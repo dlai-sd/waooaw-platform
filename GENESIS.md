@@ -945,6 +945,115 @@ An artifact that does not meet this standard shall not be committed.
 
 ---
 
+# Engineering Quality Mandate
+
+## Testing Is The Only Approval Gate
+
+There are no manual testers in the WAOOAW engineering organization. The Founder does not test software. No human validates builds manually.
+
+**Tests are the reviewers. A passing test suite is the only approval required to promote to the next environment.**
+
+Every engineer — human or AI — must internalize this principle: if your change cannot be automatically verified, it cannot be merged.
+
+## Zero Manual Testing Policy
+
+All of the following must be automated from the first line of production code:
+
+- **Unit tests** — per module, per service, executed on every commit
+- **Integration tests** — between services, executed on every QA deployment
+- **API contract tests** — verify service interfaces match their specifications
+- **Constitutional compliance tests** — WAOOAW-specific; see below
+- **UI / End-to-End tests** — Playwright; executed on QA and UAT deployments
+- **Security tests** — SAST on every commit, DAST on QA and UAT deployments
+- **Performance tests** — latency validation, especially PAAS <250ms guarantee, executed on QA
+- **Smoke tests** — health check suite, executed immediately after every deployment
+
+No exception to this policy exists. A feature without automated tests is not a completed feature.
+
+## Constitutional Compliance Tests
+
+This is a test category unique to WAOOAW. It exists because the platform's value proposition depends on constitutional behavior — not just functional correctness.
+
+Every Constitutional Compliance Test validates that the platform upholds a specific constitutional principle:
+
+| Constitutional Principle | Test |
+|---|---|
+| Evidence First | Assert evidence is written to the Audit Ledger BEFORE the API response is returned |
+| Human Override Guarantee | Assert Emergency Stop endpoint responds and halts operations within 250ms |
+| PAAS Boundary Enforcement | Assert PAAS Engine rejects actions outside licensed Decision Space parameters |
+| Audit Ledger Immutability | Assert DELETE or UPDATE operations on Audit Ledger records return 403 or equivalent |
+| Multi-tenant Isolation | Assert Customer A's API calls cannot access Customer B's data under any condition |
+| Constitutional Floor: Human Override | Assert that no configuration can disable the Emergency Stop endpoint |
+
+These tests run on every QA deployment. Failure of any Constitutional Compliance Test blocks promotion. No exception.
+
+## Image Promotion Pipeline — Build Once, Promote
+
+The same Docker image that passes QA tests runs in production. There is no separate build per environment. There are no environment-specific build steps.
+
+```
+Build (CI trigger: merge to develop)
+  → docker build
+  → push to Azure Container Registry
+    → tag: sha-{commit-hash}   (immutable, permanent)
+    → tag: qa                  (environment tag, moves forward)
+
+QA deployment
+  → pull image sha-{commit-hash}
+  → run all test suites
+  → QA GREEN → retag sha-{commit-hash} as :demo
+
+Demo deployment
+  → pull image sha-{commit-hash} (same image)
+  → run smoke tests
+  → Demo GREEN → retag sha-{commit-hash} as :uat
+
+UAT deployment
+  → pull image sha-{commit-hash} (same image)
+  → run full E2E + security + constitutional compliance
+  → UAT GREEN → retag sha-{commit-hash} as :prod
+
+Production deployment
+  → pull image sha-{commit-hash} (same image, unchanged since commit)
+  → run smoke tests
+  → monitor for 15 minutes
+```
+
+**What image promotion guarantees:** The artifact that survived all test suites is exactly the artifact serving customers. No re-compilation. No environment-specific builds. No "works in QA but fails in prod" scenarios from build differences.
+
+## CI/CD Gate Sequence
+
+```
+Commit to feature branch
+  → Unit tests
+  → SAST security scan (fail build on critical findings)
+  → Docker build
+
+Merge to develop
+  → Integration tests
+  → API contract tests
+  → Constitutional compliance tests
+  → DAST security (on running QA environment)
+  → Performance tests (PAAS latency, API response times)
+  → E2E UI tests
+
+QA GREEN → Auto-promote image to Demo
+  → Smoke tests
+
+Demo GREEN → Auto-promote image to UAT
+  → Full E2E + constitutional compliance
+  → Security scan on live environment
+
+UAT GREEN → Trigger production deployment
+  → Smoke tests
+  → 15-minute automated monitoring window
+  → Auto-rollback if error rate exceeds threshold
+```
+
+No step in this pipeline requires a human to click "approve." The test results are the approval.
+
+---
+
 # AI Engineer Operating Constraints
 AI engineers operating within this organization shall observe the following constraints.
 

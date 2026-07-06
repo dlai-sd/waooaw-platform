@@ -2,7 +2,7 @@
 
 **Altitude:** 100K — System Context
 
-**Version:** 0.3 (Updated: Temporal workflow orchestration added)
+**Version:** 0.4 (Updated: Fully automated testing, image promotion pipeline)
 
 **Deployment Target:** Azure India — Central India region (Pune)
 
@@ -490,6 +490,56 @@ The following are intentionally deferred to later epochs:
 - Third-party professional publishers
 
 These will be introduced when business evidence demands them.
+
+---
+
+## CI/CD and Testing Philosophy
+
+**There are no manual testers. There are no manual approval gates in the deployment pipeline.**
+
+Tests are the only approval mechanism. A passing test suite is the authorization to promote.
+
+### Image Promotion — One Build, Five Environments
+
+```
+Build once (on merge to develop)
+  docker build → push :sha-abc123 to Azure Container Registry
+
+QA → tests pass → retag :sha-abc123 as :demo (no rebuild)
+Demo → smoke pass → retag :sha-abc123 as :uat (no rebuild)
+UAT → full suite pass → retag :sha-abc123 as :prod (no rebuild)
+```
+
+The image that passed QA is the exact image in production. No environment-specific builds.
+
+### Test Suite per Environment
+
+| Test Type | Local | QA | Demo | UAT | Prod |
+|---|---|---|---|---|---|
+| Unit tests | ✓ | ✓ | — | — | — |
+| Integration tests | — | ✓ | — | — | — |
+| API contract tests | — | ✓ | — | ✓ | — |
+| **Constitutional compliance** | — | ✓ | — | ✓ | — |
+| UI / E2E (Playwright) | — | ✓ | — | ✓ | — |
+| SAST security scan | ✓ | ✓ | — | — | — |
+| DAST security scan | — | ✓ | — | ✓ | — |
+| Performance / latency | — | ✓ | — | — | — |
+| Smoke tests | — | ✓ | ✓ | ✓ | ✓ |
+
+### Constitutional Compliance Tests (WAOOAW-Specific)
+
+This test category is unique to WAOOAW. It validates that the platform upholds constitutional principles — not just functional correctness.
+
+| Test | Constitutional Principle |
+|---|---|
+| Evidence written before API response returned | Evidence First |
+| Emergency Stop responds + halts within 250ms | Human Override Constitutional Floor |
+| PAAS engine rejects out-of-space actions | Second Law — Authority |
+| Audit Ledger records cannot be deleted/modified | Immutable Evidence |
+| Tenant A cannot read Tenant B data | Multi-tenant Isolation |
+| Emergency Stop cannot be disabled by configuration | Constitutional Floor |
+
+Failure of any Constitutional Compliance Test blocks promotion to the next environment. No exception.
 
 ---
 
