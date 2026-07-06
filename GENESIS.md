@@ -547,13 +547,13 @@ This is BOOT 01.
 ---
 
 # The Engineering Organization
-This repository is the engineering organization.
+This repository is the legal record of the engineering organization.
 
-It is not a storage location for code.
+It is not the organization itself.
 
-It is not a documentation repository.
+The organization is the people — human and digital — operating under the Constitution and GENESIS.
 
-It is the living, executable definition of WAOOAW.
+The repository records every organizational decision.
 
 Every file is an artifact of the organization.
 
@@ -561,7 +561,7 @@ Every commit is an organizational decision.
 
 Every review is an organizational process.
 
-The repository and the engineering organization are the same thing.
+Git is institutional memory. The Constitution is the legal framework. GENESIS is the operating handbook.
 
 ---
 
@@ -1380,9 +1380,27 @@ This concludes BOOT 02.
 
 Epoch 0 is now complete. The institution has its foundation.
 
-Epoch 0.5 — Institutional Simulation — begins next.
+Epoch 0.5 — Constitutional Discovery — begins next.
 
-Engineering does not begin until the institution has been simulated into correctness.
+Engineering does not begin until the institution has been discovered into correctness.
+
+---
+
+# Founder Resolution FR-001
+
+**Issued by:** Founder
+
+**Date:** 2026-07-06
+
+> The Founding Corpus of WAOOAW exists for one purpose only:
+>
+> To enable the constitutional employment of autonomous digital professionals.
+>
+> Every future amendment, architecture decision, engineering practice, runtime behavior, and organizational policy shall be presumed invalid until shown to strengthen that purpose.
+>
+> Complexity is not evidence of maturity.
+>
+> Reality is.
 
 ---
 
