@@ -472,7 +472,7 @@ Scales with customer volume. Minimum viable production:
 | Emergency stop | WebSocket / Azure SignalR | Only guaranteed sub-250ms mechanism for push |
 | Event store | Append-only PostgreSQL tables (Temporal-backed) | Eliminates separate event bus cost in non-prod |
 | Cache | Skip in dev, Redis in prod | Container Apps scales to zero; cache is wasteful in dev |
-| Identity | Keycloak (container) | Zero additional cost vs Azure AD B2C per-auth pricing |
+| Identity | Keycloak (identity broker) | Self-hosted, zero cost. Federates to Google (default), Facebook, Microsoft, Apple via OAuth. App always receives a Keycloak JWT — provider-agnostic. |
 | Payments | Razorpay | India-native, lower fees than Stripe for INR transactions |
 | LLM in dev | Ollama local | Zero cost; forces provider-agnostic design |
 
