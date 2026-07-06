@@ -1,0 +1,259 @@
+# WAOOAW — Reference Architecture Overview
+
+**Altitude:** 100K — System Context
+
+**Version:** 0.1 (Pre-ratification — produced by Chief Architect before formal G2/G3 sequence)
+
+**Deployment Target:** Azure India — Central India region (Pune)
+
+**MVI Acceptance Scenarios:** All three from Constitutional Discovery Phase
+- Scenario 001: Dental Clinic, Viman Nagar — Asynchronous Marketing Professional
+- Scenario 002: Beauty Artist, Mumbai — Asynchronous Marketing Professional (Creative Identity variant)
+- Scenario 003: NIFTY Trader, Pune — Synchronous Trading Professional (PAAS mode, <250ms)
+
+---
+
+## The Architectural Forcing Function
+
+Supporting all three scenarios simultaneously produces one hard constraint that governs the entire architecture:
+
+> **The architecture must support both asynchronous approval-gate execution (marketing) and synchronous pre-authorized execution (trading) from a single Constitutional Engine.**
+
+If the architecture handles the trading professional's <250ms latency requirement, the marketing professionals are trivially simpler. Design for trading. Configure for marketing.
+
+---
+
+## System Context (C4 Level 1)
+
+```mermaid
+C4Context
+    title WAOOAW — System Context
+
+    Person(customer, "Customer Organisation", "Hires and governs Digital Professionals")
+    Person(admin, "WAOOAW Admin", "Manages platform, reviews appeals")
+
+    System(waooaw, "WAOOAW Platform", "Constitutional OS for autonomous digital professionals")
+
+    System_Ext(llm, "LLM Providers", "Azure OpenAI (US East), OpenAI, Anthropic")
+    System_Ext(social, "Social Platforms", "Instagram, Facebook, Google Business, WhatsApp Business API")
+    System_Ext(market, "Financial Markets", "NSE/BSE data feed, Broker API (Zerodha Kite)")
+    System_Ext(payment, "Payment Gateway", "Razorpay (India)")
+    System_Ext(idp, "Identity Provider", "Keycloak (self-hosted) or Azure AD B2C")
+
+    Rel(customer, waooaw, "Hires professionals, reviews evidence, sets authority")
+    Rel(admin, waooaw, "Reviews appeals, manages marketplace")
+    Rel(waooaw, llm, "Routes AI inference requests (provider-agnostic)")
+    Rel(waooaw, social, "Marketing Professional publishes content")
+    Rel(waooaw, market, "Trading Professional executes orders")
+    Rel(waooaw, payment, "Processes subscriptions and billing")
+    Rel(waooaw, idp, "Authenticates customers and admins")
+```
+
+---
+
+## Solution Layers (C4 Level 2 — Simplified)
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  PRESENTATION LAYER                                              │
+│  Next.js 14 + React + TypeScript                                │
+│  Customer Portal | Professional Dashboard | Admin Console        │
+│  Deployment: Azure Container Apps (consumption, scales to zero)  │
+└─────────────────────────────────────────────────────────────────┘
+                               ↓
+┌─────────────────────────────────────────────────────────────────┐
+│  API GATEWAY LAYER                                               │
+│  NGINX reverse proxy (Container Apps sidecar)                    │
+│  JWT validation | Rate limiting | Request routing                │
+│  Promotes to Azure API Management when customer volume demands   │
+└─────────────────────────────────────────────────────────────────┘
+                               ↓
+┌─────────────────────────────────────────────────────────────────┐
+│  BUSINESS PLATFORM LAYER (.NET 9, Minimal API)                  │
+│  ┌─────────────────┐  ┌──────────────┐  ┌──────────────────┐   │
+│  │ Employment Svc  │  │ Marketplace  │  │ Customer Svc     │   │
+│  │ Contracts       │  │ Discovery    │  │ Org management   │   │
+│  │ Lifecycles      │  │ Hiring flow  │  │ Multi-tenancy    │   │
+│  └─────────────────┘  └──────────────┘  └──────────────────┘   │
+│  ┌─────────────────┐  ┌──────────────┐                          │
+│  │ Billing Svc     │  │ Review &     │                          │
+│  │ Subscriptions   │  │ Appeals Svc  │                          │
+│  │ Razorpay        │  │ OOP support  │                          │
+│  └─────────────────┘  └──────────────┘                          │
+│  Deployment: Azure Container Apps (shared environment)           │
+└─────────────────────────────────────────────────────────────────┘
+                               ↓
+┌─────────────────────────────────────────────────────────────────┐
+│  CONSTITUTIONAL ENGINE LAYER  ←— WAOOAW's Core Innovation       │
+│  Decision Space Registry | Authority License Manager             │
+│  Policy Engine (Constitutional Floors enforcement)               │
+│  Evidence Recorder (append-only, immutable)                      │
+│  Three-Ledger Manager:                                           │
+│    Professional Experience Ledger | Customer Evidence Ledger     │
+│    Constitutional Audit Ledger                                   │
+│  Deployment: Azure Container Apps (dedicated — never shares)     │
+└─────────────────────────────────────────────────────────────────┘
+                               ↓
+┌─────────────────────────────────────────────────────────────────┐
+│  PROFESSIONAL EXECUTION LAYER (Python)                           │
+│                                                                  │
+│  ┌─────────────────────────┐  ┌──────────────────────────────┐  │
+│  │ APPROVAL-GATE PATH      │  │ PAAS PATH (Trading)          │  │
+│  │ (Marketing, Beauty)     │  │ <250ms latency requirement   │  │
+│  │                         │  │                              │  │
+│  │ Professional proposes   │  │ Parameters validated once    │  │
+│  │ → Customer reviews      │  │ → Execute within space       │  │
+│  │ → Constitutional check  │  │ → Evidence recorded          │  │
+│  │ → Execute               │  │ → No per-action approval     │  │
+│  └─────────────────────────┘  └──────────────────────────────┘  │
+│                                                                  │
+│  Emergency Stop Handler (WebSocket / Azure SignalR)              │
+│  Single Emergency Stop endpoint — guaranteed <250ms response     │
+│                                                                  │
+│  Deployment: Azure Container Apps                                │
+└─────────────────────────────────────────────────────────────────┘
+                               ↓
+┌─────────────────────────────────────────────────────────────────┐
+│  AI RUNTIME LAYER (Python)                                       │
+│  LLM Gateway (provider-agnostic model router)                    │
+│  → Azure OpenAI (US East) | OpenAI | Anthropic | Ollama (dev)   │
+│  Prompt Builder (constitutional context injection)               │
+│  Professional Skill Runner (executes profession-specific tools)  │
+│  Governed Memory Manager (learning within Decision Space)        │
+│  Deployment: Azure Container Apps                                │
+└─────────────────────────────────────────────────────────────────┘
+                               ↓
+┌─────────────────────────────────────────────────────────────────┐
+│  EXTERNAL INTEGRATIONS (per Professional type)                   │
+│  Marketing: Instagram Graph API | Facebook API | Google My Biz   │
+│             WhatsApp Business API | Google Analytics             │
+│  Trading:   NSE/BSE Market Data | Zerodha Kite API               │
+│             Risk management feeds                                │
+└─────────────────────────────────────────────────────────────────┘
+                               ↓
+┌─────────────────────────────────────────────────────────────────┐
+│  PERSISTENCE LAYER                                               │
+│  ┌────────────────────────────────────┐  ┌───────────────────┐  │
+│  │ PostgreSQL Flexible Server (India) │  │ Azure Blob        │  │
+│  │ + pgvector extension               │  │ Storage (India)   │  │
+│  │                                    │  │                   │  │
+│  │ Multi-tenant via Row-Level Security│  │ Media, documents  │  │
+│  │ Operational tables                 │  │ Creative assets   │  │
+│  │ Append-only event tables           │  │ Export packages   │  │
+│  │ Constitutional Audit Ledger        │  │                   │  │
+│  │ pgvector for knowledge retrieval   │  │                   │  │
+│  └────────────────────────────────────┘  └───────────────────┘  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## The PAAS Execution Path — Critical Design Detail
+
+The Trading Professional's Pre-Authorized Action Space mode is the hardest constraint. Here is the execution flow:
+
+```
+Customer defines Decision Space parameters at contract signing
+    ↓
+Constitutional Engine validates and records PAAS configuration
+    ↓
+Trading session begins (09:15 IST)
+    ↓
+Market signal arrives
+    ↓
+PAAS Engine: Is this action within the licensed Decision Space?
+    YES → Execute immediately (target: <10ms)
+    NO  → Reject, record constitutional event, notify customer
+    ↓
+Constitutional Audit Ledger: append evidence record (target: <5ms)
+    ↓
+Customer Emergency Stop received (any time)
+    ↓
+WebSocket/SignalR message to PAAS Engine
+    ↓
+PAAS Engine: halt operations (target: <250ms end-to-end)
+```
+
+**Why PostgreSQL is sufficient for the execution hot path:**
+
+The PAAS Engine validates against an in-memory cache of the Decision Space parameters (loaded at session start). It does NOT query PostgreSQL per trade. Evidence is written asynchronously after execution. PostgreSQL handles the high-write throughput of evidence recording without blocking execution.
+
+---
+
+## Environment Architecture and Cost
+
+### Development Environment (India Central — Azure)
+
+| Component | Service | Monthly Estimate |
+|---|---|---|
+| Container Apps (all services) | Consumption plan, scales to zero | INR 1,500–2,000 |
+| PostgreSQL Flexible | B1ms, 1 vCPU, 2GB, 32GB SSD | INR 2,200 |
+| Azure Blob Storage | LRS, 50GB | INR 300 |
+| Azure Monitor | Free tier | INR 0 |
+| Azure Container Registry | Basic | INR 400 |
+| LLM (dev) | Local Ollama (no cost) or pay-per-use API | INR 500–1,000 |
+| **Total** | | **~INR 5,000–6,000** ✓ |
+
+> Well within INR 10,000/month constraint. Remaining budget absorbs occasional load testing.
+
+### QA / Staging Environment
+
+| Component | Service | Monthly Estimate |
+|---|---|---|
+| Container Apps (all services) | Slightly more traffic than dev | INR 2,000–2,500 |
+| PostgreSQL Flexible | B2ms for better QA performance | INR 3,500 |
+| Azure Blob | LRS, 100GB | INR 500 |
+| Azure Monitor | Log Analytics basic | INR 500 |
+| **Total** | | **~INR 6,500–7,500** ✓ |
+
+### Production Environment
+
+Scales with customer volume. Minimum viable production:
+- AKS standard tier or Container Apps Dedicated plan
+- PostgreSQL Flex General Purpose (4 vCPU)
+- Redis Cache C1 Standard
+- Azure SignalR Service
+- Azure CDN
+- Estimated floor: INR 25,000–35,000/month before customer revenue
+
+---
+
+## Key Architectural Decisions
+
+| Decision | Choice | Rationale |
+|---|---|---|
+| Execution model bifurcation | Config-driven (PAAS vs Approval-Gate) | Profession type = JSON config, no code change |
+| Multi-tenancy | PostgreSQL Row-Level Security | 50% cheaper than schema-per-tenant. Upgrade path exists. |
+| AI provider | Model router (provider-agnostic) | Azure OpenAI not in India; US East endpoint with consent |
+| Emergency stop | WebSocket / Azure SignalR | Only guaranteed sub-250ms mechanism for push |
+| Event store | Append-only PostgreSQL tables | Eliminates separate event bus cost in non-prod |
+| Cache | Skip in dev, Redis in prod | Container Apps scales to zero; cache is wasteful in dev |
+| Identity | Keycloak (container) | Zero additional cost vs Azure AD B2C per-auth pricing |
+| Payments | Razorpay | India-native, lower fees than Stripe for INR transactions |
+| LLM in dev | Ollama local | Zero cost; forces provider-agnostic design |
+
+---
+
+## What This Architecture Does NOT Include (Yet)
+
+The following are intentionally deferred to later epochs:
+
+- Multi-region (India only for now)
+- Kafka / Service Bus (PostgreSQL event tables until volume demands it)
+- Dedicated vector database (pgvector sufficient for MVI)
+- Professional certification marketplace
+- Cross-organization credential portability
+- Third-party professional publishers
+
+These will be introduced when business evidence demands them.
+
+---
+
+## Next Steps (Architecture Sequence)
+
+1. **ADR-001 through ADR-010** — Ratify the key decisions in this document as formal ADRs
+2. **C4 Container Detail** — Decompose each container into service boundaries and API contracts
+3. **Data Architecture** — Constitutional Audit Ledger schema design, multi-tenant strategy
+4. **AI Architecture** — LLM Gateway design, model router, prompt injection pattern
+5. **Security Architecture** — Zero-trust, data residency plan for LLM cross-region
+6. **Deployment Architecture** — Terraform modules per environment
