@@ -98,7 +98,7 @@ The following discoveries were made but have not been elevated to full precedent
 
 ### CD-005 — Embodiment Change Notification Standard
 
-**Source:** Simulation 001 — Month 6
+**Source:** Case 001 — Month 6
 
 **Observation:** When the professional's underlying model changed, the platform notified the customer. The customer accepted. The constitutional observation was that consent was not required for an embodiment change that preserved the profession and responsibilities. But the notification content was not constitutionally specified. What must be communicated? What must not be implied? What constitutional assurances must the notification make?
 
@@ -106,15 +106,97 @@ The following discoveries were made but have not been elevated to full precedent
 
 ---
 
+## Case 002 Discoveries
+
+---
+
+### CD-006 — Creative Identity as Protected Customer Right
+
+**Source:** Case 002 — Sana Mirza, Beauty Artist
+
+**Constitution Articles:** Article IX (Bill of Rights), Article V (Identity and Embodiment)
+
+**Observation:** The Constitution does not explicitly name creative identity as a customer right. For sole-proprietor creative businesses, the customer's personal aesthetic IS the service. A professional operating in this context must be constitutionally bounded by the customer's creative identity, not merely by capability limits. The Creative Standard Profile functions as a constitutional document — it defines the boundary of professional authority.
+
+**Status:** Under deliberation. Likely rises to CP-006. May require constitutional amendment.
+
+---
+
+### CD-007 — Concurrent Engagement Protocol
+
+**Source:** Case 002 — Week 3
+
+**Constitution Articles:** Article VI (Three-Ledger Model), Article IX (Customer Rights)
+
+**Observation:** When both customer and professional are actively engaged on the same channel, there is no constitutional protocol governing scheduling priority, duplication prevention, or evidence classification. The professional improvised a graceful resolution. But improvisation is not constitution. The Employment Contract must define concurrent engagement rules explicitly.
+
+**Status:** Under deliberation. Architectural implications significant for content scheduling design.
+
+---
+
+### CD-008 — Third-Party Data in Customer Archives
+
+**Source:** Case 002 — Week 5
+
+**Constitution Articles:** Article VI (Three-Ledger Model), Article VII (Doctrine of Institutional Independence), Article IX (Customer Rights)
+
+**Observation:** Professional onboarding involves accessing historical customer content that may contain identifiable third-party individuals who did not consent to processing by an autonomous digital professional. The three-ledger model addresses customer data ownership but does not address third-party data rights embedded within customer archives. This is a privacy gap with genuine constitutional and potentially regulatory implications.
+
+**Status:** Under deliberation. May require constitutional amendment. Escalated to Founder as potentially the most significant discovery in Case 002.
+
+---
+
+### CD-009 — Creative Standard Calibration Period
+
+**Source:** Case 002 — Month 2
+
+**Constitution Articles:** Article IX (Customer Rights — right to transparency), Article X (Professional Duties)
+
+**Observation:** A creative standard approved at Week 1 is a hypothesis, not fully informed consent. The customer cannot know what they do not know about their own creative voice until they see it imperfectly reproduced. Corrections during the early engagement period do not constitute rejection of work — they constitute refinement of an inherently provisional standard. The institution needs a formal calibration period where the Creative Standard Profile is explicitly provisional and amendments are expected, not exceptional.
+
+**Status:** Under deliberation. Likely rises to CP-009.
+
+---
+
+### CD-010 — Split Authority Mode
+
+**Source:** Case 002 — Month 3 Renewal
+
+**Constitution Articles:** Article III (Second Law), Article IV (Three Systems)
+
+**Observation:** The current authority model treats professional actions as complete units — the professional produces and distributes content. Some customers require split authority: the customer retains creative production while delegating operational distribution to the professional. This Customer-Created, Professional-Distributed mode is not currently supported in the Employment Contract or authority model.
+
+**Status:** Under deliberation. Architectural implications for authority model design.
+
+---
+
+### CD-011 — Suspension vs Termination
+
+**Source:** Case 002 — Month 6
+
+**Constitution Articles:** Article V (Identity and Embodiment), Article VI (Three-Ledger Model), Article IX (Customer Rights — data portability)
+
+**Observation:** Non-renewal is not termination. Seasonal businesses require the ability to pause employment without losing accumulated institutional memory — the Creative Standard Profile, vocabulary record, aesthetic calibration, evidence history. Requiring full re-onboarding on seasonal return destroys the Trust Cycle's compounding value. The Employment Contract lifecycle must support a Suspended state distinct from Terminated.
+
+**Status:** Under deliberation. Likely rises to CP-011. Critical for seasonal business models.
+
+---
+
 ## Precedent Index
 
 | ID | Title | Source | Status |
 |---|---|---|---|
-| CP-001 | Pre-Employment Rights Visibility | Sim 001 | Ratified |
-| CP-002 | Shadow Authority as Earned Evidence | Sim 001 | Ratified |
-| CP-003 | Scope-Boundary Confirmation | Sim 001 | Ratified |
-| CD-004 | Renewal as Governed Re-consent | Sim 001 | Under deliberation |
-| CD-005 | Embodiment Change Notification Standard | Sim 001 | Under deliberation |
+| CP-001 | Pre-Employment Rights Visibility | Case 001 | Ratified |
+| CP-002 | Shadow Authority as Earned Evidence | Case 001 | Ratified |
+| CP-003 | Scope-Boundary Confirmation (Mandatory) | Case 001, re-affirmed Case 002 | Ratified |
+| CD-004 | Renewal as Governed Re-consent | Case 001 | Under deliberation |
+| CD-005 | Embodiment Change Notification Standard | Case 001 | Under deliberation |
+| CD-006 | Creative Identity as Protected Customer Right | Case 002 | Under deliberation |
+| CD-007 | Concurrent Engagement Protocol | Case 002 | Under deliberation |
+| CD-008 | Third-Party Data in Customer Archives | Case 002 | Under deliberation |
+| CD-009 | Creative Standard Calibration Period | Case 002 | Under deliberation |
+| CD-010 | Split Authority Mode | Case 002 | Under deliberation |
+| CD-011 | Suspension vs Termination | Case 002 | Under deliberation |
 
 ---
 
