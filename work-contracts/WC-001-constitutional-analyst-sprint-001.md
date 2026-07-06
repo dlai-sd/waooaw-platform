@@ -6,7 +6,9 @@
 
 **Epoch:** 2 — Knowledge System
 
-**Goal:** Pass Gate G2
+**Backlog Item:** IB-001 — Produce Constitutional Knowledge Corpus
+
+**Goal:** Pass Gate G2 by satisfying IB-001
 
 **Gate G2 Definition of Done:**
 
