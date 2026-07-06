@@ -2,7 +2,7 @@
 
 **Altitude:** 100K — System Context
 
-**Version:** 0.1 (Pre-ratification — produced by Chief Architect before formal G2/G3 sequence)
+**Version:** 0.2 (Updated: Mobile, Docker-first, Service decomposition)
 
 **Deployment Target:** Azure India — Central India region (Pune)
 
@@ -40,7 +40,7 @@ C4Context
     System_Ext(payment, "Payment Gateway", "Razorpay (India)")
     System_Ext(idp, "Identity Provider", "Keycloak (self-hosted) or Azure AD B2C")
 
-    Rel(customer, waooaw, "Hires professionals, reviews evidence, sets authority")
+    Rel(customer, waooaw, "Hires professionals, reviews evidence, sets authority — via Web and Mobile")
     Rel(admin, waooaw, "Reviews appeals, manages marketplace")
     Rel(waooaw, llm, "Routes AI inference requests (provider-agnostic)")
     Rel(waooaw, social, "Marketing Professional publishes content")
@@ -48,6 +48,152 @@ C4Context
     Rel(waooaw, payment, "Processes subscriptions and billing")
     Rel(waooaw, idp, "Authenticates customers and admins")
 ```
+
+---
+
+## Mobile Strategy
+
+Customers — dentists between patients, traders during lunch, beauty artists between clients — use mobile primarily.
+
+**Phase 1 (MVI): Next.js PWA**
+- Full Progressive Web App: responsive, installable on iOS/Android home screen, push notifications
+- Emergency Stop button: prominently accessible, mobile-optimized
+- Content approval: approve/reject posts on phone
+- Evidence review: session summaries readable on small screen
+- No app store required. Ships with the web app.
+
+**Phase 2 (Post-MVI): React Native**
+- Native iOS and Android
+- Shares API contracts with web (no duplication)
+- Better camera integration for beauty artist content workflows
+- Native trading alerts and vibration for Emergency Stop
+
+**WhatsApp Business integration** (marketing professionals): already in scope as a platform the professional manages. This serves as an additional mobile-native customer touchpoint.
+
+---
+
+## Service Decomposition
+
+GENESIS specifies: **Modular Monolith + Dedicated Autonomous Workforce Runtime**.
+
+This produces **four deployable services** — not 20 microservices, not one monolith:
+
+```
+┌──────────────────────────────────────────────────────────┐
+│  SERVICE 1: Business Platform                             │
+│  .NET 9, Modular Monolith                                 │
+│  Modules: Employment | Marketplace | Customer             │
+│           Billing | Review & Appeals                      │
+│  Pattern: Vertical slice architecture within monolith     │
+└──────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────┐
+│  SERVICE 2: Constitutional Engine  ← Core Innovation      │
+│  .NET 9, dedicated process                                │
+│  Decision Space Registry + Validator                      │
+│  Authority License Manager                                │
+│  Evidence Recorder (append-only writes)                   │
+│  Policy Engine (Constitutional Floors enforcement)        │
+│  Three-Ledger Manager                                     │
+│  NOTE: Must never be co-hosted with Business Platform     │
+└──────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────┐
+│  SERVICE 3: Professional Execution Runtime                │
+│  Python, dedicated process                                │
+│  Approval-Gate Orchestrator (async path)                  │
+│  PAAS Orchestrator (sync, <250ms path)                    │
+│  Emergency Stop Handler (WebSocket)                       │
+│  External Platform Connectors:                            │
+│    Instagram | Facebook | Google Business | WhatsApp      │
+│    NSE/BSE data | Zerodha Kite API                        │
+└──────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────┐
+│  SERVICE 4: AI Runtime                                    │
+│  Python, dedicated process                                │
+│  LLM Gateway (provider-agnostic router)                   │
+│  Model Router (selects model per profession type)         │
+│  Prompt Builder (constitutional context injection)        │
+│  Governed Memory Manager                                  │
+└──────────────────────────────────────────────────────────┘
+```
+
+**Why four, not more:**
+- Fewer services = fewer network hops = lower latency = lower cost in dev
+- Constitutional Engine must be isolated (Doctrine of Institutional Independence)
+- Professional Runtime must be isolated (PAAS latency requirement)
+- AI Runtime must be isolated (model routing and provider swapping without rebuilding)
+- Business Platform modules can be promoted to independent services when load demands it
+
+---
+
+## Docker-First Local Development
+
+Every engineer (human or AI Runtime Professional) must be able to run the full stack locally without cloud access.
+
+```yaml
+# docker-compose.yml (conceptual — full version in deployment/)
+services:
+  postgres:
+    image: postgres:16
+    # PostgreSQL + pgvector extension
+    # Dev data only — reset between test runs
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:24
+    # Local identity provider
+    # Pre-configured with WAOOAW realm
+
+  ollama:
+    image: ollama/ollama
+    # Local LLM for dev — zero cost
+    # Loaded with: llama3, codellama (as needed)
+    # Forces provider-agnostic design from day one
+
+  business-api:
+    build: ./src/business-platform
+    # .NET 9, watches for file changes
+    # Port 5001
+
+  constitutional-engine:
+    build: ./src/constitutional-engine
+    # .NET 9
+    # Port 5002
+
+  professional-runtime:
+    build: ./src/professional-runtime
+    # Python, FastAPI
+    # Port 5003
+
+  ai-runtime:
+    build: ./src/ai-runtime
+    # Python, FastAPI
+    # Port 5004
+
+  web:
+    build: ./src/web
+    # Next.js 14, dev mode with hot reload
+    # Port 3000
+
+  nginx:
+    image: nginx:alpine
+    # Local API gateway
+    # Routes: /api/v1/* → services
+    # Port 80
+```
+
+**Local developer flow:**
+```
+git clone → docker compose up → localhost:3000
+```
+
+No Azure account needed for development. No environment variables beyond `.env.local`. Any new team member or AI agent is running in minutes.
+
+**Local vs Cloud parity:**
+- Local: Docker Compose, Ollama, PostgreSQL container
+- Dev cloud: Azure Container Apps, Azure PostgreSQL Flex, Azure OpenAI (US East)
+- The `.env` switches the LLM endpoint and DB connection string — nothing else changes
 
 ---
 
