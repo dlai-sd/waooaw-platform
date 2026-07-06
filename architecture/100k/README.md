@@ -151,11 +151,14 @@ services:
     # Loaded with: llama3, codellama (as needed)
     # Forces provider-agnostic design from day one
 
-  temporal:
-    image: temporalio/auto-setup:1.24
-    # Temporal server + worker support
-    # Uses postgres as backing store (separate temporal schema)
-    # Port 7233 (gRPC), 7243 (frontend service)
+  jaeger:
+    image: jaegertracing/all-in-one:1.54
+    # Distributed tracing — Jaeger UI at localhost:16686
+    # All services send OTLP traces to jaeger:4317
+    ports: ["16686:16686", "4317:4317", "4318:4318"]
+
+  # Note: In cloud environments, services send OTLP to Azure Monitor endpoint
+  # Config change only — no code change between dev and cloud
 
   temporal-ui:
     image: temporalio/ui:2.26

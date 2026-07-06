@@ -400,4 +400,4 @@ The following Architecture Decision Records must be ratified before any service 
 | ADR-005 | PAAS session isolation strategy (1 instance per session vs shared) |
 | ADR-006 | API rate limiting — per customer tier vs global |
 | ADR-007 | gRPC mTLS certificate management between services |
-| ADR-008 | Identity: Keycloak as broker (Google default, Facebook/Microsoft/Apple later) |
+| ADR-009 | Observability: OpenTelemetry + Jaeger (dev) / Azure Monitor (cloud) |
