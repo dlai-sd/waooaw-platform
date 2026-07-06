@@ -2,7 +2,7 @@
 
 **Altitude:** 100K — System Context
 
-**Version:** 0.2 (Updated: Mobile, Docker-first, Service decomposition)
+**Version:** 0.3 (Updated: Temporal workflow orchestration added)
 
 **Deployment Target:** Azure India — Central India region (Pune)
 
@@ -151,6 +151,18 @@ services:
     # Loaded with: llama3, codellama (as needed)
     # Forces provider-agnostic design from day one
 
+  temporal:
+    image: temporalio/auto-setup:1.24
+    # Temporal server + worker support
+    # Uses postgres as backing store (separate temporal schema)
+    # Port 7233 (gRPC), 7243 (frontend service)
+
+  temporal-ui:
+    image: temporalio/ui:2.26
+    # Temporal web dashboard — workflow visibility
+    # Port 8080
+    # See all running workflows, history, pending approvals
+
   business-api:
     build: ./src/business-platform
     # .NET 9, watches for file changes
@@ -294,7 +306,91 @@ No Azure account needed for development. No environment variables beyond `.env.l
 
 ---
 
-## The PAAS Execution Path — Critical Design Detail
+## Orchestration Layer — Temporal
+
+**Why orchestration is required:**
+
+The Employment Contract lifecycle lasts months. The approval-gate workflow waits hours for human input. The PAAS trading session runs for 6 hours across thousands of micro-decisions. These are long-running, stateful workflows — not HTTP request/response patterns.
+
+Without orchestration: hold threads open (memory leak), poll database every second (expensive), or write custom state machines in every service (unmaintainable).
+
+**Decision: Temporal for workflow orchestration.**
+
+Temporal is an open-source durable workflow engine designed exactly for this. It handles:
+- Long-running workflows that survive service restarts (months-long Employment Contract lifecycle)
+- Wait-for-human patterns (pause workflow, resume when customer approves)
+- Retry logic with backoff for external API failures (Instagram API outages)
+- Timeout handling with graceful escalation
+- Complete workflow visibility through its dashboard
+- PAAS session lifecycle with guaranteed evidence recording
+
+**Decision: No Kafka / Azure Event Hub for MVI.**
+
+Kafka handles millions of events per second. WAOOAW MVI produces ~10,000 events per day across all professional types. Kafka's operational overhead and cost are unjustified. Temporal's internal queuing + PostgreSQL event tables is sufficient. Revisit when evidence recording exceeds PostgreSQL throughput limits.
+
+**Workflow assignments per service:**
+
+```
+Constitutional Engine (Temporal Worker)
+  Workflows:
+    - AuthorityEscalationWorkflow
+    - AppealWorkflow
+    - ConstitutionalReviewWorkflow
+  Activities:
+    - ValidateDecisionSpace
+    - RecordConstitutionalEvent (append-only)
+    - GrantAuthorityLicense
+    - SuspendAuthorityLicense
+
+Business Platform (Temporal Worker)
+  Workflows:
+    - EmploymentLifecycleWorkflow  ← months-long, survives restarts
+    - OnboardingWorkflow
+    - RenewalWorkflow
+    - TerminationWorkflow
+  Activities:
+    - CreateEmploymentContract
+    - NotifyCustomer (email + push + WhatsApp)
+    - ProcessPayment (Razorpay)
+
+Professional Runtime (Temporal Worker)
+  Workflows:
+    - ApprovalGateWorkflow
+        → proposes → notifies → waits up to 24h → customer approves
+        → validates → publishes (retry 3x) → records evidence
+    - PAASSessionWorkflow
+        → validates space → opens session → runs until close/stop
+        → records session summary → updates authority ledger
+  Activities:
+    - PublishToInstagram (with retry)
+    - PublishToFacebook (with retry)
+    - ExecuteTrade (NO retry — irreversible action)
+    - WaitForCustomerApproval (Temporal heartbeat)
+    - NotifyEmergencyStop
+    - RecordTradeEvidence
+
+AI Runtime (NOT a Temporal Worker)
+  Called as a Temporal Activity from Professional Runtime
+  - Stateless inference calls
+  - Temporal handles retry if AI Runtime is unavailable
+```
+
+**The Approval-Gate workflow is the clearest illustration:**
+
+```
+Step 1: Professional generates draft content
+Step 2: Workflow sends notification to customer (WhatsApp + push)
+Step 3: Workflow WAITS (up to 24 hours) — no polling, no thread held
+Step 4: Customer approves on mobile → workflow resumes
+Step 5: Constitutional Engine validates (scope-boundary check, CP-003)
+Step 6: Publish to Instagram (retry up to 3x with exponential backoff)
+Step 7: Record evidence in Constitutional Audit Ledger (guaranteed)
+Step 8: Workflow completes
+```
+
+Without Temporal, Step 3 requires database polling or open connections. With Temporal, the workflow suspends and resumes on signal — state is durable across service restarts.
+
+---
 
 The Trading Professional's Pre-Authorized Action Space mode is the hardest constraint. Here is the execution flow:
 
@@ -368,11 +464,13 @@ Scales with customer volume. Minimum viable production:
 
 | Decision | Choice | Rationale |
 |---|---|---|
+| Workflow orchestration | Temporal (self-hosted) | Employment lifecycle lasts months; approval-gate waits hours; PAAS runs all day. Long-running durable workflows require Temporal. |
+| Message queue | Temporal internal + PostgreSQL | Kafka unjustified at MVI scale (<10k events/day). Revisit at production scale. |
 | Execution model bifurcation | Config-driven (PAAS vs Approval-Gate) | Profession type = JSON config, no code change |
 | Multi-tenancy | PostgreSQL Row-Level Security | 50% cheaper than schema-per-tenant. Upgrade path exists. |
 | AI provider | Model router (provider-agnostic) | Azure OpenAI not in India; US East endpoint with consent |
 | Emergency stop | WebSocket / Azure SignalR | Only guaranteed sub-250ms mechanism for push |
-| Event store | Append-only PostgreSQL tables | Eliminates separate event bus cost in non-prod |
+| Event store | Append-only PostgreSQL tables (Temporal-backed) | Eliminates separate event bus cost in non-prod |
 | Cache | Skip in dev, Redis in prod | Container Apps scales to zero; cache is wasteful in dev |
 | Identity | Keycloak (container) | Zero additional cost vs Azure AD B2C per-auth pricing |
 | Payments | Razorpay | India-native, lower fees than Stripe for INR transactions |
