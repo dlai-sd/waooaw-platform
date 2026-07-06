@@ -82,7 +82,64 @@ Evidence recording must complete before the API response returns (Evidence First
 
 ---
 
-## External API — Customer-Facing (Business Platform)
+## JWT Propagation Pattern
+
+JWT propagates through the entire call chain — not just the customer-facing API.
+
+```
+Customer Request
+  Authorization: Bearer {keycloak-jwt}
+          ↓
+Business Platform
+  Validates JWT (Keycloak public key)
+  Extracts: tenant_id, user_id, org_id
+          ↓ gRPC metadata: grpc-authorization: {jwt}
+Constitutional Engine
+  Validates same JWT independently
+  Extracts: tenant_id for RLS enforcement
+          ↓ DB connection with service account
+PostgreSQL
+  Before query: SET LOCAL app.tenant_id = '{from JWT}'
+  RLS policy:   WHERE tenant_id = current_setting('app.tenant_id')
+  Result: tenant A cannot see tenant B's rows — enforced at DB level
+          ↓ JWT passed to Professional Runtime workflows
+Professional Runtime
+  Extracts: professional_id, customer_id, contract_id, decision_space_id
+  These become the constitutional context for every action
+          ↓ JWT claims passed (not the token itself)
+AI Runtime
+  Receives: professional_id, customer_id, contract_id, decision_space_id
+  Builds constitutional prompt: "You are {professional_id} employed by {customer_id}
+    under contract {contract_id}. Your Decision Space is {decision_space_id}..."
+  Calls Azure OpenAI with API key (OpenAI doesn't accept JWTs)
+  Records AI inference evidence under {professional_id} and {customer_id}
+```
+
+**Three layers of JWT enforcement:**
+
+| Layer | How JWT is used |
+|---|---|
+| Service-to-service | Passed as gRPC metadata header. Each service validates independently. No implicit trust. |
+| Database | Tenant ID extracted from JWT, set as PostgreSQL session variable. RLS enforces isolation at row level — cannot be bypassed by application bugs. |
+| AI calls | JWT claims (not the token) provide constitutional context for prompt building and evidence recording. Azure OpenAI receives an API key, not the JWT. |
+
+**JWT claims required (ADR-003):**
+
+```json
+{
+  "sub": "user-uuid",
+  "tenant_id": "org-uuid",
+  "org_name": "Dr Mehta Dental Clinic",
+  "roles": ["customer"],
+  "active_contracts": ["contract-uuid-1"],
+  "iss": "https://auth.waooaw.com/realms/waooaw",
+  "exp": 1234567890
+}
+```
+
+The `tenant_id` claim is the multi-tenancy anchor. Every service, every database query, every evidence record references this claim. It cannot be forged (JWT signature), and it cannot be bypassed (PostgreSQL RLS enforces it at the database level).
+
+---
 
 **Base:** `https://api.waooaw.com/api/v1/`
 **Auth:** Bearer JWT (issued by Keycloak/Azure AD B2C)
