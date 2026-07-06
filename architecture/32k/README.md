@@ -16,17 +16,12 @@
 │  Customer Browser / Mobile PWA                    │
 │  React Native App (Phase 2)                       │
 └──────────────────────────────────────────────────┘
-                     │ HTTPS REST + WebSocket
-                     ↓
-┌──────────────────────────────────────────────────┐
-│  API Gateway (NGINX)                              │
-│  JWT validation | Rate limiting | Routing         │
-│  Routes /api/v1/* to internal services            │
-└──────────────────────────────────────────────────┘
-                     │
-          ┌──────────┴────────────────┐
-          │                           │
-          ↓ REST                      ↓ REST + WS
+       │ HTTPS REST              │ WebSocket
+       ↓                         ↓
+api.waooaw.com             rt.waooaw.com
+(Container Apps ingress)   (Container Apps ingress)
+       │                         │
+       ↓ JWT middleware           ↓
 ┌─────────────────┐      ┌───────────────────────┐
 │ Business        │      │ Professional Runtime   │
 │ Platform        │      │ (PAAS + Approval-Gate) │
@@ -39,6 +34,7 @@
 │  Constitutional Engine (.NET)                     │
 │  ← Only service that writes to Audit Ledger       │
 │  ← Only service that manages Authority Licenses   │
+│  ← INTERNAL ONLY — not reachable from internet   │
 └──────────────────────────────────────────────────┘
                      │
           ┌──────────┴────────────────┐
@@ -51,6 +47,7 @@
 ┌──────────────────────────────────────────────────┐
 │  AI Runtime (Python)                              │
 │  LLM Gateway — stateless inference               │
+│  INTERNAL ONLY — not reachable from internet     │
 └──────────────────────────────────────────────────┘
                      │
           ┌──────────┴────────────────┐
@@ -58,6 +55,10 @@
    Azure OpenAI              Ollama / Anthropic
    (US East)                 (fallback / dev)
 ```
+
+**No dedicated API gateway.** Azure Container Apps ingress handles HTTPS termination, custom domains, and routing. JWT validation is a shared middleware library used in Business Platform and Professional Runtime.
+
+**When to add Azure API Management:** Epoch 7 (Economy), when third-party developers need a developer portal, API subscriptions, and usage-based billing. Not before.
 
 ---
 

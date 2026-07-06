@@ -2,7 +2,7 @@
 
 **Altitude:** 100K — System Context
 
-**Version:** 0.4 (Updated: Fully automated testing, image promotion pipeline)
+**Version:** 0.5 (Updated: API gateway removed — Container Apps ingress sufficient at MVI)
 
 **Deployment Target:** Azure India — Central India region (Pune)
 
@@ -163,36 +163,33 @@ services:
     # Port 8080
     # See all running workflows, history, pending approvals
 
+  # Remove nginx container — Container Apps ingress handles routing
+  # business-api and professional-runtime get direct port mappings
+
   business-api:
     build: ./src/business-platform
     # .NET 9, watches for file changes
-    # Port 5001
+    ports: ["5001:80"]
 
   constitutional-engine:
     build: ./src/constitutional-engine
     # .NET 9
-    # Port 5002
+    ports: ["5002:80"]  # Internal only — not exposed externally
 
   professional-runtime:
     build: ./src/professional-runtime
     # Python, FastAPI
-    # Port 5003
+    ports: ["5003:80"]  # WebSocket Emergency Stop on this port
 
   ai-runtime:
     build: ./src/ai-runtime
     # Python, FastAPI
-    # Port 5004
+    ports: ["5004:80"]  # Internal only — called by professional-runtime
 
   web:
     build: ./src/web
     # Next.js 14, dev mode with hot reload
-    # Port 3000
-
-  nginx:
-    image: nginx:alpine
-    # Local API gateway
-    # Routes: /api/v1/* → services
-    # Port 80
+    ports: ["3000:3000"]
 ```
 
 **Local developer flow:**
@@ -212,19 +209,22 @@ No Azure account needed for development. No environment variables beyond `.env.l
 ## Solution Layers (C4 Level 2 — Simplified)
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│  PRESENTATION LAYER                                              │
-│  Next.js 14 + React + TypeScript                                │
-│  Customer Portal | Professional Dashboard | Admin Console        │
-│  Deployment: Azure Container Apps (consumption, scales to zero)  │
-└─────────────────────────────────────────────────────────────────┘
-                               ↓
-┌─────────────────────────────────────────────────────────────────┐
-│  API GATEWAY LAYER                                               │
-│  NGINX reverse proxy (Container Apps sidecar)                    │
-│  JWT validation | Rate limiting | Request routing                │
-│  Promotes to Azure API Management when customer volume demands   │
-└─────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────┐
+│  PRESENTATION LAYER                                               │
+│  Next.js 14 + React + TypeScript + PWA                           │
+│  Customer Portal | Professional Dashboard | Admin Console         │
+│  Phase 2: React Native (native mobile)                           │
+│  Deployment: Azure Container Apps (consumption, scales to zero)   │
+└──────────────────────────────────────────────────────────────────┘
+                               ↓ HTTPS (Container Apps ingress handles SSL)
+                               ↓ No separate API gateway — not needed at MVI scale
+┌──────────────────────────────────────────────────────────────────┐
+│  ROUTING LAYER (Container Apps Ingress — not a separate service)  │
+│  api.waooaw.com  → Business Platform                              │
+│  rt.waooaw.com   → Professional Runtime (WebSocket Emergency Stop)│
+│  JWT validation via shared middleware in each service             │
+│  Rate limiting added when customer tier differentiation is needed │
+└──────────────────────────────────────────────────────────────────┘
                                ↓
 ┌─────────────────────────────────────────────────────────────────┐
 │  BUSINESS PLATFORM LAYER (.NET 9, Minimal API)                  │
