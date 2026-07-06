@@ -210,3 +210,75 @@ The following discoveries were made but have not been elevated to full precedent
 *This register is updated after every Constitutional Discovery case.*
 
 *Precedents are ratified by the Founder. Discoveries are recorded by the Chief Engineer.*
+
+---
+
+## Emerging Constitutional Interpretations
+
+An Emerging Constitutional Interpretation (ECI) explains what the Constitution means in light of accumulated discoveries. It does not yet govern. It reorganizes existing understanding under a more fundamental frame.
+
+An ECI graduates to a Constitutional Precedent (CP) when it has been independently confirmed across at least four adversarial cases from different professional domains.
+
+---
+
+### ECI-001 — Decision Space as the Constitutional Primitive
+
+**Source:** Founder deliberation after Case 003
+
+**Basis:** Three cases, 18 constitutional discoveries, the Pre-Authorized Action Space model
+
+The constitutional primitive of WAOOAW is not authority, trust, capability, or employment.
+
+It is the **Decision Space**.
+
+Reorganization under this primitive:
+
+- **Employment** = Customer delegating a Decision Space to a Professional
+- **Authority** = License to occupy a Decision Space
+- **Capability** = Ability to exercise judgment within a Decision Space
+- **Trust** = Confidence that judgment will be exercised appropriately within the licensed space
+- **Evidence** = Record of decisions made while occupying a Decision Space
+
+The Digital Professional may be defined precisely:
+
+> *An autonomous entity constitutionally licensed to exercise delegated judgment within one or more Decision Spaces on behalf of a Customer.*
+
+No AI. No LLM. No agent. No technology referenced. The definition survives any embodiment change.
+
+The approval-gate model (Cases 001 and 002) was not a different constitutional model from the Pre-Authorized Action Space model (Case 003). It was an extremely small Decision Space geometry — one decision wide, held open only with direct customer participation at each step.
+
+Cases 001, 002, and 003 were different geometries of the same constitutional model.
+
+That is the hallmark of a genuine abstraction: it generates the discipline rather than solving it.
+
+**Guiding question for all future cases:**
+
+> *What is the legitimate Decision Space in this profession, and under what conditions may another entity delegate occupancy of that space?*
+
+If a case cannot answer this question, it has not yet reached the constitutional layer.
+
+**Status:** Emerging. Must hold across Healthcare, Law, Education, and at least one more adversarial domain before graduation.
+
+---
+
+### ECI-002 — Professional Refusal as Decision Space Integrity
+
+**Source:** Founder deliberation after Case 003
+
+A Digital Professional's right to refuse employment is not a personal right.
+
+It is a constitutional obligation to protect Decision Space integrity.
+
+When a requested Decision Space cannot be occupied legitimately — because it exceeds professional competence, conflicts with professional obligations, or cannot be governed constitutionally within current parameters — the professional must refuse.
+
+The refusal is not personal. It is constitutional.
+
+A professional does not accept employment. A professional accepts **occupancy** of a Decision Space. If the space cannot be occupied with constitutional legitimacy, the professional must decline.
+
+This is not concentrated power in the professional. It is distributed responsibility for constitutional integrity.
+
+**Open constitutional question registered for future cases:**
+
+What constitutes "legitimate" occupancy? Without a constitutionally defined standard, the refusal obligation could function as an unlimited veto — concentrating power in the professional in potential violation of the Doctrine of Institutional Independence. This question must be answered by a future case (Healthcare or Legal are the most likely contexts) before ECI-002 can graduate.
+
+**Status:** Emerging. Open question must be resolved before graduation.
