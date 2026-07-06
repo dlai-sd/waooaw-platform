@@ -860,6 +860,22 @@ A session that does not update PROJECT_STATE.md is incomplete.
 
 ---
 
+# Operations Discovery Rule
+
+Operations shall be discovered through repeated execution of Office Operating Protocols.
+
+Permanent operational rules shall not be documented until they have emerged from at least two completed office sprints.
+
+Every office sprint produces Operational Discoveries — ambiguities, gaps, and process observations recorded during execution.
+
+Those discoveries accumulate in `work-contracts/operational-discoveries.md`.
+
+After sufficient sprints, the Founder reviews the discoveries and promotes stable patterns to `OPERATIONS.md`.
+
+`OPERATIONS.md` does not yet exist. It shall not be created through design. It shall emerge from execution evidence.
+
+---
+
 # PROJECT_STATE.md Contract
 PROJECT_STATE.md is the live heartbeat of this engineering organization.
 

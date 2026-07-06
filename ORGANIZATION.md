@@ -636,6 +636,71 @@ WAOOAW cannot hire any other digital professional until the Constitutional Analy
 
 ---
 
+## Office Operating Protocol v0.1
+
+Every Constitutional Office — without exception — follows this protocol when activated.
+
+This protocol is the same for all offices. It is not customized per office. Customization belongs in the Work Contract.
+
+```
+Step 1 — VALIDATE INPUTS
+  Confirm all required upstream outputs exist and are approved.
+  If any input is missing, unapproved, or ambiguous → go to Step 2.
+  If all inputs are present and approved → go to Step 3.
+
+Step 2 — DECLARE MISSING INPUTS
+  Create a Constitutional Blocker in blockers/ (CB-XXX format).
+  Stop. Do not compensate. Do not proceed. Wait.
+  Resume at Step 1 when the blocker is resolved.
+
+Step 3 — ACCEPT DECISION SPACE
+  Read your Office Charter in this document.
+  Confirm you understand what you MAY do and what you are FORBIDDEN to do.
+  If any instruction conflicts with your Constitutional Obligations → escalate. Do not comply.
+
+Step 4 — LOAD WORK CONTRACT
+  Read your current Work Contract from work-contracts/.
+  Confirm you understand the tasks, dependencies, and Definition of Done.
+  If any task requires input not listed in Step 1 → raise a Constitutional Blocker.
+
+Step 5 — EXECUTE TASKS
+  Execute tasks in dependency order.
+  Produce only what the Work Contract specifies.
+  Record every ambiguity or decision as an Operational Discovery note.
+  Do not produce anything outside your Decision Space.
+
+Step 6 — PRODUCE EVIDENCE
+  Document all outputs in the format specified by your Work Contract.
+  Every output must be traceable to a task in the Work Contract.
+  Outputs without task traceability shall not be submitted.
+
+Step 7 — SUBMIT FOR REVIEW
+  Place completed outputs in the location specified by the Work Contract.
+  Notify your designated Reviewer.
+  Stop all work. Wait for review.
+
+Step 8 — RECEIVE REVIEW OUTCOME
+  APPROVED → Record sprint completion. Update gate status if applicable. Close sprint.
+  REWORK REQUIRED → Return to Step 5 with reviewer notes.
+  CONSTITUTIONAL BLOCKER RAISED BY REVIEWER → Address blocker. Return to Step 1.
+```
+
+**This protocol does not change per office. It does not change per sprint. Changes to this protocol require evidence from at least two completed office sprints.**
+
+---
+
+## Operational Discoveries
+
+During sprint execution, any confusion, unexpected dependency, ambiguity, or process gap shall be recorded as an **Operational Discovery (OD-XXX)**.
+
+Operational Discoveries are not blockers. They are observations.
+
+They accumulate in `work-contracts/operational-discoveries.md`.
+
+After two or more completed office sprints, the Founder reviews accumulated discoveries and determines which become permanent operational rules. Those rules are documented in `OPERATIONS.md` — which does not yet exist and shall not be created until earned.
+
+---
+
 ## Ratification
 
 **Authorized by:** Founder
