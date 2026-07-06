@@ -2,11 +2,25 @@
 
 **Authority:** Derived from CONSTITUTION.md and GENESIS.md
 
-**Status:** Ratified
+**Status:** Ratified — Gate G1 Complete
 
 **Date:** 2026-07-06
 
 **Classification:** Governing — no implementation artifact may exist without an office that authorized it
+
+---
+
+## Naming Note
+
+This document uses the canonical office names for WAOOAW's engineering organization. The Development Roadmap v1.0 uses equivalent names in some places:
+
+| ORGANIZATION.md | Roadmap Equivalent |
+|---|---|
+| Platform Architect | Chief Cloud Architect / Chief Platform Architect |
+| Runtime Implementation Professional | Chief Runtime Engineer / Implementation Professional |
+| Constitutional Analyst | Chief Constitutional Analyst |
+
+The names in this document are authoritative. The roadmap names are descriptive shorthand.
 
 ---
 
@@ -158,6 +172,58 @@ Founder.
 - May not select technology. *(Engineering's Decision Space)*
 - May not produce CONFIRMED claims without adversarial testing evidence. *(Constitution Article II — First Law: trust earned through evidence)*
 - Must serve all offices equally. May not give any single office privileged access to institutional knowledge. *(Constitution Article VII — Doctrine of Institutional Independence)*
+
+---
+
+#### Constitutional Analyst — Operating Procedure
+
+**Input Sources (in processing order)**
+
+1. `CONSTITUTION.md` — extract constitutional laws, articles, amendments, and floors as LAW-type claims
+2. `GENESIS.md` — extract founder resolutions, engineering principles, and epoch definitions as LAW or CONFIRMED claims
+3. `simulation/PRECEDENTS.md` — elevate ratified CPs to CONFIRMED claims; leave CDs as HYPOTHESIS
+4. `simulation/*.md` (all cases) — extract empirical observations as EMPIRICAL claims; extract case-level interpretations as HYPOTHESIS
+5. `RED_TEAM.md` — extract audit findings as EMPIRICAL claims; extract unresolved vulnerabilities as HYPOTHESIS
+
+**Output Format — Atomic Claim**
+
+Every claim produced must conform to the following structure:
+
+```
+Claim ID:        C-XXX
+Type:            EMPIRICAL | HYPOTHESIS | CONFIRMED | LAW | ARCHITECTURAL_IMPLICATION
+Statement:       One precise, falsifiable sentence
+Confidence:      0-100%
+Source:          [list of source documents and specific sections]
+Depends On:      [list of Claim IDs this claim requires to be true]
+Produces:        [list of Claim IDs that depend on this claim]
+Contradicted By: [list of Claim IDs that conflict, if any]
+Status:          DRAFT | UNDER_REVIEW | RATIFIED | SUPERSEDED
+Reviewer Notes:  [Founder deliberation notes]
+```
+
+**Claim Types — Evidence Requirements**
+
+| Type | Required Evidence Before Ratification |
+|---|---|
+| `EMPIRICAL` | Direct observation from a case; no inference |
+| `HYPOTHESIS` | Explanation of observations; must be testable |
+| `CONFIRMED` | Survived adversarial testing across ≥2 independent cases |
+| `LAW` | Derivable from constitutional first principles; ratified by Founder |
+| `ARCHITECTURAL_IMPLICATION` | Parent claim must be CONFIRMED or LAW |
+
+**Review Cycle**
+
+1. Constitutional Analyst produces DRAFT claims from input sources
+2. DRAFT claims submitted to Founder for deliberation
+3. Founder may: Ratify → RATIFIED, Request revision → back to DRAFT, Reject → SUPERSEDED
+4. Only RATIFIED claims may be consumed by downstream offices
+
+**Claim Storage**
+
+Claims live in `knowledge/claims/` — one file per claim, named `C-XXX.md`
+The Confidence Register lives in `knowledge/confidence-register.md`
+The Claim Index lives in `knowledge/index.md`
 
 ---
 
@@ -454,6 +520,14 @@ Component specifications (approved), API contracts (approved), Data architecture
 
 Every class, function, and module must trace to an approved component specification. No unapproved dependency may be introduced. No business logic may be invented — only faithfully implemented from approved specifications. Test coverage must satisfy quality standards defined in GENESIS.
 
+**Runtime Universality Test (Epoch 5 Gate)**
+
+Before the runtime is considered complete, it must pass the following test without modification:
+
+> A Dentist hiring a Digital Marketing Professional, a Trader hiring a Trading Professional, a Lawyer hiring a Legal Professional, and a Doctor hiring a Healthcare Professional must all run on the same runtime codebase with zero runtime code changes — only configuration and Decision Space parameters differ.
+
+If this test fails, the architecture is wrong — not the runtime. Escalate to Solution Architect.
+
 **Reviewer**
 
 Solution Architect (validates architectural faithfulness). Platform Architect (validates deployment compliance).
@@ -480,6 +554,45 @@ When an office encounters a gap, contradiction, or ambiguity in its inputs, it m
 - Constitutional violations → Founder
 
 An office that resolves an upstream gap silently has violated its Decision Space.
+
+---
+
+## Constitutional Blocker
+
+A **Constitutional Blocker** is a formal declaration by any office that it cannot proceed because a required upstream artifact is missing, incomplete, or unapproved.
+
+**When to raise a Constitutional Blocker:**
+
+- A required input does not exist
+- A required input exists but has not been approved by its responsible office
+- A required input contradicts a ratified constitutional claim
+- An instruction would require the office to act outside its Decision Space
+
+**How to raise a Constitutional Blocker:**
+
+Create a file in `blockers/` named `CB-XXX-[office]-[date].md` containing:
+
+```
+Blocker ID:      CB-XXX
+Raised By:       [Office name]
+Date:            [ISO date]
+Blocking:        [What work cannot proceed]
+Missing Artifact:[What must exist before work can continue]
+Responsible:     [Office that must produce the missing artifact]
+Constitutional   
+Basis:           [Article, Precedent, or Law that creates this requirement]
+Status:          OPEN | RESOLVED | ESCALATED
+```
+
+**Resolution:**
+
+- The responsible office produces the missing artifact
+- The blocker is marked RESOLVED by the raising office
+- Work resumes
+
+If the responsible office cannot produce the artifact without a decision from above, the blocker is ESCALATED upward through the escalation chain until it reaches an office with the authority to resolve it.
+
+**No AI agent may silently work around a Constitutional Blocker.** Doing so is a Decision Space violation and must be recorded.
 
 ---
 
