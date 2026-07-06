@@ -1,12 +1,12 @@
 # WAOOAW Platform
 
-## Founding Corpus v1 — Frozen
+## Founding Phase Complete
 
 **Date:** 2026-07-06
 
-The Founding Corpus is frozen. No document within it may be edited except through the constitutional amendment process defined in CONSTITUTION.md.
+The founding phase of WAOOAW is complete. The institution exists. The software does not yet.
 
-Every amendment must cite at least one of: a Constitutional Discovery, a Constitutional Precedent, a Constitutional Audit finding, or a Production Incident. If it cites none, it waits.
+That is the correct order.
 
 ---
 
@@ -18,75 +18,95 @@ WAOOAW stands for Ways Of Working for the Autonomous World.
 
 ---
 
-## Founding Corpus Contents
+## The Four Founding Discoveries
 
-| Document | Purpose | Status |
-|---|---|---|
-| [CONSTITUTION.md](CONSTITUTION.md) | The law. What WAOOAW may become. v1.2 with 4 amendments. | Frozen |
-| [GENESIS.md](GENESIS.md) | The operating handbook. Parts 01–04. How the institution builds. | Frozen |
-| [simulation/001-dr-mehta-dental-clinic.md](simulation/001-dr-mehta-dental-clinic.md) | Case 001. Dental clinic. Lifecycle validation. | Complete |
-| [simulation/002-sana-beauty-artist-mumbai.md](simulation/002-sana-beauty-artist-mumbai.md) | Case 002. Beauty artist. Creative identity and seasonal employment. | Complete |
-| [simulation/PRECEDENTS.md](simulation/PRECEDENTS.md) | Constitutional Precedents Register. CP-001 to CP-003 ratified. | Active |
-| [RED_TEAM.md](RED_TEAM.md) | Constitutional Audit. 11 attacks. 4 amendments authorized. | Complete |
+**Discovery 1 — Constitutional Governance**
+
+The problem is not building autonomous systems. The problem is governing delegated professional judgment with legitimacy. This became the purpose of WAOOAW.
+
+**Discovery 2 — Constitutional Discovery Engineering (CDE)**
+
+Requirements are not invented. They are discovered through structured confrontation between reality and constitutional principles. This became the development methodology.
+
+**Discovery 3 — Decision Space**
+
+Decision Space is the constitutional primitive. Not actions. Not authority. Not employment. Everything else is a consequence of Decision Space. This became the architectural primitive.
+
+**Discovery 4 — Institution Before Implementation**
+
+The institution must exist before the software. Architecture exists to faithfully embody the institution — not define it. This became the engineering philosophy.
 
 ---
 
-## Governing Principle
+## The Engineering Method
 
-> **Founding Corpus v1 is frozen. Reality is now the primary author.**
+> We do not begin with solutions.
+>
+> We begin with reality.
+>
+> We discover constitutional behavior through cases.
+>
+> We deliberate before we govern.
+>
+> We govern before we architect.
+>
+> We architect before we implement.
+>
+> We implement only what the institution has already earned.
+>
+> And when reality contradicts us, we change our understanding before we change our confidence.
+
+---
+
+## Repository Contents
+
+This repository is an institutional knowledge system.
+
+| Layer | Contents |
+|---|---|
+| Constitution | [CONSTITUTION.md](CONSTITUTION.md) — The law. v1.2 with 4 amendments. |
+| Founder Resolutions | FR-001 in GENESIS Part 03 |
+| Constitutional Cases | [simulation/](simulation/) — Reality as teacher |
+| Emerging Interpretations | [simulation/PRECEDENTS.md](simulation/PRECEDENTS.md) — ECI-001, ECI-002 |
+| Constitutional Precedents | CP-001 to CP-003 ratified |
+| Constitutional Amendments | A-001 to A-004 ratified |
+| GENESIS | [GENESIS.md](GENESIS.md) — Operating handbook. Parts 01–04. |
+| Red Team Audit | [RED_TEAM.md](RED_TEAM.md) — 11 attacks. Constitution survived. |
 
 ---
 
 ## Current State
 
-**Epoch:** 0.5 — Constitutional Discovery
+**Phase:** Epoch 0.5 — Constitutional Discovery (active)
 
-**Mode:** Institutional Simulation
-
-**Implementation:** Prohibited
-
-**Architecture:** Prohibited
+**Next:** Epoch 1 — Reference Architecture (when Constitutional Confidence is sufficient)
 
 **Constitutional Confidence:**
 
 ```
-Cases Executed:                2
-Constitutional Discoveries:   11
+Cases Executed:                3
+Constitutional Discoveries:   18
+Emerging Interpretations:      2
 Precedents Ratified:           3
 Constitutional Amendments:     4
-Under Deliberation:            8
+Under Deliberation:           15
 Known Contradictions:          0
 ```
 
-**Next:** Case 003 — Autonomous Trading Professional (adversarial)
+---
+
+## What Comes Next
+
+The institution will be tested against Healthcare, Law, Education, and other adversarial domains before architecture begins.
+
+Architecture will be derived from the institution — not imposed on it.
+
+Implementation will follow architecture.
+
+The Constitution governs everything.
+
+Reality teaches everything else.
 
 ---
 
-## The Engineering Oath
-
-> We do not build agents. We build trusted digital professionals.
->
-> We do not automate tasks. We enable constitutional employment.
->
-> We do not maximize autonomy. We maximize legitimate autonomy.
->
-> If a dentist in Pune is not better protected, better informed, or better served because of our work, then our work is not yet complete.
-
----
-
-## The Four Gates
-
-Every new idea must pass all four before it is built.
-
-1. **Constitutional** — Does it preserve the institutional model?
-2. **Minimal** — Does it make the first employed Digital Professional possible?
-3. **Evolutionary** — Can future epochs extend it without rewriting it?
-4. **Customer** — Does the dentist in Pune benefit from it, even without knowing it exists?
-
----
-
-*This repository is the legal record of the WAOOAW engineering organization.*
-
-*The Constitution governs what the institution may become.*
-
-*Reality governs what it will become.*
+*The founding phase is complete. Reality is now the primary author.*
