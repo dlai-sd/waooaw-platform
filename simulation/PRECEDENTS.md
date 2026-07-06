@@ -197,6 +197,13 @@ The following discoveries were made but have not been elevated to full precedent
 | CD-009 | Creative Standard Calibration Period | Case 002 | Under deliberation |
 | CD-010 | Split Authority Mode | Case 002 | Under deliberation |
 | CD-011 | Suspension vs Termination | Case 002 | Under deliberation |
+| CD-012 | Pre-Authorized Action Space | Case 003 | Under deliberation |
+| CD-013 | Evidence Meaningfulness at Velocity | Case 003 | Under deliberation |
+| CD-014 | Irreversibility and the Right of Review | Case 003 | Under deliberation |
+| CD-015 | Temporal Dimension of Human Override | Case 003 | Under deliberation |
+| CD-016 | Learning Velocity and Behavioral Drift | Case 003 | Under deliberation |
+| CD-017 | Multidimensional Authority | Case 003 | Under deliberation |
+| CD-018 | Physics Constraint of Constitutional Floors | Case 003 | Under deliberation |
 
 ---
 
