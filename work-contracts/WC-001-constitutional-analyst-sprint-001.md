@@ -20,23 +20,23 @@
 
 | Source | Location | Purpose |
 |---|---|---|
-| Constitution | `CONSTITUTION.md` | Extract LAW-type claims |
-| GENESIS | `GENESIS.md` | Extract LAW and CONFIRMED claims |
+| Constitution | `constitution/CONSTITUTION.md` | Extract LAW-type claims |
+| GENESIS | `constitution/GENESIS.md` | Extract LAW and CONFIRMED claims |
 | Precedents Register | `simulation/PRECEDENTS.md` | Elevate ratified CPs to CONFIRMED; CDs remain HYPOTHESIS |
 | Case 001 | `simulation/001-dr-mehta-dental-clinic.md` | Extract EMPIRICAL and HYPOTHESIS claims |
 | Case 002 | `simulation/002-sana-beauty-artist-mumbai.md` | Extract EMPIRICAL and HYPOTHESIS claims |
 | Case 003 | `simulation/003-high-frequency-constitutional-employment.md` | Extract EMPIRICAL and HYPOTHESIS claims |
-| Red Team Audit | `RED_TEAM.md` | Extract EMPIRICAL claims from confirmed findings |
+| Red Team Audit | `constitution/RED_TEAM.md` | Extract EMPIRICAL claims from confirmed findings |
 
 **Authorized Output Location:** `knowledge/claims/`
 
-**Output Format:** Per the Constitutional Analyst Operating Procedure in `ORGANIZATION.md` — one file per claim, named `C-XXX.md`
+**Output Format:** Per the Constitutional Analyst Operating Procedure in `constitution/ORGANIZATION.md` — one file per claim, named `C-XXX.md`
 
 ---
 
 ## Tasks
 
-**KA-001 — Process CONSTITUTION.md**
+**KA-001 — Process constitution/CONSTITUTION.md**
 
 Extract every constitutional law, article, and amendment as LAW-type claims.
 
@@ -50,7 +50,7 @@ Dependencies: None
 
 ---
 
-**KA-002 — Process GENESIS.md**
+**KA-002 — Process constitution/GENESIS.md**
 
 Extract founder resolutions, engineering laws, and ratified operating principles.
 
@@ -90,7 +90,7 @@ Dependencies: None
 
 ---
 
-**KA-005 — Process RED_TEAM.md**
+**KA-005 — Process constitution/RED_TEAM.md**
 
 Extract confirmed attack findings as EMPIRICAL claims.
 

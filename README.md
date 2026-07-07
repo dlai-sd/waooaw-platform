@@ -147,8 +147,10 @@ Gate G6   Reference Product            ✗ Prohibited
 Gate G7   Marketplace                  ✗ Prohibited
 
 Current Authorized Activity:
-  Only the Constitutional Analyst is authorized to produce knowledge claims.
-  All architecture and implementation activity remains constitutionally prohibited.
+  Constitutional Analyst:  AUTHORIZED — produce knowledge claims (IB-001)
+  All other offices:       WAITING — blocked by gate sequence
+  Architecture work:       PROHIBITED until Gate G3
+  Implementation work:     PROHIBITED until Gate G5
 ```
 
 ---

@@ -49,13 +49,26 @@ STEP 2 — Read README.md
     - Engineering Status (AUTHORIZED / PROHIBITED)
 
 STEP 3 — Determine your state
-  If Engineering Status = PROHIBITED:
-    → STOP. Your work is not yet authorized. Do not proceed.
-    → Output: "BLOCKED — engineering status is PROHIBITED per README.md"
+  Read Engineering Status from README.md.
+  "PROHIBITED" applies to Architecture and Implementation phases only.
+  Knowledge work (Constitutional Analyst) and governance work remain authorized
+  at Gate G2 even when Architecture Status shows PROHIBITED.
+
+  If your office = Runtime Implementation Professional AND Gate < G5:
+    → STOP. Output: "BLOCKED — Implementation requires Gate G5. Current gate:
+       [gate]. Path to unblock: complete gates in sequence G2→G3→G4→G5."
+
+  If your office = Enterprise Architect or downstream AND Gate < G3:
+    → STOP. Output: "BLOCKED — Reference Architecture requires Gate G3.
+       Current gate: [gate]. Gate G3 is blocked until Gate G2 passes.
+       Active authorized office: Constitutional Analyst (Sprint 001)."
+
+  If your office = Constitutional Analyst AND Gate = G2:
+    → PROCEED to Step 4. Knowledge work is authorized.
 
 STEP 4 — Confirm your assigned office
   Option A: You were given an office by the activating instruction.
-  Option B: Read INSTITUTIONAL_BACKLOG.md → find the IN_PROGRESS item → that office is yours.
+  Option B: Read constitution/INSTITUTIONAL_BACKLOG.md → find the IN_PROGRESS item → that office is yours.
   Option C: If neither is clear → STOP → raise CB-001 (Office Assignment Unknown)
 
 STEP 5 — Load ONLY your Office Knowledge Specification (see below)
@@ -70,7 +83,7 @@ STEP 6 — Read your Work Contract from work-contracts/
 STEP 7 — Validate all required inputs
   For each input listed in your Work Contract:
     Does the file exist? → YES / NO
-    Has it been approved? → Check status in INSTITUTIONAL_BACKLOG.md and ORGANIZATION.md
+    Has it been approved? → Check status in constitution/INSTITUTIONAL_BACKLOG.md and constitution/ORGANIZATION.md
   If any required input is missing or unapproved → STOP → raise Constitutional Blocker
 
 STEP 8 — Declare state
@@ -78,7 +91,7 @@ STEP 8 — Declare state
   Any input missing → declare: BLOCKED [list missing items]
 
 STEP 9 — If READY, execute the Office Operating Protocol
-  Read ORGANIZATION.md → Office Operating Protocol section
+  Read constitution/ORGANIZATION.md → Office Operating Protocol section
   Follow steps 1–9 of the protocol exactly
   Do not interpret. Do not extend. Execute.
 
@@ -100,17 +113,17 @@ Each office loads a precise subset of the repository. Loading more than specifie
 ### Constitutional Analyst
 
 **Must Read:**
-- `CONSTITUTION.md`
-- `GENESIS.md`
+- `constitution/CONSTITUTION.md`
+- `constitution/GENESIS.md`
 - `simulation/PRECEDENTS.md`
 - `simulation/001-dr-mehta-dental-clinic.md`
 - `simulation/002-sana-beauty-artist-mumbai.md`
 - `simulation/003-high-frequency-constitutional-employment.md`
-- `RED_TEAM.md`
-- `ORGANIZATION.md` (Office Charter only)
+- `constitution/RED_TEAM.md`
+- `constitution/ORGANIZATION.md` (Office Charter only)
 - Assigned Work Contract
 
-**Must NOT Read:** `architecture/`, `src/`, any work contract not assigned to this office, `INSTITUTIONAL_BACKLOG.md` items below IB-001
+**Must NOT Read:** `architecture/`, `src/`, any work contract not assigned to this office, `constitution/INSTITUTIONAL_BACKLOG.md` items below IB-001
 
 **Reason:** Architecture, implementation, and downstream backlogs contaminate constitutional reasoning with solution bias.
 
@@ -122,11 +135,11 @@ Each office loads a precise subset of the repository. Loading more than specifie
 - `knowledge/claims/` (all CONFIRMED and LAW claims)
 - `knowledge/confidence-register.md`
 - `knowledge/index.md`
-- `GENESIS.md` Part 01 (Founder Vision only)
-- `ORGANIZATION.md` (Office Charter only)
+- `constitution/GENESIS.md` Part 01 (Founder Vision only)
+- `constitution/ORGANIZATION.md` (Office Charter only)
 - Assigned Work Contract
 
-**Must NOT Read:** `simulation/` (cases), `RED_TEAM.md`, `architecture/`, `src/`, `CONSTITUTION.md` in full (only claims already extracted from it)
+**Must NOT Read:** `simulation/` (cases), `constitution/RED_TEAM.md`, `architecture/`, `src/`, `constitution/CONSTITUTION.md` in full (only claims already extracted from it)
 
 **Reason:** Direct reading of cases and red team findings produces operational thinking, not capability thinking.
 
@@ -140,10 +153,10 @@ Each office loads a precise subset of the repository. Loading more than specifie
 - `knowledge/architectural-drivers.md`
 - `knowledge/design-principles.md`
 - `knowledge/index.md`
-- `ORGANIZATION.md` (Office Charter only)
+- `constitution/ORGANIZATION.md` (Office Charter only)
 - Assigned Work Contract
 
-**Must NOT Read:** `simulation/` (cases), `RED_TEAM.md`, `CONSTITUTION.md` (read claims instead), `GENESIS.md` in full, `src/`, `adr/` (you are producing ADRs, not reading prior ones at this stage)
+**Must NOT Read:** `simulation/` (cases), `constitution/RED_TEAM.md`, `constitution/CONSTITUTION.md` (read claims instead), `constitution/GENESIS.md` in full, `src/`, `adr/` (you are producing ADRs, not reading prior ones at this stage)
 
 **Reason:** The Enterprise Architect derives from knowledge, not from cases or raw constitutional text. It must not be influenced by implementation details.
 
@@ -155,10 +168,10 @@ Each office loads a precise subset of the repository. Loading more than specifie
 - `architecture/reference/` (all reference architecture artifacts)
 - `knowledge/index.md`
 - `adr/` (all approved ADRs)
-- `ORGANIZATION.md` (Office Charter only)
+- `constitution/ORGANIZATION.md` (Office Charter only)
 - Assigned Work Contract
 
-**Must NOT Read:** `simulation/` (cases), `CONSTITUTION.md`, `GENESIS.md`, `src/`, `knowledge/claims/` (only the derived architecture)
+**Must NOT Read:** `simulation/` (cases), `constitution/CONSTITUTION.md`, `constitution/GENESIS.md`, `src/`, `knowledge/claims/` (only the derived architecture)
 
 **Reason:** The Solution Architect embodies the reference architecture into components. It must not revisit decisions already made upstream.
 
@@ -171,10 +184,10 @@ Each office loads a precise subset of the repository. Loading more than specifie
 - `knowledge/claims/` (CONFIRMED claims tagged as data-relevant)
 - `knowledge/architectural-drivers.md` (data-relevant drivers)
 - `adr/` (data-related ADRs)
-- `ORGANIZATION.md` (Office Charter only)
+- `constitution/ORGANIZATION.md` (Office Charter only)
 - Assigned Work Contract
 
-**Must NOT Read:** `simulation/`, `GENESIS.md`, `src/`, `CONSTITUTION.md`
+**Must NOT Read:** `simulation/`, `constitution/GENESIS.md`, `src/`, `constitution/CONSTITUTION.md`
 
 ---
 
@@ -182,13 +195,13 @@ Each office loads a precise subset of the repository. Loading more than specifie
 
 **Must Read:**
 - `architecture/reference/` (all)
-- `CONSTITUTION.md` Articles IX, X (Constitutional Floors and Right of Review)
+- `constitution/CONSTITUTION.md` Articles IX, X (Constitutional Floors and Right of Review)
 - `knowledge/architectural-drivers.md` (security, compliance drivers)
 - `adr/` (security-related ADRs)
-- `ORGANIZATION.md` (Office Charter only)
+- `constitution/ORGANIZATION.md` (Office Charter only)
 - Assigned Work Contract
 
-**Must NOT Read:** `simulation/`, `GENESIS.md` in full, `src/`, `knowledge/claims/` (only read what Security Architect needs from index)
+**Must NOT Read:** `simulation/`, `constitution/GENESIS.md` in full, `src/`, `knowledge/claims/` (only read what Security Architect needs from index)
 
 ---
 
@@ -199,10 +212,10 @@ Each office loads a precise subset of the repository. Loading more than specifie
 - `knowledge/claims/` (claims tagged as ECI-001, ECI-002 and Decision Space-related)
 - `knowledge/decision-space-taxonomy.md` (when produced)
 - `adr/` (AI-related ADRs)
-- `ORGANIZATION.md` (Office Charter only)
+- `constitution/ORGANIZATION.md` (Office Charter only)
 - Assigned Work Contract
 
-**Must NOT Read:** `simulation/`, `GENESIS.md`, `CONSTITUTION.md`, `src/`
+**Must NOT Read:** `simulation/`, `constitution/GENESIS.md`, `constitution/CONSTITUTION.md`, `src/`
 
 ---
 
@@ -212,10 +225,10 @@ Each office loads a precise subset of the repository. Loading more than specifie
 - `architecture/reference/` (deployment and infrastructure sections)
 - `knowledge/architectural-drivers.md` (availability, cost, scalability, disaster recovery)
 - `adr/` (cloud, infrastructure ADRs)
-- `ORGANIZATION.md` (Office Charter only)
+- `constitution/ORGANIZATION.md` (Office Charter only)
 - Assigned Work Contract
 
-**Must NOT Read:** `simulation/`, `CONSTITUTION.md`, `GENESIS.md`, `knowledge/claims/`, `src/`
+**Must NOT Read:** `simulation/`, `constitution/CONSTITUTION.md`, `constitution/GENESIS.md`, `knowledge/claims/`, `src/`
 
 ---
 
@@ -224,10 +237,10 @@ Each office loads a precise subset of the repository. Loading more than specifie
 **Must Read:**
 - `architecture/` (all approved architecture)
 - `adr/` (all approved ADRs)
-- `ORGANIZATION.md` (Office Charter only)
+- `constitution/ORGANIZATION.md` (Office Charter only)
 - Assigned Work Contract
 
-**Must NOT Read:** `CONSTITUTION.md`, `GENESIS.md`, `simulation/`, `knowledge/` (use only what architecture has derived), `INSTITUTIONAL_BACKLOG.md`
+**Must NOT Read:** `constitution/CONSTITUTION.md`, `constitution/GENESIS.md`, `simulation/`, `knowledge/` (use only what architecture has derived), `constitution/INSTITUTIONAL_BACKLOG.md`
 
 **Reason:** The Runtime Professional implements approved architecture. It must not re-derive or re-interpret what upstream offices have already decided.
 
@@ -340,7 +353,7 @@ Record what you loaded. Declare your loaded context to the user.
 ### STEP 4 — WORK PLANNING (gate-filtered)
 
 ```
-Read: constitution/INSTITUTIONAL_BACKLOG.md
+Read: constitution/constitution/INSTITUTIONAL_BACKLOG.md
 Filter: present ONLY items that are:
   (a) Authorized for the current Gate
   (b) Within your office's Decision Space

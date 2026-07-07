@@ -1,6 +1,6 @@
 # ORGANIZATION.md — Constitutional Organization of WAOOAW
 
-**Authority:** Derived from CONSTITUTION.md and GENESIS.md
+**Authority:** Derived from constitution/CONSTITUTION.md and constitution/GENESIS.md
 
 **Status:** Ratified — Gate G1 Complete
 
@@ -179,11 +179,11 @@ Founder.
 
 **Input Sources (in processing order)**
 
-1. `CONSTITUTION.md` — extract constitutional laws, articles, amendments, and floors as LAW-type claims
-2. `GENESIS.md` — extract founder resolutions, engineering principles, and epoch definitions as LAW or CONFIRMED claims
+1. `constitution/CONSTITUTION.md` — extract constitutional laws, articles, amendments, and floors as LAW-type claims
+2. `constitution/GENESIS.md` — extract founder resolutions, engineering principles, and epoch definitions as LAW or CONFIRMED claims
 3. `simulation/PRECEDENTS.md` — elevate ratified CPs to CONFIRMED claims; leave CDs as HYPOTHESIS
 4. `simulation/*.md` (all cases) — extract empirical observations as EMPIRICAL claims; extract case-level interpretations as HYPOTHESIS
-5. `RED_TEAM.md` — extract audit findings as EMPIRICAL claims; extract unresolved vulnerabilities as HYPOTHESIS
+5. `constitution/RED_TEAM.md` — extract audit findings as EMPIRICAL claims; extract unresolved vulnerabilities as HYPOTHESIS
 
 **Output Format — Atomic Claim**
 
