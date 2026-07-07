@@ -6,13 +6,12 @@
 
 ```
 Founding Corpus v1           Status: Ratified
-Version:                     0.4.0 — Implementation Ready Baseline (2026-07-07)
-Current Epoch:               Epoch 3 → Epoch 1 transition (architecture complete,
-                             implementation beginning)
+Version:                     0.5.0 — GitHub Operating Model Baseline (2026-07-07)
+Current Epoch:               Epoch 1 — Employment (implementation begins)
 Current Gate:                G2: PASSED — G3: PASSED — G4: PASSED — G5: CLEAR
 Authorized Offices:          Runtime Professional (IB-009 — Foundation Implementation)
-Engineering Status:          Architecture — COMPLETE (18 ADRs, all reference docs)
-                             Source code implementation — AUTHORIZED
+Engineering Status:          Architecture — COMPLETE | Implementation — AUTHORIZED
+GitHub Operating Model:      ACTIVE — issue templates, PM workflow, Office 12 live
 ```
 
 ---
