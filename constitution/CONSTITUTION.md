@@ -826,6 +826,30 @@ The Constitution governs individual employment relationships. It does not and ca
 
 ---
 
+## Amendment A-005 — Creative Identity as Protected Customer Right
+
+**Authorized by:** Founder
+
+**Date:** 2026-07-07
+
+**Basis:** Constitutional Discovery CD-006 (Case 002 — Sana Mirza, Beauty Artist); Founder deliberation on Claim C-016
+
+For customers whose professional service is constituted by personal creative identity — where the customer's aesthetic voice, visual style, brand vocabulary, and creative standards are the service they provide to their own customers — the following protections apply:
+
+**The Creative Standard Profile is a constitutional document**, not a preference setting. It defines the boundary of professional authority for creative professions. A professional may not act in ways that contradict the Creative Standard Profile any more than it may act beyond its licensed scope.
+
+**Modifications to the Creative Standard Profile** must follow a governed amendment process analogous to scope-boundary confirmation (CP-003). The customer must explicitly acknowledge that the Creative Standard Profile is being revised — not merely approve a piece of content that reflects a revision.
+
+**A calibration period** of no less than the duration specified in the Employment Contract exists at the beginning of every creative professional engagement. During this period, the Creative Standard Profile is explicitly provisional. Corrections and refinements during the calibration period constitute profile development, not rejection of professional work.
+
+**This amendment adds to Article IX (Bill of Rights — Customer Rights):**
+
+> The right to creative identity protection — for customers whose service is constituted by personal creative identity, the right to have their Creative Standard Profile treated as a constitutional document governing the scope of professional authority.
+
+This amendment does not apply to professional engagements where the customer's service is not constituted by personal creative identity. It applies to sole-proprietor creative businesses (makeup artists, photographers, designers, personal stylists, and equivalent) as a minimum. Extension to other professional categories requires further constitutional discovery.
+
+---
+
 ## Founder Resolution FR-001
 
 **Issued by:** Founder

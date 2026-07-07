@@ -12,11 +12,12 @@
 |---|---|
 | Epoch 0 — Institution | ✓ Complete |
 | Epoch 1 — Engineering Organization | ✓ Complete (Gate G1 passed) |
-| Epoch 2 — Knowledge System | Sprint 001 authorized, not yet executed |
-| Architecture Phase | In progress (parallel to Epoch 2) |
-| Gate G2 | Not started |
-| Gate G3+ | Blocked |
-| Implementation | Constitutionally prohibited |
+| Epoch 2 — Knowledge System | ✓ Sprint 001 complete — IB-001 DONE |
+| Gate G2 | ✓ PASSED — 2026-07-07 |
+| Amendment A-005 | ✓ Ratified — Creative Identity as Protected Right |
+| Gate G3 | Not Started — IB-002, IB-003, IB-004 now authorized |
+| Gate G4+ | Blocked |
+| Implementation | Constitutionally prohibited until Gate G5 |
 
 ---
 

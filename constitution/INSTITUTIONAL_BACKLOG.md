@@ -87,7 +87,7 @@ Status:           WAITING | IN_PROGRESS | DONE | BLOCKED
 - `knowledge/confidence-register.md`
 - `knowledge/index.md`
 
-**Status:** IN_PROGRESS (Sprint 001 assigned)
+**Status:** DONE — Gate G2 passed 2026-07-07
 
 ---
 

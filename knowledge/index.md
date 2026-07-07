@@ -88,8 +88,8 @@ Derived from CONFIRMED or LAW claims. These authorize specific architectural dec
 
 | Status | Count | IDs |
 |---|---|---|
-| RATIFIED | 30 | C-001–C-013, C-015, C-017, C-019, C-021–C-029, C-031, C-032, C-033, C-035 |
-| DRAFT | 5 | C-014, C-016, C-018, C-020, C-030, C-034 |
+| RATIFIED | 35 | All claims C-001 through C-035 |
+| DRAFT | 0 | — |
 
 ---
 

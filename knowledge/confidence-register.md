@@ -34,13 +34,13 @@
 | C-011 | CONFIRMED | Scope-boundary confirmation is mandatory, distinct from approval (CP-003) | 95% | RATIFIED | C-029 |
 | C-012 | EMPIRICAL | Rights visibility influenced Dr. Mehta's hiring decision (Case 001) | 95% | RATIFIED | C-009 |
 | C-013 | EMPIRICAL | Shadow authority trial invented independently by customer (Case 001) | 95% | RATIFIED | C-010, C-014 |
-| C-014 | HYPOTHESIS | Shadow authority trial is convergent natural customer behavior | 70% | DRAFT | — |
-| C-015 | EMPIRICAL | Creative voice mismatch was Sana's primary rejection criterion (Case 002) | 95% | RATIFIED | C-016 |
-| C-016 | HYPOTHESIS | Creative Standard Profile is a constitutional document for creative professions | 80% | DRAFT | C-030 |
+| C-014 | HYPOTHESIS | Shadow authority trial is convergent natural customer behavior | 70% | RATIFIED | — |
+| C-015 | EMPIRICAL | Creative voice mismatch was Sana’s primary rejection criterion (Case 002) | 95% | RATIFIED | C-016 |
+| C-016 | HYPOTHESIS | Creative Standard Profile is a constitutional document (Amendment A-005) | 88% | RATIFIED | C-030 |
 | C-017 | EMPIRICAL | Review-before-execute was incoherent for trading execution (Case 003) | 98% | RATIFIED | C-018, C-025 |
-| C-018 | HYPOTHESIS | PAAS model is the constitutionally coherent alternative for millisecond-scale professions | 90% | DRAFT | C-025 |
+| C-018 | HYPOTHESIS | PAAS model is the constitutionally coherent model for millisecond-scale professions | 90% | RATIFIED | C-025 |
 | C-019 | EMPIRICAL | Emergency Stop deterministic latency makes PAAS constitutionally valid (Case 003) | 97% | RATIFIED | C-020, C-024 |
-| C-020 | HYPOTHESIS | Absolute time guarantee required for human override in high-velocity contexts | 90% | DRAFT | C-024 |
+| C-020 | HYPOTHESIS | Absolute time guarantee required for human override in high-velocity contexts | 90% | RATIFIED | C-024 |
 | C-021 | EMPIRICAL | RED_TEAM: Founder amendment authority unchecked (Attack 001, CRITICAL) | 98% | RATIFIED | — |
 | C-022 | EMPIRICAL | RED_TEAM: Professional Identity is institutionally dependent (Attack 003, CRITICAL) | 97% | RATIFIED | — |
 | C-023 | ARCH_IMPL | Evidence First — Constitutional Engine records before returning success | 97% | RATIFIED | — |
@@ -50,11 +50,11 @@
 | C-027 | ARCH_IMPL | Constitutional Audit Ledger append-only at database level | 98% | RATIFIED | — |
 | C-028 | ARCH_IMPL | Proposed state is a first-class enum in the evidence schema | 95% | RATIFIED | — |
 | C-029 | ARCH_IMPL | Scope-boundary confirmation is a distinct record type in the audit ledger | 95% | RATIFIED | — |
-| C-030 | ARCH_IMPL | Decision Space is the single architectural primitive | 85% | DRAFT | — |
+| C-030 | ARCH_IMPL | Decision Space is the single architectural primitive | 88% | RATIFIED | — |
 | C-031 | LAW | No significant architectural decision without an ADR (GENESIS Class 2) | 100% | RATIFIED | — |
 | C-032 | LAW | Implementation may not create architecture — gaps escalate upstream | 100% | RATIFIED | — |
-| C-033 | LAW | Phase Gate passage is constitutionally binding — no phase skipping | 100% | RATIFIED | — |
-| C-034 | ARCH_IMPL | Employment lifecycle: Evaluation, Active, Suspended, Terminated states | 90% | DRAFT | — |
+| C-033 | LAW | Phase Gate passage constitutionally binding, no skipping | 100% | RATIFIED | — |
+| C-034 | ARCH_IMPL | Employment lifecycle: Evaluation, Active, Suspended, Terminated states | 90% | RATIFIED | — |
 | C-035 | LAW | Runtime Universality — all scenarios on one codebase, zero code changes | 100% | RATIFIED | — |
 
 ---
@@ -74,13 +74,5 @@
 
 ## Claims Requiring Founder Deliberation
 
-The following claims are DRAFT and cannot be consumed by downstream offices until Founder reviews:
-
-| ID | Type | Risk if acted upon prematurely |
-|---|---|---|
-| C-014 | HYPOTHESIS | Low — shadow authority support is architecturally safe to build speculatively |
-| C-016 | HYPOTHESIS | May require constitutional amendment; affects creative profession employment model |
-| C-018 | HYPOTHESIS | PAAS model is already architecturally committed; hypothesis supports the commitment |
-| C-020 | HYPOTHESIS | 250ms bound is already architecturally committed (GENESIS parameter); hypothesis supports it |
-| C-030 | ARCH_IMPL | ECI-001 not yet confirmed; if Decision Space is not the primitive, core domain model needs revision |
-| C-034 | ARCH_IMPL | CD-011 (Suspension) still under deliberation; four-state lifecycle depends on its ratification |
+None. All 35 claims have been ratified by Founder deliberation (2026-07-07).
+Amendment A-005 raised from C-016 ratification.
