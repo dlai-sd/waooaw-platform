@@ -6,11 +6,14 @@
 
 ```
 Founding Corpus v1           Status: Ratified
-Current Epoch:               Epoch 2 — Knowledge System
+Current Epoch:               Epoch 2 — Knowledge System (active)
 Current Gate:                G2 — Not Started
 Authorized Office:           Constitutional Analyst (Employee #1)
-Engineering Status:          Architecture and implementation remain
-                             constitutionally prohibited until Gate G2 is passed.
+                             Chief Enterprise Architect (Architecture phase —
+                             authorized by Founder directive, parallel to Epoch 2)
+Engineering Status:          Architecture documentation — AUTHORIZED (Founder directive)
+                             Source code implementation — PROHIBITED until Gate G2 passed
+                             Architecture phase scope: adr/, architecture/ only
 ```
 
 ---
