@@ -59,30 +59,32 @@ Agent infrastructure:
 
 ---
 
+## Completed Work (This Session)
+
+### ADRs — Formally Ratified (commit 881a616)
+
+| ADR | Decision | Roles |
+|---|---|---|
+| ADR-001 | gRPC for Constitutional Engine | Enterprise Arch + Solution Arch |
+| ADR-002 | OpenAPI spec-first | Solution Arch + Enterprise Arch |
+| ADR-003 | JWT claims + multi-tenancy anchor | Security Arch + Enterprise Arch |
+| ADR-004 | Emergency Stop — Azure SignalR | Solution Arch + Security Arch |
+| ADR-005 | PAAS session isolation — session-affinity | Enterprise Arch + Solution Arch |
+| ADR-006 | Rate limiting deferred to Epoch 6 | Platform Arch + Business Arch |
+| ADR-007 | gRPC mTLS — Container Apps managed certs | Security Arch + Platform Arch |
+| ADR-008 | Keycloak as OAuth federation broker | Security Arch + Solution Arch |
+| ADR-009 | OpenTelemetry + Jaeger/Azure Monitor | Platform Arch + Enterprise Arch |
+
+---
+
 ## Next Planned Work
 
 ### Immediate (Next Session)
 
-1. **ADR-001 through ADR-009** — Ratify 9 pending architecture decisions in `adr/` folder
-2. **architecture/reference/** — C4 container/component detail specs for each service
+1. **Sprint 001 Execution** — Constitutional Analyst produces knowledge claims in `knowledge/claims/` (IB-001, Gate G2)
+2. **architecture/reference/** — C4 container/component detail specs for each service (Founder decision: sprint vs reference first)
 3. **Data Architecture** — Constitutional Audit Ledger schema, RLS design, three-ledger model
-4. **Security Architecture** — Zero-trust, JWT claims spec, mTLS between services
-5. **Deployment Architecture** — Terraform modules per environment, GitHub Actions pipeline
-6. **Sprint 001 Execution** — Constitutional Analyst produces knowledge claims in `knowledge/`
-
-### Pending ADRs (write these in `adr/` folder)
-
-| ADR | Decision Required |
-|---|---|
-| ADR-001 | gRPC vs REST for Constitutional Engine internal API |
-| ADR-002 | OpenAPI spec generation — code-first vs spec-first |
-| ADR-003 | JWT structure and claims for multi-tenant isolation |
-| ADR-004 | Emergency Stop WebSocket — SignalR vs plain WS |
-| ADR-005 | PAAS session isolation strategy |
-| ADR-006 | API rate limiting strategy |
-| ADR-007 | gRPC mTLS certificate management |
-| ADR-008 | Identity: Keycloak as broker |
-| ADR-009 | Observability: OpenTelemetry stack |
+4. **Deployment Architecture** — Terraform modules per environment, GitHub Actions pipeline
 
 ---
 
