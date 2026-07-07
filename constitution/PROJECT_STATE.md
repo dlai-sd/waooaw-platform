@@ -2,7 +2,96 @@
 
 **Last Updated:** 2026-07-07
 
-**Session Reference:** Architecture Phase — Chief Architect session
+**Session Reference:** Architecture Phase — Data Architect session (WC-005)
+
+---
+
+## Current State Summary
+
+| Item | Status |
+|---|---|
+| Epoch 0 — Institution | ✓ Complete |
+| Epoch 1 — Engineering Organization | ✓ Complete (Gate G1 passed) |
+| Epoch 2 — Knowledge System | ✓ Sprint 001 complete — IB-001 DONE |
+| Gate G2 | ✓ PASSED — 2026-07-07 |
+| Amendment A-005 | ✓ Ratified — Creative Identity as Protected Right |
+| Gate G3 | ✓ PASSED — 2026-07-07 (R-004 CA APPROVED, R-005 BA APPROVED) |
+| Gate G4 | IN PROGRESS — IB-005 DONE, IB-006 DONE, IB-007 DONE, IB-008 IN_PROGRESS |
+| Gate G5 | Not Started |
+| Implementation | Constitutionally prohibited until Gate G5 |
+
+---
+
+## Last Completed Work (This Session)
+
+### Sprint 003 Formally Closed (Enterprise Architect + concurrent IB-006)
+
+- R-004 produced: Constitutional Analyst review of WC-003 (Reference Architecture + Component Specs) — **APPROVED**
+- R-005 produced: Business Architect review of WC-003 — **APPROVED** (all 26 capabilities verified)
+- IB-005 marked DONE — Gate G3 confirmed passed
+- IB-006 marked DONE — component specs accepted (proto file gap CA-R004-01 noted, required before Gate G5)
+
+### Sprint 005 Executed (Data Architect — WC-005)
+
+- WC-005 created: Data Architect Sprint 005 (IB-007)
+- `architecture/reference/data/evidence-schema.md` produced — **complete evidence state machine specification**:
+  - ABANDONED state added to evidence_state enum
+  - action_instance_id column specified (missing from ledger-design.md — critical gap closed)
+  - Approval-Gate vs PAAS execution model variants fully specified
+  - Emergency Stop evidence record sequence specified (two-record pattern: stop event + ABANDONED records)
+  - Scope-boundary confirmation event record pattern specified
+  - State transition table: all valid and prohibited transitions with constitutional basis
+  - constitutional_basis field format specification
+  - DB enforcement approach: Constitutional Engine application-layer state machine validation
+- IB-007 marked DONE
+
+### Governance Records Updated
+
+- `constitution/INSTITUTIONAL_BACKLOG.md` — IB-005, IB-006, IB-007 DONE; IB-008 IN_PROGRESS; index updated
+- `README.md` — Gate G3 PASSED, Gate G4 IN_PROGRESS, Epoch 3 Architecture, authorized offices updated
+
+---
+
+## Gate G4 Remaining Work
+
+| Item | Status | What remains |
+|---|---|---|
+| IB-008 — Infrastructure / Docker Compose | IN_PROGRESS | `docker-compose.yml` + `.env.example` exist (produced in prior session). Need: WC-006 (Platform Architect) created, formal review R-006 produced, IB-008 marked DONE. |
+| Proto file (CA-R004-01) | OUTSTANDING | `architecture/reference/proto/constitutional_service.proto` must be produced before Gate G5. Assigned to Solution Architect scope. |
+
+Gate G4 formally passes when IB-008 is reviewed (R-006) and `docker-compose.yml` is validated against the data architecture and component specs.
+
+---
+
+## Next Session Work
+
+1. **Platform Architect — WC-006**: Formally close IB-008 — produce R-006 review of docker-compose.yml + .env.example against data architecture and component specs
+2. **Solution Architect — proto file**: Produce `architecture/reference/proto/constitutional_service.proto` (CA-R004-01 finding)
+3. **Pass Gate G4** — update README.md, PROJECT_STATE.md, declare Gate G5 authorized
+4. **Runtime Professional — WC-007**: Begin IB-009 foundation implementation skeleton
+
+---
+
+## Architecture Decisions Summary
+
+| Decision | Choice |
+|---|---|
+| Deployment target | Azure India Central (Pune) |
+| MVI scenarios | All 3: Dental Marketing, Beauty Artist, NIFTY Trading |
+| Services | 4: Business Platform (.NET 9), Constitutional Engine (.NET 9), Professional Runtime (Python), AI Runtime (Python) |
+| Workflow orchestration | Temporal (self-hosted dev → Temporal Cloud prod) |
+| No Kafka | PostgreSQL event tables + Temporal queuing at MVI scale |
+| No API gateway | Container Apps ingress handles routing at MVI scale |
+| Mobile | Next.js PWA (Phase 1) → React Native (Phase 2) |
+| Identity | Keycloak as OAuth broker — Google default, expandable |
+| Observability | OpenTelemetry → Jaeger (dev) → Azure Monitor (cloud) |
+| Database | PostgreSQL Flex + pgvector + Row-Level Security for multi-tenancy |
+| JWT propagation | Customer JWT → gRPC metadata → PostgreSQL SET LOCAL → AI context |
+| Testing | Zero manual, image promotion, Constitutional Compliance Tests |
+| Cost | Dev ~INR 5-6k/month, each non-prod env within INR 10k limit |
+| Evidence state machine | Append-only event records; state transitions = new INSERTs; action_instance_id groups events |
+| Emergency Stop evidence | Two-record pattern: stop event record + ABANDONED records for in-flight actions |
+
 
 ---
 

@@ -207,7 +207,7 @@ Status:           WAITING | IN_PROGRESS | DONE | BLOCKED
 - `architecture/reference/domain-model.md`
 - `adr/` (Architecture Decision Records, technology-agnostic at this stage)
 
-**Status:** IN_PROGRESS (Sprint 003 assigned)
+**Status:** DONE — 2026-07-07 (R-004 CA review APPROVED, R-005 BA review APPROVED. Gate G3 confirmed passed.)
 
 ---
 
@@ -240,7 +240,7 @@ Status:           WAITING | IN_PROGRESS | DONE | BLOCKED
 - `architecture/reference/components/professional-runtime.md`
 - `architecture/reference/components/ai-runtime.md`
 
-**Status:** WAITING (blocked by IB-005)
+**Status:** DONE — 2026-07-07 (Produced concurrently with IB-005 in Sprint 003 session. R-004 covers constitutional traceability. R-005 confirms capability coverage. Process deviation noted in operational-discoveries.md: IB-006 was produced by EA session without a separate WC-004. Outputs accepted; proto file gap (CA-R004-01) to be resolved before Gate G5.)
 
 ---
 
@@ -272,7 +272,7 @@ Status:           WAITING | IN_PROGRESS | DONE | BLOCKED
 - `architecture/reference/data/ledger-design.md`
 - `architecture/reference/data/evidence-schema.md`
 
-**Status:** WAITING (blocked by IB-006)
+**Status:** DONE — 2026-07-07 (WC-005, Sprint 005. Both outputs produced: ledger-design.md and evidence-schema.md. Evidence state machine fully specified including ABANDONED state, action_instance_id linkage, PAAS variant, Emergency Stop handling, and scope-boundary confirmation path. Pending R-006 review before Gate G4 formally closes.)
 
 ---
 
@@ -302,7 +302,7 @@ Status:           WAITING | IN_PROGRESS | DONE | BLOCKED
 - `docker-compose.yml`
 - `.env.example`
 
-**Status:** WAITING (blocked by IB-007)
+**Status:** IN_PROGRESS — IB-007 complete. docker-compose.yml and .env.example produced in preceding session (attributed to Platform Architect, Sprint 006). Pending formal WC-006 and review before Gate G4/G5 closed.
 
 ---
 
@@ -348,10 +348,10 @@ Status:           WAITING | IN_PROGRESS | DONE | BLOCKED
 | IB-002 | Produce Business Capability Map | Business Architect | P0 | G3 | DONE |
 | IB-003 | Define Architectural Drivers | Business Architect | P0 | G3 | DONE |
 | IB-004 | Define Design Principles | Business Architect | P0 | G3 | DONE |
-| IB-005 | Produce Reference Architecture | Enterprise Architect | P0 | G4 | IN_PROGRESS |
-| IB-006 | Produce Component Specifications | Solution Architect | P0 | G4 | WAITING |
-| IB-007 | Produce Data Architecture | Data Architect | P0 | G4 | WAITING |
-| IB-008 | Infrastructure Architecture + Docker Compose | Platform Architect | P0 | G4/G5 | WAITING |
+| IB-005 | Produce Reference Architecture | Enterprise Architect | P0 | G4 | DONE |
+| IB-006 | Produce Component Specifications | Solution Architect | P0 | G4 | DONE |
+| IB-007 | Produce Data Architecture | Data Architect | P0 | G4 | DONE |
+| IB-008 | Infrastructure Architecture + Docker Compose | Platform Architect | P0 | G4/G5 | IN_PROGRESS |
 | IB-009 | Foundation Implementation (skeleton) | Runtime Professional | P0 | G5 | WAITING |
 
 ---

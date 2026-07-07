@@ -1,0 +1,51 @@
+# Capability to Container Map
+
+**Produced by:** Enterprise Architect (Sprint 003)
+**Date:** 2026-07-07
+
+Each of the 26 business capabilities is owned by exactly one container. Ownership means: the container is the primary implementer and holds the authoritative state for that capability.
+
+---
+
+| Capability | Owning Container | Supporting Containers |
+|---|---|---|
+| **1.1 Evaluate Professional Candidates** | Business Platform | — |
+| **1.2 Configure Employment Terms** | Business Platform | — |
+| **1.3 Define Decision Space** | Business Platform | Constitutional Engine (validates boundary) |
+| **1.4 Form Employment Contract** | Business Platform | Constitutional Engine (records formation event) |
+| **1.5 Onboard Digital Professional** | Professional Runtime | AI Runtime (learns Creative Standard) |
+| **2.1 Review Proposed Actions** | Business Platform | — |
+| **2.2 Approve or Reject Actions** | Business Platform | Constitutional Engine (records approval/rejection) |
+| **2.3 Confirm Scope-Boundary Crossings** | Business Platform | Constitutional Engine (records ScopeBoundaryConfirmation) |
+| **2.4 Exercise Emergency Stop** | Professional Runtime | Constitutional Engine (records stop event) / Azure SignalR (transport) |
+| **2.5 Monitor Professional Activity** | Business Platform | Constitutional Engine (reads ledger) |
+| **2.6 Audit Evidence Ledger** | Business Platform | Constitutional Engine (read-only API) |
+| **3.1 Execute Approval-Gate Work** | Professional Runtime | Constitutional Engine (Evidence First) / AI Runtime (inference) |
+| **3.2 Execute Pre-Authorized Work (PAAS)** | Professional Runtime | Constitutional Engine (evidence recording) / AI Runtime (inference) |
+| **3.3 Manage Creative Standard Profile** | Professional Runtime | AI Runtime (learns and applies standard) |
+| **4.1 Assess Professional Performance** | Business Platform | — |
+| **4.2 Expand Professional Authority** | Business Platform | Constitutional Engine (records authority grant) |
+| **4.3 Restrict or Suspend Authority** | Business Platform | Constitutional Engine (records restriction) |
+| **4.4 Renew Employment Contract** | Business Platform | Constitutional Engine (records renewal) |
+| **5.1 Suspend Professional Employment** | Business Platform | Constitutional Engine (records suspension) |
+| **5.2 Terminate Professional Employment** | Business Platform | Constitutional Engine (records termination) |
+| **5.3 Export Customer Evidence** | Business Platform | Constitutional Engine (evidence export) |
+| **6.1 Authenticate and Authorize Customers** | Keycloak | Business Platform (JWT validation) |
+| **6.2 Isolate Tenant Data** | PostgreSQL (RLS) | All containers (JWT propagation) |
+| **6.3 Record Constitutional Evidence** | Constitutional Engine | — |
+| **6.4 Observe Platform Health** | All containers (OTel) | Jaeger/Azure Monitor |
+| **6.5 Bill Customers** | Business Platform | — |
+
+---
+
+## Observations for Solution Architect
+
+1. **Constitutional Engine is invoked by nearly every governance capability** — it is the most coupled service in the platform, by constitutional design. The Evidence First principle requires this.
+
+2. **Professional Runtime owns all execution** — neither Business Platform nor AI Runtime executes professional work. All execution flows through Professional Runtime, which calls Constitutional Engine before returning.
+
+3. **AI Runtime has no governance responsibilities** — it is a pure execution tool. Governance is always done by its caller (Professional Runtime + Constitutional Engine). AI Runtime never writes to the ledger.
+
+4. **Business Platform is the customer-facing API** — it is the entry point for all customer interactions. It delegates to Constitutional Engine for governance and to Professional Runtime for execution.
+
+5. **Emergency Stop is split across Professional Runtime (handler) and Constitutional Engine (evidence)** — the halt must happen first, the evidence must be recorded before confirmation is sent. This is the latency-critical path.

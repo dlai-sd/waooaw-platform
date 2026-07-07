@@ -1,0 +1,195 @@
+services:
+
+  # ─── Infrastructure ────────────────────────────────────────────────────────
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: waooaw
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: waooaw
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infrastructure/postgres/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U waooaw"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:25.0.6
+    command: start-dev --import-realm
+    ports:
+      - "8443:8080"
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/waooaw
+      KC_DB_USERNAME: waooaw
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD}
+      KC_DB_SCHEMA: keycloak
+    volumes:
+      - ./infrastructure/keycloak:/opt/keycloak/data/import
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/health/ready || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+
+  temporal:
+    image: temporalio/auto-setup:1.24
+    ports:
+      - "7233:7233"
+    environment:
+      DB: postgresql
+      DB_PORT: 5432
+      POSTGRES_USER: waooaw
+      POSTGRES_PWD: ${POSTGRES_PASSWORD}
+      POSTGRES_SEEDS: postgres
+      DYNAMIC_CONFIG_FILE_PATH: /etc/temporal/dynamicconfig.yaml
+    volumes:
+      - ./infrastructure/temporal:/etc/temporal
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  temporal-ui:
+    image: temporalio/ui:2.26
+    ports:
+      - "8080:8080"
+    environment:
+      TEMPORAL_ADDRESS: temporal:7233
+    depends_on:
+      - temporal
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.58
+    ports:
+      - "16686:16686"   # Jaeger UI
+      - "4317:4317"     # OTLP gRPC
+      - "4318:4318"     # OTLP HTTP
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+
+  # ─── Application Services ──────────────────────────────────────────────────
+
+  constitutional-engine:
+    build:
+      context: ./src/constitutional-engine
+      dockerfile: Dockerfile
+    ports:
+      - "5002:5002"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=waooaw;Username=constitutional_app;Password=${POSTGRES_PASSWORD}"
+      OTLP_ENDPOINT: http://jaeger:4317
+      GRPC_PORT: "5002"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "grpc_health_probe -addr=:5002 || exit 1"]
+      interval: 10s
+      retries: 5
+
+  business-platform:
+    build:
+      context: ./src/business-platform
+      dockerfile: Dockerfile
+    ports:
+      - "5001:5001"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=waooaw;Username=business_app;Password=${POSTGRES_PASSWORD}"
+      ConstitutionalEngine__Address: http://constitutional-engine:5002
+      Temporal__Address: temporal:7233
+      Keycloak__Authority: http://keycloak:8080/realms/waooaw
+      Keycloak__Audience: waooaw-platform
+      OTLP_ENDPOINT: http://jaeger:4317
+    depends_on:
+      constitutional-engine:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+      temporal:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:5001/health || exit 1"]
+      interval: 10s
+      retries: 5
+
+  professional-runtime:
+    build:
+      context: ./src/professional-runtime
+      dockerfile: Dockerfile
+    ports:
+      - "5003:5003"
+    environment:
+      ENVIRONMENT: development
+      DATABASE_URL: "postgresql+asyncpg://runtime_app:${POSTGRES_PASSWORD}@postgres:5432/waooaw"
+      CONSTITUTIONAL_ENGINE_ADDRESS: constitutional-engine:5002
+      AI_RUNTIME_URL: http://ai-runtime:5004
+      BUSINESS_PLATFORM_URL: http://business-platform:5001
+      TEMPORAL_ADDRESS: temporal:7233
+      KEYCLOAK_JWKS_URL: http://keycloak:8080/realms/waooaw/protocol/openid-connect/certs
+      OTLP_ENDPOINT: http://jaeger:4317
+    depends_on:
+      constitutional-engine:
+        condition: service_healthy
+      business-platform:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:5003/health || exit 1"]
+      interval: 10s
+      retries: 5
+
+  ai-runtime:
+    build:
+      context: ./src/ai-runtime
+      dockerfile: Dockerfile
+    ports:
+      - "5004:5004"
+    environment:
+      ENVIRONMENT: development
+      DATABASE_URL: "postgresql+asyncpg://runtime_app:${POSTGRES_PASSWORD}@postgres:5432/waooaw"
+      LLM_PROVIDER: ${LLM_PROVIDER:-openai}
+      LLM_API_KEY: ${LLM_API_KEY}
+      LLM_MODEL: ${LLM_MODEL:-gpt-4o-mini}
+      OTLP_ENDPOINT: http://jaeger:4317
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:5004/health || exit 1"]
+      interval: 10s
+      retries: 5
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: development
+      NEXT_PUBLIC_API_URL: http://localhost:5001
+      NEXT_PUBLIC_KEYCLOAK_URL: http://localhost:8443
+      NEXT_PUBLIC_KEYCLOAK_REALM: waooaw
+      NEXT_PUBLIC_KEYCLOAK_CLIENT_ID: waooaw-web
+    depends_on:
+      business-platform:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+
+networks:
+  default:
+    name: waooaw-dev
