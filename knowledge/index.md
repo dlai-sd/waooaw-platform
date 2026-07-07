@@ -3,13 +3,13 @@
 **Produced by:** Constitutional Analyst (Sprint 001)
 **Date:** 2026-07-07
 **Work Contract:** WC-001
-**Total Claims:** 30
+**Total Claims:** 35 (30 original + 5 added in response to EA review R-001)
 
 ---
 
 ## By Type
 
-### LAW — 8 claims
+### LAW — 11 claims
 Constitutional first principles. Source: Constitution and GENESIS. Cannot be contradicted by architecture or implementation.
 
 | ID | Statement |
@@ -22,6 +22,9 @@ Constitutional first principles. Source: Constitution and GENESIS. Cannot be con
 | C-006 | Doctrine of Institutional Independence |
 | C-007 | No evidence deleted or modified — append-only |
 | C-008 | Constitutional Chain — lower artifacts must not contradict higher |
+| C-031 | No significant architectural decision without an ADR |
+| C-032 | Implementation may not create architecture — gaps escalate upstream |
+| C-033 | Phase Gate passage is constitutionally binding — no skipping |
 
 ---
 
@@ -63,7 +66,7 @@ Supported by case evidence, not yet cross-validated. May be contradicted by futu
 
 ---
 
-### ARCHITECTURAL_IMPLICATION — 8 claims
+### ARCHITECTURAL_IMPLICATION — 10 claims
 Derived from CONFIRMED or LAW claims. These authorize specific architectural decisions.
 
 | ID | Statement | Authorizes |
@@ -76,6 +79,8 @@ Derived from CONFIRMED or LAW claims. These authorize specific architectural dec
 | C-028 | Proposed state is a first-class enum in the evidence schema | Data Architecture — evidence schema design |
 | C-029 | Scope-boundary confirmation is a distinct record type | Data Architecture — audit record schema |
 | C-030 | Decision Space is the single architectural primitive | Enterprise Architecture — core domain model |
+| C-034 | Employment lifecycle: Evaluation, Active, Suspended, Terminated states | Enterprise Architecture — employment domain model |
+| C-035 | Runtime Universality — all scenarios on one codebase, zero code changes | Professional Runtime architecture |
 
 ---
 
@@ -83,8 +88,8 @@ Derived from CONFIRMED or LAW claims. These authorize specific architectural dec
 
 | Status | Count | IDs |
 |---|---|---|
-| RATIFIED | 24 | C-001 through C-013, C-015, C-017, C-019, C-021 through C-029 |
-| DRAFT | 6 | C-014, C-016, C-018, C-020, C-030 |
+| RATIFIED | 30 | C-001–C-013, C-015, C-017, C-019, C-021–C-029, C-031, C-032, C-033, C-035 |
+| DRAFT | 5 | C-014, C-016, C-018, C-020, C-030, C-034 |
 
 ---
 

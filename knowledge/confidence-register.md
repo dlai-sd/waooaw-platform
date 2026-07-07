@@ -3,7 +3,7 @@
 **Produced by:** Constitutional Analyst (Sprint 001)
 **Date:** 2026-07-07
 **Work Contract:** WC-001
-**Status:** Complete — 30 claims
+**Status:** Complete — 35 claims (30 original + 5 added in response to EA review R-001)
 
 ---
 
@@ -51,6 +51,11 @@
 | C-028 | ARCH_IMPL | Proposed state is a first-class enum in the evidence schema | 95% | RATIFIED | — |
 | C-029 | ARCH_IMPL | Scope-boundary confirmation is a distinct record type in the audit ledger | 95% | RATIFIED | — |
 | C-030 | ARCH_IMPL | Decision Space is the single architectural primitive | 85% | DRAFT | — |
+| C-031 | LAW | No significant architectural decision without an ADR (GENESIS Class 2) | 100% | RATIFIED | — |
+| C-032 | LAW | Implementation may not create architecture — gaps escalate upstream | 100% | RATIFIED | — |
+| C-033 | LAW | Phase Gate passage is constitutionally binding — no phase skipping | 100% | RATIFIED | — |
+| C-034 | ARCH_IMPL | Employment lifecycle: Evaluation, Active, Suspended, Terminated states | 90% | DRAFT | — |
+| C-035 | LAW | Runtime Universality — all scenarios on one codebase, zero code changes | 100% | RATIFIED | — |
 
 ---
 
@@ -58,12 +63,12 @@
 
 | Type | Count | Mean Confidence |
 |---|---|---|
-| LAW | 8 | 100% |
+| LAW | 11 | 100% |
 | CONFIRMED | 3 | 95% |
 | EMPIRICAL | 7 | 96.4% |
 | HYPOTHESIS | 4 | 82.5% |
-| ARCHITECTURAL_IMPLICATION | 8 | 95.3% |
-| **TOTAL** | **30** | — |
+| ARCHITECTURAL_IMPLICATION | 10 | 94.5% |
+| **TOTAL** | **35** | — |
 
 ---
 
@@ -74,7 +79,8 @@ The following claims are DRAFT and cannot be consumed by downstream offices unti
 | ID | Type | Risk if acted upon prematurely |
 |---|---|---|
 | C-014 | HYPOTHESIS | Low — shadow authority support is architecturally safe to build speculatively |
-| C-016 | HYPOTHESIS | Medium — may require constitutional amendment; affects creative profession employment model |
-| C-018 | HYPOTHESIS | Low — PAAS model is already architecturally committed; hypothesis supports the commitment |
-| C-020 | HYPOTHESIS | Low — 250ms bound is already architecturally committed (GENESIS parameter); hypothesis supports it |
-| C-030 | ARCH_IMPL | Medium — ECI-001 not yet confirmed; if Decision Space is not the primitive, this architectural framing needs revision |
+| C-016 | HYPOTHESIS | May require constitutional amendment; affects creative profession employment model |
+| C-018 | HYPOTHESIS | PAAS model is already architecturally committed; hypothesis supports the commitment |
+| C-020 | HYPOTHESIS | 250ms bound is already architecturally committed (GENESIS parameter); hypothesis supports it |
+| C-030 | ARCH_IMPL | ECI-001 not yet confirmed; if Decision Space is not the primitive, core domain model needs revision |
+| C-034 | ARCH_IMPL | CD-011 (Suspension) still under deliberation; four-state lifecycle depends on its ratification |

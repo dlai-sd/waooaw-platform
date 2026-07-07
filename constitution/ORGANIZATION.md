@@ -167,7 +167,8 @@ No architectural implication may be stated before its parent claim is at minimum
 
 **Reviewer**
 
-Founder.
+Enterprise Architect — validates that the claim corpus is sufficient for architecture derivation and that ARCHITECTURAL_IMPLICATION claims accurately derive from their stated LAW or CONFIRMED parents.
+Founder — ratifies constitutional authenticity of LAW and CONFIRMED claims; approves Gate passage only.
 
 **Constitutional Obligations**
 
@@ -763,15 +764,26 @@ Step 6 — PRODUCE EVIDENCE
   Every output must be traceable to a task in the Work Contract.
   Outputs without task traceability shall not be submitted.
 
-Step 7 — SUBMIT FOR REVIEW
+Step 7 — AGENT PEER REVIEW (mandatory)
   Place completed outputs in the location specified by the Work Contract.
-  Notify your designated Reviewer.
-  Stop all work. Wait for review.
+  Raise a review request to the Reviewer office defined in your Charter.
+  The Reviewer is an AI agent occupying the Reviewer office — NOT the Founder.
+  The reviewing agent executes a critical review and produces a record in reviews/.
+    APPROVED → proceed to Step 8
+    APPROVED WITH NOTES → address notes, reviewer confirms, then proceed to Step 8
+    REJECT → return to Step 5 with reviewer findings
 
-Step 8 — RECEIVE REVIEW OUTCOME
-  APPROVED → Record sprint completion. Update gate status if applicable. Close sprint.
-  REWORK REQUIRED → Return to Step 5 with reviewer notes.
-  CONSTITUTIONAL BLOCKER RAISED BY REVIEWER → Address blocker. Return to Step 1.
+Step 8 — CLOSE OR ESCALATE
+  After agent review approval:
+    If Gate passage or constitutional ratification is required → present to Founder.
+    If no constitutional deliberation is required → merge to main directly.
+
+  Founder’s role is constitutional deliberations ONLY:
+    - Ratifying LAW and CONFIRMED claim types produced by the Constitutional Analyst
+    - Approving Phase Gate passage
+    - Resolving constitutional conflicts between claims or between offices
+    - Ratifying amendments and Founder Resolutions
+  Founders do NOT perform routine quality review. That is the Reviewer office’s responsibility.
 ```
 
 **This protocol does not change per office. It does not change per sprint. Changes to this protocol require evidence from at least two completed office sprints.**

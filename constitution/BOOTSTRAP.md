@@ -426,12 +426,18 @@ Branch strategy:
   - Work on a feature branch (never directly on main)
   - Commit with clear, traceable messages
 
-Submit for review:
-  - Raise PR against main
-  - Reviewer = the office defined in your Charter (constitution/ORGANIZATION.md)
-  - Wait for reviewer approval BEFORE merging
+Two-Agent Review Policy (mandatory for all output):
+  Raise a review request to the Reviewer office defined in your Charter.
+  The Reviewer is an AI agent — NOT the Founder.
+  The reviewing agent produces a record in reviews/R-NNN-[sprint]-[office]-review.md
+    APPROVED             → merge to main; present to Founder only if Gate passage
+                           or constitutional ratification is required
+    APPROVED WITH NOTES  → address notes, reviewer confirms, then merge
+    REJECT               → address findings, re-request review
+  Founders do NOT perform routine quality review.
+  Founders are involved for: constitutional ratification, Gate passage, amendment approval.
 
-Merge to main only after approval. Do not self-approve.
+Merge to main only after agent review approval. Do not self-approve.
 ```
 
 ---
