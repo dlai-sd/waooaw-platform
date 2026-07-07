@@ -419,6 +419,39 @@ During execution:
   Do not produce artifacts outside your Work Contract scope.
 ```
 
+### SESSION CHECKPOINTING — Mandatory During Execution
+
+```
+AI sessions can time out without warning. Governance records must survive any timeout.
+
+At the START of each session:
+  Add an IN-PROGRESS CHECKPOINT table to constitution/PROJECT_STATE.md:
+
+    | Milestone                  | Status      |
+    |----------------------------|-------------|
+    | [WC-XXX created]           | pending     |
+    | [R-XXX review produced]    | pending     |
+    | [IB-XXX marked DONE]       | pending     |
+    | [Gate close]               | pending     |
+
+After EACH internal milestone completes:
+  Update the row in the checkpoint table:
+    pending → ✓ DONE — [brief note]
+  Commit the change to PROJECT_STATE.md before beginning the next milestone.
+
+After the FINAL milestone:
+  Replace the checkpoint table with the full session record (completed work,
+  architecture decisions, next session work).
+  Push to origin.
+
+Why this matters:
+  If the session times out after milestone 2 of 4, the next agent reads
+  PROJECT_STATE.md and knows exactly which milestones are complete and which
+  to resume — without re-reading the full session history.
+  An agent that skips checkpointing forces the next agent to reconstruct
+  state from git history — wasting session context and risking mistakes.
+```
+
 ---
 
 ### STEP 6 — VERIFICATION AND REVIEW

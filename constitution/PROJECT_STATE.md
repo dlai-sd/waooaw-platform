@@ -98,23 +98,23 @@ Gate G4 formally passes when IB-008 is reviewed (R-006) and `docker-compose.yml`
 
 ## Next Session Work
 
-**Authorized office: Runtime Professional — IB-009 (Foundation Implementation)**
+**Gate G4 is technically closed, but R-007 critical review has raised required actions before IB-009 may begin.**
 
-The Runtime Professional should create WC-007 and produce:
+Per R-007 — the following must be produced before the Runtime Professional starts implementation:
 
-1. **Service skeletons** — all 4 services start with `/health` endpoint returning 200
-2. **gRPC plumbing** — Business Platform calls Constitutional Engine via the proto contract
-3. **DB init scripts** — `infrastructure/postgres/init/` SQL (schemas, users, RLS, append-only rules per ledger-design.md)
-4. **Keycloak realm** — `infrastructure/keycloak/waooaw-realm.json`
-5. **Temporal dynamic config** — `infrastructure/temporal/dynamicconfig.yaml`
-6. **First Constitutional Compliance Test** — Evidence First enforcement verified: an action that skips RecordEvidence must be rejected
+| Priority | Action | Office |
+|---|---|---|
+| P0 | ADR-016 — language selection (.NET 9 / Python 3.12) | Enterprise Architect |
+| P0 | ADR-017 — web framework (Next.js / TypeScript) | Enterprise Architect |
+| P0 | `architecture/reference/api-specs/business-platform.openapi.yaml` | Solution Architect |
+| P0 | `architecture/reference/api-specs/professional-runtime.openapi.yaml` | Solution Architect |
+| P0 | Emergency Stop fan-out mechanism specified (Temporal signal approach) | Enterprise Architect |
+| P0 | Security Architecture sprint — threat model, network topology, JWT spec | Security Architect |
+| P1 | `paas_sessions` table in data architecture | Data Architect |
+| P1 | pgvector embeddings table for Creative Standard Profiles | AI / Data Architect |
+| P1 | DP-011 — Constitutional Observability principle | Business Architect |
 
-IB-009 success gate: `docker compose up` starts all services; each passes its healthcheck; first CCT passes.
-
-**Implementation notes from this session (Runtime Professional must read):**
-- R006-01: Add `TEMPORAL_DB_PASSWORD` to `.env.example`, create dedicated `temporal` DB user
-- R006-02: Add healthcheck to `web` service in `docker-compose.yml`
-- R006-03: Confirm AI Runtime pgvector access — `runtime_app` needs SELECT on the embeddings table (location TBD with Data Architect)
+**Recommended next session:** Enterprise Architect — produce ADR-016, ADR-017, and Emergency Stop fan-out specification. This unblocks Security Architect and OpenAPI specs.
 
 ---
 
