@@ -2,7 +2,26 @@
 
 **Last Updated:** 2026-07-07
 
-**Session Reference:** Founder Resolution FR-001 (CS Agent Path A) + IB-014/015/016 design frames
+**Session Reference:** IB-017 Phase 2 Readiness Sprint
+
+## IN-PROGRESS CHECKPOINT
+
+| Milestone | Status |
+|---|---|
+| IB-017 added to backlog | ✓ DONE |
+| WC-010 created (PA + EA joint sprint) | ✓ DONE |
+| Engineering Quality Standards (IB-011) | ✓ DONE |
+| CCT Framework specification | ✓ DONE |
+| CI/CD workflows (.github/workflows/) | ✓ DONE |
+| Infrastructure postgres init SQL | ✓ DONE |
+| Keycloak realm JSON | ✓ DONE |
+| Temporal dynamic config | ✓ DONE |
+| Bootstrap script + directory structure | ✓ DONE |
+| Governance close + commit | IN PROGRESS |
+
+---
+
+**Previous Session Reference:** FR-001 (CS Agent Path A) + IB-014/015/016 design frames
 
 ## IN-PROGRESS CHECKPOINT
 
@@ -12,7 +31,57 @@
 | IB-014 corrected + added to backlog | ✓ DONE |
 | IB-015 Path A added to backlog | ✓ DONE |
 | IB-016 corrected + added to backlog | ✓ DONE |
-| Governance commit | ✓ DONE |
+| Governance close + commit | ✓ DONE |
+
+---
+
+## Current State Summary
+
+| Item | Status |
+|---|---|
+| Architecture Phase (G1–G4) | ✓ COMPLETE |
+| Gate G5 | ✓ CLEAR — all prerequisites met |
+| Phase 2 Readiness (IB-017) | ✓ COMPLETE |
+| IB-009 Foundation Implementation | **READY TO BEGIN** |
+
+---
+
+## Phase 2 Readiness — What Was Produced (IB-017)
+
+**Engineering governance (IB-011 — EA):**
+- `architecture/reference/engineering-standards.md` — Runtime Professional's Decision Space specification: coding standards, coverage targets, security gates, CCT mandate, OTel metric names
+- `tests/constitutional/README.md` — CCT framework: 12 CCTs defined (EF-01/02, HO-01/02, AL-01/02, MT-01/02, PAAS-01, RU-01), failure procedure, template
+
+**CI/CD pipeline (PA):**
+- `.github/workflows/ci.yaml` — PR pipeline: build all 5 images, unit tests (.NET + Python + TypeScript), OpenAPI/proto lint, SAST (CodeQL), Trivy image scan, secret detection
+- `.github/workflows/promote.yaml` — Merge pipeline: dev deploy, integration tests, CCTs (mandatory gate), promote to :qa on CCT pass
+
+**Infrastructure initialization (PA):**
+- `infrastructure/postgres/init/01-schemas.sql` — three constitutional schema zones
+- `infrastructure/postgres/init/02-users-and-permissions.sql` — constitutional_app/business_app/runtime_app/temporal with precise grants per ledger-design.md
+- `infrastructure/postgres/init/03-enums-and-tables.sql` — all enums and tables including action_instance_id, paas_sessions (GAP-004), creative_standard_embeddings (GAP-005), professional_templates (IB-015)
+- `infrastructure/postgres/init/04-rls-policies.sql` — tenant isolation RLS on all tenant-scoped tables
+- `infrastructure/postgres/init/05-append-only-rules.sql` — PostgreSQL RULE enforcement (belt-and-suspenders on C-007)
+- `infrastructure/keycloak/waooaw-realm.json` — realm with tenant_id claim mapper, waooaw-web + waooaw-platform clients, Google IDP, 15-min token expiry
+- `infrastructure/temporal/dynamicconfig.yaml` — Temporal dev configuration with PAAS-suitable 24h workflow timeout
+
+**Dev bootstrap (PA):**
+- `scripts/setup.sh` — one-command: .env → validate dirs → `docker compose up` → health checks → smoke tests
+- `tests/unit/`, `tests/integration/`, `src/` directories created (GENESIS repository structure contract)
+
+---
+
+## Next Session — IB-009 (Runtime Professional)
+
+**The Runtime Professional may now begin.** The development environment is governed.
+
+Pre-flight checklist (carry forward from prior sessions):
+- R006-01: `TEMPORAL_DB_PASSWORD` to `.env.example` — now handled in `02-users-and-permissions.sql` and `.env.example` needs the var
+- R006-02: Healthcheck on `web` service — add to `docker-compose.yml` in IB-009
+- R009: CE Container App — `ingress: internal` in Azure config
+- R010-01: Produce `emergency-stop-ws.md` (WebSocket frame spec)
+
+The Runtime Professional reads `architecture/reference/engineering-standards.md` as their Professional Standard BEFORE writing the first line of code.
 
 ---
 

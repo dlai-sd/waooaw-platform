@@ -470,12 +470,13 @@ Status:           WAITING | IN_PROGRESS | DONE | BLOCKED
 | IB-008 | Infrastructure Architecture + Docker Compose | Platform Architect | P0 | G4/G5 | DONE |
 | IB-009 | Foundation Implementation (skeleton) | Runtime Professional | P0 | G5 | AUTHORIZED |
 | IB-010 | Security Architecture | Security Architect | P0 | G5 | DONE |
-| IB-011 | Engineering Quality Standards | EA + Platform Architect | P0 | G5 | WAITING |
+| IB-011 | Engineering Quality Standards | EA + Platform Architect | P0 | G5 | DONE |
 | IB-012 | OpenAPI Specifications | Solution Architect | P0 | G5 | DONE |
 | IB-013 | Technology Stack ADRs (016/017/018) | Enterprise Architect | P0 | G5 | DONE |
 | IB-014 | Customer Self-Service Portal (Domain 7) | Business Architect + SA | P1 | G5-parallel | WAITING |
 | IB-015 | Constitutional CS Agents (Domain 8) — FR-001 Path A | Business Architect + Runtime Professional | P1 | G5-parallel | WAITING |
 | IB-016 | Platform Operations Architecture | Platform Architect | P1 | G5-parallel | WAITING |
+| IB-017 | Phase 2 Readiness Sprint | Platform Architect + EA | P0 | G5-prerequisite | DONE |
 
 ---
 

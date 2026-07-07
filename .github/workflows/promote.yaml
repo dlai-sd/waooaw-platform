@@ -1,0 +1,197 @@
+# Promote Pipeline — runs on merge to main
+# Constitutional basis: GENESIS Engineering Quality Mandate (image promotion);
+#                       ADR-013 (CI/CD pipeline structure)
+# Purpose: Deploy to dev, run integration tests + CCTs.
+#          On success, retag image as :dev-ready.
+#          Constitutional Compliance Tests are a mandatory gate — failure blocks all promotion.
+
+name: Promote — Dev Deploy + CCTs
+
+on:
+  push:
+    branches: [main]
+
+env:
+  REGISTRY: ghcr.io
+  REGISTRY_PREFIX: ghcr.io/${{ github.repository_owner }}
+
+jobs:
+
+  # ─── Retag images for dev ─────────────────────────────────────────────────
+  tag-dev:
+    name: Retag images → :dev
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Retag all images to :dev
+        run: |
+          SERVICES=(constitutional-engine business-platform professional-runtime ai-runtime web)
+          for svc in "${SERVICES[@]}"; do
+            docker pull ${{ env.REGISTRY_PREFIX }}/$svc:sha-${{ github.sha }}
+            docker tag ${{ env.REGISTRY_PREFIX }}/$svc:sha-${{ github.sha }} \
+                       ${{ env.REGISTRY_PREFIX }}/$svc:dev
+            docker push ${{ env.REGISTRY_PREFIX }}/$svc:dev
+          done
+
+  # ─── Dev deployment ───────────────────────────────────────────────────────
+  deploy-dev:
+    name: Deploy to dev
+    runs-on: ubuntu-latest
+    needs: tag-dev
+    environment: dev
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS_DEV }}
+
+      - name: Deploy to Azure Container Apps (dev)
+        run: |
+          # Update each Container App to the new image
+          SERVICES=(constitutional-engine business-platform professional-runtime ai-runtime web)
+          for svc in "${SERVICES[@]}"; do
+            az containerapp update \
+              --name $svc \
+              --resource-group waooaw-dev \
+              --image ${{ env.REGISTRY_PREFIX }}/$svc:sha-${{ github.sha }}
+          done
+
+      - name: Wait for all services healthy
+        run: |
+          SERVICES=(business-platform professional-runtime)
+          for svc in "${SERVICES[@]}"; do
+            az containerapp revision list \
+              --name $svc \
+              --resource-group waooaw-dev \
+              --query "[?properties.active].properties.healthState" \
+              --output tsv | grep -q "Healthy" || exit 1
+          done
+
+  # ─── Integration tests ────────────────────────────────────────────────────
+  integration-tests:
+    name: Integration tests
+    runs-on: ubuntu-latest
+    needs: deploy-dev
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Run integration tests
+        env:
+          WAOOAW_DEV_BASE_URL: ${{ secrets.DEV_BASE_URL }}
+          WAOOAW_DEV_JWT: ${{ secrets.DEV_TEST_JWT }}
+        run: |
+          dotnet test tests/integration \
+            --logger "trx;LogFileName=integration-results.trx"
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-results
+          path: tests/integration/**/*.trx
+
+  # ─── Constitutional Compliance Tests ─────────────────────────────────────
+  #
+  # This is the constitutional gate. Failure here blocks ALL promotion.
+  # No manual override exists. No exception process exists.
+  # If a CCT fails, raise a Constitutional Blocker in blockers/ and fix the violation.
+  #
+  ccts:
+    name: Constitutional Compliance Tests — MANDATORY GATE
+    runs-on: ubuntu-latest
+    needs: deploy-dev
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install CCT dependencies
+        run: pip install uv && uv sync
+        working-directory: tests/constitutional
+
+      - name: Run all CCTs
+        env:
+          WAOOAW_DEV_BASE_URL: ${{ secrets.DEV_BASE_URL }}
+          WAOOAW_DEV_DB_URL: ${{ secrets.DEV_CONSTITUTIONAL_DB_URL }}
+          WAOOAW_DEV_JWT_TENANT_A: ${{ secrets.DEV_TEST_JWT_TENANT_A }}
+          WAOOAW_DEV_JWT_TENANT_B: ${{ secrets.DEV_TEST_JWT_TENANT_B }}
+        run: |
+          # Run .NET CCTs
+          dotnet test tests/constitutional \
+            --logger "trx;LogFileName=cct-results.trx" \
+            --filter "Category=CCT"
+
+          # Run Python CCTs
+          uv run pytest tests/constitutional \
+            --junit-xml=cct-python-results.xml \
+            -v
+
+      - name: Upload CCT results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cct-results
+          path: |
+            tests/constitutional/**/*.trx
+            tests/constitutional/**/*.xml
+
+      # CCT failure annotation — makes the violation visible in the PR
+      - name: Annotate CCT failures
+        if: failure()
+        run: |
+          echo "::error title=Constitutional Compliance Test Failure::One or more Constitutional Compliance Tests failed. This is a constitutional violation — not a bug. Raise a Constitutional Blocker in blockers/ before investigating."
+
+  # ─── Promote to QA (if CCTs pass) ────────────────────────────────────────
+  promote-to-qa:
+    name: Promote → :qa (if CCTs pass)
+    runs-on: ubuntu-latest
+    needs: [ccts, integration-tests]
+    permissions:
+      packages: write
+    steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Retag images to :qa
+        run: |
+          SERVICES=(constitutional-engine business-platform professional-runtime ai-runtime web)
+          for svc in "${SERVICES[@]}"; do
+            docker pull ${{ env.REGISTRY_PREFIX }}/$svc:sha-${{ github.sha }}
+            docker tag ${{ env.REGISTRY_PREFIX }}/$svc:sha-${{ github.sha }} \
+                       ${{ env.REGISTRY_PREFIX }}/$svc:qa
+            docker push ${{ env.REGISTRY_PREFIX }}/$svc:qa
+          done
+
+      - name: Create promotion record
+        run: |
+          echo "Image sha-${{ github.sha }} promoted to :qa at $(date -u)" >> promotion-log.txt
+
+      - name: Upload promotion record
+        uses: actions/upload-artifact@v4
+        with:
+          name: promotion-record-${{ github.sha }}
+          path: promotion-log.txt

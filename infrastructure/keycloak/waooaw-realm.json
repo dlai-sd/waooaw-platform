@@ -1,0 +1,99 @@
+{
+  "realm": "waooaw",
+  "displayName": "WAOOAW Platform",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": true,
+
+  "accessTokenLifespan": 900,
+  "ssoSessionMaxLifespan": 86400,
+  "refreshTokenMaxReuse": 0,
+  "revokeRefreshToken": true,
+
+  "passwordPolicy": "length(12) and upperCase(1) and digits(1) and specialChars(1) and notUsername",
+
+  "clients": [
+    {
+      "clientId": "waooaw-web",
+      "name": "WAOOAW Web Application",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      },
+      "redirectUris": [
+        "http://localhost:3000/*",
+        "https://app.waooaw.com/*"
+      ],
+      "webOrigins": [
+        "http://localhost:3000",
+        "https://app.waooaw.com"
+      ],
+      "protocolMappers": [
+        {
+          "name": "tenant_id_mapper",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-user-attribute-mapper",
+          "config": {
+            "user.attribute": "tenant_id",
+            "claim.name": "tenant_id",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "waooaw-platform",
+      "name": "WAOOAW Platform Services (machine-to-machine)",
+      "enabled": true,
+      "publicClient": false,
+      "standardFlowEnabled": false,
+      "serviceAccountsEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "secret": "${KEYCLOAK_CLIENT_SECRET}"
+    }
+  ],
+
+  "identityProviders": [
+    {
+      "alias": "google",
+      "displayName": "Continue with Google",
+      "providerId": "google",
+      "enabled": true,
+      "trustEmail": true,
+      "firstBrokerLoginFlowAlias": "first broker login",
+      "config": {
+        "clientId": "${GOOGLE_CLIENT_ID}",
+        "clientSecret": "${GOOGLE_CLIENT_SECRET}",
+        "syncMode": "IMPORT",
+        "hostedDomain": ""
+      }
+    }
+  ],
+
+  "roles": {
+    "realm": [
+      {
+        "name": "customer",
+        "description": "WAOOAW customer — can hire and govern digital professionals"
+      },
+      {
+        "name": "waooaw-operator",
+        "description": "WAOOAW platform operator — platform administration only"
+      }
+    ]
+  },
+
+  "defaultRoles": ["customer"]
+}

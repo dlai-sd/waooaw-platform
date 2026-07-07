@@ -1,0 +1,43 @@
+# Temporal Dynamic Configuration
+# Constitutional basis: ADR-015 (Temporal self-hosted dev deployment)
+# Used by: temporalio/auto-setup:1.24 container in docker-compose.yml
+#
+# These settings are appropriate for local development.
+# Production (Temporal Cloud) does not use this file.
+
+system.forceSearchAttributesCacheRefreshOnRead:
+  - value: "true"
+    constraints: {}
+
+limit.maxIDLength:
+  - value: "255"
+    constraints: {}
+
+# Workflow execution timeout defaults (dev — generous for debugging)
+frontend.defaultWorkflowExecutionRetentionPeriod:
+  - value: "7d"
+    constraints: {}
+
+# Worker polling intervals
+matching.longPollExpirationInterval:
+  - value: "60s"
+    constraints: {}
+
+# Rate limiting — generous for dev (single developer, no load testing)
+frontend.namespaceRPS:
+  - value: "100"
+    constraints: {}
+
+frontend.globalNamespaceRPS:
+  - value: "200"
+    constraints: {}
+
+# Activity heartbeat timeout (PAAS sessions may run for hours)
+# Allow PAAS workflows to have long-running activities (trading session = ~6 hours)
+workflow.maxWorkflowExecutionTimeout:
+  - value: "24h"
+    constraints: {}
+
+workflow.maxWorkflowTaskTimeout:
+  - value: "10s"
+    constraints: {}
