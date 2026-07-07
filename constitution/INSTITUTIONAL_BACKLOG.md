@@ -302,7 +302,7 @@ Status:           WAITING | IN_PROGRESS | DONE | BLOCKED
 - `docker-compose.yml`
 - `.env.example`
 
-**Status:** IN_PROGRESS — IB-007 complete. docker-compose.yml and .env.example produced in preceding session (attributed to Platform Architect, Sprint 006). Pending formal WC-006 and review before Gate G4/G5 closed.
+**Status:** DONE — 2026-07-07 (WC-006, Sprint 006. R-006 EA review APPROVED. docker-compose.yml and .env.example validated against component specs and all relevant ADRs. Three IB-009 implementation notes raised: Temporal DB user, web healthcheck, AI Runtime pgvector access.)
 
 ---
 
@@ -351,7 +351,7 @@ Status:           WAITING | IN_PROGRESS | DONE | BLOCKED
 | IB-005 | Produce Reference Architecture | Enterprise Architect | P0 | G4 | DONE |
 | IB-006 | Produce Component Specifications | Solution Architect | P0 | G4 | DONE |
 | IB-007 | Produce Data Architecture | Data Architect | P0 | G4 | DONE |
-| IB-008 | Infrastructure Architecture + Docker Compose | Platform Architect | P0 | G4/G5 | IN_PROGRESS |
+| IB-008 | Infrastructure Architecture + Docker Compose | Platform Architect | P0 | G4/G5 | DONE |
 | IB-009 | Foundation Implementation (skeleton) | Runtime Professional | P0 | G5 | WAITING |
 
 ---

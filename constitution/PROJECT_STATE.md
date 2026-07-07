@@ -2,7 +2,19 @@
 
 **Last Updated:** 2026-07-07
 
-**Session Reference:** Architecture Phase — Data Architect session (WC-005)
+**Session Reference:** Architecture Phase — Platform Architect (WC-006) + Solution Architect (proto file)
+
+## IN-PROGRESS CHECKPOINT (update as work completes — prevents session-timeout loss)
+
+| Milestone | Status |
+|---|---|
+| WC-006 created (Platform Architect) | ✓ DONE |
+| R-006 (EA review of IB-008) | ✓ DONE — APPROVED |
+| IB-008 DONE + backlog updated | ✓ DONE |
+| Proto file produced (CA-R004-01) | ✓ DONE — constitutional_service.proto |
+| Gate G4 formally closed | ✓ DONE — 2026-07-07 |
+
+---
 
 ---
 
@@ -12,19 +24,40 @@
 |---|---|
 | Epoch 0 — Institution | ✓ Complete |
 | Epoch 1 — Engineering Organization | ✓ Complete (Gate G1 passed) |
-| Epoch 2 — Knowledge System | ✓ Sprint 001 complete — IB-001 DONE |
+| Epoch 2 — Knowledge System | ✓ Complete (Gate G2 passed) |
 | Gate G2 | ✓ PASSED — 2026-07-07 |
-| Amendment A-005 | ✓ Ratified — Creative Identity as Protected Right |
-| Gate G3 | ✓ PASSED — 2026-07-07 (R-004 CA APPROVED, R-005 BA APPROVED) |
-| Gate G4 | IN PROGRESS — IB-005 DONE, IB-006 DONE, IB-007 DONE, IB-008 IN_PROGRESS |
-| Gate G5 | Not Started |
-| Implementation | Constitutionally prohibited until Gate G5 |
+| Gate G3 | ✓ PASSED — 2026-07-07 |
+| Gate G4 | ✓ PASSED — 2026-07-07 |
+| Gate G5 | AUTHORIZED — IB-009 may begin |
+| Implementation | AUTHORIZED — Runtime Professional may produce code |
 
 ---
 
-## Last Completed Work (This Session)
+## Last Completed Work (This Session — WC-006 + SA proto)
 
-### Sprint 003 Formally Closed (Enterprise Architect + concurrent IB-006)
+### Sprint 006 (Platform Architect — WC-006)
+- WC-006 created
+- docker-compose.yml and .env.example reviewed against component specs and all ADRs
+- R-006 produced: EA review of IB-008 — **APPROVED**
+- Three IB-009 implementation notes raised (R006-01 Temporal DB user, R006-02 web healthcheck, R006-03 AI Runtime pgvector access)
+- IB-008 marked **DONE**
+
+### Solution Architect — CA-R004-01 (proto file)
+- `architecture/reference/proto/constitutional_service.proto` produced
+- Complete gRPC interface specification for Constitutional Engine:
+  - `RecordEvidence` — Evidence First Enforcer
+  - `ValidateAction` — PAAS Boundary Validator
+  - `GrantAuthorityLicense` / `RevokeAuthorityLicense` — Authority License Manager
+  - `EvaluatePolicy` — Policy Evaluator
+  - `TriggerEmergencyStop` — Emergency Stop Handler
+- All message types defined with field-level constitutional basis notes
+- Tenant ID via gRPC metadata (not request field) — specified in file header
+- Latency budget targets documented per AD-001, AD-005
+
+### Gate G4 Formally Closed
+- All G4 items DONE: IB-005, IB-006, IB-007, IB-008, proto file
+- README updated: Gate G4 PASSED, Gate G5 AUTHORIZED
+- Implementation now constitutionally authorized
 
 - R-004 produced: Constitutional Analyst review of WC-003 (Reference Architecture + Component Specs) — **APPROVED**
 - R-005 produced: Business Architect review of WC-003 — **APPROVED** (all 26 capabilities verified)
@@ -65,10 +98,23 @@ Gate G4 formally passes when IB-008 is reviewed (R-006) and `docker-compose.yml`
 
 ## Next Session Work
 
-1. **Platform Architect — WC-006**: Formally close IB-008 — produce R-006 review of docker-compose.yml + .env.example against data architecture and component specs
-2. **Solution Architect — proto file**: Produce `architecture/reference/proto/constitutional_service.proto` (CA-R004-01 finding)
-3. **Pass Gate G4** — update README.md, PROJECT_STATE.md, declare Gate G5 authorized
-4. **Runtime Professional — WC-007**: Begin IB-009 foundation implementation skeleton
+**Authorized office: Runtime Professional — IB-009 (Foundation Implementation)**
+
+The Runtime Professional should create WC-007 and produce:
+
+1. **Service skeletons** — all 4 services start with `/health` endpoint returning 200
+2. **gRPC plumbing** — Business Platform calls Constitutional Engine via the proto contract
+3. **DB init scripts** — `infrastructure/postgres/init/` SQL (schemas, users, RLS, append-only rules per ledger-design.md)
+4. **Keycloak realm** — `infrastructure/keycloak/waooaw-realm.json`
+5. **Temporal dynamic config** — `infrastructure/temporal/dynamicconfig.yaml`
+6. **First Constitutional Compliance Test** — Evidence First enforcement verified: an action that skips RecordEvidence must be rejected
+
+IB-009 success gate: `docker compose up` starts all services; each passes its healthcheck; first CCT passes.
+
+**Implementation notes from this session (Runtime Professional must read):**
+- R006-01: Add `TEMPORAL_DB_PASSWORD` to `.env.example`, create dedicated `temporal` DB user
+- R006-02: Add healthcheck to `web` service in `docker-compose.yml`
+- R006-03: Confirm AI Runtime pgvector access — `runtime_app` needs SELECT on the embeddings table (location TBD with Data Architect)
 
 ---
 

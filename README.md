@@ -9,14 +9,12 @@ Founding Corpus v1           Status: Ratified
 Current Epoch:               Epoch 3 — Architecture
 Current Gate:                G2: PASSED — 2026-07-07
                              G3: PASSED — 2026-07-07 (R-004, R-005 APPROVED)
-                             G4: IN PROGRESS — IB-005 DONE, IB-006 DONE, IB-007 DONE
-                                 IB-008 IN_PROGRESS (docker-compose.yml + .env.example produced)
-                                 Pending: R-006 (DA review), formal WC-006 close
-                             G5: Not Started
-Authorized Offices:          Platform Architect (IB-008 — close out WC-006)
-                             Runtime Professional (IB-009 — Gate G5, pending G4 close)
+                             G4: PASSED — 2026-07-07 (IB-005/006/007/008 DONE,
+                                 proto file produced, R-006 APPROVED)
+                             G5: AUTHORIZED — Runtime Professional may begin IB-009
+Authorized Offices:          Runtime Professional (IB-009 — Foundation Implementation)
 Engineering Status:          Architecture documentation — AUTHORIZED
-                             Source code implementation — PROHIBITED until Gate G5
+                             Source code implementation — AUTHORIZED from Gate G5
 ```
 
 ---
