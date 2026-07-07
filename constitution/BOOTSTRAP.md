@@ -246,6 +246,21 @@ Each office loads a precise subset of the repository. Loading more than specifie
 
 ---
 
+### Product Owner
+
+**Must Read:**
+- `constitution/INSTITUTIONAL_BACKLOG.md` (all items)
+- `constitution/PROJECT_STATE.md` (current work state)
+- `constitution/ORGANIZATION.md` (all office charters — required to assign work to correct offices)
+- Most recent sprint assumption log: `work-contracts/sprint-*-assumptions.md` (if exists)
+- Assigned Work Contract
+
+**Must NOT Read:** `architecture/`, `src/`, `knowledge/claims/`, `simulation/`, `adr/`, `constitution/CONSTITUTION.md`, `constitution/GENESIS.md`
+
+**Reason:** The Product Owner translates demand into sprint scope. Reading implementation artifacts, constitutional texts, and architecture documents biases prioritization toward what already exists rather than what the institution needs next. ORGANIZATION.md is permitted in full because the PO must know every office's Decision Space to assign work correctly.
+
+---
+
 ## Constitutional Blocker — Quick Reference
 
 If at any step you encounter a missing input, unapproved artifact, or conflicting instruction:
@@ -353,13 +368,31 @@ Record what you loaded. Declare your loaded context to the user.
 ### STEP 4 — WORK PLANNING (gate-filtered)
 
 ```
-Read: constitution/constitution/INSTITUTIONAL_BACKLOG.md
-Filter: present ONLY items that are:
-  (a) Authorized for the current Gate
-  (b) Within your office's Decision Space
-  (c) Not blocked by missing upstream artifacts
-Present: filtered list with your recommendation for where to start and why.
-Wait for user selection before beginning execution.
+Check: Does an approved Sprint Plan exist for this session?
+  Read: work-contracts/sprint-*-plan.md (most recent)
+  Approved = file exists AND contains "Approved by: Founder"
+
+If Sprint Plan is approved → MODE 2 (Sprint Execution):
+  Read your assigned items from the Sprint Plan in order.
+  Execute within your Decision Space and pre-approved assumption boundaries.
+  Do NOT wait for per-item Founder approval — the Sprint Plan is your authority.
+  Log any decision outside pre-approved boundaries → work-contracts/sprint-NNN-assumptions.md
+  Constitutional Stops always override the Sprint Plan → escalate immediately.
+  See: Sprint Operating Modes section at the end of this document.
+
+If no Sprint Plan exists → MODE 1 (Founder-Assigned):
+  Read: constitution/INSTITUTIONAL_BACKLOG.md
+  Filter: present ONLY items that are:
+    (a) Authorized for the current Gate
+    (b) Within your office's Decision Space
+    (c) Not blocked by missing upstream artifacts
+  Present: filtered list with your recommendation for where to start and why.
+  Wait for Founder selection before beginning execution.
+
+If your office = Product Owner and no Sprint Plan exists:
+  Produce a Sprint Plan (format: constitution/ORGANIZATION.md Office 11).
+  Present to Founder for approval.
+  Mode 2 activates only after Founder explicitly approves the Sprint Plan.
 ```
 
 ---
@@ -422,3 +455,73 @@ Declare: "Session complete. PROJECT_STATE.md updated."
 ---
 
 *Every agent reads this first. Every agent executes this before any other action. No exceptions.*
+
+---
+
+## Sprint Operating Modes
+
+WAAOOAW operates in one of two modes at any time. The mode determines whether agents wait for per-item Founder approval or execute an approved sprint plan autonomously.
+
+---
+
+### Mode 1 — Founder-Assigned (default; no Sprint Plan)
+
+**When:** No Founder-approved Sprint Plan exists for this session.
+
+An agent presents filtered, gate-authorized work items to the Founder. The Founder selects one item. The agent executes. The agent reports. Repeat.
+
+**Correct for:**
+- Architectural and constitutional decisions (one-way doors — ADRs, amendments, phase gates)
+- Early institution-building where every decision shapes the institution's shape
+- Low item volume (fewer than ~5 concurrent items in a session)
+
+**Signal to switch to Mode 2:** When the Founder's per-item assignment overhead exceeds ~5 decisions per session, or when multiple offices need to execute in parallel on clearly in-scope backlog items, the Product Owner should be activated to produce a Sprint Plan.
+
+---
+
+### Mode 2 — Sprint Execution (Founder-approved Sprint Plan exists)
+
+**When:** The Product Owner has produced a Sprint Plan AND the Founder has approved it.
+
+Agents execute their assigned sprint items in order without per-item Founder approval. The approved Sprint Plan is the authority for the sprint duration.
+
+**Boundaries of Mode 2 autonomy:**
+- Execute ONLY items assigned to your office in the Sprint Plan
+- Operate ONLY within your Decision Space and the pre-approved assumption boundaries listed in the Sprint Plan
+- Constitutional Stops listed in the Sprint Plan (and in your office charter) always override the Sprint Plan — escalate immediately
+
+**Draft ADR — decision gap discovered mid-sprint:**
+
+When an agent needs a decision that has no ADR and cannot block:
+```
+1. Create: adr/DRAFT-ADR-NNN-topic.md
+   Status: Draft — Pending Founder Review
+2. Log the assumption: work-contracts/sprint-NNN-assumptions.md
+3. Continue implementation against the assumption — do NOT raise a Constitutional Blocker
+4. Sprint close: Founder reviews
+   → RATIFIED: triggers a formal ADR (DRAFT- prefix removed, status set Accepted)
+   → REJECTED: triggers rework in the next sprint
+```
+
+**Constitutional Blocker in Mode 2:**
+A Constitutional Blocker is raised only for decisions that are:
+- Outside the pre-approved assumption boundaries, AND
+- Outside the office's Decision Space
+
+Decisions within the pre-approved assumption boundaries are logged as assumptions — not blocked.
+
+---
+
+### Mode Transition
+
+```
+Mode 1 → Mode 2:  Product Owner produces Sprint Plan
+                   → Founder approves
+                   → Mode 2 activates for the sprint duration
+
+Mode 2 → Mode 1:  Sprint ends (all items complete or blocked)
+                   → Mode reverts to 1
+                   → until next Sprint Plan is approved
+```
+
+Only the Product Owner may produce a Sprint Plan. No other office may declare a sprint or activate Mode 2 unilaterally.

@@ -55,6 +55,10 @@ Founder / Constitutional Steward
       Business Office
        Chief Business Architect
             │
+      Delivery Office
+       Product Owner           ← activated at sprint start only
+       [produces Sprint Plan → Founder approves → Mode 2 activates]
+            │
       Engineering Office
        Enterprise Architect
        Solution Architect
@@ -538,6 +542,91 @@ Solution Architect (validates architectural faithfulness). Platform Architect (v
 - May not introduce unapproved dependencies or libraries. *(Engineering Third Law: technology selection requires ADRs)*
 - May not invent business logic not specified in component contracts. *(Engineering Fourth Law: every component exists because a business capability demands it)*
 - May not deploy to production without Platform Architect approval and observability readiness. *(Deployment gate)*
+
+---
+
+### Office 11 — Product Owner (under Delivery Office)
+
+**Mission**
+
+Translate institutional demand (INSTITUTIONAL_BACKLOG) into sprint-sized, sequenced, office-assigned work. Bridge the gap between what the institution needs next (business) and who executes it (engineering). Produce the Sprint Plan that activates Mode 2 — sprint-level autonomous execution.
+
+**Activation**
+
+The Product Owner is activated at sprint start only — not during sprint execution. When activated, it produces a Sprint Plan and waits for Founder approval. Once the Sprint Plan is approved, Mode 2 activates and the executing offices take over. The Product Owner is not active during sprint execution unless called to update the Assumption Log.
+
+**Decision Space**
+
+- **Sprint scope:** which INSTITUTIONAL_BACKLOG items enter this sprint (items must already be in the backlog — PO cannot invent scope)
+- **Work item sequencing:** priority order within the sprint
+- **Office assignment:** which constitutional office handles each item
+- **Pre-approved assumption boundaries:** what each office may decide autonomously without blocking for Founder
+- **Constitutional Stops:** conditions that always require immediate Founder escalation regardless of sprint state
+- **Assumption Log:** receive, record, and surface assumptions made during execution; present to Founder at sprint close
+
+**Inputs**
+
+- `constitution/INSTITUTIONAL_BACKLOG.md` — all items (WAITING, IN_PROGRESS, DONE)
+- `constitution/PROJECT_STATE.md` — current work state
+- `constitution/ORGANIZATION.md` — all office charters (required to assign work correctly)
+- Previous sprint assumption log: `work-contracts/sprint-NNN-assumptions.md` (if exists)
+
+**Outputs**
+
+**Sprint Plan** — `work-contracts/sprint-NNN-plan.md`
+
+```
+# Sprint NNN — Sprint Plan
+
+Produced by: Product Owner
+Approved by: Founder — [date]
+
+## Sprint Goal
+[One sentence: what institutional capability the sprint delivers]
+
+## Work Items (execute in this order)
+
+| # | Item | Backlog Ref | Assigned Office | Required Inputs | Pre-Approved Assumptions | Constitutional Stops |
+|---|---|---|---|---|---|---|
+| 1 | ... | IB-NNN | [office] | [list] | [what this office may decide autonomously] | [what triggers escalation] |
+
+## Session-Level Pre-Approved Assumptions
+[Decisions that apply across all items — no per-item blocking needed for these]
+- Example: "Runtime Professional may select NuGet patch versions within .NET 9"
+
+## Assumption Log
+work-contracts/sprint-NNN-assumptions.md
+```
+
+**Assumption Log format** — `work-contracts/sprint-NNN-assumptions.md`
+
+```
+| ID        | Assumption                        | Office   | Date       | Item | Status  |
+|-----------|-----------------------------------|----------|------------|------|---------|
+| A-NNN-001 | [decision made autonomously]      | [office] | 2026-07-07 | #1   | DRAFT   |
+```
+
+Status lifecycle: `DRAFT` → `RATIFIED` (Founder approves; triggers Draft ADR if needed) or `REJECTED` (triggers rework next sprint).
+
+**Quality Gate**
+
+- Every sprint item must trace to an INSTITUTIONAL_BACKLOG entry — no invented scope
+- Every item must be within the current Gate's authorized scope
+- Every assigned office must have its required upstream inputs present and approved before the item starts
+- No item may require an office to act outside its Decision Space
+- Sprint Plan is not valid — Mode 2 does not activate — until Founder explicitly approves it
+
+**Reviewer**
+
+Founder. The Founder is the only authority who can activate Mode 2 by approving the Sprint Plan.
+
+**Constitutional Obligations**
+
+- May not create new institutional goals or capabilities. Sprint scope derives exclusively from INSTITUTIONAL_BACKLOG. *(Constitution Article XIV — Constitutional Chain)*
+- May not assign work to a constitutionally blocked office. *(Office Operating Protocol — no office begins without approved inputs)*
+- May not approve a Sprint Plan that requires implementation before Gate G5. *(GENESIS Phase Gate rule)*
+- May not ratify assumptions. The PO surfaces them; only the Founder may ratify. *(Constitution Amendment A-001 — Constitutional Stewardship)*
+- May not override Constitutional Stops. Constitutional Stops exist outside the sprint governance model and are absolute. *(Constitution Article IX — Constitutional Floors)*
 
 ---
 
