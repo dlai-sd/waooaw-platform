@@ -70,3 +70,6 @@ Application services only ever see Keycloak JWTs. The OAuth provider used is irr
 **Operational note:**
 - Keycloak realm configuration exported as JSON and version-controlled in `infrastructure/keycloak/`
 - Container startup imports realm automatically — no manual configuration
+- **Version pin:** Docker image pinned to a specific Keycloak minor version (e.g., `quay.io/keycloak/keycloak:25.0.6`). Floating `:latest` is prohibited — Keycloak has had breaking realm schema changes between major versions
+- **Upgrade process:** Test upgrade in dev, export updated realm JSON, commit, promote through environments. Never upgrade directly in cloud without dev validation.
+- **Realm backup:** Automated daily export of realm configuration included in platform backup job (see ADR-014 for secret management, including Keycloak client secrets)

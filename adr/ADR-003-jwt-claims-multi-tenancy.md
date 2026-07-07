@@ -23,12 +23,13 @@ The JWT issued by Keycloak is the primary bearer of tenant identity. Every servi
   "tenant_id": "org-uuid",
   "org_name": "Dr Mehta Dental Clinic",
   "roles": ["customer"],
-  "active_contracts": ["contract-uuid-1"],
   "iss": "https://auth.waooaw.com/realms/waooaw",
   "exp": 1234567890,
   "iat": 1234567800
 }
 ```
+
+**`active_contracts` is intentionally excluded from the JWT.** A JWT is issued at login and lives for its TTL. If a contract is created, amended, or terminated mid-session, the JWT does not reflect the change until token refresh — which creates a window where the token carries stale authorization. Contract membership is resolved from the database at request time using `tenant_id` as the lookup key. This is slightly slower than a JWT claim but is always authoritative.
 
 **`tenant_id` is the multi-tenancy anchor.** It propagates through:
 - HTTP Authorization header (external → Business Platform)
@@ -63,5 +64,6 @@ CREATE POLICY tenant_isolation ON contracts
 - If tenant_id is omitted from a JWT (Keycloak misconfiguration), all queries would fail — this is a fail-safe behavior, not a bug
 
 **Security note:**
-- JWT is signed by Keycloak. tenant_id claim cannot be forged without Keycloak private key.
-- Services must validate JWT signature before trusting any claim. Never trust user-supplied tenant_id outside the JWT.
+- JWT is signed by Keycloak. `tenant_id` claim cannot be forged without Keycloak private key.
+- Services must validate JWT signature before trusting any claim. Never trust user-supplied `tenant_id` outside the JWT.
+- Contract authorization is resolved from the database, not from JWT claims, to prevent stale-token authorization bypass.

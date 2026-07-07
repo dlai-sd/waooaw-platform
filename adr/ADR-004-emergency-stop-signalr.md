@@ -64,6 +64,8 @@ Customer → localhost:5003/ws/emergency-stop/{contractId}
 - Dev environment uses plain WebSocket (simpler, same interface, different transport)
 
 **Authentication:**
-- WebSocket connection includes JWT in connection query parameter or header
-- Professional Runtime validates JWT before accepting Emergency Stop commands
-- Only the customer who owns contractId can Emergency Stop that contract
+- JWT is sent in the WebSocket upgrade `Authorization: Bearer <token>` header **only**
+- JWT must **never** be placed in a query parameter — query parameters appear in server access logs, proxy logs, and browser history (OWASP A02: Cryptographic Failures)
+- Professional Runtime validates JWT signature and extracts `tenant_id` + `sub` before accepting the connection
+- Only the customer whose `sub` matches the contract owner field can Emergency Stop that `contractId`
+- Connection is rejected with `401 Unauthorized` before the WebSocket upgrade completes if JWT is invalid or absent

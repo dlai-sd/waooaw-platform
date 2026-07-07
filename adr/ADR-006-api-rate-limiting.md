@@ -15,13 +15,27 @@ However, at MVI scale with early customers, the overhead of rate limiting infras
 
 ## Decision
 
-**Defer dedicated rate limiting to Epoch 6. Use Container Apps max replica count as a crude rate limiter at MVI scale.**
+**Defer dedicated rate limiting to Epoch 6. Use Container Apps max replica count as a crude rate limiter at MVI scale, plus ASP.NET Core built-in rate limiting middleware as a per-tenant backstop.**
 
-Container Apps can be configured with a maximum replica count. When all replicas are at capacity, new requests receive 429 responses automatically. This is "infrastructure-level" rate limiting — not per-customer, but sufficient for MVI.
+Container Apps max replicas protects against platform overload. However, it does not prevent a single compromised or misbehaving tenant from monopolizing all available replicas. For that, ASP.NET Core 7+ includes a built-in `RateLimiter` middleware that requires zero additional infrastructure.
 
-In Epoch 6 (Reference Product), when customer subscription tiers are defined, introduce dedicated per-tier rate limiting using either:
+```csharp
+// Business Platform Program.cs
+builder.Services.AddRateLimiter(options =>
+{
+    options.AddFixedWindowLimiter("per-tenant", opt =>
+    {
+        opt.PermitLimit = 200;          // 200 requests
+        opt.Window = TimeSpan.FromMinutes(1);
+        opt.QueueLimit = 0;             // reject, don't queue
+    });
+});
+// Partition key = tenant_id from JWT (extracted in middleware)
+```
+
+In Epoch 6 (Reference Product), when customer subscription tiers are defined, introduce per-tier limits using either:
 - Azure API Management (if already introduced for developer portal)
-- ASP.NET Core middleware rate limiting (per-tenant, using tenant_id from JWT)
+- Replace the fixed-window limiter above with tier-specific limits from tenant configuration
 
 ## Alternatives Considered
 

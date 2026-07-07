@@ -54,3 +54,6 @@ Development (Docker):
 
 **Future:**
 If the platform moves to Kubernetes, evaluate Linkerd for service mesh. At that scale, a service mesh becomes worth the operational overhead.
+
+**Cloud portability escape hatch:**
+The mTLS boundary is implemented as a gRPC interceptor in the application code, not as a network-level flag. If Azure Container Apps managed mTLS is unavailable (cloud migration, ACA deprecation), the same interceptor is reconfigured to load TLS certificate files from a mounted secret volume. The application code change is zero — only the infrastructure configuration changes. This is documented formally in ADR-010.

@@ -43,3 +43,10 @@ Protocol Buffers define the service contract. All four operations (ValidateActio
 - `.proto` files must be versioned and shared between services
 - gRPC is harder to test manually than REST (requires grpcurl or Postman gRPC)
 - Browser cannot call gRPC natively — confirmed: Constitutional Engine is internal-only, never called from browser
+
+**Proto ownership and versioning:**
+- `.proto` files live in `architecture/reference/proto/` — version-controlled in this repository
+- Service builds copy the required `.proto` files at build time; no Git submodule needed at MVI
+- **Additive changes** (new fields, new RPC methods) are backward-compatible; no versioning required
+- **Breaking changes** (field removal, field type change) require a new proto file name suffix: `constitutional_service_v2.proto`
+- The `grpcurl` tool is the standard CLI for manual testing against the Constitutional Engine in dev

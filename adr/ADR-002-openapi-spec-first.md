@@ -21,6 +21,12 @@ OpenAPI specs live in: `architecture/reference/api-specs/`
 
 Code generation tools may generate stubs from the spec, but the spec is never generated from code.
 
+**Toolchain:**
+- **Stub generation:** `openapi-generator-cli` — generates typed client SDKs for Next.js (TypeScript) and server stubs for .NET (NSwag) from the spec
+- **Spec linting:** Spectral CLI (`@stoplight/spectral-cli`) — validates spec style and WAOOAW API conventions in CI
+- **Contract conformance in CI:** `schemathesis` — runs property-based tests against a live service, verifying responses conform to the OpenAPI spec
+- Specs live in `architecture/reference/api-specs/` — one file per service (e.g., `business-platform.openapi.yaml`)
+
 ## Alternatives Considered
 
 | Option | Reason Rejected |

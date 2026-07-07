@@ -54,7 +54,12 @@ Customer B opens PAAS session
 - Scaling: 100 concurrent PAAS customers = 100 replicas (but PAAS sessions are time-bounded — 09:15–15:25 IST for NIFTY)
 - Container Apps scale-to-zero applies at session end — no idle cost
 
-**Cost note:**
+**Replica failure recovery:**
+- If the assigned replica crashes mid-session, Container Apps assigns the customer's next request to a new replica
+- The new replica has no in-memory Decision Space — it must reload from database before accepting any execution request
+- The Professional Runtime detects missing Decision Space on the first post-failure request and performs a blocking reload (not an execution)
+- No execution occurs until reload is confirmed complete; this is a safe pause, not a constitutional violation
+- The customer's Emergency Stop connection (via SignalR) is re-established automatically by the SignalR SDK on reconnect
 - PAAS sessions are time-bounded (trading hours only)
 - After market close, replicas scale to zero
 - Cost is proportional to active concurrent sessions, not total customers

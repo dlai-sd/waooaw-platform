@@ -78,3 +78,9 @@ Python services (Professional Runtime, AI Runtime):
 - OTel adds ~5ms overhead to instrumented calls (acceptable)
 - Jaeger UI (dev) lacks alerting — developers must manually inspect traces during development
 - Azure Monitor costs ~₹400-800/month depending on data volume
+
+**Alert routing:**
+- MVI (pre-production customers): Azure Monitor alert → email to engineering on-call
+- Production: Azure Monitor alert → PagerDuty or GitHub Issues (decision deferred to Epoch 4 when first production deployment occurs)
+- `constitutional.authority.violated` and `constitutional.emergency_stop` spans are **P0 alerts** — they wake on-call regardless of time
+- `paas.execution.latency_ms` P99 > 200ms is **P1 alert** (early warning before 250ms constitutional floor is breached)
