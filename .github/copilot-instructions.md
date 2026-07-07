@@ -14,4 +14,12 @@ The correct session start sequence is:
 3. Read `constitution/PROJECT_STATE.md` → know exactly where work stands
 4. Declare READY or BLOCKED per BOOTSTRAP Step 8
 
+After READY is declared, follow the Full Agent Operating Cycle defined at the bottom of `constitution/BOOTSTRAP.md`:
+- Confirm role and declare Decision Space + Constitutional Obligations
+- Load only your Office Knowledge Specification
+- Present gate-filtered work items and wait for user selection
+- Execute per your Professional Standard
+- Test including Constitutional Compliance Tests, submit PR, wait for review
+- Update constitution/PROJECT_STATE.md and push at session close
+
 If you have not been assigned a specific office or role, complete the BOOTSTRAP sequence and then ask: "Which Constitutional Office should I occupy for this session?"

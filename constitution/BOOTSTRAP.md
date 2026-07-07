@@ -296,4 +296,116 @@ This protocol is the only thing that stands between a capable AI model and a con
 
 ---
 
+## Full Agent Operating Cycle
+
+The boot sequence above gets you to READY. This section governs the complete operating cycle for each session — from onboarding through session close. Review and refine this on a need basis as the institution evolves.
+
+---
+
+### STEP 1 — BOOTSTRAP (mandatory, no shortcuts)
+
+```
+Read: constitution/BOOTSTRAP.md → README.md → constitution/PROJECT_STATE.md
+Declare: current Epoch, Gate, Engineering Status
+If Engineering Status = PROHIBITED → STOP. Do not proceed.
+```
+
+---
+
+### STEP 2 — ROLE CONFIRMATION
+
+```
+Read: Your Office Charter from constitution/ORGANIZATION.md
+Declare explicitly:
+  - WHAT I CAN DO: my Decision Space
+  - WHAT I AM FORBIDDEN TO DO: my Constitutional Obligations (7th attribute)
+If no role assigned → ask: "Which Constitutional Office should I occupy for this session?"
+Wait for user confirmation. Do not begin work without confirmed role.
+```
+
+---
+
+### STEP 3 — KNOWLEDGE LOADING
+
+```
+Load ONLY the files listed in your Office Knowledge Specification (see above).
+Load your Professional Standard from standards/[your-office].md
+  → This defines how you reason, what evidence you accept, when to stop.
+Do NOT scan the full repository. Broad context contaminates office reasoning.
+Record what you loaded. Declare your loaded context to the user.
+```
+
+---
+
+### STEP 4 — WORK PLANNING (gate-filtered)
+
+```
+Read: constitution/INSTITUTIONAL_BACKLOG.md
+Filter: present ONLY items that are:
+  (a) Authorized for the current Gate
+  (b) Within your office's Decision Space
+  (c) Not blocked by missing upstream artifacts
+Present: filtered list with your recommendation for where to start and why.
+Wait for user selection before beginning execution.
+```
+
+---
+
+### STEP 5 — EXECUTION
+
+```
+Before beginning any task:
+  Check: Is the required upstream artifact approved and present?
+  If NO → raise Constitutional Blocker in blockers/ → STOP → wait.
+  Do NOT compensate for missing inputs.
+
+During execution:
+  Follow your Professional Standard reasoning protocol exactly.
+  Record every decision and ambiguity as an Operational Discovery.
+  If you encounter a missing input mid-execution → raise Constitutional Blocker → stop that task.
+  Do not produce artifacts outside your Work Contract scope.
+```
+
+---
+
+### STEP 6 — VERIFICATION AND REVIEW
+
+```
+Run full test suite (per GENESIS Engineering Quality Mandate):
+  - Unit, integration, API contract tests
+  - Constitutional Compliance Tests (mandatory — Evidence First, Human Override, etc.)
+  - Security scan, performance tests as applicable
+
+Branch strategy:
+  - Work on a feature branch (never directly on main)
+  - Commit with clear, traceable messages
+
+Submit for review:
+  - Raise PR against main
+  - Reviewer = the office defined in your Charter (constitution/ORGANIZATION.md)
+  - Wait for reviewer approval BEFORE merging
+
+Merge to main only after approval. Do not self-approve.
+```
+
+---
+
+### STEP 7 — SESSION CLOSE
+
+```
+Update: constitution/PROJECT_STATE.md with:
+  - Completed items (what was finished this session)
+  - Pending items (what is queued but not started)
+  - WIP items (what is partially done)
+  - Blockers raised (CB-XXX references)
+  - Next authorized item (what should start next session)
+  - Last updated: [date]
+
+Commit PROJECT_STATE.md to the feature branch or directly to main.
+Push to origin.
+Declare: "Session complete. PROJECT_STATE.md updated."
+```
+
+---
+
 *Every agent reads this first. Every agent executes this before any other action. No exceptions.*
