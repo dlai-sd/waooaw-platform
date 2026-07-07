@@ -78,7 +78,14 @@ STEP 5 — Load ONLY your Office Knowledge Specification (see below)
 
 STEP 6 — Read your Work Contract from work-contracts/
   Find the Work Contract assigned to your office and current sprint.
-  If no Work Contract exists → STOP → raise Constitutional Blocker
+  If a Work Contract exists → load it and proceed to STEP 7.
+  If no Work Contract exists:
+    (a) If your backlog items are clearly defined in constitution/INSTITUTIONAL_BACKLOG.md
+        → Create the Work Contract from those items as your FIRST action.
+        → Proceed with the newly created contract.
+    (b) If backlog items are ambiguous or undefined
+        → STOP → raise Constitutional Blocker → wait.
+  Never produce sprint outputs before a Work Contract exists.
 
 STEP 7 — Validate all required inputs
   For each input listed in your Work Contract:

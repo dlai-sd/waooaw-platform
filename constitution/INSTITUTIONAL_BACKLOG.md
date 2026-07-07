@@ -116,7 +116,7 @@ Status:           WAITING | IN_PROGRESS | DONE | BLOCKED
 **Outputs:**
 - `knowledge/business-capabilities.md`
 
-**Status:** WAITING (blocked by IB-001)
+**Status:** DONE — 2026-07-07
 
 ---
 
@@ -144,7 +144,7 @@ Status:           WAITING | IN_PROGRESS | DONE | BLOCKED
 **Outputs:**
 - `knowledge/architectural-drivers.md`
 
-**Status:** WAITING (blocked by IB-001, IB-002)
+**Status:** DONE — 2026-07-07
 
 ---
 
@@ -171,7 +171,7 @@ Status:           WAITING | IN_PROGRESS | DONE | BLOCKED
 **Outputs:**
 - `knowledge/design-principles.md`
 
-**Status:** WAITING (blocked by IB-001)
+**Status:** DONE — 2026-07-07
 
 ---
 
@@ -207,7 +207,136 @@ Status:           WAITING | IN_PROGRESS | DONE | BLOCKED
 - `architecture/reference/domain-model.md`
 - `adr/` (Architecture Decision Records, technology-agnostic at this stage)
 
-**Status:** WAITING (blocked by IB-002, IB-003, IB-004)
+**Status:** IN_PROGRESS (Sprint 003 assigned)
+
+---
+
+### IB-006 — Produce Component Specifications
+
+**Goal:** Decompose the Reference Architecture into implementable component specifications with precise interfaces, responsibilities, and integration patterns.
+
+**Office:** Solution Architect
+
+**Priority:** P0 — Gate G4 blocking
+
+**Gate:** G4
+
+**Depends On:** IB-005
+
+**Success Criteria:**
+- Component specification exists for each of the 4 services
+- Every component traces to a business capability
+- Every interface is specified (gRPC contracts, REST endpoints, event contracts)
+- Runtime Professional declares: “I can implement this without inventing logic.”
+
+**Inputs:**
+- Reference Architecture (IB-005)
+- Business Capability Map (IB-002)
+- ADRs (adr/)
+
+**Outputs:**
+- `architecture/reference/components/business-platform.md`
+- `architecture/reference/components/constitutional-engine.md`
+- `architecture/reference/components/professional-runtime.md`
+- `architecture/reference/components/ai-runtime.md`
+
+**Status:** WAITING (blocked by IB-005)
+
+---
+
+### IB-007 — Produce Data Architecture
+
+**Goal:** Design the data architecture that faithfully implements the Three-Ledger Model, evidence state machine, and employment lifecycle.
+
+**Office:** Data Architect
+
+**Priority:** P0 — Gate G4 blocking
+
+**Gate:** G4
+
+**Depends On:** IB-005, IB-006
+
+**Success Criteria:**
+- Three-ledger separation is specified at the schema level
+- Evidence state machine is fully specified
+- Employment lifecycle states are mapped to schema
+- Constitutional Audit Ledger immutability is enforced at DB level
+- Runtime Professional declares: “I can write migrations from this.”
+
+**Inputs:**
+- Reference Architecture (IB-005)
+- Component Specifications (IB-006)
+- Claims C-005, C-007, C-027, C-028, C-034
+
+**Outputs:**
+- `architecture/reference/data/ledger-design.md`
+- `architecture/reference/data/evidence-schema.md`
+
+**Status:** WAITING (blocked by IB-006)
+
+---
+
+### IB-008 — Produce Infrastructure Architecture and Local Environment
+
+**Goal:** Produce the local development infrastructure (Docker Compose) and infrastructure architecture specification so the Runtime Professional can start all services locally.
+
+**Office:** Platform Architect
+
+**Priority:** P0 — Gate G5 trigger
+
+**Gate:** G4/G5
+
+**Depends On:** IB-007
+
+**Success Criteria:**
+- `docker-compose.yml` runs `docker compose up` and all services start
+- `.env.example` documents all required environment variables
+- Runtime Professional can start the full local stack in one command
+
+**Inputs:**
+- Component Specifications (IB-006)
+- Data Architecture (IB-007)
+- All relevant ADRs (ADR-011 through ADR-015)
+
+**Outputs:**
+- `docker-compose.yml`
+- `.env.example`
+
+**Status:** WAITING (blocked by IB-007)
+
+---
+
+### IB-009 — Foundation Implementation (Gate G5)
+
+**Goal:** Implement the skeleton of all 4 services, proving the architecture is implementable. Not feature-complete — skeleton only. Every service starts, connects, and passes at least one Constitutional Compliance Test.
+
+**Office:** Runtime Implementation Professional
+
+**Priority:** P0 — Gate G5 (first working code)
+
+**Gate:** G5
+
+**Depends On:** IB-008
+
+**Success Criteria:**
+- `docker compose up` starts all 4 services and the full infrastructure stack
+- Each service has a `/health` endpoint returning 200
+- Business Platform can call Constitutional Engine via gRPC
+- First Constitutional Compliance Test passes: Evidence First enforcement verified
+- Runtime Universality Test skeleton: all 3 professional scenarios configure without code changes
+
+**Inputs:**
+- Component Specifications (IB-006)
+- Data Architecture (IB-007)
+- Docker Compose (IB-008)
+- All approved ADRs
+
+**Outputs:**
+- `src/` directory with all 4 service skeletons
+- `tests/constitutional/` with first CCT
+- All services passing `docker compose up`
+
+**Status:** WAITING (blocked by IB-008)
 
 ---
 
@@ -215,11 +344,15 @@ Status:           WAITING | IN_PROGRESS | DONE | BLOCKED
 
 | ID | Goal | Office | Priority | Gate | Status |
 |---|---|---|---|---|---|
-| IB-001 | Produce Constitutional Knowledge Corpus | Constitutional Analyst | P0 | G2 | IN_PROGRESS |
-| IB-002 | Produce Business Capability Map | Business Architect | P0 | G3 | WAITING |
-| IB-003 | Define Architectural Drivers | Business Architect | P0 | G3 | WAITING |
-| IB-004 | Define Design Principles | Business Architect | P0 | G3 | WAITING |
-| IB-005 | Produce Reference Architecture | Enterprise Architect | P0 | G4 | WAITING |
+| IB-001 | Produce Constitutional Knowledge Corpus | Constitutional Analyst | P0 | G2 | DONE |
+| IB-002 | Produce Business Capability Map | Business Architect | P0 | G3 | DONE |
+| IB-003 | Define Architectural Drivers | Business Architect | P0 | G3 | DONE |
+| IB-004 | Define Design Principles | Business Architect | P0 | G3 | DONE |
+| IB-005 | Produce Reference Architecture | Enterprise Architect | P0 | G4 | IN_PROGRESS |
+| IB-006 | Produce Component Specifications | Solution Architect | P0 | G4 | WAITING |
+| IB-007 | Produce Data Architecture | Data Architect | P0 | G4 | WAITING |
+| IB-008 | Infrastructure Architecture + Docker Compose | Platform Architect | P0 | G4/G5 | WAITING |
+| IB-009 | Foundation Implementation (skeleton) | Runtime Professional | P0 | G5 | WAITING |
 
 ---
 
