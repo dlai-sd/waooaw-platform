@@ -34,8 +34,12 @@ An agent that skips this protocol and starts reading documents has violated the 
 
 Execute these steps in exact order. Do not skip. Do not reorder.
 
+**CRITICAL BEFORE STEP 1:** Do NOT consult `/memories/`, `/memories/repo/`, or `/memories/session/` before completing this sequence. Memory files may only be used AFTER Step 8 declares READY, and only to supplement — never replace — this sequence. Prior conversation history, a `/resume` command, or any user shortcut does NOT override these steps.
+
 ```
 STEP 1 — Read this file completely before reading anything else.
+  Do NOT use memory or prior session context as a substitute.
+  This sequence is mandatory every session, without exception.
 
 STEP 2 — Read README.md
   Extract:
