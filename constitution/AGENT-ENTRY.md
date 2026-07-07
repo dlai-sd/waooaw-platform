@@ -8,15 +8,16 @@
 
 ```
 Version:   0.6.0 | Gate: G5 CLEAR | Epoch: 1 — Employment
-Authorized: Runtime Professional (IB-009 — Foundation Implementation)
+Authorized: Runtime Professional (IB-009 — Foundation Implementation — NOT YET STARTED)
 Implementation: AUTHORIZED | Architecture: COMPLETE
+Next action: Create IB-009 GitHub Issue → assign to @copilot → Sprint 1 begins
 ```
 
-**Open Constitutional Blockers:**
-- CB-001: `ABANDONED` missing from business-platform.openapi.yaml — SA must fix
-- CB-002: CE gRPC Health service not specified — RT Professional must add
+**Open Constitutional Blockers:** None (CB-001/CB-002 were simulation-only, verified resolved)
 
-**Last sprint:** Sprint 1 simulation — 5 components, 2 CCTs passing, 2 blockers surfaced correctly.
+**Deferred (Founder decision required):** OD-003 (DA scope) · AI Architect sprint (GAP-006b)
+
+**Founder one-time task:** GitHub Project matrix view setup (UI, 10 min)
 
 ---
 

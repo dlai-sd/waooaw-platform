@@ -2,7 +2,76 @@
 
 **Last Updated:** 2026-07-07
 
-**Session Reference:** v0.6.0 — Agent Efficiency Indices + GitHub Labels
+**Session Reference:** v0.6.0 — Complete. Ready for IB-009 Sprint 1.
+
+---
+
+## RESUME BRIEFING — Read this on /resume
+
+### Where we are
+```
+Version:  0.6.0  |  Gate: G5 CLEAR  |  Epoch: 1 — Employment
+Status:   Architecture COMPLETE. Implementation AUTHORIZED. First sprint not yet started.
+```
+
+### What was accomplished (2026-07-07 full day)
+
+| Phase | Status |
+|---|---|
+| Architecture (G2–G4): 35 claims, 26 capabilities, 18 ADRs, all reference docs | ✅ |
+| Phase 2 Readiness: CI/CD, CCT framework, DB init, Keycloak realm, Dockerfiles | ✅ |
+| GitHub Operating Model: issue templates, PM workflow, Office 12, 67 labels live | ✅ |
+| Agent Efficiency: AGENT-ENTRY.md, ADR-INDEX.md, COMPONENT-QUICK-REF.md, 5 office cards | ✅ |
+| Spec gaps: emergency-stop-ws.md, ARCHITECTURE.md, CHANGELOG.md, commitlint.config.js | ✅ |
+| **IB-009 Foundation Implementation — NOT STARTED** | ⬜ NEXT |
+
+---
+
+### TO-DO LIST — Next Session
+
+**P0 — Start the first development sprint:**
+
+1. Create Sprint 1 GitHub Issue and assign to @copilot:
+   - Template: `.github/ISSUE_TEMPLATE/ib-implementation.yml`
+   - Fill: IB-009, office:runtime-professional, sprint:1, gate:G5, component:all
+   - Or invoke PO first: `@copilot You are Product Owner. Produce Sprint Plan for Sprint 1.`
+
+2. IB-009 targets per service (first working code):
+   - CE: /health (gRPC health) + RecordEvidence stub
+   - BP: /health + POST /api/v1/employment/contracts + JWT middleware + EF Core baseline
+   - PR: /health + Emergency Stop WebSocket
+   - AI: /health + LLM inference stub
+   - First CCT to pass: CCT-EF-01 (Evidence First)
+
+**P1 — Parallel to IB-009:**
+
+3. IB-014 API addenda (SA, 30 min): add /contracts/{id}/status + /professional-templates
+4. IB-016 Platform Operations (PA): OTel metric names + P0 runbooks
+
+**Founder one-time (GitHub UI, 10 min):**
+
+5. Create GitHub Project "WAOOAW Platform Matrix" with views:
+   Sprint Execution | Customer Readiness | NFR Coverage
+   Labels are live — filter by component:* and domain:*
+
+**Deferred (do not start without Founder decision):**
+
+6. OD-003: DA scope boundary review (work-contracts/operational-discoveries.md)
+7. AI Architect sprint (GAP-006b): LLM failover, UNCERTAIN PAAS path, token budget
+
+---
+
+### Efficiency: How the agent should start tomorrow
+
+```
+1. constitution/AGENT-ENTRY.md          ← routing + current state (200 lines)
+2. adr/ADR-INDEX.md                     ← all 18 ADRs (18 lines)
+3. .github/agent-context/office-{name}.md  ← charter (50 lines)
+4. Work Contract + COMPONENT-QUICK-REF.md
+```
+This saves ~25,000 tokens before the first line of code.
+
+---
 
 ## IN-PROGRESS CHECKPOINT
 
