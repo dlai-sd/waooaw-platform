@@ -2,7 +2,21 @@
 
 **Last Updated:** 2026-07-07
 
-**Session Reference:** R-007 Gap Closure — EA (ADR-016/017/018) + Security Architect + Solution Architect (OpenAPI)
+**Session Reference:** Founder Resolution FR-001 (CS Agent Path A) + IB-014/015/016 design frames
+
+## IN-PROGRESS CHECKPOINT
+
+| Milestone | Status |
+|---|---|
+| FR-001 recorded (Path A decision) | ✓ DONE |
+| IB-014 corrected + added to backlog | ✓ DONE |
+| IB-015 Path A added to backlog | ✓ DONE |
+| IB-016 corrected + added to backlog | ✓ DONE |
+| Governance commit | ✓ DONE |
+
+---
+
+**Previous Session Reference:** R-007 Gap Closure — EA (ADR-016/017/018) + Security Architect + Solution Architect (OpenAPI)
 
 ## IN-PROGRESS CHECKPOINT
 
@@ -179,7 +193,19 @@ Gate G4 formally passes when IB-008 is reviewed (R-006) and `docker-compose.yml`
 
 ## Next Session Work
 
-**Gate G4 is technically closed, but R-007 critical review has raised required actions before IB-009 may begin.**
+**IB-009 is authorized. Runtime Professional may begin foundation implementation.**
+
+All architecture is complete. The following G5-parallel items exist and will be executed alongside IB-009:
+- IB-014: Customer Portal Domain 7 + 2 API addenda (Business Architect + SA)
+- IB-015: CS Agents Domain 8 Path A (Business Architect + Runtime Professional)
+- IB-016: Platform Operations Architecture (Platform Architect)
+
+Pre-flight checklist for IB-009 (from all prior reviews):
+- R006-01: `TEMPORAL_DB_PASSWORD` to `.env.example`; dedicated `temporal` DB user in postgres init scripts
+- R006-02: Healthcheck on `web` service in `docker-compose.yml`
+- R006-03: `runtime_app` pgvector SELECT permission for AI Runtime embeddings
+- R009: CE Container App must have `ingress: internal` set in Azure config
+- R010-01: Produce `emergency-stop-ws.md` (WebSocket frame spec, reconnection, heartbeat)
 
 Per R-007 — the following must be produced before the Runtime Professional starts implementation:
 

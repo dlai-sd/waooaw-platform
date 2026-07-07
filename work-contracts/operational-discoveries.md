@@ -60,3 +60,35 @@ Discoveries with status PROMOTED have been incorporated into permanent operation
 **Question:** Should the DA produce schema-level DDL, or only architectural-level data design (entity definitions, ownership rules, transition specifications)?
 **Resolution applied:** The IB-007 backlog item explicitly names the two files as DA outputs. The files are architectural data specifications with DDL illustrations — they are not EF Core migration files or production SQL scripts. The DDL serves as a precise specification of the constitutional constraints (append-only enforcement, RLS policies, permission model) that the Runtime Professional must implement. Treated as "schema specification" rather than "schema implementation." The organizational charter's "no schemas" obligation is interpreted as: no implementation-level migration code. Architectural DDL as specification is within the DA's scope. Founder to review this interpretation and amend ORGANIZATION.md Office 06 if needed.
 **Status:** OPEN — awaiting Founder review of DA scope boundary interpretation
+
+---
+
+### OD-004 — Founder Resolution FR-001: Customer Success Agent Constitutional Model
+
+**Sprint:** Post-R-007 critical review
+**Office:** Founder (constitutional decision)
+**Task:** IB-015 design frame — CS Agent path resolution
+**Observed:** The IB-015 design frame proposed "platform governs its own CS agents" but the critical review (R-007 follow-up) found two HARD constitutional conflicts:
+1. **Tenant isolation (AD-004, C-005 LAW):** A CS agent with `tenant_id = WAOOAW_ORG_ID` cannot read Customer A's evidence records under RLS — violating the design frame's "READ customer evidence records" capability.
+2. **Emergency Stop ownership (C-001 LAW):** If WAOOAW holds the Employment Contract, Customer A (the served party) has no constitutional path to exercise Emergency Stop on the CS agent serving them.
+
+**Two paths presented to Founder:**
+- Path A: Customer holds the Employment Contract (`Customer A → CS_Agent`). Tenant isolation preserved. Emergency Stop exercisable by Customer A.
+- Path B: Constitutional amendment creating "Platform Service Agent" with supervised cross-tenant access and a new Emergency Stop mechanism.
+
+**Founder Decision:** **Path A — Customer as Contract Holder.**
+
+**Constitutional Resolution (FR-001):**
+> Customer Success Agents are digital professionals of type CUSTOMER_SUCCESS_L1 and CUSTOMER_SUCCESS_L2. Each CS interaction establishes an Employment Contract between the customer and the CS agent, with the customer as the contract holder. WAOOAW provides pre-approved Decision Space templates (ProfessionalTemplates) that the customer deploys with minimal configuration. The customer retains all constitutional rights: Emergency Stop, Right of Review, authority management, evidence ledger ownership. No new constitutional authorization model is required. This resolves both conflicts within the existing constitutional framework.
+
+**Architectural consequences of FR-001:**
+1. CS agent JWT carries `tenant_id = customer's tenant_id` — RLS works normally ✓
+2. Emergency Stop contract key = customer's contract → existing WebSocket mechanism works ✓
+3. New concept: `ProfessionalTemplate` — WAOOAW-managed Decision Space templates, stored in business schema under WAOOAW's own tenant, readable by all tenants as catalogue items
+4. New capability: "Hire from Template" (Domain 1 extension — capability 1.6)
+5. Session-bound contracts: CS interaction contracts follow the standard lifecycle but terminate at interaction close
+6. L1 execution model: PRE_AUTHORIZED (PAAS) — informational actions, no customer approval needed per action
+7. L2 execution model: APPROVAL_GATE — customer approves proposed configuration/billing changes
+8. No new containers. Professional Runtime handles both L1 (PAAS) and L2 (APPROVAL_GATE) with `professional_type = CUSTOMER_SUCCESS_L1 / L2`.
+
+**Status:** RESOLVED — 2026-07-07 (Founder decision recorded)

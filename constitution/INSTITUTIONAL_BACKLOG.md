@@ -473,10 +473,233 @@ Status:           WAITING | IN_PROGRESS | DONE | BLOCKED
 | IB-011 | Engineering Quality Standards | EA + Platform Architect | P0 | G5 | WAITING |
 | IB-012 | OpenAPI Specifications | Solution Architect | P0 | G5 | DONE |
 | IB-013 | Technology Stack ADRs (016/017/018) | Enterprise Architect | P0 | G5 | DONE |
+| IB-014 | Customer Self-Service Portal (Domain 7) | Business Architect + SA | P1 | G5-parallel | WAITING |
+| IB-015 | Constitutional CS Agents (Domain 8) — FR-001 Path A | Business Architect + Runtime Professional | P1 | G5-parallel | WAITING |
+| IB-016 | Platform Operations Architecture | Platform Architect | P1 | G5-parallel | WAITING |
 
 ---
 
-## Backlog Governance
+## IB-014 — Customer Self-Service Portal (Domain 7)
+
+**Goal:** Define Domain 7 business capabilities and the portal's integration contract with the Business Platform API. Extend the OpenAPI spec with two missing endpoints identified in the critical review.
+
+**Office:** Business Architect (capabilities) + Solution Architect (API addenda)
+**Priority:** P1 — G5-parallel (does not block IB-009)
+**Gate:** G5-parallel — delivered during IB-009 sprint
+**Depends On:** IB-012 (OpenAPI spec, which this extends)
+
+**Constitutional Basis:** Article IX (Right of Review, data portability), C-001 (Emergency Stop always accessible), C-034 (employment lifecycle visible to customer)
+
+**Design Frame — Domain 7 Capabilities:**
+
+| Capability | What the customer does | API |
+|---|---|---|
+| 7.1 Hire a Professional (guided) | Step-by-step wizard: professional type → Decision Space → goals → activate | POST /api/v1/employment/contracts |
+| 7.2 Monitor Activity (polling at MVI) | Approval queue + evidence feed, refreshed on-screen or on pull-to-refresh | GET /api/v1/approvals, GET /api/v1/evidence |
+| 7.3 Act on Approval Queue | Approve/reject/confirm-boundary in one tap | POST /api/v1/approvals/{id}/approve |
+| 7.4 Emergency Stop (always visible) | Red button, fixed position, pre-warmed WebSocket | WSS /ws/emergency-stop |
+| 7.5 View Evidence Ledger | Full audit trail, filterable | GET /api/v1/evidence |
+| 7.6 Export Evidence | Data portability download (Article IX) | GET /api/v1/evidence/export |
+| 7.7 Manage Authority | Expand/restrict with evidence justification | POST /api/v1/authority/expand |
+| 7.8 Manage Contract Lifecycle | Suspend, terminate, renew | PUT/DELETE /api/v1/employment/contracts/{id} |
+
+**Notification model at MVI:** Polling (no new infrastructure). Real-time push via SSE deferred post-MVI. This is a pragmatic decision — polling suffices for approval-gate workflows where latency of seconds is acceptable. Emergency Stop is always real-time via the pre-warmed WebSocket (not polling).
+
+**Constitutional Portal Constraints (enforced in UI, not just described):**
+- Emergency Stop present on every authenticated page — fixed position, cannot scroll away, no confirmation dialog
+- Evidence records have no edit affordance — read-only with no ambiguity
+- Scope boundary confirmation requires typed acknowledgment — no checkbox substitution
+- `tenant_id` and internal UUIDs never displayed to customer
+
+**Two missing API endpoints (SA addendum to IB-012):**
+
+1. `GET /api/v1/employment/contracts/{id}/status` — returns professional execution state: `{state: IDLE | EXECUTING | AWAITING_APPROVAL}`. Execution state is derived from Professional Runtime PAAS session + pending ApprovalRequest count. Business Platform queries internally; customer never calls PR directly.
+
+2. `GET /api/v1/professional-templates` — catalogue of WAOOAW-provided professional templates (required for IB-015 / Domain 8). New in IB-015 scope but the endpoint lives in Business Platform.
+
+**Outputs:**
+- Domain 7 capability map (Business Architect)
+- Addendum to `architecture/reference/api-specs/business-platform.openapi.yaml` (SA — 2 endpoints)
+
+**Status:** WAITING (G5-parallel)
+
+---
+
+## IB-015 — Constitutional Customer Success Agents (Domain 8) — FR-001 Path A
+
+**Goal:** Design Domain 8 capabilities for L1/L2/L3 customer success agents, governed by the constitutional framework under FR-001 (Founder Resolution: Customer as Contract Holder).
+
+**Office:** Business Architect (capabilities) + Runtime Professional (professional type config)
+**Priority:** P1 — G5-parallel
+**Gate:** G5-parallel
+**Depends On:** IB-009 (foundation implementation must exist before CS professional type can be configured), IB-014 (ProfessionalTemplate endpoint)
+
+**Constitutional Basis:** FR-001 (Path A), C-003 (authority licensed), C-030 (Decision Space as primitive), C-035 (Runtime Universality — CS agents run on the same Professional Runtime as marketing/trading agents), DP-003 (Configuration over Code — professional type differences are configuration)
+
+---
+
+### FR-001 Resolution Summary (Founder Decision — 2026-07-07)
+
+**Customer holds the Employment Contract.** Each CS support interaction instantiates an Employment Contract: `Customer → CS_Agent`. WAOOAW provides Decision Space templates (ProfessionalTemplates) that the customer deploys with minimal configuration. The customer retains all constitutional rights over the CS agent: Emergency Stop, Right of Review, evidence ledger ownership, authority management.
+
+This resolves both blocking conflicts from the critical review:
+- Tenant isolation: CS agent's JWT carries `tenant_id = customer's tenant_id`. RLS works normally. ✓
+- Emergency Stop: Customer is the contract holder. Existing WebSocket mechanism works. ✓
+
+---
+
+### Design Frame — Domain 8 Capabilities
+
+| Capability | Description | Execution Model |
+|---|---|---|
+| 8.1 Hire CS Agent from Template | Customer selects a WAOOAW-provided CS agent template. Employment Contract created automatically. | Business Platform + ProfessionalTemplate |
+| 8.2 Receive L1 Support (Autonomous) | CS agent reads evidence, retrieves status, explains in plain language. No customer approval needed per action. | PAAS (PRE_AUTHORIZED) |
+| 8.3 Approve L2 Proposed Change | CS agent proposes a configuration or billing change. Customer approves before execution. | APPROVAL_GATE |
+| 8.4 Escalate to Human Expert (L3) | Customer or L2 agent requests human escalation. Agent prepares brief; human expert decides. | Out-of-band (human) |
+| 8.5 Stop CS Agent | Emergency Stop — same mechanism as any other professional. Customer exercises via WebSocket. | ADR-004 / ADR-018 |
+| 8.6 Review CS Interaction History | Full evidence record of all CS agent actions within this contract. | GET /api/v1/evidence |
+
+### Decision Space Templates (WAOOAW-Managed)
+
+**L1 Template — Autonomous Support Agent:**
+```
+professionalType:      CUSTOMER_SUCCESS_L1
+executionModel:        PRE_AUTHORIZED
+authorizedActions:
+  - READ_EVIDENCE_SUMMARY (retrieve and summarize customer's own evidence records)
+  - READ_CONTRACT_STATUS (retrieve employment contract and professional states)
+  - EXPLAIN_ACTION (plain-language explanation of a specific evidence record)
+  - GUIDE_SELF_SERVICE (navigation instructions — read-only)
+prohibitedActions:
+  - Any write operation (modify contract, change Decision Space, process billing)
+  - Any operation on another customer's data
+alwaysAskActions:
+  - Any action type not in authorizedActions above → escalate to L2
+```
+
+**L2 Template — Configuration & Billing Agent:**
+```
+professionalType:      CUSTOMER_SUCCESS_L2
+executionModel:        APPROVAL_GATE
+authorizedActions:
+  - READ_EVIDENCE_SUMMARY (inherited from L1)
+  - APPLY_DECISION_SPACE_TEMPLATE (propose applying a WAOOAW pre-approved template change)
+  - PROCESS_BILLING_REQUEST (within defined INR threshold)
+  - RESET_PROFESSIONAL (propose suspending and reactivating a professional)
+prohibitedActions:
+  - Process billing above defined threshold without L3 escalation
+  - Create or delete Employment Contracts
+  - Modify Constitutional Audit Ledger records
+alwaysAskActions:
+  - Billing requests above threshold → escalate to L3
+  - Any action not in authorizedActions → escalate to L3
+```
+
+### New Domain Model Concept: ProfessionalTemplate
+
+```
+ProfessionalTemplate {
+  id:             UUID
+  tenantId:       UUID  // WAOOAW's own tenant_id (readable by all as catalogue)
+  name:           string  // "L1 Customer Success Agent"
+  professionalType: string  // CUSTOMER_SUCCESS_L1 / CUSTOMER_SUCCESS_L2
+  decisionSpaceTemplate: DecisionSpaceInput  // pre-filled, customer cannot modify prohibited list
+  contractLifecycleType: PERMANENT | SESSION_BOUND
+  isPublished:    boolean  // WAOOAW controls which templates are available
+  createdAt:      datetime
+}
+```
+
+**Storage:** `business.professional_templates` table, in WAOOAW's own tenant. All tenants can read published templates via `GET /api/v1/professional-templates` (no RLS restriction on catalogue reads — it is a public catalogue within the platform, analogous to a job board).
+
+**Session-bound contracts:** CS interaction contracts have `contractLifecycleType: SESSION_BOUND`. They transition `EVALUATION → ACTIVE → TERMINATED` within the duration of a support interaction. The standard four-state lifecycle (C-034) applies — just at a shorter timescale.
+
+### Architecture Impact: Zero New Containers
+
+| Component | Change |
+|---|---|
+| Professional Runtime | New `professional_type` values: `CUSTOMER_SUCCESS_L1` (handled by PAAS Engine), `CUSTOMER_SUCCESS_L2` (handled by Approval-Gate Engine). No code changes — DP-003. |
+| Business Platform | New table `professional_templates`. New endpoint `GET /api/v1/professional-templates`. New endpoint `POST /api/v1/employment/contracts/from-template/{templateId}`. |
+| Constitutional Engine | No change. Evidence First and Emergency Stop apply as-is. |
+| AI Runtime | New tool set for CS agent: `fetch_evidence_summary`, `fetch_contract_status`. Same Decision Space injection pattern. |
+
+**Outputs:**
+- Domain 8 capability map (Business Architect)
+- `professional_templates` table specification (Data Architect addendum)
+- `CUSTOMER_SUCCESS_L1 / L2` Decision Space YAML templates (Runtime Professional)
+
+**Status:** WAITING (G5-parallel, blocked by IB-009)
+
+---
+
+## IB-016 — Platform Operations Architecture
+
+**Goal:** Define the operational capability inventory for WAOOAW platform operators and the observability architecture for constitutional compliance monitoring. No new infrastructure containers at MVI.
+
+**Office:** Platform Architect
+**Priority:** P1 — G5-parallel
+**Gate:** G5-parallel
+**Depends On:** IB-009 (services must exist before ops tooling can be configured)
+
+**Constitutional Basis:** AD-009 (Observability by Default), GENESIS Engineering Quality Mandate (zero manual operational procedures)
+
+---
+
+### Design Frame — Operational Capabilities
+
+| Capability | What operators get | Infrastructure |
+|---|---|---|
+| **Platform Health** | All service health, DB connection pool, Temporal worker count, cert expiry countdown | OTel metrics → Jaeger (dev) / Azure Monitor Workbooks (cloud) |
+| **Constitutional Compliance Monitor** | P99 Emergency Stop latency, Evidence First enforcement rate (% of governance events where CE confirmed before caller returned), CCT pass/fail trend | OTel metrics tagged `constitutional.*` — Azure Monitor alert rules |
+| **PAAS Session Management** | View active PAAS sessions by customer, state, and duration; force-terminate crashed sessions | Temporal UI (already in docker-compose) + `GET /api/v1/paas/sessions` (already in PR OpenAPI) |
+| **Workflow Management** | View/retry/cancel stuck Temporal employment lifecycle workflows | Temporal UI (already in docker-compose) |
+| **Secret & Certificate Expiry** | 30-day warning before expiry on all secrets and certificates | Azure Key Vault → Azure Monitor alerts (cloud); manual check script (dev) |
+| **Cost Monitoring** | Per-environment cloud cost; alert on approach to INR 10,000/month (AD-006) | Azure Cost Management alerts |
+| **P0 Runbooks** | Documented response for every P0 scenario | `architecture/reference/operations/runbooks/` (produced in IB-009 sprint) |
+
+### Observability Stack (corrected from design frame)
+
+No Grafana at MVI — Grafana is not in `docker-compose.yml` and has no ADR. The decided observability stack (ADR-009) is:
+- **Dev:** Jaeger all-in-one (already in docker-compose.yml) — distributed traces, service latency
+- **Cloud:** Azure Monitor / Application Insights — OTel traces, metrics, alerts, workbooks
+
+Grafana can be added post-MVI via ADR-019 if Azure Monitor workbooks are insufficient. No ADR = no Grafana in IB-009.
+
+### Constitutional OTel Metric Names (for Runtime Professional)
+
+These must be emitted by the services. The Runtime Professional must instrument them:
+
+| Metric | Emitting Service | Dimensions |
+|---|---|---|
+| `constitutional.emergency_stop.latency_ms` | Professional Runtime | `contract_id`, `result: confirmed/failed` |
+| `constitutional.evidence_first.enforcement_rate` | Constitutional Engine | `calling_service`, `action_type` |
+| `constitutional.paas.active_sessions` | Professional Runtime | (gauge, no dimensions needed) |
+| `constitutional.evidence.state_transition.count` | Constitutional Engine | `from_state`, `to_state` |
+| `constitutional.cct.result` | CI/CD pipeline | `test_name`, `environment`, `result: pass/fail` |
+
+### Operator Events Model (corrected from design frame)
+
+Operator actions (force-terminate session, trigger manual cert rotation, restart a service) are **not** Constitutional Audit Ledger events. The CAL is for professional actions under Employment Contracts. Operator actions have no `contract_id` or `professional_id`.
+
+Operator actions are recorded as **OTel structured events** tagged:
+```
+span.name:          waooaw.operations.<action_name>
+attributes:
+  operator_id:      <Keycloak user ID of the WAOOAW operator>
+  action:           FORCE_TERMINATE_SESSION | MANUAL_CERT_ROTATION | SERVICE_RESTART | ...
+  target:           <session_id or service name>
+  reason:           <operator-provided reason>
+  timestamp:        <ISO 8601>
+```
+
+These are queryable in Jaeger/Azure Monitor and provide an operational audit trail without contaminating the Constitutional Audit Ledger's domain model.
+
+**Outputs:**
+- Operational capability spec (Platform Architect)
+- OTel metric names added to component specs (SA addendum)
+- Runbooks (Platform Architect — produced during IB-009 sprint)
+
+**Status:** WAITING (G5-parallel, blocked by IB-009)
 
 **Who adds items:** Founder, or any office that identifies a needed output from a Constitutional Blocker.
 
