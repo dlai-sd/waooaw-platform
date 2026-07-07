@@ -109,3 +109,13 @@ Durable workflow management for multi-step employment operations.
 - Does NOT write to the Constitutional Audit Ledger directly (only via Constitutional Engine)
 - Does NOT call LLMs (that is AI Runtime via Professional Runtime)
 - Does NOT maintain WebSocket connections (Emergency Stop is handled by Professional Runtime)
+
+## Runtime Requirements (for Dockerfile + startup)
+
+**Tenant isolation interceptor:** BP must register `TenantDbCommandInterceptor` with its EF Core DbContext (see engineering-standards.md Section 10). This must execute before any DB query. JWT middleware stores `tenant_id` in `HttpContext.Items["tenant_id"]` — the interceptor reads it from there.
+
+**JWT middleware order:** In ASP.NET Core middleware pipeline:
+```
+UseRouting() → UseAuthentication() → UseAuthorization() → [extract tenant_id to HttpContext.Items] → UseEndpoints()
+```
+The tenant_id extraction middleware runs AFTER authentication so the JWT is validated first.

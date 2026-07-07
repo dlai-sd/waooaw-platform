@@ -95,7 +95,9 @@ services:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "grpc_health_probe -addr=:5002 || exit 1"]
+      # Dev: TCP port check (nc). Production Dockerfile installs grpc_health_probe.
+      # See architecture/reference/dockerfiles/Dockerfile.dotnet-service for full spec.
+      test: ["CMD-SHELL", "nc -z localhost 5002 || exit 1"]
       interval: 10s
       retries: 5
 
@@ -186,6 +188,10 @@ services:
     depends_on:
       business-platform:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000 > /dev/null 2>&1 || exit 1"]
+      interval: 15s
+      retries: 5
 
 volumes:
   postgres_data:

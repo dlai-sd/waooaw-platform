@@ -178,7 +178,126 @@ PR title must follow commit convention. Single commit PRs are squash-merged. Mul
 
 ---
 
-## 8. Operational Observability Standard
+## 9. Database Migration Strategy (EF Core + Postgres Init Bootstrap)
+
+**The baseline problem:** In dev, `infrastructure/postgres/init/*.sql` creates the schema from scratch. EF Core migrations also try to create the same tables. Without coordination, EF Core will fail trying to create tables that already exist.
+
+**Resolution: Empty Initial Migration**
+
+When setting up EF Core for the first time in a service that uses postgres init scripts:
+
+```
+Step 1: Run the postgres init scripts first (docker compose up postgres does this automatically).
+Step 2: Add EF Core migrations package and configure DbContext normally.
+Step 3: Create an EMPTY initial migration that represents the current DB state:
+          dotnet ef migrations add InitialBaseline --context WaooawDbContext
+Step 4: Mark the baseline as already applied WITHOUT running it:
+          dotnet ef database update InitialBaseline --connection "..."
+          (or use the MigrationBuilder.Sql("SELECT 1") no-op migration body)
+Step 5: All future migrations are applied normally via: dotnet ef database update
+```
+
+**The empty migration body** (copy this exactly for the initial migration):
+```csharp
+public partial class InitialBaseline : Migration
+{
+    // This migration represents the schema created by infrastructure/postgres/init/*.sql
+    // It is intentionally empty — the schema was created by the init scripts.
+    // DO NOT add any Up() or Down() operations here.
+    protected override void Up(MigrationBuilder migrationBuilder) { }
+    protected override void Down(MigrationBuilder migrationBuilder) { }
+}
+```
+
+**In the deployment pipeline** (ADR-011): The init container runs `dotnet ef database update`. In dev, the empty baseline migration is already applied (recorded in the `__EFMigrationsHistory` table by the init container). Future non-empty migrations apply normally.
+
+---
+
+## 10. Tenant Isolation — `SET LOCAL` EF Core Interceptor Pattern
+
+Every database connection in Business Platform and Constitutional Engine must execute `SET LOCAL app.tenant_id = '{value}'` before any query. This enforces PostgreSQL RLS.
+
+**Implementation pattern (apply in both CE and BP DbContext):**
+
+```csharp
+// TenantDbCommandInterceptor.cs
+// Registered in DI: builder.Services.AddSingleton<TenantDbCommandInterceptor>();
+// Added to DbContext: optionsBuilder.AddInterceptors(tenantInterceptor);
+
+public class TenantDbCommandInterceptor : DbCommandInterceptor
+{
+    private readonly IHttpContextAccessor _http;
+
+    public TenantDbCommandInterceptor(IHttpContextAccessor http) => _http = http;
+
+    public override async ValueTask<InterceptionResult<DbDataReader>>
+        ReaderExecutingAsync(DbCommand command, CommandEventData eventData,
+                             InterceptionResult<DbDataReader> result,
+                             CancellationToken cancellationToken = default)
+    {
+        await SetTenantAsync(command, cancellationToken);
+        return result;
+    }
+
+    public override async ValueTask<InterceptionResult<int>>
+        NonQueryExecutingAsync(DbCommand command, CommandEventData eventData,
+                               InterceptionResult<int> result,
+                               CancellationToken cancellationToken = default)
+    {
+        await SetTenantAsync(command, cancellationToken);
+        return result;
+    }
+
+    private async Task SetTenantAsync(DbCommand command, CancellationToken ct)
+    {
+        var tenantId = _http.HttpContext?.Items["tenant_id"]?.ToString();
+        if (string.IsNullOrEmpty(tenantId)) return;
+
+        // Validate it is a UUID before injecting (security: prevent injection)
+        if (!Guid.TryParse(tenantId, out _))
+            throw new InvalidOperationException("Invalid tenant_id in context");
+
+        using var setCmd = command.Connection!.CreateCommand();
+        setCmd.Transaction = command.Transaction;
+        setCmd.CommandText = $"SET LOCAL app.tenant_id = '{tenantId}'";
+        await setCmd.ExecuteNonQueryAsync(ct);
+    }
+}
+```
+
+**Where `tenant_id` comes from:** The JWT middleware extracts `tenant_id` from the JWT claim and stores it in `HttpContext.Items["tenant_id"]` before the controller runs. For gRPC context (CE internal calls), the metadata `x-tenant-id` is extracted in a gRPC interceptor and stored in the `ServerCallContext`.
+
+**Critical:** If `tenant_id` is null or missing, do NOT set the session variable. PostgreSQL RLS with `current_setting('app.tenant_id', TRUE)` returns NULL (no rows) rather than all rows — this is safe-by-default. An unauthenticated request sees zero rows, not all rows.
+
+---
+
+## 11. Development JWT — Local Testing Without Google OAuth
+
+To test API endpoints locally without Google OAuth:
+
+**How to get a dev JWT:**
+```bash
+# Get access token (returns JSON with access_token field)
+curl -s -X POST \
+  http://localhost:8443/realms/waooaw/protocol/openid-connect/token \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "grant_type=password" \
+  -d "client_id=waooaw-dev-client" \
+  -d "username=${DEV_TEST_USER}" \
+  -d "password=${DEV_TEST_PASSWORD}" \
+  | python3 -m json.tool
+
+# Or use the convenience script:
+./scripts/get-dev-token.sh
+```
+
+The token includes the `tenant_id` claim pre-seeded for the dev test user. Use it in API calls:
+```bash
+TOKEN=$(./scripts/get-dev-token.sh)
+curl -H "Authorization: Bearer $TOKEN" http://localhost:5001/api/v1/employment/contracts
+```
+
+**The `waooaw-dev-client`** is a Keycloak client with `directAccessGrantsEnabled: true` — allowing username/password token exchange without browser redirect. It is defined in `infrastructure/keycloak/waooaw-realm.json`. **Never enable direct access grants in production.**
 
 Every service must instrument the following OTel signals before the service is considered ready for QA promotion:
 

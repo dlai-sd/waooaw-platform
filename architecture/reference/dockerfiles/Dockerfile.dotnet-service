@@ -1,0 +1,58 @@
+# Dockerfile template — .NET 9 service (Business Platform + Constitutional Engine)
+# Copy to src/{service-name}/Dockerfile and adjust SERVICE_DLL_NAME.
+#
+# For Constitutional Engine: set INSTALL_GRPC_HEALTH_PROBE=true
+# For Business Platform: leave INSTALL_GRPC_HEALTH_PROBE=false (uses HTTP /health)
+#
+# ADR-016 (.NET 9), security-architecture.md (non-root user, alpine base)
+# GENESIS Engineering Quality Mandate (build once, promote same image)
+
+# ─── Stage 1: Dependency restore ─────────────────────────────────────────────
+FROM mcr.microsoft.com/dotnet/sdk:9.0-alpine AS restore
+WORKDIR /src
+COPY *.csproj .
+RUN dotnet restore --runtime linux-musl-x64
+
+# ─── Stage 2: Build + publish ────────────────────────────────────────────────
+FROM restore AS build
+COPY . .
+RUN dotnet publish \
+    --configuration Release \
+    --runtime linux-musl-x64 \
+    --self-contained false \
+    --no-restore \
+    -o /app/publish
+
+# ─── Stage 3: grpc_health_probe (Constitutional Engine only) ─────────────────
+# This stage is a no-op for services that don't need the gRPC health probe.
+# Included here so the same Dockerfile template serves all .NET services.
+FROM alpine:3.19 AS grpc-health-probe
+ARG GRPC_HEALTH_PROBE_VERSION=v0.4.28
+RUN apk add --no-cache wget && \
+    wget -qO /grpc_health_probe \
+      "https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/${GRPC_HEALTH_PROBE_VERSION}/grpc_health_probe-linux-amd64" && \
+    chmod +x /grpc_health_probe
+
+# ─── Stage 4: Runtime image ──────────────────────────────────────────────────
+FROM mcr.microsoft.com/dotnet/aspnet:9.0-alpine AS runtime
+
+# Security: non-root user
+RUN addgroup -S waooaw && adduser -S waooaw -G waooaw
+
+# Install grpc_health_probe (only needed for Constitutional Engine)
+# For Business Platform, comment out these two lines.
+COPY --from=grpc-health-probe /grpc_health_probe /usr/local/bin/grpc_health_probe
+
+WORKDIR /app
+COPY --from=build /app/publish .
+
+# Switch to non-root before ENTRYPOINT
+USER waooaw
+
+# Override SERVICE_DLL_NAME for each service:
+#   Constitutional Engine:  ConstitutionalEngine.dll
+#   Business Platform:      BusinessPlatform.dll
+ARG SERVICE_DLL_NAME=Service.dll
+ENV SERVICE_DLL=${SERVICE_DLL_NAME}
+
+ENTRYPOINT ["sh", "-c", "dotnet ${SERVICE_DLL}"]

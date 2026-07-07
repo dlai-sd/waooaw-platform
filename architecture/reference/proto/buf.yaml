@@ -1,0 +1,18 @@
+version: v1
+name: buf.build/waooaw/waooaw-platform
+
+# Dependencies — Google well-known types (Timestamp used in constitutional_service.proto)
+deps:
+  - buf.build/googleapis/googleapis
+
+# Lint configuration — enforce proto style consistency
+lint:
+  use:
+    - DEFAULT
+  except:
+    - PACKAGE_VERSION_SUFFIX  # waooaw uses package versioning via file names, not suffixes
+
+# Breaking change detection — protects against breaking changes to published contracts
+breaking:
+  use:
+    - FILE

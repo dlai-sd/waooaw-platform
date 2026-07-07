@@ -1,0 +1,25 @@
+version: v1
+# buf.gen.yaml — Code generation configuration
+# Run from repository root: buf generate architecture/reference/proto
+# Generated code is written into each service's source directory.
+#
+# Prerequisites:
+#   buf install: https://buf.build/docs/installation
+#   Plugin install: buf beta registry plugin install <plugin>
+#
+# This file defines the SPECIFICATION for code generation.
+# Each service's build pipeline runs generation at build time.
+
+plugins:
+  # .NET / C# — for Constitutional Engine and Business Platform
+  - plugin: buf.build/grpc/csharp:v2.60.0
+    out: src/constitutional-engine/Generated
+    opt:
+      - file_extension=.g.cs
+
+  # Python — for Professional Runtime
+  - plugin: buf.build/grpc/python:v1.64.1
+    out: src/professional-runtime/generated
+
+  - plugin: buf.build/protocolbuffers/python:v27.2
+    out: src/professional-runtime/generated

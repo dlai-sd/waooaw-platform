@@ -1,0 +1,53 @@
+# Dockerfile template — Next.js web application (PWA)
+# Copy to web/Dockerfile.
+#
+# ADR-017 (Next.js 14, TypeScript), pnpm as package manager per engineering-standards.md
+# Standalone output mode for minimal image size.
+
+# ─── Stage 1: Dependency install ─────────────────────────────────────────────
+FROM node:20-alpine AS deps
+WORKDIR /app
+
+# Install pnpm
+RUN corepack enable && corepack prepare pnpm@9 --activate
+
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
+
+# ─── Stage 2: Build ───────────────────────────────────────────────────────────
+FROM node:20-alpine AS build
+WORKDIR /app
+
+RUN corepack enable && corepack prepare pnpm@9 --activate
+
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+
+# Build args for public env vars (baked into static assets at build time)
+ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_KEYCLOAK_URL
+ARG NEXT_PUBLIC_KEYCLOAK_REALM
+ARG NEXT_PUBLIC_KEYCLOAK_CLIENT_ID
+
+# next.config.js must have: output: 'standalone'
+RUN pnpm build
+
+# ─── Stage 3: Runtime ─────────────────────────────────────────────────────────
+FROM node:20-alpine AS runtime
+
+# Security: non-root
+RUN addgroup -S waooaw && adduser -S waooaw -G waooaw
+
+WORKDIR /app
+
+# Copy only the standalone output (minimal footprint)
+COPY --from=build --chown=waooaw:waooaw /app/.next/standalone ./
+COPY --from=build --chown=waooaw:waooaw /app/.next/static ./.next/static
+COPY --from=build --chown=waooaw:waooaw /app/public ./public
+
+USER waooaw
+
+EXPOSE 3000
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
+CMD ["node", "server.js"]

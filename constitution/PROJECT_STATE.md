@@ -2,7 +2,38 @@
 
 **Last Updated:** 2026-07-07
 
-**Session Reference:** IB-017 Phase 2 Readiness Sprint
+**Session Reference:** Coding Agent Readiness Fixes + v0.4.0 Baseline
+
+## IN-PROGRESS CHECKPOINT
+
+| Milestone | Status |
+|---|---|
+| Postgres init .sh fix + TEMPORAL_DB_PASSWORD | ✓ DONE |
+| buf.yaml + Dockerfile templates | ✓ DONE |
+| docker-compose CE healthcheck fix | ✓ DONE |
+| EF Core migration bootstrap + SET LOCAL docs | ✓ DONE |
+| Keycloak dev JWT + .env.example | ✓ DONE |
+| README version + v0.4.0 tag + commit | ✓ DONE |
+
+---
+
+## v0.4.0 Baseline Summary
+
+Version 0.4.0 marks the completion of the full Architecture + Phase 2 Readiness phase.
+The coding agent can begin IB-009 with all 7 identified confidence gaps resolved.
+
+**Seven fixes applied this session:**
+1. Postgres init: `.sql` → `.sh` (bash script, proper env var interpolation); `TEMPORAL_DB_PASSWORD` added to `.env.example`
+2. Proto toolchain: `buf.yaml` + `buf.gen.yaml` in `architecture/reference/proto/`
+3. Dockerfile templates: `.NET 9`, `Python 3.12`, `Next.js` in `architecture/reference/dockerfiles/`
+4. docker-compose CE healthcheck: `grpc_health_probe` → `nc -z localhost 5002` (dev); web service healthcheck added
+5. EF Core migration bootstrap: empty initial migration technique documented in engineering-standards.md §9
+6. `SET LOCAL` interceptor: `TenantDbCommandInterceptor` pseudocode in CE + BP component specs; JWT middleware pipeline order specified
+7. Dev JWT: `waooaw-dev-client` added to Keycloak realm; dev user seeded; `scripts/get-dev-token.sh` created; `DEV_TEST_USER/PASSWORD` in `.env.example`
+
+---
+
+**Previous Session Reference:** IB-017 Phase 2 Readiness Sprint
 
 ## IN-PROGRESS CHECKPOINT
 

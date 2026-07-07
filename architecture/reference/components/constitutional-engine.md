@@ -65,6 +65,16 @@ service ConstitutionalService {
 - **PostgreSQL** (constitutional schema, append-only operations only)
 - **Temporal** (client only — used by Emergency Stop Handler to send `PAASSessionWorkflow.EmergencyStop` signals; CE does not author or orchestrate workflows — ADR-018)
 
+## Runtime Requirements (for Dockerfile)
+
+**gRPC Health Checking Protocol:** The CE exposes a gRPC health service (grpc.health.v1.Health) on port 5002 alongside the ConstitutionalService. This is required for:
+- `docker-compose.yml` healthcheck (dev: TCP port check via `nc`; CI/production: `grpc_health_probe`)
+- Azure Container Apps health probes in cloud deployment
+
+Implementation: Register `services.AddGrpc().AddHealthChecks()` in ASP.NET Core startup. The `grpc_health_probe` binary must be installed in the production Dockerfile — see `architecture/reference/dockerfiles/Dockerfile.dotnet-service`.
+
+**Tenant isolation interceptor:** The CE must register `TenantDbCommandInterceptor` with its DbContext (see engineering-standards.md Section 10). This intercepts every DB command and executes `SET LOCAL app.tenant_id` before the query runs. RLS depends on this.
+
 ## What Constitutional Engine does NOT do
 - Does NOT expose REST endpoints
 - Does NOT call other services
