@@ -1,0 +1,229 @@
+# PM Report — Platform Delivery Matrix
+# Triggered: on PR close (merged), daily at 06:00 UTC (11:30 IST), and manual dispatch.
+# Produces: a status report posted as a comment on the designated Platform Status issue.
+#           Also updates a summary section in constitution/PROJECT_STATE.md.
+#
+# Constitutional basis: Platform Delivery Tracker (Office 12) — read-only status role.
+# No decisions are made. No code is changed. No IB items are modified.
+# This workflow observes and reports.
+
+name: PM — Platform Delivery Report
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+  schedule:
+    # 06:00 UTC = 11:30 IST
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+    inputs:
+      report_type:
+        description: 'Report type'
+        required: false
+        default: 'full'
+        type: choice
+        options:
+          - full
+          - matrix-only
+          - blockers-only
+
+permissions:
+  issues: write
+  contents: write
+  pull-requests: read
+
+jobs:
+  generate-report:
+    name: Generate Platform Delivery Matrix
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate delivery matrix report
+        id: report
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          DATE=$(date -u '+%Y-%m-%d %H:%M UTC')
+
+          # ─── Collect IB issues ──────────────────────────────────────────
+          echo "## 📊 WAOOAW Platform Delivery Matrix" > report.md
+          echo "" >> report.md
+          echo "_Generated: ${DATE}_" >> report.md
+          echo "" >> report.md
+
+          # Count by status
+          TOTAL=$(gh issue list --repo "$REPO" --label "type:implementation" --state all --json number | python3 -c "import sys,json; print(len(json.load(sys.stdin)))")
+          OPEN=$(gh issue list --repo "$REPO" --label "type:implementation" --state open --json number | python3 -c "import sys,json; print(len(json.load(sys.stdin)))")
+          CLOSED=$(gh issue list --repo "$REPO" --label "type:implementation" --state closed --json number | python3 -c "import sys,json; print(len(json.load(sys.stdin)))")
+          ARCH_OPEN=$(gh issue list --repo "$REPO" --label "type:architecture" --state open --json number | python3 -c "import sys,json; print(len(json.load(sys.stdin)))")
+          BLOCKERS=$(gh issue list --repo "$REPO" --label "constitutional-blocker" --state open --json number | python3 -c "import sys,json; print(len(json.load(sys.stdin)))")
+
+          echo "### Summary" >> report.md
+          echo "" >> report.md
+          echo "| Category | Count |" >> report.md
+          echo "|---|---|" >> report.md
+          echo "| Implementation tasks total | ${TOTAL} |" >> report.md
+          echo "| Implementation — open | ${OPEN} |" >> report.md
+          echo "| Implementation — done | ${CLOSED} |" >> report.md
+          echo "| Architecture tasks open | ${ARCH_OPEN} |" >> report.md
+          echo "| 🔴 Constitutional Blockers open | ${BLOCKERS} |" >> report.md
+          echo "" >> report.md
+
+          # ─── Gate status from PROJECT_STATE.md ──────────────────────────
+          echo "### Gate Status" >> report.md
+          echo "" >> report.md
+          if grep -q "G5: CLEAR" constitution/PROJECT_STATE.md 2>/dev/null || \
+             grep -q "G5: CLEAR" README.md 2>/dev/null; then
+            echo "| G2 | G3 | G4 | G5 |" >> report.md
+            echo "|---|---|---|---|" >> report.md
+            echo "| ✅ PASSED | ✅ PASSED | ✅ PASSED | ✅ CLEAR — implementation authorized |" >> report.md
+          else
+            # Read gate status from README
+            GATE_SECTION=$(grep -A5 "Current Gate:" README.md 2>/dev/null | head -10 || echo "See README.md")
+            echo "\`\`\`" >> report.md
+            echo "$GATE_SECTION" >> report.md
+            echo "\`\`\`" >> report.md
+          fi
+          echo "" >> report.md
+
+          # ─── Component matrix (from issue labels) ───────────────────────
+          echo "### Component × Domain Matrix" >> report.md
+          echo "" >> report.md
+          echo "| Domain | CE | BP | PR | AI | Web | Infra | Ops |" >> report.md
+          echo "|---|---|---|---|---|---|---|---|" >> report.md
+
+          DOMAINS=(
+            "D1-hire" "D2-govern" "D3-execute" "D4-authority"
+            "D5-terminate" "D6-platform" "D7-portal" "D8-cs-agents"
+            "NFR-security" "NFR-performance" "NFR-cost" "NFR-observability"
+          )
+
+          DOMAIN_LABELS=(
+            "D1 — Hire Professional" "D2 — Govern Work" "D3 — Execute Work" "D4 — Manage Authority"
+            "D5 — Terminate Employment" "D6 — Platform Infrastructure" "D7 — Customer Portal" "D8 — CS Agents"
+            "NFR — Security" "NFR — Performance" "NFR — Cost" "NFR — Observability"
+          )
+
+          COMPONENTS=(
+            "component:constitutional-engine"
+            "component:business-platform"
+            "component:professional-runtime"
+            "component:ai-runtime"
+            "component:web"
+            "component:infrastructure"
+            "component:platform-ops"
+          )
+
+          for i in "${!DOMAIN_LABELS[@]}"; do
+            DOMAIN_LABEL="${DOMAIN_LABELS[$i]}"
+            ROW="| ${DOMAIN_LABEL} |"
+            for COMP in "${COMPONENTS[@]}"; do
+              COUNT=$(gh issue list --repo "$REPO" \
+                --label "domain:${DOMAINS[$i]}" \
+                --label "$COMP" \
+                --state all --json number 2>/dev/null | \
+                python3 -c "import sys,json; data=json.load(sys.stdin); print(len(data))" 2>/dev/null || echo "0")
+              DONE=$(gh issue list --repo "$REPO" \
+                --label "domain:${DOMAINS[$i]}" \
+                --label "$COMP" \
+                --state closed --json number 2>/dev/null | \
+                python3 -c "import sys,json; print(len(json.load(sys.stdin)))" 2>/dev/null || echo "0")
+              if [ "$COUNT" -eq "0" ]; then
+                ROW="$ROW ⬜ |"
+              elif [ "$COUNT" -eq "$DONE" ]; then
+                ROW="$ROW ✅ |"
+              else
+                ROW="$ROW 🟡 ${DONE}/${COUNT} |"
+              fi
+            done
+            echo "$ROW" >> report.md
+          done
+          echo "" >> report.md
+
+          # ─── Open constitutional blockers ────────────────────────────────
+          if [ "$BLOCKERS" -gt "0" ]; then
+            echo "### 🔴 Open Constitutional Blockers" >> report.md
+            echo "" >> report.md
+            gh issue list --repo "$REPO" \
+              --label "constitutional-blocker" \
+              --state open \
+              --json number,title,url \
+              --template '{{range .}}- [#{{.number}}]({{.url}}): {{.title}}{{"\n"}}{{end}}' >> report.md 2>/dev/null || true
+            echo "" >> report.md
+          fi
+
+          # ─── Recent activity (last 3 merged PRs) ────────────────────────
+          echo "### Recent Delivery (last 3 merged PRs)" >> report.md
+          echo "" >> report.md
+          gh pr list --repo "$REPO" \
+            --state merged \
+            --limit 3 \
+            --json number,title,mergedAt,url \
+            --template '{{range .}}- [#{{.number}}]({{.url}}) {{.title}} ({{.mergedAt}}){{"\n"}}{{end}}' >> report.md 2>/dev/null || echo "_No merged PRs yet_" >> report.md
+          echo "" >> report.md
+
+          cat report.md
+          echo "REPORT_CONTENT<<EOF" >> $GITHUB_OUTPUT
+          cat report.md >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Post report to Platform Status issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          # Find or create the Platform Status issue
+          STATUS_ISSUE=$(gh issue list --repo "$REPO" \
+            --label "platform-status" \
+            --state open \
+            --json number \
+            --jq '.[0].number' 2>/dev/null || echo "")
+
+          if [ -z "$STATUS_ISSUE" ]; then
+            # Create the status issue if it doesn't exist
+            STATUS_ISSUE=$(gh issue create --repo "$REPO" \
+              --title "📊 Platform Delivery Status — Live Matrix" \
+              --label "platform-status" \
+              --body "This issue is automatically updated by the PM Report workflow. See comments for the latest matrix." \
+              --json number --jq '.number')
+            echo "Created Platform Status issue #${STATUS_ISSUE}"
+          fi
+
+          gh issue comment "$STATUS_ISSUE" \
+            --repo "$REPO" \
+            --body "$(cat report.md)"
+
+          echo "Posted report to issue #${STATUS_ISSUE}"
+
+      - name: Update PROJECT_STATE.md delivery summary
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          DATE=$(date -u '+%Y-%m-%d')
+
+          # Update the last-reported date in PROJECT_STATE.md
+          if grep -q "## Platform Delivery Summary" constitution/PROJECT_STATE.md; then
+            # Section exists — update date line
+            sed -i "s/Last PM report: .*/Last PM report: ${DATE}/" constitution/PROJECT_STATE.md
+          else
+            # Append section
+            echo "" >> constitution/PROJECT_STATE.md
+            echo "## Platform Delivery Summary" >> constitution/PROJECT_STATE.md
+            echo "" >> constitution/PROJECT_STATE.md
+            echo "Last PM report: ${DATE}" >> constitution/PROJECT_STATE.md
+            echo "Platform Status issue: see GitHub Issues with label \`platform-status\`" >> constitution/PROJECT_STATE.md
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add constitution/PROJECT_STATE.md
+          git diff --staged --quiet || git commit -m "chore(pm): platform delivery matrix report ${DATE}"
+          git push

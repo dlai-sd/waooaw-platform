@@ -1,0 +1,40 @@
+# CODEOWNERS
+# Component ownership for review routing.
+# All paths require Founder approval — ensures constitutional authority is maintained.
+# Agent reviews are requested via PR comments: "@copilot review this PR as [Office]"
+# The CODEOWNERS rule ensures the Founder is ALWAYS a required reviewer in addition
+# to any agent review.
+
+# ─── Constitutional artifacts — Founder is sole authority ─────────────────────
+constitution/                    @dlai-sd
+.github/copilot-instructions.md  @dlai-sd
+
+# ─── Architecture artifacts — Founder reviews all ─────────────────────────────
+architecture/                    @dlai-sd
+adr/                             @dlai-sd
+knowledge/                       @dlai-sd
+
+# ─── Infrastructure configuration ─────────────────────────────────────────────
+infrastructure/                  @dlai-sd
+docker-compose.yml               @dlai-sd
+.env.example                     @dlai-sd
+
+# ─── CI/CD pipeline — Platform Architect owns, Founder approves ───────────────
+.github/workflows/               @dlai-sd
+
+# ─── Source code — component-specific ─────────────────────────────────────────
+# Each service is owned by the Founder until a human engineering team is formed.
+# In Mode 2 (sprint execution), the agent implements; Founder reviews the PR.
+src/constitutional-engine/       @dlai-sd
+src/business-platform/           @dlai-sd
+src/professional-runtime/        @dlai-sd
+src/ai-runtime/                  @dlai-sd
+web/                             @dlai-sd
+
+# ─── Tests — Enterprise Architect owns CCTs ───────────────────────────────────
+# CCTs are constitutional artifacts; agent may implement, Founder reviews.
+tests/constitutional/            @dlai-sd
+tests/                           @dlai-sd
+
+# ─── Scripts and tooling ──────────────────────────────────────────────────────
+scripts/                         @dlai-sd

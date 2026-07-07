@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: WAOOAW Institutional Backlog
+    url: https://github.com/dlai-sd/waooaw-platform/blob/main/constitution/INSTITUTIONAL_BACKLOG.md
+    about: View all IB items, gates, and dependencies before creating an issue
+  - name: Constitutional Blockers
+    url: https://github.com/dlai-sd/waooaw-platform/tree/main/blockers
+    about: View open Constitutional Blockers

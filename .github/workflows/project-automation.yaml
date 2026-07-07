@@ -1,0 +1,164 @@
+# Project Automation — GitHub Project Matrix
+# Automatically moves issues through the matrix board when GitHub events occur.
+# This workflow manages label-based status tracking for the Platform Delivery Matrix.
+#
+# Constitutional basis: Platform Delivery Tracker (Office 12) — operational automation.
+
+name: Project — Issue Automation
+
+on:
+  issues:
+    types: [opened, closed, labeled, assigned]
+  pull_request:
+    types: [opened, closed]
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  # ─── When an IB issue is assigned to @copilot, label it as in-progress ───────
+  mark-in-progress:
+    name: Mark issue in-progress on agent assignment
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'issues' &&
+      github.event.action == 'assigned' &&
+      github.event.assignee.login == 'copilot'
+    steps:
+      - name: Add in-progress label
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE: ${{ github.event.issue.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh issue edit "$ISSUE" --repo "$REPO" \
+            --add-label "status:in-progress" \
+            --remove-label "status:waiting" \
+            --remove-label "status:blocked" 2>/dev/null || true
+
+          gh issue comment "$ISSUE" --repo "$REPO" \
+            --body "🤖 Agent assigned. Executing BOOTSTRAP protocol. Branch will be created shortly.
+            
+            _Constitutional basis: BOOTSTRAP Step 4 — office confirmed, READY declared._"
+
+  # ─── When a constitutional-blocker issue is opened ───────────────────────────
+  handle-blocker:
+    name: Handle Constitutional Blocker
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'issues' &&
+      github.event.action == 'opened' &&
+      contains(github.event.issue.labels.*.name, 'constitutional-blocker')
+    steps:
+      - name: Comment on the blocked IB issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BLOCKER_ISSUE: ${{ github.event.issue.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          # Extract the blocked IB from the issue body
+          BLOCKED_IB=$(echo "${{ github.event.issue.body }}" | \
+            grep -i "blocking ib\|blocked ib\|IB-" | \
+            grep -oP "IB-\d+" | head -1 || echo "")
+
+          if [ -n "$BLOCKED_IB" ]; then
+            # Find the issue for this IB
+            IB_ISSUE=$(gh issue list --repo "$REPO" \
+              --search "${BLOCKED_IB} in:title" \
+              --json number --jq '.[0].number' 2>/dev/null || echo "")
+
+            if [ -n "$IB_ISSUE" ]; then
+              gh issue edit "$IB_ISSUE" --repo "$REPO" \
+                --add-label "status:blocked" \
+                --remove-label "status:in-progress" 2>/dev/null || true
+
+              gh issue comment "$IB_ISSUE" --repo "$REPO" \
+                --body "🔴 **Constitutional Blocker raised**: #${BLOCKER_ISSUE}
+
+Work on this IB item is halted per BOOTSTRAP protocol Step 7. No compensation or workaround is permitted.
+
+**Resolution required before execution can resume.** See #${BLOCKER_ISSUE} for details."
+            fi
+          fi
+
+  # ─── When a constitutional-blocker is closed (resolved) ──────────────────────
+  resolve-blocker:
+    name: Resolve Constitutional Blocker
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'issues' &&
+      github.event.action == 'closed' &&
+      contains(github.event.issue.labels.*.name, 'constitutional-blocker')
+    steps:
+      - name: Notify resolution
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BLOCKER_ISSUE: ${{ github.event.issue.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          BLOCKED_IB=$(echo "${{ github.event.issue.body }}" | \
+            grep -oP "IB-\d+" | head -1 || echo "")
+
+          if [ -n "$BLOCKED_IB" ]; then
+            IB_ISSUE=$(gh issue list --repo "$REPO" \
+              --search "${BLOCKED_IB} in:title" \
+              --json number --jq '.[0].number' 2>/dev/null || echo "")
+
+            if [ -n "$IB_ISSUE" ]; then
+              gh issue edit "$IB_ISSUE" --repo "$REPO" \
+                --remove-label "status:blocked" \
+                --add-label "status:waiting" 2>/dev/null || true
+
+              gh issue comment "$IB_ISSUE" --repo "$REPO" \
+                --body "✅ Constitutional Blocker #${BLOCKER_ISSUE} resolved. This IB item may resume execution."
+            fi
+          fi
+
+  # ─── When an IB issue is closed (implementation done) ────────────────────────
+  mark-done:
+    name: Mark issue done on close
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'issues' &&
+      github.event.action == 'closed' &&
+      (contains(github.event.issue.labels.*.name, 'type:implementation') ||
+       contains(github.event.issue.labels.*.name, 'type:architecture'))
+    steps:
+      - name: Add done label
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE: ${{ github.event.issue.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh issue edit "$ISSUE" --repo "$REPO" \
+            --add-label "status:done" \
+            --remove-label "status:in-progress" \
+            --remove-label "status:waiting" 2>/dev/null || true
+
+  # ─── When a sprint-plan-approval issue gets /approved comment ─────────────────
+  activate-sprint:
+    name: Activate Mode 2 on sprint plan approval
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'issue_comment' &&
+      github.event.comment.body == '/approved' &&
+      contains(github.event.issue.labels.*.name, 'type:sprint-plan') &&
+      github.event.comment.user.login == 'dlai-sd'
+    steps:
+      - name: Activate sprint
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE: ${{ github.event.issue.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh issue edit "$ISSUE" --repo "$REPO" \
+            --remove-label "awaiting:founder-approval" \
+            --add-label "status:approved" 2>/dev/null || true
+
+          gh issue comment "$ISSUE" --repo "$REPO" \
+            --body "✅ **Sprint Plan Approved by Founder. Mode 2 ACTIVATED.**
+
+All agents assigned to issues in this sprint may now begin execution autonomously within pre-approved assumption boundaries.
+
+_Constitutional basis: BOOTSTRAP Full Agent Operating Cycle — Mode 2 (Sprint Execution) activated._"

@@ -1,0 +1,83 @@
+name: "IB — Architecture Task"
+description: "Backlog item for an architecture office (EA, SA, DA, PA, Security, AI)"
+title: "[IB-NNN] "
+labels:
+  - "type:architecture"
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## WAOOAW Institutional Backlog — Architecture Task
+        No implementation code is produced. All outputs are architecture artifacts.
+
+  - type: input
+    id: ib-id
+    attributes:
+      label: "IB Item ID"
+      placeholder: "IB-NNN"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: office
+    attributes:
+      label: "Executing Office"
+      options:
+        - "Enterprise Architect"
+        - "Solution Architect"
+        - "Data Architect"
+        - "Platform Architect"
+        - "Security Architect"
+        - "AI Architect"
+        - "Business Architect"
+        - "Constitutional Analyst"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: gate
+    attributes:
+      label: "Gate this satisfies"
+      options:
+        - "G2"
+        - "G3"
+        - "G4"
+        - "G5-prerequisite"
+        - "G5-parallel"
+    validations:
+      required: true
+
+  - type: textarea
+    id: success-criteria
+    attributes:
+      label: "Success Criteria"
+      placeholder: "The Runtime Professional declares: 'I can implement this without inventing logic.'"
+    validations:
+      required: true
+
+  - type: textarea
+    id: outputs
+    attributes:
+      label: "Expected Outputs (architecture artifacts only)"
+      placeholder: |
+        - architecture/reference/components/new-service.md
+        - adr/ADR-019-new-decision.md
+    validations:
+      required: true
+
+  - type: textarea
+    id: inputs
+    attributes:
+      label: "Required Inputs"
+      placeholder: "IB-NNN (DONE), architecture/reference/context.md"
+
+  - type: dropdown
+    id: reviewer
+    attributes:
+      label: "Reviewing Office (per ORGANIZATION.md)"
+      options:
+        - "Constitutional Analyst"
+        - "Business Architect"
+        - "Enterprise Architect"
+        - "Solution Architect"

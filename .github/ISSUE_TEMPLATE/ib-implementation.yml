@@ -1,0 +1,149 @@
+name: "IB — Implementation Task"
+description: "Backlog item for the Runtime Professional to implement (Gate G5+)"
+title: "[IB-NNN] "
+labels:
+  - "type:implementation"
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## WAOOAW Institutional Backlog — Implementation Task
+        Fill in all fields. The agent reads these fields as part of its Work Contract.
+        Reference `constitution/INSTITUTIONAL_BACKLOG.md` for the canonical IB definition.
+
+  - type: input
+    id: ib-id
+    attributes:
+      label: "IB Item ID"
+      description: "e.g. IB-009"
+      placeholder: "IB-NNN"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: office
+    attributes:
+      label: "Executing Office"
+      description: "Which office executes this item?"
+      options:
+        - "Runtime Professional"
+        - "Platform Architect"
+        - "Data Architect"
+        - "Solution Architect"
+        - "Enterprise Architect"
+        - "Security Architect"
+        - "AI Architect"
+        - "Business Architect"
+        - "Constitutional Analyst"
+        - "Product Owner"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: gate
+    attributes:
+      label: "Gate"
+      options:
+        - "G5"
+        - "G5-parallel"
+        - "G5-prerequisite"
+        - "Post-G5"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: sprint
+    attributes:
+      label: "Sprint"
+      options:
+        - "Sprint 1"
+        - "Sprint 2"
+        - "Sprint 3"
+        - "Sprint 4"
+        - "Sprint 5"
+        - "Sprint 6"
+        - "Sprint 7"
+        - "Sprint 8"
+        - "Sprint 9"
+        - "Sprint 10"
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: components
+    attributes:
+      label: "Components affected"
+      options:
+        - label: "Constitutional Engine"
+        - label: "Business Platform"
+        - label: "Professional Runtime"
+        - label: "AI Runtime"
+        - label: "Web App"
+        - label: "Infrastructure"
+        - label: "Platform Ops"
+        - label: "All"
+
+  - type: dropdown
+    id: domain
+    attributes:
+      label: "Capability Domain / Category"
+      options:
+        - "D1 — Hire Professional"
+        - "D2 — Govern Work"
+        - "D3 — Execute Work"
+        - "D4 — Manage Authority"
+        - "D5 — Terminate Employment"
+        - "D6 — Platform Infrastructure"
+        - "D7 — Customer Portal"
+        - "D8 — CS Agents"
+        - "NFR — Security"
+        - "NFR — Performance"
+        - "NFR — Cost"
+        - "NFR — Observability"
+        - "Platform — Foundation"
+        - "Platform — CI/CD"
+
+  - type: textarea
+    id: success-criteria
+    attributes:
+      label: "Success Criteria"
+      description: "Copy from INSTITUTIONAL_BACKLOG.md — measurable, falsifiable"
+      placeholder: |
+        - docker compose up starts all services
+        - Each service has /health returning 200
+        - First CCT passes
+    validations:
+      required: true
+
+  - type: textarea
+    id: constitutional-basis
+    attributes:
+      label: "Constitutional Basis"
+      description: "Which claims, ADRs, or articles ground this work?"
+      placeholder: "C-023, AD-002, ADR-011"
+
+  - type: textarea
+    id: inputs
+    attributes:
+      label: "Required Inputs (approved upstream artifacts)"
+      description: "List files that must exist and be approved before work begins"
+      placeholder: |
+        - architecture/reference/components/*.md (DONE)
+        - infrastructure/postgres/init/*.sql (DONE)
+
+  - type: textarea
+    id: outputs
+    attributes:
+      label: "Expected Outputs"
+      description: "What must exist in the repository when this issue is closed?"
+      placeholder: |
+        - src/constitutional-engine/ (service skeleton)
+        - tests/constitutional/ce/ (CCT-EF-01, CCT-EF-02)
+
+  - type: textarea
+    id: agent-instructions
+    attributes:
+      label: "Additional Agent Instructions (optional)"
+      description: "Any specific context the agent needs beyond the BOOTSTRAP protocol"
+      placeholder: "Leave blank — BOOTSTRAP + this issue body is sufficient"

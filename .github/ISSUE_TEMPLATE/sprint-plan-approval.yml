@@ -1,0 +1,68 @@
+name: "Sprint Plan — Awaiting Founder Approval"
+description: "Product Owner creates this after producing the Sprint Plan document"
+title: "Sprint N Plan — Awaiting Founder Approval"
+labels:
+  - "type:sprint-plan"
+  - "awaiting:founder-approval"
+assignees:
+  - "dlai-sd"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Sprint Plan — Founder Approval Required
+        The Product Owner has produced the Sprint Plan. Mode 2 (autonomous sprint execution)
+        activates ONLY after the Founder approves by commenting **`/approved`** below.
+        Until then, no agent may begin execution work on any item in this sprint.
+
+  - type: input
+    id: sprint-number
+    attributes:
+      label: "Sprint Number"
+      placeholder: "Sprint N"
+    validations:
+      required: true
+
+  - type: input
+    id: sprint-plan-link
+    attributes:
+      label: "Sprint Plan Document"
+      description: "Path to work-contracts/sprint-N-plan.md"
+      placeholder: "work-contracts/sprint-1-plan.md"
+    validations:
+      required: true
+
+  - type: textarea
+    id: items
+    attributes:
+      label: "IB Items in This Sprint"
+      description: "List all IB items with assigned office"
+      placeholder: |
+        - IB-009: Foundation Implementation — Runtime Professional
+        - IB-014: Customer Portal — Business Architect
+    validations:
+      required: true
+
+  - type: textarea
+    id: gate-target
+    attributes:
+      label: "Gate Target"
+      placeholder: "G5 — foundation implementation passing CCTs"
+    validations:
+      required: true
+
+  - type: textarea
+    id: pre-approved-assumptions
+    attributes:
+      label: "Pre-Approved Assumption Boundaries"
+      description: "What can the agent decide without per-item Founder approval?"
+      placeholder: |
+        - Agent may choose internal implementation details within approved specs
+        - Agent may create WC within the sprint scope without Founder review per WC
+        - Agent must NOT make new ADR-level decisions
+
+  - type: markdown
+    attributes:
+      value: |
+        ---
+        **Founder: comment `/approved` to activate Mode 2 and start sprint execution.**

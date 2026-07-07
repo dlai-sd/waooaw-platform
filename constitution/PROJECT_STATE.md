@@ -2,7 +2,55 @@
 
 **Last Updated:** 2026-07-07
 
-**Session Reference:** Coding Agent Readiness Fixes + v0.4.0 Baseline
+**Session Reference:** GitHub Operating Model Implementation
+
+## IN-PROGRESS CHECKPOINT
+
+| Milestone | Status |
+|---|---|
+| Issue templates (.github/ISSUE_TEMPLATE/) | ✓ DONE |
+| CODEOWNERS | ✓ DONE |
+| PR template | ✓ DONE |
+| PM report workflow | ✓ DONE |
+| Project automation workflow | ✓ DONE |
+| copilot-instructions.md updated | ✓ DONE |
+| ORGANIZATION.md Office 12 added | ✓ DONE |
+| README operating commands | ✓ DONE |
+| Commit + push | ✓ DONE |
+
+---
+
+## GitHub Operating Model — Implemented
+
+This session delivered the full GitHub-grounded autonomous agent operating model.
+
+**Artifacts produced:**
+
+| Artifact | Purpose |
+|---|---|
+| `.github/ISSUE_TEMPLATE/ib-implementation.yml` | Structured IB issue form: IB ID, office, sprint, gate, components, domain, success criteria |
+| `.github/ISSUE_TEMPLATE/ib-architecture.yml` | Architecture IB form |
+| `.github/ISSUE_TEMPLATE/constitutional-blocker.yml` | CB form with blocker type, resolution path |
+| `.github/ISSUE_TEMPLATE/sprint-plan-approval.yml` | Sprint plan approval with `/approved` activation pattern |
+| `.github/ISSUE_TEMPLATE/config.yml` | Template chooser with backlog link |
+| `.github/pull_request_template.md` | PR body: IB reference, constitutional basis, CCT coverage, spec compliance checklist |
+| `.github/CODEOWNERS` | Founder (@dlai-sd) as required reviewer on all paths |
+| `.github/workflows/pm-report.yaml` | Scheduled + event-driven delivery matrix report (Office 12) |
+| `.github/workflows/project-automation.yaml` | Auto-label on agent assignment, blocker propagation, sprint activation on `/approved` |
+| `.github/copilot-instructions.md` | Updated with GitHub issue mode, PR review mode, PM mode, branch/commit conventions |
+| `constitution/ORGANIZATION.md` | Office 12 — Platform Delivery Tracker added |
+| `README.md` | Operating commands section: dev env, sprint operations, status, CI/CD, label reference |
+
+**Five operating patterns (bare minimum invocations):**
+1. Sprint start: `@copilot You are Product Owner. Produce Sprint Plan for Sprint N.`
+2. Sprint execution: assign GitHub Issue to `@copilot`
+3. PR review: `@copilot review this PR as the Enterprise Architect`
+4. Status report: `@copilot You are Platform Delivery Tracker. Status report.`
+5. Sprint approval: comment `/approved` on the sprint plan issue
+
+---
+
+**Previous Session Reference:** Coding Agent Readiness Fixes + v0.4.0 Baseline
 
 ## IN-PROGRESS CHECKPOINT
 

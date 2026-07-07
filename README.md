@@ -17,6 +17,100 @@ Engineering Status:          Architecture — COMPLETE (18 ADRs, all reference d
 
 ---
 
+## Operating Commands
+
+> These are the only commands needed to operate the full GitHub-grounded agent model.
+> The constitutional framework handles all sequencing, validation, and governance.
+
+### Development Environment
+
+```bash
+# Initial setup (one-time)
+cp .env.example .env          # edit .env with real values
+./scripts/setup.sh            # brings up the full local stack
+
+# Get a local dev JWT for API testing
+./scripts/get-dev-token.sh                     # prints access_token
+./scripts/get-dev-token.sh --full              # prints full JSON response
+export TOKEN=$(./scripts/get-dev-token.sh)
+curl -H "Authorization: Bearer $TOKEN" http://localhost:5001/api/v1/employment/contracts
+```
+
+### Sprint Operations (Founder commands)
+
+```bash
+# ── Sprint Start ──────────────────────────────────────────────────────────────
+# 1. Activate Product Owner (Office 11) — produces sprint plan
+@copilot You are Product Owner. Produce Sprint Plan for Sprint N.
+
+# 2. Founder approves sprint plan (comment on the sprint plan issue)
+/approved
+
+# ── Sprint Execution ──────────────────────────────────────────────────────────
+# Create an issue using the IB Implementation template, then assign it:
+# GitHub UI: Issues → New Issue → "IB — Implementation Task" → fill form → Assign to @copilot
+
+# Or via CLI:
+gh issue create --repo dlai-sd/waooaw-platform \
+  --template "ib-implementation.yml" \
+  --title "[IB-009] Foundation Implementation" \
+  --assignee "@copilot" \
+  --label "type:implementation,office:runtime-professional,sprint:1,gate:G5"
+
+# ── Constitutional Review ──────────────────────────────────────────────────────
+# After CI passes on a PR, request review (comment on the PR):
+@copilot review this PR as the Enterprise Architect
+
+# ── Raise a Constitutional Blocker ────────────────────────────────────────────
+gh issue create --repo dlai-sd/waooaw-platform \
+  --template "constitutional-blocker.yml" \
+  --title "[CB-NNN] Missing input: ..." \
+  --label "constitutional-blocker,priority:critical"
+```
+
+### Platform Status (Platform Delivery Tracker — Office 12)
+
+```bash
+# On-demand status report via GitHub Actions
+gh workflow run pm-report.yaml --repo dlai-sd/waooaw-platform
+
+# Narrative status report via Copilot (comment anywhere in GitHub)
+@copilot You are Platform Delivery Tracker. Status report.
+
+# View the live platform status issue
+gh issue list --repo dlai-sd/waooaw-platform --label "platform-status"
+```
+
+### CI/CD Pipeline
+
+```bash
+# The pipeline runs automatically on PR and merge.
+# To manually trigger the PM report:
+gh workflow run pm-report.yaml
+
+# View latest CCT results
+gh run list --repo dlai-sd/waooaw-platform --workflow "promote.yaml" --limit 5
+
+# View current image tags in GHCR
+gh api /orgs/dlai-sd/packages/container/constitutional-engine/versions --jq '.[0:3]'
+```
+
+### Agent Label Reference
+
+When creating GitHub Issues, use these labels to route agents correctly:
+
+| Label prefix | Values | Purpose |
+|---|---|---|
+| `type:` | `implementation`, `architecture`, `constitutional-blocker`, `sprint-plan` | Issue category |
+| `office:` | `runtime-professional`, `enterprise-architect`, `solution-architect`, `data-architect`, `platform-architect`, `security-architect`, `business-architect`, `constitutional-analyst` | Executing office |
+| `component:` | `constitutional-engine`, `business-platform`, `professional-runtime`, `ai-runtime`, `web`, `infrastructure`, `platform-ops` | Component affected |
+| `domain:` | `d1-hire`, `d2-govern`, `d3-execute`, `d4-authority`, `d5-terminate`, `d6-platform`, `d7-portal`, `d8-cs-agents`, `nfr-security`, `nfr-performance`, `nfr-cost`, `nfr-observability` | Capability domain |
+| `gate:` | `G5`, `G5-parallel`, `G5-prerequisite`, `post-G5` | Gate authorization |
+| `sprint:` | `sprint:1`, `sprint:2`, ... | Sprint number |
+| `status:` | `waiting`, `in-progress`, `blocked`, `done`, `approved` | Current state |
+
+---
+
 ## Repository Purpose
 
 This repository does not exist to produce software.

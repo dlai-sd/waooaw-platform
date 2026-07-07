@@ -1,0 +1,88 @@
+name: "Constitutional Blocker"
+description: "A missing input or constitutional conflict that halts work on an IB item"
+title: "[CB-NNN] "
+labels:
+  - "constitutional-blocker"
+  - "priority:critical"
+assignees:
+  - "dlai-sd"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Constitutional Blocker
+        A Constitutional Blocker halts ALL work on the affected IB item until resolved.
+        No compensation, workaround, or assumption is permitted. Resolution requires
+        the missing input to be produced or the conflict to be resolved by the Founder.
+
+  - type: input
+    id: cb-id
+    attributes:
+      label: "Blocker ID"
+      placeholder: "CB-NNN"
+    validations:
+      required: true
+
+  - type: input
+    id: blocking-ib
+    attributes:
+      label: "Blocking IB Item"
+      description: "Which IB item is halted?"
+      placeholder: "IB-009"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: raising-office
+    attributes:
+      label: "Office Raising This Blocker"
+      options:
+        - "Runtime Professional"
+        - "Enterprise Architect"
+        - "Solution Architect"
+        - "Data Architect"
+        - "Platform Architect"
+        - "Security Architect"
+        - "AI Architect"
+        - "Business Architect"
+        - "Constitutional Analyst"
+        - "Product Owner"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: blocker-type
+    attributes:
+      label: "Blocker Type"
+      options:
+        - "Missing upstream artifact (required input not produced)"
+        - "Unapproved artifact (produced but not reviewed)"
+        - "Constitutional conflict (design contradicts a ratified claim)"
+        - "Office assignment unclear (CB-001)"
+        - "Ambiguous specification (cannot implement without invention)"
+        - "Security violation (OWASP / Constitutional Floor)"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: "Blocker Description"
+      description: "What exactly is missing or conflicting? Be specific — cite file paths and claim IDs."
+    validations:
+      required: true
+
+  - type: textarea
+    id: resolution-path
+    attributes:
+      label: "Resolution Path"
+      description: "What must happen for this blocker to be closed? Who must act?"
+    validations:
+      required: true
+
+  - type: textarea
+    id: constitutional-basis
+    attributes:
+      label: "Constitutional Basis for the Blocker"
+      description: "Which rule, claim, or BOOTSTRAP step requires this blocker?"
+      placeholder: "BOOTSTRAP Step 7 — required input is unapproved"
