@@ -2,7 +2,62 @@
 
 **Last Updated:** 2026-07-07
 
-**Session Reference:** v0.5.0 Baseline + Sprint 1 Simulation
+**Session Reference:** v0.6.0 — Agent Efficiency Indices + GitHub Labels
+
+## IN-PROGRESS CHECKPOINT
+
+| Milestone | Status |
+|---|---|
+| ADR-INDEX.md + AGENT-ENTRY.md | ✓ DONE |
+| COMPONENT-QUICK-REF.md | ✓ DONE |
+| Office Quick-Start cards (.github/agent-context/) | ✓ DONE |
+| BOOTSTRAP updated to use indices | ✓ DONE |
+| GitHub labels script + create labels | ✓ DONE — 67 labels live on repo |
+| CB-001 CB-002 fixes + emergency-stop-ws.md | ✓ DONE (CB-001/002 already resolved; ws spec produced) |
+| ARCHITECTURE.md CHANGELOG.md commitlint | ✓ DONE |
+| v0.6.0 commit + push + session memory | ✓ DONE |
+
+---
+
+## What v0.6.0 Delivered
+
+### Agent Efficiency Index Layer (60-70% token reduction)
+- `constitution/AGENT-ENTRY.md` — master routing file (200 lines replaces 3,000+ lines of scanning)
+- `adr/ADR-INDEX.md` — all 18 ADRs in 18 lines; full ADRs fetched only when needed
+- `architecture/reference/COMPONENT-QUICK-REF.md` — all 4 services, CCT targets, DB permissions, latency budgets in one page
+- `.github/agent-context/office-*.md` — 5 office quick-start cards (50 lines each vs 880-line ORGANIZATION.md)
+- BOOTSTRAP updated: Step 3 + 5 now route through index layer first
+
+### GitHub Operational Setup
+- `scripts/setup-github-labels.sh` — 67 labels created and live on `dlai-sd/waooaw-platform`
+- Labels cover: type, office, component, domain, gate, sprint (1-10), status, priority, awaiting
+
+### Specification Gaps Closed
+- `architecture/reference/api-specs/emergency-stop-ws.md` — WebSocket frame format, connection lifecycle, reconnection strategy, heartbeat, latency budget per segment (R-010-01 outstanding finding)
+- CB-001/CB-002 verified as already resolved in actual files (were simulation-only findings)
+
+### GENESIS Repository Contract Fulfilled
+- `ARCHITECTURE.md` — altitude map, 4 services, ADR link, constitutional traceability
+- `CHANGELOG.md` — full history v0.1.0 through v0.6.0
+- `commitlint.config.js` — enforces conventional commits + `constitutional` type
+
+## Next Session — IB-009 Foundation Implementation (Sprint 1)
+
+**Office:** Runtime Professional  
+**Branch pattern:** `ib/009/{component-slug}`  
+**Start with:** `./scripts/setup.sh` → verify `docker compose up` works → first CCT
+
+**Reminder for session start:**
+1. Read `constitution/AGENT-ENTRY.md` FIRST (not BOOTSTRAP directly — it routes you through indices)
+2. Read `adr/ADR-INDEX.md` (not individual ADRs)
+3. Read `.github/agent-context/office-runtime-professional.md` (not full ORGANIZATION.md)
+4. Read your Work Contract + COMPONENT-QUICK-REF.md
+
+This order saves ~25,000 tokens before the first line of code.
+
+---
+
+**Previous Session Reference:** v0.5.0 — GitHub Operating Model Baseline
 
 ## Current Status
 

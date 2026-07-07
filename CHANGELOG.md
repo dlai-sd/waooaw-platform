@@ -1,0 +1,90 @@
+# Changelog
+
+All notable changes to the WAOOAW Platform are documented here.
+This file is auto-generated from conventional commits. Do not edit manually.
+
+Format: [Conventional Commits](https://www.conventionalcommits.org/) —
+types: `feat` | `fix` | `constitutional` | `cct` | `chore` | `refactor` | `security` | `docs`
+
+---
+
+## [0.6.0] — 2026-07-07
+
+### Added
+- Agent efficiency index layer: `constitution/AGENT-ENTRY.md`, `adr/ADR-INDEX.md`, `architecture/reference/COMPONENT-QUICK-REF.md`
+- Office Quick-Start cards (50 lines vs 880): `.github/agent-context/office-*.md`
+- GitHub labels: 67 labels created on repository (type/office/component/domain/gate/sprint/status)
+- `scripts/setup-github-labels.sh` — reproducible label creation
+- `architecture/reference/api-specs/emergency-stop-ws.md` — WebSocket frame spec, reconnection, heartbeat
+- `ARCHITECTURE.md` and `CHANGELOG.md` at repository root (GENESIS mandate)
+- `commitlint.config.js` — enforces conventional commits including `constitutional` type
+- BOOTSTRAP Step 3 + 5 updated to route through indices (60-70% token reduction per session)
+
+### Fixed
+- CB-001 (simulation): `ABANDONED` enum was already in business-platform.openapi.yaml ✓
+- CB-002 (simulation): CE gRPC Health service already specified in component spec ✓
+
+---
+
+## [0.5.0] — 2026-07-07
+
+### Added
+- GitHub-grounded operating model: 4 issue templates, CODEOWNERS, PR template
+- `.github/workflows/pm-report.yaml` — Platform Delivery Tracker (Office 12) automated reporting
+- `.github/workflows/project-automation.yaml` — issue lifecycle automation
+- `.github/copilot-instructions.md` updated with GitHub sprint mode, PM role, branch/commit conventions
+- `constitution/ORGANIZATION.md`: Office 12 — Platform Delivery Tracker
+- `README.md`: Operating Commands section (5 bare-minimum invocations)
+- Sprint 1 simulation: 5 components, 2 CCTs proven, 2 Constitutional Blockers surfaced correctly
+
+---
+
+## [0.4.0] — 2026-07-07
+
+### Added (coding agent readiness — 7 fixes)
+- `infrastructure/postgres/init/02-users-and-permissions.sh` (bash, proper env var interpolation)
+- `architecture/reference/proto/buf.yaml` + `buf.gen.yaml` (proto toolchain)
+- Dockerfile templates: `.NET 9`, `Python 3.12`, `Next.js 14`
+- `docker-compose.yml` CE healthcheck: TCP check for dev; web service healthcheck
+- Engineering-standards §9: EF Core empty initial migration technique
+- Engineering-standards §10: `TenantDbCommandInterceptor` pseudocode
+- Engineering-standards §11: Dev JWT via `waooaw-dev-client`
+- `infrastructure/keycloak/waooaw-realm.json`: dev user + `waooaw-dev-client`
+- `scripts/get-dev-token.sh`
+
+---
+
+## [0.3.0] — 2026-07-07
+
+### Added (R-007 P0 gap closure)
+- ADR-016: .NET 9 / Python 3.12 language selection
+- ADR-017: Next.js 14 TypeScript web framework
+- ADR-018: Emergency Stop Temporal signal routing (GAP-003 resolution)
+- `architecture/reference/security/`: threat model (STRIDE) + security architecture
+- `architecture/reference/api-specs/`: business-platform.openapi.yaml + professional-runtime.openapi.yaml
+- IB-017 Phase 2 Readiness: CI/CD pipelines, CCT framework, postgres init SQL, Keycloak realm
+
+---
+
+## [0.2.0] — 2026-07-07
+
+### Added (Architecture phase)
+- 35 ratified constitutional claims (C-001 to C-035) — Gate G2 PASSED
+- Business Capability Map (26 capabilities), Architectural Drivers (11), Design Principles (10) — Gate G3 PASSED
+- Complete Reference Architecture: context, containers, domain model, 4 component specs — Gate G4 PASSED
+- Data architecture: three-ledger design, evidence state machine with ABANDONED state
+- 15 ADRs (ADR-001 through ADR-015)
+- Security architecture, OpenAPI specs, proto contract — Gate G5 CLEAR
+
+---
+
+## [0.1.0] — 2026-07-06
+
+### Added (Institution foundation)
+- `constitution/CONSTITUTION.md` v1.2 (17 Articles, 4 Amendments)
+- `constitution/GENESIS.md` Parts 01–04 + Engineering Quality Mandate
+- `constitution/ORGANIZATION.md` (11 offices, 7 attributes, Operating Protocol)
+- `constitution/BOOTSTRAP.md` + `.github/copilot-instructions.md`
+- `standards/` (5 professional standards)
+- `simulation/` (3 cases, PRECEDENTS.md, ECI-001, ECI-002)
+- `constitution/RED_TEAM.md` (11 attacks, 0 constitutional failures)

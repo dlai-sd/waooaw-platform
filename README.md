@@ -6,12 +6,13 @@
 
 ```
 Founding Corpus v1           Status: Ratified
-Version:                     0.5.0 — GitHub Operating Model Baseline (2026-07-07)
-Current Epoch:               Epoch 1 — Employment (implementation begins)
+Version:                     0.6.0 — Agent Efficiency Baseline (2026-07-07)
+Current Epoch:               Epoch 1 — Employment (first sprint begins next session)
 Current Gate:                G2: PASSED — G3: PASSED — G4: PASSED — G5: CLEAR
 Authorized Offices:          Runtime Professional (IB-009 — Foundation Implementation)
 Engineering Status:          Architecture — COMPLETE | Implementation — AUTHORIZED
-GitHub Operating Model:      ACTIVE — issue templates, PM workflow, Office 12 live
+Agent Efficiency:            Index layer active — 60-70% token reduction per session
+GitHub Labels:               67 labels live on repository
 ```
 
 ---

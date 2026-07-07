@@ -72,8 +72,15 @@ STEP 4 — Confirm your assigned office
   Option C: If neither is clear → STOP → raise CB-001 (Office Assignment Unknown)
 
 STEP 5 — Load ONLY your Office Knowledge Specification (see below)
-  Do NOT read documents outside your specification.
-  Extra context contaminates reasoning.
+
+  EFFICIENCY FIRST: Before loading any files, read:
+    constitution/AGENT-ENTRY.md  ← routing table, current state in 10 lines, key file map
+    adr/ADR-INDEX.md             ← one-line summary of all 18 ADRs; read full ADRs only if needed
+    .github/agent-context/office-{your-office}.md  ← compressed charter (50 lines vs 880 in ORGANIZATION.md)
+
+  Then load only the files listed for your office in AGENT-ENTRY.md.
+  Do NOT load every file in your Knowledge Specification if the index gives you sufficient context.
+  Extra context contaminates reasoning AND increases cost.
   Record what you have loaded.
 
 STEP 6 — Read your Work Contract from work-contracts/
@@ -363,10 +370,16 @@ Wait for user confirmation. Do not begin work without confirmed role.
 ### STEP 3 — KNOWLEDGE LOADING
 
 ```
-Load ONLY the files listed in your Office Knowledge Specification (see above).
-Load your Professional Standard from standards/[your-office].md
-  → This defines how you reason, what evidence you accept, when to stop.
-Do NOT scan the full repository. Broad context contaminates office reasoning.
+EFFICIENCY PROTOCOL (read in this order):
+  1. constitution/AGENT-ENTRY.md          ← routing table + current state (200 lines)
+  2. adr/ADR-INDEX.md                     ← all 18 ADRs summarised (18 lines)
+  3. .github/agent-context/office-{name}.md ← your charter compressed (50 lines)
+  4. Your Professional Standard from standards/[your-office].md
+
+Then load ONLY the specific files your office needs (per AGENT-ENTRY.md routing table).
+Do NOT load full ADR files unless ADR-INDEX says "read full if..." applies to your task.
+Do NOT load ORGANIZATION.md in full — the office quick-start card is sufficient.
+Do NOT scan the full repository. Broad context contaminates reasoning AND wastes tokens.
 Record what you loaded. Declare your loaded context to the user.
 ```
 
