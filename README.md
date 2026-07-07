@@ -106,10 +106,10 @@ Implementation        →  Embodiment
 
 | Document | Purpose | Status |
 |---|---|---|
-| CONSTITUTION.md | The law. v1.2 — 17 Articles, 4 Amendments | Ratified |
-| GENESIS.md | Engineering operating system. Parts 01–04 | Active |
-| ORGANIZATION.md | Constitutional organization. 10 offices, 7 attributes each | Ratified — G1 ✓ |
-| RED_TEAM.md | Constitutional Audit. 11 attacks. 0 failures | Complete |
+| constitution/CONSTITUTION.md | The law. v1.2 — 17 Articles, 4 Amendments | Ratified |
+| constitution/GENESIS.md | Engineering operating system. Parts 01–04 | Active |
+| constitution/ORGANIZATION.md | Constitutional organization. 10 offices, 7 attributes each | Ratified — G1 ✓ |
+| constitution/RED_TEAM.md | Constitutional Audit. 11 attacks. 0 failures | Complete |
 
 ### Constitutional Discovery Corpus
 
