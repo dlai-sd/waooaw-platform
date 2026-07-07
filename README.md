@@ -6,15 +6,16 @@
 
 ```
 Founding Corpus v1           Status: Ratified
-Current Epoch:               Epoch 3 — Architecture
+Current Epoch:               Epoch 3 — Architecture (complete)
 Current Gate:                G2: PASSED — 2026-07-07
-                             G3: PASSED — 2026-07-07 (R-004, R-005 APPROVED)
-                             G4: PASSED — 2026-07-07 (IB-005/006/007/008 DONE,
-                                 proto file produced, R-006 APPROVED)
-                             G5: AUTHORIZED — Runtime Professional may begin IB-009
+                             G3: PASSED — 2026-07-07
+                             G4: PASSED — 2026-07-07
+                             G5: CLEAR — all R-007 P0 gaps closed
+                               ADR-016/017/018, Security Architecture,
+                               OpenAPI specs, Emergency Stop fan-out
 Authorized Offices:          Runtime Professional (IB-009 — Foundation Implementation)
-Engineering Status:          Architecture documentation — AUTHORIZED
-                             Source code implementation — AUTHORIZED from Gate G5
+Engineering Status:          Architecture — COMPLETE
+                             Source code implementation — AUTHORIZED
 ```
 
 ---

@@ -1,0 +1,378 @@
+openapi: "3.1.0"
+
+info:
+  title: WAOOAW Professional Runtime API
+  version: "1.0.0"
+  description: |
+    Internal and WebSocket API for the WAOOAW Professional Runtime service.
+
+    **Constitutional Basis:**
+    - C-001 (Emergency Stop architecturally guaranteed — ≤250ms, dedicated WebSocket)
+    - C-023 (Evidence First — all execution paths record evidence before returning success)
+    - C-035 (Runtime Universality — all professional types use this API)
+    - AD-001 (Emergency Stop ≤250ms — WebSocket pre-warmed at session start)
+    - AD-005 (PAAS hot path < 50ms)
+
+    **Audience:**
+    This spec covers two audiences:
+    1. **Business Platform** — internal REST calls for action submission and PAAS session management
+    2. **Customer browser/mobile** — WebSocket for Emergency Stop (via Business Platform proxy or direct)
+
+    **Note on WebSocket:**
+    OpenAPI 3.1 does not natively describe WebSocket protocol. The Emergency Stop
+    WebSocket is documented in the `x-websocket` extension blocks below and in
+    `architecture/reference/api-specs/emergency-stop-ws.md`.
+
+servers:
+  - url: http://localhost:5003
+    description: Local development
+  - url: https://rt.waooaw.com
+    description: Production (Azure Container Apps — WebSocket endpoint)
+
+tags:
+  - name: Emergency Stop
+    description: Real-time Emergency Stop WebSocket and REST fallback
+  - name: PAAS Sessions
+    description: Pre-Authorized Action Space session lifecycle
+  - name: Internal
+    description: Internal endpoints called by Business Platform only (not customer-facing)
+  - name: Health
+    description: Service health
+
+security:
+  - BearerAuth: []
+
+paths:
+
+  /health:
+    get:
+      tags: [Health]
+      summary: Service health check
+      security: []
+      operationId: getPRHealth
+      responses:
+        "200":
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+
+  # ─── Emergency Stop ───────────────────────────────────────────────────────
+  #
+  # PRIMARY PATH: WebSocket at /ws/emergency-stop
+  # The customer establishes this connection at login and keeps it alive.
+  # Emergency Stop is sent as a JSON message on this connection.
+  # This is the guaranteed ≤250ms path (AD-001).
+  #
+  # WEBSOCKET CONTRACT (x-websocket extension — not standard OpenAPI):
+  #   Connection URL:   wss://rt.waooaw.com/ws/emergency-stop
+  #   Auth:             Authorization header: Bearer <JWT>
+  #                     (never in query string — ADR-004)
+  #   Client → Server:  EmergencyStopCommand (JSON)
+  #   Server → Client:  EmergencyStopConfirmation (JSON)
+  #   Connection:       Pre-warmed at session start. One connection per active customer session.
+  #   Latency SLA:      P99 ≤ 250ms from message sent to EmergencyStopConfirmation received.
+
+  /api/v1/emergency-stop:
+    post:
+      tags: [Emergency Stop]
+      summary: REST fallback Emergency Stop (use WebSocket as primary path)
+      description: |
+        REST fallback for Emergency Stop when WebSocket connection is unavailable.
+        Uses the same underlying CE TriggerEmergencyStop gRPC call.
+        Latency may exceed the WebSocket path but is still bounded by AD-001.
+
+        **Primary path is the WebSocket at /ws/emergency-stop.**
+        Use this endpoint only when the WebSocket connection cannot be established.
+      operationId: triggerEmergencyStopREST
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmergencyStopCommand"
+      responses:
+        "200":
+          description: Emergency Stop confirmed — all sessions halted and evidence recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmergencyStopConfirmation"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ─── PAAS Sessions ────────────────────────────────────────────────────────
+
+  /api/v1/paas/sessions:
+    post:
+      tags: [PAAS Sessions]
+      summary: Start a PAAS session (internal — called by Business Platform)
+      description: |
+        Starts a Pre-Authorized Action Space session for a contract.
+        Loads the Decision Space into memory and starts the PAASSessionWorkflow
+        in Temporal (ADR-018). Returns the session ID (Temporal workflow ID)
+        used for Emergency Stop routing.
+
+        **This endpoint is internal-only. It is not accessible from the internet.**
+        Business Platform calls this after validating the customer's request.
+      operationId: startPAASSession
+      x-internal: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StartPAASSessionRequest"
+      responses:
+        "201":
+          description: PAAS session started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PAASSession"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: A PAAS session already exists for this contract
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+
+  /api/v1/paas/sessions/{sessionId}:
+    get:
+      tags: [PAAS Sessions]
+      summary: Get PAAS session status (internal)
+      operationId: getPAASSession
+      x-internal: true
+      parameters:
+        - $ref: "#/components/parameters/SessionId"
+      responses:
+        "200":
+          description: PAAS session status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PAASSession"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    delete:
+      tags: [PAAS Sessions]
+      summary: End a PAAS session normally (internal)
+      description: Ends the PAAS session cleanly (market hours end, customer closes session). Different from Emergency Stop — no ABANDONED evidence records are created.
+      operationId: endPAASSession
+      x-internal: true
+      parameters:
+        - $ref: "#/components/parameters/SessionId"
+      responses:
+        "200":
+          description: Session ended
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PAASSession"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ─── Internal — Action Submission ─────────────────────────────────────────
+
+  /api/v1/internal/approvals/{approvalId}/signal:
+    post:
+      tags: [Internal]
+      summary: Signal approval decision to Professional Runtime (internal)
+      description: |
+        Called by Business Platform after a customer approves or rejects an action.
+        This sends a Temporal signal to the ApprovalGateWorkflow waiting for the decision.
+        **Internal only — not accessible from the internet.**
+      operationId: signalApprovalDecision
+      x-internal: true
+      parameters:
+        - $ref: "#/components/parameters/ApprovalId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApprovalSignal"
+      responses:
+        "200":
+          description: Signal delivered
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+# ─── Components ─────────────────────────────────────────────────────────────
+
+components:
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    SessionId:
+      name: sessionId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: PAAS session UUID (= Temporal workflow ID)
+
+    ApprovalId:
+      name: approvalId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    Unauthorized:
+      description: JWT missing, expired, or invalid
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+    NotFound:
+      description: Resource not found
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+
+  schemas:
+
+    EmergencyStopCommand:
+      type: object
+      description: |
+        Sent by customer to trigger Emergency Stop.
+        Works for both WebSocket (primary) and REST fallback paths.
+      required: [contractId]
+      properties:
+        contractId:
+          type: string
+          format: uuid
+          description: The contract whose professional sessions must halt
+        activeSessionIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: |
+            Known active PAAS session IDs (Temporal workflow IDs) — ADR-018.
+            If omitted, Professional Runtime attempts to halt all known active
+            sessions for the contract.
+
+    EmergencyStopConfirmation:
+      type: object
+      description: |
+        Returned after Emergency Stop is confirmed — all sessions halted,
+        evidence recorded in Constitutional Audit Ledger.
+        This response is only sent AFTER Constitutional Engine confirms
+        the Emergency Stop evidence record is written (Evidence First — AD-002).
+      required: [emergencyStopRecordId, affectedSessions, confirmedAt]
+      properties:
+        emergencyStopRecordId:
+          type: string
+          format: uuid
+          description: UUID of the Emergency Stop evidence record in the Constitutional Audit Ledger
+        affectedSessions:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: Session IDs that were halted
+        confirmedAt:
+          type: string
+          format: date-time
+          description: When halt was confirmed and evidence recorded
+
+    PAASSession:
+      type: object
+      required: [sessionId, contractId, decisionSpaceVersion, state, startedAt]
+      properties:
+        sessionId:
+          type: string
+          format: uuid
+          description: Session ID = Temporal workflow ID (ADR-018)
+        contractId:
+          type: string
+          format: uuid
+        decisionSpaceVersion:
+          type: integer
+          description: Decision Space version loaded at session start
+        state:
+          type: string
+          enum: [STARTING, ACTIVE, ENDED, EMERGENCY_STOPPED, INTERRUPTED]
+        startedAt:
+          type: string
+          format: date-time
+        endedAt:
+          type: string
+          format: date-time
+          nullable: true
+        terminationReason:
+          type: string
+          nullable: true
+
+    StartPAASSessionRequest:
+      type: object
+      required: [contractId]
+      properties:
+        contractId:
+          type: string
+          format: uuid
+
+    ApprovalSignal:
+      type: object
+      required: [decision]
+      properties:
+        decision:
+          type: string
+          enum: [APPROVED, REJECTED]
+        reason:
+          type: string
+          nullable: true
+
+    HealthResponse:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+        temporalConnected:
+          type: boolean
+        constitutionalEngineReachable:
+          type: boolean
+        activePAASSessions:
+          type: integer
+
+    ProblemDetail:
+      type: object
+      required: [type, title, status]
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri

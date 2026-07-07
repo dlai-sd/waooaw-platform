@@ -2,7 +2,88 @@
 
 **Last Updated:** 2026-07-07
 
-**Session Reference:** Architecture Phase — Platform Architect (WC-006) + Solution Architect (proto file)
+**Session Reference:** R-007 Gap Closure — EA (ADR-016/017/018) + Security Architect + Solution Architect (OpenAPI)
+
+## IN-PROGRESS CHECKPOINT
+
+| Milestone | Status |
+|---|---|
+| IB-010/012/013 added to backlog | ✓ DONE |
+| WC-007 created (EA — ADR-016/017/018 + Emergency Stop fan-out) | ✓ DONE |
+| ADR-016 language selection | ✓ DONE |
+| ADR-017 web framework | ✓ DONE |
+| ADR-018 Emergency Stop Temporal signal | ✓ DONE |
+| Component specs updated (CE + PR — Emergency Stop fan-out) | ✓ DONE |
+| WC-008 created (Security Architect) | ✓ DONE |
+| Security Architecture + Threat Model produced | ✓ DONE |
+| WC-009 created (Solution Architect — OpenAPI) | ✓ DONE |
+| business-platform.openapi.yaml produced | ✓ DONE |
+| professional-runtime.openapi.yaml produced | ✓ DONE |
+| Governance records closed + Gate G5 authorized | ✓ DONE |
+
+---
+
+## Current State Summary
+
+| Item | Status |
+|---|---|
+| Gate G2 | ✓ PASSED |
+| Gate G3 | ✓ PASSED |
+| Gate G4 | ✓ PASSED |
+| Gate G5 | ✓ CLEAR — all R-007 P0 gaps closed |
+| Architecture Phase | COMPLETE |
+| Implementation | AUTHORIZED — Runtime Professional may begin IB-009 |
+
+---
+
+## Completed This Session
+
+**EA Sprint 007 (IB-013) — R-008 APPROVED:**
+- ADR-016: .NET 9 for CE/BP, Python 3.12 for PR/AI Runtime — rationale, alternatives, version pins
+- ADR-017: Next.js 14 TypeScript PWA (Phase 1) → React Native (Phase 2)
+- ADR-018: Emergency Stop Temporal signal routing — resolves GAP-003 (R-007)
+- professional-runtime.md updated: PAAS session explicitly as PAASSessionWorkflow with EmergencyStop signal handler
+- constitutional-engine.md updated: Temporal client dependency added (narrow, for signal routing only)
+
+**Security Architecture Sprint 008 (IB-010) — R-009 APPROVED:**
+- architecture/reference/security/threat-model.md — full STRIDE analysis, 6 threat actors, 30+ threats
+- architecture/reference/security/security-architecture.md — network topology, JWT spec, secret management, OWASP Top 10, security CCTs
+- GAP-006a from R-007 resolved
+
+**Solution Architect Sprint 009 (IB-012) — R-010 APPROVED:**
+- architecture/reference/api-specs/business-platform.openapi.yaml — 16 endpoints, all domain schemas
+- architecture/reference/api-specs/professional-runtime.openapi.yaml — Emergency Stop, PAAS sessions, internal API
+- ADR-002 (spec-first) now fulfilled
+- GAP-002 from R-007 resolved
+
+---
+
+## R-007 Gap Closure Summary
+
+| Gap | Severity | Resolution |
+|---|---|---|
+| GAP-001: Missing tech stack ADRs | HIGH | ✓ ADR-016, ADR-017 produced |
+| GAP-002: OpenAPI specs missing | HIGH | ✓ Both specs produced (IB-012) |
+| GAP-003: Emergency Stop fan-out | HIGH | ✓ ADR-018 — Temporal signal routing |
+| GAP-006a: Security Architecture | HIGH | ✓ IB-010 complete (threat model + security arch) |
+| GAP-004: PAAS session table | MEDIUM | Partially addressed — PAASSession schema in OpenAPI; `paas_sessions` DB table is IB-009 |
+| GAP-005: pgvector embeddings | MEDIUM | Deferred to AI Architect sprint (IB-011 scope) |
+| GAP-006b: AI Architecture | MEDIUM | Deferred (IB-011 scope) |
+
+---
+
+## Next Session — IB-009 (Runtime Professional)
+
+**Authorized office: Runtime Professional (WC-010)**
+
+Pre-flight checklist (from all reviews this session):
+- R006-01: Add `TEMPORAL_DB_PASSWORD` to `.env.example`; create dedicated `temporal` DB user in postgres init scripts
+- R006-02: Add healthcheck to `web` service in `docker-compose.yml`
+- R006-03: Confirm AI Runtime pgvector access (`runtime_app` needs SELECT on embeddings table)
+- R009 finding: CE Container App must have `ingress: internal` set
+- R010-01: Produce `emergency-stop-ws.md` (WebSocket frame format, reconnection, heartbeat)
+
+IB-009 success gate: `docker compose up` starts all services; each passes healthcheck; first CCT (Evidence First) passes; Runtime Universality skeleton test passes.
 
 ## IN-PROGRESS CHECKPOINT (update as work completes — prevents session-timeout loss)
 

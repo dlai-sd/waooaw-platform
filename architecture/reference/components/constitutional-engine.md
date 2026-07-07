@@ -63,6 +63,7 @@ service ConstitutionalService {
 
 ## Dependencies
 - **PostgreSQL** (constitutional schema, append-only operations only)
+- **Temporal** (client only — used by Emergency Stop Handler to send `PAASSessionWorkflow.EmergencyStop` signals; CE does not author or orchestrate workflows — ADR-018)
 
 ## What Constitutional Engine does NOT do
 - Does NOT expose REST endpoints

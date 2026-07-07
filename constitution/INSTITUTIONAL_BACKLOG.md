@@ -336,7 +336,123 @@ Status:           WAITING | IN_PROGRESS | DONE | BLOCKED
 - `tests/constitutional/` with first CCT
 - All services passing `docker compose up`
 
-**Status:** WAITING (blocked by IB-008)
+**Status:** AUTHORIZED — All R-007 P0 gaps closed. IB-010 DONE (R-009), IB-012 DONE (R-010), IB-013 DONE (R-008). Gate G5 clear.
+
+---
+
+### IB-010 — Security Architecture
+
+**Goal:** Produce a security architecture that guarantees Constitutional Floors cannot be violated by security threats, and that the platform meets world-class security standards.
+
+**Office:** Security Architect (Office 07)
+
+**Priority:** P0 — Gate G5 blocking
+
+**Gate:** G5
+
+**Depends On:** IB-005, IB-006, IB-007
+
+**Success Criteria:**
+- Threat model covers all STRIDE categories against all platform assets
+- Network topology specifies which containers are public vs internal
+- JWT validation specification (algorithm, key rotation, claim extraction)
+- Azure Key Vault secret injection pattern for Container Apps specified
+- OWASP Top 10 addressed for each service
+- Security ADRs produced for any decisions not already covered
+
+**Inputs:** Reference Architecture, Component Specifications, Data Architecture, Constitution Articles IX/X, Architectural Drivers (security), all existing ADRs
+
+**Outputs:**
+- `architecture/reference/security/security-architecture.md`
+- `architecture/reference/security/threat-model.md`
+
+**Status:** IN_PROGRESS — Sprint 008
+
+---
+
+### IB-011 — Engineering Quality Standards
+
+**Goal:** Mandate coding standards, tooling, testing frameworks, and deployment quality gates so the Runtime Professional builds at world-class standards from day one.
+
+**Office:** Enterprise Architect (governance) + Platform Architect (CI/CD)
+
+**Priority:** P0 — Gate G5 blocking
+
+**Gate:** G5
+
+**Depends On:** IB-005, IB-006
+
+**Success Criteria:**
+- Coding standards defined per language (.NET, Python, TypeScript)
+- Automated code review tooling mandated (SAST, dependency scan, coverage)
+- Testing pyramid with coverage targets defined
+- Deployment pipeline quality gates defined
+- Constitutional Compliance Test category formally specified
+
+**Inputs:** GENESIS Engineering Quality Mandate, Component Specifications, existing ADRs
+
+**Outputs:**
+- Addition to GENESIS Engineering Quality Mandate (amendment)
+- `architecture/reference/engineering-standards.md`
+
+**Status:** WAITING (IB-010 first)
+
+---
+
+### IB-012 — OpenAPI Specifications
+
+**Goal:** Produce OpenAPI 3.1 specifications for all REST-facing services, fulfilling ADR-002 (spec-first) before implementation begins.
+
+**Office:** Solution Architect (Office 05)
+
+**Priority:** P0 — Gate G5 blocking
+
+**Gate:** G5
+
+**Depends On:** IB-006
+
+**Success Criteria:**
+- `architecture/reference/api-specs/business-platform.openapi.yaml` — all endpoints from component spec
+- `architecture/reference/api-specs/professional-runtime.openapi.yaml` — WebSocket and internal REST
+- All schemas defined (EmploymentContract, DecisionSpace, ApprovalRequest, EvidenceRecord)
+- All security schemes defined (JWT Bearer)
+- Spectral linting passes on both specs
+
+**Inputs:** Component Specifications (IB-006), Data Architecture (IB-007), ADR-002, ADR-003
+
+**Outputs:**
+- `architecture/reference/api-specs/business-platform.openapi.yaml`
+- `architecture/reference/api-specs/professional-runtime.openapi.yaml`
+
+**Status:** IN_PROGRESS — Sprint 009
+
+---
+
+### IB-013 — Technology Stack ADRs
+
+**Goal:** Produce missing ADRs for all technology selections made in the architecture phase (language, framework), satisfying the EA Quality Gate obligation.
+
+**Office:** Enterprise Architect (Office 04)
+
+**Priority:** P0 — Gate G5 blocking
+
+**Gate:** G5
+
+**Depends On:** IB-005, IB-006
+
+**Success Criteria:**
+- ADR-016: service language selection (.NET 9 / Python 3.12) — alternatives rejected
+- ADR-017: web application framework (Next.js / TypeScript) — alternatives rejected
+- ADR-018: Emergency Stop Temporal signal routing — design specified, alternatives rejected
+
+**Inputs:** Component Specifications, existing ADRs, architectural drivers
+
+**Outputs:**
+- `adr/ADR-016-service-language-selection.md`
+- `adr/ADR-017-web-application-framework.md`
+- `adr/ADR-018-emergency-stop-temporal-signal.md`
+
+**Status:** IN_PROGRESS — Sprint 007
 
 ---
 
@@ -352,7 +468,11 @@ Status:           WAITING | IN_PROGRESS | DONE | BLOCKED
 | IB-006 | Produce Component Specifications | Solution Architect | P0 | G4 | DONE |
 | IB-007 | Produce Data Architecture | Data Architect | P0 | G4 | DONE |
 | IB-008 | Infrastructure Architecture + Docker Compose | Platform Architect | P0 | G4/G5 | DONE |
-| IB-009 | Foundation Implementation (skeleton) | Runtime Professional | P0 | G5 | WAITING |
+| IB-009 | Foundation Implementation (skeleton) | Runtime Professional | P0 | G5 | AUTHORIZED |
+| IB-010 | Security Architecture | Security Architect | P0 | G5 | DONE |
+| IB-011 | Engineering Quality Standards | EA + Platform Architect | P0 | G5 | WAITING |
+| IB-012 | OpenAPI Specifications | Solution Architect | P0 | G5 | DONE |
+| IB-013 | Technology Stack ADRs (016/017/018) | Enterprise Architect | P0 | G5 | DONE |
 
 ---
 

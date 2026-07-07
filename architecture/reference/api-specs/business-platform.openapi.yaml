@@ -1,0 +1,1177 @@
+openapi: "3.1.0"
+
+info:
+  title: WAOOAW Business Platform API
+  version: "1.0.0"
+  description: |
+    External customer-facing API for the WAOOAW Business Platform.
+    Manages the employment lifecycle, approval workflows, evidence reading,
+    and authority management for digital professionals.
+
+    **Constitutional Basis:**
+    - C-034 (Employment lifecycle)
+    - C-023 (Evidence First — every approval action calls Constitutional Engine before returning success)
+    - C-003 (Authority licensed — authority changes require evidence justification)
+    - AD-004 (Multi-tenant isolation — all resources scoped to JWT tenant_id)
+
+    **Authentication:**
+    All endpoints require a valid Keycloak-issued JWT Bearer token.
+    The `tenant_id` claim in the JWT is the authoritative tenant identifier.
+    Never provide `tenant_id` in request bodies — it is always sourced from the JWT.
+
+    **Constitutional Compliance:**
+    Any response that represents a governance event (approval, authority change, etc.)
+    will only return 200 OK after the Constitutional Engine has confirmed the evidence record
+    was written (Evidence First — AD-002).
+
+servers:
+  - url: http://localhost:5001
+    description: Local development
+  - url: https://api.waooaw.com
+    description: Production (Azure Container Apps)
+
+tags:
+  - name: Employment
+    description: Employment contract lifecycle management
+  - name: Approvals
+    description: Approval workflow for professional actions
+  - name: Evidence
+    description: Constitutional Audit Ledger (read-only for customers)
+  - name: Authority
+    description: Professional authority level management
+  - name: Health
+    description: Service health checks
+
+security:
+  - BearerAuth: []
+
+paths:
+
+  # ─── Health ───────────────────────────────────────────────────────────────
+
+  /health:
+    get:
+      tags: [Health]
+      summary: Service health check
+      security: []
+      operationId: getHealth
+      responses:
+        "200":
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+
+  # ─── Employment ───────────────────────────────────────────────────────────
+
+  /api/v1/employment/contracts:
+    get:
+      tags: [Employment]
+      summary: List employment contracts for the authenticated customer
+      operationId: listEmploymentContracts
+      parameters:
+        - name: state
+          in: query
+          schema:
+            $ref: "#/components/schemas/EmploymentState"
+          description: Filter by contract state
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        "200":
+          description: List of employment contracts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmploymentContractPage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+    post:
+      tags: [Employment]
+      summary: Form a new employment contract
+      description: |
+        Creates an employment contract in EVALUATION state.
+        The contract transitions to ACTIVE via the /activate endpoint
+        after the customer reviews and accepts the Decision Space.
+        A Constitutional Engine evidence record is created for contract formation.
+      operationId: formEmploymentContract
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FormEmploymentContractRequest"
+      responses:
+        "201":
+          description: Contract created in EVALUATION state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmploymentContract"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /api/v1/employment/contracts/{contractId}:
+    get:
+      tags: [Employment]
+      summary: Get a single employment contract
+      operationId: getEmploymentContract
+      parameters:
+        - $ref: "#/components/parameters/ContractId"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmploymentContract"
+          description: Employment contract
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    delete:
+      tags: [Employment]
+      summary: Terminate an employment contract
+      description: |
+        Terminates the contract (transitions to TERMINATED state).
+        A Constitutional Engine evidence record is created before this returns 200.
+        Termination is irreversible.
+      operationId: terminateEmploymentContract
+      parameters:
+        - $ref: "#/components/parameters/ContractId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TerminateContractRequest"
+      responses:
+        "200":
+          description: Contract terminated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmploymentContract"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/employment/contracts/{contractId}/activate:
+    put:
+      tags: [Employment]
+      summary: Activate an employment contract
+      description: Transitions contract from EVALUATION to ACTIVE. Constitutional Engine evidence record created before return.
+      operationId: activateEmploymentContract
+      parameters:
+        - $ref: "#/components/parameters/ContractId"
+      responses:
+        "200":
+          description: Contract activated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmploymentContract"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/employment/contracts/{contractId}/suspend:
+    put:
+      tags: [Employment]
+      summary: Suspend an employment contract
+      operationId: suspendEmploymentContract
+      parameters:
+        - $ref: "#/components/parameters/ContractId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SuspendContractRequest"
+      responses:
+        "200":
+          description: Contract suspended
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmploymentContract"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/employment/contracts/{contractId}/renew:
+    post:
+      tags: [Employment]
+      summary: Renew an employment contract
+      operationId: renewEmploymentContract
+      parameters:
+        - $ref: "#/components/parameters/ContractId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RenewContractRequest"
+      responses:
+        "200":
+          description: Contract renewed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmploymentContract"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ─── Approvals ────────────────────────────────────────────────────────────
+
+  /api/v1/approvals:
+    get:
+      tags: [Approvals]
+      summary: List pending approval requests
+      operationId: listApprovals
+      parameters:
+        - name: contractId
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Filter by contract
+        - name: state
+          in: query
+          schema:
+            $ref: "#/components/schemas/ApprovalState"
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+      responses:
+        "200":
+          description: List of approval requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApprovalRequestPage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/approvals/{approvalId}:
+    get:
+      tags: [Approvals]
+      summary: Get a single approval request
+      operationId: getApproval
+      parameters:
+        - $ref: "#/components/parameters/ApprovalId"
+      responses:
+        "200":
+          description: Approval request detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApprovalRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/approvals/{approvalId}/approve:
+    post:
+      tags: [Approvals]
+      summary: Approve a proposed action
+      description: |
+        Records customer approval. Constitutional Engine RecordEvidence (state=APPROVED)
+        is called and confirmed before this returns 200. Only returns 200 after evidence
+        is confirmed durable (Evidence First — AD-002).
+      operationId: approveAction
+      parameters:
+        - $ref: "#/components/parameters/ApprovalId"
+      responses:
+        "200":
+          description: Action approved and evidence recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApprovalRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/approvals/{approvalId}/reject:
+    post:
+      tags: [Approvals]
+      summary: Reject a proposed action
+      description: |
+        Records customer rejection. Constitutional Engine RecordEvidence (state=REJECTED)
+        is called and confirmed before this returns 200.
+      operationId: rejectAction
+      parameters:
+        - $ref: "#/components/parameters/ApprovalId"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RejectActionRequest"
+      responses:
+        "200":
+          description: Action rejected and evidence recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApprovalRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/approvals/{approvalId}/confirm-boundary:
+    post:
+      tags: [Approvals]
+      summary: Confirm a scope-boundary crossing
+      description: |
+        Customer explicitly acknowledges the professional has reached or crossed
+        a scope boundary. A ScopeBoundaryConfirmation evidence record is created.
+        This is a constitutional record — the customer's acknowledgment is permanent.
+      operationId: confirmBoundary
+      parameters:
+        - $ref: "#/components/parameters/ApprovalId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConfirmBoundaryRequest"
+      responses:
+        "200":
+          description: Boundary confirmed and evidence recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApprovalRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ─── Evidence ─────────────────────────────────────────────────────────────
+
+  /api/v1/evidence:
+    get:
+      tags: [Evidence]
+      summary: List evidence records (read-only view of Constitutional Audit Ledger)
+      description: Returns evidence records for the authenticated customer's contracts. All records are immutable.
+      operationId: listEvidence
+      parameters:
+        - name: contractId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: state
+          in: query
+          schema:
+            $ref: "#/components/schemas/EvidenceState"
+        - name: actionType
+          in: query
+          schema:
+            type: string
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+      responses:
+        "200":
+          description: Evidence records (paginated)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EvidenceRecordPage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/evidence/{evidenceId}:
+    get:
+      tags: [Evidence]
+      summary: Get a single evidence record
+      operationId: getEvidenceRecord
+      parameters:
+        - name: evidenceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Evidence record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EvidenceRecord"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/evidence/export:
+    get:
+      tags: [Evidence]
+      summary: Export full evidence ledger (data portability — Article IX right)
+      description: |
+        Returns a zip archive of all evidence records for the authenticated customer.
+        This is a constitutional right (Article IX) — it cannot be withheld or rate-limited
+        beyond reasonable technical constraints.
+      operationId: exportEvidence
+      parameters:
+        - name: contractId
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Optional — export for a specific contract only
+      responses:
+        "200":
+          description: Evidence export zip
+          content:
+            application/zip:
+              schema:
+                type: string
+                format: binary
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          description: Export rate limit (max 1 full export per hour per customer)
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+
+  # ─── Authority ────────────────────────────────────────────────────────────
+
+  /api/v1/authority/current:
+    get:
+      tags: [Authority]
+      summary: Get current authority level for a contract
+      operationId: getCurrentAuthority
+      parameters:
+        - name: contractId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Current authority level and history
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthorityStatus"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/authority/expand:
+    post:
+      tags: [Authority]
+      summary: Expand professional authority level
+      description: |
+        Grants an authority expansion. Requires evidence IDs that justify the expansion.
+        Constitutional Engine GrantAuthorityLicense is called and confirmed before return.
+      operationId: expandAuthority
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ModifyAuthorityRequest"
+      responses:
+        "200":
+          description: Authority expanded and license recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthorityStatus"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /api/v1/authority/restrict:
+    post:
+      tags: [Authority]
+      summary: Restrict professional authority level
+      description: |
+        Restricts or suspends authority. Constitutional Engine RevokeAuthorityLicense
+        is called and confirmed before return.
+      operationId: restrictAuthority
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ModifyAuthorityRequest"
+      responses:
+        "200":
+          description: Authority restricted and license recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthorityStatus"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+# ─── Components ─────────────────────────────────────────────────────────────
+
+components:
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Keycloak-issued JWT. Must contain `tenant_id` claim (UUID).
+
+  parameters:
+    ContractId:
+      name: contractId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Employment contract UUID
+
+    ApprovalId:
+      name: approvalId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Approval request UUID
+
+  responses:
+    Unauthorized:
+      description: JWT missing, expired, or invalid
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+    NotFound:
+      description: Resource not found (or not accessible to this tenant)
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+    BadRequest:
+      description: Malformed request
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+    Conflict:
+      description: Operation not valid in current state
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+    ValidationError:
+      description: Request body failed validation
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+
+  schemas:
+
+    # ── Enumerations ──────────────────────────────────────────────────────
+
+    EmploymentState:
+      type: string
+      enum: [EVALUATION, ACTIVE, SUSPENDED, TERMINATED]
+      description: Employment contract lifecycle state (C-034)
+
+    ApprovalState:
+      type: string
+      enum: [PENDING, SCOPE_BOUNDARY_PENDING, APPROVED, REJECTED]
+
+    EvidenceState:
+      type: string
+      enum: [PROPOSED, AWAITING_APPROVAL, APPROVED, REJECTED, EXECUTED, ABANDONED]
+      description: Evidence record state machine state (C-028, evidence-schema.md)
+
+    ExecutionModel:
+      type: string
+      enum: [APPROVAL_GATE, PRE_AUTHORIZED]
+      description: How the professional executes work. APPROVAL_GATE requires per-action approval. PRE_AUTHORIZED is PAAS mode.
+
+    # ── Domain Objects ────────────────────────────────────────────────────
+
+    EmploymentContract:
+      type: object
+      required: [id, tenantId, professionalId, decisionSpaceId, state, authorityLevel, goals, reviewCadence, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenantId:
+          type: string
+          format: uuid
+          description: Sourced from JWT — not settable by caller
+        professionalId:
+          type: string
+          format: uuid
+        decisionSpaceId:
+          type: string
+          format: uuid
+        state:
+          $ref: "#/components/schemas/EmploymentState"
+        authorityLevel:
+          type: integer
+          minimum: 1
+          description: Current authority level. Starts at 1 (minimum).
+        goals:
+          type: array
+          items:
+            $ref: "#/components/schemas/BusinessGoal"
+        reviewCadence:
+          $ref: "#/components/schemas/ReviewCadence"
+        createdAt:
+          type: string
+          format: date-time
+        activatedAt:
+          type: string
+          format: date-time
+          nullable: true
+        suspendedAt:
+          type: string
+          format: date-time
+          nullable: true
+        terminatedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    DecisionSpace:
+      type: object
+      required: [id, contractId, version, executionModel, professionalType, authorizedActions, prohibitedActions, alwaysAskActions]
+      properties:
+        id:
+          type: string
+          format: uuid
+        contractId:
+          type: string
+          format: uuid
+        version:
+          type: integer
+          minimum: 1
+        executionModel:
+          $ref: "#/components/schemas/ExecutionModel"
+        professionalType:
+          type: string
+          example: MARKETING
+        authorizedActions:
+          type: array
+          items:
+            $ref: "#/components/schemas/ActionDefinition"
+        prohibitedActions:
+          type: array
+          items:
+            $ref: "#/components/schemas/ActionDefinition"
+        alwaysAskActions:
+          type: array
+          items:
+            $ref: "#/components/schemas/ActionDefinition"
+        budgetConstraints:
+          $ref: "#/components/schemas/BudgetConstraints"
+          nullable: true
+        creativeStandardProfile:
+          $ref: "#/components/schemas/CreativeStandardProfile"
+          nullable: true
+          description: Present for creative professions (Amendment A-005)
+        paasParameters:
+          $ref: "#/components/schemas/PAASParameters"
+          nullable: true
+          description: Present for PAAS execution model only
+        isActive:
+          type: boolean
+
+    ApprovalRequest:
+      type: object
+      required: [id, contractId, evidenceRecordId, state, proposedContent, isScopeBoundary, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        contractId:
+          type: string
+          format: uuid
+        evidenceRecordId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Set when Constitutional Engine records the evidence
+        state:
+          $ref: "#/components/schemas/ApprovalState"
+        proposedContent:
+          type: object
+          description: The action content as proposed by the professional
+          additionalProperties: true
+        isScopeBoundary:
+          type: boolean
+        scopeBoundaryName:
+          type: string
+          nullable: true
+        customerResponse:
+          type: string
+          enum: [APPROVED, REJECTED]
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        respondedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    EvidenceRecord:
+      type: object
+      required: [id, tenantId, contractId, professionalId, actionInstanceId, actionType, state, isScopeBoundary, decisionSpaceVersion, constitutionalBasis, createdAt]
+      description: Immutable record in the Constitutional Audit Ledger (C-007, C-027)
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenantId:
+          type: string
+          format: uuid
+        contractId:
+          type: string
+          format: uuid
+        professionalId:
+          type: string
+          format: uuid
+        actionInstanceId:
+          type: string
+          format: uuid
+          description: Groups all evidence records for one logical action attempt
+        actionType:
+          type: string
+          example: MARKETING_POST
+        state:
+          $ref: "#/components/schemas/EvidenceState"
+        proposedContent:
+          type: object
+          nullable: true
+          additionalProperties: true
+        executedContent:
+          type: object
+          nullable: true
+          additionalProperties: true
+        isScopeBoundary:
+          type: boolean
+        scopeBoundaryName:
+          type: string
+          nullable: true
+        scopeBoundaryAcknowledgment:
+          type: string
+          nullable: true
+        decisionSpaceVersion:
+          type: integer
+        constitutionalBasis:
+          type: string
+          description: "Semicolon-separated list of claims/drivers (e.g., 'C-023; AD-002')"
+        createdAt:
+          type: string
+          format: date-time
+
+    AuthorityStatus:
+      type: object
+      required: [contractId, currentLevel, history]
+      properties:
+        contractId:
+          type: string
+          format: uuid
+        currentLevel:
+          type: integer
+          minimum: 1
+        history:
+          type: array
+          items:
+            $ref: "#/components/schemas/AuthorityLicenseEvent"
+
+    AuthorityLicenseEvent:
+      type: object
+      required: [id, contractId, authorityLevel, grantedBy, grantedAt, constitutionalBasis]
+      properties:
+        id:
+          type: string
+          format: uuid
+        contractId:
+          type: string
+          format: uuid
+        authorityLevel:
+          type: integer
+        grantedBy:
+          type: string
+          format: uuid
+        grantedAt:
+          type: string
+          format: date-time
+        constitutionalBasis:
+          type: string
+        evidenceIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+
+    # ── Request Bodies ────────────────────────────────────────────────────
+
+    FormEmploymentContractRequest:
+      type: object
+      required: [professionalId, decisionSpace, goals, reviewCadence]
+      properties:
+        professionalId:
+          type: string
+          format: uuid
+        decisionSpace:
+          $ref: "#/components/schemas/DecisionSpaceInput"
+        goals:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/BusinessGoal"
+        reviewCadence:
+          $ref: "#/components/schemas/ReviewCadence"
+
+    DecisionSpaceInput:
+      type: object
+      required: [executionModel, professionalType, authorizedActions, prohibitedActions, alwaysAskActions]
+      properties:
+        executionModel:
+          $ref: "#/components/schemas/ExecutionModel"
+        professionalType:
+          type: string
+        authorizedActions:
+          type: array
+          items:
+            $ref: "#/components/schemas/ActionDefinition"
+        prohibitedActions:
+          type: array
+          items:
+            $ref: "#/components/schemas/ActionDefinition"
+        alwaysAskActions:
+          type: array
+          items:
+            $ref: "#/components/schemas/ActionDefinition"
+        budgetConstraints:
+          $ref: "#/components/schemas/BudgetConstraints"
+          nullable: true
+        creativeStandardProfile:
+          $ref: "#/components/schemas/CreativeStandardProfile"
+          nullable: true
+        paasParameters:
+          $ref: "#/components/schemas/PAASParameters"
+          nullable: true
+
+    TerminateContractRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          minLength: 10
+          description: Customer-provided reason for termination (recorded in Constitutional Audit Ledger)
+
+    SuspendContractRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          minLength: 10
+
+    RenewContractRequest:
+      type: object
+      required: [decisionSpace, goals, reviewCadence]
+      properties:
+        decisionSpace:
+          $ref: "#/components/schemas/DecisionSpaceInput"
+        goals:
+          type: array
+          items:
+            $ref: "#/components/schemas/BusinessGoal"
+        reviewCadence:
+          $ref: "#/components/schemas/ReviewCadence"
+
+    RejectActionRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          description: Optional customer-provided rejection reason
+
+    ConfirmBoundaryRequest:
+      type: object
+      required: [acknowledgmentText]
+      properties:
+        acknowledgmentText:
+          type: string
+          minLength: 10
+          description: |
+            Customer's explicit acknowledgment of the scope boundary.
+            This text is recorded permanently in the Constitutional Audit Ledger
+            as the ScopeBoundaryConfirmation evidence record.
+
+    ModifyAuthorityRequest:
+      type: object
+      required: [contractId, newAuthorityLevel, evidenceIds]
+      properties:
+        contractId:
+          type: string
+          format: uuid
+        newAuthorityLevel:
+          type: integer
+          minimum: 1
+        evidenceIds:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            format: uuid
+          description: Evidence records that justify this authority change (C-003)
+        reason:
+          type: string
+          description: Optional customer-provided reason
+
+    # ── Supporting Types ──────────────────────────────────────────────────
+
+    BusinessGoal:
+      type: object
+      required: [description, target]
+      properties:
+        description:
+          type: string
+        target:
+          type: string
+
+    ReviewCadence:
+      type: object
+      required: [frequencyDays]
+      properties:
+        frequencyDays:
+          type: integer
+          minimum: 1
+        notificationChannel:
+          type: string
+          enum: [EMAIL, IN_APP, BOTH]
+          default: BOTH
+
+    ActionDefinition:
+      type: object
+      required: [actionType, description]
+      properties:
+        actionType:
+          type: string
+          description: Machine-readable action type identifier
+        description:
+          type: string
+          description: Human-readable description of this action
+        parameters:
+          type: object
+          additionalProperties: true
+          description: Action-type-specific constraint parameters (e.g., spend limits)
+
+    BudgetConstraints:
+      type: object
+      properties:
+        dailySpendLimitInr:
+          type: number
+          format: decimal
+          minimum: 0
+        monthlySpendLimitInr:
+          type: number
+          format: decimal
+          minimum: 0
+        maxPositionSizePercent:
+          type: number
+          format: decimal
+          minimum: 0
+          maximum: 100
+          description: PAAS trading only — maximum position size as % of portfolio
+
+    CreativeStandardProfile:
+      type: object
+      description: Constitutional document for creative professions (Amendment A-005)
+      properties:
+        voiceDescription:
+          type: string
+        toneKeywords:
+          type: array
+          items:
+            type: string
+        visualStyleDescription:
+          type: string
+        brandGuidelinesUrl:
+          type: string
+          format: uri
+
+    PAASParameters:
+      type: object
+      description: Configuration for PAAS execution model
+      properties:
+        sessionWindowStart:
+          type: string
+          format: time
+          description: "Trading session start (e.g., 09:15 IST)"
+        sessionWindowEnd:
+          type: string
+          format: time
+          description: "Trading session end (e.g., 15:25 IST)"
+        maxActionsPerSession:
+          type: integer
+          minimum: 1
+
+    # ── Pagination ────────────────────────────────────────────────────────
+
+    EmploymentContractPage:
+      type: object
+      required: [items, total, page, pageSize]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/EmploymentContract"
+        total:
+          type: integer
+        page:
+          type: integer
+        pageSize:
+          type: integer
+
+    ApprovalRequestPage:
+      type: object
+      required: [items, total, page, pageSize]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ApprovalRequest"
+        total:
+          type: integer
+        page:
+          type: integer
+        pageSize:
+          type: integer
+
+    EvidenceRecordPage:
+      type: object
+      required: [items, total, page, pageSize]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/EvidenceRecord"
+        total:
+          type: integer
+        page:
+          type: integer
+        pageSize:
+          type: integer
+
+    # ── Common ────────────────────────────────────────────────────────────
+
+    HealthResponse:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+        constitutionalEngineReachable:
+          type: boolean
+
+    ProblemDetail:
+      type: object
+      description: RFC 9457 Problem Detail
+      required: [type, title, status]
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri

@@ -31,16 +31,24 @@ Handles the approval-gate execution model (Acceptance Scenarios 001 and 002).
 ### 2. PAAS Engine (Pre-Authorized Action Space)
 Handles the PAAS execution model (Acceptance Scenario 003 — trading).
 
+**PAAS session is a Temporal workflow — `PAASSessionWorkflow`:**
+Each active PAAS session runs as a long-lived Temporal workflow. The workflow ID is the session ID, which is the routing key for Emergency Stop signals (ADR-018). All PAAS action executions are Temporal activities within this workflow.
+
 **Responsibility:**
-- **Session startup:** Load Decision Space from DB into memory via Constitutional Engine validation
-- **Hot path (in-memory only):** For each action signal:
+- **Session startup:** Start `PAASSessionWorkflow` in Temporal. Load Decision Space from DB into memory via Constitutional Engine validation.
+- **Hot path (in-memory only):** For each action signal (received as Temporal activity input):
   1. Validate against in-memory Decision Space (< 1ms)
   2. Check budget constraints (< 1ms)
   3. Call Constitutional Engine to validate and record evidence (gRPC, ~50-80ms)
   4. Execute action via AI Runtime if validation passes
   5. Return execution result
-- **Session teardown:** Release in-memory Decision Space on session end or Emergency Stop
-- **Replica isolation:** One PAAS session per Professional Runtime replica (ADR-005, session-affinity)
+- **Emergency Stop signal handler:** `PAASSessionWorkflow` registers a Temporal signal handler for `EmergencyStop`. On signal receipt:
+  1. Halt the in-flight activity immediately
+  2. Record ABANDONED evidence via CE gRPC (for any in-flight action)
+  3. Signal confirmation back to CE (CE returns halt confirmation to caller)
+  4. Terminate the workflow
+- **Session teardown:** Release in-memory Decision Space on normal session end, Emergency Stop, or Decision Space version change.
+- **Replica isolation:** One PAAS session workflow per active session. Temporal routes signals to the worker executing the workflow — replica-independent (ADR-018).
 
 **Critical constraint:** Steps 1-2 (validation) must complete in <1ms. The entire hot path including Constitutional Engine call must complete within 50ms budget (AD-005).
 
