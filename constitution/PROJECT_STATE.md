@@ -61,19 +61,29 @@ Agent infrastructure:
 
 ## Completed Work (This Session)
 
-### ADRs — Formally Ratified (commit 881a616)
+### ADR Set Complete — 15 ADRs Formally Ratified (commit 4ec4248)
+
+**ADR-001–009 gaps fixed:**
+- ADR-001: Proto file ownership + versioning rule added
+- ADR-002: Toolchain named (openapi-generator, Spectral, schemathesis)
+- ADR-003: `active_contracts` removed from JWT (stale-session authorization risk)
+- ADR-004: JWT transport secured — Authorization header only, never query params (OWASP A02)
+- ADR-005: Replica failure recovery path added for PAAS sessions
+- ADR-006: ASP.NET Core built-in rate limiting added as per-tenant backstop (zero infra cost)
+- ADR-007: Concrete cloud portability escape hatch for mTLS documented
+- ADR-008: Keycloak version pinning + upgrade protocol added
+- ADR-009: Alert routing targets defined (P0: constitutional violations; P1: PAAS latency)
+
+**ADR-010–015 — New ADRs ratified:**
 
 | ADR | Decision | Roles |
 |---|---|---|
-| ADR-001 | gRPC for Constitutional Engine | Enterprise Arch + Solution Arch |
-| ADR-002 | OpenAPI spec-first | Solution Arch + Enterprise Arch |
-| ADR-003 | JWT claims + multi-tenancy anchor | Security Arch + Enterprise Arch |
-| ADR-004 | Emergency Stop — Azure SignalR | Solution Arch + Security Arch |
-| ADR-005 | PAAS session isolation — session-affinity | Enterprise Arch + Solution Arch |
-| ADR-006 | Rate limiting deferred to Epoch 6 | Platform Arch + Business Arch |
-| ADR-007 | gRPC mTLS — Container Apps managed certs | Security Arch + Platform Arch |
-| ADR-008 | Keycloak as OAuth federation broker | Security Arch + Solution Arch |
-| ADR-009 | OpenTelemetry + Jaeger/Azure Monitor | Platform Arch + Enterprise Arch |
+| ADR-010 | Cloud Portability Posture — Azure-first, named escape hatches per Azure dependency | Enterprise Arch + Platform Arch |
+| ADR-011 | Database Migration Strategy — EF Core Migrations; Audit Ledger: no destructive migrations | Data Arch + Platform Arch |
+| ADR-012 | Container Image Registry — GHCR (free, cloud-agnostic, GitHub Actions native) | Platform Arch + Enterprise Arch |
+| ADR-013 | CI/CD Pipeline Structure — GitHub Actions, trunk-based, CCTs as mandatory gate | Platform Arch + Enterprise Arch |
+| ADR-014 | Secret Management — `.env` dev / GitHub Secrets CI / Azure Key Vault cloud | Security Arch + Platform Arch |
+| ADR-015 | Temporal Deployment — self-hosted dev/QA; Temporal Cloud UAT/prod | Platform Arch + Enterprise Arch |
 
 ---
 
@@ -82,9 +92,10 @@ Agent infrastructure:
 ### Immediate (Next Session)
 
 1. **Sprint 001 Execution** — Constitutional Analyst produces knowledge claims in `knowledge/claims/` (IB-001, Gate G2)
-2. **architecture/reference/** — C4 container/component detail specs for each service (Founder decision: sprint vs reference first)
+2. **`architecture/reference/`** — C4 container/component detail specs for each service
 3. **Data Architecture** — Constitutional Audit Ledger schema, RLS design, three-ledger model
-4. **Deployment Architecture** — Terraform modules per environment, GitHub Actions pipeline
+4. **`.github/workflows/`** — CI/CD pipeline implementation (GitHub Actions, per ADR-013)
+5. **`infrastructure/keycloak/`** — Keycloak realm export JSON (per ADR-008)
 
 ---
 
