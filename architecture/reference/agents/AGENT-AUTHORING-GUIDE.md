@@ -127,7 +127,17 @@ ProfessionalTemplate {
 }
 ```
 
-## 6. Learning Loop
+## 6. New MCP Servers Required
+
+List every MCP server this agent requires that is not already in `architecture/reference/containers.md`. If no new servers are needed, write "None — all required MCP servers already in platform inventory."
+
+| MCP Server | Data Source | Status | Built by |
+|---|---|---|---|
+| `[server-name]-mcp` | [API / dataset] | New / Extend existing | WAOOAW-built / Third-party |
+
+For each new server: confirm it is added to `containers.md` MCP Integration Layer inventory and `docker-compose.yml` stubs (Section 9 Architecture Chain Update Checklist).
+
+## 7. Learning Loop
 
 **Customer feedback signals captured:**
 - [what the agent learns from customer approvals/rejections]
@@ -138,7 +148,22 @@ ProfessionalTemplate {
 **Customer context learning (Tier 2):**
 - [what stays private to the customer]
 
-## 7. Constitutional Checklist
+## 8. Unit Economics
+
+**Why required:** An agent spec without pricing is not investment-ready for Founder approval. Include realistic estimates — not aspirational ones.
+
+```
+| Model | Customer pays | WAOOAW receives | Path to scale |
+|---|---|---|---|
+| [direct subscription] | ₹/month | ₹/month | [payment method, distribution] |
+| [bundle/B2B] | ₹0 | ₹/unit/month | [B2B partner, volume] |
+| [government/institutional] | ₹0 | ₹/unit/month | [contract structure] |
+
+Infrastructure cost: ~₹X/customer/month at [N] active customers
+Minimum viable margin: ₹Y/customer/month. Achievable at [N] customers.
+```
+
+## 9. Constitutional Checklist
 
 Before submitting for EA review, confirm:
 - [ ] Every Skill has a measurable business KPI (C-037)
@@ -151,10 +176,87 @@ Before submitting for EA review, confirm:
 - [ ] **Learning from R011-01 / R012-01: any real-world authorization the agent needs from the customer (image consent, broker API access, platform credentials) must be an always-ask action type that creates a constitutional evidence record. An assumed authorization is a constitutional gap.**
 - [ ] **C-042 check: if your agent serves customers with limited technical or digital literacy — farmers, healthcare workers, artisans — the Vocabulary Mandate applies. Add a Vocabulary Translation Layer to every Skill. No technical data surfaced to customer. All outputs actionable in their vocabulary.**
 
-## 8. Review and Approval
+## 10. Review and Approval
 
 Reviewer: Enterprise Architect
 Approval: Founder
 
 Review creates: `reviews/R-NNN-sprint-N-agent-{name}-ea-review.md`
+
+---
+
+## 11. Architecture Chain Update Checklist (MANDATORY — every agent create/update)
+
+> **Why this exists:** v0.12.0 simulation run revealed that two new agent specs left 9 architecture layers inconsistent — capabilities, drivers, principles, containers, component specs, data schema, and infra were not updated alongside the agent spec. This checklist is the fix. It is **not optional**. Apply it every time an agent spec is created or meaningfully updated.
+
+### 11.1 — For every new agent spec
+
+| Layer | File | What to update | Skip condition |
+|---|---|---|---|
+| Capabilities | `knowledge/business-capabilities.md` | Add a new Domain section with one capability per major Skill | Never skip |
+| Drivers | `knowledge/architectural-drivers.md` | Add an AD entry if the agent introduces a new HARD non-functional constraint | Skip only if no new constraint |
+| Principles | `knowledge/design-principles.md` | Add a DP entry if the agent requires a new structural engineering pattern | Skip only if pattern already defined |
+| Containers | `architecture/reference/containers.md` | Add any new MCP servers to the MCP Integration Layer server inventory table | Skip if no new MCP servers |
+| Component spec | `architecture/reference/components/ai-runtime.md` | Add/expand any component behavior the agent requires (new processing pipelines, new RAG tiers, new VTL behavior) | Skip if no new AI Runtime behavior |
+| Data schema | `infrastructure/postgres/init/03-enums-and-tables.sql` | Add any tables the agent needs (progressive state, profiles, logs) | Skip if no new tables |
+| Docker Compose | `docker-compose.yml` | Add a stub service for each new MCP server | Skip if MCP server already exists |
+| GENESIS | `constitution/GENESIS.md` | Verify agent's acceptance scenario (AS-XXX) is listed in Part 04 | Add if missing |
+| AGENT-ENTRY | `constitution/AGENT-ENTRY.md` | Update approved agent list and routing table | Never skip |
+| ADR | `adr/` | Create an ADR if the agent introduces a new architectural decision (e.g., new external service type, new protocol) | Skip if no new architectural decision |
+
+### 11.2 — For agent updates (existing spec amended)
+
+Apply only the layers affected by the change:
+
+| Change type | Layers to update |
+|---|---|
+| New Skill added | Capabilities (add sub-capability), Data (new RAG tables if needed), Containers (new MCP server if needed), docker-compose (new stub if needed) |
+| New MCP tool added | Containers (MCP inventory table), docker-compose (stub), ai-runtime.md (if new tool class) |
+| New always-ask action | Constitutional Checklist re-verify; no layer update usually needed |
+| New RAG source | ai-runtime.md (pipeline description), data schema (new table if new data type) |
+| New constitutional constraint | Claims (if new claim), Principles (if new structural pattern), Checklist item 9.3 |
+| Vocabulary Mandate added | AI Runtime component (VTL section), AD-015 referenced, Docker (whatsapp-voice-mcp confirmed) |
+| Skill removed | Capabilities (remove sub-capability), data schema comment the table (never drop), billing events continue |
+
+### 11.3 — Agent Update Summary Block
+
+Every PR that creates or updates an agent spec **must include** this summary block in the PR body:
+
 ```
+## Agent Architecture Chain Update
+
+| Layer | File | Change | Skipped (reason) |
+|---|---|---|---|
+| Capabilities | business-capabilities.md | [describe] | — |
+| Drivers | architectural-drivers.md | [describe] | — |
+| Principles | design-principles.md | [describe] | — |
+| Containers | containers.md | [describe] | — |
+| Component spec | ai-runtime.md | [describe] | — |
+| Data schema | 03-enums-and-tables.sql | [describe] | — |
+| Docker Compose | docker-compose.yml | [describe] | — |
+| GENESIS | GENESIS.md | [describe] | — |
+| AGENT-ENTRY | AGENT-ENTRY.md | [describe] | — |
+```
+
+An EA review that does not find this block in the PR is automatically a CHANGE REQUEST (missing architectural due diligence).
+
+---
+
+## 12. Agent Version History Convention
+
+Each agent spec file carries a version table at the bottom. Update it with every change:
+
+```markdown
+## Version History
+
+| Version | Date | Author (Office) | Change |
+|---|---|---|---|
+| 1.0 | YYYY-MM-DD | [Office] | Initial draft |
+| 1.1 | YYYY-MM-DD | [Office] | [what changed] |
+```
+
+---
+
+## 13. Capability-to-Container Map Update
+
+After every new agent spec, verify `architecture/reference/capability-to-container-map.md` includes the new capabilities. If it doesn't, add them. Domain-level capabilities must map to their owning container (typically AI Runtime for execution, Business Platform for lifecycle, Constitutional Engine for evidence).

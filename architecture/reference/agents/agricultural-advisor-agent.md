@@ -1,7 +1,7 @@
 # Agricultural Advisory Professional — India Small & Marginal Farmers
 
-**Specification version:** 1.0
-**Date:** 2026-07-08
+**Specification version:** 1.1
+**Date:** 2026-07-08 (v1.1 — R-013 P0 fixes applied)
 **Constitutional Basis:** C-036 (Skills), C-037 (Business KPIs), C-038 (Billing), C-039 (Conversational config), C-040 (Domain specialization), C-041 (Tool authorization), C-042 (Vocabulary mandate — LAW), ADR-019 (RAG), ADR-020 (MCP)
 **Proposed Acceptance Scenario:** AS-005 — Small Farmer Agricultural Advisory (to be ratified in GENESIS amendment)
 **Status:** DRAFT — pending EA review (R-013) and Founder approval (GENESIS Part 05)
@@ -273,6 +273,7 @@ Recommendation: "Grow chana — good price, suitable for your land, MSP protecti
 | Tier | Knowledge | Retrieved for |
 |---|---|---|
 | 1 — Domain | ICAR crop suitability matrices (soil type × water availability × region) | Feasibility check |
+| 1 — Domain | NBSS&LUP soil suitability database (static — loaded into Tier 1 RAG at agent init) | Soil-crop compatibility check (R013-02: soil data is static, not a real-time MCP call) |
 | 1 — Domain | Crop rotation benefits and guidelines | Soil health recommendations |
 | 1 — Domain | Input cost estimates per crop (seeds, fertilizer, pesticide, labour) | Cost-benefit in farmer's ₹ |
 | 1 — Domain | Government policy feed (MSP, subsidies, export restrictions — current) | Policy lens |
@@ -393,12 +394,38 @@ This is constitutionally elegant: the Evidence First principle (C-023) — desig
 
 ## 5. Emergency Stop
 
-Emergency Stop for the Agricultural Agent is simpler than for Trading but still important:
-- Halts ALL outgoing messages (farmer is busy during harvest — wants silence)
-- Records the stop event in CAL
-- Agent resumes only when farmer explicitly says "start again" or when a new crop is registered
+Emergency Stop for this agent uses a **WhatsApp-initiated path** — a new pattern not present in other agents (which use the web PWA WebSocket button). This path is fully specified below to support CCT writing and implementation. AD-001 (≤250ms) applies.
 
-The Emergency Stop via WhatsApp: farmer sends "STOP" or calls out "bandh kar" — the agent immediately stops all communications.
+**WhatsApp Emergency Stop path:**
+```
+1. Farmer sends "STOP" (text) or voice message containing stop keyword
+   ("bandh kar" / "rok" / "thamba" / "nillu" — language-specific variants)
+2. whatsapp-voice-mcp receives webhook → detects STOP keyword (text match or ASR transcription)
+   [Transcription uses farmer's registered language for accuracy]
+3. whatsapp-voice-mcp calls AI Runtime /emergency-stop endpoint (HTTP POST, priority)
+   [NOT a normal tool call — bypasses Decision Space validation per ART-XI]
+4. AI Runtime immediately calls Professional Runtime /emergency-stop
+   [skips CE.ValidateAction — Emergency Stop is unconditional: ART-XI, AD-001]
+5. Professional Runtime calls CE.EmergencyStop(employment_contract_id)
+6. CE records CAL entry:
+   {action_type: EMERGENCY_STOP_EXECUTED, state: EXECUTED,
+    initiated_by: FARMER_WHATSAPP, constitutional_basis: "ART-XI"}
+7. Professional Runtime halts all queued tasks and scheduled messages for this farmer
+8. whatsapp-voice-mcp sends acknowledgment in farmer's registered language:
+   Marathi: "समजलं — मी थांबतो. 'सुरू कर' म्हणाल तेव्हा परत सुरू होईन."
+   Hindi: "समझ गया — मैं रुकता हूँ। 'शुरू करो' कहने पर वापस शुरू होऊँगा।"
+
+Latency target: ≤250ms from webhook receipt to CE CAL record (AD-001 applies).
+
+Resume path:
+  Farmer sends "SURU KAR" / "SHURU KARO" / "START" / "RESUME"
+  → whatsapp-voice-mcp detects resume keyword
+  → calls Professional Runtime /emergency-stop-lift
+  → CE records: {action_type: EMERGENCY_STOP_LIFTED, state: EXECUTED}
+  → Agent resumes from next scheduled check-in
+
+Note: Halts ALL outgoing messages. Farmer busy during harvest — wants silence.
+Agent never auto-resumes; resume only on explicit farmer command.
 
 ---
 
@@ -469,7 +496,7 @@ ProfessionalTemplate:
       - { actionType: "CROP_RECOMMENDATION", description: "Propose next season crop after analysis" }
       - { actionType: "AGRICULTURAL_HINT", description: "Proactive weekly hints on weather+price+policy convergence" }
       - { actionType: "PMFBY_EVIDENCE_RECORD", description: "Auto-record insurance evidence in CAL" }
-      - { actionType: "PMFBY_REPORT_GENERATE", description: "Generate insurance evidence report on explicit request" }
+      - { actionType: "PMFBY_REPORT_SEND", description: "Send generated PMFBY report to farmer via WhatsApp (after always-ask approval)" }
     prohibited_actions:
       - { actionType: "SHOW_TECHNICAL_WEATHER_DATA", description: "C-042 — never surface meteorological data to farmer" }
       - { actionType: "COMMODITY_TRADING_ADVICE", description: "No futures/options advice — not investment advice" }
@@ -477,9 +504,18 @@ ProfessionalTemplate:
       - { actionType: "LOAN_ADVICE", description: "No financial product recommendations" }
       - { actionType: "CROSS_FARM_DATA_SHARE", description: "Never share one farmer's data with another" }
     always_ask_actions:
+      - { actionType: "FARMER_LAND_PROFILE_CONFIRMED",
+          description: "Farmer confirms land profile (village, acres, irrigation type, soil type,
+                        language) — the basis for all advisory. Creates immutable CAL record.
+                        Constitutional basis: C-023 (Evidence First), C-039 (conversational config).
+                        R013-01 fix: without this CAL record, the advisory basis is unaudited." }
       - { actionType: "EARLY_HARVEST_RECOMMENDATION", description: "Significant income impact — farmer must confirm" }
       - { actionType: "CROP_SCRAPPING_ADVICE", description: "Devastating financial decision — always ask, never assume" }
       - { actionType: "NEW_INVESTMENT_CROP", description: "Crop requiring infrastructure farmer doesn't have" }
+      - { actionType: "PMFBY_REPORT_GENERATE",
+          description: "Generate formal insurance evidence report — legal document,
+                        requires explicit farmer request and CE APPROVED record before generation.
+                        R013-05 fix: moved from authorized_actions to always_ask." }
   is_published: true
 ```
 
@@ -512,10 +548,11 @@ ProfessionalTemplate:
 |---|---|---|---|
 | `weather-ensemble-mcp` | Open-Meteo + IMD + NASA POWER + MOSDAC | **New — WAOOAW-built** | WAOOAW IP |
 | `agmarknet-mcp` | Agmarknet government API (free) | New | WAOOAW-built (wrapper) |
-| `enam-mcp` | eNAM API (government, free) | New | WAOOAW-built (wrapper) |
+| `enam-mcp` | eNAM API (government, free) | New (DEGRADABLE — implement in v1.1) | WAOOAW-built (wrapper) |
 | `whatsapp-voice-mcp` | Existing whatsapp-business-mcp extended | Extend existing | WAOOAW-extended |
-| `policy-data-mcp` | PM-KISAN portal, MSP notifications, SEBI ag policy | New | WAOOAW-built |
-| `soil-data-mcp` | NBSS&LUP soil database, PM Soil Health Card | New | WAOOAW-built |
+| `policy-data-mcp` | PM-KISAN portal, MSP notifications, SEBI ag policy | New (DEGRADABLE — implement in v1.1) | WAOOAW-built |
+
+> **R013-02 fix:** `soil-data-mcp` removed — NBSS&LUP soil data is a static national database, not a real-time API. It is loaded into institutional Tier 1 RAG at agent init (same as ICAR data). The farmer's specific soil type is captured in `farmer_profiles.soil_type` during onboarding. No MCP server required.
 
 ---
 
@@ -546,13 +583,22 @@ ProfessionalTemplate:
 - [x] All advisory output in farmer's vocabulary — Vocabulary Translation Layer is mandatory
 - [x] Multilingual requirement specified (Hindi + 8 regional languages)
 - [x] Emergency Stop works via WhatsApp "STOP" or voice command
-- [x] **R012-01 pattern applied: FARMER_LAND_PROFILE_CONFIRMED as implicit evidence record during onboarding**
+- [x] **R013-01 fix applied: FARMER_LAND_PROFILE_CONFIRMED in always_ask_actions — creates CAL record (C-023) when farmer confirms their land profile during onboarding**
 - [x] Prohibited actions include medical advice, financial product advice, cross-farm data sharing
 
 ---
 
-## 12. Review and Approval
+## 12. Version History
 
-**EA Review:** R-013 — pending
-**Founder Approval:** pending (GENESIS Part 05)
-**Status:** DRAFT
+| Version | Date | Author (Office) | Change |
+|---|---|---|---|
+| 1.0 | 2026-07-08 | Business Architect | Initial draft |
+| 1.1 | 2026-07-08 | Business Architect | R-013 P0 fixes: R013-01 (FARMER_LAND_PROFILE_CONFIRMED to always_ask), R013-02 (soil-data-mcp removed, NBSS&LUP → Tier 1 RAG), R013-03 (WhatsApp Emergency Stop path fully specified), R013-05 (PMFBY_REPORT_GENERATE to always_ask) |
+
+---
+
+## 13. Review and Approval
+
+**EA Review:** R-013 — complete (2026-07-08). v1.1 addresses all P0 findings.
+**Founder Approval:** pending (GENESIS Part 05 amendment — AS-005)
+**Status:** READY FOR FOUNDER APPROVAL
