@@ -6,12 +6,12 @@
 
 ```
 Founding Corpus v1           Status: Ratified
-Version:                     0.7.0 — FR-002/003/004 Constitutional Resolutions (2026-07-08)
-Current Epoch:               Epoch 1 — Employment (first sprint begins next session)
+Version:                     0.8.0 — Skills, Performance, Billing, Conversational Config (2026-07-08)
+Current Epoch:               Epoch 1 — Employment
 Current Gate:                G2: PASSED — G3: PASSED — G4: PASSED — G5: CLEAR
 Authorized Offices:          Runtime Professional (IB-009 — Foundation Implementation)
 Engineering Status:          Architecture — COMPLETE | Implementation — AUTHORIZED
-Active FRs:                  FR-001 (CS Agents) FR-002 (Trial) FR-003 (Learning IP) FR-004 (Teams)
+Claims:                      C-001 to C-039 | Capabilities: 42+ | Drivers: AD-001-014 | Principles: DP-001-012
 ```
 
 ---

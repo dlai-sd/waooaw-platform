@@ -2,7 +2,7 @@
 
 **Produced by:** Enterprise Architect (Sprint 003)
 **Date:** 2026-07-07
-**Constitutional Basis:** C-030 (Decision Space as primitive), C-034 (employment lifecycle), C-005 (Three-Ledger), C-028 (evidence state machine)
+**Constitutional Basis:** C-030 (Decision Space as primitive), C-034 (employment lifecycle), C-005 (Three-Ledger), C-028 (evidence state machine), C-036 (Skills as constitutional units), C-037 (business KPIs), C-038 (pro-rata billing), C-039 (conversational configuration)
 
 ---
 
@@ -88,6 +88,51 @@ AuthorityLicense {
   evidenceIds: [UUID]               // the evidence that justified the grant
 }
 // Append-only — new record per authority change. No UPDATE.
+```
+
+### Skill (v0.8.0 — C-036)
+The independently governable unit of professional capability. A Digital Professional has one or more Skills. Each Skill has its own lifecycle, configuration, and performance evidence.
+
+```
+Skill {
+  id: UUID
+  contractId: UUID
+  tenantId: UUID
+  skillType: string                   // INSTAGRAM_MARKETING, FACEBOOK_MARKETING, TRADE_EXECUTION, etc.
+  name: string                        // human-readable: "Instagram Content & Posting"
+  state: enum(ACTIVE, PAUSED, TERMINATED)  // C-036 independent lifecycle
+  decisionSpaceSubset: DecisionSpaceSubset  // the portion of the agent's Decision Space governing this skill
+  goals: [SkillGoal]                  // business KPI targets for this skill (C-037)
+  configuration: JSONB                // credentials, schedule, frequency (per C-039 — set via conversation)
+  activatedAt: datetime?
+  pausedAt: datetime?
+  terminatedAt: datetime?
+  createdAt: datetime
+}
+
+SkillGoal {
+  kpiName: string                     // "appointments_per_week", "enquiries_per_month", "daily_return_pct"
+  targetValue: decimal
+  currentValue: decimal               // updated by performance monitoring
+  measurementPeriod: string           // "week", "month", "day"
+}
+```
+
+### SubscriptionBillingEvent (v0.8.0 — C-038)
+An immutable billing event produced at every lifecycle change. Pro-rata billing is calculated from the event ledger at billing period end.
+
+```
+SubscriptionBillingEvent {
+  id: UUID
+  tenantId: UUID
+  contractId: UUID
+  skillId: UUID?                      // null = contract-level event
+  eventType: enum(ACTIVATED, PAUSED, RESUMED, TERMINATED, TRIAL_STARTED, TRIAL_CONVERTED)
+  occurredAt: datetime                // exact minute-level timestamp (AD-014)
+  pricePerMonth: decimal              // the rate at the time of this event
+  // Billing calculation: sum(pricePerMonth * duration_between_ACTIVATED_and_PAUSED_events)
+}
+// Append-only — billing events cannot be modified. C-038: pro-rata is constitutional.
 ```
 
 ### Professional Identity

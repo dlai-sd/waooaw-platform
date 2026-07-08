@@ -1,9 +1,8 @@
 # Business Capability Map
 
-**Produced by:** Chief Business Architect (Sprint 002)
-**Date:** 2026-07-07
-**Work Contract:** WC-002
-**Constitutional Basis:** GENESIS Part 01 (Acceptance Scenarios 001–004), Ratified Claims C-001 through C-035
+**Produced by:** Chief Business Architect (Sprint 002 + v0.8.0 update)
+**Date:** 2026-07-07 (updated 2026-07-08)
+**Constitutional Basis:** GENESIS Part 01 (Acceptance Scenarios 001–004), Ratified Claims C-001 through C-039
 
 ---
 
@@ -260,35 +259,143 @@ A capability exists because the institution must provide it — not because it w
 
 ---
 
-### 6.5 Bill Customers for Platform Usage
+### 6.5 Bill Customers with Pro-Rata Precision
 
-**Statement:** The institution must manage the commercial relationship — billing customers for platform usage within the agreed terms.
+**Statement:** The institution must calculate and manage billing for professional engagements on a pro-rata basis — billing must stop at the moment of pause or termination, and resume at the moment of restart, with no minimum periods or penalties.
 
-**Constitutional Basis:** AS-001 (INR 8,000–12,000/month constraint); AS-002 (INR 6,000–10,000/month constraint); AS-003 (₹5,00,000 capital allocation context — customer has explicit cost awareness)
+**Constitutional Basis:** C-038 (billing is the financial implementation of the customer's constitutional right to pause and terminate — C-038 LAW); AS-001 (INR 8,000–12,000/month constraint); AS-002 (INR 6,000–10,000/month constraint); ART-IX (right to terminate immediately without penalty)
 
 ---
 
-## Capability Summary
+## Domain 1 — Additional Capabilities (v0.8.0)
+
+---
+
+### 1.6 Browse Agent and Skill Catalogue
+
+**Statement:** The institution must enable prospective customers to browse available Digital Professionals, their Skill catalogues, domain specializations, ratings, and prior customer feedback — before committing to a trial or subscription.
+
+**Constitutional Basis:** C-009 (CP-001 — rights visibility before hiring); C-039 (conversational configuration must be discoverable naturally); AS-001 (Dr. Mehta chooses a dental-specialized marketing agent, not a generic one)
+
+---
+
+### 1.7 Configure Agent via Conversation
+
+**Statement:** The institution must enable customers to configure an agent's goals, credentials, schedule, and Decision Space through natural language dialogue — the agent asks questions, the customer answers in business terms, and the agent derives its own constitutional configuration.
+
+**Constitutional Basis:** C-039 (conversational configuration is a constitutional obligation); C-030 (Decision Space is configured by the customer — the configuration mechanism must not require technical literacy); AS-001 (Dr. Mehta says "post 3 times a week on Instagram and Facebook" not "authorized_actions[0].platform=INSTAGRAM")
+
+---
+
+### 1.8 Enroll in Trial Engagement
+
+**Statement:** The institution must enable customers to begin a time-limited trial engagement (7 days) with full constitutional employment rights — Emergency Stop, Evidence First, data portability — and no billing commitment during the trial period.
+
+**Constitutional Basis:** FR-002 (trial = full constitutional employment); C-038 (no billing during trial); C-001 (Emergency Stop from day one of trial); ART-IX (data portability from day one of trial)
+
+---
+
+## Domain 2 — Additional Capabilities (v0.8.0)
+
+---
+
+### 2.7 Monitor Skill Performance Against Business KPIs
+
+**Statement:** The institution must enable customers to review each Skill's performance against its stated business KPIs — appointments booked, enquiries generated, risk-adjusted return — not against internal technical metrics.
+
+**Constitutional Basis:** C-037 (performance is business outcomes, not technical metrics — C-037 LAW); C-036 (each Skill has its own performance evidence); AS-001 (appointment growth as KPI); AS-002 (booking rate as KPI); AS-003 (daily return, Sharpe ratio as KPIs)
+
+---
+
+## Domain 3 — Additional Capabilities (v0.8.0)
+
+---
+
+### 3.4 Self-Improve Skill Performance
+
+**Statement:** The institution must enable each Skill to improve its own performance over time using feedback from prior execution — approved actions, rejected actions, customer corrections — within the bounds of WAOOAW's institutional learning model (FR-003).
+
+**Constitutional Basis:** C-037 (failure to improve toward business KPIs is a constitutional obligation breach); FR-003 (learning that improves the Skill uses the customer's evidence as input but the derived model is WAOOAW IP); C-002 (trust earned through evidence — improvement is evidence of earned trust)
+
+---
+
+## Domain 4 — Additional Capabilities (v0.8.0)
+
+---
+
+### 4.5 Set and Update Skill Goals
+
+**Statement:** The institution must enable customers to define, review, and update the specific business goals and scheduling parameters for each individual Skill — independently of other Skills in the same engagement.
+
+**Constitutional Basis:** C-036 (each Skill has its own configuration and performance targets); C-039 (goal-setting must be achievable through conversation); AS-001 (Dr. Mehta sets frequency and goals per platform separately)
+
+---
+
+## Domain 5 — Additional Capabilities (v0.8.0)
+
+---
+
+### 5.4 Pause Individual Skill (Pro-Rata Billing)
+
+**Statement:** The institution must enable customers to pause a single Skill within a professional engagement without suspending other Skills — with billing for the paused Skill stopping pro-rata from the moment of pause.
+
+**Constitutional Basis:** C-036 (Skills are independently governable); C-038 (pro-rata billing on pause — C-038 LAW); AS-002 (Sana pauses Instagram in slow months without terminating the whole engagement)
+
+---
+
+### 5.5 Resume Paused Skill
+
+**Statement:** The institution must enable customers to resume a previously paused Skill, restoring all prior configuration, Creative Standard Profile, and performance history — billing resumes pro-rata from the moment of resumption.
+
+**Constitutional Basis:** C-036 (Skill identity and learning persist through pause — a paused Skill is not a terminated Skill); C-038 (billing resumes from moment of resumption)
+
+---
+
+## Domain 9 — Commercial and Marketplace (v0.8.0 — MVI-partial)
+
+*The institution must enable sustainable commercial operations and marketplace discovery.*
+
+---
+
+### 9.1 Manage Subscription Lifecycle
+
+**Statement:** The institution must enable customers to start, pause, resume, and terminate subscriptions — with automatic pro-rata billing at each lifecycle event.
+
+**Constitutional Basis:** C-038 (pro-rata billing — C-038 LAW); C-034 (employment lifecycle governs the subscription lifecycle — they are the same event)
+
+---
+
+### 9.2 Provide Transparent Billing
+
+**Statement:** The institution must provide customers with a complete, itemised, real-time view of their current and projected billing — per Skill, per agent, with pro-rata calculations visible.
+
+**Constitutional Basis:** C-038 (billing transparency is the commercial expression of constitutional rights); ART-IX (right to information about costs of professional engagement)
+
+---
+
+## Capability Summary (v0.8.0)
 
 | Domain | Count | Capabilities |
 |---|---|---|
-| 1 — Hire | 5 | 1.1 Evaluate, 1.2 Configure, 1.3 Define Decision Space, 1.4 Form Contract, 1.5 Onboard |
-| 2 — Govern | 6 | 2.1 Review Proposed, 2.2 Approve/Reject, 2.3 Confirm Boundary, 2.4 Emergency Stop, 2.5 Monitor, 2.6 Audit |
-| 3 — Execute | 3 | 3.1 Approval-Gate, 3.2 Pre-Authorized (PAAS), 3.3 Creative Standard |
-| 4 — Develop | 4 | 4.1 Assess, 4.2 Expand Authority, 4.3 Restrict Authority, 4.4 Renew |
-| 5 — Close | 3 | 5.1 Suspend, 5.2 Terminate, 5.3 Export Evidence |
-| 6 — Operate | 5 | 6.1 Authenticate, 6.2 Isolate Tenant, 6.3 Record Evidence, 6.4 Observe, 6.5 Bill |
-| **Total** | **26** | |
+| 1 — Hire | 8 | 1.1 Evaluate, 1.2 Configure, 1.3 Define Decision Space, 1.4 Form Contract, 1.5 Onboard, **1.6 Browse Catalogue, 1.7 Configure via Conversation, 1.8 Trial Enrollment** |
+| 2 — Govern | 7 | 2.1 Review Proposed, 2.2 Approve/Reject, 2.3 Confirm Boundary, 2.4 Emergency Stop, 2.5 Monitor, 2.6 Audit, **2.7 Monitor Skill KPIs** |
+| 3 — Execute | 4 | 3.1 Approval-Gate, 3.2 Pre-Authorized (PAAS), 3.3 Creative Standard, **3.4 Self-Improve** |
+| 4 — Develop | 5 | 4.1 Assess, 4.2 Expand Authority, 4.3 Restrict Authority, 4.4 Renew, **4.5 Set Skill Goals** |
+| 5 — Close | 5 | 5.1 Suspend, 5.2 Terminate, 5.3 Export Evidence, **5.4 Pause Skill, 5.5 Resume Skill** |
+| 6 — Operate | 5 | 6.1 Authenticate, 6.2 Isolate Tenant, 6.3 Record Evidence, 6.4 Observe, 6.5 Bill Pro-Rata |
+| 7 — Customer Portal | 8 | (IB-014 design frame) |
+| 8 — CS Agents | 6 | (IB-015 / FR-001 design frame) |
+| **9 — Commercial** | **2** | **9.1 Subscription Lifecycle, 9.2 Transparent Billing** |
+| **Total MVI** | **42+** | |
 
 ---
 
 ## Capabilities Not in Scope (MVI)
-
-The following capabilities are constitutionally grounded but deferred to later Epochs:
 
 | Capability | Deferred to | Reason |
 |---|---|---|
 | Appeal Constitutional Decision | Epoch 5 | Requires functioning Constitutional Oversight mechanism |
 | Certify Professional Identity Continuity | Epoch 6 | Requires multiple embodiment changes to observe |
 | Enable Third-Party Integrations | Epoch 6 | Requires stable API and developer programme |
-| Operate Professional Marketplace | Epoch 7 | Requires sufficient professional inventory |
+| Operate Professional Marketplace (public) | Epoch 7 | Requires sufficient professional inventory |
+| Agent Teams — self-organizing | Post-MVI Enterprise | FR-004 — IB-018 |

@@ -194,6 +194,92 @@ CREATE TABLE business.professional_templates (
     created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- ─── Skill Tables (v0.8.0 — C-036) ──────────────────────────────────────────
+
+-- Skill lifecycle state (C-036 — independently governable unit)
+CREATE TYPE skill_state AS ENUM (
+    'ACTIVE',
+    'PAUSED',
+    'TERMINATED'
+);
+
+-- Subscription billing event type (C-038 — pro-rata billing)
+CREATE TYPE billing_event_type AS ENUM (
+    'CONTRACT_ACTIVATED',
+    'CONTRACT_SUSPENDED',
+    'CONTRACT_TERMINATED',
+    'TRIAL_STARTED',
+    'TRIAL_CONVERTED',
+    'TRIAL_EXPIRED',
+    'SKILL_ACTIVATED',
+    'SKILL_PAUSED',
+    'SKILL_RESUMED',
+    'SKILL_TERMINATED'
+);
+
+-- Professional Skills (C-036 — independently configurable, independently billable)
+CREATE TABLE business.professional_skills (
+    id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id                   UUID NOT NULL,
+    contract_id                 UUID NOT NULL REFERENCES business.employment_contracts(id),
+    skill_type                  VARCHAR(100) NOT NULL,       -- INSTAGRAM_MARKETING, TRADE_EXECUTION, etc.
+    name                        VARCHAR(200) NOT NULL,       -- human-readable skill name
+    state                       skill_state NOT NULL DEFAULT 'ACTIVE',
+    decision_space_subset       JSONB NOT NULL DEFAULT '{}', -- subset of parent Decision Space
+    goals                       JSONB NOT NULL DEFAULT '[]', -- SkillGoal[] — business KPI targets (C-037)
+    configuration               JSONB NOT NULL DEFAULT '{}', -- credentials, schedule, frequency (C-039)
+    price_per_month             DECIMAL(10,2),               -- billing rate for this skill (C-038)
+    activated_at                TIMESTAMPTZ,
+    paused_at                   TIMESTAMPTZ,
+    terminated_at               TIMESTAMPTZ,
+    created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_skills_contract ON business.professional_skills(tenant_id, contract_id, state);
+
+-- Skill Performance Records (C-037 — business KPIs, not technical metrics)
+CREATE TABLE business.skill_performance_records (
+    id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id                   UUID NOT NULL,
+    contract_id                 UUID NOT NULL,
+    skill_id                    UUID NOT NULL REFERENCES business.professional_skills(id),
+    period_start                TIMESTAMPTZ NOT NULL,
+    period_end                  TIMESTAMPTZ NOT NULL,
+    -- Business KPI measurements (C-037 — primary metric)
+    business_kpi_name           VARCHAR(100) NOT NULL,       -- "appointments_per_week", "daily_return_pct"
+    business_kpi_target         DECIMAL(10,4),
+    business_kpi_actual         DECIMAL(10,4),
+    business_kpi_achieved       BOOLEAN,
+    -- Supporting technical metrics (secondary — never surfaced as primary, AD-012)
+    technical_metrics           JSONB,                       -- {engagement_rate, click_through, etc.}
+    recorded_at                 TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Subscription Billing Events (C-038 — minute-level pro-rata precision, AD-014)
+-- Append-only: billing events cannot be modified or deleted
+CREATE TABLE business.subscription_billing_events (
+    id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id                   UUID NOT NULL,
+    contract_id                 UUID NOT NULL REFERENCES business.employment_contracts(id),
+    skill_id                    UUID REFERENCES business.professional_skills(id),  -- NULL = contract-level
+    event_type                  billing_event_type NOT NULL,
+    occurred_at                 TIMESTAMPTZ NOT NULL DEFAULT NOW(),  -- minute-level precision (AD-014)
+    price_per_month             DECIMAL(10,2),                       -- rate at time of event
+    notes                       TEXT
+    -- NO updated_at — append-only billing ledger. C-038.
+);
+
+CREATE INDEX idx_billing_events_contract ON business.subscription_billing_events(tenant_id, contract_id, occurred_at);
+
+-- Append-only rules for billing events (C-038 — billing is constitutional)
+CREATE RULE no_update_billing_events AS
+    ON UPDATE TO business.subscription_billing_events
+    DO INSTEAD NOTHING;
+
+CREATE RULE no_delete_billing_events AS
+    ON DELETE TO business.subscription_billing_events
+    DO INSTEAD NOTHING;
+
 -- ─── Professional Schema Tables ───────────────────────────────────────────────
 
 SET search_path TO professional;

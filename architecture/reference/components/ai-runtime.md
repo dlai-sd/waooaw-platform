@@ -69,6 +69,24 @@ if tool_name not in decision_space.authorized_tools:
 - Does NOT store state (every request is stateless — context is passed by the caller)
 - Does NOT know which customer or professional it is serving — it only knows the Decision Space it was given
 
+## New Component (v0.8.0 — C-039, AD-013)
+
+### 5. Conversational Configuration Engine
+**Responsibility:**
+- Receives natural language input from a customer (during agent onboarding or goal-setting)
+- Derives a complete, valid DecisionSpaceInput object from the conversation (C-039)
+- Asks clarifying questions when input is ambiguous (e.g., "You said post 3 times a week — which days and times work best for your patients?")
+- Translates derived Decision Space back into business language for customer confirmation before committing
+- Supports goal refinement: customer can say "that's too much, cut it to 2 times a week" and the engine updates the configuration
+
+**The engine does NOT:**
+- Commit the Decision Space itself (it returns a proposed DecisionSpaceInput to Business Platform)
+- Make constitutional decisions (what is authorized/prohibited is the customer's choice)
+- Accept a configuration that would violate constitutional limits (AD-013: 15-minute completion target)
+
+**Input format:** unstructured natural language (voice transcription or text)
+**Output format:** `DecisionSpaceInput` JSON (per business-platform.openapi.yaml schema)
+
 ## Dependencies
 - **LLM Providers** (HTTPS external — OpenAI, Azure OpenAI)
 - **PostgreSQL** (pgvector — Creative Standard Profile embeddings, read only)

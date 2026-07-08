@@ -39,6 +39,14 @@ tags:
     description: Constitutional Audit Ledger (read-only for customers)
   - name: Authority
     description: Professional authority level management
+  - name: Skills
+    description: Skill lifecycle management (C-036 — independently governable units)
+  - name: Performance
+    description: Skill performance monitoring against business KPIs (C-037)
+  - name: Billing
+    description: Pro-rata billing and subscription management (C-038)
+  - name: Configuration
+    description: Conversational agent configuration (C-039)
   - name: Health
     description: Service health checks
 
@@ -225,6 +233,209 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
+
+  /api/v1/employment/contracts/{contractId}/skills:
+    get:
+      tags: [Skills]
+      summary: List skills in an employment contract (C-036)
+      operationId: listSkills
+      parameters:
+        - $ref: "#/components/parameters/ContractId"
+        - name: state
+          in: query
+          schema:
+            type: string
+            enum: [ACTIVE, PAUSED, TERMINATED]
+      responses:
+        "200":
+          description: Skills in the contract
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Skill"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+    post:
+      tags: [Skills]
+      summary: Add a skill to an employment contract
+      operationId: addSkill
+      parameters:
+        - $ref: "#/components/parameters/ContractId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddSkillRequest"
+      responses:
+        "201":
+          description: Skill added
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Skill"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/employment/contracts/{contractId}/skills/{skillId}/pause:
+    put:
+      tags: [Skills]
+      summary: Pause a skill (pro-rata billing stops — C-038)
+      operationId: pauseSkill
+      parameters:
+        - $ref: "#/components/parameters/ContractId"
+        - name: skillId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Skill paused — billing event recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Skill"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/employment/contracts/{contractId}/skills/{skillId}/resume:
+    put:
+      tags: [Skills]
+      summary: Resume a paused skill (pro-rata billing resumes — C-038)
+      operationId: resumeSkill
+      parameters:
+        - $ref: "#/components/parameters/ContractId"
+        - name: skillId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Skill resumed — billing event recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Skill"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/employment/contracts/{contractId}/skills/{skillId}/goals:
+    put:
+      tags: [Skills]
+      summary: Update skill business KPI goals (C-037)
+      operationId: updateSkillGoals
+      parameters:
+        - $ref: "#/components/parameters/ContractId"
+        - name: skillId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSkillGoalsRequest"
+      responses:
+        "200":
+          description: Goals updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Skill"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/employment/contracts/{contractId}/performance:
+    get:
+      tags: [Performance]
+      summary: Get skill performance against business KPIs (C-037, AD-012)
+      description: "Returns business KPI metrics as primary data. Technical metrics are available in supporting_metrics only."
+      operationId: getContractPerformance
+      parameters:
+        - $ref: "#/components/parameters/ContractId"
+        - name: skillId
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Filter to a specific skill
+        - name: periods
+          in: query
+          schema:
+            type: integer
+            default: 4
+          description: Number of historical periods to return
+      responses:
+        "200":
+          description: Performance records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SkillPerformanceRecord"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/billing:
+    get:
+      tags: [Billing]
+      summary: Get itemised billing statement (C-038, AD-014)
+      description: "Pro-rata billing calculated from event ledger. Itemised per skill."
+      operationId: getBillingStatement
+      parameters:
+        - name: month
+          in: query
+          schema:
+            type: string
+            format: date
+          description: "Billing period (YYYY-MM). Defaults to current month."
+      responses:
+        "200":
+          description: Itemised billing statement
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillingStatement"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/configure/conversational:
+    post:
+      tags: [Configuration]
+      summary: Configure agent via natural language conversation (C-039, AD-013)
+      description: |
+        Accepts a natural language message from the customer and returns either:
+        - A clarifying question (when more information is needed)
+        - A proposed DecisionSpaceInput (when enough information has been gathered)
+        The customer confirms the proposed Decision Space before it is committed.
+        Target: complete configuration in under 15 minutes (AD-013).
+      operationId: conversationalConfigure
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConversationalConfigRequest"
+      responses:
+        "200":
+          description: Clarifying question or proposed configuration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConversationalConfigResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
 
   /api/v1/employment/contracts/{contractId}/renew:
     post:
@@ -1206,6 +1417,208 @@ components:
           enum: [healthy, degraded, unhealthy]
         constitutionalEngineReachable:
           type: boolean
+
+    # ── Skills (C-036) ────────────────────────────────────────────────────────
+
+    SkillState:
+      type: string
+      enum: [ACTIVE, PAUSED, TERMINATED]
+      description: "C-036 — Skill has independent lifecycle from parent contract"
+
+    SkillGoal:
+      type: object
+      required: [kpiName, targetValue, measurementPeriod]
+      properties:
+        kpiName:
+          type: string
+          description: "Business KPI name — e.g., 'appointments_per_week', 'enquiries_per_month', 'daily_return_pct'"
+        targetValue:
+          type: number
+        currentValue:
+          type: number
+          nullable: true
+        measurementPeriod:
+          type: string
+          enum: [day, week, month]
+
+    Skill:
+      type: object
+      required: [id, contractId, skillType, name, state, goals, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        contractId:
+          type: string
+          format: uuid
+        skillType:
+          type: string
+          example: INSTAGRAM_MARKETING
+        name:
+          type: string
+          example: "Instagram Content & Posting"
+        state:
+          $ref: "#/components/schemas/SkillState"
+        goals:
+          type: array
+          items:
+            $ref: "#/components/schemas/SkillGoal"
+          description: "C-037 — business KPI targets, not technical metrics"
+        pricePerMonth:
+          type: number
+          nullable: true
+        activatedAt:
+          type: string
+          format: date-time
+          nullable: true
+        pausedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+
+    AddSkillRequest:
+      type: object
+      required: [skillType, name, goals]
+      properties:
+        skillType:
+          type: string
+        name:
+          type: string
+        goals:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/SkillGoal"
+        configuration:
+          type: object
+          additionalProperties: true
+          description: "C-039 — typically derived from conversational configuration, not filled manually"
+
+    UpdateSkillGoalsRequest:
+      type: object
+      required: [goals]
+      properties:
+        goals:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/SkillGoal"
+
+    # ── Performance (C-037) ───────────────────────────────────────────────────
+
+    SkillPerformanceRecord:
+      type: object
+      required: [id, skillId, periodStart, periodEnd, businessKpiName, businessKpiActual, businessKpiAchieved]
+      description: "AD-012 — business KPI is always the primary metric"
+      properties:
+        id:
+          type: string
+          format: uuid
+        skillId:
+          type: string
+          format: uuid
+        periodStart:
+          type: string
+          format: date-time
+        periodEnd:
+          type: string
+          format: date-time
+        businessKpiName:
+          type: string
+        businessKpiTarget:
+          type: number
+          nullable: true
+        businessKpiActual:
+          type: number
+        businessKpiAchieved:
+          type: boolean
+        technicalMetrics:
+          type: object
+          additionalProperties: true
+          description: "Supporting evidence only — never the primary metric (AD-012)"
+          nullable: true
+
+    # ── Billing (C-038) ───────────────────────────────────────────────────────
+
+    BillingStatement:
+      type: object
+      required: [tenantId, periodStart, periodEnd, totalAmount, lineItems]
+      properties:
+        tenantId:
+          type: string
+          format: uuid
+        periodStart:
+          type: string
+          format: date-time
+        periodEnd:
+          type: string
+          format: date-time
+        totalAmount:
+          type: number
+          description: "Pro-rata total for the period (C-038, AD-014)"
+        lineItems:
+          type: array
+          items:
+            $ref: "#/components/schemas/BillingLineItem"
+
+    BillingLineItem:
+      type: object
+      required: [skillId, skillName, activeDurationMinutes, pricePerMonth, chargeAmount]
+      properties:
+        skillId:
+          type: string
+          format: uuid
+          nullable: true
+        skillName:
+          type: string
+        activeDurationMinutes:
+          type: integer
+          description: "Exact minutes the skill was active in this period (AD-014)"
+        pricePerMonth:
+          type: number
+        chargeAmount:
+          type: number
+          description: "pricePerMonth * (activeDurationMinutes / minutesInMonth)"
+
+    # ── Conversational Configuration (C-039) ─────────────────────────────────
+
+    ConversationalConfigRequest:
+      type: object
+      required: [message, sessionId]
+      properties:
+        message:
+          type: string
+          description: "Customer's natural language input"
+        sessionId:
+          type: string
+          format: uuid
+          description: "Conversation session ID — groups messages in one onboarding conversation"
+        professionalType:
+          type: string
+          nullable: true
+          description: "Provide on first message; omit for follow-up messages"
+
+    ConversationalConfigResponse:
+      type: object
+      required: [type]
+      properties:
+        type:
+          type: string
+          enum: [QUESTION, PROPOSED_CONFIG, COMPLETE]
+        question:
+          type: string
+          nullable: true
+          description: "Present to customer when type=QUESTION"
+        proposedConfig:
+          $ref: "#/components/schemas/DecisionSpaceInput"
+          nullable: true
+          description: "Present for customer confirmation when type=PROPOSED_CONFIG"
+        confirmationRequired:
+          type: boolean
+          description: "If true, customer must call /confirm before config is applied"
 
     ProblemDetail:
       type: object

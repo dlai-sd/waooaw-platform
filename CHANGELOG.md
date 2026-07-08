@@ -8,6 +8,30 @@ types: `feat` | `fix` | `constitutional` | `cct` | `chore` | `refactor` | `secur
 
 ---
 
+## [0.8.0] — 2026-07-08
+
+### Constitutional (new claims)
+- C-036: Skills as first-class constitutional units (C-036 LAW)
+- C-037: Business outcome KPIs as primary performance measure (C-037 LAW)
+- C-038: Pro-rata billing as constitutional right (C-038 LAW)
+- C-039: Conversational configuration as constitutional obligation (C-039 CONFIRMED)
+
+### Knowledge (Business Architect)
+- `knowledge/business-capabilities.md`: 16 new capabilities across D1/D2/D3/D4/D5/D6 + new D9 Commercial
+- `knowledge/architectural-drivers.md`: AD-012 (Business KPI Primacy), AD-013 (Conversational Config), AD-014 (Pro-Rata Billing)
+- `knowledge/design-principles.md`: DP-011 (Business Outcome First), DP-012 (Skill Granularity in Governance)
+
+### Architecture (EA/SA/DA percolation)
+- `architecture/reference/domain-model.md`: Skill entity, SubscriptionBillingEvent entity
+- `architecture/reference/components/business-platform.md`: Skill Manager, Performance Monitor, Subscription Manager components
+- `architecture/reference/components/ai-runtime.md`: Conversational Configuration Engine component
+- `architecture/reference/api-specs/business-platform.openapi.yaml`: Skills, Performance, Billing, Conversational Config endpoints + schemas
+
+### Data Architecture
+- `03-enums-and-tables.sql`: skill_state enum, billing_event_type enum, professional_skills table, skill_performance_records table, subscription_billing_events table (append-only)
+
+---
+
 ## [0.7.0] — 2026-07-08
 
 ### Constitutional (Founder Resolutions)

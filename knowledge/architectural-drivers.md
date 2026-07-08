@@ -186,7 +186,49 @@ Any architectural change that shifts the budget of one segment must be evaluated
 
 ---
 
-## Architectural Drivers Summary
+## AD-012 — Business KPI Primacy in Performance Architecture (v0.8.0)
+
+**Requirement:** Every performance monitoring interface, every performance data model, and every performance-related agent decision must surface the customer's stated business KPIs as the primary metric. Technical metrics (engagement rate, content quality score, execution count) are supporting evidence only and must never be surfaced as the headline performance indicator.
+
+**Type:** HARD — derives from C-037 (LAW: performance = business outcomes).
+
+**Constitutional Basis:** C-037 (business outcomes are the constitutional measure of professional performance — LAW); GENESIS "Business Outcome First" principle
+
+**Capabilities Constrained:** 2.7 (Monitor Skill KPIs), 3.4 (Self-Improve), 4.1 (Assess Performance), 4.5 (Set Skill Goals)
+
+**Architectural consequence:** The `skill_performance_records` table must carry both `business_kpi_value` (e.g., appointments_this_week) and `technical_metric_value` (e.g., engagement_rate) but the API and UI must always lead with the business KPI. The performance monitoring component in Business Platform must refuse to present technical metrics as a substitute for business KPIs.
+
+---
+
+## AD-013 — Conversational Configuration Completeness (v0.8.0)
+
+**Requirement:** The agent configuration flow — credential provision, goal setting, scheduling, Decision Space definition — must be completable through natural language conversation in under 15 minutes for a first-time customer, with no prior technical knowledge required.
+
+**Type:** HARD — derives from C-039 (conversational configuration is a constitutional obligation).
+
+**Constitutional Basis:** C-039 (conversational configuration — CONFIRMED); GENESIS "The customer never manages prompts — the customer manages business outcomes"
+
+**Capabilities Constrained:** 1.7 (Configure via Conversation), 1.8 (Trial Enrollment), 4.5 (Set Skill Goals)
+
+**Architectural consequence:** A Conversational Configuration Engine component must exist in AI Runtime. It must be capable of deriving a complete, valid Decision Space from natural language input. The resulting Decision Space must be presented back to the customer in business terms for confirmation before being committed.
+
+---
+
+## AD-014 — Pro-Rata Billing Precision (v0.8.0)
+
+**Requirement:** Billing events must be calculated with minute-level precision. A pause, resume, or termination at any point in the billing cycle must result in a billing event that reflects the exact duration used — never rounded up to the nearest day, week, or month.
+
+**Type:** HARD — derives from C-038 (LAW: pro-rata billing is a constitutional right).
+
+**Constitutional Basis:** C-038 (pro-rata billing — LAW); ART-IX (right to terminate immediately without penalty)
+
+**Capabilities Constrained:** 5.4 (Pause Skill), 5.5 (Resume Skill), 9.1 (Subscription Lifecycle), 9.2 (Transparent Billing)
+
+**Architectural consequence:** The Subscription Manager must record billing events as timestamped ledger entries. Each pause/resume/terminate produces an immutable billing event with the exact timestamp. Pro-rata calculation is performed at billing period end over the event ledger. No scheduled jobs — event-driven billing only.
+
+---
+
+## Architectural Drivers Summary (v0.8.0)
 
 | ID | Driver | Type | Primary Constraint |
 |---|---|---|---|
@@ -201,3 +243,6 @@ Any architectural change that shifts the budget of one segment must be evaluated
 | AD-009 | Security by Design | HARD | Authentication, isolation, evidence |
 | AD-010 | Observability by Default | SOFT | Platform health and compliance |
 | AD-011 | Creative Standard Integrity | HARD (creative prof.) | Creative professional capabilities |
+| **AD-012** | **Business KPI Primacy** | **HARD** | **Performance monitoring, self-improvement** |
+| **AD-013** | **Conversational Config Completeness (<15 min)** | **HARD** | **Configuration and onboarding** |
+| **AD-014** | **Pro-Rata Billing Precision (minute-level)** | **HARD** | **Subscription lifecycle, billing** |

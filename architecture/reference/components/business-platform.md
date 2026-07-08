@@ -4,7 +4,7 @@
 **Technology:** .NET 9, ASP.NET Core, Entity Framework Core 9, Temporal .NET SDK
 **Port:** 5001 (REST external) | internal gRPC client to Constitutional Engine
 **Owning Office:** Solution Architect (Sprint 004)
-**Constitutional Basis:** AD-002 (Evidence First), AD-004 (Multi-tenant), C-034 (Employment lifecycle)
+**Constitutional Basis:** AD-002 (Evidence First), AD-004 (Multi-tenant), C-034 (Employment lifecycle), C-036 (Skills as constitutional units), C-037 (Business KPI primacy), C-038 (Pro-rata billing), C-039 (Conversational configuration)
 
 ---
 
@@ -109,6 +109,40 @@ Durable workflow management for multi-step employment operations.
 - Does NOT write to the Constitutional Audit Ledger directly (only via Constitutional Engine)
 - Does NOT call LLMs (that is AI Runtime via Professional Runtime)
 - Does NOT maintain WebSocket connections (Emergency Stop is handled by Professional Runtime)
+
+## New Components (v0.8.0 — C-036/037/038)
+
+### 6. Skill Manager
+**Responsibility:**
+- Manages the lifecycle of individual Skills within an Employment Contract (ACTIVE → PAUSED → TERMINATED per C-036)
+- Creates and updates `professional_skills` records
+- Routes Skill-level lifecycle events to Constitutional Engine for evidence recording
+- Enforces that Skill pause/resume does not affect other Skills in the same contract
+
+**Key methods:**
+```
+GET  /api/v1/employment/contracts/{id}/skills         → List skills in contract
+POST /api/v1/employment/contracts/{id}/skills         → Add skill to contract
+PUT  /api/v1/employment/contracts/{id}/skills/{skillId}/pause
+PUT  /api/v1/employment/contracts/{id}/skills/{skillId}/resume
+PUT  /api/v1/employment/contracts/{id}/skills/{skillId}/goals  → Update KPI targets
+```
+
+### 7. Performance Monitor
+**Responsibility:**
+- Tracks each Skill's performance against its stated business KPIs (C-037, AD-012)
+- Receives performance data from Professional Runtime (via REST) after each skill execution cycle
+- Presents business KPI dashboards — appointment growth, enquiry rate, trading return — NOT technical metrics
+- Triggers alerts when Skill KPIs trend below target for more than 2 consecutive periods
+
+### 8. Subscription Manager
+**Responsibility:**
+- Records billing events (SubscriptionBillingEvent) at every lifecycle change with minute-level precision (AD-014, C-038)
+- Calculates pro-rata charges at billing period end from the event ledger
+- Manages trial enrollment, trial conversion, and trial auto-termination
+- Generates customer-facing billing summaries (AD-014 — itemised per Skill)
+
+**Billing event triggers:** contract ACTIVATED/TERMINATED/SUSPENDED, skill ACTIVE/PAUSED/RESUMED, trial STARTED/CONVERTED/EXPIRED
 
 ## Runtime Requirements (for Dockerfile + startup)
 

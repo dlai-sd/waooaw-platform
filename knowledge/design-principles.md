@@ -1,9 +1,8 @@
 # Design Principles
 
-**Produced by:** Chief Business Architect (Sprint 002)
-**Date:** 2026-07-07
-**Work Contract:** WC-002
-**Constitutional Basis:** Ratified Claims C-001 through C-035
+**Produced by:** Chief Business Architect (Sprint 002 + v0.8.0 update)
+**Date:** 2026-07-07 (updated 2026-07-08)
+**Constitutional Basis:** Ratified Claims C-001 through C-039
 
 ---
 
@@ -178,7 +177,39 @@ Principles are listed in order of constitutional priority — Constitutional Flo
 
 ---
 
-## Design Principles Summary
+## DP-011 — Business Outcome First in Every Interface (v0.8.0)
+
+**Directive:** Every customer-facing interface — configuration, monitoring, reporting, billing — must present business outcomes as the primary language. Technical metrics, system identifiers, and operational state are secondary context. If a customer must think in technical terms to use WAOOAW, the interface has failed.
+
+**Why:** GENESIS establishes that the customer hires business capability, not technology. An interface that presents `authorized_actions[0].actionType = INSTAGRAM_POST` requires the customer to think technically. An interface that says "the agent is allowed to post on Instagram" delivers the same information in business language. C-039 mandates conversational configuration precisely because form-based technical interfaces violate this principle.
+
+**Constitutional Basis:** C-039 (conversational configuration — CONFIRMED); C-037 (business KPIs as primary performance measure — LAW); GENESIS "Business Outcome First"
+
+**Enforcement:**
+- All customer-facing API fields use business vocabulary (not enum codes) in human-readable form
+- UI/UX review must validate that no customer-facing screen requires technical literacy
+- Performance dashboards must lead with business KPIs; technical metrics are accessible but not primary
+- Agent onboarding conversational flow is tested with actual business owners (dentist, beauty artist, trader), not engineers
+
+---
+
+## DP-012 — Skill Granularity in Governance (v0.8.0)
+
+**Directive:** Every governance mechanism — Evidence First, Emergency Stop, authority licensing, billing — must operate at the Skill level, not only at the agent level. A customer who pauses a single Skill must not cause the entire agent to halt.
+
+**Why:** C-036 establishes that Skills are independently governable constitutional units. If the governance infrastructure only operates at the agent level, C-036 is architecturally unenforceable. A dental marketing agent with four skills (Instagram, Facebook, Google Business, WhatsApp) must allow the customer to pause only Instagram without affecting the others.
+
+**Constitutional Basis:** C-036 (Skills as independently governable units — LAW); C-038 (pro-rata billing at Skill level — LAW)
+
+**Enforcement:**
+- The `professional_skills` table has its own lifecycle state (ACTIVE, PAUSED, TERMINATED)
+- Billing events are generated per-Skill, not per-agent
+- Emergency Stop at agent level halts all Skills; but Skill-level pause only halts that Skill
+- The capability-to-container map must show Skill-level capabilities mapped to their owning containers
+
+---
+
+## Design Principles Summary (v0.8.0)
 
 | ID | Principle | Type | Constitutional Floor? |
 |---|---|---|---|
@@ -192,3 +223,5 @@ Principles are listed in order of constitutional priority — Constitutional Flo
 | DP-008 | Authority is Earned, Not Assumed | Design directive | No — Second Law consequence |
 | DP-009 | API First | Engineering process | No — Constitutional Chain consequence |
 | DP-010 | Observability by Default | Engineering mandate | No — First Law consequence |
+| **DP-011** | **Business Outcome First in Every Interface** | Engineering mandate | No — GENESIS mandate |
+| **DP-012** | **Skill Granularity in Governance** | Engineering mandate | Yes — C-036 LAW |

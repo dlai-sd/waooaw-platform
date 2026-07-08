@@ -2,7 +2,38 @@
 
 **Last Updated:** 2026-07-07
 
-**Session Reference:** v0.7.0 — FR-002/003/004 recorded + gaps bridged
+**Session Reference:** v0.8.0 — Skills, Performance, Billing, Conversational Config percolation
+
+## IN-PROGRESS CHECKPOINT
+
+| Milestone | Status |
+|---|---|
+| New claims C-036 to C-039 | ✓ DONE |
+| Capabilities + drivers + principles (BA) | ✓ DONE |
+| Domain model + containers (EA) | ✓ DONE |
+| Component specs: BP + AI Runtime (SA) | ✓ DONE |
+| Data architecture: skills + perf + billing (DA) | ✓ DONE |
+| OpenAPI: skill + subscription + performance (SA) | ✓ DONE |
+| v0.8.0 commit + push | ✓ DONE |
+
+---
+
+## RESUME BRIEFING — Updated for next session
+
+### Where we are
+```
+Version:  0.8.0  |  Gate: G5 CLEAR  |  Claims: C-001–C-039 | Capabilities: 42+
+Status:   Architecture COMPLETE and fully percolated. Implementation AUTHORIZED.
+```
+
+### TO-DO LIST — Next Session
+**P0:** IB-009 Foundation Implementation — first working code sprint
+**P1:** IB-014 API addenda (SA) | IB-016 Platform Ops | ADR-019 (institutional data store)
+**Founder one-time:** GitHub Project matrix view setup
+
+---
+
+**Previous Session Reference:** v0.7.0 — FR-002/003/004
 
 ## IN-PROGRESS CHECKPOINT
 
