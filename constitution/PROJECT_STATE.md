@@ -8,12 +8,10 @@
 
 | Milestone | Status |
 |---|---|
-| Gate fixes (BOOTSTRAP + AGENT-ENTRY + copilot-instructions + OD-008) | ✓ DONE |
-| Simulation gap fixes | ✓ DONE |
-| Surgical rollback (remove premature src/ code) | ✓ DONE |
-| R-011 presented for Founder approval | ✓ DONE — awaiting Founder response |
-| Trading Agent specification (AS-003) | ✓ DONE — DRAFT pending EA review |
-| Commit + push | ✓ DONE |
+| Digital Marketing Agent Founder approval recorded | ✓ DONE |
+| R-012 EA review of trading-agent.md | ✓ DONE — APPROVED |
+| trading-agent.md gaps fixed (from learnings) | ✓ DONE |
+| Commit + push | IN PROGRESS |
 
 ---
 

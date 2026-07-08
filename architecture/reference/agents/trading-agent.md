@@ -106,6 +106,18 @@ This is constitutionally justified because:
 - **Every order placement requires CE.ValidateAction BEFORE the MCP broker call (C-041, AD-002)**
 - Daily loss limit breach → agent must STOP execution and escalate to customer, even if within single-trade limits
 - Session window breach → agent must STOP execution, record session TERMINATED in evidence
+- **The agent's analysis and execution are NOT investment advice (SEBI regulatory boundary). The customer is the decision-maker in setting the Decision Space. The agent executes within that space — it does not advise beyond it.**
+
+**R012-01 fix — Broker API Authorization (always-ask):**
+
+Before the first trade execution in any session, the agent must verify broker API access is configured with execution permissions. This creates a constitutional evidence record.
+
+`BROKER_API_ACCESS_VERIFIED` — always-ask action:
+- Agent verifies `orders:write` permission on the API key
+- Agent confirms customer has enabled API trading in broker dashboard
+- Creates evidence record: action_type=BROKER_API_VERIFIED, constitutional_basis="C-041; C-003"
+- If verification fails → session cannot start; agent records BLOCKED state and alerts customer
+- If API key expires mid-session → agent halts execution gracefully, records SESSION_INTERRUPTED
 
 ---
 
@@ -116,9 +128,9 @@ This is constitutionally justified because:
 **Execution model:** PRE_AUTHORIZED (risk monitoring runs continuously alongside execution)
 
 **Decision Space:**
-- **Authorized:** Monitor open positions for stop-loss breach; calculate portfolio delta/vega/theta; trigger stop-loss orders (within Skill 2 authorization); calculate daily P&L; generate risk alerts
+- **Authorized:** Monitor open positions for stop-loss breach; calculate portfolio delta/vega/theta; trigger stop-loss orders (within Skill 2 authorization); calculate daily P&L; generate risk alerts; execute session-end position closure if authorized
 - **Prohibited:** Override a customer's stated stop-loss; hold positions beyond the approved session window; ignore a daily loss limit breach
-- **Always-ask:** Adjusting stop-loss levels mid-session (requires customer confirmation via Emergency Stop or explicit approval)
+- **Always-ask:** Adjusting stop-loss levels mid-session; `SESSION_END_POSITION_CLOSURE` — customer decides at onboarding: auto-close all positions at 3:00 PM or receive alert to close manually. This is a constitutional decision recorded in evidence.
 
 **RAG Sources:**
 | Tier | Knowledge | Retrieved for |
@@ -321,12 +333,15 @@ ProfessionalTemplate:
 - [x] Daily loss limit as a hard stop — not just a target (C-038, C-003)
 - [x] Acceptance Scenario AS-003 cited
 - [x] RAG Tier 1/3 (WAOOAW IP) and Tier 2 (customer private) separated (FR-003)
-- [x] Customer warned at onboarding that Emergency Stop does not auto-close overnight positions
+- [x] Customer warned that Emergency Stop does not auto-close overnight positions
+- [x] **R012-01 applied: BROKER_API_ACCESS_VERIFIED evidence record before any order placement**
+- [x] **Regulatory disclaimer in constitutional constraints (not investment advice — SEBI)**
+- [x] **SESSION_END_POSITION_CLOSURE as always-ask — customer decides at onboarding**
 
 ---
 
 ## 10. Review and Approval
 
-**EA Review required:** YES — R-012 pending
-**Founder Approval required:** YES — per GENESIS Part 05
-**Status:** DRAFT
+**EA Review:** R-012 — APPROVED (all three notes addressed in v1.0)
+**Founder Approval:** PENDING
+**Status:** READY FOR FOUNDER APPROVAL

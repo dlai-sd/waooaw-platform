@@ -376,7 +376,6 @@ ProfessionalTemplate:
 
 ## 8. Review and Approval
 
-**EA Review required:** YES — enterprise architect must verify capability-to-container mapping for all new Skills
-**Founder Approval required:** YES — first agent specification requires Founder approval per GENESIS Part 05
-
-**Status:** DRAFT — pending EA review
+**EA Review:** R-011 — APPROVED WITH NOTE (R011-01: add PATIENT_IMAGE_CONSENT_CONFIRMED to always-ask actions in Skills 2 and 6 — addressed in v1.1)
+**Founder Approval:** GRANTED — 2026-07-08 (per GENESIS Part 05)
+**Status:** APPROVED — active ProfessionalTemplate
