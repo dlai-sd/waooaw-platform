@@ -8,6 +8,47 @@ types: `feat` | `fix` | `constitutional` | `cct` | `chore` | `refactor` | `secur
 
 ---
 
+## [0.10.0] — 2026-07-08
+
+### Implementation (IB-009 Foundation)
+- `src/constitutional-engine/`: .NET 9 gRPC service skeleton
+  - ConstitutionalServiceImpl: RecordEvidence (writes to DB), ValidateAction stub, TriggerEmergencyStop
+  - Evidence First enforced: write confirmed before returning OK; gRPC INTERNAL on failure
+  - State transition validation (evidence-schema.md)
+  - ConstitutionalDbContext with EvidenceRecord + AuthorityLicense entities
+  - Dockerfile (multi-stage, non-root, grpc_health_probe)
+- `src/business-platform/`: .NET 9 REST service skeleton
+  - POST /api/v1/employment/contracts — Evidence First: CE called BEFORE SaveChangesAsync
+  - GET /api/v1/employment/contracts/{id}
+  - GET /health
+  - TenantDbCommandInterceptor: SET LOCAL app.tenant_id on every DB command
+  - JWT middleware: RS256, algorithm enforcement, tenant_id extraction
+  - BusinessDbContext with EmploymentContract entity
+  - Dockerfile (multi-stage, non-root)
+- `src/professional-runtime/`: Python FastAPI skeleton
+  - GET /health
+  - WSS /ws/emergency-stop (stub — READY frame, PING/PONG, EmergencyStop stub)
+  - POST /api/v1/paas/sessions (stub)
+  - Dockerfile + pyproject.toml
+- `src/ai-runtime/`: Python FastAPI skeleton
+  - GET /health
+  - POST /api/v1/inference (stub with C-041 enforcement placeholder)
+  - POST /api/v1/tools/execute (MCP stub — default deny enforced)
+  - Dockerfile + pyproject.toml
+- `tests/constitutional/bp/test_cct_ef_01.py`: CCT-EF-01 Evidence First pattern tests
+  - EF01_a/b: CE called before SaveChanges, failure path exists
+  - EF01_c: action_instance_id present
+  - EF01_d: constitutional_basis provided (AD-008)
+
+### Reviews
+- R-011: EA review of digital-marketing-agent.md — APPROVED WITH NOTE (patient consent mechanism)
+
+### Data Architecture
+- `01-schemas.sql`: institutional schema added (ADR-019, FR-003)
+- `03-enums-and-tables.sql`: domain_knowledge + platform_intelligence tables (institutional schema)
+
+---
+
 ## [0.9.0] — 2026-07-08
 
 ### Constitutional (new claims + GENESIS Part 05)

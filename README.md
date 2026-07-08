@@ -6,11 +6,11 @@
 
 ```
 Founding Corpus v1           Status: Ratified
-Version:                     0.9.0 — Digital Marketing Agent + RAG/MCP Architecture (2026-07-08)
-Current Epoch:               Epoch 1 — Employment
-Current Gate:                G2-G4: PASSED — G5: CLEAR
-Claims:                      C-001 to C-041 | ADRs: 20 | Capabilities: 42+ | Agents: 1 spec
-Engineering Status:          Architecture COMPLETE | Implementation AUTHORIZED
+Version:                     0.10.0 — IB-009 Foundation Implementation (2026-07-08)
+Current Epoch:               Epoch 1 — Employment (first code)
+Current Gate:                G5 IN PROGRESS
+Engineering Status:          Architecture COMPLETE | Implementation STARTED
+4 services:                  CE (.NET 9 gRPC) | BP (.NET 9 REST) | PR (Python) | AI (Python)
 ```
 
 ---

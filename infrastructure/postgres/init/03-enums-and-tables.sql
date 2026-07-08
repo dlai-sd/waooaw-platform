@@ -321,3 +321,53 @@ CREATE INDEX idx_creative_embeddings_cosine
     ON professional.creative_standard_embeddings
     USING ivfflat (embedding vector_cosine_ops)
     WITH (lists = 100);
+
+-- ─── Institutional Schema (ADR-019, FR-003 — WAOOAW IP) ──────────────────────
+-- Domain learning patterns. NOT customer data. No RLS needed — no customer access.
+
+SET search_path TO institutional;
+
+CREATE EXTENSION IF NOT EXISTS vector;  -- may already exist from professional schema
+
+-- Domain knowledge chunks (Tier 1 RAG — WAOOAW IP)
+-- Indexed knowledge about industry, regulations, best practices per professional type
+CREATE TABLE institutional.domain_knowledge (
+    id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    professional_type       VARCHAR(50) NOT NULL,   -- DIGITAL_MARKETING_HEALTHCARE, TRADING_FO, etc.
+    knowledge_category      VARCHAR(100) NOT NULL,  -- ALGORITHM_PATTERNS, REGULATION, BEST_PRACTICE, SEASONAL
+    content                 TEXT NOT NULL,
+    content_embedding       vector(1536),           -- for semantic retrieval
+    region                  VARCHAR(50),            -- IN-PUNE, IN-MUMBAI, IN-ALL, etc.
+    valid_from              DATE,
+    valid_until             DATE,                   -- knowledge expires (e.g., algorithm updates)
+    source                  VARCHAR(200),
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_domain_knowledge_embedding
+    ON institutional.domain_knowledge
+    USING ivfflat (content_embedding vector_cosine_ops)
+    WITH (lists = 100);
+
+CREATE INDEX idx_domain_knowledge_type ON institutional.domain_knowledge(professional_type, knowledge_category);
+
+-- Platform intelligence (Tier 3 RAG — WAOOAW IP)
+-- Aggregate patterns derived from cross-customer signals (anonymised, no customer identification)
+CREATE TABLE institutional.platform_intelligence (
+    id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    professional_type       VARCHAR(50) NOT NULL,
+    pattern_category        VARCHAR(100) NOT NULL,  -- POSTING_EFFECTIVENESS, TIMING, CONTENT_FORMAT
+    pattern_description     TEXT NOT NULL,
+    pattern_embedding       vector(1536),
+    region                  VARCHAR(50),
+    derived_from_count      INT NOT NULL DEFAULT 0, -- how many customer signals contributed (no PII)
+    confidence_score        DECIMAL(3,2),           -- 0.00 to 1.00
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    last_updated_at         TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_platform_intelligence_embedding
+    ON institutional.platform_intelligence
+    USING ivfflat (pattern_embedding vector_cosine_ops)
+    WITH (lists = 100);

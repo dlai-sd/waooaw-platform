@@ -2,7 +2,50 @@
 
 **Last Updated:** 2026-07-07
 
-**Session Reference:** v0.9.0 — Digital Marketing Agent + RAG/MCP Architecture + Agent Authoring Protocol
+**Session Reference:** v0.10.0 — IB-009 Foundation Implementation (first working code)
+
+## IN-PROGRESS CHECKPOINT
+
+| Milestone | Status |
+|---|---|
+| R-011 EA review digital-marketing-agent.md | ✓ DONE — APPROVED WITH NOTE |
+| Institutional schema in postgres init | ✓ DONE |
+| CE skeleton: .NET 9 gRPC + RecordEvidence | ✓ DONE |
+| BP skeleton: .NET 9 REST + JWT + /health | ✓ DONE |
+| PR skeleton: Python FastAPI + /health + WS stub | ✓ DONE |
+| AI Runtime skeleton: Python FastAPI + /health | ✓ DONE |
+| CCT-EF-01: Evidence First test | ✓ DONE — pattern + stub |
+| v0.10.0 commit + push | ✓ DONE |
+
+---
+
+## RESUME BRIEFING — IB-009 Sprint 2 Next
+
+### Where we are
+```
+Version:  0.10.0  |  Gate: G5 IN PROGRESS  |  4 service skeletons committed
+Services: CE (gRPC + RecordEvidence) | BP (REST + Evidence First) | PR (WS stub) | AI (MCP stub)
+CCT-EF-01: pattern verified, integration test skeleton in tests/constitutional/bp/
+```
+
+### TO-DO LIST — Next Session (Sprint 2)
+**P0 — Make docker compose up work:**
+1. Run `./scripts/setup.sh` — verify all services start with /health = 200
+2. Fix any startup issues (proto compile, DB migration, JWT config)
+3. Run CCT-EF-01 against live services (TestContainers)
+
+**P1 — Sprint 2 implementation:**
+4. CE: EF Core InitialBaseline migration (engineering-standards §9)
+5. BP → CE: gRPC connection working end-to-end (not stub)
+6. PR Emergency Stop: CE.TriggerEmergencyStop + Temporal signal (ADR-018)
+7. CCT-HO-01: Emergency Stop latency ≤250ms measured
+
+**P1 — Trading Agent specification:**
+8. `architecture/reference/agents/trading-agent.md` (AS-003 — FO/Crypto trader)
+
+---
+
+**Previous Session Reference:** v0.9.0 — Digital Marketing Agent + RAG/MCP
 
 ## IN-PROGRESS CHECKPOINT
 

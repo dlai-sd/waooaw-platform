@@ -13,6 +13,11 @@ CREATE SCHEMA IF NOT EXISTS business;
 -- Professional Experience Ledger — professional-owned, portable
 CREATE SCHEMA IF NOT EXISTS professional;
 
+-- Institutional Learning — WAOOAW IP (FR-003, ADR-019)
+-- Domain knowledge + platform intelligence derived from aggregate signals
+-- NOT customer data. NOT subject to RLS. WAOOAW internal use only.
+CREATE SCHEMA IF NOT EXISTS institutional;
+
 -- Keycloak uses its own schema (configured in docker-compose KC_DB_SCHEMA)
 CREATE SCHEMA IF NOT EXISTS keycloak;
 
