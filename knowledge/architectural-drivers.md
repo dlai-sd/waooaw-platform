@@ -1,8 +1,7 @@
 # Architectural Drivers
 
-**Produced by:** Chief Business Architect (Sprint 002)
-**Date:** 2026-07-07
-**Work Contract:** WC-002
+**Produced by:** Chief Business Architect (Sprint 002 + v0.11.0 update)
+**Date:** 2026-07-07 (updated 2026-07-08)
 **Constitutional Basis:** Ratified Claims C-001 through C-035, GENESIS Part 01
 
 ---
@@ -228,7 +227,27 @@ Any architectural change that shifts the budget of one segment must be evaluated
 
 ---
 
-## Architectural Drivers Summary (v0.8.0)
+## AD-015 — Multilingual Voice Interface for C-042 Agents (v0.11.0)
+
+**Requirement:** Any agent whose constitutional basis includes C-042 (Vocabulary Mandate) must deliver its primary customer interface via natural-language voice input/output in the dominant regional language(s) of the target customer population. Text/form interfaces are permitted only as secondary channels. The voice pipeline must not require the customer to type or use a smartphone app beyond WhatsApp.
+
+**Type:** HARD — derives directly from C-042 (LAW). C-042 mandates that no technical data shall reach a low-literacy customer. A text-only or form-only interface is itself a form of technical data exposure (requiring literacy the customer may not have).
+
+**Constitutional Basis:** C-042 (Vocabulary Mandate — LAW); C-039 (conversational interface — CONFIRMED); AS-005 (small and marginal farmer primary channel is WhatsApp voice)
+
+**Capabilities Constrained:** 10.1, 10.2, 10.3, 10.4, 10.5, 10.6 — all Domain 10 capabilities; and any future agent with C-042 in its constitutional basis
+
+**Architectural Consequence:** The AI Runtime's Vocabulary Translation Layer (see component spec) must:
+1. Accept voice input via WhatsApp Business API Audio → speech-to-text (regional language)
+2. Route through the agent's decision logic with full C-042 vocabulary enforcement
+3. Render the response as audio via text-to-speech in the same regional language
+4. Record the input transcript, decision chain, and output text (not audio) in the Constitutional Audit Ledger
+
+The voice pipeline latency budget is ≤5 seconds end-to-end for standard advisory responses. Alert delivery (10.1) may be push-only (agent initiates) — no customer voice input required.
+
+---
+
+## Architectural Drivers Summary (v0.11.0)
 
 | ID | Driver | Type | Primary Constraint |
 |---|---|---|---|
@@ -246,3 +265,4 @@ Any architectural change that shifts the budget of one segment must be evaluated
 | **AD-012** | **Business KPI Primacy** | **HARD** | **Performance monitoring, self-improvement** |
 | **AD-013** | **Conversational Config Completeness (<15 min)** | **HARD** | **Configuration and onboarding** |
 | **AD-014** | **Pro-Rata Billing Precision (minute-level)** | **HARD** | **Subscription lifecycle, billing** |
+| **AD-015** | **Multilingual Voice Interface (C-042 agents)** | **HARD** | **Agricultural advisory, any C-042 agent** |

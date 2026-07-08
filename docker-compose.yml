@@ -165,6 +165,12 @@ services:
       LLM_API_KEY: ${LLM_API_KEY}
       LLM_MODEL: ${LLM_MODEL:-gpt-4o-mini}
       OTLP_ENDPOINT: http://jaeger:4317
+      # MCP server endpoints (internal network, C-041: validated before every tool call)
+      MCP_WEATHER_ENSEMBLE_URL: http://weather-ensemble-mcp:8100
+      MCP_AGMARKNET_URL: http://agmarknet-mcp:8101
+      MCP_WHATSAPP_VOICE_URL: http://whatsapp-voice-mcp:8102
+      MCP_BROKER_API_URL: http://broker-api-mcp:8103
+      MCP_WHATSAPP_BUSINESS_URL: http://whatsapp-business-mcp:8104
     depends_on:
       postgres:
         condition: service_healthy
@@ -172,6 +178,151 @@ services:
       test: ["CMD-SHELL", "curl -sf http://localhost:5004/health || exit 1"]
       interval: 10s
       retries: 5
+
+  # =============================================================================
+  # MCP Integration Layer (ADR-020) — dev stubs
+  # All MCP servers: stateless adapters only. No business logic.
+  # C-041: CE.ValidateAction called by ai-runtime BEFORE any tool invocation.
+  # =============================================================================
+
+  weather-ensemble-mcp:
+    # 5-source ensemble: IMD, OpenWeatherMap, ECMWF, Weather.gov, AccuWeather
+    # Used by: Agricultural Advisory Agent (AS-005 — 10km hyperlocal alerts)
+    image: python:3.12-slim
+    command: >
+      sh -c "pip install fastapi uvicorn httpx --quiet &&
+             python -c \"
+import uvicorn
+from fastapi import FastAPI
+app = FastAPI(title='weather-ensemble-mcp-stub')
+@app.get('/health')
+def health(): return {'status': 'ok', 'stub': True}
+@app.get('/tools')
+def tools(): return {'tools': ['get_ensemble_forecast', 'get_current_conditions', 'get_crop_risk_assessment']}
+@app.post('/call/{tool_name}')
+def call(tool_name: str, body: dict = {}): return {'tool': tool_name, 'result': 'STUB — real implementation requires API keys', 'stub': True}
+uvicorn.run(app, host='0.0.0.0', port=8100)
+\""
+    ports:
+      - "8100:8100"
+    environment:
+      # Real credentials injected via secrets in production (ADR-014)
+      IMD_API_KEY: ${IMD_API_KEY:-stub}
+      OWM_API_KEY: ${OWM_API_KEY:-stub}
+      ACCUWEATHER_API_KEY: ${ACCUWEATHER_API_KEY:-stub}
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8100/health || exit 1"]
+      interval: 15s
+      retries: 3
+
+  agmarknet-mcp:
+    # Agmarknet + eNAM price data for mandi price intelligence (capability 10.3)
+    # Used by: Agricultural Advisory Agent
+    image: python:3.12-slim
+    command: >
+      sh -c "pip install fastapi uvicorn httpx --quiet &&
+             python -c \"
+import uvicorn
+from fastapi import FastAPI
+app = FastAPI(title='agmarknet-mcp-stub')
+@app.get('/health')
+def health(): return {'status': 'ok', 'stub': True}
+@app.get('/tools')
+def tools(): return {'tools': ['get_mandi_prices', 'get_msp_rates', 'get_price_trend']}
+@app.post('/call/{tool_name}')
+def call(tool_name: str, body: dict = {}): return {'tool': tool_name, 'result': 'STUB — Agmarknet API integration pending', 'stub': True}
+uvicorn.run(app, host='0.0.0.0', port=8101)
+\""
+    ports:
+      - "8101:8101"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8101/health || exit 1"]
+      interval: 15s
+      retries: 3
+
+  whatsapp-voice-mcp:
+    # WhatsApp Business Cloud API — audio message ingestion + TTS delivery
+    # Used by: Agricultural Advisory Agent (AD-015: voice-primary interface)
+    image: python:3.12-slim
+    command: >
+      sh -c "pip install fastapi uvicorn httpx --quiet &&
+             python -c \"
+import uvicorn
+from fastapi import FastAPI
+app = FastAPI(title='whatsapp-voice-mcp-stub')
+@app.get('/health')
+def health(): return {'status': 'ok', 'stub': True}
+@app.get('/tools')
+def tools(): return {'tools': ['receive_voice_message', 'send_voice_message', 'transcribe_audio']}
+@app.post('/call/{tool_name}')
+def call(tool_name: str, body: dict = {}): return {'tool': tool_name, 'result': 'STUB — WhatsApp Business API credentials required', 'stub': True}
+uvicorn.run(app, host='0.0.0.0', port=8102)
+\""
+    ports:
+      - "8102:8102"
+    environment:
+      WHATSAPP_ACCESS_TOKEN: ${WHATSAPP_ACCESS_TOKEN:-stub}
+      WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID:-stub}
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8102/health || exit 1"]
+      interval: 15s
+      retries: 3
+
+  broker-api-mcp:
+    # Broker API adapter — Zerodha Kite / ICICI Direct / Angel One (configurable)
+    # Used by: Trading Agent. BROKER_API_ACCESS_VERIFIED required in always-ask actions.
+    image: python:3.12-slim
+    command: >
+      sh -c "pip install fastapi uvicorn httpx --quiet &&
+             python -c \"
+import uvicorn
+from fastapi import FastAPI
+app = FastAPI(title='broker-api-mcp-stub')
+@app.get('/health')
+def health(): return {'status': 'ok', 'stub': True}
+@app.get('/tools')
+def tools(): return {'tools': ['place_order', 'get_positions', 'get_portfolio', 'get_market_data', 'cancel_order', 'get_ohlcv', 'get_option_chain']}
+@app.post('/call/{tool_name}')
+def call(tool_name: str, body: dict = {}): return {'tool': tool_name, 'result': 'STUB — broker credentials and SEBI registration required', 'stub': True}
+uvicorn.run(app, host='0.0.0.0', port=8103)
+\""
+    ports:
+      - "8103:8103"
+    environment:
+      BROKER_API_KEY: ${BROKER_API_KEY:-stub}
+      BROKER_API_SECRET: ${BROKER_API_SECRET:-stub}
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8103/health || exit 1"]
+      interval: 15s
+      retries: 3
+
+  whatsapp-business-mcp:
+    # WhatsApp Business API — text/media messaging
+    # Used by: Digital Marketing Agent (Skill 5: WhatsApp Campaign Execution)
+    image: python:3.12-slim
+    command: >
+      sh -c "pip install fastapi uvicorn httpx --quiet &&
+             python -c \"
+import uvicorn
+from fastapi import FastAPI
+app = FastAPI(title='whatsapp-business-mcp-stub')
+@app.get('/health')
+def health(): return {'status': 'ok', 'stub': True}
+@app.get('/tools')
+def tools(): return {'tools': ['send_campaign_message', 'get_message_analytics', 'create_template']}
+@app.post('/call/{tool_name}')
+def call(tool_name: str, body: dict = {}): return {'tool': tool_name, 'result': 'STUB — WhatsApp Business credentials required', 'stub': True}
+uvicorn.run(app, host='0.0.0.0', port=8104)
+\""
+    ports:
+      - "8104:8104"
+    environment:
+      WHATSAPP_ACCESS_TOKEN: ${WHATSAPP_ACCESS_TOKEN:-stub}
+      WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID:-stub}
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8104/health || exit 1"]
+      interval: 15s
+      retries: 3
 
   web:
     build:

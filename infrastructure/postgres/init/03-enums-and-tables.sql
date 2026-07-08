@@ -371,3 +371,86 @@ CREATE INDEX idx_platform_intelligence_embedding
     ON institutional.platform_intelligence
     USING ivfflat (pattern_embedding vector_cosine_ops)
     WITH (lists = 100);
+
+-- =============================================================================
+-- AGRICULTURAL ADVISORY — Progressive Crop State Model (v0.11.0 — AS-005)
+-- Constitutional Basis: C-039 (conversational continuity across sessions),
+--                       C-040 (domain specialization — Progressive Crop State),
+--                       AD-019 (RAG Tier 2 — Customer Intelligence)
+-- =============================================================================
+
+-- Farmer profile: one row per employment_contract_id (set once during onboarding, C-039)
+-- Vocabulary Mandate (C-042): this table stores agronomic facts, never surfaced raw to customer
+CREATE TABLE business.farmer_profiles (
+    id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    employment_contract_id  UUID NOT NULL REFERENCES business.employment_contracts(id),
+    organisation_id         UUID NOT NULL REFERENCES business.organisations(id),  -- tenant isolation
+    village_name            VARCHAR(200) NOT NULL,
+    district                VARCHAR(100) NOT NULL,
+    state                   VARCHAR(100) NOT NULL DEFAULT 'Maharashtra',
+    latitude                DECIMAL(9,6),                          -- for 10km weather radius
+    longitude               DECIMAL(9,6),
+    total_acres             DECIMAL(8,2),
+    irrigation_type         VARCHAR(50),                           -- RAINFED, BOREWELL, CANAL, DRIP
+    soil_type               VARCHAR(50),                           -- BLACK_COTTON, RED, ALLUVIAL
+    primary_language        VARCHAR(20) NOT NULL DEFAULT 'marathi', -- for Vocabulary Translation Layer
+    whatsapp_number         VARCHAR(20),                            -- E.164 format
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT uq_farmer_profile_contract UNIQUE (employment_contract_id)
+);
+
+CREATE INDEX idx_farmer_profiles_org ON business.farmer_profiles(organisation_id);
+CREATE INDEX idx_farmer_profiles_location ON business.farmer_profiles(district, state);
+
+-- Progressive Crop State Model: one row per active crop season per farmer
+-- Updated conversationally across all interactions (C-039)
+-- Evidence of crop state transitions stored here — used for PMFBY evidence chain (C-023)
+CREATE TABLE business.agent_progressive_state (
+    id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    employment_contract_id  UUID NOT NULL REFERENCES business.employment_contracts(id),
+    organisation_id         UUID NOT NULL REFERENCES business.organisations(id),
+    professional_type       VARCHAR(50) NOT NULL,                  -- 'agricultural_advisor', etc.
+    state_key               VARCHAR(200) NOT NULL,                 -- namespaced key: 'crop.kharif_2026.soybean.growth_stage'
+    state_value             TEXT NOT NULL,                         -- JSON-encoded state
+    state_value_embedding   vector(1536),                          -- for RAG Tier 2 similarity search
+    season                  VARCHAR(50),                           -- KHARIF_2026, RABI_2026_27
+    crop_name               VARCHAR(100),
+    growth_stage            VARCHAR(100),                          -- SOWING, VEGETATIVE, FLOWERING, HARVEST
+    last_observed_date      DATE,                                  -- date of last farmer check-in
+    confidence_level        VARCHAR(20) DEFAULT 'OBSERVED',        -- OBSERVED, INFERRED, ASSUMED
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_progressive_state_contract ON business.agent_progressive_state(employment_contract_id);
+CREATE INDEX idx_progressive_state_season ON business.agent_progressive_state(employment_contract_id, season);
+CREATE INDEX idx_progressive_state_embedding
+    ON business.agent_progressive_state
+    USING ivfflat (state_value_embedding vector_cosine_ops)
+    WITH (lists = 100)
+    WHERE state_value_embedding IS NOT NULL;
+
+-- Weather alert log: immutable record for PMFBY evidence chain (C-023, C-007)
+-- Each alert sent to farmer is an append-only record; farmer acknowledgment appended as separate row
+CREATE TABLE business.weather_alert_log (
+    id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    employment_contract_id  UUID NOT NULL REFERENCES business.employment_contracts(id),
+    organisation_id         UUID NOT NULL REFERENCES business.organisations(id),
+    alert_type              VARCHAR(50) NOT NULL,                  -- RAINFALL_EXCESS, DROUGHT, FROST, HEATWAVE, PEST_RISK
+    severity                VARCHAR(20) NOT NULL,                  -- INFO, WARNING, CRITICAL
+    crop_name               VARCHAR(100),
+    alert_message_farmer    TEXT NOT NULL,                         -- farmer-vocabulary version (C-042)
+    alert_message_technical TEXT,                                  -- raw meteorological data (CAL only)
+    alert_issued_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    farmer_acknowledged_at  TIMESTAMPTZ,                           -- NULL if no acknowledgment yet
+    adverse_event_confirmed_at TIMESTAMPTZ,                        -- NULL if event did not occur
+    pmfby_evidence_exported_at TIMESTAMPTZ,                        -- NULL if not yet used for claim
+    -- Evidence First: this record is the evidence chain link
+    cal_event_id            UUID REFERENCES constitutional.evidence_records(id)
+);
+
+CREATE INDEX idx_weather_alert_contract ON business.weather_alert_log(employment_contract_id);
+CREATE INDEX idx_weather_alert_issued ON business.weather_alert_log(alert_issued_at);
+CREATE INDEX idx_weather_alert_pmfby ON business.weather_alert_log(pmfby_evidence_exported_at)
+    WHERE pmfby_evidence_exported_at IS NOT NULL;

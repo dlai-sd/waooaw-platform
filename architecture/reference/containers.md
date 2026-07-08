@@ -1,8 +1,8 @@
 # C4 Level 2 — Container Diagram
 
-**Produced by:** Enterprise Architect (Sprint 003)
-**Date:** 2026-07-07
-**ADR References:** ADR-001 (gRPC), ADR-003 (JWT/RLS), ADR-004 (SignalR), ADR-005 (PAAS session), ADR-008 (Keycloak), ADR-009 (OTel), ADR-012 (GHCR)
+**Produced by:** Enterprise Architect (Sprint 003, updated v0.11.0)
+**Date:** 2026-07-07 (updated 2026-07-08)
+**ADR References:** ADR-001 (gRPC), ADR-003 (JWT/RLS), ADR-004 (SignalR), ADR-005 (PAAS session), ADR-008 (Keycloak), ADR-009 (OTel), ADR-012 (GHCR), ADR-019 (RAG), ADR-020 (MCP)
 
 ---
 
@@ -98,8 +98,8 @@ Customer Browser / Mobile App
 
 ### AI Runtime
 - **Technology:** Python 3.12, FastAPI, LLM client libraries
-- **Responsibility:** LLM gateway — abstracts all AI provider communication. Receives Decision Space context for every inference call, ensuring AI never operates beyond licensed scope. Tool execution (web search, API calls, market data queries). Internal-only.
-- **Communication:** Called by Professional Runtime (REST internal); calls LLM providers (HTTPS external); calls market data APIs (trading scenario)
+- **Responsibility:** LLM gateway — abstracts all AI provider communication. Receives Decision Space context for every inference call, ensuring AI never operates beyond licensed scope. Tool execution via MCP clients (ADR-020). Vocabulary Translation Layer (DP-013) for C-042 agents. RAG pipeline for domain specialization (ADR-019). Internal-only.
+- **Communication:** Called by Professional Runtime (REST internal); calls LLM providers (HTTPS external); calls MCP Integration Layer services; calls vector store in PostgreSQL (pgvector)
 - **Hosting:** Container Apps (cloud, internal ingress only) / port 5004 (dev)
 
 ### PostgreSQL 16 + pgvector
@@ -124,6 +124,33 @@ Customer Browser / Mobile App
 
 ---
 
+## MCP Integration Layer (v0.11.0 — ADR-020)
+
+The AI Runtime is an MCP client. Agent-specific capabilities that require real-time external data are delivered through MCP-compliant servers. Each MCP server is a lightweight sidecar container — it does NOT contain business logic; it contains data access adapters only.
+
+**Constitutional constraint (C-041):** Every MCP tool call is gated by a `CE.ValidateAction` call before execution. This is enforced in the AI Runtime's MCP client, not in the MCP servers themselves.
+
+### MCP Server Inventory
+
+| MCP Server | Used By | Data Source | Deployment |
+|---|---|---|---|
+| `weather-ensemble-mcp` | Agricultural Advisory Agent | IMD API, OpenWeatherMap, ECMWF, Weather.gov, AccuWeather (5-source ensemble) | Sidecar container (dev), Container Apps (cloud) |
+| `agmarknet-mcp` | Agricultural Advisory Agent | Agmarknet government portal, eNAM | Sidecar container (dev), Container Apps (cloud) |
+| `whatsapp-voice-mcp` | Agricultural Advisory Agent | WhatsApp Business Cloud API (voice messages) | Sidecar container (dev), Container Apps (cloud) |
+| `broker-api-mcp` | Trading Agent | Zerodha Kite, ICICI Direct, Angel One (configurable at employment contract time) | Sidecar container (dev), Container Apps (cloud) |
+| `whatsapp-business-mcp` | Digital Marketing Agent | WhatsApp Business API | Sidecar container (dev), Container Apps (cloud) |
+
+### MCP Architecture Principles (ADR-020)
+
+- MCP servers are stateless adapters — all state is in PostgreSQL
+- MCP servers run in the same Azure Container Apps Environment as the AI Runtime (no external network for internal calls)
+- Each MCP server exposes only the tools listed in its Tool Catalogue (GENESIS Part 05, Section 5)
+- CE.ValidateAction is called by the AI Runtime before the MCP call — MCP servers do not validate authority
+- Tool call results are returned to the AI Runtime for Vocabulary Translation Layer processing before reaching the customer
+- Production MCP servers require mTLS to the AI Runtime (same trust domain as CE — ADR-007)
+
+---
+
 ## Communication Protocol Summary
 
 | From | To | Protocol | Sync/Async | Why |
@@ -133,6 +160,7 @@ Customer Browser / Mobile App
 | Business Platform | Constitutional Engine | gRPC | Sync | Evidence First (AD-002) |
 | Professional Runtime | Constitutional Engine | gRPC | Sync | Evidence First (AD-002) |
 | Professional Runtime | AI Runtime | REST (internal) | Sync | Decision Space constrained inference |
+| AI Runtime | MCP servers | MCP (HTTP, internal) | Sync | Tool execution (C-041 gated) |
 | Business Platform | Temporal | Temporal SDK | Async | Durable workflow orchestration |
 | Professional Runtime | Temporal | Temporal SDK (worker) | Async | Workflow execution |
 | All services | PostgreSQL | TCP (EF Core / asyncpg) | Sync | Persistence |

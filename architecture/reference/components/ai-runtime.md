@@ -83,6 +83,45 @@ The AI Runtime is an MCP client. Every external platform action goes through an 
 
 **Default deny:** unauthorized tools are never called, no fallback, no exception. See ADR-020 for the full MCP server registry.
 
+## Vocabulary Translation Layer (v0.11.0 — DP-013, C-042, AD-015)
+
+**Activation:** The Vocabulary Translation Layer is activated when the agent's Decision Space configuration contains `vocabulary_mandate: true`. This flag is set by the Business Platform during employment contract formation for all agents with C-042 in their constitutional basis.
+
+**Purpose:** Intercepts every outbound response from the LLM and enforces translation from technical/data vocabulary into the customer's occupational vocabulary. This is a structural enforcement mechanism — not a prompt instruction.
+
+**Processing pipeline:**
+
+```
+LLM generates raw response (may contain technical data — this is internal)
+    ↓
+[Vocabulary Translation Layer — if vocabulary_mandate: true]
+    ↓ Step 1: Language detection — confirm target language from farmer_profile.primary_language
+    ↓ Step 2: Technical data scan — reject response if: numeric + unit pattern detected (%, °C, mm, hPa, index)
+    ↓ Step 3: Translation — invoke domain-vocabulary LLM call with occupational vocabulary prompt
+    ↓ Step 4: Output validation — assert no technical data patterns in translated output
+    ↓ Step 5: CAL logging — append (raw_response, translated_response, language) to evidence_records
+    ↓ Step 6: TTS routing — if interface_channel = 'whatsapp_voice': route to whatsapp-voice-mcp for audio delivery
+         ↓ [AD-015: voice-primary delivery path]
+Customer receives translated, voice-delivered advisory
+```
+
+**Failure handling:** If Step 4 validation fails (translation still contains technical data), the response is REFUSED — a refusal message in farmer vocabulary is delivered instead, and an internal alert is raised. The raw LLM response is logged for review. Under no circumstances does technical data reach the customer.
+
+**Domain vocabulary reference (agricultural advisory, Marathi):**
+
+| Technical Data | Farmer Vocabulary (Marathi example) |
+|---|---|
+| "Humidity will reach 85% on Thursday" | "गुरुवारी पाऊस पडण्याची शक्यता आहे — सोयाबीन झाकण्याची तयारी ठेवा" |
+| "Temperature: 38°C, risk of heat stress" | "उद्या कडक ऊन राहील — सकाळी पाणी द्या, दुपारी शेतात जाऊ नका" |
+| "Mandi price: ₹4,200/quintal (MSP: ₹3,950)" | "आज तुमच्या सोयाबीनला सरकारी भावापेक्षा जास्त मिळेल — आता विकणे फायद्याचे आहे" |
+| "Pest risk index: 0.72 (HIGH)" | "पुढच्या 3 दिवसांत अळी येण्याची शक्यता आहे — आज फवारणी करा" |
+
+**What the Vocabulary Translation Layer does NOT do:**
+- Does NOT translate for agents without `vocabulary_mandate: true`
+- Does NOT alter the LLM's internal reasoning or tool call parameters
+- Does NOT suppress safety information — if a crop is at risk, the farmer-vocabulary version still conveys urgency
+- Does NOT translate language between two literate users (this is not a general translation service)
+
 ## What AI Runtime does NOT do
 - Does NOT write to the Constitutional Audit Ledger
 - Does NOT make authority decisions
@@ -110,5 +149,6 @@ The AI Runtime is an MCP client. Every external platform action goes through an 
 
 ## Dependencies
 - **LLM Providers** (HTTPS external — OpenAI, Azure OpenAI)
-- **PostgreSQL** (pgvector — Creative Standard Profile embeddings, read only)
-- **External APIs** (social media, broker, market data — called via Tool Executor)
+- **PostgreSQL** (pgvector — Creative Standard Profile embeddings, agent_progressive_state, read only)
+- **MCP Integration Layer** (internal network — weather-ensemble-mcp, agmarknet-mcp, whatsapp-voice-mcp, broker-api-mcp, whatsapp-business-mcp)
+- **Constitutional Engine** (gRPC — CE.ValidateAction before every MCP tool call per C-041)

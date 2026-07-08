@@ -1,45 +1,56 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-07-07
-
-**Session Reference:** Gate violation fix + Trading Agent specification
-
-## IN-PROGRESS CHECKPOINT
-
-| Milestone | Status |
-|---|---|
-| Digital Marketing Agent Founder approval recorded | ✓ DONE |
-| R-012 EA review of trading-agent.md | ✓ DONE — APPROVED |
-| trading-agent.md gaps fixed (from learnings) | ✓ DONE |
-| Commit + push | IN PROGRESS |
-
----
+**Last Updated:** 2026-07-08
 
 ## RESUME BRIEFING
 
 ### Where we are
 ```
-Version:  0.11.0  |  Gate: G5 prerequisites met | 3 agent specs (2 approved, 1 draft)
-Violation corrected: OD-008, gate enforcement patched, src/ code removed
+Version:  0.12.0  |  Gate: G5 prerequisites met | 3 agent specs (2 approved, 1 draft)
+Simulation run COMPLETE — 9 architecture gaps found and fixed
 Agents: Digital Marketing (APPROVED) | Trading (APPROVED) | Agricultural (DRAFT R-013 pending)
 New claim: C-042 Vocabulary Mandate (LAW)
 ```
 
+### Architecture Simulation v0.12.0 — Gaps Fixed
+
+| Layer | Gap | Fix | File |
+|---|---|---|---|
+| Layer 2 — Capabilities | No Domain 10 (Agricultural Advisory) | Added Domain 10 with 6 capabilities | business-capabilities.md |
+| Layer 2 — Drivers | AD-015 missing (Multilingual Voice) | Added AD-015 full definition | architectural-drivers.md |
+| Layer 2 — Principles | DP-013 missing (Vocabulary Translation Layer) | Added DP-013 full definition | design-principles.md |
+| Layer 3 — Containers | MCP Integration Layer absent | Added MCP section + 5-server inventory | containers.md |
+| Layer 4 — Components | AI Runtime: Vocabulary Translation Layer underspecified | Full processing pipeline + domain vocab table | ai-runtime.md |
+| Layer 5 — Data | `business.farmer_profiles` missing | Added table | 03-enums-and-tables.sql |
+| Layer 5 — Data | `business.agent_progressive_state` missing | Added table | 03-enums-and-tables.sql |
+| Layer 5 — Data | `business.weather_alert_log` missing (PMFBY evidence chain) | Added table | 03-enums-and-tables.sql |
+| Layer 6 — Infra | 5 MCP server stubs missing from docker-compose | Added all 5 stubs (ports 8100–8104) | docker-compose.yml |
+
 ### TO-DO LIST
 **P0 (architecture):**
-1. R-013 EA review of agricultural-advisor-agent.md
+1. R-013 EA review of agricultural-advisor-agent.md — NEXT TASK
 2. Founder approval of Agricultural Agent (GENESIS Part 05)
 3. GENESIS amendment: add AS-005 (Small Farmer Agricultural Advisory)
 
 **P0 (implementation — Founder must explicitly authorize per session):**
 4. `git checkout dfbaf0b -- src/` to restore IB-009 code when authorized
-5. `./scripts/setup.sh` → verify `docker compose up` → all 4 /health = 200
+5. `./scripts/setup.sh` → verify `docker compose up` → all 4 /health = 200 + 5 MCP stubs = 200
 
 ---
 
-**Previous Session Reference:** v0.10.0 (VIOLATION: premature IB-009 implementation)
+## Previous Version Checkpoint (v0.11.0)
 
-## IN-PROGRESS CHECKPOINT
+**Reference:** v0.11.0 — Agricultural Advisory Agent + C-042 Vocabulary Mandate
+
+| Item | Status |
+|---|---|
+| Digital Marketing Agent Founder approval | ✓ DONE |
+| R-012 EA review of trading-agent.md | ✓ DONE — APPROVED |
+| Trading Agent v1.1 (R-012 gaps fixed) | ✓ DONE |
+| C-042 Vocabulary Mandate ratified | ✓ DONE |
+| agricultural-advisor-agent.md DRAFT v1.0 | ✓ DONE |
+| AGENT-AUTHORING-GUIDE checklist item 9 | ✓ DONE |
+| BOOTSTRAP + copilot-instructions.md gate enforcement (OD-008 fix) | ✓ DONE |
 
 | Milestone | Status |
 |---|---|

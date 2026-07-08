@@ -373,20 +373,79 @@ A capability exists because the institution must provide it — not because it w
 
 ---
 
-## Capability Summary (v0.8.0)
+---
+
+## Domain 10 — Agricultural Advisory (v0.11.0 — AS-005)
+
+*The institution must enable small and marginal farmers in India to receive expert agricultural advisory through their existing channels (WhatsApp voice) in their own language.*
+
+*C-042 Vocabulary Mandate applies to all Domain 10 capabilities: no technical data is surfaced to the farmer. All outputs are actionable instructions in farmer's occupational vocabulary.*
+
+---
+
+### 10.1 Receive Hyperlocal Crop Weather Alerts
+
+**Statement:** The institution must deliver weather-based crop risk alerts to the farmer in their language and vocabulary — not meteorological data — with 72-hour advance warning for adverse events, calibrated to the farmer's specific crop type, growth stage, and 10km farm radius.
+
+**Constitutional Basis:** C-040 (domain specialization — agent must know crop-weather correlations, not just weather); C-042 (vocabulary mandate — never show humidity percentages, always show crop action); AS-005 (farmer receives actionable weather advisory); C-023 (every alert recorded in CAL for PMFBY evidence)
+
+---
+
+### 10.2 Monitor Crop Health via Conversational Check-in
+
+**Statement:** The institution must enable the agent to proactively ask the farmer about their crop's current condition, interpret farmer observations through domain knowledge, and advise on interventions — maintaining a living Progressive Crop State Model across all conversations.
+
+**Constitutional Basis:** C-039 (conversational interface is the primary interaction model — C-039 CONFIRMED); C-042 (vocabulary mandate); C-040 (domain specialization — agent must know crop disease symptoms from farmer's descriptions); AS-005
+
+---
+
+### 10.3 Get Mandi Price Intelligence and Sell Timing
+
+**Statement:** The institution must inform farmers of current and trending mandi prices across their region, compare against MSP, and advise on optimal sell timing — in farmer's vocabulary (rupees per quintal, not indices).
+
+**Constitutional Basis:** C-037 (business KPI primary — farmer's income, not price index data); C-042 (vocabulary mandate); AS-005 (farmer achieves better price than district average)
+
+---
+
+### 10.4 Plan Next Season Crop
+
+**Statement:** The institution must recommend the optimal crop for the farmer's next season based on the convergence of weather outlook, mandi price trends, soil type, water availability, market saturation, government policy, and crop rotation — presenting the recommendation in farmer vocabulary with estimated income.
+
+**Constitutional Basis:** C-039 (conversational planning — farmer approves crop choice); C-037 (business outcome: income per acre vs prior season); C-040 (domain knowledge required: soil-crop compatibility, ICAR data); AS-005
+
+---
+
+### 10.5 Receive Agricultural Hints
+
+**Statement:** The institution must proactively share 1–2 forward-looking agricultural insights per week — synthesizing weather, price, market saturation, government policy, and bumper crop signals — framed as "things to keep in mind" in the farmer's language.
+
+**Constitutional Basis:** C-040 (domain specialization — hints require multi-source agricultural intelligence); C-042 (vocabulary mandate); AS-005 (farmer makes better seasonal decisions with forward-looking context)
+
+---
+
+### 10.6 Generate PMFBY Insurance Evidence
+
+**Statement:** The institution must automatically generate an insurance evidence chain in the Constitutional Audit Ledger — alert issued, farmer acknowledged, adverse weather confirmed — and produce a PMFBY claim report on the farmer's explicit request.
+
+**Constitutional Basis:** C-023 (Evidence First — every alert and acknowledgment creates a CAL record); C-007 (immutability — evidence records cannot be altered); ART-IX (farmer's right to their own evidence records); AS-005 (PMFBY claim documentation)
+
+---
+
+## Capability Summary (v0.11.0)
 
 | Domain | Count | Capabilities |
 |---|---|---|
-| 1 — Hire | 8 | 1.1 Evaluate, 1.2 Configure, 1.3 Define Decision Space, 1.4 Form Contract, 1.5 Onboard, **1.6 Browse Catalogue, 1.7 Configure via Conversation, 1.8 Trial Enrollment** |
-| 2 — Govern | 7 | 2.1 Review Proposed, 2.2 Approve/Reject, 2.3 Confirm Boundary, 2.4 Emergency Stop, 2.5 Monitor, 2.6 Audit, **2.7 Monitor Skill KPIs** |
-| 3 — Execute | 4 | 3.1 Approval-Gate, 3.2 Pre-Authorized (PAAS), 3.3 Creative Standard, **3.4 Self-Improve** |
-| 4 — Develop | 5 | 4.1 Assess, 4.2 Expand Authority, 4.3 Restrict Authority, 4.4 Renew, **4.5 Set Skill Goals** |
-| 5 — Close | 5 | 5.1 Suspend, 5.2 Terminate, 5.3 Export Evidence, **5.4 Pause Skill, 5.5 Resume Skill** |
+| 1 — Hire | 8 | 1.1 Evaluate, 1.2 Configure, 1.3 Define Decision Space, 1.4 Form Contract, 1.5 Onboard, 1.6 Browse Catalogue, 1.7 Configure via Conversation, 1.8 Trial Enrollment |
+| 2 — Govern | 7 | 2.1 Review Proposed, 2.2 Approve/Reject, 2.3 Confirm Boundary, 2.4 Emergency Stop, 2.5 Monitor, 2.6 Audit, 2.7 Monitor Skill KPIs |
+| 3 — Execute | 4 | 3.1 Approval-Gate, 3.2 Pre-Authorized (PAAS), 3.3 Creative Standard, 3.4 Self-Improve |
+| 4 — Develop | 5 | 4.1 Assess, 4.2 Expand Authority, 4.3 Restrict Authority, 4.4 Renew, 4.5 Set Skill Goals |
+| 5 — Close | 5 | 5.1 Suspend, 5.2 Terminate, 5.3 Export Evidence, 5.4 Pause Skill, 5.5 Resume Skill |
 | 6 — Operate | 5 | 6.1 Authenticate, 6.2 Isolate Tenant, 6.3 Record Evidence, 6.4 Observe, 6.5 Bill Pro-Rata |
 | 7 — Customer Portal | 8 | (IB-014 design frame) |
 | 8 — CS Agents | 6 | (IB-015 / FR-001 design frame) |
-| **9 — Commercial** | **2** | **9.1 Subscription Lifecycle, 9.2 Transparent Billing** |
-| **Total MVI** | **42+** | |
+| 9 — Commercial | 2 | 9.1 Subscription Lifecycle, 9.2 Transparent Billing |
+| **10 — Agricultural Advisory** | **6** | **10.1 Weather Alerts, 10.2 Crop Health Monitor, 10.3 Price Intelligence, 10.4 Crop Planning, 10.5 Hints, 10.6 PMFBY Evidence** |
+| **Total** | **56+** | |
 
 ---
 

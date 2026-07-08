@@ -209,7 +209,26 @@ Principles are listed in order of constitutional priority — Constitutional Flo
 
 ---
 
-## Design Principles Summary (v0.8.0)
+## DP-013 — Vocabulary Translation Layer for C-042 Agents (v0.11.0)
+
+**Directive:** Any agent whose constitutional basis includes C-042 (Vocabulary Mandate) must implement a Vocabulary Translation Layer inside the AI Runtime — a mandatory processing stage that intercepts every outbound response and enforces the translation from technical/data vocabulary to the customer's occupational vocabulary. This layer is not optional and cannot be bypassed.
+
+**Why:** C-042 is a LAW with no qualification. An agent that can "sometimes" emit technical data to a low-literacy customer is not C-042-compliant — it is unconstitutional. The Vocabulary Translation Layer makes compliance structural: it is architecturally impossible for a C-042 agent to emit a raw humidity percentage, a mandi index, or a rupee price in isolation, because the layer intercepts the response before it reaches the customer and enforces translation.
+
+**Constitutional Basis:** C-042 (Vocabulary Mandate — LAW); C-039 (conversational interface — CONFIRMED); AD-015 (Multilingual Voice Interface requirement)
+
+**Enforcement:**
+- The Vocabulary Translation Layer is a discrete module in the AI Runtime, not a prompt instruction
+- It is activated by agent configuration: `vocabulary_mandate: true` in the agent's decision space config
+- Input: the agent's raw LLM response (which may contain technical data for internal use)
+- Output: a translated response in the customer's registered language and occupational vocabulary
+- The layer must validate that no technical data pattern (numeric index, %, ppm, meteorological codes) appears in the output
+- The layer logs both the raw and translated responses in the Constitutional Audit Ledger (for compliance verification)
+- Failure to translate must result in a refusal to deliver the response and an internal alert — never a raw data leak
+
+---
+
+## Design Principles Summary (v0.11.0)
 
 | ID | Principle | Type | Constitutional Floor? |
 |---|---|---|---|
@@ -225,3 +244,4 @@ Principles are listed in order of constitutional priority — Constitutional Flo
 | DP-010 | Observability by Default | Engineering mandate | No — First Law consequence |
 | **DP-011** | **Business Outcome First in Every Interface** | Engineering mandate | No — GENESIS mandate |
 | **DP-012** | **Skill Granularity in Governance** | Engineering mandate | Yes — C-036 LAW |
+| **DP-013** | **Vocabulary Translation Layer for C-042 Agents** | Engineering mandate | Yes — C-042 LAW |
