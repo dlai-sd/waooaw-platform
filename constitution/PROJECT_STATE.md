@@ -1,57 +1,193 @@
 # PROJECT_STATE.md
 
 **Last Updated:** 2026-07-08
-
-## RESUME BRIEFING
-
-### Where we are
-```
-Version:  0.12.2  |  Gate: G5 prerequisites met
-Agents: Digital Marketing (APPROVED) | Trading (APPROVED) | Agricultural (APPROVED 2026-07-08)
-All 3 agents: EA reviewed, Founder approved, GENESIS ratified (AS-001/002/003/005)
-C-042 Vocabulary Mandate, AD-015, DP-013 all in architecture
-AGENT-AUTHORING-GUIDE: full 13-section protocol with architecture chain checklist
-```
-
-### Architecture Simulation v0.12.0 — Gaps Fixed
-
-| Layer | Gap | Fix | File |
-|---|---|---|---|
-| Layer 2 — Capabilities | No Domain 10 (Agricultural Advisory) | Added Domain 10 with 6 capabilities | business-capabilities.md |
-| Layer 2 — Drivers | AD-015 missing (Multilingual Voice) | Added AD-015 full definition | architectural-drivers.md |
-| Layer 2 — Principles | DP-013 missing (Vocabulary Translation Layer) | Added DP-013 full definition | design-principles.md |
-| Layer 3 — Containers | MCP Integration Layer absent | Added MCP section + 5-server inventory | containers.md |
-| Layer 4 — Components | AI Runtime: Vocabulary Translation Layer underspecified | Full processing pipeline + domain vocab table | ai-runtime.md |
-| Layer 5 — Data | `business.farmer_profiles` missing | Added table | 03-enums-and-tables.sql |
-| Layer 5 — Data | `business.agent_progressive_state` missing | Added table | 03-enums-and-tables.sql |
-| Layer 5 — Data | `business.weather_alert_log` missing (PMFBY evidence chain) | Added table | 03-enums-and-tables.sql |
-| Layer 6 — Infra | 5 MCP server stubs missing from docker-compose | Added all 5 stubs (ports 8100–8104) | docker-compose.yml |
-
-### TO-DO LIST
-**P0 (architecture):**
-1. R-013 EA review of agricultural-advisor-agent.md — NEXT TASK
-2. Founder approval of Agricultural Agent (GENESIS Part 05)
-3. GENESIS amendment: add AS-005 (Small Farmer Agricultural Advisory)
-
-**P0 (implementation — Founder must explicitly authorize per session):**
-4. `git checkout dfbaf0b -- src/` to restore IB-009 code when authorized
-5. `./scripts/setup.sh` → verify `docker compose up` → all 4 /health = 200 + 5 MCP stubs = 200
+**Version:** 0.13.0
+**Session:** 2026-07-08 close
 
 ---
 
-## Previous Version Checkpoint (v0.11.0)
+## SESSION CLOSE BRIEFING — READ THIS FIRST
 
-**Reference:** v0.11.0 — Agricultural Advisory Agent + C-042 Vocabulary Mandate
+This file is the single source of truth for the next session start. Read it top to bottom before doing anything.
 
-| Item | Status |
-|---|---|
-| Digital Marketing Agent Founder approval | ✓ DONE |
-| R-012 EA review of trading-agent.md | ✓ DONE — APPROVED |
-| Trading Agent v1.1 (R-012 gaps fixed) | ✓ DONE |
-| C-042 Vocabulary Mandate ratified | ✓ DONE |
-| agricultural-advisor-agent.md DRAFT v1.0 | ✓ DONE |
-| AGENT-AUTHORING-GUIDE checklist item 9 | ✓ DONE |
-| BOOTSTRAP + copilot-instructions.md gate enforcement (OD-008 fix) | ✓ DONE |
+```
+INSTITUTION:  WAOOAW — autonomous digital professionals under constitutional governance
+GATE:         G5 prerequisites met (G5 CLEAR ≠ implementation authorization)
+VERSION:      0.13.0
+FOCUS:        Engineering organization roles — architecture, specification, review, decisions
+              NOT implementation. Founder has not authorized IB-009 for any session.
+```
+
+---
+
+## What This Session Completed (2026-07-08)
+
+| Commit | Version | What |
+|---|---|---|
+| v0.12.0 | Architecture simulation | 9 layer gaps found + fixed for 2 new agents (Agricultural, Trading) |
+| v0.12.1 | R-013 + AGENT-AUTHORING-GUIDE | EA review of Agricultural Agent (3 P0 fixes); guide expanded to 13 sections |
+| v0.12.2 | GENESIS AS-005 ratification | Agricultural Agent approved by Founder; GENESIS registry of 3 ratified agents |
+| v0.13.0 | Session close | PROJECT_STATE updated; ready for next session |
+
+---
+
+## Platform Status — Snapshot
+
+### Agents (GENESIS Part 05 Registry)
+
+| Agent | Type | AS | EA Review | Status |
+|---|---|---|---|---|
+| Digital Marketing (Healthcare/Dental) | `DIGITAL_MARKETING_HEALTHCARE_DENTAL` | AS-001, AS-002 | R-011 | APPROVED |
+| Trading (F&O + Crypto) | `TRADING_FO_CRYPTO` | AS-003 | R-012 | APPROVED |
+| Agricultural Advisory (India Farmers) | `AGRICULTURAL_ADVISOR_INDIA` | AS-005 | R-013 | APPROVED |
+
+### Architecture Layers — Consistency Status
+
+| Layer | File | Last Updated | Status |
+|---|---|---|---|
+| Claims | `knowledge/claims/` C-001–C-042 | v0.11.0 | ✓ Current |
+| Capabilities | `knowledge/business-capabilities.md` | v0.12.0 | ✓ 10 domains, 56+ capabilities |
+| Drivers | `knowledge/architectural-drivers.md` | v0.12.0 | ✓ AD-001–AD-015 |
+| Principles | `knowledge/design-principles.md` | v0.12.0 | ✓ DP-001–DP-013 |
+| ADRs | `adr/` | v0.9.0 | ✓ ADR-001–ADR-020 |
+| Reference Architecture | `architecture/reference/containers.md` | v0.12.0 | ✓ + MCP Integration Layer |
+| Component Specs | `architecture/reference/components/` | v0.12.1 | ✓ AI Runtime VTL expanded |
+| Data Architecture | `infrastructure/postgres/init/` | v0.12.0 | ✓ + farmer_profiles, agent_progressive_state, weather_alert_log |
+| Local Infrastructure | `docker-compose.yml` | v0.12.0 | ✓ + 5 MCP stubs (ports 8100–8104) |
+| Agent Specs | `architecture/reference/agents/` | v0.12.2 | ✓ 3 approved |
+| GENESIS | `constitution/GENESIS.md` | v0.12.2 | ✓ AS-005 + Ratified Types registry |
+
+### Knowledge/Claims
+
+42 ratified claims (C-001–C-042). Last additions:
+- C-040: Domain Specialization as constitutional obligation (LAW)
+- C-041: Every MCP tool call governed by Decision Space (LAW)
+- C-042: Vocabulary Mandate — no technical data to low-literacy customers (LAW)
+
+---
+
+## Backlog Status — What Is and Is Not Open
+
+| IB | Goal | Status | Note |
+|---|---|---|---|
+| IB-001–008 | Constitution through Infrastructure | DONE | All architecture layers |
+| IB-009 | Foundation Implementation (skeleton) | AUTHORIZED — NOT STARTED | Requires explicit "start coding" per session |
+| IB-010 | Security Architecture | DONE | R-009 approved |
+| IB-011 | Engineering Quality Standards | DONE | |
+| IB-012 | OpenAPI Specs | DONE | |
+| IB-013 | Tech Stack ADRs 016/017/018 | DONE | |
+| IB-014 | Customer Self-Service Portal (Domain 7) | WAITING — design frame exists in backlog | Does not require IB-009 for architecture work |
+| IB-015 | Constitutional CS Agents (Domain 8) | WAITING — design frame exists in backlog | Does not require IB-009 for architecture work |
+| IB-016 | Platform Operations Architecture | WAITING — design frame exists in backlog | Does not require IB-009 for architecture work |
+| IB-017 | Phase 2 Readiness | DONE | |
+| IB-018 | Agent Teams | DEFERRED — Post-MVI Enterprise | |
+
+---
+
+## Open Architectural Work (Non-Implementation) — Next Session Options
+
+These are all valid pulls for the next session. No implementation gate applies to any of them.
+
+### Tier 1 — Architecture completion (IB-014/015/016 design frames exist, need formal documents)
+
+**A — IB-014: Domain 7 Customer Self-Service Portal spec**
+Office: Business Architect + Solution Architect
+The design frame is fully described in INSTITUTIONAL_BACKLOG.md (IB-014). What's needed:
+- Domain 7 capability map formalized in `knowledge/business-capabilities.md` (8 capabilities)
+- 2 missing API endpoints specified as OpenAPI addendum to `business-platform.openapi.yaml`
+Ready to execute immediately — all inputs exist.
+
+**B — IB-015: Domain 8 Constitutional CS Agents spec**
+Office: Business Architect + Runtime Professional
+Design frame fully in backlog. What's needed:
+- Domain 8 capability map in `knowledge/business-capabilities.md` (6 capabilities)
+- `CUSTOMER_SUCCESS_L1` / `L2` as new agent specs (using AGENT-AUTHORING-GUIDE 13-section format)
+- `professional_templates` table addendum to data architecture
+- Architecture Chain Update Checklist (Section 11) — zero new containers, configuration change only
+Note: This is the first agent type where WAOOAW itself is the customer (FR-001 Path A). Interesting constitutional territory.
+
+**C — IB-016: Platform Operations Architecture**
+Office: Platform Architect
+Design frame fully in backlog. What's needed:
+- OTel metric names formalized as additions to component specs
+- Operational capability spec: `architecture/reference/operations/` (new directory)
+- Runbook stubs (to be filled during IB-009 sprint)
+
+### Tier 2 — New agent specifications (follow AGENT-AUTHORING-GUIDE 13-section format)
+
+The platform has 3 approved agents. Candidate next domains:
+- **Legal Professional** (contract review, compliance advisory for SMEs — India)
+- **HR Professional** (hiring, performance management, onboarding for SMEs)
+- **Accounting Professional** (GST filing, TDS compliance, bookkeeping for SMEs)
+- **Real Estate Advisory** (property search, legal due diligence advisory — India)
+
+Each new agent: Business Architect produces spec → EA reviews → Founder approves → GENESIS amendment. No implementation gate.
+
+### Tier 3 — Simulation runs
+
+Simulation cases exist for Digital Marketing (001, 002) and a general high-frequency employment scenario (003). No simulation case exists yet for:
+- Trading Agent (AS-003): a full session simulation — market conditions, PAAS execution, risk management decision chain, Emergency Stop, session-end position closure
+- Agricultural Advisory Agent (AS-005): a full season simulation — Suresh in Vidarbha, kharif sowing to harvest, 3 weather alerts, PMFBY evidence chain
+
+Simulations validate the spec through realistic narrative before implementation. They also generate new claims, ADR amendments, and capability refinements.
+
+### Tier 4 — Red Team / Confidence Register
+
+- `constitution/RED_TEAM.md` — review for open items
+- `knowledge/confidence-register.md` — needs updating with C-036–C-042 additions
+- `knowledge/index.md` — index of all knowledge artifacts, likely needs v0.12.x entries
+
+---
+
+## Architectural Decisions and Precedents — Key Facts for Next Session
+
+**IMPLEMENTATION GATE (absolute):**
+- G5 CLEAR ≠ authorization to write code in `src/`
+- A TO-DO list, a GitHub Issue, a Work Contract, a P0 label is NOT authorization
+- Before any file in `src/`: STOP. Ask: "Do you authorize implementation for this session?"
+- Code from v0.10.0 (commit dfbaf0b) can be restored with `git checkout dfbaf0b -- src/`
+
+**Vocabulary Mandate (C-042) — design pattern established:**
+- Any agent serving low-literacy customers: Vocabulary Translation Layer is mandatory (DP-013)
+- Structural enforcement — not a prompt instruction
+- AD-015: voice-primary interface for C-042 agents
+
+**Architecture Chain Protocol (AGENT-AUTHORING-GUIDE Section 11):**
+- Every new agent spec: 10 layers must be reviewed/updated alongside the spec
+- Every agent update: targeted layer list by change type
+- Every PR with agent changes: Architecture Chain Update table required in PR body
+- Simulation runs validate correctness; the checklist prevents drift
+
+**Constitutional design landmark (R-013 finding):**
+- C-023 Evidence First → PMFBY insurance evidence chain: zero additional implementation effort
+- First case of a constitutional compliance mechanism delivering direct customer financial benefit
+- Pattern to apply to future agents: what other compliance mechanisms can become customer benefits?
+
+**Three-tier RAG architecture (ADR-019):**
+- Tier 1: Domain Knowledge (WAOOAW IP, shared per professional type)
+- Tier 2: Customer Context (private per tenant, pgvector in business schema)
+- Tier 3: Platform Intelligence (aggregate anonymized patterns, WAOOAW IP)
+- Static data (ICAR, NBSS&LUP, etc.) = Tier 1 RAG, not MCP servers
+
+**MCP Architecture (ADR-020, C-041):**
+- AI Runtime is the MCP client
+- CE.ValidateAction before every MCP tool call — enforced in AI Runtime, not MCP servers
+- MCP servers are stateless adapters only: no business logic, no state
+- 5 servers defined: weather-ensemble, agmarknet, whatsapp-voice, broker-api, whatsapp-business
+- enam-mcp, policy-data-mcp: DEGRADABLE, deferred to Skills 3/5 implementation
+
+---
+
+## Git History — Key Commits
+
+| Commit | Version | Description |
+|---|---|---|
+| 4e36f23 | v0.11.0 | Agricultural Agent DRAFT + C-042 |
+| 1e59a33 | v0.12.0 | Architecture simulation — 9 gaps fixed |
+| c118f30 | v0.12.1 | R-013 + AGENT-AUTHORING-GUIDE 13-section protocol |
+| 03a4906 | v0.12.2 | GENESIS AS-005 ratification |
+| (this) | v0.13.0 | Session close |
+| dfbaf0b | v0.10.0 | VIOLATION — src/ code (removable with git checkout) |
 
 | Milestone | Status |
 |---|---|
