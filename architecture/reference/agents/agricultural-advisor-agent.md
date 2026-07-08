@@ -2,6 +2,7 @@
 
 **Specification version:** 1.1
 **Date:** 2026-07-08 (v1.1 — R-013 P0 fixes applied)
+**Status:** APPROVED by Founder 2026-07-08 — GENESIS Part 05, AS-005
 **Constitutional Basis:** C-036 (Skills), C-037 (Business KPIs), C-038 (Billing), C-039 (Conversational config), C-040 (Domain specialization), C-041 (Tool authorization), C-042 (Vocabulary mandate — LAW), ADR-019 (RAG), ADR-020 (MCP)
 **Proposed Acceptance Scenario:** AS-005 — Small Farmer Agricultural Advisory (to be ratified in GENESIS amendment)
 **Status:** DRAFT — pending EA review (R-013) and Founder approval (GENESIS Part 05)
@@ -600,5 +601,5 @@ ProfessionalTemplate:
 ## 13. Review and Approval
 
 **EA Review:** R-013 — complete (2026-07-08). v1.1 addresses all P0 findings.
-**Founder Approval:** pending (GENESIS Part 05 amendment — AS-005)
-**Status:** READY FOR FOUNDER APPROVAL
+**Founder Approval:** APPROVED 2026-07-08 — GENESIS Part 05 amendment, AS-005 ratified
+**Status:** APPROVED

@@ -41,7 +41,7 @@ Next action: Create IB-009 GitHub Issue → assign to @copilot → Sprint 1 begi
 **Approved Agent Specifications (GENESIS Part 05):**
 - Digital Marketing Agent (Healthcare + Beauty) — APPROVED 2026-07-08
 - Trading Agent (FO + Crypto) — APPROVED 2026-07-08
-- Agricultural Advisory Agent (India Small Farmers) — EA REVIEWED (R-013), READY FOR FOUNDER APPROVAL (GENESIS AS-005)
+- Agricultural Advisory Agent (India Small Farmers) — APPROVED by Founder 2026-07-08 (GENESIS AS-005, R-013)
 
 **Deferred:** OD-003 (DA scope) · AI Architect sprint (GAP-006b) · IB-018 (Agent Teams — enterprise, post-MVI)
 

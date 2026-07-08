@@ -440,6 +440,59 @@ This repository is the first implementation of that vision.
 
 ---
 
+# Acceptance Scenario 005
+Business
+
+Small and Marginal Farmer
+
+Location
+
+India — Vidarbha, Marathwada, Punjab, Andhra Pradesh, Karnataka (agricultural districts)
+
+Desired Outcome
+
+Protect the season's crop from weather losses.
+
+Achieve better price than the district average.
+
+Plant the right crop next season based on price, weather, and market outlook.
+
+Service Hired
+
+Agricultural Advisory Workforce
+
+Capabilities
+
+Hyperlocal Weather Alerts (10km radius, farmer vocabulary)
+
+Crop Health Monitoring (conversational, Progressive Crop State Model)
+
+Mandi Price Intelligence (optimal sell timing)
+
+Next Season Crop Planning (convergence of weather + price + soil + policy)
+
+Forward-Looking Hints (weekly synthesis of weather + price + market + policy)
+
+PMFBY Insurance Evidence (automatic — constitutional by-product of Evidence First)
+
+Expected Business KPI
+
+Crop Loss Prevented (₹)
+
+Price Premium Achieved vs District Average (₹/quintal)
+
+Season-on-Season Revenue Per Acre
+
+PMFBY Claim Success Rate
+
+The customer — a small or marginal farmer — never reads meteorological data.
+
+The customer receives crop advice in their own language and their own vocabulary.
+
+Every alert is an insurance evidence record.
+
+---
+
 # What WAOOAW Is Not
 WAOOAW is not:
 
@@ -2125,6 +2178,18 @@ Part 05 establishes the Agent Definition Protocol for all new professional types
 No new professional type may be implemented without a complete Agent Specification in `architecture/reference/agents/`.
 
 No implementation sprint for a new agent type may begin until the Agent Specification has been reviewed by the Enterprise Architect and approved by the Founder.
+
+---
+
+# Ratified Professional Types
+
+The following professional types have been fully specified, EA-reviewed, and approved by the Founder. Each is available for implementation when authorized.
+
+| Professional Type | AS | Spec File | EA Review | Founder Approval | Status |
+|---|---|---|---|---|---|
+| `DIGITAL_MARKETING_HEALTHCARE_DENTAL` | AS-001, AS-002 | `digital-marketing-agent.md` v1.0 | R-011 | 2026-07-08 | APPROVED |
+| `TRADING_FO_CRYPTO` | AS-003 | `trading-agent.md` v1.1 | R-012 | 2026-07-08 | APPROVED |
+| `AGRICULTURAL_ADVISOR_INDIA` | AS-005 | `agricultural-advisor-agent.md` v1.1 | R-013 | 2026-07-08 | APPROVED |
 
 This concludes BOOT 04.
 

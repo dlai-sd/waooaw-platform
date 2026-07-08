@@ -6,10 +6,11 @@
 
 ### Where we are
 ```
-Version:  0.12.0  |  Gate: G5 prerequisites met | 3 agent specs (2 approved, 1 draft)
-Simulation run COMPLETE — 9 architecture gaps found and fixed
-Agents: Digital Marketing (APPROVED) | Trading (APPROVED) | Agricultural (DRAFT R-013 pending)
-New claim: C-042 Vocabulary Mandate (LAW)
+Version:  0.12.2  |  Gate: G5 prerequisites met
+Agents: Digital Marketing (APPROVED) | Trading (APPROVED) | Agricultural (APPROVED 2026-07-08)
+All 3 agents: EA reviewed, Founder approved, GENESIS ratified (AS-001/002/003/005)
+C-042 Vocabulary Mandate, AD-015, DP-013 all in architecture
+AGENT-AUTHORING-GUIDE: full 13-section protocol with architecture chain checklist
 ```
 
 ### Architecture Simulation v0.12.0 — Gaps Fixed
