@@ -1,3 +1,0 @@
-obj/Debug/net9.0/Proto/ConstitutionalService.cs \
-obj/Debug/net9.0/Proto/ConstitutionalServiceGrpc.cs: /home/codespace/.nuget/packages/grpc.tools/2.63.0/build/native/include/google/protobuf/timestamp.proto\
- Proto/constitutional_service.proto

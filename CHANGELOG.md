@@ -8,9 +8,37 @@ types: `feat` | `fix` | `constitutional` | `cct` | `chore` | `refactor` | `secur
 
 ---
 
-## [0.10.0] — 2026-07-08
+## [0.10.1] — 2026-07-08
 
-### Implementation (IB-009 Foundation)
+### Fix (gate violation correction)
+- **OD-008 CRITICAL**: Removed premature IB-009 implementation code from `src/`
+  - `src/constitutional-engine/`, `src/business-platform/`, `src/professional-runtime/`, `src/ai-runtime/` — all removed
+  - `tests/constitutional/bp/test_cct_ef_01.py` — removed (premature)
+  - Code was constitutionally correct in content but produced without Founder authorization
+  - Implementation requires explicit Founder authorization per session — G5 CLEAR is not authorization
+
+### Constitutional (gate enforcement)
+- `constitution/BOOTSTRAP.md`: IMPLEMENTATION GATE hard stop added
+  - G5 CLEAR = prerequisites met, NOT authorization to write code
+  - Any action creating files in src/ requires explicit Founder confirmation
+- `constitution/AGENT-ENTRY.md`: Implementation gate at the very top — visible every session
+- `.github/copilot-instructions.md`: IMPLEMENTATION GATE section added as ABSOLUTE rule
+- `work-contracts/operational-discoveries.md`: OD-008 violation recorded with root causes
+
+### Documentation
+- `README.md`: Version 0.10.1, G5 wording corrected to "prerequisites met — awaiting Founder authorization"
+
+---
+
+## [0.10.0] — 2026-07-08 (VIOLATION — premature implementation, corrected by 0.10.1)
+
+The v0.10.0 implementation artifacts (src/) were produced without explicit Founder authorization.
+They are preserved in git history for institutional transparency but removed from working tree.
+See OD-008 in work-contracts/operational-discoveries.md for full analysis.
+
+---
+
+## [0.9.0] — 2026-07-08
 - `src/constitutional-engine/`: .NET 9 gRPC service skeleton
   - ConstitutionalServiceImpl: RecordEvidence (writes to DB), ValidateAction stub, TriggerEmergencyStop
   - Evidence First enforced: write confirmed before returning OK; gRPC INTERNAL on failure

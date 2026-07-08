@@ -6,11 +6,14 @@
 
 ```
 Founding Corpus v1           Status: Ratified
-Version:                     0.10.0 — IB-009 Foundation Implementation (2026-07-08)
-Current Epoch:               Epoch 1 — Employment (first code)
-Current Gate:                G5 IN PROGRESS
-Engineering Status:          Architecture COMPLETE | Implementation STARTED
-4 services:                  CE (.NET 9 gRPC) | BP (.NET 9 REST) | PR (Python) | AI (Python)
+Version:                     0.10.1 — Gate violation corrected (2026-07-08)
+Current Epoch:               Epoch 1 — Employment
+Current Gate:                G2-G4: PASSED | G5: Prerequisites met
+                             ⛔ G5 CLEAR ≠ implementation authorized for any session
+                             Implementation sprint requires explicit Founder authorization
+Authorized Offices:          Runtime Professional (IB-009) — AWAITING FOUNDER AUTHORIZATION
+Engineering Status:          Architecture COMPLETE
+                             Source code: Prerequisites met. Awaiting explicit Founder approval.
 ```
 
 ---

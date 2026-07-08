@@ -465,6 +465,32 @@ Why this matters:
   state from git history — wasting session context and risking mistakes.
 ```
 
+### IMPLEMENTATION GATE — ABSOLUTE RULE
+
+```
+⛔ STOP before creating ANY file in src/ or writing ANY runnable code.
+
+"G5 CLEAR" in README means: prerequisites are met.
+It does NOT mean: Founder has authorized implementation for this session.
+
+A TO-DO list entry labelled P0/P1 is NOT authorization.
+A GitHub Issue assigned to you is NOT authorization.
+A Work Contract is NOT authorization unless the Founder explicitly said
+"start coding" in this session.
+
+BEFORE creating any file in src/, tests/ (implementation tests), or any
+runnable code artifact:
+  → STOP
+  → State explicitly: "This would begin implementation. Gate G5 prerequisites
+    are met but I do not have explicit Founder authorization for this session.
+    Do you authorize IB-009 implementation to begin?"
+  → Wait for explicit Founder confirmation
+  → Only proceed after Founder says "yes, start coding" or assigns the issue
+
+Mode 1 (no Sprint Plan): "Wait for Founder selection before beginning execution."
+This rule applies even when G5 CLEAR is visible in README.
+```
+
 ---
 
 ### STEP 6 — VERIFICATION AND REVIEW

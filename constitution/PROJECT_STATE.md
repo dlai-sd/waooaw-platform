@@ -2,7 +2,52 @@
 
 **Last Updated:** 2026-07-07
 
-**Session Reference:** v0.10.0 — IB-009 Foundation Implementation (first working code)
+**Session Reference:** Gate violation fix + Trading Agent specification
+
+## IN-PROGRESS CHECKPOINT
+
+| Milestone | Status |
+|---|---|
+| Gate fixes (BOOTSTRAP + AGENT-ENTRY + copilot-instructions + OD-008) | ✓ DONE |
+| Simulation gap fixes | ✓ DONE |
+| Surgical rollback (remove premature src/ code) | ✓ DONE |
+| R-011 presented for Founder approval | ✓ DONE — awaiting Founder response |
+| Trading Agent specification (AS-003) | ✓ DONE — DRAFT pending EA review |
+| Commit + push | ✓ DONE |
+
+---
+
+## RESUME BRIEFING
+
+### Where we are
+```
+Version:  0.10.1  |  Gate: G5 prerequisites met — AWAITING FOUNDER AUTHORIZATION to code
+Violation corrected: premature IB-009 src/ code removed (OD-008)
+Gate enforcement: BOOTSTRAP + AGENT-ENTRY + copilot-instructions all updated
+```
+
+### Pending Founder decisions
+1. Approve Digital Marketing Agent specification (R-011 EA review APPROVED WITH NOTE)
+2. Authorize IB-009 implementation when ready — explicit confirmation required
+
+### Architecture work complete this session
+- Trading Agent specification (AS-003) — DRAFT, pending EA review R-012
+- OD-008 violation recorded and gate enforcement patched
+
+### TO-DO LIST — Next Session
+**Architecture (no code):**
+1. R-012: EA review of trading-agent.md
+2. Founder approval of both agent specs (if R-012 passes)
+3. Any further customer journey discussion
+
+**When Founder explicitly authorizes IB-009:**
+4. `./scripts/setup.sh` → `docker compose up` → all 4 /health = 200
+5. The src/ code from v0.10.0 is in git history and can be restored
+   Command: `git checkout dfbaf0b -- src/`
+
+---
+
+**Previous Session Reference:** v0.10.0 (VIOLATION: premature IB-009 implementation)
 
 ## IN-PROGRESS CHECKPOINT
 

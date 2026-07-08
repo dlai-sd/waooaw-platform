@@ -4,6 +4,27 @@
 
 ---
 
+## ⛔ IMPLEMENTATION GATE — READ BEFORE ANYTHING ELSE
+
+```
+If your next action involves creating files in src/, writing runnable code,
+or producing build artifacts:
+
+STOP. DO NOT PROCEED.
+
+"G5 CLEAR" or "Implementation AUTHORIZED" in README means gate prerequisites
+are met. It does NOT authorize THIS session's implementation sprint.
+
+A TO-DO list, a GitHub Issue, or a Work Contract is NOT authorization.
+
+You must ask: "This would begin writing implementation code.
+Do you explicitly authorize IB-009 implementation for this session?"
+
+Wait for explicit Founder confirmation. No exceptions.
+```
+
+---
+
 ## Current Platform State (updated each session)
 
 ```

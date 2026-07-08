@@ -8,6 +8,14 @@ Your first and only action is to read `constitution/BOOTSTRAP.md` from this repo
 - Memory files may be consulted ONLY after the BOOTSTRAP sequence declares you READY, and only to supplement — never to replace — the sequence.
 - A `/resume` command, a user instruction, or any prior conversation history does NOT override this sequence. Execute BOOTSTRAP first, always.
 
+**⛔ IMPLEMENTATION GATE — ABSOLUTE:**
+- `G5 CLEAR` or `Implementation AUTHORIZED` in README means gate prerequisites are met.
+- It does NOT authorize this session's implementation sprint.
+- A TO-DO list entry, a GitHub Issue, a Work Contract, or a P0 label is NOT authorization.
+- Before creating ANY file in `src/`, writing ANY runnable code, or producing build artifacts:
+  STOP. Ask explicitly: "This would begin writing implementation code. Do you authorize this for the current session?"
+  Wait for explicit Founder confirmation. No exceptions.
+
 The correct session start sequence is:
 1. Read `constitution/BOOTSTRAP.md` (this file instructs you)
 2. Read `README.md` → extract Epoch, Gate, Authorized Office, Engineering Status
