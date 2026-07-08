@@ -401,13 +401,18 @@ If Sprint Plan is approved → MODE 2 (Sprint Execution):
   See: Sprint Operating Modes section at the end of this document.
 
 If no Sprint Plan exists → MODE 1 (Founder-Assigned):
-  Read: constitution/INSTITUTIONAL_BACKLOG.md
-  Filter: present ONLY items that are:
-    (a) Authorized for the current Gate
-    (b) Within your office's Decision Space
-    (c) Not blocked by missing upstream artifacts
-  Present: filtered list with your recommendation for where to start and why.
-  Wait for Founder selection before beginning execution.
+  FIRST — check constitution/PROJECT_STATE.md for a "## WORK MENU" section.
+  If WORK MENU exists → present it to the Founder exactly as written, without modification.
+    Do NOT re-derive from INSTITUTIONAL_BACKLOG.md.
+    The WORK MENU is already filtered, gate-checked, and sequenced by the previous session.
+    Wait for Founder to select a track. Do not begin execution until selection is made.
+  If no WORK MENU → fall back to INSTITUTIONAL_BACKLOG.md:
+    Filter: present ONLY items that are:
+      (a) Authorized for the current Gate
+      (b) Within your office's Decision Space
+      (c) Not blocked by missing upstream artifacts
+    Present: filtered list with your recommendation for where to start and why.
+    Wait for Founder selection before beginning execution.
 
 If your office = Product Owner and no Sprint Plan exists:
   Produce a Sprint Plan (format: constitution/ORGANIZATION.md Office 11).

@@ -88,7 +88,73 @@ FOCUS:        Engineering organization roles — architecture, specification, re
 
 These are all valid pulls for the next session. No implementation gate applies to any of them.
 
-### Tier 1 — Architecture completion (IB-014/015/016 design frames exist, need formal documents)
+---
+
+## WORK MENU — Present this on /resume
+
+> When the next session starts with `/resume`, read this section and present these options to the Founder verbatim. Do not re-derive from INSTITUTIONAL_BACKLOG.md — this menu is already filtered, gate-checked, and sequenced.
+
+---
+
+**WAOOAW Engineering Organization — Session 2026-07-09**
+**Version:** v0.13.0 | **Gate:** G5 prerequisites met | **3 agents approved**
+
+All agents approved. Architecture consistent. Ready for the next sprint.
+
+Choose a track:
+
+---
+
+**Track A — Complete the portal and CS agent architecture (IB-014 + IB-015)**
+
+*Office: Business Architect + Solution Architect*
+
+IB-014: Domain 7 — Customer Self-Service Portal. Eight capabilities already designed in the backlog (hire wizard, approval queue, evidence ledger, Emergency Stop button, data export). Needs: formal capability map in business-capabilities.md + 2 missing OpenAPI endpoints.
+
+IB-015: Domain 8 — Constitutional Customer Success Agents (FR-001 Path A). Design frame complete. Needs: Domain 8 capability map + CS agent specs (L1 + L2) in AGENT-AUTHORING-GUIDE format. Zero new containers — configuration change only.
+
+Both are pure architecture work. The design frames are written. This sprint formalizes them.
+
+---
+
+**Track B — New agent specification**
+
+*Office: Business Architect (spec) → Enterprise Architect (review) → Founder (approval)*
+
+Candidates:
+- **Legal Professional** — contract review, compliance advisory for India SMEs
+- **HR Professional** — hiring, onboarding, performance management for SMEs
+- **Accounting Professional** — GST filing, TDS compliance, bookkeeping for India SMEs
+- **Real Estate Advisory** — property search, legal due diligence for India buyers
+
+Process: 13-section AGENT-AUTHORING-GUIDE + Architecture Chain Update Checklist (Section 11) + EA review + Founder approval + GENESIS amendment. No implementation gate.
+
+---
+
+**Track C — Simulation run**
+
+*Office: Business Architect (narrative) + Constitutional Analyst (claims extraction)*
+
+No simulation case exists yet for the two newest agents:
+
+- **Trading Agent simulation** — full intraday session: market open, PAAS execution, risk boundary hit, Emergency Stop mid-session, session-end position closure. Constitutional test: does the agent halt when Decision Space says MAX_DRAWDOWN exceeded?
+- **Agricultural Advisory simulation** — full kharif season for Suresh in Vidarbha (Nagpur): sowing → 72-hour hail warning → farmer acts → mandi price timing → PMFBY claim. Constitutional test: does the vocabulary mandate hold for every output? Does the evidence chain survive?
+
+Simulations generate new claims, ADR amendments, and CCT cases from realistic narrative — the same process that produced C-042 from the agricultural agent design.
+
+---
+
+**Track D — Red Team + Confidence Register refresh**
+
+*Office: Constitutional Analyst*
+
+- `constitution/RED_TEAM.md` — 11 attacks documented. Review: do any new agents (Trading, Agricultural) open attack surfaces not covered?
+- `knowledge/confidence-register.md` — needs C-036–C-042 entries (added in v0.8.0–v0.11.0 but register not updated)
+- `knowledge/index.md` — knowledge artifact index, needs v0.12.x entries
+
+---
+
+Which track?
 
 **A — IB-014: Domain 7 Customer Self-Service Portal spec**
 Office: Business Architect + Solution Architect
@@ -112,30 +178,6 @@ Design frame fully in backlog. What's needed:
 - OTel metric names formalized as additions to component specs
 - Operational capability spec: `architecture/reference/operations/` (new directory)
 - Runbook stubs (to be filled during IB-009 sprint)
-
-### Tier 2 — New agent specifications (follow AGENT-AUTHORING-GUIDE 13-section format)
-
-The platform has 3 approved agents. Candidate next domains:
-- **Legal Professional** (contract review, compliance advisory for SMEs — India)
-- **HR Professional** (hiring, performance management, onboarding for SMEs)
-- **Accounting Professional** (GST filing, TDS compliance, bookkeeping for SMEs)
-- **Real Estate Advisory** (property search, legal due diligence advisory — India)
-
-Each new agent: Business Architect produces spec → EA reviews → Founder approves → GENESIS amendment. No implementation gate.
-
-### Tier 3 — Simulation runs
-
-Simulation cases exist for Digital Marketing (001, 002) and a general high-frequency employment scenario (003). No simulation case exists yet for:
-- Trading Agent (AS-003): a full session simulation — market conditions, PAAS execution, risk management decision chain, Emergency Stop, session-end position closure
-- Agricultural Advisory Agent (AS-005): a full season simulation — Suresh in Vidarbha, kharif sowing to harvest, 3 weather alerts, PMFBY evidence chain
-
-Simulations validate the spec through realistic narrative before implementation. They also generate new claims, ADR amendments, and capability refinements.
-
-### Tier 4 — Red Team / Confidence Register
-
-- `constitution/RED_TEAM.md` — review for open items
-- `knowledge/confidence-register.md` — needs updating with C-036–C-042 additions
-- `knowledge/index.md` — index of all knowledge artifacts, likely needs v0.12.x entries
 
 ---
 
