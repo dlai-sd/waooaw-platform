@@ -1,7 +1,7 @@
 # ADR Quick Reference
 
-**18 ADRs — one line each. Read only the full ADR if you need rationale or alternatives.**
-**All status: Accepted. All date: 2026-07-07.**
+**20 ADRs — one line each. Read only the full ADR if you need rationale or alternatives.**
+**All status: Accepted. Date: 2026-07-07 (ADR-001 to 018) / 2026-07-08 (ADR-019 to 020).**
 
 | ADR | Decision (one line) | Your constraint | Read full if... |
 |---|---|---|---|
@@ -23,3 +23,5 @@
 | **016** | .NET 9 for CE + BP; Python 3.12 for PR + AI Runtime | Language is frozen — do not introduce polyglot additions without a new ADR | Never (frozen) |
 | **017** | Next.js 14 TypeScript PWA Phase 1 → React Native Phase 2 | Emergency Stop always visible; strict TypeScript; use openapi-generator for API clients | Adding new UI framework or library |
 | **018** | Emergency Stop signal routing via Temporal — PAAS sessions are `PAASSessionWorkflow` | CE sends Temporal signal by workflow ID; `active_session_ids` in EmergencyStopRequest are Temporal workflow IDs | Implementing Emergency Stop fan-out at scale |
+| **019** | RAG Architecture — three-tier (Domain / Customer / Platform Intelligence) | pgvector in `institutional` schema at MVI; Customer context isolated per tenant | Implementing RAG pipeline or adding new agent domain knowledge |
+| **020** | MCP Integration Pattern — AI Runtime is MCP client; each platform capability is MCP server | Every MCP tool call requires CE.ValidateAction FIRST (C-041); default deny in Tool Registry | Adding a new external platform or tool capability |

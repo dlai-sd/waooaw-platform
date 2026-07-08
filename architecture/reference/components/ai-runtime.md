@@ -1,10 +1,10 @@
 # Component Specification: AI Runtime
 
 **Service:** AI Runtime
-**Technology:** Python 3.12, FastAPI, httpx (async), provider-specific SDKs (OpenAI, Azure OpenAI)
+**Technology:** Python 3.12, FastAPI, httpx (async), provider-specific SDKs (OpenAI, Azure OpenAI), MCP client SDK
 **Port:** 5004 (REST, internal only — never exposed externally)
 **Owning Office:** Solution Architect (Sprint 004)
-**Constitutional Basis:** C-003 (authority licensed — AI never acts beyond Decision Space), C-004 (three systems independent — AI is Capability, not Authority), AD-007 (Runtime Universality)
+**Constitutional Basis:** C-003 (authority licensed — AI never acts beyond Decision Space), C-004 (three systems independent — AI is Capability, not Authority), AD-007 (Runtime Universality), C-040 (domain specialization), C-041 (tool calls governed by Decision Space), ADR-019 (RAG), ADR-020 (MCP)
 
 ---
 
@@ -61,6 +61,27 @@ if tool_name not in decision_space.authorized_tools:
 - When asked "would this action be within the Decision Space?" — reasons over the Decision Space and returns a constitutional assessment
 - This supports the PAAS engine when edge cases arise that don't match a clear authorized/prohibited rule
 - Returns: WITHIN / OUTSIDE / UNCERTAIN with reasoning
+
+## RAG Pipeline (v0.9.0 — ADR-019, C-040)
+
+Every inference request is augmented with relevant context retrieved from the three-tier RAG architecture before the LLM generates output. See ADR-019 for the full architecture.
+
+```
+1. Tier 1 — Domain Knowledge (WAOOAW IP): top-5 domain knowledge chunks
+2. Tier 2 — Customer Context (tenant-isolated pgvector): 3 most similar prior contexts
+3. Tier 3 — Platform Intelligence (WAOOAW IP): aggregate performance patterns
+   ↓
+Prompt = [domain] + [customer context] + [platform patterns] + [task instruction]
+   ↓ LLM generates → Creative Standard validates → return
+```
+
+**Trading PAAS**: domain knowledge is pre-warmed at session start — zero retrieval latency in the hot path.
+
+## MCP Client (v0.9.0 — ADR-020, C-041)
+
+The AI Runtime is an MCP client. Every external platform action goes through an MCP server. C-041 is enforced before every call: if the tool is not in `decision_space.authorized_tools` → reject. If CE.ValidateAction returns DENY → halt.
+
+**Default deny:** unauthorized tools are never called, no fallback, no exception. See ADR-020 for the full MCP server registry.
 
 ## What AI Runtime does NOT do
 - Does NOT write to the Constitutional Audit Ledger

@@ -6,12 +6,11 @@
 
 ```
 Founding Corpus v1           Status: Ratified
-Version:                     0.8.0 — Skills, Performance, Billing, Conversational Config (2026-07-08)
+Version:                     0.9.0 — Digital Marketing Agent + RAG/MCP Architecture (2026-07-08)
 Current Epoch:               Epoch 1 — Employment
-Current Gate:                G2: PASSED — G3: PASSED — G4: PASSED — G5: CLEAR
-Authorized Offices:          Runtime Professional (IB-009 — Foundation Implementation)
-Engineering Status:          Architecture — COMPLETE | Implementation — AUTHORIZED
-Claims:                      C-001 to C-039 | Capabilities: 42+ | Drivers: AD-001-014 | Principles: DP-001-012
+Current Gate:                G2-G4: PASSED — G5: CLEAR
+Claims:                      C-001 to C-041 | ADRs: 20 | Capabilities: 42+ | Agents: 1 spec
+Engineering Status:          Architecture COMPLETE | Implementation AUTHORIZED
 ```
 
 ---

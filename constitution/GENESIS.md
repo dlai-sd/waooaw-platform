@@ -1995,3 +1995,136 @@ Each simulation lives in the `simulation/` folder as a numbered case file.
 Everything — customer journeys, employment contracts, behavioral models, constitutional test cases — emerges from the simulations, not from further framework documents.
 
 GENESIS does not define the simulations. Reality does.
+
+
+---
+
+# Part 05 — Agent Definition Protocol
+**Document Version:** Genesis 1.0 (Part 05)
+**Authority:** Supreme
+**Status:** Approved by Founder (2026-07-08)
+**Classification:** Immutable unless superseded by newer Genesis version
+
+---
+
+# BOOT 04
+
+# Why Agents Must Be Constitutionally Specified Before They Are Built
+
+Every Digital Professional deployed on the WAOOAW platform is a constitutional entity. It has a Professional Identity, a Decision Space, authority boundaries, Skills, and a performance obligation to its customer.
+
+Before any engineer writes a single line of code for a new professional type, the institution must know — completely and unambiguously — what that professional is:
+
+- What domain it operates in and what expertise it claims (C-040)
+- What Skills it has and what each Skill is authorized to do (C-036)
+- What knowledge it retrieves to be domain-expert (RAG specification)
+- What external tools it may call and under what authorization (MCP specification, C-041)
+- How it will be measured against the customer's business outcomes (C-037)
+- How a customer configures it through conversation (C-039)
+- What it must never do under any circumstances
+
+Without this specification, a Runtime Professional implementing the agent would invent behavior not authorized by the customer — a constitutional violation of C-003 (the Second Law).
+
+The Agent Definition Protocol is the constitutional standard for introducing new professional types to WAOOAW.
+
+---
+
+# The Agent Definition Protocol
+
+Every new Professional Type on the WAOOAW platform shall be specified using the following structure before any implementation sprint begins:
+
+```
+1. AGENT IDENTITY
+   Domain:             [the field of professional expertise]
+   Persona:            [expert + consultant + partner tone and character]
+   Target Customers:   [which customer personas hire this professional]
+
+2. SKILL CATALOGUE
+   For each Skill:
+     Name:             [business-readable name]
+     Decision Space:   [what it may do / may not do / must ask before doing]
+     RAG Sources:      [domain knowledge + customer context + other data]
+     MCP Tools:        [external tools, with authorization constraint]
+     Business KPI:     [how performance is measured — C-037]
+     Constitutional Constraints: [what this Skill may NEVER do]
+
+3. ONBOARDING CONVERSATION
+   The conversational flow through which a customer configures this
+   professional's Skills, goals, credentials, and Decision Space — C-039.
+   Must complete in under 15 minutes for a first-time customer — AD-013.
+
+4. PROFESSIONAL TEMPLATE
+   The ProfessionalTemplate definition for this agent type, stored in
+   business.professional_templates and available in the catalogue — FR-001.
+
+5. ACCEPTED ACCEPTANCE SCENARIOS
+   Which GENESIS Acceptance Scenarios does this agent type satisfy?
+   At least one Acceptance Scenario must be cited.
+```
+
+The Agent Specification lives in: `architecture/reference/agents/{agent-type}.md`
+
+The Agent Authoring Guide (template + instructions) lives in: `architecture/reference/agents/AGENT-AUTHORING-GUIDE.md`
+
+---
+
+# The RAG Specification Standard
+
+Every Skill in an Agent Specification must declare its RAG sources. RAG (Retrieval-Augmented Generation) is the mechanism by which an agent is constitutionally domain-expert (C-040).
+
+RAG sources have three constitutional categories:
+
+**Category 1 — Domain Knowledge (WAOOAW IP)**
+Industry-level patterns, best practices, regulatory context, and market intelligence. Owned by WAOOAW per FR-003. Shared across all agents of the same type. Updated continuously.
+
+Examples: dental marketing content performance patterns for India, Instagram algorithm trends for healthcare, SEBI trading regulations.
+
+**Category 2 — Customer Context (Customer Private)**
+Brand voice, previous content, business goals, patient/customer demographics. Owned by the customer per C-005. Stored in per-customer pgvector embeddings. Never shared across customers.
+
+Examples: Dr. Mehta's clinic aesthetic, her previous approved posts, her target patient demographic in Viman Nagar.
+
+**Category 3 — Platform Intelligence (WAOOAW IP)**
+Cross-customer aggregate patterns — what times work best for dental posts in Pune, what content format performs best for beauty artists on Instagram. Derived from Category 1 + anonymized Category 2. Owned by WAOOAW per FR-003.
+
+An Agent Specification must declare which RAG categories each Skill uses and what specific knowledge is retrieved.
+
+---
+
+# The MCP Tool Specification Standard
+
+Every Skill that takes external action must declare its MCP tools. MCP (Model Context Protocol) is the standard through which a Skill connects to external platforms (C-041).
+
+Every MCP tool declaration must include:
+- **Tool name** (the MCP server capability)
+- **Authorization constraint** (which Decision Space action type authorizes this tool call)
+- **Failure mode** (what happens if the tool is unavailable)
+- **Rate limit** (how often this tool can be called, per C-006 cost constraint)
+
+No Skill may call an MCP tool that is not explicitly declared in its specification. The Tool Registry enforces default deny.
+
+---
+
+# The Learning Loop Standard
+
+Every agent type specification must describe how Skills self-improve (C-037, C-040):
+
+- What signals from customer interactions are captured as learning inputs
+- How those signals feed back into the agent's domain knowledge (Category 1 or Platform Intelligence)
+- What the customer's private data contributes (Category 2 — customer context only)
+- How improvement is measured against business KPIs
+
+Learning signals are WAOOAW IP once they leave the customer context boundary (FR-003).
+
+---
+
+# Immutability Statement
+
+Part 05 establishes the Agent Definition Protocol for all new professional types on the WAOOAW platform.
+
+No new professional type may be implemented without a complete Agent Specification in `architecture/reference/agents/`.
+
+No implementation sprint for a new agent type may begin until the Agent Specification has been reviewed by the Enterprise Architect and approved by the Founder.
+
+This concludes BOOT 04.
+

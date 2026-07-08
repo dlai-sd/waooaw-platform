@@ -8,6 +8,34 @@ types: `feat` | `fix` | `constitutional` | `cct` | `chore` | `refactor` | `secur
 
 ---
 
+## [0.9.0] — 2026-07-08
+
+### Constitutional (new claims + GENESIS Part 05)
+- C-040: Domain specialization as constitutional obligation (LAW)
+- C-041: Every MCP tool call governed by Decision Space (LAW)
+- GENESIS Part 05: Agent Definition Protocol — mandatory specification before any new agent implementation
+  - RAG Specification Standard (three-tier: Domain / Customer / Platform Intelligence)
+  - MCP Tool Specification Standard (default deny, C-041 enforcement)
+  - Learning Loop Standard (FR-003 boundary at inference signal boundary)
+
+### Architecture (new ADRs + agent infrastructure)
+- ADR-019: RAG Architecture — three-tier, pgvector in `institutional` schema at MVI
+- ADR-020: MCP Integration Pattern — AI Runtime as MCP client, CE.ValidateAction before every tool call
+- ADR-INDEX.md: updated to 20 ADRs
+- AI Runtime component spec: RAG pipeline + MCP client sections added
+
+### Agent Specifications (new directory)
+- `architecture/reference/agents/AGENT-AUTHORING-GUIDE.md` — reusable template for new agent types
+- `architecture/reference/agents/digital-marketing-agent.md` — first complete agent specification
+  - 7 Skills: Content Strategy, Instagram, Facebook, Google Business, WhatsApp, Video, Analytics
+  - RAG sources per skill (Tier 1/2/3)
+  - MCP tools per skill with authorization + failure mode
+  - 15-minute onboarding conversation flow
+  - ProfessionalTemplate definition (dental + beauty variants)
+  - Full constitutional checklist
+
+---
+
 ## [0.8.0] — 2026-07-08
 
 ### Constitutional (new claims)

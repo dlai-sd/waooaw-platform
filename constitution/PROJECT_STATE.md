@@ -2,7 +2,38 @@
 
 **Last Updated:** 2026-07-07
 
-**Session Reference:** v0.8.0 — Skills, Performance, Billing, Conversational Config percolation
+**Session Reference:** v0.9.0 — Digital Marketing Agent + RAG/MCP Architecture + Agent Authoring Protocol
+
+## IN-PROGRESS CHECKPOINT
+
+| Milestone | Status |
+|---|---|
+| Claims C-040/041 + GENESIS Agent Protocol | ✓ DONE |
+| ADR-019 RAG + ADR-020 MCP architecture | ✓ DONE |
+| AI Runtime component spec update | ✓ DONE |
+| Agent Authoring Guide (template) | ✓ DONE |
+| Digital Marketing Agent specification | ✓ DONE |
+| v0.9.0 commit + push | ✓ DONE |
+
+---
+
+## RESUME BRIEFING — Updated
+
+### Where we are
+```
+Version:  0.9.0  |  Claims: C-001–C-041  |  ADRs: 20  |  Agent Specs: 1
+Architecture COMPLETE. Digital Marketing Agent fully specified. Implementation AUTHORIZED.
+```
+
+### TO-DO LIST — Next Session
+**P0:** IB-009 — Foundation Implementation (first working code)
+**P1:** EA review of digital-marketing-agent.md (pending) → Founder approval
+**P1:** Trading Agent specification (AS-003 — FO/Crypto trader)
+**P1:** ADR-019 institutional schema creation (add to postgres init scripts)
+
+---
+
+**Previous Session Reference:** v0.8.0 — Skills, Performance, Billing, Conversational Config
 
 ## IN-PROGRESS CHECKPOINT
 
