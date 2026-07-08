@@ -3,6 +3,7 @@
 **Specification version:** 1.1
 **Date:** 2026-07-08
 **Change:** Skill 1 expanded to explicitly cover Technical Chart Analysis (OHLCV candles, chart patterns, indicator calibration RAG, India VIX MCP tool)
+**Approved by Founder:** 2026-07-08
 **Constitutional Basis:** C-036 (Skills), C-037 (Business KPIs), C-038 (Billing), C-039 (Conversational config), C-040 (Domain specialization), C-041 (Tool authorization), ADR-019 (RAG), ADR-020 (MCP), ADR-018 (Emergency Stop Temporal signal)
 **Status:** DRAFT — pending EA review (R-012) and Founder approval (GENESIS Part 05)
 
@@ -347,6 +348,6 @@ ProfessionalTemplate:
 
 ## 10. Review and Approval
 
-**EA Review:** R-012 — APPROVED (all three notes addressed in v1.0)
-**Founder Approval:** PENDING
-**Status:** READY FOR FOUNDER APPROVAL
+**EA Review:** R-012 — APPROVED (all three notes addressed in v1.0; Technical Chart Analysis added in v1.1)
+**Founder Approval:** GRANTED — 2026-07-08 (per GENESIS Part 05)
+**Status:** APPROVED — active ProfessionalTemplate

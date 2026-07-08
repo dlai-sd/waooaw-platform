@@ -149,6 +149,7 @@ Before submitting for EA review, confirm:
 - [ ] RAG Tier 1 and Tier 2 sources are explicitly separated (FR-003)
 - [ ] No prohibited action violates a Constitutional Floor (Emergency Stop, Evidence First, Audit Ledger)
 - [ ] **Learning from R011-01 / R012-01: any real-world authorization the agent needs from the customer (image consent, broker API access, platform credentials) must be an always-ask action type that creates a constitutional evidence record. An assumed authorization is a constitutional gap.**
+- [ ] **C-042 check: if your agent serves customers with limited technical or digital literacy — farmers, healthcare workers, artisans — the Vocabulary Mandate applies. Add a Vocabulary Translation Layer to every Skill. No technical data surfaced to customer. All outputs actionable in their vocabulary.**
 
 ## 8. Review and Approval
 

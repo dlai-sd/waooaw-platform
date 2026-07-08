@@ -19,29 +19,21 @@
 
 ### Where we are
 ```
-Version:  0.10.1  |  Gate: G5 prerequisites met — AWAITING FOUNDER AUTHORIZATION to code
-Violation corrected: premature IB-009 src/ code removed (OD-008)
-Gate enforcement: BOOTSTRAP + AGENT-ENTRY + copilot-instructions all updated
+Version:  0.11.0  |  Gate: G5 prerequisites met | 3 agent specs (2 approved, 1 draft)
+Violation corrected: OD-008, gate enforcement patched, src/ code removed
+Agents: Digital Marketing (APPROVED) | Trading (APPROVED) | Agricultural (DRAFT R-013 pending)
+New claim: C-042 Vocabulary Mandate (LAW)
 ```
 
-### Pending Founder decisions
-1. Approve Digital Marketing Agent specification (R-011 EA review APPROVED WITH NOTE)
-2. Authorize IB-009 implementation when ready — explicit confirmation required
+### TO-DO LIST
+**P0 (architecture):**
+1. R-013 EA review of agricultural-advisor-agent.md
+2. Founder approval of Agricultural Agent (GENESIS Part 05)
+3. GENESIS amendment: add AS-005 (Small Farmer Agricultural Advisory)
 
-### Architecture work complete this session
-- Trading Agent specification (AS-003) — DRAFT, pending EA review R-012
-- OD-008 violation recorded and gate enforcement patched
-
-### TO-DO LIST — Next Session
-**Architecture (no code):**
-1. R-012: EA review of trading-agent.md
-2. Founder approval of both agent specs (if R-012 passes)
-3. Any further customer journey discussion
-
-**When Founder explicitly authorizes IB-009:**
-4. `./scripts/setup.sh` → `docker compose up` → all 4 /health = 200
-5. The src/ code from v0.10.0 is in git history and can be restored
-   Command: `git checkout dfbaf0b -- src/`
+**P0 (implementation — Founder must explicitly authorize per session):**
+4. `git checkout dfbaf0b -- src/` to restore IB-009 code when authorized
+5. `./scripts/setup.sh` → verify `docker compose up` → all 4 /health = 200
 
 ---
 
