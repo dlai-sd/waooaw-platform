@@ -1,7 +1,8 @@
 # Autonomous Trading Professional — FO & Crypto
 
-**Specification version:** 1.0
+**Specification version:** 1.1
 **Date:** 2026-07-08
+**Change:** Skill 1 expanded to explicitly cover Technical Chart Analysis (OHLCV candles, chart patterns, indicator calibration RAG, India VIX MCP tool)
 **Constitutional Basis:** C-036 (Skills), C-037 (Business KPIs), C-038 (Billing), C-039 (Conversational config), C-040 (Domain specialization), C-041 (Tool authorization), ADR-019 (RAG), ADR-020 (MCP), ADR-018 (Emergency Stop Temporal signal)
 **Status:** DRAFT — pending EA review (R-012) and Founder approval (GENESIS Part 05)
 
@@ -45,33 +46,37 @@ This is constitutionally justified because:
 
 ## 4. Skill Catalogue
 
-### Skill 1: Market Analysis & Strategy Formation
+### Skill 1: Market & Technical Analysis
 
-**Skill type:** `MARKET_ANALYSIS`
-**Business KPI:** Strategy accuracy rate (% of trades aligned with stated market view)
-**Execution model:** PRE_AUTHORIZED (analysis runs continuously, no per-analysis approval)
+**Skill type:** `MARKET_TECHNICAL_ANALYSIS`
+**Business KPI:** Signal quality score — % of analysis-driven setups that produce trades within the customer's expected risk/reward range
+**Execution model:** PRE_AUTHORIZED (analysis runs continuously; no per-analysis approval needed)
 
 **Decision Space:**
-- **Authorized:** Read market data (prices, OI, Greeks, IV); compute technical indicators; identify setups per strategy rules; generate trade proposals; assess risk/reward
-- **Prohibited:** Place any order — analysis never executes; publish trading signals externally; access customer's brokerage account without an active PAAS session
-- **Always-ask:** Changing the active strategy entirely (e.g., switching from directional to volatility strategy)
+- **Authorized:** Read market data (OHLCV candles, live prices, OI, Greeks, IV); compute technical indicators (RSI, MACD, Bollinger Bands, ATR, VWAP, EMA/SMA); identify chart patterns (support/resistance, trend lines, head and shoulders, double tops, flags, wedges); assess candlestick patterns; calculate volatility signals (India VIX, HV/IV ratio); generate trade proposals with entry/exit/stop-loss targets; assess risk/reward per setup
+- **Prohibited:** Place any order — this skill is analysis only; publish signals externally; access brokerage account without active PAAS session
+- **Always-ask:** Switching the active strategy type entirely (e.g., directional → volatility); introducing a new technical indicator not in the configured set
 
 **RAG Sources:**
 | Tier | Knowledge | Retrieved for |
 |---|---|---|
-| 1 — Domain | NSE/BSE F&O market microstructure, NIFTY/BANKNIFTY seasonal patterns | Strategy context and timing |
-| 1 — Domain | India volatility regime classification (India VIX patterns) | Strategy selection per regime |
+| 1 — Domain | NSE/BSE F&O market microstructure, NIFTY/BANKNIFTY seasonal and expiry-week patterns | Strategy timing and context |
+| 1 — Domain | India volatility regime classification (India VIX levels, HV/IV ratios) | Strategy selection per regime |
+| 1 — Domain | Chart pattern performance data for Indian F&O (historical success rate of specific patterns on NIFTY/BANKNIFTY) | Pattern-based setup confidence |
+| 1 — Domain | Technical indicator calibration for India F&O (optimal RSI periods, MACD settings for intraday vs positional) | Indicator parameter selection |
 | 1 — Domain | SEBI regulations on derivative trading (margin rules, lot sizes, expiry) | Compliance validation of trade proposals |
-| 2 — Customer | Customer's strategy preferences, risk tolerance, capital allocation | Personalized signal generation |
-| 2 — Customer | Historical trade performance (what worked, what didn't) | Strategy refinement |
-| 3 — Platform | Cross-customer alpha patterns in Indian F&O (anonymised) | Edge identification |
+| 2 — Customer | Customer's strategy preferences (directional, volatility-based, or hybrid), risk tolerance | Personalized signal generation |
+| 2 — Customer | Historical trade performance (which setups worked, entry/exit quality) | Strategy refinement |
+| 3 — Platform | Cross-customer alpha patterns in Indian F&O (anonymised aggregate) | Edge identification |
 
 **MCP Tools:**
 | Tool | MCP Server | Action | Authorization | Failure |
 |---|---|---|---|---|
-| Read NSE/BSE prices | market-data-mcp | market.get_price_feed | Always authorized (read-only) | REQUIRED — no trading without data |
+| Read live prices | market-data-mcp | market.get_price_feed | Always authorized (read-only) | REQUIRED — no analysis without data |
+| Read OHLCV candles | market-data-mcp | market.get_ohlcv | Always authorized (read-only) | REQUIRED — chart analysis needs candle data |
 | Read options chain | market-data-mcp | market.get_options_chain | Always authorized (read-only) | REQUIRED |
 | Read OI / Greeks | market-data-mcp | market.get_oi_greeks | Always authorized (read-only) | DEGRADABLE |
+| Read India VIX | market-data-mcp | market.get_vix | Always authorized (read-only) | DEGRADABLE |
 
 ---
 
