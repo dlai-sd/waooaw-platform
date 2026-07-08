@@ -8,6 +8,25 @@ types: `feat` | `fix` | `constitutional` | `cct` | `chore` | `refactor` | `secur
 
 ---
 
+## [0.7.0] — 2026-07-08
+
+### Constitutional (Founder Resolutions)
+- FR-002: Trial = full constitutional employment from day one; trial outputs owned by customer
+- FR-003: Agent learning is WAOOAW institutional IP; customer data is private and never shared
+- FR-004: Agent Teams — enterprise tier, WAOOAW-provided Team Coordinator, deferred from MVI
+
+### Architecture (gaps bridged by simulation)
+- `architecture/reference/domain-model.md`: EmploymentContract `isTrial`, `trialEndsAt`, `trialConvertedAt`
+- `infrastructure/postgres/init/03-enums-and-tables.sql`: trial columns on `business.employment_contracts`
+- `architecture/reference/api-specs/business-platform.openapi.yaml`: trial fields + `POST /convert-trial` endpoint
+- `architecture/reference/data/ledger-design.md`: Institutional Learning Zone (FR-003 fourth data zone)
+- `architecture/reference/security/security-architecture.md`: Data Classification table §0 (FR-003)
+
+### Backlog
+- IB-018: Agent Teams — Constitutional Team Architecture (enterprise, post-MVI, DEFERRED)
+
+---
+
 ## [0.6.0] — 2026-07-07
 
 ### Added

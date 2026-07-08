@@ -39,6 +39,11 @@ EmploymentContract {
   decisionSpaceId: UUID
   state: enum(EVALUATION, ACTIVE, SUSPENDED, TERMINATED)  // C-034
   authorityLevel: int               // starts at minimum, expands by evidence
+  lifecycleType: enum(PERMANENT, SESSION_BOUND, TRIAL)
+  // FR-002: Trial = full constitutional employment. All rights apply from day one.
+  isTrial: boolean                  // true = 7-day trial period, no billing commitment
+  trialEndsAt: datetime?            // auto-terminates if not converted
+  trialConvertedAt: datetime?       // set when customer converts to paid subscription
   goals: [BusinessGoal]
   reviewCadence: ReviewCadence
   startDate: datetime

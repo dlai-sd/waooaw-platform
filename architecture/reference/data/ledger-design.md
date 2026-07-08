@@ -19,6 +19,42 @@ CREATE SCHEMA professional;    -- Professional Experience Ledger: owned by profe
 
 ---
 
+## Institutional Learning Zone (FR-003 — separate from the Three Ledgers)
+
+**FR-003 Founder Resolution:** Agent learning is WAOOAW institutional IP. Customer data is private and never shared. These two must never be conflated in the data architecture.
+
+The Three-Ledger Model (C-005) governs customer data separation. Agent learning patterns are a fourth category — they are not a ledger, they are WAOOAW's operational intelligence.
+
+```
+Data category                  Owner           Storage             Governed by
+─────────────────────────────────────────────────────────────────────────────
+Constitutional Audit Ledger    Platform        constitutional.*    C-005, C-007
+Business / Employment data     Customer        business.*          C-005, AD-004
+Professional Experience        Professional    professional.*      C-005, Article VI
+Agent Domain Learning          WAOOAW (IP)     institutional.*     FR-003
+```
+
+**What is in Agent Domain Learning:**
+- Domain performance patterns (what content works in dental marketing — anonymised aggregate)
+- Skill performance models (how a video production skill improves over engagements)
+- Tool effectiveness data (which social platform yields best results for which professional type)
+- Customer-segment behaviour patterns (anonymised, no individual customer data)
+
+**What is NOT in Agent Domain Learning (and never will be):**
+- Any individual customer's posts, campaigns, goals, or credentials
+- Any customer's evidence records
+- Any data that could identify a specific customer or their business
+
+**Storage:** `institutional` schema in PostgreSQL, OR a dedicated vector store for embeddings. Architecture decision (ADR-019) required before implementation.
+
+**Access:**
+- WAOOAW AI platform services read the institutional schema for inference context
+- No customer-facing API exposes institutional learning data
+- The `runtime_app` DB user does NOT have access to the institutional schema
+- Only the AI Runtime service account has read access
+
+---
+
 ## Constitutional Schema (Append-Only)
 
 The Constitutional Audit Ledger. The application service account has INSERT + SELECT only. No UPDATE. No DELETE.

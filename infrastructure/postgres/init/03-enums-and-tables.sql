@@ -114,7 +114,11 @@ CREATE TABLE business.employment_contracts (
     authority_level         INT NOT NULL DEFAULT 1,
     goals                   JSONB NOT NULL DEFAULT '[]',
     review_cadence          JSONB NOT NULL DEFAULT '{"frequencyDays": 30}',
-    lifecycle_type          VARCHAR(20) NOT NULL DEFAULT 'PERMANENT',  -- PERMANENT | SESSION_BOUND (IB-015)
+    lifecycle_type          VARCHAR(20) NOT NULL DEFAULT 'PERMANENT',  -- PERMANENT | SESSION_BOUND | TRIAL
+    -- FR-002: Trial employment is full constitutional employment (all rights apply from day one)
+    is_trial                BOOLEAN NOT NULL DEFAULT FALSE,
+    trial_ends_at           TIMESTAMPTZ,            -- NULL for non-trial contracts
+    trial_converted_at      TIMESTAMPTZ,            -- set when customer converts trial to paid
     created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     activated_at            TIMESTAMPTZ,
     suspended_at            TIMESTAMPTZ,

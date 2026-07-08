@@ -7,17 +7,17 @@
 ## Current Platform State (updated each session)
 
 ```
-Version:   0.6.0 | Gate: G5 CLEAR | Epoch: 1 — Employment
+Version:   0.7.0 | Gate: G5 CLEAR | Epoch: 1 — Employment
 Authorized: Runtime Professional (IB-009 — Foundation Implementation — NOT YET STARTED)
 Implementation: AUTHORIZED | Architecture: COMPLETE
 Next action: Create IB-009 GitHub Issue → assign to @copilot → Sprint 1 begins
 ```
 
-**Open Constitutional Blockers:** None (CB-001/CB-002 were simulation-only, verified resolved)
+**Open Constitutional Blockers:** None
 
-**Deferred (Founder decision required):** OD-003 (DA scope) · AI Architect sprint (GAP-006b)
+**Active Founder Resolutions:** FR-001 (CS Agents), FR-002 (Trial), FR-003 (Learning IP), FR-004 (Teams — deferred)
 
-**Founder one-time task:** GitHub Project matrix view setup (UI, 10 min)
+**Deferred:** OD-003 (DA scope) · AI Architect sprint (GAP-006b) · IB-018 (Agent Teams — enterprise, post-MVI)
 
 ---
 

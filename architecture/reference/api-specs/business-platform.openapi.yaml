@@ -251,6 +251,36 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/employment/contracts/{contractId}/convert-trial:
+    post:
+      tags: [Employment]
+      summary: Convert a trial contract to paid subscription (FR-002)
+      description: |
+        Converts an active trial contract to a paid subscription.
+        Trial outputs produced during the trial period are retained by the customer
+        regardless of conversion (FR-002 — trial outputs owned by customer).
+        A Constitutional Engine evidence record is created before this returns 200.
+      operationId: convertTrialToPaid
+      parameters:
+        - $ref: "#/components/parameters/ContractId"
+      responses:
+        "200":
+          description: Trial converted to paid subscription
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmploymentContract"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Contract is not a trial, or trial has already been converted
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+
   # ─── Approvals ────────────────────────────────────────────────────────────
 
   /api/v1/approvals:
@@ -702,6 +732,21 @@ components:
             $ref: "#/components/schemas/BusinessGoal"
         reviewCadence:
           $ref: "#/components/schemas/ReviewCadence"
+        # FR-002: Trial = full constitutional employment. All rights (Emergency Stop,
+        # Evidence First, audit ledger, data portability) apply from day one of trial.
+        isTrial:
+          type: boolean
+          description: "True if this is a 7-day trial engagement. No billing commitment. All constitutional rights apply."
+        trialEndsAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Auto-termination datetime for trial contracts. Null for paid contracts.
+        trialConvertedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Set when customer converts trial to paid subscription.
         createdAt:
           type: string
           format: date-time
@@ -910,6 +955,10 @@ components:
             $ref: "#/components/schemas/BusinessGoal"
         reviewCadence:
           $ref: "#/components/schemas/ReviewCadence"
+        isTrial:
+          type: boolean
+          default: false
+          description: "Start as a 7-day trial. FR-002: all constitutional rights apply from day one."
 
     DecisionSpaceInput:
       type: object

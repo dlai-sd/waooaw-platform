@@ -7,6 +7,21 @@
 
 ---
 
+## 0. Data Classification (FR-003)
+
+Every piece of data in the WAOOAW platform falls into one of four classifications. Security controls are calibrated per classification.
+
+| Classification | Examples | Owner | Access | Portability |
+|---|---|---|---|---|
+| **Customer Private Data** | Employment contracts, evidence records, Decision Spaces, credentials, goals, content created | Customer | Customer only (RLS enforced) | Full — Article IX right of export |
+| **Professional Experience** | Engagement summaries (hashed), capability demonstrations | Professional Identity | Professional + WAOOAW internal | Portable with professional identity |
+| **Constitutional Audit** | All governance events — approvals, rejections, Emergency Stops, authority changes | Platform (immutable) | Customer read, no one writes except CE | Full — Article IX |
+| **WAOOAW Institutional IP** | Domain learning patterns, skill performance models, aggregate anonymised insights | WAOOAW | Internal AI services only | Not portable — WAOOAW IP (FR-003) |
+
+**The security rule:** A data access that crosses classification boundaries requires explicit constitutional authorization. Crossing the Customer Private ↔ Institutional IP boundary is prohibited in both directions — customer data never flows into institutional IP; institutional IP never exposes customer data.
+
+---
+
 ## 1. Network Topology
 
 ### Public vs Internal Boundary

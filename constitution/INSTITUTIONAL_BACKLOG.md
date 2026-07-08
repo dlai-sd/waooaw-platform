@@ -477,6 +477,7 @@ Status:           WAITING | IN_PROGRESS | DONE | BLOCKED
 | IB-015 | Constitutional CS Agents (Domain 8) — FR-001 Path A | Business Architect + Runtime Professional | P1 | G5-parallel | WAITING |
 | IB-016 | Platform Operations Architecture | Platform Architect | P1 | G5-parallel | WAITING |
 | IB-017 | Phase 2 Readiness Sprint | Platform Architect + EA | P0 | G5-prerequisite | DONE |
+| IB-018 | Agent Teams — Constitutional Team Architecture | Enterprise Arch + BA + CA | P1 | Post-MVI (Enterprise) | DEFERRED |
 
 ---
 

@@ -2,7 +2,47 @@
 
 **Last Updated:** 2026-07-07
 
-**Session Reference:** v0.6.0 — Complete. Ready for IB-009 Sprint 1.
+**Session Reference:** v0.7.0 — FR-002/003/004 recorded + gaps bridged
+
+## IN-PROGRESS CHECKPOINT
+
+| Milestone | Status |
+|---|---|
+| FR-002/003/004 recorded | ✓ DONE |
+| Trial fields: domain model + DB + OpenAPI | ✓ DONE |
+| Institutional learning zone + data classification | ✓ DONE |
+| IB-018 Agent Teams (deferred) | ✓ DONE |
+| v0.7.0 commit + push | ✓ DONE |
+
+---
+
+## RESUME BRIEFING — Updated for next session
+
+### Where we are
+```
+Version:  0.7.0  |  Gate: G5 CLEAR  |  Epoch: 1 — Employment
+Status:   Architecture COMPLETE. Implementation AUTHORIZED. First sprint not yet started.
+Active FRs: FR-001 (CS Agents) | FR-002 (Trial) | FR-003 (Learning IP) | FR-004 (Teams — deferred)
+```
+
+### TO-DO LIST — Next Session
+
+**P0 — Start the first development sprint:**
+1. `@copilot You are Product Owner. Produce Sprint Plan for Sprint 1.` → `/approved` → create IB-009 issue → assign to @copilot
+2. IB-009 targets: CE RecordEvidence stub + /health | BP /contracts + JWT | PR Emergency Stop | AI /health | CCT-EF-01
+
+**P1 — Parallel:**
+3. IB-014 API addenda (SA, 30 min): /contracts/{id}/status + /professional-templates
+4. IB-016 Platform Operations: OTel metrics + P0 runbooks
+5. ADR-019: Institutional learning data store decision (pgvector vs external — FR-003 consequence)
+
+**Founder one-time:**
+6. GitHub Project matrix view setup (UI, 10 min)
+7. OD-003: DA scope boundary review (operational-discoveries.md)
+
+---
+
+**Previous Session Reference:** v0.6.0 — Agent Efficiency Baseline
 
 ---
 

@@ -92,3 +92,77 @@ Discoveries with status PROMOTED have been incorporated into permanent operation
 8. No new containers. Professional Runtime handles both L1 (PAAS) and L2 (APPROVAL_GATE) with `professional_type = CUSTOMER_SUCCESS_L1 / L2`.
 
 **Status:** RESOLVED — 2026-07-07 (Founder decision recorded)
+
+---
+
+### OD-005 — Founder Resolution FR-002: Trial Employment
+
+**Date:** 2026-07-08
+**Office:** Founder (constitutional decision)
+**Context:** Customer journey design — trial mode before subscription commitment.
+
+**Question:** Is a trial engagement a formal Employment Contract? Do constitutional rights (Emergency Stop, Evidence First, data portability) apply during trial?
+
+**Founder Decision (FR-002):**
+> Trial employment is constitutional employment. Trial outputs are owned by the customer, as in any industry trial period. All constitutional rights apply from the first day of trial — Emergency Stop, Evidence First, Right of Review, audit ledger, data export. The only difference from a paid subscription is billing.
+
+**Architectural consequences of FR-002:**
+1. `business.employment_contracts` table: `is_trial BOOLEAN`, `trial_ends_at TIMESTAMPTZ`, `trial_converted_at TIMESTAMPTZ` columns added
+2. `lifecycle_type` enum extended to include `TRIAL`
+3. New endpoint: `POST /api/v1/employment/contracts/{id}/convert-trial`
+4. Domain model updated: EmploymentContract includes trial fields
+5. Trial auto-terminates at `trial_ends_at` if not converted — state → TERMINATED
+6. Trial outputs (evidence records, content) are retained by customer regardless of conversion — FR-002 explicit
+
+**Status:** RESOLVED — 2026-07-08
+
+---
+
+### OD-006 — Founder Resolution FR-003: Agent Learning is WAOOAW IP
+
+**Date:** 2026-07-08
+**Office:** Founder (constitutional decision)
+**Context:** Self-tuning agent — who owns what the agent learns?
+
+**Question:** Can WAOOAW use patterns learned from one customer's engagement to improve the agent's performance for other customers?
+
+**Founder Decision (FR-003):**
+> Agent learning is WAOOAW's institutional IP. WAOOAW has full rights to use domain knowledge derived from agent performance across its customer base. The commitment to customers is privacy of their personal and business data — which is never shared. The separation is clean: individual customer data (posts, credentials, business information, evidence records) is private; domain patterns derived from aggregate agent performance are WAOOAW IP.
+
+**Architectural consequences of FR-003:**
+1. Data architecture: 4th data zone `institutional.*` defined in ledger-design.md (separate from the Three-Ledger Model)
+2. Security architecture: Data Classification section added (§0) with clear boundary between Customer Private Data and WAOOAW Institutional IP
+3. AI Runtime: institutional learning zone is read-only context for inference — never exposes customer data
+4. DB access: `runtime_app` does NOT have access to `institutional.*` schema; only AI Runtime service account does
+5. ADR-019 required before institutional schema is implemented (data store decision — pgvector vs external)
+
+**Status:** RESOLVED — 2026-07-08
+
+---
+
+### OD-007 — Founder Resolution FR-004: Agent Teams — Enterprise Tier, Deferred from MVI
+
+**Date:** 2026-07-08
+**Office:** Founder (constitutional decision)
+**Context:** Multi-agent self-organizing team governance model.
+
+**Question:** Who governs inter-agent coordination in a team? Who appoints the Team Coordinator?
+
+**Founder Decision (FR-004):**
+> WAOOAW's team bundle comes with a Team Coordinator by default — WAOOAW-provided, not customer-appointed. Team functionality is designed for sizable/enterprise customers, not the SMB/MVI tier. Agent Teams will not be built or specced for MVI. The constitution recognises Agent Teams as a future constitutional domain to ensure all future architecture is designed with teams in mind.
+
+**Constitutional Team Architecture (for future epochs):**
+1. Customer employs the TEAM as a unit via a Team Employment Contract
+2. Team Coordinator is WAOOAW-provided (bundled ProfessionalTemplate, like CS Agents from FR-001)
+3. Each team agent has a Domain Decision Space; the Team Decision Space governs inter-agent coordination
+4. Domain authority boundaries are explicit: only the CA agent can instruct the Accountant agent on financial classification; the Marketing agent cannot direct the CA agent on budget approval
+5. Emergency Stop covers the entire team simultaneously — team-level, not per-agent
+6. Team Evidence Ledger captures cross-agent decisions, not just individual agent actions
+7. Escalation to customer only when Team Decision Space is exceeded
+
+**When this becomes active:**
+- IB-018 added to institutional backlog as DEFERRED (enterprise tier, post-MVI)
+- Business Architect sprint required to add Domain 11 (Team Orchestration) to capability map
+- Constitutional Analyst sprint required to produce claims for inter-agent authority delegation
+
+**Status:** RESOLVED — 2026-07-08 (architecture deferred, constitution aware)
