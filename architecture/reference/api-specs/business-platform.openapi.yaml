@@ -391,7 +391,7 @@ paths:
     get:
       tags: [Billing]
       summary: Get itemised billing statement (C-038, AD-014)
-      description: "Pro-rata billing calculated from event ledger. Itemised per skill."
+      description: "Pro-rata billing calculated from event ledger. Itemised per skill. For COMBINED billing preference, returns the consolidated invoice; for SEPARATE, returns per-agent invoices."
       operationId: getBillingStatement
       parameters:
         - name: month
@@ -409,6 +409,133 @@ paths:
                 $ref: "#/components/schemas/BillingStatement"
         "401":
           $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/billing/preference:
+    get:
+      tags: [Billing]
+      summary: Get billing preference (SEPARATE or COMBINED)
+      description: Returns the customer's current multi-agent billing preference.
+      operationId: getBillingPreference
+      responses:
+        "200":
+          description: Current billing preference
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  billing_preference: { type: string, enum: [SEPARATE, COMBINED] }
+                  combined_billing_anchor_day: { type: integer, minimum: 1, maximum: 28 }
+                  active_agents: { type: integer, description: "Count of currently active employment contracts" }
+    put:
+      tags: [Billing]
+      summary: Update billing preference
+      description: |
+        Changes between SEPARATE and COMBINED billing. Effective from next billing period.
+        Requires at least 2 active employment contracts for COMBINED to be meaningful.
+      operationId: updateBillingPreference
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [billing_preference]
+              properties:
+                billing_preference: { type: string, enum: [SEPARATE, COMBINED] }
+                combined_billing_anchor_day:
+                  type: integer
+                  minimum: 1
+                  maximum: 28
+                  description: "Day of month for consolidated invoice. Default 1."
+      responses:
+        "200":
+          description: Preference updated. Effective from next billing period.
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /api/v1/billing/invoices:
+    get:
+      tags: [Billing]
+      summary: List all GST invoices
+      description: |
+        Returns all GST invoices for the customer. For COMBINED preference, includes
+        consolidated parent invoices. Each invoice includes a signed PDF URL valid for 1 hour.
+      operationId: listInvoices
+      parameters:
+        - name: from_date
+          in: query
+          schema: { type: string, format: date }
+        - name: to_date
+          in: query
+          schema: { type: string, format: date }
+        - name: agent_type
+          in: query
+          schema: { type: string }
+          description: "Filter by professional_type. Omit to get all agents."
+      responses:
+        "200":
+          description: List of GST invoices
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GstInvoiceSummary"
+
+  /api/v1/billing/subscription-tiers:
+    get:
+      tags: [Billing]
+      summary: List available subscription tiers for an agent type
+      description: Returns available tiers and pricing for a given professional_type.
+      operationId: getSubscriptionTiers
+      parameters:
+        - name: professional_type
+          in: query
+          required: true
+          schema: { type: string }
+          description: "e.g. DIGITAL_MARKETING_HEALTHCARE, TRADING_FO_CRYPTO, AGRICULTURAL_ADVISOR_INDIA"
+      responses:
+        "200":
+          description: Available subscription tiers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SubscriptionTier"
+
+  /api/v1/billing/whatsapp-upi-link:
+    post:
+      tags: [Billing]
+      summary: Generate WhatsApp UPI payment link (Agricultural Advisor)
+      description: |
+        Generates a Razorpay UPI deep link for WhatsApp delivery — enables farmers to pay
+        via any India UPI app (BHIM, GPay, PhonePe, Paytm) without visiting a portal.
+        Only applicable for AGRICULTURAL_ADVISOR_INDIA professional type.
+      operationId: generateWhatsappUpiLink
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [contract_id]
+              properties:
+                contract_id: { type: string, format: uuid }
+      responses:
+        "200":
+          description: UPI deep link ready to send via WhatsApp
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  upi_link: { type: string, format: uri }
+                  amount_inr: { type: integer }
+                  expires_at: { type: string, format: date-time }
+        "422":
+          description: Agent type not eligible for UPI link payment
 
   /api/v1/configure/conversational:
     post:

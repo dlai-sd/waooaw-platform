@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **Last Updated:** 2026-07-09
-**Version:** 0.23.0
+**Version:** 0.25.0
 **Session:** 2026-07-09 close
 
 ---

@@ -1185,3 +1185,57 @@ CREATE TABLE business.trading_session_records (
 
 CREATE INDEX idx_trading_session_contract ON business.trading_session_records(employment_contract_id);
 CREATE INDEX idx_trading_session_date ON business.trading_session_records(organisation_id, session_date DESC);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Multi-agent billing (v0.25.0 — ADR-022 extension, Issue #3)
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- Billing preference enum (ADR-022: SEPARATE or COMBINED for customers with multiple agents)
+CREATE TYPE billing_preference_type AS ENUM (
+    'SEPARATE',   -- one invoice per agent, one Razorpay subscription per agent
+    'COMBINED'    -- one consolidated invoice for all agents (default for 2+ agents); each agent still has own Razorpay subscription
+);
+
+-- Add billing_preference to organisations
+ALTER TABLE business.organisations
+    ADD COLUMN billing_preference billing_preference_type NOT NULL DEFAULT 'COMBINED',
+    ADD COLUMN combined_billing_anchor_day SMALLINT DEFAULT 1 CHECK (combined_billing_anchor_day BETWEEN 1 AND 28);
+    -- billing_anchor_day: day of month for consolidated invoice generation (default 1st)
+
+-- Add consolidation_group_id to gst_invoices (for COMBINED billing)
+-- When billing_preference = COMBINED: all invoices in the same period share a consolidation_group_id.
+-- The "parent" invoice (the one displayed to the customer) has is_consolidated_parent = TRUE.
+-- Child invoices (per-agent) are the detail records.
+ALTER TABLE business.gst_invoices
+    ADD COLUMN consolidation_group_id UUID,      -- NULL for SEPARATE billing; shared UUID for COMBINED group
+    ADD COLUMN is_consolidated_parent BOOLEAN NOT NULL DEFAULT FALSE, -- TRUE only for the summary invoice in a COMBINED group
+    ADD COLUMN parent_invoice_id UUID REFERENCES business.gst_invoices(id); -- child invoices reference the parent
+
+CREATE INDEX idx_gst_invoice_consolidation ON business.gst_invoices(consolidation_group_id) WHERE consolidation_group_id IS NOT NULL;
+
+-- Subscription tiers lookup — maps agent professional_type + tier_id to Razorpay plan ID and pricing
+-- Not tenant-scoped — platform catalogue (same pattern as professional_templates)
+CREATE TABLE business.subscription_tiers (
+    id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    professional_type           VARCHAR(100) NOT NULL,             -- DIGITAL_MARKETING_HEALTHCARE, TRADING_FO_CRYPTO, AGRICULTURAL_ADVISOR_INDIA
+    tier_id                     VARCHAR(50) NOT NULL,              -- CURTAIN_RAISER, TRADING_FO_ONLY, AGRICULTURAL_ADVISOR, etc.
+    display_name                VARCHAR(100) NOT NULL,
+    monthly_price_inr_paise     BIGINT NOT NULL,                   -- all-inclusive (incl. GST)
+    base_amount_paise           BIGINT NOT NULL,
+    gst_amount_paise            BIGINT NOT NULL,
+    gst_sac_code                VARCHAR(10) NOT NULL DEFAULT '9984',
+    razorpay_plan_id            VARCHAR(100),                      -- set when Razorpay plans are created in production
+    is_active                   BOOLEAN NOT NULL DEFAULT TRUE,
+    sort_order                  INTEGER NOT NULL DEFAULT 0,
+    created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT uq_subscription_tier UNIQUE (professional_type, tier_id)
+);
+
+-- Seed subscription tiers (v0.25.0)
+INSERT INTO business.subscription_tiers (professional_type, tier_id, display_name, monthly_price_inr_paise, base_amount_paise, gst_amount_paise, razorpay_plan_id, sort_order) VALUES
+    ('DIGITAL_MARKETING_HEALTHCARE', 'CURTAIN_RAISER',    'Curtain Raiser',            149900, 127034, 22866, 'plan_dma_curtain_raiser',   10),
+    ('DIGITAL_MARKETING_HEALTHCARE', 'GROWTH_ENGINE',     'Growth Engine',             249900, 211864, 38036, 'plan_dma_growth_engine',    20),
+    ('DIGITAL_MARKETING_HEALTHCARE', 'MATURITY_PHASE',    'Maturity Phase',            399900, 338898, 61002, 'plan_dma_maturity_phase',   30),
+    ('TRADING_FO_CRYPTO',           'TRADING_FO_ONLY',   'F&O Professional',          199900, 169407, 30493, 'plan_trading_fo_only',      10),
+    ('TRADING_FO_CRYPTO',           'TRADING_FO_CRYPTO', 'F&O + Crypto Professional', 249900, 211864, 38036, 'plan_trading_fo_crypto',    20),
+    ('AGRICULTURAL_ADVISOR_INDIA',  'AGRICULTURAL',      'Agricultural Advisor',       20000,  16949,  3051, 'plan_agricultural_advisor', 10);

@@ -328,6 +328,50 @@ ProfessionalTemplate:
 
 ---
 
+## 8b. Billing & Subscription Model (ADR-022, C-038)
+
+### Subscription Tiers
+
+| Tier | Instruments | Customer pays | Base (excl. GST) | GST 18% | Razorpay Plan |
+|---|---|---|---|---|---|
+| **F&O Professional** | NIFTY + BANKNIFTY options | ₹1,999/month | ₹1,694 | ₹305 | `plan_trading_fo_only` |
+| **F&O + Crypto Professional** | NIFTY + BANKNIFTY + BTC/ETH | ₹2,499/month | ₹2,119 | ₹380 | `plan_trading_fo_crypto` |
+
+**No performance fee** — constitutional rationale: a performance component would incentivise the agent to trade more aggressively to maximise fee, creating tension with the daily loss limit (C-043 Constitutional Floor). Fixed monthly subscription is the only model consistent with C-043.
+
+### Billing Lifecycle (C-038 pro-rata)
+
+- **Session-based billing:** The subscription is monthly and flat — it does NOT bill per session or per trade. The customer pays the same whether they run 5 sessions or 20 sessions in the month.
+- **Pause:** Customer pauses agent → billing stops pro-rata from pause timestamp. In-flight PAAS session is halted (Emergency Stop semantics — ADR-018). Open positions remain open (customer manages manually after halt).
+- **Resume:** Billing resumes pro-rata from resume timestamp. Agent re-verifies broker API credentials before next session (BROKER_API_ACCESS_VERIFIED).
+- **Tier upgrade (F&O → F&O+Crypto):** Razorpay subscription plan updated; pro-rated price difference charged/credited for remaining days in billing cycle.
+
+### Professional Template — Billing Section
+
+```yaml
+billing:
+  subscription_tiers:
+    - tier_id: "TRADING_FO_ONLY"
+      name: "F&O Professional"
+      instruments: [NIFTY, BANKNIFTY]
+      monthly_price_inr_paise: 199900
+      base_amount_paise: 169407
+      gst_amount_paise: 30493
+      razorpay_plan_id: "plan_trading_fo_only"
+    - tier_id: "TRADING_FO_CRYPTO"
+      name: "F&O + Crypto Professional"
+      instruments: [NIFTY, BANKNIFTY, CRYPTO_BTC, CRYPTO_ETH]
+      monthly_price_inr_paise: 249900
+      base_amount_paise: 211864
+      gst_amount_paise: 38036
+      razorpay_plan_id: "plan_trading_fo_crypto"
+  gst_sac_code: "9984"
+  performance_fee: false      # constitutional — C-043 conflict prohibited
+  billing_model: "FLAT_MONTHLY"
+```
+
+---
+
 ## 9. Constitutional Checklist
 
 - [x] Every Skill has a measurable business KPI (C-037) — daily return, drawdown, Sharpe
