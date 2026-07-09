@@ -169,6 +169,7 @@ The AI Runtime is an MCP client. Agent-specific capabilities that require real-t
 | `nse-calendar-mcp` | Trading Agent (all skills) | NSE/BSE market holidays, circuit filter status, exchange halts | Sidecar container (dev), Container Apps (cloud) |
 | `enam-mcp` | Agricultural Advisor Agent (Skill 3) | eNAM (National Agriculture Market) portal price data | Sidecar container (dev), Container Apps (cloud) |
 | `government-scheme-mcp` | Agricultural Advisor Agent (Skills 3, 4, 5) | PMFBY status, MSP announcements, APMC rules, government scheme updates (India) | Sidecar container (dev), Container Apps (cloud) |
+| `phone-identity-service` | All C-042 agents via Business Platform webhook handler | WhatsApp phone-to-organisation_id mapping; auto-registration; session token issuance; HMAC webhook validation (ADR-023) | Internal platform service (dev), Container Apps (cloud) |
 
 ### MCP Architecture Principles (ADR-020)
 

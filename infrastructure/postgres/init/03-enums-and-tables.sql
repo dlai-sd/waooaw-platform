@@ -1185,3 +1185,53 @@ CREATE TABLE business.trading_session_records (
 
 CREATE INDEX idx_trading_session_contract ON business.trading_session_records(employment_contract_id);
 CREATE INDEX idx_trading_session_date ON business.trading_session_records(organisation_id, session_date DESC);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- WhatsApp Phone Identity tables (v0.24.0 — ADR-023, Issue #1)
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- Phone Identity Sessions — audit trail for all session tokens issued via phone identity (ADR-023)
+-- One row per session. Append-only. Used for audit and replay-attack detection.
+-- NOT tenant-scoped (phone identity is pre-tenant — organisation_id may not exist yet for new farmers)
+CREATE TABLE business.phone_identity_sessions (
+    id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    phone_number                VARCHAR(20) NOT NULL,              -- E.164 format: +919876543210
+    organisation_id             UUID,                              -- NULL until auto-registration completes
+    session_token_hash          VARCHAR(64) NOT NULL,              -- SHA-256 of issued JWT (not the token itself)
+    issued_at                   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    expires_at                  TIMESTAMPTZ NOT NULL,              -- issued_at + 30 minutes
+    invalidated_at              TIMESTAMPTZ,                       -- set on explicit logout (rare — usually just expires)
+    -- Request context (for security audit)
+    meta_message_id             VARCHAR(100),                      -- Meta's message ID (from webhook payload)
+    meta_message_timestamp      TIMESTAMPTZ,                       -- Meta's message timestamp
+    webhook_signature_valid     BOOLEAN NOT NULL DEFAULT TRUE,     -- always TRUE (invalid = no row created)
+    is_auto_registration        BOOLEAN NOT NULL DEFAULT FALSE,    -- TRUE if this session created the farmer record
+    -- TRAI service window tracking (ADR-023)
+    trai_service_window_opened_at TIMESTAMPTZ,                     -- when farmer last messaged (window start)
+    trai_service_window_expires_at TIMESTAMPTZ,                    -- window_opened_at + 24 hours
+    created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_phone_session_phone ON business.phone_identity_sessions(phone_number, issued_at DESC);
+CREATE INDEX idx_phone_session_org ON business.phone_identity_sessions(organisation_id) WHERE organisation_id IS NOT NULL;
+CREATE INDEX idx_phone_session_trai ON business.phone_identity_sessions(phone_number, trai_service_window_expires_at)
+    WHERE trai_service_window_expires_at IS NOT NULL;
+
+-- TRAI Opt-In Records — explicit evidence of TRAI compliance (C-023 Evidence First)
+-- One row per opt-in event. The act of messaging WAOOAW = opt-in.
+-- These records are the constitutional evidence for TRAI compliance.
+CREATE TABLE business.whatsapp_trai_optins (
+    id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organisation_id             UUID NOT NULL REFERENCES business.organisations(id),
+    phone_number                VARCHAR(20) NOT NULL,
+    opted_in_at                 TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    opt_in_method               VARCHAR(30) NOT NULL DEFAULT 'FARMER_INITIATED', -- FARMER_INITIATED | EXPLICIT_CONSENT | QR_CODE
+    opt_in_evidence             TEXT,                              -- the first message text or QR code reference
+    -- Constitutional evidence
+    cal_event_id                UUID REFERENCES constitutional.evidence_records(id),
+    created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT uq_trai_optin UNIQUE (organisation_id)              -- one active opt-in per farmer
+);
+
+CREATE INDEX idx_trai_optin_org ON business.whatsapp_trai_optins(organisation_id);
+CREATE INDEX idx_trai_optin_phone ON business.whatsapp_trai_optins(phone_number);

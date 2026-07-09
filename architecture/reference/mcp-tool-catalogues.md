@@ -471,3 +471,92 @@ async def get_access_token(contract_id: str, platform: str) -> str:
 | Version | Date | Change |
 |---|---|---|
 | 1.0 | 2026-07-09 | Initial catalogue — customer-profile-mcp, web-search-mcp, google-places-mcp, social-profile-mcp, meta-ad-library-mcp, scheduling-mcp, instagram-mcp, meta-ads-mcp, platform-analytics-mcp |
+
+---
+
+## phone-identity-service (port 8137)
+
+Used by: Business Platform (WhatsApp webhook handler) — NOT an MCP server; internal platform service called via HTTP by Business Platform only. Farmers never interact with this service directly.
+
+**All endpoints require mTLS from Business Platform (ADR-007). No external access.**
+
+### identity.validate_webhook
+```
+POST /validate
+Request:  {
+  raw_body: string (bytes as base64),
+  signature_header: string,    -- X-Hub-Signature-256 value from Meta webhook
+  timestamp: integer            -- Unix timestamp from message payload (for replay prevention)
+}
+Response: { valid: boolean, reason: string | null }
+Notes: Uses HMAC-SHA256(META_APP_SECRET, raw_body). Rejects if timestamp > 5 min from server time.
+       Returns 403 on invalid — caller must not process the message.
+```
+
+### identity.identify_phone
+```
+POST /identify
+Request:  { phone_number: string }  -- E.164 format: +919876543210
+Response: {
+  found: boolean,
+  organisation_id: string (UUID) | null,
+  farmer_profile_id: string (UUID) | null,
+  is_new: boolean,
+  primary_language: string | null,  -- for routing to correct language prompt
+  profile_status: "INCOMPLETE" | "MINIMUM_VIABLE" | "COMPLETE"
+}
+Authorization: Internal service call only
+Failure: REQUIRED — no identity = no processing
+```
+
+### identity.auto_register
+```
+POST /auto-register
+Request:  {
+  phone_number: string,
+  first_message_text: string | null,    -- for language detection hint
+  first_message_language_hint: string | null
+}
+Response: {
+  organisation_id: string (UUID),
+  farmer_profile_id: string (UUID),
+  session_token: string (JWT, 30min),
+  cal_registration_event_id: string (UUID)   -- CE evidence record ID
+}
+Authorization: Internal only. Auto-registration is always authorized — any inbound message = consent.
+Failure: REQUIRED — registration failure blocks all subsequent processing
+Notes: Creates farmer_profiles + organisations rows. Sets whatsapp_opt_in=TRUE.
+       Calls CE.RecordEvidence(FARMER_REGISTERED) — returns evidence record ID.
+```
+
+### identity.issue_session
+```
+POST /session
+Request:  { organisation_id: string (UUID), phone_number: string }
+Response: {
+  session_token: string,   -- internal JWT: { sub: organisation_id, phone, exp: +30min }
+  expires_at: string       -- ISO datetime
+}
+Authorization: Internal only. Called after successful identify or auto_register.
+Failure: REQUIRED — no session token = RLS cannot be applied
+Notes: Token is never sent to farmer. Used only to set app.tenant_id in DB session.
+       Stored in phone_identity_sessions for audit.
+```
+
+### identity.check_trai_window
+```
+POST /trai-check
+Request:  {
+  organisation_id: string (UUID),
+  message_direction: "OUTBOUND"    -- only relevant for outbound
+}
+Response: {
+  outbound_permitted: boolean,
+  reason: "SERVICE_WINDOW_OPEN" | "SERVICE_WINDOW_EXPIRED" | "NO_PRIOR_CONTACT",
+  last_farmer_message_at: string | null,
+  window_expires_at: string | null,
+  hsm_only: boolean    -- true if must use HSM template (no free-form)
+}
+Authorization: Internal only. Called before every outbound message.
+Failure: REQUIRED — TRAI violation if skipped
+```
