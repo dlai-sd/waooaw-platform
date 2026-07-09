@@ -6,7 +6,7 @@
 
 ```
 Founding Corpus v1           Status: Ratified
-Version:                     0.25.0 — Billing: Agricultural (₹200/month), Trading (₹1999/₹2499/month), multi-agent consolidated billing (2026-07-09)
+Version:                     0.26.0 — Session close: all 3 agents approved + billed; ADR-023 WhatsApp identity; UPI AutoPay; 24 prompts; AI-native execution layer (2026-07-09)
 Current Epoch:               Epoch 1 — Employment
 Current Gate:                G2-G4: PASSED | G5: Prerequisites met
                              ⛔ G5 CLEAR ≠ implementation authorized for any session
