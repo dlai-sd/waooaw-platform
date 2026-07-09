@@ -6,7 +6,7 @@
 
 ```
 Founding Corpus v1           Status: Ratified
-Version:                     0.27.0 — Ethics layer: C-048 (Information Non-Exploitation) + C-049 (Honest Limitation Disclosure) (2026-07-09)
+Version:                     0.28.0 — Session close: 49 claims (C-048/C-049 ethics), 3 agents approved + billed, AI-native execution layer complete (2026-07-09)
 Current Epoch:               Epoch 1 — Employment
 Current Gate:                G2-G4: PASSED | G5: Prerequisites met
                              ⛔ G5 CLEAR ≠ implementation authorized for any session

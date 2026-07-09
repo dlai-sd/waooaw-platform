@@ -1,8 +1,41 @@
 # PROJECT_STATE.md
 
 **Last Updated:** 2026-07-09
-**Version:** 0.26.0
+**Version:** 0.28.0
 **Session:** 2026-07-09 close
+
+---
+
+## SESSION CLOSE BRIEFING — READ THIS FIRST
+
+```
+INSTITUTION:  WAOOAW — autonomous digital professionals under constitutional governance
+GATE:         G5 prerequisites met (G5 CLEAR ≠ implementation authorization)
+VERSION:      0.28.0
+FOCUS:        Ethics layer added (C-048/C-049). Constitutional design complete for 3 approved agents.
+              Implementation: NOT authorized. Awaiting explicit Founder "start coding" per session.
+
+CLAIMS:       C-001 through C-049 — 49 ratified claims
+AGENTS:       3 approved (DMA v2.0, Trading v1.1, Agricultural v2.0)
+OPEN P1:      Trading + Agricultural Gate Sections 4+5 before implementation sprints
+```
+
+---
+
+## What This Session Completed (2026-07-09)
+
+| Version | What |
+|---|---|
+| v0.14.0–v0.19.0 | DMA v2.0 (14 skills, 3-phase bundles, billing); Simulation 004; developer gap filling; P2 SQL |
+| v0.20.0 | AI-native execution layer: C-045/046/047, Prompt Library (24 prompts), AI Execution Loop, Platform Operations Agent, Reasoning Traces |
+| v0.21.0 | All prompts complete; Trading/Agricultural review + simulations; AD-013/020 amendments |
+| v0.22.0 | Agent Lifecycle Gate: AGENT-AUTHORING-GUIDE v2.0 (Section 14 + 15) — gate enforced |
+| v0.23.0 | Agent lifecycle issue templates + label routing + copilot flow detection |
+| v0.24.0 | ADR-023 WhatsApp Phone Identity for Agricultural Advisor (PR #2, R-015 APPROVED) |
+| v0.25.0 | Billing: Agricultural ₹200/month UPI AutoPay, Trading ₹1,999/₹2,499, multi-agent COMBINED (PR #4, R-016 APPROVED) |
+| v0.26.0 | Session close: PRs #2+#4 merged, razorpay-mcp full catalogue, R-016-01 UPI AutoPay fix |
+| v0.27.0 | Ethics layer: C-048 (Information Non-Exploitation LAW) + C-049 (Honest Limitation Disclosure LAW) |
+| v0.28.0 | Session close: all status updated, version incremented |
 
 ---
 
