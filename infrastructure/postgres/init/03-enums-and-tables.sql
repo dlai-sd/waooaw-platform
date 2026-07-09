@@ -150,6 +150,13 @@ CREATE TABLE business.organisations (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id   UUID NOT NULL UNIQUE,
     name        VARCHAR(200) NOT NULL,
+    -- Registration contact fields (GAP-004: phone required for WhatsApp delivery; GAP-005: TRAI opt-in)
+    phone_number_whatsapp VARCHAR(20),           -- +91XXXXXXXXXX; required before WhatsApp delivery
+    whatsapp_opt_in       BOOLEAN NOT NULL DEFAULT FALSE,   -- TRAI compliance (C-045)
+    -- India business identity (ADR-022: GST B2B invoicing; optional)
+    gstin                 VARCHAR(15),            -- 15-char GSTIN for B2B customers claiming input credit
+    -- Business domain (links to business_domain_taxonomy lookup)
+    business_domain       VARCHAR(50),            -- FK to business_domain_taxonomy.domain_code
     created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -171,7 +178,12 @@ CREATE TABLE business.employment_contracts (
     created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     activated_at            TIMESTAMPTZ,
     suspended_at            TIMESTAMPTZ,
-    terminated_at           TIMESTAMPTZ
+    terminated_at           TIMESTAMPTZ,
+    -- Re-hire continuity (GAP-025, CD-003): link new contract to prior terminated contract
+    -- Prior Tier 2 RAG, skill configs, and synthetic approval history are accessible via this FK
+    previous_contract_id    UUID,                   -- set on re-hire; FK added after table creation
+    -- Payment integration (ADR-022: Razorpay)
+    razorpay_subscription_id VARCHAR(100)            -- Razorpay subscription ID; set when trial converts to paid
 );
 
 -- Decision Spaces (C-030 — constitutional primitive)
@@ -196,6 +208,11 @@ CREATE TABLE business.decision_spaces (
 ALTER TABLE business.employment_contracts
     ADD CONSTRAINT fk_decision_space
     FOREIGN KEY (decision_space_id) REFERENCES business.decision_spaces(id);
+
+-- Add self-referencing FK for re-hire continuity (GAP-025)
+ALTER TABLE business.employment_contracts
+    ADD CONSTRAINT fk_previous_contract
+    FOREIGN KEY (previous_contract_id) REFERENCES business.employment_contracts(id);
 
 -- Approval requests (business-facing view of evidence state machine)
 CREATE TABLE business.approval_requests (
@@ -539,6 +556,11 @@ CREATE TABLE business.digital_marketing_profiles (
     -- Tier 2 customer-private — never crosses tenant boundary (C-041, FR-003)
     created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    -- Profiling conversation resume support (GAP-006: mobile users may close browser mid-conversation)
+    profiling_session_id        UUID,                          -- current or last active chat session ID
+    last_exchange_index         INTEGER NOT NULL DEFAULT 0,    -- last completed exchange in profiling flow
+    resume_token                VARCHAR(64),                   -- signed token sent via SMS/WhatsApp for resume link
+    resume_token_expires_at     TIMESTAMPTZ,
     CONSTRAINT uq_dm_profile_org UNIQUE (organisation_id)     -- one active profile per organisation
 );
 
@@ -680,6 +702,12 @@ CREATE TABLE business.skill_runtime_configurations (
     -- Audit
     created_at                      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at                      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    -- Synthetic approval model freshness (GAP-023, DP-015: stale model on resume → downgrade mode)
+    synthetic_model_last_calibrated TIMESTAMPTZ,               -- timestamp of last successful synthetic approval
+    stale_after_days                INTEGER NOT NULL DEFAULT 21, -- days without calibration → model considered stale
+    -- Override rate tracking (DP-015: >10% override rate → auto-propose downgrade)
+    override_count_30d              INTEGER NOT NULL DEFAULT 0,  -- overrides in last 30 days (updated by trigger)
+    synthetic_approval_count_30d    INTEGER NOT NULL DEFAULT 0,  -- synthetic approvals in last 30 days
     CONSTRAINT uq_skill_config UNIQUE (employment_contract_id, skill_type)
 );
 
@@ -752,3 +780,134 @@ CREATE INDEX idx_governance_log_contract ON business.skill_self_governance_log(e
 CREATE INDEX idx_governance_log_skill_month ON business.skill_self_governance_log(employment_contract_id, skill_type, log_month);
 CREATE INDEX idx_governance_log_escalation ON business.skill_self_governance_log(organisation_id, escalation_triggered)
     WHERE escalation_triggered = TRUE;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- P2 tables (v0.19.0 — ADR-022, GAP-003, GAP-024, GAP-025)
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- Business Domain Taxonomy — lookup table for all supported business types.
+-- Drives registration dropdown, agent type mapping, and Tier 1 RAG domain selection.
+-- Not tenant-scoped — platform-wide catalogue (same pattern as professional_templates).
+CREATE TABLE business.business_domain_taxonomy (
+    domain_code         VARCHAR(50) PRIMARY KEY,   -- DENTAL_CLINIC, FITNESS_STUDIO, etc.
+    display_name        VARCHAR(100) NOT NULL,      -- shown in portal dropdown
+    agent_type          VARCHAR(100),               -- DIGITAL_MARKETING_HEALTHCARE for all current domains
+    tier1_rag_key       VARCHAR(100),               -- key for Tier 1 RAG domain knowledge lookup
+    is_active           BOOLEAN NOT NULL DEFAULT TRUE,
+    sort_order          INTEGER NOT NULL DEFAULT 0
+);
+
+-- Seed data — initial domain taxonomy
+INSERT INTO business.business_domain_taxonomy (domain_code, display_name, agent_type, tier1_rag_key, sort_order) VALUES
+    ('DENTAL_CLINIC',        'Dental Clinic',                   'DIGITAL_MARKETING_HEALTHCARE', 'dental_india',        10),
+    ('BEAUTY_ARTIST',        'Beauty Artist / Salon',           'DIGITAL_MARKETING_HEALTHCARE', 'beauty_india',        20),
+    ('FITNESS_STUDIO',       'Fitness Studio / Gym',            'DIGITAL_MARKETING_HEALTHCARE', 'fitness_india',       30),
+    ('MEDICAL_CLINIC',       'Medical Clinic / Hospital',       'DIGITAL_MARKETING_HEALTHCARE', 'medical_india',       40),
+    ('YOGA_STUDIO',          'Yoga / Wellness Studio',          'DIGITAL_MARKETING_HEALTHCARE', 'wellness_india',      50),
+    ('PHARMACY',             'Pharmacy / Medical Store',        'DIGITAL_MARKETING_HEALTHCARE', 'pharmacy_india',      60),
+    ('RESTAURANT',           'Restaurant / Cloud Kitchen',      NULL,                           NULL,                  70),  -- future agent
+    ('RETAIL_SHOP',          'Retail / Boutique Shop',          NULL,                           NULL,                  80),  -- future agent
+    ('OTHER',                'Other Business',                  NULL,                           NULL,                  999);
+
+-- Payment Transactions — every Razorpay payment event (ADR-022).
+-- Append-only: each payment event is a new row. Never updated. C-007.
+CREATE TABLE business.payment_transactions (
+    id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organisation_id             UUID NOT NULL REFERENCES business.organisations(id),
+    employment_contract_id      UUID NOT NULL REFERENCES business.employment_contracts(id),
+    -- Razorpay identifiers
+    razorpay_payment_id         VARCHAR(100),                  -- rzp_live_XXXXXXXXXX
+    razorpay_subscription_id    VARCHAR(100),
+    razorpay_invoice_id         VARCHAR(100),
+    -- Payment details
+    event_type                  VARCHAR(50) NOT NULL,          -- payment.captured | payment.failed | subscription.charged | subscription.halted | refund.created
+    amount_inr_paise            BIGINT NOT NULL,               -- in paise (100 paise = ₹1)
+    currency                    VARCHAR(3) NOT NULL DEFAULT 'INR',
+    status                      VARCHAR(30) NOT NULL,          -- captured | failed | refunded
+    -- Billing period this payment covers
+    billing_period_start        DATE,
+    billing_period_end          DATE,
+    -- Grace period tracking (ADR-022: 3-day grace on payment failure)
+    grace_period_ends_at        TIMESTAMPTZ,                   -- set on payment.failed; skills suspended after this
+    -- Evidence chain
+    cal_event_id                UUID REFERENCES constitutional.evidence_records(id),
+    -- Razorpay webhook payload (for dispute resolution)
+    raw_webhook_payload         JSONB,
+    created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_payment_org ON business.payment_transactions(organisation_id);
+CREATE INDEX idx_payment_contract ON business.payment_transactions(employment_contract_id);
+CREATE INDEX idx_payment_razorpay ON business.payment_transactions(razorpay_payment_id) WHERE razorpay_payment_id IS NOT NULL;
+CREATE INDEX idx_payment_grace ON business.payment_transactions(grace_period_ends_at) WHERE grace_period_ends_at IS NOT NULL;
+
+-- GST Invoices — GST-compliant invoice records (ADR-022, India GST Act).
+-- One invoice per billing period per contract. Append-only per C-007.
+CREATE TABLE business.gst_invoices (
+    id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organisation_id             UUID NOT NULL REFERENCES business.organisations(id),
+    employment_contract_id      UUID NOT NULL REFERENCES business.employment_contracts(id),
+    payment_transaction_id      UUID REFERENCES business.payment_transactions(id),
+    -- Invoice identity
+    invoice_number              VARCHAR(30) NOT NULL UNIQUE,   -- WAOOAW/2026-27/000001 format
+    invoice_date                DATE NOT NULL DEFAULT CURRENT_DATE,
+    -- WAOOAW entity
+    waooaw_gstin                VARCHAR(15) NOT NULL,          -- WAOOAW's GSTIN (from env var)
+    hsn_sac_code                VARCHAR(10) NOT NULL DEFAULT '9984',  -- Online Information Services
+    -- Customer entity
+    customer_name               VARCHAR(200) NOT NULL,
+    customer_gstin              VARCHAR(15),                   -- NULL for B2C customers
+    customer_address            TEXT,                          -- required for B2B invoices
+    -- Amounts (all in paise)
+    taxable_amount_paise        BIGINT NOT NULL,               -- base price excl. GST
+    cgst_rate                   NUMERIC(4,2) NOT NULL DEFAULT 9.00,  -- 9% CGST (same state)
+    sgst_rate                   NUMERIC(4,2) NOT NULL DEFAULT 9.00,  -- 9% SGST (same state)
+    igst_rate                   NUMERIC(4,2) NOT NULL DEFAULT 0.00,  -- 18% IGST (inter-state, if applicable)
+    cgst_amount_paise           BIGINT NOT NULL,
+    sgst_amount_paise           BIGINT NOT NULL,
+    igst_amount_paise           BIGINT NOT NULL DEFAULT 0,
+    total_amount_paise          BIGINT NOT NULL,
+    -- Billing period
+    billing_period_start        DATE NOT NULL,
+    billing_period_end          DATE NOT NULL,
+    bundle                      dm_phase_bundle NOT NULL,
+    -- PDF artifact
+    pdf_url                     VARCHAR(1024),                 -- signed URL to stored PDF; refreshed on access
+    -- Cancellation (for credit notes)
+    cancelled_at                TIMESTAMPTZ,
+    credit_note_id              UUID,                          -- FK to self if this is a replacement invoice
+    created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_gst_invoice_org ON business.gst_invoices(organisation_id);
+CREATE INDEX idx_gst_invoice_number ON business.gst_invoices(invoice_number);
+CREATE INDEX idx_gst_invoice_period ON business.gst_invoices(employment_contract_id, billing_period_start);
+
+-- Invoice number sequence — ensures sequential numbering within financial year.
+-- Financial year runs April-March in India.
+CREATE SEQUENCE business.invoice_number_seq START 1;
+
+-- Data retention tracking (GAP-024, CD-003: Pause creates preservation obligation).
+-- Tracks when Tier 2 customer data may be deleted after contract termination.
+-- Records when customer exercised data export right (ART-IX).
+CREATE TABLE business.data_retention_records (
+    id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organisation_id             UUID NOT NULL REFERENCES business.organisations(id),
+    employment_contract_id      UUID NOT NULL REFERENCES business.employment_contracts(id),
+    -- Retention policy
+    contract_terminated_at      TIMESTAMPTZ NOT NULL,
+    tier2_data_retain_until     TIMESTAMPTZ NOT NULL,          -- terminate_at + 180 days default; customer can request deletion earlier
+    -- Export history (ART-IX: customer right to their own evidence records)
+    evidence_export_requested_at TIMESTAMPTZ,
+    evidence_export_delivered_at TIMESTAMPTZ,
+    evidence_export_url          VARCHAR(1024),                -- signed URL; expires after 7 days
+    -- Deletion
+    deletion_requested_at       TIMESTAMPTZ,                   -- customer requested early deletion (India PDPB)
+    deletion_completed_at       TIMESTAMPTZ,                   -- NULL until deletion executed
+    deletion_scope              TEXT[],                        -- which data categories were deleted
+    CONSTRAINT uq_retention_contract UNIQUE (employment_contract_id)
+);
+
+CREATE INDEX idx_retention_org ON business.data_retention_records(organisation_id);
+CREATE INDEX idx_retention_expire ON business.data_retention_records(tier2_data_retain_until)
+    WHERE deletion_completed_at IS NULL;

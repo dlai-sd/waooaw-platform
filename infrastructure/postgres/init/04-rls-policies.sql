@@ -128,3 +128,25 @@ GRANT SELECT, INSERT, UPDATE  ON business.dm_phase_bundle_subscriptions   TO bus
 GRANT SELECT, INSERT, UPDATE  ON business.skill_runtime_configurations    TO business_app;
 GRANT SELECT, INSERT, UPDATE  ON business.synthetic_approval_records      TO business_app;
 GRANT SELECT, INSERT          ON business.skill_self_governance_log       TO business_app;
+
+-- ─── P2 tables (v0.19.0) ────────────────────────────────────────────────────
+ALTER TABLE business.payment_transactions   ENABLE ROW LEVEL SECURITY;
+ALTER TABLE business.gst_invoices           ENABLE ROW LEVEL SECURITY;
+ALTER TABLE business.data_retention_records ENABLE ROW LEVEL SECURITY;
+
+-- business_domain_taxonomy is NOT tenant-scoped (platform catalogue — public read)
+-- No RLS on business_domain_taxonomy.
+
+CREATE POLICY tenant_isolation ON business.payment_transactions
+    USING (organisation_id = current_setting('app.tenant_id', TRUE)::UUID);
+
+CREATE POLICY tenant_isolation ON business.gst_invoices
+    USING (organisation_id = current_setting('app.tenant_id', TRUE)::UUID);
+
+CREATE POLICY tenant_isolation ON business.data_retention_records
+    USING (organisation_id = current_setting('app.tenant_id', TRUE)::UUID);
+
+GRANT SELECT, INSERT ON business.payment_transactions   TO business_app;
+GRANT SELECT, INSERT ON business.gst_invoices           TO business_app;
+GRANT SELECT, INSERT, UPDATE ON business.data_retention_records TO business_app;
+GRANT SELECT ON business.business_domain_taxonomy       TO business_app;  -- public catalogue read

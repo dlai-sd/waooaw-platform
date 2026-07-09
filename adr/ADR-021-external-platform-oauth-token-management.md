@@ -67,6 +67,7 @@ A dedicated lightweight service responsible exclusively for credential storage a
 | Google Business Profile | Google | `https://www.googleapis.com/auth/business.manage` | 1 hour; refresh_token indefinite |
 | Google Ads | Google | `https://www.googleapis.com/auth/adwords` | 1 hour; refresh_token indefinite |
 | Google Search Console | Google | `https://www.googleapis.com/auth/webmasters.readonly` | 1 hour; refresh_token indefinite |
+| Google Analytics 4 | Google | `https://www.googleapis.com/auth/analytics.readonly` | 1 hour; refresh_token indefinite |
 | Meta Ads | Meta | `ads_management`, `ads_read` | 60 days |
 
 ### 5. Personal Instagram vs. Business Instagram (GAP-013 from Simulation 004)
@@ -93,3 +94,12 @@ Instagram's Content Publishing API requires a **Facebook-connected Instagram Pro
 - New environment variable: `OAUTH_VAULT_URL` in ai-runtime and mcp servers
 - New BP endpoints: `GET /api/v1/oauth/connect/{platform}`, `GET /api/v1/oauth/callback/{platform}`, `GET /api/v1/oauth/status/{contractId}`, `DELETE /api/v1/oauth/disconnect/{platform}`
 - Trial limitation: Customers in trial who haven't connected Instagram cannot publish posts — skills requiring OAuth connections are blocked until connection is made
+
+### 6. Token Revocation on Contract Termination (GAP-024 — Data Retention)
+
+On `EMPLOYMENT_TERMINATED` event: `oauth-vault` must revoke ALL tokens for that `contract_id` within 24 hours. Revocation sequence:
+1. Call platform revocation endpoints (Meta: `DELETE /oauth/revoke_token`; Google: `POST /oauth2/revoke`)
+2. Delete tokens from vault storage
+3. Record deletion in `data_retention_records` under `deletion_scope = ["oauth_tokens"]`
+
+Tokens are secrets — they are NOT covered by the 180-day Tier 2 data retention period. They are revoked immediately on termination regardless of the customer's data retention preferences.

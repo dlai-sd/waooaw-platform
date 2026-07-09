@@ -29,6 +29,10 @@
 | Sana | Solo Beauty Artist | Bandra, Mumbai | +30% monthly booking enquiries |
 | Generic Dental | Dental clinic (1-5 dentists) | Any Tier 1/2 India city | Patient acquisition + retention |
 | Generic Beauty | Beauty salon / solo artist | Any Tier 1/2 India city | Enquiry generation + brand awareness |
+| Kiran | Boutique Fitness Studio (20-50 members) | Koramangala, Bangalore | +12 new member sign-ups/month |
+| Generic Fitness | Fitness studio / gym / yoga studio | Any Tier 1/2 India city | New member acquisition + retention |
+
+**v2.0 domain extension:** This agent now supports any local service business discoverable via the Customer Profiling + Market Research intelligence layer. The target persona table above is the approved Acceptance Scenario set. New domains are added via the `business_domain_taxonomy` lookup table without changing the agent spec — the agent's skill execution is domain-agnostic; only Tier 1 RAG domain knowledge requires domain-specific content.
 
 **Acceptance Scenarios satisfied:** AS-001 (Dr. Mehta, dental clinic), AS-002 (Sana, beauty artist)
 
@@ -345,6 +349,14 @@
 - Broadcasts ONLY to opted-in recipients — the opt-in verification is the customer's responsibility; the agent must not override this
 - TRAI compliance check on every broadcast template before sending (retrieved via RAG Tier 1)
 
+**Two distinct WhatsApp interaction types (GAP-020 — do not conflate):**
+| Type | Direction | Channel | Requires |
+|---|---|---|---|
+| Platform notifications | WAOOAW → customer (Kiran) | Customer's personal WhatsApp number (registered in `organisations.phone_number_whatsapp`) | `whatsapp_opt_in = true` on organisation; standard HSM templates for first message |
+| Member broadcasts | Agent → Kiran's customers (gym members) | Kiran's WhatsApp Business Account (WABA) | Kiran must have a verified WABA; separate credential via ADR-021 |
+
+The `whatsapp-business-mcp` serves BOTH types but uses different credentials: WAOOAW's own WABA number for platform notifications; customer's WABA credentials for member broadcasts. MCP tool calls must specify `credential_type: "PLATFORM_NOTIFICATION" | "CUSTOMER_BROADCAST"` to select the correct credential from oauth-vault (ADR-021).
+
 ---
 
 ### Skill 8: Video & Visual Content Creation
@@ -355,7 +367,7 @@
 
 **Decision Space:**
 - **Authorized:** Create short-form video scripts; generate video from approved script; edit provided footage; create reels; produce before/after gallery posts (beauty); create educational dental content animations
-- **Prohibited:** Use patient/client images without explicit consent; create content making clinical outcome guarantees; generate AI deepfakes of real people
+- **Prohibited:** Use patient/client images without explicit consent; create content making clinical outcome guarantees; generate AI deepfakes of real people; generate AI images that create false impressions about actual results, actual people at the customer's premises, or actual equipment/facilities that do not exist at the customer's location (GAP-015 — India advertising standards)
 - **Always-ask:** Using real clinic/salon footage provided by customer (asset authorization step); publishing video to YouTube (new platform — requires Decision Space extension); **using any patient or client image or footage — customer must confirm `PATIENT_IMAGE_CONSENT_CONFIRMED` with the specific asset reference before it may be used (constitutional evidence record required)**
 
 **RAG Sources:**
