@@ -649,17 +649,63 @@ ProfessionalTemplate:
 
 ---
 
-## 10. Pricing
+## 10. Billing & Subscription Model (ADR-022, C-038)
 
-| Model | Farmer pays | WAOOAW receives | Path to scale |
+### Subscription Tier
+
+| Tier | Customer pays | Base (excl. GST) | GST 18% | Razorpay Plan |
+|---|---|---|---|---|
+| **Agricultural Advisor** | ₹200/month | ₹169 | ₹30 | `plan_agricultural_advisor` |
+
+**Why ₹200:** Affordable for small and marginal farmers (< 1% of a farmer's monthly income at 1 acre). Infrastructure cost at scale is ₹8–12/farmer/month — target margin is ₹150+/farmer at 50,000 active farmers. Route-to-market via FPO (Farmer Producer Organisation) bundles enables subsidy by FPO, keeping direct farmer cost at ₹0 for enrolled members.
+
+### Revenue Models (all use the same Razorpay plan)
+
+| Route | Who pays Razorpay | Farmer pays | Notes |
 |---|---|---|---|
-| Direct subscription | ₹49/month | ₹49/farmer | WhatsApp UPI; PM-KISAN enrolled farmers already have Aadhaar-linked accounts |
-| FPO bundle | ₹0 (FPO pays) | ₹15-25/farmer/month | 500 FPOs × 200 farmers = 1L farmers |
-| Government embed | ₹0 | ₹10-15/farmer/month via state agriculture dept | Low margin, massive scale |
-| Input co-marketing | ₹0 | ₹20-30/farmer/month from seed/fertilizer co | Sustainable B2B revenue |
+| **Direct** | Farmer (UPI/net banking) | ₹200/month | WhatsApp Pay UPI link in agent message |
+| **FPO Bundle** | FPO organisation account | ₹0 | FPO buys bulk at ₹150/farmer; WAOOAW manages FPO billing separately |
+| **Government embed** | State agriculture dept | ₹0 | Contract billing; not Razorpay |
+| **Input co-marketing** | Seed/fertiliser company | ₹0 | B2B contract |
 
-**WAOOAW infrastructure cost:** ~₹8-12/farmer/month at 1L farmer scale (weather API $100/month + WhatsApp Business API + cloud).
-**Minimum viable margin:** ₹15/farmer/month. Achievable at 50,000+ active farmers.
+### WhatsApp UPI Payment (farmer-first billing)
+
+For direct-pay farmers: Razorpay generates a UPI deep link delivered via WhatsApp:
+
+```
+Agent (Marathi voice):
+"सुरेश दादा, हे ₹200/महिना आहे. UPI ने pay करायचे असेल तर हे link tap करा:"
+[Suresh, this is ₹200/month. To pay via UPI, tap this link:]
+→ WhatsApp message: [Razorpay UPI Deep Link] — opens any India UPI app
+→ On payment confirmation: agent activated, CE.RecordEvidence(SUBSCRIPTION_ACTIVATED)
+```
+
+**No credit card required. No web form. UPI from any India bank app.**
+
+### Billing Lifecycle (C-038 pro-rata)
+
+- **Pause:** Farmer texts "थांबा" (pause/stop) → billing stops pro-rata → agent stops daily check-ins. Data preserved. PMFBY evidence chain preserved.
+- **Resume:** Farmer texts "सुरू करा" (start) → billing resumes pro-rata → agent resumes with last-known crop state.
+- **Seasonal cadence:** Monthly billing with frictionless pause covers seasonal gaps. Farmer pauses in off-season (April-May) with one message. No annual commitment required.
+
+### Professional Template — Billing Section
+
+```yaml
+billing:
+  subscription_tiers:
+    - tier_id: "AGRICULTURAL_ADVISOR"
+      name: "Agricultural Advisor"
+      monthly_price_inr_paise: 20000
+      base_amount_paise: 16949
+      gst_amount_paise: 3051
+      razorpay_plan_id: "plan_agricultural_advisor"
+  gst_sac_code: "9984"
+  billing_model: "FLAT_MONTHLY"
+  upi_payment_enabled: true    # WhatsApp UPI link delivery supported
+  fpo_bulk_pricing:
+    enabled: true
+    price_per_farmer_paise: 15000   # ₹150/farmer for FPO bulk purchase
+```
 
 ---
 

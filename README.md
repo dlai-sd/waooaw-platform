@@ -6,7 +6,7 @@
 
 ```
 Founding Corpus v1           Status: Ratified
-Version:                     0.24.0 — ADR-023 WhatsApp Phone Identity; Agricultural Advisor v2.0 WhatsApp-native; phone-identity-service (2026-07-09)
+Version:                     0.25.0 — Billing: Agricultural (₹200/month), Trading (₹1999/₹2499/month), multi-agent consolidated billing (2026-07-09)
 Current Epoch:               Epoch 1 — Employment
 Current Gate:                G2-G4: PASSED | G5: Prerequisites met
                              ⛔ G5 CLEAR ≠ implementation authorized for any session

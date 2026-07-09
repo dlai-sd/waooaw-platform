@@ -27,16 +27,51 @@ Razorpay is chosen as the payment processor because: India-native, supports recu
 WAOOAW uses **Razorpay Subscriptions API** (not one-time payments) for all recurring billing.
 
 - One Razorpay subscription per WAOOAW Employment Contract
-- Plan is tied to the active Phase Bundle (Curtain Raiser / Growth Engine / Maturity Phase)
-- Bundle upgrades: update the Razorpay subscription plan (prorated for remaining days in billing cycle)
+- Plan is tied to the active bundle/tier within each agent type
+- Bundle/tier upgrades: update the Razorpay subscription plan (prorated for remaining days)
 
-**Pricing structure (stored in `professional_templates`):**
+**Complete Pricing Table (all agents, v0.25.0):**
 
-| Bundle | Base price (excl. GST) | GST (18%) | Customer pays |
-|---|---|---|---|
-| Curtain Raiser | ₹1,271 | ₹229 | ₹1,499/month |
-| Growth Engine | ₹2,118 | ₹381 | ₹2,499/month |
-| Maturity Phase | ₹3,389 | ₹610 | ₹3,999/month |
+| Agent | Tier | Customer pays | Base | GST 18% | Razorpay Plan ID |
+|---|---|---|---|---|---|
+| Digital Marketing | Curtain Raiser | ₹1,499/month | ₹1,271 | ₹228 | `plan_dma_curtain_raiser` |
+| Digital Marketing | Growth Engine | ₹2,499/month | ₹2,118 | ₹381 | `plan_dma_growth_engine` |
+| Digital Marketing | Maturity Phase | ₹3,999/month | ₹3,389 | ₹610 | `plan_dma_maturity_phase` |
+| Trading | F&O Professional | ₹1,999/month | ₹1,694 | ₹305 | `plan_trading_fo_only` |
+| Trading | F&O + Crypto Professional | ₹2,499/month | ₹2,119 | ₹380 | `plan_trading_fo_crypto` |
+| Agricultural Advisor | Agricultural Advisor | ₹200/month | ₹169 | ₹30 | `plan_agricultural_advisor` |
+
+All amounts in INR. GST SAC code: 9984 (Online Information and Database Access Services).
+
+---
+
+### 1b. Multi-Agent Consolidated Billing
+
+When a customer hires multiple agents simultaneously (e.g., DMA + Trading), WAOOAW supports two billing preferences configurable per customer organisation:
+
+**SEPARATE** — one Razorpay subscription per employment contract; one GST invoice per agent per month. Customer receives separate payment confirmations and invoices per agent. Customer can pause each agent independently without affecting others.
+
+**COMBINED** (default for customers with 2+ active agents) — each agent still has its own independent Razorpay subscription (for clean per-agent pause/resume). WAOOAW generates ONE consolidated GST invoice monthly that itemises all active agents. Customer sees one total bill with line items per agent.
+
+**Example consolidated invoice (DMA Growth Engine + Trading F&O Only):**
+```
+WAOOAW Platform Services
+Invoice: WAOOAW/2026-27/000042
+─────────────────────────────────────────────────────
+Service                          Base      GST    Total
+─────────────────────────────────────────────────────
+Digital Marketing Professional
+  Growth Engine Bundle           ₹2,118   ₹381   ₹2,499
+Trading Professional
+  F&O Professional               ₹1,694   ₹305   ₹1,999
+─────────────────────────────────────────────────────
+Subtotal                         ₹3,812   ₹686   ₹4,498
+─────────────────────────────────────────────────────
+```
+
+**Billing preference change:** Customer can switch between SEPARATE and COMBINED via `/api/v1/billing/preference`. Effective from next billing period.
+
+**Pro-rata with multiple agents:** Each agent's pause/resume creates its own billing event in `subscription_billing_events`. The consolidated invoice sums the pro-rata amounts at the end of the billing period. If Agent A was paused for 10 days, its invoice line item reflects the pro-rata charge; Agent B (not paused) shows the full monthly charge.
 
 ### 2. razorpay-mcp (port 8131)
 

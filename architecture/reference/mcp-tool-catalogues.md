@@ -474,89 +474,111 @@ async def get_access_token(contract_id: str, platform: str) -> str:
 
 ---
 
-## phone-identity-service (port 8137)
+## razorpay-mcp (port 8131)
 
-Used by: Business Platform (WhatsApp webhook handler) — NOT an MCP server; internal platform service called via HTTP by Business Platform only. Farmers never interact with this service directly.
+Used by: Business Platform (billing, subscription management, GST invoicing)
+**ADR-022.** All tools require mTLS from Business Platform only. Never exposed externally.
 
-**All endpoints require mTLS from Business Platform (ADR-007). No external access.**
-
-### identity.validate_webhook
+### subscription.create
 ```
-POST /validate
+POST /call/subscription.create
+Request:  { contract_id, plan_id, customer_email, customer_phone, customer_name, total_count?, notes }
+Response: { razorpay_subscription_id, short_url }
+Authorization: Internal only. Called on trial → paid conversion.
+Failure: REQUIRED — no subscription = no billing = contract cannot activate
+```
+
+### subscription.pause / resume / cancel
+```
+POST /call/subscription.pause | /call/subscription.resume | /call/subscription.cancel
+Request:  { razorpay_subscription_id, pause_at?: "now"|"cycle_end" }
+Response: { success: boolean }
+Authorization: Internal only. Triggered by employment contract lifecycle events.
+Failure: REQUIRED
+```
+
+### mandate.create_upi_autopay  ← R016-01 fix
+```
+POST /call/mandate.create_upi_autopay
 Request:  {
-  raw_body: string (bytes as base64),
-  signature_header: string,    -- X-Hub-Signature-256 value from Meta webhook
-  timestamp: integer            -- Unix timestamp from message payload (for replay prevention)
-}
-Response: { valid: boolean, reason: string | null }
-Notes: Uses HMAC-SHA256(META_APP_SECRET, raw_body). Rejects if timestamp > 5 min from server time.
-       Returns 403 on invalid — caller must not process the message.
-```
-
-### identity.identify_phone
-```
-POST /identify
-Request:  { phone_number: string }  -- E.164 format: +919876543210
-Response: {
-  found: boolean,
-  organisation_id: string (UUID) | null,
-  farmer_profile_id: string (UUID) | null,
-  is_new: boolean,
-  primary_language: string | null,  -- for routing to correct language prompt
-  profile_status: "INCOMPLETE" | "MINIMUM_VIABLE" | "COMPLETE"
-}
-Authorization: Internal service call only
-Failure: REQUIRED — no identity = no processing
-```
-
-### identity.auto_register
-```
-POST /auto-register
-Request:  {
-  phone_number: string,
-  first_message_text: string | null,    -- for language detection hint
-  first_message_language_hint: string | null
+  contract_id: string (UUID),
+  customer_phone: string,        -- +91XXXXXXXXXX (E.164)
+  customer_name: string,
+  amount_inr_paise: integer,     -- 20000 = ₹200
+  description: string,           -- "WAOOAW Agricultural Advisor — ₹200/month"
+  farmer_language: string        -- for localised UPI app message
 }
 Response: {
-  organisation_id: string (UUID),
-  farmer_profile_id: string (UUID),
-  session_token: string (JWT, 30min),
-  cal_registration_event_id: string (UUID)   -- CE evidence record ID
+  mandate_id: string,            -- Razorpay mandate ID (track completion)
+  mandate_link: string,          -- UPI AutoPay deep link to send via WhatsApp
+  expires_at: string             -- link expires after 24 hours
 }
-Authorization: Internal only. Auto-registration is always authorized — any inbound message = consent.
-Failure: REQUIRED — registration failure blocks all subsequent processing
-Notes: Creates farmer_profiles + organisations rows. Sets whatsapp_opt_in=TRUE.
-       Calls CE.RecordEvidence(FARMER_REGISTERED) — returns evidence record ID.
+Authorization: Internal only. Called when farmer's profile reaches MINIMUM_VIABLE and is WhatsApp-registered.
+Failure: REQUIRED — without mandate, recurring billing cannot be established
+Notes: Uses Razorpay Recurring Payments API (UPI AutoPay / Standing Instruction).
+       Farmer approves ONCE in their UPI app; Razorpay auto-collects monthly.
+       On mandate approval: Razorpay sends webhook mandate.confirmed → SUBSCRIPTION_ACTIVATED.
 ```
 
-### identity.issue_session
+### mandate.get_status  ← R016-01 fix
 ```
-POST /session
-Request:  { organisation_id: string (UUID), phone_number: string }
+POST /call/mandate.get_status
+Request:  { mandate_id: string }
 Response: {
-  session_token: string,   -- internal JWT: { sub: organisation_id, phone, exp: +30min }
-  expires_at: string       -- ISO datetime
+  status: "CREATED" | "CONFIRMED" | "REJECTED" | "PAUSED" | "CANCELLED",
+  confirmed_at: string | null,
+  bank_name: string | null      -- which bank the farmer approved from
 }
-Authorization: Internal only. Called after successful identify or auto_register.
-Failure: REQUIRED — no session token = RLS cannot be applied
-Notes: Token is never sent to farmer. Used only to set app.tenant_id in DB session.
-       Stored in phone_identity_sessions for audit.
+Authorization: Internal only. Polled after mandate link is sent, to activate the subscription.
+Failure: DEGRADABLE — agent can retry if status check fails
 ```
 
-### identity.check_trai_window
+### invoice.get_gst
 ```
-POST /trai-check
-Request:  {
-  organisation_id: string (UUID),
-  message_direction: "OUTBOUND"    -- only relevant for outbound
-}
-Response: {
-  outbound_permitted: boolean,
-  reason: "SERVICE_WINDOW_OPEN" | "SERVICE_WINDOW_EXPIRED" | "NO_PRIOR_CONTACT",
-  last_farmer_message_at: string | null,
-  window_expires_at: string | null,
-  hsm_only: boolean    -- true if must use HSM template (no free-form)
-}
-Authorization: Internal only. Called before every outbound message.
-Failure: REQUIRED — TRAI violation if skipped
+POST /call/invoice.get_gst
+Request:  { razorpay_payment_id: string }
+Response: { invoice_number, gstin_waooaw, hsn_sac_code, base_amount_inr, cgst_amount_inr, sgst_amount_inr, total_amount_inr, customer_gstin?, pdf_url }
+Authorization: Internal only.
+Failure: DEGRADABLE — invoice can be regenerated on demand
 ```
+
+---
+
+## Agricultural Advisor — End-to-End Billing Flow (R016-01 specification)
+
+```
+[New farmer registered via WhatsApp — auto-registration complete]
+    ↓
+Profile reaches MINIMUM_VIABLE (4 exchanges)
+    ↓
+Agent sends billing setup message via whatsapp-business-mcp (HSM template):
+  "शेतकरी मित्र: ₹200/महिना — एकदाच approve करा, दर महिना आपोआप होईल: [mandate_link]"
+  razorpay-mcp.mandate.create_upi_autopay → mandate_id + mandate_link
+    ↓
+Farmer taps link → UPI app opens → approves ₹200/month standing instruction
+    ↓
+Razorpay webhook: mandate.confirmed → Business Platform
+  → razorpay-mcp.subscription.create (using confirmed mandate)
+  → employment_contracts.state = ACTIVE
+  → CE.RecordEvidence(SUBSCRIPTION_ACTIVATED)
+  → Agent begins daily check-ins
+    ↓
+Monthly auto-collection (1st of each month):
+  Razorpay debits farmer's bank → payment.captured webhook → WAOOAW
+  → subscription_billing_events record
+  → gst_invoices record (SAC 9984, ₹169 base + ₹30 GST)
+    ↓
+Payment failure path:
+  Razorpay webhook: payment.failed → Business Platform
+  → 3-day grace period starts (payment_transactions.grace_period_ends_at)
+  → Day 1: WhatsApp message: "Payment failed. Retry: [razorpay payment link]"
+  → Day 3: If no payment: employment_contracts.state = SUSPENDED
+  → Agent stops daily check-ins (PMFBY evidence records preserved)
+```
+
+**HSM Templates Required (Meta pre-approval needed before production):**
+| Template | When sent | Content |
+|---|---|---|
+| `agri_billing_setup` | After profiling complete | UPI AutoPay mandate setup link + ₹200/month explanation |
+| `agri_payment_failure` | On Razorpay payment.failed | Payment failed message + retry link |
+| `agri_subscription_active` | After mandate.confirmed | Confirmation that advisor is active |
