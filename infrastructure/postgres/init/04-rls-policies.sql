@@ -65,3 +65,66 @@ ALTER TABLE professional.creative_standard_embeddings ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY tenant_isolation ON professional.creative_standard_embeddings
     USING (tenant_id = current_setting('app.tenant_id', TRUE)::UUID);
+
+-- ─── DMA v2.0 + Synthetic Approval tables (v0.18.0) ─────────────────────────
+-- All new tenant-scoped tables require RLS before any query can execute (AD-004).
+-- organisation_id is the tenant discriminator for DMA tables (not tenant_id).
+-- The session variable app.tenant_id maps to organisations.id via the JWT middleware.
+
+ALTER TABLE business.digital_marketing_profiles      ENABLE ROW LEVEL SECURITY;
+ALTER TABLE business.digital_marketing_maturity_scores ENABLE ROW LEVEL SECURITY;
+ALTER TABLE business.digital_marketing_needs_heatmap ENABLE ROW LEVEL SECURITY;
+ALTER TABLE business.competitor_snapshots            ENABLE ROW LEVEL SECURITY;
+ALTER TABLE business.dm_phase_bundle_subscriptions   ENABLE ROW LEVEL SECURITY;
+ALTER TABLE business.skill_runtime_configurations    ENABLE ROW LEVEL SECURITY;
+ALTER TABLE business.synthetic_approval_records      ENABLE ROW LEVEL SECURITY;
+ALTER TABLE business.skill_self_governance_log       ENABLE ROW LEVEL SECURITY;
+
+-- DMA tables use organisation_id as the tenant discriminator.
+-- The JWT tenant_id maps to organisations.id.
+-- Developer note: ensure app.tenant_id session variable is set before any query.
+
+CREATE POLICY tenant_isolation ON business.digital_marketing_profiles
+    USING (organisation_id = current_setting('app.tenant_id', TRUE)::UUID);
+
+CREATE POLICY tenant_isolation ON business.digital_marketing_maturity_scores
+    USING (organisation_id = current_setting('app.tenant_id', TRUE)::UUID);
+
+CREATE POLICY tenant_isolation ON business.digital_marketing_needs_heatmap
+    USING (organisation_id = current_setting('app.tenant_id', TRUE)::UUID);
+
+CREATE POLICY tenant_isolation ON business.competitor_snapshots
+    USING (organisation_id = current_setting('app.tenant_id', TRUE)::UUID);
+
+CREATE POLICY tenant_isolation ON business.dm_phase_bundle_subscriptions
+    USING (organisation_id = current_setting('app.tenant_id', TRUE)::UUID);
+
+-- skill_runtime_configurations: tenant via employment_contract_id -> organisation_id join
+-- Simpler: use organisation_id direct lookup via the employment_contracts join.
+-- Implementation note: BP must enforce tenant isolation in application layer for this table
+-- (RLS via JOIN is complex; application-level enforcement is acceptable per AD-004 note).
+-- The table does not contain directly personal data — it contains configuration only.
+-- Still enable RLS with a function-based policy for defence in depth:
+CREATE POLICY tenant_isolation ON business.skill_runtime_configurations
+    USING (
+        employment_contract_id IN (
+            SELECT id FROM business.employment_contracts
+            WHERE tenant_id = current_setting('app.tenant_id', TRUE)::UUID
+        )
+    );
+
+CREATE POLICY tenant_isolation ON business.synthetic_approval_records
+    USING (organisation_id = current_setting('app.tenant_id', TRUE)::UUID);
+
+CREATE POLICY tenant_isolation ON business.skill_self_governance_log
+    USING (organisation_id = current_setting('app.tenant_id', TRUE)::UUID);
+
+-- Grant DML permissions to the application role (business_app role executes business schema queries)
+GRANT SELECT, INSERT, UPDATE ON business.digital_marketing_profiles      TO business_app;
+GRANT SELECT, INSERT          ON business.digital_marketing_maturity_scores TO business_app;
+GRANT SELECT, INSERT          ON business.digital_marketing_needs_heatmap TO business_app;
+GRANT SELECT, INSERT          ON business.competitor_snapshots            TO business_app;
+GRANT SELECT, INSERT, UPDATE  ON business.dm_phase_bundle_subscriptions   TO business_app;
+GRANT SELECT, INSERT, UPDATE  ON business.skill_runtime_configurations    TO business_app;
+GRANT SELECT, INSERT, UPDATE  ON business.synthetic_approval_records      TO business_app;
+GRANT SELECT, INSERT          ON business.skill_self_governance_log       TO business_app;

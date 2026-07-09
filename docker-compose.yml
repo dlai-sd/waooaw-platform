@@ -193,6 +193,12 @@ services:
       MCP_META_ADS_URL: http://meta-ads-mcp:8120
       MCP_GOOGLE_ADS_URL: http://google-ads-mcp:8121
       MCP_WEB_OPTIMISATION_URL: http://web-optimisation-mcp:8122
+      # Infrastructure services (ADR-021 OAuth, ADR-022 Razorpay, notifications, PDF, email)
+      OAUTH_VAULT_URL: http://oauth-vault:8130
+      MCP_RAZORPAY_URL: http://razorpay-mcp:8131
+      MCP_PDF_GENERATION_URL: http://pdf-generation-mcp:8123
+      MCP_EMAIL_URL: http://email-mcp:8124
+      MCP_PUSH_NOTIFICATION_URL: http://push-notification-mcp:8125
     depends_on:
       postgres:
         condition: service_healthy

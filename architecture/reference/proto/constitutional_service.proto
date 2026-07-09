@@ -203,6 +203,81 @@ message ValidateActionRequest {
   // CE returns FAILED_PRECONDITION if the active Decision Space version is newer,
   // signalling the caller to reload and start a new PAAS session.
   int32 decision_space_version = 4;
+
+  // budget_context carries financial spend parameters when validating a spend-incurring action.
+  // REQUIRED when action_type is in: PAID_AD_CAMPAIGN, PAID_AD_OPTIMISE, BUDGET_INCREASE.
+  // CE uses this to enforce the Constitutional Floor budget ceiling (C-043, AD-016).
+  // If absent for a spend-type action, CE returns INVALID_ARGUMENT.
+  optional BudgetContext budget_context = 5;
+
+  // synthetic_approval_context carries confidence parameters when the caller is
+  // requesting CE validation of a Synthetic Approval (C-044, AD-017).
+  // REQUIRED when approval_type = SYNTHETIC. CE validates confidence >= threshold.
+  // If confidence < threshold, CE returns DENY with reason SYNTHETIC_CONFIDENCE_BELOW_THRESHOLD.
+  optional SyntheticApprovalContext synthetic_approval_context = 6;
+
+  // approval_type indicates the type of approval being validated.
+  // Default (absent) = CUSTOMER_EXPLICIT. Set to SYNTHETIC for synthetic approvals.
+  ApprovalType approval_type = 7;
+
+  // skill_id identifies the specific skill instance within the contract.
+  // Required when the action is skill-scoped (most DMA actions).
+  optional string skill_id = 8;
+}
+
+// BudgetContext — carries financial spend state for budget ceiling enforcement.
+// C-043 (LAW): budget ceiling is a Constitutional Floor equivalent.
+// AD-016: CE must reject any action that would exceed approved_monthly_budget_inr.
+message BudgetContext {
+  // approved_monthly_budget_inr is the customer-approved ceiling for this skill/month.
+  // In Indian Rupees (paise-level precision: store as integer paise).
+  int64 approved_monthly_budget_inr_paise = 1;
+
+  // current_month_spend_inr_paise is the total spend already incurred this calendar month.
+  int64 current_month_spend_inr_paise = 2;
+
+  // proposed_spend_inr_paise is the spend this action would incur if executed.
+  int64 proposed_spend_inr_paise = 3;
+
+  // skill_type identifies which skill is incurring spend (for audit record).
+  string skill_type = 4;
+}
+
+// SyntheticApprovalContext — carries confidence parameters for synthetic approval validation.
+// C-044 (LAW): synthetic approvals require confidence >= customer-configured threshold.
+// AD-017: CE must deny if confidence < threshold or history_count < min_history.
+message SyntheticApprovalContext {
+  // confidence_score is the computed vector similarity score (0.0 to 1.0).
+  float confidence_score = 1;
+
+  // configured_threshold is the customer-configured minimum confidence (from skill_runtime_configurations).
+  float configured_threshold = 2;
+
+  // prior_approval_count is the count of prior approved actions of this type.
+  int32 prior_approval_count = 3;
+
+  // min_history_required is the customer-configured minimum history count.
+  int32 min_history_required = 4;
+
+  // basis_approval_ids lists the top-N prior evidence record IDs used for inference.
+  // CE stores these in the synthetic_approval_records table.
+  repeated string basis_approval_ids = 5;
+
+  // action_description is a plain-language description of the synthetically approved action.
+  // Stored in synthetic_approval_records for audit.
+  string action_description = 6;
+
+  // override_window_hours is the customer-configured override window for this action.
+  int32 override_window_hours = 7;
+}
+
+// ApprovalType — the type of approval being validated or recorded.
+enum ApprovalType {
+  APPROVAL_TYPE_UNSPECIFIED         = 0;
+  APPROVAL_TYPE_CUSTOMER_EXPLICIT   = 1;  // customer manually approved
+  APPROVAL_TYPE_CALENDAR_AUTHORIZED = 2;  // within approved content calendar
+  APPROVAL_TYPE_SYNTHETIC           = 3;  // skill-generated from preference model (C-044)
+  APPROVAL_TYPE_PRE_AUTHORIZED      = 4;  // pre-authorized class at contract formation
 }
 
 message ValidateActionResponse {
@@ -216,7 +291,21 @@ message ValidateActionResponse {
   // reason is a human-readable explanation of the decision.
   // For DENY: names the specific violated constraint.
   // For ESCALATE: names the scope boundary.
+  // Special deny reasons (developer must handle):
+  //   BUDGET_CEILING_REACHED         — C-043: proposed spend would exceed monthly ceiling
+  //   SYNTHETIC_CONFIDENCE_BELOW_THRESHOLD — C-044/AD-017: confidence below configured threshold
+  //   SYNTHETIC_HISTORY_INSUFFICIENT — C-044: prior approval history below minimum
+  //   APPROVAL_MODE_MISMATCH         — caller sent synthetic context but skill is not in SYNTHETIC_APPROVAL mode
   string reason = 3;
+
+  // budget_remaining_inr_paise is returned when the decision involves budget evaluation.
+  // Absent for non-spend actions. Present for ALLOW (remaining after proposed spend) and DENY.
+  optional int64 budget_remaining_inr_paise = 4;
+
+  // synthetic_approval_record_id is returned when CE creates the synthetic approval record.
+  // Only set when approval_type = SYNTHETIC and decision = ALLOW.
+  // The caller must store this ID in the synthetic_approval_records table extension.
+  optional string synthetic_approval_record_id = 5;
 }
 
 // ─── GrantAuthorityLicense ───────────────────────────────────────────────────

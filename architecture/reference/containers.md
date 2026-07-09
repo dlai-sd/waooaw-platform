@@ -157,6 +157,11 @@ The AI Runtime is an MCP client. Agent-specific capabilities that require real-t
 | `meta-ads-mcp` | Digital Marketing Agent (v2.0) | Meta Marketing API (customer ad account — C-043 budget cap enforced pre-call) | Sidecar container (dev), Container Apps (cloud) |
 | `google-ads-mcp` | Digital Marketing Agent (v2.0) | Google Ads API (customer ad account — C-043 budget cap enforced pre-call) | Sidecar container (dev), Container Apps (cloud) |
 | `web-optimisation-mcp` | Digital Marketing Agent (v2.0) | CRO/A-B testing platform API (e.g., VWO, Google Optimize successor) | Sidecar container (dev), Container Apps (cloud) |
+| `oauth-vault` | All agents requiring customer OAuth delegation | Secure token storage + refresh scheduler for Meta, Google OAuth tokens (ADR-021) | Sidecar container (dev), Container Apps (cloud) |
+| `razorpay-mcp` | Business Platform (billing) | Razorpay Subscriptions + Payments API (ADR-022) | Sidecar container (dev), Container Apps (cloud) |
+| `pdf-generation-mcp` | Business Platform + AI Runtime (Maturity Report) | HTML-to-PDF generation (Gotenberg/Puppeteer) for reports and invoices | Sidecar container (dev), Container Apps (cloud) |
+| `email-mcp` | AI Runtime (performance narrative delivery) | Transactional email — SendGrid/SES for Maturity Reports, billing invoices | Sidecar container (dev), Container Apps (cloud) |
+| `push-notification-mcp` | Business Platform (approval notifications, skill alerts) | Firebase FCM / APNs push notifications for approval requests and skill alerts | Sidecar container (dev), Container Apps (cloud) |
 
 ### MCP Architecture Principles (ADR-020)
 

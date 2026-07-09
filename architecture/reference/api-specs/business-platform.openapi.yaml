@@ -827,6 +827,341 @@ paths:
         "422":
           $ref: "#/components/responses/ValidationError"
 
+  # ─── DMA v2.0 Endpoints (v0.18.0) ───────────────────────────────────────────
+
+  /api/v1/employment/contracts/{contractId}/skills/{skillId}/runtime-config:
+    get:
+      tags: [Skills]
+      summary: Get skill runtime configuration
+      description: Returns the current approval mode, thresholds, delivery channels, and API budget for a skill.
+      operationId: getSkillRuntimeConfig
+      parameters:
+        - { name: contractId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: skillId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Skill runtime configuration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SkillRuntimeConfig"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags: [Skills]
+      summary: Update skill runtime configuration
+      description: |
+        Updates approval mode, thresholds, delivery channels, or API budget.
+        Mode upgrades (CUSTOMER_APPROVAL → EXCEPTION_APPROVAL → SYNTHETIC_APPROVAL) are
+        Decision Space amendments — CE.GrantAuthorityLicense is called and a constitutional
+        evidence record is created. C-003, C-044, DP-015.
+      operationId: updateSkillRuntimeConfig
+      parameters:
+        - { name: contractId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: skillId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SkillRuntimeConfigUpdate"
+      responses:
+        "200":
+          description: Configuration updated. If approval_mode changed, evidence_record_id is populated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SkillRuntimeConfig"
+        "409":
+          description: Approval mode upgrade rejected — insufficient approval history or confidence
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+
+  /api/v1/digital-marketing/profiles/{organisationId}:
+    get:
+      tags: [DigitalMarketing]
+      summary: Get customer digital marketing profile
+      description: Returns the Customer Profile built during Skill 0 (Customer Profiling). Tier 2 — tenant-scoped.
+      operationId: getDMProfile
+      parameters:
+        - { name: organisationId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Customer profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DigitalMarketingProfile"
+        "404":
+          description: No profile exists yet (profiling not completed)
+    put:
+      tags: [DigitalMarketing]
+      summary: Update customer digital marketing profile
+      description: |
+        Customer confirms or updates profile fields. Sets profile_status to COMPLETE
+        when all minimum fields are confirmed. C-039 — confirmation required.
+      operationId: updateDMProfile
+      parameters:
+        - { name: organisationId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DigitalMarketingProfileUpdate"
+      responses:
+        "200":
+          description: Profile updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DigitalMarketingProfile"
+
+  /api/v1/digital-marketing/maturity-scores/{organisationId}:
+    get:
+      tags: [DigitalMarketing]
+      summary: Get maturity score history
+      description: Returns all Digital Marketing Maturity assessments for the organisation, most recent first. Append-only — no updates.
+      operationId: getDMMaturityScores
+      parameters:
+        - { name: organisationId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: limit, in: query, schema: { type: integer, default: 10 } }
+      responses:
+        "200":
+          description: Maturity score history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MaturityScore"
+
+  /api/v1/digital-marketing/maturity-scores/{organisationId}/latest/report:
+    get:
+      tags: [DigitalMarketing]
+      summary: Get the latest Maturity Report PDF URL
+      description: Returns a signed URL for the most recent Digital Marketing Maturity Report PDF. URL valid for 1 hour.
+      operationId: getLatestMaturityReportPdfUrl
+      parameters:
+        - { name: organisationId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Signed PDF URL
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  pdf_url: { type: string, format: uri }
+                  expires_at: { type: string, format: date-time }
+        "404":
+          description: No maturity report generated yet
+
+  /api/v1/digital-marketing/needs-heatmap/{organisationId}:
+    get:
+      tags: [DigitalMarketing]
+      summary: Get current needs heat map
+      description: Returns the 8-need assessment from the most recent Market Research run.
+      operationId: getDMNeedsHeatmap
+      parameters:
+        - { name: organisationId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Needs heat map
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/NeedsHeatmapEntry"
+
+  /api/v1/employment/contracts/{contractId}/phase-bundle:
+    get:
+      tags: [Employment]
+      summary: Get active phase bundle
+      operationId: getPhaseBundle
+      parameters:
+        - { name: contractId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Active phase bundle subscription
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PhaseBundleSubscription"
+    put:
+      tags: [Employment]
+      summary: Upgrade or change phase bundle
+      description: |
+        Changes the active phase bundle. Bundle upgrades are Decision Space expansions (C-003).
+        CE.GrantAuthorityLicense is called. Customer must have selected the new bundle explicitly.
+        DP-014 — maturity score at activation is recorded.
+      operationId: updatePhaseBundle
+      parameters:
+        - { name: contractId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [bundle]
+              properties:
+                bundle:
+                  type: string
+                  enum: [CURTAIN_RAISER, GROWTH_ENGINE, MATURITY_PHASE]
+                maturity_score_at_activation:
+                  type: integer
+                  minimum: 1
+                  maximum: 7
+      responses:
+        "200":
+          description: Phase bundle updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PhaseBundleSubscription"
+
+  /api/v1/approvals/{approvalId}/synthetic:
+    post:
+      tags: [Approvals]
+      summary: Record a synthetic approval
+      description: |
+        Called by AI Runtime after CE.ValidateAction returns ALLOW for a SYNTHETIC approval.
+        Creates the synthetic_approval_records extension row with confidence data and
+        starts the override window timer. Customer is notified via delivery channels.
+        C-044, AD-017.
+      operationId: recordSyntheticApproval
+      parameters:
+        - { name: approvalId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SyntheticApprovalRecord"
+      responses:
+        "201":
+          description: Synthetic approval recorded. Customer notification dispatched.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SyntheticApprovalRecord"
+
+  /api/v1/approvals/{approvalId}/override:
+    post:
+      tags: [Approvals]
+      summary: Customer retrospective override of synthetic approval
+      description: |
+        Customer exercises their C-001 unconditional retrospective override right on a
+        synthetically approved action. Valid only within the override_window_hours period.
+        Records override in synthetic_approval_records.overridden_at. Triggers action reversal
+        where technically possible. Updates override rate counter for auto-downgrade check (DP-015).
+      operationId: overrideSyntheticApproval
+      parameters:
+        - { name: approvalId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason:
+                  type: string
+      responses:
+        "200":
+          description: Override recorded. Reversal initiated where possible.
+        "409":
+          description: Override window expired — action sealed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+
+  /api/v1/payments/subscriptions:
+    post:
+      tags: [Billing]
+      summary: Create a Razorpay subscription for a contract
+      description: |
+        Creates a recurring subscription in Razorpay for the given employment contract.
+        Called when trial converts to paid hire. Razorpay subscription_id is stored in
+        subscription_billing_events.payment_processor_reference.
+        ADR-022 (Razorpay India).
+      operationId: createSubscription
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSubscriptionRequest"
+      responses:
+        "201":
+          description: Subscription created. Razorpay payment link returned.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubscriptionCreated"
+        "402":
+          description: Payment required — Razorpay subscription creation failed
+
+  /api/v1/payments/webhooks/razorpay:
+    post:
+      tags: [Billing]
+      summary: Razorpay webhook receiver
+      description: |
+        Receives Razorpay webhook events (payment.captured, subscription.charged,
+        subscription.cancelled, payment.failed). Validates webhook signature using
+        RAZORPAY_WEBHOOK_SECRET. Updates employment contract state and billing events.
+        ADR-022. NOT authenticated via Keycloak — authenticated via Razorpay signature.
+      operationId: razorpayWebhook
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Razorpay webhook payload (varies by event type)
+      responses:
+        "200":
+          description: Webhook processed
+        "400":
+          description: Invalid signature or unrecognised event type
+
+  /api/v1/notifications/preferences:
+    get:
+      tags: [Notifications]
+      summary: Get customer notification preferences
+      operationId: getNotificationPreferences
+      responses:
+        "200":
+          description: Notification preferences
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationPreferences"
+    put:
+      tags: [Notifications]
+      summary: Update customer notification preferences
+      description: |
+        Sets which channels receive which notification types.
+        Channel preferences are stored per organisation and used by all delivery pipelines
+        (Maturity Report, monthly narratives, approval requests, self-governance alerts).
+      operationId: updateNotificationPreferences
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NotificationPreferences"
+      responses:
+        "200":
+          description: Preferences updated
+
 # ─── Components ─────────────────────────────────────────────────────────────
 
 components:

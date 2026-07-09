@@ -6,7 +6,7 @@
 
 ```
 Founding Corpus v1           Status: Ratified
-Version:                     0.17.0 — Simulation 004 (Kiran Fitness) — 25 gaps + 4 constitutional discoveries (2026-07-09)
+Version:                     0.18.0 — Developer simulation: proto, OpenAPI, RLS, MCP catalogues, Temporal workflows, ADR-021/022 (2026-07-09)
 Current Epoch:               Epoch 1 — Employment
 Current Gate:                G2-G4: PASSED | G5: Prerequisites met
                              ⛔ G5 CLEAR ≠ implementation authorized for any session
