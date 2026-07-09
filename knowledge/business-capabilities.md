@@ -520,3 +520,49 @@ A capability exists because the institution must provide it — not because it w
 | Enable Third-Party Integrations | Epoch 6 | Requires stable API and developer programme |
 | Operate Professional Marketplace (public) | Epoch 7 | Requires sufficient professional inventory |
 | Agent Teams — self-organizing | Post-MVI Enterprise | FR-004 — IB-018 |
+
+---
+
+## Domain 12 — Platform Operations (v0.20.0 — C-046)
+
+*The institution must govern its own operations through constitutional agents. Every platform operation that affects a customer engagement must be performed by a constitutionally governed Platform Operations Agent with defined authority, evidence-recorded actions, and customer notification rights.*
+
+---
+
+### 12.1 Monitor Agent and Skill Health (L1)
+
+**Statement:** The institution must continuously monitor the health of every active agent skill engagement — tracking inference quality, constitutional compliance rate, goal progress, API budget consumption, and delivery channel reliability — and autonomously resolve routine anomalies within the Platform Operations Agent's authorized action space.
+
+**Constitutional Basis:** C-046 (Platform under constitutional governance); C-037 (KPI primacy — health monitoring exists to protect KPI achievement); AD-019 (agent-driven orchestration — health monitoring is itself an agent reasoning cycle)
+
+---
+
+### 12.2 Respond to Platform Incidents (L2)
+
+**Statement:** The institution must respond to platform anomalies — degraded CE performance, failed Temporal workflows, payment processing failures, OAuth token expiry — through a constitutionally governed incident resolution cycle that diagnoses, proposes resolution, obtains required authorization, implements, and records evidence for every incident affecting a customer engagement.
+
+**Constitutional Basis:** C-046; C-001 (customer override rights — customers must be notified of incidents affecting their engagements); C-023 (Evidence First — incident resolution is a constitutional action)
+
+---
+
+### 12.3 Audit Constitutional Compliance (L3)
+
+**Statement:** The institution must periodically audit every active agent engagement against the constitutional corpus — verifying that Synthetic Approval confidence thresholds are being met, that evidence records are complete, that Decision Space boundaries have not drifted, and that prompt versions in use are approved. The audit produces a Constitutional Compliance Report delivered to the Founder and the relevant customer.
+
+**Constitutional Basis:** C-046; C-044 (Synthetic Approval — requires confidence monitoring); C-045 (Prompt as Constitutional Artifact — requires prompt version audit); AD-008 (every permission decision must be auditable)
+
+---
+
+### 12.4 Generate Agent Reasoning Traces and Operational Intelligence
+
+**Statement:** The institution must capture structured reasoning traces for every AI inference — recording the decision context, the reasoning chain, the constitutional basis invoked, the confidence score, and the outcome — in a queryable store that enables operational agents to detect patterns, quality degradations, and constitutional anomalies.
+
+**Constitutional Basis:** C-046; C-047 (Agent-Driven Execution — the reasoning IS the primary output); AD-008 (constitutional auditability requires reasoning, not just outcome); C-002 (trust through evidence — reasoning traces are the deepest form of evidence)
+
+---
+
+### 12.5 Govern Prompt Lifecycle
+
+**Statement:** The institution must manage the lifecycle of every AI prompt — versioning, review, approval, activation, and deprecation — ensuring that no unapproved prompt is ever executed by a production agent, and that every prompt change goes through the same governance process as a Decision Space amendment.
+
+**Constitutional Basis:** C-045 (Prompt as Constitutional Artifact — LAW); AD-018 (Prompt Versioning); DP-016 (Prompt-First Execution)

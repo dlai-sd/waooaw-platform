@@ -911,3 +911,190 @@ CREATE TABLE business.data_retention_records (
 CREATE INDEX idx_retention_org ON business.data_retention_records(organisation_id);
 CREATE INDEX idx_retention_expire ON business.data_retention_records(tier2_data_retain_until)
     WHERE deletion_completed_at IS NULL;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- AI Agent Execution Layer tables (v0.20.0 — C-045, C-046, C-047, AD-018, AD-019)
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- Agent Prompt Versions — the approved prompt registry (C-045, AD-018, DP-016)
+-- Governs which prompt version is active for each (skill_type, pipeline_step) combination.
+-- AI Runtime refuses to execute inferences for combinations with no active version.
+-- NOT tenant-scoped — platform-wide governance artifact.
+CREATE TABLE institutional.agent_prompt_versions (
+    id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    prompt_id               VARCHAR(150) NOT NULL,         -- e.g., DMA/INSTAGRAM_MARKETING/CAPTION
+    version                 VARCHAR(20) NOT NULL,          -- semver: 1.0.0
+    skill_type              VARCHAR(100) NOT NULL,
+    pipeline_step           VARCHAR(100) NOT NULL,
+    agent_type              VARCHAR(100) NOT NULL,         -- DIGITAL_MARKETING_HEALTHCARE, PLATFORM_OPERATIONS, CE, etc.
+    -- Content reference (prompt content lives in architecture/reference/prompts/)
+    prompt_file_path        VARCHAR(500) NOT NULL,         -- relative path in repo
+    prompt_file_hash        VARCHAR(64),                   -- SHA-256 of prompt content at approval time
+    -- Constitutional governance (C-045)
+    constitutional_basis    TEXT NOT NULL,
+    change_type             VARCHAR(30) NOT NULL,          -- BREAKING | BEHAVIOURAL | PHRASING_ONLY
+    -- Review record
+    reviewed_by             VARCHAR(100) NOT NULL,         -- e.g., "Enterprise Architect"
+    reviewed_at             TIMESTAMPTZ NOT NULL,
+    approved_by             VARCHAR(100),                  -- Founder for BEHAVIOURAL/BREAKING changes
+    approved_at             TIMESTAMPTZ,
+    -- Activation
+    is_active               BOOLEAN NOT NULL DEFAULT FALSE,
+    activated_at            TIMESTAMPTZ,
+    deactivated_at          TIMESTAMPTZ,
+    -- Audit
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT uq_prompt_version UNIQUE (prompt_id, version),
+    CONSTRAINT uq_active_prompt UNIQUE (skill_type, pipeline_step, agent_type, is_active)
+        DEFERRABLE INITIALLY DEFERRED   -- allows atomic version swap
+);
+
+CREATE INDEX idx_prompt_active ON institutional.agent_prompt_versions(skill_type, pipeline_step, agent_type) WHERE is_active = TRUE;
+
+-- Seed active prompts (v1.0.0 — all from digital-marketing-agent-prompts.md)
+INSERT INTO institutional.agent_prompt_versions
+    (prompt_id, version, skill_type, pipeline_step, agent_type, prompt_file_path, constitutional_basis, change_type, reviewed_by, reviewed_at, is_active, activated_at)
+VALUES
+    ('DMA/CUSTOMER_PROFILING/NEXT_QUESTION', '1.0.0', 'CUSTOMER_PROFILING', 'NEXT_QUESTION', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/digital-marketing-agent-prompts.md', 'C-039; C-044', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('DMA/MARKET_RESEARCH/SCORE_AXIS', '1.0.0', 'MARKET_RESEARCH', 'SCORE_AXIS', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/digital-marketing-agent-prompts.md', 'C-037; C-002', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('DMA/INSTAGRAM_MARKETING/CAPTION', '1.0.0', 'INSTAGRAM_MARKETING', 'CAPTION', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/digital-marketing-agent-prompts.md', 'C-036; C-040; C-041', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('DMA/SYNTHETIC_APPROVAL/CONFIDENCE', '1.0.0', 'SYNTHETIC_APPROVAL', 'CONFIDENCE_ASSESSMENT', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/digital-marketing-agent-prompts.md', 'C-044; AD-017', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('DMA/SELF_GOVERNANCE/DIAGNOSIS', '1.0.0', 'SELF_GOVERNANCE', 'DIAGNOSIS', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/digital-marketing-agent-prompts.md', 'C-037; DP-015', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('CE/EVALUATE_POLICY/CONSTITUTIONAL', '1.0.0', 'EVALUATE_POLICY', 'CONSTITUTIONAL_REASONING', 'CONSTITUTIONAL_ENGINE', 'architecture/reference/prompts/digital-marketing-agent-prompts.md', 'C-003; C-023; AD-008', 'BREAKING', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('PLATFORM_OPS/L1/HEALTH_CHECK', '1.0.0', 'PLATFORM_HEALTH_MONITORING', 'HEALTH_CHECK', 'PLATFORM_OPERATIONS', 'architecture/reference/prompts/digital-marketing-agent-prompts.md', 'C-046; C-037', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW());
+
+-- Agent Reasoning Traces — primary AI audit artifact (C-047, AD-008, AD-019)
+-- See architecture/reference/agent-reasoning-trace.md for full spec.
+-- Schema: institutional (WAOOAW IP — not tenant-scoped; queryable by platform ops)
+CREATE TABLE institutional.agent_reasoning_traces (
+    id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    action_instance_id      UUID,                          -- links to constitutional.evidence_records
+    contract_id             UUID NOT NULL,
+    organisation_id         UUID NOT NULL,
+    skill_type              VARCHAR(100) NOT NULL,
+    pipeline_step           VARCHAR(100) NOT NULL,
+    prompt_id               VARCHAR(150) NOT NULL,
+    prompt_version          VARCHAR(20) NOT NULL,
+    context_summary         JSONB NOT NULL DEFAULT '{}',
+    reasoning_chain         TEXT NOT NULL,
+    decision                JSONB NOT NULL,
+    confidence_score        NUMERIC(4,3) NOT NULL CHECK (confidence_score BETWEEN 0 AND 1),
+    constitutional_basis    TEXT NOT NULL,
+    llm_model               VARCHAR(50) NOT NULL,
+    llm_provider            VARCHAR(30) NOT NULL,
+    tokens_input            INTEGER NOT NULL DEFAULT 0,
+    tokens_output           INTEGER NOT NULL DEFAULT 0,
+    latency_ms              INTEGER NOT NULL DEFAULT 0,
+    outcome_action_taken    VARCHAR(100),
+    outcome_evidence_id     UUID,
+    customer_override       BOOLEAN,
+    override_reason         TEXT,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_reasoning_contract ON institutional.agent_reasoning_traces(contract_id, created_at DESC);
+CREATE INDEX idx_reasoning_skill ON institutional.agent_reasoning_traces(skill_type, pipeline_step);
+CREATE INDEX idx_reasoning_confidence ON institutional.agent_reasoning_traces(confidence_score) WHERE confidence_score < 0.80;
+CREATE INDEX idx_reasoning_prompt ON institutional.agent_reasoning_traces(prompt_id, prompt_version);
+CREATE INDEX idx_reasoning_override ON institutional.agent_reasoning_traces(customer_override) WHERE customer_override = TRUE;
+
+-- Agent Capability Registry — each agent registers its live capabilities (C-047, C-046)
+-- Updated by AI Runtime on every execution loop heartbeat.
+-- Read by Platform Operations Agent for health monitoring and intelligent routing.
+CREATE TABLE institutional.agent_capability_registry (
+    id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    agent_id                VARCHAR(200) NOT NULL,          -- PROFESSIONAL_TYPE/contract_id/skill_type
+    professional_type       VARCHAR(100) NOT NULL,
+    contract_id             UUID NOT NULL,
+    organisation_id         UUID NOT NULL,
+    skill_type              VARCHAR(100) NOT NULL,
+    -- Current state
+    approval_mode           skill_approval_mode NOT NULL DEFAULT 'CUSTOMER_APPROVAL',
+    status                  VARCHAR(20) NOT NULL DEFAULT 'HEALTHY',  -- HEALTHY|DEGRADED|BLOCKED|PAUSED
+    last_heartbeat          TIMESTAMPTZ,
+    last_execution          TIMESTAMPTZ,
+    decision_space_version  INTEGER NOT NULL DEFAULT 1,
+    -- Health signals
+    confidence_30d_avg      NUMERIC(4,3),
+    override_rate_30d       NUMERIC(4,3),
+    api_budget_used         INTEGER NOT NULL DEFAULT 0,
+    api_budget_total        INTEGER NOT NULL DEFAULT 60,
+    -- Pending items
+    pending_approvals       INTEGER NOT NULL DEFAULT 0,
+    pending_messages        INTEGER NOT NULL DEFAULT 0,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT uq_agent_capability UNIQUE (contract_id, skill_type)
+);
+
+CREATE INDEX idx_capability_contract ON institutional.agent_capability_registry(contract_id);
+CREATE INDEX idx_capability_type ON institutional.agent_capability_registry(professional_type);
+CREATE INDEX idx_capability_status ON institutional.agent_capability_registry(status) WHERE status != 'HEALTHY';
+
+-- Agent Messages — agent-to-agent communication bus (Platform Operations Agent ↔ skill agents)
+-- Asynchronous: sending agent writes; receiving agent reads on next heartbeat.
+CREATE TABLE institutional.agent_messages (
+    id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    from_agent              VARCHAR(200) NOT NULL,
+    to_agent                VARCHAR(200) NOT NULL,
+    message_type            VARCHAR(50) NOT NULL,          -- HEALTH_ALERT|PAUSE_REQUEST|RESUME_SIGNAL|CONSTITUTIONAL_ALERT|CONFIGURATION_UPDATE
+    priority                VARCHAR(20) NOT NULL DEFAULT 'ROUTINE',  -- ROUTINE|URGENT|CRITICAL
+    payload                 JSONB NOT NULL,
+    constitutional_basis    TEXT,
+    requires_acknowledgement BOOLEAN NOT NULL DEFAULT FALSE,
+    acknowledged_at         TIMESTAMPTZ,
+    expires_at              TIMESTAMPTZ,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_messages_to ON institutional.agent_messages(to_agent, created_at DESC) WHERE acknowledged_at IS NULL;
+CREATE INDEX idx_messages_priority ON institutional.agent_messages(priority, created_at DESC) WHERE acknowledged_at IS NULL;
+
+-- Platform Operations Events — audit trail for all platform operations (C-046)
+CREATE TABLE institutional.platform_operations_events (
+    id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tier                    VARCHAR(5) NOT NULL,           -- L1|L2|L3
+    event_type              VARCHAR(100) NOT NULL,
+    status                  VARCHAR(30) NOT NULL,          -- DETECTED|RESOLVING|RESOLVED|ESCALATED
+    affected_contract_id    UUID,
+    affected_organisation_id UUID,
+    description             TEXT NOT NULL,
+    resolution              TEXT,
+    escalation_reason       TEXT,
+    reasoning_trace_id      UUID REFERENCES institutional.agent_reasoning_traces(id),
+    cal_event_id            UUID REFERENCES constitutional.evidence_records(id),
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    resolved_at             TIMESTAMPTZ
+);
+
+CREATE INDEX idx_ops_events_tier ON institutional.platform_operations_events(tier, status);
+CREATE INDEX idx_ops_events_contract ON institutional.platform_operations_events(affected_contract_id) WHERE affected_contract_id IS NOT NULL;
+
+-- Agent Health Scores — rolling health metrics per agent/skill (12.1 capability)
+CREATE TABLE institutional.agent_health_scores (
+    id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    contract_id             UUID NOT NULL,
+    organisation_id         UUID NOT NULL,
+    skill_type              VARCHAR(100) NOT NULL,
+    period_start            DATE NOT NULL,
+    period_end              DATE NOT NULL,
+    -- Inference quality
+    total_inferences        INTEGER NOT NULL DEFAULT 0,
+    avg_confidence          NUMERIC(4,3),
+    p10_confidence          NUMERIC(4,3),
+    inference_blocked_count INTEGER NOT NULL DEFAULT 0,
+    -- Constitutional compliance
+    ce_deny_count           INTEGER NOT NULL DEFAULT 0,
+    ce_escalate_count       INTEGER NOT NULL DEFAULT 0,
+    constitutional_violations INTEGER NOT NULL DEFAULT 0,
+    -- Approval quality
+    customer_override_count INTEGER NOT NULL DEFAULT 0,
+    synthetic_approval_count INTEGER NOT NULL DEFAULT 0,
+    override_rate           NUMERIC(4,3),
+    -- KPI performance
+    goal_achievement_pct    NUMERIC(5,2),
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT uq_health_score UNIQUE (contract_id, skill_type, period_start)
+);
+
+CREATE INDEX idx_health_contract ON institutional.agent_health_scores(contract_id, period_start DESC);

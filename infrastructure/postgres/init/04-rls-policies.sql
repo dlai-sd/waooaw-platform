@@ -150,3 +150,27 @@ GRANT SELECT, INSERT ON business.payment_transactions   TO business_app;
 GRANT SELECT, INSERT ON business.gst_invoices           TO business_app;
 GRANT SELECT, INSERT, UPDATE ON business.data_retention_records TO business_app;
 GRANT SELECT ON business.business_domain_taxonomy       TO business_app;  -- public catalogue read
+
+-- ─── AI Agent Execution Layer tables (v0.20.0) ───────────────────────────────
+-- institutional schema tables are WAOOAW-wide (not tenant-scoped).
+-- Access is controlled by DB role permissions, not RLS (no tenant_id discriminator).
+-- Only platform-internal services (ai-runtime, business-platform) may write.
+-- Reads are restricted by service-level DB roles.
+
+-- No RLS on institutional tables — they are platform-wide.
+-- Access control via DB role grants only:
+
+GRANT SELECT, INSERT, UPDATE ON institutional.agent_prompt_versions    TO business_app;
+GRANT SELECT, INSERT, UPDATE ON institutional.agent_reasoning_traces   TO ai_runtime_app;
+GRANT SELECT                 ON institutional.agent_reasoning_traces   TO business_app;
+GRANT SELECT, INSERT, UPDATE ON institutional.agent_capability_registry TO ai_runtime_app;
+GRANT SELECT                 ON institutional.agent_capability_registry TO business_app;
+GRANT SELECT, INSERT, UPDATE ON institutional.agent_messages           TO ai_runtime_app;
+GRANT SELECT                 ON institutional.agent_messages           TO business_app;
+GRANT SELECT, INSERT, UPDATE ON institutional.platform_operations_events TO business_app;
+GRANT SELECT, INSERT, UPDATE ON institutional.agent_health_scores      TO business_app;
+
+-- Developer note: The institutional schema requires two DB roles:
+-- business_app: Business Platform service account
+-- ai_runtime_app: AI Runtime service account
+-- Both must be created in 02-users-and-roles.sql (or equivalent init script)

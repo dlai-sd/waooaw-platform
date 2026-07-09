@@ -199,6 +199,9 @@ services:
       MCP_PDF_GENERATION_URL: http://pdf-generation-mcp:8123
       MCP_EMAIL_URL: http://email-mcp:8124
       MCP_PUSH_NOTIFICATION_URL: http://push-notification-mcp:8125
+      # AI Agent Execution Layer (v0.20.0 — C-047, AD-018, AD-019)
+      MCP_PLATFORM_OPERATIONS_URL: http://platform-operations-mcp:8126
+      PROMPT_REGISTRY_URL: http://prompt-registry-mcp:8127
     depends_on:
       postgres:
         condition: service_healthy

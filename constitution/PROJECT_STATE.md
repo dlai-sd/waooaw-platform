@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **Last Updated:** 2026-07-09
-**Version:** 0.19.0
+**Version:** 0.20.0
 **Session:** 2026-07-09 close
 
 ---
@@ -33,7 +33,8 @@ FOCUS:        Digital Marketing Agent v2.0 APPROVED and committed.
 | v0.16.0 | Synthetic Approval + Skill Runtime Operating Standard | C-044 (Synthetic Approval LAW); AD-017 (Confidence Gate HARD); DP-015 (Learned Delegation); Capability 4.6; Skill Runtime Config Standard (Section 3.14) — approval ladder, cadence, narrative, self-governance, API budget; AI Runtime Pipelines 8+9 (Synthetic Approval + Self-Governance); SQL — 5 new ENUMs, 3 new tables (skill_runtime_configurations, synthetic_approval_records, skill_self_governance_log); P2 fixes from R-014 (execution_model_type + 3 VARCHAR→ENUM) |
 | v0.17.0 | Simulation 004 — Kiran Fitness Studio Bangalore | Full lifecycle simulation. 25 gaps: 4 P0, 8 P1, 13 P2. 4 constitutional discoveries (CD-001 through CD-004). C-045 candidate. ADR-021/022 identified. |
 | v0.18.0 | Developer simulation — fill all spec gaps | Proto extended (BudgetContext, SyntheticApprovalContext, ApprovalType). 9 new OpenAPI endpoints. RLS for 8 tables. MCP Tool Catalogues. 5 Temporal workflow definitions. ADR-021 (OAuth vault). ADR-022 (Razorpay India + GST). 5 new infrastructure containers. ADR-INDEX updated. |
-| v0.19.0 | P2 complete: tables, columns, spec extensions | SQL: organisations (+gstin, phone_number_whatsapp, whatsapp_opt_in, business_domain); employment_contracts (+previous_contract_id, razorpay_subscription_id); digital_marketing_profiles (+profiling_session_id, last_exchange_index, resume_token); skill_runtime_configurations (+synthetic_model_last_calibrated, stale_after_days, override counters). New tables: business_domain_taxonomy (seeded with 9 domains), payment_transactions, gst_invoices, data_retention_records. New self-FK on employment_contracts (re-hire continuity). RLS + GRANTs for all new tables. Agent spec: Fitness Studio persona + Kiran persona (AS-004 candidate). Skill 7 WhatsApp two-type distinction (platform notification vs member broadcast). Skill 8 AI image legal constraint. ADR-021: GA4 OAuth scope + token revocation on termination. |
+| v0.19.0 | P2 complete: Payment/GST tables, Fitness Studio, OAuth/retention, domain taxonomy | SQL: +organisations/contracts/profile/skill_config columns; business_domain_taxonomy; payment_transactions; gst_invoices; data_retention_records. Agent spec: Fitness Studio persona, Skill 7/8 fixes. ADR-021 GA4 + token revocation. |
+| v0.20.0 | AI-native execution layer — constitution through local environment | C-045 (Prompt=Constitutional Artifact LAW); C-046 (Platform under governance LAW); C-047 (Agent-Driven Execution LAW). AD-018 (Prompt Versioning HARD); AD-019 (Agent-Driven Orchestration HARD). DP-016/017/018. Domain 12 (Platform Operations, 5 capabilities). Reasoning Trace spec + SQL schema. Prompt Library: README + 7 core DMA+CE+Ops prompts with output schemas. Agent Execution Loop spec (the fundamental C-047 shift). Platform Operations Agent spec (L1/L2/L3, 4 skills, agent comms protocol, capability registry). CE proto: reasoning_trace_id in ValidateAction. AI Runtime: Prompt Registry + Execution Loop Coordinator + Reasoning Trace Writer components. SQL: agent_prompt_versions (seeded), agent_reasoning_traces, agent_capability_registry, agent_messages, platform_operations_events, agent_health_scores. RLS/grants for institutional schema. New containers: platform-operations-mcp (8126), prompt-registry-mcp (8127). |
 
 ---
 

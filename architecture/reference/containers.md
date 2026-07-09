@@ -162,6 +162,8 @@ The AI Runtime is an MCP client. Agent-specific capabilities that require real-t
 | `pdf-generation-mcp` | Business Platform + AI Runtime (Maturity Report) | HTML-to-PDF generation (Gotenberg/Puppeteer) for reports and invoices | Sidecar container (dev), Container Apps (cloud) |
 | `email-mcp` | AI Runtime (performance narrative delivery) | Transactional email — SendGrid/SES for Maturity Reports, billing invoices | Sidecar container (dev), Container Apps (cloud) |
 | `push-notification-mcp` | Business Platform (approval notifications, skill alerts) | Firebase FCM / APNs push notifications for approval requests and skill alerts | Sidecar container (dev), Container Apps (cloud) |
+| `platform-operations-mcp` | Platform Operations Agent (L1/L2/L3) | Platform health data aggregation, Temporal API, incident management (C-046) | Sidecar container (dev), Container Apps (cloud) |
+| `prompt-registry-mcp` | AI Runtime (AD-018 Prompt Governance) | Serves active prompt versions from `institutional.agent_prompt_versions`; invalidates cache on version change | Sidecar container (dev, lightweight), Container Apps (cloud) |
 
 ### MCP Architecture Principles (ADR-020)
 

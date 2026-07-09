@@ -189,40 +189,19 @@ message RecordEvidenceResponse {
 // ─── ValidateAction ──────────────────────────────────────────────────────────
 
 message ValidateActionRequest {
-  // contract_id identifies the Employment Contract whose Decision Space governs this action.
   string contract_id = 1;
-
-  // action_type is the type of action being validated.
   string action_type = 2;
-
-  // action_parameters contains the action-specific parameters in JSON format.
-  // Used to evaluate budget constraints (e.g., trade amount, spend limit).
   string action_parameters = 3;
-
-  // decision_space_version is the version the caller has cached.
-  // CE returns FAILED_PRECONDITION if the active Decision Space version is newer,
-  // signalling the caller to reload and start a new PAAS session.
   int32 decision_space_version = 4;
-
-  // budget_context carries financial spend parameters when validating a spend-incurring action.
-  // REQUIRED when action_type is in: PAID_AD_CAMPAIGN, PAID_AD_OPTIMISE, BUDGET_INCREASE.
-  // CE uses this to enforce the Constitutional Floor budget ceiling (C-043, AD-016).
-  // If absent for a spend-type action, CE returns INVALID_ARGUMENT.
   optional BudgetContext budget_context = 5;
-
-  // synthetic_approval_context carries confidence parameters when the caller is
-  // requesting CE validation of a Synthetic Approval (C-044, AD-017).
-  // REQUIRED when approval_type = SYNTHETIC. CE validates confidence >= threshold.
-  // If confidence < threshold, CE returns DENY with reason SYNTHETIC_CONFIDENCE_BELOW_THRESHOLD.
   optional SyntheticApprovalContext synthetic_approval_context = 6;
-
-  // approval_type indicates the type of approval being validated.
-  // Default (absent) = CUSTOMER_EXPLICIT. Set to SYNTHETIC for synthetic approvals.
   ApprovalType approval_type = 7;
-
-  // skill_id identifies the specific skill instance within the contract.
-  // Required when the action is skill-scoped (most DMA actions).
   optional string skill_id = 8;
+  // reasoning_trace_id: the ID of the reasoning trace produced BEFORE this call (C-047, AD-019).
+  // The agent must write the reasoning trace first, then call ValidateAction with its ID.
+  // CE uses this for EvaluatePolicy constitutional reasoning context.
+  // Required when the decision requires EvaluatePolicy (novel actions, boundary cases).
+  optional string reasoning_trace_id = 9;
 }
 
 // BudgetContext — carries financial spend state for budget ceiling enforcement.

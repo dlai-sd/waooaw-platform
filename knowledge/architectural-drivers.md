@@ -310,3 +310,42 @@ Note: This driver requires CE.ValidateAction to carry budget state as a first-cl
 6. The confidence score and basis (list of prior approval IDs used for inference) are recorded in the evidence record — non-negotiable
 
 **Override window:** Each synthetically approved action has a customer-configured retrospective override window (default: 24 hours for content actions, 1 hour for financial actions). Expired overrides are sealed in the CAL.
+
+---
+
+## AD-018 — Prompt Versioning and Constitutional Alignment (v0.20.0)
+
+**Requirement:** Every prompt used by an AI model in the platform must carry a version identifier, a constitutional basis citation, and a review record. Prompt changes that alter decision-making behaviour must not be deployed without the same governance process as a Decision Space amendment. The AI Runtime must refuse to execute a prompt version that is not in the approved prompt registry.
+
+**Type:** HARD — derives from C-045 (LAW). Ungoverned prompts produce ungoverned agent behaviour, which is constitutionally equivalent to an unauthorized Decision Space change.
+
+**Constitutional Basis:** C-045 (Prompt as Constitutional Artifact — LAW); C-036 (Skills are constitutional units); DP-003 (Configuration over Code)
+
+**Capabilities Constrained:** All skills in all agents — any skill that invokes an LLM inference
+
+**Architectural Consequence:**
+1. The AI Runtime maintains a Prompt Registry table (`agent_prompt_versions`) with: prompt_id, version, skill_type, pipeline_step, constitutional_basis, approved_by, approved_at, is_active
+2. At runtime, before any LLM call, the AI Runtime looks up the active prompt version for (skill_type, pipeline_step)
+3. If no approved prompt exists for that combination → AI Runtime returns INFERENCE_BLOCKED (not a graceful degradation — missing approved prompt is a constitutional gap)
+4. Prompt content is stored in the Prompt Library (`architecture/reference/prompts/`) with constitutional basis per prompt
+5. Developer cannot change a prompt by editing a file — they must create a new version, get it reviewed, and mark it active in the registry
+
+---
+
+## AD-019 — Agent-Driven Orchestration (v0.20.0)
+
+**Requirement:** Digital Professional agents must drive their own execution cycle through a reasoning loop. Temporal workflows provide durability guarantees for agent decisions, not decision logic. Code schedulers (cron, Temporal schedules) may wake an agent, but the agent determines what to do upon waking. The agent's reasoning output is the primary workflow input; the workflow is the execution substrate, not the decision engine.
+
+**Type:** HARD — derives from C-047 (LAW). An agent whose actions are determined by a workflow scheduler is not a professional — it is a script. The constitutional claim that agents exercise professional judgment (C-036) requires that judgment to be genuinely exercised, not pre-scripted.
+
+**Constitutional Basis:** C-047 (Agent-Driven Execution Loop — LAW); C-036 (Skills as constitutional units); C-030 (Decision Space as architectural primitive — the agent reads it, not the scheduler)
+
+**Capabilities Constrained:** All skill execution capabilities (3.1, 3.2, all Domain 11 skills) — and all Platform Operations capabilities (Domain 12)
+
+**Architectural Consequence:**
+1. Every agent execution cycle begins with an LLM reasoning call: "Given my context and Decision Space, what is the most appropriate action for me to take right now?"
+2. The reasoning output is a structured plan (action_type, parameters, constitutional_basis, confidence) — not a generic completion
+3. The Temporal workflow executes the plan produced by the agent's reasoning
+4. Temporal does NOT decide what the agent does — it only ensures durability of the agent's decision
+5. The reasoning call and its output are recorded as a Reasoning Trace (see agent-reasoning-trace.md)
+6. CE.ValidateAction is called on the agent's proposed action BEFORE Temporal activity execution — the agent reasons, CE validates, Temporal executes

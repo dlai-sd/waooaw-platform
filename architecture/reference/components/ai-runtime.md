@@ -369,7 +369,52 @@ Reset consecutive miss counter
 
 ---
 
-## Dependencies (updated v0.16.0)
+## New Components (v0.20.0 — C-045, C-047, AD-018, AD-019, DP-016, DP-018)
+
+### 10. Prompt Registry (AD-018, C-045)
+
+**Responsibility:**
+- At startup: load all active prompt versions from `agent_prompt_versions` table into memory cache
+- Expose: `get_active(skill_type, pipeline_step) → Prompt | None`
+- If None: the AI Runtime must return INFERENCE_BLOCKED — missing approved prompt is a constitutional gap
+- On prompt version activation (DB update): invalidate cache entry and reload
+- Never hardcode prompts in application code — all prompts come from this registry
+
+**Implementation note:** The prompt registry is a startup-time dependency. If the DB is unavailable at startup, the AI Runtime fails to start (prompts are required, not optional).
+
+---
+
+### 11. Agent Execution Loop Coordinator (C-047, AD-019, DP-018)
+
+**Responsibility:**
+- Implements the standard Agent Execution Loop (see architecture/reference/agent-execution-loop.md)
+- Provides the `agent_reasoning_and_execution_activity` Temporal activity implementation
+- Orchestrates: Prompt Registry → RAG Pipeline → LLM reasoning → Reasoning Trace write → CE.ValidateAction → MCP execution → Evidence recording → Outcome observation
+- The agent's reasoning output (from the LLM) determines what action is taken — the coordinator does NOT make decisions; it executes the agent's decisions durably
+
+**Key constraint (DP-018):** Every agent activity in the Professional Runtime that touches the AI Runtime must begin with an LLM reasoning call. Activities that skip reasoning and go directly to MCP tool calls are DP-018 violations. Code review must catch this.
+
+---
+
+### 12. Reasoning Trace Writer (C-047, AD-008)
+
+**Responsibility:**
+- Writes `agent_reasoning_traces` records after every LLM inference, before CE.ValidateAction
+- Produces the OTel span with agent-specific attributes (confidence_score, constitutional_basis, prompt_version, action_type)
+- Updates the trace with outcome data (evidence_id, action_taken, customer_override) after execution
+- Exposes the reasoning trace ID for downstream CE.ValidateAction calls
+
+**This is the primary audit artifact for AI agent operations.** Every AI decision must have a reasoning trace. A decision without a trace is constitutionally ungoverned.
+
+---
+
+## Dependencies (updated v0.20.0)
+- **LLM Providers** (HTTPS external — OpenAI, Azure OpenAI)
+- **Prompt Registry** (DB at startup → memory cache at runtime; `agent_prompt_versions` table)
+- **PostgreSQL** (pgvector — Creative Standard Profile embeddings, agent_progressive_state, digital_marketing_profiles, digital_marketing_maturity_scores, digital_marketing_needs_heatmap, competitor_snapshots, `agent_reasoning_traces` write, `agent_capability_registry` write — institutional schema)
+- **MCP Integration Layer** (internal network — all servers listed in containers.md MCP Server Inventory)
+- **Constitutional Engine** (gRPC — CE.ValidateAction before every MCP tool call per C-041; CE.ValidateAction with budget_remaining parameter before any spend-incurring tool call per C-043 and AD-016; CE.ValidateAction with reasoning_trace_id for EvaluatePolicy cases per C-047)
+- **Agent Reasoning Trace store** (institutional.agent_reasoning_traces — write at every LLM inference)
 - **LLM Providers** (HTTPS external — OpenAI, Azure OpenAI)
 - **PostgreSQL** (pgvector — Creative Standard Profile embeddings, agent_progressive_state, digital_marketing_profiles, digital_marketing_maturity_scores, digital_marketing_needs_heatmap, competitor_snapshots — read only)
 - **MCP Integration Layer** (internal network — all servers listed in containers.md MCP Server Inventory)

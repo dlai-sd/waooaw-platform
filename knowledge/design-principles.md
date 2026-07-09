@@ -283,3 +283,49 @@ Principles are listed in order of constitutional priority — Constitutional Flo
 - Self-governance: if the customer overrides more than 10% of synthetic approvals in any 30-day period, the skill must automatically propose downgrading to EXCEPTION_APPROVAL mode
 
 ---
+
+## DP-016 — Prompt-First Execution (v0.20.0)
+
+**Directive:** Before writing any code that invokes an LLM, the prompt for that invocation must exist in the Prompt Library as an approved, versioned document. Code that calls an AI model without a documented, approved prompt is constitutionally ungoverned and must be rejected in code review.
+
+**Why:** The prompt is the mechanism by which constitutional constraints, domain knowledge, and decision criteria are expressed to the AI model. If the prompt is not governed, the agent's behaviour is not governed, regardless of how well-specified the surrounding code is. A perfectly implemented pipeline with an undocumented prompt is constitutionally incomplete.
+
+**Constitutional Basis:** C-045 (Prompt as Constitutional Artifact); AD-018 (Prompt Versioning); DP-003 (Configuration over Code)
+
+**Enforcement:**
+- The Prompt Library (`architecture/reference/prompts/`) is a required deliverable before any implementation sprint that includes LLM calls
+- Every prompt document includes: prompt_id, version, skill_type, pipeline_step, system_context, constitutional_constraints, output_schema, failure_handling, approval record
+- The AI Runtime's prompt loader reads from the `agent_prompt_versions` table at startup — hardcoded prompt strings in code are a constitutional violation
+- Pull requests that add LLM calls without a corresponding Prompt Library entry are automatically flagged in code review
+
+---
+
+## DP-017 — Autonomous Platform Operations (v0.20.0)
+
+**Directive:** The platform must govern its own operations through constitutional agents — not through undocumented human interventions. Every platform operation that can affect a customer engagement (billing, contract state, skill suspension, agent restart) must be performed by a constitutionally governed agent with an evidence record, a Decision Space, and customer notification rights where applicable.
+
+**Why:** The platform's credibility depends on consistent governance. A platform that governs customer-facing agents constitutionally but operates its own infrastructure through undocumented human procedures is institutionally inconsistent. Customers cannot trust an institution that does not apply its own governance framework to itself.
+
+**Constitutional Basis:** C-046 (Platform Operations under Constitutional Governance — LAW); C-002 (trust through evidence); C-001 (human override unconditional — applies to platform operations affecting customers)
+
+**Enforcement:**
+- The Platform Operations Agent (see platform-operations-agent.md) is the only agent authorised to perform platform operations that affect customer engagements
+- Human engineers may perform infrastructure operations (restart a crashed container, restore a database) but may NOT perform customer-affecting operations (cancel a contract, suspend a skill, modify billing) except via the Platform Operations Agent's override mechanism
+- Every platform operation that modifies an employment contract, skill state, or billing record must generate a CE evidence record
+
+---
+
+## DP-018 — Agent Execution Primacy (v0.20.0)
+
+**Directive:** The AI agent's reasoning output determines what action is taken. Infrastructure code (Temporal workflows, API handlers, cron schedules) provides the execution substrate — it does not determine the agent's actions. When implementing any agent execution cycle, the first question is: "What does the agent reason about here?" not "What should the code trigger here?"
+
+**Why:** An agent whose actions are fully determined by code is a script, not a professional. The constitutional claim that Digital Professionals exercise judgment (C-036) requires that judgment to be genuinely exercised. The distinction matters architecturally: in a code-driven model, removing the AI makes the system slower but still functional. In an agent-driven model, removing the AI makes the system non-functional — the agent IS the decision logic.
+
+**Constitutional Basis:** C-047 (Agent-Driven Execution Loop — LAW); C-036 (Skills as constitutional units); AD-019 (Agent-Driven Orchestration)
+
+**Enforcement:**
+- Every Temporal workflow activity that invokes an LLM must begin with the agent's reasoning call and treat its output as the workflow's primary input
+- Code that determines agent actions through conditional logic (`if it's Monday, create content`) is a DP-018 violation — the agent should reason that Monday requires content, not be told
+- The AI Execution Loop spec (architecture/reference/agent-execution-loop.md) defines the standard reasoning-first activity pattern that all agent implementations must follow
+
+---
