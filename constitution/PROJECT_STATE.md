@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **Last Updated:** 2026-07-09
-**Version:** 0.16.0
+**Version:** 0.17.0
 **Session:** 2026-07-09 close
 
 ---
@@ -31,6 +31,7 @@ FOCUS:        Digital Marketing Agent v2.0 APPROVED and committed.
 | v0.14.2 | R-014 EA Review — APPROVED | 5 P1 findings fixed: C-043 Produces corrected; social-profile-mcp auth ambiguity resolved; CE.ValidateAction in Market Research Pipeline; PATIENT_IMAGE_CONSENT_CONFIRMED resolved (R-011 note closed); capability-to-container-map.md updated with Domain 11 |
 | v0.15.0 | Session close | All statuses updated; GENESIS registry updated; Founder approval granted; committed and pushed |
 | v0.16.0 | Synthetic Approval + Skill Runtime Operating Standard | C-044 (Synthetic Approval LAW); AD-017 (Confidence Gate HARD); DP-015 (Learned Delegation); Capability 4.6; Skill Runtime Config Standard (Section 3.14) — approval ladder, cadence, narrative, self-governance, API budget; AI Runtime Pipelines 8+9 (Synthetic Approval + Self-Governance); SQL — 5 new ENUMs, 3 new tables (skill_runtime_configurations, synthetic_approval_records, skill_self_governance_log); P2 fixes from R-014 (execution_model_type + 3 VARCHAR→ENUM) |
+| v0.17.0 | Simulation 004 — Kiran Fitness Studio Bangalore | Full lifecycle simulation (discovery → trial → hire → run → pause → resume → terminate → re-hire). 25 gaps surfaced: 4 P0 (OAuth, payment, approval notification, Temporal workflow), 8 P1 (TRAI, trial model, WhatsApp Business, GST, conversion tracking, pause handler, phone registration, delivery sequence), 13 P2. 4 constitutional discoveries (CD-001 through CD-004). C-045 candidate (India Regulatory Compliance). ADR-021 (OAuth) and ADR-022 (Razorpay) identified. |
 
 ---
 
