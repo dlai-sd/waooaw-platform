@@ -2053,9 +2053,9 @@ GENESIS does not define the simulations. Reality does.
 ---
 
 # Part 05 — Agent Definition Protocol
-**Document Version:** Genesis 1.0 (Part 05)
+**Document Version:** Genesis 1.0 (Part 05), amended v0.22.0
 **Authority:** Supreme
-**Status:** Approved by Founder (2026-07-08)
+**Status:** Approved by Founder (2026-07-08), amended 2026-07-09
 **Classification:** Immutable unless superseded by newer Genesis version
 
 ---
@@ -2201,9 +2201,17 @@ Learning signals are WAOOAW IP once they leave the customer context boundary (FR
 
 Part 05 establishes the Agent Definition Protocol for all new professional types on the WAOOAW platform.
 
-No new professional type may be implemented without a complete Agent Specification in `architecture/reference/agents/`.
+**The Agent Authoring Guide (`architecture/reference/agents/AGENT-AUTHORING-GUIDE.md`) is the operative implementation of this protocol. It is binding — not advisory.** Sections 14 (Agent Activation Gate) and 15 (Agent Update Template) of that guide define binary pass/fail criteria for agent activation and updates. A failing gate is a Constitutional Blocker.
 
-No implementation sprint for a new agent type may begin until the Agent Specification has been reviewed by the Enterprise Architect and approved by the Founder.
+No new professional type may be implemented without:
+1. A complete Agent Specification in `architecture/reference/agents/`
+2. ALL sections of the Agent Activation Gate (Section 14) passing
+3. EA review with APPROVED verdict
+4. Founder approval
+
+No existing agent type may be updated without following the Agent Update Template (Section 15) for the applicable change type.
+
+The Agent Activation Gate is machine-verifiable. An automated check of the repository can confirm whether every gate section passes. An EA reviewer who issues APPROVED without verifying the gate has violated this protocol.
 
 ---
 

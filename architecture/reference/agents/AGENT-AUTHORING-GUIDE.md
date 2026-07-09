@@ -1,10 +1,14 @@
 # Agent Authoring Guide
 
 **Authority:** GENESIS Part 05 — Agent Definition Protocol
-**Date:** 2026-07-08
-**Purpose:** Template and instructions for specifying a new Digital Professional type on WAOOAW.
+**Date:** 2026-07-09 (v2.0 — gate-enforced template replacing guide-only template)
+**Purpose:** Mandatory template for every new Digital Professional type on WAOOAW. This is a GATE, not a guide. An agent spec that is incomplete in any section cannot be activated.
 
-Before any implementation sprint for a new agent type begins, a complete Agent Specification must exist in this directory and be reviewed by the Enterprise Architect and approved by the Founder.
+**GATE vs GUIDE distinction:**
+- A guide: follow if you remember to. Partial compliance passes.
+- A gate: every section is binary (present and complete, or absent). Missing any section = BLOCKED. An automated agent can verify this gate by querying the repository.
+
+Before any implementation sprint for a new agent type begins, ALL sections of this template must exist, be complete, and have passed EA review and Founder approval.
 
 ---
 
@@ -197,26 +201,34 @@ Review creates: `reviews/R-NNN-sprint-N-agent-{name}-ea-review.md`
 | Drivers | `knowledge/architectural-drivers.md` | Add an AD entry if the agent introduces a new HARD non-functional constraint | Skip only if no new constraint |
 | Principles | `knowledge/design-principles.md` | Add a DP entry if the agent requires a new structural engineering pattern | Skip only if pattern already defined |
 | Containers | `architecture/reference/containers.md` | Add any new MCP servers to the MCP Integration Layer server inventory table | Skip if no new MCP servers |
+| MCP Tool Catalogue | `architecture/reference/mcp-tool-catalogues.md` | Add full tool signature spec for every new MCP server (request, response, authorization, failure mode) | Skip if no new MCP servers — but if MCP server is referenced in spec without a catalogue entry, this is a GATE BLOCKER |
+| Prompt Catalogue | `architecture/reference/prompts/` | Create prompt file for agent type; add every prompt to agent_prompt_versions seed data; update README index | NEVER skip — missing approved prompt = INFERENCE_BLOCKED at runtime (C-045, AD-018) |
 | Component spec | `architecture/reference/components/ai-runtime.md` | Add/expand any component behavior the agent requires (new processing pipelines, new RAG tiers, new VTL behavior) | Skip if no new AI Runtime behavior |
-| Data schema | `infrastructure/postgres/init/03-enums-and-tables.sql` | Add any tables the agent needs (progressive state, profiles, logs) | Skip if no new tables |
-| Docker Compose | `docker-compose.yml` | Add a stub service for each new MCP server | Skip if MCP server already exists |
-| GENESIS | `constitution/GENESIS.md` | Verify agent's acceptance scenario (AS-XXX) is listed in Part 04 | Add if missing |
+| Data schema | `infrastructure/postgres/init/03-enums-and-tables.sql` | Add any tables the agent needs (profiles, session records, progressive state, logs) | Skip if no new tables |
+| RLS policies | `infrastructure/postgres/init/04-rls-policies.sql` | Add RLS policies and GRANT statements for every new table | NEVER skip — new table without RLS = AD-004 violation |
+| Docker Compose | `docker-compose.yml` | Add env URL + stub service for each new MCP server; add to ai-runtime env block | Skip if MCP server already exists |
+| GENESIS | `constitution/GENESIS.md` | Add agent to Ratified Professional Types table | NEVER skip |
+| Capability map | `architecture/reference/capability-to-container-map.md` | Add all new capabilities with owning container and supporting containers | Never skip |
 | AGENT-ENTRY | `constitution/AGENT-ENTRY.md` | Update approved agent list and routing table | Never skip |
-| ADR | `adr/` | Create an ADR if the agent introduces a new architectural decision (e.g., new external service type, new protocol) | Skip if no new architectural decision |
+| ADR | `adr/` | Create an ADR if the agent introduces a new architectural decision | Skip if no new architectural decision |
+| Project State | `constitution/PROJECT_STATE.md` | Update version, agents table, and WORK MENU | Never skip |
+| README | `README.md` | Update version number | Never skip |
 
 ### 11.2 — For agent updates (existing spec amended)
 
-Apply only the layers affected by the change:
+Apply only the layers affected by the change type. Every change type has a MINIMUM required update set — below the minimum is a GATE BLOCKER.
 
-| Change type | Layers to update |
-|---|---|
-| New Skill added | Capabilities (add sub-capability), Data (new RAG tables if needed), Containers (new MCP server if needed), docker-compose (new stub if needed) |
-| New MCP tool added | Containers (MCP inventory table), docker-compose (stub), ai-runtime.md (if new tool class) |
-| New always-ask action | Constitutional Checklist re-verify; no layer update usually needed |
-| New RAG source | ai-runtime.md (pipeline description), data schema (new table if new data type) |
-| New constitutional constraint | Claims (if new claim), Principles (if new structural pattern), Checklist item 9.3 |
-| Vocabulary Mandate added | AI Runtime component (VTL section), AD-015 referenced, Docker (whatsapp-voice-mcp confirmed) |
-| Skill removed | Capabilities (remove sub-capability), data schema comment the table (never drop), billing events continue |
+| Change type | Minimum required updates | Additional if applicable |
+|---|---|---|
+| **New Skill added** | Capabilities (+sub-capability), Prompt Catalogue (+prompts for new skill), MCP Catalogue (+tool signatures if new MCP), Containers (+MCP if new), Docker Compose (+stub if new), Data Schema (+tables if new), RLS (+policies if new tables), Capability map (+new capability) | AI Runtime (+pipeline if new), ADR (+if new architectural decision) |
+| **New MCP tool added** | Containers (+MCP inventory), MCP Catalogue (+tool signature), Docker Compose (+stub + env URL) | AI Runtime (+if new tool class), ADR (+if new external service type) |
+| **New prompt added/changed** | Prompt Catalogue (+new prompt in file + seed data + README index), SQL (+seed row in agent_prompt_versions) | BEHAVIOURAL: EA review required. BREAKING: Founder approval required. |
+| **New constitutional constraint** | Claims (+new claim if novel), Principles (+new DP if new structural pattern), Agent spec checklist | EA review required regardless |
+| **New always-ask action** | Agent spec only — Decision Space updated | Constitutional Checklist re-verify |
+| **New RAG source** | AI Runtime (+pipeline description if new tier), Data Schema (+table if new data type) | |
+| **Vocabulary Mandate added** | AI Runtime component (+VTL section), AD-015 referenced, Docker (+whatsapp-voice-mcp confirmed), C-042 in constitutional basis | |
+| **Skill removed** | Capabilities (comment out sub-capability — never delete), Data Schema (comment out table — never drop), Billing events continue | |
+| **Version bump (bug fix / phrasing)** | Agent spec version table only | |
 
 ### 11.3 — Agent Update Summary Block
 
@@ -260,3 +272,176 @@ Each agent spec file carries a version table at the bottom. Update it with every
 ## 13. Capability-to-Container Map Update
 
 After every new agent spec, verify `architecture/reference/capability-to-container-map.md` includes the new capabilities. If it doesn't, add them. Domain-level capabilities must map to their owning container (typically AI Runtime for execution, Business Platform for lifecycle, Constitutional Engine for evidence).
+
+---
+
+## 14. Agent Activation Gate (BINARY — must PASS before agent can be activated)
+
+This gate is verified by the EA reviewer before issuing APPROVED verdict. Each item is PASS or FAIL — no partial credit.
+
+```
+SECTION 1 — SPEC COMPLETENESS
+[ ] 1.1  Agent Identity: domain, professional_type, persona, expertise claim — all present
+[ ] 1.2  Target Personas: at least 1 Acceptance Scenario cited and ratified in GENESIS
+[ ] 1.3  Constitutional Basis: every claim cited is in RATIFIED status (not DRAFT)
+[ ] 1.4  Every Skill has: Decision Space (Authorized/Prohibited/Always-ask), RAG Sources, MCP Tools,
+         Business KPI, Constitutional Constraints — NO section left blank
+
+SECTION 2 — PROMPT GATE (C-045, AD-018)
+[ ] 2.1  A Prompt Catalogue section exists in the agent spec listing every LLM inference point
+[ ] 2.2  Every listed prompt has a corresponding file entry in architecture/reference/prompts/
+[ ] 2.3  Every listed prompt has an active row in institutional.agent_prompt_versions (seeded in SQL)
+[ ] 2.4  No LLM call exists in any pipeline spec that is NOT listed in the Prompt Catalogue
+         FAIL condition: "LLM generates X" in pipeline spec without a matching prompt ID → GATE BLOCKED
+
+SECTION 3 — MCP GATE (C-041)
+[ ] 3.1  Every MCP server referenced in the spec is in architecture/reference/containers.md inventory
+[ ] 3.2  Every MCP server has a tool signature in architecture/reference/mcp-tool-catalogues.md
+[ ] 3.3  Every MCP server has a docker-compose.yml stub service with health check
+[ ] 3.4  Every MCP server has its env URL in the ai-runtime environment block in docker-compose.yml
+         FAIL condition: MCP server name in spec → not in containers.md → GATE BLOCKED
+
+SECTION 4 — SKILL RUNTIME GATE (DP-014, DP-015, C-044)
+[ ] 4.1  Skill Runtime Configuration Standard (Section 3.14 equivalent) exists in the spec
+[ ] 4.2  Default approval_mode declared for each skill
+[ ] 4.3  synthetic_approval_confidence_threshold declared (can be N/A if CUSTOMER_APPROVAL only)
+[ ] 4.4  goal_miss_escalation_months declared
+[ ] 4.5  delivery_channels declared
+[ ] 4.6  monthly_llm_budget declared per skill or per phase
+
+SECTION 5 — EXECUTION LOOP GATE (C-047, AD-019)
+[ ] 5.1  Heartbeat schedule declared for each skill (when does the agent wake up per skill?)
+[ ] 5.2  Session start trigger declared for PAAS-execution agents (who starts the session?)
+[ ] 5.3  Agent execution loop pattern: reasoning-first activity pattern referenced
+
+SECTION 6 — DATA GATE (AD-004)
+[ ] 6.1  Every new SQL table has an RLS policy in 04-rls-policies.sql
+[ ] 6.2  Every new SQL table has a GRANT statement for the appropriate DB role
+[ ] 6.3  No tenant-scoped table is missing a tenant_id or organisation_id discriminator
+
+SECTION 7 — CONSTITUTIONAL GATE
+[ ] 7.1  Every Skill's KPI is measurable (what data source produces the measurement?) (C-037)
+[ ] 7.2  C-042 check: if agent serves low-literacy customers → Vocabulary Translation Layer present
+[ ] 7.3  C-043 check: if agent manages financial spend → budget ceiling is a Constitutional Floor
+[ ] 7.4  C-044 check: if agent uses Synthetic Approval → confidence gate + minimum history declared
+[ ] 7.5  C-045 check: all prompts approved and seeded (Section 2 gate above)
+[ ] 7.6  C-046 check: if agent is platform-internal → operates under the same constitutional governance
+[ ] 7.7  C-047 check: agent reasons first, code executes second — no code-determined actions
+
+SECTION 8 — ARCHITECTURE CHAIN GATE (Section 11 checklist completed)
+[ ] 8.1  Capabilities domain added to knowledge/business-capabilities.md
+[ ] 8.2  New drivers/principles added to knowledge/ if applicable
+[ ] 8.3  All new MCP servers in containers.md and docker-compose.yml
+[ ] 8.4  Capability-to-container map updated
+[ ] 8.5  GENESIS Ratified Professional Types table updated
+[ ] 8.6  README.md version number updated
+[ ] 8.7  PROJECT_STATE.md updated
+
+SECTION 9 — REVIEW GATE
+[ ] 9.1  EA Review record exists in reviews/ with APPROVED verdict
+[ ] 9.2  Founder approval recorded in agent spec Section 10 (Review and Approval)
+[ ] 9.3  All P0 and P1 findings from EA review resolved before activation
+
+OVERALL GATE RESULT:
+  All 9 sections PASS → AGENT MAY BE ACTIVATED
+  Any section FAIL → CONSTITUTIONAL BLOCKER → raise blocker in blockers/ → agent NOT activated
+```
+
+---
+
+## 15. Agent Update Template
+
+When updating an existing agent spec, identify the change type first. Then follow ONLY the update path for that type.
+
+### Type 1 — New Skill
+
+Steps (in order):
+1. Add Skill to Section 3 (Skill Catalogue) — complete all sub-sections
+2. Add prompts for new skill to Prompt Catalogue (Section X) + prompt file + SQL seed
+3. Add new MCP servers to containers.md + docker-compose + MCP Catalogue
+4. Add new SQL tables + RLS
+5. Add new capabilities to business-capabilities.md + capability-to-container-map
+6. Update Professional Template (Section 7) — add new authorized_actions
+7. Update Constitutional Checklist — re-verify all items
+8. Run EA review — request CHANGE_TYPE=NEW_SKILL review
+9. Update GENESIS if the skill introduces a new execution model or domain first
+10. Bump spec version (MINOR: e.g., 1.0.0 → 1.1.0)
+
+Gate check: Sections 1-8 of the Activation Gate above
+
+### Type 2 — New or Updated Prompt
+
+Steps (in order):
+1. Add/update prompt in `architecture/reference/prompts/{agent}-prompts.md`
+2. Determine change type: PHRASING_ONLY | BEHAVIOURAL | BREAKING
+3. If PHRASING_ONLY: standard PR review → merge → update SQL seed version to ACTIVE
+4. If BEHAVIOURAL: EA review required → merge after APPROVED → update SQL seed
+5. If BREAKING: EA review + Founder approval required → same as Decision Space amendment
+6. Insert new row in `agent_prompt_versions` (do NOT update existing active row — create new version)
+7. Set `is_active = TRUE` on new version, `is_active = FALSE` on old version (atomic swap)
+8. Bump spec version (PATCH for PHRASING_ONLY, MINOR for BEHAVIOURAL/BREAKING)
+
+Gate check: Section 2 of the Activation Gate above
+
+### Type 3 — New MCP Server or Tool
+
+Steps (in order):
+1. Add MCP server to `architecture/reference/containers.md` MCP inventory
+2. Add full tool signature to `architecture/reference/mcp-tool-catalogues.md`
+3. Add stub service to `docker-compose.yml` (env URL + service definition)
+4. Add tool reference to the relevant Skill's MCP Tools table in the spec
+5. Add CE.ValidateAction authorization requirement to the tool spec
+6. If new external service type: create ADR
+7. Standard PR review is sufficient (unless the tool introduces new authorization patterns → EA review)
+8. Bump spec version (PATCH)
+
+Gate check: Section 3 of the Activation Gate above
+
+### Type 4 — New Constitutional Constraint or Claim
+
+Steps (in order):
+1. Write the new claim in `knowledge/claims/C-NNN.md`
+2. Add to agent spec constitutional basis
+3. Check if claim requires new AD (HARD driver) or DP (structural principle)
+4. Update agent spec affected Skills (prohibited_actions, always_ask_actions, or constitutional_constraints)
+5. Full EA review + Founder approval required
+6. If claim changes what the agent CAN do: re-run the full Activation Gate
+7. Bump spec version (MINOR)
+
+Gate check: Full Activation Gate
+
+### Type 5 — Persona or Domain Extension
+
+Steps (in order):
+1. Add new persona to Section 2 (Target Customer Personas)
+2. Add domain to `business_domain_taxonomy` SQL seed data
+3. Check Tier 1 RAG — does new domain need new domain knowledge entries?
+4. Check prompts — do any prompts have domain-specific hardcoded content that now needs to generalize?
+5. Update agent spec unit economics if domain changes the business model
+6. EA review required (persona changes affect what the agent claims to know)
+7. Bump spec version (MINOR)
+
+Gate check: Sections 1, 2, 7 of the Activation Gate
+
+---
+
+## 16. Retroactive Compliance Check
+
+All existing agent specs (DMA v2.0, Trading v1.1, Agricultural v1.1) must be checked against the full Activation Gate. Any gate failures become P1 work items before the implementation sprint begins.
+
+**Current compliance status (as of v0.21.0):**
+
+| Agent | Gate Section | Status | Notes |
+|---|---|---|---|
+| DMA v2.0 | All sections | ✓ PASS | R-014 EA review covers this |
+| Trading v1.1 | Section 5 (Execution Loop) | ⚠ PARTIAL | Session start trigger not fully declared (GAP-T005) |
+| Trading v1.1 | Section 4 (Skill Runtime) | ⚠ PARTIAL | Runtime config standard not yet applied |
+| Agricultural v1.1 | Section 5 (Execution Loop) | ⚠ PARTIAL | WhatsApp-native heartbeat not declared |
+| Agricultural v1.1 | Section 4 (Skill Runtime) | ⚠ PARTIAL | Runtime config standard not yet applied |
+
+**Both trading and agricultural agents need a targeted update sprint to apply:**
+- Section 3.14 Skill Runtime Configuration Standard
+- Heartbeat/session schedule declarations
+- Prompt Catalogue section added to spec (currently in separate file, not in spec)
+
+These are P1 items before IB-009 sprint begins for those agents.

@@ -88,3 +88,30 @@ Coverage:         NN% (threshold: NN%)
 1. `feat(service): skeleton with /health endpoint`
 2. `constitutional(ce): Evidence First enforcer implementation`
 3. `cct(ce): CCT-EF-01 and CCT-EF-02 passing`
+
+---
+
+## Agent Lifecycle Gate (required for PRs that create or update any agent spec)
+
+> Skip this section entirely if this PR does NOT touch any file in `architecture/reference/agents/`.
+> If it DOES touch an agent spec, every row below must be completed.
+
+**Change type:** NEW_AGENT | NEW_SKILL | NEW_PROMPT | NEW_MCP | NEW_CONSTRAINT | PERSONA_EXTENSION | VERSION_BUMP
+
+**Agent affected:** [agent-name].md vX.X
+
+| Gate Section | Status | Notes |
+|---|---|---|
+| 1 — Spec Completeness | ✅ PASS / ❌ FAIL | |
+| 2 — Prompt Gate (C-045) | ✅ PASS / ❌ FAIL | All prompts in Prompt Library + seeded in SQL? |
+| 3 — MCP Gate (C-041) | ✅ PASS / ❌ FAIL | All MCP servers in containers.md + catalogue + docker-compose? |
+| 4 — Skill Runtime Gate (DP-014) | ✅ PASS / ❌ FAIL | Runtime config standard applied to all skills? |
+| 5 — Execution Loop Gate (C-047) | ✅ PASS / ❌ FAIL | Heartbeat/session trigger declared? |
+| 6 — Data Gate (AD-004) | ✅ PASS / ❌ FAIL | RLS + GRANT for every new table? |
+| 7 — Constitutional Gate | ✅ PASS / ❌ FAIL | C-042/043/044/045/046/047 checks done? |
+| 8 — Architecture Chain Gate | ✅ PASS / ❌ FAIL | All 16 layers in Section 11.1 verified? |
+| 9 — Review Gate | ✅ PASS / ❌ FAIL | EA APPROVED + Founder approved? |
+
+**Overall gate result:** ✅ ALL PASS — agent may be activated | ❌ BLOCKED — resolve failures first
+
+> An EA reviewer who issues APPROVED without a completed gate table has violated GENESIS Part 05.
