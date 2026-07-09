@@ -239,7 +239,137 @@ Customer receives: full report in chat + PDF download link
 
 ---
 
-## Dependencies (updated v0.14.0)
+## New Components (v0.16.0 — C-044, AD-017, DP-015)
+
+### 8. Synthetic Approval Pipeline
+
+**Activation:** Triggered when a skill has an action to execute AND the skill's `approval_mode` is `SYNTHETIC_APPROVAL` or `EXCEPTION_APPROVAL`.
+
+**Responsibility:**
+- Determines whether a pending action qualifies for synthetic approval or requires customer approval
+- Computes confidence score via vector similarity between the proposed action and prior approved actions corpus
+- Generates the SYNTHETIC_APPROVAL evidence record when confidence threshold is met
+- Notifies the customer via configured delivery channels before or at execution
+- Manages the override window — holds the action in reversible state until window expires
+- Auto-downgrades to EXCEPTION_APPROVAL for any action type where confidence drops below threshold
+
+**Processing pipeline (SYNTHETIC_APPROVAL mode):**
+```
+Proposed action from skill execution context
+    ↓
+Step 1: Read skill runtime config → approval_mode, confidence_threshold, min_history
+    ↓
+Step 2: Retrieve prior approval corpus for this action type (pgvector query)
+         → count prior approved actions of same type
+         → if count < min_history → FALLBACK to EXCEPTION_APPROVAL → raise approval request
+    ↓
+Step 3: Compute vector similarity score (proposed action embedding vs corpus of approved action embeddings)
+         → if similarity < confidence_threshold → FALLBACK to EXCEPTION_APPROVAL
+    ↓
+Step 4: CE.ValidateAction(action, decision_space, approval_type=SYNTHETIC, confidence=score)
+         → if DENY → FALLBACK to EXCEPTION_APPROVAL
+    ↓
+Step 5: Write evidence record:
+         { event_type: SYNTHETIC_APPROVAL, skill_type, confidence_score,
+           basis_approval_ids: [top-5 similar prior approvals], action_description,
+           override_deadline: NOW + override_window_hours }
+    ↓
+Step 6: Notify customer via delivery_channels:
+         "I've posted [description] — based on my understanding of your preferences.
+          You can review and undo this within [override_window_hours] hours."
+    ↓
+Step 7: Execute action via MCP tool (CE.ValidateAction already returned PERMIT in Step 4)
+    ↓
+Step 8: Monitor override window
+         → If customer overrides within window: reverse action (where reversible),
+           update approval corpus with OVERRIDE signal, check 10% override rate
+         → If override rate > 10% in 30 days: propose downgrade to EXCEPTION_APPROVAL
+         → If window expires without override: evidence record sealed as confirmed
+```
+
+**EXCEPTION_APPROVAL mode (simpler flow):**
+```
+Proposed action → check if action type is in customer-defined exception list
+   → YES (exception): raise approval request to customer (standard APPROVAL_GATE flow)
+   → NO (routine): execute within approved content calendar
+                   CE.ValidateAction(action, decision_space, approval_type=CALENDAR_AUTHORIZED)
+                   Evidence record: { event_type: CALENDAR_AUTHORIZED, calendar_id, action_description }
+```
+
+**Constitutional constraints:**
+- Synthetic Approval evidence records are immutable (C-007) — the confidence score and basis cannot be altered after creation
+- Notification to customer is a REQUIRED step, not DEGRADABLE — if notification fails, the action is held until notification succeeds or the skill falls back to explicit approval request
+- The override window is always honoured — no action that is within its override window may be treated as permanently confirmed
+
+---
+
+### 9. Self-Governance and Performance Narrative Pipeline
+
+**Activation:** Triggered on day 15 of each month (pace check) and on the last 3 working days of each month (narrative generation). Also triggered when 2 consecutive monthly goal misses are recorded.
+
+**Responsibility:**
+- Day-15 pace check: computes KPI pace vs monthly target; if < 60% → autonomous correction + customer alert
+- Month-end narrative: generates one-paragraph plain-language summary of skill performance
+- Renders narrative in all configured delivery channel formats (voice via TTS, text, PDF, push)
+- 2-month escalation: compiles self-governance log, generates corrective option set, delivers escalation
+
+**Day-15 pace check pipeline:**
+```
+Retrieve skill KPI data (platform-analytics-mcp or equivalent read-only tool)
+    ↓
+Compute: (actual_to_date / (days_elapsed / days_in_month)) / monthly_target
+    ↓
+If pace < 60%:
+    → Diagnose root cause (LLM analysis of available signals)
+    → Attempt one autonomous correction within Decision Space
+       (e.g., adjust posting time, refresh content format, reallocate ad creative budget)
+    → Record correction in skill_self_governance_log
+    → Send customer alert (WhatsApp text): "I noticed [metric] is tracking low.
+       I've tried [correction]. I'll update you at month end."
+```
+
+**Month-end narrative pipeline:**
+```
+Retrieve full month KPI data for this skill
+    ↓
+Generate narrative (LLM call with structured prompt):
+    - What happened (goal vs actual in business language)
+    - What I learned (one insight)
+    - What I tried (autonomous corrections taken)
+    - What changes next month (proposed plan)
+    - What I need from you (one decision, if any)
+    ↓
+Render to all configured delivery channels:
+    - WhatsApp voice: TTS → whatsapp-voice-mcp (or whatsapp-business-mcp audio)
+    - WhatsApp text: condensed 3-bullet version
+    - Email PDF: structured report with supporting data
+    - Portal: full interactive version
+    - Push: summary notification
+    ↓
+Record narrative delivery in skill_performance_records
+```
+
+**2-month escalation pipeline:**
+```
+Detect: 2 consecutive months where actual < goal_target for this skill
+    ↓
+Compile escalation package:
+    (a) Months 1+2 corrections tried (from skill_self_governance_log)
+    (b) Root cause diagnosis (LLM analysis)
+    (c) 2-3 corrective options with recommendation
+    ↓
+Deliver escalation via all channels (priority: WhatsApp voice first)
+    ↓
+Await customer option selection (raises approval request in Business Platform)
+    ↓
+Apply selected option; write new goal baseline to skill_performance_records
+    ↓
+Reset consecutive miss counter
+```
+
+---
+
+## Dependencies (updated v0.16.0)
 - **LLM Providers** (HTTPS external — OpenAI, Azure OpenAI)
 - **PostgreSQL** (pgvector — Creative Standard Profile embeddings, agent_progressive_state, digital_marketing_profiles, digital_marketing_maturity_scores, digital_marketing_needs_heatmap, competitor_snapshots — read only)
 - **MCP Integration Layer** (internal network — all servers listed in containers.md MCP Server Inventory)

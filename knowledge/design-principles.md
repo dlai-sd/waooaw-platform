@@ -265,3 +265,21 @@ Principles are listed in order of constitutional priority — Constitutional Flo
 - Skill upgrade (bundle change) requires a new customer authorization event — the same process as any Decision Space expansion (C-003 Second Law)
 
 ---
+
+## DP-015 — Synthetic Approval as Learned Delegation (v0.16.0)
+
+**Directive:** A skill operating in SYNTHETIC_APPROVAL mode must generate its approval from a learned, evidence-backed preference model — not from heuristics, defaults, or untrained inference. The skill's approval authority is earned through demonstrated correctness, not assumed at activation. The transition from CUSTOMER_APPROVAL to SYNTHETIC_APPROVAL must be gradual, auditable, and customer-controlled at every step.
+
+**Why:** The alternative — an AI that simply executes without approval — is constitutionally invalid (C-003). The other alternative — requesting approval for every action forever — makes the agent unusable for high-volume professional work. Synthetic Approval is the constitutionally sound middle path: authority delegation backed by evidence, revocable at any time, transparent in every record.
+
+**Constitutional Basis:** C-044 (Synthetic Approval — LAW); C-002 (trust earned through evidence); C-001 (human override unconditional); AD-017 (confidence gate)
+
+**Enforcement:**
+- Approval mode is a skill-level configuration field, not an agent-level setting — each skill earns synthetic authority independently
+- Mode upgrade (CUSTOMER → EXCEPTION → SYNTHETIC) is a Decision Space amendment requiring a customer authorization event (C-003) — the skill may propose, never self-activate
+- Every synthetically approved action produces an evidence record with: approval type = SYNTHETIC, confidence score, basis approval IDs, customer notification timestamp, override deadline
+- Customer notification is mandatory before or at execution — not after the override window closes
+- The skill's monthly API budget includes a specific allocation for synthetic approval inference (vector similarity computation + LLM confidence scoring) — this is not free
+- Self-governance: if the customer overrides more than 10% of synthetic approvals in any 30-day period, the skill must automatically propose downgrading to EXCEPTION_APPROVAL mode
+
+---

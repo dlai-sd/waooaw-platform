@@ -177,6 +177,14 @@
 - Every claim in the report must cite its source (URL, platform, date retrieved)
 - Competitor names in the report require customer confirmation before inclusion
 
+**Runtime Overrides:**
+| Parameter | Standard | This skill | Reason |
+|---|---|---|---|
+| `approval_mode_default` | CUSTOMER_APPROVAL | CUSTOMER_APPROVAL | Always — this is the engagement-start intelligence skill |
+| `synthetic_eligible_actions` | — | None — this skill cannot use Synthetic Approval | Market research findings must be reviewed by the customer; no routine-equivalent actions |
+| `goal_miss_escalation_months` | 2 | N/A | Intelligence skill — no recurring KPI goal to miss |
+| `monthly_llm_budget` | 80 | 80 at start; 30 on 6-monthly refresh | Full research only at start and refresh; delta reports are lightweight |
+
 ---
 
 ### Skill 2: Content Strategy & Calendar
@@ -472,6 +480,15 @@
 - Healthcare advertising policies (Meta + Google) must be checked on every creative before launch — this is a REQUIRED step, not DEGRADABLE
 - No retargeting without confirmed pixel installation and customer's explicit privacy policy acknowledgement
 
+**Runtime Overrides:**
+| Parameter | Standard | This skill | Reason |
+|---|---|---|---|
+| `approval_mode_default` | CUSTOMER_APPROVAL | CUSTOMER_APPROVAL always for campaign launch; EXCEPTION_APPROVAL for bid optimisation within approved parameters | Campaign creation is always CUSTOMER_APPROVAL — C-043 budget ceiling is constitutional. Routine bid micro-optimisations (±10% within approved parameters) may be EXCEPTION_APPROVAL |
+| `synthetic_eligible_actions` | All APPROVAL_GATE | Bid optimisation only — never campaign creation, never budget changes | Financial actions with direct spend impact cannot be synthetic |
+| `goal_miss_escalation_months` | 2 | 1 | Paid advertising misses are financially significant — escalate after 1 month, not 2 |
+| `monthly_llm_budget` | 100 | 120 | Daily optimisation cycle requires more inference calls |
+| `override_window` | 24 hours | 1 hour | Financial actions: shorter window per AD-016 |
+
 ---
 
 ### Skill 12: Conversion Optimisation
@@ -546,6 +563,122 @@
 **Constitutional constraints:**
 - Research limited strictly to publicly available information
 - All competitive intelligence is customer-private — never aggregated into Platform Intelligence Store (Tier 3) in identifiable form
+
+---
+
+## 3.14 Skill Runtime Configuration Standard
+
+> This section defines the operating model that applies to **every skill** in this agent. Skill-specific deviations are noted in each skill's **Runtime Overrides** table. Where no override is stated, this standard applies.
+
+---
+
+### 3.14.1 Approval Mode Ladder
+
+Every skill starts at `CUSTOMER_APPROVAL` and can earn progression to higher autonomy tiers. Mode upgrades require an explicit customer Decision Space amendment (C-003 — a new licensing event). The skill proposes; the customer approves the upgrade.
+
+| Mode | How approval is obtained | Customer touchpoints / month |
+|---|---|---|
+| `CUSTOMER_APPROVAL` | Customer approves every action individually before execution | Every action |
+| `EXCEPTION_APPROVAL` | Customer pre-defines exception categories; routine actions auto-execute within the approved content calendar | 2-3 (calendar approval + exception flags) |
+| `SYNTHETIC_APPROVAL` | Skill infers approval from learned preference model (C-044); customer receives digest + has override window | 1 (monthly digest + exceptions) |
+
+**Upgrade criteria (defaults — customer-configurable):**
+- `CUSTOMER_APPROVAL` → `EXCEPTION_APPROVAL`: 3 consecutive months with ≥ 90% approval rate + customer explicitly requests or agrees to upgrade
+- `EXCEPTION_APPROVAL` → `SYNTHETIC_APPROVAL`: 20 prior approved actions of same type at ≥ 90% confidence + customer explicitly authorizes
+
+**Auto-downgrade trigger (DP-015):** If the customer overrides > 10% of synthetic approvals in any 30-day period, the skill automatically proposes downgrading to `EXCEPTION_APPROVAL`. Customer confirms the downgrade.
+
+---
+
+### 3.14.2 Skill Operating Cadence
+
+Each skill executes on a defined rhythm. The customer configures frequency at activation; the skill manages everything within that rhythm.
+
+| Cadence element | Default | Customer-configurable |
+|---|---|---|
+| Execution frequency | Per skill type (daily / weekly / monthly) | Yes — within platform minimums |
+| Month-end review | Last 3 working days of month | No — fixed |
+| Goal check | Week 2 of every month | No — fixed |
+| Mid-month alert | Triggered if KPI pace < 60% of target by day 15 | No — automatic |
+| 2-month miss escalation | Auto-triggered after 2 consecutive monthly misses | No — automatic |
+
+---
+
+### 3.14.3 Performance Narrative — Delivery Standard
+
+Every skill produces a **monthly narrative** — one plain-language summary of what happened, what was learned, and what changes next month. Delivered simultaneously on all customer-configured channels.
+
+| Channel | Format | Timing |
+|---|---|---|
+| **WhatsApp voice** | 60-90 second spoken summary | Day 1 of new month, morning |
+| **WhatsApp text** | 3-bullet digest + one recommended action | Day 1 of new month |
+| **Portal** | Full interactive report with drill-down | Always available; updated end of month |
+| **Email PDF** | Formal monthly report (printable) | Day 1 of new month |
+| **Push notification** | Alert-only: missed goals, budget nearing cap, competitor events | As they occur |
+
+**Narrative structure (all channels):**
+1. **What happened** — goal vs actual, in business language (not KPI numbers)
+2. **What I learned** — one insight the skill derived from this month's data
+3. **What I tried** — autonomous corrections made mid-month (for self-governance transparency)
+4. **What changes next month** — the skill's proposed plan for the next cycle
+5. **What I need from you** — one item requiring customer decision (if any)
+
+---
+
+### 3.14.4 Self-Governance and Goal Miss Escalation
+
+The skill monitors its own performance and acts before being asked.
+
+```
+Day 15 of month — automated KPI pace check:
+  If actual pace < 60% of monthly target:
+    → Skill tries one autonomous correction within its Decision Space
+    → Customer receives: "I noticed [metric] is running low. I've tried [action]. Watching closely."
+
+Month-end — goal evaluation:
+  If goal missed:
+    → Log: root cause, autonomous corrections tried
+    → Carry forward to Month 2 tracking
+
+Month 2 consecutive miss — escalation triggered:
+  → Skill prepares escalation report:
+     (a) What I tried autonomously (with evidence — what was changed, what happened)
+     (b) Root cause diagnosis (what is limiting performance beyond my Decision Space)
+     (c) 2-3 corrective options with my recommendation
+  → Customer receives escalation via all delivery channels
+  → Customer selects an option (or creates a custom response)
+  → Skill applies selected option; new baseline set; clock resets
+```
+
+---
+
+### 3.14.5 Billing Control — API Budget per Skill per Month
+
+Each skill has a monthly API budget that caps its resource consumption. When the budget reaches 80%, the skill reduces non-essential processing (optional optimisation cycles, extra RAG queries). It never stops core execution within budget.
+
+| Budget tier | LLM calls/month | External API calls/month | Notes |
+|---|---|---|---|
+| **Intelligence skills (0, 1)** | 80 | 300 | One-time high at onboarding; low on refresh |
+| **Phase 1 skills (2–8)** | 60 per skill | 200 per skill | Routine content + publishing |
+| **Phase 2 skills (9–11)** | 100 per skill | 400 per skill | Analytics + SEO + ads optimisation |
+| **Phase 3 skills (12–13)** | 80 per skill | 500 per skill | Research-heavy; web scan + competitive monitoring |
+| **Synthetic Approval overhead** | +20/month if SYNTHETIC_APPROVAL mode active | — | Vector similarity + confidence scoring per approval |
+
+**Graceful reduction:** When ≥ 80% of monthly budget is consumed, the skill skips optional processing (additional A/B creative variants, extra SEO keyword scans) but continues core execution (publishing approved content, sending approved broadcasts, running live ad campaigns). Customer is notified when graceful reduction activates.
+
+---
+
+### 3.14.6 Runtime Override Table (per-skill deviations from standard)
+
+Each skill section below that deviates from this standard includes a **Runtime Overrides** table in this format:
+
+| Parameter | Standard default | This skill's value | Reason |
+|---|---|---|---|
+| `approval_mode_default` | `CUSTOMER_APPROVAL` | [override] | [why] |
+| `synthetic_eligible_actions` | All APPROVAL_GATE actions | [subset] | [why] |
+| `goal_miss_escalation_months` | 2 | [override] | [why] |
+| `delivery_channels_default` | ALL | [subset] | [why] |
+| `monthly_llm_budget` | Per tier above | [override] | [why] |
 
 ---
 
@@ -821,6 +954,28 @@ ProfessionalTemplate:
       - { actionType: "RETARGETING_CAMPAIGN", description: "Run retargeting — requires pixel confirmation and privacy policy check" }
       - { actionType: "WEBSITE_CHANGE", description: "Any change to customer's live website" }
       - { actionType: "COMPETITOR_NAMED_REPORT", description: "Include named competitor in any customer-facing report" }
+  skill_runtime_defaults:
+    approval_mode: "CUSTOMER_APPROVAL"
+    synthetic_approval_confidence_threshold: 0.90
+    synthetic_approval_min_history: 20
+    goal_miss_escalation_months: 2
+    delivery_channels: ["WHATSAPP_VOICE", "WHATSAPP_TEXT", "PORTAL", "EMAIL_PDF", "PUSH"]
+    override_window_hours: 24
+    api_budget:
+      phase_1_skills_llm_calls_per_month: 60
+      phase_2_skills_llm_calls_per_month: 100
+      phase_3_skills_llm_calls_per_month: 80
+      intelligence_skills_llm_calls_per_month: 80
+      synthetic_approval_overhead_llm_calls: 20
+      phase_1_external_api_calls_per_month: 200
+      phase_2_external_api_calls_per_month: 400
+      phase_3_external_api_calls_per_month: 500
+    graceful_reduction_threshold: 0.80
+  self_governance:
+    mid_month_pace_check_day: 15
+    mid_month_alert_threshold: 0.60
+    consecutive_miss_escalation_threshold: 2
+    override_rate_downgrade_threshold: 0.10
   is_published: true
 ```
 

@@ -331,6 +331,14 @@ A capability exists because the institution must provide it — not because it w
 
 ---
 
+### 4.6 Earn Synthetic Approval Authority Through Preference Learning
+
+**Statement:** The institution must enable a skill to progress from requiring explicit customer approval for every action to generating synthetic approvals from its learned preference model — as a structured, evidence-backed, customer-controlled escalation that activates only after demonstrated alignment, and that the customer can revoke at any time.
+
+**Constitutional Basis:** C-044 (Synthetic Approval — LAW); C-002 (trust earned through evidence — synthetic authority is earned, not assumed); C-001 (human override unconditional — customer retains retrospective override throughout); C-003 (mode upgrade is a Decision Space amendment requiring customer authorization event); DP-015 (Synthetic Approval as learned delegation)
+
+---
+
 ## Domain 5 — Additional Capabilities (v0.8.0)
 
 ---

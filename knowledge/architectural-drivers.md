@@ -288,3 +288,25 @@ The voice pipeline latency budget is ≤5 seconds end-to-end for standard adviso
 5. Only proceed with the spend tool call after confirming remaining_budget > 0 AND CE.ValidateAction returns PERMIT
 
 Note: This driver requires CE.ValidateAction to carry budget state as a first-class parameter for spend-type tool calls. This is an extension to the CE ValidateAction interface beyond the standard Decision Space check.
+
+---
+
+## AD-017 — Synthetic Approval Confidence Gate (v0.16.0)
+
+**Requirement:** Before generating a Synthetic Approval for any skill action, the AI Runtime must verify that: (a) the skill's approval mode is configured as `SYNTHETIC_APPROVAL`; (b) the computed confidence score meets or exceeds the customer-configured threshold; (c) the prior approved-action history count meets or exceeds the minimum history threshold; (d) the action type is within the skill's synthetic-eligible action classes. If any condition is not met, the skill must fall back to `EXCEPTION_APPROVAL` or `CUSTOMER_APPROVAL` mode for that action.
+
+**Type:** HARD — derives from C-044 (LAW). A Synthetic Approval generated below the confidence threshold is constitutionally invalid. It cannot be corrected post-hoc — a sub-threshold synthetic approval is equivalent to an unauthorized action execution under C-003.
+
+**Constitutional Basis:** C-044 (Synthetic Approval — LAW); C-002 (trust through evidence — confidence below threshold means insufficient evidence); C-003 (Second Law — unauthorized action is a constitutional violation)
+
+**Capabilities Constrained:** All skills in SYNTHETIC_APPROVAL mode across any agent type. This is a platform-wide driver, not specific to the Digital Marketing Agent.
+
+**Architectural Consequence:** The AI Runtime's Synthetic Approval Pipeline must:
+1. Retrieve the skill's `approval_mode`, `synthetic_approval_confidence_threshold`, and `synthetic_approval_min_history` from skill runtime configuration
+2. Query prior approval history for this action type: count and approval rate
+3. Compute similarity score between proposed action and corpus of prior approved actions (vector similarity via pgvector)
+4. If count < min_history OR similarity < threshold → REJECT synthetic approval → downgrade to EXCEPTION_APPROVAL for this action → customer approval request raised
+5. If count ≥ min_history AND similarity ≥ threshold → generate SYNTHETIC_APPROVAL evidence record → CE.ValidateAction(SYNTHETIC_APPROVAL, confidence) → execute → notify customer
+6. The confidence score and basis (list of prior approval IDs used for inference) are recorded in the evidence record — non-negotiable
+
+**Override window:** Each synthetically approved action has a customer-configured retrospective override window (default: 24 hours for content actions, 1 hour for financial actions). Expired overrides are sealed in the CAL.

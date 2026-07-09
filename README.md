@@ -6,7 +6,7 @@
 
 ```
 Founding Corpus v1           Status: Ratified
-Version:                     0.15.0 — Digital Marketing Agent v2.0 approved (2026-07-09)
+Version:                     0.16.0 — Synthetic Approval model + Skill Runtime Operating Standard (2026-07-09)
 Current Epoch:               Epoch 1 — Employment
 Current Gate:                G2-G4: PASSED | G5: Prerequisites met
                              ⛔ G5 CLEAR ≠ implementation authorized for any session

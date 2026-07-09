@@ -30,7 +30,56 @@ CREATE TYPE employment_state AS ENUM (
 -- Execution model for a professional's Decision Space
 CREATE TYPE execution_model_type AS ENUM (
     'APPROVAL_GATE',
-    'PRE_AUTHORIZED'
+    'PRE_AUTHORIZED',
+    'PRODUCES_RECORD'       -- Intelligence skills: produce an artifact; customer confirms; no external action until confirmed (C-044, R-014-P2-01)
+);
+
+-- Approval mode for skill-level operating model (C-044, DP-015)
+CREATE TYPE skill_approval_mode AS ENUM (
+    'CUSTOMER_APPROVAL',    -- Customer explicitly approves every action
+    'EXCEPTION_APPROVAL',   -- Customer pre-defines exceptions; routine actions auto-execute within calendar
+    'SYNTHETIC_APPROVAL'    -- Skill generates approval from learned preference model (confidence-gated)
+);
+
+-- Approval type recorded in evidence records (C-044)
+CREATE TYPE approval_evidence_type AS ENUM (
+    'CUSTOMER_EXPLICIT',        -- Customer manually approved this action
+    'CALENDAR_AUTHORIZED',      -- Action is within approved content calendar (EXCEPTION_APPROVAL mode)
+    'SYNTHETIC',                -- Skill generated approval via preference model (SYNTHETIC_APPROVAL mode)
+    'PRE_AUTHORIZED_CLASS'      -- Action is in a pre-authorized class (PRE_AUTHORIZED execution model)
+);
+
+-- Digital Marketing needs heat map status (Skill 1)
+CREATE TYPE digital_marketing_need_status AS ENUM (
+    'ACTIVE',
+    'LATENT',
+    'NOT_APPLICABLE'
+);
+
+-- Digital Marketing need state labels (Skill 1 — 8 need states)
+CREATE TYPE digital_marketing_need_state AS ENUM (
+    'VISIBILITY',
+    'LEADS',
+    'CONVERSION',
+    'EFFICIENCY',
+    'COMPETITION',
+    'CONSISTENCY',
+    'TRUST',
+    'CLARITY'
+);
+
+-- Digital Marketing phase bundle (DP-014)
+CREATE TYPE dm_phase_bundle AS ENUM (
+    'CURTAIN_RAISER',
+    'GROWTH_ENGINE',
+    'MATURITY_PHASE'
+);
+
+-- Digital Marketing profile status
+CREATE TYPE dm_profile_status AS ENUM (
+    'INCOMPLETE',
+    'MINIMUM_VIABLE',
+    'COMPLETE'
 );
 
 -- Approval request state (mirrors evidence_state for the business schema)
@@ -483,7 +532,7 @@ CREATE TABLE business.digital_marketing_profiles (
     primary_competitor          VARCHAR(255),                  -- competitor name noted by customer
     biggest_pain_point          TEXT,
     -- Profile status
-    profile_status              VARCHAR(20) NOT NULL DEFAULT 'INCOMPLETE', -- INCOMPLETE, MINIMUM_VIABLE, COMPLETE
+    profile_status              dm_profile_status NOT NULL DEFAULT 'INCOMPLETE',
     customer_confirmed_at       TIMESTAMPTZ,                   -- NULL until customer confirms profile summary
     -- Source attribution per field (JSON: {field_name: 'registration'|'conversation'|'inference'|'customer_correction'})
     field_sources               JSONB NOT NULL DEFAULT '{}',
@@ -539,7 +588,7 @@ CREATE TABLE business.digital_marketing_needs_heatmap (
     id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     organisation_id             UUID NOT NULL REFERENCES business.organisations(id),
     maturity_score_id           UUID NOT NULL REFERENCES business.digital_marketing_maturity_scores(id),
-    need_state                  VARCHAR(50) NOT NULL,          -- VISIBILITY, LEADS, CONVERSION, EFFICIENCY, COMPETITION, CONSISTENCY, TRUST, CLARITY
+    need_state                  digital_marketing_need_state NOT NULL,
     status                      VARCHAR(20) NOT NULL,          -- ACTIVE, LATENT, NOT_APPLICABLE
     evidence_summary            TEXT,                          -- what the research found (cited)
     evidence_source_url         VARCHAR(1024),                 -- URL of the source data point
@@ -590,7 +639,7 @@ CREATE TABLE business.dm_phase_bundle_subscriptions (
     id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     organisation_id             UUID NOT NULL REFERENCES business.organisations(id),
     employment_contract_id      UUID NOT NULL REFERENCES business.employment_contracts(id),
-    bundle                      VARCHAR(30) NOT NULL,          -- CURTAIN_RAISER, GROWTH_ENGINE, MATURITY_PHASE
+    bundle                      dm_phase_bundle NOT NULL,
     activated_at                TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     deactivated_at              TIMESTAMPTZ,                   -- NULL if currently active
     maturity_score_at_activation SMALLINT,                     -- score that triggered recommendation
@@ -602,3 +651,104 @@ CREATE TABLE business.dm_phase_bundle_subscriptions (
 CREATE INDEX idx_dm_bundle_org ON business.dm_phase_bundle_subscriptions(organisation_id);
 CREATE INDEX idx_dm_bundle_active ON business.dm_phase_bundle_subscriptions(organisation_id, deactivated_at)
     WHERE deactivated_at IS NULL;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Synthetic Approval + Self-Governance tables (v0.16.0 — C-044, AD-017, DP-015)
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- Skill runtime configuration per employment contract (Section 3.14 of agent spec)
+-- One row per skill per employment contract. Updated when customer changes approval mode.
+CREATE TABLE business.skill_runtime_configurations (
+    id                              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    employment_contract_id          UUID NOT NULL REFERENCES business.employment_contracts(id),
+    skill_type                      VARCHAR(100) NOT NULL,
+    -- Approval model (C-044)
+    approval_mode                   skill_approval_mode NOT NULL DEFAULT 'CUSTOMER_APPROVAL',
+    synthetic_confidence_threshold  NUMERIC(3,2) NOT NULL DEFAULT 0.90 CHECK (synthetic_confidence_threshold BETWEEN 0.50 AND 1.00),
+    synthetic_min_history           INTEGER NOT NULL DEFAULT 20,
+    override_window_hours           INTEGER NOT NULL DEFAULT 24,
+    -- Self-governance
+    goal_miss_escalation_months     INTEGER NOT NULL DEFAULT 2,
+    mid_month_pace_threshold        NUMERIC(3,2) NOT NULL DEFAULT 0.60,
+    -- Delivery channels (C-044 notification requirement)
+    delivery_channels               TEXT[] NOT NULL DEFAULT ARRAY['WHATSAPP_VOICE','WHATSAPP_TEXT','PORTAL','EMAIL_PDF','PUSH'],
+    -- API budget
+    monthly_llm_budget              INTEGER NOT NULL DEFAULT 60,
+    monthly_external_api_budget     INTEGER NOT NULL DEFAULT 200,
+    -- Approval mode upgrade history (C-003: each upgrade is a Decision Space amendment)
+    mode_upgrade_authorization_event UUID REFERENCES constitutional.evidence_records(id),
+    -- Audit
+    created_at                      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at                      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT uq_skill_config UNIQUE (employment_contract_id, skill_type)
+);
+
+CREATE INDEX idx_skill_config_contract ON business.skill_runtime_configurations(employment_contract_id);
+CREATE INDEX idx_skill_config_mode ON business.skill_runtime_configurations(approval_mode);
+
+-- Synthetic approval evidence extension (C-044, AD-017)
+-- Supplements constitutional.evidence_records for SYNTHETIC approval events.
+-- Each row extends one evidence_record of type SYNTHETIC_APPROVAL.
+CREATE TABLE business.synthetic_approval_records (
+    id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    evidence_record_id          UUID NOT NULL REFERENCES constitutional.evidence_records(id),
+    employment_contract_id      UUID NOT NULL REFERENCES business.employment_contracts(id),
+    organisation_id             UUID NOT NULL REFERENCES business.organisations(id),
+    skill_type                  VARCHAR(100) NOT NULL,
+    -- Confidence evidence (AD-017: must be recorded)
+    confidence_score            NUMERIC(4,3) NOT NULL CHECK (confidence_score BETWEEN 0 AND 1),
+    basis_approval_count        INTEGER NOT NULL,              -- number of prior approvals used for inference
+    basis_approval_ids          UUID[],                        -- top-N similar prior approval evidence_record IDs
+    action_description          TEXT NOT NULL,                 -- plain language description of synthetically approved action
+    action_type                 VARCHAR(100) NOT NULL,         -- the actionType from Decision Space
+    -- Override window management (C-001: unconditional override right)
+    override_deadline           TIMESTAMPTZ NOT NULL,
+    customer_notified_at        TIMESTAMPTZ,                   -- NULL until notification confirmed delivered
+    overridden_at               TIMESTAMPTZ,                   -- NULL if not overridden
+    override_reason             TEXT,
+    -- Sealed: override window expired without override
+    sealed_at                   TIMESTAMPTZ,
+    created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_synthetic_org ON business.synthetic_approval_records(organisation_id);
+CREATE INDEX idx_synthetic_skill ON business.synthetic_approval_records(employment_contract_id, skill_type);
+CREATE INDEX idx_synthetic_override_window ON business.synthetic_approval_records(override_deadline)
+    WHERE sealed_at IS NULL AND overridden_at IS NULL;
+
+-- Skill self-governance log (Section 3.14.4 of agent spec — DP-015)
+-- Records autonomous corrections, escalations, and customer responses.
+-- Append-only: one row per governance event per skill per month.
+CREATE TABLE business.skill_self_governance_log (
+    id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    employment_contract_id      UUID NOT NULL REFERENCES business.employment_contracts(id),
+    organisation_id             UUID NOT NULL REFERENCES business.organisations(id),
+    skill_type                  VARCHAR(100) NOT NULL,
+    log_month                   DATE NOT NULL,                 -- first day of the month this entry covers
+    event_type                  VARCHAR(50) NOT NULL,          -- PACE_CHECK, MID_MONTH_CORRECTION, MONTH_END_NARRATIVE, ESCALATION, CUSTOMER_RESPONSE
+    -- KPI tracking
+    goal_target                 NUMERIC,
+    goal_actual                 NUMERIC,
+    goal_unit                   VARCHAR(50),                   -- 'enquiries', 'impressions', 'CPL', etc.
+    -- Autonomous action
+    root_cause_diagnosis        TEXT,
+    autonomous_correction_taken TEXT,
+    correction_result           TEXT,                          -- what happened after the correction
+    -- Escalation
+    escalation_triggered        BOOLEAN NOT NULL DEFAULT FALSE,
+    escalation_sent_at          TIMESTAMPTZ,
+    corrective_options_offered  JSONB,                         -- [{option, description, recommendation: bool}]
+    customer_selected_option    TEXT,
+    customer_responded_at       TIMESTAMPTZ,
+    -- API usage for this cycle
+    llm_calls_used              INTEGER DEFAULT 0,
+    external_api_calls_used     INTEGER DEFAULT 0,
+    -- Evidence chain
+    cal_event_id                UUID REFERENCES constitutional.evidence_records(id),
+    created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_governance_log_contract ON business.skill_self_governance_log(employment_contract_id);
+CREATE INDEX idx_governance_log_skill_month ON business.skill_self_governance_log(employment_contract_id, skill_type, log_month);
+CREATE INDEX idx_governance_log_escalation ON business.skill_self_governance_log(organisation_id, escalation_triggered)
+    WHERE escalation_triggered = TRUE;

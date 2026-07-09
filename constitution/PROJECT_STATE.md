@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **Last Updated:** 2026-07-09
-**Version:** 0.15.0
+**Version:** 0.16.0
 **Session:** 2026-07-09 close
 
 ---
@@ -30,6 +30,7 @@ FOCUS:        Digital Marketing Agent v2.0 APPROVED and committed.
 | v0.14.1 | Architecture Chain Run (Section 11) | C-043 (Financial Spend Cap LAW); Domain 11 capabilities (6 caps); AD-016 (Budget Hard Cap); DP-014 (Maturity-Driven Skill Activation); containers.md — 18 MCP servers added; ai-runtime.md — Profiling Pipeline + Market Research Pipeline; 5 new SQL tables; docker-compose — 18 new MCP stub services (ports 8105–8122) |
 | v0.14.2 | R-014 EA Review — APPROVED | 5 P1 findings fixed: C-043 Produces corrected; social-profile-mcp auth ambiguity resolved; CE.ValidateAction in Market Research Pipeline; PATIENT_IMAGE_CONSENT_CONFIRMED resolved (R-011 note closed); capability-to-container-map.md updated with Domain 11 |
 | v0.15.0 | Session close | All statuses updated; GENESIS registry updated; Founder approval granted; committed and pushed |
+| v0.16.0 | Synthetic Approval + Skill Runtime Operating Standard | C-044 (Synthetic Approval LAW); AD-017 (Confidence Gate HARD); DP-015 (Learned Delegation); Capability 4.6; Skill Runtime Config Standard (Section 3.14) — approval ladder, cadence, narrative, self-governance, API budget; AI Runtime Pipelines 8+9 (Synthetic Approval + Self-Governance); SQL — 5 new ENUMs, 3 new tables (skill_runtime_configurations, synthetic_approval_records, skill_self_governance_log); P2 fixes from R-014 (execution_model_type + 3 VARCHAR→ENUM) |
 
 ---
 
