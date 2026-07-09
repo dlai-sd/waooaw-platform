@@ -209,6 +209,10 @@ services:
       # Agricultural Advisor MCPs (additional)
       MCP_ENAM_URL: http://enam-mcp:8135
       MCP_GOVERNMENT_SCHEME_URL: http://government-scheme-mcp:8136
+      # Phone Identity Service (ADR-023 — WhatsApp-native identity for C-042 agents)
+      PHONE_IDENTITY_SERVICE_URL: http://phone-identity-service:8137
+      META_WEBHOOK_VERIFY_TOKEN: ${META_WEBHOOK_VERIFY_TOKEN:-stub}
+      META_APP_SECRET: ${META_APP_SECRET:-stub}
     depends_on:
       postgres:
         condition: service_healthy

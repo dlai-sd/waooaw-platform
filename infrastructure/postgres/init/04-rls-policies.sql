@@ -174,3 +174,23 @@ GRANT SELECT, INSERT, UPDATE ON institutional.agent_health_scores      TO busine
 -- business_app: Business Platform service account
 -- ai_runtime_app: AI Runtime service account
 -- Both must be created in 02-users-and-roles.sql (or equivalent init script)
+
+-- ─── WhatsApp Phone Identity tables (ADR-023) ────────────────────────────────
+-- phone_identity_sessions: NOT tenant-scoped (pre-tenant identity) — no RLS
+-- Access controlled by DB role grants only (phone-identity-service has its own role)
+
+ALTER TABLE business.whatsapp_trai_optins ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY tenant_isolation ON business.whatsapp_trai_optins
+    USING (organisation_id = current_setting('app.tenant_id', TRUE)::UUID);
+
+-- phone_identity_sessions: no RLS (pre-tenant, phone-identity-service-only access)
+GRANT SELECT, INSERT, UPDATE ON business.phone_identity_sessions   TO business_app;
+GRANT SELECT, INSERT          ON business.whatsapp_trai_optins      TO business_app;
+
+-- Developer note: phone-identity-service needs its own DB role with limited permissions:
+-- CREATE ROLE phone_identity_app LOGIN;
+-- GRANT SELECT, INSERT, UPDATE ON business.phone_identity_sessions TO phone_identity_app;
+-- GRANT SELECT, INSERT ON business.whatsapp_trai_optins TO phone_identity_app;
+-- GRANT SELECT ON business.farmer_profiles TO phone_identity_app;  -- phone lookup only
+-- GRANT SELECT, INSERT ON business.organisations TO phone_identity_app;  -- auto-register
