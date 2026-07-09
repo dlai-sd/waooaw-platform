@@ -139,6 +139,24 @@ The AI Runtime is an MCP client. Agent-specific capabilities that require real-t
 | `whatsapp-voice-mcp` | Agricultural Advisory Agent | WhatsApp Business Cloud API (voice messages) | Sidecar container (dev), Container Apps (cloud) |
 | `broker-api-mcp` | Trading Agent | Zerodha Kite, ICICI Direct, Angel One (configurable at employment contract time) | Sidecar container (dev), Container Apps (cloud) |
 | `whatsapp-business-mcp` | Digital Marketing Agent | WhatsApp Business API | Sidecar container (dev), Container Apps (cloud) |
+| `scheduling-mcp` | Digital Marketing Agent | Internal scheduling store (PostgreSQL) | Sidecar container (dev), Container Apps (cloud) |
+| `instagram-mcp` | Digital Marketing Agent | Meta Graph API (Instagram) | Sidecar container (dev), Container Apps (cloud) |
+| `facebook-mcp` | Digital Marketing Agent | Meta Graph API (Facebook Pages) | Sidecar container (dev), Container Apps (cloud) |
+| `google-business-mcp` | Digital Marketing Agent | Google Business Profile API | Sidecar container (dev), Container Apps (cloud) |
+| `platform-analytics-mcp` | Digital Marketing Agent | Meta Insights API, Google Analytics 4, GBP Insights (read-only) | Sidecar container (dev), Container Apps (cloud) |
+| `image-generation-mcp` | Digital Marketing Agent | OpenAI DALL-E / Azure AI Image Generation | Sidecar container (dev), Container Apps (cloud) |
+| `video-generation-mcp` | Digital Marketing Agent | Azure AI Video Generation / RunwayML (configurable) | Sidecar container (dev), Container Apps (cloud) |
+| `customer-profile-mcp` | Digital Marketing Agent (v2.0) | PostgreSQL — digital_marketing_profiles, digital_marketing_maturity_scores | Sidecar container (dev), Container Apps (cloud) |
+| `web-search-mcp` | Digital Marketing Agent (v2.0) | Public web search API (Brave Search / Bing Search — no auth required) | Sidecar container (dev), Container Apps (cloud) |
+| `google-places-mcp` | Digital Marketing Agent (v2.0) | Google Places API (public business data) | Sidecar container (dev), Container Apps (cloud) |
+| `social-profile-mcp` | Digital Marketing Agent (v2.0) | Public social profile data via web search and public page scraping — no platform API authentication; uses web-search-mcp pattern internally for social profile discovery (C-041: authenticated Graph API calls prohibited for this server) | Sidecar container (dev), Container Apps (cloud) |
+| `meta-ad-library-mcp` | Digital Marketing Agent (v2.0) | Meta Ad Library API (public — no auth required) | Sidecar container (dev), Container Apps (cloud) |
+| `web-scan-mcp` | Digital Marketing Agent (v2.0) | HTTP page scanning (no auth — public pages only; C-043: authenticated access prohibited) | Sidecar container (dev), Container Apps (cloud) |
+| `seo-mcp` | Digital Marketing Agent (v2.0) | SEO analysis APIs (keyword data, ranking signals) | Sidecar container (dev), Container Apps (cloud) |
+| `google-search-console-mcp` | Digital Marketing Agent (v2.0) | Google Search Console API (customer OAuth — customer-private read-only) | Sidecar container (dev), Container Apps (cloud) |
+| `meta-ads-mcp` | Digital Marketing Agent (v2.0) | Meta Marketing API (customer ad account — C-043 budget cap enforced pre-call) | Sidecar container (dev), Container Apps (cloud) |
+| `google-ads-mcp` | Digital Marketing Agent (v2.0) | Google Ads API (customer ad account — C-043 budget cap enforced pre-call) | Sidecar container (dev), Container Apps (cloud) |
+| `web-optimisation-mcp` | Digital Marketing Agent (v2.0) | CRO/A-B testing platform API (e.g., VWO, Google Optimize successor) | Sidecar container (dev), Container Apps (cloud) |
 
 ### MCP Architecture Principles (ADR-020)
 

@@ -35,6 +35,12 @@ Each of the 26 business capabilities is owned by exactly one container. Ownershi
 | **6.3 Record Constitutional Evidence** | Constitutional Engine | — |
 | **6.4 Observe Platform Health** | All containers (OTel) | Jaeger/Azure Monitor |
 | **6.5 Bill Customers** | Business Platform | — |
+| **11.1 Profile Customer** | AI Runtime (Customer Profiling Pipeline) | Business Platform (profile storage via customer-profile-mcp) |
+| **11.2 Assess Digital Marketing Maturity** | AI Runtime (Market Research Pipeline) | Business Platform (score + heatmap storage), CE (ValidateAction before each MCP call) |
+| **11.3 Execute Social Content** | Professional Runtime | AI Runtime (content creation + MCP publishing: instagram-mcp, facebook-mcp, google-business-mcp, whatsapp-business-mcp, scheduling-mcp, image-generation-mcp, video-generation-mcp), CE (evidence per action) |
+| **11.4 Improve Local SEO + Reputation** | Professional Runtime | AI Runtime (seo-mcp, google-places-mcp, web-scan-mcp, google-search-console-mcp), CE (evidence) |
+| **11.5 Run Paid Advertising** | Professional Runtime | AI Runtime (meta-ads-mcp, google-ads-mcp — C-043 budget check via CE.ValidateAction before every spend call), CE (budget enforcement + evidence) |
+| **11.6 Optimise Conversion + Competitive Intelligence** | Professional Runtime | AI Runtime (web-optimisation-mcp, social-profile-mcp, meta-ad-library-mcp, web-search-mcp), CE (evidence) |
 
 ---
 

@@ -454,3 +454,151 @@ CREATE INDEX idx_weather_alert_contract ON business.weather_alert_log(employment
 CREATE INDEX idx_weather_alert_issued ON business.weather_alert_log(alert_issued_at);
 CREATE INDEX idx_weather_alert_pmfby ON business.weather_alert_log(pmfby_evidence_exported_at)
     WHERE pmfby_evidence_exported_at IS NOT NULL;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Digital Marketing Agent v2.0 tables (v0.14.0 — AS-001, AS-002, C-039, C-040, C-043, DP-014)
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- Customer profile from AI-native profiling conversation (Skill 0: CUSTOMER_PROFILING)
+-- Captures registration fields + extended conversation fields.
+-- All fields carry source attribution: where the data came from.
+CREATE TABLE business.digital_marketing_profiles (
+    id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organisation_id             UUID NOT NULL REFERENCES business.organisations(id),
+    -- Minimum viable profile fields (from registration)
+    owner_name                  VARCHAR(255),
+    business_name               VARCHAR(255),
+    business_domain             VARCHAR(100),                  -- DENTAL_CLINIC, BEAUTY_ARTIST, FITNESS_STUDIO, etc.
+    locality                    VARCHAR(255),
+    city                        VARCHAR(100),
+    prospective_customers       TEXT,
+    aspiration                  TEXT,
+    -- Extended profile fields (from profiling conversation)
+    geo_scope_km                INTEGER,                       -- service area radius in km
+    current_digital_channels    TEXT[],                        -- INSTAGRAM, FACEBOOK, GOOGLE_BUSINESS, WHATSAPP, WEBSITE
+    monthly_enquiry_volume      INTEGER,                       -- approximate current monthly enquiries
+    monthly_enquiry_target      INTEGER,                       -- target monthly enquiries
+    team_size                   INTEGER,
+    monthly_ad_spend_inr        INTEGER,                       -- current ad spend (0 = none)
+    primary_competitor          VARCHAR(255),                  -- competitor name noted by customer
+    biggest_pain_point          TEXT,
+    -- Profile status
+    profile_status              VARCHAR(20) NOT NULL DEFAULT 'INCOMPLETE', -- INCOMPLETE, MINIMUM_VIABLE, COMPLETE
+    customer_confirmed_at       TIMESTAMPTZ,                   -- NULL until customer confirms profile summary
+    -- Source attribution per field (JSON: {field_name: 'registration'|'conversation'|'inference'|'customer_correction'})
+    field_sources               JSONB NOT NULL DEFAULT '{}',
+    -- Tier 2 customer-private — never crosses tenant boundary (C-041, FR-003)
+    created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT uq_dm_profile_org UNIQUE (organisation_id)     -- one active profile per organisation
+);
+
+CREATE INDEX idx_dm_profile_org ON business.digital_marketing_profiles(organisation_id);
+CREATE INDEX idx_dm_profile_status ON business.digital_marketing_profiles(profile_status);
+CREATE INDEX idx_dm_profile_domain ON business.digital_marketing_profiles(business_domain);
+
+-- Digital Marketing Maturity Score history (Skill 1: MARKET_RESEARCH)
+-- Append-only — each assessment creates a new row; scores are never overwritten (C-007).
+CREATE TABLE business.digital_marketing_maturity_scores (
+    id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organisation_id             UUID NOT NULL REFERENCES business.organisations(id),
+    assessment_date             TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    -- Score (1-7 fixed scale per spec)
+    maturity_score              SMALLINT NOT NULL CHECK (maturity_score BETWEEN 1 AND 7),
+    maturity_label              VARCHAR(50) NOT NULL,          -- NO_PRESENCE, MINIMAL_PRESENCE, OCCASIONAL, ACTIVE_INCONSISTENT, STRUCTURED, MANAGED, DIGITAL_FIRST
+    -- Benchmark comparison
+    industry_benchmark_avg      NUMERIC(3,1),                  -- average score for domain+city
+    industry_benchmark_p80      NUMERIC(3,1),                  -- P80 (top 20%) score for domain+city
+    benchmark_domain            VARCHAR(100),
+    benchmark_city              VARCHAR(100),
+    benchmark_sample_size       INTEGER,
+    -- Per-axis scores (research axes from Market Research skill)
+    axis_digital_footprint      SMALLINT CHECK (axis_digital_footprint BETWEEN 1 AND 7),
+    axis_social_presence        SMALLINT CHECK (axis_social_presence BETWEEN 1 AND 7),
+    axis_google_business        SMALLINT CHECK (axis_google_business BETWEEN 1 AND 7),
+    axis_paid_advertising       SMALLINT CHECK (axis_paid_advertising BETWEEN 1 AND 7),
+    axis_content_quality        SMALLINT CHECK (axis_content_quality BETWEEN 1 AND 7),
+    axis_competitor_landscape   SMALLINT CHECK (axis_competitor_landscape BETWEEN 1 AND 7),
+    axis_analytics              SMALLINT CHECK (axis_analytics BETWEEN 1 AND 7),
+    -- Report artifact
+    report_pdf_url              VARCHAR(1024),                 -- signed URL to stored Maturity Report PDF
+    report_delivered_at         TIMESTAMPTZ,
+    -- Recommended phase bundle based on this assessment
+    recommended_bundle          VARCHAR(30),                   -- CURTAIN_RAISER, GROWTH_ENGINE, MATURITY_PHASE
+    -- Evidence chain (C-023, C-007)
+    cal_event_id                UUID REFERENCES constitutional.evidence_records(id),
+    created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_dm_maturity_org ON business.digital_marketing_maturity_scores(organisation_id);
+CREATE INDEX idx_dm_maturity_date ON business.digital_marketing_maturity_scores(organisation_id, assessment_date DESC);
+
+-- Needs Heat Map: per-customer assessment of 8 need states (Skill 1 output, used by all skills)
+-- One row per need state per assessment. Replaced on each 6-monthly refresh.
+CREATE TABLE business.digital_marketing_needs_heatmap (
+    id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organisation_id             UUID NOT NULL REFERENCES business.organisations(id),
+    maturity_score_id           UUID NOT NULL REFERENCES business.digital_marketing_maturity_scores(id),
+    need_state                  VARCHAR(50) NOT NULL,          -- VISIBILITY, LEADS, CONVERSION, EFFICIENCY, COMPETITION, CONSISTENCY, TRUST, CLARITY
+    status                      VARCHAR(20) NOT NULL,          -- ACTIVE, LATENT, NOT_APPLICABLE
+    evidence_summary            TEXT,                          -- what the research found (cited)
+    evidence_source_url         VARCHAR(1024),                 -- URL of the source data point
+    evidence_retrieved_at       TIMESTAMPTZ,
+    created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_dm_heatmap_org ON business.digital_marketing_needs_heatmap(organisation_id);
+CREATE INDEX idx_dm_heatmap_assessment ON business.digital_marketing_needs_heatmap(maturity_score_id);
+CREATE UNIQUE INDEX idx_dm_heatmap_unique ON business.digital_marketing_needs_heatmap(maturity_score_id, need_state);
+
+-- Competitor snapshots: customer-private competitive intelligence (Skill 13: COMPETITIVE_INTELLIGENCE)
+-- NEVER aggregated into Tier 3 platform intelligence (C-041, FR-003).
+-- Append-only — each monitoring run creates new rows; prior snapshots retained as history.
+CREATE TABLE business.competitor_snapshots (
+    id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organisation_id             UUID NOT NULL REFERENCES business.organisations(id),
+    competitor_name             VARCHAR(255) NOT NULL,         -- confirmed by customer (always-ask: COMPETITOR_NAMED_REPORT)
+    competitor_confirmed_by_customer BOOLEAN NOT NULL DEFAULT FALSE,
+    snapshot_date               TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    -- Monitored axes
+    social_post_frequency       INTEGER,                       -- posts in last 30 days (public count)
+    social_follower_count       INTEGER,
+    google_review_count         INTEGER,
+    google_review_rating        NUMERIC(2,1),
+    google_last_update          DATE,
+    meta_ads_active             BOOLEAN,
+    meta_ads_count              INTEGER,
+    website_url                 VARCHAR(1024),
+    website_has_booking_cta     BOOLEAN,
+    website_has_analytics       BOOLEAN,
+    -- Change detection (for alerting)
+    notable_changes             TEXT,                          -- summary of changes vs prior snapshot
+    alert_sent_at               TIMESTAMPTZ,                   -- when customer was notified
+    -- Source evidence
+    data_sources                JSONB,                         -- {axis: 'source_url', ...}
+    -- Customer-private: NEVER aggregated (C-041)
+    created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_competitor_org ON business.competitor_snapshots(organisation_id);
+CREATE INDEX idx_competitor_name ON business.competitor_snapshots(organisation_id, competitor_name);
+CREATE INDEX idx_competitor_date ON business.competitor_snapshots(organisation_id, snapshot_date DESC);
+
+-- Phase bundle subscriptions: tracks which bundle is active and upgrade history (DP-014)
+-- Decision Space expansion events — each upgrade requires a new customer authorization (C-003).
+CREATE TABLE business.dm_phase_bundle_subscriptions (
+    id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organisation_id             UUID NOT NULL REFERENCES business.organisations(id),
+    employment_contract_id      UUID NOT NULL REFERENCES business.employment_contracts(id),
+    bundle                      VARCHAR(30) NOT NULL,          -- CURTAIN_RAISER, GROWTH_ENGINE, MATURITY_PHASE
+    activated_at                TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    deactivated_at              TIMESTAMPTZ,                   -- NULL if currently active
+    maturity_score_at_activation SMALLINT,                     -- score that triggered recommendation
+    customer_authorization_event UUID REFERENCES constitutional.evidence_records(id),  -- C-003: expansion requires evidence
+    activated_by                VARCHAR(50) NOT NULL DEFAULT 'CUSTOMER', -- CUSTOMER or AGENT_RECOMMENDATION
+    created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_dm_bundle_org ON business.dm_phase_bundle_subscriptions(organisation_id);
+CREATE INDEX idx_dm_bundle_active ON business.dm_phase_bundle_subscriptions(organisation_id, deactivated_at)
+    WHERE deactivated_at IS NULL;

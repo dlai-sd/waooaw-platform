@@ -431,7 +431,61 @@ A capability exists because the institution must provide it — not because it w
 
 ---
 
-## Capability Summary (v0.11.0)
+## Domain 11 — Digital Marketing Professional (v0.14.0 — AS-001, AS-002)
+
+*The institution must enable dental clinics, beauty artists, and other local service businesses in India to engage a digital marketing professional who builds their digital presence, drives customer acquisition, and improves their digital marketing maturity over time.*
+
+*Phase bundles (Curtain Raiser / Growth Engine / Maturity Phase) gate capability activation based on the customer's Digital Marketing Maturity Score. Capabilities 11.1–11.2 are always active; 11.3–11.6 are phase-gated.*
+
+---
+
+### 11.1 Profile Customer and Identify Marketing Needs
+
+**Statement:** The institution must enable the Digital Marketing Professional to conduct an AI-native consultative profiling conversation with a new customer — starting from the minimum registration data — to build a complete Customer Profile that identifies which of the 8 customer need states (visibility, leads, conversion, efficiency, competition, consistency, trust, clarity) are active, latent, or not applicable.
+
+**Constitutional Basis:** C-039 (conversational configuration — profile completable through conversation in ≤ 15 minutes); C-036 (every Skill is independently governable — profile drives skill activation); AS-001 (Dr. Mehta's goals and context must be understood before any action is taken); AS-002 (Sana's aesthetic and brand must be captured at intake)
+
+---
+
+### 11.2 Assess Digital Marketing Maturity and Deliver Report
+
+**Statement:** The institution must enable the Digital Marketing Professional to independently research a customer's digital presence using publicly available data, calculate a Digital Marketing Maturity Score (1–7) against a fixed scale with industry and geography benchmarks, and produce a Digital Marketing Maturity Report with a recommended Phase Bundle and 3-month plan — delivered once at engagement start and refreshed every 6 months.
+
+**Constitutional Basis:** C-037 (business KPI primacy — maturity score is the primary outcome metric for this agent); C-040 (domain specialization — maturity assessment requires deep knowledge of digital marketing signals); C-041 (research tools must be authorized in Decision Space; all research must be public-data-only); C-043 (research cannot access authenticated external systems without explicit authorization); AS-001, AS-002
+
+---
+
+### 11.3 Execute Social Media and Content Marketing (Phase 1 — Curtain Raiser)
+
+**Statement:** The institution must enable the Digital Marketing Professional to create and publish approved content across Instagram, Facebook, Google Business Profile, WhatsApp Business, and video channels — building a consistent digital presence that makes the customer discoverable and trustworthy to their target patients or clients.
+
+**Constitutional Basis:** C-036 (each social platform is a separately configurable Skill); C-037 (KPI: consistent posting rate, Google Business views, follower growth); C-041 (each publishing action requires Decision Space authorization); AS-001 (Dr. Mehta's Instagram/WhatsApp/Google presence); AS-002 (Sana's Instagram portfolio and booking enquiries)
+
+---
+
+### 11.4 Improve Local Search Visibility and Reputation (Phase 2 — Growth Engine)
+
+**Statement:** The institution must enable the Digital Marketing Professional to audit and improve the customer's local SEO signals — Google Business Profile optimisation, on-page SEO, keyword targeting, citation consistency — and manage online reputation through review response management, driving more patients or clients to discover the customer via search.
+
+**Constitutional Basis:** C-037 (KPI: search impressions, local pack appearances, review rating); C-040 (domain specialization — local SEO for healthcare/beauty India requires specific knowledge); C-041 (website changes require explicit authorization per change); AS-001, AS-002
+
+---
+
+### 11.5 Run Paid Digital Advertising Within Approved Budget (Phase 2 — Growth Engine)
+
+**Statement:** The institution must enable the Digital Marketing Professional to plan, launch, and optimise paid advertising campaigns on Meta (Facebook/Instagram Ads) and Google Ads — within the customer's explicitly approved monthly budget ceiling, which is a Constitutional Floor equivalent per C-043.
+
+**Constitutional Basis:** C-043 (financial spend authority cap — budget ceiling is absolute); C-041 (PAID_AD_CAMPAIGN and PAID_AD_OPTIMISE require Decision Space authorization); C-037 (KPI: CPL, ROAS); AS-001 (dental clinic paid patient acquisition); AS-002 (beauty artist booking enquiry campaigns)
+
+---
+
+### 11.6 Optimise Digital Conversion and Monitor Competitors (Phase 3 — Maturity Phase)
+
+**Statement:** The institution must enable the Digital Marketing Professional to analyse why website visitors or social media followers do not convert to bookings or enquiries — and recommend or execute approved landing page and funnel improvements — while monitoring the top 3 competitors' public digital activity and alerting the customer to significant competitive moves.
+
+**Constitutional Basis:** C-037 (KPI: conversion rate, competitive gap score); C-041 (website changes and competitor monitoring require Decision Space authorization); C-040 (domain specialization — CRO for local healthcare India requires UX and funnel knowledge); competitive intelligence is customer-private (C-041: research tools are authorized but outputs may not be shared)
+
+---
 
 | Domain | Count | Capabilities |
 |---|---|---|

@@ -166,11 +166,33 @@ services:
       LLM_MODEL: ${LLM_MODEL:-gpt-4o-mini}
       OTLP_ENDPOINT: http://jaeger:4317
       # MCP server endpoints (internal network, C-041: validated before every tool call)
+      # Agricultural Advisory Agent MCPs
       MCP_WEATHER_ENSEMBLE_URL: http://weather-ensemble-mcp:8100
       MCP_AGMARKNET_URL: http://agmarknet-mcp:8101
       MCP_WHATSAPP_VOICE_URL: http://whatsapp-voice-mcp:8102
+      # Trading Agent MCPs
       MCP_BROKER_API_URL: http://broker-api-mcp:8103
+      # Digital Marketing Agent — Phase 1 MCPs (Curtain Raiser)
       MCP_WHATSAPP_BUSINESS_URL: http://whatsapp-business-mcp:8104
+      MCP_SCHEDULING_URL: http://scheduling-mcp:8105
+      MCP_INSTAGRAM_URL: http://instagram-mcp:8106
+      MCP_FACEBOOK_URL: http://facebook-mcp:8107
+      MCP_GOOGLE_BUSINESS_URL: http://google-business-mcp:8108
+      MCP_PLATFORM_ANALYTICS_URL: http://platform-analytics-mcp:8109
+      MCP_IMAGE_GENERATION_URL: http://image-generation-mcp:8110
+      MCP_VIDEO_GENERATION_URL: http://video-generation-mcp:8111
+      # Digital Marketing Agent — v2.0 Intelligence + Phase 2/3 MCPs
+      MCP_CUSTOMER_PROFILE_URL: http://customer-profile-mcp:8112
+      MCP_WEB_SEARCH_URL: http://web-search-mcp:8113
+      MCP_GOOGLE_PLACES_URL: http://google-places-mcp:8114
+      MCP_SOCIAL_PROFILE_URL: http://social-profile-mcp:8115
+      MCP_META_AD_LIBRARY_URL: http://meta-ad-library-mcp:8116
+      MCP_WEB_SCAN_URL: http://web-scan-mcp:8117
+      MCP_SEO_URL: http://seo-mcp:8118
+      MCP_GOOGLE_SEARCH_CONSOLE_URL: http://google-search-console-mcp:8119
+      MCP_META_ADS_URL: http://meta-ads-mcp:8120
+      MCP_GOOGLE_ADS_URL: http://google-ads-mcp:8121
+      MCP_WEB_OPTIMISATION_URL: http://web-optimisation-mcp:8122
     depends_on:
       postgres:
         condition: service_healthy
@@ -298,7 +320,7 @@ uvicorn.run(app, host='0.0.0.0', port=8103)
 
   whatsapp-business-mcp:
     # WhatsApp Business API — text/media messaging
-    # Used by: Digital Marketing Agent (Skill 5: WhatsApp Campaign Execution)
+    # Used by: Digital Marketing Agent (Skill 7: WhatsApp Business Engagement)
     image: python:3.12-slim
     command: >
       sh -c "pip install fastapi uvicorn httpx --quiet &&
@@ -321,6 +343,497 @@ uvicorn.run(app, host='0.0.0.0', port=8104)
       WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID:-stub}
     healthcheck:
       test: ["CMD-SHELL", "curl -sf http://localhost:8104/health || exit 1"]
+      interval: 15s
+      retries: 3
+
+  # ── Digital Marketing Agent — Phase 1 MCP stubs (Curtain Raiser) ─────────────
+
+  scheduling-mcp:
+    # Content calendar and post scheduling (internal PostgreSQL backed)
+    # Used by: Digital Marketing Agent (Skills 2, 4, 5, 6, 7)
+    image: python:3.12-slim
+    command: >
+      sh -c "pip install fastapi uvicorn --quiet &&
+             python -c \"
+import uvicorn
+from fastapi import FastAPI
+app = FastAPI(title='scheduling-mcp-stub')
+@app.get('/health')
+def health(): return {'status': 'ok', 'stub': True}
+@app.get('/tools')
+def tools(): return {'tools': ['calendar.get_history', 'calendar.create_plan', 'calendar.schedule_post']}
+@app.post('/call/{tool_name}')
+def call(tool_name: str, body: dict = {}): return {'tool': tool_name, 'result': 'STUB', 'stub': True}
+uvicorn.run(app, host='0.0.0.0', port=8105)
+\""
+    ports:
+      - "8105:8105"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8105/health || exit 1"]
+      interval: 15s
+      retries: 3
+
+  instagram-mcp:
+    # Meta Graph API — Instagram publishing and insights (customer OAuth)
+    # Used by: Digital Marketing Agent (Skills 4, 8)
+    image: python:3.12-slim
+    command: >
+      sh -c "pip install fastapi uvicorn --quiet &&
+             python -c \"
+import uvicorn
+from fastapi import FastAPI
+app = FastAPI(title='instagram-mcp-stub')
+@app.get('/health')
+def health(): return {'status': 'ok', 'stub': True}
+@app.get('/tools')
+def tools(): return {'tools': ['post.publish', 'story.publish', 'reel.publish', 'get_insights']}
+@app.post('/call/{tool_name}')
+def call(tool_name: str, body: dict = {}): return {'tool': tool_name, 'result': 'STUB — Meta Graph API customer OAuth required', 'stub': True}
+uvicorn.run(app, host='0.0.0.0', port=8106)
+\""
+    ports:
+      - "8106:8106"
+    environment:
+      META_APP_ID: ${META_APP_ID:-stub}
+      META_APP_SECRET: ${META_APP_SECRET:-stub}
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8106/health || exit 1"]
+      interval: 15s
+      retries: 3
+
+  facebook-mcp:
+    # Meta Graph API — Facebook Pages publishing and insights (customer OAuth)
+    # Used by: Digital Marketing Agent (Skill 5)
+    image: python:3.12-slim
+    command: >
+      sh -c "pip install fastapi uvicorn --quiet &&
+             python -c \"
+import uvicorn
+from fastapi import FastAPI
+app = FastAPI(title='facebook-mcp-stub')
+@app.get('/health')
+def health(): return {'status': 'ok', 'stub': True}
+@app.get('/tools')
+def tools(): return {'tools': ['post.publish', 'event.create', 'get_insights']}
+@app.post('/call/{tool_name}')
+def call(tool_name: str, body: dict = {}): return {'tool': tool_name, 'result': 'STUB — Meta Graph API customer OAuth required', 'stub': True}
+uvicorn.run(app, host='0.0.0.0', port=8107)
+\""
+    ports:
+      - "8107:8107"
+    environment:
+      META_APP_ID: ${META_APP_ID:-stub}
+      META_APP_SECRET: ${META_APP_SECRET:-stub}
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8107/health || exit 1"]
+      interval: 15s
+      retries: 3
+
+  google-business-mcp:
+    # Google Business Profile API (customer OAuth)
+    # Used by: Digital Marketing Agent (Skill 6)
+    image: python:3.12-slim
+    command: >
+      sh -c "pip install fastapi uvicorn --quiet &&
+             python -c \"
+import uvicorn
+from fastapi import FastAPI
+app = FastAPI(title='google-business-mcp-stub')
+@app.get('/health')
+def health(): return {'status': 'ok', 'stub': True}
+@app.get('/tools')
+def tools(): return {'tools': ['post.publish', 'review.respond', 'get_metrics']}
+@app.post('/call/{tool_name}')
+def call(tool_name: str, body: dict = {}): return {'tool': tool_name, 'result': 'STUB — Google Business Profile API customer OAuth required', 'stub': True}
+uvicorn.run(app, host='0.0.0.0', port=8108)
+\""
+    ports:
+      - "8108:8108"
+    environment:
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-stub}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-stub}
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8108/health || exit 1"]
+      interval: 15s
+      retries: 3
+
+  platform-analytics-mcp:
+    # Aggregated analytics from Meta, Google Analytics 4, GBP (read-only, customer OAuth)
+    # Used by: Digital Marketing Agent (Skill 9)
+    image: python:3.12-slim
+    command: >
+      sh -c "pip install fastapi uvicorn --quiet &&
+             python -c \"
+import uvicorn
+from fastapi import FastAPI
+app = FastAPI(title='platform-analytics-mcp-stub')
+@app.get('/health')
+def health(): return {'status': 'ok', 'stub': True}
+@app.get('/tools')
+def tools(): return {'tools': ['instagram.get_insights', 'facebook.get_insights', 'gbp.get_metrics', 'funnel.get_analysis']}
+@app.post('/call/{tool_name}')
+def call(tool_name: str, body: dict = {}): return {'tool': tool_name, 'result': 'STUB — platform API credentials required', 'stub': True}
+uvicorn.run(app, host='0.0.0.0', port=8109)
+\""
+    ports:
+      - "8109:8109"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8109/health || exit 1"]
+      interval: 15s
+      retries: 3
+
+  image-generation-mcp:
+    # AI image generation for social media posts (OpenAI DALL-E / Azure AI)
+    # Used by: Digital Marketing Agent (Skill 4, 6)
+    image: python:3.12-slim
+    command: >
+      sh -c "pip install fastapi uvicorn --quiet &&
+             python -c \"
+import uvicorn
+from fastapi import FastAPI
+app = FastAPI(title='image-generation-mcp-stub')
+@app.get('/health')
+def health(): return {'status': 'ok', 'stub': True}
+@app.get('/tools')
+def tools(): return {'tools': ['image.generate']}
+@app.post('/call/{tool_name}')
+def call(tool_name: str, body: dict = {}): return {'tool': tool_name, 'result': 'STUB — LLM_API_KEY required', 'stub': True}
+uvicorn.run(app, host='0.0.0.0', port=8110)
+\""
+    ports:
+      - "8110:8110"
+    environment:
+      LLM_API_KEY: ${LLM_API_KEY:-stub}
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8110/health || exit 1"]
+      interval: 15s
+      retries: 3
+
+  video-generation-mcp:
+    # AI video/reel generation (Azure AI Video / RunwayML — configurable)
+    # Used by: Digital Marketing Agent (Skills 4, 8)
+    image: python:3.12-slim
+    command: >
+      sh -c "pip install fastapi uvicorn --quiet &&
+             python -c \"
+import uvicorn
+from fastapi import FastAPI
+app = FastAPI(title='video-generation-mcp-stub')
+@app.get('/health')
+def health(): return {'status': 'ok', 'stub': True}
+@app.get('/tools')
+def tools(): return {'tools': ['video.generate_from_script', 'video.edit_clips', 'video.compose_reel']}
+@app.post('/call/{tool_name}')
+def call(tool_name: str, body: dict = {}): return {'tool': tool_name, 'result': 'STUB — video generation API key required', 'stub': True}
+uvicorn.run(app, host='0.0.0.0', port=8111)
+\""
+    ports:
+      - "8111:8111"
+    environment:
+      VIDEO_GENERATION_API_KEY: ${VIDEO_GENERATION_API_KEY:-stub}
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8111/health || exit 1"]
+      interval: 15s
+      retries: 3
+
+  # ── Digital Marketing Agent v2.0 — Intelligence + Phase 2/3 MCP stubs ────────
+
+  customer-profile-mcp:
+    # Customer profile and maturity score store (PostgreSQL backed)
+    # C-043: authenticated access — customer-private Tier 2 data
+    # Used by: Digital Marketing Agent (Skills 0, 1, 13)
+    image: python:3.12-slim
+    command: >
+      sh -c "pip install fastapi uvicorn --quiet &&
+             python -c \"
+import uvicorn
+from fastapi import FastAPI
+app = FastAPI(title='customer-profile-mcp-stub')
+@app.get('/health')
+def health(): return {'status': 'ok', 'stub': True}
+@app.get('/tools')
+def tools(): return {'tools': ['profile.get_registration', 'profile.update_field', 'profile.confirm', 'maturity.save_score', 'needs.save_heatmap', 'competitors.save_snapshot']}
+@app.post('/call/{tool_name}')
+def call(tool_name: str, body: dict = {}): return {'tool': tool_name, 'result': 'STUB', 'stub': True}
+uvicorn.run(app, host='0.0.0.0', port=8112)
+\""
+    ports:
+      - "8112:8112"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8112/health || exit 1"]
+      interval: 15s
+      retries: 3
+
+  web-search-mcp:
+    # Public web search — no authentication required (Brave Search / Bing Search)
+    # C-043: public data only — no authenticated endpoint access
+    # Used by: Digital Marketing Agent (Skills 1, 10, 13)
+    image: python:3.12-slim
+    command: >
+      sh -c "pip install fastapi uvicorn --quiet &&
+             python -c \"
+import uvicorn
+from fastapi import FastAPI
+app = FastAPI(title='web-search-mcp-stub')
+@app.get('/health')
+def health(): return {'status': 'ok', 'stub': True}
+@app.get('/tools')
+def tools(): return {'tools': ['search.query']}
+@app.post('/call/{tool_name}')
+def call(tool_name: str, body: dict = {}): return {'tool': tool_name, 'result': 'STUB — search API key required', 'stub': True}
+uvicorn.run(app, host='0.0.0.0', port=8113)
+\""
+    ports:
+      - "8113:8113"
+    environment:
+      SEARCH_API_KEY: ${SEARCH_API_KEY:-stub}
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8113/health || exit 1"]
+      interval: 15s
+      retries: 3
+
+  google-places-mcp:
+    # Google Places API — public business data lookup
+    # Used by: Digital Marketing Agent (Skills 1, 6, 13)
+    image: python:3.12-slim
+    command: >
+      sh -c "pip install fastapi uvicorn --quiet &&
+             python -c \"
+import uvicorn
+from fastapi import FastAPI
+app = FastAPI(title='google-places-mcp-stub')
+@app.get('/health')
+def health(): return {'status': 'ok', 'stub': True}
+@app.get('/tools')
+def tools(): return {'tools': ['place.get_details', 'place.get_categories']}
+@app.post('/call/{tool_name}')
+def call(tool_name: str, body: dict = {}): return {'tool': tool_name, 'result': 'STUB — Google Places API key required', 'stub': True}
+uvicorn.run(app, host='0.0.0.0', port=8114)
+\""
+    ports:
+      - "8114:8114"
+    environment:
+      GOOGLE_PLACES_API_KEY: ${GOOGLE_PLACES_API_KEY:-stub}
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8114/health || exit 1"]
+      interval: 15s
+      retries: 3
+
+  social-profile-mcp:
+    # Public social profile data (Instagram/Facebook public endpoints — no auth)
+    # Used by: Digital Marketing Agent (Skills 1, 13)
+    image: python:3.12-slim
+    command: >
+      sh -c "pip install fastapi uvicorn --quiet &&
+             python -c \"
+import uvicorn
+from fastapi import FastAPI
+app = FastAPI(title='social-profile-mcp-stub')
+@app.get('/health')
+def health(): return {'status': 'ok', 'stub': True}
+@app.get('/tools')
+def tools(): return {'tools': ['profile.get_public_data']}
+@app.post('/call/{tool_name}')
+def call(tool_name: str, body: dict = {}): return {'tool': tool_name, 'result': 'STUB — public profile API access pending', 'stub': True}
+uvicorn.run(app, host='0.0.0.0', port=8115)
+\""
+    ports:
+      - "8115:8115"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8115/health || exit 1"]
+      interval: 15s
+      retries: 3
+
+  meta-ad-library-mcp:
+    # Meta Ad Library API — public, no auth required
+    # Used by: Digital Marketing Agent (Skills 1, 13)
+    image: python:3.12-slim
+    command: >
+      sh -c "pip install fastapi uvicorn --quiet &&
+             python -c \"
+import uvicorn
+from fastapi import FastAPI
+app = FastAPI(title='meta-ad-library-mcp-stub')
+@app.get('/health')
+def health(): return {'status': 'ok', 'stub': True}
+@app.get('/tools')
+def tools(): return {'tools': ['ads.search_active', 'ads.search_by_page']}
+@app.post('/call/{tool_name}')
+def call(tool_name: str, body: dict = {}): return {'tool': tool_name, 'result': 'STUB — Meta Ad Library API token required', 'stub': True}
+uvicorn.run(app, host='0.0.0.0', port=8116)
+\""
+    ports:
+      - "8116:8116"
+    environment:
+      META_AD_LIBRARY_TOKEN: ${META_AD_LIBRARY_TOKEN:-stub}
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8116/health || exit 1"]
+      interval: 15s
+      retries: 3
+
+  web-scan-mcp:
+    # Public page technical scanning (SEO/analytics signal detection — public pages only)
+    # C-043: authenticated access prohibited — 401/403 responses recorded as 'access restricted'
+    # Used by: Digital Marketing Agent (Skills 1, 10)
+    image: python:3.12-slim
+    command: >
+      sh -c "pip install fastapi uvicorn --quiet &&
+             python -c \"
+import uvicorn
+from fastapi import FastAPI
+app = FastAPI(title='web-scan-mcp-stub')
+@app.get('/health')
+def health(): return {'status': 'ok', 'stub': True}
+@app.get('/tools')
+def tools(): return {'tools': ['seo.audit_page', 'page.get_signals']}
+@app.post('/call/{tool_name}')
+def call(tool_name: str, body: dict = {}): return {'tool': tool_name, 'result': 'STUB', 'stub': True}
+uvicorn.run(app, host='0.0.0.0', port=8117)
+\""
+    ports:
+      - "8117:8117"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8117/health || exit 1"]
+      interval: 15s
+      retries: 3
+
+  seo-mcp:
+    # SEO keyword research and rank tracking
+    # Used by: Digital Marketing Agent (Skill 10)
+    image: python:3.12-slim
+    command: >
+      sh -c "pip install fastapi uvicorn --quiet &&
+             python -c \"
+import uvicorn
+from fastapi import FastAPI
+app = FastAPI(title='seo-mcp-stub')
+@app.get('/health')
+def health(): return {'status': 'ok', 'stub': True}
+@app.get('/tools')
+def tools(): return {'tools': ['keywords.research', 'rankings.track']}
+@app.post('/call/{tool_name}')
+def call(tool_name: str, body: dict = {}): return {'tool': tool_name, 'result': 'STUB — SEO API key required', 'stub': True}
+uvicorn.run(app, host='0.0.0.0', port=8118)
+\""
+    ports:
+      - "8118:8118"
+    environment:
+      SEO_API_KEY: ${SEO_API_KEY:-stub}
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8118/health || exit 1"]
+      interval: 15s
+      retries: 3
+
+  google-search-console-mcp:
+    # Google Search Console API — customer OAuth, read-only performance data
+    # Used by: Digital Marketing Agent (Skill 10)
+    image: python:3.12-slim
+    command: >
+      sh -c "pip install fastapi uvicorn --quiet &&
+             python -c \"
+import uvicorn
+from fastapi import FastAPI
+app = FastAPI(title='google-search-console-mcp-stub')
+@app.get('/health')
+def health(): return {'status': 'ok', 'stub': True}
+@app.get('/tools')
+def tools(): return {'tools': ['performance.get_data']}
+@app.post('/call/{tool_name}')
+def call(tool_name: str, body: dict = {}): return {'tool': tool_name, 'result': 'STUB — Google Search Console customer OAuth required', 'stub': True}
+uvicorn.run(app, host='0.0.0.0', port=8119)
+\""
+    ports:
+      - "8119:8119"
+    environment:
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-stub}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-stub}
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8119/health || exit 1"]
+      interval: 15s
+      retries: 3
+
+  meta-ads-mcp:
+    # Meta Marketing API — campaign management (customer ad account OAuth)
+    # C-043: BUDGET_OVERRUN hard cap enforced — CE.ValidateAction with budget_remaining BEFORE every spend call
+    # Used by: Digital Marketing Agent (Skill 11)
+    image: python:3.12-slim
+    command: >
+      sh -c "pip install fastapi uvicorn --quiet &&
+             python -c \"
+import uvicorn
+from fastapi import FastAPI
+app = FastAPI(title='meta-ads-mcp-stub')
+@app.get('/health')
+def health(): return {'status': 'ok', 'stub': True}
+@app.get('/tools')
+def tools(): return {'tools': ['campaign.create', 'campaign.update_bid', 'ad.pause', 'campaign.get_insights']}
+@app.post('/call/{tool_name}')
+def call(tool_name: str, body: dict = {}): return {'tool': tool_name, 'result': 'STUB — Meta Marketing API customer OAuth required; C-043 budget check enforced pre-call', 'stub': True}
+uvicorn.run(app, host='0.0.0.0', port=8120)
+\""
+    ports:
+      - "8120:8120"
+    environment:
+      META_APP_ID: ${META_APP_ID:-stub}
+      META_APP_SECRET: ${META_APP_SECRET:-stub}
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8120/health || exit 1"]
+      interval: 15s
+      retries: 3
+
+  google-ads-mcp:
+    # Google Ads API — campaign management (customer OAuth)
+    # C-043: BUDGET_OVERRUN hard cap enforced — CE.ValidateAction with budget_remaining BEFORE every spend call
+    # Used by: Digital Marketing Agent (Skill 11)
+    image: python:3.12-slim
+    command: >
+      sh -c "pip install fastapi uvicorn --quiet &&
+             python -c \"
+import uvicorn
+from fastapi import FastAPI
+app = FastAPI(title='google-ads-mcp-stub')
+@app.get('/health')
+def health(): return {'status': 'ok', 'stub': True}
+@app.get('/tools')
+def tools(): return {'tools': ['campaign.create', 'campaign.get_report']}
+@app.post('/call/{tool_name}')
+def call(tool_name: str, body: dict = {}): return {'tool': tool_name, 'result': 'STUB — Google Ads API customer OAuth required; C-043 budget check enforced pre-call', 'stub': True}
+uvicorn.run(app, host='0.0.0.0', port=8121)
+\""
+    ports:
+      - "8121:8121"
+    environment:
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-stub}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-stub}
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8121/health || exit 1"]
+      interval: 15s
+      retries: 3
+
+  web-optimisation-mcp:
+    # CRO / A-B testing platform API (VWO or equivalent — customer account)
+    # Used by: Digital Marketing Agent (Skill 12)
+    image: python:3.12-slim
+    command: >
+      sh -c "pip install fastapi uvicorn --quiet &&
+             python -c \"
+import uvicorn
+from fastapi import FastAPI
+app = FastAPI(title='web-optimisation-mcp-stub')
+@app.get('/health')
+def health(): return {'status': 'ok', 'stub': True}
+@app.get('/tools')
+def tools(): return {'tools': ['ab_test.create_variant', 'ab_test.launch', 'heatmap.get_data']}
+@app.post('/call/{tool_name}')
+def call(tool_name: str, body: dict = {}): return {'tool': tool_name, 'result': 'STUB — CRO platform API key required', 'stub': True}
+uvicorn.run(app, host='0.0.0.0', port=8122)
+\""
+    ports:
+      - "8122:8122"
+    environment:
+      CRO_PLATFORM_API_KEY: ${CRO_PLATFORM_API_KEY:-stub}
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8122/health || exit 1"]
       interval: 15s
       retries: 3
 

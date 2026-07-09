@@ -1,8 +1,8 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-07-08
-**Version:** 0.13.0
-**Session:** 2026-07-08 close
+**Last Updated:** 2026-07-09
+**Version:** 0.15.0
+**Session:** 2026-07-09 close
 
 ---
 
@@ -13,10 +13,23 @@ This file is the single source of truth for the next session start. Read it top 
 ```
 INSTITUTION:  WAOOAW — autonomous digital professionals under constitutional governance
 GATE:         G5 prerequisites met (G5 CLEAR ≠ implementation authorization)
-VERSION:      0.13.0
-FOCUS:        Engineering organization roles — architecture, specification, review, decisions
-              NOT implementation. Founder has not authorized IB-009 for any session.
+VERSION:      0.15.0
+FOCUS:        Digital Marketing Agent v2.0 APPROVED and committed.
+              3 agents fully approved. Architecture chain complete and consistent.
+              Implementation: NOT authorized. Awaiting explicit Founder "start coding" per session.
 ```
+
+---
+
+## What This Session Completed (2026-07-09)
+
+| Commit | Version | What |
+|---|---|---|
+| v0.13.0 | Session start | Resumed from 2026-07-08 close |
+| v0.14.0 | digital-marketing-agent.md v2.0 | 6 new skills (0: Customer Profiling, 1: Market Research, 10: SEO, 11: PPC, 12: CRO, 13: Competitive Intelligence); 3-phase bundle packaging (Curtain Raiser / Growth Engine / Maturity Phase); portal sales presentation layer; AI-native onboarding flow; updated Professional Template |
+| v0.14.1 | Architecture Chain Run (Section 11) | C-043 (Financial Spend Cap LAW); Domain 11 capabilities (6 caps); AD-016 (Budget Hard Cap); DP-014 (Maturity-Driven Skill Activation); containers.md — 18 MCP servers added; ai-runtime.md — Profiling Pipeline + Market Research Pipeline; 5 new SQL tables; docker-compose — 18 new MCP stub services (ports 8105–8122) |
+| v0.14.2 | R-014 EA Review — APPROVED | 5 P1 findings fixed: C-043 Produces corrected; social-profile-mcp auth ambiguity resolved; CE.ValidateAction in Market Research Pipeline; PATIENT_IMAGE_CONSENT_CONFIRMED resolved (R-011 note closed); capability-to-container-map.md updated with Domain 11 |
+| v0.15.0 | Session close | All statuses updated; GENESIS registry updated; Founder approval granted; committed and pushed |
 
 ---
 
@@ -37,7 +50,7 @@ FOCUS:        Engineering organization roles — architecture, specification, re
 
 | Agent | Type | AS | EA Review | Status |
 |---|---|---|---|---|
-| Digital Marketing (Healthcare/Dental) | `DIGITAL_MARKETING_HEALTHCARE_DENTAL` | AS-001, AS-002 | R-011 | APPROVED |
+| Digital Marketing (Healthcare/Dental) | `DIGITAL_MARKETING_HEALTHCARE` | AS-001, AS-002 | R-011 (v1.0) · R-014 (v2.0) | v2.0 APPROVED 2026-07-09 |
 | Trading (F&O + Crypto) | `TRADING_FO_CRYPTO` | AS-003 | R-012 | APPROVED |
 | Agricultural Advisory (India Farmers) | `AGRICULTURAL_ADVISOR_INDIA` | AS-005 | R-013 | APPROVED |
 
@@ -96,24 +109,18 @@ These are all valid pulls for the next session. No implementation gate applies t
 
 ---
 
-**WAOOAW Engineering Organization — Session 2026-07-09**
-**Version:** v0.13.0 | **Gate:** G5 prerequisites met | **3 agents approved**
+**WAOOAW Engineering Organization — Session 2026-07-09 (next)**
+**Version:** v0.15.0 | **Gate:** G5 prerequisites met | **3 agents fully approved**
 
-All agents approved. Architecture consistent. Ready for the next sprint.
-
-Choose a track:
+Digital Marketing Agent v2.0 approved with 14 skills, 3-phase bundles, and full architecture chain. Architecture is consistent across all layers. Founder indicated a next discussion point — present the menu below and await selection.
 
 ---
 
-**Track A — Complete the portal and CS agent architecture (IB-014 + IB-015)**
+**Track A — Digital Marketing Agent simulation (new v2.0 skills)**
 
-*Office: Business Architect + Solution Architect*
+*Office: Business Architect (narrative) + Constitutional Analyst (claims extraction)*
 
-IB-014: Domain 7 — Customer Self-Service Portal. Eight capabilities already designed in the backlog (hire wizard, approval queue, evidence ledger, Emergency Stop button, data export). Needs: formal capability map in business-capabilities.md + 2 missing OpenAPI endpoints.
-
-IB-015: Domain 8 — Constitutional Customer Success Agents (FR-001 Path A). Design frame complete. Needs: Domain 8 capability map + CS agent specs (L1 + L2) in AGENT-AUTHORING-GUIDE format. Zero new containers — configuration change only.
-
-Both are pure architecture work. The design frames are written. This sprint formalizes them.
+The DMA v2.0 introduced Customer Profiling, Market Research, and the maturity score model. No simulation case exercises these new skills yet. Running a simulation of a new customer onboarding (Dr. Mehta or Sana) through the full v2.0 flow — registration → profiling conversation → market research → Maturity Report → Phase Bundle selection — would validate the constitutional constraints and potentially surface new claims (e.g., around the maturity scoring rubric, the AI-native interview interaction, or the budget enforcement chain). The same simulation process that produced C-042 from the agricultural agent design.
 
 ---
 
@@ -121,26 +128,22 @@ Both are pure architecture work. The design frames are written. This sprint form
 
 *Office: Business Architect (spec) → Enterprise Architect (review) → Founder (approval)*
 
-Candidates:
+Candidates the Founder mentioned or that are logically next for the Indian SME market:
 - **Legal Professional** — contract review, compliance advisory for India SMEs
 - **HR Professional** — hiring, onboarding, performance management for SMEs
 - **Accounting Professional** — GST filing, TDS compliance, bookkeeping for India SMEs
 - **Real Estate Advisory** — property search, legal due diligence for India buyers
 
-Process: 13-section AGENT-AUTHORING-GUIDE + Architecture Chain Update Checklist (Section 11) + EA review + Founder approval + GENESIS amendment. No implementation gate.
+Process: 13-section AGENT-AUTHORING-GUIDE + Architecture Chain Update (Section 11) + EA review + Founder approval + GENESIS amendment.
 
 ---
 
-**Track C — Simulation run**
+**Track C — Portal and CS agent architecture (IB-014 + IB-015)**
 
-*Office: Business Architect (narrative) + Constitutional Analyst (claims extraction)*
+*Office: Business Architect + Solution Architect*
 
-No simulation case exists yet for the two newest agents:
-
-- **Trading Agent simulation** — full intraday session: market open, PAAS execution, risk boundary hit, Emergency Stop mid-session, session-end position closure. Constitutional test: does the agent halt when Decision Space says MAX_DRAWDOWN exceeded?
-- **Agricultural Advisory simulation** — full kharif season for Suresh in Vidarbha (Nagpur): sowing → 72-hour hail warning → farmer acts → mandi price timing → PMFBY claim. Constitutional test: does the vocabulary mandate hold for every output? Does the evidence chain survive?
-
-Simulations generate new claims, ADR amendments, and CCT cases from realistic narrative — the same process that produced C-042 from the agricultural agent design.
+IB-014 (Domain 7 — Customer Self-Service Portal): 8 capabilities, 2 missing OpenAPI endpoints.
+IB-015 (Domain 8 — Constitutional Customer Success Agents): CS agent specs (L1 + L2). First agent type where WAOOAW itself is the customer — interesting constitutional territory.
 
 ---
 
@@ -148,43 +151,20 @@ Simulations generate new claims, ADR amendments, and CCT cases from realistic na
 
 *Office: Constitutional Analyst*
 
-- `constitution/RED_TEAM.md` — 11 attacks documented. Review: do any new agents (Trading, Agricultural) open attack surfaces not covered?
-- `knowledge/confidence-register.md` — needs C-036–C-042 entries (added in v0.8.0–v0.11.0 but register not updated)
-- `knowledge/index.md` — knowledge artifact index, needs v0.12.x entries
+- C-043 (Financial Spend Cap) not yet in RED_TEAM.md — does it open attack surfaces?
+- `knowledge/confidence-register.md` needs C-036–C-043 entries
+- `knowledge/index.md` needs v0.14.x–v0.15.0 entries
+- DMA v2.0: do the new MCP servers (meta-ads, google-ads, social-profile) open new attack vectors?
 
 ---
 
-Which track?
+**Track E — Foundation Implementation (IB-009)**
 
-**A — IB-014: Domain 7 Customer Self-Service Portal spec**
-Office: Business Architect + Solution Architect
-The design frame is fully described in INSTITUTIONAL_BACKLOG.md (IB-014). What's needed:
-- Domain 7 capability map formalized in `knowledge/business-capabilities.md` (8 capabilities)
-- 2 missing API endpoints specified as OpenAPI addendum to `business-platform.openapi.yaml`
-Ready to execute immediately — all inputs exist.
+*Requires explicit Founder "start coding" authorization for the session.*
 
-**B — IB-015: Domain 8 Constitutional CS Agents spec**
-Office: Business Architect + Runtime Professional
-Design frame fully in backlog. What's needed:
-- Domain 8 capability map in `knowledge/business-capabilities.md` (6 capabilities)
-- `CUSTOMER_SUCCESS_L1` / `L2` as new agent specs (using AGENT-AUTHORING-GUIDE 13-section format)
-- `professional_templates` table addendum to data architecture
-- Architecture Chain Update Checklist (Section 11) — zero new containers, configuration change only
-Note: This is the first agent type where WAOOAW itself is the customer (FR-001 Path A). Interesting constitutional territory.
-
-**C — IB-016: Platform Operations Architecture**
-Office: Platform Architect
-Design frame fully in backlog. What's needed:
-- OTel metric names formalized as additions to component specs
-- Operational capability spec: `architecture/reference/operations/` (new directory)
-- Runbook stubs (to be filled during IB-009 sprint)
+G5 prerequisites met. All architecture approved. Implementation can begin when Founder authorizes. The first sprint would implement the Constitutional Engine skeleton + basic Professional Runtime + one acceptance scenario.
 
 ---
-
-## Architectural Decisions and Precedents — Key Facts for Next Session
-
-**IMPLEMENTATION GATE (absolute):**
-- G5 CLEAR ≠ authorization to write code in `src/`
 - A TO-DO list, a GitHub Issue, a Work Contract, a P0 label is NOT authorization
 - Before any file in `src/`: STOP. Ask: "Do you authorize implementation for this session?"
 - Code from v0.10.0 (commit dfbaf0b) can be restored with `git checkout dfbaf0b -- src/`

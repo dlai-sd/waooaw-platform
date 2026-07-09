@@ -147,8 +147,100 @@ Customer receives translated, voice-delivered advisory
 **Input format:** unstructured natural language (voice transcription or text)
 **Output format:** `DecisionSpaceInput` JSON (per business-platform.openapi.yaml schema)
 
-## Dependencies
+---
+
+## New Components (v0.14.0 — Digital Marketing Agent v2.0, C-039, C-040, C-043, DP-014)
+
+### 6. Customer Profiling Pipeline
+
+**Activation:** Triggered when the active agent skill type is `CUSTOMER_PROFILING`.
+
+**Responsibility:**
+- Reads the customer's registration data from `customer-profile-mcp` as the conversation starting point
+- Runs an AI-native profiling interview: infer what can be derived from existing data, confirm inferences, ask only what cannot be derived
+- Maintains a progressive profile summary card — shown to the customer after every 2 exchanges
+- Detects when the minimum viable profile (6 fields confirmed) has been reached and declares completion
+- Writes confirmed profile fields to `customer-profile-mcp` (profile.update_field) with source attribution (registration / conversation / inference)
+- Marks profile as complete only after explicit customer confirmation (profile.confirm)
+- Triggers Market Research Pipeline upon completion (passes business_name + locality as minimum inputs)
+
+**Processing pipeline:**
+```
+Read registration data (customer-profile-mcp: profile.get_registration)
+    ↓
+Build opening context: "Here's what I already know: [registration fields]"
+    ↓
+[Adaptive interview loop]
+    ↓ Step 1: For each unconfirmed extended field — infer if possible, else ask
+    ↓ Step 2: Every 2 exchanges — show progressive summary card
+    ↓ Step 3: Accept corrections → update profile field with source = 'customer_correction'
+    ↓ Step 4: Detect deviation → capture as extended field signal, redirect to minimum fields
+    ↓ Step 5: Check minimum viable profile completeness after each exchange
+    ↓ Step 6: When minimum fields confirmed → present completion summary → customer confirms
+    ↓ Step 7: profile.confirm → trigger Market Research Pipeline in parallel
+Customer receives: confirmation message + "I am now researching your digital presence..."
+```
+
+**Constitutional constraints:**
+- Financial questions (ad spend) are always asked last — never before domain, locality, and aspiration are confirmed
+- No field may be marked confirmed without customer acknowledgement
+- Profile data is Tier 2 customer-private — never crosses tenant boundary
+
+---
+
+### 7. Market Research & Maturity Scoring Pipeline
+
+**Activation:** Triggered when the active agent skill type is `MARKET_RESEARCH`. Runs in parallel with Customer Profiling from the moment business_name + locality are confirmed (does not wait for full profile completion).
+
+**Responsibility:**
+- Executes public-data research across 7 axes (digital footprint, social presence, Google Business, paid advertising signals, content quality, competitor landscape, analytics signals)
+- Calculates Digital Marketing Maturity Score (1–7) against the fixed scale
+- Retrieves industry and geography benchmark from Tier 3 platform intelligence
+- Generates Needs Heat Map (8 need states × Active/Latent/N/A × evidence citation)
+- Produces the Digital Marketing Maturity Report (score + benchmark + needs map + phase recommendation + 3-month plan)
+- Saves score and needs heat map to customer-profile-mcp for downstream skill use
+- Delivers report to customer in chat and makes PDF available on portal
+
+**Processing pipeline:**
+```
+Receive: business_name, locality, domain, [partial extended profile]
+    ↓
+[Research phase — parallel execution across axes]
+    ↓ For each tool call: CE.ValidateAction(tool, decision_space) → PERMIT required before invocation (C-041)
+    ↓ web-search-mcp: search "{business_name} {locality}" → footprint signals
+    ↓ google-places-mcp: place.get_details → GBP status, review count, rating, response rate
+    ↓ social-profile-mcp: profile.get_public_data → social presence, last post, frequency
+    ↓ meta-ad-library-mcp: ads.search_active → paid campaign signals
+    ↓ web-scan-mcp: page.get_signals → website technical signals (SEO, booking CTA, analytics pixel)
+    ↓
+[Score calculation]
+    ↓ Score each research axis against maturity rubric (1–7 criteria per axis)
+    ↓ Composite score = weighted average of axis scores
+    ↓ Retrieve benchmark: Tier 3 platform intelligence (avg and P80 for domain+city)
+    ↓
+[Needs Heat Map]
+    ↓ Map research findings to 8 need states → Active / Latent / N/A + evidence citation
+    ↓
+[Report generation]
+    ↓ Assemble Digital Marketing Maturity Report (score, benchmark, needs map, recommendation, 3-month plan)
+    ↓ Save: maturity.save_score, needs.save_heatmap (customer-profile-mcp) — Evidence First
+    ↓
+Customer receives: full report in chat + PDF download link
+```
+
+**Constitutional constraints:**
+- ONLY publicly available data may be used — all MCP server adapters in this pipeline are public-data-only
+- CE.ValidateAction is called before each MCP tool call per C-041
+- Every claim in the report must include source URL and retrieval date — no unsourced assertions
+- The pipeline must not attempt to access any authenticated endpoint; if a web-scan-mcp call returns a 401/403, it records "access restricted" as the finding, not as an error
+
+**Budget check for spend-tracking research tools:**
+- market research tools are read-only and incur no financial spend — AD-016 budget check is NOT applicable to this pipeline
+
+---
+
+## Dependencies (updated v0.14.0)
 - **LLM Providers** (HTTPS external — OpenAI, Azure OpenAI)
-- **PostgreSQL** (pgvector — Creative Standard Profile embeddings, agent_progressive_state, read only)
-- **MCP Integration Layer** (internal network — weather-ensemble-mcp, agmarknet-mcp, whatsapp-voice-mcp, broker-api-mcp, whatsapp-business-mcp)
-- **Constitutional Engine** (gRPC — CE.ValidateAction before every MCP tool call per C-041)
+- **PostgreSQL** (pgvector — Creative Standard Profile embeddings, agent_progressive_state, digital_marketing_profiles, digital_marketing_maturity_scores, digital_marketing_needs_heatmap, competitor_snapshots — read only)
+- **MCP Integration Layer** (internal network — all servers listed in containers.md MCP Server Inventory)
+- **Constitutional Engine** (gRPC — CE.ValidateAction before every MCP tool call per C-041; CE.ValidateAction with budget_remaining parameter before any spend-incurring tool call per C-043 and AD-016)

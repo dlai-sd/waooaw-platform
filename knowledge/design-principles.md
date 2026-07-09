@@ -245,3 +245,23 @@ Principles are listed in order of constitutional priority — Constitutional Flo
 | **DP-011** | **Business Outcome First in Every Interface** | Engineering mandate | No — GENESIS mandate |
 | **DP-012** | **Skill Granularity in Governance** | Engineering mandate | Yes — C-036 LAW |
 | **DP-013** | **Vocabulary Translation Layer for C-042 Agents** | Engineering mandate | Yes — C-042 LAW |
+| **DP-014** | **Maturity-Driven Skill Activation** | Engineering mandate | No — domain design pattern |
+
+---
+
+## DP-014 — Maturity-Driven Skill Activation (v0.14.0)
+
+**Directive:** For multi-skill agents that serve customers across a wide spectrum of readiness levels, skills must be activated progressively based on the customer's assessed maturity — not all at once at engagement start. An intelligence phase (profile + assessment) must always precede execution skill activation. Execution skills are gated by the customer's current maturity score and the phase bundle they have selected.
+
+**Why:** Activating all available skills on a Score 1 customer (no digital footprint) produces waste and confusion — the customer cannot use advanced skills (CRO, competitive intelligence) when they have no traffic to convert and no competitors to monitor. Conversely, withholding execution from a Score 6 customer creates opportunity loss. The maturity assessment is the mechanism that makes skill activation relevant rather than generic.
+
+**Constitutional Basis:** C-036 (Skills are independently governable — activation is per-Skill, not per-agent); C-037 (Business KPI primacy — activating skills the customer cannot benefit from wastes their budget and fails their KPIs); AD-013 (Conversational Config Completeness — the profile and assessment must complete within the onboarding time constraint)
+
+**Enforcement:**
+- The Customer Profiling skill (Skill 0) must complete before any execution skill is activated
+- The Market Research skill (Skill 1) must produce a Maturity Score before the Phase Bundle is confirmed
+- Phase Bundle selection (Curtain Raiser / Growth Engine / Maturity Phase) is a customer decision, not an agent decision — the agent recommends, the customer confirms
+- Decision Space authorization entries for Phase 2 and Phase 3 skills include a `phase_prerequisite` constraint: CE.ValidateAction returns DENY for a Phase 2 skill invocation if the customer's active bundle is Curtain Raiser
+- Skill upgrade (bundle change) requires a new customer authorization event — the same process as any Decision Space expansion (C-003 Second Law)
+
+---

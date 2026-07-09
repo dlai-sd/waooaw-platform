@@ -266,3 +266,25 @@ The voice pipeline latency budget is ≤5 seconds end-to-end for standard adviso
 | **AD-013** | **Conversational Config Completeness (<15 min)** | **HARD** | **Configuration and onboarding** |
 | **AD-014** | **Pro-Rata Billing Precision (minute-level)** | **HARD** | **Subscription lifecycle, billing** |
 | **AD-015** | **Multilingual Voice Interface (C-042 agents)** | **HARD** | **Agricultural advisory, any C-042 agent** |
+| **AD-016** | **Paid Advertising Budget Hard Cap** | **HARD** | **Digital Marketing Agent, any agent managing third-party spend** |
+
+---
+
+## AD-016 — Paid Advertising Budget Hard Cap (v0.14.0)
+
+**Requirement:** When a Digital Professional manages financial spend on a third-party platform (paid advertising, marketplace budget, procurement), the customer-approved monthly budget ceiling must be enforced at the tool call layer — architecturally preventing spend beyond the approved limit regardless of system state, optimisation logic, or failure mode.
+
+**Type:** HARD — derives from C-043 (LAW). Overspend is a constitutional violation equivalent to unauthorized action execution. Prompt-level instructions to "stay within budget" are insufficient — the enforcement must be structural.
+
+**Constitutional Basis:** C-043 (Financial Spend Authority Ceiling — LAW); C-003 (Second Law — authority is licensed; spend authority is bounded at hire time); C-041 (every spend-incurring tool call requires CE.ValidateAction with budget_remaining as a parameter)
+
+**Capabilities Constrained:** 11.5 (Paid Digital Advertising) — and any future capability involving agent-managed financial expenditure
+
+**Architectural Consequence:** The AI Runtime's MCP client must, before any tool call that incurs financial spend:
+1. Retrieve current approved_monthly_budget and current_month_spend from CE state
+2. Calculate: would this call exceed approved_monthly_budget?
+3. If YES → reject the tool call, raise BUDGET_CEILING_REACHED event, notify customer via approval request — do not attempt the spend call
+4. Record the budget check result in the Constitutional Audit Ledger (Evidence First)
+5. Only proceed with the spend tool call after confirming remaining_budget > 0 AND CE.ValidateAction returns PERMIT
+
+Note: This driver requires CE.ValidateAction to carry budget state as a first-class parameter for spend-type tool calls. This is an extension to the CE ValidateAction interface beyond the standard Decision Space check.
