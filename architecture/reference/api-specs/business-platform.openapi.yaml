@@ -508,12 +508,21 @@ paths:
   /api/v1/billing/whatsapp-upi-link:
     post:
       tags: [Billing]
-      summary: Generate WhatsApp UPI payment link (Agricultural Advisor)
+      summary: Generate WhatsApp UPI AutoPay mandate link (Agricultural Advisor)
       description: |
-        Generates a Razorpay UPI deep link for WhatsApp delivery — enables farmers to pay
-        via any India UPI app (BHIM, GPay, PhonePe, Paytm) without visiting a portal.
+        Generates a Razorpay UPI AutoPay (Standing Instruction) mandate link for WhatsApp delivery.
+        This is a ONE-TIME SETUP — the farmer taps the link, approves a ₹200/month standing
+        instruction in their UPI app (GPay/PhonePe/Paytm), and Razorpay auto-collects every month.
+        NOT a one-time payment link — this creates a recurring mandate.
+        
         Only applicable for AGRICULTURAL_ADVISOR_INDIA professional type.
-      operationId: generateWhatsappUpiLink
+        
+        WhatsApp message template (HSM required — pre-approved):
+        "नमस्कार {{farmer_name}}! शेतकरी मित्र सेवा ₹200/महिना.
+         एकदाच approve करा — दर महिना आपोआप होईल: {{mandate_link}}"
+        
+        R016-01 fix: Changed from one-time UPI link to UPI AutoPay mandate (ADR-022).
+      operationId: generateWhatsappUpiAutopayLink
       requestBody:
         required: true
         content:
@@ -525,17 +534,19 @@ paths:
                 contract_id: { type: string, format: uuid }
       responses:
         "200":
-          description: UPI deep link ready to send via WhatsApp
+          description: UPI AutoPay mandate link ready for WhatsApp delivery
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  upi_link: { type: string, format: uri }
-                  amount_inr: { type: integer }
-                  expires_at: { type: string, format: date-time }
+                  mandate_link: { type: string, format: uri, description: "Razorpay UPI AutoPay link" }
+                  mandate_id: { type: string, description: "Razorpay mandate ID for status tracking" }
+                  amount_inr: { type: integer, description: "Monthly amount in INR" }
+                  expires_at: { type: string, format: date-time, description: "Link expiry — 24 hours" }
+                  whatsapp_message: { type: string, description: "Pre-formatted HSM message body in farmer's language" }
         "422":
-          description: Agent type not eligible for UPI link payment
+          description: Agent type not eligible for UPI AutoPay or farmer language not available
 
   /api/v1/configure/conversational:
     post:

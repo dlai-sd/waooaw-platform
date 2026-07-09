@@ -471,3 +471,114 @@ async def get_access_token(contract_id: str, platform: str) -> str:
 | Version | Date | Change |
 |---|---|---|
 | 1.0 | 2026-07-09 | Initial catalogue — customer-profile-mcp, web-search-mcp, google-places-mcp, social-profile-mcp, meta-ad-library-mcp, scheduling-mcp, instagram-mcp, meta-ads-mcp, platform-analytics-mcp |
+
+---
+
+## razorpay-mcp (port 8131)
+
+Used by: Business Platform (billing, subscription management, GST invoicing)
+**ADR-022.** All tools require mTLS from Business Platform only. Never exposed externally.
+
+### subscription.create
+```
+POST /call/subscription.create
+Request:  { contract_id, plan_id, customer_email, customer_phone, customer_name, total_count?, notes }
+Response: { razorpay_subscription_id, short_url }
+Authorization: Internal only. Called on trial → paid conversion.
+Failure: REQUIRED — no subscription = no billing = contract cannot activate
+```
+
+### subscription.pause / resume / cancel
+```
+POST /call/subscription.pause | /call/subscription.resume | /call/subscription.cancel
+Request:  { razorpay_subscription_id, pause_at?: "now"|"cycle_end" }
+Response: { success: boolean }
+Authorization: Internal only. Triggered by employment contract lifecycle events.
+Failure: REQUIRED
+```
+
+### mandate.create_upi_autopay  ← R016-01 fix
+```
+POST /call/mandate.create_upi_autopay
+Request:  {
+  contract_id: string (UUID),
+  customer_phone: string,        -- +91XXXXXXXXXX (E.164)
+  customer_name: string,
+  amount_inr_paise: integer,     -- 20000 = ₹200
+  description: string,           -- "WAOOAW Agricultural Advisor — ₹200/month"
+  farmer_language: string        -- for localised UPI app message
+}
+Response: {
+  mandate_id: string,            -- Razorpay mandate ID (track completion)
+  mandate_link: string,          -- UPI AutoPay deep link to send via WhatsApp
+  expires_at: string             -- link expires after 24 hours
+}
+Authorization: Internal only. Called when farmer's profile reaches MINIMUM_VIABLE and is WhatsApp-registered.
+Failure: REQUIRED — without mandate, recurring billing cannot be established
+Notes: Uses Razorpay Recurring Payments API (UPI AutoPay / Standing Instruction).
+       Farmer approves ONCE in their UPI app; Razorpay auto-collects monthly.
+       On mandate approval: Razorpay sends webhook mandate.confirmed → SUBSCRIPTION_ACTIVATED.
+```
+
+### mandate.get_status  ← R016-01 fix
+```
+POST /call/mandate.get_status
+Request:  { mandate_id: string }
+Response: {
+  status: "CREATED" | "CONFIRMED" | "REJECTED" | "PAUSED" | "CANCELLED",
+  confirmed_at: string | null,
+  bank_name: string | null      -- which bank the farmer approved from
+}
+Authorization: Internal only. Polled after mandate link is sent, to activate the subscription.
+Failure: DEGRADABLE — agent can retry if status check fails
+```
+
+### invoice.get_gst
+```
+POST /call/invoice.get_gst
+Request:  { razorpay_payment_id: string }
+Response: { invoice_number, gstin_waooaw, hsn_sac_code, base_amount_inr, cgst_amount_inr, sgst_amount_inr, total_amount_inr, customer_gstin?, pdf_url }
+Authorization: Internal only.
+Failure: DEGRADABLE — invoice can be regenerated on demand
+```
+
+---
+
+## Agricultural Advisor — End-to-End Billing Flow (R016-01 specification)
+
+```
+[New farmer registered via WhatsApp — auto-registration complete]
+    ↓
+Profile reaches MINIMUM_VIABLE (4 exchanges)
+    ↓
+Agent sends billing setup message via whatsapp-business-mcp (HSM template):
+  "शेतकरी मित्र: ₹200/महिना — एकदाच approve करा, दर महिना आपोआप होईल: [mandate_link]"
+  razorpay-mcp.mandate.create_upi_autopay → mandate_id + mandate_link
+    ↓
+Farmer taps link → UPI app opens → approves ₹200/month standing instruction
+    ↓
+Razorpay webhook: mandate.confirmed → Business Platform
+  → razorpay-mcp.subscription.create (using confirmed mandate)
+  → employment_contracts.state = ACTIVE
+  → CE.RecordEvidence(SUBSCRIPTION_ACTIVATED)
+  → Agent begins daily check-ins
+    ↓
+Monthly auto-collection (1st of each month):
+  Razorpay debits farmer's bank → payment.captured webhook → WAOOAW
+  → subscription_billing_events record
+  → gst_invoices record (SAC 9984, ₹169 base + ₹30 GST)
+    ↓
+Payment failure path:
+  Razorpay webhook: payment.failed → Business Platform
+  → 3-day grace period starts (payment_transactions.grace_period_ends_at)
+  → Day 1: WhatsApp message: "Payment failed. Retry: [razorpay payment link]"
+  → Day 3: If no payment: employment_contracts.state = SUSPENDED
+  → Agent stops daily check-ins (PMFBY evidence records preserved)
+```
+
+**HSM Templates Required (Meta pre-approval needed before production):**
+| Template | When sent | Content |
+|---|---|---|
+| `agri_billing_setup` | After profiling complete | UPI AutoPay mandate setup link + ₹200/month explanation |
+| `agri_payment_failure` | On Razorpay payment.failed | Payment failed message + retry link |
+| `agri_subscription_active` | After mandate.confirmed | Confirmation that advisor is active |
