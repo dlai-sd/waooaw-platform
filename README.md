@@ -6,13 +6,14 @@
 
 ```
 Founding Corpus v1           Status: Ratified
-Version:                     0.10.1 — Gate violation corrected (2026-07-08)
+Version:                     0.15.0 — Digital Marketing Agent v2.0 approved (2026-07-09)
 Current Epoch:               Epoch 1 — Employment
 Current Gate:                G2-G4: PASSED | G5: Prerequisites met
                              ⛔ G5 CLEAR ≠ implementation authorized for any session
                              Implementation sprint requires explicit Founder authorization
 Authorized Offices:          Runtime Professional (IB-009) — AWAITING FOUNDER AUTHORIZATION
 Engineering Status:          Architecture COMPLETE
+                             Agents approved: 3 (Digital Marketing v2.0, Trading, Agricultural Advisory)
                              Source code: Prerequisites met. Awaiting explicit Founder approval.
 ```
 
