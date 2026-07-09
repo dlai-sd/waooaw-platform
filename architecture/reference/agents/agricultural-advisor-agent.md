@@ -1,9 +1,9 @@
 # Agricultural Advisory Professional — India Small & Marginal Farmers
 
-**Specification version:** 1.1
-**Date:** 2026-07-08 (v1.1 — R-013 P0 fixes applied)
-**Status:** APPROVED by Founder 2026-07-08 — GENESIS Part 05, AS-005
-**Constitutional Basis:** C-036 (Skills), C-037 (Business KPIs), C-038 (Billing), C-039 (Conversational config), C-040 (Domain specialization), C-041 (Tool authorization), C-042 (Vocabulary mandate — LAW), ADR-019 (RAG), ADR-020 (MCP)
+**Specification version:** 2.0
+**Date:** 2026-07-09 (v2.0 — Issue #1: WhatsApp Phone-as-Identity, ADR-023, TRAI opt-in enforcement, WhatsApp-native discovery and onboarding)
+**Status:** UPDATED — EA review pending (v2.0)
+**Constitutional Basis:** C-036 (Skills), C-037 (Business KPIs), C-038 (Billing), C-039 (Conversational config), C-040 (Domain specialization), C-041 (Tool authorization), C-042 (Vocabulary mandate — LAW), ADR-019 (RAG), ADR-020 (MCP), ADR-023 (WhatsApp Phone-as-Identity)
 **Proposed Acceptance Scenario:** AS-005 — Small Farmer Agricultural Advisory (to be ratified in GENESIS amendment)
 **Status:** DRAFT — pending EA review (R-013) and Founder approval (GENESIS Part 05)
 
@@ -18,7 +18,7 @@
 | **Professional type** | `AGRICULTURAL_ADVISOR_INDIA` |
 | **Persona tone** | Knowledgeable farming partner. Speaks like a trusted neighbour who happens to have expert knowledge — not an app, not a government officer. Uses regional farming vocabulary. Asks as much as it tells. Proactive, not reactive. Never shows technical data. |
 | **Expertise claim** | India crop management (cotton, soybean, wheat, rice, sugarcane, chana, onion, tomato, orange); ICAR disease-pest-weather correlations; district-level mandi price dynamics; SEBI/APMC/government policy impact on farm prices; PMFBY insurance procedures; Kharif-Rabi seasonal planning; water-constrained farming in Vidarbha, Marathwada, Punjab, AP, Karnataka. |
-| **Primary interface** | WhatsApp voice (Hindi, Marathi, Telugu, Tamil, Kannada, Punjabi, Bengali, Gujarati). Web portal as secondary only. |
+| **Primary interface** | WhatsApp voice (Hindi, Marathi, Telugu, Tamil, Kannada, Punjabi, Bengali, Gujarati). Identity via phone number (ADR-023). Web portal as monitoring/admin only — never the farmer's interface. |
 
 **C-042 mandate applies:** This agent is subject to the Vocabulary Mandate. All outputs to the farmer must be in farmer-appropriate language and actionable terms. The Vocabulary Translation Layer is mandatory in every Skill.
 
@@ -430,48 +430,140 @@ Agent never auto-resumes; resume only on explicit farmer command.
 
 ---
 
-## 6. Onboarding Conversation Flow (≤ 15 minutes, by WhatsApp voice)
+## 6. WhatsApp-Native Discovery, Identity, and Onboarding (ADR-023)
+
+### 6.1 How Farmers Discover WAOOAW
+
+Farmers never visit a website. Discovery channels (all physical-world first):
+
+| Channel | Mechanism | Message pre-filled? |
+|---|---|---|
+| QR code poster at KVK / bank / agri-shop | Farmer scans → WhatsApp opens | "नमस्कार, मला शेती सल्ला हवा आहे" |
+| Extension officer / word of mouth | Officer shares WAOOAW WhatsApp number | Farmer types any message |
+| Government Kisan portal link | Click-to-WhatsApp deep link | Auto-opens WhatsApp |
+| WhatsApp Business directory search | Farmer searches "farming advisor" | Farmer initiates |
+
+**No app download. No website. No form. The WAOOAW WhatsApp Business number is the entry point.**
+
+---
+
+### 6.2 Identity and Auto-Registration (ADR-023)
+
+When Suresh's first message arrives:
 
 ```
-PHASE 1 — Introduction (1 min)
-Agent (in farmer's language): "Namaste! I'm your farming advisor from WAOOAW.
-  I'll help you with weather alerts for your crops, market prices,
-  and planning for next season. All in [Marathi/Hindi/Telugu].
-  Which language is easiest for you?"
-Farmer: "[Language choice]"
-
-PHASE 2 — Land & Location (3 min)
-Agent: "Which village and district are you from?"
-Farmer: "Katol, Nagpur"
-Agent: "I know that area well — mostly cotton and oranges in Katol.
-  How many acres of land do you have?"
-Farmer: "3 acres / dhad 3 ekkar"
-Agent: "Do you have a borewell, canal water, or only rainfall?"
-Farmer: "Borewell, but limited water"
-
-PHASE 3 — Current Crop (3 min)
-Agent: "What are you growing right now?"
-Farmer: "Cotton / kapus"
-Agent: "When did you sow it?"
-Farmer: "June middle / June madhya"
-Agent: "So about [X] days old now. What was last season's crop?"
-Farmer: "Soybean / soya"
-
-PHASE 4 — Goals (2 min)
-Agent: "What's your main worry this season — too much rain, not enough rain,
-  market prices, or something else?"
-Farmer: "Market price and pest attacks"
-Agent: "Understood. I'll watch both for you.
-  Every morning I'll check on your crop — just a quick voice message.
-  You reply when you have time."
-
-PHASE 5 — Confirmation (1 min)
-Agent: "That's all I need! Starting tomorrow morning, I'll send you
-  a weather update and a quick crop check-in.
-  You can reply by voice anytime."
+Meta Webhook → Business Platform /api/v1/whatsapp/webhook
+    ↓
+Phone Identity Service (ADR-023):
+  1. Validate Meta HMAC signature → invalid = 403, no processing
+  2. Extract from: "+919876543210"
+  3. Check farmer_profiles.phone_number_whatsapp → NOT FOUND (new farmer)
+  4. Auto-register:
+     CREATE farmer_profiles: { phone_number_whatsapp, whatsapp_opt_in=TRUE,
+                                onboarding_channel=WHATSAPP, profile_status=INCOMPLETE }
+     CREATE organisations: { tenant_id, name="Farmer +91987..." }
+     CE.RecordEvidence(FARMER_REGISTERED, constitutional_basis="ADR-023; C-023")
+  5. Issue session token (internal JWT, 30 min, scoped to organisation_id)
+  6. Set DB: SET LOCAL app.tenant_id = '{organisation_id}'   ← RLS activates
+    ↓
+Agent Execution Loop: OPENING_MESSAGE prompt runs
 ```
 
-**Outcome:** Complete configuration by voice, no forms, farmer profile created.
+**TRAI Constitutional Prerequisite (always-ask action: `TRAI_OPT_IN_REQUIRED`):**
+The act of the farmer messaging WAOOAW first constitutes opt-in for the 24-hour service window. WAOOAW may NOT send proactive messages (weather alerts, price advisories) to a farmer who has not messaged WAOOAW within the last 24 hours. Outside the 24-hour window: send HSM pre-approved template only (`"नमस्कार! तुमच्या शेताचं काही महत्त्वाचं आहे. Reply करा."`) — farmer must re-initiate to open a full service window.
+
+---
+
+### 6.3 Onboarding Conversation (WhatsApp Voice — distributed ≤15 min total, AD-013 amended)
+
+The onboarding is distributed across 4–5 short voice exchanges over 1–2 days. The farmer controls the pace.
+
+```
+EXCHANGE 1 — First contact
+[Farmer sends any message — even just "Hi"]
+
+Agent (Marathi voice — OPENING_MESSAGE prompt):
+"नमस्कार! मी शेतकरी मित्र आहे — तुमचा शेती सल्लागार.
+मला तुमची थोडी माहिती द्या. तुमचं नाव आणि गाव सांगाल का?"
+[Hello! I'm Farmer Friend — your farming advisor.
+Tell me a little about yourself. What's your name and village?]
+
+EXCHANGE 2 — Name + location confirmed
+Farmer: "Suresh Kendre, Katol, Nagpur"
+
+Agent (INFERENCE_CONFIRM prompt — confirms inferences):
+"सुरेश दादा, काटोल नागपूर जिल्ह्यात — विदर्भात.
+तुम्ही कापूस किंवा संत्र्याची शेती करता का?"
+[Suresh, Katol is in Nagpur district — Vidarbha.
+Do you grow cotton or orange?]
+
+EXCHANGE 3 — Crop confirmed
+Farmer: "कापूस, आत्ता 3 आठवड्यांपूर्वी पेरला"
+[Cotton, sowed 3 weeks ago]
+
+Agent (progressive summary — voice):
+"ठीक आहे. मला आणखी एक गोष्ट — किती एकर शेत आहे
+आणि पाण्याची काय व्यवस्था आहे?"
+[Good. One more thing — how many acres and what's your water situation?]
+
+EXCHANGE 4 — Profile MINIMUM_VIABLE reached
+Farmer: "दीड एकर, बोअरवेल आहे पण पाणी कमी"
+[1.5 acres, borewell but limited water]
+
+Agent (completion confirmation — voice):
+"सुरेश दादा, तुमची नोंद झाली.
+उद्या सकाळी 7 वाजता मी तुमच्या कापसासाठी
+हवामानाची माहिती आणि एक प्रश्न पाठवतो.
+बघा, reply करा जेव्हा वेळ मिळेल."
+[Suresh, your registration is complete.
+Tomorrow at 7 AM I'll send you weather information for your cotton
+and one question. Reply when you have time.]
+
+→ farmer_profiles: profile_status = MINIMUM_VIABLE
+→ CE.RecordEvidence(FARMER_ONBOARDED, constitutional_basis="ADR-023; C-039")
+→ Temporal: schedule first morning check-in for next day 7 AM IST
+→ progressive_crop_state: initial state created
+```
+
+**No portal. No email. No form. The farmer is onboarded in their language, at their pace, via voice.**
+
+---
+
+### 6.4 Re-Engagement (Returning Farmer)
+
+When Suresh messages WAOOAW after a gap:
+
+```
+Phone Identity Service: phone → organisation_id → session token (known farmer)
+Agent reads context: profile COMPLETE, last interaction 45 days ago, crop season data
+Agent (voice): "सुरेश दादा! 45 दिवसांनंतर. मागच्या वर्षीचा कापूस कसा गेला?
+आता नवीन हंगामाचे काय विचार आहेत?"
+[Suresh! 45 days later. How did last year's cotton go?
+What are your plans for the new season?]
+```
+
+No re-registration. No re-onboarding. The agent remembers.
+
+---
+
+### 6.5 Skill 0: Phone-Verified Profile (new — ADR-023)
+
+**Skill type:** `WHATSAPP_PHONE_IDENTITY`
+**Execution model:** `PRODUCES_RECORD` — produces farmer_profiles record; evidence of registration
+**Triggered by:** First WhatsApp message from unknown phone number
+
+**Decision Space:**
+- **Authorized:** Auto-create farmer_profiles and organisations; issue internal session token; set whatsapp_opt_in=TRUE (consent established by farmer initiating contact); create CE evidence record for registration
+- **Prohibited:** Create a farmer record with whatsapp_opt_in=FALSE; proceed to any advisory skill before profile is MINIMUM_VIABLE; send any proactive message before TRAI opt-in is confirmed
+- **Always-ask:** `TRAI_OPT_IN_REQUIRED` — before any business-initiated outbound message, verify farmer has messaged within last 24 hours (Meta service window)
+
+**MCP Tools:**
+| Tool | MCP Server | Action | Authorization | Failure |
+|---|---|---|---|---|
+| Validate webhook | phone-identity-service | identity.validate_webhook | Always (internal) | REQUIRED — invalid signature = block all processing |
+| Identify farmer | phone-identity-service | identity.identify_phone | Always (internal) | REQUIRED |
+| Auto-register farmer | phone-identity-service | identity.auto_register | `FARMER_REGISTRATION` always authorized | REQUIRED |
+| Issue session token | phone-identity-service | identity.issue_session | Always (internal) | REQUIRED — no token = no DB access |
 
 ---
 
