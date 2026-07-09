@@ -179,6 +179,8 @@ Before submitting for EA review, confirm:
 - [ ] No prohibited action violates a Constitutional Floor (Emergency Stop, Evidence First, Audit Ledger)
 - [ ] **Learning from R011-01 / R012-01: any real-world authorization the agent needs from the customer (image consent, broker API access, platform credentials) must be an always-ask action type that creates a constitutional evidence record. An assumed authorization is a constitutional gap.**
 - [ ] **C-042 check: if your agent serves customers with limited technical or digital literacy — farmers, healthcare workers, artisans — the Vocabulary Mandate applies. Add a Vocabulary Translation Layer to every Skill. No technical data surfaced to customer. All outputs actionable in their vocabulary.**
+- [ ] **C-048 check (Information Non-Exploitation): does any Skill use the agent's information advantage against the customer's interests — steering them toward higher-tier plans they don't need, continuing execution of a known-failing strategy, or optimising for platform metrics at the expense of customer outcomes? If yes → redesign the Skill. C-048 violations cannot be fixed in the Decision Space — they require redesigning the Skill's objective.**
+- [ ] **C-049 check (Honest Limitation Disclosure): does every Self-Governance Diagnosis reasoning step include a C-049 check — "Can I deliver this customer's goal with my current capabilities? If not, do I say so explicitly?" The Self-Governance Escalation (Section 3.14.4) must include `c049_honest_assessment` in its output schema.**
 
 ## 10. Review and Approval
 
@@ -327,6 +329,8 @@ SECTION 7 — CONSTITUTIONAL GATE
 [ ] 7.5  C-045 check: all prompts approved and seeded (Section 2 gate above)
 [ ] 7.6  C-046 check: if agent is platform-internal → operates under the same constitutional governance
 [ ] 7.7  C-047 check: agent reasons first, code executes second — no code-determined actions
+[ ] 7.8  C-048 check: no Skill uses the agent's information advantage against the customer's interests
+[ ] 7.9  C-049 check: Self-Governance Diagnosis prompt includes c049_honest_assessment field; STOP_AND_DISCLOSE is a valid recommended_option
 
 SECTION 8 — ARCHITECTURE CHAIN GATE (Section 11 checklist completed)
 [ ] 8.1  Capabilities domain added to knowledge/business-capabilities.md

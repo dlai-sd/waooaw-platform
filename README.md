@@ -6,7 +6,7 @@
 
 ```
 Founding Corpus v1           Status: Ratified
-Version:                     0.26.0 — Session close: all 3 agents approved + billed; ADR-023 WhatsApp identity; UPI AutoPay; 24 prompts; AI-native execution layer (2026-07-09)
+Version:                     0.27.0 — Ethics layer: C-048 (Information Non-Exploitation) + C-049 (Honest Limitation Disclosure) (2026-07-09)
 Current Epoch:               Epoch 1 — Employment
 Current Gate:                G2-G4: PASSED | G5: Prerequisites met
                              ⛔ G5 CLEAR ≠ implementation authorized for any session
