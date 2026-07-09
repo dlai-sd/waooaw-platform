@@ -47,15 +47,29 @@ The GitHub Issue body IS additional Work Contract context. After completing BOOT
    - Label `awaiting:founder-approval` → BLOCKED. Do not begin execution. Wait.
    - Label `status:in-progress` → someone else has this. Raise a Constitutional Blocker.
    - Label `status:waiting` or no status label → proceed with execution.
+   - **Label `type:new-agent`** → you are executing the **New Agent Flow**.
+     Read the issue body fields (agent name, professional type, domain, persona, acceptance scenario).
+     Your Work Contract is: produce a complete agent spec following AGENT-AUTHORING-GUIDE sections 1–13,
+     then run the Architecture Chain Update (Section 11), then the Activation Gate (Section 14).
+     Your office: Business Architect drafts → Enterprise Architect reviews + runs gate.
+   - **Label `type:agent-update`** → you are executing the **Agent Update Flow**.
+     Read the `update-type:*` label to determine the change type.
+     Follow ONLY the Section 15 update path for that change type — no unnecessary full chain runs.
+     `update-type:new-skill` → Section 15 Type 1. `update-type:new-prompt` → Section 15 Type 2.
+     `update-type:new-mcp` → Section 15 Type 3. `update-type:new-constraint` → Section 15 Type 4.
+     `update-type:persona-extension` → Section 15 Type 5.
 3. **Create your branch:** `ib/{IB-number}/{short-slug}` e.g. `ib/009/foundation-implementation`
+   For agent lifecycle issues: `agent/{new-agent|update}/{agent-slug}` e.g. `agent/new/legal-professional`
 4. **Commit at every milestone** using conventional commit format:
    - `feat(service): description` — new feature
    - `constitutional(service): description` — implements a constitutional principle
    - `cct(service): CCT-XX-NN passing` — adds/fixes a CCT
    - `fix(service): description` — bug fix
    - `chore(service): description` — non-functional change
+   - `agent(spec): description` — agent spec change (new agent or update)
 5. **Update `constitution/PROJECT_STATE.md`** IN-PROGRESS CHECKPOINT after each milestone commit (BOOTSTRAP SESSION CHECKPOINTING rule).
 6. **Open a PR** using the `.github/pull_request_template.md` format when all Work Contract tasks are DONE.
+   For agent PRs: complete the **Agent Lifecycle Gate** section in the PR template.
 7. **Do not merge your own PR.** Comment: `@dlai-sd Ready for constitutional review. PR is complete.`
 
 ### When Asked to Review a PR

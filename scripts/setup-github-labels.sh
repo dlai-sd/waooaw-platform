@@ -24,6 +24,20 @@ create "type:architecture"        "e4e669" "IB item for an architecture office"
 create "type:constitutional-blocker" "d73a4a" "Formal Constitutional Blocker — halts work"
 create "type:sprint-plan"         "5319e7" "Sprint Plan awaiting Founder approval"
 create "platform-status"          "1d76db" "Pinned Platform Delivery Status issue"
+create "type:new-agent"           "0e8a16" "New Agent Specification — full 16-section template + Activation Gate"
+create "type:agent-update"        "e4e669" "Agent Update — specific change type, targeted Section 15 path"
+
+# ─── Agent update change type ────────────────────────────────────────────────
+create "update-type:new-skill"          "c2e0c6" "Agent update: adding a new skill"
+create "update-type:new-prompt"         "c2e0c6" "Agent update: new or changed prompt"
+create "update-type:new-mcp"            "c2e0c6" "Agent update: new MCP server or tool"
+create "update-type:new-constraint"     "f9d0c4" "Agent update: new constitutional constraint or claim"
+create "update-type:persona-extension"  "c2e0c6" "Agent update: new customer persona or domain"
+create "update-type:version-bump"       "ededed" "Agent update: bug fix / phrasing only"
+
+# ─── Agent lifecycle gate ─────────────────────────────────────────────────────
+create "gate:activation-gate"     "d4edda" "New agent — must pass Section 14 Activation Gate before activation"
+create "gate:update-gate"         "d4edda" "Agent update — must pass applicable Section 15 gate sections"
 
 # ─── Office ──────────────────────────────────────────────────────────────────
 create "office:runtime-professional"    "bfd4f2" "Office 10 — implements code"

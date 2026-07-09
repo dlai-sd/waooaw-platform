@@ -6,7 +6,7 @@
 
 ```
 Founding Corpus v1           Status: Ratified
-Version:                     0.22.0 — Agent Lifecycle Gate: AGENT-AUTHORING-GUIDE v2.0, GENESIS Part 05 amended, PR template (2026-07-09)
+Version:                     0.23.0 — Agent lifecycle issue templates; label system; copilot routing for new-agent + agent-update flows (2026-07-09)
 Current Epoch:               Epoch 1 — Employment
 Current Gate:                G2-G4: PASSED | G5: Prerequisites met
                              ⛔ G5 CLEAR ≠ implementation authorized for any session

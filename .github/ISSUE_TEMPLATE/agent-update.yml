@@ -1,0 +1,118 @@
+name: "Agent Update — Skill / Prompt / MCP / Constraint"
+description: "Update an existing agent spec. The change type determines which Section 15 update path runs."
+title: "[AGENT-UPDATE] "
+labels:
+  - "type:agent-update"
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Agent Update Request
+        This issue IS the Work Contract for the agent update. The change type you select below
+        determines EXACTLY which update path the assigned Copilot agent follows (Section 15 of
+        AGENT-AUTHORING-GUIDE). Only the minimum required layers for that change type are updated —
+        no unnecessary full chain runs.
+        
+        **The Copilot agent reads the `update-type` label to select the correct flow.**
+
+  - type: input
+    id: agent-name
+    attributes:
+      label: "Agent Being Updated"
+      description: "Which agent spec file is being changed?"
+      placeholder: "e.g. digital-marketing-agent.md (DIGITAL_MARKETING_HEALTHCARE)"
+    validations:
+      required: true
+
+  - type: input
+    id: current-version
+    attributes:
+      label: "Current Spec Version"
+      description: "The version being updated from"
+      placeholder: "e.g. v2.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: change-type
+    attributes:
+      label: "Change Type"
+      description: |
+        Select the primary change type. This selects the Section 15 update path and adds the correct label.
+        If you're making multiple change types in one update, select the MOST COMPLEX one.
+      options:
+        - "NEW_SKILL — Adding a new skill to an existing agent"
+        - "NEW_PROMPT — Adding or changing a prompt (specify: PHRASING_ONLY / BEHAVIOURAL / BREAKING)"
+        - "NEW_MCP — Adding a new MCP server or tool"
+        - "NEW_CONSTRAINT — Adding a new constitutional constraint or claim"
+        - "PERSONA_EXTENSION — Adding a new customer persona or domain"
+        - "VERSION_BUMP — Bug fix / phrasing only / no behavioural change"
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-changes
+    attributes:
+      label: "What Is Changing"
+      description: "Describe the change precisely. What section of the spec is affected? What new artifact is needed?"
+      placeholder: |
+        Adding Skill 14: Competitor Intelligence for the Maturity Phase bundle.
+        This requires: a new prompt (TRADING/COMPETITOR/WEEKLY_SCAN), a new MCP server
+        (competitor-scan-mcp), a new SQL table (competitor_scan_results), and a new
+        capability in Domain 11.
+    validations:
+      required: true
+
+  - type: textarea
+    id: why-changes
+    attributes:
+      label: "Why This Change"
+      description: "Constitutional or business justification. Which claim or capability drives this?"
+      placeholder: |
+        Customer feedback from Simulation 004 (Kiran) showed competitors are the primary
+        concern. Capability 11.6 authorizes competitive intelligence but the current spec
+        only covers it at Phase 3. This update adds it as a configurable option at Phase 2.
+    validations:
+      required: true
+
+  - type: textarea
+    id: minimum-update-layers
+    attributes:
+      label: "Minimum Layers to Update (per Section 15)"
+      description: "List the layers you expect to update. The assigned agent will verify this is complete."
+      placeholder: |
+        - architecture/reference/agents/digital-marketing-agent.md (new Skill section)
+        - architecture/reference/prompts/ (new prompt)
+        - infrastructure/postgres/init/03-enums-and-tables.sql (new table)
+        - infrastructure/postgres/init/04-rls-policies.sql (new RLS)
+        - architecture/reference/containers.md (new MCP)
+        - docker-compose.yml (new stub)
+    validations:
+      required: false
+
+  - type: dropdown
+    id: review-level
+    attributes:
+      label: "Review Level Required"
+      description: "What level of review does this change need?"
+      options:
+        - "Standard PR review (VERSION_BUMP or PHRASING_ONLY prompt)"
+        - "EA review required (BEHAVIOURAL prompt / NEW_SKILL / NEW_MCP / PERSONA_EXTENSION)"
+        - "EA review + Founder approval (BREAKING prompt / NEW_CONSTRAINT / new Constitutional claim)"
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: gate-sections
+    attributes:
+      label: "Gate Sections Affected (pre-declare)"
+      description: "Which sections of the Agent Activation Gate will need re-verification?"
+      options:
+        - label: "Section 2 — Prompt Gate (new or changed prompt)"
+        - label: "Section 3 — MCP Gate (new MCP server or tool)"
+        - label: "Section 4 — Skill Runtime Gate (new skill or runtime config change)"
+        - label: "Section 5 — Execution Loop Gate (new heartbeat or session trigger)"
+        - label: "Section 6 — Data Gate (new table or column)"
+        - label: "Section 7 — Constitutional Gate (new claim or constraint)"
+        - label: "Section 8 — Architecture Chain Gate (multiple layers affected)"

@@ -1,0 +1,135 @@
+name: "New Agent — Full Specification"
+description: "Introduce a new Digital Professional type to WAOOAW. Triggers the New Agent flow (AGENT-AUTHORING-GUIDE Sections 1–13 + Section 14 Activation Gate)."
+title: "[NEW-AGENT] "
+labels:
+  - "type:new-agent"
+  - "office:business-architect"
+  - "gate:activation-gate"
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## New Agent Specification Request
+        This issue IS the Work Contract for the new agent. Fill in all fields precisely.
+        The assigned Copilot agent reads these fields to execute the New Agent flow.
+        
+        **Flow triggered:** AGENT-AUTHORING-GUIDE Sections 1–13 (full spec) → Section 14 (Activation Gate) → EA Review → Founder Approval → GENESIS update
+        
+        **Executing offices (in order):**
+        1. Business Architect — writes the spec (Sections 1–10)
+        2. Enterprise Architect — runs Architecture Chain (Section 11) + reviews (Section 14 gate)
+        3. Founder — approves and ratifies in GENESIS
+
+  - type: input
+    id: agent-name
+    attributes:
+      label: "Agent Name"
+      description: "The human-readable name of the new agent type"
+      placeholder: "e.g. Legal Professional — India SME"
+    validations:
+      required: true
+
+  - type: input
+    id: professional-type
+    attributes:
+      label: "Professional Type Enum"
+      description: "The SCREAMING_SNAKE_CASE identifier for this agent type"
+      placeholder: "e.g. LEGAL_PROFESSIONAL_INDIA_SME"
+    validations:
+      required: true
+
+  - type: input
+    id: domain
+    attributes:
+      label: "Domain"
+      description: "The professional domain this agent operates in"
+      placeholder: "e.g. Legal Advisory"
+    validations:
+      required: true
+
+  - type: textarea
+    id: target-persona
+    attributes:
+      label: "Target Customer Persona"
+      description: "Who hires this agent? Name, business type, location, goal."
+      placeholder: |
+        Ankit, owner of a small textile business in Surat
+        Goal: contract review and GST compliance advice
+        Pain: can't afford a full-time lawyer
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance-scenario
+    attributes:
+      label: "Acceptance Scenario"
+      description: "One paragraph: what does a successful engagement look like? This will become AS-NNN in GENESIS."
+      placeholder: |
+        A small business owner receives a vendor contract, uploads it to WAOOAW,
+        and within 24 hours receives: a plain-language summary, the 3 highest-risk clauses,
+        and a redlined version. The owner negotiates based on the agent's guidance and avoids
+        a ₹1.5L liability that was hidden in Section 14.2.
+    validations:
+      required: true
+
+  - type: textarea
+    id: skills
+    attributes:
+      label: "Proposed Skill List"
+      description: "List the skills (capabilities) this agent should have. One per line."
+      placeholder: |
+        Skill 0: Client Profiling
+        Skill 1: Contract Review and Risk Scoring
+        Skill 2: Compliance Advisory (GST, Labour Law, MSME)
+        Skill 3: Document Drafting (NDA, Service Agreements)
+        Skill 4: Performance Analytics
+    validations:
+      required: true
+
+  - type: textarea
+    id: constitutional-basis
+    attributes:
+      label: "Expected Constitutional Claims"
+      description: "Which existing claims govern this agent? Any new claims needed?"
+      placeholder: |
+        Existing: C-036, C-037, C-038, C-039, C-040, C-041
+        Possibly new: C-04X — Legal advice boundary (agent advises, customer decides)
+    validations:
+      required: false
+
+  - type: dropdown
+    id: execution-model
+    attributes:
+      label: "Primary Execution Model"
+      description: "How does this agent execute actions?"
+      options:
+        - "APPROVAL_GATE (customer approves each significant action)"
+        - "PRE_AUTHORIZED / PAAS (customer pre-authorizes a Decision Space, agent executes autonomously)"
+        - "PRODUCES_RECORD (agent produces artifacts; customer confirms)"
+        - "Mixed (specify in spec)"
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: c042-check
+    attributes:
+      label: "C-042 Vocabulary Mandate Check"
+      description: "Does this agent serve customers with limited technical/digital literacy?"
+      options:
+        - label: "YES — Vocabulary Translation Layer is mandatory. Agent outputs must be in customer's occupational vocabulary."
+        - label: "NO — standard professional language is appropriate for this customer persona."
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: confirmation
+    attributes:
+      label: "Confirmation"
+      options:
+        - label: "I confirm this agent does not duplicate an existing approved agent type in GENESIS"
+          required: true
+        - label: "I confirm at least one Acceptance Scenario can be cited (or will be drafted as part of this spec)"
+          required: true
+        - label: "I understand the full Activation Gate (Section 14) must pass before this agent can be activated"
+          required: true
