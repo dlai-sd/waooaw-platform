@@ -164,6 +164,11 @@ The AI Runtime is an MCP client. Agent-specific capabilities that require real-t
 | `push-notification-mcp` | Business Platform (approval notifications, skill alerts) | Firebase FCM / APNs push notifications for approval requests and skill alerts | Sidecar container (dev), Container Apps (cloud) |
 | `platform-operations-mcp` | Platform Operations Agent (L1/L2/L3) | Platform health data aggregation, Temporal API, incident management (C-046) | Sidecar container (dev), Container Apps (cloud) |
 | `prompt-registry-mcp` | AI Runtime (AD-018 Prompt Governance) | Serves active prompt versions from `institutional.agent_prompt_versions`; invalidates cache on version change | Sidecar container (dev, lightweight), Container Apps (cloud) |
+| `market-data-mcp` | Trading Agent (Skills 1, 3, 4) | NSE/BSE live price feed, OHLCV candles, options chain, OI/Greeks, India VIX, crypto prices (CoinDCX/WazirX) | Sidecar container (dev), Container Apps (cloud) |
+| `crypto-exchange-mcp` | Trading Agent (Skill 4) | Crypto spot + DCA execution on CoinDCX / WazirX (India compliant exchanges) | Sidecar container (dev), Container Apps (cloud) |
+| `nse-calendar-mcp` | Trading Agent (all skills) | NSE/BSE market holidays, circuit filter status, exchange halts | Sidecar container (dev), Container Apps (cloud) |
+| `enam-mcp` | Agricultural Advisor Agent (Skill 3) | eNAM (National Agriculture Market) portal price data | Sidecar container (dev), Container Apps (cloud) |
+| `government-scheme-mcp` | Agricultural Advisor Agent (Skills 3, 4, 5) | PMFBY status, MSP announcements, APMC rules, government scheme updates (India) | Sidecar container (dev), Container Apps (cloud) |
 
 ### MCP Architecture Principles (ADR-020)
 

@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **Last Updated:** 2026-07-09
-**Version:** 0.20.0
+**Version:** 0.21.0
 **Session:** 2026-07-09 close
 
 ---
@@ -35,6 +35,7 @@ FOCUS:        Digital Marketing Agent v2.0 APPROVED and committed.
 | v0.18.0 | Developer simulation — fill all spec gaps | Proto extended (BudgetContext, SyntheticApprovalContext, ApprovalType). 9 new OpenAPI endpoints. RLS for 8 tables. MCP Tool Catalogues. 5 Temporal workflow definitions. ADR-021 (OAuth vault). ADR-022 (Razorpay India + GST). 5 new infrastructure containers. ADR-INDEX updated. |
 | v0.19.0 | P2 complete: Payment/GST tables, Fitness Studio, OAuth/retention, domain taxonomy | SQL: +organisations/contracts/profile/skill_config columns; business_domain_taxonomy; payment_transactions; gst_invoices; data_retention_records. Agent spec: Fitness Studio persona, Skill 7/8 fixes. ADR-021 GA4 + token revocation. |
 | v0.20.0 | AI-native execution layer — constitution through local environment | C-045 (Prompt=Constitutional Artifact LAW); C-046 (Platform under governance LAW); C-047 (Agent-Driven Execution LAW). AD-018 (Prompt Versioning HARD); AD-019 (Agent-Driven Orchestration HARD). DP-016/017/018. Domain 12 (Platform Operations, 5 capabilities). Reasoning Trace spec + SQL schema. Prompt Library: README + 7 core DMA+CE+Ops prompts with output schemas. Agent Execution Loop spec (the fundamental C-047 shift). Platform Operations Agent spec (L1/L2/L3, 4 skills, agent comms protocol, capability registry). CE proto: reasoning_trace_id in ValidateAction. AI Runtime: Prompt Registry + Execution Loop Coordinator + Reasoning Trace Writer components. SQL: agent_prompt_versions (seeded), agent_reasoning_traces, agent_capability_registry, agent_messages, platform_operations_events, agent_health_scores. RLS/grants for institutional schema. New containers: platform-operations-mcp (8126), prompt-registry-mcp (8127). |
+| v0.21.0 | Prompt library complete + Trading/Agricultural review + Simulations 005+006 | 9 missing DMA prompts completed (total 24 active). GENESIS Part 05 prompt governance. Trading Agent: C-043 added, 3 prompts, 3 missing MCPs (market-data-mcp 8132, crypto-exchange-mcp 8133, nse-calendar-mcp 8134). Agricultural Advisor: 4 prompts, 2 missing MCPs (enam-mcp 8135, government-scheme-mcp 8136). AD-013 amended (distributed onboarding for C-042). AD-020 (STT India Regional Languages HARD). Simulation 005 (Rahul Trading Pune): 10 gaps, 2 constitutional discoveries. Simulation 006 (Suresh Agricultural Nagpur): 8 gaps, 2 constitutional discoveries. SQL: weather_alert_log +imd_warning_id/stt_confidence; farmer_profiles +WhatsApp/language; trading_profiles table; trading_session_records table. |
 
 ---
 

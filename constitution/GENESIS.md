@@ -2158,6 +2158,32 @@ No Skill may call an MCP tool that is not explicitly declared in its specificati
 
 ---
 
+# The Prompt Library Standard (C-045, AD-018, DP-016)
+
+Every Agent Specification must include a Prompt Catalogue section that identifies all LLM inference points in every Skill pipeline. The Prompt Library is a constitutional artifact governed under the same process as the Agent Specification itself.
+
+**Prompt Governance Rules:**
+
+1. Every prompt is identified by: `{AGENT_TYPE}/{SKILL_TYPE}/{PIPELINE_STEP}/v{MAJOR}.{MINOR}.{PATCH}`
+2. Every prompt carries a constitutional basis citation (which claims/drivers govern its content)
+3. Prompts are classified by change type:
+   - **BREAKING** — changes what the agent CAN do (requires Founder approval, same as Decision Space amendment)
+   - **BEHAVIOURAL** — changes HOW the agent decides (requires EA review)
+   - **PHRASING_ONLY** — changes wording without affecting decisions (standard PR review)
+4. No prompt may be activated in production without an entry in `institutional.agent_prompt_versions` with `is_active = TRUE`
+5. The AI Runtime must REFUSE to execute an inference for any (skill_type, pipeline_step) without an active approved prompt — this is `INFERENCE_BLOCKED`, not a graceful degradation
+
+**Prompt Catalogue section in every Agent Specification:**
+```
+## Prompt Catalogue
+
+| Prompt ID | Pipeline Step | Change Type | Constitutional Basis |
+|---|---|---|---|
+| AGENT_TYPE/SKILL_TYPE/STEP/v1.0.0 | [description] | BEHAVIOURAL | C-XXX; AD-YYY |
+```
+
+---
+
 # The Learning Loop Standard
 
 Every agent type specification must describe how Skills self-improve (C-037, C-040):

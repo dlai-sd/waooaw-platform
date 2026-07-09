@@ -961,7 +961,26 @@ VALUES
     ('DMA/SYNTHETIC_APPROVAL/CONFIDENCE', '1.0.0', 'SYNTHETIC_APPROVAL', 'CONFIDENCE_ASSESSMENT', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/digital-marketing-agent-prompts.md', 'C-044; AD-017', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
     ('DMA/SELF_GOVERNANCE/DIAGNOSIS', '1.0.0', 'SELF_GOVERNANCE', 'DIAGNOSIS', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/digital-marketing-agent-prompts.md', 'C-037; DP-015', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
     ('CE/EVALUATE_POLICY/CONSTITUTIONAL', '1.0.0', 'EVALUATE_POLICY', 'CONSTITUTIONAL_REASONING', 'CONSTITUTIONAL_ENGINE', 'architecture/reference/prompts/digital-marketing-agent-prompts.md', 'C-003; C-023; AD-008', 'BREAKING', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    ('PLATFORM_OPS/L1/HEALTH_CHECK', '1.0.0', 'PLATFORM_HEALTH_MONITORING', 'HEALTH_CHECK', 'PLATFORM_OPERATIONS', 'architecture/reference/prompts/digital-marketing-agent-prompts.md', 'C-046; C-037', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW());
+    ('PLATFORM_OPS/L1/HEALTH_CHECK', '1.0.0', 'PLATFORM_HEALTH_MONITORING', 'HEALTH_CHECK', 'PLATFORM_OPERATIONS', 'architecture/reference/prompts/digital-marketing-agent-prompts.md', 'C-046; C-037', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    -- 9 additional DMA prompts (v0.21.0)
+    ('DMA/CUSTOMER_PROFILING/OPENING_MESSAGE', '1.0.0', 'CUSTOMER_PROFILING', 'OPENING_MESSAGE', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/digital-marketing-agent-prompts.md', 'C-039; C-044', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('DMA/CUSTOMER_PROFILING/INFERENCE_CONFIRM', '1.0.0', 'CUSTOMER_PROFILING', 'INFERENCE_CONFIRM', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/digital-marketing-agent-prompts.md', 'C-039; C-002', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('DMA/MARKET_RESEARCH/NEEDS_HEATMAP', '1.0.0', 'MARKET_RESEARCH', 'NEEDS_HEATMAP', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/digital-marketing-agent-prompts.md', 'C-037; C-002', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('DMA/MARKET_RESEARCH/MATURITY_REPORT', '1.0.0', 'MARKET_RESEARCH', 'MATURITY_REPORT', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/digital-marketing-agent-prompts.md', 'C-037; C-039; C-002', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('DMA/CONTENT_STRATEGY/MONTHLY_PLAN', '1.0.0', 'CONTENT_STRATEGY', 'MONTHLY_PLAN', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/digital-marketing-agent-prompts.md', 'C-036; C-039; C-040', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('DMA/INSTAGRAM_MARKETING/HASHTAGS', '1.0.0', 'INSTAGRAM_MARKETING', 'HASHTAGS', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/digital-marketing-agent-prompts.md', 'C-036; C-040', 'PHRASING_ONLY', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('DMA/SELF_GOVERNANCE/ESCALATION', '1.0.0', 'SELF_GOVERNANCE', 'ESCALATION', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/digital-marketing-agent-prompts.md', 'C-037; DP-015', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('DMA/PERFORMANCE_NARRATIVE/MONTHLY', '1.0.0', 'PERFORMANCE_ANALYTICS', 'MONTHLY_NARRATIVE', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/digital-marketing-agent-prompts.md', 'C-037; C-039; DP-011', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('PLATFORM_OPS/L2/INCIDENT_DIAGNOSIS', '1.0.0', 'INCIDENT_RESOLUTION', 'DIAGNOSIS', 'PLATFORM_OPERATIONS', 'architecture/reference/prompts/digital-marketing-agent-prompts.md', 'C-046; C-001', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    -- Trading Agent prompts (v0.21.0)
+    ('TRADING/MARKET_ANALYSIS/TRADE_SETUP', '1.0.0', 'MARKET_TECHNICAL_ANALYSIS', 'TRADE_SETUP', 'TRADING_FO_CRYPTO', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-036; C-040; C-041', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('TRADING/RISK_MANAGEMENT/LOSS_LIMIT_ALERT', '1.0.0', 'RISK_MANAGEMENT', 'LOSS_LIMIT_ALERT', 'TRADING_FO_CRYPTO', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-036; C-001; C-023', 'BREAKING', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('TRADING/PERFORMANCE/SESSION_REPORT', '1.0.0', 'TRADING_PERFORMANCE_ANALYTICS', 'SESSION_REPORT', 'TRADING_FO_CRYPTO', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-037; C-039; DP-011', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    -- Agricultural Advisor prompts (v0.21.0)
+    ('AGRI/WEATHER_ADVISORY/FARMER_ALERT', '1.0.0', 'WEATHER_ADVISORY_FARMER', 'FARMER_ALERT', 'AGRICULTURAL_ADVISOR_INDIA', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-042; C-040; C-039', 'BREAKING', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('AGRI/CROP_HEALTH/MORNING_CHECKIN', '1.0.0', 'CROP_HEALTH_CONVERSATIONAL', 'MORNING_CHECKIN', 'AGRICULTURAL_ADVISOR_INDIA', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-042; C-039', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('AGRI/MANDI_PRICE/SELL_TIMING', '1.0.0', 'MANDI_PRICE_INTELLIGENCE', 'SELL_TIMING', 'AGRICULTURAL_ADVISOR_INDIA', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-042; C-037; C-039', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('AGRI/CROP_PLANNING/NEXT_SEASON', '1.0.0', 'CROP_SEASON_PLANNING', 'NEXT_SEASON', 'AGRICULTURAL_ADVISOR_INDIA', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-042; C-037; C-039', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW());
 
 -- Agent Reasoning Traces — primary AI audit artifact (C-047, AD-008, AD-019)
 -- See architecture/reference/agent-reasoning-trace.md for full spec.
@@ -1098,3 +1117,71 @@ CREATE TABLE institutional.agent_health_scores (
 );
 
 CREATE INDEX idx_health_contract ON institutional.agent_health_scores(contract_id, period_start DESC);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Simulation gap fixes (v0.21.0 — Simulation 005 + 006)
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- GAP-A003: PMFBY adverse event confirmation needs IMD warning ID linkage
+ALTER TABLE business.weather_alert_log
+    ADD COLUMN imd_warning_id      VARCHAR(100),   -- IMD district warning reference ID
+    ADD COLUMN imd_warning_date    DATE,            -- date of IMD warning (for PMFBY cross-reference)
+    ADD COLUMN stt_confidence      NUMERIC(3,2);   -- STT confidence score if alert was generated from voice input (AD-020)
+
+-- GAP-A001: farmer WhatsApp contact and language fields
+ALTER TABLE business.farmer_profiles
+    ADD COLUMN IF NOT EXISTS phone_number_whatsapp VARCHAR(20),  -- +91XXXXXXXXXX
+    ADD COLUMN IF NOT EXISTS whatsapp_opt_in       BOOLEAN NOT NULL DEFAULT FALSE,
+    ADD COLUMN IF NOT EXISTS primary_language      VARCHAR(30),  -- MARATHI|HINDI|TELUGU|TAMIL|KANNADA|PUNJABI
+    ADD COLUMN IF NOT EXISTS onboarding_channel    VARCHAR(20) NOT NULL DEFAULT 'WHATSAPP';  -- WHATSAPP|PORTAL
+
+-- GAP-T002: Trading profile (structured profile for trading customers)
+-- Equivalent of digital_marketing_profiles for the trading agent
+CREATE TABLE IF NOT EXISTS business.trading_profiles (
+    id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organisation_id             UUID NOT NULL REFERENCES business.organisations(id),
+    -- Capital allocation
+    fo_capital_inr              BIGINT,            -- F&O capital in paise
+    crypto_capital_inr          BIGINT,            -- Crypto capital in paise
+    -- Risk parameters (confirmed at onboarding)
+    daily_loss_limit_pct        NUMERIC(4,2),      -- percentage of F&O capital
+    daily_loss_limit_inr        BIGINT,            -- absolute amount in paise
+    max_position_pct            NUMERIC(4,2),      -- percentage per trade
+    strategy_type               VARCHAR(30),        -- DIRECTIONAL|VOLATILITY|HYBRID
+    session_start_ist           TIME,
+    session_end_ist             TIME,
+    session_auto_start          BOOLEAN NOT NULL DEFAULT FALSE,  -- GAP-T005: explicit customer choice
+    -- Instruments approved
+    approved_instruments        TEXT[],             -- NIFTY|BANKNIFTY|CRYPTO_BTC|CRYPTO_ETH
+    approved_exchanges          TEXT[],             -- ZERODHA|UPSTOX|COINDCX|WAZIRX
+    -- Profile status
+    profile_status              dm_profile_status NOT NULL DEFAULT 'INCOMPLETE',
+    customer_confirmed_at       TIMESTAMPTZ,
+    created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT uq_trading_profile_org UNIQUE (organisation_id)
+);
+
+CREATE INDEX idx_trading_profile_org ON business.trading_profiles(organisation_id);
+
+-- GAP-T006: Trading session records for slippage tracking
+CREATE TABLE business.trading_session_records (
+    id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    employment_contract_id      UUID NOT NULL REFERENCES business.employment_contracts(id),
+    organisation_id             UUID NOT NULL REFERENCES business.organisations(id),
+    session_date                DATE NOT NULL,
+    session_started_at          TIMESTAMPTZ NOT NULL,
+    session_ended_at            TIMESTAMPTZ,
+    end_reason                  VARCHAR(50),        -- NORMAL|LOSS_LIMIT|SESSION_WINDOW|EMERGENCY_STOP
+    -- P&L
+    session_pnl_inr_paise       BIGINT NOT NULL DEFAULT 0,
+    trades_executed             INTEGER NOT NULL DEFAULT 0,
+    trades_won                  INTEGER NOT NULL DEFAULT 0,
+    total_slippage_inr_paise    BIGINT NOT NULL DEFAULT 0,
+    -- Constitutional evidence
+    cal_event_id                UUID REFERENCES constitutional.evidence_records(id),
+    created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_trading_session_contract ON business.trading_session_records(employment_contract_id);
+CREATE INDEX idx_trading_session_date ON business.trading_session_records(organisation_id, session_date DESC);

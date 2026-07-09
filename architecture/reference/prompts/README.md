@@ -65,3 +65,10 @@ Every agent prompt must produce a response conforming to this base schema plus t
 | CE/EVALUATE_POLICY/CONSTITUTIONAL | CE | Constitutional policy reasoning | v1.0.0 | ACTIVE |
 | PLATFORM_OPS/L1/HEALTH_CHECK | Ops Agent | L1 health check reasoning | v1.0.0 | ACTIVE |
 | PLATFORM_OPS/L2/INCIDENT_DIAGNOSIS | Ops Agent | L2 incident diagnosis | v1.0.0 | ACTIVE |
+| TRADING/MARKET_ANALYSIS/TRADE_SETUP | Skill 1 | Identify trade setup from market data | v1.0.0 | ACTIVE |
+| TRADING/RISK_MANAGEMENT/LOSS_LIMIT_ALERT | Skill 3 | Halt/warn on risk threshold breach | v1.0.0 | ACTIVE |
+| TRADING/PERFORMANCE/SESSION_REPORT | Skill 5 | End-of-session P&L narrative | v1.0.0 | ACTIVE |
+| AGRI/WEATHER_ADVISORY/FARMER_ALERT | Skill 1 | Translate weather to farmer advice (C-042) | v1.0.0 | ACTIVE |
+| AGRI/CROP_HEALTH/MORNING_CHECKIN | Skill 2 | Morning crop health check-in | v1.0.0 | ACTIVE |
+| AGRI/MANDI_PRICE/SELL_TIMING | Skill 3 | Optimal sell timing advisory | v1.0.0 | ACTIVE |
+| AGRI/CROP_PLANNING/NEXT_SEASON | Skill 4 | Next season crop recommendation | v1.0.0 | ACTIVE |

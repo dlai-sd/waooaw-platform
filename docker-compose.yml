@@ -202,6 +202,13 @@ services:
       # AI Agent Execution Layer (v0.20.0 — C-047, AD-018, AD-019)
       MCP_PLATFORM_OPERATIONS_URL: http://platform-operations-mcp:8126
       PROMPT_REGISTRY_URL: http://prompt-registry-mcp:8127
+      # Trading Agent MCPs
+      MCP_MARKET_DATA_URL: http://market-data-mcp:8132
+      MCP_CRYPTO_EXCHANGE_URL: http://crypto-exchange-mcp:8133
+      MCP_NSE_CALENDAR_URL: http://nse-calendar-mcp:8134
+      # Agricultural Advisor MCPs (additional)
+      MCP_ENAM_URL: http://enam-mcp:8135
+      MCP_GOVERNMENT_SCHEME_URL: http://government-scheme-mcp:8136
     depends_on:
       postgres:
         condition: service_healthy

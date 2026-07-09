@@ -199,15 +199,17 @@ Any architectural change that shifts the budget of one segment must be evaluated
 
 ---
 
-## AD-013 — Conversational Configuration Completeness (v0.8.0)
+## AD-013 — Conversational Configuration Completeness (v0.8.0, amended v0.21.0)
 
-**Requirement:** The agent configuration flow — credential provision, goal setting, scheduling, Decision Space definition — must be completable through natural language conversation in under 15 minutes for a first-time customer, with no prior technical knowledge required.
+**Requirement:** The agent configuration flow — credential provision, goal setting, scheduling, Decision Space definition — must be completable through natural language conversation in under 15 minutes of active conversation time for a first-time customer, with no prior technical knowledge required.
+
+**Amendment (v0.21.0 — GAP-A002, Simulation 006):** For C-042-governed agents (agricultural advisory, any agent where the customer has limited digital literacy), the 15-minute limit applies to TOTAL ACTIVE CONVERSATION TIME, which may be distributed across multiple short sessions over 1-3 days. A WhatsApp voice onboarding that occurs across 4 exchanges of ~3 minutes each is constitutionally valid. The constraint is the total conversation burden, not the calendar duration.
 
 **Type:** HARD — derives from C-039 (conversational configuration is a constitutional obligation).
 
-**Constitutional Basis:** C-039 (conversational configuration — CONFIRMED); GENESIS "The customer never manages prompts — the customer manages business outcomes"
+**Constitutional Basis:** C-039 (conversational configuration — CONFIRMED); C-042 (Vocabulary Mandate — farmers cannot sustain 15-minute uninterrupted sessions); GENESIS "The customer never manages prompts"
 
-**Capabilities Constrained:** 1.7 (Configure via Conversation), 1.8 (Trial Enrollment), 4.5 (Set Skill Goals)
+**Capabilities Constrained:** 1.7 (Configure via Conversation), 1.8 (Trial Enrollment), 4.5 (Set Skill Goals), 10.x (all Agricultural Advisory capabilities)
 
 **Architectural consequence:** A Conversational Configuration Engine component must exist in AI Runtime. It must be capable of deriving a complete, valid Decision Space from natural language input. The resulting Decision Space must be presented back to the customer in business terms for confirmation before being committed.
 
@@ -349,3 +351,21 @@ Note: This driver requires CE.ValidateAction to carry budget state as a first-cl
 4. Temporal does NOT decide what the agent does — it only ensures durability of the agent's decision
 5. The reasoning call and its output are recorded as a Reasoning Trace (see agent-reasoning-trace.md)
 6. CE.ValidateAction is called on the agent's proposed action BEFORE Temporal activity execution — the agent reasons, CE validates, Temporal executes
+
+---
+
+## AD-020 — STT for India Regional Languages (v0.21.0 — C-042, GAP-A004)
+
+**Requirement:** Any agent subject to C-042 (Vocabulary Mandate) that accepts voice input must use a Speech-to-Text service capable of accurately transcribing India regional languages — including domain-specific agricultural vocabulary (pesticide names, crop terms, measurement units). The STT service must be configurable per agent deployment and must be validated for accuracy on domain vocabulary before activation.
+
+**Type:** HARD — derives from C-042 (LAW). A STT service that mishears "Carbendazim" as "Carbon" produces wrong agricultural advice. STT accuracy is a prerequisite for C-042 vocabulary compliance, not an implementation detail.
+
+**Constitutional Basis:** C-042 (Vocabulary Mandate); C-039 (conversational interface); AD-015 (Multilingual Voice Interface)
+
+**Capabilities Constrained:** All agricultural advisory capabilities (Domain 10); any future C-042-governed agent using voice input
+
+**Architectural Consequence:**
+1. The whatsapp-voice-mcp implements STT via a configurable provider (Google Cloud Speech / Azure Cognitive Services / IndicSTT — per ADR-023 when written)
+2. Domain vocabulary validation: before deployment, the STT is tested against a domain vocabulary checklist (50+ crop names, pesticide names, measurement units in target language)
+3. Misrecognition fallback: if STT confidence is below 0.75, the agent asks for clarification in farmer's language before acting on the transcription
+4. STT output is stored as-is in the evidence record alongside the original audio reference — for audit and PMFBY purposes

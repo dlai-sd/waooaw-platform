@@ -6,7 +6,7 @@
 
 ```
 Founding Corpus v1           Status: Ratified
-Version:                     0.20.0 — AI-native execution layer: Prompt Library, Agent Execution Loop, Platform Operations Agent, Reasoning Traces (2026-07-09)
+Version:                     0.21.0 — All prompts complete (24 total); Trading + Agricultural Agent review + simulations 005+006 (2026-07-09)
 Current Epoch:               Epoch 1 — Employment
 Current Gate:                G2-G4: PASSED | G5: Prerequisites met
                              ⛔ G5 CLEAR ≠ implementation authorized for any session
