@@ -445,3 +445,47 @@ Before serving any cached response: re-personalize with customer-specific fields
 ```
 
 **Capabilities Constrained:** AI Runtime prompt dispatch; Agricultural Advisor Skill 1 (Weather) and Skill 2 (Crop Health) — highest cache benefit; DMA Market Research (Skill 1) and Performance Narrative (Skill 5)
+
+---
+
+## AD-025 — Real-time Cross-Customer Isolation Standard (v0.34.0)
+
+**Requirement:** No real-time data from one customer's agent execution session may influence, inform, or contaminate another customer's agent reasoning at any time. This applies at three levels: (1) DATA — Tier 3 (Platform Intelligence) may only be updated from completed, historical sessions with a minimum 24-hour lag before data enters Tier 3; active PAAS session positions, pending orders, and intra-session decisions are EXCLUDED from Tier 3 permanently. (2) PROCESS — each customer's agent execution workflow is an independent Temporal workflow instance with its own isolated event history; no shared runtime state, no shared LLM context, no batch reasoning across customers. (3) TIMING — for agents whose advice could create coordinated market or supply effects (Trading, Agricultural), the timing of the same action recommendation must be staggered across customers to prevent artificial market impact.
+
+**Type:** HARD — Constitutional Floor. The Trading agent component is additionally governed by SEBI Algorithmic Trading regulations (SEBI Alert Order Circular 2023 and subsequent). Cross-customer order contamination is not only a C-052 violation — it is a potential SEBI regulatory violation (coordinated trading, front-running). The architectural isolation is a regulatory compliance requirement, not a design preference.
+
+**Constitutional Basis:** C-052 (Context Fidelity, Isolation, Uniqueness — LAW); C-034 (Data isolation per employment contract); C-048 (Non-Exploitation); C-036 (Skills as constitutional units)
+
+**SEBI Regulatory Basis (Trading Agent):**
+- SEBI Algo Trading regulations require that discretionary orders for different client accounts be independently decided
+- Front-running prohibition: knowing one client's pending order and placing another client's order ahead of it is illegal
+- Coordinated trading (same algorithmic signal → same orders across multiple accounts simultaneously) requires specific SEBI authorization as a Portfolio Management Service (PMS) — WAOOAW is NOT registered as a PMS
+- A Trading Agent that mirrors the same order for N customers simultaneously has become an unregistered PMS, regardless of whether each customer independently configured the same strategy
+
+**Tier 3 Temporal Fence (all agents):**
+```
+Tier 3 update pipeline:
+  Session ENDS (PAAS session closed / advisory session concluded)
+       ↓ Wait: minimum 24 hours
+       ↓ Anonymize: strip all customer-identifying fields
+       ↓ Aggregate: combine with other completed sessions in the cohort
+       ↓ Only then: update Tier 3 Platform Intelligence store
+
+Prohibited:
+  ❌ Active PAAS session position data → Tier 3 (any latency)
+  ❌ In-flight order data → Tier 3
+  ❌ Today's TRADE_SETUP reasoning output → Tier 3 (even after session ends same day)
+  ❌ Real-time farmer crop observations → Tier 3 (must be aggregated with delay)
+```
+
+**Agricultural Timing Stagger:**
+When the SEASONAL_ADVISORY_PLAN or MORNING_CHECKIN produces the same action recommendation for multiple farmers in the same district (e.g., all cotton farmers: spray Imidacloprid), the delivery timing must be staggered within a agronomically valid window:
+```
+Valid window: 48-hour action window (spray within 48 hours is agronomy-equivalent)
+Stagger rule: Distribute farmer delivery times across the 48-hour window
+              based on farm ID hash — deterministic but distributed
+Result: No artificial demand spike at pesticide shops; no appearance of coordinated
+        bulk messaging; each farmer's advice remains individual
+```
+
+**Capabilities Constrained:** AI Runtime Tier 3 update pipeline; Trading Agent PAAS session workflow; Agricultural Advisor batch processing; all LLM prompt dispatch (no cross-customer batch prompting)

@@ -1,8 +1,8 @@
 # Autonomous Trading Professional — FO & Crypto
 
-**Specification version:** 1.6
-**Date:** 2026-07-11 (v1.6 — Off-Topic Boundary: Section 4.17, redirect hooks, SEBI boundary, PLATFORM/BOUNDARY/OFF_TOPIC_REDIRECT)
-**Change:** C-050 Strategic Cognition Layer added. Pre-session market regime assessment (SESSION_PREP) and monthly portfolio health assessment (MONTHLY_PORTFOLIO_ASSESSMENT) prompts added.
+**Specification version:** 1.7
+**Date:** 2026-07-11 (v1.7 — C-052: Context Bootstrap, SEBI cross-customer contamination prohibition, Tier 3 temporal fence)
+**Change:** C-052 Context Fidelity + Isolation declared. Real-time cross-customer isolation is a SEBI regulatory requirement. Each customer's PAAS session is completely isolated; Tier 3 has 24-hour write lag; active session positions NEVER enter Tier 3.
 **Approved by Founder:** 2026-07-08 (v1.1); v1.4 pending Founder acknowledgment (BREAKING prompt before implementation sprint)
 **Constitutional Basis:** C-036 (Skills), C-037 (Business KPIs), C-038 (Billing), C-039 (Conversational config), C-040 (Domain specialization), C-041 (Tool authorization), C-043 (Financial Spend Authority Ceiling — the daily loss limit is a Constitutional Floor equivalent; same enforcement mechanism as paid advertising budget cap), ADR-019 (RAG), ADR-020 (MCP), ADR-018 (Emergency Stop Temporal signal)
 **Status:** DRAFT — pending EA review (R-012) and Founder approval (GENESIS Part 05)
@@ -691,6 +691,7 @@ billing:
 - [x] **C-050 check (Strategic Cognition): Section 4.15 added. TRADING/STRATEGIC/SESSION_PREP invoked at 9:15 IST pre-session to assess market regime alignment and session risk posture; TRADING/STRATEGIC/MONTHLY_PORTFOLIO_ASSESSMENT invoked monthly and on consecutive losses. Both prompts include strategic_reasoning_chain, portfolio_health (for monthly), session_proceed_decision (for daily), and c049_honest_assessment. Professional Template declares strategic_cognition block with 3 trigger events.**
 - [x] **C-051 check (Resource Transparency): Section 4.16 added. Trading agent uses monitoring-based UsageUnits (sessions executed/deferred, monthly reviews). minimum_model_tier declared for all prompts. ESCALATION_DECISION path emergency-exempt (C-001). TRADING/TOKEN_ECONOMY/USAGE_SUMMARY prompt added.**
 - [x] **C-036/C-037/C-048 check (Off-Topic Boundary): Section 4.17 added. 5 redirect hooks declared (session_preopen_signal, daily_pnl_status, pending_escalation, vix_regime_alert, monthly_review_available). Adjacent routing: general investment advice boundary clearly stated (SEBI regulatory, not just C-036). PLATFORM/BOUNDARY/OFF_TOPIC_REDIRECT prompt in Prompt Catalogue.**
+- [x] **C-052 check (Context Fidelity, Isolation, Uniqueness): Context Bootstrap Protocol declared (loads Decision Space, session state, performance history at session start). Real-time Cross-Customer Isolation: each customer's PAAS session is an independent Temporal workflow; Tier 3 writes have 24-hour lag; active session position data NEVER enters Tier 3. SEBI compliance: Trading Agent is NOT a PMS; same trade for multiple customers simultaneously = SEBI violation; Cross-Customer Isolation Enforcer (M-2) enforces at runtime. Context Grounding: every historical assertion cites a specific evidence record; ungrounded assertions trigger GROUNDING_VIOLATION alert.**
 
 ---
 

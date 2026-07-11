@@ -363,3 +363,36 @@ Principles are listed in order of constitutional priority — Constitutional Flo
 - A PR that routes a PHRASING_ONLY prompt to FRONTIER is a DP-020 violation and requires EA justification
 
 ---
+
+## DP-021 — Creative Fingerprint Uniqueness (v0.34.0)
+
+**Directive:** Every content-generating agent must build, maintain, and enforce a Creative Fingerprint for each customer — a customer-private, continuously-updated profile that captures brand voice, content performance patterns, and competitor differentiation signals. Before generating any customer-facing content, the agent must load the Creative Fingerprint and apply it as a binding constraint on the output. Two customers with identical profiles in the same geography must receive differentiated content outputs. The Creative Fingerprint is the implementation mechanism of C-052 uniqueness obligation.
+
+**Why:** A Digital Marketing Professional hired by Dr. Mehta's dental clinic and Dr. Sharma's dental clinic (two blocks apart in Pune) has a clear professional obligation: each client gets a unique digital presence. Producing similar content for both is a betrayal of both clients. The Creative Fingerprint makes uniqueness measurable and enforceable — it is not a creative aspiration but a constitutional requirement.
+
+**Creative Fingerprint Components:**
+
+| Component | What it captures | How it's learned | Where stored |
+|---|---|---|---|
+| Brand Voice Profile | Customer-specific vocabulary, tone, phrases, emoji patterns | Updated on every approval/rejection with semantic embedding | business.customer_creative_fingerprints.voice_embedding |
+| Content Performance DNA | Which content types, themes, CTAs drive this customer's KPI | Skill 5 analytics, approval rate by content type | business.customer_creative_fingerprints.performance_dna |
+| Competitor Differentiation Profile | What nearby competitors are posting (to avoid) | Competitive intelligence MCP, weekly refresh | business.customer_creative_fingerprints.competitor_exclusion_embedding |
+| Approval Pattern Profile | What this customer always approves vs rejects (statistical pattern) | Updated on every approval/rejection decision | business.customer_creative_fingerprints.approval_pattern |
+| Hyper-Local Identity | Location-specific references, community anchors, local events | Onboarding + progressive updates | business.customer_creative_fingerprints.local_identity |
+
+**Uniqueness Guarantee Mechanism:**
+Before finalizing any customer-facing content:
+1. Compute semantic similarity between the generated draft and: (a) the customer's own last 30 days of content, and (b) the competitor exclusion embedding
+2. If similarity to competitor content > 0.75: regenerate with explicit diversity constraint
+3. If similarity to own recent content > 0.85: regenerate with novelty instruction
+4. Log the uniqueness_score in the content's evidence record (constitutional audit of differentiation)
+
+**Constitutional Basis:** C-052 (Creative Uniqueness — LAW); C-048 (Non-Exploitation — identical content for competing businesses is a service fraud); C-037 (Business KPI — non-unique content underperforms on SEO and brand differentiation)
+
+**Enforcement:**
+- `business.customer_creative_fingerprints` table is a required dependency for any content generation skill activation
+- A content generation skill that does NOT load the Creative Fingerprint before generating is a DP-021 violation
+- The Creative Standard Enforcer component in AI Runtime enforces style; DP-021 requires the Fingerprint to additionally enforce uniqueness vs competitors and recency vs own content
+- The uniqueness_score in the evidence record is the audit trail for DP-021 compliance
+
+---

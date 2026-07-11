@@ -1246,6 +1246,61 @@ CREATE INDEX idx_strategic_state_org ON business.agent_strategic_state(organisat
 CREATE INDEX idx_strategic_state_contract ON business.agent_strategic_state(employment_contract_id);
 
 -- ─────────────────────────────────────────────────────────────────────────────
+-- Agent Memory Layer (v0.34.0 — C-052, AD-025, DP-021)
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- Creative Fingerprint — per customer, per professional type (DMA and future content agents)
+-- Stores the living profile that guarantees content uniqueness (DP-021)
+CREATE TABLE business.customer_creative_fingerprints (
+    id                              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organisation_id                 UUID NOT NULL REFERENCES business.organisations(id),
+    employment_contract_id          UUID NOT NULL REFERENCES business.employment_contracts(id),
+    professional_type               VARCHAR(100) NOT NULL,
+    -- Brand Voice Profile (pgvector embedding of approved content style)
+    voice_embedding                 vector(1536),                  -- text-embedding-3-small dimension
+    voice_embedding_updated_at      TIMESTAMPTZ,
+    -- Content Performance DNA (JSONB: performance by content_type, theme, cta)
+    performance_dna                 JSONB NOT NULL DEFAULT '{}',
+    -- Competitor Differentiation Profile (pgvector embedding of competitor content to avoid)
+    competitor_exclusion_embedding  vector(1536),
+    competitor_embedding_refreshed_at TIMESTAMPTZ,
+    -- Approval Pattern Profile (JSONB: approval rates by content_type, rejection reasons)
+    approval_pattern                JSONB NOT NULL DEFAULT '{}',
+    -- Hyper-Local Identity (JSONB: neighbourhood references, local events, staff stories)
+    local_identity                  JSONB NOT NULL DEFAULT '{}',
+    -- Uniqueness tracking
+    last_uniqueness_score           DECIMAL(4,3),                  -- most recent content's uniqueness_score
+    total_approvals                 INTEGER NOT NULL DEFAULT 0,
+    total_rejections                INTEGER NOT NULL DEFAULT 0,
+    -- Audit
+    tenant_id                       UUID NOT NULL,
+    created_at                      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at                      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT uq_fingerprint_contract UNIQUE (employment_contract_id)
+);
+CREATE INDEX idx_fingerprint_org ON business.customer_creative_fingerprints(organisation_id);
+CREATE INDEX idx_fingerprint_voice ON business.customer_creative_fingerprints USING ivfflat (voice_embedding vector_cosine_ops) WHERE voice_embedding IS NOT NULL;
+CREATE INDEX idx_fingerprint_competitor ON business.customer_creative_fingerprints USING ivfflat (competitor_exclusion_embedding vector_cosine_ops) WHERE competitor_exclusion_embedding IS NOT NULL;
+
+-- Tier 3 temporal fence — tracks when session data becomes eligible for Tier 3 aggregation
+-- Enforces the 24-hour lag requirement of AD-025
+CREATE TABLE institutional.tier3_eligibility_log (
+    id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    employment_contract_id      UUID NOT NULL,
+    professional_type           VARCHAR(100) NOT NULL,
+    session_id                  UUID NOT NULL,                     -- The session whose data is being tracked
+    session_closed_at           TIMESTAMPTZ NOT NULL,
+    anonymized_at               TIMESTAMPTZ,
+    eligible_for_tier3_at       TIMESTAMPTZ GENERATED ALWAYS AS (session_closed_at + INTERVAL '24 hours') STORED,
+    tier3_written_at            TIMESTAMPTZ,                      -- When data was actually written to Tier 3
+    data_categories             TEXT[],                           -- e.g., ['performance_pattern', 'strategy_effectiveness']
+    is_trading_session          BOOLEAN NOT NULL DEFAULT FALSE,    -- Trading sessions: position data NEVER written to Tier 3
+    created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_tier3_eligible ON institutional.tier3_eligibility_log(eligible_for_tier3_at) WHERE tier3_written_at IS NULL;
+CREATE INDEX idx_tier3_trading ON institutional.tier3_eligibility_log(is_trading_session, eligible_for_tier3_at);
+
+-- ─────────────────────────────────────────────────────────────────────────────
 -- Token Economy Layer (v0.32.0 — C-051, ADR-024)
 -- ─────────────────────────────────────────────────────────────────────────────
 

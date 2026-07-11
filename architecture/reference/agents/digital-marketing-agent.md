@@ -1,7 +1,7 @@
 # Digital Marketing Professional — Healthcare & Beauty
 
-**Specification version:** 2.3
-**Date:** 2026-07-11 (v2.3 — Off-Topic Boundary: Section 3.17, redirect hooks, adjacent routing, PLATFORM/BOUNDARY/OFF_TOPIC_REDIRECT)
+**Specification version:** 2.4
+**Date:** 2026-07-11 (v2.4 — C-052: Context Bootstrap, Creative Fingerprint Enforcer, Tier 3 temporal fence)
 **Change from v2.0:** Section 3.15 (Strategic Cognition Standard) added. Professional Template: strategic_cognition block declared. C-050 added to Constitutional Checklist. Prompt Catalogue section (§10b) added. Two new prompts catalogued.
 **Constitutional Basis:** C-036 (Skills), C-037 (Business KPIs), C-038 (Billing), C-039 (Conversational config), C-040 (Domain specialization), C-041 (Tool authorization), ADR-019 (RAG), ADR-020 (MCP), C-048 (Information Non-Exploitation — LAW), C-049 (Honest Limitation Disclosure — LAW), C-050 (Strategic Cognition Obligation — LAW)
 **Reviewed by:** Enterprise Architect — R-014 (v2.0), R-018 (v2.1)
@@ -1226,6 +1226,7 @@ ProfessionalTemplate:
 - [x] **C-050 check (Strategic Cognition): Section 3.15 added. DMA/STRATEGIC/SKILL_ACTIVATION_PLAN invoked after Skill 1 maturity report; DMA/STRATEGIC/PERFORMANCE_ASSESSMENT invoked monthly + on deviation. Both prompts include strategic_reasoning_chain, portfolio_health, c050_strategic_intent, c048_check, and c049_honest_assessment fields. Professional Template declares strategic_cognition block with 4 trigger events.**
 - [x] **C-051 check (Resource Transparency): Section 3.16 added. UsageUnits defined (Content Creation, Quick Edit, Research, Strategy, Report). minimum_model_tier declared for every prompt in Prompt Catalogue. Customer budget communication thresholds (30%, 10%) declared. Emergency override never blocks service. DMA/TOKEN_ECONOMY/USAGE_SUMMARY prompt added.**
 - [x] **C-036/C-037/C-048 check (Off-Topic Boundary): Section 3.17 added. 5 redirect hooks declared (competitor_activity, kpi_pace, pending_approval, maturity_score_change, google_review_alert). Adjacent professional routing declared (accounting, HR, legal). PLATFORM/BOUNDARY/OFF_TOPIC_REDIRECT prompt in Prompt Catalogue. 3-attempt graduation pattern declared.**
+- [x] **C-052 check (Context Fidelity, Isolation, Uniqueness): Context Bootstrap Protocol loads Decision Space, session state, performance history, and Creative Fingerprint before every session. Creative Fingerprint Enforcer (M-3) runs before every content generation — uniqueness_score computed vs competitor content (threshold 0.75) and own recent content (threshold 0.85). Fingerprint is updated online after every approval/rejection. Two competing dental clinics in the same neighbourhood are guaranteed differentiated content. Tier 3 has 24-hour write lag — no real-time cross-customer data.**
 
 ---
 

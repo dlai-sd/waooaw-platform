@@ -217,6 +217,22 @@ GRANT SELECT         ON institutional.message_classification_log TO business_app
 GRANT SELECT, INSERT, UPDATE ON institutional.prompt_cache_metadata TO ai_runtime_app;
 GRANT SELECT                 ON institutional.prompt_cache_metadata TO business_app;
 
+-- Agent Memory Layer tables (v0.34.0 — C-052, AD-025, DP-021)
+
+-- customer_creative_fingerprints: tenant-scoped RLS (Creative Fingerprint is strictly customer-private — C-034)
+ALTER TABLE business.customer_creative_fingerprints ENABLE ROW LEVEL SECURITY;
+CREATE POLICY creative_fingerprint_tenant_isolation ON business.customer_creative_fingerprints
+    FOR ALL
+    TO business_app, ai_runtime_app
+    USING (tenant_id = current_setting('app.tenant_id', TRUE)::UUID);
+GRANT SELECT, INSERT, UPDATE ON business.customer_creative_fingerprints TO ai_runtime_app;
+GRANT SELECT                 ON business.customer_creative_fingerprints TO business_app;
+
+-- tier3_eligibility_log: no RLS (institutional — platform-wide audit of Tier 3 data flow)
+-- Contains no customer-identifying data — only employment_contract_id and timing
+GRANT SELECT, INSERT, UPDATE ON institutional.tier3_eligibility_log TO ai_runtime_app;
+GRANT SELECT                 ON institutional.tier3_eligibility_log TO business_app;
+
 -- Developer note: phone-identity-service needs its own DB role with limited permissions:
 -- CREATE ROLE phone_identity_app LOGIN;
 -- GRANT SELECT, INSERT, UPDATE ON business.phone_identity_sessions TO phone_identity_app;

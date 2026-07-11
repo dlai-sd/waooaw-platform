@@ -122,12 +122,205 @@ Customer receives translated, voice-delivered advisory
 - Does NOT suppress safety information — if a crop is at risk, the farmer-vocabulary version still conveys urgency
 - Does NOT translate language between two literate users (this is not a general translation service)
 
+## Agent Memory Layer (v0.34.0 — C-052, AD-025, DP-021)
+
+**Authority:** C-052 (Context Fidelity, Isolation, Uniqueness — LAW); AD-025 (Real-time Cross-Customer Isolation — HARD); DP-021 (Creative Fingerprint Uniqueness)
+
+The Agent Memory Layer governs how each agent instance loads, maintains, and protects its customer context across sessions. It is the operational expression of C-052. It consists of four sub-components.
+
+---
+
+### M-1. Context Bootstrap Protocol
+
+**Invoked:** At the start of EVERY agent execution cycle — before ANY LLM call.
+
+The agent does NOT start reasoning from scratch each session. It bootstraps from the persisted state of its employment relationship.
+
+```
+Context Bootstrap sequence (order is invariant):
+
+1. LOAD DECISION SPACE (versioned — always current)
+   → From: business.employment_contracts (decision_space_config JSONB)
+   → Validates: version matches what was configured at last session
+   → If version changed: mark session with DECISION_SPACE_UPDATED flag
+
+2. LOAD SESSION STATE (what happened last time)
+   → From: institutional.agent_reasoning_traces
+      (last 5 traces for this employment_contract_id, ordered by created_at DESC)
+   → From: business.agent_strategic_state (current plan + portfolio health)
+   → From: business.agent_progressive_state (Agricultural: crop state; DMA: maturity score)
+   → Purpose: agent knows where it left off — not starting fresh
+
+3. LOAD PERFORMANCE HISTORY (KPI trajectory)
+   → From: skill-specific tables (digital_marketing_profiles, trading_session_records, etc.)
+   → Window: last 90 days or last 3 review periods (whichever is shorter)
+   → Purpose: agent knows if it is performing well or not, before generating advice
+
+4. LOAD CREATIVE FINGERPRINT (content-generating agents only)
+   → From: business.customer_creative_fingerprints
+   → Includes: voice_embedding, performance_dna, competitor_exclusion_embedding,
+               approval_pattern, local_identity
+   → Purpose: uniqueness guarantee before any content generation (DP-021)
+
+5. LOAD ACTIVE REDIRECT HOOKS (Token Economy Layer)
+   → From: live DB reads (competitor activity, price trends, pending items)
+   → Purpose: off-topic deflection hooks pre-fetched (Section 3.17)
+
+6. ASSEMBLE TIER 2 RAG CONTEXT
+   → Combine all loaded state into structured Customer Context block
+   → This is what the LLM receives as Tier 2 context
+   → Structured format ensures agent can cite specific evidence records
+
+BOOTSTRAP COMPLETE — agent is grounded in its customer relationship before reasoning.
+```
+
+**Anti-Hallucination Guard (Grounding Rule):**
+
+The assembled Customer Context block is the ONLY source of historical truth the agent may assert. If the agent's reasoning produces a statement about prior customer interactions, it MUST be traceable to a specific record in the Customer Context block. The evidence record ID is cited in the reasoning chain.
+
+```python
+# AI Runtime enforces this before returning any LLM output
+def validate_historical_assertions(reasoning_output: str, customer_context: CustomerContext) -> bool:
+    """
+    Scan reasoning_output for any claims about prior customer interactions.
+    Every such claim must reference a specific evidence record in customer_context.
+    If an assertion cannot be grounded → redact it and log a GROUNDING_VIOLATION.
+    """
+    assertions = extract_historical_assertions(reasoning_output)
+    for assertion in assertions:
+        if not customer_context.can_ground(assertion):
+            log_grounding_violation(assertion)
+            return False  # Trigger re-generation without the ungrounded assertion
+    return True
+```
+
+A GROUNDING_VIOLATION is logged to `institutional.agent_reasoning_traces` with `grounding_failed: true`. Three grounding violations in a session trigger a CONSTITUTIONAL_ALERT to Platform Operations.
+
+---
+
+### M-2. Cross-Customer Isolation Enforcer
+
+**Invoked:** On every Tier 3 read and write operation.
+
+Tier 3 (Platform Intelligence) is the only data store that aggregates across customers. The Cross-Customer Isolation Enforcer ensures no real-time contamination occurs.
+
+```
+TIER 3 READ (LLM context injection):
+  Allowed:    Historical aggregate patterns (>24h lag, anonymized)
+  Prohibited: Any data tagged with an active session_id
+  
+TIER 3 WRITE (after session ends):
+  Allowed:    Session data AFTER: session closed + 24h elapsed + anonymized
+  Prohibited: Writing ANY active session data (positions, pending orders, today's decisions)
+
+ENFORCEMENT MECHANISM:
+  Every Tier 3 record carries:
+    - session_closed_at: TIMESTAMPTZ
+    - anonymized_at: TIMESTAMPTZ  
+    - eligible_for_tier3_at: session_closed_at + INTERVAL '24 hours'
+    
+  AI Runtime Tier 3 query filter (mandatory WHERE clause):
+    WHERE eligible_for_tier3_at <= NOW()
+    AND session_id != :current_session_id  -- belt-and-suspenders: never read own session
+```
+
+**Trading Agent — SEBI Compliance Check (additional):**
+
+Before every PAAS trade execution, a SEBI compliance check verifies:
+```python
+def sebi_isolation_check(proposed_action: TradeAction, session_context: TradingSessionContext) -> bool:
+    """
+    Verify this trade decision is not coordinated with any other customer's session.
+    This is an architectural invariant — the trading workflow has no mechanism
+    to access other sessions. This check verifies the invariant is holding.
+    """
+    # The only data this session has seen is:
+    assert session_context.tier3_sources_all_historic  # no real-time Tier 3
+    assert session_context.customer_id == proposed_action.decision_space_owner
+    # If either assertion fails → SEBI_ISOLATION_BREACH → halt session, alert platform ops
+    return True
+```
+
+---
+
+### M-3. Creative Fingerprint Enforcer
+
+**Invoked:** Before any content generation LLM call for content-generating agents (DMA).
+
+```
+UNIQUENESS CHECK sequence (before generating any customer-facing content):
+
+1. Load Creative Fingerprint from Context Bootstrap (step 4 above)
+
+2. Generate draft content (LLM call)
+
+3. UNIQUENESS VALIDATION:
+   a. Compute semantic similarity: draft vs customer's last 30 days of content
+      Threshold: 0.85 → REGENERATE with novelty constraint
+   b. Compute semantic similarity: draft vs competitor_exclusion_embedding
+      Threshold: 0.75 → REGENERATE with differentiation constraint
+
+4. If 3 regeneration attempts all fail uniqueness checks:
+   → Return best-scoring draft
+   → Log UNIQUENESS_DEGRADED in evidence record (for human review)
+   → Customer is not told about the degradation in the content itself
+
+5. Tag the final content:
+   uniqueness_score: 0.0-1.0  (stored in evidence record)
+   competitor_differentiation_score: 0.0-1.0
+   brand_voice_alignment_score: 0.0-1.0
+```
+
+**Fingerprint Update (online learning — after every approval/rejection):**
+
+```python
+# Called by AI Runtime after EVERY customer approval or rejection decision
+def update_creative_fingerprint(decision: ApprovalDecision, content: GeneratedContent):
+    if decision.approved:
+        # Reinforce: move voice_embedding toward this content's embedding
+        fingerprint.voice_embedding = lerp(fingerprint.voice_embedding, 
+                                           content.embedding, alpha=0.1)
+        # Record performance DNA signal
+        fingerprint.performance_dna.record_success(content.content_type, content.theme)
+    else:
+        # Rejection: add content embedding to rejection_exclusion_set
+        fingerprint.approval_pattern.add_rejection(content.embedding, decision.reason)
+```
+
+---
+
+### M-4. Agricultural Timing Stagger
+
+**Invoked:** Before dispatching any outbound agricultural advice that may apply to multiple farmers simultaneously.
+
+When the same action recommendation applies to N farmers in the same district (detected by batch scheduling), delivery is staggered across a 48-hour window using farm ID hash:
+
+```python
+def compute_delivery_offset(farm_id: UUID, action_window_hours: int = 48) -> timedelta:
+    """
+    Deterministic stagger: same farm always gets same offset (predictable for testing)
+    but offsets are distributed across the window.
+    """
+    hash_val = int(hashlib.sha256(farm_id.bytes).hexdigest()[:8], 16)
+    offset_minutes = hash_val % (action_window_hours * 60)
+    return timedelta(minutes=offset_minutes)
+
+# Result: 1,000 Nagpur cotton farmers who all need to spray Imidacloprid
+# receive the alert spread across 48 hours — no artificial demand spike,
+# no appearance of mass coordinated messaging.
+# Each farmer's alert is still accurate for their specific farm state.
+```
+
+---
+
 ## What AI Runtime does NOT do
 - Does NOT write to the Constitutional Audit Ledger
 - Does NOT make authority decisions
 - Does NOT call Business Platform or Constitutional Engine
 - Does NOT store state (every request is stateless — context is passed by the caller)
 - Does NOT know which customer or professional it is serving — it only knows the Decision Space it was given
+- **Does NOT access other customers' active session data — Cross-Customer Isolation Enforcer (M-2) enforces this**
+- **Does NOT generate content without loading the Creative Fingerprint first (for content agents) — M-3 enforces this**
 
 ## New Component (v0.8.0 — C-039, AD-013)
 

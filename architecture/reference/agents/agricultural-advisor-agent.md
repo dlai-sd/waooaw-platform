@@ -1,7 +1,7 @@
 # Agricultural Advisory Professional — India Small & Marginal Farmers
 
-**Specification version:** 2.5
-**Date:** 2026-07-11 (v2.5 — Off-Topic Boundary: Section 4.17, redirect hooks in farmer language, adjacent routing, PLATFORM/BOUNDARY/OFF_TOPIC_REDIRECT)
+**Specification version:** 2.6
+**Date:** 2026-07-11 (v2.6 — C-052: Context Bootstrap, Per-Farm Independence, Agricultural Timing Stagger (M-4), Tier 3 temporal fence)
 **Status:** UPDATED — EA review R-018 APPROVED
 **Constitutional Basis:** C-036 (Skills), C-037 (Business KPIs), C-038 (Billing), C-039 (Conversational config), C-040 (Domain specialization), C-041 (Tool authorization), C-042 (Vocabulary mandate — LAW), ADR-019 (RAG), ADR-020 (MCP), ADR-023 (WhatsApp Phone-as-Identity), C-048 (Information Non-Exploitation — LAW), C-049 (Honest Limitation Disclosure — LAW)
 **Proposed Acceptance Scenario:** AS-005 — Small Farmer Agricultural Advisory (to be ratified in GENESIS amendment)
@@ -1059,6 +1059,7 @@ billing:
 - [x] **C-050 check (Strategic Cognition): Section 4.15 added. AGRI/STRATEGIC/SEASONAL_ADVISORY_PLAN invoked post-onboarding + season start; AGRI/STRATEGIC/ADVISORY_EFFECTIVENESS_REVIEW invoked monthly + harvest. Professional Template declares strategic_cognition block with 5 trigger events.**
 - [x] **C-051 check (Resource Transparency): Section 4.16 added. UsageUnits defined in farmer language (Marathi + English). zero-cost classification gate estimated at 71%. Emergency alerts and PMFBY evidence are always exempt from budget. WhatsApp budget communication messages specified in Marathi. AGRI/TOKEN_ECONOMY/USAGE_SUMMARY prompt added.**
 - [x] **C-036/C-037/C-048 check (Off-Topic Boundary): Section 4.17 added. 5 redirect hooks declared (weather_48h_action, crop_health_observation, mandi_price_trend, pending_hint, pmfby_evidence_pending). Adjacent routing: government loans → suggest Kisan call centre; veterinary → refer to local vet. All deflection messages in farmer vocabulary (C-042). PLATFORM/BOUNDARY/OFF_TOPIC_REDIRECT prompt in Prompt Catalogue.**
+- [x] **C-052 check (Context Fidelity, Isolation, Uniqueness): Context Bootstrap Protocol loads Decision Space, session state (Progressive Crop State Model), and performance history before every session. Per-Farm Independence: each farmer's advisory is independently computed from their specific crop state, farm profile, and observation history. Agricultural Timing Stagger (M-4): when the same action applies to multiple farmers in the same district, delivery is offset by farm ID hash across a 48-hour window to prevent artificial demand spikes at pesticide shops. Tier 3 has 24-hour write lag. Context Grounding: agent cites specific CAL evidence records when referencing prior advisory history.**
 - [x] **C-050 check (Strategic Cognition): Section 4.15 added. AGRI/STRATEGIC/SEASONAL_ADVISORY_PLAN invoked after onboarding and at each new season to plan which skills serve this farmer's specific constraints; AGRI/STRATEGIC/ADVISORY_EFFECTIVENESS_REVIEW invoked monthly, on engagement deviation, and at harvest. Both prompts include strategic_reasoning_chain, portfolio_health, per-farmer skill assessment, and c049_honest_assessment. Professional Template declares strategic_cognition block with 5 trigger events including HARVEST_REVIEW.**
 
 ---
