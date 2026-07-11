@@ -197,6 +197,26 @@ CREATE POLICY agent_strategic_state_tenant_isolation ON business.agent_strategic
 GRANT SELECT, INSERT, UPDATE ON business.agent_strategic_state TO ai_runtime_app;
 GRANT SELECT                 ON business.agent_strategic_state TO business_app;
 
+-- Token Economy Layer tables (v0.32.0 — C-051, ADR-024)
+
+-- customer_usage_units: tenant-scoped RLS (customer cannot see other customers' budgets)
+ALTER TABLE business.customer_usage_units ENABLE ROW LEVEL SECURITY;
+CREATE POLICY customer_usage_units_tenant_isolation ON business.customer_usage_units
+    FOR ALL
+    TO business_app, ai_runtime_app
+    USING (tenant_id = current_setting('app.tenant_id', TRUE)::UUID);
+GRANT SELECT, INSERT, UPDATE ON business.customer_usage_units TO ai_runtime_app;
+GRANT SELECT                 ON business.customer_usage_units TO business_app;
+
+-- message_classification_log: no RLS (institutional — platform-wide, no customer data)
+-- Access controlled by DB role grants only
+GRANT SELECT, INSERT ON institutional.message_classification_log TO ai_runtime_app;
+GRANT SELECT         ON institutional.message_classification_log TO business_app;
+
+-- prompt_cache_metadata: no RLS (institutional — platform-wide, cache keys never contain customer data)
+GRANT SELECT, INSERT, UPDATE ON institutional.prompt_cache_metadata TO ai_runtime_app;
+GRANT SELECT                 ON institutional.prompt_cache_metadata TO business_app;
+
 -- Developer note: phone-identity-service needs its own DB role with limited permissions:
 -- CREATE ROLE phone_identity_app LOGIN;
 -- GRANT SELECT, INSERT, UPDATE ON business.phone_identity_sessions TO phone_identity_app;

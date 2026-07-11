@@ -1,7 +1,7 @@
 # Agricultural Advisory Professional — India Small & Marginal Farmers
 
-**Specification version:** 2.3
-**Date:** 2026-07-11 (v2.3 — Strategic Cognition Layer: Section 4.15, SEASONAL_ADVISORY_PLAN + ADVISORY_EFFECTIVENESS_REVIEW prompts, C-050)
+**Specification version:** 2.4
+**Date:** 2026-07-11 (v2.4 — Token Economy Layer: Section 4.16, UsageUnits, minimum_model_tier, C-051)
 **Status:** UPDATED — EA review R-018 APPROVED
 **Constitutional Basis:** C-036 (Skills), C-037 (Business KPIs), C-038 (Billing), C-039 (Conversational config), C-040 (Domain specialization), C-041 (Tool authorization), C-042 (Vocabulary mandate — LAW), ADR-019 (RAG), ADR-020 (MCP), ADR-023 (WhatsApp Phone-as-Identity), C-048 (Information Non-Exploitation — LAW), C-049 (Honest Limitation Disclosure — LAW)
 **Proposed Acceptance Scenario:** AS-005 — Small Farmer Agricultural Advisory (to be ratified in GENESIS amendment)
@@ -581,6 +581,44 @@ strategic_cognition:
 
 ---
 
+## 4.16 Token Economy Standard
+
+> **Constitutional basis:** C-051, AD-022, AD-023, DP-020, ADR-024
+
+### Usage Units — Agricultural Advisor (₹200/month)
+
+| Unit Type | Label (Marathi) | Label (English) | Monthly | Rollover | Emergency exempt |
+|---|---|---|---|---|---|
+| `ADVISORY_DAY` | सल्ला दिवस | Advisory Days | 30 | No | **Yes (weather disaster, disease outbreak)** |
+| `CROP_QUESTION` | शेती प्रश्न | Extra crop questions | 10 bonus | No | No |
+| `SEASONAL_PLAN` | हंगाम योजना | Seasonal plan | 2/year | No | No |
+| `PMFBY_REPORT` | विमा अहवाल | Insurance report | Unlimited | N/A | **Yes (C-023)** |
+| `EMERGENCY_ALERT` | आनीबाणी इशारा | Emergency alert | Unlimited | N/A | **Yes (C-001)** |
+
+**Classification gate (WhatsApp messages):**
+
+| Category | Examples | Path | Est. % |
+|---|---|---|---|
+| `EMERGENCY` | BANDH KAR, STOP, bandh karo | CE.EmergencyStop | 1% |
+| `ACKNOWLEDGMENT` | ok, theek hai, achha, 👍 | Template | 30% |
+| `PRICE_QUERY` | aaj bhav kya hai, onion rate | agmarknet-mcp direct | 15% |
+| `WEATHER_QUERY` | kal barish hogi? | weather API direct | 10% |
+| `REPEAT_QUESTION` | Same advisory asked within 7 days | Cache response | 10% |
+| `SOCIAL_CHATTER` | kaise ho, namaste, jokes | Graceful deflection | 5% |
+| `ACTIONABLE_ADVISORY` | patti par keede, kab spray karoon | MID_TIER LLM | 20% |
+| `COMPLEX_ADVISORY` | kya crop lagaun, mushkil mein hai | FRONTIER LLM | 9% |
+
+**Estimated zero-cost rate: ~71%**
+
+**Budget communication (WhatsApp Marathi voice):**
+- Day 1 reset: “नया महिना! 30 दिवस पूरी सेवा ready है.”
+- 30% remaining: “Suresh dada, 9 अनी दिवस आहे या महिन्यात.” (9 more days this month)
+- 10% remaining: “3 दिवस बाकी. आणीबाणी संदेश नेहमी येतील.” (3 days left. Emergency alerts always come)
+- Month end: “उद्या नया महिना सुरु होतो. आज राती नीट झोप.” (New month tomorrow. Sleep well tonight.)
+- **Emergency override**: “Suresh dada, या महिन्याचे दिवस संपले, पण हे हवामान alert महत्त्वाचे आहे आणि नेहमी येतो.” (Month's days are over, but this weather alert is important and always comes through.)
+
+---
+
 ## 5. Emergency Stop
 
 Emergency Stop for this agent uses a **WhatsApp-initiated path** — a new pattern not present in other agents (which use the web PWA WebSocket button). This path is fully specified below to support CCT writing and implementation. AD-001 (≤250ms) applies.
@@ -970,6 +1008,8 @@ billing:
 - [x] Prohibited actions include medical advice, financial product advice, cross-farm data sharing
 - [x] **C-048 check (Information Non-Exploitation): No Skill uses the agent's information advantage against the farmer's interests. The hint system explicitly excludes hints about crops the farmer cannot grow, products they cannot afford, or decisions that only benefit the platform. The Skill 3 price advisory does not recommend holding or selling based on WAOOAW commercial relationships — only the farmer's income is optimised.**
 - [x] **C-049 check (Honest Limitation Disclosure): `AGRI/SELF_GOVERNANCE/DIAGNOSIS` prompt (monthly farmer advisory assessment) includes `c049_honest_assessment: CAN_DELIVER_WITH_CORRECTIONS | CANNOT_DELIVER_MUST_DISCLOSE` field. If the agent cannot deliver value for a specific farmer (crop outside ICAR knowledge base, language unsupported, resource constraints make advice unactionable), it must say so explicitly. `STOP_AND_DISCLOSE` is a valid `recommended_option`. All diagnosis in farmer vocabulary (C-042). R017-01 fix applied.**
+- [x] **C-050 check (Strategic Cognition): Section 4.15 added. AGRI/STRATEGIC/SEASONAL_ADVISORY_PLAN invoked post-onboarding + season start; AGRI/STRATEGIC/ADVISORY_EFFECTIVENESS_REVIEW invoked monthly + harvest. Professional Template declares strategic_cognition block with 5 trigger events.**
+- [x] **C-051 check (Resource Transparency): Section 4.16 added. UsageUnits defined in farmer language (Marathi + English). zero-cost classification gate estimated at 71%. Emergency alerts and PMFBY evidence are always exempt from budget. WhatsApp budget communication messages specified in Marathi. AGRI/TOKEN_ECONOMY/USAGE_SUMMARY prompt added.**
 - [x] **C-050 check (Strategic Cognition): Section 4.15 added. AGRI/STRATEGIC/SEASONAL_ADVISORY_PLAN invoked after onboarding and at each new season to plan which skills serve this farmer's specific constraints; AGRI/STRATEGIC/ADVISORY_EFFECTIVENESS_REVIEW invoked monthly, on engagement deviation, and at harvest. Both prompts include strategic_reasoning_chain, portfolio_health, per-farmer skill assessment, and c049_honest_assessment. Professional Template declares strategic_cognition block with 5 trigger events including HARVEST_REVIEW.**
 
 ---
@@ -982,16 +1022,18 @@ billing:
 |---|---|---|---|---|
 | `AGRI/ONBOARDING/OPENING_MESSAGE` | Onboarding | First WhatsApp contact → warm farmer greeting | BEHAVIOURAL | trading-agri-agent-prompts.md |
 | `AGRI/ONBOARDING/INFERENCE_CONFIRM` | Onboarding | Confirm district/crop inferences before recording profile | BEHAVIOURAL | trading-agri-agent-prompts.md |
-| `AGRI/STRATEGIC/SEASONAL_ADVISORY_PLAN` | Strategic Cognition | Post-onboarding/season start: which skills serve this farmer this season | BEHAVIOURAL | trading-agri-agent-prompts.md |
-| `AGRI/WEATHER_ADVISORY/FARMER_ALERT` | Skill 1 | Weather forecast → farmer-vocabulary crop advice | BREAKING | trading-agri-agent-prompts.md |
-| `AGRI/CROP_HEALTH/MORNING_CHECKIN` | Skill 2 | Generate targeted morning check-in question | BEHAVIOURAL | trading-agri-agent-prompts.md |
-| `AGRI/MANDI_PRICE/SELL_TIMING` | Skill 3 | Mandi price analysis → sell timing advice in farmer vocabulary | BEHAVIOURAL | trading-agri-agent-prompts.md |
-| `AGRI/CROP_PLANNING/NEXT_SEASON` | Skill 4 | 6-lens convergence analysis → next season crop recommendation | BEHAVIOURAL | trading-agri-agent-prompts.md |
-| `AGRI/HINT_SYSTEM/WEEKLY_HINT` | Skill 5 | 5-lens convergence engine → 0, 1, or 2 weekly hints | BEHAVIOURAL | trading-agri-agent-prompts.md |
-| `AGRI/SELF_GOVERNANCE/DIAGNOSIS` | Self-Governance | C-049 honest assessment — advisory impact diagnosis | BEHAVIOURAL | trading-agri-agent-prompts.md |
-| `AGRI/STRATEGIC/ADVISORY_EFFECTIVENESS_REVIEW` | Strategic Cognition | Monthly/harvest: portfolio health + per-farmer advisory strategy (C-050) | BEHAVIOURAL | trading-agri-agent-prompts.md |
+| `AGRI/STRATEGIC/SEASONAL_ADVISORY_PLAN` | Strategic Cognition | Per-farmer, per-season skill activation plan (C-050) | BEHAVIOURAL | `FRONTIER` |
+| `AGRI/WEATHER_ADVISORY/FARMER_ALERT` | Skill 1 | Weather forecast → farmer-vocabulary crop advice | BREAKING | `MID_TIER` |
+| `AGRI/CROP_HEALTH/MORNING_CHECKIN` | Skill 2 | Generate targeted morning check-in question | BEHAVIOURAL | `MID_TIER` |
+| `AGRI/MANDI_PRICE/SELL_TIMING` | Skill 3 | Mandi price analysis → sell timing advice in farmer vocabulary | BEHAVIOURAL | `MID_TIER` |
+| `AGRI/CROP_PLANNING/NEXT_SEASON` | Skill 4 | 6-lens convergence analysis → next season crop recommendation | BEHAVIOURAL | `FRONTIER` |
+| `AGRI/HINT_SYSTEM/WEEKLY_HINT` | Skill 5 | 5-lens convergence engine → 0, 1, or 2 weekly hints | BEHAVIOURAL | `MID_TIER` |
+| `AGRI/SELF_GOVERNANCE/DIAGNOSIS` | Self-Governance | C-049 honest assessment — advisory impact diagnosis | BEHAVIOURAL | `MID_TIER` |
+| `AGRI/STRATEGIC/ADVISORY_EFFECTIVENESS_REVIEW` | Strategic Cognition | Monthly/harvest advisory portfolio assessment (C-050) | BEHAVIOURAL | `MID_TIER` |
+| `AGRI/TOKEN_ECONOMY/USAGE_SUMMARY` | Token Economy | Budget status in farmer's language (WhatsApp Marathi voice) | USAGE_SUMMARY | `MID_TIER` |
 
-**Section 10 gate check:** Both strategic cognition prompts catalogued and seeded in SQL. C-050 in checklist. 5 trigger events declared. Gate 10: PASS.**
+**Section 10 gate check:** Both strategic cognition prompts catalogued. C-050 in checklist. 5 trigger events declared. Gate 10: PASS.
+**Section 11 gate check:** Section 4.16 added. UsageUnits defined in Marathi + English. Classification gate 71% zero-cost. Emergency alerts exempt. C-051 in checklist. Gate 11: PASS.**
 
 ---
 
@@ -1005,6 +1047,7 @@ billing:
 | 2.1 | 2026-07-11 | Business Architect | Track A P1 fix: Section 4.14; Prompt Catalogue; execution_loop; C-048 + C-049 checks |
 | 2.2 | 2026-07-11 | Business Architect | R017-01 P1 fix: AGRI/SELF_GOVERNANCE/DIAGNOSIS prompt; C-049 checklist updated |
 | 2.3 | 2026-07-11 | Business Architect | Strategic Cognition Layer (C-050): Section 4.15; SEASONAL_ADVISORY_PLAN + ADVISORY_EFFECTIVENESS_REVIEW prompts; strategic_cognition block in Professional Template; C-050 constitutional check |
+| 2.4 | 2026-07-11 | Business Architect | Token Economy Layer (C-051): Section 4.16; UsageUnits in Marathi + English; 71% zero-cost classification; emergency exemptions declared; AGRI/TOKEN_ECONOMY/USAGE_SUMMARY prompt; C-051 check |
 
 ---
 

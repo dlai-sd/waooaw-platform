@@ -345,3 +345,21 @@ Principles are listed in order of constitutional priority — Constitutional Flo
 - The Activation Gate (Section 10 of AGENT-AUTHORING-GUIDE) is the governance mechanism that enforces this principle before any agent is activated
 
 ---
+
+## DP-020 — Quality-Preserving Resource Economy (v0.32.0)
+
+**Directive:** Every token spent by a WAOOAW agent must deliver proportionate customer value. Resource economy is not a compromise of quality — it is intelligent allocation of quality where it matters most. When implementing any LLM call or agent action, the first question is: “Does this action require frontier reasoning, or does it require reliable pattern execution?” Frontier models must be reserved for decisions where the reasoning quality difference is materially visible to the customer outcome. Routine execution (vocabulary translation, acknowledgment handling, template formatting) must use the minimum capable tier. Silently degrading quality at budget limit is prohibited (C-049). Spending frontier tokens on routine tasks when lower tiers are sufficient is wasteful (C-051 violation — poor resource stewardship).
+
+**Why:** The cost structure of AI agents is the primary commercial risk for WAOOAW at scale. A platform that cannot control per-customer AI cost cannot price sustainably for the markets it serves (₹200/month farmers, ₹1,499/month SMEs). Quality-preserving resource economy is not an optimization — it is a commercial survival requirement. The principle exists so that implementation engineers default to the lowest viable tier for each task, not the highest available tier for simplicity.
+
+**Constitutional Basis:** C-051 (Resource Transparency — LAW); C-048 (Non-Exploitation — over-spending on AI and passing cost to customers is an exploitation of the platform's information advantage); C-049 (Honest Limitation — budget limits must be disclosed, not silently managed through quality reduction); AD-022 (Model Tier Selection); AD-023 (Semantic Cache)
+
+**Enforcement:**
+- `minimum_model_tier` in `agent_prompt_versions` is the formal enforcement mechanism — every prompt call must read this field before dispatching to any LLM provider
+- Message Classification Gate (Token Economy Layer) runs on LOCAL tier always — never a frontend call to frontier model
+- Semantic cache lookup is mandatory before any LLM call for BEHAVIOURAL or lower tier prompts
+- Pre-computation at off-peak hours (02:00–04:00 IST) is the preferred pattern for time-insensitive outbound messages
+- The Usage Summary prompt runs on MID_TIER always — communicating budget status is BEHAVIOURAL quality, not BREAKING quality
+- A PR that routes a PHRASING_ONLY prompt to FRONTIER is a DP-020 violation and requires EA justification
+
+---

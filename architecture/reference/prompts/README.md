@@ -86,5 +86,9 @@ Every agent prompt must produce a response conforming to this base schema plus t
 | TRADING/STRATEGIC/MONTHLY_PORTFOLIO_ASSESSMENT | Strategic Cognition | Monthly trading strategy health (C-050) | v1.0.0 | ACTIVE |
 | AGRI/STRATEGIC/SEASONAL_ADVISORY_PLAN | Strategic Cognition | Seasonal skill activation plan per farmer (C-050) | v1.0.0 | ACTIVE |
 | AGRI/STRATEGIC/ADVISORY_EFFECTIVENESS_REVIEW | Strategic Cognition | Monthly/harvest advisory portfolio assessment (C-050) | v1.0.0 | ACTIVE |
+| DMA/TOKEN_ECONOMY/USAGE_SUMMARY | Token Economy | Budget status in business language for portal + WhatsApp (C-051) | v1.0.0 | ACTIVE |
+| TRADING/TOKEN_ECONOMY/USAGE_SUMMARY | Token Economy | Trading session dashboard usage summary (C-051) | v1.0.0 | ACTIVE |
+| AGRI/TOKEN_ECONOMY/USAGE_SUMMARY | Token Economy | Budget status in farmer's language — Marathi WhatsApp voice (C-051) | v1.0.0 | ACTIVE |
+| PLATFORM/TOKEN_ECONOMY/MESSAGE_CLASSIFIER | Token Economy | Message Classification Gate — LOCAL tier invariant (C-051, AD-022) | v1.0.0 | ACTIVE |
 
-**Total active prompts: 39** (v0.31.0 — includes 7 Strategic Cognition prompts)
+**Total active prompts: 44** (v0.32.0 — includes 4 Token Economy prompts + 1 Message Classifier)

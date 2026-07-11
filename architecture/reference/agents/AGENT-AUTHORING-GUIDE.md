@@ -276,6 +276,90 @@ strategic_cognition:
   strategic_state_table: "business.agent_strategic_state"  # SQL table for persisting plan
 ```
 
+## 9c. Section 3.16 — Token Economy Standard (MANDATORY — every agent)
+
+> **Why required (C-051):** Every agent must declare its UsageUnit definitions, model tier assignments per prompt, and customer-facing budget communication strategy. An agent spec without a Token Economy section cannot be economically deployed. This section is gate-enforced (Activation Gate Section 11).
+
+---
+
+### 3.16.1 UsageUnit Definitions (MANDATORY)
+
+Every agent must define the UsageUnit types that translate its internal token budget into customer-meaningful service units. UsageUnits are what the customer sees in the portal widget and in WhatsApp messages — never tokens.
+
+```yaml
+usage_units:
+  - unit_type: "[UNIT_ID — e.g., ADVISORY_DAY, CONTENT_CREATION]"
+    label: "[Display name in customer language]"
+    label_local: "[Display name in agent's primary language — e.g., Marathi for agricultural]"
+    token_output_equivalent: [approximate output tokens per unit]
+    monthly_included:
+      tier_1: [quantity at lowest tier]
+      tier_2: [quantity at mid tier]
+      tier_3: [quantity at highest tier]
+    rollover_pct: [0-50 — % of unused units that roll to next month]
+    emergency_exempt: [true/false — can this unit be used even at 0 remaining?]
+```
+
+**Emergency exemption rule:** Any unit that covers a constitutional obligation (Evidence First, Emergency Stop, constitutional disaster alert) MUST have `emergency_exempt: true`. The budget cannot block constitutional floors.
+
+---
+
+### 3.16.2 Model Tier Assignment (MANDATORY — per prompt)
+
+The Prompt Catalogue section of this spec must include a `minimum_model_tier` column:
+
+| Prompt ID | Step | Type | `minimum_model_tier` |
+|---|---|---|---|
+| `AGENT/SKILL/PROMPT_ID` | description | BREAKING/BEHAVIOURAL/PHRASING_ONLY | FRONTIER/MID_TIER/LOCAL/FREE_BATCH |
+
+**Assignment rules:**
+- `BREAKING`: Always `FRONTIER` — constitutional decisions cannot have degraded reasoning
+- `BEHAVIOURAL` (complex): `FRONTIER` for first-time runs (onboarding, first plan, first seasonal recommendation); `MID_TIER` for routine repetitions
+- `BEHAVIOURAL` (routine): `MID_TIER` — daily heartbeats, check-ins, reports, content variants
+- `PHRASING_ONLY`: `LOCAL` — vocabulary translation, formatting, acknowledgment generation
+- `CLASSIFICATION`: Always `LOCAL` — Message Classification Gate is invariant at LOCAL tier
+- `USAGE_SUMMARY`: Always `MID_TIER` — communicating budget status is BEHAVIOURAL quality
+
+---
+
+### 3.16.3 Message Classification Strategy
+
+Declare the classification categories relevant to this agent and the path for each:
+
+```yaml
+message_classification:
+  categories:
+    - category: "[CATEGORY_NAME]"
+      examples: ["example phrase 1", "example phrase 2"]
+      path: "ZERO_COST | LOW_COST | STANDARD | PREMIUM | EMERGENCY"
+      response_type: "TEMPLATE | CACHE | MCP_DIRECT | LLM_DISPATCH | CE_EMERGENCY"
+  estimated_zero_cost_pct: [X%]  # What % of messages expected to hit ZERO_COST path
+```
+
+---
+
+### 3.16.4 Customer Budget Communication
+
+Declare how the agent communicates remaining budget to the customer:
+
+```yaml
+budget_communication:
+  thresholds:
+    - remaining_pct: 30
+      message_template: "[What the agent says at 30% remaining, in customer language]"
+      channel: "[WHATSAPP | PORTAL | PUSH]"
+    - remaining_pct: 10
+      message_template: "[What the agent says at 10% remaining]"
+      channel: "[WHATSAPP | PORTAL | PUSH]"
+  period_reset_message: "[What the agent says at start of new billing period]"
+  emergency_override_message: "[What the agent says when serving exempt advisory despite 0 units]"
+```
+
+**Emergency override message example (agricultural):**
+> "Suresh dada, I know we've used all your advisory days, but this weather alert is too important to delay. No charge for this."
+
+---
+
 ## 10. Review and Approval
 
 Reviewer: Enterprise Architect
@@ -454,8 +538,26 @@ SECTION 10 — COGNITION GATE (C-050, AD-021, DP-019)
 [ ] 10.8  Both prompts have active rows in institutional.agent_prompt_versions
           FAIL condition: prompts declared in spec but not seeded in SQL → GATE BLOCKED
 
+SECTION 11 — TOKEN ECONOMY GATE (C-051, AD-022, AD-023, DP-020)
+[ ] 11.1  Section 3.16 (Token Economy Standard) exists in the spec
+[ ] 11.2  UsageUnit definitions declared (at least 1 unit type per subscription tier)
+[ ] 11.3  Every unit with constitutional coverage (emergency alerts, Evidence First actions)
+          has emergency_exempt: true
+[ ] 11.4  Prompt Catalogue includes minimum_model_tier column for every prompt
+          FAIL condition: any prompt without a declared tier → GATE BLOCKED
+[ ] 11.5  No PHRASING_ONLY or CLASSIFICATION prompt assigned tier above LOCAL
+          (over-routing wastes resource — AD-022 violation, DP-020 violation)
+[ ] 11.6  No BREAKING prompt assigned tier below FRONTIER
+          (under-routing is quality compromise — C-045 violation)
+[ ] 11.7  Message classification categories declared with estimated zero_cost_pct
+[ ] 11.8  Customer budget communication strategy declared (30%, 10% thresholds)
+[ ] 11.9  Usage Summary prompt exists (USAGE_SUMMARY type) in the Prompt Catalogue
+[ ] 11.10 C-051 check is present in the Constitutional Checklist section
+[ ] 11.11 minimum_model_tier column added to all seed rows in 03-enums-and-tables.sql
+          FAIL condition: seeded prompts without minimum_model_tier → GATE BLOCKED
+
 OVERALL GATE RESULT:
-  All 10 sections PASS → AGENT MAY BE ACTIVATED
+  All 11 sections PASS → AGENT MAY BE ACTIVATED
   Any section FAIL → CONSTITUTIONAL BLOCKER → raise blocker in blockers/ → agent NOT activated
 ```
 
@@ -541,22 +643,25 @@ Gate check: Sections 1, 2, 7 of the Activation Gate
 
 All existing agent specs must be checked against the full Activation Gate. Any gate failures become P1 work items before the implementation sprint begins.
 
-**Current compliance status (as of v0.31.0):**
+**Current compliance status (as of v0.32.0):**
 
 | Agent | Gate Section | Status | Notes |
 |---|---|---|---|
-| DMA v2.0 | Sections 1–9 | ✓ PASS | R-014 + R-017 EA reviews cover this |
-| DMA v2.0 | Section 10 (Cognition Gate) | ⚠ PARTIAL | SKILL_ACTIVATION_PLAN + PERFORMANCE_ASSESSMENT prompts needed (v0.31.0 sprint) |
-| Trading v1.3 | Sections 1–9 | ✓ PASS | R-012 + R-017 EA reviews; Track A P1 resolved |
-| Trading v1.3 | Section 10 (Cognition Gate) | ⚠ PARTIAL | SESSION_PREP (planning) + PORTFOLIO_ASSESSMENT prompts needed (v0.31.0 sprint) |
-| Agricultural v2.2 | Sections 1–9 | ✓ PASS | R-013 + R-015 + R-017 EA reviews; Track A P1 resolved |
-| Agricultural v2.2 | Section 10 (Cognition Gate) | ⚠ PARTIAL | SEASONAL_PLAN + ADVISORY_EFFECTIVENESS prompts needed (v0.31.0 sprint) |
+| DMA v2.1 | Sections 1–10 | ✓ PASS | R-014 + R-017 + R-018 EA reviews |
+| DMA v2.1 | Section 11 (Token Economy Gate) | ⚠ PARTIAL | Section 3.16 + UsageUnits + min_model_tier needed (v0.32.0 sprint) |
+| Trading v1.4 | Sections 1–10 | ✓ PASS | R-012 + R-017 + R-018 EA reviews |
+| Trading v1.4 | Section 11 (Token Economy Gate) | ⚠ PARTIAL | Section 3.16 + UsageUnits + min_model_tier needed (v0.32.0 sprint) |
+| Agricultural v2.3 | Sections 1–10 | ✓ PASS | R-013 + R-015 + R-017 + R-018 EA reviews |
+| Agricultural v2.3 | Section 11 (Token Economy Gate) | ⚠ PARTIAL | Section 3.16 + UsageUnits + min_model_tier needed (v0.32.0 sprint) |
 
-**Section 10 (Cognition Gate) is a new gate introduced in v0.31.0 (C-050). All three agents need a targeted update sprint:**
-- Add Section 3.15 Strategic Cognition Standard to each spec
-- Add SKILL_ACTIVATION_PLAN and PERFORMANCE_ASSESSMENT prompts (agent-specific variants)
-- Declare `strategic_cognition` block in each Professional Template
-- Add C-050 to each Constitutional Checklist
-- SQL seed both new prompts per agent
+**Section 11 (Token Economy Gate) is a new gate introduced in v0.32.0 (C-051). All three agents need the v0.32.0 sprint:**
+- Add Section 3.16 Token Economy Standard to each spec
+- Declare UsageUnit types and monthly allocations per subscription tier
+- Add `minimum_model_tier` to every Prompt Catalogue entry
+- Add Message Classification categories + estimated zero-cost %
+- Add customer budget communication thresholds
+- Add Usage Summary prompt to each agent's Prompt Catalogue
+- Add C-051 to each Constitutional Checklist
+- SQL: `minimum_model_tier` column + seed rows + `customer_usage_units` table
 
-These are P1 items before the IB-009 implementation sprint begins. Section 10 gate must pass for all three agents before implementation.
+These are P1 items before the IB-009 implementation sprint begins. Section 11 gate must pass for all three agents before implementation.

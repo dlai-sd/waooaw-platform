@@ -932,7 +932,10 @@ CREATE TABLE institutional.agent_prompt_versions (
     prompt_file_hash        VARCHAR(64),                   -- SHA-256 of prompt content at approval time
     -- Constitutional governance (C-045)
     constitutional_basis    TEXT NOT NULL,
-    change_type             VARCHAR(30) NOT NULL,          -- BREAKING | BEHAVIOURAL | PHRASING_ONLY
+    change_type             VARCHAR(30) NOT NULL,          -- BREAKING | BEHAVIOURAL | PHRASING_ONLY | STRATEGIC | CLASSIFICATION | USAGE_SUMMARY
+    -- Token Economy (AD-022 — C-051)
+    minimum_model_tier      VARCHAR(20) NOT NULL DEFAULT 'MID_TIER'
+                            CHECK (minimum_model_tier IN ('FRONTIER', 'MID_TIER', 'LOCAL', 'FREE_BATCH')),
     -- Review record
     reviewed_by             VARCHAR(100) NOT NULL,         -- e.g., "Enterprise Architect"
     reviewed_at             TIMESTAMPTZ NOT NULL,
@@ -950,6 +953,7 @@ CREATE TABLE institutional.agent_prompt_versions (
 );
 
 CREATE INDEX idx_prompt_active ON institutional.agent_prompt_versions(skill_type, pipeline_step, agent_type) WHERE is_active = TRUE;
+CREATE INDEX idx_prompt_tier ON institutional.agent_prompt_versions(minimum_model_tier) WHERE is_active = TRUE;
 
 -- Seed active prompts (v1.0.0 — all from digital-marketing-agent-prompts.md)
 INSERT INTO institutional.agent_prompt_versions
@@ -999,7 +1003,12 @@ VALUES
     ('TRADING/STRATEGIC/SESSION_PREP', '1.0.0', 'STRATEGIC_COGNITION', 'SESSION_PREP', 'TRADING_FO_CRYPTO', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-050; C-036; C-043; C-048; C-049; AD-021', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
     ('TRADING/STRATEGIC/MONTHLY_PORTFOLIO_ASSESSMENT', '1.0.0', 'STRATEGIC_COGNITION', 'MONTHLY_PORTFOLIO_ASSESSMENT', 'TRADING_FO_CRYPTO', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-050; C-037; C-043; C-048; C-049; DP-019', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
     ('AGRI/STRATEGIC/SEASONAL_ADVISORY_PLAN', '1.0.0', 'STRATEGIC_COGNITION', 'SEASONAL_ADVISORY_PLAN', 'AGRICULTURAL_ADVISOR_INDIA', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-050; C-042; C-036; C-037; C-048; C-049; DP-019; AD-021', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    ('AGRI/STRATEGIC/ADVISORY_EFFECTIVENESS_REVIEW', '1.0.0', 'STRATEGIC_COGNITION', 'ADVISORY_EFFECTIVENESS_REVIEW', 'AGRICULTURAL_ADVISOR_INDIA', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-050; C-042; C-037; C-048; C-049; DP-019', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW());
+    ('AGRI/STRATEGIC/ADVISORY_EFFECTIVENESS_REVIEW', '1.0.0', 'STRATEGIC_COGNITION', 'ADVISORY_EFFECTIVENESS_REVIEW', 'AGRICULTURAL_ADVISOR_INDIA', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-050; C-042; C-037; C-048; C-049; DP-019', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    -- Token Economy Layer prompts (v0.32.0 — C-051, ADR-024)
+    ('DMA/TOKEN_ECONOMY/USAGE_SUMMARY', '1.0.0', 'TOKEN_ECONOMY', 'USAGE_SUMMARY', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/digital-marketing-agent-prompts.md', 'C-051; C-038; DP-020', 'USAGE_SUMMARY', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('TRADING/TOKEN_ECONOMY/USAGE_SUMMARY', '1.0.0', 'TOKEN_ECONOMY', 'USAGE_SUMMARY', 'TRADING_FO_CRYPTO', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-051; C-038; DP-020', 'USAGE_SUMMARY', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('AGRI/TOKEN_ECONOMY/USAGE_SUMMARY', '1.0.0', 'TOKEN_ECONOMY', 'USAGE_SUMMARY', 'AGRICULTURAL_ADVISOR_INDIA', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-051; C-042; C-038; DP-020', 'USAGE_SUMMARY', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('PLATFORM/TOKEN_ECONOMY/MESSAGE_CLASSIFIER', '1.0.0', 'TOKEN_ECONOMY', 'MESSAGE_CLASSIFIER', 'PLATFORM_INTERNAL', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-051; AD-022; DP-020', 'CLASSIFICATION', 'Enterprise Architect', NOW(), TRUE, NOW());
 
 -- Agent Reasoning Traces — primary AI audit artifact (C-047, AD-008, AD-019)
 -- See architecture/reference/agent-reasoning-trace.md for full spec.
@@ -1233,6 +1242,95 @@ CREATE TABLE business.agent_strategic_state (
 );
 CREATE INDEX idx_strategic_state_org ON business.agent_strategic_state(organisation_id);
 CREATE INDEX idx_strategic_state_contract ON business.agent_strategic_state(employment_contract_id);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Token Economy Layer (v0.32.0 — C-051, ADR-024)
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- Customer usage unit tracking — one row per customer per billing period
+-- Tracks remaining advisory capacity in customer-meaningful units (not tokens)
+CREATE TABLE business.customer_usage_units (
+    id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organisation_id             UUID NOT NULL REFERENCES business.organisations(id),
+    employment_contract_id      UUID NOT NULL REFERENCES business.employment_contracts(id),
+    professional_type           VARCHAR(100) NOT NULL,
+    billing_period_start        DATE NOT NULL,
+    billing_period_end          DATE NOT NULL,
+    -- Agricultural Advisor units
+    advisory_days_included      SMALLINT,                  -- total days of advisory included in plan
+    advisory_days_used          SMALLINT NOT NULL DEFAULT 0,
+    advisory_days_rollover      SMALLINT NOT NULL DEFAULT 0,    -- from previous period (25% max)
+    crop_questions_included     SMALLINT,
+    crop_questions_used         SMALLINT NOT NULL DEFAULT 0,
+    seasonal_plans_included     SMALLINT,
+    seasonal_plans_used         SMALLINT NOT NULL DEFAULT 0,
+    -- DMA units
+    content_creations_included  SMALLINT,
+    content_creations_used      SMALLINT NOT NULL DEFAULT 0,
+    content_creations_rollover  SMALLINT NOT NULL DEFAULT 0,
+    quick_edits_included        SMALLINT,
+    quick_edits_used            SMALLINT NOT NULL DEFAULT 0,
+    quick_edits_rollover        SMALLINT NOT NULL DEFAULT 0,
+    research_queries_included   SMALLINT,
+    research_queries_used       SMALLINT NOT NULL DEFAULT 0,
+    strategy_sessions_included  SMALLINT,
+    strategy_sessions_used      SMALLINT NOT NULL DEFAULT 0,
+    -- Trading units (session-based, no hard unit limit — monitored only)
+    sessions_executed           SMALLINT NOT NULL DEFAULT 0,
+    sessions_deferred           SMALLINT NOT NULL DEFAULT 0,   -- SESSION_DEFERRED count
+    -- General
+    last_threshold_alert_pct    SMALLINT,                   -- last alert sent at this % remaining
+    tenant_id                   UUID NOT NULL,
+    created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT uq_usage_units_contract_period UNIQUE (employment_contract_id, billing_period_start)
+);
+CREATE INDEX idx_usage_units_org ON business.customer_usage_units(organisation_id);
+CREATE INDEX idx_usage_units_period ON business.customer_usage_units(billing_period_start, professional_type);
+
+-- Message classification log — Token Economy Gate audit trail
+-- Every incoming message classification decision is logged here
+CREATE TABLE institutional.message_classification_log (
+    id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organisation_id             UUID NOT NULL,                 -- tenant (not FK — pre-auth messages included)
+    professional_type           VARCHAR(100),
+    message_source              VARCHAR(20) NOT NULL,          -- WHATSAPP | PORTAL | API
+    message_hash                VARCHAR(64),                   -- SHA-256 of message content (not stored raw)
+    classification              VARCHAR(50) NOT NULL,          -- ACKNOWLEDGMENT | PRICE_QUERY | ACTIONABLE_ADVISORY | etc.
+    confidence                  DECIMAL(4,3),                  -- 0.000-1.000
+    path_taken                  VARCHAR(30) NOT NULL,          -- ZERO_COST | LOW_COST | STANDARD | PREMIUM | EMERGENCY
+    response_type               VARCHAR(30) NOT NULL,          -- TEMPLATE | CACHE | MCP_DIRECT | LLM_DISPATCH | CE_EMERGENCY
+    llm_dispatched              BOOLEAN NOT NULL DEFAULT FALSE,
+    cache_hit                   BOOLEAN NOT NULL DEFAULT FALSE,
+    model_tier_used             VARCHAR(20),                   -- FRONTIER | MID_TIER | LOCAL | FREE_BATCH | null (no LLM)
+    cost_inr_paise              INTEGER NOT NULL DEFAULT 0,    -- ₹0.00 = 0 paise
+    classified_at               TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    -- Note: no tenant_id RLS — classification happens before tenant is confirmed (emergency path)
+    -- Access controlled by DB role grants only (ai_runtime_app INSERT, business_app SELECT)
+);
+CREATE INDEX idx_classification_org ON institutional.message_classification_log(organisation_id, classified_at DESC);
+CREATE INDEX idx_classification_path ON institutional.message_classification_log(path_taken, classified_at DESC);
+CREATE INDEX idx_classification_llm ON institutional.message_classification_log(llm_dispatched, model_tier_used);
+
+-- Prompt cache metadata — tracks cache entries for analytics and invalidation management
+-- The actual cached responses live in Redis/pgvector; this table tracks governance
+CREATE TABLE institutional.prompt_cache_metadata (
+    id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    cache_key_hash              VARCHAR(64) NOT NULL UNIQUE,   -- SHA-256 of cache key components
+    prompt_id                   VARCHAR(150) NOT NULL,
+    professional_type           VARCHAR(100) NOT NULL,
+    cache_key_components        JSONB NOT NULL,                -- {crop, district_bucket, stage_bucket, etc.} — NEVER customer fields
+    similarity_threshold        DECIMAL(4,3) NOT NULL,
+    model_tier_used             VARCHAR(20) NOT NULL,
+    hit_count                   INTEGER NOT NULL DEFAULT 0,
+    last_hit_at                 TIMESTAMPTZ,
+    created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    expires_at                  TIMESTAMPTZ NOT NULL,
+    invalidated_at              TIMESTAMPTZ,                   -- set when cache entry invalidated before TTL
+    invalidation_reason         VARCHAR(100)                   -- OUTBREAK_ALERT | NEW_MSP | NEW_SEASONAL_DATA | TTL_EXPIRED
+);
+CREATE INDEX idx_cache_prompt ON institutional.prompt_cache_metadata(prompt_id, expires_at);
+CREATE INDEX idx_cache_hits ON institutional.prompt_cache_metadata(hit_count DESC) WHERE invalidated_at IS NULL;
 
 -- Billing preference enum (ADR-022: SEPARATE or COMBINED for customers with multiple agents)
 CREATE TYPE billing_preference_type AS ENUM (

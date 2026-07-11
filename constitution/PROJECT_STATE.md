@@ -1,8 +1,8 @@
 # PROJECT_STATE.md
 
 **Last Updated:** 2026-07-11
-**Version:** 0.31.0
-**Session:** 2026-07-11 — Strategic Cognition Layer (C-050) complete
+**Version:** 0.32.0
+**Session:** 2026-07-11 — Token Economy Layer (C-051) complete
 
 ---
 

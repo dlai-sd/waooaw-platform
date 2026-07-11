@@ -388,3 +388,60 @@ Note: This driver requires CE.ValidateAction to carry budget state as a first-cl
 3. Strategic cognition outputs (plans, assessments) are Reasoning Traces (C-047, AD-008) — they must be persisted in `institutional.agent_reasoning_traces` before the plan is acted upon
 4. Trigger event 3 (material deviation) is implemented as an automated check: if any skill's KPI pace falls below 60% of target at mid-period, the PERFORMANCE_ASSESSMENT prompt is invoked immediately — the agent does not wait for the scheduled review
 5. The SKILL_ACTIVATION_PLAN output is the authoritative input to `CE.ValidateAction` for skill activation decisions — not a code-determined activation sequence
+
+---
+
+## AD-022 — Model Tier Selection Standard (v0.32.0)
+
+**Requirement:** Every LLM prompt call made by a WAOOAW agent must be routed to the minimum model tier that can deliver the required quality for that prompt type. Over-routing (using a frontier model for a phrasing-only task) and under-routing (using a small model for a constitutional decision) are both architectural violations. The model tier for each prompt is declared in `institutional.agent_prompt_versions.minimum_model_tier` and enforced by the Token Economy Layer before every LLM dispatch. Under no circumstances may model tier be determined at runtime by cost pressure alone — tier assignment is a constitutional artifact, not an operational decision.
+
+**Type:** HARD — derives from C-051 (LAW) and C-045 (Prompt as Constitutional Artifact). A prompt executed on a tier below its minimum is a C-045 violation because the constitutional quality guarantee of the prompt output is compromised.
+
+**Constitutional Basis:** C-051 (Resource Transparency — LAW); C-045 (Prompt as Constitutional Artifact — LAW); C-049 (Honest Limitation Disclosure — quality degradation without disclosure is C-049 violation); C-048 (Non-Exploitation — using cost savings to silently downgrade quality at the customer's expense)
+
+**Model Tier Definitions:**
+
+| Tier | Examples | Use cases | Cost range |
+|---|---|---|---|
+| `FRONTIER` | GPT-4o, Claude 3.5 Sonnet, Gemini 1.5 Pro | BREAKING prompts, first strategic plan, first crop recommendation, constitutional decisions | High |
+| `MID_TIER` | GPT-4o-mini, Claude 3 Haiku, Gemini Flash, Grok-2 (paid) | BEHAVIOURAL prompts (daily heartbeats, content variants, session reports, check-ins) | ~10–20× cheaper |
+| `LOCAL` | Fine-tuned Llama 3.2 3B hosted on WAOOAW GPU | PHRASING_ONLY prompts, vocabulary translation (C-042), message classification | ~100× cheaper or near-zero |
+| `FREE_BATCH` | Grok free, Gemini free tier | Non-time-sensitive batch operations, pre-computation at off-peak (02:00–04:00 IST) | ₹0 (rate-limited) |
+
+**Capabilities Constrained:** All LLM calls in AI Runtime; all prompt dispatch logic in agent heartbeat workflows
+
+**Architectural Consequence:**
+1. AI Runtime must read `minimum_model_tier` from `agent_prompt_versions` before every LLM call
+2. If the declared tier is unavailable (model outage, rate limit), the next tier UP may be used — NEVER DOWN without constitutional review
+3. Model provider abstraction (ADR-024) must expose a unified interface across all tier levels
+4. The Message Classification Gate (Token Economy Layer component) runs on `LOCAL` tier always — this is architectural invariant
+5. Emergency paths (Emergency Stop, constitutional evidence) bypass model tier routing entirely — these are not LLM calls
+
+---
+
+## AD-023 — Semantic Response Cache Standard (v0.32.0)
+
+**Requirement:** The AI Runtime must maintain a semantic cache for prompt responses where the underlying knowledge has not changed since the cached response was computed. Cache hits must be used instead of LLM calls when semantic similarity exceeds the declared threshold for the prompt type, and the cache entry is within its declared TTL. Cache entries from one customer's Tier 2 (private customer context) must NEVER be shared with another customer's context. Only Tier 1 (domain knowledge) and Tier 3 (platform aggregate, anonymised) responses may be cached and reused across customers.
+
+**Type:** HARD for the privacy constraint (cross-customer Tier 2 sharing is an AD-004 / RLS violation). SOFT for the cache usage requirement (cache is an optimization, not a constitutional obligation — but skipping the cache without reason wastes resource that C-051 requires be managed responsibly).
+
+**Constitutional Basis:** C-051 (Resource Transparency — LAW); C-034 (Data isolation per employment contract); AD-004 (RLS enforcement); C-048 (Non-Exploitation — over-spending on redundant computation inflates costs passed to customers)
+
+**Cache Architecture:**
+
+| Cache layer | Content | Scope | TTL | Invalidation trigger |
+|---|---|---|---|---|
+| Semantic Response Cache | Tier 1 domain + Tier 3 aggregate responses | Platform-wide | 7 days (agricultural), 14 days (DMA) | New ICAR/IMD data, new MSP announcement, new market data |
+| Pre-computed Outbound Cache | Pre-generated morning check-ins, weather alerts | Per-farmer | 24 hours | Farmer response, new weather event, new disease alert |
+| District Aggregate Cache | Shared agricultural advice for same crop/stage/district | District-level | 7 days | Outbreak alert, new seasonal data |
+
+**Privacy invariant (HARD — never relaxes):**
+```
+CACHE KEY must NEVER include: farmer_id, organisation_id, customer_name, farm_location_specific
+CACHE KEY may include: {professional_type, crop, district, crop_stage_bucket, weather_bucket, symptom_category}
+
+Before serving any cached response: re-personalize with customer-specific fields
+(farmer name, farm size, specific dates) from Tier 2 — never from the cache.
+```
+
+**Capabilities Constrained:** AI Runtime prompt dispatch; Agricultural Advisor Skill 1 (Weather) and Skill 2 (Crop Health) — highest cache benefit; DMA Market Research (Skill 1) and Performance Narrative (Skill 5)

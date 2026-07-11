@@ -1,7 +1,7 @@
 # Autonomous Trading Professional — FO & Crypto
 
-**Specification version:** 1.4
-**Date:** 2026-07-11 (v1.4 — Strategic Cognition Layer: Section 4.15, SESSION_PREP + MONTHLY_PORTFOLIO_ASSESSMENT prompts, C-050)
+**Specification version:** 1.5
+**Date:** 2026-07-11 (v1.5 — Token Economy Layer: Section 4.16, UsageUnits, minimum_model_tier, C-051)
 **Change:** C-050 Strategic Cognition Layer added. Pre-session market regime assessment (SESSION_PREP) and monthly portfolio health assessment (MONTHLY_PORTFOLIO_ASSESSMENT) prompts added.
 **Approved by Founder:** 2026-07-08 (v1.1); v1.4 pending Founder acknowledgment (BREAKING prompt before implementation sprint)
 **Constitutional Basis:** C-036 (Skills), C-037 (Business KPIs), C-038 (Billing), C-039 (Conversational config), C-040 (Domain specialization), C-041 (Tool authorization), C-043 (Financial Spend Authority Ceiling — the daily loss limit is a Constitutional Floor equivalent; same enforcement mechanism as paid advertising budget cap), ADR-019 (RAG), ADR-020 (MCP), ADR-018 (Emergency Stop Temporal signal)
@@ -378,6 +378,36 @@ strategic_cognition:
 
 ---
 
+## 4.16 Token Economy Standard
+
+> **Constitutional basis:** C-051, AD-022, AD-023, DP-020, ADR-024
+
+**Usage Units — Trading** (monitoring-focused; no hard creative limits):
+
+| Unit Type | Label | Token equiv | Monthly | Rollover | Emergency exempt |
+|---|---|---|---|---|---|
+| `SESSION_EXECUTED` | Trading Sessions | 0 tokens (pre-computed) | Unlimited within session window | N/A | No |
+| `SESSION_DEFERRED` | Deferred Sessions | 0 | Tracked only | N/A | No |
+| `STRATEGY_REVIEW` | Monthly Reviews | ~3,000 tokens | 1 (monthly, Day 1) | No | No |
+| `ESCALATION_DECISION` | Escalation consults | ~2,000 tokens | As needed | N/A | **Yes** (C-001) |
+
+Trading agent does not have hard UsageUnit limits — it operates within a PAAS session budget. Monitoring tracks: sessions deferred vs executed (ratio is quality signal), monthly strategy review consumption, escalation frequency (high escalation = strategy misconfiguration signal).
+
+**Message classification categories (portal):**
+- `APPROVAL_ACTION`: session config changes confirmed — ₹0 (evidence record only)
+- `STATUS_QUERY`: P&L dashboard, session history — ₹0 (DB read)
+- `STRATEGY_CONVERSATION`: discuss parameter changes — MID_TIER
+- `ESCALATION_RESPONSE`: customer responding to UNCERTAIN pause — FRONTIER (constitutional)
+- Estimated zero-cost rate: ~40%
+
+**Budget communication:** Trading customers are professional users. Portal shows:
+- Sessions this month: executed / deferred ratio
+- Monthly strategy review: used / available
+- Monthly P&L vs target (always visible)
+- No WhatsApp budget alerts (professional portal interface)
+
+---
+
 ## 5. Emergency Stop — Trading-Specific Requirements
 
 The Emergency Stop for a trading agent has additional urgency: an active PAAS session may have open positions with real-time P&L exposure.
@@ -610,6 +640,7 @@ billing:
 - [x] **C-048 check (Information Non-Exploitation): No Skill steers the customer toward higher-tier plans or more aggressive strategies for WAOOAW platform benefit. The agent executes within the customer's stated parameters — it does not optimise for trade frequency, fee generation, or platform metrics. C-043 daily loss limit is a hard stop regardless of any other consideration.**
 - [x] **C-049 check (Honest Limitation Disclosure): `TRADING/SELF_GOVERNANCE/DIAGNOSIS` prompt (Skill 5 monthly evaluation) includes `c049_honest_assessment: CAN_DELIVER_WITH_CORRECTIONS | CANNOT_DELIVER_MUST_DISCLOSE` field. If market conditions, capital constraints, or SEBI regulations make the customer's stated return target unachievable, the agent must say so explicitly. `STOP_AND_DISCLOSE` is a valid `recommended_option`. R017-01 fix applied.**
 - [x] **C-050 check (Strategic Cognition): Section 4.15 added. TRADING/STRATEGIC/SESSION_PREP invoked at 9:15 IST pre-session to assess market regime alignment and session risk posture; TRADING/STRATEGIC/MONTHLY_PORTFOLIO_ASSESSMENT invoked monthly and on consecutive losses. Both prompts include strategic_reasoning_chain, portfolio_health (for monthly), session_proceed_decision (for daily), and c049_honest_assessment. Professional Template declares strategic_cognition block with 3 trigger events.**
+- [x] **C-051 check (Resource Transparency): Section 4.16 added. Trading agent uses monitoring-based UsageUnits (sessions executed/deferred, monthly reviews). minimum_model_tier declared for all prompts. ESCALATION_DECISION path emergency-exempt (C-001). TRADING/TOKEN_ECONOMY/USAGE_SUMMARY prompt added.**
 
 ---
 
@@ -617,19 +648,21 @@ billing:
 
 > **Gate requirement (Sections 2 + 10 of Activation Gate, C-045, C-050, AD-018, AD-021):** Every LLM inference point must have an approved prompt. All prompts reside in `architecture/reference/prompts/trading-agri-agent-prompts.md` and are seeded in `institutional.agent_prompt_versions`.
 
-| Prompt ID | Layer | Step | Type | File |
+| Prompt ID | Layer | Step | Type | `minimum_model_tier` |
 |---|---|---|---|---|
-| `TRADING/ONBOARDING/PROFILE_SETUP` | Onboarding | 5-phase config conversation → Decision Space | BEHAVIOURAL | trading-agri-agent-prompts.md |
-| `TRADING/STRATEGIC/SESSION_PREP` | Strategic Cognition | Pre-session: market regime alignment + session risk posture | BEHAVIOURAL | trading-agri-agent-prompts.md |
-| `TRADING/MARKET_ANALYSIS/TRADE_SETUP` | Skill 1 | Trade setup identification from market data | BEHAVIOURAL | trading-agri-agent-prompts.md |
-| `TRADING/EXECUTION/ESCALATION_DECISION` | Skill 2 | PAAS escalation when DS Reasoner returns UNCERTAIN | BREAKING | trading-agri-agent-prompts.md |
-| `TRADING/RISK_MANAGEMENT/LOSS_LIMIT_ALERT` | Skill 3 | Halt vs warn decision on risk threshold trigger | BREAKING | trading-agri-agent-prompts.md |
-| `TRADING/CRYPTO/REBALANCE_DECISION` | Skill 4 | Crypto rebalancing and DCA decision | BEHAVIOURAL | trading-agri-agent-prompts.md |
-| `TRADING/PERFORMANCE/SESSION_REPORT` | Skill 5 | End-of-session performance report generation | BEHAVIOURAL | trading-agri-agent-prompts.md |
-| `TRADING/SELF_GOVERNANCE/DIAGNOSIS` | Self-Governance | C-049 honest assessment — goal miss diagnosis + STOP_AND_DISCLOSE | BEHAVIOURAL | trading-agri-agent-prompts.md |
-| `TRADING/STRATEGIC/MONTHLY_PORTFOLIO_ASSESSMENT` | Strategic Cognition | Monthly: portfolio health + strategic recommendation (C-050) | BEHAVIOURAL | trading-agri-agent-prompts.md |
+| `TRADING/ONBOARDING/PROFILE_SETUP` | Onboarding | 5-phase config conversation → Decision Space | BEHAVIOURAL | `FRONTIER` |
+| `TRADING/STRATEGIC/SESSION_PREP` | Strategic Cognition | Pre-session: market regime alignment + session risk posture | BEHAVIOURAL | `MID_TIER` |
+| `TRADING/MARKET_ANALYSIS/TRADE_SETUP` | Skill 1 | Trade setup identification from market data | BEHAVIOURAL | `MID_TIER` |
+| `TRADING/EXECUTION/ESCALATION_DECISION` | Skill 2 | PAAS escalation when DS Reasoner returns UNCERTAIN | BREAKING | `FRONTIER` |
+| `TRADING/RISK_MANAGEMENT/LOSS_LIMIT_ALERT` | Skill 3 | Halt vs warn decision on risk threshold trigger | BREAKING | `FRONTIER` |
+| `TRADING/CRYPTO/REBALANCE_DECISION` | Skill 4 | Crypto rebalancing and DCA decision | BEHAVIOURAL | `MID_TIER` |
+| `TRADING/PERFORMANCE/SESSION_REPORT` | Skill 5 | End-of-session performance report generation | BEHAVIOURAL | `MID_TIER` |
+| `TRADING/SELF_GOVERNANCE/DIAGNOSIS` | Self-Governance | C-049 honest assessment — goal miss diagnosis + STOP_AND_DISCLOSE | BEHAVIOURAL | `FRONTIER` |
+| `TRADING/STRATEGIC/MONTHLY_PORTFOLIO_ASSESSMENT` | Strategic Cognition | Monthly: portfolio health + strategic recommendation (C-050) | BEHAVIOURAL | `FRONTIER` |
+| `TRADING/TOKEN_ECONOMY/USAGE_SUMMARY` | Token Economy | Session/review usage for portal dashboard | USAGE_SUMMARY | `MID_TIER` |
 
-**Section 10 gate check:** Both strategic cognition prompts catalogued and seeded in SQL. C-050 in checklist. Trigger events declared. Gate 10: PASS.**
+**Section 10 gate check:** Both strategic cognition prompts catalogued and seeded in SQL. C-050 in checklist. Trigger events declared. Gate 10: PASS.
+**Section 11 gate check:** Section 4.16 added. UsageUnits defined. minimum_model_tier declared for all 10 prompts. C-051 in checklist. Gate 11: PASS.**
 
 ---
 
@@ -642,6 +675,7 @@ billing:
 | 1.2 | 2026-07-11 | Business Architect | Track A P1 fix: Section 4.14 Skill Runtime Configuration Standard; Prompt Catalogue (Section 11); execution_loop + heartbeat_schedule in Professional Template; C-048 + C-049 constitutional checks |
 | 1.3 | 2026-07-11 | Business Architect | R017-01 P1 fix: TRADING/SELF_GOVERNANCE/DIAGNOSIS prompt; C-049 checklist updated |
 | 1.4 | 2026-07-11 | Business Architect | Strategic Cognition Layer (C-050): Section 4.15; SESSION_PREP + MONTHLY_PORTFOLIO_ASSESSMENT prompts; strategic_cognition block in Professional Template; C-050 constitutional check |
+| 1.5 | 2026-07-11 | Business Architect | Token Economy Layer (C-051): Section 4.16; UsageUnits; minimum_model_tier per prompt; TRADING/TOKEN_ECONOMY/USAGE_SUMMARY; C-051 check |
 
 ---
 

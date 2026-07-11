@@ -1051,3 +1051,80 @@ OUTPUT SCHEMA:
   }
 }
 ```
+
+---
+
+## DMA/TOKEN_ECONOMY/USAGE_SUMMARY — v1.0.0
+
+**Pipeline:** Token Economy Layer (Section 3.16)
+**Step:** Generate customer-facing budget status in business language for portal widget + WhatsApp
+**Trigger:** STATUS_QUERY message, threshold crossings (30%, 10%), Day 1 reset, portal load
+**Approved by:** Enterprise Architect (R-019 — Token Economy Layer)
+**`minimum_model_tier`:** `MID_TIER`
+**Constitutional basis:** C-051 (Resource Transparency — LAW); C-038 (Billing); DP-020
+
+```
+SYSTEM:
+You are generating a budget status report for a digital marketing professional customer.
+CRITICAL: No technical terms. No mention of "tokens", "API calls", or "context windows".
+The customer is a dentist or beauty artist — they understand posts, campaigns, and revisions.
+
+Your job: translate the remaining budget into meaningful creative units and
+tell the customer how to get the most value from what remains.
+
+Always show:
+1. What's remaining (in creative units)
+2. Pace insight: "At this pace, you have X more days of budget"
+3. Smart suggestion: the best use of remaining units given current campaign calendar
+4. Value delivered: what the budget produced this month (posts, campaigns, estimated enquiries)
+
+NEVER alarm the customer — frame budget as professional planning, not scarcity.
+When budget is low, suggest the highest-value remaining actions.
+
+USER:
+Customer: {business_name} ({business_domain}), {subscription_tier}
+Billing period: {period_start} to {period_end}
+Days remaining: {days_remaining}
+
+Usage:
+  Content Creations: {content_used}/{content_included} used ({content_rollover} rollover available)
+  Quick Edits: {edits_used}/{edits_included} used
+  Research Queries: {research_used}/{research_included} used
+  Strategy Sessions: {strategy_used}/{strategy_included} used
+
+Value delivered this month:
+  Posts created: {posts_count}
+  Campaigns active: {campaigns_count}
+  KPI trend: {kpi_trend} (IMPROVING|STABLE|DECLINING)
+  Estimated new enquiries: {estimated_enquiries}
+
+Current campaign calendar context: {active_campaigns_json}
+
+OUTPUT SCHEMA:
+{
+  "reasoning_chain": "What's the overall budget situation? What's the best use of remaining budget given where this customer is in their marketing calendar?",
+  "portal_widget": {
+    "overall_health": "GREEN|YELLOW|ORANGE|RED",
+    "pace_summary": "At this pace, budget lasts ~X more days",
+    "units": [
+      {
+        "unit_type": "content_creation",
+        "label": "Content Pieces",
+        "remaining": int,
+        "effective_remaining_with_rollover": int,
+        "health": "GREEN|YELLOW|ORANGE|RED",
+        "smart_suggestion": "suggestion or null"
+      }
+    ],
+    "value_this_month": {
+      "posts_created": int,
+      "campaigns_active": int,
+      "estimated_new_enquiries": int
+    },
+    "topup_recommendation": null
+  },
+  "customer_message": "Optional 1-line notification for portal — plain English. Null if GREEN.",
+  "confidence_score": 0.0-1.0,
+  "constitutional_basis": "C-051; C-038; DP-020"
+}
+```

@@ -1,7 +1,7 @@
 # Digital Marketing Professional — Healthcare & Beauty
 
-**Specification version:** 2.1
-**Date:** 2026-07-11 (v2.1 — Strategic Cognition Layer: Section 3.15, SKILL_ACTIVATION_PLAN + PERFORMANCE_ASSESSMENT prompts, C-050)
+**Specification version:** 2.2
+**Date:** 2026-07-11 (v2.2 — Token Economy Layer: Section 3.16, UsageUnits, minimum_model_tier, C-051)
 **Change from v2.0:** Section 3.15 (Strategic Cognition Standard) added. Professional Template: strategic_cognition block declared. C-050 added to Constitutional Checklist. Prompt Catalogue section (§10b) added. Two new prompts catalogued.
 **Constitutional Basis:** C-036 (Skills), C-037 (Business KPIs), C-038 (Billing), C-039 (Conversational config), C-040 (Domain specialization), C-041 (Tool authorization), ADR-019 (RAG), ADR-020 (MCP), C-048 (Information Non-Exploitation — LAW), C-049 (Honest Limitation Disclosure — LAW), C-050 (Strategic Cognition Obligation — LAW)
 **Reviewed by:** Enterprise Architect — R-014 (v2.0), R-018 (v2.1)
@@ -768,6 +768,60 @@ strategic_cognition:
 
 ---
 
+## 3.16 Token Economy Standard
+
+> **Constitutional basis:** C-051 (Resource Transparency — LAW), AD-022 (Model Tier Selection), AD-023 (Semantic Cache), DP-020 (Quality-Preserving Resource Economy), ADR-024
+
+---
+
+### 3.16.1 UsageUnit Definitions
+
+| Unit Type | Label | Token equiv (output) | Curtain Raiser | Growth Engine | Maturity Phase | Rollover | Emergency exempt |
+|---|---|---|---|---|---|---|---|
+| `CONTENT_CREATION` | Content Pieces | ~3,000 | 8 | 18 | 35 | 25% | No |
+| `QUICK_EDIT` | Quick Edits | ~800 | 20 | 45 | Unlimited | 25% | No |
+| `RESEARCH_QUERY` | Research Queries | ~5,000 (w/RAG) | 3 | 8 | 15 | No rollover | No |
+| `STRATEGY_SESSION` | Strategy Sessions | ~8,000 | 1 | 3 | 6 | No rollover | No |
+| `PERFORMANCE_REPORT` | Monthly Report | ~4,000 | 1 (monthly) | 1 | 1 | No rollover | No |
+| `AUTO_PUBLISH` | Publishing actions | 0 tokens | Unlimited | Unlimited | Unlimited | N/A | N/A |
+| `APPROVAL_ACTION` | Approvals/rejections | 0 tokens | Unlimited | Unlimited | Unlimited | N/A | N/A |
+
+**Top-up packs (Razorpay one-time):** Extra Content Pack (5 pieces, ₹299 + GST) · Extra Research Pack (3 queries, ₹199 + GST)
+
+---
+
+### 3.16.2 Message Classification Categories (DMA Portal)
+
+| Category | Examples | Path | Est. % |
+|---|---|---|---|
+| `APPROVAL_ACTION` | "Approved", "Looks good, post it", "👍" | Evidence record only — ₹0 | 25% |
+| `STATUS_QUERY` | "How many posts this month?", "Budget left?" | DB read → USAGE_SUMMARY | 10% |
+| `REFINEMENT_REQUEST` | "More professional", "Different tone", "Shorter" | MID_TIER REFINEMENT | 30% |
+| `NEW_CREATION_REQUEST` | "Create Diwali post", "New campaign for October" | FRONTIER (1st) / MID_TIER (2nd+) | 20% |
+| `STRATEGY_CONVERSATION` | "What should we focus on?", "Performance update?" | FRONTIER/MID_TIER | 10% |
+| `REPORT_REQUEST` | "Monthly summary", "How did we do?" | MID_TIER | 5% |
+
+**Estimated zero-cost rate: ~35%** (APPROVAL_ACTION + STATUS_QUERY)
+
+---
+
+### 3.16.3 Customer Budget Communication
+
+| Threshold | Portal display | WhatsApp/push message |
+|---|---|---|
+| 60–100% remaining | Green indicator | No message (normal) |
+| 30–59% remaining | Yellow indicator | Optional: "Using well — on track" |
+| 10–29% remaining | Orange indicator + smart suggestion | Push: "8 Content Pieces left — save for [high-impact item]" |
+| <10% remaining | Red indicator + top-up offer | Push: "2 Content Pieces left. [Top up] or [wait for reset date]" |
+| Day 1 reset | Budget widget refreshes | Portal notification: "Budget reset! [N] pieces ready this month." |
+
+**Smart suggestion engine:** When a customer attempts an exhausted unit type, agent offers the best alternative: *"You've used all Content Creations. Can I make a Quick Edit to your best post instead? That uses a Quick Edit, not a Content Creation."*
+
+**Value display (always visible):**
+*"This month: 12 posts, 2 campaigns — estimated 24 new enquiries generated"*
+
+---
+
 ## 4. Customer Journey & Onboarding Flow
 
 ### 4.1 Pre-Engagement: Registration (Portal)
@@ -1123,6 +1177,7 @@ ProfessionalTemplate:
 - [x] Patient/client data protection is absolute and double-listed in prohibited actions
 - [x] PATIENT_IMAGE_CONSENT_CONFIRMED added to always-ask in Skills 4 and 8 — constitutional evidence record required before any patient/client image is used (R-011 note R011-01 — resolved in v2.0 per R-014)
 - [x] **C-050 check (Strategic Cognition): Section 3.15 added. DMA/STRATEGIC/SKILL_ACTIVATION_PLAN invoked after Skill 1 maturity report; DMA/STRATEGIC/PERFORMANCE_ASSESSMENT invoked monthly + on deviation. Both prompts include strategic_reasoning_chain, portfolio_health, c050_strategic_intent, c048_check, and c049_honest_assessment fields. Professional Template declares strategic_cognition block with 4 trigger events.**
+- [x] **C-051 check (Resource Transparency): Section 3.16 added. UsageUnits defined (Content Creation, Quick Edit, Research, Strategy, Report). minimum_model_tier declared for every prompt in Prompt Catalogue. Customer budget communication thresholds (30%, 10%) declared. Emergency override never blocks service. DMA/TOKEN_ECONOMY/USAGE_SUMMARY prompt added.**
 
 ---
 
@@ -1132,14 +1187,16 @@ ProfessionalTemplate:
 
 All DMA prompts are catalogued in `digital-marketing-agent-prompts.md`. Key prompts relevant to the Strategic Cognition Layer (new in v2.1):
 
-| Prompt ID | Layer | Step | Type |
-|---|---|---|---|
-| `DMA/STRATEGIC/SKILL_ACTIVATION_PLAN` | Strategic Cognition | Post-Skill-1: which skills to activate + sequence | BEHAVIOURAL |
-| `DMA/STRATEGIC/PERFORMANCE_ASSESSMENT` | Strategic Cognition | Monthly/deviation: portfolio health + strategic recommendation | BEHAVIOURAL |
-| `DMA/SELF_GOVERNANCE/DIAGNOSIS` | Self-Governance | Goal miss root cause + C-049 assessment | BEHAVIOURAL |
-| `DMA/SELF_GOVERNANCE/ESCALATION` | Self-Governance | 2-month escalation report for customer | BEHAVIOURAL |
+| Prompt ID | Layer | Step | Type | `minimum_model_tier` |
+|---|---|---|---|---|
+| `DMA/STRATEGIC/SKILL_ACTIVATION_PLAN` | Strategic Cognition | Post-Skill-1: which skills to activate + sequence | BEHAVIOURAL | `FRONTIER` (first plan) / `MID_TIER` (re-plans) |
+| `DMA/STRATEGIC/PERFORMANCE_ASSESSMENT` | Strategic Cognition | Monthly/deviation: portfolio health + strategic recommendation | BEHAVIOURAL | `MID_TIER` |
+| `DMA/SELF_GOVERNANCE/DIAGNOSIS` | Self-Governance | Goal miss root cause + C-049 assessment | BEHAVIOURAL | `FRONTIER` |
+| `DMA/SELF_GOVERNANCE/ESCALATION` | Self-Governance | 2-month escalation report for customer | BEHAVIOURAL | `MID_TIER` |
+| `DMA/TOKEN_ECONOMY/USAGE_SUMMARY` | Token Economy | Budget status in customer language (portal widget + WhatsApp) | USAGE_SUMMARY | `MID_TIER` |
 
 **Section 10 gate check:** Both strategic cognition prompts seeded in SQL. C-050 in checklist. Trigger events declared in Professional Template. Gate 10: PASS.
+**Section 11 gate check:** Section 3.16 added. UsageUnits defined. minimum_model_tier declared for all prompts. C-051 in checklist. Gate 11: PASS.
 
 ---
 
