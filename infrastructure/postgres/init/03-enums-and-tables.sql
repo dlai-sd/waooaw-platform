@@ -981,7 +981,15 @@ VALUES
     ('AGRI/WEATHER_ADVISORY/FARMER_ALERT', '1.0.0', 'WEATHER_ADVISORY_FARMER', 'FARMER_ALERT', 'AGRICULTURAL_ADVISOR_INDIA', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-042; C-040; C-039', 'BREAKING', 'Enterprise Architect', NOW(), TRUE, NOW()),
     ('AGRI/CROP_HEALTH/MORNING_CHECKIN', '1.0.0', 'CROP_HEALTH_CONVERSATIONAL', 'MORNING_CHECKIN', 'AGRICULTURAL_ADVISOR_INDIA', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-042; C-039', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
     ('AGRI/MANDI_PRICE/SELL_TIMING', '1.0.0', 'MANDI_PRICE_INTELLIGENCE', 'SELL_TIMING', 'AGRICULTURAL_ADVISOR_INDIA', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-042; C-037; C-039', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    ('AGRI/CROP_PLANNING/NEXT_SEASON', '1.0.0', 'CROP_SEASON_PLANNING', 'NEXT_SEASON', 'AGRICULTURAL_ADVISOR_INDIA', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-042; C-037; C-039', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW());
+    ('AGRI/CROP_PLANNING/NEXT_SEASON', '1.0.0', 'CROP_SEASON_PLANNING', 'NEXT_SEASON', 'AGRICULTURAL_ADVISOR_INDIA', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-042; C-037; C-039', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    -- Trading Agent new prompts (v0.29.0 — Track A P1 fix)
+    ('TRADING/ONBOARDING/PROFILE_SETUP', '1.0.0', 'ONBOARDING', 'PROFILE_SETUP', 'TRADING_FO_CRYPTO', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-039; AD-013; C-023', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('TRADING/EXECUTION/ESCALATION_DECISION', '1.0.0', 'FO_TRADE_EXECUTION', 'ESCALATION_DECISION', 'TRADING_FO_CRYPTO', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-036; C-001; C-023', 'BREAKING', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('TRADING/CRYPTO/REBALANCE_DECISION', '1.0.0', 'CRYPTO_POSITION_MANAGEMENT', 'REBALANCE_DECISION', 'TRADING_FO_CRYPTO', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-036; C-043; C-041', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    -- Agricultural Advisor new prompts (v0.29.0 — Track A P1 fix)
+    ('AGRI/ONBOARDING/OPENING_MESSAGE', '1.0.0', 'WHATSAPP_PHONE_IDENTITY', 'OPENING_MESSAGE', 'AGRICULTURAL_ADVISOR_INDIA', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-042; C-039; ADR-023', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('AGRI/ONBOARDING/INFERENCE_CONFIRM', '1.0.0', 'WHATSAPP_PHONE_IDENTITY', 'INFERENCE_CONFIRM', 'AGRICULTURAL_ADVISOR_INDIA', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-039; C-023; ADR-023', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('AGRI/HINT_SYSTEM/WEEKLY_HINT', '1.0.0', 'AGRICULTURAL_HINT_SYSTEM', 'WEEKLY_HINT', 'AGRICULTURAL_ADVISOR_INDIA', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-042; C-037; C-039', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW());
 
 -- Agent Reasoning Traces — primary AI audit artifact (C-047, AD-008, AD-019)
 -- See architecture/reference/agent-reasoning-trace.md for full spec.

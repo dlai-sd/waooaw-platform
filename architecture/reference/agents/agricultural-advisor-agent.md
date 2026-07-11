@@ -1,9 +1,9 @@
 # Agricultural Advisory Professional — India Small & Marginal Farmers
 
-**Specification version:** 2.0
-**Date:** 2026-07-09 (v2.0 — Issue #1: WhatsApp Phone-as-Identity, ADR-023, TRAI opt-in enforcement, WhatsApp-native discovery and onboarding)
-**Status:** UPDATED — EA review pending (v2.0)
-**Constitutional Basis:** C-036 (Skills), C-037 (Business KPIs), C-038 (Billing), C-039 (Conversational config), C-040 (Domain specialization), C-041 (Tool authorization), C-042 (Vocabulary mandate — LAW), ADR-019 (RAG), ADR-020 (MCP), ADR-023 (WhatsApp Phone-as-Identity)
+**Specification version:** 2.1
+**Date:** 2026-07-11 (v2.1 — Track A P1 fix: Section 4.14 Skill Runtime Config Standard, Prompt Catalogue, execution loop declarations, C-048/C-049 checks)
+**Status:** UPDATED — EA review pending (v2.1)
+**Constitutional Basis:** C-036 (Skills), C-037 (Business KPIs), C-038 (Billing), C-039 (Conversational config), C-040 (Domain specialization), C-041 (Tool authorization), C-042 (Vocabulary mandate — LAW), ADR-019 (RAG), ADR-020 (MCP), ADR-023 (WhatsApp Phone-as-Identity), C-048 (Information Non-Exploitation — LAW), C-049 (Honest Limitation Disclosure — LAW)
 **Proposed Acceptance Scenario:** AS-005 — Small Farmer Agricultural Advisory (to be ratified in GENESIS amendment)
 **Status:** DRAFT — pending EA review (R-013) and Founder approval (GENESIS Part 05)
 
@@ -393,6 +393,119 @@ This is constitutionally elegant: the Evidence First principle (C-023) — desig
 
 ---
 
+## 4.14 Skill Runtime Configuration Standard
+
+> This section defines the operating model for every skill in this agent. The Agricultural Advisor's WhatsApp-native, PERMANENT lifecycle design means the approval ladder (CUSTOMER_APPROVAL → SYNTHETIC_APPROVAL) applies selectively per skill. Farmers do not manage an approval interface — conversational confirmation IS the approval mechanism. Synthetic Approval (C-044) is **not applicable** for any skill — the conversational confirmation model is sufficient and more appropriate for low-literacy users.
+
+---
+
+### 4.14.1 Approval Model per Skill
+
+| Skill | Approval model | Rationale |
+|---|---|---|
+| Skill 0 — Phone Identity | `PRODUCES_RECORD` | Auto-registration on first contact; no explicit approval (consent = farmer initiates) |
+| Skill 1 — Weather Advisory | `PRE_AUTHORIZED` for alerts; `APPROVAL_GATE` for major interventions (early harvest, emergency irrigation) | Routine alerts must reach farmer without friction; major financial decisions always need confirmation |
+| Skill 2 — Crop Health | `APPROVAL_GATE` | Morning check-in requires farmer response; diagnosis → recommendation → farmer confirms action |
+| Skill 3 — Mandi Price | `PRE_AUTHORIZED` for threshold alerts; `APPROVAL_GATE` for sell timing advice | Price threshold alert = PRE_AUTHORIZED; specific sell decision = farmer's choice |
+| Skill 4 — Crop Planning | `APPROVAL_GATE` | Planting decision is the farmer's biggest annual commitment — always explicit confirmation |
+| Skill 5 — Hint System | `PRE_AUTHORIZED` | Hints are information, not instructions; max 2/week; no approval needed to send |
+| Skill 6 — PMFBY Evidence | `PRODUCES_RECORD` auto; `APPROVAL_GATE` for formal report | Evidence creation is passive; report generation requires explicit farmer request |
+
+**Synthetic Approval:** N/A for all skills. C-044 confidence gate is not applicable — conversational confirmation at each advisory step replaces synthetic approval for this user profile.
+
+---
+
+### 4.14.2 Skill Operating Cadence
+
+The Agricultural Advisor runs **continuously (PERMANENT lifecycle)** on a multi-skill daily schedule. Each skill has its own heartbeat independent of a session window.
+
+| Skill | Heartbeat / Cadence | Trigger type |
+|---|---|---|
+| Skill 0 — Phone Identity | On every incoming WhatsApp webhook | **EVENT_DRIVEN** |
+| Skill 1 — Weather Advisory | Daily at 06:00 IST for all active farmers | **SCHEDULED** |
+| Skill 2 — Crop Health | Daily at 07:00 IST morning check-in; farmer-paced response | **SCHEDULED** (send) + **EVENT_DRIVEN** (farmer replies) |
+| Skill 3 — Mandi Price | Daily at 11:00 IST price check; alert on threshold breach | **SCHEDULED** (check) + **EVENT_DRIVEN** (threshold alert) |
+| Skill 4 — Crop Planning | Seasonal: triggered 4 weeks before expected harvest date | **EVENT_DRIVEN** (date calculation based on sowing date) |
+| Skill 5 — Hint System | Weekly: Monday at 08:00 IST | **SCHEDULED** |
+| Skill 6 — PMFBY Evidence | Event-driven: created on every advisory action by other skills | **EVENT_DRIVEN** |
+
+**Session start trigger:** Not applicable — PERMANENT lifecycle, no session boundary. The agent runs continuously. Each Temporal workflow is long-running per farmer (seasonal duration). TRAI 24-hour window governs proactive messaging; farmer-initiated contact resets the window.
+
+---
+
+### 4.14.3 Performance Narrative — Delivery Standard
+
+| Narrative | Cadence | Channel | Format |
+|---|---|---|---|
+| Monthly farmer summary | Day 1 of each month | WhatsApp voice (in farmer's language) | 60-second spoken summary: "Your [crop] last month: what happened, one thing I learned, what we do next" |
+| Seasonal crop summary | At harvest time | WhatsApp voice + text | Yield vs recommendation; income achieved; what to do differently next season |
+
+No portal-based narrative — farmers do not access the portal. All performance feedback is via WhatsApp voice in the farmer's regional language. Reports are framed in ₹ income and crop outcomes, never in KPI numbers.
+
+---
+
+### 4.14.4 Self-Governance and Goal Miss Escalation
+
+```
+Day 15 of each month — pace check (automated):
+  If farmer has not responded to check-ins for 10+ consecutive days:
+    → Agent sends reduced-frequency check-in (once every 3 days)
+    → Does NOT escalate externally — respects farmer's harvest or busy season
+
+Month 2 consecutive miss (e.g., recommended actions not being acted upon):
+  → Agent sends honest reflection in farmer's language:
+     "Suresh dada, I've been sending advice for 2 months.
+      I'm not sure if it's helping. Is there something I'm not understanding?
+      Should I change how I'm advising you?"
+  → Farmer's response guides adaptation
+
+C-049 self-governance check:
+  Monthly narrative MUST include c049_honest_assessment:
+    "Am I delivering value for this farmer given their land, resources, and goals?
+     If not, I must say so rather than continuing advice that isn't working."
+  Valid option: STOP_AND_DISCLOSE
+  — Agent must be willing to say "I'm not the right solution for your situation"
+     rather than continuing to generate advice the farmer cannot act on.
+
+Seasonal review (at harvest):
+  Compare: recommended intervention → farmer's actual action → crop outcome
+  If consistent misalignment → escalate to district-level calibration review
+  (this feeds back into Tier 3 ensemble model weights)
+```
+
+---
+
+### 4.14.5 Billing Control — API Budget per Skill per Month (per active farmer)
+
+| Skill | LLM calls/month | External API calls/month | Notes |
+|---|---|---|---|
+| Skill 1 — Weather Advisory | ~30 | ~300 | Daily farmer alert (one LLM call/day); weather API ~10 calls/day |
+| Skill 2 — Crop Health | ~60 | ~30 | Daily check-in generation + diagnosis (2 LLM calls/interaction) |
+| Skill 3 — Mandi Price | ~20 | ~300 | Threshold alerts; price API ~10 calls/day |
+| Skill 4 — Crop Planning | ~5 | ~20 | Seasonal trigger — low frequency |
+| Skill 5 — Hint System | ~8 | ~40 | Weekly hint convergence (2 runs × 2 lens calls) |
+| Skill 6 — PMFBY Evidence | ~2 | ~10 | Report synthesis; evidence creation is passive |
+| Onboarding (one-time) | ~8 | ~5 | 4-5 conversation exchanges across 2 days |
+| **Total per farmer/month** | **~133** | **~705** | |
+
+**Graceful reduction at 80% budget:** Skip optional hint convergence passes (extra lens checks beyond primary signals). Core advisory (Skills 1+2+3) and evidence creation (Skill 6) are never skipped.
+
+---
+
+### 4.14.6 Runtime Override Table (per-skill deviations)
+
+| Skill | `approval_mode` | `synthetic_approval` | `goal_miss_escalation_months` | `delivery_channels` | `monthly_llm_budget` |
+|---|---|---|---|---|---|
+| Skill 0 — Phone Identity | PRODUCES_RECORD | N/A | N/A | Internal only | ~0 |
+| Skill 1 — Weather Advisory | PRE_AUTHORIZED (alerts) / APPROVAL_GATE (major) | N/A | 1 (2 missed alerts = farmer check) | WhatsApp voice | ~30 |
+| Skill 2 — Crop Health | APPROVAL_GATE | N/A | 2 (missed responses) | WhatsApp voice + text | ~60 |
+| Skill 3 — Mandi Price | PRE_AUTHORIZED (alerts) / APPROVAL_GATE (advice) | N/A | N/A (price is continuous) | WhatsApp voice | ~20 |
+| Skill 4 — Crop Planning | APPROVAL_GATE | N/A | 1 season | WhatsApp voice + text | ~5 |
+| Skill 5 — Hint System | PRE_AUTHORIZED | N/A | N/A | WhatsApp voice | ~8 |
+| Skill 6 — PMFBY Evidence | PRODUCES_RECORD | N/A | N/A | WhatsApp (report delivery only) | ~2 |
+
+---
+
 ## 5. Emergency Stop
 
 Emergency Stop for this agent uses a **WhatsApp-initiated path** — a new pattern not present in other agents (which use the web PWA WebSocket button). This path is fully specified below to support CCT writing and implementation. AD-001 (≤250ms) applies.
@@ -609,6 +722,42 @@ ProfessionalTemplate:
           description: "Generate formal insurance evidence report — legal document,
                         requires explicit farmer request and CE APPROVED record before generation.
                         R013-05 fix: moved from authorized_actions to always_ask." }
+  skill_runtime_defaults:
+    approval_mode: "MIXED (see Section 4.14.1 per-skill table)"
+    synthetic_approval_confidence_threshold: "N/A"  # conversational confirmation replaces synthetic approval
+    synthetic_approval_min_history: "N/A"
+    goal_miss_escalation_months: 2
+    delivery_channels: ["WHATSAPP_VOICE"]  # portal is admin-only; never the farmer's interface
+    api_budget:
+      weather_advisory_llm_calls_per_month: 30
+      crop_health_llm_calls_per_month: 60
+      mandi_price_llm_calls_per_month: 20
+      crop_planning_llm_calls_per_month: 5
+      hint_system_llm_calls_per_month: 8
+      graceful_reduction_threshold: 0.80
+  execution_loop:
+    pattern: "REASONING_FIRST"  # C-047 — agent reasons before WhatsApp message is sent
+    lifecycle: "PERMANENT"
+    session_start_trigger:
+      type: "EVENT_DRIVEN"
+      description: "No session boundary — agent is permanently active per farmer. Each skill runs on its own cadence (see 4.14.2). Farmer's first WhatsApp message triggers onboarding workflow via Temporal."
+    heartbeat_schedule:
+      skill_0_phone_identity: "EVENT_DRIVEN (every incoming WhatsApp webhook)"
+      skill_1_weather_advisory: "SCHEDULED daily 06:00 IST"
+      skill_2_crop_health: "SCHEDULED daily 07:00 IST (send) + EVENT_DRIVEN (farmer reply)"
+      skill_3_mandi_price: "SCHEDULED daily 11:00 IST + EVENT_DRIVEN (threshold breach)"
+      skill_4_crop_planning: "EVENT_DRIVEN (4 weeks before calculated harvest date)"
+      skill_5_hint_system: "SCHEDULED weekly Monday 08:00 IST"
+      skill_6_pmfby_evidence: "EVENT_DRIVEN (triggered by every advisory skill action)"
+    trai_constraint:
+      proactive_window_hours: 24
+      outside_window_action: "HSM_TEMPLATE_ONLY"
+      resume_trigger: "Farmer sends any message → 24-hour window reopens"
+    self_governance:
+      missed_response_check_days: 10
+      monthly_self_reflection_day: 1
+      consecutive_miss_escalation_threshold: 2
+      c049_honest_assessment_required: true
   is_published: true
 ```
 
@@ -724,6 +873,28 @@ billing:
 - [x] Emergency Stop works via WhatsApp "STOP" or voice command
 - [x] **R013-01 fix applied: FARMER_LAND_PROFILE_CONFIRMED in always_ask_actions — creates CAL record (C-023) when farmer confirms their land profile during onboarding**
 - [x] Prohibited actions include medical advice, financial product advice, cross-farm data sharing
+- [x] **C-048 check (Information Non-Exploitation): No Skill uses the agent's information advantage against the farmer's interests. The hint system explicitly excludes hints about crops the farmer cannot grow, products they cannot afford, or decisions that only benefit the platform. The Skill 3 price advisory does not recommend holding or selling based on WAOOAW commercial relationships — only the farmer's income is optimised.**
+- [x] **C-049 check (Honest Limitation Disclosure): Monthly self-reflection (Section 4.14.4) includes c049_honest_assessment. If the agent cannot deliver value for a specific farmer (e.g., no weather data for their region, crop type outside ICAR knowledge base, language not supported), it must say so explicitly. STOP_AND_DISCLOSE is a valid self-governance recommendation.**
+
+---
+
+## 14. Prompt Catalogue
+
+> **Gate requirement (Section 2 of Activation Gate, C-045, AD-018):** Every LLM inference point must have an approved prompt. This section indexes all inference points for this agent. All prompts reside in `architecture/reference/prompts/trading-agri-agent-prompts.md` and are seeded in `institutional.agent_prompt_versions`.
+
+| Prompt ID | Skill | Step | Type | File |
+|---|---|---|---|---|
+| `AGRI/ONBOARDING/OPENING_MESSAGE` | Skill 0 / Onboarding | First WhatsApp contact → warm farmer greeting + name/village question | BEHAVIOURAL | trading-agri-agent-prompts.md |
+| `AGRI/ONBOARDING/INFERENCE_CONFIRM` | Skill 0 / Onboarding | Confirm district/crop inferences before recording profile | BEHAVIOURAL | trading-agri-agent-prompts.md |
+| `AGRI/WEATHER_ADVISORY/FARMER_ALERT` | Skill 1 | Weather forecast → farmer-vocabulary crop advice | BREAKING | trading-agri-agent-prompts.md |
+| `AGRI/CROP_HEALTH/MORNING_CHECKIN` | Skill 2 | Generate targeted morning check-in question | BEHAVIOURAL | trading-agri-agent-prompts.md |
+| `AGRI/MANDI_PRICE/SELL_TIMING` | Skill 3 | Mandi price analysis → sell timing advice in farmer vocabulary | BEHAVIOURAL | trading-agri-agent-prompts.md |
+| `AGRI/CROP_PLANNING/NEXT_SEASON` | Skill 4 | 6-lens convergence analysis → next season crop recommendation | BEHAVIOURAL | trading-agri-agent-prompts.md |
+| `AGRI/HINT_SYSTEM/WEEKLY_HINT` | Skill 5 | 5-lens convergence engine → 0, 1, or 2 weekly hints | BEHAVIOURAL | trading-agri-agent-prompts.md |
+
+**Gate 2.4 check:** The PMFBY evidence report (Skill 6) is structured-data formatting (CAL records → PDF template) — not LLM inference — and is therefore not listed here. All other LLM inference points are catalogued above.
+
+**All prompts have active rows in `institutional.agent_prompt_versions` (seeded in `03-enums-and-tables.sql`). Section 2 gate: PASS.**
 
 ---
 
@@ -733,11 +904,14 @@ billing:
 |---|---|---|---|
 | 1.0 | 2026-07-08 | Business Architect | Initial draft |
 | 1.1 | 2026-07-08 | Business Architect | R-013 P0 fixes: R013-01 (FARMER_LAND_PROFILE_CONFIRMED to always_ask), R013-02 (soil-data-mcp removed, NBSS&LUP → Tier 1 RAG), R013-03 (WhatsApp Emergency Stop path fully specified), R013-05 (PMFBY_REPORT_GENERATE to always_ask) |
+| 2.0 | 2026-07-09 | Business Architect | PR #2: ADR-023 WhatsApp Phone-as-Identity; Skill 0 (Phone-Verified Profile); distributed onboarding (Section 6.3); TRAI opt-in enforcement; R-015 APPROVED |
+| 2.1 | 2026-07-11 | Business Architect | Track A P1 fix: Section 4.14 Skill Runtime Configuration Standard; Prompt Catalogue (Section 14) with 3 new prompts (OPENING_MESSAGE, INFERENCE_CONFIRM, WEEKLY_HINT); execution_loop + heartbeat_schedule in Professional Template; C-048 + C-049 constitutional checks |
 
 ---
 
 ## 13. Review and Approval
 
 **EA Review:** R-013 — complete (2026-07-08). v1.1 addresses all P0 findings.
+**EA Review (v2.0):** R-015 — APPROVED (ADR-023 WhatsApp identity, 2026-07-09)
 **Founder Approval:** APPROVED 2026-07-08 — GENESIS Part 05 amendment, AS-005 ratified
-**Status:** APPROVED
+**Status:** APPROVED (v2.0) — v2.1 pending EA re-review for Track A P1 fixes

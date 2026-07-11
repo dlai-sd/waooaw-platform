@@ -1,8 +1,23 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-07-09
-**Version:** 0.28.0
-**Session:** 2026-07-09 close
+**Last Updated:** 2026-07-11
+**Version:** 0.29.0
+**Session:** 2026-07-11 — Track A P1 gap resolution
+
+---
+
+## IN-PROGRESS CHECKPOINT (Session 2026-07-11)
+
+| Milestone | Status |
+|---|---|
+| Section 4.14 (Skill Runtime Config) added to Trading v1.1 | ✓ DONE — trading-agent.md v1.2 |
+| Section 4.14 (Skill Runtime Config) added to Agricultural v2.0 | ✓ DONE — agricultural-advisor-agent.md v2.1 |
+| Section 5 (Execution Loop) heartbeat + session declarations | ✓ DONE — Professional Template updated in both specs |
+| Prompt Catalogue sections added to both specs | ✓ DONE — Trading §11, Agricultural §14 |
+| 6 new prompts added to trading-agri-agent-prompts.md | ✓ DONE — PROFILE_SETUP, ESCALATION_DECISION, REBALANCE_DECISION, OPENING_MESSAGE, INFERENCE_CONFIRM, WEEKLY_HINT |
+| SQL seed rows for 6 new prompts | ✓ DONE — 03-enums-and-tables.sql |
+| C-048 + C-049 constitutional checks added to both agents | ✓ DONE |
+| Version + PROJECT_STATE update | ✓ DONE |
 
 ---
 
@@ -11,14 +26,30 @@
 ```
 INSTITUTION:  WAOOAW — autonomous digital professionals under constitutional governance
 GATE:         G5 prerequisites met (G5 CLEAR ≠ implementation authorization)
-VERSION:      0.28.0
-FOCUS:        Ethics layer added (C-048/C-049). Constitutional design complete for 3 approved agents.
+VERSION:      0.29.0
+FOCUS:        Track A COMPLETE. Trading v1.2 + Agricultural v2.1 now pass Gate Sections 4+5.
+              All 3 agents are now fully gate-compliant for implementation sprint.
               Implementation: NOT authorized. Awaiting explicit Founder "start coding" per session.
 
 CLAIMS:       C-001 through C-049 — 49 ratified claims
-AGENTS:       3 approved (DMA v2.0, Trading v1.1, Agricultural v2.0)
-OPEN P1:      Trading + Agricultural Gate Sections 4+5 before implementation sprints
+AGENTS:       3 approved (DMA v2.0, Trading v1.2, Agricultural v2.1)
+OPEN P1:      None — all P1 gaps resolved. IB-009 sprint authorized architecturally.
+PENDING EA:   Trading v1.2 + Agricultural v2.1 need EA re-review for Track A changes.
 ```
+
+---
+
+## What This Session Completed (2026-07-11)
+
+| Version | What |
+|---|---|
+| v0.29.0 | **Track A P1 gap resolution** — Trading v1.1→v1.2, Agricultural v2.0→v2.1 |
+| | Section 4.14 Skill Runtime Configuration Standard added to both agents |
+| | Section 5 Execution Loop gate compliance: heartbeat_schedule + session_start_trigger declared in both Professional Templates |
+| | Prompt Catalogue sections added: Trading §11 (6 prompts), Agricultural §14 (7 prompts) |
+| | 6 new prompts in trading-agri-agent-prompts.md: TRADING/ONBOARDING/PROFILE_SETUP, TRADING/EXECUTION/ESCALATION_DECISION, TRADING/CRYPTO/REBALANCE_DECISION, AGRI/ONBOARDING/OPENING_MESSAGE, AGRI/ONBOARDING/INFERENCE_CONFIRM, AGRI/HINT_SYSTEM/WEEKLY_HINT |
+| | 6 new SQL seed rows in agent_prompt_versions |
+| | C-048 (Information Non-Exploitation) + C-049 (Honest Limitation Disclosure) checks added to both constitutional checklists |
 
 ---
 
@@ -93,19 +124,20 @@ NEXT:         Founder indicated an important point to discuss — see WORK MENU 
 | Trading + Agricultural: Section 4 (Skill Runtime Config) and Section 5 (Execution Loop) | P1 gap per Section 16 of AGENT-AUTHORING-GUIDE | Before Trading/Agricultural IB-009 sprint |
 | 3 HSM templates for Agricultural billing | Pending Meta pre-approval | Before farmer billing goes live |
 | ADR-023: OAuth vault for WhatsApp voice MCP STT service | AD-020 identifies need for ADR-023 extension | Before STT service selection |
+| Trading v1.2 + Agricultural v2.1 EA re-review (Track A changes) | Pending | Before implementing these agents in IB-009 sprint |
 
 ### Architecture Layers
 
 | Layer | Status |
 |---|---|
-| Claims | C-001 to C-047, all RATIFIED |
+| Claims | C-001 to C-049, all RATIFIED |
 | Capabilities | Domains 1–12 (Platform Operations added) |
 | Drivers | AD-001 to AD-020 |
 | Principles | DP-001 to DP-018 |
 | ADRs | ADR-001 to ADR-023 |
 | Reference Architecture | containers.md + 23 MCP servers + 2 internal services |
 | Component Specs | CE + BP + PR + AIR (all updated with AI-native execution) |
-| Prompt Library | 24 active prompts across 4 agent types |
+| Prompt Library | 30 active prompts across 4 agent types (24 DMA + 6 Trading + 7 Agri + 1 PlatOps; 6 new added v0.29.0) |
 | MCP Tool Catalogues | 11 servers + razorpay-mcp fully specified |
 | Temporal Workflows | 5 workflows defined |
 | Data Architecture | All tables, RLS, indexes complete |
@@ -115,25 +147,25 @@ NEXT:         Founder indicated an important point to discuss — see WORK MENU 
 
 ## WORK MENU — Present this on /resume
 
-**Founder indicated an important point to discuss. Present this menu and await the topic.**
+**WAOOAW Engineering Organization — Session 2026-07-11 (next)**
+**Version:** v0.29.0 | **Gate:** G5 prerequisites met | **3 agents fully gate-compliant**
 
-**WAOOAW Engineering Organization — Session 2026-07-09 (next)**
-**Version:** v0.26.0 | **Gate:** G5 prerequisites met | **3 agents fully approved + billed**
-
-All three agents are approved, have billing specs, and are architecturally complete.
-Two P1 gaps remain before Trading and Agricultural agents can go into an implementation sprint.
+Track A is COMPLETE. All three agents now pass the full Activation Gate (Sections 1–9).
+Two items remain before implementation sprints: EA re-review of v1.2/v2.1 changes, and explicit Founder "start coding" authorization.
 
 ---
 
-**Founder's Next Topic** — Awaiting Founder to introduce. Present the menu below and listen.
+**Track A — ✓ COMPLETED** (v0.29.0)
+
+Trading v1.2 and Agricultural v2.1 now pass Gate Sections 4 and 5. 6 new prompts added. All agents architecturally complete.
 
 ---
 
-**Track A — Fix P1 gaps: Trading + Agricultural Section 4+5 gate compliance**
+**Track A-review — EA re-review of Trading v1.2 + Agricultural v2.1**
 
-*Office: Business Architect (spec) → Enterprise Architect (gate verification)*
+*Office: Enterprise Architect*
 
-Trading v1.1 and Agricultural v2.0 fail Gate Sections 4 (Skill Runtime Config Standard) and 5 (Execution Loop). Per Section 16 of AGENT-AUTHORING-GUIDE, these are P1 items before their implementation sprints can begin. This sprint applies the Section 3.14 Skill Runtime Configuration Standard and heartbeat/session schedule declarations to both agents — same pattern as was done for DMA v2.0.
+Track A changes (Section 4.14 + Prompt Catalogue + C-048/C-049) need EA re-review before the implementation sprint can begin for these agents. Type 2 (prompt addition) + Type 4 (constitutional constraint) update path per Section 15. Standard PR review is sufficient for the runtime config additions; EA review required for the new prompts and C-048/C-049 additions.
 
 ---
 

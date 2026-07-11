@@ -6,14 +6,14 @@
 
 ```
 Founding Corpus v1           Status: Ratified
-Version:                     0.28.0 — Session close: 49 claims (C-048/C-049 ethics), 3 agents approved + billed, AI-native execution layer complete (2026-07-09)
+Version:                     0.29.0 — Session close: Track A COMPLETE — Trading v1.2 + Agricultural v2.1 gate-compliant (Sections 4+5), 6 new prompts, 30 total active prompts (2026-07-11)
 Current Epoch:               Epoch 1 — Employment
 Current Gate:                G2-G4: PASSED | G5: Prerequisites met
                              ⛔ G5 CLEAR ≠ implementation authorized for any session
                              Implementation sprint requires explicit Founder authorization
 Authorized Offices:          Runtime Professional (IB-009) — AWAITING FOUNDER AUTHORIZATION
 Engineering Status:          Architecture COMPLETE
-                             Agents approved: 3 (Digital Marketing v2.0, Trading, Agricultural Advisory)
+                             Agents approved: 3 (Digital Marketing v2.0, Trading v1.2, Agricultural Advisory v2.1)
                              Source code: Prerequisites met. Awaiting explicit Founder approval.
 ```
 

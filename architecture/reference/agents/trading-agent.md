@@ -1,9 +1,9 @@
 # Autonomous Trading Professional — FO & Crypto
 
-**Specification version:** 1.1
-**Date:** 2026-07-08
-**Change:** Skill 1 expanded to explicitly cover Technical Chart Analysis (OHLCV candles, chart patterns, indicator calibration RAG, India VIX MCP tool)
-**Approved by Founder:** 2026-07-08
+**Specification version:** 1.2
+**Date:** 2026-07-11 (v1.2 — Track A P1 fix: Section 4.14 Skill Runtime Config Standard, Prompt Catalogue, execution loop declarations, C-048/C-049 checks)
+**Change:** Track A compliance: Section 4 (Skill Runtime Gate) and Section 5 (Execution Loop Gate) now pass. Prompt Catalogue added. 3 new prompts.
+**Approved by Founder:** 2026-07-08 (v1.1); v1.2 pending re-review
 **Constitutional Basis:** C-036 (Skills), C-037 (Business KPIs), C-038 (Billing), C-039 (Conversational config), C-040 (Domain specialization), C-041 (Tool authorization), C-043 (Financial Spend Authority Ceiling — the daily loss limit is a Constitutional Floor equivalent; same enforcement mechanism as paid advertising budget cap), ADR-019 (RAG), ADR-020 (MCP), ADR-018 (Emergency Stop Temporal signal)
 **Status:** DRAFT — pending EA review (R-012) and Founder approval (GENESIS Part 05)
 
@@ -206,6 +206,113 @@ Before the first trade execution in any session, the agent must verify broker AP
 
 ---
 
+## 4.14 Skill Runtime Configuration Standard
+
+> This section defines the operating model for every skill in this agent. The Trading Agent's PAAS execution model means the approval-mode ladder (CUSTOMER_APPROVAL → SYNTHETIC_APPROVAL) from the DMA pattern **does not apply** — the customer pre-authorizes at session configuration, not action-by-action. All deviations from the general standard are explicitly noted.
+
+---
+
+### 4.14.1 Approval Model — PAAS Distinction
+
+The Trading Agent uses **PRE_AUTHORIZED (PAAS)** execution. This is constitutionally distinct from APPROVAL_GATE agents.
+
+| Concept | APPROVAL_GATE agents (DMA) | PRE_AUTHORIZED PAAS (Trading) |
+|---|---|---|
+| Approval point | Every action, at execution time | Once, at session configuration (onboarding) |
+| Escalation trigger | Customer must approve before each action | Decision Space Reasoner returns UNCERTAIN |
+| Synthetic Approval | Eligible (C-044 applies) | **N/A** — PAAS replaces this model |
+| Auto-downgrade | On 10% override rate | N/A — PAAS paused on any escalation |
+
+**For all Skills:** `approval_mode = PAAS_PRE_AUTHORIZED`. Synthetic approval confidence threshold: **N/A**.
+
+The only post-hoc escalation path is the `TRADING/EXECUTION/ESCALATION_DECISION` prompt, invoked when CE.ValidateAction returns UNCERTAIN. This pauses the PAAS session and routes to the customer.
+
+---
+
+### 4.14.2 Skill Operating Cadence
+
+The Trading Agent operates within a **market-day session boundary** (NSE trading days, 9:20–15:00 IST). Outside session windows, all execution skills are inactive.
+
+| Skill | Heartbeat / Cadence | Trigger type |
+|---|---|---|
+| Skill 1 — Market Analysis | Every 5 minutes during session window | **SCHEDULED** — cron within session |
+| Skill 2 — Trade Execution | On Skill 1 `TRADE_SETUP_IDENTIFIED` event | **EVENT_DRIVEN** |
+| Skill 3 — Risk Management | Every 60 seconds during active session | **SCHEDULED** — continuous monitoring |
+| Skill 4 — Crypto Management | Daily at 15:30 IST; DCA per customer schedule | **SCHEDULED** |
+| Skill 5 — Performance Analytics | Session-end (15:05 IST); monthly on Day 1 | **EVENT_DRIVEN** (session close) + **SCHEDULED** (monthly) |
+
+**Session start trigger:** PAASSessionWorkflow wakes at 9:20 IST on NSE trading days. Pre-session bootstrap runs: (1) verify broker API connectivity via `BROKER_API_ACCESS_VERIFIED`, (2) load Decision Space parameters, (3) perform first CE.ValidateAction health check. Any failure halts session before first trade.
+
+---
+
+### 4.14.3 Performance Narrative — Delivery Standard
+
+| Narrative | Cadence | Channels | Format |
+|---|---|---|---|
+| Session Report | End of every trading session (15:05 IST) | WhatsApp push + Portal | 2-3 sentence WhatsApp summary + full portal report |
+| Monthly Review | Day 1 of each month | WhatsApp push + Portal + optional email | Sharpe, drawdown, win-rate vs targets; escalation if 2+ miss months |
+
+No daily narrative beyond session report — the session report IS the daily record.
+
+---
+
+### 4.14.4 Self-Governance and Goal Miss Escalation
+
+```
+Continuous (every Risk Management heartbeat):
+  Monitor daily loss limit utilization.
+  At 80% utilization → send WARN_AND_CONTINUE customer notification.
+  At 100% utilization → HALT_TRADING immediately (constitutional floor — C-043).
+
+Monthly (Day 1 — Skill 5):
+  Evaluate: Sharpe ratio vs target, max drawdown vs tolerance, win rate trend.
+  If 2 consecutive months below stated risk-adjusted return target:
+    → Prepare escalation report:
+       (a) What strategies were deployed (with evidence)
+       (b) Market conditions diagnosis (what limited performance)
+       (c) 2-3 parameter adjustment options with recommendation
+    → Customer selects adjustment; new Decision Space amendment recorded in CAL
+    → Clock resets
+
+C-049 self-governance check:
+  Monthly escalation report MUST include c049_honest_assessment:
+    "Given my current Decision Space, market conditions, and customer capital,
+     can I deliver the customer's stated return target? If not, I must say so."
+  Valid recommended_option: STOP_AND_DISCLOSE
+  — Agent must be willing to recommend pausing or terminating if genuinely unable
+     to serve the customer's stated goal within the constitutional parameters.
+```
+
+---
+
+### 4.14.5 Billing Control — API Budget per Skill per Month
+
+| Skill | LLM calls/month | External API calls/month | Notes |
+|---|---|---|---|
+| Skill 1 — Market Analysis | ~250 | ~1,500 | 50 sessions/month × 5 analysis calls/session |
+| Skill 2 — Trade Execution | ~30 | ~500 | Execution is mechanical; LLM for escalation only |
+| Skill 3 — Risk Management | ~30 | ~3,000 | Continuous monitoring; LLM only on threshold trigger |
+| Skill 4 — Crypto Management | ~20 | ~200 | Daily rebalance check + DCA |
+| Skill 5 — Performance Analytics | ~60 | ~100 | Session reports (daily) + monthly review |
+| Onboarding (one-time) | ~10 | ~5 | 5-phase conversation at session setup |
+| **Total** | **~400/month** | **~5,305/month** | |
+
+**Graceful reduction at 80% budget:** Skip additional analysis passes (extra Skill 1 cycles beyond the core 5-minute heartbeat). Core execution (Skill 2), risk monitoring (Skill 3), and session report (Skill 5) are never skipped.
+
+---
+
+### 4.14.6 Runtime Override Table (per-skill deviations)
+
+| Skill | `approval_mode` | `synthetic_approval` | `goal_miss_escalation_months` | `delivery_channels` | `monthly_llm_budget` |
+|---|---|---|---|---|---|
+| Skill 1 — Market Analysis | PAAS_PRE_AUTHORIZED | N/A | N/A | Portal only (analysis internal) | ~250 |
+| Skill 2 — Trade Execution | PAAS_PRE_AUTHORIZED | N/A | N/A | WhatsApp push (on escalation only) | ~30 |
+| Skill 3 — Risk Management | PAAS_PRE_AUTHORIZED | N/A | 1 (daily loss = immediate escalation) | WhatsApp push (critical alerts) | ~30 |
+| Skill 4 — Crypto Management | PAAS_PRE_AUTHORIZED | N/A | 2 | Portal + WhatsApp | ~20 |
+| Skill 5 — Performance Analytics | PAAS_PRE_AUTHORIZED | N/A | 2 | WhatsApp push + Portal + Email (optional) | ~60 |
+
+---
+
 ## 5. Emergency Stop — Trading-Specific Requirements
 
 The Emergency Stop for a trading agent has additional urgency: an active PAAS session may have open positions with real-time P&L exposure.
@@ -306,6 +413,40 @@ ProfessionalTemplate:
       sessionWindowStart: "09:20"
       sessionWindowEnd: "15:00"
       maxActionsPerSession: 50  # reasonable for a professional intraday trader
+  skill_runtime_defaults:
+    approval_mode: "PAAS_PRE_AUTHORIZED"
+    synthetic_approval_confidence_threshold: "N/A"  # PAAS model — not applicable
+    synthetic_approval_min_history: "N/A"
+    goal_miss_escalation_months: 2
+    delivery_channels: ["WHATSAPP_PUSH", "PORTAL"]
+    api_budget:
+      market_analysis_llm_calls_per_month: 250
+      trade_execution_llm_calls_per_month: 30
+      risk_management_llm_calls_per_month: 30
+      crypto_management_llm_calls_per_month: 20
+      performance_analytics_llm_calls_per_month: 60
+      graceful_reduction_threshold: 0.80
+  execution_loop:
+    pattern: "REASONING_FIRST"  # C-047 — agent reasons before code executes
+    session_start_trigger:
+      type: "SCHEDULED"
+      schedule: "09:20 IST on NSE_TRADING_DAYS"
+      pre_session_checks:
+        - "BROKER_API_ACCESS_VERIFIED"
+        - "DECISION_SPACE_LOADED"
+        - "CE_HEALTH_CHECK"
+    heartbeat_schedule:
+      skill_1_market_analysis: "every_5_minutes_during_session"
+      skill_2_trade_execution: "EVENT_DRIVEN (TRADE_SETUP_IDENTIFIED)"
+      skill_3_risk_management: "every_60_seconds_during_session"
+      skill_4_crypto: "daily_15:30_IST"
+      skill_5_performance: "EVENT_DRIVEN (session_close) + monthly_day_1"
+    session_end_trigger: "15:05 IST or DAILY_LOSS_LIMIT_REACHED or EMERGENCY_STOP"
+    self_governance:
+      mid_session_loss_check: "every_risk_heartbeat"
+      monthly_performance_review_day: 1
+      consecutive_miss_escalation_threshold: 2
+      c049_honest_assessment_required: true
   is_published: true
 ```
 
@@ -387,6 +528,37 @@ billing:
 - [x] **R012-01 applied: BROKER_API_ACCESS_VERIFIED evidence record before any order placement**
 - [x] **Regulatory disclaimer in constitutional constraints (not investment advice — SEBI)**
 - [x] **SESSION_END_POSITION_CLOSURE as always-ask — customer decides at onboarding**
+- [x] **C-048 check (Information Non-Exploitation): No Skill steers the customer toward higher-tier plans or more aggressive strategies for WAOOAW platform benefit. The agent executes within the customer's stated parameters — it does not optimise for trade frequency, fee generation, or platform metrics. C-043 daily loss limit is a hard stop regardless of any other consideration.**
+- [x] **C-049 check (Honest Limitation Disclosure): Monthly self-governance report (Skill 5) includes c049_honest_assessment field. If market conditions, capital constraints, or SEBI regulations make the customer's stated return target unachievable within the constitutional parameters, the agent must say so explicitly. STOP_AND_DISCLOSE is a valid recommended_option in the escalation schema.**
+
+---
+
+## 11. Prompt Catalogue
+
+> **Gate requirement (Section 2 of Activation Gate, C-045, AD-018):** Every LLM inference point must have an approved prompt. This section indexes all inference points for this agent. All prompts reside in `architecture/reference/prompts/trading-agri-agent-prompts.md` and are seeded in `institutional.agent_prompt_versions`.
+
+| Prompt ID | Skill | Step | Type | File |
+|---|---|---|---|---|
+| `TRADING/ONBOARDING/PROFILE_SETUP` | Onboarding | 5-phase config conversation → Decision Space | BEHAVIOURAL | trading-agri-agent-prompts.md |
+| `TRADING/MARKET_ANALYSIS/TRADE_SETUP` | Skill 1 | Trade setup identification from market data | BEHAVIOURAL | trading-agri-agent-prompts.md |
+| `TRADING/EXECUTION/ESCALATION_DECISION` | Skill 2 | PAAS escalation when DS Reasoner returns UNCERTAIN | BREAKING | trading-agri-agent-prompts.md |
+| `TRADING/RISK_MANAGEMENT/LOSS_LIMIT_ALERT` | Skill 3 | Halt vs warn decision on risk threshold trigger | BREAKING | trading-agri-agent-prompts.md |
+| `TRADING/CRYPTO/REBALANCE_DECISION` | Skill 4 | Crypto rebalancing and DCA decision | BEHAVIOURAL | trading-agri-agent-prompts.md |
+| `TRADING/PERFORMANCE/SESSION_REPORT` | Skill 5 | End-of-session performance report generation | BEHAVIOURAL | trading-agri-agent-prompts.md |
+
+**Gate 2.4 check:** No LLM calls exist in the pipeline specifications above that are not listed here. Trade placement (Skill 2) is mechanical (broker-mcp call gated by CE.ValidateAction gRPC) — it is not LLM-driven and therefore not in this catalogue. Risk monitoring threshold checks (Skill 3) are rule-based; the LLM is invoked only when a threshold is triggered.
+
+**All prompts have active rows in `institutional.agent_prompt_versions` (seeded in `03-enums-and-tables.sql`). Section 2 gate: PASS.**
+
+---
+
+## 12. Version History
+
+| Version | Date | Author (Office) | Change |
+|---|---|---|---|
+| 1.0 | 2026-07-08 | Business Architect | Initial draft |
+| 1.1 | 2026-07-08 | Business Architect | R-012 P0 fixes: Technical Chart Analysis (Skill 1 expanded), BROKER_API_ACCESS_VERIFIED always-ask, SESSION_END_POSITION_CLOSURE always-ask |
+| 1.2 | 2026-07-11 | Business Architect | Track A P1 fix: Section 4.14 Skill Runtime Configuration Standard; Prompt Catalogue (Section 11) with 3 new prompts (PROFILE_SETUP, ESCALATION_DECISION, REBALANCE_DECISION); execution_loop + heartbeat_schedule in Professional Template; C-048 + C-049 constitutional checks |
 
 ---
 
@@ -394,4 +566,4 @@ billing:
 
 **EA Review:** R-012 — APPROVED (all three notes addressed in v1.0; Technical Chart Analysis added in v1.1)
 **Founder Approval:** GRANTED — 2026-07-08 (per GENESIS Part 05)
-**Status:** APPROVED — active ProfessionalTemplate
+**Status:** APPROVED — active ProfessionalTemplate — pending EA re-review for v1.2 (Track A P1 fixes)
