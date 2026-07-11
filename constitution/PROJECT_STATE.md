@@ -1,8 +1,8 @@
 # PROJECT_STATE.md
 
 **Last Updated:** 2026-07-11
-**Version:** 0.29.0
-**Session:** 2026-07-11 — Track A P1 gap resolution
+**Version:** 0.30.0
+**Session:** 2026-07-11 — Track A-review complete
 
 ---
 
@@ -44,6 +44,12 @@ PENDING EA:   Trading v1.2 + Agricultural v2.1 need EA re-review for Track A cha
 | Version | What |
 |---|---|
 | v0.29.0 | **Track A P1 gap resolution** — Trading v1.1→v1.2, Agricultural v2.0→v2.1 |
+| v0.30.0 | **Track A-review (R-017 APPROVED)** — Trading v1.2→v1.3, Agricultural v2.1→v2.2 |
+| | P1 finding R017-01 identified and resolved: TRADING/SELF_GOVERNANCE/DIAGNOSIS + AGRI/SELF_GOVERNANCE/DIAGNOSIS prompts added |
+| | 2 new SQL seed rows; Prompt Catalogues updated; C-049 checklist items reference prompt IDs |
+| | Full Activation Gate now passes for all 3 agents (all 9 sections) |
+| | 32 active prompts total |
+| | R-017 APPROVED — Trading v1.3 + Agricultural v2.2 gate-compliant for IB-009 sprint |
 | | Section 4.14 Skill Runtime Configuration Standard added to both agents |
 | | Section 5 Execution Loop gate compliance: heartbeat_schedule + session_start_trigger declared in both Professional Templates |
 | | Prompt Catalogue sections added: Trading §11 (6 prompts), Agricultural §14 (7 prompts) |
@@ -161,11 +167,11 @@ Trading v1.2 and Agricultural v2.1 now pass Gate Sections 4 and 5. 6 new prompts
 
 ---
 
-**Track A-review — EA re-review of Trading v1.2 + Agricultural v2.1**
+**Track A-review — ✓ COMPLETED** (v0.30.0, R-017 APPROVED)
 
-*Office: Enterprise Architect*
+Trading v1.3 and Agricultural v2.2 pass the full Activation Gate (all 9 sections). 32 active prompts. All 3 agents are fully gate-compliant for the IB-009 implementation sprint.
 
-Track A changes (Section 4.14 + Prompt Catalogue + C-048/C-049) need EA re-review before the implementation sprint can begin for these agents. Type 2 (prompt addition) + Type 4 (constitutional constraint) update path per Section 15. Standard PR review is sufficient for the runtime config additions; EA review required for the new prompts and C-048/C-049 additions.
+Founder note: `TRADING/EXECUTION/ESCALATION_DECISION` is BREAKING type — acknowledge before the Trading agent implementation sprint begins.
 
 ---
 

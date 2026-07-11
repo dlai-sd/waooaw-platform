@@ -989,7 +989,10 @@ VALUES
     -- Agricultural Advisor new prompts (v0.29.0 — Track A P1 fix)
     ('AGRI/ONBOARDING/OPENING_MESSAGE', '1.0.0', 'WHATSAPP_PHONE_IDENTITY', 'OPENING_MESSAGE', 'AGRICULTURAL_ADVISOR_INDIA', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-042; C-039; ADR-023', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
     ('AGRI/ONBOARDING/INFERENCE_CONFIRM', '1.0.0', 'WHATSAPP_PHONE_IDENTITY', 'INFERENCE_CONFIRM', 'AGRICULTURAL_ADVISOR_INDIA', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-039; C-023; ADR-023', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    ('AGRI/HINT_SYSTEM/WEEKLY_HINT', '1.0.0', 'AGRICULTURAL_HINT_SYSTEM', 'WEEKLY_HINT', 'AGRICULTURAL_ADVISOR_INDIA', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-042; C-037; C-039', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW());
+    ('AGRI/HINT_SYSTEM/WEEKLY_HINT', '1.0.0', 'AGRICULTURAL_HINT_SYSTEM', 'WEEKLY_HINT', 'AGRICULTURAL_ADVISOR_INDIA', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-042; C-037; C-039', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    -- Self-Governance Diagnosis prompts (v0.30.0 — R017-01 P1 fix)
+    ('TRADING/SELF_GOVERNANCE/DIAGNOSIS', '1.0.0', 'TRADING_PERFORMANCE_ANALYTICS', 'SELF_GOVERNANCE_DIAGNOSIS', 'TRADING_FO_CRYPTO', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-037; C-048; C-049; C-043; DP-015', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('AGRI/SELF_GOVERNANCE/DIAGNOSIS', '1.0.0', 'AGRICULTURAL_SELF_GOVERNANCE', 'SELF_GOVERNANCE_DIAGNOSIS', 'AGRICULTURAL_ADVISOR_INDIA', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-037; C-042; C-048; C-049; DP-015', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW());
 
 -- Agent Reasoning Traces — primary AI audit artifact (C-047, AD-008, AD-019)
 -- See architecture/reference/agent-reasoning-trace.md for full spec.

@@ -1,9 +1,9 @@
 # Autonomous Trading Professional — FO & Crypto
 
-**Specification version:** 1.2
-**Date:** 2026-07-11 (v1.2 — Track A P1 fix: Section 4.14 Skill Runtime Config Standard, Prompt Catalogue, execution loop declarations, C-048/C-049 checks)
-**Change:** Track A compliance: Section 4 (Skill Runtime Gate) and Section 5 (Execution Loop Gate) now pass. Prompt Catalogue added. 3 new prompts.
-**Approved by Founder:** 2026-07-08 (v1.1); v1.2 pending re-review
+**Specification version:** 1.3
+**Date:** 2026-07-11 (v1.3 — R017-01 fix: TRADING/SELF_GOVERNANCE/DIAGNOSIS prompt added)
+**Change:** R017-01 P1 fix: self-governance diagnosis prompt with c049_honest_assessment added
+**Approved by Founder:** 2026-07-08 (v1.1); v1.3 pending Founder acknowledgment (BREAKING prompt)
 **Constitutional Basis:** C-036 (Skills), C-037 (Business KPIs), C-038 (Billing), C-039 (Conversational config), C-040 (Domain specialization), C-041 (Tool authorization), C-043 (Financial Spend Authority Ceiling — the daily loss limit is a Constitutional Floor equivalent; same enforcement mechanism as paid advertising budget cap), ADR-019 (RAG), ADR-020 (MCP), ADR-018 (Emergency Stop Temporal signal)
 **Status:** DRAFT — pending EA review (R-012) and Founder approval (GENESIS Part 05)
 
@@ -529,7 +529,7 @@ billing:
 - [x] **Regulatory disclaimer in constitutional constraints (not investment advice — SEBI)**
 - [x] **SESSION_END_POSITION_CLOSURE as always-ask — customer decides at onboarding**
 - [x] **C-048 check (Information Non-Exploitation): No Skill steers the customer toward higher-tier plans or more aggressive strategies for WAOOAW platform benefit. The agent executes within the customer's stated parameters — it does not optimise for trade frequency, fee generation, or platform metrics. C-043 daily loss limit is a hard stop regardless of any other consideration.**
-- [x] **C-049 check (Honest Limitation Disclosure): Monthly self-governance report (Skill 5) includes c049_honest_assessment field. If market conditions, capital constraints, or SEBI regulations make the customer's stated return target unachievable within the constitutional parameters, the agent must say so explicitly. STOP_AND_DISCLOSE is a valid recommended_option in the escalation schema.**
+- [x] **C-049 check (Honest Limitation Disclosure): `TRADING/SELF_GOVERNANCE/DIAGNOSIS` prompt (Skill 5 monthly evaluation) includes `c049_honest_assessment: CAN_DELIVER_WITH_CORRECTIONS | CANNOT_DELIVER_MUST_DISCLOSE` field. If market conditions, capital constraints, or SEBI regulations make the customer's stated return target unachievable, the agent must say so explicitly. `STOP_AND_DISCLOSE` is a valid `recommended_option`. R017-01 fix applied.**
 
 ---
 
@@ -545,6 +545,7 @@ billing:
 | `TRADING/RISK_MANAGEMENT/LOSS_LIMIT_ALERT` | Skill 3 | Halt vs warn decision on risk threshold trigger | BREAKING | trading-agri-agent-prompts.md |
 | `TRADING/CRYPTO/REBALANCE_DECISION` | Skill 4 | Crypto rebalancing and DCA decision | BEHAVIOURAL | trading-agri-agent-prompts.md |
 | `TRADING/PERFORMANCE/SESSION_REPORT` | Skill 5 | End-of-session performance report generation | BEHAVIOURAL | trading-agri-agent-prompts.md |
+| `TRADING/SELF_GOVERNANCE/DIAGNOSIS` | Skill 5 (monthly) | C-049 honest assessment — goal miss diagnosis + STOP_AND_DISCLOSE | BEHAVIOURAL | trading-agri-agent-prompts.md |
 
 **Gate 2.4 check:** No LLM calls exist in the pipeline specifications above that are not listed here. Trade placement (Skill 2) is mechanical (broker-mcp call gated by CE.ValidateAction gRPC) — it is not LLM-driven and therefore not in this catalogue. Risk monitoring threshold checks (Skill 3) are rule-based; the LLM is invoked only when a threshold is triggered.
 
@@ -559,6 +560,7 @@ billing:
 | 1.0 | 2026-07-08 | Business Architect | Initial draft |
 | 1.1 | 2026-07-08 | Business Architect | R-012 P0 fixes: Technical Chart Analysis (Skill 1 expanded), BROKER_API_ACCESS_VERIFIED always-ask, SESSION_END_POSITION_CLOSURE always-ask |
 | 1.2 | 2026-07-11 | Business Architect | Track A P1 fix: Section 4.14 Skill Runtime Configuration Standard; Prompt Catalogue (Section 11) with 3 new prompts (PROFILE_SETUP, ESCALATION_DECISION, REBALANCE_DECISION); execution_loop + heartbeat_schedule in Professional Template; C-048 + C-049 constitutional checks |
+| 1.3 | 2026-07-11 | Business Architect | R017-01 P1 fix: TRADING/SELF_GOVERNANCE/DIAGNOSIS prompt added to Prompt Catalogue and SQL seed; C-049 checklist updated to reference prompt ID |
 
 ---
 
@@ -566,4 +568,4 @@ billing:
 
 **EA Review:** R-012 — APPROVED (all three notes addressed in v1.0; Technical Chart Analysis added in v1.1)
 **Founder Approval:** GRANTED — 2026-07-08 (per GENESIS Part 05)
-**Status:** APPROVED — active ProfessionalTemplate — pending EA re-review for v1.2 (Track A P1 fixes)
+**Status:** APPROVED — active ProfessionalTemplate — v1.3 EA review: R-017 APPROVED (pending Founder acknowledgment of BREAKING prompt TRADING/EXECUTION/ESCALATION_DECISION)

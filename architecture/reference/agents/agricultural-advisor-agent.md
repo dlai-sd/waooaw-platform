@@ -1,8 +1,8 @@
 # Agricultural Advisory Professional — India Small & Marginal Farmers
 
-**Specification version:** 2.1
-**Date:** 2026-07-11 (v2.1 — Track A P1 fix: Section 4.14 Skill Runtime Config Standard, Prompt Catalogue, execution loop declarations, C-048/C-049 checks)
-**Status:** UPDATED — EA review pending (v2.1)
+**Specification version:** 2.2
+**Date:** 2026-07-11 (v2.2 — R017-01 fix: AGRI/SELF_GOVERNANCE/DIAGNOSIS prompt added)
+**Status:** UPDATED — EA review R-017 APPROVED
 **Constitutional Basis:** C-036 (Skills), C-037 (Business KPIs), C-038 (Billing), C-039 (Conversational config), C-040 (Domain specialization), C-041 (Tool authorization), C-042 (Vocabulary mandate — LAW), ADR-019 (RAG), ADR-020 (MCP), ADR-023 (WhatsApp Phone-as-Identity), C-048 (Information Non-Exploitation — LAW), C-049 (Honest Limitation Disclosure — LAW)
 **Proposed Acceptance Scenario:** AS-005 — Small Farmer Agricultural Advisory (to be ratified in GENESIS amendment)
 **Status:** DRAFT — pending EA review (R-013) and Founder approval (GENESIS Part 05)
@@ -874,7 +874,7 @@ billing:
 - [x] **R013-01 fix applied: FARMER_LAND_PROFILE_CONFIRMED in always_ask_actions — creates CAL record (C-023) when farmer confirms their land profile during onboarding**
 - [x] Prohibited actions include medical advice, financial product advice, cross-farm data sharing
 - [x] **C-048 check (Information Non-Exploitation): No Skill uses the agent's information advantage against the farmer's interests. The hint system explicitly excludes hints about crops the farmer cannot grow, products they cannot afford, or decisions that only benefit the platform. The Skill 3 price advisory does not recommend holding or selling based on WAOOAW commercial relationships — only the farmer's income is optimised.**
-- [x] **C-049 check (Honest Limitation Disclosure): Monthly self-reflection (Section 4.14.4) includes c049_honest_assessment. If the agent cannot deliver value for a specific farmer (e.g., no weather data for their region, crop type outside ICAR knowledge base, language not supported), it must say so explicitly. STOP_AND_DISCLOSE is a valid self-governance recommendation.**
+- [x] **C-049 check (Honest Limitation Disclosure): `AGRI/SELF_GOVERNANCE/DIAGNOSIS` prompt (monthly farmer advisory assessment) includes `c049_honest_assessment: CAN_DELIVER_WITH_CORRECTIONS | CANNOT_DELIVER_MUST_DISCLOSE` field. If the agent cannot deliver value for a specific farmer (crop outside ICAR knowledge base, language unsupported, resource constraints make advice unactionable), it must say so explicitly. `STOP_AND_DISCLOSE` is a valid `recommended_option`. All diagnosis in farmer vocabulary (C-042). R017-01 fix applied.**
 
 ---
 
@@ -891,6 +891,7 @@ billing:
 | `AGRI/MANDI_PRICE/SELL_TIMING` | Skill 3 | Mandi price analysis → sell timing advice in farmer vocabulary | BEHAVIOURAL | trading-agri-agent-prompts.md |
 | `AGRI/CROP_PLANNING/NEXT_SEASON` | Skill 4 | 6-lens convergence analysis → next season crop recommendation | BEHAVIOURAL | trading-agri-agent-prompts.md |
 | `AGRI/HINT_SYSTEM/WEEKLY_HINT` | Skill 5 | 5-lens convergence engine → 0, 1, or 2 weekly hints | BEHAVIOURAL | trading-agri-agent-prompts.md |
+| `AGRI/SELF_GOVERNANCE/DIAGNOSIS` | Self-governance (monthly) | C-049 honest assessment — advisory impact diagnosis + STOP_AND_DISCLOSE | BEHAVIOURAL | trading-agri-agent-prompts.md |
 
 **Gate 2.4 check:** The PMFBY evidence report (Skill 6) is structured-data formatting (CAL records → PDF template) — not LLM inference — and is therefore not listed here. All other LLM inference points are catalogued above.
 
@@ -906,6 +907,7 @@ billing:
 | 1.1 | 2026-07-08 | Business Architect | R-013 P0 fixes: R013-01 (FARMER_LAND_PROFILE_CONFIRMED to always_ask), R013-02 (soil-data-mcp removed, NBSS&LUP → Tier 1 RAG), R013-03 (WhatsApp Emergency Stop path fully specified), R013-05 (PMFBY_REPORT_GENERATE to always_ask) |
 | 2.0 | 2026-07-09 | Business Architect | PR #2: ADR-023 WhatsApp Phone-as-Identity; Skill 0 (Phone-Verified Profile); distributed onboarding (Section 6.3); TRAI opt-in enforcement; R-015 APPROVED |
 | 2.1 | 2026-07-11 | Business Architect | Track A P1 fix: Section 4.14 Skill Runtime Configuration Standard; Prompt Catalogue (Section 14) with 3 new prompts (OPENING_MESSAGE, INFERENCE_CONFIRM, WEEKLY_HINT); execution_loop + heartbeat_schedule in Professional Template; C-048 + C-049 constitutional checks |
+| 2.2 | 2026-07-11 | Business Architect | R017-01 P1 fix: AGRI/SELF_GOVERNANCE/DIAGNOSIS prompt added to Prompt Catalogue and SQL seed; C-049 checklist updated to reference prompt ID |
 
 ---
 
@@ -914,4 +916,4 @@ billing:
 **EA Review:** R-013 — complete (2026-07-08). v1.1 addresses all P0 findings.
 **EA Review (v2.0):** R-015 — APPROVED (ADR-023 WhatsApp identity, 2026-07-09)
 **Founder Approval:** APPROVED 2026-07-08 — GENESIS Part 05 amendment, AS-005 ratified
-**Status:** APPROVED (v2.0) — v2.1 pending EA re-review for Track A P1 fixes
+**Status:** APPROVED (v2.0 + v2.2) — EA review R-017 APPROVED 2026-07-11
