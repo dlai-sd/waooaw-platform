@@ -1,8 +1,8 @@
 # PROJECT_STATE.md
 
 **Last Updated:** 2026-07-11
-**Version:** 0.32.0
-**Session:** 2026-07-11 — Token Economy Layer (C-051) complete
+**Version:** 0.33.0
+**Session:** 2026-07-11 — Off-Topic Boundary Standard (Section 3.17) complete
 
 ---
 

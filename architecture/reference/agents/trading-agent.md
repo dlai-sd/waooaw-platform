@@ -1,7 +1,7 @@
 # Autonomous Trading Professional — FO & Crypto
 
-**Specification version:** 1.5
-**Date:** 2026-07-11 (v1.5 — Token Economy Layer: Section 4.16, UsageUnits, minimum_model_tier, C-051)
+**Specification version:** 1.6
+**Date:** 2026-07-11 (v1.6 — Off-Topic Boundary: Section 4.17, redirect hooks, SEBI boundary, PLATFORM/BOUNDARY/OFF_TOPIC_REDIRECT)
 **Change:** C-050 Strategic Cognition Layer added. Pre-session market regime assessment (SESSION_PREP) and monthly portfolio health assessment (MONTHLY_PORTFOLIO_ASSESSMENT) prompts added.
 **Approved by Founder:** 2026-07-08 (v1.1); v1.4 pending Founder acknowledgment (BREAKING prompt before implementation sprint)
 **Constitutional Basis:** C-036 (Skills), C-037 (Business KPIs), C-038 (Billing), C-039 (Conversational config), C-040 (Domain specialization), C-041 (Tool authorization), C-043 (Financial Spend Authority Ceiling — the daily loss limit is a Constitutional Floor equivalent; same enforcement mechanism as paid advertising budget cap), ADR-019 (RAG), ADR-020 (MCP), ADR-018 (Emergency Stop Temporal signal)
@@ -408,6 +408,55 @@ Trading agent does not have hard UsageUnit limits — it operates within a PAAS 
 
 ---
 
+## 4.17 Off-Topic Boundary Standard
+
+> **Constitutional basis:** C-036 (Skills), C-037 (Business KPI primacy), C-048 (Non-Exploitation). The Trading Professional's mandate is F&O and crypto execution within the customer's pre-configured Decision Space. General investment advice (SEBI regulatory boundary) is also explicitly prohibited regardless of customer request.
+
+**Critical trading-specific boundary:** Requests for general investment advice (outside the configured strategy) are BOTH a C-036 violation AND a SEBI regulatory boundary. The deflection must be clear about this dual constraint — not just professional mandate.
+
+**Redirect hooks:**
+
+```yaml
+off_topic_redirect_hooks:
+  - hook_id: "session_preopen_signal"
+    data_source: "market-data-mcp — VIX + overnight futures before session"
+    hook_template: "Market opens in {T} minutes and VIX is {level} — your pre-session analysis is ready."
+    urgency: "HIGH"
+  - hook_id: "daily_pnl_status"
+    data_source: "trading_session_records — today's P&L vs limit"
+    hook_template: "Today's session: ₹{pnl} ({pct}% of daily limit used). Want a quick summary?"
+    urgency: "HIGH"
+  - hook_id: "pending_escalation"
+    data_source: "constitutional_action_ledger — PAAS_ESCALATION pending"
+    hook_template: "There's a pending decision from your last session that needs your input."
+    urgency: "HIGH"
+  - hook_id: "monthly_review_available"
+    data_source: "trading_session_records — month-end review ready"
+    hook_template: "Your monthly portfolio assessment is ready — {N} sessions, strategy health: {health}."
+    urgency: "MEDIUM"
+  - hook_id: "vix_regime_alert"
+    data_source: "market-data-mcp — VIX regime change vs configured strategy type"
+    hook_template: "Today's VIX regime ({regime}) differs from your configured strategy type — worth a quick check."
+    urgency: "MEDIUM"
+```
+
+**Adjacent professional routing:**
+
+```yaml
+adjacent_professional_routing:
+  - topic_category: "general_investment_advice"
+    waooaw_professional_type: null
+    referral_message: "General investment advice is outside my mandate — and outside what SEBI permits me to provide. I operate within your pre-configured Decision Space only."
+  - topic_category: "real_estate_investment"
+    waooaw_professional_type: "REAL_ESTATE_ADVISORY"
+    referral_message: "Real estate investments are outside my area — WAOOAW's Real Estate Advisory Professional handles that."
+  - topic_category: "insurance_financial_planning"
+    waooaw_professional_type: null
+    referral_message: "Financial planning and insurance are best handled by a certified financial planner."
+```
+
+---
+
 ## 5. Emergency Stop — Trading-Specific Requirements
 
 The Emergency Stop for a trading agent has additional urgency: an active PAAS session may have open positions with real-time P&L exposure.
@@ -641,6 +690,7 @@ billing:
 - [x] **C-049 check (Honest Limitation Disclosure): `TRADING/SELF_GOVERNANCE/DIAGNOSIS` prompt (Skill 5 monthly evaluation) includes `c049_honest_assessment: CAN_DELIVER_WITH_CORRECTIONS | CANNOT_DELIVER_MUST_DISCLOSE` field. If market conditions, capital constraints, or SEBI regulations make the customer's stated return target unachievable, the agent must say so explicitly. `STOP_AND_DISCLOSE` is a valid `recommended_option`. R017-01 fix applied.**
 - [x] **C-050 check (Strategic Cognition): Section 4.15 added. TRADING/STRATEGIC/SESSION_PREP invoked at 9:15 IST pre-session to assess market regime alignment and session risk posture; TRADING/STRATEGIC/MONTHLY_PORTFOLIO_ASSESSMENT invoked monthly and on consecutive losses. Both prompts include strategic_reasoning_chain, portfolio_health (for monthly), session_proceed_decision (for daily), and c049_honest_assessment. Professional Template declares strategic_cognition block with 3 trigger events.**
 - [x] **C-051 check (Resource Transparency): Section 4.16 added. Trading agent uses monitoring-based UsageUnits (sessions executed/deferred, monthly reviews). minimum_model_tier declared for all prompts. ESCALATION_DECISION path emergency-exempt (C-001). TRADING/TOKEN_ECONOMY/USAGE_SUMMARY prompt added.**
+- [x] **C-036/C-037/C-048 check (Off-Topic Boundary): Section 4.17 added. 5 redirect hooks declared (session_preopen_signal, daily_pnl_status, pending_escalation, vix_regime_alert, monthly_review_available). Adjacent routing: general investment advice boundary clearly stated (SEBI regulatory, not just C-036). PLATFORM/BOUNDARY/OFF_TOPIC_REDIRECT prompt in Prompt Catalogue.**
 
 ---
 
@@ -660,6 +710,7 @@ billing:
 | `TRADING/SELF_GOVERNANCE/DIAGNOSIS` | Self-Governance | C-049 honest assessment — goal miss diagnosis + STOP_AND_DISCLOSE | BEHAVIOURAL | `FRONTIER` |
 | `TRADING/STRATEGIC/MONTHLY_PORTFOLIO_ASSESSMENT` | Strategic Cognition | Monthly: portfolio health + strategic recommendation (C-050) | BEHAVIOURAL | `FRONTIER` |
 | `TRADING/TOKEN_ECONOMY/USAGE_SUMMARY` | Token Economy | Session/review usage for portal dashboard | USAGE_SUMMARY | `MID_TIER` |
+| `PLATFORM/BOUNDARY/OFF_TOPIC_REDIRECT` | Off-Topic Boundary | Graceful deflection + specific hook; SEBI boundary enforced (C-036, C-037, C-048) | BEHAVIOURAL | `MID_TIER` |
 
 **Section 10 gate check:** Both strategic cognition prompts catalogued and seeded in SQL. C-050 in checklist. Trigger events declared. Gate 10: PASS.
 **Section 11 gate check:** Section 4.16 added. UsageUnits defined. minimum_model_tier declared for all 10 prompts. C-051 in checklist. Gate 11: PASS.**

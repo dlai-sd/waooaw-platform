@@ -1,7 +1,7 @@
 # Digital Marketing Professional — Healthcare & Beauty
 
-**Specification version:** 2.2
-**Date:** 2026-07-11 (v2.2 — Token Economy Layer: Section 3.16, UsageUnits, minimum_model_tier, C-051)
+**Specification version:** 2.3
+**Date:** 2026-07-11 (v2.3 — Off-Topic Boundary: Section 3.17, redirect hooks, adjacent routing, PLATFORM/BOUNDARY/OFF_TOPIC_REDIRECT)
 **Change from v2.0:** Section 3.15 (Strategic Cognition Standard) added. Professional Template: strategic_cognition block declared. C-050 added to Constitutional Checklist. Prompt Catalogue section (§10b) added. Two new prompts catalogued.
 **Constitutional Basis:** C-036 (Skills), C-037 (Business KPIs), C-038 (Billing), C-039 (Conversational config), C-040 (Domain specialization), C-041 (Tool authorization), ADR-019 (RAG), ADR-020 (MCP), C-048 (Information Non-Exploitation — LAW), C-049 (Honest Limitation Disclosure — LAW), C-050 (Strategic Cognition Obligation — LAW)
 **Reviewed by:** Enterprise Architect — R-014 (v2.0), R-018 (v2.1)
@@ -822,6 +822,53 @@ strategic_cognition:
 
 ---
 
+## 3.17 Off-Topic Boundary Standard
+
+> **Constitutional basis:** C-036 (Skills), C-037 (Business KPI primacy), C-048 (Non-Exploitation). The DMA Professional's mandate is digital marketing outcomes. Engaging with off-topic requests burns the customer's Creative Budget for zero business value.
+
+**Redirect hooks (pre-fetched from live data at conversation start):**
+
+```yaml
+off_topic_redirect_hooks:
+  - hook_id: "competitor_activity"
+    data_source: "competitive_intelligence_mcp — posts vs customer cadence this week"
+    hook_template: "Your competitor posted {N} times this week while you posted {M} — want to see what they're doing?"
+    urgency: "HIGH"
+  - hook_id: "kpi_pace"
+    data_source: "digital_marketing_profiles — KPI pace at day 15"
+    hook_template: "Your enquiry pace is at {X}% of monthly target — I have a specific adjustment to suggest."
+    urgency: "HIGH"
+  - hook_id: "google_review_alert"
+    data_source: "google-business-mcp — new reviews awaiting response"
+    hook_template: "You have {N} new Google reviews — one needs a response before the weekend."
+    urgency: "MEDIUM"
+  - hook_id: "pending_approval"
+    data_source: "constitutional_action_ledger — PROPOSED state items"
+    hook_template: "{N} content pieces waiting for your approval — 5 minutes and October is sorted."
+    urgency: "MEDIUM"
+  - hook_id: "content_calendar_gap"
+    data_source: "content strategy calendar — unpublished days in next 14"
+    hook_template: "You have a {N}-day gap coming in your posting calendar — shall I fill it?"
+    urgency: "LOW"
+```
+
+**Adjacent professional routing:**
+
+```yaml
+adjacent_professional_routing:
+  - topic_category: "tax_gst_compliance"
+    waooaw_professional_type: "ACCOUNTING_PROFESSIONAL"
+    referral_message: "GST and tax advice is outside my area — WAOOAW's Accounting Professional handles exactly that."
+  - topic_category: "hiring_staff"
+    waooaw_professional_type: "HR_PROFESSIONAL"
+    referral_message: "Hiring decisions aren't my territory — that's the HR Professional's area."
+  - topic_category: "legal_matters"
+    waooaw_professional_type: null
+    referral_message: "Legal matters are best directed to a qualified lawyer."
+```
+
+---
+
 ## 4. Customer Journey & Onboarding Flow
 
 ### 4.1 Pre-Engagement: Registration (Portal)
@@ -1178,6 +1225,7 @@ ProfessionalTemplate:
 - [x] PATIENT_IMAGE_CONSENT_CONFIRMED added to always-ask in Skills 4 and 8 — constitutional evidence record required before any patient/client image is used (R-011 note R011-01 — resolved in v2.0 per R-014)
 - [x] **C-050 check (Strategic Cognition): Section 3.15 added. DMA/STRATEGIC/SKILL_ACTIVATION_PLAN invoked after Skill 1 maturity report; DMA/STRATEGIC/PERFORMANCE_ASSESSMENT invoked monthly + on deviation. Both prompts include strategic_reasoning_chain, portfolio_health, c050_strategic_intent, c048_check, and c049_honest_assessment fields. Professional Template declares strategic_cognition block with 4 trigger events.**
 - [x] **C-051 check (Resource Transparency): Section 3.16 added. UsageUnits defined (Content Creation, Quick Edit, Research, Strategy, Report). minimum_model_tier declared for every prompt in Prompt Catalogue. Customer budget communication thresholds (30%, 10%) declared. Emergency override never blocks service. DMA/TOKEN_ECONOMY/USAGE_SUMMARY prompt added.**
+- [x] **C-036/C-037/C-048 check (Off-Topic Boundary): Section 3.17 added. 5 redirect hooks declared (competitor_activity, kpi_pace, pending_approval, maturity_score_change, google_review_alert). Adjacent professional routing declared (accounting, HR, legal). PLATFORM/BOUNDARY/OFF_TOPIC_REDIRECT prompt in Prompt Catalogue. 3-attempt graduation pattern declared.**
 
 ---
 
@@ -1194,6 +1242,7 @@ All DMA prompts are catalogued in `digital-marketing-agent-prompts.md`. Key prom
 | `DMA/SELF_GOVERNANCE/DIAGNOSIS` | Self-Governance | Goal miss root cause + C-049 assessment | BEHAVIOURAL | `FRONTIER` |
 | `DMA/SELF_GOVERNANCE/ESCALATION` | Self-Governance | 2-month escalation report for customer | BEHAVIOURAL | `MID_TIER` |
 | `DMA/TOKEN_ECONOMY/USAGE_SUMMARY` | Token Economy | Budget status in customer language (portal widget + WhatsApp) | USAGE_SUMMARY | `MID_TIER` |
+| `PLATFORM/BOUNDARY/OFF_TOPIC_REDIRECT` | Off-Topic Boundary | Graceful deflection + specific monitoring hook (C-036, C-037, C-048) | BEHAVIOURAL | `MID_TIER` |
 
 **Section 10 gate check:** Both strategic cognition prompts seeded in SQL. C-050 in checklist. Trigger events declared in Professional Template. Gate 10: PASS.
 **Section 11 gate check:** Section 3.16 added. UsageUnits defined. minimum_model_tier declared for all prompts. C-051 in checklist. Gate 11: PASS.

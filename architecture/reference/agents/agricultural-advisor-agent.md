@@ -1,7 +1,7 @@
 # Agricultural Advisory Professional — India Small & Marginal Farmers
 
-**Specification version:** 2.4
-**Date:** 2026-07-11 (v2.4 — Token Economy Layer: Section 4.16, UsageUnits, minimum_model_tier, C-051)
+**Specification version:** 2.5
+**Date:** 2026-07-11 (v2.5 — Off-Topic Boundary: Section 4.17, redirect hooks in farmer language, adjacent routing, PLATFORM/BOUNDARY/OFF_TOPIC_REDIRECT)
 **Status:** UPDATED — EA review R-018 APPROVED
 **Constitutional Basis:** C-036 (Skills), C-037 (Business KPIs), C-038 (Billing), C-039 (Conversational config), C-040 (Domain specialization), C-041 (Tool authorization), C-042 (Vocabulary mandate — LAW), ADR-019 (RAG), ADR-020 (MCP), ADR-023 (WhatsApp Phone-as-Identity), C-048 (Information Non-Exploitation — LAW), C-049 (Honest Limitation Disclosure — LAW)
 **Proposed Acceptance Scenario:** AS-005 — Small Farmer Agricultural Advisory (to be ratified in GENESIS amendment)
@@ -619,6 +619,54 @@ strategic_cognition:
 
 ---
 
+---
+
+## 4.17 Off-Topic Boundary Standard
+
+> **Constitutional basis:** C-036 (Skills), C-037 (Business KPI primacy), C-042 (Vocabulary Mandate — all deflection in farmer's language), C-048 (Non-Exploitation)
+
+**Redirect hooks (pre-fetched, delivered in farmer's language):**
+
+```yaml
+off_topic_redirect_hooks:
+  - hook_id: "weather_48h_action"
+    data_source: "weather-ensemble-mcp — 48h outlook + ICAR crop risk"
+    hook_template: "अगले 48 घंटे में {weather_event} आ सकता है। आपकी {crop} के लिए एक काम बताऊं?"
+    urgency: "HIGH"
+  - hook_id: "crop_observation_due"
+    data_source: "progressive_crop_state — days since last check-in"
+    hook_template: "{N} दिन हो गए। {crop} की पत्तियां कैसी हैं आजकल?"
+    urgency: "HIGH"
+  - hook_id: "mandi_price_trend"
+    data_source: "agmarknet-mcp — price trend for farmer's crop"
+    hook_template: "{crop} के भाव {direction} चल रहे हैं। बताऊं अभी क्या करना है?"
+    urgency: "MEDIUM"
+  - hook_id: "pending_seasonal_plan"
+    data_source: "farmer_profiles — harvest_date proximity"
+    hook_template: "फसल कटाई के बाद क्या बोएंगे? अभी से सोचना ठीक रहेगा।"
+    urgency: "MEDIUM"
+  - hook_id: "pmfby_evidence_count"
+    data_source: "constitutional_action_ledger — PMFBY records this season"
+    hook_template: "इस मौसम में आपके लिए {N} insurance records बन गए हैं।"
+    urgency: "LOW"
+```
+
+**Adjacent professional routing (C-042 — all messages in farmer vocabulary):**
+
+```yaml
+adjacent_professional_routing:
+  - topic_category: "government_loan_kcc"
+    waooaw_professional_type: null
+    referral_message: "KCC loan के लिए नजदीक के बैंक में जाएं या Kisan Call Centre: 1800-180-1551 पर call करें।"
+  - topic_category: "veterinary_animal_health"
+    waooaw_professional_type: null
+    referral_message: "जानवरों की बीमारी के लिए local पशु चिकित्सक के पास जाएं — मैं सिर्फ फसल के बारे में जानता हूं।"
+  - topic_category: "crop_insurance_claims"
+    waooaw_professional_type: null
+    referral_message: "Insurance claim के लिए PMFBY helpline: 1800-180-1551। आपके records मैंने तैयार किए हुए हैं।"
+```
+
+
 ## 5. Emergency Stop
 
 Emergency Stop for this agent uses a **WhatsApp-initiated path** — a new pattern not present in other agents (which use the web PWA WebSocket button). This path is fully specified below to support CCT writing and implementation. AD-001 (≤250ms) applies.
@@ -1010,6 +1058,7 @@ billing:
 - [x] **C-049 check (Honest Limitation Disclosure): `AGRI/SELF_GOVERNANCE/DIAGNOSIS` prompt (monthly farmer advisory assessment) includes `c049_honest_assessment: CAN_DELIVER_WITH_CORRECTIONS | CANNOT_DELIVER_MUST_DISCLOSE` field. If the agent cannot deliver value for a specific farmer (crop outside ICAR knowledge base, language unsupported, resource constraints make advice unactionable), it must say so explicitly. `STOP_AND_DISCLOSE` is a valid `recommended_option`. All diagnosis in farmer vocabulary (C-042). R017-01 fix applied.**
 - [x] **C-050 check (Strategic Cognition): Section 4.15 added. AGRI/STRATEGIC/SEASONAL_ADVISORY_PLAN invoked post-onboarding + season start; AGRI/STRATEGIC/ADVISORY_EFFECTIVENESS_REVIEW invoked monthly + harvest. Professional Template declares strategic_cognition block with 5 trigger events.**
 - [x] **C-051 check (Resource Transparency): Section 4.16 added. UsageUnits defined in farmer language (Marathi + English). zero-cost classification gate estimated at 71%. Emergency alerts and PMFBY evidence are always exempt from budget. WhatsApp budget communication messages specified in Marathi. AGRI/TOKEN_ECONOMY/USAGE_SUMMARY prompt added.**
+- [x] **C-036/C-037/C-048 check (Off-Topic Boundary): Section 4.17 added. 5 redirect hooks declared (weather_48h_action, crop_health_observation, mandi_price_trend, pending_hint, pmfby_evidence_pending). Adjacent routing: government loans → suggest Kisan call centre; veterinary → refer to local vet. All deflection messages in farmer vocabulary (C-042). PLATFORM/BOUNDARY/OFF_TOPIC_REDIRECT prompt in Prompt Catalogue.**
 - [x] **C-050 check (Strategic Cognition): Section 4.15 added. AGRI/STRATEGIC/SEASONAL_ADVISORY_PLAN invoked after onboarding and at each new season to plan which skills serve this farmer's specific constraints; AGRI/STRATEGIC/ADVISORY_EFFECTIVENESS_REVIEW invoked monthly, on engagement deviation, and at harvest. Both prompts include strategic_reasoning_chain, portfolio_health, per-farmer skill assessment, and c049_honest_assessment. Professional Template declares strategic_cognition block with 5 trigger events including HARVEST_REVIEW.**
 
 ---
@@ -1031,9 +1080,9 @@ billing:
 | `AGRI/SELF_GOVERNANCE/DIAGNOSIS` | Self-Governance | C-049 honest assessment — advisory impact diagnosis | BEHAVIOURAL | `MID_TIER` |
 | `AGRI/STRATEGIC/ADVISORY_EFFECTIVENESS_REVIEW` | Strategic Cognition | Monthly/harvest advisory portfolio assessment (C-050) | BEHAVIOURAL | `MID_TIER` |
 | `AGRI/TOKEN_ECONOMY/USAGE_SUMMARY` | Token Economy | Budget status in farmer's language (WhatsApp Marathi voice) | USAGE_SUMMARY | `MID_TIER` |
+| `PLATFORM/BOUNDARY/OFF_TOPIC_REDIRECT` | Off-Topic Boundary | Graceful deflection in farmer vocabulary; adjacent routing to Kisan helplines (C-036, C-042) | BEHAVIOURAL | `MID_TIER` |
 
-**Section 10 gate check:** Both strategic cognition prompts catalogued. C-050 in checklist. 5 trigger events declared. Gate 10: PASS.
-**Section 11 gate check:** Section 4.16 added. UsageUnits defined in Marathi + English. Classification gate 71% zero-cost. Emergency alerts exempt. C-051 in checklist. Gate 11: PASS.**
+**Gate 10/11: PASS. Gate 11.4 (min_model_tier for all 15 prompts): PASS.**
 
 ---
 

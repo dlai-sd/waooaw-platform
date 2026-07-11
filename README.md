@@ -6,14 +6,14 @@
 
 ```
 Founding Corpus v1           Status: Ratified
-Version:                     0.32.0 — Session close: Token Economy Layer (C-051) complete — 66-74% cost reduction, 44 active prompts, Activation Gate 11/11 (2026-07-11)
+Version:                     0.33.0 — Session close: Off-Topic Boundary Standard (Section 3.17) — 45 active prompts, 3-attempt graduation, redirect hooks (2026-07-11)
 Current Epoch:               Epoch 1 — Employment
 Current Gate:                G2-G4: PASSED | G5: Prerequisites met
                              ⛔ G5 CLEAR ≠ implementation authorized for any session
                              Implementation sprint requires explicit Founder authorization
 Authorized Offices:          Runtime Professional (IB-009) — AWAITING FOUNDER AUTHORIZATION
 Engineering Status:          Architecture COMPLETE
-                             Agents approved: 3 (Digital Marketing v2.2, Trading v1.5, Agricultural Advisory v2.4)
+                             Agents approved: 3 (Digital Marketing v2.3, Trading v1.6, Agricultural Advisory v2.5)
                              Source code: Prerequisites met. Awaiting explicit Founder approval.
 ```
 

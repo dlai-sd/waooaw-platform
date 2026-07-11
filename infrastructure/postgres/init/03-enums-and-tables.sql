@@ -1008,6 +1008,8 @@ VALUES
     ('DMA/TOKEN_ECONOMY/USAGE_SUMMARY', '1.0.0', 'TOKEN_ECONOMY', 'USAGE_SUMMARY', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/digital-marketing-agent-prompts.md', 'C-051; C-038; DP-020', 'USAGE_SUMMARY', 'Enterprise Architect', NOW(), TRUE, NOW()),
     ('TRADING/TOKEN_ECONOMY/USAGE_SUMMARY', '1.0.0', 'TOKEN_ECONOMY', 'USAGE_SUMMARY', 'TRADING_FO_CRYPTO', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-051; C-038; DP-020', 'USAGE_SUMMARY', 'Enterprise Architect', NOW(), TRUE, NOW()),
     ('AGRI/TOKEN_ECONOMY/USAGE_SUMMARY', '1.0.0', 'TOKEN_ECONOMY', 'USAGE_SUMMARY', 'AGRICULTURAL_ADVISOR_INDIA', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-051; C-042; C-038; DP-020', 'USAGE_SUMMARY', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    -- Off-Topic Boundary Standard (v0.33.0 — Section 3.17)
+    ('PLATFORM/BOUNDARY/OFF_TOPIC_REDIRECT', '1.0.0', 'BOUNDARY', 'OFF_TOPIC_REDIRECT', 'PLATFORM_INTERNAL', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-036; C-037; C-048', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
     ('PLATFORM/TOKEN_ECONOMY/MESSAGE_CLASSIFIER', '1.0.0', 'TOKEN_ECONOMY', 'MESSAGE_CLASSIFIER', 'PLATFORM_INTERNAL', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-051; AD-022; DP-020', 'CLASSIFICATION', 'Enterprise Architect', NOW(), TRUE, NOW());
 
 -- Agent Reasoning Traces — primary AI audit artifact (C-047, AD-008, AD-019)

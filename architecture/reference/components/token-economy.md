@@ -53,8 +53,10 @@ Classify every incoming message BEFORE any LLM call. Routes 60–70% of messages
 | `PRICE_QUERY` | "aaj soyabean ka bhav", "onion price today", "mandi rate" | agmarknet-mcp direct | ₹0 |
 | `WEATHER_QUERY` | "kal barish hogi?", "aaj ka mausam", "rain forecast" | weather-ensemble-mcp direct | ₹0 |
 | `REPEAT_QUESTION` | Same question asked within 7 days (semantic match > 0.90) | Cache response | ₹0 |
-| `SOCIAL_CHATTER` | "kaise ho?", "namaste", jokes, politics, religion | Graceful deflection template | ₹0 |
-| `STATUS_QUERY` | "mera plan kya hai", "subscription kab khatam" | DB read → template | ₹0 |
+| `SOCIAL_CHATTER` | "kaise ho?", "namaste", jokes, politics, religion | Off-Topic Redirect prompt → specific business hook | MID_TIER |
+| `ADJACENT_PROFESSIONAL` | Farmer asks about loan schemes; dentist asks DMA agent about hiring; trader asks about real estate | Empathetic boundary + nearest WAOOAW alternative if exists + specific core hook | MID_TIER |
+| `OFF_TOPIC_MISUSE` | Using agent as general AI assistant; asking for content outside professional mandate; political/religious content | Clear scope statement + immediate most-relevant monitoring hook | MID_TIER |
+| `STATUS_QUERY` | "mera plan kya hai", "subscription kab khatam" | DB read → USAGE_SUMMARY | ₹0 |
 | `ACTIONABLE_ADVISORY` | "patti par safed keede", "pani dena hai?", "spray kab karoon?" | MID_TIER LLM | Standard |
 | `COMPLEX_ADVISORY` | "kya crop lagaun is baar?", "mujhe zyada paisa milega kaise?" | FRONTIER LLM | High |
 
@@ -69,6 +71,8 @@ Classify every incoming message BEFORE any LLM call. Routes 60–70% of messages
 | `REFINEMENT_REQUEST` | "Slightly different version", "More professional" | MID_TIER REFINEMENT | Low |
 | `STRATEGY_CONVERSATION` | "What should we focus on next?", "How's performance?" | FRONTIER/MID_TIER | High |
 | `REPORT_REQUEST` | "Monthly summary", "How did we do?" | MID_TIER | Medium |
+| `ADJACENT_PROFESSIONAL` | Asking DMA agent about GST, hiring, legal compliance | Empathetic boundary + suggest relevant WAOOAW professional + marketing hook | MID_TIER |
+| `OFF_TOPIC_MISUSE` | Personal questions, political content requests, general AI usage | Clear professional scope + immediate highest-value marketing hook | MID_TIER |
 
 ### Classification Model
 
@@ -89,6 +93,86 @@ INSERT INTO institutional.message_classification_log
    llm_dispatched, cache_hit, cost_inr_paise, classified_at)
 ```
 This log is the primary instrument for measuring gate effectiveness and refining the classifier.
+
+---
+
+### 1b. Off-Topic Boundary — Professional Deflection Pattern
+
+**Constitutional basis:** C-036 (Skills as constitutional units); C-037 (Business KPI primacy — agent exists to deliver business outcomes, not conversation); C-048 (Non-Exploitation — consuming customer's token budget for off-topic conversation with zero business value is an exploitation of the billing relationship)
+
+An agent that engages with off-topic requests violates C-036 AND wastes the customer's UsageUnit budget (C-051). The correct professional response is not refusal — it is **graceful redirection**.
+
+#### The 3-Attempt Graduated Response Pattern
+
+Per-session off-topic counter tracked per customer. Tone graduates from warm to professional-firm. Never rude, never passive-aggressive. Always pivots.
+
+```
+Attempt 1 — WARM_REDIRECT (off-topic count = 1):
+  "Acknowledge what they asked, one sentence. Then immediately pivot with ONE
+   SPECIFIC, TIMELY thing the agent is actively monitoring for this customer."
+
+  Strong hook (always specific to THIS customer TODAY):
+  ✓ "Your competitor posted 3 times this week while you posted once — 
+     want to see what they're doing?"
+  ✓ "Tomorrow there's a chance of heavy rain in your district — 
+     your action plan is ready."
+  ✓ "Market opens in 40 minutes and VIX is elevated — 
+     let me show you today's pre-session analysis."
+  
+  Weak hook (never use — too generic):
+  ✗ "Let me know if you need anything for your marketing."
+  ✗ "Your crops are doing well."
+  ✗ "Check your dashboard for updates."
+
+Attempt 2 — LIGHT_REMINDER_REDIRECT (off-topic count = 2):
+  "Gentle 1-sentence reminder of role. DIFFERENT hook than attempt 1 —
+   a second specific signal the agent has been watching. Shows the agent
+   is paying attention to multiple things simultaneously."
+
+Attempt 3 — PROFESSIONAL_STATEMENT (off-topic count = 3):
+  "Clear, warm statement of professional scope. Cite the customer's OWN
+   stated goal to anchor the redirect."
+  
+  Example (DMA):
+  "I'm your digital marketing professional — my job is to get you from
+   20 to 40 patient enquiries by year-end. Everything else is outside
+   my mandate. Your October content plan is ready — shall we review it?"
+
+Attempt 4+ — MINIMAL_PROFESSIONAL:
+  One-line acknowledgment only. Immediate pivot to most urgent business item.
+  Never engage with off-topic content. Always professional, never cold.
+```
+
+#### Off-Topic Category Handling
+
+| Category | Response approach |
+|---|---|
+| `SOCIAL_CHATTER` | Warm 1-sentence acknowledgment + specific hook. No engagement with chatter content. |
+| `ADJACENT_PROFESSIONAL` | Empathetic acknowledgment (their concern is valid) + honest "outside my mandate" + if another WAOOAW agent covers it, name them + specific hook |
+| `OFF_TOPIC_MISUSE` | No engagement with the content whatsoever + clear professional scope statement + most urgent monitoring hook |
+
+#### Adjacent Professional Routing (Cross-Sell Moment)
+
+When a customer asks about something handled by another WAOOAW professional, the deflection becomes a referral:
+
+> "GST advice isn't my area — I'm focused on your digital marketing. If you're looking for help with tax compliance, WAOOAW's Accounting Professional handles exactly that. For now — your Diwali campaign: shall we start on it?"
+
+This converts off-topic handling into a **cross-professional discovery opportunity** while staying within the agent's mandate.
+
+#### `off_topic_redirect_hooks` — Per-Agent Declaration (MANDATORY)
+
+Every agent spec must declare 5 pre-computed redirect hooks — the specific monitoring signals this agent maintains that can be deployed as pivot points. These are pre-fetched from the customer's live data and ready to insert into any deflection response without a new LLM call.
+
+```yaml
+off_topic_redirect_hooks:
+  - hook_id: "competitor_activity"          # DMA: most recent competitor post vs customer's post cadence
+  - hook_id: "kpi_pace_alert"              # DMA: Is KPI on pace or behind mid-month?
+  - hook_id: "weather_upcoming_action"     # Agricultural: next 48h weather + crop action needed
+  - hook_id: "session_preopen_signal"      # Trading: today's pre-session VIX / market condition
+  - hook_id: "pending_approval_item"       # Any agent: something waiting for customer action
+```
+
+Hooks are real-time database reads — not LLM calls. The Off-Topic Redirect prompt receives these hooks as context and selects the most relevant one for the current customer moment.
 
 ---
 

@@ -90,5 +90,6 @@ Every agent prompt must produce a response conforming to this base schema plus t
 | TRADING/TOKEN_ECONOMY/USAGE_SUMMARY | Token Economy | Trading session dashboard usage summary (C-051) | v1.0.0 | ACTIVE |
 | AGRI/TOKEN_ECONOMY/USAGE_SUMMARY | Token Economy | Budget status in farmer's language — Marathi WhatsApp voice (C-051) | v1.0.0 | ACTIVE |
 | PLATFORM/TOKEN_ECONOMY/MESSAGE_CLASSIFIER | Token Economy | Message Classification Gate — LOCAL tier invariant (C-051, AD-022) | v1.0.0 | ACTIVE |
+| PLATFORM/BOUNDARY/OFF_TOPIC_REDIRECT | Off-Topic Boundary | Graceful professional deflection + specific monitoring hook — 3-attempt graduation (C-036, C-037, C-048) | v1.0.0 | ACTIVE |
 
-**Total active prompts: 44** (v0.32.0 — includes 4 Token Economy prompts + 1 Message Classifier)
+**Total active prompts: 45** (v0.33.0 — includes Off-Topic Boundary prompt)

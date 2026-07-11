@@ -360,6 +360,70 @@ budget_communication:
 
 ---
 
+## 9d. Section 3.17 — Off-Topic Boundary Standard (MANDATORY — every agent)
+
+> **Why required (C-036, C-037, C-048):** A Digital Professional has a defined mandate — its Skills are constitutional units (C-036). Engaging with requests outside that mandate wastes the customer's UsageUnit budget (C-048 violation), undermines professional identity, and delivers zero business value (C-037 violation). Every agent must declare its professional boundary and the graceful redirection strategy it uses when customers venture outside it.
+
+---
+
+### 3.17.1 Off-Topic Classification Categories (in addition to Token Economy categories)
+
+The Message Classification Gate classifies off-topic messages into three categories. Each requires a different deflection strategy:
+
+| Category | Definition | Agent response |
+|---|---|---|
+| `SOCIAL_CHATTER` | Small talk, personal questions, unrelated life topics | Warm acknowledgment + immediate specific monitoring hook |
+| `ADJACENT_PROFESSIONAL` | Topic in the customer's business domain but outside this agent's skills | Empathetic boundary + WAOOAW cross-referral if applicable + monitoring hook |
+| `OFF_TOPIC_MISUSE` | Using the agent as a general AI assistant or outside its professional mandate | Clear professional scope statement + most urgent active monitoring hook |
+
+---
+
+### 3.17.2 The `off_topic_redirect_hooks` Declaration (MANDATORY)
+
+Every agent spec must declare exactly 5 redirect hooks — real-time data signals the agent continuously monitors that can be deployed as pivot points in any deflection response. These are **pre-fetched from live data at each conversation start**, not LLM-generated at deflection time.
+
+```yaml
+off_topic_redirect_hooks:
+  - hook_id: "[identifier]"
+    data_source: "[DB table / MCP tool that feeds this hook]"
+    hook_template: "[How this hook is phrased in a redirect — 1 sentence, specific]"
+    urgency: "HIGH|MEDIUM|LOW"  # HIGH hooks are used first
+```
+
+The Off-Topic Redirect prompt receives the TOP hook by urgency as its redirect anchor. Multiple hooks ensure variety across the 3-attempt graduation.
+
+---
+
+### 3.17.3 `adjacent_professional_routing` Declaration (MANDATORY if other agent types exist)
+
+If another WAOOAW professional type handles topics the customer may ask about, declare the routing here. This turns off-topic deflection into a cross-discovery moment.
+
+```yaml
+adjacent_professional_routing:
+  - topic_category: "[topic this agent cannot handle]"
+    waooaw_professional_type: "[professional_type that CAN handle it — null if none]"
+    referral_message_template: "[How to refer warmly in 1 sentence]"
+```
+
+**Example (DMA agent):**
+```yaml
+adjacent_professional_routing:
+  - topic_category: "tax_gst_compliance"
+    waooaw_professional_type: "ACCOUNTING_PROFESSIONAL"  # Not yet built — say "coming soon"
+    referral_message_template: "GST advice is outside my area — WAOOAW's Accounting Professional handles that."
+  - topic_category: "hiring_hr"
+    waooaw_professional_type: "HR_PROFESSIONAL"
+    referral_message_template: "Hiring advice isn't my focus — that's the HR Professional's territory."
+```
+
+---
+
+### 3.17.4 Constitutional Checklist Addition
+
+- [ ] **C-036/C-037/C-048 check (Off-Topic Boundary): Section 3.17 exists. 5 redirect hooks declared with data sources. `adjacent_professional_routing` declared. Off-Topic Redirect prompt exists in Prompt Catalogue (`{AGENT}/BOUNDARY/OFF_TOPIC_REDIRECT`). The 3-attempt graduated pattern is declared in agent spec.**
+
+---
+
 ## 10. Review and Approval
 
 Reviewer: Enterprise Architect
