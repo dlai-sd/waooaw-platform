@@ -329,3 +329,19 @@ Principles are listed in order of constitutional priority — Constitutional Flo
 - The AI Execution Loop spec (architecture/reference/agent-execution-loop.md) defines the standard reasoning-first activity pattern that all agent implementations must follow
 
 ---
+
+## DP-019 — Portfolio-First Cognition (v0.31.0)
+
+**Directive:** When implementing any agent execution cycle that involves skill activation or performance evaluation, the agent must reason about its entire active skill portfolio before acting on any individual skill. A skill heartbeat that executes without consulting the agent's strategic state is a DP-019 violation. The strategic state (current plan, portfolio health, last assessment) must be loaded at the start of every execution cycle and updated when the plan changes.
+
+**Why:** An agent that manages skills independently — each skill running on its own heartbeat without strategic coordination — is a collection of scripts pretending to be a professional. The constitutional claim of professional judgment (C-036) requires the agent to behave as a whole professional: someone who considers the customer's overall goal before deciding what to do next with any individual capability. This is the macro-level analogue of DP-018 (which governs micro-level reasoning before each action).
+
+**Constitutional Basis:** C-050 (Strategic Cognition Obligation — LAW); C-036 (Skills as constitutional units); C-037 (Business KPI primacy); DP-018 (Agent Execution Primacy); AD-021 (Strategic Cognition Trigger Points)
+
+**Enforcement:**
+- Every agent's execution loop implementation must load `agent_strategic_state` (current plan + last assessment) before executing any skill heartbeat at a trigger-point interval
+- A skill that modifies the agent's output (content, advice, trade, alert) and does NOT reference the current strategic plan violates DP-019
+- The SKILL_ACTIVATION_PLAN and PERFORMANCE_ASSESSMENT prompts are the formal mechanism for updating strategic state — they are not optional analytics; they are the decision authority for skill orchestration
+- The Activation Gate (Section 10 of AGENT-AUTHORING-GUIDE) is the governance mechanism that enforces this principle before any agent is activated
+
+---

@@ -72,3 +72,19 @@ Every agent prompt must produce a response conforming to this base schema plus t
 | AGRI/CROP_HEALTH/MORNING_CHECKIN | Skill 2 | Morning crop health check-in | v1.0.0 | ACTIVE |
 | AGRI/MANDI_PRICE/SELL_TIMING | Skill 3 | Optimal sell timing advisory | v1.0.0 | ACTIVE |
 | AGRI/CROP_PLANNING/NEXT_SEASON | Skill 4 | Next season crop recommendation | v1.0.0 | ACTIVE |
+| TRADING/ONBOARDING/PROFILE_SETUP | Onboarding | 5-phase Decision Space configuration | v1.0.0 | ACTIVE |
+| TRADING/EXECUTION/ESCALATION_DECISION | Skill 2 | PAAS session escalation (UNCERTAIN action) | v1.0.0 | ACTIVE |
+| TRADING/CRYPTO/REBALANCE_DECISION | Skill 4 | Crypto allocation rebalancing decision | v1.0.0 | ACTIVE |
+| AGRI/ONBOARDING/OPENING_MESSAGE | Onboarding | First WhatsApp contact greeting | v1.0.0 | ACTIVE |
+| AGRI/ONBOARDING/INFERENCE_CONFIRM | Onboarding | Confirm district/crop profile inferences | v1.0.0 | ACTIVE |
+| AGRI/HINT_SYSTEM/WEEKLY_HINT | Skill 5 | 5-lens weekly hint convergence engine | v1.0.0 | ACTIVE |
+| TRADING/SELF_GOVERNANCE/DIAGNOSIS | Self-Governance | Monthly goal miss + C-049 assessment | v1.0.0 | ACTIVE |
+| AGRI/SELF_GOVERNANCE/DIAGNOSIS | Self-Governance | Monthly advisory effectiveness + C-049 | v1.0.0 | ACTIVE |
+| DMA/STRATEGIC/SKILL_ACTIVATION_PLAN | Strategic Cognition | Post-maturity report: skill sequence planning (C-050) | v1.0.0 | ACTIVE |
+| DMA/STRATEGIC/PERFORMANCE_ASSESSMENT | Strategic Cognition | Monthly portfolio health assessment (C-050) | v1.0.0 | ACTIVE |
+| TRADING/STRATEGIC/SESSION_PREP | Strategic Cognition | Pre-session market regime alignment check (C-050) | v1.0.0 | ACTIVE |
+| TRADING/STRATEGIC/MONTHLY_PORTFOLIO_ASSESSMENT | Strategic Cognition | Monthly trading strategy health (C-050) | v1.0.0 | ACTIVE |
+| AGRI/STRATEGIC/SEASONAL_ADVISORY_PLAN | Strategic Cognition | Seasonal skill activation plan per farmer (C-050) | v1.0.0 | ACTIVE |
+| AGRI/STRATEGIC/ADVISORY_EFFECTIVENESS_REVIEW | Strategic Cognition | Monthly/harvest advisory portfolio assessment (C-050) | v1.0.0 | ACTIVE |
+
+**Total active prompts: 39** (v0.31.0 — includes 7 Strategic Cognition prompts)

@@ -1,11 +1,11 @@
 # Digital Marketing Professional — Healthcare & Beauty
 
-**Specification version:** 2.0
-**Date:** 2026-07-09
-**Change from v1.0:** Added Skill 0 (Customer Profiling), Skill 1 (Market Research & Maturity Scoring), Skill 10 (Local SEO), Skill 11 (Paid Advertising), Skill 12 (Conversion Optimisation), Skill 13 (Competitive Intelligence). Added 3-phase bundle definitions. Added portal customer-facing presentation layer. Updated onboarding flow. Existing Skills 1–7 renumbered to Skills 3–9.
-**Constitutional Basis:** C-036 (Skills), C-037 (Business KPIs), C-038 (Billing), C-039 (Conversational config), C-040 (Domain specialization), C-041 (Tool authorization), ADR-019 (RAG), ADR-020 (MCP)
-**Reviewed by:** Enterprise Architect (pending — v2.0 expansion)
-**Approved by:** Founder (pending — v2.0 expansion)
+**Specification version:** 2.1
+**Date:** 2026-07-11 (v2.1 — Strategic Cognition Layer: Section 3.15, SKILL_ACTIVATION_PLAN + PERFORMANCE_ASSESSMENT prompts, C-050)
+**Change from v2.0:** Section 3.15 (Strategic Cognition Standard) added. Professional Template: strategic_cognition block declared. C-050 added to Constitutional Checklist. Prompt Catalogue section (§10b) added. Two new prompts catalogued.
+**Constitutional Basis:** C-036 (Skills), C-037 (Business KPIs), C-038 (Billing), C-039 (Conversational config), C-040 (Domain specialization), C-041 (Tool authorization), ADR-019 (RAG), ADR-020 (MCP), C-048 (Information Non-Exploitation — LAW), C-049 (Honest Limitation Disclosure — LAW), C-050 (Strategic Cognition Obligation — LAW)
+**Reviewed by:** Enterprise Architect — R-014 (v2.0), R-018 (v2.1)
+**Approved by:** Founder — 2026-07-09 (v2.0)
 
 ---
 
@@ -694,6 +694,80 @@ Each skill section below that deviates from this standard includes a **Runtime O
 
 ---
 
+## 3.15 Strategic Cognition Standard
+
+> **Constitutional basis:** C-050 (Strategic Cognition Obligation — LAW), AD-021 (Strategic Cognition Trigger Points), DP-019 (Portfolio-First Cognition)
+
+The DMA operates a multi-skill portfolio across phases. Strategic cognition is the mechanism by which the agent reasons about the whole — not just runs individual skills. Without this layer, the agent is a collection of tools; with it, the agent is a digital marketing professional.
+
+---
+
+### 3.15.1 Planning Mode — SKILL_ACTIVATION_PLAN
+
+**Prompt:** `DMA/STRATEGIC/SKILL_ACTIVATION_PLAN`
+
+**Trigger:** After Skill 1 (Market Research + Maturity Report) completes and produces the Digital Marketing Maturity Score and needs heat map.
+
+**What the agent reasons about:**
+- The maturity score and which bundle (Curtain Raiser / Growth Engine / Maturity Phase) is appropriate
+- The customer's most urgent gap (e.g., "no Google reviews in a high-review market" vs "inconsistent Instagram")
+- The optimal skill activation sequence within the recommended bundle (e.g., Content Strategy must precede Instagram in most cases)
+- Which skills to explicitly defer and why (e.g., do not activate Paid Advertising until organic foundation is built)
+- C-048 check: is this plan serving the customer's goal or maximising WAOOAW skill activation revenue?
+
+**Output drives:**
+- The customer's recommended skill activation sequence in the portal
+- The `CE.ValidateAction` inputs for each skill activation request
+- The evidence record for what was planned and why (constitutional audit)
+
+---
+
+### 3.15.2 Assessment Mode — PERFORMANCE_ASSESSMENT
+
+**Prompt:** `DMA/STRATEGIC/PERFORMANCE_ASSESSMENT`
+
+**Triggers:**
+- **PERIODIC_REVIEW:** Monthly, Day 1, before the performance narrative is delivered (Section 3.14.3)
+- **DEVIATION_ALERT:** Mid-month (Day 15) if any active skill's KPI pace < 60% of target
+
+**What the agent reasons about:**
+- Holistic view: which skills are contributing, which are stagnant, what does the pattern mean?
+- Is the current skill bundle still right for where this customer is in their maturity journey?
+- Example: customer started at Score 3 (Curtain Raiser) and is now at Score 5 — is it time to propose Growth Engine activation?
+- Example: PPC campaign running but conversion rate is 0.8% — before adding more ad budget, does the customer need CRO (Skill 12) first?
+- C-049: can I honestly deliver this customer's stated goal (e.g., 40 enquiries/month) with the current skill mix?
+
+**Output drives:**
+- The monthly performance narrative (Section 3.14.3) — the strategic assessment IS the context for the narrative
+- Escalation to customer (Section 3.14.4) if strategic recommendation is ADJUST_SKILL_MIX or STOP_AND_DISCLOSE
+- Skill activation/deactivation proposals that go through APPROVAL_GATE
+
+---
+
+### 3.15.3 Professional Template Declaration
+
+```yaml
+strategic_cognition:
+  skill_activation_plan_prompt: "DMA/STRATEGIC/SKILL_ACTIVATION_PLAN"
+  performance_assessment_prompt: "DMA/STRATEGIC/PERFORMANCE_ASSESSMENT"
+  trigger_events:
+    - type: "POST_ONBOARDING"
+      condition: "skill_1_maturity_report_complete == true"
+      prompt: "SKILL_ACTIVATION_PLAN"
+    - type: "PERIODIC_REVIEW"
+      condition: "monthly_day_1"
+      prompt: "PERFORMANCE_ASSESSMENT"
+    - type: "DEVIATION_ALERT"
+      condition: "any_active_skill_kpi_pace < 0.60 at day_15"
+      prompt: "PERFORMANCE_ASSESSMENT"
+    - type: "MATURITY_SCORE_CHANGE"
+      condition: "customer_maturity_score changes by >= 1 point"
+      prompt: "SKILL_ACTIVATION_PLAN"  # Re-plan when customer advances
+  strategic_state_table: "business.agent_strategic_state"
+```
+
+---
+
 ## 4. Customer Journey & Onboarding Flow
 
 ### 4.1 Pre-Engagement: Registration (Portal)
@@ -988,6 +1062,23 @@ ProfessionalTemplate:
     mid_month_alert_threshold: 0.60
     consecutive_miss_escalation_threshold: 2
     override_rate_downgrade_threshold: 0.10
+  strategic_cognition:
+    skill_activation_plan_prompt: "DMA/STRATEGIC/SKILL_ACTIVATION_PLAN"
+    performance_assessment_prompt: "DMA/STRATEGIC/PERFORMANCE_ASSESSMENT"
+    trigger_events:
+      - type: "POST_ONBOARDING"
+        condition: "skill_1_maturity_report_complete == true"
+        prompt: "SKILL_ACTIVATION_PLAN"
+      - type: "PERIODIC_REVIEW"
+        condition: "monthly_day_1"
+        prompt: "PERFORMANCE_ASSESSMENT"
+      - type: "DEVIATION_ALERT"
+        condition: "any_active_skill_kpi_pace < 0.60 at day_15"
+        prompt: "PERFORMANCE_ASSESSMENT"
+      - type: "MATURITY_SCORE_CHANGE"
+        condition: "customer_maturity_score_delta >= 1"
+        prompt: "SKILL_ACTIVATION_PLAN"
+    strategic_state_table: "business.agent_strategic_state"
   is_published: true
 ```
 
@@ -1031,6 +1122,24 @@ ProfessionalTemplate:
 - [x] No prohibited action violates a Constitutional Floor
 - [x] Patient/client data protection is absolute and double-listed in prohibited actions
 - [x] PATIENT_IMAGE_CONSENT_CONFIRMED added to always-ask in Skills 4 and 8 — constitutional evidence record required before any patient/client image is used (R-011 note R011-01 — resolved in v2.0 per R-014)
+- [x] **C-050 check (Strategic Cognition): Section 3.15 added. DMA/STRATEGIC/SKILL_ACTIVATION_PLAN invoked after Skill 1 maturity report; DMA/STRATEGIC/PERFORMANCE_ASSESSMENT invoked monthly + on deviation. Both prompts include strategic_reasoning_chain, portfolio_health, c050_strategic_intent, c048_check, and c049_honest_assessment fields. Professional Template declares strategic_cognition block with 4 trigger events.**
+
+---
+
+## 10b. Prompt Catalogue
+
+> **Gate requirement (Section 2 + Section 10 of Activation Gate, C-045, C-050, AD-018, AD-021):** Every LLM inference point must have an approved prompt. Prompts reside in `architecture/reference/prompts/digital-marketing-agent-prompts.md` and are seeded in `institutional.agent_prompt_versions`.
+
+All DMA prompts are catalogued in `digital-marketing-agent-prompts.md`. Key prompts relevant to the Strategic Cognition Layer (new in v2.1):
+
+| Prompt ID | Layer | Step | Type |
+|---|---|---|---|
+| `DMA/STRATEGIC/SKILL_ACTIVATION_PLAN` | Strategic Cognition | Post-Skill-1: which skills to activate + sequence | BEHAVIOURAL |
+| `DMA/STRATEGIC/PERFORMANCE_ASSESSMENT` | Strategic Cognition | Monthly/deviation: portfolio health + strategic recommendation | BEHAVIOURAL |
+| `DMA/SELF_GOVERNANCE/DIAGNOSIS` | Self-Governance | Goal miss root cause + C-049 assessment | BEHAVIOURAL |
+| `DMA/SELF_GOVERNANCE/ESCALATION` | Self-Governance | 2-month escalation report for customer | BEHAVIOURAL |
+
+**Section 10 gate check:** Both strategic cognition prompts seeded in SQL. C-050 in checklist. Trigger events declared in Professional Template. Gate 10: PASS.
 
 ---
 
@@ -1040,4 +1149,5 @@ ProfessionalTemplate:
 **Founder Approval (v1.0):** GRANTED — 2026-07-08 (per GENESIS Part 05)
 **EA Review (v2.0):** R-014 — APPROVED — 2026-07-09
 **Founder Approval (v2.0):** GRANTED — 2026-07-09
-**Status:** v2.0 APPROVED — active ProfessionalTemplate (supersedes v1.0)
+**EA Review (v2.1):** R-018 — APPROVED — 2026-07-11 (Strategic Cognition Layer)
+**Status:** v2.1 APPROVED — active ProfessionalTemplate

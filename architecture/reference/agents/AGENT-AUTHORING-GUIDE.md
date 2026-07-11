@@ -181,6 +181,100 @@ Before submitting for EA review, confirm:
 - [ ] **C-042 check: if your agent serves customers with limited technical or digital literacy — farmers, healthcare workers, artisans — the Vocabulary Mandate applies. Add a Vocabulary Translation Layer to every Skill. No technical data surfaced to customer. All outputs actionable in their vocabulary.**
 - [ ] **C-048 check (Information Non-Exploitation): does any Skill use the agent's information advantage against the customer's interests — steering them toward higher-tier plans they don't need, continuing execution of a known-failing strategy, or optimising for platform metrics at the expense of customer outcomes? If yes → redesign the Skill. C-048 violations cannot be fixed in the Decision Space — they require redesigning the Skill's objective.**
 - [ ] **C-049 check (Honest Limitation Disclosure): does every Self-Governance Diagnosis reasoning step include a C-049 check — "Can I deliver this customer's goal with my current capabilities? If not, do I say so explicitly?" The Self-Governance Escalation (Section 3.14.4) must include `c049_honest_assessment` in its output schema.**
+- [ ] **C-050 check (Strategic Cognition): does Section 3.15 exist in this spec? Are both SKILL_ACTIVATION_PLAN and PERFORMANCE_ASSESSMENT prompts catalogued? Are trigger events declared in the Professional Template? An agent without strategic cognition is a schedule, not a professional.**
+
+## 9b. Section 3.15 — Strategic Cognition Standard (MANDATORY — every agent)
+
+> **Why required (C-050):** Skill execution without strategic oversight is not professional judgment. Every agent must reason about its entire skill portfolio at key lifecycle points — not just execute skills on their individual heartbeats. This section is gate-enforced (Activation Gate Section 10). Missing this section = GATE BLOCKED.
+
+---
+
+### 3.15.1 Strategic Cognition Model
+
+The agent's strategic cognition operates at two levels:
+
+| Level | Prompt type | Question answered | When invoked |
+|---|---|---|---|
+| **Planning** | `SKILL_ACTIVATION_PLAN` | "Given what I know about this customer, which skills should I activate, in what order, and why?" | After initial profiling/onboarding data is ready |
+| **Assessment** | `PERFORMANCE_ASSESSMENT` | "Given what's happened, is my current skill configuration achieving the customer's goal? What must change?" | Periodic review cadence + on material deviation |
+
+Both prompts are constitutional artifacts (C-045, C-050). Both outputs are Reasoning Traces (C-047, AD-008). Both feed into the self-governance escalation (Section 3.14.4) when the assessment concludes the strategy must change.
+
+---
+
+### 3.15.2 Trigger Events (MANDATORY — declare in Professional Template)
+
+Specify the exact trigger events for each prompt. At minimum, three event types are required:
+
+| Event type | Trigger condition | Prompt invoked |
+|---|---|---|
+| **POST_ONBOARDING** | Customer profile reaches `MINIMUM_VIABLE` status | `SKILL_ACTIVATION_PLAN` |
+| **PERIODIC_REVIEW** | Regular cadence (weekly / monthly / seasonal — per agent type) | `PERFORMANCE_ASSESSMENT` |
+| **DEVIATION_ALERT** | Any skill's KPI pace < 60% of target at mid-period | `PERFORMANCE_ASSESSMENT` (immediate, not waiting for cadence) |
+
+Agent-specific additional triggers (e.g., "market regime change" for Trading, "harvest approaching" for Agricultural) may be declared.
+
+---
+
+### 3.15.3 Required Output Schema Fields
+
+Both prompts must include these fields in their output schemas. These are gate requirements — not implementation details.
+
+**SKILL_ACTIVATION_PLAN must include:**
+```
+strategic_reasoning_chain:  "Full reasoning from customer context → skill selection → sequence"
+skill_activation_sequence:  [{skill_id, rationale, dependency, requires_approval}]
+skills_deferred:            [{skill_id, reason, revisit_trigger}]
+portfolio_readiness:        "READY_TO_EXECUTE | NEEDS_CUSTOMER_INPUT | BLOCKED"
+c050_strategic_intent:      "Plain statement of the professional strategy — why this sequence serves the customer's goal"
+c048_check:                 "Does this plan serve the customer's goal or WAOOAW's revenue? Must state 'customer goal' explicitly"
+c049_honest_assessment:     "CAN_DELIVER_WITH_THIS_PLAN | CANNOT_DELIVER_MUST_DISCLOSE"
+constitutional_basis:       "C-050; C-036; C-037; [others]"
+```
+
+**PERFORMANCE_ASSESSMENT must include:**
+```
+strategic_reasoning_chain:  "Full assessment of portfolio performance → diagnosis → strategic recommendation"
+portfolio_health:           "HEALTHY | UNDERPERFORMING | MISALIGNED | CRITICALLY_FAILING"
+skill_assessment:           [{skill_id, contributing: bool, kpi_trend, diagnosis}]
+strategic_recommendation:   "CONTINUE | ADJUST_SKILL_MIX | ESCALATE | STOP_AND_DISCLOSE"
+proposed_adjustments:       [{action: ACTIVATE|DEACTIVATE|UPDATE, skill_id, rationale}]
+c049_honest_assessment:     "CAN_DELIVER_WITH_ADJUSTMENTS | CANNOT_DELIVER_MUST_DISCLOSE"
+customer_narrative:         "Plain language summary of the strategic picture for customer"
+constitutional_basis:       "C-050; C-037; C-048; C-049; DP-019"
+```
+
+---
+
+### 3.15.4 Relationship to Section 3.14 (Skill Runtime Config)
+
+Section 3.14 governs **how individual skills run** (approval mode, cadence, budget).  
+Section 3.15 governs **why skills run** and **whether they should run at all**.
+
+These are distinct and both mandatory. Section 3.15 sits above Section 3.14: the SKILL_ACTIVATION_PLAN determines which skills the Section 3.14 runtime config applies to.
+
+---
+
+### 3.15.5 Professional Template Declaration
+
+The Professional Template must include a `strategic_cognition` block:
+
+```yaml
+strategic_cognition:
+  skill_activation_plan_prompt: "{AGENT}/STRATEGIC/SKILL_ACTIVATION_PLAN"
+  performance_assessment_prompt: "{AGENT}/STRATEGIC/PERFORMANCE_ASSESSMENT"
+  trigger_events:
+    - type: "POST_ONBOARDING"
+      condition: "customer_profile.status == MINIMUM_VIABLE"
+      prompt: "SKILL_ACTIVATION_PLAN"
+    - type: "PERIODIC_REVIEW"
+      condition: "[cadence — e.g., monthly_day_1, weekly_monday_0800]"
+      prompt: "PERFORMANCE_ASSESSMENT"
+    - type: "DEVIATION_ALERT"
+      condition: "any_skill_kpi_pace < 0.60 at mid_period"
+      prompt: "PERFORMANCE_ASSESSMENT"
+  strategic_state_table: "business.agent_strategic_state"  # SQL table for persisting plan
+```
 
 ## 10. Review and Approval
 
@@ -346,8 +440,22 @@ SECTION 9 — REVIEW GATE
 [ ] 9.2  Founder approval recorded in agent spec Section 10 (Review and Approval)
 [ ] 9.3  All P0 and P1 findings from EA review resolved before activation
 
+SECTION 10 — COGNITION GATE (C-050, AD-021, DP-019)
+[ ] 10.1  Section 3.15 (Strategic Cognition Standard) exists in the spec
+[ ] 10.2  A SKILL_ACTIVATION_PLAN prompt is catalogued in the Prompt Catalogue section
+[ ] 10.3  SKILL_ACTIVATION_PLAN output schema includes: strategic_reasoning_chain,
+          skill_activation_sequence, c050_strategic_intent, c048_check, c049_honest_assessment
+[ ] 10.4  A PERFORMANCE_ASSESSMENT prompt is catalogued in the Prompt Catalogue section
+[ ] 10.5  PERFORMANCE_ASSESSMENT output schema includes: portfolio_health, skill_assessment,
+          strategic_recommendation, c049_honest_assessment, customer_narrative
+[ ] 10.6  Professional Template declares strategic_cognition block with trigger_events
+          (minimum: POST_ONBOARDING, PERIODIC_REVIEW, DEVIATION_ALERT)
+[ ] 10.7  C-050 check is present in the Constitutional Checklist section
+[ ] 10.8  Both prompts have active rows in institutional.agent_prompt_versions
+          FAIL condition: prompts declared in spec but not seeded in SQL → GATE BLOCKED
+
 OVERALL GATE RESULT:
-  All 9 sections PASS → AGENT MAY BE ACTIVATED
+  All 10 sections PASS → AGENT MAY BE ACTIVATED
   Any section FAIL → CONSTITUTIONAL BLOCKER → raise blocker in blockers/ → agent NOT activated
 ```
 
@@ -431,21 +539,24 @@ Gate check: Sections 1, 2, 7 of the Activation Gate
 
 ## 16. Retroactive Compliance Check
 
-All existing agent specs (DMA v2.0, Trading v1.1, Agricultural v1.1) must be checked against the full Activation Gate. Any gate failures become P1 work items before the implementation sprint begins.
+All existing agent specs must be checked against the full Activation Gate. Any gate failures become P1 work items before the implementation sprint begins.
 
-**Current compliance status (as of v0.21.0):**
+**Current compliance status (as of v0.31.0):**
 
 | Agent | Gate Section | Status | Notes |
 |---|---|---|---|
-| DMA v2.0 | All sections | ✓ PASS | R-014 EA review covers this |
-| Trading v1.1 | Section 5 (Execution Loop) | ⚠ PARTIAL | Session start trigger not fully declared (GAP-T005) |
-| Trading v1.1 | Section 4 (Skill Runtime) | ⚠ PARTIAL | Runtime config standard not yet applied |
-| Agricultural v1.1 | Section 5 (Execution Loop) | ⚠ PARTIAL | WhatsApp-native heartbeat not declared |
-| Agricultural v1.1 | Section 4 (Skill Runtime) | ⚠ PARTIAL | Runtime config standard not yet applied |
+| DMA v2.0 | Sections 1–9 | ✓ PASS | R-014 + R-017 EA reviews cover this |
+| DMA v2.0 | Section 10 (Cognition Gate) | ⚠ PARTIAL | SKILL_ACTIVATION_PLAN + PERFORMANCE_ASSESSMENT prompts needed (v0.31.0 sprint) |
+| Trading v1.3 | Sections 1–9 | ✓ PASS | R-012 + R-017 EA reviews; Track A P1 resolved |
+| Trading v1.3 | Section 10 (Cognition Gate) | ⚠ PARTIAL | SESSION_PREP (planning) + PORTFOLIO_ASSESSMENT prompts needed (v0.31.0 sprint) |
+| Agricultural v2.2 | Sections 1–9 | ✓ PASS | R-013 + R-015 + R-017 EA reviews; Track A P1 resolved |
+| Agricultural v2.2 | Section 10 (Cognition Gate) | ⚠ PARTIAL | SEASONAL_PLAN + ADVISORY_EFFECTIVENESS prompts needed (v0.31.0 sprint) |
 
-**Both trading and agricultural agents need a targeted update sprint to apply:**
-- Section 3.14 Skill Runtime Configuration Standard
-- Heartbeat/session schedule declarations
-- Prompt Catalogue section added to spec (currently in separate file, not in spec)
+**Section 10 (Cognition Gate) is a new gate introduced in v0.31.0 (C-050). All three agents need a targeted update sprint:**
+- Add Section 3.15 Strategic Cognition Standard to each spec
+- Add SKILL_ACTIVATION_PLAN and PERFORMANCE_ASSESSMENT prompts (agent-specific variants)
+- Declare `strategic_cognition` block in each Professional Template
+- Add C-050 to each Constitutional Checklist
+- SQL seed both new prompts per agent
 
-These are P1 items before IB-009 sprint begins for those agents.
+These are P1 items before the IB-009 implementation sprint begins. Section 10 gate must pass for all three agents before implementation.

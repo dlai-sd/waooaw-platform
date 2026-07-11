@@ -28,20 +28,21 @@ Wait for explicit Founder confirmation. No exceptions.
 ## Current Platform State (updated each session)
 
 ```
-Version:   0.7.0 | Gate: G5 CLEAR | Epoch: 1 — Employment
+Version:   0.31.0 | Gate: G5 CLEAR | Epoch: 1 — Employment
 Authorized: Runtime Professional (IB-009 — Foundation Implementation — NOT YET STARTED)
-Implementation: AUTHORIZED | Architecture: COMPLETE
-Next action: Create IB-009 GitHub Issue → assign to @copilot → Sprint 1 begins
+Implementation: AWAITING FOUNDER AUTHORIZATION | Architecture: COMPLETE
 ```
 
 **Open Constitutional Blockers:** None
 
 **Active Founder Resolutions:** FR-001 (CS Agents) · FR-002 (Trial) · FR-003 (Learning IP) · FR-004 (Teams — deferred)
 
+**Note for implementation sprint:** TRADING/EXECUTION/ESCALATION_DECISION is BREAKING type — Founder must acknowledge before Trading agent implementation begins.
+
 **Approved Agent Specifications (GENESIS Part 05):**
-- Digital Marketing Agent (Healthcare + Beauty) — APPROVED 2026-07-08
-- Trading Agent (FO + Crypto) — APPROVED 2026-07-08
-- Agricultural Advisory Agent (India Small Farmers) — APPROVED by Founder 2026-07-08 (GENESIS AS-005, R-013)
+- Digital Marketing Agent (Healthcare + Beauty) v2.1 — APPROVED. R-014 + R-018. 39 active prompts (incl. Strategic Cognition Layer C-050).
+- Trading Agent (FO + Crypto) v1.4 — APPROVED. R-012 + R-017 + R-018. Full Activation Gate (10 sections) PASS.
+- Agricultural Advisory Agent (India Small Farmers) v2.3 — APPROVED. R-013 + R-015 + R-017 + R-018. Full Activation Gate (10 sections) PASS.
 
 **Deferred:** OD-003 (DA scope) · AI Architect sprint (GAP-006b) · IB-018 (Agent Teams — enterprise, post-MVI)
 

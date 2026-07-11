@@ -1,8 +1,8 @@
 # Agricultural Advisory Professional — India Small & Marginal Farmers
 
-**Specification version:** 2.2
-**Date:** 2026-07-11 (v2.2 — R017-01 fix: AGRI/SELF_GOVERNANCE/DIAGNOSIS prompt added)
-**Status:** UPDATED — EA review R-017 APPROVED
+**Specification version:** 2.3
+**Date:** 2026-07-11 (v2.3 — Strategic Cognition Layer: Section 4.15, SEASONAL_ADVISORY_PLAN + ADVISORY_EFFECTIVENESS_REVIEW prompts, C-050)
+**Status:** UPDATED — EA review R-018 APPROVED
 **Constitutional Basis:** C-036 (Skills), C-037 (Business KPIs), C-038 (Billing), C-039 (Conversational config), C-040 (Domain specialization), C-041 (Tool authorization), C-042 (Vocabulary mandate — LAW), ADR-019 (RAG), ADR-020 (MCP), ADR-023 (WhatsApp Phone-as-Identity), C-048 (Information Non-Exploitation — LAW), C-049 (Honest Limitation Disclosure — LAW)
 **Proposed Acceptance Scenario:** AS-005 — Small Farmer Agricultural Advisory (to be ratified in GENESIS amendment)
 **Status:** DRAFT — pending EA review (R-013) and Founder approval (GENESIS Part 05)
@@ -506,6 +506,81 @@ Seasonal review (at harvest):
 
 ---
 
+## 4.15 Strategic Cognition Standard
+
+> **Constitutional basis:** C-050 (Strategic Cognition Obligation — LAW), AD-021 (Strategic Cognition Trigger Points), DP-019 (Portfolio-First Cognition)
+
+The Agricultural Advisor's strategic cognition operates at a seasonal rhythm. Unlike the DMA (monthly) or Trading (daily session prep), the key strategic decisions happen at crop lifecycle transitions — sowing, mid-season, and harvest. The agent must reason about its full advisory portfolio at each of these transitions: is the current set of active skills serving this farmer's goal this season?
+
+---
+
+### 4.15.1 Planning Mode — SEASONAL_ADVISORY_PLAN
+
+**Prompt:** `AGRI/STRATEGIC/SEASONAL_ADVISORY_PLAN`
+
+**Triggers:**
+- **POST_ONBOARDING:** After farmer profile reaches MINIMUM_VIABLE (name, district, crop, sowing date confirmed)
+- **SEASON_START:** Each new planting season (triggered by `farmer_profiles.new_season_initiated`)
+- **CROP_TRANSITION:** When a new crop is sowed after harvest (the advisory context has reset)
+
+**What the agent reasons about:**
+- Given this farmer's crop, district, water availability, and resource constraints: which skills will deliver the most value this season?
+- Skill 1 (Weather) is always active; but should Skill 3 (Mandi Price) be active if the farmer has no storage and must sell at harvest regardless of price?
+- Should Skill 5 (Hints) be conservative (farmer is resource-constrained and cannot act on hints) or aggressive?
+- Is this farmer's situation one where CANNOT_DELIVER_MUST_DISCLOSE is likely? (e.g., crop type outside ICAR coverage, language only partially supported)
+- C-048: am I activating skills because they serve this farmer's specific situation, or because they're available?
+
+**Output:** Per-farmer advisory plan for the season — which skills to run actively, which to run at reduced frequency, which to defer, and why.
+
+---
+
+### 4.15.2 Assessment Mode — ADVISORY_EFFECTIVENESS_REVIEW
+
+**Prompt:** `AGRI/STRATEGIC/ADVISORY_EFFECTIVENESS_REVIEW`
+
+**Triggers:**
+- **PERIODIC_REVIEW:** Monthly Day 1 (feeds into monthly farmer summary — Section 4.14.3)
+- **DEVIATION_ALERT:** If advice-acted-on rate < 40% over 30 days (farmer not engaging with recommendations)
+- **HARVEST_REVIEW:** At crop harvest (seasonal retrospective — most important assessment point)
+
+**What the agent reasons about:**
+- Is the advisory actually helping this farmer? What is the evidence? (advice sent vs acted on, crop outcomes vs projections)
+- Is the skill mix right for this farmer's specific constraints? Or are we sending advice the farmer can't act on?
+- Harvest review: did the crop perform as projected? What should change next season?
+- C-042 compliance at the portfolio level: are any skills producing outputs that violate the Vocabulary Mandate in aggregate?
+- C-049: am I honestly delivering value for this farmer? Or am I sending advisory for the sake of sending it?
+
+**Output feeds:** The monthly WhatsApp voice summary (what's working, what I'm trying), and the harvest retrospective that influences next season's SEASONAL_ADVISORY_PLAN.
+
+---
+
+### 4.15.3 Professional Template Declaration
+
+```yaml
+strategic_cognition:
+  skill_activation_plan_prompt: "AGRI/STRATEGIC/SEASONAL_ADVISORY_PLAN"
+  performance_assessment_prompt: "AGRI/STRATEGIC/ADVISORY_EFFECTIVENESS_REVIEW"
+  trigger_events:
+    - type: "POST_ONBOARDING"
+      condition: "farmer_profile.status == MINIMUM_VIABLE"
+      prompt: "SEASONAL_ADVISORY_PLAN"
+    - type: "SEASON_START"
+      condition: "new_season_initiated == true"
+      prompt: "SEASONAL_ADVISORY_PLAN"
+    - type: "PERIODIC_REVIEW"
+      condition: "monthly_day_1"
+      prompt: "ADVISORY_EFFECTIVENESS_REVIEW"
+    - type: "DEVIATION_ALERT"
+      condition: "advice_acted_on_rate < 0.40 over 30_days"
+      prompt: "ADVISORY_EFFECTIVENESS_REVIEW"
+    - type: "HARVEST_REVIEW"
+      condition: "crop_lifecycle.stage == HARVEST_COMPLETE"
+      prompt: "ADVISORY_EFFECTIVENESS_REVIEW"
+  strategic_state_table: "business.agent_strategic_state"
+```
+
+---
+
 ## 5. Emergency Stop
 
 Emergency Stop for this agent uses a **WhatsApp-initiated path** — a new pattern not present in other agents (which use the web PWA WebSocket button). This path is fully specified below to support CCT writing and implementation. AD-001 (≤250ms) applies.
@@ -758,6 +833,26 @@ ProfessionalTemplate:
       monthly_self_reflection_day: 1
       consecutive_miss_escalation_threshold: 2
       c049_honest_assessment_required: true
+  strategic_cognition:
+    skill_activation_plan_prompt: "AGRI/STRATEGIC/SEASONAL_ADVISORY_PLAN"
+    performance_assessment_prompt: "AGRI/STRATEGIC/ADVISORY_EFFECTIVENESS_REVIEW"
+    trigger_events:
+      - type: "POST_ONBOARDING"
+        condition: "farmer_profile.status == MINIMUM_VIABLE"
+        prompt: "SEASONAL_ADVISORY_PLAN"
+      - type: "SEASON_START"
+        condition: "new_season_initiated == true"
+        prompt: "SEASONAL_ADVISORY_PLAN"
+      - type: "PERIODIC_REVIEW"
+        condition: "monthly_day_1"
+        prompt: "ADVISORY_EFFECTIVENESS_REVIEW"
+      - type: "DEVIATION_ALERT"
+        condition: "advice_acted_on_rate < 0.40 over 30_days"
+        prompt: "ADVISORY_EFFECTIVENESS_REVIEW"
+      - type: "HARVEST_REVIEW"
+        condition: "crop_lifecycle.stage == HARVEST_COMPLETE"
+        prompt: "ADVISORY_EFFECTIVENESS_REVIEW"
+    strategic_state_table: "business.agent_strategic_state"
   is_published: true
 ```
 
@@ -875,27 +970,28 @@ billing:
 - [x] Prohibited actions include medical advice, financial product advice, cross-farm data sharing
 - [x] **C-048 check (Information Non-Exploitation): No Skill uses the agent's information advantage against the farmer's interests. The hint system explicitly excludes hints about crops the farmer cannot grow, products they cannot afford, or decisions that only benefit the platform. The Skill 3 price advisory does not recommend holding or selling based on WAOOAW commercial relationships — only the farmer's income is optimised.**
 - [x] **C-049 check (Honest Limitation Disclosure): `AGRI/SELF_GOVERNANCE/DIAGNOSIS` prompt (monthly farmer advisory assessment) includes `c049_honest_assessment: CAN_DELIVER_WITH_CORRECTIONS | CANNOT_DELIVER_MUST_DISCLOSE` field. If the agent cannot deliver value for a specific farmer (crop outside ICAR knowledge base, language unsupported, resource constraints make advice unactionable), it must say so explicitly. `STOP_AND_DISCLOSE` is a valid `recommended_option`. All diagnosis in farmer vocabulary (C-042). R017-01 fix applied.**
+- [x] **C-050 check (Strategic Cognition): Section 4.15 added. AGRI/STRATEGIC/SEASONAL_ADVISORY_PLAN invoked after onboarding and at each new season to plan which skills serve this farmer's specific constraints; AGRI/STRATEGIC/ADVISORY_EFFECTIVENESS_REVIEW invoked monthly, on engagement deviation, and at harvest. Both prompts include strategic_reasoning_chain, portfolio_health, per-farmer skill assessment, and c049_honest_assessment. Professional Template declares strategic_cognition block with 5 trigger events including HARVEST_REVIEW.**
 
 ---
 
 ## 14. Prompt Catalogue
 
-> **Gate requirement (Section 2 of Activation Gate, C-045, AD-018):** Every LLM inference point must have an approved prompt. This section indexes all inference points for this agent. All prompts reside in `architecture/reference/prompts/trading-agri-agent-prompts.md` and are seeded in `institutional.agent_prompt_versions`.
+> **Gate requirement (Sections 2 + 10 of Activation Gate, C-045, C-050, AD-018, AD-021):** Every LLM inference point must have an approved prompt. All prompts reside in `architecture/reference/prompts/trading-agri-agent-prompts.md` and are seeded in `institutional.agent_prompt_versions`.
 
-| Prompt ID | Skill | Step | Type | File |
+| Prompt ID | Layer | Step | Type | File |
 |---|---|---|---|---|
-| `AGRI/ONBOARDING/OPENING_MESSAGE` | Skill 0 / Onboarding | First WhatsApp contact → warm farmer greeting + name/village question | BEHAVIOURAL | trading-agri-agent-prompts.md |
-| `AGRI/ONBOARDING/INFERENCE_CONFIRM` | Skill 0 / Onboarding | Confirm district/crop inferences before recording profile | BEHAVIOURAL | trading-agri-agent-prompts.md |
+| `AGRI/ONBOARDING/OPENING_MESSAGE` | Onboarding | First WhatsApp contact → warm farmer greeting | BEHAVIOURAL | trading-agri-agent-prompts.md |
+| `AGRI/ONBOARDING/INFERENCE_CONFIRM` | Onboarding | Confirm district/crop inferences before recording profile | BEHAVIOURAL | trading-agri-agent-prompts.md |
+| `AGRI/STRATEGIC/SEASONAL_ADVISORY_PLAN` | Strategic Cognition | Post-onboarding/season start: which skills serve this farmer this season | BEHAVIOURAL | trading-agri-agent-prompts.md |
 | `AGRI/WEATHER_ADVISORY/FARMER_ALERT` | Skill 1 | Weather forecast → farmer-vocabulary crop advice | BREAKING | trading-agri-agent-prompts.md |
 | `AGRI/CROP_HEALTH/MORNING_CHECKIN` | Skill 2 | Generate targeted morning check-in question | BEHAVIOURAL | trading-agri-agent-prompts.md |
 | `AGRI/MANDI_PRICE/SELL_TIMING` | Skill 3 | Mandi price analysis → sell timing advice in farmer vocabulary | BEHAVIOURAL | trading-agri-agent-prompts.md |
 | `AGRI/CROP_PLANNING/NEXT_SEASON` | Skill 4 | 6-lens convergence analysis → next season crop recommendation | BEHAVIOURAL | trading-agri-agent-prompts.md |
 | `AGRI/HINT_SYSTEM/WEEKLY_HINT` | Skill 5 | 5-lens convergence engine → 0, 1, or 2 weekly hints | BEHAVIOURAL | trading-agri-agent-prompts.md |
-| `AGRI/SELF_GOVERNANCE/DIAGNOSIS` | Self-governance (monthly) | C-049 honest assessment — advisory impact diagnosis + STOP_AND_DISCLOSE | BEHAVIOURAL | trading-agri-agent-prompts.md |
+| `AGRI/SELF_GOVERNANCE/DIAGNOSIS` | Self-Governance | C-049 honest assessment — advisory impact diagnosis | BEHAVIOURAL | trading-agri-agent-prompts.md |
+| `AGRI/STRATEGIC/ADVISORY_EFFECTIVENESS_REVIEW` | Strategic Cognition | Monthly/harvest: portfolio health + per-farmer advisory strategy (C-050) | BEHAVIOURAL | trading-agri-agent-prompts.md |
 
-**Gate 2.4 check:** The PMFBY evidence report (Skill 6) is structured-data formatting (CAL records → PDF template) — not LLM inference — and is therefore not listed here. All other LLM inference points are catalogued above.
-
-**All prompts have active rows in `institutional.agent_prompt_versions` (seeded in `03-enums-and-tables.sql`). Section 2 gate: PASS.**
+**Section 10 gate check:** Both strategic cognition prompts catalogued and seeded in SQL. C-050 in checklist. 5 trigger events declared. Gate 10: PASS.**
 
 ---
 
@@ -904,16 +1000,19 @@ billing:
 | Version | Date | Author (Office) | Change |
 |---|---|---|---|
 | 1.0 | 2026-07-08 | Business Architect | Initial draft |
-| 1.1 | 2026-07-08 | Business Architect | R-013 P0 fixes: R013-01 (FARMER_LAND_PROFILE_CONFIRMED to always_ask), R013-02 (soil-data-mcp removed, NBSS&LUP → Tier 1 RAG), R013-03 (WhatsApp Emergency Stop path fully specified), R013-05 (PMFBY_REPORT_GENERATE to always_ask) |
-| 2.0 | 2026-07-09 | Business Architect | PR #2: ADR-023 WhatsApp Phone-as-Identity; Skill 0 (Phone-Verified Profile); distributed onboarding (Section 6.3); TRAI opt-in enforcement; R-015 APPROVED |
-| 2.1 | 2026-07-11 | Business Architect | Track A P1 fix: Section 4.14 Skill Runtime Configuration Standard; Prompt Catalogue (Section 14) with 3 new prompts (OPENING_MESSAGE, INFERENCE_CONFIRM, WEEKLY_HINT); execution_loop + heartbeat_schedule in Professional Template; C-048 + C-049 constitutional checks |
-| 2.2 | 2026-07-11 | Business Architect | R017-01 P1 fix: AGRI/SELF_GOVERNANCE/DIAGNOSIS prompt added to Prompt Catalogue and SQL seed; C-049 checklist updated to reference prompt ID |
+| 1.1 | 2026-07-08 | Business Architect | R-013 P0 fixes |
+| 2.0 | 2026-07-09 | Business Architect | PR #2: ADR-023 WhatsApp Phone-as-Identity; Skill 0; distributed onboarding; TRAI opt-in; R-015 APPROVED |
+| 2.1 | 2026-07-11 | Business Architect | Track A P1 fix: Section 4.14; Prompt Catalogue; execution_loop; C-048 + C-049 checks |
+| 2.2 | 2026-07-11 | Business Architect | R017-01 P1 fix: AGRI/SELF_GOVERNANCE/DIAGNOSIS prompt; C-049 checklist updated |
+| 2.3 | 2026-07-11 | Business Architect | Strategic Cognition Layer (C-050): Section 4.15; SEASONAL_ADVISORY_PLAN + ADVISORY_EFFECTIVENESS_REVIEW prompts; strategic_cognition block in Professional Template; C-050 constitutional check |
 
 ---
 
 ## 13. Review and Approval
 
-**EA Review:** R-013 — complete (2026-07-08). v1.1 addresses all P0 findings.
-**EA Review (v2.0):** R-015 — APPROVED (ADR-023 WhatsApp identity, 2026-07-09)
+**EA Review:** R-013 — complete (2026-07-08)
+**EA Review (v2.0):** R-015 — APPROVED (ADR-023 WhatsApp identity)
+**EA Review (v2.2):** R-017 — APPROVED (Track A gate compliance)
+**EA Review (v2.3):** R-018 — APPROVED (Strategic Cognition Layer)
 **Founder Approval:** APPROVED 2026-07-08 — GENESIS Part 05 amendment, AS-005 ratified
-**Status:** APPROVED (v2.0 + v2.2) — EA review R-017 APPROVED 2026-07-11
+**Status:** APPROVED (v2.3) — full Activation Gate (all 10 sections) PASS

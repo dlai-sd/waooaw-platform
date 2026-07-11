@@ -369,3 +369,22 @@ Note: This driver requires CE.ValidateAction to carry budget state as a first-cl
 2. Domain vocabulary validation: before deployment, the STT is tested against a domain vocabulary checklist (50+ crop names, pesticide names, measurement units in target language)
 3. Misrecognition fallback: if STT confidence is below 0.75, the agent asks for clarification in farmer's language before acting on the transcription
 4. STT output is stored as-is in the evidence record alongside the original audio reference — for audit and PMFBY purposes
+
+---
+
+## AD-021 — Strategic Cognition Trigger Points (v0.31.0)
+
+**Requirement:** Every Digital Professional agent must invoke its strategic cognition prompts (SKILL_ACTIVATION_PLAN and PERFORMANCE_ASSESSMENT) at a defined set of trigger points. These trigger points must be explicitly declared in the agent's Professional Template (`execution_loop.strategic_cognition.trigger_events`). Trigger points must cover at minimum: (1) post-onboarding / initial context ready, (2) periodic performance review cadence, and (3) material performance deviation. The absence of declared trigger points is a gate blocker (Activation Gate Section 10.5).
+
+**Type:** HARD — derives from C-050 (LAW). Without declared trigger points, the strategic reasoning obligation of C-050 cannot be implemented deterministically. An agent specification that declares strategic cognition as "whenever relevant" has not satisfied C-050.
+
+**Constitutional Basis:** C-050 (Strategic Cognition Obligation — LAW); C-036 (Skills as constitutional units); C-047 (Agent-Driven Execution Loop); AD-019 (Agent-Driven Orchestration)
+
+**Capabilities Constrained:** All skill activation decisions (Domains 1–12); all agent onboarding flows; all monthly/periodic review cycles
+
+**Architectural Consequence:**
+1. Every agent's Temporal workflow must include explicit activity checkpoints for the SKILL_ACTIVATION_PLAN prompt (post-onboarding) and PERFORMANCE_ASSESSMENT prompt (periodic review)
+2. The Temporal scheduler may wake the agent for its cadence; the PERFORMANCE_ASSESSMENT prompt determines what happens upon waking at a review checkpoint — not a hardcoded workflow branch
+3. Strategic cognition outputs (plans, assessments) are Reasoning Traces (C-047, AD-008) — they must be persisted in `institutional.agent_reasoning_traces` before the plan is acted upon
+4. Trigger event 3 (material deviation) is implemented as an automated check: if any skill's KPI pace falls below 60% of target at mid-period, the PERFORMANCE_ASSESSMENT prompt is invoked immediately — the agent does not wait for the scheduled review
+5. The SKILL_ACTIVATION_PLAN output is the authoritative input to `CE.ValidateAction` for skill activation decisions — not a code-determined activation sequence

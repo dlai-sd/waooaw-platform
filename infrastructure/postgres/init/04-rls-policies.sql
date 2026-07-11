@@ -188,6 +188,15 @@ CREATE POLICY tenant_isolation ON business.whatsapp_trai_optins
 GRANT SELECT, INSERT, UPDATE ON business.phone_identity_sessions   TO business_app;
 GRANT SELECT, INSERT          ON business.whatsapp_trai_optins      TO business_app;
 
+-- agent_strategic_state: tenant-scoped RLS (v0.31.0 — C-050 Strategic Cognition Layer)
+ALTER TABLE business.agent_strategic_state ENABLE ROW LEVEL SECURITY;
+CREATE POLICY agent_strategic_state_tenant_isolation ON business.agent_strategic_state
+    FOR ALL
+    TO business_app, ai_runtime_app
+    USING (tenant_id = current_setting('app.tenant_id', TRUE)::UUID);
+GRANT SELECT, INSERT, UPDATE ON business.agent_strategic_state TO ai_runtime_app;
+GRANT SELECT                 ON business.agent_strategic_state TO business_app;
+
 -- Developer note: phone-identity-service needs its own DB role with limited permissions:
 -- CREATE ROLE phone_identity_app LOGIN;
 -- GRANT SELECT, INSERT, UPDATE ON business.phone_identity_sessions TO phone_identity_app;

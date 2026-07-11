@@ -1,9 +1,9 @@
 # Autonomous Trading Professional — FO & Crypto
 
-**Specification version:** 1.3
-**Date:** 2026-07-11 (v1.3 — R017-01 fix: TRADING/SELF_GOVERNANCE/DIAGNOSIS prompt added)
-**Change:** R017-01 P1 fix: self-governance diagnosis prompt with c049_honest_assessment added
-**Approved by Founder:** 2026-07-08 (v1.1); v1.3 pending Founder acknowledgment (BREAKING prompt)
+**Specification version:** 1.4
+**Date:** 2026-07-11 (v1.4 — Strategic Cognition Layer: Section 4.15, SESSION_PREP + MONTHLY_PORTFOLIO_ASSESSMENT prompts, C-050)
+**Change:** C-050 Strategic Cognition Layer added. Pre-session market regime assessment (SESSION_PREP) and monthly portfolio health assessment (MONTHLY_PORTFOLIO_ASSESSMENT) prompts added.
+**Approved by Founder:** 2026-07-08 (v1.1); v1.4 pending Founder acknowledgment (BREAKING prompt before implementation sprint)
 **Constitutional Basis:** C-036 (Skills), C-037 (Business KPIs), C-038 (Billing), C-039 (Conversational config), C-040 (Domain specialization), C-041 (Tool authorization), C-043 (Financial Spend Authority Ceiling — the daily loss limit is a Constitutional Floor equivalent; same enforcement mechanism as paid advertising budget cap), ADR-019 (RAG), ADR-020 (MCP), ADR-018 (Emergency Stop Temporal signal)
 **Status:** DRAFT — pending EA review (R-012) and Founder approval (GENESIS Part 05)
 
@@ -313,6 +313,71 @@ C-049 self-governance check:
 
 ---
 
+## 4.15 Strategic Cognition Standard
+
+> **Constitutional basis:** C-050 (Strategic Cognition Obligation — LAW), AD-021 (Strategic Cognition Trigger Points), DP-019 (Portfolio-First Cognition)
+
+The Trading Agent operates with a fixed, pre-configured strategy (PAAS). Strategic cognition takes a distinct form: the agent does not choose which skills to activate mid-session (the Decision Space is the strategy). Instead, strategic cognition operates at two points: (1) pre-session preparation — is today's market regime still aligned with the customer's configured strategy? (2) monthly portfolio review — is the overall trading approach achieving the customer's risk-adjusted return goal?
+
+---
+
+### 4.15.1 Planning Mode — SESSION_PREP
+
+**Prompt:** `TRADING/STRATEGIC/SESSION_PREP`
+
+**Trigger:** Pre-session at 9:15 IST (5 minutes before session window opens)
+
+**What the agent reasons about:**
+- Is today's market regime (VIX level, overnight global developments) broadly aligned with the customer's configured strategy type (DIRECTIONAL vs VOLATILITY)?
+- Are there any events today (expiry, RBI announcement, earnings) that materially change the risk profile of executing the current strategy?
+- Based on yesterday's session outcome: is there any reason to be more conservative today (e.g., near daily loss limit, portfolio heat)?
+- If the regime is fundamentally misaligned: SESSION_DEFERRED — agent does not trade today, alerts customer
+- C-048: this assessment must not find reasons to trade when the evidence suggests not trading
+
+**Output:** Session proceed/defer decision + risk posture for today's session (conservative/normal/aggressive within Decision Space)
+
+---
+
+### 4.15.2 Assessment Mode — MONTHLY_PORTFOLIO_ASSESSMENT
+
+**Prompt:** `TRADING/STRATEGIC/MONTHLY_PORTFOLIO_ASSESSMENT`
+
+**Triggers:**
+- **PERIODIC_REVIEW:** Monthly Day 1 (feeds into Skill 5 monthly report)
+- **DEVIATION_ALERT:** If monthly P&L < 0 for 2 consecutive months (triggers alongside `TRADING/SELF_GOVERNANCE/DIAGNOSIS`)
+
+**What the agent reasons about:**
+- Is the configured strategy (DIRECTIONAL / VOLATILITY / HYBRID) still appropriate for the current market regime that has prevailed over the past month?
+- Is the daily loss limit calibrated correctly? (Too tight → too many stopped sessions; too loose → excessive risk)
+- Win rate and R/R analysis: is the edge real or has it degraded?
+- C-049: can I honestly deliver this customer's return target with this strategy in this market?
+
+---
+
+### 4.15.3 Professional Template Declaration
+
+```yaml
+strategic_cognition:
+  skill_activation_plan_prompt: "TRADING/STRATEGIC/SESSION_PREP"
+  performance_assessment_prompt: "TRADING/STRATEGIC/MONTHLY_PORTFOLIO_ASSESSMENT"
+  trigger_events:
+    - type: "POST_ONBOARDING"
+      condition: "broker_api_access_verified == true AND decision_space_configured == true"
+      prompt: "SESSION_PREP"  # First session prep after onboarding
+    - type: "PRE_SESSION"
+      condition: "daily 09:15 IST on NSE_TRADING_DAYS"
+      prompt: "SESSION_PREP"
+    - type: "PERIODIC_REVIEW"
+      condition: "monthly_day_1"
+      prompt: "MONTHLY_PORTFOLIO_ASSESSMENT"
+    - type: "DEVIATION_ALERT"
+      condition: "consecutive_losing_months >= 2"
+      prompt: "MONTHLY_PORTFOLIO_ASSESSMENT"
+  strategic_state_table: "business.agent_strategic_state"
+```
+
+---
+
 ## 5. Emergency Stop — Trading-Specific Requirements
 
 The Emergency Stop for a trading agent has additional urgency: an active PAAS session may have open positions with real-time P&L exposure.
@@ -447,6 +512,20 @@ ProfessionalTemplate:
       monthly_performance_review_day: 1
       consecutive_miss_escalation_threshold: 2
       c049_honest_assessment_required: true
+  strategic_cognition:
+    skill_activation_plan_prompt: "TRADING/STRATEGIC/SESSION_PREP"
+    performance_assessment_prompt: "TRADING/STRATEGIC/MONTHLY_PORTFOLIO_ASSESSMENT"
+    trigger_events:
+      - type: "PRE_SESSION"
+        condition: "daily 09:15 IST on NSE_TRADING_DAYS"
+        prompt: "SESSION_PREP"
+      - type: "PERIODIC_REVIEW"
+        condition: "monthly_day_1"
+        prompt: "MONTHLY_PORTFOLIO_ASSESSMENT"
+      - type: "DEVIATION_ALERT"
+        condition: "consecutive_losing_months >= 2"
+        prompt: "MONTHLY_PORTFOLIO_ASSESSMENT"
+    strategic_state_table: "business.agent_strategic_state"
   is_published: true
 ```
 
@@ -530,26 +609,27 @@ billing:
 - [x] **SESSION_END_POSITION_CLOSURE as always-ask — customer decides at onboarding**
 - [x] **C-048 check (Information Non-Exploitation): No Skill steers the customer toward higher-tier plans or more aggressive strategies for WAOOAW platform benefit. The agent executes within the customer's stated parameters — it does not optimise for trade frequency, fee generation, or platform metrics. C-043 daily loss limit is a hard stop regardless of any other consideration.**
 - [x] **C-049 check (Honest Limitation Disclosure): `TRADING/SELF_GOVERNANCE/DIAGNOSIS` prompt (Skill 5 monthly evaluation) includes `c049_honest_assessment: CAN_DELIVER_WITH_CORRECTIONS | CANNOT_DELIVER_MUST_DISCLOSE` field. If market conditions, capital constraints, or SEBI regulations make the customer's stated return target unachievable, the agent must say so explicitly. `STOP_AND_DISCLOSE` is a valid `recommended_option`. R017-01 fix applied.**
+- [x] **C-050 check (Strategic Cognition): Section 4.15 added. TRADING/STRATEGIC/SESSION_PREP invoked at 9:15 IST pre-session to assess market regime alignment and session risk posture; TRADING/STRATEGIC/MONTHLY_PORTFOLIO_ASSESSMENT invoked monthly and on consecutive losses. Both prompts include strategic_reasoning_chain, portfolio_health (for monthly), session_proceed_decision (for daily), and c049_honest_assessment. Professional Template declares strategic_cognition block with 3 trigger events.**
 
 ---
 
 ## 11. Prompt Catalogue
 
-> **Gate requirement (Section 2 of Activation Gate, C-045, AD-018):** Every LLM inference point must have an approved prompt. This section indexes all inference points for this agent. All prompts reside in `architecture/reference/prompts/trading-agri-agent-prompts.md` and are seeded in `institutional.agent_prompt_versions`.
+> **Gate requirement (Sections 2 + 10 of Activation Gate, C-045, C-050, AD-018, AD-021):** Every LLM inference point must have an approved prompt. All prompts reside in `architecture/reference/prompts/trading-agri-agent-prompts.md` and are seeded in `institutional.agent_prompt_versions`.
 
-| Prompt ID | Skill | Step | Type | File |
+| Prompt ID | Layer | Step | Type | File |
 |---|---|---|---|---|
 | `TRADING/ONBOARDING/PROFILE_SETUP` | Onboarding | 5-phase config conversation → Decision Space | BEHAVIOURAL | trading-agri-agent-prompts.md |
+| `TRADING/STRATEGIC/SESSION_PREP` | Strategic Cognition | Pre-session: market regime alignment + session risk posture | BEHAVIOURAL | trading-agri-agent-prompts.md |
 | `TRADING/MARKET_ANALYSIS/TRADE_SETUP` | Skill 1 | Trade setup identification from market data | BEHAVIOURAL | trading-agri-agent-prompts.md |
 | `TRADING/EXECUTION/ESCALATION_DECISION` | Skill 2 | PAAS escalation when DS Reasoner returns UNCERTAIN | BREAKING | trading-agri-agent-prompts.md |
 | `TRADING/RISK_MANAGEMENT/LOSS_LIMIT_ALERT` | Skill 3 | Halt vs warn decision on risk threshold trigger | BREAKING | trading-agri-agent-prompts.md |
 | `TRADING/CRYPTO/REBALANCE_DECISION` | Skill 4 | Crypto rebalancing and DCA decision | BEHAVIOURAL | trading-agri-agent-prompts.md |
 | `TRADING/PERFORMANCE/SESSION_REPORT` | Skill 5 | End-of-session performance report generation | BEHAVIOURAL | trading-agri-agent-prompts.md |
-| `TRADING/SELF_GOVERNANCE/DIAGNOSIS` | Skill 5 (monthly) | C-049 honest assessment — goal miss diagnosis + STOP_AND_DISCLOSE | BEHAVIOURAL | trading-agri-agent-prompts.md |
+| `TRADING/SELF_GOVERNANCE/DIAGNOSIS` | Self-Governance | C-049 honest assessment — goal miss diagnosis + STOP_AND_DISCLOSE | BEHAVIOURAL | trading-agri-agent-prompts.md |
+| `TRADING/STRATEGIC/MONTHLY_PORTFOLIO_ASSESSMENT` | Strategic Cognition | Monthly: portfolio health + strategic recommendation (C-050) | BEHAVIOURAL | trading-agri-agent-prompts.md |
 
-**Gate 2.4 check:** No LLM calls exist in the pipeline specifications above that are not listed here. Trade placement (Skill 2) is mechanical (broker-mcp call gated by CE.ValidateAction gRPC) — it is not LLM-driven and therefore not in this catalogue. Risk monitoring threshold checks (Skill 3) are rule-based; the LLM is invoked only when a threshold is triggered.
-
-**All prompts have active rows in `institutional.agent_prompt_versions` (seeded in `03-enums-and-tables.sql`). Section 2 gate: PASS.**
+**Section 10 gate check:** Both strategic cognition prompts catalogued and seeded in SQL. C-050 in checklist. Trigger events declared. Gate 10: PASS.**
 
 ---
 
@@ -559,13 +639,16 @@ billing:
 |---|---|---|---|
 | 1.0 | 2026-07-08 | Business Architect | Initial draft |
 | 1.1 | 2026-07-08 | Business Architect | R-012 P0 fixes: Technical Chart Analysis (Skill 1 expanded), BROKER_API_ACCESS_VERIFIED always-ask, SESSION_END_POSITION_CLOSURE always-ask |
-| 1.2 | 2026-07-11 | Business Architect | Track A P1 fix: Section 4.14 Skill Runtime Configuration Standard; Prompt Catalogue (Section 11) with 3 new prompts (PROFILE_SETUP, ESCALATION_DECISION, REBALANCE_DECISION); execution_loop + heartbeat_schedule in Professional Template; C-048 + C-049 constitutional checks |
-| 1.3 | 2026-07-11 | Business Architect | R017-01 P1 fix: TRADING/SELF_GOVERNANCE/DIAGNOSIS prompt added to Prompt Catalogue and SQL seed; C-049 checklist updated to reference prompt ID |
+| 1.2 | 2026-07-11 | Business Architect | Track A P1 fix: Section 4.14 Skill Runtime Configuration Standard; Prompt Catalogue (Section 11); execution_loop + heartbeat_schedule in Professional Template; C-048 + C-049 constitutional checks |
+| 1.3 | 2026-07-11 | Business Architect | R017-01 P1 fix: TRADING/SELF_GOVERNANCE/DIAGNOSIS prompt; C-049 checklist updated |
+| 1.4 | 2026-07-11 | Business Architect | Strategic Cognition Layer (C-050): Section 4.15; SESSION_PREP + MONTHLY_PORTFOLIO_ASSESSMENT prompts; strategic_cognition block in Professional Template; C-050 constitutional check |
 
 ---
 
 ## 10. Review and Approval
 
-**EA Review:** R-012 — APPROVED (all three notes addressed in v1.0; Technical Chart Analysis added in v1.1)
+**EA Review:** R-012 — APPROVED (v1.0/v1.1)
+**EA Review:** R-017 — APPROVED (v1.3 Track A gate compliance)
+**EA Review:** R-018 — APPROVED (v1.4 Strategic Cognition Layer)
 **Founder Approval:** GRANTED — 2026-07-08 (per GENESIS Part 05)
-**Status:** APPROVED — active ProfessionalTemplate — v1.3 EA review: R-017 APPROVED (pending Founder acknowledgment of BREAKING prompt TRADING/EXECUTION/ESCALATION_DECISION)
+**Status:** APPROVED — v1.4 active (pending Founder acknowledgment of TRADING/EXECUTION/ESCALATION_DECISION BREAKING prompt before implementation sprint)

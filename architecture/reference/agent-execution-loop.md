@@ -280,3 +280,110 @@ The key new element is `reasoning_trace_id` passed to CE.ValidateAction. This en
 | LLM call is a step in a pipeline | LLM reasoning is the FIRST step that drives all subsequent steps | AD-019 |
 | Evidence record records outcome | Evidence record + Reasoning Trace record both created; trace is primary | C-047 |
 | CE.ValidateAction is a rule check | CE.ValidateAction includes constitutional reasoning for EvaluatePolicy cases | Layer 2 review |
+| Skills run independently on their own heartbeats | Skills are orchestrated by Strategic Cognition Layer — plan first, then execute | C-050 — DP-019 |
+
+---
+
+## Strategic Cognition Layer — The Macro Execution Loop
+
+**Authority:** C-050 (Strategic Cognition Obligation — LAW); AD-021 (Strategic Cognition Trigger Points); DP-019 (Portfolio-First Cognition)
+**Added:** v0.31.0
+
+The Standard Execution Loop above governs **how an individual skill executes** (micro-level reasoning). The Strategic Cognition Layer governs **which skills execute and why** (macro-level reasoning). Both are mandatory.
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│               STRATEGIC COGNITION LAYER (C-050)                    │
+│                                                                     │
+│  Operates at a higher cadence than individual skill heartbeats.    │
+│  Runs at TRIGGER EVENTS defined in the Professional Template.      │
+│                                                                     │
+│  TRIGGER EVENT → Strategic Cognition Workflow activates            │
+│                                                                     │
+│  1. LOAD STRATEGIC CONTEXT                                         │
+│     Current skill activation plan (business.agent_strategic_state) │
+│     All active skill KPI states (portfolio view)                   │
+│     Customer goal and elapsed time                                 │
+│     Previous strategic assessment (last assessment date + outcome) │
+│                                                                     │
+│  2. INVOKE STRATEGIC PROMPT                                        │
+│     POST_ONBOARDING / SEASON_START → SKILL_ACTIVATION_PLAN         │
+│     PERIODIC_REVIEW / DEVIATION_ALERT / HARVEST → PERFORMANCE_ASSESSMENT│
+│                                                                     │
+│  3. STRATEGIC REASONING (LLM)                                      │
+│     Agent reasons about the WHOLE portfolio:                       │
+│     "Given all active skills and the customer's goal, what is      │
+│      the current strategic situation and what should change?"      │
+│     Output: Strategic Plan (activation sequence, adjustments,      │
+│             c050_strategic_intent, c049_honest_assessment)         │
+│     Write: Reasoning Trace to institutional.agent_reasoning_traces │
+│                                                                     │
+│  4. STRATEGIC VALIDATION                                           │
+│     CE.ValidateAction for any proposed skill activation changes    │
+│     Skill activations → APPROVAL_GATE (customer approves new skill)│
+│     Skill deactivations → APPROVAL_GATE (customer confirms)        │
+│     Parameter changes → per agent's Decision Space                 │
+│                                                                     │
+│  5. UPDATE STRATEGIC STATE                                         │
+│     Write updated plan to business.agent_strategic_state           │
+│     (Replaces previous plan — the current plan is always current)  │
+│                                                                     │
+│  6. DISPATCH                                                       │
+│     Activated skills: new Temporal workflows started per plan      │
+│     Deactivated skills: existing workflows signalled to stop       │
+│     No-change skills: continue on existing heartbeat schedule      │
+│                                                                     │
+│  7. CUSTOMER COMMUNICATION (if assessment changed the portfolio)   │
+│     If strategic_recommendation = ADJUST or STOP_AND_DISCLOSE:    │
+│     → customer_narrative delivered via configured channels         │
+│     → wait for customer decision before activating new skills      │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Relationship Between the Two Loops
+
+```
+Strategic Cognition Loop (C-050)          Standard Execution Loop (C-047)
+────────────────────────────────          ───────────────────────────────
+Runs at: trigger events                   Runs at: skill heartbeat cadence
+Asks: "Which skills? Why?"                Asks: "What action next?"
+Output: Strategic plan                    Output: Specific action
+Scope: Whole portfolio                    Scope: One skill, one cycle
+Frequency: Low (monthly/seasonal/event)  Frequency: High (daily/5-min/per-event)
+
+The Strategic Loop controls WHICH skills the Execution Loop runs.
+The Execution Loop governs HOW each skill executes within its heartbeat.
+C-050 cannot replace C-047; C-047 cannot satisfy C-050.
+Both are mandatory.
+```
+
+### SQL: agent_strategic_state
+
+The Strategic Cognition Layer persists its output in `business.agent_strategic_state`:
+
+```sql
+-- Added in v0.31.0 migration — see 03-enums-and-tables.sql
+CREATE TABLE business.agent_strategic_state (
+    id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organisation_id             UUID NOT NULL REFERENCES business.organisations(id),
+    employment_contract_id      UUID NOT NULL REFERENCES business.employment_contracts(id),
+    professional_type           VARCHAR(100) NOT NULL,
+    plan_version                INTEGER NOT NULL DEFAULT 1,  -- increments on each re-plan
+    skill_activation_plan       JSONB NOT NULL,              -- full output of SKILL_ACTIVATION_PLAN prompt
+    last_performance_assessment JSONB,                       -- full output of PERFORMANCE_ASSESSMENT prompt
+    active_skills               TEXT[] NOT NULL,             -- currently active skill IDs
+    deferred_skills             JSONB,                       -- [{skill_id, reason, revisit_trigger}]
+    portfolio_health            VARCHAR(50),                 -- from last assessment
+    strategic_intent            TEXT,                        -- c050_strategic_intent from current plan
+    last_plan_date              TIMESTAMPTZ NOT NULL,
+    last_assessment_date        TIMESTAMPTZ,
+    reasoning_trace_id          UUID REFERENCES institutional.agent_reasoning_traces(id),
+    created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    tenant_id                   UUID NOT NULL,              -- RLS discriminator
+    CONSTRAINT uq_strategic_state_contract UNIQUE (employment_contract_id)
+);
+CREATE INDEX idx_strategic_state_org ON business.agent_strategic_state(organisation_id);
+CREATE INDEX idx_strategic_state_contract ON business.agent_strategic_state(employment_contract_id);
+```

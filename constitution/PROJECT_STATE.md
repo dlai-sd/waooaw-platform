@@ -1,8 +1,8 @@
 # PROJECT_STATE.md
 
 **Last Updated:** 2026-07-11
-**Version:** 0.30.0
-**Session:** 2026-07-11 — Track A-review complete
+**Version:** 0.31.0
+**Session:** 2026-07-11 — Strategic Cognition Layer (C-050) complete
 
 ---
 
@@ -10,14 +10,19 @@
 
 | Milestone | Status |
 |---|---|
-| Section 4.14 (Skill Runtime Config) added to Trading v1.1 | ✓ DONE — trading-agent.md v1.2 |
-| Section 4.14 (Skill Runtime Config) added to Agricultural v2.0 | ✓ DONE — agricultural-advisor-agent.md v2.1 |
-| Section 5 (Execution Loop) heartbeat + session declarations | ✓ DONE — Professional Template updated in both specs |
-| Prompt Catalogue sections added to both specs | ✓ DONE — Trading §11, Agricultural §14 |
-| 6 new prompts added to trading-agri-agent-prompts.md | ✓ DONE — PROFILE_SETUP, ESCALATION_DECISION, REBALANCE_DECISION, OPENING_MESSAGE, INFERENCE_CONFIRM, WEEKLY_HINT |
-| SQL seed rows for 6 new prompts | ✓ DONE — 03-enums-and-tables.sql |
-| C-048 + C-049 constitutional checks added to both agents | ✓ DONE |
-| Version + PROJECT_STATE update | ✓ DONE |
+| Track A P1 gap resolution (Trading v1.2, Agricultural v2.1) | ✓ DONE — v0.29.0 |
+| R-017 EA review — Trading v1.3 + Agricultural v2.2 gate compliance | ✓ DONE — v0.30.0 |
+| C-050 (Strategic Cognition Obligation LAW) ratified | ✓ DONE — v0.31.0 |
+| AD-021 + DP-019 added to knowledge layer | ✓ DONE |
+| AGENT-AUTHORING-GUIDE: Section 3.15 + Gate Section 10 (Cognition Gate) | ✓ DONE |
+| DMA v2.1: Section 3.15 + strategic_cognition block + Prompt Catalogue + C-050 | ✓ DONE |
+| Trading v1.4: Section 4.15 + strategic_cognition block + Prompt Catalogue + C-050 | ✓ DONE |
+| Agricultural v2.3: Section 4.15 + strategic_cognition block + Prompt Catalogue + C-050 | ✓ DONE |
+| 7 new strategic prompts (2 DMA + 2 Trading + 2 Agri, 1 error: actually 6) in prompt files | ✓ DONE |
+| SQL: agent_strategic_state table + RLS + 7 strategic prompt seed rows | ✓ DONE |
+| agent-execution-loop.md: Strategic Cognition Layer + macro execution loop diagram | ✓ DONE |
+| R-018 EA critical review: APPROVED, P1 gaps fixed (README + AGENT-ENTRY) | ✓ DONE |
+| PROJECT_STATE + README + commit + push | ✓ DONE |
 
 ---
 
@@ -41,15 +46,25 @@ PENDING EA:   Trading v1.2 + Agricultural v2.1 need EA re-review for Track A cha
 
 ## What This Session Completed (2026-07-11)
 
+## What This Session Completed (2026-07-11)
+
 | Version | What |
 |---|---|
-| v0.29.0 | **Track A P1 gap resolution** — Trading v1.1→v1.2, Agricultural v2.0→v2.1 |
-| v0.30.0 | **Track A-review (R-017 APPROVED)** — Trading v1.2→v1.3, Agricultural v2.1→v2.2 |
-| | P1 finding R017-01 identified and resolved: TRADING/SELF_GOVERNANCE/DIAGNOSIS + AGRI/SELF_GOVERNANCE/DIAGNOSIS prompts added |
-| | 2 new SQL seed rows; Prompt Catalogues updated; C-049 checklist items reference prompt IDs |
-| | Full Activation Gate now passes for all 3 agents (all 9 sections) |
-| | 32 active prompts total |
-| | R-017 APPROVED — Trading v1.3 + Agricultural v2.2 gate-compliant for IB-009 sprint |
+| v0.29.0 | **Track A P1 gap resolution** — Trading v1.1→v1.2, Agricultural v2.0→v2.1 (Sections 4+5 gate) |
+| v0.30.0 | **Track A-review R-017 APPROVED** — Trading v1.2→v1.3, Agricultural v2.1→v2.2 (self-governance prompts, full gate) |
+| v0.31.0 | **Strategic Cognition Layer (C-050)** — full implementation, 9 architecture levels |
+| | C-050 claim ratified (50th constitutional claim) |
+| | AD-021 (Strategic Cognition Trigger Points HARD), DP-019 (Portfolio-First Cognition) |
+| | AGENT-AUTHORING-GUIDE: Section 3.15 (Strategic Cognition Standard) + Gate Section 10 (Cognition Gate, 8 items) |
+| | DMA v2.0→v2.1: Section 3.15, SKILL_ACTIVATION_PLAN + PERFORMANCE_ASSESSMENT prompts |
+| | Trading v1.3→v1.4: Section 4.15, SESSION_PREP + MONTHLY_PORTFOLIO_ASSESSMENT prompts |
+| | Agricultural v2.2→v2.3: Section 4.15, SEASONAL_ADVISORY_PLAN + ADVISORY_EFFECTIVENESS_REVIEW prompts |
+| | 6 new strategic prompts in prompt files; 7 SQL seed rows |
+| | `business.agent_strategic_state` SQL table + RLS |
+| | agent-execution-loop.md: Strategic Cognition Layer (macro execution loop) |
+| | R-018 APPROVED: All 3 agents pass full Activation Gate (10/10 sections) |
+| | 39 active prompts (was 24 at start of session) |
+| | Prompts README + AGENT-ENTRY.md updated (R018 P1 fixes) |
 | | Section 4.14 Skill Runtime Configuration Standard added to both agents |
 | | Section 5 Execution Loop gate compliance: heartbeat_schedule + session_start_trigger declared in both Professional Templates |
 | | Prompt Catalogue sections added: Trading §11 (6 prompts), Agricultural §14 (7 prompts) |
@@ -157,21 +172,27 @@ NEXT:         Founder indicated an important point to discuss — see WORK MENU 
 **Version:** v0.29.0 | **Gate:** G5 prerequisites met | **3 agents fully gate-compliant**
 
 Track A is COMPLETE. All three agents now pass the full Activation Gate (Sections 1–9).
-Two items remain before implementation sprints: EA re-review of v1.2/v2.1 changes, and explicit Founder "start coding" authorization.
+All three agents are architecturally complete. All 10 activation gate sections pass. 39 active prompts. The platform is ready for the IB-009 Foundation Implementation sprint — pending explicit Founder authorization each session.
 
 ---
 
 **Track A — ✓ COMPLETED** (v0.29.0)
 
-Trading v1.2 and Agricultural v2.1 now pass Gate Sections 4 and 5. 6 new prompts added. All agents architecturally complete.
+Trading v1.4 and Agricultural v2.3 now pass all 10 activation gate sections. 39 active prompts.
 
 ---
 
-**Track A-review — ✓ COMPLETED** (v0.30.0, R-017 APPROVED)
+**Track A-review — ✓ COMPLETED** (v0.30.0 + v0.31.0, R-017 + R-018 APPROVED)
 
-Trading v1.3 and Agricultural v2.2 pass the full Activation Gate (all 9 sections). 32 active prompts. All 3 agents are fully gate-compliant for the IB-009 implementation sprint.
+All 3 agents: full Activation Gate 10/10 sections PASS.
 
 Founder note: `TRADING/EXECUTION/ESCALATION_DECISION` is BREAKING type — acknowledge before the Trading agent implementation sprint begins.
+
+---
+
+**Strategic Cognition Layer — ✓ COMPLETED** (v0.31.0, C-050, R-018 APPROVED)
+
+Micro + macro reasoning fully specified. Agents are professionals, not schedules.
 
 ---
 

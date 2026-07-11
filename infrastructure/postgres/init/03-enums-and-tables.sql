@@ -992,7 +992,14 @@ VALUES
     ('AGRI/HINT_SYSTEM/WEEKLY_HINT', '1.0.0', 'AGRICULTURAL_HINT_SYSTEM', 'WEEKLY_HINT', 'AGRICULTURAL_ADVISOR_INDIA', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-042; C-037; C-039', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
     -- Self-Governance Diagnosis prompts (v0.30.0 — R017-01 P1 fix)
     ('TRADING/SELF_GOVERNANCE/DIAGNOSIS', '1.0.0', 'TRADING_PERFORMANCE_ANALYTICS', 'SELF_GOVERNANCE_DIAGNOSIS', 'TRADING_FO_CRYPTO', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-037; C-048; C-049; C-043; DP-015', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
-    ('AGRI/SELF_GOVERNANCE/DIAGNOSIS', '1.0.0', 'AGRICULTURAL_SELF_GOVERNANCE', 'SELF_GOVERNANCE_DIAGNOSIS', 'AGRICULTURAL_ADVISOR_INDIA', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-037; C-042; C-048; C-049; DP-015', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW());
+    ('AGRI/SELF_GOVERNANCE/DIAGNOSIS', '1.0.0', 'AGRICULTURAL_SELF_GOVERNANCE', 'SELF_GOVERNANCE_DIAGNOSIS', 'AGRICULTURAL_ADVISOR_INDIA', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-037; C-042; C-048; C-049; DP-015', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    -- Strategic Cognition Layer prompts (v0.31.0 — C-050)
+    ('DMA/STRATEGIC/SKILL_ACTIVATION_PLAN', '1.0.0', 'STRATEGIC_COGNITION', 'SKILL_ACTIVATION_PLAN', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/digital-marketing-agent-prompts.md', 'C-050; C-036; C-037; C-048; C-049; DP-019; AD-021', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('DMA/STRATEGIC/PERFORMANCE_ASSESSMENT', '1.0.0', 'STRATEGIC_COGNITION', 'PERFORMANCE_ASSESSMENT', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/digital-marketing-agent-prompts.md', 'C-050; C-037; C-048; C-049; DP-015; DP-019', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('TRADING/STRATEGIC/SESSION_PREP', '1.0.0', 'STRATEGIC_COGNITION', 'SESSION_PREP', 'TRADING_FO_CRYPTO', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-050; C-036; C-043; C-048; C-049; AD-021', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('TRADING/STRATEGIC/MONTHLY_PORTFOLIO_ASSESSMENT', '1.0.0', 'STRATEGIC_COGNITION', 'MONTHLY_PORTFOLIO_ASSESSMENT', 'TRADING_FO_CRYPTO', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-050; C-037; C-043; C-048; C-049; DP-019', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('AGRI/STRATEGIC/SEASONAL_ADVISORY_PLAN', '1.0.0', 'STRATEGIC_COGNITION', 'SEASONAL_ADVISORY_PLAN', 'AGRICULTURAL_ADVISOR_INDIA', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-050; C-042; C-036; C-037; C-048; C-049; DP-019; AD-021', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('AGRI/STRATEGIC/ADVISORY_EFFECTIVENESS_REVIEW', '1.0.0', 'STRATEGIC_COGNITION', 'ADVISORY_EFFECTIVENESS_REVIEW', 'AGRICULTURAL_ADVISOR_INDIA', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-050; C-042; C-037; C-048; C-049; DP-019', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW());
 
 -- Agent Reasoning Traces — primary AI audit artifact (C-047, AD-008, AD-019)
 -- See architecture/reference/agent-reasoning-trace.md for full spec.
@@ -1199,8 +1206,33 @@ CREATE INDEX idx_trading_session_contract ON business.trading_session_records(em
 CREATE INDEX idx_trading_session_date ON business.trading_session_records(organisation_id, session_date DESC);
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- Multi-agent billing (v0.25.0 — ADR-022 extension, Issue #3)
+-- Strategic Cognition Layer (v0.31.0 — C-050, AD-021, DP-019)
+-- Persists the agent's current strategic plan and last portfolio assessment.
+-- One row per employment contract — updated on each re-plan.
 -- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE TABLE business.agent_strategic_state (
+    id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organisation_id             UUID NOT NULL REFERENCES business.organisations(id),
+    employment_contract_id      UUID NOT NULL REFERENCES business.employment_contracts(id),
+    professional_type           VARCHAR(100) NOT NULL,
+    plan_version                INTEGER NOT NULL DEFAULT 1,     -- increments on each re-plan
+    skill_activation_plan       JSONB NOT NULL,                 -- full SKILL_ACTIVATION_PLAN prompt output
+    last_performance_assessment JSONB,                         -- full PERFORMANCE_ASSESSMENT prompt output
+    active_skills               TEXT[] NOT NULL,               -- currently active skill IDs
+    deferred_skills             JSONB,                         -- [{skill_id, reason, revisit_trigger}]
+    portfolio_health            VARCHAR(50),                   -- from last assessment
+    strategic_intent            TEXT,                          -- c050_strategic_intent from current plan
+    last_plan_date              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    last_assessment_date        TIMESTAMPTZ,
+    reasoning_trace_id          UUID REFERENCES institutional.agent_reasoning_traces(id),
+    tenant_id                   UUID NOT NULL,                 -- RLS discriminator
+    created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT uq_strategic_state_contract UNIQUE (employment_contract_id)
+);
+CREATE INDEX idx_strategic_state_org ON business.agent_strategic_state(organisation_id);
+CREATE INDEX idx_strategic_state_contract ON business.agent_strategic_state(employment_contract_id);
 
 -- Billing preference enum (ADR-022: SEPARATE or COMBINED for customers with multiple agents)
 CREATE TYPE billing_preference_type AS ENUM (
