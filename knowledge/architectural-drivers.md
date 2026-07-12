@@ -489,3 +489,77 @@ Result: No artificial demand spike at pesticide shops; no appearance of coordina
 ```
 
 **Capabilities Constrained:** AI Runtime Tier 3 update pipeline; Trading Agent PAAS session workflow; Agricultural Advisor batch processing; all LLM prompt dispatch (no cross-customer batch prompting)
+
+---
+
+## AD-026 — Signal Watch Workflow Pattern (v0.35.0)
+
+**Requirement:** Every agent type that operates in a time-sensitive domain (weather, market data, platform performance, regulatory changes) MUST implement one or more Signal Watch Workflows — long-running Temporal workflows that continuously poll defined signal feeds, evaluate materiality at LOCAL tier (zero LLM cost), and inject event signals into customer AgentExecutionWorkflows when materiality crosses a declared threshold. Signal Watch Workflows are NOT per-customer — they are per-signal-type per-agent-type. They run at the platform level and fan out to relevant customers only when a material signal is detected.
+
+**Type:** HARD for URGENCY_CLASS=CRITICAL signals — constitutional obligation (C-053). Soft for ADVISORY-class signals — architectural best practice.
+
+**Constitutional Basis:** C-053 (Signal Sensing Obligation — LAW); C-001 (Human Override — professional duty to warn before override is needed); C-047 (Agent-Driven Execution — execution loop wakes on event signal, not heartbeat only); C-048 (Information Non-Exploitation — possessing a material signal and not sharing it is exploitation)
+
+**Signal Watch Workflow Architecture:**
+```
+SignalWatchWorkflow (one long-running Temporal workflow per signal type per agent type):
+  - Polls external MCP server at declared cadence (e.g., every 15 min for weather)
+  - Runs LOCAL-tier MaterialityClassifier: signal_event → materiality_score (0.0–1.0)
+  - Runs LOCAL-tier CustomerRelevanceMatcher: signal × customer registry → [(customer_id, relevance_score, skill_id)]
+  - For each customer above relevance_threshold:
+      → Sends Temporal signal to customer's AgentExecutionWorkflow
+      → Logs signal event to institutional.signal_materiality_events
+  - Continues polling (infinite loop — Temporal handles durability)
+```
+
+**Materiality Urgency Classes (mandatory in every Section 3.18 declaration):**
+```
+CRITICAL  (≥ 0.90) — Communicate immediately. emergency_exempt: true. Budget cannot block.
+HIGH      (0.70–0.89) — Communicate within 1 hour. TRAI window governs. Budget applies.
+ADVISORY  (<0.70 AND ≥ threshold) — Bundle with next heartbeat. No extra communication.
+```
+
+**Temporal Implementation Constraints:**
+- Signal Watch Workflows must use `continue_as_new` to avoid unbounded history (every 1,000 poll cycles)
+- Customer AgentExecutionWorkflow receives signal via `workflow.signal(signal_type, signal_payload)` — existing signal handler pattern (ADR-018 established this pattern for Emergency Stop)
+- TRAI compliance: the Signal Watch Workflow marks signal events with `within_trai_window` flag per customer — the execution workflow checks this before sending
+
+**Capabilities Constrained:** AI Runtime signal processing; Agricultural Advisor Skill 1 (Weather) and Skill 3 (Mandi Price) — highest signal density; Trading Agent pre-session alert; DMA Agent competitor activity monitoring; all proactive outbound communication paths
+
+---
+
+## AD-027 — Skill Capability Manifest Standard (v0.35.0)
+
+**Requirement:** Every Skill in every agent specification MUST declare a Skill Capability Manifest (SCM) — a structured, machine-readable contract that the Skill Intelligence Router (SIR) can reason over at request time. The SCM is not documentation — it is a runtime artifact. It must be loaded by the SIR before processing any customer request. Missing or incomplete SCMs are a GATE BLOCKER in the Agent Activation Gate (Section 4 — Skill Runtime Gate).
+
+**Type:** HARD — C-054 (Skill Intelligence Routing — LAW) requires it. An agent spec without SCMs cannot pass the Activation Gate.
+
+**Constitutional Basis:** C-054 (Skill Intelligence Routing — LAW); C-036 (Skills as constitutional units — the unit must be describable to the routing system); C-050 (Strategic Cognition — the SCM feeds the Skill Dependency Graph that the Strategic Cognition Layer reasons over)
+
+**Required SCM Fields (all mandatory):**
+```yaml
+skill_capability_manifest:
+  skill_id:                 # Unique skill identifier (matches Section 3 skill definition)
+  version:                  # Version string — bumped on any intent_signature or collaboration change
+  intent_signatures:        # List of natural language phrases this skill can serve (minimum 5)
+  servable_request_types:   # Map of request_type_id → description
+  unservable_request_types: # List of {intent, routes_to_skill} — explicit routing exclusions
+  input_requirements:
+    required:               # Skills/data that MUST be present for this skill to execute
+    optional:               # Skills/data that improve output but are not blocking
+  output_contributions:     # What this skill produces that other skills can consume
+    - type:                 # Output type ID
+      used_by:              # List of skill_ids that consume this output
+  collaboration_affinities: # Skills this skill works well with
+    - with_skill:           # Skill ID
+      relationship:         # UPSTREAM | DOWNSTREAM | BIDIRECTIONAL
+      benefit:              # Plain description of collaboration value
+  activation_state:         # Runtime state (populated by AI Runtime at workflow start, not in spec)
+    requires_oauth:         # true | false
+    within_budget:          # true | false (runtime)
+    current_mode:           # CUSTOMER_APPROVAL | EXCEPTION_APPROVAL | SYNTHETIC_APPROVAL
+```
+
+**The Skill Dependency Graph** (`business.agent_skill_graph`) is materialized from all SCMs for a given customer's active skills at the time the SKILL_ACTIVATION_PLAN runs. The SIR reads the live graph, not the static spec.
+
+**Capabilities Constrained:** AI Runtime SIR sub-component; every multi-skill agent spec (mandatory Section 3.19 declaration); Activation Gate Section 4 (Skill Runtime Gate — SCM completeness check added); Agent Authoring Guide constitutional checklist

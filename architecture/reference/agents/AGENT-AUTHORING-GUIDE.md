@@ -183,6 +183,8 @@ Before submitting for EA review, confirm:
 - [ ] **C-049 check (Honest Limitation Disclosure): does every Self-Governance Diagnosis reasoning step include a C-049 check — "Can I deliver this customer's goal with my current capabilities? If not, do I say so explicitly?" The Self-Governance Escalation (Section 3.14.4) must include `c049_honest_assessment` in its output schema.**
 - [ ] **C-050 check (Strategic Cognition): does Section 3.15 exist in this spec? Are both SKILL_ACTIVATION_PLAN and PERFORMANCE_ASSESSMENT prompts catalogued? Are trigger events declared in the Professional Template? An agent without strategic cognition is a schedule, not a professional.**
 - [ ] **C-052 check (Context Fidelity, Isolation, Uniqueness): (a) FIDELITY — is Context Bootstrap Protocol declared? Does the spec specify that session state, Decision Space, and performance history are loaded before every session? Does the spec prohibit ungrounded historical assertions? (b) ISOLATION — is Tier 3 24-hour write lag declared? For PAAS Trading: is SEBI cross-customer contamination prohibition documented? (c) UNIQUENESS — for content-generating agents: is Creative Fingerprint declared and Creative Fingerprint Enforcer (M-3) invoked before content generation? For advisory agents with shared recommendations: is Agricultural Timing Stagger (M-4) declared?**
+- [ ] **C-053 check (Signal Intelligence): is Section 3.18 present? If agent operates in a time-sensitive domain (weather, market, operational), are signal feeds declared? Are all CRITICAL-class signal types marked `emergency_exempt: true`? Is a PROACTIVE_ALERT prompt in the Prompt Catalogue? If NOT applicable, is `signal_intelligence: NOT_APPLICABLE` stated with a reason?**
+- [ ] **C-054 check (Skill Intelligence Routing): for multi-skill agents, is Section 3.19 present? Does every Skill have a `skill_capability_manifest` block with ≥ 5 intent_signatures and ≥ 1 collaboration affinity? Is `skill_gap_signalling` declared? Is a SKILL_INTENT_ROUTER prompt (LOCAL tier) in the Prompt Catalogue? If single-skill, is `skill_intelligence_router: NOT_APPLICABLE` stated?**
 
 ## 9b. Section 3.15 — Strategic Cognition Standard (MANDATORY — every agent)
 
@@ -425,6 +427,282 @@ adjacent_professional_routing:
 
 ---
 
+## 9e. Section 3.18 — Signal Intelligence Layer (MANDATORY for time-sensitive domain agents)
+
+> **Why required (C-053):** An agent that waits for a customer to ask about a risk that the agent already knows about has failed its professional duty. Signal Intelligence is not a feature — it is a constitutional obligation for any agent where external signals (weather, market, operational) can materially affect customer outcomes. Missing this section in a time-sensitive agent is a GATE BLOCKER.
+
+**Time-sensitive domain test (applies this section if TRUE):**
+- Does this agent operate in a domain where external events (weather, prices, regulations, platform changes) can cause material harm or benefit to the customer within hours if unaddressed?
+- If YES → Section 3.18 is MANDATORY.
+- If NO (e.g., HR Professional, Legal Professional) → write `signal_intelligence: NOT_APPLICABLE` and state the reason.
+
+---
+
+### 3.18.1 Signal Feeds Declaration (MANDATORY)
+
+Declare every external signal feed the agent must continuously monitor:
+
+```yaml
+signal_intelligence:
+  signal_feeds:
+    - feed_id: "[SIGNAL_FEED_ID — e.g., WEATHER_DISTRICT]"
+      mcp_server: "[mcp-server-name]"
+      tool_call: "[tool.method_name]"
+      poll_cadence: "[ISO 8601 duration — e.g., PT15M for every 15 minutes]"
+      relevance_dimension: "[What customer state makes this signal relevant — e.g., crop.stage_day + farm.district]"
+      materiality_classifier: "[Rule or LOCAL model that scores 0.0–1.0 — describe the logic]"
+```
+
+---
+
+### 3.18.2 Signal Types and Urgency Classes (MANDATORY)
+
+Declare every named signal type this agent can detect. Each must be mapped to an URGENCY_CLASS with a specific triggering rule:
+
+```yaml
+  signal_types:
+    - signal_type: "[SIGNAL_TYPE_ID — e.g., WEATHER_HAIL_RISK]"
+      feed_id: "[references signal_feeds above]"
+      skill_id: "[which active Skill handles this signal]"
+      urgency_class_rule: "[explicit condition for CRITICAL/HIGH/ADVISORY — e.g., hail_probability > 0.6 AND stage_day > 60 → CRITICAL]"
+      urgency_class: "CRITICAL | HIGH | ADVISORY"
+      emergency_exempt: true | false   # CRITICAL signals MUST be true
+      channel: "[WHATSAPP_VOICE | WHATSAPP_TEXT | PORTAL | PUSH | ALL]"
+      trai_outside_window_behavior: "HSM_TEMPLATE_ONLY | DEFER | IMMEDIATE"
+        # IMMEDIATE only for URGENCY_CLASS=CRITICAL
+      evidence_action_type: "[CAL action type for evidence record — e.g., PROACTIVE_SIGNAL_ALERT]"
+```
+
+**URGENCY_CLASS definitions (non-negotiable):**
+| Class | Materiality score | Delivery | Budget | TRAI window |
+|---|---|---|---|---|
+| `CRITICAL` | ≥ 0.90 | Immediate | `emergency_exempt: true` — budget cannot block | Override with HSM; CRITICAL is a constitutional obligation |
+| `HIGH` | 0.70–0.89 | Within 1 hour | Costs 1 UsageUnit | Within window: send. Outside: HSM template only |
+| `ADVISORY` | 0.50–0.69 | Next heartbeat bundle | No extra cost | Bundled with scheduled message |
+
+---
+
+### 3.18.3 Proactive Communication Prompts (MANDATORY)
+
+At minimum one prompt must exist for proactive signal delivery. Add to Prompt Catalogue:
+
+| Prompt ID | Type | Tier | Description |
+|---|---|---|---|
+| `{AGENT}/SIGNAL/PROACTIVE_ALERT` | `BEHAVIOURAL` | `MID_TIER` | Converts raw signal event into customer-vocabulary alert with actionable guidance |
+| `{AGENT}/SIGNAL/ADVISORY_BUNDLE` | `BEHAVIOURAL` | `MID_TIER` | Bundles multiple ADVISORY-class signals into a single coherent brief |
+
+**CRITICAL signal prompts** may not be downgraded below MID_TIER — constitutional communications require professional quality reasoning.
+
+---
+
+### 3.18.4 HSM Pre-Approved Templates (MANDATORY if agent sends WhatsApp)
+
+For each signal type that requires out-of-TRAI-window delivery, declare the HSM template content. These must be submitted to Meta for pre-approval before the agent can communicate outside the 24-hour service window.
+
+```yaml
+  hsm_templates:
+    - signal_type: "[SIGNAL_TYPE_ID]"
+      template_name: "[Meta HSM template name]"
+      template_text: "[Exact text in customer's language — no variables except {{1}}=customer name]"
+      meta_approval_status: "PENDING | APPROVED | REJECTED"
+```
+
+---
+
+### 3.18.5 Constitutional Checklist Addition
+
+- [ ] **C-053 check (Signal Intelligence): Section 3.18 exists OR `signal_intelligence: NOT_APPLICABLE` with reason stated. If applicable: all signal feeds declared with poll cadence. All signal types declared with explicit urgency_class_rule. All CRITICAL signals have `emergency_exempt: true`. PROACTIVE_ALERT prompt exists in Prompt Catalogue. Evidence action type declared for each signal type. HSM templates declared for any out-of-window WhatsApp signals.**
+
+---
+
+## 9f. Section 3.19 — Skill Intelligence Router Standard (MANDATORY for all multi-skill agents)
+
+> **Why required (C-054):** An agent with more than one Skill that forces its customer to select the right Skill is not a digital professional — it is a labelled menu. Skill routing is a professional obligation. Every multi-skill agent must declare a Skill Capability Manifest (SCM) for each Skill so the Skill Intelligence Router (SIR) can serve any customer request to the correct Skill(s) at LOCAL tier cost. Missing SCMs are a GATE BLOCKER.
+
+**Multi-skill test (applies this section if TRUE):**
+- Does this agent expose more than one Skill to customers? If YES → Section 3.19 is MANDATORY for every Skill.
+- Single-skill agents write `skill_intelligence_router: NOT_APPLICABLE` and state the reason.
+
+---
+
+### 3.19.1 Skill Capability Manifest (MANDATORY per Skill)
+
+Every Skill section must include a `skill_capability_manifest` block. Add it immediately after the Skill's introductory table (after Business KPI, Execution model lines):
+
+```yaml
+skill_capability_manifest:
+  skill_id: "[SKILL_TYPE — e.g., INSTAGRAM_MARKETING]"
+  version: "1.0"
+
+  intent_signatures:
+    # Minimum 5 natural-language phrases that characterise what customers ask for this Skill
+    - "[phrase 1]"
+    - "[phrase 2]"
+    - "[phrase 3]"
+    - "[phrase 4]"
+    - "[phrase 5]"
+
+  servable_request_types:
+    "[REQUEST_TYPE_ID]": "[Description of what this skill can do for this request type]"
+
+  unservable_request_types:
+    # Explicit routing exclusions — what this skill CANNOT do and where to send it
+    - intent: "[what customer asks that this skill cannot serve]"
+      routes_to_skill: "[SKILL_TYPE_ID of the skill that can serve it, or null]"
+
+  input_requirements:
+    required:
+      - "[Data or Skill output that MUST exist for this Skill to execute]"
+    optional:
+      - "[Data or Skill output that improves output quality but does not block execution]"
+
+  output_contributions:
+    - type: "[OUTPUT_TYPE_ID — what this skill produces]"
+      used_by:
+        - "[SKILL_TYPE_ID of skills that consume this output]"
+
+  collaboration_affinities:
+    # At least 1 affinity required unless the Skill operates fully independently (must justify)
+    - with_skill: "[SKILL_TYPE_ID]"
+      relationship: "UPSTREAM | DOWNSTREAM | BIDIRECTIONAL"
+      benefit: "[One sentence: what the collaboration achieves that solo execution cannot]"
+```
+
+---
+
+### 3.19.2 Skill Gap Signalling (MANDATORY)
+
+When the SIR cannot route a customer request to any active Skill (gap_detected = true), the agent must:
+
+1. Acknowledge the request empathetically and state the professional boundary
+2. Emit a `SKILL_GAP_SIGNAL` to the Platform Operations Agent with:
+   - `unserviced_intent` — what the customer asked for
+   - `frequency_in_30_days` — how many times this intent has been unserved
+   - `similar_gap_across_customers` — platform-level count (Tier 3, anonymised)
+3. If a WAOOAW adjacent professional type exists for the intent → apply `adjacent_professional_routing` (Section 3.17.3)
+
+This gap signal is the evidence chain for the Agent Skill Proposal Governance Loop (Section 3.20).
+
+```yaml
+skill_gap_signalling:
+  gap_signal_threshold_days: 30          # Emit signal after this many days of repeated gaps
+  gap_frequency_min: 3                   # Minimum occurrences before emitting a gap signal
+  cross_customer_threshold: 5            # Escalate to PO review when ≥ N customers hit same gap
+  evidence_table: "institutional.skill_gap_signals"
+```
+
+---
+
+### 3.19.3 Skill Collaboration Orchestration (MANDATORY for multi-skill requests)
+
+When the SIR identifies a multi-skill request (primary_skill + contributing_skills), the Skill Collaboration Orchestrator (SCO) executes:
+
+```
+SCO execution order for multi-skill request:
+  1. Identify dependency chain from Skill Dependency Graph
+     (UPSTREAM skills execute first; DOWNSTREAM skills receive their outputs)
+  2. For each Skill in dependency order:
+     a. Load Skill-specific RAG context (Tier 1 + Tier 2 for this Skill)
+     b. CE.ValidateAction for the Skill's contribution to the combined request
+     c. Execute Skill reasoning step
+     d. Pass output to downstream Skills' input_requirements
+  3. Combine outputs into single coherent response
+  4. Single combined approval request covers all contributing Skills
+     (customer approves the whole, not each step separately)
+  5. Evidence record created per Skill contribution — the combined request
+     produces N evidence records, one per contributing Skill
+```
+
+---
+
+### 3.19.4 Constitutional Checklist Addition
+
+- [ ] **C-054 check (Skill Intelligence Routing): Section 3.19 exists OR `skill_intelligence_router: NOT_APPLICABLE` with reason. If applicable: every Skill has a `skill_capability_manifest` block. Each manifest has minimum 5 intent_signatures. Each manifest declares `collaboration_affinities` (or justifies empty). `skill_gap_signalling` block declared. `{AGENT}/SKILL/SKILL_INTENT_ROUTER` prompt exists in Prompt Catalogue (LOCAL tier). Skill gap signal mechanism connects to institutional.skill_gap_signals table.**
+
+---
+
+## 9g. Section 3.20 — Agent Skill Proposal Governance Loop (MANDATORY platform standard)
+
+> **Why required:** When agents consistently encounter customer requests they cannot serve (C-054 gap signal), the platform needs a constitutional pathway from signal → business case → Founder decision → new Skill. Without this pathway, unserved intents are invisible. With it, the platform evolves organically from customer need.
+
+---
+
+### 3.20.1 The Governance Loop
+
+```
+STAGE 1 — SIGNAL ACCUMULATION (AI Runtime / Platform Operations Agent)
+  SIR emits SKILL_GAP_SIGNAL for each unserved intent
+  institutional.skill_gap_signals accumulates signals
+  Platform Operations Agent monitors: when gap_frequency_in_30_days ≥ 3
+  AND similar_gap_across_customers ≥ 5 → escalate to STAGE 2
+
+STAGE 2 — PRODUCT OWNER REVIEW (Office 11 — Product Owner)
+  Platform Operations Agent raises a `type:skill-proposal` GitHub Issue
+  Issue body: unserviced_intent, frequency data, affected customers (count only — no names),
+              adjacent_professional_type if applicable, suggested skill domain
+  Product Owner reads issue → deep review:
+    - Is this a genuine new Skill need or a training/prompt gap?
+    - Does a WAOOAW adjacent professional already cover this?
+    - What are the constitutional dependencies (new claim needed? new MCP server?)
+    - What is the business case (pricing impact, customer segment size)?
+    - What are the risks (constitutional, regulatory, technical)?
+  Product Owner produces: SKILL_PROPOSAL document (see template below)
+
+STAGE 3 — FOUNDER DECISION (GitHub Issue — type:skill-proposal, label:awaiting:founder-approval)
+  Product Owner posts SKILL_PROPOSAL to GitHub Issue
+  Adds label: `awaiting:founder-approval`
+  Founder reviews and decides:
+    APPROVE → add label `status:approved`, assign to Business Architect office
+    DEFER   → add label `status:deferred`, comment with condition for re-evaluation
+    REJECT  → add label `status:rejected`, close issue with reason
+
+STAGE 4 — SKILL IMPLEMENTATION (Standard Section 15 Type 1 flow)
+  On Founder APPROVE: Business Architect creates `type:agent-update, update-type:new-skill` issue
+  Standard Section 15 Type 1 execution (Architecture Chain Update checklist applies)
+  EA Review → Founder approval → merged to main → agent version bumped
+```
+
+---
+
+### 3.20.2 SKILL_PROPOSAL Template (Product Owner produces this)
+
+```markdown
+## Skill Proposal: [Proposed Skill Name]
+
+**Agent:** [Agent professional_type]
+**Proposed Skill Domain:** [e.g., Invoice Generation, Contract Review]
+**Signal Evidence:** [N gap events in last 30 days across M customers]
+**Sample Unserviced Intents:** (anonymised)
+  - "[Intent phrase 1]"
+  - "[Intent phrase 2]"
+
+**Product Owner Assessment:**
+  - Genuine gap? [YES/NO + reasoning]
+  - Adjacent professional covers it? [YES/NO + which one]
+  - Constitutional dependencies: [new claims needed? new MCP servers?]
+  - Regulatory considerations: [any applicable regulations]
+  - Estimated customer segment: [N customers would benefit]
+  - Pricing impact: [current tier covers it? or requires tier extension?]
+
+**Risk Assessment:**
+  - Constitutional risks: [list]
+  - Technical risks: [list]
+  - Regulatory risks: [list]
+
+**Proposed Mitigation:** [best option with mitigation plan]
+
+**PO Recommendation:** APPROVE_FOR_SPEC | NEEDS_MORE_DATA | REJECT
+**Confidence:** [X%]
+```
+
+---
+
+### 3.20.3 Constitutional Checklist Addition
+
+- [ ] **Section 3.20 is a platform standard — it is not declared per-agent. The `institutional.skill_gap_signals` table and `type:skill-proposal` GitHub Issue template must exist before any agent with SIR active is deployed.**
+
+---
+
 ## 10. Review and Approval
 
 Reviewer: Enterprise Architect
@@ -621,8 +899,29 @@ SECTION 11 — TOKEN ECONOMY GATE (C-051, AD-022, AD-023, DP-020)
 [ ] 11.11 minimum_model_tier column added to all seed rows in 03-enums-and-tables.sql
           FAIL condition: seeded prompts without minimum_model_tier → GATE BLOCKED
 
+SECTION 12 — SIGNAL INTELLIGENCE GATE (C-053) — for time-sensitive domain agents
+[ ] 12.1  Section 3.18 exists in the spec OR `signal_intelligence: NOT_APPLICABLE` with reason stated
+[ ] 12.2  (If applicable) At least one signal_feed declared with poll_cadence
+[ ] 12.3  (If applicable) Every URGENCY_CLASS=CRITICAL signal type has emergency_exempt: true
+          FAIL condition: CRITICAL signal without emergency_exempt → C-001 + C-053 violation
+[ ] 12.4  (If applicable) PROACTIVE_ALERT prompt in Prompt Catalogue (MID_TIER minimum)
+[ ] 12.5  (If applicable) Evidence action_type declared for each signal_type
+[ ] 12.6  (If applicable) HSM templates declared for any out-of-TRAI-window signals
+[ ] 12.7  C-053 check present in Constitutional Checklist section
+
+SECTION 13 — SKILL INTELLIGENCE ROUTING GATE (C-054) — for multi-skill agents
+[ ] 13.1  Section 3.19 exists in the spec OR `skill_intelligence_router: NOT_APPLICABLE` with reason
+[ ] 13.2  (If applicable) Every Skill has a `skill_capability_manifest` block
+          FAIL condition: any Skill missing SCM → GATE BLOCKED
+[ ] 13.3  (If applicable) Each SCM has minimum 5 intent_signatures
+[ ] 13.4  (If applicable) Each SCM declares collaboration_affinities OR justifies empty (rare)
+[ ] 13.5  (If applicable) skill_gap_signalling block declared with threshold and table reference
+[ ] 13.6  (If applicable) SKILL_INTENT_ROUTER prompt exists in Prompt Catalogue (LOCAL tier)
+          FAIL condition: no router prompt → SIR cannot operate → GATE BLOCKED
+[ ] 13.7  C-054 check present in Constitutional Checklist section
+
 OVERALL GATE RESULT:
-  All 11 sections PASS → AGENT MAY BE ACTIVATED
+  All 13 sections PASS → AGENT MAY BE ACTIVATED
   Any section FAIL → CONSTITUTIONAL BLOCKER → raise blocker in blockers/ → agent NOT activated
 ```
 

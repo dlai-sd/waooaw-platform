@@ -6,7 +6,7 @@
 
 ```
 Founding Corpus v1           Status: Ratified
-Version:                     0.34.0 — Session close: C-052 Agent Context Fidelity + SEBI Cross-Customer Isolation + Creative Fingerprint Uniqueness (2026-07-11)
+Version:                     0.35.0 — C-053 Signal Intelligence Layer + C-054 Skill Intelligence Router (2026-07-12)
 Current Epoch:               Epoch 1 — Employment
 Current Gate:                G2-G4: PASSED | G5: Prerequisites met
                              ⛔ G5 CLEAR ≠ implementation authorized for any session

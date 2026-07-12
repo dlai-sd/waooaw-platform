@@ -239,3 +239,30 @@ GRANT SELECT                 ON institutional.tier3_eligibility_log TO business_
 -- GRANT SELECT, INSERT ON business.whatsapp_trai_optins TO phone_identity_app;
 -- GRANT SELECT ON business.farmer_profiles TO phone_identity_app;  -- phone lookup only
 -- GRANT SELECT, INSERT ON business.organisations TO phone_identity_app;  -- auto-register
+
+-- Signal Intelligence Layer RLS (v0.35.0 — C-053, C-054)
+
+-- signal_materiality_events: no RLS — institutional, no customer PII; platform-level log
+GRANT SELECT, INSERT ON institutional.signal_materiality_events TO ai_runtime_app;
+GRANT SELECT         ON institutional.signal_materiality_events TO business_app;
+
+-- skill_gap_signals: tenant-scoped for INSERT (customer org owns gap events); platform-wide SELECT for PO analytics
+-- Note: Gap signals reference organisation_id but are aggregated cross-customer for proposal analysis
+-- ai_runtime_app inserts per-customer; business_app reads aggregate counts (PO dashboard)
+ALTER TABLE institutional.skill_gap_signals ENABLE ROW LEVEL SECURITY;
+CREATE POLICY skill_gap_signals_tenant_isolation ON institutional.skill_gap_signals
+    FOR INSERT
+    TO ai_runtime_app
+    WITH CHECK (organisation_id = current_setting('app.tenant_id', TRUE)::UUID);
+-- SELECT is unrestricted at DB level for PO analytics (business_app role); application layer enforces count-only aggregation (no raw intents exposed)
+GRANT SELECT, INSERT ON institutional.skill_gap_signals TO ai_runtime_app;
+GRANT SELECT         ON institutional.skill_gap_signals TO business_app;
+
+-- agent_skill_graph: tenant-scoped RLS (each customer's skill graph is private — C-034)
+ALTER TABLE business.agent_skill_graph ENABLE ROW LEVEL SECURITY;
+CREATE POLICY agent_skill_graph_tenant_isolation ON business.agent_skill_graph
+    FOR ALL
+    TO business_app, ai_runtime_app
+    USING (tenant_id = current_setting('app.tenant_id', TRUE)::UUID);
+GRANT SELECT, INSERT, UPDATE ON business.agent_skill_graph TO ai_runtime_app;
+GRANT SELECT                 ON business.agent_skill_graph TO business_app;

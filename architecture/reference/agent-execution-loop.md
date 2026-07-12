@@ -281,10 +281,242 @@ The key new element is `reasoning_trace_id` passed to CE.ValidateAction. This en
 | Evidence record records outcome | Evidence record + Reasoning Trace record both created; trace is primary | C-047 |
 | CE.ValidateAction is a rule check | CE.ValidateAction includes constitutional reasoning for EvaluatePolicy cases | Layer 2 review |
 | Skills run independently on their own heartbeats | Skills are orchestrated by Strategic Cognition Layer — plan first, then execute | C-050 — DP-019 |
+| Agent waits for customer to report a problem | Agent continuously watches signal feeds; proactively alerts before the customer knows | C-053 — DP-022 |
+| Skills execute independently from a list | Skills route intelligently via SIR; multi-skill requests are orchestrated as one response | C-054 — DP-023 |
 
 ---
 
-## Strategic Cognition Layer — The Macro Execution Loop
+## Signal Intelligence Layer — The Proactive Watch Loop
+
+**Authority:** C-053 (Signal Sensing Obligation — LAW); AD-026 (Signal Watch Workflow Pattern); DP-022 (Proactive Intelligence Primacy)
+**Added:** v0.35.0
+
+The Execution Loop and Strategic Cognition Loop are both **customer-or-schedule-triggered**. The Signal Intelligence Layer introduces a third, **always-on, environment-triggered** loop that runs in parallel to detect and communicate material external signals before the customer asks.
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│              SIGNAL WATCH WORKFLOW (C-053)                             │
+│  One long-running Temporal workflow per signal_type per agent_type     │
+│  NOT per-customer — platform-level, fans out to relevant customers     │
+│                                                                        │
+│  1. POLL                                                               │
+│     Execute MCP tool call at declared poll_cadence                     │
+│     (weather-ensemble-mcp, agmarknet-mcp, platform-analytics-mcp…)    │
+│     Result: raw signal event (weather observation, price point, etc.)  │
+│                                                                        │
+│  2. CLASSIFY MATERIALITY (LOCAL tier — ₹0)                            │
+│     Rule-based or fine-tuned LOCAL model                               │
+│     Input: raw signal event                                            │
+│     Output: materiality_score (0.0–1.0) + urgency_class               │
+│     CRITICAL (≥0.90) | HIGH (0.70–0.89) | ADVISORY (0.50–0.69)        │
+│     Below threshold → discard + log only                               │
+│                                                                        │
+│  3. MATCH CUSTOMERS (LOCAL tier — ₹0)                                 │
+│     Cross-reference signal against Customer Registry                   │
+│     Input: signal_type + signal_payload                                │
+│     Relevance dimension: customer profile fields declared in SCM       │
+│     Output: [(customer_id, relevance_score, skill_id)]                 │
+│     Filter: relevance_score ≥ 0.70                                     │
+│                                                                        │
+│  4. CHECK TRAI WINDOW + BUDGET                                         │
+│     For each matched customer:                                         │
+│       CRITICAL → always proceed (emergency_exempt: true)               │
+│       HIGH/ADVISORY → check TRAI 24-hour window                        │
+│         Within window + budget > 0 → proceed                          │
+│         Outside window → queue HSM pre-approved template only          │
+│         Budget = 0 (non-CRITICAL) → log event for period-reset bundle  │
+│                                                                        │
+│  5. INJECT EVENT SIGNAL                                                │
+│     Send Temporal signal to customer's AgentExecutionWorkflow          │
+│     Signal type: PROACTIVE_SIGNAL_{SIGNAL_TYPE}                        │
+│     Payload: {signal_event, materiality_score, urgency_class,          │
+│              trai_window_status, customer_context_snapshot}            │
+│     → Customer's Execution Loop wakes immediately (Step 1: WAKE)       │
+│       with signal_trigger context instead of heartbeat context         │
+│                                                                        │
+│  6. LOG                                                                │
+│     INSERT INTO institutional.signal_materiality_events                │
+│     (signal_type, materiality_score, urgency_class,                    │
+│      customers_matched, customers_notified, customers_deferred,        │
+│      signal_payload_hash, detected_at)                                 │
+│                                                                        │
+│  7. CONTINUE_AS_NEW (every 1,000 poll cycles)                         │
+│     Prevents unbounded Temporal event history                          │
+│     State: {last_signal_hash, consecutive_below_threshold_count}       │
+│                                                                        │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+**When the Execution Loop receives a PROACTIVE_SIGNAL trigger:**
+- Step 2 (LOAD CONTEXT) includes the signal event as primary context
+- Step 3 (REASON) uses `{AGENT}/SIGNAL/PROACTIVE_ALERT` prompt instead of normal skill prompt
+- Step 5 (EXECUTE): evidence action_type = `PROACTIVE_SIGNAL_ALERT`
+- Customer receives proactive advisory in their language via configured channel
+
+**Temporal implementation note:**
+```python
+@workflow.signal
+def proactive_signal_received(self, signal: ProactiveSignalInput) -> None:
+    """
+    Received from SignalWatchWorkflow when a material signal is detected.
+    Wakes the execution loop immediately regardless of heartbeat cadence.
+    """
+    self._signal_queue.append(signal)
+
+# In the main execution loop:
+if self._signal_queue:
+    signal = self._signal_queue.pop(0)
+    context = await load_agent_context_with_signal(self._context, signal)
+    # Proceeds to REASON step with signal as primary context
+```
+
+---
+
+## Skill Intelligence Router — The Request-Time Routing Layer
+
+**Authority:** C-054 (Skill Intelligence Routing — LAW); AD-027 (Skill Capability Manifest Standard); DP-023 (Skill Network Intelligence)
+**Added:** v0.35.0
+
+The SIR executes as a **pre-step before the Execution Loop's REASON step** whenever a customer message triggers the loop. It classifies the customer's intent, matches it against active Skill Capability Manifests, and produces a routing plan that the REASON step uses.
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│              SKILL INTELLIGENCE ROUTER (SIR)                           │
+│  Runs at LOCAL tier — ₹0. Adds ≤ 10ms to request processing.          │
+│  Executes BEFORE Step 3 (REASON) in the Execution Loop                 │
+│                                                                        │
+│  INPUT: {customer_message, agent_type, customer_id, active_skills[]}   │
+│                                                                        │
+│  ── LAYER 1: INTENT CLASSIFICATION ──────────────────────────────────  │
+│  LOCAL classifier (rule-based Phase 1; fine-tuned Phase 2)             │
+│  Output: {primary_intent, secondary_intents[], confidence}             │
+│                                                                        │
+│  ── LAYER 2: SKILL CAPABILITY MATCH ─────────────────────────────────  │
+│  Vector similarity: intents vs. active Skills' SCM.intent_signatures   │
+│  Only ACTIVE skills visible (inactive/deactivated skills excluded)     │
+│  Output: {primary_skill, contributing_skills[], gap_detected: bool}    │
+│                                                                        │
+│  gap_detected = true when:                                             │
+│    - No skill scores above similarity threshold (0.70)                 │
+│    - OR all matching skills are in INACTIVE state                      │
+│    → Emit SKILL_GAP_SIGNAL to institutional.skill_gap_signals           │
+│    → Apply adjacent_professional_routing if available                  │
+│                                                                        │
+│  ── LAYER 3: SKILL STATE VALIDATION ─────────────────────────────────  │
+│  For each matched skill: check activation_state                        │
+│    oauth_status = CONNECTED?                                           │
+│    within_budget = true?                                               │
+│    approval_mode compatible with request type?                         │
+│  Output: {routing_plan, degraded_skills[], blocked_skills[]}           │
+│                                                                        │
+│  ── LAYER 4: COLLABORATION ORCHESTRATION PLAN ───────────────────────  │
+│  If contributing_skills is non-empty:                                  │
+│    Build dependency-ordered execution plan from SCM affinities          │
+│    Identify data handoffs (Skill A output → Skill B input_requirement) │
+│    Determine combined_approval: bool                                   │
+│      (true when all contributing skills are APPROVAL_GATE — one        │
+│       combined approval request replaces N individual requests)        │
+│                                                                        │
+│  OUTPUT: SIR_RoutingPlan {                                             │
+│    primary_skill: "[SKILL_TYPE_ID]",                                   │
+│    execution_sequence: [{skill_id, step, inputs, outputs}],            │
+│    combined_approval: bool,                                            │
+│    gap_detected: bool,                                                 │
+│    gap_signal_emitted: bool,                                           │
+│    estimated_usage_units: N                                            │
+│  }                                                                     │
+│                                                                        │
+└────────────────────────────────────────────────────────────────────────┘
+                         ↓ SIR_RoutingPlan
+    Step 3 (REASON) uses routing plan to load correct Skill's RAG context,
+    MCP tools, and Decision Space constraints.
+    Multi-skill: Skill Collaboration Orchestrator (SCO) runs Steps 3-5
+    in dependency order, passing outputs between Skills.
+```
+
+**Relationship between SIR and Strategic Cognition Layer (C-050 vs C-054):**
+```
+Strategic Cognition Layer (C-050)     Skill Intelligence Router (C-054)
+──────────────────────────────────    ──────────────────────────────────
+Runs at: trigger events (low freq)    Runs at: every customer request
+Asks: "Which Skills in portfolio?"    Asks: "Which active Skill(s) for THIS?"
+Output: Skill activation plan         Output: Per-request routing plan
+Scope: Portfolio strategy             Scope: Single request routing
+Horizon: Weeks to months              Horizon: This request, right now
+```
+
+Both are mandatory. Neither replaces the other. C-050 decides the skill portfolio. C-054 routes requests within that portfolio.
+
+---
+
+## SQL: Signal Intelligence Layer Tables (v0.35.0)
+
+```sql
+-- Signal materiality events — platform-level log of all detected signals
+-- No RLS — institutional table, no customer data in signal events
+CREATE TABLE institutional.signal_materiality_events (
+    id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    agent_type                  VARCHAR(100) NOT NULL,         -- AGRICULTURAL_ADVISOR_INDIA, etc.
+    signal_type                 VARCHAR(100) NOT NULL,         -- WEATHER_HAIL_RISK, PRICE_TARGET_CROSSED
+    signal_feed_id              VARCHAR(100) NOT NULL,         -- references signal_feed declarations
+    materiality_score           DECIMAL(4,3) NOT NULL,
+    urgency_class               VARCHAR(20) NOT NULL           CHECK (urgency_class IN ('CRITICAL','HIGH','ADVISORY','BELOW_THRESHOLD')),
+    customers_matched           INTEGER NOT NULL DEFAULT 0,
+    customers_notified          INTEGER NOT NULL DEFAULT 0,    -- actually sent alert
+    customers_deferred          INTEGER NOT NULL DEFAULT 0,    -- outside TRAI window or zero budget
+    customers_budget_blocked    INTEGER NOT NULL DEFAULT 0,    -- budget = 0, non-CRITICAL
+    signal_payload_hash         VARCHAR(64) NOT NULL,          -- SHA-256 of signal content (no PII)
+    signal_region               VARCHAR(200),                  -- district/market/domain (no PII)
+    detected_at                 TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    workflow_run_id             VARCHAR(200)                   -- Temporal workflow run ID for tracing
+);
+CREATE INDEX idx_signal_events_type ON institutional.signal_materiality_events(agent_type, signal_type, detected_at DESC);
+CREATE INDEX idx_signal_events_urgency ON institutional.signal_materiality_events(urgency_class, detected_at DESC);
+
+-- Skill gap signals — accumulates unserved customer intents per agent
+-- Feeds the Agent Skill Proposal Governance Loop (Section 3.20)
+CREATE TABLE institutional.skill_gap_signals (
+    id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    agent_type                  VARCHAR(100) NOT NULL,
+    unserviced_intent           TEXT NOT NULL,                 -- what the customer asked (anonymised at source)
+    intent_classification       VARCHAR(100),                  -- SIR Layer 1 classification result
+    organisation_id             UUID NOT NULL REFERENCES business.organisations(id),  -- which customer hit this gap
+    employment_contract_id      UUID NOT NULL REFERENCES business.employment_contracts(id),
+    gap_frequency_for_customer  INTEGER NOT NULL DEFAULT 1,    -- how many times THIS customer hit this gap
+    similar_intent_hash         VARCHAR(64) NOT NULL,          -- for aggregating similar intents (no PII)
+    candidate_skill_type        VARCHAR(100),                  -- SIR best-guess at what skill would serve this
+    adjacent_routing_applied    BOOLEAN NOT NULL DEFAULT FALSE,
+    skill_proposal_raised       BOOLEAN NOT NULL DEFAULT FALSE, -- true when Section 3.20 Stage 2 triggered
+    skill_proposal_issue_id     INTEGER,                       -- GitHub Issue number when raised
+    detected_at                 TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_skill_gap_agent ON institutional.skill_gap_signals(agent_type, similar_intent_hash);
+CREATE INDEX idx_skill_gap_frequency ON institutional.skill_gap_signals(agent_type, detected_at DESC) WHERE skill_proposal_raised = FALSE;
+
+-- Skill collaboration graph — materialized from SCM declarations per customer's active skills
+-- Updated when SKILL_ACTIVATION_PLAN runs (C-050) or when SIR detects state change
+CREATE TABLE business.agent_skill_graph (
+    id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organisation_id             UUID NOT NULL REFERENCES business.organisations(id),
+    employment_contract_id      UUID NOT NULL REFERENCES business.employment_contracts(id),
+    skill_id                    VARCHAR(100) NOT NULL,
+    skill_version               VARCHAR(20) NOT NULL,
+    intent_signatures_embedding VECTOR(1536),                  -- pgvector embedding of intent_signatures list
+    servable_request_types      JSONB NOT NULL,                -- {REQUEST_TYPE_ID: description}
+    unservable_request_types    JSONB,                         -- [{intent, routes_to_skill}]
+    output_contributions        JSONB,                         -- [{type, used_by:[]}]
+    collaboration_affinities    JSONB,                         -- [{with_skill, relationship, benefit}]
+    activation_state            JSONB NOT NULL,                -- {oauth_status, within_budget, current_mode}
+    is_active                   BOOLEAN NOT NULL DEFAULT TRUE,
+    last_updated_at             TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    tenant_id                   UUID NOT NULL,                 -- RLS discriminator
+    CONSTRAINT uq_skill_graph_entry UNIQUE (employment_contract_id, skill_id)
+);
+CREATE INDEX idx_skill_graph_contract ON business.agent_skill_graph(employment_contract_id) WHERE is_active = TRUE;
+CREATE INDEX idx_skill_graph_embedding ON business.agent_skill_graph USING ivfflat (intent_signatures_embedding vector_cosine_ops);
+```
+
+### SQL: agent_strategic_state
 
 **Authority:** C-050 (Strategic Cognition Obligation — LAW); AD-021 (Strategic Cognition Trigger Points); DP-019 (Portfolio-First Cognition)
 **Added:** v0.31.0

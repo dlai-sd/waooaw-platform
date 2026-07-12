@@ -1,12 +1,22 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-07-11
-**Version:** 0.34.0
-**Session:** 2026-07-11 — SESSION CLOSE (C-052, SEBI isolation, Creative Fingerprint, Token Economy, Strategic Cognition, Off-Topic Boundary)
+**Last Updated:** 2026-07-12
+**Version:** 0.35.0
+**Session:** 2026-07-12 — IN PROGRESS (C-053 Signal Intelligence Layer, C-054 Skill Intelligence Router, Skill Dependency Register, Secret Vault, Agent Skill Proposal Loop)
 
 ---
 
-## IN-PROGRESS CHECKPOINT (Session 2026-07-11)
+## IN-PROGRESS CHECKPOINT (Session 2026-07-12)
+
+| Milestone | Status |
+|---|---|
+| C-053 Signal Intelligence Layer (SIL) — claim, AD-026, DP-022, Section 3.18, SQL, RLS | ✓ DONE — v0.35.0 |
+| C-054 Skill Intelligence Router (SIR) — claim, AD-027, DP-023, Section 3.19, AI Runtime, SQL, RLS | pending v0.36.0 |
+| Skill Dependency Register per agent | pending v0.37.0 |
+| Secret Vault oauth-vault backing decision | pending v0.37.1 |
+| Agent → Skill Proposal governance loop (Section 3.20, issue template) | pending v0.38.0 |
+| EA Review + Founder approval | pending |
+| Simulation runs (DMA, Trading, Agricultural) | NEXT AFTER THIS SPRINT |
 
 | Milestone | Status |
 |---|---|
