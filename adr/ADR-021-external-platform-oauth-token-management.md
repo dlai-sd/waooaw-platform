@@ -103,3 +103,29 @@ On `EMPLOYMENT_TERMINATED` event: `oauth-vault` must revoke ALL tokens for that 
 3. Record deletion in `data_retention_records` under `deletion_scope = ["oauth_tokens"]`
 
 Tokens are secrets — they are NOT covered by the 180-day Tier 2 data retention period. They are revoked immediately on termination regardless of the customer's data retention preferences.
+
+---
+
+## 7. Secret Vault Backing — Explicit Confirmation (v0.37.1)
+
+**Decision confirmed:** The `oauth-vault` service is explicitly backed by **Azure Key Vault** (ADR-014) for master key storage. This was implicit in Section 2 ("Master key stored in Azure Key Vault / AWS KMS"). This section makes it explicit and non-ambiguous.
+
+**Encryption architecture:**
+```
+oauth-vault DB (PostgreSQL, encrypted at-rest via Azure Disk Encryption)
+    ↓ Each customer token encrypted with per-tenant AES-256-GCM key
+    ↓ Per-tenant key = HKDF(master_key, tenant_id)  — never stored
+Master key → Azure Key Vault (per-environment: waooaw-dev-kv, waooaw-prod-kv)
+    ↓ oauth-vault reads master key from Key Vault AT STARTUP via managed identity (ADR-014 pattern)
+    ↓ Master key held in memory only — never written to disk or DB
+```
+
+**Why this is sufficient (cost boundary confirmed):**
+- Azure Key Vault: ~₹150–300/month per environment (confirmed in ADR-014) — within cost boundary
+- No HashiCorp Vault required (ADR-014 rejected it: operational management cost not justified at MVI)
+- The oauth-vault service itself is NOT a general secret store — it is narrowly scoped to OAuth tokens only. Platform secrets (DB passwords, API keys, Temporal certs) continue to follow ADR-014 three-tier model: `.env` → GitHub Secrets → Azure Key Vault directly.
+
+**What was deferred (ADR-023 extension):**
+The STT service for WhatsApp voice transcription (Agricultural agent) requires a new OAuth credential pattern (STT provider API key, not user-delegated OAuth). This is a platform API key, not a customer OAuth token. It follows ADR-014 directly (GitHub Secret in CI; Azure Key Vault in cloud) — oauth-vault is NOT involved. ADR-023 extension remains open only for STT provider selection, not for credential storage architecture.
+
+**Summary for Founder:** ADR-014 (Azure Key Vault) + ADR-021 (oauth-vault backed by Key Vault) together cover ALL secret storage needs at MVI. No additional secret infrastructure is needed. The architecture is settled.

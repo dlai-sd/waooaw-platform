@@ -566,3 +566,19 @@ A capability exists because the institution must provide it — not because it w
 **Statement:** The institution must manage the lifecycle of every AI prompt — versioning, review, approval, activation, and deprecation — ensuring that no unapproved prompt is ever executed by a production agent, and that every prompt change goes through the same governance process as a Decision Space amendment.
 
 **Constitutional Basis:** C-045 (Prompt as Constitutional Artifact — LAW); AD-018 (Prompt Versioning); DP-016 (Prompt-First Execution)
+
+---
+
+### 12.6 Detect and Communicate Material Signals (Signal Intelligence Layer — v0.35.0)
+
+**Statement:** The institution must continuously monitor external signal feeds (weather, market data, platform analytics, competitor activity) relevant to each active agent engagement, evaluate signal materiality against each customer's current state, and proactively communicate actionable alerts before the customer asks. CRITICAL-class signals (materiality ≥ 0.90) must be delivered regardless of customer budget balance. The institution may not possess a material signal affecting a customer's business outcome and withhold it.
+
+**Constitutional Basis:** C-053 (Signal Sensing Obligation — LAW); C-001 (human override absolute — professional duty to warn before override is needed); C-048 (Information Non-Exploitation — possessing material information and not sharing it exploits information advantage against customer interests); AD-026 (Signal Watch Workflow Pattern); DP-022 (Proactive Intelligence Primacy)
+
+---
+
+### 12.7 Route Customer Requests to Correct Skill(s) (Skill Intelligence Router — v0.35.0)
+
+**Statement:** The institution must ensure that every customer request or message directed at a multi-skill agent is intelligently routed to the correct active Skill(s) — using the Skill Capability Manifests of active skills to match customer intent at LOCAL-tier cost (≤10ms, ₹0). When a request spans multiple skills, the institution must orchestrate those skills in dependency order and present one coherent professional response. When no active skill can serve a request, the institution must emit a gap signal for the governance process.
+
+**Constitutional Basis:** C-054 (Skill Intelligence Routing — LAW); C-036 (Skills as constitutional units — the professional deploys the right capability without being told which tool to use); C-050 (Strategic Cognition — SCM feeds the Skill Dependency Graph that C-050 reasons over); AD-027 (Skill Capability Manifest Standard); DP-023 (Skill Network Intelligence)

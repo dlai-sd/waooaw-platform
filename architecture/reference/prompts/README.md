@@ -91,5 +91,11 @@ Every agent prompt must produce a response conforming to this base schema plus t
 | AGRI/TOKEN_ECONOMY/USAGE_SUMMARY | Token Economy | Budget status in farmer's language — Marathi WhatsApp voice (C-051) | v1.0.0 | ACTIVE |
 | PLATFORM/TOKEN_ECONOMY/MESSAGE_CLASSIFIER | Token Economy | Message Classification Gate — LOCAL tier invariant (C-051, AD-022) | v1.0.0 | ACTIVE |
 | PLATFORM/BOUNDARY/OFF_TOPIC_REDIRECT | Off-Topic Boundary | Graceful professional deflection + specific monitoring hook — 3-attempt graduation (C-036, C-037, C-048) | v1.0.0 | ACTIVE |
+| DMA/ROUTING/SKILL_INTENT_ROUTER | Skill Intelligence Router | LOCAL-tier intent classification → skill routing plan for DMA agent (C-054) | v1.0.0 | ACTIVE |
+| AGRI/ROUTING/SKILL_INTENT_ROUTER | Skill Intelligence Router | LOCAL-tier intent classification → skill routing plan for Agricultural agent (C-054) | v1.0.0 | ACTIVE |
+| TRADING/ROUTING/SKILL_INTENT_ROUTER | Skill Intelligence Router | LOCAL-tier intent classification → skill routing plan for Trading agent (C-054) | v1.0.0 | ACTIVE |
+| DMA/SIGNAL/PROACTIVE_ALERT | Signal Intelligence | Converts competitor/analytics/review signal into actionable portal notification (C-053) | v1.0.0 | ACTIVE |
+| AGRI/SIGNAL/PROACTIVE_ALERT | Signal Intelligence | Converts weather/price/pest signal into farmer-vocabulary WhatsApp voice alert (C-053) | v1.0.0 | ACTIVE |
+| TRADING/SIGNAL/PROACTIVE_ALERT | Signal Intelligence | Converts VIX/broker-auth/session signal into PAAS pre-session alert (C-053) | v1.0.0 | ACTIVE |
 
-**Total active prompts: 45** (v0.33.0 — includes Off-Topic Boundary prompt)
+**Total active prompts: 52** (v0.35.0 — includes SIR routing prompts + SIL proactive alert prompts)

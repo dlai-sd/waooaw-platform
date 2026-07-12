@@ -1012,6 +1012,18 @@ VALUES
     ('PLATFORM/BOUNDARY/OFF_TOPIC_REDIRECT', '1.0.0', 'BOUNDARY', 'OFF_TOPIC_REDIRECT', 'PLATFORM_INTERNAL', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-036; C-037; C-048', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
     ('PLATFORM/TOKEN_ECONOMY/MESSAGE_CLASSIFIER', '1.0.0', 'TOKEN_ECONOMY', 'MESSAGE_CLASSIFIER', 'PLATFORM_INTERNAL', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-051; AD-022; DP-020', 'CLASSIFICATION', 'Enterprise Architect', NOW(), TRUE, NOW());
 
+-- Prompt seeds: Signal Intelligence Layer (C-053) + Skill Intelligence Router (C-054) — v0.35.0/v0.36.0
+INSERT INTO institutional.agent_prompt_versions
+    (prompt_id, version, skill_type, pipeline_step, agent_type, prompt_file_path, constitutional_basis, change_type, minimum_model_tier, reviewed_by, reviewed_at, is_active, activated_at)
+VALUES
+    ('DMA/ROUTING/SKILL_INTENT_ROUTER', '1.0.0', 'SKILL_ROUTING', 'INTENT_CLASSIFICATION', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-054; AD-027; DP-023', 'CLASSIFICATION', 'LOCAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('AGRI/ROUTING/SKILL_INTENT_ROUTER', '1.0.0', 'SKILL_ROUTING', 'INTENT_CLASSIFICATION', 'AGRICULTURAL_ADVISOR_INDIA', 'architecture/reference/prompts/README.md', 'C-054; AD-027; DP-023', 'CLASSIFICATION', 'LOCAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('TRADING/ROUTING/SKILL_INTENT_ROUTER', '1.0.0', 'SKILL_ROUTING', 'INTENT_CLASSIFICATION', 'TRADING_FO_CRYPTO', 'architecture/reference/prompts/README.md', 'C-054; AD-027; DP-023', 'CLASSIFICATION', 'LOCAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('DMA/SIGNAL/PROACTIVE_ALERT', '1.0.0', 'SIGNAL_INTELLIGENCE', 'PROACTIVE_ALERT', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-053; AD-026; DP-022', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('AGRI/SIGNAL/PROACTIVE_ALERT', '1.0.0', 'SIGNAL_INTELLIGENCE', 'PROACTIVE_ALERT', 'AGRICULTURAL_ADVISOR_INDIA', 'architecture/reference/prompts/README.md', 'C-053; C-042; AD-026; DP-022', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('TRADING/SIGNAL/PROACTIVE_ALERT', '1.0.0', 'SIGNAL_INTELLIGENCE', 'PROACTIVE_ALERT', 'TRADING_FO_CRYPTO', 'architecture/reference/prompts/README.md', 'C-053; AD-026; DP-022', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('PLATFORM/SIGNAL/ADVISORY_BUNDLE', '1.0.0', 'SIGNAL_INTELLIGENCE', 'ADVISORY_BUNDLE', 'PLATFORM_INTERNAL', 'architecture/reference/prompts/README.md', 'C-053; AD-026', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW());
+
 -- Agent Reasoning Traces — primary AI audit artifact (C-047, AD-008, AD-019)
 -- See architecture/reference/agent-reasoning-trace.md for full spec.
 -- Schema: institutional (WAOOAW IP — not tenant-scoped; queryable by platform ops)
@@ -1438,3 +1450,71 @@ INSERT INTO business.subscription_tiers (professional_type, tier_id, display_nam
     ('TRADING_FO_CRYPTO',           'TRADING_FO_ONLY',   'F&O Professional',          199900, 169407, 30493, 'plan_trading_fo_only',      10),
     ('TRADING_FO_CRYPTO',           'TRADING_FO_CRYPTO', 'F&O + Crypto Professional', 249900, 211864, 38036, 'plan_trading_fo_crypto',    20),
     ('AGRICULTURAL_ADVISOR_INDIA',  'AGRICULTURAL',      'Agricultural Advisor',       20000,  16949,  3051, 'plan_agricultural_advisor', 10);
+
+-- ============================================================
+-- Signal Intelligence Layer tables (v0.35.0 — C-053, AD-026, DP-022)
+-- ============================================================
+
+-- signal_materiality_events: platform-level signal detection log (no customer PII)
+CREATE TABLE institutional.signal_materiality_events (
+    id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    agent_type                  VARCHAR(100) NOT NULL,
+    signal_type                 VARCHAR(100) NOT NULL,
+    signal_feed_id              VARCHAR(100) NOT NULL,
+    materiality_score           DECIMAL(4,3) NOT NULL,
+    urgency_class               VARCHAR(20) NOT NULL CHECK (urgency_class IN ('CRITICAL','HIGH','ADVISORY','BELOW_THRESHOLD')),
+    customers_matched           INTEGER NOT NULL DEFAULT 0,
+    customers_notified          INTEGER NOT NULL DEFAULT 0,
+    customers_deferred          INTEGER NOT NULL DEFAULT 0,
+    customers_budget_blocked    INTEGER NOT NULL DEFAULT 0,
+    signal_payload_hash         VARCHAR(64) NOT NULL,
+    signal_region               VARCHAR(200),
+    detected_at                 TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    workflow_run_id             VARCHAR(200)
+);
+CREATE INDEX idx_signal_events_type    ON institutional.signal_materiality_events(agent_type, signal_type, detected_at DESC);
+CREATE INDEX idx_signal_events_urgency ON institutional.signal_materiality_events(urgency_class, detected_at DESC);
+
+-- skill_gap_signals: accumulates unserved customer intents → feeds Section 3.20 governance loop
+CREATE TABLE institutional.skill_gap_signals (
+    id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    agent_type                  VARCHAR(100) NOT NULL,
+    unserviced_intent           TEXT NOT NULL,
+    intent_classification       VARCHAR(100),
+    organisation_id             UUID NOT NULL REFERENCES business.organisations(id),
+    employment_contract_id      UUID NOT NULL REFERENCES business.employment_contracts(id),
+    gap_frequency_for_customer  INTEGER NOT NULL DEFAULT 1,
+    similar_intent_hash         VARCHAR(64) NOT NULL,
+    candidate_skill_type        VARCHAR(100),
+    adjacent_routing_applied    BOOLEAN NOT NULL DEFAULT FALSE,
+    skill_proposal_raised       BOOLEAN NOT NULL DEFAULT FALSE,
+    skill_proposal_issue_id     INTEGER,
+    detected_at                 TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_skill_gap_agent     ON institutional.skill_gap_signals(agent_type, similar_intent_hash);
+CREATE INDEX idx_skill_gap_frequency ON institutional.skill_gap_signals(agent_type, detected_at DESC) WHERE skill_proposal_raised = FALSE;
+
+-- ============================================================
+-- Skill Intelligence Router tables (v0.35.0 — C-054, AD-027, DP-023)
+-- ============================================================
+
+-- agent_skill_graph: materialized SCM declarations per customer's active skills (pgvector routing index)
+CREATE TABLE business.agent_skill_graph (
+    id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organisation_id             UUID NOT NULL REFERENCES business.organisations(id),
+    employment_contract_id      UUID NOT NULL REFERENCES business.employment_contracts(id),
+    skill_id                    VARCHAR(100) NOT NULL,
+    skill_version               VARCHAR(20) NOT NULL,
+    intent_signatures_embedding VECTOR(1536),
+    servable_request_types      JSONB NOT NULL,
+    unservable_request_types    JSONB,
+    output_contributions        JSONB,
+    collaboration_affinities    JSONB,
+    activation_state            JSONB NOT NULL,
+    is_active                   BOOLEAN NOT NULL DEFAULT TRUE,
+    last_updated_at             TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    tenant_id                   UUID NOT NULL,
+    CONSTRAINT uq_skill_graph_entry UNIQUE (employment_contract_id, skill_id)
+);
+CREATE INDEX idx_skill_graph_contract  ON business.agent_skill_graph(employment_contract_id) WHERE is_active = TRUE;
+CREATE INDEX idx_skill_graph_embedding ON business.agent_skill_graph USING ivfflat (intent_signatures_embedding vector_cosine_ops) WITH (lists = 100);

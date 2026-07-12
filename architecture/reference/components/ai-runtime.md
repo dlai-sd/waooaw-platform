@@ -62,6 +62,69 @@ if tool_name not in decision_space.authorized_tools:
 - This supports the PAAS engine when edge cases arise that don't match a clear authorized/prohibited rule
 - Returns: WITHIN / OUTSIDE / UNCERTAIN with reasoning
 
+### 5. Skill Intelligence Router (SIR) (v0.35.0 — C-054, AD-027, DP-023)
+**Responsibility:**
+- Executes BEFORE every Execution Loop REASON step when a customer message is the trigger
+- Classifies the customer's intent at LOCAL tier (zero LLM cost — rule-based Phase 1; fine-tuned Phase 2)
+- Matches classified intent against the customer's active Skill Capability Manifests (`business.agent_skill_graph`)
+- Returns a `SIR_RoutingPlan` that specifies: primary_skill, execution_sequence, data_handoffs, combined_approval, gap_detected
+- On gap_detected: emits SKILL_GAP_SIGNAL to `institutional.skill_gap_signals`; applies adjacent_professional_routing
+
+**Processing pipeline:**
+```python
+async def route_customer_request(message: str, customer_context: AgentContext) -> SIRRoutingPlan:
+    # Layer 1: Intent classification (LOCAL tier — rule-based / fine-tuned classifier)
+    intent = await classify_intent(message, customer_context.agent_type)
+
+    # Layer 2: Skill capability match (vector similarity against active SCMs)
+    skill_matches = await match_skills(
+        intent, customer_context.employment_contract_id,
+        similarity_threshold=0.70
+    )
+
+    if not skill_matches:
+        await emit_gap_signal(intent, customer_context)  # → institutional.skill_gap_signals
+        return SIRRoutingPlan(gap_detected=True, adjacent_routing=get_adjacent_routing(intent))
+
+    # Layer 3: Validate activation state (OAuth, budget, approval mode)
+    validated = [s for s in skill_matches if s.activation_state_valid]
+
+    # Layer 4: Build collaboration orchestration plan (dependency order from SCM affinities)
+    return build_orchestration_plan(validated, intent)
+```
+
+**Cost invariant:** SIR adds ≤ 10ms and ₹0 to every request. It is classification, not LLM reasoning.
+
+### 6. Signal Intelligence Layer — Watch Loop Coordinator (v0.35.0 — C-053, AD-026, DP-022)
+**Responsibility:**
+- Manages the lifecycle of SignalWatchWorkflows in Temporal — one per signal_type per agent_type
+- Receives `PROACTIVE_SIGNAL_{SIGNAL_TYPE}` Temporal signals and injects them into customer AgentExecutionWorkflows
+- Evaluates TRAI window status and budget state before forwarding signal to customer workflow
+- Logs all signal events to `institutional.signal_materiality_events`
+
+**SignalWatchWorkflow lifecycle management:**
+```python
+# AI Runtime starts one SignalWatchWorkflow per declared signal_feed per agent_type at platform boot
+# These are platform-wide workflows (not per-customer)
+async def start_signal_watch_workflows():
+    for agent_type in REGISTERED_AGENT_TYPES:
+        for feed in agent_type.signal_intelligence.signal_feeds:
+            await temporal_client.start_workflow(
+                SignalWatchWorkflow,
+                id=f"signal-watch-{agent_type.professional_type}-{feed.feed_id}",
+                task_queue="signal-watch-queue"
+            )
+```
+
+**Proactive signal injection:**
+```python
+@workflow.signal
+def proactive_signal_received(self, payload: ProactiveSignalPayload) -> None:
+    """Received from SignalWatchWorkflow. Injects signal into customer's execution loop."""
+    self._signal_queue.append(payload)
+    # Execution loop checks self._signal_queue before sleeping at end of each cycle
+```
+
 ## RAG Pipeline (v0.9.0 — ADR-019, C-040)
 
 Every inference request is augmented with relevant context retrieved from the three-tier RAG architecture before the LLM generates output. See ADR-019 for the full architecture.

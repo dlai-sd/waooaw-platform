@@ -396,3 +396,42 @@ Before finalizing any customer-facing content:
 - The uniqueness_score in the evidence record is the audit trail for DP-021 compliance
 
 ---
+
+## DP-022 — Proactive Intelligence Primacy (v0.35.0)
+
+**Directive:** When an agent possesses information that is material to a customer's outcome — a risk, an opportunity, a threshold crossed — the default action is to communicate proactively, not to wait for the customer to ask. Reactive assistance (waiting for a query) is the baseline floor of service. Proactive intelligence is the professional obligation.
+
+**Why:** A Digital Professional retained to serve a customer's business interests has a duty of care that extends beyond answering questions. A weather forecaster hired by a farmer who checks the weather only when the farmer calls is not performing their job. The difference between a digital professional and a digital assistant is initiative: the professional acts on information; the assistant responds to requests. C-053 (Signal Sensing Obligation) makes proactive intelligence mandatory for time-sensitive domains. DP-022 makes it a design directive for all engineering decisions about agent behaviour.
+
+**Constitutional Basis:** C-053 (Signal Sensing Obligation — LAW); C-036 (Skills as constitutional units — professional judgment includes anticipation); C-048 (Information Non-Exploitation — possessing material information and not sharing it is exploitation); C-037 (Business KPI primacy — failing to alert before harm occurs is a KPI failure)
+
+**Enforcement:**
+- The Signal Intelligence Layer specification (Section 3.18 of AGENT-AUTHORING-GUIDE) is mandatory for all agents in time-sensitive domains
+- Any PR that removes or degrades a signal watch workflow requires EA justification and Founder approval
+- URGENCY_CLASS=CRITICAL signals are always `emergency_exempt: true` — no budget ceiling may block them; a PR that adds a budget check on a CRITICAL signal is a constitutional violation, not a configuration choice
+- Signal watch workflows run continuously in Temporal — any infrastructure change that would stop or pause them must be treated as an Emergency Stop scenario (C-001 safeguards apply)
+
+---
+
+## DP-023 — Skill Network Intelligence (v0.35.0)
+
+**Directive:** Skills within an agent are not independent tools — they are nodes in a capability network with defined inputs, outputs, dependencies, and collaboration relationships. Every engineering decision that affects how Skills execute must consider the Skills as a network, not in isolation. The Skill Intelligence Router and Skill Capability Manifests are the implementation mechanism of this principle.
+
+**Why:** A Digital Marketing Professional with 14 independent tools produces 14 separate outputs. A Digital Marketing Professional with 14 interconnected capabilities produces one coherent professional response to any customer request. The difference is not the number of Skills — it is whether those Skills are networked. Content Strategy knows what Instagram Marketing needs. Instagram Marketing produces content that Paid Advertising can amplify. Performance Analytics feeds back into Content Strategy. Engineering that ignores these relationships builds tools, not professionals. C-054 (Skill Intelligence Routing) makes Skill networking mandatory. DP-023 makes it a first-order engineering constraint.
+
+**Constitutional Basis:** C-054 (Skill Intelligence Routing — LAW); C-036 (Skills as constitutional units — the unit has relationships, not just a definition); C-050 (Strategic Cognition — portfolio reasoning requires understanding inter-skill relationships); C-037 (Business KPI — the most impactful actions often span multiple Skills)
+
+**Skill Collaboration Graph — three relationship types:**
+| Relationship | Meaning | Engineering implication |
+|---|---|---|
+| `UPSTREAM` | Skill A's output is an input to Skill B | Skill A executes first; its output is passed to Skill B's context |
+| `DOWNSTREAM` | Skill B can amplify or extend Skill A's output | Skill B is offered as a follow-on action when Skill A completes |
+| `BIDIRECTIONAL` | Skills A and B inform each other continuously | Both load the other's recent outputs in their RAG context |
+
+**Enforcement:**
+- Every Skill Capability Manifest must declare `collaboration_affinities` (AD-027) — a skill with no declared affinities when other skills clearly depend on it is a gap that blocks Activation Gate Section 4
+- The `business.agent_skill_graph` table materializes the SCM declarations at runtime; the SIR reads this table, not static YAML
+- A multi-skill agent spec where all skills have `collaboration_affinities: []` (empty) will fail the Activation Gate Section 4 review — this indicates the spec was authored without network thinking
+- Skills added via Section 15 Type 1 (New Skill) MUST declare affinities with at least one existing skill OR justify why they operate fully independently
+
+---
