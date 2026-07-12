@@ -2001,3 +2001,109 @@ VALUES
     ('DMA/ONBOARDING/PROFESSIONAL_INTAKE_OPENING', '1.0.0', 'CUSTOMER_PROFILING', 'PROFESSIONAL_INTAKE_OPENING', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-057; C-036; C-037; C-040', 'BEHAVIOURAL', 'FRONTIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
     ('DMA/ONBOARDING/COMPETITIVE_POSITIONING', '1.0.0', 'CUSTOMER_PROFILING', 'COMPETITIVE_POSITIONING', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-057; C-049; C-002', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
     ('DMA/PORTFOLIO/PORTFOLIO_CLAIM_GENERATION', '1.0.0', 'MARKET_RESEARCH', 'PORTFOLIO_CLAIM_GENERATION', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-057; C-002; C-052', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW());
+
+-- ============================================================
+-- DMA Skill Deepening Tables (v0.45.0 — P0: Review gen, Blog, Patient reactivation)
+-- ============================================================
+
+-- review_requests: tracks review request messages sent to patients (Skill 6+7)
+CREATE TABLE business.review_requests (
+    id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organisation_id             UUID NOT NULL REFERENCES business.organisations(id),
+    employment_contract_id      UUID NOT NULL REFERENCES business.employment_contracts(id),
+    patient_identifier          VARCHAR(200) NOT NULL,    -- hashed phone or patient_id — no plain PII
+    trigger_type                VARCHAR(30) NOT NULL CHECK (trigger_type IN ('POST_APPOINTMENT','TREATMENT_COMPLETE','WELCOME_DAY3')),
+    channel                     VARCHAR(20) NOT NULL DEFAULT 'WHATSAPP',
+    message_template_id         VARCHAR(100) NOT NULL,    -- which HSM template was used
+    sent_at                     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    review_detected_at          TIMESTAMPTZ,              -- NULL until Google review detected
+    review_detected             BOOLEAN NOT NULL DEFAULT FALSE,
+    next_eligible_at            TIMESTAMPTZ NOT NULL,     -- 3 months from sent_at (rate limiting)
+    opted_out                   BOOLEAN NOT NULL DEFAULT FALSE,
+    evidence_record_id          UUID,
+    tenant_id                   UUID NOT NULL,
+    created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_review_requests_org ON business.review_requests(organisation_id, sent_at DESC);
+CREATE INDEX idx_review_requests_patient ON business.review_requests(organisation_id, patient_identifier, next_eligible_at);
+
+-- blog_posts: tracks blog content from draft to published to performance (Skill 10)
+CREATE TYPE blog_post_status AS ENUM (
+    'DRAFT',          -- agent generated, not yet reviewed
+    'CUSTOMER_REVIEW', -- awaiting customer approval
+    'APPROVED',        -- customer approved, ready to publish
+    'PUBLISHED',       -- live on website
+    'REJECTED'         -- customer rejected; return for revision
+);
+
+CREATE TABLE business.blog_posts (
+    id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organisation_id             UUID NOT NULL REFERENCES business.organisations(id),
+    employment_contract_id      UUID NOT NULL REFERENCES business.employment_contracts(id),
+    title                       VARCHAR(300) NOT NULL,
+    slug                        VARCHAR(300),              -- URL slug (generated at draft; confirmed at publish)
+    primary_keyword             VARCHAR(200) NOT NULL,
+    secondary_keywords          TEXT[],
+    content_pillar              VARCHAR(20) CHECK (content_pillar IN ('EDUCATIONAL','COMMERCIAL','LOCAL','TRUST')),
+    word_count                  INTEGER,
+    status                      blog_post_status NOT NULL DEFAULT 'DRAFT',
+    draft_content               TEXT,                      -- full blog post text (Markdown)
+    published_url               VARCHAR(500),              -- set when PUBLISHED
+    cms_post_id                 VARCHAR(200),              -- WordPress post ID or equivalent
+    search_impressions_mtd      INTEGER,                   -- Google Search Console: current month
+    search_clicks_mtd           INTEGER,                   -- Google Search Console: current month
+    avg_position_mtd            NUMERIC(5,2),              -- average ranking position
+    drafted_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    approved_at                 TIMESTAMPTZ,
+    published_at                TIMESTAMPTZ,
+    evidence_record_id          UUID,
+    tenant_id                   UUID NOT NULL
+);
+CREATE INDEX idx_blog_posts_org ON business.blog_posts(organisation_id, status);
+CREATE INDEX idx_blog_posts_published ON business.blog_posts(organisation_id, published_at DESC) WHERE status = 'PUBLISHED';
+
+-- patient_reactivation_log: tracks dormant patient outreach (Skill 7)
+CREATE TABLE business.patient_reactivation_log (
+    id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organisation_id             UUID NOT NULL REFERENCES business.organisations(id),
+    employment_contract_id      UUID NOT NULL REFERENCES business.employment_contracts(id),
+    patient_identifier          VARCHAR(200) NOT NULL,    -- hashed phone — no plain PII
+    last_appointment_date       DATE,                     -- from clinic data or customer input
+    days_since_last_visit       INTEGER,                  -- computed at time of outreach
+    reactivation_sent_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    responded                   BOOLEAN NOT NULL DEFAULT FALSE,
+    booked_appointment          BOOLEAN NOT NULL DEFAULT FALSE,
+    response_at                 TIMESTAMPTZ,
+    follow_up_sent_at           TIMESTAMPTZ,              -- second contact if no response in 7 days
+    archived_at                 TIMESTAMPTZ,              -- after 2 contacts with no response
+    campaign_id                 UUID,                     -- which reactivation campaign this belongs to
+    evidence_record_id          UUID,
+    tenant_id                   UUID NOT NULL
+);
+CREATE INDEX idx_reactivation_org ON business.patient_reactivation_log(organisation_id, reactivation_sent_at DESC);
+
+-- Prompt seeds: DMA Skill Deepening P0+P1 (v0.46.0)
+INSERT INTO institutional.agent_prompt_versions
+    (prompt_id, version, skill_type, pipeline_step, agent_type, prompt_file_path, constitutional_basis, change_type, minimum_model_tier, reviewed_by, reviewed_at, is_active, activated_at)
+VALUES
+    ('DMA/GBP/QA_SEEDING', '1.0.0', 'GOOGLE_BUSINESS_PROFILE', 'QA_SEEDING', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-037', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('DMA/WHATSAPP/REVIEW_REQUEST', '1.0.0', 'WHATSAPP_BUSINESS', 'REVIEW_REQUEST', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-037; C-048', 'BEHAVIOURAL', 'LOCAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('DMA/WHATSAPP/PATIENT_REACTIVATION', '1.0.0', 'WHATSAPP_BUSINESS', 'PATIENT_REACTIVATION', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-037; C-048', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('DMA/WHATSAPP/POST_TREATMENT_CHECKIN', '1.0.0', 'WHATSAPP_BUSINESS', 'POST_TREATMENT_CHECKIN', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-037', 'BEHAVIOURAL', 'LOCAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('DMA/WHATSAPP/WELCOME_SEQUENCE', '1.0.0', 'WHATSAPP_BUSINESS', 'WELCOME_SEQUENCE', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-039', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('DMA/SEO/KEYWORD_RESEARCH_FOR_BLOG', '1.0.0', 'LOCAL_SEO', 'KEYWORD_RESEARCH_FOR_BLOG', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-037', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('DMA/SEO/BLOG_POST_CONTENT', '1.0.0', 'LOCAL_SEO', 'BLOG_POST_CONTENT', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-037; C-048; C-055', 'BEHAVIOURAL', 'FRONTIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('DMA/SEO/SCHEMA_MARKUP_GENERATION', '1.0.0', 'LOCAL_SEO', 'SCHEMA_MARKUP_GENERATION', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-037', 'BEHAVIOURAL', 'LOCAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('DMA/INSTAGRAM/REELS_HOOK', '1.0.0', 'INSTAGRAM_MARKETING', 'REELS_HOOK', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-052; C-055', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('DMA/INSTAGRAM/CAROUSEL_CONTENT', '1.0.0', 'INSTAGRAM_MARKETING', 'CAROUSEL_CONTENT', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-052; C-055', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('DMA/YOUTUBE/CHANNEL_OPTIMIZATION', '1.0.0', 'VIDEO_CONTENT_CREATION', 'CHANNEL_OPTIMIZATION', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-037', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('DMA/CONTENT/PHOTO_SHOT_LIST', '1.0.0', 'CONTENT_STRATEGY', 'PHOTO_SHOT_LIST', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-055', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('DMA/GBP/SERVICES_MENU_UPDATE', '1.0.0', 'GOOGLE_BUSINESS_PROFILE', 'SERVICES_MENU_UPDATE', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-037', 'BEHAVIOURAL', 'LOCAL', 'Enterprise Architect', NOW(), TRUE, NOW());
+
+-- Prompt seeds: P2 prompts (v0.47.0)
+INSERT INTO institutional.agent_prompt_versions
+    (prompt_id, version, skill_type, pipeline_step, agent_type, prompt_file_path, constitutional_basis, change_type, minimum_model_tier, reviewed_by, reviewed_at, is_active, activated_at)
+VALUES
+    ('DMA/SEASONAL/OPPORTUNITY_CALENDAR', '1.0.0', 'MARKET_RESEARCH', 'OPPORTUNITY_CALENDAR', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-037; C-055', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('DMA/FACEBOOK/MESSENGER_AUTOMATION', '1.0.0', 'FACEBOOK_MARKETING', 'MESSENGER_AUTOMATION', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-039', 'BEHAVIOURAL', 'LOCAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('DMA/FACEBOOK/COMMUNITY_EVENTS', '1.0.0', 'FACEBOOK_MARKETING', 'COMMUNITY_EVENTS', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-037', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW());

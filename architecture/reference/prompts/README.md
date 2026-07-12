@@ -106,8 +106,23 @@ Every agent prompt must produce a response conforming to this base schema plus t
 | DMA/ONBOARDING/PROFESSIONAL_INTAKE_OPENING | AI Agency Onboarding | Expertise-first opening: agent demonstrates market knowledge before asking configuration (C-057) | v1.0.0 | ACTIVE |
 | DMA/ONBOARDING/COMPETITIVE_POSITIONING | AI Agency Onboarding | Honest comparison of WAOOAW DMA vs traditional agencies when prospect asks (C-057 + C-049) | v1.0.0 | ACTIVE |
 | DMA/PORTFOLIO/PORTFOLIO_CLAIM_GENERATION | AI Agency Portfolio | Generates accurate portfolio claims from dma_performance_portfolio Tier 3 data (C-057 + C-002) | v1.0.0 | ACTIVE |
+| DMA/GBP/QA_SEEDING | Google Business Profile | Generates 15-20 FAQ Q&A pairs for GBP Q&A section targeting voice search + People Also Ask | v1.0.0 | ACTIVE |
+| DMA/WHATSAPP/REVIEW_REQUEST | Review Generation | Personalized post-appointment review request message (rate-limited, UTILITY HSM template) | v1.0.0 | ACTIVE |
+| DMA/WHATSAPP/PATIENT_REACTIVATION | Patient Reactivation | Dormant patient (6+ months) reactivation message — APPROVAL_GATE (customer reviews list first) | v1.0.0 | ACTIVE |
+| DMA/WHATSAPP/POST_TREATMENT_CHECKIN | Post-Treatment Care | 24h post-procedure check-in message → review request trigger if positive response | v1.0.0 | ACTIVE |
+| DMA/WHATSAPP/WELCOME_SEQUENCE | New Patient Onboarding | Day 1+3+7 welcome sequence for newly opted-in patients | v1.0.0 | ACTIVE |
+| DMA/SEO/KEYWORD_RESEARCH_FOR_BLOG | Blog SEO | Identifies 1 primary + 3-5 secondary keywords + PAA targets for next blog post | v1.0.0 | ACTIVE |
+| DMA/SEO/BLOG_POST_CONTENT | Blog Writing | Full 1,000-1,500 word SEO-optimised blog post with H1/H2/FAQ/CTA structure | v1.0.0 | ACTIVE |
+| DMA/SEO/SCHEMA_MARKUP_GENERATION | Schema Markup | Generates LocalBusiness + FAQPage + MedicalOrganization JSON-LD schema markup | v1.0.0 | ACTIVE |
+| DMA/INSTAGRAM/REELS_HOOK | Reels Optimization | Hook formula for first 3 seconds of every Instagram Reel (question/shock/story/promise/controversy pattern) | v1.0.0 | ACTIVE |
+| DMA/INSTAGRAM/CAROUSEL_CONTENT | Carousel Creation | Multi-slide carousel sequence with cover hook + content slides + save CTA | v1.0.0 | ACTIVE |
+| DMA/YOUTUBE/CHANNEL_OPTIMIZATION | YouTube SEO | Channel description, playlist architecture, video title formula, description template with timestamps | v1.0.0 | ACTIVE |
+| DMA/CONTENT/PHOTO_SHOT_LIST | Content Asset Planning | Monthly photo shot list — specific, phone-friendly, timed to campaign needs (eliminates no-photo failure mode) | v1.0.0 | ACTIVE |
+| DMA/SEASONAL/OPPORTUNITY_CALENDAR | Seasonal Planning | Annual 12-month opportunity calendar by domain + India festival calendar — feeds Campaign Theme Engine | v1.0.0 | ACTIVE |
+| DMA/FACEBOOK/MESSENGER_AUTOMATION | Facebook Engagement | Welcome message, away message, and quick reply button text for Messenger automation | v1.0.0 | ACTIVE |
+| DMA/FACEBOOK/COMMUNITY_EVENTS | Facebook Events | Facebook Event content for dental camps, awareness sessions, community engagement | v1.0.0 | ACTIVE |
 
-**Total active prompts: 61** (v0.44.0 — 58 + 3 new agency onboarding/portfolio prompts)
+**Total active prompts: 77** (v0.47.0 — 74 + 3 new P2 prompts)
 | AGRI/ROUTING/SKILL_INTENT_ROUTER | Skill Intelligence Router | LOCAL-tier intent classification → skill routing plan for Agricultural agent (C-054) | v1.0.0 | ACTIVE |
 | TRADING/ROUTING/SKILL_INTENT_ROUTER | Skill Intelligence Router | LOCAL-tier intent classification → skill routing plan for Trading agent (C-054) | v1.0.0 | ACTIVE |
 | DMA/SIGNAL/PROACTIVE_ALERT | Signal Intelligence | Converts competitor/analytics/review signal into actionable portal notification (C-053) | v1.0.0 | ACTIVE |
