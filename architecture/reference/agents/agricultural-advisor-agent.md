@@ -1077,16 +1077,27 @@ EXCHANGE 4 — Profile MINIMUM_VIABLE reached
 Farmer: "दीड एकर, बोअरवेल आहे पण पाणी कमी"
 [1.5 acres, borewell but limited water]
 
+Agent (price target question — GAP-A013):
+"आणखी एक गोष्ट — कापूस काढल्यावर तुम्हाला किती रुपये प्रति क्विंटल मिळाले तर विकाल?
+आपली किमान अपेक्षा?"
+[One more thing — when you harvest cotton, at what price per quintal will you sell?
+Your minimum expectation?]
+
+Farmer: "₹6,500 पेक्षा जास्त मिळाला तर विकेन"
+[I'll sell if I get more than ₹6,500]
+
 Agent (completion confirmation — voice):
 "सुरेश दादा, तुमची नोंद झाली.
 उद्या सकाळी 7 वाजता मी तुमच्या कापसासाठी
 हवामानाची माहिती आणि एक प्रश्न पाठवतो.
-बघा, reply करा जेव्हा वेळ मिळेल."
+बघा, reply करा जेव्हा वेळ मिळेल.
+जेव्हा भाव ₹6,500 पेक्षा जास्त होईल, मी लगेच सांगतो."
 [Suresh, your registration is complete.
-Tomorrow at 7 AM I'll send you weather information for your cotton
-and one question. Reply when you have time.]
+Tomorrow at 7 AM I'll send weather information for your cotton
+and one question. Reply when you have time.
+When the price crosses ₹6,500, I'll alert you immediately.]
 
-→ farmer_profiles: profile_status = MINIMUM_VIABLE
+→ farmer_profiles: profile_status = MINIMUM_VIABLE; stated_price_target_inr_per_quintal = 6500
 → CE.RecordEvidence(FARMER_ONBOARDED, constitutional_basis="ADR-023; C-039")
 → Temporal: schedule first morning check-in for next day 7 AM IST
 → progressive_crop_state: initial state created

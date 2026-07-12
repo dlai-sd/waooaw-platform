@@ -857,6 +857,51 @@ uvicorn.run(app, host='0.0.0.0', port=8122)
       interval: 15s
       retries: 3
 
+  # ─── Signal Watch Worker (v0.40.0 — C-053, GAP-DEV-002) ──────────────────
+  signal-watch-worker:
+    image: python:3.12-slim
+    command: >
+      python -c "
+      import time, os
+      print('[signal-watch-worker] Stub worker starting on signal-watch-queue...')
+      print('[signal-watch-worker] STUB: real worker built in IB-009.')
+      while True: time.sleep(60); print('[signal-watch-worker] heartbeat')
+      "
+    environment:
+      TEMPORAL_HOST: temporal
+      SIGNAL_WATCH_ENABLED: "${SIGNAL_WATCH_ENABLED:-true}"
+      MCP_WEATHER_ENSEMBLE_URL: http://weather-ensemble-mcp:8121
+      MCP_AGMARKNET_URL: http://agmarknet-mcp:8122
+      MCP_MARKET_DATA_URL: http://market-data-mcp:8103
+    depends_on: [temporal]
+    restart: unless-stopped
+
+  # ─── New Platform MCP Stubs (v0.39.0 — GAP-DEV-003, PLANNED) ────────────
+  youtube-mcp:
+    image: python:3.12-slim
+    command: python -c "from http.server import HTTPServer,BaseHTTPRequestHandler; import json,os; H=type('H',(BaseHTTPRequestHandler,),{'do_GET':lambda s:(s.send_response(200),s.send_header('Content-Type','application/json'),s.end_headers(),s.wfile.write(json.dumps({'status':'ok','service':'youtube-mcp-stub'}).encode())),'log_message':lambda *a:None}); HTTPServer(('0.0.0.0',8138),H).serve_forever()"
+    ports: ["8138:8138"]
+
+  linkedin-mcp:
+    image: python:3.12-slim
+    command: python -c "from http.server import HTTPServer,BaseHTTPRequestHandler; import json,os; H=type('H',(BaseHTTPRequestHandler,),{'do_GET':lambda s:(s.send_response(200),s.send_header('Content-Type','application/json'),s.end_headers(),s.wfile.write(json.dumps({'status':'ok','service':'linkedin-mcp-stub'}).encode())),'log_message':lambda *a:None}); HTTPServer(('0.0.0.0',8139),H).serve_forever()"
+    ports: ["8139:8139"]
+
+  x-mcp:
+    image: python:3.12-slim
+    command: python -c "from http.server import HTTPServer,BaseHTTPRequestHandler; import json,os; H=type('H',(BaseHTTPRequestHandler,),{'do_GET':lambda s:(s.send_response(200),s.send_header('Content-Type','application/json'),s.end_headers(),s.wfile.write(json.dumps({'status':'ok','service':'x-mcp-stub','note':'PENDING_FOUNDER_DECISION'}).encode())),'log_message':lambda *a:None}); HTTPServer(('0.0.0.0',8140),H).serve_forever()"
+    ports: ["8140:8140"]
+
+  pinterest-mcp:
+    image: python:3.12-slim
+    command: python -c "from http.server import HTTPServer,BaseHTTPRequestHandler; import json; H=type('H',(BaseHTTPRequestHandler,),{'do_GET':lambda s:(s.send_response(200),s.send_header('Content-Type','application/json'),s.end_headers(),s.wfile.write(json.dumps({'status':'ok','service':'pinterest-mcp-stub'}).encode())),'log_message':lambda *a:None}); HTTPServer(('0.0.0.0',8141),H).serve_forever()"
+    ports: ["8141:8141"]
+
+  threads-mcp:
+    image: python:3.12-slim
+    command: python -c "from http.server import HTTPServer,BaseHTTPRequestHandler; import json; H=type('H',(BaseHTTPRequestHandler,),{'do_GET':lambda s:(s.send_response(200),s.send_header('Content-Type','application/json'),s.end_headers(),s.wfile.write(json.dumps({'status':'ok','service':'threads-mcp-stub'}).encode())),'log_message':lambda *a:None}); HTTPServer(('0.0.0.0',8142),H).serve_forever()"
+    ports: ["8142:8142"]
+
   web:
     build:
       context: ./web

@@ -6,7 +6,7 @@
 
 ```
 Founding Corpus v1           Status: Ratified
-Version:                     0.39.0 — C-053 SIL + C-054 SIR + C-055 Campaign Theme Engine + DMA v2.5 (2026-07-12)
+Version:                     0.42.0 — User + Developer + Tester Simulation Runs + 16 gap bridges (2026-07-12)
 Current Epoch:               Epoch 1 — Employment
 Current Gate:                G2-G4: PASSED | G5: Prerequisites met
                              ⛔ G5 CLEAR ≠ implementation authorized for any session

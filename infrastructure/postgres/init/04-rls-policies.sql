@@ -353,3 +353,17 @@ GRANT SELECT, INSERT ON business.scr_review_records TO ai_runtime_app;
 GRANT SELECT         ON business.scr_review_records TO business_app;
 -- Note: SCR records are constitutional audit artifacts — INSERT only after creation, never UPDATE or DELETE
 >>>>>>> 699f049 (constitutional(dma): C-055 Campaign Theme Engine + SCR + Platform Intelligence (DMA v2.5, v0.39.0))
+
+-- Simulation gap bridge RLS (v0.40.0)
+
+-- trading_session_records: tenant-scoped (C-034)
+ALTER TABLE business.trading_session_records ENABLE ROW LEVEL SECURITY;
+CREATE POLICY trading_session_records_tenant_isolation ON business.trading_session_records
+    FOR ALL TO business_app, ai_runtime_app
+    USING (tenant_id = current_setting('app.tenant_id', TRUE)::UUID);
+GRANT SELECT, INSERT, UPDATE ON business.trading_session_records TO ai_runtime_app;
+GRANT SELECT                 ON business.trading_session_records TO business_app;
+
+-- signal_bundling_log: institutional — no RLS; no customer PII in bundling decisions
+GRANT SELECT, INSERT ON institutional.signal_bundling_log TO ai_runtime_app;
+GRANT SELECT         ON institutional.signal_bundling_log TO business_app;

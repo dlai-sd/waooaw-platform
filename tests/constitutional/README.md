@@ -51,6 +51,10 @@ Every CCT is a self-contained test that:
 | `SEC` | Security Constitutional Floors | Constitution Article IX |
 | `RU` | Runtime Universality | C-035, DP-003 |
 | `OBS` | Constitutional Observability | AD-009, IB-016 |
+| `SIL` | Signal Intelligence Layer | C-053, AD-026, DP-022 |
+| `SIR` | Skill Intelligence Routing | C-054, AD-027, DP-023 |
+| `CTE` | Campaign Theme Engine + SCR | C-055, AD-028, DP-024 |
+| `FIN` | Financial Constitutional Floors | C-043 (trading loss limits) |
 
 ---
 
@@ -186,6 +190,141 @@ Assert:   All three are processed by the same Professional Runtime container ima
           Each follows its correct execution model path.
 Constitutional basis: C-035 — "a single runtime codebase with zero runtime
           code changes — only configuration and Decision Space parameters differ"
+```
+
+---
+
+### Signal Intelligence Layer (SIL) — v0.40.0
+
+**CCT-SIL-01 — CRITICAL Signal Cannot Be Budget-Blocked**
+```
+Setup:    Create test customer with customer_usage_units.remaining_units = 0.
+          Configure WEATHER_HAIL_RISK as CRITICAL signal with emergency_exempt: true.
+Action:   POST /debug/signal {signal_type: "WEATHER_HAIL_RISK", urgency_class: "CRITICAL",
+                              organisation_id: {test_customer_id}}
+Assert:   Evidence record PROACTIVE_SIGNAL_ALERT created ✓
+          Alert delivered to customer (WhatsApp mock) ✓
+          customer_usage_units.remaining_units still 0 (no decrement) ✓
+          signal_materiality_events.customers_budget_blocked = 0 ✓
+Constitutional basis: C-053 (CRITICAL signals are budget-exempt); C-051 (emergency_exempt)
+```
+
+**CCT-SIL-02 — CRITICAL Signal Uses UTILITY WhatsApp Category**
+```
+Setup:    Create test customer with TRAI window expired (last message > 24h ago).
+          Configure BROKER_AUTH_EXPIRY as CRITICAL with trai_outside_window_behavior: IMMEDIATE.
+Action:   Inject BROKER_AUTH_EXPIRY signal.
+Assert:   Delivery attempted immediately (not deferred) ✓
+          WhatsApp mock records template_category = "UTILITY" (not "MARKETING") ✓
+          Evidence record created with trai_window_status: OUTSIDE_WINDOW_CRITICAL_OVERRIDE ✓
+Constitutional basis: C-053 (CRITICAL = service obligation, not marketing); TRAI DND exemption
+```
+
+**CCT-SIL-03 — Multi-Signal Bundling: CRITICAL Solo, HIGH Held**
+```
+Setup:    Create test customer within TRAI window.
+Action:   Inject WEATHER_HAIL_RISK (CRITICAL) then DISTRICT_PEST_OUTBREAK (HIGH) within 30 seconds.
+          Wait 5 minutes.
+Assert:   WEATHER_HAIL_RISK: delivered immediately, 1 message, bundling_decision=IMMEDIATE_SOLO ✓
+          DISTRICT_PEST_OUTBREAK: held (bundling_decision=HELD_FOR_BUNDLE) ✓
+          Customer received exactly 1 message in first 30 seconds ✓
+          signal_bundling_log records correct for both signals ✓
+Constitutional basis: C-053 (proactive intelligence); C-048 (simultaneous alerts = exploitation)
+```
+
+### Skill Intelligence Router (SIR) — v0.40.0
+
+**CCT-SIR-01 — SIR Does Not Route to Inactive Skills**
+```
+Setup:    DMA test customer. Set INSTAGRAM_MARKETING.is_active = FALSE in agent_skill_graph.
+Action:   Submit: "create instagram post for my clinic"
+Assert:   SIR routes to CONTENT_STRATEGY (best active match), NOT INSTAGRAM_MARKETING ✓
+          skill_gap_signals record created (inactive skill triggered gap detection) ✓
+          No INSTAGRAM_MARKETING evidence record ✓
+Constitutional basis: C-054 (SIR operates on ACTIVE skills only)
+```
+
+**CCT-SIR-02 — SIR Gap Signal Emitted When No Skill Matches**
+```
+Setup:    DMA test customer with standard skills (none covering GST/accounting).
+Action:   Submit: "help me file my GST return"
+Assert:   SIR returns gap_detected: true ✓
+          skill_gap_signals record created within 5 seconds ✓
+          adjacent_professional_routing applied (ACCOUNTING_PROFESSIONAL "coming soon") ✓
+Constitutional basis: C-054 (gap detection); C-036 (skills as constitutional units)
+```
+
+**CCT-SIR-03 — Multi-Skill Evidence Records Share parent_request_id**
+```
+Setup:    DMA test customer with PERFORMANCE_ANALYTICS + CONTENT_STRATEGY active.
+Action:   Submit: "show performance this week AND draft a Diwali campaign"
+Assert:   2 evidence records created ✓
+          Both share identical parent_request_id UUID ✓
+          sir_skill_position: 1 for PERFORMANCE_ANALYTICS, 2 for CONTENT_STRATEGY ✓
+          1 UsageUnit charged (not 2) ✓
+Constitutional basis: C-054 (orchestration); C-023 (evidence per skill contribution)
+```
+
+### Campaign Theme Engine + SCR (CTE) — v0.40.0
+
+**CCT-CTE-01 — Campaign Content Cannot Publish Without SCR Gate**
+```
+Setup:    Active campaign. Content item with scr_status = 'PENDING'.
+Action:   Attempt to call scheduling-mcp: content.schedule_item for the PENDING item.
+Assert:   CE.ValidateAction returns DENY ✓
+          scheduling-mcp.schedule_item NOT called ✓
+          content_items.scr_status remains 'PENDING' ✓
+Constitutional basis: C-055 (CE enforces scr_status gate before any publish action)
+```
+
+**CCT-CTE-02 — SCR Compliance Failure Never Auto-Retries**
+```
+Setup:    Content item containing "guaranteed painless procedure" (RULE-HC-001 violation).
+Action:   Run SCR pipeline.
+Assert:   check_3_compliance = 'FAIL' ✓
+          check_3_violations NOT null ✓
+          scr_status = 'COMPLIANCE_VIOLATION' ✓
+          regeneration_attempts NOT incremented ✓
+          Customer notification sent ✓
+Constitutional basis: C-055 (compliance failure ALWAYS routes to customer — never silently regenerated)
+```
+
+**CCT-CTE-03 — Campaign Approval Creates Constitutional Evidence Record**
+```
+Setup:    Campaign in DRAFT status.
+Action:   POST /api/v1/campaigns/{id}/approve (with valid JWT).
+Assert:   content_campaigns.status = 'CUSTOMER_APPROVED' ✓
+          CE evidence record: action_type = CAMPAIGN_BRIEF_APPROVED ✓
+          After 8-day wait (simulated): campaign still DRAFT (no auto-approval) ✓
+Constitutional basis: C-055 + C-003 (campaign approval = constitutional authority event)
+```
+
+### Financial Constitutional Floors (FIN) — v0.40.0
+
+**CCT-FIN-01 — Daily Loss Limit Halt Cancels Pending Entry Orders**
+```
+Setup:    PAAS session. daily_loss_limit = 10000. P&L at -9800. 1 pending entry order.
+Action:   Simulate trade fill pushing P&L to -10200 (exceeds limit).
+Assert:   CE.ValidateAction DENY for next TRADE_SETUP ✓
+          order.cancel_all_pending called immediately ✓
+          Stop-loss orders NOT cancelled ✓
+          CE.RecordEvidence(TRADING_SESSION_HALTED) created ✓
+          trading_session_records.daily_loss_limit_hit = TRUE ✓
+          trading_session_records.pending_orders_cancelled = 1 ✓
+Note:     cancel_pending executes BEFORE RecordEvidence (emergency action priority — C-001 analogy)
+Constitutional basis: C-043 (daily loss limit = financial constitutional floor); GAP-T014
+```
+
+**CCT-FIN-02 — Loss Limit Overshoot Does Not Terminate Employment**
+```
+Setup:    PAAS session. P&L at -9500. Pending order worth 1000 exposure.
+Action:   Pending order fills simultaneously with halt → P&L = -10500 (overshoot 500).
+Assert:   Session halts (LOSS_LIMIT_HIT) ✓
+          trading_session_records.net_pnl_inr = -10500 (actual) ✓
+          Employment contract status = ACTIVE (not SUSPENDED) ✓
+          Next session requires manual customer restart (one-time protection) ✓
+          Customer informed of overshoot reason ✓
+Constitutional basis: C-043 (limit hit ≠ termination); C-049 (honest disclosure)
 ```
 
 ---

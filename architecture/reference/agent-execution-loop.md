@@ -353,15 +353,51 @@ The Execution Loop and Strategic Cognition Loop are both **customer-or-schedule-
 - Step 5 (EXECUTE): evidence action_type = `PROACTIVE_SIGNAL_ALERT`
 - Customer receives proactive advisory in their language via configured channel
 
+**Multi-Signal Bundling Rules (GAP-A010 — CD-A004, v0.40.0):**
+
+When multiple signals fire within a short window for the same customer, blind sequential delivery overwhelms the customer (C-048 violation). The following bundling rules apply:
+
+```
+RULE 1 — CRITICAL signals: send IMMEDIATELY and SOLO.
+  No bundling with any other signal. No waiting.
+  Record in signal_bundling_log: bundling_decision = 'IMMEDIATE_SOLO'
+
+RULE 2 — HIGH signals within 15 minutes of a CRITICAL signal:
+  Hold for 2 hours, then bundle HIGH signals together.
+  If still within TRAI window at delivery time: send bundled message.
+  If TRAI window closed: defer to next morning (7:00 AM IST).
+  Record in signal_bundling_log: bundling_decision = 'HELD_FOR_BUNDLE'
+
+RULE 3 — Multiple HIGH signals within 15 minutes of each other (no CRITICAL):
+  Bundle into single advisory message delivered within 30 minutes.
+  Use PROACTIVE_ALERT prompt with all signal contexts as input.
+  Record in signal_bundling_log: bundling_decision = 'HELD_FOR_BUNDLE'
+
+RULE 4 — ADVISORY signals:
+  Always defer to next scheduled heartbeat/communication.
+  Include as "intelligence brief" in next regular message.
+  Record in signal_bundling_log: bundling_decision = 'DEFERRED_TO_HEARTBEAT'
+```
+
+**TRAI Category for CRITICAL signal delivery (GAP-A009 — CD-A003, v0.40.0):**
+Any signal with `emergency_exempt: true` and `urgency_class: CRITICAL` must be delivered using a WhatsApp HSM template with `category: UTILITY` (not MARKETING). UTILITY messages are exempt from TRAI DND hours (9 PM - 9 AM). An agent spec that sends a CRITICAL signal using a MARKETING template has misclassified a constitutional obligation as a commercial message — this is a C-053 violation.
+
 **Temporal implementation note:**
 ```python
 @workflow.signal
 def proactive_signal_received(self, signal: ProactiveSignalInput) -> None:
     """
     Received from SignalWatchWorkflow when a material signal is detected.
-    Wakes the execution loop immediately regardless of heartbeat cadence.
+    Applies bundling rules before adding to delivery queue.
     """
-    self._signal_queue.append(signal)
+    if signal.urgency_class == 'CRITICAL':
+        # CRITICAL: send immediately, solo — bypass queue
+        self._immediate_signal_queue.append(signal)
+        asyncio.create_task(self._deliver_critical_signal(signal))
+    else:
+        # HIGH/ADVISORY: apply bundling rules
+        self._signal_queue.append(signal)
+        self._apply_bundling_rules()
 
 # In the main execution loop:
 if self._signal_queue:
