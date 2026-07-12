@@ -2099,3 +2099,11 @@ VALUES
     ('DMA/YOUTUBE/CHANNEL_OPTIMIZATION', '1.0.0', 'VIDEO_CONTENT_CREATION', 'CHANNEL_OPTIMIZATION', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-037', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
     ('DMA/CONTENT/PHOTO_SHOT_LIST', '1.0.0', 'CONTENT_STRATEGY', 'PHOTO_SHOT_LIST', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-055', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
     ('DMA/GBP/SERVICES_MENU_UPDATE', '1.0.0', 'GOOGLE_BUSINESS_PROFILE', 'SERVICES_MENU_UPDATE', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-037', 'BEHAVIOURAL', 'LOCAL', 'Enterprise Architect', NOW(), TRUE, NOW());
+
+-- Prompt seeds: P2 prompts (v0.47.0)
+INSERT INTO institutional.agent_prompt_versions
+    (prompt_id, version, skill_type, pipeline_step, agent_type, prompt_file_path, constitutional_basis, change_type, minimum_model_tier, reviewed_by, reviewed_at, is_active, activated_at)
+VALUES
+    ('DMA/SEASONAL/OPPORTUNITY_CALENDAR', '1.0.0', 'MARKET_RESEARCH', 'OPPORTUNITY_CALENDAR', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-037; C-055', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('DMA/FACEBOOK/MESSENGER_AUTOMATION', '1.0.0', 'FACEBOOK_MARKETING', 'MESSENGER_AUTOMATION', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-039', 'BEHAVIOURAL', 'LOCAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('DMA/FACEBOOK/COMMUNITY_EVENTS', '1.0.0', 'FACEBOOK_MARKETING', 'COMMUNITY_EVENTS', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-037', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW());

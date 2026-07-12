@@ -118,8 +118,11 @@ Every agent prompt must produce a response conforming to this base schema plus t
 | DMA/INSTAGRAM/CAROUSEL_CONTENT | Carousel Creation | Multi-slide carousel sequence with cover hook + content slides + save CTA | v1.0.0 | ACTIVE |
 | DMA/YOUTUBE/CHANNEL_OPTIMIZATION | YouTube SEO | Channel description, playlist architecture, video title formula, description template with timestamps | v1.0.0 | ACTIVE |
 | DMA/CONTENT/PHOTO_SHOT_LIST | Content Asset Planning | Monthly photo shot list — specific, phone-friendly, timed to campaign needs (eliminates no-photo failure mode) | v1.0.0 | ACTIVE |
+| DMA/SEASONAL/OPPORTUNITY_CALENDAR | Seasonal Planning | Annual 12-month opportunity calendar by domain + India festival calendar — feeds Campaign Theme Engine | v1.0.0 | ACTIVE |
+| DMA/FACEBOOK/MESSENGER_AUTOMATION | Facebook Engagement | Welcome message, away message, and quick reply button text for Messenger automation | v1.0.0 | ACTIVE |
+| DMA/FACEBOOK/COMMUNITY_EVENTS | Facebook Events | Facebook Event content for dental camps, awareness sessions, community engagement | v1.0.0 | ACTIVE |
 
-**Total active prompts: 74** (v0.46.0 — 61 + 13 new Skill deepening prompts)
+**Total active prompts: 77** (v0.47.0 — 74 + 3 new P2 prompts)
 | AGRI/ROUTING/SKILL_INTENT_ROUTER | Skill Intelligence Router | LOCAL-tier intent classification → skill routing plan for Agricultural agent (C-054) | v1.0.0 | ACTIVE |
 | TRADING/ROUTING/SKILL_INTENT_ROUTER | Skill Intelligence Router | LOCAL-tier intent classification → skill routing plan for Trading agent (C-054) | v1.0.0 | ACTIVE |
 | DMA/SIGNAL/PROACTIVE_ALERT | Signal Intelligence | Converts competitor/analytics/review signal into actionable portal notification (C-053) | v1.0.0 | ACTIVE |

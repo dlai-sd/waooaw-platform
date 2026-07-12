@@ -1,11 +1,11 @@
 # Digital Marketing Professional — Healthcare & Beauty
 
-**Specification version:** 2.5
-**Date:** 2026-07-12 (v2.5 — C-055: Campaign Theme Engine, Platform Intelligence, Synthetic Content Reviewer, Content Cascade, Campaign Approval Modes)
-**Change from v2.0:** Section 3.15 (Strategic Cognition Standard) added. Professional Template: strategic_cognition block declared. C-050 added to Constitutional Checklist. Prompt Catalogue section (§10b) added. Two new prompts catalogued.
-**Constitutional Basis:** C-036 (Skills), C-037 (Business KPIs), C-038 (Billing), C-039 (Conversational config), C-040 (Domain specialization), C-041 (Tool authorization), ADR-019 (RAG), ADR-020 (MCP), C-048 (Information Non-Exploitation — LAW), C-049 (Honest Limitation Disclosure — LAW), C-050 (Strategic Cognition Obligation — LAW)
-**Reviewed by:** Enterprise Architect — R-014 (v2.0), R-018 (v2.1)
-**Approved by:** Founder — 2026-07-09 (v2.0)
+**Specification version:** 2.7
+**Date:** 2026-07-12 (v2.7 — Skill Deepening: full P0+P1+P2 competitive upgrade across all skills)
+**Change from v2.5:** Skills 1, 4, 5, 6, 7, 8, 10, 11, 12 upgraded. 16 new capabilities. 16 new prompts (total 77). 3 new SQL tables (review_requests, blog_posts, patient_reactivation_log). cms-mcp added. See CHANGELOG below.
+**Constitutional Basis:** C-036 (Skills), C-037 (Business KPIs), C-038 (Billing), C-039 (Conversational config), C-040 (Domain specialization), C-041 (Tool authorization), ADR-019 (RAG), ADR-020 (MCP), C-048 (Information Non-Exploitation — LAW), C-049 (Honest Limitation Disclosure — LAW), C-050 (Strategic Cognition Obligation — LAW), C-055 (Campaign Coherence — LAW), C-056 (Ad Spend Transparency — LAW), C-057 (AI Agency Professional Standard — LAW)
+**Reviewed by:** Enterprise Architect — R-014 (v2.0), R-015 (v2.7)
+**Approved by:** Founder — 2026-07-09 (v2.0), 2026-07-12 (v2.7 skill deepening)
 
 ---
 
@@ -157,11 +157,35 @@
 
 **Report cadence:** Full report at engagement start. 6-monthly refresh (or customer request). Monthly reports between refreshes are execution reports only (skills performed, KPIs, progress).
 
+**Seasonal Opportunity Calendar (P2 — proactive campaign planning):**
+```
+Generated once per year at onboarding (and refreshed annually).
+Maps the customer's business domain to key calendar moments.
+
+For dental clinic:
+  JANUARY:   New Year resolution campaigns ("New year, new smile")
+  FEBRUARY:  Valentine's Day whitening promotions
+  MARCH:     World Oral Health Day (20 March) — awareness content
+  APRIL:     Summer holidays → children's dental camp promotions
+  JUNE:      School admissions → back-to-school dental checkup campaigns
+  AUGUST:    Independence Day offers + Raksha Bandhan content
+  SEPTEMBER: Lead-in to festival season (strong campaign month)
+  OCTOBER:   Dussehra + Navratri — highest engagement season in India
+  NOVEMBER:  Diwali offers + year-end checkup campaigns
+  DECEMBER:  Year-end appointments + new year planning content
+
+Agent generates: DMA/SEASONAL/OPPORTUNITY_CALENDAR prompt
+Output: 12-month calendar with recommended campaign themes + timing
+Delivered: once at onboarding; shared with customer for awareness
+Used by: Skill 2 (Campaign Theme Engine) when proposing Campaign Briefs
+```
+
 **RAG Sources:**
 | Tier | Knowledge | Retrieved for |
 |---|---|---|
 | 1 — Domain | Digital maturity benchmarks by industry + India city tier | Score benchmarking |
 | 1 — Domain | Competitor identification patterns by business domain | Competitor landscape |
+| 1 — Domain | India seasonal calendar: festivals, health awareness months, school calendar by state | Seasonal campaign timing |
 | 2 — Customer | Confirmed Customer Profile (from Skill 0) | Research targeting |
 | 3 — Platform | Anonymised aggregate maturity scores by domain + city | Benchmark calculation |
 
@@ -387,27 +411,65 @@ Instead of isolated stories, produce 3-5 connected story sequences with narrativ
 ### Skill 5: Facebook Presence Management
 
 **Skill type:** `FACEBOOK_MARKETING`
-**Business KPI:** Facebook-attributed appointment enquiries per month
+**Business KPI:** Facebook-attributed appointment enquiries per month + Facebook Events attendance
 **Execution model:** APPROVAL_GATE
 
 **Decision Space:**
-- **Authorized:** Post updates; create practice events; share informational content; boost posts within approved budget; respond to page reviews (non-clinical templates)
-- **Prohibited:** Paid campaigns above approved budget; responding to negative reviews with clinical detail; sharing patient information
-- **Always-ask:** Creating a paid campaign; responding to a negative review with non-template content; creating an event outside the pre-approved calendar
+- **Authorized:** Post updates; create practice events; share informational content; boost posts within approved budget; respond to page reviews (non-clinical templates); **set up Messenger automation (welcome message, away message, quick reply buttons)**; post native video content (not just repurposed Instagram content)
+- **Prohibited:** Paid campaigns above approved budget; responding to negative reviews with clinical detail; sharing patient information; accessing or responding to Messenger conversations directly (Messenger automation only, not manual chat handling)
+- **Always-ask:** Creating a paid campaign; responding to a negative review with non-template content; creating an event outside the pre-approved calendar; enabling Messenger automation for the first time (customer must approve the welcome message text + away message text)
+
+**Facebook Events (P2 — organic reach still strong for Events):**
+```
+Event types for dental clinic:
+  "Free Dental Check-Up Camp" — monthly community event, drives first-time visitors
+  "Oral Health Awareness Talk" — World Oral Health Day (20 March) anchor
+  "Children's Dental Day" — quarterly, positions clinic as family-friendly
+
+Events get organic reach on Facebook even for small pages. A clinic with 340 followers
+can reach 2,000-5,000 people with a well-structured event.
+
+Event structure:
+  Name: Clear + location ("Free Dental Camp — Viman Nagar, October 15")
+  Cover photo: professional, branded, date + time prominent
+  Description: What happens, what to bring, how to register, what's free vs paid
+  Location: exact address
+  Questions for attendees: collect name + phone at RSVP for appointment follow-up
+```
+
+**Messenger Automation (P2 — fast response = 4× booking rate):**
+```
+When a patient messages the Facebook Page, speed of response determines whether they book.
+Messenger automation removes the delay.
+
+Setup (one-time, APPROVAL_GATE):
+  Welcome message (fires immediately when anyone messages):
+    "Hi! Thanks for reaching out to [Clinic Name]. We'll respond within a few hours.
+     For an appointment, tap 'Book Now' below. For urgent queries, call [number]."
+  Quick reply buttons: [Book Appointment] [View Services] [Our Timings] [Call Us]
+  Away message (outside business hours):
+    "We're closed right now ([hours]). We'll reply first thing tomorrow.
+     Or book online anytime: [link]"
+
+The automation handles first contact; the clinic handles follow-up conversations.
+Agent does NOT engage in the Messenger conversation beyond the automation — privacy boundary.
+```
 
 **RAG Sources:**
 | Tier | Knowledge | Retrieved for |
 |---|---|---|
-| 1 — Domain | Facebook algorithm for local business India | Post format optimization |
-| 1 — Domain | Healthcare event marketing patterns | Event creation templates |
+| 1 — Domain | Facebook algorithm for local business India 2026 | Post format optimization, video native vs shared |
+| 1 — Domain | Facebook Events best practices for healthcare India | Event creation, RSVP optimization |
+| 1 — Domain | Healthcare event marketing patterns | Community camp templates |
 | 2 — Customer | Previous Facebook posts and performance | Content consistency |
-| 3 — Platform | What Facebook content drives local medical enquiries | Effectiveness |
+| 3 — Platform | What Facebook content drives local medical enquiries (anonymised) | Format effectiveness |
 
 **MCP Tools:**
 | Tool | MCP Server | Action | Authorization | Failure |
 |---|---|---|---|---|
 | Publish post | facebook-mcp | post.publish | `FACEBOOK_POST` authorized + APPROVED | REQUIRED |
 | Create event | facebook-mcp | event.create | `FACEBOOK_EVENT` authorized + APPROVED | DEGRADABLE |
+| **Set Messenger automation** | **facebook-mcp** | **messenger.set_automation** | **`FACEBOOK_MESSENGER_SETUP` always-ask (customer approves message text)** | **DEGRADABLE** |
 | Read insights | platform-analytics-mcp | facebook.get_insights | Always authorized | DEGRADABLE |
 
 ---
@@ -848,9 +910,38 @@ minimum_ad_spend_inr: 2000      # Per month. Below this, Meta learning algorithm
 - **Low balance alert**: C-053 HIGH signal when wallet < 3 days of burn rate
 
 **Decision Space:**
-- **Authorized:** Research and recommend campaign strategy (platform, objective, audience, budget); create ad creatives (copy + visuals) for approval; set up campaigns after customer approval using WAOOAW's sub-account; optimise bids within approved parameters; A/B test creatives; pause underperforming ads; report on campaign performance; debit Ad Spend Wallet for confirmed charges; notify customer of wallet balance
-- **Prohibited:** Launch any campaign without explicit customer approval; exceed customer's approved monthly ad budget (C-043 Constitutional Floor); commingle this customer's ad budget with another customer's (C-056 segregation); run retargeting without confirmed pixel installation and customer privacy acknowledgement; target based on health conditions or sensitive categories (healthcare advertising policy); retain any Meta/Google credit that belongs to this customer
-- **Always-ask:** `PAGE_ACCESS_GRANT_REQUEST` — one-time at Skill 11 activation (customer grants their Facebook Page to WAOOAW's MBM); increasing monthly ad budget above approved amount; targeting a new audience segment; running retargeting campaign; switching campaign objective; `AD_SPEND_WALLET_TOPUP_REQUEST` — when wallet balance is projected to hit zero within 3 days
+- **Authorized:** Research and recommend campaign strategy (platform, objective, audience, budget); create ad creatives (copy + visuals) for approval; set up campaigns after customer approval using WAOOAW's sub-account; optimise bids within approved parameters; A/B test creatives; pause underperforming ads; report on campaign performance; debit Ad Spend Wallet for confirmed charges; notify customer of wallet balance; **guide pixel/tag installation on customer website (Meta Pixel + Google Tag — instructions only; agent never accesses website code directly)**; **build retargeting audiences from website visitors**; **build lookalike audiences from engaged ad interactions**
+- **Prohibited:** Launch any campaign without explicit customer approval; exceed customer's approved monthly ad budget (C-043 Constitutional Floor); commingle this customer's ad budget with another customer's (C-056 segregation); run retargeting without confirmed pixel installation and customer privacy acknowledgement; target based on health conditions or sensitive categories; retain any Meta/Google credit that belongs to this customer
+- **Always-ask:** `PAGE_ACCESS_GRANT_REQUEST` — one-time at Skill 11 activation; increasing monthly ad budget above approved amount; targeting a new audience segment; running retargeting campaign (requires confirmed pixel); switching campaign objective; `AD_SPEND_WALLET_TOPUP_REQUEST` — when wallet balance projected to hit zero within 3 days; **`PIXEL_INSTALLATION_CONFIRMATION`** — before any retargeting campaign, customer must confirm pixel is installed on website
+
+**Retargeting Strategy (P2 — warmest possible audience):**
+```
+Website visitors who didn't book are already aware and interested.
+Retargeting to them converts at 3-5× the rate of cold audience ads.
+
+Prerequisites:
+  1. Meta Pixel installed on customer website (customer installs; agent provides 3-line code snippet)
+  2. Google Tag installed (same process)
+  3. Customer confirms: PIXEL_INSTALLATION_CONFIRMED (always-ask, creates constitutional evidence)
+  4. Customer confirms privacy policy mentions pixel (GDPR/DPDP compliance)
+
+Retargeting audiences to build:
+  "Website visitors — last 30 days" → "Still thinking about your checkup?"
+  "Specific page visitors — Root Canal page" → "Considering root canal? Here's what to expect."
+  "Booking page abandoned" → "Your appointment is just one tap away." (highest intent)
+  
+Frequency cap: max 3 retargeting impressions per user per day (avoids stalking perception)
+```
+
+**Lookalike Audiences (P2 — scale cold audience quality):**
+```
+After 100+ engaged interactions in WAOOAW's sub-account for this customer:
+  Build 1% lookalike of "engaged Instagram audience" → similar people in the same city
+  Build 1% lookalike of "website visitors who converted" → after pixel data accumulates
+  
+Lookalike creation: meta-ads-mcp.audience.create_lookalike (authorized, no always-ask after
+  initial audience creation approval)
+```
 
 **RAG Sources:**
 | Tier | Knowledge | Retrieved for |
