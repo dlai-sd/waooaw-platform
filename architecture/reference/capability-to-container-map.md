@@ -42,6 +42,8 @@ Each of the 26 business capabilities is owned by exactly one container. Ownershi
 | **11.4 Improve Local SEO + Reputation** | Professional Runtime | AI Runtime (seo-mcp, google-places-mcp, web-scan-mcp, google-search-console-mcp), CE (evidence) |
 | **11.5 Run Paid Advertising** | Professional Runtime | AI Runtime (meta-ads-mcp, google-ads-mcp — C-043 budget check via CE.ValidateAction before every spend call), CE (budget enforcement + evidence) |
 | **11.6 Optimise Conversion + Competitive Intelligence** | Professional Runtime | AI Runtime (web-optimisation-mcp, social-profile-mcp, meta-ad-library-mcp, web-search-mcp), CE (evidence) |
+| **12.6 Detect and Communicate Material Signals (SIL)** | AI Runtime (Signal Watch Loop Coordinator + SignalWatchWorkflow via Temporal) | Constitutional Engine (CE.ValidateAction before proactive alert; RecordEvidence for PROACTIVE_SIGNAL_ALERT), MCP servers (weather-ensemble-mcp, agmarknet-mcp, platform-analytics-mcp, meta-ad-library-mcp), Temporal (SignalWatchWorkflow long-running per signal type per agent type) |
+| **12.7 Route Customer Requests to Correct Skill(s) (SIR)** | AI Runtime (Skill Intelligence Router — LOCAL tier, ≤10ms, ₹0) | business.agent_skill_graph (pgvector intent_signatures_embedding), institutional.skill_gap_signals (gap detection), Professional Runtime (receives SIR_RoutingPlan before REASON step) |
 
 ---
 

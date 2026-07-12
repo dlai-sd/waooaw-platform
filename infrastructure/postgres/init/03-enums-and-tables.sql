@@ -1012,6 +1012,18 @@ VALUES
     ('PLATFORM/BOUNDARY/OFF_TOPIC_REDIRECT', '1.0.0', 'BOUNDARY', 'OFF_TOPIC_REDIRECT', 'PLATFORM_INTERNAL', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-036; C-037; C-048', 'BEHAVIOURAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
     ('PLATFORM/TOKEN_ECONOMY/MESSAGE_CLASSIFIER', '1.0.0', 'TOKEN_ECONOMY', 'MESSAGE_CLASSIFIER', 'PLATFORM_INTERNAL', 'architecture/reference/prompts/trading-agri-agent-prompts.md', 'C-051; AD-022; DP-020', 'CLASSIFICATION', 'Enterprise Architect', NOW(), TRUE, NOW());
 
+-- Prompt seeds: Signal Intelligence Layer (C-053) + Skill Intelligence Router (C-054) — v0.35.0/v0.36.0
+INSERT INTO institutional.agent_prompt_versions
+    (prompt_id, version, skill_type, pipeline_step, agent_type, prompt_file_path, constitutional_basis, change_type, minimum_model_tier, reviewed_by, reviewed_at, is_active, activated_at)
+VALUES
+    ('DMA/ROUTING/SKILL_INTENT_ROUTER', '1.0.0', 'SKILL_ROUTING', 'INTENT_CLASSIFICATION', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-054; AD-027; DP-023', 'CLASSIFICATION', 'LOCAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('AGRI/ROUTING/SKILL_INTENT_ROUTER', '1.0.0', 'SKILL_ROUTING', 'INTENT_CLASSIFICATION', 'AGRICULTURAL_ADVISOR_INDIA', 'architecture/reference/prompts/README.md', 'C-054; AD-027; DP-023', 'CLASSIFICATION', 'LOCAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('TRADING/ROUTING/SKILL_INTENT_ROUTER', '1.0.0', 'SKILL_ROUTING', 'INTENT_CLASSIFICATION', 'TRADING_FO_CRYPTO', 'architecture/reference/prompts/README.md', 'C-054; AD-027; DP-023', 'CLASSIFICATION', 'LOCAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('DMA/SIGNAL/PROACTIVE_ALERT', '1.0.0', 'SIGNAL_INTELLIGENCE', 'PROACTIVE_ALERT', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-053; AD-026; DP-022', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('AGRI/SIGNAL/PROACTIVE_ALERT', '1.0.0', 'SIGNAL_INTELLIGENCE', 'PROACTIVE_ALERT', 'AGRICULTURAL_ADVISOR_INDIA', 'architecture/reference/prompts/README.md', 'C-053; C-042; AD-026; DP-022', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('TRADING/SIGNAL/PROACTIVE_ALERT', '1.0.0', 'SIGNAL_INTELLIGENCE', 'PROACTIVE_ALERT', 'TRADING_FO_CRYPTO', 'architecture/reference/prompts/README.md', 'C-053; AD-026; DP-022', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('PLATFORM/SIGNAL/ADVISORY_BUNDLE', '1.0.0', 'SIGNAL_INTELLIGENCE', 'ADVISORY_BUNDLE', 'PLATFORM_INTERNAL', 'architecture/reference/prompts/README.md', 'C-053; AD-026', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW());
+
 -- Agent Reasoning Traces — primary AI audit artifact (C-047, AD-008, AD-019)
 -- See architecture/reference/agent-reasoning-trace.md for full spec.
 -- Schema: institutional (WAOOAW IP — not tenant-scoped; queryable by platform ops)
