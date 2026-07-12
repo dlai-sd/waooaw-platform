@@ -1,8 +1,8 @@
 # PROJECT_STATE.md
 
 **Last Updated:** 2026-07-12
-**Version:** 0.40.0
-**Session:** 2026-07-12 — IN PROGRESS (User/Developer/Tester Simulation Runs)
+**Version:** 0.42.0
+**Session:** 2026-07-12 — SESSION CLOSE (Simulation Runs: User + Developer + Tester + 16 gap bridges)
 
 ---
 

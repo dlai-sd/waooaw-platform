@@ -6,7 +6,7 @@
 
 ```
 Founding Corpus v1           Status: Ratified
-Version:                     0.40.0 — User Simulation Runs + Gap Bridges: GAP-D001-006, GAP-T011-015, GAP-A009-013 (2026-07-12)
+Version:                     0.42.0 — User + Developer + Tester Simulation Runs + 16 gap bridges (2026-07-12)
 Current Epoch:               Epoch 1 — Employment
 Current Gate:                G2-G4: PASSED | G5: Prerequisites met
                              ⛔ G5 CLEAR ≠ implementation authorized for any session
