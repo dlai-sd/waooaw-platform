@@ -756,7 +756,7 @@ For each signal type that requires out-of-TRAI-window delivery, declare the HSM 
 
 ### 3.18.5 Constitutional Checklist Addition
 
-- [ ] **C-053 check (Signal Intelligence): Section 3.18 exists OR `signal_intelligence: NOT_APPLICABLE` with reason stated. If applicable: all signal feeds declared with poll cadence. All signal types declared with explicit urgency_class_rule. All CRITICAL signals have `emergency_exempt: true`. PROACTIVE_ALERT prompt exists in Prompt Catalogue. Evidence action type declared for each signal type. HSM templates declared for any out-of-window WhatsApp signals.**
+- [ ] **C-053 check (Signal Intelligence): Section 3.18 exists OR `signal_intelligence: NOT_APPLICABLE` with reason stated. If applicable: all signal feeds declared with poll cadence. All signal types declared with explicit urgency_class_rule. All CRITICAL signals have `emergency_exempt: true`. All CRITICAL signals have `whatsapp_template_category: UTILITY` (CRITICAL signals are service obligations, not marketing — MARKETING template for a constitutional alert = C-053 violation). Multi-signal bundling rule declared or inherits platform default. PROACTIVE_ALERT prompt exists in Prompt Catalogue. Evidence action type declared for each signal type. HSM templates declared for any out-of-window signals.**
 
 ---
 

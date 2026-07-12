@@ -1780,3 +1780,79 @@ VALUES
     ('DMA/CAMPAIGN/SCR_QUALITY_CHECK', '1.0.0', 'SYNTHETIC_CONTENT_REVIEW', 'SCR_QUALITY_CHECK', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-055; C-052; DP-021', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
     ('DMA/CAMPAIGN/CAMPAIGN_DIGEST', '1.0.0', 'CONTENT_STRATEGY', 'CAMPAIGN_DIGEST', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-055; C-037; C-051', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
     ('DMA/PLATFORM/PLATFORM_INTELLIGENCE_RESEARCH', '1.0.0', 'MARKET_RESEARCH', 'PLATFORM_INTELLIGENCE_RESEARCH', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-037; DP-024', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW());
+
+-- ============================================================
+-- Simulation Gap Bridges (v0.40.0)
+-- GAP-T015: Trading session records + slippage tracking
+-- GAP-A013: Farmer price target
+-- GAP-A011: IMD warning ID for PMFBY evidence chain
+-- GAP-D006: SIR multi-skill evidence attribution (parent_request_id)
+-- ============================================================
+
+-- trading_session_records: per-session summary for trading agent (GAP-T015)
+CREATE TABLE business.trading_session_records (
+    id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organisation_id             UUID NOT NULL REFERENCES business.organisations(id),
+    employment_contract_id      UUID NOT NULL REFERENCES business.employment_contracts(id),
+    session_date                DATE NOT NULL,
+    session_start_at            TIMESTAMPTZ NOT NULL,
+    session_end_at              TIMESTAMPTZ,
+    session_type                VARCHAR(20) NOT NULL DEFAULT 'PAAS' CHECK (session_type IN ('PAAS', 'CRYPTO_ADVISORY')),
+    trades_executed             SMALLINT NOT NULL DEFAULT 0,
+    gross_pnl_inr               NUMERIC(12,2) NOT NULL DEFAULT 0,
+    net_pnl_inr                 NUMERIC(12,2) NOT NULL DEFAULT 0,
+    slippage_total_inr          NUMERIC(10,2) NOT NULL DEFAULT 0,   -- GAP-T015: intended vs actual fill
+    slippage_pct_of_gross       NUMERIC(5,3),                        -- slippage as % of gross P&L
+    worst_slippage_trade_id     UUID,                                -- references agent_evidence_records
+    daily_loss_limit_utilization NUMERIC(5,3) NOT NULL DEFAULT 0,   -- 0.0 to 1.0
+    daily_loss_limit_hit        BOOLEAN NOT NULL DEFAULT FALSE,
+    pending_orders_cancelled    SMALLINT NOT NULL DEFAULT 0,         -- GAP-T014: orders cancelled at limit
+    vix_at_session_start        NUMERIC(6,2),
+    vix_regime                  VARCHAR(20) CHECK (vix_regime IN ('LOW','MEDIUM','ELEVATED','HIGH')),
+    position_size_reduction_pct NUMERIC(5,2),                        -- GAP-T011: volatility regime response
+    session_status              VARCHAR(20) NOT NULL DEFAULT 'ACTIVE' CHECK (session_status IN ('ACTIVE','COMPLETED','EMERGENCY_STOPPED','LOSS_LIMIT_HIT')),
+    emergency_stop_at           TIMESTAMPTZ,
+    evidence_record_count       SMALLINT NOT NULL DEFAULT 0,
+    reasoning_trace_id          UUID REFERENCES institutional.agent_reasoning_traces(id),
+    tenant_id                   UUID NOT NULL,
+    created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_trading_session_contract ON business.trading_session_records(employment_contract_id, session_date DESC);
+CREATE INDEX idx_trading_session_date     ON business.trading_session_records(session_date DESC);
+
+-- farmer_profiles: add stated_price_target (GAP-A013)
+-- Note: farmer_profiles table created in earlier migration; adding column here
+ALTER TABLE business.farmer_profiles
+    ADD COLUMN IF NOT EXISTS stated_price_target_inr_per_quintal NUMERIC(8,2),
+    ADD COLUMN IF NOT EXISTS price_target_updated_at TIMESTAMPTZ;
+
+-- weather_alert_log: add IMD warning reference (GAP-A011)
+-- Note: weather_alert_log table created in agricultural advisor spec; adding column here
+ALTER TABLE business.weather_alert_log
+    ADD COLUMN IF NOT EXISTS imd_warning_id VARCHAR(100),
+    ADD COLUMN IF NOT EXISTS imd_warning_fetched_at TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS imd_warning_confirmed BOOLEAN NOT NULL DEFAULT FALSE;
+CREATE INDEX IF NOT EXISTS idx_weather_alert_imd ON business.weather_alert_log(imd_warning_id) WHERE imd_warning_id IS NOT NULL;
+
+-- agent_evidence_records: add parent_request_id for SIR multi-skill attribution (GAP-D006)
+-- Groups all evidence records from a single customer request that triggered SIR multi-skill orchestration
+ALTER TABLE institutional.agent_evidence_records
+    ADD COLUMN IF NOT EXISTS parent_request_id UUID,
+    ADD COLUMN IF NOT EXISTS sir_skill_position SMALLINT;  -- position in SIR execution sequence (1, 2, 3...)
+CREATE INDEX IF NOT EXISTS idx_evidence_parent_request ON institutional.agent_evidence_records(parent_request_id) WHERE parent_request_id IS NOT NULL;
+
+-- signal_bundling_log: tracks multi-signal bundling decisions (GAP-A010)
+CREATE TABLE institutional.signal_bundling_log (
+    id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organisation_id             UUID NOT NULL REFERENCES business.organisations(id),
+    bundle_session_id           UUID NOT NULL,              -- all signals in same bundle share this ID
+    signal_type                 VARCHAR(100) NOT NULL,
+    urgency_class               VARCHAR(20) NOT NULL,
+    bundled_with                UUID[],                     -- other signal IDs in the same bundle
+    bundling_decision           VARCHAR(30) NOT NULL CHECK (bundling_decision IN ('IMMEDIATE_SOLO','HELD_FOR_BUNDLE','DEFERRED_TO_HEARTBEAT')),
+    hold_until                  TIMESTAMPTZ,
+    delivered_at                TIMESTAMPTZ,
+    bundle_message_sent         BOOLEAN NOT NULL DEFAULT FALSE,
+    logged_at                   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_signal_bundle_org ON institutional.signal_bundling_log(organisation_id, logged_at DESC);

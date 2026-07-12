@@ -1,8 +1,8 @@
 # PROJECT_STATE.md
 
 **Last Updated:** 2026-07-12
-**Version:** 0.38.0
-**Session:** 2026-07-12 — SESSION CLOSE (C-053 SIL + C-054 SIR + C-055 Campaign Theme Engine + EA review + merges)
+**Version:** 0.40.0
+**Session:** 2026-07-12 — IN PROGRESS (User/Developer/Tester Simulation Runs)
 
 ---
 

@@ -1322,6 +1322,56 @@ campaign_theme_engine:
     channels: ["PORTAL", "WHATSAPP_TEXT", "EMAIL"]
     prompt: "DMA/CAMPAIGN/CAMPAIGN_DIGEST"
     model_tier: "MID_TIER"
+
+  campaign_approval_ux:
+    # GAP-D002: Campaign approval is a constitutional event — must be explicit
+    portal_ui: "Campaign Brief Card — shows master_theme, target_outcome, platform_mix, weekly_theme_preview"
+    approval_actions:
+      approve_button: "Approve this Campaign"
+        # Creates: CE.RecordEvidence(CAMPAIGN_BRIEF_APPROVED, campaign_id, constitutional_basis="C-055; C-003")
+        # Sets: content_campaigns.status = CUSTOMER_APPROVED
+      change_request_button: "Request Changes"
+        # Customer adds note → agent revises → re-proposes → same approval gate
+    no_response_policy: "Campaign remains DRAFT after 7 days. One reminder sent. No auto-approval."
+    # C-003: implicit approval is constitutionally invalid for campaign-level authority
+
+  kpi_attribution:
+    # GAP-D005: C-049 Honest Limitation Disclosure — appointment bookings not directly measurable
+    measurable_kpis:
+      - metric: "content engagement (likes, saves, shares)"
+        source: "platform-analytics-mcp"
+        accuracy: "HIGH — direct API data"
+      - metric: "website clicks from social"
+        source: "platform-analytics-mcp + google-search-console-mcp"
+        accuracy: "MEDIUM — attributed clicks, not confirmed appointments"
+      - metric: "WhatsApp enquiries from broadcast"
+        source: "whatsapp-business-mcp message logs"
+        accuracy: "HIGH — direct message count"
+    not_measurable_at_mvi:
+      - metric: "actual appointment bookings"
+        reason: "No clinic management system integration (Phase 2 dependency)"
+        c049_disclosure: "I can measure engagement signals accurately. I cannot directly measure appointment bookings unless you connect your clinic system. I'll use engagement signals and your weekly input to estimate monthly results."
+    proxy_kpi: "Weekly intent signals: DMs asking about appointments + WhatsApp enquiries + Google Maps calls"
+    manual_input: "Customer provides weekly booking count via portal ('How many new patients mentioned Instagram/social this week?')"
+
+  youtube_short_audio:
+    # GAP-D004: Audio generation mode for YouTube Shorts
+    phase_1_mode: "CUSTOMER_RECORDS"
+      # Agent generates voice script → sends to customer via portal
+      # Customer records their own voice → uploads via portal
+      # Agent composes video: customer audio + visuals + text overlays
+    phase_2_mode: "AI_VOICE_WITH_CONSENT"
+      # Requires: YOUTUBE_SHORT_VOICE_CONSENT_CONFIRMED (always-ask action)
+      # Customer must approve an AI-generated voice sample before use
+    always_ask_action: "YOUTUBE_SHORT_VOICE_CONSENT_CONFIRMED"
+      # Customer must confirm voice consent each time AI voice is used
+      # Constitutional basis: C-003 (authority for voice use must be licensed)
+
+  platform_intelligence_fallback:
+    # GAP-D001: No competitor data available
+    fallback_basis: "DOMAIN_BENCHMARKS"
+    fallback_disclosure: "I couldn't find your competitors' public profiles — my recommendation is based on what works for dental clinics in Pune, not your specific competitors."
+    competitor_data_available_field: true  # Added to PLATFORM_INTELLIGENCE_RESEARCH output schema
 ```
 
 ```yaml

@@ -457,6 +457,246 @@ adjacent_professional_routing:
 
 ---
 
+## 4.18 Signal Intelligence Layer — Section 3.18 (C-053, v0.40.0)
+
+```yaml
+signal_intelligence:
+  signal_feeds:
+    - feed_id: "MARKET_VOLATILITY"
+      mcp_server: "market-data-mcp"
+      tool_call: "market.get_vix"
+      poll_cadence: "PT1H"
+      relevance_dimension: "session_auto_start = true AND market_open_within_2h AND nse_market_day = true"
+      materiality_classifier: "vix_change_pct_overnight > 20 → HIGH; vix > 25 → CRITICAL; vix_change_pct_overnight > 30 → CRITICAL"
+
+    - feed_id: "BROKER_AUTH_STATUS"
+      mcp_server: "broker-api-mcp"
+      tool_call: "auth.check_token_expiry"
+      poll_cadence: "PT1H"
+      relevance_dimension: "has_active_employment_contract AND broker_connected"
+      materiality_classifier: "token_expires_within_hours <= 5 → CRITICAL always"
+
+  signal_types:
+    - signal_type: "MARKET_VOLATILITY_SPIKE"
+      feed_id: "MARKET_VOLATILITY"
+      skill_id: "SESSION_PREP"
+      urgency_class_rule: "vix_change_pct_overnight > 20 → HIGH; vix > 25 OR vix_change_pct > 30 → CRITICAL"
+      urgency_class: "HIGH"
+      emergency_exempt: false
+      channel: "WHATSAPP"
+      trai_outside_window_behavior: "DEFER"
+      evidence_action_type: "PROACTIVE_SIGNAL_ALERT"
+      note: "Alert informs customer of volatility regime and declares pre-authorized volatility_regime_response action (reduced position size per Decision Space configuration)"
+
+    - signal_type: "BROKER_AUTH_EXPIRY"
+      feed_id: "BROKER_AUTH_STATUS"
+      skill_id: "SESSION_PREP"
+      urgency_class_rule: "token_expires_within_hours <= 5 → CRITICAL always"
+      urgency_class: "CRITICAL"
+      emergency_exempt: true
+      channel: "WHATSAPP"
+      trai_outside_window_behavior: "IMMEDIATE"
+      whatsapp_template_category: "UTILITY"
+      evidence_action_type: "PROACTIVE_SIGNAL_ALERT"
+      note: "BROKER_AUTH_EXPIRY is always CRITICAL — without auth, no session is possible. UTILITY category — not a marketing message."
+
+  materiality_thresholds:
+    critical: 0.90
+    high: 0.70
+    advisory: 0.50
+
+  hsm_templates:
+    - signal_type: "BROKER_AUTH_EXPIRY"
+      template_name: "trading_broker_auth_expiry_v1"
+      template_text: "Hi {{1}}! Your broker connection expires today. Tap to re-authenticate and keep tomorrow's trading session running: {{2}}"
+      whatsapp_template_category: "UTILITY"
+      meta_approval_status: "PENDING"
+```
+
+---
+
+## 4.19 Skill Intelligence Router — Section 3.19 (C-054, v0.40.0)
+
+```yaml
+skill_intelligence_router:
+  router_prompt: "TRADING/ROUTING/SKILL_INTENT_ROUTER"
+  gap_signalling:
+    gap_signal_threshold_days: 30
+    gap_frequency_min: 2
+    cross_customer_threshold: 3
+    evidence_table: "institutional.skill_gap_signals"
+
+  skill_capability_manifests:
+
+    - skill_id: "SESSION_PREP"
+      version: "1.7"
+      intent_signatures:
+        - "how is today looking"
+        - "market outlook before session"
+        - "VIX is high what do we do"
+        - "should we trade today"
+        - "pre-session analysis"
+        - "market conditions today"
+        - "what is the volatility"
+      servable_request_types:
+        PRE_SESSION_BRIEF: "Produces SESSION_PREP analysis: VIX regime, strategy alignment, max position, session recommendation"
+        MARKET_CONTEXT: "Answers question about current market conditions relevant to trading strategy"
+      unservable_request_types:
+        - intent: "execute a trade"
+          routes_to_skill: "TRADE_SETUP"
+        - intent: "session performance today"
+          routes_to_skill: "SESSION_REPORT"
+      input_requirements:
+        required: ["market-data-mcp.vix", "market-data-mcp.nifty_level"]
+        optional: ["broker-api-mcp.open_positions", "decision_space.volatility_regime_response"]
+      output_contributions:
+        - type: "session_context"
+          used_by: ["TRADE_SETUP", "LOSS_LIMIT_MANAGEMENT"]
+      collaboration_affinities:
+        - with_skill: "TRADE_SETUP"
+          relationship: "UPSTREAM"
+          benefit: "Session regime context (VIX, market direction) constrains trade setup parameters"
+
+    - skill_id: "TRADE_SETUP"
+      version: "1.7"
+      intent_signatures:
+        - "what trade should I take"
+        - "options strategy for today"
+        - "NIFTY trade idea"
+        - "should we enter now"
+        - "add to position"
+        - "entry signal"
+        - "what is the setup"
+      servable_request_types:
+        TRADE_RECOMMENDATION: "Produces TRADE_SETUP: entry, target, stop, size, constitutional basis for the recommended trade"
+        POSITION_ASSESSMENT: "Evaluates whether to add to an existing position"
+      unservable_request_types:
+        - intent: "performance this month"
+          routes_to_skill: "SESSION_REPORT"
+        - intent: "stop all trading today"
+          routes_to_skill: "LOSS_LIMIT_MANAGEMENT"
+      input_requirements:
+        required: ["session_prep.session_context", "broker-api-mcp.current_positions", "decision_space.daily_loss_limit"]
+        optional: ["market-data-mcp.option_chain"]
+      output_contributions:
+        - type: "trade_recommendation"
+          used_by: []
+      collaboration_affinities:
+        - with_skill: "SESSION_PREP"
+          relationship: "DOWNSTREAM"
+          benefit: "Trade setup uses session regime context — elevated VIX means smaller position sizes"
+        - with_skill: "LOSS_LIMIT_MANAGEMENT"
+          relationship: "BIDIRECTIONAL"
+          benefit: "Trade setup checks remaining daily budget before recommending; loss limit monitors all executed trades"
+
+    - skill_id: "LOSS_LIMIT_MANAGEMENT"
+      version: "1.7"
+      intent_signatures:
+        - "daily limit status"
+        - "how much have I lost today"
+        - "remaining trading budget"
+        - "are we near the limit"
+        - "risk status now"
+        - "stop trading today"
+      servable_request_types:
+        RISK_STATUS: "Reports current session P&L, remaining daily limit, open position exposure"
+        HALT_TRADING: "Executes daily loss limit halt: cancel pending entry orders, notify customer, create evidence record"
+      unservable_request_types:
+        - intent: "new trade entry"
+          routes_to_skill: "TRADE_SETUP"
+      input_requirements:
+        required: ["broker-api-mcp.positions_pnl", "decision_space.daily_loss_limit"]
+        optional: []
+      output_contributions:
+        - type: "risk_status"
+          used_by: ["TRADE_SETUP", "SESSION_PREP"]
+      collaboration_affinities:
+        - with_skill: "TRADE_SETUP"
+          relationship: "BIDIRECTIONAL"
+          benefit: "Every trade proposal must check remaining loss limit; loss limit monitors every filled trade"
+
+    - skill_id: "SESSION_REPORT"
+      version: "1.7"
+      intent_signatures:
+        - "how did we do today"
+        - "session summary"
+        - "P&L for the session"
+        - "what happened this session"
+        - "session report"
+        - "trades executed today"
+        - "performance this session"
+      servable_request_types:
+        SESSION_SUMMARY: "Produces end-of-session report: P&L, trades, slippage, strategy alignment, loss limit utilization"
+        PERFORMANCE_QUERY: "Answers specific performance question about the current or previous session"
+      unservable_request_types:
+        - intent: "monthly performance"
+          routes_to_skill: null
+        - intent: "new trade"
+          routes_to_skill: "TRADE_SETUP"
+      input_requirements:
+        required: ["institutional.agent_evidence_records (session trades)", "business.trading_session_records"]
+        optional: ["broker-api-mcp.final_positions"]
+      output_contributions:
+        - type: "session_performance_record"
+          used_by: []
+      collaboration_affinities:
+        - with_skill: "LOSS_LIMIT_MANAGEMENT"
+          relationship: "DOWNSTREAM"
+          benefit: "Session report includes final loss limit utilization from risk management tracking"
+```
+
+---
+
+## 4.20 Volatility Regime Response (Decision Space Extension — GAP-T011)
+
+The trading agent's Decision Space includes a `volatility_regime_response` configuration that pre-authorizes the agent to reduce position sizes when market volatility exceeds a declared threshold. This eliminates the need for ad-hoc approval at the moment of volatility detection.
+
+```yaml
+volatility_regime_response:
+  high_vix_threshold: 18.0        # VIX above this = ELEVATED regime
+  critical_vix_threshold: 25.0    # VIX above this = HIGH regime
+  elevated_regime_action:
+    position_size_reduction_pct: 50   # reduce all new positions to 50% of normal size
+    skip_session: false               # still trade, but smaller
+    notify_customer: true             # send pre-session alert (informational)
+  high_regime_action:
+    position_size_reduction_pct: 75   # reduce all new positions to 25% of normal size
+    skip_session: false
+    notify_customer: true
+  customer_override: true             # customer can override by replying to the pre-session alert
+```
+
+This configuration is set during onboarding and stored in the employment contract's Decision Space JSON. The SIL `MARKET_VOLATILITY_SPIKE` signal triggers the pre-session alert; the agent uses `volatility_regime_response` to determine its action without waiting for customer input.
+
+---
+
+## 4.21 Daily Loss Limit Hit Protocol (GAP-T014)
+
+When CE.ValidateAction returns DENY due to daily loss limit breach, the agent executes the following sequence immediately (before creating the evidence record):
+
+```
+1. broker-api-mcp: order.cancel_all_pending(session_id)
+   → Cancels all entry orders that have NOT yet filled
+   → Stop-loss orders remain active (they are passive broker-side orders)
+   → Records: orders_cancelled count in trading_session_records
+
+2. Record race condition: if any order filled AFTER limit was detected:
+   → actual_loss = sum of all filled orders
+   → report actual_loss in SESSION_REPORT (may exceed stated limit by fill slippage)
+
+3. CE.RecordEvidence(BUDGET_CEILING_REACHED):
+   → action_type: TRADING_SESSION_HALTED
+   → evidence includes: daily_loss_at_halt, orders_cancelled, open_positions_snapshot
+
+4. Customer notification (WhatsApp):
+   → "I've reached your ₹16,000 daily limit. I've stopped trading and cancelled 
+      N pending orders. Your open positions are: [summary]. 
+      Positions remain open — you decide whether to close them. 
+      [See portal for full session report]"
+```
+
+---
+
 ## 5. Emergency Stop — Trading-Specific Requirements
 
 The Emergency Stop for a trading agent has additional urgency: an active PAAS session may have open positions with real-time P&L exposure.
