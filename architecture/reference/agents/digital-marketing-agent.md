@@ -295,39 +295,92 @@ PLATFORM CONTENT VARIANTS (Week 2 example):
 ### Skill 4: Instagram Content Creation & Publishing
 
 **Skill type:** `INSTAGRAM_MARKETING`
-**Business KPI:** Instagram-attributed appointment enquiries per month (tracked via link in bio / WhatsApp click)
+**Business KPI:** Instagram-attributed appointment enquiries per month + Reel average play rate (%) + carousel average saves per post
 **Execution model:** Per Section 3.14.1 approval modes; in CAMPAIGN_APPROVAL/CAMPAIGN_AUTO: SCR governs, not per-post customer approval
 
 **Decision Space:**
-- **Authorized:** Create captions; generate post images; design stories; create reels from provided assets; schedule posts; respond to comments (generic, pre-approved response templates only); manage highlights; use approved hashtags
+- **Authorized:** Create captions; generate post images; design stories; create reels (script + visuals + hook); create carousel posts (multi-slide educational content); schedule posts; respond to comments (generic, pre-approved response templates only); manage highlights; use approved hashtags; propose collab post opportunities with complementary local businesses
 - **Prohibited:** Post without customer approval; share patient/client photos without written consent; make pricing claims; post competitor comparisons; access direct messages (privacy boundary)
-- **Always-ask:** Publishing a reel (higher commitment content); using a new hashtag set not in the approved list; posting during off-schedule times; responding to a comment with specific clinical advice; **using any patient or client image — customer must confirm `PATIENT_IMAGE_CONSENT_CONFIRMED` with the specific image reference before the image may be used in any post (creates a constitutional evidence record)**
+- **Always-ask:** Publishing a reel (higher commitment content); using a new hashtag set not in the approved list; posting during off-schedule times; responding to a comment with specific clinical advice; **using any patient or client image — customer must confirm `PATIENT_IMAGE_CONSENT_CONFIRMED`; proposing a collab with a specific external business (customer must approve the partner)**
+
+**Reels Hook Optimization (P1 — algorithm reach multiplier):**
+```
+The first 3 seconds determine whether Instagram shows the reel to non-followers.
+Every reel requires a declared hook before the script.
+
+Hook formula (one of these patterns):
+  QUESTION HOOK:  "Is [common dental fear] holding you back from..."
+  SHOCK HOOK:     "Most people don't know this about their teeth..."
+  STORY HOOK:     "A patient walked in last month with [situation]..."
+  PROMISE HOOK:   "In 60 seconds, I'll show you exactly how [procedure] works"
+  CONTROVERSY:    "Dentists are not supposed to tell you this, but..."
+
+Reels production checklist:
+  ✓ Hook declared (first 3 seconds — text overlay + verbal)
+  ✓ Pacing: cut every 2-3 seconds for healthcare content (short attention window)
+  ✓ Captions in first frame for muted viewing (70% of Reels watched without sound)
+  ✓ Trending audio: agent checks audio.get_trending via scheduling-mcp weekly
+  ✓ CTA at end: one clear action (tap link in bio / WhatsApp us / book now)
+  ✓ No talking head for full 60 seconds — cut to B-roll, graphics, or text at least 3 times
+```
+
+**Carousel Posts (P2 — 3× more saves than single images):**
+```
+Carousel use cases for dental clinic:
+  Educational: "5 Signs You Need a Root Canal" (slide 1: hook → slides 2-5: one sign each → slide 6: CTA)
+  Before/After: illustrated before/after of procedure with explanation of each step
+  Myth vs Fact: "5 Dental Myths Busted" (myth on left slide, fact on right slide — pairs work well)
+  How-to: "How to Brush Correctly in 4 Steps" (step per slide)
+
+Carousel structure:
+  Slide 1 (Cover): HOOK — must make viewer swipe. Bold typography, single clear message.
+  Slides 2-N: Content — consistent design template, progress indicator.
+  Last slide: CTA — "Save this" + booking link in caption.
+
+carousel.publish added to MCP tools (instagram-mcp supports multi-image posts).
+```
+
+**Story Sequences (P1 — 40-60% higher engagement than standalone stories):**
+```
+Instead of isolated stories, produce 3-5 connected story sequences with narrative arc:
+  Example: "What happens at your first visit" story sequence:
+    Story 1: "Have you ever wondered what happens at a dental checkup?" [Poll: Nervous / Curious]
+    Story 2: "Here's exactly what we do in the first 5 minutes..." [B-roll of reception welcome]
+    Story 3: "The examination — what we check and why" [Illustrated or short clip]
+    Story 4: "The conversation — no judgment, ever" [Dentist speaking to camera]
+    Story 5: "Ready to see for yourself?" [Link sticker to booking page]
+```
 
 **RAG Sources:**
 | Tier | Knowledge | Retrieved for |
 |---|---|---|
-| 1 — Domain | Instagram algorithm patterns for healthcare India 2026 | Optimal post format and timing |
-| 1 — Domain | Hashtag performance data for dental/beauty practices India | Hashtag selection |
-| 1 — Domain | Healthcare content compliance guidelines | Caption compliance |
-| 2 — Customer | Brand voice embeddings (Dr. Mehta's aesthetic, Sana's style) | Content tone and style |
-| 2 — Customer | Previous approved posts (embeddings) | Consistency and variation |
+| 1 — Domain | Instagram algorithm patterns for healthcare India 2026 (Reels, carousels, stories ranking) | Optimal format selection, hook effectiveness |
+| 1 — Domain | Hashtag performance data for dental/beauty practices India (by follower tier) | Hashtag selection |
+| 1 — Domain | Healthcare content compliance guidelines (MCI, ASCI) | Caption compliance |
+| 1 — Domain | Reels hook formulas by domain and engagement intent | Hook writing for each Reel |
+| 2 — Customer | Brand voice embeddings | Content tone and style |
+| 2 — Customer | Previous approved posts + performance (saves, reach, CTR) | Learning what works for this customer |
 | 2 — Customer | Rejected posts and rejection reasons | Avoid repeating mistakes |
-| 3 — Platform | What caption formats drive enquiries for dental/beauty in Pune/Mumbai | Effectiveness optimization |
+| 3 — Platform | Reel play rates, carousel save rates, story completion rates for dental/beauty (anonymised) | Format and length optimization |
 
 **MCP Tools:**
 | Tool | MCP Server | Action | Authorization | Failure |
 |---|---|---|---|---|
 | Create post | image-generation-mcp | image.generate | `INSTAGRAM_POST` authorized | DEGRADABLE (text-only fallback) |
 | Create reel | video-generation-mcp | video.compose_reel | `INSTAGRAM_REEL` authorized | DEGRADABLE |
-| Publish post | instagram-mcp | post.publish | `INSTAGRAM_POST` authorized + customer APPROVED | REQUIRED |
-| Publish story | instagram-mcp | story.publish | `INSTAGRAM_STORY` authorized + customer APPROVED | DEGRADABLE |
+| **Create carousel** | **image-generation-mcp** | **image.generate_carousel_slides** | **`INSTAGRAM_CAROUSEL` authorized** | **DEGRADABLE** |
+| **Publish carousel** | **instagram-mcp** | **carousel.publish** | **`INSTAGRAM_CAROUSEL` authorized + APPROVED** | **REQUIRED** |
+| Publish post | instagram-mcp | post.publish | `INSTAGRAM_POST` authorized + APPROVED | REQUIRED |
+| Publish story | instagram-mcp | story.publish | `INSTAGRAM_STORY` authorized + APPROVED | DEGRADABLE |
+| **Get trending audio** | **scheduling-mcp** | **audio.get_trending** | **`INSTAGRAM_REEL` authorized (read-only)** | **DEGRADABLE** |
 | Schedule post | scheduling-mcp | calendar.schedule_post | `INSTAGRAM_POST` authorized | REQUIRED |
 | Read insights | platform-analytics-mcp | instagram.get_insights | Always authorized (read-only) | DEGRADABLE |
 
 **Constitutional constraints:**
 - No post may be published without an explicit customer APPROVAL evidence record
-- No patient/client images may be generated or posted without consent confirmation from the customer in the evidence record
-- Response to comments must use pre-approved templates only — the agent may NOT engage clinically via comments
+- No patient/client images may be generated or posted without consent confirmation (PATIENT_IMAGE_CONSENT_CONFIRMED evidence record)
+- Every Reel must have a declared hook in the content brief before video generation begins — a hookless Reel is a production failure, not a constitutional violation, but it wastes the customer's budget
+- Response to comments: pre-approved templates only — agent may NOT engage clinically via comments
 
 ---
 
@@ -538,22 +591,67 @@ The `whatsapp-business-mcp` serves BOTH types but uses different credentials: WA
 ### Skill 8: Video & Visual Content Creation
 
 **Skill type:** `VIDEO_CONTENT_CREATION`
-**Business KPI:** Video-content-attributed enquiries + content completion rate (customers who watch >50% of video)
+**Business KPI:** Video-content-attributed enquiries + YouTube channel subscriber growth + average video view duration (%)
 **Execution model:** APPROVAL_GATE (all video content approved before publishing)
 
 **Decision Space:**
-- **Authorized:** Create short-form video scripts; generate video from approved script; edit provided footage; create reels; produce before/after gallery posts (beauty); create educational dental content animations
-- **Prohibited:** Use patient/client images without explicit consent; create content making clinical outcome guarantees; generate AI deepfakes of real people; generate AI images that create false impressions about actual results, actual people at the customer's premises, or actual equipment/facilities that do not exist at the customer's location (GAP-015 — India advertising standards)
-- **Always-ask:** Using real clinic/salon footage provided by customer (asset authorization step); publishing video to YouTube (new platform — requires Decision Space extension); **using any patient or client image or footage — customer must confirm `PATIENT_IMAGE_CONSENT_CONFIRMED` with the specific asset reference before it may be used (constitutional evidence record required)**
+- **Authorized:** Create short-form video scripts with structured hooks; generate video from approved script; edit provided footage; create reels; produce before/after gallery posts (beauty); create educational dental content animations; **optimize YouTube channel (description, playlists, about section, channel art brief, video SEO per upload)**; create consistent video series concepts; write YouTube video titles using SEO formula; write YouTube video descriptions (250+ words, keyword-rich); create chapter markers for longer YouTube videos; recommend thumbnail A/B test concepts
+- **Prohibited:** Use patient/client images without explicit consent; create content making clinical outcome guarantees; generate AI deepfakes of real people; generate AI images that create false impressions about the clinic's actual facilities or results (GAP-015)
+- **Always-ask:** Using real clinic/salon footage provided by customer; publishing video to YouTube (new platform — requires YouTube channel connection); using any patient or client image or footage; recording voice using AI voice (requires YOUTUBE_SHORT_VOICE_CONSENT_CONFIRMED)
+
+**YouTube Channel Optimization (P1):**
+```
+One-time setup (when YouTube is added to platform mix):
+  Channel name: "[Clinic Name] | [City]" — local keyword in channel name
+  Channel description (2,000 chars): practice intro + services + location + hours
+    Keyword placement: primary keywords in first 100 chars
+  Channel art: branded header with clinic address + phone + website + hours overlay
+  About section: structured with links to website + WhatsApp + booking
+  Channel trailer: 60-90 second "Why choose us" video — auto-plays for new visitors
+  
+Playlists (organized content library):
+  1. "Dental Procedures Explained" — educational procedure videos
+  2. "Dental Tips" — quick tips (under 2 minutes each)
+  3. "Meet Our Team" — humanizing content
+  4. "Patient FAQs" — answers to top questions (feeds GBP Q&A too)
+
+YouTube SEO per video:
+  Title formula: "[Question/Keyword] — [Answer/Clinic Identifier]"
+    Example: "Is Root Canal Painful? An Honest Answer from a Pune Dentist"
+    NOT: "Root Canal at Dr. Mehta's Clinic October 2026"
+  Description structure:
+    First 150 chars: primary keyword + CTA (visible without clicking "more")
+    Lines 150-500: content summary + secondary keywords
+    Lines 500+: full transcript excerpt + links + location + hours
+  Tags: 5-8 specific tags (include misspellings of medical terms)
+  End screen: channel subscription + related video at 0:15 from end
+  Cards: link to website at relevant moment in video
+  Chapters/timestamps: for videos over 3 minutes
+```
+
+**Consistent Video Series Framework (P1):**
+```
+A named series builds subscription habit. Agent proposes series for each active channel.
+Example series for dental clinic:
+  "1-Minute Dental Truth" (weekly Shorts): myth-busting in under 60 seconds
+  "Meet [Staff Name]" (monthly): humanizing the team
+  "Before & After Breakdown" (monthly): illustrated procedure journey
+  "Ask Dr. Mehta" (biweekly): answering real patient questions
+
+Series naming: memorable + brand-consistent + descriptive
+Series thumbnail: consistent template per series (colour + font + position of elements)
+```
 
 **RAG Sources:**
 | Tier | Knowledge | Retrieved for |
 |---|---|---|
-| 1 — Domain | Short-form video performance data for healthcare India | Script and format guidance |
-| 1 — Domain | Healthcare video content regulations India | Compliance checking |
-| 2 — Customer | Customer's visual identity (colors, fonts, tone) | Brand consistency |
-| 2 — Customer | Previously approved video scripts and performance | Script style learning |
-| 3 — Platform | What video formats drive enquiries for dental/beauty | Format optimization |
+| 1 — Domain | Short-form video performance data for healthcare India 2026 | Script and format guidance, hook effectiveness |
+| 1 — Domain | YouTube SEO for local business and healthcare India | Title formula, description structure, tags |
+| 1 — Domain | Healthcare video content regulations India (MCI, ASCI) | Compliance checking |
+| 1 — Domain | YouTube channel optimization best practices | Channel setup + playlist architecture |
+| 2 — Customer | Customer's visual identity (colors, fonts, tone) | Brand consistency across videos |
+| 2 — Customer | Previously approved video scripts and performance (views, watch time) | Script style learning |
+| 3 — Platform | Video formats and series that drive enquiries for dental/beauty (anonymised) | Format and length optimization |
 
 **MCP Tools:**
 | Tool | MCP Server | Action | Authorization | Failure |
@@ -561,6 +659,10 @@ The `whatsapp-business-mcp` serves BOTH types but uses different credentials: WA
 | Generate video | video-generation-mcp | video.generate_from_script | `VIDEO_CONTENT` authorized + APPROVED | DEGRADABLE (image fallback) |
 | Edit footage | video-generation-mcp | video.edit_clips | `VIDEO_CONTENT` authorized + APPROVED | DEGRADABLE |
 | Publish reel | instagram-mcp | reel.publish | `INSTAGRAM_REEL` authorized + APPROVED | REQUIRED |
+| **Publish YouTube video** | **youtube-mcp** | **video.upload** | **`YOUTUBE_VIDEO` authorized + APPROVED** | **DEGRADABLE** |
+| **Update YouTube channel** | **youtube-mcp** | **channel.update_metadata** | **`YOUTUBE_CHANNEL_SETUP` authorized + APPROVED (one-time)** | **DEGRADABLE** |
+| **Create YouTube playlist** | **youtube-mcp** | **playlist.create** | **`YOUTUBE_CHANNEL_SETUP` authorized + APPROVED** | **DEGRADABLE** |
+| **Get YouTube analytics** | **youtube-mcp** | **analytics.get_video_stats** | **Always authorized (read-only)** | **DEGRADABLE** |
 
 ---
 
@@ -878,21 +980,46 @@ skill_capability_manifest:
 ### Skill 12: Conversion Optimisation
 
 **Skill type:** `CONVERSION_OPTIMISATION`
-**Business KPI:** Conversion rate on key landing pages (visitors → enquiry/booking action) per month
+**Business KPI:** Conversion rate on key landing pages (visitors → enquiry/booking action) per month + WhatsApp/phone click rate from website
 **Execution model:** `APPROVAL_GATE` for any website or landing page changes; `PRE_AUTHORIZED` for analysis and recommendations
 **Phase activation:** Phase 3 (Maturity Phase) — activated at Score 5+
 
 **Customer need solved:** 🛒 Traffic But No Sales
 
 **Decision Space:**
-- **Authorized:** Analyse landing page performance (bounce rate, scroll depth, CTA click rate via analytics); identify conversion blockers; recommend landing page copy, layout, and CTA improvements; create A/B test variants for approval; analyse booking funnel drop-off; recommend form optimisation; analyse WhatsApp/phone click rates from website
+- **Authorized:** Analyse landing page performance (bounce rate, scroll depth, CTA click rate via analytics); identify conversion blockers; recommend landing page copy, layout, and CTA improvements; **recommend WhatsApp chat widget installation (highest-converting CTA for Indian SMBs)**; create A/B test variants for approval; analyse booking funnel drop-off; recommend form optimisation; analyse WhatsApp/phone click rates from website; recommend social proof placement (testimonials, review count, certification badges); generate UTM parameter scheme for cross-channel attribution
 - **Prohibited:** Make changes to live website without approval; run A/B tests without customer confirming the testing tool is installed; make UX changes that remove existing customer testimonials or social proof without replacement
 - **Always-ask:** Implementing a new booking or enquiry form (involves data collection — requires customer review); making changes to pricing or service pages; adding a new tracking pixel
+
+**WhatsApp Chat Widget (P1 — highest-converting CTA for Indian SMBs):**
+```
+First recommendation for any clinic without online booking system.
+A floating "Chat on WhatsApp" button in the bottom-right of the website converts at
+2-4× the rate of a "Call Now" button for Indian patients.
+
+Implementation options (agent recommends in order of ease):
+  Option A: WhatsApp Business API link (wa.me/[number]?text=[pre-filled text])
+    → Customer pastes a 3-line HTML snippet into their website footer
+    → Zero cost, works instantly
+    → Pre-filled text: "Hi, I'd like to book a dental appointment"
+    
+  Option B: WhatsApp widget service (Tidio, WATI, Interakt)
+    → Small monthly cost (~₹500-2,000/month)
+    → Includes chat history, away messages, quick replies
+    → Agent recommends when customer volume justifies it
+
+UTM Attribution Scheme (P1 — know which channel drives appointments):
+  All links shared by the agent use UTM parameters:
+    ?utm_source=[platform]&utm_medium=[content_type]&utm_campaign=[campaign_name]
+  This allows Google Analytics to attribute traffic to the correct channel.
+  Example: Instagram link in bio → ?utm_source=instagram&utm_medium=social&utm_campaign=oct_preventive
+```
 
 **RAG Sources:**
 | Tier | Knowledge | Retrieved for |
 |---|---|---|
 | 1 — Domain | CRO best practices for healthcare appointment booking India | Optimisation recommendations |
+| 1 — Domain | WhatsApp Business engagement patterns for India healthcare websites | WhatsApp CTA recommendations |
 | 1 — Domain | Mobile UX patterns for local medical/beauty services | Mobile conversion recommendations |
 | 2 — Customer | Customer's analytics data (bounce rate, funnel, CTAs) | Diagnosis |
 | 2 — Customer | Previous A/B test results and approved changes | Learning |
@@ -909,6 +1036,7 @@ skill_capability_manifest:
 **Constitutional constraints:**
 - No live website changes without approval evidence in the record
 - A/B tests on booking forms require explicit customer sign-off on what data will be collected
+- WhatsApp widget recommendation includes both options with accurate cost information — agent may not recommend only the paid option if free option serves the customer's needs (C-048 non-exploitation)
 
 ---
 
@@ -1626,7 +1754,35 @@ campaign_theme_engine:
     prompt: "DMA/CAMPAIGN/CAMPAIGN_DIGEST"
     model_tier: "MID_TIER"
 
-  campaign_approval_ux:
+  content_shot_list:
+    # P1: Photo/Asset planning — eliminates "can't post because no photo" failure
+    # Every campaign brief includes a monthly shot list for the customer
+    cadence: "Monthly — delivered with Campaign Brief"
+    prompt: "DMA/CONTENT/PHOTO_SHOT_LIST"
+    model_tier: "MID_TIER"
+    structure: |
+      Shot list for [Month] — [Clinic Name]
+      "This month's campaign theme is '[Theme]'. Here are the photos you'll need.
+       Each takes less than 5 minutes to shoot on your phone."
+
+      WEEK 1 PHOTOS (needed by [date]):
+        📸 Photo 1: [Specific subject + exact framing description]
+           "Stand at the reception desk. Ask your receptionist to smile at the camera.
+            Natural lighting, no flash. Horizontal (landscape) format."
+        📸 Photo 2: [Second photo]
+
+      WEEK 2 PHOTOS (needed by [date]):
+        📸 [etc.]
+
+      OPTIONAL this month (bonus if you have time):
+        📸 Team group photo in reception area
+    
+    principles:
+      - Every shot description is specific enough to execute without a photographer
+      - Phone-friendly: all shots described for smartphone camera
+      - Timed to campaign needs: shot due 1 week before the content that uses it
+      - No patient faces without PATIENT_IMAGE_CONSENT_CONFIRMED
+
     # GAP-D002: Campaign approval is a constitutional event — must be explicit
     portal_ui: "Campaign Brief Card — shows master_theme, target_outcome, platform_mix, weekly_theme_preview"
     approval_actions:

@@ -2081,3 +2081,21 @@ CREATE TABLE business.patient_reactivation_log (
     tenant_id                   UUID NOT NULL
 );
 CREATE INDEX idx_reactivation_org ON business.patient_reactivation_log(organisation_id, reactivation_sent_at DESC);
+
+-- Prompt seeds: DMA Skill Deepening P0+P1 (v0.46.0)
+INSERT INTO institutional.agent_prompt_versions
+    (prompt_id, version, skill_type, pipeline_step, agent_type, prompt_file_path, constitutional_basis, change_type, minimum_model_tier, reviewed_by, reviewed_at, is_active, activated_at)
+VALUES
+    ('DMA/GBP/QA_SEEDING', '1.0.0', 'GOOGLE_BUSINESS_PROFILE', 'QA_SEEDING', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-037', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('DMA/WHATSAPP/REVIEW_REQUEST', '1.0.0', 'WHATSAPP_BUSINESS', 'REVIEW_REQUEST', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-037; C-048', 'BEHAVIOURAL', 'LOCAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('DMA/WHATSAPP/PATIENT_REACTIVATION', '1.0.0', 'WHATSAPP_BUSINESS', 'PATIENT_REACTIVATION', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-037; C-048', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('DMA/WHATSAPP/POST_TREATMENT_CHECKIN', '1.0.0', 'WHATSAPP_BUSINESS', 'POST_TREATMENT_CHECKIN', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-037', 'BEHAVIOURAL', 'LOCAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('DMA/WHATSAPP/WELCOME_SEQUENCE', '1.0.0', 'WHATSAPP_BUSINESS', 'WELCOME_SEQUENCE', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-039', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('DMA/SEO/KEYWORD_RESEARCH_FOR_BLOG', '1.0.0', 'LOCAL_SEO', 'KEYWORD_RESEARCH_FOR_BLOG', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-037', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('DMA/SEO/BLOG_POST_CONTENT', '1.0.0', 'LOCAL_SEO', 'BLOG_POST_CONTENT', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-037; C-048; C-055', 'BEHAVIOURAL', 'FRONTIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('DMA/SEO/SCHEMA_MARKUP_GENERATION', '1.0.0', 'LOCAL_SEO', 'SCHEMA_MARKUP_GENERATION', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-037', 'BEHAVIOURAL', 'LOCAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('DMA/INSTAGRAM/REELS_HOOK', '1.0.0', 'INSTAGRAM_MARKETING', 'REELS_HOOK', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-052; C-055', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('DMA/INSTAGRAM/CAROUSEL_CONTENT', '1.0.0', 'INSTAGRAM_MARKETING', 'CAROUSEL_CONTENT', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-052; C-055', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('DMA/YOUTUBE/CHANNEL_OPTIMIZATION', '1.0.0', 'VIDEO_CONTENT_CREATION', 'CHANNEL_OPTIMIZATION', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-037', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('DMA/CONTENT/PHOTO_SHOT_LIST', '1.0.0', 'CONTENT_STRATEGY', 'PHOTO_SHOT_LIST', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-055', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('DMA/GBP/SERVICES_MENU_UPDATE', '1.0.0', 'GOOGLE_BUSINESS_PROFILE', 'SERVICES_MENU_UPDATE', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-037', 'BEHAVIOURAL', 'LOCAL', 'Enterprise Architect', NOW(), TRUE, NOW());
