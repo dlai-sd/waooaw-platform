@@ -1,8 +1,8 @@
 # PROJECT_STATE.md
 
 **Last Updated:** 2026-07-12
-**Version:** 0.48.0
-**Session:** 2026-07-12 — SESSION CLOSE (C-058 Video Brief Primacy, DP-025 Expert Consultative Communication, Three-Track Video Architecture, Digital Twin, Brief-First Workflow)
+**Version:** 0.48.1
+**Session:** 2026-07-12 — SESSION CLOSE (Video API dependency register, DP-025 Professional Vocabulary Standard, domain-adaptive vocabulary guide for 7 business domains)
 
 ---
 

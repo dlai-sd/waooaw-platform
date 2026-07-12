@@ -6,7 +6,7 @@
 
 ```
 Founding Corpus v1           Status: Ratified
-Version:                     0.48.0 — C-058 Video Brief Primacy + DP-025 Expert Consultative Communication + Three-Track Video + Digital Twin (2026-07-12)
+Version:                     0.48.1 — Founder dependency register (4 video APIs) + DP-025 Professional Vocabulary Standard per domain (2026-07-12)
 Current Epoch:               Epoch 1 — Employment
 Current Gate:                G2-G4: PASSED | G5: Prerequisites met
                              ⛔ G5 CLEAR ≠ implementation authorized for any session

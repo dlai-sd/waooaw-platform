@@ -82,7 +82,11 @@
 
 | Dependency | Type | Status | Founder Action Required |
 |---|---|---|---|
-| `video-generation-mcp` | AI video generation (Sora / Runway / Kling) | ⚠️ stub only | 🔴 **Provider selection + API access.** Sora (OpenAI) is invitation-only at time of writing. Runway ML or Kling AI are alternatives. Monthly cost: highly variable. **Founder decision required on provider and budget ceiling.** |
+| `video-generation-mcp` | AI video generation — **DECIDED v0.48.0: Three-Track Architecture** | ⚠️ stub only | **Provider decision made. Four separate MCPs now specified:** |
+| `image-to-video-mcp` | Kling AI 2.0 — Track 1 Photo-to-Video | ⚠️ stub only | 🔴 **KLING_AI_API_KEY required.** Self-serve at klingai.com. Approx $10/month for DMA MVI volume (~₹840/month). |
+| `avatar-generation-mcp` | HeyGen 2.0 — Track 2 Digital Twin avatar | ⚠️ stub only | 🔴 **HEYGEN_API_KEY required.** Self-serve at heygen.com. Creator plan $29/month (~₹2,430). Covers 3 min avatar video/month — sufficient for MVI. |
+| `voice-clone-mcp` | ElevenLabs Turbo v2 — Track 2 voice cloning | ⚠️ stub only | 🔴 **ELEVENLABS_API_KEY required.** Self-serve at elevenlabs.io. Starter plan $5/month (~₹420). 30,000 chars/month, voice cloning included. |
+| `text-to-video-mcp` | Runway ML Gen-3 Alpha — Track 3 generative brand video | ⚠️ stub only | 🔴 **RUNWAYML_API_KEY required.** Self-serve at runwayml.com. Standard plan $15/month (~₹1,260). 625 credits = ~100 seconds of generated video. |
 
 ### Skill 9 — Performance Analytics
 
@@ -239,6 +243,7 @@
 | 10 | ICAR content strategy decision (public PDFs vs. formal partnership) | Agricultural | Partnership: negotiation needed |
 | 11 | NBSS&LUP soil data access | Agricultural | Free (public domain) |
 | 12 | SEBI compliance review of PAAS advisory model | Trading | Legal cost (one-time) |
+| **13** | **Video generation API keys — 4 self-serve signups (v0.48.0):** Kling AI (klingai.com ~$10/mo), HeyGen (heygen.com $29/mo), ElevenLabs (elevenlabs.io $5/mo), Runway ML (runwayml.com $15/mo) | **DMA Skill 8 — Three-Track Video** | **~$59/month (~₹5,000/month) total platform cost. Self-serve, no lead time.** |
 
 ### Platform Engineering Actions (Not Founder — Before Simulation)
 
@@ -291,7 +296,11 @@
 | `ZERODHA_API_SECRET` | Kite Connect | Trading | 🔴 |
 | `IMD_API_KEY` | IMD Weather | Agricultural | 🔴 Free, needs registration |
 | `DATA_GOV_IN_API_KEY` | Agmarknet / data.gov.in | Agricultural | ⚠️ Free — register at data.gov.in |
-| `IMAGE_GENERATION_API_KEY` | DALL-E or Stability AI | DMA Skill 3 | 🔴 Provider decision pending |
+| `IMAGE_GENERATION_API_KEY` | DALL-E or Stability AI | DMA Skill 3 static images | 🔴 Provider decision pending (separate from video MCPs) |
+| `KLING_AI_API_KEY` | Kling AI 2.0 | DMA Skill 8 Track 1 — Photo-to-Video | 🔴 Self-serve at klingai.com. ~$10/month. |
+| `HEYGEN_API_KEY` | HeyGen 2.0 | DMA Skill 8 Track 2 — Digital Twin avatar | 🔴 Self-serve at heygen.com. $29/month (Creator plan). |
+| `ELEVENLABS_API_KEY` | ElevenLabs Turbo v2 | DMA Skill 8 Track 2 — Voice cloning | 🔴 Self-serve at elevenlabs.io. $5/month (Starter plan). |
+| `RUNWAYML_API_KEY` | Runway ML Gen-3 Alpha | DMA Skill 8 Track 3 — Generative brand video | 🔴 Self-serve at runwayml.com. $15/month (Standard plan). |
 | `SEO_API_KEY` | Semrush or Ahrefs | DMA Skill 10 | 🔴 Provider decision pending |
 | `BHASHINI_API_KEY` | Bhashini STT/TTS | Agricultural (optional) | ⚠️ Free — bhashini.gov.in |
 | `AZURE_KEY_VAULT_URL` | Azure Key Vault (ADR-014) | All agents (cloud env) | ⚠️ Azure subscription required |
