@@ -417,3 +417,29 @@ CREATE POLICY patient_reactivation_tenant_isolation ON business.patient_reactiva
     USING (tenant_id = current_setting('app.tenant_id', TRUE)::UUID);
 GRANT SELECT, INSERT, UPDATE ON business.patient_reactivation_log TO ai_runtime_app;
 GRANT SELECT                 ON business.patient_reactivation_log TO business_app;
+
+-- Video Brief-First System RLS (v0.48.0 — C-058)
+-- style_anchor_library: no RLS — platform catalogue, not customer data
+GRANT SELECT ON institutional.style_anchor_library TO ai_runtime_app;
+GRANT SELECT ON institutional.style_anchor_library TO business_app;
+
+ALTER TABLE business.video_creation_briefs ENABLE ROW LEVEL SECURITY;
+CREATE POLICY video_briefs_tenant_isolation ON business.video_creation_briefs
+    FOR ALL TO business_app, ai_runtime_app
+    USING (tenant_id = current_setting('app.tenant_id', TRUE)::UUID);
+GRANT SELECT, INSERT, UPDATE ON business.video_creation_briefs TO ai_runtime_app;
+GRANT SELECT                 ON business.video_creation_briefs TO business_app;
+
+ALTER TABLE business.digital_twins ENABLE ROW LEVEL SECURITY;
+CREATE POLICY digital_twins_tenant_isolation ON business.digital_twins
+    FOR ALL TO business_app, ai_runtime_app
+    USING (tenant_id = current_setting('app.tenant_id', TRUE)::UUID);
+GRANT SELECT, INSERT, UPDATE ON business.digital_twins TO ai_runtime_app;
+GRANT SELECT                 ON business.digital_twins TO business_app;
+
+ALTER TABLE business.content_assets ENABLE ROW LEVEL SECURITY;
+CREATE POLICY content_assets_tenant_isolation ON business.content_assets
+    FOR ALL TO business_app, ai_runtime_app
+    USING (tenant_id = current_setting('app.tenant_id', TRUE)::UUID);
+GRANT SELECT, INSERT, UPDATE ON business.content_assets TO ai_runtime_app;
+GRANT SELECT, INSERT         ON business.content_assets TO business_app;

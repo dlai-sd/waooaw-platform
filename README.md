@@ -6,7 +6,7 @@
 
 ```
 Founding Corpus v1           Status: Ratified
-Version:                     0.47.0 — DMA v2.7: Full Skill Deepening P0+P1+P2 — Review gen, Blog, Patient reactivation, Reels hooks, YouTube SEO, Schema markup, Retargeting (2026-07-12)
+Version:                     0.48.0 — C-058 Video Brief Primacy + DP-025 Expert Consultative Communication + Three-Track Video + Digital Twin (2026-07-12)
 Current Epoch:               Epoch 1 — Employment
 Current Gate:                G2-G4: PASSED | G5: Prerequisites met
                              ⛔ G5 CLEAR ≠ implementation authorized for any session
