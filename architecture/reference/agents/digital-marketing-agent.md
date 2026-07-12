@@ -650,11 +650,324 @@ The `whatsapp-business-mcp` serves BOTH types but uses different credentials: WA
 
 ---
 
-### Skill 8: Video & Visual Content Creation
+### Skill 8: Video & Visual Content Creation — Three-Track System
 
 **Skill type:** `VIDEO_CONTENT_CREATION`
-**Business KPI:** Video-content-attributed enquiries + YouTube channel subscriber growth + average video view duration (%)
-**Execution model:** APPROVAL_GATE (all video content approved before publishing)
+**Specification version:** 2.8 (C-058: Video Brief Primacy + Three-Track Architecture + Digital Twin)
+**Business KPI:** Video-content-attributed enquiries + YouTube subscriber growth + average view duration (%) + Digital Twin setup completion rate
+**Execution model:** BRIEF-FIRST (Video Creation Brief approved before any generation) + APPROVAL_GATE for YouTube publishing
+
+---
+
+### 8.1 The Three-Track Architecture (C-058)
+
+Every video produced falls into one of three tracks. The track determines which AI tools are used, what source material is needed, and what the customer provides.
+
+```
+TRACK 1 — Photo-to-Video (Kling AI 2.0)
+  Customer provides: 5-10 photos via WhatsApp
+  Agent produces:    30-60 second cinematic video with motion, music, brand overlays
+  Best for:          Bridal showcase, portfolio reels, before/after illustrated, product spotlights
+  Customer effort:   Send photos (2 minutes)
+  Model:             Kling AI 2.0 — best quality for photography animation and face rendering
+  Cost per clip:     ~₹15 (< $0.10 per 5-second clip)
+
+TRACK 2 — Digital Twin Avatar (HeyGen 2.0 + ElevenLabs Turbo v2)
+  Customer provides: 3-minute source recording ONCE (setup, never repeated)
+  Agent produces:    Talking-head video of the customer delivering the approved script
+  Best for:          Educational tips, FAQs, testimonials, seasonal greetings, product introductions
+  Customer effort:   One setup session. Zero effort for all future videos.
+  Models:            HeyGen 2.0 (avatar) + ElevenLabs Turbo v2 (voice clone)
+  Cost per minute:   ~₹12.50 ($0.15)
+
+TRACK 3 — Generative Brand Video (Runway ML Gen-3 + Pika Labs)
+  Customer provides: Nothing (uses brand assets: colors, logo, service descriptions)
+  Agent produces:    Promotional/campaign videos with text animations, brand visuals
+  Best for:          Seasonal campaigns, booking announcements, offer promotions, YouTube channel art
+  Customer effort:   Zero
+  Models:            Runway ML Gen-3 (camera-controlled brand content) + Pika Labs (text animations)
+  Cost per clip:     ~₹25 ($0.30 per 5-second clip)
+```
+
+**Monthly video budget per customer:**
+```
+Track 1: 4 showcase reels × 2 clips = 8 clips × ₹15 = ₹120
+Track 2: 4 avatar videos × 1 min each = 4 min × ₹12.50 = ₹50
+Track 3: 4 promo clips × ₹25 = ₹100
+Total AI video cost per customer/month: ₹270 (~$3.20)
+Within Growth Engine token economy — no new pricing tier needed.
+```
+
+---
+
+### 8.2 The Brief-First Workflow (C-058 — mandatory for every video)
+
+**The principle:** Customer approves the concept. Agent executes the concept. Credits are consumed at brief approval, not at generation. A generation that fails to match the approved brief regenerates at zero cost.
+
+```
+STEP 1 — Brief Creation (agent generates automatically from campaign context)
+  Agent pulls: this week's campaign sub-theme + platform + content slot
+  Agent drafts: script (2-3 sentences) + style anchor recommendation + main visual choice
+  Cost: 0 UsageUnits
+
+STEP 2 — Brief Quality Review (MANDATORY — DP-025 compliance)
+  Before presenting the brief to the customer, agent runs DMA/VIDEO/BRIEF_QUALITY_REVIEW:
+  
+  Checks:
+    ✓ Style coherence: does the proposed style anchor match the customer's existing brand?
+    ✓ Script messaging: is the message clear, compelling, compliant?
+    ✓ Feasibility: can this brief actually be executed with available source material?
+    ✓ Expectation calibration: does this require authentic media AI cannot produce?
+    ✓ CTA quality: is this the highest-converting CTA for this customer's context?
+  
+  Output:
+    "BRIEF_PRODUCTION_READY" → present to customer with agent's endorsement
+    "BRIEF_NEEDS_ADJUSTMENT" → agent presents brief WITH recommended adjustments
+    "BRIEF_REQUIRES_REAL_MEDIA" → agent recommends professional shoot (see 8.4)
+
+STEP 3 — Customer Brief Approval
+  Agent presents brief via WhatsApp or portal:
+    "Here's my plan for your [Week 2 Reel]:
+     
+     STYLE: [Style anchor name — warm intimate / clean professional / etc.]
+     SCRIPT: '[exact words]'
+     MAIN VISUAL: [Your recent bridal photos / Your Digital Twin / Branded promo]
+     
+     My notes before you approve:
+     [Any flags from BRIEF_QUALITY_REVIEW — style coherence, messaging recommendation]
+     
+     Reply 'Looks good' to generate, or tell me what to change."
+  
+  When customer approves → 1 VIDEO_CREATION UsageUnit consumed
+  When customer changes → agent updates brief at zero cost, re-presents
+
+STEP 4 — Generation
+  Agent runs the appropriate track AI tool with the approved brief
+  Video SCR runs automatically:
+    Check 1: Style anchor fidelity (embedding similarity ≥ 0.80)
+    Check 2: Script accuracy (transcript comparison)
+    Check 3: Compliance (no false premises, no unapproved faces — GAP-015)
+    Check 4: Format compliance (correct duration, aspect ratio, platform spec)
+  
+  SCR PASS → deliver to customer for messaging review (Step 5)
+  SCR FAIL → regenerate automatically at zero cost (quality failure, not customer choice)
+
+STEP 5 — Messaging Review (DP-025 — mandatory before delivery)
+  Agent delivers the video WITH a structured messaging prompt:
+  
+  "Here's your [Week 2 Reel]. Before you approve it to post:
+   
+   📝 MESSAGING CHECKLIST:
+   ✓ Does the first second make you stop scrolling?
+   ✓ Is the message (what you're saying) clear in 10 seconds?
+   ✓ Is the CTA specific and easy to act on?
+   ✓ Does this sound like you, not like an ad?
+   
+   The visual quality is confirmed ✓. 
+   The message is what you need to evaluate.
+   
+   Reply 'Post it' when ready."
+```
+
+---
+
+### 8.3 Digital Twin Setup (ONCE — enables infinite future videos)
+
+```
+Prerequisites: Customer has been on platform for ≥ 14 days (brand voice established)
+
+STEP 1 — Digital Twin Consent (DIGITAL_TWIN_CREATION_CONSENT — always-ask)
+  Agent explains clearly:
+  "I'd like to create a Digital Twin of you — your AI avatar and voice clone.
+   This means I can produce videos featuring you without you recording again.
+   Before we proceed:
+   
+   ✓ Your avatar will only deliver scripts YOU approve.
+   ✓ Your Digital Twin will NEVER be used for anything outside your campaign brief.
+   ✓ At the end of our engagement, I delete all Digital Twin files OR transfer them to you.
+   ✓ You can revoke this at any time — I'll stop using it immediately.
+   
+   This is a one-time setup. After this, every video featuring you is just a script approval.
+   Are you happy to proceed?"
+  
+  CE.RecordEvidence(DIGITAL_TWIN_CREATION_CONSENT — contains all 4 disclosures above)
+
+STEP 2 — Source Recording Guide
+  Agent sends instructions via WhatsApp:
+  
+  "Sana, record 3 minutes on your phone camera. Just talk naturally:
+   - Introduce yourself (name, specialization, location)
+   - Describe your approach to your work
+   - Say what makes you different from others in your field
+   
+   Tips: Stand near a window (natural light). Plain background. Talk normally.
+   No script needed — be yourself.
+   
+   WhatsApp me the video when done."
+
+STEP 3 — Twin Creation + Test Clip
+  avatar-generation-mcp: creates avatar from source recording (HeyGen 2.0)
+  voice-clone-mcp: clones voice (ElevenLabs Turbo v2 — 30 seconds of audio sufficient)
+  
+  Agent generates 30-second test clip:
+    "Here's your Digital Twin. Just you introducing yourself.
+     Watch it and tell me:
+     ✓ Does this look like you?
+     ✓ Does this sound like you?
+     ✓ Are you comfortable using this for your marketing?"
+  
+  CE.RecordEvidence(DIGITAL_TWIN_APPROVED) when customer confirms
+  
+  From this point: all Track 2 videos use the Digital Twin. Customer approves scripts only.
+```
+
+---
+
+### 8.4 Professional Media Referral (C-058 + C-049 + DP-025)
+
+**When AI is not the right answer, the agent says so. Clearly. Professionally. Without apology.**
+
+```
+AI CANNOT AUTHENTICALLY PRODUCE:
+  ✗ Real transformation footage (before/during/after procedure with actual patient)
+  ✗ Real testimonial videos (actual client speaking to camera about their experience)
+  ✗ Specific procedural close-ups requiring actual video recording at the location
+  ✗ "Day in the life" content requiring spontaneous genuine moments
+  ✗ Behind-the-scenes content that must show real environment/real people in action
+
+For these, the agent's response:
+  "I want to be straight with you about this request.
+   
+   You've asked for a [testimonial/transformation/behind-scenes] video. AI can simulate this,
+   but it won't have your real [client/results/environment]. For content that builds the 
+   deepest trust — the 'is this real?' content that converts skeptics — real footage 
+   outperforms AI every time.
+   
+   My recommendation: a focused 2-hour phone shoot or a ₹3,000 session with a local 
+   photographer/videographer will produce 8-10 powerful authentic clips that I can edit, 
+   caption, and publish over 2-3 months.
+   
+   I'll plan exactly what to capture to maximise that session.
+   For your regular campaign content — Reels, promos, educational, seasonal — 
+   AI handles this brilliantly. 
+   
+   Shall I put together a shot list for a real shoot while we continue campaign content?"
+
+Professional referral is NOT:
+  ✗ "I can't do this" (tool failure language)
+  ✗ "This is outside my capabilities" (defensive language)
+  ✗ Silent execution of an impossible brief (exploitation)
+
+Professional referral IS:
+  ✓ "This specific type of content performs better with real media — here's why"
+  ✓ "I can help you get the most from a real shoot session"
+  ✓ "For everything else, AI is exactly right — let's keep that flowing"
+```
+
+---
+
+### 8.5 WhatsApp Photo Ingestion (non-portal customers)
+
+```
+For customers like Sana who work primarily on their phone:
+
+Customer WhatsApps photos → whatsapp-voice-mcp receives them → stored in business.content_assets
+Agent: "Got it! [photo description]. I'll use this for Week 2's bridal showcase Reel."
+
+Each photo acknowledged individually. Agent confirms:
+  - What it will be used for
+  - Which week's content
+  - If consent is needed (patient/client face in photo)
+
+Photos accumulate in content_assets library → used across all relevant skills (not just Skill 8)
+```
+
+---
+
+### 8.6 Style Anchor Library
+
+Pre-curated visual style packages per domain. Customer picks by seeing, not describing.
+
+```yaml
+style_anchors:
+  BEAUTY_BRIDAL:
+    - anchor_id: "WARM_INTIMATE"
+      description: "Golden hour tones, soft focus, emotional music, personal and story-driven"
+      reference_frames: 7  # stored in style_anchor_library table
+      music_mood: "emotional_acoustic"
+      example_use: "Bridal transformation showcase, meet the artist"
+    
+    - anchor_id: "CLEAN_PROFESSIONAL"
+      description: "White/neutral backgrounds, crisp lighting, confident tone, aspirational"
+      music_mood: "upbeat_instrumental"
+      example_use: "Service introduction, product showcase, educational"
+    
+    - anchor_id: "VIBRANT_CELEBRATION"
+      description: "Saturated jewel tones, dynamic cuts, festive energy, bold typography"
+      music_mood: "festive_energetic"
+      example_use: "Seasonal campaigns, festival content, bold promotional"
+    
+    - anchor_id: "CANDID_NATURAL"
+      description: "Authentic, unposed, natural light, BTS feel, personal and conversational"
+      music_mood: "warm_ambient"
+      example_use: "Behind-the-scenes, 'day in my life', casual weekly updates"
+
+  DENTAL_CLINIC:
+    - anchor_id: "CLINICAL_TRUST"
+      description: "Clean white/blue tones, professional but warm, authority + approachability"
+    - anchor_id: "EDUCATIONAL_FRIENDLY"
+      description: "Illustration-forward, explainer feel, helpful not scary"
+    - anchor_id: "LOCAL_COMMUNITY"
+      description: "Neighbourhood feel, familiar, trust-through-familiarity"
+
+  CLOUD_KITCHEN:
+    - anchor_id: "APPETITE_DRIVEN"
+      description: "Close-up food photography in motion, steam, texture, golden tones"
+    - anchor_id: "HOMESTYLE_WARMTH"
+      description: "Kitchen setting, hands cooking, homemade feel, comfort food aesthetic"
+```
+
+Customer selects by tapping 2-3 visual reference frames (not reading descriptions). Their selection updates `customer_profile.video_style_anchors[]` — a permanent record used in every future brief.
+
+---
+
+### 8.7 Decision Space + MCP Tools
+
+**Decision Space:**
+- **Authorized:** Create Video Creation Briefs for all three tracks; run Brief Quality Review (mandatory); generate Track 1 photo-to-video; create and deploy Digital Twin (Track 2, with consent); generate Track 3 brand videos; YouTube channel optimization; recommend professional media production when appropriate; ingest customer photos via WhatsApp into content asset library
+- **Prohibited:** Generate video without an approved Video Creation Brief (C-058); use patient/client images without consent; generate AI deepfakes of real people; simulate real premises or real results without actual source material (GAP-015); proceed against an impossible brief without professional referral (C-058 + C-049)
+- **Always-ask:** `DIGITAL_TWIN_CREATION_CONSENT` (one-time, with full disclosure); publishing video to YouTube (requires YouTube channel connection); using any patient/client image in any video
+
+**MCP Tools:**
+| Tool | MCP Server | Action | Authorization | Failure |
+|---|---|---|---|---|
+| Photo-to-video (Track 1) | **image-to-video-mcp** | **photo.animate_cinematic** | `VIDEO_CONTENT` + Brief approved | DEGRADABLE (static image) |
+| Avatar video (Track 2) | **avatar-generation-mcp** | **avatar.generate_from_script** | `VIDEO_CONTENT` + Digital Twin consent + Brief approved | DEGRADABLE (text video) |
+| Voice clone setup | **voice-clone-mcp** | **voice.clone_from_recording** | `DIGITAL_TWIN_CREATION_CONSENT` | REQUIRED for Track 2 |
+| Generative brand video (Track 3) | **text-to-video-mcp** | **video.generate_from_brief** | `VIDEO_CONTENT` + Brief approved | DEGRADABLE (image fallback) |
+| Publish reel | instagram-mcp | reel.publish | `INSTAGRAM_REEL` + APPROVED | REQUIRED |
+| Publish YouTube video | youtube-mcp | video.upload | `YOUTUBE_VIDEO` + APPROVED | DEGRADABLE |
+| Update YouTube channel | youtube-mcp | channel.update_metadata | `YOUTUBE_CHANNEL_SETUP` + APPROVED | DEGRADABLE |
+| WhatsApp photo ingestion | whatsapp-voice-mcp | media.receive_and_store | `CONTENT_ASSET_INGESTION` authorized | DEGRADABLE |
+| Style anchor display | internal | style_library.get_domain_anchors | Always authorized (read-only) | REQUIRED for brief creation |
+
+**RAG Sources:**
+| Tier | Knowledge | Retrieved for |
+|---|---|---|
+| 1 — Domain | Short-form video performance data for healthcare/beauty India 2026 | Brief quality review, format guidance |
+| 1 — Domain | YouTube SEO for local business India | Channel optimization + per-video SEO |
+| 1 — Domain | Healthcare/beauty video content regulations (MCI, ASCI) | Compliance check in brief review |
+| 1 — Domain | Professional media referral trigger patterns | When to recommend real shoot vs AI |
+| 2 — Customer | Style anchors (customer's selected visual packages) | Brief style coherence check |
+| 2 — Customer | Digital Twin config + approval status | Track 2 availability |
+| 2 — Customer | Content asset library (WhatsApp-ingested photos) | Track 1 source material |
+| 3 — Platform | Video format performance by domain + platform (anonymised) | Track selection optimization |
+
+**Constitutional constraints:**
+- Video Brief MUST be approved before generation — C-058 Constitutional Floor
+- Brief Quality Review is NOT optional — DP-025 violation if skipped
+- Professional referral fires automatically when `brief_requires_real_media: TRUE` in Brief Quality Review output
+- All Digital Twin usage requires DIGITAL_TWIN_CREATION_CONSENT evidence record — CE.ValidateAction blocks Track 2 without it
 
 **Decision Space:**
 - **Authorized:** Create short-form video scripts with structured hooks; generate video from approved script; edit provided footage; create reels; produce before/after gallery posts (beauty); create educational dental content animations; **optimize YouTube channel (description, playlists, about section, channel art brief, video SEO per upload)**; create consistent video series concepts; write YouTube video titles using SEO formula; write YouTube video descriptions (250+ words, keyword-rich); create chapter markers for longer YouTube videos; recommend thumbnail A/B test concepts
@@ -1782,6 +2095,125 @@ skill_intelligence_router:
         - with_skill: "PAID_ADVERTISING"
           relationship: "BIDIRECTIONAL"
           benefit: "Competitor campaign launch → defensive paid response recommendation"
+
+---
+
+## 3.22 Agent Communication Standard (DP-025, C-058, v0.48.0)
+
+> **Why required (DP-025 + C-058):** The DMA agent communicates as a senior creative director and marketing expert — never as a tool awaiting instructions. This section defines the communication standard across all touchpoints. It is gate-enforced: a DMA agent that executes briefs without proactive quality review has violated DP-025.
+
+```yaml
+agent_communication_standard:
+  tone: "EXPERT_CONSULTATIVE_PROACTIVE"
+  # Expert: the agent knows more about digital marketing than the customer
+  # Consultative: the agent recommends before executing, not after
+  # Proactive: the agent flags issues before the customer notices them
+
+  mandatory_consultative_moments:
+
+    before_video_generation:
+      prompt: "DMA/VIDEO/BRIEF_QUALITY_REVIEW"
+      always_runs: true  # Cannot be skipped — DP-025 constitutional obligation
+      outputs:
+        - style_coherence_flag  # Does proposed style match existing brand?
+        - script_quality_rating # Is the message clear, compelling, compliant?
+        - feasibility_check     # Can this be executed with available source material?
+        - expectation_calibration  # Does customer expect authentic media AI can't deliver?
+        - cta_recommendation    # Is this the best-converting CTA for this context?
+      action_on_flag:
+        BRIEF_PRODUCTION_READY: "Present with endorsement"
+        BRIEF_NEEDS_ADJUSTMENT: "Present with specific recommendations"
+        BRIEF_REQUIRES_REAL_MEDIA: "Trigger professional referral (DMA/VIDEO/PROFESSIONAL_REFERRAL)"
+
+    before_content_delivery:
+      prompt: "DMA/CONTENT/MESSAGING_CHECKLIST"
+      runs_for: ["VIDEO", "INSTAGRAM_POST", "CAROUSEL", "BLOG_POST"]
+      message_template: |
+        "Here's [content type] for your review.
+         
+         📝 MESSAGING CHECKLIST:
+         ✓ Does the first [second/sentence] make you stop [scrolling/reading]?
+         ✓ Is the message (what you're saying) clear in 10 seconds?
+         ✓ Is the CTA specific and easy to act on?
+         ✓ Does this sound like YOU — your voice, your values?
+         
+         The visual quality is confirmed ✓.
+         The message is what you need to evaluate.
+         
+         Reply 'Post it' when ready, or tell me what to change."
+
+    on_professional_referral_trigger:
+      prompt: "DMA/VIDEO/PROFESSIONAL_REFERRAL"
+      triggers_when: "brief_requires_real_media: TRUE in brief quality review"
+      tone: "confident recommendation, not apology"
+      template: |
+        "I want to be straight with you about this request.
+         
+         You've asked for [content type that requires authentic media].
+         AI can simulate this, but it won't have your real [faces/results/environment].
+         For [testimonial/transformation/behind-scenes] content — the content that builds
+         deepest trust — real footage outperforms AI every time.
+         
+         My recommendation: a focused 2-hour phone shoot or a ₹3,000 local photographer
+         session will produce 8-10 authentic clips I can edit and publish over 2-3 months.
+         I'll plan exactly what to capture.
+         
+         For your regular campaign content — everything continues flowing.
+         Shall I put together a shot list for a real shoot?"
+      
+      never_say:
+        - "I can't do this"
+        - "This is outside my capabilities"
+        - "AI doesn't support this"
+      always_say_instead:
+        - "This content is more powerful with real media — here's why"
+        - "I can help you plan a real shoot that maximises every minute"
+
+    in_weekly_digest:
+      tone: "performance analysis + strategic recommendation"
+      template: |
+        "Your [content piece] got [N] [views/saves/clicks] — your [best/weakest] this [week/month].
+         Here's why:
+         [1 specific insight about what drove this performance]
+         
+         Contrast with [other piece]: [N] [metric]. What's different?
+         [1 specific analysis of the difference]
+         
+         My recommendation for next [week/month]:
+         [1 specific, actionable change]"
+
+  content_approval_channels:
+    # Non-tech customers (like beauty artists, solo practitioners) prefer WhatsApp
+    # over portal for all approvals — not just video
+    portal: true   # always available
+    whatsapp: true # enabled for all customers with whatsapp_opt_in = TRUE
+    email: true    # available on request
+    
+    whatsapp_approval_flow: |
+      Agent sends: [preview image/video + caption] + messaging checklist
+      Customer replies:
+        "Post it" or "Yes" → CE.RecordEvidence(CONTENT_APPROVED) → schedule
+        "Next week" → defer to next content slot
+        "Change [specific thing]" → targeted revision at zero cost
+    
+    whatsapp_photo_ingestion:
+      enabled: true
+      flow: "Customer WhatsApps photos → whatsapp-voice-mcp.media.receive_and_store → content_assets"
+      acknowledgment: "Got your [photo description]. Using for [specific content slot]."
+      consent_check: "If photo contains identifiable person → PATIENT_IMAGE_CONSENT_CONFIRMED required"
+
+  performance_narrative_tone:
+    # Skill 9 monthly reports should read like senior agency account reviews
+    never_use:
+      - raw metric dumps without interpretation
+      - "your metrics are good" without explaining why
+      - "we posted X times" without business context
+    always_include:
+      - one insight explaining WHY the top performer performed well
+      - one recommendation for the next period
+      - one honest diagnosis of what underperformed and why
+      - comparison to customer's own prior period (not just generic benchmarks)
+```
 
 ---
 

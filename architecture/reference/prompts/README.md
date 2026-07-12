@@ -121,8 +121,14 @@ Every agent prompt must produce a response conforming to this base schema plus t
 | DMA/SEASONAL/OPPORTUNITY_CALENDAR | Seasonal Planning | Annual 12-month opportunity calendar by domain + India festival calendar — feeds Campaign Theme Engine | v1.0.0 | ACTIVE |
 | DMA/FACEBOOK/MESSENGER_AUTOMATION | Facebook Engagement | Welcome message, away message, and quick reply button text for Messenger automation | v1.0.0 | ACTIVE |
 | DMA/FACEBOOK/COMMUNITY_EVENTS | Facebook Events | Facebook Event content for dental camps, awareness sessions, community engagement | v1.0.0 | ACTIVE |
+| DMA/VIDEO/VIDEO_BRIEF_CREATION | Video Production | Creates Video Creation Brief from campaign context: style anchor recommendation, script draft, track selection | v1.0.0 | ACTIVE |
+| DMA/VIDEO/BRIEF_QUALITY_REVIEW | Video Production | Mandatory brief review before generation: style coherence, script quality, feasibility, expectation calibration, CTA quality | v1.0.0 | ACTIVE |
+| DMA/VIDEO/DIGITAL_TWIN_SETUP_GUIDE | Digital Twin Onboarding | Guides customer through 3-minute source recording session with specific, achievable instructions | v1.0.0 | ACTIVE |
+| DMA/VIDEO/PROFESSIONAL_REFERRAL | Honest Limitation | Confident recommendation to use professional photographer/videographer when authentic media outperforms AI (C-058 + C-049) | v1.0.0 | ACTIVE |
+| DMA/CONTENT/MESSAGING_CHECKLIST | Content Delivery | Structured checklist delivered WITH every content piece reminding customer to evaluate message, not just visual | v1.0.0 | ACTIVE |
+| DMA/ANALYTICS/PERFORMANCE_NARRATIVE | Analytics | Expert performance analysis: insight on top performer, diagnosis of underperformer, one specific recommendation (DP-025) | v1.0.0 | ACTIVE |
 
-**Total active prompts: 77** (v0.47.0 — 74 + 3 new P2 prompts)
+**Total active prompts: 86** (v0.48.0 — 77 + 9 new video+communication prompts)
 | AGRI/ROUTING/SKILL_INTENT_ROUTER | Skill Intelligence Router | LOCAL-tier intent classification → skill routing plan for Agricultural agent (C-054) | v1.0.0 | ACTIVE |
 | TRADING/ROUTING/SKILL_INTENT_ROUTER | Skill Intelligence Router | LOCAL-tier intent classification → skill routing plan for Trading agent (C-054) | v1.0.0 | ACTIVE |
 | DMA/SIGNAL/PROACTIVE_ALERT | Signal Intelligence | Converts competitor/analytics/review signal into actionable portal notification (C-053) | v1.0.0 | ACTIVE |

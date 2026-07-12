@@ -2107,3 +2107,114 @@ VALUES
     ('DMA/SEASONAL/OPPORTUNITY_CALENDAR', '1.0.0', 'MARKET_RESEARCH', 'OPPORTUNITY_CALENDAR', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-037; C-055', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
     ('DMA/FACEBOOK/MESSENGER_AUTOMATION', '1.0.0', 'FACEBOOK_MARKETING', 'MESSENGER_AUTOMATION', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-039', 'BEHAVIOURAL', 'LOCAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
     ('DMA/FACEBOOK/COMMUNITY_EVENTS', '1.0.0', 'FACEBOOK_MARKETING', 'COMMUNITY_EVENTS', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-037', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW());
+
+-- ============================================================
+-- Video Brief-First System (v0.48.0 — C-058, DP-025)
+-- ============================================================
+
+-- style_anchor_library: pre-curated visual style packages per domain
+CREATE TABLE institutional.style_anchor_library (
+    id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    anchor_id                   VARCHAR(50) NOT NULL UNIQUE,  -- e.g., WARM_INTIMATE, CLEAN_PROFESSIONAL
+    domain                      VARCHAR(100) NOT NULL,         -- BEAUTY_BRIDAL, DENTAL_CLINIC, etc.
+    display_name                VARCHAR(100) NOT NULL,
+    description                 TEXT NOT NULL,
+    reference_frame_count       INTEGER NOT NULL DEFAULT 7,   -- how many reference frames in the package
+    music_mood                  VARCHAR(50) NOT NULL,
+    example_use_cases           TEXT[] NOT NULL,
+    is_active                   BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_style_anchor_domain ON institutional.style_anchor_library(domain) WHERE is_active = TRUE;
+-- No RLS — this is a platform catalogue, not customer data
+
+-- video_creation_briefs: approved brief before any video generation (C-058)
+CREATE TYPE video_track AS ENUM ('TRACK_1_PHOTO_TO_VIDEO', 'TRACK_2_DIGITAL_TWIN', 'TRACK_3_GENERATIVE');
+CREATE TYPE video_brief_status AS ENUM ('DRAFT', 'QUALITY_REVIEW', 'CUSTOMER_APPROVED', 'GENERATING', 'GENERATED', 'DELIVERED', 'CANCELLED');
+
+CREATE TABLE business.video_creation_briefs (
+    id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organisation_id             UUID NOT NULL REFERENCES business.organisations(id),
+    employment_contract_id      UUID NOT NULL REFERENCES business.employment_contracts(id),
+    campaign_id                 UUID REFERENCES business.content_campaigns(id),
+    weekly_theme_id             UUID REFERENCES business.campaign_weekly_themes(id),
+    video_track                 video_track NOT NULL,
+    style_anchor_id             VARCHAR(50) REFERENCES institutional.style_anchor_library(anchor_id),
+    script_text                 TEXT NOT NULL,               -- exact approved script (2-3 sentences)
+    main_visual_type            VARCHAR(50) NOT NULL CHECK (main_visual_type IN ('DIGITAL_TWIN','CUSTOMER_PHOTOS','GENERATIVE')),
+    source_asset_ids            UUID[],                      -- references content_assets used in Track 1
+    platform_target             VARCHAR(50) NOT NULL,        -- INSTAGRAM_REEL, YOUTUBE_SHORT, etc.
+    status                      video_brief_status NOT NULL DEFAULT 'DRAFT',
+    brief_quality_review_result VARCHAR(30) CHECK (brief_quality_review_result IN ('PRODUCTION_READY','NEEDS_ADJUSTMENT','REQUIRES_REAL_MEDIA')),
+    brief_quality_flags         JSONB,                       -- flags from DMA/VIDEO/BRIEF_QUALITY_REVIEW
+    usage_units_consumed        BOOLEAN NOT NULL DEFAULT FALSE,  -- TRUE when customer approves brief (credit consumed)
+    customer_approved_at        TIMESTAMPTZ,
+    generation_attempts         SMALLINT NOT NULL DEFAULT 0,
+    generation_failed_scr       BOOLEAN NOT NULL DEFAULT FALSE,  -- TRUE if generation failed SCR (zero cost regen)
+    professional_referral_sent  BOOLEAN NOT NULL DEFAULT FALSE,  -- TRUE if REQUIRES_REAL_MEDIA triggered referral
+    evidence_record_id          UUID,
+    tenant_id                   UUID NOT NULL,
+    created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_video_briefs_contract ON business.video_creation_briefs(employment_contract_id, status);
+CREATE INDEX idx_video_briefs_campaign ON business.video_creation_briefs(campaign_id);
+
+-- digital_twins: Digital Twin configuration + consent record (C-058 + C-003)
+CREATE TYPE digital_twin_status AS ENUM ('CONSENT_PENDING', 'SOURCE_RECORDING_REQUESTED', 'CREATING', 'TEST_CLIP_REVIEW', 'APPROVED', 'REVOKED', 'DELETED');
+
+CREATE TABLE business.digital_twins (
+    id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organisation_id             UUID NOT NULL REFERENCES business.organisations(id),
+    employment_contract_id      UUID NOT NULL REFERENCES business.employment_contracts(id),
+    status                      digital_twin_status NOT NULL DEFAULT 'CONSENT_PENDING',
+    consent_evidence_record_id  UUID,                        -- CE.RecordEvidence(DIGITAL_TWIN_CREATION_CONSENT)
+    consent_disclosures_confirmed JSONB NOT NULL DEFAULT '{}', -- which of the 4 disclosures were confirmed
+    source_recording_asset_id   UUID,                        -- references content_assets for the 3-min recording
+    heygen_avatar_id            VARCHAR(200),                -- HeyGen avatar ID
+    elevenlabs_voice_id         VARCHAR(200),                -- ElevenLabs cloned voice ID
+    test_clip_asset_id          UUID,                        -- 30-second test clip
+    customer_approved_at        TIMESTAMPTZ,                 -- when customer confirmed twin looks/sounds like them
+    approval_evidence_record_id UUID,                        -- CE.RecordEvidence(DIGITAL_TWIN_APPROVED)
+    revoked_at                  TIMESTAMPTZ,
+    deletion_requested_at       TIMESTAMPTZ,
+    deletion_completed_at       TIMESTAMPTZ,
+    tenant_id                   UUID NOT NULL,
+    created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT uq_digital_twin_contract UNIQUE (employment_contract_id)
+);
+CREATE INDEX idx_digital_twins_org ON business.digital_twins(organisation_id, status);
+
+-- content_assets: media asset library (photos from WhatsApp, video clips, etc.)
+CREATE TYPE asset_source AS ENUM ('WHATSAPP_INGESTION', 'PORTAL_UPLOAD', 'AI_GENERATED', 'THIRD_PARTY');
+CREATE TYPE asset_type AS ENUM ('PHOTO', 'VIDEO', 'AUDIO', 'DIGITAL_TWIN_SOURCE', 'DIGITAL_TWIN_AVATAR');
+
+CREATE TABLE business.content_assets (
+    id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organisation_id             UUID NOT NULL REFERENCES business.organisations(id),
+    employment_contract_id      UUID NOT NULL REFERENCES business.employment_contracts(id),
+    asset_source                asset_source NOT NULL,
+    asset_type                  asset_type NOT NULL,
+    storage_key                 VARCHAR(500) NOT NULL,        -- internal storage reference (never a public URL in DB)
+    description                 TEXT,                         -- agent's description: "Sana's bridal look — Day 71"
+    contains_identifiable_face  BOOLEAN NOT NULL DEFAULT FALSE, -- consent required before use
+    consent_confirmed           BOOLEAN NOT NULL DEFAULT FALSE,
+    consent_evidence_record_id  UUID,
+    ingested_via                VARCHAR(50),                  -- 'whatsapp', 'portal', 'mcp'
+    used_in_content_ids         UUID[],                      -- which posts/videos used this asset
+    tenant_id                   UUID NOT NULL,
+    created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_content_assets_org ON business.content_assets(organisation_id, asset_type, created_at DESC);
+CREATE INDEX idx_content_assets_face ON business.content_assets(organisation_id) WHERE contains_identifiable_face = TRUE AND consent_confirmed = FALSE;
+
+-- Prompt seeds: Video Brief-First + Communication Standard (v0.48.0)
+INSERT INTO institutional.agent_prompt_versions
+    (prompt_id, version, skill_type, pipeline_step, agent_type, prompt_file_path, constitutional_basis, change_type, minimum_model_tier, reviewed_by, reviewed_at, is_active, activated_at)
+VALUES
+    ('DMA/VIDEO/VIDEO_BRIEF_CREATION', '1.0.0', 'VIDEO_CONTENT_CREATION', 'VIDEO_BRIEF_CREATION', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-058; C-055; C-052', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('DMA/VIDEO/BRIEF_QUALITY_REVIEW', '1.0.0', 'VIDEO_CONTENT_CREATION', 'BRIEF_QUALITY_REVIEW', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-058; C-049; C-048; DP-025', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('DMA/VIDEO/DIGITAL_TWIN_SETUP_GUIDE', '1.0.0', 'VIDEO_CONTENT_CREATION', 'DIGITAL_TWIN_SETUP_GUIDE', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-058; C-003; C-039', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('DMA/VIDEO/PROFESSIONAL_REFERRAL', '1.0.0', 'VIDEO_CONTENT_CREATION', 'PROFESSIONAL_REFERRAL', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-058; C-049; C-048; DP-025', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('DMA/CONTENT/MESSAGING_CHECKLIST', '1.0.0', 'CONTENT_STRATEGY', 'MESSAGING_CHECKLIST', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-037; C-048; DP-025', 'BEHAVIOURAL', 'LOCAL', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('DMA/ANALYTICS/PERFORMANCE_NARRATIVE', '1.0.0', 'PERFORMANCE_ANALYTICS', 'PERFORMANCE_NARRATIVE', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-037; C-049; DP-025', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW());
