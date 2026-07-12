@@ -435,3 +435,79 @@ Before finalizing any customer-facing content:
 - Skills added via Section 15 Type 1 (New Skill) MUST declare affinities with at least one existing skill OR justify why they operate fully independently
 
 ---
+
+## DP-024 — Campaign-First Content Intelligence (v0.39.0)
+
+**Directive:** Before creating any piece of content for a customer, the agent must be able to answer: "Which approved campaign does this serve? Which week's sub-theme does it advance? What is the target audience's emotional state at this point in the campaign journey?" A content piece that cannot answer all three questions is not ready to be created.
+
+**Why:** A digital marketing professional who creates posts on request — "here's a post about teeth whitening because you asked" — is a content factory, not a strategist. The difference between a ₹500/month content tool and a ₹1,499/month Digital Marketing Professional is exactly this: the professional has a strategy that each content piece serves. Campaign-first intelligence is what makes the DMA agent a professional worth the subscription. Without it, the agent is a sophisticated template engine. With it, the agent is doing what a senior digital marketing professional at an agency does: building a narrative over time that changes the target audience's relationship with the brand.
+
+**Constitutional Basis:** C-055 (Campaign Coherence Obligation — LAW); C-036 (Skills as constitutional units — the professional service IS the campaign strategy, not the individual post); C-037 (Business KPI — the campaign outcome target is the KPI; individual posts do not have KPIs, campaigns do)
+
+**The Platform Intelligence Principle (sub-directive):** Platform selection is a professional judgment, not a menu. The agent researches which platforms the customer's target audience actually uses, evaluates the platform-content fit for the customer's domain, and recommends a platform mix with evidence. A dentist who is told "you need a presence on all platforms" by their digital marketing professional has been given bad advice. The professional should say: "Your patients are on Instagram and Google. YouTube is worth testing for patient education. LinkedIn is not your channel." Platform selection precedes campaign design and constrains it.
+
+**The Audio+Visual Principle (sub-directive):** For every content piece that benefits from it, the agent produces both the visual specification (image prompt, layout direction, brand color usage) and the audio/copy content (caption, voice script, spoken narrative) as a unified output. Visual and copy are not separate tasks assigned to separate skills — they are co-designed as a coherent content unit from the weekly sub-theme.
+
+**Enforcement:**
+- `business.campaign_content_items` has a `campaign_id` foreign key — publishing without a campaign reference is impossible at DB level
+- CE.ValidateAction for `CONTENT_PUBLISH` action validates `campaign_content_items.scr_status IN ('SCR_PASSED', 'CUSTOMER_APPROVED')` as a constitutional precondition
+- The `DMA/CAMPAIGN/MASTER_THEME_PROPOSAL` prompt is a FRONTIER-tier BREAKING-class prompt — it cannot be downgraded; campaign strategy is a constitutional-quality decision
+- Any implementation that adds a "quick post" path that bypasses the Campaign Cascade for customers in CAMPAIGN_APPROVAL or CAMPAIGN_AUTO mode is a C-055 violation, not a feature
+
+---
+
+**Directive:** When an agent possesses information that is material to a customer's outcome — a risk, an opportunity, a threshold crossed — the default action is to communicate proactively, not to wait for the customer to ask. Reactive assistance (waiting for a query) is the baseline floor of service. Proactive intelligence is the professional obligation.
+
+**Why:** A Digital Professional retained to serve a customer's business interests has a duty of care that extends beyond answering questions. A weather forecaster hired by a farmer who checks the weather only when the farmer calls is not performing their job. The difference between a digital professional and a digital assistant is initiative: the professional acts on information; the assistant responds to requests. C-053 (Signal Sensing Obligation) makes proactive intelligence mandatory for time-sensitive domains. DP-022 makes it a design directive for all engineering decisions about agent behaviour.
+
+**Constitutional Basis:** C-053 (Signal Sensing Obligation — LAW); C-036 (Skills as constitutional units — professional judgment includes anticipation); C-048 (Information Non-Exploitation — possessing material information and not sharing it is exploitation); C-037 (Business KPI primacy — failing to alert before harm occurs is a KPI failure)
+
+**Enforcement:**
+- The Signal Intelligence Layer specification (Section 3.18 of AGENT-AUTHORING-GUIDE) is mandatory for all agents in time-sensitive domains
+- Any PR that removes or degrades a signal watch workflow requires EA justification and Founder approval
+- URGENCY_CLASS=CRITICAL signals are always `emergency_exempt: true` — no budget ceiling may block them; a PR that adds a budget check on a CRITICAL signal is a constitutional violation, not a configuration choice
+- Signal watch workflows run continuously in Temporal — any infrastructure change that would stop or pause them must be treated as an Emergency Stop scenario (C-001 safeguards apply)
+
+---
+
+## DP-023 — Skill Network Intelligence (v0.35.0)
+
+**Directive:** Skills within an agent are not independent tools — they are nodes in a capability network with defined inputs, outputs, dependencies, and collaboration relationships. Every engineering decision that affects how Skills execute must consider the Skills as a network, not in isolation. The Skill Intelligence Router and Skill Capability Manifests are the implementation mechanism of this principle.
+
+**Why:** A Digital Marketing Professional with 14 independent tools produces 14 separate outputs. A Digital Marketing Professional with 14 interconnected capabilities produces one coherent professional response to any customer request. The difference is not the number of Skills — it is whether those Skills are networked. Content Strategy knows what Instagram Marketing needs. Instagram Marketing produces content that Paid Advertising can amplify. Performance Analytics feeds back into Content Strategy. Engineering that ignores these relationships builds tools, not professionals. C-054 (Skill Intelligence Routing) makes Skill networking mandatory. DP-023 makes it a first-order engineering constraint.
+
+**Constitutional Basis:** C-054 (Skill Intelligence Routing — LAW); C-036 (Skills as constitutional units — the unit has relationships, not just a definition); C-050 (Strategic Cognition — portfolio reasoning requires understanding inter-skill relationships); C-037 (Business KPI — the most impactful actions often span multiple Skills)
+
+**Skill Collaboration Graph — three relationship types:**
+| Relationship | Meaning | Engineering implication |
+|---|---|---|
+| `UPSTREAM` | Skill A's output is an input to Skill B | Skill A executes first; its output is passed to Skill B's context |
+| `DOWNSTREAM` | Skill B can amplify or extend Skill A's output | Skill B is offered as a follow-on action when Skill A completes |
+| `BIDIRECTIONAL` | Skills A and B inform each other continuously | Both load the other's recent outputs in their RAG context |
+
+**Enforcement:**
+- Every Skill Capability Manifest must declare `collaboration_affinities` (AD-027) — a skill with no declared affinities when other skills clearly depend on it is a gap that blocks Activation Gate Section 4
+- The `business.agent_skill_graph` table materializes the SCM declarations at runtime; the SIR reads this table, not static YAML
+- A multi-skill agent spec where all skills have `collaboration_affinities: []` (empty) will fail the Activation Gate Section 4 review — this indicates the spec was authored without network thinking
+- Skills added via Section 15 Type 1 (New Skill) MUST declare affinities with at least one existing skill OR justify why they operate fully independently
+=======
+## DP-024 — Campaign-First Content Intelligence (v0.39.0)
+
+**Directive:** Before creating any piece of content for a customer, the agent must be able to answer: "Which approved campaign does this serve? Which week's sub-theme does it advance? What is the target audience's emotional state at this point in the campaign journey?" A content piece that cannot answer all three questions is not ready to be created.
+
+**Why:** A digital marketing professional who creates posts on request — "here's a post about teeth whitening because you asked" — is a content factory, not a strategist. The difference between a ₹500/month content tool and a ₹1,499/month Digital Marketing Professional is exactly this: the professional has a strategy that each content piece serves. Campaign-first intelligence is what makes the DMA agent a professional worth the subscription. Without it, the agent is a sophisticated template engine. With it, the agent is doing what a senior digital marketing professional at an agency does: building a narrative over time that changes the target audience's relationship with the brand.
+
+**Constitutional Basis:** C-055 (Campaign Coherence Obligation — LAW); C-036 (Skills as constitutional units — the professional service IS the campaign strategy, not the individual post); C-037 (Business KPI — the campaign outcome target is the KPI; individual posts do not have KPIs, campaigns do)
+
+**The Platform Intelligence Principle (sub-directive):** Platform selection is a professional judgment, not a menu. The agent researches which platforms the customer's target audience actually uses, evaluates the platform-content fit for the customer's domain, and recommends a platform mix with evidence. A dentist who is told "you need a presence on all platforms" by their digital marketing professional has been given bad advice. The professional should say: "Your patients are on Instagram and Google. YouTube is worth testing for patient education. LinkedIn is not your channel." Platform selection precedes campaign design and constrains it.
+
+**The Audio+Visual Principle (sub-directive):** For every content piece that benefits from it, the agent produces both the visual specification (image prompt, layout direction, brand color usage) and the audio/copy content (caption, voice script, spoken narrative) as a unified output. Visual and copy are not separate tasks assigned to separate skills — they are co-designed as a coherent content unit from the weekly sub-theme.
+
+**Enforcement:**
+- `business.campaign_content_items` has a `campaign_id` foreign key — publishing without a campaign reference is impossible at DB level
+- CE.ValidateAction for `CONTENT_PUBLISH` action validates `campaign_content_items.scr_status IN ('SCR_PASSED', 'CUSTOMER_APPROVED')` as a constitutional precondition
+- The `DMA/CAMPAIGN/MASTER_THEME_PROPOSAL` prompt is a FRONTIER-tier BREAKING-class prompt — it cannot be downgraded; campaign strategy is a constitutional-quality decision
+- Any implementation that adds a "quick post" path that bypasses the Campaign Cascade for customers in CAMPAIGN_APPROVAL or CAMPAIGN_AUTO mode is a C-055 violation, not a feature
+>>>>>>> 699f049 (constitutional(dma): C-055 Campaign Theme Engine + SCR + Platform Intelligence (DMA v2.5, v0.39.0))
+
+---

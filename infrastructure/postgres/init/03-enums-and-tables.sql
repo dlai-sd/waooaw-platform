@@ -1518,3 +1518,265 @@ CREATE TABLE business.agent_skill_graph (
 );
 CREATE INDEX idx_skill_graph_contract  ON business.agent_skill_graph(employment_contract_id) WHERE is_active = TRUE;
 CREATE INDEX idx_skill_graph_embedding ON business.agent_skill_graph USING ivfflat (intent_signatures_embedding vector_cosine_ops) WITH (lists = 100);
+
+-- ============================================================
+-- Campaign Theme Engine tables (v0.39.0 — C-055, AD-028, DP-024)
+-- ============================================================
+
+-- Campaign approval mode enum
+CREATE TYPE campaign_approval_mode AS ENUM (
+    'POST_APPROVAL',       -- customer approves every piece individually
+    'CAMPAIGN_APPROVAL',   -- customer approves campaign brief; SCR gates content; weekly digest
+    'CAMPAIGN_AUTO'        -- customer approves campaign brief; full auto within SCR
+);
+
+-- Campaign status enum
+CREATE TYPE campaign_status AS ENUM (
+    'DRAFT',             -- proposed by agent, not yet customer-approved
+    'CUSTOMER_APPROVED', -- customer approved the brief
+    'ACTIVE',            -- campaign is currently running (within campaign_window)
+    'PAUSED',            -- temporarily suspended
+    'COMPLETE',          -- campaign window elapsed
+    'CANCELLED'          -- cancelled before completion
+);
+
+-- SCR check result enum
+CREATE TYPE scr_check_result AS ENUM (
+    'PASS', 'FAIL', 'NOT_RUN'
+);
+
+-- content_campaigns: Level 1 — master campaign record (one per campaign period per customer)
+CREATE TABLE business.content_campaigns (
+    id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organisation_id             UUID NOT NULL REFERENCES business.organisations(id),
+    employment_contract_id      UUID NOT NULL REFERENCES business.employment_contracts(id),
+    professional_type           VARCHAR(100) NOT NULL DEFAULT 'DIGITAL_MARKETING_HEALTHCARE',
+    master_theme                VARCHAR(300) NOT NULL,
+    campaign_window_start       DATE NOT NULL,
+    campaign_window_end         DATE NOT NULL,
+    target_outcome              TEXT NOT NULL,
+    target_audience             TEXT NOT NULL,
+    platform_mix                TEXT[] NOT NULL,
+    content_cadence             JSONB NOT NULL,
+    theme_sequence              JSONB,                       -- EA fix R6-EA: allow NULL for DRAFT state; NOT NULL enforced at ACTIVE transition
+    approval_mode               campaign_approval_mode NOT NULL DEFAULT 'POST_APPROVAL',
+    status                      campaign_status NOT NULL DEFAULT 'DRAFT',
+    proposed_at                 TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    approved_at                 TIMESTAMPTZ,
+    completed_at                TIMESTAMPTZ,
+    reasoning_trace_id          UUID REFERENCES institutional.agent_reasoning_traces(id),
+    tenant_id                   UUID NOT NULL,
+    created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_campaigns_contract  ON business.content_campaigns(employment_contract_id, status);
+CREATE INDEX idx_campaigns_window    ON business.content_campaigns(campaign_window_start, campaign_window_end);
+
+-- campaign_weekly_themes: Level 2 — weekly sub-theme cascade
+CREATE TABLE business.campaign_weekly_themes (
+    id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    campaign_id                 UUID NOT NULL REFERENCES business.content_campaigns(id),
+    organisation_id             UUID NOT NULL REFERENCES business.organisations(id),
+    week_number                 SMALLINT NOT NULL CHECK (week_number BETWEEN 1 AND 12),
+    sub_theme                   VARCHAR(300) NOT NULL,
+    narrative_hook              TEXT NOT NULL,
+    emotional_target            TEXT NOT NULL,
+    platform_execution_notes    JSONB,
+    week_start_date             DATE NOT NULL,
+    status                      VARCHAR(20) NOT NULL DEFAULT 'GENERATED' CHECK (status IN ('GENERATED','ACTIVE','COMPLETE')),
+    tenant_id                   UUID NOT NULL,
+    created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT uq_campaign_week UNIQUE (campaign_id, week_number)
+);
+CREATE INDEX idx_weekly_themes_campaign ON business.campaign_weekly_themes(campaign_id);
+
+-- campaign_content_items: Level 3 — individual content pieces per platform per week
+CREATE TYPE content_scr_status AS ENUM (
+    'PENDING', 'SCR_PASSED', 'SCR_FAILED', 'COMPLIANCE_VIOLATION',
+    'CUSTOMER_APPROVED', 'CUSTOMER_REJECTED', 'PUBLISHED', 'PUBLISH_FAILED'
+);
+
+CREATE TABLE business.campaign_content_items (
+    id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    campaign_id                 UUID NOT NULL REFERENCES business.content_campaigns(id),
+    weekly_theme_id             UUID NOT NULL REFERENCES business.campaign_weekly_themes(id),
+    organisation_id             UUID NOT NULL REFERENCES business.organisations(id),
+    platform                    VARCHAR(50) NOT NULL,
+    content_body                JSONB NOT NULL,
+    audio_script                TEXT,
+    visual_storyboard           JSONB,
+    scheduled_at                TIMESTAMPTZ NOT NULL,
+    published_at                TIMESTAMPTZ,
+    platform_post_id            VARCHAR(200),
+    scr_status                  content_scr_status NOT NULL DEFAULT 'PENDING',
+    regeneration_attempts       SMALLINT NOT NULL DEFAULT 0,
+    approval_mode               campaign_approval_mode NOT NULL,
+    tenant_id                   UUID NOT NULL,
+    created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_content_items_campaign  ON business.campaign_content_items(campaign_id);
+CREATE INDEX idx_content_items_schedule  ON business.campaign_content_items(scheduled_at) WHERE scr_status IN ('SCR_PASSED','CUSTOMER_APPROVED');
+CREATE INDEX idx_content_items_status    ON business.campaign_content_items(scr_status, organisation_id);
+
+-- scr_review_records: SCR check results per content item (constitutional audit artifact — INSERT only)
+CREATE TABLE business.scr_review_records (
+    id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    content_item_id             UUID NOT NULL REFERENCES business.campaign_content_items(id),
+    organisation_id             UUID NOT NULL REFERENCES business.organisations(id),
+    regeneration_attempt        SMALLINT NOT NULL DEFAULT 0,
+    check_1_theme_fidelity      scr_check_result NOT NULL DEFAULT 'NOT_RUN',
+    check_1_score               DECIMAL(4,3),
+    check_2_brand_voice         scr_check_result NOT NULL DEFAULT 'NOT_RUN',
+    check_2_score               DECIMAL(4,3),
+    check_3_compliance          scr_check_result NOT NULL DEFAULT 'NOT_RUN',
+    check_3_violations          JSONB,
+    check_4_uniqueness          scr_check_result NOT NULL DEFAULT 'NOT_RUN',
+    check_4_competitor_sim      DECIMAL(4,3),
+    check_4_own_recency_sim     DECIMAL(4,3),
+    check_5_quality             scr_check_result NOT NULL DEFAULT 'NOT_RUN',
+    check_5_score               DECIMAL(4,3),
+    overall_result              VARCHAR(20) NOT NULL DEFAULT 'PENDING' CHECK (overall_result IN ('PENDING','PASSED','FAILED','COMPLIANCE_VIOLATION')),
+    reviewed_at                 TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    tenant_id                   UUID NOT NULL
+);
+CREATE INDEX idx_scr_records_item ON business.scr_review_records(content_item_id);
+CREATE INDEX idx_scr_records_org  ON business.scr_review_records(organisation_id, reviewed_at DESC);
+-- ============================================================
+
+-- Campaign approval mode enum
+CREATE TYPE campaign_approval_mode AS ENUM (
+    'POST_APPROVAL',       -- customer approves every piece individually
+    'CAMPAIGN_APPROVAL',   -- customer approves campaign brief; SCR gates content; weekly digest
+    'CAMPAIGN_AUTO'        -- customer approves campaign brief; full auto within SCR
+);
+
+-- Campaign status enum
+CREATE TYPE campaign_status AS ENUM (
+    'DRAFT',             -- proposed by agent, not yet customer-approved
+    'CUSTOMER_APPROVED', -- customer approved the brief
+    'ACTIVE',            -- campaign is currently running (within campaign_window)
+    'PAUSED',            -- temporarily suspended
+    'COMPLETE',          -- campaign window elapsed
+    'CANCELLED'          -- cancelled before completion
+);
+
+-- SCR check result enum
+CREATE TYPE scr_check_result AS ENUM (
+    'PASS', 'FAIL', 'NOT_RUN'
+);
+
+-- content_campaigns: Level 1 — master campaign record (one per campaign period per customer)
+CREATE TABLE business.content_campaigns (
+    id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organisation_id             UUID NOT NULL REFERENCES business.organisations(id),
+    employment_contract_id      UUID NOT NULL REFERENCES business.employment_contracts(id),
+    professional_type           VARCHAR(100) NOT NULL DEFAULT 'DIGITAL_MARKETING_HEALTHCARE',
+    master_theme                VARCHAR(300) NOT NULL,         -- "Dental Preventive Care Series"
+    campaign_window_start       DATE NOT NULL,
+    campaign_window_end         DATE NOT NULL,
+    target_outcome              TEXT NOT NULL,                 -- customer language: "+15 preventive bookings"
+    target_audience             TEXT NOT NULL,                 -- specific description of who this reaches
+    platform_mix                TEXT[] NOT NULL,              -- ['INSTAGRAM','GBP','WHATSAPP','YOUTUBE_SHORT']
+    content_cadence             JSONB NOT NULL,               -- {platform: frequency_string}
+    theme_sequence              JSONB NOT NULL,               -- [{week_number, sub_theme, narrative_hook, emotional_target}]
+    approval_mode               campaign_approval_mode NOT NULL DEFAULT 'POST_APPROVAL',
+    status                      campaign_status NOT NULL DEFAULT 'DRAFT',
+    proposed_at                 TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    approved_at                 TIMESTAMPTZ,                  -- NULL until customer approves
+    completed_at                TIMESTAMPTZ,
+    reasoning_trace_id          UUID REFERENCES institutional.agent_reasoning_traces(id),
+    tenant_id                   UUID NOT NULL,               -- RLS discriminator
+    created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_campaigns_contract  ON business.content_campaigns(employment_contract_id, status);
+CREATE INDEX idx_campaigns_window    ON business.content_campaigns(campaign_window_start, campaign_window_end);
+
+-- campaign_weekly_themes: Level 2 — weekly sub-theme cascade
+CREATE TABLE business.campaign_weekly_themes (
+    id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    campaign_id                 UUID NOT NULL REFERENCES business.content_campaigns(id),
+    organisation_id             UUID NOT NULL REFERENCES business.organisations(id),
+    week_number                 SMALLINT NOT NULL CHECK (week_number BETWEEN 1 AND 12),
+    sub_theme                   VARCHAR(300) NOT NULL,        -- "Prevention is cheaper than cure"
+    narrative_hook              TEXT NOT NULL,                -- "Cost anxiety: ₹500 checkup vs ₹15,000 root canal"
+    emotional_target            TEXT NOT NULL,                -- "Relief + motivation to book now"
+    platform_execution_notes    JSONB,                       -- {platform: "note for this platform this week"}
+    week_start_date             DATE NOT NULL,
+    status                      VARCHAR(20) NOT NULL DEFAULT 'GENERATED' CHECK (status IN ('GENERATED','ACTIVE','COMPLETE')),
+    tenant_id                   UUID NOT NULL,
+    created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT uq_campaign_week UNIQUE (campaign_id, week_number)
+);
+CREATE INDEX idx_weekly_themes_campaign ON business.campaign_weekly_themes(campaign_id);
+
+-- campaign_content_items: Level 3 — individual content pieces per platform per week
+CREATE TYPE content_scr_status AS ENUM (
+    'PENDING',             -- awaiting SCR review
+    'SCR_PASSED',          -- all 5 SCR checks passed → eligible for auto-publish
+    'SCR_FAILED',          -- failed checks after max regeneration → routed to customer
+    'COMPLIANCE_VIOLATION',-- SCR Check 3 (compliance) failed → always routes to customer
+    'CUSTOMER_APPROVED',   -- customer explicitly approved (after SCR_FAILED or POST_APPROVAL mode)
+    'CUSTOMER_REJECTED',   -- customer rejected, returned for regeneration
+    'PUBLISHED',           -- published to platform
+    'PUBLISH_FAILED'       -- scheduling-mcp returned error
+);
+
+CREATE TABLE business.campaign_content_items (
+    id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    campaign_id                 UUID NOT NULL REFERENCES business.content_campaigns(id),
+    weekly_theme_id             UUID NOT NULL REFERENCES business.campaign_weekly_themes(id),
+    organisation_id             UUID NOT NULL REFERENCES business.organisations(id),
+    platform                    VARCHAR(50) NOT NULL,         -- INSTAGRAM_POST, YOUTUBE_SHORT, GBP_POST, etc.
+    content_body                JSONB NOT NULL,              -- {caption, image_prompt, hashtags, cta, alt_text}
+    audio_script                TEXT,                        -- voice script for video/audio platforms
+    visual_storyboard           JSONB,                       -- scene-by-scene for video content
+    scheduled_at                TIMESTAMPTZ NOT NULL,
+    published_at                TIMESTAMPTZ,
+    platform_post_id            VARCHAR(200),                -- external ID from platform API
+    scr_status                  content_scr_status NOT NULL DEFAULT 'PENDING',
+    regeneration_attempts       SMALLINT NOT NULL DEFAULT 0,
+    approval_mode               campaign_approval_mode NOT NULL,
+    tenant_id                   UUID NOT NULL,
+    created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_content_items_campaign  ON business.campaign_content_items(campaign_id);
+CREATE INDEX idx_content_items_schedule  ON business.campaign_content_items(scheduled_at) WHERE scr_status IN ('SCR_PASSED','CUSTOMER_APPROVED');
+CREATE INDEX idx_content_items_status    ON business.campaign_content_items(scr_status, organisation_id);
+
+-- scr_review_records: SCR check results per content item (one row per review run)
+CREATE TABLE business.scr_review_records (
+    id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    content_item_id             UUID NOT NULL REFERENCES business.campaign_content_items(id),
+    organisation_id             UUID NOT NULL REFERENCES business.organisations(id),
+    regeneration_attempt        SMALLINT NOT NULL DEFAULT 0,
+    check_1_theme_fidelity      scr_check_result NOT NULL DEFAULT 'NOT_RUN',
+    check_1_score               DECIMAL(4,3),
+    check_2_brand_voice         scr_check_result NOT NULL DEFAULT 'NOT_RUN',
+    check_2_score               DECIMAL(4,3),
+    check_3_compliance          scr_check_result NOT NULL DEFAULT 'NOT_RUN',
+    check_3_violations          JSONB,                       -- list of compliance violations (if any)
+    check_4_uniqueness          scr_check_result NOT NULL DEFAULT 'NOT_RUN',
+    check_4_competitor_sim      DECIMAL(4,3),
+    check_4_own_recency_sim     DECIMAL(4,3),
+    check_5_quality             scr_check_result NOT NULL DEFAULT 'NOT_RUN',
+    check_5_score               DECIMAL(4,3),
+    overall_result              VARCHAR(20) NOT NULL DEFAULT 'PENDING' CHECK (overall_result IN ('PENDING','PASSED','FAILED','COMPLIANCE_VIOLATION')),
+    reviewed_at                 TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    tenant_id                   UUID NOT NULL
+);
+CREATE INDEX idx_scr_records_item ON business.scr_review_records(content_item_id);
+CREATE INDEX idx_scr_records_org  ON business.scr_review_records(organisation_id, reviewed_at DESC);
+
+-- Prompt seeds: Campaign Theme Engine (C-055) + Platform Intelligence (DP-024) — v0.39.0
+INSERT INTO institutional.agent_prompt_versions
+    (prompt_id, version, skill_type, pipeline_step, agent_type, prompt_file_path, constitutional_basis, change_type, minimum_model_tier, reviewed_by, reviewed_at, is_active, activated_at)
+VALUES
+    ('DMA/CAMPAIGN/MASTER_THEME_PROPOSAL', '1.0.0', 'CONTENT_STRATEGY', 'MASTER_THEME_PROPOSAL', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-055; C-036; C-037; C-050; AD-028; DP-024', 'BREAKING', 'FRONTIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('DMA/CAMPAIGN/WEEKLY_THEME_CASCADE', '1.0.0', 'CONTENT_STRATEGY', 'WEEKLY_THEME_CASCADE', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-055; C-036; AD-028', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('DMA/CAMPAIGN/PLATFORM_CONTENT_VARIANT', '1.0.0', 'CONTENT_STRATEGY', 'PLATFORM_CONTENT_VARIANT', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-055; C-036; C-052; AD-028; DP-024', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('DMA/CAMPAIGN/SCR_QUALITY_CHECK', '1.0.0', 'SYNTHETIC_CONTENT_REVIEW', 'SCR_QUALITY_CHECK', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-055; C-052; DP-021', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('DMA/CAMPAIGN/CAMPAIGN_DIGEST', '1.0.0', 'CONTENT_STRATEGY', 'CAMPAIGN_DIGEST', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-055; C-037; C-051', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('DMA/PLATFORM/PLATFORM_INTELLIGENCE_RESEARCH', '1.0.0', 'MARKET_RESEARCH', 'PLATFORM_INTELLIGENCE_RESEARCH', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-036; C-037; DP-024', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW());

@@ -28,10 +28,10 @@ Wait for explicit Founder confirmation. No exceptions.
 ## Current Platform State (updated each session)
 
 ```
-Version:   0.38.0 | Gate: G5 CLEAR | Epoch: 1 — Employment
+Version:   0.39.0 | Gate: G5 CLEAR | Epoch: 1 — Employment
 Authorized: Runtime Professional (IB-009 — Foundation Implementation — NOT YET STARTED)
 Implementation: AWAITING FOUNDER AUTHORIZATION | Architecture: COMPLETE
-Activation Gate: 13 sections (extended v0.35.0: +Section 12 SIL Gate, +Section 13 SIR Gate)
+Activation Gate: 14 sections (extended v0.39.0: +Section 14 Campaign Theme Engine Gate)
 ```
 
 **Open Constitutional Blockers:** None
@@ -41,7 +41,7 @@ Activation Gate: 13 sections (extended v0.35.0: +Section 12 SIL Gate, +Section 1
 **Note for implementation sprint:** TRADING/EXECUTION/ESCALATION_DECISION is BREAKING type — Founder must acknowledge before Trading agent implementation begins.
 
 **Approved Agent Specifications (GENESIS Part 05):**
-- Digital Marketing Agent (Healthcare + Beauty) v2.4 — APPROVED. R-014 + R-018. 45 active prompts. Activation Gate 11/11 PASS (pre-C-053/C-054 gate). Sections 3.18+3.19 added (v0.35.0–v0.36.0). Gate 12+13 status: PASS.
+- Digital Marketing Agent (Healthcare + Beauty) v2.5 — APPROVED. R-014 + R-015. 58 active prompts. Activation Gate 14/14 PASS (v0.39.0). Sections 3.18+3.19+3.21 added. Campaign Theme Engine + Platform Intelligence + SCR operational.
 - Trading Agent (FO + Crypto) v1.7 — APPROVED. R-012 + R-017 + R-018. Full Activation Gate 11/11 PASS. **P1 before IB-009: Sections 3.18+3.19 (SIL/SIR) not yet added to Trading spec.**
 - Agricultural Advisory Agent (India Small Farmers) v2.6 — APPROVED. R-013 + R-015 + R-017 + R-018. Full Activation Gate 11/11 PASS. Sections 4.13+4.18 (SIL+SIR) added (v0.35.0–v0.36.0). Gate 12+13 status: PASS.
 

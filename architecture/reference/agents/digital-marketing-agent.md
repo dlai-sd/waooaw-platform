@@ -1,7 +1,7 @@
 # Digital Marketing Professional — Healthcare & Beauty
 
-**Specification version:** 2.4
-**Date:** 2026-07-11 (v2.4 — C-052: Context Bootstrap, Creative Fingerprint Enforcer, Tier 3 temporal fence)
+**Specification version:** 2.5
+**Date:** 2026-07-12 (v2.5 — C-055: Campaign Theme Engine, Platform Intelligence, Synthetic Content Reviewer, Content Cascade, Campaign Approval Modes)
 **Change from v2.0:** Section 3.15 (Strategic Cognition Standard) added. Professional Template: strategic_cognition block declared. C-050 added to Constitutional Checklist. Prompt Catalogue section (§10b) added. Two new prompts catalogued.
 **Constitutional Basis:** C-036 (Skills), C-037 (Business KPIs), C-038 (Billing), C-039 (Conversational config), C-040 (Domain specialization), C-041 (Tool authorization), ADR-019 (RAG), ADR-020 (MCP), C-048 (Information Non-Exploitation — LAW), C-049 (Honest Limitation Disclosure — LAW), C-050 (Strategic Cognition Obligation — LAW)
 **Reviewed by:** Enterprise Architect — R-014 (v2.0), R-018 (v2.1)
@@ -191,35 +191,104 @@
 
 ---
 
-### Skill 2: Content Strategy & Calendar
+### Skill 2: Content Strategy, Campaign Theme Engine & Calendar
 
 **Skill type:** `CONTENT_STRATEGY`
-**Business KPI:** Content calendar adherence rate (%) + theme relevance score (customer-rated 1-5)
-**Execution model:** APPROVAL_GATE (monthly plan requires customer approval)
+**Specification version:** 2.5 (Campaign Theme Engine upgrade — C-055)
+**Business KPI:** Campaign outcome achievement rate (% of campaign target_outcome achieved) + Content calendar adherence rate (%) + Customer effort score (how often customer has to manually intervene)
+**Execution model:** APPROVAL_GATE for Campaign Brief and monthly calendar; auto-execution within approved Campaign Brief scope (CAMPAIGN_APPROVAL / CAMPAIGN_AUTO modes)
+
+**Operating modes (v2.5 — new):**
+
+| Mode | Customer in | What customer approves | Touchpoints |
+|---|---|---|---|
+| `POST_APPROVAL` | First 3 months | Every individual content piece | Every piece |
+| `CAMPAIGN_APPROVAL` | After 3 months ≥90% approval rate | Campaign Brief (once per campaign) + weekly digest | 1/campaign + digest |
+| `CAMPAIGN_AUTO` | After 3 months CAMPAIGN_APPROVAL <5% SCR failure | Campaign Brief only | 1/campaign + digest |
 
 **Decision Space:**
-- **Authorized:** Create monthly content calendar; propose seasonal themes; recommend posting frequency; identify content opportunities (holidays, awareness days); adjust calendar based on customer feedback
-- **Prohibited:** Publish anything without customer approval; create content that makes clinical claims; use patient names or photos without explicit permission
-- **Always-ask:** Changing agreed posting frequency; introducing a new content theme not in the approved monthly plan; posting during medical/religious occasions the customer hasn't cleared
+- **Authorized:** Research and propose platform intelligence (which platforms suit this customer's target audience); propose master Campaign Brief with theme, weekly cascade, target outcome, platform mix; generate weekly sub-themes from approved campaign brief; create platform content variants (caption + image prompt + audio script) for all active platforms; coordinate Synthetic Content Reviewer (SCR) pipeline; send weekly campaign digest; suggest seasonal campaign opportunities
+- **Prohibited:** Publish anything without an approved Campaign Brief in CAMPAIGN_APPROVAL or CAMPAIGN_AUTO mode; create content that makes clinical claims; use patient names or photos without explicit permission; propose a platform the customer has not approved in their platform mix
+- **Always-ask:** Proposing a new platform (requires Platform Mix approval update); changing campaign window or target outcome after brief approval (major change); discontinuing an in-progress campaign early; introducing a new brand voice direction not evidenced in the Creative Fingerprint
+
+**Platform Intelligence (v2.5 — new capability in Skill 2):**
+```
+Platform Intelligence Research runs at:
+  - POST_ONBOARDING (when customer profile reaches MINIMUM_VIABLE)
+  - QUARTERLY_REFRESH (every 3 months — platforms evolve, so should the mix)
+  - ON_REQUEST (customer asks "should I be on LinkedIn?")
+
+Research signals:
+  - Competitor platform presence (from meta-ad-library-mcp + social-profile-mcp)
+  - Target audience demographics per platform (Tier 1 RAG: platform audience data by domain + city)
+  - Platform-content fit for business domain (Tier 1 RAG: what works on which platform, by vertical)
+  - Customer's existing accounts and follower counts (where they already have a presence)
+
+Output: Platform Recommendation — for each platform: ACTIVE | ADVISORY | NOT_RELEVANT + rationale
+Customer approves the platform mix → stored in customer profile → governs all campaign planning
+```
+
+**Campaign Theme Cascade (v2.5 — new capability):**
+```
+Dr. Mehta — October 2026 Campaign (example)
+
+CAMPAIGN BRIEF (proposed by agent, approved by customer):
+  master_theme:    "Dental Preventive Care Series"
+  campaign_window: Oct 1–31, 2026 (4 weeks)
+  target_outcome:  "+15 preventive checkup appointments"
+  target_audience: "Working professionals, 28–45, Viman Nagar area,
+                    haven't visited dentist in >1 year;
+                    anxious about: pain + cost"
+  platform_mix:    [INSTAGRAM, GBP, WHATSAPP, YOUTUBE_SHORT]
+  content_cadence: {INSTAGRAM: "2/week + 3 stories/week", GBP: "1/week",
+                    WHATSAPP: "1 broadcast/week", YOUTUBE_SHORT: "1/2 weeks"}
+
+WEEKLY SUB-THEMES (generated after approval):
+  Week 1: "Prevention is cheaper than cure"       → hook: cost anxiety
+  Week 2: "What actually happens at a checkup"    → hook: pain anxiety
+  Week 3: "Meet our team — the faces you'll see"  → hook: trust building
+  Week 4: "Offer + last chance CTA"               → hook: conversion
+
+PLATFORM CONTENT VARIANTS (Week 2 example):
+  INSTAGRAM_POST: Illustrated 5-step infographic + caption 
+                  "Scared? Here's exactly what happens in 30 min 👇"
+  INSTAGRAM_STORY: 15-second animated poll "When did you last visit?"
+  GBP_POST: 300-char text + "Call Now" CTA
+  YOUTUBE_SHORT: 60-second voice script (Dr. Mehta speaks to camera)
+  WHATSAPP: Marathi+Hindi conversational message + appointment link
+  
+→ All 5 pieces carry the SAME core story
+→ Each is FORMAT-NATIVE to its platform
+→ All pass SCR before scheduling
+→ Customer sees: weekly digest only (what posted, how it performed, what's next)
+```
 
 **RAG Sources:**
 | Tier | Knowledge | Retrieved for |
 |---|---|---|
-| 1 — Domain | Dental/beauty awareness calendar India (World Oral Health Day, etc.) | Seasonal content opportunities |
-| 1 — Domain | Healthcare marketing regulation guidelines India | Compliance checking on content themes |
-| 2 — Customer | Customer's previous monthly plans and approval history | Preference learning |
-| 2 — Customer | Customer's stated business goals and KPI targets | Goal alignment |
-| 3 — Platform | What content themes perform best for dental clinics in India by month | Theme effectiveness |
+| 1 — Domain | Awareness calendar India: World Oral Health Day, healthcare awareness months | Seasonal campaign opportunities |
+| 1 — Domain | Healthcare marketing regulation guidelines India + per-platform advertising policies | Campaign + content compliance |
+| 1 — Domain | Platform audience demographics by domain + city tier (Instagram, YouTube, LinkedIn, X) | Platform Intelligence research |
+| 1 — Domain | What campaign themes perform best for dental/beauty by month + by platform | Theme effectiveness benchmarks |
+| 2 — Customer | Customer's Creative Fingerprint (voice_embedding, performance_dna, approval_pattern) | Campaign brand alignment |
+| 2 — Customer | Previous campaigns: themes, approval history, outcome achievement | Learning + continuity |
+| 3 — Platform | Campaign outcome benchmarks by domain + city (anonymised) | Target outcome calibration |
 
 **MCP Tools:**
 | Tool | MCP Server | Action | Authorization | Failure |
 |---|---|---|---|---|
-| Read prior content | scheduling-mcp | calendar.get_history | `CONTENT_STRATEGY` authorized | DEGRADABLE |
-| Publish calendar | scheduling-mcp | calendar.create_plan | `CONTENT_STRATEGY` authorized, customer APPROVED | REQUIRED |
+| Read prior content + campaigns | scheduling-mcp | calendar.get_history | `CONTENT_STRATEGY` authorized | DEGRADABLE |
+| Publish campaign plan | scheduling-mcp | calendar.create_plan | `CONTENT_STRATEGY` authorized, customer APPROVED | REQUIRED |
+| Competitor platform research | meta-ad-library-mcp + social-profile-mcp | Platform Intelligence research | `MARKET_RESEARCH` authorized | DEGRADABLE |
+| Schedule content item | scheduling-mcp | content.schedule_item | `CONTENT_STRATEGY` authorized, SCR_PASSED | REQUIRED |
 
 **Constitutional constraints:**
-- Must never suggest content that makes unverifiable medical claims (healthcare advertising standards)
-- Monthly plan is ALWAYS presented for customer approval before any execution begins
+- A Campaign Brief in DRAFT status may NOT have content variants generated for it — customer approval is the constitutional gate
+- Compliance violations detected by SCR Check 3 always route to customer — never auto-regenerated silently (C-055)
+- The MASTER_THEME_PROPOSAL prompt is FRONTIER tier / BREAKING class — campaign strategy is not a routine task
+- Platform Intelligence recommendation must cite evidence — "you should be on LinkedIn" without competitor/audience data is not authorized
+
+**Constitutional Basis (v2.5 additions):** C-055 (Campaign Coherence — LAW); AD-028 (Campaign Theme Cascade Standard); DP-024 (Campaign-First Content Intelligence)
 
 ---
 
@@ -227,7 +296,7 @@
 
 **Skill type:** `INSTAGRAM_MARKETING`
 **Business KPI:** Instagram-attributed appointment enquiries per month (tracked via link in bio / WhatsApp click)
-**Execution model:** APPROVAL_GATE (each post requires approval before publishing)
+**Execution model:** Per Section 3.14.1 approval modes; in CAMPAIGN_APPROVAL/CAMPAIGN_AUTO: SCR governs, not per-post customer approval
 
 **Decision Space:**
 - **Authorized:** Create captions; generate post images; design stories; create reels from provided assets; schedule posts; respond to comments (generic, pre-approved response templates only); manage highlights; use approved hashtags
@@ -1191,6 +1260,159 @@ skill_intelligence_router:
         - with_skill: "PAID_ADVERTISING"
           relationship: "BIDIRECTIONAL"
           benefit: "Competitor campaign launch → defensive paid response recommendation"
+
+---
+
+## 3.21 Campaign Theme Engine — Section 3.21 (C-055, v0.39.0)
+
+```yaml
+campaign_theme_engine:
+  applies_to_modes: ["CAMPAIGN_APPROVAL", "CAMPAIGN_AUTO"]
+  backward_compatible: true  # POST_APPROVAL mode customers unaffected
+
+  platform_intelligence:
+    research_skill: "CONTENT_STRATEGY"
+    research_prompt: "DMA/PLATFORM/PLATFORM_INTELLIGENCE_RESEARCH"
+    research_cadence: "POST_ONBOARDING + QUARTERLY_REFRESH"
+    research_signals:
+      - "competitor platform presence and active campaign counts (meta-ad-library-mcp)"
+      - "target audience demographics per platform for healthcare/beauty India (Tier 1 RAG)"
+      - "platform-content fit benchmarks by domain + city tier (Tier 1 RAG)"
+      - "customer's existing platform accounts and follower counts (social-profile-mcp)"
+    supported_platforms:
+      - {platform: "INSTAGRAM", content_fit: ["dental", "beauty", "fitness", "food", "retail"], mcp: "instagram-mcp"}
+      - {platform: "YOUTUBE_SHORT", content_fit: ["dental_education", "beauty_tutorials", "fitness_demos"], mcp: "youtube-mcp"}
+      - {platform: "GBP", content_fit: ["all_local_businesses"], mcp: "google-business-mcp"}
+      - {platform: "FACEBOOK", content_fit: ["dental", "beauty", "fitness", "local_retail"], mcp: "facebook-mcp"}
+      - {platform: "WHATSAPP_BROADCAST", content_fit: ["appointment_reminders", "existing_patient_campaigns"], mcp: "whatsapp-business-mcp"}
+      - {platform: "LINKEDIN", content_fit: ["b2b_practices", "corporate_wellness"], mcp: "linkedin-mcp", dependency_status: "PENDING_FOUNDER_ACTION"}
+      - {platform: "X", content_fit: ["thought_leadership", "real_time_engagement"], mcp: "x-mcp", dependency_status: "PENDING_FOUNDER_DECISION"}
+      - {platform: "PINTEREST", content_fit: ["beauty", "home_decor", "fashion", "food"], mcp: "pinterest-mcp", dependency_status: "PENDING_FOUNDER_ACTION"}
+      - {platform: "THREADS", content_fit: ["dental", "beauty", "lifestyle", "young_urban"], mcp: "threads-mcp", dependency_status: "PENDING_FOUNDER_ACTION"}
+
+  campaign_theme_cascade:
+    level_1_prompt: "DMA/CAMPAIGN/MASTER_THEME_PROPOSAL"
+    level_1_model_tier: "FRONTIER"
+    level_1_prompt_type: "BREAKING"
+    level_2_prompt: "DMA/CAMPAIGN/WEEKLY_THEME_CASCADE"
+    level_2_model_tier: "MID_TIER"
+    level_3_prompt: "DMA/CAMPAIGN/PLATFORM_CONTENT_VARIANT"
+    level_3_model_tier: "MID_TIER"
+    campaign_weeks_range: [3, 8]
+    tables: ["business.content_campaigns", "business.campaign_weekly_themes", "business.campaign_content_items"]
+
+  synthetic_content_review:
+    enabled_for_modes: ["CAMPAIGN_APPROVAL", "CAMPAIGN_AUTO"]
+    checks:
+      SCR_1_THEME_FIDELITY:  {threshold: 0.80, tier: "LOCAL", fail_action: "REGENERATE"}
+      SCR_2_BRAND_VOICE:     {threshold: 0.75, tier: "LOCAL", fail_action: "REGENERATE"}
+      SCR_3_COMPLIANCE:      {threshold: "ZERO_VIOLATIONS", tier: "LOCAL", fail_action: "ROUTE_TO_CUSTOMER"}
+      SCR_4_UNIQUENESS:      {competitor_threshold: 0.75, own_content_threshold: 0.85, tier: "LOCAL", fail_action: "REGENERATE"}
+      SCR_5_QUALITY:         {threshold: 0.80, tier: "MID_TIER", prompt: "DMA/CAMPAIGN/SCR_QUALITY_CHECK", fail_action: "REGENERATE"}
+    max_regeneration_attempts: 2
+    evidence_table: "business.scr_review_records"
+
+  content_approval_modes:
+    POST_APPROVAL:     {upgrade_criteria: "3 months + ≥90% approval rate + explicit customer request"}
+    CAMPAIGN_APPROVAL: {weekly_digest: true, digest_prompt: "DMA/CAMPAIGN/CAMPAIGN_DIGEST", upgrade_criteria: "3 months + <5% SCR failure + explicit customer request"}
+    CAMPAIGN_AUTO:     {weekly_digest: true, max_auto_posts_per_week: 10, downgrade_trigger: "SCR failure rate > 15% in any 30-day period"}
+
+  campaign_digest:
+    cadence: "WEEKLY — Monday 09:00 IST"
+    channels: ["PORTAL", "WHATSAPP_TEXT", "EMAIL"]
+    prompt: "DMA/CAMPAIGN/CAMPAIGN_DIGEST"
+    model_tier: "MID_TIER"
+```
+
+```yaml
+campaign_theme_engine:
+  applies_to_modes: ["CAMPAIGN_APPROVAL", "CAMPAIGN_AUTO"]
+  backward_compatible: true  # POST_APPROVAL mode customers unaffected
+
+  platform_intelligence:
+    research_skill: "CONTENT_STRATEGY"
+    research_prompt: "DMA/CAMPAIGN/PLATFORM_INTELLIGENCE_RESEARCH"
+    research_cadence: "POST_ONBOARDING + QUARTERLY_REFRESH"
+    research_signals:
+      - "competitor platform presence and active campaign counts (meta-ad-library-mcp)"
+      - "target audience demographics per platform for healthcare/beauty India (Tier 1 RAG)"
+      - "platform-content fit benchmarks by domain + city tier (Tier 1 RAG)"
+      - "customer's existing platform accounts and follower counts (social-profile-mcp)"
+    supported_platforms:
+      - platform: "INSTAGRAM"
+        content_fit: ["dental", "beauty", "fitness", "food", "retail"]
+        mcp: "instagram-mcp"
+      - platform: "YOUTUBE_SHORT"
+        content_fit: ["dental_education", "beauty_tutorials", "fitness_demos"]
+        mcp: "youtube-mcp"
+      - platform: "GBP"
+        content_fit: ["all_local_businesses"]
+        mcp: "google-business-mcp"
+      - platform: "FACEBOOK"
+        content_fit: ["dental", "beauty", "fitness", "local_retail"]
+        mcp: "facebook-mcp"
+      - platform: "WHATSAPP_BROADCAST"
+        content_fit: ["appointment_reminders", "existing_patient_campaigns"]
+        mcp: "whatsapp-business-mcp"
+      - platform: "LINKEDIN"
+        content_fit: ["b2b_practices", "corporate_wellness", "professional_services"]
+        mcp: "linkedin-mcp"
+        dependency_status: "PENDING_FOUNDER_ACTION"  # LinkedIn Partner Program needed
+      - platform: "X"
+        content_fit: ["thought_leadership", "real_time_engagement"]
+        mcp: "x-mcp"
+        dependency_status: "PENDING_FOUNDER_DECISION"  # $100/month API cost
+      - platform: "PINTEREST"
+        content_fit: ["beauty", "home_decor", "fashion", "food"]
+        mcp: "pinterest-mcp"
+        dependency_status: "PENDING_FOUNDER_ACTION"  # Pinterest developer account
+      - platform: "THREADS"
+        content_fit: ["dental", "beauty", "lifestyle", "young_urban"]
+        mcp: "threads-mcp"
+        dependency_status: "PENDING_FOUNDER_ACTION"  # Meta Threads API beta access
+
+  campaign_theme_cascade:
+    level_1_prompt: "DMA/CAMPAIGN/MASTER_THEME_PROPOSAL"
+    level_1_model_tier: "FRONTIER"
+    level_1_prompt_type: "BREAKING"
+    level_2_prompt: "DMA/CAMPAIGN/WEEKLY_THEME_CASCADE"
+    level_2_model_tier: "MID_TIER"
+    level_3_prompt: "DMA/CAMPAIGN/PLATFORM_CONTENT_VARIANT"
+    level_3_model_tier: "MID_TIER"
+    campaign_weeks_range: [3, 8]
+    tables:
+      - "business.content_campaigns"
+      - "business.campaign_weekly_themes"
+      - "business.campaign_content_items"
+
+  synthetic_content_review:
+    enabled_for_modes: ["CAMPAIGN_APPROVAL", "CAMPAIGN_AUTO"]
+    checks:
+      SCR_1_THEME_FIDELITY:     {threshold: 0.80, tier: "LOCAL", fail_action: "REGENERATE"}
+      SCR_2_BRAND_VOICE:        {threshold: 0.75, tier: "LOCAL", fail_action: "REGENERATE"}
+      SCR_3_COMPLIANCE:         {threshold: "ZERO_VIOLATIONS", tier: "LOCAL", fail_action: "ROUTE_TO_CUSTOMER"}
+      SCR_4_UNIQUENESS:         {competitor_threshold: 0.75, own_content_threshold: 0.85, tier: "LOCAL", fail_action: "REGENERATE"}
+      SCR_5_QUALITY:            {threshold: 0.80, tier: "MID_TIER", prompt: "DMA/CAMPAIGN/SCR_QUALITY_CHECK", fail_action: "REGENERATE"}
+    max_regeneration_attempts: 2
+    evidence_table: "business.scr_review_records"
+
+  content_approval_modes:
+    POST_APPROVAL:
+      upgrade_criteria: "3 months + ≥90% approval rate + explicit customer request"
+    CAMPAIGN_APPROVAL:
+      weekly_digest: true
+      digest_prompt: "DMA/CAMPAIGN/CAMPAIGN_DIGEST"
+      upgrade_criteria: "3 months + <5% SCR failure + explicit customer request"
+    CAMPAIGN_AUTO:
+      weekly_digest: true
+      max_auto_posts_per_week: 10
+      downgrade_trigger: "SCR failure rate > 15% in any 30-day period"
+
+  campaign_digest:
+    cadence: "WEEKLY — Monday 09:00 IST"
+    channels: ["PORTAL", "WHATSAPP_TEXT", "EMAIL"]
+    prompt: "DMA/CAMPAIGN/CAMPAIGN_DIGEST"
+    model_tier: "MID_TIER"
 ```
 
 ---
@@ -1553,6 +1775,7 @@ ProfessionalTemplate:
 - [x] **C-051 check (Resource Transparency): Section 3.16 added. UsageUnits defined (Content Creation, Quick Edit, Research, Strategy, Report). minimum_model_tier declared for every prompt in Prompt Catalogue. Customer budget communication thresholds (30%, 10%) declared. Emergency override never blocks service. DMA/TOKEN_ECONOMY/USAGE_SUMMARY prompt added.**
 - [x] **C-036/C-037/C-048 check (Off-Topic Boundary): Section 3.17 added. 5 redirect hooks declared (competitor_activity, kpi_pace, pending_approval, maturity_score_change, google_review_alert). Adjacent professional routing declared (accounting, HR, legal). PLATFORM/BOUNDARY/OFF_TOPIC_REDIRECT prompt in Prompt Catalogue. 3-attempt graduation pattern declared.**
 - [x] **C-052 check (Context Fidelity, Isolation, Uniqueness): Context Bootstrap Protocol loads Decision Space, session state, performance history, and Creative Fingerprint before every session. Creative Fingerprint Enforcer (M-3) runs before every content generation — uniqueness_score computed vs competitor content (threshold 0.75) and own recent content (threshold 0.85). Fingerprint is updated online after every approval/rejection. Two competing dental clinics in the same neighbourhood are guaranteed differentiated content. Tier 3 has 24-hour write lag — no real-time cross-customer data.**
+- [ ] **C-055 check (Campaign Coherence): Section 3.21 added (v2.5). Platform Intelligence declared with 10 platform coverage + dependency status. Campaign Theme Cascade declared (3 levels, all required fields). SCR 5-check criteria declared with thresholds, model tiers, and fail actions. SCR Check 3 (Compliance) fail_action = ROUTE_TO_CUSTOMER (never silent). Content Approval Modes declared (POST_APPROVAL→CAMPAIGN_APPROVAL→CAMPAIGN_AUTO) with upgrade/downgrade criteria. Campaign Digest declared (weekly, Monday 09:00 IST, 3 channels). 6 new campaign prompts + 1 Platform Intelligence prompt in Prompt Catalogue. MASTER_THEME_PROPOSAL is FRONTIER/BREAKING. Campaign SQL tables referenced (4 tables).**
 
 ---
 

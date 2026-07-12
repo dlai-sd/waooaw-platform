@@ -2,11 +2,38 @@
 
 **Last Updated:** 2026-07-12
 **Version:** 0.38.0
-**Session:** 2026-07-12 — SESSION CLOSE (C-053 SIL, C-054 SIR, Skill Dependency Register, Secret Vault, Agent Skill Proposal Loop)
+**Session:** 2026-07-12 — SESSION CLOSE (C-053 SIL + C-054 SIR + C-055 Campaign Theme Engine + EA review + merges)
 
 ---
 
-## IN-PROGRESS CHECKPOINT (Session 2026-07-12)
+## IN-PROGRESS CHECKPOINT (Session 2026-07-12 — Final)
+
+| Milestone | Status |
+|---|---|
+| C-053 Signal Intelligence Layer (LAW) — claim, AD-026, DP-022, Section 3.18, SQL, RLS | ✓ DONE — v0.35.0 |
+| C-054 Skill Intelligence Router (LAW) — claim, AD-027, DP-023, Section 3.19, AI Runtime, SQL, RLS | ✓ DONE — v0.36.0 |
+| Agent spec updates: Agricultural SCMs (5), DMA SCMs (7), SIR Sections 3.18+3.19 | ✓ DONE — v0.36.0 |
+| Prompt Library: 7 new prompts (SIR x3, SIL x3) — 52 active | ✓ DONE — v0.36.0 |
+| Skill Dependency Register — per-agent, per-skill, Founder action list | ✓ DONE — v0.37.0 |
+| Secret Vault — ADR-021 Section 7 explicit Key Vault backing confirmation | ✓ DONE — v0.37.1 |
+| Agent → Skill Proposal Loop — Section 3.20, issue template, copilot routing | ✓ DONE — v0.38.0 |
+| EA review R-015: 12 gaps identified, all fixed | ✓ DONE — PR #5 merged |
+| C-055 Campaign Coherence Obligation (LAW) + AD-028 + DP-024 | ✓ DONE — v0.39.0 |
+| Section 3.21 Campaign Theme Engine (AGENT-AUTHORING-GUIDE) + Activation Gate 14 sections | ✓ DONE — v0.39.0 |
+| AI Runtime Components 10 (Campaign Engine) + 11 (SCR) | ✓ DONE — v0.39.0 |
+| DMA v2.4 → v2.5: Campaign Theme Engine upgrade + Platform Intelligence + Section 3.21 | ✓ DONE — v0.39.0 |
+| SQL: 4 campaign tables + enums + RLS | ✓ DONE — v0.39.0 |
+| Campaign prompt seeds: 6 new + PLATFORM_INTELLIGENCE prompt — total 58 active | ✓ DONE — v0.39.0 |
+| PR #5 merged + PR #6 merged | ✓ DONE |
+| GENESIS.md + containers.md (new MCPs) + business-capabilities + AGENT-ENTRY updated | ✓ DONE — EA fix |
+| Simulation runs (DMA, Trading, Agricultural) | NEXT SESSION |
+
+**New Founder Dependencies (v0.39.0 — Platform Expansion):**
+- YouTube Data API v3: Enable in existing Google Cloud project — free, no new cost. New MCP: youtube-mcp
+- LinkedIn Marketing API: WAOOAW LinkedIn Company Page + Partner Program. Lead time 2-4 weeks. Free.
+- **X (Twitter) API v2 Basic: $100/month for write access. Founder decision needed.**
+- Pinterest API v5: New developer account. Free. 2-3 days.
+- Meta Threads API: Same Meta Business Manager as Instagram. Free. 1-2 weeks after Meta BM verification.
 
 | Milestone | Status |
 |---|---|
@@ -31,6 +58,32 @@
 | v0.37.0 | **Skill Dependency Register** — `architecture/reference/skill-dependency-register.md`; per-agent per-skill dependency table; 3 P0 Founder actions identified (Meta Business Verification, WABA, ESCALATION_DECISION acknowledgment); full GitHub Secrets inventory |
 | v0.37.1 | **Secret Vault confirmation** — ADR-021 Section 7 added; oauth-vault HKDF+Key Vault architecture made explicit; HashiCorp Vault rejection reaffirmed; ₹150-300/month cost confirmed within boundary |
 | v0.38.0 | **Agent → Skill Proposal Governance Loop** — Section 3.20 in AGENT-AUTHORING-GUIDE; `type:skill-proposal` GitHub Issue template; copilot-instructions.md routing for `awaiting:po-review` and `status:approved` flows |
+=======
+## IN-PROGRESS CHECKPOINT (Session 2026-07-12 — PR #6)
+
+| Milestone | Status |
+|---|---|
+| C-055 Campaign Coherence Obligation (LAW) | ✓ DONE — v0.39.0 |
+| AD-028 Campaign Theme Cascade Standard | ✓ DONE — v0.39.0 |
+| DP-024 Campaign-First Content Intelligence | ✓ DONE — v0.39.0 |
+| Section 3.21 Campaign Theme Engine Standard (AGENT-AUTHORING-GUIDE) | ✓ DONE — v0.39.0 |
+| Activation Gate extended to 14 sections (Section 14 = Campaign Gate) | ✓ DONE — v0.39.0 |
+| AI Runtime: Campaign Theme Engine Pipeline (Component 10) + SCR (Component 11) | ✓ DONE — v0.39.0 |
+| DMA v2.4 → v2.5: Skill 2 → Campaign Theme Engine, Section 3.21, Platform Intelligence | ✓ DONE — v0.39.0 |
+| SQL: 4 campaign tables (content_campaigns, campaign_weekly_themes, campaign_content_items, scr_review_records) | ✓ DONE — v0.39.0 |
+| RLS: 4 tenant-isolated campaign tables | ✓ DONE — v0.39.0 |
+| 7 new campaign/platform prompts — total 58 active (45 main + 7 PR#5 + 6 PR#6) | ✓ DONE — v0.39.0 |
+| PR #5 (C-053/C-054) pending EA review | PENDING |
+| PR #6 (C-055) pending EA review | PENDING |
+| New platform dependencies to add to Skill Dependency Register after PR #5 merges | PENDING |
+
+**New Founder Dependencies (v0.39.0 — add to Skill Dependency Register after PR #5 merges):**
+- YouTube Data API v3: Enable in existing Google Cloud project — free quota, no new cost. New MCP: youtube-mcp
+- LinkedIn Marketing API: WAOOAW LinkedIn Company Page + Partner Program. Lead time 2-4 weeks. Free.
+- X (Twitter) API v2 Basic: $100/month for write access. **Founder decision: include at MVI or defer?**
+- Pinterest API v5: New developer account. Free. 2-3 days.
+- Meta Threads API: Same Meta Business Manager as Instagram. Free. 1-2 weeks after Meta BM verification.
+>>>>>>> 699f049 (constitutional(dma): C-055 Campaign Theme Engine + SCR + Platform Intelligence (DMA v2.5, v0.39.0))
 
 | Milestone | Status |
 |---|---|
