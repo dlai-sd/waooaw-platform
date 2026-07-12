@@ -1,0 +1,177 @@
+name: "Skill Proposal — Agent-Detected Gap → New Skill Request"
+description: "Raised by Platform Operations Agent when SIR gap signals reach threshold. Product Owner reviews and prepares proposal for Founder decision."
+title: "[SKILL-PROPOSAL] "
+labels:
+  - "type:skill-proposal"
+  - "awaiting:po-review"
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Skill Proposal — Section 3.20 Governance Loop
+
+        This issue represents a **gap signal that has crossed the materiality threshold** in
+        `institutional.skill_gap_signals`. It was raised automatically by the Platform Operations
+        Agent or manually by the Product Owner.
+
+        **Governance flow:**
+        1. Platform Operations Agent raises this issue (auto) or PO raises manually → label `awaiting:po-review`
+        2. **Product Owner** completes the Proposal Review section below → changes label to `awaiting:founder-approval`
+        3. **Founder** reviews and decides → `approved` / `deferred` / `rejected`
+        4. On `approved` → assign Business Architect; create `type:agent-update, update-type:new-skill` issue
+
+        **No implementation begins until Founder approves. PO review is mandatory before Founder sees the proposal.**
+
+  - type: input
+    id: agent-type
+    attributes:
+      label: "Agent with Gap"
+      description: "Which agent's SIR detected this gap?"
+      placeholder: "e.g. DIGITAL_MARKETING_HEALTHCARE (Digital Marketing Agent)"
+    validations:
+      required: true
+
+  - type: input
+    id: unserviced-intent
+    attributes:
+      label: "Unserviced Intent"
+      description: "What category of customer request is no current skill serving?"
+      placeholder: "e.g. GST invoice generation, contract review, hiring advice"
+    validations:
+      required: true
+
+  - type: input
+    id: gap-frequency
+    attributes:
+      label: "Signal Evidence"
+      description: "How many times was this intent unserviced? Across how many customers?"
+      placeholder: "e.g. 12 gap events in 30 days across 7 customers"
+    validations:
+      required: true
+
+  - type: textarea
+    id: sample-intents
+    attributes:
+      label: "Sample Customer Requests (anonymised)"
+      description: "What did customers actually ask that no skill could serve? 3-5 examples."
+      placeholder: |
+        - "Can you generate the GST invoice for this campaign?"
+        - "I need a tax receipt for my subscription"
+        - "How do I file GST for digital marketing services?"
+    validations:
+      required: true
+
+  - type: input
+    id: candidate-skill
+    attributes:
+      label: "Candidate Skill Domain"
+      description: "What skill type would serve this intent? (SIR best-guess)"
+      placeholder: "e.g. GST_INVOICE_GENERATION, CONTRACT_REVIEW, HIRING_ADVISORY"
+    validations:
+      required: false
+
+  - type: input
+    id: adjacent-professional
+    attributes:
+      label: "Adjacent WAOOAW Professional Type (if applicable)"
+      description: "Does another WAOOAW agent already handle this? If so, is the answer cross-referral instead of a new skill?"
+      placeholder: "e.g. ACCOUNTING_PROFESSIONAL (not yet built), or N/A"
+    validations:
+      required: false
+
+  - type: markdown
+    attributes:
+      value: |
+        ---
+        ## Product Owner Proposal Review (PO completes this section before Founder review)
+
+        **Instructions for Product Owner (Office 11):**
+        Complete all fields below. Then change the label from `awaiting:po-review` to `awaiting:founder-approval`.
+        The Founder will not see this issue until PO review is complete.
+
+  - type: textarea
+    id: po-genuine-gap
+    attributes:
+      label: "PO: Is this a genuine new Skill need?"
+      description: "Or is this a prompt gap, a training issue, or already covered by adjacent_professional_routing?"
+      placeholder: |
+        YES — genuine gap because:
+        - No current skill covers this intent
+        - adjacent_professional_routing doesn't apply (accounting agent not yet built)
+        - Frequency (7 customers / 12 events) exceeds noise threshold
+    validations:
+      required: false
+
+  - type: textarea
+    id: po-constitutional-dependencies
+    attributes:
+      label: "PO: Constitutional Dependencies"
+      description: "What new claims, ADRs, MCP servers, or external credentials would this skill require?"
+      placeholder: |
+        - New claim: C-055 (GST Invoice Generation as professional obligation)? TBD after spec.
+        - New MCP: razorpay-mcp already exists for billing. GST e-invoice may need new integration.
+        - External: ClearTax or GSTN API for GST e-invoice generation
+        - Regulatory: GST practitioner registration may be required for WAOOAW
+    validations:
+      required: false
+
+  - type: textarea
+    id: po-business-case
+    attributes:
+      label: "PO: Business Case"
+      description: "What customer segment benefits? Pricing impact? Estimated addressable customers?"
+      placeholder: |
+        All DMA customers who are GST-registered businesses (est. 70% of DMA customer base).
+        Could be bundled into existing tiers or as a premium add-on.
+        Eliminates a common pain point (customers currently use a separate accountant for this).
+    validations:
+      required: false
+
+  - type: textarea
+    id: po-risk-assessment
+    attributes:
+      label: "PO: Risk Assessment + Mitigation"
+      description: "Constitutional risks, technical risks, regulatory risks. Best option with mitigation."
+      placeholder: |
+        RISKS:
+        - Regulatory: Is generating GST invoices a Chartered Accountant-only activity? Research needed.
+        - Constitutional: C-048 check — must not cross-sell accounting services using information advantage.
+        - Technical: GSTN API access requires GSP registration.
+
+        MITIGATION:
+        - Scope to invoice generation only (not tax advisory)
+        - Require customer to confirm GST registration number (always-ask)
+        - Partner with a GSP for GSTN API access
+
+        RECOMMENDATION: APPROVE_FOR_SPEC — with explicit scope boundary (invoice generation, not advisory)
+    validations:
+      required: false
+
+  - type: dropdown
+    id: po-recommendation
+    attributes:
+      label: "PO Recommendation"
+      description: "Product Owner's recommendation to Founder"
+      options:
+        - "APPROVE_FOR_SPEC — Proceed to Business Architect for full spec"
+        - "NEEDS_MORE_DATA — Gap signal is real but business case needs more evidence"
+        - "REJECT — Gap is better served by adjacent_professional_routing or out-of-scope"
+        - "DEFER — Valid idea but not in current roadmap quarter"
+      default_value: "NEEDS_MORE_DATA — Gap signal is real but business case needs more evidence"
+    validations:
+      required: false
+
+  - type: markdown
+    attributes:
+      value: |
+        ---
+        ## Founder Decision
+
+        After PO review, Founder approves or rejects:
+        - **APPROVE** → add label `status:approved`, assign to Business Architect (Office 2)
+        - **DEFER** → add label `status:deferred`, comment with condition for re-evaluation
+        - **REJECT** → add label `status:rejected`, close issue with reason
+
+        On APPROVE, Business Architect creates a new `type:agent-update, update-type:new-skill` issue
+        and follows Section 15 Type 1 of AGENT-AUTHORING-GUIDE. This issue is the authorization record.

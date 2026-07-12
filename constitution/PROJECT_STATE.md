@@ -1,8 +1,8 @@
 # PROJECT_STATE.md
 
 **Last Updated:** 2026-07-12
-**Version:** 0.35.0
-**Session:** 2026-07-12 — IN PROGRESS (C-053 Signal Intelligence Layer, C-054 Skill Intelligence Router, Skill Dependency Register, Secret Vault, Agent Skill Proposal Loop)
+**Version:** 0.38.0
+**Session:** 2026-07-12 — SESSION CLOSE (C-053 SIL, C-054 SIR, Skill Dependency Register, Secret Vault, Agent Skill Proposal Loop)
 
 ---
 
@@ -10,13 +10,27 @@
 
 | Milestone | Status |
 |---|---|
-| C-053 Signal Intelligence Layer (SIL) — claim, AD-026, DP-022, Section 3.18, SQL, RLS | ✓ DONE — v0.35.0 |
-| C-054 Skill Intelligence Router (SIR) — claim, AD-027, DP-023, Section 3.19, AI Runtime, SQL, RLS | pending v0.36.0 |
-| Skill Dependency Register per agent | pending v0.37.0 |
-| Secret Vault oauth-vault backing decision | pending v0.37.1 |
-| Agent → Skill Proposal governance loop (Section 3.20, issue template) | pending v0.38.0 |
-| EA Review + Founder approval | pending |
-| Simulation runs (DMA, Trading, Agricultural) | NEXT AFTER THIS SPRINT |
+| C-053 Signal Intelligence Layer — claim, AD-026, DP-022, Section 3.18, SQL, RLS | ✓ DONE — v0.35.0 |
+| C-054 Skill Intelligence Router — claim, AD-027, DP-023, Section 3.19, AI Runtime, SQL, RLS | ✓ DONE — v0.36.0 |
+| Agent spec updates: Agricultural SCMs (5), DMA SCMs (7), SIR Section 3.18+3.19 | ✓ DONE — v0.36.0 |
+| Prompt Library: 7 new prompts (SIR x3, SIL x3) — total 52 active prompts | ✓ DONE — v0.36.0 |
+| Skill Dependency Register — per-agent, per-skill dependencies + Founder action list | ✓ DONE — v0.37.0 |
+| Secret Vault — ADR-021 Section 7 explicit Key Vault backing confirmation | ✓ DONE — v0.37.1 |
+| Agent → Skill Proposal Loop — Section 3.20, `type:skill-proposal` issue template, copilot routing | ✓ DONE — v0.38.0 |
+| EA Review of this PR | PENDING — awaiting Founder authorization for EA review |
+| Simulation runs (DMA, Trading, Agricultural) | NEXT AFTER EA REVIEW |
+
+---
+
+## What This Session Completed (2026-07-12)
+
+| Version | What |
+|---|---|
+| v0.35.0 | **C-053 Signal Intelligence Layer (LAW)** — constitutional claim; AD-026 (Signal Watch Workflow Pattern); DP-022 (Proactive Intelligence Primacy); Section 3.18 in AGENT-AUTHORING-GUIDE; SignalWatchWorkflow pattern in execution loop; SQL tables (signal_materiality_events, skill_gap_signals); RLS policies |
+| v0.36.0 | **C-054 Skill Intelligence Router (LAW)** — constitutional claim; AD-027 (Skill Capability Manifest Standard); DP-023 (Skill Network Intelligence); Section 3.19+3.20 in AGENT-AUTHORING-GUIDE; Activation Gate extended to 13 sections; SIR + SIL coordinator in AI Runtime spec; Skill Capability Manifests for Agricultural (5 skills) and DMA (7 skills); 7 new prompts — total 52 active; SQL (agent_skill_graph, RLS) |
+| v0.37.0 | **Skill Dependency Register** — `architecture/reference/skill-dependency-register.md`; per-agent per-skill dependency table; 3 P0 Founder actions identified (Meta Business Verification, WABA, ESCALATION_DECISION acknowledgment); full GitHub Secrets inventory |
+| v0.37.1 | **Secret Vault confirmation** — ADR-021 Section 7 added; oauth-vault HKDF+Key Vault architecture made explicit; HashiCorp Vault rejection reaffirmed; ₹150-300/month cost confirmed within boundary |
+| v0.38.0 | **Agent → Skill Proposal Governance Loop** — Section 3.20 in AGENT-AUTHORING-GUIDE; `type:skill-proposal` GitHub Issue template; copilot-instructions.md routing for `awaiting:po-review` and `status:approved` flows |
 
 | Milestone | Status |
 |---|---|
@@ -150,14 +164,14 @@ NEXT:         Founder indicated an important point to discuss — see WORK MENU 
 
 | Layer | Status |
 |---|---|
-| Claims | C-001 to C-049, all RATIFIED |
+| Claims | C-001 to C-054, all RATIFIED |
 | Capabilities | Domains 1–12 (Platform Operations added) |
-| Drivers | AD-001 to AD-020 |
-| Principles | DP-001 to DP-018 |
+| Drivers | AD-001 to AD-027 |
+| Principles | DP-001 to DP-023 |
 | ADRs | ADR-001 to ADR-023 |
 | Reference Architecture | containers.md + 23 MCP servers + 2 internal services |
 | Component Specs | CE + BP + PR + AIR (all updated with AI-native execution) |
-| Prompt Library | 30 active prompts across 4 agent types (24 DMA + 6 Trading + 7 Agri + 1 PlatOps; 6 new added v0.29.0) |
+| Prompt Library | 52 active prompts across 4 agent types + platform routing/signal prompts (v0.38.0) |
 | MCP Tool Catalogues | 11 servers + razorpay-mcp fully specified |
 | Temporal Workflows | 5 workflows defined |
 | Data Architecture | All tables, RLS, indexes complete |

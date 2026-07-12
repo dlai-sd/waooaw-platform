@@ -58,6 +58,16 @@ The GitHub Issue body IS additional Work Contract context. After completing BOOT
      `update-type:new-skill` → Section 15 Type 1. `update-type:new-prompt` → Section 15 Type 2.
      `update-type:new-mcp` → Section 15 Type 3. `update-type:new-constraint` → Section 15 Type 4.
      `update-type:persona-extension` → Section 15 Type 5.
+   - **Label `type:skill-proposal`** → you are executing the **Skill Proposal Review Flow** (Section 3.20).
+     If label also has `awaiting:po-review`: you are the Product Owner (Office 11).
+       Read the gap signal evidence in the issue body.
+       Complete the PO Proposal Review fields: genuine gap assessment, constitutional dependencies, business case, risk assessment.
+       Change label to `awaiting:founder-approval` when your review is complete.
+       DO NOT begin any spec work until Founder approves.
+     If label has `awaiting:founder-approval`: BLOCKED — wait for Founder decision comment on the issue.
+     If label has `status:approved`: you are the Business Architect.
+       Create `type:agent-update, update-type:new-skill` issue referencing this skill-proposal issue.
+       Follow Section 15 Type 1 from AGENT-AUTHORING-GUIDE.
 3. **Create your branch:** `ib/{IB-number}/{short-slug}` e.g. `ib/009/foundation-implementation`
    For agent lifecycle issues: `agent/{new-agent|update}/{agent-slug}` e.g. `agent/new/legal-professional`
 4. **Commit at every milestone** using conventional commit format:
