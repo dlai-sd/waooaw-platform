@@ -1856,3 +1856,110 @@ CREATE TABLE institutional.signal_bundling_log (
     logged_at                   TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX idx_signal_bundle_org ON institutional.signal_bundling_log(organisation_id, logged_at DESC);
+
+-- ============================================================
+-- Centralized Ad Account Management (v0.43.0 — C-056, ADR-026)
+-- ============================================================
+
+-- connection_model enum: WAOOAW_MANAGED (default) | CUSTOMER_OWNED (pending Founder auth)
+CREATE TYPE ads_connection_model AS ENUM (
+    'WAOOAW_MANAGED',   -- WAOOAW MBM + Google MCC (default, ADR-026)
+    'CUSTOMER_OWNED'    -- per-customer OAuth (PENDING_FOUNDER_AUTHORIZATION)
+);
+
+-- customer_ad_accounts: sub-accounts under WAOOAW's MBM and Google MCC (per customer)
+CREATE TABLE business.customer_ad_accounts (
+    id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organisation_id             UUID NOT NULL REFERENCES business.organisations(id),
+    employment_contract_id      UUID NOT NULL REFERENCES business.employment_contracts(id),
+    connection_model            ads_connection_model NOT NULL DEFAULT 'WAOOAW_MANAGED',
+
+    -- WAOOAW_MANAGED fields (populated for WAOOAW_MANAGED model)
+    meta_sub_account_id         VARCHAR(100),          -- customer's sub-account ID in WAOOAW's Meta MBM
+    meta_page_id                VARCHAR(100),          -- customer's Facebook Page ID (granted to WAOOAW's MBM)
+    meta_page_access_granted_at TIMESTAMPTZ,           -- when customer granted their Page to WAOOAW's MBM
+    google_ads_client_id        VARCHAR(100),          -- customer's client account ID in WAOOAW's MCC
+    google_analytics_property   VARCHAR(100),          -- linked GA4 property
+
+    -- Management fee configuration (C-056 — fixed at contract formation)
+    management_fee_pct          NUMERIC(4,2) NOT NULL DEFAULT 10.00,  -- 10%
+    minimum_monthly_spend_inr   INTEGER NOT NULL DEFAULT 200000,       -- ₹2,000 in paise
+
+    -- CUSTOMER_OWNED fields (populated only for CUSTOMER_OWNED model)
+    customer_meta_bm_id         VARCHAR(100),          -- customer's own Meta Business Manager ID
+    customer_google_ads_id      VARCHAR(100),          -- customer's own Google Ads account ID
+
+    status                      VARCHAR(20) NOT NULL DEFAULT 'SETUP_PENDING'
+                                CHECK (status IN ('SETUP_PENDING','ACTIVE','SUSPENDED','TERMINATING','TRANSFERRED','DELETED')),
+    activated_at                TIMESTAMPTZ,
+    terminated_at               TIMESTAMPTZ,
+    transfer_target_bm_id       VARCHAR(100),          -- for TRANSFER at termination
+    tenant_id                   UUID NOT NULL,
+    created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT uq_ad_account_contract UNIQUE (employment_contract_id)
+);
+CREATE INDEX idx_ad_accounts_org ON business.customer_ad_accounts(organisation_id, status);
+
+-- ad_spend_wallets: per-customer prepaid Ad Spend Wallet (C-056 segregation)
+CREATE TABLE business.ad_spend_wallets (
+    id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organisation_id             UUID NOT NULL REFERENCES business.organisations(id),
+    employment_contract_id      UUID NOT NULL REFERENCES business.employment_contracts(id),
+    ad_account_id               UUID NOT NULL REFERENCES business.customer_ad_accounts(id),
+
+    -- Balance tracking (all values in INR paise for precision)
+    funded_balance_paise        BIGINT NOT NULL DEFAULT 0,   -- total topped up, not yet charged
+    spent_balance_paise         BIGINT NOT NULL DEFAULT 0,   -- confirmed charged to Meta/Google
+    pending_spend_paise         BIGINT NOT NULL DEFAULT 0,   -- committed to campaigns, not yet billed
+    management_fee_charged_paise BIGINT NOT NULL DEFAULT 0,  -- total management fee deducted
+    credits_received_paise      BIGINT NOT NULL DEFAULT 0,   -- Meta/Google credits passed through
+
+    -- available = funded - spent - pending
+    monthly_budget_cap_paise    BIGINT NOT NULL,             -- C-043 Constitutional Floor
+    current_month               DATE NOT NULL DEFAULT DATE_TRUNC('month', NOW()),
+
+    last_topup_at               TIMESTAMPTZ,
+    last_charge_at              TIMESTAMPTZ,
+    low_balance_alert_sent_at   TIMESTAMPTZ,                 -- tracks when LOW_BALANCE SIL signal last fired
+    tenant_id                   UUID NOT NULL,
+    created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT uq_wallet_contract UNIQUE (employment_contract_id)
+);
+CREATE INDEX idx_ad_wallets_org ON business.ad_spend_wallets(organisation_id);
+
+-- ad_spend_ledger: complete audit trail of every ad spend event (C-056 evidentiary record)
+-- This table is append-only — no UPDATE or DELETE (same immutability as evidence_records)
+CREATE TYPE ad_spend_transaction_type AS ENUM (
+    'TOPUP',            -- customer funded the wallet via Razorpay
+    'CHARGE',           -- Meta/Google billed WAOOAW for this customer's campaigns
+    'MANAGEMENT_FEE',   -- WAOOAW's 10% management fee on the CHARGE
+    'CREDIT',           -- Meta/Google issued a promotional credit → passed to customer
+    'REFUND',           -- Razorpay refund of unused wallet balance (at termination)
+    'ADJUSTMENT'        -- WAOOAW manually corrects an error (requires constitutional evidence record)
+);
+
+CREATE TABLE business.ad_spend_ledger (
+    id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organisation_id             UUID NOT NULL REFERENCES business.organisations(id),
+    employment_contract_id      UUID NOT NULL REFERENCES business.employment_contracts(id),
+    wallet_id                   UUID NOT NULL REFERENCES business.ad_spend_wallets(id),
+
+    transaction_type            ad_spend_transaction_type NOT NULL,
+    amount_paise                BIGINT NOT NULL,           -- always positive; direction determined by type
+    platform                    VARCHAR(20) CHECK (platform IN ('META','GOOGLE','WAOOAW','RAZORPAY')),
+    external_campaign_id        VARCHAR(200),              -- Meta/Google campaign ID (for CHARGE records)
+    external_invoice_id         VARCHAR(200),              -- Meta/Google billing invoice reference
+    razorpay_payment_id         VARCHAR(100),              -- for TOPUP and REFUND records
+    management_fee_basis_paise  BIGINT,                    -- for MANAGEMENT_FEE rows: the CHARGE amount this fee is based on
+    evidence_record_id          UUID,                      -- CE evidence record ID (C-023 — Evidence First)
+    description                 TEXT,                      -- human-readable description for invoice
+    billing_month               DATE NOT NULL DEFAULT DATE_TRUNC('month', NOW()),
+    created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    -- NOTE: No updated_at, no tenant_id needed — this is immutable financial audit record
+);
+CREATE INDEX idx_ad_ledger_wallet    ON business.ad_spend_ledger(wallet_id, billing_month DESC);
+CREATE INDEX idx_ad_ledger_org       ON business.ad_spend_ledger(organisation_id, billing_month DESC);
+CREATE INDEX idx_ad_ledger_type      ON business.ad_spend_ledger(transaction_type, billing_month DESC);
+CREATE INDEX idx_ad_ledger_campaign  ON business.ad_spend_ledger(external_campaign_id) WHERE external_campaign_id IS NOT NULL;

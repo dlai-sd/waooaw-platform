@@ -367,3 +367,31 @@ GRANT SELECT                 ON business.trading_session_records TO business_app
 -- signal_bundling_log: institutional — no RLS; no customer PII in bundling decisions
 GRANT SELECT, INSERT ON institutional.signal_bundling_log TO ai_runtime_app;
 GRANT SELECT         ON institutional.signal_bundling_log TO business_app;
+
+-- Centralized Ad Account Management RLS (v0.43.0 — C-056, ADR-026)
+-- All three tables are tenant-scoped — ad data is customer-private (C-034 + C-056 segregation)
+
+ALTER TABLE business.customer_ad_accounts ENABLE ROW LEVEL SECURITY;
+CREATE POLICY customer_ad_accounts_tenant_isolation ON business.customer_ad_accounts
+    FOR ALL TO business_app, ai_runtime_app
+    USING (tenant_id = current_setting('app.tenant_id', TRUE)::UUID);
+GRANT SELECT, INSERT, UPDATE ON business.customer_ad_accounts TO ai_runtime_app;
+GRANT SELECT, INSERT         ON business.customer_ad_accounts TO business_app;
+
+ALTER TABLE business.ad_spend_wallets ENABLE ROW LEVEL SECURITY;
+CREATE POLICY ad_spend_wallets_tenant_isolation ON business.ad_spend_wallets
+    FOR ALL TO business_app, ai_runtime_app
+    USING (tenant_id = current_setting('app.tenant_id', TRUE)::UUID);
+GRANT SELECT, INSERT, UPDATE ON business.ad_spend_wallets TO ai_runtime_app;
+GRANT SELECT                 ON business.ad_spend_wallets TO business_app;
+
+-- ad_spend_ledger: tenant-scoped INSERT; institutional SELECT for billing reconciliation
+-- C-056: no UPDATE or DELETE — immutable financial audit record (same principle as CAL)
+ALTER TABLE business.ad_spend_ledger ENABLE ROW LEVEL SECURITY;
+CREATE POLICY ad_spend_ledger_tenant_isolation ON business.ad_spend_ledger
+    FOR SELECT TO business_app, ai_runtime_app
+    USING (organisation_id = current_setting('app.tenant_id', TRUE)::UUID);
+-- INSERT policy: ai_runtime_app inserts charges; business_app inserts topup records (from Razorpay webhook)
+GRANT SELECT, INSERT ON business.ad_spend_ledger TO ai_runtime_app;
+GRANT SELECT, INSERT ON business.ad_spend_ledger TO business_app;
+-- Note: no UPDATE or DELETE granted to any role — C-056 immutability obligation

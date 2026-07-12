@@ -225,18 +225,20 @@
 | 1 | **Meta Business Manager verification** (covers Instagram, Facebook, WhatsApp, Ad Library) | DMA + Agricultural | 2–4 weeks | Free |
 | 2 | **WAOOAW WhatsApp Business Account (WABA) number** | DMA + Agricultural | 1–2 weeks after #1 | $0.005/message |
 | 3 | **TRADING/EXECUTION/ESCALATION_DECISION prompt acknowledgment** | Trading | Immediate — one sentence | None |
+| 4 | **Meta Business Partner status** (required for multi-client ad management via WAOOAW MBM — ADR-026) | DMA Skill 11 Paid Advertising | 1–3 weeks after Meta BM verification (#1) | Free |
+| 5 | **Google Ads Manager account (MCC)** + billing profile setup | DMA Skill 11 Paid Advertising | 1 day (Google self-serve) | Free to create; ad spend billed monthly |
 
 ### Founder Action Required (P1 — Before Live Deployment)
 
 | # | Item | Agents | Cost |
 |---|---|---|---|
-| 4 | Zerodha Kite Connect developer API account | Trading | ₹2,000/month |
-| 5 | IMD API key (free registration) | Agricultural | Free |
-| 6 | eNAM registration for agmarknet-mcp | Agricultural | Free |
-| 7 | Google Cloud project for Places + GBP + Search Console | DMA | ~₹0 (free tiers cover MVI) |
-| 8 | ICAR content strategy decision (public PDFs vs. formal partnership) | Agricultural | Partnership: negotiation needed |
-| 9 | NBSS&LUP soil data access | Agricultural | Free (public domain) |
-| 10 | SEBI compliance review of PAAS advisory model | Trading | Legal cost (one-time) |
+| 6 | Zerodha Kite Connect developer API account | Trading | ₹2,000/month |
+| 7 | IMD API key (free registration) | Agricultural | Free |
+| 8 | eNAM registration for agmarknet-mcp | Agricultural | Free |
+| 9 | Google Cloud project for Places + GBP + Search Console | DMA | ~₹0 (free tiers cover MVI) |
+| 10 | ICAR content strategy decision (public PDFs vs. formal partnership) | Agricultural | Partnership: negotiation needed |
+| 11 | NBSS&LUP soil data access | Agricultural | Free (public domain) |
+| 12 | SEBI compliance review of PAAS advisory model | Trading | Legal cost (one-time) |
 
 ### Platform Engineering Actions (Not Founder — Before Simulation)
 
@@ -246,6 +248,30 @@
 | B | `data.gov.in` API key (free) + agmarknet-mcp realistic price data | Runtime Professional |
 | C | MSP data ingestion pipeline from data.gov.in | Runtime Professional |
 | D | Open-Meteo integration test (no key needed — free public API) | Runtime Professional |
+| E | `waooaw-ads-manager` stub service in docker-compose (returns mock sub-account IDs) | Runtime Professional |
+
+---
+
+## DMA Skill 11 — Paid Advertising Dependency Detail (ADR-026 Model)
+
+### WAOOAW_MANAGED Connection (Default — ADR-026)
+
+| Dependency | Status | Founder Action | Cost |
+|---|---|---|---|
+| WAOOAW Meta Business Manager | ⚠️ Requires Meta BM verification (P0 item #1) | P0 — Founder submits for verification | Free |
+| Meta Business Partner status | 🔴 Requires additional Meta review after BM verification | P0 item #4 above | Free |
+| `WAOOAW_META_SYSTEM_USER_ACCESS_TOKEN` | 🔴 Created inside Meta BM after Partner status | Added to Azure Key Vault | Free |
+| `waooaw-ads-manager` service | ⚠️ Spec complete; needs implementation | IB-009 implementation sprint | Dev cost |
+| Google Ads Manager (MCC) account | 🔴 Founder creates MCC account | P0 item #5 above | Free |
+| `WAOOAW_GOOGLE_ADS_MCC_DEVELOPER_TOKEN` | 🔴 Issued after MCC creation (Google review: 1-2 weeks) | Added to Azure Key Vault | Free |
+| Ad Spend Wallet Razorpay flow | ⚠️ New payment type (AD_SPEND_TOPUP) — needs implementation | IB-009 implementation sprint | Razorpay 2% + GST on each topup |
+
+### CUSTOMER_OWNED Connection (Alternative — PENDING_FOUNDER_AUTHORIZATION)
+
+| Dependency | Status | Note |
+|---|---|---|
+| Per-customer Meta BM OAuth | 🔴 PENDING_FOUNDER_AUTHORIZATION | Declared in spec. Not built. Same as original ADR-021 model. |
+| Per-customer Google Ads OAuth | 🔴 PENDING_FOUNDER_AUTHORIZATION | Declared in spec. Not built. |
 
 ---
 
@@ -255,6 +281,8 @@
 |---|---|---|---|
 | `META_APP_ID` | Meta Graph API | DMA (Instagram, Facebook, WhatsApp), Agricultural (WhatsApp) | 🔴 Needs Meta Business Verification |
 | `META_APP_SECRET` | Meta Graph API | Same | 🔴 |
+| `WAOOAW_META_SYSTEM_USER_ACCESS_TOKEN` | WAOOAW MBM (ADR-026) | DMA Skill 11 — centralized ad management | 🔴 Needs Meta Business Partner status |
+| `WAOOAW_GOOGLE_ADS_MCC_DEVELOPER_TOKEN` | WAOOAW Google MCC (ADR-026) | DMA Skill 11 — centralized ad management | 🔴 Needs Google MCC + developer token approval |
 | `GOOGLE_PLACES_API_KEY` | Google Places | DMA Skill 0 | 🔴 Needs Google Cloud project |
 | `GOOGLE_OAUTH_CLIENT_ID` | Google OAuth | DMA (GBP, Search Console) | 🔴 |
 | `GOOGLE_OAUTH_CLIENT_SECRET` | Google OAuth | Same | 🔴 |

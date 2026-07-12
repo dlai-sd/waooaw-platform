@@ -1,8 +1,8 @@
 # PROJECT_STATE.md
 
 **Last Updated:** 2026-07-12
-**Version:** 0.42.0
-**Session:** 2026-07-12 — SESSION CLOSE (Simulation Runs: User + Developer + Tester + 16 gap bridges)
+**Version:** 0.43.0
+**Session:** 2026-07-12 — SESSION CLOSE (C-056 Ad Spend Transparency, ADR-026 Centralized Ad Management, DMA Skill 11 v2.5 Agency Model)
 
 ---
 

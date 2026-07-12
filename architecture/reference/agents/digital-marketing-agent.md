@@ -522,12 +522,127 @@ The `whatsapp-business-mcp` serves BOTH types but uses different credentials: WA
 
 ---
 
-### Skill 11: Paid Advertising (Meta + Google Ads)
+### Skill 11: Paid Advertising — WAOOAW Managed (Meta + Google Ads)
 
 **Skill type:** `PAID_ADVERTISING`
+**Specification version:** 2.5 (ADR-026 — Centralized Agency Model, C-056)
 **Business KPI:** Cost per lead (CPL) from paid campaigns + Return on Ad Spend (ROAS) per month
 **Execution model:** `APPROVAL_GATE` — every campaign, budget change, and creative requires customer approval before launch
-**Phase activation:** Phase 2 (Growth Engine) — activated at Score 3+; budget must be confirmed by customer
+**Phase activation:** Phase 2 (Growth Engine) — activated at Score 3+; Ad Spend Wallet must be funded (minimum ₹2,000)
+
+**Customer needs solved:** 📞 Not Enough Leads · 💸 Wasting Ad Money
+
+**Connection model (ADR-026):**
+```yaml
+connection_model: WAOOAW_MANAGED  # Default. CUSTOMER_OWNED: PENDING_FOUNDER_AUTHORIZATION.
+meta_sub_account_id: "{waooaw_mbm}/{customer_sub_account_id}"
+google_ads_client_id: "{waooaw_mcc}/{customer_client_id}"
+management_fee_pct: 10          # Disclosed at onboarding. Fixed for contract duration (C-056).
+minimum_ad_spend_inr: 2000      # Per month. Below this, Meta learning algorithm cannot optimize.
+```
+
+**Ad Spend Wallet (C-056 — two-part billing):**
+- **Subscription fee** (₹2,499/mo Growth Engine): covers DMA agent management, content, analytics — SAC 9984
+- **Ad spend** (customer-funded wallet, pass-through): Meta + Google actual charges — SAC 998361
+- **Management fee**: 10% of gross ad spend, added to Invoice 2, disclosed line-by-line
+- **Invoice 2 example** (₹5,000 ad spend month):
+  ```
+  Meta ad spend (Oct 2026):          ₹3,500
+  Google Ads spend (Oct 2026):       ₹1,500
+  Management fee (10%):              ₹  500
+  Sub-total:                         ₹5,500
+  GST @ 18% (SAC 998361):           ₹  990
+  Total:                             ₹6,490
+  ```
+- **Pass-through obligation (C-056)**: Any Meta/Google credits or refunds → credited 100% to customer's wallet
+- **Low balance alert**: C-053 HIGH signal when wallet < 3 days of burn rate
+
+**Decision Space:**
+- **Authorized:** Research and recommend campaign strategy (platform, objective, audience, budget); create ad creatives (copy + visuals) for approval; set up campaigns after customer approval using WAOOAW's sub-account; optimise bids within approved parameters; A/B test creatives; pause underperforming ads; report on campaign performance; debit Ad Spend Wallet for confirmed charges; notify customer of wallet balance
+- **Prohibited:** Launch any campaign without explicit customer approval; exceed customer's approved monthly ad budget (C-043 Constitutional Floor); commingle this customer's ad budget with another customer's (C-056 segregation); run retargeting without confirmed pixel installation and customer privacy acknowledgement; target based on health conditions or sensitive categories (healthcare advertising policy); retain any Meta/Google credit that belongs to this customer
+- **Always-ask:** `PAGE_ACCESS_GRANT_REQUEST` — one-time at Skill 11 activation (customer grants their Facebook Page to WAOOAW's MBM); increasing monthly ad budget above approved amount; targeting a new audience segment; running retargeting campaign; switching campaign objective; `AD_SPEND_WALLET_TOPUP_REQUEST` — when wallet balance is projected to hit zero within 3 days
+
+**RAG Sources:**
+| Tier | Knowledge | Retrieved for |
+|---|---|---|
+| 1 — Domain | Meta healthcare advertising policies India + ASCI healthcare advertising rules (healthcare-advertising-rules-india.md) | Campaign compliance — every creative reviewed |
+| 1 — Domain | Google Ads healthcare policy India | Google campaign compliance |
+| 1 — Domain | Audience patterns for dental/beauty enquiry generation India by city | Audience targeting recommendations |
+| 2 — Customer | Approved monthly ad budget and wallet balance | Budget enforcement (C-043 + C-056) |
+| 2 — Customer | Campaign performance history, rejected creatives, approved audience segments | Learning and optimisation |
+| 2 — Customer | Platform Intelligence output (from Skill 0/1): competitor ad activity, audience platform fit | Campaign platform + audience strategy |
+| 2 — Customer | Campaign Theme Engine brief (from Skill 2, C-055): master theme, weekly sub-themes | Creative brief for paid campaigns — organic and paid tell the same story |
+| 3 — Platform | Anonymised CPL benchmarks by domain + city + platform (WAOOAW MBM aggregate — C-052 isolation) | Bid strategy, budget recommendations |
+
+**MCP Tools:**
+| Tool | MCP Server | Action | Authorization | Failure |
+|---|---|---|---|---|
+| Create Meta sub-account | waooaw-ads-manager | mbm.create_sub_account | `PAID_ADVERTISING_SETUP` + Founder-level credential | REQUIRED at activation |
+| Grant page access link | waooaw-ads-manager | mbm.generate_page_access_request | `PAGE_ACCESS_GRANT_REQUEST` always-ask | REQUIRED at activation |
+| Create Meta campaign | meta-ads-mcp | campaign.create | `PAID_ADVERTISING` authorized + APPROVED; uses WAOOAW_MANAGED sub_account_id | REQUIRED |
+| Create Google campaign | google-ads-mcp | campaign.create | `PAID_ADVERTISING` authorized + APPROVED; uses WAOOAW_MANAGED client_id | REQUIRED |
+| Update bid | meta-ads-mcp | campaign.update_bid | `PAID_ADVERTISING` authorized, within approved parameters | REQUIRED |
+| Pause campaign | meta-ads-mcp / google-ads-mcp | campaign.pause | `PAID_ADVERTISING` authorized | DEGRADABLE |
+| Read campaign stats | meta-ads-mcp / google-ads-mcp | campaign.get_insights | Always authorized (read-only) | DEGRADABLE |
+| Debit wallet | internal — ad_spend_ledger | wallet.charge | `AD_SPEND_CHARGE` authorized; CE.ValidateAction with BudgetContext (C-043 + C-056) | REQUIRED |
+| Get wallet balance | internal — ad_spend_wallets | wallet.get_balance | Always authorized (read-only) | DEGRADABLE |
+
+**Constitutional constraints:**
+- Budget hard cap (C-043): agent may NEVER spend more than the customer-approved monthly budget; CE.ValidateAction validates against wallet balance + monthly_budget_cap before EVERY campaign launch and bid change
+- Segregation (C-056): this customer's wallet balance may never be used for another customer's campaigns; ad_spend_ledger is RLS-isolated per tenant
+- Management fee transparency (C-056): management_fee_pct is disclosed in onboarding conversation and on every Invoice 2 — the fee may not change during a contract without a Decision Space amendment
+- Healthcare advertising compliance (SCR Check 3 from C-055): all ad creatives pass through the same healthcare advertising rules as organic content — a healthcare advertising violation in a paid ad is MORE serious (paid ads have wider reach)
+- Pass-through obligation (C-056): any Meta/Google credit processed → immediately credited to this customer's wallet; CE.RecordEvidence(AD_SPEND_CREDIT_RECEIVED) before crediting
+
+**Runtime Overrides:**
+| Parameter | Standard | This skill | Reason |
+|---|---|---|---|
+| `approval_mode_default` | `CUSTOMER_APPROVAL` | `CUSTOMER_APPROVAL` for campaign launch; `EXCEPTION_APPROVAL` for bid optimisation within approved parameters | Financial actions with direct spend impact require explicit approval (C-043) |
+| `synthetic_eligible_actions` | All APPROVAL_GATE | Bid optimisation only — never campaign creation, never budget changes, never wallet actions | Financial actions cannot be synthetic (C-044 restricts Synthetic Approval for financial actions) |
+| `goal_miss_escalation_months` | 2 | 1 | Paid advertising misses are financially significant — ad spend is occurring with no return |
+| `override_window` | 24 hours | 1 hour | Financial actions: tighter window because spend is irreversible (AD-016) |
+| `c056_management_fee_pct` | N/A | 10 | Fixed at contract formation. Shown on Invoice 2 |
+
+**Skill Capability Manifest (SCM for SIR routing — C-054):**
+```yaml
+skill_capability_manifest:
+  skill_id: "PAID_ADVERTISING"
+  version: "2.5"
+  intent_signatures:
+    - "run paid ads"
+    - "boost this post"
+    - "Facebook ads campaign"
+    - "Google ads for my clinic"
+    - "lead generation campaign"
+    - "how much should I spend on ads"
+    - "paid campaign for Diwali"
+  servable_request_types:
+    CAMPAIGN_CREATION: "Sets up a paid campaign on Meta or Google after approval"
+    CAMPAIGN_REPORT: "Reports paid ad performance — spend, leads, CPL, ROAS"
+    BUDGET_STATUS: "Shows Ad Spend Wallet balance and monthly burn rate"
+    BID_OPTIMISATION: "Adjusts bids within approved parameters for better CPL"
+  unservable_request_types:
+    - intent: "organic social post"
+      routes_to_skill: "INSTAGRAM_MARKETING"
+    - intent: "website conversion rate"
+      routes_to_skill: "CONVERSION_OPTIMISATION"
+  output_contributions:
+    - type: "campaign_performance_data"
+      used_by: ["PERFORMANCE_ANALYTICS"]
+  collaboration_affinities:
+    - with_skill: "CONTENT_STRATEGY"
+      relationship: "DOWNSTREAM"
+      benefit: "Campaign Theme Engine brief → paid campaign uses same creative direction as organic"
+    - with_skill: "INSTAGRAM_MARKETING"
+      relationship: "DOWNSTREAM"
+      benefit: "Approved Instagram post → paid amplification for same creative (unified organic + paid)"
+    - with_skill: "LOCAL_SEO"
+      relationship: "BIDIRECTIONAL"
+      benefit: "SEO keywords → paid keyword targeting; paid data reveals which search terms convert"
+    - with_skill: "PERFORMANCE_ANALYTICS"
+      relationship: "UPSTREAM"
+      benefit: "Campaign performance feeds monthly analytics report; CPL vs organic cost comparison"
+```
 
 **Customer needs solved:** 📞 Not Enough Leads · 💸 Wasting Ad Money
 
@@ -1595,6 +1710,7 @@ Customers choose a bundle at activation. Bundle determines which skills are acti
 **Promise:** "We'll build your digital footprint and post consistently so customers can find you and trust you."
 **Active skills:** Skill 0 (Profiling), Skill 1 (Market Research), Skill 2 (Content Strategy), Skill 4 (Instagram), Skill 5 (Facebook), Skill 6 (Google Business), Skill 7 (WhatsApp), Skill 8 (Video)
 **KPIs tracked:** Post consistency rate · Google Business views · Instagram follower growth · WhatsApp engagement
+**Billing:** Subscription only — ₹1,499/month + 18% GST (SAC 9984). No Ad Spend Wallet at this tier.
 **Upgrade trigger:** Customer reaches Score 3; agent recommends Growth Engine in monthly report.
 
 ---
@@ -1604,6 +1720,14 @@ Customers choose a bundle at activation. Bundle determines which skills are acti
 **Promise:** "We'll turn your digital presence into a customer acquisition machine."
 **Active skills:** All Curtain Raiser skills + Skill 9 (Analytics), Skill 10 (Local SEO), Skill 11 (Paid Advertising)
 **KPIs tracked:** All Curtain Raiser KPIs + enquiry volume · CPL · Google search impressions · conversion from digital
+**Billing — two-part (ADR-026 + C-056):**
+- **Part 1 (Subscription):** ₹2,499/month + 18% GST (SAC 9984) — covers all DMA agent management
+- **Part 2 (Ad Spend):** Customer-funded Ad Spend Wallet, minimum ₹2,000/month. Billed as:
+  - Actual spend passed to Meta + Google
+  - Management fee: 10% of gross ad spend (disclosed at onboarding, itemized on every invoice)
+  - GST @ 18% on (spend + management fee) — SAC 998361 (Online Advertising Services)
+  - Example: ₹5,000 ad spend → Invoice 2 total: ₹6,490 (₹5,500 + ₹990 GST)
+- Ad Spend Wallet is optional at Growth Engine. Skill 11 activates only when wallet is funded.
 **Upgrade trigger:** Customer reaches Score 5; agent recommends Maturity Phase in 6-monthly Maturity Report.
 
 ---
@@ -1613,6 +1737,7 @@ Customers choose a bundle at activation. Bundle determines which skills are acti
 **Promise:** "We'll maximise every rupee of your digital marketing and keep you ahead of competitors."
 **Active skills:** All Growth Engine skills + Skill 12 (Conversion Optimisation), Skill 13 (Competitive Intelligence)
 **KPIs tracked:** All Growth Engine KPIs + conversion rate · ROAS · competitive gap score · revenue attributed to digital
+**Billing — two-part (same as Growth Engine):** Subscription ₹3,999/month + Ad Spend Wallet (same pass-through model)
 
 ---
 
