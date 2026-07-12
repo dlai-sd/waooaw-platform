@@ -1,8 +1,8 @@
 # PROJECT_STATE.md
 
 **Last Updated:** 2026-07-12
-**Version:** 0.44.1
-**Session:** 2026-07-12 — SESSION CLOSE (FR-005: Skill 14 WAOOAW Self-Marketing authorized)
+**Version:** 0.47.0
+**Session:** 2026-07-12 — SESSION CLOSE (DMA v2.7 Skill Deepening: 16 new capabilities P0+P1+P2 across all skills, 16 new prompts, 3 new SQL tables)
 
 ---
 
