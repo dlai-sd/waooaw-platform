@@ -395,3 +395,25 @@ CREATE POLICY ad_spend_ledger_tenant_isolation ON business.ad_spend_ledger
 GRANT SELECT, INSERT ON business.ad_spend_ledger TO ai_runtime_app;
 GRANT SELECT, INSERT ON business.ad_spend_ledger TO business_app;
 -- Note: no UPDATE or DELETE granted to any role — C-056 immutability obligation
+
+-- DMA Skill Deepening RLS (v0.45.0)
+ALTER TABLE business.review_requests ENABLE ROW LEVEL SECURITY;
+CREATE POLICY review_requests_tenant_isolation ON business.review_requests
+    FOR ALL TO business_app, ai_runtime_app
+    USING (tenant_id = current_setting('app.tenant_id', TRUE)::UUID);
+GRANT SELECT, INSERT, UPDATE ON business.review_requests TO ai_runtime_app;
+GRANT SELECT                 ON business.review_requests TO business_app;
+
+ALTER TABLE business.blog_posts ENABLE ROW LEVEL SECURITY;
+CREATE POLICY blog_posts_tenant_isolation ON business.blog_posts
+    FOR ALL TO business_app, ai_runtime_app
+    USING (tenant_id = current_setting('app.tenant_id', TRUE)::UUID);
+GRANT SELECT, INSERT, UPDATE ON business.blog_posts TO ai_runtime_app;
+GRANT SELECT, UPDATE         ON business.blog_posts TO business_app;
+
+ALTER TABLE business.patient_reactivation_log ENABLE ROW LEVEL SECURITY;
+CREATE POLICY patient_reactivation_tenant_isolation ON business.patient_reactivation_log
+    FOR ALL TO business_app, ai_runtime_app
+    USING (tenant_id = current_setting('app.tenant_id', TRUE)::UUID);
+GRANT SELECT, INSERT, UPDATE ON business.patient_reactivation_log TO ai_runtime_app;
+GRANT SELECT                 ON business.patient_reactivation_log TO business_app;

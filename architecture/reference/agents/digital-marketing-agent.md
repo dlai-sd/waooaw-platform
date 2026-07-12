@@ -362,27 +362,99 @@ PLATFORM CONTENT VARIANTS (Week 2 example):
 ### Skill 6: Google Business Profile
 
 **Skill type:** `GOOGLE_BUSINESS_PROFILE`
-**Business KPI:** Google-attributed appointment calls + direction requests per month
+**Business KPI:** Google-attributed appointment calls + direction requests per month + total Google review count (stars + volume)
 **Execution model:** APPROVAL_GATE
 
 **Decision Space:**
-- **Authorized:** Post business updates; respond to reviews using pre-approved templates; update business hours; add photos (pre-approved); post offers within compliant guidelines
-- **Prohibited:** Respond to reviews with clinical claims; change business information (phone, address) without explicit customer confirmation; delete reviews
-- **Always-ask:** Responding to a 1-star review (requires custom response beyond template); posting a special offer; updating business categories
+- **Authorized:** Post business updates; respond to reviews using pre-approved templates; update business hours; add photos (pre-approved by category); post offers within compliant guidelines; seed GBP Q&A section with pre-approved FAQ pairs; update services menu (list services with description + price range); read review link URL for patient outreach; audit and update business attributes
+- **Prohibited:** Respond to reviews with clinical claims; change business information (phone, address) without explicit customer confirmation; delete reviews; post prices that are inaccurate (must be confirmed by customer before publishing)
+- **Always-ask:** Responding to a 1-star review (requires custom response beyond template); posting a special offer; updating business categories; adding a new Q&A pair not in the approved FAQ library; listing a service price range customer hasn't confirmed
+
+**Review Generation (P0 — highest ROI GBP action):**
+```
+Two-trigger review request flow:
+  TRIGGER 1: Post-Appointment (primary — 15-25% conversion rate)
+    → 24-48 hours after appointment (timing: not same day — patient still in clinic mindset)
+    → Sent via WhatsApp using review_request template (HSM pre-approved, UTILITY category)
+    → Message: "Thank you for visiting Dr. Mehta's Dental Clinic, [Name]! If your experience was positive,
+       a Google review helps other patients find us. It takes 30 seconds: [Review Link]"
+    → One request per appointment. Never repeat if patient already left a review.
+    → Evidence: REVIEW_REQUEST_SENT in CAL; REVIEW_RECEIVED if review detected (GBP polling)
+
+  TRIGGER 2: Service Milestone (secondary)
+    → After a significant multi-visit treatment is completed (implant, braces, etc.)
+    → Same template; different context in message ("Your treatment is now complete...")
+
+  Rate limiting: Never more than 1 review request per patient per 3 months
+  Opt-out: If patient replies "no" or unsubscribes, flag patient.review_request_opted_out = TRUE
+```
+
+**GBP Q&A Strategy (P0 — free SEO for voice search and People Also Ask):**
+```
+Initial seeding: 15-20 Q&A pairs covering:
+  - Hours and location: "What time does the clinic open?" → "Mon-Sat 10 AM – 8 PM, Viman Nagar"
+  - Booking: "Do I need an appointment?" → "Walk-ins welcome, appointments recommended"
+  - Pricing: "How much does a root canal cost?" → "₹8,000 – ₹15,000 depending on complexity"
+  - Procedure: "Is dental treatment painful?" → "We use modern anaesthesia..."
+  - Insurance: "Do you accept insurance?" → "Yes, we work with..."
+  - Emergency: "Do you handle dental emergencies?" → "Yes, call [number] for same-day slots"
+Monthly: Agent checks for new patient-submitted questions → suggests answers within 24 hours
+```
+
+**Services Menu (P0 — drives higher conversion from GBP profile):**
+```
+Agent builds and maintains the GBP services menu:
+  [Category: Preventive Care]
+    - Regular Checkup & Cleaning: ₹500 – ₹800 "Includes X-ray if needed"
+    - Dental X-Ray: ₹200 – ₹500 "Digital X-rays available"
+  [Category: Restorative]
+    - Root Canal Treatment: ₹8,000 – ₹15,000 "Pain-free procedure, same-day results"
+    - Tooth Filling: ₹800 – ₹2,500 "Tooth-colored composite fillings"
+  ...
+Always-ask: customer must confirm each price range before it publishes (C-043 accuracy obligation)
+```
+
+**Photo Library Strategy:**
+```
+12 mandatory photo categories (agent provides monthly photo guidance):
+  1. Exterior (day + night views)
+  2. Reception / waiting area
+  3. Treatment room(s)
+  4. Equipment (dental chair, X-ray machine, sterilization)
+  5. Team individual photos (dentist, assistant, receptionist)
+  6. Team group photo
+  7. Before/after illustrations (designed, NOT real patient photos without explicit consent)
+  8. Award/certification display
+  9. Patient experience (reception interaction — no treatment, no patient face without consent)
+  10. Neighbourhood landmark ("near [landmark] in Viman Nagar")
+  11. Logo + clinic signage
+  12. Seasonal/occasion decoration
+
+Agent generates monthly photo guidance: "This month, upload 2 photos in Category 4 (equipment).
+Google rewards profiles with fresh photos — last equipment photo was 45 days ago."
+```
 
 **RAG Sources:**
 | Tier | Knowledge | Retrieved for |
 |---|---|---|
-| 1 — Domain | Google Business optimization for healthcare India | Post format, keyword optimization |
-| 1 — Domain | Healthcare review response guidelines | Compliant review responses |
-| 2 — Customer | Clinic's approved business information | Accuracy checks |
-| 3 — Platform | What GBP post types drive calls for dental/beauty practices | Post type selection |
+| 1 — Domain | Google Business optimization for healthcare India 2026 | Post format, keyword optimization, Q&A best practices |
+| 1 — Domain | Healthcare review response guidelines (MCI + ASCI compliant) | Compliant review responses |
+| 1 — Domain | GBP services menu structure for dental/medical practices | Services menu format and pricing display |
+| 1 — Domain | Review generation best practices + TRAI compliance | Review request timing, frequency, opt-out |
+| 2 — Customer | Clinic's approved business information, services, price ranges | Accuracy checks before publishing |
+| 2 — Customer | Review request sent log (review_requests table) | Rate limiting — never spam |
+| 3 — Platform | What GBP post types + photo categories drive calls for dental/beauty | Post + photo strategy |
 
 **MCP Tools:**
 | Tool | MCP Server | Action | Authorization | Failure |
 |---|---|---|---|---|
 | Post update | google-business-mcp | post.publish | `GOOGLE_BUSINESS_POST` authorized + APPROVED | DEGRADABLE |
 | Respond review | google-business-mcp | review.respond | `GOOGLE_REVIEW_RESPONSE` authorized + APPROVED | DEGRADABLE |
+| Add Q&A | google-business-mcp | qa.add | `GOOGLE_QA_MANAGEMENT` authorized + APPROVED (first time) / PRE_AUTHORIZED (approved library) | DEGRADABLE |
+| Update services menu | google-business-mcp | services.update | `GOOGLE_SERVICES_UPDATE` always-ask (price accuracy) | DEGRADABLE |
+| Get review link | google-business-mcp | review.get_link | Always authorized (read-only) | REQUIRED for review generation |
+| Send review request | whatsapp-business-mcp | review_request.send | `REVIEW_REQUEST` authorized, rate-limited (1 per patient per 3 months) | DEGRADABLE |
+| Add photo | google-business-mcp | photo.upload | `GOOGLE_PHOTO_UPLOAD` authorized + APPROVED | DEGRADABLE |
 | Read metrics | platform-analytics-mcp | gbp.get_metrics | Always authorized | DEGRADABLE |
 
 ---
@@ -390,24 +462,59 @@ PLATFORM CONTENT VARIANTS (Week 2 example):
 ### Skill 7: WhatsApp Business Engagement
 
 **Skill type:** `WHATSAPP_BUSINESS`
-**Business KPI:** WhatsApp-originated appointment bookings per month
-**Execution model:** APPROVAL_GATE for broadcasts; PRE_AUTHORIZED for scheduled reminders within approved templates
+**Business KPI:** WhatsApp-originated appointment bookings per month + review generation conversion rate + patient reactivation rate (% of dormant patients who rebook within 30 days of contact)
+**Execution model:** APPROVAL_GATE for new broadcasts; PRE_AUTHORIZED for scheduled reminders, review requests, and post-treatment check-ins within approved templates
 
 **Decision Space:**
-- **Authorized:** Send pre-approved broadcast messages to opted-in patients; update WhatsApp status; manage product/service catalogue; send appointment reminder templates
-- **Prohibited:** Send clinical advice via WhatsApp; contact patients who have not opted in; share patient information in broadcasts; send promotional messages that violate TRAI regulations
-- **Always-ask:** New broadcast message content not in the pre-approved template library; adding a new product to the catalogue; contacting a new patient segment
+- **Authorized:** Send pre-approved broadcast messages to opted-in patients; update WhatsApp status; manage product/service catalogue; send appointment reminder templates; send post-appointment review requests (PRE_AUTHORIZED within approved template); send post-treatment check-in messages (PRE_AUTHORIZED within approved template); send patient reactivation messages (APPROVAL_GATE — customer reviews the target list before sending); send welcome sequence to newly opt-in patients (PRE_AUTHORIZED); add booking link to all outbound messages
+- **Prohibited:** Send clinical advice via WhatsApp; contact patients who have not opted in; contact patients who have opted out of review requests; share patient information in broadcasts; send more than 1 review request per patient per 3 months; send promotional messages that violate TRAI regulations; contact patients on the DND registry
+- **Always-ask:** New broadcast message content not in the pre-approved template library; adding a new product to the catalogue; contacting a new patient segment; reactivation campaign (customer reviews the dormant patient list and confirms who to contact before any message is sent)
+
+**Patient Reactivation (P0 — highest ROI WhatsApp action):**
+```
+Dormant patient identification:
+  - Patient who has not had a confirmed appointment in 6+ months
+  - Source: patient appointment history (if clinic management system connected)
+           OR manual list upload by customer (CSV via portal)
+  - Customer reviews + approves the target list BEFORE any message is sent
+
+Reactivation message (PRE_APPROVED template, UTILITY category):
+  "Dr. Mehta's Dental Clinic: Hello [Name], it's been a while since your last visit.
+   Your routine dental checkup may be due. Reply 'YES' to book, or visit: [booking link]"
+
+Cadence: Once per dormant patient. If no response in 7 days: one follow-up, then archive.
+Evidence: PATIENT_REACTIVATION_SENT + PATIENT_REACTIVATION_RESPONDED in CAL
+```
+
+**Post-Treatment Check-In (P1 — builds loyalty, generates reviews):**
+```
+Trigger: 24 hours after a significant procedure (root canal, extraction, implant, braces fitting)
+Message: "How are you feeling after yesterday's treatment, [Name]? Any discomfort?
+          We're here if you have questions. [WhatsApp contact link]"
+Follow-up: If patient replies positively → review request sent within 1 hour
+Evidence: POST_TREATMENT_CHECKIN_SENT in CAL
+```
+
+**Welcome Sequence (P1 — new patient onboarding):**
+```
+Trigger: New patient added to opt-in list (after first visit confirmation)
+  Day 1: "Welcome to Dr. Mehta's family! Thank you for your visit today.
+          Here's a guide to your treatment plan: [link]"
+  Day 3: "How has your recovery been? If you're happy with your visit,
+          a Google review helps others find us: [review link]"
+  Day 7: "Your next checkup should be in 6 months. Tap to schedule it now: [booking link]"
+```
 
 **RAG Sources:**
 | Tier | Knowledge | Retrieved for |
 |---|---|---|
-| 1 — Domain | TRAI regulations on commercial messaging India | Compliance checking |
-| 1 — Domain | WhatsApp Business API engagement patterns for healthcare | Message timing and frequency |
-| 2 — Customer | Opt-in patient list categories | Audience segmentation |
-| 2 — Customer | Approved message templates | Template selection |
-| 3 — Platform | What WhatsApp message types drive appointment bookings | Template effectiveness |
-
-**MCP Tools:**
+| 1 — Domain | TRAI regulations on commercial messaging India (DND registry, opt-out requirements) | Compliance — every message checked |
+| 1 — Domain | WhatsApp Business API engagement patterns for healthcare India | Message timing, frequency, format |
+| 1 — Domain | Review generation best practices for India healthcare | Review request timing and phrasing |
+| 2 — Customer | Opt-in patient list with last appointment date + opt-out flags | Segmentation + rate limiting |
+| 2 — Customer | Approved message templates library | Template selection |
+| 2 — Customer | Review requests sent log | Rate limiting (1 per 3 months per patient) |
+| 3 — Platform | What WhatsApp message types drive appointments + reviews for dental/beauty | Template effectiveness learning |
 | Tool | MCP Server | Action | Authorization | Failure |
 |---|---|---|---|---|
 | Send broadcast | whatsapp-business-mcp | broadcast.send | `WHATSAPP_BROADCAST` authorized + APPROVED | REQUIRED |
@@ -486,39 +593,120 @@ The `whatsapp-business-mcp` serves BOTH types but uses different credentials: WA
 ### Skill 10: Local SEO
 
 **Skill type:** `LOCAL_SEO`
-**Business KPI:** Google search impressions for target keywords per month + local pack appearances (tracked via Google Search Console)
-**Execution model:** `PRE_AUTHORIZED` for audits and recommendations; `APPROVAL_GATE` for any on-site changes or content publication
+**Business KPI:** Google search impressions for target keywords per month + local pack appearances + organic blog traffic (new sessions from blog posts) + total published blog posts
+**Execution model:** `PRE_AUTHORIZED` for audits, keyword research, schema generation, and blog drafting; `APPROVAL_GATE` for publishing any content to website or submitting to directories
 **Phase activation:** Phase 2 (Growth Engine) — activated at Score 3+
 
 **Customer need solved:** 🔍 Nobody Can Find Us
 
 **Decision Space:**
-- **Authorized:** Audit website for local SEO signals (title tags, meta descriptions, NAP consistency, schema markup, mobile speed); identify target keywords for the business domain and locality; audit and optimise Google Business Profile categories and description; build local citation recommendations; create SEO-optimised blog content recommendations; track keyword ranking progress
-- **Prohibited:** Make changes to customer's website without explicit approval per change; submit to link directories without customer approval; claim or modify business listings on platforms the customer hasn't authorised; make promises about ranking timelines
-- **Always-ask:** Publishing any new page or significant content change to customer's website; submitting to a new citation directory; recommending a paid SEO tool subscription
+- **Authorized:** Audit website for local SEO signals; identify and track target keywords; audit + optimise GBP categories and description; build citation recommendations; **create full SEO-optimised blog posts for customer approval**; generate LocalBusiness + FAQPage + MedicalOrganization JSON-LD schema markup for website; generate image SEO guidance (alt text, file naming, compression); create internal linking map between service pages and blog posts; track keyword ranking progress; generate monthly photo SEO guidance; detect broken links and missing title/meta tags; suggest Core Web Vitals improvements
+- **Prohibited:** Make changes to customer's website without explicit approval per change; submit to link directories without customer approval; publish blog posts without customer reading and approving; make promises about ranking timelines
+- **Always-ask:** Publishing any content to the website (blog post or schema); submitting to a new citation directory; recommending a paid SEO subscription
+
+**Blog Content Creation (P0 — most impactful SEO capability):**
+```
+Monthly blog production: 2 posts per month (Growth Engine) | 4 posts/month (Maturity Phase)
+Each post: 1,000–1,500 words, fully optimised
+
+Blog creation workflow:
+  STEP 1 — Keyword research (DMA/SEO/KEYWORD_RESEARCH_FOR_BLOG prompt)
+    Target: 1 primary keyword + 3-5 secondary keywords + "People Also Ask" targets
+    Approach: long-tail local keywords with buying intent
+    Examples for dental clinic Viman Nagar:
+      "dentist near me viman nagar pune" (local search)
+      "root canal cost pune 2026" (commercial intent — high CPL if captured organically)
+      "is root canal painful" (informational — positions clinic as authority)
+      "dental implant procedure steps india" (educational, builds trust)
+
+  STEP 2 — Blog post draft (DMA/SEO/BLOG_POST_CONTENT prompt — FRONTIER for first of series)
+    Structure: 
+      H1: Primary keyword naturally included
+      Introduction (150 words): Hook + pain point + what reader will learn
+      H2 sections: 3-5 sections covering the topic thoroughly
+      FAQ section: 5-7 Q&A pairs targeting "People Also Ask" (featured snippet bait)
+      CTA at end: "Book a consultation at our Viman Nagar clinic: [link]"
+    SEO elements:
+      Title tag: "[Primary keyword] | [Clinic Name] [City]"
+      Meta description: 155 chars, includes primary keyword, has a CTA
+      Image alt text: included in draft for each image slot
+      Internal links: 2-3 links to other blog posts + 1-2 to service pages
+      
+  STEP 3 — Customer review + approval (APPROVAL_GATE)
+    Customer reads the draft in portal → approves or requests edits
+    
+  STEP 4 — Publish (APPROVAL_GATE)
+    CMS integration: wordpress-mcp.post.publish (WordPress) or content-delivery for non-WP sites
+    If customer has no CMS integration: deliver as formatted document (customer pastes)
+    Evidence: BLOG_POST_PUBLISHED in CAL + URL recorded in blog_posts table
+    
+  STEP 5 — Track performance (PRE_AUTHORIZED)
+    Monthly: google-search-console-mcp reads impressions + clicks for each blog post URL
+    Report: "Blog 'Is Root Canal Painful?' got 234 impressions, 18 clicks this month (+45%)"
+```
+
+**Blog Post Types (annual content calendar):**
+```
+Content pillars for dental clinic:
+  PILLAR 1 — Educational (40%): "What Happens During a Dental Checkup?", "How to Floss Correctly"
+  PILLAR 2 — Commercial (30%): "Dental Implants Cost in Pune", "Best Whitening Treatments 2026"
+  PILLAR 3 — Local (20%): "Best Dental Clinic in Viman Nagar", "Dentist Near Koregaon Park"
+  PILLAR 4 — Trust (10%): "Meet Our Team", "Patient Testimonials", "Our Sterilization Process"
+
+Seasonal: align with awareness months (October = World Oral Health awareness → publish in September)
+```
+
+**Schema Markup Generation (P1 — rich snippets in Google):**
+```
+Agent generates JSON-LD schema and delivers to customer for website head injection:
+
+LocalBusiness / MedicalOrganization schema:
+  {
+    "@context": "https://schema.org",
+    "@type": "Dentist",
+    "name": "Dr. Mehta's Dental Clinic",
+    "address": {"@type": "PostalAddress", "streetAddress": "[address]", ...},
+    "telephone": "[phone]",
+    "openingHours": ["Mo-Sa 10:00-20:00"],
+    "aggregateRating": {"@type": "AggregateRating", "ratingValue": "4.8", "reviewCount": "76"}
+  }
+
+FAQPage schema: generated from GBP Q&A pairs — each Q&A pair becomes a FAQ entry
+  → Google shows FAQ dropdowns directly in search results (massive CTR lift)
+
+Delivery: if cms-mcp connected → inject automatically; else → copy-paste instructions for customer
+```
 
 **RAG Sources:**
 | Tier | Knowledge | Retrieved for |
 |---|---|---|
-| 1 — Domain | Local SEO best practices for healthcare/beauty India 2026 | Audit criteria and recommendations |
-| 1 — Domain | Keyword patterns for dental/beauty searches in India cities | Keyword targeting |
-| 1 — Domain | Google Business optimisation guide for medical practices | GBP optimisation |
-| 2 — Customer | Customer's current website URL and domain | Audit targeting |
-| 2 — Customer | Customer profile (domain, locality, target customers) | Keyword relevance |
-| 3 — Platform | Keyword performance data for dental/beauty by city (anonymised) | Benchmark keywords |
+| 1 — Domain | Local SEO best practices for healthcare/beauty India 2026 | Audit criteria, blog structure, schema standards |
+| 1 — Domain | Keyword patterns + search volumes for dental/beauty in India cities (updated monthly) | Blog topic selection, keyword targeting |
+| 1 — Domain | Google Business optimisation guide for medical practices | GBP category + description best practices |
+| 1 — Domain | Schema.org medical/dental markup standards | Schema generation accuracy |
+| 1 — Domain | Featured snippet + People Also Ask optimization techniques | FAQ section writing |
+| 2 — Customer | Website URL, CMS type (WordPress/Squarespace/etc.), published pages | Blog publishing path + internal link targets |
+| 2 — Customer | Published blog posts + their search console performance | Blog strategy iteration |
+| 2 — Customer | Service pages and their current ranking keywords | Internal linking strategy |
+| 3 — Platform | Keyword performance data for dental/beauty by city — anonymised (blog topics that drive traffic) | Blog topic prioritization |
 
 **MCP Tools:**
 | Tool | MCP Server | Action | Authorization | Failure |
 |---|---|---|---|---|
 | Website SEO audit | web-scan-mcp | seo.audit_page | `LOCAL_SEO` authorized | DEGRADABLE (partial audit) |
+| Detect CMS type | web-scan-mcp | cms.detect | `LOCAL_SEO` authorized | DEGRADABLE |
 | Keyword research | seo-mcp | keywords.research | `LOCAL_SEO` authorized | DEGRADABLE |
 | GBP category check | google-places-mcp | place.get_categories | `LOCAL_SEO` authorized | DEGRADABLE |
 | Rank tracking | seo-mcp | rankings.track | `LOCAL_SEO` authorized | DEGRADABLE |
 | Read Search Console | google-search-console-mcp | performance.get_data | `LOCAL_SEO` authorized, customer OAuth connected | DEGRADABLE |
+| **Publish blog post** | **cms-mcp** | **post.publish** | **`BLOG_PUBLISH` authorized + CUSTOMER APPROVED** | **DEGRADABLE (deliver as document if CMS not connected)** |
+| Check blog performance | google-search-console-mcp | url.get_performance | `LOCAL_SEO` authorized | DEGRADABLE |
+| Validate schema | web-scan-mcp | schema.validate | `LOCAL_SEO` authorized | DEGRADABLE |
 
 **Constitutional constraints:**
-- No website changes may be made without evidence of customer approval per change
-- Keyword targeting must be relevant to the customer's actual domain and geography — no keyword stuffing recommendations
+- Every blog post is reviewed by the customer before publishing (healthcare content accuracy obligation)
+- Schema markup: price ranges, hours, and contact details must be verified against customer profile before schema is generated or published — inaccurate structured data is an ASCI advertising violation
+- No keyword stuffing in any content produced — Google penalizes this and it violates DP-024 (Campaign-First Content Intelligence)
 
 ---
 
