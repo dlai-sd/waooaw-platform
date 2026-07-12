@@ -594,3 +594,49 @@ A capability exists because the institution must provide it — not because it w
 **Statement:** The institution must ensure that every customer request or message directed at a multi-skill agent is intelligently routed to the correct active Skill(s) — using the Skill Capability Manifests of active skills to match customer intent at LOCAL-tier cost (≤10ms, ₹0). When a request spans multiple skills, the institution must orchestrate those skills in dependency order and present one coherent professional response. When no active skill can serve a request, the institution must emit a gap signal for the governance process.
 
 **Constitutional Basis:** C-054 (Skill Intelligence Routing — LAW); C-036 (Skills as constitutional units — the professional deploys the right capability without being told which tool to use); C-050 (Strategic Cognition — SCM feeds the Skill Dependency Graph that C-050 reasons over); AD-027 (Skill Capability Manifest Standard); DP-023 (Skill Network Intelligence)
+
+---
+
+### 11.9 Operate as an AI-Native Digital Marketing Agency (C-057, v0.44.0)
+
+**Statement:** The institution must enable the Digital Marketing Professional to function as a full-service AI-native digital marketing agency — not a self-service tool, not an assistant to an existing agency, but a professional entity that takes strategic ownership of the customer's digital marketing outcomes. This means: opening every engagement with a professional intake (not a data form); competing directly on price, speed, consistency, and transparency against traditional agencies; citing its own evidence-based track record to demonstrate capability; and holding itself accountable to business outcomes (appointments, enquiries, bookings) — not just content metrics.
+
+**Constitutional Basis:** C-057 (AI Agency Professional Standard — LAW); C-036 (Skills as constitutional units — professional judgment is the service); C-037 (Business KPI primacy — the agency obligation is to move the customer's business, not produce content); C-040 (Domain specialization — agency authority comes from specialization, not general AI capability)
+
+**Competitive basis:** WAOOAW DMA competes against traditional digital marketing agencies on four structural advantages:
+1. **Consistency** — constitutional standards, not human availability, govern every execution cycle
+2. **Scale** — the 100th customer receives the same professional attention as the 1st
+3. **Cost** — ₹1,499/month vs ₹15,000-50,000/month agency retainer; 10% ad spend fee vs 15-25% agency markup
+4. **Transparency** — every action is CAL-recorded and auditable; agencies produce reports; WAOOAW produces evidence
+
+---
+
+### 11.10 Demonstrate Evidence-Based Performance Portfolio (C-057, v0.44.0)
+
+**Statement:** The institution must enable the Digital Marketing Professional to cite its aggregate, anonymized performance track record when marketing itself to prospects and during onboarding conversations. "47 dental clinics served. Average enquiry increase: 34% in 3 months. Campaign adherence rate: 96%." These statements must be sourced from the Tier 3 Platform Intelligence register (business.dma_performance_portfolio) — never fabricated, never extrapolated beyond what is recorded. The evidence portfolio is the agency's professional credential.
+
+**Constitutional Basis:** C-057 (AI Agency Professional Standard); C-002 (First Law — portfolio claims must be traceable to actual evidence records; an agent that claims results it cannot evidence is fabricating evidence); C-052 (Context Fidelity — aggregate performance data is isolated per C-052; no individual customer's data appears in the portfolio; only anonymized cohort statistics)
+
+---
+
+## Domain 13 — WAOOAW Institutional Self-Marketing (v0.44.0 — PENDING_FOUNDER_AUTHORIZATION)
+
+*WAOOAW itself is a valid employer of the DMA agent. The most powerful demonstration of the platform's value is that WAOOAW uses its own DMA agent to grow WAOOAW's own customer base. This domain declares the institutional capability — implementation requires Founder authorization.*
+
+---
+
+### 13.1 Acquire DMA Customers for WAOOAW Using WAOOAW's Own DMA Agent
+
+**Statement:** The institution must have the capability to employ its own DMA agent to market the WAOOAW Digital Marketing Professional service — running paid campaigns (Meta, Google), publishing professional content, and managing WAOOAW's own digital presence — with the explicit business goal of acquiring new DMA customers for the platform. This is the highest form of institutional credibility: WAOOAW demonstrates its product by being its own reference customer.
+
+**Status:** PENDING_FOUNDER_AUTHORIZATION — DMA Skill 14 (WAOOAW Self-Marketing) is declared but not implemented. Implementation requires: (a) Founder authorization for WAOOAW to employ its own DMA agent; (b) a constitutional configuration for institutional self-employment (WAOOAW as both employer and operator); (c) clear separation of institutional marketing budget from customer ad budgets (C-056 segregation principle applies to WAOOAW's own spend too).
+
+**Constitutional Basis:** C-057 (AI Agency Professional Standard — institutional self-marketing as the proof of product); C-046 (Platform Self-Governance — WAOOAW's institutional operations are constitutionally governed); C-003 (Authority licensing — WAOOAW's own DMA employment requires its own Decision Space and evidence trail)
+
+---
+
+### 13.2 Build Network Intelligence from Customer Outcomes
+
+**Statement:** The institution must systematically aggregate anonymized performance data from every active DMA engagement into a Tier 3 Platform Intelligence store that directly improves recommendations for every subsequent customer. The 100th dental clinic customer must receive materially better strategic recommendations than the 1st — because of what the DMA agent learned from the previous 99 engagements. This network intelligence advantage compounds over time and is the structural moat that traditional agencies cannot replicate.
+
+**Constitutional Basis:** C-057 (Network Intelligence Obligation — LAW); C-052 (Context Fidelity — aggregation must never expose individual customer data; only anonymized cohort statistics enter Tier 3); C-048 (Non-Exploitation — network intelligence serves each customer; WAOOAW may not use one customer's data pattern to disadvantage another)

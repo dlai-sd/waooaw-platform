@@ -1963,3 +1963,41 @@ CREATE INDEX idx_ad_ledger_wallet    ON business.ad_spend_ledger(wallet_id, bill
 CREATE INDEX idx_ad_ledger_org       ON business.ad_spend_ledger(organisation_id, billing_month DESC);
 CREATE INDEX idx_ad_ledger_type      ON business.ad_spend_ledger(transaction_type, billing_month DESC);
 CREATE INDEX idx_ad_ledger_campaign  ON business.ad_spend_ledger(external_campaign_id) WHERE external_campaign_id IS NOT NULL;
+
+-- ============================================================
+-- DMA Performance Portfolio — Tier 3 Agency Track Record (v0.44.0 — C-057)
+-- Anonymized aggregate performance register — no individual customer data
+-- Used in onboarding conversations and portal agency pitch
+-- ============================================================
+
+CREATE TABLE institutional.dma_performance_portfolio (
+    id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    professional_type           VARCHAR(100) NOT NULL DEFAULT 'DIGITAL_MARKETING_HEALTHCARE',
+    business_domain             VARCHAR(100) NOT NULL,    -- DENTAL_CLINIC, BEAUTY_ARTIST, etc.
+    city_tier                   VARCHAR(10) NOT NULL CHECK (city_tier IN ('TIER_1','TIER_2','TIER_3')),
+    cohort_size                 INTEGER NOT NULL,          -- number of active customers in cohort
+    avg_enquiry_increase_pct    NUMERIC(5,2),              -- avg % increase in enquiry signals vs baseline
+    content_adherence_rate      NUMERIC(5,2),              -- avg % content calendar adherence
+    avg_maturity_score_change   NUMERIC(4,2),              -- avg maturity score gain in 3 months
+    avg_time_to_first_result_days INTEGER,                 -- days until first measurable KPI signal
+    avg_cpl_inr                 NUMERIC(8,2),              -- avg cost per lead (Skill 11 customers only)
+    avg_campaign_roas           NUMERIC(6,2),              -- avg ROAS for Skill 11 customers
+    portfolio_claim_approved    BOOLEAN NOT NULL DEFAULT FALSE,  -- must be EA-approved before portal use
+    data_quality_score          NUMERIC(3,2),              -- how many customers have complete KPI data
+    portfolio_period            DATE NOT NULL,             -- which month this snapshot covers
+    computed_at                 TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    -- C-052: This table contains NO individual customer data — only cohort aggregates.
+    -- C-002: portfolio_claim_approved = TRUE required before any claim is shown in portal or agent conversation.
+);
+CREATE INDEX idx_portfolio_domain ON institutional.dma_performance_portfolio(professional_type, business_domain, city_tier, portfolio_period DESC);
+-- Note: no RLS — institutional table. No PII. Accessible by ai_runtime (onboarding RAG) and business_app (portal display).
+GRANT SELECT, INSERT, UPDATE ON institutional.dma_performance_portfolio TO ai_runtime_app;
+GRANT SELECT                 ON institutional.dma_performance_portfolio TO business_app;
+
+-- Prompt seeds: AI Agency Onboarding + Portfolio (C-057) — v0.44.0
+INSERT INTO institutional.agent_prompt_versions
+    (prompt_id, version, skill_type, pipeline_step, agent_type, prompt_file_path, constitutional_basis, change_type, minimum_model_tier, reviewed_by, reviewed_at, is_active, activated_at)
+VALUES
+    ('DMA/ONBOARDING/PROFESSIONAL_INTAKE_OPENING', '1.0.0', 'CUSTOMER_PROFILING', 'PROFESSIONAL_INTAKE_OPENING', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-057; C-036; C-037; C-040', 'BEHAVIOURAL', 'FRONTIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('DMA/ONBOARDING/COMPETITIVE_POSITIONING', '1.0.0', 'CUSTOMER_PROFILING', 'COMPETITIVE_POSITIONING', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-057; C-049; C-002', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW()),
+    ('DMA/PORTFOLIO/PORTFOLIO_CLAIM_GENERATION', '1.0.0', 'MARKET_RESEARCH', 'PORTFOLIO_CLAIM_GENERATION', 'DIGITAL_MARKETING_HEALTHCARE', 'architecture/reference/prompts/README.md', 'C-057; C-002; C-052', 'BEHAVIOURAL', 'MID_TIER', 'Enterprise Architect', NOW(), TRUE, NOW());

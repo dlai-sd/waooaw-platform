@@ -1584,9 +1584,46 @@ campaign_theme_engine:
 
 ## 4. Customer Journey & Onboarding Flow
 
+### 4.0 Pre-Engagement: The Agency Pitch (Portal Discovery)
+
+Before a customer registers, they encounter WAOOAW DMA on the portal. This is the agency's "shop window." It must answer the question every prospect has: **"Why would I trust an AI with my marketing when I can hire a real agency?"**
+
+**The answer the portal must communicate (C-057):**
+
+```
+"Hiring an agency for ₹15,000–₹50,000/month gets you a team that handles
+8–15 clients. When your account manager leaves, they take your strategy with them.
+
+We're different.
+
+₹1,499/month. No retainer. No inflated creative fees. No team turnover.
+We handle your dental clinic the same way at month 12 as at month 1.
+
+We've helped [N] dental clinics in cities like yours increase their appointment
+enquiries by an average of [X]% in 3 months. Every action we take is recorded.
+You can audit us. No other agency gives you that.
+
+And when you're ready to spend on ads, we charge 10% — not 20-25%.
+Your ₹5,000 ad budget sends ₹4,500 to Meta or Google.
+
+Try the first month. See the work. Then decide."
+```
+
+**The portfolio claim format (C-057 + C-002 evidence requirement):**
+```
+Claims the portal may display (sourced from Tier 3 performance register):
+  ✓ "[N] dental clinics served" (count from institutional.dma_performance_portfolio)
+  ✓ "Average enquiry increase: [X]% in 3 months" (cohort aggregate, same domain)
+  ✓ "Content calendar adherence: [X]%" (platform metric aggregate)
+  ✗ "Guaranteed to increase your bookings" — prohibited (RULE-HC-001 equivalent)
+  ✗ "Better than [Agency Name]" — prohibited (disparagement, RULE-HC-006 equivalent)
+```
+
+---
+
 ### 4.1 Pre-Engagement: Registration (Portal)
 
-Customer registers on WAOOAW portal before any agent interaction begins. Registration form collects minimum mandatory fields. These feed directly into Skill 0 — the agent never re-asks what registration already captured.
+Customer registers on WAOOAW portal. Registration is SHORT — the agent does the real discovery in conversation.
 
 **Mandatory registration fields:**
 1. Owner / contact name
@@ -1594,50 +1631,169 @@ Customer registers on WAOOAW portal before any agent interaction begins. Registr
 3. Business domain (dropdown: Dental Clinic / Beauty Artist / Beauty Salon / Medical Clinic / Fitness Studio / Other)
 4. Locality + City
 5. Prospective customers (free text, 1 sentence)
-6. Aspiration (free text, 1 sentence — "What do you most want to improve in 3 months?")
+6. Aspiration (free text, 1 sentence)
 
-Customer can edit these at any time from their profile page.
+Customer can edit at any time from their profile page.
 
 ---
 
-### 4.2 First Interaction: AI-Native Profiling Conversation (Skill 0)
+### 4.2 First Interaction: Professional Intake Conversation (Skill 0 + C-057)
 
-Starts immediately after registration. Runs in the chat interface. Target: complete within 1 session of 10–12 minutes.
+**This is not a data collection form. It is a professional intake meeting.**
+
+The DMA agent opens every new engagement by demonstrating expertise about the customer's situation BEFORE asking configuration questions. The order is: professional insight first, data collection second. This is how every reputable agency opens a new client relationship.
 
 ```
-OPENING — Agent reads registration data first, does not ask what it already knows
+OPENING — Agent demonstrates professional authority first (C-057)
 
-AI:  "Welcome, [Name]! I've already got your basics from your registration —
-     you run [Business Name], a [Domain] in [Locality, City].
-     I can see you're looking to [Aspiration]. That's a great goal.
+AI:  "Hello [Name]! I've seen your registration — [Business Name],
+     a [Dental Clinic] in [Viman Nagar, Pune].
 
-     Before I start researching your digital presence, I have just a few
-     questions to understand your customers and situation better.
-     Takes about 10 minutes. Shall we begin?"
+     Before I ask you anything, let me tell you what I already know about
+     the situation for dental clinics in your area.
 
-EXCHANGE 1 — Prospective customers (depth)
-AI:  "You mentioned [Prospective Customers from registration].
-     Quick check — are most of your patients/clients from the immediate
-     [Locality] area, or do they come from further?"
-Customer: "Mostly nearby, within 3-4 km"
-→ Agent confirms geo-scope, narrows benchmark geography.
+     Viman Nagar is a high-density area with at least 3 dental clinics within
+     800 metres of your location. One of them — [Dantavilas Dental] — has been
+     very active on Instagram lately with 3-4 posts per week.
+     Your Google Business listing was last updated [X months] ago.
+     Your Instagram has [N] followers and posts about twice a month.
 
-EXCHANGE 2 — Current digital activity (infer + confirm)
-AI:  "Are you currently active on Instagram or Facebook for [Business Name]?
-     I'll look it up anyway, but it helps to hear it from you first."
-Customer: "Yes, Instagram — but I don't post very regularly"
-→ Agent infers: consistency need likely Active. Confirms before noting.
+     Based on what I see, your biggest opportunity right now is consistency
+     and search visibility. Patients are searching 'dentist near me' and not
+     finding you first.
 
-EXCHANGE 3 — Business goal depth
-AI:  "You said more [patient/client] enquiries. Roughly how many enquiries
-     do you get per month today, and what would 'success' look like for you?"
-Customer: "Maybe 20 now. I'd like to get to 40 by end of year."
+     Now let me ask you a few things to sharpen the picture.
+     This takes about 10 minutes. Ready?"
+
+Note: Agent uses Market Research (Skill 1) data gathered before the conversation.
+      The opening demonstrates value before the customer has done anything.
+      This is the agency model: research first, intake second.
+
+EXCHANGE 1 — KPI baseline
+AI:  "You mentioned [aspiration]. How many new patient enquiries are you getting
+     per month right now — roughly?"
+Customer: "Maybe 15-20 a month. Not enough."
 → Agent captures KPI baseline + target.
 
-EXCHANGE 4 — Competition awareness
-AI:  "Is there another [Dental Clinic / Beauty Studio] nearby that you feel
-     is doing better than you digitally — or getting more customers?"
-Customer: "Yes, [Competitor Name] down the road has a lot of Google reviews"
+EXCHANGE 2 — Competitive awareness
+AI:  "The clinic down the road from you — how long have they been active?
+     Do patients mention them?"
+Customer: "Yes, they opened last year and seem busier."
+→ Agent confirms competitive context from Skill 1 research.
+
+EXCHANGE 3 — Budget signal
+AI:  "One practical question: how much do you currently spend on marketing —
+     including any boosted posts, freelancers, WhatsApp tools — per month?"
+Customer: "About ₹3,000 on boosted Instagram posts. Not sure if they work."
+→ Agent captures existing spend + implied frustration with ROI.
+
+EXCHANGE 4 — Agency experience
+AI:  "Have you worked with a digital marketing agency or freelancer before?
+     What was that experience like?"
+Customer: "A freelancer for 3 months. He disappeared."
+→ Agent captures trust deficit. This is where the agency positioning lands.
+
+AI:  "That's more common than you'd think. Our approach is different —
+     every action I take is recorded. You can see exactly what I did, when,
+     and what result it drove. Nothing disappears.
+
+     Based on what I've seen, here's what I'd recommend for the first 3 months..."
+```
+
+**Why this opening works (C-057 — Professional Authority):**
+- Agent demonstrates market knowledge BEFORE asking for data — this establishes expertise
+- Agent shows it has already done research — customers feel it works for them, not with them
+- Agent addresses the trust deficit from the previous bad experience with evidence (not promises)
+- The opening closes with a recommendation — agency confidence, not tool passivity
+
+**The competitive positioning moment (C-057 + C-049 Honest Limitation):**
+```
+If customer asks: "How are you different from hiring an agency?"
+
+Agent must answer with:
+  1. Specific price comparison (your situation: ₹1,499/month vs typical ₹20,000-40,000 retainer)
+  2. Specific transparency advantage (CAL evidence — "you can audit every post I made")
+  3. Specific consistency advantage ("I don't have team turnover — same quality every month")
+  4. Honest limitation (C-049): "What I can't do is attend your events in person or
+     handle media relations. I'm the digital specialist — not the full agency."
+
+What the agent must NOT say:
+  ✗ "Agencies are bad" (disparagement)
+  ✗ "I'm better in every way" (absolute claim)
+  ✗ "You'll definitely see results" (guarantee claim — RULE-HC-001 equivalent)
+```
+
+---
+
+### 4.3 Performance Portfolio — What the Agent Cites (C-057 + Tier 3 RAG)
+
+During onboarding and monthly reviews, the agent may cite platform-level performance statistics sourced from the Tier 3 performance portfolio register. These are the agent's "references."
+
+```
+Format for citing portfolio performance (must be accurate — C-002):
+  "[N] dental clinics on our platform."
+  "Dental clinics in Tier 1 India cities that use us for 3+ months average [X]% more
+   monthly enquiry signals versus their starting baseline."
+  "Content calendar adherence across dental clinic customers: [X]% average."
+
+Prohibited portfolio claims:
+  ✗ Specific customer names without written consent (C-034 data isolation)
+  ✗ Performance guarantees for the current customer
+  ✗ Claiming statistics not in the Tier 3 performance register
+  ✗ Comparing to named traditional agencies
+```
+
+**New Tier 3 RAG table: `institutional.dma_performance_portfolio`**
+```sql
+-- Anonymized aggregate performance by professional_type + domain + city_tier
+-- Updated weekly from employment contracts in ACTIVE status with >30 days history
+-- No individual customer data — only cohort statistics (C-052 isolation)
+CREATE TABLE institutional.dma_performance_portfolio (
+    id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    professional_type           VARCHAR(100) NOT NULL,  -- DIGITAL_MARKETING_HEALTHCARE
+    business_domain             VARCHAR(100) NOT NULL,  -- DENTAL_CLINIC, BEAUTY_ARTIST, etc.
+    city_tier                   VARCHAR(10) NOT NULL,   -- TIER_1, TIER_2, TIER_3
+    cohort_size                 INTEGER NOT NULL,        -- number of active customers in cohort
+    avg_enquiry_increase_pct    NUMERIC(5,2),           -- avg % increase in enquiry signals vs baseline
+    content_adherence_rate      NUMERIC(5,2),           -- avg % content calendar adherence
+    avg_maturity_score_change   NUMERIC(4,2),           -- avg maturity score gain in 3 months
+    avg_time_to_first_result_days INTEGER,              -- days until first measurable KPI signal
+    avg_cpl_inr                 NUMERIC(8,2),           -- avg cost per lead for Skill 11 customers
+    portfolio_claim_approved    BOOLEAN NOT NULL DEFAULT FALSE, -- EA-approved before use in sales
+    portfolio_period            DATE NOT NULL,          -- which month this snapshot covers
+    computed_at                 TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_portfolio_domain ON institutional.dma_performance_portfolio(professional_type, business_domain, city_tier);
+```
+
+---
+
+### 4.4 Skill 14: WAOOAW Self-Marketing (PENDING_FOUNDER_AUTHORIZATION)
+
+WAOOAW itself is a valid employer of the DMA agent. When Founder authorizes:
+
+```
+WAOOAW employs its own DMA agent to:
+  - Run paid campaigns on Meta + Google to acquire DMA customers for WAOOAW
+    (using WAOOAW's own sub-account in WAOOAW's MBM — no conflict with C-056,
+     WAOOAW's ad spend is institutionally separate from customer ad spend)
+  - Publish professional content on WAOOAW's own Instagram, LinkedIn, Facebook
+    demonstrating the DMA agent's work (case studies, before/after metrics, etc.)
+  - Manage WAOOAW's own Google Business Profile
+  - Run seasonal campaigns: "New year, new patients — give your clinic a
+    professional digital marketing team for ₹1,499/month"
+
+Constitutional configuration:
+  employer: WAOOAW (institutional entity, not a customer)
+  decision_space: WAOOAW_INSTITUTIONAL_MARKETING
+  budget_ceiling: [Founder sets institutional marketing budget]
+  evidence_trail: CAL records with organisation_id = WAOOAW_INSTITUTIONAL
+  constitutional_basis: C-057 (institutional self-marketing); C-046 (platform self-governance)
+
+Dependency_status: PENDING_FOUNDER_AUTHORIZATION
+Why: Institutional self-employment requires a constitutional decision about WAOOAW's
+     own Decision Space — a configuration not yet declared in GENESIS.
+```
 → Agent flags competition need, captures competitor name.
 
 PROGRESSIVE SUMMARY (after exchange 4)
@@ -1951,6 +2107,8 @@ ProfessionalTemplate:
 - [x] **C-036/C-037/C-048 check (Off-Topic Boundary): Section 3.17 added. 5 redirect hooks declared (competitor_activity, kpi_pace, pending_approval, maturity_score_change, google_review_alert). Adjacent professional routing declared (accounting, HR, legal). PLATFORM/BOUNDARY/OFF_TOPIC_REDIRECT prompt in Prompt Catalogue. 3-attempt graduation pattern declared.**
 - [x] **C-052 check (Context Fidelity, Isolation, Uniqueness): Context Bootstrap Protocol loads Decision Space, session state, performance history, and Creative Fingerprint before every session. Creative Fingerprint Enforcer (M-3) runs before every content generation — uniqueness_score computed vs competitor content (threshold 0.75) and own recent content (threshold 0.85). Fingerprint is updated online after every approval/rejection. Two competing dental clinics in the same neighbourhood are guaranteed differentiated content. Tier 3 has 24-hour write lag — no real-time cross-customer data.**
 - [ ] **C-055 check (Campaign Coherence): Section 3.21 added (v2.5). Platform Intelligence declared with 10 platform coverage + dependency status. Campaign Theme Cascade declared (3 levels, all required fields). SCR 5-check criteria declared with thresholds, model tiers, and fail actions. SCR Check 3 (Compliance) fail_action = ROUTE_TO_CUSTOMER (never silent). Content Approval Modes declared (POST_APPROVAL→CAMPAIGN_APPROVAL→CAMPAIGN_AUTO) with upgrade/downgrade criteria. Campaign Digest declared (weekly, Monday 09:00 IST, 3 channels). 6 new campaign prompts + 1 Platform Intelligence prompt in Prompt Catalogue. MASTER_THEME_PROPOSAL is FRONTIER/BREAKING. Campaign SQL tables referenced (4 tables).**
+- [ ] **C-056 check (Ad Spend Transparency): ADR-026 declared. Skill 11 uses WAOOAW_MANAGED connection model. customer_ad_accounts + ad_spend_wallets + ad_spend_ledger tables referenced. management_fee_pct = 10 declared in Skill 11. PAGE_ACCESS_GRANT_REQUEST as always-ask action. ad_spend_ledger is append-only (no UPDATE/DELETE). CUSTOMER_OWNED declared with PENDING_FOUNDER_AUTHORIZATION.**
+- [ ] **C-057 check (AI Agency Professional Standard): Section 4.0 (agency pitch) declared with portfolio claim format and prohibited claims. Section 4.2 (professional intake opening) includes expertise-first model — agent demonstrates market knowledge before asking configuration questions. Competitive positioning response declared (honest comparison with C-049 limitations disclosure). institutional.dma_performance_portfolio referenced as Tier 3 source. portfolio_claim_approved = TRUE enforced before any portfolio stat appears in conversation. Skill 14 (WAOOAW self-marketing) declared with PENDING_FOUNDER_AUTHORIZATION.**
 
 ---
 

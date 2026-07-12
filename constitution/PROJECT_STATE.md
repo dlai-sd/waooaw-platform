@@ -1,8 +1,8 @@
 # PROJECT_STATE.md
 
 **Last Updated:** 2026-07-12
-**Version:** 0.43.0
-**Session:** 2026-07-12 — SESSION CLOSE (C-056 Ad Spend Transparency, ADR-026 Centralized Ad Management, DMA Skill 11 v2.5 Agency Model)
+**Version:** 0.44.0
+**Session:** 2026-07-12 — SESSION CLOSE (C-057 AI Agency Standard, DMA as AI Agency, Professional Intake, Portfolio Track Record, Skill 14 declaration)
 
 ---
 

@@ -103,8 +103,11 @@ Every agent prompt must produce a response conforming to this base schema plus t
 | DMA/CAMPAIGN/SCR_QUALITY_CHECK | Synthetic Content Reviewer | SCR Check 5 — quality assessment of content for professional standard (C-055, Check 5 only) | v1.0.0 | ACTIVE |
 | DMA/CAMPAIGN/CAMPAIGN_DIGEST | Campaign Theme Engine | Weekly campaign performance digest + next-week preview for customer (C-055) | v1.0.0 | ACTIVE |
 | DMA/PLATFORM/PLATFORM_INTELLIGENCE_RESEARCH | Platform Intelligence | Research-driven platform selection recommendation for customer domain + target audience (DP-024) | v1.0.0 | ACTIVE |
+| DMA/ONBOARDING/PROFESSIONAL_INTAKE_OPENING | AI Agency Onboarding | Expertise-first opening: agent demonstrates market knowledge before asking configuration (C-057) | v1.0.0 | ACTIVE |
+| DMA/ONBOARDING/COMPETITIVE_POSITIONING | AI Agency Onboarding | Honest comparison of WAOOAW DMA vs traditional agencies when prospect asks (C-057 + C-049) | v1.0.0 | ACTIVE |
+| DMA/PORTFOLIO/PORTFOLIO_CLAIM_GENERATION | AI Agency Portfolio | Generates accurate portfolio claims from dma_performance_portfolio Tier 3 data (C-057 + C-002) | v1.0.0 | ACTIVE |
 
-**Total active prompts: 58** (v0.39.0 — 45 base + 7 SIR/SIL (C-053/C-054) + 6 Campaign Theme Engine (C-055))
+**Total active prompts: 61** (v0.44.0 — 58 + 3 new agency onboarding/portfolio prompts)
 | AGRI/ROUTING/SKILL_INTENT_ROUTER | Skill Intelligence Router | LOCAL-tier intent classification → skill routing plan for Agricultural agent (C-054) | v1.0.0 | ACTIVE |
 | TRADING/ROUTING/SKILL_INTENT_ROUTER | Skill Intelligence Router | LOCAL-tier intent classification → skill routing plan for Trading agent (C-054) | v1.0.0 | ACTIVE |
 | DMA/SIGNAL/PROACTIVE_ALERT | Signal Intelligence | Converts competitor/analytics/review signal into actionable portal notification (C-053) | v1.0.0 | ACTIVE |
