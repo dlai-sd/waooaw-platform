@@ -6,7 +6,7 @@
 
 ```
 Founding Corpus v1           Status: Ratified
-Version:                     0.44.0 — C-057 AI Agency Professional Standard + DMA Agency Onboarding + Portfolio Track Record (2026-07-12)
+Version:                     0.44.1 — FR-005: Skill 14 WAOOAW Self-Marketing authorized (₹5k/mo budget, 50+ diverse customer threshold) (2026-07-12)
 Current Epoch:               Epoch 1 — Employment
 Current Gate:                G2-G4: PASSED | G5: Prerequisites met
                              ⛔ G5 CLEAR ≠ implementation authorized for any session

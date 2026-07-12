@@ -36,7 +36,7 @@ Activation Gate: 14 sections (extended v0.39.0: +Section 14 Campaign Theme Engin
 
 **Open Constitutional Blockers:** None
 
-**Active Founder Resolutions:** FR-001 (CS Agents) · FR-002 (Trial) · FR-003 (Learning IP) · FR-004 (Teams — deferred)
+**Active Founder Resolutions:** FR-001 (CS Agents) · FR-002 (Trial) · FR-003 (Learning IP) · FR-004 (Teams — deferred) · **FR-005 (Skill 14 — WAOOAW Self-Marketing AUTHORIZED 2026-07-12: ₹5,000/month budget, 50+ diverse customer threshold before performance stats)**
 
 **Note for implementation sprint:** TRADING/EXECUTION/ESCALATION_DECISION is BREAKING type — Founder must acknowledge before Trading agent implementation begins.
 

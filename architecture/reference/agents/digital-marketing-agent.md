@@ -1768,32 +1768,92 @@ CREATE INDEX idx_portfolio_domain ON institutional.dma_performance_portfolio(pro
 
 ---
 
-### 4.4 Skill 14: WAOOAW Self-Marketing (PENDING_FOUNDER_AUTHORIZATION)
+### 4.4 Skill 14: WAOOAW Self-Marketing — AUTHORIZED (2026-07-12)
 
-WAOOAW itself is a valid employer of the DMA agent. When Founder authorizes:
+**Authorization:** Founder authorized 2026-07-12. Recorded as FR-005 in PROJECT_STATE.md.
 
+```yaml
+skill_14_institutional_config:
+  employer: "WAOOAW"
+  employer_organisation_id: "WAOOAW_INSTITUTIONAL"  # institutional entity, not a customer organisation
+  professional_type: "DIGITAL_MARKETING_HEALTHCARE"  # internal enum; campaigns target ALL local businesses
+  decision_space_id: "WAOOAW_INSTITUTIONAL_MARKETING"
+  constitutional_basis: "C-057 (AI Agency Professional Standard); C-046 (Platform Self-Governance); C-003 (authority licensed — WAOOAW's own Decision Space)"
+
+  # Founder-set parameters (2026-07-12)
+  monthly_ad_spend_budget_inr: 5000       # ₹5,000/month — C-043 Constitutional Floor applies to WAOOAW itself
+  management_fee_pct: 0                   # WAOOAW does not charge itself a management fee
+  portfolio_stat_threshold:
+    minimum_customers: 50                 # Performance stats appear in WAOOAW's own ads ONLY after 50+ customers
+    minimum_diversity: "MULTI_DOMAIN"     # Must span multiple business domains (doctors, builders, banks, etc.)
+    
+  authorized_actions:
+    - META_AD_CAMPAIGN               # Acquire DMA customers via Meta ads
+    - GOOGLE_AD_CAMPAIGN             # Acquire DMA customers via Google ads (Search + Performance Max)
+    - INSTAGRAM_POST                 # WAOOAW's own Instagram — case studies, results, how-it-works content
+    - FACEBOOK_POST                  # WAOOAW's own Facebook presence
+    - LINKEDIN_POST                  # B2B positioning — banks, insurance, builders respond here
+    - GOOGLE_BUSINESS_POST           # WAOOAW's own GBP listing
+    - WHATSAPP_BROADCAST             # WAOOAW's own WhatsApp Business number (platform notifications)
+    
+  target_audience:
+    description: "Local business owners across India who need professional digital marketing"
+    segments:
+      - "Doctors and healthcare practices (dental, medical, physiotherapy, Ayurveda)"
+      - "Builders, real estate developers, and property agents"
+      - "Banks (branch marketing, local campaigns), NBFCs, microfinance institutions"
+      - "Insurance advisors and distributors (LIC agents, private insurance)"
+      - "Retail businesses (local stores, restaurants, boutiques)"
+      - "Professional services (CAs, lawyers, consultants)"
+      - "Fitness and wellness studios"
+      - "Educational institutions (coaching classes, schools)"
+    geography: "India — Tier 1 + Tier 2 cities"
+    platform_fit:
+      META: "All segments — Facebook for builders/insurance; Instagram for healthcare/retail"
+      GOOGLE: "All segments — 'digital marketing agency near me' intent"
+      LINKEDIN: "Banks, insurance, builders, professional services"
+
+  campaign_phases:
+    phase_1:
+      trigger: "0 to 49 customers on platform"
+      message_focus: "Value proposition + pricing comparison vs agencies"
+      portfolio_stats: false  # Never use performance stats until threshold met
+      sample_headlines:
+        - "Professional digital marketing for your dental clinic. ₹1,499/month."
+        - "No agency retainer. No inflated ad fees. Just results. ₹1,499/month."
+        - "AI digital marketing professional for your business. Try the first month."
+      
+    phase_2:
+      trigger: "50+ customers, multi-domain (doctors + builders + banks + insurance)"
+      message_focus: "Evidence-based performance + value proposition"
+      portfolio_stats: true   # Can now cite: "[N] businesses served, [X]% average enquiry increase"
+      sample_headlines:
+        - "[N] businesses. Doctors, builders, banks. Average [X]% more enquiries in 3 months."
+        - "The digital marketing professional that never has a bad month. ₹1,499/month."
+        - "Banks branch marketing. Builders' project launches. Doctors' patient acquisition. One platform."
+
+  financial_isolation:
+    note: "WAOOAW's ₹5,000/month ad spend is institutionally separate from customer ad budgets (C-056).
+           Charged to WAOOAW's own institutional bank account, NOT from any customer's Ad Spend Wallet.
+           Appears in ad_spend_ledger with organisation_id = WAOOAW_INSTITUTIONAL."
+    
+  evidence_trail:
+    all_actions: "CAL records with organisation_id = WAOOAW_INSTITUTIONAL"
+    campaign_reports: "Identical to customer reports — DMA agent reports to Founder monthly"
+    constitutional_basis: "C-023 (Evidence First — WAOOAW's own marketing actions are constitutionally recorded)"
 ```
-WAOOAW employs its own DMA agent to:
-  - Run paid campaigns on Meta + Google to acquire DMA customers for WAOOAW
-    (using WAOOAW's own sub-account in WAOOAW's MBM — no conflict with C-056,
-     WAOOAW's ad spend is institutionally separate from customer ad spend)
-  - Publish professional content on WAOOAW's own Instagram, LinkedIn, Facebook
-    demonstrating the DMA agent's work (case studies, before/after metrics, etc.)
-  - Manage WAOOAW's own Google Business Profile
-  - Run seasonal campaigns: "New year, new patients — give your clinic a
-    professional digital marketing team for ₹1,499/month"
 
-Constitutional configuration:
-  employer: WAOOAW (institutional entity, not a customer)
-  decision_space: WAOOAW_INSTITUTIONAL_MARKETING
-  budget_ceiling: [Founder sets institutional marketing budget]
-  evidence_trail: CAL records with organisation_id = WAOOAW_INSTITUTIONAL
-  constitutional_basis: C-057 (institutional self-marketing); C-046 (platform self-governance)
+**What this means in practice:**
 
-Dependency_status: PENDING_FOUNDER_AUTHORIZATION
-Why: Institutional self-employment requires a constitutional decision about WAOOAW's
-     own Decision Space — a configuration not yet declared in GENESIS.
-```
+The DMA agent now has two types of customers:
+1. **External customers** (dental clinics, beauty studios, builders, banks) — pay subscription + ad spend
+2. **WAOOAW itself** — the agent runs WAOOAW's own marketing to grow the external customer base
+
+The agent runs WAOOAW's Instagram showing "this is what I did for a dental clinic last month." Then someone who runs a dental clinic sees it and asks "how do I hire one of these?" That's the self-reinforcing loop.
+
+**Implementation trigger:** When IB-009 implementation sprint begins, `WAOOAW_INSTITUTIONAL_MARKETING` is the first Decision Space to configure — before any customer Decision Space. WAOOAW eats its own cooking from day one.
+
+---
 → Agent flags competition need, captures competitor name.
 
 PROGRESSIVE SUMMARY (after exchange 4)
