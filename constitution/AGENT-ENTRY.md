@@ -28,32 +28,39 @@ Wait for explicit Founder confirmation. No exceptions.
 ## Current Platform State (updated each session)
 
 ```
-Version:   0.39.0 | Gate: G5 CLEAR | Epoch: 1 — Employment
+Version:   0.48.1 | Gate: G5 CLEAR | Epoch: 1 — Employment
 Authorized: Runtime Professional (IB-009 — Foundation Implementation — NOT YET STARTED)
-Implementation: AWAITING FOUNDER AUTHORIZATION | Architecture: COMPLETE
-Activation Gate: 14 sections (extended v0.39.0: +Section 14 Campaign Theme Engine Gate)
+Implementation: AWAITING FOUNDER AUTHORIZATION | Architecture: COMPLETE at v0.48.1
+Activation Gate: 14 sections (last extended v0.39.0)
+Constitutional Claims: C-001 to C-058 (58 claims, all RATIFIED)
+Active Prompts: 86 (DMA) | Architectural Drivers: AD-001 to AD-028 | Design Principles: DP-001 to DP-025
 ```
 
 **Open Constitutional Blockers:** None
 
-**Active Founder Resolutions:** FR-001 (CS Agents) · FR-002 (Trial) · FR-003 (Learning IP) · FR-004 (Teams — deferred) · **FR-005 (Skill 14 — WAOOAW Self-Marketing AUTHORIZED 2026-07-12: ₹5,000/month budget, 50+ diverse customer threshold before performance stats)**
+**Active Founder Resolutions:**
+- FR-001 (CS Agents) · FR-002 (Trial) · FR-003 (Learning IP) · FR-004 (Teams — deferred)
+- **FR-005 (Skill 14 WAOOAW Self-Marketing — AUTHORIZED 2026-07-12: ₹5k/month, 50+ diverse customer threshold)**
 
-**Note for implementation sprint:** TRADING/EXECUTION/ESCALATION_DECISION is BREAKING type — Founder must acknowledge before Trading agent implementation begins.
+**CRITICAL NOTE before Trading IB-009:** `TRADING/EXECUTION/ESCALATION_DECISION` is BREAKING type — Founder must explicitly acknowledge before Trading implementation begins.
 
 **Approved Agent Specifications (GENESIS Part 05):**
-- Digital Marketing Agent (Healthcare + Beauty) v2.5 — APPROVED. R-014 + R-015. 58 active prompts. Activation Gate 14/14 PASS (v0.39.0). Sections 3.18+3.19+3.21 added. Campaign Theme Engine + Platform Intelligence + SCR operational.
-- Trading Agent (FO + Crypto) v1.7 — APPROVED. R-012 + R-017 + R-018. Full Activation Gate 11/11 PASS. **P1 before IB-009: Sections 3.18+3.19 (SIL/SIR) not yet added to Trading spec.**
-- Agricultural Advisory Agent (India Small Farmers) v2.6 — APPROVED. R-013 + R-015 + R-017 + R-018. Full Activation Gate 11/11 PASS. Sections 4.13+4.18 (SIL+SIR) added (v0.35.0–v0.36.0). Gate 12+13 status: PASS.
+- **Digital Marketing Agent v2.8** — APPROVED. R-014 + R-015. 86 active prompts. Activation Gate 14/14 PASS.
+  Sections 3.18 (SIL), 3.19 (SIR/SCMs), 3.21 (Campaign Theme Engine), 3.22 (Agent Communication Standard).
+  Three-Track Video Architecture (C-058). Digital Twin. Professional Vocabulary Standard (DP-025).
+  DMA v2.8 is fully specification-complete and simulation-tested (Sim 007, 010, 011).
+- **Trading Agent v1.7** — APPROVED. R-012 + R-017 + R-018. Sections 4.18 (SIL) + 4.19 (SCMs/SIR) + 4.20 + 4.21 added.
+  **P1 before IB-009:** TRADING/EXECUTION/ESCALATION_DECISION BREAKING prompt — Founder acknowledgment required.
+- **Agricultural Advisor v2.6** — APPROVED. R-013 + R-015 + R-017 + R-018. Sections 4.13 (SIL) + 4.18 (SIR) added.
 
-**New in v0.35.0–v0.38.0:**
-- C-053: Signal Sensing Obligation (LAW) — all time-sensitive agents must run Signal Watch Loops
-- C-054: Skill Intelligence Routing (LAW) — multi-skill agents must route requests via SIR
-- AD-026: Signal Watch Workflow Pattern; AD-027: Skill Capability Manifest Standard
-- DP-022: Proactive Intelligence Primacy; DP-023: Skill Network Intelligence
-- AGENT-AUTHORING-GUIDE Sections 3.18 (SIL), 3.19 (SIR), 3.20 (Skill Proposal Governance Loop)
-- Skill Dependency Register: architecture/reference/skill-dependency-register.md
-- ADR-021 Section 7: oauth-vault Azure Key Vault backing confirmed
-- type:skill-proposal GitHub Issue template added
+**Key capabilities added this session (v0.35.0–v0.48.1):**
+- C-053–C-058: Signal Intelligence, Skill Routing, Campaign Engine, Ad Spend, AI Agency, Video Brief Primacy
+- DMA skills 1–13 fully deepened (P0+P1+P2): review generation, blog writing, reels hooks, YouTube SEO, retargeting, schema markup
+- ADR-025 (Zerodha daily auth), ADR-026 (Centralized Ad Management — WAOOAW MBM + Google MCC)
+- Digital Twin architecture (HeyGen 2.0 + ElevenLabs) — one 3-min recording, infinite future videos
+- Brief-first video workflow: credits consumed at concept approval, not generation
+- Professional vocabulary by domain (7 domains) — agent speaks customer's language, not marketing jargon
+- Simulation runs 007–011 completed: User (DMA/Trading/Agricultural), Developer, Tester (24 CCTs)
 
 **Deferred:** OD-003 (DA scope) · AI Architect sprint (GAP-006b) · IB-018 (Agent Teams — enterprise, post-MVI)
 

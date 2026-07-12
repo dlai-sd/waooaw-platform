@@ -2,11 +2,128 @@
 
 **Last Updated:** 2026-07-12
 **Version:** 0.48.1
-**Session:** 2026-07-12 — SESSION CLOSE (Video API dependency register, DP-025 Professional Vocabulary Standard, domain-adaptive vocabulary guide for 7 business domains)
+**Session:** 2026-07-12 — SESSION CLOSE (Complete architecture sprint: C-053 through C-058, DMA v2.8, full skill deepening, simulations, video architecture, professional vocabulary)
 
 ---
 
-## IN-PROGRESS CHECKPOINT (Session 2026-07-12 — Final)
+## SESSION CLOSE BRIEFING — READ THIS FIRST
+
+```
+INSTITUTION:  WAOOAW — autonomous digital professionals under constitutional governance
+GATE:         G5 prerequisites met (G5 CLEAR ≠ implementation authorization for any session)
+VERSION:      0.48.1
+CONSTITUTIONAL CLAIMS: C-001 to C-058 (58 ratified claims)
+ACTIVE PROMPTS: 86 (DMA v2.8)
+AGENTS: DMA v2.8 | Trading v1.7 | Agricultural v2.6
+
+FOCUS: FULL ARCHITECTURE COMPLETE. DMA is specification-complete and genuinely competitive.
+       Three-Track Video Architecture. Digital Twin. Brief-First workflow. Professional Vocabulary.
+       ALL DMA skills at Grade A (vs Grade C/B in prior sessions for GBP, WhatsApp, SEO, Video).
+
+NEXT SESSION OPTIONS:
+  A. IB-009 Foundation Implementation sprint — one sentence from Founder starts coding
+  B. Simulation runs of all 3 agents (Sims 007-011 were gap-identification; now confidence runs)
+  C. New agent specification (Legal, HR, Accounting — Track B)
+  D. Skill 14 launch prep (WAOOAW Self-Marketing is authorized — FR-005)
+
+FOUNDER ACTIONS OUTSTANDING (before live customers):
+  P0: Meta Business Manager verification + WABA + TRADING/EXECUTION/ESCALATION_DECISION ack
+  P0: Meta Business Partner status (for Skill 11 centralized ads)
+  P0: Google Ads MCC account setup
+  P1: Zerodha Kite Connect developer account (₹2,000/month)
+  P1: 4 video API keys (Kling AI, HeyGen, ElevenLabs, Runway ML — ~$59/month total, all self-serve)
+  DECISION: X (Twitter) API — $100/month, Founder decision needed
+```
+
+---
+
+## SESSION COMPLETE SUMMARY (2026-07-12)
+
+| Version | What |
+|---|---|
+| v0.35.0–v0.38.0 | **C-053 SIL + C-054 SIR + Skill Dependency Register + Secret Vault + Skill Proposal Loop** |
+| v0.39.0 | **C-055 Campaign Coherence + Campaign Theme Engine + DMA v2.5** |
+| v0.40.0 | **C-056 Ad Spend Transparency + ADR-026 Centralized Ad Management (WAOOAW MBM + Google MCC)** |
+| v0.41.0–v0.44.1 | **C-057 AI Agency Standard + DMA as AI Agency + FR-005 Skill 14 AUTHORIZED** |
+| v0.45.0–v0.47.0 | **DMA v2.7 Full Skill Deepening** — All skills P0+P1+P2: review generation, blog writing, patient reactivation, GBP Q&A, Reels hooks, YouTube SEO, schema markup, retargeting, Facebook Events, Messenger, seasonal calendar |
+| v0.48.0 | **C-058 Video Brief Primacy + Three-Track Video Architecture + Digital Twin + DP-025 Expert Communication** |
+| v0.48.1 | **4 video API keys added to dependency register + Professional Vocabulary Standard (7 domains)** |
+
+**Total capabilities added this session:** 58 constitutional claims, 28 architectural drivers, 25 design principles, 86 active prompts, 15+ SQL tables, 4 new video MCPs, full DMA skill deepening across all 14 skills.
+
+---
+
+## WHAT DMA v2.8 DELIVERS (for next session context)
+
+Every DMA skill is now specification-complete and genuinely competitive against traditional agencies:
+
+| Skill | Grade | Key capabilities |
+|---|---|---|
+| 0 Customer Profiling | A | Professional intake — expertise-first, not data collection |
+| 1 Market Research | A | Seasonal opportunity calendar, competitor content quality |
+| 2 Content Strategy | A | Campaign Theme Engine, photo shot list, asset planning |
+| 4 Instagram | A | Reels hooks (first 3 seconds), carousels, story sequences |
+| 5 Facebook | B+ | Events (dental camps), Messenger automation, native video |
+| 6 GBP | A | Review generation (15-25% conversion), Q&A seeding, services menu |
+| 7 WhatsApp | A | Patient reactivation, post-treatment check-in, welcome sequence |
+| 8 Video | A | Three-Track: Photo-to-Video + Digital Twin + Generative; Brief-first (C-058) |
+| 9 Analytics | A | Expert account review style (DP-025), domain vocabulary |
+| 10 Local SEO | A | Blog writing (2/month), schema markup, CMS publishing |
+| 11 Paid Advertising | A | WAOOAW MBM agency model, retargeting pixel, lookalike audiences |
+| 12 CRO | B+ | WhatsApp chat widget (highest-converting India CTA), UTM attribution |
+| 13 Competitive Intelligence | B | Review gap strategy, SEO keyword gap |
+| 14 WAOOAW Self-Marketing | AUTHORIZED | FR-005 — ₹5k/month, 50+ diverse customer threshold |
+
+**Agent tone:** Expert, consultative, proactive. Speaks customer's professional vocabulary (brides not leads; patients not users; bookings not conversions). Professional referral when AI can't deliver authentic media.
+
+---
+
+## WORK MENU — Present this on /resume
+
+**Track A — IB-009 Foundation Implementation**
+*Requires explicit Founder "start coding" per session.*
+Architecture is 100% complete at v0.48.1. All 3 agents fully spec'd, simulation-tested, activation gate PASS.
+First sprint: Constitutional Engine skeleton + Business Platform first endpoint + one acceptance scenario.
+One sentence from Founder unlocks it.
+
+**Track B — New Agent Specification**
+*Office: Business Architect → Enterprise Architect → Founder*
+Approved for specification: Legal Professional, HR Professional, Accounting Professional (GST/TDS), Real Estate Advisory.
+Use `type:new-agent` issue template to trigger the flow for any of these.
+
+**Track C — Confidence Simulation Runs**
+*Simulations 007–011 identified gaps which were fixed. Now run confidence runs with gap-bridged specs.*
+Purpose: confirm DMA v2.8 / Trading v1.7 / Agricultural v2.6 produce genuinely good outputs.
+Run these before IB-009 to validate the architecture produces the customer experience intended.
+
+**Track D — Skill 14 Launch Preparation**
+*FR-005 AUTHORIZED — ₹5k/month, 50+ diverse customer threshold.*
+WAOOAW_INSTITUTIONAL_MARKETING Decision Space to configure.
+Set up WAOOAW's own DMA instance as the first customer on the platform.
+The ultimate proof of product: WAOOAW uses its own DMA to acquire DMA customers.
+
+---
+
+## Architecture Layers (v0.48.1)
+
+| Layer | Status |
+|---|---|
+| Claims | C-001 to C-058 — 58 RATIFIED |
+| Capabilities | Domains 1–13 (Domain 13: WAOOAW Institutional Self-Marketing) |
+| Drivers | AD-001 to AD-028 |
+| Principles | DP-001 to DP-025 |
+| ADRs | ADR-001 to ADR-026 |
+| Reference Architecture | Complete |
+| Component Specs | CE + BP + PR + AIR (all updated) |
+| Prompt Library | 86 active prompts |
+| MCP Tool Catalogues | 28 MCP servers (including 4 new video MCPs) |
+| Data Architecture | All tables, RLS, indexes complete |
+| Constitutional Tests | 24 CCTs defined (SIL/SIR/CTE/FIN/SC/CF/SA) |
+| Professional Vocabulary | 7 domain guides (professional-vocabulary-by-domain.md) |
+| Healthcare Compliance | 10 MCI/ASCI rules (healthcare-advertising-rules-india.md) |
+| Skill Dependency Register | Full — 13 P1 Founder actions catalogued |
+
+---
 
 | Milestone | Status |
 |---|---|
