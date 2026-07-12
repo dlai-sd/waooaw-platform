@@ -247,6 +247,59 @@ GRANT SELECT, INSERT ON institutional.signal_materiality_events TO ai_runtime_ap
 GRANT SELECT         ON institutional.signal_materiality_events TO business_app;
 
 -- skill_gap_signals: tenant-scoped for INSERT (customer org owns gap events); platform-wide SELECT for PO analytics
+ALTER TABLE institutional.skill_gap_signals ENABLE ROW LEVEL SECURITY;
+CREATE POLICY skill_gap_signals_tenant_isolation ON institutional.skill_gap_signals
+    FOR INSERT
+    TO ai_runtime_app
+    WITH CHECK (organisation_id = current_setting('app.tenant_id', TRUE)::UUID);
+GRANT SELECT, INSERT ON institutional.skill_gap_signals TO ai_runtime_app;
+GRANT SELECT         ON institutional.skill_gap_signals TO business_app;
+
+-- agent_skill_graph: tenant-scoped RLS (each customer's skill graph is private — C-034)
+ALTER TABLE business.agent_skill_graph ENABLE ROW LEVEL SECURITY;
+CREATE POLICY agent_skill_graph_tenant_isolation ON business.agent_skill_graph
+    FOR ALL TO business_app, ai_runtime_app
+    USING (tenant_id = current_setting('app.tenant_id', TRUE)::UUID);
+GRANT SELECT, INSERT, UPDATE ON business.agent_skill_graph TO ai_runtime_app;
+GRANT SELECT                 ON business.agent_skill_graph TO business_app;
+
+-- Campaign Theme Engine RLS (v0.39.0 — C-055, AD-028)
+-- All 4 campaign tables are tenant-scoped — campaign data is strictly customer-private (C-034)
+
+ALTER TABLE business.content_campaigns ENABLE ROW LEVEL SECURITY;
+CREATE POLICY content_campaigns_tenant_isolation ON business.content_campaigns
+    FOR ALL TO business_app, ai_runtime_app
+    USING (tenant_id = current_setting('app.tenant_id', TRUE)::UUID);
+GRANT SELECT, INSERT, UPDATE ON business.content_campaigns TO ai_runtime_app;
+GRANT SELECT, INSERT         ON business.content_campaigns TO business_app;
+
+ALTER TABLE business.campaign_weekly_themes ENABLE ROW LEVEL SECURITY;
+CREATE POLICY campaign_weekly_themes_tenant_isolation ON business.campaign_weekly_themes
+    FOR ALL TO business_app, ai_runtime_app
+    USING (tenant_id = current_setting('app.tenant_id', TRUE)::UUID);
+GRANT SELECT, INSERT, UPDATE ON business.campaign_weekly_themes TO ai_runtime_app;
+GRANT SELECT                 ON business.campaign_weekly_themes TO business_app;
+
+ALTER TABLE business.campaign_content_items ENABLE ROW LEVEL SECURITY;
+CREATE POLICY campaign_content_items_tenant_isolation ON business.campaign_content_items
+    FOR ALL TO business_app, ai_runtime_app
+    USING (tenant_id = current_setting('app.tenant_id', TRUE)::UUID);
+GRANT SELECT, INSERT, UPDATE ON business.campaign_content_items TO ai_runtime_app;
+GRANT SELECT, UPDATE         ON business.campaign_content_items TO business_app;
+
+ALTER TABLE business.scr_review_records ENABLE ROW LEVEL SECURITY;
+CREATE POLICY scr_review_records_tenant_isolation ON business.scr_review_records
+    FOR ALL TO business_app, ai_runtime_app
+    USING (tenant_id = current_setting('app.tenant_id', TRUE)::UUID);
+GRANT SELECT, INSERT ON business.scr_review_records TO ai_runtime_app;
+GRANT SELECT         ON business.scr_review_records TO business_app;
+-- SCR records are constitutional audit artifacts — INSERT only, never UPDATE or DELETE
+
+-- signal_materiality_events: no RLS — institutional, no customer PII; platform-level log
+GRANT SELECT, INSERT ON institutional.signal_materiality_events TO ai_runtime_app;
+GRANT SELECT         ON institutional.signal_materiality_events TO business_app;
+
+-- skill_gap_signals: tenant-scoped for INSERT (customer org owns gap events); platform-wide SELECT for PO analytics
 -- Note: Gap signals reference organisation_id but are aggregated cross-customer for proposal analysis
 -- ai_runtime_app inserts per-customer; business_app reads aggregate counts (PO dashboard)
 ALTER TABLE institutional.skill_gap_signals ENABLE ROW LEVEL SECURITY;
@@ -266,3 +319,37 @@ CREATE POLICY agent_skill_graph_tenant_isolation ON business.agent_skill_graph
     USING (tenant_id = current_setting('app.tenant_id', TRUE)::UUID);
 GRANT SELECT, INSERT, UPDATE ON business.agent_skill_graph TO ai_runtime_app;
 GRANT SELECT                 ON business.agent_skill_graph TO business_app;
+=======
+-- Campaign Theme Engine RLS (v0.39.0 — C-055, AD-028)
+-- All 4 campaign tables are tenant-scoped — campaign data is strictly customer-private (C-034)
+
+ALTER TABLE business.content_campaigns ENABLE ROW LEVEL SECURITY;
+CREATE POLICY content_campaigns_tenant_isolation ON business.content_campaigns
+    FOR ALL TO business_app, ai_runtime_app
+    USING (tenant_id = current_setting('app.tenant_id', TRUE)::UUID);
+GRANT SELECT, INSERT, UPDATE ON business.content_campaigns TO ai_runtime_app;
+GRANT SELECT, INSERT         ON business.content_campaigns TO business_app;
+
+ALTER TABLE business.campaign_weekly_themes ENABLE ROW LEVEL SECURITY;
+CREATE POLICY campaign_weekly_themes_tenant_isolation ON business.campaign_weekly_themes
+    FOR ALL TO business_app, ai_runtime_app
+    USING (tenant_id = current_setting('app.tenant_id', TRUE)::UUID);
+GRANT SELECT, INSERT, UPDATE ON business.campaign_weekly_themes TO ai_runtime_app;
+GRANT SELECT                 ON business.campaign_weekly_themes TO business_app;
+
+ALTER TABLE business.campaign_content_items ENABLE ROW LEVEL SECURITY;
+CREATE POLICY campaign_content_items_tenant_isolation ON business.campaign_content_items
+    FOR ALL TO business_app, ai_runtime_app
+    USING (tenant_id = current_setting('app.tenant_id', TRUE)::UUID);
+GRANT SELECT, INSERT, UPDATE ON business.campaign_content_items TO ai_runtime_app;
+GRANT SELECT, UPDATE         ON business.campaign_content_items TO business_app;
+-- business_app UPDATE: customer approval/rejection actions update scr_status column only
+
+ALTER TABLE business.scr_review_records ENABLE ROW LEVEL SECURITY;
+CREATE POLICY scr_review_records_tenant_isolation ON business.scr_review_records
+    FOR ALL TO business_app, ai_runtime_app
+    USING (tenant_id = current_setting('app.tenant_id', TRUE)::UUID);
+GRANT SELECT, INSERT ON business.scr_review_records TO ai_runtime_app;
+GRANT SELECT         ON business.scr_review_records TO business_app;
+-- Note: SCR records are constitutional audit artifacts — INSERT only after creation, never UPDATE or DELETE
+>>>>>>> 699f049 (constitutional(dma): C-055 Campaign Theme Engine + SCR + Platform Intelligence (DMA v2.5, v0.39.0))

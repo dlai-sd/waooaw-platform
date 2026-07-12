@@ -664,6 +664,140 @@ Reset consecutive miss counter
 
 ---
 
+### 10. Campaign Theme Engine Pipeline (v0.39.0 — C-055, AD-028, DP-024)
+
+**Responsibility:**
+- Manages the three-level Campaign Theme Cascade for multi-post, multi-platform content agents
+- Executes the Campaign Brief proposal, weekly theme cascade generation, and platform content variant creation
+- Coordinates the Synthetic Content Reviewer (SCR) pipeline before any content auto-publication
+- Maintains the `business.content_campaigns`, `business.campaign_weekly_themes`, `business.campaign_content_items`, and `business.scr_review_records` tables
+
+**Campaign Theme Engine execution sequence:**
+```python
+# Phase 1: Campaign Brief Proposal (customer-triggered or strategic cadence)
+async def propose_campaign_brief(customer_context: AgentContext) -> CampaignBrief:
+    # Load Platform Intelligence (from agent_skill_graph + customer profile)
+    platform_mix = await load_approved_platform_mix(customer_context.employment_contract_id)
+    # FRONTIER tier — BREAKING class prompt (campaign strategy is constitutional quality)
+    brief = await llm_gateway.infer(
+        prompt_id="DMA/CAMPAIGN/MASTER_THEME_PROPOSAL",
+        context={**customer_context, "platform_mix": platform_mix, "season": current_month()},
+        model_tier="FRONTIER"
+    )
+    # Store as DRAFT — awaits customer approval
+    await db.content_campaigns.insert({**brief, "status": "DRAFT"})
+    return brief  # Presented to customer for approval
+
+# Phase 2: Weekly Theme Cascade (runs when campaign status transitions to ACTIVE)
+async def generate_weekly_cascade(campaign_id: UUID) -> list[WeeklyTheme]:
+    campaign = await db.content_campaigns.get(campaign_id)
+    themes = []
+    for week in range(1, campaign.campaign_weeks + 1):
+        theme = await llm_gateway.infer(
+            prompt_id="DMA/CAMPAIGN/WEEKLY_THEME_CASCADE",
+            context={"campaign": campaign, "week_number": week},
+            model_tier="MID_TIER"
+        )
+        await db.campaign_weekly_themes.insert(theme)
+        themes.append(theme)
+    return themes  # All generated upfront; no customer touchpoint needed
+
+# Phase 3: Platform Content Variant generation (runs per scheduled_at datetime)
+async def generate_content_variant(weekly_theme_id: UUID, platform: str) -> ContentItem:
+    weekly_theme = await db.campaign_weekly_themes.get(weekly_theme_id)
+    variant = await llm_gateway.infer(
+        prompt_id="DMA/CAMPAIGN/PLATFORM_CONTENT_VARIANT",
+        context={
+            "weekly_theme": weekly_theme,
+            "platform": platform,
+            "brand_voice": await load_creative_fingerprint(weekly_theme.organisation_id),
+            "platform_format": get_platform_format_spec(platform)
+        },
+        model_tier="MID_TIER"
+    )
+    item = await db.campaign_content_items.insert({**variant, "scr_status": "PENDING"})
+    # Immediately pass to SCR
+    return await scr_pipeline.review(item)
+```
+
+### 11. Synthetic Content Reviewer (SCR) (v0.39.0 — C-055)
+
+**Responsibility:**
+- Runs 5 structured quality checks on every content item before auto-publication
+- Checks 1–4 run at LOCAL tier (embedding similarity + rule-based); Check 5 runs at MID_TIER
+- Records complete check results in `business.scr_review_records`
+- Sets `campaign_content_items.scr_status` to `SCR_PASSED`, `SCR_FAILED`, or `COMPLIANCE_VIOLATION`
+- `COMPLIANCE_VIOLATION` (Check 3 failure) always routes to customer — never silent
+
+**SCR pipeline:**
+```python
+async def review(content_item: ContentItem) -> ContentItem:
+    campaign = await db.content_campaigns.get(content_item.campaign_id)
+    weekly_theme = await db.campaign_weekly_themes.get(content_item.weekly_theme_id)
+    fingerprint = await db.customer_creative_fingerprints.get(content_item.organisation_id)
+
+    results = {}
+
+    # Check 1: Theme Fidelity (LOCAL — embedding similarity)
+    content_embedding = await embed(content_item.content_body)
+    theme_embedding = await embed(f"{weekly_theme.sub_theme} {weekly_theme.narrative_hook}")
+    results["SCR_1"] = cosine_similarity(content_embedding, theme_embedding) >= 0.80
+
+    # Check 2: Brand Voice (LOCAL — Creative Fingerprint comparison)
+    results["SCR_2"] = cosine_similarity(content_embedding, fingerprint.voice_embedding) >= 0.75
+
+    # Check 3: Compliance (LOCAL — rule-based against RAG Tier 1 advertising standards)
+    violations = await check_advertising_compliance(content_item, campaign.domain)
+    results["SCR_3"] = len(violations) == 0
+    compliance_violations = violations  # Carried to evidence record
+
+    # Check 4: Uniqueness (LOCAL — C-052 Creative Fingerprint checks)
+    competitor_sim = cosine_similarity(content_embedding, fingerprint.competitor_exclusion_embedding)
+    own_recency_sim = await max_similarity_to_recent_content(content_embedding, content_item.organisation_id, days=30)
+    results["SCR_4"] = competitor_sim < 0.75 and own_recency_sim < 0.85
+
+    # Check 5: Quality (MID_TIER — LLM quality assessment)
+    quality_score = await llm_gateway.infer(
+        prompt_id="DMA/CAMPAIGN/SCR_QUALITY_CHECK",
+        context={"content": content_item, "platform": content_item.platform, "campaign": campaign},
+        model_tier="MID_TIER"
+    )
+    results["SCR_5"] = quality_score.overall_score >= 0.80
+
+    # Record all results
+    await db.scr_review_records.insert({
+        "content_item_id": content_item.id,
+        "check_results": results,
+        "compliance_violations": compliance_violations,
+        "quality_score": quality_score,
+        "reviewed_at": now()
+    })
+
+    all_pass = all(results.values())
+
+    if results["SCR_3"] is False:
+        # Compliance violation — ALWAYS routes to customer, never retried automatically
+        await db.campaign_content_items.update(content_item.id, scr_status="COMPLIANCE_VIOLATION")
+        await notify_customer_scr_failure(content_item, "COMPLIANCE", compliance_violations)
+    elif all_pass:
+        await db.campaign_content_items.update(content_item.id, scr_status="SCR_PASSED")
+        # Auto-publish via scheduling-mcp (if customer is in CAMPAIGN_APPROVAL or CAMPAIGN_AUTO mode)
+        if content_item.approval_mode in ("CAMPAIGN_APPROVAL", "CAMPAIGN_AUTO"):
+            await scheduling_mcp.schedule_publish(content_item)
+    else:
+        # Regenerate up to 2 times, then route to customer
+        failed_checks = [k for k, v in results.items() if not v]
+        if content_item.regeneration_attempts < 2:
+            return await regenerate_and_recheck(content_item, failed_checks)
+        else:
+            await db.campaign_content_items.update(content_item.id, scr_status="SCR_FAILED")
+            await notify_customer_scr_failure(content_item, "QUALITY", failed_checks)
+
+    return content_item
+```
+
+---
+
 ## Dependencies (updated v0.20.0)
 - **LLM Providers** (HTTPS external — OpenAI, Azure OpenAI)
 - **Prompt Registry** (DB at startup → memory cache at runtime; `agent_prompt_versions` table)

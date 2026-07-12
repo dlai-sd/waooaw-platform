@@ -424,6 +424,251 @@ adjacent_professional_routing:
 ### 3.17.4 Constitutional Checklist Addition
 
 - [ ] **C-036/C-037/C-048 check (Off-Topic Boundary): Section 3.17 exists. 5 redirect hooks declared with data sources. `adjacent_professional_routing` declared. Off-Topic Redirect prompt exists in Prompt Catalogue (`{AGENT}/BOUNDARY/OFF_TOPIC_REDIRECT`). The 3-attempt graduated pattern is declared in agent spec.**
+- [ ] **C-055 check (Campaign Coherence): if agent creates multi-post, multi-platform content, Section 3.21 exists. Campaign Brief structure declared with all required fields. SCR 5-check criteria declared with thresholds. Platform Intelligence research declared. Content Approval Modes (POST_APPROVAL, CAMPAIGN_APPROVAL, CAMPAIGN_AUTO) declared with upgrade criteria. MASTER_THEME_PROPOSAL prompt in Prompt Catalogue (FRONTIER/BREAKING). If NOT applicable, `campaign_theme_engine: NOT_APPLICABLE` stated with reason.**
+
+---
+
+## 9h. Section 3.21 — Campaign Theme Engine Standard (MANDATORY for multi-post, multi-platform content agents)
+
+> **Why required (C-055):** A Digital Marketing Professional who creates posts without a campaign strategy is a content factory, not a professional. C-055 makes campaign-coherent content a constitutional obligation. Section 3.21 is gate-enforced (Activation Gate Section 14). Missing this section in a multi-post content agent = GATE BLOCKED.
+
+**Multi-post content test (applies this section if TRUE):**
+- Does this agent create more than 3 content pieces per month across one or more platforms?
+- If YES → Section 3.21 is MANDATORY.
+- If NO → write `campaign_theme_engine: NOT_APPLICABLE` and state the reason.
+
+---
+
+### 3.21.1 Platform Intelligence Declaration (MANDATORY)
+
+The agent must research and recommend a platform mix before any campaign is designed:
+
+```yaml
+platform_intelligence:
+  research_skill: "[Skill that performs platform research — typically Market Research / Skill 0]"
+  research_prompt: "{AGENT}/PLATFORM/PLATFORM_INTELLIGENCE_RESEARCH"
+  research_cadence: "ONBOARDING + QUARTERLY_REFRESH"
+  research_signals:
+    - "competitor platform presence and engagement rates"
+    - "target audience demographics per platform (domain-specific)"
+    - "platform-content fit for business domain"
+    - "customer's existing platform accounts and follower count"
+  output_fields:
+    recommended_platforms:
+      - platform: "[INSTAGRAM | YOUTUBE | LINKEDIN | X | FACEBOOK | WHATSAPP | GBP | PINTEREST | THREADS]"
+        recommendation: "ACTIVE | ADVISORY | NOT_RELEVANT"
+        rationale: "[One sentence: why this platform is / isn't right for this customer]"
+        evidence: "[Competitor signals, demographic data that supports the recommendation]"
+  platform_mix_approval: "CUSTOMER_APPROVED — customer confirms their platform mix before any campaign"
+```
+
+---
+
+### 3.21.2 Campaign Theme Cascade Structure (MANDATORY)
+
+Declare the three-level content hierarchy this agent will produce:
+
+```yaml
+campaign_theme_cascade:
+  level_1_campaign:
+    required_fields:
+      - master_theme          # "Dental Preventive Care Series" — the campaign headline
+      - campaign_window       # ISO 8601 date range — e.g., "2026-10-01/2026-10-31"
+      - target_outcome        # Business outcome in customer language — "+15 preventive bookings"
+      - target_audience       # Specific description of who this campaign reaches
+      - platform_mix          # From Platform Intelligence, customer-approved
+      - content_cadence       # {platform: frequency} for each active platform
+      - theme_sequence        # [{week_number, sub_theme, narrative_hook, emotional_target}]
+    approval_required: true   # Customer must approve Level 1 before any Level 2 is generated
+
+  level_2_weekly_theme:
+    required_fields:
+      - week_number
+      - sub_theme             # "Prevention is cheaper than cure"
+      - narrative_hook        # "Cost anxiety reduction — ₹500 checkup vs ₹15,000 root canal"
+      - emotional_target      # "Relief + motivation to book now"
+      - platform_execution_notes  # Any platform-specific notes for this week's content
+    generated_by: "{AGENT}/CAMPAIGN/WEEKLY_THEME_CASCADE"
+    approval_required: false  # Generated automatically from approved Level 1
+
+  level_3_content_variant:
+    required_fields:
+      - platform
+      - week_number
+      - content_body          # Platform-specific content (caption, image_prompt, CTA, etc.)
+      - audio_script          # Voice script for YOUTUBE_SHORT, INSTAGRAM_REEL, WHATSAPP_VOICE
+      - scheduled_at          # When this piece is scheduled to publish
+    generated_by: "{AGENT}/CAMPAIGN/PLATFORM_CONTENT_VARIANT"
+    scr_required: true        # Every Level 3 content MUST pass SCR before publish
+```
+
+---
+
+### 3.21.3 Platform Content Variant Formats (MANDATORY — declare per active platform)
+
+For each platform in the customer's approved platform mix, declare the content format the agent produces:
+
+```yaml
+platform_content_formats:
+  - platform: "INSTAGRAM_POST"
+    content_fields: ["caption (≤2200 chars)", "image_prompt (for image-generation-mcp)", "hashtags (≤30)", "cta_text", "alt_text"]
+    audio: false
+    image: true
+    publishing_mcp: "instagram-mcp"
+
+  - platform: "INSTAGRAM_REEL"
+    content_fields: ["voice_script (60–90 second)", "visual_storyboard (scene-by-scene)", "caption (≤2200 chars)", "hashtags"]
+    audio: true
+    image: true
+    publishing_mcp: "instagram-mcp"
+
+  - platform: "YOUTUBE_SHORT"
+    content_fields: ["voice_script (≤60 seconds)", "visual_storyboard", "title (≤100 chars)", "description (≤5000 chars)", "tags"]
+    audio: true
+    image: true
+    publishing_mcp: "youtube-mcp"
+
+  - platform: "LINKEDIN_POST"
+    content_fields: ["post_text (≤3000 chars, professional tone)", "image_prompt (optional)", "hashtags (≤5)", "cta_text"]
+    audio: false
+    image: true
+    publishing_mcp: "linkedin-mcp"
+
+  - platform: "X_POST"
+    content_fields: ["tweet_text (≤280 chars)", "thread_continuation (optional)", "image_prompt (optional)"]
+    audio: false
+    image: true
+    publishing_mcp: "x-mcp"
+
+  - platform: "GBP_POST"
+    content_fields: ["post_text (≤1500 chars)", "cta_button_type (BOOK/CALL/LEARN_MORE)", "image_prompt"]
+    audio: false
+    image: true
+    publishing_mcp: "google-business-mcp"
+
+  - platform: "WHATSAPP_BROADCAST"
+    content_fields: ["message_text (≤1024 chars, conversational tone)", "cta_link"]
+    audio: false
+    image: false
+    publishing_mcp: "whatsapp-business-mcp"
+
+  - platform: "PINTEREST_PIN"
+    content_fields: ["pin_title (≤100 chars)", "pin_description (≤500 chars)", "image_prompt", "destination_link"]
+    audio: false
+    image: true
+    publishing_mcp: "pinterest-mcp"
+```
+
+---
+
+### 3.21.4 Synthetic Content Reviewer (SCR) Declaration (MANDATORY)
+
+The SCR is the 5-check quality gate that enables auto-posting. Declare the review criteria and thresholds:
+
+```yaml
+synthetic_content_review:
+  enabled_for_modes: ["CAMPAIGN_APPROVAL", "CAMPAIGN_AUTO"]
+  not_applicable_for_modes: ["POST_APPROVAL"]
+
+  checks:
+    - check_id: "SCR_1_THEME_FIDELITY"
+      description: "Does this content serve the declared weekly sub-theme and advance the master campaign narrative?"
+      method: "Semantic similarity between content and sub_theme + narrative_hook embeddings"
+      pass_threshold: 0.80
+      model_tier: "LOCAL"
+      fail_action: "REGENERATE_WITH_THEME_ANCHOR"
+
+    - check_id: "SCR_2_BRAND_VOICE"
+      description: "Is this content in the customer's established brand voice (Creative Fingerprint)?"
+      method: "Cosine similarity to brand_voice_embedding (business.customer_creative_fingerprints)"
+      pass_threshold: 0.75
+      model_tier: "LOCAL"
+      fail_action: "REGENERATE_WITH_VOICE_CONSTRAINT"
+
+    - check_id: "SCR_3_COMPLIANCE"
+      description: "Does this content comply with platform policies and domain advertising regulations?"
+      method: "Rule-based check against known prohibitions (RAG Tier 1: advertising standards)"
+      pass_threshold: "ZERO_VIOLATIONS"
+      model_tier: "LOCAL"
+      fail_action: "FLAG_SPECIFIC_VIOLATION → ROUTE_TO_CUSTOMER"
+      # Compliance failures ALWAYS route to customer — never regenerate silently
+
+    - check_id: "SCR_4_UNIQUENESS"
+      description: "Is this content differentiated from competitors and from own recent posts?"
+      method: "Similarity to competitor_exclusion_embedding < 0.75 AND own_content_30_days < 0.85"
+      pass_threshold: "SEE_THRESHOLDS"
+      model_tier: "LOCAL"
+      fail_action: "REGENERATE_WITH_DIVERSITY_CONSTRAINT"
+
+    - check_id: "SCR_5_QUALITY"
+      description: "Is this content professionally produced? Would the customer be proud to post it?"
+      method: "LLM quality assessment across: grammar, CTA clarity, emotional resonance, visual-copy alignment"
+      pass_threshold: 0.80
+      model_tier: "MID_TIER"
+      fail_action: "REGENERATE_WITH_QUALITY_BRIEF"
+
+  max_regeneration_attempts: 2  # If 2 regenerations still fail SCR → route to customer
+  evidence_record: true         # Every SCR run creates a business.scr_review_records entry
+  scr_review_prompt: "{AGENT}/CAMPAIGN/SCR_QUALITY_CHECK"  # for Check 5 only; others are LOCAL
+```
+
+---
+
+### 3.21.5 Content Approval Modes (MANDATORY — extend Section 3.14.1 for content skills)
+
+```yaml
+content_approval_modes:
+  POST_APPROVAL:
+    description: "Customer approves every individual content piece before publish"
+    upgrade_criteria: "3 months with ≥ 90% approval rate + customer requests upgrade"
+    customer_touchpoints: "Every piece of content"
+    scr_enabled: false  # SCR runs but results are advisory — customer always the final gate
+
+  CAMPAIGN_APPROVAL:
+    description: "Customer approves Campaign Brief + weekly themes. Content that passes SCR auto-publishes."
+    upgrade_criteria: "3 months in POST_APPROVAL at ≥ 90% + customer explicitly requests"
+    customer_touchpoints: "1 per campaign (brief approval) + weekly digest + SCR failures"
+    scr_enabled: true
+    scr_failure_routing: "ALWAYS_TO_CUSTOMER — no silent rejection"
+    weekly_digest: true  # Customer receives weekly summary of what published + performance
+
+  CAMPAIGN_AUTO:
+    description: "Customer approves Campaign Brief only. SCR handles content review. Weekly digest is the only touchpoint."
+    upgrade_criteria: "3 months in CAMPAIGN_APPROVAL with <5% SCR failure rate + customer explicitly requests"
+    customer_touchpoints: "1 per campaign + weekly digest"
+    scr_enabled: true
+    max_auto_posts_per_week: 10  # Safety cap — beyond this, route to customer regardless
+    downgrade_trigger: "SCR failure rate > 15% in any 30-day period → propose downgrade to CAMPAIGN_APPROVAL"
+```
+
+---
+
+### 3.21.6 Campaign Digest (MANDATORY for CAMPAIGN_APPROVAL and CAMPAIGN_AUTO)
+
+Every week, the agent sends a campaign digest that tells the customer:
+1. What published this week (and where)
+2. How it performed (platform metrics in business language)
+3. What's planned for next week (preview of Level 2 sub-theme + 1 sample content piece)
+4. Any decisions needed (SCR failures awaiting approval, budget nearing threshold)
+
+```yaml
+campaign_digest:
+  cadence: "WEEKLY — Monday morning, before next week's content begins"
+  delivery_channels: ["PORTAL", "WHATSAPP_TEXT (if opted in)", "EMAIL"]
+  prompt: "{AGENT}/CAMPAIGN/CAMPAIGN_DIGEST"
+  model_tier: "MID_TIER"
+  structure:
+    - "THIS_WEEK: What published, on which platforms, how it performed"
+    - "NEXT_WEEK_PREVIEW: Sub-theme + 1 sample content piece for customer visibility"
+    - "ACTION_NEEDED: SCR failures (if any) + budget status"
+    - "CAMPAIGN_HEALTH: Are we on track for the campaign's target outcome?"
+```
+
+---
+
+### 3.21.7 Constitutional Checklist Addition
+
+- [ ] **C-055 check (Campaign Coherence): Section 3.21 exists OR `campaign_theme_engine: NOT_APPLICABLE` stated. If applicable: Platform Intelligence declared. Campaign Theme Cascade structure declared (all 3 levels). SCR 5-check criteria declared with thresholds and model tiers. Content Approval Modes declared (POST_APPROVAL → CAMPAIGN_APPROVAL → CAMPAIGN_AUTO) with upgrade criteria. Campaign Digest declared. All campaign prompts in Prompt Catalogue (MASTER_THEME_PROPOSAL as FRONTIER/BREAKING). Campaign tables referenced (content_campaigns, campaign_weekly_themes, campaign_content_items, scr_review_records).**
 
 ---
 
@@ -920,8 +1165,76 @@ SECTION 13 — SKILL INTELLIGENCE ROUTING GATE (C-054) — for multi-skill agent
           FAIL condition: no router prompt → SIR cannot operate → GATE BLOCKED
 [ ] 13.7  C-054 check present in Constitutional Checklist section
 
+SECTION 14 — CAMPAIGN THEME ENGINE GATE (C-055) — for multi-post, multi-platform content agents
+[ ] 14.1  Section 3.21 exists in the spec OR `campaign_theme_engine: NOT_APPLICABLE` with reason
+[ ] 14.2  (If applicable) Platform Intelligence declared with research_signals + output_fields
+[ ] 14.3  (If applicable) Campaign Theme Cascade structure declared (all 3 levels with required_fields)
+[ ] 14.4  (If applicable) SCR 5-check criteria declared with pass_threshold and model_tier per check
+          FAIL condition: SCR declared without individual check thresholds → GATE BLOCKED
+[ ] 14.5  (If applicable) SCR Check 3 (Compliance) fail_action = ROUTE_TO_CUSTOMER (never silent)
+          FAIL condition: any compliance failure routed to auto-regeneration → C-055 violation
+[ ] 14.6  (If applicable) Content Approval Modes declared (POST_APPROVAL, CAMPAIGN_APPROVAL, CAMPAIGN_AUTO)
+[ ] 14.7  (If applicable) Upgrade criteria declared for each mode transition
+[ ] 14.8  (If applicable) Campaign Digest declared (cadence, channels, prompt)
+[ ] 14.9  (If applicable) All campaign prompts in Prompt Catalogue:
+          MASTER_THEME_PROPOSAL (FRONTIER, BREAKING)
+          WEEKLY_THEME_CASCADE (MID_TIER, BEHAVIOURAL)
+          PLATFORM_CONTENT_VARIANT (MID_TIER, BEHAVIOURAL)
+          SCR_QUALITY_CHECK (MID_TIER, BEHAVIOURAL — Check 5 only)
+          CAMPAIGN_DIGEST (MID_TIER, BEHAVIOURAL)
+          FAIL condition: any of these missing → GATE BLOCKED
+[ ] 14.10 C-055 check present in Constitutional Checklist section
+
+OVERALL GATE RESULT:
+  All 14 sections PASS → AGENT MAY BE ACTIVATED
+  Any section FAIL → CONSTITUTIONAL BLOCKER → raise blocker in blockers/ → agent NOT activated
+```
+[ ] 12.1  Section 3.18 exists in the spec OR `signal_intelligence: NOT_APPLICABLE` with reason stated
+[ ] 12.2  (If applicable) At least one signal_feed declared with poll_cadence
+[ ] 12.3  (If applicable) Every URGENCY_CLASS=CRITICAL signal type has emergency_exempt: true
+          FAIL condition: CRITICAL signal without emergency_exempt → C-001 + C-053 violation
+[ ] 12.4  (If applicable) PROACTIVE_ALERT prompt in Prompt Catalogue (MID_TIER minimum)
+[ ] 12.5  (If applicable) Evidence action_type declared for each signal_type
+[ ] 12.6  (If applicable) HSM templates declared for any out-of-TRAI-window signals
+[ ] 12.7  C-053 check present in Constitutional Checklist section
+
+SECTION 13 — SKILL INTELLIGENCE ROUTING GATE (C-054) — for multi-skill agents
+[ ] 13.1  Section 3.19 exists in the spec OR `skill_intelligence_router: NOT_APPLICABLE` with reason
+[ ] 13.2  (If applicable) Every Skill has a `skill_capability_manifest` block
+          FAIL condition: any Skill missing SCM → GATE BLOCKED
+[ ] 13.3  (If applicable) Each SCM has minimum 5 intent_signatures
+[ ] 13.4  (If applicable) Each SCM declares collaboration_affinities OR justifies empty (rare)
+[ ] 13.5  (If applicable) skill_gap_signalling block declared with threshold and table reference
+[ ] 13.6  (If applicable) SKILL_INTENT_ROUTER prompt exists in Prompt Catalogue (LOCAL tier)
+          FAIL condition: no router prompt → SIR cannot operate → GATE BLOCKED
+[ ] 13.7  C-054 check present in Constitutional Checklist section
+
 OVERALL GATE RESULT:
   All 13 sections PASS → AGENT MAY BE ACTIVATED
+=======
+SECTION 14 — CAMPAIGN THEME ENGINE GATE (C-055) — for multi-post, multi-platform content agents
+[ ] 14.1  Section 3.21 exists in the spec OR `campaign_theme_engine: NOT_APPLICABLE` with reason
+[ ] 14.2  (If applicable) Platform Intelligence declared with research_signals + output_fields
+[ ] 14.3  (If applicable) Campaign Theme Cascade structure declared (all 3 levels with required_fields)
+[ ] 14.4  (If applicable) SCR 5-check criteria declared with pass_threshold and model_tier per check
+          FAIL condition: SCR declared without individual check thresholds → GATE BLOCKED
+[ ] 14.5  (If applicable) SCR Check 3 (Compliance) fail_action = ROUTE_TO_CUSTOMER (never silent)
+          FAIL condition: any compliance failure routed to auto-regeneration → C-055 violation
+[ ] 14.6  (If applicable) Content Approval Modes declared (POST_APPROVAL, CAMPAIGN_APPROVAL, CAMPAIGN_AUTO)
+[ ] 14.7  (If applicable) Upgrade criteria declared for each mode transition
+[ ] 14.8  (If applicable) Campaign Digest declared (cadence, channels, prompt)
+[ ] 14.9  (If applicable) All campaign prompts in Prompt Catalogue:
+          MASTER_THEME_PROPOSAL (FRONTIER, BREAKING)
+          WEEKLY_THEME_CASCADE (MID_TIER, BEHAVIOURAL)
+          PLATFORM_CONTENT_VARIANT (MID_TIER, BEHAVIOURAL)
+          SCR_QUALITY_CHECK (MID_TIER, BEHAVIOURAL — Check 5 only)
+          CAMPAIGN_DIGEST (MID_TIER, BEHAVIOURAL)
+          FAIL condition: any of these missing → GATE BLOCKED
+[ ] 14.10 C-055 check present in Constitutional Checklist section
+
+OVERALL GATE RESULT:
+  All 14 sections PASS → AGENT MAY BE ACTIVATED
+>>>>>>> 699f049 (constitutional(dma): C-055 Campaign Theme Engine + SCR + Platform Intelligence (DMA v2.5, v0.39.0))
   Any section FAIL → CONSTITUTIONAL BLOCKER → raise blocker in blockers/ → agent NOT activated
 ```
 

@@ -2221,7 +2221,7 @@ The following professional types have been fully specified, EA-reviewed, and app
 
 | Professional Type | AS | Spec File | EA Review | Founder Approval | Status |
 |---|---|---|---|---|---|
-| `DIGITAL_MARKETING_HEALTHCARE` | AS-001, AS-002 | `digital-marketing-agent.md` v2.0 | R-014 | 2026-07-09 | APPROVED |
+| `DIGITAL_MARKETING_HEALTHCARE` | AS-001, AS-002 | `digital-marketing-agent.md` v2.5 | R-014, R-015 | 2026-07-12 | APPROVED |
 | `TRADING_FO_CRYPTO` | AS-003 | `trading-agent.md` v1.1 | R-012 | 2026-07-08 | APPROVED |
 | `AGRICULTURAL_ADVISOR_INDIA` | AS-005 | `agricultural-advisor-agent.md` v1.1 | R-013 | 2026-07-08 | APPROVED |
 

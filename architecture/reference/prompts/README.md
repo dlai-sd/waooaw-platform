@@ -97,5 +97,28 @@ Every agent prompt must produce a response conforming to this base schema plus t
 | DMA/SIGNAL/PROACTIVE_ALERT | Signal Intelligence | Converts competitor/analytics/review signal into actionable portal notification (C-053) | v1.0.0 | ACTIVE |
 | AGRI/SIGNAL/PROACTIVE_ALERT | Signal Intelligence | Converts weather/price/pest signal into farmer-vocabulary WhatsApp voice alert (C-053) | v1.0.0 | ACTIVE |
 | TRADING/SIGNAL/PROACTIVE_ALERT | Signal Intelligence | Converts VIX/broker-auth/session signal into PAAS pre-session alert (C-053) | v1.0.0 | ACTIVE |
+| DMA/CAMPAIGN/MASTER_THEME_PROPOSAL | Campaign Theme Engine | Proposes master campaign brief: theme, window, target outcome, weekly cascade, platform mix (C-055) | v1.0.0 | ACTIVE |
+| DMA/CAMPAIGN/WEEKLY_THEME_CASCADE | Campaign Theme Engine | Decomposes master campaign into weekly sub-themes with narrative hooks + emotional targets (C-055) | v1.0.0 | ACTIVE |
+| DMA/CAMPAIGN/PLATFORM_CONTENT_VARIANT | Campaign Theme Engine | Creates platform-native content variant (caption+image+audio) from weekly sub-theme (C-055) | v1.0.0 | ACTIVE |
+| DMA/CAMPAIGN/SCR_QUALITY_CHECK | Synthetic Content Reviewer | SCR Check 5 — quality assessment of content for professional standard (C-055, Check 5 only) | v1.0.0 | ACTIVE |
+| DMA/CAMPAIGN/CAMPAIGN_DIGEST | Campaign Theme Engine | Weekly campaign performance digest + next-week preview for customer (C-055) | v1.0.0 | ACTIVE |
+| DMA/PLATFORM/PLATFORM_INTELLIGENCE_RESEARCH | Platform Intelligence | Research-driven platform selection recommendation for customer domain + target audience (DP-024) | v1.0.0 | ACTIVE |
+
+**Total active prompts: 58** (v0.39.0 — 45 base + 7 SIR/SIL (C-053/C-054) + 6 Campaign Theme Engine (C-055))
+| AGRI/ROUTING/SKILL_INTENT_ROUTER | Skill Intelligence Router | LOCAL-tier intent classification → skill routing plan for Agricultural agent (C-054) | v1.0.0 | ACTIVE |
+| TRADING/ROUTING/SKILL_INTENT_ROUTER | Skill Intelligence Router | LOCAL-tier intent classification → skill routing plan for Trading agent (C-054) | v1.0.0 | ACTIVE |
+| DMA/SIGNAL/PROACTIVE_ALERT | Signal Intelligence | Converts competitor/analytics/review signal into actionable portal notification (C-053) | v1.0.0 | ACTIVE |
+| AGRI/SIGNAL/PROACTIVE_ALERT | Signal Intelligence | Converts weather/price/pest signal into farmer-vocabulary WhatsApp voice alert (C-053) | v1.0.0 | ACTIVE |
+| TRADING/SIGNAL/PROACTIVE_ALERT | Signal Intelligence | Converts VIX/broker-auth/session signal into PAAS pre-session alert (C-053) | v1.0.0 | ACTIVE |
 
 **Total active prompts: 52** (v0.35.0 — includes SIR routing prompts + SIL proactive alert prompts)
+=======
+| DMA/CAMPAIGN/MASTER_THEME_PROPOSAL | Campaign Theme Engine | Proposes master campaign brief: theme, window, target outcome, weekly cascade, platform mix (C-055) | v1.0.0 | ACTIVE |
+| DMA/CAMPAIGN/WEEKLY_THEME_CASCADE | Campaign Theme Engine | Decomposes master campaign into weekly sub-themes with narrative hooks + emotional targets (C-055) | v1.0.0 | ACTIVE |
+| DMA/CAMPAIGN/PLATFORM_CONTENT_VARIANT | Campaign Theme Engine | Creates platform-native content variant (caption+image+audio) from weekly sub-theme (C-055) | v1.0.0 | ACTIVE |
+| DMA/CAMPAIGN/SCR_QUALITY_CHECK | Synthetic Content Reviewer | SCR Check 5 — quality assessment of content for professional standard (C-055, Check 5 only) | v1.0.0 | ACTIVE |
+| DMA/CAMPAIGN/CAMPAIGN_DIGEST | Campaign Theme Engine | Weekly campaign performance digest + next-week preview for customer (C-055) | v1.0.0 | ACTIVE |
+| DMA/PLATFORM/PLATFORM_INTELLIGENCE_RESEARCH | Platform Intelligence | Research-driven platform selection recommendation for customer domain + target audience (DP-024) | v1.0.0 | ACTIVE |
+
+**Total active prompts: 52** (v0.34.0 — on main branch; +7 (SIR/SIL) in PR #5 + 6 (Campaign) in PR #6 = 58 when both merged)
+>>>>>>> 699f049 (constitutional(dma): C-055 Campaign Theme Engine + SCR + Platform Intelligence (DMA v2.5, v0.39.0))

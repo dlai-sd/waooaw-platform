@@ -157,6 +157,11 @@ The AI Runtime is an MCP client. Agent-specific capabilities that require real-t
 | `meta-ads-mcp` | Digital Marketing Agent (v2.0) | Meta Marketing API (customer ad account — C-043 budget cap enforced pre-call) | Sidecar container (dev), Container Apps (cloud) |
 | `google-ads-mcp` | Digital Marketing Agent (v2.0) | Google Ads API (customer ad account — C-043 budget cap enforced pre-call) | Sidecar container (dev), Container Apps (cloud) |
 | `web-optimisation-mcp` | Digital Marketing Agent (v2.0) | CRO/A-B testing platform API (e.g., VWO, Google Optimize successor) | Sidecar container (dev), Container Apps (cloud) |
+| `youtube-mcp` | Digital Marketing Agent (v2.5) | YouTube Data API v3 (customer OAuth — upload, metadata, analytics) | **PLANNED** — Founder action: enable YouTube Data API in existing Google Cloud project. Sidecar container (dev), Container Apps (cloud) |
+| `linkedin-mcp` | Digital Marketing Agent (v2.5) | LinkedIn Marketing API (company page posts, analytics) | **PLANNED** — Founder action: WAOOAW LinkedIn Company Page + LinkedIn Partner Program application required. Lead time: 2-4 weeks. |
+| `x-mcp` | Digital Marketing Agent (v2.5) | X (Twitter) API v2 (post creation, analytics) | **PLANNED — PENDING FOUNDER DECISION** — X API Basic tier: $100/month for write access. Defer until Founder approves cost. |
+| `pinterest-mcp` | Digital Marketing Agent (v2.5) | Pinterest API v5 (Pin creation, analytics) | **PLANNED** — Founder action: Pinterest Developer Account registration. Free. 2-3 days. |
+| `threads-mcp` | Digital Marketing Agent (v2.5) | Meta Threads API (post creation) | **PLANNED** — Requires same Meta Business Manager as instagram-mcp. Available after Meta BM verification. |
 | `oauth-vault` | All agents requiring customer OAuth delegation | Secure token storage + refresh scheduler for Meta, Google OAuth tokens (ADR-021) | Sidecar container (dev), Container Apps (cloud) |
 | `razorpay-mcp` | Business Platform (billing) | Razorpay Subscriptions + Payments API (ADR-022) | Sidecar container (dev), Container Apps (cloud) |
 | `pdf-generation-mcp` | Business Platform + AI Runtime (Maturity Report) | HTML-to-PDF generation (Gotenberg/Puppeteer) for reports and invoices | Sidecar container (dev), Container Apps (cloud) |

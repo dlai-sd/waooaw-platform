@@ -495,7 +495,19 @@ A capability exists because the institution must provide it — not because it w
 
 ---
 
-| Domain | Count | Capabilities |
+### 11.7 Design and Execute Coherent Multi-Platform Campaigns (Campaign Theme Engine — v0.39.0)
+
+**Statement:** The institution must enable the Digital Marketing Professional to design a master campaign theme for a customer — with a declared business outcome, target audience, platform mix, and weekly narrative sequence — and to automatically generate platform-native content variants for each active platform in each week of the campaign, subject to Synthetic Content Review (SCR) before publication. The institution must enable customers to approve once (the campaign brief) and receive professional campaign execution without reviewing each content piece individually.
+
+**Constitutional Basis:** C-055 (Campaign Coherence Obligation — LAW); C-036 (Skills as constitutional units — the campaign is the professional deliverable, not the individual post); C-037 (Business KPI — campaign outcome target is the KPI, not individual post metrics); C-052 (Creative Fingerprint — campaign coherence is the highest expression of brand identity); AD-028 (Campaign Theme Cascade Standard); DP-024 (Campaign-First Content Intelligence)
+
+---
+
+### 11.8 Research and Recommend Platform Mix (Platform Intelligence — v0.39.0)
+
+**Statement:** The institution must enable the Digital Marketing Professional to research which digital platforms are most effective for a customer's specific business domain, geography, and target audience — and to recommend a platform mix with evidence, enabling the customer to make an informed decision on where their digital presence should be built. Platform selection is a professional judgment informed by competitor presence, audience demographics, and platform-content fit data.
+
+**Constitutional Basis:** C-036 (Skills as constitutional units — platform selection is a professional service, not a customer menu choice); C-037 (Business KPI — wrong platform selection wastes the customer's budget and time); DP-024 (Campaign-First Content Intelligence — platform selection precedes and constrains campaign design)
 |---|---|---|
 | 1 — Hire | 8 | 1.1 Evaluate, 1.2 Configure, 1.3 Define Decision Space, 1.4 Form Contract, 1.5 Onboard, 1.6 Browse Catalogue, 1.7 Configure via Conversation, 1.8 Trial Enrollment |
 | 2 — Govern | 7 | 2.1 Review Proposed, 2.2 Approve/Reject, 2.3 Confirm Boundary, 2.4 Emergency Stop, 2.5 Monitor, 2.6 Audit, 2.7 Monitor Skill KPIs |
