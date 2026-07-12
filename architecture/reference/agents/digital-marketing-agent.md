@@ -869,6 +869,332 @@ adjacent_professional_routing:
 
 ---
 
+## 3.18 Signal Intelligence Layer (C-053, v0.35.0)
+
+```yaml
+signal_intelligence:
+  signal_feeds:
+    - feed_id: "COMPETITOR_ACTIVITY"
+      mcp_server: "meta-ad-library-mcp"
+      tool_call: "ads.search_active"
+      poll_cadence: "PT6H"
+      relevance_dimension: "customer_profile.competitor_list + customer_profile.business_domain + customer_profile.city"
+      materiality_classifier: "competitor_new_campaign_in_7_days AND customer_has_no_active_campaign → HIGH; competitor_posting_frequency > 5x_customer_frequency → ADVISORY"
+
+    - feed_id: "PLATFORM_ANALYTICS"
+      mcp_server: "platform-analytics-mcp"
+      tool_call: "*.get_insights"
+      poll_cadence: "PT24H"
+      relevance_dimension: "customer_profile.active_skills + kpi_targets"
+      materiality_classifier: "any_kpi_pace < 0.40_at_week2 → HIGH; engagement_drop > 30pct_week_on_week → HIGH"
+
+    - feed_id: "GOOGLE_REVIEW_ALERT"
+      mcp_server: "google-business-mcp"
+      tool_call: "review.get_recent"
+      poll_cadence: "PT4H"
+      relevance_dimension: "customer_profile.google_business_id"
+      materiality_classifier: "new_1_or_2_star_review → HIGH"
+
+  signal_types:
+    - signal_type: "COMPETITOR_CAMPAIGN_LAUNCHED"
+      feed_id: "COMPETITOR_ACTIVITY"
+      skill_id: "COMPETITIVE_INTELLIGENCE"
+      urgency_class_rule: "competitor launches paid campaign while customer has no active campaign → HIGH"
+      urgency_class: "HIGH"
+      emergency_exempt: false
+      channel: "PORTAL"
+      trai_outside_window_behavior: "DEFER"
+      evidence_action_type: "PROACTIVE_SIGNAL_ALERT"
+
+    - signal_type: "KPI_PACE_CRITICAL"
+      feed_id: "PLATFORM_ANALYTICS"
+      skill_id: "PERFORMANCE_ANALYTICS"
+      urgency_class_rule: "any_kpi_pace < 0.40 by day 15 of month → HIGH"
+      urgency_class: "HIGH"
+      emergency_exempt: false
+      channel: "PORTAL"
+      trai_outside_window_behavior: "DEFER"
+      evidence_action_type: "PROACTIVE_SIGNAL_ALERT"
+
+    - signal_type: "NEGATIVE_REVIEW_RECEIVED"
+      feed_id: "GOOGLE_REVIEW_ALERT"
+      skill_id: "GOOGLE_BUSINESS_PROFILE"
+      urgency_class_rule: "1 or 2 star review → HIGH always"
+      urgency_class: "HIGH"
+      emergency_exempt: false
+      channel: "PORTAL"
+      trai_outside_window_behavior: "DEFER"
+      evidence_action_type: "PROACTIVE_SIGNAL_ALERT"
+
+  materiality_thresholds:
+    critical: 0.90
+    high: 0.70
+    advisory: 0.50
+
+  # DMA delivers via portal (not WhatsApp) — no HSM templates required
+  hsm_templates: []
+```
+
+---
+
+## 3.19 Skill Intelligence Router (C-054, v0.35.0)
+
+```yaml
+skill_intelligence_router:
+  router_prompt: "DMA/ROUTING/SKILL_INTENT_ROUTER"
+  gap_signalling:
+    gap_signal_threshold_days: 30
+    gap_frequency_min: 3
+    cross_customer_threshold: 5
+    evidence_table: "institutional.skill_gap_signals"
+
+  skill_capability_manifests:
+
+    - skill_id: "MARKET_RESEARCH"
+      version: "2.4"
+      intent_signatures:
+        - "who are my competitors"
+        - "market research report"
+        - "digital maturity score"
+        - "competitor analysis"
+        - "what's my online presence"
+        - "benchmark against others"
+        - "what should I focus on"
+      servable_request_types:
+        COMPETITOR_ANALYSIS: "Identifies top competitors and their digital presence"
+        MATURITY_ASSESSMENT: "Scores customer's digital maturity and identifies priority gaps"
+      unservable_request_types:
+        - intent: "create content"
+          routes_to_skill: "CONTENT_STRATEGY"
+        - intent: "run paid ads"
+          routes_to_skill: "PAID_ADVERTISING"
+      input_requirements:
+        required: ["customer_profile.business_domain", "customer_profile.locality"]
+        optional: []
+      output_contributions:
+        - type: "maturity_score"
+          used_by: ["CONTENT_STRATEGY", "PAID_ADVERTISING", "LOCAL_SEO"]
+        - type: "competitor_list"
+          used_by: ["COMPETITIVE_INTELLIGENCE", "INSTAGRAM_MARKETING"]
+      collaboration_affinities:
+        - with_skill: "CONTENT_STRATEGY"
+          relationship: "UPSTREAM"
+          benefit: "Maturity score determines which phase skills are activated"
+        - with_skill: "COMPETITIVE_INTELLIGENCE"
+          relationship: "UPSTREAM"
+          benefit: "Competitor list from research feeds competitive monitoring"
+
+    - skill_id: "CONTENT_STRATEGY"
+      version: "2.4"
+      intent_signatures:
+        - "content calendar for next month"
+        - "what should we post"
+        - "monthly content plan"
+        - "Diwali campaign ideas"
+        - "theme for this month"
+        - "posting schedule"
+        - "content strategy"
+      servable_request_types:
+        CONTENT_CALENDAR: "Creates monthly content calendar with themes and posting schedule"
+        CAMPAIGN_BRIEF: "Creates a campaign brief for a specific event or theme"
+      unservable_request_types:
+        - intent: "create the actual Instagram post"
+          routes_to_skill: "INSTAGRAM_MARKETING"
+        - intent: "run paid ads for the campaign"
+          routes_to_skill: "PAID_ADVERTISING"
+      input_requirements:
+        required: ["customer_profile.business_goals"]
+        optional: ["market_research.maturity_score"]
+      output_contributions:
+        - type: "content_calendar"
+          used_by: ["INSTAGRAM_MARKETING", "FACEBOOK_MARKETING", "WHATSAPP_BUSINESS"]
+        - type: "campaign_brief"
+          used_by: ["INSTAGRAM_MARKETING", "VIDEO_CONTENT_CREATION", "PAID_ADVERTISING"]
+      collaboration_affinities:
+        - with_skill: "INSTAGRAM_MARKETING"
+          relationship: "UPSTREAM"
+          benefit: "Content calendar drives Instagram execution — calendar approval → post creation"
+        - with_skill: "PAID_ADVERTISING"
+          relationship: "UPSTREAM"
+          benefit: "Campaign brief is the creative brief that paid ads amplify"
+        - with_skill: "PERFORMANCE_ANALYTICS"
+          relationship: "BIDIRECTIONAL"
+          benefit: "Analytics tells Content Strategy what's working; strategy drives next month's plan"
+
+    - skill_id: "INSTAGRAM_MARKETING"
+      version: "2.4"
+      intent_signatures:
+        - "create instagram post"
+        - "instagram content"
+        - "social media post for clinic"
+        - "reel for my practice"
+        - "caption for photo"
+        - "post for instagram"
+        - "instagram campaign"
+      servable_request_types:
+        CONTENT_CREATION: "Creates captions, images, reels, stories for Instagram"
+        CAMPAIGN_EXECUTION: "Publishes approved content to Instagram"
+        CREATIVE_REFINEMENT: "Iterates on previously generated content"
+      unservable_request_types:
+        - intent: "paid ad budget"
+          routes_to_skill: "PAID_ADVERTISING"
+        - intent: "website landing page"
+          routes_to_skill: "CONVERSION_OPTIMISATION"
+      input_requirements:
+        required: ["customer_profile.brand_voice_embeddings"]
+        optional: ["content_strategy.campaign_brief", "customer_creative_fingerprints.voice_embedding"]
+      output_contributions:
+        - type: "approved_instagram_post"
+          used_by: ["PAID_ADVERTISING"]
+        - type: "content_performance_data"
+          used_by: ["PERFORMANCE_ANALYTICS", "CONTENT_STRATEGY"]
+      collaboration_affinities:
+        - with_skill: "CONTENT_STRATEGY"
+          relationship: "DOWNSTREAM"
+          benefit: "Content Strategy brief drives Instagram execution; calendar-aligned content"
+        - with_skill: "PAID_ADVERTISING"
+          relationship: "UPSTREAM"
+          benefit: "Approved Instagram post → paid amplification for same creative"
+        - with_skill: "PERFORMANCE_ANALYTICS"
+          relationship: "BIDIRECTIONAL"
+          benefit: "Instagram performance informs creative learning loop"
+
+    - skill_id: "PAID_ADVERTISING"
+      version: "2.4"
+      intent_signatures:
+        - "run paid ads"
+        - "Facebook ads campaign"
+        - "Google ads"
+        - "boost this post"
+        - "lead generation campaign"
+        - "paid campaign for Diwali"
+        - "how to get more leads"
+      servable_request_types:
+        CAMPAIGN_CREATION: "Sets up paid advertising campaign on Meta or Google after approval"
+        BID_OPTIMISATION: "Optimises bids within approved parameters"
+        CAMPAIGN_REPORT: "Reports on paid campaign performance"
+      unservable_request_types:
+        - intent: "organic social media post"
+          routes_to_skill: "INSTAGRAM_MARKETING"
+        - intent: "website conversion rate"
+          routes_to_skill: "CONVERSION_OPTIMISATION"
+      input_requirements:
+        required: ["customer_profile.approved_budget", "customer_profile.campaign_objective"]
+        optional: ["instagram_marketing.approved_instagram_post", "content_strategy.campaign_brief"]
+      output_contributions:
+        - type: "campaign_performance_data"
+          used_by: ["PERFORMANCE_ANALYTICS"]
+      collaboration_affinities:
+        - with_skill: "INSTAGRAM_MARKETING"
+          relationship: "DOWNSTREAM"
+          benefit: "Organic post → paid amplification; unified creative across organic+paid"
+        - with_skill: "CONTENT_STRATEGY"
+          relationship: "DOWNSTREAM"
+          benefit: "Campaign brief drives both content creation and paid targeting"
+        - with_skill: "LOCAL_SEO"
+          relationship: "BIDIRECTIONAL"
+          benefit: "SEO keyword research informs paid keywords; paid data shows which keywords convert"
+
+    - skill_id: "PERFORMANCE_ANALYTICS"
+      version: "2.4"
+      intent_signatures:
+        - "how did we do this month"
+        - "monthly report"
+        - "what's working"
+        - "KPI summary"
+        - "performance overview"
+        - "analytics report"
+        - "results"
+      servable_request_types:
+        MONTHLY_REPORT: "Generates full monthly performance report across all active skills"
+        KPI_STATUS: "Answers status query about specific KPIs"
+        UNDERPERFORMANCE_DIAGNOSIS: "Identifies underperforming skills and proposes adjustments"
+      unservable_request_types:
+        - intent: "create new content"
+          routes_to_skill: "CONTENT_STRATEGY"
+      input_requirements:
+        required: []
+        optional: ["all active skills' performance data"]
+      output_contributions:
+        - type: "performance_intelligence"
+          used_by: ["CONTENT_STRATEGY", "PAID_ADVERTISING", "LOCAL_SEO"]
+      collaboration_affinities:
+        - with_skill: "CONTENT_STRATEGY"
+          relationship: "BIDIRECTIONAL"
+          benefit: "Analytics shows what content performs; strategy adapts accordingly"
+        - with_skill: "PAID_ADVERTISING"
+          relationship: "BIDIRECTIONAL"
+          benefit: "Campaign performance data drives bid optimisation decisions"
+        - with_skill: "COMPETITIVE_INTELLIGENCE"
+          relationship: "BIDIRECTIONAL"
+          benefit: "Own performance compared to competitor activity for strategic context"
+
+    - skill_id: "LOCAL_SEO"
+      version: "2.4"
+      intent_signatures:
+        - "nobody can find us on Google"
+        - "SEO audit"
+        - "local search ranking"
+        - "Google search keywords"
+        - "appear on Google Maps"
+        - "search visibility"
+        - "local SEO"
+      servable_request_types:
+        SEO_AUDIT: "Audits website and GBP for local SEO signals"
+        KEYWORD_RESEARCH: "Identifies target keywords for the domain and locality"
+        SEO_RECOMMENDATION: "Recommends SEO improvements"
+      unservable_request_types:
+        - intent: "paid ads"
+          routes_to_skill: "PAID_ADVERTISING"
+        - intent: "website conversion"
+          routes_to_skill: "CONVERSION_OPTIMISATION"
+      input_requirements:
+        required: ["customer_profile.website_url", "customer_profile.business_domain"]
+        optional: ["performance_analytics.performance_intelligence"]
+      output_contributions:
+        - type: "keyword_intelligence"
+          used_by: ["PAID_ADVERTISING", "CONTENT_STRATEGY"]
+      collaboration_affinities:
+        - with_skill: "PAID_ADVERTISING"
+          relationship: "BIDIRECTIONAL"
+          benefit: "SEO keywords improve paid ad targeting; paid data reveals which terms convert"
+        - with_skill: "CONTENT_STRATEGY"
+          relationship: "UPSTREAM"
+          benefit: "Keyword research informs content themes for maximum organic visibility"
+
+    - skill_id: "COMPETITIVE_INTELLIGENCE"
+      version: "2.4"
+      intent_signatures:
+        - "what are competitors doing"
+        - "competitor campaign alert"
+        - "competitor posted new ad"
+        - "defend against competitor"
+        - "competitive gap analysis"
+        - "market position"
+        - "who is beating us"
+      servable_request_types:
+        COMPETITOR_MONITORING: "Monitors top 3 competitors' public digital activity"
+        COMPETITIVE_RESPONSE: "Recommends defensive or offensive response to competitor move"
+      unservable_request_types:
+        - intent: "initial competitor list setup"
+          routes_to_skill: "MARKET_RESEARCH"
+      input_requirements:
+        required: ["customer_profile.confirmed_competitor_list"]
+        optional: ["market_research.maturity_score", "performance_analytics.performance_intelligence"]
+      output_contributions:
+        - type: "competitor_intelligence_snapshot"
+          used_by: ["CONTENT_STRATEGY", "PAID_ADVERTISING"]
+      collaboration_affinities:
+        - with_skill: "MARKET_RESEARCH"
+          relationship: "DOWNSTREAM"
+          benefit: "Market Research produces the competitor list; Competitive Intelligence monitors it continuously"
+        - with_skill: "PAID_ADVERTISING"
+          relationship: "BIDIRECTIONAL"
+          benefit: "Competitor campaign launch → defensive paid response recommendation"
+```
+
+---
+
 ## 4. Customer Journey & Onboarding Flow
 
 ### 4.1 Pre-Engagement: Registration (Portal)

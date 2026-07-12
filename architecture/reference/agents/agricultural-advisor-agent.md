@@ -393,6 +393,105 @@ This is constitutionally elegant: the Evidence First principle (C-023) — desig
 
 ---
 
+## 4.13 Signal Intelligence Layer — Section 3.18 (C-053, v0.35.0)
+
+```yaml
+signal_intelligence:
+  signal_feeds:
+    - feed_id: "WEATHER_DISTRICT"
+      mcp_server: "weather-ensemble-mcp"
+      tool_call: "weather.get_ensemble_forecast"
+      poll_cadence: "PT15M"
+      relevance_dimension: "farm.district + crop.sowing_date + crop.expected_harvest_date"
+      materiality_classifier: "hail_probability > 0.5 OR wind_speed > 60kph OR rainfall_48h > 150mm → HIGH/CRITICAL based on crop_stage_day"
+
+    - feed_id: "MANDI_PRICE"
+      mcp_server: "agmarknet-mcp"
+      tool_call: "market.get_mandi_prices"
+      poll_cadence: "PT1H"
+      relevance_dimension: "farmer.stated_price_target + crop.expected_harvest_within_30_days"
+      materiality_classifier: "current_price >= farmer_price_target → HIGH; price_drop_pct_3day > 15 → HIGH"
+
+    - feed_id: "PEST_OUTBREAK_DISTRICT"
+      mcp_server: "internal-tier3-rag"
+      tool_call: "intelligence.get_district_pest_alerts"
+      poll_cadence: "PT6H"
+      relevance_dimension: "farm.district + crop.type + crop.stage_day"
+      materiality_classifier: "outbreak_farms_in_district >= 5 AND farmer_crop_stage_matches_risk_window → HIGH"
+
+  signal_types:
+    - signal_type: "WEATHER_HAIL_RISK"
+      feed_id: "WEATHER_DISTRICT"
+      skill_id: "WEATHER_ADVISORY_FARMER"
+      urgency_class_rule: "hail_probability > 0.6 AND stage_day > 60 → CRITICAL; hail_probability > 0.4 → HIGH"
+      urgency_class: "CRITICAL"
+      emergency_exempt: true
+      channel: "WHATSAPP_VOICE"
+      trai_outside_window_behavior: "IMMEDIATE"
+      evidence_action_type: "PROACTIVE_SIGNAL_ALERT"
+
+    - signal_type: "WEATHER_HEAVY_RAIN"
+      feed_id: "WEATHER_DISTRICT"
+      skill_id: "WEATHER_ADVISORY_FARMER"
+      urgency_class_rule: "rainfall_48h > 100mm → CRITICAL if harvest_within_7_days; → HIGH otherwise"
+      urgency_class: "HIGH"
+      emergency_exempt: false
+      channel: "WHATSAPP_VOICE"
+      trai_outside_window_behavior: "HSM_TEMPLATE_ONLY"
+      evidence_action_type: "PROACTIVE_SIGNAL_ALERT"
+
+    - signal_type: "PRICE_TARGET_CROSSED"
+      feed_id: "MANDI_PRICE"
+      skill_id: "MANDI_PRICE_INTELLIGENCE"
+      urgency_class_rule: "current_price >= farmer_price_target → HIGH always"
+      urgency_class: "HIGH"
+      emergency_exempt: false
+      channel: "WHATSAPP_VOICE"
+      trai_outside_window_behavior: "HSM_TEMPLATE_ONLY"
+      evidence_action_type: "PROACTIVE_SIGNAL_ALERT"
+
+    - signal_type: "PRICE_RAPID_DROP"
+      feed_id: "MANDI_PRICE"
+      skill_id: "MANDI_PRICE_INTELLIGENCE"
+      urgency_class_rule: "price_drop_pct_3day > 15 AND harvest_within_14_days → HIGH"
+      urgency_class: "HIGH"
+      emergency_exempt: false
+      channel: "WHATSAPP_VOICE"
+      trai_outside_window_behavior: "HSM_TEMPLATE_ONLY"
+      evidence_action_type: "PROACTIVE_SIGNAL_ALERT"
+
+    - signal_type: "DISTRICT_PEST_OUTBREAK"
+      feed_id: "PEST_OUTBREAK_DISTRICT"
+      skill_id: "CROP_HEALTH_CONVERSATIONAL"
+      urgency_class_rule: "outbreak_farms >= 5 AND farmer_crop_in_risk_window → HIGH"
+      urgency_class: "HIGH"
+      emergency_exempt: false
+      channel: "WHATSAPP_VOICE"
+      trai_outside_window_behavior: "HSM_TEMPLATE_ONLY"
+      evidence_action_type: "PROACTIVE_SIGNAL_ALERT"
+
+  materiality_thresholds:
+    critical: 0.90
+    high: 0.70
+    advisory: 0.50
+
+  hsm_templates:
+    - signal_type: "WEATHER_HEAVY_RAIN"
+      template_name: "agri_weather_alert_v1"
+      template_text: "नमस्कार {{1}}! तुमच्या शेताबद्दल महत्त्वाचं हवामान अपडेट आहे. Reply करा."
+      meta_approval_status: "PENDING"
+    - signal_type: "PRICE_TARGET_CROSSED"
+      template_name: "agri_price_alert_v1"
+      template_text: "नमस्कार {{1}}! तुमच्या पिकाच्या भावाबद्दल महत्त्वाची माहिती. Reply करा."
+      meta_approval_status: "PENDING"
+    - signal_type: "DISTRICT_PEST_OUTBREAK"
+      template_name: "agri_pest_alert_v1"
+      template_text: "नमस्कार {{1}}! तुमच्या भागात कीड दिसत आहे. Reply करा — मी मदत करतो."
+      meta_approval_status: "PENDING"
+```
+
+---
+
 ## 4.14 Skill Runtime Configuration Standard
 
 > This section defines the operating model for every skill in this agent. The Agricultural Advisor's WhatsApp-native, PERMANENT lifecycle design means the approval ladder (CUSTOMER_APPROVAL → SYNTHETIC_APPROVAL) applies selectively per skill. Farmers do not manage an approval interface — conversational confirmation IS the approval mechanism. Synthetic Approval (C-044) is **not applicable** for any skill — the conversational confirmation model is sufficient and more appropriate for low-literacy users.
@@ -666,6 +765,200 @@ adjacent_professional_routing:
     referral_message: "Insurance claim के लिए PMFBY helpline: 1800-180-1551। आपके records मैंने तैयार किए हुए हैं।"
 ```
 
+---
+
+## 4.18 Skill Intelligence Router — Section 3.19 (C-054, v0.35.0)
+
+```yaml
+skill_intelligence_router:
+  router_prompt: "AGRI/ROUTING/SKILL_INTENT_ROUTER"
+  gap_signalling:
+    gap_signal_threshold_days: 30
+    gap_frequency_min: 3
+    cross_customer_threshold: 5
+    evidence_table: "institutional.skill_gap_signals"
+
+  skill_capability_manifests:
+
+    - skill_id: "WEATHER_ADVISORY_FARMER"
+      version: "2.6"
+      intent_signatures:
+        - "kal barish hogi"
+        - "aaj ka mausam"
+        - "meri fasal ko khatra hai"
+        - "hail risk for my crop"
+        - "weather forecast district"
+        - "kya aandhi aayegi"
+        - "pala padega kya"
+      servable_request_types:
+        WEATHER_ALERT: "Generates a weather alert in farmer vocabulary with crop-stage-specific action guidance"
+        WEATHER_QUERY: "Answers a farmer's question about the current or upcoming weather for their district"
+        WEATHER_RISK_ASSESSMENT: "Evaluates weather risk for current crop stage and recommends protective action"
+      unservable_request_types:
+        - intent: "mandi price query"
+          routes_to_skill: "MANDI_PRICE_INTELLIGENCE"
+        - intent: "crop health symptoms"
+          routes_to_skill: "CROP_HEALTH_CONVERSATIONAL"
+      input_requirements:
+        required:
+          - "farmer_profile.district_location"
+          - "farmer_profile.crop_type"
+          - "farmer_profile.sowing_date"
+        optional:
+          - "crop_state_model.current_stage_day"
+      output_contributions:
+        - type: "weather_risk_context"
+          used_by: ["CROP_HEALTH_CONVERSATIONAL", "CROP_SEASON_PLANNING"]
+      collaboration_affinities:
+        - with_skill: "CROP_HEALTH_CONVERSATIONAL"
+          relationship: "UPSTREAM"
+          benefit: "Weather context makes crop health advice more accurate — humidity predicts fungal risk"
+        - with_skill: "MANDI_PRICE_INTELLIGENCE"
+          relationship: "BIDIRECTIONAL"
+          benefit: "Rain before harvest + rising price = urgent sell-timing advice; both signals combined"
+
+    - skill_id: "CROP_HEALTH_CONVERSATIONAL"
+      version: "2.6"
+      intent_signatures:
+        - "patti par keede"
+        - "yellowing on leaves"
+        - "white flies on crop"
+        - "fasal mein kya hua"
+        - "spray karna hai kya"
+        - "pest disease identification"
+        - "leaf symptom morning checkin"
+      servable_request_types:
+        SYMPTOM_DIAGNOSIS: "Diagnoses crop disease or pest from farmer's verbal observation"
+        MORNING_CHECKIN: "Proactive daily check-in question based on crop stage and recent weather"
+        INTERVENTION_RECOMMENDATION: "Recommends pesticide or irrigation intervention in farmer vocabulary"
+      unservable_request_types:
+        - intent: "weather query"
+          routes_to_skill: "WEATHER_ADVISORY_FARMER"
+        - intent: "price query"
+          routes_to_skill: "MANDI_PRICE_INTELLIGENCE"
+      input_requirements:
+        required:
+          - "crop_state_model.current_stage_day"
+          - "farmer_profile.farmer_resources"
+        optional:
+          - "weather_advisory_farmer.weather_risk_context"
+      output_contributions:
+        - type: "crop_intervention_record"
+          used_by: ["PMFBY_INSURANCE_EVIDENCE"]
+      collaboration_affinities:
+        - with_skill: "WEATHER_ADVISORY_FARMER"
+          relationship: "DOWNSTREAM"
+          benefit: "Weather risk triggers crop health check — hail alert → morning check-in becomes urgent"
+        - with_skill: "PMFBY_INSURANCE_EVIDENCE"
+          relationship: "UPSTREAM"
+          benefit: "Every intervention record feeds PMFBY evidence chain"
+
+    - skill_id: "MANDI_PRICE_INTELLIGENCE"
+      version: "2.6"
+      intent_signatures:
+        - "aaj soyabean ka bhav"
+        - "onion price today"
+        - "mandi rate kya hai"
+        - "kab bechun apni fasal"
+        - "price target crossed"
+        - "MSP kya hai is saal"
+        - "nearest mandi price"
+      servable_request_types:
+        PRICE_QUERY: "Answers current mandi price for farmer's crop in nearest markets"
+        SELL_TIMING_ADVICE: "Advises on optimal timing to sell based on price trend, farmer target, and seasonal pattern"
+        PRICE_ALERT: "Proactively alerts farmer when price target is crossed"
+      unservable_request_types:
+        - intent: "futures or commodity trading"
+          routes_to_skill: null
+        - intent: "crop health"
+          routes_to_skill: "CROP_HEALTH_CONVERSATIONAL"
+      input_requirements:
+        required:
+          - "farmer_profile.stated_price_target"
+          - "farmer_profile.crop_type"
+        optional:
+          - "farmer_profile.storage_availability"
+      output_contributions:
+        - type: "price_intelligence_context"
+          used_by: ["CROP_SEASON_PLANNING"]
+      collaboration_affinities:
+        - with_skill: "WEATHER_ADVISORY_FARMER"
+          relationship: "BIDIRECTIONAL"
+          benefit: "Rain before harvest urgently changes sell-timing advice; price + weather combined advisory"
+        - with_skill: "CROP_SEASON_PLANNING"
+          relationship: "UPSTREAM"
+          benefit: "Current price trends directly inform next season crop choice (MSP + mandi patterns)"
+
+    - skill_id: "CROP_SEASON_PLANNING"
+      version: "2.6"
+      intent_signatures:
+        - "agla season kya lagaun"
+        - "next crop recommendation"
+        - "kaunsi fasal zyada paisa degi"
+        - "crop rotation advice"
+        - "soil type crop match"
+        - "is baar kya karun"
+        - "season planning"
+      servable_request_types:
+        NEXT_SEASON_RECOMMENDATION: "Recommends optimal crop for next season based on soil, water, price outlook, rotation, policy"
+        CROP_VIABILITY_CHECK: "Evaluates whether a specific crop the farmer is considering is suitable"
+      unservable_request_types:
+        - intent: "current crop health"
+          routes_to_skill: "CROP_HEALTH_CONVERSATIONAL"
+        - intent: "current price query"
+          routes_to_skill: "MANDI_PRICE_INTELLIGENCE"
+      input_requirements:
+        required:
+          - "farmer_profile.soil_type"
+          - "farmer_profile.irrigation_type"
+          - "mandi_price_intelligence.price_intelligence_context"
+        optional:
+          - "weather_advisory_farmer.weather_risk_context"
+      output_contributions:
+        - type: "season_plan"
+          used_by: []
+      collaboration_affinities:
+        - with_skill: "MANDI_PRICE_INTELLIGENCE"
+          relationship: "DOWNSTREAM"
+          benefit: "Price trends (current + seasonal patterns) are a primary input to crop selection"
+        - with_skill: "WEATHER_ADVISORY_FARMER"
+          relationship: "DOWNSTREAM"
+          benefit: "3-month forecast informs crop water requirement feasibility"
+
+    - skill_id: "PMFBY_INSURANCE_EVIDENCE"
+      version: "2.6"
+      intent_signatures:
+        - "insurance claim kaise karein"
+        - "PMFBY evidence"
+        - "crop loss documentation"
+        - "fasal nuksaan ka record"
+        - "generate insurance report"
+        - "kya mere paas proof hai"
+        - "PMFBY report chahiye"
+      servable_request_types:
+        INSURANCE_EVIDENCE_GENERATION: "Generates PMFBY-ready evidence report from Constitutional Audit Ledger records"
+        CLAIM_ELIGIBILITY_CHECK: "Checks whether current CAL evidence is sufficient for a PMFBY claim"
+      unservable_request_types:
+        - intent: "PMFBY scheme registration"
+          routes_to_skill: null
+      input_requirements:
+        required:
+          - "constitutional_audit_ledger.weather_alert_records"
+          - "crop_health_conversational.crop_intervention_record"
+        optional: []
+      output_contributions:
+        - type: "pmfby_evidence_document"
+          used_by: []
+      collaboration_affinities:
+        - with_skill: "CROP_HEALTH_CONVERSATIONAL"
+          relationship: "DOWNSTREAM"
+          benefit: "Every intervention record is PMFBY evidence — skills produce the evidence chain together"
+        - with_skill: "WEATHER_ADVISORY_FARMER"
+          relationship: "DOWNSTREAM"
+          benefit: "Every weather alert issued creates a CAL record that feeds the PMFBY evidence chain"
+```
+
+---
 
 ## 5. Emergency Stop
 
