@@ -1,8 +1,8 @@
 # PROJECT_STATE.md
 
 **Last Updated:** 2026-07-13
-**Version:** 0.63.0
-**Session:** 2026-07-13 — SESSION CLOSE (C-061 Content Safety + Section 3.24 platform standard + Interview Mode honesty principle + v0.62.0 Interview Mode gate)
+**Version:** 0.64.0
+**Session:** 2026-07-13 — SESSION CLOSE (ADR-008 v2 IDP expansion + ADR-023 v2 tiered WhatsApp MPIN auth + C-061 Content Safety)
 
 ---
 
@@ -11,11 +11,11 @@
 ```
 INSTITUTION:  WAOOAW — autonomous digital professionals under constitutional governance
 GATE:         G5 prerequisites met (G5 CLEAR ≠ implementation authorization for any session)
-VERSION:      0.63.0
+VERSION:      0.64.0
 CONSTITUTIONAL CLAIMS: C-001 to C-061 (61 ratified claims)
 AGENTS: DMA v2.9 | Trading v1.7 | Agricultural Advisor v2.7 | Private Tutor v1.0
 CCTs: 29
-AGENT TEMPLATE: Section 3.23 (Interview Mode) + Section 3.24 (Content Safety) + Gate 15
+IDPs: Google (live) | Microsoft P1 | Apple P1 | LinkedIn P2 | Facebook deferred
 
 FOCUS: Agricultural Advisor v2.7 COMPLETE. 6 new skills (7-12). Tone Framework 3.0.
        8-dimension crop planning. Zero cost escalation — all new MCPs use free govt APIs.
