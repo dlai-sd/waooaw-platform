@@ -70,6 +70,27 @@ Coverage:         NN% (threshold: NN%)
 
 ---
 
+## Spec-Code Traceability Matrix (C-059 — MANDATORY for any PR touching src/)
+
+> Skip this section ONLY if this PR contains zero src/ file changes.
+> If any src/ file was created or modified, every row below is required.
+> An incomplete matrix is a C-059 violation — the PR cannot be merged.
+
+| src/ file changed | Specification section it implements | Spec approved? | Header present? |
+|---|---|---|---|
+| `src/...` | `architecture/reference/...md §Section Name` | ✅ Yes | ✅ Yes |
+| `src/...` | `architecture/reference/...md §Section Name` | ✅ Yes | ✅ Yes |
+
+**Spec-first check (BOOTSTRAP Step 10b):**
+- [ ] Every spec section listed above existed and was approved BEFORE the code was written
+- [ ] No src/ file was created for a spec section that does not yet exist
+- [ ] If any spec section was updated in this PR: existing src/ files referencing it have been reviewed for alignment (note below if any are out of sync)
+
+**Spec-change impact note:** *(if any spec section was updated)*
+> Which src/ files reference this spec section, and were they reviewed?
+
+---
+
 ## Reviewer Instructions
 
 > **Constitutional review:** `@copilot review this PR as the [Reviewer Office per ORGANIZATION.md]`

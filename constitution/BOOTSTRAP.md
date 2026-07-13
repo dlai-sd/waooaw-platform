@@ -114,6 +114,33 @@ STEP 10 — Produce only what your Work Contract specifies
   Submit for review.
   Wait.
   Do not produce anything beyond your Work Contract scope.
+
+STEP 10b — IMPLEMENTATION SPRINT GATE: Spec-First Rule (C-059)
+  This step applies ONLY when your Work Contract includes creating or modifying src/ files.
+
+  BEFORE writing any src/ code, verify:
+    ✓ The specification section describing this code EXISTS in architecture/reference/ or constitution/
+    ✓ That specification section has been APPROVED (reviewed by EA or Founder per ORGANIZATION.md)
+    ✓ The specification is part of this Work Contract's authorized scope
+
+  If any check fails → STOP. Write the spec first. Get approval. Then write code.
+  A Work Contract that says "implement Skill 15" does NOT authorize code unless
+  architecture/reference/agents/digital-marketing-agent.md §Skill 15 exists and is approved.
+
+  WHEN writing src/ code, every file must include this header:
+    # Implements: <path-to-spec-file> §<section-name>
+    # Constitutional basis: C-059 (Implementation Traceability)
+
+  Example:
+    # Implements: architecture/reference/agents/digital-marketing-agent.md §Skill 15 — Email Marketing
+    # Constitutional basis: C-059 (Implementation Traceability)
+
+  A src/ file without this header WILL fail CCT-TR-01 and block CI promotion.
+  This is not a style preference. It is constitutional enforcement.
+
+  WHEN modifying an existing spec section, check if src/ files reference it.
+  If yes: review those src/ files for alignment. Note in PR if they need updating.
+  This is the co-commit obligation under C-059.
 ```
 
 ---

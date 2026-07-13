@@ -1,7 +1,7 @@
 # Constitutional Compliance Test (CCT) Framework
 
 **Produced by:** Enterprise Architect (Sprint 010, WC-010)
-**Date:** 2026-07-07 | **Last Updated:** 2026-07-13 (v0.48.1 — added CCT-SIR-04, CCT-SIL-04; total: 26 CCTs)
+**Date:** 2026-07-07 | **Last Updated:** 2026-07-13 (v0.54.0 — added C-059 + CCT-TR-01/02/03; total: 29 CCTs)
 **Constitutional Basis:** GENESIS Engineering Quality Mandate — "Constitutional Compliance Tests — WAOOAW-specific; validates that the platform upholds a specific constitutional principle"; ADR-013 (CCTs are a required CI/CD gate)
 
 ---
@@ -58,6 +58,7 @@ Every CCT is a self-contained test that:
 | `SC` | Strategic Cognition | C-050, AD-021, DP-019 |
 | `CF` | Context Fidelity, Isolation, Uniqueness | C-052, AD-025, DP-021 |
 | `SA` | Synthetic Approval | C-044, AD-017, DP-015 |
+| `TR` | Implementation Traceability (Spec-Code Integrity) | C-059, GENESIS Engineering Quality Mandate |
 
 ---
 
@@ -645,6 +646,101 @@ Teardown: Delete test evidence records.
 Constitutional basis: C-044 (confidence threshold must be met — below threshold =
           not a valid Synthetic Approval); C-049 (Honest Limitation Disclosure —
           agent discloses its confidence level when it cannot proceed autonomously)
+```
+
+---
+
+### Implementation Traceability (TR) — v0.54.0
+
+**CCT-TR-01 — Every src/ File Has a Traceable Spec Header**
+```
+Name:     CCT-TR-01 — Spec Header Present on All src/ Files
+Principle: C-059 (Implementation Traceability); GENESIS Engineering Quality Mandate
+Type:     BUILD-TIME gate (runs as CI step, not as a runtime test)
+
+Setup:    CI pipeline triggered by any commit to a branch with src/ changes.
+
+Action:   Automated scanner runs over all files in src/**:
+          find src/ -type f \( -name "*.py" -o -name "*.cs" -o -name "*.ts" -o -name "*.tsx" \) |
+          xargs grep -rL "# Implements:\|// Implements:"
+
+Assert:   Output is EMPTY (zero files without the header) ✓
+          Every file that exists in src/ contains either:
+            # Implements: <spec-file-path> §<section>        (Python)
+            // Implements: <spec-file-path> §<section>       (C# / TypeScript)
+          A non-empty output = build BLOCKED. Output lists offending files.
+
+Teardown: N/A — build-time gate, no state to restore.
+
+Constitutional basis: C-059 (every src/ file must have a verifiable traceability link
+          to an approved specification section); GENESIS Rule 2 (Traceable Header —
+          the code's constitutional basis must be observable, just as C-023 requires
+          evidence to be observable for runtime actions)
+
+Note:     This CCT is the automated equivalent of an ISO auditor checking that every
+          manufactured part references its drawing number. It runs on EVERY commit,
+          not just on QA promotion. The first line of production code in src/ must
+          already carry this header — it cannot be retrofitted later.
+```
+
+**CCT-TR-02 — Referenced Spec Section Actually Exists**
+```
+Name:     CCT-TR-02 — Spec References Are Not Dangling Pointers
+Principle: C-059 (Implementation Traceability)
+Type:     BUILD-TIME gate
+
+Setup:    CI pipeline. All src/ files scanned for # Implements: headers.
+
+Action:   For each # Implements: <file> §<section> header found:
+          1. Check file exists: ls <file> → exists ✓ / not found ✗
+          2. Check section exists in file: grep -n "<section>" <file> → found ✓ / not found ✗
+
+Assert:   All referenced spec files exist ✓
+          All referenced spec sections are found in their files ✓
+          A dangling reference (file deleted, section renamed without updating headers)
+          = build BLOCKED. Output lists the broken references.
+
+Constitutional basis: C-059 (traceability link must be verifiable — a header pointing to
+          a deleted spec is worthless); C-002 (First Law: trust through observable evidence —
+          an unresolvable spec reference is unobservable evidence)
+
+Note:     This CCT catches the most common form of spec-code drift: a specification section
+          is renamed or restructured, but the src/ files referencing it are not updated.
+          CCT-TR-02 makes that drift immediately visible in CI rather than silently
+          accumulating over months.
+```
+
+**CCT-TR-03 — New src/ Files in a PR Have a Corresponding Approved Spec Section**
+```
+Name:     CCT-TR-03 — No Orphan Code (Spec-First Enforcement)
+Principle: C-059 (Implementation Traceability); BOOTSTRAP Step 10b (Spec-First Rule)
+Type:     PR-gate (runs on PR creation and update, not every commit)
+
+Setup:    GitHub Actions PR trigger. List of newly created src/ files in the PR diff.
+
+Action:   For each NEW src/ file in the PR:
+          1. Extract the spec reference from its # Implements: header
+          2. Check that spec section was NOT modified in the SAME PR
+             (if it was just created in this PR → spec-first rule may be violated)
+          
+          Edge case handling:
+            ALLOWED: spec section was in a PREVIOUS merged commit + src/ implements it
+            ALLOWED: spec section AND src/ file both created in same PR (atomic new feature)
+                     → requires PR description to include "New feature: spec and code co-committed"
+            BLOCKED: src/ file references a spec section that does NOT exist in main
+                     at the time the PR is opened
+
+Assert:   All new src/ files reference spec sections that exist in main (or are
+          co-committed in the same PR with Founder's explicit acknowledgment) ✓
+          
+          PR comment if blocked:
+          "CCT-TR-03: src/path/to/file.py references a spec section that does not
+           exist in main. Create and merge the spec section first, or co-commit
+           it with this PR and note it in the PR description."
+
+Constitutional basis: C-059 Rule 1 (Spec First — spec must exist before code is written);
+          BOOTSTRAP Step 10b (Implementation Sprint Gate);
+          C-023 (Evidence First analogy — spec IS the evidence that authorizes implementation)
 ```
 
 ---

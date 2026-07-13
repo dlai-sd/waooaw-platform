@@ -1008,6 +1008,61 @@ There are no manual testers in the WAOOAW engineering organization. The Founder 
 
 Every engineer — human or AI — must internalize this principle: if your change cannot be automatically verified, it cannot be merged.
 
+---
+
+## Specification Traceability — The Non-Negotiable Foundation (C-059)
+
+> **"In ISO 9001, you do not accept a manufactured part without a specification, a review record, test cases, and test results. WAOOAW applies the same discipline to every line of code."**
+> — Founder, 2026-07-13
+
+WAOOAW has no human development team. Every line of code is written by an AI agent operating under constitutional governance. The specifications in `architecture/reference/` and `constitution/` are the institution's only memory between sessions. If code drifts from its specification, the next AI agent reading the spec will implement a contradictory version, and the platform will become constitutionally incoherent.
+
+**C-059 mandates:**
+
+### Rule 1 — Spec First (The ISO Rule)
+No `src/` file may be created before the specification section describing its behavior exists, is approved, and is referenced in an active Work Contract. This is not a process preference — it is a constitutional obligation enforced by BOOTSTRAP.
+
+```
+SPEC → REVIEW → CODE → TESTS → TEST RESULTS
+```
+
+This is the only permitted sequence. Code written before a spec exists is a constitutional violation, not a style issue.
+
+### Rule 2 — Traceable Header (The Evidence First Rule)
+Every file created or modified in `src/` must declare which specification it implements in a standardized header comment. This is the code-level equivalent of Evidence First (C-023): the code's constitutional basis must be observable.
+
+**Format:**
+```python
+# Implements: architecture/reference/agents/digital-marketing-agent.md §Skill 15 — Email Marketing
+# Constitutional basis: C-059 (Implementation Traceability)
+```
+```csharp
+// Implements: architecture/reference/components/constitutional-engine.md §3.1 — Evidence Recorder
+// Constitutional basis: C-059 (Implementation Traceability)
+```
+```typescript
+// Implements: architecture/reference/components/business-platform.md §2.4 — Campaign Approval API
+// Constitutional basis: C-059 (Implementation Traceability)
+```
+
+### Rule 3 — Co-Committed (The Atomic Change Rule)
+When a spec section changes, the src/ code it governs must be reviewed for alignment in the same PR. A PR that updates `architecture/reference/agents/digital-marketing-agent.md §Skill 15` without reviewing the corresponding `src/professional-runtime/skills/email/` code (or noting it does not yet exist) is incomplete.
+
+### Rule 4 — CI Enforcement (CCT-TR-01)
+`CCT-TR-01` is a CI gate that scans all `src/` files on every commit. Any `src/` file missing the `# Implements:` header fails the build. No exception, no manual override. This is a Constitutional Compliance Test — its failure is a Constitutional Blocker.
+
+### What this replaces
+| Old process (human team) | WAOOAW equivalent |
+|---|---|
+| Jira ticket created before coding starts | Work Contract approved before BOOTSTRAP authorizes coding |
+| Developer references Confluence spec in PR | `# Implements:` header in every src/ file |
+| Tech lead reviews spec-code alignment | PR template Traceability Matrix (reviewer checklist) |
+| QA executes test cases, records results | CCTs run automatically in CI; results in every PR |
+| Defect logged in Jira | Constitutional Blocker filed in `blockers/` |
+| ISO auditor checks documentation trail | CCT-TR-01 scans the entire src/ tree automatically |
+
+**There is no lighter version of this policy.** The absence of a human engineering team makes traceability more important, not less. An AI agent that cannot find the spec for a piece of code will either refuse to modify it (correct behaviour) or invent a change without constitutional basis (constitutional violation).
+
 ## Zero Manual Testing Policy
 
 All of the following must be automated from the first line of production code:
