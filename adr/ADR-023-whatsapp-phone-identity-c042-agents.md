@@ -221,3 +221,111 @@ Start time: tomorrow morning 7 AM."
 **B — OTP-based registration (WAOOAW sends OTP via SMS):** Adds friction, cost (Twilio/Msg91 for OTP SMS), and regulatory complexity (DLT registration for transactional SMS India). The farmer's WhatsApp account is already OTP-verified by Meta — WAOOAW should trust that rather than re-verify.
 
 **C — Store session in Redis:** Overkill for this use case. The DB lookup is fast (<5ms on an indexed phone number query), and the session token is short-lived. Redis adds operational complexity without meaningful performance gain at agricultural advisory scale.
+
+---
+
+## Tiered WhatsApp Session Security (v2 — 2026-07-13)
+
+WhatsApp phone-as-identity is the industry standard for routine interactions (banks including HDFC, Axis, Kotak use it). However, high-risk financial and legal actions require an additional authentication factor — consistent with how Indian banks handle it (MPIN for transactions, portal redirect for high-risk changes).
+
+### Action Risk Tiers
+
+```yaml
+TIER_1_LOW_RISK:
+  examples:
+    - Routine content approval (Instagram post, WhatsApp broadcast)
+    - NPS score response
+    - Crop monitoring check-in
+    - Homework helper query (Private Tutor)
+    - Informational queries
+  auth_required: PHONE_NUMBER_IDENTITY  # ADR-023 current model — no change
+  additional: none
+
+TIER_2_MEDIUM_RISK:
+  examples:
+    - Seasonal crop plan confirmation (agricultural — major annual commitment)
+    - PMFBY insurance acknowledgment (legal document trigger)
+    - Campaign brief approval (monthly campaign — significant time commitment)
+    - Homework assignment submission confirmation (tutor)
+  auth_required: PHONE_NUMBER_IDENTITY
+  additional: "Explicit confirmatory reply REQUIRED — agent waits for YES/CONFIRM before proceeding"
+  pattern: "Reply YES to confirm [action summary]. Reply NO or ignore to cancel."
+  evidence: Constitutional record with customer reply text (C-023)
+  note: "The explicit YES reply IS the authorization event. Different from a casual message."
+
+TIER_3_HIGH_RISK:
+  examples:
+    - Ad budget approval above ₹2,000 (financial commitment)
+    - New campaign with significant spend (₹5,000+ monthly)
+    - Agent Employment Contract change (subscription upgrade/downgrade)
+    - Trading session authorization above daily loss threshold
+  auth_required: PHONE_NUMBER_IDENTITY + MPIN_CHALLENGE
+  mpin_mechanism:
+    what: "4-digit MPIN set by customer during web portal onboarding"
+    storage: "Bcrypt hashed in business.customer_security table — never in plain text"
+    prompt: "To confirm ₹5,000 campaign budget: reply your 4-digit WAOOAW PIN"
+    max_attempts: 3  # After 3 failures: lock this action, notify via portal
+    reset: "Via web portal only — not via WhatsApp (prevents social engineering)"
+  note: "MPIN is not required for the full session — only for the specific high-risk action."
+
+TIER_4_CRITICAL:
+  examples:
+    - Employment Contract creation (new hiring)
+    - Emergency Stop reversal (restart after stop)
+    - Bank account / payment details change
+    - Account deletion
+  auth_required: WEB_PORTAL_ONLY
+  whatsapp_response: |
+    "This action needs to be completed securely on the WAOOAW portal.
+     Here's your secure link: [deep link with pre-filled session]
+     The link expires in 15 minutes."
+  note: "Some actions are too consequential for any messaging channel.
+         This is consistent with how Indian banks redirect WhatsApp users 
+         to NetBanking/app for NEFT transfers or mandate changes."
+```
+
+### MPIN Onboarding (Portal)
+
+During web portal onboarding (PATH 1 — Keycloak OAuth), every customer is prompted to set a WhatsApp MPIN:
+
+```
+"For your security, set a 4-digit PIN for high-value approvals on WhatsApp.
+ This PIN is required when approving budgets or major decisions via WhatsApp.
+ 
+ [Set PIN] — optional but strongly recommended
+ 
+ If you skip this, high-risk approvals will redirect to the portal instead."
+```
+
+A customer without an MPIN is not blocked — their Tier 3 actions fall back to TIER_4 (portal redirect) rather than MPIN challenge.
+
+### JWT Implication (ADR-008 v2)
+
+The `auth_path: WHATSAPP` claim in the session JWT carries a `mpin_verified: true/false` flag that the Constitutional Engine checks:
+
+```
+CE.ValidateAction receives:
+  action: AD_BUDGET_APPROVE (₹8,000)
+  session.auth_path: WHATSAPP
+  session.mpin_verified: false
+  
+CE decision: DENY — "High-risk financial action requires MPIN verification on WhatsApp.
+              Please reply your 4-digit PIN to proceed."
+              
+After MPIN reply:
+  session.mpin_verified: true
+  
+CE decision: ALLOW — evidence recorded: BUDGET_APPROVED + mpin_verified: true
+```
+
+### Industry Standard Reference
+
+| Bank | Low-risk (WhatsApp) | High-risk (WhatsApp) | Critical |
+|---|---|---|---|
+| HDFC | Phone number sufficient | OTP sent to registered mobile | NetBanking redirect |
+| Axis | Phone number sufficient | MPIN | App redirect |
+| Kotak | Phone number sufficient | OTP | NetBanking redirect |
+| **WAOOAW** | Phone number sufficient | **MPIN (4-digit, portal-set)** | **Portal deep-link** |
+
+WAOOAW's model is aligned with Indian banking practice and stricter than most non-financial apps.
+
