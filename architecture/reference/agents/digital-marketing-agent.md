@@ -2182,6 +2182,66 @@ UTM Attribution Scheme (P1 — know which channel drives appointments):
 
 ---
 
+## 3.13c Content Safety Standard — v2.9 (C-061)
+
+This section declares DMA's compliance with C-061 (Platform Content Safety Obligation). DMA accepts customer-uploaded media and generates synthesised media — both pipelines require mandatory Content Safety scanning.
+
+**Section 3.24 (AGENT-AUTHORING-GUIDE) applies in full.** DMA-specific additions below.
+
+**Upload sources (DMA-specific):**
+- Customer uploads clinic photos, team photos, before/after illustrated cards via portal or WhatsApp
+- Customer shares audio (voice messages used in WhatsApp broadcasts)
+- Customer shares video clips for Track 1 Photo-to-Video (Skill 8)
+
+**Generation sources (DMA-specific):**
+- image-generation-mcp: Instagram post images, carousel slides, ad creatives, highlight covers
+- kling-ai-mcp / runway-mcp: Photo-to-video Reels, generative brand videos
+- heygen-mcp: Digital Twin avatar videos
+- elevenlabs-mcp: Voice cloning for Digital Twin audio
+
+**SCR Check 0 (Safety Gate) for DMA — before ALL other SCR checks:**
+
+```yaml
+dma_scr_check_0:
+  runs_on: [CUSTOMER_UPLOAD, GENERATED_IMAGE, GENERATED_VIDEO, GENERATED_AUDIO]
+  mcp: content-moderation-mcp
+  is_degradable: false  # C-061 — never proceed without result
+  
+  healthcare_context_note: |
+    Healthcare DMA content may include:
+    - Medical/dental before-after illustrations (NOT real patient photos)
+    - Anatomy diagrams for educational content
+    These are in the NUDITY_NON_SEXUAL domain_whitelist: [MEDICAL_EDUCATION]
+    Agent must have: business_domain = DENTAL | MEDICAL | PHYSIOTHERAPY to whitelist anatomy content.
+    
+  patient_photo_gate:  # Separate from safety gate — constitutional (pre-existing)
+    rule: "Any photo appearing to contain a human face triggers PATIENT_IMAGE_CONSENT check
+           BEFORE the safety scan. Safety scan runs after consent is confirmed.
+           Both gates required before any such image proceeds."
+    evidence: PATIENT_IMAGE_CONSENT_CONFIRMED (existing) + CONTENT_SAFETY_SCAN (C-061 new)
+    
+  social_media_content_note: |
+    AI-generated images intended for Instagram, Facebook, YouTube must be clean of:
+    - Sexually suggestive content (even if technically non-explicit — Meta's policies are stricter than law)
+    - Hate symbols or gestures (even if subtle — platform liability)
+    The Safety Gate confidence threshold for social media content:
+      SEXUAL_EXPLICIT: 0.70 (lower threshold — Meta/Instagram policy stricter than law)
+      HATE_SPEECH: 0.70 (same reason)
+```
+
+**Customer message on rejection (DMA-specific):**
+```
+"This image can't be used for your campaign — it doesn't meet our content guidelines.
+ [If healthcare: "Medical content needs to follow our patient privacy and 
+                  advertising standards."]
+ Please share a different image — I can suggest exactly what would work best 
+ for [business_type] in [city]."
+```
+
+**Constitutional basis:** C-061, C-048 (protecting customers from platform liability), IT Act 67/67A/67B, IT Rules 2021 Rule 3(1)(b), POCSO India 2012 (CSAM reporting obligation)
+
+---
+
 ## 3.13b Banking-Grade DMA Practices — v2.9
 
 > **Source:** International banking digital marketing practices (Barclays, HDFC, Axis, Kotak) — applied to local Indian SMBs.

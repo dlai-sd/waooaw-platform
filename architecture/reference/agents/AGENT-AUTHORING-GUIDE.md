@@ -1010,6 +1010,63 @@ demo_mode_rules:
                   ka data nahi hai, but yahi main tumhare business ke liye karunga.'"
     constitutional_basis: C-049 (Honest Limitation Disclosure)
     
+  HIRING_INTERVIEW_HONESTY_PRINCIPLE:
+    # Mirrors real-world hiring: a candidate in a job interview claims only current skills.
+    # They do not promise skills they are planning to learn. They are confident about
+    # what they can do and honest about what they cannot.
+    
+    asserts_only_current_skills:
+      rule: "Agent claims ONLY skills that exist in its current approved spec.
+             Not planned skills. Not roadmap. Not 'we're working on it'.
+             If the prospect asks about a capability not in the spec: 
+             'That's not something I do currently — here's what I can do for you.'"
+      example_correct: |
+        Prospect: "Can you manage my YouTube channel?"
+        DMA agent: "Currently I handle YouTube Short creation and SEO optimization —
+                    I don't manage the full channel independently yet. 
+                    But here's what I'll do with those Shorts..."
+      example_wrong: |
+        DMA agent: "YouTube channel management is something we're planning to add soon!"
+        [This is a tall promise — not authorized, not in the spec]
+                    
+    assertive_about_available_skills:
+      rule: "Agent is confident and specific about what it CAN do.
+             Not vague, not mealy-mouthed. A good candidate doesn't undersell themselves."
+      example_correct: |
+        "For your dental clinic in Viman Nagar — here is exactly what I would do in
+         your first 30 days: audit your GBP (you have 47 reviews, Dantavilas has 94 —
+         I'd close that gap), set up your Instagram content calendar, and run a
+         WhatsApp reactivation campaign for patients not seen in 12 months.
+         That combination typically generates 15-20% more enquiries in Month 1."
+      example_wrong: |
+        "I can help you with various digital marketing activities..."
+        [This is vague — a good candidate is specific]
+        
+    no_outcome_guarantees:
+      rule: "Agent never guarantees specific business outcomes. Ever.
+             States what it does (process) and what typically results (evidence-based ranges),
+             but never promises a specific number to a specific customer."
+      example_correct: |
+        "Dental clinics we work with typically see 15-30% more enquiries in Month 1
+         from this combination. I can't guarantee your exact number — it depends on
+         your market, your existing reputation, and how consistently we execute."
+      example_wrong: |
+        "I will get you 20 more patients per month."
+        [This is a guarantee — C-049 violation]
+        
+    honest_about_limits:
+      rule: "When asked about something outside the agent's scope or current ability,
+             say so clearly and redirect to what the agent CAN help with."
+      example: |
+        Prospect: "Can you file my GST returns?"
+        DMA agent: "That's outside what I do — I'm a digital marketing professional, 
+                    not an accounting professional. But WAOOAW does have an accounting
+                    agent I can introduce you to, or I can help you with the digital 
+                    marketing side of your business right now."
+                    
+    constitutional_basis: C-049 (Honest Limitation Disclosure); C-048 (Non-Exploitation — 
+      a customer who hires based on false promises is being exploited, not served)
+      
   CONVERSION:
     trigger: "Natural conversation close — agent senses prospect is interested"
     NOT: Hard sell or pressure tactics
@@ -1178,6 +1235,197 @@ interview_mode_spec:
 - [ ] **Conversion CTA does not use pressure or urgency language (C-048 Non-Exploitation)**
 - [ ] **Demo session disclosure present: agent tells prospect when using synthetic/example data (C-049)**
 - [ ] **Portal landing page sample outputs use anonymised/fictional customer examples — not real customer data**
+- [ ] **Hiring Interview Honesty: agent claims only CURRENTLY AVAILABLE skills — not roadmap. No tall promises. (C-049)**
+
+---
+
+## 9j. Section 3.24 — Platform Content Safety Standard (MANDATORY — every agent that handles media)
+
+> **Why required (C-061):** WAOOAW is an intermediary under IT Rules 2021 the moment it stores or transmits user-generated content. The law requires content moderation. The constitution requires it unconditionally. CSAM detection triggers a POCSO India mandatory reporting obligation that cannot be waived by any customer, Founder instruction, or system configuration.
+
+**Media-handling test (applies this section if TRUE):**
+- Does this agent accept user-uploaded images, video, or audio?
+- Does this agent generate, synthesise, or compose image, video, or audio content?
+- If either is YES → Section 3.24 is MANDATORY.
+- If NO → write `content_safety: NOT_APPLICABLE` and state reason.
+
+---
+
+### 3.24.1 SCR Check 0 — Safety Gate (Runs First, Always)
+
+**Check 0 runs BEFORE all other SCR checks — before brand voice, before compliance, before quality.** A content piece that fails Check 0 is not reviewed further. It is rejected immediately.
+
+```yaml
+scr_check_0_safety:
+  name: "Safety Gate"
+  runs_on: [USER_UPLOADED_MEDIA, AGENT_GENERATED_MEDIA]
+  runs_before: [check_1_format, check_2_brand_voice, check_3_compliance, check_4_uniqueness, check_5_quality]
+  mcp: content-moderation-mcp
+  is_degradable: false  # REQUIRED — if MCP unavailable, BLOCK (never proceed without result)
+  
+  categories_checked:
+    CSAM:
+      description: "Child Sexual Abuse Material — any sexual depiction of minors"
+      threshold: ANY_DETECTION  # Zero tolerance — no confidence threshold
+      action: CSAM_PROTOCOL  # See 3.24.2 — immediate legal sequence
+      
+    SEXUAL_EXPLICIT_ADULT:
+      description: "Non-consensual sexual content, pornographic material"
+      threshold: confidence >= 0.85
+      action: REJECT_WITH_WARNING
+      
+    HATE_SPEECH_IMAGERY:
+      description: "Symbols, imagery promoting hatred based on religion, caste, ethnicity, gender"
+      threshold: confidence >= 0.80
+      action: REJECT_WITH_WARNING
+      
+    VIOLENCE_GRAPHIC:
+      description: "Graphic violence, gore"
+      threshold: confidence >= 0.85
+      action: REJECT_UNLESS_DOMAIN_WHITELIST
+      domain_whitelist: [MEDICAL_EDUCATION]  # e.g., surgical procedure diagrams
+      
+    NUDITY_NON_SEXUAL:
+      threshold: confidence >= 0.90
+      action: CONTEXT_REVIEW  # Medical anatomy = OK with whitelist; otherwise reject
+      
+  pass_result: SAFETY_GATE_PASSED
+  evidence_record: CONTENT_SAFETY_SCAN (C-023) — written before any storage or delivery
+```
+
+---
+
+### 3.24.2 CSAM Protocol (Mandatory Legal Sequence)
+
+```yaml
+csam_protocol:
+  trigger: "content-moderation-mcp returns CSAM_DETECTED on any media"
+  
+  step_1_immediate_0ms:
+    action: "DO NOT STORE the media — purge from all memory/buffers immediately"
+    action: "Terminate the current agent session (same priority as Emergency Stop)"
+    
+  step_2_constitutional_record:
+    action: "Write CSAM_DETECTED to constitutional.audit_ledger (C-023)"
+    record: "organisation_id, timestamp, content_hash (not content), mcp_confidence_score"
+    immutable: true (C-007 — this record cannot be deleted)
+    
+  step_3_constitutional_blocker:
+    action: "Raise Constitutional Blocker: CB-CSAM-[date]-[org-id]"
+    file: "blockers/CB-CSAM-[date].md"
+    auto_escalate: "Founder notification immediately"
+    
+  step_4_legal_notification:
+    ncmec: "Submit CyberTipline report to NCMEC (National Center for Missing & Exploited Children)"
+    cbi: "Notify CBI Cyber Crime division as required under POCSO India Act 2012"
+    timeline: "Within 24 hours of detection (IT Rules 2021 intermediary requirement)"
+    
+  step_5_account_status:
+    customer_account: FLAGGED_FOR_REVIEW
+    service: SUSPENDED pending investigation
+    no_auto_restore: true  # Cannot be restored by any automatic process
+    
+  constitutional_note: "Steps 1-4 are NOT overridable by Emergency Stop, Founder instruction,
+                        or any system configuration. POCSO reporting is a legal obligation.
+                        WAOOAW cannot shield any user from mandatory reporting requirements."
+```
+
+---
+
+### 3.24.3 Upload Pipeline (User-Uploaded Media)
+
+```yaml
+upload_pipeline:
+  trigger: "Customer uploads image/video/audio via portal or WhatsApp"
+  
+  sequence:
+    step_1: "Receive media in temporary buffer (NOT stored in database yet)"
+    step_2: "Run SCR Check 0 (Safety Gate) via content-moderation-mcp"
+    step_3a_if_CSAM: "→ CSAM Protocol (3.24.2)"
+    step_3b_if_FLAGGED: "→ Reject: 'This image/video cannot be used — [category]. 
+                           Please upload different media.'"
+    step_3c_if_PASSED: "→ Store in business.customer_media with safety_scan_result: PASSED
+                         → Evidence: MEDIA_UPLOAD_SAFETY_PASSED (C-023)
+                         → Proceed to brand/SCR pipeline"
+                         
+  evidence_record_on_pass:
+    action_type: MEDIA_UPLOAD_SAFETY_PASSED
+    content_hash: "SHA-256 of media — not the media itself"
+    scan_provider: "Azure Content Safety API"
+    scan_result: PASSED
+    scanned_categories: [list]
+    
+  user_message_on_rejection:
+    NOT: "Your image failed our AI safety check" (too technical, alarming)
+    YES: "This image/video doesn't meet our content guidelines and can't be used 
+          for your campaign. Please upload a different one — I'll guide you on what works best."
+```
+
+---
+
+### 3.24.4 Generated Content Pipeline (Agent-Created Media)
+
+```yaml
+generated_content_pipeline:
+  trigger: "Agent calls image-generation-mcp, video-generation-mcp, or tts-mcp"
+  
+  sequence:
+    step_1: "Agent generates media via MCP"
+    step_2: "BEFORE returning to agent session: run SCR Check 0 via content-moderation-mcp"
+    step_3a_if_FLAGGED: "→ Discard generated content
+                          → Log: GENERATED_CONTENT_SAFETY_FAILED
+                          → Retry once with modified prompt (reduced specificity)
+                          → If retry also fails: notify agent to use a different content approach
+                          → Customer sees: 'The generated image didn't meet our quality standards.
+                                           Let me try a different approach.'"
+    step_3b_if_PASSED: "→ Deliver to agent session for further SCR checks (Check 1 onward)"
+    
+  note: "Generated content is scanned because AI models can produce unexpected outputs
+         even from safe prompts — model drift, adversarial edge cases, training data artifacts.
+         Never assume generated content is safe because the prompt was safe."
+```
+
+---
+
+### 3.24.5 Cost Profile
+
+```yaml
+content_moderation_cost:
+  api: "Azure Content Safety API (recommended — India region available, GDPR + DPDPA compatible)"
+  cost_per_image: "$0.001 (approx ₹0.085)"
+  cost_per_video_minute: "$0.01 (approx ₹0.85)"
+  cost_per_text_1000_chars: "$0.0001"
+  
+  per_customer_per_month_estimate:
+    dma_customer:
+      uploads: "~10 images/month from customer"
+      generated: "~30 images/month by agent + 8 videos"
+      total_scan_cost: "₹4-6/customer/month"
+      
+  constitutional_note: "₹4-6/month per customer is approximately 0.3-0.4% of the ₹1,499
+                         subscription. This cost is non-optional under C-061 and IT Rules 2021.
+                         It is absorbed into platform operating costs, not passed to customer."
+  
+  mcp: content-moderation-mcp
+  mcp_actions:
+    - content.scan_image
+    - content.scan_video_frame
+    - content.scan_text
+  is_degradable: false  # Critical — see C-061
+```
+
+---
+
+### 3.24.6 Constitutional Checklist Addition
+
+- [ ] **Section 3.24 exists in the spec OR `content_safety: NOT_APPLICABLE` with reason**
+- [ ] **SCR Check 0 (Safety Gate) runs BEFORE all other SCR checks on all media**
+- [ ] **CSAM Protocol documented: immediate purge → CAL record → CB → NCMEC/CBI report → account suspend**
+- [ ] **content-moderation-mcp declared as REQUIRED (not DEGRADABLE)**
+- [ ] **Upload pipeline: Safety scan runs BEFORE any storage action (C-023 Evidence First)**
+- [ ] **Generated content pipeline: Safety scan runs AFTER generation BEFORE delivery**
+- [ ] **User rejection message does not reveal internal classification details**
+- [ ] **C-061 present in Constitutional Basis section of the agent spec**
 
 ---
 
