@@ -1243,6 +1243,109 @@ Every Constitutional Compliance Test validates that the platform upholds a speci
 
 These tests run on every QA deployment. Failure of any Constitutional Compliance Test blocks promotion. No exception.
 
+---
+
+## Platform Security Standards (P1 — 2026-07-13)
+
+### Temporal UI Authentication
+
+The Temporal UI (port 8088) exposes all workflow executions, their inputs and outputs, and workflow control. Customer data may appear in workflow inputs (organisation_id, task payloads). Access must be restricted:
+
+```yaml
+temporal_ui_security:
+  development: "Bind to 127.0.0.1 only (localhost — not exposed to network).
+                Use SSH tunnel for remote access. Never expose on 0.0.0.0 in dev."
+  cloud: "Place Temporal UI behind Azure Container Apps ingress with:
+          - Internal-only ingress (not externally accessible)
+          - Keycloak OIDC proxy in front of Temporal UI
+          - Only WAOOAW_ADMIN role can access
+          docker-compose.yml: temporal-ui service exposes 8088 on localhost only"
+  
+  temporal_ui_auth_config: |
+    # Add to Temporal UI environment in docker-compose.yml:
+    TEMPORAL_UI_AUTH_ENABLED: "true"
+    TEMPORAL_UI_AUTH_PROVIDER_URL: "http://keycloak:8080/realms/waooaw"
+    TEMPORAL_UI_AUTH_CLIENT_ID: "temporal-ui"
+    TEMPORAL_UI_AUTH_CALLBACK_URL: "http://localhost:8088/auth/callback"
+```
+
+### RAG Tier 3 Write Authorization
+
+Tier 3 (Platform Intelligence Store) contains anonymised aggregate data that influences all customers' agent decisions. A compromised service writing poisoned data to Tier 3 affects every customer.
+
+```yaml
+tier3_write_authorization:
+  principle: "Tier 3 writes are pipeline-only, never direct service calls"
+  
+  permitted_write_path:
+    - AI Runtime anonymisation pipeline (runs after session close, 24-hour lag per ADR)
+    - Constitutionally authorized: CE.RecordEvidence(TIER3_WRITE_AUTHORIZED) required
+    - Pipeline: reads session outcome (organisation-scoped) → anonymises → aggregates → writes Tier 3
+    
+  prohibited_write_paths:
+    - Direct DB INSERT to tier3_* tables from any service other than the authorized pipeline
+    - No real-time Tier 3 writes during active sessions (C-052 temporal fence)
+    - No Tier 3 writes from external MCPs or webhooks
+    
+  enforcement: "RLS policy: tier3_* tables have write grants only to the anonymisation_pipeline DB role.
+                No other role (app_user, ce_user, ai_runtime_user) has INSERT on tier3_* tables."
+```
+
+### DPDPA India 2023 — Data Residency Compliance
+
+WAOOAW processes the following sensitive data categories under DPDPA India 2023:
+
+```yaml
+dpdpa_compliance:
+  deployment: "Azure India Central (Pune) — all services, all databases"
+  
+  sensitive_data_categories:
+    health_data:
+      description: "Dental patient records, medical history in DMA context"
+      residency: "Processed and stored in Azure India Central only"
+      cross_border: "Prohibited — no health data leaves India"
+    
+    financial_data:
+      description: "Trading P&L, ad spend, bank account references"
+      residency: "Processed and stored in Azure India Central only"
+    
+    minor_data:
+      description: "Private Tutor student performance, session transcripts"
+      classification: "CHILDREN'S DATA — highest protection tier under DPDPA"
+      residency: "Processed and stored in Azure India Central only"
+      consent: "Verifiable parental consent required (C-060)"
+      retention: "72-hour deletion on parent request (C-060)"
+    
+    biometric_adjacent:
+      description: "Voice recordings for Digital Twin (DMA Skill 8 — ElevenLabs)"
+      action: "Voice clone created from customer recording — explicit consent required"
+      residency: "ElevenLabs processes outside India — customer consent must cover cross-border"
+      dpdpa_note: "ElevenLabs is a US-based processor. Customer consent for cross-border
+                   processing of voice data is required before Digital Twin setup."
+    
+  data_principal_rights:
+    right_to_access: "Customer can download all their data via portal export"
+    right_to_correction: "Customer can update profile data via portal"
+    right_to_erasure: "Platform must delete within 72 hours on request (parents: minors)"
+    right_to_nominate: "Customer can nominate a person to exercise rights on their behalf"
+    
+  grievance_officer: "Required under DPDPA — designated by Founder before commercial launch"
+```
+
+### Container Image Security Scanning
+
+```yaml
+image_scanning:
+  tool: "Trivy (open-source, free) — integrated into GitHub Actions CI"
+  scan_on: "Every docker build in CI"
+  fail_condition: "CRITICAL or HIGH severity CVE → build fails, image not pushed"
+  exception_process: "If a HIGH CVE has no fix available: document in blockers/ with
+                      CVE ID, affected package, risk assessment, and mitigation timeline"
+  azure_defender: "Azure Defender for Containers enabled in cloud — continuous monitoring"
+```
+
+---
+
 ## Image Promotion Pipeline — Build Once, Promote
 
 The same Docker image that passes QA tests runs in production. There is no separate build per environment. There are no environment-specific build steps.

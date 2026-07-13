@@ -52,6 +52,10 @@ This is NOT an MCP server — it is a platform service called by the Business Pl
    - Verify Meta HMAC signature (X-Hub-Signature-256 header)
    - Reject any request with invalid signature → 403 (never processed)
    - Prevent replay attacks: check message timestamp is within ±5 minutes
+   - Deduplicate by WhatsApp message_id: Meta may retry failed webhooks with the same
+     message_id. Store processed message_ids in phone_identity_sessions for 24 hours.
+     If message_id already processed: return 200 OK (idempotent) without re-processing.
+     This prevents: duplicate approvals, duplicate NPS scores, duplicate PMFBY acknowledgments.
 
 2. IDENTIFY the sender
    - Extract `from` field (phone number in E.164 format: +919876543210)
@@ -264,8 +268,19 @@ TIER_3_HIGH_RISK:
     what: "4-digit MPIN set by customer during web portal onboarding"
     storage: "Bcrypt hashed in business.customer_security table — never in plain text"
     prompt: "To confirm ₹5,000 campaign budget: reply your 4-digit WAOOAW PIN"
-    max_attempts: 3  # After 3 failures: lock this action, notify via portal
-    reset: "Via web portal only — not via WhatsApp (prevents social engineering)"
+    max_attempts: 3  # After 3 failures: lockout (see below)
+    lockout_policy:
+      duration: 30 minutes (per account, not per IP — IP-based lockout enables DoS)
+      scope: PER_ACCOUNT (locks the specific customer's MPIN for 30 min)
+      notification: "WhatsApp message + portal notification: 'Your WAOOAW PIN has been
+                     temporarily locked after 3 incorrect attempts. It will unlock at [time],
+                     or you can reset it immediately at waooaw.com/security'"
+      security_event: MPIN_LOCKOUT logged to constitutional.audit_ledger (C-023)
+                      includes: timestamp, organisation_id, ip_address_hash (not plain IP)
+      after_lockout: "Action reverts to TIER_4 (portal deep-link) until MPIN is reset"
+      fraud_detection: "3 lockouts in 24 hours → SECURITY_ALERT to platform operations"
+    reset: "Via web portal only (Keycloak re-authentication required) — not via WhatsApp"
+    storage: "Bcrypt hash (cost factor 12), stored in business.customer_security — never plaintext"
   note: "MPIN is not required for the full session — only for the specific high-risk action."
 
 TIER_4_CRITICAL:
