@@ -1,8 +1,8 @@
 # PROJECT_STATE.md
 
 **Last Updated:** 2026-07-13
-**Version:** 0.67.0
-**Session:** 2026-07-13 — SESSION CLOSE (Third-party security audit readiness: 5 security policy docs, DAST, dep scanning, CERT-IN compliance, security headers policy)
+**Version:** 0.68.0
+**Session:** 2026-07-13 — SESSION CLOSE (LLM Prompt DoS protection: ADR-006 v2, CCT-SEC-06, context bomb + demo flood + WhatsApp SIM farm + Temporal circuit breaker + ₹500/day cost cap)
 
 ---
 
@@ -11,11 +11,11 @@
 ```
 INSTITUTION:  WAOOAW — autonomous digital professionals under constitutional governance
 GATE:         G5 prerequisites met (G5 CLEAR ≠ implementation authorization for any session)
-VERSION:      0.67.0
+VERSION:      0.68.0
 CONSTITUTIONAL CLAIMS: C-001 to C-062 (62 ratified claims)
 AGENTS: DMA v2.9 | Trading v1.7 | Agricultural Advisor v2.7 | Private Tutor v1.0
-CCTs: 34 (29 core + 5 CCT-SEC)
-SECURITY: Audit-ready — security/ folder + DAST + dep-scan + ZAP rules + CERT-IN compliant
+CCTs: 35 (34 prev + CCT-SEC-06 LLM DoS)
+SECURITY: Audit-ready v0.68.0 — policies + DAST + dep-scan + prompt-DoS + ₹500/day cap
 
 FOCUS: Agricultural Advisor v2.7 COMPLETE. 6 new skills (7-12). Tone Framework 3.0.
        8-dimension crop planning. Zero cost escalation — all new MCPs use free govt APIs.
