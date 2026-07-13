@@ -1,0 +1,30 @@
+# OWASP ZAP scan rules configuration for WAOOAW
+# Format: rule_id	IGNORE|WARN|FAIL	description
+# Constitutional basis: C-062 (AI Security); security/SECURITY-HEADERS.md
+
+# Rules to FAIL on (block deployment):
+10038	FAIL	Content Security Policy (CSP) Header Not Set
+10020	FAIL	X-Frame-Options Header Not Set
+10021	FAIL	X-Content-Type-Options Header Not Set
+10035	FAIL	Strict-Transport-Security Header Not Set
+10036	FAIL	Server Leaks Version Information
+10096	FAIL	Timestamp Disclosure
+10045	FAIL	Source Code Disclosure
+10054	FAIL	Cookie Without SameSite Attribute
+10098	FAIL	Cross-Domain Misconfiguration (CORS)
+40014	FAIL	Cross Site Scripting (Persistent)
+40016	FAIL	Cross Site Scripting (Persistent) - Prime
+40017	FAIL	Cross Site Scripting (Persistent) - Spider
+40018	FAIL	SQL Injection
+40020	FAIL	SQL Injection - MySQL
+40021	FAIL	SQL Injection - Hypersonic SQL
+40022	FAIL	SQL Injection - SQLite
+40023	FAIL	Possible Username Enumeration
+
+# Rules to WARN on (report but do not block):
+10094	WARN	Base64 Disclosure
+10027	WARN	Information Disclosure - Suspicious Comments
+10055	WARN	CSP Scanner
+
+# Rules to IGNORE (known false positives for this platform):
+# None currently

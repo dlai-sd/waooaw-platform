@@ -264,3 +264,60 @@ jobs:
         if: always()
         with:
           sarif_file: trivy-${{ matrix.image }}.sarif
+
+  # ─── Dependency vulnerability scanning ───────────────────────────────────
+  # Catches vulnerable dependencies BEFORE image build — faster feedback than Trivy alone.
+  # Constitutional basis: GENESIS AI Security Mandate (log sanitization + dependency hygiene);
+  #                       C-062 (AI Security); security/SECURITY-HEADERS.md
+  dep-scan:
+    name: Dependency vulnerability scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      - name: pip-audit — Python dependencies
+        run: |
+          pip install pip-audit
+          pip-audit -r src/professional-runtime/requirements.txt --strict
+          pip-audit -r src/ai-runtime/requirements.txt --strict
+        continue-on-error: false  # Fail on any vulnerability
+
+      - name: dotnet vulnerable — .NET dependencies
+        run: |
+          dotnet list src/constitutional-engine package --vulnerable --include-transitive 2>&1 | \
+            grep -i "has the following vulnerable packages" && exit 1 || true
+          dotnet list src/business-platform package --vulnerable --include-transitive 2>&1 | \
+            grep -i "has the following vulnerable packages" && exit 1 || true
+
+      - name: pnpm audit — Node.js dependencies
+        run: pnpm audit --audit-level high
+        working-directory: web
+
+  # ─── License compliance ───────────────────────────────────────────────────
+  # Prevents inadvertent use of GPL/AGPL licensed dependencies in commercial code.
+  license-check:
+    name: License compliance
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: pip-licenses — check Python dependency licenses
+        run: |
+          pip install pip-licenses
+          pip-licenses --fail-on="GPL;AGPL;LGPL" \
+            --packages $(pip install -r src/professional-runtime/requirements.txt -q 2>/dev/null && \
+                         pip install -r src/ai-runtime/requirements.txt -q 2>/dev/null && \
+                         pip freeze | cut -d= -f1 | tr '\n' ' ')
+        continue-on-error: true  # Advisory only — does not block PR (LGPL can be acceptable)

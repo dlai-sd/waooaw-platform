@@ -195,3 +195,45 @@ jobs:
         with:
           name: promotion-record-${{ github.sha }}
           path: promotion-log.txt
+
+  # ─── DAST — OWASP ZAP against QA ─────────────────────────────────────────
+  # Constitutional basis: GENESIS AI Security Mandate; ADR-013 (DAST on QA/UAT);
+  #                       C-062 (AI Security); security/SECURITY-HEADERS.md
+  # Runs AFTER QA deployment. Tests the running application for:
+  #   - Authentication bypass
+  #   - Security header misconfiguration
+  #   - CORS misconfiguration
+  #   - Common web vulnerabilities (XSS, SQLi probes)
+  #   - Error message information leakage
+  dast:
+    name: DAST — OWASP ZAP
+    runs-on: ubuntu-latest
+    needs: tag-qa  # Runs after QA deployment
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run OWASP ZAP Full Scan
+        uses: zaproxy/action-full-scan@v0.10.0
+        with:
+          target: ${{ secrets.QA_API_BASE_URL }}
+          rules_file_name: '.zap/rules.tsv'
+          cmd_options: '-a'  # ajaxSpider for SPA support
+          fail_action: true
+          allow_issue_writing: true  # Creates GitHub issue for findings
+
+      - name: Upload ZAP report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zap-report-${{ github.sha }}
+          path: report_html.html
+
+      - name: Check security headers (Mozilla Observatory CLI)
+        run: |
+          npm install -g observatory-cli
+          observatory ${{ secrets.QA_WEB_BASE_URL }} \
+            --format report \
+            --min-grade B \  # Minimum acceptable grade
+            --rescan
+        continue-on-error: true  # Advisory — generates report but does not block
