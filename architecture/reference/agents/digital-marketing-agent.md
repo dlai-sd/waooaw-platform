@@ -581,6 +581,45 @@ Instead of isolated stories, produce 3-5 connected story sequences with narrativ
 - Every Reel must have a declared hook in the content brief before video generation begins — a hookless Reel is a production failure, not a constitutional violation, but it wastes the customer's budget
 - Response to comments: pre-approved templates only — agent may NOT engage clinically via comments
 
+**Interactive Story Framework — v2.9 (G-04)**
+
+Passive Stories (image + text) get 5-8% completion rate. Interactive Stories with polls, questions, and quizzes get 25-40% engagement and trigger Instagram's algorithm to show more content to the customer's followers. Every week should include at least one interactive Story element.
+
+```yaml
+interactive_story_calendar:
+  weekly_poll (EVERY Monday):
+    prompt: Business-relevant, low-stakes, conversational
+    examples:
+      dental:   "Morning or evening appointment — which do you prefer? 🌅 🌙"
+      beauty:   "Hair treatment or facial — what do you need most right now? 💇 ✨"
+      fitness:  "Morning workout or evening workout — which works for you? 🌅 🌙"
+    why: Polls boost Story reach 3-5× (Instagram algorithm rewards interaction)
+    output: `DMA/INSTAGRAM/INTERACTIVE_STORY_POLL` — agent generates question + answer options
+    constitutional: customer approves the poll question before it goes live
+
+  monthly_question_sticker (first Thursday of month):
+    prompt: "Ask me anything about [domain topic]" 
+    examples:
+      dental:   "Ask me anything about dental care 🦷 — I'll answer your top questions this week"
+      beauty:   "What's your biggest skin/hair concern? 💬 I'll share my best tip"
+      fitness:  "What's stopping you from reaching your fitness goal? Let me help 💪"
+    why: Question stickers generate content for the next week (answers become posts/Reels)
+    output: Customer answers questions on camera → agent schedules replies as Story content
+    constitutional: customer reviews and records answers themselves; agent scripts and schedules
+
+  monthly_quiz (last week of month):
+    examples:
+      dental:   "How often should you change your toothbrush? A) 1 month B) 3 months C) 6 months"
+      beauty:   "Which skin type benefits most from a hydrating facial?"
+    why: Quizzes keep viewers through all slides (algorithm counts Story completion rate)
+    output: `DMA/INSTAGRAM/INTERACTIVE_STORY_QUIZ` — agent generates quiz with reveal slide
+
+  booking_link_sticker (every Friday):
+    CTA: "Book your appointment this weekend →" [booking link sticker]
+    placement: Last slide of any content Story sequence
+    why: Friday = highest booking intent for weekend/next-week appointments (India pattern)
+```
+
 ---
 
 ### Skill 5: Facebook Presence Management
@@ -822,6 +861,61 @@ Trigger: New patient added to opt-in list (after first visit confirmation)
 | Member broadcasts | Agent → Kiran's customers (gym members) | Kiran's WhatsApp Business Account (WABA) | Kiran must have a verified WABA; separate credential via ADR-021 |
 
 The `whatsapp-business-mcp` serves BOTH types but uses different credentials: WAOOAW's own WABA number for platform notifications; customer's WABA credentials for member broadcasts. MCP tool calls must specify `credential_type: "PLATFORM_NOTIFICATION" | "CUSTOMER_BROADCAST"` to select the correct credential from oauth-vault (ADR-021).
+
+**WhatsApp Catalog — v2.9 (G-05)**
+
+WhatsApp Catalog is a structured product/service menu inside WhatsApp Business. Customers can browse services, see price ranges, and tap to enquire — without leaving WhatsApp. It is the single most underused feature for Indian local businesses and functions as in-app social commerce for service businesses.
+
+```yaml
+whatsapp_catalog_setup:
+  trigger: Skill 1b Platform Setup (G-User-Obs-01) — created as part of standard setup
+  
+  catalog_structure_by_domain:
+    dental_clinic:
+      categories:
+        - name: "Preventive Care"
+          items:
+            - name: "Dental Checkup & Cleaning"
+              description: "Full examination, X-ray if needed, professional cleaning. 
+                             Recommended every 6 months. Pain-free."
+              price_range: "₹500 – ₹800"
+              image: clinic-branded card (agent generates via image-generation-mcp)
+            - name: "Dental X-Ray (Digital)"
+              description: "Digital X-ray — lower radiation, immediate results."
+              price_range: "₹200 – ₹500"
+        - name: "Restorative"
+          items:
+            - name: "Root Canal Treatment"
+              description: "Removes infected pulp, saves the tooth. 1-2 visits. 
+                             Modern anaesthesia — virtually pain-free."
+              price_range: "₹8,000 – ₹15,000"
+            - name: "Tooth Filling (Composite)"
+              description: "Tooth-colored filling, matches natural shade. Same day."
+              price_range: "₹800 – ₹2,500"
+        - name: "Cosmetic"
+          items:
+            - name: "Teeth Whitening"
+              description: "Professional in-clinic whitening. Results in 1 session."
+              price_range: "₹4,000 – ₹8,000"
+              
+  catalog_rules:
+    - Every item must have a description (answers the implicit "what is this?")
+    - Price ranges are mandatory (C-056 Ad Spend Transparency principle extended to catalog)
+    - Ranges must be confirmed by customer before publish (C-043 accuracy obligation)
+    - Item images: branded cards (clinic colors + logo), NOT real patient photos
+    - Max 30 items per catalog (WhatsApp UI becomes unwieldy above this)
+    - CTA on each item: "Tap to enquire" → opens WhatsApp chat with pre-filled message
+    
+  click_to_chat_integration:
+    every_catalog_item_CTA: "wa.me/91XXXXXXXXXX?text=I'm interested in [Service Name]"
+    business_profile_header: catalog button visible on WhatsApp Business profile
+    instagram_bio_link: link to WhatsApp catalog (alternative to booking page)
+    
+  catalog_maintenance:
+    monthly: agent reviews catalog for accuracy (price changes, discontinued services)
+    seasonal: add seasonal items (Diwali whitening offer, summer dental camp)
+    evidence: WHATSAPP_CATALOG_UPDATED in CAL when any change is made
+```
 
 ---
 
@@ -1214,6 +1308,45 @@ Series thumbnail: consistent template per series (colour + font + position of el
 | **Create YouTube playlist** | **youtube-mcp** | **playlist.create** | **`YOUTUBE_CHANNEL_SETUP` authorized + APPROVED** | **DEGRADABLE** |
 | **Get YouTube analytics** | **youtube-mcp** | **analytics.get_video_stats** | **Always authorized (read-only)** | **DEGRADABLE** |
 
+**Track 4 — Live Session Planning (G-04 — v2.9)**
+
+Instagram/Facebook/YouTube Live sessions are the highest-trust video format. An "Ask the Doctor" or "Meet our trainer" live session cannot be produced by AI — the professional must be present. But the agent plans, promotes, and follows up the entire lifecycle.
+
+```yaml
+live_session_playbook:
+  format: INSTAGRAM_LIVE  # or FACEBOOK_LIVE, YOUTUBE_LIVE
+  recommended_frequency: monthly (one live per month)
+  
+  agent_actions:
+    pre_live (7 days before):
+      - Promotion post: announcement with date/time and topic
+      - Reminder story sequence (3 days before + day before)
+      - Question collection: story question sticker — "What do you want to ask Dr. Mehta?"
+      - Agenda brief: agent prepares 5-7 Q&A pairs for customer to prepare answers
+      
+    during_live:
+      # Agent cannot participate in live video
+      # Customer conducts the session
+      # Agent monitors comments if customer has a moderator assistant
+      
+    post_live (within 24h):
+      - Recap post: key takeaways from the session
+      - Highlight save: add live replay to "Ask the Doctor" Stories Highlight
+      - YouTube upload: upload live replay (edited) to YouTube as a full educational video
+      - Email recap: if email list active (Skill 15) — send summary to subscribers
+      - Quote cards: 2-3 memorable quotes from the session as Instagram posts
+      
+  session_topics_by_domain:
+    dental: "Everything you were afraid to ask your dentist", "Root canals: myth vs reality",
+            "How to choose the right toothpaste", "Teeth whitening: safe or not?"
+    beauty: "My skincare routine for [skin type]", "3 treatments that changed my clients' skin"
+    fitness: "5 training mistakes I see every day", "Beginner Q&A — ask me anything"
+    builder: "How to evaluate a construction project before buying", "Vastu myths for modern homes"
+    
+  human_referral: true  # Live content requires the professional to be present
+  constitutional: VIDEO_BRIEF_APPROVED before every live promotion post (C-058 applies to live too)
+```
+
 ---
 
 ### Skill 9: Performance Analytics & Business Reporting
@@ -1222,10 +1355,56 @@ Series thumbnail: consistent template per series (colour + font + position of el
 **Business KPI:** Accuracy of KPI attribution + report completeness score
 **Execution model:** PRE_AUTHORIZED (analytics reading is always authorized; reports generated automatically)
 
+**Specification version:** 2.9 (G-06 — Cross-Channel Attribution upgrade)
+
 **Decision Space:**
-- **Authorized:** Read analytics from all connected platforms; aggregate business KPI data; generate periodic reports; identify underperforming skills; suggest goal adjustments
+- **Authorized:** Read analytics from all connected platforms; aggregate business KPI data; generate periodic reports; identify underperforming skills; suggest goal adjustments; **read GA4 cross-channel attribution data; trace customer journey across channels; correlate Instagram/GBP/WhatsApp touchpoints to booking outcomes**
 - **Prohibited:** Access competitor analytics; modify any platform settings while reading analytics; share analytics data outside the customer's account
 - **Always-ask:** Recommending a significant goal change (>25% adjustment to KPI targets)
+
+**Cross-Channel Attribution Module — v2.9 (G-06)**
+
+Traditional per-channel reporting shows: "Instagram: 234 reach. GBP: 11 clicks. WhatsApp: 3 enquiries." An agency-grade report shows: "Your October Reel drove 89 GBP visits, 23 of which became WhatsApp enquiries, 8 of which booked — ₹12,000 in revenue from ₹1,800 ad spend."
+
+This requires: UTM discipline (all links tagged), GA4 integration (multi-channel funnel), and a correlation model that links social engagement → website/GBP visit → WhatsApp/call → booking.
+
+```yaml
+cross_channel_attribution:
+
+  data_sources:
+    ga4:             google-analytics-mcp (reads multi-channel funnel data)
+    meta:            platform-analytics-mcp (Instagram + Facebook reach, link clicks)
+    gbp:             platform-analytics-mcp (GBP calls, direction requests, website clicks)
+    search_console:  google-search-console-mcp (organic search clicks to website)
+    whatsapp:        platform-analytics-mcp (broadcast open rates, reply rates)
+    email:           email-mcp (open rate, click rate, booking conversions)
+    booking_system:  booking-mcp (confirmed appointments, source attribution if available)
+
+  utm_discipline (REQUIRED for all agent-placed links):
+    format:    utm_source={platform}&utm_medium={type}&utm_campaign={campaign_slug}
+    examples:
+      Instagram bio link:  ?utm_source=instagram&utm_medium=bio&utm_campaign=oct2026
+      WhatsApp broadcast:  ?utm_source=whatsapp&utm_medium=broadcast&utm_campaign=reactivation
+      GBP website click:   ?utm_source=gbp&utm_medium=listing&utm_campaign=organic
+      Email newsletter:    ?utm_source=email&utm_medium=newsletter&utm_campaign=oct2026
+    enforcement: agent generates UTM-tagged links for all placements automatically
+    
+  monthly_attribution_report:
+    headline_metric: "Your best patient acquisition channel this month"
+    customer_journey_map:
+      - Show: which channel patients typically see FIRST (first touch)
+      - Show: which channel drives them to act (last touch before booking)
+      - Show: the full journey for your top 5 bookings this month
+    insight_format: "8 patients who booked this month first found you via Instagram.
+                     6 of them then checked your GBP reviews before messaging.
+                     Your GBP is the trust-verification step between Instagram and booking."
+    recommended_action: one specific change based on the attribution data
+    
+  new_mcp_tools:
+    - google-analytics-mcp: analytics.get_multichannel_funnel
+    - google-analytics-mcp: analytics.get_source_medium_report  
+    - booking-mcp: bookings.get_source_attribution (if booking system connected)
+```
 
 **RAG Sources:**
 | Tier | Knowledge | Retrieved for |
