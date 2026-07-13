@@ -1,8 +1,8 @@
 # PROJECT_STATE.md
 
 **Last Updated:** 2026-07-13
-**Version:** 0.68.0
-**Session:** 2026-07-13 — SESSION CLOSE (LLM Prompt DoS protection: ADR-006 v2, CCT-SEC-06, context bomb + demo flood + WhatsApp SIM farm + Temporal circuit breaker + ₹500/day cost cap)
+**Version:** 0.69.0
+**Session:** 2026-07-13 — SESSION CLOSE (ADR-027 cloud optimization: pgvector HNSW, PgBouncer, Temporal retention, Container Apps scaling rules, Ollama production, trading cold-start constitutional fix + 17 Founder actions catalogued)
 
 ---
 
