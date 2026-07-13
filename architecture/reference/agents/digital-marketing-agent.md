@@ -215,6 +215,181 @@ Used by: Skill 2 (Campaign Theme Engine) when proposing Campaign Briefs
 
 ---
 
+### Skill 1b: Platform Account Health Check & Standard Setup — v2.9
+
+**Skill type:** `PLATFORM_ACCOUNT_SETUP`
+**Specification version:** 2.9 (G-01 / User Observation — 2026-07-13)
+**Business KPI:** Platform Account Completeness Score (% of standard setup items completed) at 30, 60, 90 days
+**Execution model:** `APPROVAL_GATE` — each setup action requires customer confirmation (account access + credentials are customer-controlled)
+**Phase activation:** Phase 1 — runs IMMEDIATELY after Skill 1 maturity report. Setup gaps block Phase 2 activation.
+
+**Purpose:** Most local businesses have platform accounts that exist but are incomplete, disconnected, or set up incorrectly. Before any content is created, the agent audits every platform account and brings it to a standard "agency-ready" state. A dental clinic with a dead YouTube channel, no GBP booking link, and a Facebook page not connected to Instagram is losing enquiries from day one.
+
+**Standard Setup Checklist (agent executes against this for every new customer):**
+
+```yaml
+platform_setup_standard:
+
+  GOOGLE:
+    google_business_profile:
+      - [ ] Claimed and verified (agent checks; not verifiable by agent — directs customer to verify)
+      - [ ] All categories correctly set (primary + secondary)
+      - [ ] Business description: 750 characters, keyword-rich, no promotional language
+      - [ ] Services menu: all services listed with description + price range
+      - [ ] Products/Services tab populated
+      - [ ] Booking link connected (Calendly / Practo / custom URL)
+      - [ ] Website link verified and working
+      - [ ] Phone number primary (not secondary)
+      - [ ] Minimum 10 photos uploaded across standard categories
+      - [ ] GBP messaging enabled (if available in region)
+      - [ ] "Questions & Answers" section: minimum 10 Q&A pairs seeded
+      - [ ] Attributes set: wheelchair accessible, parking, languages spoken, etc.
+    
+    google_search_console:
+      - [ ] Customer website added and verified
+      - [ ] Sitemap submitted
+      - [ ] Coverage errors reviewed
+      
+    youtube_channel:
+      - [ ] Channel created under customer's Google account
+      - [ ] Channel name: "[Business Name] Official"
+      - [ ] Channel art: brand colors + logo (agent generates via image-generation-mcp)
+      - [ ] Channel description: SEO-optimized, includes location + services + contact
+      - [ ] About section + website link + booking link in channel header
+      - [ ] Handle set (@DentistViman, @DrMehtaDental format)
+      - [ ] First playlist created: "Patient Education" (staging for future Shorts)
+      - [ ] Channel sections organized (Playlists visible on channel home)
+      - [ ] Contact email visible in About tab
+      
+  META:
+    instagram_business_account:
+      - [ ] Profile type: Business (not Personal or Creator) — enables analytics + ads
+      - [ ] Category: Correct (e.g., "Dentist", "Beauty Salon", "Medical & Health")
+      - [ ] Bio: 150 characters — hook + services + location + emoji + CTA
+      - [ ] Bio link: booking link or link-in-bio tool (if multiple links needed)
+      - [ ] Profile photo: professional logo or owner photo (1080×1080px)
+      - [ ] Highlight covers: branded templates for categories (Services, Reviews, Team, FAQ)
+      - [ ] First 9 posts: curated "grid anchor" content before campaigns begin
+      - [ ] Contact button: Phone/Email enabled
+      - [ ] Action button: "Book Now" or "Contact" configured
+      - [ ] Instagram Shopping: enabled if applicable (beauty/retail/products)
+      - [ ] Facebook Page linked (required for Meta ad account)
+      
+    facebook_business_page:
+      - [ ] Page type: Business Page (not personal)
+      - [ ] Category correctly set
+      - [ ] About section: complete (description, founding date, services)
+      - [ ] Cover photo: brand + CTA overlay (820×312px)
+      - [ ] Profile photo: consistent with Instagram
+      - [ ] "Book Now" / "Contact" / "Call Now" CTA button enabled
+      - [ ] Services tab: all services listed (mirrors GBP services menu)
+      - [ ] Facebook Business Manager connected (required for WAOOAW managed ads — ADR-026)
+      - [ ] Instagram linked to Facebook Page
+      - [ ] Messenger: auto-reply / welcome message configured
+      - [ ] Facebook Shop: set up if product-based business (beauty, retail)
+      - [ ] Reviews tab: enabled
+      
+    whatsapp_business:
+      - [ ] WhatsApp Business App or API account (not personal WhatsApp)
+      - [ ] Business profile: display name, description, category, address, website, email
+      - [ ] Profile photo: professional (same as Instagram/Facebook)
+      - [ ] Business hours set
+      - [ ] Away message configured
+      - [ ] Greeting message configured ("Welcome to [Name]. We'll reply within 1 hour.")
+      - [ ] Quick Replies: set up for top 5 most common questions
+      - [ ] WhatsApp Catalog: all services listed with description, price range, and photo
+      - [ ] Click-to-WhatsApp link generated (wa.me/91XXXXXXXXXX?text=...) and used in all CTAs
+      
+  GOOGLE_ADS:
+    - [ ] Google Ads account created under WAOOAW MCC (ADR-026 agency model)
+    - [ ] Conversion tracking: Google Tag installed on customer website
+    - [ ] Call conversion: tracking set up on phone number
+    - [ ] Google Analytics 4 property linked to Ads account
+    
+  SEO_INFRASTRUCTURE:
+    - [ ] Google Analytics 4: property created, tracking code installed on website
+    - [ ] Meta Pixel: created and installed on website (required for Skill 11 retargeting)
+    - [ ] Google Tag Manager: installed (recommended; simplifies all future tracking)
+    - [ ] Search Console: verified (see above)
+```
+
+**Setup workflow:**
+
+```
+STEP 1 — Audit (Day 0, PRE_AUTHORIZED)
+  Agent runs platform_setup_audit:
+  - Scans public profile state via MCP tools
+  - Cross-checks against standard setup checklist
+  - Produces: PLATFORM_SETUP_AUDIT_REPORT with items: COMPLETE / INCOMPLETE / MISSING
+  
+STEP 2 — Prioritized Setup Plan (APPROVAL_GATE — customer reviews)
+  Agent produces setup plan sorted by impact:
+    P0 (blocks revenue today): GBP booking link missing, incorrect category, no Meta Pixel
+    P1 (reduces effectiveness): bio not optimized, no highlights, no welcome message
+    P2 (enhancement): YouTube channel art, Facebook Shop, WhatsApp Catalog
+    
+  "Dr. Mehta, I've found 12 setup gaps. 3 are urgent — they're costing you leads today.
+   Here's my plan. I'll do most of this myself in the next 48 hours, but I'll need 
+   your Canva/Google login for a few items."
+
+STEP 3 — Execute (APPROVAL_GATE per item requiring credentials; PRE_AUTHORIZED for content items)
+  Agent executes setup items it can do autonomously (descriptions, bios, catalog text, artwork)
+  Customer handles items requiring their login credentials (verified by agent with instruction)
+  
+STEP 4 — Completion Report
+  PLATFORM_SETUP_COMPLETED evidence record
+  Score: X/[total items] completed
+  Remaining items: customer-action-required list with step-by-step instructions
+```
+
+**Keyword Feed Integration (Skill 1 → Skill 10 — G-User-Obs-02):**
+
+Skill 1 (Market Research) produces the customer's primary + secondary keyword map during the maturity report. This keyword map is the **authoritative source** for all downstream content tagging, schema attributes, meta tags, and image alt text in Skill 10. The keyword map is saved in `business.agent_strategic_state.keyword_map` immediately after Skill 1 completes.
+
+```yaml
+skill_1_keyword_feed:
+  output: keyword_map
+  saved_to: business.agent_strategic_state.keyword_map
+  
+  structure:
+    primary_keywords:            # Top 3 — appear in H1, meta title, first 100 words
+      example: ["dentist viman nagar pune", "dental clinic viman nagar", "best dentist pune"]
+    secondary_keywords:          # 5-8 — appear in H2s, body, alt text
+      example: ["root canal pune cost", "dental implants pune", "teeth whitening viman nagar"]
+    local_keywords:              # 3-5 — hyperlocal, GBP Q&A seeding
+      example: ["dentist near viman nagar", "dental clinic near seasons mall"]
+    voice_search_queries:        # 5-8 — conversational, FAQ schema, GBP Q&A
+      example: ["what is root canal cost in pune", "is dental implant painful", 
+                "best dentist near me viman nagar", "dentist open sunday pune"]
+    people_also_ask:             # 5-10 from Google PAA box — blog post FAQs
+      example: ["how long does a root canal take", "what to eat after tooth extraction"]
+      
+  consumed_by:
+    - Skill 10: ALL meta tags, title tags, blog headings, schema attributes, image alt text
+    - Skill 6: GBP business description, Q&A answers, post captions
+    - Skill 4: Instagram caption hashtags (keyword-to-hashtag mapping)
+    - Skill 8: YouTube video titles and descriptions
+    
+  refresh_cadence: 6-monthly (with Skill 1 refresh) or when SIL detects keyword opportunity shift
+```
+
+**Constitutional constraints:**
+- Agent cannot access any platform login credentials — all setup actions requiring authentication must be done by the customer; agent provides exact step-by-step instructions
+- Price ranges in WhatsApp Catalog and services menus must be confirmed by customer before publishing
+- YouTube channel and social profiles are created under the customer's own accounts — never under WAOOAW's accounts
+
+**MCP Tools (additions for Skill 1b):**
+| Tool | MCP Server | Action | Authorization | Failure |
+|---|---|---|---|---|
+| Check GBP completeness | google-places-mcp | place.get_completeness | `PLATFORM_ACCOUNT_SETUP` authorized | DEGRADABLE |
+| Check Instagram profile | social-profile-mcp | profile.get_completeness | `PLATFORM_ACCOUNT_SETUP` authorized | DEGRADABLE |
+| Generate channel art | image-generation-mcp | image.generate_banner | `PLATFORM_ACCOUNT_SETUP` authorized | DEGRADABLE |
+| Generate highlight covers | image-generation-mcp | image.generate_story_cover | `PLATFORM_ACCOUNT_SETUP` authorized | DEGRADABLE |
+| Generate WhatsApp Catalog draft | — | structured content generation | `PLATFORM_ACCOUNT_SETUP` authorized | DEGRADABLE |
+| Check website pixel | web-scan-mcp | tracking.check_pixels | `PLATFORM_ACCOUNT_SETUP` authorized | DEGRADABLE |
+
+---
+
 ### Skill 2: Content Strategy, Campaign Theme Engine & Calendar
 
 **Skill type:** `CONTENT_STRATEGY`
@@ -1184,6 +1359,99 @@ Delivery: if cms-mcp connected → inject automatically; else → copy-paste ins
 - Every blog post is reviewed by the customer before publishing (healthcare content accuracy obligation)
 - Schema markup: price ranges, hours, and contact details must be verified against customer profile before schema is generated or published — inaccurate structured data is an ASCI advertising violation
 - No keyword stuffing in any content produced — Google penalizes this and it violates DP-024 (Campaign-First Content Intelligence)
+
+---
+
+### Skill 10b: Generative Engine Optimization (GEO) — v2.9
+
+**Skill type:** `GEO_OPTIMIZATION` (sub-module of `LOCAL_SEO`)
+**Specification version:** 2.9 (G-01 — 2026-07-13)
+**Business KPI:** AI search citation appearances per month (Google AI Overviews, Perplexity, ChatGPT Search) + Google Discover traffic + E-E-A-T score (audited quarterly)
+**Execution model:** `APPROVAL_GATE` — GEO content changes require customer review (same as blog publishing)
+**Phase activation:** Phase 2 — runs alongside Skill 10 from Score 3+
+
+**Why GEO matters in 2026:**
+Google AI Overviews, Perplexity, and ChatGPT Search now answer "best dentist near me" or "root canal cost pune" with a generated summary ABOVE the map pack and organic results. This summary cites 3-5 sources. If the dental clinic's content is not structured to be cited, it is invisible to this entire discovery layer — regardless of its traditional SEO ranking.
+
+**GEO is not a replacement for traditional SEO. It is an additional layer.** The blog posts, schema markup, and GBP Q&A that Skill 10 already produces are the foundation. GEO makes that content AI-citable.
+
+**The 5 GEO signals Google AI Overviews and Perplexity use to cite a local business:**
+
+```
+1. E-E-A-T SIGNALS (Experience, Expertise, Authoritativeness, Trustworthiness)
+   - "Written by Dr. Priya Mehta, BDS MDS, 12 years in practice" — byline on every blog post
+   - Author bio page on website linking back to blog posts
+   - GBP verification badge (verified = authoritative local source)
+   - Third-party citations: Practo profile, IDA membership, local news mentions
+   
+2. ANSWER-FIRST STRUCTURE (AI models pull the first clear answer to a query)
+   Current Skill 10 blog structure:
+     Introduction → H2 sections → FAQ → CTA
+   GEO-enhanced structure:
+     DIRECT ANSWER (40-50 words, answering the primary keyword query in the first paragraph)
+     → supporting context → H2 sections → FAQ → CTA
+   Example: "Root canal treatment in Pune costs between ₹8,000 and ₹15,000 depending on
+   the tooth location and complexity. At Dr. Mehta's Dental Clinic in Viman Nagar, 
+   most root canals are completed in a single visit." — AI cites this.
+
+3. VOICE SEARCH ALIGNMENT (conversational queries = AI search queries)
+   Every FAQ pair must be phrased as a NATURAL SPOKEN QUESTION:
+     ❌ Current: "Root Canal Cost" (keyword-stuffed heading)
+     ✅ GEO: "How much does a root canal cost in Pune?" (how someone would speak to Google or ChatGPT)
+   
+4. STRUCTURED DATA COMPLETENESS (AI crawlers read schema more than HTML)
+   Current Skill 10: LocalBusiness + MedicalOrganization + FAQPage schema
+   Add for GEO:
+     - SpecialAnnouncement schema (for seasonal offers — makes Google Discover eligible)
+     - HowTo schema (for procedure explainer blog posts)
+     - Speakable schema (marks specific sections as voice-search optimal)
+     - sameAs property in LocalBusiness: links to GBP, Facebook, Instagram, LinkedIn
+       (proves consistent entity identity across the web — AI trust signal)
+   
+5. GOOGLE DISCOVER OPTIMIZATION (AI-personalized content feed — massive local traffic)
+   Google Discover shows content to users based on their interests BEFORE they search.
+   Eligibility requirements (all now in agent's scope):
+     - High-resolution image (1200px minimum) with every blog post — currently not specified
+     - Article structured data on every blog post page
+     - E-E-A-T author signals (see above)
+     - Content matches established topics (dental health, beauty, fitness — high interest categories)
+     - GBP business health score above threshold (reviews, posting frequency)
+```
+
+**GEO Prompt additions:**
+
+| Prompt ID | Purpose | When runs |
+|---|---|---|
+| `DMA/SEO/GEO_CONTENT_AUDIT` | Audit existing content for GEO signals; produce gap report | Quarterly or on customer request |
+| `DMA/SEO/GEO_ANSWER_FIRST_REWRITE` | Rewrite blog post introduction to answer-first format | At blog publishing (runs after `DMA/SEO/BLOG_POST_CONTENT`) |
+| `DMA/SEO/GEO_SCHEMA_ENHANCED` | Generate HowTo, Speakable, SpecialAnnouncement schema | Per blog post type + seasonal offers |
+| `DMA/SEO/GEO_AUTHOR_BIO` | Generate E-E-A-T author bio for website + byline format | Once at setup, refreshed annually |
+| `DMA/GBP/GEO_QA_STRUCTURE` | Reformat GBP Q&A as voice-search-optimized conversational pairs | GBP audit + monthly new Q&A seeding |
+
+**GEO for GBP (Skill 6 integration):**
+
+Google AI Overviews for local queries pull content from three GBP sources:
+1. **Q&A pairs** — when phrased as conversational questions with direct answers (already in Skill 6; now enhanced with voice-search formatting)
+2. **Posts** — recent GBP posts (last 7 days) are indexed faster by AI crawlers — maintain weekly posting cadence
+3. **Services descriptions** — AI reads services descriptions to answer "what does [clinic] treat?" — descriptions must include the condition, the treatment, and the outcome (not just the service name)
+
+GBP service description format upgrade (v2.9):
+```
+❌ Before: "Root Canal Treatment — ₹8,000 – ₹15,000"
+✅ After:  "Root Canal Treatment: If you have severe toothache, sensitivity to hot/cold, 
+           or a cracked tooth, root canal treatment removes the infected pulp and saves 
+           the tooth. Completed in 1-2 visits. ₹8,000 – ₹15,000. Pain-free with 
+           modern anaesthesia."
+```
+This description answers the implicit search query ("root canal in Pune — what is it, how much?") and gets cited by AI search.
+
+**New MCP Tools for GEO:**
+| Tool | MCP Server | Action | Authorization | Failure |
+|---|---|---|---|---|
+| Check AI citation appearances | web-search-mcp | search.check_ai_citations | `GEO_OPTIMIZATION` authorized | DEGRADABLE |
+| Submit enhanced schema | cms-mcp | schema.inject_enhanced | `BLOG_PUBLISH` authorized + APPROVED | DEGRADABLE |
+| Validate Speakable schema | web-scan-mcp | schema.validate_speakable | `GEO_OPTIMIZATION` authorized | DEGRADABLE |
+| Check Discover eligibility | web-scan-mcp | discover.check_eligibility | `GEO_OPTIMIZATION` authorized | DEGRADABLE |
 
 ---
 
