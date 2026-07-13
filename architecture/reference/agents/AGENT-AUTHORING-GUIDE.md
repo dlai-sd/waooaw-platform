@@ -948,6 +948,239 @@ STAGE 4 — SKILL IMPLEMENTATION (Standard Section 15 Type 1 flow)
 
 ---
 
+## 9i. Section 3.23 — Agent Interview Mode (MANDATORY — every agent)
+
+> **Why required:** WAOOAW's primary customer acquisition channel is the agent demonstrating its own expertise before the customer commits. Every agent must define how a prospective customer can "interview" it — have a live, uninstructed conversation — on WhatsApp or the WAOOAW portal. The agent IS the marketing. This section is gate-enforced (Activation Gate Section 15). Missing this section = GATE BLOCKED.
+
+---
+
+### 3.23.1 The Interview Mode Concept
+
+Before any customer hires an agent, they can talk to it for up to 15 minutes in Demo Mode. No Employment Contract. No persistent memory. No MCP API costs. The agent uses synthetic/example data to demonstrate its capabilities.
+
+This is the most powerful form of marketing: **the product demonstrates itself**.
+
+**Two available channels — every agent must support both:**
+
+```yaml
+interview_channels:
+  WHATSAPP:
+    entry_point: "User messages WAOOAW's main WhatsApp number"
+    routing: "Platform routing agent asks: 'Which professional would you like to meet?'
+              [menu of available agents]"
+    demo_duration_max: 15 minutes
+    session_type: DEMO_MODE
+    
+  PORTAL:
+    entry_point: "waooaw.com/meet/[agent-slug] — individual landing page per agent"
+    ui_requirements:
+      - Agent persona visual (avatar or illustrated character — NOT a real person photo)
+      - 3 sample output cards (what this agent produced for an example customer)
+      - "Start Interview" button → opens demo session
+      - Agent's expertise shown BEFORE the conversation starts
+    demo_duration_max: 15 minutes
+    session_type: DEMO_MODE
+```
+
+---
+
+### 3.23.2 Demo Mode Constraints (All Agents)
+
+```yaml
+demo_mode_rules:
+  
+  PERMITTED:
+    - Demonstrate expertise using synthetic/example data
+    - Show the agent's full persona (tone, language, personality)
+    - Respond to prospect's real questions about their specific situation
+    - Show sample outputs (reports, recommendations, content) using anonymised examples
+    - Ask the prospect qualifying questions that build engagement
+    
+  PROHIBITED:
+    - Creating any Employment Contract or customer record
+    - Making MCP API calls that have per-call costs (exception: read-only free APIs)
+    - Building persistent memory across demo sessions
+    - Accessing real customer data from any existing customer
+    - Claiming specific results that the prospect's business will achieve
+    - Extending the demo beyond 15 minutes without explicit prospect request
+    
+  ALWAYS_HONEST:
+    disclosure: "In Demo Mode, the agent must be transparent when using synthetic data:
+                 'Main tumhe ek example scenario mein dikhata hoon — yeh ek real customer 
+                  ka data nahi hai, but yahi main tumhare business ke liye karunga.'"
+    constitutional_basis: C-049 (Honest Limitation Disclosure)
+    
+  CONVERSION:
+    trigger: "Natural conversation close — agent senses prospect is interested"
+    NOT: Hard sell or pressure tactics
+    YES: "Yeh aapko kaisa laga? Agar aap chahte hain ki main aapke business ke liye 
+          kaam karna shuru karun — trial session ek click mein shuru hota hai."
+    constitutional_basis: C-048 (Non-Exploitation — never pressure a prospect)
+```
+
+---
+
+### 3.23.3 Per-Agent Interview Script Declaration
+
+Each agent spec must declare its Interview Mode behaviour in a `Section 3.23` block:
+
+```yaml
+interview_mode_spec:
+  agent_slug: [url-friendly name — e.g., dma, tutor, agri-advisor]
+  portal_tagline: [one sentence — what this agent does for the customer]
+  
+  opening_hook:
+    whatsapp_opener: [first message the agent sends — 1-2 sentences that demonstrate expertise]
+    portal_opener: [slightly richer — shows confidence and personality from message 1]
+    
+  demonstration_scenarios:  # 2-3 scenarios that show peak capability
+    - scenario_name: [e.g., "Market Research Demo"]
+      synthetic_data_used: [e.g., "Example dental clinic in Pune"]
+      what_prospect_sees: [what the agent produces in this scenario]
+      
+  sample_outputs:  # 3 cards shown on portal landing page before interview starts
+    - title: [e.g., "October Campaign — Dr. Mehta's Dental Clinic"]
+      description: [1-2 lines of what was produced]
+      visual: [image or illustrated summary — not a real customer screenshot]
+      
+  conversion_cta:
+    whatsapp: [text of the conversion message at end of demo]
+    portal: [button text + short description]
+    
+  mcp_calls_allowed_in_demo:  # Only read-only, free APIs
+    - [list of MCPs that can be called — typically none for cost reasons]
+    - default: [] (no external MCP calls in demo — use synthetic data)
+```
+
+---
+
+### 3.23.4 DMA Interview Mode Example
+
+```yaml
+interview_mode_spec:
+  agent_slug: dma
+  portal_tagline: "The digital marketing professional your business deserves. ₹1,499/month."
+  
+  opening_hook:
+    whatsapp_opener: |
+      "Namaste! Main WAOOAW ka Digital Marketing Professional hoon.
+       Batao — aapka business kya hai aur city kahan hai? 
+       Main 2 minute mein aapke competitors ka analysis karke dikhata hoon."
+    portal_opener: |
+      "Hello! I'm WAOOAW's Digital Marketing Professional — I work for local businesses 
+       across India the way a senior agency account manager would, but at ₹1,499/month.
+       Tell me about your business — I'll show you exactly what I'd do for you in the first 30 days."
+      
+  demonstration_scenarios:
+    - scenario_name: "Competitor Intelligence Demo"
+      synthetic_data_used: "Example dental clinic, Pune (anonymised, representative)"
+      what_prospect_sees: |
+        Agent researches (simulated): competitor Instagram activity, GBP review gap,
+        Meta ad library presence. Delivers: "Your top competitor has 94 GBP reviews — 
+        you have 47. That gap costs you 5-8 patients/month. Here's exactly how I'd close it."
+        
+    - scenario_name: "First Month Plan"
+      what_prospect_sees: |
+        Agent produces a 4-week content calendar outline + 2 sample Instagram captions
+        + one ad brief for their business type — all using their stated business info.
+        
+  sample_outputs_portal:
+    - title: "Review gap closed: 47 → 94 Google reviews in 4 months"
+      description: "Dental clinic, Pune — GBP review generation campaign"
+    - title: "October campaign: +18 bookings vs target of 15"
+      description: "Healthcare campaign — Instagram + WhatsApp + GBP"
+    - title: "₹3,800 revenue per ₹1,000 ad spend (ROAS 3.8×)"
+      description: "Meta + Google paid campaign for beauty studio, Mumbai"
+      
+  conversion_cta:
+    whatsapp: "Aapke business ke liye yahi sab main karonga — aur bhi. 
+               Trial session mein mile? Ek message mein shuru hota hai."
+    portal: "Start my free trial →"
+```
+
+---
+
+### 3.23.5 Agricultural Advisor Interview Mode Example
+
+```yaml
+interview_mode_spec:
+  agent_slug: agri-advisor
+  portal_tagline: "Your farming advisor. Crop planning, market timing, government schemes. WhatsApp pe."
+  
+  opening_hook:
+    whatsapp_opener: |
+      "Namaskar! Main WAOOAW ka Krishi Salahkar hoon.
+       Aapki kaunsi fasal hai aur kaunse district mein aapki zameen hai?
+       Main aaj ke mandi bhav aur next season ke liye ek suggestion dungi."
+       
+  demonstration_scenarios:
+    - scenario_name: "Mandi Price Alert Demo"
+      synthetic_data_used: "Example cotton farmer, Nagpur (representative)"
+      what_prospect_sees: "Live-style price update: 'Nagpur mandi mein today soybean ₹3,820/q 
+                           hai. Agar aapka target ₹4,000 hai — main alert kar dunga exact waqt pe.'"
+    - scenario_name: "Crop Planning Demo"
+      what_prospect_sees: "8-dimension analysis for prospect's stated crop + land + water, 
+                           including one non-traditional option with market linkage info."
+                           
+  conversion_cta:
+    whatsapp: "Trial ke liye: apna naam, zameen ka size, aur district batao — 
+               ek hafte free mein dekho main kaise kaam karta hoon."
+```
+
+---
+
+### 3.23.6 Private Tutor Interview Mode Example
+
+```yaml
+interview_mode_spec:
+  agent_slug: tutor
+  portal_tagline: "The teacher your child deserves — available every day, remembers every session."
+  
+  opening_hook:
+    portal_opener: |
+      "Hello! I'm a WAOOAW Private Tutor. I can be configured to your child's exact needs —
+       board, class, subjects, language, teaching style.
+       Tell me about your child — I'll show you how I'd teach them."
+    whatsapp_opener: |
+      "Namaste! Main WAOOAW ka Private Tutor hoon.
+       Aapke bache ki class kya hai aur kaunsa subject sabse zyada help chahiye?"
+       
+  demonstration_scenarios:
+    - scenario_name: "Discovery Session Demo (Maths)"
+      what_prospect_sees: |
+        Agent delivers a 5-minute Discovery Session on Quadratic Equations using 
+        the Al-Khwarizmi story. Parent sees: teacher personality, story-based approach,
+        whiteboard usage (portal only), and how it would feel for their child.
+    - scenario_name: "Parent Report Preview"
+      what_prospect_sees: |
+        Sample weekly progress report: what was covered, what was strong, 
+        what to watch, one dinner-table question. Parent sees the reporting they'd get.
+        
+  sample_outputs_portal:
+    - title: "Priya talked about Emmy Noether for 5 minutes at dinner"
+      description: "Class 9, Maths — Discovery Session changed how she sees the subject"
+    - title: "Arjun's algebra score: 44% → 78% in 6 weeks"
+      description: "Class 8, CBSE — targeted weak area sessions"
+    - title: "Riya's parent report: 'For the first time, she's excited about Science'"
+      description: "Class 6, ICSE — story-based teaching approach"
+      
+  conversion_cta:
+    portal: "Try one free session →"
+    whatsapp: "Ek free session mein Sunita Ma'am se milein? Batao kab chalega."
+```
+
+---
+
+### 3.23.7 Constitutional Checklist Addition
+
+- [ ] **Section 3.23 (Interview Mode) exists in the agent spec with all required sub-sections**
+- [ ] **Demo Mode constraints documented: no Employment Contract, no persistent memory, synthetic data only**
+- [ ] **Conversion CTA does not use pressure or urgency language (C-048 Non-Exploitation)**
+- [ ] **Demo session disclosure present: agent tells prospect when using synthetic/example data (C-049)**
+- [ ] **Portal landing page sample outputs use anonymised/fictional customer examples — not real customer data**
+
+---
+
 ## 10. Review and Approval
 
 Reviewer: Enterprise Architect
@@ -1185,8 +1418,22 @@ SECTION 14 — CAMPAIGN THEME ENGINE GATE (C-055) — for multi-post, multi-plat
           FAIL condition: any of these missing → GATE BLOCKED
 [ ] 14.10 C-055 check present in Constitutional Checklist section
 
+SECTION 15 — INTERVIEW MODE GATE (MANDATORY — every agent)
+[ ] 15.1  Section 3.23 (Agent Interview Mode) exists in the agent spec
+[ ] 15.2  agent_slug declared (used for portal URL: waooaw.com/meet/[agent-slug])
+[ ] 15.3  portal_tagline declared (one sentence, shown before the conversation starts)
+[ ] 15.4  opening_hook declared for both WHATSAPP and PORTAL channels
+[ ] 15.5  At least 2 demonstration_scenarios declared with synthetic_data_used noted
+[ ] 15.6  3 sample_outputs declared for portal landing page
+[ ] 15.7  conversion_cta declared for both channels (no pressure language — C-048)
+[ ] 15.8  Demo Mode constraints documented: no Employment Contract, no persistent memory
+[ ] 15.9  Disclosure statement present: agent tells prospect when using synthetic data (C-049)
+[ ] 15.10 mcp_calls_allowed_in_demo declared (default: [] — no paid MCP calls in demo)
+          FAIL condition: Section 3.23 absent → agent cannot be marketed → GATE BLOCKED
+          FAIL condition: conversion_cta uses urgency or pressure language → C-048 violation
+
 OVERALL GATE RESULT:
-  All 14 sections PASS → AGENT MAY BE ACTIVATED
+  All 15 sections PASS → AGENT MAY BE ACTIVATED
   Any section FAIL → CONSTITUTIONAL BLOCKER → raise blocker in blockers/ → agent NOT activated
 ```
 [ ] 12.1  Section 3.18 exists in the spec OR `signal_intelligence: NOT_APPLICABLE` with reason stated
@@ -1320,25 +1567,37 @@ Gate check: Sections 1, 2, 7 of the Activation Gate
 
 All existing agent specs must be checked against the full Activation Gate. Any gate failures become P1 work items before the implementation sprint begins.
 
-**Current compliance status (as of v0.32.0):**
+**Current compliance status (as of v0.61.0):**
 
 | Agent | Gate Section | Status | Notes |
 |---|---|---|---|
-| DMA v2.1 | Sections 1–10 | ✓ PASS | R-014 + R-017 + R-018 EA reviews |
-| DMA v2.1 | Section 11 (Token Economy Gate) | ⚠ PARTIAL | Section 3.16 + UsageUnits + min_model_tier needed (v0.32.0 sprint) |
-| Trading v1.4 | Sections 1–10 | ✓ PASS | R-012 + R-017 + R-018 EA reviews |
-| Trading v1.4 | Section 11 (Token Economy Gate) | ⚠ PARTIAL | Section 3.16 + UsageUnits + min_model_tier needed (v0.32.0 sprint) |
-| Agricultural v2.3 | Sections 1–10 | ✓ PASS | R-013 + R-015 + R-017 + R-018 EA reviews |
-| Agricultural v2.3 | Section 11 (Token Economy Gate) | ⚠ PARTIAL | Section 3.16 + UsageUnits + min_model_tier needed (v0.32.0 sprint) |
+| DMA v2.9 | Sections 1–14 | ✓ PASS | Multiple EA reviews through R-018 |
+| DMA v2.9 | **Section 15 (Interview Mode Gate)** | ⚠ NEEDED | Section 3.23 must be added — see backlog below |
+| Trading v1.7 | Sections 1–14 | ✓ PASS | |
+| Trading v1.7 | **Section 15 (Interview Mode Gate)** | ⚠ NEEDED | Section 3.23 must be added |
+| Agricultural v2.7 | Sections 1–14 | ✓ PASS | |
+| Agricultural v2.7 | **Section 15 (Interview Mode Gate)** | ⚠ NEEDED | Section 3.23 must be added |
+| Private Tutor v1.0 | Sections 1–14 | ✓ PASS | Simulation 018 validated |
+| Private Tutor v1.0 | **Section 15 (Interview Mode Gate)** | ⚠ NEEDED | Section 3.23 template exists in AGENT-AUTHORING-GUIDE 9i; to be added to spec |
 
-**Section 11 (Token Economy Gate) is a new gate introduced in v0.32.0 (C-051). All three agents need the v0.32.0 sprint:**
-- Add Section 3.16 Token Economy Standard to each spec
-- Declare UsageUnit types and monthly allocations per subscription tier
-- Add `minimum_model_tier` to every Prompt Catalogue entry
-- Add Message Classification categories + estimated zero-cost %
-- Add customer budget communication thresholds
-- Add Usage Summary prompt to each agent's Prompt Catalogue
-- Add C-051 to each Constitutional Checklist
-- SQL: `minimum_model_tier` column + seed rows + `customer_usage_units` table
+**Section 15 (Interview Mode Gate) added in v0.61.0. Backlog for all existing agents:**
+
+```
+For each existing agent (DMA / Trading / Agricultural / Private Tutor):
+  Add Section 3.23 to the agent spec with:
+    - agent_slug
+    - portal_tagline
+    - opening_hook (WhatsApp + Portal)
+    - 2-3 demonstration_scenarios with synthetic_data_used
+    - 3 sample_outputs for portal landing page
+    - conversion_cta (both channels, no pressure language)
+    - mcp_calls_allowed_in_demo: [] (default — no paid MCP calls)
+
+Platform work required alongside specs:
+  - waooaw.com/meet/[agent-slug] landing pages (Next.js 14 — existing web component)
+  - WAOOAW WhatsApp routing agent (selects which professional to demo)
+  - Demo Mode session type in AI Runtime (no Employment Contract, 15-min limit, no persistence)
+  - Portal landing page with sample output cards (per agent)
+```
 
 These are P1 items before the IB-009 implementation sprint begins. Section 11 gate must pass for all three agents before implementation.
