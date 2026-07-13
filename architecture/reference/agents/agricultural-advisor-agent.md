@@ -844,6 +844,205 @@ Matched schemes for your farm (2 acres, Junnar, small farmer category):
 
 ---
 
+### Skill 9: Post-Harvest Management — v2.7
+
+**Skill type:** `POST_HARVEST_MANAGEMENT`
+**Specification version:** 2.7 (new — 2026-07-13)
+**Business KPI:** Average sale price achieved vs district mandi average (harvest month) + % of farmers who used storage vs panic-sold
+**Execution model:** `PRE_AUTHORIZED` for storage and grading guidance; `APPROVAL_GATE` for any action involving warehouse registration
+**Phase activation:** Phase 2 — activates 4 weeks before expected harvest date (from Skill 1 crop monitoring)
+**Cost profile:** Zero new paid APIs. WDRA warehouse locator (free), NHB cold chain directory (free).
+
+**The core insight:** The single biggest reason small farmers earn less than large farmers is not crop yield — it is timing of sale. Small farmers panic-sell at harvest when supply is maximum and price is minimum. A farmer with 2 acres of chana who waits 8 weeks gets 20-30% more per quintal. This skill gives small farmers the financial tools that large farmers take for granted.
+
+**Decision Space:**
+- **Authorized:** Advise on storage options (home storage, government warehouse, cooperative), grading and sorting guidance for price premium, identify nearest cold storage for perishables, explain warehouse receipt scheme (WDRA) for institutional storage + loan, advise on value addition options (when raw crop vs processed is more profitable)
+- **Prohibited:** Direct the farmer to sell or hold — only present options and market data; make promises about future prices
+- **Always-ask:** Recommending warehouse registration (requires documents + costs)
+
+**Storage Options by Crop and Scale:**
+
+```yaml
+storage_options:
+  
+  HOME_STORAGE:
+    suitable_for: "Dry grains (chana, soybean, wheat, maize) — NOT perishables"
+    farmer_scale: "Any — most cost-effective for < 5 quintal"
+    cost: "Zero (uses existing storage)"
+    risk: "Moisture, pests — agent provides storage preparation guidance"
+    agent_guidance: |
+      "Chana ghar maddhe thevaaycha asel tar:
+       (1) Packling: dry clean sacks, not wet
+       (2) Neem leaves or camphor in sacks — pest repellent
+       (3) Check every 15 days for moisture
+       (4) Target: sell when Rabi arrival pressure reduces (usually Feb-March)"
+
+  WDRA_WAREHOUSE (Warehousing Development and Regulatory Authority):
+    suitable_for: "Grains, pulses — 5+ quintal, dry crops only"
+    farmer_scale: "5-50 quintal viable"
+    cost: "₹1-2/quintal/month storage charge"
+    benefit: |
+      "Sabse bada faayda: tum crop warehouse mein rakho aur 70% loan lete ho crop value par.
+       ₹40,000 ka crop = ₹28,000 loan at bank rate. No need to sell at low price."
+    warehouse_locator: "post-harvest-mcp: wdra.find_warehouse_by_district"
+    agent_action: "Find nearest WDRA warehouse, explain receipt process, farmer decides"
+    
+  COLD_STORAGE:
+    suitable_for: "Onion, potato, tomato, grapes, pomegranate"
+    farmer_scale: "1+ quintal"
+    cost: "₹80-150/quintal/month"
+    locator: "post-harvest-mcp: nhb.find_cold_storage_by_district"
+    agent_timing: "Alert 2 weeks before harvest for perishables — time-critical"
+
+  COOPERATIVE_STORAGE:
+    suitable_for: "Where farmer is FPO member (Skill 10)"
+    benefit: "Often subsidized storage as FPO member benefit"
+    agent_action: "Check FPO membership status — if member, advise on FPO storage first"
+```
+
+**Grading and Sorting — Price Premium:**
+
+```yaml
+grading_guidance:
+  principle: "Sorted produce commands 15-30% premium at most mandis. A 2-acre farmer who
+              sorts their chana before selling earns more than their neighbour who doesn't."
+  
+  by_crop:
+    chana:
+      sorting: "Remove broken, shrivelled, discoloured grains before market"
+      premium: "₹200-500/quintal for clean graded chana vs mixed"
+      equipment_needed: "Hand sorting or small winnower (₹500-800 rental/day)"
+    
+    onion:
+      sorting: "Grade by size: big (A), medium (B), small (C) — sold at different prices"
+      premium: "A grade can be 50-100% more than C grade"
+      packaging: "Mesh bags (not gunny) for A grade onion — market expects this"
+    
+    soybean:
+      sorting: "Moisture content < 10% required for premium price"
+      test: "Simple moisture test — agent provides instructions"
+    
+    zucchini (non-traditional):
+      sorting: "Uniform size 15-20cm, unblemished skin — market requirement"
+      premium: "Uniform Zucchini gets ₹30-40/kg vs mixed ₹20-25/kg"
+      note: "For premium vegetable crops, grading is not optional — buyers will reject"
+```
+
+**Value Addition (when to process vs sell raw):**
+
+```yaml
+value_addition_options:
+  chana_to_dal:
+    when_to_consider: "Chana mandi price < ₹5,000/q AND dal mill in district"
+    economics: "1 quintal chana → 70kg dal + 30kg husk. Dal ₹80-100/kg = ₹5,600-7,000 
+                vs chana ₹5,000. Milling cost ₹400-600/q. Net uplift ₹600-2,000/q."
+    agent_action: "Identify nearest dal mill; provide current dal price from agmarknet-mcp"
+    
+  soybean_to_oil:
+    when_to_consider: "Rarely viable for small farmer — extraction plants need bulk"
+    agent_action: "Do not recommend unless farmer has > 50 quintal"
+    
+  tomato_to_paste:
+    when_to_consider: "Price crash below ₹3/kg (market glut) + local processing available"
+    agent_action: "Identify FPO or cooperative processing units in district"
+```
+
+**MCP Tools:**
+| Tool | MCP Server | Action | Authorization | Cost | Failure |
+|---|---|---|---|---|---|
+| Find WDRA warehouse | post-harvest-mcp | wdra.find_warehouse_by_district | PRE_AUTHORIZED | Free — govt data | DEGRADABLE |
+| Find cold storage | post-harvest-mcp | nhb.find_cold_storage_by_district | PRE_AUTHORIZED | Free — NHB data | DEGRADABLE |
+| Get current dal/processed prices | agmarknet-mcp | market.get_processed_prices | PRE_AUTHORIZED | Free — existing MCP | DEGRADABLE |
+| Find dal mill by district | post-harvest-mcp | value_addition.find_mill | PRE_AUTHORIZED | Free — govt directory | DEGRADABLE |
+
+---
+
+### Skill 10: FPO and Cooperative Connection — v2.7
+
+**Skill type:** `FPO_COOPERATIVE_CONNECTION`
+**Specification version:** 2.7 (new — 2026-07-13)
+**Business KPI:** % of farmers connected to an active FPO within 12 months; ₹ savings on inputs via FPO bulk purchase
+**Execution model:** `PRE_AUTHORIZED` for information and connection; farmer must initiate and decide membership (C-001 — decision belongs to farmer)
+**Phase activation:** Phase 2 — activates after crop plan is established (post Skill 4)
+**Cost profile:** Zero. FPO registry data is from SFAC (Small Farmers' Agribusiness Consortium) — free government database.
+
+**Simulation correction embedded:** FPO quality varies enormously. Many registered FPOs are dormant. Agent checks activity status before recommending any specific FPO. A dormant FPO recommendation destroys trust.
+
+**Decision Space:**
+- **Authorized:** Identify FPOs within 25km of farmer's farm; check FPO activity status (last transaction, member count); explain membership benefits in farmer's language; provide FPO contact details; explain how to join
+- **Prohibited:** Pressure farmer to join any FPO; recommend dormant FPOs as active; make promises about specific prices or benefits the agent cannot verify
+- **Always-ask:** Recommending the farmer visit an FPO — this costs time and trust; only recommend if activity status is ACTIVE
+
+**FPO Activity Status Check:**
+
+```yaml
+fpo_status_check:
+  before_any_recommendation:
+    check: fpo-registry-mcp: fpo.get_activity_status(fpo_id)
+    fields_checked:
+      - last_transaction_date   # must be within 6 months → ACTIVE
+      - member_count            # must be > 10 → OPERATIONAL  
+      - has_buying_selling_activity # must be true → FUNCTIONAL
+    
+  status_categories:
+    ACTIVE_FUNCTIONAL:
+      criteria: "last_transaction < 6 months + members > 10 + buying/selling active"
+      agent_action: "Recommend with confidence, provide contact details"
+    ACTIVE_LIMITED:
+      criteria: "Registered but limited activity"
+      agent_action: "Mention but with caveat: 'FPO aahe pan khup active nahi — 
+                     jaaychi khatra kadachit naphat jaail. Visaar tumhi.'"
+    DORMANT:
+      criteria: "No transaction in 12+ months"
+      agent_action: "DO NOT RECOMMEND. Find next nearest active FPO."
+```
+
+**FPO Benefits explained in farmer language:**
+
+```yaml
+fpo_benefits:
+  input_buying:
+    farmer_language: |
+      "200 shetkari milun kharedi keli tar fertilizer, seed, pesticide kam bhavaat milto.
+       Adhi dealer la jast paisa dyaychi garj nahi."
+      (200 farmers buying together get fertilizer, seed, pesticide cheaper. 
+       No need to pay extra to the dealer anymore.)
+    typical_saving: "10-20% on fertilizer, 15-25% on certified seed"
+    
+  collective_selling:
+    farmer_language: |
+      "Milun vikla tar dalal chi adaat kami hote, jast bhav milto.
+       Ek shetkari 10 quintal vikayla jayil tar 2% adaat — 200 ton vikli tar 
+       seedha mill la jaate, adaat nahi."
+      (Selling together reduces commission agent's cut, better price. 
+       One farmer selling 10 quintal pays 2% commission — 200 tons sold directly to mill, no commission.)
+    typical_uplift: "5-15% higher price vs individual sale"
+    
+  credit_access:
+    farmer_language: |
+      "FPO member asel tar bank jast kadhi chan credit dete. 
+       FPO guarantee stakeholder hoto."
+      (If FPO member, bank gives better credit. FPO becomes guarantor.)
+    
+  market_linkage:
+    farmer_language: |
+      "Non-traditional pike — Zukini, baby corn — FPO milun vikayla laavta.
+       Ek shestkaryane seedha Pune market la jana kastkaarak aahe.
+       FPO te karate."
+      (For non-traditional crops — Zucchini, baby corn — FPO facilitates collective sale.
+       One farmer going directly to Pune market is hard. FPO does it.)
+    note: "This is the critical market linkage for Zucchini and similar crops — see Skill 4"
+```
+
+**MCP Tools:**
+| Tool | MCP Server | Action | Authorization | Cost | Failure |
+|---|---|---|---|---|---|
+| Find FPOs by district | fpo-registry-mcp | fpo.find_by_district_radius | PRE_AUTHORIZED | Free — SFAC data | DEGRADABLE |
+| Get FPO activity status | fpo-registry-mcp | fpo.get_activity_status | PRE_AUTHORIZED | Free | DEGRADABLE — show all found, note "activity unverified" |
+| Get FPO contact | fpo-registry-mcp | fpo.get_contact_details | PRE_AUTHORIZED | Free | DEGRADABLE |
+
+---
+
 ## 4.13 Signal Intelligence Layer — Section 3.18 (C-053, v0.35.0)
 
 ```yaml
