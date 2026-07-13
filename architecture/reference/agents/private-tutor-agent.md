@@ -186,6 +186,44 @@ Does this look right? You can edit anything above.
 
 ---
 
+### 3.0a Trial Session (GAP-T001 — Simulation 018)
+
+Every parent will ask: *"Can I try before I subscribe?"* The answer must be yes. The trial IS Skill 0 (the introduction session) — no special mode needed.
+
+```yaml
+trial_session:
+  what: "One free 20-minute introduction session (Skill 0) before first payment"
+  when_offered: "After parent completes configuration — before billing begins"
+  
+  what_parent_sees:
+    - Teacher persona in action (the name, voice, language, personality they configured)
+    - How the teacher builds rapport with their child
+    - The whiteboard interface working
+    - Their child's comfort level with the teacher
+    
+  what_parent_does_not_see:
+    - Full session quality (intro session is only 20 min — the real depth shows in sessions 3-5)
+    - Skill 3 teaching depth (that's after trial)
+    
+  conversion_trigger:
+    at_session_end_teacher_to_student: |
+      "Priya, I think we're going to work really well together. 
+       Your mum can set up our regular sessions from here if you'd like to continue."
+    parent_notification: "[student name] and [teacher name] have met! 
+                          Start regular sessions? [Yes — subscribe] [Not yet]"
+    
+  data_if_no_conversion:
+    retention: 7 days (C-060 data minimization)
+    deletion: auto-delete student_profile + session_transcript after 7 days
+    parent_can_restart: anytime within 30 days — reconfigures fresh
+    
+  constitutional_note: "Trial session creates STUDENT_PROFILE_DRAFT (not ESTABLISHED).
+                        Draft records are deleted on non-conversion. No ESTABLISHED 
+                        record until parent subscribes — C-060 data minimization."
+```
+
+---
+
 ### 3.0b Configuration Amendment (mid-subscription)
 
 Parent can change any configuration element at any time from the portal. Changes take effect from the next session.
@@ -727,6 +765,61 @@ i_dont_understand_protocol:
      you're more comfortable with and come back to this."
     → Flag topic as NEEDS_REVISIT in Student Knowledge Graph
     → Never make student feel bad for not understanding
+```
+
+**FALSE_CONFIRMATION Detection (GAP-T002 — Simulation 018):**
+
+Students say "I know" or "haan, samajh gaya" even when they haven't — to avoid embarrassment. This is especially common in shy students. The spec must catch it.
+
+```yaml
+false_confirmation_detection:
+  trigger_signals:
+    - response_latency < 1.5s after a NEW concept (new concepts need processing time)
+    - one_word_agreement on an unmastered topic:
+        phrases: ["okay", "yes", "I know", "haan", "samajh gaya", "got it", "theek hai"]
+    - topic_mastery in Student Knowledge Graph is NOT_COVERED or PARTIAL for this topic
+    
+  NOT: "Do you really understand?" (challenging — causes shame)
+  YES: Immediately ask a SHOW-ME question
+  
+  show_me_question_format: "Acha — toh mujhe [micro-task] mein dikhao"
+  examples:
+    - "Ek apni life se example do is concept ka"
+    - "Whiteboard pe pehla step likho"
+    - "Mujhe batao X = [value] daalne se kya hoga"
+    
+  if_show_me_fails:
+    → triggers attempt_1 of i_dont_understand_protocol (different analogy)
+    evidence: FALSE_CONFIRMATION_CAUGHT + REEXPLANATION_TRIGGERED (C-023)
+```
+
+**Story Bank — Tier 1 RAG (GAP-T006 — Simulation 018):**
+
+Story-based teaching requires curated, contextually accurate stories — not generic inspiration quotes.
+
+```yaml
+story_bank_rag:
+  structure: subject × chapter → 2-3 relevant stories per chapter
+  story_rules:
+    - Connects to the CONCEPT, not just the chapter topic
+    - Told BEFORE the definition (hook first, concept name second)
+    - Maximum 90 seconds spoken
+    - Ends with bridge: "Aur is concept ka naam hai — [concept name]"
+    - About real people: scientists, mathematicians, historical figures, explorers
+    
+  sample_entries:
+    maths_polynomials:
+      - "Al-Khwarizmi — 9th century Baghdad — invented algebra. 'Al-jabr' became 'algebra'."
+      - "Emmy Noether — thrown out of university by Nazis — taught in a drawing room — Einstein called her the greatest."
+    science_electricity:
+      - "Nikola Tesla vs Edison — the war of currents that lit the world."
+      - "Faraday — bookbinder's son, no formal education — discovered electromagnetic induction."
+    history_civil_disobedience:
+      - "The Salt March — 240 miles on foot — one law, one old man, one country changed."
+    geography_rivers:
+      - "Why Varanasi exists where it does — the Ganga bend that made a civilization."
+      
+  rag_refresh: annually
 ```
 
 **MCP Tools:**
