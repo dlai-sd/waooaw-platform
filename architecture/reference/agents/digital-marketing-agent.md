@@ -2182,6 +2182,272 @@ UTM Attribution Scheme (P1 — know which channel drives appointments):
 
 ---
 
+## 3.13b Banking-Grade DMA Practices — v2.9
+
+> **Source:** International banking digital marketing practices (Barclays, HDFC, Axis, Kotak) — applied to local Indian SMBs.
+> **Principle:** Banks are the most rigorous practitioners of data-driven, customer-lifecycle marketing at scale. Their practices are directly applicable to local businesses with existing customer relationships — dental clinics, fitness studios, insurance advisors, banks' own branches, and professional service firms.
+
+---
+
+### Practice B-01: Net Promoter Score (NPS) Measurement
+
+**Banking equivalent:** Every Barclays interaction (transaction, service call, branch visit) triggers an NPS survey. NPS is the single most predictive metric of customer loyalty and referral intent.
+
+**DMA implementation:** Post-appointment NPS survey via WhatsApp, 24-48 hours after every visit.
+
+```yaml
+nps_workflow:
+  trigger: appointment_completed (from booking system) OR manual trigger by customer
+  
+  message (WhatsApp):
+    "Hi [Name], how was your experience at [Clinic Name] yesterday?
+     On a scale of 0 to 10, how likely are you to recommend us to a friend or family member?
+     Just reply with a number."
+    
+  follow_up_by_score:
+    promoters (9-10):
+      message: "Thank you, [Name]! We're glad you had a great experience.
+                Would you mind leaving a quick Google review? It really helps other patients
+                find us: [GBP Review Link]. Takes 30 seconds."
+      action: triggers Skill 6 review generation flow ✓
+      
+    passives (7-8):
+      message: "Thank you for the feedback! Is there anything specific we could have 
+                done better? Your input helps us improve."
+      action: captures feedback text → stored in customer_feedback table
+      
+    detractors (0-6):
+      message: "We're sorry your experience wasn't perfect. The clinic owner [Name] would 
+                like to personally understand what went wrong. Is it okay if they call you 
+                in the next 24 hours?"
+      action: IMMEDIATE alert to clinic owner (WhatsApp + portal notification)
+              purpose: service recovery BEFORE the patient writes a bad review
+              constitutional: detractor alert is always-ask for owner response text
+              
+  nps_tracking:
+    monthly_report_metric: rolling 30-day NPS score
+    alert_threshold: NPS drops below 40 → SIL HIGH signal → agent raises with customer
+    benchmark: dental clinic India average NPS ~45; top performers ~70+
+    
+  constitutional_basis: C-001 (professional duty of care — identifying dissatisfied patients
+    is part of the employment mandate); C-023 (NPS response = constitutional evidence record)
+    
+  new_prompt: DMA/FEEDBACK/NPS_SURVEY_RESPONSE
+  new_table: business.customer_nps_scores (score, category, feedback_text, review_link_sent, date)
+```
+
+---
+
+### Practice B-02: Referral Program
+
+**Banking equivalent:** HDFC's "Refer a Friend" program generates 15-20% of new account openings. Barclays' "Recommend Barclays" is a key acquisition channel. The fundamental insight: a referred customer costs 1/5th to acquire and has 3× higher lifetime value.
+
+**DMA implementation:** Systematic referral program for businesses with happy existing customers.
+
+```yaml
+referral_program:
+  trigger: NPS score ≥ 9 (Promoter) OR monthly loyalty milestone (6-month active patient)
+  
+  referral_offer (customer-configurable):
+    example_dental: "Refer a friend and get ₹500 credit on your next treatment.
+                     Your friend gets a free first checkup (₹500 value)."
+    example_beauty: "Refer a friend and get 20% off your next session.
+                     Your friend gets 20% off their first service."
+    example_fitness: "Refer a friend to join. They get first month free.
+                      You get one month extension on your membership."
+    
+  mechanics:
+    referral_link: unique per patient (tracking in business.referral_codes table)
+    channel: WhatsApp message (patient shares their code), Instagram Story share option
+    tracking: when referred patient books → system auto-applies credit to referrer
+    
+  agent_actions:
+    month_6_milestone_message:
+      "[Name], you've been with us for 6 months — and we're grateful! 
+       As a thank-you, we'd love to extend a referral benefit. 
+       If you know someone who needs a dentist, here's your personal link: [link]
+       They get a free checkup, you get ₹500 credit."
+       
+    post_nps_9_or_10_referral_ask:
+      "Since you had such a positive experience, would you like to share our referral 
+       link with friends or family? [link] — they'll thank you for it."
+       
+  constitutional_basis: C-003 (referral link generation = new customer authority event);
+    C-023 (referral credit application = evidence record); C-048 (referral messages are
+    sent maximum once per 3 months to any patient — not exploitative frequency)
+    
+  new_table: business.referral_codes (code, referring_patient_id, referred_patient_id, 
+             credit_amount, status, created_at)
+```
+
+---
+
+### Practice B-03: Customer Lifecycle Journey Automation
+
+**Banking equivalent:** Barclays' "lifecycle NBO (Next Best Offer)" — every customer is in a defined lifecycle stage, and the bank's communication is triggered by stage transitions, not just calendar dates. New account → onboarding emails → 30-day product cross-sell → 6-month review → anniversary retention offer.
+
+**DMA implementation:** Every patient/client is in a lifecycle stage. The agent's communication is triggered by lifecycle events, not just broadcast cadence.
+
+```yaml
+customer_lifecycle_automation:
+
+  stages:
+    NEW_PATIENT (0-30 days from first appointment):
+      trigger: first appointment confirmed
+      sequence:
+        Day 0:   Appointment reminder (existing — Skill 6)
+        Day 1:   Post-visit check-in (WhatsApp): "How are you feeling after yesterday?"
+        Day 3:   Review request (if NPS ≥7 from post-visit follow-up)
+        Day 7:   Welcome email (Skill 15 welcome sequence trigger)
+        Day 14:  Educational content: "What to do between dental visits"
+        Day 30:  "Your next checkup is in 5 months — save the date"
+        
+    ACTIVE_PATIENT (1-12 months, regular visits):
+      trigger: appointment confirmed every 3-6 months
+      sequence:
+        Monthly:      Campaign theme content via WhatsApp/email (existing)
+        At 6 months:  Referral program offer (Practice B-02)
+        At 12 months: Loyalty acknowledgment + annual review summary
+        
+    DORMANT_PATIENT (12+ months, no appointment):
+      trigger: 12 months since last appointment detected by SIL (PATIENT_LAPSED signal)
+      sequence:
+        Month 12:     Gentle re-engagement (WhatsApp reactivation — existing Skill 7)
+        Month 14:     Second attempt with different angle ("Annual checkup reminder")
+        Month 18:     Final attempt + exit survey ("Is there something we could improve?")
+        Month 24:     Remove from active broadcast list (GDPR/DPDPA respect)
+        
+    AT_RISK_PATIENT (missed appointment, negative NPS):
+      trigger: appointment no-show OR NPS 0-6
+      sequence:
+        Within 24h:   Owner alert (NPS detractor) — Practice B-01
+        Within 48h:   Rebooking WhatsApp: "We noticed your appointment was missed — 
+                      here are available slots this week"
+        Day 7:        Follow-up if no rebook
+        
+  lifecycle_trigger_source: booking system MCP + SIL signals (PATIENT_LAPSED)
+  new_table: business.customer_lifecycle_events (patient_id, stage, event_type, timestamp)
+  constitutional_basis: C-053 (PATIENT_LAPSED = SIL signal); C-048 (lifecycle messaging
+    is never exploitative — frequency limits apply: max 2 messages/week per customer)
+```
+
+---
+
+### Practice B-04: Monthly Business Review (MBR)
+
+**Banking equivalent:** Every Barclays Corporate client has a quarterly "Business Review" with their Relationship Manager. It is not a metrics dump — it is a strategic conversation about what's working, what to do next, and what the bank (professional) recommends. The relationship manager arrives prepared.
+
+**DMA implementation:** Monthly strategic Business Review delivered to the customer — not just a metrics report, but a professional recommendation with forward-looking strategy.
+
+```yaml
+monthly_business_review:
+  delivery_date: First working day of month
+  format: Portal (full) + WhatsApp voice (90-second summary) + PDF (printable)
+  
+  structure:
+    section_1_WHAT_HAPPENED:
+      "October Summary: You got 18 new appointment bookings attributed to digital marketing.
+       Your goal was 15. You're 20% above target."
+      source: Skill 9 cross-channel attribution data
+      
+    section_2_WHAT_WORKED:
+      "Your best-performing content this month was the 'Prevention is cheaper than cure' Reel.
+       It reached 3,400 people (94% who don't follow you). The WhatsApp reactivation
+       brought back 4 patients who hadn't visited in over a year — total value ~₹16,000."
+      source: platform-analytics-mcp + booking attribution
+      
+    section_3_WHAT_I_LEARNED:
+      "Your audience engages most on Tuesday and Thursday evenings. I've updated your
+       posting schedule to front-load those days."
+      source: agent's own learning from performance data
+      
+    section_4_COMPETITIVE_PICTURE:
+      "Dantavilas (your main competitor) launched a new Instagram campaign this month
+       targeting 'dental implants Pune'. Their review count grew from 94 to 101.
+       You now have 67 reviews. Closing the review gap is still the priority."
+      source: Skill 13 Competitive Intelligence
+      
+    section_5_MY_RECOMMENDATION_FOR_NOVEMBER:
+      "For November, I recommend focusing on: 
+       (1) YouTube Shorts — your Digital Twin session gave us 4 videos to edit and publish.
+       (2) Google Customer Match — your patient database has 180 numbers. Uploading
+           these to Meta will reduce your ad cost per patient by an estimated 40%.
+       (3) GBP reviews — 2 more to hit 70. At October's pace (20/month) you'll surpass
+           Dantavilas by December."
+      tone: DP-025 (Expert Communication — speaks as a professional partner, not a report generator)
+      
+    section_6_WHAT_I_NEED_FROM_YOU:
+      maximum_1_item: true  # Never dump a list of requests on the customer
+      example: "One thing I need from you: your patient database in a CSV file. 
+                5 minutes of your time will improve our next month's ad performance significantly."
+                
+  format_principle: "Barclays RM never sends a 30-page PDF. They send a 1-page executive
+    summary with the 3 things that matter and one clear recommendation. DMA MBR is the same."
+    
+  new_prompt: DMA/ANALYTICS/MONTHLY_BUSINESS_REVIEW
+  constitutional_basis: C-049 (Honest Limitation Disclosure — MBR includes honest assessment of
+    what didn't work and why); C-050 (Strategic Cognition — MBR is the primary strategic output);
+    DP-025 (Expert Communication — MBR speaks like a senior professional, not a tool)
+```
+
+---
+
+### Practice B-05: Micro-Influencer Partnership Brief (G-08)
+
+**Banking equivalent:** HDFC Bank's "Community Banking" model — local branch events, school partnerships, community sponsorships. Not mass advertising — targeted local credibility building.
+
+**DMA implementation:** Systematic micro-influencer identification and collaboration brief in Skill 2 (Content Strategy).
+
+```yaml
+micro_influencer_module:
+  decision_space_addition: "Skill 2 — Authorized to identify micro-influencer candidates 
+    and prepare collaboration brief; ALWAYS-ASK to approach any specific influencer 
+    (customer must initiate and approve the relationship)"
+  
+  identification_criteria:
+    followers: 2,000 – 100,000 (micro-influencer range)
+    local: same city or neighbourhood as the business
+    content_relevance: overlapping audience (beauty/health/fitness/lifestyle)
+    engagement_rate: >3% (more important than follower count)
+    content_quality: professional photography, consistent aesthetic
+    
+  collaboration_brief_template:
+    what_we_offer: Service for content (barter) — priced at retail value, not cash
+    what_we_ask: 1 Instagram post + 2-3 Stories + honest review
+    content_brief: agent writes specific creative direction for the influencer
+    disclosure: "#ad" or "#collaboration" disclosure (ASCI India mandatory)
+    approval: customer must approve the collaboration before agent prepares the brief
+    
+  new_prompt: DMA/CONTENT/MICRO_INFLUENCER_BRIEF
+```
+
+---
+
+### Practice B-06: Campaign Funnel Sequence Design (G-09)
+
+**Banking equivalent:** Barclays' acquisition funnel: awareness ad → financial health tool → product page → pre-approval form → call from RM. Every stage is designed as part of the funnel, not as separate campaigns.
+
+**DMA implementation:** Every campaign brief in Skill 2 includes an explicit customer journey map.
+
+```yaml
+funnel_sequence_in_campaign_brief:
+  added_to: Skill 2 Campaign Brief output (Section 3.21)
+  
+  journey_map_example:
+    awareness:      Instagram Reel → "Prevention is cheaper than cure"
+    consideration:  GBP Q&A + website blog → "What happens at a checkup?"
+    intent:         WhatsApp Catalog → browse services and price ranges
+    conversion:     WhatsApp message / booking link → appointment confirmed
+    retention:      Post-visit NPS → review request + welcome email sequence
+    advocacy:       NPS 9-10 → referral program trigger
+    
+  agent_action: declare the expected customer journey for every campaign brief;
+    confirm each stage has a corresponding asset or skill active
+  new_prompt: DMA/CAMPAIGN/FUNNEL_SEQUENCE_DESIGN (added to Section 3.21 Campaign Brief template)
+```
+
+---
+
 ## 3.14 Skill Runtime Configuration Standard
 
 > This section defines the operating model that applies to **every skill** in this agent. Skill-specific deviations are noted in each skill's **Runtime Overrides** table. Where no override is stated, this standard applies.
