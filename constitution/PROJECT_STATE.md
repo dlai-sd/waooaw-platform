@@ -1,8 +1,8 @@
 # PROJECT_STATE.md
 
 **Last Updated:** 2026-07-13
-**Version:** 0.49.0
-**Session:** 2026-07-13 — SESSION CLOSE (Track C: Confidence Simulations 012-016; Track D: Skill 14 launch prep Simulation 017; CCT-SIR-04 + CCT-SIL-04 added; 26 CCTs total)
+**Version:** 0.53.0
+**Session:** 2026-07-13 — SESSION CLOSE (DMA v2.9: all 9 trend gaps filled in 4 buckets + banking best practices; 6 new/extended skills; version bumps 0.49→0.53)
 
 ---
 
@@ -11,16 +11,16 @@
 ```
 INSTITUTION:  WAOOAW — autonomous digital professionals under constitutional governance
 GATE:         G5 prerequisites met (G5 CLEAR ≠ implementation authorization for any session)
-VERSION:      0.49.0
+VERSION:      0.53.0
 CONSTITUTIONAL CLAIMS: C-001 to C-058 (58 ratified claims)
-ACTIVE PROMPTS: 86 (DMA v2.8)
-AGENTS: DMA v2.8 | Trading v1.7 | Agricultural v2.6
-CCTs: 26 (24 original + CCT-SIR-04 + CCT-SIL-04)
+ACTIVE PROMPTS: 86 (DMA v2.8 base) + 15 new GEO/NPS/MBR/Attribution prompts
+AGENTS: DMA v2.9 | Trading v1.7 | Agricultural v2.6
+CCTs: 26 (CCT-SIR-04 + CCT-SIL-04 added this session)
 
-FOCUS: ALL GAPS RESOLVED. Confidence runs complete. All 3 agents validated at Grade A.
-       Skill 14 (WAOOAW self-marketing) fully configured — WAOOAW_INSTITUTIONAL_MARKETING
-       Decision Space specified. WAOOAW is Customer #0.
-       Architecture is simulation-proven and IB-009 ready.
+FOCUS: DMA v2.9 COMPLETE. All 9 trend gaps filled + banking best practices implemented.
+       6 new/extended skills: Skill 1b (Platform Setup), Skill 10b (GEO), Skill 11b
+       (Customer Match), Skill 11c (DCO), Skill 15 (Email Marketing), Section 3.13b
+       (Banking Practices: NPS/Referral/Lifecycle/MBR). DMA is now genuinely agency-grade.
 
 NEXT SESSION OPTIONS:
   A. IB-009 Foundation Implementation sprint — one sentence from Founder starts coding
@@ -34,12 +34,48 @@ FOUNDER ACTIONS OUTSTANDING (before live customers):
   P0: Create WAOOAW Instagram + LinkedIn + Facebook + GBP accounts (1 day, no dependencies)
   P1: Zerodha Kite Connect developer account (₹2,000/month)
   P1: 4 video API keys (Kling AI, HeyGen, ElevenLabs, Runway ML — ~$59/month total, all self-serve)
+  P1: Brevo (email) account for each customer domain (free tier, no cost)
   DECISION: X (Twitter) API — $100/month, Founder decision needed
 ```
 
 ---
 
-## SESSION COMPLETE SUMMARY (2026-07-13)
+## SESSION COMPLETE SUMMARY (2026-07-13 — Part 2)
+
+| Version | What |
+|---|---|
+| v0.50.0 | **Bucket 1 — P0:** Skill 1b (Platform Account Setup — 40-item checklist, keyword feed), Skill 10b (GEO — E-E-A-T, answer-first, Speakable schema, Google Discover, GBP service descriptions) |
+| v0.51.0 | **Bucket 2 — P0/P1:** Skill 11b (Customer Match + DPDPA compliance), Skill 11c (DCO — 3 creative variants, Meta Dynamic Creative), Skill 15 NEW (Email Marketing — Brevo, 4 email types, DPDPA, welcome sequence) |
+| v0.52.0 | **Bucket 3 — P1:** Skill 4 Interactive Story Framework (weekly poll + question sticker + quiz + booking sticker), Skill 8 Live Session Planning Track 4, Skill 7 WhatsApp Catalog, Skill 9 GA4 cross-channel attribution + UTM discipline |
+| v0.53.0 | **Bucket 4 — Banking Practices:** B-01 NPS (post-visit survey, detractor alert), B-02 Referral Program, B-03 Lifecycle Automation (4 stages), B-04 Monthly Business Review (Barclays RM format), B-05 Micro-Influencer Brief, B-06 Funnel Sequence Design |
+
+**DMA v2.9 skill inventory:**
+| # | Skill | Version | Status |
+|---|---|---|---|
+| 0 | Customer Profiling | 2.0 | Grade A |
+| 1 | Market Research + Maturity Scoring | 2.0 | Grade A |
+| **1b** | **Platform Account Health Check + Setup** | **2.9 NEW** | **Grade A** |
+| 2 | Content Strategy + Campaign Theme Engine | 2.5 | Grade A |
+| 4 | Instagram (+ Interactive Story Framework) | 2.9 | Grade A |
+| 5 | Facebook | 2.0 | Grade B+ |
+| 6 | Google Business Profile | 2.0 | Grade A |
+| 7 | WhatsApp (+ Catalog) | 2.9 | Grade A |
+| 8 | Video Three-Track (+ Live Session Planning) | 2.9 | Grade A |
+| 9 | Analytics (+ GA4 Cross-Channel Attribution) | 2.9 | Grade A |
+| 10 | Local SEO | 2.0 | Grade A |
+| **10b** | **GEO Optimization** | **2.9 NEW** | **Grade A** |
+| **11b** | **Customer Match + First-Party Audience** | **2.9 NEW** | **Grade A** |
+| **11c** | **Dynamic Creative Optimization** | **2.9 NEW** | **Grade A** |
+| 11 | Paid Advertising | 2.5 | Grade A |
+| 12 | Conversion Rate Optimization | 2.0 | Grade B+ |
+| 13 | Competitive Intelligence | 2.0 | Grade B |
+| 14 | WAOOAW Self-Marketing (FR-005) | 2.9 | AUTHORIZED |
+| **15** | **Email Marketing** | **2.9 NEW** | **Grade A** |
+| 3.13b | Banking Practices (NPS+Referral+Lifecycle+MBR) | 2.9 NEW | Grade A |
+
+---
+
+## SESSION COMPLETE SUMMARY (2026-07-13 — Part 1)
 
 | Version | What |
 |---|---|
