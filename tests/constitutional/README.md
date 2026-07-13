@@ -1,7 +1,7 @@
 # Constitutional Compliance Test (CCT) Framework
 
 **Produced by:** Enterprise Architect (Sprint 010, WC-010)
-**Date:** 2026-07-07
+**Date:** 2026-07-07 | **Last Updated:** 2026-07-13 (v0.48.1 — added CCT-SIR-04, CCT-SIL-04; total: 26 CCTs)
 **Constitutional Basis:** GENESIS Engineering Quality Mandate — "Constitutional Compliance Tests — WAOOAW-specific; validates that the platform upholds a specific constitutional principle"; ADR-013 (CCTs are a required CI/CD gate)
 
 ---
@@ -235,6 +235,39 @@ Assert:   WEATHER_HAIL_RISK: delivered immediately, 1 message, bundling_decision
 Constitutional basis: C-053 (proactive intelligence); C-048 (simultaneous alerts = exploitation)
 ```
 
+**CCT-SIL-04 — Signal Watch Worker Liveness Detected and Alerted** — v0.48.1
+```
+Setup:    Start the platform (docker-compose up). All services healthy.
+          Verify: GET /health/signal-watch → {"status": "healthy", "workers": 1}.
+          Record SignalWatchWorkflow count in Temporal UI = N (typically ≥ 1).
+Action:   Kill the signal-watch-worker container:
+          docker stop {signal-watch-worker-container-id}
+          Wait 30 seconds.
+Assert:   GET /health/signal-watch → {"status": "degraded", "workers": 0,
+                                       "last_healthy": "<ISO8601>"} ✓
+          institutional.agent_capability_registry.status = 'SIGNAL_WATCH_DEGRADED'
+          for all agents using signal watching ✓
+          Platform Operations Agent alert raised ✓
+          Signals that fire during downtime queue in Temporal (not lost) ✓
+Assert (after restart):
+          docker start {signal-watch-worker-container-id}
+          Signal Watch Worker re-registers on signal-watch-queue ✓
+          Queued signals processed (no signal loss during downtime) ✓
+          GET /health/signal-watch → {"status": "healthy", "workers": 1} ✓
+          agent_capability_registry.status returns to 'ACTIVE' ✓
+Teardown: Confirm worker running; verify queue empty.
+Constitutional basis: C-053 (Signal Sensing Obligation — silent signal-watch failure
+          is a constitutional violation when a farmer misses a hail alert because
+          the worker was down); C-001 (professional duty of care extends to ensuring
+          sensing infrastructure is alive — liveness = constitutional obligation, not
+          just an operational concern)
+Note:     Signal durability during downtime relies on Temporal's workflow persistence.
+          CCT-SIL-04 validates both detection (health endpoint) and durability
+          (no signal loss). Production-tier CCT — acceptable to defer until
+          environment promotion tests (not required in first dev sprint).
+Source:   GAP-TEST-002 (Simulation 011); Simulation 016 (CCT Confidence Run)
+```
+
 ### Skill Intelligence Router (SIR) — v0.40.0
 
 **CCT-SIR-01 — SIR Does Not Route to Inactive Skills**
@@ -266,6 +299,28 @@ Assert:   2 evidence records created ✓
           sir_skill_position: 1 for PERFORMANCE_ANALYTICS, 2 for CONTENT_STRATEGY ✓
           1 UsageUnit charged (not 2) ✓
 Constitutional basis: C-054 (orchestration); C-023 (evidence per skill contribution)
+```
+
+**CCT-SIR-04 — SIR Cannot Operate on Stale or Missing SCM Data** — v0.48.1
+```
+Setup:    Create an agent employment contract.
+          DO NOT populate business.agent_skill_graph for this contract.
+          (Simulates deployment where spec was uploaded but SCM sync did not complete.)
+Action:   Submit any customer request: "create me an instagram post"
+Assert:   SIR returns SKILL_GRAPH_NOT_INITIALIZED (not silent failure or wrong routing) ✓
+          Customer receives: "I'm getting set up — please contact support if this persists." ✓
+          Platform Operations Agent receives SKILL_GRAPH_MISSING alert ✓
+          institutional.agent_capability_registry.status = 'DEGRADED' for this agent ✓
+          No AGENT_RESPONSE evidence record created ✓
+          No UsageUnit charged ✓
+Negative: Populate agent_skill_graph with valid SCM data. Repeat request.
+          Assert: SIR routes correctly to appropriate skill ✓
+Teardown: Delete test employment contract; reset agent_capability_registry.
+Constitutional basis: C-054 (SIR operates on ACTIVE skills only — uninitialised graph
+          is a deployment failure, not a silent routing fallback); C-036 (professional
+          must know its own mandate before serving anyone); Activation Gate Section 14
+          (SIR Gate is static; CCT-SIR-04 is the runtime enforcement of the same gate)
+Source:   GAP-TEST-001 (Simulation 011); Simulation 016 (CCT Confidence Run)
 ```
 
 ### Campaign Theme Engine + SCR (CTE) — v0.40.0

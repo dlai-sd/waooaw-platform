@@ -1,8 +1,8 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-07-12
-**Version:** 0.48.1
-**Session:** 2026-07-12 — SESSION CLOSE (Complete architecture sprint: C-053 through C-058, DMA v2.8, full skill deepening, simulations, video architecture, professional vocabulary)
+**Last Updated:** 2026-07-13
+**Version:** 0.49.0
+**Session:** 2026-07-13 — SESSION CLOSE (Track C: Confidence Simulations 012-016; Track D: Skill 14 launch prep Simulation 017; CCT-SIR-04 + CCT-SIL-04 added; 26 CCTs total)
 
 ---
 
@@ -11,29 +11,41 @@
 ```
 INSTITUTION:  WAOOAW — autonomous digital professionals under constitutional governance
 GATE:         G5 prerequisites met (G5 CLEAR ≠ implementation authorization for any session)
-VERSION:      0.48.1
+VERSION:      0.49.0
 CONSTITUTIONAL CLAIMS: C-001 to C-058 (58 ratified claims)
 ACTIVE PROMPTS: 86 (DMA v2.8)
 AGENTS: DMA v2.8 | Trading v1.7 | Agricultural v2.6
+CCTs: 26 (24 original + CCT-SIR-04 + CCT-SIL-04)
 
-FOCUS: FULL ARCHITECTURE COMPLETE. DMA is specification-complete and genuinely competitive.
-       Three-Track Video Architecture. Digital Twin. Brief-First workflow. Professional Vocabulary.
-       ALL DMA skills at Grade A (vs Grade C/B in prior sessions for GBP, WhatsApp, SEO, Video).
+FOCUS: ALL GAPS RESOLVED. Confidence runs complete. All 3 agents validated at Grade A.
+       Skill 14 (WAOOAW self-marketing) fully configured — WAOOAW_INSTITUTIONAL_MARKETING
+       Decision Space specified. WAOOAW is Customer #0.
+       Architecture is simulation-proven and IB-009 ready.
 
 NEXT SESSION OPTIONS:
   A. IB-009 Foundation Implementation sprint — one sentence from Founder starts coding
-  B. Simulation runs of all 3 agents (Sims 007-011 were gap-identification; now confidence runs)
-  C. New agent specification (Legal, HR, Accounting — Track B)
-  D. Skill 14 launch prep (WAOOAW Self-Marketing is authorized — FR-005)
+  B. New agent specification (Legal, HR, Accounting — Track B)
+  C. WAOOAW social account creation (Founder: Instagram, LinkedIn, Facebook, GBP — 1 day)
 
 FOUNDER ACTIONS OUTSTANDING (before live customers):
   P0: Meta Business Manager verification + WABA + TRADING/EXECUTION/ESCALATION_DECISION ack
   P0: Meta Business Partner status (for Skill 11 centralized ads)
   P0: Google Ads MCC account setup
+  P0: Create WAOOAW Instagram + LinkedIn + Facebook + GBP accounts (1 day, no dependencies)
   P1: Zerodha Kite Connect developer account (₹2,000/month)
   P1: 4 video API keys (Kling AI, HeyGen, ElevenLabs, Runway ML — ~$59/month total, all self-serve)
   DECISION: X (Twitter) API — $100/month, Founder decision needed
 ```
+
+---
+
+## SESSION COMPLETE SUMMARY (2026-07-13)
+
+| Version | What |
+|---|---|
+| v0.49.0 | **Track C: Confidence Simulations 012–016** — All gaps from Sims 007-011 resolved. DMA Grade A validated (Sim 012). Trading Grade A validated (Sim 013). Agricultural Grade A validated (Sim 014). Developer onboarding fixed (Sim 015). 26 CCTs confirmed PASS (Sim 016). |
+| v0.49.0 | **Track D: Skill 14 Launch Prep (Sim 017)** — `WAOOAW_INSTITUTIONAL_MARKETING` Decision Space fully configured. Phase 1 content calendar (12 Instagram + 4 LinkedIn posts). 3 ad campaign briefs (₹5,000/month). Portfolio stat gate defined (50+ diverse customers). WAOOAW is Customer #0. |
+| v0.49.0 | **2 new CCTs added** — CCT-SIR-04 (SIR stale SCM data, GAP-TEST-001) + CCT-SIL-04 (Signal Watch Worker liveness, GAP-TEST-002). Total CCTs: 26. |
 
 ---
 
@@ -82,7 +94,7 @@ Every DMA skill is now specification-complete and genuinely competitive against 
 
 **Track A — IB-009 Foundation Implementation**
 *Requires explicit Founder "start coding" per session.*
-Architecture is 100% complete at v0.48.1. All 3 agents fully spec'd, simulation-tested, activation gate PASS.
+Architecture is 100% complete at v0.49.0. All 3 agents simulation-proven (confidence runs complete). Skill 14 configured. WAOOAW_INSTITUTIONAL_MARKETING Decision Space ready.
 First sprint: Constitutional Engine skeleton + Business Platform first endpoint + one acceptance scenario.
 One sentence from Founder unlocks it.
 
@@ -91,20 +103,19 @@ One sentence from Founder unlocks it.
 Approved for specification: Legal Professional, HR Professional, Accounting Professional (GST/TDS), Real Estate Advisory.
 Use `type:new-agent` issue template to trigger the flow for any of these.
 
-**Track C — Confidence Simulation Runs**
-*Simulations 007–011 identified gaps which were fixed. Now run confidence runs with gap-bridged specs.*
-Purpose: confirm DMA v2.8 / Trading v1.7 / Agricultural v2.6 produce genuinely good outputs.
-Run these before IB-009 to validate the architecture produces the customer experience intended.
+**Track C — Confidence Simulation Runs** ✅ COMPLETE (2026-07-13)
+*Simulations 012–016 completed. All gaps from Sims 007-011 resolved.*
+DMA v2.8 Grade A | Trading v1.7 Grade A | Agricultural v2.6 Grade A | Developer onboarding fixed | 26 CCTs confirmed PASS.
 
-**Track D — Skill 14 Launch Preparation**
-*FR-005 AUTHORIZED — ₹5k/month, 50+ diverse customer threshold.*
-WAOOAW_INSTITUTIONAL_MARKETING Decision Space to configure.
-Set up WAOOAW's own DMA instance as the first customer on the platform.
-The ultimate proof of product: WAOOAW uses its own DMA to acquire DMA customers.
+**Track D — Skill 14 Launch Preparation** ✅ COMPLETE (2026-07-13)
+*FR-005 AUTHORIZED — ₹5,000/month, 50+ diverse customer threshold.*
+WAOOAW_INSTITUTIONAL_MARKETING Decision Space configured (Sim 017).
+Phase 1 campaign (content calendar + 3 ad briefs) ready.
+**Founder next action:** Create WAOOAW Instagram + LinkedIn + Facebook + GBP accounts (1 day, no dependencies).
 
 ---
 
-## Architecture Layers (v0.48.1)
+## Architecture Layers (v0.49.0)
 
 | Layer | Status |
 |---|---|
@@ -118,10 +129,12 @@ The ultimate proof of product: WAOOAW uses its own DMA to acquire DMA customers.
 | Prompt Library | 86 active prompts |
 | MCP Tool Catalogues | 28 MCP servers (including 4 new video MCPs) |
 | Data Architecture | All tables, RLS, indexes complete |
-| Constitutional Tests | 24 CCTs defined (SIL/SIR/CTE/FIN/SC/CF/SA) |
+| Constitutional Tests | 26 CCTs defined (EF/HO/AL/MT/PAAS/RU/SIL/SIR/CTE/FIN/SC/CF/SA) |
 | Professional Vocabulary | 7 domain guides (professional-vocabulary-by-domain.md) |
 | Healthcare Compliance | 10 MCI/ASCI rules (healthcare-advertising-rules-india.md) |
 | Skill Dependency Register | Full — 13 P1 Founder actions catalogued |
+| Confidence Simulations | 012–016 COMPLETE — all agents Grade A, all CCTs PASS |
+| Skill 14 Launch Prep | WAOOAW_INSTITUTIONAL_MARKETING configured — Sim 017 COMPLETE |
 
 ---
 
