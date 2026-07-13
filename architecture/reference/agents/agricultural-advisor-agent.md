@@ -663,6 +663,187 @@ This is constitutionally elegant: the Evidence First principle (C-023) — desig
 
 ---
 
+### Skill 7: Farm Finance Navigator — v2.7
+
+**Skill type:** `FARM_FINANCE_NAVIGATOR`
+**Specification version:** 2.7 (new — 2026-07-13)
+**Business KPI:** ₹ value of government entitlements claimed per farmer per year + % of eligible farmers with active KCC
+**Execution model:** `PRE_AUTHORIZED` for proactive hints about entitlements; `APPROVAL_GATE` + explicit farmer consent for any action requiring personal data (Aadhaar, bank details)
+**Phase activation:** Phase 1 — activates immediately after farm profile is established (Skill 0)
+**Cost profile:** Zero new paid APIs. All sources are free government portals (PM-KISAN, PMFBY, KCC via NABARD guidance).
+
+**Why this skill matters:**
+Most small farmers leave ₹10,000–30,000/year unclaimed in government entitlements — not because they don't qualify, but because the application process is opaque. This skill proactively checks what the farmer is entitled to and guides them to claim it. It is not advisory — it is recovery of what legally belongs to them.
+
+**Decision Space:**
+- **Authorized:** Proactively inform farmer about PM-KISAN payment cycles, PMFBY claim deadlines, KCC availability; explain eligibility criteria; provide step-by-step application guidance; identify relevant state schemes by farmer profile
+- **Prohibited:** Access any government portal on the farmer's behalf without explicit consent; store Aadhaar numbers or bank details (route to farmer's own action); guarantee any payment or approval
+- **Always-ask:** Anything requiring farmer's Aadhaar number, bank account details, or farm registration number — explicit consent required every time; farmer must initiate the action themselves with the agent providing guidance
+
+**Simulation correction (from Founder review 2026-07-13):** The agent CANNOT proactively "check" a farmer's PM-KISAN status without first asking for consent and the farmer providing their Aadhaar-linked information. The proactive action is: "Do you know about PM-KISAN? Are you receiving it? If not, I can help you check." — not "Your PM-KISAN status is X."
+
+**Core entitlements tracked per farmer:**
+
+```yaml
+entitlements_checklist:
+  PM_KISAN:
+    what: "₹6,000/year (₹2,000 per installment × 3) direct to bank account"
+    eligibility: "Farmer with land in their name, Aadhaar-linked bank account"
+    check_cadence: quarterly (installment months: April, August, December)
+    agent_action: |
+      "PM-KISAN payment aala ka tumchya khatyat? Nahi aala tar help karto.
+       Tumchi Aadhaar number check karayla tyayar aahaat ka?"
+    portal: pmkisan.gov.in (farmer self-service — agent provides URL + guidance)
+    dpdpa_note: "Aadhaar number collected only with explicit consent; not stored by WAOOAW"
+    
+  KCC (Kisan Credit Card):
+    what: "Revolving crop loan at 4% interest (vs 24-36% from moneylenders)"
+    eligibility: "Any farmer with land records (7/12 Satbara extract)"
+    awareness_gap: "Most small farmers use informal credit at 24-36% when 4% is available"
+    agent_action: |
+      "Tumchya lagnachi bank KCC dete ka? Nahi dili tar nearby bank la jaun apply kara.
+       Satbara extract laagto — tyaacha ka? Mi sangto kaay karaycha aahe."
+    agent_provides: bank list in farmer's district offering KCC, document checklist
+    
+  PMFBY:
+    what: "Crop insurance — premium 2% (Kharif), 1.5% (Rabi) rest paid by government"
+    enrollment_window: "Must enroll BEFORE crop sowing — deadline varies by district"
+    agent_action: "SIL signal: PMFBY_ENROLLMENT_DEADLINE approaching (30 days before cutoff)"
+    portal: pmfby.gov.in
+    
+  DBTL_Fertilizer:
+    what: "Subsidized DAP/Urea through POS machine at licensed dealer"
+    note: "Many farmers don't know which dealers have POS machines for Aadhaar-linked subsidy"
+    agent_action: "Advise farmer on Aadhaar-linked purchase at licensed dealer for subsidy benefit"
+
+  STATE_SCHEMES_MAHARASHTRA:
+    refresh_cadence: MONTHLY  # Critical — schemes change every budget cycle
+    disclaimer: |
+      "He scheme details aajchi aahet — pण Krishi Seva Kendra maddhe ek welt jaun verify kara
+       apply karaypurvi. Schemes badltat."
+       (These scheme details are current — but verify at your Krishi Seva Kendra before applying.)
+    top_5:
+      - name: "Mukhyamantri Saur Krishi Pump Yojana"
+        what: "Solar pump for irrigation — 95% subsidy for small/marginal farmers"
+        applies_to: "Farmers with <5 acres, no grid connection"
+      - name: "Nanaji Deshmukh Krishi Sanjivani (PoCRA)"
+        what: "Climate-resilient farming support — equipment, training, soil health"
+        applies_to: "Drought-prone districts including Pune region"
+      - name: "Drip Irrigation (PMKSY)"
+        what: "50-75% subsidy on drip/sprinkler"
+        subsidy_by_category:
+          marginal_farmer_below_1ha: "75%"
+          small_farmer_1_to_2ha: "65%"
+          other: "50%"
+        note: "Founder's farm (2 acres) = small farmer category = 65% subsidy on drip"
+      - name: "PM Kusum (Solar pump)"
+        what: "60% subsidy on solar pump for irrigation"
+      - name: "Crop Loan Waiver (state-level)"
+        what: "Periodic crop loan waivers — check if any active"
+        refresh: "Check at every enrollment window — state government announces irregularly"
+```
+
+**SIL Integration (new signal type):**
+```yaml
+new_signal:
+  signal_type: "SCHEME_DEADLINE_APPROACHING"
+  feed_id: "GOVT_SCHEMES"
+  mcp_server: "govt-schemes-mcp"
+  urgency_class: "HIGH"
+  urgency_class_rule: "deadline_days <= 30 AND farmer_not_enrolled → HIGH"
+  channel: "WHATSAPP_VOICE"
+  example: "PMFBY enrollment for Kharif closes on August 31. Tumhi apply kela ka aahe?"
+```
+
+**MCP Tools:**
+| Tool | MCP Server | Action | Authorization | Cost | Failure |
+|---|---|---|---|---|---|
+| Check PM-KISAN cycle | govt-schemes-mcp | pmkisan.get_installment_schedule | PRE_AUTHORIZED (public calendar) | Free govt API | DEGRADABLE |
+| Get state schemes list | govt-schemes-mcp | schemes.get_by_state_district | PRE_AUTHORIZED (public data) | Free govt API | DEGRADABLE |
+| Get PMKSY subsidy by category | govt-schemes-mcp | pmksy.get_subsidy_rate | `FARM_FINANCE` authorized | Free govt API | DEGRADABLE |
+| Get KCC bank list by district | govt-schemes-mcp | kcc.get_banks_by_district | PRE_AUTHORIZED | Free — NABARD data | DEGRADABLE |
+
+---
+
+### Skill 8: Government Scheme Navigator — v2.7
+
+**Skill type:** `GOVT_SCHEME_NAVIGATOR`
+**Specification version:** 2.7 (new — 2026-07-13)
+**Business KPI:** Number of schemes successfully applied for per farmer per year; ₹ benefits received from schemes
+**Execution model:** `PRE_AUTHORIZED` for scheme identification and guidance; `APPROVAL_GATE` for any action requiring farmer's personal data
+**Phase activation:** Phase 1 — activates at farm profile establishment
+**Cost profile:** Zero new paid APIs. All government scheme data is publicly available.
+
+**The critical design constraint:** Scheme data ages quickly. Every scheme-related output carries a mandatory disclaimer: *"Krishi Seva Kendra maddhe verify kara apply karaypurvi."* The agent never states a scheme amount or deadline as absolute fact — it always says "as of [date], this is what I know."
+
+**Decision Space:**
+- **Authorized:** Map farmer's profile (land size, category, district, crop) to eligible schemes; explain each scheme in plain Marathi/Hindi; provide step-by-step application guidance; identify required documents; flag application deadlines via SIL
+- **Prohibited:** Submit any application on behalf of the farmer; confirm eligibility as guaranteed (always "you appear to qualify — verify at KSK"); state subsidy amounts without the category-aware check
+- **Always-ask:** Any guidance requiring the farmer's Aadhaar, income certificate, bank passbook, or Satbara extract
+
+**Scheme Eligibility Engine (rule-based, no LLM inference needed):**
+
+```yaml
+eligibility_rules:
+  input_profile:
+    - land_size_acres (from farm profile)
+    - farmer_category: derived from land_size
+        below_1_ha: MARGINAL_FARMER
+        1_to_2_ha: SMALL_FARMER       # Founder's case: 2 acres ≈ 0.8 ha → SMALL_FARMER
+        above_2_ha: OTHER_FARMER
+    - district + state (from farm profile)
+    - water_source (borewell / canal / rain-fed — from farm profile)
+    - current_crop (from active season)
+    
+  scheme_match_output:
+    for_each_matched_scheme:
+      - scheme_name
+      - what_you_get (farmer language, ₹ amounts where applicable)
+      - subsidy_pct (category-aware — not flat)
+      - documents_needed: [list]
+      - where_to_apply: [Krishi Seva Kendra / online portal / bank]
+      - deadline: (if applicable, feeds SIL)
+      - last_verified_date  # Always shown to farmer
+      - disclaimer: "Verify at Krishi Seva Kendra before applying — schemes may have changed"
+```
+
+**Example output for Founder's profile (2 acres, borewell, Junnar, Pune):**
+
+```
+Matched schemes for your farm (2 acres, Junnar, small farmer category):
+
+1. Drip Irrigation Subsidy (PMKSY)
+   Tumhala milnar: 65% subsidy on drip irrigation installation
+   (Small farmer category — 65%; marginal = 75%; others = 50%)
+   Laagnar kaagadpatra: 7/12 Satbara, Aadhaar, bank passbook, quotation from certified supplier
+   Kuthay apply: Zilla Krishi Adhikari office, Pune + online at pmksy.gov.in
+   Last verified: July 2026. Krishi Seva Kendra maddhe verify kara.
+
+2. PM-KISAN
+   Tumhala milnar: ₹6,000/year (₹2,000 × 3 installments)
+   Aadhar ani bank account linked asayla pahije
+   Portal: pmkisan.gov.in — self-check available
+   
+3. PMFBY Kharif 2026
+   Tumhala milnar: Crop insurance at 2% premium (rest paid by government)
+   Enrollment deadline: Check district notification (usually August 31 for Kharif)
+   Kuthay: Nearest bank or Krishi Seva Kendra
+   
+4. Nanaji Deshmukh PoCRA
+   Tumhala milnar: Equipment support, soil health, training for Pune drought-prone areas
+   Kuthay: Check at Zilla Parishad Agriculture Department, Pune
+```
+
+**MCP Tools:**
+| Tool | MCP Server | Action | Authorization | Cost | Failure |
+|---|---|---|---|---|---|
+| Get schemes by farmer profile | govt-schemes-mcp | schemes.match_by_profile | PRE_AUTHORIZED | Free | DEGRADABLE — degrade to static scheme list |
+| Get scheme detail | govt-schemes-mcp | schemes.get_detail | PRE_AUTHORIZED | Free | DEGRADABLE |
+| Get deadline calendar | govt-schemes-mcp | schemes.get_deadline_calendar | PRE_AUTHORIZED | Free | DEGRADABLE |
+| Scheme refresh (Tier 1 RAG) | internal RAG | — | Monthly auto-refresh | Free | DEGRADABLE — use last cached |
+
+---
+
 ## 4.13 Signal Intelligence Layer — Section 3.18 (C-053, v0.35.0)
 
 ```yaml
