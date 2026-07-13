@@ -1043,6 +1043,211 @@ fpo_benefits:
 
 ---
 
+### Skill 11: Soil and Water Health — v2.7
+
+**Skill type:** `SOIL_WATER_HEALTH`
+**Specification version:** 2.7 (new — 2026-07-13)
+**Business KPI:** % of farmers who reduced fertilizer cost while maintaining/improving yield; % who completed annual soil test
+**Execution model:** `PRE_AUTHORIZED` for reminders, guidance, and Soil Health Card interpretation; guidance only (no direct lab access)
+**Phase activation:** Phase 3 — activates at the start of every new crop year (November-December for Rabi planning; April-May for Kharif planning)
+**Cost profile:** Zero. Soil Health Card portal (soilhealth.dac.gov.in) is a free government API. Borewell water quality is advisory guidance — farmer gets testing done locally at krishi vigyan kendra.
+
+**Core problem this solves:**
+Most Maharashtra small farmers apply fertilizer based on dealer recommendation — which is biased toward selling more product. Over-fertilization costs ₹3,000-8,000/acre/year in excess inputs and degrades soil over time. A soil-test-based fertilizer plan costs nothing extra but saves ₹3,000-8,000/acre while improving long-term yield.
+
+**Decision Space:**
+- **Authorized:** Remind farmer about annual soil test timing; help interpret their Soil Health Card (SHC) in plain Marathi/Hindi; generate a fertilizer recommendation based on SHC data and crop plan; advise on borewell water quality concerns and how to get testing done; identify nearest Krishi Vigyan Kendra (KVK) for testing
+- **Prohibited:** Recommend a specific fertilizer brand (brand-agnostic always); promise yield improvement from fertilizer change; perform water quality testing (advisory only — farmer gets actual test done)
+- **Always-ask:** Any fertilizer recommendation beyond what the SHC explicitly supports — always caveat with "based on your soil test"
+
+**Soil Health Card (SHC) Interpretation:**
+
+```yaml
+shc_interpretation:
+  data_sources: "soilhealth.dac.gov.in — farmer's SHC by their survey number / Aadhaar"
+  
+  limitations_always_disclosed:
+    - "Tumcha SHC [date] cha aahe — 2-3 varsha juna asel tar aata test karava"
+      (Your SHC is from [date] — if 2-3 years old, test again now)
+    - "SHC ek sample var based aahe — jaminiche different bhag vegale astu shaktat"
+      (SHC is based on one sample — different parts of your field may vary)
+  
+  parameters_explained_in_farmer_language:
+    N_nitrogen:
+      low: "Jamin bhookeli aahe — urea/DAP jaast lagel"
+      medium: "Theek aahe — normal dose chalel"
+      high: "Urea kami lava — paise vratha nako"
+    P_phosphorus:
+      low: "DAP jaast laga — beej vikasasathi"
+      high: "DAP kapat kara — tum jast kharchi katat aahat"
+    K_potassium:
+      low: "MOP (potash) lava — pakke pik saathi muhkya"
+      high: "Potash nako — already aahe"
+    pH:
+      acidic: "Chun (lime) dya jaminit — acidity kam hote"
+      alkaline: "Gypsum useful hoto — chek kara KVK kade"
+    Zinc_deficiency:
+      detected: "Zinc sulphate spray kara — yellow leaves nantar sudhartat"
+      
+  fertilizer_plan_output:
+    format: "Ek ekarasathi: [X] bag urea + [Y] bag DAP + [Z] bag MOP"
+    based_on: "SHC data + crop plan (from Skill 4)"
+    disclaimer: "He SHC var based aahe. Navi test karaychi asel tar KVK la jaa."
+```
+
+**Annual Soil Test Reminder (proactive SIL signal):**
+
+```yaml
+soil_test_reminder:
+  signal_type: "SOIL_TEST_DUE"
+  timing: "November (Rabi planning start) if no SHC update in last 24 months"
+  urgency: "ADVISORY"
+  message: |
+    "Rabi pikaachya aadhi jamin test karavi — sarkar free karate KVK la.
+     Tumcha SHC [date] paryant ahe. Navi test keli tar fertilizer paise 
+     ₹3,000-5,000 vaachu shaktat ya varshi."
+     (Before Rabi crop, get soil tested — government does it free at KVK.
+      Your SHC is from [date]. Fresh test can save ₹3,000-5,000 on fertilizer this year.)
+```
+
+**Borewell Water Quality (for Junnar and similar borewell-dependent farmers):**
+
+```yaml
+borewell_water_advisory:
+  why_it_matters: |
+    High TDS (Total Dissolved Solids) or fluoride in borewell water affects:
+    1. Crop health — salt accumulation in soil over time
+    2. Drip irrigation — blocks drip emitters, reduces efficiency
+    3. Human health — fluorosis is a real risk in parts of Maharashtra
+    
+  agent_cannot: "Test water directly — no MCP for this"
+  agent_can:
+    - Explain the importance of annual borewell water test
+    - Guide farmer to nearest testing lab (KVK or district lab — free or ₹100-200)
+    - Interpret test results if farmer shares them
+    - Advise on treatment if TDS/fluoride is high (RO for drinking, gypsum application for soil)
+    
+  proactive_check: |
+    "Tumcha borewell kitya varsha pura aahe? Kabhi water test keli? 
+     Junnar maddhe kaahi ether high TDS yetat — crop saathi ani 
+     ghari pyanyasaathi check karava changla."
+     (How old is your borewell? Have you ever tested the water? In some parts of 
+      Junnar, TDS is high — good to check for both crops and drinking water at home.)
+```
+
+**MCP Tools:**
+| Tool | MCP Server | Action | Authorization | Cost | Failure |
+|---|---|---|---|---|---|
+| Get Soil Health Card | soil-health-mcp | shc.get_by_survey_number | `SOIL_HEALTH` authorized + farmer provides survey number | Free — govt portal | DEGRADABLE |
+| Find nearest KVK | govt-schemes-mcp | kvk.find_by_district | PRE_AUTHORIZED | Free | DEGRADABLE |
+| SHC interpretation | internal LLM | — | `SOIL_HEALTH` authorized | MID_TIER model | N/A |
+
+---
+
+### Skill 12: Water and Irrigation Management — v2.7
+
+**Skill type:** `WATER_IRRIGATION_MANAGEMENT`
+**Specification version:** 2.7 (new — 2026-07-13)
+**Business KPI:** ₹ saved on water (pumping cost reduction) + % of borewell farmers on drip irrigation + % who availed PMKSY drip subsidy
+**Execution model:** `PRE_AUTHORIZED` for advisory and calculations; `APPROVAL_GATE` for subsidy application guidance (requires documents)
+**Phase activation:** Phase 3 — activates at crop planning stage (Skill 4) for water-intensive crop choices
+**Cost profile:** Zero new paid APIs. PMKSY portal (free). Crop water requirement calculations use existing weather-ensemble-mcp + static Tier 1 RAG (ICAR crop water data).
+
+**Highest-impact action for Founder's profile (2 acres, borewell, Junnar):**
+Drip irrigation. 65% subsidy available (small farmer category). Saves 30-50% water vs flood irrigation. Enables year-round cropping. Pay back in 1-2 seasons. This skill makes the case and guides the application.
+
+**Decision Space:**
+- **Authorized:** Calculate crop water budget (how much water each crop needs vs what's available); advise on drip/sprinkler installation (category-aware subsidy); guide PMKSY application process; advise on farm pond for rainwater harvesting (Jalyukt Shivar scheme); advise on borewell usage schedule
+- **Prohibited:** Promise borewell longevity or water table sustainability (data not available); recommend irrigation equipment brands; guarantee subsidy approval
+- **Always-ask:** Recommending drip installation (significant investment even with subsidy); farm pond construction
+
+**Crop Water Budget (per Founder's profile):**
+
+```yaml
+water_budget_example:
+  farm: "2 acres, Junnar, borewell + well"
+  season: "Kharif 2026"
+  
+  by_crop_option:
+    chana_rabi:
+      water_requirement: "300-400mm total (2-3 irrigations)"
+      borewell_suitability: "EXCELLENT — minimal water needed"
+      note: "Your borewell handles chana easily. Even a weak borewell is sufficient."
+      
+    zucchini:
+      water_requirement: "5-8 mm/day via drip (moderate)"
+      borewell_suitability: "GOOD with drip — without drip, requires 3× more water"
+      drip_requirement: "Strongly recommended — reduces water 60% vs flood irrigation"
+      monthly_pumping_cost_flood: "₹3,000-4,500 (diesel pump)"
+      monthly_pumping_cost_drip: "₹800-1,200"
+      annual_water_saving: "₹26,000-40,000 in pumping cost alone"
+      
+    onion:
+      water_requirement: "High — 550-650mm"
+      borewell_suitability: "MODERATE — monitor water table carefully"
+      warning: "Onion + weak borewell = risk. Check borewell yield before committing."
+```
+
+**Drip Irrigation Application Guide (PMKSY):**
+
+```yaml
+drip_subsidy_application:
+  scheme: "PMKSY (Pradhan Mantri Krishi Sinchayee Yojana)"
+  
+  subsidy_category_aware:
+    marginal_farmer_below_1ha: "75%"
+    small_farmer_1_to_2ha: "65%"    # Founder's category
+    other_farmer_above_2ha: "50%"
+  
+  example_for_founder:
+    farm_size: "2 acres (small farmer category)"
+    drip_installation_cost: "₹40,000-50,000 for 2 acres"
+    subsidy_65pct: "₹26,000-32,500 reimbursed by government"
+    farmer_net_cost: "₹14,000-17,500 (after subsidy)"
+    annual_water_saving: "₹26,000-40,000 (pumping cost)"
+    payback: "6-8 months after installation"
+    
+  application_steps:
+    step_1: "Visit Zilla Krishi Adhikari (ZAO) office in Pune — get approved vendor list"
+    step_2: "Get 2-3 quotations from PMKSY-approved vendors only (non-approved = no subsidy)"
+    step_3: "Submit application: 7/12 Satbara + Aadhaar + bank passbook + vendor quotation"
+    step_4: "Wait for pre-approval (15-30 days)"
+    step_5: "Purchase + install AFTER approval (not before — no retroactive subsidy)"
+    step_6: "Submit installation certificate + vendor invoice for reimbursement"
+    
+  common_mistake: |
+    "Bahut shetkari pahile drip laavtat, nantar subsidy check karatat.
+     He chukicha aahe — pehle apply kara, manzuri milal tar laava."
+     (Many farmers install drip first, then check for subsidy. 
+      This is wrong — apply first, get approval, then install.)
+      
+  agent_proactive_timing: "Alert at crop planning stage (Skill 4) when borewell-intensive 
+                            crop is chosen — not after installation is done"
+```
+
+**Farm Pond / Jalyukt Shivar (rainwater harvesting):**
+
+```yaml
+farm_pond_scheme:
+  what: "Dig a farm pond on corner of field to collect monsoon runoff"
+  capacity: "5,000-50,000 litre depending on size"
+  benefit: "Free water for 2-3 Rabi irrigations; reduces borewell dependency"
+  scheme: "Jalyukt Shivar Abhiyan (Maharashtra) — government funds or subsidizes construction"
+  eligibility: "Drought-prone or water-stressed districts — check if Junnar qualifies"
+  agent_action: "Check Jalyukt Shivar eligibility for farmer's district via govt-schemes-mcp"
+  note: "Junnar is in Pune district — check Maharashtra government notification for current year"
+```
+
+**MCP Tools:**
+| Tool | MCP Server | Action | Authorization | Cost | Failure |
+|---|---|---|---|---|---|
+| Get crop water requirement | internal Tier 1 RAG | agri.get_crop_water_requirement | PRE_AUTHORIZED | Free — static ICAR data | N/A |
+| Get PMKSY approved vendor list | govt-schemes-mcp | pmksy.get_approved_vendors_by_district | PRE_AUTHORIZED | Free | DEGRADABLE |
+| Check Jalyukt Shivar eligibility | govt-schemes-mcp | jalyukt.check_eligibility | PRE_AUTHORIZED | Free | DEGRADABLE |
+| Rainfall forecast (for water budgeting) | weather-ensemble-mcp | weather.get_seasonal_outlook | PRE_AUTHORIZED | Free — existing MCP | DEGRADABLE |
+
+---
+
 ## 4.13 Signal Intelligence Layer — Section 3.18 (C-053, v0.35.0)
 
 ```yaml
