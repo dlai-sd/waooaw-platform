@@ -1,7 +1,7 @@
 # Constitutional Compliance Test (CCT) Framework
 
 **Produced by:** Enterprise Architect (Sprint 010, WC-010)
-**Date:** 2026-07-07 | **Last Updated:** 2026-07-13 (v0.65.0 — added CCT-SEC-01/02/03/04/05; total: 34 CCTs)
+**Date:** 2026-07-07 | **Last Updated:** 2026-07-13 (v0.68.0 — added CCT-SEC-06 LLM DoS; total: 35 CCTs)
 **Constitutional Basis:** GENESIS Engineering Quality Mandate — "Constitutional Compliance Tests — WAOOAW-specific; validates that the platform upholds a specific constitutional principle"; ADR-013 (CCTs are a required CI/CD gate)
 
 ---
@@ -876,6 +876,53 @@ Assert:   1. First submission: processed normally, agent action triggered ✓
 Constitutional basis: C-023 (Evidence First — a duplicate approval evidence record is
           constitutionally incorrect; the "YES" reply creates exactly one authorization event);
           C-003 (authority licensed once — a customer saying "YES" once is one authorization)
+```
+
+**CCT-SEC-06 — LLM Prompt DoS Protection**
+```
+Name:     CCT-SEC-06 — Oversized Input and Demo Flood Protection
+Principle: C-062 (AI Security); ADR-006 v2 (LLM-aware prompt DoS protection)
+
+PART A — Input length truncation:
+Setup:    Active agent session.
+          Prepare oversized input: "A" × 10,000 characters (well above 4,000 char limit).
+
+Action:   Submit oversized input:
+          POST /api/v1/agent/request {message: "A"×10000, organisation_id: test_id}
+
+Assert:   1. Request is accepted (not rejected — truncation is silent for UX) ✓
+          2. LLM call is made with input truncated to ≤4,000 characters ✓
+          3. OVERSIZED_INPUT security event logged to CAL ✓
+          4. Response is normal (no system error) ✓
+
+PART B — Demo session IP rate limiting:
+Setup:    IP address: test_ip. Demo session limit: 5 per hour.
+          
+Action:   Create 5 demo sessions from test_ip (within 1 hour).
+          Attempt to create a 6th demo session from test_ip.
+          
+Assert:   1. Sessions 1-5: created successfully ✓
+          2. Session 6: rejected with HTTP 429 (Too Many Requests) ✓
+             Response: {"error": "DEMO_RATE_LIMIT", "retry_after": 3600}
+          3. No LLM call made for the rejected 6th attempt ✓
+          4. Legitimate customers (different IPs) unaffected ✓
+
+PART C — Daily LLM budget cap:
+Setup:    Test customer. Set artificial daily_token_budget = 100 tokens.
+          
+Action:   Submit requests totalling > 100 tokens of LLM consumption.
+
+Assert:   1. Requests within budget: processed normally ✓
+          2. First request exceeding budget: returns 503 SERVICE_BUSY ✓
+             {"error": "DAILY_BUDGET_EXHAUSTED", "resets_at": "ISO8601 midnight IST"}
+          3. BUDGET_EXHAUSTED event logged to CAL ✓
+          4. Platform operations alerted (at 80% threshold, not at 100%) ✓
+
+Teardown: Reset demo session counter for test_ip; reset test customer daily budget.
+Constitutional basis: C-062 (AI Security — DoS is an AI security threat);
+          ADR-006 v2 (LLM-aware rate limiting); C-051 (Resource Transparency —
+          customer must know when their budget is exhausted); C-043 (Financial
+          Spend Ceiling extended to LLM compute costs)
 ```
 
 ---
