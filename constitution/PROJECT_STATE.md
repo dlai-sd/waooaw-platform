@@ -1,8 +1,8 @@
 # PROJECT_STATE.md
 
 **Last Updated:** 2026-07-13
-**Version:** 0.54.0
-**Session:** 2026-07-13 — SESSION CLOSE (C-059 Implementation Traceability — spec-code integrity enforced constitutionally; CCT-TR-01/02/03; GENESIS + BOOTSTRAP + PR template updated)
+**Version:** 0.59.0
+**Session:** 2026-07-13 — SESSION CLOSE (Agricultural Advisor v2.7: 6 new skills + tone framework + 8-dimension crop planning + simulation validation — v0.55.0 through v0.59.0)
 
 ---
 
@@ -11,16 +11,16 @@
 ```
 INSTITUTION:  WAOOAW — autonomous digital professionals under constitutional governance
 GATE:         G5 prerequisites met (G5 CLEAR ≠ implementation authorization for any session)
-VERSION:      0.54.0
+VERSION:      0.59.0
 CONSTITUTIONAL CLAIMS: C-001 to C-059 (59 ratified claims)
-ACTIVE PROMPTS: 86 (DMA v2.8 base) + 15 new GEO/NPS/MBR/Attribution prompts
-AGENTS: DMA v2.9 | Trading v1.7 | Agricultural v2.6
-CCTs: 29 (added CCT-TR-01/02/03 — Implementation Traceability gate)
+ACTIVE PROMPTS: 86 DMA + Agricultural Advisor v2.7 (12 skills)
+AGENTS: DMA v2.9 | Trading v1.7 | Agricultural Advisor v2.7
+CCTs: 29 (CCT-TR-01/02/03 — Implementation Traceability)
 
-FOCUS: DMA v2.9 COMPLETE + C-059 (Implementation Traceability) ratified.
-       All spec-code drift prevented constitutionally: BOOTSTRAP Step 10b + CCT-TR-01/02/03 +
-       GENESIS Engineering Quality Mandate + PR template Traceability Matrix.
-       No human dev team required. ISO-equivalent discipline enforced by constitution.
+FOCUS: Agricultural Advisor v2.7 COMPLETE. 6 new skills (7-12). Tone Framework 3.0.
+       8-dimension crop planning. Zero cost escalation — all new MCPs use free govt APIs.
+       Simulation-validated against Founder's farm (Arvi Pimpalgaon, Junnar, Pune).
+       C-059 (Spec-Code Integrity) constitutionally enforced.
 
 NEXT SESSION OPTIONS:
   A. IB-009 Foundation Implementation sprint — one sentence from Founder starts coding
