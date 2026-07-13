@@ -38,7 +38,228 @@ Every ed-tech product delivers content. WAOOAW delivers a teacher who *knows thi
 
 ---
 
-## 3. Critical Design Principles
+## 3. Parent Onboarding and Configuration (C-039)
+
+> **Design principle (C-039 — Conversational Config):** Configuration must feel like a conversation with an experienced school counsellor, not a form to fill. The platform already knows everything the parent entered at registration. The onboarding conversation asks only what it cannot infer — and shows a running summary so the parent can correct, not re-enter.
+
+---
+
+### 3.0 Onboarding Conversation Flow
+
+**Channel:** Web portal (desktop or mobile browser). This is the parent's first interaction with the platform — not the student's. Single session, approximately 10-12 minutes.
+
+**Minimum Viable Configuration (sessions can only begin after these 6 fields are confirmed):**
+
+```yaml
+minimum_viable_config:
+  1. child_name: (from registration — confirmed, not re-asked)
+  2. child_class: 5 | 6 | 7 | 8 | 9 | 10
+  3. board: CBSE | ICSE | IB | MAHARASHTRA_SSC | OTHER_STATE_BOARD
+  4. subjects: [selected subjects] or ALL
+  5. teacher_language_primary: (parent's stated preference)
+  6. teacher_name: (parent chooses the name their child will use)
+```
+
+**Configuration Conversation (6 exchanges, progressive):**
+
+```
+EXCHANGE 1 — About your child (start from registration data)
+─────────────────────────────────────────────────────────────
+Platform: "Welcome! You've registered Priya — Class 9, CBSE. That's right?
+           Which subjects would you like Priya to have a tutor for?
+           All subjects, or specific ones?"
+
+Parent: "All subjects"
+
+Platform records: subjects = ALL, board = CBSE, class = 9
+→ Never asks for board or class — already known from registration.
+
+EXCHANGE 2 — The teacher's language
+─────────────────────────────────────────────────────────────
+Platform: "What language should the teacher primarily use with Priya?
+           (a) English only
+           (b) Hindi with English for technical terms
+           (c) Marathi with Hindi and English
+           (d) Another language — tell me"
+
+Parent: "Hindi with English — we're in Pune"
+
+Platform records: language_primary = HINDI, language_secondary = ENGLISH,
+                  regional_context = PUNE_MAHARASHTRA
+
+EXCHANGE 3 — Teaching style and strictness
+─────────────────────────────────────────────────────────────
+Platform: "How would you describe the kind of teacher you want for Priya?
+           
+           (a) Gentle and encouraging — lots of patience, never pressures
+           (b) Warm but expects effort — pushes when needed, celebrates wins
+           (c) Strict and demanding — high expectations, no shortcuts
+           
+           And how should the teacher explain things?
+           (a) Through stories and real-world examples
+           (b) By asking questions that lead Priya to the answer
+           (c) Visually — lots of diagrams and drawing
+           (d) Through practice — learn by doing
+           (e) A mix of all of these"
+
+Parent: "Option (b) for strictness. Mix of all for style."
+
+Platform records: strictness = MODERATE, teaching_style = MIXED
+
+EXCHANGE 4 — The teacher's name and personality
+─────────────────────────────────────────────────────────────
+Platform: "What would you like Priya to call her teacher?
+           (This is the name she'll hear every session — choose something that 
+           feels right for your family)"
+
+Parent: "Sunita Ma'am"
+
+Platform records: teacher_name = "Sunita Ma'am"
+
+Platform: "And one more — which of these feels closest to the teacher
+           personality you're looking for?
+           (a) Warm and patient — like a favourite aunt who happens to be a teacher
+           (b) Enthusiastic and passionate — makes every topic exciting
+           (c) Strict but fair — high expectations, earns respect
+           (d) Intellectually challenging — always asks 'but why?'"
+
+Parent: "A mix of (a) and (b)"
+
+Platform records: personality = [WARM_AND_PATIENT, ENTHUSIASTIC_PASSIONATE]
+
+EXCHANGE 5 — Anything specific about Priya
+─────────────────────────────────────────────────────────────
+Platform: "Almost done. Is there anything specific Sunita Ma'am should know 
+           about Priya before they meet?
+           
+           For example: subjects she struggles with, how she responds to pressure, 
+           anything about her learning style, or anything else you think matters.
+           
+           (Or just skip this — you can always add notes later)"
+
+Parent: "She's shy and takes time to respond. Strong in theory, weak in calculations.
+         Please don't compare her to other students."
+
+Platform records: specific_instructions = [parent's text, verbatim]
+Note: This field is teacher-visible but NEVER shown to the student (C-060)
+
+EXCHANGE 6 — Scheduling
+─────────────────────────────────────────────────────────────
+Platform: "When should Sunita Ma'am's sessions happen?
+           
+           Suggested: 3-4 sessions per week, 40 minutes each.
+           For 9 subjects in Class 9, this covers the full syllabus 
+           before annual exams.
+           
+           Days and times that work for Priya?"
+
+Parent: "Tuesday, Thursday, Saturday — 5 to 5:45 PM"
+
+Platform records: session_schedule = TUE/THU/SAT 17:00-17:45
+```
+
+**Progressive Summary (after Exchange 5 — parent confirms before first session):**
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PRIYA'S TEACHER CONFIGURATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Teacher name:   Sunita Ma'am
+Subjects:       All (Class 9 CBSE)
+Language:       Hindi + English (Pune context)
+Style:          Warm, patient, encouraging + enthusiastic
+                Mix of stories, visual, and practice
+Strictness:     Moderate — expects effort, celebrates wins
+Schedule:       Tue / Thu / Sat — 5:00 PM to 5:45 PM
+
+Note to teacher: Priya is shy. Needs time to respond. 
+                 Strong theory, weak calculations. 
+                 No peer comparisons.
+
+Does this look right? You can edit anything above.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[Confirm — start sessions] or [Edit]
+```
+
+**Evidence record on confirm:** `TEACHER_PERSONA_CONFIGURED` (C-023)
+**Next:** Skill 0 intro session scheduled for the next available slot.
+
+---
+
+### 3.0b Configuration Amendment (mid-subscription)
+
+Parent can change any configuration element at any time from the portal. Changes take effect from the next session.
+
+```yaml
+amendment_rules:
+  teacher_name: can change anytime
+  language: can change anytime — applies from next session
+  strictness: can change anytime
+  subjects: can add or remove
+  class: updates automatically at year-end (Class 9 → 10)
+  board: can change (rare — requires re-sequencing curriculum)
+  specific_instructions: can update anytime — teacher reads updated version before next session
+
+  what_cannot_change_mid_session: teacher_name (causes confusion for student)
+
+  evidence_record: TEACHER_PERSONA_AMENDED on every change (C-023)
+  
+  amendment_conversation:
+    portal: direct field editing
+    whatsapp: "Sunita Ma'am ki strictness thodi zyada karni hai — 
+                'strict' mode pe switch kar do" → Platform processes this natural language update
+```
+
+---
+
+### 3.0c Multiple Children Configuration
+
+A family can configure tutors for multiple children. Each child has a completely independent teacher configuration — sibling A's teacher and sibling B's teacher are separate agents with no shared state.
+
+```yaml
+multi_child:
+  each_child: independent_teacher_persona + independent_student_knowledge_graph
+  parent_portal: unified dashboard showing all children's progress side by side
+  billing: per-child subscription (separate pricing per child)
+  
+  sibling_data_isolation: "C-060 extends to sibling isolation — Child A's performance 
+                            data is NEVER visible in Child B's session or report"
+```
+
+---
+
+### 3.0d Skill Runtime Configuration Standard (C-039)
+
+```yaml
+approval_mode_standard_tutor:
+  philosophy: "Parent approves the teacher persona once. Thereafter, the teacher 
+               delivers sessions autonomously within that persona. Parent's approval 
+               is exercised at persona configuration — not per session."
+               
+  parent_touchpoints_per_week:
+    scheduled: 1 (weekly progress report — Sunday evening)
+    triggered: as needed (pace alert, exam mode activation recommendation, 
+               critical engagement drop, session ending early)
+    never_more_than: 3 unsolicited contacts per week (C-048 non-exploitation)
+    
+  student_autonomy_within_session:
+    student_can: "Pause the session ('Ma'am, 5 minute break please'), 
+                   request topic change ('can we do something else today'), 
+                   ask for an easier problem ('this is too hard, can we go simpler')"
+    student_cannot: "Terminate the session (parent-level only), 
+                      change teacher persona, view parent-configured notes about them"
+    
+  session_recording:
+    what_is_saved: whiteboard_state_snapshot + session_transcript + engagement_timeline
+    who_can_access: parent (full access) + student (current session only, not history)
+    retention: 12 months (then auto-deleted unless parent requests extended retention)
+    dpdpa_note: "Transcript of minor's sessions — highest sensitivity. 
+                 Never used for platform training data (C-060 data minimization)"
+```
+
+---
+
+## 4. Critical Design Principles
 
 ### 3.0 Minor Student Protection — C-060 (Constitutional Law)
 
