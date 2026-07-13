@@ -1,9 +1,13 @@
 # Temporal Dynamic Configuration
 # Constitutional basis: ADR-015 (Temporal self-hosted dev deployment)
+# Optimization: ADR-027 (Cloud Architecture Optimization — O-03 Temporal retention)
 # Used by: temporalio/auto-setup:1.24 container in docker-compose.yml
 #
 # These settings are appropriate for local development.
 # Production (Temporal Cloud) does not use this file.
+# Temporal Cloud retention is configured per-namespace in the Temporal Cloud console:
+#   waooaw-prod:  trading workflows = 90 days | all others = 7 days
+#   waooaw-uat:   all workflows = 7 days
 
 system.forceSearchAttributesCacheRefreshOnRead:
   - value: "true"
@@ -13,10 +17,16 @@ limit.maxIDLength:
   - value: "255"
     constraints: {}
 
-# Workflow execution timeout defaults (dev — generous for debugging)
+# Workflow execution retention — O-03 optimization
+# Trading workflows need 90-day retention for audit/compliance (financial regulatory)
+# All other workflows: 7 days is sufficient
 frontend.defaultWorkflowExecutionRetentionPeriod:
   - value: "7d"
     constraints: {}
+
+# Trading namespace gets longer retention (Temporal Cloud: configure per-namespace)
+# In dev/self-hosted: use task queue namespace separation if needed
+# Namespace waooaw-trading: retention = 90d (set in Temporal Cloud console)
 
 # Worker polling intervals
 matching.longPollExpirationInterval:
@@ -40,4 +50,30 @@ workflow.maxWorkflowExecutionTimeout:
 
 workflow.maxWorkflowTaskTimeout:
   - value: "10s"
+    constraints: {}
+
+# ─── Performance optimizations (ADR-027) ─────────────────────────────────────
+
+# Stickiness: keep workflow on same worker for better cache locality
+# Reduces cold-context overhead for multi-step agent workflows
+matching.stickyPollerUnavailableWindow:
+  - value: "10s"
+    constraints: {}
+
+# History size limit: prevent runaway workflows from consuming excessive storage
+limit.historySize.warn:
+  - value: "10485760"   # 10MB warning
+    constraints: {}
+
+limit.historySize.error:
+  - value: "52428800"   # 50MB error (terminates workflow)
+    constraints: {}
+
+# Concurrent task polling — increase for higher throughput at scale
+matching.numTaskqueueReadPartitions:
+  - value: "4"
+    constraints: {}
+
+matching.numTaskqueueWritePartitions:
+  - value: "4"
     constraints: {}

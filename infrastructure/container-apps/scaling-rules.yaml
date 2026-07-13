@@ -1,0 +1,199 @@
+# Container Apps Scaling Rules — WAOOAW Platform
+# Optimization: ADR-027 (Cloud Architecture Optimization)
+# Implements: infrastructure/container-apps/scaling-rules.yaml
+# Constitutional basis: C-059 (Implementation Traceability)
+#
+# CRITICAL — O-06: Trading Cold Start Fix
+# Constitutional requirement: PAAS trading latency < 250ms (ADR-001, C-043)
+# Container Apps cold start for .NET = 3-5 seconds = CONSTITUTIONAL VIOLATION
+# Fix: constitutional-engine and professional-runtime must NEVER cold-start during trading hours.
+
+# ─── Constitutional Engine ──────────────────────────────────────────────────
+constitutional-engine:
+  resource_limits:
+    cpu: 0.5
+    memory: 1Gi
+  
+  scaling:
+    # O-06: min_replicas=1 during trading hours prevents cold start violation
+    # Outside trading hours: scale to zero (cost saving)
+    min_replicas: 0  # default (non-trading hours)
+    max_replicas: 10
+    
+    rules:
+      # HTTP queue depth — scale up when CE gRPC calls are queuing
+      - name: http-queue
+        type: http
+        metadata:
+          concurrentRequests: "10"
+      
+      # TRADING HOURS OVERRIDE (O-06):
+      # Implemented via scheduled cron scaling rule in Azure Container Apps
+      # 8:45 AM IST → set min_replicas = 1 (warm up before 9:15 AM market open)
+      # 4:00 PM IST → set min_replicas = 0 (allow scale-to-zero after market close)
+      # IST = UTC+5:30, so: 8:45 IST = 03:15 UTC | 4:00 PM IST = 10:30 UTC
+      - name: trading-hours-warm
+        type: cron
+        metadata:
+          timezone: "Asia/Kolkata"
+          start: "45 8 * * 1-5"  # 8:45 AM Mon-Fri (market days)
+          end:   "0 16 * * 1-5"  # 4:00 PM Mon-Fri
+          desiredReplicas: "1"   # always-warm during trading hours
+          
+  notes:
+    - "min_replicas=1 during trading hours adds ~₹16/month cost — non-negotiable for constitutional compliance"
+    - "PAAS trading latency constitutional requirement: <250ms (ADR-001)"
+    - "Cold start would violate this requirement; cron scaling rule prevents it"
+
+# ─── Professional Runtime ───────────────────────────────────────────────────
+professional-runtime:
+  resource_limits:
+    cpu: 0.5
+    memory: 1Gi
+  
+  scaling:
+    min_replicas: 0  # default
+    max_replicas: 10
+    
+    rules:
+      - name: temporal-queue-depth
+        type: azure-queue  # KEDA Temporal task queue scaler
+        metadata:
+          queueName: "ai-runtime-queue"
+          messageCount: "5"
+          
+      # Same trading hours warm-up as Constitutional Engine
+      - name: trading-hours-warm
+        type: cron
+        metadata:
+          timezone: "Asia/Kolkata"
+          start: "45 8 * * 1-5"
+          end:   "0 16 * * 1-5"
+          desiredReplicas: "1"
+
+# ─── Business Platform ──────────────────────────────────────────────────────
+business-platform:
+  resource_limits:
+    cpu: 0.5
+    memory: 1Gi
+  
+  scaling:
+    min_replicas: 0  # Scales to zero outside business hours (cost saving)
+    max_replicas: 10
+    
+    rules:
+      - name: http-requests
+        type: http
+        metadata:
+          concurrentRequests: "20"
+
+# ─── AI Runtime ─────────────────────────────────────────────────────────────
+ai-runtime:
+  resource_limits:
+    cpu: 1.0   # Higher CPU for LLM calls + prompt building
+    memory: 2Gi
+  
+  scaling:
+    min_replicas: 0
+    max_replicas: 10
+    
+    rules:
+      - name: temporal-signal-queue
+        type: azure-queue
+        metadata:
+          queueName: "signal-watch-queue"
+          messageCount: "3"
+          
+      - name: temporal-ai-queue
+        type: azure-queue
+        metadata:
+          queueName: "ai-runtime-queue"
+          messageCount: "5"
+
+# ─── Signal Watch Worker ─────────────────────────────────────────────────────
+signal-watch-worker:
+  resource_limits:
+    cpu: 0.25
+    memory: 512Mi
+  
+  scaling:
+    # Signal watch MUST always be running — proactive alerts depend on it (C-053)
+    # CCT-SIL-04: worker liveness is a constitutional requirement
+    min_replicas: 1   # ALWAYS ON — never scale to zero
+    max_replicas: 3
+    
+    rules:
+      - name: temporal-signal-queue
+        type: azure-queue
+        metadata:
+          queueName: "signal-watch-queue"
+          messageCount: "10"
+
+# ─── Web (Next.js) ───────────────────────────────────────────────────────────
+web:
+  resource_limits:
+    cpu: 0.25
+    memory: 512Mi
+  
+  scaling:
+    min_replicas: 0  # Static assets served via CDN (O-02); server-side only scales on demand
+    max_replicas: 5
+    
+    rules:
+      - name: http-requests
+        type: http
+        metadata:
+          concurrentRequests: "30"
+
+# ─── Keycloak ────────────────────────────────────────────────────────────────
+keycloak:
+  resource_limits:
+    cpu: 0.5
+    memory: 1Gi  # Keycloak minimum viable memory
+  
+  scaling:
+    # Keycloak CANNOT scale to zero — authentication state must always be available
+    min_replicas: 1   # ALWAYS ON
+    max_replicas: 3
+    
+    rules:
+      - name: http-requests
+        type: http
+        metadata:
+          concurrentRequests: "50"
+
+# ─── O-07: Ollama (LOCAL tier LLM — stays in India, zero LLM API cost) ───────
+ollama:
+  # PRODUCTION deployment: Azure Container Apps with CPU inference
+  # Llama 3.2 3B model: ~2-3s response on CPU — acceptable for LOCAL tier prompts
+  # Saves 90% of LOCAL tier LLM cost vs Azure OpenAI MID_TIER
+  # Data stays in Azure India Central = DPDPA compliant for LOCAL prompts
+  
+  image: ollama/ollama:latest
+  
+  resource_limits:
+    cpu: 2.0   # Higher CPU for inference (no GPU in Container Apps)
+    memory: 4Gi  # Llama 3.2 3B requires ~3GB RAM
+  
+  scaling:
+    min_replicas: 1  # Always on — LOCAL tier should have no cold start
+    max_replicas: 3
+    
+    rules:
+      - name: http-requests
+        type: http
+        metadata:
+          concurrentRequests: "5"  # CPU inference is slow; don't over-queue
+  
+  model: llama3.2:3b  # Download at startup via model pull
+  
+  environment:
+    OLLAMA_MODELS: /models
+    OLLAMA_NUM_PARALLEL: 2
+    
+  notes:
+    - "O-07: LOCAL tier prompts route to Ollama instead of Azure OpenAI"
+    - "O-10: FRONTIER/MID_TIER prompts → Azure OpenAI UAE North (100ms vs 200ms from India)"
+    - "Data in LOCAL prompts never leaves Azure India Central = DPDPA compliant"
+    - "Model: Llama 3.2 3B (smallest capable model; sufficient for classification + routing)"
+    - "Cost: ₹0 per inference (only compute cost included in Container Apps pricing)"
