@@ -1224,6 +1224,64 @@ enforcement: "SAST tool (Gitleaks / TruffleHog) scans every commit.
               Log review is part of QA environment promotion checklist."
 ```
 
+**8. PII Detection and Redaction Layer — PDRL (C-063)**
+
+Extends the Input Sanitization Layer (ISL) with a PII detection pass. Every customer message is scanned BEFORE storage or LLM context injection.
+
+```python
+# PDRL — added to ISL in AI Runtime, before any message storage or LLM call
+import re, hashlib
+
+PII_PATTERNS = {
+    "AADHAAR":     r'\b\d{4}\s?\d{4}\s?\d{4}\b',
+    "PAN":         r'\b[A-Z]{5}\d{4}[A-Z]\b',
+    "BANK_ACCT":   r'\b\d{9,18}\b(?!\s*[A-Za-z])',  # numeric only, not followed by letters
+    "IFSC":        r'\b[A-Z]{4}0[A-Z0-9]{6}\b',
+    "CREDIT_CARD": r'\b\d{4}[\s\-]?\d{4}[\s\-]?\d{4}[\s\-]?\d{4}\b',
+    "OTP":         r'(?i)\botp[:\s]+\d{4,8}\b',
+    "PASSPORT":    r'\b[A-Z][1-9]\d{7}\b',
+    "VOTER_ID":    r'\b[A-Z]{3}\d{7}\b',
+}
+
+def detect_and_redact_pii(message: str, organisation_id: str) -> tuple[str, list[str]]:
+    """
+    Returns: (redacted_message, list_of_detected_categories)
+    Never returns the original PII values.
+    """
+    detected = []
+    redacted = message
+    for category, pattern in PII_PATTERNS.items():
+        if re.search(pattern, redacted):
+            redacted = re.sub(pattern, f"[REDACTED-{category}]", redacted)
+            detected.append(category)
+    
+    if detected:
+        # Record the detection (hash of original, not original itself)
+        original_hash = hashlib.sha256(message.encode()).hexdigest()
+        log_constitutional_event("PII_DETECTED_AND_REDACTED", {
+            "pii_categories": detected,
+            "original_message_hash": original_hash,  # hash only — never the PII
+            "organisation_id": organisation_id,
+        })
+        # The original message is never stored anywhere after this point
+    
+    return redacted, detected
+
+# Agent acknowledgment when PII is detected:
+PII_ACKNOWLEDGMENT = (
+    "I caught a sensitive number in your message — removed it, won't store it. "
+    "Now, about your question: {original_topic}"
+)
+# Note: {original_topic} is inferred from the redacted message context
+```
+
+**PDRL Rules:**
+- PDRL runs BEFORE the ISL prompt injection guard (order: PDRL → ISL → LLM)
+- The redacted version is stored in message logs, passed to LLM, and returned in responses
+- Original PII value is NEVER stored — only SHA-256 hash (for audit proof of redaction)
+- Agent acknowledgment is brief, warm, non-alarming (see C-063 for wording guidance)
+- PROHIBITED in all agent Decision Spaces: soliciting Aadhaar, PAN, bank account, OTP, government ID
+
 ---
 
 ## Constitutional Compliance Tests
