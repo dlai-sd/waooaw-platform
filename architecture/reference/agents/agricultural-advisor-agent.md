@@ -231,65 +231,328 @@ Yes: "Soyabean prices in Akola are now ₹5,100 per quintal — ₹200 more than
 
 ---
 
-### Skill 4: Next Season Crop Planning
+### Skill 4: Next Season Crop Planning — v2.7
 
 **Skill type:** `CROP_SEASON_PLANNING`
-**Business KPI:** Recommended crop's actual yield vs district average; revenue per acre vs prior season
+**Specification version:** 2.7 (upgraded from 6-lens to 8-dimension + Farmer Sentiment Intelligence + Non-Traditional Crop Advisory — Founder feedback 2026-07-13)
+**Business KPI:** Recommended crop's actual yield vs district average; revenue per acre vs prior season; farmer satisfaction score on recommendation quality (1-5)
 **Execution model:** APPROVAL_GATE (farmer explicitly approves crop choice — this is a major commitment)
 
 **Decision Space:**
-- **Authorized:** Recommend crops for next season based on soil + water + weather outlook + market prices + crop rotation; explain recommendation in farmer's vocabulary; show estimated cost and expected income per acre; consider farmer's resource constraints
-- **Prohibited:** Recommend crops that require water availability the farmer doesn't have; recommend crops without checking price outlook; commit on behalf of farmer (always farmer's decision)
-- **Always-ask:** Any crop that requires significant new investment (drip irrigation, new seeds); any significant change from the farmer's experience (e.g., farmer has never grown cotton before)
+- **Authorized:** Recommend crops for next season based on 8-dimension convergence analysis; include both traditional AND non-traditional crop options ranked by opportunity; address farmer perception and fear of each option honestly; explain recommendation in farmer's vocabulary; show estimated cost and expected income per acre; identify market linkage for non-traditional crops before recommending them; consider farmer's resource constraints
+- **Prohibited:** Recommend crops that require water availability the farmer doesn't have; recommend crops without checking price outlook AND farmer's capital capacity; commit on behalf of farmer (always farmer's decision); recommend a non-traditional crop without confirming a real buyer exists within reach
+- **Always-ask:** Any crop that requires significant new investment (drip irrigation, new seeds, polyhouse); any crop the farmer has never grown before
 
-**The planning conversation:**
+---
+
+### 8-Dimension Convergence Analysis (upgraded from 6-lens)
+
+**The difference between a common-sense recommendation and an expert recommendation is these two additional dimensions.** A farmer's neighbour can give 6-lens advice. An expert adds Farmer Sentiment Intelligence and Finance Intelligence.
+
+```yaml
+eight_dimensions:
+
+  DIMENSION_1_AGRONOMY:
+    question: "Is this crop compatible with this land, water, and climate?"
+    sources: ICAR suitability matrices, NBSS&LUP soil data, local agri university data
+    output: "SUITABLE / MARGINAL / NOT_SUITABLE" + reason
+    example: "Zucchini: suitable for Junnar's loamy red soil + borewell availability.
+              Water requirement: moderate (2-3 liters/plant/day via drip).
+              Temperature: 18-30°C ideal — Junnar's range fits well."
+
+  DIMENSION_2_MARKET:
+    question: "What are current and 6-month forecast prices? Is the market saturated?"
+    sources: agmarknet-mcp (live mandi prices), NCDEX futures, state horticulture department data
+    output: current price, seasonal high/low, saturation risk (how many farmers are growing this)
+    example: "Zucchini: ₹20-40/kg in Pune APMC wholesale. Demand growing 25%/year (hotels,
+              supermarkets). Fewer than 50 farms in Pune district currently growing it.
+              Not in traditional mandi — direct buyer linkage required."
+    saturation_alert: "Soybean: 68% of Marathwada farmers planting this kharif → 
+                        price likely ₹3,200-3,600/q at harvest (below break-even for most)."
+
+  DIMENSION_3_FINANCE:  # NEW — was missing from v2.6
+    question: "Can this farmer actually afford this crop? What is the real ROI?"
+    sources: Tier 1 RAG (input cost database by crop + region, updated quarterly)
+    output: investment/acre, expected revenue/acre, break-even yield, profit range, credit options
+    example_traditional:
+      crop: Soybean (1 acre)
+      investment: "₹18,000 (seeds ₹4,000 + fertilizer ₹6,000 + pesticide ₹4,000 + labour ₹4,000)"
+      expected_yield: "12-15 quintal/acre"
+      expected_price: "₹3,500-4,000/q (current outlook)"
+      revenue: "₹42,000 - ₹60,000"
+      net_profit: "₹24,000 - ₹42,000/acre"
+      credit: "KCC (Kisan Credit Card) covers 70% of input cost at 4% interest (PM-KISAN rate)"
+    example_non_traditional:
+      crop: Zucchini (1 acre)
+      investment: "₹40,000 (seeds ₹8,000 + drip setup ₹18,000 (one-time) + fertilizer ₹8,000 + labour ₹6,000)"
+      expected_yield: "8-12 tons/acre (2 crops/year)"
+      expected_price: "₹25/kg wholesale Pune"
+      revenue: "₹2,00,000 - ₹3,00,000/acre/year"
+      net_profit: "₹1,60,000 - ₹2,60,000/acre/year (after recovery of drip setup in Year 1)"
+      credit: "NABARD horticulture loan for drip irrigation (50% subsidy under PMKSY scheme)"
+      break_even_yield: "1.6 tons/acre at ₹25/kg recovers all costs"
+      risk_note: "Higher upfront investment. But drip is permanent — cost drops from Year 2."
+
+  DIMENSION_4_ENVIRONMENTAL:
+    question: "What does the weather and climate outlook say? What pest pressure is likely?"
+    sources: weather-ensemble-mcp (seasonal outlook), IMD data, ICAR pest calendar
+    output: seasonal rainfall forecast, temperature trend, top 2-3 pest risks this season
+    example: "Junnar, Pune — Kharif 2026: IMD forecast above-normal rainfall (109% LPA).
+              Good for water-intensive crops. Pest risk: leaf curl virus in tomato (high);
+              downy mildew in cucurbits (monitor). Zucchini: moderate risk; manageable with
+              weekly scouting."
+
+  DIMENSION_5_GEOPOLITICAL:  # NEW explicit dimension (was partially in Policy Lens)
+    question: "What government schemes, MSP, export/import policies affect this crop?"
+    sources: policy-data-mcp, state agriculture department bulletins
+    output: MSP current + change vs last year, relevant subsidies, export/import policy signal
+    examples:
+      - "Pulses: India imports 4-5 lakh MT/year of tur dal. Government wants domestic production.
+         MSP ₹7,000/q + ₹1,000 state bonus in Maharashtra. Strong policy tailwind."
+      - "Onion: Export ban was lifted in March 2026 but government retains right to re-impose.
+         High political sensitivity. Price volatility risk: historically 3× variation in 12 months."
+      - "Millet (Bajra/Jowar): PM Poshan scheme procurement active. India promoted millets
+         internationally (International Year of Millets 2023 — momentum continuing).
+         Government buying directly at MSP in 14 states including Maharashtra."
+
+  DIMENSION_6_ROTATION:
+    question: "What was grown last season? What rotation maintains soil health?"
+    sources: Tier 2 (farmer's own crop history), ICAR rotation guidelines
+    output: "GOOD_ROTATION / ACCEPTABLE / POOR_ROTATION (soil depletion risk)" + explanation
+    example: "You grew cotton (legume-family depleted) last season. Soybean after cotton is 
+              acceptable. Chana (chickpea) is BETTER — fixes nitrogen, improves soil for 
+              next year's cotton if you return to it."
+
+  DIMENSION_7_FARMER_SENTIMENT:  # NEW — the most important missing dimension
+    question: "What do farmers in this region think about this crop based on recent experience?
+               What fears do they have, and are those fears valid right now?"
+    sources:
+      - Tier 3 RAG: anonymous aggregate crop decisions across WAOOAW farmers in this district
+      - Tier 1 RAG: agricultural news + mandi news + farmer cooperative reports (rolling 12 months)
+      - local agri news: "why did farmers avoid X last season"
+    
+    output: sentiment_score (POSITIVE / CAUTIOUS / NEGATIVE) + reason + agent's mitigation
+    
+    examples:
+      onion_junnar_2026:
+        farmer_sentiment: CAUTIOUS
+        reason: "Onion prices crashed to ₹3/kg in April 2025. Many Junnar farmers lost money.
+                  Fear is real — farmers who stored onion from last rabi lost ₹40,000-80,000."
+        agent_response: |
+          "आपण बरोबर आहात — गेल्या वर्षी कांद्याने खूप नुकसान केले. पण यावेळी परिस्थिती वेगळी आहे:
+           निर्यातबंदी उठली आहे. पाकिस्तान आणि बांगलादेशकडून मागणी वाढली आहे. सध्याचा भाव ₹18/kg आहे.
+           तरी कांदा घेणे = जास्त जोखीम. मी तुम्हाला पर्याय दाखवतो जे कमी जोखमीचे आणि जास्त नफ्याचे आहेत."
+           
+           Translation: "You are right — onion hurt many farmers last year. But this year is 
+           different: export ban lifted, demand from Pakistan and Bangladesh has increased, current 
+           price ₹18/kg. Still, onion = higher risk. Let me show you alternatives with lower risk 
+           and better profit."
+           
+      soybean_marathwada_2026:
+        farmer_sentiment: CAUTIOUS
+        reason: "Too many farmers planting soybean this kharif. Prices likely ₹3,200-3,600/q 
+                  at harvest — below break-even for many farmers."
+        agent_response: "सोयाबीन यावेळी खूप जास्त शेतकरी लावत आहेत. कापणीच्या वेळी भाव पडतील.
+                          तुमच्याकडे पाण्याची सोय आहे — तुम्ही वेगळा पर्याय घेऊ शकता."
+                          
+      zucchini_maharashtra_2026:
+        farmer_sentiment: UNKNOWN_BUT_SKEPTICAL
+        reason: "Most Maharashtra farmers have never grown zucchini. Unknown crop = high fear.
+                  Common reactions: 'कोण विकत घेणार?' (who will buy it?), 'हे आमच्याकडे होत नाही' 
+                  (it doesn't grow here), 'बाजार नाही' (no market)."
+        agent_mitigation:
+          fear_1_who_buys:
+            concern: "कोण विकत घेणार?"
+            answer: "Pune APMC (90km), hotel suppliers in Pune (direct selling, no middleman),
+                     BigBasket/Swiggy Instamart (farm-to-app contracts available),
+                     Kolkata, Mumbai export aggregators (INdian zucchini now exports to UAE)."
+          fear_2_will_it_grow:
+            concern: "हे आमच्याकडे होत नाही"
+            answer: "Zucchini grows in 18-30°C. Junnar's temperature range is exactly right.
+                     Needs 500-600mm water/season — your borewell provides this.
+                     3 farmers in nearby Manchar and Otur have grown it successfully."
+          fear_3_no_market:
+            concern: "बाजार नाही"
+            answer: "This IS the opportunity. Because few farmers grow it, mandi doesn't 
+                     handle it yet. But Pune's premium grocery chains, restaurant aggregators, 
+                     and export agents pay ₹25-40/kg (vs ₹4-8/kg for routine vegetables).
+                     The 'no mandi' problem = our market linkage action (agent connects you 
+                     to buyers before you plant, not after harvest)."
+
+  DIMENSION_8_NUTRITION_NATIONAL_PRIORITY:  # NEW
+    question: "What does India need? What crops have government demand tailwind?"
+    sources: Tier 1 RAG (NITI Aayog food security reports, FSSAI nutrition data, national missions)
+    output: national_priority level + government support available
+    examples:
+      - crop: Pulses (tur, chana, moong)
+        priority: CRITICAL
+        reason: "India imports 4-5 lakh MT/year. National Food Security Mission (NFSM) Pulses
+                 gives ₹1,000/quintal bonus above MSP in Maharashtra. Direct procurement in 
+                 mandis at MSP guaranteed. Demand is structural — will not crash."
+      - crop: Millets (bajra, jowar, ragi)
+        priority: HIGH
+        reason: "India led global millet push. PM Poshan scheme uses millets for school meals.
+                 Export demand growing to Africa, Middle East. Maharashtra has dedicated 
+                 millet procurement at MSP."
+      - crop: Oilseeds (sunflower, groundnut)
+        priority: HIGH
+        reason: "India imports 60-65% of edible oil needs. National Mission on Edible Oils.
+                 Sunflower MSP ₹6,760/q — strong floor. But competing with imported palm oil 
+                 on price."
+      - crop: Zucchini / premium vegetables
+        priority: EMERGING
+        reason: "No national priority scheme, but India's urban nutrition shift toward 
+                 Mediterranean diet is structural. Restaurant industry + premium retail 
+                 growing 15-20%/year. No import competition (zucchini is not imported at 
+                 farm level). Price risk is LOW because supply is extremely limited in India."
 ```
-Agent: "Suresh dada, your cotton will be ready to harvest in about 3 weeks.
-       Let's think about what to plant next.
-       Last year you grew soybean — how did it do?"
 
-Farmer: "Theek hi tha, par bhaav kam mila"
+---
 
-Agent: "You're right — soybean prices have been weak this year.
-       Your land near Nagpur has good black soil for chickpea (chana).
-       Government's MSP for chana this year is ₹5,440 per quintal — the highest ever.
-       And your water situation suits chana — it needs less water than soybean.
-       Shall I show you how much you might earn from 1.5 acres of chana?"
+### Non-Traditional Crop Advisory Tier
+
+**The recommendation must include both tiers. A recommendation that only presents traditional crops is incomplete.**
+
+```yaml
+recommendation_output_structure:
+  
+  TIER_1_TRADITIONAL (always present):
+    crops: 2-3 options the farmer's neighbours also grow
+    why_include: farmer comfort, known inputs, local expertise, mandi access
+    presented_as: "Safe, familiar options"
+    example_for_junnar_2026:
+      option_1:
+        crop: Chana (Chickpea) — Rabi
+        investment_per_acre: ₹14,000
+        expected_income: ₹32,000 - ₹46,000
+        risk: LOW (MSP floor + borewell availability for 1-2 irrigations)
+        why: "MSP ₹5,440/q — highest ever. Your rotation after Kharif is perfect for chana."
+      option_2:
+        crop: Safed Kanda (White Onion) — if export season timing right
+        investment_per_acre: ₹35,000
+        expected_income: ₹50,000 - ₹1,40,000
+        risk: HIGH (price volatile — farmer knows this)
+        why: "Export demand currently strong. But price risk is real — 2023 and 2025 both
+              had crashes. I would not recommend without a minimum price agreement first."
+        
+  TIER_2_NON_TRADITIONAL (always present — at least 1 option):
+    crops: 1-2 high-value crops unfamiliar to the region
+    why_include: "With water security and proximity to Pune, you have an unfair advantage
+                  most farmers don't. Ignoring this is leaving money on the table."
+    presented_as: "Higher-opportunity options (requires new learning — I will support you)"
+    example_for_junnar_2026:
+      option_1:
+        crop: Zucchini (Zukini / Courgette)
+        investment_per_acre_year1: ₹55,000 (includes drip setup ₹18,000)
+        investment_per_acre_year2plus: ₹32,000 (drip already installed)
+        expected_income_per_acre: ₹1,80,000 - ₹2,80,000/year (2 crops)
+        risk: MODERATE (market linkage is the key task — solved before planting)
+        why: |
+          "तुमच्याकडे बोअरवेल आहे, पुणे 90km आहे, आणि जुन्नरचे हवामान योग्य आहे.
+           हे तीन गोष्टी मिळून झुकिनी साठी परफेक्ट आहे.
+           
+           (You have borewell water, Pune is 90km away, and Junnar's climate is right.
+            These three things together make zucchini a perfect fit.)"
+           
+          Agronomically: Compatible with your red loamy soil. 65-75 days to first harvest.
+                         Can harvest 2 full crops per year with borewell.
+          
+          Market: ₹20-40/kg at Pune APMC. Direct selling to Pune hotels = ₹30-45/kg.
+                  BigBasket/Swiggy Instamart farm partnerships available.
+                  3 farms in Manchar (35km) already doing this successfully.
+                  
+          Finance: ₹55,000 investment Year 1 → potential ₹2,40,000 income.
+                   NABARD drip irrigation subsidy: 50% of drip cost reimbursed.
+                   KCC loan covers seeds + fertilizer at 4% interest.
+                   
+          My action before you decide: I will contact 2-3 Pune buyer aggregators
+          to confirm they will buy your zucchini BEFORE you plant a single seed.
+          No confirmed buyer = I will not recommend you plant.
+          
+        agent_pre_planting_action: "Market linkage verification BEFORE recommendation is final"
+        
+      option_2:
+        crop: Baby Corn
+        investment_per_acre: ₹22,000
+        expected_income: ₹60,000 - ₹1,00,000 (fresh) / ₹80,000-₹1,20,000 (processed)
+        risk: LOW-MODERATE
+        why: "55-day crop. 3 crops per year. ITC and McCain have contract farming programs —
+              guaranteed buy-back removes market risk entirely. Your water availability 
+              makes 3 cycles/year possible."
+        contract_farming_lead: "I will check current ITC/McCain contract availability 
+                                 for Junnar taluka before recommending."
 ```
 
-**The convergence analysis behind every recommendation:**
+---
+
+### Farmer Perception Conversation Design
+
+**The conversation does not start with the recommendation. It starts with what the farmer already believes.**
+
 ```
-Weather Lens:    "What is the 3-month rainfall outlook for this district?"
-Price Lens:      "What are current and forecast prices for candidate crops?"
-Soil Lens:       "What crops suit this soil type + irrigation level?"
-Market Lens:     "Are many farmers in this district already planting this crop?"
-                 (If yes → prices may fall at harvest → avoid unless MSP protected)
-Policy Lens:     "Any MSP change, export restriction, or subsidy this season?"
-Rotation Lens:   "What was grown last season? What rotation is ideal for soil health?"
-                 ↓
-Recommendation: "Grow chana — good price, suitable for your land, MSP protection, less water."
+STEP 1 — Acknowledge recent experience first (never dismiss it)
+  Agent: "Suresh dada, last year many farmers here lost money on [crop X]. I know you 
+          saw this too. Before I tell you what I think you should plant, let me understand 
+          what you're thinking."
+          
+STEP 2 — Surface the fear explicitly
+  Let the farmer voice concerns. Do NOT immediately rebut.
+  Record: fear of price crash, fear of unknown crop, fear of investment loss, 
+          fear of buyer not available.
+          
+STEP 3 — Address each fear with evidence, not platitudes
+  NOT: "Zucchini acha hai" (Zucchini is good)
+  YES: "Zucchini ke liye Pune mein 3 buyers hain jo ₹25/kg denge — main unka naam 
+        aur number dunga BEFORE you plant. Unse seedha baat karo. Agar woh nahin milte,
+        hum nahin lagaate." 
+        (For zucchini there are 3 buyers in Pune who will pay ₹25/kg — I will give you 
+        their names and numbers BEFORE you plant. Talk to them directly. If they're not 
+        available, we don't plant.)
+        
+STEP 4 — Present numbers, not opinions
+  For every option: investment per acre, expected yield, price range, net profit range.
+  "This is a range, not a guarantee. Let me show you the break-even: if price falls to 
+   ₹15/kg (worst case), you still recover all costs at 2.7 tons/acre. Your expected yield 
+   is 8-12 tons. The downside is capped; the upside is open."
+
+STEP 5 — Connect to other farmers (proof, not theory)
+  "3 farms in Manchar are doing this. Want me to send you their WhatsApp numbers? 
+   Talking to another farmer is worth more than anything I tell you."
 ```
 
-**RAG Sources:**
+**RAG Sources (upgraded):**
 | Tier | Knowledge | Retrieved for |
 |---|---|---|
-| 1 — Domain | ICAR crop suitability matrices (soil type × water availability × region) | Feasibility check |
-| 1 — Domain | NBSS&LUP soil suitability database (static — loaded into Tier 1 RAG at agent init) | Soil-crop compatibility check (R013-02: soil data is static, not a real-time MCP call) |
-| 1 — Domain | Crop rotation benefits and guidelines | Soil health recommendations |
-| 1 — Domain | Input cost estimates per crop (seeds, fertilizer, pesticide, labour) | Cost-benefit in farmer's ₹ |
-| 1 — Domain | Government policy feed (MSP, subsidies, export restrictions — current) | Policy lens |
-| 2 — Customer | Land profile, past crop history, water availability, resources | Personalized recommendation |
-| 2 — Customer | Past season's crop performance (yield vs target) | Calibration |
-| 3 — Platform | Which crops succeeded in nearby districts this and last season (anonymised) | Market saturation check |
+| 1 — Domain | ICAR crop suitability matrices (soil × water × region) | Agronomy dimension |
+| 1 — Domain | NBSS&LUP soil suitability database | Soil-crop compatibility |
+| 1 — Domain | Input cost database (crop × district × season, updated quarterly) | Finance dimension |
+| 1 — Domain | Non-traditional crop guides: zucchini, baby corn, capsicum, dragon fruit, moringa | Non-traditional options |
+| 1 — Domain | Farmer sentiment signals from agri news + cooperative reports (rolling 12 months) | Sentiment dimension |
+| 1 — Domain | Government policy: MSP + state bonus + national missions (NFSM, PM-KISAN, PMKSY) | Geopolitical dimension |
+| 1 — Domain | Buyer directory: Pune/Mumbai premium vegetable buyers, contract farming programs, export aggregators | Market linkage for non-traditional |
+| 1 — Domain | Crop rotation benefits and guidelines | Rotation dimension |
+| 2 — Customer | Land profile, past crop history, water availability, resources, capital capacity | Personalized recommendation |
+| 2 — Customer | Past season's crop performance + farmer's own stated fears | Calibration + sentiment |
+| 3 — Platform | Which crops succeeded in nearby districts (anonymised cross-farmer data) | Market saturation check |
 
-**MCP Tools:**
+**New MCP Tools:**
 | Tool | MCP Server | Action | Authorization | Failure |
 |---|---|---|---|---|
 | Get weather seasonal outlook | weather-ensemble-mcp | weather.get_seasonal_outlook | Always authorized | REQUIRED |
 | Get crop price forecasts | agmarknet-mcp + ncdex | market.get_price_forecast | Always authorized | DEGRADABLE |
-| Get MSP announcements | policy-data-mcp | policy.get_msp_current | Always authorized | DEGRADABLE |
+| Get MSP + state bonus | policy-data-mcp | policy.get_msp_current | Always authorized | DEGRADABLE |
+| **Check buyer availability** | **agri-market-linkage-mcp** | **buyers.check_availability_by_crop_district** | **`CROP_MARKET_LINKAGE` authorized** | **REQUIRED before non-traditional recommendation** |
+| **Get contract farming programs** | **agri-market-linkage-mcp** | **contract.get_active_programs** | **`CROP_MARKET_LINKAGE` authorized** | **DEGRADABLE** |
+| **Get input cost estimates** | **agri-inputs-mcp** | **costs.get_per_acre_by_crop** | **Always authorized** | **DEGRADABLE** |
 | Send recommendation | whatsapp-voice-mcp | message.send_voice | `CROP_RECOMMENDATION` authorized | REQUIRED |
 | Record farmer's crop decision | CE gRPC | RecordEvidence(CROP_PLAN_APPROVED) | Always — C-023 | REQUIRED |
+
+**Constitutional constraints:**
+- A non-traditional crop CANNOT be recommended without confirming at least one real buyer exists in the district or within 150km. "Demand exists" is not sufficient — a named, contactable buyer is required (C-049 Honest Limitation Disclosure).
+- Finance dimension is REQUIRED — a recommendation without investment/income/break-even is incomplete. A farmer cannot make a good crop decision without knowing what it costs.
+- Farmer sentiment must be explicitly surfaced and addressed — ignoring a known fear is a form of information non-exploitation violation (C-048).
+
+
 
 ---
 
