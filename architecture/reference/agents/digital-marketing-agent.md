@@ -1649,6 +1649,259 @@ skill_capability_manifest:
 
 ---
 
+### Skill 11b: Customer Match & First-Party Audience Activation — v2.9
+
+**Skill type:** `FIRST_PARTY_AUDIENCE` (sub-module of `PAID_ADVERTISING`)
+**Specification version:** 2.9 (G-02 — 2026-07-13)
+**Business KPI:** Custom Audience match rate (%) + Lookalike Audience size generated + CPL reduction vs. cold interest-based targeting (%)
+**Execution model:** `APPROVAL_GATE` — customer must explicitly approve data upload with GDPR/DPDPA compliance acknowledgment
+**Phase activation:** Phase 2 — activates when Skill 11 activates; runs as first action before any cold-audience campaign
+
+**Why Customer Match is P0:**
+In a cookieless 2026 world, interest-based Meta/Google targeting is less precise. A dental clinic with 500 patient phone numbers can upload them to Meta → retarget existing patients at ₹2-5 CPL (vs. ₹80-200 CPL cold) and generate a lookalike audience of 50,000 local prospects who statistically resemble existing patients. This is the most powerful paid advertising signal available — and most small businesses never use it.
+
+**Customer Match Workflow:**
+
+```
+STEP 1 — Data inventory (APPROVAL_GATE)
+  Agent asks: "Do you have a list of past patient/client phone numbers or emails?
+               Even 100 contacts will significantly improve our ad targeting.
+               This is completely private — we upload it to Meta/Google in 
+               encrypted form and it's never visible to us or them."
+  
+  Minimum effective: 100 contacts (Meta) / 1,000 contacts (Google — for broader lookalike)
+  Optimal: 500+ contacts for Meta; 5,000+ for Google
+
+STEP 2 — Consent verification (ALWAYS-ASK)
+  Before any upload, agent confirms:
+  ✓ Customer has consent from contacts to receive marketing (DPDPA India compliance)
+  ✓ Customer confirms contacts are from their own business records
+  ✓ Customer uploads file to WAOOAW secure portal (never via WhatsApp/email)
+  Evidence: DATA_UPLOAD_CONSENT evidence record in CAL (C-023)
+  
+STEP 3 — Upload and audience creation
+  Meta Custom Audiences:
+    - Customer list uploaded → Meta hashes and matches → Custom Audience created
+    - Lookalike Audience: 1% lookalike from Custom Audience (city-level, India)
+    - Retargeting Audience: website visitors + Facebook/Instagram engagers (Pixel-based)
+  Google Customer Match:
+    - Customer list uploaded → Google matches to Google accounts
+    - Similar Audiences generated for Google Search + Display
+    
+STEP 4 — Campaign structure (replaces cold-audience campaigns)
+  Priority order (highest to lowest expected ROI):
+    1. Custom Audience retargeting (₹lowest CPL — they already know you)
+    2. Lookalike Audience (₹medium CPL — statistically similar to your best patients)
+    3. Interest-based cold audience (₹highest CPL — fallback when Custom Audience too small)
+    
+STEP 5 — Monthly refresh
+  Agent prompts customer for data refresh every 90 days:
+  "Your patient list has grown since we last uploaded. A fresh upload will improve 
+   your targeting. Takes 2 minutes — same process as before."
+```
+
+**Constitutional safeguards:**
+- DPDPA (India Digital Personal Data Protection Act) compliance check is REQUIRED (not DEGRADABLE) before upload
+- Data is never stored by WAOOAW — it passes through WAOOAW portal to Meta/Google API in hashed form
+- Evidence record: `DATA_UPLOAD_CONSENT` with customer acknowledgment text and timestamp
+- Customer can revoke at any time — agent deletes audience and creates new evidence record `CUSTOM_AUDIENCE_DELETED`
+
+**New MCP Tools:**
+| Tool | MCP Server | Action | Authorization | Failure |
+|---|---|---|---|---|
+| Create Custom Audience | meta-ads-mcp | audience.create_customer_list | `CUSTOMER_MATCH` authorized + CONSENT_VERIFIED | REQUIRED |
+| Create Lookalike | meta-ads-mcp | audience.create_lookalike | `CUSTOMER_MATCH` authorized | DEGRADABLE |
+| Create Google Customer Match | google-ads-mcp | audience.create_customer_match | `CUSTOMER_MATCH` authorized + CONSENT_VERIFIED | DEGRADABLE |
+| Check match rate | meta-ads-mcp | audience.get_match_rate | Always authorized (read-only) | DEGRADABLE |
+| Delete audience | meta-ads-mcp | audience.delete | `CUSTOMER_MATCH` authorized | REQUIRED (on revocation) |
+
+---
+
+### Skill 11c: Dynamic Creative Optimization (DCO) — v2.9
+
+**Skill type:** `DYNAMIC_CREATIVE` (sub-module of `PAID_ADVERTISING`)
+**Specification version:** 2.9 (G-07 — 2026-07-13)
+**Business KPI:** Winning creative CTR vs. control creative CTR + ROAS improvement from creative testing (%)
+**Execution model:** `APPROVAL_GATE` — all 3 creative variants approved by customer before any campaign launches
+**Phase activation:** Phase 2 — replaces single-creative campaigns from Skill 11 activation
+
+**Why DCO is P1:**
+Meta's algorithm performs best when given 3-5 creative variants — it automatically allocates budget to best-performing combinations of headline, image, and body text. Running one creative (current DMA v2.8) leaves 20-40% performance improvement on the table. A mid-size agency never runs a Meta campaign with a single creative.
+
+**3-Variant Creative Brief (default for every Meta campaign):**
+
+```yaml
+dco_campaign_brief:
+  campaign: "WAOOAW_DENTAL_ACQ_AUG2026"
+  objective: LEAD_GENERATION
+  
+  creative_variants:
+    variant_A:  # Rational — cost-focused
+      headline: "Professional dental marketing. ₹1,499/month."
+      hook_type: PRICE_ANCHOR
+      visual: price comparison card (agency vs WAOOAW)
+      hypothesis: "Cost-conscious decision-makers respond to transparent pricing"
+      
+    variant_B:  # Emotional — time/frustration-focused
+      headline: "Stop writing captions at 11 PM. ₹1,499/month."
+      hook_type: PAIN_POINT
+      visual: exhausted business owner → professional handling it
+      hypothesis: "Time-stressed owners respond to relief/escape framing"
+      
+    variant_C:  # Social proof — trust-focused (ONLY available after 50+ customers)
+      headline: "[N] dental clinics. Professional digital marketing."
+      hook_type: SOCIAL_PROOF
+      visual: results/metrics card
+      hypothesis: "Trust-seekers respond to evidence over claims"
+      gate: portfolio_stat_gate.gate_status = UNLOCKED  # C-049 compliance
+      
+  meta_ad_setup:
+    ad_set_type: DYNAMIC_CREATIVE  # Meta allocates budget between variants automatically
+    test_duration_days: 7           # Declare winner after 7 days; pause losers
+    budget_per_day: ₹200 (test phase); ₹[full budget] (scale winner)
+    winning_metric: CPL (lowest cost per lead after statistical significance ≥ 90%)
+    
+  winner_declaration:
+    after: 7 days + ≥50 leads total
+    action: pause losing variants; scale winner to full budget
+    report_to_customer: "Your [Variant B] is performing 34% better than Variant A. 
+                         I've paused Variant A and am scaling Variant B. Here's why it won."
+```
+
+---
+
+### Skill 15: Email Marketing — v2.9 (NEW)
+
+**Skill type:** `EMAIL_MARKETING`
+**Specification version:** 2.9 (G-03 — 2026-07-13)
+**Business KPI:** Email open rate (%) + click-through rate (%) + email-attributed appointment bookings per month
+**Execution model:** `APPROVAL_GATE` for initial sequence setup + first campaign; `SYNTHETIC_APPROVAL` eligible for routine newsletters after 20 approvals
+**Phase activation:** Phase 2 (Growth Engine) — activates at Score 3+ AND customer has an email list of ≥50 contacts
+**MCP dependency:** `email-mcp` (Brevo/Sendinblue integration — free tier: 9,000 emails/month; ₹0 for most SMB customers)
+
+**Customer needs solved:** 📞 Not Enough Leads · 🔁 Customer Retention (zero algorithm dependency)
+
+**Why Email is P0:**
+
+Email is the only owned marketing channel with no algorithm. Instagram reach is 5-8% of followers. Email open rate is 25-35%. A dental clinic with 400 patient emails sending a monthly newsletter reaches 100-140 patients every month — for ₹0 incremental cost. For B2B customers (builders, insurance, banks), email is the primary nurture channel. Email survives every platform algorithm change, every iOS privacy update, every Meta policy shift.
+
+**Decision Space:**
+- **Authorized:** Create and send monthly newsletters; build and send lifecycle automation sequences (welcome series, reactivation campaigns, appointment reminders, seasonal campaigns); manage email list (add subscribers, honor unsubscribes, segment by engagement); A/B test subject lines; track opens/clicks/unsubscribes; generate email content aligned to Campaign Theme Engine brief
+- **Prohibited:** Purchase email lists; send to contacts who have not opted in; remove unsubscribe link from any email; send more than 3 promotional emails per month (anti-spam); share email list with any third party
+- **Always-ask:** Importing a new email list (customer must confirm consent source); sending outside the monthly calendar; any offer or pricing claim in email body (price accuracy confirmation)
+
+**Email Types and Cadence:**
+
+```yaml
+email_types:
+  
+  MONTHLY_NEWSLETTER:
+    frequency: 2/month
+    content_alignment: Campaign Theme Engine brief (same theme as social content)
+    structure:
+      subject_line: A/B tested (2 variants; winner based on open rate after 4 hours)
+      preheader: 40 characters supporting the subject line
+      hero_section: month's key message or offer
+      content_section_1: educational (aligns to blog post of the month — drive blog traffic)
+      content_section_2: patient story or team spotlight (trust-building)
+      content_section_3: reminder of key service + seasonal offer
+      cta_button: ONE primary CTA (book appointment / WhatsApp us)
+      footer: clinic address + phone + unsubscribe link (MANDATORY)
+    
+  WELCOME_SEQUENCE (triggered on new subscriber / new patient WhatsApp opt-in converted to email):
+    email_1 (Day 0):   "Welcome to Dr. Mehta's Dental Clinic — what to expect from us"
+    email_2 (Day 3):   "The one dental habit that makes the biggest difference"
+    email_3 (Day 7):   "Meet our team + your first appointment guide"
+    email_4 (Day 14):  "Our most-asked question: Is [procedure] painful?"
+    email_5 (Day 30):  "Book your first checkup — October special included"
+    
+  REACTIVATION_SEQUENCE (triggered for patients not seen in >12 months):
+    email_1: "It's been a while — we miss you, [Name]"
+    email_2 (Day 5, if no open): "A quick dental health check might surprise you"
+    email_3 (Day 14, if still no response): Final attempt + soft urgency
+    
+  APPOINTMENT_REMINDER (triggered by booking system integration):
+    48h before: "Your appointment is in 2 days — here's what to expect"
+    2h before:  "See you at 3 PM today, [Name]!"
+    24h after:  "Hope your visit went well — a Google review helps other patients" 
+                (review generation trigger — links to Skill 6)
+    
+  SEASONAL_CAMPAIGN (quarterly, aligned to Skill 1 seasonal calendar):
+    Diwali:       "Gift yourself a brighter smile this Diwali"
+    New Year:     "New year, new dental habit"
+    World Oral Health Day (20 March): educational email, no CTA pressure
+```
+
+**DPDPA India Compliance (mandatory):**
+```
+Every email must include:
+  ✓ Business name and address in footer
+  ✓ One-click unsubscribe link (REQUIRED — not just buried text)
+  ✓ "You're receiving this because you're a patient/client of [Business Name]" reason statement
+  
+Consent documentation:
+  Email list must be sourced from:
+    (a) Direct patient/client opt-in (appointment form checkbox)
+    (b) WhatsApp opt-in converted to email (patient provided email + consented to updates)
+    (c) In-person signup at clinic/studio
+  
+  NOT acceptable:
+    ✗ Purchased lists
+    ✗ Scraped contact directories
+    ✗ Business card collections without explicit consent
+    
+Evidence record: EMAIL_LIST_IMPORT with consent_source declared (C-023)
+```
+
+**Technical Setup:**
+
+```yaml
+email_provider: Brevo (formerly Sendinblue)
+  tier: Free (≤9,000 emails/month — sufficient for 0-500 subscribers at 2 emails/month)
+  upgrade_trigger: when subscriber count × 2 > 9,000 (agent alerts customer + recommends upgrade)
+  
+integration:
+  api_key: stored in oauth-vault (ADR-021)
+  sender_email: clinic@drmehtadental.com (customer's own domain — not WAOOAW's)
+  sender_name: "Dr. Mehta's Dental Clinic"
+  reply_to: clinic@drmehtadental.com
+  
+list_management:
+  double_opt_in: REQUIRED for all imported lists
+  unsubscribe_handling: automatic (Brevo handles; WAOOAW records UNSUBSCRIBE_EVENT in CAL)
+  bounce_handling: automatic hard bounce removal
+  segment_tags: new_patient | returning_patient | reactivation_target | vip (score 5+)
+```
+
+**RAG Sources:**
+| Tier | Knowledge | Retrieved for |
+|---|---|---|
+| 1 — Domain | Email marketing best practices India 2026 (healthcare open rates, optimal send times) | Send time optimization, subject line formulas |
+| 1 — Domain | DPDPA India email compliance requirements | Legal compliance |
+| 1 — Domain | Email subject line psychology for healthcare/beauty India audiences | Subject line A/B variants |
+| 2 — Customer | Email list segments, engagement history, past campaign performance | Personalization, content selection |
+| 2 — Customer | Campaign Theme Engine brief (from Skill 2) | Content alignment |
+| 3 — Platform | Anonymised email performance benchmarks by domain + India city (open rates, CTR) | Performance comparison |
+
+**MCP Tools:**
+| Tool | MCP Server | Action | Authorization | Failure |
+|---|---|---|---|---|
+| Create campaign | email-mcp | campaign.create | `EMAIL_CAMPAIGN` authorized + APPROVED | REQUIRED |
+| Send campaign | email-mcp | campaign.send | `EMAIL_SEND` authorized + APPROVED | REQUIRED |
+| Create automation | email-mcp | automation.create | `EMAIL_AUTOMATION` authorized + APPROVED | DEGRADABLE |
+| Import contacts | email-mcp | contacts.import | `EMAIL_LIST_IMPORT` authorized + CONSENT_VERIFIED | REQUIRED |
+| Get campaign stats | email-mcp | campaign.get_stats | Always authorized (read-only) | DEGRADABLE |
+| Add unsubscribe | email-mcp | contacts.unsubscribe | Always authorized | REQUIRED |
+| Create segment | email-mcp | contacts.create_segment | `EMAIL_MARKETING` authorized | DEGRADABLE |
+
+**Constitutional constraints:**
+- Unsubscribe handling is REQUIRED (not DEGRADABLE) — a non-functional unsubscribe link is a constitutional violation (C-048, Non-Exploitation)
+- No email is sent without customer approval for the first 3 sends; then eligible for Synthetic Approval at subject line + content level
+- DPDPA consent verification is REQUIRED before any list import — failure to verify blocks the import (not DEGRADABLE)
+- Email content must pass SCR Check 3 (compliance) — healthcare pricing and outcome claims in email are identical to social media compliance rules
+
+---
+
 ### Skill 12: Conversion Optimisation
 
 **Skill type:** `CONVERSION_OPTIMISATION`
