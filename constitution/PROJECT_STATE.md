@@ -1,8 +1,8 @@
 # PROJECT_STATE.md
 
 **Last Updated:** 2026-07-18
-**Version:** 0.80.0
-**Session:** 2026-07-18 — SESSION CLOSE (C-067 Blue-Green + Cost Constitutional Constraint + deployment scripts)
+**Version:** 0.81.0
+**Session:** 2026-07-18 — SESSION CLOSE (Index files updated for token optimisation — AGENT-ENTRY.md v0.80.0, knowledge/index.md C-036–C-067 added)
 
 ---
 
@@ -48,6 +48,8 @@ FOUNDER ACTIONS OUTSTANDING (before live customers):
   P1: Brevo (email) account for each customer domain (free tier, no cost)
   DECISION: X (Twitter) API — $100/month, Founder decision needed
 ```
+
+| v0.81.0 | **Index files updated for token optimisation** — `constitution/AGENT-ENTRY.md`: Current Platform State updated to v0.80.0 / 67 claims / 5 agents; Office Routing table adds Platform IT Expert + WAOOAW AI Agent — Legal rows; Key File Map expands with UX/Legal/Brand/Scripts/new workflow sections. `knowledge/index.md`: C-036–C-067 compact index table added (32 new claims with type, condensed statement, ratification date). |
 
 | v0.80.0 | **C-067 Blue-Green + Cost Constitutional Constraint** — `knowledge/claims/C-067.md`; `scripts/blue-green-deploy.sh` (Azure Container Apps revision-based: 0% green → canary 10% → 100% green → blue deactivated within 30min); `promote.yaml` updated with cost gate (block at 95% of INR 10k/env/month ceiling) + blue-green deployment; `adr/ADR-027` O-12 added. Cost per deployment: ~₹0.30. Constitutional cost ceilings: dev/qa/demo/uat ₹10k/month, prod ₹15k/month. |
 

@@ -88,8 +88,49 @@ Derived from CONFIRMED or LAW claims. These authorize specific architectural dec
 
 | Status | Count | IDs |
 |---|---|---|
-| RATIFIED | 35 | All claims C-001 through C-035 |
+| RATIFIED | 67 | C-001 through C-067 (all) |
 | DRAFT | 0 | — |
+
+---
+
+## C-036 through C-067 — All RATIFIED (compact index)
+
+*Detailed claim files: `knowledge/claims/C-NNN.md`*
+
+| ID | Type | Statement (condensed) | Ratified |
+|---|---|---|---|
+| C-036 | CONFIRMED | Agent requires declared skills — no ad-hoc task execution | 2026-07-09 |
+| C-037 | CONFIRMED | Business KPI primacy — agent measures success by customer outcome | 2026-07-09 |
+| C-038 | LAW | Pro-rata billing on pause/terminate — constitutional right, not policy | 2026-07-09 |
+| C-039 | CONFIRMED | Conversational config — natural language must always be a path | 2026-07-09 |
+| C-040 | LAW | Domain specialisation obligation — agent must be genuinely domain-specific | 2026-07-09 |
+| C-041 | LAW | Every MCP tool call governed by Decision Space — default deny | 2026-07-09 |
+| C-042 | LAW | Vocabulary Mandate — no technical data to low-literacy customers | 2026-07-09 |
+| C-043 | CONFIRMED | Financial authority ceiling — agent cannot spend above customer-set limit | 2026-07-09 |
+| C-044 | CONFIRMED | Synthetic Approval — all approvals via CE, no simulated approvals | 2026-07-09 |
+| C-045 | CONFIRMED | LLM inference is professional judgment — not data retrieval | 2026-07-09 |
+| C-046 | CONFIRMED | RAG retrieval is professional knowledge access — not search | 2026-07-09 |
+| C-047 | LAW | AI Execution Loop — every skill runs the 5-step loop (SENSE/RETRIEVE/REASON/ACT/RECORD) | 2026-07-09 |
+| C-048 | LAW | Information Non-Exploitation — agent's expertise used only for customer benefit | 2026-07-09 |
+| C-049 | LAW | Honest Limitation Disclosure — agent must say when it cannot deliver | 2026-07-09 |
+| C-050 | LAW | Strategic Cognition Obligation — agent plans beyond immediate task | 2026-07-11 |
+| C-051 | CONFIRMED | Token Economy Layer — 66-74% cost reduction via 4-tier routing | 2026-07-11 |
+| C-052 | CONFIRMED | Context Fidelity + SEBI Isolation + Creative Fingerprint Uniqueness | 2026-07-11 |
+| C-053 | LAW | Signal Intelligence Layer — proactive signal detection (SIL) | 2026-07-12 |
+| C-054 | LAW | Skill Intelligence Router — cross-skill capability awareness (SIR) | 2026-07-12 |
+| C-055 | LAW | Campaign Coherence Obligation — all content serves the campaign | 2026-07-12 |
+| C-056 | LAW | Ad Spend Transparency — customer sees every rupee spent | 2026-07-12 |
+| C-057 | LAW | AI Agency Standard — WAOOAW DMA operates as a constitutional AI agency | 2026-07-12 |
+| C-058 | LAW | Video Brief Primacy — brief before credits; concept before generation | 2026-07-12 |
+| C-059 | LAW | Implementation Traceability — every code line traces to IB item + constitutional claim | 2026-07-13 |
+| C-060 | LAW | Minor Student Protection — highest data tier; no camera; no commercial contact to student | 2026-07-13 |
+| C-061 | LAW | Content Safety Scan — mandatory CSAM/explicit content gate before store/deliver | 2026-07-13 |
+| C-062 | PLATFORM_SECURITY | AI Security — prompt injection defence; Decision Space cannot be bypassed by conversation | 2026-07-13 |
+| C-063 | PRIVACY | Data Minimisation — PII detection and redaction; agents never solicit unnecessary PII | 2026-07-13 |
+| C-064 | INSTITUTIONAL_IDENTITY | Three-Human Institution — Yogesh/Sujay/Ojal are the only humans; all else = WAOOAW AI Agent — [function] | 2026-07-18 |
+| C-065 | PLATFORM_INTEGRITY | SDLC Separation of Duties — Author ≠ Reviewer ≠ Deployment Confirmer (Article VII for software) | 2026-07-18 |
+| C-066 | PLATFORM_INTEGRITY | Autonomous Development Authorization Tiers — 4 tiers: 0=emergency / 1=Sujay / 2=Sujay+IB / 3=Yogesh | 2026-07-18 |
+| C-067 | PLATFORM_INTEGRITY | Blue-Green + Cost-Constrained Deployment — ₹10k/env/month ceiling; blue deactivated ≤30min after green verified | 2026-07-18 |
 
 ---
 
