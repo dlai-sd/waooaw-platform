@@ -55,27 +55,47 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS_DEV }}
 
-      - name: Deploy to Azure Container Apps (dev)
+      # ─── C-067 Cost Gate — check before any deployment ───────────────────
+      - name: Cost gate check (C-067 — constitutional cost ceiling)
         run: |
-          # Update each Container App to the new image
+          ENVIRONMENT="dev"
+          CEILING=10000  # INR 10,000/month for dev (ADR-027 / C-067)
+
+          # Query current month Azure spend for dev resource group
+          CURRENT_MONTH=$(date +%Y-%m-01)
+          CURRENT_COST=$(az consumption usage list \
+            --start-date "$CURRENT_MONTH" \
+            --end-date "$(date +%Y-%m-%d)" \
+            --query "sum([?contains(instanceId,'waooaw-dev')].pretaxCost)" \
+            --output tsv 2>/dev/null || echo "0")
+          CURRENT_COST=${CURRENT_COST:-0}
+
+          echo "Current month spend (dev): ₹${CURRENT_COST} / ₹${CEILING}"
+
+          if (( $(echo "$CURRENT_COST > $CEILING * 0.95" | bc -l) )); then
+            echo "❌ COST GATE BLOCKED (C-067): Monthly spend exceeds 95% of ₹${CEILING} ceiling"
+            exit 1
+          fi
+          if (( $(echo "$CURRENT_COST > $CEILING * 0.80" | bc -l) )); then
+            echo "⚠️  COST WARNING: spend >80% of constitutional ceiling"
+          fi
+          echo "✓ Cost gate passed"
+
+      # ─── C-067 Blue-Green deployment to dev ───────────────────────────────
+      - name: Blue-Green deploy to dev (C-067)
+        run: |
           SERVICES=(constitutional-engine business-platform professional-runtime ai-runtime web)
           for svc in "${SERVICES[@]}"; do
-            az containerapp update \
-              --name $svc \
-              --resource-group waooaw-dev \
-              --image ${{ env.REGISTRY_PREFIX }}/$svc:sha-${{ github.sha }}
+            ./scripts/blue-green-deploy.sh \
+              --service "$svc" \
+              --image "${{ env.REGISTRY_PREFIX }}/$svc:sha-${{ github.sha }}" \
+              --resource-group "waooaw-dev" \
+              --environment "dev" \
+              --sha "${{ github.sha }}"
           done
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Wait for all services healthy
-        run: |
-          SERVICES=(business-platform professional-runtime)
-          for svc in "${SERVICES[@]}"; do
-            az containerapp revision list \
-              --name $svc \
-              --resource-group waooaw-dev \
-              --query "[?properties.active].properties.healthState" \
-              --output tsv | grep -q "Healthy" || exit 1
-          done
 
   # ─── Integration tests ────────────────────────────────────────────────────
   integration-tests:

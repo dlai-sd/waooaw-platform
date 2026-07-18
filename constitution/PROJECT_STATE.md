@@ -1,8 +1,8 @@
 # PROJECT_STATE.md
 
 **Last Updated:** 2026-07-18
-**Version:** 0.79.0
-**Session:** 2026-07-18 — SESSION CLOSE (Platform IT Expert spec + C-065 + C-066 + autonomous SDLC workflows)
+**Version:** 0.80.0
+**Session:** 2026-07-18 — SESSION CLOSE (C-067 Blue-Green + Cost Constitutional Constraint + deployment scripts)
 
 ---
 
@@ -12,7 +12,7 @@
 INSTITUTION:  WAOOAW — autonomous digital professionals under constitutional governance
 GATE:         G5 prerequisites met (G5 CLEAR ≠ implementation authorization for any session)
 VERSION:      0.71.0
-CONSTITUTIONAL CLAIMS: C-001 to C-066 (66 ratified claims)
+CONSTITUTIONAL CLAIMS: C-001 to C-067 (67 ratified claims)
 AGENTS: DMA v2.9 | Trading v1.7 | Agricultural Advisor v2.7 | Private Tutor v1.0
 CCTs: 35 | ADRs: 27 | SECURITY: Audit-ready | INFRA: Cloud-optimized
 FOUNDER ACTIONS: 17+ catalogued in security/FOUNDER-ACTIONS.md
@@ -48,6 +48,8 @@ FOUNDER ACTIONS OUTSTANDING (before live customers):
   P1: Brevo (email) account for each customer domain (free tier, no cost)
   DECISION: X (Twitter) API — $100/month, Founder decision needed
 ```
+
+| v0.80.0 | **C-067 Blue-Green + Cost Constitutional Constraint** — `knowledge/claims/C-067.md`; `scripts/blue-green-deploy.sh` (Azure Container Apps revision-based: 0% green → canary 10% → 100% green → blue deactivated within 30min); `promote.yaml` updated with cost gate (block at 95% of INR 10k/env/month ceiling) + blue-green deployment; `adr/ADR-027` O-12 added. Cost per deployment: ~₹0.30. Constitutional cost ceilings: dev/qa/demo/uat ₹10k/month, prod ₹15k/month. |
 
 | v0.79.0 | **Platform IT Expert Agent + C-065 + C-066** — `architecture/reference/agents/platform-it-expert-agent.md` (11 SDLC skills, 8 gaps closed, full GitHub component integration). C-065: SDLC Separation of Duties (Article VII applied to software development — author ≠ reviewer ≠ deployment confirmer). C-066: 4-tier autonomous authorization model (Tier 0 emergency=immediate, Tier 1 bugfix=Sujay, Tier 2 feature=Sujay+IB authorized, Tier 3 constitutional=Yogesh). New workflows: `emergency-halt-check.yaml` (C-001 for pipelines), `post-deploy-verify.yaml` (C-065 independent verification + auto-rollback). CI.yaml: C-059 constitutional commit gate + C-066 authorization tier check. |
 

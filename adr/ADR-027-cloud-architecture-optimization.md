@@ -181,6 +181,43 @@ AZURE_OPENAI_ENDPOINT=https://waooaw-ai.openai.azure.com/  # UAE North deploymen
 
 ---
 
+### O-12 — Blue-Green Deployment Strategy ✅ Implemented (v0.79.0)
+
+**Decision:** All environment deployments use Azure Container Apps revision-based Blue-Green strategy.
+
+**Constitutional basis:** C-067 (Blue-Green + Cost-Constrained Deployment); C-001 (zero-downtime); C-065 (Deployer ≠ Deployment Confirmer).
+
+**How it works on Container Apps:**
+1. Enable `revision mode: multiple` on each Container App
+2. Deploy new image as a new revision (green) — receives 0% traffic initially
+3. Health-check green at 0% traffic
+4. Canary: shift 10% traffic to green; check error rate for 30 seconds
+5. If canary passes: shift 100% traffic to green
+6. Deactivate old revision (blue) — scales to zero within 30 minutes (C-067 cost rule)
+7. If any step fails: traffic shifts 100% back to blue; green is deactivated
+
+**Cost impact:** ~₹0.30 per deployment (15–30 min dual-revision window). See C-067 for full math.
+
+**Why this is cost-neutral:**
+Azure Container Apps Consumption plan charges per CPU-second used, not per revision provisioned. A revision receiving 0% traffic and scaled to 0 costs exactly ₹0. The brief dual-running window during verification adds negligible cost.
+
+**Implementation:**
+- `scripts/blue-green-deploy.sh` — deployment orchestrator per service
+- `.github/workflows/promote.yaml` — calls blue-green script + C-067 cost gate
+- C-067 cost gate: blocks deployment if current month spend > 95% of ₹10,000 ceiling (dev/qa/demo/uat) or ₹15,000 (prod)
+
+**Constitutional cost ceilings (C-067):**
+
+| Environment | Monthly ceiling | Warning at | Block at |
+|---|---|---|---|
+| dev | ₹10,000 | ₹8,000 (80%) | ₹9,500 (95%) |
+| qa | ₹10,000 | ₹8,000 | ₹9,500 |
+| demo | ₹10,000 | ₹8,000 | ₹9,500 |
+| uat | ₹10,000 | ₹8,000 | ₹9,500 |
+| prod | ₹15,000 | ₹12,000 | ₹14,250 |
+
+---
+
 ## Scalability Architecture (Planned — Not Yet Implemented)
 
 ### Tier 3: 100–1,000 customers
