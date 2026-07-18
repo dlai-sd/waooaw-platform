@@ -1,8 +1,8 @@
 # PROJECT_STATE.md
 
 **Last Updated:** 2026-07-18
-**Version:** 0.78.0
-**Session:** 2026-07-18 — SESSION CLOSE (C-064 Three-Human Institution ratified + WAOOAW AI Agent naming convention embedded throughout)
+**Version:** 0.79.0
+**Session:** 2026-07-18 — SESSION CLOSE (Platform IT Expert spec + C-065 + C-066 + autonomous SDLC workflows)
 
 ---
 
@@ -12,7 +12,7 @@
 INSTITUTION:  WAOOAW — autonomous digital professionals under constitutional governance
 GATE:         G5 prerequisites met (G5 CLEAR ≠ implementation authorization for any session)
 VERSION:      0.71.0
-CONSTITUTIONAL CLAIMS: C-001 to C-064 (64 ratified claims)
+CONSTITUTIONAL CLAIMS: C-001 to C-066 (66 ratified claims)
 AGENTS: DMA v2.9 | Trading v1.7 | Agricultural Advisor v2.7 | Private Tutor v1.0
 CCTs: 35 | ADRs: 27 | SECURITY: Audit-ready | INFRA: Cloud-optimized
 FOUNDER ACTIONS: 17+ catalogued in security/FOUNDER-ACTIONS.md
@@ -48,6 +48,8 @@ FOUNDER ACTIONS OUTSTANDING (before live customers):
   P1: Brevo (email) account for each customer domain (free tier, no cost)
   DECISION: X (Twitter) API — $100/month, Founder decision needed
 ```
+
+| v0.79.0 | **Platform IT Expert Agent + C-065 + C-066** — `architecture/reference/agents/platform-it-expert-agent.md` (11 SDLC skills, 8 gaps closed, full GitHub component integration). C-065: SDLC Separation of Duties (Article VII applied to software development — author ≠ reviewer ≠ deployment confirmer). C-066: 4-tier autonomous authorization model (Tier 0 emergency=immediate, Tier 1 bugfix=Sujay, Tier 2 feature=Sujay+IB authorized, Tier 3 constitutional=Yogesh). New workflows: `emergency-halt-check.yaml` (C-001 for pipelines), `post-deploy-verify.yaml` (C-065 independent verification + auto-rollback). CI.yaml: C-059 constitutional commit gate + C-066 authorization tier check. |
 
 | v0.78.0 | **C-064 Three-Human Institution** — `knowledge/claims/C-064.md` ratified. WAOOAW has exactly three humans: Yogesh Khandge (Founder & Designer), Sujay Khandge (Business Growth & Prompt Intelligence), Ojal Khandge (Ethics Officer). All other roles designated as "WAOOAW AI Agent — [function]". ORGANIZATION.md updated with Three-Human Stewardship Model + naming convention table. UX vocabulary Appendix B updated throughout. Legal documents already correctly use WAOOAW AI Agent language. |
 

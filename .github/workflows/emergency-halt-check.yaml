@@ -1,0 +1,52 @@
+# Emergency Halt Check — runs before every deployment stage
+# Constitutional basis: C-001 (Human Override — unconditional); C-066 (Authorization Tiers)
+# Purpose: Any of the three humans (Yogesh, Sujay, Ojal) can apply the label
+#          'emergency:halt-deployments' to any open GitHub Issue to immediately
+#          stop all in-progress and pending deployments across all environments.
+#
+# Usage: Apply label 'emergency:halt-deployments' to any open issue.
+#        Remove the label to resume deployments.
+#
+# This is the CI/CD expression of C-001: Human Override is unconditional
+# and architecturally guaranteed — including for automated pipelines.
+
+name: Emergency Halt Check
+
+on:
+  workflow_call:  # Called by ci.yaml and promote.yaml before every deploy stage
+
+jobs:
+  check-halt:
+    name: Check for Emergency Halt signal
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check emergency:halt-deployments label
+        run: |
+          HALT_COUNT=$(gh issue list \
+            --label "emergency:halt-deployments" \
+            --state open \
+            --json number \
+            --jq 'length' \
+            --repo ${{ github.repository }})
+
+          if [ "$HALT_COUNT" -gt "0" ]; then
+            echo "🔴 EMERGENCY HALT DETECTED"
+            echo "One or more open issues have the 'emergency:halt-deployments' label."
+            echo ""
+            echo "This deployment has been STOPPED per C-001 (Human Override — unconditional)."
+            echo ""
+            echo "To resume deployments:"
+            echo "1. Resolve the emergency"
+            echo "2. Remove the 'emergency:halt-deployments' label from all issues"
+            echo "3. Re-trigger the deployment"
+            echo ""
+            gh issue list --label "emergency:halt-deployments" --state open \
+              --json number,title,url \
+              --jq '.[] | "Issue #\(.number): \(.title)\n\(.url)"' \
+              --repo ${{ github.repository }}
+            exit 1
+          fi
+
+          echo "✓ No emergency halt signal. Proceeding with deployment."
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

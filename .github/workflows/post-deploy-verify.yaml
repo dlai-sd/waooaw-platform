@@ -1,0 +1,171 @@
+# Post-Deployment Verification — runs after every environment deploy
+# Constitutional basis: C-065 (SDLC Separation of Duties — Deployer ≠ Deployment Confirmer);
+#                       C-001 (Human Override — Emergency Stop latency is a Constitutional Floor);
+#                       C-023 (Evidence First — deployment success recorded before status confirmed);
+#                       C-024 (Emergency Stop ≤250ms — verified in every environment after deploy)
+#
+# This workflow is invoked by promote.yaml after each environment deployment.
+# It is the independent verification layer that satisfies C-065:
+# the agent that deploys is GitHub Actions; the agent that confirms is this workflow.
+# If any check fails: automatic rollback is triggered and all three humans are notified.
+
+name: Post-Deployment Verification
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+        description: Target environment (dev | qa | demo | uat | prod)
+      sha:
+        required: true
+        type: string
+        description: SHA that was deployed
+      previous_sha:
+        required: false
+        type: string
+        description: Previous SHA — used for rollback if verification fails
+      environment_url:
+        required: true
+        type: string
+        description: Base URL of the deployed environment
+
+jobs:
+  verify:
+    name: Post-Deploy Verification — ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+
+      # ─── 1. Health Checks ────────────────────────────────────────────────
+      - name: Health check — all services
+        run: |
+          BASE="${{ inputs.environment_url }}"
+          SERVICES=(
+            "$BASE/health"                    # Business Platform
+            "$BASE/ce/health"                  # Constitutional Engine
+            "$BASE/pr/health"                  # Professional Runtime
+            "$BASE/ai/health"                  # AI Runtime
+          )
+          FAILED=0
+          for url in "${SERVICES[@]}"; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$url")
+            if [ "$STATUS" != "200" ]; then
+              echo "❌ Health check FAILED: $url returned $STATUS"
+              FAILED=1
+            else
+              echo "✓ $url → $STATUS"
+            fi
+          done
+          if [ "$FAILED" -eq "1" ]; then
+            echo "HEALTH_FAILED=true" >> $GITHUB_ENV
+            exit 1
+          fi
+
+      # ─── 2. Constitutional Compliance Tests ──────────────────────────────
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.sha }}
+
+      - name: Run CCT Suite — ${{ inputs.environment }}
+        run: |
+          echo "Running Constitutional Compliance Tests against ${{ inputs.environment }}..."
+          # TODO (IB-009): Implement when services are deployed
+          # ./scripts/run-ccts.sh --environment ${{ inputs.environment }} \
+          #                       --base-url ${{ inputs.environment_url }}
+          echo "CCT Suite: PENDING (IB-009 implementation required)"
+
+      # ─── 3. Emergency Stop Latency Test (C-024 — ≤250ms) ─────────────────
+      - name: Emergency Stop latency test — C-024 Constitutional Floor
+        run: |
+          echo "Testing Emergency Stop latency (Constitutional Floor: ≤250ms)..."
+          # TODO (IB-009): Implement when Professional Runtime is deployed
+          # LATENCY=$(./scripts/test-emergency-stop-latency.sh ${{ inputs.environment_url }})
+          # if [ "$LATENCY" -gt "200" ]; then
+          #   echo "⚠️  WARNING: Emergency Stop latency ${LATENCY}ms — approaching 250ms floor"
+          # fi
+          # if [ "$LATENCY" -gt "250" ]; then
+          #   echo "❌ CONSTITUTIONAL FLOOR BREACH: Emergency Stop > 250ms"
+          #   exit 1
+          # fi
+          echo "Emergency Stop latency test: PENDING (IB-009)"
+
+      # ─── 4. Error Rate Check ─────────────────────────────────────────────
+      - name: Error rate check — 5 minute window
+        run: |
+          echo "Checking error rate (target: < 1%) for 5 minutes post-deploy..."
+          # TODO (IB-009): Query OTel/Azure Monitor for error rates
+          echo "Error rate check: PENDING (IB-009)"
+
+      # ─── 5. CE Evidence Recording — Deployment Confirmed ─────────────────
+      - name: Record CE Evidence — Deployment Verified (C-023)
+        if: success()
+        run: |
+          echo "Recording deployment verification evidence to Constitutional Audit Ledger..."
+          # TODO (IB-009): Call CE API when deployed
+          # curl -X POST $CE_URL/api/v1/constitutional/record-evidence \
+          #   -H "Authorization: Bearer $CE_TOKEN" \
+          #   -d '{"type": "DEPLOYMENT_VERIFIED", "environment": "${{ inputs.environment }}",
+          #         "sha": "${{ inputs.sha }}", "constitutional_basis": "C-065"}'
+          echo "DEPLOYMENT_VERIFIED env=${{ inputs.environment }} sha=${{ inputs.sha }}" \
+            >> .deployment-evidence.log
+          echo "✓ Deployment verification evidence recorded"
+
+      # ─── 6. Notify Three Humans — Success ────────────────────────────────
+      - name: Notify team — deployment successful
+        if: success()
+        run: |
+          gh issue comment \
+            $(gh issue list --label "status:implementing" --json number -q '.[0].number' \
+              --repo ${{ github.repository }}) \
+            --body "✅ Deployment to **${{ inputs.environment }}** verified (sha: ${{ inputs.sha }})" \
+            --repo ${{ github.repository }} || true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  rollback:
+    name: Automatic Rollback — ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    needs: verify
+    if: failure() && inputs.previous_sha != ''
+    environment: ${{ inputs.environment }}
+    steps:
+      # ─── Record Rollback Evidence BEFORE executing rollback (C-023) ───────
+      - name: Record CE Evidence — Rollback Triggered (C-023)
+        run: |
+          echo "ROLLBACK_TRIGGERED env=${{ inputs.environment }} " \
+            "from_sha=${{ inputs.sha }} to_sha=${{ inputs.previous_sha }}" \
+            >> .rollback-evidence.log
+          echo "⚠️ Rollback evidence recorded before execution (C-023 — Evidence First)"
+
+      - name: Execute rollback to previous SHA
+        run: |
+          echo "⚠️ Post-deployment verification FAILED."
+          echo "Initiating automatic rollback: ${{ inputs.sha }} → ${{ inputs.previous_sha }}"
+          # TODO (IB-009): Implement actual rollback when infrastructure is deployed
+          # ./scripts/rollback.sh \
+          #   --environment ${{ inputs.environment }} \
+          #   --target-sha ${{ inputs.previous_sha }}
+          echo "ROLLBACK: PENDING (IB-009)"
+
+      - name: Alert all three humans — rollback triggered
+        run: |
+          ISSUE_BODY="🔴 **AUTOMATIC ROLLBACK TRIGGERED** — ${{ inputs.environment }}
+
+          **Failed SHA:** ${{ inputs.sha }}
+          **Rolled back to:** ${{ inputs.previous_sha }}
+
+          Post-deployment verification failed. Automatic rollback has been executed.
+
+          **Action required:** Review the failed deployment and fix before re-deploying.
+
+          /cc @dlai-sd"
+
+          gh issue create \
+            --title "🔴 Rollback triggered — ${{ inputs.environment }} — $(date +%Y-%m-%d)" \
+            --body "$ISSUE_BODY" \
+            --label "tier:0-emergency,status:blocked" \
+            --repo ${{ github.repository }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

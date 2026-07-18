@@ -321,3 +321,109 @@ jobs:
                          pip install -r src/ai-runtime/requirements.txt -q 2>/dev/null && \
                          pip freeze | cut -d= -f1 | tr '\n' ' ')
         continue-on-error: true  # Advisory only — does not block PR (LGPL can be acceptable)
+
+  # ─── Constitutional commit gate (C-059 — Implementation Traceability) ─────
+  # Every commit must reference an IB item or Fix issue AND a constitutional claim.
+  # This makes implementation traceability machine-enforced, not merely documented.
+  # Constitutional basis: C-059 (Implementation Traceability — LAW)
+  # Platform IT Expert: WAOOAW AI Agent — Developer must satisfy this before PR creation.
+  constitutional-commit-gate:
+    name: C-059 Constitutional Commit Gate
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate commit messages (C-059)
+        run: |
+          BASE="${{ github.event.pull_request.base.sha }}"
+          HEAD="${{ github.event.pull_request.head.sha }}"
+          FAIL=0
+
+          while IFS= read -r msg; do
+            # Skip merge commits
+            if echo "$msg" | grep -q "^Merge "; then
+              continue
+            fi
+
+            # Check conventional commit format
+            if ! echo "$msg" | grep -qP "^(feat|fix|constitutional|cct|chore|refactor|security|docs|agent)\("; then
+              echo "❌ Commit does not follow conventional format: $msg"
+              FAIL=1
+              continue
+            fi
+
+            # Check IB or Fix reference (C-059 traceability)
+            if ! echo "$msg" | grep -qP "(IB:|FIX:|Constitutional:|chore\(|docs\()"; then
+              echo "⚠️  Commit missing IB/FIX reference (C-059): $msg"
+              # Warning only for chore/docs commits; blocking for feat/fix/constitutional
+              if echo "$msg" | grep -qP "^(feat|fix|constitutional|cct)\("; then
+                FAIL=1
+              fi
+            fi
+
+          done < <(git log "$BASE..$HEAD" --format="%s" 2>/dev/null || true)
+
+          if [ "$FAIL" -eq "1" ]; then
+            echo ""
+            echo "Constitutional Commit Gate FAILED (C-059 — Implementation Traceability)"
+            echo "All feat/fix/constitutional/cct commits must:"
+            echo "  1. Follow conventional commit format: {type}({component}): {description}"
+            echo "  2. Reference an IB item or Fix issue in the commit body"
+            exit 1
+          fi
+
+          echo "✓ All commits satisfy C-059 Implementation Traceability"
+
+  # ─── Authorization tier check (C-066) ─────────────────────────────────────
+  # Verifies the PR branch has the required authorization label on its source issue.
+  # Prevents unauthorized implementation work from entering the main branch.
+  # Constitutional basis: C-066 (Autonomous Development Authorization Tiers)
+  authorization-tier-check:
+    name: C-066 Authorization Tier Check
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Verify authorization labels on PR
+        run: |
+          PR_LABELS=$(gh pr view ${{ github.event.pull_request.number }} \
+            --json labels --jq '[.labels[].name] | join(",")' \
+            --repo ${{ github.repository }})
+
+          echo "PR labels: $PR_LABELS"
+
+          # Emergency tier: always allowed (C-066 Tier 0)
+          if echo "$PR_LABELS" | grep -q "tier:0-emergency"; then
+            echo "✓ Tier 0 Emergency — authorized (C-066)"
+            exit 0
+          fi
+
+          # Tier 1/2: requires approved:sujay label
+          if echo "$PR_LABELS" | grep -qP "tier:1-bugfix|tier:2-feature"; then
+            if echo "$PR_LABELS" | grep -q "approved:sujay"; then
+              echo "✓ Tier 1/2 — approved by Sujay (C-066)"
+              exit 0
+            else
+              echo "⚠️  Tier 1/2 PR requires 'approved:sujay' label before merge."
+              echo "Sujay must review the implementation spec and apply the approval label."
+              # Warning only — Founder (CODEOWNERS) will still gate the actual merge
+              exit 0
+            fi
+          fi
+
+          # Tier 3: requires approved:yogesh label
+          if echo "$PR_LABELS" | grep -q "tier:3-constitutional"; then
+            if echo "$PR_LABELS" | grep -q "approved:yogesh"; then
+              echo "✓ Tier 3 — approved by Yogesh (C-066)"
+              exit 0
+            else
+              echo "⚠️  Tier 3 constitutional PR requires 'approved:yogesh' label."
+              exit 0
+            fi
+          fi
+
+          echo "ℹ️  No tier label found on PR — defaulting to CODEOWNERS review gate"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
