@@ -1,8 +1,8 @@
 # PROJECT_STATE.md
 
 **Last Updated:** 2026-07-18
-**Version:** 0.77.0
-**Session:** 2026-07-18 — SESSION CLOSE (5 legal documents + constitutional audit: 15 gaps found and fixed)
+**Version:** 0.78.0
+**Session:** 2026-07-18 — SESSION CLOSE (C-064 Three-Human Institution ratified + WAOOAW AI Agent naming convention embedded throughout)
 
 ---
 
@@ -12,7 +12,7 @@
 INSTITUTION:  WAOOAW — autonomous digital professionals under constitutional governance
 GATE:         G5 prerequisites met (G5 CLEAR ≠ implementation authorization for any session)
 VERSION:      0.71.0
-CONSTITUTIONAL CLAIMS: C-001 to C-063 (63 ratified claims)
+CONSTITUTIONAL CLAIMS: C-001 to C-064 (64 ratified claims)
 AGENTS: DMA v2.9 | Trading v1.7 | Agricultural Advisor v2.7 | Private Tutor v1.0
 CCTs: 35 | ADRs: 27 | SECURITY: Audit-ready | INFRA: Cloud-optimized
 FOUNDER ACTIONS: 17+ catalogued in security/FOUNDER-ACTIONS.md
@@ -48,6 +48,8 @@ FOUNDER ACTIONS OUTSTANDING (before live customers):
   P1: Brevo (email) account for each customer domain (free tier, no cost)
   DECISION: X (Twitter) API — $100/month, Founder decision needed
 ```
+
+| v0.78.0 | **C-064 Three-Human Institution** — `knowledge/claims/C-064.md` ratified. WAOOAW has exactly three humans: Yogesh Khandge (Founder & Designer), Sujay Khandge (Business Growth & Prompt Intelligence), Ojal Khandge (Ethics Officer). All other roles designated as "WAOOAW AI Agent — [function]". ORGANIZATION.md updated with Three-Human Stewardship Model + naming convention table. UX vocabulary Appendix B updated throughout. Legal documents already correctly use WAOOAW AI Agent language. |
 
 | v0.77.0 | **5 Legal Documents + Constitutional Audit** — `legal/privacy-policy.md` (DPDPA 2023, 15 sections, Three-Ledger Model, C-048 non-exploitation pledge, constitutional audit record carve-out, data portability + evidence audit rights); `legal/terms-of-service.md` (18 sections, Article IX Bill of Rights table, C-049 honest limitation disclosure, C-038 constitutional billing, SEBI disclaimer, Emergency Stop 250ms guarantee); `legal/refund-policy.md` (12 sections, Emergency Stop billing pause, C-060 mandatory minor data deletion); `legal/cookie-policy.md`; `legal/grievance-policy.md` (Constitutional Grievance fast-track). Constitutional audit: 15 gaps found and fixed across all 3 primary documents. |
 | v0.76.0 | **Company details locked** — DLAI Satellite Data (OPC) Pvt Ltd · CIN: U62090PN2024OPC230499 · GSTIN: 27AAKCD8188R1ZH · Viman Nagar, Pune 411014. Registered address in footer + Contact Us + Appendix B. |

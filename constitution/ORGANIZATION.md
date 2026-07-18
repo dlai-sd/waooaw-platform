@@ -4,9 +4,39 @@
 
 **Status:** Ratified — Gate G1 Complete
 
-**Date:** 2026-07-06
+**Date:** 2026-07-06 | **Last updated:** 2026-07-18 (C-064 Three-Human Institution ratified)
 
 **Classification:** Governing — no implementation artifact may exist without an office that authorized it
+
+---
+
+## The Three-Human Institution (C-064 — RATIFIED 2026-07-18)
+
+WAOOAW operates with exactly **three human participants**. All other roles are performed by **WAOOAW AI Agents**.
+
+| Human | Role | Constitutional Decision Space |
+|---|---|---|
+| **Yogesh Khandge** | Founder & Designer | Ratifies constitutional amendments · Approves agent specifications · Holds Founder Gate authority · Designated Grievance Officer (DPDPA 2023) |
+| **Sujay Khandge** | Business Growth & Prompt Intelligence | Reviews and improves agent prompts (Section 15 Type 2) · Monitors KPI performance · Competitive intelligence · Trial-to-paid conversion · Agent Intelligence Hub |
+| **Ojal Khandge** | Ethics Officer | Constitutional compliance review · C-048/C-049 adherence · Investigates constitutional grievances · Debates ethics decisions · Innovates governance model |
+
+**WAOOAW AI Agent naming convention (mandatory — C-064):**
+
+All non-human roles must be referred to as `WAOOAW AI Agent — [function]`:
+
+| Function | Designation |
+|---|---|
+| Software implementation | WAOOAW AI Agent — Developer |
+| Architecture review | WAOOAW AI Agent — Enterprise Architect |
+| Constitutional analysis | WAOOAW AI Agent — Constitutional Analyst |
+| Platform monitoring / L1–L2 support | WAOOAW AI Agent — Platform Operations |
+| Prompt engineering / quality | WAOOAW AI Agent — Prompt Engineer |
+| Legal drafting | WAOOAW AI Agent — Legal |
+| Content creation / translation | WAOOAW AI Agent — Content |
+| Business architecture | WAOOAW AI Agent — Business Architect |
+| Quality assurance / testing | WAOOAW AI Agent — QA |
+
+Using "Developer", "Engineer", "Support team", or "The team" for non-human roles is incorrect under C-064 and must be corrected in any document where it appears.
 
 ---
 

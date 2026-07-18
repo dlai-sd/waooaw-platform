@@ -1319,25 +1319,27 @@ Quick reference: every WAOOAW-specific UX term and what it means to a customer.
 
 ## Appendix B — Open Items Before Implementation Begins
 
+**C-064 naming convention applies to this table.** All non-human roles are designated as "WAOOAW AI Agent — [function]".
+
 | Item | Owner | Deadline |
 |---|---|---|
 | Logo direction confirmed | Founder | ✅ DONE — 2026-07-18 |
-| Brand color tokens (`--color-brand-*`) populated from logo | AI (from Founder's logo + color input) | ✅ DONE — 2026-07-18 — see Section 4.0 |
-| Legal documents drafted (Privacy Policy, ToS, Refund) | ✅ DONE 2026-07-18 — `legal/privacy-policy.md` · `legal/terms-of-service.md` · `legal/refund-policy.md` · `legal/cookie-policy.md` · `legal/grievance-policy.md` — constitutional audit complete (15 gaps fixed) |
-| CIN / registered company details | ✅ DONE — DLAI Satellite Data (OPC) Pvt Ltd · CIN: U62090PN2024OPC230499 · GSTIN: 27AAKCD8188R1ZH · Viman Nagar, Pune 411014 |
+| Brand color tokens (`--color-brand-*`) populated from logo | WAOOAW AI Agent — Developer | ✅ DONE — 2026-07-18 — see Section 4.0 |
+| Legal documents drafted (Privacy Policy, ToS, Refund, Cookie, Grievance) | WAOOAW AI Agent — Legal | ✅ DONE 2026-07-18 — constitutional audit complete (15 gaps fixed) |
+| CIN / registered company details | Founder | ✅ DONE — DLAI Satellite Data (OPC) Pvt Ltd · CIN: U62090PN2024OPC230499 · GSTIN: 27AAKCD8188R1ZH |
 | media@waooaw.com + general@waooaw.com — confirm or replace | Founder | Before public launch |
-| Grievance Officer page go-live | Portal dev task | Before any paying customer |
-| RTL layout CCT (CCT-UX-01) defined | Enterprise Architect | Before first UI sprint |
-| Font licensing confirmation (Noto Sans — open source ✓) | Developer | Sprint 1 |
-| WCAG audit tooling set up in CI | Developer | Sprint 1 |
-| i18n string files (`mr.json`, `hi.json`, etc.) | AI task — translates from `en.json` | Sprint 1 |
-| **Dark theme token values** — all `--color-*` need `[data-theme="dark"]` variants | Developer | Sprint 1 |
-| **Cookie consent banner** — non-intrusive; analytics cookies opt-in; session/auth exempt | Developer | Sprint 1 |
-| **PWA install prompt** — after 2nd visit + 1 interaction; text in all 11 languages | Developer + AI translation | Sprint 1 |
-| **Push notification permission UX** — per-agent opt-in; "Allow crop alerts?" in Marathi | Developer | Sprint 1 |
-| **C-060 portal gate** — Private Tutor: parent portal must never show billing info in student session-type; implement view-type gate | Developer | Before Private Tutor launch |
-| **"How it works" page** — listed in footer Column 1; plain-language constitutional explainer | AI content task | Before public launch |
-| **OpenGraph / social share card** — 1200×630px, WAOOAW logo on navy, headline copy | AI + designer | Before public launch |
-| **Yashus.in logo** for Platform DNA strip | ✅ `yashus-logo-dark.png` generated — white text + gradient mark on transparent bg |
-| **DLAISD.com logo** for Platform DNA strip | ✅ `dlaisd-logo-dark.png` generated — white monochrome on transparent bg |
+| Grievance Officer page go-live | WAOOAW AI Agent — Developer | Before any paying customer |
+| RTL layout CCT (CCT-UX-01) defined | WAOOAW AI Agent — Enterprise Architect | Before first UI sprint |
+| Font licensing confirmation (Noto Sans — open source ✓) | WAOOAW AI Agent — Developer | Sprint 1 |
+| WCAG audit tooling set up in CI | WAOOAW AI Agent — Developer | Sprint 1 |
+| i18n string files (`mr.json`, `hi.json`, etc.) | WAOOAW AI Agent — Content | Sprint 1 |
+| **Dark theme token values** — all `--color-*` need `[data-theme="dark"]` variants | WAOOAW AI Agent — Developer | Sprint 1 |
+| **Cookie consent banner** | WAOOAW AI Agent — Developer | Sprint 1 |
+| **PWA install prompt** — text in all 11 languages | WAOOAW AI Agent — Developer + WAOOAW AI Agent — Content | Sprint 1 |
+| **Push notification permission UX** — per-agent opt-in | WAOOAW AI Agent — Developer | Sprint 1 |
+| **C-060 portal gate** — parent portal billing never shown in student session | WAOOAW AI Agent — Developer | Before Private Tutor launch |
+| **"How it works" page** | WAOOAW AI Agent — Content | Before public launch |
+| **OpenGraph / social share card** — 1200×630px | WAOOAW AI Agent — Developer + WAOOAW AI Agent — Content | Before public launch |
+| **Yashus.in logo** for Platform DNA strip | ✅ `yashus-logo-dark.png` generated |
+| **DLAISD.com logo** for Platform DNA strip | ✅ `dlaisd-logo-dark.png` generated |
 | **Team bio paragraphs** — Yogesh + Sujay + Ojal | ✅ All three bios complete — see Section 13.1 |
