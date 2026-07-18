@@ -1,8 +1,8 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-07-13
-**Version:** 0.71.0
-**Session:** 2026-07-13 — SESSION CLOSE (UX phase begun: 5-phase process defined, Suresh on portal approved, brand direction set, 4 logo briefs produced for founder review tomorrow)
+**Last Updated:** 2026-07-18
+**Version:** 0.77.0
+**Session:** 2026-07-18 — SESSION CLOSE (5 legal documents + constitutional audit: 15 gaps found and fixed)
 
 ---
 
@@ -15,14 +15,18 @@ VERSION:      0.71.0
 CONSTITUTIONAL CLAIMS: C-001 to C-063 (63 ratified claims)
 AGENTS: DMA v2.9 | Trading v1.7 | Agricultural Advisor v2.7 | Private Tutor v1.0
 CCTs: 35 | ADRs: 27 | SECURITY: Audit-ready | INFRA: Cloud-optimized
-FOUNDER ACTIONS: 17 catalogued in security/FOUNDER-ACTIONS.md
-UX: 5-phase process agreed. Suresh on portal confirmed. 4 logo briefs ready for review.
+FOUNDER ACTIONS: 17+ catalogued in security/FOUNDER-ACTIONS.md
+UX: COMPLETE — constitutional-ux-vocabulary.md v1.0 + suresh-portal-walkthrough.md
+    Brand: 3 logos + dark variants + Platform DNA strip preview generated
+    Legal: 5 documents — privacy-policy, terms-of-service, refund-policy,
+           cookie-policy, grievance-policy (all constitutionally audited)
+    Team: Yogesh Khandge (Founder), Sujay Khandge (Business Growth), Ojal Khandge (Ethics Officer)
+    Company: DLAI Satellite Data (OPC) Pvt Ltd | CIN: U62090PN2024OPC230499 | GSTIN: 27AAKCD8188R1ZH
 
-FOCUS: Platform specification-complete, security-hardened, cloud-optimized.
-       UX design phase begun — logo briefs (Seal / Loop / Wave / Orbital) ready.
-       Founder reviews logo briefs next session, then Phase 1 Constitutional UX Vocabulary.
-
-NEXT SESSION: Logo brief review → pick direction → Phase 1 UX vocabulary → spec writing.
+NEXT SESSION OPTIONS:
+  A. IB-009 Foundation Implementation — one sentence from Founder starts coding
+  B. New agent specification (Legal, HR, Accounting — Track B)
+  C. Screen flow design / wireframes (UX vocabulary is complete — ready to design)
 
 NEXT SESSION OPTIONS:
   A. IB-009 Foundation Implementation sprint — one sentence from Founder starts coding
@@ -34,11 +38,53 @@ FOUNDER ACTIONS OUTSTANDING (before live customers):
   P0: Meta Business Partner status (for Skill 11 centralized ads)
   P0: Google Ads MCC account setup
   P0: Create WAOOAW Instagram + LinkedIn + Facebook + GBP accounts (1 day, no dependencies)
+  P0: [NEW FA-018] Create WAOOAW Facebook App in Meta BM (for portal "Continue with Facebook" login) — 2h after FA-002
+  P0: [NEW FA-019] Create Apple Developer account + SIWA Service ID (for "Continue with Apple" — Dr. Mehta, Meera) — 1 day, no dependencies
+  P0: [NEW FA-020] Register MSG91 DLT templates with TRAI (SMS OTP fallback for rural users) — 2-3 days, no dependencies
+  P0: [PARTIAL FA-004] Yogesh Khandge designated Grievance Officer ✓ — remaining: portal grievance page + Privacy Policy SLA
+  P0: Logo + brand colors — ✅ DONE 2026-07-18 — brand tokens in constitutional-ux-vocabulary.md Section 4.0
   P1: Zerodha Kite Connect developer account (₹2,000/month)
   P1: 4 video API keys (Kling AI, HeyGen, ElevenLabs, Runway ML — ~$59/month total, all self-serve)
   P1: Brevo (email) account for each customer domain (free tier, no cost)
   DECISION: X (Twitter) API — $100/month, Founder decision needed
 ```
+
+| v0.77.0 | **5 Legal Documents + Constitutional Audit** — `legal/privacy-policy.md` (DPDPA 2023, 15 sections, Three-Ledger Model, C-048 non-exploitation pledge, constitutional audit record carve-out, data portability + evidence audit rights); `legal/terms-of-service.md` (18 sections, Article IX Bill of Rights table, C-049 honest limitation disclosure, C-038 constitutional billing, SEBI disclaimer, Emergency Stop 250ms guarantee); `legal/refund-policy.md` (12 sections, Emergency Stop billing pause, C-060 mandatory minor data deletion); `legal/cookie-policy.md`; `legal/grievance-policy.md` (Constitutional Grievance fast-track). Constitutional audit: 15 gaps found and fixed across all 3 primary documents. |
+| v0.76.0 | **Company details locked** — DLAI Satellite Data (OPC) Pvt Ltd · CIN: U62090PN2024OPC230499 · GSTIN: 27AAKCD8188R1ZH · Viman Nagar, Pune 411014. Registered address in footer + Contact Us + Appendix B. |
+| v0.75.0 | **UX specification session complete** — End-to-end review (10 issues fixed). Logo processing: dark variants generated for DLAISD, Yashus, WAOOAW. Platform DNA strip preview on navy verified. Team bios: Yogesh + Sujay + Ojal. LinkedIn captions. `scripts/convert-logos-dark.py` reusable utility. |
+| v0.74.0 | **UX vocabulary final additions** — Platform DNA attribution strip (above footer, brand navy background): Inspired by Yashus.in · Designed by DLAISD.com · Developed by WAOOAW AI Agents (only). Footer redesigned: 4 columns (Platform / Company / Legal / Support). Page specs added: About Us (institutional story + constitutional model + team = 1 human + AI workforce), Contact Us (WhatsApp primary, 4-tab: Support/Press/Grievance/Other), Careers ("We don't hire humans. We hire constitutionally governed AI professionals." — agent catalog IS the job board). Logo moved to `architecture/reference/ux/brand/`. Pending: Yashus.in + DLAISD.com logo assets from Founder. |
+
+| v0.73.0 | **UX Phase 2 — Suresh-on-Portal Walkthrough** — `architecture/reference/ux/suresh-portal-walkthrough.md`. 12 UX/functional gaps discovered and resolved. Full auth API spec: Google (existing) + Facebook + Apple SIWA + WhatsApp OTP (Keycloak SPI) + SMS OTP (MSG91 fallback). Minimum registration: 3 fields only (name + phone + language). Refer-a-Friend: complete API spec + `business.referrals` table + Razorpay coupon integration + WhatsApp-native share. Trial-to-paid: WhatsApp Payment Link flow (Suresh pays via UPI in WhatsApp without visiting portal). Channel-agnostic message log: `professional.agent_messages` + SignalR sync to portal. |
+
+**Key gaps resolved this session:**
+- GAP-REG-001: Language auto-detection (Accept-Language header + 1-tap confirm)
+- GAP-REG-002: WhatsApp OTP as portal login (Keycloak Phone OTP SPI + WABA + MSG91 fallback)
+- GAP-REG-003: Registration relaxed to 3 mandatory fields
+- GAP-REG-010: OTP expiry extended to 10 min; auto-fallback WhatsApp→SMS
+- GAP-REG-011: Apple Developer account (Founder P0 action)
+- GAP-REG-012: WhatsApp as primary CTA on welcome screen (not portal chat)
+- GAP-REG-013: WhatsApp↔Portal sync via agent_messages table + SignalR
+- GAP-REF-001: Refer-a-friend — full referral system specced from scratch
+- GAP-SET-001: Rural payment via WhatsApp Payment Link (no portal visit required)
+
+---
+
+## SESSION COMPLETE SUMMARY (2026-07-18)
+
+| Version | What |
+|---|---|
+| v0.72.0 | **UX Phase 1 — Constitutional UX Vocabulary** — `architecture/reference/ux/constitutional-ux-vocabulary.md` ratified. 12 sections: Language & Localisation (11 languages incl. Urdu RTL), Accessibility (WCAG 2.1 AA, dark/light/system themes), Performance (200KB budget, LCP ≤2.5s, PWA), Visual Design System (4-layer token architecture incl. constitutional tokens), Constitutional Visual Language (Emergency Stop, Evidence Confirmation, Scope Card, Curious/Engaged/Informed portal model), Navigation Architecture (logged-out: Home/Agents/Blogs/Settings/Login; logged-in: Home/My Agents/My Profile), WoW Concierge (platform voice, 3-exchange depth, hero input + agent cards + persistent bubble), Try Before You Buy (per-agent trial flows, C-063 data deletion rule), Content & Copy Standards (per-agent vocabulary, C-042), Legal & Compliance (footer, Grievance Officer: Yogesh Khandge), Blogs (byline format, 5 categories, CTA pattern), Interaction Standards. |
+
+**Key decisions ratified this session:**
+- Urdu RTL: Phase 1 (CSS logical properties mandatory throughout)
+- Grievance Officer: Yogesh Khandge — yogesh.khandge@dlaisd.com
+- Navigation: logged-out (Home · Agents · Blogs · Settings · Login/Register), logged-in (Home · My Agents · My Profile)
+- Agent naming: "WoW Expert [Profession]" — "WoW Expert" prefix fixed, suffix customer-customisable
+- WoW Concierge: WAOOAW platform voice, unnamed, 3 free exchanges then soft nudge
+- Blogs: research-based institutional voice, byline "By WoW Expert [Domain] · WAOOAW Research"
+- Settings (pre-login): language + theme only
+- Activity Log: inside each agent card, not top-level nav
+- Platform value proposition: "Try before you buy · Reduce effort 80% · Autonomous, secure, trusted" (stat gate: 50+ customers for specific numbers)
 
 ---
 

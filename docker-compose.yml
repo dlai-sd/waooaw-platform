@@ -19,6 +19,36 @@ services:
       timeout: 5s
       retries: 10
 
+  # ─── PgBouncer — connection pooling (O-05, ADR-027) ──────────────────────
+  # All application services connect via PgBouncer (port 5433), NOT directly to PostgreSQL.
+  # Exception: Keycloak connects directly (5432) — Keycloak has its own connection management.
+  # Exception: Temporal connects directly (5432) — Temporal manages its own pool.
+  pgbouncer:
+    image: pgbouncer/pgbouncer:1.22
+    ports:
+      - "5433:5433"
+    environment:
+      DATABASES_HOST: postgres
+      DATABASES_PORT: 5432
+      DATABASES_DBNAME: waooaw
+      PGBOUNCER_POOL_MODE: transaction
+      PGBOUNCER_MAX_CLIENT_CONN: 200
+      PGBOUNCER_DEFAULT_POOL_SIZE: 25
+      PGBOUNCER_QUERY_WAIT_TIMEOUT: 5
+      PGBOUNCER_SERVER_IDLE_TIMEOUT: 300
+      # Auth — password passed at runtime (ADR-014: no secrets in compose)
+      PGBOUNCER_AUTH_TYPE: scram-sha-256
+      PGBOUNCER_AUTH_USER: waooaw
+      PGBOUNCER_AUTH_PASSWORD: ${POSTGRES_PASSWORD}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h localhost -p 5433 -U waooaw"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
   keycloak:
     image: quay.io/keycloak/keycloak:25.0.6
     command: start-dev --import-realm
