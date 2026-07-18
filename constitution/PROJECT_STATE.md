@@ -1,8 +1,8 @@
 # PROJECT_STATE.md
 
 **Last Updated:** 2026-07-18
-**Version:** 0.81.0
-**Session:** 2026-07-18 — SESSION CLOSE (Index files updated for token optimisation — AGENT-ENTRY.md v0.80.0, knowledge/index.md C-036–C-067 added)
+**Version:** 0.82.0
+**Session:** 2026-07-18 — SESSION CLOSE (Terraform IaC structure + .gitignore + implementation roadmap)
 
 ---
 
@@ -48,6 +48,8 @@ FOUNDER ACTIONS OUTSTANDING (before live customers):
   P1: Brevo (email) account for each customer domain (free tier, no cost)
   DECISION: X (Twitter) API — $100/month, Founder decision needed
 ```
+
+| v0.82.0 | **Terraform IaC + .gitignore** — Bridged the main deployment gap: zero Terraform existed despite ADR-010/013/014 all referencing it. Created `infrastructure/terraform/` structure: `providers.tf` (AzureRM 3.110 + remote state backend), `variables.tf`, `modules/core/main.tf` (all 9 Container Apps: CE/BP/PR/AIR/Web/Keycloak/Temporal/Ollama/PgBouncer + PostgreSQL Flexible Server + Key Vault + Log Analytics + App Insights), `modules/core/variables.tf + outputs.tf`, `environments/dev/main.tf` (Burstable B2ms, all scale-to-zero), `environments/prod/main.tf` (Standard D2ds_v5, HA, CE min=1 for trading). `.gitignore` created (Terraform secrets, build outputs, env files). |
 
 | v0.81.0 | **Index files updated for token optimisation** — `constitution/AGENT-ENTRY.md`: Current Platform State updated to v0.80.0 / 67 claims / 5 agents; Office Routing table adds Platform IT Expert + WAOOAW AI Agent — Legal rows; Key File Map expands with UX/Legal/Brand/Scripts/new workflow sections. `knowledge/index.md`: C-036–C-067 compact index table added (32 new claims with type, condensed statement, ratification date). |
 

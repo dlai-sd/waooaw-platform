@@ -1,0 +1,42 @@
+# WAOOAW Platform — .gitignore
+# Secrets, build outputs, environment-specific files
+
+# ─── Terraform secrets (NEVER commit) ────────────────────────────────────────
+infrastructure/terraform/**/*.tfvars
+infrastructure/terraform/**/.terraform/
+infrastructure/terraform/**/.terraform.lock.hcl
+infrastructure/terraform/**/terraform.tfstate
+infrastructure/terraform/**/terraform.tfstate.backup
+infrastructure/terraform/**/*.tfplan
+
+# ─── Environment secrets ──────────────────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+infrastructure/postgres/pgbouncer/userlist.txt   # contains DB passwords
+
+# ─── Build outputs ────────────────────────────────────────────────────────────
+**/bin/
+**/obj/
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+node_modules/
+.next/
+out/
+dist/
+coverage/
+*.trx
+*.xml
+
+# ─── OS / editor ─────────────────────────────────────────────────────────────
+.DS_Store
+*.swp
+*.swo
+.vscode/settings.json
+.idea/
+
+# ─── CI artefacts ─────────────────────────────────────────────────────────────
+.ci-evidence.log
+.deployment-evidence.log
+.rollback-evidence.log

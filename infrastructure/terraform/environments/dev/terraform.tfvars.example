@@ -1,0 +1,11 @@
+# terraform.tfvars — Dev environment
+# NEVER COMMIT THIS FILE — it contains secrets
+# Add to .gitignore: infrastructure/terraform/environments/**/terraform.tfvars
+#
+# Copy this file: cp terraform.tfvars.example terraform.tfvars
+# Fill in values from your Azure Key Vault or password manager
+
+postgres_admin_password = "REPLACE_ME_strong_password_min_8_chars"
+keycloak_admin_password = "REPLACE_ME_keycloak_admin"
+ghcr_username           = "dlai-sd"
+ghcr_token              = "REPLACE_ME_github_pat_with_read_packages"
