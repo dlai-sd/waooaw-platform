@@ -1,8 +1,8 @@
 # PROJECT_STATE.md
 
 **Last Updated:** 2026-07-19
-**Version:** 0.92.0
-**Session:** 2026-07-19 — SESSION CLOSE (C-074 On-the-Fly MCP Provisioning + DMA domain-agnostic complete)
+**Version:** 0.93.0
+**Session:** 2026-07-19 — SESSION CLOSE (DMA deep-dive complete: v3.0 + agency + restaurant + WoW)
 
 ---
 
@@ -11,22 +11,57 @@
 ```
 INSTITUTION:  WAOOAW — autonomous digital professionals under constitutional governance
 GATE:         G5 prerequisites met (G5 CLEAR ≠ implementation authorization for any session)
-VERSION:      0.71.0
-CONSTITUTIONAL CLAIMS: C-001 to C-067 (67 ratified claims)
-AGENTS: DMA v2.9 | Trading v1.7 | Agricultural Advisor v2.7 | Private Tutor v1.0
-CCTs: 35 | ADRs: 27 | SECURITY: Audit-ready | INFRA: Cloud-optimized
-FOUNDER ACTIONS: 17+ catalogued in security/FOUNDER-ACTIONS.md
-UX: COMPLETE — constitutional-ux-vocabulary.md v1.0 + suresh-portal-walkthrough.md
-    Brand: 3 logos + dark variants + Platform DNA strip preview generated
-    Legal: 5 documents — privacy-policy, terms-of-service, refund-policy,
-           cookie-policy, grievance-policy (all constitutionally audited)
-    Team: Yogesh Khandge (Founder), Sujay Khandge (Business Growth), Ojal Khandge (Ethics Officer)
-    Company: DLAI Satellite Data (OPC) Pvt Ltd | CIN: U62090PN2024OPC230499 | GSTIN: 27AAKCD8188R1ZH
-
+VERSION:      0.93.0
+CONSTITUTIONAL CLAIMS: C-001 to C-075 (75 ratified)
+  NEW THIS SESSION: C-074 (On-the-Fly MCP Provisioning) · C-075 (White-Label Reseller)
+AGENTS: DMA v3.0 | Trading v1.7 | Agricultural v2.7 | Private Tutor v1.0
+        Internal: Platform IT Expert · Steward Assistant · Self-Improvement Analyst · Platform Operations
+ADRs: 29 | CCTs: 50 specified | Simulations: SIM-001 to SIM-021
 NEXT SESSION OPTIONS:
-  A. IB-009 Foundation Implementation — one sentence from Founder starts coding
-  B. New agent specification (Legal, HR, Accounting — Track B)
-  C. Screen flow design / wireframes (UX vocabulary is complete — ready to design)
+  A. IB-009 Foundation Implementation — Yogesh "start coding" → CE evaluators first
+  B. UI/UX design — review website inspirations, design portal + steward chat interface
+  C. New agent spec (Legal / HR / Accounting) using Section 0 DNA template
+
+DMA v3.0 FULL SESSION SUMMARY (2026-07-19):
+  DOMAIN-AGNOSTIC:
+    DVE Section 3.1 — 10 domains + compliance table (dental/restaurant/beauty/fitness/
+    agency/technology_saas/etc). All 24 hardcoded dental references replaced.
+    Skill 0: account_mode detection as FIRST QUESTION (SINGLE/MULTI/FRANCHISE/RESELLER)
+    Skill 1: website-URL parallel start (maturity score at Minute 5, not Minute 15)
+    technology_saas domain added (WAOOAW Customer #0 — G2/ProductHunt reputation)
+    SIM-019 Grade A: Shri Krishna Restaurant, Hadapsar
+    SIM-020 Grade A: Dr. Mehta, Day 0→Month 3
+    SIM-021 Grade A: Yashus Agency, 3 clients, white-label
+    IB-019: multi-unit/franchise backlog (P2, post FR-005)
+  NEW SKILLS:
+    Skill 7b: Lead Conversation (Instagram DM → WhatsApp → booking)
+    Skill 16: Customer Lifecycle (7-touch, DVE-resolved)
+    Skill 11 v3.0: Performance Max + Advantage+ + Click-to-WhatsApp + LSA
+    Skill 18: Agency Operations (AM dashboard, white-label reports)
+    Skill 19: Multi-Location (brand vs local content)
+    Skill 20: Crisis Communications
+    Skill 21: Quarterly Strategy Review
+  MCPs (10 new): youtube, ga4, instagram-messaging, instagram-comments,
+    booking, reputation, cms, whatsapp-flows, zomato, swiggy
+  C-074: On-the-Fly MCP Provisioning (no deployment cycles)
+    09-mcp-registry.sql: mcp_registry + domain_capability_map + health tables
+    3-layer persistence: restart policy + reconciliation + 5-min health probe
+  C-075: White-Label Reseller (C-075 + 10-reseller-agency.sql)
+    Agency commercial model: wholesale ₹899-1,299/seat, reseller bills retail
+    business.agency_staff: AM roles, not WAOOAW stewards
+    ADR-026 amended: reseller uses own MBM/MCC, 3-layer ad billing
+  AD BILLING: SIM-020/021 full ad account setup flows documented
+    Meta FA-002 pending → organic first, paid when BM verified
+    Google Ads independent (no FA-002) → Performance Max live Week 3
+    SCR Check 4: pre-publication Meta/Google policy gate
+
+FOUNDER ACTIONS OUTSTANDING (P0):
+  FA-021: GCP Vertex AI → Gemini primary LLM (2h, CRITICAL PATH)
+  FA-022: sarvam.ai API key → Agricultural Grade A (1h)
+  FA-002: Meta BM verification (2-4 weeks, START NOW)
+  FA-005: Trading ESCALATION_DECISION ack (5 min)
+  Full list: security/FOUNDER-ACTIONS.md
+```
 
 NEXT SESSION OPTIONS:
   A. IB-009 Foundation Implementation sprint — one sentence from Founder starts coding
