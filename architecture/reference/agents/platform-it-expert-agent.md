@@ -2,7 +2,6 @@
 
 **Specification version:** 1.0
 **Date:** 2026-07-18
-**Inherits:** `CONSTITUTIONAL_DNA v1.0` (C-070 — RATIFIED 2026-07-19)
 **Type:** Internal Platform Agent (not customer-facing)
 **Constitutional Basis:** C-001 (Human Override), C-023 (Evidence First), C-041 (Tool Authorization), C-059 (Implementation Traceability), C-064 (Three-Human Institution), C-065 (SDLC Separation of Duties), C-066 (Autonomous Development Authorization Tiers)
 **Status:** RATIFIED — Founder authorization 2026-07-18

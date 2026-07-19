@@ -282,6 +282,24 @@ services:
       MCP_META_ADS_URL: http://meta-ads-mcp:8120
       MCP_GOOGLE_ADS_URL: http://google-ads-mcp:8121
       MCP_WEB_OPTIMISATION_URL: http://web-optimisation-mcp:8122
+      # ── DMA v3.0 NEW MCPs (2026-07-19 gap bridge) ────────────────────────
+      # YouTube Operations (Skill 8 video publish + analytics — youtube-mcp)
+      MCP_YOUTUBE_URL: http://youtube-mcp:8141
+      # Google Analytics 4 cross-channel attribution (Skill 9 — ga4-mcp)
+      MCP_GOOGLE_ANALYTICS_URL: http://ga4-mcp:8142
+      # Instagram DM + lead qualification (Skill 7b — instagram-messaging-mcp)
+      MCP_INSTAGRAM_MESSAGING_URL: http://instagram-messaging-mcp:8143
+      # Instagram comment management (Skill 7b — instagram-comments-mcp)
+      MCP_INSTAGRAM_COMMENTS_URL: http://instagram-comments-mcp:8144
+      # Appointment booking system (Skill 7b + 16 — booking-mcp: Practo/Calendly/native)
+      MCP_BOOKING_URL: http://booking-mcp:8146
+      # India reputation management (Skill 14 — Practo/Justdial/Sulekha)
+      MCP_REPUTATION_URL: http://reputation-mcp:8145
+      # CMS integration for blog publishing (Skill 10 — cms-mcp: WordPress/Squarespace)
+      MCP_CMS_URL: http://cms-mcp:8147
+      # WhatsApp Flows + WhatsApp Pay (Skill 7 extensions)
+      MCP_WHATSAPP_FLOWS_URL: http://whatsapp-flows-mcp:8148
+      # ─────────────────────────────────────────────────────────────────────
       # Infrastructure services (ADR-021 OAuth, ADR-022 Razorpay, notifications, PDF, email)
       OAUTH_VAULT_URL: http://oauth-vault:8130
       MCP_RAZORPAY_URL: http://razorpay-mcp:8131
@@ -990,6 +1008,56 @@ uvicorn.run(app, host='0.0.0.0', port=8122)
     image: python:3.12-slim
     command: python -c "from http.server import HTTPServer,BaseHTTPRequestHandler; import json; H=type('H',(BaseHTTPRequestHandler,),{'do_GET':lambda s:(s.send_response(200),s.send_header('Content-Type','application/json'),s.end_headers(),s.wfile.write(json.dumps({'status':'ok','service':'threads-mcp-stub'}).encode())),'log_message':lambda *a:None}); HTTPServer(('0.0.0.0',8142),H).serve_forever()"
     ports: ["8142:8142"]
+
+  # ── DMA v3.0 NEW MCP stubs (2026-07-19 — gap bridge) ──────────────────────
+  # youtube-mcp: YouTube Data API v3 + Analytics API (Skill 8 publish + Skill 9 analytics)
+  youtube-mcp:
+    image: python:3.12-slim
+    command: python -c "from http.server import HTTPServer,BaseHTTPRequestHandler; import json; H=type('H',(BaseHTTPRequestHandler,),{'do_POST':lambda s:(s.send_response(200),s.send_header('Content-Type','application/json'),s.end_headers(),s.wfile.write(json.dumps({'status':'ok','service':'youtube-mcp-stub','note':'FA-021 GCP credentials required'}).encode())),'do_GET':lambda s:(s.send_response(200),s.send_header('Content-Type','application/json'),s.end_headers(),s.wfile.write(json.dumps({'status':'ok','service':'youtube-mcp-stub'}).encode())),'log_message':lambda *a:None}); HTTPServer(('0.0.0.0',8141),H).serve_forever()"
+    ports: ["8141:8141"]
+
+  # ga4-mcp: Google Analytics 4 Data API (Skill 9 cross-channel attribution — CRITICAL)
+  ga4-mcp:
+    image: python:3.12-slim
+    command: python -c "from http.server import HTTPServer,BaseHTTPRequestHandler; import json; H=type('H',(BaseHTTPRequestHandler,),{'do_POST':lambda s:(s.send_response(200),s.send_header('Content-Type','application/json'),s.end_headers(),s.wfile.write(json.dumps({'status':'ok','service':'ga4-mcp-stub','note':'FA-021 GCP credentials required'}).encode())),'do_GET':lambda s:(s.send_response(200),s.send_header('Content-Type','application/json'),s.end_headers(),s.wfile.write(json.dumps({'status':'ok','service':'ga4-mcp-stub'}).encode())),'log_message':lambda *a:None}); HTTPServer(('0.0.0.0',8142),H).serve_forever()"
+    ports: ["8142:8142"]
+
+  # instagram-messaging-mcp: Instagram Conversational Messaging API (Skill 7b DM handling — CRITICAL)
+  instagram-messaging-mcp:
+    image: python:3.12-slim
+    command: python -c "from http.server import HTTPServer,BaseHTTPRequestHandler; import json; H=type('H',(BaseHTTPRequestHandler,),{'do_POST':lambda s:(s.send_response(200),s.send_header('Content-Type','application/json'),s.end_headers(),s.wfile.write(json.dumps({'status':'ok','service':'instagram-messaging-mcp-stub','note':'FA-002 Meta BM + Instagram Business Account required'}).encode())),'do_GET':lambda s:(s.send_response(200),s.send_header('Content-Type','application/json'),s.end_headers(),s.wfile.write(json.dumps({'status':'ok','service':'instagram-messaging-mcp-stub'}).encode())),'log_message':lambda *a:None}); HTTPServer(('0.0.0.0',8143),H).serve_forever()"
+    ports: ["8143:8143"]
+
+  # instagram-comments-mcp: Instagram Graph API comments endpoint (Skill 7b — CRITICAL)
+  instagram-comments-mcp:
+    image: python:3.12-slim
+    command: python -c "from http.server import HTTPServer,BaseHTTPRequestHandler; import json; H=type('H',(BaseHTTPRequestHandler,),{'do_POST':lambda s:(s.send_response(200),s.send_header('Content-Type','application/json'),s.end_headers(),s.wfile.write(json.dumps({'status':'ok','service':'instagram-comments-mcp-stub'}).encode())),'do_GET':lambda s:(s.send_response(200),s.send_header('Content-Type','application/json'),s.end_headers(),s.wfile.write(json.dumps({'status':'ok','service':'instagram-comments-mcp-stub'}).encode())),'log_message':lambda *a:None}); HTTPServer(('0.0.0.0',8144),H).serve_forever()"
+    ports: ["8144:8144"]
+
+  # reputation-mcp: India reputation platforms — Practo + Justdial + Sulekha (Skill 14)
+  reputation-mcp:
+    image: python:3.12-slim
+    command: python -c "from http.server import HTTPServer,BaseHTTPRequestHandler; import json; H=type('H',(BaseHTTPRequestHandler,),{'do_POST':lambda s:(s.send_response(200),s.send_header('Content-Type','application/json'),s.end_headers(),s.wfile.write(json.dumps({'status':'ok','service':'reputation-mcp-stub','platforms':['practo','justdial','sulekha']}).encode())),'do_GET':lambda s:(s.send_response(200),s.send_header('Content-Type','application/json'),s.end_headers(),s.wfile.write(json.dumps({'status':'ok','service':'reputation-mcp-stub'}).encode())),'log_message':lambda *a:None}); HTTPServer(('0.0.0.0',8145),H).serve_forever()"
+    ports: ["8145:8145"]
+
+  # booking-mcp: Appointment booking — Practo Partner API + Calendly + WAOOAW native (Skills 7b + 16 — CRITICAL)
+  booking-mcp:
+    image: python:3.12-slim
+    command: python -c "from http.server import HTTPServer,BaseHTTPRequestHandler; import json; H=type('H',(BaseHTTPRequestHandler,),{'do_POST':lambda s:(s.send_response(200),s.send_header('Content-Type','application/json'),s.end_headers(),s.wfile.write(json.dumps({'status':'ok','service':'booking-mcp-stub','supported':['practo','calendly','waooaw_native'],'note':'Configure customer booking platform credentials in oauth-vault'}).encode())),'do_GET':lambda s:(s.send_response(200),s.send_header('Content-Type','application/json'),s.end_headers(),s.wfile.write(json.dumps({'status':'ok','service':'booking-mcp-stub'}).encode())),'log_message':lambda *a:None}); HTTPServer(('0.0.0.0',8146),H).serve_forever()"
+    ports: ["8146:8146"]
+
+  # cms-mcp: CMS blog publishing — WordPress REST API + Squarespace (Skill 10 blog publish)
+  cms-mcp:
+    image: python:3.12-slim
+    command: python -c "from http.server import HTTPServer,BaseHTTPRequestHandler; import json; H=type('H',(BaseHTTPRequestHandler,),{'do_POST':lambda s:(s.send_response(200),s.send_header('Content-Type','application/json'),s.end_headers(),s.wfile.write(json.dumps({'status':'ok','service':'cms-mcp-stub','supported':['wordpress','squarespace','custom']}).encode())),'do_GET':lambda s:(s.send_response(200),s.send_header('Content-Type','application/json'),s.end_headers(),s.wfile.write(json.dumps({'status':'ok','service':'cms-mcp-stub'}).encode())),'log_message':lambda *a:None}); HTTPServer(('0.0.0.0',8147),H).serve_forever()"
+    ports: ["8147:8147"]
+
+  # whatsapp-flows-mcp: WhatsApp Flows + WhatsApp Pay via Razorpay bridge (Skill 7 extensions)
+  whatsapp-flows-mcp:
+    image: python:3.12-slim
+    command: python -c "from http.server import HTTPServer,BaseHTTPRequestHandler; import json; H=type('H',(BaseHTTPRequestHandler,),{'do_POST':lambda s:(s.send_response(200),s.send_header('Content-Type','application/json'),s.end_headers(),s.wfile.write(json.dumps({'status':'ok','service':'whatsapp-flows-mcp-stub','note':'FA-009 WABA required'}).encode())),'do_GET':lambda s:(s.send_response(200),s.send_header('Content-Type','application/json'),s.end_headers(),s.wfile.write(json.dumps({'status':'ok','service':'whatsapp-flows-mcp-stub'}).encode())),'log_message':lambda *a:None}); HTTPServer(('0.0.0.0',8148),H).serve_forever()"
+    ports: ["8148:8148"]
+  # ── End DMA v3.0 MCP stubs ─────────────────────────────────────────────────
 
   web:
     build:

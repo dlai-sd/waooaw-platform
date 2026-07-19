@@ -88,7 +88,7 @@ Derived from CONFIRMED or LAW claims. These authorize specific architectural dec
 
 | Status | Count | IDs |
 |---|---|---|
-| RATIFIED | 73 | C-001 through C-073 (all) |
+| RATIFIED | 67 | C-001 through C-067 (all) |
 | DRAFT | 0 | — |
 
 ---
@@ -131,11 +131,7 @@ Derived from CONFIRMED or LAW claims. These authorize specific architectural dec
 | C-065 | PLATFORM_INTEGRITY | SDLC Separation of Duties — Author ≠ Reviewer ≠ Deployment Confirmer (Article VII for software) | 2026-07-18 |
 | C-066 | PLATFORM_INTEGRITY | Autonomous Development Authorization Tiers — 4 tiers: 0=emergency / 1=Sujay / 2=Sujay+IB / 3=Yogesh | 2026-07-18 |
 | C-067 | PLATFORM_INTEGRITY | Blue-Green + Cost-Constrained Deployment — ₹10k/env/month ceiling; blue deactivated ≤30min after green verified | 2026-07-18 |
-| C-068 | ARCHITECTURAL_CONSTRAINT + SECURITY | Steward Access Isolation — steward URL hidden, Google OAuth allowlist, cryptographically separate from customer portal | 2026-07-19 |
-| C-069 | OBLIGATION + PLATFORM_INTEGRITY | Platform Self-Improvement Obligation — Self-Improvement Analyst raises Skill Proposals within 24h of degradation detection | 2026-07-19 |
-| C-070 | OBLIGATION + ARCHITECTURAL_CONSTRAINT | Constitutional DNA Inheritance — every agent (current + future) must inherit the 3 basic instincts; AGENT-AUTHORING-GUIDE Section 0 mandatory gate | 2026-07-19 |
-| C-071 | OBLIGATION + PLATFORM_INTEGRITY | Quality Obligation — quality is constitutional; all gates automated; no bypass permitted; test quality feeds Self-Improvement loop; Grade A required for every customer-facing agent deploy | 2026-07-19 || C-072 | OBLIGATION + PLATFORM_INTEGRITY | Coding Standards Obligation — all code conforms to CODING-STANDARDS.md (cosmetic, performance, security, observability, unit test quality); tools decide style, not agents | 2026-07-19 |
-| C-073 | OBLIGATION + PLATFORM_INTEGRITY | Bidirectional Implementation Traceability — every function implementing a constitutional principle carries machine-readable @constitutional annotation; claim amendment CI surfaces all tagged code | 2026-07-19 |
+
 ---
 
 ## By Source

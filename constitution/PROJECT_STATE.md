@@ -1,8 +1,8 @@
 # PROJECT_STATE.md
 
 **Last Updated:** 2026-07-19
-**Version:** 0.90.0
-**Session:** 2026-07-19 — SESSION CLOSE (Traceability Protocol C-073 + full implementation chain)
+**Version:** 0.91.0
+**Session:** 2026-07-19 — SESSION CLOSE (DMA v3.0 critical gap bridge + full session)
 
 ---
 
@@ -11,99 +11,11 @@
 ```
 INSTITUTION:  WAOOAW — autonomous digital professionals under constitutional governance
 GATE:         G5 prerequisites met (G5 CLEAR ≠ implementation authorization for any session)
-VERSION:      0.88.0
-CONSTITUTIONAL CLAIMS: C-001 to C-071 (71 ratified)
-  NEW: C-071 — Quality Obligation (quality gates are constitutional, not optional)
-QA FRAMEWORK: RATIFIED — world-class quality infrastructure
-  STRATEGY: tests/QA-STRATEGY.md (7-layer test pyramid, tool registry, coverage requirements)
-  POLICY:   tests/QA-POLICY.md (4 quality gates, authorship standards, defect classification)
-  CHECKLIST:tests/QA-CHECKLIST.md (7 stage checklists, executable gate checks)
-  TOOLS (definitive — agents never choose):
-    Unit: xUnit/FluentAssertions (.NET), pytest/hypothesis (Python), Vitest (TypeScript)
-    Integration: testcontainers (real DB in CI), adversarial multi-tenant suite
-    Contract: Schemathesis (OpenAPI fuzzing), buf breaking (proto)
-    E2E: Playwright (web + accessibility), httpx+pytest (API)
-    Performance: k6 (constitutional floors: Emergency Stop ≤250ms, CE ≤40ms)
-    Security: OWASP ZAP DAST, 50-case prompt injection suite (C-062)
-    Accessibility: @axe-core/playwright (WCAG 2.1 AA)
-    AI Quality: DeepEval + Grade-based assertions + regional language vocabulary scoring
-    Mutation: Stryker.NET, mutmut (weekly CI)
-    Reporting: Allure Report (rich, stakeholder-friendly)
-  CI WORKFLOWS ADDED:
-    .github/workflows/integration-tests.yaml (multi-tenant, contract, seed-prompts, prompt-injection)
-    .github/workflows/e2e-acceptance-tests.yaml (AS-001, AS-003, AS-005, PSE failover, Emergency Stop E2E)
-    .github/workflows/performance-baseline.yaml (k6 smoke + load + constitutional Emergency Stop)
-  DB:
-    institutional.quality_metrics table (CI run metrics → Self-Improvement loop via C-069/C-071)
-    institutional.provider_dispatch_events updated (quality_metrics added to 08-provider-performance.sql)
-  TEST INFRASTRUCTURE:
-    tests/QA-STRATEGY.md, tests/QA-POLICY.md, tests/QA-CHECKLIST.md
-    tests/conftest.py (shared fixtures: synthetic personas, rollback_db, CCT helpers, injection attacks)
-    tests/performance/smoke.js (k6 with constitutional floor assertions)
-NEXT SESSION OPTIONS:
-  A. IB-009 Foundation Implementation — Yogesh "start coding" → CE evaluators first
-  B. Write first CCTs for CE ValidateAction evaluators (CCT-CE-01 to CCT-CE-10)
-  C. New agent spec (Legal, HR, Accounting) with full Section 0 + quality checklist
-CONSTITUTIONAL CLAIMS: C-001 to C-070 (70 ratified) | ADRs: 29
-LLM STRATEGY: ADR-029 RATIFIED — Multi-provider conscious selection
-  PRIMARY MID_TIER:  Google Gemini 2.0 Flash (Vertex AI asia-south1, Mumbai — DPDPA primary)
-  AGRICULTURAL:      Sarvam AI Saaras (India-hosted, C-042 Vocabulary Mandate compliance)
-  LOCAL:             Ollama Llama 3.2 3B + AI4Bharat IndicBERT (self-hosted, ₹0)
-  FRONTIER:          Google Gemini 2.5 Pro (Vertex AI asia-south1, Mumbai)
-  FALLBACK:          Azure OpenAI GPT-4o-mini / GPT-4o (UAE North — circuit-breaker only)
-  NEVER:             Grok / Claude-direct / OpenAI-direct (DPDPA gap — US-only, no India/UAE region)
-  COST SAVING:       ~40% vs single-provider plan (~₹5,100/month at 1,000 customers)
-PROVIDER SELECTION ENGINE (PSE):
-  - Rule Layer: PSE-R01 (DPDPA) → PSE-R02 (language) → PSE-R03 (plan_tier) → PSE-R04 (steward)
-                PSE-R05 (constitutional) → PSE-R06 (key expired) → PSE-R07 (circuit-breaker)
-                PSE-R08 (latency SLA)
-  - Performance Layer: composite_score from institutional.pse_provider_ranking (1h rolling)
-  - Circuit breaker: per-provider, 120s open window on rate-limit/error
-  - Feedback: weekly Steward digest via Steward Assistant (success rates, fallback events, DPDPA audit)
-NEW THIS SESSION (v0.87.0):
-  - adr/ADR-029 (multi-provider LLM, PSE design, provider registry, FA-021/FA-022)
-  - infrastructure/postgres/init/08-provider-performance.sql
-      institutional.provider_dispatch_events (partitioned — raw PSE events)
-      institutional.pse_provider_ranking (materialized view — composite_score ranking)
-      institutional.provider_circuit_breaker (PSE-R07 circuit state)
-  - infrastructure/terraform/modules/core/main.tf (Gemini + Sarvam Key Vault secrets)
-  - infrastructure/terraform/modules/core/variables.tf (google_vertex_* + sarvam_api_key)
-  - docker-compose.yml (ollama service + AI4Bharat model pull + multi-provider env vars)
-  - adr/ADR-024 amended (provider dimension + PSE replaces static dispatch)
-  - adr/ADR-INDEX.md updated (ADR-029 registered)
-FOUNDER ACTIONS OUTSTANDING (before live customers):
-  P0: FA-021 — Create GCP project, enable Vertex AI API, SA key → enables Gemini primary
-  P0: FA-022 — Register sarvam.ai, get Saaras API key → enables Agricultural C-042 override
-  P0 (existing): Meta BM, WABA, Azure OpenAI, Razorpay (see security/FOUNDER-ACTIONS.md)
-NEXT SESSION OPTIONS:
-  A. IB-009 Foundation Implementation — Yogesh "start coding" → CE evaluators + AI Runtime PSE
-  B. New agent spec (Legal, HR, Accounting) using new Section 0 DNA template
-  C. Acceptance Scenario AS-006 (Private Tutor) full specification
-  STEWARD INTERFACE (v0.84.0):
-    - architecture/reference/steward-interface.md (chat-based, hidden URL, GitHub API writeback, prompt pipeline)
-    - C-068 RATIFIED (Steward Access Isolation), C-069 RATIFIED (Platform Self-Improvement Obligation)
-    - ADR-028 (Steward=FRONTIER, plan_tier JWT, ADR-003 amended)
-  P0/P1 GAPS CLOSED (v0.85.0):
-    - infrastructure/postgres/init/07-agent-prompts.sql (agent_prompts + improvement_proposals + trust_ledger)
-    - scripts/seed-prompts.py (CI seeder: .md → PostgreSQL, never logs prompt_text, idempotent)
-    - .github/workflows/ci.yaml: seed-prompts job added
-    - ADR-003 amended: plan_tier + steward person JWT claims
-    - architecture/reference/agents/self-improvement-analyst-agent.md (full spec + CCT-SIA-01 to SIA-05)
-    - architecture/reference/ce-validate-action-evaluators.md (6 evaluators + 10 CCTs + proto additions)
-  CONSTITUTIONAL DNA (v0.86.0):
-    - knowledge/claims/C-070.md RATIFIED (Constitutional DNA Inheritance Obligation)
-    - architecture/reference/agents/CONSTITUTIONAL_DNA.md (3 instincts as inheritable base spec)
-    - architecture/reference/agents/AGENT-AUTHORING-GUIDE.md v3.0 (Section 0 mandatory gate)
-    - All 7 agent specs: Inherits CONSTITUTIONAL_DNA v1.0 declared
-    - DMA v2.9: Section 0 (C-049 triggers + quality signals + trust model)
-    - Trading v1.7: Section 0 (C-043 override + C-049 triggers + quality signals + trust model)
-    - Agricultural v2.7: Section 0 (WhatsApp Emergency Stop keywords + Evidence First for advisory + outcome feedback)
-    - Private Tutor v1.0: Section 0 (C-060 absolute override + comprehension signals + parent trust model)
-    - simulation/SIM-018-constitutional-dna-inheritance-walkthrough.md (all 7 agents verified)
-NEXT SESSION OPTIONS:
-  A. IB-009 Foundation Implementation — Yogesh says "start coding" → CE evaluators first
-  B. New agent spec (Legal, HR, Accounting) — now has Section 0 template ready
-  C. Acceptance Scenario AS-006 (Private Tutor) specification
+VERSION:      0.71.0
+CONSTITUTIONAL CLAIMS: C-001 to C-067 (67 ratified claims)
+AGENTS: DMA v2.9 | Trading v1.7 | Agricultural Advisor v2.7 | Private Tutor v1.0
+CCTs: 35 | ADRs: 27 | SECURITY: Audit-ready | INFRA: Cloud-optimized
+FOUNDER ACTIONS: 17+ catalogued in security/FOUNDER-ACTIONS.md
 UX: COMPLETE — constitutional-ux-vocabulary.md v1.0 + suresh-portal-walkthrough.md
     Brand: 3 logos + dark variants + Platform DNA strip preview generated
     Legal: 5 documents — privacy-policy, terms-of-service, refund-policy,

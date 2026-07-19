@@ -427,33 +427,3 @@ jobs:
           echo "ℹ️  No tier label found on PR — defaulting to CODEOWNERS review gate"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  # ─── Seed agent prompts to DB (C-059, ADR-028, G-STEWARD-03) ─────────────
-  # Runs on merge to main only (not on PRs — dev DB seeded locally).
-  # Reads .md prompt files → inserts into professional.agent_prompts.
-  # SECURITY: prompt_text never logged; DB URL from GitHub Secrets → Key Vault.
-  # Constitutional basis: C-045 (prompt as artifact), C-059 (traceability),
-  #                       ADR-028 (no prompt content in container images)
-  seed-prompts:
-    name: Seed agent prompts → DB
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [build, test-dotnet, test-python, test-web, constitutional-commit-gate]
-    environment: dev   # Uses dev secrets by default; promote.yaml handles QA/UAT/prod seeding
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-
-      - name: Install psycopg2
-        run: pip install psycopg2-binary
-
-      - name: Seed prompts to dev DB
-        run: python scripts/seed-prompts.py --env dev --grade A
-        env:
-          WAOOAW_DB_URL: ${{ secrets.WAOOAW_DB_URL }}
-          GITHUB_SERVER_URL: ${{ github.server_url }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          GITHUB_RUN_ID: ${{ github.run_id }}

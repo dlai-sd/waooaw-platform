@@ -1,12 +1,12 @@
 # Digital Marketing Professional — Healthcare & Beauty
 
-**Specification version:** 2.9
-**Date:** 2026-07-12 (v2.8 — C-058 Video Brief Primacy, Three-Track Video, Digital Twin, DP-025 Expert Consultative Tone + Professional Vocabulary Standard)
+**Specification version:** 3.0
+**Date:** 2026-07-19 (v3.0 — Critical gap bridge: Skill 7b + booking-mcp close the enquiry-to-booking loop; Skill 16 adds patient lifecycle; Skill 11 upgraded to Performance Max + Advantage+ + Click-to-WhatsApp + LSA; 8 new MCPs: youtube, ga4, instagram-messaging, instagram-comments, booking, reputation, cms, whatsapp-flows)
 **Inherits:** `CONSTITUTIONAL_DNA v1.0` (C-070 — RATIFIED 2026-07-19)
-**Change from v2.7:** Skill 8 full rewrite (three-track architecture). Section 3.22 (Agent Communication Standard). C-058 + DP-025 implemented. Professional vocabulary guide per domain added to Tier 1 RAG. DMA agent speaks customer's professional vocabulary, not marketing jargon.
+**Change from v2.9:** Agent was acquisition-only — generated enquiries but could not book appointments, could not respond to DMs, could not manage patients after first visit. v3.0 makes the agent a full digital marketing professional: acquire → convert → retain.
 **Constitutional Basis:** C-036 (Skills), C-037 (Business KPIs), C-038 (Billing), C-039 (Conversational config), C-040 (Domain specialization), C-041 (Tool authorization), ADR-019 (RAG), ADR-020 (MCP), C-048 (Information Non-Exploitation — LAW), C-049 (Honest Limitation Disclosure — LAW), C-050 (Strategic Cognition Obligation — LAW), C-055 (Campaign Coherence — LAW), C-056 (Ad Spend Transparency — LAW), C-057 (AI Agency Professional Standard — LAW)
-**Reviewed by:** Enterprise Architect — R-014 (v2.0), R-015 (v2.7)
-**Approved by:** Founder — 2026-07-09 (v2.0), 2026-07-12 (v2.7 skill deepening)
+**Reviewed by:** Enterprise Architect — R-014 (v2.0), R-015 (v2.7), v3.0 pending
+**Approved by:** Founder — 2026-07-09 (v2.0), 2026-07-12 (v2.7), 2026-07-19 (v3.0 gap bridge)
 
 ---
 
@@ -1638,7 +1638,110 @@ This description answers the implicit search query ("root canal in Pune — what
 ### Skill 11: Paid Advertising — WAOOAW Managed (Meta + Google Ads)
 
 **Skill type:** `PAID_ADVERTISING`
-**Specification version:** 2.5 (ADR-026 — Centralized Agency Model, C-056)
+**Specification version:** 3.0 (2026-07-19 — ADR-026 + Performance Max + Meta Advantage+ + Click-to-WhatsApp Ads)
+
+**v3.0 additions:** (1) Google Performance Max replaces manual campaign structures as default for Google Ads — it is now the industry standard for local business Google advertising. (2) Meta Advantage+ replaces manual interest-based audience targeting — Meta's AI finds better audiences than manual targeting for most local businesses. (3) Click-to-WhatsApp Ads added as a primary campaign type — the most effective ad format for India local businesses because it opens a WhatsApp conversation directly, removing all website friction. (4) Google Local Services Ads (LSA) added — "Google Guaranteed" badge ads at top of search, pay per lead not click, zero creative required.
+
+**Performance Max — replacing manual Google Ads campaigns (Google Ads API v17):**
+
+```
+What Performance Max does:
+  Google's AI distributes assets (headlines, descriptions, images, videos) across
+  ALL Google inventory simultaneously: Search, Display, YouTube, Gmail, Maps, Discover.
+  One campaign replaces what would previously have been 5 separate campaigns.
+  
+Why this matters for Dr. Mehta:
+  Manual Google campaign: "Dentist Viman Nagar" keyword → search ad → website
+  Performance Max: same budget, but also shows:
+    → YouTube pre-roll before dental videos (awareness)
+    → Display ads on health websites (consideration)
+    → Maps ad when someone searches "dentist near me" (bottom of funnel)
+    → Discover feed ad when target audience is browsing (interest)
+  All from the same campaign, Google optimizes the mix automatically.
+
+Performance Max setup in Skill 11 v3.0:
+  Agent creates one PMax campaign per customer (not 5 separate campaigns)
+  Asset groups: 
+    - Headlines: 15 variations (agent generates from customer profile)
+    - Descriptions: 4 variations
+    - Images: at minimum 5 (from content_assets library — images from Skill 4/8)
+    - Videos: YouTube Shorts from Skill 8 (if YouTube connected)
+    - Logo: from brand assets
+  Audience signals: Custom Audience from Skill 11b (if available) + website visitors
+  Conversion goal: phone calls + form fills + booking page views (GA4 conversion events)
+  
+Constitutional: all assets customer-approved before campaign launches (APPROVAL_GATE)
+```
+
+**Meta Advantage+ — replacing manual audience targeting:**
+
+```
+What Advantage+ does:
+  Meta's AI expands the audience automatically beyond the manually defined interest groups.
+  For local businesses: starts with defined city + age range, then Meta AI expands to
+  lookalike users who are statistically likely to convert.
+  
+Why manual interest targeting is now 2022 strategy:
+  Old Skill 11: "35-50, Viman Nagar, interested in Dentistry" — rigid, misses people
+  Advantage+: starts there, then learns who actually converts and finds more of them
+  Result: typically 15-30% lower CPL after 2-week learning period
+
+Advantage+ campaign setup in Skill 11 v3.0:
+  Campaign objective: LEADS (Meta Lead Gen Form) or MESSAGES (Click-to-WhatsApp)
+  Audience: city + minimum age only → Advantage+ handles the rest
+  Budget optimization: Advantage+ Campaign Budget (CBO) across all ad sets
+  Creative: 3 variants from Skill 11c DCO
+```
+
+**Click-to-WhatsApp Ads — the most effective India local business ad format:**
+
+```
+What Click-to-WhatsApp does:
+  Patient sees ad on Instagram/Facebook → taps CTA → WhatsApp opens with pre-filled message
+  → Skill 7 WhatsApp flow handles the conversation → booking-mcp creates appointment
+  No website needed. No landing page needed. No form to fill. Patient stays in WhatsApp.
+  
+Why this is P0 for India:
+  80% of Indian mobile internet users are on WhatsApp daily.
+  The friction of "see ad → go to website → fill form → wait for call back" loses 70% of leads.
+  "See ad → tap → WhatsApp opens → instant reply" converts at 3-5× the rate.
+  Dr. Mehta doesn't need a website to get bookings. He needs WhatsApp.
+  
+Click-to-WhatsApp ad setup:
+  Campaign objective: MESSAGES (Meta objective)
+  Ad creative: same as other Meta ads (image/video from Skill 4/8)
+  CTA button: "Send Message" → opens WhatsApp with pre-filled:
+    "Hi, I saw your ad and I'd like to book an appointment"
+  Landing: WAOOAW's WhatsApp Business Number (FA-009 WABA)
+  First message: automated welcome + service selection from WhatsApp Catalog (Skill 7)
+  
+Constitutional: requires FA-009 (WABA) to be live — blocks this campaign type until WABA verified
+```
+
+**Google Local Services Ads (LSA) — new campaign type in v3.0:**
+
+```
+What LSA does:
+  "Google Guaranteed" badge ads at the very top of search results (above regular paid ads).
+  Appears when someone searches "dentist near me" or "root canal viman nagar".
+  Billing: pay per LEAD (phone call or message), not per click.
+  No creative required — Google uses GBP profile data.
+  
+Why this is important for Dr. Mehta:
+  LSA appears BEFORE all other ads in local search → maximum visibility
+  Pay per verified lead → no wasted clicks from browsers who aren't booking
+  "Google Guaranteed" badge → massive trust signal for new patients
+  
+LSA setup requirements (one-time, APPROVAL_GATE):
+  - GBP profile verified (Skill 6) ✓ 
+  - Background check/license verification: dental license copy uploaded to Google
+  - Business hours confirmed
+  - Service areas set (Viman Nagar + surrounding pin codes)
+  - Budget cap: ₹X per lead (agent recommends; customer approves)
+  
+LSA cannot be set up until: GBP is verified + dental license submitted to Google
+Agent action: guides customer through LSA verification once GBP is complete
+```
 **Business KPI:** Cost per lead (CPL) from paid campaigns + Return on Ad Spend (ROAS) per month
 **Execution model:** `APPROVAL_GATE` — every campaign, budget change, and creative requires customer approval before launch
 **Phase activation:** Phase 2 (Growth Engine) — activated at Score 3+; Ad Spend Wallet must be funded (minimum ₹2,000)
@@ -2079,6 +2182,151 @@ list_management:
 - No email is sent without customer approval for the first 3 sends; then eligible for Synthetic Approval at subject line + content level
 - DPDPA consent verification is REQUIRED before any list import — failure to verify blocks the import (not DEGRADABLE)
 - Email content must pass SCR Check 3 (compliance) — healthcare pricing and outcome claims in email are identical to social media compliance rules
+
+---
+
+### Skill 7b: Lead Conversation Management — v3.0 (CRITICAL GAP BRIDGE)
+
+**Skill type:** `LEAD_CONVERSATION`
+**Specification version:** 3.0 (2026-07-19 — Gap: enquiries die in Instagram DMs and comments; agent generates leads but cannot convert them to bookings)
+**Business KPI:** Lead-to-booking conversion rate (%) + average DM response time (minutes) + WhatsApp handoff rate (%)
+**Execution model:** `PRE_AUTHORIZED` for reading + classifying; `APPROVAL_GATE` for first 3 response templates; `SYNTHETIC_APPROVAL` thereafter
+**Phase activation:** Phase 1 — activates with Skill 4. Skills that generate enquiries without responding to them violate C-049.
+
+**Decision Space:**
+- **Authorized:** Read all new Instagram DMs and comments every 2 hours; classify intent (BOOKING_INTENT / PRICE_QUESTION / PROCEDURE_QUESTION / GENERAL_ENQUIRY / COMPLAINT / SPAM); respond using approved templates; qualify leads; hand off to WhatsApp (Skill 7); check booking availability; create appointments via booking-mcp
+- **Prohibited:** Clinical advice in DMs; specific price commitments; handling COMPLAINT autonomously; more than 3 DM exchanges before WhatsApp handoff
+- **Always-ask:** Any response not in approved template library; COMPLAINT handling; responding to apparent minor
+
+**Lead Classification + Response Matrix:**
+
+```yaml
+BOOKING_INTENT:
+  triggers: [appointment, book, available, when can, slot, timing, book karna]
+  response_time: < 5 min
+  template: "Hi [Name]! To book fastest, tap here on WhatsApp: [wa.me link] 😊"
+  next_action: WHATSAPP_HANDOFF
+
+PRICE_QUESTION:
+  triggers: [how much, cost, fees, kitna, charges, price]
+  response_time: < 15 min
+  template: "Hi [Name]! [Service] starts at [price_range from catalog].
+             For accurate quote + availability: [wa.me link] 🙏"
+  next_action: WHATSAPP_HANDOFF
+
+PROCEDURE_QUESTION:
+  triggers: [what is, how does, painful, how long, safe, implant]
+  response_time: < 30 min
+  template: "[2-sentence FAQ answer from approved library] Want more detail? [wa.me link]"
+  source: APPROVED_FAQ_LIBRARY only — never LLM freeform on medical topics
+
+COMPLAINT:
+  triggers: [bad, worst, cheat, fraud, disappointed, complaint]
+  agent_action: DO_NOT_RESPOND → immediate WhatsApp to Dr. Mehta:
+    "⚠️ Complaint on Instagram from @[user]: '[first 100 chars]'. I have NOT responded."
+
+SPAM: HIDE_COMMENT / MARK_AS_SPAM silently.
+```
+
+**WhatsApp Handoff Protocol:**
+Instagram DMs are for discovery. WhatsApp is for booking. Every substantive DM conversation moves to WhatsApp within 2 exchanges. If patient doesn't click the WhatsApp link after 2 exchanges → flag for Dr. Mehta.
+
+**Booking Integration — the missing conversion endpoint:**
+
+```yaml
+booking-mcp:  # NEW — port 8146
+  supported_platforms:
+    practo:   Practo Partner API (availability.get, appointment.create, appointment.cancel)
+    calendly: Calendly API v2 (availability.get, booking.create, booking.cancel)
+    waooaw_native: WAOOAW-managed calendar (for customers with no booking system)
+  
+  booking_flow:
+    1. Patient enquires via Instagram DM
+    2. Skill 7b classifies → BOOKING_INTENT
+    3. Agent replies with WhatsApp CTA
+    4. Patient moves to WhatsApp (Skill 7 takes over)
+    5. booking-mcp.availability.get → agent sends 3 available time slots
+    6. Patient confirms slot
+    7. booking-mcp.appointment.create → confirmation sent
+    8. CE.RecordEvidence(APPOINTMENT_CREATED) before confirmation (C-023)
+    9. Skill 16 Patient Lifecycle activated for this patient
+```
+
+**MCP Tools:**
+| Tool | MCP Server | Action | Authorization | Failure |
+|---|---|---|---|---|
+| Read DMs | instagram-messaging-mcp | dm.list_unread | `LEAD_CONVERSATION` | REQUIRED |
+| Classify DM | internal (LOCAL LLM) | dm.classify | `LEAD_CONVERSATION` | REQUIRED |
+| Reply DM | instagram-messaging-mcp | dm.send_template | `LEAD_CONVERSATION` + approved template | REQUIRED |
+| Read comments | instagram-comments-mcp | comment.list_recent | `LEAD_CONVERSATION` | REQUIRED |
+| Reply comment | instagram-comments-mcp | comment.reply | `LEAD_CONVERSATION` + APPROVAL_GATE (first 3) | REQUIRED |
+| Check availability | booking-mcp | availability.get | `BOOKING_MANAGEMENT` | DEGRADABLE |
+| Create appointment | booking-mcp | appointment.create | `BOOKING_MANAGEMENT` + patient confirmed | REQUIRED |
+| GA4 lead event | google-analytics-mcp | event.record | `ANALYTICS_WRITE` | DEGRADABLE |
+
+---
+
+### Skill 16: Patient Lifecycle Management — v3.0 (CRITICAL GAP BRIDGE)
+
+**Skill type:** `PATIENT_LIFECYCLE`
+**Specification version:** 3.0 (2026-07-19 — Gap: agent is acquisition-only; zero retention after first visit)
+**Business KPI:** 6-month patient return rate (%) + patient LTV (₹) + review conversion rate (%) + reactivation rate (%)
+**Execution model:** `PRE_AUTHORIZED` for all lifecycle sequences within approved templates; `APPROVAL_GATE` for bulk reactivation campaigns
+**Phase activation:** Phase 1 — activates when first appointment confirmed. A dental agent that forgets patients after their first visit delivers 30% of its possible value.
+
+**The 7-Touch Patient Lifecycle:**
+
+```
+TOUCH 1 — Post-Visit Check-In (24h after appointment)
+  Trigger: booking-mcp appointment.status = COMPLETED
+  "How are you feeling after your [treatment] yesterday, [Name]? 🙏"
+  If pain/concern → IMMEDIATE escalation to Dr. Mehta (C-049)
+
+TOUCH 2 — Review Request (48-72h after positive check-in)
+  Trigger: TOUCH 1 response = POSITIVE
+  "If you're happy with your visit, a Google review helps others: [review link]"
+  Rate limit: 1 per patient per 3 months
+
+TOUCH 3 — Multi-Visit Treatment Follow-Up (Day 7 for root canal/implant/braces)
+  "Your next appointment is [date]. Any questions before then? [WhatsApp]"
+
+TOUCH 4 — 6-Month Checkup Reminder
+  Trigger: days_since_last_visit >= 180
+  "Your routine checkup is due! Book here: [booking link] or reply YES for available times"
+  booking-mcp shows 3 slots if patient replies YES
+
+TOUCH 5 — Reactivation Sequence (12+ months dormant)
+  Requires: APPROVAL_GATE — customer sees patient list before any message sent
+  3 messages, 7 days apart. Stop after 3 non-responses. Never harass.
+
+TOUCH 6 — Birthday Message (if date in profile)
+  Relationship-only. Zero sales CTA. C-048 — birthday is not a sales tool.
+
+TOUCH 7 — 1-Year Anniversary
+  "It's been a year since your first visit. Thank you for trusting us. 🙏
+   Your 6-month checkup is due: [booking link]"
+```
+
+**Patient Segmentation:**
+NEW_PATIENT → AT_RISK → DORMANT → DORMANT_INACTIVE  
+HIGH_VALUE (>₹15k spend) → enhanced lifecycle  
+REFERRER (has referred patients) → special acknowledgment  
+
+**MCP Tools:**
+| Tool | MCP Server | Action | Authorization | Failure |
+|---|---|---|---|---|
+| Get completed appointments | booking-mcp | appointment.list_completed | `PATIENT_LIFECYCLE` | DEGRADABLE |
+| Get dormant patients | booking-mcp | patients.get_dormant | `PATIENT_LIFECYCLE` | DEGRADABLE |
+| Send check-in | whatsapp-business-mcp | checkin.send | `PATIENT_LIFECYCLE` PRE_AUTHORIZED | REQUIRED |
+| Send review request | whatsapp-business-mcp | review_request.send | `PATIENT_LIFECYCLE` rate-limited | REQUIRED |
+| Send reactivation | whatsapp-business-mcp | reactivation.send | `PATIENT_LIFECYCLE` + APPROVED_LIST | REQUIRED |
+| Create appointment | booking-mcp | appointment.create | `BOOKING_MANAGEMENT` + confirmed | REQUIRED |
+
+**Constitutional constraints:**
+- Pain/discomfort in check-in → IMMEDIATE escalation. Never medical advice in lifecycle messages.
+- Reactivation: customer approves list before any message. Patient data is sensitive.
+- Birthday: zero sales CTA — relationship-only or it violates C-048.
+- Opt-out on every message: "Reply STOP to stop receiving messages."
 
 ---
 
