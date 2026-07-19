@@ -1,6 +1,6 @@
 # WAOOAW Platform — Founder Action List
 
-**Last Updated:** 2026-07-18
+**Last Updated:** 2026-07-19
 **Purpose:** Tracks all actions that require the Founder's direct involvement. No AI agent can complete these.
 
 ---
@@ -19,11 +19,13 @@
 |---|---|---|---|---|
 | **FA-001** | Create Cloudflare account + add waooaw.com domain + enable proxy mode for static assets (`_next/static/**`, `*.js`, `*.css`) | CDN — O-02 optimization; faster portal load for all users | 30 minutes | PENDING |
 | **FA-002** | Meta Business Manager verification (upload business documents) | DMA Skill 11 (paid advertising agency model — ADR-026); WhatsApp Business API (WABA) | 2-4 weeks lead time | PENDING |
-| **FA-003** | Create Azure OpenAI resource in **UAE North** region (not US East) + deploy gpt-4o and gpt-4o-mini models | O-10 LLM latency optimization: 180ms → 80ms for all LLM calls | 1 hour | PENDING |
+| **FA-003** | Create Azure OpenAI resource in **UAE North** region (not US East) + deploy gpt-4o and gpt-4o-mini models | **Fallback LLM** (ADR-029 fallback chain) — primary LLM is now Google Vertex AI (FA-021). Azure UAE North is circuit-breaker fallback only | 1 hour | PENDING |
 | **FA-004** | ~~Designate Grievance Officer~~ — **DONE (partial):** Yogesh Khandge designated (yogesh.khandge@dlaisd.com). Remaining: set up grievance page on portal + ensure 30-day response SLA is documented in Privacy Policy | DPDPA compliance before commercial launch | 30 minutes | PARTIAL |
 | **FA-005** | TRADING/EXECUTION/ESCALATION_DECISION — acknowledge that this is a BREAKING constitutional boundary before any trading agent goes live | Trading IB-009 implementation unblocked | Immediate | PENDING |
 | **FA-006** | Google Ads MCC (My Client Center) account setup | DMA Skill 11 Google Ads management (ADR-026) | 1 day (self-serve) | PENDING |
 | **FA-007** | Create WAOOAW Instagram + LinkedIn + Facebook + GBP accounts | Skill 14 (WAOOAW institutional self-marketing, FR-005) | 1 day | PENDING |
+| **FA-021** | **Create GCP project + enable Vertex AI API + create Service Account key** — (1) console.cloud.google.com → New project: `waooaw-platform`. (2) APIs & Services → Enable `Vertex AI API`. (3) IAM → Service Accounts → create `waooaw-ai-runtime` with role `Vertex AI User`. (4) Keys → Create JSON key → download. (5) Add JSON content to Azure Key Vault secret `google-vertex-sa-key`; add project ID to `google-vertex-project-id`. | **Primary LLM for ALL agents** (ADR-029): Gemini 2.0 Flash (MID_TIER) + Gemini 2.5 Pro (FRONTIER + steward sessions) via Mumbai region (asia-south1). **DPDPA primary position. ~40% cost saving vs Azure-only plan.** | 2 hours (self-serve — free GCP tier sufficient to start) | **PENDING — DO FIRST** |
+| **FA-022** | **Register at sarvam.ai + subscribe to Saaras API + add key to Key Vault** — (1) sarvam.ai → Sign up. (2) Subscribe to Saaras API plan (~₹0.05/call). (3) Copy API key → add to Azure Key Vault secret `sarvam-api-key`. | **Agricultural agent C-042 compliance** (ADR-029): Sarvam Saaras is the MID_TIER provider for Hindi/Marathi/Telugu/Punjabi/Kannada advisory. Without this, Suresh gets Gemini (Grade B regional language). With this, Grade A guaranteed for Vidarbha dialect and rural India vocabulary. | 1 hour (self-serve) | **PENDING — BEFORE AGRICULTURAL LAUNCH** |
 
 ## P1 — Before 50 Customers
 
@@ -64,7 +66,9 @@
 ## Notes
 
 - **FA-002 (Meta BM) is the critical path item** — FA-009, FA-010, FA-018 all depend on it. Start immediately.
-- **FA-003 (UAE North OpenAI) takes 1 hour** and saves ~55% LLM latency from day one — do alongside IB-009 kickoff.
+- **FA-021 (GCP Vertex AI) is now the primary LLM action** (ADR-029) — 2 hours, self-serve. Unlocks Gemini 2.0 Flash (MID_TIER) + Gemini 2.5 Pro (FRONTIER) as primary providers for ALL agents. 40% cost saving vs Azure-only. Do alongside FA-003 (Azure remains fallback).
+- **FA-022 (Sarvam AI) is required before Agricultural launch** — 1 hour, self-serve. Without it, Agricultural agent uses Gemini (good but not Grade A for Marathi/Vidarbha dialect). With it, Grade A guaranteed.
+- **FA-003 (Azure OpenAI UAE North)** still needed — it's the fallback chain for when Gemini has rate limits or outage. Do after FA-021.
 - **FA-005 (Trading ESCALATION_DECISION)** is a 5-minute acknowledgment that unlocks the entire trading implementation sprint.
 - **FA-018 (Facebook App)** depends on FA-002 (Meta BM verified). Do both together.
 - **FA-019 (Apple Developer)** has no dependencies — can be done immediately. Unlocks Apple Sign In for Dr. Mehta + Meera (iPhone users).
