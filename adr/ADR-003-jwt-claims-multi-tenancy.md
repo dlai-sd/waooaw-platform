@@ -67,3 +67,56 @@ CREATE POLICY tenant_isolation ON contracts
 - JWT is signed by Keycloak. `tenant_id` claim cannot be forged without Keycloak private key.
 - Services must validate JWT signature before trusting any claim. Never trust user-supplied `tenant_id` outside the JWT.
 - Contract authorization is resolved from the database, not from JWT claims, to prevent stale-token authorization bypass.
+
+---
+
+## Amendment — ADR-028 Extension (2026-07-19)
+
+ADR-028 extends this decision with two new JWT claim sets. The original minimum claims remain unchanged.
+
+### Customer JWT (extended)
+
+```json
+{
+  "sub": "user-uuid",
+  "tenant_id": "org-uuid",
+  "org_name": "Dr Mehta Dental Clinic",
+  "roles": ["customer"],
+  "plan_tier": "essential | professional | enterprise",
+  "subscription_id": "sub-uuid",
+  "iss": "https://auth.waooaw.com/realms/waooaw",
+  "exp": 1234567890,
+  "iat": 1234567800
+}
+```
+
+**`plan_tier`** — sourced from Keycloak user attribute `waooaw_plan_tier`, set by Business Platform
+via Keycloak Admin API at subscription activation. Used by AI Runtime LLM Gateway to route
+customer sessions to the correct model tier (ADR-024 + ADR-028). Default: `essential` for any
+customer whose subscription record has not yet set this attribute.
+
+**`subscription_id`** — UUID of the active subscription record in `business.subscriptions`.
+Informational — authorization uses `tenant_id`, not `subscription_id`.
+
+### Steward JWT (new — C-068)
+
+```json
+{
+  "sub": "steward-uuid",
+  "role": "steward",
+  "person": "yogesh | sujay | ojal",
+  "iss": "https://auth.waooaw.com/realms/waooaw-steward",
+  "exp": 1234567890,
+  "iat": 1234567800
+}
+```
+
+Steward JWTs are issued by the `waooaw-steward` Keycloak client — a **separate client** from the
+customer portal client with a different JWKS endpoint. This means a customer JWT signed by the
+customer client keypair will fail signature verification against the steward JWKS even if it
+contains `role: steward` in its claims. This is the cryptographic enforcement of C-068.
+
+**Keycloak Protocol Mapper additions required:**
+- Customer client: add `plan_tier` mapper (user attribute → JWT claim, token type: access_token)
+- Customer client: add `subscription_id` mapper (user attribute → JWT claim)
+- Steward client: add `person` mapper (user attribute → JWT claim, allowlist: yogesh|sujay|ojal)

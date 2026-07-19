@@ -1,12 +1,14 @@
 # Agent Authoring Guide
 
 **Authority:** GENESIS Part 05 — Agent Definition Protocol
-**Date:** 2026-07-09 (v2.0 — gate-enforced template replacing guide-only template)
+**Date:** 2026-07-09 (v2.0 — gate-enforced template) · **Amended 2026-07-19 (v3.0 — Section 0 Constitutional DNA mandatory, C-070)**
 **Purpose:** Mandatory template for every new Digital Professional type on WAOOAW. This is a GATE, not a guide. An agent spec that is incomplete in any section cannot be activated.
 
 **GATE vs GUIDE distinction:**
 - A guide: follow if you remember to. Partial compliance passes.
 - A gate: every section is binary (present and complete, or absent). Missing any section = BLOCKED. An automated agent can verify this gate by querying the repository.
+
+**v3.0 change (2026-07-19):** Section 0 (Constitutional DNA Inheritance) is now the FIRST mandatory gate section. No agent spec may pass EA review without it. Authority: C-070 (Constitutional DNA Inheritance Obligation — RATIFIED 2026-07-19).
 
 Before any implementation sprint for a new agent type begins, ALL sections of this template must exist, be complete, and have passed EA review and Founder approval.
 
@@ -28,6 +30,54 @@ Copy this template. Fill every section. Leave no section blank.
 ---
 
 ```
+# [Agent Name] Specification
+
+## 0. Constitutional DNA Inheritance (MANDATORY FIRST SECTION — C-070)
+
+Inherits:          CONSTITUTIONAL_DNA v1.0
+                   (architecture/reference/agents/CONSTITUTIONAL_DNA.md)
+Constitutional claims that bind this agent (beyond the universal 69):
+  [List any domain-specific claim extensions or parameter overrides]
+
+### 0.1 Instinct 1 — Follow Constitution (agent-specific parameters)
+
+CE.ValidateAction is called: [list each skill/action that triggers CE.ValidateAction]
+Evidence First applies to:   [list which outputs require CE.RecordEvidence before returning success]
+Domain-specific DENY conditions: [e.g., "C-043: daily loss limit ₹X"; "C-060: no camera on student"]
+Constitutional Blocker triggers (additional to universal):
+  - [domain-specific situations that require an immediate blocker, e.g., "SEBI circuit breaker hit"]
+
+### 0.2 Instinct 2 — Improve Itself (agent-specific parameters)
+
+Acceptance scenarios: [AS-NNN, AS-NNN] — used for simulation grade cycle
+Minimum simulation grade for production: A
+Grade A definition for this agent: [specific pass criteria, e.g., "All 5 customer goals met; 0 C-048/C-049 violations; Emergency Stop ≤250ms"]
+
+Per-skill C-049 trigger conditions:
+| Skill | Trigger condition | Escalation message template |
+|---|---|---|
+| Skill N | [when to file C-049 for this skill] | [what to tell the customer] |
+
+Per-skill quality signal type:
+| Skill | record_type in audit_records | outcome values |
+|---|---|---|
+| Skill N | SKILL_QUALITY_SIGNAL | DELIVERED | PARTIAL | ESCALATED | FAILED |
+
+### 0.3 Instinct 3 — Autonomous and Trust-Based (agent-specific parameters)
+
+Trust tier overrides (if any from universal model):
+  [e.g., "Trading agent: C-043 violation → immediate Tier 1 reset regardless of session count"]
+  [e.g., "Private Tutor: C-060 violation → permanent suspension, no tier reset"]
+  
+Actions that qualify for Tier 0 after trust_score ≥ 0.95:
+  [list which skill classes can become pre-authorized for trusted customers]
+  
+Actions that NEVER reach Tier 0 (always require CE.ValidateAction):
+  [e.g., "All financial actions", "All external MCP tool calls"]
+
+```
+
+
 # [Agent Name] Specification
 # e.g., "Digital Marketing Professional — Healthcare"
 

@@ -2,6 +2,7 @@
 
 **Specification version:** 1.0
 **Date:** 2026-07-13
+**Inherits:** `CONSTITUTIONAL_DNA v1.0` (C-070 — RATIFIED 2026-07-19)
 **Constitutional Basis:** C-036 (Skills), C-037 (Business KPIs), C-038 (Billing), C-039 (Conversational config), C-040 (Domain specialization), C-041 (Tool authorization), C-048 (Information Non-Exploitation — LAW), C-049 (Honest Limitation Disclosure — LAW), C-059 (Implementation Traceability), **C-060 (Minor Student Protection — LAW)**
 **Status:** DRAFT — pending EA review and Founder approval
 **Primary interface:** Web application (whiteboard + voice) — NOT WhatsApp. Parent reporting via WhatsApp + portal.
@@ -1296,3 +1297,62 @@ tutor_constitutional_constraints:
 **Status:** DRAFT v1.0 — 2026-07-13
 **Pending:** EA review + Founder approval (GENESIS Part 05)
 **Next:** Acceptance Scenarios (AS-006 proposed), simulation runs
+
+---
+
+## 0. Constitutional DNA Inheritance (C-070 — RATIFIED 2026-07-19)
+
+**Inherits:** `CONSTITUTIONAL_DNA v1.0` — all 3 instincts apply unconditionally.
+**C-060 override:** Minor student data protection is the highest-severity constraint on this agent. Any violation resets autonomy tier permanently and triggers an immediate Constitutional Blocker.
+
+### 0.1 Instinct 1 — CE.ValidateAction + Evidence First (Private Tutor-specific)
+
+| Trigger | Evaluators invoked |
+|---|---|
+| whiteboard-mcp `session.start` (lesson begins) | C-041, C-060 (no camera on student?), C-051 (usage) |
+| waba-mcp `message.send` (parent report) | C-041, C-048 (parent only — no student billing data), C-051 |
+| Any LLM inference (lesson content) | C-062 (prompt injection), C-051 (usage) |
+| Lesson plan modification (internal decision) | CE.RecordEvidence with `record_type=LESSON_PLAN_CHANGE` before modification applied (GAP-TUTOR-01 resolved) |
+
+**Emergency Stop for tutoring (GAP-TUTOR-02 resolved):**
+- **Lesson-stop:** Parent sends WhatsApp keyword "STOP" → current whiteboard session frozen ≤250ms, screen shared cleared, student sees "Session paused by parent"
+- **Account-suspend:** Parent visits portal → Emergency Stop button → all future sessions blocked until parent reactivates
+
+**Domain-specific Constitutional Blocker triggers:**
+- Any attempt to contact student outside session (e.g., WhatsApp to student directly) → immediate blocker + C-060 violation
+- Lesson content contains adult themes detected by content safety scan (C-061) → blocker, lesson halted
+- Billing data visible on student's screen → blocker
+
+### 0.2 Instinct 2 — C-049 Triggers + Quality Signals (Private Tutor-specific)
+
+**Acceptance scenarios:** AS-006 (Priya, Class 8 Maths). **Minimum grade: A.**
+
+**Grade A definition:** Student completes lesson with ≥80% question accuracy. Parent receives progress report within 24h. Emergency Stop verified ≤250ms. No C-060 violation. No camera requested.
+
+**Student comprehension signals (GAP-TUTOR-03 resolved):**
+After each concept explanation, agent records: questions attempted, correct rate, time taken, hints needed → `TUTOR_COMPREHENSION_SIGNAL`.
+
+| Skill | C-049 Trigger | Parent Message |
+|---|---|---|
+| Any subject | Student answers ≤40% correct on same concept 3 sessions in a row | "I'm struggling to help [child] understand [topic] effectively. I'd like to change my approach. Can we discuss what works best for [child]?" (GAP-TUTOR-04 resolved) |
+| Session delivery | Technical issue: whiteboard latency > 3s for > 5 min | "The session quality is poor today. I'm ending early — no charge for this session." |
+| Lesson planning | Student curriculum changes (board change, class change) | "I need to update my lesson plan for [child]. Can you confirm the new board/class?" |
+
+| Skill | Quality Signal `record_type` | Outcome Values |
+|---|---|---|
+| Lesson delivery | `TUTOR_LESSON_QUALITY_SIGNAL` | COMPLETED \| PARTIAL \| STUDENT_DISENGAGED \| ESCALATED \| TECHNICAL_FAILURE |
+| Progress report | `TUTOR_REPORT_QUALITY_SIGNAL` | DELIVERED \| DELAYED \| ESCALATED |
+| Comprehension | `TUTOR_COMPREHENSION_SIGNAL` | HIGH \| MEDIUM \| LOW \| BREAKTHROUGH \| REGRESSION |
+
+### 0.3 Instinct 3 — Trust Progression (Private Tutor-specific)
+
+**C-060 override (absolute):** Any C-060 violation → permanent suspension of autonomy, immediate blocker. No session count or trust score can override this.
+
+| After | Condition | Tier 0 scope earned |
+|---|---|---|
+| 20 lessons, trust ≥ 0.90 | Parent satisfaction signal present, zero C-060 violations | Lesson plan adjustments within approved subject scope without per-session parent confirmation |
+| 40 lessons, trust ≥ 0.95 | Consistent HIGH/BREAKTHROUGH comprehension signals | Pacing decisions (speed up/slow down topic) made autonomously |
+
+**Student trust signals (GAP-TUTOR-06 resolved):** Parent reports "child is excited about maths now" or student asks for extra sessions → `customer_satisfaction_signals++` in trust_ledger. Engagement duration per session is a proxy signal.
+
+**Parent-agent trust model (GAP-TUTOR-05 resolved):** Parent's approval pattern tracked: if parent never rejects agent's lesson plan suggestions for 30 consecutive sessions, agent earns `LESSON_PLAN_AUTONOMY` flag for that child.

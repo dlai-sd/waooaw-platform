@@ -2,6 +2,7 @@
 
 **Specification version:** 1.7
 **Date:** 2026-07-11 (v1.7 — C-052: Context Bootstrap, SEBI cross-customer contamination prohibition, Tier 3 temporal fence)
+**Inherits:** `CONSTITUTIONAL_DNA v1.0` (C-070 — RATIFIED 2026-07-19)
 **Change:** C-052 Context Fidelity + Isolation declared. Real-time cross-customer isolation is a SEBI regulatory requirement. Each customer's PAAS session is completely isolated; Tier 3 has 24-hour write lag; active session positions NEVER enter Tier 3.
 **Approved by Founder:** 2026-07-08 (v1.1); v1.4 pending Founder acknowledgment (BREAKING prompt before implementation sprint)
 **Constitutional Basis:** C-036 (Skills), C-037 (Business KPIs), C-038 (Billing), C-039 (Conversational config), C-040 (Domain specialization), C-041 (Tool authorization), C-043 (Financial Spend Authority Ceiling — the daily loss limit is a Constitutional Floor equivalent; same enforcement mechanism as paid advertising budget cap), ADR-019 (RAG), ADR-020 (MCP), ADR-018 (Emergency Stop Temporal signal)
@@ -977,4 +978,55 @@ billing:
 **EA Review:** R-017 — APPROVED (v1.3 Track A gate compliance)
 **EA Review:** R-018 — APPROVED (v1.4 Strategic Cognition Layer)
 **Founder Approval:** GRANTED — 2026-07-08 (per GENESIS Part 05)
-**Status:** APPROVED — v1.4 active (pending Founder acknowledgment of TRADING/EXECUTION/ESCALATION_DECISION BREAKING prompt before implementation sprint)
+**Status:** APPROVED — v1.7 active (pending Founder acknowledgment of TRADING/EXECUTION/ESCALATION_DECISION BREAKING prompt before implementation sprint)
+
+---
+
+## 0. Constitutional DNA Inheritance (C-070 — RATIFIED 2026-07-19)
+
+**Inherits:** `CONSTITUTIONAL_DNA v1.0` — all 3 instincts apply unconditionally.
+
+### 0.1 Instinct 1 — CE.ValidateAction + Evidence First (Trading-specific)
+
+| Trigger | Evaluators invoked |
+|---|---|
+| zerodha-mcp `order.place` | C-041 (order type in Decision Space?), C-043 (daily loss limit not exceeded?), C-051 (usage) |
+| Any financial action | C-043 (loss limit), C-048 (exploitation check) |
+| LLM inference | C-062 (prompt injection), C-051 (usage) |
+| PAAS session start | CE.RecordEvidence: session_start evidence record before any market data read |
+
+**Domain-specific DENY:** C-043 daily loss limit breach → DENY + immediate PAAS session pause + Emergency Stop notification.
+
+**Domain-specific Constitutional Blocker triggers:**
+- SEBI circuit breaker triggered on NSE → blocker + immediate session freeze
+- Broker API returns `MARGIN_CALL` → blocker + Rahul notified immediately
+- `TRADING/EXECUTION/ESCALATION_DECISION` UNCERTAIN result without Rahul acknowledgment → blocker
+
+### 0.2 Instinct 2 — C-049 Triggers + Quality Signals (Trading-specific)
+
+**Acceptance scenarios:** AS-003 (Rahul, NIFTY FO). **Minimum grade: A.**
+
+**Grade A definition:** Rahul's trade brief is delivered, entry/exit levels are SEBI-compliant, Emergency Stop ≤250ms, no C-043 violation, PAAS session survives a simulated Temporal crash and resumes.
+
+| Skill | C-049 Trigger | Customer Message |
+|---|---|---|
+| Skill 1 Market Analysis | 3 consecutive losing setups in 7 days | "My recent analysis has missed 3 setups. The market regime may have changed. I'm pausing new trade recommendations for 24h to recalibrate. No charges for missed sessions." |
+| Skill 2 PAAS Execution | Broker API latency > 500ms (SLA breach) | "Execution quality is degraded — broker API is slow. I won't place orders in this condition. Notifying you now." |
+| Skill 3 Portfolio Review | Missing 2+ consecutive broker data feeds | "I cannot give you a reliable portfolio review without complete data. Escalating to get the data issue resolved." |
+
+| Skill | Quality Signal `record_type` | Outcome Values |
+|---|---|---|
+| Skill 1 Analysis | `TRADING_SIGNAL_QUALITY` | ACTED_ON \| EXPIRED \| REJECTED_BY_RAHUL \| ESCALATED |
+| Skill 2 PAAS | `TRADING_EXECUTION_QUALITY` | EXECUTED \| PARTIAL \| DENIED_CE \| ESCALATED \| CIRCUIT_BREAKER |
+| Skill 3 Review | `TRADING_REVIEW_QUALITY` | DELIVERED \| PARTIAL \| DATA_INCOMPLETE |
+
+### 0.3 Instinct 3 — Trust Progression (Trading-specific)
+
+**Override:** Any C-043 violation (daily loss limit breach) → **immediate Tier 1 reset, regardless of session count.** This is absolute.
+
+| After | Condition | Tier 0 scope earned |
+|---|---|---|
+| 30 sessions, trust ≥ 0.95 | Zero C-043 violations, Rahul satisfaction signal present | Intraday NIFTY FO within pre-defined range (no per-trade confirmation needed) |
+| 60 sessions, trust ≥ 0.97 | Zero violations | Overnight positions within pre-set allocation (subject to CE.ValidateAction at execution) |
+
+**Never reaches Tier 0:** Any order exceeding Rahul's single-trade size limit; crypto orders; any instrument not explicitly in the Decision Space.

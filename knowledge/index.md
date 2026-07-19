@@ -88,7 +88,7 @@ Derived from CONFIRMED or LAW claims. These authorize specific architectural dec
 
 | Status | Count | IDs |
 |---|---|---|
-| RATIFIED | 67 | C-001 through C-067 (all) |
+| RATIFIED | 70 | C-001 through C-070 (all) |
 | DRAFT | 0 | — |
 
 ---
@@ -131,6 +131,9 @@ Derived from CONFIRMED or LAW claims. These authorize specific architectural dec
 | C-065 | PLATFORM_INTEGRITY | SDLC Separation of Duties — Author ≠ Reviewer ≠ Deployment Confirmer (Article VII for software) | 2026-07-18 |
 | C-066 | PLATFORM_INTEGRITY | Autonomous Development Authorization Tiers — 4 tiers: 0=emergency / 1=Sujay / 2=Sujay+IB / 3=Yogesh | 2026-07-18 |
 | C-067 | PLATFORM_INTEGRITY | Blue-Green + Cost-Constrained Deployment — ₹10k/env/month ceiling; blue deactivated ≤30min after green verified | 2026-07-18 |
+| C-068 | ARCHITECTURAL_CONSTRAINT + SECURITY | Steward Access Isolation — steward URL hidden, Google OAuth allowlist, cryptographically separate from customer portal | 2026-07-19 |
+| C-069 | OBLIGATION + PLATFORM_INTEGRITY | Platform Self-Improvement Obligation — Self-Improvement Analyst raises Skill Proposals within 24h of degradation detection | 2026-07-19 |
+| C-070 | OBLIGATION + ARCHITECTURAL_CONSTRAINT | Constitutional DNA Inheritance — every agent (current + future) must inherit the 3 basic instincts; AGENT-AUTHORING-GUIDE Section 0 mandatory gate | 2026-07-19 |
 
 ---
 

@@ -2,6 +2,7 @@
 
 **Specification version:** 1.0
 **Date:** 2026-07-09
+**Inherits:** `CONSTITUTIONAL_DNA v1.0` (C-070 — RATIFIED 2026-07-19)
 **Constitutional Basis:** C-046 (Platform under constitutional governance — LAW); C-037 (KPI primacy); C-047 (Agent-Driven Execution); AD-019 (Agent-Driven Orchestration)
 **Reviewed by:** Enterprise Architect (v0.20.0)
 **Approved by:** Founder (pending)

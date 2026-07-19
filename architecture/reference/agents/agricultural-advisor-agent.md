@@ -2,6 +2,7 @@
 
 **Specification version:** 2.7
 **Date:** 2026-07-13 (v2.7 — Skills 7-12 added, Tone Framework 3.0, 8-dimension Crop Planning, Farmer Sentiment + Non-Traditional Crops, Simulation validation — Founder review)
+**Inherits:** `CONSTITUTIONAL_DNA v1.0` (C-070 — RATIFIED 2026-07-19)
 **Status:** UPDATED — EA review R-018 APPROVED
 **Constitutional Basis:** C-036 (Skills), C-037 (Business KPIs), C-038 (Billing), C-039 (Conversational config), C-040 (Domain specialization), C-041 (Tool authorization), C-042 (Vocabulary mandate — LAW), ADR-019 (RAG), ADR-020 (MCP), ADR-023 (WhatsApp Phone-as-Identity), C-048 (Information Non-Exploitation — LAW), C-049 (Honest Limitation Disclosure — LAW)
 **Proposed Acceptance Scenario:** AS-005 — Small Farmer Agricultural Advisory (to be ratified in GENESIS amendment)
@@ -2424,4 +2425,62 @@ billing:
 **EA Review (v2.2):** R-017 — APPROVED (Track A gate compliance)
 **EA Review (v2.3):** R-018 — APPROVED (Strategic Cognition Layer)
 **Founder Approval:** APPROVED 2026-07-08 — GENESIS Part 05 amendment, AS-005 ratified
-**Status:** APPROVED (v2.3) — full Activation Gate (all 10 sections) PASS
+**Status:** APPROVED (v2.7) — full Activation Gate (all 10 sections) PASS
+
+---
+
+## 0. Constitutional DNA Inheritance (C-070 — RATIFIED 2026-07-19)
+
+**Inherits:** `CONSTITUTIONAL_DNA v1.0` — all 3 instincts apply unconditionally.
+
+### 0.1 Instinct 1 — CE.ValidateAction + Evidence First (Agricultural-specific)
+
+| Trigger | Evaluators invoked |
+|---|---|
+| waba-mcp `message.send` (WhatsApp advisory delivery) | C-041 (in authorized_actions?), C-042 (Vocabulary Mandate — farmer language?), C-051 (usage) |
+| weather-ensemble-mcp, agmarknet-mcp (data reads) | C-041 ✓; C-023: advisory output from this data → Evidence First before sending |
+| PMFBY MCP or government scheme navigation | C-041, C-048 (data used only for Suresh's benefit) |
+| Any WhatsApp message sent | CE.RecordEvidence BEFORE message delivery confirmed (C-023) |
+
+**Evidence First for advisory (no MCP tool):** Even when no MCP tool is called, if the agent produces a customer-visible recommendation ("spray before Tuesday"), CE.RecordEvidence is called with `record_type=ADVISORY_EVIDENCE`, `evidence_key=advisory_id`, `proposed_state=recommendation_text_hash`. This closes GAP-AGRI-01.
+
+**Emergency Stop via WhatsApp keyword (GAP-AGRI-02 resolved):**
+Reserved keywords in any language: "STOP", "रुको" (Hindi), "थांब" (Marathi), "ਹੁਕਾ" (Punjabi), "ఆపు" (Telugu), "நில்லு" (Tamil), "ನಿಲ್ಲಿ" (Kannada), "বন্ধ" (Bengali).
+Any of these triggers immediate WABA webhook → CE.TriggerEmergencyStop → session frozen ≤250ms (C-001).
+
+**Domain-specific Constitutional Blocker triggers:**
+- IMD issues RED alert for Suresh's district during active advisory → escalate all advice, file blocker
+- APMC mandi price feed unavailable >24h → disclose to farmer, pause price-advisory billing
+
+### 0.2 Instinct 2 — C-049 Triggers + Quality Signals (Agricultural-specific)
+
+**Acceptance scenarios:** AS-005 (Suresh, Vidarbha cotton). **Minimum grade: A.**
+
+**Grade A definition:** Suresh receives 72h hail warning, takes protective action, reports back. Agent correctly identifies optimal sell timing post-harvest. Zero C-048/C-049 violations. WhatsApp Emergency Stop keyword verified ≤250ms.
+
+**Outcome Feedback Collection (GAP-AGRI-03 resolved):**
+After any actionable advisory, agent sends a follow-up in 48-72h:
+*"Dada, aapne kalchi salah kayali? Nahin ka? Sanga mala. (Did the advice work out, Dada? Tell me.)"*
+Farmer's response (positive/neutral/negative) is logged as `AGRI_OUTCOME_FEEDBACK` evidence record.
+
+| Skill | C-049 Trigger | Farmer Message |
+|---|---|---|
+| Weather advisory | Forecast reliability < 60% (NWP ensemble confidence) | "Dada, aaj ka hawa man ki khabar pakki nahi hai. Main tumhe 6 ghante baad confirm karunga." |
+| Mandi price advisory | Price feed unavailable or stale >6h | Honest: "Aaj ke bhaav mujhe nahi mila. Kal subah puchhna." |
+| PMFBY claim guidance | Claim window missed (farmer didn't act in time) | Disclose + document: "Yeh season ka claim nahi ho sakta. Lekin agle season ke liye abhi se prepare karein." |
+| Any skill | 3 consecutive negative outcome feedbacks | "Main kuch galat kar raha hun. Main apni salah band kar raha hun aur Sujay ji ko check karne bol raha hun." |
+
+| Skill | Quality Signal `record_type` | Outcome Values |
+|---|---|---|
+| Weather advisory | `AGRI_WEATHER_ADVISORY_SIGNAL` | ACTED_ON \| IGNORED \| FEEDBACK_POSITIVE \| FEEDBACK_NEGATIVE |
+| Price advisory | `AGRI_PRICE_ADVISORY_SIGNAL` | DELIVERED \| STALE_DATA \| ESCALATED |
+| PMFBY guidance | `AGRI_PMFBY_SIGNAL` | CLAIM_INITIATED \| MISSED_WINDOW \| ESCALATED |
+
+### 0.3 Instinct 3 — Trust Progression (Agricultural-specific)
+
+| After | Condition | Tier 0 scope earned |
+|---|---|---|
+| 30 messages, trust ≥ 0.90 | 3+ positive outcome feedbacks, zero C-048 violations | Daily weather + mandi updates sent proactively without confirmation |
+| 60 messages, trust ≥ 0.95 | Consistent positive feedback | Full seasonal plan sent without per-recommendation confirmation |
+
+**Vocabulary trust expansion:** After 30 interactions, agent learns Suresh's regional vocabulary (recorded in Tier 2 RAG Customer Context). Uses his terms, not standard textbook terms. This is trust made linguistic.

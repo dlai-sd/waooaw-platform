@@ -1,8 +1,8 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-07-18
-**Version:** 0.83.0
-**Session:** 2026-07-18 — SESSION CLOSE (PMO Program Plan + Terraform + Full session complete)
+**Last Updated:** 2026-07-19
+**Version:** 0.86.0
+**Session:** 2026-07-19 — SESSION CLOSE (Constitutional DNA + 3 Instincts inherited by all agents)
 
 ---
 
@@ -11,11 +11,40 @@
 ```
 INSTITUTION:  WAOOAW — autonomous digital professionals under constitutional governance
 GATE:         G5 prerequisites met (G5 CLEAR ≠ implementation authorization for any session)
-VERSION:      0.71.0
-CONSTITUTIONAL CLAIMS: C-001 to C-067 (67 ratified claims)
-AGENTS: DMA v2.9 | Trading v1.7 | Agricultural Advisor v2.7 | Private Tutor v1.0
-CCTs: 35 | ADRs: 27 | SECURITY: Audit-ready | INFRA: Cloud-optimized
-FOUNDER ACTIONS: 17+ catalogued in security/FOUNDER-ACTIONS.md
+VERSION:      0.86.0
+CONSTITUTIONAL CLAIMS: C-001 to C-070 (70 ratified)
+  NEW: C-070 — Constitutional DNA Inheritance Obligation (all agents inherit 3 basic instincts)
+AGENTS: DMA v2.9 | Trading v1.7 | Agricultural v2.7 | Private Tutor v1.0
+        Internal: Platform IT Expert v1.0 | Platform Operations v1.0
+        New: Steward Assistant v1.0 | Self-Improvement Analyst v1.0
+ALL AGENTS: Inherit CONSTITUTIONAL_DNA v1.0 — Section 0 in every spec (C-070 compliant)
+CCTs: 50 specified (35 original + 5 CCT-SIA + 10 CCT-CE) | ADRs: 28
+2026-07-19 SESSION COMPLETE — ALL ITEMS DELIVERED:
+  STEWARD INTERFACE (v0.84.0):
+    - architecture/reference/steward-interface.md (chat-based, hidden URL, GitHub API writeback, prompt pipeline)
+    - C-068 RATIFIED (Steward Access Isolation), C-069 RATIFIED (Platform Self-Improvement Obligation)
+    - ADR-028 (Steward=FRONTIER, plan_tier JWT, ADR-003 amended)
+  P0/P1 GAPS CLOSED (v0.85.0):
+    - infrastructure/postgres/init/07-agent-prompts.sql (agent_prompts + improvement_proposals + trust_ledger)
+    - scripts/seed-prompts.py (CI seeder: .md → PostgreSQL, never logs prompt_text, idempotent)
+    - .github/workflows/ci.yaml: seed-prompts job added
+    - ADR-003 amended: plan_tier + steward person JWT claims
+    - architecture/reference/agents/self-improvement-analyst-agent.md (full spec + CCT-SIA-01 to SIA-05)
+    - architecture/reference/ce-validate-action-evaluators.md (6 evaluators + 10 CCTs + proto additions)
+  CONSTITUTIONAL DNA (v0.86.0):
+    - knowledge/claims/C-070.md RATIFIED (Constitutional DNA Inheritance Obligation)
+    - architecture/reference/agents/CONSTITUTIONAL_DNA.md (3 instincts as inheritable base spec)
+    - architecture/reference/agents/AGENT-AUTHORING-GUIDE.md v3.0 (Section 0 mandatory gate)
+    - All 7 agent specs: Inherits CONSTITUTIONAL_DNA v1.0 declared
+    - DMA v2.9: Section 0 (C-049 triggers + quality signals + trust model)
+    - Trading v1.7: Section 0 (C-043 override + C-049 triggers + quality signals + trust model)
+    - Agricultural v2.7: Section 0 (WhatsApp Emergency Stop keywords + Evidence First for advisory + outcome feedback)
+    - Private Tutor v1.0: Section 0 (C-060 absolute override + comprehension signals + parent trust model)
+    - simulation/SIM-018-constitutional-dna-inheritance-walkthrough.md (all 7 agents verified)
+NEXT SESSION OPTIONS:
+  A. IB-009 Foundation Implementation — Yogesh says "start coding" → CE evaluators first
+  B. New agent spec (Legal, HR, Accounting) — now has Section 0 template ready
+  C. Acceptance Scenario AS-006 (Private Tutor) specification
 UX: COMPLETE — constitutional-ux-vocabulary.md v1.0 + suresh-portal-walkthrough.md
     Brand: 3 logos + dark variants + Platform DNA strip preview generated
     Legal: 5 documents — privacy-policy, terms-of-service, refund-policy,
