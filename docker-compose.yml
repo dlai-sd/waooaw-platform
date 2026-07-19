@@ -108,6 +108,45 @@ services:
     environment:
       COLLECTOR_OTLP_ENABLED: "true"
 
+  # ─── Ollama — LOCAL tier LLM (ADR-029 — multi-model) ─────────────────────
+  # Hosts two models for local dev:
+  #   1. llama3.2:3b          — classification gate (ADR-024 Layer 1, ZERO_COST path)
+  #   2. ai4bharat/indic-bert — Indian language classification + C-042 vocab check
+  # In dev: CPU-only mode (no GPU required, slightly slower embedding)
+  # In cloud: GPU node pool added at 200+ customers (Terraform variable gpu_node_pool)
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    environment:
+      OLLAMA_HOST: "0.0.0.0"
+      OLLAMA_NUM_PARALLEL: 2
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:11434/api/tags || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  # Pull required models on startup (runs once; idempotent on restart)
+  ollama-pull:
+    image: ollama/ollama:latest
+    depends_on:
+      ollama:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-c"]
+    command: |
+      "ollama pull llama3.2:3b &&
+       echo 'Pulling AI4Bharat IndicBERT (GGUF format)...' &&
+       ollama pull hf.co/ai4bharat/indic-bert:latest ||
+       echo 'AI4Bharat pull failed — will retry on next startup. Using llama3.2 as fallback for classification.'"
+    volumes:
+      - ollama_data:/root/.ollama
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    restart: "no"  # Pull once; do not restart loop
+
   # ─── Application Services ──────────────────────────────────────────────────
 
   constitutional-engine:
@@ -191,9 +230,29 @@ services:
     environment:
       ENVIRONMENT: development
       DATABASE_URL: "postgresql+asyncpg://runtime_app:${POSTGRES_PASSWORD}@postgres:5432/waooaw"
-      LLM_PROVIDER: ${LLM_PROVIDER:-openai}
-      LLM_API_KEY: ${LLM_API_KEY}
-      LLM_MODEL: ${LLM_MODEL:-gpt-4o-mini}
+      # ── LLM Provider config (ADR-029 — Multi-Provider Strategy) ────────────
+      # LOCAL tier
+      OLLAMA_BASE_URL: http://ollama:11434
+      OLLAMA_LLAMA_MODEL: ${OLLAMA_LLAMA_MODEL:-llama3.2:3b}
+      OLLAMA_INDIC_MODEL: ${OLLAMA_INDIC_MODEL:-ai4bharat/indic-bert}
+      # MID_TIER primary: Google Gemini 2.0 Flash (Vertex AI asia-south1)
+      GOOGLE_VERTEX_PROJECT_ID: ${GOOGLE_VERTEX_PROJECT_ID:-placeholder-fa021-required}
+      GOOGLE_VERTEX_REGION: ${GOOGLE_VERTEX_REGION:-asia-south1}
+      GOOGLE_VERTEX_SA_KEY: ${GOOGLE_VERTEX_SA_KEY:-{}}
+      MID_TIER_MODEL_PRIMARY: ${MID_TIER_MODEL_PRIMARY:-gemini-2.0-flash}
+      # MID_TIER Agricultural override: Sarvam AI Saaras (C-042 compliance)
+      SARVAM_API_KEY: ${SARVAM_API_KEY:-placeholder-fa022-required}
+      MID_TIER_MODEL_AGRI: ${MID_TIER_MODEL_AGRI:-sarvam-saaras-1.0}
+      # MID_TIER fallback: Azure OpenAI GPT-4o-mini (UAE North)
+      AZURE_OPENAI_ENDPOINT: ${AZURE_OPENAI_ENDPOINT:-https://waooaw-ai.openai.azure.com/}
+      AZURE_OPENAI_KEY: ${AZURE_OPENAI_KEY:-placeholder}
+      # FRONTIER primary: Google Gemini 2.5 Pro (Vertex AI asia-south1)
+      STEWARD_FRONTIER_MODEL: ${STEWARD_FRONTIER_MODEL:-gemini-2.5-pro}
+      # FRONTIER fallback: Azure OpenAI GPT-4o (UAE North) — circuit-breaker only
+      AZURE_FRONTIER_MODEL: ${AZURE_FRONTIER_MODEL:-gpt-4o}
+      # Legacy single-provider vars (kept for backward compat — PSE overrides these)
+      LLM_PROVIDER: ${LLM_PROVIDER:-google_vertex}
+      LLM_MODEL: ${LLM_MODEL:-gemini-2.0-flash}
       OTLP_ENDPOINT: http://jaeger:4317
       # MCP server endpoints (internal network, C-041: validated before every tool call)
       # Agricultural Advisory Agent MCPs
@@ -954,6 +1013,7 @@ uvicorn.run(app, host='0.0.0.0', port=8122)
 
 volumes:
   postgres_data:
+  ollama_data:      # Persists downloaded models across restarts (ADR-029 — LOCAL tier)
 
 networks:
   default:

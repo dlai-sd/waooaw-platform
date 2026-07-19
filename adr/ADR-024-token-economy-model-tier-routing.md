@@ -255,10 +255,33 @@ Rejected — complexity and unpredictability. Customers need to know what they'r
 
 ---
 
+## Amendment — ADR-029 Extension (2026-07-19)
+
+ADR-029 extends Layer 2 (Model Tier Dispatch) with a **provider dimension** and replaces single-provider routing with the Provider Selection Engine (PSE).
+
+**Changes to `professional.agent_prompts` (formerly `agent_prompt_versions`):**
+- `minimum_model_tier` field: unchanged — still enforces tier floor
+- New field `preferred_provider` (nullable): overrides PSE Layer B ranking for specific skills.
+  Example: Agricultural Skill 2 (price advisory) sets `preferred_provider = sarvam_saaras` to enforce C-042 compliance for Hindi/Marathi output. Null = PSE chooses.
+
+**PSE replaces static tier dispatch:**
+- Old: `tier → model_name` (single Azure OpenAI endpoint)
+- New: `tier → PSE(Rule Engine + Performance Engine) → provider + model_name`
+
+**Provider priority order (from ADR-029):**
+- MID_TIER: `google_gemini_flash` → `sarvam_saaras` (agri override) → `azure_gpt4o_mini` (fallback)
+- FRONTIER: `google_gemini_pro` → `azure_gpt4o` (fallback)
+- LOCAL: `ollama_llama3` → `ollama_ai4bharat` (Indian language tasks) → queue (no LLM fallback)
+
+**No change to token economy cost model** — UsageUnits abstraction means customers are unaware of which provider was used. C-051 transparency applies to tier (essential/professional/enterprise), not to specific provider names.
+
 ## Implementation
 
 Governed by:
-- `institutional.agent_prompt_versions.minimum_model_tier` — tier enforcement
+- `professional.agent_prompts.minimum_model_tier` + `preferred_provider` — tier + provider enforcement
+- `institutional.provider_dispatch_events` — raw PSE outcome log (ADR-029)
+- `institutional.pse_provider_ranking` — materialized view, PSE real-time ranking (ADR-029)
+- `institutional.provider_circuit_breaker` — PSE circuit-breaker state (ADR-029)
 - `business.customer_usage_units` — customer budget tracking
 - `institutional.message_classification_log` — classification gate audit
 - `institutional.prompt_cache_metadata` — cache hit/miss analytics

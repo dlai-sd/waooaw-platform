@@ -87,6 +87,54 @@ resource "azurerm_key_vault_secret" "ghcr_token" {
   depends_on   = [azurerm_role_assignment.kv_reader]
 }
 
+# ─── LLM Provider Secrets (ADR-029 — Multi-Provider Strategy) ────────────────
+# Google Vertex AI (primary MID_TIER + FRONTIER — asia-south1 Mumbai, DPDPA-primary)
+# Founder Action FA-021: Create GCP project + Vertex AI SA key
+resource "azurerm_key_vault_secret" "google_vertex_project" {
+  name         = "google-vertex-project-id"
+  value        = var.google_vertex_project_id
+  key_vault_id = azurerm_key_vault.main.id
+  depends_on   = [azurerm_role_assignment.kv_reader]
+}
+
+resource "azurerm_key_vault_secret" "google_vertex_sa_key" {
+  name         = "google-vertex-sa-key"
+  value        = var.google_vertex_sa_key  # Service account JSON — sensitive
+  key_vault_id = azurerm_key_vault.main.id
+  depends_on   = [azurerm_role_assignment.kv_reader]
+}
+
+# Sarvam AI (MID_TIER — Agricultural agent override, India-hosted, C-042 compliance)
+# Founder Action FA-022: Register at sarvam.ai, get API key
+resource "azurerm_key_vault_secret" "sarvam_api_key" {
+  name         = "sarvam-api-key"
+  value        = var.sarvam_api_key
+  key_vault_id = azurerm_key_vault.main.id
+  depends_on   = [azurerm_role_assignment.kv_reader]
+}
+
+# LLM provider model routing config (non-secret — can be Key Vault or env var)
+resource "azurerm_key_vault_secret" "steward_frontier_model" {
+  name         = "steward-frontier-model"
+  value        = "gemini-2.5-pro"  # ADR-028 + ADR-029: steward always FRONTIER; updated from gpt-4o
+  key_vault_id = azurerm_key_vault.main.id
+  depends_on   = [azurerm_role_assignment.kv_reader]
+}
+
+resource "azurerm_key_vault_secret" "mid_tier_model_primary" {
+  name         = "mid-tier-model-primary"
+  value        = "gemini-2.0-flash"  # ADR-029: primary MID_TIER, 40% cheaper than gpt-4o-mini
+  key_vault_id = azurerm_key_vault.main.id
+  depends_on   = [azurerm_role_assignment.kv_reader]
+}
+
+resource "azurerm_key_vault_secret" "mid_tier_model_agri" {
+  name         = "mid-tier-model-agri"
+  value        = "sarvam-saaras-1.0"  # ADR-029: Agricultural agent override (C-042)
+  key_vault_id = azurerm_key_vault.main.id
+  depends_on   = [azurerm_role_assignment.kv_reader]
+}
+
 # ─── PostgreSQL Flexible Server (ADR-027 O-08) ────────────────────────────────
 # Burstable B2ms for dev/qa/demo/uat; Standard D2ds_v5 for prod
 resource "azurerm_postgresql_flexible_server" "main" {
@@ -359,13 +407,46 @@ resource "azurerm_container_app" "ai_runtime" {
         name  = "DB_URL"
         value = "postgresql://${local.pg_user}:${var.postgres_admin_password}@${local.pg_host}:5432/waooaw"
       }
+      # ── LLM Provider config (ADR-029 — read from Key Vault at runtime) ──────
       env {
         name  = "AZURE_OPENAI_ENDPOINT"
-        value = "https://waooaw-ai.openai.azure.com/"  # UAE North (ADR-027 O-10)
+        value = "https://waooaw-ai.openai.azure.com/"  # UAE North fallback (ADR-027 O-10)
       }
       env {
         name  = "OLLAMA_BASE_URL"
         value = "http://ca-ollama-${local.prefix}"     # LOCAL tier LLM (ADR-027 O-07)
+      }
+      env {
+        name  = "OLLAMA_INDIC_MODEL"
+        value = "ai4bharat/indic-bert"                 # LOCAL Indian language tasks (ADR-029)
+      }
+      env {
+        name        = "GOOGLE_VERTEX_PROJECT_ID"
+        secret_name = "google-vertex-project-id"       # Key Vault — FA-021 required
+      }
+      env {
+        name        = "GOOGLE_VERTEX_SA_KEY"
+        secret_name = "google-vertex-sa-key"           # Key Vault — FA-021 required (sensitive)
+      }
+      env {
+        name  = "GOOGLE_VERTEX_REGION"
+        value = "asia-south1"                          # Mumbai — DPDPA primary (ADR-029)
+      }
+      env {
+        name        = "SARVAM_API_KEY"
+        secret_name = "sarvam-api-key"                 # Key Vault — FA-022 required
+      }
+      env {
+        name        = "STEWARD_FRONTIER_MODEL"
+        secret_name = "steward-frontier-model"         # gemini-2.5-pro (ADR-028+ADR-029)
+      }
+      env {
+        name        = "MID_TIER_MODEL_PRIMARY"
+        secret_name = "mid-tier-model-primary"         # gemini-2.0-flash (ADR-029)
+      }
+      env {
+        name        = "MID_TIER_MODEL_AGRI"
+        secret_name = "mid-tier-model-agri"            # sarvam-saaras-1.0 (C-042 override)
       }
       env {
         name  = "OTEL_EXPORTER_OTLP_ENDPOINT"

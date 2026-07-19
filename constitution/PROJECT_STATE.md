@@ -1,8 +1,8 @@
 # PROJECT_STATE.md
 
 **Last Updated:** 2026-07-19
-**Version:** 0.86.0
-**Session:** 2026-07-19 — SESSION CLOSE (Constitutional DNA + 3 Instincts inherited by all agents)
+**Version:** 0.87.0
+**Session:** 2026-07-19 — SESSION CLOSE (Multi-provider LLM + Provider Selection Engine)
 
 ---
 
@@ -11,15 +11,42 @@
 ```
 INSTITUTION:  WAOOAW — autonomous digital professionals under constitutional governance
 GATE:         G5 prerequisites met (G5 CLEAR ≠ implementation authorization for any session)
-VERSION:      0.86.0
-CONSTITUTIONAL CLAIMS: C-001 to C-070 (70 ratified)
-  NEW: C-070 — Constitutional DNA Inheritance Obligation (all agents inherit 3 basic instincts)
-AGENTS: DMA v2.9 | Trading v1.7 | Agricultural v2.7 | Private Tutor v1.0
-        Internal: Platform IT Expert v1.0 | Platform Operations v1.0
-        New: Steward Assistant v1.0 | Self-Improvement Analyst v1.0
-ALL AGENTS: Inherit CONSTITUTIONAL_DNA v1.0 — Section 0 in every spec (C-070 compliant)
-CCTs: 50 specified (35 original + 5 CCT-SIA + 10 CCT-CE) | ADRs: 28
-2026-07-19 SESSION COMPLETE — ALL ITEMS DELIVERED:
+VERSION:      0.87.0
+CONSTITUTIONAL CLAIMS: C-001 to C-070 (70 ratified) | ADRs: 29
+LLM STRATEGY: ADR-029 RATIFIED — Multi-provider conscious selection
+  PRIMARY MID_TIER:  Google Gemini 2.0 Flash (Vertex AI asia-south1, Mumbai — DPDPA primary)
+  AGRICULTURAL:      Sarvam AI Saaras (India-hosted, C-042 Vocabulary Mandate compliance)
+  LOCAL:             Ollama Llama 3.2 3B + AI4Bharat IndicBERT (self-hosted, ₹0)
+  FRONTIER:          Google Gemini 2.5 Pro (Vertex AI asia-south1, Mumbai)
+  FALLBACK:          Azure OpenAI GPT-4o-mini / GPT-4o (UAE North — circuit-breaker only)
+  NEVER:             Grok / Claude-direct / OpenAI-direct (DPDPA gap — US-only, no India/UAE region)
+  COST SAVING:       ~40% vs single-provider plan (~₹5,100/month at 1,000 customers)
+PROVIDER SELECTION ENGINE (PSE):
+  - Rule Layer: PSE-R01 (DPDPA) → PSE-R02 (language) → PSE-R03 (plan_tier) → PSE-R04 (steward)
+                PSE-R05 (constitutional) → PSE-R06 (key expired) → PSE-R07 (circuit-breaker)
+                PSE-R08 (latency SLA)
+  - Performance Layer: composite_score from institutional.pse_provider_ranking (1h rolling)
+  - Circuit breaker: per-provider, 120s open window on rate-limit/error
+  - Feedback: weekly Steward digest via Steward Assistant (success rates, fallback events, DPDPA audit)
+NEW THIS SESSION (v0.87.0):
+  - adr/ADR-029 (multi-provider LLM, PSE design, provider registry, FA-021/FA-022)
+  - infrastructure/postgres/init/08-provider-performance.sql
+      institutional.provider_dispatch_events (partitioned — raw PSE events)
+      institutional.pse_provider_ranking (materialized view — composite_score ranking)
+      institutional.provider_circuit_breaker (PSE-R07 circuit state)
+  - infrastructure/terraform/modules/core/main.tf (Gemini + Sarvam Key Vault secrets)
+  - infrastructure/terraform/modules/core/variables.tf (google_vertex_* + sarvam_api_key)
+  - docker-compose.yml (ollama service + AI4Bharat model pull + multi-provider env vars)
+  - adr/ADR-024 amended (provider dimension + PSE replaces static dispatch)
+  - adr/ADR-INDEX.md updated (ADR-029 registered)
+FOUNDER ACTIONS OUTSTANDING (before live customers):
+  P0: FA-021 — Create GCP project, enable Vertex AI API, SA key → enables Gemini primary
+  P0: FA-022 — Register sarvam.ai, get Saaras API key → enables Agricultural C-042 override
+  P0 (existing): Meta BM, WABA, Azure OpenAI, Razorpay (see security/FOUNDER-ACTIONS.md)
+NEXT SESSION OPTIONS:
+  A. IB-009 Foundation Implementation — Yogesh "start coding" → CE evaluators + AI Runtime PSE
+  B. New agent spec (Legal, HR, Accounting) using new Section 0 DNA template
+  C. Acceptance Scenario AS-006 (Private Tutor) full specification
   STEWARD INTERFACE (v0.84.0):
     - architecture/reference/steward-interface.md (chat-based, hidden URL, GitHub API writeback, prompt pipeline)
     - C-068 RATIFIED (Steward Access Isolation), C-069 RATIFIED (Platform Self-Improvement Obligation)
