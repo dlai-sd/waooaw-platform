@@ -267,3 +267,76 @@ Credentials held:
 3. Set WAOOAW_META_SYSTEM_USER_ACCESS_TOKEN and WAOOAW_GOOGLE_ADS_MCC_DEVELOPER_TOKEN in Azure Key Vault (production) and .env (dev).
 
 **Minimum Ad Spend:** ₹2,000/month. Below this, Meta's learning algorithm cannot optimize effectively. Skill 11 activation requires customer to fund Ad Spend Wallet to at least ₹2,000.
+
+---
+
+## Amendment — C-075 Reseller Model (2026-07-19)
+
+C-075 (White-Label Reseller) introduces a new ad account management path: **Reseller-Owned MBM/MCC**. This coexists with the original WAOOAW-Owned model.
+
+### Two Ad Account Models
+
+| Model | Who uses it | Meta account | Google account | Billing |
+|---|---|---|---|---|
+| **WAOOAW-Owned** (original) | Direct customers | WAOOAW MBM sub-account | WAOOAW MCC client account | Customer → Ad Spend Wallet → WAOOAW → Meta/Google |
+| **Reseller-Owned** (new) | Agency resellers (C-075) | Reseller's own MBM sub-account | Reseller's own MCC client account | Reseller → Meta/Google directly; WAOOAW → Reseller (wholesale seat fee only) |
+
+### Reseller-Owned: How It Works
+
+```
+Reseller (Yashus) connects their Meta BM and Google MCC to WAOOAW via oauth-vault:
+  meta_bm_access_token: stored as "META_BM_TOKEN_{reseller_id}"
+  google_mcc_developer_token: stored as "GOOGLE_MCC_TOKEN_{reseller_id}"
+
+For each end-customer (Yashus's client):
+  meta-ads-mcp creates a sub-ad-account under YASHUS's MBM (not WAOOAW's)
+  google-ads-mcp creates a client account under YASHUS's MCC (not WAOOAW's)
+  
+Billing flows:
+  Meta/Google → bills Yashus directly (Yashus's payment method)
+  Yashus → bills their clients (Yashus's pricing + Yashus's management fee %)
+  WAOOAW → bills Yashus only: active_seats × wholesale_price_per_seat/month
+  WAOOAW does NOT invoice Yashus's clients for ad spend (C-075 — Yashus is the billing entity)
+```
+
+### Ad Account Health Monitoring (both models)
+
+Platform Operations agent now monitors ad account health as part of its L1 5-minute health probe.
+
+**Monitored signals:**
+```
+meta-ads-mcp.account.get_status(sub_account_id)
+  → account_standing: ACTIVE | RESTRICTED | DISABLED | UNDER_REVIEW
+  → payment_method_status: VALID | DECLINED | MISSING
+  → policy_violations: count + descriptions
+  → spending_limit: current vs approved ceiling (C-043 enforcement)
+
+google-ads-mcp.account.get_status(client_account_id)
+  → account_status: ENABLED | SUSPENDED | CANCELLED | PENDING
+  → budget_utilization: % of monthly budget used (alert at 80% — C-053)
+  → policy_warnings: any active policy issues
+
+Triggers:
+  RESTRICTED/SUSPENDED → immediate alert to AM (reseller) + customer + Sujay
+  PAYMENT_DECLINED → immediate alert + campaigns paused + customer notified
+  POLICY_VIOLATION → Skill 20 (Crisis Communications) triggered if public-facing
+  BUDGET_AT_80% → C-053 proactive signal → customer notified (LOW BALANCE equivalent for ads)
+```
+
+**SCR Pre-Publication Policy Check (gap closed from SIM-021):**
+
+Before any content is published to a paid ad (not just organic), the SCR runs an additional check:
+
+```
+SCR Check 4 (new — ads-specific): Meta/Google Policy Pre-Check
+  dental_clinic: MCI + ASCI healthcare + Meta healthcare advertising policy
+    → Before/after images: BLOCKED unless written patient consent recorded in CAL
+    → "Guaranteed" language: BLOCKED
+    → Drug/treatment claims: BLOCKED
+  restaurant: FSSAI advertising guidelines + Meta food policy
+    → Health claims without FSSAI certification: BLOCKED
+  
+This runs BEFORE the ad goes live — not after Meta flags it.
+Meta's own review catches violations AFTER publishing → account restrictions.
+WAOOAW's SCR catches them BEFORE → no account risk.
+```
