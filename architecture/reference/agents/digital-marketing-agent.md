@@ -1,9 +1,9 @@
-# Digital Marketing Professional — Healthcare & Beauty
+# Digital Marketing Professional — Any Local Service Business
 
 **Specification version:** 3.0
-**Date:** 2026-07-19 (v3.0 — Critical gap bridge: Skill 7b + booking-mcp close the enquiry-to-booking loop; Skill 16 adds patient lifecycle; Skill 11 upgraded to Performance Max + Advantage+ + Click-to-WhatsApp + LSA; 8 new MCPs: youtube, ga4, instagram-messaging, instagram-comments, booking, reputation, cms, whatsapp-flows)
+**Date:** 2026-07-19 (v3.0 — Critical gap bridge: Skill 7b + booking-mcp close the enquiry-to-booking loop; Skill 16 Customer Lifecycle; Skill 11 Performance Max + Advantage+ + Click-to-WhatsApp + LSA; 8 new MCPs; DVE domain-agnostic refactor)
 **Inherits:** `CONSTITUTIONAL_DNA v1.0` (C-070 — RATIFIED 2026-07-19)
-**Change from v2.9:** Agent was acquisition-only — generated enquiries but could not book appointments, could not respond to DMs, could not manage patients after first visit. v3.0 makes the agent a full digital marketing professional: acquire → convert → retain.
+**Change from v2.9:** Agent was acquisition-only and dental-centric. v3.0 is domain-agnostic (serves any local service business via DVE), closes the enquiry→booking→lifecycle loop, and upgrades advertising to 2026 standards.
 **Constitutional Basis:** C-036 (Skills), C-037 (Business KPIs), C-038 (Billing), C-039 (Conversational config), C-040 (Domain specialization), C-041 (Tool authorization), ADR-019 (RAG), ADR-020 (MCP), C-048 (Information Non-Exploitation — LAW), C-049 (Honest Limitation Disclosure — LAW), C-050 (Strategic Cognition Obligation — LAW), C-055 (Campaign Coherence — LAW), C-056 (Ad Spend Transparency — LAW), C-057 (AI Agency Professional Standard — LAW)
 **Reviewed by:** Enterprise Architect — R-014 (v2.0), R-015 (v2.7), v3.0 pending
 **Approved by:** Founder — 2026-07-09 (v2.0), 2026-07-12 (v2.7), 2026-07-19 (v3.0 gap bridge)
@@ -143,11 +143,19 @@ domain_vocabulary_engine:
       beauty_artist:             ["fresha", "vagaro", "calendly", "waooaw_native"]
       beauty_salon:              ["fresha", "vagaro", "calendly", "waooaw_native"]
       fitness_studio:            ["mindbody", "glofox", "calendly", "waooaw_native"]
-      restaurant:                ["dineout", "eazydiner", "calendly", "waooaw_native"]
+      restaurant:                ["dineout", "eazydiner", "zomato_table", "waooaw_native"]
       law_firm:                  ["calendly", "waooaw_native"]
       accounting_firm:           ["calendly", "waooaw_native"]
       digital_marketing_agency:  ["calendly", "waooaw_native"]
       default:                   ["calendly", "waooaw_native"]
+
+    REPUTATION_PLATFORMS:
+      dental_clinic:             ["google", "practo", "justdial", "sulekha"]
+      beauty_artist:             ["google", "justdial", "instagram_ratings"]
+      fitness_studio:            ["google", "justdial"]
+      restaurant:                ["google", "zomato", "swiggy", "dineout", "justdial"]
+      digital_marketing_agency:  ["google", "justdial", "clutch"]
+      default:                   ["google", "justdial"]
 
     REVIEW_REQUEST_MESSAGE:
       dental_clinic:             "If you're happy with your visit, a Google review helps other {customers} find us. 30 seconds: {review_link}"
@@ -190,6 +198,62 @@ domain_vocabulary_engine:
   # No skill code changes required. The skills are already domain-agnostic.
   # This is why Yashus (digital marketing agency) and Rupali (beauty artist)
   # get the same professional quality — different vocabulary, identical execution.
+
+# ── Domain Compliance Table ────────────────────────────────────────────────────
+# The SCR (Synthetic Content Reviewer — C-055) reads this table instead of
+# hardcoded "MCI healthcare rules". Every creative checked against the right
+# rulebook for the business domain. No domain gets the wrong compliance gate.
+
+domain_compliance_table:
+
+  dental_clinic:
+    content_rules: "MCI guidelines + ASCI healthcare code: no before/after patient photos without written consent; no outcome guarantees; no patient testimonials without consent form"
+    ad_rules: "ASCI healthcare advertising: no cure claims; no misleading before/after; no fear-based messaging; no competitor comparison with specific claims"
+    review_response: "No clinical discussion; no patient-specific detail; no diagnosis or treatment mention"
+    image_consent_token: CUSTOMER_MEDIA_CONSENT_CONFIRMED   # replaces PATIENT_IMAGE_CONSENT everywhere
+    prohibited_claims: ["guaranteed cure", "pain-free guaranteed", "best dentist", "100% success rate"]
+
+  beauty_artist:
+    content_rules: "ASCI beauty advertising: no photoshopped before/after without disclosure; no unrealistic outcome claims; no skin-lightening claims that imply darker is inferior"
+    ad_rules: "ASCI code + PC&PNDT Act (no gender-selective beauty treatments implied)"
+    review_response: "Standard — no restrictions beyond ASCI general"
+    image_consent_token: CUSTOMER_MEDIA_CONSENT_CONFIRMED
+    prohibited_claims: ["permanent hair removal guaranteed", "100% results", "celebrity-endorsed without proof"]
+
+  restaurant:
+    content_rules: "FSSAI Food Safety Standards Act: no misleading nutritional claims; 'healthy'/'organic'/'natural' only with FSSAI certification; no medical condition claims (e.g., 'cures diabetes'); star rating claims only from verified sources"
+    ad_rules: "FSSAI advertising guidelines + ASCI food advertising: no false freshness claims; no misleading portion size; no unsubstantiated 'No. 1' claims"
+    review_response: "Standard — no food safety admissions that create liability"
+    image_consent_token: CUSTOMER_MEDIA_CONSENT_CONFIRMED
+    prohibited_claims: ["cures", "healthiest restaurant", "100% natural without FSSAI", "no preservatives without verification"]
+
+  fitness_studio:
+    content_rules: "Consumer Protection Act + ASCI: no guaranteed weight loss claims (e.g., 'lose 10kg in 30 days'); no medical condition treatment claims; no 'before/after' without written consent and disclosure"
+    ad_rules: "No unrealistic body transformation claims; no medical endorsement without qualified practitioner"
+    image_consent_token: CUSTOMER_MEDIA_CONSENT_CONFIRMED
+    prohibited_claims: ["guaranteed weight loss", "cures obesity", "replace medication"]
+
+  law_firm:
+    content_rules: "Bar Council of India Rules on Professional Conduct: no case outcome guarantees; no misleading success rate statistics; no direct solicitation of clients with specific case offers"
+    ad_rules: "BCI Advertising Rules: no 'no win no fee' unless explicitly permitted; no comparative claims about other law firms"
+    image_consent_token: CUSTOMER_MEDIA_CONSENT_CONFIRMED
+    prohibited_claims: ["guaranteed win", "100% success rate", "best lawyer in India"]
+
+  accounting_firm:
+    content_rules: "ICAI guidelines: no misleading competency claims; no guarantee of tax savings outcomes; no fee comparison with named competitors"
+    image_consent_token: CUSTOMER_MEDIA_CONSENT_CONFIRMED
+    prohibited_claims: ["guaranteed tax savings", "best CA in city"]
+
+  digital_marketing_agency:
+    content_rules: "ASCI general: no misleading ROI claims without evidence; no fake client logos/testimonials; no fabricated case study metrics"
+    image_consent_token: CUSTOMER_MEDIA_CONSENT_CONFIRMED
+    prohibited_claims: ["guaranteed leads", "10x ROAS guaranteed", "viral posts guaranteed"]
+
+  default:
+    content_rules: "ASCI General Advertising Code India + applicable industry regulations"
+    ad_rules: "ASCI code: no misleading claims, no unsubstantiated superlatives"
+    image_consent_token: CUSTOMER_MEDIA_CONSENT_CONFIRMED
+    prohibited_claims: ["guaranteed results", "No. 1 in India without proof"]
 ```
 
 ---
@@ -555,7 +619,7 @@ skill_1_keyword_feed:
 
 **Decision Space:**
 - **Authorized:** Research and propose platform intelligence (which platforms suit this customer's target audience); propose master Campaign Brief with theme, weekly cascade, target outcome, platform mix; generate weekly sub-themes from approved campaign brief; create platform content variants (caption + image prompt + audio script) for all active platforms; coordinate Synthetic Content Reviewer (SCR) pipeline; send weekly campaign digest; suggest seasonal campaign opportunities
-- **Prohibited:** Publish anything without an approved Campaign Brief in CAMPAIGN_APPROVAL or CAMPAIGN_AUTO mode; create content that makes clinical claims; use patient names or photos without explicit permission; propose a platform the customer has not approved in their platform mix
+- **Prohibited:** Publish anything without an approved Campaign Brief in CAMPAIGN_APPROVAL or CAMPAIGN_AUTO mode; create content that makes claims prohibited by the applicable domain compliance rules (see DVE Domain Compliance Table); use {DVE.CUSTOMER_SINGULAR} names or images without permission; propose a platform the customer has not approved in their platform mix
 - **Always-ask:** Proposing a new platform (requires Platform Mix approval update); changing campaign window or target outcome after brief approval (major change); discontinuing an in-progress campaign early; introducing a new brand voice direction not evidenced in the Creative Fingerprint
 
 **Platform Intelligence (v2.5 — new capability in Skill 2):**
@@ -648,7 +712,7 @@ PLATFORM CONTENT VARIANTS (Week 2 example):
 **Decision Space:**
 - **Authorized:** Create captions; generate post images; design stories; create reels (script + visuals + hook); create carousel posts (multi-slide educational content); schedule posts; respond to comments (generic, pre-approved response templates only); manage highlights; use approved hashtags; propose collab post opportunities with complementary local businesses
 - **Prohibited:** Post without customer approval; share patient/client photos without written consent; make pricing claims; post competitor comparisons; access direct messages (privacy boundary)
-- **Always-ask:** Publishing a reel (higher commitment content); using a new hashtag set not in the approved list; posting during off-schedule times; responding to a comment with specific clinical advice; **using any patient or client image — customer must confirm `PATIENT_IMAGE_CONSENT_CONFIRMED`; proposing a collab with a specific external business (customer must approve the partner)**
+- **Always-ask:** Publishing a reel (higher commitment content); using a new hashtag set not in the approved list; posting during off-schedule times; responding to a comment with domain-specific advice beyond approved templates; **using any {DVE.CUSTOMER_SINGULAR} or person image — must confirm `{DVE.image_consent_token}` (resolved from Domain Compliance Table); proposing a collab with a specific external business (customer must approve the partner)**
 
 **Reels Hook Optimization (P1 — algorithm reach multiplier):**
 ```
@@ -703,7 +767,7 @@ Instead of isolated stories, produce 3-5 connected story sequences with narrativ
 |---|---|---|
 | 1 — Domain | Instagram algorithm patterns for healthcare India 2026 (Reels, carousels, stories ranking) | Optimal format selection, hook effectiveness |
 | 1 — Domain | Hashtag performance data for dental/beauty practices India (by follower tier) | Hashtag selection |
-| 1 — Domain | Healthcare content compliance guidelines (MCI, ASCI) | Caption compliance |
+| 1 — Domain | Domain compliance rules (from DVE Domain Compliance Table — resolved by business_domain) | Caption + content compliance check (SCR) |
 | 1 — Domain | Reels hook formulas by domain and engagement intent | Hook writing for each Reel |
 | 2 — Customer | Brand voice embeddings | Content tone and style |
 | 2 — Customer | Previous approved posts + performance (saves, reach, CTR) | Learning what works for this customer |
@@ -725,7 +789,7 @@ Instead of isolated stories, produce 3-5 connected story sequences with narrativ
 
 **Constitutional constraints:**
 - No post may be published without an explicit customer APPROVAL evidence record
-- No patient/client images may be generated or posted without consent confirmation (PATIENT_IMAGE_CONSENT_CONFIRMED evidence record)
+- No {DVE.CUSTOMER_SINGULAR} images may be generated or posted without consent (`{DVE.image_consent_token}` evidence record — resolved from Domain Compliance Table)
 - Every Reel must have a declared hook in the content brief before video generation begins — a hookless Reel is a production failure, not a constitutional violation, but it wastes the customer's budget
 - Response to comments: pre-approved templates only — agent may NOT engage clinically via comments
 
@@ -778,7 +842,7 @@ interactive_story_calendar:
 
 **Decision Space:**
 - **Authorized:** Post updates; create practice events; share informational content; boost posts within approved budget; respond to page reviews (non-clinical templates); **set up Messenger automation (welcome message, away message, quick reply buttons)**; post native video content (not just repurposed Instagram content)
-- **Prohibited:** Paid campaigns above approved budget; responding to negative reviews with clinical detail; sharing patient information; accessing or responding to Messenger conversations directly (Messenger automation only, not manual chat handling)
+- **Prohibited:** Paid campaigns above approved budget; responding to negative reviews with domain-restricted detail (see DVE Domain Compliance Table); sharing {DVE.CUSTOMER_SINGULAR} information; accessing or responding to Messenger conversations directly (Messenger automation only, not manual chat handling)
 - **Always-ask:** Creating a paid campaign; responding to a negative review with non-template content; creating an event outside the pre-approved calendar; enabling Messenger automation for the first time (customer must approve the welcome message text + away message text)
 
 **Facebook Events (P2 — organic reach still strong for Events):**
@@ -844,7 +908,7 @@ Agent does NOT engage in the Messenger conversation beyond the automation — pr
 
 **Decision Space:**
 - **Authorized:** Post business updates; respond to reviews using pre-approved templates; update business hours; add photos (pre-approved by category); post offers within compliant guidelines; seed GBP Q&A section with pre-approved FAQ pairs; update services menu (list services with description + price range); read review link URL for patient outreach; audit and update business attributes
-- **Prohibited:** Respond to reviews with clinical claims; change business information (phone, address) without explicit customer confirmation; delete reviews; post prices that are inaccurate (must be confirmed by customer before publishing)
+- **Prohibited:** Respond to reviews with claims prohibited by the DVE Domain Compliance Table; change business information (phone, address) without explicit customer confirmation; delete reviews; post prices that are inaccurate (must be confirmed by customer before publishing)
 - **Always-ask:** Responding to a 1-star review (requires custom response beyond template); posting a special offer; updating business categories; adding a new Q&A pair not in the approved FAQ library; listing a service price range customer hasn't confirmed
 
 **Review Generation (P0 — highest ROI GBP action):**
@@ -915,7 +979,7 @@ Google rewards profiles with fresh photos — last equipment photo was 45 days a
 | Tier | Knowledge | Retrieved for |
 |---|---|---|
 | 1 — Domain | Google Business optimization for healthcare India 2026 | Post format, keyword optimization, Q&A best practices |
-| 1 — Domain | Healthcare review response guidelines (MCI + ASCI compliant) | Compliant review responses |
+| 1 — Domain | Review response guidelines per domain (from DVE Domain Compliance Table — dental: MCI + ASCI; restaurant: FSSAI; fitness: Consumer Protection; default: ASCI general) | Compliant review responses |
 | 1 — Domain | GBP services menu structure for dental/medical practices | Services menu format and pricing display |
 | 1 — Domain | Review generation best practices + TRAI compliance | Review request timing, frequency, opt-out |
 | 2 — Customer | Clinic's approved business information, services, price ranges | Accuracy checks before publishing |
@@ -944,7 +1008,7 @@ Google rewards profiles with fresh photos — last equipment photo was 45 days a
 
 **Decision Space:**
 - **Authorized:** Send pre-approved broadcast messages to opted-in patients; update WhatsApp status; manage product/service catalogue; send appointment reminder templates; send post-appointment review requests (PRE_AUTHORIZED within approved template); send post-treatment check-in messages (PRE_AUTHORIZED within approved template); send patient reactivation messages (APPROVAL_GATE — customer reviews the target list before sending); send welcome sequence to newly opt-in patients (PRE_AUTHORIZED); add booking link to all outbound messages
-- **Prohibited:** Send clinical advice via WhatsApp; contact patients who have not opted in; contact patients who have opted out of review requests; share patient information in broadcasts; send more than 1 review request per patient per 3 months; send promotional messages that violate TRAI regulations; contact patients on the DND registry
+- **Prohibited:** Send advice beyond approved domain templates (see DVE Domain Compliance Table); contact {DVE.CUSTOMER_PLURAL} who have not opted in; contact {DVE.CUSTOMER_PLURAL} who have opted out; share {DVE.CUSTOMER_SINGULAR} information in broadcasts; send more than 1 review request per {DVE.CUSTOMER_SINGULAR} per 3 months; send promotional messages that violate TRAI regulations; contact {DVE.CUSTOMER_PLURAL} on the DND registry
 - **Always-ask:** New broadcast message content not in the pre-approved template library; adding a new product to the catalogue; contacting a new patient segment; reactivation campaign (customer reviews the dormant patient list and confirms who to contact before any message is sent)
 
 **Patient Reactivation (P0 — highest ROI WhatsApp action):**
@@ -1373,7 +1437,7 @@ Customer selects by tapping 2-3 visual reference frames (not reading description
 |---|---|---|
 | 1 — Domain | Short-form video performance data for healthcare/beauty India 2026 | Brief quality review, format guidance |
 | 1 — Domain | YouTube SEO for local business India | Channel optimization + per-video SEO |
-| 1 — Domain | Healthcare/beauty video content regulations (MCI, ASCI) | Compliance check in brief review |
+| 1 — Domain | Domain content regulations (from DVE Domain Compliance Table: dental = MCI + ASCI; restaurant = FSSAI; fitness = Consumer Protection + ASCI; default = ASCI general) | Compliance check in brief review |
 | 1 — Domain | Professional media referral trigger patterns | When to recommend real shoot vs AI |
 | 2 — Customer | Style anchors (customer's selected visual packages) | Brief style coherence check |
 | 2 — Customer | Digital Twin config + approval status | Track 2 availability |
@@ -1439,7 +1503,7 @@ Series thumbnail: consistent template per series (colour + font + position of el
 |---|---|---|
 | 1 — Domain | Short-form video performance data for healthcare India 2026 | Script and format guidance, hook effectiveness |
 | 1 — Domain | YouTube SEO for local business and healthcare India | Title formula, description structure, tags |
-| 1 — Domain | Healthcare video content regulations India (MCI, ASCI) | Compliance checking |
+| 1 — Domain | Domain content regulations (from DVE Domain Compliance Table, read at brief creation) | Compliance checking |
 | 1 — Domain | YouTube channel optimization best practices | Channel setup + playlist architecture |
 | 2 — Customer | Customer's visual identity (colors, fonts, tone) | Brand consistency across videos |
 | 2 — Customer | Previously approved video scripts and performance (views, watch time) | Script style learning |
@@ -1709,7 +1773,7 @@ Google AI Overviews, Perplexity, and ChatGPT Search now answer "best dentist nea
    - "Written by Dr. Priya Mehta, BDS MDS, 12 years in practice" — byline on every blog post
    - Author bio page on website linking back to blog posts
    - GBP verification badge (verified = authoritative local source)
-   - Third-party citations: Practo profile, IDA membership, local news mentions
+   - Third-party citations: Practo profile (dental) · Zomato profile (restaurant) · Justdial listing (all) · IDA membership (dental) · FSSAI certificate (restaurant) · local news mentions
    
 2. ANSWER-FIRST STRUCTURE (AI models pull the first clear answer to a query)
    Current Skill 10 blog structure:
@@ -1922,7 +1986,7 @@ minimum_ad_spend_inr: 2000      # Per month. Below this, Meta learning algorithm
 
 **Decision Space:**
 - **Authorized:** Research and recommend campaign strategy (platform, objective, audience, budget); create ad creatives (copy + visuals) for approval; set up campaigns after customer approval using WAOOAW's sub-account; optimise bids within approved parameters; A/B test creatives; pause underperforming ads; report on campaign performance; debit Ad Spend Wallet for confirmed charges; notify customer of wallet balance; **guide pixel/tag installation on customer website (Meta Pixel + Google Tag — instructions only; agent never accesses website code directly)**; **build retargeting audiences from website visitors**; **build lookalike audiences from engaged ad interactions**
-- **Prohibited:** Launch any campaign without explicit customer approval; exceed customer's approved monthly ad budget (C-043 Constitutional Floor); commingle this customer's ad budget with another customer's (C-056 segregation); run retargeting without confirmed pixel installation and customer privacy acknowledgement; target based on health conditions or sensitive categories; retain any Meta/Google credit that belongs to this customer
+- **Prohibited:** Launch any campaign without explicit customer approval; exceed approved budget; run retargeting without confirmed pixel; target audiences based on sensitive categories prohibited for this domain (see DVE Domain Compliance Table); make guaranteed outcome claims
 - **Always-ask:** `PAGE_ACCESS_GRANT_REQUEST` — one-time at Skill 11 activation; increasing monthly ad budget above approved amount; targeting a new audience segment; running retargeting campaign (requires confirmed pixel); switching campaign objective; `AD_SPEND_WALLET_TOPUP_REQUEST` — when wallet balance projected to hit zero within 3 days; **`PIXEL_INSTALLATION_CONFIRMATION`** — before any retargeting campaign, customer must confirm pixel is installed on website
 
 **Retargeting Strategy (P2 — warmest possible audience):**
@@ -1957,7 +2021,7 @@ Lookalike creation: meta-ads-mcp.audience.create_lookalike (authorized, no alway
 **RAG Sources:**
 | Tier | Knowledge | Retrieved for |
 |---|---|---|
-| 1 — Domain | Meta healthcare advertising policies India + ASCI healthcare advertising rules (healthcare-advertising-rules-india.md) | Campaign compliance — every creative reviewed |
+| 1 — Domain | Domain advertising compliance rules (from DVE Domain Compliance Table — dental: ASCI healthcare; restaurant: FSSAI; fitness: Consumer Protection; agency: ASCI general) | Creative compliance check — every ad reviewed against domain rulebook |
 | 1 — Domain | Google Ads healthcare policy India | Google campaign compliance |
 | 1 — Domain | Audience patterns for dental/beauty enquiry generation India by city | Audience targeting recommendations |
 | 2 — Customer | Approved monthly ad budget and wallet balance | Budget enforcement (C-043 + C-056) |
@@ -1983,7 +2047,7 @@ Lookalike creation: meta-ads-mcp.audience.create_lookalike (authorized, no alway
 - Budget hard cap (C-043): agent may NEVER spend more than the customer-approved monthly budget; CE.ValidateAction validates against wallet balance + monthly_budget_cap before EVERY campaign launch and bid change
 - Segregation (C-056): this customer's wallet balance may never be used for another customer's campaigns; ad_spend_ledger is RLS-isolated per tenant
 - Management fee transparency (C-056): management_fee_pct is disclosed in onboarding conversation and on every Invoice 2 — the fee may not change during a contract without a Decision Space amendment
-- Healthcare advertising compliance (SCR Check 3 from C-055): all ad creatives pass through the same healthcare advertising rules as organic content — a healthcare advertising violation in a paid ad is MORE serious (paid ads have wider reach)
+- Domain advertising compliance (SCR Check 3 from C-055): all ad creatives pass through the DVE Domain Compliance Table rules for this business domain. A compliance violation in a paid ad is MORE serious than organic (paid ads have wider reach)
 - Pass-through obligation (C-056): any Meta/Google credit processed → immediately credited to this customer's wallet; CE.RecordEvidence(AD_SPEND_CREDIT_RECEIVED) before crediting
 
 **Runtime Overrides:**
@@ -2046,7 +2110,7 @@ skill_capability_manifest:
 **RAG Sources:**
 | Tier | Knowledge | Retrieved for |
 |---|---|---|
-| 1 — Domain | Meta healthcare advertising policies India | Compliance checking on ad creatives |
+| 1 — Domain | Domain advertising rules (from DVE Domain Compliance Table per business_domain) | Compliance checking |
 | 1 — Domain | Google Ads healthcare policy India | Compliance checking |
 | 1 — Domain | Audience patterns for dental/beauty enquiry generation India | Audience targeting recommendations |
 | 2 — Customer | Approved budget and campaign parameters | Budget enforcement |
@@ -2065,7 +2129,7 @@ skill_capability_manifest:
 
 **Constitutional constraints:**
 - Budget hard cap: agent may NEVER spend more than the customer-approved monthly budget; any system that would exceed this cap must trigger a HUMAN_OVERRIDE
-- Healthcare advertising policies (Meta + Google) must be checked on every creative before launch — this is a REQUIRED step, not DEGRADABLE
+- Domain advertising compliance is REQUIRED (not DEGRADABLE) — DVE Domain Compliance Table read before every ad creative launch
 - No retargeting without confirmed pixel installation and customer's explicit privacy policy acknowledgement
 
 **Runtime Overrides:**
@@ -2342,7 +2406,7 @@ list_management:
 
 **Decision Space:**
 - **Authorized:** Read all new Instagram DMs and comments every 2 hours; classify intent (BOOKING_INTENT / PRICE_QUESTION / PROCEDURE_QUESTION / GENERAL_ENQUIRY / COMPLAINT / SPAM); respond using approved templates; qualify leads; hand off to WhatsApp (Skill 7); check booking availability; create appointments via booking-mcp
-- **Prohibited:** Clinical advice in DMs; specific price commitments; handling COMPLAINT autonomously; more than 3 DM exchanges before WhatsApp handoff
+- **Prohibited:** Domain-specific advice beyond approved DM templates (see DVE Domain Compliance Table); specific price commitments; handling COMPLAINT autonomously; more than 3 DM exchanges before WhatsApp handoff
 - **Always-ask:** Any response not in approved template library; COMPLAINT handling; responding to apparent minor
 
 **Lead Classification + Response Matrix:**

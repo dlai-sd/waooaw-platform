@@ -291,14 +291,17 @@ services:
       MCP_INSTAGRAM_MESSAGING_URL: http://instagram-messaging-mcp:8143
       # Instagram comment management (Skill 7b — instagram-comments-mcp)
       MCP_INSTAGRAM_COMMENTS_URL: http://instagram-comments-mcp:8144
-      # Appointment booking system (Skill 7b + 16 — booking-mcp: Practo/Calendly/native)
+      # Appointment booking system (Skill 7b + 16 — booking-mcp: Practo/Fresha/Mindbody/Calendly/native)
       MCP_BOOKING_URL: http://booking-mcp:8146
-      # India reputation management (Skill 14 — Practo/Justdial/Sulekha)
+      # India reputation management (Skill 14 — Practo/Justdial/Sulekha + Zomato/Swiggy for restaurants)
       MCP_REPUTATION_URL: http://reputation-mcp:8145
       # CMS integration for blog publishing (Skill 10 — cms-mcp: WordPress/Squarespace)
       MCP_CMS_URL: http://cms-mcp:8147
       # WhatsApp Flows + WhatsApp Pay (Skill 7 extensions)
       MCP_WHATSAPP_FLOWS_URL: http://whatsapp-flows-mcp:8148
+      # Restaurant delivery platforms (zomato-mcp + swiggy-mcp — domain: restaurant)
+      MCP_ZOMATO_URL: http://zomato-mcp:8149
+      MCP_SWIGGY_URL: http://swiggy-mcp:8150
       # ─────────────────────────────────────────────────────────────────────
       # Infrastructure services (ADR-021 OAuth, ADR-022 Razorpay, notifications, PDF, email)
       OAUTH_VAULT_URL: http://oauth-vault:8130
@@ -1060,6 +1063,18 @@ uvicorn.run(app, host='0.0.0.0', port=8122)
     image: python:3.12-slim
     command: python -c "from http.server import HTTPServer,BaseHTTPRequestHandler; import json; H=type('H',(BaseHTTPRequestHandler,),{'do_POST':lambda s:(s.send_response(200),s.send_header('Content-Type','application/json'),s.end_headers(),s.wfile.write(json.dumps({'status':'ok','service':'whatsapp-flows-mcp-stub','note':'FA-009 WABA required'}).encode())),'do_GET':lambda s:(s.send_response(200),s.send_header('Content-Type','application/json'),s.end_headers(),s.wfile.write(json.dumps({'status':'ok','service':'whatsapp-flows-mcp-stub'}).encode())),'log_message':lambda *a:None}); HTTPServer(('0.0.0.0',8148),H).serve_forever()"
     ports: ["8148:8148"]
+
+  # zomato-mcp: Zomato Partner API — menu mgmt, reviews, promotions (restaurants — CRITICAL)
+  zomato-mcp:
+    image: python:3.12-slim
+    command: python -c "from http.server import HTTPServer,BaseHTTPRequestHandler; import json; H=type('H',(BaseHTTPRequestHandler,),{'do_POST':lambda s:(s.send_response(200),s.send_header('Content-Type','application/json'),s.end_headers(),s.wfile.write(json.dumps({'status':'ok','service':'zomato-mcp-stub','note':'Zomato Restaurant Partner credentials required'}).encode())),'do_GET':lambda s:(s.send_response(200),s.send_header('Content-Type','application/json'),s.end_headers(),s.wfile.write(json.dumps({'status':'ok','service':'zomato-mcp-stub'}).encode())),'log_message':lambda *a:None}); HTTPServer(('0.0.0.0',8149),H).serve_forever()"
+    ports: ["8149:8149"]
+
+  # swiggy-mcp: Swiggy Merchant API — listing, menu, order analytics (restaurants — CRITICAL)
+  swiggy-mcp:
+    image: python:3.12-slim
+    command: python -c "from http.server import HTTPServer,BaseHTTPRequestHandler; import json; H=type('H',(BaseHTTPRequestHandler,),{'do_POST':lambda s:(s.send_response(200),s.send_header('Content-Type','application/json'),s.end_headers(),s.wfile.write(json.dumps({'status':'ok','service':'swiggy-mcp-stub','note':'Swiggy Merchant Portal credentials required'}).encode())),'do_GET':lambda s:(s.send_response(200),s.send_header('Content-Type','application/json'),s.end_headers(),s.wfile.write(json.dumps({'status':'ok','service':'swiggy-mcp-stub'}).encode())),'log_message':lambda *a:None}); HTTPServer(('0.0.0.0',8150),H).serve_forever()"
+    ports: ["8150:8150"]
   # ── End DMA v3.0 MCP stubs ─────────────────────────────────────────────────
 
   web:
