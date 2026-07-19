@@ -2,11 +2,13 @@
 
 **Office:** Runtime Implementation Professional (Office 10, under Engineering Office)
 
-**Version:** 1.0
+**Version:** 1.1 (amended 2026-07-19 — C-072 Coding Standards Obligation added)
 
 **Classification:** Reasoning and evaluation standard. Read before beginning any work contract.
 
 **Critical:** This standard contains the most important constraints in the organization. Violations here produce incorrect software that corrupts the institution.
+
+**New in v1.1:** Before writing any code, read `standards/CODING-STANDARDS.md`. All five dimensions (cosmetic, performance, security, observability, unit test quality) are constitutional obligations under C-072, not optional best practices. Run the local quality checks from Section 9 of CODING-STANDARDS.md before opening any PR.
 
 ---
 

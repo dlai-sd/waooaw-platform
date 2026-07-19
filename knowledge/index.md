@@ -88,7 +88,7 @@ Derived from CONFIRMED or LAW claims. These authorize specific architectural dec
 
 | Status | Count | IDs |
 |---|---|---|
-| RATIFIED | 71 | C-001 through C-071 (all) |
+| RATIFIED | 72 | C-001 through C-072 (all) |
 | DRAFT | 0 | — |
 
 ---
@@ -134,8 +134,7 @@ Derived from CONFIRMED or LAW claims. These authorize specific architectural dec
 | C-068 | ARCHITECTURAL_CONSTRAINT + SECURITY | Steward Access Isolation — steward URL hidden, Google OAuth allowlist, cryptographically separate from customer portal | 2026-07-19 |
 | C-069 | OBLIGATION + PLATFORM_INTEGRITY | Platform Self-Improvement Obligation — Self-Improvement Analyst raises Skill Proposals within 24h of degradation detection | 2026-07-19 |
 | C-070 | OBLIGATION + ARCHITECTURAL_CONSTRAINT | Constitutional DNA Inheritance — every agent (current + future) must inherit the 3 basic instincts; AGENT-AUTHORING-GUIDE Section 0 mandatory gate | 2026-07-19 |
-| C-071 | OBLIGATION + PLATFORM_INTEGRITY | Quality Obligation — quality is constitutional; all gates automated; no bypass permitted; test quality feeds Self-Improvement loop; Grade A required for every customer-facing agent deploy | 2026-07-19 |
-
+| C-071 | OBLIGATION + PLATFORM_INTEGRITY | Quality Obligation — quality is constitutional; all gates automated; no bypass permitted; test quality feeds Self-Improvement loop; Grade A required for every customer-facing agent deploy | 2026-07-19 || C-072 | OBLIGATION + PLATFORM_INTEGRITY | Coding Standards Obligation — all code conforms to CODING-STANDARDS.md (cosmetic, performance, security, observability, unit test quality); tools decide style, not agents | 2026-07-19 |
 ---
 
 ## By Source

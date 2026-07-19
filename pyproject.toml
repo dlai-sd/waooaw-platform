@@ -1,0 +1,128 @@
+# Root pyproject.toml — Python tooling configuration for WAOOAW platform
+# Constitutional basis: C-072 (Coding Standards Obligation)
+# Applies to: src/professional-runtime, src/ai-runtime, scripts/, tests/
+#
+# Tools configured here:
+#   ruff     — lint + format (replaces flake8/black/isort/pylint)
+#   mypy     — static type checking (strict mode)
+#   bandit   — security scanning (OWASP Top 10 patterns)
+#   pytest   — test runner
+#   hypothesis — property-based testing
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort (import ordering)
+    "N",    # pep8-naming (naming conventions)
+    "UP",   # pyupgrade (modern Python idioms)
+    "B",    # flake8-bugbear (common bugs)
+    "S",    # bandit security rules (via ruff)
+    "ANN",  # type annotations required
+    "RUF",  # ruff-specific rules
+    "ASYNC",# async/await patterns
+    "LOG",  # logging best practices (no f-strings in log calls)
+    "G",    # flake8-logging-format
+]
+ignore = [
+    "ANN101",  # 'self' type annotation not required
+    "ANN102",  # 'cls' type annotation not required
+    "S101",    # 'assert' in tests is fine (not in production code)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S", "ANN"]   # Security + annotation rules relaxed in tests
+"scripts/**" = ["ANN"]       # CLI scripts don't need full annotations
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+
+[tool.ruff.lint.isort]
+known-first-party = ["waooaw", "constitutional_engine", "professional_runtime", "ai_runtime"]
+force-single-line = false
+
+# ─── mypy (strict type checking) ─────────────────────────────────────────────
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_any_generics = true
+
+[[tool.mypy.overrides]]
+# Relax for test files — hypothesis generates untyped strategies
+module = "tests.*"
+disallow_untyped_defs = false
+disallow_any_generics = false
+
+# ─── bandit (security scanning) ──────────────────────────────────────────────
+[tool.bandit]
+exclude_dirs = ["tests", ".venv"]
+skips = [
+    "B101",   # assert usage — acceptable in tests
+    "B311",   # random — acceptable for non-crypto uses
+]
+# Always flag:
+# B102 (exec), B103 (file permissions), B104 (hardcoded IPs),
+# B105/B106/B107 (hardcoded passwords/keys/tokens),
+# B201 (Flask debug mode), B301-B320 (pickle, yaml, xml unsafe),
+# B501-B509 (SSL/TLS), B601-B612 (shell injection)
+
+# ─── pytest ──────────────────────────────────────────────────────────────────
+[tool.pytest.ini_options]
+asyncio_mode = "auto"            # All async tests auto-detected
+minversion = "8.0"
+addopts = [
+    "--strict-markers",          # Fail on unknown markers
+    "--strict-config",           # Fail on config errors
+    "-ra",                       # Show all non-pass results
+    "--tb=short",                # Shorter tracebacks
+]
+testpaths = ["tests"]
+markers = [
+    "cct: Constitutional Compliance Test — C-071",
+    "acceptance: Acceptance Scenario test (AS-NNN) — Grade A required",
+    "integration: Integration test — requires testcontainers",
+    "performance: Performance test — may be slow",
+    "security: Security test — prompt injection, adversarial",
+    "flaky: Known flaky test — quarantined from blocking gates",
+]
+filterwarnings = [
+    "error",                     # All warnings are errors in tests
+    "ignore::DeprecationWarning:hypothesis",
+]
+
+# ─── hypothesis (property-based testing) ─────────────────────────────────────
+[tool.hypothesis]
+max_examples = 100               # More thorough in CI (pytest --hypothesis-seed for repro)
+deriving = "best"
+suppress_health_check = ["too_slow"]
+
+# ─── coverage ────────────────────────────────────────────────────────────────
+[tool.coverage.run]
+branch = true
+source = ["src/professional-runtime", "src/ai-runtime", "scripts"]
+omit = ["tests/*", ".venv/*", "*/migrations/*"]
+
+[tool.coverage.report]
+fail_under = 80                  # Minimum coverage — gates set per-service in QA-POLICY.md
+show_missing = true
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "@overload",
+]

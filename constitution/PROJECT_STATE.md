@@ -1,8 +1,8 @@
 # PROJECT_STATE.md
 
 **Last Updated:** 2026-07-19
-**Version:** 0.88.0
-**Session:** 2026-07-19 — SESSION CLOSE (World-class QA Framework — C-071)
+**Version:** 0.89.0
+**Session:** 2026-07-19 — SESSION CLOSE (Coding Standards C-072 + full tool enforcement)
 
 ---
 

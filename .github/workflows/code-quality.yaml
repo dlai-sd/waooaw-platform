@@ -1,0 +1,314 @@
+# Code Quality Gates — runs on every PR (Gate 1 of QA-POLICY.md)
+# Constitutional basis: C-072 (Coding Standards Obligation), C-071 (Quality Obligation)
+# Purpose: Enforce formatting, linting, type checking, and security scanning
+#          across all languages before any code reaches main branch.
+#          Tools decide style — agents do not debate formatting.
+
+name: Code Quality
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: code-quality-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+
+  # ─── .NET: CSharpier format + Roslyn analyzers ──────────────────────────
+  dotnet-quality:
+    name: .NET — CSharpier + analyzers + StyleCop
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        project: [src/constitutional-engine, src/business-platform]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Install CSharpier
+        run: dotnet tool install -g csharpier
+
+      - name: Check formatting (CSharpier)
+        run: dotnet csharpier --check ${{ matrix.project }}
+        # Fails if any file needs formatting — agents must run 'dotnet csharpier .' locally first
+
+      - name: Build with warnings-as-errors (Roslyn + StyleCop)
+        run: dotnet build ${{ matrix.project }} -warnaserror /p:TreatWarningsAsErrors=true
+
+      - name: Check for known vulnerable packages
+        run: |
+          dotnet list ${{ matrix.project }} package --vulnerable --include-transitive \
+            2>&1 | grep -i "has the following vulnerable packages" && exit 1 || true
+
+  # ─── Python: Ruff lint + format + mypy + bandit ─────────────────────────
+  python-quality:
+    name: Python — Ruff + mypy + bandit
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [src/professional-runtime, src/ai-runtime]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install uv + tools
+        run: |
+          pip install uv
+          uv pip install ruff mypy bandit[toml] --system
+
+      - name: Ruff lint (catches bugs, style, security patterns)
+        run: ruff check ${{ matrix.service }} --output-format=github
+        # --output-format=github: inline annotations in PR
+
+      - name: Ruff format check (no diffs allowed)
+        run: ruff format --check ${{ matrix.service }}
+
+      - name: mypy strict type check
+        run: mypy --strict ${{ matrix.service }} --config-file pyproject.toml
+
+      - name: Bandit security scan
+        run: |
+          bandit -r ${{ matrix.service }} \
+            -c pyproject.toml \
+            -f json \
+            -o bandit-results-${{ matrix.service }}.json \
+            --exit-zero  # bandit always exits 0; we parse results below
+
+      - name: Assert no high/critical bandit findings
+        run: |
+          python3 - <<'EOF'
+          import json, sys, pathlib
+          results_file = pathlib.Path("bandit-results-${{ matrix.service }}.json")
+          if not results_file.exists():
+              print("No bandit results file — check step above")
+              sys.exit(1)
+          results = json.loads(results_file.read_text())
+          issues = [r for r in results.get("results", [])
+                    if r["issue_severity"] in ("HIGH", "CRITICAL")]
+          if issues:
+              print(f"SECURITY GATE FAILED: {len(issues)} HIGH/CRITICAL finding(s)")
+              for issue in issues:
+                  print(f"  [{issue['issue_severity']}] {issue['test_id']}: {issue['issue_text']}")
+                  print(f"    {issue['filename']}:{issue['line_number']}")
+              sys.exit(1)
+          print(f"✓ No HIGH/CRITICAL security findings in ${{ matrix.service }}")
+          EOF
+
+      - name: Check no prompt_text in log calls (ADR-028 security rule)
+        run: |
+          grep -rn "log.*prompt_text\|logger.*prompt_text\|print.*prompt_text" \
+            ${{ matrix.service }} --include="*.py" && \
+            echo "SECURITY VIOLATION: prompt_text found in log/print statement — ADR-028" && \
+            exit 1 || echo "✓ No prompt_text in log statements"
+
+  # ─── Python: scripts/ quality ────────────────────────────────────────────
+  scripts-quality:
+    name: Python scripts — ruff + mypy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install ruff mypy
+      - name: Lint scripts
+        run: ruff check scripts/ --config pyproject.toml
+      - name: Format check scripts
+        run: ruff format --check scripts/
+      - name: seed-prompts.py dry-run (contract test)
+        run: python scripts/seed-prompts.py --dry-run
+
+  # ─── TypeScript: Biome lint + format + type check ───────────────────────
+  typescript-quality:
+    name: TypeScript — Biome + tsc strict
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+        working-directory: web
+
+      - name: Biome lint (bugs + security + accessibility + performance)
+        run: pnpm exec biome lint --reporter=github .
+        working-directory: web
+
+      - name: Biome format check
+        run: pnpm exec biome format --write=false .
+        working-directory: web
+
+      - name: TypeScript strict type check
+        run: pnpm exec tsc --noEmit
+        working-directory: web
+
+      - name: Check for 'any' type (forbidden — C-072)
+        run: |
+          grep -rn "as any\|: any\b" web/src --include="*.ts" --include="*.tsx" \
+            --exclude-dir=node_modules | grep -v "// biome-ignore" && \
+            echo "C-072 violation: 'any' type found in TypeScript source" && exit 1 || \
+            echo "✓ No 'any' types in production TypeScript"
+
+      - name: Bundle size check (UX vocabulary: ≤200KB home page)
+        run: |
+          pnpm build 2>&1 | grep -E "First Load JS|Route" || true
+          # TODO: parse Next.js build output and fail if bundle > 250KB threshold
+
+  # ─── SQL: sqlfluff ───────────────────────────────────────────────────────
+  sql-quality:
+    name: SQL — sqlfluff lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install sqlfluff
+        run: pip install sqlfluff
+      - name: Lint SQL migrations
+        run: |
+          sqlfluff lint infrastructure/postgres/init/ \
+            --config .sqlfluff \
+            --format github-annotation \
+            --annotation-level warning || true  # Advisory until existing files are formatted
+
+  # ─── Proto: buf lint + format ────────────────────────────────────────────
+  proto-quality:
+    name: Proto — buf lint + breaking
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: buf lint
+        uses: bufbuild/buf-action@v1
+        with:
+          input: architecture/reference/proto
+      - name: buf format check
+        uses: bufbuild/buf-action@v1
+        with:
+          input: architecture/reference/proto
+          format: true
+          format_diff: true
+
+  # ─── Security: OTel span tag audit (no PII in traces) ───────────────────
+  observability-security:
+    name: OTel span PII audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Scan for raw tenant_id/customer_data in OTel span tags
+        run: |
+          VIOLATIONS=0
+          # Look for common patterns that would put PII in traces
+          for pattern in \
+            'SetTag.*tenant_id[^_]' \
+            'SetTag.*customer_name' \
+            'SetTag.*email' \
+            'SetTag.*phone' \
+            'set_attribute.*tenant_id[^_]' \
+            'set_attribute.*customer_name'; do
+            MATCHES=$(grep -rn "$pattern" src/ --include="*.cs" --include="*.py" 2>/dev/null || true)
+            if [ -n "$MATCHES" ]; then
+              echo "OBSERVABILITY SECURITY VIOLATION: raw PII in OTel span tags"
+              echo "Pattern: $pattern"
+              echo "$MATCHES"
+              VIOLATIONS=$((VIOLATIONS + 1))
+            fi
+          done
+          [ "$VIOLATIONS" -eq 0 ] && echo "✓ No PII in OTel spans" || exit 1
+
+  # ─── Constitutional naming audit (C-072 naming convention) ──────────────
+  constitutional-naming:
+    name: Constitutional naming audit
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check changed files for constitutional naming conventions
+        run: |
+          # Get changed .cs and .py files in this PR
+          CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD \
+            | grep -E '\.(cs|py)$' | head -30 || true)
+
+          if [ -z "$CHANGED" ]; then
+            echo "No .cs/.py files changed"
+            exit 0
+          fi
+
+          VIOLATIONS=0
+          for file in $CHANGED; do
+            [ -f "$file" ] || continue
+
+            # Check for generic names in constitutional code paths (warning only)
+            if grep -qE 'class.*Manager|class.*Helper|class.*Util|class.*Misc' "$file"; then
+              echo "WARNING: Generic class name in $file — consider constitutional naming (C-072)"
+            fi
+
+            # Check for hardcoded magic numbers that should be named constants
+            if grep -qE '[^_a-zA-Z]250[^ms]|[^_]40[^m]' "$file" 2>/dev/null; then
+              echo "INFO: Possible magic number in $file — ensure constitutional constants are named"
+            fi
+          done
+
+          echo "✓ Constitutional naming audit complete"
+
+  # ─── Mutation testing (weekly — Sunday at midnight UTC) ─────────────────
+  mutation-dotnet:
+    name: Mutation testing — .NET (Stryker)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+      - name: Install Stryker.NET
+        run: dotnet tool install -g dotnet-stryker
+      - name: Run Stryker on CE (target ≥75% mutation score)
+        run: |
+          dotnet stryker \
+            --project src/constitutional-engine \
+            --threshold-high 80 \
+            --threshold-low 75 \
+            --threshold-break 65 \
+            --reporter json \
+            --output stryker-ce-results
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stryker-results
+          path: stryker-ce-results/
+
+  mutation-python:
+    name: Mutation testing — Python (mutmut)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install mutmut pytest
+      - name: Run mutmut on AI Runtime (target ≥65%)
+        run: |
+          cd src/ai-runtime
+          mutmut run --paths-to-mutate=. --tests-dir=../../tests/unit/ai-runtime/
+          mutmut results
+          # Fail if mutation score < 60% (hard floor from QA-STRATEGY.md)
+          SCORE=$(mutmut results | grep -oP '\d+(?=%)' | head -1)
+          [ "${SCORE:-0}" -ge 60 ] || (echo "Mutation score ${SCORE}% < 60% — C-072" && exit 1)
