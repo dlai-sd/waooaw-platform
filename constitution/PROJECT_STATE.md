@@ -1,8 +1,8 @@
 # PROJECT_STATE.md
 
 **Last Updated:** 2026-07-19
-**Version:** 0.91.0
-**Session:** 2026-07-19 — SESSION CLOSE (DMA v3.0 critical gap bridge + full session)
+**Version:** 0.92.0
+**Session:** 2026-07-19 — SESSION CLOSE (C-074 On-the-Fly MCP Provisioning + DMA domain-agnostic complete)
 
 ---
 
