@@ -14,11 +14,11 @@
 
 | Attribute | Value |
 |---|---|
-| **Domain** | Digital Marketing |
-| **Sub-domain** | Healthcare (Dental, Medical) · Beauty & Aesthetics |
-| **Professional type** | `DIGITAL_MARKETING_HEALTHCARE` |
-| **Persona tone** | Expert + Consultant + Partner. Speaks like a senior digital marketing professional who deeply understands healthcare patient psychology, India social media landscape, and regulatory constraints on healthcare marketing. Never generic. Always domain-specific. |
-| **Expertise claim** | Indian patient acquisition through social media; dental and beauty practice brand building; healthcare content regulations (PCPNDT Act awareness, medical council guidelines); Instagram/Facebook/WhatsApp/Google Business optimization for local medical and beauty practices. |
+| **Domain** | Digital Marketing — Any Local Service Business |
+| **Sub-domain** | Healthcare (Dental, Medical) · Beauty & Aesthetics · Fitness & Wellness · Food & Hospitality · Professional Services (Legal, Accounting, Agency) · Education · Real Estate Advisory — domain determined from `customer_profile.business_domain` at runtime |
+| **Professional type** | `DIGITAL_MARKETING_LOCAL_SERVICE` |
+| **Persona tone** | Expert + Consultant + Partner. Speaks like a senior digital marketing professional who deeply understands the customer's specific business domain, India social media landscape, and the relevant regulatory constraints. Never generic — always domain-specific. Never uses wrong vocabulary for the business (never calls Rupali's clients "patients"; never calls Yashus's work "bookings"). |
+| **Expertise claim** | Local business digital acquisition across all service domains in India; platform-native content creation; multi-channel presence management; measurable customer lifetime value improvement; constitutional governance of every marketing action. |
 
 ---
 
@@ -27,15 +27,14 @@
 | Persona | Business | Location | Business Goal |
 |---|---|---|---|
 | Dr. Mehta | Dental Clinic, mid-size (2 dentists) | Viman Nagar, Pune | +20% monthly appointment bookings |
-| Sana | Solo Beauty Artist | Bandra, Mumbai | +30% monthly booking enquiries |
-| Generic Dental | Dental clinic (1-5 dentists) | Any Tier 1/2 India city | Patient acquisition + retention |
-| Generic Beauty | Beauty salon / solo artist | Any Tier 1/2 India city | Enquiry generation + brand awareness |
+| Rupali | Solo Beauty Artist | Pune | +30% monthly booking enquiries |
 | Kiran | Boutique Fitness Studio (20-50 members) | Koramangala, Bangalore | +12 new member sign-ups/month |
-| Generic Fitness | Fitness studio / gym / yoga studio | Any Tier 1/2 India city | New member acquisition + retention |
+| Yashus | Digital Marketing Agency | Mumbai | Client acquisition + showcasing agency expertise |
+| Generic Local Service | Any service business | Any Tier 1/2 India city | Domain-specific acquisition + retention |
 
-**v2.0 domain extension:** This agent now supports any local service business discoverable via the Customer Profiling + Market Research intelligence layer. The target persona table above is the approved Acceptance Scenario set. New domains are added via the `business_domain_taxonomy` lookup table without changing the agent spec — the agent's skill execution is domain-agnostic; only Tier 1 RAG domain knowledge requires domain-specific content.
+**Domain extension (v3.0):** This agent serves ANY local service business. The persona table above is the approved Acceptance Scenario set. New domains are added via the `business_domain_taxonomy` lookup table without changing the agent spec — all skill execution is domain-agnostic via the Domain Vocabulary Engine (Section 3.1). Only Tier 1 RAG domain knowledge requires domain-specific content.
 
-**Acceptance Scenarios satisfied:** AS-001 (Dr. Mehta, dental clinic), AS-002 (Sana, beauty artist)
+**Acceptance Scenarios satisfied:** AS-001 (Dr. Mehta, dental), AS-002 (Rupali/Sana, beauty)
 
 ---
 
@@ -46,6 +45,154 @@
 > - **Skills 2–8 — Phase 1 (Curtain Raiser):** footprint and consistency. Activated for all customers.
 > - **Skills 9–11 — Phase 2 (Growth Engine):** acquisition focus. Activated when customer reaches Score 3+.
 > - **Skills 12–13 — Phase 3 (Maturity Phase):** optimisation and competitive edge. Activated at Score 5+.
+
+---
+
+### 3.1 Domain Vocabulary Engine (DVE) — Universal Domain-Agnostic Language
+
+**Constitutional basis:** C-042 (Vocabulary Mandate — LAW). The agent must speak the professional vocabulary of the customer's domain. Calling Rupali's clients "patients" or Yashus's client meetings "bookings" is a C-042 violation — it signals the agent doesn't understand the business.
+
+**How it works:** Every skill uses generic vocabulary tokens (`{CUSTOMER}`, `{VISIT}`, `{BOOKING_PLATFORM}` etc.). At runtime, the DVE resolves these tokens by reading `customer_profile.business_domain`. The skill logic is identical across all domains. Only the language changes.
+
+**Agents and developers NEVER hardcode domain-specific words in skill implementations. They use DVE tokens.**
+
+```yaml
+domain_vocabulary_engine:
+
+  # ── business_domain values ──────────────────────────────────────────────────
+  # Set in customer_profile.business_domain during Skill 0 profiling
+  # Values: dental_clinic | beauty_artist | beauty_salon | fitness_studio | 
+  #         restaurant | law_firm | accounting_firm | digital_marketing_agency |
+  #         real_estate | education | cloud_kitchen | retail | generic
+
+  tokens:
+
+    CUSTOMER_SINGULAR:
+      dental_clinic:             "patient"
+      beauty_artist:             "client"
+      beauty_salon:              "client"
+      fitness_studio:            "member"
+      restaurant:                "guest"
+      law_firm:                  "client"
+      accounting_firm:           "client"
+      digital_marketing_agency:  "client"
+      real_estate:               "prospect"
+      education:                 "student"
+      cloud_kitchen:             "customer"
+      retail:                    "customer"
+      default:                   "customer"
+
+    CUSTOMER_PLURAL:
+      dental_clinic:             "patients"
+      beauty_artist:             "clients"
+      fitness_studio:            "members"
+      restaurant:                "guests"
+      law_firm:                  "clients"
+      default:                   "customers"
+
+    VISIT_NOUN:
+      dental_clinic:             "appointment"
+      beauty_artist:             "booking"
+      beauty_salon:              "appointment"
+      fitness_studio:            "session"
+      restaurant:                "reservation"
+      law_firm:                  "meeting"
+      accounting_firm:           "consultation"
+      digital_marketing_agency:  "meeting"
+      real_estate:               "viewing"
+      default:                   "visit"
+
+    POST_VISIT_CHECKIN_MESSAGE:
+      dental_clinic:             "How are you feeling after your {service} yesterday, {name}? Any discomfort? 🙏"
+      beauty_artist:             "How are you loving your new {service}, {name}? ✨ We'd love to hear from you!"
+      beauty_salon:              "Hope you're enjoying your {service}, {name}! 😊 How did it go?"
+      fitness_studio:            "Hope you're feeling great after your {service} session, {name}! 💪"
+      restaurant:                "Hope you enjoyed your visit yesterday, {name}! 😊 We'd love your feedback."
+      law_firm:                  "Hope our meeting was helpful, {name}. Do you have any follow-up questions?"
+      accounting_firm:           "Hope our {service} session was useful, {name}. Any follow-up queries?"
+      digital_marketing_agency:  "Hi {name}, following up on our {service} meeting. Any questions so far?"
+      default:                   "How was your experience, {name}? We'd love to hear from you! 🙏"
+
+    REVISIT_REMINDER_MESSAGE:
+      dental_clinic:             "Your routine {service} checkup may be due. Book a slot: {booking_link}"
+      beauty_artist:             "Time for your next {service}? It's been {n} months, {name}! {booking_link}"
+      fitness_studio:            "We haven't seen you in a while, {name}! Your {service} is waiting 💪 {booking_link}"
+      restaurant:                "It's been {n} months since your last visit, {name}. We have new dishes! {booking_link}"
+      digital_marketing_agency:  "Hi {name}, just checking in — it's been {n} months since we last connected. How's your marketing going?"
+      real_estate:               "Hi {name}, any update on your property search? Happy to share new listings. {contact_link}"
+      default:                   "Hi {name}, it's been {n} months since your last {visit}. Come back anytime: {booking_link}"
+
+    REACTIVATION_HOOK:
+      dental_clinic:             "Your oral health matters — even small issues are easier to fix early."
+      beauty_artist:             "Your next transformation is overdue! 💄"
+      fitness_studio:            "Your fitness journey is waiting for you. Every day is a new start. 💪"
+      restaurant:                "New menu items since your last visit — worth coming back for! 🍽️"
+      law_firm:                  "In case anything has changed since we last spoke — happy to help."
+      digital_marketing_agency:  "Your competitors aren't standing still. Let's catch up."
+      default:                   "It's been a while — we'd love to see you again."
+
+    LOYALTY_ACHIEVEMENT:
+      dental_clinic:             "{name} has been keeping their smile healthy for {n} months with us! 🦷"
+      beauty_artist:             "{name} has trusted us with {n} transformations! ✨"
+      fitness_studio:            "{name} has completed {n} sessions this year! 💪"
+      restaurant:                "{name} has visited us {n} times! A true regular! 🍽️"
+      default:                   "{name} has been with us for {n} months!"
+
+    BOOKING_PLATFORM_PRIORITY:
+      dental_clinic:             ["practo", "calendly", "waooaw_native"]
+      beauty_artist:             ["fresha", "vagaro", "calendly", "waooaw_native"]
+      beauty_salon:              ["fresha", "vagaro", "calendly", "waooaw_native"]
+      fitness_studio:            ["mindbody", "glofox", "calendly", "waooaw_native"]
+      restaurant:                ["dineout", "eazydiner", "calendly", "waooaw_native"]
+      law_firm:                  ["calendly", "waooaw_native"]
+      accounting_firm:           ["calendly", "waooaw_native"]
+      digital_marketing_agency:  ["calendly", "waooaw_native"]
+      default:                   ["calendly", "waooaw_native"]
+
+    REVIEW_REQUEST_MESSAGE:
+      dental_clinic:             "If you're happy with your visit, a Google review helps other {customers} find us. 30 seconds: {review_link}"
+      beauty_artist:             "If you loved your new look, share it on Google — it helps others discover us! {review_link} ✨"
+      fitness_studio:            "Enjoying your training? A Google review goes a long way for us! {review_link} 💪"
+      restaurant:                "Enjoyed your visit? A quick review helps us reach more food lovers! {review_link} 🙏"
+      default:                   "If you're happy with your experience, a Google review helps others find us: {review_link}"
+
+    LIFECYCLE_KPI:
+      dental_clinic:             "6-month patient return rate + patient LTV (₹)"
+      beauty_artist:             "repeat booking rate + client LTV (₹)"
+      fitness_studio:            "member retention rate + average membership LTV (₹)"
+      restaurant:                "return visit rate + per-cover LTV (₹)"
+      digital_marketing_agency:  "client retention rate + average contract LTV (₹)"
+      default:                   "repeat customer rate + customer LTV (₹)"
+
+    SEASONAL_HIGHLIGHT:
+      dental_clinic:             "Diwali season → whitening promotions · School admissions → children's dental camp"
+      beauty_artist:             "Bridal season (Oct-Dec, Mar-May) · Diwali fashion looks · Valentine's"
+      fitness_studio:            "New Year resolutions (Jan) · Summer body (Mar-May) · Navratri (Oct)"
+      restaurant:                "Festival dining (Diwali, Eid, Christmas) · Monsoon specials"
+      digital_marketing_agency:  "Q4 budget season · New Year campaign planning · Festive ad spend season"
+      default:                   "India festive calendar: Diwali · Navratri · New Year · Valentine's"
+
+  # ── DVE Usage in skill prompts ──────────────────────────────────────────────
+  # Every skill prompt template uses {DVE.TOKEN_NAME} syntax.
+  # The AI Runtime resolves tokens before sending to LLM.
+  # Example in Skill 16 post-visit check-in prompt:
+  #   Template: "DVE.POST_VISIT_CHECKIN_MESSAGE"
+  #   Resolves for dental_clinic: "How are you feeling after your {service} yesterday, {name}? Any discomfort? 🙏"
+  #   Resolves for beauty_artist: "How are you loving your new {service}, {name}? ✨ We'd love to hear from you!"
+  # The agent sends domain-appropriate language automatically. No hardcoded domain vocabulary anywhere.
+
+  # ── Adding new domains ─────────────────────────────────────────────────────
+  # To add a new business domain to WAOOAW DMA:
+  # 1. Add the domain to business_domain_taxonomy table
+  # 2. Add domain-specific token values to DVE (above)
+  # 3. Add Tier 1 RAG domain knowledge content
+  # 4. Add domain examples to seasonal_highlight
+  # No skill code changes required. The skills are already domain-agnostic.
+  # This is why Yashus (digital marketing agency) and Rupali (beauty artist)
+  # get the same professional quality — different vocabulary, identical execution.
+```
+
+---
 
 ---
 
@@ -2266,15 +2413,138 @@ booking-mcp:  # NEW — port 8146
 
 ---
 
-### Skill 16: Patient Lifecycle Management — v3.0 (CRITICAL GAP BRIDGE)
+### Skill 16: Customer Lifecycle Management — v3.0
 
-**Skill type:** `PATIENT_LIFECYCLE`
-**Specification version:** 3.0 (2026-07-19 — Gap: agent is acquisition-only; zero retention after first visit)
-**Business KPI:** 6-month patient return rate (%) + patient LTV (₹) + review conversion rate (%) + reactivation rate (%)
+**Skill type:** `CUSTOMER_LIFECYCLE`
+**Specification version:** 3.0 (2026-07-19 — domain-agnostic via DVE; replaces the incorrectly named "Patient Lifecycle" which was dental-only)
+**Business KPI:** `{DVE.LIFECYCLE_KPI}` — resolved from business_domain at runtime
 **Execution model:** `PRE_AUTHORIZED` for all lifecycle sequences within approved templates; `APPROVAL_GATE` for bulk reactivation campaigns
-**Phase activation:** Phase 1 — activates when first appointment confirmed. A dental agent that forgets patients after their first visit delivers 30% of its possible value.
+**Phase activation:** Phase 1 — activates when first confirmed {DVE.VISIT_NOUN} is recorded. No business should lose a {DVE.CUSTOMER_SINGULAR} because no one followed up.
 
-**The 7-Touch Patient Lifecycle:**
+**Why this skill exists:**
+Acquiring a new {DVE.CUSTOMER_SINGULAR} costs 5-7× more than retaining one. The DMA agent's acquisition skills (2, 4, 5, 7b, 11) bring {DVE.CUSTOMER_PLURAL} in. This skill keeps them, deepens the relationship, and maximises lifetime value — for every domain.
+
+- Dr. Mehta: a dental {DVE.CUSTOMER_SINGULAR} who returns every 6 months for 5 years is worth ₹20,000-50,000 LTV
+- Rupali: a bridal {DVE.CUSTOMER_SINGULAR} who returns for every occasion + refers friends is worth ₹40,000+ LTV  
+- Kiran's gym: a {DVE.CUSTOMER_SINGULAR} who renews 3 years is worth ₹36,000 LTV
+- Yashus: a {DVE.CUSTOMER_SINGULAR} on retainer for 2 years at ₹15k/month is worth ₹3,60,000 LTV
+
+**Decision Space:**
+- **Authorized:** Send post-{DVE.VISIT_NOUN} check-in; send review request after positive check-in; send {DVE.VISIT_NOUN} reminders at appropriate intervals; identify dormant {DVE.CUSTOMER_PLURAL}; send reactivation sequence after customer approves list; track {DVE.CUSTOMER_SINGULAR} LTV; generate retention report; send birthday message; send loyalty milestone messages
+- **Prohibited:** Contact {DVE.CUSTOMER_PLURAL} without opt-in; send more than 3 reactivation attempts to non-responding {DVE.CUSTOMER_PLURAL}; use {DVE.CUSTOMER_PLURAL} data for any purpose other than this customer's own retention
+- **Always-ask:** Bulk reactivation campaign (customer sees list first); any new sequence not in approved template library
+
+**The 7-Touch {DVE.CUSTOMER_SINGULAR} Lifecycle:**
+
+All message text uses DVE tokens — resolved to domain-specific language at runtime.
+
+```
+TOUCH 1 — Post-{DVE.VISIT_NOUN} Check-In (24h after confirmed {DVE.VISIT_NOUN})
+  Trigger: booking-mcp {DVE.VISIT_NOUN}.status = COMPLETED
+  Message: {DVE.POST_VISIT_CHECKIN_MESSAGE}
+  Examples by domain:
+    dental_clinic:  "How are you feeling after your root canal yesterday, Dr. Mehta's patient? 🙏"
+    beauty_artist:  "How are you loving your new bridal look, Priya? ✨ We'd love to hear!"
+    fitness_studio: "Hope you're feeling great after your HIIT session, Arjun! 💪"
+    agency:         "Hi Yashus team, following up on our strategy meeting. Any questions?"
+  If concern/complaint → IMMEDIATE escalation to business owner (C-049)
+
+TOUCH 2 — Review Request (48-72h after positive TOUCH 1)
+  Trigger: TOUCH 1 response = POSITIVE
+  Message: {DVE.REVIEW_REQUEST_MESSAGE}
+  Rate limit: 1 per {DVE.CUSTOMER_SINGULAR} per 3 months
+
+TOUCH 3 — Multi-{DVE.VISIT_NOUN} Follow-Up (Day 7 for ongoing engagements)
+  Trigger: {DVE.VISIT_NOUN} records show multi-step engagement in progress
+  Examples:
+    dental:   "Your next appointment is [date]. Any questions before then?"
+    beauty:   "Your next colour touch-up is due in 6 weeks. Book when you're ready!"
+    fitness:  "You're halfway through your 10-session pack. 5 down, 5 to go! 💪"
+    agency:   "Month 1 of your campaign is complete. Here's your first results snapshot."
+
+TOUCH 4 — Revisit Reminder (appropriate interval by domain)
+  Trigger: days_since_last_{DVE.VISIT_NOUN} >= domain_revisit_interval
+  Intervals:
+    dental_clinic:             180 days (6-month checkup)
+    beauty_artist/salon:       45 days (hair colour), 30 days (facial), 90 days (bridal touch-up)
+    fitness_studio:            14 days (member hasn't visited in 2 weeks)
+    restaurant:                60 days
+    digital_marketing_agency:  90 days (if on project basis, not retainer)
+    default:                   90 days
+  Message: {DVE.REVISIT_REMINDER_MESSAGE}
+  booking-mcp shows 3 available slots if {DVE.CUSTOMER_SINGULAR} replies YES/HA/हाँ
+
+TOUCH 5 — Reactivation Sequence (2× interval since last visit, dormant)
+  Requires: APPROVAL_GATE — owner sees {DVE.CUSTOMER_SINGULAR} names + last {DVE.VISIT_NOUN} date before sending
+  3 messages, 7 days apart, then stop:
+    Message 1: {DVE.REACTIVATION_HOOK} + booking link
+    Message 2: Gentle follow-up with social proof or seasonal hook
+    Message 3: "This is my last message — no pressure. We're here whenever you need us."
+  After 3 non-responses: mark DORMANT_INACTIVE; stop all messaging
+
+TOUCH 6 — Birthday Message (if date in profile)
+  Zero sales CTA — relationship only. C-048 violation to use birthday for sales.
+  Examples:
+    dental:   "Happy Birthday, [Name]! 🎂 Wishing you a healthy, happy year!"
+    beauty:   "Happy Birthday, [Name]! 🎂 Hoping you're feeling fabulous today! ✨"
+    fitness:  "Happy Birthday, [Name]! 💪 Here's to another year of gains!"
+    agency:   "Happy Birthday, [Name]! 🎉 It's a pleasure working with you."
+
+TOUCH 7 — Loyalty Milestone (1 year / 10 visits / ₹10,000 spent)
+  Message: {DVE.LOYALTY_ACHIEVEMENT}
+  Tone: genuine appreciation + (optional) small goodwill gesture if customer approves
+  Examples:
+    dental:   "It's been one year since your first visit! Thank you for trusting us. 🙏"
+    beauty:   "10 transformations together — thank you for trusting me with your look! ✨"
+    fitness:  "100 sessions this year! You're incredible, [Name]. 💪"
+    agency:   "One year of working together. Thank you for your trust, [Yashus team]. 🙏"
+```
+
+**{DVE.CUSTOMER_SINGULAR} Segmentation (domain-agnostic):**
+
+```yaml
+customer_segments:
+  NEW: first {DVE.VISIT_NOUN} within last 30 days → TOUCH 1 → 2 → 3
+  REGULAR: 2+ {DVE.VISIT_NOUN}s, last within domain_revisit_interval × 1.2 → TOUCH 4
+  AT_RISK: last {DVE.VISIT_NOUN} between domain_revisit_interval and 2× interval → urgent TOUCH 4
+  DORMANT: last {DVE.VISIT_NOUN} > 2× domain_revisit_interval → TOUCH 5 (with owner approval)
+  HIGH_VALUE: LTV > domain_high_value_threshold → enhanced lifecycle
+  REFERRER: has referred ≥1 new {DVE.CUSTOMER_SINGULAR} → special thank-you
+```
+
+**Booking Platform Resolution (domain-aware):**
+
+```yaml
+# booking-mcp reads business_domain and selects preferred platform order
+booking_platform_priority: {DVE.BOOKING_PLATFORM_PRIORITY}
+
+# For dental_clinic:  ["practo", "calendly", "waooaw_native"]
+# For beauty_artist:  ["fresha", "vagaro", "calendly", "waooaw_native"]
+# For fitness_studio: ["mindbody", "glofox", "calendly", "waooaw_native"]
+# For agency/default: ["calendly", "waooaw_native"]
+
+# WAOOAW native calendar is always the fallback — works for all domains
+# Customers with no booking system get WAOOAW native calendar at no extra cost
+```
+
+**MCP Tools:**
+| Tool | MCP Server | Action | Authorization | Failure |
+|---|---|---|---|---|
+| Get completed {DVE.VISIT_NOUN}s | booking-mcp | visit.list_completed | `CUSTOMER_LIFECYCLE` | DEGRADABLE (fallback: customer-uploaded list) |
+| Get dormant {DVE.CUSTOMER_PLURAL} | booking-mcp | customers.get_dormant | `CUSTOMER_LIFECYCLE` | DEGRADABLE |
+| Send check-in | whatsapp-business-mcp | checkin.send | `CUSTOMER_LIFECYCLE` PRE_AUTHORIZED | REQUIRED |
+| Send review request | whatsapp-business-mcp | review_request.send | `CUSTOMER_LIFECYCLE` rate-limited 1/3mo | REQUIRED |
+| Send reminder | whatsapp-business-mcp | reminder.send | `CUSTOMER_LIFECYCLE` PRE_AUTHORIZED | REQUIRED |
+| Send reactivation | whatsapp-business-mcp | reactivation.send | `CUSTOMER_LIFECYCLE` + APPROVED_LIST | REQUIRED |
+| Check availability | booking-mcp | availability.get | `BOOKING_MANAGEMENT` | DEGRADABLE |
+| Create {DVE.VISIT_NOUN} | booking-mcp | visit.create | `BOOKING_MANAGEMENT` + confirmed | REQUIRED |
+
+**Constitutional constraints:**
+- All message templates use DVE tokens — hardcoded domain vocabulary is a C-042 violation
+- Pain/discomfort/complaint in TOUCH 1 response → immediate escalation to owner (C-049); never medical advice regardless of domain
+- TOUCH 5 reactivation: owner approves list before any message — {DVE.CUSTOMER_SINGULAR} data is personal
+- TOUCH 6 birthday: zero sales CTA — C-048 violation to monetize birthday
+- Opt-out on every message: "Reply STOP to stop messages" (TRAI mandatory)
 
 ```
 TOUCH 1 — Post-Visit Check-In (24h after appointment)
