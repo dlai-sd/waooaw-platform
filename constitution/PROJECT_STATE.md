@@ -1,8 +1,8 @@
 # PROJECT_STATE.md
 
 **Last Updated:** 2026-07-19
-**Version:** 0.87.0
-**Session:** 2026-07-19 — SESSION CLOSE (Multi-provider LLM + Provider Selection Engine)
+**Version:** 0.88.0
+**Session:** 2026-07-19 — SESSION CLOSE (World-class QA Framework — C-071)
 
 ---
 
@@ -11,7 +11,39 @@
 ```
 INSTITUTION:  WAOOAW — autonomous digital professionals under constitutional governance
 GATE:         G5 prerequisites met (G5 CLEAR ≠ implementation authorization for any session)
-VERSION:      0.87.0
+VERSION:      0.88.0
+CONSTITUTIONAL CLAIMS: C-001 to C-071 (71 ratified)
+  NEW: C-071 — Quality Obligation (quality gates are constitutional, not optional)
+QA FRAMEWORK: RATIFIED — world-class quality infrastructure
+  STRATEGY: tests/QA-STRATEGY.md (7-layer test pyramid, tool registry, coverage requirements)
+  POLICY:   tests/QA-POLICY.md (4 quality gates, authorship standards, defect classification)
+  CHECKLIST:tests/QA-CHECKLIST.md (7 stage checklists, executable gate checks)
+  TOOLS (definitive — agents never choose):
+    Unit: xUnit/FluentAssertions (.NET), pytest/hypothesis (Python), Vitest (TypeScript)
+    Integration: testcontainers (real DB in CI), adversarial multi-tenant suite
+    Contract: Schemathesis (OpenAPI fuzzing), buf breaking (proto)
+    E2E: Playwright (web + accessibility), httpx+pytest (API)
+    Performance: k6 (constitutional floors: Emergency Stop ≤250ms, CE ≤40ms)
+    Security: OWASP ZAP DAST, 50-case prompt injection suite (C-062)
+    Accessibility: @axe-core/playwright (WCAG 2.1 AA)
+    AI Quality: DeepEval + Grade-based assertions + regional language vocabulary scoring
+    Mutation: Stryker.NET, mutmut (weekly CI)
+    Reporting: Allure Report (rich, stakeholder-friendly)
+  CI WORKFLOWS ADDED:
+    .github/workflows/integration-tests.yaml (multi-tenant, contract, seed-prompts, prompt-injection)
+    .github/workflows/e2e-acceptance-tests.yaml (AS-001, AS-003, AS-005, PSE failover, Emergency Stop E2E)
+    .github/workflows/performance-baseline.yaml (k6 smoke + load + constitutional Emergency Stop)
+  DB:
+    institutional.quality_metrics table (CI run metrics → Self-Improvement loop via C-069/C-071)
+    institutional.provider_dispatch_events updated (quality_metrics added to 08-provider-performance.sql)
+  TEST INFRASTRUCTURE:
+    tests/QA-STRATEGY.md, tests/QA-POLICY.md, tests/QA-CHECKLIST.md
+    tests/conftest.py (shared fixtures: synthetic personas, rollback_db, CCT helpers, injection attacks)
+    tests/performance/smoke.js (k6 with constitutional floor assertions)
+NEXT SESSION OPTIONS:
+  A. IB-009 Foundation Implementation — Yogesh "start coding" → CE evaluators first
+  B. Write first CCTs for CE ValidateAction evaluators (CCT-CE-01 to CCT-CE-10)
+  C. New agent spec (Legal, HR, Accounting) with full Section 0 + quality checklist
 CONSTITUTIONAL CLAIMS: C-001 to C-070 (70 ratified) | ADRs: 29
 LLM STRATEGY: ADR-029 RATIFIED — Multi-provider conscious selection
   PRIMARY MID_TIER:  Google Gemini 2.0 Flash (Vertex AI asia-south1, Mumbai — DPDPA primary)

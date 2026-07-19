@@ -1,0 +1,223 @@
+# E2E + Acceptance Scenario + Accessibility Tests — Gate 2 (QA environment)
+# Constitutional basis: C-071 (Quality Obligation), C-001 (Emergency Stop E2E),
+#                       QA-STRATEGY.md Section 5.3 (E2E), 5.5 (AS), 5.7 (Accessibility)
+# Purpose: Validates complete customer journeys (acceptance scenarios) and
+#          WCAG 2.1 AA compliance. Runs against a deployed QA environment.
+
+name: E2E · Acceptance Scenarios · Accessibility
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'qa'
+        type: choice
+        options: [qa, demo, uat]
+  push:
+    branches: [main]
+
+env:
+  BASE_URL: ${{ secrets.QA_BASE_URL || 'http://localhost:3000' }}
+
+jobs:
+
+  # ─── Playwright setup ────────────────────────────────────────────────────
+  install:
+    name: Install Playwright
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: web/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+        working-directory: web
+      - run: pnpm exec playwright install --with-deps chromium firefox
+        working-directory: web
+      - uses: actions/cache@v4
+        with:
+          path: web/node_modules/.pnpm
+          key: playwright-${{ hashFiles('web/pnpm-lock.yaml') }}
+
+  # ─── Accessibility tests (WCAG 2.1 AA — C-042 constitutional UX standard) ──
+  accessibility:
+    name: Accessibility — WCAG 2.1 AA
+    runs-on: ubuntu-latest
+    needs: install
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v3
+        with: { version: 9 }
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: web/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+        working-directory: web
+      - run: pnpm exec playwright install --with-deps chromium
+        working-directory: web
+      - name: Run axe-playwright accessibility tests
+        run: pnpm exec playwright test tests/accessibility/ --reporter=html
+        working-directory: web
+        env:
+          BASE_URL: ${{ env.BASE_URL }}
+      - name: Upload accessibility report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: accessibility-report
+          path: web/playwright-report/
+
+  # ─── AS-001: DMA — Dr. Mehta acceptance scenario ────────────────────────
+  as-001-dma:
+    name: AS-001 DMA — Dr. Mehta (Grade A required)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install
+        run: pip install pytest deepeval httpx pytest-asyncio
+      - name: Run AS-001
+        run: |
+          pytest tests/acceptance/test_as001_dma_dr_mehta.py \
+            -v --tb=short \
+            --junit-xml=results/as-001.xml \
+            -m "acceptance"
+        env:
+          WAOOAW_API_URL: ${{ env.BASE_URL }}
+          WAOOAW_TEST_TOKEN: ${{ secrets.QA_TEST_TOKEN }}
+          LLM_TEST_MODE: "grade_a_required"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: as-001-results
+          path: results/
+
+  # ─── AS-003: Trading — Rahul NIFTY FO scenario ──────────────────────────
+  as-003-trading:
+    name: AS-003 Trading — Rahul (Grade A + Emergency Stop ≤250ms)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install
+        run: pip install pytest deepeval httpx pytest-asyncio websockets
+      - name: Run AS-003 + Emergency Stop constitutional test
+        run: |
+          pytest tests/acceptance/test_as003_trading_rahul.py \
+            -v --tb=short \
+            --junit-xml=results/as-003.xml \
+            -m "acceptance"
+        env:
+          WAOOAW_API_URL: ${{ env.BASE_URL }}
+          WAOOAW_TEST_TOKEN: ${{ secrets.QA_TEST_TOKEN }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: as-003-results
+          path: results/
+
+  # ─── AS-005: Agricultural — Suresh Vidarbha scenario ────────────────────
+  as-005-agricultural:
+    name: AS-005 Agricultural — Suresh (Grade A + C-042 Marathi)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install
+        run: pip install pytest deepeval httpx pytest-asyncio
+      - name: Run AS-005 with regional language assertions
+        run: |
+          pytest tests/acceptance/test_as005_agri_suresh.py \
+            -v --tb=short \
+            --junit-xml=results/as-005.xml \
+            -m "acceptance"
+        env:
+          WAOOAW_API_URL: ${{ env.BASE_URL }}
+          WAOOAW_TEST_TOKEN: ${{ secrets.QA_TEST_TOKEN }}
+          TEST_LANGUAGE: "mr"   # Marathi — C-042 vocabulary assertion active
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: as-005-results
+          path: results/
+
+  # ─── PSE Failover scenario ────────────────────────────────────────────────
+  as-pse-failover:
+    name: AS-PSE — Provider failover (Gemini → Azure)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install
+        run: pip install pytest httpx pytest-asyncio
+      - name: PSE circuit-breaker + fallback test
+        run: |
+          pytest tests/acceptance/test_as_pse_failover.py \
+            -v --tb=short \
+            --junit-xml=results/as-pse.xml
+        env:
+          WAOOAW_API_URL: ${{ env.BASE_URL }}
+          WAOOAW_TEST_TOKEN: ${{ secrets.QA_TEST_TOKEN }}
+          PSE_TEST_INJECT_RATE_LIMIT: "true"   # Simulates Gemini 429
+
+  # ─── Emergency Stop E2E — constitutional floor (C-001) ──────────────────
+  emergency-stop-e2e:
+    name: Emergency Stop E2E — ≤250ms P99 (constitutional floor)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install
+        run: pip install pytest pytest-asyncio websockets statistics
+      - name: Emergency Stop latency test (10 runs, P99 assertion)
+        run: |
+          pytest tests/constitutional/test_cct_ho_01_emergency_stop_latency.py \
+            -v --tb=short \
+            -k "e2e" \
+            --junit-xml=results/emergency-stop-e2e.xml
+        env:
+          WAOOAW_WS_URL: ${{ secrets.QA_WS_URL || 'ws://localhost:5003/emergency-stop' }}
+          WAOOAW_TEST_TOKEN: ${{ secrets.QA_TEST_TOKEN }}
+
+  # ─── Allure report aggregation ───────────────────────────────────────────
+  report:
+    name: Generate Allure Quality Report
+    runs-on: ubuntu-latest
+    needs: [accessibility, as-001-dma, as-003-trading, as-005-agricultural, emergency-stop-e2e]
+    if: always()
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: allure-results/
+      - name: Generate Allure report
+        uses: simple-elf/allure-report-action@master
+        with:
+          allure_results: allure-results
+          allure_report: allure-report
+          gh_pages: gh-pages
+          allure_history: allure-history
+      - name: Upload Allure report
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-quality-report
+          path: allure-report/

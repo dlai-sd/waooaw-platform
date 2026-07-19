@@ -1,0 +1,145 @@
+# Performance Baseline Tests — Gate 2 QA promotion
+# Constitutional basis: C-001 (Emergency Stop ≤250ms — hard floor), C-071 (Quality Obligation)
+# Tool: k6 (cloud-native, Azure-native, scripted in JavaScript)
+# Purpose: Validates platform meets latency SLAs. Emergency Stop P99 ≤250ms is
+#          a constitutional floor — this test is a CCT equivalent for performance.
+
+name: Performance Baseline (k6)
+
+on:
+  workflow_dispatch:
+    inputs:
+      scenario:
+        description: 'Test scenario'
+        required: true
+        default: 'smoke'
+        type: choice
+        options: [smoke, load, constitutional-emergency-stop]
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'qa'
+        type: choice
+        options: [qa, uat]
+  push:
+    branches: [main]
+
+jobs:
+
+  # ─── Smoke test (10 VUs, 2 min) — every QA deploy ──────────────────────
+  smoke:
+    name: Performance smoke (10 VUs · 2 min)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install k6
+        run: |
+          curl https://github.com/grafana/k6/releases/download/v0.52.0/k6-v0.52.0-linux-amd64.tar.gz \
+            -L -o k6.tar.gz
+          tar -xzf k6.tar.gz
+          sudo cp k6-v0.52.0-linux-amd64/k6 /usr/local/bin/
+
+      - name: Run smoke test
+        run: |
+          k6 run tests/performance/smoke.js \
+            --out json=results/smoke-results.json \
+            --summary-export=results/smoke-summary.json
+        env:
+          BASE_URL: ${{ secrets.QA_BASE_URL || 'http://localhost:5001' }}
+          K6_TEST_TOKEN: ${{ secrets.QA_TEST_TOKEN }}
+
+      - name: Assert SLA thresholds
+        run: |
+          python3 - <<'EOF'
+          import json, sys
+
+          with open("results/smoke-summary.json") as f:
+              summary = json.load(f)
+
+          metrics = summary.get("metrics", {})
+          failures = []
+
+          # Emergency Stop P99 ≤250ms — CONSTITUTIONAL FLOOR
+          es_p99 = metrics.get("emergency_stop_latency", {}).get("values", {}).get("p(99)", 999999)
+          if es_p99 > 250:
+              failures.append(f"CONSTITUTIONAL VIOLATION: Emergency Stop P99={es_p99}ms > 250ms (C-001)")
+
+          # CE ValidateAction P99 ≤40ms
+          ce_p99 = metrics.get("ce_validate_action_latency", {}).get("values", {}).get("p(99)", 999999)
+          if ce_p99 > 40:
+              failures.append(f"CE ValidateAction P99={ce_p99}ms > 40ms SLA")
+
+          # BP API P99 ≤500ms
+          bp_p99 = metrics.get("http_req_duration", {}).get("values", {}).get("p(99)", 999999)
+          if bp_p99 > 500:
+              failures.append(f"BP API P99={bp_p99}ms > 500ms SLA")
+
+          if failures:
+              print("PERFORMANCE GATE FAILED:")
+              for f in failures:
+                  print(f"  ❌ {f}")
+              sys.exit(1)
+
+          print("✓ All performance thresholds within SLA")
+          EOF
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smoke-results
+          path: results/
+
+  # ─── Load test (50 VUs, 5 min) — pre-production gate ───────────────────
+  load:
+    name: Performance load (50 VUs · 5 min)
+    runs-on: ubuntu-latest
+    if: github.event.inputs.scenario == 'load' || github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install k6
+        run: |
+          curl https://github.com/grafana/k6/releases/download/v0.52.0/k6-v0.52.0-linux-amd64.tar.gz \
+            -L -o k6.tar.gz && tar -xzf k6.tar.gz
+          sudo cp k6-v0.52.0-linux-amd64/k6 /usr/local/bin/
+      - name: Run load test
+        run: k6 run tests/performance/load.js --out json=results/load-results.json
+        env:
+          BASE_URL: ${{ secrets.QA_BASE_URL }}
+          K6_TEST_TOKEN: ${{ secrets.QA_TEST_TOKEN }}
+          K6_VUS: 50
+          K6_DURATION: 5m
+
+  # ─── Emergency Stop under concurrent load — constitutional CCT equivalent ─
+  constitutional-emergency-stop:
+    name: Emergency Stop under 50 concurrent PAAS sessions (≤250ms P99)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install k6
+        run: |
+          curl https://github.com/grafana/k6/releases/download/v0.52.0/k6-v0.52.0-linux-amd64.tar.gz \
+            -L -o k6.tar.gz && tar -xzf k6.tar.gz
+          sudo cp k6-v0.52.0-linux-amd64/k6 /usr/local/bin/
+      - name: Run Emergency Stop constitutional performance test
+        run: |
+          k6 run tests/performance/emergency_stop.js \
+            --out json=results/emergency-stop-load.json \
+            --summary-export=results/emergency-stop-summary.json
+        env:
+          BASE_URL: ${{ secrets.QA_BASE_URL }}
+          K6_TEST_TOKEN: ${{ secrets.QA_TEST_TOKEN }}
+      - name: Assert constitutional floor (P99 ≤ 250ms — BLOCKS PRODUCTION)
+        run: |
+          python3 - <<'EOF'
+          import json, sys
+          with open("results/emergency-stop-summary.json") as f:
+              s = json.load(f)
+          p99 = s["metrics"]["emergency_stop_latency"]["values"]["p(99)"]
+          print(f"Emergency Stop P99: {p99:.1f}ms")
+          if p99 > 250:
+              print(f"CONSTITUTIONAL VIOLATION — C-001 BREACH: {p99:.1f}ms > 250ms")
+              print("This blocks production promotion. A P0-Constitutional incident has been raised.")
+              sys.exit(1)
+          print(f"✓ Constitutional floor maintained: {p99:.1f}ms ≤ 250ms")
+          EOF

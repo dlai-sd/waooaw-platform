@@ -1,0 +1,179 @@
+# Integration + Contract Tests — runs after merge to main (Gate 2)
+# Constitutional basis: C-071 (Quality Obligation), ADR-013 (CCT as CI/CD gate)
+# Purpose: Test real service-to-service interactions and API contract conformance.
+#          Uses testcontainers — real PostgreSQL, no mocks for infrastructure.
+
+name: Integration & Contract Tests
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 2 * * *'   # Nightly full run at 02:00 UTC
+
+concurrency:
+  group: integration-${{ github.ref }}
+  cancel-in-progress: false  # Never cancel integration tests mid-run
+
+jobs:
+
+  # ─── Multi-tenant isolation adversarial suite (C-005, ADR-003) ──────────────
+  multi-tenant-isolation:
+    name: Multi-tenant isolation (adversarial)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: waooaw
+          POSTGRES_PASSWORD: testpassword
+          POSTGRES_DB: waooaw_test
+        options: >-
+          --health-cmd "pg_isready -U waooaw"
+          --health-interval 5s
+          --health-retries 10
+        ports: ["5432:5432"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run DB migrations on test DB
+        run: |
+          for f in infrastructure/postgres/init/*.sql; do
+            PGPASSWORD=testpassword psql -h localhost -U waooaw -d waooaw_test -f "$f"
+          done
+      - name: Install test dependencies
+        run: pip install pytest pytest-asyncio psycopg2-binary httpx
+      - name: Multi-tenant isolation tests
+        run: |
+          pytest tests/integration/test_multi_tenant_*.py \
+            -v --tb=short \
+            --junit-xml=results/multi-tenant.xml
+        env:
+          DATABASE_URL: postgresql://waooaw:testpassword@localhost:5432/waooaw_test
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: multi-tenant-results
+          path: results/
+
+  # ─── Service integration tests (BP ↔ CE, PR ↔ CE) ───────────────────────────
+  service-integration:
+    name: Service integration tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: waooaw
+          POSTGRES_PASSWORD: testpassword
+          POSTGRES_DB: waooaw_test
+        options: >-
+          --health-cmd "pg_isready -U waooaw"
+          --health-interval 5s
+          --health-retries 10
+        ports: ["5432:5432"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+      - name: Run DB migrations
+        run: |
+          for f in infrastructure/postgres/init/*.sql; do
+            PGPASSWORD=testpassword psql -h localhost -U waooaw -d waooaw_test -f "$f"
+          done
+      - name: BP + CE integration tests (.NET)
+        run: |
+          dotnet test tests/integration/constitutional-engine \
+            --no-build \
+            --logger "junit;LogFileName=ce-integration.xml"
+        env:
+          DATABASE_URL: "Host=localhost;Port=5432;Database=waooaw_test;Username=waooaw;Password=testpassword"
+        continue-on-error: false
+      - name: PR + AIR integration tests (Python)
+        run: |
+          pip install pytest pytest-asyncio psycopg2-binary
+          pytest tests/integration/test_pr_ce_*.py tests/integration/test_air_pse_*.py \
+            -v --tb=short \
+            --junit-xml=results/service-integration.xml
+        env:
+          DATABASE_URL: postgresql://waooaw:testpassword@localhost:5432/waooaw_test
+
+  # ─── REST contract tests — Schemathesis OpenAPI fuzzing ───────────────────
+  contract-rest:
+    name: REST contract tests (Schemathesis)
+    runs-on: ubuntu-latest
+    needs: service-integration
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Schemathesis
+        run: pip install schemathesis
+      - name: Fuzz Business Platform OpenAPI
+        run: |
+          schemathesis run architecture/reference/api-specs/business-platform.openapi.yaml \
+            --checks all \
+            --hypothesis-max-examples 100 \
+            --junit-xml=results/schemathesis-bp.xml \
+            --base-url http://localhost:5001  # Requires running service — stub in CI
+        continue-on-error: true  # Advisory until service is deployed in CI
+      - name: Fuzz Professional Runtime OpenAPI
+        run: |
+          schemathesis run architecture/reference/api-specs/professional-runtime.openapi.yaml \
+            --checks all \
+            --hypothesis-max-examples 100 \
+            --junit-xml=results/schemathesis-pr.xml \
+            --base-url http://localhost:5003
+        continue-on-error: true
+
+  # ─── seed-prompts.py contract test (C-059, ADR-028) ──────────────────────
+  seed-prompts-contract:
+    name: seed-prompts.py contract validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Dry-run seed-prompts.py
+        run: python scripts/seed-prompts.py --dry-run
+      - name: Verify PROMPT markers parse correctly
+        run: |
+          python -c "
+          import subprocess, sys
+          result = subprocess.run(['python', 'scripts/seed-prompts.py', '--dry-run'],
+                                  capture_output=True, text=True)
+          if result.returncode != 0:
+              print('seed-prompts dry-run FAILED:')
+              print(result.stderr)
+              sys.exit(1)
+          print('seed-prompts dry-run PASSED')
+          print(result.stdout)
+          "
+
+  # ─── Prompt injection security suite (C-062, C-071) ─────────────────────
+  prompt-injection:
+    name: Prompt injection defense
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: pip install pytest
+      - name: Run prompt injection suite
+        run: |
+          pytest tests/security/test_prompt_injection.py \
+            -v --tb=short \
+            --junit-xml=results/prompt-injection.xml
+        # This tests the PSE C-062 evaluator logic directly (unit-level)
+        # Full DAST prompt injection runs in E2E workflow against live service

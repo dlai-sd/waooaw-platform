@@ -181,3 +181,84 @@ ON CONFLICT (provider) DO NOTHING;
 COMMENT ON TABLE institutional.provider_circuit_breaker IS
     'PSE-R07: circuit breaker state per provider. PSE checks this before dispatch. '
     'AI Runtime updates this table after rate-limit or error outcomes.';
+
+-- ─── Quality Metrics Table (C-071 — Quality Obligation self-improvement loop) ─
+-- One row per CI pipeline run. Self-Improvement Analyst reads weekly.
+-- Steward Assistant surfaces to Sujay Monday morning.
+
+CREATE TABLE IF NOT EXISTS institutional.quality_metrics (
+    id                      UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    pipeline_run_url        VARCHAR(300) NOT NULL,         -- GitHub Actions run URL
+    commit_sha              VARCHAR(40) NOT NULL,
+    environment             VARCHAR(20) NOT NULL           -- 'dev', 'qa', 'uat', 'prod'
+                            CHECK (environment IN ('dev', 'qa', 'uat', 'prod')),
+    measured_at             TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    -- Coverage metrics
+    coverage_ce_pct         DECIMAL(5,2),                  -- CE unit test coverage %
+    coverage_bp_pct         DECIMAL(5,2),
+    coverage_pr_pct         DECIMAL(5,2),
+    coverage_air_pct        DECIMAL(5,2),
+    coverage_web_pct        DECIMAL(5,2),
+    coverage_overall_pct    DECIMAL(5,2),
+
+    -- Mutation scores (weekly, nullable if not run this pipeline)
+    mutation_score_ce_pct   DECIMAL(5,2),
+    mutation_score_bp_pct   DECIMAL(5,2),
+    mutation_score_pr_pct   DECIMAL(5,2),
+    mutation_score_air_pct  DECIMAL(5,2),
+
+    -- CCT results
+    cct_total               INTEGER NOT NULL DEFAULT 0,
+    cct_passed              INTEGER NOT NULL DEFAULT 0,
+    cct_failed              INTEGER NOT NULL DEFAULT 0,    -- >0 = P0-Constitutional
+    cct_pass_rate_pct       DECIMAL(5,2) GENERATED ALWAYS AS (
+        CASE WHEN cct_total > 0
+             THEN ROUND(cct_passed::NUMERIC / cct_total * 100, 2)
+             ELSE NULL END
+    ) STORED,
+
+    -- Acceptance scenario grades
+    as_001_grade            CHAR(1) CHECK (as_001_grade IN ('A', 'B', 'C', 'F')),
+    as_003_grade            CHAR(1) CHECK (as_003_grade IN ('A', 'B', 'C', 'F')),
+    as_005_grade            CHAR(1) CHECK (as_005_grade IN ('A', 'B', 'C', 'F')),
+    as_006_grade            CHAR(1) CHECK (as_006_grade IN ('A', 'B', 'C', 'F')),
+
+    -- Performance metrics (from k6)
+    emergency_stop_p99_ms   INTEGER,                       -- Constitutional floor: ≤250ms
+    ce_validate_p99_ms      INTEGER,                       -- SLA: ≤40ms
+    bp_api_p99_ms           INTEGER,                       -- SLA: ≤500ms
+    lcp_p99_ms              INTEGER,                       -- SLA: ≤2500ms
+
+    -- Security
+    sast_critical_findings  INTEGER NOT NULL DEFAULT 0,    -- >0 = P0
+    dast_critical_findings  INTEGER,                       -- >0 = P0 (nullable: not run in all envs)
+    prompt_injection_blocked INTEGER,                      -- should = prompt_injection_total
+    prompt_injection_total  INTEGER,
+
+    -- Accessibility
+    wcag_critical_violations INTEGER,                      -- >0 = P1
+
+    -- Flags for Self-Improvement triggers (C-071)
+    constitutional_violation BOOLEAN NOT NULL DEFAULT FALSE,
+    needs_improvement_proposal BOOLEAN GENERATED ALWAYS AS (
+        cct_failed > 0
+        OR coverage_overall_pct < 85
+        OR emergency_stop_p99_ms > 200
+        OR as_001_grade IN ('B', 'C', 'F')
+        OR as_003_grade IN ('B', 'C', 'F')
+        OR as_005_grade IN ('B', 'C', 'F')
+    ) STORED
+);
+
+CREATE INDEX IF NOT EXISTS idx_quality_metrics_env_recent
+    ON institutional.quality_metrics (environment, measured_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_quality_metrics_needs_improvement
+    ON institutional.quality_metrics (needs_improvement_proposal, measured_at DESC)
+    WHERE needs_improvement_proposal = TRUE;
+
+COMMENT ON TABLE institutional.quality_metrics IS
+    'CI pipeline quality metrics per run. C-071: tracked for Self-Improvement loop. '
+    'Self-Improvement Analyst reads weekly; surfaces to Sujay via Steward Assistant. '
+    'needs_improvement_proposal=true triggers automatic quality proposal.';
