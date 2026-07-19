@@ -63,7 +63,7 @@ domain_vocabulary_engine:
   # Set in customer_profile.business_domain during Skill 0 profiling
   # Values: dental_clinic | beauty_artist | beauty_salon | fitness_studio | 
   #         restaurant | law_firm | accounting_firm | digital_marketing_agency |
-  #         real_estate | education | cloud_kitchen | retail | generic
+  #         real_estate | education | cloud_kitchen | retail | technology_saas | generic
 
   tokens:
 
@@ -80,6 +80,7 @@ domain_vocabulary_engine:
       education:                 "student"
       cloud_kitchen:             "customer"
       retail:                    "customer"
+      technology_saas:           "user"          # e.g., WAOOAW's own trial signups
       default:                   "customer"
 
     CUSTOMER_PLURAL:
@@ -100,6 +101,7 @@ domain_vocabulary_engine:
       accounting_firm:           "consultation"
       digital_marketing_agency:  "meeting"
       real_estate:               "viewing"
+      technology_saas:           "trial"          # trial signup, demo, onboarding
       default:                   "visit"
 
     POST_VISIT_CHECKIN_MESSAGE:
@@ -111,6 +113,7 @@ domain_vocabulary_engine:
       law_firm:                  "Hope our meeting was helpful, {name}. Do you have any follow-up questions?"
       accounting_firm:           "Hope our {service} session was useful, {name}. Any follow-up queries?"
       digital_marketing_agency:  "Hi {name}, following up on our {service} meeting. Any questions so far?"
+      technology_saas:           "Hi {name}, how is your {trial} going? Any questions or feedback? 🙏"
       default:                   "How was your experience, {name}? We'd love to hear from you! 🙏"
 
     REVISIT_REMINDER_MESSAGE:
@@ -129,6 +132,7 @@ domain_vocabulary_engine:
       restaurant:                "New menu items since your last visit — worth coming back for! 🍽️"
       law_firm:                  "In case anything has changed since we last spoke — happy to help."
       digital_marketing_agency:  "Your competitors aren't standing still. Let's catch up."
+      technology_saas:           "Your trial expired — come back and see what's new. A lot has improved."
       default:                   "It's been a while — we'd love to see you again."
 
     LOYALTY_ACHIEVEMENT:
@@ -147,6 +151,7 @@ domain_vocabulary_engine:
       law_firm:                  ["calendly", "waooaw_native"]
       accounting_firm:           ["calendly", "waooaw_native"]
       digital_marketing_agency:  ["calendly", "waooaw_native"]
+      technology_saas:           ["waooaw_native"]  # signups via the product itself
       default:                   ["calendly", "waooaw_native"]
 
     REPUTATION_PLATFORMS:
@@ -155,6 +160,7 @@ domain_vocabulary_engine:
       fitness_studio:            ["google", "justdial"]
       restaurant:                ["google", "zomato", "swiggy", "dineout", "justdial"]
       digital_marketing_agency:  ["google", "justdial", "clutch"]
+      technology_saas:           ["google", "g2", "producthunt", "capterra"]
       default:                   ["google", "justdial"]
 
     REVIEW_REQUEST_MESSAGE:
@@ -170,6 +176,7 @@ domain_vocabulary_engine:
       fitness_studio:            "member retention rate + average membership LTV (₹)"
       restaurant:                "return visit rate + per-cover LTV (₹)"
       digital_marketing_agency:  "client retention rate + average contract LTV (₹)"
+      technology_saas:           "trial-to-paid conversion rate (%) + MRR growth"
       default:                   "repeat customer rate + customer LTV (₹)"
 
     SEASONAL_HIGHLIGHT:
@@ -178,6 +185,7 @@ domain_vocabulary_engine:
       fitness_studio:            "New Year resolutions (Jan) · Summer body (Mar-May) · Navratri (Oct)"
       restaurant:                "Festival dining (Diwali, Eid, Christmas) · Monsoon specials"
       digital_marketing_agency:  "Q4 budget season · New Year campaign planning · Festive ad spend season"
+      technology_saas:           "Product Hunt launches · SaaS Black Friday (Nov) · New Year 'start fresh' signups · Budget season Q4"
       default:                   "India festive calendar: Diwali · Navratri · New Year · Valentine's"
 
   # ── DVE Usage in skill prompts ──────────────────────────────────────────────
@@ -248,6 +256,13 @@ domain_compliance_table:
     content_rules: "ASCI general: no misleading ROI claims without evidence; no fake client logos/testimonials; no fabricated case study metrics"
     image_consent_token: CUSTOMER_MEDIA_CONSENT_CONFIRMED
     prohibited_claims: ["guaranteed leads", "10x ROAS guaranteed", "viral posts guaranteed"]
+
+  technology_saas:
+    content_rules: "ASCI general + IT Act compliance: no misleading feature claims; no fabricated user counts; 'free trial' must be genuinely free with no hidden charges; testimonials must be from real users; no dark patterns in trial-to-paid conversion messaging"
+    ad_rules: "ASCI code: no 'World's #1' claims without substantiation; no misleading pricing ('₹0 forever' when it isn't); trial terms must be disclosed in ad"
+    image_consent_token: CUSTOMER_MEDIA_CONSENT_CONFIRMED
+    prohibited_claims: ["world's first AI", "100% accurate", "replaces humans entirely", "guaranteed trial conversion"]
+    note: "WAOOAW itself is a technology_saas domain customer (Customer #0). The agent must hold WAOOAW to the same standards it holds all other customers. The constitutional guarantee in WAOOAW's own marketing must be accurate and verifiable."
 
   default:
     content_rules: "ASCI General Advertising Code India + applicable industry regulations"
@@ -388,6 +403,26 @@ WoW Expert (first message after registration):
 **Execution model:** `PRODUCES_RECORD` — outputs the Digital Marketing Maturity Report; delivered to customer once at engagement start, then on 6-monthly refresh or customer request
 
 **Trigger:** Starts in parallel as soon as Skill 0 confirms business name + locality (minimum 2 fields). Does not wait for full profile completion.
+
+**Website-URL Early Start (20-minute WoW design):**
+If the customer provided a website URL at registration, Skill 1 begins IMMEDIATELY at registration — before Skill 0 even starts. The web-scan-mcp.seo.audit_page call runs in the background during the Skill 0 conversation. By the time Skill 0 completes its first 2 questions, the website scan, GBP lookup, social profile scan, and competitor ad check are already done. The maturity score and first insight are ready to deliver within 5 minutes of the first exchange.
+
+```yaml
+skill_1_early_start:
+  trigger: registration.website_url IS NOT NULL
+  timing: parallel with Skill 0 (not sequential)
+  pre_scans:
+    - web-scan-mcp.seo.audit_page(registration.website_url)
+    - web-search-mcp.search.query("{business_name} {city} reviews")
+    - google-places-mcp.place.get_details("{business_name} {city}")
+    - social-profile-mcp.profile.get_public_data("{business_name}")
+    - meta-ad-library-mcp.ads.search_active("{business_name}")
+  ready_by: Skill 0 second exchange (within 3-4 minutes of registration)
+  
+  # This is how Yogesh gets his maturity score at Minute 5, not Minute 20.
+  # Without this, the spec would ask profiling questions first, THEN research,
+  # delivering the report at ~Minute 15 and the 20-minute WoW target is missed.
+```
 
 **Decision Space:**
 - **Authorized:** Search publicly available information about the customer's business; retrieve Google Business data; check social media public profiles; check Meta Ad Library; check website technical signals; assess competitor landscape; calculate maturity score; generate report with recommendations; propose phase bundle based on score
