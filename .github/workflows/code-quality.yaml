@@ -231,6 +231,36 @@ jobs:
           done
           [ "$VIOLATIONS" -eq 0 ] && echo "✓ No PII in OTel spans" || exit 1
 
+  # ─── C-073 Traceability annotation scan ─────────────────────────────────
+  traceability-scan:
+    name: C-073 Traceability scan (constitutional annotations)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # Full history needed for diff + claim amendment detection
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Scan changed files for constitutional annotations
+        run: python scripts/scan-traceability.py --changed-only
+
+      - name: Detect amended constitutional claims → surface affected code
+        run: python scripts/scan-traceability.py --amended-claims
+
+      - name: Generate traceability report (PR artifact)
+        run: python scripts/scan-traceability.py --report traceability-report.json
+        continue-on-error: true
+
+      - name: Upload traceability report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: traceability-report
+          path: traceability-report.json
+
   # ─── Constitutional naming audit (C-072 naming convention) ──────────────
   constitutional-naming:
     name: Constitutional naming audit

@@ -88,7 +88,7 @@ Derived from CONFIRMED or LAW claims. These authorize specific architectural dec
 
 | Status | Count | IDs |
 |---|---|---|
-| RATIFIED | 72 | C-001 through C-072 (all) |
+| RATIFIED | 73 | C-001 through C-073 (all) |
 | DRAFT | 0 | — |
 
 ---
@@ -135,6 +135,7 @@ Derived from CONFIRMED or LAW claims. These authorize specific architectural dec
 | C-069 | OBLIGATION + PLATFORM_INTEGRITY | Platform Self-Improvement Obligation — Self-Improvement Analyst raises Skill Proposals within 24h of degradation detection | 2026-07-19 |
 | C-070 | OBLIGATION + ARCHITECTURAL_CONSTRAINT | Constitutional DNA Inheritance — every agent (current + future) must inherit the 3 basic instincts; AGENT-AUTHORING-GUIDE Section 0 mandatory gate | 2026-07-19 |
 | C-071 | OBLIGATION + PLATFORM_INTEGRITY | Quality Obligation — quality is constitutional; all gates automated; no bypass permitted; test quality feeds Self-Improvement loop; Grade A required for every customer-facing agent deploy | 2026-07-19 || C-072 | OBLIGATION + PLATFORM_INTEGRITY | Coding Standards Obligation — all code conforms to CODING-STANDARDS.md (cosmetic, performance, security, observability, unit test quality); tools decide style, not agents | 2026-07-19 |
+| C-073 | OBLIGATION + PLATFORM_INTEGRITY | Bidirectional Implementation Traceability — every function implementing a constitutional principle carries machine-readable @constitutional annotation; claim amendment CI surfaces all tagged code | 2026-07-19 |
 ---
 
 ## By Source

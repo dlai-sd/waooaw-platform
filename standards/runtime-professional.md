@@ -10,6 +10,8 @@
 
 **New in v1.1:** Before writing any code, read `standards/CODING-STANDARDS.md`. All five dimensions (cosmetic, performance, security, observability, unit test quality) are constitutional obligations under C-072, not optional best practices. Run the local quality checks from Section 9 of CODING-STANDARDS.md before opening any PR.
 
+**New in v1.2:** Before writing the FIRST LINE of any function in `src/`, place a constitutional file header and use the `@constitutional` decorator (Python) or `[ConstitutionalClaim]` attribute (.NET). Read `architecture/reference/TRACEABILITY-PROTOCOL.md` — the Pre-Code Reading Protocol (Section 2) is mandatory before every sprint. C-073 is constitutional, not optional.
+
 ---
 
 ## How I Reason
