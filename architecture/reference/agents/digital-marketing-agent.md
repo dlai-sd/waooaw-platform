@@ -4718,6 +4718,269 @@ All DMA prompts are catalogued in `digital-marketing-agent-prompts.md`. Key prom
 
 ---
 
+### Skill 18: Agency Operations — Multi-Client Management — v3.0
+
+**Skill type:** `AGENCY_OPERATIONS`
+**Specification version:** 3.0 (2026-07-19 — new skill for reseller/agency accounts)
+**Business KPI:** Agency portfolio delivery score (% of clients at GREEN) + AM time-to-response on flagged clients + client retention rate across agency portfolio
+**Execution model:** `PRE_AUTHORIZED` for dashboard reads and daily digests; `APPROVAL_GATE` for any action affecting an end-customer's configuration
+**Phase activation:** Activates only for `account_type = RESELLER` organisations. Not visible to direct customers.
+**Constitutional basis:** C-075 (White-Label Reseller Model — RATIFIED)
+
+**Who uses this skill:**
+- Yashus (the agency / reseller) sees their full portfolio
+- Yashus's Account Managers (AM) see their assigned client portfolio
+- Neither sees another reseller's clients (RLS-enforced)
+
+**Decision Space:**
+- **Authorized:** Read all end-customer delivery scores; generate agency morning digest; surface attention_flags for AM review; generate white-labeled client reports (Yashus branding); approve content on behalf of a client (if AM has can_approve_content=true); flag a client for strategic review; request a new quarterly plan for a client; generate portfolio-level monthly summary for Yashus's own business review
+- **Prohibited:** Modify any end-customer's constitutional configuration; approve ad spend above any client's ceiling (C-043 still applies per client); share one client's data with another client (C-005, C-048); approve content that violates the applicable domain compliance rules (DVE Domain Compliance Table)
+- **Always-ask:** Any change to a client's agent configuration; approving a campaign budget increase; onboarding a new end-customer under the reseller's account
+
+**Morning Digest (Agency AM's daily brief — 8:30 AM):**
+
+```
+Yashus Digital | Morning Portfolio Review
+Monday, July 19, 2026
+
+🔴 NEEDS ATTENTION TODAY (3 clients):
+  Dr. Mehta Dental (Viman Nagar): No post in 5 days. 2 campaigns pending approval.
+  Shri Krishna Restaurant (Hadapsar): Zomato rating dropped 0.2 → 4.1. 3 unanswered reviews.
+  Comfort Salon (Koregaon Park): Monthly ad budget at 89%. Suggest pausing Google Ads today.
+
+🟡 MONITOR (5 clients):
+  [list of amber clients with specific signal]
+
+🟢 ON TRACK (30 clients):
+  All performing well. No action needed.
+
+💰 PORTFOLIO SUMMARY:
+  38 active clients | 32 GREEN | 5 AMBER | 3 RED
+  This month: 1,247 posts published | 89 campaigns launched | 0 constitutional violations
+
+📋 PENDING YOUR APPROVAL:
+  4 content batches waiting for AM review
+  2 new monthly plans to sign off
+```
+
+**White-Label Report Generation:**
+
+```yaml
+white_label_report:
+  trigger: Monthly (1st of each month, for previous month)
+  branding: reseller's white-label config (logo, colors, domain)
+  
+  report_structure:
+    cover_page:
+      reseller_logo: from whitelabel_logo_url
+      client_logo: from customer profile
+      title: "[Client Name] — Digital Marketing Report — [Month Year]"
+      prepared_by: "[Reseller Brand Name]"  # NOT "WAOOAW"
+      
+    executive_summary:
+      headline_result: "Best result in one sentence (e.g., 23 new patient enquiries this month)"
+      top_3_highlights: ["Best post (image + stats)", "Campaign ROI", "Review milestone"]
+      vs_last_month: trend direction + % change
+      
+    section_by_skill:
+      social_media: posts published, reach, engagement, top content
+      google_business: calls, direction requests, reviews
+      paid_advertising: spend, leads, CPL, ROAS (if applicable)
+      whatsapp: messages sent, open rate, enquiries generated
+      
+    next_month_plan: 3 recommended actions, campaign theme
+    
+    footer: "[Reseller Brand Name] | [reseller_report_footer]"
+    # e.g., "Yashus Digital Marketing | 10 years of digital excellence"
+    # NEVER shows WAOOAW branding in white-label mode (C-075)
+```
+
+**Account Manager Content Pre-Review:**
+
+Before content goes to the end-customer for approval, the AM sees it first (optional, configurable per reseller):
+
+```
+AM Queue (Priya — AM for Dr. Mehta, Ramesh, 6 other clients)
+
+Pending your review before client sees:
+  Dr. Mehta: October Reel script — "Is Root Canal Painful?" [Preview] [Approve] [Edit]
+  Ramesh Restaurant: This week's GBP post — Diwali thali special [Preview] [Approve] [Edit]
+  
+Once you approve → goes to client for final approval
+Once client approves → agent publishes
+
+Your clients never see a post you haven't approved first.
+```
+
+**MCP Tools:**
+| Tool | MCP Server | Action | Authorization | Failure |
+|---|---|---|---|---|
+| Get agency dashboard | internal | dashboard.get_portfolio_snapshot | `AGENCY_OPERATIONS` + reseller JWT | REQUIRED |
+| Get client delivery scores | internal | delivery.get_scores | `AGENCY_OPERATIONS` + reseller JWT | REQUIRED |
+| Generate white-label report | pdf-generation-mcp | report.generate_branded | `AGENCY_OPERATIONS` + APPROVED | REQUIRED |
+| AM content approval | internal | content.am_approve | `CONTENT_APPROVAL` + AM JWT | REQUIRED |
+| Assign client to AM | internal | staff.assign_client | `AGENCY_ADMIN` JWT only | REQUIRED |
+
+---
+
+### Skill 19: Multi-Location Management — v3.0
+
+**Skill type:** `MULTI_LOCATION`
+**Specification version:** 3.0 (2026-07-19 — new skill for chain/franchise clients)
+**Business KPI:** Location consistency score (% of locations posting on schedule) + per-location GBP performance + aggregate brand performance across all locations
+**Execution model:** `PRE_AUTHORIZED` for reads and reports; `APPROVAL_GATE` for location-specific content; `SYNTHETIC_APPROVAL` for brand-level content after 3 months
+**Phase activation:** Activates when customer_locations table has ≥ 2 active locations
+
+**The problem it solves:**
+Smile Dental Group has 4 clinics. They need:
+- Brand content (new service launch, Diwali offer) → published to all 4 locations simultaneously
+- Location-specific content (Dr. Priya joins our Koregaon Park team) → published to that location only
+- Aggregate reporting (which location is performing best? which needs more promotion?)
+- Hyperlocal paid ads per location (each clinic targets its own 5km radius)
+
+**Content Routing:**
+
+```yaml
+content_routing:
+  BRAND_LEVEL:
+    definition: Content that applies to all locations equally
+    examples: New service announcement, festival offers, brand campaigns
+    publishing: Simultaneously to all active location Instagram accounts + GBPs
+    approval: One approval from owner covers all locations
+    agent_message: "I'll publish this to all 4 locations simultaneously. Shall I proceed?"
+    
+  LOCATION_SPECIFIC:
+    definition: Content relevant to one location only
+    examples: Staff introduction, local event, location-specific offer
+    publishing: To that location's accounts only
+    approval: Owner approval (or AM approval if AM has can_approve_content)
+    agent_message: "This is specifically for your [Location Name] branch. Publishing there only."
+    
+  HYPERLOCAL:
+    definition: Paid ads targeting a specific location's catchment area
+    publishing: Meta/Google ads geo-targeted to location_code's target_area_radius_km
+    approval: APPROVAL_GATE per location (C-043 — each location has its own ad budget ceiling)
+```
+
+**Aggregate Reporting for Multi-Location:**
+
+```
+Smile Dental Group — All Locations Report — October 2026
+
+📍 BEST PERFORMING: Viman Nagar (Score: 87)
+   → 18 new patient enquiries | 4.8 Google rating | 234 Instagram followers gained
+
+📍 NEEDS ATTENTION: Kothrud (Score: 52)
+   → No posts in 8 days | 4.1 Google rating (2 unanswered reviews)
+   → Recommendation: I'll create 3 catch-up posts this week + respond to the reviews.
+
+📍 CONSISTENT: Hinjewadi (Score: 78) | Baner (Score: 74)
+
+BRAND TOTAL:
+  66 posts across all locations | 12,400 combined reach | 47 patient enquiries
+  Paid: ₹8,200 ad spend | 23 leads | ₹356 CPL
+```
+
+---
+
+### Skill 20: Crisis Communications — v3.0
+
+**Skill type:** `CRISIS_COMMS`
+**Specification version:** 3.0 (2026-07-19 — new skill, requested by agency review)
+**Business KPI:** Time-to-first-response on reputation crisis (target < 2 hours) + sentiment recovery rate
+**Execution model:** `APPROVAL_GATE` always — crisis response is never autonomous (C-049)
+**Phase activation:** Phase 1 — activates immediately; every business can face a crisis
+
+**Crisis trigger detection:**
+
+```yaml
+crisis_triggers:
+  review_bomb:
+    definition: 3+ negative reviews in 24 hours (any platform)
+    detection: reputation-mcp.review.get_recent + sentiment analysis
+    severity: HIGH
+    
+  competitor_attack:
+    definition: Competitor running ads comparing unfavourably to client
+    detection: meta-ad-library-mcp monitoring competitor ads mentioning client brand
+    severity: MEDIUM
+    
+  media_negative:
+    definition: News article or viral social post negatively mentioning client
+    detection: web-search-mcp.alert.get_brand_mentions
+    severity: HIGH
+    
+  regulatory_issue:
+    definition: Any mention of "complaint", "legal", "FSSAI", "MCI", "police" near brand name
+    detection: brand mention monitoring
+    severity: CRITICAL → immediate escalation to owner + AM
+
+crisis_response_protocol:
+  1: DETECT → alert AM + owner within 15 minutes
+  2: ASSESS → agent drafts situation summary (what happened, scale, affected platforms)
+  3: RECOMMEND → agent proposes response options (ignore / respond privately / respond publicly)
+     Owner/AM chooses the response path — NEVER autonomous
+  4: DRAFT → agent drafts response text (platform-appropriate, DVE compliant)
+  5: APPROVE → owner/AM approves exact text (always-ask — C-049)
+  6: EXECUTE → agent publishes approved response
+  7: MONITOR → track sentiment over 72h; daily update to owner until resolved
+  
+constitutional_constraint: Agent NEVER responds to a crisis without explicit owner approval.
+  A wrong crisis response at 2 AM is worse than no response.
+  Emergency Stop equivalent for reputation: owner always has the override.
+```
+
+---
+
+### Skill 21: Quarterly Strategy Review — v3.0
+
+**Skill type:** `QUARTERLY_STRATEGY`
+**Specification version:** 3.0 (2026-07-19 — agency-grade strategic planning cycle)
+**Business KPI:** Quarter-over-quarter KPI improvement rate + strategy acceptance rate (% of quarterly plan approved by client)
+**Execution model:** `PRODUCES_RECORD` — outputs Quarterly Strategy Document; owner reviews and approves
+**Cadence:** Once per quarter (auto-triggers 14 days before quarter end)
+
+**Quarterly Review Structure:**
+
+```
+Q3 2026 Review + Q4 Planning — Dr. Mehta Dental, Viman Nagar
+
+LAST QUARTER SCORECARD:
+  Target: +20% appointment enquiries → Achieved: +31% ✅
+  Target: Maintain 4.5+ Google rating → Achieved: 4.7 ✅
+  Target: 15 new Instagram followers/week → Achieved: 11/week ⚠️ (73%)
+  Target: Launch blog (2 posts/month) → Achieved: 1 post/month ⚠️ (50%)
+
+WHAT WORKED:
+  - "Is Root Canal Painful?" Reel: 8,200 views, 34 enquiries (best content this year)
+  - Diwali teeth whitening campaign: 18 bookings in 10 days, ₹2,400 ad CPL
+  - GBP Q&A strategy: now ranking for 12 voice search queries
+
+WHAT DIDN'T:
+  - Blog frequency too low — Dr. Mehta not providing approval quickly enough
+    Recommendation: Switch from 2-step (agent drafts → Dr. Mehta approves) to
+    auto-publish for educational blogs (trust level earned)
+  - Instagram follower growth slower than target
+    Recommendation: Add weekly Reels (currently 2/month) — our data shows 3x growth
+
+Q4 2026 PLAN (Oct-Dec):
+  CAMPAIGN 1 (Oct): "Dental Health Month" — 18 posts + 1 paid campaign
+    Target: +20% enquiries, maintain 4.7 rating
+  CAMPAIGN 2 (Nov): "Diwali Smile" — flash campaign + ad boost
+  CAMPAIGN 3 (Dec): "Year-end checkup" — reactivation + patient loyalty
+  
+  AD BUDGET RECOMMENDATION: ₹8,000/month (up from ₹5,000 — proven ROAS of 4.2x)
+  SKILL UPGRADE: Activate Skill 14 (Reputation Management) — Justdial needs attention
+
+Agent message: "Here's your Q3 review and Q4 plan. Two things I need your input on:
+                1. Do you want to approve blogs weekly (current) or can I auto-publish
+                   within the approved style guidelines?
+                2. Are you comfortable increasing ad budget to ₹8,000/month?
+                Reply YES/NO to each, or let's discuss on WhatsApp."
+```
+
+---
+
 ## 0. Constitutional DNA Inheritance (C-070 — RATIFIED 2026-07-19)
 
 **Inherits:** `CONSTITUTIONAL_DNA v1.0` — all 3 instincts apply unconditionally.
