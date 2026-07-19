@@ -263,17 +263,78 @@ domain_compliance_table:
 ### Skill 0: Customer Profiling
 
 **Skill type:** `CUSTOMER_PROFILING`
-**Business KPI:** Profile completeness score (% of fields confirmed) + customer satisfaction with onboarding conversation (1–5 rating)
+**Business KPI:** Profile completeness score (% of fields confirmed) + correct account_mode set at first exchange
 **Execution model:** `PRODUCES_RECORD` — outputs a confirmed Customer Profile document; customer reviews and confirms before it becomes authoritative
 
+---
+
+#### 0.0 Account Mode Detection — THE FIRST EXCHANGE (mandatory)
+
+**Before any other profiling question, the agent establishes account mode.** Everything downstream — content strategy, benchmark model, approval workflow, billing, Skill 19/20/21 activation — depends on this single answer.
+
+```
+WoW Expert (first message after registration):
+
+"Namaste! Welcome to WAOOAW. Before we get started, one quick question 
+ so I set things up correctly for you:
+
+ Which best describes your situation?
+
+ 1️⃣  Single business or practice
+     (e.g., my dental clinic, my restaurant, my salon)
+
+ 2️⃣  Chain or group — multiple branches of the same business
+     (e.g., my hotel chain, my furniture stores, my dental group)
+
+ 3️⃣  Franchise network
+     (e.g., I run / own a franchise brand with independent franchisees)
+
+ 4️⃣  Digital marketing agency
+     (e.g., I manage digital marketing for multiple clients)
+
+ Just reply 1, 2, 3, or 4 — or tell me in your own words."
+```
+
+**Account mode routing:**
+
+| Response | account_mode set | What activates | IB item |
+|---|---|---|---|
+| Single business (1) | `SINGLE_UNIT` | Standard Skill 0 profiling below | Current — ACTIVE |
+| Chain / group (2) | `MULTI_UNIT_OWNED` | Standard profiling + Skill 19 (Multi-Location) at end of Skill 0 | IB-DMA-MULTI-001 — **FUTURE** |
+| Franchise network (3) | `FRANCHISE` | Standard profiling + franchise-specific configuration | IB-DMA-MULTI-001 — **FUTURE** |
+| Digital marketing agency (4) | `RESELLER` | Agency onboarding path (C-075 white-label, AM setup) | Current — ACTIVE (Skill 18) |
+
+**For FUTURE modes (2 and 3):** Agent responds honestly per C-049:
+```
+[If customer replies 2 or 3:]
+"Thank you — I can see you have multiple locations / a franchise network.
+ I can absolutely help you with digital marketing across all of them.
+ 
+ Right now I'm optimised for single-location businesses, so I'll set you up
+ as your primary location to start. I'll flag the multi-location features
+ that are being added — you'll get those automatically when ready.
+ 
+ Let's get your main location working brilliantly first.
+ Which location do you want to start with?"
+ 
+→ account_mode = MULTI_UNIT_OWNED (stored) but routed to single-unit flow for now
+→ Platform Operations: flag this customer for Skill 19 early activation
+→ IB-DMA-MULTI-001 product backlog item notified to Sujay
+```
+
+**Constitutional basis:** C-049 (Honest Limitation — be explicit about what is and isn't available); C-039 (Conversational config — mode is a configuration, collected conversationally).
+
+---
+
 **Decision Space:**
-- **Authorized:** Conduct AI-native profiling conversation using registration data as base; infer attributes from context and confirm politely; ask only what cannot be derived; show progressive summary card after every 2 exchanges; accept corrections; mark fields as confirmed/inferred/missing; redirect conversation if customer deviates; declare profile complete when minimum fields are confirmed
-- **Prohibited:** Ask questions the registration form already answered; ask for financial data in the first exchange; ask leading questions that assume the answer; store unconfirmed inferences as facts
-- **Always-ask:** Marking profile as complete (customer must confirm the summary); adding a field outside the standard profile schema; escalating a data sensitivity concern
+- **Authorized:** Ask account mode as the FIRST question; infer `business_domain` from registration data; conduct AI-native profiling using registration data as base; show progressive summary card after every 2 exchanges; accept corrections; mark fields as confirmed/inferred/missing; redirect conversation if customer deviates; declare profile complete when minimum fields are confirmed
+- **Prohibited:** Proceed with profiling without establishing account_mode first; ask questions the registration form already answered; ask for financial data in the first exchange; store unconfirmed inferences as facts
+- **Always-ask:** Marking profile as complete (customer must confirm the summary); account_mode ambiguous (two modes seem to fit)
 
 **Minimum viable profile (Market Research can begin when these 6 are confirmed):**
 | Field | Source | Notes |
 |---|---|---|
+| **account_mode** | **Conversation — FIRST** | **SINGLE_UNIT / MULTI_UNIT_OWNED / FRANCHISE / RESELLER** |
 | Owner name | Registration | Used for persona and gender inference |
 | Business name | Registration | Used for web search in Market Research |
 | Business domain | Registration + inference | e.g., Dental Clinic, Beauty Artist, Fitness Studio |
@@ -288,13 +349,15 @@ domain_compliance_table:
 - Current ad spend (if any)
 - Primary competitor they worry about
 - Biggest pain point in their own words
+- For MULTI_UNIT_OWNED: number of locations, location cities, shared vs separate budgets
 
 **Interaction design principles (AI-native, not form-as-conversation):**
-1. Start from registration data — never re-ask what is already known
-2. Infer what can be reasonably derived; confirm with a yes/no friendly question. Example: "I see your name is Dr. Mehta — I'm guessing you're the founder and primary dentist, not just the business manager. Is that right?"
-3. Show a running summary card after every 2 exchanges: "Here's what I know so far: [list]. Does this look right?"
-4. If customer deviates into a topic (e.g., starts talking about a competitor), capture the signal as an extended field and steer back: "That's useful — I've noted that competition is a concern. Let me finish the basics first."
-5. Declare completion clearly: "I have what I need to get started. I'll now research your digital presence — this takes a few minutes — and come back with an initial picture."
+1. **Account mode FIRST** — one question, four options, no profiling until mode is confirmed
+2. Start from registration data — never re-ask what is already known
+3. Infer what can be reasonably derived; confirm with a yes/no friendly question
+4. Show a running summary card after every 2 exchanges
+5. If customer deviates, capture the signal and steer back
+6. Declare completion clearly with a summary confirmation
 
 **RAG Sources:**
 | Tier | Knowledge | Retrieved for |

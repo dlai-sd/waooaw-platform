@@ -478,6 +478,7 @@ Status:           WAITING | IN_PROGRESS | DONE | BLOCKED
 | IB-016 | Platform Operations Architecture | Platform Architect | P1 | G5-parallel | WAITING |
 | IB-017 | Phase 2 Readiness Sprint | Platform Architect + EA | P0 | G5-prerequisite | DONE |
 | IB-018 | Agent Teams — Constitutional Team Architecture | Enterprise Arch + BA + CA | P1 | Post-MVI (Enterprise) | DEFERRED |
+| **IB-019** | **DMA Multi-Mode: Chain, Franchise, Agency — Full Architecture** | **Business Architect + DMA Agent** | **P2** | **Post FR-005 (50+ customers)** | **WAITING** |
 
 ---
 
@@ -712,3 +713,125 @@ These are queryable in Jaeger/Azure Monitor and provide an operational audit tra
 **What cannot be added:** Items that don't trace to a gate or a constitutional need. Items that ask an office to act outside its Decision Space. Items that bypass the dependency chain.
 
 **The backlog is demand. The organization is supply. Flow is governance.**
+
+---
+
+### IB-019 — DMA Multi-Mode: Chain, Franchise, and Agency Full Architecture
+
+**Goal:** Design the complete DMA architecture for three advanced account modes — company-owned chain (MULTI_UNIT_OWNED), franchise network (FRANCHISE), and digital marketing agency (already partially implemented via C-075/Skill 18). This IB extends the existing Skill 19 (Multi-Location), Skill 18 (Agency Operations), and the benchmark model to fully serve hotel chains, restaurant franchises, furniture store groups, and large agencies.
+
+**Office:** Business Architect (capabilities) + DMA Agent (spec update)
+
+**Priority:** P2 — **WAITING until FR-005 (50+ paying single-unit customers)**
+
+**Gate:** Post-FR-005 (after first paying customer cohort is established and generating cashflow)
+
+**Depends On:** IB-009 (foundation live), FR-005 (50 diverse customers — real revenue before complex architecture investment)
+
+**Why this is P2 and not P0:**
+Single-unit customers (Dr. Mehta, Rupali, Ramesh) are the fastest path to revenue, the simplest to serve, and the validation that the core platform works. A hotel chain or franchise network is a longer sales cycle, a more complex integration, and requires the single-unit track record to sell. Yogesh's stated priority: *"Get single unit/account customer onboarded, serving, and creating WoW. With secured cashflow, venture into agency, franchise, or multi-unit."* This IB is correctly P2.
+
+**Business case for venturing into this at FR-005:**
+- A hotel chain with 10 locations = 10× the revenue of one single-unit customer
+- A dental franchise with 50 clinics = 50× the seat revenue at near-zero marginal cost
+- An agency with 50 client seats at ₹1,299/seat = ₹64,950/month from one agency relationship
+- The complexity investment pays off exponentially once the single-unit product is proven
+
+---
+
+### Gap Inventory (for Work Contract when this IB is authorized)
+
+**Gap 2: Internal benchmark for chains (MULTI_UNIT_OWNED)**
+
+*Problem:* The current 1-7 maturity score compares a business to external competitors. A hotel chain with 10 branches needs a DIFFERENT benchmark: *"Which of my own branches is performing best, and why?"* The internal cross-location benchmark is 10× more actionable than the external one because it leads to replicable improvements.
+
+*Design required:*
+- `CROSS_LOCATION_PERFORMANCE_SCORE`: normalized comparison of all locations within one account
+- Benchmark dimensions: content consistency, GBP rating, review response rate, engagement, CPL
+- Output: "Mumbai branch leads in Instagram engagement. Jaipur branch leads in GBP rating. Kondhwa branch lags in all dimensions — here's a tailored plan to close the gap."
+- Drives Skill 19 content routing: "replicate what Mumbai is doing in Kondhwa"
+
+**Gap 3: Budget allocation strategy across locations**
+
+*Problem:* Equal ad spend split across 10 locations is almost always wrong. No framework exists for performance-based, need-based, or strategic allocation.
+
+*Design required:*
+- `BUDGET_ALLOCATION_MODEL` enum: EQUAL_SPLIT | PERFORMANCE_BASED | NEED_BASED | STRATEGIC
+- Performance-based: allocate proportional to conversion rate per location
+- Need-based: give more to locations that are underperforming relative to their market potential
+- Strategic: more to new openings (launch budget), less to mature stable locations
+- This is a quarterly decision (Skill 21), not monthly
+- CE.ValidateAction: C-043 applies per-location (each location has its own ceiling), not per-account
+
+**Gap 4: Brand consistency gate across locations**
+
+*Problem:* The SCR checks each location's content independently. A furniture chain running a "20% off" sale in Mumbai but full price in Delhi, or Pune using a deprecated logo variant, creates brand inconsistency that the current spec cannot detect.
+
+*Design required:*
+- `BRAND_CONSISTENCY_CHECK` (new SCR step 5 for MULTI_UNIT accounts):
+  - Does this content contradict any concurrent content at another location? (price, promotion, offer)
+  - Is the logo, color palette, and font consistent with the approved brand guidelines?
+  - If contradicting: APPROVAL_GATE escalation before publishing
+- Brand asset vault: approved logo versions, color codes, tone guidelines — shared across all locations
+
+**Gap 5: Cross-client intelligence vs cross-location intelligence (data access model)**
+
+*Problem:* Both agency (Yashus's clients) and chain (hotel's 10 branches) generate cross-unit intelligence, but the data ownership and privacy model is fundamentally different.
+
+| | Agency cross-client | Chain cross-location |
+|---|---|---|
+| Data owner | Each client owns their own data | Chain owner owns ALL location data |
+| C-048 implications | Agent must anonymize (C-048 — no cross-client exposure) | No anonymization needed (same owner) |
+| Benchmark access | Tier 3 RAG only (platform aggregate, anonymized) | Direct DB read (all locations same tenant) |
+| Platform architecture | Separate tenant_ids | Same tenant_id (multi-location flag) |
+
+*Design required:* Different data access patterns in AI Runtime for agency vs chain intelligence queries.
+
+**Gap 6: Franchise model (FRANCHISE account_mode)**
+
+*Problem:* A franchise has independently-owned franchisees sharing a brand. Each franchisee pays separately. Brand standards are mandatory. The benchmark between franchisees is both competitive and collaborative.
+
+*Design required:*
+- `FRANCHISE` account_mode: franchisee accounts linked to a franchisor account
+- Franchisor sets: brand guidelines, prohibited content (brand consistency gate), benchmark targets
+- Franchisee pays: their own WAOOAW subscription + their own ad spend
+- Franchisor sees: aggregate performance across all franchisees (their IP as franchisor)
+- Franchisee sees: their own performance + how they rank vs other franchisees (motivational, anonymized)
+- Commercial: franchisor may pay a brand protection fee to WAOOAW; franchisees pay standard rate
+
+**Gap 7: Portfolio maturity score + consistency score for chains**
+
+*Problem:* A chain averaging 5/7 maturity with a range of 2-7 has a different problem than a chain consistently at 3/7. Current Skill 1 only produces a per-location score.
+
+*Design required:*
+- `PORTFOLIO_MATURITY_SCORE`: weighted average of all location scores
+- `BRAND_CONSISTENCY_INDEX`: std deviation of maturity scores across locations
+  - Low std dev + high avg = excellent (all locations performing consistently well)
+  - Low std dev + low avg = systematic underperformance (whole chain needs work)
+  - High std dev = inconsistency problem (some locations great, some failing)
+- This feeds the quarterly planning session (Skill 21) with a chain-level strategic framing
+
+---
+
+### Success Criteria for IB-019
+
+When this IB is authorized and completed:
+- [ ] MULTI_UNIT_OWNED account mode fully specced (Skill 0 routing → full capability stack)
+- [ ] Cross-location performance dashboard (internal benchmark) for chain owners
+- [ ] Budget allocation framework (3 models: equal, performance-based, need-based)
+- [ ] Brand consistency gate (SCR Step 5 for multi-unit accounts)
+- [ ] Franchise model (FRANCHISE account_mode) architecture + commercial model
+- [ ] Portfolio maturity + consistency scores in Skill 1 for multi-unit accounts
+- [ ] Cross-client vs cross-location data access pattern documented and implemented
+- [ ] Simulation run for: "Horizon Hotels — 10 branch chain" → Grade A
+- [ ] Simulation run for: "FitFusion Franchise — 25 franchisees" → Grade A
+
+---
+
+### Inputs Required When IB-019 is Authorized
+
+- Real customer(s) with multi-unit requirement (to validate the spec against actual use case)
+- FR-005 milestone achieved (50+ single-unit customers — proven revenue)
+- Yogesh's explicit authorization ("IB-019 authorized — begin multi-mode architecture")
+- SIM-020 and SIM-021 Grade A verified in production (not just simulation)
+
