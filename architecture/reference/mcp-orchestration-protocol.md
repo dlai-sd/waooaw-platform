@@ -377,3 +377,259 @@ Each credential request:
 
 **The 24-hour SLA is a constitutional commitment under C-074 + C-049.**
 If it cannot be met, the customer is informed BEFORE the 24h passes — not after.
+
+---
+
+## 9. Persistence — MCP Survival Across Restarts, Crashes, and Scaling Events
+
+### 9.1 The Problem
+
+A dynamically provisioned MCP container can be lost due to:
+- **Host reboot** — Docker containers without a restart policy are not restarted
+- **Container App scaling to zero** — Azure Container Apps scales to 0 when idle; on first request, cold start ~3s (acceptable). BUT: if the Container App resource itself is deleted, it does not come back.
+- **Platform restart** — when the AI Runtime or Platform Operations agent restarts, it has no in-memory state of which MCPs were provisioned
+
+**The solution:** PostgreSQL (`institutional.customer_mcp_status`) is the **persistent source of truth**. Physical containers are ephemeral and disposable. The database record is authoritative. On any restart, the reconciliation loop rebuilds the physical state from the database.
+
+### 9.2 Three-Layer Persistence Strategy
+
+```
+LAYER 1 — Restart Policy (prevents most losses)
+  Docker:           restart: unless-stopped on every dynamically provisioned container
+  Azure Container:  apps persist in ARM by default; scale-to-zero is NOT deletion
+  
+LAYER 2 — Startup Reconciliation (catches what restart policy misses)
+  Temporal workflow: mcp-reconciliation (runs on Platform Operations startup)
+  Reads: customer_mcp_status WHERE status = 'RUNNING'
+  Checks: is this container/app actually reachable? (health check HTTP GET)
+  Action: if not reachable → re-provision using stored credentials from oauth-vault
+  
+LAYER 3 — Periodic Health Probe (catches silent failures between restarts)
+  Temporal schedule: every 5 minutes
+  Checks: all RUNNING MCPs respond to /health endpoint
+  Action: RUNNING → health check fails → update status to 'ERROR' → re-provision → alert
+```
+
+### 9.3 Docker Restart Policy
+
+Every container started via Docker SDK must include `restart: unless-stopped`:
+
+```python
+class MCPOrchestratorDev:
+    def provision(self, mcp: MCPRegistryEntry, customer_id: UUID) -> None:
+        docker_client.containers.run(
+            image=mcp.docker_image,
+            name=f"{mcp.mcp_id}-{customer_id[:8]}",
+            network="waooaw-dev",
+            ports={f"{mcp.port}/tcp": mcp.port},
+            environment=self._build_env(mcp, customer_id),
+            detach=True,
+            restart_policy={"Name": "unless-stopped"},  # ← REQUIRED for persistence
+            labels={
+                "waooaw.mcp_id": mcp.mcp_id,
+                "waooaw.customer_id": str(customer_id),
+                "waooaw.managed": "true",
+            }
+        )
+        # Labels enable the reconciliation loop to re-discover managed containers
+```
+
+**`restart: unless-stopped`** means:
+- Container restarts automatically after host reboot ✓
+- Container restarts after OOM kill ✓
+- Container restarts after crash ✓
+- Container does NOT restart after `docker stop` (manual stop = intentional) ✓
+
+### 9.4 Azure Container Apps Persistence
+
+Azure Container Apps resources persist in ARM (Azure Resource Manager) independently of
+whether they're running. Scale-to-zero = 0 replicas → resource still exists → auto-scales
+on first HTTP request (cold start ~2-3 seconds at Consumption tier).
+
+```python
+class MCPOrchestratorCloud:
+    def provision(self, mcp: MCPRegistryEntry, customer_id: UUID) -> None:
+        app_name = f"{mcp.mcp_id}-{customer_id[:8]}"
+        
+        container_apps_client.create_or_update(
+            resource_group=self.resource_group,
+            name=app_name,
+            template=ContainerAppTemplate(
+                image=mcp.docker_image,
+                env_vars=self._build_env(mcp, customer_id),
+                scale=ScaleConfig(
+                    min_replicas=0,   # Scale to zero when idle (cost: ₹0)
+                    max_replicas=1,
+                    rules=[ScaleRule(
+                        name="http-scale",
+                        http=HttpScaleRule(concurrent_requests=10)
+                    )]
+                ),
+                # Container Apps restart automatically on crash — no explicit policy needed
+                # The ARM resource itself is durable; only replicas scale to 0
+            )
+        )
+        
+        # Store ARM resource ID for reconciliation verification
+        arm_resource_id = f"/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.App/containerApps/{app_name}"
+        mcp_registry.update_arm_resource_id(mcp.mcp_id, customer_id, arm_resource_id)
+```
+
+**After ARM resource creation, the MCP is durable by default.** No additional persistence configuration needed for Azure.
+
+### 9.5 Startup Reconciliation Workflow
+
+This Temporal workflow runs automatically every time Platform Operations starts.
+It is the safety net that rebuilds physical state from the database record.
+
+```python
+@workflow.defn
+class MCPReconciliationWorkflow:
+    """
+    C-074: Reconcile physical MCP state against database on every Platform Operations startup.
+    Runs as first activity before accepting any new customer requests.
+    """
+    
+    @workflow.run
+    async def run(self) -> ReconciliationResult:
+        # Get all MCPs that should be RUNNING according to the database
+        expected_running = await workflow.execute_activity(
+            get_expected_running_mcps,
+            schedule_to_close_timeout=timedelta(minutes=2)
+        )
+        
+        results = ReconciliationResult(checked=0, healthy=0, reprovisioned=0, failed=0)
+        
+        for entry in expected_running:
+            results.checked += 1
+            
+            # Health check the physical container/app
+            is_healthy = await workflow.execute_activity(
+                health_check_mcp,
+                args=[entry.container_url],
+                schedule_to_close_timeout=timedelta(seconds=10)
+            )
+            
+            if is_healthy:
+                results.healthy += 1
+                # Update last_seen_at
+                await workflow.execute_activity(
+                    update_mcp_last_seen, args=[entry.customer_id, entry.mcp_id]
+                )
+            else:
+                # Not healthy — re-provision using stored credentials
+                reprovisioned = await workflow.execute_activity(
+                    reprovision_mcp,
+                    args=[entry.customer_id, entry.mcp_id, entry.mcp_registry],
+                    schedule_to_close_timeout=timedelta(minutes=5)
+                )
+                if reprovisioned:
+                    results.reprovisioned += 1
+                    # Notify customer that their integration was briefly interrupted and is restored
+                    await workflow.execute_activity(
+                        notify_customer_mcp_restored,
+                        args=[entry.customer_id, entry.mcp_id]
+                    )
+                else:
+                    results.failed += 1
+                    # Alert Sujay — re-provision failed, human attention needed
+                    await workflow.execute_activity(
+                        alert_steward_mcp_failed,
+                        args=[entry.customer_id, entry.mcp_id, "reconciliation_failed"]
+                    )
+        
+        # Record evidence of reconciliation run (C-023)
+        await workflow.execute_activity(
+            record_evidence,
+            args=["MCP_RECONCILIATION_COMPLETE", results.__dict__, "C-074"]
+        )
+        
+        return results
+```
+
+### 9.6 Periodic Health Probe (every 5 minutes)
+
+Integrated into Platform Operations Skill A (Continuous Health Monitoring):
+
+```python
+async def mcp_health_probe_activity() -> MCPHealthReport:
+    """
+    Runs every 5 minutes. Checks all RUNNING MCPs.
+    Failures trigger automatic re-provision + optional customer notification.
+    """
+    running_mcps = await db.fetch_all(
+        """SELECT customer_id, mcp_id, container_url
+           FROM institutional.customer_mcp_status
+           WHERE status = 'RUNNING'"""
+    )
+    
+    failures = []
+    for mcp in running_mcps:
+        try:
+            async with httpx.AsyncClient(timeout=3.0) as client:
+                r = await client.get(f"{mcp.container_url}/health")
+                if r.status_code != 200:
+                    failures.append(mcp)
+        except (httpx.ConnectError, httpx.TimeoutException):
+            failures.append(mcp)
+    
+    for failed in failures:
+        # Mark as ERROR
+        await db.execute(
+            "UPDATE institutional.customer_mcp_status SET status = 'ERROR' WHERE customer_id = $1 AND mcp_id = $2",
+            failed.customer_id, failed.mcp_id
+        )
+        # Record to health_check_log
+        await db.execute(
+            """INSERT INTO institutional.mcp_health_check_log
+               (customer_id, mcp_id, status, error_reason, checked_at)
+               VALUES ($1, $2, 'FAIL', 'health_check_timeout', NOW())""",
+            failed.customer_id, failed.mcp_id
+        )
+        # Queue re-provision (async — does not block health probe)
+        await temporal.signal_workflow("mcp-reprovision", {"customer_id": failed.customer_id, "mcp_id": failed.mcp_id})
+    
+    return MCPHealthReport(total=len(running_mcps), healthy=len(running_mcps)-len(failures), failed=len(failures))
+```
+
+### 9.7 Customer Notification on Recovery
+
+When an MCP is silently re-provisioned after a failure, the customer receives a WhatsApp message only if their services were **interrupted for more than 2 minutes**:
+
+```
+"Namaste [Name]! A quick update: there was a brief interruption with your
+ [Platform Name] integration (e.g., Zomato) — it went offline for [N] minutes
+ and has now been automatically restored.
+ 
+ No data was lost. Your integration is working normally again. 🙏
+ 
+ You don't need to do anything."
+```
+
+Threshold: < 2 minutes → silent (no customer notification, internal log only).
+> 2 minutes → customer notified as above.
+> 15 minutes → Sujay also notified via Steward Assistant.
+
+### 9.8 CCT for MCP Persistence
+
+**CCT-MCP-01: MCP persists after platform restart**
+```
+Setup:    Provision a Type 1 MCP (customer credential) for a test customer.
+          Verify it's running: GET /health → 200.
+Action:   Restart the AI Runtime service (simulates crash).
+Assert:   After 60 seconds, GET /health on the same MCP URL → 200.
+          customer_mcp_status.status is still RUNNING (or was RUNNING → ERROR → RUNNING via reconciliation).
+          No customer notification sent (< 2 min downtime).
+Constitutional basis: C-074 (MCP persistence obligation)
+```
+
+**CCT-MCP-02: Reconciliation re-provisions deleted MCP**
+```
+Setup:    Provision a Type 1 MCP. Manually stop the container (simulate crash with no restart).
+          Update customer_mcp_status.status = 'RUNNING' (simulate stale state).
+Action:   Trigger MCPReconciliationWorkflow.
+Assert:   Container is re-provisioned (new health check passes).
+          customer_mcp_status.status = 'RUNNING' with updated container_url.
+          Evidence record: MCP_RECONCILIATION_COMPLETE with reprovisioned = 1.
+Constitutional basis: C-074, C-023 (Evidence First)
+```

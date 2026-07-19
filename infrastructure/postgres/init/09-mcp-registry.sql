@@ -282,3 +282,127 @@ COMMENT ON TABLE institutional.customer_mcp_status IS
     'Per-customer MCP provisioning state. C-074: tracks credential collection,
      provisioning, suspension, and SLA compliance. Platform Operations reads this
      to auto-provision, send Founder alerts, and notify customers.';
+
+-- ─── Persistence Layer: ARM Resource ID + Docker Container ID ────────────────
+-- Stores the physical handle to the running container/app.
+-- Reconciliation uses this to verify the container still exists, not just health-check.
+
+ALTER TABLE institutional.customer_mcp_status
+    ADD COLUMN IF NOT EXISTS arm_resource_id    VARCHAR(500),   -- Azure Container Apps ARM resource path
+    ADD COLUMN IF NOT EXISTS docker_container_id VARCHAR(64),   -- Docker container ID (dev only)
+    ADD COLUMN IF NOT EXISTS last_health_check   TIMESTAMPTZ,   -- Last successful /health response
+    ADD COLUMN IF NOT EXISTS restart_policy      VARCHAR(20)    -- 'unless-stopped' for Docker; 'arm-persistent' for Azure
+                             DEFAULT 'unless-stopped',
+    ADD COLUMN IF NOT EXISTS reconciliation_count INTEGER NOT NULL DEFAULT 0;
+    -- Incremented each time the reconciliation loop re-provisioned this MCP
+
+-- ─── MCP Health Check Log ─────────────────────────────────────────────────────
+-- Append-only log of every health check probe result.
+-- Partitioned monthly to prevent unbounded growth.
+-- Used by: Platform Operations periodic health probe (every 5 min)
+--          Reconciliation workflow (checks last_N_failures to decide re-provision threshold)
+
+CREATE TABLE IF NOT EXISTS institutional.mcp_health_check_log (
+    id                  UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    customer_id         UUID        NOT NULL,
+    mcp_id              VARCHAR(50) NOT NULL,
+    status              VARCHAR(10) NOT NULL CHECK (status IN ('OK', 'FAIL', 'TIMEOUT', 'NO_RESPONSE')),
+    http_status_code    INTEGER,            -- e.g., 200, 503, NULL if timeout
+    latency_ms          INTEGER,            -- Response latency in ms
+    error_reason        TEXT,               -- e.g., 'connection_refused', 'health_check_timeout'
+    checked_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    was_reprovisioned   BOOLEAN     NOT NULL DEFAULT FALSE  -- Did this FAIL trigger re-provision?
+) PARTITION BY RANGE (checked_at);
+
+CREATE TABLE IF NOT EXISTS institutional.mcp_health_check_log_2026_07
+    PARTITION OF institutional.mcp_health_check_log
+    FOR VALUES FROM ('2026-07-01') TO ('2026-08-01');
+
+CREATE TABLE IF NOT EXISTS institutional.mcp_health_check_log_2026_08
+    PARTITION OF institutional.mcp_health_check_log
+    FOR VALUES FROM ('2026-08-01') TO ('2026-09-01');
+
+-- Indexes for reconciliation decisions
+CREATE INDEX IF NOT EXISTS idx_health_log_recent_failures
+    ON institutional.mcp_health_check_log (customer_id, mcp_id, checked_at DESC)
+    WHERE status != 'OK';
+
+CREATE INDEX IF NOT EXISTS idx_health_log_customer_mcp
+    ON institutional.mcp_health_check_log (customer_id, mcp_id, checked_at DESC);
+
+COMMENT ON TABLE institutional.mcp_health_check_log IS
+    'Append-only health probe log. C-074: source of truth for MCP availability history.
+     Reconciliation reads last-5-failures to decide re-provision threshold.
+     Partitioned monthly for performance.';
+
+-- ─── Reconciliation Run Log ───────────────────────────────────────────────────
+-- Records every startup reconciliation and periodic health sweep.
+-- Enables audit trail for SLA compliance verification.
+
+CREATE TABLE IF NOT EXISTS institutional.mcp_reconciliation_log (
+    id                  UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    run_type            VARCHAR(20) NOT NULL CHECK (run_type IN ('STARTUP', 'PERIODIC', 'MANUAL')),
+    started_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    completed_at        TIMESTAMPTZ,
+    mcps_checked        INTEGER     NOT NULL DEFAULT 0,
+    mcps_healthy        INTEGER     NOT NULL DEFAULT 0,
+    mcps_reprovisioned  INTEGER     NOT NULL DEFAULT 0,
+    mcps_failed         INTEGER     NOT NULL DEFAULT 0,   -- Failed to re-provision after 3 attempts
+    temporal_workflow_id VARCHAR(200),
+    constitutional_basis VARCHAR(10) NOT NULL DEFAULT 'C-074'
+);
+
+COMMENT ON TABLE institutional.mcp_reconciliation_log IS
+    'Records every reconciliation run. C-074 SLA audit trail.
+     Failed reconciliations (mcps_failed > 0) trigger Steward notification.';
+
+-- ─── Suspension Management ────────────────────────────────────────────────────
+-- View: MCPs that have been idle for > 24h and should be suspended (scale-to-zero)
+-- Platform Operations reads this view on its daily 02:00 IST maintenance run.
+
+CREATE MATERIALIZED VIEW IF NOT EXISTS institutional.mcps_eligible_for_suspension AS
+SELECT
+    cms.customer_id,
+    cms.mcp_id,
+    mr.display_name,
+    cms.container_url,
+    cms.last_called_at,
+    EXTRACT(EPOCH FROM (NOW() - cms.last_called_at)) / 3600 AS hours_idle
+FROM institutional.customer_mcp_status cms
+JOIN institutional.mcp_registry mr ON mr.mcp_id = cms.mcp_id
+WHERE cms.status = 'RUNNING'
+  AND cms.last_called_at < NOW() - INTERVAL '24 hours'
+  AND mr.isolation = 'PER_CUSTOMER'  -- Only suspend per-customer MCPs; shared MCPs stay up
+WITH DATA;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_suspension_eligible_pk
+    ON institutional.mcps_eligible_for_suspension (customer_id, mcp_id);
+
+COMMENT ON MATERIALIZED VIEW institutional.mcps_eligible_for_suspension IS
+    'MCPs idle > 24h eligible for scale-to-zero. Refreshed by Platform Operations nightly.
+     Suspension = 0 replicas on Container Apps (cost: ₹0). Resume on next request.
+     ADR-027 O-07: scale-to-zero for cost optimisation.';
+
+-- ─── Recovery SLA View ────────────────────────────────────────────────────────
+-- SLA breach detection: any MCP that has been in ERROR state for > 1h is a breach.
+
+CREATE VIEW institutional.mcp_sla_breaches AS
+SELECT
+    cms.customer_id,
+    cms.mcp_id,
+    mr.display_name,
+    cms.status,
+    cms.sla_deadline,
+    cms.customer_notified_at,
+    cms.founder_notified_at,
+    EXTRACT(EPOCH FROM (NOW() - cms.sla_deadline)) / 3600 AS hours_overdue
+FROM institutional.customer_mcp_status cms
+JOIN institutional.mcp_registry mr ON mr.mcp_id = cms.mcp_id
+WHERE cms.status IN ('ERROR', 'FOUNDER_ACTION')
+  AND cms.sla_deadline IS NOT NULL
+  AND NOW() > cms.sla_deadline;
+
+COMMENT ON VIEW institutional.mcp_sla_breaches IS
+    'C-074: SLA breach detection. Platform Operations checks this every 5 min.
+     Any row = immediate Steward notification + constitutional incident.';
+

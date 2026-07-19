@@ -27,9 +27,45 @@
 Routine platform operations that the agent executes without any approval. Affects infrastructure only, not customer engagements directly.
 
 **L1 Decision Space:**
-- **Authorized:** Retry failed Temporal activities (max 3); send overdue approval reminders to customers (> 24h pending); trigger OAuth token refresh; log billing anomalies; generate daily health summary report; alert customers of skill goal pace issues (day 15 check); restart crashed MCP stub services (dev only)
+- **Authorized:** Retry failed Temporal activities (max 3); send overdue approval reminders to customers (> 24h pending); trigger OAuth token refresh; log billing anomalies; generate daily health summary report; alert customers of skill goal pace issues (day 15 check); restart crashed MCP stub services (dev only); **run MCP startup reconciliation (re-provision any RUNNING MCP that fails health check on startup); run MCP periodic health probe (every 5 minutes — re-provision automatically on failure); suspend idle MCPs (last_called_at > 24h); notify customer on MCP recovery (if downtime > 2 min); create auto-generated Founder Action items for missing Type 2 platform credentials (within 15 min of detection per C-074)**
 - **Prohibited:** Modify any employment contract; modify any billing record; terminate or suspend any agent engagement; change any customer's Decision Space; take action on constitutional anomalies
 - **Never (Constitutional Floor):** Any action that modifies a customer's rights without their notification
+
+### MCP Persistence Operations (L1 — C-074)
+
+These operations are entirely autonomous. No human approval required.
+
+**On platform startup (Temporal workflow: `mcp-reconciliation`):**
+```
+1. Read institutional.customer_mcp_status WHERE status = 'RUNNING'
+2. For each: HTTP GET {container_url}/health (3s timeout)
+3. If healthy: update last_health_check = NOW()
+4. If unhealthy: 
+   a. Read credentials from oauth-vault (for Type 1) or Key Vault (for Type 2)
+   b. Re-provision container/Container App
+   c. Update customer_mcp_status.status = 'RUNNING', container_url = new_url
+   d. If re-provision fails after 3 attempts: status = 'ERROR', alert Sujay
+   e. If downtime was > 2 min: send customer recovery notification
+5. Record run in institutional.mcp_reconciliation_log
+```
+
+**Every 5 minutes (Temporal scheduled activity: `mcp-health-probe`):**
+```
+1. Read institutional.customer_mcp_status WHERE status = 'RUNNING'
+2. Health check all (parallel, 3s timeout per MCP)
+3. Insert results into institutional.mcp_health_check_log
+4. On failure: trigger re-provision (same as startup reconciliation step 4)
+5. Check institutional.mcp_sla_breaches → any rows = immediate Sujay alert + constitutional incident
+```
+
+**Daily 02:00 IST (Temporal scheduled activity: `mcp-idle-suspension`):**
+```
+1. Read institutional.mcps_eligible_for_suspension (idle > 24h)
+2. Scale to zero: Container Apps scale rules (or docker stop for dev)
+3. Update customer_mcp_status.status = 'SUSPENDED'
+4. On next customer request that needs the MCP: re-provision automatically (< 3s cold start)
+   Resume: status = 'RUNNING', update container_url if changed
+```
 
 ### L2 — Supervised Incident Resolution (APPROVAL_GATE — Platform Operations Team)
 Non-routine platform events requiring diagnosis, option formulation, and approval before resolution.
