@@ -188,11 +188,22 @@
   .outcome-pill .num{color:var(--navy);font-weight:700}
 
   /* HOW IT WORKS */
-  .steps-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1px;background:var(--border);border:1px solid var(--border);border-radius:var(--r-xl);overflow:hidden}
-  .step-item{background:var(--surface);padding:32px 28px;display:flex;flex-direction:column;gap:12px;transition:background .2s}
-  .step-item:hover{background:#f8fafc}
-  .step-num{width:36px;height:36px;border-radius:10px;border:1px solid var(--border-md);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:var(--blue)}
-  .step-title{font-size:16px;font-weight:700;color:var(--navy)}.step-desc{font-size:14px;color:var(--text-2);line-height:1.6}
+  /* ══ Steps progress tracker ══ */
+  .steps-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:0;background:transparent;border:none;border-radius:0;overflow:visible;position:relative}
+  /* Gradient line connecting circle centres */
+  .steps-grid::before{content:'';position:absolute;top:19px;left:calc(100%/6);right:calc(100%/6);height:3px;background:linear-gradient(90deg,#1A66C2,#3DAD35,#F7941D);border-radius:2px;z-index:0}
+  .step-item{background:transparent;padding:0 28px 0;display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;transition:none}
+  .step-item:hover{background:transparent}
+  /* Numbered circles — one brand color each */
+  .step-num{width:38px;height:38px;border-radius:50%;background:#fff;border:2.5px solid #1A66C2;color:#1A66C2;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;position:relative;z-index:1;box-shadow:0 0 0 5px rgba(26,102,194,.10)}
+  .step-item:nth-child(2) .step-num{border-color:#1B6B17;color:#1B6B17;box-shadow:0 0 0 5px rgba(27,107,23,.10)}
+  .step-item:nth-child(3) .step-num{border-color:#A85B00;color:#A85B00;box-shadow:0 0 0 5px rgba(168,91,0,.10)}
+  /* Time pill */
+  .step-time{font-size:11px;font-weight:700;color:#fff;background:#1A66C2;padding:2px 12px;border-radius:100px;margin-top:-4px}
+  .step-item:nth-child(2) .step-time{background:#1B6B17}
+  .step-item:nth-child(3) .step-time{background:#A85B00}
+  .step-title{font-size:15px;font-weight:700;color:var(--navy);margin-top:4px}
+  .step-desc{font-size:13px;color:var(--text-2);line-height:1.6;max-width:260px}
 
   /* CONSTITUTIONAL PROMISE */
   .promise-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-block-start:2.5rem}
@@ -320,9 +331,9 @@
   <h2 id="how-h" class="section-title">Three steps in 10 minutes. <strong>Then it just works.</strong></h2>
   <p class="section-sub">The WaooaW Concierge configures your agent through conversation &mdash; no forms, no technical setup, no commitment before you see results.</p>
   <div class="steps-grid" role="list">
-    <div class="step-item" role="listitem"><div class="step-num">1</div><div class="step-title">Tell us about your business</div><p class="step-desc">The WaooaW Concierge learns your business in a 5-minute conversation. No form. No technical knowledge needed.</p></div>
-    <div class="step-item" role="listitem"><div class="step-num">2</div><div class="step-title">Your AI Agent is configured</div><p class="step-desc">We define your Agent&apos;s Decision Space &mdash; exactly what it can and cannot do. You review and confirm before anything happens.</p></div>
-    <div class="step-item" role="listitem"><div class="step-num">3</div><div class="step-title">Watch it work. You&apos;re always in control.</div><p class="step-desc">Your Agent starts delivering. Emergency Stop is always one tap away. See every action in real time.</p></div>
+    <div class="step-item" role="listitem"><div class="step-num">1</div><div class="step-time">2 min</div><div class="step-title">Tell us about your business</div><p class="step-desc">The WaooaW Concierge learns your business in a 5-minute conversation. No form. No technical knowledge needed.</p></div>
+    <div class="step-item" role="listitem"><div class="step-num">2</div><div class="step-time">2 min</div><div class="step-title">Your AI Agent is configured</div><p class="step-desc">We define your Agent&apos;s Decision Space &mdash; exactly what it can and cannot do. You review and confirm before anything happens.</p></div>
+    <div class="step-item" role="listitem"><div class="step-num">3</div><div class="step-time">5 min</div><div class="step-title">Watch it work. You&apos;re always in control.</div><p class="step-desc">Your Agent starts delivering. Emergency Stop is always one tap away. See every action in real time.</p></div>
   </div>
 </section>
 
