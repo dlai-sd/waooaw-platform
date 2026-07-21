@@ -20,7 +20,7 @@
     --r-sm:8px; --r-md:12px; --r-lg:20px; --r-xl:28px;
     --sh-sm:0 2px 8px rgba(0,0,0,.05); --sh-md:0 4px 20px rgba(0,0,0,.08);
     --sh-lg:0 16px 48px rgba(0,0,0,.12); --sh-hover:0 20px 60px rgba(0,0,0,.15);
-    --font:'Inter','Noto Sans',system-ui,sans-serif;
+    --font:'Noto Sans','Inter',system-ui,sans-serif;
   }
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
   html{scroll-behavior:smooth}
@@ -58,13 +58,6 @@
   .nav-ghost:hover{border-color:var(--blue);color:var(--blue)}
   .nav-cta{background:var(--blue);border:none;color:#fff;padding:8px 18px;border-radius:var(--r-sm);font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font);text-decoration:none;display:inline-flex;align-items:center;transition:background .2s,box-shadow .2s}
   .nav-cta:hover{background:var(--blue-dark);box-shadow:0 4px 16px var(--blue-glow)}
-
-  /* AMBIENT BAR */
-  .ambient-bar{position:fixed;inset-block-start:64px;inset-inline:0;height:34px;z-index:90;background:rgba(244,247,251,.92);backdrop-filter:blur(8px);border-block-end:1px solid var(--border);display:flex;align-items:center;justify-content:center;gap:28px;font-size:12px;color:var(--text-3);overflow:hidden}
-  .ambient-pulse{display:flex;align-items:center;gap:6px}
-  .pulse-dot{width:6px;height:6px;border-radius:50%;animation:breathe 2.5s ease-in-out infinite}
-  .pulse-dot.green{background:var(--green)}.pulse-dot.blue{background:var(--blue);animation-delay:.8s}.pulse-dot.gold{background:var(--orange);animation-delay:1.6s}
-  @keyframes breathe{0%,100%{opacity:.4;transform:scale(1)}50%{opacity:1;transform:scale(1.4)}}
 
   /* LAYOUT */
   main{padding-block-start:171px} /* 47px announce + 108px nav + 16px gap */
@@ -261,12 +254,13 @@
 
   @media(max-width:1100px){.agent-grid{grid-template-columns:repeat(2,1fr)}}
   @media(max-width:580px){.agent-grid{grid-template-columns:1fr}}
-  @media(max-width:900px){.nav-links{display:none}.ambient-bar{gap:14px;font-size:11px}.dna-sep{display:none}.dna-items{gap:24px}footer{grid-template-columns:1fr 1fr}}
+  @media(max-width:900px){.nav-links{display:none}.dna-sep{display:none}.dna-items{gap:24px}footer{grid-template-columns:1fr 1fr}}
   @media(max-width:500px){footer{grid-template-columns:1fr}}
   @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms !important;transition-duration:.01ms !important}}
 </style>
 </head>
 <body>
+<a href="#content" class="skip-link">Skip to main content</a>
 
 <!-- ANNOUNCEMENT BAR -->
 <div class="announce-bar" id="announceBar" role="banner" aria-label="Announcement">
@@ -289,8 +283,8 @@
   <ul class="nav-links" role="list">
     <li><a href="/" aria-current="page">Home</a></li>
     <li><a href="#agents">Agents</a></li>
-    <li><a href="#how">How it works</a></li>
     <li><a href="/blog">Blogs</a></li>
+    <li><a href="/settings">Settings</a></li>
   </ul>
   <div class="nav-actions">
     <button class="nav-ghost" onclick="openCmd()" aria-label="Search ⌘K">⌘K</button>
@@ -298,7 +292,7 @@
   </div>
 </nav>
 
-<main>
+<main id="content">
 
 <!-- HERO -->
 <section class="container hero" aria-labelledby="hero-h">
@@ -307,7 +301,7 @@
     <p class="hero-sub">Turn Your Business<br><strong>from Good to Great.</strong></p>
     <div class="hero-btns">
       <a href="#agents" class="btn-primary">Meet &amp; Interview Your WAOOAW AI Agent</a>
-      <button class="btn-ghost">Watch Demo</button>
+      <button type="button" class="btn-ghost">Watch Demo</button>
     </div>
   </div>
   <div class="hero-panel" role="complementary">
@@ -337,7 +331,6 @@
   </div>
 </section>
 
-<div class="divider"></div>
 
 <!-- AGENTS -->
 <section class="container section" id="agents" aria-labelledby="agents-h">
@@ -389,7 +382,6 @@
   <div class="agents-footer"><a href="#">More coming soon &mdash; Legal, HR, Accounting &rarr;</a></div>
 </section>
 
-<div class="divider"></div>
 
 <!-- TRUST JOURNEY -->
 <section class="container section" aria-labelledby="trust-h">
@@ -398,7 +390,7 @@
   <p class="section-sub">Every WaooaW Expert builds a relationship with your business &mdash; one evidence-backed action at a time.</p>
   <div class="story-grid">
     <article class="story-card dma">
-      <div class="story-persona"><div class="persona-avatar" style="background:rgba(26,102,194,.10)">&#x1F9B7;</div><div><div class="persona-name">Dr. Mehta</div><div class="persona-role">Dental Clinic &middot; Viman Nagar, Pune</div></div></div>
+      <div class="story-persona"><div class="persona-avatar" aria-hidden="true" style="background:rgba(26,102,194,.10)">&#x1F9B7;</div><div><div class="persona-name">Dr. Mehta</div><div class="persona-role">Dental Clinic &middot; Viman Nagar, Pune</div></div></div>
       <div class="story-streak"><span class="streak-icon">&#x1F525;</span><span class="streak-text">WaooaW Expert Dental Marketing &middot; 47-day streak</span></div>
       <div class="heatmap-strip" role="img" aria-label="Activity heatmap">
         <div class="heatmap-cell l0"></div><div class="heatmap-cell l1"></div><div class="heatmap-cell l3"></div><div class="heatmap-cell l4"></div><div class="heatmap-cell l2"></div><div class="heatmap-cell l0"></div><div class="heatmap-cell l1"></div>
@@ -410,13 +402,14 @@
       <div class="story-outcome"><div class="outcome-pill"><span class="num">63</span> enquiries</div><div class="outcome-pill"><span class="num">14</span> campaigns</div><div class="outcome-pill"><span class="num">0</span> violations</div></div>
     </article>
     <article class="story-card agri">
-      <div class="story-persona"><div class="persona-avatar" style="background:rgba(61,173,53,.10)">&#x1F33F;</div><div><div class="persona-name">Suresh</div><div class="persona-role">1.5 hectare cotton farm &middot; Katol, Nagpur</div></div></div>
+      <div class="story-persona"><div class="persona-avatar" aria-hidden="true" style="background:rgba(61,173,53,.10)">&#x1F33F;</div><div><div class="persona-name">Suresh</div><div class="persona-role">1.5 hectare cotton farm &middot; Katol, Nagpur</div></div></div>
       <div class="story-streak"><span class="streak-icon">&#x1F33E;</span><span class="streak-text">WaooaW Expert Agricultural Advisor &middot; 1 full Kharif season</span></div>
-      <blockquote class="story-quote">&ldquo;Mala hail warning 3 din aadhi milali. Majha cotton cover kelela hota. Shejarypeksha &#x20B9;8 jast mila.&rdquo; <span style="font-style:normal;font-size:12px;color:var(--text-3)">(Received 3-day early warning. Got &#x20B9;8/kg more than neighbours.)</span></blockquote>
+      <blockquote class="story-quote" lang="mr">&ldquo;Mala hail warning 3 din aadhi milali. Majha cotton cover kelela hota. Shejarypeksha &#x20B9;8 jast mila.&rdquo;</blockquote>
+      <p style="font-size:12px;color:var(--text-3);font-style:italic;padding-inline-start:12px;border-inline-start:2px solid var(--green);margin-block-start:-8px">(Received 3-day early warning. Got &#x20B9;8/kg more than neighbours.)</p>
       <div class="story-outcome"><div class="outcome-pill"><span class="num">&#x20B9;8/kg</span> above market</div><div class="outcome-pill"><span class="num">3 days</span> early warning</div><div class="outcome-pill">Hindi &middot; Marathi</div></div>
     </article>
     <article class="story-card trade">
-      <div class="story-persona"><div class="persona-avatar" style="background:rgba(247,148,29,.10)">&#x1F4CA;</div><div><div class="persona-name">Rahul</div><div class="persona-role">F&amp;O Trader &middot; Pune &middot; &#x20B9;10L capital</div></div></div>
+      <div class="story-persona"><div class="persona-avatar" aria-hidden="true" style="background:rgba(247,148,29,.10)">&#x1F4CA;</div><div><div class="persona-name">Rahul</div><div class="persona-role">F&amp;O Trader &middot; Pune &middot; &#x20B9;10L capital</div></div></div>
       <div class="story-streak"><span class="streak-icon">&#x26A1;</span><span class="streak-text">23 consecutive sessions &mdash; loss limit maintained</span></div>
       <blockquote class="story-quote">&ldquo;It paused the session the moment VIX spiked. I didn&apos;t have to watch the screen. It knew before I did.&rdquo;</blockquote>
       <div class="story-outcome"><div class="outcome-pill"><span class="num">&#x20B9;8,500</span> daily ceiling</div><div class="outcome-pill"><span class="num">23</span> sessions, 0 breaches</div><div class="outcome-pill">SEBI compliant</div></div>
@@ -424,7 +417,6 @@
   </div>
 </section>
 
-<div class="divider"></div>
 
 <!-- CONSTITUTIONAL PROMISE -->
 <section class="container section" aria-labelledby="promise-h">
@@ -441,7 +433,6 @@
   </div>
 </section>
 
-<div class="divider"></div>
 
 <!-- FINAL CTA -->
 <section class="container section">
@@ -541,12 +532,6 @@ function tlTick(){
   tlC=(tlC+1)%4;
 }
 tlTick();setInterval(tlTick,1900);
-
-/* Ambient bar */
-const ambM=[['green','WaooaW Expert Dental Marketing \u2014 Dr. Mehta campaign running'],['blue','Agricultural Advisor \u2014 Suresh cotton advisory sent'],['gold','Trading Advisor \u2014 Rahul loss limit maintained (day 23)'],['green',"Private Tutor \u2014 Priya's student: geometry +18%"],['blue','Platform Operations \u2014 all CCTs passing']];
-let ambI=0;const ambP=document.querySelectorAll('.ambient-pulse');
-function ambCycle(){const m=ambM[ambI%ambM.length],t=ambP[ambI%ambP.length];if(t){t.querySelector('.pulse-dot').className='pulse-dot '+m[0];const n=t.childNodes;n[n.length-1].textContent=' '+m[1];}ambI++;}
-setInterval(ambCycle,4000);
 
 /* Announcement bar dismiss */
 function dismissAnnounce(){
