@@ -277,6 +277,16 @@ institutional/    WAOOAW IP — aggregate intelligence, not customer data.
 
 → `infrastructure/postgres/init/` (01-schemas through 08-provider-performance)
 
+### 5.6 Autonomous Execution Engine
+
+WAOOAW builds its own platform the same way it serves its customers — through autonomous AI agents operating under constitutional governance. There is no human developer, no dedicated engineering team, and no per-task approvals from the founders. Every two hours, a GitHub automation wakes up, reads a work plan (called a Work Contract), picks the next task, writes the code, opens a pull request for review, and updates a progress log. The founders are notified only at milestones that matter — gate closures, constitutional changes, or when the automation encounters a genuine blocker it cannot resolve on its own.
+
+The process is governed by the same constitutional rules the platform enforces for customer agents. Every code file must declare which specification it implements and which constitutional principle it upholds. Every commit must reference the backlog item that authorised it. No code can be merged without passing a set of Constitutional Compliance Tests — automated checks that verify the platform cannot accidentally violate its own principles such as Evidence First or Emergency Stop. The review of each pull request is performed by the same Platform IT Expert agent wearing a different hat, using a separate identity so that no agent can approve its own work. The founders retain one absolute control: a single flag in a text file (`AUTONOMOUS_HALT: true`) that, if set by any of the three stewards, stops all autonomous execution immediately.
+
+The practical result is that a founder can authorise a sprint on a Monday morning and return to a merged, tested, deployed feature by Wednesday — without writing a single line of code, reviewing a single PR, or attending a single meeting. The institution builds itself. The constitution ensures it builds itself correctly.
+
+→ `.github/workflows/autonomous-sprint.yaml` · `scripts/autonomous_sprint_runner.py` · `constitution/PROJECT_STATE.md` (SPRINT_STATE_MACHINE)
+
 ---
 
 ## 6. Technology Stack
