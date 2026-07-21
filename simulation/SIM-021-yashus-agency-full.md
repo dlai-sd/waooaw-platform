@@ -49,7 +49,7 @@ WAOOAW agent to Yogesh:
 
 White-label config committed:
   brand_name: "Yashus AI"
-  agent_prefix: "Yashus"  → "Yashus AI Digital Marketing" (not "WoW Expert Digital Marketing")
+  agent_prefix: "Yashus"  → "Yashus AI Digital Marketing" (not "WaooaW Expert Digital Marketing")
   portal_domain: "clients.yashus.in"
   primary_color: "#1A56DB"
   email_domain: "yashus.in" (noreply@yashus.in)
@@ -115,7 +115,7 @@ Layer 3: Yashus → Their clients
   Yashus's pricing (₹10,000-₹25,000/month)
   Yashus's management fee on ad spend (their own %)
   Clients sign contracts with YASHUS, not WAOOAW
-  Clients see "Yashus AI" not "WoW Expert"
+  Clients see "Yashus AI" not "WaooaW Expert"
 ```
 
 ### Account Manager Setup
@@ -165,7 +165,7 @@ Dr. Mehta's onboarding message (from noreply@yashus.in):
    [Yashus logo, Yashus blue colors — no WAOOAW branding anywhere]"
 
 Portal header: "Yashus Digital Marketing | Dr. Mehta Dental Clinic"
-Agent name: "Your Yashus AI Expert" (not "WoW Expert Dental Marketing")
+Agent name: "Your Yashus AI Expert" (not "WaooaW Expert Dental Marketing")
 Monthly report: "Yashus Digital Marketing | Dr. Mehta Dental | July 2026"
                 [Yashus logo, Yashus footer, Yashus contact]
 
@@ -348,7 +348,7 @@ Agent: "I should have caught this in SCR. The before/after illustration was AI-g
 
 **Agency model validated:**
 - 3 clients onboarded with different domains (dental, restaurant, beauty) ✓
-- White-label working: Dr. Mehta sees "Yashus AI" not "WoW Expert" ✓ (C-075)
+- White-label working: Dr. Mehta sees "Yashus AI" not "WaooaW Expert" ✓ (C-075)
 - AM workflow: Priya reviews content before client (constitutional separation) ✓
 - Multi-location: Ramesh's 2 locations tracked and served ✓
 - Ad billing: Yashus's own MBM/MCC used; WAOOAW bills Yashus wholesale ✓

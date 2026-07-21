@@ -27,16 +27,16 @@ If you do not agree to these Terms, do not access or use the Platform.
 
 ## 2. Description of Service
 
-WAOOAW is a platform that enables Customers to engage and employ autonomous AI professionals ("**WoW Experts**") — software agents governed by a written constitutional framework — for business services. Available WoW Expert types at launch include:
+WAOOAW is a platform that enables Customers to engage and employ autonomous AI professionals ("**WaooaW Experts**") — software agents governed by a written constitutional framework — for business services. Available WaooaW Expert types at launch include:
 
-| WoW Expert | Service domain | Applicable regulations |
+| WaooaW Expert | Service domain | Applicable regulations |
 |---|---|---|
-| WoW Expert Digital Marketing | Social media, Google Business, paid advertising, SEO | ASCI Guidelines; IT Act 2000; DPDPA 2023 |
-| WoW Expert Agricultural Advisor | Crop management, mandi prices, weather alerts, government schemes | FSSA; IMD data terms |
-| WoW Expert Trading Professional | F&O analysis, trade briefing, portfolio review | SEBI Disclaimer — see Clause 12 |
-| WoW Expert Private Tutor | School subject tutoring, Class 5–10, CBSE/ICSE/State boards | POCSO 2012; DPDPA 2023 Section 9 |
+| WaooaW Expert Digital Marketing | Social media, Google Business, paid advertising, SEO | ASCI Guidelines; IT Act 2000; DPDPA 2023 |
+| WaooaW Expert Agricultural Advisor | Crop management, mandi prices, weather alerts, government schemes | FSSA; IMD data terms |
+| WaooaW Expert Trading Professional | F&O analysis, trade briefing, portfolio review | SEBI Disclaimer — see Clause 12 |
+| WaooaW Expert Private Tutor | School subject tutoring, Class 5–10, CBSE/ICSE/State boards | POCSO 2012; DPDPA 2023 Section 9 |
 
-We reserve the right to introduce new WoW Expert types and to modify existing services with reasonable notice.
+We reserve the right to introduce new WaooaW Expert types and to modify existing services with reasonable notice.
 
 ---
 
@@ -65,7 +65,7 @@ We reserve the right to introduce new WoW Expert types and to modify existing se
 We offer a free trial period (7 calendar days for subscription services; 1 session for session-based services) with no payment required. Details are set out on the relevant service page.
 
 ### 4.2 Trial Conditions
-- One free trial per WoW Expert type per Customer
+- One free trial per WaooaW Expert type per Customer
 - Trial data (conversation transcripts, profile) will be deleted 7 days after trial end if you do not convert to a paid subscription
 - We reserve the right to modify or discontinue trial offerings with 7 days' notice
 
@@ -98,47 +98,47 @@ GST-compliant invoices are issued for every payment. Invoices are available in y
 
 ### 5.5 Failed Payments
 - If a payment fails, we will retry once automatically
-- After two failed attempts, the WoW Expert will pause (not terminate)
+- After two failed attempts, the WaooaW Expert will pause (not terminate)
 - You will be notified via WhatsApp with a payment link to resume
 - If payment is not received within 7 days of the original due date, the subscription may be terminated
 
 ---
 
-## 6. Your WoW Expert — Constitutional Governance
+## 6. Your WaooaW Expert — Constitutional Governance
 
 ### 6.1 Constitutional Framework
-Every WoW Expert on the WAOOAW platform operates under a written constitutional framework. This framework defines:
-- The **Decision Space** — the precise scope of actions the WoW Expert is authorised to take on your behalf
+Every WaooaW Expert on the WAOOAW platform operates under a written constitutional framework. This framework defines:
+- The **Decision Space** — the precise scope of actions the WaooaW Expert is authorised to take on your behalf
 - **Evidence First** — every consequential action is recorded before being confirmed
-- **Human Override** — your right to stop the WoW Expert at any time, unconditionally
+- **Human Override** — your right to stop the WaooaW Expert at any time, unconditionally
 
-The WAOOAW constitutional framework document is publicly available at **github.com/dlai-sd/waooaw-platform**. The underlying technical implementation (prompts, AI models, source code) is proprietary and protected by intellectual property law. The framework itself — the principles that govern what WoW Experts can and cannot do — is open for inspection by any party.
+The WAOOAW constitutional framework document is publicly available at **github.com/dlai-sd/waooaw-platform**. The underlying technical implementation (prompts, AI models, source code) is proprietary and protected by intellectual property law. The framework itself — the principles that govern what WaooaW Experts can and cannot do — is open for inspection by any party.
 
 ### 6.2 Decision Space (Scope of Authority)
-At the time of hiring, you will review and confirm the WoW Expert's Decision Space — a plain-language statement of what it can and cannot do. The WoW Expert will not take any action outside this confirmed scope without your explicit approval.
+At the time of hiring, you will review and confirm the WaooaW Expert's Decision Space — a plain-language statement of what it can and cannot do. The WaooaW Expert will not take any action outside this confirmed scope without your explicit approval.
 
 Changes to the Decision Space require your confirmation and are **recorded as constitutional events in the immutable Constitutional Audit Ledger**. This means every scope change is permanently traceable — no scope can be expanded without your knowledge and consent, and that consent is permanently recorded.
 
 ### 6.3 Human Override (Emergency Stop) — Constitutional Right
-**Your right to stop any WoW Expert is absolute, unconditional, and architecturally guaranteed.** The Emergency Stop function is always accessible, cannot be disabled by any configuration or commercial agreement, and will halt all WoW Expert activity within **250 milliseconds**. This right is a Constitutional Floor — it cannot be waived, contracted away, or modified by any agreement including these Terms. **An Emergency Stop immediately pauses your billing from the moment of activation** (see Refund Policy, Clause 3).
+**Your right to stop any WaooaW Expert is absolute, unconditional, and architecturally guaranteed.** The Emergency Stop function is always accessible, cannot be disabled by any configuration or commercial agreement, and will halt all WaooaW Expert activity within **250 milliseconds**. This right is a Constitutional Floor — it cannot be waived, contracted away, or modified by any agreement including these Terms. **An Emergency Stop immediately pauses your billing from the moment of activation** (see Refund Policy, Clause 3).
 
 ### 6.4 Evidence Records
-All consequential actions taken by your WoW Expert are recorded in an immutable evidence ledger. You may request a full audit of your evidence ledger at any time (see Privacy Policy, Clause 8.3). These records cannot be altered retroactively by any party.
+All consequential actions taken by your WaooaW Expert are recorded in an immutable evidence ledger. You may request a full audit of your evidence ledger at any time (see Privacy Policy, Clause 8.3). These records cannot be altered retroactively by any party.
 
 ### 6.5 Honest Limitation Disclosure — Your Right (C-049)
-You have the right to be told proactively when your WoW Expert determines — through its own analysis — that it **cannot deliver your stated business outcome** with its current capabilities, Decision Space, or available data. Your WoW Expert will not continue executing a strategy it has reason to believe will not achieve your goal without first disclosing this assessment to you.
+You have the right to be told proactively when your WaooaW Expert determines — through its own analysis — that it **cannot deliver your stated business outcome** with its current capabilities, Decision Space, or available data. Your WaooaW Expert will not continue executing a strategy it has reason to believe will not achieve your goal without first disclosing this assessment to you.
 
-This is a constitutional obligation (C-049), not a service preference. A WoW Expert that continues billing while knowingly unable to deliver your business outcome is in violation of the constitutional framework and must escalate. If you believe this obligation has been breached, you may raise a grievance (Clause 16.2).
+This is a constitutional obligation (C-049), not a service preference. A WaooaW Expert that continues billing while knowingly unable to deliver your business outcome is in violation of the constitutional framework and must escalate. If you believe this obligation has been breached, you may raise a grievance (Clause 16.2).
 
 ### 6.6 Non-Exploitation Commitment — Your Right (C-048)
-Your WoW Expert possesses expert domain knowledge you hired it for. This creates an information asymmetry between you and the WoW Expert. We make the following unconditional guarantee:
+Your WaooaW Expert possesses expert domain knowledge you hired it for. This creates an information asymmetry between you and the WaooaW Expert. We make the following unconditional guarantee:
 
-> **Your WoW Expert will never use its information advantage over you to benefit DLAISD, itself, or any third party at your expense.**
+> **Your WaooaW Expert will never use its information advantage over you to benefit DLAISD, itself, or any third party at your expense.**
 
-This means the WoW Expert's only measure of success is your stated business outcome — not DLAISD's revenue, not the WoW Expert's utilisation rate, not any third party's commercial interest.
+This means the WaooaW Expert's only measure of success is your stated business outcome — not DLAISD's revenue, not the WaooaW Expert's utilisation rate, not any third party's commercial interest.
 
 ### 6.7 Tenant Isolation — Your Right (C-005)
-Your data is constitutionally isolated from every other customer on the platform. No other customer, WoW Expert serving another customer, or WAOOAW employee can access your data without your explicit authorisation. This isolation is enforced at the database layer and is a Constitutional Floor — it cannot be disabled by any configuration or commercial arrangement.
+Your data is constitutionally isolated from every other customer on the platform. No other customer, WaooaW Expert serving another customer, or WAOOAW employee can access your data without your explicit authorisation. This isolation is enforced at the database layer and is a Constitutional Floor — it cannot be disabled by any configuration or commercial arrangement.
 
 ---
 
@@ -148,15 +148,15 @@ The WAOOAW Constitutional Framework (Article IX) grants you the following rights
 
 | Right | What it means |
 |---|---|
-| **Transparency** | Full visibility of your WoW Expert's behaviour within your engagement at all times |
-| **Override** | Stop any WoW Expert immediately, unconditionally, within 250ms — architecturally guaranteed |
+| **Transparency** | Full visibility of your WaooaW Expert's behaviour within your engagement at all times |
+| **Override** | Stop any WaooaW Expert immediately, unconditionally, within 250ms — architecturally guaranteed |
 | **Evidence Audit** | Access your complete Customer Evidence Ledger at any time, in full |
 | **Data Portability** | Receive your evidence in a portable format (JSON/CSV) on request |
-| **Appeal** | Appeal any permission or authority decision affecting your WoW Expert |
-| **Authority Visibility** | Know the current authority level and scope of every WoW Expert you have hired |
-| **Immediate Termination** | Terminate any WoW Expert engagement immediately, without restriction or penalty |
-| **Honest Limitation** | Be told proactively when a WoW Expert cannot deliver your stated business outcome |
-| **Non-Exploitation** | Your WoW Expert's expertise will only ever be used in your interest |
+| **Appeal** | Appeal any permission or authority decision affecting your WaooaW Expert |
+| **Authority Visibility** | Know the current authority level and scope of every WaooaW Expert you have hired |
+| **Immediate Termination** | Terminate any WaooaW Expert engagement immediately, without restriction or penalty |
+| **Honest Limitation** | Be told proactively when a WaooaW Expert cannot deliver your stated business outcome |
+| **Non-Exploitation** | Your WaooaW Expert's expertise will only ever be used in your interest |
 | **Isolation** | Your data is constitutionally isolated from every other customer |
 
 To exercise any right, contact technology@dlaisd.com or customersupport@dlaisd.com.
@@ -168,10 +168,10 @@ To exercise any right, contact technology@dlaisd.com or customersupport@dlaisd.c
 You agree to:
 
 1. Use the Platform only for lawful business purposes
-2. Not attempt to circumvent, manipulate, or deceive your WoW Expert's Decision Space
+2. Not attempt to circumvent, manipulate, or deceive your WaooaW Expert's Decision Space
 3. Not use the Platform to engage in fraudulent, deceptive, or misleading activity towards third parties
-4. Provide accurate business information that enables your WoW Expert to perform its services effectively
-5. Promptly notify us if your WoW Expert takes any action you did not authorise
+4. Provide accurate business information that enables your WaooaW Expert to perform its services effectively
+5. Promptly notify us if your WaooaW Expert takes any action you did not authorise
 6. Comply with all applicable laws governing your business domain (e.g., MCI guidelines for healthcare, SEBI regulations for trading)
 7. Not attempt to extract, reverse-engineer, or reproduce the constitutional framework, prompts, or AI models underlying the Platform
 8. Not use the Platform to send unsolicited commercial communications (spam) to any person
@@ -184,16 +184,16 @@ You agree to:
 The WAOOAW Platform, its constitutional framework, software, AI models, prompts, design systems, trade marks, and all related intellectual property are owned by DLAI Satellite Data (OPC) Pvt Ltd. All rights reserved.
 
 ### 8.2 Your Content
-Content you provide to the Platform (business information, uploaded documents, campaign briefs) remains your property. You grant DLAISD a limited, non-exclusive, royalty-free licence to process this content solely for the purpose of delivering the contracted WoW Expert service. This licence terminates on account closure.
+Content you provide to the Platform (business information, uploaded documents, campaign briefs) remains your property. You grant DLAISD a limited, non-exclusive, royalty-free licence to process this content solely for the purpose of delivering the contracted WaooaW Expert service. This licence terminates on account closure.
 
 ### 8.3 Output Ownership
-Marketing content, advisory reports, trade briefs, or educational material generated by your WoW Expert based on your instructions and data belong to you. DLAISD claims no intellectual property rights over the outputs of your WoW Expert.
+Marketing content, advisory reports, trade briefs, or educational material generated by your WaooaW Expert based on your instructions and data belong to you. DLAISD claims no intellectual property rights over the outputs of your WaooaW Expert.
 
 ### 8.4 Prohibited Use
 You may not:
 - Copy, reproduce, distribute, or create derivative works from any part of the Platform without written permission
 - Use the WAOOAW name, logo, or brand in any manner that implies endorsement or affiliation without written permission
-- Register any trade mark or domain name confusingly similar to "WAOOAW" or "WoW Expert"
+- Register any trade mark or domain name confusingly similar to "WAOOAW" or "WaooaW Expert"
 
 ---
 
@@ -227,25 +227,25 @@ Violation of any prohibited activity may result in immediate account suspension 
 
 ## 12. Important Disclaimers
 
-### 12.1 WoW Expert Trading Professional — SEBI Disclaimer
+### 12.1 WaooaW Expert Trading Professional — SEBI Disclaimer
 
 **IMPORTANT: THIS DISCLAIMER MUST BE READ BEFORE USING THE WAOOAW TRADING PROFESSIONAL SERVICE.**
 
 - DLAI Satellite Data (OPC) Pvt Ltd is **not registered** as an Investment Adviser under the **SEBI (Investment Advisers) Regulations, 2013**.
-- The WoW Expert Trading Professional provides **analytical tools, trade briefings, portfolio analysis, and educational content only**. It does **not constitute personalised investment advice** within the meaning of the SEBI IA Regulations.
+- The WaooaW Expert Trading Professional provides **analytical tools, trade briefings, portfolio analysis, and educational content only**. It does **not constitute personalised investment advice** within the meaning of the SEBI IA Regulations.
 - All trade-related output is for **informational purposes only** and must not be construed as a recommendation, solicitation, or offer to buy or sell any securities.
 - **You bear full and sole responsibility** for all trading decisions. Trading in F&O and other instruments involves significant risk of loss, including loss of capital. Past performance of analysis is not indicative of future results.
 - For personalised investment advice, you are strongly recommended to consult a SEBI-registered Investment Adviser.
-- The WoW Expert Trading Professional will never provide Tier 3 (intraday execution signals) without a 24-hour lag, as required by the Platform's constitutional framework.
+- The WaooaW Expert Trading Professional will never provide Tier 3 (intraday execution signals) without a 24-hour lag, as required by the Platform's constitutional framework.
 
-### 12.2 WoW Expert Digital Marketing — Healthcare Content
-Marketing content for dental clinics and other healthcare practices is governed by the **Medical Council of India (MCI) guidelines** and the **ASCI Healthcare Advertising Code**. You are responsible for ensuring that all content published through your WoW Expert complies with applicable healthcare advertising regulations. DLAISD does not accept liability for regulatory violations arising from content published at your instruction.
+### 12.2 WaooaW Expert Digital Marketing — Healthcare Content
+Marketing content for dental clinics and other healthcare practices is governed by the **Medical Council of India (MCI) guidelines** and the **ASCI Healthcare Advertising Code**. You are responsible for ensuring that all content published through your WaooaW Expert complies with applicable healthcare advertising regulations. DLAISD does not accept liability for regulatory violations arising from content published at your instruction.
 
-### 12.3 WoW Expert Agricultural Advisor
+### 12.3 WaooaW Expert Agricultural Advisor
 Agricultural advisories are based on publicly available data (IMD weather, APMC mandi prices, ICAR recommendations). They do not constitute a guarantee of crop yield, price outcomes, or insurance coverage. Farming decisions involve inherent risks; you remain solely responsible for decisions made in reliance on the advisory.
 
 ### 12.4 No Professional Licence
-No WoW Expert is a licensed professional (doctor, lawyer, chartered accountant, advocate, etc.). Their outputs are advisory and informational only. Where applicable law requires a licensed professional, you must consult one.
+No WaooaW Expert is a licensed professional (doctor, lawyer, chartered accountant, advocate, etc.). Their outputs are advisory and informational only. Where applicable law requires a licensed professional, you must consult one.
 
 ---
 
@@ -259,7 +259,7 @@ To the maximum extent permitted by applicable Indian law:
 
 3. **Service availability**: We do not warrant that the Platform will be available 24/7 or free from errors. We target 99.5% uptime but do not guarantee it. Planned maintenance will be notified in advance.
 
-4. **AI outputs**: WoW Expert outputs are AI-generated and may contain errors. You must exercise independent judgement before acting on any output.
+4. **AI outputs**: WaooaW Expert outputs are AI-generated and may contain errors. You must exercise independent judgement before acting on any output.
 
 Nothing in these Terms limits liability for: (a) death or personal injury caused by our negligence; (b) fraud or fraudulent misrepresentation; (c) any liability that cannot be excluded under applicable law.
 
@@ -272,7 +272,7 @@ You agree to indemnify, defend, and hold harmless DLAISD, its directors, officer
 - Your violation of these Terms
 - Your use of the Platform in violation of any law
 - Content you provide to the Platform that infringes any third party's rights
-- Your business activities conducted using WoW Expert outputs
+- Your business activities conducted using WaooaW Expert outputs
 
 ---
 
@@ -287,7 +287,7 @@ We may suspend or terminate your account immediately, without notice, if:
 - We are required to do so by law or a court order
 - Continued operation poses a legal, security, or constitutional risk to the Platform
 
-We may terminate your account with 30 days' notice if we discontinue the Platform or a specific WoW Expert type.
+We may terminate your account with 30 days' notice if we discontinue the Platform or a specific WaooaW Expert type.
 
 ### 15.3 Effect of Termination
 On termination, your access to the Platform ceases. Your data will be retained and deleted per the Privacy Policy retention schedule. Outstanding subscription fees for the current period remain due.
@@ -298,11 +298,11 @@ On termination, your access to the Platform ceases. Your data will be retained a
 
 In addition to our contractual rights under these Terms, DLAISD holds the following constitutional rights that cannot be contracted away:
 
-1. **Right to refuse constitutional violations**: DLAISD may refuse any instruction that would require a WoW Expert to act in violation of the constitutional framework, regardless of your subscription status or commercial relationship. This includes instructions to expand a Decision Space without your own confirmation, to act on behalf of a third party without authorisation, or to take any action that would breach Constitutional Floors.
+1. **Right to refuse constitutional violations**: DLAISD may refuse any instruction that would require a WaooaW Expert to act in violation of the constitutional framework, regardless of your subscription status or commercial relationship. This includes instructions to expand a Decision Space without your own confirmation, to act on behalf of a third party without authorisation, or to take any action that would breach Constitutional Floors.
 
-2. **Right to suspend authority**: DLAISD may reduce or suspend a WoW Expert's authority licence where constitutional evidence warrants, independently of your commercial preferences. You will be notified of any authority suspension.
+2. **Right to suspend authority**: DLAISD may reduce or suspend a WaooaW Expert's authority licence where constitutional evidence warrants, independently of your commercial preferences. You will be notified of any authority suspension.
 
-3. **Right to constitutional neutrality**: DLAISD will not take sides in any commercial dispute between you and a third party using WoW Expert outputs as evidence, except where legally compelled to do so.
+3. **Right to constitutional neutrality**: DLAISD will not take sides in any commercial dispute between you and a third party using WaooaW Expert outputs as evidence, except where legally compelled to do so.
 
 ---
 

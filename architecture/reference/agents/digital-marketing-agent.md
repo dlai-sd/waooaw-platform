@@ -288,7 +288,7 @@ domain_compliance_table:
 **Before any other profiling question, the agent establishes account mode.** Everything downstream — content strategy, benchmark model, approval workflow, billing, Skill 19/20/21 activation — depends on this single answer.
 
 ```
-WoW Expert (first message after registration):
+WaooaW Expert (first message after registration):
 
 "Namaste! Welcome to WAOOAW. Before we get started, one quick question 
  so I set things up correctly for you:

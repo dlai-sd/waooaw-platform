@@ -13,7 +13,7 @@
 
 ## 1. Introduction
 
-DLAI Satellite Data (OPC) Pvt Ltd ("**DLAISD**", "**we**", "**us**", "**our**") operates the WAOOAW platform ("**Platform**") at waooaw.com. WAOOAW enables individuals and organisations ("**Data Principals**", "**you**") to engage and employ autonomous AI professionals ("**WoW Experts**") for business services including digital marketing, agricultural advisory, trading analysis, and private tutoring.
+DLAI Satellite Data (OPC) Pvt Ltd ("**DLAISD**", "**we**", "**us**", "**our**") operates the WAOOAW platform ("**Platform**") at waooaw.com. WAOOAW enables individuals and organisations ("**Data Principals**", "**you**") to engage and employ autonomous AI professionals ("**WaooaW Experts**") for business services including digital marketing, agricultural advisory, trading analysis, and private tutoring.
 
 This Privacy Policy describes how we collect, use, store, share, and protect your personal data in accordance with the **Digital Personal Data Protection Act, 2023 (DPDPA)**, the **Information Technology Act, 2000**, the **Information Technology (Intermediary Guidelines and Digital Media Ethics Code) Rules, 2021**, and all applicable Indian laws.
 
@@ -65,13 +65,13 @@ We do not receive passwords from any OAuth provider. Profile pictures are used o
 The WAOOAW platform is governed by a constitutional framework that defines three independent data ledgers. Understanding these is essential to understanding your rights.
 
 **1. Your Customer Evidence Ledger (You own this)**
-This ledger contains everything your WoW Expert has observed, done, and reported within your engagement — every conversation, action, KPI measurement, and business outcome. This ledger is **private and exclusively yours**. DLAISD has no right to access it without your explicit authorisation. No other customer, WoW Expert, or WAOOAW employee can access it. This constitutional isolation is enforced at the database layer (Row-Level Security), not merely at the application layer — it cannot be disabled by any configuration or commercial pressure.
+This ledger contains everything your WaooaW Expert has observed, done, and reported within your engagement — every conversation, action, KPI measurement, and business outcome. This ledger is **private and exclusively yours**. DLAISD has no right to access it without your explicit authorisation. No other customer, WaooaW Expert, or WAOOAW employee can access it. This constitutional isolation is enforced at the database layer (Row-Level Security), not merely at the application layer — it cannot be disabled by any configuration or commercial pressure.
 
 **2. The Constitutional Audit Ledger (Platform-owned, immutable)**
 This ledger records constitutional events only — authority grants, scope changes, Emergency Stop events, policy decisions. It is **immutable by constitutional mandate (C-007)**: no record in this ledger may ever be modified or deleted by any party, including DLAISD, its employees, or by a customer data deletion request. This is a Constitutional Floor — not a policy choice. The immutability of this ledger is what makes WAOOAW's trust model provable. You may request a read-only export of constitutional events related to your account at any time.
 
-**3. The Professional Experience Ledger (WoW Expert-owned)**
-This ledger belongs to the WoW Expert's professional identity. It records verified experience and accumulated trust — not your personal data. It does not contain any data from your Customer Evidence Ledger.
+**3. The Professional Experience Ledger (WaooaW Expert-owned)**
+This ledger belongs to the WaooaW Expert's professional identity. It records verified experience and accumulated trust — not your personal data. It does not contain any data from your Customer Evidence Ledger.
 
 **No ledger may be merged with another. No stakeholder may access another's ledger without explicit constitutional authorisation.**
 
@@ -79,16 +79,16 @@ This ledger belongs to the WoW Expert's professional identity. It records verifi
 
 ## 3B. Our Non-Exploitation Commitment (C-048)
 
-Your WoW Expert possesses expertise you hired it for — domain knowledge, market data, platform intelligence. This information asymmetry is the source of its value. It is also the source of its greatest potential harm. We make the following unconditional commitment:
+Your WaooaW Expert possesses expertise you hired it for — domain knowledge, market data, platform intelligence. This information asymmetry is the source of its value. It is also the source of its greatest potential harm. We make the following unconditional commitment:
 
-> **Your WoW Expert will never use its information advantage over you to benefit DLAISD, itself, or any third party at your expense.**
+> **Your WaooaW Expert will never use its information advantage over you to benefit DLAISD, itself, or any third party at your expense.**
 
 Specifically, this means:
-- Your WoW Expert will never recommend a higher-tier subscription when a lower tier would serve your goals equally well
-- Your WoW Expert will never continue executing a strategy it has reason to believe will not achieve your business outcome, without disclosing that assessment to you first
+- Your WaooaW Expert will never recommend a higher-tier subscription when a lower tier would serve your goals equally well
+- Your WaooaW Expert will never continue executing a strategy it has reason to believe will not achieve your business outcome, without disclosing that assessment to you first
 - Your data and business intelligence will never be used to serve a competitor or to derive commercial advantage for WAOOAW beyond the subscription fee you have paid
 
-This commitment is constitutionally enforceable (C-048). Violation of this principle by any WoW Expert is a constitutional event, not merely a service complaint.
+This commitment is constitutionally enforceable (C-048). Violation of this principle by any WaooaW Expert is a constitutional event, not merely a service complaint.
 
 ---
 
@@ -112,7 +112,7 @@ You may withdraw consent at any time (see Section 8). Withdrawal of consent will
 
 We use your personal data solely for the following purposes:
 
-1. **Service delivery** — operating and personalising your WoW Expert professional
+1. **Service delivery** — operating and personalising your WaooaW Expert professional
 2. **WhatsApp communication** — delivering agent advisories, alerts, and progress reports
 3. **Account management** — authentication, billing, subscription management
 4. **Legal compliance** — GST invoicing, regulatory reporting, mandatory disclosures
@@ -160,7 +160,7 @@ In the event of a merger, acquisition, or sale of assets, your data may be trans
 
 ## 6. Children's Data (DPDPA 2023, Section 9 | C-060)
 
-The WAOOAW Private Tutor service ("WoW Expert Private Tutor") serves students aged approximately 10–15 years (Class 5–10, CBSE/ICSE/State boards).
+The WAOOAW Private Tutor service ("WaooaW Expert Private Tutor") serves students aged approximately 10–15 years (Class 5–10, CBSE/ICSE/State boards).
 
 **We apply the highest tier of data protection for minor students:**
 
@@ -200,16 +200,16 @@ You may request a summary of the personal data we hold about you and the purpose
 ### 8.2 Right to Correction and Erasure (Section 10(b)–(c))
 You may request correction of inaccurate personal data or erasure of data that is no longer necessary. We will process correction requests within **72 hours** and erasure requests within **7 working days**.
 
-**Important constitutional carve-out:** Records in the **Constitutional Audit Ledger** (constitutional events: authority grants, scope changes, Emergency Stop events) **cannot be deleted** by any party, including DLAISD or by customer request. This is mandated by C-007 (Constitutional Floor — ledger immutability). These records exist to protect you — they are the proof that your WoW Expert acted within its authorised scope. GST billing records cannot be deleted before their statutory 8-year retention period (GST Act, 2017).
+**Important constitutional carve-out:** Records in the **Constitutional Audit Ledger** (constitutional events: authority grants, scope changes, Emergency Stop events) **cannot be deleted** by any party, including DLAISD or by customer request. This is mandated by C-007 (Constitutional Floor — ledger immutability). These records exist to protect you — they are the proof that your WaooaW Expert acted within its authorised scope. GST billing records cannot be deleted before their statutory 8-year retention period (GST Act, 2017).
 
 ### 8.3 Right to Audit Your Evidence Ledger (Article IX, WAOOAW Constitution)
-You have the constitutional right to audit your Customer Evidence Ledger completely and at any time. This means you may request a full export of all records related to your WoW Expert's activities — every action taken, every conversation, every KPI recorded — in a portable, machine-readable format. We will provide this export within **5 working days** of request. This right exists independently of DPDPA and cannot be waived.
+You have the constitutional right to audit your Customer Evidence Ledger completely and at any time. This means you may request a full export of all records related to your WaooaW Expert's activities — every action taken, every conversation, every KPI recorded — in a portable, machine-readable format. We will provide this export within **5 working days** of request. This right exists independently of DPDPA and cannot be waived.
 
 ### 8.4 Right to Data Portability (Article IX, WAOOAW Constitution)
 You have the constitutional right to receive your Customer Evidence Ledger in a portable format (JSON/CSV) to transfer to another service or for your own records. Contact technology@dlaisd.com to request. We will respond within **7 working days**.
 
 ### 8.5 Right to Know Authority Level (Article IX, WAOOAW Constitution)
-You have the constitutional right to know the current authority level of every WoW Expert you have hired at any time. This information is always visible in your account portal under each WoW Expert's Scope Card.
+You have the constitutional right to know the current authority level of every WaooaW Expert you have hired at any time. This information is always visible in your account portal under each WaooaW Expert's Scope Card.
 
 ### 8.6 Right to Grievance Redressal (Section 10(e))
 You have the right to a prompt, fair, and reasoned response to any grievance. Contact the Grievance Officer (Section 14).
@@ -275,7 +275,7 @@ We do not transfer data to countries without adequate protection unless required
 Where you use the WAOOAW platform via WhatsApp:
 
 - Your phone number and message content are processed by Meta Platforms (Facebook Ireland Limited) as the operator of WhatsApp. Meta's processing is governed by their Privacy Policy (whatsapp.com/legal/privacy-policy).
-- DLAISD processes your WhatsApp messages solely to deliver the contracted WoW Expert service. Message content is stored as agent session data per Section 2.2 above.
+- DLAISD processes your WhatsApp messages solely to deliver the contracted WaooaW Expert service. Message content is stored as agent session data per Section 2.2 above.
 - You may opt out of WhatsApp communication at any time by sending "STOP" to the WAOOAW WhatsApp number or by updating notification preferences in your account Settings.
 
 ---

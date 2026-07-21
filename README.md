@@ -50,10 +50,10 @@ The three human stewards — Yogesh (Founder), Sujay (Business Growth & Prompt I
 
 ### 3.1 Constitutional Employment Model
 
-A customer does not "use a chatbot." They hire a **WoW Expert** — a constitutionally governed digital professional with a declared Decision Space, published skills, honest limitation disclosures (C-049), and a non-exploitation pledge (C-048). The employment contract defines exactly what the agent can and cannot do. The Constitutional Engine enforces this on every action.
+A customer does not "use a chatbot." They hire a **WaooaW Expert** — a constitutionally governed digital professional with a declared Decision Space, published skills, honest limitation disclosures (C-049), and a non-exploitation pledge (C-048). The employment contract defines exactly what the agent can and cannot do. The Constitutional Engine enforces this on every action.
 
 ```
-Customer hires WoW Expert Dental Marketing
+Customer hires WaooaW Expert Dental Marketing
   → Decision Space locked (19 authorized skills, no others)
   → CE.ValidateAction called before every MCP tool execution
   → Evidence First: every action recorded before returning success
@@ -61,14 +61,14 @@ Customer hires WoW Expert Dental Marketing
   → Monthly Business Review: agent proves its value to the customer
 ```
 
-### 3.2 The Four WoW Experts (Customer-Facing Agents)
+### 3.2 The Four WaooaW Experts (Customer-Facing Agents)
 
 | Agent | Customer | Business goal | Primary channel |
 |---|---|---|---|
-| **WoW Expert Digital Marketing** (DMA v2.9) | Dr. Mehta, dental clinic; Sana, beauty artist | +20% patient bookings; +30% enquiries | Instagram, Facebook, WhatsApp, Google Business |
-| **WoW Expert Trading Advisor** (v1.7) | Rahul, salaried F&O trader | Consistent risk-managed NIFTY returns | Web portal (PAAS — pre-authorized execution) |
-| **WoW Expert Agricultural Advisor** (v2.7) | Suresh, cotton farmer, Vidarbha | Better price timing; weather loss prevention | WhatsApp voice (Marathi, Hindi, Telugu) |
-| **WoW Expert Private Tutor** (v1.0) | Priya's child, Class 8 CBSE | Geometry + Maths improvement | Web whiteboard; parent reports via WhatsApp |
+| **WaooaW Expert Digital Marketing** (DMA v2.9) | Dr. Mehta, dental clinic; Sana, beauty artist | +20% patient bookings; +30% enquiries | Instagram, Facebook, WhatsApp, Google Business |
+| **WaooaW Expert Trading Advisor** (v1.7) | Rahul, salaried F&O trader | Consistent risk-managed NIFTY returns | Web portal (PAAS — pre-authorized execution) |
+| **WaooaW Expert Agricultural Advisor** (v2.7) | Suresh, cotton farmer, Vidarbha | Better price timing; weather loss prevention | WhatsApp voice (Marathi, Hindi, Telugu) |
+| **WaooaW Expert Private Tutor** (v1.0) | Priya's child, Class 8 CBSE | Geometry + Maths improvement | Web whiteboard; parent reports via WhatsApp |
 
 → `architecture/reference/agents/digital-marketing-agent.md`
 → `architecture/reference/agents/trading-agent.md`

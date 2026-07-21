@@ -46,7 +46,7 @@ booking-mcp-practo: NOT_PROVISIONED → Type 1 (Practo credentials)
 
 **Welcome message to Dr. Mehta (WhatsApp, within 1 hour — C-074):**
 ```
-Namaste Dr. Mehta! Welcome to WAOOAW. Your WoW Expert Dental Marketing is being set up.
+Namaste Dr. Mehta! Welcome to WAOOAW. Your WaooaW Expert Dental Marketing is being set up.
 
 ✅ Ready immediately:
    - Google Business Profile management
@@ -76,19 +76,19 @@ Ready to connect your Google account? Reply YES to start.
 **Conversation flow (WhatsApp):**
 
 ```
-WoW Expert: "Namaste Dr. Mehta! I can see you're a dentist in Viman Nagar —
+WaooaW Expert: "Namaste Dr. Mehta! I can see you're a dentist in Viman Nagar —
               one of Pune's busiest areas for young professionals.
               My first question: do you want to focus on getting new patients,
               or on keeping existing patients coming back, or both?"
 
 Dr. Mehta: "Both, but mainly new patients right now. We just moved to a bigger clinic."
 
-WoW Expert: "New space — exciting! How many new patients per month would make
+WaooaW Expert: "New space — exciting! How many new patients per month would make
               you feel this is working?"
 
 Dr. Mehta: "20 would be great. We currently get about 8-10 from walk-ins."
 
-WoW Expert: "Got it — double your current new patient flow. That's a clear target.
+WaooaW Expert: "Got it — double your current new patient flow. That's a clear target.
               One more question: who is your typical new patient? Working professional?
               Family? Students from the nearby colleges?"
 
@@ -169,7 +169,7 @@ What this means for your goal:
 
 **Credential collection (Type 1):**
 ```
-WoW Expert: "Let's connect your Google Business Profile. I need 'manage' access
+WaooaW Expert: "Let's connect your Google Business Profile. I need 'manage' access
               to your GBP so I can post updates and respond to reviews.
               
               Steps (3 min):
@@ -208,7 +208,7 @@ CE.RecordEvidence(GBP_UPDATED, constitutional_basis="C-023,C-073")
 ### B. Instagram Business Account — MCP provisioning
 
 ```
-WoW Expert: "Your Instagram account is currently Personal — let's switch it to Business.
+WaooaW Expert: "Your Instagram account is currently Personal — let's switch it to Business.
               This gives us analytics and the ability to run ads later.
               
               Settings → Account → Switch to Professional Account → Business → Dentist"
@@ -231,7 +231,7 @@ Dr. Mehta: (switches account)
 **Current state: FA-002 (Meta BM) PENDING**
 
 ```
-WoW Expert: "For paid ads on Facebook and Instagram, our Meta Business Manager
+WaooaW Expert: "For paid ads on Facebook and Instagram, our Meta Business Manager
               is being verified by Meta (standard 2-4 week process).
               
               While we wait, I'll do two things:
@@ -259,7 +259,7 @@ waooaw-ads-manager.mbm.generate_page_access_request:
 
 **Google Ads + LSA Setup (parallel, no Meta BM dependency):**
 ```
-WoW Expert: "Good news — Google Ads doesn't need the same verification.
+WaooaW Expert: "Good news — Google Ads doesn't need the same verification.
               I can launch Google campaigns this week.
               
               I'll create your Google Ads account under our Manager Account.
@@ -290,7 +290,7 @@ For LSA (Google Local Services Ads — pay per lead):
 
 **Conversion Tracking — Critical for attribution (GA4 gap noted):**
 ```
-WoW Expert: "To know which posts and ads are actually bringing patients to your
+WaooaW Expert: "To know which posts and ads are actually bringing patients to your
               website, I need Google Analytics and Meta Pixel on your site.
               
               Your web developer needs to add these two snippets (< 5 min):
@@ -313,7 +313,7 @@ WoW Expert: "To know which posts and ads are actually bringing patients to your
 ### D. Ad Spend Wallet Creation
 
 ```
-WoW Expert: "To run paid ads, you'll fund an Ad Spend Wallet.
+WaooaW Expert: "To run paid ads, you'll fund an Ad Spend Wallet.
               You decide how much to put in (minimum ₹2,000/month for Meta to optimize).
               I recommend ₹5,000/month to start — enough to test 2 campaigns.
               

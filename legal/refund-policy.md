@@ -16,7 +16,7 @@ This Refund Policy ("**Policy**") governs all refund, cancellation, and dispute 
 
 This Policy is in compliance with the **Consumer Protection Act, 2019**, the **Consumer Protection (E-Commerce) Rules, 2020**, and the **Payment and Settlement Systems Act, 2007**.
 
-**Constitutional basis:** Pro-rata refund on pause, cancellation, or Emergency Stop is not a commercial policy — it is your **constitutional right under C-038** of the WAOOAW constitutional framework. The right to pause or terminate a WoW Expert engagement at any time, with billing calculated pro-rata from the moment of pause, is a Constitutional Floor. It cannot be modified by any future version of this Policy, any subscription agreement, or any commercial arrangement.
+**Constitutional basis:** Pro-rata refund on pause, cancellation, or Emergency Stop is not a commercial policy — it is your **constitutional right under C-038** of the WAOOAW constitutional framework. The right to pause or terminate a WaooaW Expert engagement at any time, with billing calculated pro-rata from the moment of pause, is a Constitutional Floor. It cannot be modified by any future version of this Policy, any subscription agreement, or any commercial arrangement.
 
 By subscribing to any WAOOAW service, you agree to this Policy.
 
@@ -25,14 +25,14 @@ By subscribing to any WAOOAW service, you agree to this Policy.
 ## 2. Free Trial — No Charge, No Refund Needed
 
 ### 2.1 Trial Period
-WAOOAW offers a free trial for each WoW Expert type:
+WAOOAW offers a free trial for each WaooaW Expert type:
 
-| WoW Expert | Trial | Duration |
+| WaooaW Expert | Trial | Duration |
 |---|---|---|
-| WoW Expert Digital Marketing | Full service trial | 7 calendar days |
-| WoW Expert Agricultural Advisor | 1 complete crop advisory session | 1 session |
-| WoW Expert Trading Professional | 1 risk profile + 1 trade brief | 1 session |
-| WoW Expert Private Tutor | 1 student onboarding session (20 minutes) | 1 session |
+| WaooaW Expert Digital Marketing | Full service trial | 7 calendar days |
+| WaooaW Expert Agricultural Advisor | 1 complete crop advisory session | 1 session |
+| WaooaW Expert Trading Professional | 1 risk profile + 1 trade brief | 1 session |
+| WaooaW Expert Private Tutor | 1 student onboarding session (20 minutes) | 1 session |
 
 **No payment method is required during the trial period.** You will not be charged until you explicitly confirm your subscription after the trial. There is nothing to refund for a trial that is not converted.
 
@@ -47,20 +47,20 @@ You may cancel your subscription at any time via:
 - WhatsApp: +91 8888912344
 
 ### 3.2 When Cancellation Takes Effect
-Cancellations take effect at the **end of the current billing month**. Your WoW Expert continues to work until the last day of the paid period. You will not be charged for the next month.
+Cancellations take effect at the **end of the current billing month**. Your WaooaW Expert continues to work until the last day of the paid period. You will not be charged for the next month.
 
 ### 3.3 Emergency Stop and Billing
-If you use the **Emergency Stop** function (the unconditional Human Override guaranteed under C-001 of the constitutional framework), your WoW Expert's activity halts within 250 milliseconds. For billing purposes:
+If you use the **Emergency Stop** function (the unconditional Human Override guaranteed under C-001 of the constitutional framework), your WaooaW Expert's activity halts within 250 milliseconds. For billing purposes:
 
 - An Emergency Stop is treated as an immediate **pause** of the subscription from the moment of activation
-- No charges accrue for the period during which the WoW Expert is stopped
+- No charges accrue for the period during which the WaooaW Expert is stopped
 - If you do not resume within 30 days, the subscription is treated as a cancellation and the pro-rata refund schedule (Clause 4.1) applies
 - You may resume at any time within the 30-day window without incurring a new subscription charge
 
 This provision cannot be modified — it is the commercial expression of the constitutional right to Human Override (C-001) and pro-rata billing (C-038).
 
 ### 3.4 Pause Option
-Instead of cancelling, you may **pause** your subscription for up to 3 months. Paused subscriptions do not incur charges. Your WoW Expert, configuration, and activity history are preserved and resume immediately when you reactivate.
+Instead of cancelling, you may **pause** your subscription for up to 3 months. Paused subscriptions do not incur charges. Your WaooaW Expert, configuration, and activity history are preserved and resume immediately when you reactivate.
 
 ---
 
@@ -100,8 +100,8 @@ If the WAOOAW Platform is unavailable for more than **8 continuous hours** in a 
 
 Outages caused by third-party infrastructure (Azure, Meta/WhatsApp, internet providers) are not eligible for credit unless DLAISD has committed to an SLA in a separate agreement.
 
-### 5.2 WoW Expert Failure
-If your WoW Expert fails to perform its core contractual service for **3 or more consecutive days** due to a platform defect (not due to missing customer configuration or third-party OAuth expiry):
+### 5.2 WaooaW Expert Failure
+If your WaooaW Expert fails to perform its core contractual service for **3 or more consecutive days** due to a platform defect (not due to missing customer configuration or third-party OAuth expiry):
 
 - Contact customersupport@dlaisd.com with details
 - We will investigate within 2 working days
@@ -114,14 +114,14 @@ If your WoW Expert fails to perform its core contractual service for **3 or more
 Refunds will **not** be issued in the following circumstances:
 
 1. **Change of mind** after Day 1 of a paid subscription (the 24-hour cooling-off period is the remedy for this)
-2. **Dissatisfaction with AI output quality** where the WoW Expert has functioned within its specified Decision Space — AI advisory services involve inherent uncertainty
-3. **WoW Expert Trading Professional** — losses incurred in trading decisions made in reliance on the analytical output. The trading service provides analysis only; trading outcomes are not warranted
+2. **Dissatisfaction with AI output quality** where the WaooaW Expert has functioned within its specified Decision Space — AI advisory services involve inherent uncertainty
+3. **WaooaW Expert Trading Professional** — losses incurred in trading decisions made in reliance on the analytical output. The trading service provides analysis only; trading outcomes are not warranted
 4. **Subscription paused by the Customer** — no refund for unused days during a Customer-initiated pause
 5. **Account terminated for breach** of the Terms of Service — no refund on termination for cause
-5. **Third-party costs** incurred as a result of WoW Expert actions (e.g., Meta ad spend, Google Ads spend) — governed by respective third-party platform policies
+5. **Third-party costs** incurred as a result of WaooaW Expert actions (e.g., Meta ad spend, Google Ads spend) — governed by respective third-party platform policies
 6. **Referral credits** — non-transferable and non-refundable in cash
 
-### 6A. WoW Expert Private Tutor — Mandatory Student Data Deletion on Subscription End
+### 6A. WaooaW Expert Private Tutor — Mandatory Student Data Deletion on Subscription End
 
 When a Private Tutor subscription ends — for any reason (cancellation, non-renewal, termination, refund) — the following applies automatically and unconditionally:
 
@@ -133,12 +133,12 @@ If you wish to retain your child's learning records, you must export them via th
 
 ---
 
-## 7. WoW Expert Trading Professional — Special Provisions
+## 7. WaooaW Expert Trading Professional — Special Provisions
 
 In addition to Clause 6 above:
 
-- No refund will be issued based on trading losses, market movements, or outcomes of trades taken in reliance on the WoW Expert's analytical output
-- DLAISD expressly disclaims any warranty regarding the accuracy, profitability, or suitability of any analytical output from the WoW Expert Trading Professional
+- No refund will be issued based on trading losses, market movements, or outcomes of trades taken in reliance on the WaooaW Expert's analytical output
+- DLAISD expressly disclaims any warranty regarding the accuracy, profitability, or suitability of any analytical output from the WaooaW Expert Trading Professional
 - You acknowledge having read and accepted the **SEBI Disclaimer** in the Terms of Service (Clause 12.1) before subscribing to the trading service
 
 ---

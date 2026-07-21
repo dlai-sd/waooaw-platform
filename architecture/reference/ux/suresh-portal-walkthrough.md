@@ -90,10 +90,10 @@ Suresh types in Marathi voice (Android Marathi keyboard voice input):
 > *"मी कापूस शेती करतो, नागपूर जिल्हा"* ("I do cotton farming, Nagpur district")
 
 WoW Concierge responds (Marathi):
-> *"नागपूर जिल्ह्यातील कापूस शेतकऱ्यांसाठी WoW Expert Agricultural Advisor उपलब्ध आहे — हवामान सतर्कता, मंडी भाव, आणि पीक सल्ला मराठीत, WhatsApp वर.
+> *"नागपूर जिल्ह्यातील कापूस शेतकऱ्यांसाठी WaooaW Expert Agricultural Advisor उपलब्ध आहे — हवामान सतर्कता, मंडी भाव, आणि पीक सल्ला मराठीत, WhatsApp वर.
 > तुमच्या शेतासाठी काय करेल ते पाहायचे आहे का?"*
 
-**UX requirement met:** C-042 — no technical terms. "WoW Expert Agricultural Advisor" not "AI Agricultural Agent v2.7".
+**UX requirement met:** C-042 — no technical terms. "WaooaW Expert Agricultural Advisor" not "AI Agricultural Agent v2.7".
 
 ---
 
@@ -111,7 +111,7 @@ After 3 WoW Concierge exchanges, Suresh taps:
 
 ```
 ┌──────────────────────────────────────────┐
-│  WoW Expert Agricultural Advisor         │
+│  WaooaW Expert Agricultural Advisor         │
 │  7 दिवस मोफत. कार्ड आवश्यक नाही.          │
 │  (7 days free. No card needed.)          │
 │                                          │
@@ -341,13 +341,13 @@ After any OAuth provider completes, Suresh sees a 2-step completion screen (if f
 
 **Step 1 — The one thing we need (if not from OAuth):**
 ```
-"WoW Expert Agricultural Advisor तुमच्याशी WhatsApp वर बोलेल.
+"WaooaW Expert Agricultural Advisor तुमच्याशी WhatsApp वर बोलेल.
  तुमचा WhatsApp नंबर काय आहे?"
 
 [+91 __________]
 
-ℹ "हा नंबर फक्त तुमच्या WoW Expert साठी वापरला जाईल."
-  ("This number is used only for your WoW Expert.")
+ℹ "हा नंबर फक्त तुमच्या WaooaW Expert साठी वापरला जाईल."
+  ("This number is used only for your WaooaW Expert.")
 ```
 
 **Complete minimum field set:**
@@ -398,7 +398,7 @@ Progressive completion:
 │ सुप्रभात, सुरेश! 🌅                      │
 │                                          │
 │ ┌────────────────────────────────────┐   │
-│ │  WoW Expert Agricultural Advisor   │   │
+│ │  WaooaW Expert Agricultural Advisor   │   │
 │ │  तुमची 7 दिवसांची मोफत चाचणी     │   │
 │ │  सुरू आहे.                        │   │
 │ │                                    │   │
@@ -422,7 +422,7 @@ Primary:   [WhatsApp वर बोला →]    ← Opens WA deep link: wa.me/[
 Secondary: [Portal वर चॅट करा →]  ← Web portal conversation (same agent, different channel)
 
 The WhatsApp link pre-loads a conversation opener:
-"नमस्कार! मी सुरेश, नागपूर जिल्ह्यातून. WoW Expert Agricultural Advisor वापरायचा आहे."
+"नमस्कार! मी सुरेश, नागपूर जिल्ह्यातून. WaooaW Expert Agricultural Advisor वापरायचा आहे."
 (Agent recognises the number from registration — no need to re-introduce)
 ```
 
@@ -435,8 +435,8 @@ Suresh taps "WhatsApp वर बोला" → WhatsApp opens with the pre-compo
 Agent receives the message, identifies Suresh from phone number, sees `profile_completion_status: PARTIAL`.
 
 **Agent opens (Marathi voice message + text):**
-> *"नमस्ते सुरेश! मी तुमचा WoW Expert Agricultural Advisor. तुम्ही कापूस पिकवता हे मला कळले. या हंगामात किती एकर कापूस आहे?"*
-> ("Hello Suresh! I'm your WoW Expert Agricultural Advisor. I understand you grow cotton. How many acres of cotton this season?")
+> *"नमस्ते सुरेश! मी तुमचा WaooaW Expert Agricultural Advisor. तुम्ही कापूस पिकवता हे मला कळले. या हंगामात किती एकर कापूस आहे?"*
+> ("Hello Suresh! I'm your WaooaW Expert Agricultural Advisor. I understand you grow cotton. How many acres of cotton this season?")
 
 This is **conversational profile completion** (C-039) — the first question fills in `farm_area_hectares`. The customer experiences a helpful conversation, not a form.
 
@@ -463,7 +463,7 @@ WhatsApp conversation is the source of truth; portal is a mirror.
 
 ### D-1 — Suresh's Referral Scenario
 
-After 10 days on the platform, Suresh's WoW Expert correctly predicted a hail storm 72 hours in advance. Suresh tells his farming group on WhatsApp. Harbhajan (Punjab wheat farmer) asks: *"कुठे मिळेल?"* ("Where can I get it?")
+After 10 days on the platform, Suresh's WaooaW Expert correctly predicted a hail storm 72 hours in advance. Suresh tells his farming group on WhatsApp. Harbhajan (Punjab wheat farmer) asks: *"कुठे मिळेल?"* ("Where can I get it?")
 
 Suresh taps the Refer a Friend option in My Profile.
 
@@ -617,7 +617,7 @@ Suresh opens the portal at 7 AM to check on his cotton. He sees:
 │                                            │
 │ सुप्रभात, सुरेश!  शनिवार, 18 जुलै 2026    │
 │                                            │
-│ ┌── WoW Expert Agricultural Advisor ─────┐ │
+│ ┌── WaooaW Expert Agricultural Advisor ─────┐ │
 │ │  सक्रिय आहे (6:30 पासून)              │ │
 │ │                                        │ │
 │ │  आज:                                   │ │
@@ -631,16 +631,16 @@ Suresh opens the portal at 7 AM to check on his cotton. He sees:
 │ │  [WhatsApp वर बोला]  [पूर्ण इतिहास]  │ │
 │ └────────────────────────────────────────┘ │
 │                                            │
-│ [+ नवीन WoW Expert जोडा]                  │
+│ [+ नवीन WaooaW Expert जोडा]                  │
 └────────────────────────────────────────────┘
 ```
 
 **"Curious, Engaged, Informed" model in action:**
 - **Engaged:** Activity feed shows what the agent did before Suresh woke up. He doesn't need to ask.
-- **Curious:** "नवीन WoW Expert जोडा" (Add new WoW Expert) — surfaces other agent types
+- **Curious:** "नवीन WaooaW Expert जोडा" (Add new WaooaW Expert) — surfaces other agent types
 - **Informed:** Platform insight card (dismissable, once/week):
-  > *"तुमचा WoW Expert फक्त तुमच्यासाठी काम करतो. इतर कुठल्याही शेताची माहिती त्याला नाही."*
-  > ("Your WoW Expert works only for you. It has no information about any other farm.")
+  > *"तुमचा WaooaW Expert फक्त तुमच्यासाठी काम करतो. इतर कुठल्याही शेताची माहिती त्याला नाही."*
+  > ("Your WaooaW Expert works only for you. It has no information about any other farm.")
   This builds the constitutional trust story for Suresh without technical language.
 
 ---
@@ -657,7 +657,7 @@ Suresh presses [⏹ Active]:
 │  ⏹ थांबवा                                  │
 │  STOP NOW                                  │
 │                                            │
-│  WoW Expert Agricultural Advisor थांबेल.  │
+│  WaooaW Expert Agricultural Advisor थांबेल.  │
 │  सर्व काम 250ms मध्ये थांबेल.             │
 │                                            │
 │  [हो, थांबवा]     [रद्द करा]              │
@@ -665,7 +665,7 @@ Suresh presses [⏹ Active]:
 └────────────────────────────────────────────┘
 
 After confirmation:
-"तुमच्या WoW Expert ने काम थांबवले आहे (7:23 AM)
+"तुमच्या WaooaW Expert ने काम थांबवले आहे (7:23 AM)
  तुम्ही सांगाल तेव्हा पुन्हा सुरू करेल."
 [पुन्हा सुरू करा]
 ```
@@ -695,8 +695,8 @@ C-001 compliance: confirmed — 2 taps maximum from any screen to Emergency Stop
 │  │   चाचणी संपते: 25 जुलै 2026            │
 │  └── Payment माहिती जोडा               [›] │
 │                                            │
-│  WoW Expert Scope                          │
-│  └── WoW Expert काय करू शकतो?         [›] │
+│  WaooaW Expert Scope                          │
+│  └── WaooaW Expert काय करू शकतो?         [›] │
 │                                            │
 │  मदत                                       │
 │  ├── प्रश्न विचारा (WoW Concierge)    [›]  │

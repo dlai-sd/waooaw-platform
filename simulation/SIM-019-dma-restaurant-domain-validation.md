@@ -3,7 +3,7 @@
 **Date:** 2026-07-19
 **Purpose:** Validate DMA v3.0 domain-agnostic architecture against a non-dental, non-beauty use case.
             Surface any remaining dental/healthcare vocabulary drift. Identify restaurant-specific gaps.
-**Agent:** WAOOAW AI Agent — WoW Expert Digital Marketing (DMA v3.0)
+**Agent:** WAOOAW AI Agent — WaooaW Expert Digital Marketing (DMA v3.0)
 **Business:** Shri Krishna Veg Restaurant, Hadapsar, Pune
 **Domain resolved:** `restaurant`
 **Grade:** A (after gap bridge applied in this session)

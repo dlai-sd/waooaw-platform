@@ -35,7 +35,7 @@ ALTER TABLE business.organisations
     ADD COLUMN IF NOT EXISTS whitelabel_brand_name VARCHAR(100),
     -- Name shown to end-customers instead of "WAOOAW" (e.g., "Yashus AI")
     ADD COLUMN IF NOT EXISTS whitelabel_agent_prefix VARCHAR(50),
-    -- Replaces "WoW Expert" in agent names (e.g., "Yashus Expert")
+    -- Replaces "WaooaW Expert" in agent names (e.g., "Yashus Expert")
     ADD COLUMN IF NOT EXISTS whitelabel_portal_domain VARCHAR(200),
     -- Custom domain (e.g., clients.yashus.in) — Cloudflare CNAME to waooaw.ai
     ADD COLUMN IF NOT EXISTS whitelabel_logo_url VARCHAR(500),

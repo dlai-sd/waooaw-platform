@@ -28,10 +28,10 @@ SET search_path TO professional, public;
 
 -- Agent types — must stay in sync with AGENT-AUTHORING-GUIDE and acceptance scenarios
 CREATE TYPE agent_type AS ENUM (
-    'DMA',                      -- WoW Expert Digital Marketing Agent
-    'TRADING',                  -- WoW Expert Trading Advisor
-    'AGRICULTURAL',             -- WoW Expert Agricultural Advisor
-    'PRIVATE_TUTOR',            -- WoW Expert Private Tutor
+    'DMA',                      -- WaooaW Expert Digital Marketing Agent
+    'TRADING',                  -- WaooaW Expert Trading Advisor
+    'AGRICULTURAL',             -- WaooaW Expert Agricultural Advisor
+    'PRIVATE_TUTOR',            -- WaooaW Expert Private Tutor
     'PLATFORM_IT_EXPERT',       -- Internal: WAOOAW AI Agent — Platform IT Expert
     'STEWARD_ASSISTANT',        -- Internal: WAOOAW AI Agent — Steward Assistant (C-068)
     'SELF_IMPROVEMENT_ANALYST', -- Internal: WAOOAW AI Agent — Self-Improvement Analyst (C-069)

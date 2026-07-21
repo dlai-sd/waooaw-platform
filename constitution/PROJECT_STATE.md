@@ -126,9 +126,9 @@ FOUNDER ACTIONS OUTSTANDING (before live customers):
 - Urdu RTL: Phase 1 (CSS logical properties mandatory throughout)
 - Grievance Officer: Yogesh Khandge — yogesh.khandge@dlaisd.com
 - Navigation: logged-out (Home · Agents · Blogs · Settings · Login/Register), logged-in (Home · My Agents · My Profile)
-- Agent naming: "WoW Expert [Profession]" — "WoW Expert" prefix fixed, suffix customer-customisable
+- Agent naming: "WaooaW Expert [Profession]" — "WaooaW Expert" prefix fixed, suffix customer-customisable
 - WoW Concierge: WAOOAW platform voice, unnamed, 3 free exchanges then soft nudge
-- Blogs: research-based institutional voice, byline "By WoW Expert [Domain] · WAOOAW Research"
+- Blogs: research-based institutional voice, byline "By WaooaW Expert [Domain] · WAOOAW Research"
 - Settings (pre-login): language + theme only
 - Activity Log: inside each agent card, not top-level nav
 - Platform value proposition: "Try before you buy · Reduce effort 80% · Autonomous, secure, trusted" (stat gate: 50+ customers for specific numbers)

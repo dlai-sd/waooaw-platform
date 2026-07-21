@@ -31,7 +31,7 @@ Everything on the portal — every screen, every word, every interaction — mus
 
 | Truth | What Suresh experiences | What the portal shows |
 |---|---|---|
-| **AI agents based on constitution and innovation** | "My WoW Expert only works for me — no one else's farm" | Scope card showing the agent's boundaries. "Working only for you." |
+| **AI agents based on constitution and innovation** | "My WaooaW Expert only works for me — no one else's farm" | Scope card showing the agent's boundaries. "Working only for you." |
 | **Reduce effort by 80%** | Suresh does nothing — the agent acts first | Activity feed showing what the agent did *today*, unprompted |
 | **Improve outcomes by 50%** | Better harvest decisions, better prices | Outcome history: "Last season: ₹8/kg more than market average" |
 | **60% cost reduction** | Less wasted spend on advice, pesticides, middlemen | Cost savings tracker (unlocked after FR-005 stat gate: 50+ customers) |
@@ -122,9 +122,9 @@ float: inline-start;
 | Language switcher | Globe icon + current language name. Always visible in header. |
 | Language persistence | Browser `localStorage` pre-login. Migrated to user profile on registration. |
 
-**C-042 localisation obligation:** Translations are NOT literal. Per-agent vocabulary must be translated in occupational terms. "Decision Space" → never appears in any language. "Agent activity log" → "Aaj Aapke WoW Expert ne kya kiya" (Hindi: "What your WoW Expert did today"). The translation is of the meaning, not the word.
+**C-042 localisation obligation:** Translations are NOT literal. Per-agent vocabulary must be translated in occupational terms. "Decision Space" → never appears in any language. "Agent activity log" → "Aaj Aapke WaooaW Expert ne kya kiya" (Hindi: "What your WaooaW Expert did today"). The translation is of the meaning, not the word.
 
-**Who translates:** WAOOAW AI — not human translators. Platform operations — including content generation, translation, and research — are performed by AI agents. The founding team (Yogesh, Sujay, Ojal) governs; AI agents execute. This is by design: a human translator produces technically accurate text; WAOOAW AI produces constitutionally faithful text — preserving occupational vocabulary, the WoW Expert persona tone, and the constitutional principles embedded in every string. A human translating "Evidence recorded" into Marathi produces "पुरावा नोंदवला" (literal). WAOOAW AI translates it as "नोंद झाली ✓" ("Done — logged") — which is what C-042 requires.
+**Who translates:** WAOOAW AI — not human translators. Platform operations — including content generation, translation, and research — are performed by AI agents. The founding team (Yogesh, Sujay, Ojal) governs; AI agents execute. This is by design: a human translator produces technically accurate text; WAOOAW AI produces constitutionally faithful text — preserving occupational vocabulary, the WaooaW Expert persona tone, and the constitutional principles embedded in every string. A human translating "Evidence recorded" into Marathi produces "पुरावा नोंदवला" (literal). WAOOAW AI translates it as "नोंद झाली ✓" ("Done — logged") — which is what C-042 requires.
 
 **Translation standard:**
 - Source truth: `en.json` (English strings, authored to constitutional vocabulary spec)
@@ -442,7 +442,7 @@ Calm state (agent active, no concern):
 Danger state (triggered by customer — expands):
   ┌──────────────────────────────────────┐
   │        ⏹ STOP NOW                   │  ← full-width red bar
-  │  Your WoW Expert is pausing now.     │
+  │  Your WaooaW Expert is pausing now.     │
   │  All activity will stop within 250ms.│
   └──────────────────────────────────────┘
 ```
@@ -460,9 +460,9 @@ Every action that writes a Constitutional Engine evidence record must show a vis
 
 **Visual pattern:**
 ```
-Customer action: "Hire WoW Expert Dental Marketing"
+Customer action: "Hire WaooaW Expert Dental Marketing"
 
-  [Hire WoW Expert Dental Marketing]  ← button
+  [Hire WaooaW Expert Dental Marketing]  ← button
         ↓ (customer taps)
   ⟳ Setting up your professional...   ← pending state, --color-pending
         ↓ (CE confirms, ~200ms)
@@ -480,7 +480,7 @@ Every hired agent has a **Scope Card** — a plain-language view of what their p
 
 ```
 ┌─────────────────────────────────────────────┐
-│ WoW Expert Dental Marketing — Your Scope    │
+│ WaooaW Expert Dental Marketing — Your Scope    │
 │                                             │
 │ ✓ Posts on Instagram, Facebook, WhatsApp    │
 │ ✓ Responds to Google reviews                │
@@ -503,7 +503,7 @@ Every hired agent has a **Scope Card** — a plain-language view of what their p
 This is the post-login design principle for customers like Suresh. The portal must not be a passive dashboard. It must be a living presence that makes Suresh feel his professional is always working.
 
 **Curious** — the platform surfaces what Suresh doesn't know to ask:
-- "Your WoW Expert noticed something this morning." → unexpected proactive insight
+- "Your WaooaW Expert noticed something this morning." → unexpected proactive insight
 - "Farmers near you are asking about X. Here's what it means for your crop."
 - New agent types teased: "WoW is working on new professionals. Coming soon: Legal Advisory."
 - Platform vision micro-content: brief, plain-language explainer cards about what constitutional AI means for farmers. Shown once per week max. Never forced.
@@ -521,8 +521,8 @@ Activity is shown in Suresh's language, using his vocabulary, with actionable ne
 
 **Informed** — the platform shares its vision, simply:
 - Small "Did you know?" cards in the portal (dismissable, once/week max):
-  - "WoW Expert is constitutionally bound to work only for your farm — never for a competitor."
-  - "Every decision your WoW Expert makes is recorded. You can ask to see it anytime."
+  - "WaooaW Expert is constitutionally bound to work only for your farm — never for a competitor."
+  - "Every decision your WaooaW Expert makes is recorded. You can ask to see it anytime."
   - "WAOOAW is research-based. This tip is backed by ICAR data from 2024."
 - These cards build the constitutional trust story without requiring Suresh to read a whitepaper.
 
@@ -574,7 +574,7 @@ Mobile bottom bar:
 Activity log (evidence ledger in plain language) lives **inside each agent card**, not as a top-level nav item.
 
 ```
-My Agents → WoW Expert Dental Marketing card → "See full activity" →
+My Agents → WaooaW Expert Dental Marketing card → "See full activity" →
   ↳ Timeline: today's posts, patient reviews responded, ad spend this week
 ```
 
@@ -614,7 +614,7 @@ Mobile (375px):
 │ │ "I trade F&O on NSE"                │ │
 │ │ "I want a tutor for my child"       │ │
 │ └─────────────────────────────────────┘ │
-│ [→ Meet your WoW Expert]                │
+│ [→ Meet your WaooaW Expert]                │
 │                                         │
 │ ──── or browse professionals ────       │
 └─────────────────────────────────────────┘
@@ -622,7 +622,7 @@ Mobile (375px):
 
 - Input box: `--color-evidence` border glow on focus (green — the constitutional signal)
 - Cycling placeholder: rotates through agent-type examples every 3 seconds, `prefers-reduced-motion` stops cycling
-- CTA: "Meet your WoW Expert" — outcome-first language, not "Search" or "Explore"
+- CTA: "Meet your WaooaW Expert" — outcome-first language, not "Search" or "Explore"
 - Input is free text — customer types anything, WoW Concierge interprets
 
 **Surface 2 — Agent Preview Cards (below hero, home page):**
@@ -631,7 +631,7 @@ Each public agent type has a card:
 
 ```
 ┌──────────────────────────────────────────┐
-│  WoW Expert                              │
+│  WaooaW Expert                              │
 │  Dental Marketing                        │
 │                                          │
 │  "More patients. Better reviews.         │
@@ -663,7 +663,7 @@ Expanded:   320px chat panel, slides up from bottom-right
 
 Context-aware opening message:
 - On home page: "Tell me about your business."
-- On DMA agent page: "What kind of business do you run? I'll show you what WoW Expert Marketing would do for it."
+- On DMA agent page: "What kind of business do you run? I'll show you what WaooaW Expert Marketing would do for it."
 - On Blogs page: "Did this article raise any questions? Ask me."
 - On Pricing page: "Want to see what's included before you decide?"
 
@@ -674,7 +674,7 @@ Context-aware opening message:
 ```
 Exchange 1 — Discovery
   Customer: "I have a dental clinic in Pune, 2 chairs, mostly families"
-  WoW:      "Perfect. WoW Expert Dental Marketing handles Instagram,
+  WoW:      "Perfect. WaooaW Expert Dental Marketing handles Instagram,
               WhatsApp, Google reviews, and patient reactivation
               specifically for dental practices like yours.
               Want to see what they'd do for your clinic?"
@@ -682,7 +682,7 @@ Exchange 1 — Discovery
 Exchange 2 — Demonstration
   Customer: "Yes, show me"
   WoW:      "Here's a real scenario: a patient leaves a 3★ Google review
-              after a long wait. Your WoW Expert responds within 2 hours:
+              after a long wait. Your WaooaW Expert responds within 2 hours:
               [shows simulated response in dental vocabulary]
               *Based on a typical scenario*
               Want to see your week's social media plan?"
@@ -727,7 +727,7 @@ Soft nudge (after 3rd exchange):
   ↓
 "Tell us about your business" — 3-question quick profiling (conversational, not a form)
   ↓
-"Your WoW Expert is ready. No card needed. Trial ends in 7 days."
+"Your WaooaW Expert is ready. No card needed. Trial ends in 7 days."
   ↓
 [Access your portal →]  (registration at this point — email/phone, no payment)
   ↓
@@ -744,7 +744,7 @@ Full portal access — agent immediately begins working
 **Day 7:** Gentle final nudge. No aggressive countdown.
 
 **Day 8:** Agent pauses. Customer sees:
-> "Your trial ended. Here's what WoW Expert Dental Marketing did in your 7 days: [summary]. Continue from ₹1,499/month?"
+> "Your trial ended. Here's what WaooaW Expert Dental Marketing did in your 7 days: [summary]. Continue from ₹1,499/month?"
 
 Trial data retention: 7 days after trial end for conversion opportunity, then deleted (C-063). Customer is informed of this at trial start.
 
@@ -758,11 +758,11 @@ Trial data retention: 7 days after trial end for conversion opportunity, then de
 
 | Never | Always |
 |---|---|
-| "Our AI-powered platform leverages multi-agent orchestration" | "Your WoW Expert handled this. Here's what they did." |
+| "Our AI-powered platform leverages multi-agent orchestration" | "Your WaooaW Expert handled this. Here's what they did." |
 | "Configure your Decision Space parameters" | "Tell your professional what you need them to do" |
 | "Constitutional Engine validation successful" | "Done ✓" |
 | "ML inference completed" | (invisible — customers never see inference language) |
-| "Error 403 — Unauthorized action" | "This isn't something your WoW Expert can do — here's what is possible:" |
+| "Error 403 — Unauthorized action" | "This isn't something your WaooaW Expert can do — here's what is possible:" |
 
 ### 9.2 Per-Agent Vocabulary (C-042 Mandate)
 
@@ -777,7 +777,7 @@ Trial data retention: 7 days after trial end for conversion opportunity, then de
 
 | Context | Label |
 |---|---|
-| Hiring an agent | "Hire WoW Expert [Name]" |
+| Hiring an agent | "Hire WaooaW Expert [Name]" |
 | Starting a trial | "Try free — [X] days" |
 | Emergency Stop | "Stop" (calm) / "STOP NOW" (active) |
 | Confirming scope change | "Confirm — [specific change]" |
@@ -792,8 +792,8 @@ Trial data retention: 7 days after trial end for conversion opportunity, then de
 
 | Screen | Never | Always |
 |---|---|---|
-| No agents hired | "No professionals hired" | "Ready to hire your first WoW Expert? It takes 10 minutes." [Start →] |
-| No activity yet | "No data available" | "Your WoW Expert starts working as soon as you confirm their scope. [Set up now →]" |
+| No agents hired | "No professionals hired" | "Ready to hire your first WaooaW Expert? It takes 10 minutes." [Start →] |
+| No activity yet | "No data available" | "Your WaooaW Expert starts working as soon as you confirm their scope. [Set up now →]" |
 | No blogs | "No posts found" | "We're writing something useful. Check back soon." |
 | Trial not started | "No trial active" | "Try any professional free — no card needed. [Choose →]" |
 
@@ -959,10 +959,10 @@ Each data field collected during onboarding shows a `(?)` icon with a tooltip:
   → "Used to research your market and competitors. Stored in your profile."
 
 [Phone number] (?)
-  → "Used to send you WhatsApp updates from your WoW Expert. Not shared with anyone."
+  → "Used to send you WhatsApp updates from your WaooaW Expert. Not shared with anyone."
 
 [Crop type] — Agricultural only (?)
-  → "Your WoW Expert needs this to give you relevant advice. Stored for your account only."
+  → "Your WaooaW Expert needs this to give you relevant advice. Stored for your account only."
 ```
 
 ---
@@ -975,11 +975,11 @@ Blogs are WAOOAW's institutional voice as a **research-based AI platform contrib
 
 ### 11.2 Blog Structure
 
-**Byline format:** "By WoW Expert [Domain] · WAOOAW Research · [Date]"
+**Byline format:** "By WaooaW Expert [Domain] · WAOOAW Research · [Date]"
 
 Examples:
-- "By WoW Expert Dental Marketing · WAOOAW Research · July 2026"
-- "By WoW Expert Agricultural Advisor · WAOOAW Research · July 2026"
+- "By WaooaW Expert Dental Marketing · WAOOAW Research · July 2026"
+- "By WaooaW Expert Agricultural Advisor · WAOOAW Research · July 2026"
 
 ### 11.3 Blog Categories
 
@@ -997,11 +997,11 @@ Every blog post ends with a contextual WoW Concierge invitation:
 
 ```
 ─────────────────────────────────────────────────────
-Written by WoW Expert Dental Marketing · WAOOAW Research
+Written by WaooaW Expert Dental Marketing · WAOOAW Research
 
 This professional is available to hire.
 
-[Talk to WoW Expert Dental Marketing →]   [Try free — 7 days]
+[Talk to WaooaW Expert Dental Marketing →]   [Try free — 7 days]
 ─────────────────────────────────────────────────────
 ```
 
@@ -1031,10 +1031,10 @@ This professional is available to hire.
 Agent-triggered notifications (WhatsApp is primary; push notification for PWA is secondary):
 
 ```
-Format: "[WoW Expert] → [plain-language action]"
+Format: "[WaooaW Expert] → [plain-language action]"
 
-Good:  "WoW Expert Dental Marketing → Posted your Tuesday content ✓"
-Good:  "WoW Expert Agricultural → Hail risk tomorrow in Katol. Your cotton is covered."
+Good:  "WaooaW Expert Dental Marketing → Posted your Tuesday content ✓"
+Good:  "WaooaW Expert Agricultural → Hail risk tomorrow in Katol. Your cotton is covered."
 Bad:   "Agent task execution completed: INSTAGRAM_POST_PUBLISHED (status: SUCCESS)"
 ```
 
@@ -1081,7 +1081,7 @@ All notifications in the customer's selected language.
 │  No black boxes.                                        │
 │                                                         │
 │  🟠 Works while you don't                               │
-│  Your WoW Expert is active before you wake up.          │
+│  Your WaooaW Expert is active before you wake up.          │
 │  You review outcomes, not tasks.                        │
 │                                                         │
 │  ─────── Platform DNA ───────                           │
@@ -1125,10 +1125,10 @@ All notifications in the customer's selected language.
 │                                                         │
 │  ──── AI Workforce ────                                 │
 │                                                         │
-│  [WoW Expert Digital Marketing]   Active                │
-│  [WoW Expert Agricultural Advisor] Active               │
-│  [WoW Expert Trading Professional] Active               │
-│  [WoW Expert Private Tutor]        Active               │
+│  [WaooaW Expert Digital Marketing]   Active                │
+│  [WaooaW Expert Agricultural Advisor] Active               │
+│  [WaooaW Expert Trading Professional] Active               │
+│  [WaooaW Expert Private Tutor]        Active               │
 │  + more coming                                          │
 │                                                         │
 │  ─────── Contribute ───────                             │
@@ -1170,7 +1170,7 @@ All notifications in the customer's selected language.
 │  └──────────────────────────────────────────────────┘   │
 │                                                         │
 │  [Support tab — default]:                               │
-│  For questions about your WoW Expert or your account.   │
+│  For questions about your WaooaW Expert or your account.   │
 │                                                         │
 │  🟢 WhatsApp (fastest)                                  │
 │  [wa.me/918888912344]  → opens WhatsApp directly        │
@@ -1243,21 +1243,21 @@ All notifications in the customer's selected language.
 │  [Same agent cards as /agents — each with "Hire" CTA]   │
 │                                                         │
 │  ┌──────────────────────────────────┐                   │
-│  │  WoW Expert Dental Marketing     │                   │
+│  │  WaooaW Expert Dental Marketing     │                   │
 │  │  Digital Marketing Professional  │                   │
 │  │  Actively available · ₹1,499/mo  │                   │
 │  │  [Try free — 7 days]  ← primary  │                   │
 │  │  [Hire this professional →]       │                   │
 │  └──────────────────────────────────┘                   │
 │                                                         │
-│  [WoW Expert Agricultural Advisor card]                 │
-│  [WoW Expert Trading Professional card]                 │
-│  [WoW Expert Private Tutor card]                        │
+│  [WaooaW Expert Agricultural Advisor card]                 │
+│  [WaooaW Expert Trading Professional card]                 │
+│  [WaooaW Expert Private Tutor card]                        │
 │                                                         │
 │  ┌─────── Coming soon ──────────────┐                   │
-│  │  WoW Expert Legal Professional   │  ← teaser cards  │
-│  │  WoW Expert HR Professional      │    greyed out     │
-│  │  WoW Expert Accounting           │                   │
+│  │  WaooaW Expert Legal Professional   │  ← teaser cards  │
+│  │  WaooaW Expert HR Professional      │    greyed out     │
+│  │  WaooaW Expert Accounting           │                   │
 │  └──────────────────────────────────┘                   │
 │                                                         │
 │  ─────── For Humans ───────                             │
@@ -1306,7 +1306,7 @@ Quick reference: every WAOOAW-specific UX term and what it means to a customer.
 |---|---|---|
 | Constitutional Engine | (hidden) | (hidden) |
 | Evidence record | "Logged" / "Confirmed" | "दर्ज किया गया" |
-| Decision Space | "What your professional can do" | "आपके WoW Expert का दायरा" |
+| Decision Space | "What your professional can do" | "आपके WaooaW Expert का दायरा" |
 | Emergency Stop | "Stop" | "रोकें" |
 | Scope boundary | "This is as far as they go" | "यहाँ तक ही" |
 | PAAS session | (hidden — customers never see this) | (hidden) |

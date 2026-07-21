@@ -18,7 +18,7 @@ Gaps found are catalogued and bridged in `architecture/reference/agents/CONSTITU
 
 ---
 
-## Agent 1: WoW Expert Digital Marketing Agent (DMA v2.9)
+## Agent 1: WaooaW Expert Digital Marketing Agent (DMA v2.9)
 
 **Scenario:** Dr. Mehta's DMA agent (Skill 3) creates an Instagram Reel and publishes it.
 
@@ -59,7 +59,7 @@ Gaps found are catalogued and bridged in `architecture/reference/agents/CONSTITU
 
 ---
 
-## Agent 2: WoW Expert Trading Advisor (Trading v1.7)
+## Agent 2: WaooaW Expert Trading Advisor (Trading v1.7)
 
 **Scenario:** Rahul's trading agent (PAAS) detects a NIFTY signal, executes a trade, then market regime changes and the strategy stops working.
 
@@ -97,7 +97,7 @@ Gaps found are catalogued and bridged in `architecture/reference/agents/CONSTITU
 
 ---
 
-## Agent 3: WoW Expert Agricultural Advisor (Agricultural v2.7)
+## Agent 3: WaooaW Expert Agricultural Advisor (Agricultural v2.7)
 
 **Scenario:** Suresh asks for pesticide timing advice. Agent gives advice. Advice turns out to be wrong (unexpected rain).
 
@@ -135,7 +135,7 @@ Gaps found are catalogued and bridged in `architecture/reference/agents/CONSTITU
 
 ---
 
-## Agent 4: WoW Expert Private Tutor (v1.0)
+## Agent 4: WaooaW Expert Private Tutor (v1.0)
 
 **Scenario:** Priya's child (Class 8 Maths) has a lesson. Agent detects the child is struggling with geometry. Agent modifies lesson plan. Parent receives progress report via WhatsApp.
 

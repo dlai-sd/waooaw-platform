@@ -112,7 +112,7 @@ IMPLEMENTATION DEPENDENCY CHAIN
   │  6d. Customer dashboard (activity feed, emergency stop, scope card)         │
   └──────────────────────────────────────┬──────────────────────────────────────┘
   ┌─ TRACK 7: DMA AS-001 (Weeks 5-6) ──────────────────────────────────────────┐
-  │  Goal: Dr. Mehta hires WoW Expert Dental Marketing → agent posts on        │
+  │  Goal: Dr. Mehta hires WaooaW Expert Dental Marketing → agent posts on        │
   │        Instagram → patient books an appointment.                            │
   │  7a. DMA Decision Space configuration (all 19 skills)                       │
   │  7b. Instagram MCP integration                                              │
@@ -154,7 +154,7 @@ IMPLEMENTATION DEPENDENCY CHAIN
 | **M6**: AI Runtime — LLM Gateway + RAG pipeline live | 4 | WAOOAW AI Agent — Developer | M5 complete |
 | **M7**: Web Portal — registration + WoW Concierge + dashboard | 4 | WAOOAW AI Agent — Developer | M4 complete (parallel with M5/M6) |
 
-**Phase 1 exit criterion:** A test user can register on the portal, hire a (stub) WoW Expert, and Emergency Stop works in ≤250ms.
+**Phase 1 exit criterion:** A test user can register on the portal, hire a (stub) WaooaW Expert, and Emergency Stop works in ≤250ms.
 
 ### Phase 2 — First Acceptance Scenario (Weeks 5-6)
 
@@ -165,7 +165,7 @@ IMPLEMENTATION DEPENDENCY CHAIN
 | **M10**: DMA first post sent to Instagram in dev | 5 | Sujay reviews output | M9 complete + Sujay approval |
 | **M11**: AS-001 passes in QA environment | 6 | WAOOAW AI Agent — QA | Blue-green QA deploy |
 
-**Phase 2 exit criterion:** Dr. Mehta can hire WoW Expert Dental Marketing, the agent posts content, a patient can message via WhatsApp. Sujay reviews the post quality. Ojal reviews constitutional compliance.
+**Phase 2 exit criterion:** Dr. Mehta can hire WaooaW Expert Dental Marketing, the agent posts content, a patient can message via WhatsApp. Sujay reviews the post quality. Ojal reviews constitutional compliance.
 
 ### Phase 3 — All Agents (Weeks 7-9)
 
@@ -308,11 +308,11 @@ The following must be completed by Yogesh/Sujay before the milestones that depen
 
 | Process | Owner | Trigger | SLA |
 |---|---|---|---|
-| Trial conversion nudge | WoW Expert agent (automated) | Day 5 of trial | Automatic |
+| Trial conversion nudge | WaooaW Expert agent (automated) | Day 5 of trial | Automatic |
 | C-049 escalation handling | WAOOAW AI Agent — Platform Operations | Agent triggers C-049 | Within 4h |
 | Subscription payment failure | WAOOAW AI Agent (Razorpay webhook) | Payment fails | WhatsApp link sent within 1h |
 | Grievance handling | Yogesh Khandge (Grievance Officer) | Customer submits grievance | 30 days (IT Rules 2021) |
-| Monthly Business Review | WoW Expert agent (automated, per B-04) | Monthly, each customer | Automatic |
+| Monthly Business Review | WaooaW Expert agent (automated, per B-04) | Monthly, each customer | Automatic |
 
 ---
 
@@ -321,7 +321,7 @@ The following must be completed by Yogesh/Sujay before the milestones that depen
 Three approaches were evaluated:
 
 ### Approach A: Big Bang (rejected)
-All 5 services + 4 agent types implemented simultaneously by parallel AI Agent instances. Fast on paper but creates massive integration-testing complexity. When Dr. Mehta can't hire a WoW Expert, the bug could be in CE, BP, PR, AIR, or the Web — any layer. Debugging cross-service issues in a big-bang approach is disproportionately expensive.
+All 5 services + 4 agent types implemented simultaneously by parallel AI Agent instances. Fast on paper but creates massive integration-testing complexity. When Dr. Mehta can't hire a WaooaW Expert, the bug could be in CE, BP, PR, AIR, or the Web — any layer. Debugging cross-service issues in a big-bang approach is disproportionately expensive.
 
 ### Approach B: Sequential (rejected)
 Infrastructure → CE → BP → PR → AIR → Web → DMA → Agricultural → Trading → Tutor, strictly one at a time, no parallelism. Predictable but slow. Would take 20+ weeks to first customer.
@@ -390,10 +390,10 @@ Each active agent has a quarterly review:
 ### 10.4 New Agent Types (Yogesh authorizes)
 
 Approved for specification when platform is stable:
-- WoW Expert Legal Professional (corporate law, contracts, trademark)
-- WoW Expert HR Professional (recruitment, compliance, payroll advisory)
-- WoW Expert Accounting (GST/TDS, P&L review, statutory compliance)
-- WoW Expert Real Estate Advisory
+- WaooaW Expert Legal Professional (corporate law, contracts, trademark)
+- WaooaW Expert HR Professional (recruitment, compliance, payroll advisory)
+- WaooaW Expert Accounting (GST/TDS, P&L review, statutory compliance)
+- WaooaW Expert Real Estate Advisory
 
 Each new agent follows the AGENT-AUTHORING-GUIDE activation gate (14 sections) before any implementation.
 
