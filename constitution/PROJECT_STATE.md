@@ -66,19 +66,35 @@ blocker_raised_utc: ""
 ## NEXT SESSION OPTIONS (updated 2026-07-21)
 
 ```
-A. ⚡ AUTONOMOUS — autonomous-sprint.yaml fires every 2h automatically.
-   No action needed. Sprint 011 executes on next cron trigger if AUTONOMOUS_HALT: false.
-   Monitor via GitHub Actions → autonomous-sprint workflow runs.
-   Override: set AUTONOMOUS_HALT: true in SPRINT_STATE_MACHINE above (C-001 Human Override).
+⚡ TOMORROW'S PLAN — AUTONOMOUS DRY RUN (read this first at session start)
 
-B. MANUAL override — say "start coding Sprint 011" to execute in this chat session.
-   Platform IT Expert runs WC-011 tasks immediately. No 2h wait.
+STEP 1 — DRY RUN (no commits)
+  Trigger: GitHub Actions → autonomous-sprint → workflow_dispatch → dry_run: true
+  Expected: agent reads SPRINT_STATE_MACHINE, plans WC011-01 + WC011-04 + WC011-07
+  Check: correct tasks identified, AUTONOMOUS_HALT: false confirmed, no side effects
 
-C. Operations Management ITSM policies (separate governance track)
-   Incident/Change/Release Management → standards/ folder
-   No Founder authorization needed — governance documents only.
+STEP 2 — LIVE RUN ON BRANCH (commits + PR, NO merge to main)
+  Trigger: workflow_dispatch → dry_run: false
+  Expected: autonomous_sprint_runner.py executes tasks, pushes ib/009/infra-foundation,
+            opens PR, autonomous_sprint_reviewer.py posts review
+  Gate: PR stays on branch — do NOT approve merge yet
 
-D. About Us / Contact Us / Careers pages (spec §13 complete, not yet built)
+STEP 3 — HUMAN REVIEW OF BRANCH
+  Review branch ib/009/infra-foundation for:
+  [ ] Correctness      — docker-compose validation output is accurate
+  [ ] Completeness     — WC011-01/04/07 DoD items all satisfied
+  [ ] Effectiveness    — src/ scaffold README.md files have correct C-059 headers
+  [ ] Code quality     — Python scripts pass ruff/mypy if any .py files added
+  [ ] Constitutional   — logs/bootstrap-evidence.jsonl populated with run events
+  [ ] PR review        — advisory review comment covers engineering-standards checklist
+
+STEP 4 — DECISION POINT
+  If branch passes review → approve PR → merge → SPRINT_STATE_MACHINE advances to WC-012
+  If gaps found → fix on branch → re-trigger review job
+
+OTHER OPTIONS (lower priority today):
+  B. Operations Management ITSM policies (standards/ folder, no auth needed)
+  C. About Us / Contact Us / Careers pages (spec §13 complete)
 ```
 
 ## SESSION CLOSE BRIEFING — READ THIS FIRST
