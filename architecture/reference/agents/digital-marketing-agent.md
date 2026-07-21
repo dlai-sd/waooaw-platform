@@ -404,7 +404,7 @@ WaooaW Expert (first message after registration):
 
 **Trigger:** Starts in parallel as soon as Skill 0 confirms business name + locality (minimum 2 fields). Does not wait for full profile completion.
 
-**Website-URL Early Start (20-minute WoW design):**
+**Website-URL Early Start (20-minute WaooaW design):**
 If the customer provided a website URL at registration, Skill 1 begins IMMEDIATELY at registration — before Skill 0 even starts. The web-scan-mcp.seo.audit_page call runs in the background during the Skill 0 conversation. By the time Skill 0 completes its first 2 questions, the website scan, GBP lookup, social profile scan, and competitor ad check are already done. The maturity score and first insight are ready to deliver within 5 minutes of the first exchange.
 
 ```yaml
@@ -421,7 +421,7 @@ skill_1_early_start:
   
   # This is how Yogesh gets his maturity score at Minute 5, not Minute 20.
   # Without this, the spec would ask profiling questions first, THEN research,
-  # delivering the report at ~Minute 15 and the 20-minute WoW target is missed.
+  # delivering the report at ~Minute 15 and the 20-minute WaooaW target is missed.
 ```
 
 **Decision Space:**

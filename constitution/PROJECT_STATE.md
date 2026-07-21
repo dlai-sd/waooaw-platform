@@ -2,7 +2,7 @@
 
 **Last Updated:** 2026-07-19
 **Version:** 0.93.0
-**Session:** 2026-07-19 — SESSION CLOSE (DMA deep-dive complete: v3.0 + agency + restaurant + WoW)
+**Session:** 2026-07-19 — SESSION CLOSE (DMA deep-dive complete: v3.0 + agency + restaurant + WaooaW)
 
 ---
 
@@ -120,14 +120,14 @@ FOUNDER ACTIONS OUTSTANDING (before live customers):
 
 | Version | What |
 |---|---|
-| v0.72.0 | **UX Phase 1 — Constitutional UX Vocabulary** — `architecture/reference/ux/constitutional-ux-vocabulary.md` ratified. 12 sections: Language & Localisation (11 languages incl. Urdu RTL), Accessibility (WCAG 2.1 AA, dark/light/system themes), Performance (200KB budget, LCP ≤2.5s, PWA), Visual Design System (4-layer token architecture incl. constitutional tokens), Constitutional Visual Language (Emergency Stop, Evidence Confirmation, Scope Card, Curious/Engaged/Informed portal model), Navigation Architecture (logged-out: Home/Agents/Blogs/Settings/Login; logged-in: Home/My Agents/My Profile), WoW Concierge (platform voice, 3-exchange depth, hero input + agent cards + persistent bubble), Try Before You Buy (per-agent trial flows, C-063 data deletion rule), Content & Copy Standards (per-agent vocabulary, C-042), Legal & Compliance (footer, Grievance Officer: Yogesh Khandge), Blogs (byline format, 5 categories, CTA pattern), Interaction Standards. |
+| v0.72.0 | **UX Phase 1 — Constitutional UX Vocabulary** — `architecture/reference/ux/constitutional-ux-vocabulary.md` ratified. 12 sections: Language & Localisation (11 languages incl. Urdu RTL), Accessibility (WCAG 2.1 AA, dark/light/system themes), Performance (200KB budget, LCP ≤2.5s, PWA), Visual Design System (4-layer token architecture incl. constitutional tokens), Constitutional Visual Language (Emergency Stop, Evidence Confirmation, Scope Card, Curious/Engaged/Informed portal model), Navigation Architecture (logged-out: Home/Agents/Blogs/Settings/Login; logged-in: Home/My Agents/My Profile), WaooaW Concierge (platform voice, 3-exchange depth, hero input + agent cards + persistent bubble), Try Before You Buy (per-agent trial flows, C-063 data deletion rule), Content & Copy Standards (per-agent vocabulary, C-042), Legal & Compliance (footer, Grievance Officer: Yogesh Khandge), Blogs (byline format, 5 categories, CTA pattern), Interaction Standards. |
 
 **Key decisions ratified this session:**
 - Urdu RTL: Phase 1 (CSS logical properties mandatory throughout)
 - Grievance Officer: Yogesh Khandge — yogesh.khandge@dlaisd.com
 - Navigation: logged-out (Home · Agents · Blogs · Settings · Login/Register), logged-in (Home · My Agents · My Profile)
 - Agent naming: "WaooaW Expert [Profession]" — "WaooaW Expert" prefix fixed, suffix customer-customisable
-- WoW Concierge: WAOOAW platform voice, unnamed, 3 free exchanges then soft nudge
+- WaooaW Concierge: WAOOAW platform voice, unnamed, 3 free exchanges then soft nudge
 - Blogs: research-based institutional voice, byline "By WaooaW Expert [Domain] · WAOOAW Research"
 - Settings (pre-login): language + theme only
 - Activity Log: inside each agent card, not top-level nav

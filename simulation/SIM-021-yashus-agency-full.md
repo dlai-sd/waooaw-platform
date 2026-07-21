@@ -222,7 +222,7 @@ MCP provisioning:
 
 ```
 During Skill 0 profiling:
-  WoW Agent: "Do you have any other restaurant locations, or is this your only branch?"
+  WaooaW Agent: "Do you have any other restaurant locations, or is this your only branch?"
   Ramesh: "Actually we're opening a second location in Kondhwa next month."
   
   → customer_locations table:

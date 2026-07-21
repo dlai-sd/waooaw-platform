@@ -303,7 +303,7 @@ All color tokens must have a light and dark variant. No hardcoded colors anywher
 | Portal header (full logo) | `waooaw-platform-logo.png` | 32px height |
 | Favicon | Icon mark only (three-W crop) | 16×16, 32×32 |
 | PWA manifest | Icon mark, white background | 192×192, 512×512 |
-| WoW Concierge bubble | Icon mark only | 40×40px |
+| WaooaW Concierge bubble | Icon mark only | 40×40px |
 | Email footer | Full logo | 120px width |
 | WhatsApp Business profile | Square icon mark crop | 400×400px |
 | OpenGraph / social share card | Full logo on `--color-brand-navy` background | 1200×630px |
@@ -505,7 +505,7 @@ This is the post-login design principle for customers like Suresh. The portal mu
 **Curious** — the platform surfaces what Suresh doesn't know to ask:
 - "Your WaooaW Expert noticed something this morning." → unexpected proactive insight
 - "Farmers near you are asking about X. Here's what it means for your crop."
-- New agent types teased: "WoW is working on new professionals. Coming soon: Legal Advisory."
+- New agent types teased: "WaooaW is working on new professionals. Coming soon: Legal Advisory."
 - Platform vision micro-content: brief, plain-language explainer cards about what constitutional AI means for farmers. Shown once per week max. Never forced.
 
 **Engaged** — the agent shows activity even when Suresh isn't looking:
@@ -582,13 +582,13 @@ This keeps the top-level navigation clean and contextualizes the evidence with t
 
 ---
 
-## 7. WoW Concierge — Home Page Engagement Interface
+## 7. WaooaW Concierge — Home Page Engagement Interface
 
 ### 7.1 Identity
 
-The WoW Concierge is the **WAOOAW platform voice** — unnamed, no avatar, no persona name. It speaks as the institution. It is not an agent. It cannot be hired. It cannot take consequential actions.
+The WaooaW Concierge is the **WAOOAW platform voice** — unnamed, no avatar, no persona name. It speaks as the institution. It is not an agent. It cannot be hired. It cannot take consequential actions.
 
-**Constitutional Decision Space (WoW Concierge):**
+**Constitutional Decision Space (WaooaW Concierge):**
 - Authorized: answer questions about WAOOAW professionals, show demonstrations, describe pricing, guide to registration, simulate a professional interaction for a prospect
 - Prohibited: store prospect data beyond the session, take any hiring or configuration action, make guarantees that exceed platform capabilities, promise specific outcomes before stat gate clears
 - Always ask: before showing scenario-based performance statistics, must display "Based on a typical scenario" label
@@ -623,7 +623,7 @@ Mobile (375px):
 - Input box: `--color-evidence` border glow on focus (green — the constitutional signal)
 - Cycling placeholder: rotates through agent-type examples every 3 seconds, `prefers-reduced-motion` stops cycling
 - CTA: "Meet your WaooaW Expert" — outcome-first language, not "Search" or "Explore"
-- Input is free text — customer types anything, WoW Concierge interprets
+- Input is free text — customer types anything, WaooaW Concierge interprets
 
 **Surface 2 — Agent Preview Cards (below hero, home page):**
 
@@ -648,7 +648,7 @@ Each public agent type has a card:
 ```
 
 - No feature lists. Outcomes only (C-042).
-- "Ask a question" opens WoW Concierge pre-loaded with context about this agent type.
+- "Ask a question" opens WaooaW Concierge pre-loaded with context about this agent type.
 - "Try free" goes to trial flow (Section 8).
 
 **Surface 3 — Persistent Concierge Bubble (all public pages):**
@@ -674,14 +674,14 @@ Context-aware opening message:
 ```
 Exchange 1 — Discovery
   Customer: "I have a dental clinic in Pune, 2 chairs, mostly families"
-  WoW:      "Perfect. WaooaW Expert Dental Marketing handles Instagram,
+  WaooaW:      "Perfect. WaooaW Expert Dental Marketing handles Instagram,
               WhatsApp, Google reviews, and patient reactivation
               specifically for dental practices like yours.
               Want to see what they'd do for your clinic?"
 
 Exchange 2 — Demonstration
   Customer: "Yes, show me"
-  WoW:      "Here's a real scenario: a patient leaves a 3★ Google review
+  WaooaW:      "Here's a real scenario: a patient leaves a 3★ Google review
               after a long wait. Your WaooaW Expert responds within 2 hours:
               [shows simulated response in dental vocabulary]
               *Based on a typical scenario*
@@ -689,17 +689,17 @@ Exchange 2 — Demonstration
 
 Exchange 3 — Value
   Customer: "How much does it cost?"
-  WoW:      "₹1,499/month. Includes everything you just saw.
+  WaooaW:      "₹1,499/month. Includes everything you just saw.
               7-day free trial — no card needed.
               [Start free trial]  [Tell me more]"
 
 Soft nudge (after 3rd exchange):
-  WoW:      "I can show you a lot more if you register — it takes 2 minutes
+  WaooaW:      "I can show you a lot more if you register — it takes 2 minutes
               and it's free. Or keep asking — up to you."
               [Register free →]  [Keep asking]
 ```
 
-**WoW Concierge tone:**
+**WaooaW Concierge tone:**
 - Knowledgeable, warm, efficient. Expert colleague, not a chatbot.
 - Speaks in the customer's language (browser locale until they set it explicitly)
 - Short responses — 3 sentences maximum per turn
@@ -799,7 +799,7 @@ Trial data retention: 7 days after trial end for conversion opportunity, then de
 
 ### 9.5 Stat Gate Display Rule
 
-Until FR-005 clears (50+ diverse paying customers), all outcome statistics shown in WoW Concierge and agent cards must display:
+Until FR-005 clears (50+ diverse paying customers), all outcome statistics shown in WaooaW Concierge and agent cards must display:
 
 ```
 "23 new patient appointments this month*"
@@ -993,7 +993,7 @@ Examples:
 
 ### 11.4 Blog CTA Pattern
 
-Every blog post ends with a contextual WoW Concierge invitation:
+Every blog post ends with a contextual WaooaW Concierge invitation:
 
 ```
 ─────────────────────────────────────────────────────
@@ -1020,7 +1020,7 @@ This professional is available to hire.
 
 | State | Visual | Duration |
 |---|---|---|
-| WoW Concierge thinking | 3-dot breathing animation | Until response |
+| WaooaW Concierge thinking | 3-dot breathing animation | Until response |
 | Agent working (background) | "Active since [time]" — no spinner | Persistent |
 | CE confirmation pending | `--color-pending` amber indicator | ≤500ms typically |
 | CE confirmed | `--color-evidence` green checkmark pulse | 400ms, then resolves |

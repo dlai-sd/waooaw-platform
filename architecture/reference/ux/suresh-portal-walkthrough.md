@@ -89,7 +89,7 @@ Cycling examples:
 Suresh types in Marathi voice (Android Marathi keyboard voice input):
 > *"मी कापूस शेती करतो, नागपूर जिल्हा"* ("I do cotton farming, Nagpur district")
 
-WoW Concierge responds (Marathi):
+WaooaW Concierge responds (Marathi):
 > *"नागपूर जिल्ह्यातील कापूस शेतकऱ्यांसाठी WaooaW Expert Agricultural Advisor उपलब्ध आहे — हवामान सतर्कता, मंडी भाव, आणि पीक सल्ला मराठीत, WhatsApp वर.
 > तुमच्या शेतासाठी काय करेल ते पाहायचे आहे का?"*
 
@@ -103,7 +103,7 @@ WoW Concierge responds (Marathi):
 
 ### B-1 — Registration Entry Point
 
-After 3 WoW Concierge exchanges, Suresh taps:
+After 3 WaooaW Concierge exchanges, Suresh taps:
 
 > [**मोफत वापरून पहा — 7 दिवस**] ("Try free — 7 days")
 
@@ -699,7 +699,7 @@ C-001 compliance: confirmed — 2 taps maximum from any screen to Emergency Stop
 │  └── WaooaW Expert काय करू शकतो?         [›] │
 │                                            │
 │  मदत                                       │
-│  ├── प्रश्न विचारा (WoW Concierge)    [›]  │
+│  ├── प्रश्न विचारा (WaooaW Concierge)    [›]  │
 │  └── Grievance Officer शी संपर्क करा  [›] │
 │                                            │
 │  [लॉग आउट]                                 │

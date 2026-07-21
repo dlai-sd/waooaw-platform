@@ -729,7 +729,7 @@ These are queryable in Jaeger/Azure Monitor and provide an operational audit tra
 **Depends On:** IB-009 (foundation live), FR-005 (50 diverse customers — real revenue before complex architecture investment)
 
 **Why this is P2 and not P0:**
-Single-unit customers (Dr. Mehta, Rupali, Ramesh) are the fastest path to revenue, the simplest to serve, and the validation that the core platform works. A hotel chain or franchise network is a longer sales cycle, a more complex integration, and requires the single-unit track record to sell. Yogesh's stated priority: *"Get single unit/account customer onboarded, serving, and creating WoW. With secured cashflow, venture into agency, franchise, or multi-unit."* This IB is correctly P2.
+Single-unit customers (Dr. Mehta, Rupali, Ramesh) are the fastest path to revenue, the simplest to serve, and the validation that the core platform works. A hotel chain or franchise network is a longer sales cycle, a more complex integration, and requires the single-unit track record to sell. Yogesh's stated priority: *"Get single unit/account customer onboarded, serving, and creating WaooaW. With secured cashflow, venture into agency, franchise, or multi-unit."* This IB is correctly P2.
 
 **Business case for venturing into this at FR-005:**
 - A hotel chain with 10 locations = 10× the revenue of one single-unit customer

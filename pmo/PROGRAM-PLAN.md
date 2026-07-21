@@ -107,7 +107,7 @@ IMPLEMENTATION DEPENDENCY CHAIN
   └──────────────────────────────────────┬──────────────────────────────────────┘
   ┌─ TRACK 6: Web Portal (Week 4) ─────────────────────────────────────────────┐
   │  6a. Registration + OAuth (Google, phone OTP)                               │
-  │  6b. WoW Concierge (hero input + agent cards + persistent bubble)           │
+  │  6b. WaooaW Concierge (hero input + agent cards + persistent bubble)           │
   │  6c. Agent hiring flow (try free → pay)                                     │
   │  6d. Customer dashboard (activity feed, emergency stop, scope card)         │
   └──────────────────────────────────────┬──────────────────────────────────────┘
@@ -152,7 +152,7 @@ IMPLEMENTATION DEPENDENCY CHAIN
 | **M4**: Business Platform — registration + hire endpoints live | 3 | WAOOAW AI Agent — Developer | M3 complete |
 | **M5**: Professional Runtime — PAAS + Emergency Stop live | 3 | WAOOAW AI Agent — Developer | M4 complete |
 | **M6**: AI Runtime — LLM Gateway + RAG pipeline live | 4 | WAOOAW AI Agent — Developer | M5 complete |
-| **M7**: Web Portal — registration + WoW Concierge + dashboard | 4 | WAOOAW AI Agent — Developer | M4 complete (parallel with M5/M6) |
+| **M7**: Web Portal — registration + WaooaW Concierge + dashboard | 4 | WAOOAW AI Agent — Developer | M4 complete (parallel with M5/M6) |
 
 **Phase 1 exit criterion:** A test user can register on the portal, hire a (stub) WaooaW Expert, and Emergency Stop works in ≤250ms.
 
