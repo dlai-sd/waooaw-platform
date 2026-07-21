@@ -552,51 +552,6 @@
         </svg>
         Continue with Google
       </button>
-/* Auth modal — Figma-style inline module */
-function openAuth(panel){
-  panel=panel||'welcome';
-  document.getElementById('authOverlay').classList.add('open');
-  showPanel(panel);
-  setTimeout(function(){
-    var el=panel==='welcome'?document.getElementById('auth-email-input')
-          :panel==='login'?document.getElementById('auth-pwd'):null;
-    if(el)el.focus();
-  },120);
-}
-function closeAuth(){document.getElementById('authOverlay').classList.remove('open');}
-function handleAuthBg(e){if(e.target===document.getElementById('authOverlay'))closeAuth();}
-function showPanel(p){
-  document.querySelectorAll('.auth-panel').forEach(function(el){el.classList.remove('active');});
-  document.getElementById('auth-'+p).classList.add('active');
-}
-function continueEmail(){
-  var v=document.getElementById('auth-email-input').value.trim();
-  if(!v)return;
-  document.getElementById('auth-email-display').textContent=v;
-  showPanel('login');
-  setTimeout(function(){document.getElementById('auth-pwd').focus();},80);
-}
-function submitLogin(){
-  /* TODO: Keycloak integration — IB-009 */
-  closeAuth();
-  alert('Login integration pending IB-009 foundation sprint.');
-}
-function submitRegister(){
-  /* TODO: Keycloak registration — IB-009 */
-  closeAuth();
-  alert('Registration integration pending IB-009 foundation sprint.');
-}
-function authWith(provider){
-  /* TODO: Keycloak OAuth — Google via ADR-008, WhatsApp via ADR-023 + FA-002 */
-  closeAuth();
-  alert(provider==='google'
-    ?'Google OAuth via Keycloak — enabled in IB-009'
-    :'WhatsApp OTP via Keycloak + WABA — enabled in IB-009 after FA-002');
-}
-document.addEventListener('keydown',function(e){
-  if(e.key==='Escape'&&document.getElementById('authOverlay').classList.contains('open'))closeAuth();
-});
-
 
       <button type="button" class="auth-soc auth-wa" onclick="authWith('whatsapp')">
         <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -738,6 +693,43 @@ if(localStorage.getItem('waooaw_announce_dismissed')==='1'){
   window.addEventListener('scroll',onScroll,{passive:true});
   onScroll(); // run once on load
 })();
+/* Auth modal — Figma-style inline module */
+function openAuth(panel){
+  panel=panel||'welcome';
+  document.getElementById('authOverlay').classList.add('open');
+  showPanel(panel);
+  setTimeout(function(){
+    var el=panel==='welcome'?document.getElementById('auth-email-input')
+          :panel==='login'?document.getElementById('auth-pwd'):null;
+    if(el)el.focus();
+  },120);
+}
+function closeAuth(){document.getElementById('authOverlay').classList.remove('open');}
+function handleAuthBg(e){if(e.target===document.getElementById('authOverlay'))closeAuth();}
+function showPanel(p){
+  document.querySelectorAll('.auth-panel').forEach(function(el){el.classList.remove('active');});
+  document.getElementById('auth-'+p).classList.add('active');
+}
+function continueEmail(){
+  var v=document.getElementById('auth-email-input').value.trim();
+  if(!v)return;
+  document.getElementById('auth-email-display').textContent=v;
+  showPanel('login');
+  setTimeout(function(){document.getElementById('auth-pwd').focus();},80);
+}
+function submitLogin(){
+  closeAuth();
+  alert('Login — Keycloak integration in IB-009.');
+}
+function submitRegister(){
+  closeAuth();
+  alert('Registration — Keycloak integration in IB-009.');
+}
+function authWith(provider){
+  closeAuth();
+  alert(provider==='google'?'Google OAuth — IB-009':'WhatsApp OTP — IB-009 + FA-002');
+}
+
 function openCmd(){document.getElementById('cmdOverlay').classList.add('open');setTimeout(()=>document.getElementById('cmdInput').focus(),50);}
 function closeCmd(e){if(!e||e.target===document.getElementById('cmdOverlay'))document.getElementById('cmdOverlay').classList.remove('open');}
 document.addEventListener('keydown',e=>{if((e.metaKey||e.ctrlKey)&&e.key==='k'){e.preventDefault();openCmd();}if(e.key==='Escape')closeCmd();});
