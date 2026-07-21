@@ -28,12 +28,15 @@ Wait for explicit Founder confirmation. No exceptions.
 ## Current Platform State (updated each session)
 
 ```
-Version:    0.80.0  |  Gate: G5 CLEAR  |  Epoch: 1 — Employment
-Last update: 2026-07-18 — UX + Legal + Brand + Platform IT Expert + Blue-Green deploy
-Implementation: AWAITING EXPLICIT FOUNDER "start coding" authorization per session
-Constitutional Claims: C-001 to C-067 (67 RATIFIED)
-Agents: DMA v2.9 | Trading v1.7 | Agricultural Advisor v2.7 | Private Tutor v1.0 | Platform IT Expert v1.0
-CCTs: 35 | ADRs: 27 + O-12 | Security: Audit-ready | Infra: Cloud-optimized + Blue-Green
+Version:    0.96.0  |  Gate: G5 CLEAR  |  Epoch: 1 — Employment
+Last update: 2026-07-21 — Full autonomy model: C-066 Tier 2A, BOOTSTRAP amendment, autonomous-sprint.yaml
+Implementation: AUTONOMOUS — autonomous-sprint.yaml fires every 2h (C-066 Tier 2A + C-070 Third Instinct)
+Human Override: AUTONOMOUS_HALT: true in PROJECT_STATE.md SPRINT_STATE_MACHINE (C-001)
+Constitutional Claims: C-001 to C-075 (75 RATIFIED)
+Agents (customer): DMA v3.0 | Trading v1.7 | Agricultural Advisor v2.7 | Private Tutor v1.0
+Agents (internal): Platform IT Expert v1.0 | Steward Assistant v1.0 | Self-Improvement Analyst v1.0 | Platform Operations v1.0
+CCTs: 50 specified | ADRs: 29 | Security: Audit-ready | Infra: Cloud-optimized + Blue-Green
+Web: web/WAOOAWHome.html — Landing page v1.0 + Auth modal (Google/WhatsApp/email, Figma-style)
 Three Humans: Yogesh Khandge (Founder) · Sujay Khandge (Business Growth) · Ojal Khandge (Ethics Officer)
 Company: DLAI Satellite Data (OPC) Pvt Ltd | CIN: U62090PN2024OPC230499 | GSTIN: 27AAKCD8188R1ZH
 ```
@@ -44,27 +47,38 @@ Company: DLAI Satellite Data (OPC) Pvt Ltd | CIN: U62090PN2024OPC230499 | GSTIN:
 - FR-001 (CS Agents) · FR-002 (Trial) · FR-003 (Learning IP) · FR-004 (Teams — deferred)
 - **FR-005 (Skill 14 WAOOAW Self-Marketing — AUTHORIZED: ₹5k/month, 50+ diverse customers)**
 
-**CRITICAL before Trading IB-009:** `TRADING/EXECUTION/ESCALATION_DECISION` is BREAKING — Founder must acknowledge before Trading implementation begins.
+**CRITICAL before Trading implementation:** `TRADING/EXECUTION/ESCALATION_DECISION` is BREAKING — Founder must acknowledge before Trading sprint begins.
 
 **Approved Agent Specifications (GENESIS Part 05):**
-- **DMA v2.9** — APPROVED. 86 prompts. 19 skills (incl. 1b/10b/11b/11c/15 + Banking Practices). Sim 012 Grade A.
+- **DMA v3.0** — APPROVED. 21 skills (incl. Skill 7b/16/18/19/20/21). 10 new MCPs (C-074). Sims 019/020/021 Grade A.
 - **Trading v1.7** — APPROVED. ⚠️ ESCALATION_DECISION pending Founder ack. Sim 013 Grade A.
 - **Agricultural Advisor v2.7** — APPROVED. WhatsApp primary (ADR-023). Sim 014 Grade A.
 - **Private Tutor v1.0** — APPROVED. C-060 minor protection. Web whiteboard. Sim 018.
 - **Platform IT Expert v1.0** — APPROVED. Internal SDLC agent. C-065/C-066. 11 SDLC skills.
+- **Steward Assistant v1.0** — APPROVED. ops.waooaw.ai entry (C-068). Always FRONTIER (ADR-028).
+- **Self-Improvement Analyst v1.0** — APPROVED. C-069. Prompt improvement pipeline.
+- **Platform Operations v1.0** — APPROVED. Monitoring, incident response, SLA tracking.
 
-**Key constitutional claims added since v0.48.1 (C-059 → C-067):**
-- C-059: Implementation Traceability (CCT-TR-01/02/03)
-- C-060: Minor Student Protection (Private Tutor — LAW)
-- C-061: Content Safety Scan (POCSO mandatory reporting — LAW)
-- C-062: AI Security (prompt injection, OWASP LLM Top 10)
-- C-063: Data Minimisation / PII detection
-- C-064: Three-Human Institution (Yogesh/Sujay/Ojal — all other roles = WAOOAW AI Agent — [function])
-- C-065: SDLC Separation of Duties (Author ≠ Reviewer ≠ Deployment Confirmer)
-- C-066: Autonomous Development Authorization Tiers (0=emergency / 1=Sujay / 2=Sujay+IB / 3=Yogesh)
-- C-067: Blue-Green + Cost-Constrained Deployment (₹10k/env/month ceiling; ~₹0.30/deploy)
+**Key constitutional claims C-068 → C-075:**
+- C-068: Steward Access Isolation (ops.waooaw.ai, 3-account OAuth allowlist)
+- C-069: Platform Self-Improvement (Self-Improvement Analyst loop)
+- C-070: Constitutional DNA (3 instincts — inherited by every agent)
+- C-071: Quality Framework (7 layers — Layer 1 CCTs through Layer 7 Chaos)
+- C-072: Coding Standards (5 dimensions per language)
+- C-073: Constitutional Annotations (@constitutional in source, CCT-TR-01)
+- C-074: On-the-Fly MCP Provisioning (09-mcp-registry.sql, no deployment cycles)
+- C-075: White-Label Reseller (agency commercial model, 10-reseller-agency.sql)
 
-**Founder Actions Outstanding (P0):** See `security/FOUNDER-ACTIONS.md` — 20 items catalogued (FA-001 to FA-020)
+**Claims C-059 → C-067 (previously new, now ratified):**
+- C-059: Implementation Traceability | C-060: Minor Student Protection (LAW) | C-061: Content Safety (LAW)
+- C-062: AI Security (OWASP LLM Top 10) | C-063: Data Minimisation | C-064: Three-Human Institution
+- C-065: SDLC Separation of Duties | C-066: Authorization Tiers | C-067: Blue-Green + Cost Ceiling
+
+**Founder Actions Outstanding (P0):** See `security/FOUNDER-ACTIONS.md` — FA-001 to FA-021+
+- **FA-021** (GCP Vertex AI SA key) — CRITICAL PATH: AI Runtime MID_TIER/FRONTIER cannot function without this
+- **FA-002** (Meta BM verification) — START NOW: 2-4 week lead time for WhatsApp/DMA
+- **FA-005** (Trading ESCALATION_DECISION ack) — 5 min, unblocks Trading sprint
+- **Azure SP + GitHub Secrets** — blocks ALL CI/CD from running
 
 ---
 
@@ -84,6 +98,8 @@ Company: DLAI Satellite Data (OPC) Pvt Ltd | CIN: U62090PN2024OPC230499 | GSTIN:
 | **Platform Delivery Tracker** | This file + INSTITUTIONAL_BACKLOG.md + PROJECT_STATE.md + GitHub Issues | Everything else — read-only |
 | **WAOOAW AI Agent — Platform IT Expert** | This file + platform-it-expert-agent.md + C-065.md + C-066.md + C-067.md + [ADR-INDEX.md](ADR-INDEX.md) + .github/workflows/ | knowledge/claims/ (except C-059/C-065/C-066/C-067), simulation/, legal/ |
 | **WAOOAW AI Agent — Legal** | This file + legal/ (all 5 documents) + knowledge/claims/C-060.md + C-061.md + C-063.md | architecture/, src/, simulation/, agent specs |
+| **Program Management Office** | This file + pmo/PROGRAM-PLAN.md + constitution/PROJECT_STATE.md + constitution/INSTITUTIONAL_BACKLOG.md + work-contracts/ (active WCs only) + security/FOUNDER-ACTIONS.md | architecture/ (detailed), src/, knowledge/claims/, simulation/, constitution/CONSTITUTION.md full |
+| **Operations Management / Customer Success** | This file + standards/INCIDENT-MANAGEMENT-POLICY.md + standards/CHANGE-MANAGEMENT-POLICY.md + standards/RELEASE-MANAGEMENT-POLICY.md + pmo/PROGRAM-PLAN.md §6 (SLA/OLA) + constitution/PROJECT_STATE.md | architecture/, src/, knowledge/claims/, simulation/ — read operational artefacts only |
 
 ---
 
@@ -102,7 +118,7 @@ Architecture
   Skill dependency register             architecture/reference/skill-dependency-register.md
   Component quick-reference             architecture/reference/COMPONENT-QUICK-REF.md
   ADR quick reference                   adr/ADR-INDEX.md  ← read this before individual ADRs
-  Individual ADRs                       adr/ADR-NNN-*.md  (ADR-001 to ADR-027 + O-12)
+  Individual ADRs                       adr/ADR-NNN-*.md  (ADR-001 to ADR-029)
   Engineering standards                 architecture/reference/engineering-standards.md
 
 UX & Brand
@@ -126,12 +142,23 @@ Constitutional
   Quick-start cards (per office)        .github/agent-context/office-{name}.md
 
 Knowledge
-  All constitutional claims (67)        knowledge/claims/C-001.md through C-067.md
+  All constitutional claims (75)        knowledge/claims/C-001.md through C-075.md
   Claim index + summary                 knowledge/index.md
   Architectural drivers (AD-001–028)    knowledge/architectural-drivers.md
   Design principles (DP-001–025)        knowledge/design-principles.md
   Confidence register                   knowledge/confidence-register.md
   Business capabilities                 knowledge/business-capabilities.md
+
+Steward Interface
+  Steward web entry point (C-068)       ops.waooaw.ai (hidden URL — Google OAuth, 3 accounts)
+  Steward agent spec                    architecture/reference/agents/steward-assistant-agent.md
+  Steward interface design              architecture/reference/steward-interface.md
+
+Operations & Standards
+  PMO program plan                      pmo/PROGRAM-PLAN.md
+  Incident Management Policy            standards/INCIDENT-MANAGEMENT-POLICY.md  (pending — ITSM)
+  Change Management Policy              standards/CHANGE-MANAGEMENT-POLICY.md    (pending — ITSM)
+  Release Management Policy             standards/RELEASE-MANAGEMENT-POLICY.md   (pending — ITSM)
 
 Implementation (src/ not yet built — IB-009 awaiting authorization)
   Source code (coming)                  src/{service-name}/
@@ -153,7 +180,7 @@ GitHub Operations
   CODEOWNERS                            .github/CODEOWNERS  (all paths require @dlai-sd)
 
 Security
-  Founder action list (20 items)        security/FOUNDER-ACTIONS.md  (FA-001 to FA-020)
+  Founder action list                   security/FOUNDER-ACTIONS.md  (FA-001 to FA-021+)
   Security headers                      security/SECURITY-HEADERS.md
 ```
 

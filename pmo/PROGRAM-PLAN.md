@@ -1,20 +1,22 @@
 # WAOOAW Platform — Program Management Office (PMO)
 
 **Document:** Master Program Plan — Start to Go-Live
-**Version:** 1.0
-**Date:** 2026-07-18
+**Version:** 2.0
+**Date:** 2026-07-21 (revised from v1.0 at v0.82.0)
 **Owner:** Yogesh Khandge (Founder) · Sujay Khandge (Business Growth) · Ojal Khandge (Ethics Officer)
 **Execution:** WAOOAW AI Agents (Platform IT Expert, Developer, QA, Legal, Content)
-**Constitutional Basis:** C-064 (Three-Human Institution), C-065 (SDLC Separation), C-066 (Authorization Tiers), C-067 (Blue-Green Deployment)
-**Platform version at PMO creation:** v0.82.0
+**Constitutional Basis:** C-064 (Three-Human Institution), C-065 (SDLC Separation), C-066 (Authorization Tiers), C-067 (Blue-Green Deployment), C-068 (Steward Access Isolation), C-071 (Quality Framework), C-073 (Constitutional Annotations)
+**Platform version:** v0.95.0 (revised — v1.0 was at v0.82.0; additions marked ⬆ NEW)
 
 ---
 
 ## Executive Summary
 
-WAOOAW is specification-complete at v0.82.0. The constitutional framework (67 ratified claims), four customer-facing agent specifications (DMA, Trading, Agricultural, Private Tutor), the Platform IT Expert agent, UX vocabulary, legal documents, brand assets, CI/CD pipelines, and Terraform infrastructure code are all production-ready. The platform requires one authorization from Yogesh to begin IB-009 implementation.
+WAOOAW is specification-complete at v0.95.0. The constitutional framework (75 ratified claims C-001→C-075), four customer-facing agent specifications (DMA v3.0, Trading v1.7, Agricultural v2.7, Private Tutor v1.0), four internal agent specifications (Platform IT Expert, Steward Assistant, Self-Improvement Analyst, Platform Operations), the constitutional UX vocabulary, legal documents, brand assets, homepage + auth modal, CI/CD pipelines, and Terraform infrastructure code are all production-ready. The platform requires one authorization from Yogesh to begin IB-009 implementation.
 
 **Target: First paying customer by Week 10. FR-005 milestone (50 diverse customers) by Week 16.**
+
+**⬆ NEW since v1.0:** DMA v3.0 adds 21 skills and 10 new MCPs under C-074 (On-the-Fly MCP Provisioning). C-075 (White-Label Reseller) adds agency commercial model. Steward Assistant v1.0 approved with ops.waooaw.ai interface (C-068). Self-Improvement Analyst v1.0 (C-069) and Platform Operations v1.0 added as internal agents. AI Runtime primary LLM is now Google Gemini via Vertex AI `asia-south1` Mumbai (ADR-029), not Azure OpenAI (retained as fallback only). Track 11 (Steward Interface) and Track 12 (Internal Agents) added to dependency chain.
 
 The implementation is executed entirely by WAOOAW AI Agents under constitutional governance. The three human stewards govern, approve milestones, and provide the Azure credentials and third-party accounts. No human writes code, tests, or deploys.
 
@@ -100,10 +102,14 @@ IMPLEMENTATION DEPENDENCY CHAIN
   │  4c. Temporal workflow integration (agent session workflows)                 │
   └──────────────────────────────────────┬──────────────────────────────────────┘
   ┌─ TRACK 5: AI Runtime (Week 3-4) ───────────────────────────────────────────┐
-  │  5a. LLM Gateway: Ollama (LOCAL) + Azure OpenAI MID/FRONTIER routing        │
+  │  5a. LLM Gateway: Ollama (LOCAL) + Vertex AI Gemini (MID/FRONTIER primary)  │
+  │      PSE (Provider Selection Engine — ADR-029): rule engine + perf ranking  │
+  │      Sarvam Saaras override for Agricultural Indian-language MID_TIER        │
+  │      Azure OpenAI UAE North circuit-breaker fallback only (FA-003 key)      │
   │  5b. Input Sanitisation Layer (C-062 — prompt injection defence)            │
   │  5c. RAG pipeline: pgvector queries for Tier 1/2/3 knowledge                │
   │  5d. MCP tool executor (default deny, CE.ValidateAction before each call)   │
+  │  5e. ⬆ NEW: On-the-Fly MCP Provisioning (C-074) — DB-backed mcp_registry   │
   └──────────────────────────────────────┬──────────────────────────────────────┘
   ┌─ TRACK 6: Web Portal (Week 4) ─────────────────────────────────────────────┐
   │  6a. Registration + OAuth (Google, phone OTP)                               │
@@ -112,30 +118,53 @@ IMPLEMENTATION DEPENDENCY CHAIN
   │  6d. Customer dashboard (activity feed, emergency stop, scope card)         │
   └──────────────────────────────────────┬──────────────────────────────────────┘
   ┌─ TRACK 7: DMA AS-001 (Weeks 5-6) ──────────────────────────────────────────┐
-  │  Goal: Dr. Mehta hires WaooaW Expert Dental Marketing → agent posts on        │
+  │  Goal: Dr. Mehta hires WaooaW Expert Dental Marketing → agent posts on      │
   │        Instagram → patient books an appointment.                            │
-  │  7a. DMA Decision Space configuration (all 19 skills)                       │
-  │  7b. Instagram MCP integration                                              │
+  │  ⬆ DMA v3.0 (was v2.9): 21 skills (added 7b/16/18/19/20/21)               │
+  │  7a. DMA Decision Space configuration (all 21 skills)                       │
+  │  7b. ⬆ 10 new MCPs via C-074 On-the-Fly Provisioning:                      │
+  │      youtube, ga4, instagram-messaging, instagram-comments, booking,        │
+  │      reputation, cms, whatsapp-flows, zomato, swiggy                        │
   │  7c. Google Business Profile MCP                                            │
   │  7d. WhatsApp WABA message delivery                                         │
-  │  7e. Simulation 019 (DMA live run) — Grade A                                │
+  │  7e. Simulation 020 (DMA full Dr. Mehta Day 0→Month 3) — Grade A           │
+  │  7f. ⬆ Skill 18 Agency Operations (SIM-021 Yashus Agency) — Grade A        │
   └──────────────────────────────────────┬──────────────────────────────────────┘
   ┌─ TRACK 8: Agricultural AS-005 + Trading AS-003 (Weeks 6-8, parallel) ──────┐
   │  8a. Agricultural: IMD weather MCP, APMC mandi price MCP, PMFBY              │
+  │      Sarvam Saaras for Hindi/Marathi/Telugu (PSE-R02 override)              │
   │  8b. Trading: Zerodha Kite Connect MCP, SEBI Tier 3 24h lag enforced        │
   │  (Founder must acknowledge TRADING/EXECUTION/ESCALATION_DECISION first)     │
   └──────────────────────────────────────┬──────────────────────────────────────┘
   ┌─ TRACK 9: Private Tutor (Weeks 8-9) ───────────────────────────────────────┐
   │  9a. Whiteboard WebRTC interface                                             │
   │  9b. C-060 portal gate (no billing info to student view)                    │
-  │  9c. Parent portal: progress reports, Emergency Stop authority               │
+  │  9c. C-061 Content Safety Scan (POCSO mandatory reporting — LAW)            │
+  │  9d. Parent portal: progress reports, Emergency Stop authority               │
   └──────────────────────────────────────┬──────────────────────────────────────┘
   ┌─ TRACK 10: Pilot Launch (Week 10) ──────────────────────────────────────────┐
   │  5 customers across all 4 agent types (DMA, Agricultural, Trading, Tutor)   │
-  │  Constitutional compliance verified: all CCTs pass in production             │
+  │  Constitutional compliance verified: all 50 CCTs pass in production          │
   │  Sujay: customer success monitoring active                                   │
   │  Ojal: first constitutional compliance report reviewed                       │
-  └─────────────────────────────────────────────────────────────────────────────┘
+  └──────────────────────────────────────┬──────────────────────────────────────┘
+  ┌─ TRACK 11: ⬆ NEW — Steward Interface (Weeks 6-7, parallel with Track 8) ───┐
+  │  Goal: Yogesh/Sujay/Ojal can access ops.waooaw.ai (C-068)                  │
+  │  11a. ops.waooaw.ai subdomain + Google OAuth 3-account allowlist            │
+  │  11b. Steward Assistant v1.0 — FRONTIER always, ADR-028                    │
+  │  11c. Approvals queue (Yogesh) + Agent Intelligence Hub (Sujay)             │
+  │  11d. C-048/C-049 ethics dashboard (Ojal)                                   │
+  │  11e. Constitutional Blocker filing form (→ auto blocker file + GH Issue)   │
+  └──────────────────────────────────────┬──────────────────────────────────────┘
+  ┌─ TRACK 12: ⬆ NEW — Internal Agents (Weeks 7-9, parallel with Track 9) ─────┐
+  │  Goal: Platform self-governance agents live before first customer            │
+  │  12a. Self-Improvement Analyst v1.0 (C-069) — prompt improvement loop       │
+  │       C-049 escalations → analysis → proposal → Sujay approval              │
+  │  12b. Platform Operations v1.0 — Azure Monitor + 6h CCT health cycle        │
+  │       Automated incident detection + P0 escalation to Yogesh               │
+  │  12c. White-Label Reseller (C-075) — agency.agency_staff schema             │
+  │       Skill 18 multi-client dashboard for agency AM                         │
+  └──────────────────────────────────────┬──────────────────────────────────────┘
 ```
 
 ---
@@ -160,10 +189,11 @@ IMPLEMENTATION DEPENDENCY CHAIN
 
 | Milestone | Week | Owner | Gate |
 |---|---|---|---|
-| **M8**: DMA Decision Space live in dev | 5 | WAOOAW AI Agent — Developer | M6 complete + Instagram MCP configured |
+| **M8**: DMA Decision Space live in dev (v3.0 — 21 skills, 10 new MCPs via C-074) | 5 | WAOOAW AI Agent — Developer | M6 complete + Instagram MCP configured |
 | **M9**: Dr. Mehta (AS-001) — complete hire flow works | 5 | WAOOAW AI Agent — QA | M8 complete |
 | **M10**: DMA first post sent to Instagram in dev | 5 | Sujay reviews output | M9 complete + Sujay approval |
 | **M11**: AS-001 passes in QA environment | 6 | WAOOAW AI Agent — QA | Blue-green QA deploy |
+| **⬆ M11b**: Steward Interface (ops.waooaw.ai) live in dev | 6-7 | WAOOAW AI Agent — Developer | M4 + C-068 OAuth configured |
 
 **Phase 2 exit criterion:** Dr. Mehta can hire WaooaW Expert Dental Marketing, the agent posts content, a patient can message via WhatsApp. Sujay reviews the post quality. Ojal reviews constitutional compliance.
 
@@ -171,10 +201,12 @@ IMPLEMENTATION DEPENDENCY CHAIN
 
 | Milestone | Week | Owner | Gate |
 |---|---|---|---|
-| **M12**: Agricultural AS-005 — Suresh crop advisory working | 7 | WAOOAW AI Agent — Developer | WABA live + FA-009 complete |
+| **M12**: Agricultural AS-005 — Suresh crop advisory working (Sarvam Saaras Marathi) | 7 | WAOOAW AI Agent — Developer | WABA live + FA-009 complete |
 | **M13**: Trading AS-003 — Rahul trade brief working | 7-8 | WAOOAW AI Agent — Developer | Yogesh acknowledges ESCALATION_DECISION |
-| **M14**: Private Tutor AS (Priya) — parent config + first lesson | 8-9 | WAOOAW AI Agent — Developer | C-060 portal gate implemented |
-| **M15**: All 4 agent types in QA — all CCTs pass | 9 | WAOOAW AI Agent — QA | M12 + M13 + M14 complete |
+| **M14**: Private Tutor AS (Priya) — parent config + first lesson (C-060/C-061 gates) | 8-9 | WAOOAW AI Agent — Developer | C-060 portal gate implemented |
+| **M15**: All 4 agent types in QA — all 50 CCTs pass | 9 | WAOOAW AI Agent — QA | M12 + M13 + M14 complete |
+| **⬆ M15b**: Self-Improvement Analyst + Platform Operations live | 8-9 | WAOOAW AI Agent — Developer | M6 complete |
+| **⬆ M15c**: White-Label Reseller (C-075) — Yashus Agency AS (SIM-021 Grade A) | 9 | WAOOAW AI Agent — Developer | M8 + agency schema migration |
 
 ### Phase 4 — Pilot Launch (Week 10)
 
@@ -201,9 +233,10 @@ The following must be completed by Yogesh/Sujay before the milestones that depen
 
 | Action | Required by | Lead time | Milestone blocked |
 |---|---|---|---|
-| Azure credentials (Service Principal) | Start of implementation | 1 hour | M1 (Terraform apply) |
-| FA-003: Azure OpenAI UAE North | Week 3 | 1 hour | M6 (AI Runtime LLM) |
-| FA-002: Meta Business Manager | Week 5 | 2-4 weeks | M10 (DMA Instagram posting) |
+| Azure credentials (Service Principal) + GitHub Secrets | Start of implementation | 1 hour | M1 (Terraform apply) + ALL CI/CD |
+| **FA-021: GCP project + Vertex AI SA key → Azure Key Vault** | **Week 3** | **2 hours** | **M6 (AI Runtime MID/FRONTIER LLM — CRITICAL PATH)** |
+| FA-003: Azure OpenAI UAE North | Week 3 | 1 hour | M6 fallback chain only |
+| FA-002: Meta Business Manager | Week 5 | 2-4 weeks — START NOW | M10 (DMA Instagram posting) |
 | FA-009: WAOOAW WABA | After FA-002 | 1-2 weeks | M12 (Agricultural WhatsApp) |
 | FA-018: Facebook App | Week 4 | 2 hours (after FA-002) | M7 (Portal OAuth) |
 | FA-019: Apple Developer Account | Week 4 | 1-2 days | M7 (iPhone users) |
@@ -221,7 +254,7 @@ The following must be completed by Yogesh/Sujay before the milestones that depen
 | ID | Risk | Probability | Impact | Mitigation |
 |---|---|---|---|---|
 | R-01 | Meta BM verification delayed beyond 4 weeks | Medium | High — blocks WhatsApp for all agents | Start FA-002 in Week 1; use portal chat as fallback |
-| R-02 | Azure OpenAI quota insufficient for initial load | Low | Medium — LLM responses slow | Request quota increase proactively; use Ollama LOCAL tier as fallback |
+| R-02 | Azure OpenAI quota insufficient for initial load | Low | Medium — LLM responses slow | Vertex AI is primary; Azure is fallback only — this risk is now lower |
 | R-03 | Constitutional Engine CCT-HO-01 fails (>250ms) | Low | Critical — constitutional floor breach | Dedicated Container App with min=1; no shared queue with other traffic |
 | R-04 | Trading ESCALATION_DECISION not acknowledged before Track 8 | Medium | High — Trading blocked | Escalate to Yogesh via GitHub Issue |
 | R-05 | Terraform state file corrupted | Low | High — must recreate all infra | Remote state in Azure Blob + state locking + regular backup |
@@ -229,6 +262,8 @@ The following must be completed by Yogesh/Sujay before the milestones that depen
 | R-07 | Prompt quality insufficient for Grade A simulation | Medium | Medium — Sujay must iterate | Run simulation after each skill implementation; Sujay reviews via Agent Intelligence Hub |
 | R-08 | Single agent type (e.g., Trading) not ready by Week 10 | Medium | Low — pilot can launch with 3 types | MVP can go live with DMA + Agricultural + Tutor; Trading added post-pilot |
 | R-09 | DPDPA enforcement action before Privacy Policy reviewed by lawyer | Low | High — regulatory | Legal document review by qualified advocate before any customer goes live |
+| R-10 | **⬆ FA-021 delayed — GCP Vertex AI SA key not provided before Week 3** | **Medium** | **High — AI Runtime runs LOCAL tier only; no real inference** | **Escalate FA-021 as P0 Day 1 action; AI Runtime sprint starts without blocking infra, but LLM integration blocked** |
+| R-11 | ⬆ C-074 On-the-Fly MCP Provisioning — mcp_registry reconciler bugs | Low | Medium — MCPs fall back to static config | 3-layer persistence spec (restart + reconcile + 5-min health probe) mitigates |
 
 ---
 
@@ -345,6 +380,11 @@ Infrastructure → CE → BP → PR → AIR → Web → DMA → Agricultural →
 | Business Platform | .NET 9 / REST | 9.0 | Standard REST + JWT; shared language with CE |
 | Professional Runtime | Python 3.12 / FastAPI | 3.12 | Temporal SDK; async WebSocket; Python ecosystem |
 | AI Runtime | Python 3.12 / FastAPI | 3.12 | LangChain, pgvector, MCP tools; Python AI ecosystem |
+| LLM Primary (MID_TIER) | ⬆ Google Gemini 2.0 Flash (Vertex AI asia-south1) | — | 35-40% cost saving; DPDPA India residency; ADR-029 |
+| LLM Primary (FRONTIER) | ⬆ Google Gemini 2.5 Pro (Vertex AI asia-south1) | — | Strongest multilingual reasoning; DPDPA primary |
+| LLM Agricultural override | ⬆ Sarvam AI Saaras | 1.0 | C-042 Vocabulary Mandate; Hindi/Marathi/Telugu fidelity |
+| LLM Fallback | Azure OpenAI UAE North (GPT-4o-mini / GPT-4o) | — | Circuit-breaker only; Microsoft DPA (UAE) |
+| LLM LOCAL | Ollama Llama 3.2 3B + AI4Bharat IndicBERT | — | Zero cost; classification + intent detection |
 | Web Portal | Next.js 14 / TypeScript | 14 | SSR, PWA, React Native path (Phase 2) |
 | Database | PostgreSQL 16 + pgvector | 16 | RLS multi-tenancy; pgvector for RAG |
 | Identity | Keycloak 25.0.6 | 25.0.6 | OAuth broker; Google/Facebook/Apple/Phone IDPs |

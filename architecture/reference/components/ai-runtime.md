@@ -1,10 +1,15 @@
 # Component Specification: AI Runtime
 
 **Service:** AI Runtime
-**Technology:** Python 3.12, FastAPI, httpx (async), provider-specific SDKs (OpenAI, Azure OpenAI), MCP client SDK
+**Technology:** Python 3.12, FastAPI, httpx (async), MCP client SDK
+**LLM abstraction:** Provider-agnostic interface — see §LLM Gateway and §Provider Abstraction Layer below.
+  Provider selection is runtime-dynamic via the Provider Selection Engine (ADR-029).
+  No provider SDK is hardcoded in the component. Individual provider adapters are
+  pluggable implementations registered in the Provider Registry. The PSE selects;
+  the adapter executes. Swapping providers requires only Key Vault config changes.
 **Port:** 5004 (REST, internal only — never exposed externally)
 **Owning Office:** Solution Architect (Sprint 004)
-**Constitutional Basis:** C-003 (authority licensed — AI never acts beyond Decision Space), C-004 (three systems independent — AI is Capability, not Authority), AD-007 (Runtime Universality), C-040 (domain specialization), C-041 (tool calls governed by Decision Space), ADR-019 (RAG), ADR-020 (MCP)
+**Constitutional Basis:** C-003 (authority licensed — AI never acts beyond Decision Space), C-004 (three systems independent — AI is Capability, not Authority), AD-007 (Runtime Universality), C-040 (domain specialization), C-041 (tool calls governed by Decision Space), ADR-019 (RAG), ADR-020 (MCP), ADR-029 (Multi-Provider LLM Strategy + PSE)
 
 ---
 
@@ -16,10 +21,61 @@ The LLM gateway and tool execution service. The AI Runtime has no constitutional
 
 ## Components
 
+### 0. Provider Abstraction Layer (PAL)
+**Responsibility:**
+- Defines the `LLMProvider` interface that ALL provider implementations must satisfy
+- Hosts the Provider Registry — a runtime-loaded map of `provider_id → LLMProvider` adapter
+- Exposes the Provider Selection Engine (PSE) — see ADR-029 for full rule + performance spec
+- Ensures the LLM Gateway **never imports a provider SDK directly** — it calls only `LLMProvider` methods
+
+**Architecture invariant:**
+```
+LLM Gateway calls:
+    provider = pse.select(tier, request_context)   # returns LLMProvider instance
+    response = await provider.complete(messages, params)
+
+LLMProvider is an interface. Concrete implementations:
+    VertexAIProvider      → wraps google-cloud-aiplatform SDK
+    AzureOpenAIProvider   → wraps openai SDK (azure endpoint)
+    SarvamProvider        → wraps sarvam HTTP API
+    OllamaProvider        → wraps ollama HTTP API (self-hosted)
+
+The LLM Gateway imports: LLMProvider (interface), ProviderSelectionEngine
+The LLM Gateway does NOT import: google.cloud.aiplatform, openai, sarvam, ollama
+```
+
+**Extending providers:** Adding a new LLM provider = implement `LLMProvider`, register in Provider Registry, add Key Vault secret. Zero changes to LLM Gateway, PSE rules, or any business logic.
+
+**PSE decision matrix** (full spec in ADR-029; summary below):
+
+| Layer | Mechanism | Purpose |
+|---|---|---|
+| Rule Engine (PSE-R01–R08) | Stateless, deterministic | DPDPA compliance, plan tier gates, circuit-breaker |
+| Performance Ranking | Rolling 1h composite score from `institutional.provider_performance` | C-069: platform improves its own choices using evidence |
+| Tie-break | Prefer India-region provider (DPDPA-primary) | Regulatory best-practice default |
+
+**Current PSE default rankings** (as of ADR-029, subject to change via config — NOT via code):
+
+| Tier | Default primary | Override condition | Fallback |
+|---|---|---|---|
+| LOCAL | Ollama Llama 3.2 3B | — | Queue → ZERO_COST template |
+| LOCAL (Indian lang) | AI4Bharat IndicBERT | language ∈ {hi,mr,te,ta,kn,pa,bn,gu} | Llama 3.2 |
+| MID_TIER | Google Gemini 2.0 Flash (asia-south1) | PSE-R08 latency breach | Azure GPT-4o-mini (UAE) |
+| MID_TIER (Agricultural) | Sarvam Saaras | PSE-R02 language override — C-042 LAW | Gemini 2.0 Flash |
+| FRONTIER | Google Gemini 2.5 Pro (asia-south1) | PSE-R08 latency breach | Azure GPT-4o (UAE) |
+| FRONTIER (Steward) | Forced FRONTIER primary — PSE-R04 | No override | Azure GPT-4o (emergency only) |
+
+**"Default primary" is not a mandate.** It is the PSE's current top-ranked provider under:
+- PSE-R01: DPDPA compliance (India-region passes; US-only fails)
+- Cost ranking: Gemini Flash/Pro ~35-40% cheaper than GPT-4o-mini/GPT-4o
+- C-042 Agricultural override: Sarvam Saaras demonstrably superior for regional languages
+
+If a DPDPA-compliant Indian provider with better cost/performance emerges, the PSE ranking changes automatically via the performance engine (no code change). If the Founder updates Key Vault config to deprioritize any provider, the rule engine acts immediately.
+
 ### 1. LLM Gateway
 **Responsibility:**
 - Receives inference requests from Professional Runtime with: prompt, Decision Space context, and tool list
-- Routes to the configured LLM provider (OpenAI, Azure OpenAI — provider configured via env var)
+- Calls `pse.select(tier, request_context)` to obtain the active `LLMProvider` instance — never selects provider itself
 - Applies constitutional prompt wrapper: Decision Space boundaries are injected into system prompt
 - Returns generated content to Professional Runtime
 
@@ -35,7 +91,7 @@ For actions listed as 'always ask': propose the action but do not execute it.
 """
 ```
 
-**Provider agnosticism:** The LLM provider is selected by the `LLM_PROVIDER` environment variable. The gateway interface does not change when providers change.
+**Provider agnosticism:** The LLM Gateway calls `LLMProvider.complete()`. It never inspects which provider was selected. It never branches on provider type. Adding or removing a provider does not touch the Gateway code.
 
 ### 2. Tool Registry and Executor
 **Responsibility:**

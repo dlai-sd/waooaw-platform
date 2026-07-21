@@ -29,7 +29,10 @@ from collections import defaultdict
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).parent.parent
-SRC_DIRS = ["src", "web/src", "scripts", "tests"]
+SRC_DIRS = ["src", "web/src", "scripts", "tests", "infrastructure"]
+# G-03 FIX: infrastructure/ added so SQL migration files are scanned for
+# -- constitutional_basis: annotations. Without this, DB schema traceability
+# (C-073) was declared but not enforced by the scanner.
 CLAIMS_DIR = REPO_ROOT / "knowledge" / "claims"
 
 # Patterns that indicate constitutional annotation in source files

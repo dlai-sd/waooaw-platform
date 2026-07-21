@@ -71,10 +71,24 @@ jobs:
       - name: Run CCT Suite — ${{ inputs.environment }}
         run: |
           echo "Running Constitutional Compliance Tests against ${{ inputs.environment }}..."
-          # TODO (IB-009): Implement when services are deployed
-          # ./scripts/run-ccts.sh --environment ${{ inputs.environment }} \
-          #                       --base-url ${{ inputs.environment_url }}
-          echo "CCT Suite: PENDING (IB-009 implementation required)"
+          # G-07 FIX: scripts/run-ccts.sh now exists (created Sprint 011).
+          # It guards against empty suite (exit 2) and unhealthy environment (exit 3).
+          # Uncomment when Sprint 012 delivers first CCT test files:
+          # ./scripts/run-ccts.sh \
+          #   --environment "${{ inputs.environment }}" \
+          #   --base-url "${{ inputs.environment_url }}"
+          #
+          # Until Sprint 012 delivers CCT-EF-01, run the script in check-only mode:
+          CCT_COUNT=$(find tests/constitutional -name "test_cct_*.py" 2>/dev/null | wc -l)
+          if [[ "$CCT_COUNT" -eq 0 ]]; then
+            echo "⏳ CCT Suite: 0 test files — Sprint 012 required before CCT gate activates."
+            echo "   Post-deploy CCT gate is SUSPENDED until first CCT exists."
+            echo "   This is logged. Promotion proceeds under BOOTSTRAP exception (engineering-standards.md §12)."
+          else
+            ./scripts/run-ccts.sh \
+              --environment "${{ inputs.environment }}" \
+              --base-url "${{ inputs.environment_url }}"
+          fi
 
       # ─── 3. Emergency Stop Latency Test (C-024 — ≤250ms) ─────────────────
       - name: Emergency Stop latency test — C-024 Constitutional Floor

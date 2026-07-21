@@ -73,12 +73,9 @@ jobs:
                 --add-label "status:blocked" \
                 --remove-label "status:in-progress" 2>/dev/null || true
 
+              COMMENT_BODY="Constitutional Blocker raised: #${BLOCKER_ISSUE} - Work on this IB item is halted per BOOTSTRAP protocol Step 7. No compensation or workaround is permitted. Resolution required before execution can resume."
               gh issue comment "$IB_ISSUE" --repo "$REPO" \
-                --body "🔴 **Constitutional Blocker raised**: #${BLOCKER_ISSUE}
-
-Work on this IB item is halted per BOOTSTRAP protocol Step 7. No compensation or workaround is permitted.
-
-**Resolution required before execution can resume.** See #${BLOCKER_ISSUE} for details."
+                --body "$COMMENT_BODY"
             fi
           fi
 
@@ -157,8 +154,4 @@ Work on this IB item is halted per BOOTSTRAP protocol Step 7. No compensation or
             --add-label "status:approved" 2>/dev/null || true
 
           gh issue comment "$ISSUE" --repo "$REPO" \
-            --body "✅ **Sprint Plan Approved by Founder. Mode 2 ACTIVATED.**
-
-All agents assigned to issues in this sprint may now begin execution autonomously within pre-approved assumption boundaries.
-
-_Constitutional basis: BOOTSTRAP Full Agent Operating Cycle — Mode 2 (Sprint Execution) activated._"
+            --body "Sprint Plan Approved by Founder. Mode 2 ACTIVATED. All agents assigned to issues in this sprint may now begin execution autonomously within pre-approved assumption boundaries. Constitutional basis: BOOTSTRAP Full Agent Operating Cycle Mode 2 (Sprint Execution) activated."

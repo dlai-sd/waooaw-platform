@@ -18,10 +18,41 @@ concurrency:
 
 jobs:
 
+  # ─── Commit message format (C-059 + C-073 traceability) ──────────────────
+  # G-05 FIX: commitlint enforces IB:/Constitutional:/CCTs-added: fields on
+  # every commit message. Without this, the spec→code traceability chain breaks
+  # silently. commitlint.config.js defines WAOOAW-specific types and scopes.
+  commitlint:
+    name: Commit message lint (C-059 traceability)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install commitlint
+        run: npm install --save-dev @commitlint/cli @commitlint/config-conventional
+      - name: Validate PR commits
+        run: |
+          npx commitlint \
+            --from ${{ github.event.pull_request.base.sha }} \
+            --to ${{ github.event.pull_request.head.sha }} \
+            --verbose
+        # Note: commitlint checks conventional format. The C-059 extended fields
+        # (IB:, Constitutional:, CCTs-added:) are validated by the traceability
+        # scan job below — they are body fields, not subject fields.
+
   # ─── .NET: CSharpier format + Roslyn analyzers ──────────────────────────
   dotnet-quality:
     name: .NET — CSharpier + analyzers + StyleCop
     runs-on: ubuntu-latest
+    # hashFiles guard: skip before src/ service dirs exist (Sprint 011 scaffold PRs)
+    if: |
+      hashFiles('src/constitutional-engine/**/*.csproj') != '' ||
+      hashFiles('src/business-platform/**/*.csproj') != ''
     strategy:
       matrix:
         project: [src/constitutional-engine, src/business-platform]
@@ -50,6 +81,10 @@ jobs:
   python-quality:
     name: Python — Ruff + mypy + bandit
     runs-on: ubuntu-latest
+    # hashFiles guard: skip before Python service dirs exist
+    if: |
+      hashFiles('src/professional-runtime/pyproject.toml') != '' ||
+      hashFiles('src/ai-runtime/pyproject.toml') != ''
     strategy:
       matrix:
         service: [src/professional-runtime, src/ai-runtime]
@@ -164,7 +199,7 @@ jobs:
             echo "C-072 violation: 'any' type found in TypeScript source" && exit 1 || \
             echo "✓ No 'any' types in production TypeScript"
 
-      - name: Bundle size check (UX vocabulary: ≤200KB home page)
+      - name: "Bundle size check (UX vocabulary: max 200KB home page)"
         run: |
           pnpm build 2>&1 | grep -E "First Load JS|Route" || true
           # TODO: parse Next.js build output and fail if bundle > 250KB threshold

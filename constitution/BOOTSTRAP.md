@@ -497,30 +497,50 @@ Why this matters:
   state from git history — wasting session context and risking mistakes.
 ```
 
-### IMPLEMENTATION GATE — ABSOLUTE RULE
+### IMPLEMENTATION GATE — TWO MODES (C-066 + C-070 Third Instinct)
 
 ```
-⛔ STOP before creating ANY file in src/ or writing ANY runnable code.
+⚙️  DETERMINE YOUR EXECUTION MODE FIRST
 
-"G5 CLEAR" in README means: prerequisites are met.
-It does NOT mean: Founder has authorized implementation for this session.
+MODE A — HUMAN SESSION (GitHub Copilot chat / agent invoked by a human)
+  You were invoked by a human typing in a chat window.
+  Per-session Founder confirmation is required before creating any src/ files.
+  STOP. Ask: "This would begin writing implementation code.
+              Do you explicitly authorize IB-009 implementation for this session?"
+  Wait for explicit Founder confirmation. Only then proceed.
 
-A TO-DO list entry labelled P0/P1 is NOT authorization.
-A GitHub Issue assigned to you is NOT authorization.
-A Work Contract is NOT authorization unless the Founder explicitly said
-"start coding" in this session.
+MODE B — AUTONOMOUS SPRINT AGENT (GitHub Actions scheduled trigger)
+  You were invoked by .github/workflows/autonomous-sprint.yaml (cron / workflow_dispatch).
+  The environment variable AUTONOMOUS_SPRINT_AGENT=true will be set.
 
-BEFORE creating any file in src/, tests/ (implementation tests), or any
-runnable code artifact:
-  → STOP
-  → State explicitly: "This would begin implementation. Gate G5 prerequisites
-    are met but I do not have explicit Founder authorization for this session.
-    Do you authorize IB-009 implementation to begin?"
-  → Wait for explicit Founder confirmation
-  → Only proceed after Founder says "yes, start coding" or assigns the issue
+  AUTHORIZATION CHECK (replaces per-session human ask):
+    ✓ Read constitution/PROJECT_STATE.md → SPRINT_STATE_MACHINE block
+    ✓ Check AUTONOMOUS_HALT: false  (if true → log and exit gracefully — C-001)
+    ✓ Check current_sprint WC-NNN exists in work-contracts/
+    ✓ Check IB item status = AUTHORIZED in INSTITUTIONAL_BACKLOG.md
+    ✓ Check consecutive_failures < 3  (if ≥ 3 → create Constitutional Blocker → halt)
+    If ALL checks pass → PROCEED immediately. No human approval required.
+    If ANY check fails → update PROJECT_STATE.md with failure reason → exit.
 
-Mode 1 (no Sprint Plan): "Wait for Founder selection before beginning execution."
-This rule applies even when G5 CLEAR is visible in README.
+  CONSTITUTIONAL BASIS:
+    C-070 Third Instinct: "Autonomous and Trust-Based Execution" is constitutional DNA.
+    C-066 Tier 2A: IB:AUTHORIZED + WC exists = execution authorized for scheduled agent.
+    C-064: Humans govern via IB authorization and AUTONOMOUS_HALT — not per-execution.
+    C-001: AUTONOMOUS_HALT flag IS the Human Override for the autonomous loop.
+
+  WHAT HUMANS CONTROL IN MODE B:
+    Yogesh sets IB:AUTHORIZED (Founding Gate) — grants the sprint.
+    Any of the 3 humans sets AUTONOMOUS_HALT: true to stop all autonomous execution.
+    Yogesh ratifies Gate closures (not individual sprint runs).
+    Ojal can halt and trigger ethics review of any AI behavior at any time.
+    CODEOWNERS still blocks any merge — final merge gate is always human (Yogesh).
+
+⛔ WHAT NEVER CHANGES REGARDLESS OF MODE:
+  - Class 1 documents cannot be modified (CONSTITUTION.md, GENESIS.md)
+  - C-007 Audit Ledger is always append-only — no delete/update ever
+  - C-065 SDLC Separation: Implementation job ≠ Review job (different workflow context)
+  - C-059 commit format mandatory — IB: and Constitutional: fields always required
+  - CCT-EF-01 must pass before any sprint is considered DONE
 ```
 
 ---

@@ -1,6 +1,6 @@
 # WAOOAW Platform — Founder Action List
 
-**Last Updated:** 2026-07-18
+**Last Updated:** 2026-07-21
 **Purpose:** Tracks all actions that require the Founder's direct involvement. No AI agent can complete these.
 
 ---
@@ -19,11 +19,14 @@
 |---|---|---|---|---|
 | **FA-001** | Create Cloudflare account + add waooaw.com domain + enable proxy mode for static assets (`_next/static/**`, `*.js`, `*.css`) | CDN — O-02 optimization; faster portal load for all users | 30 minutes | PENDING |
 | **FA-002** | Meta Business Manager verification (upload business documents) | DMA Skill 11 (paid advertising agency model — ADR-026); WhatsApp Business API (WABA) | 2-4 weeks lead time | PENDING |
-| **FA-003** | Create Azure OpenAI resource in **UAE North** region (not US East) + deploy gpt-4o and gpt-4o-mini models | O-10 LLM latency optimization: 180ms → 80ms for all LLM calls | 1 hour | PENDING |
+| **FA-003** | Create Azure OpenAI resource in **UAE North** region (not US East) + deploy gpt-4o and gpt-4o-mini models | Fallback LLM chain when Vertex AI circuit-breaker fires (ADR-029) | 1 hour | PENDING |
 | **FA-004** | ~~Designate Grievance Officer~~ — **DONE (partial):** Yogesh Khandge designated (yogesh.khandge@dlaisd.com). Remaining: set up grievance page on portal + ensure 30-day response SLA is documented in Privacy Policy | DPDPA compliance before commercial launch | 30 minutes | PARTIAL |
 | **FA-005** | TRADING/EXECUTION/ESCALATION_DECISION — acknowledge that this is a BREAKING constitutional boundary before any trading agent goes live | Trading IB-009 implementation unblocked | Immediate | PENDING |
 | **FA-006** | Google Ads MCC (My Client Center) account setup | DMA Skill 11 Google Ads management (ADR-026) | 1 day (self-serve) | PENDING |
 | **FA-007** | Create WAOOAW Instagram + LinkedIn + Facebook + GBP accounts | Skill 14 (WAOOAW institutional self-marketing, FR-005) | 1 day | PENDING |
+| **FA-021** | Create GCP project → enable Vertex AI API → create service account with `aiplatform.user` role → download SA key JSON → store in Azure Key Vault as `GOOGLE_VERTEX_SA_KEY` | **AI Runtime MID_TIER + FRONTIER inference (CRITICAL PATH).** Without this, AI Runtime runs LOCAL tier only (Ollama). All customer agents degrade to zero-cost stub responses. | 2 hours | PENDING |
+| **FA-022** | Register at sarvam.ai → subscribe to Saaras API → store API key in Azure Key Vault as `SARVAM_API_KEY` | Agricultural agent Grade A regional language (Hindi/Marathi/Telugu). PSE-R02 override requires Sarvam for C-042 Vocabulary Mandate compliance. | 1 hour | PENDING |
+| **FA-023** | Create GitHub App for autonomous PR review (C-065 SDLC Separation enforcement): Go to `github.com/settings/apps/new` → set permissions: `pull_requests:write`, `contents:read` → install on `dlai-sd/waooaw-platform` → generate installation token → store as `REVIEW_APP_TOKEN` GitHub Secret | **Autonomous Sprint Agent full C-065 compliance.** Without this, the autonomous reviewer runs in advisory mode only (posts comment, cannot formally approve). CODEOWNERS merge gate remains — this just adds the autonomous review approval layer. | 30 minutes | PENDING |
 
 ## P1 — Before 50 Customers
 

@@ -1,0 +1,107 @@
+# Autonomous Sprint Agent — executes sprint tasks every 2 hours
+#
+# constitutional_basis: C-066 Tier 2A, C-070 Third Instinct, C-001, C-065, C-059
+# ib_item: IB-009
+# spec: architecture/reference/agents/platform-it-expert-agent.md
+#
+# AUTHORIZATION: No per-execution human approval (C-066 Tier 2A).
+#   IB:AUTHORIZED + WC exists + AUTONOMOUS_HALT: false = proceed.
+# HUMAN OVERRIDE (C-001): Set AUTONOMOUS_HALT: true in PROJECT_STATE.md.
+# C-065 SDLC SEPARATION:
+#   execute job uses GITHUB_TOKEN (author).
+#   review job uses REVIEW_APP_TOKEN (reviewer — different GitHub App identity).
+#   GitHub platform enforces: same token cannot open AND approve a PR.
+
+name: Autonomous Sprint Agent
+
+on:
+  schedule:
+    - cron: '0 */2 * * *'
+  workflow_dispatch:
+    inputs:
+      force_task:
+        description: 'Force specific task ID (e.g. WC011-01). Overrides state machine.'
+        required: false
+        type: string
+      dry_run:
+        description: 'Dry run — plan but do not commit or open PR'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  AUTONOMOUS_SPRINT_AGENT: 'true'
+
+jobs:
+
+  # ── Job 1: Execute sprint tasks (Implementation hat) ─────────────────────
+  # C-065: This job is the AUTHOR. Uses GITHUB_TOKEN.
+  execute:
+    name: "Execute sprint (Platform IT Expert — Implementation)"
+    runs-on: ubuntu-latest
+    outputs:
+      pr_number:    ${{ steps.runner.outputs.pr_number }}
+      halt:         ${{ steps.runner.outputs.halt }}
+      result:       ${{ steps.runner.outputs.result }}
+      sprint:       ${{ steps.runner.outputs.sprint }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install pyyaml requests
+
+      - name: Configure git
+        run: |
+          git config user.name  "WAOOAW AI Agent - Platform IT Expert"
+          git config user.email "platform-it-expert@waooaw.ai"
+
+      - name: Run autonomous sprint agent
+        id: runner
+        env:
+          GITHUB_TOKEN:  ${{ secrets.GITHUB_TOKEN }}
+          FORCE_TASK:    ${{ inputs.force_task || '' }}
+          DRY_RUN:       ${{ inputs.dry_run || 'false' }}
+          GITHUB_REPO:   ${{ github.repository }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+        run: python3 scripts/autonomous_sprint_runner.py
+
+  # ── Job 2: PR Review (PR Review hat) ─────────────────────────────────────
+  # C-065: This job is the REVIEWER. Uses REVIEW_APP_TOKEN (different identity).
+  # Until REVIEW_APP_TOKEN is provisioned: advisory comment only.
+  review:
+    name: "PR Review (Platform IT Expert — PR Review hat, C-065)"
+    runs-on: ubuntu-latest
+    needs: execute
+    if: |
+      needs.execute.outputs.halt != 'true' &&
+      needs.execute.outputs.pr_number != '' &&
+      needs.execute.outputs.result == 'SUCCESS'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run PR review
+        env:
+          # GA-06: REVIEW_APP_TOKEN must be a GitHub App token (different from GITHUB_TOKEN).
+          # GitHub enforces: cannot approve a PR using the same token that opened it.
+          # Until provisioned: falls back to advisory comment via GITHUB_TOKEN.
+          REVIEW_TOKEN:  ${{ secrets.REVIEW_APP_TOKEN || secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN:  ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER:     ${{ needs.execute.outputs.pr_number }}
+          SPRINT:        ${{ needs.execute.outputs.sprint }}
+          GITHUB_REPO:   ${{ github.repository }}
+          HAS_REVIEW_TOKEN: ${{ secrets.REVIEW_APP_TOKEN != '' }}
+        run: python3 scripts/autonomous_sprint_reviewer.py

@@ -1,10 +1,85 @@
 # PROJECT_STATE.md
 
 **Last Updated:** 2026-07-21
-**Version:** 0.95.0
-**Session:** 2026-07-21 — SESSION CLOSE (Homepage v1.0 + Auth modal + UX compliance)
+**Version:** 0.96.0
+**Session:** 2026-07-21 — SESSION CLOSE (Autonomous Execution Model + Full Audit)
 
 ---
+
+## IN-PROGRESS CHECKPOINT — 2026-07-21 SESSION CLOSE
+
+| Milestone | Status |
+|---|---|
+| AGENT-ENTRY.md updated to v0.95.0 (75 claims, all 8 agents, PMO/Ops routing) | ✓ DONE |
+| AI Runtime component spec — Vertex AI SDK gap + Provider Abstraction Layer | ✓ DONE |
+| PMO Program Plan v2.0 — Tracks 11/12, Vertex AI tech stack, new milestones | ✓ DONE |
+| WC-011 created (IB-009 Sprint 011 — Infrastructure Foundation) | ✓ DONE |
+| Simulation run — 8 gaps found and fixed (G-01 to G-08) | ✓ DONE |
+| Full autonomy model — BOOTSTRAP amended, C-066 Tier 2A, autonomous-sprint.yaml | ✓ DONE |
+| FA-021/022/023 added to FOUNDER-ACTIONS.md | ✓ DONE |
+| Full audit — 11/11 YAML valid, Python valid, runner dry-run confirmed | ✓ DONE |
+| Version bump → v0.96.0 across README + AGENT-ENTRY | ✓ DONE |
+| Operations Management ITSM policies | PENDING — next session |
+
+---
+
+## SPRINT_STATE_MACHINE
+<!-- Machine-readable by autonomous-sprint.yaml. YAML-parseable block. -->
+<!-- Edit ONLY the fields below. Do not alter the block structure. -->
+
+```yaml
+autonomous_halt: false        # ← SET TO true TO STOP ALL AUTONOMOUS RUNS (C-001 Human Override)
+                              #   Any steward (Yogesh/Sujay/Ojal) may set this at any time.
+                              #   Not auto-cleared — requires human to set back to false.
+
+current_sprint: WC-011
+sprint_ib_item: IB-009
+sprint_status: READY          # READY | IN_PROGRESS | BLOCKED | DONE | FAILED
+branch: ib/009/infra-foundation
+
+last_attempt_utc: ""    # ISO 8601 — set by autonomous-sprint.yaml on each run
+last_attempt_result: ""       # SUCCESS | PARTIAL | FAILED | SKIPPED
+consecutive_failures: 0       # Resets to 0 on any SUCCESS. Halt triggered at 3.
+
+tasks_done: []
+tasks_remaining:
+  - WC011-01   # Validate docker-compose.yml
+  - WC011-02   # Validate DB migration scripts 01-09
+  - WC011-03   # Validate Keycloak realm import
+  - WC011-04   # Create src/ directory scaffold
+  - WC011-05   # Verify setup.sh and get-dev-token.sh
+  - WC011-07   # GitHub Actions secrets documentation
+  # WC011-06 BLOCKED: awaiting Azure SP (Terraform apply)
+
+current_task: ""              # Set to task ID when execution is active
+current_task_started_utc: ""
+
+next_sprint: WC-012           # Activates automatically when sprint_status = DONE
+next_sprint_ib_item: IB-009   # Same IB item — Sprint 012 is CE skeleton
+
+blocker: ""                   # CB-NNN reference if blocked
+blocker_raised_utc: ""
+```
+
+---
+
+## NEXT SESSION OPTIONS (updated 2026-07-21)
+
+```
+A. ⚡ AUTONOMOUS — autonomous-sprint.yaml fires every 2h automatically.
+   No action needed. Sprint 011 executes on next cron trigger if AUTONOMOUS_HALT: false.
+   Monitor via GitHub Actions → autonomous-sprint workflow runs.
+   Override: set AUTONOMOUS_HALT: true in SPRINT_STATE_MACHINE above (C-001 Human Override).
+
+B. MANUAL override — say "start coding Sprint 011" to execute in this chat session.
+   Platform IT Expert runs WC-011 tasks immediately. No 2h wait.
+
+C. Operations Management ITSM policies (separate governance track)
+   Incident/Change/Release Management → standards/ folder
+   No Founder authorization needed — governance documents only.
+
+D. About Us / Contact Us / Careers pages (spec §13 complete, not yet built)
+```
 
 ## SESSION CLOSE BRIEFING — READ THIS FIRST
 

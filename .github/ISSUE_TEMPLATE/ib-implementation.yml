@@ -3,6 +3,12 @@ description: "Backlog item for the Runtime Professional to implement (Gate G5+)"
 title: "[IB-NNN] "
 labels:
   - "type:implementation"
+  - "tier:2-feature"
+  # GA-07 / C-066 Tier 2A: approved:sujay label REMOVED from auto-apply.
+  # Authorization model: IB:AUTHORIZED in INSTITUTIONAL_BACKLOG.md = execution authorized.
+  # The autonomous-sprint.yaml workflow reads IB status directly — no label required.
+  # For human-initiated sessions: Copilot checks IB status, not a GitHub label.
+  # Sujay's role is agent prompt quality, KPI review, trial conversion — not sprint gating.
 assignees: []
 body:
   - type: markdown

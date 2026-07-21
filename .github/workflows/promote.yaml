@@ -156,6 +156,19 @@ jobs:
           WAOOAW_DEV_JWT_TENANT_A: ${{ secrets.DEV_TEST_JWT_TENANT_A }}
           WAOOAW_DEV_JWT_TENANT_B: ${{ secrets.DEV_TEST_JWT_TENANT_B }}
         run: |
+          # G-06 FIX: Verify CCT suite is non-empty before running.
+          # An empty test/constitutional/ directory produces a pytest exit-0 false-pass.
+          # Constitutional principle: a passing gate with zero tests is not a passing gate.
+          CCT_COUNT=$(find tests/constitutional -name "test_cct_*.py" | wc -l)
+          if [ "$CCT_COUNT" -eq "0" ]; then
+            echo "❌ CCT GATE BLOCKED: No CCT test files found in tests/constitutional/"
+            echo "Constitutional Compliance Tests must exist before promotion is authorized."
+            echo "Sprint 012 (CE skeleton) must add CCT-EF-01 and CCT-HO-01 as first tests."
+            echo "This gate cannot be bypassed. Raise a Constitutional Blocker if blocked."
+            exit 1
+          fi
+          echo "✓ CCT suite contains $CCT_COUNT test file(s) — proceeding"
+
           # Run .NET CCTs
           dotnet test tests/constitutional \
             --logger "trx;LogFileName=cct-results.trx" \

@@ -328,3 +328,61 @@ constitutional.paas.active_sessions       — gauge
 constitutional.evidence.state_transition  — counter, per from/to state pair
 constitutional.cct.result                 — counter, per CCT ID + pass/fail
 ```
+
+---
+
+## 12. CE Bootstrap Stub Pattern (Sprint 011 → Sprint 012 transition)
+
+**The circular dependency problem:** Evidence First (C-023) requires every consequential action to call `CE.RecordEvidence()` before returning success. But CE is built in Sprint 012 — after Sprint 011 infrastructure is complete. Sprint 011 actions (branch creation, DB migration, Keycloak import) cannot call CE because CE does not exist yet.
+
+**Resolution: Ordered Bootstrap with Stub Mode**
+
+Sprint 011 operates under **Stub Mode** — a constitutionally-acknowledged bootstrap exception defined here. It is NOT a permanent waiver of Evidence First.
+
+```
+STUB MODE rules (Sprint 011 only):
+  1. CE.RecordEvidence() calls are replaced with local append-only log writes:
+       File: logs/bootstrap-evidence.jsonl
+       Format: {"event": "BRANCH_CREATED", "branch": "ib/009/infra-foundation",
+                "sha": "abc123", "timestamp": "2026-07-21T...", "stub_mode": true}
+  2. The bootstrap-evidence.jsonl file is committed to the branch
+  3. When CE is built (Sprint 012), a one-time migration imports bootstrap-evidence.jsonl
+     into constitutional.audit_records with constitutional_basis = "BOOTSTRAP-STUB-IB-009"
+  4. All CCT-EF tests are run for the FIRST TIME against Sprint 012 CE — not Sprint 011
+  5. Sprint 011 CI gates explicitly exclude CCT-EF tests (they cannot pass without CE)
+```
+
+**In practice (Sprint 011 only):**
+```python
+# src/waooaw/evidence.py — created in Sprint 011 scaffold
+# Implements: architecture/reference/engineering-standards.md §12
+# Constitutional basis: C-023 (Evidence First), C-059 (Traceability)
+
+import json
+from datetime import datetime, timezone
+from pathlib import Path
+
+_BOOTSTRAP_LOG = Path("logs/bootstrap-evidence.jsonl")
+
+def record_bootstrap_evidence(event_type: str, **kwargs) -> None:
+    """
+    Sprint 011 stub for CE.RecordEvidence().
+    Writes to local JSONL file instead of CE gRPC.
+    STUB MODE — replaced by real CE call in Sprint 012.
+    """
+    _BOOTSTRAP_LOG.parent.mkdir(exist_ok=True)
+    record = {
+        "event": event_type,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "stub_mode": True,
+        "ib_item": "IB-009",
+        **kwargs,
+    }
+    with _BOOTSTRAP_LOG.open("a") as f:
+        f.write(json.dumps(record) + "\n")
+```
+
+**Sprint 012 CE activation:**
+When Sprint 012 delivers the real CE, replace all `record_bootstrap_evidence()` calls with `ce_client.record_evidence()` and run the one-time bootstrap import. CCT-EF-01 must pass before any Sprint 012 PR merges.
+
+**The constitutional justification:** BOOTSTRAP.md itself operates under a "read-before-act" protocol that cannot call CE (CE doesn't exist at first boot). The institution acknowledges that constitutional infrastructure must be built before it can be constitutionally governed. The stub mode preserves the intent (every action is recorded) while acknowledging the sequencing constraint. The bootstrap evidence is imported — nothing is lost.
