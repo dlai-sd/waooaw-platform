@@ -169,7 +169,7 @@ jobs:
           uv run pytest tests/unit \
             --cov=. \
             --cov-report=xml \
-            --cov-fail-under=80
+            --cov-fail-under=90
         working-directory: ${{ matrix.service }}
 
       - name: Upload coverage
@@ -206,7 +206,7 @@ jobs:
         working-directory: web
 
       - name: Jest
-        run: pnpm jest --coverage --coverageThreshold='{"global":{"lines":70}}'
+        run: pnpm jest --coverage --coverageThreshold='{"global":{"lines":90}}'
         working-directory: web
 
   # ─── OpenAPI spec lint ────────────────────────────────────────────────────

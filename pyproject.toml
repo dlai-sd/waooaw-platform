@@ -118,7 +118,7 @@ source = ["src/professional-runtime", "src/ai-runtime", "scripts"]
 omit = ["tests/*", ".venv/*", "*/migrations/*"]
 
 [tool.coverage.report]
-fail_under = 80                  # Minimum coverage — gates set per-service in QA-POLICY.md
+fail_under = 90                  # Minimum coverage — 90% floor on all services (engineering-standards.md)
 show_missing = true
 exclude_lines = [
     "pragma: no cover",

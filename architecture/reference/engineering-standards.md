@@ -54,13 +54,17 @@ A standard without enforcement is a suggestion. Every standard here has an autom
 
 ### Coverage Targets (enforced by Codecov in CI)
 
+**Minimum floor: 90% line coverage on all services.** No PR may merge with coverage below 90%.
+Targets above 90% represent the quality bar; the 90% floor is the constitutional gate.
+
 | Layer | Service | Target | Hard Gate |
-|---|---|---|---|
+|---|---|---|
+---|
 | Unit | Constitutional Engine | 95% line coverage | Fail PR if < 90% |
-| Unit | Business Platform | 85% line coverage | Fail PR if < 80% |
-| Unit | Professional Runtime | 85% line coverage | Fail PR if < 80% |
-| Unit | AI Runtime | 80% line coverage | Fail PR if < 75% |
-| Unit | Web App | 75% line coverage | Fail PR if < 70% |
+| Unit | Business Platform | 92% line coverage | Fail PR if < 90% |
+| Unit | Professional Runtime | 92% line coverage | Fail PR if < 90% |
+| Unit | AI Runtime | 90% line coverage | Fail PR if < 90% |
+| Unit | Web App | 90% line coverage | Fail PR if < 90% |
 | Integration | All services | All service boundaries covered | Fail dev deploy if missing |
 | Constitutional Compliance | All | 100% pass | Fail dev deploy if any CCT fails |
 
