@@ -240,8 +240,17 @@
   .cmd-isub{font-size:12px;color:var(--text-3)}
   .cmd-footer{border-block-start:1px solid var(--border);padding:10px 20px;display:flex;gap:16px;font-size:11px;color:var(--text-3)}
 
-  /* RESPONSIVE */
-  @media(max-width:860px){.hero{grid-template-columns:1fr;gap:48px}}
+  /* HERO GRADIENT — fixed backdrop, fades on scroll (sleek.com inspired) */
+  body::before{
+    content:'';
+    position:fixed;inset:0;z-index:0;pointer-events:none;
+    background:
+      radial-gradient(ellipse 70% 55% at 0% 0%,   rgba(26,102,194,.07) 0%,transparent 65%),
+      radial-gradient(ellipse 55% 45% at 100% 0%,  rgba(61,173,53,.05)  0%,transparent 60%),
+      radial-gradient(ellipse 50% 30% at 50% 100%, rgba(247,148,29,.04) 0%,transparent 55%);
+    opacity:var(--hero-grad,1);
+    transition:opacity .5s ease;
+  }
   @media(max-width:1100px){.agent-grid{grid-template-columns:repeat(2,1fr)}}
   @media(max-width:580px){.agent-grid{grid-template-columns:1fr}}
   @media(max-width:900px){.nav-links{display:none}.ambient-bar{gap:14px;font-size:11px}.dna-sep{display:none}.dna-items{gap:24px}footer{grid-template-columns:1fr 1fr}}
@@ -262,7 +271,7 @@
 <!-- NAV -->
 <nav role="navigation" aria-label="Main navigation">
   <a href="/" class="nav-logo" aria-label="WAOOAW Home">
-    <img src="architecture/reference/ux/brand/waooaw-platform-logo.png" alt="WAOOAW"
+    <img src="Stylized%20WAW%20logo%20design.png" alt="WAOOAW"
          onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" />
     <div class="nav-logo-fallback">
       <div class="logo-mark">W</div>
@@ -303,6 +312,20 @@
       <div class="tl-step" id="s3"><div class="tl-circle"><span class="tl-val">24&times;7</span></div><div class="tl-name">Autonomous</div><div class="tl-time">24&times;7</div></div>
     </div>
     <div class="tl-status" id="tl-status" role="status" aria-live="polite"></div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- HOW IT WORKS -->
+<section class="container section" id="how" aria-labelledby="how-h">
+  <p class="section-eyebrow">Getting started</p>
+  <h2 id="how-h" class="section-title">Three steps in 10 minutes. <strong>Then it just works.</strong></h2>
+  <p class="section-sub">The WaooaW Concierge configures your agent through conversation &mdash; no forms, no technical setup, no commitment before you see results.</p>
+  <div class="steps-grid" role="list">
+    <div class="step-item" role="listitem"><div class="step-num">1</div><div class="step-title">Tell us about your business</div><p class="step-desc">The WaooaW Concierge learns your business in a 5-minute conversation. No form. No technical knowledge needed.</p></div>
+    <div class="step-item" role="listitem"><div class="step-num">2</div><div class="step-title">Your AI Agent is configured</div><p class="step-desc">We define your Agent&apos;s Decision Space &mdash; exactly what it can and cannot do. You review and confirm before anything happens.</p></div>
+    <div class="step-item" role="listitem"><div class="step-num">3</div><div class="step-title">Watch it work. You&apos;re always in control.</div><p class="step-desc">Your Agent starts delivering. Emergency Stop is always one tap away. See every action in real time.</p></div>
   </div>
 </section>
 
@@ -395,20 +418,6 @@
 
 <div class="divider"></div>
 
-<!-- HOW IT WORKS -->
-<section class="container section" id="how" aria-labelledby="how-h">
-  <p class="section-eyebrow">Getting started</p>
-  <h2 id="how-h" class="section-title">Three steps.<br><strong>Then it just works.</strong></h2>
-  <p class="section-sub">The WaooaW Concierge configures your agent through conversation &mdash; no forms, no technical setup, no commitment before you see results.</p>
-  <div class="steps-grid" role="list">
-    <div class="step-item" role="listitem"><div class="step-num">1</div><div class="step-title">Tell us about your business</div><p class="step-desc">The WaooaW Concierge learns your business in a 5-minute conversation. No form. No technical knowledge needed.</p></div>
-    <div class="step-item" role="listitem"><div class="step-num">2</div><div class="step-title">Your AI Agent is configured</div><p class="step-desc">We define your Agent&apos;s Decision Space &mdash; exactly what it can and cannot do. You review and confirm before anything happens.</p></div>
-    <div class="step-item" role="listitem"><div class="step-num">3</div><div class="step-title">Watch it work. You&apos;re always in control.</div><p class="step-desc">Your Agent starts delivering. Emergency Stop is always one tap away. See every action in real time.</p></div>
-  </div>
-</section>
-
-<div class="divider"></div>
-
 <!-- CONSTITUTIONAL PROMISE -->
 <section class="container section" aria-labelledby="promise-h">
   <p class="section-eyebrow">The constitutional promise</p>
@@ -467,7 +476,7 @@
 <!-- FOOTER -->
 <footer role="contentinfo">
   <div class="footer-brand">
-    <a href="/"><img src="architecture/reference/ux/brand/waooaw-platform-logo.png" alt="WAOOAW" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="footer-brand-fallback"><div class="logo-mark" style="width:24px;height:24px;font-size:11px">W</div><span class="logo-text" style="font-size:14px">WAOOAW</span></div></a>
+    <a href="/"><img src="Stylized%20WAW%20logo%20design.png" alt="WAOOAW" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="footer-brand-fallback"><div class="logo-mark" style="width:24px;height:24px;font-size:11px">W</div><span class="logo-text" style="font-size:14px">WAOOAW</span></div></a>
     <p>Ways Of Working for the Autonomous World. Constitutional AI professionals for every business.</p>
     <p style="font-size:11px;color:var(--text-muted)">Inspired by Yashus.in &middot; Designed by DLAISD.com &middot; Developed by WAOOAW AI Agents</p>
   </div>
@@ -550,6 +559,15 @@ if(localStorage.getItem('waooaw_announce_dismissed')==='1'){
   window.addEventListener('scroll',onScroll,{passive:true});
   onScroll(); // run once on load
 })();
+/* Hero gradient fade on scroll — fades to 0 by 400px */
+(function(){
+  function updateGrad(){
+    var o=Math.max(0,1-window.scrollY/400);
+    document.documentElement.style.setProperty('--hero-grad',o);
+  }
+  window.addEventListener('scroll',updateGrad,{passive:true});
+})();
+
 function openCmd(){document.getElementById('cmdOverlay').classList.add('open');setTimeout(()=>document.getElementById('cmdInput').focus(),50);}
 function closeCmd(e){if(!e||e.target===document.getElementById('cmdOverlay'))document.getElementById('cmdOverlay').classList.remove('open');}
 document.addEventListener('keydown',e=>{if((e.metaKey||e.ctrlKey)&&e.key==='k'){e.preventDefault();openCmd();}if(e.key==='Escape')closeCmd();});
