@@ -256,6 +256,46 @@
   @media(max-width:580px){.agent-grid{grid-template-columns:1fr}}
   @media(max-width:900px){.nav-links{display:none}.dna-sep{display:none}.dna-items{gap:24px}footer{grid-template-columns:1fr 1fr}}
   @media(max-width:500px){footer{grid-template-columns:1fr}}
+  /* ═══ AUTH MODAL ═══ */
+  .auth-overlay{position:fixed;inset:0;z-index:400;background:rgba(0,0,0,.55);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center}
+  .auth-overlay.open{display:flex}
+  .auth-modal{background:#fff;border-radius:16px;padding:40px 36px 32px;width:min(400px,90vw);position:relative;box-shadow:0 24px 60px rgba(0,0,0,.22);animation:auth-in .18s ease-out}
+  @keyframes auth-in{from{opacity:0;transform:translateY(-10px) scale(.97)}to{opacity:1;transform:none}}
+  .auth-close{position:absolute;top:14px;right:14px;background:none;border:none;font-size:20px;cursor:pointer;color:#9ca3af;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:8px;transition:background .15s,color .15s}
+  .auth-close:hover{background:#f3f4f6;color:#1E3352}
+  .auth-logo-wrap{display:flex;justify-content:center;margin-bottom:20px}
+  .auth-logo-wrap img{height:28px}
+  .auth-title{font-size:20px;font-weight:700;color:#1E3352;margin-bottom:22px;text-align:center;letter-spacing:-.3px}
+  /* Social buttons */
+  .auth-soc{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:11px 16px;border-radius:10px;border:1px solid rgba(0,0,0,.15);background:#fff;font-size:14px;font-weight:500;color:#1E3352;cursor:pointer;transition:background .15s,border-color .15s;margin-bottom:10px;font-family:var(--font)}
+  .auth-soc:hover{background:#f8fafc;border-color:rgba(0,0,0,.28)}
+  .auth-soc svg{flex-shrink:0}
+  .auth-wa{border-color:rgba(37,211,102,.35);color:#1a7a52}
+  .auth-wa:hover{background:rgba(37,211,102,.05)}
+  /* Divider */
+  .auth-div{display:flex;align-items:center;gap:12px;margin:14px 0;color:#9ca3af;font-size:12px}
+  .auth-div::before,.auth-div::after{content:'';flex:1;height:1px;background:#e5e7eb}
+  /* Inputs */
+  .auth-inp{width:100%;padding:11px 14px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;font-family:var(--font);color:#1E3352;outline:none;transition:border-color .2s,box-shadow .2s;margin-bottom:10px;background:#fff}
+  .auth-inp:focus{border-color:#1A66C2;box-shadow:0 0 0 3px rgba(26,102,194,.12)}
+  .auth-inp::placeholder{color:#9ca3af}
+  select.auth-inp{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%239ca3af' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center}
+  /* Email chip */
+  .auth-email-chip{font-size:13px;color:#4A5568;background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:9px 14px;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+  /* Submit */
+  .auth-submit{width:100%;padding:12px;border-radius:10px;background:var(--blue);color:#fff;border:none;font-size:15px;font-weight:600;cursor:pointer;font-family:var(--font);transition:background .15s}
+  .auth-submit:hover{background:var(--blue-dark)}
+  /* Back button */
+  .auth-back{display:flex;align-items:center;gap:5px;background:none;border:none;color:#6b7280;font-size:13px;cursor:pointer;margin-bottom:14px;font-family:var(--font);padding:0;transition:color .15s}
+  .auth-back:hover{color:#1E3352}
+  /* Bottom links */
+  .auth-foot{margin-top:14px;text-align:center;font-size:13px;color:#6b7280}
+  .auth-foot a{color:var(--blue);text-decoration:none;font-weight:500}
+  .auth-foot a:hover{text-decoration:underline}
+  .auth-note{font-size:11px;color:#9ca3af;text-align:center;margin-top:6px}
+  /* Panel management */
+  .auth-panel{display:none}.auth-panel.active{display:block}
+
   @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms !important;transition-duration:.01ms !important}}
 </style>
 </head>
@@ -288,7 +328,7 @@
   </ul>
   <div class="nav-actions">
     <button class="nav-ghost" onclick="openCmd()" aria-label="Search ⌘K">⌘K</button>
-    <button class="nav-ghost">Log in</button>
+    <button class="nav-ghost" onclick="openAuth()" aria-label="Log in">Log in</button>
   </div>
 </nav>
 
@@ -488,6 +528,152 @@
     <span>Grievance Officer: Yogesh Khandge &middot; yogesh.khandge@dlaisd.com</span>
   </div>
 </footer>
+
+<!-- AUTH MODAL — Figma-style inline module (URL stays at /) -->
+<div class="auth-overlay" id="authOverlay" role="dialog" aria-modal="true" aria-label="Sign in to WAOOAW" onclick="handleAuthBg(event)">
+  <div class="auth-modal">
+    <button type="button" class="auth-close" onclick="closeAuth()" aria-label="Close">&times;</button>
+
+    <div class="auth-logo-wrap">
+      <img src="../architecture/reference/ux/brand/waooaw-stylized-logo.png" alt="WAOOAW"
+           onerror="this.style.display='none'" />
+    </div>
+
+    <!-- Panel 1: Welcome -->
+    <div class="auth-panel active" id="auth-welcome">
+      <h2 class="auth-title">Welcome back</h2>
+
+      <button type="button" class="auth-soc" onclick="authWith('google')">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M17.64 9.2045c0-.638-.0573-1.2518-.1636-1.8409H9v3.4814h4.8436c-.2086 1.1255-.8427 2.0791-1.7959 2.7191v2.2595h2.908c1.7018-1.5668 2.6836-3.873 2.6836-6.62Z" fill="#4285F4"/>
+          <path d="M9 18c2.43 0 4.4673-.8059 5.9564-2.1814l-2.908-2.2595c-.8059.54-1.8368.8591-3.0484.8591-2.3454 0-4.3309-1.5845-5.0382-3.7132H.9574v2.3318C2.4382 15.9832 5.4818 18 9 18Z" fill="#34A853"/>
+          <path d="M3.9618 10.71c-.18-.54-.2827-1.1168-.2827-1.71s.1027-1.17.2827-1.71V4.9582H.9574A8.9961 8.9961 0 0 0 0 9c0 1.4523.3477 2.8282.9574 4.0418L3.9618 10.71Z" fill="#FBBC05"/>
+          <path d="M9 3.5795c1.3214 0 2.5077.4545 3.4405 1.346l2.5818-2.5818C13.4632.8918 11.4259 0 9 0 5.4818 0 2.4382 2.0168.9574 4.9582L3.9618 7.29C4.6691 5.1613 6.6546 3.5795 9 3.5795Z" fill="#EA4335"/>
+        </svg>
+        Continue with Google
+      </button>
+/* Auth modal — Figma-style inline module */
+function openAuth(panel){
+  panel=panel||'welcome';
+  document.getElementById('authOverlay').classList.add('open');
+  showPanel(panel);
+  setTimeout(function(){
+    var el=panel==='welcome'?document.getElementById('auth-email-input')
+          :panel==='login'?document.getElementById('auth-pwd'):null;
+    if(el)el.focus();
+  },120);
+}
+function closeAuth(){document.getElementById('authOverlay').classList.remove('open');}
+function handleAuthBg(e){if(e.target===document.getElementById('authOverlay'))closeAuth();}
+function showPanel(p){
+  document.querySelectorAll('.auth-panel').forEach(function(el){el.classList.remove('active');});
+  document.getElementById('auth-'+p).classList.add('active');
+}
+function continueEmail(){
+  var v=document.getElementById('auth-email-input').value.trim();
+  if(!v)return;
+  document.getElementById('auth-email-display').textContent=v;
+  showPanel('login');
+  setTimeout(function(){document.getElementById('auth-pwd').focus();},80);
+}
+function submitLogin(){
+  /* TODO: Keycloak integration — IB-009 */
+  closeAuth();
+  alert('Login integration pending IB-009 foundation sprint.');
+}
+function submitRegister(){
+  /* TODO: Keycloak registration — IB-009 */
+  closeAuth();
+  alert('Registration integration pending IB-009 foundation sprint.');
+}
+function authWith(provider){
+  /* TODO: Keycloak OAuth — Google via ADR-008, WhatsApp via ADR-023 + FA-002 */
+  closeAuth();
+  alert(provider==='google'
+    ?'Google OAuth via Keycloak — enabled in IB-009'
+    :'WhatsApp OTP via Keycloak + WABA — enabled in IB-009 after FA-002');
+}
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape'&&document.getElementById('authOverlay').classList.contains('open'))closeAuth();
+});
+
+
+      <button type="button" class="auth-soc auth-wa" onclick="authWith('whatsapp')">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path fill-rule="evenodd" clip-rule="evenodd" d="M9 0C4.0294 0 0 4.0294 0 9c0 1.5882.4118 3.0706 1.1294 4.3647L0 18l4.7647-1.1294A8.9647 8.9647 0 0 0 9 18c4.9706 0 9-4.0294 9-9s-4.0294-9-9-9Zm4.3235 12.4412c-.1765.4941-.8824.9-1.4118.9706-.3706.0529-.8471.0941-2.4706-.5294-2.0706-.7941-3.4-2.8941-3.5059-3.0294-.1059-.1353-.8824-1.1647-.8824-2.2235 0-1.0588.5471-1.5706.7647-1.7941.1765-.1882.4706-.2824.7412-.2824.0882 0 .1765 0 .2471.0059.2176.0059.3294.0235.4706.3706.1765.4235.6.1.6882 1.5294.0529.1294.0176.2353-.0353.3353-.0529.1-.2118.2706-.3353.3706-.1176.1-.2412.2118-.1118.4235.1294.2118.5706.9412 1.2235 1.5235.8412.7588 1.5 1.0059 1.7353 1.1176.1765.0882.3882.0706.5235-.0647l.4941-.5647c.1235-.1412.3118-.2235.5-.2235.0471 0 .0941.0059.1353.0176l1.5353.7235c.2118.1059.35.2706.35.4706 0 .1176-.0353.5-.2118.9706Z" fill="#25D366"/>
+        </svg>
+        Continue with WhatsApp
+      </button>
+
+      <div class="auth-div">or</div>
+
+      <input type="email" class="auth-inp" id="auth-email-input"
+             placeholder="Email or phone number"
+             autocomplete="email"
+             onkeydown="if(event.key==='Enter')continueEmail()" />
+      <button type="button" class="auth-submit" onclick="continueEmail()">Continue &rarr;</button>
+
+      <div class="auth-foot">
+        New to WAOOAW? <a href="#" onclick="showPanel('register');return false">Start free trial &rarr;</a>
+      </div>
+    </div>
+
+    <!-- Panel 2: Login -->
+    <div class="auth-panel" id="auth-login">
+      <button type="button" class="auth-back" onclick="showPanel('welcome')">&larr; Back</button>
+      <h2 class="auth-title">Sign in</h2>
+
+      <div class="auth-email-chip">&#x2709; <span id="auth-email-display"></span></div>
+
+      <input type="password" class="auth-inp" id="auth-pwd"
+             placeholder="Password"
+             autocomplete="current-password"
+             onkeydown="if(event.key==='Enter')submitLogin()" />
+      <button type="button" class="auth-submit" onclick="submitLogin()">Log in</button>
+
+      <div class="auth-foot">
+        <a href="#" onclick="return false">Forgot password?</a>
+        &nbsp;&middot;&nbsp;
+        <a href="#" onclick="showPanel('register');return false">Create account</a>
+      </div>
+    </div>
+
+    <!-- Panel 3: Register -->
+    <div class="auth-panel" id="auth-register">
+      <button type="button" class="auth-back" onclick="showPanel('welcome')">&larr; Back</button>
+      <h2 class="auth-title">Create your account</h2>
+
+      <button type="button" class="auth-soc" onclick="authWith('google')">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M17.64 9.2045c0-.638-.0573-1.2518-.1636-1.8409H9v3.4814h4.8436c-.2086 1.1255-.8427 2.0791-1.7959 2.7191v2.2595h2.908c1.7018-1.5668 2.6836-3.873 2.6836-6.62Z" fill="#4285F4"/><path d="M9 18c2.43 0 4.4673-.8059 5.9564-2.1814l-2.908-2.2595c-.8059.54-1.8368.8591-3.0484.8591-2.3454 0-4.3309-1.5845-5.0382-3.7132H.9574v2.3318C2.4382 15.9832 5.4818 18 9 18Z" fill="#34A853"/><path d="M3.9618 10.71c-.18-.54-.2827-1.1168-.2827-1.71s.1027-1.17.2827-1.71V4.9582H.9574A8.9961 8.9961 0 0 0 0 9c0 1.4523.3477 2.8282.9574 4.0418L3.9618 10.71Z" fill="#FBBC05"/><path d="M9 3.5795c1.3214 0 2.5077.4545 3.4405 1.346l2.5818-2.5818C13.4632.8918 11.4259 0 9 0 5.4818 0 2.4382 2.0168.9574 4.9582L3.9618 7.29C4.6691 5.1613 6.6546 3.5795 9 3.5795Z" fill="#EA4335"/>
+        </svg>
+        Continue with Google
+      </button>
+      <button type="button" class="auth-soc auth-wa" onclick="authWith('whatsapp')">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path fill-rule="evenodd" clip-rule="evenodd" d="M9 0C4.0294 0 0 4.0294 0 9c0 1.5882.4118 3.0706 1.1294 4.3647L0 18l4.7647-1.1294A8.9647 8.9647 0 0 0 9 18c4.9706 0 9-4.0294 9-9s-4.0294-9-9-9Zm4.3235 12.4412c-.1765.4941-.8824.9-1.4118.9706-.3706.0529-.8471.0941-2.4706-.5294-2.0706-.7941-3.4-2.8941-3.5059-3.0294-.1059-.1353-.8824-1.1647-.8824-2.2235 0-1.0588.5471-1.5706.7647-1.7941.1765-.1882.4706-.2824.7412-.2824.0882 0 .1765 0 .2471.0059.2176.0059.3294.0235.4706.3706.1765.4235.6.1.6882 1.5294.0529.1294.0176.2353-.0353.3353-.0529.1-.2118.2706-.3353.3706-.1176.1-.2412.2118-.1118.4235.1294.2118.5706.9412 1.2235 1.5235.8412.7588 1.5 1.0059 1.7353 1.1176.1765.0882.3882.0706.5235-.0647l.4941-.5647c.1235-.1412.3118-.2235.5-.2235.0471 0 .0941.0059.1353.0176l1.5353.7235c.2118.1059.35.2706.35.4706 0 .1176-.0353.5-.2118.9706Z" fill="#25D366"/></svg>
+        Continue with WhatsApp
+      </button>
+
+      <div class="auth-div">or</div>
+
+      <input type="text" class="auth-inp" placeholder="Your name" autocomplete="name" />
+      <input type="email" class="auth-inp" placeholder="Email or phone number" autocomplete="email" />
+      <select class="auth-inp" aria-label="Preferred language">
+        <option value="en">&#x1F1EE;&#x1F1F3; English</option>
+        <option value="hi">&#x1F1EE;&#x1F1F3; &#x939;&#x93F;&#x928;&#x94D;&#x926;&#x940;</option>
+        <option value="mr">&#x1F1EE;&#x1F1F3; &#x92E;&#x930;&#x93E;&#x920;&#x940;</option>
+        <option value="ta">&#x1F1EE;&#x1F1F3; &#xBA4;&#xBAE;&#xBBF;&#xBB4;&#xBCD;</option>
+        <option value="te">&#x1F1EE;&#x1F1F3; &#xC24;&#xC46;&#xC32;&#xC41;&#xC17;&#xC41;</option>
+      </select>
+      <button type="button" class="auth-submit" onclick="submitRegister()">Start free trial &rarr;</button>
+      <p class="auth-note">No credit card required &middot; 7 days free</p>
+
+      <div class="auth-foot">
+        Already have an account? <a href="#" onclick="showPanel('welcome');return false">Log in</a>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- COMMAND PALETTE -->
 <div class="cmd-overlay" id="cmdOverlay" role="dialog" aria-modal="true" aria-label="Command palette" onclick="closeCmd(event)">

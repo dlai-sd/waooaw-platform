@@ -1,8 +1,70 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-07-19
-**Version:** 0.93.0
-**Session:** 2026-07-19 — SESSION CLOSE (DMA deep-dive complete: v3.0 + agency + restaurant + WaooaW)
+**Last Updated:** 2026-07-21
+**Version:** 0.94.0
+**Session:** 2026-07-21 — SESSION CLOSE (Homepage landing page v1.0 complete)
+
+---
+
+## SESSION CLOSE BRIEFING — READ THIS FIRST
+
+```
+INSTITUTION:  WAOOAW — autonomous digital professionals under constitutional governance
+GATE:         G5 prerequisites met (G5 CLEAR ≠ implementation authorization for any session)
+VERSION:      0.94.0
+CONSTITUTIONAL CLAIMS: C-001 to C-075 (75 ratified — unchanged this session)
+AGENTS: DMA v3.0 | Trading v1.7 | Agricultural v2.7 | Private Tutor v1.0
+        Internal: Platform IT Expert · Steward Assistant · Self-Improvement Analyst · Platform Operations
+ADRs: 29 | CCTs: 50 specified | Simulations: SIM-001 to SIM-021
+WEB:  web/WAOOAWHome.html — Landing page v1.0 (constitutional UX spec §6/§7/§10/§13 compliant)
+NEXT SESSION OPTIONS:
+  A. IB-009 Foundation Implementation — Yogesh "start coding" → CE evaluators first
+  B. Portal UX — authenticated experience (My Agents, trial flow, session view)
+  C. New agent spec (Legal / HR / Accounting) using Section 0 DNA template
+  D. About Us / Contact Us / Careers pages (spec §13 complete, not yet built)
+
+SESSION SUMMARY (2026-07-21):
+  BRAND TERM FIX (repo-wide):
+    "WoW Expert" → "WaooaW Expert" (233 occurrences, 22 files)
+    "WoW" platform references → "WaooaW" (31 occurrences, 8 files)
+    WaooaW Concierge is now the canonical platform voice term
+  HOMEPAGE LANDING PAGE — web/WAOOAWHome.html:
+    Hero: "Hire WAOOAW AI Agents" + animated timeline panel (Trial→Hire→Learns→Autonomous 24×7)
+    Timeline: indeterminate circular progress on last step, "24×7" value text, Chakra-style
+    Navigation: logo + Home/Agents/Blogs/Settings + Log in · scroll dissolve (Sleek technique)
+    Announcement bar: 3-color brand gradient (blue→green→amber), 7-day free trial, dismissible
+    Hero gradient: body-level radial gradients (Sleek technique — sections cover on scroll)
+    Getting started: 3-step progress tracker with gradient line + time pills (2min/2min/5min)
+    Agent cards: Raycast-inspired, light brand-tinted headers, Tutor card fixed navy (not purple)
+    Trust Journey Wall: Dr. Mehta / Suresh (Marathi) / Rahul story cards + heatmaps
+    Constitutional Promise: 6-card grid
+    Platform DNA strip: navy bg, 3 logos (Yashus/DLAISD/WAOOAW)
+    Footer: 4-column (Platform/Company/Legal/Support) + copyright + grievance officer
+    Command palette: ⌘K overlay
+  CONSTITUTIONAL COMPLIANCE FIXES (10):
+    Font: Noto Sans primary per §1.3
+    Nav: "How it works" removed, "Settings" added per §6.1
+    Skip-to-content link + <main id="content"> per §2.7
+    aria-hidden on decorative avatars, lang="mr" on Marathi text
+    type="button" on buttons, dead CSS/JS removed
+  FILE REORGANISATION:
+    web/WAOOAWHome.html (was WAOOAW_Landing_v11.html at root)
+    architecture/reference/ux/brand/waooaw-stylized-logo.png (was root)
+    Deleted: WAOOAW_Hero_v08.html, WAOOAW_Landing_v10.html
+
+FOUNDER ACTIONS OUTSTANDING (P0):
+  FA-021: GCP Vertex AI → Gemini primary LLM (2h, CRITICAL PATH)
+  FA-022: sarvam.ai API key → Agricultural Grade A (1h)
+  FA-002: Meta BM verification (2-4 weeks, START NOW)
+  FA-005: Trading ESCALATION_DECISION ack (5 min)
+  Full list: security/FOUNDER-ACTIONS.md
+```
+
+NEXT SESSION OPTIONS:
+  A. IB-009 Foundation Implementation sprint — one sentence from Founder starts coding
+  B. Portal UX — authenticated experience (My Agents, trial flow, session view)
+  C. New agent specification (Legal, HR, Accounting — Track B)
+  D. Homepage pages: About Us / Contact Us / Careers (spec §13 complete)
 
 ---
 
