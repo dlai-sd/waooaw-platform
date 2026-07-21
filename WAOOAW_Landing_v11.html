@@ -108,14 +108,7 @@
     50%    {box-shadow:0 0 0 5px rgba(61,173,53,.35),0 0 24px rgba(61,173,53,.20)}
   }
 
-  /* ── Dashed extension — sits on same line as progress bar ── */
-  .tl-outer{position:relative;padding-inline-end:52px}
-  .tl-endline{
-    position:absolute;inset-inline-end:0;inset-block-start:25px;
-    height:5px;display:flex;align-items:center;gap:5px;
-  }
-  .tl-dash{width:9px;height:4px;background:var(--orange);border-radius:2px;opacity:.85}
-  .tl-arrow-tip{color:var(--orange);font-size:15px;font-weight:700;line-height:1;margin-block-start:0}
+
   .tl-name{font-size:12px;font-weight:600;color:var(--text-2);white-space:nowrap}
   .tl-time{font-size:11px;color:var(--text-3);margin-block-start:-4px}
   .tl-status{text-align:center;margin-block-start:28px;font-size:14px;font-weight:600;color:var(--green-text);min-height:22px}
@@ -284,20 +277,12 @@
   </div>
   <div class="hero-panel" role="complementary">
     <p class="panel-label">From trial to autonomous &mdash; in minutes</p>
-    <div class="tl-outer">
-      <div class="tl-track">
-        <div class="tl-base"></div><div class="tl-fill" id="fill"></div>
-        <div class="tl-step" id="s0"><div class="tl-circle"></div><div class="tl-name">Trial</div><div class="tl-time">2 min</div></div>
-        <div class="tl-step" id="s1"><div class="tl-circle"></div><div class="tl-name">Hire</div><div class="tl-time">2 min</div></div>
-        <div class="tl-step" id="s2"><div class="tl-circle"></div><div class="tl-name">Learns</div><div class="tl-time">5 min</div></div>
-        <div class="tl-step" id="s3"><div class="tl-circle">&#x1F680;</div><div class="tl-name">Autonomous</div><div class="tl-time">24&times;7</div></div>
-      </div>
-      <div class="tl-endline" aria-hidden="true">
-        <span class="tl-dash"></span>
-        <span class="tl-dash"></span>
-        <span class="tl-dash"></span>
-        <span class="tl-arrow-tip">&#x2192;</span>
-      </div>
+    <div class="tl-track">
+      <div class="tl-base"></div><div class="tl-fill" id="fill"></div>
+      <div class="tl-step" id="s0"><div class="tl-circle"></div><div class="tl-name">Trial</div><div class="tl-time">2 min</div></div>
+      <div class="tl-step" id="s1"><div class="tl-circle"></div><div class="tl-name">Hire</div><div class="tl-time">2 min</div></div>
+      <div class="tl-step" id="s2"><div class="tl-circle"></div><div class="tl-name">Learns</div><div class="tl-time">5 min</div></div>
+      <div class="tl-step" id="s3"><div class="tl-circle">&#x1F680;</div><div class="tl-name">Autonomous</div><div class="tl-time">24&times;7</div></div>
     </div>
     <div class="tl-status" id="tl-status" role="status" aria-live="polite"></div>
     <p class="panel-note">Every action evidence-backed &nbsp;&middot;&nbsp; Emergency Stop &lt;250ms &nbsp;&middot;&nbsp; DPDPA compliant</p>
