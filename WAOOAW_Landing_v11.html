@@ -96,8 +96,9 @@
      Base line: left:12.5% → right:12.5% (between first and last circle centers).
      Fill:      left:12.5%, width grows 0→75% (0%=Trial, 25%=Hire, 50%=Learns, 75%=Autonomous)
   ═══════════════════════════════════════════════ */
-  .hero-panel{background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:20px;padding:36px 32px 32px;box-shadow:0 4px 24px rgba(0,0,0,.08)}
-  .panel-label{text-align:center;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#8A9BB0;margin-bottom:32px}
+  .hero-panel{background:transparent;border:none;border-radius:0;padding:36px 32px 32px;box-shadow:none}
+  .panel-label{text-align:center;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#6a7d94;margin-bottom:20px}
+  .tl-frame{border:1px solid rgba(26,102,194,.20);border-radius:20px;padding:28px 24px 24px;background:transparent}
   .tl-track{display:flex;align-items:flex-start;position:relative}
   .tl-step{flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;position:relative;z-index:2}
   /* Base line: spans between circle centers */
@@ -301,6 +302,7 @@
   </div>
   <div class="hero-panel" role="complementary">
     <p class="panel-label">From trial to autonomous &mdash; in minutes</p>
+    <div class="tl-frame">
     <div class="tl-track">
       <div class="tl-base"></div><div class="tl-fill" id="fill"></div>
       <div class="tl-step" id="s0"><div class="tl-circle"></div><div class="tl-name">Trial</div><div class="tl-time">2 min</div></div>
@@ -309,6 +311,7 @@
       <div class="tl-step" id="s3"><div class="tl-circle"><span class="tl-val">24&times;7</span></div><div class="tl-name">Autonomous</div><div class="tl-time">24&times;7</div></div>
     </div>
     <div class="tl-status" id="tl-status" role="status" aria-live="polite"></div>
+    </div>
   </div>
 </section>
 
