@@ -74,9 +74,8 @@
   .hero-panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);padding:44px 36px 36px;box-shadow:var(--sh-md)}
   .panel-label{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);margin-block-end:36px;text-align:center}
   .tl-track{display:flex;justify-content:space-between;position:relative;padding-inline:28px}
-  .tl-base,.tl-fill{position:absolute;inset-inline:56px;inset-block-start:28px;height:5px;border-radius:8px}
-  .tl-base{background:#dce8f2}
-  .tl-fill{width:0%;background:linear-gradient(90deg,var(--blue),var(--green),var(--orange));transition:width 1s cubic-bezier(.4,0,.2,1)}
+  .tl-base{position:absolute;inset-inline:56px;inset-block-start:28px;height:5px;border-radius:8px;background:#dce8f2}
+  .tl-fill{position:absolute;inset-inline-start:56px;inset-block-start:28px;height:5px;border-radius:8px;max-width:calc(100% - 112px);width:0%;background:linear-gradient(90deg,var(--blue),var(--green),var(--orange));transition:width 1s cubic-bezier(.4,0,.2,1)}
   .tl-step{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;gap:10px;width:72px}
   .tl-circle{width:56px;height:56px;border-radius:50%;border:2.5px solid #d6e1ed;background:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#aab8c8;transition:all .35s cubic-bezier(.4,0,.2,1)}
   .tl-step.active .tl-circle{border-color:var(--blue);background:var(--blue-dim);color:var(--blue);box-shadow:0 0 0 6px rgba(26,102,194,.08);transform:scale(1.08)}
