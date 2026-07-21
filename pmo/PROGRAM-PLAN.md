@@ -234,7 +234,7 @@ The following must be completed by Yogesh/Sujay before the milestones that depen
 | Action | Required by | Lead time | Milestone blocked |
 |---|---|---|---|
 | Azure credentials (Service Principal) + GitHub Secrets | Start of implementation | 1 hour | M1 (Terraform apply) + ALL CI/CD |
-| **FA-021: GCP project + Vertex AI SA key → Azure Key Vault** | **Week 3** | **2 hours** | **M6 (AI Runtime MID/FRONTIER LLM — CRITICAL PATH)** |
+| **FA-021: GCP project + Vertex AI SA key → Azure Key Vault** | **Sprint 015 (AI Runtime)** | **2 hours** | **M6 (AI Runtime real LLM inference + integration tests). NOT needed for Sprints 011–014 which use mocks.** |
 | FA-003: Azure OpenAI UAE North | Week 3 | 1 hour | M6 fallback chain only |
 | FA-002: Meta Business Manager | Week 5 | 2-4 weeks — START NOW | M10 (DMA Instagram posting) |
 | FA-009: WAOOAW WABA | After FA-002 | 1-2 weeks | M12 (Agricultural WhatsApp) |

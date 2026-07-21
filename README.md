@@ -393,7 +393,7 @@ Chat:  "What's pending my approval?"
 
 | ID | Action | Unlocks | Time |
 |---|---|---|---|
-| **FA-021** | GCP project + Vertex AI SA key → Azure Key Vault | Gemini as primary LLM — 40% cost saving | 2h |
+| **FA-021** | GCP project + Vertex AI SA key → Azure Key Vault | Gemini as primary LLM (Sprint 015 AI Runtime integration tests + test/demo env). Not needed for Sprints 011–014. | 2h |
 | **FA-022** | sarvam.ai Saaras API key → Azure Key Vault | Agricultural Grade A regional language | 1h |
 | **FA-002** | Meta Business Manager verification | WhatsApp WABA, DMA Instagram ads | 2-4 weeks |
 | **FA-003** | Azure OpenAI UAE North (GPT-4o + GPT-4o-mini) | Fallback LLM chain | 1h |

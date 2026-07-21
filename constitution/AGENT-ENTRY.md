@@ -75,7 +75,7 @@ Company: DLAI Satellite Data (OPC) Pvt Ltd | CIN: U62090PN2024OPC230499 | GSTIN:
 - C-065: SDLC Separation of Duties | C-066: Authorization Tiers | C-067: Blue-Green + Cost Ceiling
 
 **Founder Actions Outstanding (P0):** See `security/FOUNDER-ACTIONS.md` — FA-001 to FA-021+
-- **FA-021** (GCP Vertex AI SA key) — CRITICAL PATH: AI Runtime MID_TIER/FRONTIER cannot function without this
+- **FA-021** (GCP Vertex AI SA key) — needed for Sprint 015 AI Runtime integration tests and test/demo env. NOT required for Sprint 011–014 (infrastructure, CE, BP, PR — use mocks)
 - **FA-002** (Meta BM verification) — START NOW: 2-4 week lead time for WhatsApp/DMA
 - **FA-005** (Trading ESCALATION_DECISION ack) — 5 min, unblocks Trading sprint
 - **Azure SP + GitHub Secrets** — blocks ALL CI/CD from running
