@@ -91,22 +91,19 @@
   .tl-name{font-size:12px;font-weight:600;color:#4A5568;text-align:center;white-space:nowrap}
   .tl-time{font-size:11px;color:#8A9BB0;margin-top:-4px}
   .tl-status{text-align:center;margin-top:24px;font-size:14px;font-weight:600;color:#1B6B17;min-height:20px}
-  /* ── Autonomous 24×7: indeterminate spinner ──
-     3 colored sides (top=blue, right=green, bottom=orange) + transparent left = broken arc.
-     Spins 1s linear infinite. ::after sits 8px outside circle boundary. */
-  #s3 .tl-circle{position:relative;overflow:visible}
-  #s3.done .tl-circle{background:#1E3352;border:none;color:#fff}
-  #s3.done .tl-circle::after{
-    content:'';
-    position:absolute;
-    top:-8px;left:-8px;right:-8px;bottom:-8px;
-    border-radius:50%;
-    border:4px solid transparent;
-    border-top-color:#1A66C2;
-    border-right-color:#3DAD35;
-    border-bottom-color:#F7941D;
-    animation:tl-spin 1s linear infinite;
-  }
+  /* ── Autonomous 24×7: Chakra-style circular progress with value text ──
+     ::before = static grey track ring (always visible)
+     ::after  = spinning indeterminate arc (3-color, never stops)
+     .tl-val  = "24×7" value text displayed in circle center */
+  #s3 .tl-circle{position:relative;overflow:visible;font-size:0}
+  .tl-val{display:block;font-size:11px;font-weight:800;letter-spacing:-.3px;line-height:1;color:#b8c8d8;transition:color .3s}
+  #s3.active .tl-val{color:#1A66C2}
+  #s3.done .tl-circle{background:#fff;border-color:transparent}
+  #s3.done .tl-val{color:#1E3352}
+  /* Static grey track ring */
+  #s3 .tl-circle::before{content:'';position:absolute;top:-8px;left:-8px;right:-8px;bottom:-8px;border-radius:50%;border:4px solid #e4eef7}
+  /* Spinning tri-color arc — runs only when done */
+  #s3.done .tl-circle::after{content:'';position:absolute;top:-8px;left:-8px;right:-8px;bottom:-8px;border-radius:50%;border:4px solid transparent;border-top-color:#1A66C2;border-right-color:#3DAD35;border-bottom-color:#F7941D;animation:tl-spin 1s linear infinite}
   @keyframes tl-spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 
   /* AGENT CARDS — Raycast-inspired */
@@ -277,7 +274,7 @@
       <div class="tl-step" id="s0"><div class="tl-circle"></div><div class="tl-name">Trial</div><div class="tl-time">2 min</div></div>
       <div class="tl-step" id="s1"><div class="tl-circle"></div><div class="tl-name">Hire</div><div class="tl-time">2 min</div></div>
       <div class="tl-step" id="s2"><div class="tl-circle"></div><div class="tl-name">Learns</div><div class="tl-time">5 min</div></div>
-      <div class="tl-step" id="s3"><div class="tl-circle">&#x1F680;</div><div class="tl-name">Autonomous</div><div class="tl-time">24&times;7</div></div>
+      <div class="tl-step" id="s3"><div class="tl-circle"><span class="tl-val">24&times;7</span></div><div class="tl-name">Autonomous</div><div class="tl-time">24&times;7</div></div>
     </div>
     <div class="tl-status" id="tl-status" role="status" aria-live="polite"></div>
   </div>
@@ -483,7 +480,23 @@
 <script>
 /* Timeline */
 const tlS=['s0','s1','s2','s3'],tlL=['Starting your free trial\u2026','Configuring your WaooaW Expert\u2026','Your Agent is learning your business\u2026','Working for you, autonomously 24\xd77'],tlW=['0%','25%','50%','75%'];let tlC=0;
-function tlTick(){tlS.forEach((id,i)=>{const e=document.getElementById(id);e.className='tl-step';e.querySelector('.tl-circle').textContent=i===3?'\uD83D\uDE80':'';});for(let j=0;j<tlC;j++){const e=document.getElementById(tlS[j]);e.classList.add('done');if(j<3)e.querySelector('.tl-circle').textContent='\u2713';}const a=document.getElementById(tlS[tlC]);a.classList.add('active');document.getElementById('fill').style.width=tlW[tlC];document.getElementById('tl-status').textContent=tlL[tlC];tlC=(tlC+1)%4;}
+function tlTick(){
+  tlS.forEach((id,i)=>{
+    const e=document.getElementById(id);
+    e.className='tl-step';
+    if(i<3)e.querySelector('.tl-circle').textContent=''; // clear checkmarks on non-auto steps
+    // s3: never touch innerHTML — .tl-val span lives there
+  });
+  for(let j=0;j<tlC;j++){
+    const e=document.getElementById(tlS[j]);
+    e.classList.add('done');
+    if(j<3)e.querySelector('.tl-circle').textContent='\u2713';
+  }
+  document.getElementById(tlS[tlC]).classList.add('active');
+  document.getElementById('fill').style.width=tlW[tlC];
+  document.getElementById('tl-status').textContent=tlL[tlC];
+  tlC=(tlC+1)%4;
+}
 tlTick();setInterval(tlTick,1900);
 
 /* Ambient bar */
