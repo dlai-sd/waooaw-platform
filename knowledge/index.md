@@ -3,7 +3,7 @@
 **Produced by:** Constitutional Analyst (Sprint 001)
 **Date:** 2026-07-07
 **Work Contract:** WC-001
-**Total Claims:** 35 (30 original + 5 added in response to EA review R-001)
+**Total Claims:** 75 (ratified through 2026-07-19)
 
 ---
 
@@ -131,6 +131,14 @@ Derived from CONFIRMED or LAW claims. These authorize specific architectural dec
 | C-065 | PLATFORM_INTEGRITY | SDLC Separation of Duties — Author ≠ Reviewer ≠ Deployment Confirmer (Article VII for software) | 2026-07-18 |
 | C-066 | PLATFORM_INTEGRITY | Autonomous Development Authorization Tiers — 4 tiers: 0=emergency / 1=Sujay / 2=Sujay+IB / 3=Yogesh | 2026-07-18 |
 | C-067 | PLATFORM_INTEGRITY | Blue-Green + Cost-Constrained Deployment — ₹10k/env/month ceiling; blue deactivated ≤30min after green verified | 2026-07-18 |
+| C-068 | SECURITY | Steward interface cryptographically separated from customer platform at every layer — not discoverable via any customer session | 2026-07-18 |
+| C-069 | PLATFORM_INTEGRITY | Platform constitutional compliance self-monitoring — Self-Improvement Analyst raises Skill Proposal within 24h of degradation trigger | 2026-07-18 |
+| C-070 | PLATFORM_INTEGRITY | Constitutional DNA inheritance mandatory for all agents — Evidence First, CE.ValidateAction, C-049 escalation, trust ledger contribution | 2026-07-18 |
+| C-071 | PLATFORM_INTEGRITY | Quality is a constitutional obligation, not a project phase — mandatory gates, no skipping | 2026-07-18 |
+| C-072 | PLATFORM_INTEGRITY | Every line of code must conform to WAOOAW Quality Framework (tests/QA-STRATEGY.md) | 2026-07-18 |
+| C-073 | PLATFORM_INTEGRITY | Testing obligation for all platform modules implementing constitutional principles | 2026-07-18 |
+| C-074 | ARCHITECTURAL_CONSTRAINT | On-the-fly MCP Provisioning — new domains served without deployment cycles via mcp_registry | 2026-07-19 |
+| C-075 | COMMERCIAL | White-label reseller model — agency wholesale (₹899-1,299/seat) + customer retail billing via own MBM/MCC | 2026-07-19 |
 
 ---
 

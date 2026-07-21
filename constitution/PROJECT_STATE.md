@@ -1,8 +1,8 @@
 # PROJECT_STATE.md
 
 **Last Updated:** 2026-07-21
-**Version:** 0.94.0
-**Session:** 2026-07-21 — SESSION CLOSE (Homepage landing page v1.0 complete)
+**Version:** 0.95.0
+**Session:** 2026-07-21 — SESSION CLOSE (Homepage v1.0 + Auth modal + UX compliance)
 
 ---
 
@@ -11,17 +11,64 @@
 ```
 INSTITUTION:  WAOOAW — autonomous digital professionals under constitutional governance
 GATE:         G5 prerequisites met (G5 CLEAR ≠ implementation authorization for any session)
-VERSION:      0.94.0
+VERSION:      0.95.0
 CONSTITUTIONAL CLAIMS: C-001 to C-075 (75 ratified — unchanged this session)
 AGENTS: DMA v3.0 | Trading v1.7 | Agricultural v2.7 | Private Tutor v1.0
         Internal: Platform IT Expert · Steward Assistant · Self-Improvement Analyst · Platform Operations
 ADRs: 29 | CCTs: 50 specified | Simulations: SIM-001 to SIM-021
-WEB:  web/WAOOAWHome.html — Landing page v1.0 (constitutional UX spec §6/§7/§10/§13 compliant)
+WEB:
+  web/WAOOAWHome.html — Landing page v1.0 (constitutional UX spec §6/§7/§10/§13 compliant)
+  Auth modal — Figma-style inline module, 3 panels: welcome→login→register
+    Google OAuth + WhatsApp OTP (ADR-008/ADR-023 compliant stubs, IB-009 gated)
+    Language selector: EN/HI/MR/TA/TE per §1.1
+    Progressive disclosure: email → password flow
 NEXT SESSION OPTIONS:
   A. IB-009 Foundation Implementation — Yogesh "start coding" → CE evaluators first
   B. Portal UX — authenticated experience (My Agents, trial flow, session view)
   C. New agent spec (Legal / HR / Accounting) using Section 0 DNA template
   D. About Us / Contact Us / Careers pages (spec §13 complete, not yet built)
+  E. Facebook auth (FA-018) + Apple SIWA (FA-019) + SMS OTP (FA-020) — Founder actions required first
+
+SESSION SUMMARY (2026-07-21 — full day):
+  BRAND TERM FIX (repo-wide):
+    "WoW Expert" → "WaooaW Expert" (233 occurrences, 22 files)
+    "WoW" platform references → "WaooaW" (31 occurrences, 8 files)
+  HOMEPAGE LANDING PAGE — web/WAOOAWHome.html:
+    Hero: "Hire WAOOAW AI Agents" + animated timeline (Trial→Hire→Learns→Autonomous 24×7)
+    Timeline: indeterminate circular progress, "24×7" value text (Chakra-UI inspired)
+    Nav: logo + Home/Agents/Blogs/Settings + Log in · Sleek-style scroll dissolve
+    Announcement bar: 3-color brand gradient, 7-day free trial, dismissible (localStorage)
+    Hero gradient: body-level radial gradients — Sleek technique (sections cover on scroll)
+    Getting started: 3-step progress tracker, gradient connecting line, time pills
+    Agent cards: Raycast-inspired, light brand-tinted headers, constitutional colors
+    Trust Journey Wall: Dr. Mehta / Suresh (lang=mr) / Rahul — story cards + heatmaps
+    Constitutional Promise: 6-card grid
+    Platform DNA strip: navy bg, Yashus/DLAISD/WAOOAW logos
+    Footer: 4-column + copyright + grievance officer (per §10.2)
+    Command palette: ⌘K overlay
+  AUTH MODAL (Figma-pattern — same URL, no page redirect):
+    Panel 1: Welcome — Google SVG + WhatsApp SVG + email field
+    Panel 2: Login — email chip + password + Log in
+    Panel 3: Register — name + email/phone + language selector + Start free trial
+    Keycloak/WABA stubs: IB-009 gated with clear notes
+  CONSTITUTIONAL COMPLIANCE (10 fixes):
+    Font: Noto Sans primary per §1.3 · Nav per §6.1 · Skip-link per §2.7
+    aria-hidden, lang=mr, type=button, dead code removed
+  FILE REORGANISATION:
+    web/WAOOAWHome.html (was WAOOAW_Landing_v11.html)
+    architecture/reference/ux/brand/waooaw-stylized-logo.png
+    Deleted: WAOOAW_Hero_v08.html, WAOOAW_Landing_v10.html
+
+FOUNDER ACTIONS OUTSTANDING (P0):
+  FA-021: GCP Vertex AI → Gemini primary LLM (2h, CRITICAL PATH)
+  FA-022: sarvam.ai API key → Agricultural Grade A (1h)
+  FA-002: Meta BM verification (2-4 weeks, START NOW)
+  FA-005: Trading ESCALATION_DECISION ack (5 min)
+  FA-018: Facebook App creation (for portal "Continue with Facebook") — 2h after FA-002
+  FA-019: Apple Developer + SIWA Service ID (for "Continue with Apple") — 1 day
+  FA-020: MSG91 DLT TRAI templates (SMS OTP fallback) — 2-3 days
+  Full list: security/FOUNDER-ACTIONS.md
+```
 
 SESSION SUMMARY (2026-07-21):
   BRAND TERM FIX (repo-wide):
