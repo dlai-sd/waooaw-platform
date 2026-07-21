@@ -90,17 +90,18 @@
   .tl-step.done .tl-circle{background:linear-gradient(135deg,#1A66C2,#3DAD35);border-color:transparent;color:#fff}
   .tl-name{font-size:12px;font-weight:600;color:#4A5568;text-align:center;white-space:nowrap}
   .tl-time{font-size:11px;color:#8A9BB0;margin-top:-4px}
-  .tl-status{text-align:center;margin-top:24px;font-size:14px;font-weight:600;color:#1B6B17;min-height:20px}
-  /* ── Autonomous 24×7: value text appears on done, green, like ✓ on other steps ── */
+  .tl-status{text-align:center;margin-top:24px;font-size:20px;font-weight:600;color:#1B6B17;min-height:28px}
+  /* ── Autonomous 24×7: triggers on ACTIVE (s3 is never 'done' in the cycle) ── */
   #s3 .tl-circle{position:relative;overflow:visible}
-  /* Text hidden until line reaches circle — then flips to green */
+  /* Override the generic active style for s3 only */
+  #s3.active .tl-circle{background:#fff;border-color:transparent;box-shadow:0 0 0 5px rgba(26,102,194,.10);transform:scale(1.08)}
+  /* 24×7 text: transparent until s3 becomes active */
   .tl-val{font-size:13px;font-weight:800;letter-spacing:-.3px;color:transparent;transition:color .4s ease}
-  #s3.done .tl-circle{background:#fff;border-color:transparent}
-  #s3.done .tl-val{color:#3DAD35}
+  #s3.active .tl-val,#s3.done .tl-val{color:#3DAD35}
   /* Static grey track ring — always present */
   #s3 .tl-circle::before{content:'';position:absolute;top:-8px;left:-8px;right:-8px;bottom:-8px;border-radius:50%;border:4px solid #e4eef7}
-  /* Spinning tri-color arc — activates on done */
-  #s3.done .tl-circle::after{content:'';position:absolute;top:-8px;left:-8px;right:-8px;bottom:-8px;border-radius:50%;border:4px solid transparent;border-top-color:#1A66C2;border-right-color:#3DAD35;border-bottom-color:#F7941D;animation:tl-spin 1s linear infinite}
+  /* Spinning arc — activates on active OR done */
+  #s3.active .tl-circle::after,#s3.done .tl-circle::after{content:'';position:absolute;top:-8px;left:-8px;right:-8px;bottom:-8px;border-radius:50%;border:4px solid transparent;border-top-color:#1A66C2;border-right-color:#3DAD35;border-bottom-color:#F7941D;animation:tl-spin 1s linear infinite}
   @keyframes tl-spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 
   /* AGENT CARDS — Raycast-inspired */
