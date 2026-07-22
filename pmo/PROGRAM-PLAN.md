@@ -453,6 +453,120 @@ Each new agent follows the AGENT-AUTHORING-GUIDE activation gate (14 sections) b
 | PMO-008 | DPDPA/SEBI legal review by qualified advocate | Yogesh | Before first customer | OPEN |
 | PMO-009 | Registered address + CIN in production portal footer | Yogesh | Before first customer | OPEN |
 | PMO-010 | Ojal reviews Privacy Policy + Grievance Policy | Ojal | Before first customer | OPEN |
+| **PMO-011** | **FA-023: GitHub App `waooaw-reviewer` (REVIEW_APP_TOKEN) — 30 min P0** | **Yogesh** | **Next session** | **OPEN — blocks fully autonomous merge loop** |
+| PMO-012 | C-077 ratification: Development Tooling Cost Ceiling (monthly token budget decision) | Yogesh | Next session | OPEN — DRAFT claim exists |
+| PMO-013 | platform_phase: IMPLEMENTATION authorization + FA-NNN in FOUNDER-ACTIONS.md | Yogesh | When ready to begin Sprint 1 | OPEN |
+
+---
+
+## 12. Sprint Roadmap Tracking (updated 2026-07-22)
+
+This section tracks every Work Contract (sprint), its readiness, simulation result, and status.
+Updated after each sprint simulation run.
+
+### 12.1 Completed Sprints (WC-001 to WC-010)
+
+All pre-implementation sprints — constitutional corpus, architecture, specs, standards.
+
+| WC | Sprint | Office | Goal | Outputs Verified | Status |
+|---|---|---|---|---|---|
+| WC-001 | 001 | Constitutional Analyst | Knowledge claim index (C-001→C-075) | `knowledge/index.md`, `knowledge/claims/`, `constitution/CONSTITUTION.md` | ✅ DONE |
+| WC-002 | 002 | Business Architect | Agent specifications (DMA, Trading, Agricultural, Private Tutor, Internal) | `architecture/reference/agents/` (8 agent specs) | ✅ DONE |
+| WC-003 | 003 | Enterprise Architect | Reference architecture + component specs + ADR-INDEX | `architecture/reference/components/`, `adr/ADR-INDEX.md` | ✅ DONE |
+| WC-004 | 004 | — | *(skipped — merged into WC-003)* | — | N/A |
+| WC-005 | 005 | Data Architect | Data architecture: 3-schema, RLS, evidence state machine | `architecture/reference/data/` | ✅ DONE |
+| WC-006 | 006 | Platform Architect | Infrastructure: docker-compose, postgres init, Keycloak realm | `infrastructure/postgres/`, `infrastructure/keycloak/`, `docker-compose.yml` | ✅ DONE |
+| WC-007 | 007 | Enterprise Architect | ADRs 001-029: all technology decisions | `adr/ADR-001*.md` through `adr/ADR-029*.md` | ✅ DONE |
+| WC-008 | 008 | Security Architect | Security architecture: STRIDE model, OWASP, constitutional floor | `security/` (audit-ready) | ✅ DONE |
+| WC-009 | 009 | Solution Architect | OpenAPI specs + proto contract | `architecture/reference/api-specs/`, `architecture/reference/proto/` | ✅ DONE |
+| WC-010 | 010 | Platform IT Expert | Phase 2 readiness: CI/CD, Dockerfiles, GitHub operating model | `.github/workflows/ci.yaml`, `infrastructure/terraform/` | ✅ DONE |
+
+### 12.2 Current Sprint (WC-011)
+
+| WC | Sprint | Goal | Simulation | Status |
+|---|---|---|---|---|
+| WC-011 | 011 | Infrastructure Foundation | SIM-023: 6/7 PASS, 1 BLOCKED (WC011-06 Azure SP) | 🟡 READY (gated on `platform_phase: IMPLEMENTATION`) |
+
+**WC-011 Task Breakdown:**
+
+| Task | Description | Cost | SIM-023 Result |
+|---|---|---|---|
+| WC011-01 | Validate docker-compose.yml | ₹0 | ✅ PASS (YAML fixed — 23 inline Python blocks replaced) |
+| WC011-02 | Validate DB migration scripts 01-10 | ₹0 | ✅ PASS (10 SQL files in postgres/init/) |
+| WC011-03 | Validate Keycloak realm | ₹0 | ✅ PASS (waooaw-realm.json valid, Google IDP present) |
+| WC011-04 | src/ scaffold + C-059 headers | ₹0 | ✅ PASS (4 service README.md files created) |
+| WC011-05 | setup.sh + get-dev-token.sh | ₹0 | ✅ PASS |
+| WC011-06 | Terraform apply (Azure SP) | ₹0 | 🔴 BLOCKED — Azure SP (PMO-001) |
+| WC011-07 | GITHUB-SECRETS.md | ₹0 | ✅ PASS |
+
+**Gaps found and fixed in SIM-023:**
+- docker-compose.yml YAML error (23 services with unindented Python → replaced with `scripts/mcp_stub_server.py`)
+- Duplicate `youtube-mcp` service removed; port conflicts fixed (8141/8142)
+- `05-migrations.sql` naming collision → renamed `05b-migrations.sql`
+- Runner WC011-02/03/05 functions added
+
+### 12.3 Planned Sprints (WC-012 to WC-018)
+
+All gated on `platform_phase: IMPLEMENTATION`. Work contracts written; readiness checked.
+
+| WC | Sprint | Goal | PMO Milestone | Readiness | Blocked by |
+|---|---|---|---|---|---|
+| WC-012 | 012 | Constitutional Engine skeleton (.NET 9 gRPC) | M3 | ✅ All inputs exist | `platform_phase: IMPLEMENTATION` |
+| WC-013 | 013 | Business Platform skeleton (.NET 9 REST) | M4 | ✅ All inputs exist | WC-012 |
+| WC-014 | 014 | Professional Runtime skeleton (Python + Temporal) | M5 | ✅ All inputs exist | WC-013 |
+| WC-015 | 015 | AI Runtime skeleton (Python + PSE + RAG) | M6 | ✅ All inputs exist | WC-014 |
+| WC-016 | 016 | Web Portal skeleton (Next.js 14) | M7 | ✅ All inputs exist | WC-013 (parallel with 014/015) |
+| WC-017 | 017 | DMA v3.0 Decision Space + AS-001 Grade A | M8-M10 | ✅ Spec complete | WC-015 + WC-016 + FA-002 in progress |
+| WC-018 | 018 | All CCTs + QA promotion + Pilot (5 customers) | M11-M18 | ⏳ Detail added after WC-017 | WC-017 + FA-NNN (QA Azure) + Razorpay |
+
+### 12.4 Sprint Dependencies (critical path)
+
+```
+platform_phase: IMPLEMENTATION (Founder sets)
+    ↓
+WC-011 (Infra — ₹0, 6/7 ready now)
+    ↓
+WC-012 (CE skeleton — reasoning model required)
+    ↓
+WC-013 (BP skeleton)
+    ↓               ↘
+WC-014 (PR)      WC-016 (Web — parallel)
+    ↓
+WC-015 (AIR)
+    ↓               ↙
+WC-017 (DMA + AS-001)  ← also needs FA-002 (Meta BM)
+    ↓
+WC-018 (All CCTs + Pilot)
+    ↓
+FR-005 (50 customers) → M19-M22
+```
+
+### 12.5 FinOps Profile per Sprint
+
+| Sprint | LLM needed | Token profile | Approx cost |
+|---|---|---|---|
+| WC-011 | None (rule-based Python) | 0 tokens | ₹0 |
+| WC-012 | Reasoning (CE .NET code) | ~10K/task | IB-020 / C-077 ceiling |
+| WC-013 | Reasoning (BP .NET code) | ~10K/task | IB-020 / C-077 ceiling |
+| WC-014 | Reasoning (PR Python code) | ~8K/task | IB-020 / C-077 ceiling |
+| WC-015 | Reasoning (AIR Python code) | ~10K/task | IB-020 / C-077 ceiling |
+| WC-016 | Reasoning (Next.js TypeScript) | ~8K/task | IB-020 / C-077 ceiling |
+| WC-017+ | Reasoning + real LLM inference | Variable | Covered by Vertex AI budget |
+
+**Note:** C-077 ratification (PMO-012) and IB-020 (ADR-030) must be completed before WC-012 begins to define the per-sprint token ceiling.
+
+### 12.6 Session Resume Guide
+
+If session drops, the next session agent reads:
+1. `constitution/AGENT-ENTRY.md` — current phase, halt state, version
+2. `constitution/PROJECT_STATE.md` — SPRINT_STATE_MACHINE + NEXT SESSION OPTIONS
+3. `pmo/PROGRAM-PLAN.md §12` — this section, for sprint tracking context
+
+**Current stop point (2026-07-22 session close):**
+- All WC-001 to WC-011 verified
+- WC-012 to WC-018 work contracts written and ready
+- PMO tracking section (§12) fully populated
+- Blocking next steps: PMO-011 (FA-023 REVIEW_APP_TOKEN), PMO-012 (C-077), PMO-013 (platform_phase: IMPLEMENTATION)
 
 ---
 

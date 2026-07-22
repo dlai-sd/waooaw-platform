@@ -32,6 +32,8 @@
 | Full autonomy merge model decided: no human PR approver, REVIEW_APP_TOKEN agent only | ✓ DECIDED |
 | FA-023 identified: GitHub App for REVIEW_APP_TOKEN (30 min, P0, Founder next session) | ✓ PENDING |
 | RAG token budget: WC011 tasks ≤6.5K/8.2K free model limit (section targeting enforced) | ✓ VERIFIED |
+| WC-012 to WC-018 work contracts written + readiness verified | ✓ DONE |
+| PMO PROGRAM-PLAN.md §12 sprint tracking table (full roadmap) added | ✓ DONE |
 
 ---
 
