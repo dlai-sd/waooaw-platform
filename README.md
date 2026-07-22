@@ -9,8 +9,8 @@
 ## Platform Status
 
 ```
-Version:              v0.97.0 (2026-07-22)
-Constitutional Claims: 76 ratified (C-001 to C-076)
+Version:              v0.98.0 (2026-07-22)
+Constitutional Claims: 76 ratified (C-001 to C-076) · C-077 DRAFT
 Customer Agents:      4 approved — DMA v3.0 · Trading v1.7 · Agricultural v2.7 · Private Tutor v1.0
 Internal Agents:      4 — Platform IT Expert · Steward Assistant · Self-Improvement Analyst · Platform Operations
 Gates:                G0 ✅  G1 ✅  G2 ✅  G3 ✅  G4 ✅  G5 CLEAR

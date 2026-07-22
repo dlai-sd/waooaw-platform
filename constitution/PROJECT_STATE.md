@@ -1,8 +1,8 @@
 # PROJECT_STATE.md
 
 **Last Updated:** 2026-07-22
-**Version:** 0.97.0
-**Session:** 2026-07-22 — C-076 Coverage Mandate + GH Actions FinOps Optimization
+**Version:** 0.98.0
+**Session:** 2026-07-22 — SESSION CLOSE
 
 ---
 
@@ -29,6 +29,39 @@
 | SIM-023 GAP-6: GITHUB-SECRETS.md created (WC011-07 pre-requisite) | ✓ FIXED |
 | SIM-023 GAP-7: src/ README.md C-059 scaffolds created for all 4 services | ✓ FIXED |
 | WC-011 dry-run result: 6/7 PASS, 1 BLOCKED (WC011-06 Azure SP — external) | ✓ VERIFIED |
+| Full autonomy merge model decided: no human PR approver, REVIEW_APP_TOKEN agent only | ✓ DECIDED |
+| FA-023 identified: GitHub App for REVIEW_APP_TOKEN (30 min, P0, Founder next session) | ✓ PENDING |
+| RAG token budget: WC011 tasks ≤6.5K/8.2K free model limit (section targeting enforced) | ✓ VERIFIED |
+
+---
+
+## NEXT SESSION OPTIONS (updated 2026-07-22 SESSION CLOSE)
+
+```
+CURRENT STATE: platform_phase=SPEC · AUTONOMOUS_HALT=true · Version=v0.98.0
+
+OPTION A — FA-023: GitHub App for REVIEW_APP_TOKEN (30 min, P0)
+  → Go to github.com/settings/apps → New GitHub App
+  → Name: waooaw-reviewer  |  Permission: Pull requests Read+Write
+  → Install on dlai-sd/waooaw-platform → Download private key
+  → Add as repo secret: REVIEW_APP_TOKEN
+  → Unblocks: fully autonomous merge loop (no human approver ever needed)
+
+OPTION B — C-066 Amendment + CODEOWNERS update (Founder authorization needed)
+  → Amend C-066 to add Tier 2B: auto-merge when reviewer Grade A + all CI pass
+  → Remove human from CODEOWNERS (or restrict to Class 1 docs only)
+  → Upgrade autonomous_sprint_reviewer.py to produce binding Grade A/B/F
+
+OPTION C — Ratify C-077 (Development Tooling Cost Ceiling)
+  → Founder decision: what is the monthly token budget for autonomous development?
+  → Ratifies the DRAFT claim and authorizes IB-020 (ADR-030)
+
+OPTION D — Set platform_phase: IMPLEMENTATION to begin WC-011 live run
+  → Prerequisites: FA-023 done (or accept advisory-only reviews temporarily)
+  → Record FA-NNN in security/FOUNDER-ACTIONS.md
+  → Set platform_phase: IMPLEMENTATION + autonomous_halt: false
+  → First autonomous sprint fires within 2h
+```
 
 ---
 

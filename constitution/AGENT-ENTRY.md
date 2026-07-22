@@ -25,7 +25,7 @@ AUTONOMOUS_HALT: true (set 2026-07-22 by Founder — do not clear without explic
 ## Current Platform State (updated each session)
 
 ```
-Version:    0.97.0  |  Gate: G5 CLEAR  |  Epoch: 1 — Employment  |  Phase: SPEC
+Version:    0.98.0  |  Gate: G5 CLEAR  |  Epoch: 1 — Employment  |  Phase: SPEC
 Last update: 2026-07-22 — C-076; FinOps; SPEC phase enforced; SIM-022 run; 8 gaps fixed; C-077 DRAFT
 Phase:      SPEC — design, specs, planning only. NO implementation. NO src/ code.
 Implementation: HALTED — AUTONOMOUS_HALT: true · platform_phase: SPEC · IB-009 status = GATE_CLEAR
