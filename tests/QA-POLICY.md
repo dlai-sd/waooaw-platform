@@ -1,8 +1,8 @@
 # WAOOAW Quality Policy
 
-**Version:** 1.0
-**Date:** 2026-07-19
-**Authority:** C-071 (Quality Obligation — RATIFIED), QA-STRATEGY.md
+**Version:** 1.1
+**Date:** 2026-07-22
+**Authority:** C-071 (Quality Obligation — RATIFIED), C-076 (90% Coverage Mandate — RATIFIED), QA-STRATEGY.md
 **Owner:** WAOOAW AI Agent — QA
 **Scope:** All code changes, all environments, all agents
 
@@ -19,7 +19,8 @@ Every pull request must pass ALL of the following before merge is permitted:
 | Check | Tool | Threshold | Blocks merge? |
 |---|---|---|---|
 | Unit tests pass | xUnit / pytest / Vitest | 100% pass rate | YES |
-| Coverage not regressed | Codecov | Drop ≤ 2% from base branch | YES |
+| Coverage ≥90% (C-076) | Coverlet / pytest-cov / c8 | ≥90% line coverage — absolute floor, no exceptions | YES |
+| Coverage not regressed | Codecov | Any drop below 90% blocks merge absolutely | YES |
 | SAST: no new critical/high | CodeQL | 0 new critical/high findings | YES |
 | Dependency audit | pip-audit / pnpm audit | 0 HIGH+ vulnerabilities | YES |
 | Container scan | Trivy | 0 CRITICAL findings | YES |

@@ -1,0 +1,3 @@
+{"event": "platform_phase_gate_blocked", "timestamp": "2026-07-22T04:14:52.935451+00:00", "run_id": "local", "stub_mode": true, "platform_phase": "SPEC", "reason": "platform_phase=SPEC, not IMPLEMENTATION. No src/ operations, no commits. Founder must set platform_phase: IMPLEMENTATION to begin."}
+{"event": "autonomous_halt_active", "timestamp": "2026-07-22T04:14:52.936171+00:00", "run_id": "local", "stub_mode": true, "reason": "AUTONOMOUS_HALT=true in PROJECT_STATE.md"}
+{"event": "platform_phase_gate_blocked", "timestamp": "2026-07-22T04:14:52.936969+00:00", "run_id": "local", "stub_mode": true, "platform_phase": "SPEC", "reason": "platform_phase=SPEC, not IMPLEMENTATION. No src/ operations, no commits. Founder must set platform_phase: IMPLEMENTATION to begin."}

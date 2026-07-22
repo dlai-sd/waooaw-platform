@@ -336,7 +336,7 @@ Status:           WAITING | IN_PROGRESS | DONE | BLOCKED
 - `tests/constitutional/` with first CCT
 - All services passing `docker compose up`
 
-**Status:** AUTHORIZED — All R-007 P0 gaps closed. IB-010 DONE (R-009), IB-012 DONE (R-010), IB-013 DONE (R-008). Gate G5 clear.
+**Status:** GATE_CLEAR — Gate G5 prerequisites met (R-007 P0 gaps closed, IB-010/012/013 done). Implementation requires explicit Founder authorization recorded in security/FOUNDER-ACTIONS.md. Platform currently in SPEC phase (platform_phase: SPEC in PROJECT_STATE.md). Do not begin implementation until Founder sets platform_phase: IMPLEMENTATION.
 
 ---
 
@@ -468,7 +468,7 @@ Status:           WAITING | IN_PROGRESS | DONE | BLOCKED
 | IB-006 | Produce Component Specifications | Solution Architect | P0 | G4 | DONE |
 | IB-007 | Produce Data Architecture | Data Architect | P0 | G4 | DONE |
 | IB-008 | Infrastructure Architecture + Docker Compose | Platform Architect | P0 | G4/G5 | DONE |
-| IB-009 | Foundation Implementation (skeleton) | Runtime Professional | P0 | G5 | AUTHORIZED |
+| IB-009 | Foundation Implementation (skeleton) | Runtime Professional | P0 | G5 | GATE_CLEAR |
 | IB-010 | Security Architecture | Security Architect | P0 | G5 | DONE |
 | IB-011 | Engineering Quality Standards | EA + Platform Architect | P0 | G5 | DONE |
 | IB-012 | OpenAPI Specifications | Solution Architect | P0 | G5 | DONE |
@@ -834,4 +834,58 @@ When this IB is authorized and completed:
 - FR-005 milestone achieved (50+ single-unit customers — proven revenue)
 - Yogesh's explicit authorization ("IB-019 authorized — begin multi-mode architecture")
 - SIM-020 and SIM-021 Grade A verified in production (not just simulation)
+
+---
+
+### IB-020 — Zero-Cost Autonomous Development Agent (ADR-030)
+
+**Goal:** Specify and authorize a zero-cost or near-zero-cost model for autonomous sprint execution using GitHub Actions. The current autonomous runner (autonomous_sprint_runner.py) is rule-based Python with no LLM — correct for simple tasks. When the sprint requires intelligent code authoring, the agent must have a free-tier LLM specified so it does not default to a paid frontier model.
+
+**Office:** Enterprise Architect (ADR-030) + Platform IT Expert (implementation)
+
+**Priority:** P0-parallel — required before any implementation sprint begins (cannot authorize implementation without knowing which model the autonomous agent will use and at what cost)
+
+**Gate:** Before platform_phase transitions from SPEC to IMPLEMENTATION
+
+**Depends On:** Founder decision on GitHub Models vs Google AI Studio free tier vs other
+
+**Scope:**
+- ADR-030: Development Tooling LLM Selection — zero-cost model for autonomous sprint (separate from customer LLMs in ADR-029)
+- Specify: GitHub Models free tier (llama-3.1-8b, phi-3.5-mini available via GITHUB_TOKEN — zero additional cost)
+- Specify: Task tiers — which tasks need no LLM (rule-based Python), which need a cheap model, which need a reasoning model
+- Specify: Monthly token budget ceiling for development tooling (separate from C-067 deployment cost ceiling)
+- Add C-077 constitutional claim: "Development tooling token cost must not exceed [Founder-set ceiling]/month"
+- Update build_sprint_index.py model_hint to reference actual free-tier model names
+- Add GitHub Models API call stubs to autonomous_sprint_runner.py for intelligent tasks
+
+**Success Criteria:**
+- [ ] ADR-030 written and approved by EA
+- [ ] C-077 ratified (Development Tooling Cost Ceiling)
+- [ ] autonomous-sprint.yaml updated to use GitHub Models API for model_hint=auto tasks
+- [ ] Monthly cost estimate documented: rule-based tasks = ₹0, auto tasks = ₹0 (GitHub Models free tier), reasoning tasks = [Founder-approved model at known rate]
+- [ ] Test: dry run of autonomous sprint costs < ₹1
+
+**Status:** WAITING — requires Founder decision on free-tier model preference and monthly ceiling
+
+---
+
+## Backlog Summary Table (updated 2026-07-22)
+
+| ID | Title | Office | Priority | Gate | Status |
+|---|---|---|---|---|---|
+| IB-001 | Constitutional Corpus | CA | P0 | G2 | DONE |
+| IB-002 | Simulation Corpus | CA | P0 | G2 | DONE |
+| IB-003 | Knowledge Claim Index | CA | P0 | G2 | DONE |
+| IB-004 | RED_TEAM Audit | CA | P0 | G2 | DONE |
+| IB-005 | Reference Architecture | EA | P0 | G3 | DONE |
+| IB-006 | Component Specifications | SA | P0 | G4 | DONE |
+| IB-007 | Data Architecture | SA | P0 | G4 | DONE |
+| IB-008 | Infrastructure Architecture | SA | P0 | G5 | DONE |
+| IB-009 | Foundation Implementation | Runtime Prof | P0 | G5 | GATE_CLEAR |
+| IB-010 | Security Architecture | Security Arch | P0 | G5 | DONE |
+| IB-011 | Engineering Quality Standards | EA | P0 | G5 | DONE |
+| IB-012 | OpenAPI Specifications | SA | P0 | G5 | DONE |
+| IB-013 | Technology Stack ADRs | EA | P0 | G5 | DONE |
+| IB-019 | DMA Multi-Mode Architecture | BA | P1 | Post-MVI | WAITING |
+| IB-020 | Zero-Cost Dev Agent ADR-030 | EA + PIT Expert | P0-parallel | Pre-impl | WAITING |
 

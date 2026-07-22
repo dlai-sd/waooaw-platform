@@ -1,6 +1,6 @@
 # WAOOAW Quality Checklist
 
-**Authority:** C-071 · QA-POLICY.md
+**Authority:** C-071 · C-076 · QA-POLICY.md
 **Use:** Execute these checklists at each stage. Every [ ] is a binary check — pass or raise a defect.
 
 ---
@@ -8,7 +8,8 @@
 ## Checklist A: Before Opening a PR (Developer self-check)
 
 - [ ] Unit tests written for all new functions/methods (AAA pattern, constitutional basis comment where applicable)
-- [ ] Unit test coverage: run `dotnet test --collect:"XPlat Code Coverage"` or `pytest --cov` — coverage not regressed
+- [ ] **Unit test coverage ≥90% (C-076):** run `dotnet test --collect:"XPlat Code Coverage"` or `pytest --cov --cov-fail-under=90` — coverage must be ≥90%, not merely not-regressed
+- [ ] Coverage report shows no untested new code paths (gaps require justification comment with `# pragma: no cover` + reason)
 - [ ] Test naming follows convention: `test_{subject}_{condition}_{expected}`
 - [ ] No `time.sleep()` or `Thread.Sleep()` in tests — use async/await or testcontainers waits
 - [ ] No real PII in test fixtures — all synthetic data from `tests/fixtures/`
@@ -22,7 +23,7 @@
 
 ## Checklist B: QA Agent PR Review
 
-- [ ] Unit test coverage report reviewed — no unexplained gaps
+- [ ] Unit test coverage report reviewed — **total line coverage ≥90% (C-076)**; no unexplained gaps
 - [ ] Integration test exists for every new service-to-service interaction
 - [ ] Every new API endpoint has a contract test (Schemathesis or grpc-health)
 - [ ] Multi-tenant isolation: new endpoint has adversarial test (Customer A cannot read Customer B's data)

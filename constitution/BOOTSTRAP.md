@@ -504,35 +504,37 @@ Why this matters:
 
 MODE A — HUMAN SESSION (GitHub Copilot chat / agent invoked by a human)
   You were invoked by a human typing in a chat window.
-  Per-session Founder confirmation is required before creating any src/ files.
-  STOP. Ask: "This would begin writing implementation code.
-              Do you explicitly authorize IB-009 implementation for this session?"
-  Wait for explicit Founder confirmation. Only then proceed.
+  MANDATORY FIRST CHECK — read constitution/PROJECT_STATE.md SPRINT_STATE_MACHINE:
+    platform_phase: SPEC       → You are in design/spec/planning phase.
+                                 No src/ code. No implementation. Spec work only.
+    platform_phase: IMPLEMENTATION → Per-session Founder confirmation still required.
+                                 STOP. Ask: "This would begin writing implementation code.
+                                 Do you explicitly authorize IB-009 implementation for this session?"
+                                 Wait for explicit Founder confirmation. Only then proceed.
+    platform_phase: LIVE       → Follow office operating protocol for live system.
 
 MODE B — AUTONOMOUS SPRINT AGENT (GitHub Actions scheduled trigger)
   You were invoked by .github/workflows/autonomous-sprint.yaml (cron / workflow_dispatch).
   The environment variable AUTONOMOUS_SPRINT_AGENT=true will be set.
 
-  AUTHORIZATION CHECK (replaces per-session human ask):
-    ✓ Read constitution/PROJECT_STATE.md → SPRINT_STATE_MACHINE block
-    ✓ Check AUTONOMOUS_HALT: false  (if true → log and exit gracefully — C-001)
+  AUTHORIZATION CHECKS (all must pass — fail any = halt gracefully):
+    ✓ Check AUTONOMOUS_HALT: false  (if true → log and exit — C-001 Human Override)
+    ✓ Check platform_phase = IMPLEMENTATION  ← NEW GATE
+      (if SPEC → log "Platform in SPEC phase. No implementation authorized." → exit)
     ✓ Check current_sprint WC-NNN exists in work-contracts/
-    ✓ Check IB item status = AUTHORIZED in INSTITUTIONAL_BACKLOG.md
-    ✓ Check consecutive_failures < 3  (if ≥ 3 → create Constitutional Blocker → halt)
-    If ALL checks pass → PROCEED immediately. No human approval required.
-    If ANY check fails → update PROJECT_STATE.md with failure reason → exit.
+    ✓ Check IB item status = GATE_CLEAR in INSTITUTIONAL_BACKLOG.md
+    ✓ Check consecutive_failures < 3
+
+  IMPORTANT: IB status = GATE_CLEAR means prerequisites are met.
+  Implementation is authorized ONLY when platform_phase = IMPLEMENTATION
+  AND a Founder Action (FA-NNN) recording explicit authorization exists in security/FOUNDER-ACTIONS.md.
+  The previous "AUTHORIZED" label in INSTITUTIONAL_BACKLOG.md was a session-agent self-authorization
+  and has been corrected to GATE_CLEAR as of 2026-07-22 (Founder instruction).
 
   CONSTITUTIONAL BASIS:
-    C-070 Third Instinct: "Autonomous and Trust-Based Execution" is constitutional DNA.
-    C-066 Tier 2A: IB:AUTHORIZED + WC exists = execution authorized for scheduled agent.
-    C-064: Humans govern via IB authorization and AUTONOMOUS_HALT — not per-execution.
-    C-001: AUTONOMOUS_HALT flag IS the Human Override for the autonomous loop.
-
-  WHAT HUMANS CONTROL IN MODE B:
-    Yogesh sets IB:AUTHORIZED (Founding Gate) — grants the sprint.
-    Any of the 3 humans sets AUTONOMOUS_HALT: true to stop all autonomous execution.
-    Yogesh ratifies Gate closures (not individual sprint runs).
-    Ojal can halt and trigger ethics review of any AI behavior at any time.
+    C-001: AUTONOMOUS_HALT flag and platform_phase ARE the Human Override mechanisms.
+    C-066 Tier 2A: Authorized for execution when ALL gate checks pass (not just IB status).
+    C-064: Humans govern via platform_phase, AUTONOMOUS_HALT, and Founder Actions — not per-execution asks.
     CODEOWNERS still blocks any merge — final merge gate is always human (Yogesh).
 
 ⛔ WHAT NEVER CHANGES REGARDLESS OF MODE:

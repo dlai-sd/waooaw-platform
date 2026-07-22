@@ -120,6 +120,17 @@ jobs:
             --collect:"XPlat Code Coverage" \
             --results-directory ./coverage
 
+      - name: Install dotnet-coverage tool
+        run: dotnet tool install --global dotnet-coverage
+
+      - name: Check coverage ≥90% (C-076)
+        run: |
+          dotnet-coverage merge ./coverage/**/*.xml -f xml -o merged-coverage.xml
+          dotnet-coverage check merged-coverage.xml \
+            --minimum-coverage-lines 90 \
+            --minimum-coverage-branches 80
+        # Failure = C-076 constitutional violation — blocks merge absolutely
+
       - name: Upload coverage
         uses: codecov/codecov-action@v4
         with:
@@ -206,8 +217,9 @@ jobs:
         working-directory: web
 
       - name: Jest
-        run: pnpm jest --coverage --coverageThreshold='{"global":{"lines":90}}'
+        run: pnpm jest --coverage --coverageThreshold='{"global":{"lines":90,"branches":80,"functions":90,"statements":90}}'
         working-directory: web
+        # C-076: 90% line/function/statement floor is constitutional minimum
 
   # ─── OpenAPI spec lint ────────────────────────────────────────────────────
   spec-lint:

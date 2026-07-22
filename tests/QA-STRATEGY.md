@@ -1,8 +1,8 @@
 # WAOOAW Quality Framework — Master Strategy
 
-**Version:** 1.0
-**Date:** 2026-07-19
-**Authority:** C-071 (Quality Obligation — RATIFIED), GENESIS Engineering Quality Mandate
+**Version:** 1.1
+**Date:** 2026-07-22
+**Authority:** C-071 (Quality Obligation — RATIFIED), C-076 (90% Coverage Mandate — RATIFIED), GENESIS Engineering Quality Mandate
 **Owner:** WAOOAW AI Agent — QA (execution) · Sujay Khandge (quality stewardship)
 **Constitutional Basis:** C-002, C-023, C-065, C-070, C-071
 **Applies to:** All platform services (CE, BP, PR, AIR, Web), all agents (DMA, Trading, Agricultural, Private Tutor, Steward Assistant, Self-Improvement Analyst, Platform IT Expert, Platform Operations)
@@ -70,16 +70,18 @@ Each layer builds on the one below. A layer 6 failure does not block a PR — it
 
 These are **minimums, not targets.** World class means exceeding them.
 
+**Constitutional basis: C-076 — 90% Minimum Code Coverage Obligation.** No service may ship below 90% unit test line coverage. The floor is uniform, enforced by CI at Gate 1, and cannot be waived.
+
 | Service | Unit Test Coverage | Integration Coverage | CCT Coverage | Mutation Score |
 |---|---|---|---|---|
-| Constitutional Engine (CE) | ≥90% line | ≥80% path | 100% of constitutional claims with runtime enforcement | ≥75% |
-| Business Platform (BP) | ≥85% line | ≥75% path | All multi-tenant, billing, employment endpoints | ≥70% |
-| Professional Runtime (PR) | ≥85% line | ≥75% path | PAAS session lifecycle, Emergency Stop path | ≥70% |
-| AI Runtime (AIR) | ≥80% line | ≥70% path | PSE routing, prompt injection defense, trust score | ≥65% |
-| Web Portal | ≥75% line | N/A | Accessibility (all pages WCAG 2.1 AA), Emergency Stop UI | ≥60% |
-| scripts/ | ≥90% line | ≥85% path | seed-prompts.py idempotency, blue-green deploy | ≥70% |
+| Constitutional Engine (CE) | ≥90% line | ≥85% path | 100% of constitutional claims with runtime enforcement | ≥75% |
+| Business Platform (BP) | ≥90% line | ≥80% path | All multi-tenant, billing, employment endpoints | ≥70% |
+| Professional Runtime (PR) | ≥90% line | ≥80% path | PAAS session lifecycle, Emergency Stop path | ≥70% |
+| AI Runtime (AIR) | ≥90% line | ≥80% path | PSE routing, prompt injection defense, trust score | ≥70% |
+| Web Portal | ≥90% line | N/A | Accessibility (all pages WCAG 2.1 AA), Emergency Stop UI | ≥65% |
+| scripts/ | ≥90% line | ≥90% path | seed-prompts.py idempotency, blue-green deploy | ≥70% |
 
-**Coverage enforcement:** Codecov PR gate — coverage drop > 2% blocks merge.
+**Coverage enforcement:** CI (`--cov-fail-under=90` Python / ReportGenerator threshold .NET / `--coverageThreshold` TypeScript). Codecov PR gate — any new PR that drops total coverage below 90% blocks merge absolutely. This is a C-076 constitutional violation, not a soft warning.
 
 ---
 

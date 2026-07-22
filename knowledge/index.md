@@ -3,7 +3,7 @@
 **Produced by:** Constitutional Analyst (Sprint 001)
 **Date:** 2026-07-07
 **Work Contract:** WC-001
-**Total Claims:** 75 (ratified through 2026-07-19)
+**Total Claims:** 76 (ratified through 2026-07-22)
 
 ---
 
@@ -88,7 +88,7 @@ Derived from CONFIRMED or LAW claims. These authorize specific architectural dec
 
 | Status | Count | IDs |
 |---|---|---|
-| RATIFIED | 75 | C-001 through C-075 (all) |
+| RATIFIED | 76 | C-001 through C-076 (all) |
 | DRAFT | 0 | — |
 
 ---
@@ -139,6 +139,8 @@ Derived from CONFIRMED or LAW claims. These authorize specific architectural dec
 | C-073 | PLATFORM_INTEGRITY | Testing obligation for all platform modules implementing constitutional principles | 2026-07-18 |
 | C-074 | ARCHITECTURAL_CONSTRAINT | On-the-fly MCP Provisioning — new domains served without deployment cycles via mcp_registry | 2026-07-19 |
 | C-075 | COMMERCIAL | White-label reseller model — agency wholesale (₹899-1,299/seat) + customer retail billing via own MBM/MCC | 2026-07-19 |
+| C-076 | PLATFORM_INTEGRITY | 90% Minimum Code Coverage Obligation — all platform services (CE/BP/PR/AIR/Web/scripts) must maintain ≥90% line coverage on unit tests; non-compliance blocks PR merge at Gate 1 | 2026-07-22 |
+| C-077 | PLATFORM_INTEGRITY | **DRAFT — pending Founder ratification.** Development Tooling Cost Ceiling — autonomous development agent token spend must not exceed a Founder-set monthly ceiling; zero-cost execution (GitHub Models free tier) is the default; paid models require explicit authorization per sprint | DRAFT |
 
 ---
 

@@ -9,13 +9,13 @@
 ## Platform Status
 
 ```
-Version:              v0.96.0 (2026-07-21)
-Constitutional Claims: 75 ratified (C-001 to C-075)
+Version:              v0.97.0 (2026-07-22)
+Constitutional Claims: 76 ratified (C-001 to C-076)
 Customer Agents:      4 approved — DMA v3.0 · Trading v1.7 · Agricultural v2.7 · Private Tutor v1.0
 Internal Agents:      4 — Platform IT Expert · Steward Assistant · Self-Improvement Analyst · Platform Operations
 Gates:                G0 ✅  G1 ✅  G2 ✅  G3 ✅  G4 ✅  G5 CLEAR
-Implementation:       IB-009 AUTHORIZED — autonomous execution via autonomous-sprint.yaml (every 2h)
-Autonomous Sprint:    SPRINT_STATE_MACHINE in PROJECT_STATE.md · C-066 Tier 2A · C-070 Third Instinct
+Phase:                SPEC — design, specs, planning. Implementation NOT authorized (Yogesh must authorize explicitly).
+Implementation:       IB-009 GATE_CLEAR — Gate G5 prerequisites met. AUTONOMOUS_HALT: true. Waiting for Founder authorization.
 Human Override:       AUTONOMOUS_HALT: true in PROJECT_STATE.md (C-001) · CODEOWNERS merge gate always active
 Web:                  web/WAOOAWHome.html — Landing page v1.0 + Auth modal (Google/WhatsApp/email, Figma-style)
 ADRs:                 29  |  CCTs: 50 specified  |  Simulations: 21

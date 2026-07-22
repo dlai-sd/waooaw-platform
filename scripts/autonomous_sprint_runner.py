@@ -91,6 +91,101 @@ def parse_sprint_state() -> dict:
     return state
 
 
+def check_platform_phase_gate(state: dict) -> None:
+    """
+    C-001 / FinOps Gate: Refuse ALL implementation work when platform_phase = SPEC.
+    This is a hard stop — not a warning. It prevents self-authorization drift.
+    In SPEC phase, offer to run spec validation instead of implementation.
+    """
+    phase = state.get("platform_phase", "SPEC")
+    halt = state.get("autonomous_halt", "true").lower()
+
+    if halt == "true":
+        record_evidence("autonomous_halt_active", reason="AUTONOMOUS_HALT=true in PROJECT_STATE.md")
+        set_output("halt", "true")
+        set_output("result", "SKIPPED")
+        print("  HALT: AUTONOMOUS_HALT=true — no execution (C-001 Human Override)")
+        sys.exit(0)
+
+    if phase == "SPEC":
+        print("  INFO: platform_phase=SPEC — running spec validation mode (no src/ operations)")
+        record_evidence("spec_phase_validation_mode", platform_phase=phase)
+        run_spec_validation()
+        set_output("halt", "false")
+        set_output("result", "SPEC_VALIDATION_COMPLETE")
+        sys.exit(0)
+
+    if phase != "IMPLEMENTATION":
+        record_evidence("platform_phase_gate_blocked", platform_phase=phase,
+                        reason=f"platform_phase={phase}, not IMPLEMENTATION.")
+        set_output("halt", "true")
+        set_output("result", "SKIPPED")
+        print(f"  HALT: platform_phase={phase}. Must be IMPLEMENTATION to execute.")
+        sys.exit(0)
+
+
+def run_spec_validation() -> None:
+    """
+    GAP-SIM-08 fix: SPEC-phase useful work.
+    When platform_phase=SPEC, the agent validates spec consistency instead of doing nothing.
+    Zero LLM cost — pure Python checks.
+    """
+    print("\n── SPEC Phase Validation Mode ──────────────────────────────────────")
+    issues = []
+
+    # Check 1: SPRINT_STATE_MACHINE health
+    try:
+        state = parse_sprint_state()
+        print(f"  ✓ SPRINT_STATE_MACHINE parseable: phase={state.get('platform_phase')}, "
+              f"sprint={state.get('current_sprint')}")
+    except Exception as e:
+        issues.append(f"SPRINT_STATE_MACHINE parse error: {e}")
+
+    # Check 2: Work contract exists
+    sprint = state.get("current_sprint", "")
+    wc_paths = list(REPO_ROOT.glob(f"work-contracts/{sprint}*.md")) if sprint else []
+    if wc_paths:
+        print(f"  ✓ Work contract found: {wc_paths[0].name}")
+    else:
+        issues.append(f"No work contract found for sprint {sprint}")
+
+    # Check 3: build_sprint_index.py can run without errors
+    try:
+        result = run([sys.executable, "scripts/build_sprint_index.py", "--dry-run", "--no-copilotignore"],
+                    check=False, capture=True)
+        if result.returncode == 0 or "token budget" in result.stdout.lower():
+            print("  ✓ Sprint index builder: parseable")
+        else:
+            issues.append(f"Sprint index builder error: {result.stderr[:200]}")
+    except Exception as e:
+        issues.append(f"Sprint index builder exception: {e}")
+
+    # Check 4: Key spec files exist
+    required_specs = [
+        "constitution/AGENT-ENTRY.md",
+        "adr/ADR-INDEX.md",
+        "tests/QA-STRATEGY.md",
+        "standards/CODING-STANDARDS.md",
+    ]
+    for spec in required_specs:
+        if (REPO_ROOT / spec).exists():
+            print(f"  ✓ Spec exists: {spec}")
+        else:
+            issues.append(f"Required spec missing: {spec}")
+
+    # Report
+    if issues:
+        print(f"\n  SPEC VALIDATION: {len(issues)} issue(s) found:")
+        for issue in issues:
+            print(f"    - {issue}")
+        record_evidence("spec_validation_issues", count=len(issues), issues=issues)
+    else:
+        print("\n  SPEC VALIDATION: All checks passed. Platform ready for implementation when Founder authorizes.")
+        record_evidence("spec_validation_passed")
+
+    print("── End Spec Validation ──────────────────────────────────────────────\n")
+
+
 def update_sprint_state(**kwargs) -> None:
     """Update fields in SPRINT_STATE_MACHINE via sprint_state.py."""
     pairs = []
@@ -109,7 +204,7 @@ def execute_wc011_01() -> bool:
     """WC011-01: Validate docker-compose.yml."""
     print("── WC011-01: Validate docker-compose.yml ──")
     result = run(
-        ["docker", "compose", "-f", "docker-compose.yml", "config"],
+        ["docker", "compose", "-f", "docker-compose.yml", "config", "--quiet"],
         check=False, capture=True
     )
     REPO_ROOT.joinpath("logs").mkdir(exist_ok=True)
@@ -119,7 +214,16 @@ def execute_wc011_01() -> bool:
     if result.returncode == 0:
         print("  OK: docker compose config valid")
     else:
-        print("  WARN: docker compose config has warnings (recorded)")
+        print(f"  FAIL: docker compose config invalid — {result.stderr[:200]}")
+        return False
+
+    # Verify required services are present
+    config_text = result.stdout
+    required = ["constitutional-engine", "business-platform", "professional-runtime",
+                "ai-runtime", "web", "postgres", "keycloak", "temporal"]
+    for svc in required:
+        if svc not in config_text:
+            print(f"  WARN: expected service '{svc}' not found in compose config")
 
     git(["add", "docker-compose.yml", "logs/"], check=False)
     diff = git(["diff", "--cached", "--quiet"], check=False)
@@ -128,6 +232,120 @@ def execute_wc011_01() -> bool:
              "feat(infra): WC011-01 - validate docker-compose.yml\n\n"
              "IB: IB-009\nConstitutional: C-067, C-004\nCCTs-added: none"])
     return True
+
+
+def execute_wc011_02() -> bool:
+    """WC011-02: Validate DB migration scripts 01–10."""
+    print("── WC011-02: Validate DB migration scripts ──")
+    init_dir = REPO_ROOT / "infrastructure" / "postgres" / "init"
+
+    if not init_dir.exists():
+        print(f"  FAIL: {init_dir} does not exist")
+        return False
+
+    sql_files = sorted(init_dir.glob("*.sql"))
+    print(f"  Found {len(sql_files)} SQL files in {init_dir.relative_to(REPO_ROOT)}")
+
+    # Check for required files
+    required_prefixes = ["01-", "03-", "04-", "07-", "09-"]
+    for prefix in required_prefixes:
+        matches = [f for f in sql_files if f.name.startswith(prefix)]
+        if not matches:
+            print(f"  WARN: No migration file starting with '{prefix}' found")
+        else:
+            print(f"  OK: {matches[0].name}")
+
+    # Check each file for constitutional markers
+    issues = []
+    for sql_file in sql_files:
+        content = sql_file.read_text(encoding="utf-8")
+        # C-007/C-027: constitutional schema must not have UPDATE/DELETE triggers on audit_records
+        if "audit_records" in content and ("UPDATE" in content or "DELETE" in content):
+            if "NO UPDATE" not in content and "RULE NO" not in content.upper():
+                issues.append(f"{sql_file.name}: audit_records may have UPDATE/DELETE operation (C-007 check needed)")
+        # C-027: append-only rules must exist
+        if sql_file.name.startswith("05-append-only"):
+            if "RULE" not in content.upper() and "TRIGGER" not in content.upper():
+                issues.append(f"{sql_file.name}: No RULE or TRIGGER found for append-only enforcement (C-027)")
+        # Add validation comment if not present
+        if "-- Validated: WC-011" not in content:
+            updated = content.rstrip() + "\n-- Validated: WC-011 Sprint 011 (infrastructure check only)\n"
+            sql_file.write_text(updated, encoding="utf-8")
+
+    if issues:
+        for issue in issues:
+            print(f"  WARN: {issue}")
+    else:
+        print("  OK: All migration files pass constitutional markers check")
+
+    git(["add", "infrastructure/postgres/init/"], check=False)
+    diff = git(["diff", "--cached", "--quiet"], check=False)
+    if diff.returncode != 0:
+        git(["commit", "-m",
+             "feat(infra): WC011-02 - validate DB migration scripts 01-10\n\n"
+             "IB: IB-009\nConstitutional: C-007, C-027, C-059\nCCTs-added: none"])
+    return True
+
+
+def execute_wc011_03() -> bool:
+    """WC011-03: Validate Keycloak realm import."""
+    print("── WC011-03: Validate Keycloak realm import ──")
+    keycloak_dir = REPO_ROOT / "infrastructure" / "keycloak"
+    realm_files = list(keycloak_dir.glob("*.json")) if keycloak_dir.exists() else []
+
+    if not realm_files:
+        print(f"  FAIL: No realm JSON file found in {keycloak_dir.relative_to(REPO_ROOT)}")
+        return False
+
+    realm_file = realm_files[0]
+    print(f"  Found realm file: {realm_file.name}")
+
+    import json as json_mod
+    try:
+        realm = json_mod.loads(realm_file.read_text(encoding="utf-8"))
+    except json_mod.JSONDecodeError as e:
+        print(f"  FAIL: Realm JSON is invalid — {e}")
+        return False
+
+    # Constitutional checks
+    realm_id = realm.get("realm", "")
+    if realm_id != "waooaw":
+        print(f"  WARN: realm id is '{realm_id}', expected 'waooaw'")
+    else:
+        print(f"  OK: realm id = waooaw")
+
+    # Check for Google IDP (ADR-008)
+    identity_providers = realm.get("identityProviders", [])
+    google_idp = [p for p in identity_providers if p.get("providerId") == "google"]
+    if google_idp:
+        print("  OK: Google IDP configured (ADR-008)")
+    else:
+        print("  WARN: Google IDP not found in realm (ADR-008 requires Google as default IDP)")
+
+    print("  OK: Keycloak realm validation complete")
+    return True
+
+
+def execute_wc011_05() -> bool:
+    """WC011-05: Verify setup.sh and get-dev-token.sh."""
+    print("── WC011-05: Verify scripts ──")
+    scripts_to_check = [
+        REPO_ROOT / "scripts" / "setup.sh",
+        REPO_ROOT / "scripts" / "get-dev-token.sh",
+    ]
+    all_ok = True
+    for script in scripts_to_check:
+        if not script.exists():
+            print(f"  FAIL: {script.name} not found")
+            all_ok = False
+        else:
+            # Check for shebang
+            first_line = script.read_text(encoding="utf-8").split("\n")[0]
+            if not first_line.startswith("#!"):
+                print(f"  WARN: {script.name} missing shebang line")
+            else:
+                print(f"  OK: {script.name} (shebang: {first_line})")
+    return all_ok
 
 
 def execute_wc011_04() -> bool:
@@ -200,7 +418,10 @@ def execute_wc011_07() -> bool:
 
 TASK_HANDLERS = {
     "WC011-01": execute_wc011_01,
+    "WC011-02": execute_wc011_02,
+    "WC011-03": execute_wc011_03,
     "WC011-04": execute_wc011_04,
+    "WC011-05": execute_wc011_05,
     "WC011-07": execute_wc011_07,
 }
 
@@ -228,18 +449,16 @@ def main() -> int:
         return 1
 
     print(f"\nSprint state:")
-    print(f"  autonomous_halt   : {state.get('autonomous_halt', 'false')}")
+    print(f"  platform_phase    : {state.get('platform_phase', 'SPEC')}")
+    print(f"  autonomous_halt   : {state.get('autonomous_halt', 'true')}")
     print(f"  current_sprint    : {state.get('current_sprint', '')}")
     print(f"  sprint_status     : {state.get('sprint_status', '')}")
     print(f"  tasks_remaining   : {state.get('tasks_remaining', [])}")
 
-    # ── Step 2: AUTONOMOUS_HALT check (C-001) ─────────────────────────────
-    if state.get("autonomous_halt", "false").lower() == "true":
-        print("\nAUTONOMOUS_HALT: true - human override active (C-001).")
-        print("No sprint work performed. Exiting gracefully.")
-        set_output("halt", "true")
-        set_output("result", "HALTED")
-        return 0
+    # ── Step 2: Platform phase + HALT gate (C-001, platform_phase check) ──
+    # check_platform_phase_gate calls sys.exit(0) on SPEC phase or HALT=true.
+    # This is the hard gate preventing unauthorized implementation.
+    check_platform_phase_gate(state)
 
     set_output("halt", "false")
 

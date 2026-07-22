@@ -650,6 +650,62 @@ def test_c041_evaluator_never_authorizes_unlisted_tool(
         assert result.decision == EvaluationDecision.DENY
 ```
 
+### 7.5 Code Coverage Obligation (C-076 — Constitutional)
+
+**Constitutional basis: C-076 — 90% Minimum Code Coverage Obligation**
+
+Every platform service must maintain ≥90% unit test line coverage. This is not aspirational; it is enforced by CI at Gate 1.
+
+**Toolchain (per language):**
+
+| Language | Tool | CI Enforcement | Threshold Config |
+|---|---|---|---|
+| .NET 9 | Coverlet + ReportGenerator | `dotnet-coverage` threshold check in `ci.yaml` | `--minimum 90` |
+| Python 3.12 | pytest-cov + coverage.py | `--cov-fail-under=90` in `ci.yaml` | `fail_under = 90` in `pyproject.toml` |
+| TypeScript | c8/istanbul via Vitest | `coverageThreshold` in `vitest.config.ts` | `lines: 90` |
+
+**Rules for every PR author:**
+
+```python
+# ✓ — Confirm before opening PR:
+#     pytest --cov --cov-fail-under=90 --cov-report=term-missing
+# Output must show overall coverage ≥90%.
+# Any module below 90% must have new tests OR a documented justification.
+
+# ✓ — New code: every new function gets at least one unit test
+def route_to_provider(tier: LLMTier, ...) -> ProviderSelection:
+    ...  # ← new function
+
+def test_route_to_provider_returns_gemini_for_mid_tier():  # ← required test
+    result = route_to_provider(tier=LLMTier.MID, ...)
+    assert result.provider == LLMProvider.GEMINI_FLASH
+
+# ✓ — Exempt from coverage only with explicit reason:
+def _internal_debug_repr(self) -> str:  # pragma: no cover
+    # Reason: only used interactively in debugger, not called in production code path
+    return f"<{self.__class__.__name__}: {self.id}>"
+
+# ✗ — Blanket exemptions are a C-076 violation
+class MyService:  # pragma: no cover — FORBIDDEN without justification
+    ...
+```
+
+**.NET coverage enforcement (ci.yaml):**
+```yaml
+- name: Check coverage threshold (C-076)
+  run: |
+    dotnet-coverage collect "dotnet test" -f xml -o coverage.xml
+    dotnet-coverage check coverage.xml \
+      --minimum-coverage-branches 80 \
+      --minimum-coverage-lines 90
+```
+
+**Exemption process (if 90% is genuinely unreachable):**
+1. Open GitHub Issue labelled `coverage-exemption-request`
+2. Provide: which module, which lines are uncoverable, why (generated code, platform glue)
+3. EA must approve the exemption before `# pragma: no cover` is merged
+4. Approval is recorded in the Issue; the Issue number goes in the code comment
+
 ---
 
 ## 8. Observability Standards — Span + Log Taxonomy

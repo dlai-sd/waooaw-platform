@@ -7,20 +7,17 @@
 ## ⛔ IMPLEMENTATION GATE — READ BEFORE ANYTHING ELSE
 
 ```
-If your next action involves creating files in src/, writing runnable code,
-or producing build artifacts:
+CURRENT PLATFORM PHASE: SPEC
+  → Design, specs, planning only.
+  → No src/ code. No docker builds. No database migrations.
+  → Any agent that creates implementation code in SPEC phase is in constitutional violation.
 
-STOP. DO NOT PROCEED.
+Check constitution/PROJECT_STATE.md SPRINT_STATE_MACHINE first:
+  platform_phase: SPEC        → spec/governance/standards work only (current state)
+  platform_phase: IMPLEMENTATION → implementation authorized, but STILL requires per-session
+                                   Founder confirmation in Mode A (human sessions)
 
-"G5 CLEAR" or "Implementation AUTHORIZED" in README means gate prerequisites
-are met. It does NOT authorize THIS session's implementation sprint.
-
-A TO-DO list, a GitHub Issue, or a Work Contract is NOT authorization.
-
-You must ask: "This would begin writing implementation code.
-Do you explicitly authorize IB-009 implementation for this session?"
-
-Wait for explicit Founder confirmation. No exceptions.
+AUTONOMOUS_HALT: true (set 2026-07-22 by Founder — do not clear without explicit instruction)
 ```
 
 ---
@@ -28,11 +25,11 @@ Wait for explicit Founder confirmation. No exceptions.
 ## Current Platform State (updated each session)
 
 ```
-Version:    0.96.0  |  Gate: G5 CLEAR  |  Epoch: 1 — Employment
-Last update: 2026-07-21 — Full autonomy model: C-066 Tier 2A, BOOTSTRAP amendment, autonomous-sprint.yaml
-Implementation: AUTONOMOUS — autonomous-sprint.yaml fires every 2h (C-066 Tier 2A + C-070 Third Instinct)
-Human Override: AUTONOMOUS_HALT: true in PROJECT_STATE.md SPRINT_STATE_MACHINE (C-001)
-Constitutional Claims: C-001 to C-075 (75 RATIFIED)
+Version:    0.97.0  |  Gate: G5 CLEAR  |  Epoch: 1 — Employment  |  Phase: SPEC
+Last update: 2026-07-22 — C-076; FinOps; SPEC phase enforced; SIM-022 run; 8 gaps fixed; C-077 DRAFT
+Phase:      SPEC — design, specs, planning only. NO implementation. NO src/ code.
+Implementation: HALTED — AUTONOMOUS_HALT: true · platform_phase: SPEC · IB-009 status = GATE_CLEAR
+Constitutional Claims: C-001 to C-076 (76 RATIFIED)
 Agents (customer): DMA v3.0 | Trading v1.7 | Agricultural Advisor v2.7 | Private Tutor v1.0
 Agents (internal): Platform IT Expert v1.0 | Steward Assistant v1.0 | Self-Improvement Analyst v1.0 | Platform Operations v1.0
 CCTs: 50 specified | ADRs: 29 | Security: Audit-ready | Infra: Cloud-optimized + Blue-Green
@@ -68,6 +65,7 @@ Company: DLAI Satellite Data (OPC) Pvt Ltd | CIN: U62090PN2024OPC230499 | GSTIN:
 - C-073: Constitutional Annotations (@constitutional in source, CCT-TR-01)
 - C-074: On-the-Fly MCP Provisioning (09-mcp-registry.sql, no deployment cycles)
 - C-075: White-Label Reseller (agency commercial model, 10-reseller-agency.sql)
+- **C-076: 90% Minimum Code Coverage Obligation (all services ≥90% line, unit tests, blocks PR merge)**
 
 **Claims C-059 → C-067 (previously new, now ratified):**
 - C-059: Implementation Traceability | C-060: Minor Student Protection (LAW) | C-061: Content Safety (LAW)
