@@ -1,8 +1,8 @@
 # PROJECT_STATE.md
 
 **Last Updated:** 2026-07-22
-**Version:** 0.98.0
-**Session:** 2026-07-22 — SESSION CLOSE
+**Version:** 0.99.0
+**Session:** 2026-07-22 — GAP-1 COMPLETE (commit 8ea38a3)
 
 ---
 
@@ -29,6 +29,10 @@
 | SIM-023 GAP-6: GITHUB-SECRETS.md created (WC011-07 pre-requisite) | ✓ FIXED |
 | SIM-023 GAP-7: src/ README.md C-059 scaffolds created for all 4 services | ✓ FIXED |
 | WC-011 dry-run result: 6/7 PASS, 1 BLOCKED (WC011-06 Azure SP — external) | ✓ VERIFIED |
+| **GAP-1 FULLY RESOLVED: all 14 remaining MCP stubs migrated to mcp_stub_server.py** | ✓ DONE |
+| signal-watch-worker: YAML-safe shell loop; pinterest→8151, threads→8152 (port conflicts fixed) | ✓ DONE |
+| docker compose config: EXIT 0, zero inline python -c, zero port conflicts | ✓ VERIFIED |
+| **WC011-01 (docker-compose validation) now passes cleanly — SIM-023 fully clean** | ✓ DONE |
 | Full autonomy merge model decided: no human PR approver, REVIEW_APP_TOKEN agent only | ✓ DECIDED |
 | FA-023 identified: GitHub App for REVIEW_APP_TOKEN (30 min, P0, Founder next session) | ✓ PENDING |
 | RAG token budget: WC011 tasks ≤6.5K/8.2K free model limit (section targeting enforced) | ✓ VERIFIED |
@@ -40,7 +44,7 @@
 ## NEXT SESSION OPTIONS (updated 2026-07-22 SESSION CLOSE)
 
 ```
-CURRENT STATE: platform_phase=SPEC · AUTONOMOUS_HALT=true · Version=v0.98.0
+CURRENT STATE: platform_phase=SPEC · AUTONOMOUS_HALT=true · Version=v0.99.0
 
 OPTION A — FA-023: GitHub App for REVIEW_APP_TOKEN (30 min, P0)
   → Go to github.com/settings/apps → New GitHub App

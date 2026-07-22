@@ -8,6 +8,22 @@ types: `feat` | `fix` | `constitutional` | `cct` | `chore` | `refactor` | `secur
 
 ---
 
+## [0.99.0] — 2026-07-22
+
+### Fix (infrastructure — GAP-1 complete)
+- **GAP-1 fully resolved**: all 14 remaining MCP stub services migrated from inline `python -c` to `mcp_stub_server.py`
+  - `signal-watch-worker`: replaced inline Python with YAML-safe shell heartbeat loop
+  - `linkedin-mcp` (8139), `x-mcp` (8140): migrated to generic stub server
+  - `pinterest-mcp`: port corrected 8145→8151 (was conflicting with `reputation-mcp`)
+  - `threads-mcp`: port corrected 8146→8152 (was conflicting with `booking-mcp`)
+  - `youtube-mcp` (8141), `ga4-mcp` (8142), `instagram-messaging-mcp` (8143), `instagram-comments-mcp` (8144): migrated
+  - `reputation-mcp` (8145), `booking-mcp` (8146), `cms-mcp` (8147), `whatsapp-flows-mcp` (8148): migrated
+  - `zomato-mcp` (8149), `swiggy-mcp` (8150): migrated
+- `docker compose config`: EXIT 0, zero port conflicts, zero inline `python -c` remaining
+- **WC011-01 (docker-compose validation) now passes cleanly** — SIM-023 gap register fully resolved
+
+---
+
 ## [0.10.1] — 2026-07-08
 
 ### Fix (gate violation correction)
