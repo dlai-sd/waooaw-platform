@@ -171,12 +171,20 @@ def parse_sprint_state() -> dict[str, str]:
     match = re.search(r"## SPRINT_STATE_MACHINE.*?```yaml\n(.*?)```", content, re.DOTALL)
     if not match:
         return {}
+    block = match.group(1)
     state: dict[str, str] = {}
-    for line in match.group(1).splitlines():
+    for line in block.splitlines():
         line = line.split("#")[0].strip()
         if ":" in line:
             k, _, v = line.partition(":")
             state[k.strip()] = v.strip().strip('"').strip("'")
+    # Parse tasks_remaining list (YAML list items not captured by key:value loop above)
+    tasks_block = re.search(r"tasks_remaining:\n((?:  - [^\n]+\n?)*)", block)
+    if tasks_block:
+        tasks = re.findall(r"  - (\S+)", tasks_block.group(1))
+        state["tasks_remaining"] = [t for t in tasks if not t.startswith("#")]
+    else:
+        state["tasks_remaining"] = []
     return state
 
 
