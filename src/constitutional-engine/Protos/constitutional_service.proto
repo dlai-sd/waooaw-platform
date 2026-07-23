@@ -1,0 +1,40 @@
+// Implements: architecture/reference/components/constitutional-engine.md §4 Emergency Stop Handler
+// constitutional_basis: C-001 (Emergency Stop absolute), ADR-001 (gRPC), CCT-HO-01 (≤250ms P99)
+
+syntax = "proto3";
+
+option csharp_namespace = "Waooaw.ConstitutionalEngine";
+
+package constitutional;
+
+import "google/protobuf/timestamp.proto";
+
+// ConstitutionalService — gRPC service for the Constitutional Engine.
+// TriggerEmergencyStop implements C-001 Emergency Stop absolute guarantee.
+service ConstitutionalService {
+  // C-001: Emergency Stop — must complete ≤250ms P99 (CCT-HO-01)
+  rpc TriggerEmergencyStop (TriggerEmergencyStopRequest) returns (TriggerEmergencyStopResponse);
+}
+
+// Request to trigger an Emergency Stop for an employment contract.
+message TriggerEmergencyStopRequest {
+  // UUID of the employment contract being stopped (required)
+  string contract_id = 1;
+
+  // Known active PAAS session IDs (Temporal workflow IDs per ADR-018).
+  // If empty, CE halts all known sessions for the contract.
+  repeated string active_session_ids = 2;
+}
+
+// Response confirming the Emergency Stop has been recorded and Temporal signalled.
+// Sent only after evidence record is written (AD-002 Evidence First).
+message TriggerEmergencyStopResponse {
+  // UUID of the persisted emergency_stop_events record
+  string emergency_stop_record_id = 1;
+
+  // Temporal workflow IDs that were signalled
+  repeated string affected_session_ids = 2;
+
+  // UTC timestamp when Temporal signal was confirmed
+  google.protobuf.Timestamp confirmed_at = 3;
+}
