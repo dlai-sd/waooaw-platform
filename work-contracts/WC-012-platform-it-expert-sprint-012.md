@@ -6,7 +6,7 @@
 **Sprint Track:** Track 2 — Constitutional Engine (PMO §2.1 M3)
 **Gate:** G5
 **Reviewer:** WAOOAW AI Agent — QA (CCT authoring, C-065 separation)
-**Constitutional Basis:** C-023 (Evidence First), C-041 (Tool Authorization), C-059, C-065, C-073, C-076
+**Constitutional Basis:** C-023 (Evidence First), C-041 (Tool Authorization), C-059, C-065, C-073, C-076, **C-079 (CE Fail-Safe Halt on Unavailability — RATIFIED 2026-07-23)**
 
 **Authorization:** Requires `platform_phase: IMPLEMENTATION` in PROJECT_STATE.md before execution.
 Follows WC-011 (infrastructure validated). No parallel execution with other WCs.
@@ -31,14 +31,16 @@ This sprint produces **NO business logic**. Evaluators are stubs. Evidence recor
 
 | Input | Location | Status |
 |---|---|---|
-| CE component spec | `architecture/reference/components/constitutional-engine.md` | ✅ EXISTS |
+| CE component spec | `architecture/reference/components/constitutional-engine.md` | ✅ EXISTS (updated 2026-07-23 — §6 CE Unavailability added) |
+| ADR-031 (CE fail-safe) | `adr/ADR-031-ce-fail-safe-unavailability.md` | ✅ EXISTS (new, RATIFIED C-079) |
 | Proto contract | `architecture/reference/proto/constitutional_service.proto` | ✅ EXISTS |
 | ADR-001 (gRPC) | `adr/ADR-001-grpc-for-constitutional-engine.md` | ✅ EXISTS |
 | ADR-007 (mTLS) | `adr/ADR-007-grpc-mtls-certificates.md` | ✅ EXISTS |
 | DB schema | `infrastructure/postgres/init/01-schemas.sql` | ✅ EXISTS |
 | Append-only rules | `infrastructure/postgres/init/05-append-only-rules.sql` | ✅ EXISTS |
 | Coding standards (.NET) | `standards/CODING-STANDARDS.md §2` | ✅ EXISTS |
-| QA strategy | `tests/QA-STRATEGY.md` | ✅ EXISTS |
+| QA strategy | `tests/QA-STRATEGY.md` | ✅ EXISTS (v1.2 — C-080 Docker mandate) |
+| **.NET 9 SDK** | GitHub Actions `actions/setup-dotnet@v4 dotnet-version: 9.0.x` | ✅ CONFIGURED in autonomous-sprint.yaml execute job (P1-02 fix 2026-07-23) |
 | Sprint index | `sprint-context/index.json` (WC012-01 entry) | ✅ EXISTS |
 | WC-011 complete | Infrastructure validated | ✅ 6/7 PASS |
 

@@ -10,6 +10,7 @@
 
 **Depends on:** WC-015 (AI Runtime live), WC-016 (Web Portal live)
 **Authorization:** Requires `platform_phase: IMPLEMENTATION` + Instagram MCP credentials available
+**⛔ HARD BLOCK — FA-002:** This sprint CANNOT START until Meta Business Manager verification is complete (FA-002). Instagram Graph API requires verified Meta BM. FA-002 has a 2-4 week lead time. Sprint runner will HALT with `BLOCKED_FA_002` if `GOOGLE-VERTEX-SA-KEY` and `META_APP_SECRET` are not in Key Vault. See FOUNDER-ACTION.md T1-01 (FA-002) and T1-02 (FA-021).
 
 ---
 

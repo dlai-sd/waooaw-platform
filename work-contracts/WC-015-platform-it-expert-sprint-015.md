@@ -13,17 +13,18 @@
 
 ---
 
-## Sprint Goal
+**Sprint Goal**
 
 Produce a running Python 3.12 FastAPI service for the AI Runtime that:
 1. Provider Selection Engine (PSE): routes to correct LLM tier (ADR-029)
 2. LLM dispatch: calls Ollama (dev) via PSE — real inference in dev environment
 3. RAG retrieval: pgvector similarity search stub (returns top-3 chunks)
 4. Prompt injection defence: 50-attack test suite passes 100% (C-062)
-5. Unit test coverage ≥90% (C-076)
+5. **PII Scrubber (C-078 Component 7):** AI4Bharat IndicNER + regex, type-system enforcement (external providers only)
+6. Unit test coverage ≥90% (C-076)
 
-**Dev model:** Ollama (llama3.2 or gemma3) running in docker-compose. No cloud API needed for Sprint 015.
-**Note:** FA-021 (GCP Vertex AI) unlocks production-quality inference in Sprint 019+. Not needed now.
+**Dev model:** Ollama (llama3.2 or gemma3) running in docker-compose.
+**FA-021 gate:** GCP Vertex AI SA key (`GOOGLE-VERTEX-SA-KEY` in Key Vault) REQUIRED before WC-015 executes. Without FA-021, PSE has no real Gemini provider and cannot pass integration tests. See FOUNDER-ACTION.md T1-02.
 
 ---
 
@@ -31,16 +32,18 @@ Produce a running Python 3.12 FastAPI service for the AI Runtime that:
 
 | Input | Location | Status |
 |---|---|---|
-| AIR component spec | `architecture/reference/components/ai-runtime.md` | ✅ EXISTS |
-| ADR-019 (RAG) | `adr/ADR-019-rag-architecture.md` | ✅ EXISTS |
+| AIR component spec | `architecture/reference/components/ai-runtime.md` | ✅ EXISTS (updated 2026-07-23 — Component 7 PII Scrubber added) |
+| PII Masking Pipeline spec | `architecture/reference/pii-masking-pipeline.md` | ✅ EXISTS (C-078 RATIFIED) |
+| ADR-019 (RAG) + Amendment 1+2 | `adr/ADR-019-rag-architecture.md` | ✅ EXISTS (chunking spec + token budgets) |
 | ADR-020 (MCP) | `adr/ADR-020-mcp-integration-pattern.md` | ✅ EXISTS |
 | ADR-024 (Token Economy) | `adr/ADR-024-token-economy-model-tier-routing.md` | ✅ EXISTS |
 | ADR-029 (Multi-provider LLM) | `adr/ADR-029-multi-provider-llm-strategy.md` | ✅ EXISTS |
 | PSE performance schema | `infrastructure/postgres/init/08-provider-performance.sql` | ✅ EXISTS |
 | Prompt injection suite | `tests/conftest.py` (50 attack patterns) | ✅ EXISTS |
+| **FA-021: GCP Vertex AI SA key** | Azure Key Vault: `GOOGLE-VERTEX-SA-KEY` | ❌ REQUIRED — see FOUNDER-ACTION.md T1-02 |
 | WC-014 (PR running) | `src/professional-runtime/` | ⏳ PENDING WC-014 |
 
-**Readiness: BLOCKED** — WC-014 must complete first
+**Readiness: BLOCKED** — WC-014 + FA-021 must complete first
 
 ---
 
