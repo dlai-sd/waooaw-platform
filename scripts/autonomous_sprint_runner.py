@@ -6,10 +6,11 @@ autonomous_sprint_runner.py
 # constitutional_basis: C-023 (Evidence First), C-041 (ValidateAction), C-059 (Traceability),
 #                       C-065 (SDLC Separation — Author hat), C-066 Tier 2A (autonomous execution),
 #                       C-070 (Constitutional DNA — all 3 instincts apply to this agent),
-#                       C-007/C-027 (Append-only enforcement — validated in WC011-02)
-# ib_item: IB-009
+#                       C-007/C-027 (Append-only enforcement — validated in WC011-02),
+#                       C-077 (Dev Tooling Cost Ceiling ₹5,000/month — ADR-030)
+# ib_item: IB-009, IB-020
 # office: Platform IT Expert — Implementation hat
-# amended: 2026-07-23 — EA review; C-007 halt added; Fix 1-5 applied
+# amended: 2026-07-23 — IB-020 ADR-030: call_llm() + parse_llm_files() implemented
 
 Implementation hat — executes sprint tasks, opens PR.
 Called by autonomous-sprint.yaml Job 1 (execute).
@@ -28,6 +29,40 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).parent.parent
 STATE_FILE = REPO_ROOT / "constitution" / "PROJECT_STATE.md"
 EVIDENCE_LOG = REPO_ROOT / "logs" / "bootstrap-evidence.jsonl"
+
+# ── ADR-030: File write boundary enforcement (C-059 + C-065) ─────────────────
+ALLOWED_WRITE_ROOTS = [
+    "src/",
+    "tests/",
+    "infrastructure/postgres/",
+    "infrastructure/keycloak/",
+    "logs/",
+]
+
+# ADR-030: Constitutional system prompt for all code generation tasks
+CONSTITUTIONAL_SYSTEM_PROMPT = """You are WAOOAW AI Agent — Platform IT Expert (Implementation hat).
+You generate production-ready code for the WAOOAW platform under constitutional governance.
+
+Constitutional obligations (non-negotiable):
+- C-059: Every source file must carry a header: # Implements: <spec-path> and # constitutional_basis: <claims>
+- C-073: Every function implementing a constitutional obligation carries an annotation comment
+- C-076: Every service must have ≥90% unit test coverage. Write tests alongside implementation.
+- C-065: You are the Author. You do not approve or merge your own work.
+
+Output format — respond ONLY with XML file blocks:
+<file path="src/service-name/FileName.ext">
+file content here
+</file>
+
+Rules:
+- Paths must start with one of: src/, tests/, infrastructure/postgres/, infrastructure/keycloak/
+- Never output paths starting with: constitution/, adr/, architecture/, knowledge/, standards/
+- Every .cs file: nullable enabled, structured logging (ILogger<T>), OTel spans
+- Every .py file: type hints, ruff-compliant, async FastAPI patterns
+- Include unit tests in a separate <file path="tests/..."> block
+- If a design decision is unclear, add a comment: # DESIGN_QUESTION: <question>
+  (these will be flagged as spec gaps for EA review)
+"""
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -202,6 +237,205 @@ def update_sprint_state(**kwargs) -> None:
 
 def gh(args: list[str], check: bool = True) -> subprocess.CompletedProcess:
     return run(["gh"] + args, check=check, capture=True)
+
+
+# ── ADR-030: LLM code generation functions ────────────────────────────────────
+
+def call_llm(task_id: str, task_description: str, spec_content: str,
+             constitutional_check: str, model_hint: str = "reasoning") -> str | None:
+    """
+    Call Claude Sonnet 4.6 to generate code for a sprint task.
+    Returns the raw LLM response string, or None on failure.
+
+    constitutional_basis: ADR-030 (code generation protocol), C-077 (cost ceiling)
+    ib_item: IB-020
+    """
+    if model_hint not in ("reasoning", "auto"):
+        return None  # model_hint: none — no LLM needed
+
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    if not api_key:
+        print(f"  WARN: ANTHROPIC_API_KEY not set — cannot call LLM for {task_id}")
+        return None
+
+    try:
+        import urllib.request
+        import json as json_mod
+
+        user_prompt = (
+            f"Task: {task_id} — {task_description}\n\n"
+            f"Spec context:\n{spec_content}\n\n"
+            f"Constitutional check (must pass):\n{constitutional_check}\n\n"
+            f"Generate the implementation files now. "
+            f"Use <file path=\"...\"> blocks for each file. "
+            f"Include unit tests in tests/ directory."
+        )
+
+        payload = {
+            "model": "claude-sonnet-4-5",
+            "max_tokens": 8000,
+            "temperature": 0,
+            "system": CONSTITUTIONAL_SYSTEM_PROMPT,
+            "messages": [{"role": "user", "content": user_prompt}],
+        }
+
+        req = urllib.request.Request(
+            "https://api.anthropic.com/v1/messages",
+            data=json_mod.dumps(payload).encode(),
+            headers={
+                "x-api-key": api_key,
+                "anthropic-version": "2023-06-01",
+                "content-type": "application/json",
+            },
+        )
+        with urllib.request.urlopen(req, timeout=120) as resp:
+            result = json_mod.loads(resp.read())
+            content = result.get("content", [])
+            text = "".join(block.get("text", "") for block in content if block.get("type") == "text")
+            tokens_in = result.get("usage", {}).get("input_tokens", 0)
+            tokens_out = result.get("usage", {}).get("output_tokens", 0)
+            print(f"  LLM: {task_id} → {tokens_in} in / {tokens_out} out tokens")
+            record_evidence("llm_call", task=task_id, tokens_in=tokens_in, tokens_out=tokens_out)
+            return text
+    except Exception as e:
+        print(f"  WARN: LLM call failed for {task_id}: {e}")
+        return None
+
+
+def parse_llm_files(response: str) -> dict[str, str]:
+    """
+    Parse <file path="...">content</file> blocks from LLM response.
+    Returns dict of {relative_path: content}.
+    Enforces ADR-030 write boundary (ALLOWED_WRITE_ROOTS).
+    """
+    files: dict[str, str] = {}
+    pattern = re.compile(r'<file\s+path=["\']([^"\']+)["\']>(.*?)</file>', re.DOTALL)
+    for match in pattern.finditer(response):
+        path = match.group(1).strip()
+        content = match.group(2).strip()
+        # ADR-030: enforce write boundary
+        if not any(path.startswith(root) for root in ALLOWED_WRITE_ROOTS):
+            print(f"  WARN: LLM attempted to write outside boundary: {path} — skipped")
+            continue
+        # Check for design questions that need spec clarification
+        if "DESIGN_QUESTION:" in content:
+            questions = re.findall(r"DESIGN_QUESTION: (.+)", content)
+            for q in questions:
+                print(f"  ⚠️  Design question in {path}: {q}")
+        files[path] = content
+    return files
+
+
+def write_llm_files(files: dict[str, str]) -> list[str]:
+    """Write parsed files to disk. Returns list of written paths."""
+    written = []
+    for rel_path, content in files.items():
+        abs_path = REPO_ROOT / rel_path
+        abs_path.parent.mkdir(parents=True, exist_ok=True)
+        abs_path.write_text(content, encoding="utf-8")
+        written.append(rel_path)
+        print(f"  Written: {rel_path} ({len(content)} chars)")
+    return written
+
+
+def validate_written_files(written: list[str]) -> bool:
+    """Run validation appropriate to file type. Returns True if all pass."""
+    py_files = [f for f in written if f.endswith(".py")]
+    cs_files = [f for f in written if f.endswith(".cs")]
+    ok = True
+
+    for f in py_files:
+        result = run(["python3", "-m", "py_compile", f], check=False, capture=True)
+        if result.returncode != 0:
+            print(f"  FAIL: {f} syntax error: {result.stderr[:200]}")
+            ok = False
+        else:
+            print(f"  ✅ Python syntax OK: {f}")
+
+    if cs_files:
+        # Find the csproj file in src/
+        csproj_dirs = set()
+        for f in cs_files:
+            parts = Path(f).parts
+            if len(parts) > 1:
+                csproj_dirs.add(str(REPO_ROOT / parts[0] / parts[1]))
+        for csproj_dir in csproj_dirs:
+            result = run(["dotnet", "build", csproj_dir, "--nologo", "-v", "quiet"],
+                        check=False, capture=True)
+            if result.returncode != 0:
+                print(f"  FAIL: dotnet build in {csproj_dir}: {result.stderr[:300]}")
+                ok = False
+            else:
+                print(f"  ✅ .NET build OK: {csproj_dir}")
+    return ok
+
+
+def execute_with_llm(task_id: str, task_description: str, spec_sections: dict,
+                     constitutional_check: str, model_hint: str = "reasoning") -> bool:
+    """
+    Execute a code generation task using Claude (ADR-030 protocol).
+    Implements the 3-attempt retry loop with validation.
+    Returns True on success, False (with flag_spec_gap) on exhausted retries.
+
+    constitutional_basis: ADR-030, C-059, C-076, C-077
+    ib_item: IB-020
+    """
+    # Build spec content from sections
+    spec_lines = [f"# Spec context for {task_id}"]
+    for file_path, section in spec_sections.items():
+        full_path = REPO_ROOT / file_path
+        if full_path.is_file():
+            content = full_path.read_text(encoding="utf-8", errors="replace")
+            if section == "full" or len(content) < 6000:
+                spec_lines.append(f"\n## {file_path}\n{content[:4000]}")
+            else:
+                spec_lines.append(f"\n## {file_path} (section: {section})\n[load section '{section}' from this file]")
+    spec_content = "\n".join(spec_lines)
+
+    failure_context = ""
+    for attempt in range(1, 4):
+        print(f"\n── {task_id} (attempt {attempt}/3) ──")
+
+        prompt_with_context = spec_content
+        if failure_context:
+            prompt_with_context += f"\n\n# Previous attempt failed:\n{failure_context}\nFix the issues above."
+
+        response = call_llm(task_id, task_description, prompt_with_context,
+                           constitutional_check, model_hint)
+        if not response:
+            print(f"  LLM call returned no response on attempt {attempt}")
+            continue
+
+        files = parse_llm_files(response)
+        if not files:
+            print(f"  No <file> blocks found in LLM response on attempt {attempt}")
+            failure_context = "Response contained no <file path='...'> blocks. Generate file blocks."
+            continue
+
+        written = write_llm_files(files)
+        if validate_written_files(written):
+            # Commit the generated files
+            git(["add"] + written, check=False)
+            diff = git(["diff", "--cached", "--quiet"], check=False)
+            if diff.returncode != 0:
+                git(["commit", "-m",
+                     f"feat: {task_id} — {task_description}\n\n"
+                     f"IB: IB-009\nConstitutional: C-059, C-073, C-076\nCCTs-added: per WC spec"])
+            print(f"  ✅ {task_id} complete ({len(written)} files)")
+            return True
+        else:
+            # Collect failure for next attempt
+            failure_context = f"Build/syntax validation failed for files: {written}"
+            print(f"  Validation failed on attempt {attempt} — retrying with failure context")
+
+    # All 3 attempts exhausted
+    flag_spec_gap(
+        task_id=task_id,
+        gap_description=f"{task_id} failed validation after 3 LLM attempts. Last error: {failure_context[:300]}",
+        affected_spec=list(spec_sections.keys())[0] if spec_sections else "unknown",
+        constitutional_basis="C-059 (Traceability — implementation must match spec), C-076 (Coverage)"
+    )
+    return False
 
 
 def flag_spec_gap(
@@ -558,6 +792,50 @@ TASK_HANDLERS = {
     "WC011-04": execute_wc011_04,
     "WC011-05": execute_wc011_05,
     "WC011-07": execute_wc011_07,
+    # WC-012: Constitutional Engine skeleton (ADR-030 LLM code generation)
+    "WC012-01": lambda: execute_with_llm(
+        "WC012-01", "CE project scaffold (.NET 9 gRPC service)",
+        {
+            "architecture/reference/components/constitutional-engine.md": "full",
+            "architecture/reference/proto/constitutional_service.proto": "full",
+            "standards/CODING-STANDARDS.md": "§2.1 Tools,§1.5 Structured Comments",
+        },
+        "Every .cs file must carry # Implements: and # constitutional_basis: header. "
+        "gRPC service registered with Grpc.AspNetCore. RecordEvidence + ValidateAction RPCs present.",
+        model_hint="reasoning"
+    ),
+    "WC012-02": lambda: execute_with_llm(
+        "WC012-02", "CE ValidateAction RPC + unit tests ≥90%",
+        {
+            "architecture/reference/components/constitutional-engine.md": "§2 PAAS Boundary Validator",
+            "architecture/reference/ce-validate-action-evaluators.md": "full",
+            "tests/QA-STRATEGY.md": "§5.1 Unit Tests",
+        },
+        "ValidateAction must return ALLOW/DENY/ESCALATE. Default deny for unknown tools (C-041). "
+        "Unit tests use xUnit + Moq. CCT-EF-01 must be referenced in test.",
+        model_hint="reasoning"
+    ),
+    "WC012-03": lambda: execute_with_llm(
+        "WC012-03", "CE Evidence First record + CCT-EF-01",
+        {
+            "architecture/reference/components/constitutional-engine.md": "§1 Evidence First Enforcer",
+            "architecture/reference/data/": "§constitutional schema",
+        },
+        "RecordEvidence writes to constitutional.audit_records BEFORE returning success (C-023). "
+        "Append-only — no UPDATE/DELETE (C-007/C-027). CCT-EF-01 test must pass.",
+        model_hint="reasoning"
+    ),
+    "WC012-04": lambda: execute_with_llm(
+        "WC012-04", "CE Emergency Stop signal + CCT-HO-01",
+        {
+            "architecture/reference/components/constitutional-engine.md": "§4 Emergency Stop Handler",
+            "architecture/reference/api-specs/emergency-stop-ws.md": "full",
+            "adr/ADR-031-ce-fail-safe-unavailability.md": "§Recovery",
+        },
+        "TriggerEmergencyStop RPC records stop event and signals Temporal within 100ms (C-001). "
+        "CCT-HO-01: Emergency Stop ≤250ms P99 end-to-end.",
+        model_hint="reasoning"
+    ),
 }
 
 
