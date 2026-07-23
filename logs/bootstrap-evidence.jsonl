@@ -6,3 +6,14 @@
 {"event": "AUTONOMOUS_SPRINT_STARTED", "timestamp": "2026-07-23T13:51:26.803454+00:00", "run_id": "30013030008", "stub_mode": true, "sprint": "WC-011", "branch": "ib/009/infra-foundation", "tasks": ["WC011-01", "WC011-02", "WC011-03", "WC011-04", "WC011-05", "WC011-07"]}
 {"event": "SPRINT_TASKS_EXECUTED", "timestamp": "2026-07-23T13:51:30.821061+00:00", "run_id": "30013030008", "stub_mode": true, "sprint": "WC-011", "tasks_done": ["WC011-01", "WC011-02", "WC011-03", "WC011-04", "WC011-05", "WC011-07"]}
 {"event": "AUTONOMOUS_SPRINT_STARTED", "timestamp": "2026-07-23T19:16:07.274555+00:00", "run_id": "30037214220", "stub_mode": true, "sprint": "WC-012", "branch": "ib/009/sprint-012", "tasks": ["WC012-01", "WC012-02", "WC012-03", "WC012-04"]}
+{"event": "llm_call", "timestamp": "2026-07-23T19:19:09.562394+00:00", "run_id": "30037214220", "stub_mode": true, "task": "WC012-01", "tokens_in": 3520, "tokens_out": 16000}
+{"event": "llm_call", "timestamp": "2026-07-23T19:21:34.963510+00:00", "run_id": "30037214220", "stub_mode": true, "task": "WC012-02", "tokens_in": 2416, "tokens_out": 10000}
+{"event": "llm_call", "timestamp": "2026-07-23T19:23:26.699054+00:00", "run_id": "30037214220", "stub_mode": true, "task": "WC012-03", "tokens_in": 577, "tokens_out": 10000}
+{"event": "llm_call", "timestamp": "2026-07-23T19:25:21.208446+00:00", "run_id": "30037214220", "stub_mode": true, "task": "WC012-03", "tokens_in": 966, "tokens_out": 10000}
+{"event": "llm_call", "timestamp": "2026-07-23T19:27:12.826884+00:00", "run_id": "30037214220", "stub_mode": true, "task": "WC012-03", "tokens_in": 968, "tokens_out": 10000}
+{"event": "spec_gap_halt", "timestamp": "2026-07-23T19:27:14.097920+00:00", "run_id": "30037214220", "stub_mode": true, "task": "WC012-03", "issue": "23", "gap": "WC012-03 failed validation after 3 LLM attempts. Last error: Build/syntax validation failed for file"}
+{"event": "llm_call", "timestamp": "2026-07-23T19:29:14.663566+00:00", "run_id": "30037214220", "stub_mode": true, "task": "WC012-04", "tokens_in": 2608, "tokens_out": 10000}
+{"event": "llm_call", "timestamp": "2026-07-23T19:31:13.011909+00:00", "run_id": "30037214220", "stub_mode": true, "task": "WC012-04", "tokens_in": 2933, "tokens_out": 10000}
+{"event": "llm_call", "timestamp": "2026-07-23T19:33:19.023931+00:00", "run_id": "30037214220", "stub_mode": true, "task": "WC012-04", "tokens_in": 2933, "tokens_out": 10000}
+{"event": "spec_gap_halt", "timestamp": "2026-07-23T19:33:20.011076+00:00", "run_id": "30037214220", "stub_mode": true, "task": "WC012-04", "issue": "24", "gap": "WC012-04 failed validation after 3 LLM attempts. Last error: Build/syntax validation failed for file"}
+{"event": "SPRINT_TASKS_EXECUTED", "timestamp": "2026-07-23T19:33:20.011294+00:00", "run_id": "30037214220", "stub_mode": true, "sprint": "WC-012", "tasks_done": ["WC012-01", "WC012-02"]}
