@@ -159,16 +159,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
-
-                      "--body", review_body,
-                      "--repo", github_repo], env=env)
-        if result.returncode == 0:
-            print(f"Advisory review comment posted on PR #{pr_number}")
-        else:
-            print(f"WARN: Comment failed: {result.stderr}")
-
-    return 0
-
-
-if __name__ == "__main__":
-    sys.exit(main())
