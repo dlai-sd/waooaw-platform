@@ -108,7 +108,7 @@ platform_phase: IMPLEMENTATION  # SPEC | IMPLEMENTATION | LIVE
 
 current_sprint: WC-011
 sprint_ib_item: IB-009
-sprint_status: BLOCKED        # BLOCKED until platform_phase = IMPLEMENTATION
+sprint_status: READY          # READY — platform_phase=IMPLEMENTATION, all pipeline fixes applied
 branch: ib/009/infra-foundation
 
 last_attempt_utc: ""    # ISO 8601 — set by autonomous-sprint.yaml on each run
