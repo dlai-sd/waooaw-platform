@@ -367,6 +367,16 @@ def validate_written_files(written: list[str]) -> tuple[bool, str]:
             if len(parts) > 1:
                 csproj_dirs.add(str(REPO_ROOT / parts[0] / parts[1]))
         for csproj_dir in csproj_dirs:
+            # Check .csproj exists — if not, that's an explicit error for the retry context
+            csproj_files = list(Path(csproj_dir).glob("*.csproj")) if Path(csproj_dir).exists() else []
+            if not csproj_files:
+                msg = (f"No .csproj file found in {csproj_dir}. "
+                       f"You MUST generate the .csproj in src/constitutional-engine/ (not any other directory). "
+                       f"Write ALL files to src/constitutional-engine/ only.")
+                print(f"  FAIL: {msg}")
+                errors.append(msg)
+                ok = False
+                continue
             result = run(["dotnet", "build", csproj_dir, "--nologo", "-v", "quiet"],
                         check=False, capture=True)
             if result.returncode != 0:
@@ -845,8 +855,14 @@ TASK_HANDLERS = {
             "architecture/reference/components/constitutional-engine.md": "§1 Evidence First Enforcer",
             "architecture/reference/data/": "§constitutional schema",
         },
-        "RecordEvidence writes to constitutional.audit_records BEFORE returning success (C-023). "
-        "Append-only — no UPDATE/DELETE (C-007/C-027). CCT-EF-01 test must pass.",
+        "IMPORTANT: ALL files MUST go in src/constitutional-engine/ ONLY. "
+        "Do NOT write to any other directory. "
+        "Add EvidenceFirst/ subdirectory INSIDE src/constitutional-engine/. "
+        "RecordEvidence RPC writes to constitutional.audit_records BEFORE returning success (C-023). "
+        "Append-only — no UPDATE/DELETE allowed (C-007/C-027). "
+        "Uses the DbContext from the existing ConstitutionalEngine project. "
+        "CCT-EF-01 test must be in tests/constitutional-engine/ and must pass. "
+        "All .cs files carry // Implements: and // constitutional_basis: header.",
         model_hint="reasoning"
     ),
     "WC012-04": lambda: execute_with_llm(
@@ -856,8 +872,15 @@ TASK_HANDLERS = {
             "architecture/reference/api-specs/emergency-stop-ws.md": "full",
             "adr/ADR-031-ce-fail-safe-unavailability.md": "§Recovery",
         },
-        "TriggerEmergencyStop RPC records stop event and signals Temporal within 100ms (C-001). "
-        "CCT-HO-01: Emergency Stop ≤250ms P99 end-to-end.",
+        "IMPORTANT: ALL files MUST go in src/constitutional-engine/ ONLY. "
+        "Do NOT write to src/professional-runtime or any other directory. "
+        "Add EmergencyStop/ subdirectory INSIDE src/constitutional-engine/. "
+        "TriggerEmergencyStop is a gRPC RPC defined in constitutional_service.proto — "
+        "implement it as a method on ConstitutionalEngineService class. "
+        "Records stop event to constitutional.emergency_stop_events table (C-001). "
+        "Signals Temporal workflow via TemporalClientFactory within 100ms. "
+        "CCT-HO-01: Emergency Stop ≤250ms P99 end-to-end. "
+        "All .cs files carry // Implements: and // constitutional_basis: header.",
         model_hint="reasoning"
     ),
 }
@@ -1002,7 +1025,13 @@ def main() -> int:
              f"chore(pm): {sprint} tasks done: {', '.join(tasks_done)}\n\n"
              f"IB: IB-009\nConstitutional: C-059"])
 
-    git(["push", "origin", branch, "--force-with-lease"])
+    # Push sprint branch — use -u (set upstream) not --force-with-lease.
+    # --force-with-lease fails when no remote tracking ref exists (new branch).
+    push = git(["push", "-u", "origin", branch], check=False)
+    if push.returncode != 0:
+        print(f"  WARN: branch push failed (non-fatal): {push.stderr[:200]}")
+        # Retry once with --force in case of ref mismatch
+        git(["push", "--force", "origin", branch], check=False)
 
     # ── Step 8: Open/update PR ────────────────────────────────────────────
     if not github_repo:
