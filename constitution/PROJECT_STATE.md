@@ -1,9 +1,9 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-07-23 (session continued — evening)
-**Version:** 1.1.0 — Implementation Sprint Authorized + WC-012 READY
+**Last Updated:** 2026-07-23 (session continued — evening, final)
+**Version:** 1.2.0 — Automated versioning live, reviewer bugs fixed, WC-012 GO
 **Declared by:** Yogesh Khandge (Founder), 2026-07-23
-**Session:** 2026-07-23 — IB-020 complete, WC-012 unblocked, all FA items done
+**Session:** 2026-07-23 — IB-020 complete, versioning automated, 8 reviewer bugs fixed
 
 ---
 
@@ -16,6 +16,18 @@
 - Model: `claude-sonnet-4-6` (authorized by Yogesh 2026-07-23 for all planned sprints WC-011→WC-018)
 - `SPRINT_LLM_MODEL` GitHub Variable set to `claude-sonnet-4-6` — confirmed valid via live Anthropic API call
 - 3-attempt retry loop, XML `<file path="...">` response format, write boundary enforcement
+
+### Automated Version Bump — ✅ LIVE
+- Scheme: `MAJOR.WC_SPRINT_NUMBER.0` (e.g. WC-012 merge → `1.12.0`)
+- `VERSION` file created at repo root (baseline: `1.11.0` = WC-011 done)
+- `bump_version()` + `update_changelog()` added to `autonomous_sprint_reviewer.py`
+- Reviewer post-merge flow: rebase → bump VERSION → prepend CHANGELOG entry → advance sprint state → single commit → push
+- CHANGELOG.md auto-updated on every sprint merge
+
+### Critical Bug Fixed — Reviewer kwargs TypeError
+- 8 calls to `run(cmd, check=False, capture=True)` in reviewer would have raised `TypeError` at WC-012 merge
+- `run()` only accepts `cmd` and `env` — invalid kwargs silently crash post-merge steps
+- All 8 removed; confirmed clean via AST scan + syntax check
 
 ### Pre-flight Simulation — ✅ ALL GREEN (Docker)
 - CCT-PIPE-01: 15/15 PASS in Docker test-runner
