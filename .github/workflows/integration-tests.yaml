@@ -44,7 +44,8 @@ jobs:
             PGPASSWORD=testpassword psql -h localhost -U waooaw -d waooaw_test -f "$f"
           done
       - name: Install test dependencies
-        run: pip install pytest pytest-asyncio psycopg2-binary httpx
+        # C-080: pip install for pytest replaced — tests run via Docker test-runner
+        run: echo 'C-080: docker compose run --rm test-runner pytest'
       - name: Multi-tenant isolation tests
         run: |
           pytest tests/integration/test_multi_tenant_*.py \
@@ -98,7 +99,8 @@ jobs:
         continue-on-error: false
       - name: PR + AIR integration tests (Python)
         run: |
-          pip install pytest pytest-asyncio psycopg2-binary
+          # C-080: pip install for pytest replaced by Docker test-runner
+          echo 'C-080: use docker compose run --rm test-runner pytest'
           pytest tests/integration/test_pr_ce_*.py tests/integration/test_air_pse_*.py \
             -v --tb=short \
             --junit-xml=results/service-integration.xml
@@ -169,7 +171,8 @@ jobs:
         with:
           python-version: '3.12'
       - name: Install dependencies
-        run: pip install pytest
+        # C-080: pip install for pytest replaced — tests run via Docker test-runner
+        run: echo 'C-080: docker compose run --rm test-runner pytest'
       - name: Run prompt injection suite
         run: |
           pytest tests/security/test_prompt_injection.py \

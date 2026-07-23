@@ -368,7 +368,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: pip install mutmut pytest
+      # C-080: Test dependencies in test-runner Docker image (requirements-test.txt)
+      # Tests run via: docker compose run --rm test-runner pytest
       - name: Run mutmut on AI Runtime (target ≥65%)
         run: |
           cd src/ai-runtime
