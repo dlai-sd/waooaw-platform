@@ -22,7 +22,7 @@ name: Autonomous Sprint Agent
 
 on:
   schedule:
-    - cron: '0 */6 * * *'    # Every 6 hours (was every 2h — reduced, G6 fix)
+    - cron: '0 */3 * * *'    # Every 3 hours (reduced from 6h per PMO request 2026-07-23)
   workflow_dispatch:
     inputs:
       force_task:
@@ -252,6 +252,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+
+      # P1-02: .NET 9 SDK — required for WC-012+ (CE + BP skeleton tasks)
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
 
       - name: Install dependencies
         run: pip install pyyaml requests

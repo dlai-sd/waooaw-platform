@@ -161,21 +161,17 @@ def main() -> int:
         else:
             print(f"  WARN: Comment failed: {result.stderr[:200]}")
 
-    # Auto-merge: C-066 Tier 2A — no human approval required for authorized IB items.
-    # Founder should NEVER manually review or merge sprint PRs.
-    # Use effective_token (GitHub App) for merge — same identity that approved (C-065).
+    # Auto-merge + P1-03 race condition fix: use --rebase before advancing state
     if approved:
         merge_result = run(["gh", "pr", "merge", pr_number,
                             "--squash",
                             "--subject", f"feat(infra): {sprint} — autonomous sprint complete",
                             "--repo", github_repo], env={"GH_TOKEN": effective_token})
         if merge_result.returncode == 0:
-            print(f"  ✅ PR #{pr_number} MERGED to main (C-066 Tier 2A — autonomous, C-065 — GitHub App identity)")
-            # Fix 1: Advance sprint state on main after successful merge
-            # Pull latest main, advance sprint, push — prevents infinite loop on next cron.
+            print(f"  ✅ PR #{pr_number} MERGED to main (C-066 Tier 2A, C-065 GitHub App identity)")
             run(["git", "fetch", "origin", "main"], check=False)
             run(["git", "checkout", "main"], check=False)
-            run(["git", "pull", "origin", "main"], check=False)
+            run(["git", "pull", "--rebase", "origin", "main"], check=False)  # P1-03: rebase prevents race condition
             adv = run([
                 "python3", "scripts/sprint_state.py",
                 "advance", "--current", sprint, "--ib", "IB-009"
@@ -187,11 +183,13 @@ def main() -> int:
                 run(["git", "commit", "-m",
                      f"chore(pmo): {sprint} DONE — advance to next sprint\n\n"
                      f"IB: IB-009\nConstitutional: C-066 Tier 2A (autonomous sprint cycle)"], check=False)
-                run(["git", "push", "origin", "main"], check=False)
-                print(f"  ✅ Sprint state advanced on main — next cron picks up next sprint")
+                push = run(["git", "push", "origin", "main"], check=False)
+                if push.returncode == 0:
+                    print(f"  ✅ Sprint state advanced on main")
+                else:
+                    print(f"  WARN: Advance push failed (will retry next run): {push.stderr[:100]}")
         else:
             print(f"  WARN: Merge failed: {merge_result.stderr[:300]}")
-            print(f"  PR remains open — Yogesh can merge manually if needed")
 
     return 0
 

@@ -651,10 +651,16 @@ def main() -> int:
 
     # ── Step 6: Execute each task ─────────────────────────────────────────
     tasks_done = []
+    tasks_not_implemented = []
     for task in tasks:
         handler = TASK_HANDLERS.get(task)
         if handler is None:
-            print(f"  SKIP {task}: no handler (requires Copilot workspace)")
+            # P1-04: explicit NOT_IMPLEMENTED — not silent skip
+            print(f"  ⚠️  TASK_NOT_IMPLEMENTED: {task}")
+            print(f"       This task requires LLM code generation (IB-020).")
+            print(f"       Runner does not yet have code generation capability.")
+            print(f"       Action: Implement IB-020 (ADR-030) before this sprint can execute.")
+            tasks_not_implemented.append(task)
             continue
         if dry_run:
             print(f"  DRY RUN: would execute {task}")
@@ -731,7 +737,14 @@ def main() -> int:
             print(f"  WARN: gh pr create failed (rc={result.returncode}): {result.stderr[:300]}")
         pr_num = result.stdout.strip().split("/")[-1] if result.returncode == 0 else ""
         if pr_num:
-            print(f"  PR created: #{pr_num}")
+    if tasks_not_implemented:
+        set_output("result", "NOT_IMPLEMENTED")
+        set_output("halt_reason", f"Tasks {tasks_not_implemented} require IB-020 LLM code generation — not yet implemented")
+        print(f"\n  ⚠️  {len(tasks_not_implemented)} task(s) require IB-020 (runner code generation).")
+        print(f"  Sprint cannot advance until IB-020 is implemented.")
+        print(f"  Issue #12 tracks this: github.com/dlai-sd/waooaw-platform/issues/12")
+    else:
+                print(f"  PR created: #{pr_num}")
     else:
         pr_num = existing_num
         print(f"  PR updated: #{pr_num}")
