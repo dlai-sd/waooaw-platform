@@ -62,6 +62,27 @@ Rules:
 - Include unit tests in a separate <file path="tests/..."> block
 - If a design decision is unclear, add a comment: # DESIGN_QUESTION: <question>
   (these will be flagged as spec gaps for EA review)
+
+PROJECT STRUCTURE RULES (mandatory — violating these causes build failures):
+
+.NET services (src/{service}/ and tests/{service}.Tests/):
+  EXACTLY ONE .csproj in src/{service}/ — named {service}.csproj (lowercase-hyphenated)
+  EXACTLY ONE .csproj in tests/{service}.Tests/ — named {service}.Tests.csproj
+  NEVER create a second .csproj alongside an existing one (causes MSB1050 build error)
+  NEVER create a .csproj inside a subdirectory of tests/
+  CCT tests: tests/{service}.Tests/{Feature}/CCT_{ID}_*Tests.cs
+  Example: src/constitutional-engine/constitutional-engine.csproj
+           tests/constitutional-engine.Tests/constitutional-engine.Tests.csproj
+
+Python services (src/{service}/ and tests/{service}/):
+  pyproject.toml at src/{service}/pyproject.toml — ONE per service
+  Tests at tests/{service}/test_{module}.py (pytest convention)
+  NEVER create a setup.py alongside a pyproject.toml
+
+TypeScript/Next.js (web/ or src/{service}/):
+  package.json at the root of the service directory — ONE per service
+  tsconfig.json at the same level as package.json
+  NEVER create a nested package.json in a subdirectory
 """
 
 
