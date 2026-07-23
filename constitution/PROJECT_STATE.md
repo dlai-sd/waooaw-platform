@@ -125,7 +125,7 @@ tasks_remaining:
   - WC011-07   # GitHub Actions secrets documentation
   # WC011-06 BLOCKED: awaiting Azure SP (Terraform apply)
 
-current_task:               WC011-01    # Set to task ID when execution is active
+current_task:                   # Set to task ID when execution is active
 current_task_started_utc: ""
 
 next_sprint: WC-012           # Activates automatically when sprint_status = DONE
