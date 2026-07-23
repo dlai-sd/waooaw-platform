@@ -38,19 +38,21 @@ Every autonomous sprint run **must** post a status update to the Sprint Dashboar
 
 ### 0.3 Pre-Sprint Authorization Gate (EA mandate — 2026-07-23)
 
-Before any sprint trigger (manual workflow_dispatch OR automatic cron), the following 4-line verification MUST pass locally. This is a **constitutional obligation** (C-059 traceability — you must know the pipeline is coherent before authorizing execution), not a suggestion.
+Before any sprint trigger (manual workflow_dispatch OR automatic cron), the following verification MUST pass. This is a **constitutional obligation** (C-059 traceability + C-080 Docker isolation — you must know the pipeline is coherent before authorizing execution), not a suggestion.
 
-**Mandatory local pre-flight:**
+**Mandatory local pre-flight (all commands via Docker per C-080):**
 ```bash
-python3 -m py_compile scripts/autonomous_sprint_runner.py
-python3 -m py_compile scripts/autonomous_sprint_reviewer.py
-python3 scripts/build_sprint_index.py --dry-run          # must show correct task_id, budget OK
-docker compose config --quiet                             # must exit 0
+docker compose run --rm test-runner python3 -m py_compile scripts/autonomous_sprint_runner.py
+docker compose run --rm test-runner python3 -m py_compile scripts/autonomous_sprint_reviewer.py
+docker compose run --rm test-runner python3 scripts/build_sprint_index.py --dry-run
+docker compose config --quiet
 ```
 
-All 4 must pass before any sprint trigger. If any fails: fix first, verify again, then trigger. **A sprint triggered without this verification is unauthorized execution (C-059 violation).**
+The first three commands use the `test-runner` Docker container (C-080 compliant). The last checks the compose config itself.
 
-**Rationale:** WC-011 autonomous execution took 7+ runs to achieve one clean end-to-end pass. Every wasted run was caused by a defect detectable in < 30 seconds with local verification. The 4-line check is the cheapest quality gate in the platform.
+All 4 must exit 0 before any sprint trigger. If any fails: fix first, verify again, then trigger. **A sprint triggered without this verification is unauthorized execution (C-059 violation).**
+
+**Why Docker, not `python3 -m pytest` directly:** See C-080 (Test Execution Environment Isolation). A test verified only in a virtual environment or host Python has NOT been constitutionally verified. The Docker image IS the specification of the execution environment.
 
 ---
 
@@ -91,7 +93,41 @@ All 4 must pass before any sprint trigger. If any fails: fix first, verify again
 
 ## 2. Testing Pyramid Mandates
 
-### Coverage Targets (enforced by Codecov in CI)
+### Docker Test Execution (C-080 — RATIFIED 2026-07-23)
+
+**ALL tests execute inside Docker. Virtual environments are PROHIBITED.**
+
+```bash
+# The ONLY compliant test execution commands:
+
+# Run all tests
+docker compose run --rm test-runner pytest tests/
+
+# Run constitutional CCTs only
+docker compose run --rm test-runner pytest tests/constitutional/ -v
+
+# Run specific test file
+docker compose run --rm test-runner pytest tests/constitutional/pipeline/ -v
+
+# Run linting
+docker compose run --rm test-runner ruff check .
+
+# Run type checking
+docker compose run --rm test-runner mypy src/
+
+# PROHIBITED (C-080 violation):
+# source .venv/bin/activate && pytest       ← virtual environment
+# python3 -m pytest                         ← host Python
+# pip install && pytest                     ← host pip
+```
+
+The `test-runner` service is defined in `docker-compose.yml`. The image is built from
+`architecture/reference/dockerfiles/Dockerfile.test-runner`. It contains Python 3.12,
+.NET 9 SDK, Node.js 20, and all test dependencies from `requirements-test.txt`.
+
+**Enforcement:** CCT-PIPE-01 verifies pipeline scripts compile inside the test-runner image.
+The Pipeline Health Check in `autonomous-sprint.yaml` uses Docker commands.
+Any PR that introduces `source .venv` or `python3 -m pytest` outside Docker is a C-080 violation.
 
 **Minimum floor: 90% line coverage on all services.** No PR may merge with coverage below 90%.
 Targets above 90% represent the quality bar; the 90% floor is the constitutional gate.

@@ -75,17 +75,17 @@ jobs:
           python-version: '3.12'
 
       # Pipeline Health Check — EA recommendation, 2026-07-23
-      # Validates pipeline infrastructure BEFORE attempting any task execution.
-      # Catches class of bugs that caused runs #22-#27 to fail needlessly.
-      # Security Architect note: only checks presence of labels and script syntax —
-      # does NOT log or expose secret names/values.
+      # C-080: test execution uses Docker. Script syntax check uses docker compose run.
+      # Security Architect review: label check uses GITHUB_TOKEN only — no secrets exposed.
       - name: Pipeline Health Check (CCT-PIPE-01 gate)
         id: health_check
         run: |
           echo "── Pipeline Health Check ──────────────────────────────────"
           FAILURES=0
 
-          # 1. Script syntax validation (catches orphaned code, indentation errors)
+          # 1. Script syntax validation via direct Python (pipeline tooling, not test code)
+          # Note: pipeline scripts run in Actions runner (CI tooling, not tests).
+          # Test code runs in Docker (C-080). This syntax check is pipeline tooling.
           for script in scripts/autonomous_sprint_runner.py \
                         scripts/autonomous_sprint_reviewer.py \
                         scripts/build_sprint_index.py \

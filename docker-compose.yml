@@ -1,5 +1,30 @@
 services:
 
+  # ─── Test Runner (C-080 — Docker Test Isolation mandate) ─────────────────
+  # ALL tests execute here. Virtual environments are PROHIBITED (C-080).
+  # Usage:
+  #   docker compose run --rm test-runner pytest tests/
+  #   docker compose run --rm test-runner pytest tests/constitutional/ -v
+  #   docker compose run --rm test-runner python3 -m py_compile scripts/*.py
+  #   docker compose run --rm test-runner ruff check .
+  # The test-runner image IS the test execution environment — no venv, no host Python.
+  test-runner:
+    build:
+      context: .
+      dockerfile: architecture/reference/dockerfiles/Dockerfile.test-runner
+    volumes:
+      - .:/workspace                    # bind mount for local dev — code changes reflected immediately
+      - /var/run/docker.sock:/var/run/docker.sock  # testcontainers: access to Docker daemon
+    environment:
+      DATABASE_URL: postgresql://waooaw:${POSTGRES_PASSWORD}@postgres:5432/waooaw_test
+      PYTHONPATH: /workspace
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles:
+      - test                            # only starts when --profile test is specified
+    # No ports — test-runner is not a server, it's an on-demand command executor
+
   # ─── Infrastructure ────────────────────────────────────────────────────────
 
   postgres:

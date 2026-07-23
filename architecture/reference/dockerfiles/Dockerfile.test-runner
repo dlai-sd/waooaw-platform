@@ -1,0 +1,57 @@
+# Dockerfile.test-runner
+# constitutional_basis: C-080 (Docker Test Isolation — RATIFIED 2026-07-23)
+# ib_item: IB-009
+# Implements: tests/QA-STRATEGY.md §Docker Execution Mandate
+#
+# This is the SINGLE AUTHORITATIVE test execution environment for WAOOAW.
+# All tests — unit, integration, CCT, performance, security, pipeline — run here.
+# Virtual environments are PROHIBITED (C-080). This image IS the environment.
+#
+# Usage:
+#   docker compose run --rm test-runner pytest tests/
+#   docker compose run --rm test-runner pytest tests/constitutional/pipeline/ -v
+#   docker compose run --rm test-runner python3 -m py_compile scripts/runner.py
+#   docker compose run --rm test-runner ruff check .
+#   docker compose run --rm test-runner mypy src/
+
+FROM python:3.12-slim-bookworm
+
+# Security: run as non-root
+RUN groupadd -r waooaw && useradd -r -g waooaw waooaw
+
+WORKDIR /workspace
+
+# System dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    curl \
+    docker.io \
+    && rm -rf /var/lib/apt/lists/*
+
+# .NET SDK for CE + BP .NET tests
+RUN curl -sSL https://dot.net/v1/dotnet-install.sh | bash -s -- --channel 9.0 --install-dir /usr/local/dotnet
+ENV DOTNET_ROOT=/usr/local/dotnet
+ENV PATH=$PATH:/usr/local/dotnet
+
+# Node.js for TypeScript/Next.js tests (Vitest, Playwright)
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
+# Python test dependencies — installed to system Python (no venv per C-080)
+# This file is the venv replacement — the image IS the isolated environment.
+COPY requirements-test.txt /workspace/requirements-test.txt
+RUN pip install --no-cache-dir -r requirements-test.txt
+
+# Copy project files (bind mount in docker-compose.yml overrides this for local dev)
+COPY . /workspace/
+
+# Ensure scripts are executable
+RUN chmod +x scripts/*.sh 2>/dev/null || true
+
+# Run as non-root (OWASP — no root in test containers)
+RUN chown -R waooaw:waooaw /workspace
+USER waooaw
+
+# Default: run all constitutional CCTs
+CMD ["python3", "-m", "pytest", "tests/constitutional/", "-v", "--tb=short"]

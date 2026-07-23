@@ -1,11 +1,38 @@
 # WAOOAW Quality Framework — Master Strategy
 
-**Version:** 1.1
-**Date:** 2026-07-22
-**Authority:** C-071 (Quality Obligation — RATIFIED), C-076 (90% Coverage Mandate — RATIFIED), GENESIS Engineering Quality Mandate
+**Version:** 1.2
+**Date:** 2026-07-23 (amended — C-080 Docker Test Execution Mandate)
+**Authority:** C-071 (Quality Obligation — RATIFIED), C-076 (90% Coverage Mandate — RATIFIED), C-080 (Docker Test Isolation — RATIFIED 2026-07-23), GENESIS Engineering Quality Mandate
 **Owner:** WAOOAW AI Agent — QA (execution) · Sujay Khandge (quality stewardship)
-**Constitutional Basis:** C-002, C-023, C-065, C-070, C-071
+**Constitutional Basis:** C-002, C-023, C-065, C-070, C-071, C-080
 **Applies to:** All platform services (CE, BP, PR, AIR, Web), all agents (DMA, Trading, Agricultural, Private Tutor, Steward Assistant, Self-Improvement Analyst, Platform IT Expert, Platform Operations)
+
+---
+
+## 0. Docker Test Execution Mandate (C-080 — RATIFIED 2026-07-23)
+
+**All tests on WAOOAW execute inside Docker. Virtual environments are constitutionally prohibited.**
+
+```bash
+# Run all tests (local and CI)
+docker compose run --rm test-runner pytest tests/
+
+# Run CCTs only
+docker compose run --rm test-runner pytest tests/constitutional/ -v
+
+# Run linting + type checks
+docker compose run --rm test-runner ruff check . && docker compose run --rm test-runner mypy src/
+```
+
+The `test-runner` service (`docker-compose.yml`) runs image `Dockerfile.test-runner` which
+contains Python 3.12, .NET 9 SDK, Node.js 20, and all dependencies from `requirements-test.txt`.
+**This image is the test environment. Any test verified outside this image has NOT been verified.**
+
+| Compliant ✅ | Non-compliant ❌ |
+|---|---|
+| `docker compose run --rm test-runner pytest` | `source .venv/bin/activate && pytest` |
+| GitHub Actions running `docker compose run` | `pip install && python3 -m pytest` |
+| testcontainers in integration tests | Any pyenv/conda/virtualenv invocation |
 
 ---
 
