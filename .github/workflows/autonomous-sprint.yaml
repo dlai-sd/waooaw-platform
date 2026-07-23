@@ -238,7 +238,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: preflight
     if: needs.preflight.outputs.halt == 'false'
-    timeout-minutes: 30             # Hard limit: 30 min max per task (FinOps Pattern 4)
+    timeout-minutes: 60             # Raised from 30: 16k-token tasks take ~6min each; 4 tasks × 3 attempts = up to 72min worst case
     outputs:
       pr_number:    ${{ steps.runner.outputs.pr_number }}
       halt:         ${{ steps.runner.outputs.halt }}

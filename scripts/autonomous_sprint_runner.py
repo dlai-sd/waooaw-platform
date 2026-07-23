@@ -242,7 +242,8 @@ def gh(args: list[str], check: bool = True) -> subprocess.CompletedProcess:
 # ── ADR-030: LLM code generation functions ────────────────────────────────────
 
 def call_llm(task_id: str, task_description: str, spec_content: str,
-             constitutional_check: str, model_hint: str = "reasoning") -> str | None:
+             constitutional_check: str, model_hint: str = "reasoning",
+             max_tokens: int = 10000) -> str | None:
     """
     Call Claude Sonnet 4.6 to generate code for a sprint task.
     Returns the raw LLM response string, or None on failure.
@@ -277,7 +278,7 @@ def call_llm(task_id: str, task_description: str, spec_content: str,
         model_id = os.environ.get("SPRINT_LLM_MODEL", "claude-sonnet-4-6")
         payload = {
             "model": model_id,
-            "max_tokens": 16000,  # Raised from 8000 — scaffold tasks need >8k (proto alone ~2500 tokens)
+            "max_tokens": max_tokens,  # Per-task: scaffold=16000, implementation=10000 (C-077 token floor)
             "temperature": 0,
             "system": CONSTITUTIONAL_SYSTEM_PROMPT,
             "messages": [{"role": "user", "content": user_prompt}],
@@ -391,7 +392,8 @@ def validate_written_files(written: list[str]) -> tuple[bool, str]:
 
 
 def execute_with_llm(task_id: str, task_description: str, spec_sections: dict,
-                     constitutional_check: str, model_hint: str = "reasoning") -> bool:
+                     constitutional_check: str, model_hint: str = "reasoning",
+                     max_tokens: int = 10000) -> bool:
     """
     Execute a code generation task using Claude (ADR-030 protocol).
     Implements the 3-attempt retry loop with validation.
@@ -421,7 +423,7 @@ def execute_with_llm(task_id: str, task_description: str, spec_sections: dict,
             prompt_with_context += f"\n\n# Previous attempt failed:\n{failure_context}\nFix the issues above."
 
         response = call_llm(task_id, task_description, prompt_with_context,
-                           constitutional_check, model_hint)
+                           constitutional_check, model_hint, max_tokens)
         if not response:
             print(f"  LLM call returned no response on attempt {attempt}")
             continue
@@ -838,7 +840,8 @@ TASK_HANDLERS = {
         "(4) Program.cs — minimal ASP.NET Core 9: builder.Services.AddGrpc(), "
         "app.MapGrpcService<ConstitutionalEngineService>() using the class from file (3). "
         "Every .cs file: // Implements: and // constitutional_basis: header.",
-        model_hint="reasoning"
+        model_hint="reasoning",
+        max_tokens=16000  # Scaffold: proto+csproj+service+Program.cs = ~15k tokens
     ),
     "WC012-02": lambda: execute_with_llm(
         "WC012-02", "CE ValidateAction RPC + unit tests ≥90%",
@@ -853,7 +856,8 @@ TASK_HANDLERS = {
         "ValidateAction must return ALLOW/DENY/ESCALATE. Default deny for unknown tools (C-041). "
         "ALL files MUST go in src/constitutional-engine/ only. "
         "Unit tests use xUnit + Moq. CCT-EF-01 must be referenced in test.",
-        model_hint="reasoning"
+        model_hint="reasoning",
+        max_tokens=10000  # Implementation task: evaluators + tests fit in 10k
     ),
     "WC012-03": lambda: execute_with_llm(
         "WC012-03", "CE Evidence First record + CCT-EF-01",
@@ -869,7 +873,8 @@ TASK_HANDLERS = {
         "Uses the DbContext from the existing ConstitutionalEngine project. "
         "CCT-EF-01 test must be in tests/constitutional-engine/ and must pass. "
         "All .cs files carry // Implements: and // constitutional_basis: header.",
-        model_hint="reasoning"
+        model_hint="reasoning",
+        max_tokens=10000  # Implementation task
     ),
     "WC012-04": lambda: execute_with_llm(
         "WC012-04", "CE Emergency Stop signal + CCT-HO-01",
@@ -890,7 +895,8 @@ TASK_HANDLERS = {
         "Signals Temporal workflow via TemporalClientFactory within 100ms. "
         "CCT-HO-01: Emergency Stop ≤250ms P99 end-to-end. "
         "All .cs files carry // Implements: and // constitutional_basis: header.",
-        model_hint="reasoning"
+        model_hint="reasoning",
+        max_tokens=10000  # Implementation task
     ),
 }
 
