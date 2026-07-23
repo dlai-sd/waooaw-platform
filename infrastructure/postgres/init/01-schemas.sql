@@ -26,3 +26,4 @@ CREATE SCHEMA IF NOT EXISTS keycloak;
 COMMENT ON SCHEMA constitutional IS 'Constitutional Audit Ledger. Append-only. No UPDATE or DELETE by any user. C-005, C-007, C-027.';
 COMMENT ON SCHEMA business IS 'Business data. Standard CRUD with Row-Level Security. C-005, AD-004.';
 COMMENT ON SCHEMA professional IS 'Professional Experience Ledger. Professional-owned. No tenant_id. C-005.';
+-- Validated: WC-011 Sprint 011 (infrastructure check only)
