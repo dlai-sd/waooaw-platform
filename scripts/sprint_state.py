@@ -21,6 +21,19 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).parent.parent
 STATE_FILE = REPO_ROOT / "constitution" / "PROJECT_STATE.md"
 
+# Sprint → task list manifest. Reviewer and runner both reference this.
+# When a sprint completes, the next sprint's tasks_remaining is populated from here.
+SPRINT_TASK_MANIFEST: dict[str, list[str]] = {
+    "WC-011": ["WC011-01", "WC011-02", "WC011-03", "WC011-04", "WC011-05", "WC011-07"],
+    "WC-012": ["WC012-01", "WC012-02", "WC012-03", "WC012-04"],
+    "WC-013": ["WC013-01", "WC013-02", "WC013-03", "WC013-04"],
+    "WC-014": ["WC014-01", "WC014-02", "WC014-03", "WC014-04"],
+    "WC-015": ["WC015-01", "WC015-02", "WC015-03", "WC015-04", "WC015-05"],
+    "WC-016": ["WC016-01", "WC016-02", "WC016-03", "WC016-04"],
+    "WC-017": ["WC017-01", "WC017-02", "WC017-03", "WC017-04"],
+    "WC-018": ["WC018-01", "WC018-02", "WC018-03", "WC018-04", "WC018-05", "WC018-06", "WC018-07"],
+}
+
 
 def read_state_file() -> str:
     return STATE_FILE.read_text(encoding="utf-8")
@@ -97,9 +110,26 @@ def cmd_advance(args: argparse.Namespace) -> None:
         new_branch = f"ib/{ib_num.group() if ib_num else '009'}/{slug}"
         content = set_field(content, "branch", new_branch)
 
+        # Populate tasks_remaining for next sprint from manifest
+        next_tasks = SPRINT_TASK_MANIFEST.get(next_sprint, [])
+        if next_tasks:
+            # Build YAML list block
+            task_lines = "\n".join(f"  - {t}" for t in next_tasks)
+            # Replace tasks_remaining: ... (list block) with new list
+            content = re.sub(
+                r'tasks_remaining:.*?(?=\n\n|\ncurrent_task:)',
+                f'tasks_remaining:\n{task_lines}',
+                content, flags=re.DOTALL
+            )
+            print(f"  tasks_remaining populated for {next_sprint}: {next_tasks}")
+        else:
+            content = set_field(content, "tasks_remaining", "[]")
+            print(f"  WARNING: No task manifest for {next_sprint} — tasks_remaining set to []")
+
         # Clear next_sprint (next session's PMO will populate it)
-        content = set_field(content, "next_sprint", '""')
-        content = set_field(content, "next_sprint_ib_item", '""')
+        content = set_field(content, "next_sprint", next_sprint.replace("WC-0", "WC-0").replace(
+            next_sprint, f"WC-0{int(next_sprint.split('-')[1])+1:02d}"))
+        content = set_field(content, "next_sprint_ib_item", next_ib)
 
         print(f"✓ Sprint advanced: {args.current} DONE → {next_sprint} READY")
     else:

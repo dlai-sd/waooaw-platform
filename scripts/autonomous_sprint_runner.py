@@ -306,9 +306,12 @@ def execute_wc011_01() -> bool:
     config_text = result.stdout
     required = ["constitutional-engine", "business-platform", "professional-runtime",
                 "ai-runtime", "web", "postgres", "keycloak", "temporal"]
-    for svc in required:
-        if svc not in config_text:
-            print(f"  WARN: expected service '{svc}' not found in compose config")
+    missing = [svc for svc in required if svc not in config_text]
+    if missing:
+        for svc in missing:
+            print(f"  FAIL: required service '{svc}' missing from docker-compose config")
+        print(f"  FAIL: {len(missing)} required service(s) missing — cannot pass WC011-01")
+        return False
 
     git(["add", "docker-compose.yml", "logs/"], check=False)
     diff = git(["diff", "--cached", "--quiet"], check=False)
@@ -344,10 +347,17 @@ def execute_wc011_02() -> bool:
     issues = []
     for sql_file in sql_files:
         content = sql_file.read_text(encoding="utf-8")
-        # C-007/C-027: constitutional schema must not have UPDATE/DELETE triggers on audit_records
+        # C-007/C-027: constitutional schema must not have UPDATE/DELETE on audit_records
         if "audit_records" in content and ("UPDATE" in content or "DELETE" in content):
             if "NO UPDATE" not in content and "RULE NO" not in content.upper():
-                issues.append(f"{sql_file.name}: audit_records may have UPDATE/DELETE operation (C-007 check needed)")
+                flag_spec_gap(
+                    task_id="WC011-02",
+                    gap_description=f"{sql_file.name}: potential UPDATE/DELETE on audit_records — C-007/C-027 violation. "
+                                    "The constitutional audit ledger must be append-only. No UPDATE or DELETE permitted.",
+                    affected_spec="infrastructure/postgres/init/05-append-only-rules.sql",
+                    constitutional_basis="C-007 (Ledger Immutability), C-027 (Append-only enforcement)"
+                )
+                return False
         # C-027: append-only rules must exist
         if sql_file.name.startswith("05-append-only"):
             if "RULE" not in content.upper() and "TRIGGER" not in content.upper():
@@ -473,7 +483,12 @@ def execute_wc011_07() -> bool:
     print("── WC011-07: Document GitHub Actions secrets ──")
     secrets_doc = REPO_ROOT / "infrastructure" / "GITHUB-SECRETS.md"
 
-    # Always overwrite — reflects current OIDC architecture (no long-lived credentials in GitHub Secrets)
+    # Skip if already contains the OIDC pattern markers — avoids noisy re-commits
+    if secrets_doc.exists():
+        existing = secrets_doc.read_text(encoding="utf-8")
+        if "OIDC + Azure Key Vault" in existing and "ANTHROPIC-API-KEY" in existing:
+            print("  OK: GITHUB-SECRETS.md already documents OIDC pattern — no changes needed")
+            return True
     secrets_doc.write_text(
         "# GitHub Actions Secrets & Variables — WAOOAW Platform\n"
         "# constitutional_basis: C-059 (Implementation Traceability), ADR-014 (Secret Management)\n"
