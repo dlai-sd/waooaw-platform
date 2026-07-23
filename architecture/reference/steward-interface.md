@@ -96,8 +96,58 @@ The session JWT contains `person: yogesh | sujay | ojal`. The Steward Assistant 
 | "What's the approval queue?" | Lists all GitHub Issues with `awaiting:founder-approval` label, allows Yogesh to say "approve #47" → posts `/approved` comment via GitHub API |
 | "Generate this week's compliance report" | Queries C-048/C-049 audit records, formats report, commits to `reviews/R-NNN-compliance-ojal-YYYY-MM-DD.md` via GitHub API |
 | "Is the platform safe to take a new customer today?" | Checks: CCT pass rate 100%? No active P0? No active Constitutional Blockers? Cost below ceiling? Returns go/no-go with evidence |
+| "Show me agent evaluation dashboard" | See §3.4a — Agent Evaluation Dashboard |
 
-### 3.5 What the Steward Assistant Will NOT Do
+### 3.4a Agent Evaluation Dashboard (Audit GAP-CH7-01)
+
+**Trigger:** Steward asks for "agent dashboard", "agent performance", "evaluation report", or Sujay's proactive opening shows agents below Grade B.
+
+**Source data:** `institutional.agent_reasoning_traces` + `institutional.quality_metrics` + `professional.trust_ledger`
+
+**Format (Steward Assistant renders as markdown table in chat):**
+
+```
+AGENT EVALUATION DASHBOARD — last 7 days
+Generated: 2026-07-23 09:00 IST
+
+┌─────────────────────┬────────┬──────────┬──────────┬──────────┬──────────┬────────────┐
+│ Agent / Skill       │ Traces │ DENY rate│ ESCALATE │ Avg conf │ Tool fail│ Grade      │
+├─────────────────────┼────────┼──────────┼──────────┼──────────┼──────────┼────────────┤
+│ DMA — all skills    │   847  │  2.7%    │  1.2%    │  0.87    │  0.8%    │ A          │
+│ DMA — Skill 2       │   312  │  4.1%    │  0.6%    │  0.84    │  1.2%    │ B+         │
+│ Trading — all       │   203  │  1.0%    │  8.9%    │  0.92    │  0.0%    │ A+         │
+│ Agricultural — all  │   156  │  3.8%    │  0.6%    │  0.81    │  2.6%    │ B          │
+└─────────────────────┴────────┴──────────┴──────────┴──────────┴──────────┴────────────┘
+
+⚠️  AUTOMATIC ALERTS (Self-Improvement Analyst flagged):
+• DMA Skill 2: DENY rate 4.1% (threshold > 3%) → 7 DENY decisions in 7 days
+  Most common deny reason: "PAAS boundary: proposed spend exceeds weekly budget"
+  Recommendation: Review Dr. Mehta's budget constraint in Decision Space
+• Agricultural: tool failure 2.6% (threshold > 2%) → whatsapp-voice-mcp timeouts × 4
+  Recommendation: Investigate mandi-price-mcp health (3 REQUIRED failures this week)
+
+RAG RETRIEVAL QUALITY (sample of 50 traces, manual grading by Self-Improvement Analyst):
+• DMA: 88% faithfulness (relevant chunks retrieved)
+• Trading: 94% faithfulness (pre-warmed at session start)
+• Agricultural: 82% faithfulness — budget_reached: true in 23% of traces → domain corpus review needed
+```
+
+**Auto-alert thresholds** (Self-Improvement Analyst monitors continuously; Steward notified when breached):
+
+| Metric | Alert threshold | Severity |
+|---|---|---|
+| DENY rate > 10% for any agent type over 3 days | P1 — schema/Decision Space review needed | High |
+| DENY rate > 3% for any skill over 7 days | Advisory — review Decision Space configuration | Medium |
+| Average confidence score < 0.70 over 3 days | P1 — prompt quality degradation | High |
+| Tool failure rate > 5% for REQUIRED tool | P1 — MCP infrastructure issue | High |
+| RAG budget_reached > 20% of traces | Advisory — domain corpus curation needed | Medium |
+| Schema validation failures > 0 in 24h | P0 — LLM output contract broken | Critical |
+| CCT pass rate drops below 100% | P0 — constitutional compliance breach | Critical |
+
+**Retrieval quality metric definition:**
+- Faithfulness: % of reasoning traces where the retrieved Tier 1 chunks contained the information used in the final response (sampled manually weekly by Self-Improvement Analyst via DeepEval)
+- Target: ≥ 85% faithfulness for all agent types
+- Below 80%: triggers domain knowledge corpus refresh (Self-Improvement Analyst files IB item)
 
 - Merge its own PRs (C-065 — self-merge prohibited, always requires reviewer)
 - Modify `constitution/CONSTITUTION.md` or `constitution/GENESIS.md` (Class 1 Immutable)

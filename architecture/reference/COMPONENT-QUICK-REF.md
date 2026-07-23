@@ -72,10 +72,10 @@ No UPDATE or DELETE on constitutional schema for ANY user (PostgreSQL RULE enfor
 
 | Service | CCTs it must pass |
 |---|---|
-| Constitutional Engine | CCT-EF-01, CCT-EF-02, CCT-AL-01, CCT-AL-02 |
+| Constitutional Engine | CCT-EF-01, CCT-EF-02, CCT-AL-01, CCT-AL-02, CCT-CE-AVAIL-01 |
 | Business Platform | CCT-MT-01, CCT-MT-02, CCT-SEC-01 through SEC-05 |
 | Professional Runtime | CCT-HO-01, CCT-HO-02, CCT-PAAS-01 |
-| AI Runtime | CCT-RU-01 (via PR) |
+| AI Runtime | CCT-RU-01 (via PR), CCT-PII-01, CCT-PII-02 |
 | Web App | CCT-HO-02 (Emergency Stop always visible) |
 | All services | CCT-OBS-01 (constitutional OTel spans emitted) |
 
@@ -83,16 +83,58 @@ Full CCT specs: `tests/constitutional/README.md`
 
 ---
 
-## Key Latency Budgets (AD-001, AD-005)
+## CE Unavailability — Quick Reference (C-079, ADR-031)
+
+| Caller | When CE unreachable | Recovery |
+|---|---|---|
+| Business Platform | 503 on all write endpoints + Retry-After:30. Read endpoints unaffected. | Automatic when CE health probe returns SERVING |
+| Professional Runtime | All PAAS execution loops pause. Temporal heartbeat continues. Local audit buffer activated. | Automatic. Buffer flushed to CE first on recovery. |
+| Emergency Stop | PR executes local halt immediately (no CE needed for the halt). Stop buffered for CE write on recovery. | ≤250ms SLA maintained even during CE outage. |
+| Keycloak / web | Unaffected. Auth is independent of CE. | N/A |
+
+**Detection:** 2 consecutive grpc_health_probe failures within 5s = CE UNAVAILABLE.
+**Full spec:** `adr/ADR-031-ce-fail-safe-unavailability.md`
+
+---
+
+## PII Masking — Quick Reference (C-078)
+
+| Scope | PII Scrubbing? |
+|---|---|
+| Prompt → external provider (Vertex AI, Azure, Sarvam) | **MANDATORY** — before every dispatch |
+| Prompt → LOCAL provider (Ollama, AI4Bharat on-premise) | Exempt — data never leaves WAOOAW boundary |
+| MCP tool call bodies | Not required — calls are between WAOOAW services |
+| Reasoning traces (institutional schema) | Stored with tokens (never original values) |
+
+**Latency budget:** PII Scrubber adds < 20ms P99.
+**Full spec:** `architecture/reference/pii-masking-pipeline.md`
+
+---
+
+## Key Reference Documents
+
+| Need | Document |
+|---|---|
+| SLOs (latency, availability, cost) | `architecture/reference/slo.md` |
+| Graceful degradation / on-call runbook | `architecture/reference/graceful-degradation.md` |
+| PII masking pipeline | `architecture/reference/pii-masking-pipeline.md` |
+| CE unavailability behavior | `adr/ADR-031-ce-fail-safe-unavailability.md` |
+| RAG chunking + token budgets | `adr/ADR-019-rag-architecture.md` (Amendment 1 + 2) |
+
+---
+
+## Key Latency Budgets (AD-001, AD-005, slo.md)
 
 | Path | Budget | Where enforced |
 |---|---|---|
 | PAAS hot path (in-memory validation) | < 1ms | Professional Runtime memory |
-| CE ValidateAction (PAAS) | < 40ms | CE gRPC |
-| CE RecordEvidence (standard) | < 80ms | CE gRPC + DB write |
+| CE ValidateAction (PAAS) | < 40ms P99 | CE gRPC |
+| CE RecordEvidence (standard) | < 80ms P99 | CE gRPC + DB write |
 | Emergency Stop detection + routing | < 50ms | SignalR / WebSocket |
 | Halt + confirmation | < 50ms | Professional Runtime |
 | Emergency Stop end-to-end P99 | ≤ 250ms | Constitutional Floor (C-001) |
+| PII Scrubber (C-078) | < 20ms P99 | AI Runtime Component 7 |
+| RAG retrieval (all 3 tiers) | < 80ms P99 | AI Runtime RAG pipeline |
 
 ---
 

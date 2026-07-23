@@ -75,8 +75,43 @@ Implementation: Register `services.AddGrpc().AddHealthChecks()` in ASP.NET Core 
 
 **Tenant isolation interceptor:** The CE must register `TenantDbCommandInterceptor` with its DbContext (see engineering-standards.md Section 10). This intercepts every DB command and executes `SET LOCAL app.tenant_id` before the query runs. RLS depends on this.
 
+## 6. Unavailability Behavior (C-079, ADR-031)
+
+**Constitutional basis:** C-079 mandates that when CE is unavailable, all CE-dependent operations enter Fail-Safe Halt. This section defines what CE itself does to support detection and recovery.
+
+**Health endpoint (mandatory):** CE exposes `grpc.health.v1.Health` on port 5002 (alongside ConstitutionalService). This is the detection mechanism for callers.
+
+```
+Health states:
+  SERVING     → CE is operational; callers may proceed
+  NOT_SERVING → CE is starting up or shutting down; callers must halt
+  UNKNOWN     → CE cannot assess its own health; callers must treat as NOT_SERVING
+```
+
+**CE startup gate:** CE must reach SERVING state before reporting healthy to the health probe. Specifically, CE must confirm:
+1. PostgreSQL connection pool is healthy (constitutional schema accessible)
+2. A test RecordEvidence write succeeds (verifies DB write path, not just connection)
+3. gRPC server is accepting requests
+
+Only after all three pass does CE set its health state to SERVING.
+
+**Graceful shutdown:** On SIGTERM (Kubernetes/Container Apps pod termination), CE:
+1. Sets health state to NOT_SERVING (callers detect and halt immediately)
+2. Waits for in-flight gRPC calls to complete (drain timeout: 10 seconds)
+3. Flushes any pending DB writes
+4. Shuts down cleanly
+
+This ensures that a rolling restart does not create a window where CE is unreachable without callers knowing.
+
+**constitutional.engine_availability_events table:** CE writes one record per availability event (see ADR-031). These records are written by callers (BP, PR), not by CE itself — because CE may be unavailable when the record is needed. BP and PR write to this table directly.
+
+**Full unavailability specification:** see `adr/ADR-031-ce-fail-safe-unavailability.md`
+
+---
+
 ## What Constitutional Engine does NOT do
 - Does NOT expose REST endpoints
 - Does NOT call other services
 - Does NOT make business logic decisions — it records and validates, it does not govern
 - Does NOT store customer business data (evidence records contain constitutional events, not business content)
+- Does NOT continue serving requests in a degraded mode — it is either SERVING or NOT_SERVING (C-079)

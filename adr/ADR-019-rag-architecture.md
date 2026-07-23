@@ -98,6 +98,101 @@ Inference request arrives (e.g., "create this week's Instagram post for Dr. Meht
 
 ---
 
+## Amendment 1 — Chunking Specification (2026-07-23, audit GAP-CH10-01)
+
+**Authority:** Audit finding GAP-CH10-01 — production RAG chunking was unspecified. This amendment defines the mandatory chunking strategy for all tiers.
+
+### Mandatory Chunking Strategy
+
+All documents ingested into Tier 1 (Domain Knowledge) and Tier 3 (Platform Intelligence) must be chunked using the following specification. This is not a recommendation — it is the enforced standard for all ingestion pipelines.
+
+| Parameter | Value | Rationale |
+|---|---|---|
+| Chunk size | 512 tokens | Balances semantic coherence vs retrieval precision. Validated against DMA, Trading, and Agricultural domain corpora. |
+| Chunk overlap | 50 tokens | Preserves context across chunk boundaries without inflating index size. |
+| Boundary enforcement | Sentence boundary aware | Never split at mid-sentence. Use `spaCy` sentence tokenizer (multilingual model `xx_sent_ud_sm`) before chunking. |
+| Language handling | Multilingual — sentence tokenizer handles Hindi, Marathi, Tamil, Telugu, Kannada | Required for Agricultural agent (C-042) domain knowledge in regional languages. |
+| Maximum chunk tokens | 512 (hard limit) | If a sentence exceeds 512 tokens alone (rare), it is split at the 512-token boundary as an exception. |
+| Minimum chunk tokens | 50 | Chunks below 50 tokens are merged with the adjacent chunk. Prevents low-signal micro-chunks. |
+
+### Chunk Metadata (mandatory on every chunk)
+
+Every chunk stored in pgvector must carry the following metadata alongside the embedding:
+
+```python
+@dataclass
+class ChunkMetadata:
+    source_document_id: str          # e.g., "dental_marketing_india_v3"
+    source_document_version: str     # semantic version — allows stale chunk detection
+    source_section: str              # e.g., "Section 4: Instagram Content Strategy"
+    chunk_index: int                 # position within source document (0-based)
+    chunk_token_count: int           # actual token count (not nominal 512)
+    language: str                    # ISO 639-1 code: "en", "hi", "mr", "ta", etc.
+    domain: str                      # "dental_marketing", "trading", "agricultural", etc.
+    tier: int                        # 1 (Domain) | 3 (Platform Intelligence)
+    created_at: datetime
+    # Tier 2 (Customer Context) chunks also carry:
+    tenant_id: Optional[str]         # UUID — RLS anchor; None for Tier 1/3 (shared)
+    contract_id: Optional[str]       # UUID — links to employment contract
+```
+
+### Source Attribution in Reasoning Traces
+
+Every chunk retrieved during inference must be logged in the `context_summary` JSONB of the `agent_reasoning_traces` table. This closes the black-box gap — the trace records not just what action was taken, but what knowledge justified it.
+
+```json
+{
+  "tier1_chunks": [
+    {
+      "source_document_id": "dental_marketing_india_v3",
+      "source_section": "Section 4: Instagram Content Strategy",
+      "chunk_index": 12,
+      "similarity_score": 0.91,
+      "token_count": 487
+    }
+  ],
+  "tier2_chunks": [
+    {
+      "source_document_id": "dr_mehta_brand_voice_v4",
+      "chunk_index": 3,
+      "similarity_score": 0.88,
+      "token_count": 312
+    }
+  ],
+  "tier3_chunks": [...],
+  "total_context_tokens": 1247
+}
+```
+
+---
+
+## Amendment 2 — Per-Inference Token Budget (2026-07-23, audit GAP-CH10-02)
+
+**Authority:** Audit finding GAP-CH10-02 — no per-inference RAG token budget specified for production agents.
+
+### Production RAG Context Budget per Agent Type
+
+Every agent type has a defined maximum token budget for RAG context (Tier 1 + Tier 2 + Tier 3 combined). This budget is enforced at the AI Runtime RAG pipeline stage — retrieval stops when the budget is reached, not when top-K chunks are exhausted.
+
+**Budget enforcement principle:** Quality over quantity. Fewer highly-relevant chunks are better than many loosely-relevant chunks within the same budget.
+
+| Agent Type | Skill Context | Tier 1 Budget | Tier 2 Budget | Tier 3 Budget | Total RAG Budget |
+|---|---|---|---|---|---|
+| Digital Marketing Agent | Skill 2 (Content) | 1,500 tok | 1,000 tok | 500 tok | 3,000 tok |
+| Digital Marketing Agent | Skill 1 (Market Research) | 2,000 tok | 500 tok | 1,000 tok | 3,500 tok |
+| Trading Agent | All skills | 1,000 tok (pre-warmed) | 800 tok | 200 tok | 2,000 tok |
+| Agricultural Agent | Advisory | 1,500 tok | 600 tok | 400 tok | 2,500 tok |
+| Private Tutor Agent | All skills | 1,500 tok | 1,000 tok | 500 tok | 3,000 tok |
+| Self-Improvement Analyst | All skills | 2,000 tok | 0 tok | 1,500 tok | 3,500 tok |
+| Platform IT Expert | All skills | 2,500 tok | 0 tok | 500 tok | 3,000 tok |
+| Platform Operations | All skills | 1,000 tok | 0 tok | 500 tok | 1,500 tok |
+
+**Overflow behavior:** If the budget is reached before top-K chunks are exhausted, the retrieval stops. The `context_summary.budget_reached` flag is set to `true` in the reasoning trace. The Self-Improvement Analyst monitors budget_reached frequency — if > 20% of traces for an agent type hit the budget, it triggers a domain knowledge curation review.
+
+**Trading Agent special case:** Tier 1 chunks for Trading are pre-warmed at PAAS session start (zero retrieval latency in the hot path). The 1,000-token Tier 1 budget is loaded once and held in the PAAS session state for the session duration.
+
+---
+
 ## Alternatives Considered
 
 | Option | Reason Rejected |

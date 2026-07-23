@@ -55,7 +55,22 @@ Every skill in every agent runs this loop. It is the implementation of C-047.
 │       - Constitutional basis for the action                     │
 │       - Confidence in the decision                              │
 │       - Alternatives considered and rejected                    │
-│     Write: ReasoningTrace to institutional.agent_reasoning_traces│
+│       - reasoning_summary (one sentence, customer-readable)     │
+│     PII Scrubber fires BEFORE prompt leaves WAOOAW boundary     │
+│     (C-078: mandatory for all external LLM providers)           │
+│                                                                 │
+│  3.5 VALIDATE LLM OUTPUT SCHEMA                                 │
+│     Parse raw LLM output through AgentDecision Pydantic model   │
+│     If validation fails (malformed JSON / missing required      │
+│       fields): retry once with explicit schema reminder in prompt│
+│     If second attempt also fails:                               │
+│       - Record SCHEMA_VALIDATION_FAILED in reasoning trace      │
+│       - Set decision = DENIED (constitutional default: if agent │
+│           cannot reason within schema, it cannot act)           │
+│       - Escalate to Steward Assistant (alert via WhatsApp)      │
+│       - Do NOT proceed to step 4                                │
+│     On success: Write reasoning trace to                        │
+│       institutional.agent_reasoning_traces                      │
 │                                                                 │
 │  4. VALIDATE                                                    │
 │     CE.ValidateAction(action, decision_space, budget_context?,  │
@@ -69,6 +84,15 @@ Every skill in every agent runs this loop. It is the implementation of C-047.
 │     MCP tool call (via authorized tool registry)                │
 │     CE.RecordEvidence(EXECUTED)                                 │
 │     Update reasoning trace: outcome_action_taken, evidence_id   │
+│     Build ActionResponse envelope for customer-facing output:   │
+│       {                                                         │
+│         "evidence_id": "<uuid>",                                │
+│         "reasoning_summary": "<one sentence — what & why>",     │
+│         "constitutional_basis": "C-036; C-041",                 │
+│         "action_type": "<action>",                              │
+│         "executed_at": "<ISO timestamp>"                        │
+│       }                                                         │
+│     Reasoning summary language: customer's language (C-042)     │
 │                                                                 │
 │  6. OBSERVE                                                     │
 │     Read execution outcome (success / partial / degraded)       │

@@ -76,8 +76,44 @@ If a DPDPA-compliant Indian provider with better cost/performance emerges, the P
 **Responsibility:**
 - Receives inference requests from Professional Runtime with: prompt, Decision Space context, and tool list
 - Calls `pse.select(tier, request_context)` to obtain the active `LLMProvider` instance — never selects provider itself
+- **Invokes Component 7 (PII Scrubber) before dispatching to any external provider (C-078 — mandatory)**
 - Applies constitutional prompt wrapper: Decision Space boundaries are injected into system prompt
 - Returns generated content to Professional Runtime
+
+### 7. PII Scrubber (C-078 — RATIFIED 2026-07-23)
+**Responsibility:**
+- Intercepts every prompt before dispatch to any external LLM provider (Vertex AI, Azure OpenAI, Sarvam AI)
+- Detects PII using AI4Bharat IndicNER (NER-based: names, addresses, organisations) + structural regex battery (phone, email, Aadhaar, PAN, bank, GSTIN, UPI, vehicle number)
+- Replaces detected PII with stable, reversible placeholder tokens (e.g., `{{CUSTOMER_PHONE_1}}`)
+- Holds a request-scoped token-to-value map in memory — never persisted, never logged, never transmitted
+- Restores original values only for tool execution (not for reasoning traces or evidence records)
+- LOCAL-tier providers (Ollama, AI4Bharat on-premise) are exempt — data never leaves WAOOAW boundary
+
+**Architecture invariant — type-system enforcement:**
+```python
+# ExternalLLMProvider.complete() only accepts ScrubbedPrompt, not RawPrompt.
+# This makes it impossible to call an external provider without scrubbing — it is a compile-time error.
+class ExternalLLMProvider(LLMProvider):
+    async def complete(self, prompt: ScrubbedPrompt, ...) -> InferenceResponse: ...
+
+class LocalLLMProvider(LLMProvider):
+    async def complete(self, prompt: RawPrompt | ScrubbedPrompt, ...) -> InferenceResponse: ...
+
+# LLM Gateway dispatch path:
+async def dispatch(request: InferenceRequest, provider: LLMProvider) -> InferenceResponse:
+    if isinstance(provider, ExternalLLMProvider):
+        scrubbed, token_map = await pii_scrubber.scrub(request.prompt)  # C-078 mandatory
+        response = await provider.complete(ScrubbedPrompt(scrubbed), request.params)
+        if token_map:
+            response = await pii_scrubber.restore_for_execution(response, token_map)
+    else:
+        response = await provider.complete(request.prompt, request.params)  # LOCAL exempt
+    return response
+```
+
+**Latency budget:** PII Scrubber must add < 20ms P99 to inference latency.
+**CCTs:** CCT-PII-01 (unit — detection accuracy), CCT-PII-02 (integration — adversarial red-team)
+**Full specification:** `architecture/reference/pii-masking-pipeline.md`
 
 **Constitutional prompt injection:**
 ```python

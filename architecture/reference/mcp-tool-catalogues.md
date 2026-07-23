@@ -1,11 +1,39 @@
 # MCP Tool Catalogues
 
 **Authority:** GENESIS Part 05 — Agent Definition Protocol (Tool Registry)
-**Date:** 2026-07-09
+**Date:** 2026-07-09 (amended 2026-07-23 — versioning policy, audit GAP-CH4-01)
 **Constitutional Basis:** C-041 (every tool call governed by Decision Space); ADR-020 (MCP integration pattern)
 **Purpose:** Formal tool signatures for all MCP server adapters. Every tool listed here corresponds to an authorized_action or read-only operation in the agent Decision Space. Developers implement MCP servers to these contracts exactly. The AI Runtime calls these tools — deviation from this contract is a C-041 violation.
 
 **Format:** Each tool defines: name, HTTP method + path on the MCP server, request body schema, response schema, authorization requirement, and failure mode (REQUIRED = skill halts if tool fails; DEGRADABLE = skill continues with reduced capability).
+
+---
+
+## Tool Versioning Policy (GAP-CH4-01, 2026-07-23)
+
+All MCP tool call paths are versioned under `/v1/`. This is a breaking-change protection policy.
+
+**Current version:** v1 (all tools listed below are v1)
+
+### Versioning Rules
+
+| Rule | Detail |
+|---|---|
+| Path prefix | All tool paths: `GET /v1/call/{tool.name}` or `POST /v1/call/{tool.name}` |
+| Backward-compatible changes | Add optional request fields, add optional response fields — NO version bump required |
+| Breaking changes | Remove fields, rename fields, change field types, change HTTP method, change response status codes — **requires new version (`/v2/call/{tool.name}`) + deprecation period** |
+| Deprecation period | v1 endpoint must remain available for ≥ 30 days after v2 is live. During this period, v1 returns a `Deprecation: true` response header with `Sunset: {date}` |
+| Version enforcement | ADR-020: the MCP client in AI Runtime specifies the version in every call. Calling an unsupported version returns 404 (not 200 with degraded behavior — fail explicitly) |
+
+### Retry and Backoff Policy (GAP-CH4-02, 2026-07-23)
+
+| Failure mode | Retry policy | Backoff | Dead-letter behavior |
+|---|---|---|---|
+| REQUIRED tool | 3 attempts | 30s, 60s, 120s (exponential) | After 3 failures: CE records `SKILL_PAUSED_TOOL_FAILURE`; skill → `PAUSED_TOOL_UNAVAILABLE`; customer notified |
+| DEGRADABLE tool | 1 attempt | None | Continue with degraded output; reasoning trace: `tool_degraded: true` |
+| All tool calls | If CE.ValidateAction returns DENY | No retry | Record DENY reasoning trace; do not call tool |
+
+**Temporal implementation:** Retry policy is set at the Temporal activity level in the workflow definitions (see `temporal-workflow-definitions.md`). The retry counts above are the activity `retry_policy.maximum_attempts`.
 
 ---
 
