@@ -46,6 +46,7 @@ permissions:
   id-token: write      # Required for Azure OIDC login
   contents: write      # git push
   pull-requests: write # PR create + review
+  issues: write        # flag_spec_gap() — create spec gap issues (awaiting:founder-approval)
 
 env:
   AUTONOMOUS_SPRINT_AGENT: 'true'
