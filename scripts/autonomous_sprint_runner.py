@@ -342,23 +342,26 @@ def write_llm_files(files: dict[str, str]) -> list[str]:
     return written
 
 
-def validate_written_files(written: list[str]) -> bool:
-    """Run validation appropriate to file type. Returns True if all pass."""
+def validate_written_files(written: list[str]) -> tuple[bool, str]:
+    """Run validation appropriate to file type. Returns (ok, error_text)."""
     py_files = [f for f in written if f.endswith(".py")]
     cs_files = [f for f in written if f.endswith(".cs")]
     ok = True
+    errors: list[str] = []
 
     for f in py_files:
         result = run(["python3", "-m", "py_compile", f], check=False, capture=True)
         if result.returncode != 0:
-            print(f"  FAIL: {f} syntax error: {result.stderr[:200]}")
+            msg = result.stderr.strip() or result.stdout.strip()
+            print(f"  FAIL: {f} syntax error: {msg[:200]}")
+            errors.append(f"{f}: {msg[:300]}")
             ok = False
         else:
             print(f"  ✅ Python syntax OK: {f}")
 
     if cs_files:
-        # Find the csproj file in src/
-        csproj_dirs = set()
+        # Find the csproj dir: src/<service>/ from the first .cs file
+        csproj_dirs: set[str] = set()
         for f in cs_files:
             parts = Path(f).parts
             if len(parts) > 1:
@@ -367,11 +370,14 @@ def validate_written_files(written: list[str]) -> bool:
             result = run(["dotnet", "build", csproj_dir, "--nologo", "-v", "quiet"],
                         check=False, capture=True)
             if result.returncode != 0:
-                print(f"  FAIL: dotnet build in {csproj_dir}: {result.stderr[:300]}")
+                # dotnet quiet mode sends errors to stdout, not stderr
+                build_output = (result.stdout.strip() or result.stderr.strip())[:600]
+                print(f"  FAIL: dotnet build in {csproj_dir}:\n{build_output}")
+                errors.append(f"dotnet build {csproj_dir}:\n{build_output}")
                 ok = False
             else:
                 print(f"  ✅ .NET build OK: {csproj_dir}")
-    return ok
+    return ok, "\n".join(errors)
 
 
 def execute_with_llm(task_id: str, task_description: str, spec_sections: dict,
@@ -417,7 +423,8 @@ def execute_with_llm(task_id: str, task_description: str, spec_sections: dict,
             continue
 
         written = write_llm_files(files)
-        if validate_written_files(written):
+        ok, build_error = validate_written_files(written)
+        if ok:
             # Commit the generated files
             git(["add"] + written, check=False)
             diff = git(["diff", "--cached", "--quiet"], check=False)
@@ -428,8 +435,11 @@ def execute_with_llm(task_id: str, task_description: str, spec_sections: dict,
             print(f"  ✅ {task_id} complete ({len(written)} files)")
             return True
         else:
-            # Collect failure for next attempt
-            failure_context = f"Build/syntax validation failed for files: {written}"
+            # Pass the ACTUAL build error to Claude on the next attempt
+            failure_context = (
+                f"Build/syntax validation failed for files: {written}\n"
+                f"Exact error output:\n{build_error}"
+            )
             print(f"  Validation failed on attempt {attempt} — retrying with failure context")
 
     # All 3 attempts exhausted
@@ -804,7 +814,17 @@ TASK_HANDLERS = {
             "architecture/reference/proto/constitutional_service.proto": "full",
             "standards/CODING-STANDARDS.md": "§2.1 Tools,§1.5 Structured Comments",
         },
-        "Every .cs file must carry # Implements: and # constitutional_basis: header. "
+        "Every .cs file must carry // Implements: and // constitutional_basis: header comment. "
+        "The .csproj MUST use Sdk='Microsoft.NET.Sdk.Web', TargetFramework=net9.0, "
+        "and include these PackageReferences: Grpc.AspNetCore (2.65.0), "
+        "Google.Protobuf (3.28.0), Grpc.Tools (2.65.0). "
+        "The .csproj MUST include an ItemGroup with "
+        "<Protobuf Include='Protos/constitutional_service.proto' GrpcServices='Server' />. "
+        "Copy the proto file content from architecture/reference/proto/constitutional_service.proto "
+        "into src/constitutional-engine/Protos/constitutional_service.proto exactly. "
+        "Program.cs: minimal ASP.NET Core 9 app with builder.Services.AddGrpc() and "
+        "app.MapGrpcService<ConstitutionalEngineService>(). "
+        "ConstitutionalEngineService.cs: stub implementing all RPCs from the proto. "
         "gRPC service registered with Grpc.AspNetCore. RecordEvidence + ValidateAction RPCs present.",
         model_hint="reasoning"
     ),
