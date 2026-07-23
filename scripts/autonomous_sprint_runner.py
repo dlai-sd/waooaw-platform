@@ -496,10 +496,10 @@ def execute_with_llm(task_id: str, task_description: str, spec_sections: dict,
     # All 3 attempts exhausted — categorize the failure type
     if infra_failures == 3:
         # ALL failures were infrastructure (timeout/rate-limit/server error) — NOT a spec gap
-        # Increment consecutive_failures and let next cron retry automatically
         print(f"  ⚠️  INFRA_FAILURE: {task_id} — all 3 attempts were API failures (timeout/rate-limit).")
         print(f"  This is NOT a spec gap. No issue created. Next cron run will retry automatically.")
-        update_sprint_state(last_attempt_result="INFRA_ERROR")
+        # Signal to main() that this was an infra failure, not a code/spec failure
+        _INFRA_ERROR_TASKS.append(task_id)
         return False
     elif infra_failures > 0:
         # Mixed: some infra failures + some build failures — treat as spec gap but note it
@@ -864,6 +864,8 @@ def execute_wc011_07() -> bool:
     return True
 
 
+_INFRA_ERROR_TASKS: list[str] = []  # populated by execute_with_llm when all 3 attempts are API failures
+
 TASK_HANDLERS = {
     "WC011-01": execute_wc011_01,
     "WC011-02": execute_wc011_02,
@@ -1045,6 +1047,7 @@ def main() -> int:
     # ── Step 6: Execute each task ─────────────────────────────────────────
     tasks_done = []
     tasks_not_implemented = []
+    infra_error_tasks = _INFRA_ERROR_TASKS   # populated by execute_with_llm on pure API failures
     for task in tasks:
         handler = TASK_HANDLERS.get(task)
         if handler is None:
@@ -1065,6 +1068,14 @@ def main() -> int:
                 print(f"  DONE: {task}")
         except Exception as exc:
             print(f"  FAILED: {task}: {exc}")
+
+    # Determine if ALL failures were infrastructure (no spec gap, no human action needed)
+    all_infra_errors = (
+        not tasks_done
+        and not tasks_not_implemented
+        and len(infra_error_tasks) > 0
+        and len(infra_error_tasks) == len([t for t in tasks if t not in tasks_done and t not in tasks_not_implemented])
+    )
 
     # ── Step 7: Update state + open PR ────────────────────────────────────
     if dry_run:
@@ -1148,6 +1159,12 @@ def main() -> int:
         print(f"\n  ⚠️  {len(tasks_not_implemented)} task(s) require IB-020 (runner code generation).")
         print(f"  Sprint cannot advance until IB-020 is implemented.")
         print(f"  Issue #12 tracks this: github.com/dlai-sd/waooaw-platform/issues/12")
+    elif not tasks_done and all_infra_errors:
+        # Every task failed due to API infrastructure (timeout/rate-limit/server error)
+        set_output("result", "INFRA_ERROR")
+        set_output("halt_reason", "All tasks failed due to API timeouts or rate limits. No spec gap. Next cron run will retry automatically.")
+        print("\n  ⚠️  INFRA_ERROR: all tasks failed due to API failures, not spec issues.")
+        print("  Cron will retry. No founder action required.")
     else:
         set_output("result", "SUCCESS" if tasks_done else "PARTIAL")
     return 0

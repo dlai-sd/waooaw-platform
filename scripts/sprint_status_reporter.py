@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 GITHUB_TOKEN = os.environ["GITHUB_TOKEN"]
 REPO         = os.environ.get("GITHUB_REPO", "dlai-sd/waooaw-platform")
 TASK_ID      = os.environ.get("SPRINT_TASK_ID", "unknown")
-RESULT       = os.environ.get("SPRINT_RESULT", "")        # SUCCESS | FAILED | SKIPPED | HALTED
+RESULT       = os.environ.get("SPRINT_RESULT", "")        # SUCCESS | FAILED | SKIPPED | HALTED | INFRA_ERROR | PARTIAL
 PR_NUMBER    = os.environ.get("SPRINT_PR_NUMBER", "")
 HALT_REASON  = os.environ.get("SPRINT_HALT_REASON", "")
 EXISTING_PR  = os.environ.get("SPRINT_EXISTING_PR", "")
@@ -49,6 +49,17 @@ elif RESULT == "FAILED":
     status_line  = "❌ **Run failed** — infrastructure or code error"
     action_line  = f"**Your action:** Check the [run logs]({run_url}). If this keeps happening, tell Copilot: 'The sprint is failing, please investigate'."
     label_to_set = "sprint:halted"
+
+elif RESULT == "INFRA_ERROR":
+    status_line  = "⚠️ **API infrastructure failure** — all tasks timed out or hit rate limits"
+    action_line  = (
+        "**Your action: None required.** This is NOT a spec gap. "
+        "The Anthropic API calls timed out or were rate-limited. "
+        "The next scheduled cron run (within 3 hours) will retry all tasks automatically. "
+        f"If this happens 3 runs in a row, tell Copilot: 'sprint is stuck on INFRA_ERROR'. "
+        f"[View run logs]({run_url})"
+    )
+    label_to_set = "sprint:waiting"  # not halted — auto-retry, no human action needed
 
 else:
     status_line  = f"ℹ️ Status: {RESULT or 'unknown'}"
