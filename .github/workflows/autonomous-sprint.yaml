@@ -98,14 +98,16 @@ jobs:
           done
 
           # 2. Required GitHub labels exist (absence caused run #24/#25 failures)
+          # Security Architect note: gh label list returns only label names — no secrets,
+          # no user data, no repo content. GITHUB_TOKEN read-only scope for this call.
           for label in "tier:2-feature" "status:pr-open" "awaiting:review" \
                        "sprint:running" "sprint:waiting" "founder-action-needed"; do
             EXISTS=$(gh label list --repo "$GITHUB_REPOSITORY" --json name \
-              --jq ".[] | select(.name==\"$label\") | .name" 2>/dev/null || echo "")
+              --jq ".[] | select(.name==\"$label\") | .name" 2>/dev/null | head -1 || echo "")
             if [ -n "$EXISTS" ]; then
               echo "  ✅ label: $label"
             else
-              echo "  ❌ MISSING LABEL: $label (run scripts/setup-labels.sh)"
+              echo "  ❌ MISSING LABEL: $label"
               FAILURES=$((FAILURES+1))
             fi
           done

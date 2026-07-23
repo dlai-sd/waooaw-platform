@@ -1011,23 +1011,90 @@ def test_pipeline_scripts_carry_constitutional_annotation():
 ## CCT-PIPE-02 — Sprint State Machine Coherence After Merge
 
 **Authority:** C-059 (Traceability), C-066 Tier 2A (autonomous sprint cycle), EA review 2026-07-23
-**Constitutional Principle:** After a sprint PR is merged to main, the SPRINT_STATE_MACHINE in `PROJECT_STATE.md` must reflect the completed sprint: `sprint_status=DONE` (or advanced to next sprint), `tasks_remaining=[]` for the completed sprint. An infinite loop where a completed sprint re-executes on every cron cycle is a constitutional violation of C-059 (every action must trace to a valid, unconsumed task).
-**Blocking:** Every PR that touches `scripts/autonomous_sprint_reviewer.py` — ensures the advancement step is present.
-**Implementation:** `tests/constitutional/pipeline/test_cct_pipe_02.py` (to be written in WC-018)
-**Owner for implementation:** QA Office.
+**QA sign-off:** ✅ APPROVED 2026-07-23 (QA Office — spec is complete and testable)
+**Constitutional Principle:** After a sprint PR is merged to main, the SPRINT_STATE_MACHINE must have `tasks_remaining` populated for the NEXT sprint and `tasks_done: []` reset. An infinite loop where a completed sprint re-executes is a C-059 traceability violation — the agent executes tasks it has no valid trace to.
+**Blocking:** Every PR touching `scripts/autonomous_sprint_reviewer.py` or `scripts/sprint_state.py`.
+**Implementation:** `tests/constitutional/pipeline/test_cct_pipe_02.py` (Platform IT Expert — current sprint)
 
 ```python
-# CCT-PIPE-02 — specification (not yet implemented — target: WC-018)
-# Constitutional basis: C-059, C-066
+# CCT-PIPE-02 — Sprint State Machine Coherence
+# Location: tests/constitutional/pipeline/test_cct_pipe_02.py
+# constitutional_basis: C-059 (Traceability), C-066 Tier 2A
+# QA sign-off: 2026-07-23
 
-def test_sprint_advancement_after_simulated_merge():
-    """CCT-PIPE-02: After sprint_state.py advance, tasks_remaining is populated
-    for next sprint and tasks_done is reset to []."""
-    import subprocess, json
-    from pathlib import Path
-    # Simulate: run advance with a test PROJECT_STATE.md
-    # Assert: tasks_remaining has WC-012 tasks, not WC-011 tasks
-    # Assert: current_sprint = WC-012, sprint_status = READY
-    # (full test implementation in WC-018)
-    pass
+import sys
+import pytest
+from pathlib import Path
+REPO_ROOT = Path(__file__).parent.parent.parent.parent
+sys.path.insert(0, str(REPO_ROOT / "scripts"))
+
+from sprint_state import SPRINT_TASK_MANIFEST
+
+def test_sprint_task_manifest_covers_all_planned_sprints():
+    """CCT-PIPE-02a: SPRINT_TASK_MANIFEST must cover WC-011 through WC-018.
+    If a sprint exists in the plan but not in the manifest, advance() will
+    set tasks_remaining=[] and the sprint will skip all tasks silently."""
+    for sprint_num in range(11, 19):
+        sprint = f"WC-0{sprint_num:02d}"
+        assert sprint in SPRINT_TASK_MANIFEST, \
+            f"{sprint} missing from SPRINT_TASK_MANIFEST — infinite loop risk"
+        assert len(SPRINT_TASK_MANIFEST[sprint]) > 0, \
+            f"{sprint} has empty task list — all tasks would be skipped"
+
+def test_sprint_task_manifest_task_ids_are_valid_format():
+    """CCT-PIPE-02b: All task IDs must follow WC-NNN-NN format."""
+    import re
+    pattern = re.compile(r'^WC\d{3}-\d{2}$')
+    for sprint, tasks in SPRINT_TASK_MANIFEST.items():
+        for task in tasks:
+            assert pattern.match(task), \
+                f"Invalid task ID format: {task} in {sprint} (expected WC###-##)"
+
+def test_advance_populates_correct_tasks_for_next_sprint(tmp_path):
+    """CCT-PIPE-02c: After advance(), tasks_remaining matches manifest for next sprint."""
+    import re, shutil
+    from sprint_state import SPRINT_TASK_MANIFEST
+
+    # Build a minimal PROJECT_STATE.md with WC-011 as current sprint
+    state_file = tmp_path / "PROJECT_STATE.md"
+    state_file.write_text("""## SPRINT_STATE_MACHINE
+```yaml
+autonomous_halt: false
+platform_phase: IMPLEMENTATION
+current_sprint: WC-011
+sprint_ib_item: IB-009
+sprint_status: READY
+branch: ib/009/infra-foundation
+last_attempt_utc: ""
+last_attempt_result: ""
+consecutive_failures: 0
+tasks_done: []
+tasks_remaining:
+  - WC011-01
+current_task: ""
+current_task_started_utc: ""
+next_sprint: WC-012
+next_sprint_ib_item: IB-009
+blocker: ""
+blocker_raised_utc: ""
+```
+""")
+    # Patch STATE_FILE to use tmp file, call advance
+    import sprint_state as ss
+    original = ss.STATE_FILE
+    ss.STATE_FILE = state_file
+    try:
+        import argparse
+        args = argparse.Namespace(current="WC-011", ib="IB-009")
+        ss.cmd_advance(args)
+        result = state_file.read_text()
+        # After advance: current_sprint should be WC-012
+        assert "current_sprint: WC-012" in result, "current_sprint not advanced"
+        # tasks_remaining should contain WC-012 tasks from manifest
+        for task in SPRINT_TASK_MANIFEST["WC-012"]:
+            assert task in result, f"tasks_remaining missing {task} after advance"
+        # sprint_status should be READY for next sprint
+        assert "sprint_status: READY" in result
+    finally:
+        ss.STATE_FILE = original
 ```
