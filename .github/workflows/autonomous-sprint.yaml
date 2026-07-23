@@ -22,7 +22,7 @@ name: Autonomous Sprint Agent
 
 on:
   schedule:
-    - cron: '0 */2 * * *'
+    - cron: '0 */6 * * *'    # Every 6 hours (was every 2h — reduced, G6 fix)
   workflow_dispatch:
     inputs:
       force_task:
@@ -34,6 +34,18 @@ on:
         required: false
         type: boolean
         default: false
+
+# G1 FIX: Prevent overlapping runs. New cron-triggered run waits for running sprint.
+# cancel-in-progress: false — never kill a running sprint mid-task.
+concurrency:
+  group: autonomous-sprint-${{ github.ref }}
+  cancel-in-progress: false
+
+# OIDC permissions for Azure Key Vault secret fetch (G2 fix)
+permissions:
+  id-token: write      # Required for Azure OIDC login
+  contents: write      # git push
+  pull-requests: write # PR create + review
 
 env:
   AUTONOMOUS_SPRINT_AGENT: 'true'
@@ -193,7 +205,43 @@ jobs:
           git config user.name  "WAOOAW AI Agent - Platform IT Expert"
           git config user.email "platform-it-expert@waooaw.ai"
 
+      # G2 FIX: Login to Azure via OIDC then fetch all secrets from Key Vault
+      # No long-lived credentials stored anywhere — 5-minute OIDC token only
+      - name: Login to Azure (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id:       ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id:       ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Fetch secrets from Azure Key Vault
+        id: kv_secrets
+        uses: azure/get-keyvault-secrets@v1
+        with:
+          keyvault: ${{ vars.AZURE_KEYVAULT_NAME }}
+          secrets: 'ANTHROPIC-API-KEY, GH-APP-ID, GH-APP-INSTALLATION-ID, GH-APP-PRIVATE-KEY'
+
+      # G3 FIX: Skip execution if an open PR already exists for this task
+      # Prevents duplicate PRs when a previous run's PR is still open/unmerged
+      - name: Check for existing open PR (G3 — duplicate prevention)
+        id: pr_check
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TASK_ID: ${{ needs.preflight.outputs.task_id }}
+        run: |
+          EXISTING=$(gh pr list --repo "$GITHUB_REPOSITORY" --state open \
+            --search "$TASK_ID in:title" --json number --jq '.[0].number // empty' 2>/dev/null || echo "")
+          if [ -n "$EXISTING" ]; then
+            echo "skip=true"  >> "$GITHUB_OUTPUT"
+            echo "existing_pr=$EXISTING" >> "$GITHUB_OUTPUT"
+            echo "⚠️  PR #$EXISTING already open for $TASK_ID — skipping. Waiting for review."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            echo "✅ No open PR for $TASK_ID — proceeding."
+          fi
+
       - name: Download sprint index artifact
+        if: steps.pr_check.outputs.skip != 'true'
         uses: actions/download-artifact@v4
         with:
           name: sprint-context-index
@@ -201,16 +249,40 @@ jobs:
 
       - name: Run autonomous sprint agent
         id: runner
+        if: steps.pr_check.outputs.skip != 'true'
         env:
-          GITHUB_TOKEN:  ${{ secrets.GITHUB_TOKEN }}
-          FORCE_TASK:    ${{ inputs.force_task || '' }}
-          DRY_RUN:       ${{ inputs.dry_run || 'false' }}
-          GITHUB_REPO:   ${{ github.repository }}
-          GITHUB_RUN_ID: ${{ github.run_id }}
-          # FinOps Pattern 3: model hint from preflight — runner logs this for observability
+          GITHUB_TOKEN:      ${{ secrets.GITHUB_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ steps.kv_secrets.outputs.ANTHROPIC-API-KEY }}
+          FORCE_TASK:        ${{ inputs.force_task || '' }}
+          DRY_RUN:           ${{ inputs.dry_run || 'false' }}
+          GITHUB_REPO:       ${{ github.repository }}
+          GITHUB_RUN_ID:     ${{ github.run_id }}
           SPRINT_MODEL_HINT: ${{ needs.preflight.outputs.model_hint }}
           SPRINT_TASK_ID:    ${{ needs.preflight.outputs.task_id }}
         run: python3 scripts/autonomous_sprint_runner.py
+
+      # G7 FIX: Human-readable summary — visible at Actions tab without reading logs
+      - name: Write run summary (G7 — status visibility)
+        if: always()
+        env:
+          TASK_ID:     ${{ needs.preflight.outputs.task_id }}
+          SKIP:        ${{ steps.pr_check.outputs.skip }}
+          EXISTING_PR: ${{ steps.pr_check.outputs.existing_pr }}
+          PR_NUMBER:   ${{ steps.runner.outputs.pr_number }}
+          RESULT:      ${{ steps.runner.outputs.result }}
+        run: |
+          echo "## 🤖 WAOOAW Autonomous Sprint" >> $GITHUB_STEP_SUMMARY
+          echo "| | |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| Task | \`$TASK_ID\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Time | $(date -u '+%Y-%m-%d %H:%M UTC') |" >> $GITHUB_STEP_SUMMARY
+          if [ "$SKIP" = "true" ]; then
+            echo "| Status | ⏸ Waiting — PR #$EXISTING_PR open, awaiting review/merge |" >> $GITHUB_STEP_SUMMARY
+          elif [ "$RESULT" = "SUCCESS" ]; then
+            echo "| Status | ✅ PR #$PR_NUMBER opened — awaiting review |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| Status | ❌ Failed — see job logs |" >> $GITHUB_STEP_SUMMARY
+          fi
 
   # ── Job 2: PR Review (PR Review hat) ─────────────────────────────────────
   # C-065: This job is the REVIEWER. Uses REVIEW_APP_TOKEN (different identity).
@@ -234,15 +306,28 @@ jobs:
       - name: Install dependencies
         run: pip install requests
 
+      - name: Login to Azure (OIDC) and fetch reviewer credentials
+        uses: azure/login@v2
+        with:
+          client-id:       ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id:       ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Fetch reviewer secrets from Key Vault
+        id: kv_review
+        uses: azure/get-keyvault-secrets@v1
+        with:
+          keyvault: ${{ vars.AZURE_KEYVAULT_NAME }}
+          secrets: 'GH-APP-ID, GH-APP-INSTALLATION-ID, GH-APP-PRIVATE-KEY, ANTHROPIC-API-KEY'
+
       - name: Run PR review
         env:
-          # GA-06: REVIEW_APP_TOKEN must be a GitHub App token (different from GITHUB_TOKEN).
-          # GitHub enforces: cannot approve a PR using the same token that opened it.
-          # Until provisioned: falls back to advisory comment via GITHUB_TOKEN.
-          REVIEW_TOKEN:  ${{ secrets.REVIEW_APP_TOKEN || secrets.GITHUB_TOKEN }}
-          GITHUB_TOKEN:  ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER:     ${{ needs.execute.outputs.pr_number }}
-          SPRINT:        ${{ needs.execute.outputs.sprint }}
-          GITHUB_REPO:   ${{ github.repository }}
-          HAS_REVIEW_TOKEN: ${{ secrets.REVIEW_APP_TOKEN != '' }}
+          GITHUB_TOKEN:         ${{ secrets.GITHUB_TOKEN }}
+          GH_APP_ID:            ${{ steps.kv_review.outputs.GH-APP-ID }}
+          GH_APP_INSTALLATION_ID: ${{ steps.kv_review.outputs.GH-APP-INSTALLATION-ID }}
+          GH_APP_PRIVATE_KEY:   ${{ steps.kv_review.outputs.GH-APP-PRIVATE-KEY }}
+          ANTHROPIC_API_KEY:    ${{ steps.kv_review.outputs.ANTHROPIC-API-KEY }}
+          PR_NUMBER:            ${{ needs.execute.outputs.pr_number }}
+          SPRINT:               ${{ needs.execute.outputs.sprint }}
+          GITHUB_REPO:          ${{ github.repository }}
         run: python3 scripts/autonomous_sprint_reviewer.py
