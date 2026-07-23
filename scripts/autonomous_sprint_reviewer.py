@@ -23,10 +23,11 @@ C-065: This script is the REVIEWER. The runner is the author. Different tokens e
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 import sys
 import time
-import textwrap
+from datetime import date
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).parent.parent
@@ -76,6 +77,48 @@ def generate_installation_token(app_id: str, installation_id: str, private_key_p
     except Exception as e:
         print(f"  WARN: Token generation error: {e}")
         return None
+
+
+def bump_version(sprint: str) -> tuple[str, str]:
+    """
+    Compute new platform version from sprint string.
+    Scheme: MAJOR.WC_SPRINT_NUMBER.0  (e.g. WC-012 → 1.12.0)
+    MAJOR stays fixed unless a platform gate flip occurs (SPEC→IMPLEMENTATION→LIVE).
+    Returns (old_version, new_version).
+    """
+    version_file = REPO_ROOT / "VERSION"
+    old = version_file.read_text().strip() if version_file.exists() else "1.0.0"
+    major = int(old.split(".")[0])
+    # Extract sprint number: "WC-012" → 12, "WC-018" → 18
+    match = re.search(r"WC-(\d+)", sprint)
+    sprint_num = int(match.group(1)) if match else int(old.split(".")[1]) + 1
+    new = f"{major}.{sprint_num}.0"
+    version_file.write_text(f"{new}\n")
+    return old, new
+
+
+def update_changelog(sprint: str, new_version: str) -> None:
+    """
+    Prepend a version entry to CHANGELOG.md after sprint merge.
+    Inserts after the changelog header block (after the first `---` separator).
+    """
+    changelog = REPO_ROOT / "CHANGELOG.md"
+    today = date.today().isoformat()
+    entry = (
+        f"\n## [{new_version}] — {today}\n\n"
+        f"### Sprint Merge\n"
+        f"- **{sprint}** merged to main — autonomous sprint complete\n"
+    )
+    if changelog.exists():
+        content = changelog.read_text()
+        idx = content.find("\n---\n")
+        if idx != -1:
+            content = content[: idx + 5] + entry + content[idx + 5 :]
+        else:
+            content = content + entry
+        changelog.write_text(content)
+    else:
+        changelog.write_text(f"# Changelog\n{entry}")
 
 
 def main() -> int:
@@ -169,23 +212,29 @@ def main() -> int:
                             "--repo", github_repo], env={"GH_TOKEN": effective_token})
         if merge_result.returncode == 0:
             print(f"  ✅ PR #{pr_number} MERGED to main (C-066 Tier 2A, C-065 GitHub App identity)")
-            run(["git", "fetch", "origin", "main"], check=False)
-            run(["git", "checkout", "main"], check=False)
-            run(["git", "pull", "--rebase", "origin", "main"], check=False)  # P1-03: rebase prevents race condition
+            run(["git", "fetch", "origin", "main"])
+            run(["git", "checkout", "main"])
+            run(["git", "pull", "--rebase", "origin", "main"])  # P1-03: rebase prevents race condition
+
+            # Version bump — MAJOR.WC_SPRINT_NUMBER.0 (e.g. WC-012 → 1.12.0)
+            old_ver, new_ver = bump_version(sprint)
+            update_changelog(sprint, new_ver)
+            print(f"  📦 Version bump: {old_ver} → {new_ver}")
+
             adv = run([
                 "python3", "scripts/sprint_state.py",
                 "advance", "--current", sprint, "--ib", "IB-009"
-            ], check=False, capture=True)
+            ])
             print(adv.stdout.strip() if adv.stdout else "  (no advance output)")
-            run(["git", "add", "constitution/PROJECT_STATE.md"], check=False)
-            diff = run(["git", "diff", "--cached", "--quiet"], check=False)
+            run(["git", "add", "constitution/PROJECT_STATE.md", "VERSION", "CHANGELOG.md"])
+            diff = run(["git", "diff", "--cached", "--quiet"])
             if diff.returncode != 0:
                 run(["git", "commit", "-m",
-                     f"chore(pmo): {sprint} DONE — advance to next sprint\n\n"
-                     f"IB: IB-009\nConstitutional: C-066 Tier 2A (autonomous sprint cycle)"], check=False)
-                push = run(["git", "push", "origin", "main"], check=False)
+                     f"chore(release): {sprint} DONE — v{new_ver}\n\n"
+                     f"IB: IB-009\nConstitutional: C-066 Tier 2A (autonomous sprint cycle)"])
+                push = run(["git", "push", "origin", "main"])
                 if push.returncode == 0:
-                    print(f"  ✅ Sprint state advanced on main")
+                    print(f"  ✅ Sprint state advanced on main — v{new_ver} released")
                 else:
                     print(f"  WARN: Advance push failed (will retry next run): {push.stderr[:100]}")
         else:
