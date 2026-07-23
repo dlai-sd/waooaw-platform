@@ -277,7 +277,7 @@ def call_llm(task_id: str, task_description: str, spec_content: str,
         model_id = os.environ.get("SPRINT_LLM_MODEL", "claude-sonnet-4-6")
         payload = {
             "model": model_id,
-            "max_tokens": 8000,
+            "max_tokens": 16000,  # Raised from 8000 — scaffold tasks need >8k (proto alone ~2500 tokens)
             "temperature": 0,
             "system": CONSTITUTIONAL_SYSTEM_PROMPT,
             "messages": [{"role": "user", "content": user_prompt}],
