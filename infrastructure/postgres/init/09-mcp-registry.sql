@@ -405,4 +405,4 @@ WHERE cms.status IN ('ERROR', 'FOUNDER_ACTION')
 COMMENT ON VIEW institutional.mcp_sla_breaches IS
     'C-074: SLA breach detection. Platform Operations checks this every 5 min.
      Any row = immediate Steward notification + constitutional incident.';
-
+-- Validated: WC-011 Sprint 011 (infrastructure check only)
