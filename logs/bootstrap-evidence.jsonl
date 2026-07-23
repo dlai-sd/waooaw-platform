@@ -24,3 +24,8 @@
 {"event": "spec_gap_halt", "timestamp": "2026-07-23T18:28:16.845662+00:00", "run_id": "30032411449", "stub_mode": true, "task": "WC012-04", "issue": "16", "gap": "WC012-04 failed validation after 3 LLM attempts. Last error: Build/syntax validation failed for file"}
 {"event": "SPRINT_TASKS_EXECUTED", "timestamp": "2026-07-23T18:28:16.845799+00:00", "run_id": "30032411449", "stub_mode": true, "sprint": "WC-012", "tasks_done": []}
 {"event": "AUTONOMOUS_SPRINT_STARTED", "timestamp": "2026-07-23T18:33:24.767381+00:00", "run_id": "30034173000", "stub_mode": true, "sprint": "WC-012", "branch": "ib/009/sprint-012", "tasks": ["WC012-01", "WC012-02", "WC012-03", "WC012-04"]}
+{"event": "spec_gap_halt", "timestamp": "2026-07-23T18:39:25.898008+00:00", "run_id": "30034173000", "stub_mode": true, "task": "WC012-01", "issue": "18", "gap": "WC012-01 failed validation after 3 LLM attempts. Last error: "}
+{"event": "spec_gap_halt", "timestamp": "2026-07-23T18:45:27.066293+00:00", "run_id": "30034173000", "stub_mode": true, "task": "WC012-02", "issue": "19", "gap": "WC012-02 failed validation after 3 LLM attempts. Last error: "}
+{"event": "spec_gap_halt", "timestamp": "2026-07-23T18:51:28.100961+00:00", "run_id": "30034173000", "stub_mode": true, "task": "WC012-03", "issue": "20", "gap": "WC012-03 failed validation after 3 LLM attempts. Last error: "}
+{"event": "spec_gap_halt", "timestamp": "2026-07-23T18:57:29.021692+00:00", "run_id": "30034173000", "stub_mode": true, "task": "WC012-04", "issue": "21", "gap": "WC012-04 failed validation after 3 LLM attempts. Last error: "}
+{"event": "SPRINT_TASKS_EXECUTED", "timestamp": "2026-07-23T18:57:29.021838+00:00", "run_id": "30034173000", "stub_mode": true, "sprint": "WC-012", "tasks_done": []}
