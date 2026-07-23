@@ -306,8 +306,26 @@ def call_llm(task_id: str, task_description: str, spec_content: str,
             print(f"  LLM: {task_id} → {tokens_in} in / {tokens_out} out tokens")
             record_evidence("llm_call", task=task_id, tokens_in=tokens_in, tokens_out=tokens_out)
             return text
+    except urllib.error.HTTPError as e:
+        body = e.read(300).decode("utf-8", errors="replace")
+        if e.code == 429:
+            print(f"  INFRA: HTTP 429 rate limit for {task_id} — caller should retry with backoff")
+            raise RuntimeError(f"RATE_LIMIT:{e.code}:{body}") from e
+        elif e.code >= 500:
+            print(f"  INFRA: HTTP {e.code} server error for {task_id}")
+            raise RuntimeError(f"API_SERVER_ERROR:{e.code}:{body}") from e
+        else:
+            print(f"  WARN: HTTP {e.code} for {task_id}: {body}")
+            return None
+    except TimeoutError:
+        print(f"  INFRA: API read timed out after {api_timeout}s for {task_id}")
+        raise RuntimeError(f"API_TIMEOUT:{api_timeout}s") from None
     except Exception as e:
-        print(f"  WARN: LLM call failed for {task_id}: {e}")
+        err = str(e)
+        if "timed out" in err.lower() or "timeout" in err.lower():
+            print(f"  INFRA: API read timed out for {task_id}: {err}")
+            raise RuntimeError(f"API_TIMEOUT:{err}") from e
+        print(f"  WARN: LLM call failed for {task_id}: {err}")
         return None
 
 
@@ -419,6 +437,7 @@ def execute_with_llm(task_id: str, task_description: str, spec_sections: dict,
     spec_content = "\n".join(spec_lines)
 
     failure_context = ""
+    infra_failures = 0  # count of transient API failures (timeout, rate limit, server error)
     for attempt in range(1, 4):
         print(f"\n── {task_id} (attempt {attempt}/3) ──")
 
@@ -426,8 +445,24 @@ def execute_with_llm(task_id: str, task_description: str, spec_sections: dict,
         if failure_context:
             prompt_with_context += f"\n\n# Previous attempt failed:\n{failure_context}\nFix the issues above."
 
-        response = call_llm(task_id, task_description, prompt_with_context,
-                           constitutional_check, model_hint, max_tokens)
+        try:
+            response = call_llm(task_id, task_description, prompt_with_context,
+                               constitutional_check, model_hint, max_tokens)
+        except RuntimeError as infra_err:
+            err_str = str(infra_err)
+            infra_failures += 1
+            if err_str.startswith("API_TIMEOUT"):
+                print(f"  INFRA_TIMEOUT on attempt {attempt} — NOT a spec gap. Retrying in 30s.")
+            elif err_str.startswith("RATE_LIMIT"):
+                print(f"  RATE_LIMIT on attempt {attempt} — backing off 60s before retry.")
+                import time; time.sleep(60)
+            elif err_str.startswith("API_SERVER_ERROR"):
+                print(f"  API_SERVER_ERROR on attempt {attempt} — retrying in 30s.")
+            else:
+                print(f"  INFRA_ERROR on attempt {attempt}: {err_str}")
+            import time; time.sleep(30)
+            continue
+
         if not response:
             print(f"  LLM call returned no response on attempt {attempt}")
             continue
@@ -458,10 +493,24 @@ def execute_with_llm(task_id: str, task_description: str, spec_sections: dict,
             )
             print(f"  Validation failed on attempt {attempt} — retrying with failure context")
 
-    # All 3 attempts exhausted
+    # All 3 attempts exhausted — categorize the failure type
+    if infra_failures == 3:
+        # ALL failures were infrastructure (timeout/rate-limit/server error) — NOT a spec gap
+        # Increment consecutive_failures and let next cron retry automatically
+        print(f"  ⚠️  INFRA_FAILURE: {task_id} — all 3 attempts were API failures (timeout/rate-limit).")
+        print(f"  This is NOT a spec gap. No issue created. Next cron run will retry automatically.")
+        update_sprint_state(last_attempt_result="INFRA_ERROR")
+        return False
+    elif infra_failures > 0:
+        # Mixed: some infra failures + some build failures — treat as spec gap but note it
+        gap_desc = (f"{task_id} failed after 3 attempts ({infra_failures} API timeouts, "
+                    f"{3 - infra_failures} build failures). Last build error: {failure_context[:200]}")
+    else:
+        gap_desc = f"{task_id} failed validation after 3 LLM attempts. Last error: {failure_context[:300]}"
+
     flag_spec_gap(
         task_id=task_id,
-        gap_description=f"{task_id} failed validation after 3 LLM attempts. Last error: {failure_context[:300]}",
+        gap_description=gap_desc,
         affected_spec=list(spec_sections.keys())[0] if spec_sections else "unknown",
         constitutional_basis="C-059 (Traceability — implementation must match spec), C-076 (Coverage)"
     )
