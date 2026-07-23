@@ -106,32 +106,29 @@ platform_phase: IMPLEMENTATION  # SPEC | IMPLEMENTATION | LIVE
                               # SPEC = design, specs, planning only. No src/ code allowed.
                               # Agents MUST check this field before any implementation action.
 
-current_sprint: WC-011
+current_sprint: WC-012
 sprint_ib_item: IB-009
-sprint_status: IN_PROGRESS          # READY — platform_phase=IMPLEMENTATION, all pipeline fixes applied
-branch: ib/009/infra-foundation
+sprint_status: READY
+branch: ib/009/ce-skeleton
 
-last_attempt_utc: 2026-07-23T13:36:12.267462+00:00    # ISO 8601 — set by autonomous-sprint.yaml on each run
-last_attempt_result: SUCCESS       # SUCCESS | PARTIAL | FAILED | SKIPPED
-consecutive_failures: 0       # Resets to 0 on any SUCCESS. Halt triggered at 3.
+last_attempt_utc: ""
+last_attempt_result: ""
+consecutive_failures: 0
 
 tasks_done: []
 tasks_remaining:
-  - WC011-01   # Validate docker-compose.yml
-  - WC011-02   # Validate DB migration scripts 01-09
-  - WC011-03   # Validate Keycloak realm import
-  - WC011-04   # Create src/ directory scaffold
-  - WC011-05   # Verify setup.sh and get-dev-token.sh
-  - WC011-07   # GitHub Actions secrets documentation
-  # WC011-06 BLOCKED: awaiting Azure SP (Terraform apply)
+  - WC012-01   # CE project scaffold (.NET 9 gRPC)
+  - WC012-02   # ValidateAction RPC + unit tests ≥90%
+  - WC012-03   # Evidence First record + CCT-EF-01
+  - WC012-04   # Emergency Stop signal + CCT-HO-01
 
-current_task:               # Set to task ID when execution is active
+current_task: ""
 current_task_started_utc: ""
 
-next_sprint: WC-012           # Activates automatically when sprint_status = DONE
-next_sprint_ib_item: IB-009   # Same IB item — Sprint 012 is CE skeleton
+next_sprint: WC-013
+next_sprint_ib_item: IB-009
 
-blocker: ""                   # CB-NNN reference if blocked
+blocker: ""
 blocker_raised_utc: ""
 ```
 
