@@ -39,7 +39,8 @@ STATE_FILE = REPO_ROOT / "constitution" / "PROJECT_STATE.md"
 INDEX_OUTPUT = REPO_ROOT / "sprint-context" / "index.json"
 
 # ── Token budget constants (SIM-022 GAP-SIM-01/02 fix) ───────────────────────
-FREE_MODEL_CONTEXT  = 8_192   # llama-3.1-8b / phi-3.5-mini hard context limit
+FREE_MODEL_CONTEXT      = 8_192    # llama-3.1-8b / phi-3.5-mini hard context limit
+REASONING_MODEL_CONTEXT = 100_000  # Claude Sonnet 4.6 — effectively unlimited for our tasks
 RESERVED_FOR_BOOT   = 3_500   # AGENT-ENTRY.md always loaded first (~3.4K tokens)
 MAX_TASK_CONTEXT    = 4_500   # hard cap for all spec_files combined
 MAX_TOKENS_PER_FILE = 1_500   # single file triggers section targeting above this
@@ -156,6 +157,100 @@ TASK_CONTEXT_MAP: dict[str, dict] = {
         "relevant_adrs": ["ADR-001", "ADR-011"],
         "constitutional_check": "CCT-EF-01: evidence recorded BEFORE success returned. Append-only ledger (C-007/C-027).",
     },
+    # WC-013: Business Platform skeleton
+    "WC013-01": {
+        "description": "BP project scaffold + OpenAPI spec alignment",
+        "model_hint": "reasoning",
+        "spec_sections": {
+            "architecture/reference/components/business-platform.md": "full",
+            "architecture/reference/api-specs/business-platform.openapi.yaml": "full",
+            "standards/CODING-STANDARDS.md": "§2.1 Tools,§7.5 Code Coverage",
+        },
+        "relevant_claims": ["C-005", "C-059", "C-072", "C-076"],
+        "relevant_adrs": ["ADR-002", "ADR-003", "ADR-006"],
+        "constitutional_check": "Every endpoint must call CE.ValidateAction before executing (C-023). Spec-first (ADR-002).",
+    },
+    "WC013-02": {
+        "description": "Tenant isolation middleware + JWT validation",
+        "model_hint": "reasoning",
+        "spec_sections": {
+            "architecture/reference/security/security-architecture.md": "§2 Identity and Authentication",
+            "architecture/reference/components/business-platform.md": "§Tenant Isolation",
+        },
+        "relevant_claims": ["C-005", "C-026", "C-059", "C-076"],
+        "relevant_adrs": ["ADR-003", "ADR-008"],
+        "constitutional_check": "C-005: tenant_id from JWT → SET LOCAL app.tenant_id. RLS enforced at DB layer.",
+    },
+    # WC-014: Professional Runtime skeleton
+    "WC014-01": {
+        "description": "PR project scaffold + Temporal worker",
+        "model_hint": "reasoning",
+        "spec_sections": {
+            "architecture/reference/components/professional-runtime.md": "full",
+            "architecture/reference/temporal-workflow-definitions.md": "§PAASSessionWorkflow",
+        },
+        "relevant_claims": ["C-001", "C-024", "C-025", "C-059", "C-076"],
+        "relevant_adrs": ["ADR-005", "ADR-015", "ADR-018"],
+        "constitutional_check": "PAAS is the exclusive execution model (C-025). Emergency Stop path has NO blocking I/O.",
+    },
+    "WC014-02": {
+        "description": "Emergency Stop WebSocket + CCT-HO-02",
+        "model_hint": "reasoning",
+        "spec_sections": {
+            "architecture/reference/api-specs/emergency-stop-ws.md": "full",
+            "architecture/reference/graceful-degradation.md": "§Scenario 9 Emergency Stop",
+        },
+        "relevant_claims": ["C-001", "C-024", "C-079", "C-059", "C-076"],
+        "relevant_adrs": ["ADR-004", "ADR-018"],
+        "constitutional_check": "C-001: ≤250ms P99 absolute. C-079: if CE unreachable, local halt executes immediately.",
+    },
+    # WC-015: AI Runtime skeleton
+    "WC015-01": {
+        "description": "AIR project scaffold + PSE routing",
+        "model_hint": "reasoning",
+        "spec_sections": {
+            "architecture/reference/components/ai-runtime.md": "§0 Provider Abstraction Layer,§1 LLM Gateway",
+            "adr/ADR-029-multi-provider-llm-strategy.md": "§PSE Rule Layer",
+        },
+        "relevant_claims": ["C-051", "C-059", "C-072", "C-076"],
+        "relevant_adrs": ["ADR-024", "ADR-028", "ADR-029"],
+        "constitutional_check": "PSE: LOCAL tier for 60-70% requests (C-051). ADR-029 rules PSE-R01 to PSE-R08.",
+    },
+    "WC015-02": {
+        "description": "LLM dispatch + PII Scrubber (C-078) + real Ollama inference",
+        "model_hint": "reasoning",
+        "spec_sections": {
+            "architecture/reference/components/ai-runtime.md": "§7 PII Scrubber",
+            "architecture/reference/pii-masking-pipeline.md": "full",
+            "adr/ADR-019-rag-architecture.md": "Amendment 1,Amendment 2",
+        },
+        "relevant_claims": ["C-063", "C-078", "C-059", "C-076"],
+        "relevant_adrs": ["ADR-019", "ADR-029"],
+        "constitutional_check": "C-078 MANDATORY: PII Scrubber fires BEFORE every external LLM dispatch. Type-system enforcement.",
+    },
+    # WC-016: Web Portal skeleton
+    "WC016-01": {
+        "description": "Next.js 14 App Router scaffold + landing page",
+        "model_hint": "reasoning",
+        "spec_sections": {
+            "architecture/reference/ux/constitutional-ux-vocabulary.md": "§Navigation,§Performance",
+            "standards/CODING-STANDARDS.md": "§1.3 TypeScript",
+        },
+        "relevant_claims": ["C-009", "C-059", "C-072", "C-076"],
+        "relevant_adrs": ["ADR-017"],
+        "constitutional_check": "Emergency Stop button must be visible on ALL authenticated routes (C-001). WCAG 2.1 AA.",
+    },
+    # WC-017: DMA live + AS-001
+    "WC017-01": {
+        "description": "Seed DMA v3.0 prompts to DB",
+        "model_hint": "none",
+        "spec_sections": {
+            "architecture/reference/agents/digital-marketing-agent.md": "§Skills Overview",
+        },
+        "relevant_claims": ["C-036", "C-040", "C-059"],
+        "relevant_adrs": [],
+        "constitutional_check": "21 skills in professional.agent_prompts. seed-prompts.py idempotent (can re-run safely).",
+    },
 }
 
 # Global context always injected (condensed — not full corpus)
@@ -253,10 +348,12 @@ def build_index(task_id: str) -> dict:
 
     spec_entries, task_tokens = resolve_spec_sections(context.get("spec_sections", {}))
 
-    # Token budget check
+    # Token budget check — use correct limit based on model_hint
+    model_hint = context.get("model_hint", "reasoning")
+    effective_limit = REASONING_MODEL_CONTEXT if model_hint == "reasoning" else FREE_MODEL_CONTEXT
     global_tokens = sum(estimate_tokens(f) for f in GLOBAL_CONTEXT_FILES)
     total_tokens = global_tokens + task_tokens
-    budget_ok = total_tokens <= FREE_MODEL_CONTEXT
+    budget_ok = total_tokens <= effective_limit
 
     return {
         "generated_utc": datetime.now(timezone.utc).isoformat(),
