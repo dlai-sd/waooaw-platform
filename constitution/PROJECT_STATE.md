@@ -98,12 +98,11 @@ OPTION C — Nothing needed from you until sprint opens first PR
 <!-- Edit ONLY the fields below. Do not alter the block structure. -->
 
 ```yaml
-autonomous_halt: true         # ← HALTED BY FOUNDER 2026-07-22 (C-001 Human Override)
-                              #   Reason: Platform is in SPEC phase. Implementation NOT authorized.
-                              #   Only Yogesh may set this back to false, and only after explicit
-                              #   implementation authorization is recorded in FOUNDER-ACTIONS.md.
+autonomous_halt: false        # ← IMPLEMENTATION AUTHORIZED by Yogesh Khandge 2026-07-23 18:00 IST
+                              #   Authorization: "Yogesh authorizes IB-009 Sprint 011 implementation"
+                              #   Recorded: constitution/PROJECT_STATE.md + FOUNDER-ACTION.md
 
-platform_phase: SPEC          # SPEC | IMPLEMENTATION | LIVE
+platform_phase: IMPLEMENTATION  # SPEC | IMPLEMENTATION | LIVE
                               # SPEC = design, specs, planning only. No src/ code allowed.
                               # Agents MUST check this field before any implementation action.
 
