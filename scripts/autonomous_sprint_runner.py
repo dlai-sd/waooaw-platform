@@ -400,7 +400,14 @@ def validate_written_files(written: list[str]) -> tuple[bool, str]:
                 errors.append(msg)
                 ok = False
                 continue
-            result = run(["dotnet", "build", csproj_dir, "--nologo", "-v", "quiet"],
+            # Pick specific .csproj to avoid MSB1050 (multiple .csproj in dir)
+            if len(csproj_files) > 1:
+                canonical = [f for f in csproj_files if "-" in f.name]
+                build_target = str(canonical[0]) if canonical else str(csproj_files[0])
+                print(f"  WARN: {len(csproj_files)} .csproj found — building {Path(build_target).name}")
+            else:
+                build_target = str(csproj_files[0])
+            result = run(["dotnet", "build", build_target, "--nologo", "-v", "quiet"],
                         check=False, capture=True)
             if result.returncode != 0:
                 # dotnet quiet mode sends errors to stdout, not stderr
