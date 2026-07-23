@@ -16,11 +16,10 @@ services:
       - .:/workspace                    # bind mount for local dev — code changes reflected immediately
       - /var/run/docker.sock:/var/run/docker.sock  # testcontainers: access to Docker daemon
     environment:
-      DATABASE_URL: postgresql://waooaw:${POSTGRES_PASSWORD}@postgres:5432/waooaw_test
+      DATABASE_URL: postgresql://waooaw:${POSTGRES_PASSWORD:-changeme}@postgres:5432/waooaw_test
       PYTHONPATH: /workspace
-    depends_on:
-      postgres:
-        condition: service_healthy
+    # Note: no depends_on postgres — constitutional/pipeline tests don't need DB.
+    # For integration tests that need postgres, run: docker compose --profile test up postgres
     profiles:
       - test                            # only starts when --profile test is specified
     # No ports — test-runner is not a server, it's an on-demand command executor

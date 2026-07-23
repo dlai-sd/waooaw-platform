@@ -367,6 +367,7 @@ def build_index(task_id: str) -> dict:
         # Token budget (SIM-022 GAP-SIM-01/02 fix)
         "token_budget": {
             "free_model_limit": FREE_MODEL_CONTEXT,
+            "effective_limit": effective_limit,
             "global_context_tokens": global_tokens,
             "task_context_tokens": task_tokens,
             "total_tokens": total_tokens,
@@ -431,7 +432,8 @@ def main() -> None:
 
     budget = index["token_budget"]
     print(f"  model_hint: {index['model_hint']}")
-    print(f"  token budget: {budget['total_tokens']:,}/{budget['free_model_limit']:,} tokens "
+    effective_display = budget.get('effective_limit', budget['free_model_limit'])
+    print(f"  token budget: {budget['total_tokens']:,}/{effective_display:,} tokens "
           f"({'OK' if budget['budget_ok'] else 'OVERFLOW — check spec sections'})")
     if budget.get("warning"):
         print(f"  WARNING: {budget['warning']}")
