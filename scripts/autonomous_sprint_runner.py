@@ -293,7 +293,11 @@ def call_llm(task_id: str, task_description: str, spec_content: str,
                 "content-type": "application/json",
             },
         )
-        with urllib.request.urlopen(req, timeout=120) as resp:
+        # Timeout: Claude Sonnet generates ~50 tokens/sec.
+        # Allow 3× the expected generation time as safety margin.
+        # 16000 tokens → 960s expected → 600s floor (API is faster in practice)
+        api_timeout = max(600, (max_tokens // 50) * 3)
+        with urllib.request.urlopen(req, timeout=api_timeout) as resp:
             result = json_mod.loads(resp.read())
             content = result.get("content", [])
             text = "".join(block.get("text", "") for block in content if block.get("type") == "text")
