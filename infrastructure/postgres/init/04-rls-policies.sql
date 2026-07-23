@@ -443,3 +443,4 @@ CREATE POLICY content_assets_tenant_isolation ON business.content_assets
     USING (tenant_id = current_setting('app.tenant_id', TRUE)::UUID);
 GRANT SELECT, INSERT, UPDATE ON business.content_assets TO ai_runtime_app;
 GRANT SELECT, INSERT         ON business.content_assets TO business_app;
+-- Validated: WC-011 Sprint 011 (infrastructure check only)

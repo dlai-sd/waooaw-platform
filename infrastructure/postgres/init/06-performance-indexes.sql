@@ -106,3 +106,4 @@ CREATE INDEX IF NOT EXISTS idx_content_scr_pending
 -- Customer NPS scores: monthly report query
 CREATE INDEX IF NOT EXISTS idx_nps_org_date
     ON business.customer_nps_scores (organisation_id, scored_at DESC);
+-- Validated: WC-011 Sprint 011 (infrastructure check only)
