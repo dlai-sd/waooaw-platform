@@ -108,10 +108,10 @@ platform_phase: IMPLEMENTATION  # SPEC | IMPLEMENTATION | LIVE
 
 current_sprint: WC-011
 sprint_ib_item: IB-009
-sprint_status: READY          # READY — platform_phase=IMPLEMENTATION, all pipeline fixes applied
+sprint_status: IN_PROGRESS          # READY — platform_phase=IMPLEMENTATION, all pipeline fixes applied
 branch: ib/009/infra-foundation
 
-last_attempt_utc: ""    # ISO 8601 — set by autonomous-sprint.yaml on each run
+last_attempt_utc: 2026-07-23T13:19:51.405713+00:00    # ISO 8601 — set by autonomous-sprint.yaml on each run
 last_attempt_result: ""       # SUCCESS | PARTIAL | FAILED | SKIPPED
 consecutive_failures: 0       # Resets to 0 on any SUCCESS. Halt triggered at 3.
 
@@ -125,7 +125,7 @@ tasks_remaining:
   - WC011-07   # GitHub Actions secrets documentation
   # WC011-06 BLOCKED: awaiting Azure SP (Terraform apply)
 
-current_task: ""              # Set to task ID when execution is active
+current_task: WC011-01              # Set to task ID when execution is active
 current_task_started_utc: ""
 
 next_sprint: WC-012           # Activates automatically when sprint_status = DONE
