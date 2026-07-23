@@ -48,3 +48,4 @@ CREATE RULE no_delete_experience_records AS
 -- SELECT rulename, tablename FROM pg_rules
 -- WHERE tablename IN ('evidence_records', 'authority_licenses', 'experience_records')
 -- ORDER BY tablename, rulename;
+-- Validated: WC-011 Sprint 011 (infrastructure check only)

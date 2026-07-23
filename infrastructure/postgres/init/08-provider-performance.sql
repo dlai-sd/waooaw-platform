@@ -262,3 +262,4 @@ COMMENT ON TABLE institutional.quality_metrics IS
     'CI pipeline quality metrics per run. C-071: tracked for Self-Improvement loop. '
     'Self-Improvement Analyst reads weekly; surfaces to Sujay via Steward Assistant. '
     'needs_improvement_proposal=true triggers automatic quality proposal.';
+-- Validated: WC-011 Sprint 011 (infrastructure check only)

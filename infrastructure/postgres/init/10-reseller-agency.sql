@@ -259,3 +259,4 @@ COMMENT ON TABLE business.customer_locations IS
      Each location gets its own GBP, Instagram, and local content.
      All locations share the parent organisation''s brand identity and ad account.
      Agency clients with chains (dental groups, restaurant franchises) need this.';
+-- Validated: WC-011 Sprint 011 (infrastructure check only)

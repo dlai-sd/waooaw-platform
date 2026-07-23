@@ -48,3 +48,4 @@ END $$;
 -- ─── Future migrations go here ──────────────────────────────────────────────
 -- Follow the pattern: DO $$ BEGIN IF EXISTS (...) THEN ALTER TABLE ... END IF; END $$;
 -- Never DROP columns; never ALTER existing column types on constitutional schema tables.
+-- Validated: WC-011 Sprint 011 (infrastructure check only)

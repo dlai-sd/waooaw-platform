@@ -224,3 +224,4 @@ COMMENT ON TABLE professional.trust_ledger IS
     'Source of truth for autonomy tier decisions (G-INSTINCT-09). '
     'Computed by WAOOAW AI Agent — Platform Operations nightly Temporal workflow. '
     'C-002: trust is earned through observable evidence — this table IS that evidence.';
+-- Validated: WC-011 Sprint 011 (infrastructure check only)
