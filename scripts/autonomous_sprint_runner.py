@@ -887,11 +887,15 @@ TASK_HANDLERS = {
             "architecture/reference/components/constitutional-engine.md": "full",
             "architecture/reference/proto/constitutional_service.proto": "full",
             "architecture/reference/dotfiles/constitutional-engine.csproj": "full",
+            "standards/CODING-STANDARDS.md": "§2.0 Project Structure Convention",
         },
         "CRITICAL: copy constitutional-engine.csproj EXACTLY from "
         "architecture/reference/dotfiles/constitutional-engine.csproj — do NOT invent packages. "
         "The correct OTLP exporter is 'OpenTelemetry.Exporter.OpenTelemetryProtocol' "
         "(NOT 'OpenTelemetry.Exporter.Otlp' — that package does not exist on NuGet). "
+        "Follow §2.0 Project Structure Convention from CODING-STANDARDS.md EXACTLY: "
+        "src/constitutional-engine/constitutional-engine.csproj (ONE .csproj, never create a second). "
+        "tests/constitutional-engine.Tests/constitutional-engine.Tests.csproj (test project). "
         "Generate a SELF-CONTAINED scaffold — every type in Program.cs MUST exist in a file "
         "you generate in THIS response. "
         "REQUIRED files in src/constitutional-engine/: "
@@ -915,6 +919,9 @@ TASK_HANDLERS = {
         },
         "Use the .csproj from architecture/reference/dotfiles/constitutional-engine.csproj — "
         "do NOT add extra packages or invent package names. "
+        "Follow §2.0 Project Structure in CODING-STANDARDS.md: "
+        "tests go in tests/constitutional-engine.Tests/ ONLY — "
+        "NEVER create a .csproj inside a subdirectory of tests/. "
         "ValidateAction must return ALLOW/DENY/ESCALATE. Default deny for unknown tools (C-041). "
         "ALL files MUST go in src/constitutional-engine/ only. "
         "Unit tests use xUnit + Moq. CCT-EF-01 must be referenced in test.",
@@ -949,6 +956,9 @@ TASK_HANDLERS = {
         "CRITICAL: copy constitutional-engine.csproj EXACTLY from "
         "architecture/reference/dotfiles/constitutional-engine.csproj — do NOT invent packages. "
         "Temporalio version is 0.1.0-beta1 (NOT beta.34 — that does not exist on NuGet). "
+        "Follow §2.0 Project Structure in CODING-STANDARDS.md: "
+        "NEVER create a second .csproj in src/constitutional-engine/ — one already exists. "
+        "Tests go in tests/constitutional-engine.Tests/ ONLY. "
         "IMPORTANT: ALL files MUST go in src/constitutional-engine/ ONLY. "
         "Add EmergencyStop/ subdirectory INSIDE src/constitutional-engine/. "
         "TriggerEmergencyStop is a gRPC RPC in the CE service — implement as a method on "

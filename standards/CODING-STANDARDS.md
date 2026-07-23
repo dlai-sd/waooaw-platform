@@ -91,7 +91,45 @@ Every file must have a header comment stating purpose and constitutional basis:
 
 ## 2. .NET 9 — Constitutional Engine + Business Platform
 
-### 2.1 Tools (CI-enforced, agents install locally)
+### 2.0 Project Structure Convention (MANDATORY — agent must follow exactly)
+
+Every .NET service follows this layout. Deviating causes `MSB1050` or test discovery failures.
+
+```
+src/{service-name}/                        ← ONE .csproj here, named exactly:
+  {service-name}.csproj                    ← e.g. constitutional-engine.csproj (lowercase-hyphenated)
+  Program.cs
+  Protos/
+    constitutional_service.proto           ← copied from architecture/reference/proto/
+  Services/
+    {Service}Service.cs
+  {Feature}/
+    Models/
+    Services/
+    Data/
+
+tests/{service-name}.Tests/                ← ONE .csproj here, named:
+  {service-name}.Tests.csproj              ← e.g. constitutional-engine.Tests.csproj
+  {Feature}/
+    {Class}Tests.cs                        ← e.g. ClaimEvaluatorTests.cs
+```
+
+**Rules for autonomous agents:**
+- `src/{service-name}/` contains EXACTLY ONE `.csproj` — never create a second one
+- `tests/{service-name}.Tests/` contains EXACTLY ONE `.csproj` — the test project
+- CCT test files go in `tests/{service-name}.Tests/{Feature}/CCT_{ID}_*.cs`
+- NEVER create a `.csproj` inside a subdirectory of `tests/`
+- NEVER create a `.csproj` with different capitalisation alongside an existing one
+
+**Constitutional Engine example:**
+```
+src/constitutional-engine/constitutional-engine.csproj    ← THE only .csproj in src/ce
+tests/constitutional-engine.Tests/constitutional-engine.Tests.csproj  ← THE only test .csproj
+tests/constitutional-engine.Tests/Evaluators/C041EvaluatorTests.cs
+tests/constitutional-engine.Tests/EvidenceFirst/CCT_EF_01_RecordEvidenceTests.cs
+```
+
+
 
 | Tool | Version | Purpose | Config |
 |---|---|---|---|
