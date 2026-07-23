@@ -106,10 +106,10 @@ platform_phase: IMPLEMENTATION  # SPEC | IMPLEMENTATION | LIVE
                               # SPEC = design, specs, planning only. No src/ code allowed.
                               # Agents MUST check this field before any implementation action.
 
-current_sprint: WC-012
+current_sprint: WC-011
 sprint_ib_item: IB-009
 sprint_status: READY
-branch: ib/009/ce-skeleton
+branch: ib/009/infra-foundation
 
 last_attempt_utc: ""
 last_attempt_result: ""
@@ -117,15 +117,17 @@ consecutive_failures: 0
 
 tasks_done: []
 tasks_remaining:
-  - WC012-01   # CE project scaffold (.NET 9 gRPC)
-  - WC012-02   # ValidateAction RPC + unit tests ≥90%
-  - WC012-03   # Evidence First record + CCT-EF-01
-  - WC012-04   # Emergency Stop signal + CCT-HO-01
+  - WC011-01   # Validate docker-compose.yml
+  - WC011-02   # Validate DB migration scripts 01-09
+  - WC011-03   # Validate Keycloak realm import
+  - WC011-04   # Create src/ directory scaffold
+  - WC011-05   # Verify setup.sh and get-dev-token.sh
+  - WC011-07   # GitHub Actions secrets documentation
 
 current_task: ""
 current_task_started_utc: ""
 
-next_sprint: WC-013
+next_sprint: WC-012
 next_sprint_ib_item: IB-009
 
 blocker: ""
