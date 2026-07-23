@@ -74,6 +74,60 @@ jobs:
         with:
           python-version: '3.12'
 
+      # Pipeline Health Check — EA recommendation, 2026-07-23
+      # Validates pipeline infrastructure BEFORE attempting any task execution.
+      # Catches class of bugs that caused runs #22-#27 to fail needlessly.
+      # Security Architect note: only checks presence of labels and script syntax —
+      # does NOT log or expose secret names/values.
+      - name: Pipeline Health Check (CCT-PIPE-01 gate)
+        id: health_check
+        run: |
+          echo "── Pipeline Health Check ──────────────────────────────────"
+          FAILURES=0
+
+          # 1. Script syntax validation (catches orphaned code, indentation errors)
+          for script in scripts/autonomous_sprint_runner.py \
+                        scripts/autonomous_sprint_reviewer.py \
+                        scripts/build_sprint_index.py \
+                        scripts/sprint_state.py \
+                        scripts/sprint_status_reporter.py; do
+            python3 -m py_compile "$script" 2>/dev/null && echo "  ✅ $script" || {
+              echo "  ❌ SYNTAX ERROR: $script"
+              FAILURES=$((FAILURES+1))
+            }
+          done
+
+          # 2. Required GitHub labels exist (absence caused run #24/#25 failures)
+          for label in "tier:2-feature" "status:pr-open" "awaiting:review" \
+                       "sprint:running" "sprint:waiting" "founder-action-needed"; do
+            EXISTS=$(gh label list --repo "$GITHUB_REPOSITORY" --json name \
+              --jq ".[] | select(.name==\"$label\") | .name" 2>/dev/null || echo "")
+            if [ -n "$EXISTS" ]; then
+              echo "  ✅ label: $label"
+            else
+              echo "  ❌ MISSING LABEL: $label (run scripts/setup-labels.sh)"
+              FAILURES=$((FAILURES+1))
+            fi
+          done
+
+          # 3. Sprint state coherence
+          PHASE=$(python3 -c "
+          import re
+          content = open('constitution/PROJECT_STATE.md').read()
+          m = re.search(r'platform_phase:\s*(\S+)', content)
+          print(m.group(1).strip(\"'\\\"\") if m else 'UNKNOWN')
+          ")
+          echo "  ℹ️  platform_phase=$PHASE"
+
+          echo "── Health Check: $FAILURES failure(s) ─────────────────────"
+          if [ "$FAILURES" -gt 0 ]; then
+            echo "  ❌ Pipeline health check FAILED — fix issues above before sprint can run"
+            exit 1
+          fi
+          echo "  ✅ Pipeline healthy — proceeding to HALT check"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Check AUTONOMOUS_HALT + consecutive failures (C-001)
         id: halt_check
         run: |

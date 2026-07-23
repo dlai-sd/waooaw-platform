@@ -36,13 +36,21 @@ Every autonomous sprint run **must** post a status update to the Sprint Dashboar
 | OIDC authentication only | GitHub Actions authenticates to Azure using `azure/login@v2` with OIDC (client-id + tenant-id + subscription-id as GitHub Variables, not Secrets) | `permissions: id-token: write` in workflow |
 | GitHub Variables (not Secrets) for non-sensitive config | `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `AZURE_KEYVAULT_NAME` are GitHub Variables | Set in repo Settings → Variables → Actions |
 
-### 0.3 Autonomous Sprint Concurrency and Deduplication
+### 0.3 Pre-Sprint Authorization Gate (EA mandate — 2026-07-23)
 
-| Standard | Rule | Enforcement |
-|---|---|---|
-| No overlapping sprint runs | `concurrency.group: autonomous-sprint-${{ github.ref }}` with `cancel-in-progress: false` | Workflow `concurrency` block |
-| No duplicate PRs | Before execution, check for open PR with same task ID in title | `pr_check` step in execute job |
-| Cron frequency | Maximum once every 6 hours during any phase | `cron: '0 */6 * * *'` in workflow |
+Before any sprint trigger (manual workflow_dispatch OR automatic cron), the following 4-line verification MUST pass locally. This is a **constitutional obligation** (C-059 traceability — you must know the pipeline is coherent before authorizing execution), not a suggestion.
+
+**Mandatory local pre-flight:**
+```bash
+python3 -m py_compile scripts/autonomous_sprint_runner.py
+python3 -m py_compile scripts/autonomous_sprint_reviewer.py
+python3 scripts/build_sprint_index.py --dry-run          # must show correct task_id, budget OK
+docker compose config --quiet                             # must exit 0
+```
+
+All 4 must pass before any sprint trigger. If any fails: fix first, verify again, then trigger. **A sprint triggered without this verification is unauthorized execution (C-059 violation).**
+
+**Rationale:** WC-011 autonomous execution took 7+ runs to achieve one clean end-to-end pass. Every wasted run was caused by a defect detectable in < 30 seconds with local verification. The 4-line check is the cheapest quality gate in the platform.
 
 ---
 

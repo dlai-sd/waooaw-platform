@@ -1,9 +1,15 @@
 #!/usr/bin/env python3
 """
 autonomous_sprint_runner.py
-constitutional_basis: C-066 Tier 2A, C-070, C-001, C-059, C-065
-ib_item: IB-009
-spec: architecture/reference/agents/platform-it-expert-agent.md §Skill 8
+
+# Implements: architecture/reference/agents/platform-it-expert-agent.md (Skill 8 — SDLC Execution)
+# constitutional_basis: C-023 (Evidence First), C-041 (ValidateAction), C-059 (Traceability),
+#                       C-065 (SDLC Separation — Author hat), C-066 Tier 2A (autonomous execution),
+#                       C-070 (Constitutional DNA — all 3 instincts apply to this agent),
+#                       C-007/C-027 (Append-only enforcement — validated in WC011-02)
+# ib_item: IB-009
+# office: Platform IT Expert — Implementation hat
+# amended: 2026-07-23 — EA review; C-007 halt added; Fix 1-5 applied
 
 Implementation hat — executes sprint tasks, opens PR.
 Called by autonomous-sprint.yaml Job 1 (execute).

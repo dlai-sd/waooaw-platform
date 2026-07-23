@@ -1,7 +1,7 @@
 # Constitutional Compliance Test (CCT) Framework
 
 **Produced by:** Enterprise Architect (Sprint 010, WC-010)
-**Date:** 2026-07-07 | **Last Updated:** 2026-07-13 (v0.68.0 — added CCT-SEC-06 LLM DoS; total: 35 CCTs)
+**Date:** 2026-07-07 | **Last Updated:** 2026-07-23 (EA review — added CCT-PIPE-01/02, CCT-PII-01/02, CCT-CE-AVAIL-01; total: 52 CCTs)
 **Constitutional Basis:** GENESIS Engineering Quality Mandate — "Constitutional Compliance Tests — WAOOAW-specific; validates that the platform upholds a specific constitutional principle"; ADR-013 (CCTs are a required CI/CD gate)
 
 ---
@@ -58,6 +58,9 @@ Every CCT is a self-contained test that:
 | `SC` | Strategic Cognition | C-050, AD-021, DP-019 |
 | `CF` | Context Fidelity, Isolation, Uniqueness | C-052, AD-025, DP-021 |
 | `SA` | Synthetic Approval | C-044, AD-017, DP-015 |
+| `PIPE` | Pipeline Constitutional Integrity | C-059, C-065, C-066, C-073 — EA-mandated 2026-07-23 |
+| `PII` | PII Masking Before LLM Dispatch | C-078 — RATIFIED 2026-07-23 |
+| `CE-AVAIL` | CE Fail-Safe Halt on Unavailability | C-079 — RATIFIED 2026-07-23 |
 | `TR` | Implementation Traceability (Spec-Code Integrity) | C-059, GENESIS Engineering Quality Mandate |
 | `SEC` | AI Security (Prompt Injection, SSRF, Cross-Tenant LLM) | C-062, GENESIS AI Security Mandate |
 
@@ -963,3 +966,68 @@ A CCT failure in any environment:
 4. The blocker must be closed (failure fixed, CCT passing) before promotion resumes
 
 **There is no "waive the CCT" procedure.** A CCT represents a constitutional principle. Waiving it is a constitutional violation.
+
+---
+
+## CCT-PIPE-01 — Pipeline Script Syntax and C-073 Annotation Compliance
+
+**Authority:** C-059 (Traceability), C-073 (Constitutional Annotations), EA review 2026-07-23
+**Constitutional Principle:** Every implementation script that enforces a constitutional obligation must (a) compile without errors and (b) carry a C-073 `# constitutional_basis:` annotation. This CCT prevents the class of failures seen in WC-011 runs #22–#27 where orphaned code caused SyntaxErrors in production.
+**Blocking:** Every PR that touches `scripts/` — blocks merge on any syntax error or missing annotation.
+**Implementation:** `tests/constitutional/pipeline/test_cct_pipe_01.py` (to be written in WC-018)
+**Owner for implementation:** QA Office (WAOOAW AI Agent — QA) — validates spec before implementation.
+
+```python
+# CCT-PIPE-01 — specification (not yet implemented — target: WC-018)
+# Location: tests/constitutional/pipeline/test_cct_pipe_01.py
+# Constitutional basis: C-059 (Traceability), C-073 (Constitutional Annotations)
+
+PIPELINE_SCRIPTS = [
+    "scripts/autonomous_sprint_runner.py",
+    "scripts/autonomous_sprint_reviewer.py",
+    "scripts/build_sprint_index.py",
+    "scripts/sprint_state.py",
+    "scripts/sprint_status_reporter.py",
+]
+
+def test_pipeline_scripts_compile_without_error():
+    """CCT-PIPE-01a: All pipeline scripts must pass py_compile."""
+    import py_compile
+    for script in PIPELINE_SCRIPTS:
+        py_compile.compile(script, doraise=True)  # raises PyCompileError on failure
+
+def test_pipeline_scripts_carry_constitutional_annotation():
+    """CCT-PIPE-01b: All pipeline scripts must carry # constitutional_basis: annotation."""
+    for script in PIPELINE_SCRIPTS:
+        content = open(script).read()
+        assert "constitutional_basis:" in content, \
+            f"{script} is missing # constitutional_basis: annotation (C-073)"
+```
+
+**QA Office sign-off required before implementation.** Submit via: create GitHub Issue `type:cct-proposal` with this spec as body.
+
+---
+
+## CCT-PIPE-02 — Sprint State Machine Coherence After Merge
+
+**Authority:** C-059 (Traceability), C-066 Tier 2A (autonomous sprint cycle), EA review 2026-07-23
+**Constitutional Principle:** After a sprint PR is merged to main, the SPRINT_STATE_MACHINE in `PROJECT_STATE.md` must reflect the completed sprint: `sprint_status=DONE` (or advanced to next sprint), `tasks_remaining=[]` for the completed sprint. An infinite loop where a completed sprint re-executes on every cron cycle is a constitutional violation of C-059 (every action must trace to a valid, unconsumed task).
+**Blocking:** Every PR that touches `scripts/autonomous_sprint_reviewer.py` — ensures the advancement step is present.
+**Implementation:** `tests/constitutional/pipeline/test_cct_pipe_02.py` (to be written in WC-018)
+**Owner for implementation:** QA Office.
+
+```python
+# CCT-PIPE-02 — specification (not yet implemented — target: WC-018)
+# Constitutional basis: C-059, C-066
+
+def test_sprint_advancement_after_simulated_merge():
+    """CCT-PIPE-02: After sprint_state.py advance, tasks_remaining is populated
+    for next sprint and tasks_done is reset to []."""
+    import subprocess, json
+    from pathlib import Path
+    # Simulate: run advance with a test PROJECT_STATE.md
+    # Assert: tasks_remaining has WC-012 tasks, not WC-011 tasks
+    # Assert: current_sprint = WC-012, sprint_status = READY
+    # (full test implementation in WC-018)
+    pass
+```

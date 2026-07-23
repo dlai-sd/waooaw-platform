@@ -1,8 +1,13 @@
 #!/usr/bin/env python3
 """
 sprint_state.py — SPRINT_STATE_MACHINE helper for autonomous-sprint.yaml
-constitutional_basis: C-066 (Tier 2A Autonomous Sprint), C-059 (Traceability)
-ib_item: IB-009
+
+# Implements: architecture/reference/agents/platform-it-expert-agent.md (Sprint State Machine)
+# constitutional_basis: C-059 (Traceability), C-066 Tier 2A (autonomous sprint cycle),
+#                       C-070 (Constitutional DNA), C-073 (this annotation)
+# ib_item: IB-009
+# office: Platform IT Expert
+# amended: 2026-07-23 — EA review; SPRINT_TASK_MANIFEST added; cmd_advance populates tasks_remaining
 spec: architecture/reference/agents/platform-it-expert-agent.md §Skill 8
 
 Commands:

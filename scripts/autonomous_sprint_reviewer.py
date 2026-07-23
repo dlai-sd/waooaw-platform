@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
 """
 autonomous_sprint_reviewer.py
-constitutional_basis: C-065 (SDLC Separation), C-059
-ib_item: IB-009
-spec: architecture/reference/agents/platform-it-expert-agent.md §Skill 7
+
+# Implements: architecture/reference/agents/platform-it-expert-agent.md (Skill 7 — PR Review)
+# constitutional_basis: C-065 (SDLC Separation — Reviewer hat, different identity from Author),
+#                       C-059 (Traceability), C-066 Tier 2A (autonomous merge authority),
+#                       C-070 (Constitutional DNA), C-073 (this annotation)
+# ib_item: IB-009
+# office: Platform IT Expert — PR Review hat
+# amended: 2026-07-23 — EA review; auto-merge added (Fix 4 C-065 token); sprint advancement (Fix 1)
 
 PR Review hat — reviews PR opened by autonomous_sprint_runner.py.
 Called by autonomous-sprint.yaml Job 2 (review).
