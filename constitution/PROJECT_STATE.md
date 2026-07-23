@@ -1,8 +1,9 @@
 # PROJECT_STATE.md
 
 **Last Updated:** 2026-07-23
-**Version:** 1.0.0
-**Session:** 2026-07-23 — Full Session: Audit + Infrastructure Setup + Sprint Hardening
+**Version:** 1.0.0 — Design & Specification Iteration 1 COMPLETE
+**Declared by:** Yogesh Khandge (Founder), 2026-07-23
+**Session:** 2026-07-23 — v1.0.0 baseline declared
 
 ---
 

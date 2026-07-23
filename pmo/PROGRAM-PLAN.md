@@ -1,24 +1,65 @@
 # WAOOAW Platform — Program Management Office (PMO)
 
 **Document:** Master Program Plan — Start to Go-Live
-**Version:** 2.0
-**Date:** 2026-07-21 (revised from v1.0 at v0.82.0)
+**Version:** 3.0
+**Date:** 2026-07-23 (revised from v2.0 — Design & Specification Iteration 1 declared complete)
 **Owner:** Yogesh Khandge (Founder) · Sujay Khandge (Business Growth) · Ojal Khandge (Ethics Officer)
 **Execution:** WAOOAW AI Agents (Platform IT Expert, Developer, QA, Legal, Content)
 **Constitutional Basis:** C-064 (Three-Human Institution), C-065 (SDLC Separation), C-066 (Authorization Tiers), C-067 (Blue-Green Deployment), C-068 (Steward Access Isolation), C-071 (Quality Framework), C-073 (Constitutional Annotations)
-**Platform version:** v0.95.0 (revised — v1.0 was at v0.82.0; additions marked ⬆ NEW)
+**Platform version:** v1.0.0 — Design & Specification Iteration 1 COMPLETE
 
 ---
 
-## Executive Summary
+## ✅ Design & Specification Iteration 1 — DECLARED COMPLETE (2026-07-23)
 
-WAOOAW is specification-complete at v0.95.0. The constitutional framework (75 ratified claims C-001→C-075), four customer-facing agent specifications (DMA v3.0, Trading v1.7, Agricultural v2.7, Private Tutor v1.0), four internal agent specifications (Platform IT Expert, Steward Assistant, Self-Improvement Analyst, Platform Operations), the constitutional UX vocabulary, legal documents, brand assets, homepage + auth modal, CI/CD pipelines, and Terraform infrastructure code are all production-ready. The platform requires one authorization from Yogesh to begin IB-009 implementation.
+**All design and specification work for the initial implementation sprint is complete.**
 
-**Target: First paying customer by Week 10. FR-005 milestone (50 diverse customers) by Week 16.**
+### What Was Completed
 
-**⬆ NEW since v1.0:** DMA v3.0 adds 21 skills and 10 new MCPs under C-074 (On-the-Fly MCP Provisioning). C-075 (White-Label Reseller) adds agency commercial model. Steward Assistant v1.0 approved with ops.waooaw.ai interface (C-068). Self-Improvement Analyst v1.0 (C-069) and Platform Operations v1.0 added as internal agents. AI Runtime primary LLM is now Google Gemini via Vertex AI `asia-south1` Mumbai (ADR-029), not Azure OpenAI (retained as fallback only). Track 11 (Steward Interface) and Track 12 (Internal Agents) added to dependency chain.
+| Category | Status | Details |
+|---|---|---|
+| Constitutional Framework | ✅ Complete | 79 ratified claims (C-001→C-079). Constitution v1.2. GENESIS Parts 01–05. |
+| Architecture Decisions | ✅ Complete | 30 ADRs (ADR-001→ADR-029 + ADR-031). ADR-030 reserved for IB-020. |
+| Agent Specifications | ✅ Complete | 4 customer agents + 4 internal agents. All simulations Grade A. |
+| Component Specifications | ✅ Complete | CE, BP, PR, AIR — full specs, proto contracts, OpenAPI specs. |
+| Data Architecture | ✅ Complete | 3-schema PostgreSQL + pgvector. RLS. Append-only audit ledger. Evidence state machine. |
+| Security Architecture | ✅ Complete | JWT spec. mTLS. OIDC. STRIDE threat model. Data classification. |
+| Quality Framework | ✅ Complete | 7-layer test pyramid. 52 CCTs. 90% coverage mandate (C-076). QA-STRATEGY/POLICY/CHECKLIST. |
+| Coding Standards | ✅ Complete | .NET/Python/TypeScript/SQL. ruff, mypy, biome, xUnit, pytest, Vitest. |
+| UX & Legal | ✅ Complete | Constitutional UX vocabulary. Portal walkthrough. 5 legal documents (DPDPA compliant). |
+| Infrastructure | ✅ Complete | Terraform (9 Container Apps). Docker Compose (23 services). DB migrations (01-09). |
+| CI/CD Pipelines | ✅ Complete | ci.yaml, promote.yaml, autonomous-sprint.yaml, code-quality.yaml, post-deploy-verify.yaml. |
+| Sprint Execution System | ✅ Complete | autonomous-sprint.yaml hardened (G1-G7). Sprint Dashboard Issue #7 live. Key Vault OIDC. |
+| 12-Chapter Agent AI Audit | ✅ All chapters PASS | GAP-CH11-01 (PII masking), GAP-CH6-01 (CE fail-safe), GAP-CH10-01 (RAG chunking) fixed. |
 
-The implementation is executed entirely by WAOOAW AI Agents under constitutional governance. The three human stewards govern, approve milestones, and provide the Azure credentials and third-party accounts. No human writes code, tests, or deploys.
+### What Was NOT Done (by design — implementation only starts after T0-3)
+
+- No `src/` code written
+- No Azure infrastructure deployed (Terraform not applied)
+- No database migrations run
+- No agents running in any environment
+
+---
+
+## Executive Summary (v3.0)
+
+WAOOAW is **specification-complete at v1.0.0**. This is the first fully-declared baseline. Every architectural decision, constitutional claim, agent specification, data schema, API contract, security control, and quality standard is written, reviewed, and ratified. The platform passed a rigorous 12-chapter agent AI system design audit with all gaps fixed.
+
+**The implementation is authorized and ready to begin.** Yogesh's authorization sentence starts the autonomous sprint chain (WC-011 → WC-018), which will deliver a working platform with the first acceptance scenario (Dr. Mehta hires DMA v3.0) by Sprint 017.
+
+**Target: First paying customer within 10 calendar weeks of T0-3 authorization.**
+
+**Key changes since v2.0 (2026-07-21):**
+- v1.0.0 baseline declared (was v0.95.0)
+- 79 constitutional claims (was 75): C-076 (90% coverage), C-077 (₹5k/month dev budget), C-078 (PII masking), C-079 (CE fail-safe)
+- 30 ADRs: ADR-031 (CE fail-safe behavior) added
+- 12-chapter agent AI audit: all 10 gaps fixed (SLO, graceful degradation, PII pipeline, CE unavailability, RAG chunking, LLM output validation, response envelope, MCP versioning, Steward evaluation dashboard)
+- Azure infrastructure live: waooaw-dev-kv, OIDC, GitHub App waooaw-reviewer
+- Sprint Dashboard: Issue #7 — 24/7 monitoring via GitHub mobile
+- Autonomous sprint hardened: concurrency lock, Key Vault fetch, PR dedup, 6h cron, step summary
+- FOUNDER-ACTION.md created: T0-1/T0-2/T0-4/T0-5 complete; T0-3 pending
+
+The implementation is executed entirely by WAOOAW AI Agents under constitutional governance. The three human stewards govern, approve milestones, and provide credentials. No human writes code, tests, or deploys.
 
 ---
 
