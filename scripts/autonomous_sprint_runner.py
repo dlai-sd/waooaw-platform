@@ -702,9 +702,13 @@ def main() -> int:
                      "--body", pr_body,
                      "--base", "main",
                      "--head", branch,
-                     "--label", "tier:2-feature,status:pr-open,awaiting:review",
+                     "--label", "tier:2-feature",
+                     "--label", "status:pr-open",
+                     "--label", "awaiting:review",
                      "--repo", github_repo], check=False)
-        pr_num = result.stdout.strip() if result.returncode == 0 else ""
+        if result.returncode != 0:
+            print(f"  WARN: gh pr create failed (rc={result.returncode}): {result.stderr[:300]}")
+        pr_num = result.stdout.strip().split("/")[-1] if result.returncode == 0 else ""
         if pr_num:
             print(f"  PR created: #{pr_num}")
     else:
