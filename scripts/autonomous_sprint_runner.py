@@ -877,12 +877,15 @@ TASK_HANDLERS = {
             "architecture/reference/components/constitutional-engine.md": "§4 Emergency Stop Handler",
             "architecture/reference/api-specs/emergency-stop-ws.md": "full",
             "adr/ADR-031-ce-fail-safe-unavailability.md": "§Recovery",
+            "architecture/reference/dotfiles/constitutional-engine.csproj": "full",
         },
+        "CRITICAL: copy constitutional-engine.csproj EXACTLY from "
+        "architecture/reference/dotfiles/constitutional-engine.csproj — do NOT invent packages. "
+        "Temporalio version is 0.1.0-beta1 (NOT beta.34 — that does not exist on NuGet). "
         "IMPORTANT: ALL files MUST go in src/constitutional-engine/ ONLY. "
-        "Do NOT write to src/professional-runtime or any other directory. "
         "Add EmergencyStop/ subdirectory INSIDE src/constitutional-engine/. "
-        "TriggerEmergencyStop is a gRPC RPC defined in constitutional_service.proto — "
-        "implement it as a method on ConstitutionalEngineService class. "
+        "TriggerEmergencyStop is a gRPC RPC in the CE service — implement as a method on "
+        "ConstitutionalEngineService class. "
         "Records stop event to constitutional.emergency_stop_events table (C-001). "
         "Signals Temporal workflow via TemporalClientFactory within 100ms. "
         "CCT-HO-01: Emergency Stop ≤250ms P99 end-to-end. "
