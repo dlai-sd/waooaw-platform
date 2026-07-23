@@ -1,70 +1,86 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-07-23
-**Version:** 1.0.0 — Design & Specification Iteration 1 COMPLETE
+**Last Updated:** 2026-07-23 (session continued — evening)
+**Version:** 1.1.0 — Implementation Sprint Authorized + WC-012 READY
 **Declared by:** Yogesh Khandge (Founder), 2026-07-23
-**Session:** 2026-07-23 — v1.0.0 baseline declared
+**Session:** 2026-07-23 — IB-020 complete, WC-012 unblocked, all FA items done
 
 ---
 
-## SESSION CLOSE RECORD — 2026-07-23
+## SESSION CLOSE RECORD — 2026-07-23 (evening update)
+
+### IB-020: LLM Code Generation (ADR-030) — ✅ COMPLETE
+- ADR-030 ratified: Autonomous Sprint Code Generation spec
+- `call_llm()`, `parse_llm_files()`, `validate_written_files()`, `execute_with_llm()` implemented
+- WC012-01 to WC012-04 registered in TASK_HANDLERS
+- Model: `claude-sonnet-4-6` (authorized by Yogesh 2026-07-23 for all planned sprints WC-011→WC-018)
+- `SPRINT_LLM_MODEL` GitHub Variable set to `claude-sonnet-4-6` — confirmed valid via live Anthropic API call
+- 3-attempt retry loop, XML `<file path="...">` response format, write boundary enforcement
+
+### Pre-flight Simulation — ✅ ALL GREEN (Docker)
+- CCT-PIPE-01: 15/15 PASS in Docker test-runner
+- CCT-PIPE-02: 4/4 PASS in Docker test-runner
+- Sprint index dry-run WC012-01→04: 10,449/100,000 tokens — OK
+- Syntax: all 4 pipeline scripts compile clean
+- Anthropic model alias `claude-sonnet-4-6` confirmed valid via `/v1/models` API
+
+### Infrastructure FA Actions — ✅ ALL DONE
+- **FA-005 Trading ack**: Yogesh acknowledged TRADING/EXECUTION/ESCALATION_DECISION boundary
+- **FA-021 GCP Vertex AI**: SA key → `waooaw-dev-kv` → `GOOGLE-VERTEX-SA-KEY`
+  SA: `waooaw-vertex-sa@heroic-arbor-483004-d4.iam.gserviceaccount.com`, Role: `roles/aiplatform.user`
+- **FA-022 Sarvam AI**: API key → `waooaw-dev-kv` → `SARVAM-API-KEY`
+- **FA-003 Azure OpenAI**: Resource `waooaw-openai-uae` (UAE North) created, endpoint + key stored in KV
+  Model deployment deferred — Azure OpenAI is fallback only (Gemini is primary)
+- Key Vault `waooaw-dev-kv` now has **9 secrets**: ANTHROPIC-API-KEY, AZURE-OPENAI-ENDPOINT, AZURE-OPENAI-KEY, CODECOV-TOKEN, GH-APP-ID, GH-APP-INSTALLATION-ID, GH-APP-PRIVATE-KEY, GOOGLE-VERTEX-SA-KEY, SARVAM-API-KEY
+
+### Bugs Fixed This Session
+- `docker-compose.yml`: removed hard `depends_on: postgres` from test-runner (blocked all Docker CCT runs)
+- `build_sprint_index.py`: token budget display now shows effective limit (100k) not free limit (8k)
+
+### Constitutional Status
+- **Claims ratified**: 80 (C-001 → C-080)
+- **ADRs**: 31 (ADR-001 → ADR-031)
+- **C-080**: Docker Test Isolation enforced — no virtual environments permitted
+
+---
+
+## SESSION CLOSE RECORD — 2026-07-23 (morning baseline)
 
 ### Part 1: 12-Chapter Agent AI Audit (all gaps fixed)
 All 12 chapters passed. 4 new constitutional claims ratified. 8 new/updated spec files.
-See git commits from this session for full file list.
 
 ### Part 2: Azure Infrastructure (fully live)
 - Azure account: yogesh.khandge@dlaisd.com (Pay-as-you-go, Central India)
 - Tenant: `0471534c-1bbe-40ab-ae65-3f721b62582c`
 - Subscription: `2ed11839-6a0f-4eaa-bd94-44ca96ff5d84`
 - Resource Group: `waooaw-dev-rg`
-- Key Vault: `waooaw-dev-kv` — 5 secrets stored: `ANTHROPIC-API-KEY`, `GH-APP-ID`, `GH-APP-INSTALLATION-ID`, `GH-APP-PRIVATE-KEY`, `CODECOV-TOKEN`
+- Key Vault: `waooaw-dev-kv`
 - App Registration: `waooaw-platform-sp` (Client ID: `ccd13909-d004-4340-aa26-990a00bed9c0`)
 - OIDC: federated credentials for main branch + PRs — **no stored client secrets**
-- GitHub Variables set: `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `AZURE_KEYVAULT_NAME`
+- GitHub Variables: `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `AZURE_KEYVAULT_NAME`, `SPRINT_LLM_MODEL`
 
-### Part 3: T0 Checklist Status
+### Part 3: WC-011 Proven End-to-End (Run #29)
+- execute → PR opened → auto-merge by waooaw-reviewer → sprint advance to WC-012
+- All 7 WC-011 tasks DONE: docker validation, DB migrations, Keycloak, GitHub Secrets doc, CCTs
+
+### Part 4: EA Post-Mortem + Constitutional Hardening
+- CCT-PIPE-01/02: 19 tests added and passing
+- C-080 Docker Test Isolation: Dockerfile.test-runner, requirements-test.txt, docker-compose service
+- SIM-PL-001: Pipeline health simulation protocol
+- ADR-031: CE Fail-Safe Halt on Unavailability (C-079)
+
+### Part 5: FOUNDER-ACTION.md Items
 | Item | Status |
 |---|---|
-| T0-1 Anthropic API key (waooaw-dev-sprint) | ✅ DONE — in Key Vault |
+| T0-1 Anthropic API key | ✅ DONE |
 | T0-2 Azure OIDC + Key Vault | ✅ DONE |
-| T0-3 Flip platform_phase to IMPLEMENTATION | ⬜ **PENDING — Yogesh's authorization sentence** |
-| T0-4 GitHub App waooaw-reviewer | ✅ DONE — App ID: 4372447, Install: 148479218 |
-| T0-5 Codecov token | ✅ DONE — in Key Vault |
-| GitHub Variables (4) | ✅ DONE |
-
-### Part 4: C-077 Ratified
-C-077 ratified: ₹5,000/month development agent token budget ceiling.
-
-### Part 5: Autonomous Sprint Hardening (G1-G7 gaps fixed)
-- G1: Concurrency lock — no overlapping sprint runs
-- G2: Azure OIDC + Key Vault fetch in workflow — ANTHROPIC_API_KEY flows correctly
-- G3: PR existence check — no duplicate task execution
-- G6: Cron reduced to every 6 hours
-- G7: GITHUB_STEP_SUMMARY — human-readable status on every run
-- Sprint Dashboard: **Issue #7** — posts comment after every run, labels updated, founder-action-needed triggers mobile push notification
-
-### Part 6: Sprint Dashboard Live
-- Issue #7: https://github.com/dlai-sd/waooaw-platform/issues/7
-- `scripts/sprint_status_reporter.py`: posts layman-language comments
-- Labels: sprint:running / sprint:pr-open / sprint:waiting / sprint:halted / founder-action-needed
-
-### Part 7: Constitutional Updates
-- AGENT-ENTRY.md: updated to v1.0.0, Sprint Dashboard reference, Azure IDs
-- FOUNDER-ACTION.md: T0 statuses updated, summary block updated
-- engineering-standards.md: §0 Sprint Dashboard Obligation + CI Secret Management standards
-- knowledge/claims/C-077.md: DRAFT → RATIFIED at ₹5,000/month
-
----
-
-## ONE REMAINING ACTION
-
-```
-Yogesh says: "Yogesh authorizes IB-009 Sprint 011 implementation for this session"
-→ This flips platform_phase=IMPLEMENTATION + autonomous_halt=false
-→ Sprint fires within 6 hours (next cron)
-→ WC-011 begins: docker-compose validation, DB migrations, Keycloak, GitHub Secrets doc
-```
+| T0-3 platform_phase=IMPLEMENTATION | ✅ DONE 2026-07-23 18:00 IST |
+| T0-4 GitHub App waooaw-reviewer | ✅ DONE |
+| T0-5 Codecov token | ✅ DONE |
+| T1-1 FA-002 Meta BM | ⏳ IN PROGRESS (2-4 weeks external) |
+| T1-2 FA-021 GCP Vertex AI key | ✅ DONE |
+| T1-3 FA-022 Sarvam AI key | ✅ DONE |
+| T1-4 FA-003 Azure OpenAI | ✅ DONE (model deployment deferred — fallback only) |
 
 ---
 
@@ -110,7 +126,7 @@ current_sprint: WC-012
 sprint_ib_item: IB-009
 sprint_status: READY
 branch: ib/009/sprint-012
-last_attempt_utc: 2026-07-23T13:51:26.803569+00:00
+last_attempt_utc: 2026-07-23T17:30:00.000000+00:00
 last_attempt_result: SUCCESS
 consecutive_failures: 0
 tasks_done: []
@@ -130,30 +146,31 @@ blocker_raised_utc: ""
 
 ---
 
-## NEXT SESSION OPTIONS (updated 2026-07-22)
+## NEXT SESSION OPTIONS
 
 ```
-CURRENT STATE: platform_phase=SPEC · AUTONOMOUS_HALT=true · IB-009=GATE_CLEAR
+CURRENT STATE: platform_phase=IMPLEMENTATION · AUTONOMOUS_HALT=false
+               current_sprint=WC-012 · sprint_status=READY
+               CLAIMS: 80 RATIFIED (C-001→C-080) · ADRs: 31
 
-OPTION A — Spec work (no implementation authorization needed):
-  - IB-020: Draft ADR-030 (Zero-Cost Dev Agent model selection)
-  - Ratify C-077 (Development Tooling Cost Ceiling) — Founder decision needed on monthly budget
-  - Operations ITSM policies (standards/ folder)
-  - About Us / Contact Us / Careers pages (spec §13 complete)
+SPRINT SCOPE — WC-012 (Constitutional Engine v1 — 4 tasks):
+  WC012-01: .NET 9 gRPC project scaffold    → src/constitutional-engine/ created
+  WC012-02: ValidateAction RPC + tests ≥90% → core business logic
+  WC012-03: Evidence First + CCT-EF-01      → C-059 constitutional enforcement
+  WC012-04: Emergency Stop + CCT-HO-01      → C-073 emergency stop
+  Full CE v1 delivered by end of sprint — not just skeleton.
 
-OPTION B — Authorize implementation (requires explicit Founder decision):
-  Prerequisite checklist before setting platform_phase=IMPLEMENTATION:
-  [ ] IB-020 complete — ADR-030 approved (which model, what cost ceiling)
-  [ ] C-077 ratified (development tooling cost ceiling)
-  [ ] FA-NNN recorded in security/FOUNDER-ACTIONS.md: "IB-009 implementation authorized"
-  [ ] AUTONOMOUS_HALT set to: false
-  [ ] platform_phase set to: IMPLEMENTATION
-  Then: WC-011 tasks can run autonomously (rule-based Python, zero LLM cost)
+OPTION A — Trigger WC-012 now (recommended)
+  → github.com/dlai-sd/waooaw-platform/actions/workflows/autonomous-sprint.yaml → Run workflow
+  → Claude Sonnet 4.6 will generate 4 tasks of .NET 9 CE code
+  → Monitor: github.com/dlai-sd/waooaw-platform/issues/7
 
-OPTION C — Review RAG changes + FinOps assurance (Founder requested):
-  Review: scripts/build_sprint_index.py — section targeting, token budget
-  Review: simulation/SIM-022-zero-cost-autonomous-agent.md — gap register
-  Review: scripts/AGENTS.md, src/*/AGENTS.md — nested context design
+OPTION B — Wait for next 3-hour cron (no action needed)
+  → Cron: 0 */3 * * * — auto-fires within 3 hours
+
+OPTION C — Pending founder action (non-blocking)
+  → FA-002 Meta BM verification: IN PROGRESS externally (2-4 weeks)
+  → FA-003 Azure OpenAI model deployment: deferred (fallback only, non-critical)
 ```
 
 
