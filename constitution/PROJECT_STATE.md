@@ -1,50 +1,73 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-07-22
-**Version:** 0.99.0
-**Session:** 2026-07-22 — GAP-1 COMPLETE (commit 8ea38a3)
+**Last Updated:** 2026-07-23
+**Version:** 1.0.0
+**Session:** 2026-07-23 — 12-Chapter Agent AI Audit + All Gaps Fixed
 
 ---
 
-## IN-PROGRESS CHECKPOINT — 2026-07-22 SESSION
+## IN-PROGRESS CHECKPOINT — 2026-07-23 SESSION
 
-| Milestone | Status |
+### Audit: 12-Chapter Agent AI System Review
+
+| Chapter | Verdict | Gaps Fixed This Session |
+|---|---|---|
+| Ch 1 — What Is This System | ✅ STRONG PASS | None needed |
+| Ch 2 — Architecture Complexity | ✅ PASS | MCP versioning policy added to mcp-tool-catalogues.md |
+| Ch 3 — Model Routing | ✅ PASS | LLM output schema validation added to agent-execution-loop.md (step 3.5) |
+| Ch 4 — Tool Contracts | ✅ PASS | Versioning policy + retry/backoff spec added to mcp-tool-catalogues.md |
+| Ch 5 — Memory vs State | ✅ PASS | ActionResponse envelope with reasoning_summary added to agent-execution-loop.md |
+| Ch 6 — Orchestration | ✅ STRONG PASS | CE unavailability: ADR-031 + CE component spec §6 |
+| Ch 7 — Evaluation Layer | ✅ PASS | Agent evaluation dashboard added to steward-interface.md §3.4a |
+| Ch 8 — Approval & Policy | ✅ EXCELLENT PASS | None needed |
+| Ch 9 — Reliability & Cost | ✅ PASS | slo.md created |
+| Ch 10 — Context & Retrieval | ⚠️→✅ FIXED | ADR-019 Amendment 1 (chunking spec) + Amendment 2 (token budgets) |
+| Ch 11 — Observability & Security | ✅ PASS | C-078 RATIFIED; pii-masking-pipeline.md; ai-runtime.md Component 7 |
+| Ch 12 — Closing Principles | ✅ PASS | graceful-degradation.md created |
+
+### Constitutional Claims Ratified
+
+| Claim | Statement | Status |
+|---|---|---|
+| C-076 | 90% Minimum Code Coverage Obligation | ✓ RATIFIED (file created — ratified 2026-07-22, file was missing) |
+| C-077 | Development Tooling Cost Ceiling | ✓ DRAFT (Founder decision needed on ceiling value) |
+| C-078 | PII Masking Before LLM Dispatch | ✓ RATIFIED 2026-07-23 |
+| C-079 | CE Fail-Safe Halt on Unavailability | ✓ RATIFIED 2026-07-23 |
+
+### Files Created (2026-07-23)
+
+| File | Purpose |
 |---|---|
-| C-076 RATIFIED: 90% Minimum Code Coverage Obligation (all services) | ✓ DONE |
-| QA-STRATEGY/POLICY/CHECKLIST/CODING-STANDARDS: all updated to ≥90% | ✓ DONE |
-| ci.yaml: .NET 90% threshold, Web branches/functions/statements 90% | ✓ DONE |
-| FinOps: build_sprint_index.py, sprint-context/, AGENTS.md nested, autonomous-sprint.yaml preflight | ✓ DONE |
-| GAP FIX: AUTONOMOUS_HALT=true, platform_phase=SPEC, IB-009=GATE_CLEAR | ✓ DONE |
-| GAP FIX: BOOTSTRAP/AGENT-ENTRY contradiction resolved | ✓ DONE |
-| GAP FIX: PROJECT_STATE.md condensed 1,783→111 lines | ✓ DONE |
-| GAP FIX: runner SPEC phase hard gate + spec validation mode | ✓ DONE |
-| GAP FIX: IB-020 zero-cost dev agent backlog item added | ✓ DONE |
-| SIM-022: 8 gaps found, all fixed (token budget, platform_phase gate, etc.) | ✓ DONE |
-| **SIM-023: WC-011 zero-cost sprint deep-dive simulation** | ✓ DONE |
-| SIM-023 GAP-1: docker-compose.yml YAML error (23 services w/ unindented Python) | ✓ FIXED |
-| SIM-023 GAP-2: scripts/mcp_stub_server.py — generic stub, removes inline Python | ✓ FIXED |
-| SIM-023 GAP-3: duplicate youtube-mcp + port conflicts (8141/8142) | ✓ FIXED |
-| SIM-023 GAP-4: runner WC011-02/03/05 functions missing | ✓ FIXED |
-| SIM-023 GAP-5: 05-migrations.sql naming collision → 05b-migrations.sql | ✓ FIXED |
-| SIM-023 GAP-6: GITHUB-SECRETS.md created (WC011-07 pre-requisite) | ✓ FIXED |
-| SIM-023 GAP-7: src/ README.md C-059 scaffolds created for all 4 services | ✓ FIXED |
-| WC-011 dry-run result: 6/7 PASS, 1 BLOCKED (WC011-06 Azure SP — external) | ✓ VERIFIED |
-| **GAP-1 FULLY RESOLVED: all 14 remaining MCP stubs migrated to mcp_stub_server.py** | ✓ DONE |
-| signal-watch-worker: YAML-safe shell loop; pinterest→8151, threads→8152 (port conflicts fixed) | ✓ DONE |
-| docker compose config: EXIT 0, zero inline python -c, zero port conflicts | ✓ VERIFIED |
-| **WC011-01 (docker-compose validation) now passes cleanly — SIM-023 fully clean** | ✓ DONE |
-| Full autonomy merge model decided: no human PR approver, REVIEW_APP_TOKEN agent only | ✓ DECIDED |
-| FA-023 identified: GitHub App for REVIEW_APP_TOKEN (30 min, P0, Founder next session) | ✓ PENDING |
-| RAG token budget: WC011 tasks ≤6.5K/8.2K free model limit (section targeting enforced) | ✓ VERIFIED |
-| WC-012 to WC-018 work contracts written + readiness verified | ✓ DONE |
-| PMO PROGRAM-PLAN.md §12 sprint tracking table (full roadmap) added | ✓ DONE |
+| `knowledge/claims/C-076.md` | 90% Coverage Obligation claim file |
+| `knowledge/claims/C-077.md` | Dev Tooling Cost Ceiling (DRAFT) |
+| `knowledge/claims/C-078.md` | PII Masking Before LLM Dispatch (RATIFIED) |
+| `knowledge/claims/C-079.md` | CE Fail-Safe Halt on Unavailability (RATIFIED) |
+| `adr/ADR-031-ce-fail-safe-unavailability.md` | CE unavailability full spec + CCT-CE-AVAIL-01 |
+| `architecture/reference/pii-masking-pipeline.md` | PII scrubber full spec + CCTs |
+| `architecture/reference/slo.md` | Formal SLO document (availability + latency + cost) |
+| `architecture/reference/graceful-degradation.md` | 9-scenario degradation manifest (on-call runbook) |
+
+### Files Updated (2026-07-23)
+
+| File | What Changed |
+|---|---|
+| `adr/ADR-019-rag-architecture.md` | Amendment 1: chunking spec (512 tok/50 overlap/sentence boundary/metadata). Amendment 2: per-agent RAG token budgets |
+| `adr/ADR-INDEX.md` | ADR-030 reserved (IB-020), ADR-031 added |
+| `architecture/reference/COMPONENT-QUICK-REF.md` | CE unavailability quick-ref, PII masking quick-ref, new CCTs, key reference docs table, updated latency budgets |
+| `architecture/reference/agent-execution-loop.md` | Step 3.5: LLM output schema validation. Step 5: ActionResponse envelope with reasoning_summary + evidence_id |
+| `architecture/reference/components/ai-runtime.md` | LLM Gateway mentions PII Scrubber (C-078). Component 7: PII Scrubber spec |
+| `architecture/reference/components/constitutional-engine.md` | §6: Unavailability Behavior (health states, startup gate, graceful shutdown, availability events) |
+| `architecture/reference/mcp-tool-catalogues.md` | Tool versioning policy (/v1/ paths, breaking-change rules, deprecation period). Retry/backoff policy table |
+| `architecture/reference/steward-interface.md` | §3.4a: Agent Evaluation Dashboard (traces, deny rate, confidence, tool fail rate, RAG faithfulness, auto-alert thresholds) |
 
 ---
 
-## NEXT SESSION OPTIONS (updated 2026-07-22 SESSION CLOSE)
+## NEXT SESSION OPTIONS (updated 2026-07-23 SESSION CLOSE)
 
 ```
-CURRENT STATE: platform_phase=SPEC · AUTONOMOUS_HALT=true · Version=v0.99.0
+CURRENT STATE: platform_phase=SPEC · AUTONOMOUS_HALT=true · Version=v1.0.0
+CLAIMS: C-001 to C-076 RATIFIED (76 claims) + C-078 + C-079 = 78 RATIFIED · C-077 DRAFT
+ADRs: ADR-001 to ADR-029 + ADR-031 = 30 ADRs (ADR-030 reserved for IB-020)
 
 OPTION A — FA-023: GitHub App for REVIEW_APP_TOKEN (30 min, P0)
   → Go to github.com/settings/apps → New GitHub App
@@ -62,10 +85,10 @@ OPTION C — Ratify C-077 (Development Tooling Cost Ceiling)
   → Founder decision: what is the monthly token budget for autonomous development?
   → Ratifies the DRAFT claim and authorizes IB-020 (ADR-030)
 
-OPTION D — Set platform_phase: IMPLEMENTATION to begin WC-011 live run
+OPTION D — Set platform_phase to IMPLEMENTATION to begin WC-011 live run
   → Prerequisites: FA-023 done (or accept advisory-only reviews temporarily)
   → Record FA-NNN in security/FOUNDER-ACTIONS.md
-  → Set platform_phase: IMPLEMENTATION + autonomous_halt: false
+  → Set platform_phase=IMPLEMENTATION + autonomous_halt=false
   → First autonomous sprint fires within 2h
 ```
 
@@ -128,7 +151,7 @@ OPTION A — Spec work (no implementation authorization needed):
   - About Us / Contact Us / Careers pages (spec §13 complete)
 
 OPTION B — Authorize implementation (requires explicit Founder decision):
-  Prerequisite checklist before setting platform_phase: IMPLEMENTATION:
+  Prerequisite checklist before setting platform_phase=IMPLEMENTATION:
   [ ] IB-020 complete — ADR-030 approved (which model, what cost ceiling)
   [ ] C-077 ratified (development tooling cost ceiling)
   [ ] FA-NNN recorded in security/FOUNDER-ACTIONS.md: "IB-009 implementation authorized"
