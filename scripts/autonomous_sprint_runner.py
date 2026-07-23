@@ -824,18 +824,20 @@ TASK_HANDLERS = {
             "architecture/reference/proto/constitutional_service.proto": "full",
             "standards/CODING-STANDARDS.md": "§2.1 Tools,§1.5 Structured Comments",
         },
-        "Every .cs file must carry // Implements: and // constitutional_basis: header comment. "
-        "The .csproj MUST use Sdk='Microsoft.NET.Sdk.Web', TargetFramework=net9.0, "
-        "and include these PackageReferences: Grpc.AspNetCore (2.65.0), "
-        "Google.Protobuf (3.28.0), Grpc.Tools (2.65.0). "
-        "The .csproj MUST include an ItemGroup with "
-        "<Protobuf Include='Protos/constitutional_service.proto' GrpcServices='Server' />. "
-        "Copy the proto file content from architecture/reference/proto/constitutional_service.proto "
-        "into src/constitutional-engine/Protos/constitutional_service.proto exactly. "
-        "Program.cs: minimal ASP.NET Core 9 app with builder.Services.AddGrpc() and "
-        "app.MapGrpcService<ConstitutionalEngineService>(). "
-        "ConstitutionalEngineService.cs: stub implementing all RPCs from the proto. "
-        "gRPC service registered with Grpc.AspNetCore. RecordEvidence + ValidateAction RPCs present.",
+        "Generate a SELF-CONTAINED scaffold — every type referenced in Program.cs "
+        "MUST exist in one of the generated files. "
+        "REQUIRED files in src/constitutional-engine/: "
+        "(1) constitutional-engine.csproj with Sdk='Microsoft.NET.Sdk.Web', net9.0, "
+        "Grpc.AspNetCore, Google.Protobuf, Grpc.Tools packages, "
+        "and <Protobuf Include='Protos/constitutional_service.proto' GrpcServices='Server' />. "
+        "(2) Protos/constitutional_service.proto — copy from the reference proto exactly. "
+        "(3) Services/ConstitutionalEngineService.cs — the gRPC service class that inherits "
+        "ConstitutionalEngineService.ConstitutionalEngineServiceBase and implements ALL RPCs "
+        "as stub methods returning Task. This is MANDATORY — Program.cs calls "
+        "app.MapGrpcService<ConstitutionalEngineService.Services.ConstitutionalEngineService>(). "
+        "(4) Program.cs — minimal ASP.NET Core 9 startup. Only reference types from files "
+        "you generate in THIS response. No external service references except the gRPC class. "
+        "Every .cs file carries // Implements: and // constitutional_basis: header comment.",
         model_hint="reasoning"
     ),
     "WC012-02": lambda: execute_with_llm(
