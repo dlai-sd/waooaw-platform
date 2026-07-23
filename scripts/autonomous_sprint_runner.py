@@ -83,6 +83,13 @@ TypeScript/Next.js (web/ or src/{service}/):
   package.json at the root of the service directory — ONE per service
   tsconfig.json at the same level as package.json
   NEVER create a nested package.json in a subdirectory
+
+PYTHON PACKAGE RULES (critical — prevents import errors and build failures):
+  Temporal: import from 'temporalio' (1.x stable) — NOT 'temporal-sdk', 'temporal-python'
+  Vertex AI: 'from google.cloud import aiplatform' — NOT 'import vertexai' (different SDK)
+  Sarvam AI: NO Python SDK exists — use httpx for REST calls only — NEVER 'import sarvam'
+  AI4Bharat IndicNER: use transformers.pipeline('ner', model='ai4bharat/IndicNER') — NO 'ai4bharat' PyPI package
+  Gemini model name: 'gemini-2.0-flash' — NOT 'gemini-pro' (deprecated)
 """
 
 

@@ -157,18 +157,21 @@ TASK_CONTEXT_MAP: dict[str, dict] = {
         "relevant_adrs": ["ADR-001", "ADR-011"],
         "constitutional_check": "CCT-EF-01: evidence recorded BEFORE success returned. Append-only ledger (C-007/C-027).",
     },
-    # WC-013: Business Platform skeleton
+    # WC-013: Business Platform skeleton (.NET 9)
     "WC013-01": {
         "description": "BP project scaffold + OpenAPI spec alignment",
         "model_hint": "reasoning",
         "spec_sections": {
             "architecture/reference/components/business-platform.md": "full",
             "architecture/reference/api-specs/business-platform.openapi.yaml": "full",
-            "standards/CODING-STANDARDS.md": "§2.1 Tools,§7.5 Code Coverage",
+            "architecture/reference/dotfiles/business-platform.csproj": "full",
+            "standards/CODING-STANDARDS.md": "§2.0 Project Structure Convention,§2.1 Tools",
         },
         "relevant_claims": ["C-005", "C-059", "C-072", "C-076"],
         "relevant_adrs": ["ADR-002", "ADR-003", "ADR-006"],
-        "constitutional_check": "Every endpoint must call CE.ValidateAction before executing (C-023). Spec-first (ADR-002).",
+        "constitutional_check": "Copy business-platform.csproj EXACTLY from architecture/reference/dotfiles/. "
+            "Every endpoint must call CE.ValidateAction before executing (C-023). Spec-first (ADR-002). "
+            "project name: business-platform (lowercase-hyphenated). EXACTLY ONE .csproj in src/business-platform/.",
     },
     "WC013-02": {
         "description": "Tenant isolation middleware + JWT validation",
@@ -176,22 +179,28 @@ TASK_CONTEXT_MAP: dict[str, dict] = {
         "spec_sections": {
             "architecture/reference/security/security-architecture.md": "§2 Identity and Authentication",
             "architecture/reference/components/business-platform.md": "§Tenant Isolation",
+            "architecture/reference/dotfiles/business-platform.csproj": "full",
         },
         "relevant_claims": ["C-005", "C-026", "C-059", "C-076"],
         "relevant_adrs": ["ADR-003", "ADR-008"],
-        "constitutional_check": "C-005: tenant_id from JWT → SET LOCAL app.tenant_id. RLS enforced at DB layer.",
+        "constitutional_check": "C-005: tenant_id from JWT → SET LOCAL app.tenant_id. RLS enforced at DB layer. "
+            "NEVER create a second .csproj in src/business-platform/.",
     },
-    # WC-014: Professional Runtime skeleton
+    # WC-014: Professional Runtime skeleton (Python 3.12 + Temporal)
     "WC014-01": {
         "description": "PR project scaffold + Temporal worker",
         "model_hint": "reasoning",
         "spec_sections": {
             "architecture/reference/components/professional-runtime.md": "full",
             "architecture/reference/temporal-workflow-definitions.md": "§PAASSessionWorkflow",
+            "architecture/reference/dotfiles/requirements-professional-runtime.txt": "full",
         },
         "relevant_claims": ["C-001", "C-024", "C-025", "C-059", "C-076"],
         "relevant_adrs": ["ADR-005", "ADR-015", "ADR-018"],
-        "constitutional_check": "PAAS is the exclusive execution model (C-025). Emergency Stop path has NO blocking I/O.",
+        "constitutional_check": "Copy requirements-professional-runtime.txt EXACTLY for dependencies. "
+            "Package is 'temporalio' (1.x stable) — NOT 'temporal-sdk' or 'temporal-python'. "
+            "PAAS is the exclusive execution model (C-025). Emergency Stop path has NO blocking I/O. "
+            "pyproject.toml in src/professional-runtime/ root only.",
     },
     "WC014-02": {
         "description": "Emergency Stop WebSocket + CCT-HO-02",
@@ -199,22 +208,30 @@ TASK_CONTEXT_MAP: dict[str, dict] = {
         "spec_sections": {
             "architecture/reference/api-specs/emergency-stop-ws.md": "full",
             "architecture/reference/graceful-degradation.md": "§Scenario 9 Emergency Stop",
+            "architecture/reference/dotfiles/requirements-professional-runtime.txt": "full",
         },
         "relevant_claims": ["C-001", "C-024", "C-079", "C-059", "C-076"],
         "relevant_adrs": ["ADR-004", "ADR-018"],
-        "constitutional_check": "C-001: ≤250ms P99 absolute. C-079: if CE unreachable, local halt executes immediately.",
+        "constitutional_check": "C-001: ≤250ms P99 absolute. C-079: if CE unreachable, local halt executes immediately. "
+            "NEVER create a second pyproject.toml.",
     },
-    # WC-015: AI Runtime skeleton
+    # WC-015: AI Runtime skeleton (Python 3.12 + Vertex AI + Sarvam REST)
     "WC015-01": {
         "description": "AIR project scaffold + PSE routing",
         "model_hint": "reasoning",
         "spec_sections": {
             "architecture/reference/components/ai-runtime.md": "§0 Provider Abstraction Layer,§1 LLM Gateway",
             "adr/ADR-029-multi-provider-llm-strategy.md": "§PSE Rule Layer",
+            "architecture/reference/dotfiles/requirements-ai-runtime.txt": "full",
         },
         "relevant_claims": ["C-051", "C-059", "C-072", "C-076"],
         "relevant_adrs": ["ADR-024", "ADR-028", "ADR-029"],
-        "constitutional_check": "PSE: LOCAL tier for 60-70% requests (C-051). ADR-029 rules PSE-R01 to PSE-R08.",
+        "constitutional_check": "Copy requirements-ai-runtime.txt EXACTLY for dependencies. "
+            "CRITICAL: Sarvam AI has NO Python SDK — SarvamProvider uses httpx REST calls only. "
+            "NEVER 'import sarvam' or use any sarvam package. "
+            "Vertex AI import: 'from google.cloud import aiplatform' (NOT 'import vertexai'). "
+            "AI4Bharat IndicNER: load via transformers.pipeline('ner', model='ai4bharat/IndicNER') — NOT 'import ai4bharat'. "
+            "PSE: LOCAL tier for 60-70% requests (C-051). ADR-029 rules PSE-R01 to PSE-R08.",
     },
     "WC015-02": {
         "description": "LLM dispatch + PII Scrubber (C-078) + real Ollama inference",
@@ -223,10 +240,14 @@ TASK_CONTEXT_MAP: dict[str, dict] = {
             "architecture/reference/components/ai-runtime.md": "§7 PII Scrubber",
             "architecture/reference/pii-masking-pipeline.md": "full",
             "adr/ADR-019-rag-architecture.md": "Amendment 1,Amendment 2",
+            "architecture/reference/dotfiles/requirements-ai-runtime.txt": "full",
         },
         "relevant_claims": ["C-063", "C-078", "C-059", "C-076"],
         "relevant_adrs": ["ADR-019", "ADR-029"],
-        "constitutional_check": "C-078 MANDATORY: PII Scrubber fires BEFORE every external LLM dispatch. Type-system enforcement.",
+        "constitutional_check": "C-078 MANDATORY: PII Scrubber fires BEFORE every external LLM dispatch. "
+            "CRITICAL: Sarvam has NO SDK — use httpx only. "
+            "Gemini model name: 'gemini-2.0-flash' (NOT 'gemini-pro' — deprecated). "
+            "AI4Bharat IndicNER via transformers.pipeline only. Type-system enforcement.",
     },
     # WC-016: Web Portal skeleton
     "WC016-01": {
