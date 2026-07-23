@@ -106,29 +106,24 @@ platform_phase: IMPLEMENTATION  # SPEC | IMPLEMENTATION | LIVE
                               # SPEC = design, specs, planning only. No src/ code allowed.
                               # Agents MUST check this field before any implementation action.
 
-current_sprint: WC-011
+current_sprint: WC-012
 sprint_ib_item: IB-009
-sprint_status: IN_PROGRESS
-branch: ib/009/infra-foundation
-
+sprint_status: READY
+branch: ib/009/sprint-012
 last_attempt_utc: 2026-07-23T13:51:26.803569+00:00
 last_attempt_result: SUCCESS
 consecutive_failures: 0
 tasks_done: []
 tasks_remaining:
-  - WC011-01   # Validate docker-compose.yml
-  - WC011-02   # Validate DB migration scripts 01-09
-  - WC011-03   # Validate Keycloak realm import
-  - WC011-04   # Create src/ directory scaffold
-  - WC011-05   # Verify setup.sh and get-dev-token.sh
-  - WC011-07   # GitHub Actions secrets documentation
+  - WC012-01
+  - WC012-02
+  - WC012-03
+  - WC012-04
 
 current_task:
-current_task_started_utc: ""
-
-next_sprint: WC-012
+""
+next_sprint: WC-013
 next_sprint_ib_item: IB-009
-
 blocker: ""
 blocker_raised_utc: ""
 ```
