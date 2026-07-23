@@ -271,8 +271,12 @@ def call_llm(task_id: str, task_description: str, spec_content: str,
             f"Include unit tests in tests/ directory."
         )
 
+        # ADR-030: Claude Sonnet 4.6 authorized by Yogesh 2026-07-23 for all planned sprints (C-077)
+        # API alias follows pattern: claude-sonnet-{major}-{minor}
+        # Fallback: if 4-6 alias not yet published, claude-sonnet-4-5 is acceptable
+        model_id = os.environ.get("SPRINT_LLM_MODEL", "claude-sonnet-4-6")
         payload = {
-            "model": "claude-sonnet-4-5",
+            "model": model_id,
             "max_tokens": 8000,
             "temperature": 0,
             "system": CONSTITUTIONAL_SYSTEM_PROMPT,
