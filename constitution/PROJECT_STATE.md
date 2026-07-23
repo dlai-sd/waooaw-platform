@@ -188,7 +188,6 @@ tasks_remaining:
   - WC012-04
 
 current_task:
-WC012-01
 next_sprint: WC-013
 next_sprint_ib_item: IB-009
 blocker: ""
