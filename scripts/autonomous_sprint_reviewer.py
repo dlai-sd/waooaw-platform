@@ -160,64 +160,6 @@ def main() -> int:
 if __name__ == "__main__":
     sys.exit(main())
 
-
-    if not pr_number:
-        print("No PR number provided — skipping review")
-        return 0
-
-    print("=" * 60)
-    print("  WAOOAW Autonomous Sprint Reviewer")
-    print(f"  PR: #{pr_number}  Sprint: {sprint}")
-    print(f"  Mode: {'FULL APPROVAL (GitHub App)' if has_review_token else 'ADVISORY (fallback token)'}")
-    print("=" * 60)
-
-    # Build review body (plain text — no markdown that could cause issues)
-    review_lines = [
-        f"Platform IT Expert - PR Review (Autonomous) - {sprint}",
-        "",
-        f"Reviewer: WAOOAW AI Agent - Platform IT Expert (PR Review hat)",
-        f"Constitutional basis: C-065 (SDLC Separation - this job is the reviewer, not the author)",
-        f"Review mode: {'FULL - GitHub App token' if has_review_token else 'ADVISORY - REVIEW_APP_TOKEN not yet provisioned (see FA-023)'}",
-        "",
-        "Checklist:",
-        "  [PASS] C-059: src/ files carry Implements: and Constitutional: headers",
-        "  [PASS] No hardcoded secrets (Gitleaks gate in CI)",
-        "  [PASS] Branch follows ib/{num}/{slug} convention",
-        "  [PASS] Commits carry IB: and Constitutional: fields",
-        "  [PASS] WC tasks are within authorized scope",
-        "  [PENDING] CCT-EF-01 - Sprint 012 required (CE not yet built)",
-        "  [PENDING] CCT-HO-01 - Sprint 012 required",
-        "",
-        "Engineering Standards (engineering-standards.md):",
-        "  [PASS] No business logic in Sprint 011 (infrastructure only - correct)",
-        "  [PASS] src/ scaffold has C-059 README headers",
-        "  [PASS] Bootstrap evidence recorded (Section 12 CE Stub Pattern)",
-        "",
-        "Decision: APPROVED - Sprint 011 infrastructure tasks are within scope and constitutionally compliant.",
-    ]
-    if not has_review_token:
-        review_lines += [
-            "",
-            "NOTE: Full autonomous approval requires REVIEW_APP_TOKEN (see FA-023 in FOUNDER-ACTIONS.md).",
-            "Until provisioned, Yogesh (CODEOWNERS) approves this PR manually.",
-        ]
-
-    review_body = "\n".join(review_lines)
-    env = {"GH_TOKEN": review_token}
-
-    if has_review_token:
-        result = run(["gh", "pr", "review", pr_number,
-                      "--approve", "--body", review_body,
-                      "--repo", github_repo], env=env)
-        if result.returncode == 0:
-            print(f"PR #{pr_number} APPROVED (C-065 compliant - different token from author)")
-        else:
-            print(f"WARN: Approval failed: {result.stderr}")
-            # Fall through to advisory comment
-            has_review_token = False
-
-    if not has_review_token:
-        result = run(["gh", "pr", "comment", pr_number,
                       "--body", review_body,
                       "--repo", github_repo], env=env)
         if result.returncode == 0:
