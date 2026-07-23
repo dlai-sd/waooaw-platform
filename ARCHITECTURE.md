@@ -31,7 +31,7 @@ WAOOAW is an institution that enables organizations to employ autonomous digital
 
 ---
 
-## Four Services
+## Four Services (Current)
 
 | Service | Language | Port | Responsibility |
 |---|---|---|---|
@@ -44,6 +44,35 @@ Quick reference for all services: [architecture/reference/COMPONENT-QUICK-REF.md
 
 ---
 
+## Planned Components
+
+| Component | Sprint | Stack | Constitutional Pre-requisites |
+|---|---|---|---|
+| Web Application | WC-016 | Next.js 14 / TypeScript | C-082 (TypeScript validation path required) |
+| Mobile Application | Post WC-018 | Flutter 3 / Dart | C-001 (push stop signal), C-078 (device PII), C-079 (offline halt), C-081 (pubspec.yaml reference), C-082 (flutter analyze validation), ADR-032 (reserved) |
+
+**Mobile authorization gate:** Before any mobile Work Contract is opened, the following must be in place:
+1. `architecture/reference/dotfiles/pubspec.yaml` created and EA-approved (C-081)
+2. `flutter analyze` added to `validate_written_files()` (C-082)
+3. Push notification stop-signal path specified in CE (C-001 mobile extension)
+4. Mobile offline behavior spec written and ratified (C-079 mobile extension)
+
+---
+
+## Reference Dependency Files (C-081)
+
+EA-approved dependency version files that autonomous agents MUST copy verbatim:
+
+| File | Stack | Sprint |
+|---|---|---|
+| [constitutional-engine.csproj](architecture/reference/dotfiles/constitutional-engine.csproj) | .NET 9 (CE) | WC-012 |
+| `business-platform.csproj` | .NET 9 (BP) | Before WC-014 |
+| `requirements-ai-runtime.txt` | Python 3.12 (AI Runtime) | Before WC-015 |
+| `package.json` | Next.js / TypeScript | Before WC-016 |
+| `pubspec.yaml` | Flutter / Dart (Mobile) | Before mobile sprint |
+
+---
+
 ## Architecture Decision Records
 
 18 ADRs govern all technology selections. Quick reference: [adr/ADR-INDEX.md](adr/ADR-INDEX.md)
@@ -52,6 +81,6 @@ Quick reference for all services: [architecture/reference/COMPONENT-QUICK-REF.md
 
 ## Constitutional Traceability
 
-Every architecture decision traces to a ratified constitutional claim (35 claims, `knowledge/claims/`).
+Every architecture decision traces to a ratified constitutional claim (82 claims, `knowledge/claims/`).
 Every component traces to a business capability (26 capabilities, `knowledge/business-capabilities.md`).
 Constitutional compliance is verified by automated tests (`tests/constitutional/`).
