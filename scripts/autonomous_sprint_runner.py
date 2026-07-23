@@ -198,6 +198,66 @@ def gh(args: list[str], check: bool = True) -> subprocess.CompletedProcess:
     return run(["gh"] + args, check=check, capture=True)
 
 
+def flag_spec_gap(
+    task_id: str,
+    gap_description: str,
+    affected_spec: str,
+    workaround: str,
+    constitutional_basis: str = "",
+) -> str | None:
+    """
+    Create a GitHub Issue for a spec gap discovered during implementation.
+    The agent CANNOT modify spec files — it flags gaps for EA/SA/Founder review.
+
+    Returns the issue number (as string) or None if creation fails.
+
+    Constitutional basis: C-065 (SDLC — author cannot also be spec owner)
+    Office authority: Spec files (architecture/reference/**) are EA/SA authored.
+                      Implementation agent flags; appropriate office fixes.
+    """
+    github_repo = os.environ.get("GITHUB_REPO", "")
+    github_token = os.environ.get("GITHUB_TOKEN", "")
+    if not github_repo or not github_token:
+        print(f"  WARN: Cannot create spec-gap issue — GITHUB_REPO or GITHUB_TOKEN not set")
+        return None
+
+    title = f"spec-gap: {task_id} — {gap_description[:80]}"
+    body = (
+        f"## Spec Gap Found During Autonomous Implementation\n\n"
+        f"**Discovered by:** Autonomous Sprint Agent (Platform IT Expert — Implementation hat)\n"
+        f"**During task:** `{task_id}`\n"
+        f"**Affected spec file:** `{affected_spec}`\n\n"
+        f"## Gap Description\n\n{gap_description}\n\n"
+        f"## Workaround Applied\n\n{workaround}\n\n"
+        f"## Required Action\n\n"
+        f"This spec gap needs review by the **Enterprise Architect** or **Solution Architect** office.\n"
+        f"The implementation proceeded with the workaround above, but the spec should be updated\n"
+        f"to reflect the correct design before WC-012+ implementation continues.\n\n"
+        f"**The agent cannot modify spec files** (C-065 boundary — EA/SA authority required).\n\n"
+        + (f"## Constitutional Basis\n\n{constitutional_basis}\n\n" if constitutional_basis else "")
+        + f"## Labels\n\nApply: `type:spec-gap`, `awaiting:founder-approval`, `sprint:{task_id[:6].lower()}`"
+    )
+
+    result = gh([
+        "issue", "create",
+        "--repo", github_repo,
+        "--title", title,
+        "--body", body,
+        "--label", "awaiting:founder-approval",
+    ], check=False)
+
+    if result.returncode == 0:
+        # Extract issue number from URL (e.g., .../issues/42)
+        issue_url = result.stdout.strip()
+        issue_num = issue_url.split("/")[-1] if "/" in issue_url else "?"
+        print(f"  ⚠️  Spec gap flagged: Issue #{issue_num} — {gap_description[:60]}")
+        record_evidence("spec_gap_flagged", task=task_id, issue=issue_num, gap=gap_description[:100])
+        return issue_num
+    else:
+        print(f"  WARN: Could not create spec-gap issue: {result.stderr[:100]}")
+        return None
+
+
 # ── Task implementations ─────────────────────────────────────────────────────
 
 def execute_wc011_01() -> bool:
