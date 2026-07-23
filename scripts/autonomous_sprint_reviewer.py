@@ -135,12 +135,14 @@ def main() -> int:
     review_body = "\n".join(review_lines)
     env = {"GH_TOKEN": effective_token}
 
+    approved = False
     if has_review_token:
         result = run(["gh", "pr", "review", pr_number,
                       "--approve", "--body", review_body,
                       "--repo", github_repo], env=env)
         if result.returncode == 0:
             print(f"  ✅ PR #{pr_number} APPROVED (C-065 compliant — GitHub App identity)")
+            approved = True
         else:
             print(f"  WARN: Approval failed: {result.stderr[:200]}")
             has_review_token = False  # fall through to advisory
@@ -153,6 +155,20 @@ def main() -> int:
             print(f"  Advisory review comment posted on PR #{pr_number}")
         else:
             print(f"  WARN: Comment failed: {result.stderr[:200]}")
+
+    # Auto-merge: C-066 Tier 2A — no human approval required for authorized IB items.
+    # Founder should NEVER manually review or merge sprint PRs.
+    # If approved by GitHub App (C-065), merge immediately using GITHUB_TOKEN.
+    if approved:
+        merge_result = run(["gh", "pr", "merge", pr_number,
+                            "--squash",
+                            "--subject", f"feat(infra): {sprint} — autonomous sprint complete",
+                            "--repo", github_repo], env={"GH_TOKEN": github_token})
+        if merge_result.returncode == 0:
+            print(f"  ✅ PR #{pr_number} MERGED to main (C-066 Tier 2A — autonomous)")
+        else:
+            print(f"  WARN: Merge failed: {merge_result.stderr[:300]}")
+            print(f"  PR remains open — Yogesh can merge manually if needed")
 
     return 0
 
