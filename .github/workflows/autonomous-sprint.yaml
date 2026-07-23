@@ -331,7 +331,7 @@ jobs:
           python-version: '3.12'
 
       - name: Install dependencies
-        run: pip install requests
+        run: pip install requests PyJWT cryptography -q
 
       - name: Login to Azure (OIDC) and fetch reviewer credentials
         uses: azure/login@v2

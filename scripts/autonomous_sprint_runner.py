@@ -384,35 +384,64 @@ def execute_wc011_04() -> bool:
 
 
 def execute_wc011_07() -> bool:
-    """WC011-07: Document GitHub Actions secrets."""
+    """WC011-07: Document GitHub Actions secrets (OIDC pattern — 2026-07-23)."""
     print("── WC011-07: Document GitHub Actions secrets ──")
     secrets_doc = REPO_ROOT / "infrastructure" / "GITHUB-SECRETS.md"
-    if not secrets_doc.exists():
-        secrets_doc.write_text(
-            "# GitHub Actions Secrets - WAOOAW Platform\n"
-            "# constitutional_basis: C-059\n"
-            "# ib_item: IB-009 (WC011-07)\n\n"
-            "| Secret | Used By | Obtain From | Status |\n"
-            "|---|---|---|---|\n"
-            "| AZURE_CREDENTIALS_DEV | promote.yaml | Azure SP (FA - Service Principal) | PENDING |\n"
-            "| AZURE_CREDENTIALS_QA | promote.yaml | Azure SP | PENDING |\n"
-            "| AZURE_CREDENTIALS_PROD | promote.yaml | Azure SP | PENDING |\n"
-            "| GHCR_TOKEN | ci.yaml | GitHub PAT (packages:write) | PENDING |\n"
-            "| CODECOV_TOKEN | ci.yaml | codecov.io project token | PENDING |\n"
-            "| DEV_BASE_URL | post-deploy-verify.yaml | Terraform output after M1 | PENDING |\n"
-            "| DEV_CONSTITUTIONAL_DB_URL | promote.yaml CCTs | Terraform output after M2 | PENDING |\n"
-            "| DEV_TEST_JWT_TENANT_A | promote.yaml CCTs | scripts/get-dev-token.sh | PENDING |\n"
-            "| DEV_TEST_JWT_TENANT_B | promote.yaml CCTs | scripts/get-dev-token.sh | PENDING |\n"
-            "| REVIEW_APP_TOKEN | autonomous-sprint.yaml review job | GitHub App - see FA-023 | PENDING |\n"
-        )
-        print("  Created infrastructure/GITHUB-SECRETS.md")
+
+    # Always overwrite — reflects current OIDC architecture (no long-lived credentials in GitHub Secrets)
+    secrets_doc.write_text(
+        "# GitHub Actions Secrets & Variables — WAOOAW Platform\n"
+        "# constitutional_basis: C-059 (Implementation Traceability), ADR-014 (Secret Management)\n"
+        "# ib_item: IB-009 (WC011-07)\n"
+        "# produced_by: WC011-07 autonomous sprint task\n\n"
+        "## Architecture: OIDC + Azure Key Vault (no long-lived credentials in GitHub Secrets)\n\n"
+        "Per ADR-014, all secrets live in Azure Key Vault (waooaw-dev-kv).\n"
+        "GitHub Actions authenticates to Azure via OIDC (no stored client secret).\n"
+        "Non-sensitive config values are GitHub Variables (not Secrets).\n\n"
+        "---\n\n"
+        "## GitHub Variables (non-sensitive config — Settings → Variables → Actions)\n\n"
+        "| Variable | Value | Purpose |\n"
+        "|---|---|---|\n"
+        "| `AZURE_CLIENT_ID` | App Registration Client ID | OIDC authentication to Azure |\n"
+        "| `AZURE_TENANT_ID` | Azure AD Tenant ID | OIDC authentication to Azure |\n"
+        "| `AZURE_SUBSCRIPTION_ID` | Azure Subscription ID | OIDC scope |\n"
+        "| `AZURE_KEYVAULT_NAME` | `waooaw-dev-kv` | Key Vault name for secret fetch |\n\n"
+        "**Status: All 4 set** (2026-07-23)\n\n"
+        "---\n\n"
+        "## Azure Key Vault Secrets (fetched at runtime via OIDC — never stored in GitHub)\n\n"
+        "| KV Secret Name | Used By | Obtain From | Status |\n"
+        "|---|---|---|---|\n"
+        "| `ANTHROPIC-API-KEY` | `autonomous-sprint.yaml` execute + review | console.anthropic.com → API Keys | ✅ DONE |\n"
+        "| `GH-APP-ID` | `autonomous-sprint.yaml` review | GitHub App waooaw-reviewer | ✅ DONE |\n"
+        "| `GH-APP-INSTALLATION-ID` | `autonomous-sprint.yaml` review | GitHub App installation | ✅ DONE |\n"
+        "| `GH-APP-PRIVATE-KEY` | `autonomous-sprint.yaml` review | GitHub App private key (.pem) | ✅ DONE |\n"
+        "| `CODECOV-TOKEN` | `ci.yaml` coverage upload | codecov.io → repo settings | ✅ DONE |\n"
+        "| `DEV_BASE_URL` | `post-deploy-verify.yaml` | Terraform output after M1 | ⬜ PENDING |\n"
+        "| `DEV_CONSTITUTIONAL_DB_URL` | `promote.yaml` CCTs | Terraform output after M2 | ⬜ PENDING |\n"
+        "| `DEV_TEST_JWT_TENANT_A` | `promote.yaml` CCTs | `scripts/get-dev-token.sh` after Keycloak live | ⬜ PENDING |\n"
+        "| `DEV_TEST_JWT_TENANT_B` | `promote.yaml` CCTs | `scripts/get-dev-token.sh` after Keycloak live | ⬜ PENDING |\n"
+        "| `GOOGLE-VERTEX-SA-KEY` | AI Runtime (Gemini) | GCP SA key JSON (FA-021) | ⬜ PENDING |\n"
+        "| `SARVAM-API-KEY` | AI Runtime (Agricultural) | sarvam.ai API key (FA-022) | ⬜ PENDING |\n"
+        "| `AZURE-OPENAI-KEY` | AI Runtime (fallback LLM) | Azure OpenAI UAE North (FA-003) | ⬜ PENDING |\n\n"
+        "---\n\n"
+        "## Secret Rotation Policy (ADR-014)\n\n"
+        "- Azure OIDC: no rotation needed (no client secret — OIDC federated credential)\n"
+        "- ANTHROPIC-API-KEY: rotate if exposed in logs or AI context\n"
+        "- GH-APP-PRIVATE-KEY: rotate annually or if exposed\n"
+        "- All others: rotate if leaked; quarterly audit minimum\n\n"
+        "## No Longer Used\n\n"
+        "The following were in earlier designs but are replaced by OIDC:\n"
+        "- `AZURE_CREDENTIALS_DEV/QA/PROD` — replaced by OIDC federated credential\n"
+        "- `REVIEW_APP_TOKEN` — replaced by `GH-APP-PRIVATE-KEY` in Key Vault + JWT generation\n"
+    )
+    print("  Updated infrastructure/GITHUB-SECRETS.md (OIDC pattern)")
 
     git(["add", "infrastructure/GITHUB-SECRETS.md"], check=False)
     diff = git(["diff", "--cached", "--quiet"], check=False)
     if diff.returncode != 0:
         git(["commit", "-m",
-             "chore(infra): WC011-07 - document GitHub Actions secrets\n\n"
-             "IB: IB-009\nConstitutional: C-059"])
+             "chore(infra): WC011-07 - document GitHub Actions secrets (OIDC pattern)\n\n"
+             "IB: IB-009\nConstitutional: C-059, ADR-014"])
     return True
 
 
