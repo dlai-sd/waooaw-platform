@@ -2,94 +2,92 @@
 
 **Last Updated:** 2026-07-23
 **Version:** 1.0.0
-**Session:** 2026-07-23 — 12-Chapter Agent AI Audit + All Gaps Fixed
+**Session:** 2026-07-23 — Full Session: Audit + Infrastructure Setup + Sprint Hardening
 
 ---
 
-## IN-PROGRESS CHECKPOINT — 2026-07-23 SESSION
+## SESSION CLOSE RECORD — 2026-07-23
 
-### Audit: 12-Chapter Agent AI System Review
+### Part 1: 12-Chapter Agent AI Audit (all gaps fixed)
+All 12 chapters passed. 4 new constitutional claims ratified. 8 new/updated spec files.
+See git commits from this session for full file list.
 
-| Chapter | Verdict | Gaps Fixed This Session |
-|---|---|---|
-| Ch 1 — What Is This System | ✅ STRONG PASS | None needed |
-| Ch 2 — Architecture Complexity | ✅ PASS | MCP versioning policy added to mcp-tool-catalogues.md |
-| Ch 3 — Model Routing | ✅ PASS | LLM output schema validation added to agent-execution-loop.md (step 3.5) |
-| Ch 4 — Tool Contracts | ✅ PASS | Versioning policy + retry/backoff spec added to mcp-tool-catalogues.md |
-| Ch 5 — Memory vs State | ✅ PASS | ActionResponse envelope with reasoning_summary added to agent-execution-loop.md |
-| Ch 6 — Orchestration | ✅ STRONG PASS | CE unavailability: ADR-031 + CE component spec §6 |
-| Ch 7 — Evaluation Layer | ✅ PASS | Agent evaluation dashboard added to steward-interface.md §3.4a |
-| Ch 8 — Approval & Policy | ✅ EXCELLENT PASS | None needed |
-| Ch 9 — Reliability & Cost | ✅ PASS | slo.md created |
-| Ch 10 — Context & Retrieval | ⚠️→✅ FIXED | ADR-019 Amendment 1 (chunking spec) + Amendment 2 (token budgets) |
-| Ch 11 — Observability & Security | ✅ PASS | C-078 RATIFIED; pii-masking-pipeline.md; ai-runtime.md Component 7 |
-| Ch 12 — Closing Principles | ✅ PASS | graceful-degradation.md created |
+### Part 2: Azure Infrastructure (fully live)
+- Azure account: yogesh.khandge@dlaisd.com (Pay-as-you-go, Central India)
+- Tenant: `0471534c-1bbe-40ab-ae65-3f721b62582c`
+- Subscription: `2ed11839-6a0f-4eaa-bd94-44ca96ff5d84`
+- Resource Group: `waooaw-dev-rg`
+- Key Vault: `waooaw-dev-kv` — 5 secrets stored: `ANTHROPIC-API-KEY`, `GH-APP-ID`, `GH-APP-INSTALLATION-ID`, `GH-APP-PRIVATE-KEY`, `CODECOV-TOKEN`
+- App Registration: `waooaw-platform-sp` (Client ID: `ccd13909-d004-4340-aa26-990a00bed9c0`)
+- OIDC: federated credentials for main branch + PRs — **no stored client secrets**
+- GitHub Variables set: `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `AZURE_KEYVAULT_NAME`
 
-### Constitutional Claims Ratified
-
-| Claim | Statement | Status |
-|---|---|---|
-| C-076 | 90% Minimum Code Coverage Obligation | ✓ RATIFIED (file created — ratified 2026-07-22, file was missing) |
-| C-077 | Development Tooling Cost Ceiling | ✓ DRAFT (Founder decision needed on ceiling value) |
-| C-078 | PII Masking Before LLM Dispatch | ✓ RATIFIED 2026-07-23 |
-| C-079 | CE Fail-Safe Halt on Unavailability | ✓ RATIFIED 2026-07-23 |
-
-### Files Created (2026-07-23)
-
-| File | Purpose |
+### Part 3: T0 Checklist Status
+| Item | Status |
 |---|---|
-| `knowledge/claims/C-076.md` | 90% Coverage Obligation claim file |
-| `knowledge/claims/C-077.md` | Dev Tooling Cost Ceiling (DRAFT) |
-| `knowledge/claims/C-078.md` | PII Masking Before LLM Dispatch (RATIFIED) |
-| `knowledge/claims/C-079.md` | CE Fail-Safe Halt on Unavailability (RATIFIED) |
-| `adr/ADR-031-ce-fail-safe-unavailability.md` | CE unavailability full spec + CCT-CE-AVAIL-01 |
-| `architecture/reference/pii-masking-pipeline.md` | PII scrubber full spec + CCTs |
-| `architecture/reference/slo.md` | Formal SLO document (availability + latency + cost) |
-| `architecture/reference/graceful-degradation.md` | 9-scenario degradation manifest (on-call runbook) |
+| T0-1 Anthropic API key (waooaw-dev-sprint) | ✅ DONE — in Key Vault |
+| T0-2 Azure OIDC + Key Vault | ✅ DONE |
+| T0-3 Flip platform_phase to IMPLEMENTATION | ⬜ **PENDING — Yogesh's authorization sentence** |
+| T0-4 GitHub App waooaw-reviewer | ✅ DONE — App ID: 4372447, Install: 148479218 |
+| T0-5 Codecov token | ✅ DONE — in Key Vault |
+| GitHub Variables (4) | ✅ DONE |
 
-### Files Updated (2026-07-23)
+### Part 4: C-077 Ratified
+C-077 ratified: ₹5,000/month development agent token budget ceiling.
 
-| File | What Changed |
-|---|---|
-| `adr/ADR-019-rag-architecture.md` | Amendment 1: chunking spec (512 tok/50 overlap/sentence boundary/metadata). Amendment 2: per-agent RAG token budgets |
-| `adr/ADR-INDEX.md` | ADR-030 reserved (IB-020), ADR-031 added |
-| `architecture/reference/COMPONENT-QUICK-REF.md` | CE unavailability quick-ref, PII masking quick-ref, new CCTs, key reference docs table, updated latency budgets |
-| `architecture/reference/agent-execution-loop.md` | Step 3.5: LLM output schema validation. Step 5: ActionResponse envelope with reasoning_summary + evidence_id |
-| `architecture/reference/components/ai-runtime.md` | LLM Gateway mentions PII Scrubber (C-078). Component 7: PII Scrubber spec |
-| `architecture/reference/components/constitutional-engine.md` | §6: Unavailability Behavior (health states, startup gate, graceful shutdown, availability events) |
-| `architecture/reference/mcp-tool-catalogues.md` | Tool versioning policy (/v1/ paths, breaking-change rules, deprecation period). Retry/backoff policy table |
-| `architecture/reference/steward-interface.md` | §3.4a: Agent Evaluation Dashboard (traces, deny rate, confidence, tool fail rate, RAG faithfulness, auto-alert thresholds) |
+### Part 5: Autonomous Sprint Hardening (G1-G7 gaps fixed)
+- G1: Concurrency lock — no overlapping sprint runs
+- G2: Azure OIDC + Key Vault fetch in workflow — ANTHROPIC_API_KEY flows correctly
+- G3: PR existence check — no duplicate task execution
+- G6: Cron reduced to every 6 hours
+- G7: GITHUB_STEP_SUMMARY — human-readable status on every run
+- Sprint Dashboard: **Issue #7** — posts comment after every run, labels updated, founder-action-needed triggers mobile push notification
+
+### Part 6: Sprint Dashboard Live
+- Issue #7: https://github.com/dlai-sd/waooaw-platform/issues/7
+- `scripts/sprint_status_reporter.py`: posts layman-language comments
+- Labels: sprint:running / sprint:pr-open / sprint:waiting / sprint:halted / founder-action-needed
+
+### Part 7: Constitutional Updates
+- AGENT-ENTRY.md: updated to v1.0.0, Sprint Dashboard reference, Azure IDs
+- FOUNDER-ACTION.md: T0 statuses updated, summary block updated
+- engineering-standards.md: §0 Sprint Dashboard Obligation + CI Secret Management standards
+- knowledge/claims/C-077.md: DRAFT → RATIFIED at ₹5,000/month
 
 ---
 
-## NEXT SESSION OPTIONS (updated 2026-07-23 SESSION CLOSE)
+## ONE REMAINING ACTION
+
+```
+Yogesh says: "Yogesh authorizes IB-009 Sprint 011 implementation for this session"
+→ This flips platform_phase=IMPLEMENTATION + autonomous_halt=false
+→ Sprint fires within 6 hours (next cron)
+→ WC-011 begins: docker-compose validation, DB migrations, Keycloak, GitHub Secrets doc
+```
+
+---
+
+## NEXT SESSION OPTIONS
 
 ```
 CURRENT STATE: platform_phase=SPEC · AUTONOMOUS_HALT=true · Version=v1.0.0
-CLAIMS: C-001 to C-076 RATIFIED (76 claims) + C-078 + C-079 = 78 RATIFIED · C-077 DRAFT
-ADRs: ADR-001 to ADR-029 + ADR-031 = 30 ADRs (ADR-030 reserved for IB-020)
+CLAIMS: 78 RATIFIED (C-001→C-076 + C-078 + C-079) · C-077 RATIFIED ₹5,000/month
+ADRs: 30 (ADR-001→ADR-029 + ADR-031 · ADR-030 reserved IB-020)
 
-OPTION A — FA-023: GitHub App for REVIEW_APP_TOKEN (30 min, P0)
-  → Go to github.com/settings/apps → New GitHub App
-  → Name: waooaw-reviewer  |  Permission: Pull requests Read+Write
-  → Install on dlai-sd/waooaw-platform → Download private key
-  → Add as repo secret: REVIEW_APP_TOKEN
-  → Unblocks: fully autonomous merge loop (no human approver ever needed)
+OPTION A — Authorize implementation (T0-3)
+  → Say: "Yogesh authorizes IB-009 Sprint 011 implementation"
+  → Monitor: github.com/dlai-sd/waooaw-platform/issues/7
 
-OPTION B — C-066 Amendment + CODEOWNERS update (Founder authorization needed)
-  → Amend C-066 to add Tier 2B: auto-merge when reviewer Grade A + all CI pass
-  → Remove human from CODEOWNERS (or restrict to Class 1 docs only)
-  → Upgrade autonomous_sprint_reviewer.py to produce binding Grade A/B/F
+OPTION B — Complete T1 actions while waiting for sprint
+  → T1-1: Submit Meta BM verification (START TODAY — 2-4 week clock)
+  → T1-2: GCP Vertex AI SA key (2h)
+  → T1-3: Sarvam AI key (1h)
+  → T1-4: Azure OpenAI UAE North (1h)
+  → T1-5: Trading ESCALATION_DECISION ack (5 min)
 
-OPTION C — Ratify C-077 (Development Tooling Cost Ceiling)
-  → Founder decision: what is the monthly token budget for autonomous development?
-  → Ratifies the DRAFT claim and authorizes IB-020 (ADR-030)
-
-OPTION D — Set platform_phase to IMPLEMENTATION to begin WC-011 live run
-  → Prerequisites: FA-023 done (or accept advisory-only reviews temporarily)
-  → Record FA-NNN in security/FOUNDER-ACTIONS.md
-  → Set platform_phase=IMPLEMENTATION + autonomous_halt=false
-  → First autonomous sprint fires within 2h
+OPTION C — Nothing needed from you until sprint opens first PR
+  → Sprint runs autonomously, posts to Issue #7
+  → You review PR when notified (mobile push)
 ```
 
 ---

@@ -25,17 +25,36 @@ AUTONOMOUS_HALT: true (set 2026-07-22 by Founder — do not clear without explic
 ## Current Platform State (updated each session)
 
 ```
-Version:    0.98.0  |  Gate: G5 CLEAR  |  Epoch: 1 — Employment  |  Phase: SPEC
-Last update: 2026-07-22 — C-076; FinOps; SPEC phase enforced; SIM-022 run; 8 gaps fixed; C-077 DRAFT
+Version:    1.0.0  |  Gate: G5 CLEAR  |  Epoch: 1 — Employment  |  Phase: SPEC
+Last update: 2026-07-23 — 12-chapter audit complete; C-078/C-079 ratified; Azure+OIDC live;
+             Sprint Dashboard Issue #7 active; T0-1/T0-2/T0-4/T0-5 done; T0-3 pending Founder auth
 Phase:      SPEC — design, specs, planning only. NO implementation. NO src/ code.
 Implementation: HALTED — AUTONOMOUS_HALT: true · platform_phase: SPEC · IB-009 status = GATE_CLEAR
-Constitutional Claims: C-001 to C-076 (76 RATIFIED)
+Constitutional Claims: C-001 to C-076 + C-078 + C-079 = 78 RATIFIED · C-077 DRAFT
+ADRs: ADR-001 to ADR-029 + ADR-031 = 30 ADRs · ADR-030 reserved for IB-020
 Agents (customer): DMA v3.0 | Trading v1.7 | Agricultural Advisor v2.7 | Private Tutor v1.0
 Agents (internal): Platform IT Expert v1.0 | Steward Assistant v1.0 | Self-Improvement Analyst v1.0 | Platform Operations v1.0
-CCTs: 50 specified | ADRs: 29 | Security: Audit-ready | Infra: Cloud-optimized + Blue-Green
-Web: web/WAOOAWHome.html — Landing page v1.0 + Auth modal (Google/WhatsApp/email, Figma-style)
+CCTs: 52 specified (added CCT-PII-01, CCT-PII-02, CCT-CE-AVAIL-01) | ADRs: 30
+Web: web/WAOOAWHome.html — Landing page v1.0 + Auth modal
 Three Humans: Yogesh Khandge (Founder) · Sujay Khandge (Business Growth) · Ojal Khandge (Ethics Officer)
 Company: DLAI Satellite Data (OPC) Pvt Ltd | CIN: U62090PN2024OPC230499 | GSTIN: 27AAKCD8188R1ZH
+```
+
+## Sprint Dashboard (mandatory check for autonomous agents)
+
+```
+Sprint Dashboard Issue: https://github.com/dlai-sd/waooaw-platform/issues/7
+  → Current sprint status, open PRs, and Founder actions needed
+  → Every autonomous sprint run updates this issue automatically
+  → Agents: check this issue at session start. If label = founder-action-needed,
+    surface it to Yogesh before doing anything else.
+
+Azure infrastructure:
+  Tenant ID:       0471534c-1bbe-40ab-ae65-3f721b62582c
+  Subscription ID: 2ed11839-6a0f-4eaa-bd94-44ca96ff5d84
+  Resource Group:  waooaw-dev-rg (Central India)
+  Key Vault:       waooaw-dev-kv (all runtime secrets stored here, fetched via OIDC)
+  App Registration: waooaw-platform-sp (Client ID: ccd13909-d004-4340-aa26-990a00bed9c0)
 ```
 
 **Open Constitutional Blockers:** None

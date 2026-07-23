@@ -1,8 +1,8 @@
 # Engineering Quality Standards
 
 **Produced by:** Enterprise Architect + Platform Architect (Sprint 010, WC-010)
-**Date:** 2026-07-07
-**Constitutional Basis:** GENESIS Engineering Quality Mandate; ADR-013 (CI/CD); ADR-016 (.NET + Python); ADR-017 (Next.js); Security Architecture (security tooling gates)
+**Date:** 2026-07-07 (amended 2026-07-23 — Sprint Dashboard obligation, CI secret management)
+**Constitutional Basis:** GENESIS Engineering Quality Mandate; ADR-013 (CI/CD); ADR-016 (.NET + Python); ADR-017 (Next.js); Security Architecture (security tooling gates); C-001 (Human Override — Founder must have 24/7 status visibility)
 **Classification:** Class 3 — Governed (evolves via PR review, must remain consistent with GENESIS and all ADRs)
 
 ---
@@ -12,6 +12,37 @@
 This document is the **Decision Space specification for the Runtime Professional**. It defines what the Runtime Professional may build, how they must build it, and what evidence they must produce before a change is merged. Every standard below is constitutionally authorized and enforcement-automated.
 
 A standard without enforcement is a suggestion. Every standard here has an automated enforcement mechanism listed. If the mechanism does not exist yet, the standard does not take effect until it does.
+
+---
+
+## 0. Autonomous Sprint Standards (2026-07-23)
+
+### 0.1 Sprint Dashboard Obligation (C-001)
+
+Every autonomous sprint run **must** post a status update to the Sprint Dashboard (GitHub Issue #7) at the end of execution. This is not optional — it is the implementation of C-001 (Human Override) for the development process. Yogesh must be able to see sprint status at any time via GitHub mobile.
+
+| Standard | Rule | Enforcement |
+|---|---|---|
+| Sprint Dashboard update | Every run calls `scripts/sprint_status_reporter.py` in the `report` job (runs `always()`) | `report` job in `autonomous-sprint.yaml` — cannot be skipped |
+| Layman-language status | Comments on Issue #7 must state: what happened, what task, what the Founder must do (if anything) | Script template enforced in `sprint_status_reporter.py` |
+| Label reflects state | Issue #7 label updated to `sprint:running/pr-open/waiting/halted/done` after every run | `sprint_status_reporter.py` label update step |
+| `founder-action-needed` label | If sprint is halted or failed, add `founder-action-needed` label — triggers mobile push notification | `sprint_status_reporter.py` conditional logic |
+
+### 0.2 CI Secret Management (ADR-014, OIDC)
+
+| Standard | Rule | Enforcement |
+|---|---|---|
+| No long-lived credentials in GitHub Secrets | All runtime secrets live in Azure Key Vault (`waooaw-dev-kv`). Fetched at runtime via OIDC. | `azure/get-keyvault-secrets@v1` step in `execute` and `review` jobs |
+| OIDC authentication only | GitHub Actions authenticates to Azure using `azure/login@v2` with OIDC (client-id + tenant-id + subscription-id as GitHub Variables, not Secrets) | `permissions: id-token: write` in workflow |
+| GitHub Variables (not Secrets) for non-sensitive config | `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `AZURE_KEYVAULT_NAME` are GitHub Variables | Set in repo Settings → Variables → Actions |
+
+### 0.3 Autonomous Sprint Concurrency and Deduplication
+
+| Standard | Rule | Enforcement |
+|---|---|---|
+| No overlapping sprint runs | `concurrency.group: autonomous-sprint-${{ github.ref }}` with `cancel-in-progress: false` | Workflow `concurrency` block |
+| No duplicate PRs | Before execution, check for open PR with same task ID in title | `pr_check` step in execute job |
+| Cron frequency | Maximum once every 6 hours during any phase | `cron: '0 */6 * * *'` in workflow |
 
 ---
 
