@@ -6,3 +6,20 @@
 {"event": "AUTONOMOUS_SPRINT_STARTED", "timestamp": "2026-07-23T13:51:26.803454+00:00", "run_id": "30013030008", "stub_mode": true, "sprint": "WC-011", "branch": "ib/009/infra-foundation", "tasks": ["WC011-01", "WC011-02", "WC011-03", "WC011-04", "WC011-05", "WC011-07"]}
 {"event": "SPRINT_TASKS_EXECUTED", "timestamp": "2026-07-23T13:51:30.821061+00:00", "run_id": "30013030008", "stub_mode": true, "sprint": "WC-011", "tasks_done": ["WC011-01", "WC011-02", "WC011-03", "WC011-04", "WC011-05", "WC011-07"]}
 {"event": "AUTONOMOUS_SPRINT_STARTED", "timestamp": "2026-07-23T18:08:57.093707+00:00", "run_id": "30032411449", "stub_mode": true, "sprint": "WC-012", "branch": "ib/009/sprint-012", "tasks": ["WC012-01", "WC012-02", "WC012-03", "WC012-04"]}
+{"event": "llm_call", "timestamp": "2026-07-23T18:10:27.993906+00:00", "run_id": "30032411449", "stub_mode": true, "task": "WC012-01", "tokens_in": 2841, "tokens_out": 8000}
+{"event": "llm_call", "timestamp": "2026-07-23T18:12:20.463865+00:00", "run_id": "30032411449", "stub_mode": true, "task": "WC012-01", "tokens_in": 3128, "tokens_out": 8000}
+{"event": "llm_call", "timestamp": "2026-07-23T18:13:56.435847+00:00", "run_id": "30032411449", "stub_mode": true, "task": "WC012-01", "tokens_in": 3187, "tokens_out": 8000}
+{"event": "spec_gap_halt", "timestamp": "2026-07-23T18:14:00.719009+00:00", "run_id": "30032411449", "stub_mode": true, "task": "WC012-01", "issue": "13", "gap": "WC012-01 failed validation after 3 LLM attempts. Last error: Build/syntax validation failed for file"}
+{"event": "llm_call", "timestamp": "2026-07-23T18:15:31.557842+00:00", "run_id": "30032411449", "stub_mode": true, "task": "WC012-02", "tokens_in": 1659, "tokens_out": 8000}
+{"event": "llm_call", "timestamp": "2026-07-23T18:17:03.867275+00:00", "run_id": "30032411449", "stub_mode": true, "task": "WC012-02", "tokens_in": 2093, "tokens_out": 8000}
+{"event": "llm_call", "timestamp": "2026-07-23T18:18:40.347578+00:00", "run_id": "30032411449", "stub_mode": true, "task": "WC012-02", "tokens_in": 2126, "tokens_out": 8000}
+{"event": "spec_gap_halt", "timestamp": "2026-07-23T18:18:43.758601+00:00", "run_id": "30032411449", "stub_mode": true, "task": "WC012-02", "issue": "14", "gap": "WC012-02 failed validation after 3 LLM attempts. Last error: Build/syntax validation failed for file"}
+{"event": "llm_call", "timestamp": "2026-07-23T18:20:16.228828+00:00", "run_id": "30032411449", "stub_mode": true, "task": "WC012-03", "tokens_in": 577, "tokens_out": 8000}
+{"event": "llm_call", "timestamp": "2026-07-23T18:21:43.494417+00:00", "run_id": "30032411449", "stub_mode": true, "task": "WC012-03", "tokens_in": 1111, "tokens_out": 8000}
+{"event": "llm_call", "timestamp": "2026-07-23T18:23:16.468675+00:00", "run_id": "30032411449", "stub_mode": true, "task": "WC012-03", "tokens_in": 1149, "tokens_out": 8000}
+{"event": "spec_gap_halt", "timestamp": "2026-07-23T18:23:21.301417+00:00", "run_id": "30032411449", "stub_mode": true, "task": "WC012-03", "issue": "15", "gap": "WC012-03 failed validation after 3 LLM attempts. Last error: Build/syntax validation failed for file"}
+{"event": "llm_call", "timestamp": "2026-07-23T18:24:54.254141+00:00", "run_id": "30032411449", "stub_mode": true, "task": "WC012-04", "tokens_in": 1849, "tokens_out": 8000}
+{"event": "llm_call", "timestamp": "2026-07-23T18:26:25.781802+00:00", "run_id": "30032411449", "stub_mode": true, "task": "WC012-04", "tokens_in": 2233, "tokens_out": 8000}
+{"event": "llm_call", "timestamp": "2026-07-23T18:28:07.727006+00:00", "run_id": "30032411449", "stub_mode": true, "task": "WC012-04", "tokens_in": 2314, "tokens_out": 8000}
+{"event": "spec_gap_halt", "timestamp": "2026-07-23T18:28:16.845662+00:00", "run_id": "30032411449", "stub_mode": true, "task": "WC012-04", "issue": "16", "gap": "WC012-04 failed validation after 3 LLM attempts. Last error: Build/syntax validation failed for file"}
+{"event": "SPRINT_TASKS_EXECUTED", "timestamp": "2026-07-23T18:28:16.845799+00:00", "run_id": "30032411449", "stub_mode": true, "sprint": "WC-012", "tasks_done": []}
