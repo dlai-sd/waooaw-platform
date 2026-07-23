@@ -822,22 +822,22 @@ TASK_HANDLERS = {
         {
             "architecture/reference/components/constitutional-engine.md": "full",
             "architecture/reference/proto/constitutional_service.proto": "full",
-            "standards/CODING-STANDARDS.md": "§2.1 Tools,§1.5 Structured Comments",
+            "architecture/reference/dotfiles/constitutional-engine.csproj": "full",
         },
-        "Generate a SELF-CONTAINED scaffold — every type referenced in Program.cs "
-        "MUST exist in one of the generated files. "
+        "CRITICAL: copy constitutional-engine.csproj EXACTLY from "
+        "architecture/reference/dotfiles/constitutional-engine.csproj — do NOT invent packages. "
+        "The correct OTLP exporter is 'OpenTelemetry.Exporter.OpenTelemetryProtocol' "
+        "(NOT 'OpenTelemetry.Exporter.Otlp' — that package does not exist on NuGet). "
+        "Generate a SELF-CONTAINED scaffold — every type in Program.cs MUST exist in a file "
+        "you generate in THIS response. "
         "REQUIRED files in src/constitutional-engine/: "
-        "(1) constitutional-engine.csproj with Sdk='Microsoft.NET.Sdk.Web', net9.0, "
-        "Grpc.AspNetCore, Google.Protobuf, Grpc.Tools packages, "
-        "and <Protobuf Include='Protos/constitutional_service.proto' GrpcServices='Server' />. "
-        "(2) Protos/constitutional_service.proto — copy from the reference proto exactly. "
-        "(3) Services/ConstitutionalEngineService.cs — the gRPC service class that inherits "
-        "ConstitutionalEngineService.ConstitutionalEngineServiceBase and implements ALL RPCs "
-        "as stub methods returning Task. This is MANDATORY — Program.cs calls "
-        "app.MapGrpcService<ConstitutionalEngineService.Services.ConstitutionalEngineService>(). "
-        "(4) Program.cs — minimal ASP.NET Core 9 startup. Only reference types from files "
-        "you generate in THIS response. No external service references except the gRPC class. "
-        "Every .cs file carries // Implements: and // constitutional_basis: header comment.",
+        "(1) constitutional-engine.csproj — copied from reference file, unchanged. "
+        "(2) Protos/constitutional_service.proto — copied from reference proto, unchanged. "
+        "(3) Services/ConstitutionalEngineService.cs — gRPC service class inheriting "
+        "ConstitutionalEngineServiceBase, ALL RPCs stubbed with Task.FromResult(...). "
+        "(4) Program.cs — minimal ASP.NET Core 9: builder.Services.AddGrpc(), "
+        "app.MapGrpcService<ConstitutionalEngineService>() using the class from file (3). "
+        "Every .cs file: // Implements: and // constitutional_basis: header.",
         model_hint="reasoning"
     ),
     "WC012-02": lambda: execute_with_llm(
@@ -845,9 +845,13 @@ TASK_HANDLERS = {
         {
             "architecture/reference/components/constitutional-engine.md": "§2 PAAS Boundary Validator",
             "architecture/reference/ce-validate-action-evaluators.md": "full",
+            "architecture/reference/dotfiles/constitutional-engine.csproj": "full",
             "tests/QA-STRATEGY.md": "§5.1 Unit Tests",
         },
+        "Use the .csproj from architecture/reference/dotfiles/constitutional-engine.csproj — "
+        "do NOT add extra packages or invent package names. "
         "ValidateAction must return ALLOW/DENY/ESCALATE. Default deny for unknown tools (C-041). "
+        "ALL files MUST go in src/constitutional-engine/ only. "
         "Unit tests use xUnit + Moq. CCT-EF-01 must be referenced in test.",
         model_hint="reasoning"
     ),
