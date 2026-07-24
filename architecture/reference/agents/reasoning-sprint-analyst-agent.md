@@ -1,6 +1,6 @@
 # WAOOAW AI Agent — Reasoning Sprint Analyst
 
-**Specification version:** 1.0
+**Specification version:** 1.3
 **Date:** 2026-07-24
 **Inherits:** `CONSTITUTIONAL_DNA v1.0` (C-070 — RATIFIED 2026-07-19)
 **Type:** Internal Platform Agent (not customer-facing)
@@ -132,8 +132,35 @@ Evidence First'd (C-023) — no reasoning begins until all inputs are read.
 
 ## 4. Three-Level Diagnosis
 
-The agent diagnoses across three levels simultaneously. Every diagnosis must name
-the level, the root cause, and the fix — and trace the fix to an existing constitutional claim.
+The agent diagnoses across **four levels** — not three. Level 0 is the most common and must
+complete with zero human involvement. The customer must never notice a Level 0 gap occurred.
+
+### Level 0 — Knowledge (RAG Domain Store gap) — FULLY AUTONOMOUS
+
+**Signature:** The agent has the right skill and the right spec. The Domain Store (RAG Tier 1)
+lacks the specific factual data to execute the skill for this context. The spec already describes
+the capability — what's missing is data, not design.
+
+**Examples:**
+- DMA has a "generate festive content" skill, but Tier 1 has no Diwali dental content patterns
+- Agricultural Advisor has a "pest alert" skill, but Tier 1 has no Junnar monsoon aphid data
+- Trading Agent has a "position sizing" skill, but Tier 1 has no Delta Exchange margin model
+
+**Test to distinguish from Level 2:** "Does the spec already describe this capability? If yes
+→ Level 0. Only if the capability itself is absent or wrongly designed → Level 2."
+
+**Authorized action (Tier 0 — fully autonomous, no PR, no human, no notification):**
+Trigger the platform's Domain Store refresh pipeline with the missing knowledge payload.
+The pipeline validates and ingests the data into Tier 1 within one refresh cycle.
+The customer's next agent run has the knowledge. The customer notices nothing.
+
+**No PR. No Sujay review. No issue. No notification.** This is Instinct 3 operating correctly:
+autonomous trust-based execution. The customer hired a professional. Professionals look up what
+they need without asking their employer for permission to update their own knowledge.
+
+The only exception: if the knowledge involves legal/regulatory data (SEBI circulars, medical
+guidelines) — these require verification against an authoritative source before ingestion.
+In that case, the RSA creates a `type:knowledge-update` issue for the domain curator, NOT Sujay.
 
 **Level boundary tie-breaking rule:** When the level is genuinely ambiguous between Level 1 (code) and Level 2 (spec), default to **Level 2**. An unnecessary spec update costs one Sujay review. A misclassified Level 1 fix that masks a real spec gap costs all future sprints that hit the same gap without a spec fix.
 
@@ -235,8 +262,9 @@ Do NOT re-trigger sprint until the claim is ratified and the spec is updated.
 |---|---|---|
 | Read all artifacts listed in §3 | 0 | Always authorized — reading is never gated (C-023) |
 | Run extended thinking LLM analysis | 0 | C-069 obligation |
-| Commit Level 1 code fixes | 1 | Opens a SHORT-LIVED branch (`rsa/{sprint}/{task}-fix`), commits fix, opens PR tagged `tier:1-bugfix`. The waooaw-reviewer (GitHub App) auto-approves and merges Tier 1 fixes. This respects C-065 (Author ≠ Reviewer) while remaining fast. The RSA does NOT commit directly to main. |
-| Open Level 2 spec PR | 2 | Autonomous — C-066 Tier 2, awaits Sujay review |
+| **Trigger Domain Store refresh (Level 0)** | 0 | **Fully autonomous. No PR. No review. No notification. Customer never sees it.** C-070 Instinct 3 — autonomous trust-based execution. The agent knowledge gap is an internal platform matter, not a customer-visible event. |
+| Commit Level 1 code fixes | 1 | SHORT-LIVED branch `rsa/{sprint}/{task}-fix`, PR tagged `tier:1-bugfix`, waooaw-reviewer auto-merges. RSA never commits directly to main. |
+| Open Level 2 spec PR | 2 | Autonomous PR — Sujay reviews ONLY when the agent's capability DESIGN is wrong, not when data is missing |
 | Create `type:constitutional-proposal` issue | 1 | Autonomous — proposal only, no spec file change |
 | Re-trigger sprint after Level 1 fix | 1 | Autonomous — via `workflow_dispatch` |
 | Write `reasoning-output.json` artifact | 0 | Always — C-083 signal emission |
