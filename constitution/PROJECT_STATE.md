@@ -262,15 +262,14 @@ branch: ib/009/sprint-012
 last_attempt_utc: 2026-07-24T13:30:41.002711+00:00
 last_attempt_result: SUCCESS
 consecutive_failures: 0
-tasks_done: []
-tasks_remaining:
+tasks_done:
   - WC012-01
+tasks_remaining:
   - WC012-02
   - WC012-03
   - WC012-04
 
 current_task:
-WC012-01
 next_sprint_ib_item: IB-009
 blocker: ""
 blocker_raised_utc: ""
