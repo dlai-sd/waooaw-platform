@@ -561,6 +561,299 @@ class TestExecuteSubtaskChainLivePaths:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# IB-023: File-by-file generation tests
+# ═══════════════════════════════════════════════════════════════════════════════
+
+from task_decomposer import _filter_ptr_types_for_file, execute_file_by_file
+
+
+class TestFilterPtrTypesForFile:
+    """Tests for targeted type injection — reduces 'lost-in-middle' attention loss."""
+
+    ALL_TYPES = {
+        "EvaluationContext": {"kind": "record"},
+        "EvaluationResult": {"kind": "record"},
+        "EvaluationVerdict": {"kind": "enum"},
+        "EvaluatorRegistry": {"kind": "class"},
+        "IClaimEvaluator": {"kind": "interface"},
+        "ValidateActionResponse": {"kind": "proto_message"},
+        "RecordEvidenceRequest": {"kind": "proto_message"},
+        "ValidationDecision": {"kind": "proto_enum"},
+        "BudgetContext": {"kind": "proto_message"},
+    }
+
+    def test_test_file_gets_all_types(self):
+        """Test files reference many types — inject all."""
+        result = _filter_ptr_types_for_file(
+            "tests/ce.Tests/Evaluators/CCT_EF01_Tests.cs",
+            self.ALL_TYPES,
+        )
+        assert len(result) == len(self.ALL_TYPES)
+
+    def test_evaluator_file_gets_evaluation_types_only(self):
+        """C041ToolAuthorizationEvaluator only needs evaluation types."""
+        result = _filter_ptr_types_for_file(
+            "src/ce/Evaluators/C041ToolAuthorizationEvaluator.cs",
+            self.ALL_TYPES,
+        )
+        assert "EvaluationContext" in result
+        assert "EvaluationResult" in result
+        assert "EvaluationVerdict" in result
+        # Proto request/response types not needed for evaluator implementation
+        assert "RecordEvidenceRequest" not in result
+
+    def test_service_file_gets_proto_and_registry_types(self):
+        """ConstitutionalEngineService needs proto types + registry."""
+        result = _filter_ptr_types_for_file(
+            "src/ce/Services/ConstitutionalEngineService.cs",
+            self.ALL_TYPES,
+        )
+        assert "ValidateActionResponse" in result
+        assert "ValidationDecision" in result
+
+    def test_empty_types_returns_empty(self):
+        result = _filter_ptr_types_for_file("src/ce/Evaluators/Foo.cs", {})
+        assert result == []
+
+    def test_always_returns_list(self):
+        result = _filter_ptr_types_for_file("src/anything.cs", self.ALL_TYPES)
+        assert isinstance(result, list)
+
+    def test_fewer_types_than_total_for_evaluator(self):
+        """Evaluator files must get fewer types than total — this is the whole point."""
+        evaluator_types = _filter_ptr_types_for_file(
+            "src/ce/Evaluators/C043BudgetCeilingEvaluator.cs",
+            self.ALL_TYPES,
+        )
+        # Must be a subset — proto request/response types excluded
+        assert len(evaluator_types) < len(self.ALL_TYPES)
+
+
+class TestExecuteFileByFile:
+    """Tests for file-by-file LLM generation (IB-023)."""
+
+    def _make_mock_runner(self, success: bool = True):
+        return MagicMock(
+            execute_with_llm=MagicMock(return_value=success),
+            get_branch_context=lambda: "",
+        )
+
+    def test_single_file_success(self, tmp_path, monkeypatch):
+        """Single output_file generates, compile passes, returns True."""
+        import task_decomposer
+        mock_runner = self._make_mock_runner(success=True)
+
+        with patch("task_decomposer.REPO_ROOT", tmp_path):
+            with patch.dict("sys.modules", {"autonomous_sprint_runner": mock_runner}):
+                with patch("task_decomposer.load_ptr", return_value={}, create=True):
+                    result = execute_file_by_file(
+                        task_id="WC012-02b",
+                        output_files=["src/ce/Evaluators/C041.cs"],
+                        effective_check="BASE CHECK",
+                        spec_sections={"spec.md": "full"},
+                        model_hint="reasoning",
+                        max_tokens=5000,
+                    )
+        assert result is True
+
+    def test_multi_file_all_succeed(self, tmp_path, monkeypatch):
+        """3 output files, all succeed → True. LLM called once per file."""
+        import task_decomposer
+        call_count = []
+
+        def fake_execute(task_id, desc, spec, check, model, tokens):
+            call_count.append(task_id)
+            # Verify single-file instruction in check
+            assert "Generate ONLY this ONE file" in check
+            return True
+
+        mock_runner = MagicMock(
+            execute_with_llm=fake_execute,
+            get_branch_context=lambda: "",
+        )
+
+        files = [
+            "src/ce/Evaluators/C041.cs",
+            "src/ce/Evaluators/C043.cs",
+            "src/ce/Evaluators/C062.cs",
+        ]
+
+        with patch("task_decomposer.REPO_ROOT", tmp_path):
+            with patch.dict("sys.modules", {"autonomous_sprint_runner": mock_runner}):
+                with patch("task_decomposer.load_ptr", return_value={}, create=True):
+                    result = execute_file_by_file(
+                        task_id="WC012-02b",
+                        output_files=files,
+                        effective_check="BASE CHECK",
+                        spec_sections={},
+                        model_hint="reasoning",
+                        max_tokens=5000,
+                    )
+
+        assert result is True
+        # Called exactly once per file
+        assert len(call_count) == 3
+
+    def test_first_file_fail_halts_immediately(self, tmp_path):
+        """If first file fails, remaining files are NOT generated (error isolation)."""
+        import task_decomposer
+        call_count = []
+
+        def fake_execute(*args, **kwargs):
+            call_count.append(1)
+            return len(call_count) > 1  # first call returns False
+
+        mock_runner = MagicMock(
+            execute_with_llm=fake_execute,
+            get_branch_context=lambda: "",
+        )
+
+        with patch("task_decomposer.REPO_ROOT", tmp_path):
+            with patch.dict("sys.modules", {"autonomous_sprint_runner": mock_runner}):
+                with patch("task_decomposer.load_ptr", return_value={}, create=True):
+                    result = execute_file_by_file(
+                        task_id="WC012-02b",
+                        output_files=["src/c1.cs", "src/c2.cs", "src/c3.cs"],
+                        effective_check="check",
+                        spec_sections={},
+                        model_hint="reasoning",
+                        max_tokens=5000,
+                    )
+
+        assert result is False
+        assert len(call_count) == 1, "Must stop at first failure, not call remaining files"
+
+    def test_preservation_list_grows_between_files(self, tmp_path):
+        """Each file's check must list previously-generated files — prevents regeneration."""
+        import task_decomposer
+        checks_received = []
+
+        def fake_execute(task_id, desc, spec, check, model, tokens):
+            checks_received.append(check)
+            return True
+
+        mock_runner = MagicMock(
+            execute_with_llm=fake_execute,
+            get_branch_context=lambda: "",
+        )
+
+        with patch("task_decomposer.REPO_ROOT", tmp_path):
+            with patch.dict("sys.modules", {"autonomous_sprint_runner": mock_runner}):
+                with patch("task_decomposer.load_ptr", return_value={}, create=True):
+                    execute_file_by_file(
+                        task_id="WC012-02b",
+                        output_files=["src/A.cs", "src/B.cs", "src/C.cs"],
+                        effective_check="check",
+                        spec_sections={},
+                        model_hint="reasoning",
+                        max_tokens=5000,
+                    )
+
+        # First file: no preservation list
+        assert "already written" not in checks_received[0].lower() or "src/A.cs" not in checks_received[0]
+        # Second file: A.cs must be listed as already written
+        assert "src/A.cs" in checks_received[1]
+        # Third file: both A.cs and B.cs must be listed
+        assert "src/A.cs" in checks_received[2]
+        assert "src/B.cs" in checks_received[2]
+
+    def test_token_budget_capped_per_file(self, tmp_path):
+        """Per-file token budget is capped at 4000 max — shorter prompts."""
+        import task_decomposer
+        token_budgets = []
+
+        def fake_execute(task_id, desc, spec, check, model, tokens):
+            token_budgets.append(tokens)
+            return True
+
+        mock_runner = MagicMock(
+            execute_with_llm=fake_execute,
+            get_branch_context=lambda: "",
+        )
+
+        with patch("task_decomposer.REPO_ROOT", tmp_path):
+            with patch.dict("sys.modules", {"autonomous_sprint_runner": mock_runner}):
+                with patch("task_decomposer.load_ptr", return_value={}, create=True):
+                    execute_file_by_file(
+                        task_id="WC012-02b",
+                        output_files=["src/A.cs"],
+                        effective_check="check",
+                        spec_sections={},
+                        model_hint="reasoning",
+                        max_tokens=10000,  # full subtask budget
+                    )
+
+        # Per-file budget must be <= 4000 regardless of subtask budget
+        assert token_budgets[0] <= 4000
+
+    def test_single_file_check_contains_one_file_instruction(self, tmp_path):
+        """LLM prompt must say 'Generate ONLY this ONE file' — no batch instructions."""
+        import task_decomposer
+        received_check = []
+
+        def fake_execute(task_id, desc, spec, check, model, tokens):
+            received_check.append(check)
+            return True
+
+        mock_runner = MagicMock(
+            execute_with_llm=fake_execute,
+            get_branch_context=lambda: "",
+        )
+
+        with patch("task_decomposer.REPO_ROOT", tmp_path):
+            with patch.dict("sys.modules", {"autonomous_sprint_runner": mock_runner}):
+                with patch("task_decomposer.load_ptr", return_value={}, create=True):
+                    execute_file_by_file(
+                        task_id="WC012-02b",
+                        output_files=["src/C041.cs"],
+                        effective_check="BASE",
+                        spec_sections={},
+                        model_hint="reasoning",
+                        max_tokens=5000,
+                    )
+
+        assert len(received_check) == 1
+        assert "Generate ONLY this ONE file" in received_check[0]
+        assert "src/C041.cs" in received_check[0]
+
+    def test_subtask_chain_uses_file_by_file_when_output_files_set(self, tmp_path):
+        """execute_subtask_chain routes to file-by-file when output_files is populated."""
+        import task_decomposer
+        file_by_file_called = []
+
+        def fake_file_by_file(*args, **kwargs):
+            file_by_file_called.append(True)
+            return True
+
+        mock_runner = MagicMock(
+            get_branch_context=lambda: "",
+            git=MagicMock(return_value=MagicMock(returncode=1)),
+        )
+
+        monitor = {"task_results": {}}
+
+        with patch("task_decomposer.REPO_ROOT", tmp_path):
+            with patch.dict("sys.modules", {"autonomous_sprint_runner": mock_runner}):
+                with patch("task_decomposer.run_compile_gate", return_value=(True, "")):
+                    with patch("task_decomposer.execute_file_by_file", fake_file_by_file):
+                        st = SubTaskDef(
+                            id="WC012-02b", description="evaluators", type="llm",
+                            output_files=["src/ce/Evaluators/C041.cs"],
+                            model_hint="reasoning",
+                            max_tokens=5000,
+                        )
+                        execute_subtask_chain(
+                            task_id="WC012-02",
+                            subtasks=[st],
+                            monitor_signal=monitor,
+                            infra_error_tasks=[],
+                            dry_run=False,
+                        )
+
+        assert len(file_by_file_called) == 1, "file-by-file must be invoked when output_files set"
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # PTR wiring tests — C-083 Emit after compile gate, C-085 inject before LLM
 # ═══════════════════════════════════════════════════════════════════════════════
 

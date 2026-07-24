@@ -238,6 +238,140 @@ def emit_subtask_signal(task_id: str, subtask_id: str, result: str, monitor_sign
     }
 
 
+# ── File-by-file LLM generation (IB-023) ──────────────────────────────────────
+
+def _filter_ptr_types_for_file(filename: str, all_types: dict) -> list[str]:
+    """
+    Heuristic: return PTR type names likely relevant to the given filename.
+    Reduces prompt context by injecting only relevant types, not all 24.
+
+    Rules (in priority order):
+    1. Type name appears verbatim in filename → always include
+    2. File is a test → include all types (tests reference many types)
+    3. File is ConstitutionalEngineService → include proto + registry types
+    4. File is an evaluator → include evaluation types only
+    5. Fallback → return all type names (safe default)
+    """
+    fname = filename.lower()
+
+    # Test files — include all types
+    if "test" in fname or "spec" in fname:
+        return list(all_types.keys())
+
+    # Constitutional engine service — proto types + evaluator types
+    if "service" in fname and "constitutional" in fname:
+        return [t for t in all_types if
+                any(k in t.lower() for k in ("validate", "record", "evidence", "emergency",
+                                              "grant", "revoke", "evaluator", "evaluation",
+                                              "validation", "decision", "budget"))]
+
+    # Evaluator files — evaluation types only
+    if "evaluator" in fname or "evaluators" in fname.split("/")[-2:]:
+        return [t for t in all_types if
+                any(k in t.lower() for k in ("evaluation", "evaluator", "verdict",
+                                              "result", "claim", "context", "registry"))]
+
+    # Name match — type name substring appears in filename
+    matched = [t for t in all_types if t.lower() in fname or fname in t.lower()]
+    if matched:
+        return matched + [t for t in all_types if
+                          any(k in t.lower() for k in ("evaluation", "evaluator"))]
+
+    # Safe fallback — inject all
+    return list(all_types.keys())
+
+
+def execute_file_by_file(
+    task_id: str,
+    output_files: list[str],
+    effective_check: str,
+    spec_sections: dict,
+    model_hint: str,
+    max_tokens: int,
+) -> bool:
+    """
+    Generate LLM output one file at a time.
+
+    # Implements: architecture/reference/pipeline/wc-spec-reader.md (IB-023 file-by-file mode)
+    # constitutional_basis: C-077 (FinOps — smaller prompts = lower cost), C-082 (per-file validation)
+
+    Industry best-practice approach:
+    - ONE file per LLM call (focused context, less "lost-in-middle" attention loss)
+    - Targeted PTR injection (only relevant types, not all 24)
+    - Per-call token budget (3-4k output vs 14k for full batch)
+    - Error isolation (only the failing file retries, not the whole batch)
+
+    Called by execute_subtask_chain when st.output_files is non-empty.
+    Falls back to batch mode (execute_with_llm) if output_files is empty.
+    """
+    # Lazy import — avoids circular dependency at module load
+    _scripts = str(REPO_ROOT / "scripts")
+    if _scripts not in sys.path:
+        sys.path.insert(0, _scripts)
+    from autonomous_sprint_runner import execute_with_llm, get_branch_context
+
+    # Collect all PTR types for selective injection
+    all_ptr_types: dict = {}
+    try:
+        from platform_type_registry import load_ptr, build_ptr_prompt_block
+        ptr = load_ptr()
+        for task_entry in ptr.get("tasks", {}).values():
+            all_ptr_types.update(task_entry.get("types", {}))
+    except Exception:
+        pass
+
+    already_written: list[str] = []
+
+    for output_file in output_files:
+        file_name = Path(output_file).name
+        print(f"\n  FILE-BY-FILE: generating {file_name}")
+
+        # Build targeted PTR block for this specific file
+        relevant_types = _filter_ptr_types_for_file(output_file, all_ptr_types)
+        file_ptr_block = ""
+        if all_ptr_types and relevant_types:
+            try:
+                file_ptr_block = build_ptr_prompt_block(relevant_types, ptr=ptr)
+                print(f"  PTR: {len(relevant_types)}/{len(all_ptr_types)} types injected for {file_name}")
+            except Exception:
+                pass
+
+        # Single-file constitutional check: focused, no noise from other files
+        preservation = (
+            f"\nFiles already written in this session (DO NOT regenerate):\n  "
+            + "\n  ".join(already_written)
+        ) if already_written else ""
+
+        single_file_check = (
+            f"Generate ONLY this ONE file: {output_file}\n"
+            f"Do NOT generate any other file.{preservation}\n\n"
+            f"{effective_check}"
+            f"{file_ptr_block}"
+        )
+
+        # Per-file token budget: enough for one file, not the whole batch
+        per_file_tokens = min(max_tokens, 4000)
+
+        success = execute_with_llm(
+            f"{task_id}:{file_name}",
+            f"Generate {file_name}",
+            spec_sections,
+            single_file_check,
+            model_hint,
+            per_file_tokens,
+        )
+
+        if success:
+            already_written.append(output_file)
+            print(f"  FILE-BY-FILE: {file_name} ✅")
+        else:
+            print(f"  FILE-BY-FILE: {file_name} ❌ — halting subtask")
+            return False
+
+    print(f"  FILE-BY-FILE: all {len(output_files)} file(s) generated successfully")
+    return True
+
+
 # ── TaskDecomposer ─────────────────────────────────────────────────────────────
 
 def execute_subtask_chain(
@@ -299,38 +433,52 @@ def execute_subtask_chain(
 
         elif st.type == "llm":
             print(f"  [{st.id}] Calling LLM ({st.model_hint}, max={st.max_tokens} tokens)...")
-            # Inject branch context into spec content for LLM call
             spec_with_context = dict(st.spec_sections)
 
             # IB-022: assemble constitutional_check from WC spec + stack rules + delta
             effective_check = _build_effective_check(st, completed)
 
-            # C-085 / DP-009: inject PTR type contracts into constitutional_check
-            # so the LLM sees compiled property names, not spec prose that may have drifted.
-            try:
-                from platform_type_registry import build_ptr_prompt_block, load_ptr
-                ptr = load_ptr()
-                if ptr:
-                    all_type_names = [
-                        t
-                        for task_entry in ptr.get("tasks", {}).values()
-                        for t in task_entry.get("types", {}).keys()
-                    ]
-                    ptr_block = build_ptr_prompt_block(all_type_names, ptr=ptr)
-                    if ptr_block:
-                        effective_check = effective_check + ptr_block
-                        print(f"  PTR: injected {len(all_type_names)} compiled type(s) into prompt (C-085/DP-009)")
-            except Exception as _ptr_err:
-                print(f"  PTR injection skipped: {_ptr_err}")
+            # C-085/DP-009: inject PTR type contracts (appended to effective_check)
+            # Note: for file-by-file mode, PTR injection is done per-file with targeted types.
+            # For batch mode (legacy), inject all types here.
+            if not st.output_files:
+                try:
+                    from platform_type_registry import build_ptr_prompt_block, load_ptr
+                    ptr = load_ptr()
+                    if ptr:
+                        all_type_names = [
+                            t for task_entry in ptr.get("tasks", {}).values()
+                            for t in task_entry.get("types", {}).keys()
+                        ]
+                        ptr_block = build_ptr_prompt_block(all_type_names, ptr=ptr)
+                        if ptr_block:
+                            effective_check = effective_check + ptr_block
+                            print(f"  PTR: injected {len(all_type_names)} type(s) (batch mode)")
+                except Exception as _ptr_err:
+                    print(f"  PTR injection skipped: {_ptr_err}")
 
-            success = execute_with_llm(
-                st.id,
-                st.description,
-                spec_with_context,
-                effective_check,
-                st.model_hint,
-                st.max_tokens,
-            )
+            # IB-023: file-by-file generation when output_files defined (industry best practice)
+            if st.output_files:
+                print(f"  [{st.id}] File-by-file mode: {len(st.output_files)} file(s)")
+                success = execute_file_by_file(
+                    st.id,
+                    st.output_files,
+                    effective_check,
+                    spec_with_context,
+                    st.model_hint,
+                    st.max_tokens,
+                )
+            else:
+                # Legacy batch mode — backward compat for subtasks without output_files
+                from autonomous_sprint_runner import execute_with_llm
+                success = execute_with_llm(
+                    st.id,
+                    st.description,
+                    spec_with_context,
+                    effective_check,
+                    st.model_hint,
+                    st.max_tokens,
+                )
         else:
             print(f"  [{st.id}] ERROR: unknown type '{st.type}'")
             return False
