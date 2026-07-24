@@ -1,9 +1,43 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-07-23 (session close — evening)
-**Version:** 1.3.0 — WC-012 in execution, all barriers fixed, overnight cron authorized
-**Declared by:** Yogesh Khandge (Founder), 2026-07-23
-**Session:** 2026-07-23 full day — 35 autonomous runs, WC-012 2/4 tasks proven, all barriers fixed
+**Last Updated:** 2026-07-24 (EA+IT Expert session — clean WC-012 restart authorized)
+**Version:** 1.4.0 — WC-012 READY for clean run, pipeline RC#1/RC#2/RC#3 fixed
+**Declared by:** Yogesh Khandge (Founder), 2026-07-23 (implementation authorization unchanged)
+**Session:** 2026-07-24 — RCA complete, 3 pipeline root causes fixed, WC-012 reset to READY
+
+---
+
+## SESSION CLOSE RECORD — 2026-07-24 (EA+IT Expert RCA session)
+
+### WC-012 Reset to Clean READY State
+
+**What happened overnight (runs #30046231957 → #30065913447):**
+- Pipeline produced a partially-built PR #28: WC012-01/02/04 code committed but build was broken at intermediate state
+- 9 false spec-gap issues (#26–#35) created — NOT real spec gaps (pipeline bug)
+- Tests were 1/11 passing (Moq mock used non-virtual ServerCallContext.RequestHeaders)
+
+**Root causes fixed (all 3 on main now):**
+| RC | Fix | Location |
+|---|---|---|
+| RC#1: scaffold failure didn't halt sprint | Break on scaffold fail; dependent tasks stop | `autonomous_sprint_runner.py` |
+| RC#2: tasks_done never advanced | Per-task `tasks_done`/`tasks_remaining` write via `set-list` | `autonomous_sprint_runner.py` + `sprint_state.py` |
+| RC#3: Moq can't mock non-virtual ServerCallContext | `FakeServerCallContext` concrete stub | test project |
+
+**CCTs added to test project (now 42/42 pass):**
+- CCT-EF-01: Evidence First ordering (PersistEvidence before TriggerTemporalSignal)
+- CCT-HO-01: EmergencyStop handler ≤100ms budget
+- Evaluator suite: C-041/C-043/C-048/C-049/C-051/C-062 + registry ordering
+
+**Clean state declared:**
+- PR #28 closed (not merged), branch `ib/009/sprint-012` deleted
+- All 9 spec-gap issues closed, RCA issue #36 closed
+- `sprint_status: READY`, `tasks_done: []`, all 4 WC-012 tasks in `tasks_remaining`
+- Pipeline fixes on `main` — next run will execute WC-012 cleanly end-to-end
+
+### Next Session
+1. Trigger WC-012 run (manual or next cron at `0 */3 * * *`)
+2. Monitor Issue #7 — expect 4/4 tasks pass with fixed pipeline
+3. Review PR when opened — code builds + 42/42 tests pass is the exit gate
 
 ---
 
@@ -188,7 +222,6 @@ tasks_remaining:
   - WC012-04
 
 current_task:
-""
 next_sprint: WC-013
 next_sprint_ib_item: IB-009
 blocker: ""
