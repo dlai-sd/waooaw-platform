@@ -545,7 +545,7 @@ def gh(args: list[str], check: bool = True) -> subprocess.CompletedProcess:
 
 def call_llm(task_id: str, task_description: str, spec_content: str,
              constitutional_check: str, model_hint: str = "reasoning",
-             max_tokens: int = 10000) -> str | None:
+             max_tokens: int = 10000, attempt: int = 1) -> str | None:
     """
     Call Claude Sonnet 4.6 to generate code for a sprint task.
     Returns the raw LLM response string, or None on failure.
@@ -631,34 +631,50 @@ def call_llm(task_id: str, task_description: str, spec_content: str,
                 "content-type": "application/json",
             },
         )
+        # Observability: log prompt size before call
+        prompt_chars = len(json_mod.dumps(payload))
+        print(f"  REQ:  {task_id} attempt={attempt} | prompt={prompt_chars:,} chars | max_tokens={max_tokens}")
         # Timeout: adaptive thinking may use significant tokens on complex tasks.
         # Use generous floor — 600s minimum, scaled to output tokens.
         api_timeout = max(600, (max_tokens // 50) * 3)
+        t_start = __import__('time').monotonic()
         with urllib.request.urlopen(req, timeout=api_timeout) as resp:
             result = json_mod.loads(resp.read())
-            content = result.get("content", [])
-            # Extract only text blocks — thinking blocks (type="thinking") are stripped.
-            text = "".join(block.get("text", "") for block in content if block.get("type") == "text")
-            usage = result.get("usage", {})
-            tokens_in  = usage.get("input_tokens", 0)
-            tokens_out = usage.get("output_tokens", 0)
-            # Log thinking block count for FinOps learning data (C-077)
-            thinking_blocks = sum(1 for b in content if b.get("type") == "thinking")
-            thinking_chars  = sum(len(b.get("thinking", "")) for b in content if b.get("type") == "thinking")
-            # DIAGNOSTIC: stop_reason and raw text length — confirms/kills truncation hypothesis
-            stop_reason = result.get("stop_reason", "unknown")
-            text_chars  = len(text)
-            if thinking_blocks:
-                print(f"  LLM: {task_id} → {tokens_in} in / {tokens_out} out tokens "
-                      f"[+ {thinking_blocks} thinking block(s), ~{thinking_chars} chars]")
-            else:
-                print(f"  LLM: {task_id} → {tokens_in} in / {tokens_out} out tokens")
-            print(f"  DIAG: stop_reason={stop_reason!r}  text_chars={text_chars}  "
-                  f"thinking_chars={thinking_chars}")
-            record_evidence("llm_call", task=task_id, tokens_in=tokens_in, tokens_out=tokens_out,
-                            thinking_blocks=thinking_blocks, stop_reason=stop_reason,
-                            text_chars=text_chars)
-            return text
+        latency_s = __import__('time').monotonic() - t_start
+        content = result.get("content", [])
+        # Extract only text blocks — thinking blocks (type="thinking") are stripped.
+        text = "".join(block.get("text", "") for block in content if block.get("type") == "text")
+        usage = result.get("usage", {})
+        tokens_in  = usage.get("input_tokens", 0)
+        tokens_out = usage.get("output_tokens", 0)
+        thinking_blocks = sum(1 for b in content if b.get("type") == "thinking")
+        thinking_chars  = sum(len(b.get("thinking", "")) for b in content if b.get("type") == "thinking")
+        stop_reason  = result.get("stop_reason", "unknown")
+        text_chars   = len(text)
+        block_types  = [b.get("type") for b in content]
+        text_snippet = text[:400].replace("\n", " ") if text else "(empty)"
+        # ── Industry-standard LLM call observability ─────────────────────────
+        print(f"  REQ:  {task_id} attempt={attempt} | prompt={prompt_chars:,} chars | max_tokens={max_tokens}")
+        print(f"  LLM:  {task_id} attempt={attempt} → {tokens_in} in / {tokens_out} out | "
+              f"latency={latency_s:.1f}s | stop={stop_reason!r}")
+        if thinking_blocks:
+            print(f"  THINK: {thinking_blocks} block(s), {thinking_chars:,} chars")
+        print(f"  RESP: block_types={block_types} | text_chars={text_chars:,}")
+        print(f"  TEXT: {text_snippet}")
+        # ─────────────────────────────────────────────────────────────────────
+        record_evidence(
+            "llm_call",
+            task=task_id, attempt=attempt,
+            tokens_in=tokens_in, tokens_out=tokens_out,
+            latency_s=round(latency_s, 2),
+            stop_reason=stop_reason,
+            block_types=block_types,
+            text_chars=text_chars,
+            thinking_blocks=thinking_blocks,
+            thinking_chars=thinking_chars,
+            prompt_chars=prompt_chars,
+        )
+        return text
     except urllib.error.HTTPError as e:
         body = e.read(300).decode("utf-8", errors="replace")
         if e.code == 429:
@@ -815,7 +831,8 @@ def execute_with_llm(task_id: str, task_description: str, spec_sections: dict,
 
         try:
             response = call_llm(task_id, task_description, prompt_with_context,
-                               constitutional_check, model_hint, max_tokens)
+                               constitutional_check, model_hint, max_tokens,
+                               attempt=attempt)
         except RuntimeError as infra_err:
             err_str = str(infra_err)
             infra_failures += 1
