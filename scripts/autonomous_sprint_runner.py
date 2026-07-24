@@ -1702,19 +1702,30 @@ TASK_HANDLERS = {
                 constitutional_check=(
                     "BRANCH CONTEXT: WC012-02a just committed 4 interface files to the branch:\n"
                     "  Evaluators/EvaluationResult.cs, EvaluationContext.cs, IClaimEvaluator.cs, EvaluatorRegistry.cs\n"
-                    "READ BRANCH CONTEXT — do NOT regenerate these 4 files. Implement only:\n"
-                    "  5 evaluators: C041ToolAuthorizationEvaluator, C043BudgetCeilingEvaluator,\n"
-                    "    C048NonExploitationEvaluator, C049HonestLimitationEvaluator, C062AiSecurityEvaluator\n"
-                    "  Extend ConstitutionalEngineService.cs with ValidateAction RPC implementation.\n"
-                    "Each evaluator: implement IClaimEvaluator, return EvaluationResult with Verdict.\n"
+                    "READ BRANCH CONTEXT — do NOT regenerate these 4 files. They compile correctly as-is.\n"
+                    "Implement ONLY these 6 files:\n"
+                    "  src/constitutional-engine/Evaluators/C041ToolAuthorizationEvaluator.cs\n"
+                    "  src/constitutional-engine/Evaluators/C043BudgetCeilingEvaluator.cs\n"
+                    "  src/constitutional-engine/Evaluators/C048NonExploitationEvaluator.cs\n"
+                    "  src/constitutional-engine/Evaluators/C049HonestLimitationEvaluator.cs\n"
+                    "  src/constitutional-engine/Evaluators/C062AiSecurityEvaluator.cs\n"
+                    "  src/constitutional-engine/Services/ConstitutionalEngineService.cs (EXTEND only — add ValidateAction impl)\n"
+                    "\n"
+                    "CRITICAL TYPE NAMES (use these exactly — wrong names = CS0103 build failure):\n"
+                    "  Enum: EvaluationVerdict { Allow, Deny, Escalate }  — NOT 'EvaluationDecision'\n"
+                    "  Record: EvaluationResult(string ClaimId, EvaluationVerdict Verdict, string Reason)\n"
+                    "  Constructor: new EvaluationResult(\"C-041\", EvaluationVerdict.Deny, \"reason\")\n"
+                    "  NEVER use: EvaluationDecision, Decision — these types/fields do NOT exist.\n"
+                    "  EvaluationContext fields: ContractId, ActionType, ActionParameters, DecisionSpaceVersion, SkillId\n"
+                    "\n"
                     "EvaluationContext is passed in — no DB access, no DbContext reference.\n"
-                    "Default deny for unknown tools (C-041). ValidateAction aggregates: any DENY → DENY response.\n"
-                    "Do NOT generate tests here — tests are a separate sub-task (WC012-02c).\n"
+                    "Default deny for unknown/missing ContractId (C-041). ValidateAction: any DENY in results → DENY.\n"
+                    "Do NOT generate tests here — tests are WC012-02c.\n"
                     "Do NOT generate Data/ files — data layer is WC012-03.\n"
                     "PROTO NAMESPACE: using Waooaw.ConstitutionalEngine.Grpc; on every file referencing gRPC types."
                 ),
                 model_hint="reasoning",
-                max_tokens=8000,
+                max_tokens=10000,
             ),
             SubTaskDef(
                 id="WC012-02c",

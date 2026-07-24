@@ -319,7 +319,7 @@ tasks_remaining:
 current_task:
 
 
-                        ## NEXT SESSION OPTIONS
+                            ## NEXT SESSION OPTIONS
 
 ```
 CURRENT STATE: platform_phase=IMPLEMENTATION · AUTONOMOUS_HALT=false

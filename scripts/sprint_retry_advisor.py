@@ -329,6 +329,28 @@ def diagnose_build_error(
             print(f"  Retry Advisor: WRONG_FIELD_NAME (confidence={diagnosis.confidence:.0%})")
             return diagnosis
 
+    # ── Rule 4: CS0103 — undefined name (invented type/enum) ──────────────────
+    if "CS0103" in error_codes:
+        m = re.search(r"The name '([^']+)' does not exist in the current context", build_error)
+        if m:
+            bad_name = m.group(1)
+            fix = (
+                f"UNDEFINED NAME: '{bad_name}' does not exist. "
+                f"You invented a type or enum name that is not defined anywhere in the project. "
+                f"Check the BRANCH CONTEXT section for the exact class/enum names. "
+                f"For EvaluationResult: use EvaluationVerdict (not EvaluationDecision). "
+                f"For EvaluationVerdict values: Allow, Deny, Escalate (exact case). "
+                f"Never invent new type names — only use types visible in the spec or branch context."
+            )
+            print(f"  Retry Advisor: WRONG_FIELD_NAME/undefined name CS0103 (confidence=88%)")
+            return RetryDiagnosis(
+                error_type=WRONG_FIELD_NAME,
+                fix_instruction=fix,
+                should_retry=True,
+                confidence=0.88,
+                constitutional_trace="C-082 (Build Validation — generated code must use defined types)"
+            )
+
     # ── Fallback: LLM classification ───────────────────────────────────────────
     print(f"  Retry Advisor: pattern not recognized — calling cheap LLM classifier")
     diagnosis = _classify_with_llm(task_id, build_error)
