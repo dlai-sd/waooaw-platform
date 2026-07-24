@@ -117,7 +117,7 @@ def execute_subtask_chain(
     task_id: str,
     subtasks: list[SubTaskDef],
     monitor_signal: dict,
-    _INFRA_ERROR_TASKS: list,
+    infra_error_tasks: list,
     dry_run: bool = False,
 ) -> bool:
     """
@@ -128,11 +128,12 @@ def execute_subtask_chain(
     C-082: compile gate after every sub-task.
     Backward compatible: called only when task has 'subtasks' key.
     """
-    # Import here to avoid circular dependency
-    sys.path.insert(0, str(REPO_ROOT / "scripts"))
-    from autonomous_sprint_runner import (
-        execute_with_llm, get_branch_context, git, _MONITOR_SIGNAL
-    )
+    # Lazy import to avoid circular dependency at module load time.
+    # The runner is always loaded before this function is called.
+    _scripts = str(REPO_ROOT / "scripts")
+    if _scripts not in sys.path:
+        sys.path.insert(0, _scripts)  # only insert once
+    from autonomous_sprint_runner import execute_with_llm, get_branch_context, git
 
     completed: list[str] = []
     all_written_files: list[str] = []

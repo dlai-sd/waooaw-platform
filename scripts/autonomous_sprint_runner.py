@@ -1581,7 +1581,11 @@ def main() -> int:
                     tasks_not_implemented.append(task)
                     continue
                 print(f"  ✅ C-086 gate: {sim_msg}")
-                success = _execute_task_decomposed(task, handler["subtasks"], _MONITOR_SIGNAL)
+                success = _execute_task_decomposed(
+                    task, handler["subtasks"], _MONITOR_SIGNAL,
+                    infra_error_tasks=infra_error_tasks,
+                    dry_run=dry_run,
+                )
             else:
                 print(f"  ⚠️  TASK_NOT_IMPLEMENTED: {task} — unknown handler format")
                 tasks_not_implemented.append(task)
