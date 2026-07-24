@@ -355,21 +355,31 @@ def diagnose_build_error(
         m = re.search(r"'([^']+)' does not contain a definition for '([^']+)'", build_error)
         if m:
             type_name, field_name = m.group(1), m.group(2)
-            fix = (
-                f"FIELD NOT FOUND: '{type_name}.{field_name}' does not exist. "
-                f"For ValidateActionRequest: use EvaluationContext.FromRequest(request) "
-                f"and access ctx.ContractId, ctx.ActionType etc. "
-                f"NEVER access request.TenantId, request.AgentId, request.ToolName — "
-                f"these fields do NOT exist in the proto. "
-                f"Proto fields: ContractId, ActionType, ActionParameters, DecisionSpaceVersion, SkillId."
-            )
-            print(f"  Retry Advisor: CS1061 WRONG_FIELD_NAME (confidence=88%)")
+            # Detect string-used-as-Dictionary (most common LLM mistake in evaluators)
+            dict_methods = {"TryGetValue", "ContainsKey", "Add", "Remove", "Keys", "Values"}
+            if type_name == "string" and field_name in dict_methods:
+                fix = (
+                    f"TYPE ERROR: You called '{field_name}' on a `string` variable, "
+                    f"but '{field_name}' is a Dictionary method. "
+                    f"Declare the variable as `Dictionary<string, bool>` (or appropriate value type), "
+                    f"not as `string`. Example: `var lookup = new Dictionary<string, bool> {{ ... }};` "
+                    f"then `lookup.TryGetValue(key, out var result);`"
+                )
+            else:
+                fix = (
+                    f"FIELD NOT FOUND: '{type_name}.{field_name}' does not exist. "
+                    f"For ValidateActionRequest: use EvaluationContext.FromRequest(request) "
+                    f"and access ctx.ContractId, ctx.ActionType, ctx.ActionParameters etc. "
+                    f"NEVER access request.TenantId, request.AgentId, request.ToolName. "
+                    f"For other types: check the BRANCH CONTEXT for the exact property names."
+                )
+            print(f"  Retry Advisor: CS1061 WRONG_FIELD_NAME — {type_name}.{field_name} (confidence=88%)")
             return RetryDiagnosis(
                 error_type=WRONG_FIELD_NAME,
                 fix_instruction=fix,
                 should_retry=True,
                 confidence=0.88,
-                constitutional_trace="C-082 (Build Validation — use EvaluationContext.FromRequest)"
+                constitutional_trace="C-082 (Build Validation — correct type usage)"
             )
 
     # ── Fallback: LLM classification ───────────────────────────────────────────
