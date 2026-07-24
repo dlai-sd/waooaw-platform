@@ -108,6 +108,15 @@ OVERALL GATE STATUS: PASS
 
 ---
 
+## Sujay Khandge Approval
+
+**Approved:** 2026-07-24
+**Role:** Business Growth / Platform Quality Owner
+**Verdict:** APPROVED — RSA spec RATIFIED
+**Next action:** Implementation sprint can begin (WC-018 or next available sprint slot)
+
+---
+
 ## EA Authorization
 
 This review authorizes the spec to advance from DRAFT to **DRAFT (EA reviewed)**. Implementation
