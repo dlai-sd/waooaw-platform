@@ -834,6 +834,16 @@ class TestGenerateWc01202aEvaluatorInterfaces:
 class TestWc01202bConstitutionalCheck:
     """Tests that WC012-02b constitutional_check contains the right type contract."""
 
+    def _get_subtask(self):
+        """Return the WC012-02b SubTaskDef from TASK_HANDLERS."""
+        wc012 = runner.TASK_HANDLERS.get("WC012-02")
+        if not wc012:
+            return None
+        for st in wc012.get("subtasks", []):
+            if st.id == "WC012-02b":
+                return st
+        return None
+
     def _get_check(self) -> str:
         """Extract WC012-02b constitutional_check from TASK_HANDLERS."""
         handler = runner.TASK_HANDLERS.get("WC012-02b")
@@ -886,9 +896,11 @@ class TestWc01202bConstitutionalCheck:
         )
 
     def test_check_lists_six_output_files(self):
-        """check must enumerate all 6 files WC012-02b must produce."""
-        check = self._get_check()
-        required_files = [
+        """WC012-02b must declare 6 output_files (used for file-by-file routing)."""
+        st = self._get_subtask()
+        assert st is not None, "WC012-02b subtask not found"
+        assert st.output_files, "WC012-02b must have output_files for file-by-file mode"
+        required = [
             "C041ToolAuthorizationEvaluator",
             "C043BudgetCeiling",
             "C048NonExploitation",
@@ -896,8 +908,9 @@ class TestWc01202bConstitutionalCheck:
             "C062AiSecurity",
             "ConstitutionalEngineService",
         ]
-        for f in required_files:
-            assert f in check, f"WC012-02b check missing {f} in output file list"
+        paths = " ".join(st.output_files)
+        for f in required:
+            assert f in paths, f"WC012-02b output_files missing {f}"
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

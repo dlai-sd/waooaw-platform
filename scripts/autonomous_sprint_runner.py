@@ -1810,26 +1810,29 @@ TASK_HANDLERS = {
                 type="llm",
                 depends_on=["WC012-02a"],
                 compile_gate="dotnet_build",
+                wc_task_id="WC012-02",
+                stack="dotnet",
+                output_files=[
+                    "src/constitutional-engine/Evaluators/C041ToolAuthorizationEvaluator.cs",
+                    "src/constitutional-engine/Evaluators/C043BudgetCeilingEvaluator.cs",
+                    "src/constitutional-engine/Evaluators/C048NonExploitationEvaluator.cs",
+                    "src/constitutional-engine/Evaluators/C049HonestLimitationEvaluator.cs",
+                    "src/constitutional-engine/Evaluators/C062AiSecurityEvaluator.cs",
+                    "src/constitutional-engine/Services/ConstitutionalEngineService.cs",
+                ],
+                not_regenerate_from=[
+                    "src/constitutional-engine/Evaluators/EvaluationResult.cs",
+                    "src/constitutional-engine/Evaluators/EvaluationContext.cs",
+                    "src/constitutional-engine/Evaluators/IClaimEvaluator.cs",
+                    "src/constitutional-engine/Evaluators/EvaluatorRegistry.cs",
+                ],
                 spec_sections={
                     "architecture/reference/components/constitutional-engine.md": "§2 PAAS Boundary Validator",
                     "architecture/reference/ce-validate-action-evaluators.md": "full",
                     "architecture/reference/dotfiles/constitutional-engine.csproj": "full",
                 },
                 constitutional_check=(
-                    "BRANCH CONTEXT: WC012-02a committed 4 interface files. READ BRANCH CONTEXT.\n"
-                    "  Do NOT regenerate: EvaluationResult.cs, EvaluationContext.cs, IClaimEvaluator.cs, EvaluatorRegistry.cs\n"
-                    "Implement ONLY these 6 files:\n"
-                    "  src/constitutional-engine/Evaluators/C041ToolAuthorizationEvaluator.cs\n"
-                    "  src/constitutional-engine/Evaluators/C043BudgetCeilingEvaluator.cs\n"
-                    "  src/constitutional-engine/Evaluators/C048NonExploitationEvaluator.cs\n"
-                    "  src/constitutional-engine/Evaluators/C049HonestLimitationEvaluator.cs\n"
-                    "  src/constitutional-engine/Evaluators/C062AiSecurityEvaluator.cs\n"
-                    "  src/constitutional-engine/Services/ConstitutionalEngineService.cs (EXTEND only — add ValidateAction impl)\n"
-                    "\n"
-                    "# TYPE CONTRACTS are injected from the Platform Type Registry (see block below).\n"
-                    "# Use ONLY the property/method/field names listed there. Do NOT invent names.\n"
-                    "\n"
-                    "BEHAVIORAL RULES (implementation patterns, not type listings):\n"
+                    "BEHAVIORAL RULES (delta — stack rules are injected automatically):\n"
                     "  ActionParameters is JSON-encoded — use ctx.GetParameter(\"key\") to extract values.\n"
                     "  ⛔ NEVER call ctx.ActionParameters.TryGetValue() — it is a string, not a Dictionary.\n"
                     "  TenantId: var tenantId = context.RequestHeaders.GetValue(\"x-tenant-id\") ?? \"\";\n"
@@ -1838,15 +1841,14 @@ TASK_HANDLERS = {
                     "  ValidateAction: any DENY from any evaluator → return DENY. Default deny for unknown ContractId.\n"
                     "  ⛔ ValidationDecision values are Allow/Deny/Escalate — NOT Authorized, Denied, or Permit.\n"
                     "  ⛔ BudgetRemainingInrPaise is long? (nullable optional) — NEVER assign null directly. Use ?? 0L.\n"
-                    "\n"
                     "TASK BOUNDARIES:\n"
+                    "  ConstitutionalEngineService.cs: EXTEND only — add ValidateAction impl. Do NOT rewrite existing methods.\n"
                     "  Do NOT call RecordEvidence — that is WC012-03.\n"
                     "  Do NOT generate test files — that is WC012-02c.\n"
-                    "  Do NOT generate Data/ files — that is WC012-03.\n"
-                    "PROTO NAMESPACE: using Waooaw.ConstitutionalEngine.Grpc; on every file referencing gRPC types."
+                    "  Do NOT generate Data/ files — that is WC012-03."
                 ),
                 model_hint="reasoning",
-                max_tokens=10000,
+                max_tokens=4000,
             ),
             SubTaskDef(
                 id="WC012-02c-prep",
