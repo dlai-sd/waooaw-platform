@@ -35,3 +35,4 @@
 {"event": "llm_call", "timestamp": "2026-07-24T01:10:49.377000+00:00", "run_id": "30056975614", "stub_mode": true, "task": "WC012-04", "tokens_in": 3651, "tokens_out": 10000}
 {"event": "spec_gap_halt", "timestamp": "2026-07-24T01:10:51.255515+00:00", "run_id": "30056975614", "stub_mode": true, "task": "WC012-04", "issue": "32", "gap": "WC012-04 failed validation after 3 LLM attempts. Last error: Build/syntax validation failed for file"}
 {"event": "SPRINT_TASKS_EXECUTED", "timestamp": "2026-07-24T01:10:51.255668+00:00", "run_id": "30056975614", "stub_mode": true, "sprint": "WC-012", "tasks_done": []}
+{"event": "AUTONOMOUS_SPRINT_STARTED", "timestamp": "2026-07-24T04:07:06.353924+00:00", "run_id": "30065913447", "stub_mode": true, "sprint": "WC-012", "branch": "ib/009/sprint-012", "tasks": ["WC012-01", "WC012-02", "WC012-03", "WC012-04"]}
