@@ -41,12 +41,13 @@ Run [30123433904 + successor] — WC-012 sprint in progress on branch `ib/009/sp
 2. Check active batch run status: `gh run list --repo dlai-sd/waooaw-platform --limit 3`
 3. If run PASSED → audit → PR review → merge → VERSION bump → begin IB-022
 4. If run FAILED → audit → identify failure → fix → clean slate → re-trigger
-5. IB-022 Phase 1 (spec writing) is NEXT after WC-012 merge:
+5. IB-022 gate clarification: Phase 1 (spec writing) has NO gate — begins immediately. Phase 2 (runner migration) requires WC-012 merged.
+6. IB-022 Phase 1 is NEXT — can start now:
    - Write `architecture/reference/pipeline/wc-spec-reader.md`
    - Write `architecture/reference/pipeline/sprint-task-decomposition.md`
    - Amend `adr/ADR-030-autonomous-sprint-code-generation.md`
    - Write `simulation/SIM-PL-003-WCSpecReader-check-assembly.md`
-   - ONLY THEN implement `scripts/wc_spec_reader.py`
+   - ONLY THEN implement `scripts/wc_spec_reader.py` (after WC-012 merged)
 
 ---
 

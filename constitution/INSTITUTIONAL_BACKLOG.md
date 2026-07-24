@@ -877,7 +877,10 @@ When this IB is authorized and completed:
 
 **Priority:** P1 — execute after WC-012 sprint completes (pipeline still working; this is a structural improvement)
 
-**Gate:** Post-WC012 complete. Requires SIM-PL-003 PASS before implementation begins (C-086).
+**Gate:**
+- Phase 1 (spec): No gate — begins immediately, independent of WC-012
+- Phase 2 (implementation): Requires WC-012 merged to main (runner migration on clean state)
+- Phase 3 (validation + PR): Requires Phase 2 complete
 
 **Depends On:** IB-021 (task decomposition framework — already delivered), WC-012 complete
 
