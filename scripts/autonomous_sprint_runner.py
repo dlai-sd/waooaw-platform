@@ -645,13 +645,19 @@ def call_llm(task_id: str, task_description: str, spec_content: str,
             # Log thinking block count for FinOps learning data (C-077)
             thinking_blocks = sum(1 for b in content if b.get("type") == "thinking")
             thinking_chars  = sum(len(b.get("thinking", "")) for b in content if b.get("type") == "thinking")
+            # DIAGNOSTIC: stop_reason and raw text length — confirms/kills truncation hypothesis
+            stop_reason = result.get("stop_reason", "unknown")
+            text_chars  = len(text)
             if thinking_blocks:
                 print(f"  LLM: {task_id} → {tokens_in} in / {tokens_out} out tokens "
                       f"[+ {thinking_blocks} thinking block(s), ~{thinking_chars} chars]")
             else:
                 print(f"  LLM: {task_id} → {tokens_in} in / {tokens_out} out tokens")
+            print(f"  DIAG: stop_reason={stop_reason!r}  text_chars={text_chars}  "
+                  f"thinking_chars={thinking_chars}")
             record_evidence("llm_call", task=task_id, tokens_in=tokens_in, tokens_out=tokens_out,
-                            thinking_blocks=thinking_blocks)
+                            thinking_blocks=thinking_blocks, stop_reason=stop_reason,
+                            text_chars=text_chars)
             return text
     except urllib.error.HTTPError as e:
         body = e.read(300).decode("utf-8", errors="replace")
