@@ -97,12 +97,18 @@ def _classify_cs0246_namespace(error: str) -> Optional[RetryDiagnosis]:
     Most common: Waooaw.ConstitutionalEngine.Protos instead of Waooaw.ConstitutionalEngine.Grpc
     constitutional_trace: C-082 (build validation) + C-059 (traceability)
     """
-    # Known wrong namespace patterns → correct namespace
+    # Known wrong namespace patterns → correct namespace.
+    # Also covers proto-generated request/response types (ValidateActionRequest, etc.)
+    # which live in Waooaw.ConstitutionalEngine.Grpc and need 'using Grpc;'
     NAMESPACE_MAP = {
-        "Protos":          "Waooaw.ConstitutionalEngine.Grpc",
-        "Proto":           "Waooaw.ConstitutionalEngine.Grpc",
-        "ConstitutionalService": "Waooaw.ConstitutionalEngine.Grpc",
+        "Protos":                    "Waooaw.ConstitutionalEngine.Grpc",
+        "Proto":                     "Waooaw.ConstitutionalEngine.Grpc",
+        "ConstitutionalService":     "Waooaw.ConstitutionalEngine.Grpc",
         "Grpc.ConstitutionalService": "Waooaw.ConstitutionalEngine.Grpc",
+        # Proto-generated message types — all end in Request/Response/Reply
+        "Request":                   "Waooaw.ConstitutionalEngine.Grpc",
+        "Response":                  "Waooaw.ConstitutionalEngine.Grpc",
+        "Reply":                     "Waooaw.ConstitutionalEngine.Grpc",
     }
 
     # Extract the missing type

@@ -317,7 +317,6 @@ tasks_remaining:
   - WC012-04
 
 current_task:
-blocker: ""
 blocker_raised_utc: ""
 ```
 
