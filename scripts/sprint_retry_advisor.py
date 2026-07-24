@@ -329,7 +329,6 @@ def diagnose_build_error(
             print(f"  Retry Advisor: WRONG_FIELD_NAME (confidence={diagnosis.confidence:.0%})")
             return diagnosis
 
-<<<<<<< Updated upstream
     # ── Rule 4: CS0103 — undefined name (invented type/enum) ──────────────────
     if "CS0103" in error_codes:
         m = re.search(r"The name '([^']+)' does not exist in the current context", build_error)
@@ -338,13 +337,19 @@ def diagnose_build_error(
             fix = (
                 f"UNDEFINED NAME: '{bad_name}' does not exist. "
                 f"You invented a type or enum name that is not defined anywhere in the project. "
-                f"Check the BRANCH CONTEXT section for the exact class/enum names. "
+                f"Check the BRANCH CONTEXT for exact class/enum names. "
                 f"For EvaluationResult: use EvaluationVerdict (not EvaluationDecision). "
-                f"For EvaluationVerdict values: Allow, Deny, Escalate (exact case). "
-                f"Never invent new type names — only use types visible in the spec or branch context."
+                f"For EvaluationVerdict values: Allow, Deny, Escalate (exact case)."
             )
             print(f"  Retry Advisor: WRONG_FIELD_NAME/undefined name CS0103 (confidence=88%)")
-=======
+            return RetryDiagnosis(
+                error_type=WRONG_FIELD_NAME,
+                fix_instruction=fix,
+                should_retry=True,
+                confidence=0.88,
+                constitutional_trace="C-082 (Build Validation — generated code must use defined types)"
+            )
+
     # ── Rule 5: CS1061 — member not found on type (wrong proto field access) ───
     if "CS1061" in error_codes:
         m = re.search(r"'([^']+)' does not contain a definition for '([^']+)'", build_error)
@@ -359,17 +364,12 @@ def diagnose_build_error(
                 f"Proto fields: ContractId, ActionType, ActionParameters, DecisionSpaceVersion, SkillId."
             )
             print(f"  Retry Advisor: CS1061 WRONG_FIELD_NAME (confidence=88%)")
->>>>>>> Stashed changes
             return RetryDiagnosis(
                 error_type=WRONG_FIELD_NAME,
                 fix_instruction=fix,
                 should_retry=True,
                 confidence=0.88,
-<<<<<<< Updated upstream
-                constitutional_trace="C-082 (Build Validation — generated code must use defined types)"
-=======
                 constitutional_trace="C-082 (Build Validation — use EvaluationContext.FromRequest)"
->>>>>>> Stashed changes
             )
 
     # ── Fallback: LLM classification ───────────────────────────────────────────

@@ -1702,7 +1702,6 @@ TASK_HANDLERS = {
                 constitutional_check=(
                     "BRANCH CONTEXT: WC012-02a just committed 4 interface files to the branch:\n"
                     "  Evaluators/EvaluationResult.cs, EvaluationContext.cs, IClaimEvaluator.cs, EvaluatorRegistry.cs\n"
-<<<<<<< Updated upstream
                     "READ BRANCH CONTEXT — do NOT regenerate these 4 files. They compile correctly as-is.\n"
                     "Implement ONLY these 6 files:\n"
                     "  src/constitutional-engine/Evaluators/C041ToolAuthorizationEvaluator.cs\n"
@@ -1719,24 +1718,13 @@ TASK_HANDLERS = {
                     "  NEVER use: EvaluationDecision, Decision — these types/fields do NOT exist.\n"
                     "  EvaluationContext fields: ContractId, ActionType, ActionParameters, DecisionSpaceVersion, SkillId\n"
                     "\n"
-                    "EvaluationContext is passed in — no DB access, no DbContext reference.\n"
-                    "Default deny for unknown/missing ContractId (C-041). ValidateAction: any DENY in results → DENY.\n"
-                    "Do NOT generate tests here — tests are WC012-02c.\n"
-=======
-                    "READ BRANCH CONTEXT — do NOT regenerate these 4 files. Implement only:\n"
-                    "  5 evaluators: C041ToolAuthorizationEvaluator, C043BudgetCeilingEvaluator,\n"
-                    "    C048NonExploitationEvaluator, C049HonestLimitationEvaluator, C062AiSecurityEvaluator\n"
-                    "  Extend ConstitutionalEngineService.cs with ValidateAction RPC implementation.\n"
-                    "Each evaluator: implement IClaimEvaluator, return EvaluationResult with Verdict.\n"
                     "IN ConstitutionalEngineService.ValidateAction:\n"
                     "  Use: var ctx = EvaluationContext.FromRequest(request);\n"
                     "  Access: ctx.ContractId, ctx.ActionType, ctx.ActionParameters etc.\n"
                     "  NEVER: request.TenantId, request.AgentId, request.ToolName — these fields do NOT exist.\n"
-                    "  Proto fields: ContractId, ActionType, ActionParameters, DecisionSpaceVersion, SkillId.\n"
                     "EvaluationContext is passed in — no DB access, no DbContext reference.\n"
                     "Default deny for unknown/missing ContractId (C-041). ValidateAction: any DENY → DENY.\n"
-                    "Do NOT generate tests here — tests are a separate sub-task (WC012-02c).\n"
->>>>>>> Stashed changes
+                    "Do NOT generate tests here — tests are WC012-02c.\n"
                     "Do NOT generate Data/ files — data layer is WC012-03.\n"
                     "PROTO NAMESPACE: using Waooaw.ConstitutionalEngine.Grpc; on every file referencing gRPC types."
                 ),
