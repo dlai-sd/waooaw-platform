@@ -1532,7 +1532,10 @@ def main() -> int:
             git(["checkout", branch])
             git(["pull", "origin", branch])
         else:
-            git(["checkout", "-b", branch])
+            # Branch may already exist locally (local dev or resume run) — try checkout first
+            local_check = git(["checkout", branch], check=False)
+            if local_check.returncode != 0:
+                git(["checkout", "-b", branch])
 
         record_evidence("AUTONOMOUS_SPRINT_STARTED", sprint=sprint,
                         branch=branch, tasks=tasks)
