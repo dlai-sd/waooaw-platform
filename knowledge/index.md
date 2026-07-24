@@ -88,7 +88,7 @@ Derived from CONFIRMED or LAW claims. These authorize specific architectural dec
 
 | Status | Count | IDs |
 |---|---|---|
-| RATIFIED | 85 | C-001 through C-082, C-083, C-084, C-085 (all) |
+| RATIFIED | 86 | C-001 through C-082, C-083, C-084, C-085, C-086 (all) |
 | DRAFT | 0 | — |
 
 ---
@@ -141,6 +141,10 @@ Derived from CONFIRMED or LAW claims. These authorize specific architectural dec
 | C-075 | COMMERCIAL | White-label reseller model — agency wholesale (₹899-1,299/seat) + customer retail billing via own MBM/MCC | 2026-07-19 |
 | C-076 | PLATFORM_INTEGRITY | 90% Minimum Code Coverage Obligation — all platform services (CE/BP/PR/AIR/Web/scripts) must maintain ≥90% line coverage on unit tests; non-compliance blocks PR merge at Gate 1 | 2026-07-22 |
 | C-077 | PLATFORM_INTEGRITY | Development Tooling Cost Ceiling — autonomous development agent token spend ≤ ₹5,000/month; zero-cost execution is default; paid models require explicit Founder authorization per sprint | 2026-07-23 |
+| C-083 | ARCHITECTURAL_CONSTRAINT | Emit-Transport-Listen — every agent must emit structured signals at each significant action boundary | 2026-07-24 |
+| C-084 | ARCHITECTURAL_CONSTRAINT | Step Dependency Ordering — step N+1 must not execute if step N produced FAIL/HALT/ERROR signal | 2026-07-24 |
+| C-085 | ARCHITECTURAL_CONSTRAINT | Idempotency Obligation — before executing any step with external side effects, check for existing SUCCESS signal | 2026-07-24 |
+| C-086 | PLATFORM_INTEGRITY | Pre-Execution Simulation Obligation — before any LLM code generation task runs for the first time, SIM-PL-002 with verdict PASS must exist; no LLM call without prior simulation | 2026-07-24 |
 
 ---
 
