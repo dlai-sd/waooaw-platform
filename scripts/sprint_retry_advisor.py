@@ -329,6 +329,7 @@ def diagnose_build_error(
             print(f"  Retry Advisor: WRONG_FIELD_NAME (confidence={diagnosis.confidence:.0%})")
             return diagnosis
 
+<<<<<<< Updated upstream
     # ── Rule 4: CS0103 — undefined name (invented type/enum) ──────────────────
     if "CS0103" in error_codes:
         m = re.search(r"The name '([^']+)' does not exist in the current context", build_error)
@@ -343,12 +344,32 @@ def diagnose_build_error(
                 f"Never invent new type names — only use types visible in the spec or branch context."
             )
             print(f"  Retry Advisor: WRONG_FIELD_NAME/undefined name CS0103 (confidence=88%)")
+=======
+    # ── Rule 5: CS1061 — member not found on type (wrong proto field access) ───
+    if "CS1061" in error_codes:
+        m = re.search(r"'([^']+)' does not contain a definition for '([^']+)'", build_error)
+        if m:
+            type_name, field_name = m.group(1), m.group(2)
+            fix = (
+                f"FIELD NOT FOUND: '{type_name}.{field_name}' does not exist. "
+                f"For ValidateActionRequest: use EvaluationContext.FromRequest(request) "
+                f"and access ctx.ContractId, ctx.ActionType etc. "
+                f"NEVER access request.TenantId, request.AgentId, request.ToolName — "
+                f"these fields do NOT exist in the proto. "
+                f"Proto fields: ContractId, ActionType, ActionParameters, DecisionSpaceVersion, SkillId."
+            )
+            print(f"  Retry Advisor: CS1061 WRONG_FIELD_NAME (confidence=88%)")
+>>>>>>> Stashed changes
             return RetryDiagnosis(
                 error_type=WRONG_FIELD_NAME,
                 fix_instruction=fix,
                 should_retry=True,
                 confidence=0.88,
+<<<<<<< Updated upstream
                 constitutional_trace="C-082 (Build Validation — generated code must use defined types)"
+=======
+                constitutional_trace="C-082 (Build Validation — use EvaluationContext.FromRequest)"
+>>>>>>> Stashed changes
             )
 
     # ── Fallback: LLM classification ───────────────────────────────────────────
