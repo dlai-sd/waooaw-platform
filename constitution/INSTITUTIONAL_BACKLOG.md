@@ -888,4 +888,5 @@ When this IB is authorized and completed:
 | IB-013 | Technology Stack ADRs | EA | P0 | G5 | DONE |
 | IB-019 | DMA Multi-Mode Architecture | BA | P1 | Post-MVI | WAITING |
 | IB-020 | Zero-Cost Dev Agent ADR-030 | EA + PIT Expert | P0-parallel | Pre-impl | WAITING |
+| IB-021 | Dependency Graph Task Decomposition | EA + PIT Expert | P0 | Pre-WC012-03 | AUTHORIZED |
 

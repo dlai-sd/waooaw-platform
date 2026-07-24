@@ -129,3 +129,54 @@ See also `scripts/build_sprint_index.py` — `TASK_CONTEXT_MAP` provides spec co
 - `scripts/build_sprint_index.py` — TASK_CONTEXT_MAP spec sections
 - `architecture/reference/graceful-degradation.md` — flag_spec_gap escalation path
 - `FOUNDER-ACTION.md` T0-1 — Anthropic API key in Key Vault
+
+---
+
+## Amendment 1 — Sub-Task Decomposition Protocol (2026-07-24)
+
+**Authority:** C-084 (Step Dependency Ordering — RATIFIED 2026-07-24),
+  C-086 (Pre-Execution Simulation Obligation — RATIFIED 2026-07-24),
+  Simulation evidence: SIM-PL-002-WC012-03 (build succeeded with ordered layers)
+**IB Reference:** IB-021 — Dependency Graph Task Decomposition
+**Implementation:** WC-019
+
+### The gap this amendment closes
+
+The original ADR-030 protocol specifies one LLM call per task. WC012-03 evidence
+(runs #46/#47) proved that single-call generation cannot maintain namespace
+consistency across 3+ interdependent files. Every task from WC012-03 onwards has
+multi-layer file dependencies that single-call generation cannot handle reliably.
+
+### Extended Protocol: Sub-Task Decomposition
+
+When a task's TASK_HANDLERS entry contains a `subtasks` key, the TaskDecomposer
+replaces the single execute_with_llm() call:
+
+```
+For each sub-task in declared dependency order:
+  1. VERIFY prior sub-tasks have passed their compile gates (C-084)
+  2. REFRESH branch context (C-083 — prior outputs become next input)
+  3. GENERATE: deterministic template OR LLM call (see taxonomy below)
+  4. COMPILE GATE: dotnet build | dotnet test | ruff + py_compile | tsc --noEmit
+  5. If PASS → emit C-083 signal, continue to next sub-task
+  6. If FAIL → Retry Advisor classifies → intelligent retry or halt (C-084)
+  7. After all sub-tasks PASS → single git commit with all generated files
+```
+
+### Sub-Task Type Taxonomy
+
+**`deterministic`:** Schema entities, interfaces, config files, proto copies.
+  Never LLM. Namespace is hardcoded. No business logic. Guaranteed namespace
+  consistency. Template function is a Python function in the runner.
+
+**`llm`:** Business logic, Evidence First implementations, constitutional reasoning,
+  CCTs. Always calls Claude Sonnet 4.6. Receives compiled output of prior
+  deterministic sub-tasks as branch context. Retry Advisor applies between attempts.
+
+### Backward Compatibility
+
+Tasks without `subtasks` key continue to use the original ADR-030 single-call
+protocol unchanged. No migration of WC011-01 through WC012-02 required.
+
+### Full spec
+See: `architecture/reference/pipeline/dependency-graph-task-decomposition.md`
