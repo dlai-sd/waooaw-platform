@@ -1,10 +1,31 @@
 # ADR-030: Autonomous Sprint Agent Code Generation (IB-020)
 
-**Status:** Accepted
+**Status:** Accepted — amended 2026-07-24 (IB-022 Option B)
 **Date:** 2026-07-23
+**Amendment date:** 2026-07-24
 **Roles Applied:** Enterprise Architect + Solution Architect
 **Constitutional Basis:** C-059 (Traceability), C-066 Tier 2A (Autonomous Sprint), C-073 (Annotations), C-077 (Dev Tooling Cost Ceiling ₹5,000/month)
-**IB Reference:** IB-020
+**IB Reference:** IB-020, IB-022
+
+---
+
+## Amendment — IB-022 Option B (2026-07-24)
+
+**Decision:** Adopt WC-Spec-Driven constitutional_check generation (Option B architecture).
+
+**Change summary:**
+- `SubTaskDef.constitutional_check` (hand-written prose) is deprecated as primary content source
+- New `SubTaskDef.wc_task_id` field links each subtask to its PMO Work Contract task
+- `WCSpecReader` reads Work Contract fields → `_build_effective_check()` assembles the LLM prompt's constitutional section from: (1) PMO spec, (2) output file list, (3) prior task preservation, (4) stack behavioral rules, (5) constitutional_check delta
+- `STACK_BEHAVIORAL_RULES` (dict in `task_decomposer.py`) provides EA-approved floor rules per technology stack — updated only with EA review
+- Subtask decomposition decisions are now formally authorized in `architecture/reference/pipeline/sprint-task-decomposition.md` (C-032 compliance)
+
+**Why this does not change the core ADR decision:**
+The code generation protocol (model selection, token budget, retry advisor, PTR type contracts) is unchanged. This amendment changes only HOW the LLM's constitutional context is constructed — from hand-written strings to PMO-spec-derived assembly.
+
+**Supersedes:** The "constitutional_check field" section of this ADR regarding how prompt content is authored.
+
+**Reference:** `architecture/reference/pipeline/wc-spec-reader.md`, `architecture/reference/pipeline/sprint-task-decomposition.md`
 
 ---
 

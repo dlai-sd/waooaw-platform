@@ -1864,15 +1864,17 @@ TASK_HANDLERS = {
                 spec_sections={
                     "tests/QA-STRATEGY.md": "§5.1 Unit Tests",
                 },
+                wc_task_id="WC012-02",
+                output_files=[
+                    "tests/constitutional-engine.Tests/Evaluators/CCT_EF01_C041ToolAuthorizationEvaluatorTests.cs",
+                    "tests/constitutional-engine.Tests/Evaluators/CCT_EF01_C043BudgetCeilingEvaluatorTests.cs",
+                ],
+                not_regenerate_from=["WC012-02a", "WC012-02b", "WC012-02c-prep"],
+                stack="dotnet",
                 constitutional_check=(
-                    "BRANCH CONTEXT: WC012-02a + WC012-02b + WC012-02c-prep are all committed.\n"
                     "FakeServerCallContext.cs is ALREADY on the branch — do NOT regenerate it.\n"
-                    "Generate ONLY these 2 test files:\n"
-                    "  tests/constitutional-engine.Tests/Evaluators/CCT_EF01_C041ToolAuthorizationEvaluatorTests.cs\n"
-                    "  tests/constitutional-engine.Tests/Evaluators/CCT_EF01_C043BudgetCeilingEvaluatorTests.cs\n"
                     "Use FakeServerCallContext.Create(tenantId) to build test context.\n"
-                    "xUnit [Fact] tests. Test EvaluateAsync with Allow/Deny/Escalate scenarios. ≥90% coverage (C-076).\n"
-                    "Do NOT regenerate any implementation files — EXTEND-NOT-REPLACE rule."
+                    "xUnit [Fact] tests. Test EvaluateAsync with Allow/Deny/Escalate scenarios. ≥90% coverage (C-076)."
                 ),
                 model_hint="reasoning",
                 max_tokens=5000,
@@ -1900,18 +1902,18 @@ TASK_HANDLERS = {
                 spec_sections={
                     "architecture/reference/components/constitutional-engine.md": "§1 Evidence First Enforcer",
                 },
+                wc_task_id="WC012-03",
+                output_files=[
+                    "src/constitutional-engine/Services/ConstitutionalEngineService.cs",
+                ],
+                not_regenerate_from=["WC012-03a"],
+                stack="dotnet",
                 constitutional_check=(
-                    "BRANCH CONTEXT: WC012-03a just committed Data/Entities/EvidenceRecord.cs "
-                    "and Data/ConstitutionalDbContext.cs to the branch. These files exist with namespace "
-                    "Waooaw.ConstitutionalEngine.Data.Entities (EvidenceRecord) and "
-                    "Waooaw.ConstitutionalEngine.Data (DbContext). "
-                    "DO NOT regenerate them. "
-                    "FOR ConstitutionalEngineService.cs: implement RecordEvidence in the EXISTING stub. "
-                    "RecordEvidence: inject ConstitutionalDbContext via constructor DI. "
-                    "Write EvidenceRecord to DB BEFORE returning gRPC response (C-023 Evidence First). "
-                    "Check ActionInstanceId uniqueness in DB — return existing record_id if already written (C-085 idempotency). "
-                    "Append-only — no UPDATE or DELETE ever (C-007/C-027). "
-                    "All .cs files carry // Implements: and // constitutional_basis: headers."
+                    "Implement RecordEvidence in the EXISTING ConstitutionalEngineService.cs stub.\n"
+                    "RecordEvidence: inject ConstitutionalDbContext via constructor DI.\n"
+                    "Write EvidenceRecord to DB BEFORE returning gRPC response (C-023 Evidence First).\n"
+                    "Check ActionInstanceId uniqueness in DB — return existing record_id if already written (C-085).\n"
+                    "Append-only — no UPDATE or DELETE ever (C-007/C-027)."
                 ),
                 model_hint="reasoning",
                 max_tokens=8000,
@@ -1925,13 +1927,16 @@ TASK_HANDLERS = {
                 spec_sections={
                     "tests/QA-STRATEGY.md": "§5.1 Unit Tests",
                 },
+                wc_task_id="WC012-03",
+                output_files=[
+                    "tests/constitutional-engine.Tests/Services/CCT_EF01_EvidenceFirstTests.cs",
+                ],
+                not_regenerate_from=["WC012-03a", "WC012-03b"],
+                stack="dotnet",
                 constitutional_check=(
-                    "Write CCT-EF-01 test only — do NOT regenerate any implementation files. "
-                    "File: tests/constitutional-engine.Tests/Services/CCT_EF01_EvidenceFirstTests.cs "
-                    "Test class must verify: RecordEvidence writes DB record BEFORE returning gRPC response. "
-                    "Use Moq for ConstitutionalDbContext. Use FakeServerCallContext (NOT Mock<ServerCallContext>). "
-                    "Test must call RecordEvidence and assert SaveChanges was called before the response returned. "
-                    "All .cs files: // Implements: and // constitutional_basis: C-023, C-076"
+                    "Test: RecordEvidence writes DB record BEFORE returning gRPC response.\n"
+                    "Use Moq for ConstitutionalDbContext. Use FakeServerCallContext.Create().\n"
+                    "Assert SaveChanges called before method returned."
                 ),
                 model_hint="reasoning",
                 max_tokens=5000,
@@ -1959,15 +1964,17 @@ TASK_HANDLERS = {
                 spec_sections={
                     "architecture/reference/components/constitutional-engine.md": "§4 Emergency Stop Handler",
                 },
+                wc_task_id="WC012-04",
+                output_files=[
+                    "src/constitutional-engine/Services/ConstitutionalEngineService.cs",
+                ],
+                not_regenerate_from=["WC012-04a"],
+                stack="dotnet",
                 constitutional_check=(
-                    "BRANCH CONTEXT: WC012-04a just committed EmergencyStop/ directory with "
-                    "EmergencyStopEvent entity and EmergencyStopDbContext. "
-                    "DO NOT regenerate these files. "
-                    "FOR ConstitutionalEngineService.cs: implement TriggerEmergencyStop in the EXISTING stub. "
-                    "TriggerEmergencyStop: C-001 absolute — write EmergencyStopEvent to DB FIRST (C-023), "
-                    "THEN signal Temporal (ADR-018). Use EmergencyStopDbContext injected via constructor DI. "
-                    "Temporalio version in csproj is 0.1.0-beta1 — use that exact API. "
-                    "All .cs files carry // Implements: and // constitutional_basis: headers."
+                    "Implement TriggerEmergencyStop in the EXISTING ConstitutionalEngineService.cs stub.\n"
+                    "Write EmergencyStopEvent to DB FIRST (C-023), THEN signal Temporal (ADR-018).\n"
+                    "Use EmergencyStopDbContext injected via constructor DI.\n"
+                    "Temporalio version in csproj is 0.1.0-beta1 — use that exact API."
                 ),
                 model_hint="reasoning",
                 max_tokens=8000,
@@ -1981,13 +1988,16 @@ TASK_HANDLERS = {
                 spec_sections={
                     "tests/QA-STRATEGY.md": "§5.1 Unit Tests",
                 },
+                wc_task_id="WC012-04",
+                output_files=[
+                    "tests/constitutional-engine.Tests/EmergencyStop/CCT_HO01_EmergencyStopLatencyTests.cs",
+                ],
+                not_regenerate_from=["WC012-04a", "WC012-04b"],
+                stack="dotnet",
                 constitutional_check=(
-                    "Write CCT-HO-01 test only — do NOT regenerate implementation files. "
-                    "File: tests/constitutional-engine.Tests/EmergencyStop/CCT_HO01_EmergencyStopLatencyTests.cs "
-                    "Test: TriggerEmergencyStop completes in ≤250ms with mocked Temporalio client. "
-                    "Use FakeServerCallContext. Mock EmergencyStopDbContext. Mock ITemporalClient. "
-                    "Measure elapsed time with Stopwatch. Assert ≤250ms. "
-                    "All .cs files: // Implements: and // constitutional_basis: C-001, C-076"
+                    "Test: TriggerEmergencyStop completes in ≤250ms with mocked Temporalio client.\n"
+                    "Use FakeServerCallContext. Mock EmergencyStopDbContext. Mock ITemporalClient.\n"
+                    "Measure elapsed time with Stopwatch. Assert ≤250ms."
                 ),
                 model_hint="reasoning",
                 max_tokens=5000,
