@@ -1053,7 +1053,12 @@ TASK_HANDLERS = {
         "CRITICAL: copy constitutional-engine.csproj EXACTLY from "
         "architecture/reference/dotfiles/constitutional-engine.csproj — do NOT invent packages. "
         "The correct OTLP exporter is 'OpenTelemetry.Exporter.OpenTelemetryProtocol' "
-        "(NOT 'OpenTelemetry.Exporter.Otlp' — that package does not exist on NuGet). "
+        "(NOT 'OpenTelemetry.Exporter.Otlp' — that package does not exist on NuGet). \n"
+        "OPENTELEMETRY GRPC: for server-side gRPC use .AddAspNetCoreInstrumentation() ONLY. "
+        "DO NOT call .AddGrpcClientInstrumentation() — that method does not exist in Grpc.AspNetCore. \n"
+        "PROTO ENUM NAMING: generated enum values do NOT include the parent type name. "
+        "For ActionDecision enum: ActionDecision.Allow, ActionDecision.Deny, ActionDecision.Escalate. "
+        "NEVER use ActionDecision.ActionDecisionAllow or ActionDecision.ActionDecisionDeny. \n"
         "Follow §2.0 Project Structure Convention from CODING-STANDARDS.md EXACTLY: "
         "src/constitutional-engine/constitutional-engine.csproj (ONE .csproj, never create a second). "
         "tests/constitutional-engine.Tests/constitutional-engine.Tests.csproj (test project). "
@@ -1331,6 +1336,12 @@ def main() -> int:
                    "--json", "number", "--jq", ".[0].number",
                    "--repo", github_repo], check=False)
     existing_num = existing.stdout.strip() if existing.returncode == 0 else ""
+
+    # Never open an empty PR — a PR with no code commits is noise (C-077 FinOps)
+    if not tasks_done and not existing_num:
+        print("  No tasks completed and no existing PR — skipping PR creation (empty PR is noise).")
+        set_output("result", "PARTIAL")
+        return 0
 
     if not existing_num:
         pr_title = f"feat(infra): {sprint} - Autonomous Sprint Execution"
