@@ -7,7 +7,7 @@
 **Constitutional Basis:** C-069 (Self-Improvement), C-070 (Constitutional DNA),
   C-083 (Emit-Transport-Listen), C-084 (Step Dependency Ordering),
   C-085 (Idempotency), C-023 (Evidence First), C-066 (Authorization Tiers)
-**Status:** RATIFIED — Founder authorization 2026-07-24
+**Status:** DRAFT — pending EA review and AGENT-AUTHORING-GUIDE activation gate
 **Activation:** GitHub Actions workflow job — runs after every sprint execution
 
 ---

@@ -1011,6 +1011,148 @@ def execute_wc011_07() -> bool:
     return True
 
 
+def execute_wc012_01() -> bool:
+    """
+    WC012-01: CE project scaffold — DETERMINISTIC (no LLM call).
+
+    Root cause of 3+ failures: calling Claude to copy reference files produces hallucinations.
+    Fix: copy reference files verbatim + write minimal templates. No Claude, no hallucination.
+
+    constitutional_basis: C-059 (Traceability), C-082 (build validation), ADR-001 (gRPC)
+    """
+    print("── WC012-01: CE project scaffold (DETERMINISTIC) ──")
+    service = "constitutional-engine"
+    src_dir = REPO_ROOT / "src" / service
+    test_dir = REPO_ROOT / "tests" / f"{service}.Tests"
+    src_dir.mkdir(parents=True, exist_ok=True)
+    (src_dir / "Protos").mkdir(exist_ok=True)
+    (src_dir / "Services").mkdir(exist_ok=True)
+    test_dir.mkdir(parents=True, exist_ok=True)
+
+    # ── 1. Copy .csproj verbatim from reference dotfile (C-081) ──────────────
+    ref_csproj = REPO_ROOT / "architecture" / "reference" / "dotfiles" / "constitutional-engine.csproj"
+    if not ref_csproj.is_file():
+        print(f"  ❌ Reference csproj not found: {ref_csproj}")
+        return False
+    (src_dir / "constitutional-engine.csproj").write_text(ref_csproj.read_text())
+    print("  ✅ constitutional-engine.csproj copied from reference dotfile")
+
+    # ── 2. Copy proto verbatim from architecture reference ────────────────────
+    ref_proto = REPO_ROOT / "architecture" / "reference" / "proto" / "constitutional_service.proto"
+    if not ref_proto.is_file():
+        print(f"  ❌ Reference proto not found: {ref_proto}")
+        return False
+    (src_dir / "Protos" / "constitutional_service.proto").write_text(ref_proto.read_text())
+    print("  ✅ constitutional_service.proto copied from architecture reference")
+
+    # ── 3. Program.cs — minimal template (no OTel hallucination risk) ─────────
+    (src_dir / "Program.cs").write_text(
+        "// Implements: architecture/reference/components/constitutional-engine.md\n"
+        "// constitutional_basis: C-023 (Evidence First), ADR-001 (gRPC), ADR-009 (OpenTelemetry)\n\n"
+        "using Waooaw.ConstitutionalEngine.Services;\n\n"
+        "var builder = WebApplication.CreateBuilder(args);\n"
+        "builder.Services.AddGrpc();\n\n"
+        "var app = builder.Build();\n"
+        "app.MapGrpcService<ConstitutionalEngineService>();\n"
+        "app.Run();\n"
+    )
+    print("  ✅ Program.cs written from template")
+
+    # ── 4. ConstitutionalEngineService.cs — stub inheriting proto base ─────────
+    # All RPCs return default empty responses — stubs only. WC012-02/03/04 fill them.
+    (src_dir / "Services" / "ConstitutionalEngineService.cs").write_text(
+        "// Implements: architecture/reference/components/constitutional-engine.md\n"
+        "// constitutional_basis: C-023 (Evidence First), C-003 (authority licensed), C-001 (Emergency Stop)\n\n"
+        "using Grpc.Core;\n"
+        "using Waooaw.ConstitutionalEngine.Grpc;\n\n"
+        "namespace Waooaw.ConstitutionalEngine.Services;\n\n"
+        "/// <summary>gRPC service stub — full implementation in WC012-02/03/04.</summary>\n"
+        "public sealed class ConstitutionalEngineService : ConstitutionalService.ConstitutionalServiceBase\n"
+        "{\n"
+        "    public override Task<RecordEvidenceResponse> RecordEvidence(RecordEvidenceRequest req, ServerCallContext ctx)\n"
+        "        => Task.FromResult(new RecordEvidenceResponse());\n"
+        "    public override Task<ValidateActionResponse> ValidateAction(ValidateActionRequest req, ServerCallContext ctx)\n"
+        "        => Task.FromResult(new ValidateActionResponse());\n"
+        "    public override Task<GrantAuthorityResponse> GrantAuthorityLicense(GrantAuthorityRequest req, ServerCallContext ctx)\n"
+        "        => Task.FromResult(new GrantAuthorityResponse());\n"
+        "    public override Task<RevokeAuthorityResponse> RevokeAuthorityLicense(RevokeAuthorityRequest req, ServerCallContext ctx)\n"
+        "        => Task.FromResult(new RevokeAuthorityResponse());\n"
+        "    public override Task<EvaluatePolicyResponse> EvaluatePolicy(EvaluatePolicyRequest req, ServerCallContext ctx)\n"
+        "        => Task.FromResult(new EvaluatePolicyResponse());\n"
+        "    public override Task<EmergencyStopResponse> TriggerEmergencyStop(EmergencyStopRequest req, ServerCallContext ctx)\n"
+        "        => Task.FromResult(new EmergencyStopResponse());\n"
+        "}\n"
+    )
+    print("  ✅ ConstitutionalEngineService.cs stub written from template")
+
+    # ── 5. appsettings files ───────────────────────────────────────────────────
+    (src_dir / "appsettings.json").write_text(
+        '{\n  "Logging": { "LogLevel": { "Default": "Information" } },\n'
+        '  "ConnectionStrings": { "ConstitutionalDb": "" },\n'
+        '  "Kestrel": { "Endpoints": { "Grpc": { "Url": "http://0.0.0.0:5002", "Protocols": "Http2" } } }\n}\n'
+    )
+    (src_dir / "appsettings.Development.json").write_text(
+        '{\n  "Logging": { "LogLevel": { "Default": "Debug" } },\n'
+        '  "ConnectionStrings": { "ConstitutionalDb": "Host=localhost;Port=5432;Database=constitutional;Username=constitutional_engine;Password=dev_password_replace_in_prod" }\n}\n'
+    )
+    print("  ✅ appsettings.json + appsettings.Development.json written")
+
+    # ── 6. Test project .csproj ────────────────────────────────────────────────
+    (test_dir / "constitutional-engine.Tests.csproj").write_text(
+        '<Project Sdk="Microsoft.NET.Sdk">\n'
+        '  <PropertyGroup>\n'
+        '    <TargetFramework>net9.0</TargetFramework>\n'
+        '    <Nullable>enable</Nullable>\n'
+        '    <ImplicitUsings>enable</ImplicitUsings>\n'
+        '    <IsPackable>false</IsPackable>\n'
+        '  </PropertyGroup>\n'
+        '  <ItemGroup>\n'
+        '    <ProjectReference Include="..\\..\\src\\constitutional-engine\\constitutional-engine.csproj" />\n'
+        '  </ItemGroup>\n'
+        '  <ItemGroup>\n'
+        '    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />\n'
+        '    <PackageReference Include="xunit" Version="2.9.3" />\n'
+        '    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2">\n'
+        '      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>\n'
+        '      <PrivateAssets>all</PrivateAssets>\n'
+        '    </PackageReference>\n'
+        '    <PackageReference Include="Moq" Version="4.20.72" />\n'
+        '    <PackageReference Include="FluentAssertions" Version="6.12.2" />\n'
+        '    <PackageReference Include="coverlet.collector" Version="6.0.4">\n'
+        '      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>\n'
+        '      <PrivateAssets>all</PrivateAssets>\n'
+        '    </PackageReference>\n'
+        '  </ItemGroup>\n'
+        '</Project>\n'
+    )
+    print("  ✅ constitutional-engine.Tests.csproj written")
+
+    # ── 7. Validate build ──────────────────────────────────────────────────────
+    build = run(["dotnet", "build", str(src_dir / "constitutional-engine.csproj"),
+                 "--nologo", "-v", "quiet"], check=False, capture=True)
+    if build.returncode != 0:
+        print(f"  ❌ dotnet build FAILED:\n{build.stderr[:500]}")
+        # Clean up on failure so next run starts fresh
+        import shutil
+        for p in [src_dir / "Protos", src_dir / "Services", src_dir / "Program.cs",
+                  src_dir / "appsettings.json", src_dir / "appsettings.Development.json",
+                  src_dir / "constitutional-engine.csproj", test_dir]:
+            if p.is_dir(): shutil.rmtree(p)
+            elif p.is_file(): p.unlink()
+        return False
+    print("  ✅ dotnet build PASSED")
+
+    # ── 8. Commit ──────────────────────────────────────────────────────────────
+    git(["add", "src/constitutional-engine/", "tests/constitutional-engine.Tests/"])
+    diff = git(["diff", "--cached", "--quiet"], check=False)
+    if diff.returncode != 0:
+        git(["commit", "-m",
+             "feat: WC012-01 — CE project scaffold (.NET 9 gRPC service)\n\n"
+             "IB: IB-009\nConstitutional: C-059, C-073, C-076\nCCTs-added: per WC spec"])
+    print("  ✅ WC012-01 complete (deterministic — no LLM)")
+    return True
+
+
 _INFRA_ERROR_TASKS: list[str] = []  # populated by execute_with_llm when all 3 attempts are API failures
 
 # ── Sprint Monitor signal (C-069: self-improvement loop) ──────────────────────
@@ -1041,40 +1183,10 @@ TASK_HANDLERS = {
     "WC011-04": execute_wc011_04,
     "WC011-05": execute_wc011_05,
     "WC011-07": execute_wc011_07,
-    # WC-012: Constitutional Engine skeleton (ADR-030 LLM code generation)
-    "WC012-01": lambda: execute_with_llm(
-        "WC012-01", "CE project scaffold (.NET 9 gRPC service)",
-        {
-            "architecture/reference/components/constitutional-engine.md": "full",
-            "architecture/reference/proto/constitutional_service.proto": "full",
-            "architecture/reference/dotfiles/constitutional-engine.csproj": "full",
-            "standards/CODING-STANDARDS.md": "§2.0 Project Structure Convention",
-        },
-        "CRITICAL: copy constitutional-engine.csproj EXACTLY from "
-        "architecture/reference/dotfiles/constitutional-engine.csproj — do NOT invent packages. "
-        "The correct OTLP exporter is 'OpenTelemetry.Exporter.OpenTelemetryProtocol' "
-        "(NOT 'OpenTelemetry.Exporter.Otlp' — that package does not exist on NuGet). \n"
-        "OPENTELEMETRY GRPC: for server-side gRPC use .AddAspNetCoreInstrumentation() ONLY. "
-        "DO NOT call .AddGrpcClientInstrumentation() — that method does not exist in Grpc.AspNetCore. \n"
-        "PROTO ENUM NAMING: generated enum values do NOT include the parent type name. "
-        "For ActionDecision enum: ActionDecision.Allow, ActionDecision.Deny, ActionDecision.Escalate. "
-        "NEVER use ActionDecision.ActionDecisionAllow or ActionDecision.ActionDecisionDeny. \n"
-        "Follow §2.0 Project Structure Convention from CODING-STANDARDS.md EXACTLY: "
-        "src/constitutional-engine/constitutional-engine.csproj (ONE .csproj, never create a second). "
-        "tests/constitutional-engine.Tests/constitutional-engine.Tests.csproj (test project). "
-        "Generate a SELF-CONTAINED scaffold — every type in Program.cs MUST exist in a file "
-        "you generate in THIS response. "
-        "REQUIRED files in src/constitutional-engine/: "
-        "(1) constitutional-engine.csproj — copied from reference file, unchanged. "
-        "(2) Protos/constitutional_service.proto — copied from reference proto, unchanged. "
-        "(3) Services/ConstitutionalEngineService.cs — gRPC service class inheriting "
-        "ConstitutionalEngineServiceBase, ALL RPCs stubbed with Task.FromResult(...). "
-        "(4) Program.cs — minimal ASP.NET Core 9: builder.Services.AddGrpc(), "
-        "app.MapGrpcService<ConstitutionalEngineService>() using the class from file (3). "
-        "Every .cs file: // Implements: and // constitutional_basis: header.",
-        model_hint="reasoning",
-        max_tokens=16000  # Scaffold: proto+csproj+service+Program.cs = ~15k tokens
-    ),
+    # WC-012: Constitutional Engine skeleton
+    # WC012-01 is DETERMINISTIC — copies reference files, no Claude call.
+    # Root cause of 3 prior failures: Claude hallucinated API methods when asked to copy known-good files.
+    "WC012-01": execute_wc012_01,
     "WC012-02": lambda: execute_with_llm(
         "WC012-02", "CE ValidateAction RPC + unit tests ≥90%",
         {

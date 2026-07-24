@@ -140,7 +140,18 @@ Derived from CONFIRMED or LAW claims. These authorize specific architectural dec
 | C-074 | ARCHITECTURAL_CONSTRAINT | On-the-fly MCP Provisioning — new domains served without deployment cycles via mcp_registry | 2026-07-19 |
 | C-075 | COMMERCIAL | White-label reseller model — agency wholesale (₹899-1,299/seat) + customer retail billing via own MBM/MCC | 2026-07-19 |
 | C-076 | PLATFORM_INTEGRITY | 90% Minimum Code Coverage Obligation — all platform services (CE/BP/PR/AIR/Web/scripts) must maintain ≥90% line coverage on unit tests; non-compliance blocks PR merge at Gate 1 | 2026-07-22 |
-| C-077 | PLATFORM_INTEGRITY | **DRAFT — pending Founder ratification.** Development Tooling Cost Ceiling — autonomous development agent token spend must not exceed a Founder-set monthly ceiling; zero-cost execution (GitHub Models free tier) is the default; paid models require explicit authorization per sprint | DRAFT |
+| C-077 | PLATFORM_INTEGRITY | Development Tooling Cost Ceiling — autonomous development agent token spend ≤ ₹5,000/month; zero-cost execution is default; paid models require explicit Founder authorization per sprint | 2026-07-23 |
+
+---
+
+## Internal Platform Agents
+
+| Agent | Type | Status | Spec |
+|---|---|---|---|
+| Platform IT Expert | Internal development | RATIFIED | `architecture/reference/agents/platform-it-expert-agent.md` |
+| Self-Improvement Analyst | Internal intelligence | RATIFIED 2026-07-19 | `architecture/reference/agents/self-improvement-analyst-agent.md` |
+| Platform Operations | Internal operations | RATIFIED | `architecture/reference/agents/platform-operations-agent.md` |
+| Reasoning Sprint Analyst | Internal intelligence | **DRAFT** — pending EA review | `architecture/reference/agents/reasoning-sprint-analyst-agent.md` |
 
 ---
 
