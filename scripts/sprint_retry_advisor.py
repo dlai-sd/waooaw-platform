@@ -474,7 +474,53 @@ def diagnose_build_error(
                 constitutional_trace="C-082 (Build Validation — use types from BRANCH CONTEXT)"
             )
 
-    # ── Rule 6: CS0505 — overriding property as method ────────────────────────
+    # ── Rule 6: CS0266 — implicit nullable-to-non-nullable conversion ─────────
+    if "CS0266" in error_codes:
+        m = re.search(r"Cannot implicitly convert type '([^']+)' to '([^']+)'", build_error)
+        if m:
+            from_type, to_type = m.group(1), m.group(2)
+            # PTR-aware: look up the field that is nullable
+            field_m = re.search(r"error CS0266:.*\[.*\]\s*$", build_error, re.MULTILINE)
+            ptr_entry = None
+            # Try to find which field is nullable from PTR
+            try:
+                from platform_type_registry import load_ptr
+                ptr = load_ptr()
+                for task_entry in ptr.get("tasks", {}).values():
+                    for type_entry in task_entry.get("types", {}).values():
+                        for field_name, field_type in type_entry.get("fields", {}).items():
+                            if "?" in field_type and field_type.replace("?", "").strip() == to_type:
+                                ptr_entry = (field_name, field_type)
+                                break
+            except Exception:
+                pass
+            if ptr_entry:
+                field_name, field_type = ptr_entry
+                fix = (
+                    f"NULLABLE CONVERSION (CS0266): '{from_type}' cannot be assigned to '{to_type}' directly. "
+                    f"The field '{field_name}' is declared as '{field_type}' (nullable). "
+                    f"Use '.Value' to assert non-null: {field_name}.Value "
+                    f"OR use null-coalescing: {field_name} ?? 0L "
+                    f"Example: response.{to_type.capitalize()} = someNullable ?? 0L;"
+                )
+            else:
+                fix = (
+                    f"NULLABLE CONVERSION (CS0266): '{from_type}' cannot be assigned to '{to_type}' directly. "
+                    f"The source value is nullable. "
+                    f"Use null-coalescing: nullableValue ?? default({to_type}) "
+                    f"OR use .Value if you know it is non-null: nullableValue.Value "
+                    f"For proto optional long fields: field ?? 0L"
+                )
+            print(f"  Retry Advisor: CS0266 nullable-to-non-nullable (confidence=90%)")
+            return RetryDiagnosis(
+                error_type=WRONG_FIELD_NAME,
+                fix_instruction=fix,
+                should_retry=True,
+                confidence=0.90,
+                constitutional_trace="C-082 (Build Validation — nullable types require explicit conversion)"
+            )
+
+    # ── Rule 7: CS0505 — overriding property as method ────────────────────────
     if "CS0505" in error_codes:
         m = re.search(r"'([^.]+)\.(\w+)\(\)'.*'([^']+)' is not a function", build_error)
         if not m:

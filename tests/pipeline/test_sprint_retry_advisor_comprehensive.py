@@ -620,3 +620,56 @@ class TestCS0505PropertyOverriddenAsMethod:
         error = "error CS0505: 'FakeServerCallContext.MethodCore()': cannot override because 'ServerCallContext.MethodCore' is not a function"
         result = diagnose_build_error("WC012-02c", error, [])
         assert result.constitutional_trace != ""
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# CCT-SRA-09: CS0266 — implicit nullable-to-non-nullable conversion
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class TestCS0266NullableConversion:
+    """WC012 run failure: LLM assigned long? (ValidateActionResponse.BudgetRemainingInrPaise) to long."""
+
+    def test_cs0266_classified(self):
+        error = (
+            "/src/Services/ConstitutionalEngineService.cs(180,39): "
+            "error CS0266: Cannot implicitly convert type 'long?' to 'long'. "
+            "An explicit conversion exists (are you missing a cast?)"
+        )
+        result = diagnose_build_error("WC012-02b", error, [])
+        assert result.error_type == WRONG_FIELD_NAME
+        assert result.should_retry is True
+        assert result.confidence >= 0.88
+
+    def test_fix_names_null_coalescing(self):
+        """Fix must explain ?? or .Value pattern."""
+        error = "error CS0266: Cannot implicitly convert type 'long?' to 'long'."
+        result = diagnose_build_error("WC012-02b", error, [])
+        assert "??" in result.fix_instruction or ".Value" in result.fix_instruction or "nullable" in result.fix_instruction.lower()
+
+    def test_constitutional_trace_present(self):
+        error = "error CS0266: Cannot implicitly convert type 'long?' to 'long'."
+        result = diagnose_build_error("WC012-02b", error, [])
+        assert result.constitutional_trace != ""
+
+    def test_ptr_aware_fix_with_nullable_field(self):
+        """When PTR has the nullable field, fix is precise."""
+        proto_ptr = {
+            "tasks": {
+                "WC012-01": {
+                    "types": {
+                        "ValidateActionResponse": {
+                            "kind": "proto_message",
+                            "fields": {
+                                "Decision": "ValidationDecision",
+                                "BudgetRemainingInrPaise": "long?",
+                            }
+                        }
+                    },
+                    "files": []
+                }
+            }
+        }
+        error = "error CS0266: Cannot implicitly convert type 'long?' to 'long'."
+        with patch("platform_type_registry.load_ptr", return_value=proto_ptr):
+            result = diagnose_build_error("WC012-02b", error, [])
+        assert result.error_type == WRONG_FIELD_NAME
+        assert result.should_retry is True
