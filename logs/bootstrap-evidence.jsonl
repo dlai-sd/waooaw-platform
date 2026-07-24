@@ -6,3 +6,8 @@
 {"event": "AUTONOMOUS_SPRINT_STARTED", "timestamp": "2026-07-23T13:51:26.803454+00:00", "run_id": "30013030008", "stub_mode": true, "sprint": "WC-011", "branch": "ib/009/infra-foundation", "tasks": ["WC011-01", "WC011-02", "WC011-03", "WC011-04", "WC011-05", "WC011-07"]}
 {"event": "SPRINT_TASKS_EXECUTED", "timestamp": "2026-07-23T13:51:30.821061+00:00", "run_id": "30013030008", "stub_mode": true, "sprint": "WC-011", "tasks_done": ["WC011-01", "WC011-02", "WC011-03", "WC011-04", "WC011-05", "WC011-07"]}
 {"event": "AUTONOMOUS_SPRINT_STARTED", "timestamp": "2026-07-24T14:40:14.591883+00:00", "run_id": "30101948609", "stub_mode": true, "sprint": "WC-012", "branch": "ib/009/sprint-012", "tasks": ["WC012-01", "WC012-02", "WC012-03", "WC012-04"]}
+{"event": "llm_call", "timestamp": "2026-07-24T14:43:15.813969+00:00", "run_id": "30101948609", "stub_mode": true, "task": "WC012-02", "tokens_in": 5363, "tokens_out": 10000, "thinking_blocks": 1}
+{"event": "llm_call", "timestamp": "2026-07-24T14:45:42.246768+00:00", "run_id": "30101948609", "stub_mode": true, "task": "WC012-02", "tokens_in": 5363, "tokens_out": 10000, "thinking_blocks": 1}
+{"event": "llm_call", "timestamp": "2026-07-24T14:48:22.294086+00:00", "run_id": "30101948609", "stub_mode": true, "task": "WC012-02", "tokens_in": 5363, "tokens_out": 10000, "thinking_blocks": 1}
+{"event": "spec_gap_halt", "timestamp": "2026-07-24T14:48:23.116255+00:00", "run_id": "30101948609", "stub_mode": true, "task": "WC012-02", "issue": "53", "gap": "WC012-02 failed validation after 3 LLM attempts. Last error: "}
+{"event": "SPRINT_TASKS_EXECUTED", "timestamp": "2026-07-24T14:48:23.116412+00:00", "run_id": "30101948609", "stub_mode": true, "sprint": "WC-012", "tasks_done": ["WC012-01"]}
