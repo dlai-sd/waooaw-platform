@@ -621,12 +621,38 @@ def execute_with_llm(task_id: str, task_description: str, spec_sections: dict,
             }
             return True
         else:
-            # Pass the ACTUAL build error to Claude on the next attempt
+            # Layer 1: Sprint Retry Advisor — classify error before next attempt
+            # C-077 (FinOps): rule-based classification costs nothing; cheap LLM only for unknowns
+            # C-082 (Build Validation): every failed attempt must be diagnosed, not just retried
+            import importlib.util as _ilu
+            _spec = _ilu.spec_from_file_location("sprint_retry_advisor",
+                     str(REPO_ROOT / "scripts" / "sprint_retry_advisor.py"))
+            _mod = _ilu.module_from_spec(_spec); _spec.loader.exec_module(_mod)
+            diagnose_build_error = _mod.diagnose_build_error
+            branch_cs_files = [
+                str(p.relative_to(REPO_ROOT))
+                for p in REPO_ROOT.glob("src/**/*.cs")
+            ]
+            diagnosis = diagnose_build_error(task_id, build_error, written, branch_cs_files)
+
+            if not diagnosis.should_retry:
+                # Advisor says: don't waste another attempt — flag spec-gap now
+                print(f"  Retry Advisor: {diagnosis.error_type} — skipping remaining attempts "
+                      f"(confidence={diagnosis.confidence:.0%})")
+                failure_context = (
+                    f"RETRY ADVISOR: {diagnosis.error_type} — unrecoverable without spec fix.\n"
+                    f"{build_error[:200]}"
+                )
+                break  # exit the attempt loop, fall through to flag_spec_gap
+
+            # Advisor produced a targeted fix — use it as the retry context
             failure_context = (
-                f"Build/syntax validation failed for files: {written}\n"
-                f"Exact error output:\n{build_error}"
+                f"RETRY ADVISOR DIAGNOSIS: {diagnosis.error_type}\n"
+                f"CONSTITUTIONAL BASIS: {diagnosis.constitutional_trace}\n"
+                f"TARGETED FIX REQUIRED: {diagnosis.fix_instruction}\n\n"
+                f"ORIGINAL BUILD ERROR (for reference):\n{build_error[:300]}"
             )
-            print(f"  Validation failed on attempt {attempt} — retrying with failure context")
+            print(f"  Retry Advisor: {diagnosis.error_type} — intelligent retry with fix context")
 
     # All 3 attempts exhausted — categorize the failure type
     if infra_failures == 3:
