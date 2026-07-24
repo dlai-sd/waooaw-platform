@@ -1759,6 +1759,378 @@ def _generate_wc012_04a_emergency_stop_entities() -> bool:
     return True
 
 
+# ══════════════════════════════════════════════════════════════════════════════
+# WC-013 — Business Platform scaffold
+# ══════════════════════════════════════════════════════════════════════════════
+
+def execute_wc013_01() -> bool:
+    """
+    WC013-01: Business Platform project scaffold — DETERMINISTIC (no LLM).
+    Creates src/business-platform/ skeleton + tests/business-platform.Tests/.
+    constitutional_basis: C-059 (Traceability), C-082 (build validation), ADR-002 (spec-first)
+    """
+    print("── WC013-01: BP project scaffold (DETERMINISTIC) ──")
+    service = "business-platform"
+    src_dir = REPO_ROOT / "src" / service
+    test_dir = REPO_ROOT / "tests" / f"{service}.Tests"
+    (src_dir / "Controllers").mkdir(parents=True, exist_ok=True)
+    (src_dir / "Services").mkdir(parents=True, exist_ok=True)
+    (src_dir / "Models").mkdir(parents=True, exist_ok=True)
+    (src_dir / "Data").mkdir(parents=True, exist_ok=True)
+    (src_dir / "Protos").mkdir(parents=True, exist_ok=True)
+    test_dir.mkdir(parents=True, exist_ok=True)
+
+    # 1. Copy .csproj from reference dotfile
+    ref_csproj = REPO_ROOT / "architecture" / "reference" / "dotfiles" / "business-platform.csproj"
+    (src_dir / "business-platform.csproj").write_text(ref_csproj.read_text())
+    print("  ✅ business-platform.csproj copied from reference dotfile")
+
+    # 2. Copy CE proto verbatim (BP needs it for gRPC client code-gen)
+    ref_proto = REPO_ROOT / "architecture" / "reference" / "proto" / "constitutional_service.proto"
+    (src_dir / "Protos" / "constitutional_service.proto").write_text(ref_proto.read_text())
+    print("  ✅ constitutional_service.proto copied (gRPC client target)")
+
+    # 3. Program.cs — minimal stub (JWT + EF + gRPC + RLS wired in WC013-02)
+    (src_dir / "Program.cs").write_text(
+        "// Implements: architecture/reference/components/business-platform.md\n"
+        "// constitutional_basis: ADR-002 (spec-first), ADR-003 (JWT tenancy), C-026 (RLS), C-023\n\n"
+        "using Waooaw.BusinessPlatform.Controllers;\n\n"
+        "var builder = WebApplication.CreateBuilder(args);\n"
+        "builder.Services.AddControllers();\n"
+        "builder.Services.AddEndpointsApiExplorer();\n"
+        "builder.Services.AddSwaggerGen();\n\n"
+        "var app = builder.Build();\n"
+        "app.UseSwagger();\n"
+        "app.UseSwaggerUI();\n"
+        "app.MapControllers();\n"
+        "app.Run();\n"
+    )
+    print("  ✅ Program.cs stub written")
+
+    # 4. Minimal controller stubs (ADR-002: spec-first — full impl in WC013-02/03)
+    (src_dir / "Controllers" / "CustomersController.cs").write_text(
+        "// Implements: architecture/reference/api-specs/business-platform.openapi.yaml\n"
+        "// constitutional_basis: ADR-002 (spec-first), C-023 (Evidence First), C-038 (pro-rata)\n\n"
+        "using Microsoft.AspNetCore.Mvc;\n\n"
+        "namespace Waooaw.BusinessPlatform.Controllers;\n\n"
+        "[ApiController, Route(\"api/v1\")]\n"
+        "public sealed class CustomersController : ControllerBase\n"
+        "{\n"
+        "    [HttpPost(\"employment/contracts\")]\n"
+        "    public IActionResult FormEmploymentContract() => Ok();\n\n"
+        "    [HttpGet(\"employment/contracts/{id}\")]\n"
+        "    public IActionResult GetEmploymentContract(Guid id) => Ok();\n"
+        "}\n"
+    )
+    print("  ✅ CustomersController.cs stub written")
+
+    # 5. appsettings
+    (src_dir / "appsettings.json").write_text(
+        '{\n  "Logging": { "LogLevel": { "Default": "Information" } },\n'
+        '  "ConnectionStrings": { "BusinessPlatformDb": "" },\n'
+        '  "ConstitutionalEngine": { "GrpcUrl": "http://constitutional-engine:5002" },\n'
+        '  "Jwt": { "Authority": "", "Audience": "business-platform" },\n'
+        '  "Kestrel": { "Endpoints": { "Rest": { "Url": "http://0.0.0.0:5001" } } }\n}\n'
+    )
+    (src_dir / "appsettings.Development.json").write_text(
+        '{\n  "Logging": { "LogLevel": { "Default": "Debug" } },\n'
+        '  "ConnectionStrings": { "BusinessPlatformDb": "Host=localhost;Port=5432;Database=waooaw;Username=business_platform;Password=dev_password_replace_in_prod" },\n'
+        '  "ConstitutionalEngine": { "GrpcUrl": "http://localhost:5002" },\n'
+        '  "Jwt": { "Authority": "http://localhost:8080/realms/waooaw" }\n}\n'
+    )
+    print("  ✅ appsettings.json + appsettings.Development.json written")
+
+    # 6. Tests .csproj
+    (test_dir / "business-platform.Tests.csproj").write_text(
+        '<Project Sdk="Microsoft.NET.Sdk">\n'
+        '  <PropertyGroup>\n'
+        '    <TargetFramework>net9.0</TargetFramework>\n'
+        '    <Nullable>enable</Nullable>\n'
+        '    <ImplicitUsings>enable</ImplicitUsings>\n'
+        '    <IsPackable>false</IsPackable>\n'
+        '  </PropertyGroup>\n'
+        '  <ItemGroup>\n'
+        '    <ProjectReference Include="..\\..\\src\\business-platform\\business-platform.csproj" />\n'
+        '  </ItemGroup>\n'
+        '  <ItemGroup>\n'
+        '    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />\n'
+        '    <PackageReference Include="xunit" Version="2.9.3" />\n'
+        '    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2">\n'
+        '      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>\n'
+        '      <PrivateAssets>all</PrivateAssets>\n'
+        '    </PackageReference>\n'
+        '    <PackageReference Include="Moq" Version="4.20.72" />\n'
+        '    <PackageReference Include="FluentAssertions" Version="6.12.2" />\n'
+        '    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="9.0.1" />\n'
+        '    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="9.0.0" />\n'
+        '    <PackageReference Include="coverlet.collector" Version="6.0.4">\n'
+        '      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>\n'
+        '      <PrivateAssets>all</PrivateAssets>\n'
+        '    </PackageReference>\n'
+        '  </ItemGroup>\n'
+        '</Project>\n'
+    )
+    print("  ✅ business-platform.Tests.csproj written")
+
+    # 7. Build validate
+    build = run(["dotnet", "build", str(src_dir / "business-platform.csproj"),
+                 "--nologo", "-v", "quiet"], check=False, capture=True)
+    if build.returncode != 0:
+        print(f"  ❌ dotnet build FAILED:\n{build.stderr[:500]}")
+        return False
+    print("  ✅ dotnet build PASSED")
+
+    git(["add", f"src/{service}/", f"tests/{service}.Tests/"], check=False)
+    git(["commit", "-m",
+         "feat: WC013-01 — BP project scaffold (.NET 9 REST + gRPC client to CE)\n\n"
+         "IB: IB-009\nConstitutional: C-059, ADR-002, ADR-003, C-026\nCCTs-added: per WC spec"],
+        check=False)
+    print("  ✅ WC013-01 complete (deterministic — no LLM)")
+    return True
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# WC-014 — Professional Runtime scaffold (Python)
+# ══════════════════════════════════════════════════════════════════════════════
+
+def execute_wc014_01() -> bool:
+    """
+    WC014-01: Professional Runtime project scaffold — DETERMINISTIC (no LLM).
+    Creates src/professional-runtime/ Python FastAPI skeleton + tests/.
+    constitutional_basis: C-059, C-025 (PAAS exclusive), ADR-015 (Temporal)
+    """
+    print("── WC014-01: PR project scaffold (DETERMINISTIC) ──")
+    service = "professional-runtime"
+    src_dir = REPO_ROOT / "src" / service
+    test_dir = REPO_ROOT / "tests" / service
+    (src_dir / "routers").mkdir(parents=True, exist_ok=True)
+    (src_dir / "workflows").mkdir(parents=True, exist_ok=True)
+    (src_dir / "activities").mkdir(parents=True, exist_ok=True)
+    (src_dir / "proto").mkdir(parents=True, exist_ok=True)
+    test_dir.mkdir(parents=True, exist_ok=True)
+
+    # 1. Copy requirements.txt from reference
+    ref_req = REPO_ROOT / "architecture" / "reference" / "dotfiles" / "requirements-professional-runtime.txt"
+    (src_dir / "requirements.txt").write_text(ref_req.read_text())
+    print("  ✅ requirements.txt copied from reference dotfile")
+
+    # 2. requirements-test.txt
+    (src_dir / "requirements-test.txt").write_text(
+        "# Test dependencies for professional-runtime\n"
+        "pytest==8.3.4\n"
+        "pytest-asyncio==0.24.0\n"
+        "pytest-cov==6.0.0\n"
+        "httpx==0.27.2\n"
+        "respx==0.21.1\n"
+    )
+    print("  ✅ requirements-test.txt written")
+
+    # 3. Copy CE proto (gRPC client)
+    ref_proto = REPO_ROOT / "architecture" / "reference" / "proto" / "constitutional_service.proto"
+    (src_dir / "proto" / "constitutional_service.proto").write_text(ref_proto.read_text())
+    print("  ✅ constitutional_service.proto copied (gRPC client target)")
+
+    # 4. Package init
+    (src_dir / "__init__.py").write_text(
+        "# Professional Runtime — C-025 (PAAS exclusive execution model)\n"
+    )
+    (test_dir / "__init__.py").write_text("")
+
+    # 5. main.py — minimal FastAPI stub
+    (src_dir / "main.py").write_text(
+        "# Implements: architecture/reference/components/professional-runtime.md\n"
+        "# constitutional_basis: C-025 (PAAS exclusive), C-001 (Emergency Stop ≤250ms),\n"
+        "#   ADR-015 (Temporal), ADR-018 (Emergency Stop signal)\n\n"
+        "from fastapi import FastAPI\n\n"
+        "app = FastAPI(\n"
+        "    title=\"WAOOAW Professional Runtime\",\n"
+        "    description=\"PAAS execution engine (C-025). All professional work runs here.\",\n"
+        "    version=\"0.1.0\",\n"
+        ")\n\n\n"
+        "@app.get(\"/health\")\n"
+        "async def health() -> dict:\n"
+        "    \"\"\"Health check.\"\"\"\n"
+        "    return {\"status\": \"ok\", \"service\": \"professional-runtime\"}\n"
+    )
+    print("  ✅ main.py stub written")
+
+    # 6. conftest.py for tests
+    (test_dir / "conftest.py").write_text(
+        "# Implements: tests/QA-STRATEGY.md §5.1\n"
+        "# constitutional_basis: C-076 (≥90% coverage)\n\n"
+        "import pytest\n"
+        "from httpx import AsyncClient, ASGITransport\n"
+        "from src.professional_runtime.main import app\n\n\n"
+        "@pytest.fixture\n"
+        "async def client():\n"
+        "    async with AsyncClient(transport=ASGITransport(app=app), base_url=\"http://test\") as c:\n"
+        "        yield c\n"
+    )
+    print("  ✅ tests/conftest.py written")
+
+    # 7. Lint check (ruff) — no dotnet build for Python
+    lint = run(["python3", "-m", "ruff", "check", str(src_dir)],
+               check=False, capture=True)
+    if lint.returncode != 0:
+        print(f"  ⚠️  ruff: {lint.stdout[:200]}")
+    else:
+        print("  ✅ ruff PASSED")
+
+    git(["add", f"src/{service}/", f"tests/{service}/"], check=False)
+    git(["commit", "-m",
+         "feat: WC014-01 — PR project scaffold (Python 3.12 FastAPI + Temporal worker)\n\n"
+         "IB: IB-009\nConstitutional: C-059, C-025, ADR-015\nCCTs-added: per WC spec"],
+        check=False)
+    print("  ✅ WC014-01 complete (deterministic — no LLM)")
+    return True
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# WC-015 — AI Runtime scaffold (Python)
+# ══════════════════════════════════════════════════════════════════════════════
+
+def execute_wc015_01() -> bool:
+    """
+    WC015-01: AI Runtime project scaffold — DETERMINISTIC (no LLM).
+    Creates src/ai-runtime/ Python FastAPI skeleton + tests/.
+    constitutional_basis: C-059, C-051 (Token Economy), C-062 (AI Security), C-063, C-078
+    """
+    print("── WC015-01: AIR project scaffold (DETERMINISTIC) ──")
+    service = "ai-runtime"
+    src_dir = REPO_ROOT / "src" / service
+    test_dir = REPO_ROOT / "tests" / service
+    (src_dir / "providers").mkdir(parents=True, exist_ok=True)
+    (src_dir / "pse").mkdir(parents=True, exist_ok=True)
+    (src_dir / "rag").mkdir(parents=True, exist_ok=True)
+    (src_dir / "pii").mkdir(parents=True, exist_ok=True)
+    (src_dir / "proto").mkdir(parents=True, exist_ok=True)
+    test_dir.mkdir(parents=True, exist_ok=True)
+
+    # 1. Copy requirements.txt from reference
+    ref_req = REPO_ROOT / "architecture" / "reference" / "dotfiles" / "requirements-ai-runtime.txt"
+    (src_dir / "requirements.txt").write_text(ref_req.read_text())
+    print("  ✅ requirements.txt copied from reference dotfile")
+
+    # 2. requirements-test.txt
+    (src_dir / "requirements-test.txt").write_text(
+        "# Test dependencies for ai-runtime\n"
+        "pytest==8.3.4\n"
+        "pytest-asyncio==0.24.0\n"
+        "pytest-cov==6.0.0\n"
+        "httpx==0.27.2\n"
+        "respx==0.21.1\n"
+    )
+    print("  ✅ requirements-test.txt written")
+
+    # 3. Copy CE proto
+    ref_proto = REPO_ROOT / "architecture" / "reference" / "proto" / "constitutional_service.proto"
+    (src_dir / "proto" / "constitutional_service.proto").write_text(ref_proto.read_text())
+    print("  ✅ constitutional_service.proto copied")
+
+    # 4. Package inits
+    (src_dir / "__init__.py").write_text(
+        "# AI Runtime — C-051 (Token Economy), C-062 (AI Security), C-078 (PII Scrubber)\n"
+    )
+    (src_dir / "providers" / "__init__.py").write_text("")
+    (src_dir / "pse" / "__init__.py").write_text("")
+    (src_dir / "rag" / "__init__.py").write_text("")
+    (src_dir / "pii" / "__init__.py").write_text("")
+    (test_dir / "__init__.py").write_text("")
+
+    # 5. main.py — minimal FastAPI stub
+    (src_dir / "main.py").write_text(
+        "# Implements: architecture/reference/components/ai-runtime.md\n"
+        "# constitutional_basis: C-051 (Token Economy), C-062 (AI Security),\n"
+        "#   C-063 (Data Minimisation), C-078 (PII Scrubber), ADR-029 (Multi-provider)\n\n"
+        "from fastapi import FastAPI\n\n"
+        "app = FastAPI(\n"
+        "    title=\"WAOOAW AI Runtime\",\n"
+        "    description=\"Provider Selection Engine + LLM dispatch (ADR-029).\",\n"
+        "    version=\"0.1.0\",\n"
+        ")\n\n\n"
+        "@app.get(\"/health\")\n"
+        "async def health() -> dict:\n"
+        "    \"\"\"Health check.\"\"\"\n"
+        "    return {\"status\": \"ok\", \"service\": \"ai-runtime\"}\n"
+    )
+    print("  ✅ main.py stub written")
+
+    # 6. PSE tier enum stub (ADR-029) — prevents LLM from inventing tier names
+    (src_dir / "pse" / "tiers.py").write_text(
+        "# Implements: adr/ADR-029-multi-provider-llm-strategy.md\n"
+        "# constitutional_basis: C-051 (Token Economy — 66-74% cost reduction)\n"
+        "# PSE-R01 to PSE-R08 routing rules defined here.\n\n"
+        "from enum import Enum\n\n\n"
+        "class LlmTier(str, Enum):\n"
+        "    \"\"\"ADR-029 §3 routing tiers. NEVER add tiers without EA approval.\"\"\"\n"
+        "    LOCAL = \"local\"        # Ollama (₹0/token) — default for dev\n"
+        "    MID = \"mid\"            # Sarvam AI (Indian SMEs, optimised cost)\n"
+        "    FRONTIER = \"frontier\"  # Gemini / Anthropic (complex reasoning)\n"
+        "    FALLBACK = \"fallback\"  # Anthropic Claude (when Gemini unavailable)\n"
+    )
+    print("  ✅ pse/tiers.py stub written (ADR-029 tiers)")
+
+    # 7. conftest.py for tests
+    (test_dir / "conftest.py").write_text(
+        "# Implements: tests/QA-STRATEGY.md §5.1\n"
+        "# constitutional_basis: C-076 (≥90% coverage), C-062 (AI Security)\n\n"
+        "import pytest\n"
+        "from httpx import AsyncClient, ASGITransport\n"
+        "from src.ai_runtime.main import app\n\n\n"
+        "@pytest.fixture\n"
+        "async def client():\n"
+        "    async with AsyncClient(transport=ASGITransport(app=app), base_url=\"http://test\") as c:\n"
+        "        yield c\n"
+    )
+    print("  ✅ tests/conftest.py written")
+
+    # 8. Lint check
+    lint = run(["python3", "-m", "ruff", "check", str(src_dir)],
+               check=False, capture=True)
+    if lint.returncode != 0:
+        print(f"  ⚠️  ruff: {lint.stdout[:200]}")
+    else:
+        print("  ✅ ruff PASSED")
+
+    git(["add", f"src/{service}/", f"tests/{service}/"], check=False)
+    git(["commit", "-m",
+         "feat: WC015-01 — AIR project scaffold (Python 3.12 FastAPI + PSE tiers)\n\n"
+         "IB: IB-009\nConstitutional: C-059, C-051, C-062, C-078, ADR-029\nCCTs-added: per WC spec"],
+        check=False)
+    print("  ✅ WC015-01 complete (deterministic — no LLM)")
+    return True
+
+
+def _skip_schemathesis_gate() -> bool:
+    """
+    WC013-04a: Schemathesis contract test — CI gate deferred.
+    Schemathesis requires a running docker-compose service stack.
+    In the autonomous sprint pipeline (GitHub Actions, no docker), this gate
+    is recorded as SKIPPED with an instruction to run manually.
+    constitutional_basis: C-008 (Constitutional Chain — spec-code drift check)
+    """
+    print("  ── WC013-04a: Schemathesis gate (CI-deferred) ──")
+    print("  ⏭️  Schemathesis requires running service — deferred to manual docker-compose run.")
+    print("  Manual command: docker compose up business-platform && schemathesis run "
+          "architecture/reference/api-specs/business-platform.openapi.yaml "
+          "--url http://localhost:5001 --checks all")
+    # Record skip in sprint-context for monitor
+    skip_file = REPO_ROOT / "sprint-context" / "schemathesis-deferred.txt"
+    skip_file.parent.mkdir(exist_ok=True)
+    skip_file.write_text(
+        "WC013-04 Schemathesis deferred — run manually after WC-013 completes.\n"
+        "Command: docker compose up business-platform && "
+        "schemathesis run architecture/reference/api-specs/business-platform.openapi.yaml "
+        "--url http://localhost:5001 --checks all\n"
+    )
+    git(["add", "sprint-context/schemathesis-deferred.txt"], check=False)
+    git(["commit", "-m",
+         "chore(pm): WC013-04 Schemathesis gate deferred — requires running service\n\n"
+         "IB: IB-009\nConstitutional: C-008 (tracked, not blocking)"],
+        check=False)
+    return True
+
+
 _INFRA_ERROR_TASKS: list[str] = []  # populated by execute_with_llm when all 3 attempts are API failures
 
 # ── Sprint Monitor signal (C-069: self-improvement loop) ──────────────────────
@@ -2023,6 +2395,436 @@ TASK_HANDLERS = {
             ),
         ]
     },
+    # ══════════════════════════════════════════════════════════════════════════
+    # WC-013 — Business Platform (.NET 9 REST)
+    # ══════════════════════════════════════════════════════════════════════════
+    "WC013-01": execute_wc013_01,
+    "WC013-02": {
+        # JWT middleware + tenant isolation (RLS). Sub-tasks: impl → tests.
+        "subtasks": [
+            SubTaskDef(
+                id="WC013-02a",
+                description="JWT middleware + RLS tenant isolation — Keycloak bearer + SET LOCAL",
+                type="llm",
+                depends_on=[],
+                compile_gate="dotnet_build",
+                service_dir="src/business-platform",
+                wc_task_id="WC013-02",
+                stack="dotnet",
+                output_files=[
+                    "src/business-platform/Infrastructure/TenantIsolationMiddleware.cs",
+                    "src/business-platform/Program.cs",
+                ],
+                spec_sections={
+                    "architecture/reference/components/business-platform.md": "§ Tenant Isolation",
+                    "adr/ADR-003-jwt-claims-multi-tenancy.md": "full",
+                },
+                constitutional_check=(
+                    "JWT: AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer().\n"
+                    "Extract tenant_id claim from JWT and call: SET LOCAL app.current_tenant_id = '{id}'\n"
+                    "via IDbContextInterceptor or middleware before any DB query (C-026).\n"
+                    "app.UseAuthentication(); app.UseAuthorization(); must be in Program.cs.\n"
+                    "Invalid token → 401. Missing tenant_id claim → 403.\n"
+                    "⛔ Do NOT hardcode tenant IDs — always read from JWT claim."
+                ),
+                model_hint="reasoning",
+                max_tokens=6000,
+            ),
+            SubTaskDef(
+                id="WC013-02b",
+                description="CCT-MT-01 — cross-tenant isolation unit test",
+                type="llm",
+                depends_on=["WC013-02a"],
+                compile_gate="dotnet_build",
+                service_dir="src/business-platform",
+                wc_task_id="WC013-02",
+                stack="dotnet",
+                output_files=[
+                    "tests/business-platform.Tests/Infrastructure/CCT_MT01_TenantIsolationTests.cs",
+                ],
+                not_regenerate_from=["WC013-02a"],
+                constitutional_check=(
+                    "Test: requests with tenant A token cannot see tenant B data (CCT-MT-01).\n"
+                    "Use WebApplicationFactory<Program> from Microsoft.AspNetCore.Mvc.Testing.\n"
+                    "using FluentAssertions; for assertions. ≥90% coverage (C-076)."
+                ),
+                model_hint="reasoning",
+                max_tokens=4000,
+            ),
+        ]
+    },
+    "WC013-03": {
+        # Registration + Hire endpoints. Sub-tasks: impl files → tests.
+        "subtasks": [
+            SubTaskDef(
+                id="WC013-03a",
+                description="POST /api/customers + POST /api/agents/hire — calls CE.ValidateAction",
+                type="llm",
+                depends_on=["WC013-02a"],
+                compile_gate="dotnet_build",
+                service_dir="src/business-platform",
+                wc_task_id="WC013-03",
+                stack="dotnet",
+                output_files=[
+                    "src/business-platform/Controllers/CustomersController.cs",
+                    "src/business-platform/Controllers/AgentsController.cs",
+                    "src/business-platform/Services/EmploymentService.cs",
+                ],
+                not_regenerate_from=["WC013-02a"],
+                spec_sections={
+                    "architecture/reference/api-specs/business-platform.openapi.yaml": "POST /api/customers, POST /api/agents/hire",
+                    "architecture/reference/components/business-platform.md": "§1 Employment Manager",
+                },
+                constitutional_check=(
+                    "EVERY endpoint must call CE.ValidateAction via gRPC BEFORE executing (C-023).\n"
+                    "CE client: var channel = GrpcChannel.ForAddress(config['ConstitutionalEngine:GrpcUrl']);\n"
+                    "           var ceClient = new ConstitutionalService.ConstitutionalServiceClient(channel);\n"
+                    "C-038: Hire endpoint must populate pro_rata_billing_start_date on contract creation.\n"
+                    "⛔ Do NOT call CE inside a DB transaction — CE call is pre-condition, not part of TX.\n"
+                    "Namespace: Waooaw.BusinessPlatform.Controllers and Waooaw.BusinessPlatform.Services."
+                ),
+                model_hint="reasoning",
+                max_tokens=8000,
+            ),
+            SubTaskDef(
+                id="WC013-03b",
+                description="Unit tests for Registration + Hire endpoints — ≥90% coverage",
+                type="llm",
+                depends_on=["WC013-03a"],
+                compile_gate="dotnet_build",
+                service_dir="src/business-platform",
+                wc_task_id="WC013-03",
+                stack="dotnet",
+                output_files=[
+                    "tests/business-platform.Tests/Controllers/CustomersControllerTests.cs",
+                    "tests/business-platform.Tests/Controllers/AgentsControllerTests.cs",
+                ],
+                not_regenerate_from=["WC013-02a", "WC013-03a"],
+                constitutional_check=(
+                    "Mock CE gRPC client with Moq (IConstitutionalService — it IS an interface).\n"
+                    "Use InMemoryDatabase for EF Core context (NOT Moq for DbContext).\n"
+                    "Test: CE.ValidateAction called before any DB write.\n"
+                    "using FluentAssertions; for assertions. ≥90% coverage (C-076)."
+                ),
+                model_hint="reasoning",
+                max_tokens=5000,
+            ),
+        ]
+    },
+    "WC013-04": {
+        # Schemathesis contract test — requires running service, CI-deferred.
+        "subtasks": [
+            SubTaskDef(
+                id="WC013-04a",
+                description="Schemathesis contract test — CI gate (deferred to docker-compose run)",
+                type="deterministic",
+                depends_on=["WC013-03a"],
+                compile_gate="dotnet_build",
+                service_dir="src/business-platform",
+                template_fn=lambda: _skip_schemathesis_gate(),
+            ),
+        ]
+    },
+    # ══════════════════════════════════════════════════════════════════════════
+    # WC-014 — Professional Runtime (Python 3.12 FastAPI + Temporal)
+    # ══════════════════════════════════════════════════════════════════════════
+    "WC014-01": execute_wc014_01,
+    "WC014-02": {
+        # Emergency Stop WebSocket + CCT-HO-02
+        "subtasks": [
+            SubTaskDef(
+                id="WC014-02a",
+                description="Emergency Stop WebSocket → Temporal HALT signal ≤250ms",
+                type="llm",
+                depends_on=[],
+                compile_gate="ruff",
+                service_dir="src/professional-runtime",
+                wc_task_id="WC014-02",
+                stack="python",
+                output_files=[
+                    "src/professional-runtime/routers/emergency_stop.py",
+                ],
+                spec_sections={
+                    "architecture/reference/components/professional-runtime.md": "§ Emergency Stop",
+                    "adr/ADR-018-emergency-stop-temporal-signal.md": "full",
+                    "architecture/reference/api-specs/emergency-stop-ws.md": "full",
+                },
+                constitutional_check=(
+                    "@router.websocket('/sessions/{session_id}/stop')\n"
+                    "Use temporalio SDK (version 1.7.1 — from requirements.txt).\n"
+                    "Signal HALT to Temporal workflow: await handle.signal(HALT_SIGNAL_NAME)\n"
+                    "⛔ NO I/O between WebSocket accept and signal send (C-001 ≤250ms).\n"
+                    "⛔ Do NOT import 'temporal' or 'temporal_sdk' — import 'temporalio' only.\n"
+                    "Fire-and-forget: await websocket.send_json({'status': 'stopping'}) then close."
+                ),
+                model_hint="reasoning",
+                max_tokens=4000,
+            ),
+            SubTaskDef(
+                id="WC014-02b",
+                description="CCT-HO-02 — Emergency Stop latency test (mock Temporal)",
+                type="llm",
+                depends_on=["WC014-02a"],
+                compile_gate="ruff",
+                service_dir="src/professional-runtime",
+                wc_task_id="WC014-02",
+                stack="python",
+                output_files=[
+                    "tests/professional-runtime/test_emergency_stop.py",
+                ],
+                not_regenerate_from=["WC014-02a"],
+                constitutional_check=(
+                    "Mock temporalio client with pytest-mock/unittest.mock.\n"
+                    "Use httpx.AsyncClient + starlette.testclient for WebSocket testing.\n"
+                    "@pytest.mark.asyncio for async tests.\n"
+                    "Assert: signal sent within 250ms (time.perf_counter measurement).\n"
+                    "⛔ Do NOT start a real Temporal server in tests."
+                ),
+                model_hint="reasoning",
+                max_tokens=4000,
+            ),
+        ]
+    },
+    "WC014-03": {
+        # PAAS session lifecycle + unit tests
+        "subtasks": [
+            SubTaskDef(
+                id="WC014-03a",
+                description="PAAS session lifecycle — start/resume/terminate Temporal workflows",
+                type="llm",
+                depends_on=["WC014-02a"],
+                compile_gate="ruff",
+                service_dir="src/professional-runtime",
+                wc_task_id="WC014-03",
+                stack="python",
+                output_files=[
+                    "src/professional-runtime/workflows/paas_workflow.py",
+                    "src/professional-runtime/routers/sessions.py",
+                ],
+                not_regenerate_from=["WC014-02a"],
+                spec_sections={
+                    "architecture/reference/components/professional-runtime.md": "§ PAAS Session Lifecycle",
+                    "adr/ADR-005-paas-session-isolation.md": "full",
+                },
+                constitutional_check=(
+                    "C-025: ALL professional execution runs as Temporal workflow — never direct call.\n"
+                    "Each session = one Temporal workflow (workflow_id = session_id for idempotency).\n"
+                    "Session isolation: no shared state between workflows (C-025).\n"
+                    "POST /sessions → start_workflow(). GET /sessions/{id} → describe workflow state.\n"
+                    "DELETE /sessions/{id} → signal TERMINATE to workflow.\n"
+                    "⛔ Do NOT use temporalio.workflow.execute_activity inside the router — only inside workflow."
+                ),
+                model_hint="reasoning",
+                max_tokens=6000,
+            ),
+            SubTaskDef(
+                id="WC014-03b",
+                description="Unit tests for PAAS session lifecycle — ≥90% coverage",
+                type="llm",
+                depends_on=["WC014-03a"],
+                compile_gate="pytest",
+                service_dir="tests/professional-runtime",
+                wc_task_id="WC014-03",
+                stack="python",
+                output_files=[
+                    "tests/professional-runtime/test_sessions.py",
+                ],
+                not_regenerate_from=["WC014-02a", "WC014-03a"],
+                constitutional_check=(
+                    "Mock temporalio client. @pytest.mark.asyncio for async tests.\n"
+                    "Test: start_workflow called on POST /sessions.\n"
+                    "Test: cross-session isolation — workflow IDs are unique per session.\n"
+                    "pytest-cov: ≥90% coverage required (C-076)."
+                ),
+                model_hint="reasoning",
+                max_tokens=4000,
+            ),
+        ]
+    },
+    "WC014-04": {
+        # AI Execution Loop stub (5 Temporal activities)
+        "subtasks": [
+            SubTaskDef(
+                id="WC014-04a",
+                description="AI Execution Loop — SENSE/RETRIEVE/REASON/ACT/RECORD Temporal activities",
+                type="llm",
+                depends_on=["WC014-03a"],
+                compile_gate="ruff",
+                service_dir="src/professional-runtime",
+                wc_task_id="WC014-04",
+                stack="python",
+                output_files=[
+                    "src/professional-runtime/activities/execution_loop.py",
+                ],
+                not_regenerate_from=["WC014-02a", "WC014-03a"],
+                spec_sections={
+                    "architecture/reference/components/professional-runtime.md": "§ AI Execution Loop",
+                },
+                constitutional_check=(
+                    "5 @activity.defn functions: sense, retrieve, reason, act, record.\n"
+                    "C-047: all 5 must execute in sequence. RECORD must always run (C-023).\n"
+                    "Activities are stubs — return placeholder dicts. Real AI calls in WC015.\n"
+                    "⛔ No LLM calls here — that is AI Runtime's responsibility.\n"
+                    "⛔ Do NOT skip RECORD on error — wrap in try/finally."
+                ),
+                model_hint="auto",
+                max_tokens=4000,
+            ),
+        ]
+    },
+    # ══════════════════════════════════════════════════════════════════════════
+    # WC-015 — AI Runtime (Python 3.12 FastAPI + PSE)
+    # ══════════════════════════════════════════════════════════════════════════
+    "WC015-01": execute_wc015_01,
+    "WC015-02": {
+        # PSE routing + LLM dispatch
+        "subtasks": [
+            SubTaskDef(
+                id="WC015-02a",
+                description="Provider Selection Engine — PSE-R01 to PSE-R08 routing rules",
+                type="llm",
+                depends_on=[],
+                compile_gate="ruff",
+                service_dir="src/ai-runtime",
+                wc_task_id="WC015-02",
+                stack="python",
+                output_files=[
+                    "src/ai-runtime/pse/router.py",
+                ],
+                spec_sections={
+                    "adr/ADR-029-multi-provider-llm-strategy.md": "full",
+                    "adr/ADR-024-token-economy-model-tier-routing.md": "full",
+                },
+                constitutional_check=(
+                    "PSE routes to LlmTier enum (from pse/tiers.py — DO NOT redefine).\n"
+                    "PSE-R01: task_complexity=simple → LOCAL (Ollama, ₹0). \n"
+                    "PSE-R02: task_complexity=medium + language=indic → MID (Sarvam).\n"
+                    "PSE-R03: task_complexity=complex → FRONTIER (Gemini/Anthropic).\n"
+                    "C-051: ≥66% of calls must route to LOCAL or MID.\n"
+                    "⛔ NEVER call 'import vertexai' — use 'from google.cloud import aiplatform'."
+                ),
+                model_hint="reasoning",
+                max_tokens=5000,
+            ),
+            SubTaskDef(
+                id="WC015-02b",
+                description="LLM dispatch — Ollama (LOCAL) + Sarvam (MID) providers",
+                type="llm",
+                depends_on=["WC015-02a"],
+                compile_gate="ruff",
+                service_dir="src/ai-runtime",
+                wc_task_id="WC015-02",
+                stack="python",
+                output_files=[
+                    "src/ai-runtime/providers/ollama_provider.py",
+                    "src/ai-runtime/providers/sarvam_provider.py",
+                ],
+                not_regenerate_from=["WC015-02a"],
+                spec_sections={
+                    "adr/ADR-029-multi-provider-llm-strategy.md": "§ OllamaProvider, SarvamProvider",
+                },
+                constitutional_check=(
+                    "OllamaProvider: POST http://ollama:11434/api/generate (docker-compose service name).\n"
+                    "SarvamProvider: POST https://api.sarvam.ai/v1/chat/completions via httpx.\n"
+                    "⛔ Sarvam has NO Python SDK — use httpx directly (see requirements.txt note).\n"
+                    "C-063: no PII in prompt. ADR-028: prompt content never logged.\n"
+                    "Record dispatch to provider_dispatch_events table after each call."
+                ),
+                model_hint="reasoning",
+                max_tokens=5000,
+            ),
+        ]
+    },
+    "WC015-03": {
+        # RAG retrieval stub
+        "subtasks": [
+            SubTaskDef(
+                id="WC015-03a",
+                description="RAG retrieval — pgvector similarity search (top-3 chunks)",
+                type="llm",
+                depends_on=["WC015-02a"],
+                compile_gate="ruff",
+                service_dir="src/ai-runtime",
+                wc_task_id="WC015-03",
+                stack="python",
+                output_files=[
+                    "src/ai-runtime/rag/retriever.py",
+                ],
+                not_regenerate_from=["WC015-02a", "WC015-02b"],
+                spec_sections={
+                    "adr/ADR-019-rag-architecture.md": "full",
+                },
+                constitutional_check=(
+                    "pgvector: from pgvector.asyncpg import register_vector.\n"
+                    "Query: SELECT content FROM professional.agent_prompts ORDER BY embedding <=> $1 LIMIT 3.\n"
+                    "Embeddings via AI4Bharat IndicBERT: transformers.pipeline('feature-extraction', model='ai4bharat/indic-bert').\n"
+                    "⛔ IndicBERT is loaded via HuggingFace transformers — do NOT 'pip install ai4bharat'.\n"
+                    "Return List[str] of top-3 chunks. Never include raw embeddings in response."
+                ),
+                model_hint="reasoning",
+                max_tokens=4000,
+            ),
+        ]
+    },
+    "WC015-04": {
+        # Prompt injection defence + CCT-PI-01
+        "subtasks": [
+            SubTaskDef(
+                id="WC015-04a",
+                description="Prompt injection defence — 50-attack test suite (CCT-PI-01)",
+                type="llm",
+                depends_on=["WC015-02a"],
+                compile_gate="ruff",
+                service_dir="src/ai-runtime",
+                wc_task_id="WC015-04",
+                stack="python",
+                output_files=[
+                    "src/ai-runtime/pii/injection_guard.py",
+                    "tests/ai-runtime/test_injection_guard.py",
+                ],
+                not_regenerate_from=["WC015-02a", "WC015-02b", "WC015-03a"],
+                spec_sections={
+                    "architecture/reference/components/ai-runtime.md": "§ Prompt Injection Defence",
+                },
+                constitutional_check=(
+                    "C-062: Decision Space cannot be bypassed by conversation input.\n"
+                    "Implement InjectionGuard.scan(prompt: str) → bool (True = safe, False = blocked).\n"
+                    "Attack patterns in tests/conftest.py — import and use them in the test.\n"
+                    "CCT-PI-01: all 50 attack patterns must be BLOCKED (100% block rate).\n"
+                    "@pytest.mark.asyncio. Assert all 50 attacks return False from scan()."
+                ),
+                model_hint="reasoning",
+                max_tokens=5000,
+            ),
+        ]
+    },
+    "WC015-05": {
+        # PSE routing tests ≥90% coverage
+        "subtasks": [
+            SubTaskDef(
+                id="WC015-05a",
+                description="PSE routing unit tests — PSE-R01 to PSE-R08 + ≥90% coverage",
+                type="llm",
+                depends_on=["WC015-02a", "WC015-02b", "WC015-03a", "WC015-04a"],
+                compile_gate="pytest",
+                service_dir="tests/ai-runtime",
+                wc_task_id="WC015-05",
+                stack="python",
+                output_files=[
+                    "tests/ai-runtime/test_pse_routing.py",
+                ],
+                not_regenerate_from=["WC015-02a", "WC015-02b"],
+                constitutional_check=(
+                    "Test every PSE routing rule (PSE-R01 to PSE-R08) with a [Fact] equivalent.\n"
+                    "@pytest.mark.parametrize for routing rules.\n"
+                    "Mock Ollama/Sarvam providers — no real HTTP calls in unit tests.\n"
+                    "pytest-cov: ≥90% coverage on pse/router.py (C-076)."
+                ),
+                model_hint="auto",
+                max_tokens=4000,
+            ),
+        ]
+    },
 }
 
 
@@ -2138,6 +2940,12 @@ def main() -> int:
             print(f"  DRY RUN: would execute {task}")
             continue
         try:
+            # FA-021 gate: WC015 requires GCP Vertex AI SA key in Key Vault / env
+            if task.startswith("WC015") and not os.environ.get("GOOGLE_VERTEX_SA_KEY"):
+                print(f"  ❌ FA-021 gate: WC015 requires GOOGLE_VERTEX_SA_KEY in environment.")
+                print(f"     See FOUNDER-ACTION.md T1-02. Set secret in Azure Key Vault first.")
+                tasks_not_implemented.append(task)
+                continue
             # Route through TaskDecomposer if task is a dict with subtasks (IB-021 / WC-019)
             # Backward compatible: callable handlers still execute directly (WC011-xx, WC012-01/02)
             if callable(handler):
