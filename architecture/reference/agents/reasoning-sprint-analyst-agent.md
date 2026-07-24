@@ -170,6 +170,31 @@ Open a PR labelled `tier:2-feature`, `awaiting:review`.
 Re-run sprint once PR is merged.
 The agent may NOT re-trigger the sprint without the spec PR being merged.
 
+**Level 2 PR body format — mandatory (Sujay must decide in under 60 seconds):**
+
+The RSA generates the PR body in the same LLM call as the diagnosis. It follows this structure:
+
+```
+## What happened and what was added — 3 lines
+
+[Plain English. What could the agent not do? What was missing from the spec?
+What was added? No technical jargon.]
+Example: "Dr. Mehta's DMA couldn't write Diwali content — the spec had no
+guidelines for healthcare-appropriate festival campaigns in Maharashtra. Added
+a spec section covering this. Agent will now deliver without escalating."
+
+## Two things to check
+- [ ] Is the new spec content factually correct for this domain?
+- [ ] Does it introduce any customer risk or constitutional concern?
+
+## Diff (skip if the two checks above look right)
+[link to the changed spec section — nothing else]
+```
+
+**Restriction:** PR body must be ≤ 150 words above the diff link. If the RSA cannot
+explain the change in 3 plain-English lines, the diagnosis is unclear and it must
+escalate to Level 3 rather than open a PR.
+
 **Spec writing obligations (C-059):**
 Every spec section written by the Reasoning Sprint Analyst must include:
 - Section heading matching the component it describes
