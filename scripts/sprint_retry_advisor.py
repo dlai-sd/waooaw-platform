@@ -141,12 +141,87 @@ def _classify_cs0246_namespace(error: str) -> Optional[RetryDiagnosis]:
     return None
 
 
+def _lookup_type_in_ptr(type_name: str) -> Optional[dict]:
+    """
+    Look up a type's members in the Platform Type Registry.
+    Returns the PTR entry if found, None otherwise.
+    Best-effort — never raises.
+    C-085: prior compiled state is authoritative for fix instructions.
+    """
+    try:
+        from platform_type_registry import load_ptr
+        ptr = load_ptr()
+        for task_entry in ptr.get("tasks", {}).values():
+            if type_name in task_entry.get("types", {}):
+                return task_entry["types"][type_name]
+    except Exception:
+        pass
+    return None
+
+
+def _build_ptr_fix_instruction(type_name: str, field_name: str, ptr_entry: dict) -> str:
+    """
+    Build a precise fix instruction from a PTR entry.
+    Lists actual members so LLM can correct invented names immediately.
+    Works for any type in any sprint — zero per-type hardcoding.
+    """
+    kind = ptr_entry.get("kind", "unknown")
+    actual: list[str] = []
+
+    if kind in ("record", "class") and "properties" in ptr_entry:
+        actual = list(ptr_entry["properties"].keys())
+    elif kind == "proto_message" and "fields" in ptr_entry:
+        actual = list(ptr_entry["fields"].keys())
+    elif kind == "interface" and "methods" in ptr_entry:
+        actual = [
+            m["name"] if isinstance(m, dict) else str(m)
+            for m in ptr_entry.get("methods", [])
+        ]
+    elif kind in ("enum", "proto_enum") and "values" in ptr_entry:
+        actual = ptr_entry["values"]
+
+    if not actual:
+        return (
+            f"FIELD NOT FOUND: '{type_name}' does not have '{field_name}'. "
+            f"Check BRANCH CONTEXT for the actual definition of '{type_name}'."
+        )
+
+    display = ", ".join(actual[:20]) + ("..." if len(actual) > 20 else "")
+    ns = ptr_entry.get("namespace", "")
+    note = ptr_entry.get("note", "")
+
+    fix = (
+        f"PTR-VERIFIED: '{type_name}' ({kind}{f', namespace: {ns}' if ns else ''}) "
+        f"does NOT have '{field_name}'. "
+        f"Actual members: {display}. "
+        f"Use ONLY members from this list — do NOT invent names. "
+    )
+    if note:
+        fix += f"{note} "
+
+    # Add well-known behavioral notes for specific patterns
+    methods_str = str(ptr_entry.get("methods", []))
+    props_str = str(ptr_entry.get("properties", {}).keys())
+    if "ActionParameters" in props_str or "GetParameter" in methods_str:
+        fix += (
+            "For ActionParameters: use ctx.GetParameter(\"key\") — "
+            "it is a JSON-encoded string, NOT a Dictionary. "
+        )
+    if "EvaluateAllAsync" in methods_str:
+        fix += (
+            "For EvaluatorRegistry: _registry.EvaluateAllAsync(ctx, ct) is the ONLY public method. "
+        )
+
+    return fix
+
+
 def _classify_cs0117(error: str) -> Optional[RetryDiagnosis]:
     """
-    CS0117: 'X' does not contain a definition for 'Y'
-    Root cause: Claude invented a property/field name that doesn't exist.
-    Fix: Tell Claude to use default() or empty constructors for proto-generated types.
-    constitutional_trace: C-082 (build validation — generated code must compile)
+    CS0117: 'X' does not contain a definition for 'Y'.
+    Generalized: looks up X in PTR to generate machine-verified fix instruction.
+    Falls back to generic advice if type not in PTR.
+    Covers any type in any sprint — no per-type hardcoding.
+    constitutional_trace: C-082, C-085
     """
     m = re.search(r"'([^']+)' does not contain a definition for '([^']+)'", error)
     if not m:
@@ -154,58 +229,33 @@ def _classify_cs0117(error: str) -> Optional[RetryDiagnosis]:
 
     class_name, field_name = m.group(1), m.group(2)
 
-    # Proto-generated response types — LLM invents fields that don't exist
-    if "ValidateActionResponse" in class_name or "ValidateActionResponse" in error:
-        fix = (
-            f"PROTO FIELD NOT FOUND: 'ValidateActionResponse' does NOT have '{field_name}'. "
-            f"ValidateActionResponse has EXACTLY these fields: "
-            f"Decision (ValidationDecision), ConstitutionalBasis (string), Reason (string), "
-            f"BudgetRemainingInrPaise (long? — optional), SyntheticApprovalRecordId (string? — optional). "
-            f"CORRECT usage: return new ValidateActionResponse {{ "
-            f"Decision = ValidationDecision.Allow, "
-            f"ConstitutionalBasis = \"C-041\", "
-            f"Reason = \"All evaluators passed\" }}; "
-            f"Do NOT set ClaimId, EvaluationResults, AllowedActions, or any other field — they do NOT exist."
-        )
+    # Try PTR first — fully generalized across all sprints
+    ptr_entry = _lookup_type_in_ptr(class_name)
+    if ptr_entry:
+        fix = _build_ptr_fix_instruction(class_name, field_name, ptr_entry)
         return RetryDiagnosis(
             error_type=WRONG_FIELD_NAME,
             fix_instruction=fix,
             should_retry=True,
             confidence=0.95,
-            constitutional_trace="C-082 (Build Validation — ValidateActionResponse proto fields)"
+            constitutional_trace="C-082 + C-085 (PTR-verified — prior compiled state is authoritative)"
         )
 
-    if "RecordEvidenceRequest" in class_name or "RecordEvidenceRequest" in error:
-        fix = (
-            f"PROTO FIELD NOT FOUND: 'RecordEvidenceRequest' does NOT have '{field_name}'. "
-            f"RecordEvidenceRequest has these fields: "
-            f"ActionInstanceId, ContractId, ProfessionalId, ActionType, State (EvidenceState), "
-            f"ConstitutionalBasis, ProposedContent, ExecutedContent, DecisionSpaceVersion. "
-            f"⛔ NO IdempotencyKey, NO SessionId, NO RequestId fields exist. "
-            f"NOTE: Do NOT call RecordEvidence from WC012-02b — that is WC012-03's responsibility."
-        )
-        return RetryDiagnosis(
-            error_type=WRONG_FIELD_NAME,
-            fix_instruction=fix,
-            should_retry=True,
-            confidence=0.95,
-            constitutional_trace="C-082 (Build Validation — RecordEvidenceRequest proto fields)"
-        )
-
+    # PTR miss — generic fallback
     fix = (
-        f"FIELD ERROR: '{class_name}' does not have a property '{field_name}'. "
-        f"You invented a field name that does not exist in the proto-generated class. "
+        f"FIELD ERROR: '{class_name}' does not have '{field_name}'. "
+        f"Check BRANCH CONTEXT for the exact definition of '{class_name}'. "
+        f"Do not invent field/method/property names. "
         f"For proto-generated response types: use empty constructors (new {class_name}()) "
-        f"rather than object initializers. Do NOT set properties unless you have verified "
-        f"the exact property name from the proto definition. "
-        f"The proto is in Protos/constitutional_service.proto — check the actual field names."
+        f"rather than object initializers with invented fields. "
+        f"Check the actual field names in Protos/constitutional_service.proto."
     )
     return RetryDiagnosis(
         error_type=WRONG_FIELD_NAME,
         fix_instruction=fix,
         should_retry=True,
-        confidence=0.85,
-        constitutional_trace="C-082 (Build Validation — generated code must compile before commit)"
+        confidence=0.75,
+        constitutional_trace="C-082 (Build Validation — generated code must compile)"
     )
 
 
@@ -388,57 +438,40 @@ def diagnose_build_error(
                 constitutional_trace="C-082 (Build Validation — generated code must use defined types)"
             )
 
-    # ── Rule 5: CS1061 — member not found on type (wrong proto field access) ───
+    # ── Rule 5: CS1061 — member not found on type ─────────────────────────────
     if "CS1061" in error_codes:
         m = re.search(r"'([^']+)' does not contain a definition for '([^']+)'", build_error)
         if m:
             type_name, field_name = m.group(1), m.group(2)
 
-            # EvaluatorRegistry — LLM invents method names that don't exist
-            if "EvaluatorRegistry" in type_name or field_name in (
-                "GetEvaluators", "GetApplicableEvaluators", "GetAll", "Evaluate",
-            ):
-                fix = (
-                    f"REGISTRY METHOD NOT FOUND: 'EvaluatorRegistry' does NOT have '{field_name}'. "
-                    f"EvaluatorRegistry has exactly ONE public method: "
-                    f"EvaluateAllAsync(EvaluationContext context, CancellationToken ct) "
-                    f"→ Task<IReadOnlyList<EvaluationResult>>. "
-                    f"CORRECT usage: var results = await _registry.EvaluateAllAsync(ctx, cancellationToken); "
-                    f"Do NOT call GetEvaluators(), GetApplicableEvaluators(), GetAll(), Evaluate(), "
-                    f"or any other method — NONE of them exist on EvaluatorRegistry."
-                )
-                print(f"  Retry Advisor: CS1061 EvaluatorRegistry.{field_name} invented method (confidence=95%)")
+            # Try PTR first — fully generalized, works for any type in any sprint
+            ptr_entry = _lookup_type_in_ptr(type_name)
+            if ptr_entry:
+                fix = _build_ptr_fix_instruction(type_name, field_name, ptr_entry)
+                print(f"  Retry Advisor: CS1061 PTR-verified fix for {type_name}.{field_name} (confidence=95%)")
                 return RetryDiagnosis(
                     error_type=WRONG_FIELD_NAME,
                     fix_instruction=fix,
                     should_retry=True,
                     confidence=0.95,
-                    constitutional_trace="C-082 (Build Validation — EvaluatorRegistry.EvaluateAllAsync is the only public method)"
+                    constitutional_trace="C-082 + C-085 (PTR-verified — prior compiled state is authoritative)"
                 )
 
-            # EvaluationContext / string — original TryGetValue case
+            # PTR miss — fall back to known behavioral patterns
             fix = (
                 f"FIELD NOT FOUND: '{type_name}.{field_name}' does not exist. "
-                f"EvaluationContext is a sealed record with these EXACT properties: "
-                f"ContractId (string), ActionType (string), ActionParameters (string — JSON-encoded), "
-                f"DecisionSpaceVersion (int), TenantId (string), SkillId (string?), "
-                f"ProposedSpendInrPaise (long), ApprovedBudgetInrPaise (long), CurrentSpendInrPaise (long). "
-                f"Use ctx.GetParameter(\"key\") to extract values from ActionParameters JSON — "
-                f"NEVER call ActionParameters.TryGetValue() — ActionParameters is a string, not a Dictionary. "
-                f"Example for tool_name: var toolName = ctx.GetParameter(\"tool_name\"); "
-                f"Example for system_prompt_sha: var sha = ctx.GetParameter(\"system_prompt_sha\"); "
-                f"For budget: use ctx.ProposedSpendInrPaise, ctx.ApprovedBudgetInrPaise directly. "
-                f"For DB reads: use ctx.TenantId (from gRPC metadata). "
-                f"Build context: EvaluationContext.FromRequest(request, tenantId) where tenantId = "
-                f"context.RequestHeaders.GetValue(\"x-tenant-id\") ?? \"\"."
+                f"Check BRANCH CONTEXT for the exact API of '{type_name}'. "
+                f"If this is EvaluationContext: use ctx.GetParameter(\"key\") for ActionParameters JSON — "
+                f"NEVER call ActionParameters.TryGetValue(). "
+                f"If this is EvaluatorRegistry: use _registry.EvaluateAllAsync(ctx, ct) — the only public method."
             )
-            print(f"  Retry Advisor: CS1061 WRONG_FIELD_NAME (confidence=88%)")
+            print(f"  Retry Advisor: CS1061 generic fallback for {type_name}.{field_name} (confidence=75%)")
             return RetryDiagnosis(
                 error_type=WRONG_FIELD_NAME,
                 fix_instruction=fix,
                 should_retry=True,
-                confidence=0.88,
-                constitutional_trace="C-082 (Build Validation — use EvaluationContext typed properties and GetParameter)"
+                confidence=0.75,
+                constitutional_trace="C-082 (Build Validation — use types from BRANCH CONTEXT)"
             )
 
     # ── Fallback: LLM classification ───────────────────────────────────────────

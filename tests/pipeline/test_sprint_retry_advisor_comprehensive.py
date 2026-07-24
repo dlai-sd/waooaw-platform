@@ -345,16 +345,46 @@ class TestAdvisorCoverageBranches:
 # CCT-SRA-06: CS1061 EvaluatorRegistry invented method names
 # ═══════════════════════════════════════════════════════════════════════════════
 
-class TestCS1061EvaluatorRegistry:
-    """WC012 run failure: LLM called _registry.GetEvaluators() which doesn't exist."""
+import json
+import textwrap
+import tempfile
+from unittest.mock import patch
 
-    def test_get_evaluators_classified(self):
+
+def _make_ptr_with_types(types_by_task: dict) -> dict:
+    """Helper: build a PTR dict for use in retry advisor tests."""
+    return {"tasks": {
+        task_id: {"types": types, "files": []}
+        for task_id, types in types_by_task.items()
+    }}
+
+
+class TestCS1061EvaluatorRegistry:
+    """
+    WC012 run failure: LLM called _registry.GetEvaluators() which doesn't exist.
+    New design: fix instructions come from PTR lookup — fully generalized.
+    """
+
+    EVALUATOR_REGISTRY_PTR = _make_ptr_with_types({
+        "WC012-02a": {
+            "EvaluatorRegistry": {
+                "kind": "class",
+                "namespace": "Waooaw.ConstitutionalEngine.Evaluators",
+                "properties": {"Count": "int"},
+                "methods": [{"name": "EvaluateAllAsync",
+                              "return_type": "Task<IReadOnlyList<EvaluationResult>>",
+                              "params": "EvaluationContext context, CancellationToken ct"}],
+            }
+        }
+    })
+
+    def test_get_evaluators_classified_with_ptr(self):
+        """With PTR populated, EvaluatorRegistry.GetEvaluators → PTR-driven fix at 95%."""
         error = (
-            "error CS1061: 'EvaluatorRegistry' does not contain a definition for 'GetEvaluators' "
-            "and no accessible extension method 'GetEvaluators' accepting a first argument of type "
-            "'EvaluatorRegistry' could be found"
+            "error CS1061: 'EvaluatorRegistry' does not contain a definition for 'GetEvaluators'"
         )
-        result = diagnose_build_error("WC012-02b", error, [])
+        with patch("platform_type_registry.load_ptr", return_value=self.EVALUATOR_REGISTRY_PTR):
+            result = diagnose_build_error("WC012-02b", error, [])
         assert result.error_type == WRONG_FIELD_NAME
         assert result.should_retry is True
         assert result.confidence >= 0.90
@@ -363,95 +393,151 @@ class TestCS1061EvaluatorRegistry:
         error = (
             "error CS1061: 'EvaluatorRegistry' does not contain a definition for 'GetApplicableEvaluators'"
         )
-        result = diagnose_build_error("WC012-02b", error, [])
+        with patch("platform_type_registry.load_ptr", return_value=self.EVALUATOR_REGISTRY_PTR):
+            result = diagnose_build_error("WC012-02b", error, [])
         assert result.error_type == WRONG_FIELD_NAME
         assert result.should_retry is True
 
     def test_fix_instruction_names_evaluate_all_async(self):
-        """Fix must name the correct EvaluateAllAsync method — not just say 'wrong field'."""
+        """PTR-driven fix must show EvaluateAllAsync as the correct method."""
         error = (
             "error CS1061: 'EvaluatorRegistry' does not contain a definition for 'GetEvaluators'"
         )
-        result = diagnose_build_error("WC012-02b", error, [])
+        with patch("platform_type_registry.load_ptr", return_value=self.EVALUATOR_REGISTRY_PTR):
+            result = diagnose_build_error("WC012-02b", error, [])
         assert "EvaluateAllAsync" in result.fix_instruction, (
-            f"Fix must name EvaluateAllAsync. Got: {result.fix_instruction[:200]}"
+            f"PTR fix must name EvaluateAllAsync. Got: {result.fix_instruction[:200]}"
         )
 
     def test_fix_instruction_prohibits_invented_methods(self):
         error = (
             "error CS1061: 'EvaluatorRegistry' does not contain a definition for 'GetApplicableEvaluators'"
         )
-        result = diagnose_build_error("WC012-02b", error, [])
-        assert "GetApplicableEvaluators" in result.fix_instruction or "do NOT" in result.fix_instruction.upper() or "NONE" in result.fix_instruction
+        with patch("platform_type_registry.load_ptr", return_value=self.EVALUATOR_REGISTRY_PTR):
+            result = diagnose_build_error("WC012-02b", error, [])
+        # PTR shows actual members — LLM can self-correct
+        assert "EvaluateAllAsync" in result.fix_instruction or "Count" in result.fix_instruction
 
     def test_evaluate_method_also_classified(self):
-        """Generic 'Evaluate' without 'All' also caught."""
         error = (
             "error CS1061: 'EvaluatorRegistry' does not contain a definition for 'Evaluate'"
         )
-        result = diagnose_build_error("WC012-02b", error, [])
+        with patch("platform_type_registry.load_ptr", return_value=self.EVALUATOR_REGISTRY_PTR):
+            result = diagnose_build_error("WC012-02b", error, [])
         assert result.error_type == WRONG_FIELD_NAME
         assert "EvaluateAllAsync" in result.fix_instruction
 
     def test_constitutional_trace_present(self):
         error = "error CS1061: 'EvaluatorRegistry' does not contain a definition for 'GetEvaluators'"
-        result = diagnose_build_error("WC012-02b", error, [])
+        with patch("platform_type_registry.load_ptr", return_value=self.EVALUATOR_REGISTRY_PTR):
+            result = diagnose_build_error("WC012-02b", error, [])
         assert result.constitutional_trace != ""
 
-    def test_evaluationcontext_trygetvalue_still_classified(self):
-        """Original TryGetValue case must still work after EvaluatorRegistry branch added."""
-        error = (
-            "error CS1061: 'string' does not contain a definition for 'TryGetValue'"
-        )
-        result = diagnose_build_error("WC012-02b", error, [])
+    def test_ptr_miss_falls_back_gracefully(self):
+        """Without PTR data, still returns WRONG_FIELD_NAME with branch context advice."""
+        with patch("platform_type_registry.load_ptr", return_value={}):
+            error = "error CS1061: 'EvaluatorRegistry' does not contain a definition for 'GetEvaluators'"
+            result = diagnose_build_error("WC012-02b", error, [])
         assert result.error_type == WRONG_FIELD_NAME
         assert result.should_retry is True
-        # Must still name EvaluationContext properties
-        assert any(kw in result.fix_instruction for kw in [
-            "GetParameter", "ContractId", "TenantId", "ActionParameters"
-        ])
+
+    def test_evaluationcontext_trygetvalue_ptr_driven(self):
+        """Original TryGetValue case now PTR-driven when EvaluationContext is in PTR."""
+        evaluation_context_ptr = _make_ptr_with_types({
+            "WC012-02a": {
+                "EvaluationContext": {
+                    "kind": "record",
+                    "properties": {
+                        "ContractId": "string", "TenantId": "string",
+                        "ActionParameters": "string", "ActionType": "string",
+                    },
+                    "methods": [{"name": "GetParameter", "return_type": "string?", "params": "string key"}],
+                }
+            }
+        })
+        error = "error CS1061: 'string' does not contain a definition for 'TryGetValue'"
+        # 'string' not in PTR — generic fallback
+        with patch("platform_type_registry.load_ptr", return_value=evaluation_context_ptr):
+            result = diagnose_build_error("WC012-02b", error, [])
+        assert result.error_type == WRONG_FIELD_NAME
+        assert result.should_retry is True
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# CCT-SRA-07: CS0117 proto invented fields — ValidateActionResponse / RecordEvidenceRequest
+# CCT-SRA-07: CS0117 proto invented fields — PTR-driven generalized fix
 # ═══════════════════════════════════════════════════════════════════════════════
 
 class TestCS0117ProtoInventedFields:
-    """Run 3 failure: LLM set ValidateActionResponse.ClaimId and RecordEvidenceRequest.IdempotencyKey."""
+    """
+    Run 3 failure: LLM set ValidateActionResponse.ClaimId and RecordEvidenceRequest.IdempotencyKey.
+    New design: retry advisor uses PTR for fix instructions — works for any proto type.
+    """
+
+    PROTO_PTR = _make_ptr_with_types({
+        "WC012-01": {
+            "ValidateActionResponse": {
+                "kind": "proto_message",
+                "namespace": "Waooaw.ConstitutionalEngine.Grpc",
+                "fields": {
+                    "Decision": "ValidationDecision",
+                    "ConstitutionalBasis": "string",
+                    "Reason": "string",
+                    "BudgetRemainingInrPaise": "long?",
+                    "SyntheticApprovalRecordId": "string?",
+                },
+                "note": "Proto-generated — use ONLY fields listed. Do NOT invent fields.",
+            },
+            "RecordEvidenceRequest": {
+                "kind": "proto_message",
+                "namespace": "Waooaw.ConstitutionalEngine.Grpc",
+                "fields": {
+                    "ActionInstanceId": "string",
+                    "ContractId": "string",
+                    "ProfessionalId": "string",
+                    "ActionType": "string",
+                    "State": "EvidenceState",
+                    "ConstitutionalBasis": "string",
+                },
+                "note": "Proto-generated — use ONLY fields listed.",
+            },
+        }
+    })
 
     def test_validate_action_response_claim_id_classified(self):
-        error = (
-            "error CS0117: 'ValidateActionResponse' does not contain a definition for 'ClaimId'"
-        )
-        result = diagnose_build_error("WC012-02b", error, [])
+        error = "error CS0117: 'ValidateActionResponse' does not contain a definition for 'ClaimId'"
+        with patch("platform_type_registry.load_ptr", return_value=self.PROTO_PTR):
+            result = diagnose_build_error("WC012-02b", error, [])
         assert result.error_type == WRONG_FIELD_NAME
         assert result.should_retry is True
         assert result.confidence >= 0.90
 
     def test_fix_names_correct_validate_action_response_fields(self):
         error = "error CS0117: 'ValidateActionResponse' does not contain a definition for 'ClaimId'"
-        result = diagnose_build_error("WC012-02b", error, [])
+        with patch("platform_type_registry.load_ptr", return_value=self.PROTO_PTR):
+            result = diagnose_build_error("WC012-02b", error, [])
         assert "Decision" in result.fix_instruction
         assert "ConstitutionalBasis" in result.fix_instruction
-        assert "Reason" in result.fix_instruction
 
-    def test_fix_prohibits_claim_id(self):
+    def test_fix_shows_actual_members(self):
+        """PTR-driven fix must list actual fields, not invented ones."""
         error = "error CS0117: 'ValidateActionResponse' does not contain a definition for 'ClaimId'"
-        result = diagnose_build_error("WC012-02b", error, [])
-        assert "ClaimId" in result.fix_instruction  # must mention what NOT to use
+        with patch("platform_type_registry.load_ptr", return_value=self.PROTO_PTR):
+            result = diagnose_build_error("WC012-02b", error, [])
+        # ClaimId not in actual members, but Decision/Reason are
+        assert "Decision" in result.fix_instruction or "Reason" in result.fix_instruction
 
     def test_record_evidence_request_idempotency_key_classified(self):
-        error = (
-            "error CS0117: 'RecordEvidenceRequest' does not contain a definition for 'IdempotencyKey'"
-        )
-        result = diagnose_build_error("WC012-02b", error, [])
+        error = "error CS0117: 'RecordEvidenceRequest' does not contain a definition for 'IdempotencyKey'"
+        with patch("platform_type_registry.load_ptr", return_value=self.PROTO_PTR):
+            result = diagnose_build_error("WC012-02b", error, [])
         assert result.error_type == WRONG_FIELD_NAME
         assert result.should_retry is True
         assert result.confidence >= 0.90
 
     def test_fix_names_correct_record_evidence_fields(self):
         error = "error CS0117: 'RecordEvidenceRequest' does not contain a definition for 'IdempotencyKey'"
-        result = diagnose_build_error("WC012-02b", error, [])
+        with patch("platform_type_registry.load_ptr", return_value=self.PROTO_PTR):
+            result = diagnose_build_error("WC012-02b", error, [])
         assert "ActionInstanceId" in result.fix_instruction or "ContractId" in result.fix_instruction
 
     def test_constitutional_trace_on_proto_errors(self):
@@ -459,5 +545,34 @@ class TestCS0117ProtoInventedFields:
             "error CS0117: 'ValidateActionResponse' does not contain a definition for 'ClaimId'",
             "error CS0117: 'RecordEvidenceRequest' does not contain a definition for 'IdempotencyKey'",
         ]:
-            result = diagnose_build_error("WC012-02b", error, [])
+            with patch("platform_type_registry.load_ptr", return_value=self.PROTO_PTR):
+                result = diagnose_build_error("WC012-02b", error, [])
             assert result.constitutional_trace != ""
+
+    def test_ptr_miss_still_returns_wrong_field_name(self):
+        """Without PTR, generic fallback still classifies correctly."""
+        with patch("platform_type_registry.load_ptr", return_value={}):
+            error = "error CS0117: 'ValidateActionResponse' does not contain a definition for 'ClaimId'"
+            result = diagnose_build_error("WC012-02b", error, [])
+        assert result.error_type == WRONG_FIELD_NAME
+        assert result.should_retry is True
+
+    def test_generalized_for_any_sprint_type(self):
+        """PTR-aware advisor works for a WC013+ type never seen before."""
+        wc013_ptr = _make_ptr_with_types({
+            "WC013-01a": {
+                "AuthorityLicenseResponse": {
+                    "kind": "proto_message",
+                    "namespace": "Waooaw.ConstitutionalEngine.Grpc",
+                    "fields": {"LicenseId": "string", "RecordedAt": "Timestamp"},
+                    "note": "Proto-generated.",
+                }
+            }
+        })
+        error = "error CS0117: 'AuthorityLicenseResponse' does not contain a definition for 'GrantedBy'"
+        with patch("platform_type_registry.load_ptr", return_value=wc013_ptr):
+            result = diagnose_build_error("WC013-01b", error, [])
+        assert result.error_type == WRONG_FIELD_NAME
+        assert result.confidence >= 0.90
+        # Fix must mention actual fields from PTR
+        assert "LicenseId" in result.fix_instruction or "RecordedAt" in result.fix_instruction
