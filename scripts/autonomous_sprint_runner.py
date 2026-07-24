@@ -1078,14 +1078,19 @@ TASK_HANDLERS = {
             "architecture/reference/dotfiles/constitutional-engine.csproj": "full",
             "tests/QA-STRATEGY.md": "§5.1 Unit Tests",
         },
+        "⚠️  BRANCH CONTEXT RULE: WC012-01 already generated the scaffold on this branch. "
+        "READ the BRANCH CONTEXT section carefully before writing any file. "
+        "DO NOT regenerate: constitutional-engine.csproj, Protos/, Program.cs, appsettings*.json, "
+        "Services/ConstitutionalEngineService.cs, Data/ConstitutionalDbContext.cs, "
+        "Data/Entities/EvidenceRecord.cs. These files EXIST — duplicating them causes CS0101. \n"
+        "FOR ConstitutionalEngineService.cs: add the ValidateAction implementation to the EXISTING file. "
+        "Use EvaluatorRegistry pattern. Evaluators go in src/constitutional-engine/Evaluators/. "
         "Use the .csproj from architecture/reference/dotfiles/constitutional-engine.csproj — "
         "do NOT add extra packages or invent package names. "
-        "Follow §2.0 Project Structure in CODING-STANDARDS.md: "
-        "tests go in tests/constitutional-engine.Tests/ ONLY — "
-        "NEVER create a .csproj inside a subdirectory of tests/. "
-        "ValidateAction must return ALLOW/DENY/ESCALATE. Default deny for unknown tools (C-041). "
-        "ALL files MUST go in src/constitutional-engine/ only. "
-        "Unit tests use xUnit + Moq. CCT-EF-01 must be referenced in test.",
+        "tests go in tests/constitutional-engine.Tests/ ONLY — NEVER create nested .csproj. "
+        "ValidateAction returns ALLOW/DENY/ESCALATE. Default deny for unknown tools (C-041). "
+        "Unit tests use xUnit + Moq. FakeServerCallContext (NOT Mock<ServerCallContext> — non-virtual). "
+        "CCT format: tests/constitutional-engine.Tests/Evaluators/CCT_EF01_*Tests.cs",
         model_hint="reasoning",
         max_tokens=10000  # Implementation task: evaluators + tests fit in 10k
     ),
@@ -1095,14 +1100,16 @@ TASK_HANDLERS = {
             "architecture/reference/components/constitutional-engine.md": "§1 Evidence First Enforcer",
             "architecture/reference/data/": "§constitutional schema",
         },
-        "IMPORTANT: ALL files MUST go in src/constitutional-engine/ ONLY. "
-        "Do NOT write to any other directory. "
-        "Add EvidenceFirst/ subdirectory INSIDE src/constitutional-engine/. "
-        "RecordEvidence RPC writes to constitutional.audit_records BEFORE returning success (C-023). "
-        "Append-only — no UPDATE/DELETE allowed (C-007/C-027). "
-        "Uses the DbContext from the existing ConstitutionalEngine project. "
-        "CCT-EF-01 test must be in tests/constitutional-engine/ and must pass. "
-        "All .cs files carry // Implements: and // constitutional_basis: header.",
+        "⚠️  BRANCH CONTEXT RULE: WC012-01 and WC012-02 already generated files. READ BRANCH CONTEXT. "
+        "DO NOT regenerate: csproj, Protos/, Program.cs, Services/ConstitutionalEngineService.cs, "
+        "Data/ConstitutionalDbContext.cs, Data/Entities/EvidenceRecord.cs, any Evaluator files. "
+        "FOR ConstitutionalEngineService.cs: implement RecordEvidence in the EXISTING stub. "
+        "RecordEvidence writes to constitutional.evidence_records BEFORE returning success (C-023 Evidence First). "
+        "Append-only — no UPDATE or DELETE ever issued (C-007/C-027). "
+        "Idempotency: check idempotency_key in DB before inserting — return existing record if found (C-085). "
+        "CCT-EF-01: tests/constitutional-engine.Tests/Services/CCT_EF01_EvidenceFirstTests.cs "
+        "Test verifies: RecordEvidence writes DB record BEFORE returning the gRPC response. "
+        "All .cs files carry // Implements: and // constitutional_basis: headers.",
         model_hint="reasoning",
         max_tokens=10000  # Implementation task
     ),
@@ -1114,20 +1121,18 @@ TASK_HANDLERS = {
             "adr/ADR-031-ce-fail-safe-unavailability.md": "§Recovery",
             "architecture/reference/dotfiles/constitutional-engine.csproj": "full",
         },
-        "CRITICAL: copy constitutional-engine.csproj EXACTLY from "
-        "architecture/reference/dotfiles/constitutional-engine.csproj — do NOT invent packages. "
-        "Temporalio version is 0.1.0-beta1 (NOT beta.34 — that does not exist on NuGet). "
-        "Follow §2.0 Project Structure in CODING-STANDARDS.md: "
-        "NEVER create a second .csproj in src/constitutional-engine/ — one already exists. "
-        "Tests go in tests/constitutional-engine.Tests/ ONLY. "
-        "IMPORTANT: ALL files MUST go in src/constitutional-engine/ ONLY. "
-        "Add EmergencyStop/ subdirectory INSIDE src/constitutional-engine/. "
-        "TriggerEmergencyStop is a gRPC RPC in the CE service — implement as a method on "
-        "ConstitutionalEngineService class. "
-        "Records stop event to constitutional.emergency_stop_events table (C-001). "
-        "Signals Temporal workflow via TemporalClientFactory within 100ms. "
-        "CCT-HO-01: Emergency Stop ≤250ms P99 end-to-end. "
-        "All .cs files carry // Implements: and // constitutional_basis: header.",
+        "⚠️  BRANCH CONTEXT RULE: WC012-01/02/03 already generated files. READ BRANCH CONTEXT. "
+        "DO NOT regenerate: csproj, Protos/, Program.cs, Services/ConstitutionalEngineService.cs, "
+        "Data/ entities or DbContexts, or any Evaluator files. "
+        "FOR ConstitutionalEngineService.cs: implement TriggerEmergencyStop in the EXISTING stub. "
+        "FOR csproj: DO NOT touch — it already exists on branch with correct Temporalio 0.1.0-beta1. "
+        "Add EmergencyStop/ subdirectory INSIDE src/constitutional-engine/ with new classes ONLY. "
+        "TriggerEmergencyStop: C-001 absolute — records to constitutional.emergency_stop_events "
+        "BEFORE signalling Temporal (Evidence First, C-023). Temporal signal within 100ms. "
+        "CCT-HO-01: tests/constitutional-engine.Tests/EmergencyStop/CCT_HO01_*Tests.cs "
+        "Test verifies Emergency Stop completes ≤250ms with mocked dependencies. "
+        "Use FakeServerCallContext (NOT Mock<ServerCallContext> — non-virtual property). "
+        "All .cs files carry // Implements: and // constitutional_basis: headers.",
         model_hint="reasoning",
         max_tokens=10000  # Implementation task
     ),
