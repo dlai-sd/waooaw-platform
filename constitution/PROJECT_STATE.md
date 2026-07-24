@@ -304,14 +304,14 @@ platform_phase: IMPLEMENTATION  # SPEC | IMPLEMENTATION | LIVE
 
 current_sprint: WC-012
 sprint_ib_item: IB-009
-sprint_status: READY
+sprint_status: IN_PROGRESS
 branch: ib/009/sprint-012
-last_attempt_utc: 2026-07-23T18:15:00.000000+00:00
+last_attempt_utc: 2026-07-24T18:02:44.251430+00:00
 last_attempt_result: SUCCESS
 consecutive_failures: 0
-tasks_done: []
-tasks_remaining:
+tasks_done:
   - WC012-01
+tasks_remaining:
   - WC012-02
   - WC012-03
   - WC012-04
@@ -319,7 +319,7 @@ tasks_remaining:
 current_task:
 
 
-                                        ## NEXT SESSION OPTIONS
+                                            ## NEXT SESSION OPTIONS
 
 ```
 CURRENT STATE: platform_phase=IMPLEMENTATION · AUTONOMOUS_HALT=false
