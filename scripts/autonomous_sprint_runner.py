@@ -63,6 +63,16 @@ Rules:
 - If a design decision is unclear, add a comment: # DESIGN_QUESTION: <question>
   (these will be flagged as spec gaps for EA review)
 
+EXTEND-NOT-REPLACE RULE (critical — read the BRANCH CONTEXT section before writing ANY file):
+- The sprint branch may already contain files from earlier tasks in this sprint.
+- The BRANCH CONTEXT section below lists EVERY file already on the branch.
+- For files listed in BRANCH CONTEXT: you MAY output an updated version that EXTENDS the existing
+  implementation (e.g. adding a new method to ConstitutionalEngineService.cs that was stubbed).
+  You MUST NOT change existing correct code, only add to it.
+- NEVER recreate Data layer entities, DbContexts, or .csproj files that already exist.
+  Creating a duplicate class causes CS0101 (namespace already contains definition) and fails the build.
+- If a file you would normally generate already exists and needs NO changes, OMIT it from your output.
+
 PROJECT STRUCTURE RULES (mandatory — violating these causes build failures):
 
 .NET services (src/{service}/ and tests/{service}.Tests/):
@@ -91,6 +101,83 @@ PYTHON PACKAGE RULES (critical — prevents import errors and build failures):
   AI4Bharat IndicNER: use transformers.pipeline('ner', model='ai4bharat/IndicNER') — NO 'ai4bharat' PyPI package
   Gemini model name: 'gemini-2.0-flash' — NOT 'gemini-pro' (deprecated)
 """
+
+
+def get_branch_context(service_dir: str = "src/constitutional-engine") -> str:
+    """
+    Scan the current sprint branch for files already committed from prior tasks.
+    Returns a formatted BRANCH CONTEXT block injected into every LLM prompt.
+
+    This implements the RAG insight: the LLM must know the current state of the
+    branch before generating new code. Without this, Task 2 regenerates Task 1's
+    files, causing duplicate class definitions and build failures.
+
+    C-083 (Emit-Transport-Listen): the branch state IS the signal from prior tasks.
+    C-085 (Idempotency): the LLM must check existing state before acting.
+    """
+    try:
+        # Find all code files added/modified on this branch vs main
+        result = run(["git", "diff", "--name-only", "origin/main...HEAD"], check=False, capture=True)
+        if result.returncode != 0:
+            return ""
+
+        branch_files = [f.strip() for f in result.stdout.splitlines() if f.strip()]
+        code_files = [f for f in branch_files if f.endswith((".cs", ".py", ".ts", ".proto", ".csproj"))]
+
+        if not code_files:
+            return ""
+
+        lines = [
+            "\n\n# ═══ BRANCH CONTEXT — EXISTING FILES FROM PRIOR TASKS ═══",
+            "# These files are ALREADY on the sprint branch from completed tasks.",
+            "# Apply EXTEND-NOT-REPLACE rule: do NOT recreate these. Read them to understand",
+            "# existing types, namespaces, and interfaces before writing new code.\n",
+        ]
+
+        for file_path in sorted(code_files):
+            full_path = REPO_ROOT / file_path
+            if not full_path.is_file():
+                continue
+
+            content = full_path.read_text(encoding="utf-8", errors="replace")
+
+            # For .csproj and appsettings: just list them (don't regenerate)
+            if file_path.endswith((".csproj", ".json", ".proto")):
+                lines.append(f"## EXISTING (DO NOT REGENERATE): {file_path}")
+                if file_path.endswith(".csproj"):
+                    # Include package references so LLM uses correct types
+                    lines.append(content[:800])
+                lines.append("")
+                continue
+
+            # For .cs source files: include namespace, class declaration, and method signatures
+            # This tells the LLM what types already exist without full file content
+            important_lines = []
+            for line in content.splitlines():
+                stripped = line.strip()
+                if any(stripped.startswith(kw) for kw in (
+                    "namespace ", "public ", "internal ", "protected ", "private ",
+                    "// Implements:", "// constitutional_basis:", "interface ", "record ",
+                    "sealed class", "abstract class", "static class",
+                )):
+                    important_lines.append(line)
+                    if len(important_lines) > 30:  # cap per file
+                        break
+
+            if important_lines:
+                lines.append(f"## EXISTING (may EXTEND but not duplicate): {file_path}")
+                lines.append("\n".join(important_lines[:30]))
+                lines.append("")
+
+        if len(lines) <= 4:  # only header, no files
+            return ""
+
+        lines.append("# ═══ END BRANCH CONTEXT ═══\n")
+        return "\n".join(lines)
+
+    except Exception as e:
+        print(f"  WARN: get_branch_context failed: {e}")
+        return ""
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -470,6 +557,14 @@ def execute_with_llm(task_id: str, task_description: str, spec_sections: dict,
             else:
                 spec_lines.append(f"\n## {file_path} (section: {section})\n[load section '{section}' from this file]")
     spec_content = "\n".join(spec_lines)
+
+    # RAG: inject branch context — tell LLM what prior tasks already generated.
+    # C-083 (Emit-Transport-Listen): prior task outputs are signals for this task.
+    # C-085 (Idempotency): LLM must not regenerate files that already exist.
+    branch_context = get_branch_context()
+    if branch_context:
+        spec_content = spec_content + branch_context
+        print(f"  Branch context injected ({len(branch_context.splitlines())} lines) — EXTEND-NOT-REPLACE active")
 
     failure_context = ""
     infra_failures = 0  # count of transient API failures (timeout, rate limit, server error)
@@ -1160,18 +1255,24 @@ def main() -> int:
                 print(f"  DONE: {task}")
             else:
                 print(f"  FAILED: {task}")
-                # RC#1: Halt on scaffold failure — downstream tasks cannot compile without scaffold.
-                # C-084 (Step Dependency Ordering), C-070 (Constitutional DNA)
+                # RC#1: Halt on scaffold failure (C-084 Step Dependency Ordering)
                 if task == scaffold_run_task:
                     print(f"  HALT: scaffold task {task} failed — downstream tasks cannot build. "
-                          f"Stopping sprint. (C-084 Step Dependency Ordering)")
+                          f"Stopping sprint. (C-084)")
                     break
+                # Dependent chain halt: any non-scaffold failure also halts remaining tasks.
+                # In a multi-task sprint, tasks share the same codebase. WC012-02 failing
+                # means WC012-03/04 reference missing types → guaranteed to fail too.
+                # Running them wastes 6 Claude API calls — C-077 FinOps violation.
+                # On the next run, branch context (EXTEND-NOT-REPLACE) gives full state.
+                print(f"  HALT: task {task} failed — stopping sprint to avoid wasted API calls "
+                      f"on dependent tasks. Next run gets full branch context. (C-077 + C-084)")
+                break
         except Exception as exc:
             print(f"  FAILED: {task}: {exc}")
-            # RC#1: also halt on scaffold exception
-            if task == scaffold_run_task:
-                print(f"  HALT: scaffold task {task} raised exception — stopping sprint. (C-084)")
-                break
+            # RC#1 / chain halt on exception too
+            print(f"  HALT: exception on {task} — stopping sprint. (C-084)")
+            break
 
     # Determine if ALL failures were infrastructure (no spec gap, no human action needed)
     all_infra_errors = (

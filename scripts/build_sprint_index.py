@@ -363,11 +363,81 @@ def resolve_spec_sections(spec_sections: dict[str, str]) -> tuple[list[dict], in
     return resolved, total_tokens
 
 
+def discover_semantic_spec_sections(task_description: str, existing_sections: dict) -> dict:
+    """
+    Semantic spec discovery — supplement the TASK_CONTEXT_MAP with dynamically found sections.
+
+    Instead of relying only on hardcoded mappings, this scans the architecture/reference/
+    directory for spec files whose names or headings match keywords from the task description.
+    This is the RAG insight applied to the pipeline: the context should grow with the task,
+    not be statically bounded by what was anticipated at map-writing time.
+
+    C-083 (Emit-Transport-Listen): the task description IS the query signal.
+    The spec corpus is the knowledge base. The output is the retrieved context.
+
+    Returns: additional spec sections not already in existing_sections.
+    """
+    if not task_description:
+        return {}
+
+    keywords = set(task_description.lower().split())
+    # Add domain-specific synonyms
+    keyword_expansions = {
+        "evidence": ["audit", "ledger", "record", "append"],
+        "emergency": ["stop", "halt", "signal", "temporal"],
+        "validate": ["action", "decision", "space", "boundary"],
+        "evaluator": ["claims", "c-041", "c-043", "c-048"],
+        "scaffold": ["csproj", "proto", "grpc", "service"],
+    }
+    for kw in list(keywords):
+        for base, expansions in keyword_expansions.items():
+            if base in kw:
+                keywords.update(expansions)
+
+    arch_ref = REPO_ROOT / "architecture" / "reference"
+    discovered = {}
+    if not arch_ref.is_dir():
+        return {}
+
+    for md_file in arch_ref.rglob("*.md"):
+        rel_path = str(md_file.relative_to(REPO_ROOT))
+        if rel_path in existing_sections:
+            continue  # already included
+
+        # Score this file by keyword overlap with its name and first 500 chars
+        name_score = sum(1 for kw in keywords if kw in md_file.stem.lower())
+        try:
+            head = md_file.read_text(encoding="utf-8", errors="replace")[:500].lower()
+            content_score = sum(1 for kw in keywords if kw in head)
+        except OSError:
+            content_score = 0
+
+        score = name_score * 3 + content_score
+        if score >= 3:  # threshold: at least moderate relevance
+            discovered[rel_path] = "full"
+
+    # Cap: max 2 additional files to stay within token budget
+    top = sorted(discovered.items(), key=lambda x: x[0])[:2]
+    return dict(top)
+
+
 def build_index(task_id: str) -> dict:
     sprint_state = parse_sprint_state()
     context = TASK_CONTEXT_MAP.get(task_id, {})
 
-    spec_entries, task_tokens = resolve_spec_sections(context.get("spec_sections", {}))
+    base_sections = context.get("spec_sections", {})
+
+    # Semantic spec discovery: supplement hardcoded map with dynamically found sections
+    semantic_sections = discover_semantic_spec_sections(
+        context.get("description", ""), base_sections
+    )
+    if semantic_sections:
+        merged_sections = {**base_sections, **semantic_sections}
+        print(f"  Semantic discovery added: {list(semantic_sections.keys())}")
+    else:
+        merged_sections = base_sections
+
+    spec_entries, task_tokens = resolve_spec_sections(merged_sections)
 
     # Token budget check — use correct limit based on model_hint
     model_hint = context.get("model_hint", "reasoning")
