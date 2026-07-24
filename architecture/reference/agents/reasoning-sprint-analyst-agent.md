@@ -35,7 +35,8 @@ It is the implementation of **Instinct 2** for the sprint pipeline. Every other 
 | Trigger | Condition | Priority |
 |---|---|---|
 | **T-01** | Sprint task fails with SPEC_GAP_GENUINE classification from Constitutional Monitor | HIGH |
-| **T-02** | Sprint task fails 2 consecutive runs with the same error pattern | HIGH |
+| **T-02** | Sprint task fails 2 consecutive runs with the same error TYPE — same CS error code (e.g. CS0246), same undefined method name, or same namespace conflict | HIGH |
+| **T-02 limit** | Max 2 Level 1 re-triggers per sprint task. After 2 failed Level 1 attempts, the diagnosis escalates to Level 2 regardless of root cause assessment | ESCALATION GUARD |
 | **T-03** | Constitutional Monitor classifies CASCADE_PIPELINE_BUG | MEDIUM — code fix likely but spec may also be incomplete |
 | **T-04** | Sprint task succeeds but CCT tests fail (build passes, quality gate fails) | HIGH |
 | **T-05** | New sprint defined (WC-NNN first run) and no spec sections exist in TASK_CONTEXT_MAP | MEDIUM — spec should be written before first attempt |
@@ -52,7 +53,7 @@ Evidence First'd (C-023) — no reasoning begins until all inputs are read.
 | Artifact | Source | What it reveals |
 |---|---|---|
 | `sprint-context/monitor-signal.json` | Artifact from execute job | Per-task result, error snippets, scaffold_failed flag |
-| `logs/bootstrap-evidence.jsonl` | Sprint branch | Step-by-step execution trace |
+| `logs/bootstrap-evidence.jsonl` | Workflow artifact (uploaded by execute job — NOT the sprint branch) | Step-by-step execution trace. If not available as artifact, use monitor-signal.json only — do NOT attempt to read from the sprint branch |
 | Build error messages | Monitor signal `build_error_snippet` | Exact compiler/syntax failure |
 | PR diff | GitHub API (open PR on sprint branch) | What code Claude actually wrote |
 | Spec sections | `architecture/reference/components/{service}.md` | What the spec says should be built |
@@ -66,6 +67,8 @@ Evidence First'd (C-023) — no reasoning begins until all inputs are read.
 
 The agent diagnoses across three levels simultaneously. Every diagnosis must name
 the level, the root cause, and the fix — and trace the fix to an existing constitutional claim.
+
+**Level boundary tie-breaking rule:** When the level is genuinely ambiguous between Level 1 (code) and Level 2 (spec), default to **Level 2**. An unnecessary spec update costs one Sujay review. A misclassified Level 1 fix that masks a real spec gap costs all future sprints that hit the same gap without a spec fix.
 
 ### Level 1 — Code (Pipeline Bug)
 
@@ -140,7 +143,7 @@ Do NOT re-trigger sprint until the claim is ratified and the spec is updated.
 |---|---|---|
 | Read all artifacts listed in §3 | 0 | Always authorized — reading is never gated (C-023) |
 | Run extended thinking LLM analysis | 0 | C-069 obligation |
-| Commit Level 1 code fixes to main | 1 | Autonomous — C-066 Tier 1, tagged `tier:1-bugfix` |
+| Commit Level 1 code fixes | 1 | Opens a SHORT-LIVED branch (`rsa/{sprint}/{task}-fix`), commits fix, opens PR tagged `tier:1-bugfix`. The waooaw-reviewer (GitHub App) auto-approves and merges Tier 1 fixes. This respects C-065 (Author ≠ Reviewer) while remaining fast. The RSA does NOT commit directly to main. |
 | Open Level 2 spec PR | 2 | Autonomous — C-066 Tier 2, awaits Sujay review |
 | Create `type:constitutional-proposal` issue | 1 | Autonomous — proposal only, no spec file change |
 | Re-trigger sprint after Level 1 fix | 1 | Autonomous — via `workflow_dispatch` |
@@ -172,7 +175,11 @@ before acting.
   "sprint": "WC-012",
   "task_failed": "WC012-02",
   "diagnosis_level": 1,
+  "confidence": 0.92,
   "root_cause": "Constitutional check for WC012-02 did not instruct Claude to avoid regenerating WC012-01 files. No EXTEND-NOT-REPLACE guidance was present.",
+  "alternative_diagnoses": [
+    {"level": 2, "reason": "Spec for WC012-02 doesn't list WC012-01 outputs — but this is a runner instruction gap, not a spec gap"}
+  ],
   "evidence_chain": [
     "monitor-signal.json: scaffold_failed=false, WC012-02 result=SPEC_GAP",
     "build_error_snippet: 'CS0101: Namespace already contains definition for EvidenceRecord'",
@@ -180,13 +187,19 @@ before acting.
   ],
   "constitutional_trace": "C-083 (Emit-Transport-Listen): branch state from WC012-01 was not emitted to WC012-02 context",
   "fix_type": "code",
-  "fix_summary": "Update WC012-02 constitutional_check in TASK_HANDLERS to reference EXTEND-NOT-REPLACE rule and list WC012-01 files that must not be regenerated",
-  "action_taken": "committed fix to scripts/autonomous_sprint_runner.py",
-  "action_at": "2026-07-24T10:30:00Z",
+  "fix_summary": "Update WC012-02 constitutional_check in TASK_HANDLERS to reference EXTEND-NOT-REPLACE rule",
+  "intended_action": "commit fix to scripts/autonomous_sprint_runner.py",
   "requires_human": false,
-  "re_trigger_sprint": true
+  "re_trigger_sprint": true,
+  "level1_attempt_count": 1,
+  "action_result": null
 }
 ```
+
+**Two-phase write (C-023 Evidence First):**
+1. Write `reasoning-output.json` with `action_result: null` BEFORE acting.
+2. After acting, update ONLY the `action_result` field with the outcome.
+The `intended_action` field is immutable after the first write — what was planned is permanently recorded.
 
 ---
 
@@ -249,7 +262,8 @@ In each case: the agent's **Self-Improvement loop** reads its quality signals (�
 | **CCT-RSA-03** | Evidence before action | `reasoning-output.json` artifact written before any code commit, PR, or issue creation |
 | **CCT-RSA-04** | No self-merge | The agent never calls gh pr merge on its own PRs |
 | **CCT-RSA-05** | Constitutional boundary respected | Agent never modifies `knowledge/claims/*.md` directly — proposals only |
-| **CCT-RSA-06** | Re-trigger on Level 1 only | Sprint is re-triggered automatically only after Level 1 diagnosis. Level 2/3 wait for human approval. |
+| **CCT-RSA-06** | Re-trigger on Level 1 only — with loop guard | Sprint re-triggered only after Level 1 AND `level1_attempt_count < 2`. On 3rd attempt same task: escalate to Level 2, no re-trigger. |
+| **CCT-RSA-07** | No duplicate constitutional proposals | Before creating `type:constitutional-proposal` issue, query GitHub for open issues containing the same claim hint. If found, skip creation and post a dashboard note instead. |
 
 ---
 
@@ -262,28 +276,28 @@ reasoning_analyst:
   name: "Reasoning Sprint Analyst (C-069 / C-070)"
   runs-on: ubuntu-latest
   timeout-minutes: 15
-  needs: [monitor]          # Runs after Constitutional Monitor
+  needs: [preflight, execute, monitor]   # all three — needs execute outputs + monitor signal
   if: |
     always() &&
     needs.preflight.outputs.halt == 'false' &&
     needs.execute.outputs.result != 'SUCCESS'   # Only on failure
   permissions:
-    contents: write         # Level 1 code commits
-    pull-requests: write    # Level 2 spec PRs
+    contents: write         # Level 1 branch + commit
+    pull-requests: write    # Level 1 PR + Level 2 spec PR
     issues: write           # Level 3 constitutional proposals
-    actions: write          # Re-trigger sprint on Level 1
+    actions: write          # Re-trigger sprint on Level 1 (max 2 per task — infinite loop guard)
 ```
 
-**Inputs (from prior jobs):**
-- `sprint-monitor-signal` artifact (from execute job)
-- `needs.execute.outputs.result`
-- `needs.execute.outputs.sprint`
-- `needs.monitor.outputs.classification`
+**Infinite loop guard:** The RSA reads `level1_attempt_count` from `reasoning-output.json` of the previous run (if present). If `level1_attempt_count >= 2` for the same task, the RSA does NOT re-trigger. It escalates to Level 2 and posts a note on the Sprint Dashboard.
 
-**Outputs:**
-- `reasoning-output.json` artifact (Evidence First — always written before acting)
+**Inputs (downloaded artifacts + job outputs):**
+- `sprint-monitor-signal` artifact (from execute job — download via `actions/download-artifact@v4`)
+- Prior `reasoning-output.json` artifact (if present — for loop guard on T-02 limit)
+- `needs.execute.outputs.result`, `needs.execute.outputs.sprint`
+
+**Note on monitor output:** The monitor job does NOT expose a `classification` job output. The RSA reads the `sprint-monitor-signal` artifact directly — same source the monitor uses.
 - GitHub commit (Level 1) OR PR (Level 2) OR Issue (Level 3)
-- Sprint re-trigger via `workflow_dispatch` (Level 1 only)
+- Sprint re-trigger via `workflow_dispatch` (Level 1 only, max 2 per task)
 - Comment on Sprint Dashboard (Issue #7) — always
 
 ---
@@ -303,25 +317,21 @@ act_at_level()               → dispatches to commit_code() | open_spec_pr() | 
 post_to_dashboard()          → always — posts classification + fix summary to Issue #7
 ```
 
-**LLM Prompt Core (system):**
+**LLM call spec (C-077 FinOps):**
+```python
+# Anthropic extended thinking API
+response = client.messages.create(
+    model="claude-sonnet-4-6",        # authorized by Founder 2026-07-23
+    max_tokens=12000,
+    thinking={"type": "enabled", "budget_tokens": 8000},
+    system=REASONING_SYSTEM_PROMPT,    # includes constitutional claims text
+    messages=[{"role": "user", "content": evidence_summary}]
+)
+# Response has thinking block (introspection) + text block (structured output)
 ```
-You are WAOOAW AI Agent — Reasoning Sprint Analyst.
 
-Constitutional DNA (C-070): You operate on three instincts.
-Authorization (C-066):
-  Level 1 (code bug) — you may commit a fix autonomously.
-  Level 2 (spec gap) — you may write a missing spec and open a PR.
-  Level 3 (constitutional gap) — you draft a claim proposal. Founder decides.
-
-You must:
-1. Trace every diagnosis to an existing constitutional claim (C-059)
-2. Write your reasoning output BEFORE taking any action (C-023)
-3. Act at exactly ONE level — the root cause level, not a symptom level
-4. Name what must NOT be done as clearly as what must be done
-
-You must NOT:
-1. Modify knowledge/claims/ files directly
-2. Merge your own PRs
-3. Re-trigger the sprint unless diagnosis is Level 1
-4. Produce a diagnosis without citing specific artifacts as evidence
-```
+**System prompt must include:**
+- Full text of relevant constitutional claims (loaded dynamically from `knowledge/claims/`)
+- Current TASK_CONTEXT_MAP entry for the failed task
+- The three-level authorization matrix (C-066)
+- Explicit instruction: produce ONLY the reasoning-output.json schema, nothing else
