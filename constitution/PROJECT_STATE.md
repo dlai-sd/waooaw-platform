@@ -317,8 +317,6 @@ tasks_remaining:
   - WC012-04
 
 current_task:
-```
-
 ---
 
 ## NEXT SESSION OPTIONS
