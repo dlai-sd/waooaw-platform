@@ -474,6 +474,32 @@ def diagnose_build_error(
                 constitutional_trace="C-082 (Build Validation — use types from BRANCH CONTEXT)"
             )
 
+    # ── Rule 6: CS0505 — overriding property as method ────────────────────────
+    if "CS0505" in error_codes:
+        m = re.search(r"'([^.]+)\.(\w+)\(\)'.*'([^']+)' is not a function", build_error)
+        if not m:
+            m = re.search(r"cannot override.*'([^']+)'.*is not a function", build_error)
+        fix = (
+            "PROPERTY OVERRIDE ERROR (CS0505): You tried to override a property as a method. "
+            "In Grpc.Core.ServerCallContext, ALL core members are abstract PROPERTIES — "
+            "NEVER use parentheses '()' when overriding them. "
+            "CORRECT form: protected override string MethodCore => \"value\"; "
+            "WRONG form:   protected override string MethodCore() => \"value\"; "
+            "Members that are properties (no parentheses): "
+            "MethodCore, HostCore, DeadlineCore, RequestHeadersCore, "
+            "CancellationTokenCore, PeerCore, AuthContextCore, StatusCore, WriteOptionsCore. "
+            "Members that ARE methods (use parentheses): "
+            "CreatePropagationTokenCore(options), WriteResponseHeadersAsyncCore(headers)."
+        )
+        print(f"  Retry Advisor: CS0505 property-as-method override (confidence=95%)")
+        return RetryDiagnosis(
+            error_type=WRONG_FIELD_NAME,
+            fix_instruction=fix,
+            should_retry=True,
+            confidence=0.95,
+            constitutional_trace="C-082 (Build Validation — Grpc.Core.ServerCallContext members are properties)"
+        )
+
     # ── Fallback: LLM classification ───────────────────────────────────────────
     print(f"  Retry Advisor: pattern not recognized — calling cheap LLM classifier")
     diagnosis = _classify_with_llm(task_id, build_error)

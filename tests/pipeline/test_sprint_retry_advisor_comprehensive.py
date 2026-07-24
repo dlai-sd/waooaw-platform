@@ -576,3 +576,47 @@ class TestCS0117ProtoInventedFields:
         assert result.confidence >= 0.90
         # Fix must mention actual fields from PTR
         assert "LicenseId" in result.fix_instruction or "RecordedAt" in result.fix_instruction
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# CCT-SRA-08: CS0505 — overriding abstract property as method
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class TestCS0505PropertyOverriddenAsMethod:
+    """WC012-02c run failure: LLM wrote MethodCore() instead of MethodCore { get; }."""
+
+    def test_cs0505_classified(self):
+        error = (
+            "/tests/Evaluators/FakeServerCallContext.cs(71,31): "
+            "error CS0505: 'FakeServerCallContext.MethodCore()': cannot override "
+            "because 'ServerCallContext.MethodCore' is not a function"
+        )
+        result = diagnose_build_error("WC012-02c", error, [])
+        assert result.error_type == WRONG_FIELD_NAME
+        assert result.should_retry is True
+        assert result.confidence >= 0.90
+
+    def test_fix_explains_property_syntax(self):
+        """Fix must show the correct property form — not method form."""
+        error = (
+            "error CS0505: 'FakeServerCallContext.MethodCore()': cannot override "
+            "because 'ServerCallContext.MethodCore' is not a function"
+        )
+        result = diagnose_build_error("WC012-02c", error, [])
+        # Must explain correct property override syntax
+        assert "=>" in result.fix_instruction or "{ get" in result.fix_instruction or "property" in result.fix_instruction.lower()
+
+    def test_fix_lists_property_members(self):
+        """Fix must name all ServerCallContext property members to prevent re-occurrence."""
+        error = (
+            "error CS0505: 'FakeServerCallContext.HostCore()': cannot override "
+            "because 'ServerCallContext.HostCore' is not a function"
+        )
+        result = diagnose_build_error("WC012-02c", error, [])
+        assert "MethodCore" in result.fix_instruction
+        assert "HostCore" in result.fix_instruction
+
+    def test_constitutional_trace_present(self):
+        error = "error CS0505: 'FakeServerCallContext.MethodCore()': cannot override because 'ServerCallContext.MethodCore' is not a function"
+        result = diagnose_build_error("WC012-02c", error, [])
+        assert result.constitutional_trace != ""
