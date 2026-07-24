@@ -569,12 +569,13 @@ def call_llm(task_id: str, task_description: str, spec_content: str,
         print(f"  WARN: ANTHROPIC_API_KEY not set — cannot call LLM for {task_id}")
         return None
 
-    # Adaptive thinking: model decides its own reasoning budget.
-    # No budget_tokens constraint — avoids the max_tokens > budget_tokens API conflict.
-    # THINKING_OVERHEAD: extra token headroom added to max_tokens when thinking is active.
-    # Without it: model uses all 10K tokens for thinking, leaves nothing for code output.
-    # Evidence (run 30103437538): stop_reason='max_tokens', text_chars=0, thinking_chars~9500.
-    THINKING_OVERHEAD = 8000  # tokens reserved for adaptive thinking on top of code output budget
+    # Thinking mode: 'enabled' with controlled budget.
+    # Lesson from adaptive (run 30104540921): adaptive lets model think indefinitely —
+    # used all 18K tokens for thinking, never generated code. block_types=['thinking'], text_chars=0.
+    # With 'enabled' + budget_tokens: model KNOWS its thinking limit and plans accordingly,
+    # then generates code with remaining tokens. Predictable. Controllable.
+    THINKING_OVERHEAD = 8000  # added to max_tokens so thinking doesn't eat code budget
+    THINKING_BUDGET   = 8000  # budget_tokens cap — model thinks up to this, then generates
     use_thinking = model_hint == "reasoning"
     effective_max_tokens = (max_tokens + THINKING_OVERHEAD) if use_thinking else max_tokens
 
@@ -617,12 +618,13 @@ def call_llm(task_id: str, task_description: str, spec_content: str,
         }
 
         if use_thinking:
-            # Adaptive thinking: model chooses its own reasoning depth per task complexity.
-            # effective_max_tokens = max_tokens + THINKING_OVERHEAD gives room for both.
-            payload["thinking"] = {"type": "adaptive"}
+            # Enabled thinking: model plans within budget_tokens, then generates code.
+            # budget_tokens < effective_max_tokens satisfies API constraint for all tasks:
+            #   WC012-02: 8000 < 18000 ✅  WC012-03b: 8000 < 16000 ✅  WC012-03c: 8000 < 13000 ✅
+            payload["thinking"] = {"type": "enabled", "budget_tokens": THINKING_BUDGET}
             payload["temperature"] = 1   # required for any thinking mode
-            print(f"  Adaptive thinking enabled — effective_max_tokens={effective_max_tokens} "
-                  f"(code={max_tokens} + thinking_overhead={THINKING_OVERHEAD})")
+            print(f"  Thinking: enabled | budget={THINKING_BUDGET} | effective_max={effective_max_tokens} "
+                  f"(code={max_tokens} + overhead={THINKING_OVERHEAD})")
         else:
             payload["temperature"] = 0
 
@@ -825,7 +827,9 @@ def execute_with_llm(task_id: str, task_description: str, spec_sections: dict,
 
     failure_context = ""
     infra_failures = 0  # count of transient API failures (timeout, rate limit, server error)
-    for attempt in range(1, 4):
+    for attempt in range(1, 3):  # 2 attempts: 1 primary + 1 build-failure retry with advisor fix
+                                 # Attempt 3 removed: same model+params = same result, wastes tokens
+                                 # Evidence (run 30104540921): attempt 2+3 were connection-dead waste
         print(f"\n── {task_id} (attempt {attempt}/3) ──")
 
         prompt_with_context = spec_content
