@@ -1837,6 +1837,7 @@ TASK_HANDLERS = {
                     "  EvaluatorRegistry: _registry.EvaluateAllAsync(ctx, ct) is the ONLY public method.\n"
                     "  ValidateAction: any DENY from any evaluator → return DENY. Default deny for unknown ContractId.\n"
                     "  ⛔ ValidationDecision values are Allow/Deny/Escalate — NOT Authorized, Denied, or Permit.\n"
+                    "  ⛔ BudgetRemainingInrPaise is long? (nullable optional) — NEVER assign null directly. Use ?? 0L.\n"
                     "\n"
                     "TASK BOUNDARIES:\n"
                     "  Do NOT call RecordEvidence — that is WC012-03.\n"

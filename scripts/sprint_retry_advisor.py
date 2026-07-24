@@ -474,8 +474,8 @@ def diagnose_build_error(
                 constitutional_trace="C-082 (Build Validation — use types from BRANCH CONTEXT)"
             )
 
-    # ── Rule 6: CS0266 — implicit nullable-to-non-nullable conversion ─────────
-    if "CS0266" in error_codes:
+    # ── Rule 6: CS0266 / CS0037 — null/nullable-to-non-nullable conversion ──────
+    if "CS0266" in error_codes or "CS0037" in error_codes:
         m = re.search(r"Cannot implicitly convert type '([^']+)' to '([^']+)'", build_error)
         if m:
             from_type, to_type = m.group(1), m.group(2)
@@ -497,7 +497,7 @@ def diagnose_build_error(
             if ptr_entry:
                 field_name, field_type = ptr_entry
                 fix = (
-                    f"NULLABLE CONVERSION (CS0266): '{from_type}' cannot be assigned to '{to_type}' directly. "
+                    f"NULLABLE CONVERSION (CS0266/CS0037): '{from_type}' cannot be assigned to '{to_type}' directly. "
                     f"The field '{field_name}' is declared as '{field_type}' (nullable). "
                     f"Use '.Value' to assert non-null: {field_name}.Value "
                     f"OR use null-coalescing: {field_name} ?? 0L "
@@ -505,13 +505,13 @@ def diagnose_build_error(
                 )
             else:
                 fix = (
-                    f"NULLABLE CONVERSION (CS0266): '{from_type}' cannot be assigned to '{to_type}' directly. "
-                    f"The source value is nullable. "
+                    f"NULLABLE CONVERSION (CS0266/CS0037): '{from_type}' cannot be assigned to '{to_type}' directly. "
+                    f"The source value is nullable or null. "
                     f"Use null-coalescing: nullableValue ?? default({to_type}) "
                     f"OR use .Value if you know it is non-null: nullableValue.Value "
                     f"For proto optional long fields: field ?? 0L"
                 )
-            print(f"  Retry Advisor: CS0266 nullable-to-non-nullable (confidence=90%)")
+            print(f"  Retry Advisor: CS0266/CS0037 nullable-to-non-nullable (confidence=90%)")
             return RetryDiagnosis(
                 error_type=WRONG_FIELD_NAME,
                 fix_instruction=fix,
