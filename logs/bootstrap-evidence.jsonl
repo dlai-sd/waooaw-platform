@@ -6,3 +6,8 @@
 {"event": "AUTONOMOUS_SPRINT_STARTED", "timestamp": "2026-07-23T13:51:26.803454+00:00", "run_id": "30013030008", "stub_mode": true, "sprint": "WC-011", "branch": "ib/009/infra-foundation", "tasks": ["WC011-01", "WC011-02", "WC011-03", "WC011-04", "WC011-05", "WC011-07"]}
 {"event": "SPRINT_TASKS_EXECUTED", "timestamp": "2026-07-23T13:51:30.821061+00:00", "run_id": "30013030008", "stub_mode": true, "sprint": "WC-011", "tasks_done": ["WC011-01", "WC011-02", "WC011-03", "WC011-04", "WC011-05", "WC011-07"]}
 {"event": "AUTONOMOUS_SPRINT_STARTED", "timestamp": "2026-07-24T09:59:20.839935+00:00", "run_id": "30084526599", "stub_mode": true, "sprint": "WC-012", "branch": "ib/009/sprint-012", "tasks": ["WC012-01", "WC012-02", "WC012-03", "WC012-04"]}
+{"event": "llm_call", "timestamp": "2026-07-24T10:02:04.079356+00:00", "run_id": "30084526599", "stub_mode": true, "task": "WC012-01", "tokens_in": 4330, "tokens_out": 12926}
+{"event": "llm_call", "timestamp": "2026-07-24T10:05:32.257908+00:00", "run_id": "30084526599", "stub_mode": true, "task": "WC012-01", "tokens_in": 4900, "tokens_out": 13467}
+{"event": "llm_call", "timestamp": "2026-07-24T10:08:17.367295+00:00", "run_id": "30084526599", "stub_mode": true, "task": "WC012-01", "tokens_in": 4938, "tokens_out": 12774}
+{"event": "spec_gap_halt", "timestamp": "2026-07-24T10:08:22.778917+00:00", "run_id": "30084526599", "stub_mode": true, "task": "WC012-01", "issue": "41", "gap": "WC012-01 failed validation after 3 LLM attempts. Last error: Build/syntax validation failed for file"}
+{"event": "SPRINT_TASKS_EXECUTED", "timestamp": "2026-07-24T10:08:22.779098+00:00", "run_id": "30084526599", "stub_mode": true, "sprint": "WC-012", "tasks_done": []}
