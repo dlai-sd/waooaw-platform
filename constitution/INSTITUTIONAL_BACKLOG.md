@@ -869,6 +869,65 @@ When this IB is authorized and completed:
 
 ---
 
+### IB-022 — WC-Spec-Driven Sprint Runner (Option B Architecture)
+
+**Goal:** Eliminate hand-translated `constitutional_check` strings from the sprint runner. Derive constitutional requirements automatically from PMO Work Contracts. Separate PMO responsibility (what to build) from EA responsibility (how to decompose for LLM execution).
+
+**Office:** Enterprise Architect (spec + ADR amendment) + Platform IT Expert (implementation)
+
+**Priority:** P1 — execute after WC-012 sprint completes (pipeline still working; this is a structural improvement)
+
+**Gate:** Post-WC012 complete. Requires SIM-PL-003 PASS before implementation begins (C-086).
+
+**Depends On:** IB-021 (task decomposition framework — already delivered), WC-012 complete
+
+**Architectural Decision (Option B — EA-authorized 2026-07-24):**
+- PMO Work Contracts (`work-contracts/WC-0NN-*.md`) define: scope, constitutional requirements, model hint, CCT gates
+- EA maintains `architecture/reference/pipeline/sprint-task-decomposition.md`: authorizes subtask decomposition decisions (WC012-02 → 02a/02b/02c) that are not in the WC spec
+- `WCSpecReader` reads WC docs for constitutional requirements; decomposition spec authorizes subtask splits
+- This preserves PMO scope (WHAT to build) while giving EA control over HOW to decompose for LLM execution
+
+**Constitutional Basis:**
+- C-059 (Traceability) — current runner violates C-059: constitutional_check strings are untraced. This IB closes that gap.
+- C-032 (Implementation may not create architecture) — subtask decomposition is architectural; EA authorizes it via decomposition spec
+- DP-009 (API First) — WC spec is the API contract; WCSpecReader makes the runner consume it directly
+- C-083 (Emit-Transport-Listen) — parsed WC spec is a structured signal into SubTaskDef chain
+
+**Scope — New artifacts:**
+
+| File | Type | Description |
+|---|---|---|
+| `architecture/reference/pipeline/wc-spec-reader.md` | Spec | Interface definition, data model, assembly logic |
+| `architecture/reference/pipeline/sprint-task-decomposition.md` | Spec | EA-authorized subtask splits for WC012–WC018 |
+| `simulation/SIM-PL-003-WCSpecReader-check-assembly.md` | Simulation | C-086 gate for WCSpecReader integration |
+| `scripts/wc_spec_reader.py` | Implementation | WC parser + WCTaskSpec dataclass + cache |
+| `tests/pipeline/test_wc_spec_reader.py` | Tests | ≥90% coverage |
+
+**Scope — Changes to existing artifacts:**
+
+| File | Change | Why |
+|---|---|---|
+| `adr/ADR-030-autonomous-sprint-code-generation.md` | Amendment note: Option B decision | EA architectural decision requires ADR record |
+| `scripts/task_decomposer.py` | Add `SubTaskDef.wc_task_id`, `output_files`, `not_regenerate_from`, `stack`; add `STACK_BEHAVIORAL_RULES`; add `_build_effective_check()` | Core pipeline change |
+| `scripts/autonomous_sprint_runner.py` | Migrate all SubTaskDef entries: replace `constitutional_check` prose with `wc_task_id` + `output_files` | C-059 compliance — link to WC spec |
+| `tests/pipeline/test_autonomous_sprint_runner.py` | Update SubTaskDef assertions for new field structure | Test coverage maintained |
+| `work-contracts/WC-012-*.md` through `WC-018-*.md` | Non-destructive review: verify all task fields use consistent `**Field:**` format for parser | WCSpecReader depends on consistent format |
+
+**Success Criteria:**
+- [ ] `architecture/reference/pipeline/wc-spec-reader.md` written and EA-reviewed
+- [ ] `architecture/reference/pipeline/sprint-task-decomposition.md` written and EA-reviewed
+- [ ] ADR-030 amendment note added (Option B decision)
+- [ ] `SIM-PL-003-WCSpecReader-check-assembly.md` — Verdict: ✅ PASS
+- [ ] `scripts/wc_spec_reader.py` implemented with ≥90% test coverage
+- [ ] All SubTaskDef entries migrated to `wc_task_id` form in runner
+- [ ] WC013 can be onboarded by writing only the WC spec + decomposition entry — zero runner prose required
+- [ ] All 277+ existing tests still pass
+- [ ] PR reviewed and merged
+
+**Status:** PLANNED — begin after WC-012 sprint completes and is merged
+
+---
+
 ## Backlog Summary Table (updated 2026-07-22)
 
 | ID | Title | Office | Priority | Gate | Status |
@@ -889,4 +948,5 @@ When this IB is authorized and completed:
 | IB-019 | DMA Multi-Mode Architecture | BA | P1 | Post-MVI | WAITING |
 | IB-020 | Zero-Cost Dev Agent ADR-030 | EA + PIT Expert | P0-parallel | Pre-impl | WAITING |
 | IB-021 | Dependency Graph Task Decomposition | EA + PIT Expert | P0 | Pre-WC012-03 | AUTHORIZED |
+| IB-022 | WC-Spec-Driven Runner (Option B) | EA + PIT Expert | P1 | Post-WC012 | PLANNED |
 

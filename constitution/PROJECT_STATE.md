@@ -1,13 +1,54 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-07-24 (evening — pipeline hardening session close)
-**Version:** 1.7.0 — Platform Type Registry live, 95% pipeline coverage, WC012-02b CS1061 root cause resolved, WC-012 ready for clean run
+**Last Updated:** 2026-07-24 (late evening — EA architectural decision + active WC-012 run)
+**Version:** 1.8.0 — IB-022 (WC-Spec-Driven Runner) authorized, Option B architectural decision recorded
 **Declared by:** Yogesh Khandge (Founder), 2026-07-23 (implementation authorization unchanged)
-**Session:** 2026-07-24 evening — PR #71 merged (Platform Type Registry + 95% pipeline coverage)
+**Session:** 2026-07-24 late evening — pipeline generalization complete, IB-022 chartered
 
 ---
 
-## SESSION CLOSE RECORD — 2026-07-24 (evening — Platform Type Registry + pipeline hardening)
+## ARCHITECTURAL DECISION RECORD — 2026-07-24 (Enterprise Architect session)
+
+### IB-022 Option B — EA-authorized subtask decomposition separation
+
+**Decision:** PMO Work Contracts define WHAT to build (scope, constitutional requirements, model_hint, CCT gates). EA maintains a separate `sprint-task-decomposition.md` spec that authorizes HOW each WC task is decomposed into subtasks for LLM execution. WCSpecReader reads WC docs for constitutional requirements; decomposition spec authorizes subtask splits.
+
+**Rationale:** Preserves PMO scope (business requirements) while giving EA authority over LLM execution strategy. Prevents C-032 violation (subtask decomposition is an architectural decision, not an implementation decision).
+
+**Constitutional violations this closes:**
+- C-059: runner's `constitutional_check` strings were untraced to any spec — WCSpecReader links them directly to WC documents
+- C-032: subtask decomposition (02a/02b/02c) was an architectural decision inside implementation code — decomposition spec formalizes the authorization
+
+**IB item:** IB-022 — added to INSTITUTIONAL_BACKLOG.md, status PLANNED
+
+**Next action:** Begin IB-022 Phase 1 (spec writing) after WC-012 sprint completes
+
+---
+
+## SESSION IN PROGRESS — 2026-07-24 (late evening — active run)
+
+### Active batch run
+Run [30123433904 + successor] — WC-012 sprint in progress on branch `ib/009/sprint-012`
+
+### Latest pipeline state on main (`c4c7bbe`)
+- PTR: 24+ types injected before WC012-02b → **passed on first attempt** (no retries)
+- WC012-02c-prep: deterministic FakeServerCallContext template added (CS0505 fix)
+- CS0505 handler added to retry advisor at 95% confidence
+- 277 tests passing
+
+### Session checkpoint for pickup if dropped
+1. BOOTSTRAP → README → PROJECT_STATE.md
+2. Check active batch run status: `gh run list --repo dlai-sd/waooaw-platform --limit 3`
+3. If run PASSED → audit → PR review → merge → VERSION bump → begin IB-022
+4. If run FAILED → audit → identify failure → fix → clean slate → re-trigger
+5. IB-022 Phase 1 (spec writing) is NEXT after WC-012 merge:
+   - Write `architecture/reference/pipeline/wc-spec-reader.md`
+   - Write `architecture/reference/pipeline/sprint-task-decomposition.md`
+   - Amend `adr/ADR-030-autonomous-sprint-code-generation.md`
+   - Write `simulation/SIM-PL-003-WCSpecReader-check-assembly.md`
+   - ONLY THEN implement `scripts/wc_spec_reader.py`
+
+---
 
 ### Summary
 Audit of run #30115330370 (job/89554544280) → RCA of WC012-02b CS1061 root cause → generalized Platform Type Registry architecture → full implementation + test suite → PR #71 merged.
