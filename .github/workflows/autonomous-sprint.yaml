@@ -441,7 +441,7 @@ jobs:
     name: "Constitutional Monitor & Feedback (C-069)"
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: [preflight, execute, post_status]
+    needs: [preflight, execute, report]
     if: always() && needs.preflight.outputs.halt == 'false'
     permissions:
       contents: read
