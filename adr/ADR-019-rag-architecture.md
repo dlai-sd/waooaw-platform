@@ -214,3 +214,28 @@ Every agent type has a defined maximum token budget for RAG context (Tier 1 + Ti
 **Trade-offs:**
 - Retrieval adds ~20-50ms to inference latency (acceptable within PAAS budget for non-trading agents; for trading agent, retrieval is pre-warmed at session start)
 - pgvector requires indexing maintenance (`REINDEX` periodically as embeddings grow)
+
+---
+
+## Amendment 3 — Autonomous RSA-Triggered Domain Store Refresh (2026-07-24)
+
+**Authority:** C-069 Amendment 1 (2026-07-24) — Level 0 knowledge gap pattern defined by
+Reasoning Sprint Analyst spec (architecture/reference/agents/reasoning-sprint-analyst-agent.md v1.3)
+
+**The gap this amendment closes:** ADR-019 specified weekly automated refresh for Tier 1 and
+real-time updates for Tier 2. Neither covered on-demand autonomous refresh triggered by detected
+knowledge gaps during agent execution.
+
+**Decision:** A fourth refresh trigger is added for Tier 1:
+
+**Trigger 4 — RSA Knowledge Gap Refresh (autonomous, no human approval)**
+- **When:** Reasoning Sprint Analyst or Self-Improvement Analyst detects that Tier 1 lacks data
+  needed for an existing skill (agent escalated, CCT failed, or C-049 escalation cluster)
+- **What:** RSA constructs the missing knowledge payload using LLM synthesis + authoritative sources
+- **How:** Calls the Domain Store ingest API directly — same pipeline as weekly refresh, different trigger
+- **Validation:** The ingest pipeline validates factual consistency before accepting the payload
+- **Exception:** Legal/regulatory data (SEBI, medical guidelines) requires domain curator review before ingest
+- **Customer visibility:** Zero. The next agent session has the knowledge. No notification.
+
+**Constitutional basis:** C-069 (platform must improve without waiting for humans), C-070
+Instinct 3 (autonomous trust-based execution), C-048 (not exploiting customer unawareness).
