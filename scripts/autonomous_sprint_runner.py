@@ -1410,6 +1410,7 @@ def execute_wc012_01() -> bool:
         '    </PackageReference>\n'
         '    <PackageReference Include="Moq" Version="4.20.72" />\n'
         '    <PackageReference Include="FluentAssertions" Version="6.12.2" />\n'
+        '    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="9.0.0" />\n'
         '    <PackageReference Include="coverlet.collector" Version="6.0.4">\n'
         '      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>\n'
         '      <PrivateAssets>all</PrivateAssets>\n'
@@ -1879,7 +1880,10 @@ TASK_HANDLERS = {
                 constitutional_check=(
                     "FakeServerCallContext.cs is ALREADY on the branch — do NOT regenerate it.\n"
                     "Use FakeServerCallContext.Create(tenantId) to build test context.\n"
-                    "xUnit [Fact] tests. Test EvaluateAsync with Allow/Deny/Escalate scenarios. ≥90% coverage (C-076)."
+                    "xUnit [Fact] tests. Test EvaluateAsync with Allow/Deny/Escalate scenarios. ≥90% coverage (C-076).\n"
+                    "using FluentAssertions; — use .Should().Be() for assertions.\n"
+                    "Namespaces needed: using Waooaw.ConstitutionalEngine.Evaluators; using Waooaw.ConstitutionalEngine.Grpc;\n"
+                    "⛔ Do NOT define FakeServerCallContext — it already exists in this namespace."
                 ),
                 model_hint="reasoning",
                 max_tokens=5000,
@@ -1940,8 +1944,13 @@ TASK_HANDLERS = {
                 stack="dotnet",
                 constitutional_check=(
                     "Test: RecordEvidence writes DB record BEFORE returning gRPC response.\n"
-                    "Use Moq for ConstitutionalDbContext. Use FakeServerCallContext.Create().\n"
-                    "Assert SaveChanges called before method returned."
+                    "Use InMemoryDatabase — NOT Moq — for ConstitutionalDbContext:\n"
+                    "  var opts = new DbContextOptionsBuilder<ConstitutionalDbContext>()\n"
+                    "      .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options;\n"
+                    "  await using var db = new ConstitutionalDbContext(opts);\n"
+                    "Use FakeServerCallContext.Create(tenantId) for server context.\n"
+                    "Assert: db.EvidenceRecords.Count() == 1 after call. ≥90% coverage (C-076).\n"
+                    "using FluentAssertions; for assertions. Namespace: Waooaw.ConstitutionalEngine.Services;"
                 ),
                 model_hint="reasoning",
                 max_tokens=5000,
@@ -2001,8 +2010,13 @@ TASK_HANDLERS = {
                 stack="dotnet",
                 constitutional_check=(
                     "Test: TriggerEmergencyStop completes in ≤250ms with mocked Temporalio client.\n"
-                    "Use FakeServerCallContext. Mock EmergencyStopDbContext. Mock ITemporalClient.\n"
-                    "Measure elapsed time with Stopwatch. Assert ≤250ms."
+                    "Use InMemoryDatabase — NOT Moq — for EmergencyStopDbContext:\n"
+                    "  var opts = new DbContextOptionsBuilder<EmergencyStopDbContext>()\n"
+                    "      .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options;\n"
+                    "  await using var db = new EmergencyStopDbContext(opts);\n"
+                    "Mock ITemporalClient with Moq (it IS an interface — Moq works fine).\n"
+                    "Measure elapsed time with Stopwatch. Assert elapsed.TotalMilliseconds ≤ 250.\n"
+                    "using FluentAssertions; for assertions."
                 ),
                 model_hint="reasoning",
                 max_tokens=5000,
