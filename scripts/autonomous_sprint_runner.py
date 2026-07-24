@@ -1643,7 +1643,7 @@ def _generate_wc012_02c_prep() -> bool:
         "               new Dictionary<string, IEnumerable<AuthProperty>>());\n\n"
         "    // ── Abstract methods ────────────────────────────────────────────────\n"
         "    protected override ContextPropagationToken CreatePropagationTokenCore(\n"
-        "        ContextPropagationOptions options)\n"
+        "        ContextPropagationOptions? options)\n"
         "        => throw new NotImplementedException(\"Not required for unit tests.\");\n\n"
         "    protected override Task WriteResponseHeadersAsyncCore(\n"
         "        Metadata responseHeaders)\n"
