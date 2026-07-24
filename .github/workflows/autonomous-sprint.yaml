@@ -420,3 +420,37 @@ jobs:
           SPRINT:               ${{ needs.execute.outputs.sprint }}
           GITHUB_REPO:          ${{ github.repository }}
         run: python3 scripts/autonomous_sprint_reviewer.py
+
+  # ── Job 4: Constitutional Monitor & Feedback (C-069 / C-070) ─────────────────
+  # Runs after EVERY sprint execution — success or failure.
+  # Classifies failures, closes false spec-gap issues, drafts constitutional proposals.
+  # C-069: platform MUST detect degradation and raise proposals autonomously.
+  # C-070: self-improvement instinct is mandatory — waiting for humans = violation.
+  monitor:
+    name: "Constitutional Monitor & Feedback (C-069)"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [preflight, execute, post_status]
+    if: always() && needs.preflight.outputs.halt == 'false'
+    permissions:
+      contents: read
+      issues:   write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install requests -q
+
+      - name: Run Sprint Health Monitor
+        env:
+          GITHUB_TOKEN:  ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPO:   ${{ github.repository }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          SPRINT:        ${{ needs.execute.outputs.sprint }}
+          SPRINT_RESULT: ${{ needs.execute.outputs.result }}
+        run: python3 scripts/sprint_monitor.py
