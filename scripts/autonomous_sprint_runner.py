@@ -638,10 +638,14 @@ def execute_with_llm(task_id: str, task_description: str, spec_sections: dict,
             # Layer 1: Sprint Retry Advisor — classify error before next attempt
             # C-077 (FinOps): rule-based classification costs nothing; cheap LLM only for unknowns
             # C-082 (Build Validation): every failed attempt must be diagnosed, not just retried
-            import importlib.util as _ilu
+            import importlib.util as _ilu, sys as _sys
             _spec = _ilu.spec_from_file_location("sprint_retry_advisor",
                      str(REPO_ROOT / "scripts" / "sprint_retry_advisor.py"))
-            _mod = _ilu.module_from_spec(_spec); _spec.loader.exec_module(_mod)
+            _mod = _ilu.module_from_spec(_spec)
+            # D2 FIX: register in sys.modules BEFORE exec_module — otherwise @dataclass
+            # decorator calls sys.modules.get(cls.__module__).__dict__ → None.__dict__ crash
+            _sys.modules.setdefault("sprint_retry_advisor", _mod)
+            _spec.loader.exec_module(_mod)
             diagnose_build_error = _mod.diagnose_build_error
             branch_cs_files = [
                 str(p.relative_to(REPO_ROOT))
@@ -1328,8 +1332,13 @@ TASK_HANDLERS = {
         "⚠️  BRANCH CONTEXT RULE: WC012-01 already generated the scaffold on this branch. "
         "READ the BRANCH CONTEXT section carefully before writing any file. "
         "DO NOT regenerate: constitutional-engine.csproj, Protos/, Program.cs, appsettings*.json, "
-        "Services/ConstitutionalEngineService.cs, Data/ConstitutionalDbContext.cs, "
-        "Data/Entities/EvidenceRecord.cs. These files EXIST — duplicating them causes CS0101. \n"
+        "Services/ConstitutionalEngineService.cs. These scaffold files EXIST — duplicating them causes CS0101. \n"
+        "⛔ DATA LAYER DOES NOT EXIST YET: ConstitutionalDbContext, EvidenceRecord, and all "
+        "Data/ entities will be created in WC012-03 (a separate task). "
+        "DO NOT reference ConstitutionalDbContext anywhere. DO NOT generate any files in Data/. "
+        "Evaluators must NOT access a database — they evaluate only the ValidateActionRequest "
+        "parameters (tool_name, tenant_id, agent_id, action_type) passed to ValidateAction RPC. "
+        "EvaluationContext must contain ONLY data extracted from ValidateActionRequest — no DbContext. \n"
         "FOR ConstitutionalEngineService.cs: add the ValidateAction implementation to the EXISTING file. "
         "Use EvaluatorRegistry pattern. Evaluators go in src/constitutional-engine/Evaluators/. "
         "Use the .csproj from architecture/reference/dotfiles/constitutional-engine.csproj — "
