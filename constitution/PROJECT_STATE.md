@@ -247,7 +247,7 @@ OPTION C — Nothing needed from you until sprint opens first PR
 <!-- Edit ONLY the fields below. Do not alter the block structure. -->
 
 ```yaml
-autonomous_halt: true        # ← IMPLEMENTATION AUTHORIZED by Yogesh Khandge 2026-07-23 18:00 IST
+autonomous_halt: false        # ← IMPLEMENTATION AUTHORIZED by Yogesh Khandge 2026-07-23 18:00 IST
                               #   Authorization: "Yogesh authorizes IB-009 Sprint 011 implementation"
                               #   Recorded: constitution/PROJECT_STATE.md + FOUNDER-ACTION.md
 
