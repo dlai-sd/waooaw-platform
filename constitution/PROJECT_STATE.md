@@ -270,7 +270,6 @@ tasks_remaining:
   - WC012-04
 
 current_task:
-next_sprint_ib_item: IB-009
 blocker: ""
 blocker_raised_utc: ""
 ```
