@@ -211,7 +211,7 @@ def _classify_cs0246_missing_using(error: str) -> Optional[RetryDiagnosis]:
 
 # ── LLM-assisted classifier for UNKNOWN patterns ──────────────────────────────
 
-def _classify_with_llm(task_id: str, error: str) -> RetryDiagnosis:
+def _classify_with_llm(task_id: str, error: str) -> RetryDiagnosis:  # pragma: no cover
     """
     Fallback: use cheap LLM call to classify an unknown build error.
     Uses a small model (~1,000 tokens) — not FRONTIER.
@@ -357,11 +357,18 @@ def diagnose_build_error(
             type_name, field_name = m.group(1), m.group(2)
             fix = (
                 f"FIELD NOT FOUND: '{type_name}.{field_name}' does not exist. "
-                f"For ValidateActionRequest: use EvaluationContext.FromRequest(request) "
-                f"and access ctx.ContractId, ctx.ActionType etc. "
-                f"NEVER access request.TenantId, request.AgentId, request.ToolName — "
-                f"these fields do NOT exist in the proto. "
-                f"Proto fields: ContractId, ActionType, ActionParameters, DecisionSpaceVersion, SkillId."
+                f"EvaluationContext is a sealed record with these EXACT properties: "
+                f"ContractId (string), ActionType (string), ActionParameters (string — JSON-encoded), "
+                f"DecisionSpaceVersion (int), TenantId (string), SkillId (string?), "
+                f"ProposedSpendInrPaise (long), ApprovedBudgetInrPaise (long), CurrentSpendInrPaise (long). "
+                f"Use ctx.GetParameter(\"key\") to extract values from ActionParameters JSON — "
+                f"NEVER call ActionParameters.TryGetValue() — ActionParameters is a string, not a Dictionary. "
+                f"Example for tool_name: var toolName = ctx.GetParameter(\"tool_name\"); "
+                f"Example for system_prompt_sha: var sha = ctx.GetParameter(\"system_prompt_sha\"); "
+                f"For budget: use ctx.ProposedSpendInrPaise, ctx.ApprovedBudgetInrPaise directly. "
+                f"For DB reads: use ctx.TenantId (from gRPC metadata). "
+                f"Build context: EvaluationContext.FromRequest(request, tenantId) where tenantId = "
+                f"context.RequestHeaders.GetValue(\"x-tenant-id\") ?? \"\"."
             )
             print(f"  Retry Advisor: CS1061 WRONG_FIELD_NAME (confidence=88%)")
             return RetryDiagnosis(
@@ -369,7 +376,7 @@ def diagnose_build_error(
                 fix_instruction=fix,
                 should_retry=True,
                 confidence=0.88,
-                constitutional_trace="C-082 (Build Validation — use EvaluationContext.FromRequest)"
+                constitutional_trace="C-082 (Build Validation — use EvaluationContext typed properties and GetParameter)"
             )
 
     # ── Fallback: LLM classification ───────────────────────────────────────────
