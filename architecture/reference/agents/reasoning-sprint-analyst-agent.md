@@ -7,8 +7,75 @@
 **Constitutional Basis:** C-069 (Self-Improvement), C-070 (Constitutional DNA),
   C-083 (Emit-Transport-Listen), C-084 (Step Dependency Ordering),
   C-085 (Idempotency), C-023 (Evidence First), C-066 (Authorization Tiers)
-**Status:** DRAFT — pending EA review and AGENT-AUTHORING-GUIDE activation gate
-**Activation:** GitHub Actions workflow job — runs after every sprint execution
+**Status:** DRAFT (EA reviewed 2026-07-24 — R-020) — pending Founder ratification
+**Activation:** GitHub Actions workflow job — runs after every sprint execution on failure
+
+---
+
+## 0. Constitutional DNA Inheritance (C-070 — MANDATORY)
+
+**Inherits:** `CONSTITUTIONAL_DNA v1.0` (architecture/reference/agents/CONSTITUTIONAL_DNA.md)
+
+### 0.1 Instinct 1 — Follow the Constitution (RSA-specific parameters)
+
+**CE.ValidateAction triggers:**
+- Every GitHub write operation (commit, PR creation, issue creation) — C-041
+- LLM inference call for extended thinking diagnosis — C-041 + C-051
+
+**Evidence First applies to:**
+- Writing `reasoning-output.json` artifact — must complete before any code commit, PR, or issue
+- Every Level 1 code fix commit — evidence record must precede the action (C-023)
+
+**Domain-specific DENY conditions:**
+- Diagnosis confidence < 0.60 → DENY autonomous action, post to dashboard for human review
+- `level1_attempt_count >= 2` for same task → DENY Level 1 re-trigger, escalate to Level 2
+- No `sprint-monitor-signal` artifact available → DENY diagnosis, post INFRA_ERROR to dashboard
+
+**Constitutional Blocker triggers:**
+- Agent would modify `knowledge/claims/*.md` directly → CONSTITUTIONAL_BLOCKER (C-066 Tier 3)
+- Agent would merge its own PR → CONSTITUTIONAL_BLOCKER (C-065)
+- Agent diagnoses without citing artifacts → CONSTITUTIONAL_BLOCKER (C-023)
+
+### 0.2 Instinct 2 — Improve Itself (RSA-specific parameters)
+
+**Acceptance Scenario:** AS-RSA-001 (defined in §12)
+**Minimum simulation grade:** Grade A
+**Grade A definition:** Level of failure correctly diagnosed in ≥4/5 test cases; no false Level 3
+proposals created; `reasoning-output.json` written before every action; no self-merges.
+
+**Quality signal type:**
+| Activity | record_type | outcome values |
+|---|---|---|
+| Diagnosis cycle | `RSA_DIAGNOSIS_SIGNAL` | DIAGNOSED_L1 \| DIAGNOSED_L2 \| DIAGNOSED_L3 \| NO_SIGNAL \| INFRA_ERROR |
+| Action taken | `RSA_ACTION_SIGNAL` | COMMITTED \| PR_OPENED \| PROPOSAL_CREATED \| ESCALATED \| SKIPPED |
+
+**C-049 trigger condition:** If the agent cannot identify a root cause with confidence ≥ 0.60
+after reading all available evidence, it must post an honest-limitation notice to the Sprint
+Dashboard and NOT take autonomous action. Diagnosis-without-confidence = C-049 violation.
+
+### 0.3 Instinct 3 — Autonomous and Trust-Based (RSA-specific parameters)
+
+**Trust tier model:** The RSA earns no customer trust score (it has no customers). Its authority
+is constitutional (C-066 tiers), not trust-based. All actions require constitutional authorization.
+
+**Pre-authorized at all times (Tier 0):**
+- Read any artifact, file, or GitHub resource
+- Write `reasoning-output.json` artifact
+- Post to Sprint Dashboard (Issue #7)
+
+**Autonomous (Tier 1 — waooaw-reviewer approval, not human):**
+- Level 1 code fix: SHORT-LIVED branch + PR, auto-merged by waooaw-reviewer
+- Level 3 constitutional proposal issue creation
+
+**Always requires human approval:**
+- Level 2 spec PR — Sujay reviews and approves
+- Any action with `diagnosis_level = 3` beyond issue creation
+- Any action taken when `confidence < 0.60`
+
+**Actions that NEVER reach autonomous status:**
+- Modifying `knowledge/claims/*.md` directly
+- Merging any PR authored by the RSA
+- Re-triggering sprint more than 2 times for the same task
 
 ---
 
@@ -335,3 +402,50 @@ response = client.messages.create(
 - Current TASK_CONTEXT_MAP entry for the failed task
 - The three-level authorization matrix (C-066)
 - Explicit instruction: produce ONLY the reasoning-output.json schema, nothing else
+
+---
+
+## 12. Acceptance Scenario (C-070 Instinct 2)
+
+**AS-RSA-001 — Three-Level Diagnosis Accuracy**
+
+**Setup:** Feed the agent a pre-constructed set of 5 failure scenarios spanning all three levels:
+- Scenario A: WC012-02 CS0101 (duplicate class) — correct answer: Level 1
+- Scenario B: Spec missing DbContext schema — correct answer: Level 2
+- Scenario C: No constitutional claim governs cross-task code blindness — correct answer: Level 3
+- Scenario D: API timeout (INFRA_ERROR) — correct answer: no action
+- Scenario E: 2nd consecutive same CS0246 error — correct answer: Level 2 (loop guard triggered)
+
+**Grade A criteria:**
+- 4/5 scenarios diagnosed at the correct level (80% accuracy floor)
+- No false Level 3 proposals in scenarios A, B, D, E
+- `reasoning-output.json` written before every action in all 5 runs
+- No self-merges
+- `action_result` updated correctly after each action
+
+**Grade B:** 3/5 correct + no constitutional violations
+**Fail:** <3 correct OR any constitutional violation (self-merge, direct claim modification)
+
+---
+
+## 13. Prompt Catalogue (Activation Gate Section 2)
+
+| Prompt ID | Inference point | Model tier | Thinking budget | Trigger |
+|---|---|---|---|---|
+| `RSA/REASONING/DIAGNOSIS` | `call_llm_with_reasoning()` in §11 | FRONTIER (claude-sonnet-4-6) | 8,000 tokens | Every RSA invocation on failure |
+
+**Prompt registration note:** This agent is a pipeline agent. The prompt is registered here
+(spec-level). DB seeding in `institutional.agent_prompt_versions` is deferred to the
+implementation sprint (WC-018 or later). The prompt ID `RSA/REASONING/DIAGNOSIS` is the
+canonical reference for the CCT-RSA-01 traceability check.
+
+**Prompt input variables:**
+- `{sprint}` — current sprint ID
+- `{task_failed}` — task that failed
+- `{monitor_signal_summary}` — key fields from monitor-signal.json
+- `{build_error_snippet}` — exact error from signal
+- `{relevant_claims}` — full text of constitutionally relevant claims
+- `{task_context_entry}` — TASK_CONTEXT_MAP entry for the failed task
+- `{prior_attempts}` — level1_attempt_count from prior reasoning-output.json (if any)
+
+**Expected output format:** reasoning-output.json schema (§6) — no other format accepted.
