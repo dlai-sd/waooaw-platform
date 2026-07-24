@@ -1,40 +1,335 @@
-// Implements: architecture/reference/components/constitutional-engine.md §4 Emergency Stop Handler
-// constitutional_basis: C-001 (Emergency Stop absolute), ADR-001 (gRPC), CCT-HO-01 (≤250ms P99)
+// constitutional_service.proto
+//
+// API Contract: Constitutional Engine gRPC Service
+//
+// Produced by:  Solution Architect (Sprint 006 — CA-R004-01 finding)
+// Date:         2026-07-07
+// ADR:          ADR-001 (gRPC for Constitutional Engine)
+// Constitutional Basis:
+//   C-023 (Evidence First — every action requires CE to confirm before caller returns success)
+//   C-027 (append-only ledger — RecordEvidence is INSERT only, never UPDATE)
+//   C-003 (authority licensed — ValidateAction enforces Decision Space boundary)
+//   C-013 (Emergency Override — TriggerEmergencyStop is a Constitutional Floor)
+//   AD-001 (Emergency Stop ≤250ms end-to-end)
+//   AD-008 (every permission decision must name its constitutional basis)
+//
+// ─── TRANSPORT NOTES ────────────────────────────────────────────────────────
+//
+// This service is INTERNAL ONLY. It is never exposed to the internet.
+// It communicates only with Business Platform and Professional Runtime.
+//
+// Tenant isolation is carried via gRPC metadata, NOT request fields:
+//   Metadata key: "x-tenant-id"
+//   Value:        UUID extracted from the caller's JWT (propagated by Business Platform
+//                 and Professional Runtime from the customer's JWT claim)
+//   Enforcement:  Constitutional Engine reads this metadata on every RPC call and
+//                 writes it as tenant_id on every evidence record.
+//   If metadata is absent or invalid → gRPC error UNAUTHENTICATED
+//
+// All UUIDs are transmitted as strings in canonical format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+//
+// ─── LATENCY BUDGET ─────────────────────────────────────────────────────────
+//
+// RecordEvidence (standard):        target < 80ms   (AD-005 PAAS budget allocation)
+// ValidateAction (PAAS hot path):   target < 40ms   (AD-005: leaves 10ms for caller overhead)
+// TriggerEmergencyStop:             target < 100ms  (AD-001: 250ms total; 50ms network; 100ms here)
+//
+// ────────────────────────────────────────────────────────────────────────────
 
 syntax = "proto3";
 
-option csharp_namespace = "Waooaw.ConstitutionalEngine";
-
-package constitutional;
+package constitutional.v1;
 
 import "google/protobuf/timestamp.proto";
 
-// ConstitutionalService — gRPC service for the Constitutional Engine.
-// TriggerEmergencyStop implements C-001 Emergency Stop absolute guarantee.
+option csharp_namespace = "Waooaw.ConstitutionalEngine.Grpc";
+
+// ─── SERVICE DEFINITION ─────────────────────────────────────────────────────
+
 service ConstitutionalService {
-  // C-001: Emergency Stop — must complete ≤250ms P99 (CCT-HO-01)
-  rpc TriggerEmergencyStop (TriggerEmergencyStopRequest) returns (TriggerEmergencyStopResponse);
+
+  // RecordEvidence — Evidence First Enforcer
+  // Writes an evidence record to the Constitutional Audit Ledger atomically.
+  // The caller MUST NOT return success to its own client until this RPC returns OK.
+  // On any error response, the caller MUST treat its own operation as failed.
+  // C-023, AD-002
+  rpc RecordEvidence(RecordEvidenceRequest) returns (RecordEvidenceResponse);
+
+  // ValidateAction — PAAS Boundary Validator
+  // Validates whether a proposed action falls within the current Decision Space.
+  // Called by Professional Runtime on every PAAS action before execution.
+  // Returns ALLOW, DENY, or ESCALATE. Does NOT record evidence — caller must
+  // call RecordEvidence with the outcome state after this decision.
+  // C-003, AD-005
+  rpc ValidateAction(ValidateActionRequest) returns (ValidateActionResponse);
+
+  // GrantAuthorityLicense — Authority License Manager (expansion)
+  // Records an authority expansion event in the Constitutional Audit Ledger.
+  // Caller must supply evidence IDs that justify the expansion.
+  // C-003, C-023
+  rpc GrantAuthorityLicense(GrantAuthorityRequest) returns (GrantAuthorityResponse);
+
+  // RevokeAuthorityLicense — Authority License Manager (restriction)
+  // Records an authority restriction or suspension event.
+  // C-003, C-023
+  rpc RevokeAuthorityLicense(RevokeAuthorityRequest) returns (RevokeAuthorityResponse);
+
+  // EvaluatePolicy — Policy Evaluator
+  // General-purpose constitutional policy evaluation.
+  // Returns a decision with the constitutional basis string required for audit records.
+  // AD-008 (every permission decision must name its constitutional basis)
+  rpc EvaluatePolicy(EvaluatePolicyRequest) returns (EvaluatePolicyResponse);
+
+  // TriggerEmergencyStop — Emergency Stop Handler
+  // Records the emergency stop event in the Constitutional Audit Ledger and signals
+  // the affected Professional Runtime to halt immediately.
+  // C-013, AD-001 (≤250ms end-to-end), AD-005
+  rpc TriggerEmergencyStop(EmergencyStopRequest) returns (EmergencyStopResponse);
 }
 
-// Request to trigger an Emergency Stop for an employment contract.
-message TriggerEmergencyStopRequest {
-  // UUID of the employment contract being stopped (required)
+// ─── ENUMERATIONS ───────────────────────────────────────────────────────────
+
+// EvidenceType — classifies the kind of evidence being recorded.
+// C-023: every evidence record must carry a type for audit traceability.
+enum EvidenceType {
+  EVIDENCE_TYPE_UNSPECIFIED = 0;
+  EVIDENCE_TYPE_CUSTOMER_INSTRUCTION    = 1;  // Explicit customer instruction
+  EVIDENCE_TYPE_CUSTOMER_APPROVAL       = 2;  // Customer approved a proposed action
+  EVIDENCE_TYPE_CUSTOMER_REJECTION      = 3;  // Customer rejected a proposed action
+  EVIDENCE_TYPE_AUTHORITY_EXPANSION     = 4;  // Decision Space expanded
+  EVIDENCE_TYPE_AUTHORITY_RESTRICTION   = 5;  // Decision Space restricted
+  EVIDENCE_TYPE_PAAS_ACTION_EXECUTED    = 6;  // PAAS action completed
+  EVIDENCE_TYPE_PAAS_ACTION_DENIED      = 7;  // PAAS action denied by boundary validator
+  EVIDENCE_TYPE_EMERGENCY_STOP          = 8;  // Emergency stop triggered
+  EVIDENCE_TYPE_POLICY_DECISION         = 9;  // Policy evaluation result
+  EVIDENCE_TYPE_SESSION_START           = 10; // Professional Runtime session started
+  EVIDENCE_TYPE_SESSION_END             = 11; // Professional Runtime session ended
+}
+
+// ActionDecision — outcome of a ValidateAction or EvaluatePolicy call.
+enum ActionDecision {
+  ACTION_DECISION_UNSPECIFIED = 0;
+  ACTION_DECISION_ALLOW       = 1;  // Action is within Decision Space — proceed
+  ACTION_DECISION_DENY        = 2;  // Action violates Decision Space — do not proceed
+  ACTION_DECISION_ESCALATE    = 3;  // Action requires customer confirmation before proceeding
+}
+
+// EmergencyStopReason — why the emergency stop was triggered.
+// C-013: Emergency Stop is a Constitutional Floor — reason must be recorded.
+enum EmergencyStopReason {
+  EMERGENCY_STOP_REASON_UNSPECIFIED         = 0;
+  EMERGENCY_STOP_REASON_CUSTOMER_INITIATED  = 1;  // Customer pressed the stop button
+  EMERGENCY_STOP_REASON_BUDGET_BREACH       = 2;  // Spend limit exceeded
+  EMERGENCY_STOP_REASON_AUTHORITY_VIOLATION = 3;  // Action outside Decision Space detected
+  EMERGENCY_STOP_REASON_SYSTEM_FAULT        = 4;  // Internal system fault requiring halt
+  EMERGENCY_STOP_REASON_OPERATOR_OVERRIDE   = 5;  // Platform operator override
+}
+
+// ─── RecordEvidence ──────────────────────────────────────────────────────────
+
+message RecordEvidenceRequest {
+  // Unique idempotency key supplied by caller — prevents duplicate writes on retry.
+  // Must be a UUID. CE will return the existing record if this key was already used.
+  string idempotency_key = 1;
+
+  // The contract this evidence belongs to.
+  string contract_id = 2;
+
+  // The Professional Runtime session this evidence belongs to (if applicable).
+  // Empty string if not session-scoped.
+  string session_id = 3;
+
+  // Classification of this evidence record.
+  EvidenceType evidence_type = 4;
+
+  // Human-readable summary of what happened. Stored verbatim in the ledger.
+  string summary = 5;
+
+  // Structured payload — JSON-encoded domain-specific detail.
+  // Schema is determined by evidence_type. Stored verbatim; never interpreted by CE.
+  string payload_json = 6;
+
+  // Constitutional basis string — names the constitutional claim(s) this record satisfies.
+  // AD-008: required on every evidence record.
+  // Example: "C-023 Evidence First; C-027 Append-Only Ledger"
+  string constitutional_basis = 7;
+
+  // Actor who caused this event. Format: "user:<uuid>" or "system:<service-name>"
+  string actor = 8;
+
+  // Wall-clock time of the originating event (caller's clock).
+  // CE also records its own server-side received_at timestamp.
+  google.protobuf.Timestamp occurred_at = 9;
+}
+
+message RecordEvidenceResponse {
+  // The UUID assigned to this evidence record in the Constitutional Audit Ledger.
+  string evidence_id = 1;
+
+  // Server-side timestamp when the record was committed to the ledger.
+  google.protobuf.Timestamp recorded_at = 2;
+
+  // True if this response was served from an idempotency cache (duplicate request).
+  bool was_duplicate = 3;
+}
+
+// ─── ValidateAction ──────────────────────────────────────────────────────────
+
+message ValidateActionRequest {
+  // The contract whose Decision Space governs this action.
   string contract_id = 1;
 
-  // Known active PAAS session IDs (Temporal workflow IDs per ADR-018).
-  // If empty, CE halts all known sessions for the contract.
-  repeated string active_session_ids = 2;
+  // The session in which this action is being proposed.
+  string session_id = 2;
+
+  // The action type being proposed. Must match a known action type in the Decision Space schema.
+  string action_type = 3;
+
+  // Structured parameters of the proposed action — JSON-encoded.
+  // Used for budget/limit checks (e.g., trade size, spend amount).
+  string action_params_json = 4;
 }
 
-// Response confirming the Emergency Stop has been recorded and Temporal signalled.
-// Sent only after evidence record is written (AD-002 Evidence First).
-message TriggerEmergencyStopResponse {
-  // UUID of the persisted emergency_stop_events record
-  string emergency_stop_record_id = 1;
+message ValidateActionResponse {
+  // The decision: ALLOW, DENY, or ESCALATE.
+  ActionDecision decision = 1;
 
-  // Temporal workflow IDs that were signalled
-  repeated string affected_session_ids = 2;
+  // Human-readable reason for the decision. Must be stored by caller in its audit record.
+  string reason = 2;
 
-  // UTC timestamp when Temporal signal was confirmed
-  google.protobuf.Timestamp confirmed_at = 3;
+  // Constitutional basis for this decision. AD-008: caller must include this in its evidence record.
+  string constitutional_basis = 3;
+
+  // If ESCALATE: the question that must be presented to the customer before proceeding.
+  string escalation_prompt = 4;
+}
+
+// ─── GrantAuthorityLicense ───────────────────────────────────────────────────
+
+message GrantAuthorityRequest {
+  // The contract receiving the authority expansion.
+  string contract_id = 1;
+
+  // The session context (if applicable).
+  string session_id = 2;
+
+  // Human-readable description of the authority being granted.
+  string authority_description = 3;
+
+  // The action types being added to the authorizedActions list.
+  repeated string action_types_granted = 4;
+
+  // Evidence IDs that justify this expansion. C-023: expansion requires prior evidence.
+  // All IDs must belong to the same contract_id.
+  repeated string justifying_evidence_ids = 5;
+
+  // Constitutional basis for this grant.
+  string constitutional_basis = 6;
+
+  // Actor authorising the expansion. Format: "user:<uuid>"
+  string granted_by = 7;
+}
+
+message GrantAuthorityResponse {
+  // Evidence record ID written to the Constitutional Audit Ledger for this grant event.
+  string evidence_id = 1;
+
+  // Timestamp when the grant was recorded.
+  google.protobuf.Timestamp granted_at = 2;
+}
+
+// ─── RevokeAuthorityLicense ──────────────────────────────────────────────────
+
+message RevokeAuthorityRequest {
+  // The contract whose authority is being restricted.
+  string contract_id = 1;
+
+  // The session context (if applicable).
+  string session_id = 2;
+
+  // Human-readable description of the authority being revoked.
+  string authority_description = 3;
+
+  // The action types being removed from the authorizedActions list.
+  repeated string action_types_revoked = 4;
+
+  // Reason for revocation.
+  string reason = 5;
+
+  // Constitutional basis for this revocation.
+  string constitutional_basis = 6;
+
+  // Actor authorising the revocation. Format: "user:<uuid>" or "system:<service-name>"
+  string revoked_by = 7;
+}
+
+message RevokeAuthorityResponse {
+  // Evidence record ID written to the Constitutional Audit Ledger for this revocation event.
+  string evidence_id = 1;
+
+  // Timestamp when the revocation was recorded.
+  google.protobuf.Timestamp revoked_at = 2;
+}
+
+// ─── EvaluatePolicy ──────────────────────────────────────────────────────────
+
+message EvaluatePolicyRequest {
+  // The contract context for this policy evaluation.
+  string contract_id = 1;
+
+  // The policy being evaluated. Must match a known policy identifier.
+  string policy_id = 2;
+
+  // Structured input for the policy evaluation — JSON-encoded.
+  string evaluation_input_json = 3;
+
+  // Actor requesting the evaluation.
+  string actor = 4;
+}
+
+message EvaluatePolicyResponse {
+  // The policy decision.
+  ActionDecision decision = 1;
+
+  // Human-readable explanation of the decision.
+  string explanation = 2;
+
+  // Constitutional basis string. AD-008: caller must include this in its evidence record.
+  string constitutional_basis = 3;
+
+  // Structured output from the policy evaluation — JSON-encoded.
+  string evaluation_output_json = 4;
+}
+
+// ─── TriggerEmergencyStop ────────────────────────────────────────────────────
+
+message EmergencyStopRequest {
+  // The contract being stopped.
+  string contract_id = 1;
+
+  // The session being halted.
+  string session_id = 2;
+
+  // Why the stop is being triggered.
+  EmergencyStopReason reason = 3;
+
+  // Human-readable detail about the stop trigger.
+  string detail = 4;
+
+  // Actor triggering the stop. Format: "user:<uuid>" or "system:<service-name>"
+  string triggered_by = 5;
+
+  // Constitutional basis for this stop. C-013.
+  string constitutional_basis = 6;
+}
+
+message EmergencyStopResponse {
+  // Evidence record ID written to the Constitutional Audit Ledger for this stop event.
+  string evidence_id = 1;
+
+  // Timestamp when the stop was recorded and the halt signal was sent.
+  google.protobuf.Timestamp stopped_at = 2;
+
+  // True if the Temporal signal to the Professional Runtime was successfully sent.
+  bool runtime_signal_sent = 3;
 }
