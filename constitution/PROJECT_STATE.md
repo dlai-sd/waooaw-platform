@@ -31,7 +31,7 @@
 **Clean state declared:**
 - PR #28 closed (not merged), branch `ib/009/sprint-012` deleted
 - All 9 spec-gap issues closed, RCA issue #36 closed
-- `sprint_status: READY`, `tasks_done: []`, all 4 WC-012 tasks in `tasks_remaining`
+- sprint_status=READY, tasks_done=[], all 4 WC-012 tasks in tasks_remaining
 - Pipeline fixes on `main` — next run will execute WC-012 cleanly end-to-end
 
 ### Next Session
