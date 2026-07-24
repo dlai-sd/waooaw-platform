@@ -48,6 +48,8 @@ from autonomous_sprint_runner import (   # type: ignore[import]
 
 # ── Select task ────────────────────────────────────────────────────────────────
 task_id = sys.argv[1] if len(sys.argv) > 1 else "WC012-02"
+# Optional: override max_tokens via CLI arg (e.g. python3 trial_llm_call.py WC012-02 14000)
+max_tokens_override = int(sys.argv[2]) if len(sys.argv) > 2 else None
 handler = TASK_HANDLERS.get(task_id)
 
 if handler is None:
@@ -140,9 +142,10 @@ response = call_llm(
     spec_content=spec_content,
     constitutional_check=spec_match.group(3) if spec_match.group(3) else "",
     model_hint="reasoning",
-    max_tokens=10000,
+    max_tokens=max_tokens_override if max_tokens_override else 10000,
     attempt=1,
 )
+print(f"\nmax_tokens used: {max_tokens_override or 10000} (effective with overhead: {(max_tokens_override or 10000) + 8000})")
 
 # ── Analyse response ───────────────────────────────────────────────────────────
 print()
