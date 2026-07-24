@@ -1445,6 +1445,112 @@ def execute_wc012_01() -> bool:
     return True
 
 
+def _generate_wc012_02a_evaluator_interfaces() -> bool:
+    """
+    WC012-02a: Evaluator interface contracts — deterministic templates.
+    EvaluationResult, EvaluationContext, IClaimEvaluator, EvaluatorRegistry.
+    No business logic — pure structural contracts. Stable regardless of evaluator count.
+    constitutional_basis: C-041 (Tool Authorization), C-059 (Traceability), C-073 (Annotation)
+    """
+    print("  ── WC012-02a: Evaluator interfaces (deterministic template) ──")
+    ev_dir = REPO_ROOT / "src" / "constitutional-engine" / "Evaluators"
+    ev_dir.mkdir(parents=True, exist_ok=True)
+
+    (ev_dir / "EvaluationResult.cs").write_text(
+        "// Implements: architecture/reference/ce-validate-action-evaluators.md\n"
+        "// constitutional_basis: C-041, C-073, C-059\n\n"
+        "#nullable enable\n"
+        "namespace Waooaw.ConstitutionalEngine.Evaluators;\n\n"
+        "/// <summary>Verdict returned by a constitutional claim evaluator.</summary>\n"
+        "public enum EvaluationVerdict { Allow, Deny, Escalate }\n\n"
+        "/// <summary>Result of a single constitutional claim evaluation.</summary>\n"
+        "public sealed record EvaluationResult(\n"
+        "    string ClaimId,\n"
+        "    EvaluationVerdict Verdict,\n"
+        "    string Reason);\n"
+    )
+    (ev_dir / "EvaluationContext.cs").write_text(
+        "// Implements: architecture/reference/ce-validate-action-evaluators.md\n"
+        "// constitutional_basis: C-041, C-059\n\n"
+        "#nullable enable\n"
+        "namespace Waooaw.ConstitutionalEngine.Evaluators;\n\n"
+        "using Waooaw.ConstitutionalEngine.Grpc;\n\n"
+        "/// <summary>\n"
+        "/// Immutable context derived from ValidateActionRequest.\n"
+        "/// Contains ONLY data from the gRPC request — no database access.\n"
+        "/// </summary>\n"
+        "public sealed record EvaluationContext(\n"
+        "    string TenantId,\n"
+        "    string AgentId,\n"
+        "    string ToolName,\n"
+        "    string ActionType,\n"
+        "    string? EmploymentContractId = null)\n"
+        "{\n"
+        "    public static EvaluationContext FromRequest(ValidateActionRequest request) => new(\n"
+        "        TenantId: request.TenantId,\n"
+        "        AgentId: request.AgentId,\n"
+        "        ToolName: request.ToolName,\n"
+        "        ActionType: request.ActionType,\n"
+        "        EmploymentContractId: string.IsNullOrEmpty(request.EmploymentContractId)\n"
+        "            ? null : request.EmploymentContractId);\n"
+        "}\n"
+    )
+    (ev_dir / "IClaimEvaluator.cs").write_text(
+        "// Implements: architecture/reference/ce-validate-action-evaluators.md\n"
+        "// constitutional_basis: C-041, C-073\n\n"
+        "#nullable enable\n"
+        "namespace Waooaw.ConstitutionalEngine.Evaluators;\n\n"
+        "/// <summary>\n"
+        "/// Constitutional claim evaluator contract.\n"
+        "/// Each implementation enforces one constitutional claim against a ValidateAction request.\n"
+        "/// </summary>\n"
+        "public interface IClaimEvaluator\n"
+        "{\n"
+        "    string ClaimId { get; }\n"
+        "    Task<EvaluationResult> EvaluateAsync(\n"
+        "        EvaluationContext context,\n"
+        "        CancellationToken cancellationToken = default);\n"
+        "}\n"
+    )
+    (ev_dir / "EvaluatorRegistry.cs").write_text(
+        "// Implements: architecture/reference/ce-validate-action-evaluators.md\n"
+        "// constitutional_basis: C-041, C-073, C-076\n\n"
+        "#nullable enable\n"
+        "namespace Waooaw.ConstitutionalEngine.Evaluators;\n\n"
+        "using Microsoft.Extensions.Logging;\n\n"
+        "/// <summary>\n"
+        "/// Runs all registered IClaimEvaluator instances in parallel.\n"
+        "/// DENY from any evaluator → ValidateAction returns DENY (C-041 default-deny).\n"
+        "/// </summary>\n"
+        "public sealed class EvaluatorRegistry\n"
+        "{\n"
+        "    private readonly IReadOnlyList<IClaimEvaluator> _evaluators;\n"
+        "    private readonly ILogger<EvaluatorRegistry> _logger;\n\n"
+        "    public EvaluatorRegistry(\n"
+        "        IEnumerable<IClaimEvaluator> evaluators,\n"
+        "        ILogger<EvaluatorRegistry> logger)\n"
+        "    {\n"
+        "        _evaluators = evaluators.ToList();\n"
+        "        _logger = logger;\n"
+        "    }\n\n"
+        "    public int Count => _evaluators.Count;\n\n"
+        "    public async Task<IReadOnlyList<EvaluationResult>> EvaluateAllAsync(\n"
+        "        EvaluationContext context,\n"
+        "        CancellationToken cancellationToken = default)\n"
+        "    {\n"
+        "        _logger.LogInformation(\n"
+        "            \"Evaluating {Tool} for agent {Agent} against {Count} claims\",\n"
+        "            context.ToolName, context.AgentId, _evaluators.Count);\n"
+        "        var tasks = _evaluators.Select(e => e.EvaluateAsync(context, cancellationToken));\n"
+        "        return await Task.WhenAll(tasks);\n"
+        "    }\n"
+        "}\n"
+    )
+    git(["add", "src/constitutional-engine/Evaluators/"], check=False)
+    print("  ✅ WC012-02a: 4 interface files written (EvaluationResult, EvaluationContext, IClaimEvaluator, EvaluatorRegistry)")
+    return True
+
+
 def _generate_wc012_03a_data_layer() -> bool:
     """
     WC012-03a: Data layer templates — EvidenceRecord + ConstitutionalDbContext.
@@ -1569,39 +1675,72 @@ TASK_HANDLERS = {
     # WC012-01 is DETERMINISTIC — copies reference files, no Claude call.
     # Root cause of 3 prior failures: Claude hallucinated API methods when asked to copy known-good files.
     "WC012-01": execute_wc012_01,
-    "WC012-02": lambda: execute_with_llm(
-        "WC012-02", "CE ValidateAction RPC + unit tests ≥90%",
-        {
-            "architecture/reference/components/constitutional-engine.md": "§2 PAAS Boundary Validator",
-            "architecture/reference/ce-validate-action-evaluators.md": "full",
-            "architecture/reference/dotfiles/constitutional-engine.csproj": "full",
-            "tests/QA-STRATEGY.md": "§5.1 Unit Tests",
-        },
-        "⚠️  BRANCH CONTEXT RULE: WC012-01 already generated the scaffold on this branch. "
-        "READ the BRANCH CONTEXT section carefully before writing any file. "
-        "DO NOT regenerate: constitutional-engine.csproj, Protos/, Program.cs, appsettings*.json, "
-        "Services/ConstitutionalEngineService.cs. These scaffold files EXIST — duplicating them causes CS0101. \n"
-        "⛔ DATA LAYER DOES NOT EXIST YET: ConstitutionalDbContext, EvidenceRecord, and all "
-        "Data/ entities will be created in WC012-03 (a separate task). "
-        "DO NOT reference ConstitutionalDbContext anywhere. DO NOT generate any files in Data/. "
-        "Evaluators must NOT access a database — they evaluate only the ValidateActionRequest "
-        "parameters (tool_name, tenant_id, agent_id, action_type) passed to ValidateAction RPC. "
-        "EvaluationContext must contain ONLY data extracted from ValidateActionRequest — no DbContext. \n"
-        "FOR ConstitutionalEngineService.cs: add the ValidateAction implementation to the EXISTING file. "
-        "Use EvaluatorRegistry pattern. Evaluators go in src/constitutional-engine/Evaluators/. "
-        "Use the .csproj from architecture/reference/dotfiles/constitutional-engine.csproj — "
-        "do NOT add extra packages or invent package names. "
-        "PROTO NAMESPACE: ValidateActionRequest, ValidateActionResponse and all gRPC message types "
-        "are in namespace Waooaw.ConstitutionalEngine.Grpc (generated by protobuf). "
-        "Every .cs file that references these types MUST have: using Waooaw.ConstitutionalEngine.Grpc; "
-        "Do NOT use Waooaw.ConstitutionalEngine.Protos — that namespace does not exist. "
-        "tests go in tests/constitutional-engine.Tests/ ONLY — NEVER create nested .csproj. "
-        "ValidateAction returns ALLOW/DENY/ESCALATE. Default deny for unknown tools (C-041). "
-        "Unit tests use xUnit + Moq. FakeServerCallContext (NOT Mock<ServerCallContext> — non-virtual). "
-        "CCT format: tests/constitutional-engine.Tests/Evaluators/CCT_EF01_*Tests.cs",
-        model_hint="reasoning",
-        max_tokens=10000  # Implementation task: evaluators + tests fit in 10k
-    ),
+    "WC012-02": {
+        # SIM-PL-002-WC012-02: PASS (2026-07-24) — C-086 gate satisfied
+        # Decomposed from single lambda: 02a (interfaces, deterministic) → 02b (evaluators, LLM) → 02c (tests, LLM)
+        # Lesson: single-call with 13 files hit max_tokens ceiling repeatedly.
+        # Split: 02a writes stable contracts, 02b focuses on 5 business rules, 02c tests them.
+        "subtasks": [
+            SubTaskDef(
+                id="WC012-02a",
+                description="Evaluator interface contracts — EvaluationResult, EvaluationContext, IClaimEvaluator, EvaluatorRegistry (deterministic)",
+                type="deterministic",
+                depends_on=[],
+                compile_gate="dotnet_build",
+                template_fn=lambda: _generate_wc012_02a_evaluator_interfaces(),
+            ),
+            SubTaskDef(
+                id="WC012-02b",
+                description="Constitutional claim evaluators — C041, C043, C048, C049, C062 + ValidateAction in ConstitutionalEngineService",
+                type="llm",
+                depends_on=["WC012-02a"],
+                compile_gate="dotnet_build",
+                spec_sections={
+                    "architecture/reference/components/constitutional-engine.md": "§2 PAAS Boundary Validator",
+                    "architecture/reference/ce-validate-action-evaluators.md": "full",
+                    "architecture/reference/dotfiles/constitutional-engine.csproj": "full",
+                },
+                constitutional_check=(
+                    "BRANCH CONTEXT: WC012-02a just committed 4 interface files to the branch:\n"
+                    "  Evaluators/EvaluationResult.cs, EvaluationContext.cs, IClaimEvaluator.cs, EvaluatorRegistry.cs\n"
+                    "READ BRANCH CONTEXT — do NOT regenerate these 4 files. Implement only:\n"
+                    "  5 evaluators: C041ToolAuthorizationEvaluator, C043BudgetCeilingEvaluator,\n"
+                    "    C048NonExploitationEvaluator, C049HonestLimitationEvaluator, C062AiSecurityEvaluator\n"
+                    "  Extend ConstitutionalEngineService.cs with ValidateAction RPC implementation.\n"
+                    "Each evaluator: implement IClaimEvaluator, return EvaluationResult with Verdict.\n"
+                    "EvaluationContext is passed in — no DB access, no DbContext reference.\n"
+                    "Default deny for unknown tools (C-041). ValidateAction aggregates: any DENY → DENY response.\n"
+                    "Do NOT generate tests here — tests are a separate sub-task (WC012-02c).\n"
+                    "Do NOT generate Data/ files — data layer is WC012-03.\n"
+                    "PROTO NAMESPACE: using Waooaw.ConstitutionalEngine.Grpc; on every file referencing gRPC types."
+                ),
+                model_hint="reasoning",
+                max_tokens=8000,
+            ),
+            SubTaskDef(
+                id="WC012-02c",
+                description="CCT tests — FakeServerCallContext + CCT_EF01 evaluator unit tests (xUnit + Moq)",
+                type="llm",
+                depends_on=["WC012-02a", "WC012-02b"],
+                compile_gate="dotnet_build",
+                spec_sections={
+                    "tests/QA-STRATEGY.md": "§5.1 Unit Tests",
+                },
+                constitutional_check=(
+                    "BRANCH CONTEXT: WC012-02a + WC012-02b are committed. You can see all evaluator implementations.\n"
+                    "Generate ONLY test files:\n"
+                    "  tests/constitutional-engine.Tests/Evaluators/FakeServerCallContext.cs\n"
+                    "  tests/constitutional-engine.Tests/Evaluators/CCT_EF01_C041ToolAuthorizationEvaluatorTests.cs\n"
+                    "  tests/constitutional-engine.Tests/Evaluators/CCT_EF01_C043BudgetCeilingEvaluatorTests.cs\n"
+                    "Use FakeServerCallContext (NOT Mock<ServerCallContext> — non-virtual). xUnit [Fact] tests.\n"
+                    "Test EvaluateAsync with Allow/Deny/Escalate scenarios. ≥90% coverage (C-076).\n"
+                    "Do NOT regenerate any implementation files — EXTEND-NOT-REPLACE rule."
+                ),
+                model_hint="reasoning",
+                max_tokens=5000,
+            ),
+        ]
+    },
     "WC012-03": {
         # SIM-PL-002-WC012-03: PASS (2026-07-24) — C-086 gate satisfied
         # Three sub-tasks in dependency order: Data layer → Implementation → Tests
