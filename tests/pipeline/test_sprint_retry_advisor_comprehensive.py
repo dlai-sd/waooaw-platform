@@ -410,3 +410,54 @@ class TestCS1061EvaluatorRegistry:
         assert any(kw in result.fix_instruction for kw in [
             "GetParameter", "ContractId", "TenantId", "ActionParameters"
         ])
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# CCT-SRA-07: CS0117 proto invented fields — ValidateActionResponse / RecordEvidenceRequest
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class TestCS0117ProtoInventedFields:
+    """Run 3 failure: LLM set ValidateActionResponse.ClaimId and RecordEvidenceRequest.IdempotencyKey."""
+
+    def test_validate_action_response_claim_id_classified(self):
+        error = (
+            "error CS0117: 'ValidateActionResponse' does not contain a definition for 'ClaimId'"
+        )
+        result = diagnose_build_error("WC012-02b", error, [])
+        assert result.error_type == WRONG_FIELD_NAME
+        assert result.should_retry is True
+        assert result.confidence >= 0.90
+
+    def test_fix_names_correct_validate_action_response_fields(self):
+        error = "error CS0117: 'ValidateActionResponse' does not contain a definition for 'ClaimId'"
+        result = diagnose_build_error("WC012-02b", error, [])
+        assert "Decision" in result.fix_instruction
+        assert "ConstitutionalBasis" in result.fix_instruction
+        assert "Reason" in result.fix_instruction
+
+    def test_fix_prohibits_claim_id(self):
+        error = "error CS0117: 'ValidateActionResponse' does not contain a definition for 'ClaimId'"
+        result = diagnose_build_error("WC012-02b", error, [])
+        assert "ClaimId" in result.fix_instruction  # must mention what NOT to use
+
+    def test_record_evidence_request_idempotency_key_classified(self):
+        error = (
+            "error CS0117: 'RecordEvidenceRequest' does not contain a definition for 'IdempotencyKey'"
+        )
+        result = diagnose_build_error("WC012-02b", error, [])
+        assert result.error_type == WRONG_FIELD_NAME
+        assert result.should_retry is True
+        assert result.confidence >= 0.90
+
+    def test_fix_names_correct_record_evidence_fields(self):
+        error = "error CS0117: 'RecordEvidenceRequest' does not contain a definition for 'IdempotencyKey'"
+        result = diagnose_build_error("WC012-02b", error, [])
+        assert "ActionInstanceId" in result.fix_instruction or "ContractId" in result.fix_instruction
+
+    def test_constitutional_trace_on_proto_errors(self):
+        for error in [
+            "error CS0117: 'ValidateActionResponse' does not contain a definition for 'ClaimId'",
+            "error CS0117: 'RecordEvidenceRequest' does not contain a definition for 'IdempotencyKey'",
+        ]:
+            result = diagnose_build_error("WC012-02b", error, [])
+            assert result.constitutional_trace != ""

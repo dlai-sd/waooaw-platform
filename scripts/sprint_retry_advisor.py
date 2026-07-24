@@ -154,6 +154,44 @@ def _classify_cs0117(error: str) -> Optional[RetryDiagnosis]:
 
     class_name, field_name = m.group(1), m.group(2)
 
+    # Proto-generated response types — LLM invents fields that don't exist
+    if "ValidateActionResponse" in class_name or "ValidateActionResponse" in error:
+        fix = (
+            f"PROTO FIELD NOT FOUND: 'ValidateActionResponse' does NOT have '{field_name}'. "
+            f"ValidateActionResponse has EXACTLY these fields: "
+            f"Decision (ValidationDecision), ConstitutionalBasis (string), Reason (string), "
+            f"BudgetRemainingInrPaise (long? — optional), SyntheticApprovalRecordId (string? — optional). "
+            f"CORRECT usage: return new ValidateActionResponse {{ "
+            f"Decision = ValidationDecision.Allow, "
+            f"ConstitutionalBasis = \"C-041\", "
+            f"Reason = \"All evaluators passed\" }}; "
+            f"Do NOT set ClaimId, EvaluationResults, AllowedActions, or any other field — they do NOT exist."
+        )
+        return RetryDiagnosis(
+            error_type=WRONG_FIELD_NAME,
+            fix_instruction=fix,
+            should_retry=True,
+            confidence=0.95,
+            constitutional_trace="C-082 (Build Validation — ValidateActionResponse proto fields)"
+        )
+
+    if "RecordEvidenceRequest" in class_name or "RecordEvidenceRequest" in error:
+        fix = (
+            f"PROTO FIELD NOT FOUND: 'RecordEvidenceRequest' does NOT have '{field_name}'. "
+            f"RecordEvidenceRequest has these fields: "
+            f"ActionInstanceId, ContractId, ProfessionalId, ActionType, State (EvidenceState), "
+            f"ConstitutionalBasis, ProposedContent, ExecutedContent, DecisionSpaceVersion. "
+            f"⛔ NO IdempotencyKey, NO SessionId, NO RequestId fields exist. "
+            f"NOTE: Do NOT call RecordEvidence from WC012-02b — that is WC012-03's responsibility."
+        )
+        return RetryDiagnosis(
+            error_type=WRONG_FIELD_NAME,
+            fix_instruction=fix,
+            should_retry=True,
+            confidence=0.95,
+            constitutional_trace="C-082 (Build Validation — RecordEvidenceRequest proto fields)"
+        )
+
     fix = (
         f"FIELD ERROR: '{class_name}' does not have a property '{field_name}'. "
         f"You invented a field name that does not exist in the proto-generated class. "

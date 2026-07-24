@@ -285,8 +285,134 @@ class TestExtractTerraformOutputs:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# PTR load / save
+# extract_proto_types() — Protobuf message/enum extraction
 # ═══════════════════════════════════════════════════════════════════════════════
+
+from platform_type_registry import extract_proto_types
+
+
+class TestExtractProtoTypes:
+    """Tests for .proto file parsing — C# PascalCase field name generation."""
+
+    PROTO_SNIPPET = textwrap.dedent("""\
+        syntax = "proto3";
+        option csharp_namespace = "Waooaw.ConstitutionalEngine.Grpc";
+
+        enum ValidationDecision {
+          VALIDATION_DECISION_UNSPECIFIED = 0;
+          VALIDATION_DECISION_ALLOW       = 1;
+          VALIDATION_DECISION_DENY        = 2;
+          VALIDATION_DECISION_ESCALATE    = 3;
+        }
+
+        message ValidateActionResponse {
+          ValidationDecision decision          = 1;
+          string constitutional_basis          = 2;
+          string reason                        = 3;
+          optional int64 budget_remaining_inr_paise = 4;
+          optional string synthetic_approval_record_id = 5;
+        }
+
+        message RecordEvidenceRequest {
+          string action_instance_id   = 1;
+          string contract_id          = 2;
+          string professional_id      = 3;
+          string action_type          = 4;
+          string constitutional_basis = 12;
+        }
+    """)
+
+    def test_extracts_proto_message(self):
+        result = extract_proto_types(self.PROTO_SNIPPET)
+        assert "ValidateActionResponse" in result
+        assert result["ValidateActionResponse"]["kind"] == "proto_message"
+
+    def test_message_fields_pascal_cased(self):
+        """snake_case proto fields must become PascalCase C# properties."""
+        result = extract_proto_types(self.PROTO_SNIPPET)
+        fields = result["ValidateActionResponse"]["fields"]
+        assert "Decision" in fields
+        assert "ConstitutionalBasis" in fields
+        assert "Reason" in fields
+        # optional → nullable
+        assert "BudgetRemainingInrPaise" in fields
+        assert "SyntheticApprovalRecordId" in fields
+
+    def test_optional_fields_nullable(self):
+        """optional proto fields → nullable C# types."""
+        result = extract_proto_types(self.PROTO_SNIPPET)
+        fields = result["ValidateActionResponse"]["fields"]
+        assert "?" in fields["BudgetRemainingInrPaise"]
+        assert "?" in fields["SyntheticApprovalRecordId"]
+
+    def test_no_invented_fields(self):
+        """ClaimId, IdempotencyKey must NOT appear — they don't exist in proto."""
+        result = extract_proto_types(self.PROTO_SNIPPET)
+        fields_vr = result["ValidateActionResponse"]["fields"]
+        assert "ClaimId" not in fields_vr
+        fields_re = result["RecordEvidenceRequest"]["fields"]
+        assert "IdempotencyKey" not in fields_re
+
+    def test_extracts_proto_enum(self):
+        result = extract_proto_types(self.PROTO_SNIPPET)
+        assert "ValidationDecision" in result
+        assert result["ValidationDecision"]["kind"] == "proto_enum"
+
+    def test_enum_values_prefix_stripped_and_pascal_cased(self):
+        """VALIDATION_DECISION_ALLOW → Allow (matching Grpc.Tools output)."""
+        result = extract_proto_types(self.PROTO_SNIPPET)
+        values = result["ValidationDecision"]["values"]
+        assert "Allow" in values
+        assert "Deny" in values
+        assert "Escalate" in values
+        # Must NOT contain the raw proto prefix
+        assert not any("VALIDATION" in v for v in values)
+
+    def test_namespace_extracted(self):
+        result = extract_proto_types(self.PROTO_SNIPPET)
+        assert result["ValidateActionResponse"]["namespace"] == "Waooaw.ConstitutionalEngine.Grpc"
+
+    def test_empty_proto_returns_empty(self):
+        assert extract_proto_types("") == {}
+
+    def test_record_evidence_request_fields(self):
+        result = extract_proto_types(self.PROTO_SNIPPET)
+        assert "RecordEvidenceRequest" in result
+        fields = result["RecordEvidenceRequest"]["fields"]
+        assert "ActionInstanceId" in fields
+        assert "ContractId" in fields
+        assert "ConstitutionalBasis" in fields
+
+    def test_ptr_prompt_block_includes_proto_message(self):
+        """Proto message fields appear in the LLM prompt block."""
+        from platform_type_registry import build_ptr_prompt_block
+        ptr = {
+            "tasks": {
+                "WC012-01": {
+                    "types": extract_proto_types(self.PROTO_SNIPPET),
+                    "files": [],
+                }
+            }
+        }
+        result = build_ptr_prompt_block(["ValidateActionResponse"], ptr=ptr)
+        assert "Decision" in result
+        assert "ConstitutionalBasis" in result
+        assert "proto_message" in result or "Proto-generated" in result
+
+    def test_ptr_prompt_block_proto_enum_values(self):
+        """Proto enum values appear in the LLM prompt block."""
+        from platform_type_registry import build_ptr_prompt_block
+        ptr = {
+            "tasks": {
+                "WC012-01": {
+                    "types": extract_proto_types(self.PROTO_SNIPPET),
+                    "files": [],
+                }
+            }
+        }
+        result = build_ptr_prompt_block(["ValidationDecision"], ptr=ptr)
+        assert "Allow" in result
+        assert "Deny" in result
 
 class TestPtrLoadSave:
     def test_load_returns_empty_when_no_file(self, tmp_path, monkeypatch):

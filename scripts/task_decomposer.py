@@ -226,13 +226,13 @@ def execute_subtask_chain(
         # Best-effort — never blocks sprint execution.
         try:
             from platform_type_registry import update_ptr_from_task
-            src_cs_files = [
+            src_files = [
                 str(f.relative_to(REPO_ROOT))
-                for f in (REPO_ROOT / "src").rglob("*.cs")
-                if f.is_file()
+                for f in (REPO_ROOT / "src").rglob("*")
+                if f.is_file() and f.suffix in (".cs", ".proto", ".py", ".ts", ".tsx", ".tf")
             ]
-            if src_cs_files:
-                update_ptr_from_task(st.id, src_cs_files)
+            if src_files:
+                update_ptr_from_task(st.id, src_files)
         except Exception as _ptr_err:
             print(f"  PTR update skipped: {_ptr_err}")
 

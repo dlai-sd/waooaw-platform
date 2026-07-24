@@ -26,6 +26,8 @@ Stack support:
   Python       — parse class/TypedDict/BaseModel from .py files using ast stdlib
   TypeScript   — parse interface/type from .ts files using regex
   Terraform    — parse output blocks from .tf files using regex
+  Protobuf     — parse message/enum definitions from .proto files using regex
+                 (generates C# PascalCase field names matching Grpc.Tools output)
 """
 
 from __future__ import annotations
@@ -279,6 +281,122 @@ def extract_terraform_outputs(tf_content: str) -> dict[str, Any]:
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+# Protobuf extractor
+# ══════════════════════════════════════════════════════════════════════════════
+
+def _proto_to_csharp_name(snake_name: str) -> str:
+    """Convert proto snake_case field name to C# PascalCase (matching Grpc.Tools output)."""
+    return "".join(part.capitalize() for part in snake_name.split("_"))
+
+
+def _proto_type_to_csharp(proto_type: str, optional: bool = False) -> str:
+    """Map proto scalar types to their C# equivalents."""
+    mapping = {
+        "string": "string",
+        "bool": "bool",
+        "int32": "int",
+        "int64": "long",
+        "uint32": "uint",
+        "uint64": "ulong",
+        "float": "float",
+        "double": "double",
+        "bytes": "ByteString",
+    }
+    cs_type = mapping.get(proto_type, proto_type)  # message/enum types stay as-is
+    return f"{cs_type}?" if optional else cs_type
+
+
+def _strip_enum_prefix(values: list[str]) -> list[str]:
+    """
+    Strip the common prefix from proto enum values and PascalCase the result.
+    E.g. [VALIDATION_DECISION_ALLOW, VALIDATION_DECISION_DENY] → [Allow, Deny]
+    Matches Grpc.Tools C# codegen behaviour.
+    """
+    if not values:
+        return []
+    # Find common prefix (split by _)
+    parts_list = [v.split("_") for v in values]
+    min_len = min(len(p) for p in parts_list)
+    prefix_len = 0
+    for i in range(min_len):
+        if len({p[i] for p in parts_list}) == 1:
+            prefix_len = i + 1
+        else:
+            break
+    stripped = ["_".join(p[prefix_len:]) for p in parts_list]
+    # PascalCase each
+    return [_proto_to_csharp_name(v.lower()) for v in stripped if v]
+
+
+def extract_proto_types(proto_content: str) -> dict[str, Any]:
+    """
+    Parse a .proto file and extract message and enum definitions with their
+    C# field names (matching Grpc.Tools generated code).
+
+    Proto message fields → PascalCase C# property names.
+    Proto enum values   → prefix-stripped PascalCase C# enum values.
+    optional fields     → nullable C# types (string?, long?, etc.)
+
+    C-083: this is the Emit step for the proto contract so that downstream
+    LLM tasks see EXACT field names, not invented ones.
+    DP-009: proto is the source of truth for gRPC message types.
+    """
+    result: dict[str, Any] = {}
+
+    # Extract csharp_namespace if present
+    ns_m = re.search(r'option csharp_namespace\s*=\s*"([^"]+)"', proto_content)
+    namespace = ns_m.group(1) if ns_m else ""
+
+    # ── Extract enum types ──────────────────────────────────────────────────
+    for m in re.finditer(r'enum\s+(\w+)\s*\{([^}]+)\}', proto_content, re.DOTALL):
+        enum_name = m.group(1)
+        body = m.group(2)
+        raw_values = re.findall(r'^\s*([A-Z][A-Z0-9_]+)\s*=\s*\d+', body, re.MULTILINE)
+        cs_values = _strip_enum_prefix(raw_values)
+        result[enum_name] = {
+            "kind": "proto_enum",
+            "namespace": namespace,
+            "values": cs_values,
+            "proto_values": raw_values,
+            "note": f"C# enum in namespace {namespace}. Values are PascalCased from proto.",
+        }
+
+    # ── Extract message types ───────────────────────────────────────────────
+    for m in re.finditer(r'message\s+(\w+)\s*\{([^}]+)\}', proto_content, re.DOTALL):
+        msg_name = m.group(1)
+        body = m.group(2)
+        fields: dict[str, str] = {}
+
+        # Match: [optional] <type> <name> = <number>
+        for fm in re.finditer(
+            r'^\s*(optional\s+)?(repeated\s+)?(\w+)\s+(\w+)\s*=\s*\d+',
+            body,
+            re.MULTILINE,
+        ):
+            is_optional = fm.group(1) is not None
+            is_repeated = fm.group(2) is not None
+            proto_type  = fm.group(3)
+            field_name  = fm.group(4)
+            cs_name     = _proto_to_csharp_name(field_name)
+            cs_type     = _proto_type_to_csharp(proto_type, optional=is_optional)
+            if is_repeated:
+                cs_type = f"RepeatedField<{proto_type}>"
+            fields[cs_name] = cs_type
+
+        result[msg_name] = {
+            "kind": "proto_message",
+            "namespace": namespace,
+            "fields": fields,
+            "note": (
+                f"Proto-generated C# class in namespace {namespace}. "
+                f"Use property names EXACTLY as listed — do NOT invent fields."
+            ),
+        }
+
+    return result
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # PTR read / write
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -329,6 +447,9 @@ def update_ptr_from_task(task_id: str, written_files: list[str]) -> None:
             service_types.update(extracted)
         elif rel_path.endswith(".tf"):
             extracted = extract_terraform_outputs(content)
+            service_types.update(extracted)
+        elif rel_path.endswith(".proto"):
+            extracted = extract_proto_types(content)
             service_types.update(extracted)
 
     if service_types:
@@ -391,8 +512,15 @@ def build_ptr_prompt_block(type_names: list[str], ptr: dict | None = None) -> st
                     note = "  # from gRPC metadata x-tenant-id"
                 lines.append(f"  {prop_name}: {prop_type}{note}")
 
-        elif kind == "enum" and "values" in entry:
+        elif kind in ("enum", "proto_enum") and "values" in entry:
             lines.append(f"  Values: {', '.join(entry['values'])}")
+            if kind == "proto_enum" and entry.get("note"):
+                lines.append(f"  # {entry['note']}")
+
+        elif kind == "proto_message" and "fields" in entry:
+            lines.append(f"  # {entry.get('note', 'Proto-generated — use ONLY fields listed below.')}")
+            for field_name, field_type in entry["fields"].items():
+                lines.append(f"  {field_name}: {field_type}")
 
         elif kind in ("pydantic_model", "typed_dict", "dataclass") and "fields" in entry:
             for field_name, field_type in entry["fields"].items():
@@ -412,9 +540,6 @@ def build_ptr_prompt_block(type_names: list[str], ptr: dict | None = None) -> st
 
     lines.append("# ═══ END TYPE CONTRACT ═══\n")
     return "\n".join(lines)
-
-
-# ══════════════════════════════════════════════════════════════════════════════
 # Spec Contract Checker (C-032 gate)
 # ══════════════════════════════════════════════════════════════════════════════
 
