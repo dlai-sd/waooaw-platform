@@ -55,9 +55,6 @@ tasks_done: []
 tasks_remaining:
   - WC012-01
   - WC012-02
-  - WC012-02a
-  - WC012-02b
-  - WC012-02c
   - WC012-03
   - WC012-04
 consecutive_failures: 0
