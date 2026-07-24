@@ -304,3 +304,246 @@ If source injection had been present from day 1, the errors in rows 1-9 would no
 ---
 
 *This document is input for a Founder + EA architectural decision. It does not authorize any implementation.*
+
+---
+
+---
+
+# Part II — Chief Architect Office: Autonomous Codebase Lifecycle
+**Trigger:** How does WAOOAW maintain its codebase in fully autonomous mode across all scenarios — first implementation, ongoing defects, and constitutional amendments triggered by regulations?
+
+---
+
+## The Three Lifecycles
+
+```
+LIFECYCLE 1: First Implementation (what we're doing in WC-012 to WC-018)
+  Constitutional claim exists → Work Contract written → Sprint Agent implements
+
+LIFECYCLE 2: Defect Fixes (what happens after WC-018 is merged)
+  CCT fails OR bug filed → Constitutional Compliance Scanner identifies → 
+  Sprint Agent remediates → re-runs CCTs
+
+LIFECYCLE 3: Constitutional Amendment (regulation arrives after 2 years)
+  Plain-English change from Founder → Constitution updated → 
+  Impact Analysis finds all affected code → WCs generated → Sprint Agent propagates
+```
+
+All three lifecycles share one foundation: **C-059 traceability**. Every file in this codebase already carries `// constitutional_basis: C-NNN` in its header. This is not a bureaucratic annotation — it is the machine-readable index that makes autonomous lifecycle 3 possible.
+
+---
+
+## Real-Life Scenario: "Add Data Masking and Encryption"
+
+Founder says (plain English):
+> "Add data masking to private fields and encryption to critically important fields of customer data."
+
+### What MUST happen (full decomposition):
+
+**Step 1 — Constitutional interpretation (human + EA, one time):**
+```
+Founder input:
+  "private fields" → constitutional definition needed: which fields are PII?
+  "critically important" → constitutional definition needed: what is CRITICAL tier?
+  "customer data" → which components own customer data?
+
+Output: New constitutional claim C-NEW-001 with:
+  - Taxonomy: PII_TIER1 (name, phone, email), PII_TIER2 (address, DOB), CRITICAL (bank_account, aadhaar)
+  - Rule 1: PII_TIER1/TIER2 must be masked in logs, API responses, error messages
+  - Rule 2: CRITICAL must be encrypted at rest (AES-256-GCM), decrypted only in-memory
+  - CCT requirement: CCT-PII-01 (adversarial log scan — no PII in output)
+  - CCT requirement: CCT-ENC-01 (DB dump scan — CRITICAL fields not plaintext)
+```
+
+**Step 2 — Impact analysis (currently manual, should be automated):**
+
+Because every file already has `constitutional_basis: C-NNN` headers (C-059), the system CAN do:
+```bash
+grep -r "customer\|CustomerPhone\|aadhaar\|bank_account" src/ --include="*.cs" --include="*.py"
+grep -r "log\.\|logger\.\|print\|Logger" src/ --include="*.cs" --include="*.py"
+```
+
+Today this is manual. The autonomous version is an Impact Analysis Engine that:
+1. Reads C-NEW-001 definition (field categories + rules)
+2. Scans all `src/` files for fields matching PII taxonomy
+3. Scans all `src/` files for logging statements
+4. Produces an impact report: "these 47 locations need changes"
+
+**Step 3 — Work Contract generation (currently manual):**
+From the impact report, the system generates:
+```
+WC-NNN-platform-it-expert-sprint-NNN-pii-masking.md:
+  Task 1: Create PiiMaskingService (.NET + Python) — deterministic template
+  Task 2: Add [PiiMask] / [Encrypt] attribute to all identified entities
+  Task 3: Intercept all log statements to apply masking
+  Task 4: Add EF Core value converters for CRITICAL field encryption
+  Task 5: CCT-PII-01 adversarial test (log PII fields, assert they are masked)
+  Task 6: CCT-ENC-01 scan (dump DB, assert CRITICAL fields are ciphertext)
+```
+
+**Step 4 — Sprint Agent executes (already exists, today's capability):**
+Same mechanism as WC-012 — deterministic scaffolds for the service/converter patterns, LLM fills business logic slots.
+
+**Step 5 — Compliance scanner verifies (partially exists via CCTs, should be continuous):**
+```
+After merge: scan every log statement in codebase → assert no PII in output
+After merge: query DB → assert CRITICAL fields are encrypted
+Weekly cron: re-run compliance scan → alert on any new violation
+```
+
+---
+
+## The Architecture That Makes This Autonomous at Scale
+
+### What exists today (the foundation):
+```
+✅ C-059 traceability — every file carries constitutional_basis header
+✅ AGENTS.md convention — agents know which claims govern each directory
+✅ CCT mechanism — constitutional compliance tests, run on PR
+✅ Constitutional claim files — knowledge/claims/C-NNN.md (human-readable)
+✅ Sprint agent — executes Work Contracts autonomously
+✅ Deterministic scaffold + LLM slot-filling (recommended in Part I)
+```
+
+### What is missing (the gaps):
+```
+❌ Machine-readable claim registry — claims are prose .md files, not structured data
+❌ Impact analysis engine — no system maps "claim changed" → "files affected"
+❌ WC generator from claim diff — no system produces WCs from constitutional amendments
+❌ Cross-cutting change orchestration — pipeline is per-service, per-sprint; PII touches all services
+❌ Continuous compliance scanner — CCTs run on PR only, not as ongoing monitoring
+```
+
+### Target architecture (3-phase evolution):
+
+**Phase 1 — Now (WC-012 to WC-018): Build the implementation layer.**
+Each sprint builds a service. Traceability is established. CCTs catch violations on PR. Source-injection + slot-filling makes code generation reliable.
+
+**Phase 2 — (WC-019+): Semi-autonomous amendment propagation.**
+
+Add `knowledge/claims/C-NNN.yaml` alongside each `.md`:
+```yaml
+# C-078.yaml — machine-readable companion to C-078.md
+claim_id: C-078
+tier: PII_PROTECTION
+applies_to:
+  field_patterns: ["*Phone*", "*Email*", "*Aadhaar*", "*BankAccount*"]
+  file_patterns: ["src/**/*.cs", "src/**/*.py"]
+  context_types: [logging, api_response, error_message, db_storage]
+enforcement:
+  logging: mask  # replace with ***MASKED***
+  db_storage: encrypt  # AES-256-GCM for CRITICAL tier
+ccts:
+  - CCT-PII-01: no_pii_in_logs
+  - CCT-ENC-01: critical_fields_encrypted_at_rest
+```
+
+The Impact Analysis Engine reads these YAML files and produces:
+```json
+{
+  "affected_files": ["src/business-platform/Models/Customer.cs", ...],
+  "affected_log_sites": ["src/business-platform/Controllers/CustomersController.cs:L47", ...],
+  "work_contracts_needed": ["WC-NNN-pii-masking"],
+  "estimated_sprint_count": 2
+}
+```
+
+**Phase 3 — (12-18 months): Fully autonomous constitutional amendment absorption.**
+
+Founder writes constitutional amendment in plain English.
+The "Constitutional Amendment Agent" (a new Office):
+1. Parses plain-English amendment → drafts C-NNN.yaml + C-NNN.md
+2. Runs impact analysis → produces affected file list
+3. Drafts Work Contracts (using WC template)
+4. Submits for Founder approval
+5. On approval: sprint agent executes, compliance scanner verifies
+6. Generates compliance evidence report
+
+---
+
+## The DPDP / GDPR Scenario (Regulation Arrives in 2 Years)
+
+India's Digital Personal Data Protection (DPDP) Act or GDPR equivalent lands. Founder says:
+> "We must comply with DPDP. Data principals have the right to erasure. All personal data must have a lawful basis for processing. Processors must notify breaches within 72 hours."
+
+**Today's path (manual, months of work):**
+1. Lawyer reads regulation → maps to requirements → takes 3 months
+2. Architect maps requirements to code → impact analysis → takes 2 months
+3. Dev team implements → takes 6 months
+4. Audit → re-work → takes 3 months
+**Total: 12-18 months, high risk of drift between requirement and implementation**
+
+**WAOOAW's path (with Phase 3 architecture):**
+1. Founder reads regulation → adds 3 constitutional amendments (1 hour)
+2. Constitutional Amendment Agent parses amendments → drafts claim YAMLs → Founder approves (1 day)
+3. Impact Analysis Engine finds all affected locations (minutes)
+4. WC Generator produces work contracts (minutes)
+5. Sprint Agent implements across all services (hours to days)
+6. Compliance Scanner verifies and produces audit-ready evidence (automated)
+**Total: Days to weeks. Full constitutional traceability on every change.**
+
+The key insight: **WAOOAW's constitutional model IS the compliance framework.** Regulations are just external claims that must be mapped to internal claims. Once mapped, the entire implementation chain is automated.
+
+---
+
+## Defect Lifecycle (Ongoing Maintenance)
+
+Scenario: A bug is filed — "Customer phone number appears in logs."
+
+**With current architecture (Phase 1):**
+1. Human reviews bug → identifies it violates C-078
+2. Human opens GitHub issue → assigns to sprint
+3. Sprint agent generates fix → PR → merge
+
+**With Phase 2 architecture (compliance scanner):**
+1. Compliance scanner detects violation (next nightly run)
+2. Files GitHub issue automatically with `constitutional_basis: C-078`, `affected_file`, `line_number`
+3. Severity computed from claim tier (C-078 = high → auto-assign to next sprint)
+4. Sprint agent generates targeted fix (slot-filling, not whole file regeneration)
+5. Scanner re-runs → validates fix → closes issue
+
+No human in the loop. The constitutional annotation (`// constitutional_basis: C-078`) in the source file is the mechanism — scanner knows what claim governs that file, so it knows what rule to check.
+
+---
+
+## What This Means for Current Sprint Pipeline Design
+
+The decisions we make now in WC-012 to WC-018 lock in the foundation. Two decisions matter:
+
+**Decision 1: Constitutional annotation discipline (already in place)**
+Every generated file must carry `// constitutional_basis: C-NNN` accurately. This is C-059. It is already enforced. DO NOT relax this — it is the entire traceability foundation for Phase 2 and 3.
+
+**Decision 2: Source injection + slot-filling (Part I recommendation)**
+When we shift to slot-filling for business logic, the claim that governs each SLOT should be the template marker:
+```csharp
+/* SLOT: implement C-041 Tool Authorization logic here
+   C-041: The agent may only use tools explicitly listed in authorized_actions[].
+   Input: ctx.GetParameter("tool_name")
+   Return: EvaluationResult.Allow("C-041") or EvaluationResult.Deny("C-041", reason) */
+```
+
+This makes the slot itself a machine-readable constitutional contract. When C-041 changes, the scanner knows exactly which slots are affected.
+
+---
+
+## Summary: The Autonomy Ladder
+
+| Level | Mechanism | Status |
+|---|---|---|
+| L1: Annotated code | `// constitutional_basis: C-NNN` in every file | ✅ Done |
+| L2: Per-sprint LLM generation | Sprint Agent + CCTs | ✅ Partially working (fixing now) |
+| L3: Source-grounded generation | `inject_source_files` + slot-filling | 📋 Recommended (pipeline.md Part I) |
+| L4: Machine-readable claims | `C-NNN.yaml` alongside prose `.md` | ❌ Not started |
+| L5: Impact analysis | Claim-change → file-list | ❌ Not started |
+| L6: WC generation from claims | Amendment → Work Contracts | ❌ Not started |
+| L7: Continuous compliance scan | Nightly CCT scan → auto-issue | ❌ Not started |
+| L8: Full autonomous amendment | Amendment → code → verified | ❌ Future (Phase 3) |
+
+**The principle:** Every level depends on the level below it being solid. We are currently fixing L2 → L3. L4 through L8 require L3 to be reliable first.
+
+**The "data masking after 2 years" scenario requires L4 through L7.** It cannot be built until L3 is reliable. The current whack-a-mole with retry handlers is preventing us from advancing the ladder.
+
+---
+
+*Chief Architect recommendation: Fix L3 (source injection + slot-filling) now. Charter L4 (machine-readable claims) as a distinct IB item after WC-018 completes. L5 through L8 are future IB items under Gate G6 (Autonomy Maturation).*
+
