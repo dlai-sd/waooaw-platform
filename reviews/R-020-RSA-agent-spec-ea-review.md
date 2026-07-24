@@ -113,9 +113,10 @@ OVERALL GATE STATUS: PASS
 This review authorizes the spec to advance from DRAFT to **DRAFT (EA reviewed)**. Implementation
 sprint requires Founder ratification to begin.
 
-**Recommended Founder action:** Review §0 (DNA inheritance) and §5 (Decision Space) specifically —
+**Recommended action (Sujay):** Review §0 (DNA inheritance) and §5 (Decision Space) specifically —
 these define what the agent can do autonomously. The Level 1 autonomous code commits and Level 2
-autonomous spec PRs are the most significant authority grants.
+autonomous spec PRs are the most significant authority grants. Approve via comment on this review
+to advance status to RATIFIED.
 
 ---
 *Enterprise Architect review — 2026-07-24 · See spec v1.2 for all changes*
