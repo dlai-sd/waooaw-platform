@@ -1,9 +1,56 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-07-24 (full day session — evening close)
-**Version:** 1.5.0 — WC-012 READY, pipeline hardened, 3 new constitutional claims ratified
+**Last Updated:** 2026-07-24 (afternoon — architecture + IT expert session)
+**Version:** 1.6.0 — WC-019 dependency graph live, C-086 ratified, pipeline defects resolved, WC-012 ready for clean run
 **Declared by:** Yogesh Khandge (Founder), 2026-07-23 (implementation authorization unchanged)
-**Session:** 2026-07-24 — RCA complete, C-083/C-084/C-085 ratified, Sprint Monitor built, all pipeline gates pass
+**Session:** 2026-07-24 — WC-019 complete, 4 post-audit defects fixed, run #49 audited, 2 runner defects found and fixed
+
+---
+
+## SESSION RECORD — 2026-07-24 (afternoon — architecture + IT expert)
+
+### WC-019 Dependency Graph Task Decomposition — Complete
+
+**What was built:**
+- `scripts/task_decomposer.py` — SubTaskDef, execute_subtask_chain, C-086 gate, compile gate between sub-tasks
+- `scripts/check_c086_gate.py` — pre-flight enforcement: every decomposed task requires SIM-PL-002 with PASS verdict
+- `scripts/sprint_retry_advisor.py` — 9/9 CCTs, classifies CS0101/CS0246/CS0117 build errors between retries
+- 4 SIM-PL-002 PASS simulations: WC012-03, WC012-04, DECOMP-01, DECOMP-02
+- `tests/test_wc012_dry_run.py` — 4-phase dry run integration test (0 failures)
+- C-086 (Pre-Execution Simulation Gate) ratified — total claims: **86**
+
+**Post-audit defects fixed (found by mandatory code review):**
+
+| Defect | Root Cause | Fix |
+|---|---|---|
+| D1 (WC-019): TypeError in runner | `_execute_task_decomposed` called with 3 args; requires 5 | Pass `infra_error_tasks`, `dry_run` |
+| D2 (WC-019): Redundant import | `_MONITOR_SIGNAL` imported inside function AND received as parameter | Removed from lazy import |
+| D3 (WC-019): sys.path side effect | `sys.path.insert` called unconditionally every invocation | Guard with `if not in sys.path` |
+| D4 (WC-019): dry_run not propagated | `dry_run` not passed to decomposer call | Pass `dry_run=dry_run` explicitly |
+
+**Run #49 (30097679323) — post-run audit:**
+- WC012-01: ✅ DONE — scaffold deterministic, `dotnet build` passed
+- WC012-02: ❌ FAILED — 2 runner defects found:
+  - D1 (spec ordering): spec listed `Data/ConstitutionalDbContext.cs` as existing → LLM referenced it (CS0246)
+  - D2 (NoneType crash): `exec_module` before `sys.modules` registration → `@dataclass` crashes retry advisor
+  - Effect: only 1 attempt made instead of 3; retry loop never ran
+- WC012-03/04: ⏭ Skipped (C-084 chain halt)
+
+**Both run #49 defects fixed and pushed to main.**
+
+### State at Session Close
+
+- sprint_status: READY | tasks_done: [] | tasks_remaining: [WC012-01, WC012-02, WC012-03, WC012-04]
+- consecutive_failures: 0 | autonomous_halt: false | platform_phase: IMPLEMENTATION
+- No open PRs. No open spec-gap issues. No stale branches.
+- Pipeline: all scripts syntax-clean. D1/D2 fixes committed. Clean slate pushed.
+- Ready for next manual trigger.
+
+### Next Actions
+
+1. Trigger manual run → expect WC012-01 (deterministic) → WC012-02 (LLM, no DbContext) → WC012-03 (3 sub-tasks) → WC012-04 (3 sub-tasks)
+2. If WC012-02 still fails: check retry advisor output (should now show attempts 2 and 3)
+3. On success: PR review → merge → VERSION → 1.12.0 → WC-013
 
 ---
 
