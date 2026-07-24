@@ -30,6 +30,20 @@ REPO_ROOT = Path(__file__).parent.parent
 STATE_FILE = REPO_ROOT / "constitution" / "PROJECT_STATE.md"
 EVIDENCE_LOG = REPO_ROOT / "logs" / "bootstrap-evidence.jsonl"
 
+# TaskDecomposer — sub-task decomposition for multi-layer sprint tasks (IB-021 / WC-019)
+# Implements: architecture/reference/pipeline/dependency-graph-task-decomposition.md
+# constitutional_basis: C-084 (Step Dependency), C-086 (Pre-Execution Simulation)
+import importlib.util as _ilu, types as _types, sys as _sys
+_td_path = str(Path(__file__).parent / "task_decomposer.py")
+_td_spec = _ilu.spec_from_file_location("task_decomposer", _td_path)
+_td_mod = _ilu.module_from_spec(_td_spec)
+_td_mod.__file__ = _td_path          # required for Path(__file__) inside task_decomposer
+_sys.modules["task_decomposer"] = _td_mod
+_td_spec.loader.exec_module(_td_mod)
+SubTaskDef = _td_mod.SubTaskDef
+_execute_task_decomposed = _td_mod.execute_subtask_chain
+_check_simulation = _td_mod.check_simulation_exists
+
 # ── ADR-030: File write boundary enforcement (C-059 + C-065) ─────────────────
 ALLOWED_WRITE_ROOTS = [
     "src/",
@@ -1179,6 +1193,96 @@ def execute_wc012_01() -> bool:
     return True
 
 
+def _generate_wc012_03a_data_layer() -> bool:
+    """
+    WC012-03a: Data layer templates — EvidenceRecord + ConstitutionalDbContext.
+    DETERMINISTIC — no LLM. Namespace is fixed. Simulation: SIM-PL-002-WC012-03 PASS.
+    constitutional_basis: C-027 (append-only), C-023 (Evidence First), C-059 (Traceability)
+    """
+    print("  ── WC012-03a: Data layer (deterministic template) ──")
+    service = "constitutional-engine"
+    data_dir = REPO_ROOT / "src" / service / "Data"
+    entities_dir = data_dir / "Entities"
+    entities_dir.mkdir(parents=True, exist_ok=True)
+
+    (entities_dir / "EvidenceRecord.cs").write_text(
+        "// Implements: architecture/reference/components/constitutional-engine.md §1\n"
+        "// constitutional_basis: C-027 (append-only ledger), C-023 (Evidence First), C-059 (Traceability)\n\n"
+        "namespace Waooaw.ConstitutionalEngine.Data.Entities;\n\n"
+        "/// <summary>Append-only evidence record in the Constitutional Audit Ledger. C-027: never UPDATE or DELETE.</summary>\n"
+        "public sealed class EvidenceRecord\n"
+        "{\n"
+        "    public Guid Id { get; init; } = Guid.NewGuid();\n"
+        "    public string IdempotencyKey { get; init; } = string.Empty;\n"
+        "    public Guid TenantId { get; init; }\n"
+        "    public string EvidenceType { get; init; } = string.Empty;\n"
+        "    public string Summary { get; init; } = string.Empty;\n"
+        "    public string? PayloadJson { get; init; }\n"
+        "    public DateTimeOffset RecordedAt { get; init; } = DateTimeOffset.UtcNow;\n"
+        "}\n"
+    )
+    (data_dir / "ConstitutionalDbContext.cs").write_text(
+        "// Implements: architecture/reference/components/constitutional-engine.md §1\n"
+        "// constitutional_basis: C-027 (append-only), C-023 (Evidence First)\n\n"
+        "using Microsoft.EntityFrameworkCore;\n"
+        "using Waooaw.ConstitutionalEngine.Data.Entities;\n\n"
+        "namespace Waooaw.ConstitutionalEngine.Data;\n\n"
+        "/// <summary>EF Core context for the Constitutional Audit Ledger. C-027: INSERT only, no UPDATE/DELETE.</summary>\n"
+        "public sealed class ConstitutionalDbContext : DbContext\n"
+        "{\n"
+        "    public ConstitutionalDbContext(DbContextOptions<ConstitutionalDbContext> options) : base(options) {}\n"
+        "    public DbSet<EvidenceRecord> EvidenceRecords => Set<EvidenceRecord>();\n"
+        "}\n"
+    )
+    git(["add", f"src/{service}/Data/"], check=False)
+    print("  ✅ WC012-03a: Data layer written (EvidenceRecord + ConstitutionalDbContext)")
+    return True
+
+
+def _generate_wc012_04a_emergency_stop_entities() -> bool:
+    """
+    WC012-04a: EmergencyStop entities — EmergencyStopEvent + DbContext.
+    DETERMINISTIC — no LLM. Namespace is fixed.
+    constitutional_basis: C-001 (Emergency Stop absolute), C-023 (Evidence First), C-027 (append-only)
+    """
+    print("  ── WC012-04a: EmergencyStop entities (deterministic template) ──")
+    service = "constitutional-engine"
+    es_dir = REPO_ROOT / "src" / service / "EmergencyStop"
+    es_dir.mkdir(parents=True, exist_ok=True)
+
+    (es_dir / "EmergencyStopEvent.cs").write_text(
+        "// Implements: architecture/reference/components/constitutional-engine.md §4\n"
+        "// constitutional_basis: C-001 (Emergency Stop absolute), C-023 (Evidence First), C-027 (append-only)\n\n"
+        "namespace Waooaw.ConstitutionalEngine.EmergencyStop;\n\n"
+        "/// <summary>Append-only evidence record for Emergency Stop events. C-001 + C-027.</summary>\n"
+        "public sealed class EmergencyStopEvent\n"
+        "{\n"
+        "    public Guid Id { get; init; } = Guid.NewGuid();\n"
+        "    public Guid ContractId { get; init; }\n"
+        "    public string InitiatedByUserId { get; init; } = string.Empty;\n"
+        "    public string[] AffectedSessionIds { get; init; } = Array.Empty<string>();\n"
+        "    public DateTimeOffset TriggeredAt { get; init; } = DateTimeOffset.UtcNow;\n"
+        "    public DateTimeOffset? TemporalSignalledAt { get; set; }\n"
+        "    public string StopSource { get; init; } = \"gRPC\";\n"
+        "}\n"
+    )
+    (es_dir / "EmergencyStopDbContext.cs").write_text(
+        "// Implements: architecture/reference/components/constitutional-engine.md §4\n"
+        "// constitutional_basis: C-001 (Emergency Stop), C-027 (append-only), C-023 (Evidence First)\n\n"
+        "using Microsoft.EntityFrameworkCore;\n\n"
+        "namespace Waooaw.ConstitutionalEngine.EmergencyStop;\n\n"
+        "/// <summary>EF Core context for Emergency Stop evidence. Append-only per C-027.</summary>\n"
+        "public sealed class EmergencyStopDbContext : DbContext\n"
+        "{\n"
+        "    public EmergencyStopDbContext(DbContextOptions<EmergencyStopDbContext> options) : base(options) {}\n"
+        "    public DbSet<EmergencyStopEvent> EmergencyStopEvents => Set<EmergencyStopEvent>();\n"
+        "}\n"
+    )
+    git(["add", f"src/{service}/EmergencyStop/"], check=False)
+    print("  ✅ WC012-04a: EmergencyStop entities written")
+    return True
+
+
 _INFRA_ERROR_TASKS: list[str] = []  # populated by execute_with_llm when all 3 attempts are API failures
 
 # ── Sprint Monitor signal (C-069: self-improvement loop) ──────────────────────
@@ -1237,48 +1341,121 @@ TASK_HANDLERS = {
         model_hint="reasoning",
         max_tokens=10000  # Implementation task: evaluators + tests fit in 10k
     ),
-    "WC012-03": lambda: execute_with_llm(
-        "WC012-03", "CE Evidence First record + CCT-EF-01",
-        {
-            "architecture/reference/components/constitutional-engine.md": "§1 Evidence First Enforcer",
-            "architecture/reference/data/": "§constitutional schema",
-        },
-        "⚠️  BRANCH CONTEXT RULE: WC012-01 and WC012-02 already generated files. READ BRANCH CONTEXT. "
-        "DO NOT regenerate: csproj, Protos/, Program.cs, Services/ConstitutionalEngineService.cs, "
-        "Data/ConstitutionalDbContext.cs, Data/Entities/EvidenceRecord.cs, any Evaluator files. "
-        "FOR ConstitutionalEngineService.cs: implement RecordEvidence in the EXISTING stub. "
-        "RecordEvidence writes to constitutional.evidence_records BEFORE returning success (C-023 Evidence First). "
-        "Append-only — no UPDATE or DELETE ever issued (C-007/C-027). "
-        "Idempotency: check idempotency_key in DB before inserting — return existing record if found (C-085). "
-        "CCT-EF-01: tests/constitutional-engine.Tests/Services/CCT_EF01_EvidenceFirstTests.cs "
-        "Test verifies: RecordEvidence writes DB record BEFORE returning the gRPC response. "
-        "All .cs files carry // Implements: and // constitutional_basis: headers.",
-        model_hint="reasoning",
-        max_tokens=10000  # Implementation task
-    ),
-    "WC012-04": lambda: execute_with_llm(
-        "WC012-04", "CE Emergency Stop signal + CCT-HO-01",
-        {
-            "architecture/reference/components/constitutional-engine.md": "§4 Emergency Stop Handler",
-            "architecture/reference/api-specs/emergency-stop-ws.md": "full",
-            "adr/ADR-031-ce-fail-safe-unavailability.md": "§Recovery",
-            "architecture/reference/dotfiles/constitutional-engine.csproj": "full",
-        },
-        "⚠️  BRANCH CONTEXT RULE: WC012-01/02/03 already generated files. READ BRANCH CONTEXT. "
-        "DO NOT regenerate: csproj, Protos/, Program.cs, Services/ConstitutionalEngineService.cs, "
-        "Data/ entities or DbContexts, or any Evaluator files. "
-        "FOR ConstitutionalEngineService.cs: implement TriggerEmergencyStop in the EXISTING stub. "
-        "FOR csproj: DO NOT touch — it already exists on branch with correct Temporalio 0.1.0-beta1. "
-        "Add EmergencyStop/ subdirectory INSIDE src/constitutional-engine/ with new classes ONLY. "
-        "TriggerEmergencyStop: C-001 absolute — records to constitutional.emergency_stop_events "
-        "BEFORE signalling Temporal (Evidence First, C-023). Temporal signal within 100ms. "
-        "CCT-HO-01: tests/constitutional-engine.Tests/EmergencyStop/CCT_HO01_*Tests.cs "
-        "Test verifies Emergency Stop completes ≤250ms with mocked dependencies. "
-        "Use FakeServerCallContext (NOT Mock<ServerCallContext> — non-virtual property). "
-        "All .cs files carry // Implements: and // constitutional_basis: headers.",
-        model_hint="reasoning",
-        max_tokens=10000  # Implementation task
-    ),
+    "WC012-03": {
+        # SIM-PL-002-WC012-03: PASS (2026-07-24) — C-086 gate satisfied
+        # Three sub-tasks in dependency order: Data layer → Implementation → Tests
+        "subtasks": [
+            SubTaskDef(
+                id="WC012-03a",
+                description="Data layer — EvidenceRecord entity + ConstitutionalDbContext (deterministic template)",
+                type="deterministic",
+                depends_on=[],
+                compile_gate="dotnet_build",
+                template_fn=lambda: _generate_wc012_03a_data_layer(),
+            ),
+            SubTaskDef(
+                id="WC012-03b",
+                description="RecordEvidence implementation — Evidence First write + idempotency",
+                type="llm",
+                depends_on=["WC012-03a"],
+                compile_gate="dotnet_build",
+                spec_sections={
+                    "architecture/reference/components/constitutional-engine.md": "§1 Evidence First Enforcer",
+                },
+                constitutional_check=(
+                    "BRANCH CONTEXT: WC012-03a just committed Data/Entities/EvidenceRecord.cs "
+                    "and Data/ConstitutionalDbContext.cs to the branch. These files exist with namespace "
+                    "Waooaw.ConstitutionalEngine.Data.Entities (EvidenceRecord) and "
+                    "Waooaw.ConstitutionalEngine.Data (DbContext). "
+                    "DO NOT regenerate them. "
+                    "FOR ConstitutionalEngineService.cs: implement RecordEvidence in the EXISTING stub. "
+                    "RecordEvidence: inject ConstitutionalDbContext via constructor DI. "
+                    "Write EvidenceRecord to DB BEFORE returning gRPC response (C-023 Evidence First). "
+                    "Check IdempotencyKey in DB first — return existing record if found (C-085). "
+                    "Append-only — no UPDATE or DELETE ever (C-007/C-027). "
+                    "All .cs files carry // Implements: and // constitutional_basis: headers."
+                ),
+                model_hint="reasoning",
+                max_tokens=8000,
+            ),
+            SubTaskDef(
+                id="WC012-03c",
+                description="CCT-EF-01 — Evidence First ordering test",
+                type="llm",
+                depends_on=["WC012-03a", "WC012-03b"],
+                compile_gate="dotnet_build",
+                spec_sections={
+                    "tests/QA-STRATEGY.md": "§5.1 Unit Tests",
+                },
+                constitutional_check=(
+                    "Write CCT-EF-01 test only — do NOT regenerate any implementation files. "
+                    "File: tests/constitutional-engine.Tests/Services/CCT_EF01_EvidenceFirstTests.cs "
+                    "Test class must verify: RecordEvidence writes DB record BEFORE returning gRPC response. "
+                    "Use Moq for ConstitutionalDbContext. Use FakeServerCallContext (NOT Mock<ServerCallContext>). "
+                    "Test must call RecordEvidence and assert SaveChanges was called before the response returned. "
+                    "All .cs files: // Implements: and // constitutional_basis: C-023, C-076"
+                ),
+                model_hint="reasoning",
+                max_tokens=5000,
+            ),
+        ]
+    },
+    "WC012-04": {
+        # SIM-PL-002-WC012-04 required before this runs — see WC019-04
+        # Sub-tasks: EmergencyStop entities (deterministic) → Handler impl → CCT-HO-01
+        "subtasks": [
+            SubTaskDef(
+                id="WC012-04a",
+                description="EmergencyStop entities — EmergencyStopEvent entity + DbContext (deterministic)",
+                type="deterministic",
+                depends_on=[],
+                compile_gate="dotnet_build",
+                template_fn=lambda: _generate_wc012_04a_emergency_stop_entities(),
+            ),
+            SubTaskDef(
+                id="WC012-04b",
+                description="TriggerEmergencyStop implementation — Evidence First + Temporal signal",
+                type="llm",
+                depends_on=["WC012-04a"],
+                compile_gate="dotnet_build",
+                spec_sections={
+                    "architecture/reference/components/constitutional-engine.md": "§4 Emergency Stop Handler",
+                },
+                constitutional_check=(
+                    "BRANCH CONTEXT: WC012-04a just committed EmergencyStop/ directory with "
+                    "EmergencyStopEvent entity and EmergencyStopDbContext. "
+                    "DO NOT regenerate these files. "
+                    "FOR ConstitutionalEngineService.cs: implement TriggerEmergencyStop in the EXISTING stub. "
+                    "TriggerEmergencyStop: C-001 absolute — write EmergencyStopEvent to DB FIRST (C-023), "
+                    "THEN signal Temporal (ADR-018). Use EmergencyStopDbContext injected via constructor DI. "
+                    "Temporalio version in csproj is 0.1.0-beta1 — use that exact API. "
+                    "All .cs files carry // Implements: and // constitutional_basis: headers."
+                ),
+                model_hint="reasoning",
+                max_tokens=8000,
+            ),
+            SubTaskDef(
+                id="WC012-04c",
+                description="CCT-HO-01 — Emergency Stop ≤250ms test",
+                type="llm",
+                depends_on=["WC012-04a", "WC012-04b"],
+                compile_gate="dotnet_build",
+                spec_sections={
+                    "tests/QA-STRATEGY.md": "§5.1 Unit Tests",
+                },
+                constitutional_check=(
+                    "Write CCT-HO-01 test only — do NOT regenerate implementation files. "
+                    "File: tests/constitutional-engine.Tests/EmergencyStop/CCT_HO01_EmergencyStopLatencyTests.cs "
+                    "Test: TriggerEmergencyStop completes in ≤250ms with mocked Temporalio client. "
+                    "Use FakeServerCallContext. Mock EmergencyStopDbContext. Mock ITemporalClient. "
+                    "Measure elapsed time with Stopwatch. Assert ≤250ms. "
+                    "All .cs files: // Implements: and // constitutional_basis: C-001, C-076"
+                ),
+                model_hint="reasoning",
+                max_tokens=5000,
+            ),
+        ]
+    },
 }
 
 
@@ -1391,7 +1568,24 @@ def main() -> int:
             print(f"  DRY RUN: would execute {task}")
             continue
         try:
-            success = handler()
+            # Route through TaskDecomposer if task is a dict with subtasks (IB-021 / WC-019)
+            # Backward compatible: callable handlers still execute directly (WC011-xx, WC012-01/02)
+            if callable(handler):
+                success = handler()
+            elif isinstance(handler, dict) and "subtasks" in handler:
+                # C-086: check simulation exists before calling LLM
+                ok, sim_msg = _check_simulation(task)
+                if not ok:
+                    print(f"  ❌ C-086: {sim_msg}")
+                    print(f"  Create simulation/SIM-PL-002-{task}-*.md with Verdict: PASS first.")
+                    tasks_not_implemented.append(task)
+                    continue
+                print(f"  ✅ C-086 gate: {sim_msg}")
+                success = _execute_task_decomposed(task, handler["subtasks"], _MONITOR_SIGNAL)
+            else:
+                print(f"  ⚠️  TASK_NOT_IMPLEMENTED: {task} — unknown handler format")
+                tasks_not_implemented.append(task)
+                continue
             if success:
                 tasks_done.append(task)
                 # RC#2: Write tasks_done/tasks_remaining to PROJECT_STATE.md after each success.
