@@ -1,20 +1,68 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-07-24 (EA+IT Expert session — clean WC-012 restart authorized)
-**Version:** 1.4.0 — WC-012 READY for clean run, pipeline RC#1/RC#2/RC#3 fixed
+**Last Updated:** 2026-07-24 (full day session — evening close)
+**Version:** 1.5.0 — WC-012 READY, pipeline hardened, 3 new constitutional claims ratified
 **Declared by:** Yogesh Khandge (Founder), 2026-07-23 (implementation authorization unchanged)
-**Session:** 2026-07-24 — RCA complete, 3 pipeline root causes fixed, WC-012 reset to READY
+**Session:** 2026-07-24 — RCA complete, C-083/C-084/C-085 ratified, Sprint Monitor built, all pipeline gates pass
 
 ---
 
-## SESSION CLOSE RECORD — 2026-07-24 (EA+IT Expert RCA session)
+## SESSION CLOSE RECORD — 2026-07-24 (full day — evening close)
 
-### WC-012 Reset to Clean READY State
+### Audit → RCA → Pipeline Hardening → Constitutional Ratification
 
 **What happened overnight (runs #30046231957 → #30065913447):**
-- Pipeline produced a partially-built PR #28: WC012-01/02/04 code committed but build was broken at intermediate state
-- 9 false spec-gap issues (#26–#35) created — NOT real spec gaps (pipeline bug)
-- Tests were 1/11 passing (Moq mock used non-virtual ServerCallContext.RequestHeaders)
+- Pipeline produced PR #28 with build errors: WC012-02/04 committed before WC012-01 scaffold was clean
+- 9 false spec-gap issues created — all closed with RCA documentation in #36
+
+**Root causes fixed + pipeline hardened:**
+
+| RC | Fix | Constitutional Claim |
+|---|---|---|
+| RC#1: scaffold failure didn't halt sprint | SCAFFOLD_TASKS frozenset + break in execution loop | C-084 |
+| RC#2: tasks_done never written | Per-task set-list after each success | C-085 |
+| RC#3: Moq non-virtual ServerCallContext | FakeServerCallContext concrete stub | C-076 |
+
+**Sprint Monitor built (C-069 self-improvement loop):**
+- `scripts/sprint_monitor.py` — runs after every sprint execution
+- Classifies: INFRA_ERROR / CASCADE_PIPELINE_BUG / IDEMPOTENCY_BUG / SPEC_GAP_GENUINE
+- Emits signals: runner writes `monitor-signal.json` artifact; monitor downloads and reads it
+- Auto-closes false spec-gap issues; drafts constitutional proposals
+- Fixed 5 design defects in monitor: signal in wrong job, scaffold from wrong source, dashboard noise, duplicate proposals, misleading success messages
+
+**Constitutional claims ratified (3 new — total now 85):**
+
+| Claim | Title | Source |
+|---|---|---|
+| C-083 | Emit-Transport-Listen — streaming signals at every action boundary | Pipeline failure: monitor couldn't see runner's work |
+| C-084 | Step Dependency Ordering — upstream fail MUST halt downstream steps | Pipeline failure: WC012-02/04 committed on broken WC012-01 |
+| C-085 | Idempotency Obligation — completed steps not re-executed on retry | Pipeline failure: tasks_done not tracked, tasks re-ran |
+
+**Additional fixes:**
+- CCT-EF-01, CCT-HO-01, evaluator test suite (42/42 passing) added to test project
+- Workflow YAML: `monitor needs report` (broken dep caused push-validation failure runs #40–#43)
+- `sprint_state.py`: set-list command restored after automated edit removed it
+- `knowledge/index.md`: C-077–C-085 all indexed
+- `sprint-context/*.json` added to .gitignore (regenerated artifacts)
+
+### State at Session Close
+
+- sprint_status: READY | tasks_done: [] | tasks_remaining: [WC012-01, WC012-02, WC012-03, WC012-04]
+- consecutive_failures: 0 | autonomous_halt: false | platform_phase: IMPLEMENTATION
+- No open PRs. No open spec-gap issues. No stale branches.
+- Pipeline: all 6 scripts syntax-clean. Workflow YAML: all job deps valid.
+- Ready to trigger WC-012.
+
+### Tomorrow First Actions
+
+1. Complete BOOTSTRAP sequence
+2. Check Issue #7 — did WC-012 run? What did the Constitutional Monitor report?
+3. If PR opened → code review (build ✅ + 42/42 tests ✅ standard), approve/merge
+4. If run failed with spec-gap → check monitor classification (genuine gap or pipeline bug?)
+
+---
+
+## SESSION CLOSE RECORD — 2026-07-24 (EA+IT Expert RCA session — morning)
 
 **Root causes fixed (all 3 on main now):**
 | RC | Fix | Location |

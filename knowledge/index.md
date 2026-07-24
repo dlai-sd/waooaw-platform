@@ -88,7 +88,7 @@ Derived from CONFIRMED or LAW claims. These authorize specific architectural dec
 
 | Status | Count | IDs |
 |---|---|---|
-| RATIFIED | 76 | C-001 through C-076 (all) |
+| RATIFIED | 85 | C-001 through C-082, C-083, C-084, C-085 (all) |
 | DRAFT | 0 | — |
 
 ---
@@ -140,7 +140,15 @@ Derived from CONFIRMED or LAW claims. These authorize specific architectural dec
 | C-074 | ARCHITECTURAL_CONSTRAINT | On-the-fly MCP Provisioning — new domains served without deployment cycles via mcp_registry | 2026-07-19 |
 | C-075 | COMMERCIAL | White-label reseller model — agency wholesale (₹899-1,299/seat) + customer retail billing via own MBM/MCC | 2026-07-19 |
 | C-076 | PLATFORM_INTEGRITY | 90% Minimum Code Coverage Obligation — all platform services (CE/BP/PR/AIR/Web/scripts) must maintain ≥90% line coverage on unit tests; non-compliance blocks PR merge at Gate 1 | 2026-07-22 |
-| C-077 | PLATFORM_INTEGRITY | **DRAFT — pending Founder ratification.** Development Tooling Cost Ceiling — autonomous development agent token spend must not exceed a Founder-set monthly ceiling; zero-cost execution (GitHub Models free tier) is the default; paid models require explicit authorization per sprint | DRAFT |
+| C-077 | PLATFORM_INTEGRITY | Development Tooling Cost Ceiling — autonomous development agent token spend ≤ ₹5,000/month; zero-cost execution is default; paid models require explicit Founder authorization per sprint | 2026-07-23 |
+| C-078 | PLATFORM_INTEGRITY | Every prompt sent to an external LLM provider must include the constitutional system prompt — no LLM call without constitutional context | 2026-07-23 |
+| C-079 | PLATFORM_INTEGRITY | CE fail-safe unavailability — if CE is unreachable, the calling service must refuse to proceed (fail-safe deny, not fail-open allow) | 2026-07-23 |
+| C-080 | PLATFORM_INTEGRITY | Docker Test Isolation — all automated tests run via Docker; no virtual environments permitted; C-076 coverage gates enforced in Docker only | 2026-07-23 |
+| C-081 | PLATFORM_INTEGRITY | Approved Reference Dependency Files — every scaffold must copy EA-approved dotfiles verbatim; no LLM-hallucinated package versions | 2026-07-23 |
+| C-082 | PLATFORM_INTEGRITY | Build Validation for All Stacks — runner must validate every language/framework (Python py_compile, .NET dotnet build, TypeScript tsc); unvalidated code must not be committed | 2026-07-23 |
+| C-083 | ARCHITECTURAL_CONSTRAINT | Emit-Transport-Listen — every agent MUST emit structured signals at each significant action boundary so downstream observers can act in real time; Evidence First (C-023) records outcomes, C-083 requires streaming signals during execution | 2026-07-24 |
+| C-084 | ARCHITECTURAL_CONSTRAINT | Step Dependency Ordering — step N+1 MUST NOT execute if step N produced FAIL/HALT/ERROR signal in current workflow instance; formalises RC#1 pipeline fix | 2026-07-24 |
+| C-085 | ARCHITECTURAL_CONSTRAINT | Idempotency Obligation — before executing any step with external side effects, check for existing SUCCESS signal; prevents duplicate emails, trades, commits on Temporal retry or cron re-run | 2026-07-24 |
 
 ---
 

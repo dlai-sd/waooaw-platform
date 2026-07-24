@@ -8,6 +8,48 @@ types: `feat` | `fix` | `constitutional` | `cct` | `chore` | `refactor` | `secur
 
 ---
 
+## [1.5.0-doc] — 2026-07-24 (Design & Pipeline Hardening)
+
+### Constitutional (3 new claims — total 85 ratified)
+- **C-083**: Emit-Transport-Listen Obligation — every agent must emit structured signals at each action boundary; streaming visibility is distinct from Evidence First (C-023) outcome records
+- **C-084**: Step Dependency Ordering — step N+1 must not execute if step N produced FAIL/HALT/ERROR; formalises RC#1 pipeline fix; basis for CCT-DEP-01
+- **C-085**: Idempotency Obligation — before executing any step with external side effects, check for existing SUCCESS signal; prevents duplicate emails/trades/commits on Temporal retry or cron re-run
+
+### Constitutional (previously missing from index — now indexed)
+- C-077: Development Tooling Cost Ceiling (₹5,000/month, ratified 2026-07-23)
+- C-078: LLM Constitutional System Prompt mandatory (ratified 2026-07-23)
+- C-079: CE fail-safe unavailability (fail-safe deny, ratified 2026-07-23)
+- C-080: Docker Test Isolation — no virtual environments (ratified 2026-07-23)
+- C-081: Approved Reference Dependency Files (ratified 2026-07-23)
+- C-082: Build Validation for All Stacks (ratified 2026-07-23)
+
+### Pipeline (sprint runner + workflow)
+- **feat**: Sprint Monitor (`scripts/sprint_monitor.py`) — C-069 self-improvement loop in every sprint run; classifies INFRA_ERROR / CASCADE_PIPELINE_BUG / IDEMPOTENCY_BUG / SPEC_GAP_GENUINE; auto-closes false issues; drafts constitutional proposals
+- **fix**: RC#1 — Sprint halts when scaffold task fails (SCAFFOLD_TASKS frozenset + break in execution loop)
+- **fix**: RC#2 — tasks_done written per task success via set-list command (C-085 idempotency)
+- **fix**: RC#3 — FakeServerCallContext replaces Moq non-virtual mock (10/11 → 11/11 tests)
+- **fix**: Monitor signal artifact uploaded from execute job (was incorrectly in preflight)
+- **fix**: Monitor scaffold detection from SCAFFOLD_TASKS frozenset (not positional tasks[0])
+- **fix**: Sprint Dashboard only updated when actionable — no noise on ALL_PASS runs
+- **fix**: Constitutional proposal deduplication — query GitHub before creating
+- **fix**: sprint_state.py set-list command (restored after automated edit removal)
+- **fix**: Workflow YAML job dependency `monitor needs report` (broken dep caused push-validation failure runs)
+- **fix**: sprint_status backtick artifact in PROJECT_STATE.md narrative text
+
+### Tests (CCTs)
+- **cct**: CCT-EF-01 — Evidence First: PersistEvidence MUST complete before TriggerTemporalSignal (4 cases)
+- **cct**: CCT-HO-01 — Emergency Stop handler ≤100ms budget, 20-run P99 (2 cases)
+- **feat**: Evaluator test suite — C-041/C-043/C-048/C-049/C-051/C-062 + EvaluatorRegistry ordering (27 cases)
+- **fix**: TenantMetadataExtractor tests — FakeServerCallContext (11 cases; was 1/11 passing)
+- **Total**: 42/42 CCT tests pass
+
+### Housekeeping
+- `.gitignore`: sprint-context/index.json + monitor-signal.json (regenerated artifacts)
+- Closed false spec-gap issues #26–#35 (pipeline bugs, not spec gaps)
+- Closed RCA issue #36, pre-runner gap issue #12
+
+---
+
 ## [0.99.0] — 2026-07-22
 
 ### Fix (infrastructure — GAP-1 complete)
