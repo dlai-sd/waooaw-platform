@@ -355,6 +355,30 @@ def diagnose_build_error(
         m = re.search(r"'([^']+)' does not contain a definition for '([^']+)'", build_error)
         if m:
             type_name, field_name = m.group(1), m.group(2)
+
+            # EvaluatorRegistry — LLM invents method names that don't exist
+            if "EvaluatorRegistry" in type_name or field_name in (
+                "GetEvaluators", "GetApplicableEvaluators", "GetAll", "Evaluate",
+            ):
+                fix = (
+                    f"REGISTRY METHOD NOT FOUND: 'EvaluatorRegistry' does NOT have '{field_name}'. "
+                    f"EvaluatorRegistry has exactly ONE public method: "
+                    f"EvaluateAllAsync(EvaluationContext context, CancellationToken ct) "
+                    f"→ Task<IReadOnlyList<EvaluationResult>>. "
+                    f"CORRECT usage: var results = await _registry.EvaluateAllAsync(ctx, cancellationToken); "
+                    f"Do NOT call GetEvaluators(), GetApplicableEvaluators(), GetAll(), Evaluate(), "
+                    f"or any other method — NONE of them exist on EvaluatorRegistry."
+                )
+                print(f"  Retry Advisor: CS1061 EvaluatorRegistry.{field_name} invented method (confidence=95%)")
+                return RetryDiagnosis(
+                    error_type=WRONG_FIELD_NAME,
+                    fix_instruction=fix,
+                    should_retry=True,
+                    confidence=0.95,
+                    constitutional_trace="C-082 (Build Validation — EvaluatorRegistry.EvaluateAllAsync is the only public method)"
+                )
+
+            # EvaluationContext / string — original TryGetValue case
             fix = (
                 f"FIELD NOT FOUND: '{type_name}.{field_name}' does not exist. "
                 f"EvaluationContext is a sealed record with these EXACT properties: "

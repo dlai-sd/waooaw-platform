@@ -558,3 +558,141 @@ class TestExecuteSubtaskChainLivePaths:
                     )
                     assert result is True
                     assert monitor["subtask_results"]["WC012-02b"]["result"] == "SUCCESS"
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# PTR wiring tests — C-083 Emit after compile gate, C-085 inject before LLM
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class TestPTRWiring:
+    """Tests that PTR update is called after compile gate and injected before LLM."""
+
+    def _make_monitor(self) -> dict:
+        return {"sprint": "WC-012", "task_results": {}, "signals": []}
+
+    def test_ptr_update_called_after_deterministic_subtask(self, monkeypatch, tmp_path):
+        """After deterministic subtask compile gate passes, update_ptr_from_task is called."""
+        import task_decomposer
+
+        ptr_calls = []
+
+        mock_runner = MagicMock(
+            get_branch_context=lambda: "",
+            git=MagicMock(return_value=MagicMock(returncode=1)),
+        )
+
+        # Create a fake .cs file so rglob finds something
+        cs_file = tmp_path / "src" / "ce" / "Ctx.cs"
+        cs_file.parent.mkdir(parents=True)
+        cs_file.write_text("namespace X; public sealed record Ctx(string Id);")
+
+        def fake_update_ptr(task_id, files):
+            ptr_calls.append((task_id, files))
+
+        with patch("task_decomposer.REPO_ROOT", tmp_path):
+            with patch.dict("sys.modules", {"autonomous_sprint_runner": mock_runner}):
+                with patch("task_decomposer.run_compile_gate", return_value=(True, "")):
+                    # Patch the source module since execute_subtask_chain does a local import
+                    with patch("platform_type_registry.update_ptr_from_task", fake_update_ptr):
+                        st = SubTaskDef(
+                            id="WC012-02a", description="interfaces", type="deterministic",
+                            template_fn=lambda: True,
+                        )
+                        execute_subtask_chain(
+                            task_id="WC012-02",
+                            subtasks=[st],
+                            monitor_signal=self._make_monitor(),
+                            infra_error_tasks=[],
+                            dry_run=False,
+                        )
+        # PTR update called with WC012-02a and the .cs file path
+        assert len(ptr_calls) >= 1
+        assert ptr_calls[0][0] == "WC012-02a"
+
+    def test_ptr_injection_into_llm_constitutional_check(self, monkeypatch, tmp_path):
+        """Before LLM subtask, build_ptr_prompt_block output is appended to constitutional_check."""
+        import task_decomposer
+
+        injected_check = []
+
+        def fake_execute_with_llm(task_id, desc, spec, constitutional_check, model, tokens):
+            injected_check.append(constitutional_check)
+            return True
+
+        mock_runner = MagicMock(
+            execute_with_llm=fake_execute_with_llm,
+            get_branch_context=lambda: "",
+            git=MagicMock(return_value=MagicMock(returncode=1)),
+        )
+
+        fake_ptr = {
+            "tasks": {
+                "WC012-02a": {
+                    "types": {
+                        "EvaluatorRegistry": {
+                            "kind": "class",
+                            "properties": {},
+                            "methods": [{"name": "EvaluateAllAsync", "return_type": "Task", "params": "EvaluationContext ctx"}],
+                        }
+                    },
+                    "files": [],
+                }
+            }
+        }
+
+        with patch("task_decomposer.REPO_ROOT", tmp_path):
+            with patch.dict("sys.modules", {"autonomous_sprint_runner": mock_runner}):
+                with patch("task_decomposer.run_compile_gate", return_value=(True, "")):
+                    # Patch source module — local imports resolve to the patched versions
+                    with patch("platform_type_registry.load_ptr", return_value=fake_ptr):
+                        with patch("platform_type_registry.build_ptr_prompt_block",
+                                   return_value="\n# TYPE CONTRACT: EvaluatorRegistry — EvaluateAllAsync"):
+                            st = SubTaskDef(
+                                id="WC012-02b", description="evaluators", type="llm",
+                                spec_sections={"spec.md": "full"},
+                                constitutional_check="BASE CHECK",
+                                model_hint="reasoning",
+                                max_tokens=5000,
+                            )
+                            execute_subtask_chain(
+                                task_id="WC012-02",
+                                subtasks=[st],
+                                monitor_signal=self._make_monitor(),
+                                infra_error_tasks=[],
+                                dry_run=False,
+                            )
+
+        assert len(injected_check) == 1
+        # PTR block must be appended to the base constitutional check
+        assert "BASE CHECK" in injected_check[0]
+        assert "TYPE CONTRACT" in injected_check[0] or "EvaluateAllAsync" in injected_check[0]
+
+    def test_ptr_failure_does_not_block_sprint(self, monkeypatch, tmp_path):
+        """If PTR update fails, sprint execution must continue (best-effort)."""
+        import task_decomposer
+
+        mock_runner = MagicMock(
+            execute_with_llm=MagicMock(return_value=True),
+            get_branch_context=lambda: "",
+            git=MagicMock(return_value=MagicMock(returncode=1)),
+        )
+
+        with patch("task_decomposer.REPO_ROOT", tmp_path):
+            with patch.dict("sys.modules", {"autonomous_sprint_runner": mock_runner}):
+                with patch("task_decomposer.run_compile_gate", return_value=(True, "")):
+                    # Simulate PTR raising on call — sprint must still succeed
+                    with patch("platform_type_registry.update_ptr_from_task",
+                               side_effect=RuntimeError("PTR unavailable")):
+                        st = SubTaskDef(
+                            id="WC012-02a", description="interfaces", type="deterministic",
+                            template_fn=lambda: True,
+                        )
+                        result = execute_subtask_chain(
+                            task_id="WC012-02",
+                            subtasks=[st],
+                            monitor_signal=self._make_monitor(),
+                            infra_error_tasks=[],
+                            dry_run=False,
+                        )
+        # Sprint must succeed despite PTR failure
+        assert result is True

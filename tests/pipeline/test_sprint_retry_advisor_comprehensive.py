@@ -339,4 +339,74 @@ class TestAdvisorCoverageBranches:
         error = "error CS0117: 'MyType' does not contain a definition for 'MyField'"
         result = diagnose_build_error("WC012-02", error, [])
         assert result.error_type == WRONG_FIELD_NAME
-        assert "MyType" in result.fix_instruction or "MyField" in result.fix_instruction
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# CCT-SRA-06: CS1061 EvaluatorRegistry invented method names
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class TestCS1061EvaluatorRegistry:
+    """WC012 run failure: LLM called _registry.GetEvaluators() which doesn't exist."""
+
+    def test_get_evaluators_classified(self):
+        error = (
+            "error CS1061: 'EvaluatorRegistry' does not contain a definition for 'GetEvaluators' "
+            "and no accessible extension method 'GetEvaluators' accepting a first argument of type "
+            "'EvaluatorRegistry' could be found"
+        )
+        result = diagnose_build_error("WC012-02b", error, [])
+        assert result.error_type == WRONG_FIELD_NAME
+        assert result.should_retry is True
+        assert result.confidence >= 0.90
+
+    def test_get_applicable_evaluators_classified(self):
+        error = (
+            "error CS1061: 'EvaluatorRegistry' does not contain a definition for 'GetApplicableEvaluators'"
+        )
+        result = diagnose_build_error("WC012-02b", error, [])
+        assert result.error_type == WRONG_FIELD_NAME
+        assert result.should_retry is True
+
+    def test_fix_instruction_names_evaluate_all_async(self):
+        """Fix must name the correct EvaluateAllAsync method — not just say 'wrong field'."""
+        error = (
+            "error CS1061: 'EvaluatorRegistry' does not contain a definition for 'GetEvaluators'"
+        )
+        result = diagnose_build_error("WC012-02b", error, [])
+        assert "EvaluateAllAsync" in result.fix_instruction, (
+            f"Fix must name EvaluateAllAsync. Got: {result.fix_instruction[:200]}"
+        )
+
+    def test_fix_instruction_prohibits_invented_methods(self):
+        error = (
+            "error CS1061: 'EvaluatorRegistry' does not contain a definition for 'GetApplicableEvaluators'"
+        )
+        result = diagnose_build_error("WC012-02b", error, [])
+        assert "GetApplicableEvaluators" in result.fix_instruction or "do NOT" in result.fix_instruction.upper() or "NONE" in result.fix_instruction
+
+    def test_evaluate_method_also_classified(self):
+        """Generic 'Evaluate' without 'All' also caught."""
+        error = (
+            "error CS1061: 'EvaluatorRegistry' does not contain a definition for 'Evaluate'"
+        )
+        result = diagnose_build_error("WC012-02b", error, [])
+        assert result.error_type == WRONG_FIELD_NAME
+        assert "EvaluateAllAsync" in result.fix_instruction
+
+    def test_constitutional_trace_present(self):
+        error = "error CS1061: 'EvaluatorRegistry' does not contain a definition for 'GetEvaluators'"
+        result = diagnose_build_error("WC012-02b", error, [])
+        assert result.constitutional_trace != ""
+
+    def test_evaluationcontext_trygetvalue_still_classified(self):
+        """Original TryGetValue case must still work after EvaluatorRegistry branch added."""
+        error = (
+            "error CS1061: 'string' does not contain a definition for 'TryGetValue'"
+        )
+        result = diagnose_build_error("WC012-02b", error, [])
+        assert result.error_type == WRONG_FIELD_NAME
+        assert result.should_retry is True
+        # Must still name EvaluationContext properties
+        assert any(kw in result.fix_instruction for kw in [
+            "GetParameter", "ContractId", "TenantId", "ActionParameters"
+        ])

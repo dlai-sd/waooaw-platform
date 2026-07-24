@@ -174,11 +174,31 @@ def execute_subtask_chain(
             print(f"  [{st.id}] Calling LLM ({st.model_hint}, max={st.max_tokens} tokens)...")
             # Inject branch context into spec content for LLM call
             spec_with_context = dict(st.spec_sections)
+
+            # C-085 / DP-009: inject PTR type contracts into constitutional_check
+            # so the LLM sees compiled property names, not spec prose that may have drifted.
+            constitutional_check = st.constitutional_check
+            try:
+                from platform_type_registry import build_ptr_prompt_block, load_ptr
+                ptr = load_ptr()
+                if ptr:
+                    all_type_names = [
+                        t
+                        for task_entry in ptr.get("tasks", {}).values()
+                        for t in task_entry.get("types", {}).keys()
+                    ]
+                    ptr_block = build_ptr_prompt_block(all_type_names, ptr=ptr)
+                    if ptr_block:
+                        constitutional_check = st.constitutional_check + ptr_block
+                        print(f"  PTR: injected {len(all_type_names)} compiled type(s) into prompt (C-085/DP-009)")
+            except Exception as _ptr_err:
+                print(f"  PTR injection skipped: {_ptr_err}")
+
             success = execute_with_llm(
                 st.id,
                 st.description,
                 spec_with_context,
-                st.constitutional_check,
+                constitutional_check,
                 st.model_hint,
                 st.max_tokens,
             )
@@ -201,6 +221,20 @@ def execute_subtask_chain(
             return False
 
         print(f"  [{st.id}] Compile gate: ✅ PASS")
+
+        # C-083 Emit: extract compiled types → write to PTR for downstream subtasks.
+        # Best-effort — never blocks sprint execution.
+        try:
+            from platform_type_registry import update_ptr_from_task
+            src_cs_files = [
+                str(f.relative_to(REPO_ROOT))
+                for f in (REPO_ROOT / "src").rglob("*.cs")
+                if f.is_file()
+            ]
+            if src_cs_files:
+                update_ptr_from_task(st.id, src_cs_files)
+        except Exception as _ptr_err:
+            print(f"  PTR update skipped: {_ptr_err}")
 
         # ── C-083: emit signal ─────────────────────────────────────────────────
         emit_subtask_signal(task_id, st.id, "SUCCESS", monitor_signal)
