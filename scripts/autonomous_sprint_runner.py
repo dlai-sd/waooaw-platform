@@ -571,9 +571,12 @@ def call_llm(task_id: str, task_description: str, spec_content: str,
 
     # Adaptive thinking: model decides its own reasoning budget.
     # No budget_tokens constraint — avoids the max_tokens > budget_tokens API conflict.
-    # Running wild for learning sprints: captures empirical data on thinking depth per task.
-    # temperature=1 required for any thinking mode (Anthropic API constraint).
+    # THINKING_OVERHEAD: extra token headroom added to max_tokens when thinking is active.
+    # Without it: model uses all 10K tokens for thinking, leaves nothing for code output.
+    # Evidence (run 30103437538): stop_reason='max_tokens', text_chars=0, thinking_chars~9500.
+    THINKING_OVERHEAD = 8000  # tokens reserved for adaptive thinking on top of code output budget
     use_thinking = model_hint == "reasoning"
+    effective_max_tokens = (max_tokens + THINKING_OVERHEAD) if use_thinking else max_tokens
 
     try:
         import urllib.request
@@ -608,17 +611,18 @@ def call_llm(task_id: str, task_description: str, spec_content: str,
 
         payload: dict = {
             "model": model_id,
-            "max_tokens": max_tokens,
+            "max_tokens": effective_max_tokens,   # code budget + thinking overhead when active
             "system": _build_system_prompt(task_id),   # stack-aware: dotnet/python/terraform/typescript
             "messages": [{"role": "user", "content": user_prompt}],
         }
 
         if use_thinking:
             # Adaptive thinking: model chooses its own reasoning depth per task complexity.
-            # No budget_tokens field — no constraint conflict with max_tokens.
+            # effective_max_tokens = max_tokens + THINKING_OVERHEAD gives room for both.
             payload["thinking"] = {"type": "adaptive"}
             payload["temperature"] = 1   # required for any thinking mode
-            print(f"  Adaptive thinking enabled (model decides budget)")
+            print(f"  Adaptive thinking enabled — effective_max_tokens={effective_max_tokens} "
+                  f"(code={max_tokens} + thinking_overhead={THINKING_OVERHEAD})")
         else:
             payload["temperature"] = 0
 
@@ -633,10 +637,9 @@ def call_llm(task_id: str, task_description: str, spec_content: str,
         )
         # Observability: log prompt size before call
         prompt_chars = len(json_mod.dumps(payload))
-        print(f"  REQ:  {task_id} attempt={attempt} | prompt={prompt_chars:,} chars | max_tokens={max_tokens}")
-        # Timeout: adaptive thinking may use significant tokens on complex tasks.
-        # Use generous floor — 600s minimum, scaled to output tokens.
-        api_timeout = max(600, (max_tokens // 50) * 3)
+        print(f"  REQ:  {task_id} attempt={attempt} | prompt={prompt_chars:,} chars | max_tokens={effective_max_tokens} (code={max_tokens})")
+        # Timeout: scaled to effective_max_tokens (includes thinking headroom).
+        api_timeout = max(600, (effective_max_tokens // 50) * 3)
         t_start = __import__('time').monotonic()
         with urllib.request.urlopen(req, timeout=api_timeout) as resp:
             result = json_mod.loads(resp.read())
