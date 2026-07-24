@@ -62,30 +62,28 @@ ALL_PASS             = "ALL_PASS"
 # Known constitutional gap patterns → proposed claims
 CONSTITUTIONAL_GAP_MAP = {
     CASCADE_PIPELINE_BUG: {
-        "claim_id_hint": "C-083",
+        "claim_id_hint": "C-084",
         "title": "Step Dependency Ordering — upstream failure must halt downstream steps",
         "statement": (
             "In any multi-step autonomous workflow, a step MUST NOT begin execution "
-            "if its declared upstream dependency produced a FAIL, HALT, or ERROR evidence "
-            "record in the current workflow instance. Committing code from step N+1 when "
-            "step N has failed is a constitutional violation — the work is unverifiable "
-            "because its foundation is invalid. This applies to all autonomous agents "
-            "on the WAOOAW platform, including the implementation sprint runner."
+            "if its declared upstream dependency produced a FAIL, HALT, or ERROR signal "
+            "in the current workflow instance. Committing code from step N+1 when step N "
+            "has failed is a constitutional violation — the work is unverifiable because "
+            "its inputs are invalid. (Full text: knowledge/claims/C-084.md)"
         ),
-        "basis": "C-023 (Evidence First — unverifiable work must not be committed), C-070, C-059",
+        "basis": "C-083 (Emit-Transport-Listen), C-023 (Evidence First), C-059 (Traceability)",
     },
     IDEMPOTENCY_BUG: {
-        "claim_id_hint": "C-084",
+        "claim_id_hint": "C-085",
         "title": "Idempotency Obligation — completed steps must not be re-executed",
         "statement": (
-            "Before executing any workflow step in a resumable or retryable workflow, "
-            "the agent MUST verify that a SUCCESS record for this step does not already "
+            "Before executing any workflow step that produces external side effects, "
+            "the agent MUST verify that a SUCCESS signal for this step does not already "
             "exist in the current workflow instance. Temporal retries, cron re-runs, "
-            "and session resumptions are all subject to this obligation. Re-executing a "
-            "completed step produces duplicate external effects (duplicate emails, duplicate "
-            "trade orders, duplicate commits) that constitute real customer harm."
+            "and session resumptions are all subject to this obligation. "
+            "(Full text: knowledge/claims/C-085.md)"
         ),
-        "basis": "C-027 (append-only ledger), C-023 (Evidence First), C-070 (Constitutional DNA)",
+        "basis": "C-083 (Emit-Transport-Listen), C-027 (append-only ledger), C-023 (Evidence First)",
     },
 }
 

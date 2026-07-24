@@ -162,6 +162,50 @@ def cmd_generate_secrets_doc(args: argparse.Namespace) -> None:
     print(f"✓ Secrets doc stub target: {output}")
 
 
+def set_list_field(content: str, key: str, items: list[str]) -> str:
+    """
+    Update a YAML list field in SPRINT_STATE_MACHINE.
+    Handles transition from inline (tasks_done: []) to block format.
+    RC#2 / C-085 (Idempotency): called after each successful task commit so
+    subsequent cron runs know which tasks are already done.
+    """
+    if not items:
+        # Collapse to inline empty list
+        pat = re.compile(
+            r'^' + re.escape(key) + r':[ ]*(?:\[.*?\]|(?:\n  - [^\n]+)+)',
+            re.MULTILINE,
+        )
+        new_content, n = pat.subn(f"{key}: []", content)
+        if n > 0:
+            return new_content
+        return set_field(content, key, "[]")
+
+    block_items = "\n".join(f"  - {item}" for item in items)
+    new_block = f"{key}:\n{block_items}"
+    # Match: inline [] or inline [a,b] or block list
+    pat = re.compile(
+        r'^' + re.escape(key) + r':[ ]*(?:\[.*?\]|(?:\n  - [^\n]+)+)',
+        re.MULTILINE,
+    )
+    new_content, n = pat.subn(new_block, content)
+    if n == 0:
+        # Fallback: treat as scalar
+        new_content = set_field(content, key, f"[{', '.join(items)}]")
+    return new_content
+
+
+def cmd_set_list(args: argparse.Namespace) -> None:
+    """
+    Update a YAML list field in SPRINT_STATE_MACHINE.
+    RC#2 (C-085 Idempotency Obligation) — records tasks_done/tasks_remaining
+    after each successful task commit so subsequent cron runs skip done tasks.
+    """
+    content = read_state_file()
+    content = set_list_field(content, args.key, args.items)
+    write_state_file(content)
+    print(f"✓ {args.key} = {args.items or '[]'}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Sprint State Machine helper")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -170,6 +214,12 @@ def main() -> None:
     p_set = sub.add_parser("set", help="Update sprint state fields")
     p_set.add_argument("pairs", nargs="+", help="key value pairs")
     p_set.set_defaults(func=cmd_set)
+
+    # set-list command — RC#2 / C-085 Idempotency: advance tasks_done/tasks_remaining per task
+    p_setlist = sub.add_parser("set-list", help="Update a YAML list field in sprint state")
+    p_setlist.add_argument("key", help="Field name (e.g. tasks_done)")
+    p_setlist.add_argument("items", nargs="*", help="List items (empty = [])")
+    p_setlist.set_defaults(func=cmd_set_list)
 
     # advance command
     p_adv = sub.add_parser("advance", help="Mark sprint done and activate next")

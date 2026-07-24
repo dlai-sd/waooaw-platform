@@ -1131,6 +1131,9 @@ def main() -> int:
     tasks_done = []
     tasks_not_implemented = []
     infra_error_tasks = _INFRA_ERROR_TASKS   # populated by execute_with_llm on pure API failures
+    # RC#1: scaffold task for this run = first queued task that is in SCAFFOLD_TASKS.
+    # If scaffold already succeeded in a prior run, it won't be in tasks — scaffold_run_task=None.
+    scaffold_run_task = next((t for t in tasks if t in SCAFFOLD_TASKS), None)
     for task in tasks:
         handler = TASK_HANDLERS.get(task)
         if handler is None:
@@ -1148,9 +1151,27 @@ def main() -> int:
             success = handler()
             if success:
                 tasks_done.append(task)
+                # RC#2: Write tasks_done/tasks_remaining to PROJECT_STATE.md after each success.
+                # Prevents duplicate re-execution across cron runs on the same open PR.
+                # C-083 (Emit-Transport-Listen), C-059 (Traceability), C-085 (Idempotency)
+                all_remaining = [t for t in state.get("tasks_remaining", []) if t not in tasks_done]
+                run([sys.executable, "scripts/sprint_state.py", "set-list", "tasks_done"] + tasks_done)
+                run([sys.executable, "scripts/sprint_state.py", "set-list", "tasks_remaining"] + all_remaining)
                 print(f"  DONE: {task}")
+            else:
+                print(f"  FAILED: {task}")
+                # RC#1: Halt on scaffold failure — downstream tasks cannot compile without scaffold.
+                # C-084 (Step Dependency Ordering), C-070 (Constitutional DNA)
+                if task == scaffold_run_task:
+                    print(f"  HALT: scaffold task {task} failed — downstream tasks cannot build. "
+                          f"Stopping sprint. (C-084 Step Dependency Ordering)")
+                    break
         except Exception as exc:
             print(f"  FAILED: {task}: {exc}")
+            # RC#1: also halt on scaffold exception
+            if task == scaffold_run_task:
+                print(f"  HALT: scaffold task {task} raised exception — stopping sprint. (C-084)")
+                break
 
     # Determine if ALL failures were infrastructure (no spec gap, no human action needed)
     all_infra_errors = (

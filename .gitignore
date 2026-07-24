@@ -46,3 +46,5 @@ coverage/
 sprint-context/index.json           # Committed to branch during sprint, not to main
 *.tar.gz
 google-cloud-cli*
+sprint-context/index.json
+sprint-context/monitor-signal.json
