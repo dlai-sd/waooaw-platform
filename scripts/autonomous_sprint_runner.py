@@ -1642,7 +1642,7 @@ def _generate_wc012_02c_prep() -> bool:
         "    protected override Metadata ResponseTrailersCore => _responseTrailers;\n"
         "    protected override AuthContext AuthContextCore\n"
         "        => new AuthContext(null,\n"
-        "               new Dictionary<string, IEnumerable<AuthProperty>>());\n\n"
+        "               new Dictionary<string, List<AuthProperty>>());\n\n"
         "    // ── Abstract methods ────────────────────────────────────────────────\n"
         "    protected override ContextPropagationToken CreatePropagationTokenCore(\n"
         "        ContextPropagationOptions? options)\n"
