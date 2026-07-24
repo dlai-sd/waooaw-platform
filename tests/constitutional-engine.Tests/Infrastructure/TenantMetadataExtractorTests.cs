@@ -1,10 +1,11 @@
 // Implements: architecture/reference/components/constitutional-engine.md
 // constitutional_basis: C-076 (≥90% unit test coverage), C-029 (scope-boundary record), C-059 (Traceability)
 
+using System.Threading;
+using System.Threading.Tasks;
 using FluentAssertions;
 using Grpc.Core;
 using Microsoft.Extensions.Logging.Abstractions;
-using Moq;
 using Waooaw.ConstitutionalEngine.Infrastructure;
 using Xunit;
 
@@ -143,12 +144,41 @@ public sealed class TenantMetadataExtractorTests
 
     // ─── Helpers ──────────────────────────────────────────────────────────────
 
+    // RC#3 fix: ServerCallContext.RequestHeaders is non-virtual — Moq cannot intercept it.
+    // Use a concrete stub that sets RequestHeaders via the protected constructor chain.
     private static ServerCallContext BuildContextWithMetadata(string key, string value)
     {
         var metadata = new Metadata { { key, value } };
-        var mockContext = new Mock<ServerCallContext>();
-        mockContext.Setup(c => c.RequestHeaders).Returns(metadata);
-        mockContext.Setup(c => c.Method).Returns("/constitutional.v1.ConstitutionalService/Test");
-        return mockContext.Object;
+        return new FakeServerCallContext(metadata);
+    }
+
+    /// <summary>
+    /// Minimal concrete ServerCallContext for testing.
+    /// C-076: Required because Moq cannot mock non-virtual gRPC context members.
+    /// </summary>
+    private sealed class FakeServerCallContext : ServerCallContext
+    {
+        private readonly Metadata _requestHeaders;
+
+        public FakeServerCallContext(Metadata requestHeaders)
+        {
+            _requestHeaders = requestHeaders;
+        }
+
+        protected override string MethodCore => "/constitutional.v1.ConstitutionalService/Test";
+        protected override string HostCore => "localhost";
+        protected override string PeerCore => "ipv4:127.0.0.1:0";
+        protected override DateTime DeadlineCore => DateTime.MaxValue;
+        protected override Metadata RequestHeadersCore => _requestHeaders;
+        protected override CancellationToken CancellationTokenCore => CancellationToken.None;
+        protected override Metadata ResponseTrailersCore => new Metadata();
+        protected override Status StatusCore { get; set; }
+        protected override WriteOptions? WriteOptionsCore { get; set; }
+        protected override AuthContext AuthContextCore =>
+            new AuthContext(null, new Dictionary<string, List<AuthProperty>>());
+        protected override ContextPropagationToken CreatePropagationTokenCore(ContextPropagationOptions? options) =>
+            throw new NotSupportedException();
+        protected override Task WriteResponseHeadersAsyncCore(Metadata responseHeaders) =>
+            Task.CompletedTask;
     }
 }

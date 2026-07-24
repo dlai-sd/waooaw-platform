@@ -1093,6 +1093,7 @@ def main() -> int:
     tasks_done = []
     tasks_not_implemented = []
     infra_error_tasks = _INFRA_ERROR_TASKS   # populated by execute_with_llm on pure API failures
+    scaffold_task = tasks[0] if tasks else None  # RC#1: first task is always the scaffold
     for task in tasks:
         handler = TASK_HANDLERS.get(task)
         if handler is None:
@@ -1110,9 +1111,27 @@ def main() -> int:
             success = handler()
             if success:
                 tasks_done.append(task)
+                # RC#2: Advance tasks_done and tasks_remaining in PROJECT_STATE.md after each success.
+                # Prevents duplicate re-execution on subsequent cron runs against the same open PR.
+                # constitutional_basis: C-059 (traceability), C-070 (autonomous halt on failure)
+                all_remaining = [t for t in state.get("tasks_remaining", []) if t not in tasks_done]
+                run([sys.executable, "scripts/sprint_state.py", "set-list", "tasks_done"] + tasks_done)
+                run([sys.executable, "scripts/sprint_state.py", "set-list", "tasks_remaining"] + all_remaining)
                 print(f"  DONE: {task}")
+            else:
+                print(f"  FAILED: {task}")
+                # RC#1: Halt on scaffold failure — downstream tasks cannot compile without scaffold.
+                # C-070: autonomous halt on validated failure.
+                if task == scaffold_task:
+                    print(f"  HALT: scaffold task {task} failed. Dependent tasks cannot build. "
+                          f"Stopping sprint. (RC#1 fix — C-070)")
+                    break
         except Exception as exc:
             print(f"  FAILED: {task}: {exc}")
+            # RC#1: also halt on scaffold exception
+            if task == scaffold_task:
+                print(f"  HALT: scaffold task {task} raised exception. Stopping sprint. (RC#1 fix)")
+                break
 
     # Determine if ALL failures were infrastructure (no spec gap, no human action needed)
     all_infra_errors = (

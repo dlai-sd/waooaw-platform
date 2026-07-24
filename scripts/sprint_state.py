@@ -71,6 +71,38 @@ def set_field(content: str, key: str, value: str) -> str:
     return new_content
 
 
+def set_list_field(content: str, key: str, items: list[str]) -> str:
+    """
+    Update a YAML list field inside the ```yaml block under ## SPRINT_STATE_MACHINE.
+    Handles both inline (e.g. tasks_done: []) and block list formats.
+    RC#2 fix: called after each successful task to advance tasks_done/tasks_remaining.
+    """
+    if not items:
+        # Empty list — use inline format
+        new_value = "[]"
+        # Replace inline: tasks_done: [] OR tasks_done: [...]
+        inline_pat = re.compile(
+            r'^(' + re.escape(key) + r':\s*)(\[.*?\])(.*)$',
+            re.MULTILINE,
+        )
+        new_content, n = inline_pat.subn(lambda m: f"{m.group(1)}{new_value}{m.group(3)}", content)
+        if n > 0:
+            return new_content
+    # Non-empty: use block list format (indented "  - item")
+    block_items = "\n".join(f"  - {item}" for item in items)
+    new_block = f"{key}:\n{block_items}"
+    # Replace existing block (multi-line) or inline form
+    block_pat = re.compile(
+        r'^' + re.escape(key) + r':[ ]*(?:\[.*?\]|(?:\n  - [^\n]+)+)',
+        re.MULTILINE,
+    )
+    new_content, n = block_pat.subn(new_block, content)
+    if n == 0:
+        # Fallback: scalar replacement
+        new_content = set_field(content, key, f"[{', '.join(items)}]")
+    return new_content
+
+
 def cmd_set(args: argparse.Namespace) -> None:
     if len(args.pairs) % 2 != 0:
         print("ERROR: 'set' requires pairs of key value", file=sys.stderr)
@@ -162,6 +194,17 @@ def cmd_generate_secrets_doc(args: argparse.Namespace) -> None:
     print(f"✓ Secrets doc stub target: {output}")
 
 
+def cmd_set_list(args: argparse.Namespace) -> None:
+    """
+    Update a YAML list field in SPRINT_STATE_MACHINE.
+    RC#2 fix: records tasks_done and tasks_remaining after each successful task commit.
+    """
+    content = read_state_file()
+    content = set_list_field(content, args.key, args.items)
+    write_state_file(content)
+    print(f"✓ {args.key} = {args.items or '[]'}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Sprint State Machine helper")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -170,6 +213,12 @@ def main() -> None:
     p_set = sub.add_parser("set", help="Update sprint state fields")
     p_set.add_argument("pairs", nargs="+", help="key value pairs")
     p_set.set_defaults(func=cmd_set)
+
+    # set-list command — RC#2 fix: advance tasks_done/tasks_remaining per task success
+    p_setlist = sub.add_parser("set-list", help="Update a YAML list field in sprint state")
+    p_setlist.add_argument("key", help="Field name (e.g. tasks_done)")
+    p_setlist.add_argument("items", nargs="*", help="List items (space-separated, empty = [])")
+    p_setlist.set_defaults(func=cmd_set_list)
 
     # advance command
     p_adv = sub.add_parser("advance", help="Mark sprint done and activate next")
