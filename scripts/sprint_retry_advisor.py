@@ -259,6 +259,41 @@ def _classify_cs0117(error: str) -> Optional[RetryDiagnosis]:
     )
 
 
+def _classify_cs0019_nullable_operator(error: str) -> Optional[RetryDiagnosis]:
+    """
+    CS0019: Operator '??' (or similar) cannot be applied to non-nullable type.
+    Root cause: LLM uses 'field ?? default' on a non-nullable long/int field.
+    In EvaluationContext all budget fields are non-nullable long — no ?? needed.
+    constitutional_trace: C-082
+    """
+    if "CS0019" not in error:
+        return None
+    if "'??'" not in error and "operator" not in error.lower():
+        return None
+
+    # Extract the type name if available
+    type_match = re.search(r"operands of type '([^']+)'", error)
+    offending_type = type_match.group(1) if type_match else "long"
+
+    fix = (
+        f"NULL-COALESCING ERROR: '??' cannot be applied to non-nullable '{offending_type}'.\n"
+        f"In EvaluationContext all budget fields (ApprovedBudgetInrPaise, CurrentSpendInrPaise, "
+        f"ProposedSpendInrPaise) are non-nullable 'long' — they are NEVER null.\n"
+        f"REMOVE all '?? 0L' operators on these fields.\n"
+        f"For C043 budget ceiling: compute directly:\n"
+        f"  bool exceeded = (ctx.CurrentSpendInrPaise + ctx.ProposedSpendInrPaise) "
+        f"> ctx.ApprovedBudgetInrPaise;\n"
+        f"Do NOT call ctx.BudgetRemainingInrPaise — that field does not exist on EvaluationContext."
+    )
+    return RetryDiagnosis(
+        error_type="NULLABLE_OPERATOR_ON_VALUE_TYPE",
+        fix_instruction=fix,
+        should_retry=True,
+        confidence=0.95,
+        constitutional_trace="C-082 (Build Validation)"
+    )
+
+
 def _classify_cs0246_missing_using(error: str) -> Optional[RetryDiagnosis]:
     """
     CS0246 general: type not found, likely missing using directive.
@@ -520,7 +555,14 @@ def diagnose_build_error(
                 constitutional_trace="C-082 (Build Validation — nullable types require explicit conversion)"
             )
 
-    # ── Rule 7: CS0505 — overriding property as method ────────────────────────
+    # ── Rule 7: CS0019 — operator applied to non-nullable type ──────────────────
+    if "CS0019" in error_codes:
+        diagnosis = _classify_cs0019_nullable_operator(build_error)
+        if diagnosis:
+            print(f"  Retry Advisor: CS0019 null-coalescing on non-nullable (confidence={diagnosis.confidence:.0%})")
+            return diagnosis
+
+    # ── Rule 8: CS0505 — overriding property as method ────────────────────────
     if "CS0505" in error_codes:
         m = re.search(r"'([^.]+)\.(\w+)\(\)'.*'([^']+)' is not a function", build_error)
         if not m:
