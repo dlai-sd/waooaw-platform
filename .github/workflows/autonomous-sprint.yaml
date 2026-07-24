@@ -122,6 +122,9 @@ jobs:
           ")
           echo "  ℹ️  platform_phase=$PHASE"
 
+          # 4. C-086 Pre-Execution Simulation gate (WC-019)
+          python3 scripts/check_c086_gate.py || { echo "  ❌ C-086 gate FAILED"; FAILURES=$((FAILURES+1)); }
+
           echo "── Health Check: $FAILURES failure(s) ─────────────────────"
           if [ "$FAILURES" -gt 0 ]; then
             echo "  ❌ Pipeline health check FAILED — fix issues above before sprint can run"
