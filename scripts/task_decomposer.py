@@ -95,6 +95,7 @@ class SubTaskDef:
     type: str                                  # "deterministic" | "llm"
     depends_on: list[str] = field(default_factory=list)
     compile_gate: str = "dotnet_build"         # "dotnet_build" | "dotnet_test" | "ruff" | "tsc"
+    service_dir: str = "src/constitutional-engine"  # target service dir for compile gate
 
     # For type="deterministic"
     template_fn: Optional[Callable[[], bool]] = None
@@ -218,6 +219,13 @@ def run_compile_gate(gate_type: str, service_dir: str = "src/constitutional-engi
             capture_output=True, text=True, cwd=REPO_ROOT
         )
         return result.returncode == 0, result.stdout[:500]
+
+    if gate_type == "pytest":
+        result = subprocess.run(
+            ["python3", "-m", "pytest", service_dir, "-q", "--tb=short"],
+            capture_output=True, text=True, cwd=REPO_ROOT
+        )
+        return result.returncode == 0, result.stdout[-500:] if result.returncode != 0 else ""
 
     return False, f"Unknown gate_type: {gate_type}"
 
@@ -490,7 +498,7 @@ def execute_subtask_chain(
             return False
 
         # ── C-082: compile gate ────────────────────────────────────────────────
-        gate_ok, gate_error = run_compile_gate(st.compile_gate)
+        gate_ok, gate_error = run_compile_gate(st.compile_gate, st.service_dir)
         if not gate_ok:
             print(f"  [{st.id}] COMPILE GATE FAILED: {gate_error[:200]}")
             print(f"  C-084: halting chain — downstream sub-tasks not executed")
