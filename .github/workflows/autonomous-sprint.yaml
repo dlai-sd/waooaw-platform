@@ -50,6 +50,7 @@ permissions:
 
 env:
   AUTONOMOUS_SPRINT_AGENT: 'true'
+  PYTHONUNBUFFERED: '1'     # flush Python print() immediately → real-time logs in GitHub Actions
 
 jobs:
 
