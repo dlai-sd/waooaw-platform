@@ -562,7 +562,28 @@ def diagnose_build_error(
             print(f"  Retry Advisor: CS0019 null-coalescing on non-nullable (confidence={diagnosis.confidence:.0%})")
             return diagnosis
 
-    # ── Rule 8: CS0505 — overriding property as method ────────────────────────
+    # ── Rule 8: CS0539 — explicit interface member not in interface ──────────────
+    if "CS0539" in error_codes:
+        m = re.search(r"'[^.]+\.([^']+)' in explicit interface declaration is not found", build_error)
+        bad_member = m.group(1) if m else "unknown"
+        fix = (
+            f"INVENTED INTERFACE MEMBER (CS0539): '{bad_member}' does not exist on IClaimEvaluator.\n"
+            f"IClaimEvaluator has EXACTLY TWO members:\n"
+            f"  1. string ClaimId {{ get; }}\n"
+            f"  2. Task<EvaluationResult> EvaluateAsync(EvaluationContext context, CancellationToken ct = default);\n"
+            f"Remove the explicit interface declaration for '{bad_member}' entirely.\n"
+            f"If you need per-evaluator metadata, add it as a PRIVATE field — not on the interface."
+        )
+        print(f"  Retry Advisor: CS0539 invented interface member '{bad_member}' (confidence=95%)")
+        return RetryDiagnosis(
+            error_type="WRONG_FIELD_NAME",
+            fix_instruction=fix,
+            should_retry=True,
+            confidence=0.95,
+            constitutional_trace="C-082 (Build Validation — do not invent interface members)"
+        )
+
+    # ── Rule 9: CS0505 — overriding property as method ────────────────────────
     if "CS0505" in error_codes:
         m = re.search(r"'([^.]+)\.(\w+)\(\)'.*'([^']+)' is not a function", build_error)
         if not m:
