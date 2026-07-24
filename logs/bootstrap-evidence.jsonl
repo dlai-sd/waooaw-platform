@@ -5,3 +5,5 @@
 {"event": "SPRINT_TASKS_EXECUTED", "timestamp": "2026-07-23T13:36:12.706028+00:00", "run_id": "30011880559", "stub_mode": true, "sprint": "WC-011", "tasks_done": ["WC011-01", "WC011-02", "WC011-03", "WC011-04", "WC011-05", "WC011-07"]}
 {"event": "AUTONOMOUS_SPRINT_STARTED", "timestamp": "2026-07-23T13:51:26.803454+00:00", "run_id": "30013030008", "stub_mode": true, "sprint": "WC-011", "branch": "ib/009/infra-foundation", "tasks": ["WC011-01", "WC011-02", "WC011-03", "WC011-04", "WC011-05", "WC011-07"]}
 {"event": "SPRINT_TASKS_EXECUTED", "timestamp": "2026-07-23T13:51:30.821061+00:00", "run_id": "30013030008", "stub_mode": true, "sprint": "WC-011", "tasks_done": ["WC011-01", "WC011-02", "WC011-03", "WC011-04", "WC011-05", "WC011-07"]}
+{"event": "autonomous_halt_active", "timestamp": "2026-07-24T13:06:37.965966+00:00", "run_id": "sim-wc019", "stub_mode": true, "reason": "AUTONOMOUS_HALT=true in PROJECT_STATE.md"}
+{"event": "AUTONOMOUS_SPRINT_STARTED", "timestamp": "2026-07-24T13:30:41.002503+00:00", "run_id": "local", "stub_mode": true, "sprint": "WC-012", "branch": "ib/009/sprint-012", "tasks": ["WC012-01", "WC012-02", "WC012-03", "WC012-04"]}

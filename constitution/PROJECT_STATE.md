@@ -257,9 +257,9 @@ platform_phase: IMPLEMENTATION  # SPEC | IMPLEMENTATION | LIVE
 
 current_sprint: WC-012
 sprint_ib_item: IB-009
-sprint_status: READY
+sprint_status: IN_PROGRESS
 branch: ib/009/sprint-012
-last_attempt_utc: 2026-07-23T18:15:00.000000+00:00
+last_attempt_utc: 2026-07-24T13:30:41.002711+00:00
 last_attempt_result: SUCCESS
 consecutive_failures: 0
 tasks_done: []
@@ -270,7 +270,7 @@ tasks_remaining:
   - WC012-04
 
 current_task:
-next_sprint: WC-013
+WC012-01
 next_sprint_ib_item: IB-009
 blocker: ""
 blocker_raised_utc: ""
