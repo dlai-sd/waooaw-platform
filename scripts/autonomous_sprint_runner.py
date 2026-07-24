@@ -569,12 +569,10 @@ def call_llm(task_id: str, task_description: str, spec_content: str,
         print(f"  WARN: ANTHROPIC_API_KEY not set — cannot call LLM for {task_id}")
         return None
 
-    # Extended thinking: enabled for 'reasoning' tasks (complex multi-file generation).
-    # The model spends up to THINKING_BUDGET tokens reasoning about namespaces, DI graph,
-    # branch state, and code structure before producing any output — like a senior engineer
-    # reading the spec carefully before opening their editor.
-    # Extended thinking requires temperature=1 (Anthropic API constraint).
-    THINKING_BUDGET = 8000  # tokens — enough to reason about 3-4 interdependent files
+    # Adaptive thinking: model decides its own reasoning budget.
+    # No budget_tokens constraint — avoids the max_tokens > budget_tokens API conflict.
+    # Running wild for learning sprints: captures empirical data on thinking depth per task.
+    # temperature=1 required for any thinking mode (Anthropic API constraint).
     use_thinking = model_hint == "reasoning"
 
     try:
@@ -583,7 +581,7 @@ def call_llm(task_id: str, task_description: str, spec_content: str,
 
         # Self-calibration prefix — injected into every task prompt.
         # Asks the model to derive its OWN implementation plan from the provided spec
-        # before writing code. With extended thinking enabled, this happens in the
+        # before writing code. With adaptive thinking enabled, this happens in the
         # internal reasoning block. Without thinking, it forces chain-of-thought.
         calibration_prefix = (
             "## SELF-CALIBRATION (complete before writing any <file> block)\n"
@@ -608,8 +606,6 @@ def call_llm(task_id: str, task_description: str, spec_content: str,
 
         model_id = os.environ.get("SPRINT_LLM_MODEL", "claude-sonnet-4-6")
 
-        # Token budget: thinking tokens are separate from output tokens in billing.
-        # We set max_tokens to cover the full output (code files), not the thinking.
         payload: dict = {
             "model": model_id,
             "max_tokens": max_tokens,
@@ -618,11 +614,11 @@ def call_llm(task_id: str, task_description: str, spec_content: str,
         }
 
         if use_thinking:
-            # Extended thinking: model reasons before generating code.
-            # temperature must be 1 when thinking is enabled (Anthropic API requirement).
-            payload["thinking"] = {"type": "enabled", "budget_tokens": THINKING_BUDGET}
-            payload["temperature"] = 1
-            print(f"  Extended thinking enabled ({THINKING_BUDGET} token budget)")
+            # Adaptive thinking: model chooses its own reasoning depth per task complexity.
+            # No budget_tokens field — no constraint conflict with max_tokens.
+            payload["thinking"] = {"type": "adaptive"}
+            payload["temperature"] = 1   # required for any thinking mode
+            print(f"  Adaptive thinking enabled (model decides budget)")
         else:
             payload["temperature"] = 0
 
@@ -635,28 +631,23 @@ def call_llm(task_id: str, task_description: str, spec_content: str,
                 "content-type": "application/json",
             },
         )
-        # Timeout: account for thinking tokens on top of output tokens.
-        # Thinking generates at ~50 tok/s; output at ~50 tok/s.
-        thinking_tokens = THINKING_BUDGET if use_thinking else 0
-        api_timeout = max(600, ((max_tokens + thinking_tokens) // 50) * 3)
+        # Timeout: adaptive thinking may use significant tokens on complex tasks.
+        # Use generous floor — 600s minimum, scaled to output tokens.
+        api_timeout = max(600, (max_tokens // 50) * 3)
         with urllib.request.urlopen(req, timeout=api_timeout) as resp:
             result = json_mod.loads(resp.read())
             content = result.get("content", [])
             # Extract only text blocks — thinking blocks (type="thinking") are stripped.
-            # The model's reasoning stays internal; only the generated code is returned.
             text = "".join(block.get("text", "") for block in content if block.get("type") == "text")
             usage = result.get("usage", {})
             tokens_in  = usage.get("input_tokens", 0)
             tokens_out = usage.get("output_tokens", 0)
-            # Log thinking token spend separately for FinOps visibility (C-077)
-            thinking_used = next(
-                (b.get("thinking", "")[:0] or 0 for b in content if b.get("type") == "thinking"),
-                0,
-            )
+            # Log thinking block count for FinOps learning data (C-077)
             thinking_blocks = sum(1 for b in content if b.get("type") == "thinking")
+            thinking_chars  = sum(len(b.get("thinking", "")) for b in content if b.get("type") == "thinking")
             if thinking_blocks:
                 print(f"  LLM: {task_id} → {tokens_in} in / {tokens_out} out tokens "
-                      f"[+ {thinking_blocks} thinking block(s)]")
+                      f"[+ {thinking_blocks} thinking block(s), ~{thinking_chars} chars]")
             else:
                 print(f"  LLM: {task_id} → {tokens_in} in / {tokens_out} out tokens")
             record_evidence("llm_call", task=task_id, tokens_in=tokens_in, tokens_out=tokens_out,
