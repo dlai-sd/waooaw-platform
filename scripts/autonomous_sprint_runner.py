@@ -519,6 +519,11 @@ def execute_with_llm(task_id: str, task_description: str, spec_sections: dict,
                      f"feat: {task_id} — {task_description}\n\n"
                      f"IB: IB-009\nConstitutional: C-059, C-073, C-076\nCCTs-added: per WC spec"])
             print(f"  ✅ {task_id} complete ({len(written)} files)")
+            # Emit success signal for Constitutional Monitor (C-069)
+            _MONITOR_SIGNAL["task_results"][task_id] = {
+                "result": "SUCCESS", "error_type": None,
+                "build_error_snippet": None, "attempts": attempt, "spec_gap_issue": None,
+            }
             return True
         else:
             # Pass the ACTUAL build error to Claude on the next attempt
@@ -535,6 +540,11 @@ def execute_with_llm(task_id: str, task_description: str, spec_sections: dict,
         print(f"  This is NOT a spec gap. No issue created. Next cron run will retry automatically.")
         # Signal to main() that this was an infra failure, not a code/spec failure
         _INFRA_ERROR_TASKS.append(task_id)
+        # Emit INFRA_ERROR signal for Constitutional Monitor (C-069)
+        _MONITOR_SIGNAL["task_results"][task_id] = {
+            "result": "INFRA_ERROR", "error_type": "API_TIMEOUT",
+            "build_error_snippet": None, "attempts": 3, "spec_gap_issue": None,
+        }
         return False
     elif infra_failures > 0:
         # Mixed: some infra failures + some build failures — treat as spec gap but note it
@@ -625,6 +635,13 @@ def flag_spec_gap(
             print(f"     Spec: {affected_spec}")
             print(f"     Fix the spec, close the issue, and the next sprint run retries.")
             record_evidence("spec_gap_halt", task=task_id, issue=issue_num, gap=gap_description[:100])
+            # Emit SPEC_GAP signal for Constitutional Monitor (C-069)
+            _MONITOR_SIGNAL["task_results"][task_id] = {
+                "result": "SPEC_GAP", "error_type": "BUILD_ERROR",
+                "build_error_snippet": gap_description[:200],
+                "attempts": 3, "spec_gap_issue": issue_num,
+            }
+            _MONITOR_SIGNAL["spec_gap_issues"].append(issue_num)
         else:
             print(f"  🔴 SPEC GAP — task HALTED (issue creation failed: {result.stderr[:100]})")
             print(f"     Gap: {gap_description}")
@@ -900,6 +917,27 @@ def execute_wc011_07() -> bool:
 
 
 _INFRA_ERROR_TASKS: list[str] = []  # populated by execute_with_llm when all 3 attempts are API failures
+
+# ── Sprint Monitor signal (C-069: self-improvement loop) ──────────────────────
+# Scaffold tasks are EXPLICITLY declared — never inferred from position.
+# If WC012-01 fails, all downstream tasks cannot compile. The monitor uses this
+# to distinguish CASCADE_PIPELINE_BUG from SPEC_GAP_GENUINE.
+SCAFFOLD_TASKS: frozenset[str] = frozenset({
+    "WC012-01", "WC013-01", "WC014-01", "WC015-01",
+    "WC016-01", "WC017-01", "WC018-01",
+})
+
+# Populated during execution — written to sprint-context/monitor-signal.json
+# and uploaded as artifact for the Constitutional Monitor job to consume.
+_MONITOR_SIGNAL: dict = {
+    "run_id": os.environ.get("GITHUB_RUN_ID", ""),
+    "sprint": "",
+    "scaffold_task": None,     # task ID of the scaffold (if any) in this run
+    "scaffold_failed": False,  # True = downstream spec-gap issues are CASCADE bugs
+    "task_results": {},        # per-task: result, error_type, snippet, attempts, issue
+    "spec_gap_issues": [],     # GitHub issue numbers opened by flag_spec_gap()
+    "overall_result": "UNKNOWN",
+}
 
 TASK_HANDLERS = {
     "WC011-01": execute_wc011_01,
@@ -1212,6 +1250,28 @@ def main() -> int:
         print("  Cron will retry. No founder action required.")
     else:
         set_output("result", "SUCCESS" if tasks_done else "PARTIAL")
+
+    # ── Emit monitor signal artifact (C-069 — observable state for downstream jobs) ──
+    # Scaffold task = first task in this run's queue that is in SCAFFOLD_TASKS.
+    # If scaffold already succeeded in a prior run, it's not in the queue → scaffold_task=None.
+    scaffold_t = next((t for t in tasks if t in SCAFFOLD_TASKS), None)
+    scaffold_failed = scaffold_t is not None and scaffold_t not in tasks_done
+    _MONITOR_SIGNAL["sprint"] = sprint
+    _MONITOR_SIGNAL["scaffold_task"] = scaffold_t
+    _MONITOR_SIGNAL["scaffold_failed"] = scaffold_failed
+    _MONITOR_SIGNAL["overall_result"] = (
+        "SUCCESS" if tasks_done and not scaffold_failed
+        else "INFRA_ERROR" if all_infra_errors
+        else "PARTIAL"
+    )
+    signal_path = Path("sprint-context/monitor-signal.json")
+    signal_path.parent.mkdir(exist_ok=True)
+    import json as _json
+    signal_path.write_text(_json.dumps(_MONITOR_SIGNAL, indent=2))
+    print(f"  📡 Monitor signal emitted: {signal_path}")
+    # Scalar outputs consumed directly by the monitor job
+    set_output("scaffold_failed", str(scaffold_failed).lower())
+    set_output("infra_error_tasks", ",".join(str(t) for t in infra_error_tasks))
     return 0
 
 

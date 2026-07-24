@@ -229,6 +229,15 @@ jobs:
           path: sprint-context/index.json
           retention-days: 7
 
+      - name: Upload monitor signal as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sprint-monitor-signal
+          path: sprint-context/monitor-signal.json
+          if-no-files-found: ignore
+          retention-days: 7
+
   # ── Job 1: Execute sprint tasks (Implementation hat) ─────────────────────
   # C-065: This job is the AUTHOR. Uses GITHUB_TOKEN.
   # FinOps Pattern 3: MODEL_HINT env var routes trivial tasks to 'auto' model tier.
@@ -240,10 +249,12 @@ jobs:
     if: needs.preflight.outputs.halt == 'false'
     timeout-minutes: 60             # Raised from 30: 16k-token tasks take ~6min each; 4 tasks × 3 attempts = up to 72min worst case
     outputs:
-      pr_number:    ${{ steps.runner.outputs.pr_number }}
-      halt:         ${{ steps.runner.outputs.halt }}
-      result:       ${{ steps.runner.outputs.result }}
-      sprint:       ${{ steps.runner.outputs.sprint }}
+      pr_number:         ${{ steps.runner.outputs.pr_number }}
+      halt:              ${{ steps.runner.outputs.halt }}
+      result:            ${{ steps.runner.outputs.result }}
+      sprint:            ${{ steps.runner.outputs.sprint }}
+      scaffold_failed:   ${{ steps.runner.outputs.scaffold_failed }}
+      infra_error_tasks: ${{ steps.runner.outputs.infra_error_tasks }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -446,11 +457,20 @@ jobs:
       - name: Install dependencies
         run: pip install requests -q
 
+      - name: Download monitor signal artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: sprint-monitor-signal
+          path: sprint-context/
+        continue-on-error: true   # signal may not exist if execute was cancelled
+
       - name: Run Sprint Health Monitor
         env:
-          GITHUB_TOKEN:  ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_REPO:   ${{ github.repository }}
-          GITHUB_RUN_ID: ${{ github.run_id }}
-          SPRINT:        ${{ needs.execute.outputs.sprint }}
-          SPRINT_RESULT: ${{ needs.execute.outputs.result }}
+          GITHUB_TOKEN:      ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPO:       ${{ github.repository }}
+          GITHUB_RUN_ID:     ${{ github.run_id }}
+          SPRINT:            ${{ needs.execute.outputs.sprint }}
+          SPRINT_RESULT:     ${{ needs.execute.outputs.result }}
+          SCAFFOLD_FAILED:   ${{ needs.execute.outputs.scaffold_failed }}
+          INFRA_ERROR_TASKS: ${{ needs.execute.outputs.infra_error_tasks }}
         run: python3 scripts/sprint_monitor.py
