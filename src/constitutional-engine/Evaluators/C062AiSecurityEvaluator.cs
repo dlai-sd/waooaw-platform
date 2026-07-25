@@ -9,160 +9,134 @@ using Microsoft.Extensions.Logging;
 namespace Waooaw.ConstitutionalEngine.Evaluators;
 
 /// <summary>
-/// C-073: Enforces C-062 (AI Security) — prevents AI agents from operating outside
-/// their permitted security boundary: accessing prohibited security classifications,
-/// targeting protected governance systems, or signalling bypass of constitutional controls.
+/// Enforces C-062 (AI Security): denies actions that use prohibited tool classifications
+/// or attempt direct AI-agent access to constitutionally protected systems.
 /// </summary>
 public sealed class C062AiSecurityEvaluator : IClaimEvaluator
 {
-    // C-073: Shared ActivitySource per service — name must match OTel configuration in Program.cs.
+    // C-073: ActivitySource scoped to the Constitutional Engine telemetry provider (ADR-009)
     private static readonly ActivitySource _tracer = new("Waooaw.ConstitutionalEngine");
 
-    // C-073: Security classifications that unconditionally prohibit AI agent execution.
-    // DESIGN_QUESTION: Should CONFIDENTIAL be denied or escalated? Marking Escalate path not
-    // implemented until EA confirms C-062 scope vs C-049 Honest Limitation boundary.
+    // C-073: C-062 enumerates tool classifications an AI agent may NEVER invoke.
+    // Evaluated against action parameter key "tool_classification" (case-insensitive).
     private static readonly HashSet<string> ProhibitedClassifications =
         new(StringComparer.OrdinalIgnoreCase)
         {
-            "RESTRICTED",
-            "TOP_SECRET",
-            "PROHIBITED",
+            "OFFENSIVE_CYBER",          // Any tool that attacks or probes external systems
+            "SURVEILLANCE",             // Mass-monitoring tools without explicit consent
+            "BIOMETRIC_MASS_COLLECTION", // Bulk biometric harvesting
+            "AUTONOMOUS_WEAPONS",       // Kinetic or cyber weapons with autonomous trigger
+            "SOCIAL_SCORING",           // Algorithmic social credit or ranking systems
+            "DEEPFAKE_GENERATION",      // Synthetic media that impersonates real persons
+            "CREDENTIAL_HARVESTING",    // Tools designed to extract auth credentials
+            "EXPLOIT_DEVELOPMENT",      // Zero-day or CVE exploitation tooling
         };
 
-    // C-073: Systems that AI agents must never directly access or modify.
-    // Protecting constitutional governance infrastructure enforces the PAAS boundary (§2).
+    // C-073: C-062 enumerates systems an AI agent may NEVER directly write to or control.
+    // Evaluated against action parameter key "target_system" (case-insensitive).
     private static readonly HashSet<string> ProtectedSystems =
         new(StringComparer.OrdinalIgnoreCase)
         {
-            "constitutional-engine",
-            "audit-records",
-            "governance",
-            "identity-provider",
-            "keycloak",
+            "IDENTITY_PROVIDER",        // Keycloak / auth stack — human-only mutations
+            "AUDIT_LOG",                // Constitutional audit records are append-only via CE
+            "CONSTITUTIONAL_ENGINE",    // CE must not self-modify its own rule set
+            "EMERGENCY_STOP",           // Emergency Stop may only be triggered via authorised path
+            "HUMAN_OVERRIDE_CHANNEL",   // C-001 override channel is exclusively human-operated
+            "PAYMENT_GATEWAY",          // Financial disbursement requires human authorisation
+            "CREDENTIAL_STORE",         // Secrets vault — never directly accessible by agents
         };
 
     private readonly ILogger<C062AiSecurityEvaluator> _logger;
 
-    // C-073: Constructor — constructor injection only (C-059, DI contract).
     public C062AiSecurityEvaluator(ILogger<C062AiSecurityEvaluator> logger)
     {
+        // C-073: Constructor guard — DI must supply a concrete logger (C-059 traceability)
         ArgumentNullException.ThrowIfNull(logger);
         _logger = logger;
     }
 
     /// <inheritdoc />
-    // C-073: ClaimId — identifies this evaluator in audit records (C-023 Evidence First).
     public string ClaimId => "C-062";
 
-    /// <inheritdoc />
-    // C-073: EvaluateAsync implements C-062 — three-gate AI security check:
-    //   Gate 1: security_classification must not be in the prohibited set.
-    //   Gate 2: target_system must not be a protected governance system.
-    //   Gate 3: explicit ai_security_bypass=true is unconditionally denied.
-    //   Default: Allow (C-041 owns default-deny for unlisted tools).
+    /// <summary>
+    /// C-073: Enforces C-062 (AI Security).
+    /// Denies on first match of either a prohibited tool classification or a protected target system.
+    /// Pure synchronous logic wrapped in Task — no network I/O, satisfies the 40 ms budget share.
+    /// </summary>
     public Task<EvaluationResult> EvaluateAsync(EvaluationContext ctx, CancellationToken ct)
     {
+        // C-073: Null guard — EvaluationContext must be constructed by CE before reaching evaluators
         ArgumentNullException.ThrowIfNull(ctx);
 
         using var activity = _tracer.StartActivity(
-            "C062AiSecurityEvaluator.EvaluateAsync",
+            "C062AiSecurityEvaluator.Evaluate",
             ActivityKind.Internal);
 
         activity?.SetTag("claim_id", ClaimId);
         activity?.SetTag("tenant_id", ctx.TenantId);
         activity?.SetTag("action_type", ctx.ActionType);
-        activity?.SetTag("contract_id", ctx.ContractId);
 
-        // ── Gate 1: Security classification ─────────────────────────────────────────
-        // C-073: C-062 prohibits AI agents from executing actions tagged with restricted
-        // security classifications — these require human handling outside the AI boundary.
-        var securityClassification = ctx.GetParameter("security_classification");
-        if (securityClassification is not null &&
-            ProhibitedClassifications.Contains(securityClassification))
+        // ── Check 1: Prohibited tool classification ──────────────────────────────────
+        // C-073: ActionParameters is a JSON string — use GetParameter(), never TryGetValue()
+        var toolClassification = ctx.GetParameter("tool_classification");
+
+        if (toolClassification is not null
+            && ProhibitedClassifications.Contains(toolClassification))
         {
             _logger.LogWarning(
-                "C-062 DENY: prohibited security_classification={Classification} " +
-                "TenantId={TenantId} ActionType={ActionType} ContractId={ContractId}",
-                securityClassification,
+                "C-062 DENY — prohibited tool classification. " +
+                "Classification={Classification} TenantId={TenantId} ActionType={ActionType}",
+                toolClassification,
                 ctx.TenantId,
-                ctx.ActionType,
-                ctx.ContractId);
+                ctx.ActionType);
 
-            activity?.SetTag("c062.deny_reason", "prohibited_classification");
-            activity?.SetTag("c062.security_classification", securityClassification);
+            activity?.SetTag("decision", "Deny");
+            activity?.SetTag("deny_reason", "prohibited_classification");
+            activity?.SetTag("tool_classification", toolClassification);
 
             return Task.FromResult(new EvaluationResult(
                 ClaimId,
                 EvaluationVerdict.Deny,
-                $"C-062: Security classification '{securityClassification}' is prohibited " +
-                "for AI agent operations. Human handling required."));
+                $"C-062: Tool classification '{toolClassification}' is prohibited for AI agents " +
+                $"under the WAOOAW AI Security policy."));
         }
 
-        // ── Gate 2: Protected system access ─────────────────────────────────────────
-        // C-073: AI agents must not directly access or modify constitutional governance
-        // infrastructure. Violation would undermine the PAAS boundary (CE §2).
+        // ── Check 2: Protected target system ─────────────────────────────────────────
+        // C-073: Prevents AI agents from directly mutating constitutionally protected systems
         var targetSystem = ctx.GetParameter("target_system");
-        if (targetSystem is not null)
+
+        if (targetSystem is not null
+            && ProtectedSystems.Contains(targetSystem))
         {
-            var matched = ProtectedSystems.FirstOrDefault(ps =>
-                targetSystem.Contains(ps, StringComparison.OrdinalIgnoreCase));
-
-            if (matched is not null)
-            {
-                _logger.LogWarning(
-                    "C-062 DENY: AI agent targeting protected system={TargetSystem} " +
-                    "MatchedBoundary={Matched} TenantId={TenantId} ActionType={ActionType}",
-                    targetSystem,
-                    matched,
-                    ctx.TenantId,
-                    ctx.ActionType);
-
-                activity?.SetTag("c062.deny_reason", "protected_system_access");
-                activity?.SetTag("c062.target_system", targetSystem);
-                activity?.SetTag("c062.matched_boundary", matched);
-
-                return Task.FromResult(new EvaluationResult(
-                    ClaimId,
-                    EvaluationVerdict.Deny,
-                    $"C-062: AI agents may not directly access or modify protected system " +
-                    $"'{targetSystem}'. Constitutional governance boundary enforced."));
-            }
-        }
-
-        // ── Gate 3: Explicit bypass attempt ──────────────────────────────────────────
-        // C-073: Any request carrying ai_security_bypass=true is an unconditional DENY.
-        // Logged at Critical severity — this is a canary signal for adversarial probing.
-        var bypassAttempt = ctx.GetParameter("ai_security_bypass");
-        if (string.Equals(bypassAttempt, "true", StringComparison.OrdinalIgnoreCase))
-        {
-            _logger.LogCritical(
-                "C-062 DENY: ai_security_bypass=true detected — possible adversarial probe. " +
-                "TenantId={TenantId} ActionType={ActionType} ContractId={ContractId}",
+            _logger.LogWarning(
+                "C-062 DENY — direct AI access to protected system. " +
+                "TargetSystem={TargetSystem} TenantId={TenantId} ActionType={ActionType}",
+                targetSystem,
                 ctx.TenantId,
-                ctx.ActionType,
-                ctx.ContractId);
+                ctx.ActionType);
 
-            activity?.SetTag("c062.deny_reason", "bypass_attempt");
+            activity?.SetTag("decision", "Deny");
+            activity?.SetTag("deny_reason", "protected_system");
+            activity?.SetTag("target_system", targetSystem);
 
             return Task.FromResult(new EvaluationResult(
                 ClaimId,
                 EvaluationVerdict.Deny,
-                "C-062: AI security bypass attempts are unconditionally denied and escalated " +
-                "to governance review."));
+                $"C-062: Direct AI agent access to protected system '{targetSystem}' " +
+                $"is prohibited. Route through the appropriate human-authorised channel."));
         }
 
-        // ── All gates passed: Allow ───────────────────────────────────────────────────
+        // ── All C-062 checks passed ───────────────────────────────────────────────────
         _logger.LogDebug(
-            "C-062 Allow: TenantId={TenantId} ActionType={ActionType} ContractId={ContractId}",
+            "C-062 Allow. TenantId={TenantId} ActionType={ActionType}",
             ctx.TenantId,
-            ctx.ActionType,
-            ctx.ContractId);
+            ctx.ActionType);
 
-        activity?.SetTag("c062.verdict", "allow");
+        activity?.SetTag("decision", "Allow");
 
         return Task.FromResult(new EvaluationResult(
             ClaimId,
             EvaluationVerdict.Allow,
-            "C-062: AI security checks passed."));
+            "C-062: No AI security violation detected."));
     }
 }
