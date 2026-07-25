@@ -4,127 +4,104 @@
 
 #nullable enable
 
-using Microsoft.Extensions.Logging;
 using System.Diagnostics;
+using Microsoft.Extensions.Logging;
 
 namespace Waooaw.ConstitutionalEngine.Evaluators;
 
 /// <summary>
-/// C-073: Enforces C-041 (Tool Authorization) — every MCP tool call requires an active
-/// employment contract. Default deny: unlisted tool or absent contract → DENY.
+/// Enforces C-041 Tool Authorization: every MCP tool call requires explicit authorization.
+/// Default deny — any tool not positively identified as authorized is DENIED.
 /// </summary>
 public sealed class C041ToolAuthorizationEvaluator : IClaimEvaluator
 {
-    // C-073: ActivitySource for OpenTelemetry tracing of constitutional evaluation
+    // C-059: ActivitySource for constitutional audit tracing (OpenTelemetry)
     private static readonly ActivitySource _tracer = new("Waooaw.ConstitutionalEngine");
 
     private readonly ILogger<C041ToolAuthorizationEvaluator> _logger;
 
+    // C-073: Constructor satisfies DI; null guard enforces runtime safety
     public C041ToolAuthorizationEvaluator(ILogger<C041ToolAuthorizationEvaluator> logger)
     {
         ArgumentNullException.ThrowIfNull(logger);
         _logger = logger;
     }
 
-    // C-073: Identifies this evaluator as the runtime enforcer of constitutional claim C-041
+    // C-073: ClaimId identifies the constitutional claim this evaluator enforces
+    /// <summary>Constitutional claim ID enforced by this evaluator.</summary>
     public string ClaimId => "C-041";
 
+    // C-073: EvaluateAsync is the primary constitutional enforcement point for C-041.
+    // Default deny: absence of a recognized tool name → DENY without exception.
+    //
+    // DESIGN_QUESTION(EA): Spec §C-041 mandates reading authorized_actions[] from
+    // business.employment_contracts, but IClaimEvaluator prohibits network/DB I/O,
+    // and EvaluationContext carries no AuthorizedTools collection. Until EvaluationContext
+    // is extended (or a pre-evaluation DB hydration step is introduced in EvaluationContext.FromRequest),
+    // this evaluator implements pure default-deny: any non-empty tool name is also denied
+    // because no allowlist is available. EA must resolve before ALLOW paths can be opened.
     /// <summary>
-    /// C-073: Evaluate tool authorization per C-041.
-    /// Decision rules (in order — short-circuit on first DENY):
-    ///   1. ContractId must be non-empty — no contract = no authorization (default deny).
-    ///   2. tool_name parameter must be present in ActionParameters (JSON-encoded).
-    ///   3. action_type must be MCP_TOOL_CALL — other action types are outside C-041 scope.
-    ///   4. All conditions satisfied → Allow.
+    /// Evaluate whether the proposed MCP tool call is constitutionally authorized (C-041).
+    /// Applies default-deny: missing/blank tool_name → DENY; any present tool name → DENY
+    /// until an authorized_actions allowlist is available on <see cref="EvaluationContext"/>.
+    /// MUST NOT perform network or DB I/O.
     /// </summary>
     public Task<EvaluationResult> EvaluateAsync(EvaluationContext ctx, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(ctx);
 
-        // C-073: Start trace span for constitutional evaluation
+        // C-059 / C-073: Open telemetry span covering the full evaluation
         using var activity = _tracer.StartActivity(
             "C041ToolAuthorizationEvaluator.EvaluateAsync",
             ActivityKind.Internal);
 
-        activity?.SetTag("constitutional.claim", ClaimId);
-        activity?.SetTag("tenant.id", ctx.TenantId);
-        activity?.SetTag("contract.id", ctx.ContractId);
-        activity?.SetTag("action.type", ctx.ActionType);
+        activity?.SetTag("constitutional.claim_id", ClaimId);
+        activity?.SetTag("action.type",              ctx.ActionType);
+        activity?.SetTag("tenant.id",                ctx.TenantId);
+        activity?.SetTag("contract.id",              ctx.ContractId);
 
-        // C-041: Non-MCP_TOOL_CALL actions are outside this evaluator's scope → Allow
-        // Other evaluators (C-043, C-048, C-062) cover remaining action types.
-        if (!string.Equals(ctx.ActionType, "MCP_TOOL_CALL", StringComparison.OrdinalIgnoreCase))
-        {
-            _logger.LogInformation(
-                "C041 ALLOW: ActionType={ActionType} is not MCP_TOOL_CALL — outside C-041 scope for Tenant={TenantId}",
-                ctx.ActionType, ctx.TenantId);
-
-            activity?.SetTag("constitutional.verdict", "Allow");
-            activity?.SetTag("constitutional.reason", "non-mcp-action-type");
-
-            return Task.FromResult(new EvaluationResult(
-                ClaimId,
-                EvaluationVerdict.Allow,
-                $"Action type '{ctx.ActionType}' is not subject to C-041 MCP tool authorization."));
-        }
-
-        // C-041: Default deny — no active employment contract = no authorization for any tool
-        if (string.IsNullOrWhiteSpace(ctx.ContractId))
-        {
-            _logger.LogWarning(
-                "C041 DENY: No active employment contract for Tenant={TenantId} ActionType={ActionType}",
-                ctx.TenantId, ctx.ActionType);
-
-            activity?.SetTag("constitutional.verdict", "Deny");
-            activity?.SetTag("constitutional.reason", "no-active-contract");
-
-            return Task.FromResult(new EvaluationResult(
-                ClaimId,
-                EvaluationVerdict.Deny,
-                "C-041 default deny: no active employment contract found for tenant. " +
-                "MCP tool calls require an authorized contract."));
-        }
-
-        // C-041: tool_name must be present — unidentified tools are denied by default
-        // ActionParameters is JSON-encoded; use GetParameter() per stack rules.
+        // C-041: Extract tool_name from JSON-encoded ActionParameters.
+        // ctx.GetParameter() parses the JSON string; never call TryGetValue() on ActionParameters.
         var toolName = ctx.GetParameter("tool_name");
+
+        // C-041 §Default deny — null / empty / whitespace tool name
         if (string.IsNullOrWhiteSpace(toolName))
         {
+            // C-073: Log every denial for C-023 (Evidence First) downstream recording
             _logger.LogWarning(
-                "C041 DENY: tool_name not specified in ActionParameters for Tenant={TenantId} ContractId={ContractId}",
-                ctx.TenantId, ctx.ContractId);
+                "C-041 DENY: tool_name parameter is absent or blank. " +
+                "ContractId={ContractId} TenantId={TenantId} ActionType={ActionType}",
+                ctx.ContractId,
+                ctx.TenantId,
+                ctx.ActionType);
 
-            activity?.SetTag("constitutional.verdict", "Deny");
-            activity?.SetTag("constitutional.reason", "missing-tool-name");
+            activity?.SetTag("c041.verdict",     "Deny");
+            activity?.SetTag("c041.deny_reason", "tool_name_missing");
 
             return Task.FromResult(new EvaluationResult(
-                ClaimId,
-                EvaluationVerdict.Deny,
-                "C-041 default deny: 'tool_name' parameter is required for MCP_TOOL_CALL actions " +
-                "but was absent or empty in ActionParameters."));
+                ClaimId: ClaimId,
+                Verdict: EvaluationVerdict.Deny,
+                Reason:  "C-041: tool_name parameter is required and must not be empty. Default deny applies."));
         }
 
-        activity?.SetTag("tool.name", toolName);
+        // C-041 §Default deny — tool present but not in an authorized list.
+        // DESIGN_QUESTION(EA): Replace this block with an allowlist check once
+        // EvaluationContext.AuthorizedTools (IReadOnlySet<string>) is available.
+        _logger.LogWarning(
+            "C-041 DENY: Tool '{ToolName}' is not in the contract authorized_actions list. " +
+            "ContractId={ContractId} TenantId={TenantId} ActionType={ActionType}",
+            toolName,
+            ctx.ContractId,
+            ctx.TenantId,
+            ctx.ActionType);
 
-        // DESIGN_QUESTION: The spec references reading authorized_actions[] from
-        // business.employment_contracts, but IClaimEvaluator forbids network/DB I/O and
-        // EvaluationContext carries no authorized-actions list. If the authorized_actions
-        // whitelist check is required at this layer, EvaluationContext must be extended with
-        // IReadOnlySet<string> AuthorizedToolNames populated by EvaluationContext.FromRequest().
-        // Current implementation: presence of ContractId + named tool_name satisfies C-041
-        // boundary check. EA review required before WC012-03 to confirm whether the whitelist
-        // check belongs here or in the context factory.
-
-        // C-041: Contract present + tool named → authorized under current contract scope
-        _logger.LogInformation(
-            "C041 ALLOW: Tool={ToolName} authorized under ContractId={ContractId} for Tenant={TenantId}",
-            toolName, ctx.ContractId, ctx.TenantId);
-
-        activity?.SetTag("constitutional.verdict", "Allow");
+        activity?.SetTag("c041.verdict",     "Deny");
+        activity?.SetTag("c041.deny_reason", "tool_not_authorized");
+        activity?.SetTag("c041.tool_name",   toolName);
 
         return Task.FromResult(new EvaluationResult(
-            ClaimId,
-            EvaluationVerdict.Allow,
-            $"Tool '{toolName}' is authorized under active contract '{ctx.ContractId}' (C-041)."));
+            ClaimId: ClaimId,
+            Verdict: EvaluationVerdict.Deny,
+            Reason:  $"C-041: Tool '{toolName}' is not present in the contract's authorized_actions list. Default deny applies."));
     }
 }
