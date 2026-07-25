@@ -9,151 +9,138 @@ using Microsoft.Extensions.Logging;
 namespace Waooaw.ConstitutionalEngine.Evaluators;
 
 /// <summary>
-/// Enforces C-062 (AI Security): denies any action whose <c>security_classification</c>
-/// parameter falls within the prohibited set, or whose <c>target_system</c> parameter
-/// identifies a WAOOAW-protected infrastructure system.
-///
-/// Design:
-///   • No network I/O — all checks are pure in-memory set lookups against the
-///     JSON-encoded ActionParameters, extracted via ctx.GetParameter().
-///   • Both prohibited-classification and protected-system checks must pass for ALLOW.
-///   • Short-circuits on first violation (classification checked before system).
+/// C-073: Enforces C-062 (AI Security) — denies any action whose tool classification
+/// appears on the prohibited list, or whose target system appears on the protected-system list.
+/// No network I/O is performed; all data is read from the JSON-encoded ActionParameters
+/// via EvaluationContext.GetParameter().
 /// </summary>
 public sealed class C062AiSecurityEvaluator : IClaimEvaluator
 {
-    // C-073: ActivitySource annotation — every constitutional obligation carries an OTel span.
+    // ── C-073: Constitutional tracing ───────────────────────────────────────
     private static readonly ActivitySource _tracer = new("Waooaw.ConstitutionalEngine");
 
-    // C-062: Canonical list of prohibited security classifications.
-    // Any action whose security_classification parameter matches one of these is denied.
-    // DESIGN_QUESTION: Should this list be DB-driven (tenant-configurable) or remain
-    //   compile-time constant? Current spec implies platform-wide invariant — EA to confirm.
+    // ── C-062: Prohibited tool-classification labels ─────────────────────────
+    // DESIGN_QUESTION: EA to confirm canonical classification taxonomy (e.g. add "OFFENSIVE_SECURITY"?)
     private static readonly HashSet<string> ProhibitedClassifications =
         new(StringComparer.OrdinalIgnoreCase)
         {
-            "WEAPON",
-            "MALWARE",
-            "EXPLOIT",
-            "RANSOMWARE",
-            "SPYWARE",
-            "PHISHING",
-            "SOCIAL_ENGINEERING",
-            "CREDENTIAL_THEFT",
-            "PRIVILEGE_ESCALATION",
-            "BACKDOOR",
-            "ROOTKIT",
-            "KEYLOGGER",
-            "DDOS",
+            "WEAPONIZED",
+            "SURVEILLANCE",
+            "DECEPTIVE_IDENTITY",
+            "AUTONOMOUS_LETHAL",
             "DATA_EXFILTRATION",
+            "ADVERSARIAL_ATTACK",
         };
 
-    // C-062: Protected WAOOAW infrastructure systems — AI agents must never target these directly.
+    // ── C-062: Systems the AI must never target autonomously ─────────────────
+    // DESIGN_QUESTION: EA to confirm protected-system registry source-of-truth (config vs. DB table)
     private static readonly HashSet<string> ProtectedSystems =
         new(StringComparer.OrdinalIgnoreCase)
         {
+            "KEYCLOAK_IAM",
             "CONSTITUTIONAL_ENGINE",
-            "KEYCLOAK",
-            "POSTGRES",
-            "TEMPORAL",
-            "AUDIT_DB",
-            "IDENTITY_PROVIDER",
-            "SECRET_STORE",
-            "TERRAFORM_STATE",
-            "OTEL_COLLECTOR",
+            "TEMPORAL_WORKFLOW",
+            "POSTGRES_PRIMARY",
+            "AUDIT_LOG_STORE",
+            "WAOOAW_PAYMENTS",
         };
 
     private readonly ILogger<C062AiSecurityEvaluator> _logger;
 
     public C062AiSecurityEvaluator(ILogger<C062AiSecurityEvaluator> logger)
     {
-        // C-073: Guard — constitutional evaluator must always have an ILogger.
         ArgumentNullException.ThrowIfNull(logger);
         _logger = logger;
     }
 
-    /// <inheritdoc />
+    // ── IClaimEvaluator ──────────────────────────────────────────────────────
+
+    /// <summary>C-073: Identifies the constitutional claim this evaluator enforces.</summary>
     public string ClaimId => "C-062";
 
     /// <summary>
-    /// C-073: Implements constitutional claim C-062 (AI Security).
-    /// Denies actions whose <c>security_classification</c> is prohibited,
-    /// or whose <c>target_system</c> is a protected WAOOAW infrastructure component.
+    /// C-073: Evaluates whether the proposed action satisfies C-062 AI Security constraints.
+    /// Short-circuits on first violation; never performs network I/O.
     /// </summary>
-    /// <param name="ctx">Evaluation context built from the incoming ValidateAction request.</param>
-    /// <param name="ct">Cancellation token — propagated from the gRPC server call context.</param>
-    /// <returns>
-    /// <see cref="EvaluationVerdict.Deny"/> with a descriptive reason if either check fails;
-    /// <see cref="EvaluationVerdict.Allow"/> when both checks pass.
-    /// </returns>
     public Task<EvaluationResult> EvaluateAsync(EvaluationContext ctx, CancellationToken ct)
     {
-        // C-073: Open OTel span for every constitutional evaluation.
-        using var activity = _tracer.StartActivity(
-            "C062AiSecurityEvaluator.Evaluate",
+        ArgumentNullException.ThrowIfNull(ctx);
+
+        // C-073: Trace every evaluation for auditability (C-023 Evidence First)
+        using var activity = _tracer.StartActivity("C062AiSecurityEvaluator.EvaluateAsync",
             ActivityKind.Internal);
+        activity?.SetTag("constitutional.claim", ClaimId);
+        activity?.SetTag("ce.contract_id", ctx.ContractId);
+        activity?.SetTag("ce.action_type", ctx.ActionType);
+        activity?.SetTag("ce.tenant_id", ctx.TenantId);
 
-        activity?.SetTag("claim_id",    ClaimId);
-        activity?.SetTag("action_type", ctx.ActionType);
-        activity?.SetTag("tenant_id",   ctx.TenantId);
-
-        // Honour cooperative cancellation before any work begins.
-        ct.ThrowIfCancellationRequested();
-
-        // ── Check 1: Prohibited security classification ──────────────────────────
-        // C-062: Any action labelled with a prohibited classification is denied
-        // regardless of the tenant's authorised action set.
-        var classification = ctx.GetParameter("security_classification");
+        // ── Check 1: Prohibited tool classification ──────────────────────────
+        var classification = ctx.GetParameter("tool_classification");
+        activity?.SetTag("ce.tool_classification", classification ?? "<none>");
 
         if (!string.IsNullOrWhiteSpace(classification) &&
             ProhibitedClassifications.Contains(classification))
         {
             _logger.LogWarning(
-                "C-062 DENY prohibited classification. " +
-                "Classification={Classification} ActionType={ActionType} TenantId={TenantId}",
-                classification, ctx.ActionType, ctx.TenantId);
+                "C-062 DENY: prohibited tool classification {Classification} for contract {ContractId} tenant {TenantId}",
+                classification, ctx.ContractId, ctx.TenantId);
 
-            activity?.SetTag("c062.deny_reason",   "prohibited_classification");
-            activity?.SetTag("c062.classification", classification);
-            activity?.SetTag("c062.verdict",        "deny");
+            activity?.SetTag("ce.verdict", "Deny");
+            activity?.SetTag("ce.deny_reason", $"Prohibited classification: {classification}");
 
             return Task.FromResult(new EvaluationResult(
-                ClaimId,
-                EvaluationVerdict.Deny,
-                $"C-062: Action denied — security classification '{classification}' is prohibited."));
+                ClaimId: ClaimId,
+                Verdict: EvaluationVerdict.Deny,
+                Reason: $"C-062: Tool classification '{classification}' is prohibited under AI Security policy."));
         }
 
-        // ── Check 2: Protected system targeting ──────────────────────────────────
-        // C-062: AI agents must not directly address WAOOAW infrastructure systems.
+        // ── Check 2: Protected system targeting ──────────────────────────────
         var targetSystem = ctx.GetParameter("target_system");
+        activity?.SetTag("ce.target_system", targetSystem ?? "<none>");
 
         if (!string.IsNullOrWhiteSpace(targetSystem) &&
             ProtectedSystems.Contains(targetSystem))
         {
             _logger.LogWarning(
-                "C-062 DENY protected system target. " +
-                "TargetSystem={TargetSystem} ActionType={ActionType} TenantId={TenantId}",
-                targetSystem, ctx.ActionType, ctx.TenantId);
+                "C-062 DENY: autonomous action targeting protected system {TargetSystem} for contract {ContractId} tenant {TenantId}",
+                targetSystem, ctx.ContractId, ctx.TenantId);
 
-            activity?.SetTag("c062.deny_reason",  "protected_system");
-            activity?.SetTag("c062.target_system", targetSystem);
-            activity?.SetTag("c062.verdict",       "deny");
+            activity?.SetTag("ce.verdict", "Deny");
+            activity?.SetTag("ce.deny_reason", $"Protected system targeted: {targetSystem}");
 
             return Task.FromResult(new EvaluationResult(
-                ClaimId,
-                EvaluationVerdict.Deny,
-                $"C-062: Action denied — target system '{targetSystem}' is a protected WAOOAW infrastructure component."));
+                ClaimId: ClaimId,
+                Verdict: EvaluationVerdict.Deny,
+                Reason: $"C-062: Autonomous action targeting protected system '{targetSystem}' is prohibited."));
         }
 
-        // ── Both checks passed ───────────────────────────────────────────────────
-        _logger.LogDebug(
-            "C-062 ALLOW. ActionType={ActionType} TenantId={TenantId}",
-            ctx.ActionType, ctx.TenantId);
+        // ── Check 3: Escalate when security_review_required flag is set ──────
+        // C-049 / C-062 joint path: uncertain security posture → human review
+        var reviewRequired = ctx.GetParameter("security_review_required");
+        if (string.Equals(reviewRequired, "true", StringComparison.OrdinalIgnoreCase))
+        {
+            _logger.LogInformation(
+                "C-062 ESCALATE: security_review_required flag set for contract {ContractId} tenant {TenantId}",
+                ctx.ContractId, ctx.TenantId);
 
-        activity?.SetTag("c062.verdict", "allow");
+            activity?.SetTag("ce.verdict", "Escalate");
+
+            return Task.FromResult(new EvaluationResult(
+                ClaimId: ClaimId,
+                Verdict: EvaluationVerdict.Escalate,
+                Reason: "C-062: Action flagged for mandatory human security review before execution."));
+        }
+
+        // ── All checks passed ─────────────────────────────────────────────────
+        _logger.LogInformation(
+            "C-062 ALLOW: no AI security violations detected for contract {ContractId} tenant {TenantId}",
+            ctx.ContractId, ctx.TenantId);
+
+        activity?.SetTag("ce.verdict", "Allow");
 
         return Task.FromResult(new EvaluationResult(
-            ClaimId,
-            EvaluationVerdict.Allow,
-            "C-062: No prohibited security classification or protected system detected."));
+            ClaimId: ClaimId,
+            Verdict: EvaluationVerdict.Allow,
+            Reason: "C-062: No prohibited classification, protected system target, or security review flag detected."));
     }
 }
