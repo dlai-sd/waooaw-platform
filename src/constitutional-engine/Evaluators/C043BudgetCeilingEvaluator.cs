@@ -10,13 +10,13 @@ using Microsoft.Extensions.Logging;
 namespace Waooaw.ConstitutionalEngine.Evaluators;
 
 /// <summary>
-/// Enforces C-043 (Budget Ceiling): a proposed action is DENIED if the sum of
-/// current-month spend and proposed spend would exceed the tenant's approved
-/// monthly budget ceiling for the relevant skill type.
+/// C-073: Enforces C-043 (Budget Ceiling) — denies any action whose proposed spend would
+/// cause the tenant's cumulative monthly spend to exceed the approved budget ceiling.
+/// C-051: Remaining budget is always logged regardless of verdict (Resource Transparency).
 /// </summary>
 public sealed class C043BudgetCeilingEvaluator : IClaimEvaluator
 {
-    // C-073: ActivitySource — every constitutional obligation carries an OTel trace
+    // C-059: Canonical tracer for the Constitutional Engine service.
     private static readonly ActivitySource _tracer = new("Waooaw.ConstitutionalEngine");
 
     private readonly ILogger<C043BudgetCeilingEvaluator> _logger;
@@ -27,89 +27,109 @@ public sealed class C043BudgetCeilingEvaluator : IClaimEvaluator
         _logger = logger;
     }
 
-    // C-073: ClaimId identifies the constitutional obligation this evaluator enforces
-    /// <summary>Constitutional claim enforced by this evaluator.</summary>
+    // C-073: ClaimId identifies the constitutional claim this evaluator enforces.
+    /// <summary>Constitutional claim enforced: C-043 (Budget Ceiling).</summary>
     public string ClaimId => "C-043";
 
-    // C-073: EvaluateAsync implements the C-043 budget ceiling constitutional obligation
+    // C-073: EvaluateAsync is the primary constitutional obligation implementation for C-043.
     /// <summary>
-    /// Evaluates whether the proposed spend would cause the tenant to exceed their
-    /// approved monthly budget ceiling (C-043).  No network I/O — all budget fields
-    /// are resolved from <see cref="EvaluationContext"/> before this call.
+    /// Evaluates whether the proposed action falls within the tenant's approved budget ceiling.
+    /// Returns <see cref="EvaluationVerdict.Deny"/> when
+    /// <c>CurrentSpendInrPaise + ProposedSpendInrPaise &gt; ApprovedBudgetInrPaise</c>.
     /// </summary>
+    /// <remarks>
+    /// All three budget fields on <see cref="EvaluationContext"/> are non-nullable <c>long</c>;
+    /// the null-coalescing operator (??) MUST NOT be applied to them.
+    /// <c>BudgetRemainingInrPaise</c> does not exist as a property — it is derived here.
+    /// </remarks>
     public Task<EvaluationResult> EvaluateAsync(EvaluationContext ctx, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(ctx);
 
-        // C-073: Begin trace span scoped to this constitutional evaluation
+        // C-073: Open a tracing span for observability — C-059 traceability requirement.
         using var activity = _tracer.StartActivity(
-            "C043BudgetCeiling.Evaluate", ActivityKind.Internal);
+            "C043BudgetCeilingEvaluator.EvaluateAsync",
+            ActivityKind.Internal);
 
-        activity?.SetTag("constitutional.claim", ClaimId);
-        activity?.SetTag("tenant_id", ctx.TenantId);
-        activity?.SetTag("budget.skill_type", ctx.BudgetSkillType);
-        activity?.SetTag("budget.approved_inr_paise", ctx.ApprovedBudgetInrPaise);
-        activity?.SetTag("budget.current_spend_inr_paise", ctx.CurrentSpendInrPaise);
-        activity?.SetTag("budget.proposed_spend_inr_paise", ctx.ProposedSpendInrPaise);
+        activity?.SetTag("tenant_id",                  ctx.TenantId);
+        activity?.SetTag("contract_id",                ctx.ContractId);
+        activity?.SetTag("budget_skill_type",          ctx.BudgetSkillType);
+        activity?.SetTag("approved_budget_inr_paise",  ctx.ApprovedBudgetInrPaise);
+        activity?.SetTag("current_spend_inr_paise",    ctx.CurrentSpendInrPaise);
+        activity?.SetTag("proposed_spend_inr_paise",   ctx.ProposedSpendInrPaise);
 
-        // C-043: Ceiling check — do NOT use ?? on these fields; they are non-nullable long.
-        // BEHAVIORAL RULE: compute remaining from the three canonical budget fields only;
-        // BudgetRemainingInrPaise does NOT exist on EvaluationContext.
-        bool exceeded =
-            (ctx.CurrentSpendInrPaise + ctx.ProposedSpendInrPaise) > ctx.ApprovedBudgetInrPaise;
+        // C-043: Core budget ceiling check.
+        // ⛔ Fields are non-nullable long — do NOT apply ?? operator.
+        // ⛔ BudgetRemainingInrPaise is not a property — derived below from the three canonical fields.
+        long projectedTotalSpendInrPaise = ctx.CurrentSpendInrPaise + ctx.ProposedSpendInrPaise;
+        bool ceilingExceeded             = projectedTotalSpendInrPaise > ctx.ApprovedBudgetInrPaise;
 
-        if (exceeded)
-        {
-            long projectedSpend  = ctx.CurrentSpendInrPaise + ctx.ProposedSpendInrPaise;
-            long overageInrPaise = projectedSpend - ctx.ApprovedBudgetInrPaise;
+        // C-051: Derive remaining budget for transparent logging — not a property, computed here.
+        long budgetRemainingInrPaise         = ctx.ApprovedBudgetInrPaise - ctx.CurrentSpendInrPaise;
+        long budgetRemainingAfterProposedInrPaise = budgetRemainingInrPaise - ctx.ProposedSpendInrPaise;
 
-            _logger.LogWarning(
-                "C-043 DENY — budget ceiling exceeded. " +
-                "TenantId={TenantId} SkillType={SkillType} " +
-                "Approved={ApprovedInrPaise} Current={CurrentInrPaise} " +
-                "Proposed={ProposedInrPaise} Projected={ProjectedInrPaise} " +
-                "Overage={OverageInrPaise}",
-                ctx.TenantId,
-                ctx.BudgetSkillType,
-                ctx.ApprovedBudgetInrPaise,
-                ctx.CurrentSpendInrPaise,
-                ctx.ProposedSpendInrPaise,
-                projectedSpend,
-                overageInrPaise);
-
-            activity?.SetTag("budget.exceeded", true);
-            activity?.SetTag("budget.overage_inr_paise", overageInrPaise);
-
-            return Task.FromResult(new EvaluationResult(
-                ClaimId: ClaimId,
-                Verdict: EvaluationVerdict.Deny,
-                Reason: $"C-043 budget ceiling exceeded for skill type '{ctx.BudgetSkillType}': " +
-                        $"projected spend {projectedSpend} paise would exceed approved ceiling " +
-                        $"{ctx.ApprovedBudgetInrPaise} paise (overage {overageInrPaise} paise)."));
-        }
-
-        long remainingInrPaise =
-            ctx.ApprovedBudgetInrPaise - (ctx.CurrentSpendInrPaise + ctx.ProposedSpendInrPaise);
-
+        // C-051 (Resource Transparency): Always log budget state, even on Allow, so spend is visible.
         _logger.LogInformation(
-            "C-043 ALLOW — budget ceiling within limit. " +
-            "TenantId={TenantId} SkillType={SkillType} " +
-            "Approved={ApprovedInrPaise} Current={CurrentInrPaise} " +
-            "Proposed={ProposedInrPaise} RemainingAfter={RemainingInrPaise}",
+            "C-043 budget evaluation: TenantId={TenantId} ContractId={ContractId} " +
+            "SkillType={SkillType} ApprovedBudget={ApprovedBudget} " +
+            "CurrentSpend={CurrentSpend} ProposedSpend={ProposedSpend} " +
+            "ProjectedTotal={ProjectedTotal} Remaining={Remaining} Exceeded={Exceeded}",
             ctx.TenantId,
+            ctx.ContractId,
             ctx.BudgetSkillType,
             ctx.ApprovedBudgetInrPaise,
             ctx.CurrentSpendInrPaise,
             ctx.ProposedSpendInrPaise,
-            remainingInrPaise);
+            projectedTotalSpendInrPaise,
+            budgetRemainingInrPaise,
+            ceilingExceeded);
 
-        activity?.SetTag("budget.exceeded", false);
-        activity?.SetTag("budget.remaining_inr_paise", remainingInrPaise);
+        activity?.SetTag("projected_total_inr_paise",              projectedTotalSpendInrPaise);
+        activity?.SetTag("budget_remaining_inr_paise",             budgetRemainingInrPaise);
+        activity?.SetTag("budget_remaining_after_proposed_paise",  budgetRemainingAfterProposedInrPaise);
+        activity?.SetTag("ceiling_exceeded",                       ceilingExceeded);
 
-        return Task.FromResult(new EvaluationResult(
-            ClaimId: ClaimId,
-            Verdict: EvaluationVerdict.Allow,
-            Reason: $"C-043 budget ceiling satisfied: projected spend within approved limit " +
-                    $"({remainingInrPaise} paise remaining) for skill type '{ctx.BudgetSkillType}'."));
+        EvaluationResult result;
+
+        if (ceilingExceeded)
+        {
+            // C-073: DENY path — C-043 Budget Ceiling constitutional obligation violated.
+            _logger.LogWarning(
+                "C-043 DENY: Budget ceiling exceeded. TenantId={TenantId} ContractId={ContractId} " +
+                "ProjectedTotal={ProjectedTotal} ApprovedBudget={ApprovedBudget} Shortfall={Shortfall}",
+                ctx.TenantId,
+                ctx.ContractId,
+                projectedTotalSpendInrPaise,
+                ctx.ApprovedBudgetInrPaise,
+                projectedTotalSpendInrPaise - ctx.ApprovedBudgetInrPaise);
+
+            result = new EvaluationResult(
+                ClaimId: "C-043",
+                Verdict: EvaluationVerdict.Deny,
+                Reason:  $"C-043 Budget Ceiling: projected total spend of {projectedTotalSpendInrPaise} paise " +
+                         $"(current {ctx.CurrentSpendInrPaise} + proposed {ctx.ProposedSpendInrPaise}) " +
+                         $"exceeds approved ceiling of {ctx.ApprovedBudgetInrPaise} paise " +
+                         $"by {projectedTotalSpendInrPaise - ctx.ApprovedBudgetInrPaise} paise.");
+        }
+        else
+        {
+            // C-073: ALLOW path — within budget ceiling, C-043 satisfied.
+            _logger.LogInformation(
+                "C-043 ALLOW: Within budget ceiling. TenantId={TenantId} ContractId={ContractId} " +
+                "RemainingAfterProposed={RemainingAfterProposed}",
+                ctx.TenantId,
+                ctx.ContractId,
+                budgetRemainingAfterProposedInrPaise);
+
+            result = new EvaluationResult(
+                ClaimId: "C-043",
+                Verdict: EvaluationVerdict.Allow,
+                Reason:  $"C-043 Budget Ceiling satisfied: projected total spend of {projectedTotalSpendInrPaise} paise " +
+                         $"is within approved ceiling of {ctx.ApprovedBudgetInrPaise} paise. " +
+                         $"Remaining after proposed spend: {budgetRemainingAfterProposedInrPaise} paise.");
+        }
+
+        activity?.SetTag("verdict", result.Verdict.ToString());
+        return Task.FromResult(result);
     }
 }
