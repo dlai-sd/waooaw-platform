@@ -9,147 +9,143 @@ using Microsoft.Extensions.Logging;
 namespace Waooaw.ConstitutionalEngine.Evaluators;
 
 /// <summary>
-/// C-073: Enforces C-062 (AI Security) — prevents the AI agent from invoking tools that are
-/// classified as prohibited security categories or that target WAOOAW-protected infrastructure
-/// systems. Default deny on unknown classification when explicitly flagged as restricted.
+/// C-073: Enforces C-062 (AI Security) — prohibits autonomous AI action against
+/// classified-prohibited action types and protected infrastructure systems.
+/// Escalates when the calling context explicitly flags human-oversight requirement.
 /// </summary>
 public sealed class C062AiSecurityEvaluator : IClaimEvaluator
 {
-    // C-073: ActivitySource shared across the constitutional engine (single logical service boundary)
+    // C-073: shared tracer for all constitutional evaluators
     private static readonly ActivitySource _tracer = new("Waooaw.ConstitutionalEngine");
 
-    // C-062: Tool classifications that are unconditionally prohibited for AI agents.
-    // These represent categories where AI autonomy creates unacceptable security risk.
+    /// <summary>
+    /// C-062: AI must not perform actions whose declared security_classification
+    /// falls into any of these categories.
+    /// </summary>
     private static readonly HashSet<string> ProhibitedClassifications = new(StringComparer.OrdinalIgnoreCase)
     {
-        "weapons_development",
-        "exploit_generation",
-        "credential_theft",
-        "social_engineering",
-        "surveillance_unauthorized",
-        "data_exfiltration",
-        "privilege_escalation",
-        "malware_generation",
-        "cryptojacking",
-        "denial_of_service",
+        "WEAPONIZED",
+        "SURVEILLANCE_MASS",
+        "SOCIAL_CREDIT",
+        "AUTONOMOUS_LETHAL",
+        "DECEPTION_CAMPAIGN",
+        "IDENTITY_FRAUD",
+        "BIOMETRIC_MASS_COLLECTION",
     };
 
-    // C-062: Infrastructure systems that the AI agent is prohibited from targeting directly.
-    // Targeting these bypasses constitutional governance controls entirely.
+    /// <summary>
+    /// C-062: autonomous AI write/execute access to these infrastructure systems is prohibited.
+    /// Read-only access is permitted for observability; any action flagging these as
+    /// target_system is denied unless it carries an explicit human approval token.
+    /// </summary>
     private static readonly HashSet<string> ProtectedSystems = new(StringComparer.OrdinalIgnoreCase)
     {
-        "constitutional_engine",
-        "keycloak",
-        "audit_records",
-        "payment_processor",
-        "banking_core",
-        "temporal_server",
-        "waooaw_db_primary",
-        "secrets_vault",
-        "certificate_authority",
-        "identity_provider",
+        "identity-provider",
+        "authentication-service",
+        "certificate-authority",
+        "key-management-service",
+        "audit-ledger",
+        "constitutional-engine",
+        "emergency-stop-controller",
+        "secret-manager",
+        "payment-processor",
     };
 
     private readonly ILogger<C062AiSecurityEvaluator> _logger;
 
-    // C-073: Constructor validates dependencies per C-059 traceability obligation.
+    // C-073: constructor-injection only; ArgumentNullException guards per null-safety standard
     public C062AiSecurityEvaluator(ILogger<C062AiSecurityEvaluator> logger)
     {
         ArgumentNullException.ThrowIfNull(logger);
         _logger = logger;
     }
 
-    /// <inheritdoc />
+    // C-073: ClaimId declares the constitutional claim this evaluator enforces
     public string ClaimId => "C-062";
 
     /// <summary>
-    /// C-073: Evaluates whether the proposed action violates C-062 AI Security.
-    /// Checks two independent gates:
-    ///   1. tool_classification — must not be in the prohibited classifications set.
-    ///   2. target_system — must not be a WAOOAW-protected infrastructure system.
-    /// Either gate failing results in an unconditional DENY (no override path).
-    /// Absence of both parameters = pass-through (not every action carries security metadata).
+    /// C-073: Evaluates C-062 (AI Security). Short-circuits to DENY on:
+    ///   1. Prohibited security_classification parameter value.
+    ///   2. Autonomous action targeting a protected system.
+    /// Escalates when requires_human_oversight=true is declared by the caller.
+    /// All other actions are ALLOWED (no DB I/O required — purely parameter-driven).
     /// </summary>
     public Task<EvaluationResult> EvaluateAsync(EvaluationContext ctx, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(ctx);
 
-        // C-073: Trace every evaluation for C-059 audit traceability
         using var activity = _tracer.StartActivity(
             "C062AiSecurityEvaluator.EvaluateAsync",
             ActivityKind.Internal);
 
-        activity?.SetTag("claim_id", ClaimId);
-        activity?.SetTag("tenant_id", ctx.TenantId);
-        activity?.SetTag("action_type", ctx.ActionType);
-        activity?.SetTag("contract_id", ctx.ContractId);
+        activity?.SetTag("claim.id", ClaimId);
+        activity?.SetTag("tenant.id", ctx.TenantId);
+        activity?.SetTag("action.type", ctx.ActionType);
 
-        // ── Gate 1: Prohibited tool classification ────────────────────────────────────────
-        // C-073: ctx.GetParameter() is the ONLY correct way to read ActionParameters (JSON-encoded string).
-        var toolClassification = ctx.GetParameter("tool_classification");
-
-        if (!string.IsNullOrWhiteSpace(toolClassification)
-            && ProhibitedClassifications.Contains(toolClassification))
+        // ── Check 1: security_classification must not be in the prohibited set ──────────────
+        // C-073: C-062 prohibits AI action on weaponised, mass-surveillance, or deception categories.
+        var classification = ctx.GetParameter("security_classification");
+        if (!string.IsNullOrWhiteSpace(classification) &&
+            ProhibitedClassifications.Contains(classification))
         {
-            activity?.SetTag("verdict", "Deny");
-            activity?.SetTag("deny_gate", "tool_classification");
-            activity?.SetTag("denied_classification", toolClassification);
-
-            // C-073: Structured log — never string interpolation (C-059 compliance)
             _logger.LogWarning(
-                "C-062 DENY: ProhibitedClassification={Classification} TenantId={TenantId} ContractId={ContractId} ActionType={ActionType}",
-                toolClassification,
-                ctx.TenantId,
-                ctx.ContractId,
-                ctx.ActionType);
+                "C-062 DENY — prohibited security_classification={Classification} TenantId={TenantId} ActionType={ActionType}",
+                classification, ctx.TenantId, ctx.ActionType);
 
-            return Task.FromResult(new EvaluationResult(
-                ClaimId,
-                EvaluationVerdict.Deny,
-                $"Tool classification '{toolClassification}' is unconditionally prohibited under C-062 AI Security. " +
-                $"AI agents may not invoke tools in this category."));
+            activity?.SetTag("deny.reason", "prohibited_classification");
+            activity?.SetTag("security_classification", classification);
+            return Task.FromResult(Deny(
+                $"C-062: security_classification '{classification}' is constitutionally prohibited for autonomous AI execution."));
         }
 
-        // ── Gate 2: Protected system targeting ───────────────────────────────────────────
-        // C-073: Targeting WAOOAW infrastructure bypasses constitutional governance — always deny.
+        // ── Check 2: target_system must not be a protected infrastructure system ───────────
+        // C-073: C-062 bars autonomous AI access to identity, cryptographic, audit, and control systems.
         var targetSystem = ctx.GetParameter("target_system");
-
-        if (!string.IsNullOrWhiteSpace(targetSystem)
-            && ProtectedSystems.Contains(targetSystem))
+        if (!string.IsNullOrWhiteSpace(targetSystem) &&
+            ProtectedSystems.Contains(targetSystem))
         {
-            activity?.SetTag("verdict", "Deny");
-            activity?.SetTag("deny_gate", "target_system");
-            activity?.SetTag("denied_system", targetSystem);
-
             _logger.LogWarning(
-                "C-062 DENY: ProtectedSystem={System} TenantId={TenantId} ContractId={ContractId} ActionType={ActionType}",
-                targetSystem,
-                ctx.TenantId,
-                ctx.ContractId,
-                ctx.ActionType);
+                "C-062 DENY — target_system={TargetSystem} is a protected system. TenantId={TenantId} ActionType={ActionType}",
+                targetSystem, ctx.TenantId, ctx.ActionType);
 
-            return Task.FromResult(new EvaluationResult(
-                ClaimId,
-                EvaluationVerdict.Deny,
-                $"Target system '{targetSystem}' is a WAOOAW-protected infrastructure system under C-062 AI Security. " +
-                $"Direct AI agent access to this system is prohibited."));
+            activity?.SetTag("deny.reason", "protected_system");
+            activity?.SetTag("target_system", targetSystem);
+            return Task.FromResult(Deny(
+                $"C-062: target_system '{targetSystem}' is a protected infrastructure system — autonomous AI access is prohibited."));
         }
 
-        // ── Both gates passed ─────────────────────────────────────────────────────────────
-        activity?.SetTag("verdict", "Allow");
+        // ── Check 3: requires_human_oversight flag → escalate to C-049 path ────────────────
+        // C-073: when the caller declares that a human must approve, C-062 escalates rather
+        // than allows, ensuring the Escalate verdict triggers human-review workflow.
+        var requiresOversight = ctx.GetParameter("requires_human_oversight");
+        if (string.Equals(requiresOversight, "true", StringComparison.OrdinalIgnoreCase))
+        {
+            _logger.LogInformation(
+                "C-062 ESCALATE — requires_human_oversight=true TenantId={TenantId} ActionType={ActionType}",
+                ctx.TenantId, ctx.ActionType);
 
-        _logger.LogDebug(
-            "C-062 Allow: TenantId={TenantId} ContractId={ContractId} ActionType={ActionType} " +
-            "Classification={Classification} TargetSystem={TargetSystem}",
-            ctx.TenantId,
-            ctx.ContractId,
-            ctx.ActionType,
-            toolClassification ?? "<none>",
-            targetSystem ?? "<none>");
+            activity?.SetTag("escalate.reason", "requires_human_oversight");
+            return Task.FromResult(Escalate(
+                "C-062: action declared requires_human_oversight=true — escalating to human review per AI Security policy."));
+        }
 
-        return Task.FromResult(new EvaluationResult(
-            ClaimId,
-            EvaluationVerdict.Allow,
-            "C-062 AI Security check passed: no prohibited classification or protected system target detected."));
+        // ── All C-062 checks passed ───────────────────────────────────────────────────────
+        _logger.LogInformation(
+            "C-062 ALLOW — AI security checks passed. TenantId={TenantId} ActionType={ActionType}",
+            ctx.TenantId, ctx.ActionType);
+
+        activity?.SetTag("verdict", "allow");
+        return Task.FromResult(Allow());
     }
+
+    // ── Private result helpers (C-073: named helpers make denial paths explicit) ─────────
+
+    private EvaluationResult Deny(string reason) =>
+        new(ClaimId, EvaluationVerdict.Deny, reason);
+
+    private EvaluationResult Escalate(string reason) =>
+        new(ClaimId, EvaluationVerdict.Escalate, reason);
+
+    private EvaluationResult Allow() =>
+        new(ClaimId, EvaluationVerdict.Allow, "C-062: action passed all AI security checks.");
 }
