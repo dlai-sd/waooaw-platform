@@ -1,6 +1,6 @@
 // Implements: architecture/reference/ce-validate-action-evaluators.md §C-043 Evaluator
 // constitutional_basis: C-043 (Budget Ceiling), C-051 (Resource Transparency),
-//                       C-059 (Traceability), C-073 (Annotation), C-023 (Evidence First)
+//                       C-023 (Evidence First), C-059 (Traceability), C-073 (Annotation)
 
 #nullable enable
 
@@ -10,91 +10,91 @@ using Microsoft.Extensions.Logging;
 namespace Waooaw.ConstitutionalEngine.Evaluators;
 
 /// <summary>
-/// Enforces C-043 Budget Ceiling: the sum of current spend and proposed spend must not exceed
-/// the approved monthly budget ceiling for the tenant. Any breach is denied immediately to
-/// prevent unauthorised resource consumption (C-051 Resource Transparency).
+/// C-073: Enforces C-043 (Budget Ceiling) — denies any action whose proposed spend
+/// would cause cumulative monthly spend to exceed the tenant's approved budget ceiling.
+/// C-051: All budget evaluations are traceable via OpenTelemetry activity tags.
 /// </summary>
 public sealed class C043BudgetCeilingEvaluator : IClaimEvaluator
 {
-    // C-073: Static tracer — every constitutional enforcement point must be observable
+    // C-059: Activity source name matches the canonical service tracer name.
     private static readonly ActivitySource _tracer = new("Waooaw.ConstitutionalEngine");
 
     private readonly ILogger<C043BudgetCeilingEvaluator> _logger;
 
     public C043BudgetCeilingEvaluator(ILogger<C043BudgetCeilingEvaluator> logger)
     {
+        // C-073: Constructor validates all required dependencies per constitutional DI rules.
         ArgumentNullException.ThrowIfNull(logger);
         _logger = logger;
     }
 
-    /// <inheritdoc />
-    /// <remarks>C-043: Budget Ceiling claim identifier.</remarks>
+    /// <summary>C-043: Constitutional claim identifier enforced by this evaluator.</summary>
     public string ClaimId => "C-043";
 
     /// <summary>
-    /// C-073: Evaluates whether the proposed action would breach the approved monthly budget ceiling.
-    ///
-    /// DENY condition (C-043):
-    ///   (CurrentSpendInrPaise + ProposedSpendInrPaise) > ApprovedBudgetInrPaise
-    ///
-    /// All three fields are non-nullable long — no null-coalescing required or permitted.
-    /// BudgetRemainingInrPaise does NOT exist on EvaluationContext; compute from the three fields.
+    /// C-073: Evaluates whether the proposed action spend would breach the tenant's
+    /// approved budget ceiling (C-043). Returns Deny on breach, Allow otherwise.
+    /// C-051: Budget figures are traced as activity tags for resource transparency.
     /// </summary>
     public Task<EvaluationResult> EvaluateAsync(EvaluationContext ctx, CancellationToken ct)
     {
+        // C-073: Constitutional obligation — evaluate budget ceiling before authorising spend.
         ArgumentNullException.ThrowIfNull(ctx);
 
-        // C-073: Trace every C-043 budget ceiling evaluation for audit observability (C-051)
         using var activity = _tracer.StartActivity(
             "C043BudgetCeilingEvaluator.Evaluate",
             ActivityKind.Internal);
 
-        activity?.SetTag("constitutional.claim_id", ClaimId);
-        activity?.SetTag("tenant_id", ctx.TenantId);
-        activity?.SetTag("action_type", ctx.ActionType);
+        // C-051: Tag all budget figures for resource transparency / audit trail.
+        activity?.SetTag("constitutional.claim", ClaimId);
+        activity?.SetTag("tenant.id", ctx.TenantId);
         activity?.SetTag("budget.skill_type", ctx.BudgetSkillType);
         activity?.SetTag("budget.approved_inr_paise", ctx.ApprovedBudgetInrPaise);
         activity?.SetTag("budget.current_spend_inr_paise", ctx.CurrentSpendInrPaise);
         activity?.SetTag("budget.proposed_spend_inr_paise", ctx.ProposedSpendInrPaise);
 
-        // C-043: Core budget ceiling arithmetic.
-        // RULE: do NOT use ?? — all three fields are non-nullable long (see TYPE CONTRACT).
-        // RULE: BudgetRemainingInrPaise does not exist — compute inline.
-        bool ceilingBreached =
+        // C-043: Core ceiling check.
+        // BEHAVIORAL RULE: Non-nullable longs — no ?? operators permitted.
+        // BEHAVIORAL RULE: Do NOT reference BudgetRemainingInrPaise — it does not exist.
+        bool exceeded =
             (ctx.CurrentSpendInrPaise + ctx.ProposedSpendInrPaise) > ctx.ApprovedBudgetInrPaise;
 
-        if (ceilingBreached)
+        if (exceeded)
         {
             long projectedTotal = ctx.CurrentSpendInrPaise + ctx.ProposedSpendInrPaise;
             long overage = projectedTotal - ctx.ApprovedBudgetInrPaise;
 
-            // C-073: Structured log — no string interpolation in log templates (structured logging rule)
+            // C-051: Log breach details for resource transparency.
             _logger.LogWarning(
-                "C-043 budget ceiling breach: TenantId={TenantId} SkillType={SkillType} " +
+                "C-043 budget ceiling breached: TenantId={TenantId} SkillType={SkillType} " +
                 "Approved={ApprovedInrPaise} Current={CurrentInrPaise} " +
-                "Proposed={ProposedInrPaise} Overage={OverageInrPaise}",
+                "Proposed={ProposedInrPaise} Projected={ProjectedInrPaise} Overage={OverageInrPaise}",
                 ctx.TenantId,
                 ctx.BudgetSkillType,
                 ctx.ApprovedBudgetInrPaise,
                 ctx.CurrentSpendInrPaise,
                 ctx.ProposedSpendInrPaise,
+                projectedTotal,
                 overage);
 
-            activity?.SetTag("verdict", "Deny");
+            activity?.SetTag("budget.exceeded", true);
             activity?.SetTag("budget.overage_inr_paise", overage);
+            activity?.SetTag("evaluation.verdict", "Deny");
 
-            // C-043 + C-051: Denial reason must be fully traceable — include all budget figures
+            var reason =
+                $"C-043 budget ceiling exceeded: proposed spend of {ctx.ProposedSpendInrPaise} paise " +
+                $"added to current spend of {ctx.CurrentSpendInrPaise} paise " +
+                $"would total {projectedTotal} paise, exceeding the approved ceiling of " +
+                $"{ctx.ApprovedBudgetInrPaise} paise by {overage} paise " +
+                $"(skill_type={ctx.BudgetSkillType}).";
+
             return Task.FromResult(new EvaluationResult(
-                ClaimId,
-                EvaluationVerdict.Deny,
-                $"C-043: Budget ceiling breach. " +
-                $"Projected spend ({ctx.CurrentSpendInrPaise} + {ctx.ProposedSpendInrPaise} = {projectedTotal} paise) " +
-                $"exceeds approved ceiling of {ctx.ApprovedBudgetInrPaise} paise " +
-                $"by {overage} paise [skill_type={ctx.BudgetSkillType}]."
-            ));
+                ClaimId: ClaimId,
+                Verdict: EvaluationVerdict.Deny,
+                Reason: reason));
         }
 
-        // C-051: Log every authorized budget evaluation for resource transparency
+        // C-043: Spend within ceiling — authorised to proceed.
         _logger.LogInformation(
             "C-043 budget ceiling check passed: TenantId={TenantId} SkillType={SkillType} " +
             "Approved={ApprovedInrPaise} Current={CurrentInrPaise} Proposed={ProposedInrPaise}",
@@ -104,14 +104,12 @@ public sealed class C043BudgetCeilingEvaluator : IClaimEvaluator
             ctx.CurrentSpendInrPaise,
             ctx.ProposedSpendInrPaise);
 
-        activity?.SetTag("verdict", "Allow");
+        activity?.SetTag("budget.exceeded", false);
+        activity?.SetTag("evaluation.verdict", "Allow");
 
         return Task.FromResult(new EvaluationResult(
-            ClaimId,
-            EvaluationVerdict.Allow,
-            $"C-043: Proposed spend within approved budget ceiling. " +
-            $"Current={ctx.CurrentSpendInrPaise}, Proposed={ctx.ProposedSpendInrPaise}, " +
-            $"Approved={ctx.ApprovedBudgetInrPaise} paise [skill_type={ctx.BudgetSkillType}]."
-        ));
+            ClaimId: ClaimId,
+            Verdict: EvaluationVerdict.Allow,
+            Reason: "Proposed spend is within the approved budget ceiling."));
     }
 }
