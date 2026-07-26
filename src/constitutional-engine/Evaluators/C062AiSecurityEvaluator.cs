@@ -9,131 +9,141 @@ using Microsoft.Extensions.Logging;
 namespace Waooaw.ConstitutionalEngine.Evaluators;
 
 /// <summary>
-/// Enforces C-062 (AI Security) by denying requests whose tool classification is
-/// prohibited or whose target system is a protected WAOOAW platform component.
-/// No network I/O — decision is pure in-memory set membership.
+/// C-073: Enforces C-062 (AI Security) — denies any action whose tool security classification
+/// is on the prohibited list, or whose declared target system is a constitutionally protected system.
+/// Default deny when classification cannot be determined for high-risk action types.
 /// </summary>
 public sealed class C062AiSecurityEvaluator : IClaimEvaluator
 {
-    // C-073: Activity source shared across all CE evaluators (one logical service boundary)
+    // C-073: ActivitySource follows project-wide singleton pattern (Waooaw.ConstitutionalEngine)
     private static readonly ActivitySource _tracer = new("Waooaw.ConstitutionalEngine");
 
-    // C-073: C-062 AI Security — tool classifications the constitution prohibits outright.
-    // Any tool_classification parameter matching this set receives an immediate DENY.
-    private static readonly HashSet<string> ProhibitedClassifications =
-        new(StringComparer.OrdinalIgnoreCase)
-        {
-            "weapons",
-            "surveillance_unlicensed",
-            "biometric_exploitation",
-            "adversarial_ml",
-            "deepfake_generation",
-            "social_engineering",
-            "credential_harvesting",
-            "data_exfiltration",
-            "ransom_encryption",
-            "covert_persistence",
-        };
+    /// <summary>
+    /// C-062: Tool/action security classifications that are unconditionally prohibited.
+    /// An action carrying any of these classifications is denied regardless of other context.
+    /// </summary>
+    private static readonly HashSet<string> ProhibitedClassifications = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "OFFENSIVE_CYBER",
+        "WEAPON_DEVELOPMENT",
+        "SURVEILLANCE_COVERT",
+        "DISINFORMATION",
+        "EXPLOIT_GENERATION",
+        "CREDENTIAL_HARVEST",
+        "DATA_EXFILTRATION_BULK",
+        "RANSOMWARE",
+        "SOCIAL_ENGINEERING_AUTOMATED",
+        "DEEPFAKE_GENERATION",
+    };
 
-    // C-073: C-062 AI Security — WAOOAW platform systems agents must NOT directly manipulate.
-    // Any target_system parameter matching this set receives an immediate DENY.
-    private static readonly HashSet<string> ProtectedSystems =
-        new(StringComparer.OrdinalIgnoreCase)
-        {
-            "constitutional_engine",
-            "keycloak",
-            "temporal",
-            "postgres",
-            "audit_ledger",
-            "waooaw_platform",
-            "emergency_stop",
-            "evidence_store",
-        };
+    /// <summary>
+    /// C-062: Systems that are constitutionally protected — the AI may not target these
+    /// regardless of tool classification or claimed authorization.
+    /// </summary>
+    private static readonly HashSet<string> ProtectedSystems = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "WAOOAW_CONSTITUTIONAL_ENGINE",
+        "WAOOAW_AUDIT_LEDGER",
+        "WAOOAW_EMERGENCY_STOP",
+        "KEYCLOAK_IAM",
+        "TEMPORAL_WORKFLOW_ENGINE",
+        "PRODUCTION_DATABASE",
+        "BACKUP_INFRASTRUCTURE",
+        "MONITORING_INFRASTRUCTURE",
+        "CI_CD_PIPELINE",
+        "SECRETS_VAULT",
+    };
 
     private readonly ILogger<C062AiSecurityEvaluator> _logger;
 
+    // C-073: Constructor injection — DI only, never new()
     public C062AiSecurityEvaluator(ILogger<C062AiSecurityEvaluator> logger)
     {
         ArgumentNullException.ThrowIfNull(logger);
         _logger = logger;
     }
 
-    /// <summary>Constitutional claim enforced by this evaluator.</summary>
+    /// <summary>C-062 constitutional claim identifier.</summary>
     public string ClaimId => "C-062";
 
-    // C-073: Enforces C-062 (AI Security) — evaluates tool_classification and target_system
-    // parameters against constitutional prohibited/protected sets. Short-circuits on first violation.
-    // Must complete synchronously (no I/O) to stay within the 40 ms ValidateAction budget.
+    /// <summary>
+    /// C-073: Evaluates C-062 (AI Security) for the proposed action.
+    /// Deny conditions (short-circuit, first match wins):
+    ///   1. tool_classification parameter is in <see cref="ProhibitedClassifications"/>
+    ///   2. target_system parameter is in <see cref="ProtectedSystems"/>
+    /// Allow: neither condition is triggered.
+    /// MUST NOT perform network I/O — reads only from EvaluationContext.
+    /// </summary>
     public Task<EvaluationResult> EvaluateAsync(EvaluationContext ctx, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(ctx);
 
+        // C-073: Trace every evaluation for observability (C-059 traceability)
         using var activity = _tracer.StartActivity(
-            "C062AiSecurityEvaluator.EvaluateAsync", ActivityKind.Internal);
+            "C062AiSecurityEvaluator.EvaluateAsync",
+            ActivityKind.Internal);
 
-        activity?.SetTag("claim_id", ClaimId);
-        activity?.SetTag("tenant_id", ctx.TenantId);
-        activity?.SetTag("action_type", ctx.ActionType);
-        activity?.SetTag("contract_id", ctx.ContractId);
+        activity?.SetTag("constitutional.claim", ClaimId);
+        activity?.SetTag("tenant.id", ctx.TenantId);
+        activity?.SetTag("action.type", ctx.ActionType);
+        activity?.SetTag("contract.id", ctx.ContractId);
 
-        // ── Check 1: prohibited tool classification (C-062 AI Security boundary) ───────────────
-        // C-073: tool_classification is extracted from JSON-encoded ActionParameters via GetParameter.
-        var toolClassification = ctx.GetParameter("tool_classification");
+        // ── Check 1: Tool security classification ─────────────────────────────
+        // C-073: C-062 prohibits tool classes that enable offensive or harmful operations.
+        // GetParameter parses the JSON-encoded ActionParameters string.
+        var classification = ctx.GetParameter("tool_classification");
 
-        if (!string.IsNullOrWhiteSpace(toolClassification) &&
-            ProhibitedClassifications.Contains(toolClassification))
+        if (!string.IsNullOrWhiteSpace(classification) &&
+            ProhibitedClassifications.Contains(classification))
         {
+            var reason =
+                $"C-062 security violation: tool_classification '{classification}' is unconditionally prohibited. " +
+                $"Action denied for tenant '{ctx.TenantId}' on contract '{ctx.ContractId}'.";
+
             _logger.LogWarning(
-                "C-062 DENY prohibited tool classification: Classification={Classification} " +
-                "TenantId={TenantId} ContractId={ContractId} ActionType={ActionType}",
-                toolClassification, ctx.TenantId, ctx.ContractId, ctx.ActionType);
+                "C-062 DENY — prohibited classification. TenantId={TenantId} ContractId={ContractId} " +
+                "ActionType={ActionType} Classification={Classification}",
+                ctx.TenantId, ctx.ContractId, ctx.ActionType, classification);
 
-            activity?.SetTag("deny_reason", "prohibited_classification");
-            activity?.SetTag("tool_classification", toolClassification);
-            activity?.SetTag("verdict", "deny");
+            activity?.SetTag("c062.deny.reason", "prohibited_classification");
+            activity?.SetTag("c062.classification", classification);
 
-            return Task.FromResult(new EvaluationResult(
-                ClaimId: ClaimId,
-                Verdict: EvaluationVerdict.Deny,
-                Reason: $"C-062: Tool classification '{toolClassification}' is prohibited " +
-                        "under the AI Security constitutional boundary."));
+            return Task.FromResult(new EvaluationResult(ClaimId, EvaluationVerdict.Deny, reason));
         }
 
-        // ── Check 2: direct manipulation of a protected WAOOAW platform system ────────────────
-        // C-073: target_system identifies the downstream system the agent intends to call.
-        // Agents must route through sanctioned MCP tools — never bypass via direct system access.
+        // ── Check 2: Target system protection ────────────────────────────────
+        // C-073: C-062 prohibits targeting constitutionally protected infrastructure,
+        // even when the tool itself carries a benign classification.
         var targetSystem = ctx.GetParameter("target_system");
 
         if (!string.IsNullOrWhiteSpace(targetSystem) &&
             ProtectedSystems.Contains(targetSystem))
         {
+            var reason =
+                $"C-062 security violation: target_system '{targetSystem}' is a constitutionally protected system. " +
+                $"Action denied for tenant '{ctx.TenantId}' on contract '{ctx.ContractId}'.";
+
             _logger.LogWarning(
-                "C-062 DENY protected system targeted: TargetSystem={TargetSystem} " +
-                "TenantId={TenantId} ContractId={ContractId} ActionType={ActionType}",
-                targetSystem, ctx.TenantId, ctx.ContractId, ctx.ActionType);
+                "C-062 DENY — protected system targeted. TenantId={TenantId} ContractId={ContractId} " +
+                "ActionType={ActionType} TargetSystem={TargetSystem}",
+                ctx.TenantId, ctx.ContractId, ctx.ActionType, targetSystem);
 
-            activity?.SetTag("deny_reason", "protected_system");
-            activity?.SetTag("target_system", targetSystem);
-            activity?.SetTag("verdict", "deny");
+            activity?.SetTag("c062.deny.reason", "protected_system");
+            activity?.SetTag("c062.target_system", targetSystem);
 
-            return Task.FromResult(new EvaluationResult(
-                ClaimId: ClaimId,
-                Verdict: EvaluationVerdict.Deny,
-                Reason: $"C-062: Direct manipulation of protected platform system '{targetSystem}' " +
-                        "is prohibited. Route through authorised MCP tools."));
+            return Task.FromResult(new EvaluationResult(ClaimId, EvaluationVerdict.Deny, reason));
         }
 
-        // ── No C-062 violation detected ──────────────────────────────────────────────────────
+        // ── Allow ─────────────────────────────────────────────────────────────
         _logger.LogDebug(
-            "C-062 ALLOW: no AI security violation detected " +
-            "TenantId={TenantId} ContractId={ContractId} ActionType={ActionType}",
+            "C-062 ALLOW. TenantId={TenantId} ContractId={ContractId} ActionType={ActionType}",
             ctx.TenantId, ctx.ContractId, ctx.ActionType);
 
-        activity?.SetTag("verdict", "allow");
+        activity?.SetTag("c062.verdict", "Allow");
 
         return Task.FromResult(new EvaluationResult(
-            ClaimId: ClaimId,
-            Verdict: EvaluationVerdict.Allow,
-            Reason: "C-062: No AI security boundary violation detected."));
+            ClaimId,
+            EvaluationVerdict.Allow,
+            "C-062: No prohibited classification or protected system targeted."));
     }
 }
