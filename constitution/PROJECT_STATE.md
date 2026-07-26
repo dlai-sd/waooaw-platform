@@ -95,9 +95,9 @@ WC012-02b `CS1061: string.TryGetValue` fixed at three layers:
 sprint_status: IN_PROGRESS
 tasks_done:
   - WC012-01
-tasks_remaining:
   - WC012-02
   - WC012-03
+tasks_remaining:
   - WC012-04
 consecutive_failures: 0
 autonomous_halt: false
@@ -417,15 +417,15 @@ last_attempt_result: SUCCESS
 consecutive_failures: 0
 tasks_done:
   - WC012-01
-tasks_remaining:
   - WC012-02
   - WC012-03
+tasks_remaining:
   - WC012-04
 
 current_task:
 
 
-                                                        WC012-01    ## NEXT SESSION OPTIONS
+                                                            ## NEXT SESSION OPTIONS
 
 ```
 CURRENT STATE: platform_phase=IMPLEMENTATION · AUTONOMOUS_HALT=false
