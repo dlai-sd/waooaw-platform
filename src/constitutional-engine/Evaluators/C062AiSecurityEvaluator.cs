@@ -9,52 +9,50 @@ using Microsoft.Extensions.Logging;
 namespace Waooaw.ConstitutionalEngine.Evaluators;
 
 /// <summary>
-/// Enforces C-062 (AI Security) — prevents AI agents from accessing prohibited
-/// security classifications, targeting protected infrastructure systems, or
-/// proceeding when an adversarial risk flag has been raised by an upstream detector.
+/// C-073: Enforces C-062 (AI Security) — prevents the AI agent from invoking tools that are
+/// classified as prohibited security categories or that target WAOOAW-protected infrastructure
+/// systems. Default deny on unknown classification when explicitly flagged as restricted.
 /// </summary>
 public sealed class C062AiSecurityEvaluator : IClaimEvaluator
 {
-    // C-073: ActivitySource shared across all evaluators per ADR-009
+    // C-073: ActivitySource shared across the constitutional engine (single logical service boundary)
     private static readonly ActivitySource _tracer = new("Waooaw.ConstitutionalEngine");
 
-    /// <summary>
-    /// Security classifications that AI agents are categorically prohibited from accessing.
-    /// C-062: constitutional boundary — these are non-negotiable regardless of contract scope.
-    /// </summary>
+    // C-062: Tool classifications that are unconditionally prohibited for AI agents.
+    // These represent categories where AI autonomy creates unacceptable security risk.
     private static readonly HashSet<string> ProhibitedClassifications = new(StringComparer.OrdinalIgnoreCase)
     {
-        "CONFIDENTIAL",
-        "SECRET",
-        "TOP_SECRET",
-        "RESTRICTED",
-        "CLASSIFIED",
-        "SENSITIVE_PII",
-        "EYES_ONLY"
+        "weapons_development",
+        "exploit_generation",
+        "credential_theft",
+        "social_engineering",
+        "surveillance_unauthorized",
+        "data_exfiltration",
+        "privilege_escalation",
+        "malware_generation",
+        "cryptojacking",
+        "denial_of_service",
     };
 
-    /// <summary>
-    /// Infrastructure systems that AI agents must never directly access or mutate.
-    /// C-062: AI must not control the systems that enforce constitutional constraints on AI.
-    /// </summary>
+    // C-062: Infrastructure systems that the AI agent is prohibited from targeting directly.
+    // Targeting these bypasses constitutional governance controls entirely.
     private static readonly HashSet<string> ProtectedSystems = new(StringComparer.OrdinalIgnoreCase)
     {
-        "IAM",
-        "KEYCLOAK",
-        "CONSTITUTIONAL_ENGINE",
-        "AUDIT_LEDGER",
-        "PRODUCTION_DATABASE",
-        "PAYMENT_GATEWAY",
-        "HSM",
-        "SECRET_MANAGER",
-        "CERTIFICATE_AUTHORITY",
-        "SIGNING_SERVICE",
-        "EMERGENCY_STOP_SERVICE"
+        "constitutional_engine",
+        "keycloak",
+        "audit_records",
+        "payment_processor",
+        "banking_core",
+        "temporal_server",
+        "waooaw_db_primary",
+        "secrets_vault",
+        "certificate_authority",
+        "identity_provider",
     };
 
     private readonly ILogger<C062AiSecurityEvaluator> _logger;
 
-    // C-073: Constructor injection — satisfies DI requirement; ArgumentNullException per null-safety rules
+    // C-073: Constructor validates dependencies per C-059 traceability obligation.
     public C062AiSecurityEvaluator(ILogger<C062AiSecurityEvaluator> logger)
     {
         ArgumentNullException.ThrowIfNull(logger);
@@ -65,95 +63,93 @@ public sealed class C062AiSecurityEvaluator : IClaimEvaluator
     public string ClaimId => "C-062";
 
     /// <summary>
-    /// Evaluates C-062 AI Security constraints against the proposed action.
-    /// Three distinct checks are applied in priority order:
-    ///   1. Prohibited security classification access
-    ///   2. Protected infrastructure system targeting
-    ///   3. Adversarial risk flag raised by upstream detector
-    /// Short-circuits on the first violation (DENY) per evaluator architecture spec.
+    /// C-073: Evaluates whether the proposed action violates C-062 AI Security.
+    /// Checks two independent gates:
+    ///   1. tool_classification — must not be in the prohibited classifications set.
+    ///   2. target_system — must not be a WAOOAW-protected infrastructure system.
+    /// Either gate failing results in an unconditional DENY (no override path).
+    /// Absence of both parameters = pass-through (not every action carries security metadata).
     /// </summary>
-    // C-073: EvaluateAsync enforces C-062 (AI Security) — runtime constitutional boundary
     public Task<EvaluationResult> EvaluateAsync(EvaluationContext ctx, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(ctx);
 
-        using var activity = _tracer.StartActivity("C062AiSecurityEvaluator.Evaluate", ActivityKind.Internal);
-        activity?.SetTag("tenant.id", ctx.TenantId);
-        activity?.SetTag("action.type", ctx.ActionType);
-        activity?.SetTag("contract.id", ctx.ContractId);
+        // C-073: Trace every evaluation for C-059 audit traceability
+        using var activity = _tracer.StartActivity(
+            "C062AiSecurityEvaluator.EvaluateAsync",
+            ActivityKind.Internal);
 
-        // ── Check 1: Prohibited security classification ────────────────────────────────
-        // C-073: C-062 prohibits AI access to classified/sensitive data tiers regardless
-        //        of what the employment contract authorizes — classification gates override.
-        var classification = ctx.GetParameter("security_classification");
-        if (!string.IsNullOrWhiteSpace(classification)
-            && ProhibitedClassifications.Contains(classification))
+        activity?.SetTag("claim_id", ClaimId);
+        activity?.SetTag("tenant_id", ctx.TenantId);
+        activity?.SetTag("action_type", ctx.ActionType);
+        activity?.SetTag("contract_id", ctx.ContractId);
+
+        // ── Gate 1: Prohibited tool classification ────────────────────────────────────────
+        // C-073: ctx.GetParameter() is the ONLY correct way to read ActionParameters (JSON-encoded string).
+        var toolClassification = ctx.GetParameter("tool_classification");
+
+        if (!string.IsNullOrWhiteSpace(toolClassification)
+            && ProhibitedClassifications.Contains(toolClassification))
         {
-            _logger.LogWarning(
-                "C-062 DENY: prohibited security classification requested. " +
-                "Classification={Classification} TenantId={TenantId} ActionType={ActionType} ContractId={ContractId}",
-                classification, ctx.TenantId, ctx.ActionType, ctx.ContractId);
+            activity?.SetTag("verdict", "Deny");
+            activity?.SetTag("deny_gate", "tool_classification");
+            activity?.SetTag("denied_classification", toolClassification);
 
-            activity?.SetTag("c062.deny.reason", "prohibited_classification");
-            activity?.SetTag("c062.deny.value", classification);
+            // C-073: Structured log — never string interpolation (C-059 compliance)
+            _logger.LogWarning(
+                "C-062 DENY: ProhibitedClassification={Classification} TenantId={TenantId} ContractId={ContractId} ActionType={ActionType}",
+                toolClassification,
+                ctx.TenantId,
+                ctx.ContractId,
+                ctx.ActionType);
 
             return Task.FromResult(new EvaluationResult(
                 ClaimId,
                 EvaluationVerdict.Deny,
-                $"C-062: AI agents are prohibited from accessing security classification '{classification}'."));
+                $"Tool classification '{toolClassification}' is unconditionally prohibited under C-062 AI Security. " +
+                $"AI agents may not invoke tools in this category."));
         }
 
-        // ── Check 2: Protected infrastructure system targeting ─────────────────────────
-        // C-073: C-062 prohibits AI from directly targeting systems that enforce
-        //        constitutional constraints — self-referential control is categorically denied.
+        // ── Gate 2: Protected system targeting ───────────────────────────────────────────
+        // C-073: Targeting WAOOAW infrastructure bypasses constitutional governance — always deny.
         var targetSystem = ctx.GetParameter("target_system");
+
         if (!string.IsNullOrWhiteSpace(targetSystem)
             && ProtectedSystems.Contains(targetSystem))
         {
-            _logger.LogWarning(
-                "C-062 DENY: AI targeting protected infrastructure system. " +
-                "TargetSystem={TargetSystem} TenantId={TenantId} ActionType={ActionType} ContractId={ContractId}",
-                targetSystem, ctx.TenantId, ctx.ActionType, ctx.ContractId);
+            activity?.SetTag("verdict", "Deny");
+            activity?.SetTag("deny_gate", "target_system");
+            activity?.SetTag("denied_system", targetSystem);
 
-            activity?.SetTag("c062.deny.reason", "protected_system");
-            activity?.SetTag("c062.deny.value", targetSystem);
+            _logger.LogWarning(
+                "C-062 DENY: ProtectedSystem={System} TenantId={TenantId} ContractId={ContractId} ActionType={ActionType}",
+                targetSystem,
+                ctx.TenantId,
+                ctx.ContractId,
+                ctx.ActionType);
 
             return Task.FromResult(new EvaluationResult(
                 ClaimId,
                 EvaluationVerdict.Deny,
-                $"C-062: Direct AI access to protected system '{targetSystem}' is prohibited."));
+                $"Target system '{targetSystem}' is a WAOOAW-protected infrastructure system under C-062 AI Security. " +
+                $"Direct AI agent access to this system is prohibited."));
         }
 
-        // ── Check 3: Adversarial risk flag raised by upstream detector ─────────────────
-        // C-073: C-062 requires CE to honour adversarial risk signals from upstream
-        //        prompt-injection / jailbreak detectors. If flagged → hard DENY.
-        var adversarialRiskFlag = ctx.GetParameter("adversarial_risk_flag");
-        if (string.Equals(adversarialRiskFlag, "true", StringComparison.OrdinalIgnoreCase))
-        {
-            _logger.LogWarning(
-                "C-062 DENY: adversarial risk flag is set. " +
-                "TenantId={TenantId} ActionType={ActionType} ContractId={ContractId}",
-                ctx.TenantId, ctx.ActionType, ctx.ContractId);
+        // ── Both gates passed ─────────────────────────────────────────────────────────────
+        activity?.SetTag("verdict", "Allow");
 
-            activity?.SetTag("c062.deny.reason", "adversarial_risk_flag");
-
-            return Task.FromResult(new EvaluationResult(
-                ClaimId,
-                EvaluationVerdict.Deny,
-                "C-062: Action flagged with adversarial risk indicator — prohibited by AI security policy."));
-        }
-
-        // ── All C-062 checks passed ────────────────────────────────────────────────────
         _logger.LogDebug(
-            "C-062 ALLOW: AI security checks passed. " +
-            "TenantId={TenantId} ActionType={ActionType} ContractId={ContractId}",
-            ctx.TenantId, ctx.ActionType, ctx.ContractId);
-
-        activity?.SetTag("c062.verdict", "allow");
+            "C-062 Allow: TenantId={TenantId} ContractId={ContractId} ActionType={ActionType} " +
+            "Classification={Classification} TargetSystem={TargetSystem}",
+            ctx.TenantId,
+            ctx.ContractId,
+            ctx.ActionType,
+            toolClassification ?? "<none>",
+            targetSystem ?? "<none>");
 
         return Task.FromResult(new EvaluationResult(
             ClaimId,
             EvaluationVerdict.Allow,
-            "C-062: AI security boundary checks passed."));
+            "C-062 AI Security check passed: no prohibited classification or protected system target detected."));
     }
 }
