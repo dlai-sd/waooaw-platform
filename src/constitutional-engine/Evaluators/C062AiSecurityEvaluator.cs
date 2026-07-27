@@ -9,144 +9,169 @@ using Microsoft.Extensions.Logging;
 namespace Waooaw.ConstitutionalEngine.Evaluators;
 
 /// <summary>
-/// Enforces C-062 AI Security boundary at runtime.
-/// Denies actions whose tool classification is prohibited under C-062,
-/// and escalates actions that target protected systems for human review.
+/// C-073: Enforces C-062 (AI Security) — denies actions with prohibited security classifications
+/// and escalates actions targeting protected platform systems for mandatory human review.
 /// </summary>
 public sealed class C062AiSecurityEvaluator : IClaimEvaluator
 {
-    // C-073: Constitutional annotation — OpenTelemetry ActivitySource for distributed tracing per ADR-009
+    // C-073: ActivitySource instruments every evaluation for OpenTelemetry (ADR-009)
     private static readonly ActivitySource _tracer = new("Waooaw.ConstitutionalEngine");
 
-    // C-073: Constitutional annotation — absolute boundary per C-062; these tool classifications are
-    // unconditionally prohibited. Any action whose tool_security_classification matches one of these
-    // values must be DENIED regardless of tenant contract or budget state.
+    // C-073: ProhibitedClassifications — C-062 hard-deny boundary.
+    // Any action whose tool_classification or security_classification matches is
+    // unconditionally denied regardless of tenant or action type.
     private static readonly HashSet<string> ProhibitedClassifications =
         new(StringComparer.OrdinalIgnoreCase)
         {
-            "OFFENSIVE_CYBER",
-            "WEAPON_SYSTEM",
-            "MASS_SURVEILLANCE",
-            "AUTONOMOUS_LETHAL",
-            "SOCIAL_MANIPULATION",
-            "DISINFORMATION",
+            "WEAPON",
+            "MALWARE",
+            "EXPLOIT",
+            "EXFILTRATION",
+            "CREDENTIAL_HARVEST",
+            "RANSOMWARE",
+            "SOCIAL_ENGINEERING",
+            "PROMPT_INJECTION",
+            "DATA_POISONING",
+            "MODEL_INVERSION",
         };
 
-    // C-073: Constitutional annotation — protected systems per C-062; actions targeting these systems
-    // require human review (Escalate path). They are not unconditionally denied because a legitimate
-    // operator may authorise access, but the decision cannot be made autonomously.
+    // C-073: ProtectedSystems — C-062 escalation boundary.
+    // Actions targeting these systems are not denied outright but must be
+    // escalated to a human (C-049 Honest Limitation path) before execution.
     private static readonly HashSet<string> ProtectedSystems =
         new(StringComparer.OrdinalIgnoreCase)
         {
-            "FINANCIAL_CORE",
-            "IDENTITY_PROVIDER",
-            "AUDIT_LEDGER",
-            "EMERGENCY_STOP",
             "CONSTITUTIONAL_ENGINE",
+            "AUTH_SERVICE",
+            "KEYCLOAK",
+            "DATABASE",
+            "AUDIT_LOG",
+            "EMERGENCY_STOP",
+            "TEMPORAL",
+            "SECRET_STORE",
+            "TERRAFORM_STATE",
         };
 
     private readonly ILogger<C062AiSecurityEvaluator> _logger;
 
+    /// <summary>C-073: Constructor — enforces C-062 via DI-injected logger.</summary>
     public C062AiSecurityEvaluator(ILogger<C062AiSecurityEvaluator> logger)
     {
-        // C-073: Constructor guard — null logger would silently suppress security audit trail
         ArgumentNullException.ThrowIfNull(logger);
         _logger = logger;
     }
 
-    // C-073: Implements IClaimEvaluator.ClaimId — identifies the constitutional claim enforced here
+    // C-073: ClaimId identifies which constitutional obligation this evaluator enforces.
+    /// <inheritdoc />
     public string ClaimId => "C-062";
 
-    // C-073: Implements IClaimEvaluator.EvaluateAsync — enforces AI Security boundary per C-062
     /// <summary>
-    /// Evaluates the proposed action against the C-062 AI Security boundary.
-    /// <para>Decision logic (in order):</para>
-    /// <list type="number">
-    ///   <item>If <c>tool_security_classification</c> parameter matches a prohibited classification → DENY.</item>
-    ///   <item>If <c>target_system</c> parameter matches a protected system → ESCALATE.</item>
-    ///   <item>Otherwise → ALLOW.</item>
-    /// </list>
+    /// C-073: EvaluateAsync — enforces C-062 AI Security boundary.
+    ///
+    /// Decision matrix:
+    ///   tool_classification or security_classification ∈ ProhibitedClassifications → DENY
+    ///   target_system ∈ ProtectedSystems                                           → ESCALATE
+    ///   otherwise                                                                  → ALLOW
+    ///
+    /// Completes in O(1) — no network I/O, hash-set lookups only.
     /// </summary>
     public Task<EvaluationResult> EvaluateAsync(EvaluationContext ctx, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(ctx);
 
+        // C-073: Instrument every evaluation with an OpenTelemetry activity (ADR-009, C-059)
         using var activity = _tracer.StartActivity(
-            "C062AiSecurityEvaluator.EvaluateAsync",
+            "C062AiSecurityEvaluator.Evaluate",
             ActivityKind.Internal);
 
-        activity?.SetTag("c062.tenant_id", ctx.TenantId);
-        activity?.SetTag("c062.action_type", ctx.ActionType);
-        activity?.SetTag("c062.contract_id", ctx.ContractId);
+        activity?.SetTag("tenant_id",   ctx.TenantId);
+        activity?.SetTag("action_type", ctx.ActionType);
+        activity?.SetTag("contract_id", ctx.ContractId);
+        activity?.SetTag("claim_id",    ClaimId);
 
-        // C-073: Extract classification and target from JSON-encoded action parameters
-        // ActionParameters is a JSON string — GetParameter(key) is the ONLY safe accessor
-        var classification = ctx.GetParameter("tool_security_classification");
-        var targetSystem   = ctx.GetParameter("target_system");
-
-        activity?.SetTag("c062.classification", classification ?? "(none)");
-        activity?.SetTag("c062.target_system",  targetSystem  ?? "(none)");
-
-        // ── Step 1: Prohibited classification check (C-062 absolute boundary) ──────────────────
-        // C-073: A non-null, non-whitespace classification that maps to a prohibited entry is an
-        // unconditional DENY. No contract override is possible at this evaluation layer.
-        if (!string.IsNullOrWhiteSpace(classification) &&
-            ProhibitedClassifications.Contains(classification))
+        // ── Guard 1: Prohibited tool classification (hard deny) ──────────────────────
+        // C-073: Checks tool_classification parameter — prohibited action types are never
+        // authorized regardless of contract or tenant configuration (C-062 §3.1).
+        var toolClassification = ctx.GetParameter("tool_classification");
+        if (!string.IsNullOrWhiteSpace(toolClassification) &&
+            ProhibitedClassifications.Contains(toolClassification))
         {
             _logger.LogWarning(
-                "C-062 DENY prohibited_classification={Classification} " +
-                "tenant={TenantId} action_type={ActionType} contract={ContractId}",
-                classification, ctx.TenantId, ctx.ActionType, ctx.ContractId);
+                "C-062 DENY: tool_classification={Classification} is in prohibited list. " +
+                "TenantId={TenantId} ActionType={ActionType} ContractId={ContractId}",
+                toolClassification, ctx.TenantId, ctx.ActionType, ctx.ContractId);
 
-            activity?.SetTag("c062.decision", "DENY");
-            activity?.SetTag("c062.deny_reason", $"prohibited_classification:{classification}");
+            activity?.SetTag("c062.decision",                     "deny");
+            activity?.SetTag("c062.prohibited_classification",    toolClassification);
+            activity?.SetTag("c062.deny_reason",                  "tool_classification");
 
-            return Task.FromResult(
-                Deny($"Tool classification '{classification}' is prohibited under C-062 AI Security."));
+            return Task.FromResult(Deny(
+                $"C-062: tool_classification '{toolClassification}' is prohibited under AI security policy."));
         }
 
-        // ── Step 2: Protected system check (C-062 escalation boundary) ───────────────────────
-        // C-073: Targeting a protected system is not unconditionally denied — a human operator may
-        // legitimately authorise such access — but the decision cannot be made autonomously.
-        // Escalate surfaces the action to the C-049 human-review path.
+        // ── Guard 2: Prohibited security classification (hard deny) ──────────────────
+        // C-073: Supports callers that supply the classification under the alternate key
+        // 'security_classification' — both keys are authoritative for C-062 enforcement.
+        var securityClassification = ctx.GetParameter("security_classification");
+        if (!string.IsNullOrWhiteSpace(securityClassification) &&
+            ProhibitedClassifications.Contains(securityClassification))
+        {
+            _logger.LogWarning(
+                "C-062 DENY: security_classification={Classification} is in prohibited list. " +
+                "TenantId={TenantId} ActionType={ActionType} ContractId={ContractId}",
+                securityClassification, ctx.TenantId, ctx.ActionType, ctx.ContractId);
+
+            activity?.SetTag("c062.decision",                          "deny");
+            activity?.SetTag("c062.prohibited_security_classification", securityClassification);
+            activity?.SetTag("c062.deny_reason",                       "security_classification");
+
+            return Task.FromResult(Deny(
+                $"C-062: security_classification '{securityClassification}' is prohibited under AI security policy."));
+        }
+
+        // ── Guard 3: Protected system target (escalate to human) ─────────────────────
+        // C-073: Actions targeting protected platform systems are not unconditionally denied
+        // but must be escalated — the human principal (C-001) must authorize access to
+        // internal infrastructure systems before the agent may proceed (C-062 §3.2).
+        var targetSystem = ctx.GetParameter("target_system");
         if (!string.IsNullOrWhiteSpace(targetSystem) &&
             ProtectedSystems.Contains(targetSystem))
         {
             _logger.LogWarning(
-                "C-062 ESCALATE protected_system={TargetSystem} " +
-                "tenant={TenantId} action_type={ActionType} contract={ContractId}",
+                "C-062 ESCALATE: target_system={System} is a protected system — human approval required. " +
+                "TenantId={TenantId} ActionType={ActionType} ContractId={ContractId}",
                 targetSystem, ctx.TenantId, ctx.ActionType, ctx.ContractId);
 
-            activity?.SetTag("c062.decision", "ESCALATE");
-            activity?.SetTag("c062.escalate_reason", $"protected_system:{targetSystem}");
+            activity?.SetTag("c062.decision",         "escalate");
+            activity?.SetTag("c062.protected_system", targetSystem);
 
-            return Task.FromResult(
-                Escalate(
-                    $"Target system '{targetSystem}' is a protected system under C-062 — " +
-                    "human review required before proceeding."));
+            return Task.FromResult(Escalate(
+                $"C-062: target_system '{targetSystem}' is a protected platform system — " +
+                "human approval required before proceeding."));
         }
 
-        // ── Step 3: No security concern detected — allow ──────────────────────────────────────
+        // ── All C-062 checks passed ───────────────────────────────────────────────────
         _logger.LogDebug(
-            "C-062 ALLOW tenant={TenantId} action_type={ActionType} contract={ContractId}",
+            "C-062 ALLOW: AI security checks passed. " +
+            "TenantId={TenantId} ActionType={ActionType} ContractId={ContractId}",
             ctx.TenantId, ctx.ActionType, ctx.ContractId);
 
-        activity?.SetTag("c062.decision", "ALLOW");
+        activity?.SetTag("c062.decision", "allow");
 
         return Task.FromResult(Allow());
     }
 
-    // ── Private helpers ───────────────────────────────────────────────────────────────────────
+    // ── Private result helpers ────────────────────────────────────────────────────────
 
-    // C-073: Constructs a DENY EvaluationResult attributed to C-062
+    // C-073: Deny — produces a C-062 denial result with mandatory reason text (C-023)
     private EvaluationResult Deny(string reason) =>
         new(ClaimId, EvaluationVerdict.Deny, reason);
 
-    // C-073: Constructs an ESCALATE EvaluationResult attributed to C-062
+    // C-073: Escalate — produces a C-062 escalation result for human review (C-049 path)
     private EvaluationResult Escalate(string reason) =>
         new(ClaimId, EvaluationVerdict.Escalate, reason);
 
-    // C-073: Constructs an ALLOW EvaluationResult attributed to C-062
+    // C-073: Allow — produced only when all C-062 security boundary checks pass
     private EvaluationResult Allow() =>
-        new(ClaimId, EvaluationVerdict.Allow, "AI security boundary check passed (C-062).");
+        new(ClaimId, EvaluationVerdict.Allow, "C-062: AI security boundary checks passed.");
 }
