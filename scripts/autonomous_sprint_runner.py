@@ -688,8 +688,12 @@ def call_llm(task_id: str, task_description: str, spec_content: str,
         # Observability: log prompt size before call
         prompt_chars = len(json_mod.dumps(payload))
         print(f"  REQ:  {task_id} attempt={attempt} | prompt={prompt_chars:,} chars | max_tokens={effective_max_tokens} (code={max_tokens})")
-        # Timeout: scaled to effective_max_tokens (includes thinking headroom).
-        api_timeout = max(600, (effective_max_tokens // 50) * 3)
+        # Timeout: bounded to prevent long "stuck" windows on a single API call.
+        # Defaults can be overridden via env for controlled tuning in CI.
+        timeout_floor = int(os.environ.get("LLM_API_TIMEOUT_FLOOR_S", "180"))
+        timeout_ceiling = int(os.environ.get("LLM_API_TIMEOUT_CEILING_S", "420"))
+        scaled_timeout = (effective_max_tokens // 50) * 3
+        api_timeout = max(timeout_floor, min(timeout_ceiling, scaled_timeout))
         t_start = __import__('time').monotonic()
         with urllib.request.urlopen(req, timeout=api_timeout) as resp:
             result = json_mod.loads(resp.read())
@@ -993,10 +997,11 @@ def execute_with_llm(task_id: str, task_description: str, spec_sections: dict,
 
     failure_context = ""
     infra_failures = 0  # count of transient API failures (timeout, rate limit, server error)
-    for attempt in range(1, 3):  # 2 attempts: 1 primary + 1 build-failure retry with advisor fix
+    max_attempts = 2
+    for attempt in range(1, max_attempts + 1):  # 2 attempts: 1 primary + 1 build-failure retry with advisor fix
                                  # Attempt 3 removed: same model+params = same result, wastes tokens
                                  # Evidence (run 30104540921): attempt 2+3 were connection-dead waste
-        print(f"\n── {task_id} (attempt {attempt}/3) ──")
+        print(f"\n── {task_id} (attempt {attempt}/{max_attempts}) ──")
 
         prompt_with_context = spec_content
         if failure_context:
@@ -1105,24 +1110,24 @@ def execute_with_llm(task_id: str, task_description: str, spec_sections: dict,
         print(f"  ⚠️  PIPELINE_BUG: {task_id} failed due to runner logic, not spec content.")
         return False
 
-    if infra_failures == 3:
+    if infra_failures == max_attempts:
         # ALL failures were infrastructure (timeout/rate-limit/server error) — NOT a spec gap
-        print(f"  ⚠️  INFRA_FAILURE: {task_id} — all 3 attempts were API failures (timeout/rate-limit).")
+        print(f"  ⚠️  INFRA_FAILURE: {task_id} — all {max_attempts} attempts were API failures (timeout/rate-limit).")
         print(f"  This is NOT a spec gap. No issue created. Next cron run will retry automatically.")
         # Signal to main() that this was an infra failure, not a code/spec failure
         _INFRA_ERROR_TASKS.append(task_id)
         # Emit INFRA_ERROR signal for Constitutional Monitor (C-069)
         _MONITOR_SIGNAL["task_results"][task_id] = {
             "result": "INFRA_ERROR", "error_type": "API_TIMEOUT",
-            "build_error_snippet": None, "attempts": 3, "spec_gap_issue": None,
+            "build_error_snippet": None, "attempts": max_attempts, "spec_gap_issue": None,
         }
         return False
     elif infra_failures > 0:
         # Mixed: some infra failures + some build failures — treat as spec gap but note it
-        gap_desc = (f"{task_id} failed after 3 attempts ({infra_failures} API timeouts, "
-                    f"{3 - infra_failures} build failures). Last build error: {failure_context[:200]}")
+        gap_desc = (f"{task_id} failed after {max_attempts} attempts ({infra_failures} API timeouts, "
+                    f"{max_attempts - infra_failures} build failures). Last build error: {failure_context[:200]}")
     else:
-        gap_desc = f"{task_id} failed validation after 3 LLM attempts. Last error: {failure_context[:300]}"
+        gap_desc = f"{task_id} failed validation after {max_attempts} LLM attempts. Last error: {failure_context[:300]}"
 
     flag_spec_gap(
         task_id=task_id,
