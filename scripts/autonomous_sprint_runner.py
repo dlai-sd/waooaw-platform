@@ -3123,18 +3123,49 @@ def main() -> int:
         set_output("result", "SKIPPED")
         return 0
 
+    # Fresh-start signal: READY + no completed tasks means start from latest main,
+    # not from any stale/diverged sprint branch left by prior interrupted runs.
+    tasks_done_state = state.get("tasks_done", [])
+    has_completed_tasks = bool(tasks_done_state)
+    is_fresh_start = str(state.get("sprint_status", "")).upper() == "READY" and not has_completed_tasks
+
     # ── Step 5: Setup branch ──────────────────────────────────────────────
     branch = state.get("branch", f"ib/009/{sprint.lower()}")
     if not dry_run:
+        git(["fetch", "origin", "main"], check=False)
         remote_check = git(["ls-remote", "--exit-code", "--heads", "origin", branch], check=False)
-        if remote_check.returncode == 0:
-            git(["checkout", branch])
-            git(["pull", "origin", branch])
+
+        if is_fresh_start:
+            print(f"  Branch freshness guard: rebuilding {branch} from latest origin/main")
+            # Ensure we are not on the sprint branch before deleting/resetting it.
+            current_branch = git(["branch", "--show-current"]).stdout.strip()
+            if current_branch == branch:
+                git(["checkout", "main"], check=False)
+
+            git(["checkout", "main"], check=False)
+            git(["pull", "origin", "main"], check=False)
+
+            # Delete stale local sprint branch if present.
+            local_ref = git(["show-ref", "--verify", "--quiet", f"refs/heads/{branch}"], check=False)
+            if local_ref.returncode == 0:
+                git(["branch", "-D", branch], check=False)
+
+            # Delete stale remote sprint branch if present.
+            if remote_check.returncode == 0:
+                del_remote = git(["push", "origin", "--delete", branch], check=False)
+                if del_remote.returncode != 0:
+                    print(f"  WARN: could not delete remote {branch}; continuing with local fresh branch")
+
+            git(["checkout", "-b", branch, "origin/main"])
         else:
-            # Branch may already exist locally (local dev or resume run) — try checkout first
-            local_check = git(["checkout", branch], check=False)
-            if local_check.returncode != 0:
-                git(["checkout", "-b", branch])
+            if remote_check.returncode == 0:
+                git(["checkout", branch])
+                git(["pull", "origin", branch])
+            else:
+                # Branch may already exist locally (local dev or resume run) — try checkout first
+                local_check = git(["checkout", branch], check=False)
+                if local_check.returncode != 0:
+                    git(["checkout", "-b", branch])
 
         record_evidence("AUTONOMOUS_SPRINT_STARTED", sprint=sprint,
                         branch=branch, tasks=tasks)
