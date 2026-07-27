@@ -757,6 +757,23 @@ The autonomous sprint respects the constitutional Human Override at every level:
 - GitHub Issues remain as human-facing view
 - PostgreSQL becomes the constitutional audit ledger
 
+### Autonomous Pre-Sprint and Post-Sprint Constitutional Duties
+
+The Goal Orchestrator has two additional constitutional duties in the autonomous sprint cycle, both FULLY AUTOMATED — no human intervention required:
+
+**Duty 1 — Pre-Sprint Gap Analysis (C-086, runs in `preflight` job):**
+Before any GO Authorization is issued for a code generation phase, the Goal Orchestrator runs `scripts/pre_sprint_sim.py` against the current Work Contract. This surfaces probable failure modes before the LLM is called.
+- CRITICAL gaps → sprint halted automatically (Constitutional Stop — C-086 gate)
+- HIGH gaps → warning posted to Sprint Dashboard Issue #7, sprint proceeds
+- Gap findings posted to GitHub Actions Step Summary (visible without reading logs)
+
+This converts the system from reactive (fail → classify → retry) to proactive (predict → prevent → succeed). **No human must remember to run this — it is constitutional infrastructure.**
+
+**Duty 2 — Canonical Pattern Library Seeding (C-069, runs in `review` job after merge):**
+After every successful sprint merge, the Goal Orchestrator invokes `scripts/pattern_seeder.py` to extract canonical patterns from the newly merged code and seed them to `architecture/reference/ptr/canonical-patterns/{stack}/`. Patterns start as CANDIDATE (0.5 confidence) and are promoted to CANONICAL after Constitutional Analyst review.
+
+Each sprint accumulates institutional engineering wisdom. WC-013 starts with WC-012's patterns. WC-014 starts with WC-012+013's patterns. **No human must maintain the Pattern Library — it grows automatically from successful sprint merges.**
+
 ### Work Contract → Goal Association (Migration Rule)
 
 Existing Work Contracts (WC-012 through WC-019) predate GEOM. They are associated with Goals using the pattern:

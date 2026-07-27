@@ -225,6 +225,52 @@ jobs:
           echo "model_hint=$MODEL_HINT" >> "$GITHUB_OUTPUT"
           echo "  Index built: task=$TASK_ID, model_hint=$MODEL_HINT"
 
+      # ── Pre-Sprint Gap Analysis (C-086 + GOAL-003) ────────────────────────────
+      # Proactive: surfaces probable failure modes BEFORE LLM is called.
+      # CRITICAL gaps halt the sprint. HIGH gaps warn on Issue #7 but proceed.
+      # Goal Orchestrator constitutional duty — documented in GEOM §11.
+      - name: Pre-Sprint Gap Analysis (C-086 proactive gate)
+        id: gap_analysis
+        if: steps.halt_check.outputs.halt == 'false'
+        env:
+          TASK_ID: ${{ steps.index_build.outputs.task_id }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Find the Work Contract file for the current sprint
+          SPRINT_WC=$(python3 -c "
+          import re, json
+          idx = json.load(open('sprint-context/index.json'))
+          sprint = idx.get('sprint', 'WC-012')
+          print(sprint)
+          " 2>/dev/null || echo "")
+
+          WC_FILE=$(ls work-contracts/${SPRINT_WC}-*.md 2>/dev/null | head -1 || echo "")
+
+          if [ -n "$WC_FILE" ]; then
+            echo "  Running pre-sprint simulation: $WC_FILE"
+            python3 scripts/pre_sprint_sim.py "$WC_FILE" 2>&1 || true
+            SIM_EXIT=$?
+
+            # Post gap summary to GitHub Step Summary
+            echo "## 🔍 Pre-Sprint Gap Analysis" >> $GITHUB_STEP_SUMMARY
+            python3 scripts/pre_sprint_sim.py "$WC_FILE" 2>&1 | \
+              grep -E 'CRITICAL|HIGH|MEDIUM|confidence|SUMMARY' | \
+              sed 's/^/  /' >> $GITHUB_STEP_SUMMARY || true
+
+            # CRITICAL gaps halt the sprint
+            CRITICAL=$(python3 scripts/pre_sprint_sim.py "$WC_FILE" 2>/dev/null | grep -c 'CRITICAL' || echo '0')
+            if [ "$CRITICAL" -gt 0 ]; then
+              echo "  ⛔ CRITICAL gaps found — sprint halted (C-086 pre-execution gate)"
+              echo "gap_halt=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "  ✅ No CRITICAL gaps — sprint may proceed"
+              echo "gap_halt=false" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            echo "  No WC file found for $SPRINT_WC — skipping gap analysis"
+            echo "gap_halt=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Upload sprint index as artifact
         if: steps.halt_check.outputs.halt == 'false'
         uses: actions/upload-artifact@v4

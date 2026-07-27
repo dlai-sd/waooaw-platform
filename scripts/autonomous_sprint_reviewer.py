@@ -279,6 +279,18 @@ def main() -> int:
                 "advance", "--current", sprint, "--ib", "IB-009"
             ])
             print(adv.stdout.strip() if adv.stdout else "  (no advance output)")
+
+            # ── Action 1: Seed Canonical Pattern Library (C-069 Self-Improvement) ──
+            # Automatically extract patterns from merged code — no manual step.
+            # Goal Orchestrator constitutional duty documented in GEOM §11.
+            try:
+                seed_result = run(["python3", "scripts/pattern_seeder.py", sprint])
+                if seed_result.returncode == 0:
+                    print(f"  ✓ Canonical Pattern Library seeded from {sprint}")
+                else:
+                    print(f"  WARN: Pattern seeder returned non-zero (non-blocking)")
+            except Exception as e:
+                print(f"  WARN: Pattern seeder failed ({e}) — non-blocking")
             run(["git", "add", "constitution/PROJECT_STATE.md", "VERSION", "CHANGELOG.md"])
             diff = run(["git", "diff", "--cached", "--quiet"])
             if diff.returncode != 0:
