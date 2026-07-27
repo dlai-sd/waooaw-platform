@@ -1,6 +1,6 @@
 // Implements: architecture/reference/ce-validate-action-evaluators.md §C-041 Evaluator
 // constitutional_basis: C-041 (Tool Authorization), C-023 (Evidence First),
-//                       C-059 (Traceability), C-073 (Annotation), C-076 (≥90% test coverage)
+//                       C-059 (Traceability), C-073 (Annotation)
 
 #nullable enable
 
@@ -11,12 +11,13 @@ using Microsoft.Extensions.Logging;
 namespace Waooaw.ConstitutionalEngine.Evaluators;
 
 /// <summary>
-/// C-073: Enforces C-041 — every MCP tool call is default-deny unless the tool name
-/// appears in the contract's authorized_actions list carried in ActionParameters.
+/// C-041 Tool Authorization Evaluator.
+/// Default-deny: every MCP tool call must appear in the tenant's authorized_tools list
+/// (passed as a JSON array in ActionParameters["authorized_tools"]) or the action is DENIED.
 /// </summary>
 public sealed class C041ToolAuthorizationEvaluator : IClaimEvaluator
 {
-    // C-073: Tracing span for observability of every evaluation
+    // C-073: ActivitySource for distributed tracing — required by ADR-009 (OpenTelemetry)
     private static readonly ActivitySource _tracer = new("Waooaw.ConstitutionalEngine");
 
     private readonly ILogger<C041ToolAuthorizationEvaluator> _logger;
@@ -27,123 +28,123 @@ public sealed class C041ToolAuthorizationEvaluator : IClaimEvaluator
         _logger = logger;
     }
 
-    // C-073: ClaimId identifies the constitutional claim this evaluator enforces.
+    // C-073: ClaimId — declares which constitutional claim this evaluator enforces
+    /// <inheritdoc />
     public string ClaimId => "C-041";
 
-    /// <summary>
-    /// C-073: Evaluate whether the requested tool is explicitly authorized.
-    /// Default deny — any missing or unlisted tool name returns DENY immediately.
-    /// </summary>
+    // C-073: EvaluateAsync — enforces C-041 (Tool Authorization) default-deny boundary
+    /// <inheritdoc />
     public Task<EvaluationResult> EvaluateAsync(EvaluationContext ctx, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(ctx);
 
-        // C-073: Start an observability span for this evaluation
-        using var activity = _tracer.StartActivity("C041ToolAuthorizationEvaluator.Evaluate",
+        using var activity = _tracer.StartActivity(
+            "C041ToolAuthorizationEvaluator.Evaluate",
             ActivityKind.Internal);
         activity?.SetTag("claim_id", ClaimId);
-        activity?.SetTag("tenant_id", ctx.TenantId);
         activity?.SetTag("action_type", ctx.ActionType);
-        activity?.SetTag("contract_id", ctx.ContractId);
+        activity?.SetTag("tenant_id", ctx.TenantId);
 
-        // C-073 / C-041: Extract tool name from JSON-encoded ActionParameters
+        // C-041: Step 1 — extract tool_name from JSON-encoded ActionParameters.
+        //        ctx.GetParameter() is the ONLY valid accessor (ActionParameters is a JSON string).
         var toolName = ctx.GetParameter("tool_name");
 
         if (string.IsNullOrWhiteSpace(toolName))
         {
-            _logger.LogWarning(
-                "C-041 DENY — tool_name missing or empty. TenantId={TenantId} ContractId={ContractId} ActionType={ActionType}",
-                ctx.TenantId, ctx.ContractId, ctx.ActionType);
+            // C-041: No tool name supplied — default deny applies immediately.
+            _logger.LogInformation(
+                "C-041 DENY: tool_name missing or empty. TenantId={TenantId} ActionType={ActionType}",
+                ctx.TenantId,
+                ctx.ActionType);
 
-            activity?.SetTag("verdict", "Deny");
-            activity?.SetTag("deny_reason", "tool_name_missing");
+            activity?.SetTag("decision", "Deny");
+            activity?.SetTag("deny_reason", "missing_tool_name");
 
-            return Task.FromResult(Deny("C-041: tool_name parameter is missing or empty — default deny."));
+            return Task.FromResult(
+                Deny("C-041: tool_name parameter is missing or empty — default deny applies."));
         }
 
         activity?.SetTag("tool_name", toolName);
 
-        // C-073 / C-041: Read the authorized_actions list from ActionParameters
-        var authorizedActionsRaw = ctx.GetParameter("authorized_actions");
+        // C-041: Step 2 — read the tenant's authorized_tools JSON array from ActionParameters.
+        var authorizedToolsRaw = ctx.GetParameter("authorized_tools");
 
-        if (!IsToolAuthorized(toolName, authorizedActionsRaw))
+        if (!IsToolAuthorized(toolName, authorizedToolsRaw))
         {
-            _logger.LogWarning(
-                "C-041 DENY — tool '{ToolName}' not in authorized_actions. TenantId={TenantId} ContractId={ContractId}",
-                toolName, ctx.TenantId, ctx.ContractId);
+            // C-041: Tool is not in the authorized list — default deny.
+            _logger.LogInformation(
+                "C-041 DENY: tool={ToolName} not in authorized_tools list. TenantId={TenantId} ActionType={ActionType}",
+                toolName,
+                ctx.TenantId,
+                ctx.ActionType);
 
-            activity?.SetTag("verdict", "Deny");
+            activity?.SetTag("decision", "Deny");
             activity?.SetTag("deny_reason", "tool_not_authorized");
 
-            return Task.FromResult(Deny(
-                $"C-041: tool '{toolName}' is not in the contract's authorized_actions list — default deny."));
+            return Task.FromResult(
+                Deny($"C-041: Tool '{toolName}' is not in the authorized tools list — default deny applies."));
         }
 
+        // C-041: Tool explicitly found in the authorized list — allow.
         _logger.LogInformation(
-            "C-041 ALLOW — tool '{ToolName}' authorized. TenantId={TenantId} ContractId={ContractId}",
-            toolName, ctx.TenantId, ctx.ContractId);
+            "C-041 ALLOW: tool={ToolName} found in authorized_tools list. TenantId={TenantId}",
+            toolName,
+            ctx.TenantId);
 
-        activity?.SetTag("verdict", "Allow");
+        activity?.SetTag("decision", "Allow");
 
-        return Task.FromResult(new EvaluationResult(ClaimId, EvaluationVerdict.Allow,
-            $"C-041: tool '{toolName}' is explicitly authorized."));
+        return Task.FromResult(
+            new EvaluationResult(ClaimId, EvaluationVerdict.Allow,
+                $"C-041: Tool '{toolName}' is authorized for this tenant."));
     }
 
-    // ── Private helpers ──────────────────────────────────────────────────────────
-
-    /// <summary>
-    /// Returns true only when <paramref name="authorizedActionsRaw"/> is a non-empty
-    /// JSON array that contains <paramref name="toolName"/> (case-sensitive).
-    /// Any parse error or absent list returns false (default deny).
-    /// </summary>
+    // C-073: IsToolAuthorized — implements C-041 default-deny check
+    //        Returns false for null/empty raw JSON (default deny) and for malformed JSON (safe fail-closed).
     private static bool IsToolAuthorized(string toolName, string? authorizedActionsRaw)
     {
         if (string.IsNullOrWhiteSpace(authorizedActionsRaw))
         {
-            return false; // C-041: no list present → default deny
+            // No authorized_tools parameter supplied — default deny.
+            return false;
         }
 
-        // Attempt JSON array parse; malformed JSON → default deny (no exception surfaced)
         return TryParseJsonArray(authorizedActionsRaw, toolName);
     }
 
-    /// <summary>
-    /// Parses <paramref name="jsonArray"/> as a JSON string array and returns true
-    /// if <paramref name="toolName"/> appears in it.
-    /// Returns false (and swallows <see cref="JsonException"/>) on malformed input.
-    /// </summary>
+    // C-073: TryParseJsonArray — parses authorized_tools JSON array and checks membership.
+    //        Returns false on any JSON parse failure (fail-closed per C-041 default deny).
     private static bool TryParseJsonArray(string jsonArray, string toolName)
     {
         try
         {
-            // Use JsonDocument for zero-allocation enumeration
             using var doc = JsonDocument.Parse(jsonArray);
-            var root = doc.RootElement;
 
-            if (root.ValueKind != JsonValueKind.Array)
+            if (doc.RootElement.ValueKind != JsonValueKind.Array)
             {
-                return false; // Unexpected shape → default deny
+                // Not a JSON array — cannot authorize, default deny.
+                return false;
             }
 
-            foreach (var element in root.EnumerateArray())
+            foreach (var element in doc.RootElement.EnumerateArray())
             {
                 if (element.ValueKind == JsonValueKind.String &&
-                    string.Equals(element.GetString(), toolName, StringComparison.Ordinal))
+                    string.Equals(element.GetString(), toolName, StringComparison.OrdinalIgnoreCase))
                 {
                     return true;
                 }
             }
 
-            return false; // Tool not found in array
+            // Tool not found in array.
+            return false;
         }
         catch (JsonException)
         {
-            // C-041: malformed JSON in authorized_actions → default deny, never throw
+            // Malformed JSON — fail closed (default deny).
             return false;
         }
     }
 
-    /// <summary>Convenience factory for a DENY result attributed to this evaluator.</summary>
+    // C-073: Deny factory — ensures ClaimId is always populated on denial records (C-023 Evidence First)
     private EvaluationResult Deny(string reason) =>
         new(ClaimId, EvaluationVerdict.Deny, reason);
 }
