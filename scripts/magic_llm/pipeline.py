@@ -343,13 +343,14 @@ class MagicLLMPipeline:
         else:
             gates[QualityGate.FORMAT] = bool(raw.strip())
 
-        # Annotation gate (C-073) — for code tasks
+        # Annotation gate (C-073) — for code tasks (stack-aware)
         if request.task_category in (TaskCategory.CODE_GENERATION, TaskCategory.TEST_GENERATION):
-            has_implements = "# Implements:" in raw
+            # Python/Terraform/CSS: # Implements:  |  C#/JS/TS: // Implements:
+            has_implements = ("# Implements:" in raw) or ("// Implements:" in raw)
             gates[QualityGate.ANNOTATION] = has_implements
             if not has_implements:
                 return "retry_needed", gates, FailureClassification.ANNOTATION_MISSING, \
-                       "missing # Implements: header (C-073)"
+                       "missing # Implements: or // Implements: header (C-073)"
 
         return "accepted", gates, None, None
 
