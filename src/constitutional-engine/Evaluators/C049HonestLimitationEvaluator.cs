@@ -1,86 +1,108 @@
 // Implements: architecture/reference/ce-validate-action-evaluators.md §C-049 Evaluator — Honest Limitation
 // constitutional_basis: C-049 (Honest Limitation)
-using System.Globalization;
 
 namespace Waooaw.ConstitutionalEngine.Evaluators;
 
 /// <summary>
-/// C-049 Honest Limitation — denies or escalates when the agent is operating beyond
-/// its demonstrated capability or confidence boundary.
+/// C-049 Honest Limitation: the agent must not proceed when it has flagged capability
+/// exceedance, insufficient confidence, or inadequate approval history.
+/// Deny  — capability_exceeded == "true"
+/// Escalate — confidence_score below threshold OR prior approvals below minimum history
+/// Allow — all checks pass
 /// </summary>
 public sealed class C049HonestLimitationEvaluator : IClaimEvaluator
 {
     public string ClaimId => "C-049";
 
-    private const string CapabilityExceededKey      = "capability_exceeded";
-    private const string ConfidenceScoreKey          = "confidence_score";
-    private const string MinHistoryRequiredKey       = "min_history_required";
-    private const string PriorApprovalCountKey       = "prior_approval_count";
-    private const double EscalateConfidenceThreshold = 0.70;
+    private const string CapabilityExceededKey       = "capability_exceeded";
+    private const string ConfidenceScoreKey           = "confidence_score";
+    private const string MinHistoryRequiredKey        = "min_history_required";
+    private const string PriorApprovalCountKey        = "prior_approval_count";
+    private const double EscalateConfidenceThreshold  = 0.70;
 
     public Task<EvaluationResult> EvaluateAsync(EvaluationContext ctx, CancellationToken ct)
     {
-        // ── 1. Explicit capability-exceeded flag ─────────────────────────────
+        // ── 1. Capability-exceeded flag — explicit DENY ───────────────────────────
         var capabilityExceededRaw = ctx.GetParameter(CapabilityExceededKey);
         if (string.Equals(capabilityExceededRaw, "true", StringComparison.OrdinalIgnoreCase))
         {
             return Task.FromResult(new EvaluationResult(
-                ClaimId:  ClaimId,
-                Verdict:  EvaluationVerdict.Deny,
-                Reason:   "C-049: capability_exceeded flag is set — agent must not proceed beyond declared capability boundary."));
+                ClaimId,
+                EvaluationVerdict.Deny,
+                "C-049: Agent flagged capability_exceeded=true — action exceeds declared competency boundary."));
         }
 
-        // ── 2. Confidence score below escalation threshold ───────────────────
+        // ── 2. Confidence score — low confidence → ESCALATE ──────────────────────
         var confidenceRaw = ctx.GetParameter(ConfidenceScoreKey);
         if (confidenceRaw is not null)
         {
-            if (!double.TryParse(confidenceRaw, NumberStyles.Float, CultureInfo.InvariantCulture, out var confidenceScore))
+            if (!double.TryParse(confidenceRaw,
+                    System.Globalization.NumberStyles.Any,
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    out var confidenceScore))
             {
+                // Unparseable score is treated as zero confidence — escalate
                 return Task.FromResult(new EvaluationResult(
-                    ClaimId:  ClaimId,
-                    Verdict:  EvaluationVerdict.Escalate,
-                    Reason:   $"C-049: confidence_score '{confidenceRaw}' could not be parsed — escalating for human review."));
+                    ClaimId,
+                    EvaluationVerdict.Escalate,
+                    $"C-049: confidence_score value '{confidenceRaw}' could not be parsed — escalating to human review."));
             }
 
             if (confidenceScore < EscalateConfidenceThreshold)
             {
                 return Task.FromResult(new EvaluationResult(
-                    ClaimId:  ClaimId,
-                    Verdict:  EvaluationVerdict.Escalate,
-                    Reason:   $"C-049: confidence_score {confidenceScore:F4} is below required threshold {EscalateConfidenceThreshold} — escalating for human review."));
+                    ClaimId,
+                    EvaluationVerdict.Escalate,
+                    $"C-049: confidence_score {confidenceScore:F4} is below the {EscalateConfidenceThreshold:F2} threshold — escalating to human review."));
             }
         }
 
-        // ── 3. Insufficient prior-approval history ───────────────────────────
-        var minHistoryRaw    = ctx.GetParameter(MinHistoryRequiredKey);
-        var priorApprovalRaw = ctx.GetParameter(PriorApprovalCountKey);
+        // ── 3. Prior approval history — insufficient history → ESCALATE ──────────
+        var minHistoryRaw     = ctx.GetParameter(MinHistoryRequiredKey);
+        var priorApprovalRaw  = ctx.GetParameter(PriorApprovalCountKey);
 
         if (minHistoryRaw is not null && priorApprovalRaw is not null)
         {
-            var minParsed   = int.TryParse(minHistoryRaw,    out var minRequired);
-            var priorParsed = int.TryParse(priorApprovalRaw, out var priorCount);
+            var parsedMin   = int.TryParse(minHistoryRaw,    out var minRequired)    ? (int?)minRequired    : null;
+            var parsedPrior = int.TryParse(priorApprovalRaw, out var priorApprovals) ? (int?)priorApprovals : null;
 
-            if (!minParsed || !priorParsed)
+            if (parsedMin is null)
             {
                 return Task.FromResult(new EvaluationResult(
-                    ClaimId:  ClaimId,
-                    Verdict:  EvaluationVerdict.Escalate,
-                    Reason:   $"C-049: min_history_required or prior_approval_count could not be parsed ('{minHistoryRaw}', '{priorApprovalRaw}') — escalating for human review."));
+                    ClaimId,
+                    EvaluationVerdict.Escalate,
+                    $"C-049: min_history_required value '{minHistoryRaw}' could not be parsed — escalating to human review."));
             }
 
-            if (priorCount < minRequired)
+            if (parsedPrior is null)
             {
                 return Task.FromResult(new EvaluationResult(
-                    ClaimId:  ClaimId,
-                    Verdict:  EvaluationVerdict.Escalate,
-                    Reason:   $"C-049: prior_approval_count {priorCount} is below min_history_required {minRequired} — agent lacks sufficient approval history for autonomous execution."));
+                    ClaimId,
+                    EvaluationVerdict.Escalate,
+                    $"C-049: prior_approval_count value '{priorApprovalRaw}' could not be parsed — escalating to human review."));
+            }
+
+            if (parsedPrior.Value < parsedMin.Value)
+            {
+                return Task.FromResult(new EvaluationResult(
+                    ClaimId,
+                    EvaluationVerdict.Escalate,
+                    $"C-049: prior_approval_count {parsedPrior.Value} is below min_history_required {parsedMin.Value} — escalating to human review."));
             }
         }
+        else if (minHistoryRaw is not null && priorApprovalRaw is null)
+        {
+            // Minimum history specified but no count provided — conservative escalation
+            return Task.FromResult(new EvaluationResult(
+                ClaimId,
+                EvaluationVerdict.Escalate,
+                $"C-049: min_history_required is set to '{minHistoryRaw}' but prior_approval_count was not provided — escalating to human review."));
+        }
 
-        // ── 4. All honest-limitation checks passed ───────────────────────────
+        // ── 4. All checks passed ──────────────────────────────────────────────────
         return Task.FromResult(new EvaluationResult(
-            ClaimId:  ClaimId,
-            Verdict:  EvaluationVerdict.Allow,
-            Reason:   "C-049: agent is operating within its declared capability and confidence boundary."));
+            ClaimId,
+            EvaluationVerdict.Allow,
+            "C-049: Honest limitation checks passed — capability within bounds, confidence sufficient, approval history adequate."));
     }
 }
