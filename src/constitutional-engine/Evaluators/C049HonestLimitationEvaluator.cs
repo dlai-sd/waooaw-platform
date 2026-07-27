@@ -1,6 +1,6 @@
 // Implements: architecture/reference/ce-validate-action-evaluators.md §C-049 Evaluator
 // constitutional_basis: C-049 (Honest Limitation), C-023 (Evidence First),
-//                       C-059 (Traceability), C-073 (Annotation), C-076 (Test Coverage)
+//                       C-059 (Traceability), C-073 (Constitutional Annotation)
 
 #nullable enable
 
@@ -12,164 +12,218 @@ namespace Waooaw.ConstitutionalEngine.Evaluators;
 
 /// <summary>
 /// C-049 Honest Limitation Evaluator.
-/// Enforces the constitutional obligation that the AI must escalate to human review
-/// whenever its confidence is below the configured threshold or it lacks sufficient
-/// prior-approval history to act autonomously.
+///
+/// Constitutional obligation: the agent MUST acknowledge uncertainty and escalate
+/// to a human (Sujay) when it lacks the confidence or prior approval history to
+/// act autonomously. An agent that suppresses its own uncertainty violates C-049.
+///
+/// Escalation logic:
+///   • confidence_score present AND below effective threshold → Escalate
+///   • min_history_required > 0 AND prior_approval_count absent → Escalate
+///   • min_history_required > 0 AND prior_approval_count < min_history_required → Escalate
+///   • All checks pass → Allow
+///
+/// Parameters consumed from EvaluationContext.ActionParameters (JSON-encoded):
+///   "confidence_score"     — float 0..1, agent's self-assessed confidence for this action
+///   "configured_threshold" — float 0..1, override threshold (defaults to 0.70)
+///   "prior_approval_count" — int, number of prior human approvals for equivalent actions
+///   "min_history_required" — int, minimum prior approvals required (defaults to 0)
 /// </summary>
 public sealed class C049HonestLimitationEvaluator : IClaimEvaluator
 {
-    // C-073: ActivitySource for distributed tracing — every constitutional evaluation is observable.
+    // C-073: ActivitySource for constitutional obligation tracing (ADR-009 OpenTelemetry)
     private static readonly ActivitySource _tracer = new("Waooaw.ConstitutionalEngine");
 
-    /// <summary>Default confidence threshold applied when the request carries no configured_threshold.</summary>
+    /// <summary>
+    /// Default minimum confidence score (0–1.0) an agent must have before acting autonomously.
+    /// Configurable per-action via the "configured_threshold" parameter.
+    /// </summary>
     private const float DefaultConfidenceThreshold = 0.70f;
 
-    /// <summary>Default minimum prior-approval count when the request carries no min_history_required.</summary>
+    /// <summary>
+    /// Default minimum number of prior human approvals required.
+    /// Zero means no prior-history gate applies unless explicitly requested by the caller.
+    /// </summary>
     private const int DefaultMinHistoryRequired = 0;
 
     private readonly ILogger<C049HonestLimitationEvaluator> _logger;
 
+    /// <summary>
+    /// C-073: Constructor injection — logger required for constitutional audit trail.
+    /// </summary>
     public C049HonestLimitationEvaluator(ILogger<C049HonestLimitationEvaluator> logger)
     {
         ArgumentNullException.ThrowIfNull(logger);
         _logger = logger;
     }
 
-    // C-073: ClaimId identifies the constitutional claim this evaluator enforces.
+    /// <summary>Constitutional claim enforced by this evaluator.</summary>
     public string ClaimId => "C-049";
 
     /// <summary>
-    /// C-073: Implements C-049 Honest Limitation.
-    /// Escalates to human review when the agent's confidence score is below the threshold
-    /// or when the agent lacks the minimum prior-approval history to proceed autonomously.
-    /// Never denies outright — uncertainty routes to a human, not a hard block.
+    /// C-073: Evaluates C-049 Honest Limitation.
+    ///
+    /// Short-circuits via the EvaluatorRegistry on first Escalate (treated as non-DENY
+    /// by the registry but surfaces to ValidateAction for human routing).
+    /// MUST NOT perform network I/O — reads only from the JSON action parameters.
     /// </summary>
     public Task<EvaluationResult> EvaluateAsync(EvaluationContext ctx, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(ctx);
 
-        // C-073: Start a trace span so every C-049 evaluation decision is recorded in OTel.
+        // C-073: Trace constitutional evaluation span
         using var activity = _tracer.StartActivity(
             "C049HonestLimitationEvaluator.Evaluate",
             ActivityKind.Internal);
-
         activity?.SetTag("claim_id", ClaimId);
         activity?.SetTag("tenant_id", ctx.TenantId);
         activity?.SetTag("action_type", ctx.ActionType);
         activity?.SetTag("contract_id", ctx.ContractId);
 
-        // ── Read synthetic approval parameters from the JSON-encoded ActionParameters ──
-        // All values extracted via ctx.GetParameter() — NEVER ctx.ActionParameters.TryGetValue().
-        float? confidenceScore      = TryParseFloat(ctx.GetParameter("confidence_score"));
-        float? configuredThreshold  = TryParseFloat(ctx.GetParameter("configured_threshold"));
-        int?   priorApprovalCount   = TryParseInt(ctx.GetParameter("prior_approval_count"));
-        int?   minHistoryRequired   = TryParseInt(ctx.GetParameter("min_history_required"));
+        // ── Parameter extraction ────────────────────────────────────────────────
+        // ctx.GetParameter() parses the JSON-encoded ActionParameters string.
+        // Returns null when the key is absent — we apply defaults below.
 
-        float effectiveThreshold = configuredThreshold ?? DefaultConfidenceThreshold;
-        int   effectiveMinHistory = minHistoryRequired ?? DefaultMinHistoryRequired;
+        float? confidenceScore    = TryParseFloat(ctx.GetParameter("confidence_score"));
+        float? configuredThreshold = TryParseFloat(ctx.GetParameter("configured_threshold"));
+        int?   priorApprovalCount  = TryParseInt(ctx.GetParameter("prior_approval_count"));
+        int?   minHistoryRequired  = TryParseInt(ctx.GetParameter("min_history_required"));
 
-        activity?.SetTag("confidence_score",     confidenceScore?.ToString(CultureInfo.InvariantCulture) ?? "absent");
-        activity?.SetTag("effective_threshold",  effectiveThreshold.ToString(CultureInfo.InvariantCulture));
-        activity?.SetTag("prior_approval_count", priorApprovalCount?.ToString(CultureInfo.InvariantCulture) ?? "absent");
+        float effectiveThreshold  = configuredThreshold ?? DefaultConfidenceThreshold;
+        int   effectiveMinHistory = minHistoryRequired  ?? DefaultMinHistoryRequired;
+
+        activity?.SetTag("confidence_score",      confidenceScore?.ToString("F4", CultureInfo.InvariantCulture) ?? "absent");
+        activity?.SetTag("effective_threshold",   effectiveThreshold.ToString("F4", CultureInfo.InvariantCulture));
+        activity?.SetTag("prior_approval_count",  priorApprovalCount?.ToString(CultureInfo.InvariantCulture)    ?? "absent");
         activity?.SetTag("effective_min_history", effectiveMinHistory.ToString(CultureInfo.InvariantCulture));
 
-        // ── Guard: if no synthetic-approval context is present, C-049 is not applicable ──
-        // An action that carries no confidence signal is not a synthetic-approval action;
-        // other evaluators (C-041, C-043) cover it. Allow and continue chain.
-        if (confidenceScore is null && priorApprovalCount is null)
+        // ── Check 1: Confidence below threshold ────────────────────────────────
+        // C-049: Agent must not proceed when it knows its confidence is inadequate.
+        if (confidenceScore.HasValue && confidenceScore.Value < effectiveThreshold)
         {
-            _logger.LogDebug(
-                "C-049: No confidence parameters present — not a synthetic-approval action. " +
-                "TenantId={TenantId} ActionType={ActionType} ContractId={ContractId}",
-                ctx.TenantId, ctx.ActionType, ctx.ContractId);
+            var reason = string.Format(
+                CultureInfo.InvariantCulture,
+                "C-049: Agent confidence {0:F4} is below required threshold {1:F4}. " +
+                "Escalating to human — agent must acknowledge its limitation.",
+                confidenceScore.Value,
+                effectiveThreshold);
 
-            activity?.SetTag("c049_outcome", "not_applicable");
-            return Task.FromResult(Allow("C-049: No synthetic approval context — claim not applicable to this action"));
+            _logger.LogInformation(
+                "C049 Escalate: confidence_score={ConfidenceScore:F4} threshold={Threshold:F4} " +
+                "tenant={TenantId} contract={ContractId}",
+                confidenceScore.Value, effectiveThreshold, ctx.TenantId, ctx.ContractId);
+
+            activity?.SetTag("decision", "Escalate");
+            activity?.SetTag("escalation_reason", "confidence_below_threshold");
+
+            return Task.FromResult(Escalate(reason));
         }
 
-        // ── C-073: Check 1 — confidence score must meet or exceed the threshold ──
-        if (confidenceScore is not null && confidenceScore < effectiveThreshold)
+        // ── Check 2: Insufficient prior approval history (count absent) ────────
+        // C-049: When a minimum history gate is configured and no count is supplied,
+        // we cannot verify the gate — safe path is to escalate.
+        if (effectiveMinHistory > DefaultMinHistoryRequired && !priorApprovalCount.HasValue)
         {
-            _logger.LogWarning(
-                "C-049: Confidence {ConfidenceScore:F4} below threshold {Threshold:F4} — escalating to human review. " +
-                "TenantId={TenantId} ActionType={ActionType} ContractId={ContractId}",
-                confidenceScore, effectiveThreshold, ctx.TenantId, ctx.ActionType, ctx.ContractId);
+            var reason = string.Format(
+                CultureInfo.InvariantCulture,
+                "C-049: prior_approval_count parameter absent but min_history_required={0}. " +
+                "Escalating — cannot verify approval history without a count.",
+                effectiveMinHistory);
 
-            activity?.SetTag("c049_outcome", "escalate_confidence");
-            return Task.FromResult(Escalate(
-                $"C-049: Confidence score {confidenceScore.Value:F4} is below the required threshold " +
-                $"{effectiveThreshold:F4} — human review required before autonomous execution"));
+            _logger.LogInformation(
+                "C049 Escalate: prior_approval_count absent, min_history_required={MinHistory} " +
+                "tenant={TenantId} contract={ContractId}",
+                effectiveMinHistory, ctx.TenantId, ctx.ContractId);
+
+            activity?.SetTag("decision", "Escalate");
+            activity?.SetTag("escalation_reason", "approval_history_absent");
+
+            return Task.FromResult(Escalate(reason));
         }
 
-        // ── C-073: Check 2 — agent must have sufficient prior-approval history ──
-        if (priorApprovalCount is not null && priorApprovalCount < effectiveMinHistory)
+        // ── Check 3: Prior approval count below required minimum ───────────────
+        // C-049: Agent has not accumulated enough human-validated history for this
+        // action class. Escalate rather than proceed on insufficient precedent.
+        if (effectiveMinHistory > DefaultMinHistoryRequired
+            && priorApprovalCount.HasValue
+            && priorApprovalCount.Value < effectiveMinHistory)
         {
-            _logger.LogWarning(
-                "C-049: PriorApprovalCount {PriorApprovalCount} below MinHistoryRequired {MinHistoryRequired} " +
-                "— escalating to human review. TenantId={TenantId} ActionType={ActionType} ContractId={ContractId}",
-                priorApprovalCount, effectiveMinHistory, ctx.TenantId, ctx.ActionType, ctx.ContractId);
+            var reason = string.Format(
+                CultureInfo.InvariantCulture,
+                "C-049: prior_approval_count={0} is below min_history_required={1}. " +
+                "Escalating — agent must build approval history before acting autonomously.",
+                priorApprovalCount.Value,
+                effectiveMinHistory);
 
-            activity?.SetTag("c049_outcome", "escalate_history");
-            return Task.FromResult(Escalate(
-                $"C-049: Prior approval count {priorApprovalCount.Value} is below the minimum history required " +
-                $"{effectiveMinHistory} — human review required before autonomous execution"));
+            _logger.LogInformation(
+                "C049 Escalate: prior_approval_count={PriorCount} min_history_required={MinHistory} " +
+                "tenant={TenantId} contract={ContractId}",
+                priorApprovalCount.Value, effectiveMinHistory, ctx.TenantId, ctx.ContractId);
+
+            activity?.SetTag("decision", "Escalate");
+            activity?.SetTag("escalation_reason", "insufficient_approval_history");
+
+            return Task.FromResult(Escalate(reason));
         }
 
-        // ── All C-049 checks passed — allow the action to continue through the evaluator chain ──
+        // ── All checks passed ──────────────────────────────────────────────────
+        // Agent confidence is adequate (or not asserted) and approval history
+        // meets any configured minimum. C-049 is satisfied.
         _logger.LogInformation(
-            "C-049: Allow — confidence and history requirements satisfied. " +
-            "TenantId={TenantId} ActionType={ActionType} ContractId={ContractId} " +
-            "ConfidenceScore={ConfidenceScore} Threshold={Threshold} " +
-            "PriorApprovalCount={PriorApprovalCount} MinHistoryRequired={MinHistoryRequired}",
-            ctx.TenantId, ctx.ActionType, ctx.ContractId,
-            confidenceScore?.ToString("F4", CultureInfo.InvariantCulture) ?? "absent",
-            effectiveThreshold,
-            priorApprovalCount?.ToString(CultureInfo.InvariantCulture) ?? "absent",
-            effectiveMinHistory);
+            "C049 Allow: confidence={ConfidenceScore} threshold={Threshold} " +
+            "priorCount={PriorCount} minHistory={MinHistory} " +
+            "tenant={TenantId} contract={ContractId}",
+            confidenceScore.HasValue
+                ? confidenceScore.Value.ToString("F4", CultureInfo.InvariantCulture)
+                : "absent",
+            effectiveThreshold.ToString("F4", CultureInfo.InvariantCulture),
+            priorApprovalCount.HasValue
+                ? priorApprovalCount.Value.ToString(CultureInfo.InvariantCulture)
+                : "absent",
+            effectiveMinHistory,
+            ctx.TenantId,
+            ctx.ContractId);
 
-        activity?.SetTag("c049_outcome", "allow");
+        activity?.SetTag("decision", "Allow");
+
         return Task.FromResult(Allow(
-            $"C-049: Confidence and approval-history requirements satisfied " +
-            $"(score={confidenceScore?.ToString("F4", CultureInfo.InvariantCulture) ?? "N/A"} " +
-            $"≥ threshold={effectiveThreshold:F4}, " +
-            $"history={priorApprovalCount?.ToString(CultureInfo.InvariantCulture) ?? "N/A"} " +
-            $"≥ required={effectiveMinHistory})"));
+            "C-049: Agent confidence meets the honest limitation threshold and " +
+            "prior approval history is sufficient for autonomous action."));
     }
 
-    // ── Private helpers ──────────────────────────────────────────────────────────────────
+    // ── Private helpers ──────────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Constructs an Allow result for this evaluator.
-    /// Allow does NOT mean the full chain is satisfied — subsequent evaluators still run.
-    /// </summary>
+    // C-073: Constructs an Allow result attributed to C-049
     private EvaluationResult Allow(string reason) =>
         new(ClaimId, EvaluationVerdict.Allow, reason);
 
-    /// <summary>
-    /// Constructs an Escalate result for this evaluator.
-    /// Escalate signals that the action is uncertain and must be reviewed by a human (C-049 path).
-    /// The ConstitutionalEngineService treats Escalate as a non-approval outcome.
-    /// </summary>
+    // C-073: Constructs an Escalate result attributed to C-049
+    // Escalate = action is uncertain → forward to human (Sujay) via C-049 path
     private EvaluationResult Escalate(string reason) =>
         new(ClaimId, EvaluationVerdict.Escalate, reason);
 
     /// <summary>
-    /// Attempts to parse a float from a parameter string using invariant culture.
-    /// Returns null if the string is null, empty, whitespace, or not a valid float.
+    /// Parses a nullable float from a raw string parameter value.
+    /// Returns null when the input is null, empty, whitespace, or not parseable.
+    /// Uses InvariantCulture so "0.70" is always interpreted as 0.70 (not locale-dependent).
     /// </summary>
     private static float? TryParseFloat(string? raw)
     {
         if (string.IsNullOrWhiteSpace(raw))
             return null;
 
-        return float.TryParse(raw, NumberStyles.Float, CultureInfo.InvariantCulture, out var value)
+        return float.TryParse(
+            raw,
+            NumberStyles.Float | NumberStyles.AllowLeadingSign,
+            CultureInfo.InvariantCulture,
+            out var value)
             ? value
             : null;
     }
 
     /// <summary>
-    /// Attempts to parse an int from a parameter string.
-    /// Returns null if the string is null, empty, whitespace, or not a valid integer.
+    /// Parses a nullable int from a raw string parameter value.
+    /// Returns null when the input is null, empty, whitespace, or not parseable.
     /// </summary>
     private static int? TryParseInt(string? raw)
     {
