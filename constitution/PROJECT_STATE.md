@@ -121,7 +121,7 @@ simulations_passing:
   SIM-GO-005: 7/7  (Greenfield Goal Register — WAOOAW builds itself)
   SIM-GO-006: 9/9  (Production defect P1 Emergency Stop)
   SIM-GO-007: 14/14 (Full autonomous sprint lifecycle — FINAL)
-sprint_status: READY
+sprint_status: IN_PROGRESS
 autonomous_halt: false
 consecutive_failures: 0
 ```
@@ -217,7 +217,7 @@ WC012-02b `CS1061: string.TryGetValue` fixed at three layers:
 ### State at Session Close
 
 ```yaml
-sprint_status: READY
+sprint_status: IN_PROGRESS
 tasks_done: []
 tasks_remaining:
   - WC012-01
@@ -535,9 +535,9 @@ platform_phase: IMPLEMENTATION  # SPEC | IMPLEMENTATION | LIVE
 
 current_sprint: WC-012
 sprint_ib_item: IB-009
-sprint_status: READY
+sprint_status: IN_PROGRESS
 branch: ib/009/sprint-012
-last_attempt_utc: 2026-07-23T18:15:00.000000+00:00
+last_attempt_utc: 2026-07-27T13:08:21.025587+00:00
 last_attempt_result: SUCCESS
 consecutive_failures: 0
 tasks_done: []
@@ -550,7 +550,7 @@ tasks_remaining:
 current_task:
 
 
-                                        ## NEXT SESSION OPTIONS
+                                        WC012-01    ## NEXT SESSION OPTIONS
 
 ```
 CURRENT STATE: platform_phase=IMPLEMENTATION · AUTONOMOUS_HALT=false
