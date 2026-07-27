@@ -1,11 +1,12 @@
 // Implements: architecture/reference/ce-validate-action-evaluators.md §C-062 AI Security
-// constitutional_basis: C-062 (AI Security), C-059 (Traceability), C-076 (test coverage)
+// Constitutional basis: C-062 (AI Security), C-059 (Traceability), C-076 (test coverage)
+using System.Globalization;
 
 namespace Waooaw.ConstitutionalEngine.Evaluators;
 
 /// <summary>
-/// Enforces C-062 (AI Security): denies or escalates actions flagged for prompt injection,
-/// AI security violations, or elevated security risk scores.
+/// Enforces C-062 (AI Security): denies or escalates actions that present prompt-injection,
+/// adversarial input, or elevated security-risk signals detected upstream by the skill layer.
 /// </summary>
 public sealed class C062AiSecurityEvaluator : IClaimEvaluator
 {
@@ -20,52 +21,59 @@ public sealed class C062AiSecurityEvaluator : IClaimEvaluator
 
     public Task<EvaluationResult> EvaluateAsync(EvaluationContext ctx, CancellationToken ct)
     {
-        // Hard deny: explicit AI security flag raised
+        // 1. Hard flag: ai_security_flag=true → immediate DENY
         var aiSecurityFlag = ctx.GetParameter(AiSecurityFlagKey);
         if (string.Equals(aiSecurityFlag, "true", StringComparison.OrdinalIgnoreCase))
         {
             return Task.FromResult(new EvaluationResult(
                 ClaimId,
                 EvaluationVerdict.Deny,
-                "C-062: AI security flag is set — action denied to protect system integrity."));
+                "C-062: AI security flag is set — action denied to prevent adversarial execution."));
         }
 
-        // Hard deny: prompt injection detected
+        // 2. Hard flag: prompt_injection_detected=true → immediate DENY
         var promptInjection = ctx.GetParameter(PromptInjectionKey);
         if (string.Equals(promptInjection, "true", StringComparison.OrdinalIgnoreCase))
         {
             return Task.FromResult(new EvaluationResult(
                 ClaimId,
                 EvaluationVerdict.Deny,
-                "C-062: Prompt injection detected — action denied per AI security policy."));
+                "C-062: Prompt injection detected — action denied to preserve constitutional integrity."));
         }
 
-        // Score-based evaluation
-        var scoreRaw = ctx.GetParameter(SecurityRiskScoreKey);
-        if (scoreRaw is not null
-            && double.TryParse(scoreRaw, System.Globalization.NumberStyles.Any,
-                               System.Globalization.CultureInfo.InvariantCulture, out var score))
+        // 3. Numeric security risk score
+        var riskScoreRaw = ctx.GetParameter(SecurityRiskScoreKey);
+        if (riskScoreRaw is not null)
         {
-            if (score >= DenyThreshold)
+            if (!double.TryParse(riskScoreRaw, NumberStyles.Any, CultureInfo.InvariantCulture, out var riskScore))
             {
                 return Task.FromResult(new EvaluationResult(
                     ClaimId,
                     EvaluationVerdict.Deny,
-                    $"C-062: Security risk score {score:F2} meets or exceeds deny threshold {DenyThreshold:F2}."));
+                    $"C-062: security_risk_score value '{riskScoreRaw}' is not a valid number — action denied."));
             }
 
-            if (score >= EscalateThreshold)
+            if (riskScore >= DenyThreshold)
+            {
+                return Task.FromResult(new EvaluationResult(
+                    ClaimId,
+                    EvaluationVerdict.Deny,
+                    $"C-062: Security risk score {riskScore:F4} meets or exceeds deny threshold {DenyThreshold} — action denied."));
+            }
+
+            if (riskScore >= EscalateThreshold)
             {
                 return Task.FromResult(new EvaluationResult(
                     ClaimId,
                     EvaluationVerdict.Escalate,
-                    $"C-062: Security risk score {score:F2} meets or exceeds escalation threshold {EscalateThreshold:F2} — human review required."));
+                    $"C-062: Security risk score {riskScore:F4} meets or exceeds escalate threshold {EscalateThreshold} — forwarding to human review."));
             }
         }
 
+        // 4. No security signals detected — allow
         return Task.FromResult(new EvaluationResult(
             ClaimId,
             EvaluationVerdict.Allow,
-            "C-062: No AI security violations detected."));
+            "C-062: No AI security signals detected — action permitted."));
     }
 }
