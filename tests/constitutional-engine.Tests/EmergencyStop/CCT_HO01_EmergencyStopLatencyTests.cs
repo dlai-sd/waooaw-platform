@@ -47,8 +47,8 @@ public sealed class CCT_HO01_EmergencyStopLatencyTests
             NullLogger<EvaluatorRegistry>.Instance);
 
         return new ConstitutionalEngineService(
-            registry,
             CreateConstitutionalDb(),
+            registry,
             NullLogger<ConstitutionalEngineService>.Instance,
             emergencyDb,
             temporalClient);
@@ -64,6 +64,7 @@ public sealed class CCT_HO01_EmergencyStopLatencyTests
             ContractId = contractId,
             StoppedBy = stoppedBy
         };
+
         req.ActiveSessionIds.AddRange(sessionIds);
         return req;
     }

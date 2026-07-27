@@ -33,9 +33,14 @@ public sealed class CCT_EF01_EvidenceFirstTests
             NullLogger<EvaluatorRegistry>.Instance);
 
         return new ConstitutionalEngineService(
-            registry,
             db,
-            NullLogger<ConstitutionalEngineService>.Instance);
+            new EmergencyStopDbContext(
+                new DbContextOptionsBuilder<EmergencyStopDbContext>()
+                    .UseInMemoryDatabase(Guid.NewGuid().ToString())
+                    .Options),
+            null,
+            NullLogger<ConstitutionalEngineService>.Instance,
+            registry);
     }
 
     private static RecordEvidenceRequest MakeRequest(
