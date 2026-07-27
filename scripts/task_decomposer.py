@@ -415,6 +415,99 @@ def execute_file_by_file(
     return True
 
 
+# ── Generalized LLM subtask runner (used by both normal and skeleton→logic path) ─
+
+def _run_llm_subtask(st: "SubTaskDef", completed: list[str], dry_run: bool) -> bool:
+    """Run a single LLM subtask with full context assembly. Used by execute_subtask_chain."""
+    _scripts = str(REPO_ROOT / "scripts")
+    if _scripts not in sys.path:
+        sys.path.insert(0, _scripts)
+    from autonomous_sprint_runner import execute_with_llm
+
+    spec_with_context = dict(st.spec_sections)
+    effective_check = _build_effective_check(st, completed)
+
+    if not st.output_files:
+        try:
+            from platform_type_registry import build_ptr_prompt_block, load_ptr
+            ptr = load_ptr()
+            if ptr:
+                all_type_names = [
+                    t for task_entry in ptr.get("tasks", {}).values()
+                    for t in task_entry.get("types", {}).keys()
+                ]
+                ptr_block = build_ptr_prompt_block(all_type_names, ptr=ptr)
+                if ptr_block:
+                    effective_check = effective_check + ptr_block
+        except Exception:
+            pass
+
+    if st.output_files:
+        return execute_file_by_file(
+            st.id, st.output_files, effective_check, spec_with_context,
+            st.model_hint, st.max_tokens,
+        )
+    else:
+        return execute_with_llm(
+            st.id, st.description, spec_with_context, effective_check,
+            st.model_hint, st.max_tokens,
+        )
+
+
+# ── Canary-file validation ─────────────────────────────────────────────────────
+
+def run_canary_validation(
+    task_id: str,
+    output_files: list[str],
+    effective_check: str,
+    spec_sections: dict,
+    model_hint: str,
+    compile_gate: str,
+    service_dir: str,
+) -> tuple[bool, str]:
+    """
+    Industry Item 8: Canary-file validation.
+    Generate and compile the FIRST (most representative) file in isolation.
+    If it fails, do not waste tokens on remaining files in the batch.
+    Returns (should_proceed, error_message).
+    """
+    if not output_files or len(output_files) < 2:
+        return True, ""  # no value in canary for single file
+
+    canary_file = output_files[0]
+    print(f"  CANARY: validating {Path(canary_file).name} before batch generation")
+
+    _scripts = str(REPO_ROOT / "scripts")
+    if _scripts not in sys.path:
+        sys.path.insert(0, _scripts)
+    from autonomous_sprint_runner import execute_with_llm, validate_written_files
+
+    canary_check = (
+        f"Generate ONLY this ONE canary file: {canary_file}\n"
+        f"Do NOT generate any other file.\n\n"
+        f"{effective_check}"
+    )
+
+    success = execute_with_llm(
+        f"{task_id}:canary:{Path(canary_file).name}",
+        f"Canary: {Path(canary_file).name}",
+        spec_sections,
+        canary_check,
+        model_hint,
+        3000,  # tight budget for canary
+    )
+
+    if not success:
+        return False, f"Canary file {canary_file} failed — stopping batch"
+
+    gate_ok, gate_error = run_compile_gate(compile_gate, service_dir)
+    if not gate_ok:
+        return False, f"Canary compile failed: {gate_error[:200]}"
+
+    print(f"  CANARY: ✅ {Path(canary_file).name} validates — proceeding with batch")
+    return True, ""
+
+
 # ── TaskDecomposer ─────────────────────────────────────────────────────────────
 
 def execute_subtask_chain(
@@ -475,6 +568,40 @@ def execute_subtask_chain(
             success = st.template_fn()
 
         elif st.type == "llm":
+            # ── Industry Item 1: Generalized skeleton→logic two-pass executor ──
+            # If generation_phase="skeleton", we run an automatic second "logic" pass
+            # after the skeleton compiles. This is fully general — no per-task code.
+            if st.generation_phase == "skeleton":
+                print(f"  [{st.id}] PHASE 1/2: SKELETON (signatures + stubs only)...")
+                skeleton_st = st
+                success = _run_llm_subtask(skeleton_st, completed, dry_run)
+                if not success:
+                    print(f"  [{st.id}] SKELETON phase FAILED — halting chain")
+                    emit_subtask_signal(task_id, st.id, "FAIL", monitor_signal)
+                    return False
+                # Compile gate between phases
+                gate_ok, gate_error = run_compile_gate(st.compile_gate, st.service_dir)
+                if not gate_ok:
+                    print(f"  [{st.id}] SKELETON compile gate FAILED: {gate_error[:200]}")
+                    emit_subtask_signal(task_id, st.id, "FAIL", monitor_signal)
+                    return False
+                print(f"  [{st.id}] SKELETON compile gate: ✅ PASS — signatures frozen")
+                # Transition to logic phase automatically
+                import copy
+                logic_st = copy.copy(st)
+                logic_st.generation_phase = "logic"
+                print(f"  [{st.id}] PHASE 2/2: LOGIC FILL (method bodies only)...")
+                success = _run_llm_subtask(logic_st, completed, dry_run)
+                if success:
+                    completed.append(st.id)
+                    emit_subtask_signal(task_id, st.id, "SUCCESS", monitor_signal)
+                    print(f"  [{st.id}] C-083 signal: SUBTASK_COMPLETE emitted")
+                else:
+                    print(f"  [{st.id}] LOGIC phase FAILED — halting chain")
+                    emit_subtask_signal(task_id, st.id, "FAIL", monitor_signal)
+                    return False
+                continue  # Skip standard execution below
+
             print(f"  [{st.id}] Calling LLM ({st.model_hint}, max={st.max_tokens} tokens)...")
             spec_with_context = dict(st.spec_sections)
 

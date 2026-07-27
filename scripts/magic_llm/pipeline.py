@@ -135,7 +135,18 @@ class MagicLLMPipeline:
         api_key: Optional[str] = None,
         vertex_sa_key_json: Optional[str] = None,
     ) -> None:
-        self._write_record = goal_register_writer or self._default_file_writer
+        # Normalize writer: accept both (record) and (goal_id, record) signatures.
+        # Fixes the 'write_record() missing 1 required positional argument: record' error.
+        _raw_writer = goal_register_writer or self._default_file_writer
+        def _normalized_writer(record: dict) -> str:
+            try:
+                return _raw_writer(record)  # new signature: (record,)
+            except TypeError:
+                try:
+                    return _raw_writer(record.get("goal_id", ""), record)  # old: (goal_id, record)
+                except Exception:
+                    return ""
+        self._write_record = _normalized_writer
         self._api_key = api_key or os.environ.get("ANTHROPIC_API_KEY", "")
         # ADR-033: Gemini Vertex AI SA key (JSON string)
         self._vertex_sa_key_json = (
@@ -305,6 +316,7 @@ class MagicLLMPipeline:
     def _select_model(self, category: TaskCategory, request: "MagicLLMRequest" = None) -> tuple[str, float]:
         """O-01: Returns (model_name, temperature) using task complexity scoring.
         ADR-033: Cat. 7-13 always use Gemini Flash.
+        Industry Item 10: skeleton phase → Haiku (10x cheaper); logic/test → Sonnet.
         """
         # ADR-033: Gemini for orchestration + semantic categories
         if category in _GEMINI_CATS:
@@ -315,9 +327,15 @@ class MagicLLMPipeline:
                         TaskCategory.DEEP_REASONING, TaskCategory.DESIGN_CONTRACTS):
             if request is not None:
                 complexity = _task_complexity_score(request)
+                # Cost-aware tiering: SKELETON phase → always Haiku (signatures only, no reasoning needed)
+                # LOGIC/TEST phase → Sonnet when complexity is high, Haiku otherwise
+                desc = (request.task_description or "").lower()
+                is_skeleton = "skeleton" in desc or "SKELETON PHASE" in " ".join(request.context_sections)
+                if is_skeleton:
+                    return _ANTHROPIC_HAIKU, 0.0  # skeleton: cheap model always
                 if complexity >= 80:
-                    return _ANTHROPIC_MODEL, 0.0   # HIGH → Sonnet
-                return _ANTHROPIC_HAIKU, 0.0       # LOW/MEDIUM → Haiku (10x cheaper)
+                    return _ANTHROPIC_MODEL, 0.0  # HIGH complexity → Sonnet
+                return _ANTHROPIC_HAIKU, 0.0      # LOW/MEDIUM → Haiku (10x cheaper)
             return _ANTHROPIC_MODEL, 0.0           # fallback if no request
         return _ANTHROPIC_HAIKU, 0.0
 
@@ -351,6 +369,19 @@ class MagicLLMPipeline:
         if request.ptr_snapshot:
             ptr_lines = [f"  {k}: {v}" for k, v in list(request.ptr_snapshot.items())[:30]]
             parts.append("## PLATFORM TYPE REGISTRY (compiled types)\n" + "\n".join(ptr_lines))
+
+        # Industry Item 12: Forbidden API patterns — prevent LLM from inventing non-existent methods.
+        _FORBIDDEN_APIS = (
+            "## FORBIDDEN API PATTERNS (do NOT use — these do not exist)\n"
+            "  ❌ .AsTask() on Task<T>  — Task<T> IS already awaitable, just use 'await task;'\n"
+            "  ❌ .TryGetValue() on string/EvaluationContext — use ctx.GetParameter('key')\n"
+            "  ❌ .TryGetValue() on proto fields — proto fields are properties, not dictionaries\n"
+            "  ❌ BudgetRemainingInrPaise — does not exist on EvaluationContext\n"
+            "  ❌ ValidationDecision.Authorized/Denied/Permit — use Allow/Deny/Escalate\n"
+            "  ❌ new ConstitutionalDbContext() — always inject via constructor DI\n"
+            "  ❌ Mixed named+positional args: e.g. new Svc(a, b, logger: x) — use all positional"
+        )
+        parts.append(_FORBIDDEN_APIS)
 
         # Spec sections
         for i, section in enumerate(request.context_sections):

@@ -88,6 +88,16 @@ file content here
 - If a file exists and needs NO changes: OMIT it from your output entirely.
 - Duplicating a class causes CS0101 / ImportError / duplicate export — build fails.
 
+## FORBIDDEN PATTERNS (using any of these = immediate build failure)
+- `.AsTask()` on `Task<T>` — this method does NOT exist. Await the Task directly.
+- `.Result` or `.Wait()` on any Task in async context — use `await`.
+- `TryGetValue()` on `EvaluationContext` — it is not a Dictionary. Use `ctx.GetParameter("key")`.
+- `BudgetRemainingInrPaise` field on `EvaluationContext` — does not exist. Compute from ApprovedBudgetInrPaise - CurrentSpendInrPaise.
+- Mixing named and positional arguments in one constructor/method call — CS1744.
+- `asyncio.run()` inside any Temporal activity or FastAPI route — event loop already running.
+- `new DbContext()` anywhere — always inject via DI constructor parameter.
+- `using Waooaw.ConstitutionalEngine.Protos;` — namespace does not exist, use Waooaw.ConstitutionalEngine.Grpc.
+
 ## PROJECT STRUCTURE (one violation = build failure)
 .NET services:
   ONE .csproj in src/{service}/ named {service}.csproj (lowercase-hyphenated)
@@ -809,10 +819,15 @@ def call_llm_via_magiclm(
             return call_llm(task_id, task_description, spec_content,
                             constitutional_check, model_hint, max_tokens, attempt)
 
-    # Map task to category
+    # Map task to category — item 10: cost-aware model tiering
+    # skeleton phase → DESIGN_CONTRACTS (Cat.3) → eligible for cheaper model (Haiku)
+    # logic/full phase → CODE_GENERATION (Cat.2) → Sonnet (reasoning)
+    # test phase → TEST_GENERATION (Cat.6) → Sonnet (reasoning)
     tid = task_id.lower()
-    if "cct" in tid or "test" in tid or tid.endswith("-02c"):
+    if "cct" in tid or "test" in tid or tid.endswith("-02c") or tid.endswith("-03c") or tid.endswith("-04c"):
         category = TaskCategory.TEST_GENERATION
+    elif task_id.endswith("-skeleton") or "skeleton" in task_id.lower():
+        category = TaskCategory.DESIGN_CONTRACTS  # cheaper model eligible
     else:
         category = TaskCategory.CODE_GENERATION
 
@@ -857,8 +872,12 @@ def call_llm_via_magiclm(
     )
 
     writer = make_goal_register_writer()
+    # write_record signature: (goal_id: str, record: dict) → str
+    # Wrap to ensure positional call matches regardless of bridge version
+    def _safe_write(record: dict) -> str:
+        return writer.write_record(effective_goal_id, record)
     pipeline = MagicLLMPipeline(
-        goal_register_writer=writer.write_record,
+        goal_register_writer=_safe_write,
         api_key=os.environ.get("ANTHROPIC_API_KEY", ""),
     )
 
@@ -1084,6 +1103,23 @@ def execute_with_llm(task_id: str, task_description: str, spec_sections: dict,
                      f"feat: {task_id} — {task_description}\n\n"
                      f"IB: IB-009\nConstitutional: C-059, C-073, C-076\nCCTs-added: per WC spec"])
             print(f"  ✅ {task_id} complete ({len(written)} files)")
+            # Industry Item 11: if this was a retry (attempt > 1), record the fix in learning cache.
+            if attempt > 1 and failure_context.startswith("RETRY ADVISOR DIAGNOSIS:"):
+                try:
+                    _spec = __import__("importlib.util", fromlist=["spec_from_file_location"])
+                    import importlib.util as _ilu
+                    _s = _ilu.spec_from_file_location("sprint_retry_advisor",
+                         str(REPO_ROOT / "scripts" / "sprint_retry_advisor.py"))
+                    _m = _ilu.module_from_spec(_s); _s.loader.exec_module(_m)
+                    _m.record_successful_fix(
+                        error_snippet=build_error[:200] if build_error else "",
+                        fix_instruction=failure_context[failure_context.find("TARGETED FIX"):failure_context.find("TARGETED FIX")+400] if "TARGETED FIX" in failure_context else failure_context[:400],
+                        error_type=failure_context.split("\n")[0].replace("RETRY ADVISOR DIAGNOSIS:", "").strip(),
+                        task_id=task_id,
+                    )
+                    print(f"  LEARNING CACHE: fix recorded for future runs (C-069)")
+                except Exception:
+                    pass
             # Emit success signal for Constitutional Monitor (C-069)
             _MONITOR_SIGNAL["task_results"][task_id] = {
                 "result": "SUCCESS", "error_type": None,

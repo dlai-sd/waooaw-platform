@@ -650,6 +650,55 @@ def _classify_typescript_error(error: str) -> Optional[RetryDiagnosis]:
     return None
 
 
+# ── Industry Item 11: Post-run failure learning cache ─────────────────────────
+# After a retry succeeds, store error→fix pair to a local JSONL cache.
+# Next run loads cache before LLM fallback — eliminates repeat LLM calls for
+# the same error pattern.
+
+_LEARNING_CACHE_PATH = Path(__file__).parent.parent / "sprint-context" / "retry-learning-cache.jsonl"
+
+
+def record_successful_fix(error_snippet: str, fix_instruction: str, error_type: str, task_id: str) -> None:
+    """Append a successful error→fix pair to the learning cache (C-069 self-improvement)."""
+    import json as _json
+    try:
+        entry = {
+            "error_snippet": error_snippet[:200],
+            "error_type": error_type,
+            "fix_instruction": fix_instruction[:400],
+            "task_id": task_id,
+        }
+        _LEARNING_CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with _LEARNING_CACHE_PATH.open("a", encoding="utf-8") as f:
+            f.write(_json.dumps(entry) + "\n")
+    except Exception:
+        pass  # Learning cache is best-effort — never blocks execution
+
+
+def lookup_learning_cache(error_snippet: str) -> Optional[RetryDiagnosis]:
+    """Check learning cache for a known fix before calling LLM."""
+    import json as _json
+    if not _LEARNING_CACHE_PATH.exists():
+        return None
+    try:
+        with _LEARNING_CACHE_PATH.open("r", encoding="utf-8") as f:
+            for line in f:
+                entry = _json.loads(line.strip())
+                # Simple substring match — fast and deterministic
+                if entry.get("error_snippet", "") and entry["error_snippet"][:80] in error_snippet:
+                    print(f"  Retry Advisor: CACHE HIT — using learned fix for {entry['error_type']}")
+                    return RetryDiagnosis(
+                        error_type=entry["error_type"],
+                        fix_instruction=entry["fix_instruction"],
+                        should_retry=True,
+                        confidence=0.82,
+                        constitutional_trace="C-069 (Self-Improvement — learned from prior successful retry)",
+                    )
+    except Exception:
+        pass
+    return None
+
+
 # ── LLM-assisted classifier for UNKNOWN patterns ──────────────────────────────
 
 def _classify_with_llm(task_id: str, error: str) -> RetryDiagnosis:  # pragma: no cover
@@ -1106,7 +1155,12 @@ def diagnose_build_error(
             constitutional_trace="C-082 (Build Validation — project reference graph must be valid before code retries)",
         )
 
-    # ── Fallback: LLM classification ───────────────────────────────────────────
+    # ── Fallback 1: Learning cache (C-069 self-improvement) ──────────────────
+    cache_hit = lookup_learning_cache(build_error[:200])
+    if cache_hit:
+        return cache_hit
+
+    # ── Fallback 2: LLM classification ───────────────────────────────────────
     print(f"  Retry Advisor: pattern not recognized — calling cheap LLM classifier")
     diagnosis = _classify_with_llm(task_id, build_error)
     print(f"  Retry Advisor: LLM says {diagnosis.error_type} (confidence={diagnosis.confidence:.0%})")

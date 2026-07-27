@@ -729,6 +729,8 @@ class TestExecuteWithLlm:
             return None  # simulate no API key
 
         monkeypatch.setattr(runner, "call_llm", fake_call_llm)
+        # call_llm_via_magiclm falls through to call_llm; ensure it reaches it
+        monkeypatch.setattr(runner, "call_llm_via_magiclm", fake_call_llm)
 
         runner.execute_with_llm(
             task_id="WC012-99",
