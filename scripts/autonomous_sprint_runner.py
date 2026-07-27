@@ -2407,6 +2407,8 @@ TASK_HANDLERS = {
                     "  Budget ceiling (C043): `bool exceeded = (ctx.CurrentSpendInrPaise + ctx.ProposedSpendInrPaise) > ctx.ApprovedBudgetInrPaise;`\n"
                     "  ⛔ Do NOT use ?? on budget fields — ApprovedBudgetInrPaise/CurrentSpendInrPaise/ProposedSpendInrPaise are non-nullable long.\n"
                     "  ⛔ BudgetRemainingInrPaise does NOT exist on EvaluationContext — compute from the three budget fields above.\n"
+                    "  Nullable numeric mapping rule: if any request field is `long?`, convert safely before assignment (`if (!x.HasValue) return DENY/ESCALATE; var v = x.Value;` or `var v = x.GetValueOrDefault(0L)` when zero-default is explicitly acceptable).\n"
+                    "  ⛔ Never assign `long?` directly to a `long` local/field (prevents CS0266/CS8629).\n"
                     "IClaimEvaluator CONTRACT (do NOT invent members):\n"
                     "  ONLY two members: ClaimId (string property) + EvaluateAsync(ctx, ct).\n"
                     "  ⛔ Do NOT add ApplicableActionTypes, Priority, Weight, or any other property.\n"
