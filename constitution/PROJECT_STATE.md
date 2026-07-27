@@ -128,11 +128,11 @@ sprint_status: IN_PROGRESS
 task_id: WC012-01                   # starts from task 1
 tasks_done:
   - WC012-01
-tasks_remaining:
   - WC012-02
   - WC012-03
   - WC012-04
-consecutive_failures: 1
+tasks_remaining: []
+consecutive_failures: 0
 autonomous_halt: false
 open_prs: none                      # PR #113 closed · PR #96 closed · branch deleted
 goal_register_issue: 115            # [GOAL-WC-012] registered in GitHub Issues
@@ -238,11 +238,11 @@ WC012-02b `CS1061: string.TryGetValue` fixed at three layers:
 sprint_status: IN_PROGRESS
 tasks_done:
   - WC012-01
-tasks_remaining:
   - WC012-02
   - WC012-03
   - WC012-04
-consecutive_failures: 1
+tasks_remaining: []
+consecutive_failures: 0
 autonomous_halt: false
 platform_phase: IMPLEMENTATION
 ```
@@ -556,19 +556,19 @@ sprint_ib_item: IB-009
 sprint_status: IN_PROGRESS
 branch: ib/009/sprint-012
 last_attempt_utc: 2026-07-27T18:38:03.603634+00:00
-last_attempt_result: PARTIAL
-consecutive_failures: 1
+last_attempt_result: SUCCESS
+consecutive_failures: 0
 tasks_done:
   - WC012-01
-tasks_remaining:
   - WC012-02
   - WC012-03
   - WC012-04
+tasks_remaining: []
 
 current_task:
 
 
-                                        WC012-01    ## NEXT SESSION OPTIONS
+                                            ## NEXT SESSION OPTIONS
 
 ```
 CURRENT STATE: platform_phase=IMPLEMENTATION · AUTONOMOUS_HALT=false
