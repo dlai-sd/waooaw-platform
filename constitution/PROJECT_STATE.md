@@ -73,22 +73,30 @@ GOAL-001 executed all 5 phases in a single session, transforming the WAOOAW cons
 
 ---
 
-## CURRENT PLATFORM STATE (2026-07-27 — v1.13.0)
+## CURRENT PLATFORM STATE (2026-07-27 — v1.13.0 — Session Close)
 
 ```yaml
-platform_phase: IMPLEMENTATION
 version: 1.13.0
+platform_phase: IMPLEMENTATION
 goals_closed: [GOAL-001, GOAL-002]
-sprint_status: READY
+goal_in_progress: GOAL-003 (Phase A+B complete, Phase C-D pending)
+session_declared: "Goal-driven conversation and development phase COMPLETE"
 constitutional_claims: 79 ratified + 2 amendments (AMENDMENT-001, AMENDMENT-002)
 adrs: 32 (ADR-001 through ADR-032)
-customer_agents: 4 approved (DMA v3.0 · Trading v1.7 · Agricultural v2.7 · Private Tutor v1.0)
+customer_agents: 4 approved
 institutions_chartered: 14 (INST-001 through INST-014)
-new_institutions: INST-013 (Goal Orchestrator) · INST-014 (Engineering Intelligence — RepoNav)
-magic_llm: operational (Cat. 1-6) · Cat. 7-13 Phase 2 pending Gemini integration
-go_intelligence: understand_goal + plan_routing active · monitor/research/synthesis Phase 2
-cascade_handler: fully operational · 9-state machine · 22/22 CCTs pass
-gates: G0 ✅ G1 ✅ G2 ✅ G3 ✅ G4 ✅ G5 CLEAR
+magic_llm: operational (Cat. 1-6) · cost optimized (91% reduction O-01+O-03)
+go_intelligence: understand_goal + plan_routing active
+cascade_handler: fully operational · 9-state machine
+ptr_2_0: architecture complete (5 layers, multi-stack, 8 CRB challenges resolved)
+simulations_passing:
+  SIM-GO-001: 6/6  (MagicLLM end-to-end cascade)
+  SIM-GO-002: 6/6  (WC-012 CS1061 use case)
+  SIM-GO-003: 8/8  (WC-012 PTR 2.0 phase refresh)
+  SIM-GO-004: 8/8  (WC-015 constitutional blocker)
+  SIM-GO-005: 7/7  (Greenfield Goal Register — WAOOAW builds itself)
+  SIM-GO-006: 9/9  (Production defect P1 Emergency Stop)
+sprint_status: READY
 autonomous_halt: false
 consecutive_failures: 0
 ```
@@ -96,27 +104,24 @@ consecutive_failures: 0
 ## NEXT AUTHORIZED WORK
 
 ```
-Priority 1: Resume WC-012 autonomous sprint (pre-GOAL-001 in-progress work)
-  Check: gh run list --repo dlai-sd/waooaw-platform --limit 3
-  If sprint needs trigger: verify pre-flight then dispatch autonomous-sprint.yaml
+Priority 1: Resume WC-012 sprint (PR #96 open — WC012-01 complete)
+  action: review PR #96, merge when ready, sprint continues to WC012-02
 
-Priority 2: IB-022 Phase 1 (WCSpecReader + sprint-task-decomposition spec)
-  Depends on: WC-012 merged
-  Files: architecture/reference/pipeline/wc-spec-reader.md
-         architecture/reference/pipeline/sprint-task-decomposition.md
-         Amend adr/ADR-030
+Priority 2: GOAL-003 Phase C — PTR 2.0 Python implementation
+  files: scripts/ptr_assembler/ (multi-stack: dotnet, python, terraform, ts)
+  milestone: PTR built from source files, not static JSON
 
-Priority 3: MagicLLM Phase 2 — Gemini Vertex AI integration
-  Unblocks: Cat. 7-13 (Semantic Understanding + GO-Intelligence orchestration)
-  Unblocks: RepoNav Agent Specification (INST-014 Stage W-2)
-  New ADR needed: ADR-033 (MagicLLM Phase 2 — Gemini + async)
+Priority 3: MagicLLM Phase 2 — Gemini Vertex AI (Cat. 7-13)
+  blocker: ADR-033 (DPDPA-compliant Gemini endpoint) + FA-GCP key
+  unblocks: Cat. 7 (Semantic Understanding → RepoNav) + GO-Intelligence live
 
-Priority 4: Engineering Intelligence (RepoNav) — Stage W-2 (Capability Development)
-  Prerequisite: MagicLLM Phase 2 (Cat. 7 Semantic Understanding)
-  Next action: Register GOAL-003 → Enterprise Architect + AI Architect produce Agent Spec
+Priority 4: RepoNav Agent Specification (INST-014 Stage W-2)
+  prerequisite: MagicLLM Phase 2 (needs Cat. 7 Semantic Understanding)
+
+Priority 5: Cost optimizations O-02 + O-04 + O-05 (Phase 2 ADR-032)
 ```
 
-**Last updated:** 2026-07-27 — GOAL-001 + GOAL-002 complete · v1.13.0
+**Last updated:** 2026-07-27 — Session close · Goal-driven phase COMPLETE
 
 ---
 
