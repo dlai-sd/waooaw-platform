@@ -197,14 +197,19 @@ def _parse_wc_file(wc_path: Path) -> dict[str, Any]:
     wc_id_match = re.search(r"Work Contract (\d+)", content)
     wc_id = f"WC-{wc_id_match.group(1):0>3}" if wc_id_match else wc_path.stem[:6]
 
-    # Extract stack from task content
-    stack = "dotnet"
-    if re.search(r"python|fastapi|temporal|asyncio|pydantic", content, re.I):
-        stack = "python"
-    elif re.search(r"terraform|azurerm|\.tf\b", content, re.I):
+    # Extract stack — check explicit primary-stack signals first (most specific wins)
+    # IMPORTANT: Temporal is used across stacks (CE/.NET consuming Temporal signals).
+    # Do NOT use 'temporal' alone as a Python signal — require python-only keywords.
+    if re.search(r'\.net\s*9|\.csproj|dotnet\s+build|dotnet\s+test|setup-dotnet|csharp|using\s+\w+;', content, re.I):
+        stack = "dotnet"
+    elif re.search(r'terraform|azurerm|\.tf\b', content, re.I):
         stack = "terraform"
-    elif re.search(r"typescript|next\.js|react|tailwind|\.tsx?\b", content, re.I):
+    elif re.search(r'typescript|next\.js|react|tailwind|\.tsx?\b', content, re.I):
         stack = "typescript"
+    elif re.search(r'fastapi|asyncio|pydantic|requirements\.txt|pip install|python\s+\d', content, re.I):
+        stack = "python"
+    else:
+        stack = "dotnet"  # default — most WCs are .NET
 
     # Extract task IDs and their descriptions
     tasks = []
@@ -353,8 +358,15 @@ def simulate_wc(wc_path: Path) -> WCSimResult:
         # 4. CCT gap
         if task.get("has_cct"):
             # Check if a CCT simulation exists for this task
-            cct_refs = re.findall(r'CCT-(\w+)', spec_text)
+            # SKIP framework-level CCTs — these are platform-wide tests, not sprint-specific.
+            # CCT-EF (Evidence First), CCT-HO (Human Override), CCT-MT (Multi-Tenant),
+            # CCT-ES (Emergency Stop), CCT-PIPE (Pipeline) are constitutional infrastructure.
+            # Sprint authors write task-specific CCTs; framework CCTs already have suites.
+            _FRAMEWORK_CCTS = {"EF", "HO", "MT", "ES", "PIPE", "CE"}
+            cct_refs = re.findall(r'CCT-([A-Z]+)', spec_text)
             for cct in cct_refs:
+                if cct in _FRAMEWORK_CCTS:
+                    continue  # Framework CCT — no sprint-specific simulation required
                 cct_files = list(REPO_ROOT.glob(f"simulation/*{cct}*"))
                 if not cct_files:
                     result.gaps.append(TaskGap(
