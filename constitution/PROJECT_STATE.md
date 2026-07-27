@@ -555,7 +555,7 @@ current_sprint: WC-012
 sprint_ib_item: IB-009
 sprint_status: IN_PROGRESS
 branch: ib/009/sprint-012
-last_attempt_utc: 2026-07-27T18:38:03.603634+00:00
+last_attempt_utc: 2026-07-27T20:35:49.805770+00:00
 last_attempt_result: SUCCESS
 consecutive_failures: 0
 tasks_done:
@@ -568,7 +568,7 @@ tasks_remaining: []
 current_task:
 
 
-                                            ## NEXT SESSION OPTIONS
+                                            WC012-01    ## NEXT SESSION OPTIONS
 
 ```
 CURRENT STATE: platform_phase=IMPLEMENTATION · AUTONOMOUS_HALT=false
