@@ -500,12 +500,13 @@ jobs:
   monitor:
     name: "Constitutional Monitor & Feedback (C-069)"
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15             # Raised from 10: auto-extend may call Haiku + git push
     needs: [preflight, execute, report]
     if: always() && needs.preflight.outputs.halt == 'false'
     permissions:
-      contents: read
+      contents: write              # git push for auto-extended advisor handlers
       issues:   write
+      id-token: write              # OIDC for KV secret fetch (ANTHROPIC key for auto-extend)
 
     steps:
       - uses: actions/checkout@v4
@@ -516,6 +517,22 @@ jobs:
 
       - name: Install dependencies
         run: pip install requests -q
+
+      - name: Login to Azure (OIDC) for auto-extend key
+        uses: azure/login@v2
+        with:
+          client-id:       ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id:       ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+        continue-on-error: true   # non-fatal — auto-extend skips gracefully without key
+
+      - name: Fetch ANTHROPIC key for advisor auto-extend
+        id: kv_monitor
+        uses: azure/get-keyvault-secrets@v1
+        with:
+          keyvault: ${{ vars.AZURE_KEYVAULT_NAME }}
+          secrets: 'ANTHROPIC-API-KEY'
+        continue-on-error: true   # non-fatal — auto-extend skips gracefully without key
 
       - name: Download monitor signal artifact
         uses: actions/download-artifact@v4

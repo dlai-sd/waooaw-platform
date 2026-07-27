@@ -499,6 +499,19 @@ def main() -> int:
     # Step 5: Act
     act_on_classification(classification)
 
+    # Step 6: Self-healing — auto-extend advisor for new unknown error codes (C-069)
+    # If any task hit STOP_LOSS/UNKNOWN (0% confidence) on a new CS-code, generate
+    # and commit a handler automatically. Next run uses it. No human needed.
+    try:
+        from advisor_auto_extend import run_auto_extend
+        new_handlers = run_auto_extend(signal)
+        if new_handlers > 0:
+            print(f"  ✅ Self-healing: {new_handlers} new advisor handler(s) auto-generated and pushed")
+        else:
+            print(f"  ℹ️  Self-healing: no new error codes to extend")
+    except Exception as e:
+        print(f"  WARN: advisor_auto_extend failed ({e}) — non-blocking")
+
     return 0
 
 

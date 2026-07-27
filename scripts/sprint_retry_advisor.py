@@ -999,9 +999,8 @@ def diagnose_build_error(
         fix = (
             f"WRONG CONSTRUCTOR ARITY (CS1729): "
             f"'{type_n}' has no constructor taking {arg_c} argument(s). "
-            "Check the BRANCH CONTEXT and PTR snapshot for the exact constructor signature. "
-            "Common cause in tests: injecting extra mock arguments not present in the actual constructor. "
-            "Fix: match constructor arguments exactly to what is defined in the source file on this branch."
+            "Check BRANCH CONTEXT and PTR for the exact constructor signature. "
+            "Fix: match constructor arguments exactly to what is defined on this branch."
         )
         print(f"  Retry Advisor: CS1729 wrong constructor arity for '{type_n}' ({arg_c} args) (confidence=88%)")
         return RetryDiagnosis(
