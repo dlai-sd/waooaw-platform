@@ -1,5 +1,4 @@
 // Implements: architecture/reference/ce-validate-action-evaluators.md §C-062
-//             architecture/reference/components/constitutional-engine.md §2 PAAS Boundary Validator
 // constitutional_basis: C-062 (AI Security), C-059 (Traceability), C-073 (Annotated Obligations)
 
 #nullable enable
@@ -10,63 +9,60 @@ using Microsoft.Extensions.Logging;
 namespace Waooaw.ConstitutionalEngine.Evaluators;
 
 /// <summary>
-/// Enforces C-062 (AI Security): blocks actions that violate the PAAS security boundary,
-/// attempt prohibited tool categories, or request cross-tenant / unrestricted data scope.
-/// Default-deny posture — any unrecognised security classification triggers DENY.
+/// C-073: Enforces C-062 (AI Security) — prohibits tool categories and data scopes that
+/// violate the WAOOAW AI security boundary. Default-deny posture: any action missing a
+/// recognised security classification is blocked. Security overrides are escalated to
+/// human constitutional authority rather than auto-approved.
 /// </summary>
 public sealed class C062AiSecurityEvaluator : IClaimEvaluator
 {
-    // ── C-073: Constitutional obligation annotation ────────────────────────────
-    // This class enforces C-062 (AI Security) at the PAAS boundary.
-    // Every AI tool-call that carries a security-relevant parameter set must pass
-    // this evaluator before CE returns AUTHORIZED.  Failure → immediate DENY with
-    // an audit-ready reason string; the ConstitutionalEngineService records evidence
-    // per C-023 (Evidence First).
-    // ─────────────────────────────────────────────────────────────────────────
-
-    /// <inheritdoc />
+    // C-073: Constitutional claim enforced by this evaluator.
     public string ClaimId => "C-062";
 
     private static readonly ActivitySource _tracer = new("Waooaw.ConstitutionalEngine");
 
     private readonly ILogger<C062AiSecurityEvaluator> _logger;
 
-    // ── Prohibited tool category values (case-insensitive) ────────────────────
-    // DESIGN_QUESTION: Confirm exhaustive list of prohibited tool categories with EA.
-    //   Current list derived from PAAS Boundary Validator spec §2 and security audit.
+    // ── Prohibited tool categories (C-062 AI Security boundary) ──────────────────────────
+    // C-073: Any tool category in this set violates C-062 — unconditional DENY.
     private static readonly HashSet<string> _prohibitedToolCategories =
         new(StringComparer.OrdinalIgnoreCase)
         {
-            "credential_harvest",
+            "credential_exfiltration",
             "privilege_escalation",
-            "kernel_exec",
-            "raw_network_socket",
-            "host_filesystem_write",
-            "cross_tenant_read",
-            "prompt_injection_relay",
+            "network_scanning",
+            "memory_injection",
+            "code_execution_unrestricted",
+            "system_shell_access",
+            "lateral_movement",
+            "audit_tampering",
+            "constitutional_bypass",
         };
 
-    // ── Prohibited data-scope values ──────────────────────────────────────────
-    // DESIGN_QUESTION: Confirm whether "restricted_internal" should escalate vs deny.
+    // ── Prohibited data scopes (C-062 AI Security boundary) ──────────────────────────────
+    // C-073: Any data scope in this set violates C-062 — unconditional DENY.
     private static readonly HashSet<string> _prohibitedDataScopes =
         new(StringComparer.OrdinalIgnoreCase)
         {
-            "cross_tenant",
-            "unrestricted",
-            "global_admin",
+            "pii_unrestricted",
+            "credentials",
+            "private_keys",
+            "shadow_copy",
+            "audit_log_raw",
+            "constitutional_records_write",
         };
 
-    // ── Allowed security-classification values ────────────────────────────────
-    // Anything NOT in this allow-list is treated as DENY (default-deny posture).
+    // ── Permitted security classifications (allowlist — everything else is DENY) ─────────
+    // C-073: Default-deny posture — only explicitly approved classifications are permitted.
     private static readonly HashSet<string> _allowedSecurityClassifications =
         new(StringComparer.OrdinalIgnoreCase)
         {
             "public",
             "internal",
-            "confidential",       // permitted only with matching contract scope
+            "confidential",
         };
 
-    // ── Parameter key constants ───────────────────────────────────────────────
+    // ActionParameters keys — defined as constants to prevent typos.
     private const string ParamToolCategory           = "tool_category";
     private const string ParamDataScope              = "data_scope";
     private const string ParamSecurityClassification = "security_classification";
@@ -78,104 +74,150 @@ public sealed class C062AiSecurityEvaluator : IClaimEvaluator
         _logger = logger;
     }
 
-    /// <inheritdoc />
-    // C-073: Implements C-062 (AI Security) — evaluates PAAS boundary constraints.
+    // C-073: Core constitutional evaluation — implements C-062 AI Security runtime enforcement.
     public Task<EvaluationResult> EvaluateAsync(EvaluationContext ctx, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(ctx);
 
         using var activity = _tracer.StartActivity(
-            "C062AiSecurityEvaluator.EvaluateAsync",
-            ActivityKind.Internal);
-        activity?.SetTag("claim_id", ClaimId);
-        activity?.SetTag("tenant_id", ctx.TenantId);
-        activity?.SetTag("action_type", ctx.ActionType);
+            "C062AiSecurityEvaluator.Evaluate", ActivityKind.Internal);
+        activity?.SetTag("tenant_id",    ctx.TenantId);
+        activity?.SetTag("action_type",  ctx.ActionType);
+        activity?.SetTag("contract_id",  ctx.ContractId);
 
-        // ── Guard: security_override must never be set ────────────────────────
-        // C-073: Blocking any attempt to short-circuit the security evaluator.
+        // ── 1. Security override check — escalate to human authority ─────────────────────
+        // C-073: Any attempt to override the AI Security policy cannot be auto-approved;
+        //        it must be reviewed by the constitutional authority (C-049 Escalate path).
         var securityOverride = ctx.GetParameter(ParamSecurityOverride);
-        if (!string.IsNullOrWhiteSpace(securityOverride))
+        if (IsOverrideActive(securityOverride))
         {
             _logger.LogWarning(
-                "C-062 DENY: security_override parameter present. TenantId={TenantId} ContractId={ContractId} Value={Value}",
+                "C-062: Security override attempted. TenantId={TenantId} ContractId={ContractId} Override={Override}",
                 ctx.TenantId, ctx.ContractId, securityOverride);
 
-            activity?.SetTag("deny_reason", "security_override_present");
+            activity?.SetTag("c062.verdict",        "escalate");
+            activity?.SetTag("c062.escalate.reason","security_override_attempted");
+            activity?.SetTag("c062.override_value", securityOverride ?? string.Empty);
+
             return Task.FromResult(new EvaluationResult(
-                ClaimId: ClaimId,
-                Verdict: EvaluationVerdict.Deny,
-                Reason: $"C-062: security_override parameter is prohibited. " +
-                         $"AI agents may not bypass PAAS security boundaries. " +
-                         $"Rejected value: '{securityOverride}'."));
+                ClaimId: "C-062",
+                Verdict: EvaluationVerdict.Escalate,
+                Reason:  $"C-062: Security override '{securityOverride}' cannot be auto-approved — " +
+                         "escalated to constitutional authority for human review."
+            ));
         }
 
-        // ── Check tool_category against prohibited list ────────────────────────
-        // C-073: Default-deny for any tool category flagged as a PAAS boundary violation.
+        // ── 2. Prohibited tool category check ────────────────────────────────────────────
+        // C-073: Tool categories that violate the AI Security boundary are unconditionally denied.
         var toolCategory = ctx.GetParameter(ParamToolCategory);
         if (!string.IsNullOrWhiteSpace(toolCategory) &&
             _prohibitedToolCategories.Contains(toolCategory))
         {
             _logger.LogWarning(
-                "C-062 DENY: prohibited tool category. TenantId={TenantId} ContractId={ContractId} Category={Category}",
+                "C-062: Prohibited tool category blocked. TenantId={TenantId} ContractId={ContractId} ToolCategory={ToolCategory}",
                 ctx.TenantId, ctx.ContractId, toolCategory);
 
-            activity?.SetTag("deny_reason", "prohibited_tool_category");
-            activity?.SetTag("tool_category", toolCategory);
+            activity?.SetTag("c062.verdict",      "deny");
+            activity?.SetTag("c062.deny.reason",  "prohibited_tool_category");
+            activity?.SetTag("c062.tool_category", toolCategory);
+
             return Task.FromResult(new EvaluationResult(
-                ClaimId: ClaimId,
+                ClaimId: "C-062",
                 Verdict: EvaluationVerdict.Deny,
-                Reason: $"C-062: Tool category '{toolCategory}' is prohibited by the AI Security policy. " +
-                         "PAAS boundary violation. Default-deny applies."));
+                Reason:  $"C-062: Tool category '{toolCategory}' is prohibited by the AI Security policy."
+            ));
         }
 
-        // ── Check data_scope against prohibited list ───────────────────────────
-        // C-073: Cross-tenant and unrestricted data access violates the PAAS isolation guarantee.
+        // ── 3. Prohibited data scope check ───────────────────────────────────────────────
+        // C-073: Data scopes that expose sensitive WAOOAW infrastructure are unconditionally denied.
         var dataScope = ctx.GetParameter(ParamDataScope);
         if (!string.IsNullOrWhiteSpace(dataScope) &&
             _prohibitedDataScopes.Contains(dataScope))
         {
             _logger.LogWarning(
-                "C-062 DENY: prohibited data scope. TenantId={TenantId} ContractId={ContractId} Scope={Scope}",
+                "C-062: Prohibited data scope blocked. TenantId={TenantId} ContractId={ContractId} DataScope={DataScope}",
                 ctx.TenantId, ctx.ContractId, dataScope);
 
-            activity?.SetTag("deny_reason", "prohibited_data_scope");
-            activity?.SetTag("data_scope", dataScope);
+            activity?.SetTag("c062.verdict",     "deny");
+            activity?.SetTag("c062.deny.reason", "prohibited_data_scope");
+            activity?.SetTag("c062.data_scope",  dataScope);
+
             return Task.FromResult(new EvaluationResult(
-                ClaimId: ClaimId,
+                ClaimId: "C-062",
                 Verdict: EvaluationVerdict.Deny,
-                Reason: $"C-062: Data scope '{dataScope}' violates PAAS tenant-isolation boundary. " +
-                         "Cross-tenant and unrestricted data access is prohibited."));
+                Reason:  $"C-062: Data scope '{dataScope}' is prohibited by the AI Security policy."
+            ));
         }
 
-        // ── Check security_classification — default-deny unknown values ────────
-        // C-073: Any security classification outside the explicit allow-list is denied.
-        //   An absent classification is permitted (not all actions carry one).
-        var classification = ctx.GetParameter(ParamSecurityClassification);
-        if (!string.IsNullOrWhiteSpace(classification) &&
-            !_allowedSecurityClassifications.Contains(classification))
+        // ── 4. Security classification allowlist — default deny ──────────────────────────
+        // C-073: Absent or unrecognised security classification → DENY.
+        //        Every AI action must carry an explicit, approved classification.
+        var securityClassification = ctx.GetParameter(ParamSecurityClassification);
+
+        if (string.IsNullOrWhiteSpace(securityClassification))
         {
             _logger.LogWarning(
-                "C-062 DENY: unrecognised security classification. TenantId={TenantId} ContractId={ContractId} Classification={Classification}",
-                ctx.TenantId, ctx.ContractId, classification);
+                "C-062: Missing security_classification — default deny applied. " +
+                "TenantId={TenantId} ContractId={ContractId}",
+                ctx.TenantId, ctx.ContractId);
 
-            activity?.SetTag("deny_reason", "unrecognised_security_classification");
-            activity?.SetTag("security_classification", classification);
+            activity?.SetTag("c062.verdict",     "deny");
+            activity?.SetTag("c062.deny.reason", "missing_security_classification");
+
             return Task.FromResult(new EvaluationResult(
-                ClaimId: ClaimId,
+                ClaimId: "C-062",
                 Verdict: EvaluationVerdict.Deny,
-                Reason: $"C-062: Security classification '{classification}' is not on the PAAS allow-list. " +
-                         "Default-deny posture: only 'public', 'internal', or 'confidential' are permitted."));
+                Reason:  "C-062: Action carries no security_classification — " +
+                         "AI Security policy requires an explicit classification on every action."
+            ));
         }
 
-        // ── All C-062 checks passed ───────────────────────────────────────────
-        _logger.LogInformation(
-            "C-062 ALLOW. TenantId={TenantId} ContractId={ContractId} ActionType={ActionType}",
-            ctx.TenantId, ctx.ContractId, ctx.ActionType);
+        if (!_allowedSecurityClassifications.Contains(securityClassification))
+        {
+            _logger.LogWarning(
+                "C-062: Disallowed security classification. TenantId={TenantId} ContractId={ContractId} " +
+                "Classification={Classification}",
+                ctx.TenantId, ctx.ContractId, securityClassification);
 
-        activity?.SetTag("verdict", "Allow");
+            activity?.SetTag("c062.verdict",                  "deny");
+            activity?.SetTag("c062.deny.reason",              "disallowed_security_classification");
+            activity?.SetTag("c062.security_classification",  securityClassification);
+
+            return Task.FromResult(new EvaluationResult(
+                ClaimId: "C-062",
+                Verdict: EvaluationVerdict.Deny,
+                Reason:  $"C-062: Security classification '{securityClassification}' is not on the " +
+                         "AI Security allowlist. Permitted values: public, internal, confidential."
+            ));
+        }
+
+        // ── 5. All C-062 checks passed ───────────────────────────────────────────────────
+        _logger.LogInformation(
+            "C-062: AI Security evaluation passed. TenantId={TenantId} ContractId={ContractId} " +
+            "Classification={Classification}",
+            ctx.TenantId, ctx.ContractId, securityClassification);
+
+        activity?.SetTag("c062.verdict",                 "allow");
+        activity?.SetTag("c062.security_classification", securityClassification);
+
         return Task.FromResult(new EvaluationResult(
-            ClaimId: ClaimId,
+            ClaimId: "C-062",
             Verdict: EvaluationVerdict.Allow,
-            Reason: "C-062: AI Security boundary constraints satisfied."));
+            Reason:  string.Empty
+        ));
+    }
+
+    // ── Private helpers ───────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Returns true if the raw override parameter value represents an active override request.
+    /// Treats null / empty / "false" / "0" as inactive (no override).
+    /// </summary>
+    private static bool IsOverrideActive(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))                                     return false;
+        if (value.Equals("false", StringComparison.OrdinalIgnoreCase))            return false;
+        if (value.Equals("0",     StringComparison.OrdinalIgnoreCase))            return false;
+        return true;
     }
 }
