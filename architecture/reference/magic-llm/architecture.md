@@ -1,12 +1,11 @@
 # MagicLLM — Engineering AI Execution Layer
 
-**Classification:** Reference Architecture
-**Status:** Proposed — Awaiting Solution Architect review + Founder acknowledgement
-**Produced by:** AI Architect (INST-008) — GOAL-001 Phase 3 (2026-07-27)
-**Constitutional Basis:** C-069 (Platform Self-Improvement) · C-059 (Traceability) · C-073 (@constitutional annotations) · ORGANIZATION.md Office 08 (AI Architect Decision Space)
-**Goal Reference:** GOAL-001 — Semantic Brain Transformation
-**ADR Reference:** ADR-032 (MagicLLM Architecture Decision)
-**Depends on:** EEM (architecture/reference/engineering-execution-model.md) · ADR-029 (Multi-Provider LLM) · ADR-030 (Code Generation)
+**Classification:** Reference Architecture — **Universal Constitutional AI Execution Layer**
+**Status:** Proposed — amended for GOAL-002 (universal scope)
+**Produced by:** AI Architect (INST-008) — GOAL-001 Phase 3 (2026-07-27) · Amended GOAL-002 Phase A (2026-07-27)
+**Constitutional Basis:** C-069 (Platform Self-Improvement) · C-059 (Traceability) · C-073 (@constitutional annotations) · C-070 (Three Basic Instincts) · ORGANIZATION.md Office 08
+**Goal Reference:** GOAL-001 Phase 3 · GOAL-002 Phase A
+**ADR Reference:** ADR-032 (amended — Universal Constitutional AI Execution Layer)
 
 ---
 

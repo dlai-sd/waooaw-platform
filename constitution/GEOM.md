@@ -416,6 +416,105 @@ A Goal may discover, during its Journey, that its completion is blocked by a con
 
 This pattern prevents the institution from forcing a choice between "block the parent Goal forever" and "proceed with a constitutional gap unresolved." The Goal survives. The gap is resolved through the same constitutional process. The institution evolves continuously.
 
+---
+
+## §10 — Remediation Cascade
+
+**Constitutional basis:** C-070 Instinct 2 (Improve Itself) · C-001 (Human Override — reserved for genuine blockers, not routine failures) · GOAL-002
+
+When a Goal Outcome Alignment Gate (EEM Steps 06, 10, 14) fails, or when evidence validation reveals that success criteria are not being met, the system does NOT immediately suspend the Goal or escalate to the Founder. Instead, it traverses a **Remediation Cascade** — an ordered set of increasingly powerful remediation levels, each more intelligent than the last. The Founder is the last resort, not the first.
+
+**Cascade parameters** are defined in the Goal Execution Plan (Stage G-4) for each Goal. Default parameters apply if the Execution Plan does not override them.
+
+---
+
+### Level 1 — Context Enhancement (internal)
+
+**Trigger:** Goal Outcome Alignment Gate fails OR MagicLLM compile/spec failure after first attempt.
+**Max attempts:** 3 (default)
+**Institution:** Runtime Implementation Professional (INST-010) via MagicLLM Retry Advisor
+**Action:**
+- MagicLLM Retry Advisor classifies the failure type
+- Context is enhanced: PTR refreshed, spec sections re-injected, targeted corrections applied
+- MagicLLM retries with enhanced context
+
+**Evidence produced:** L1 Attempt Record (per attempt) — failure classification + correction applied + outcome
+
+**Gate to L2:** 3 Level 1 attempts exhausted without achieving Goal Outcome Alignment.
+
+---
+
+### Level 2 — Research / Industry Expert Query (external knowledge)
+
+**Trigger:** Level 1 exhausted.
+**Max attempts:** 2 (default)
+**Institution:** Enterprise Architect (INST-004) via **MagicLLM Task Category 12 (Research Query)**
+**Invocation:** Goal Orchestrator issues a Collaboration Amendment to INST-004 authorizing a Research Query.
+
+**What is queried (in priority order):**
+1. Domain-specific industry standards (OWASP, CNCF, ISO, SEBI, RBI, HL7, etc. — per Goal domain)
+2. Published technical literature, RFCs, and specification documents
+3. Public implementation patterns in WAOOAW-adjacent technology stacks
+4. Academic research relevant to the specific failure pattern
+5. CVE databases (if the gap involves security)
+
+**Evidence produced:** Research Record — structured findings, applicable standards, recommended patterns, constitutional evidence, model + sources used.
+
+The Research Record is committed to the Goal Register and injected into the producing Institution's context for retry.
+
+**Gate to L3:** 2 Level 2 attempts exhausted without Goal Outcome Alignment.
+
+---
+
+### Level 3 — Expert-Informed Redesign
+
+**Trigger:** Level 2 exhausted.
+**Max attempts:** 1 redesign run (default)
+**Institution:** Enterprise Architect (INST-004)
+**Action:**
+- Enterprise Architect reviews the Research Record + all prior failure evidence
+- Produces a revised Engineering Proposal (returns to EEM Step 03 — not Step 01)
+- Full EEM re-execution from Step 03 forward
+- Level 1 and Level 2 remediation are available within this new run
+
+**Evidence produced:** Redesign Record — what changed in the Engineering Proposal + constitutional basis for the change.
+
+**Gate to Founder Escalation:** Level 3 run exhausted without Goal Outcome Alignment.
+
+---
+
+### Founder Escalation
+
+**Trigger:** Level 3 exhausted, or a Constitutional Stop condition is reached at any level.
+
+**Institution:** Goal Orchestrator (INST-013) assembles the Evidence Package. Steward Assistant delivers it.
+
+**Evidence Package — required fields:**
+
+```
+goal_id:              GOAL-NNN
+goal_statement:       [the original registered Goal statement]
+success_criteria:     [SC-01 through SC-NN — which are unmet]
+l1_attempts:          [count + failure classifications]
+l2_research_record:   [record_id of Research Record from Level 2]
+l3_redesign_record:   [record_id of Redesign Record from Level 3]
+specific_gap:         [exactly what cannot be resolved and why]
+options:
+  option_a: Scope reduction — which success criteria to narrow or remove
+  option_b: Architectural redesign — what fundamental change is required
+            (spawns a Child Goal for the redesign)
+  option_c: Goal suspension — defer to a future capability milestone
+constitutional_implications: [what each option means for the institution]
+assembled_by:         INST-013
+assembled_at:         [timestamp]
+```
+
+**Delivery:** Steward Assistant routes the Evidence Package to the Founder via the Steward interface (chat or WhatsApp). The Founder selects option (a), (b), or (c). The Goal Orchestrator records the decision and acts on it. The decision is committed to the Goal Register as a Founder Action.
+
+**Constitutional principle:** The Founder is consulted when the institution's autonomous capability is genuinely exhausted — not as a routine escalation. The Remediation Cascade is WAOOAW's operational expression of C-070 Instinct 3 (Autonomous and Trust-Based Execution): the system earns the right to operate without constant Founder oversight by exhausting every intelligent remediation option before asking.
+
+---
+
 *This mechanism was first exercised in GOAL-001 Phase 5 (RepoNav onboarding), where constitutional gaps T-01 and T-03 became Child Goals before the parent onboarding Goal could proceed to v1.0 ratification.*
 
 ---
