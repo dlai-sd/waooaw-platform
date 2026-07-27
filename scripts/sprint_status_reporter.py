@@ -61,6 +61,21 @@ elif RESULT == "INFRA_ERROR":
     )
     label_to_set = "sprint:waiting"  # not halted — auto-retry, no human action needed
 
+elif RESULT == "PARTIAL":
+    if PR_NUMBER:
+        status_line = (
+            f"⚠️ **Partial execution** — PR [#{PR_NUMBER}](https://github.com/{REPO}/pull/{PR_NUMBER}) opened, "
+            f"but one or more downstream tasks failed/halted"
+        )
+        action_line = (
+            f"**Your action:** Review the [run logs]({run_url}) for the first failed task and fix runner/spec issues "
+            f"before re-triggering."
+        )
+    else:
+        status_line = "⚠️ **Partial execution** — no PR opened"
+        action_line = f"**Your action:** Check [run logs]({run_url}) and resolve the first failed task before retry."
+    label_to_set = "sprint:halted"
+
 else:
     status_line  = f"ℹ️ Status: {RESULT or 'unknown'}"
     action_line  = f"**Your action:** Check [run logs]({run_url})"

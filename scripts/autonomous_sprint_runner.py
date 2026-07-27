@@ -809,6 +809,9 @@ def call_llm_via_magiclm(
     else:
         print(f"  MagicLLM returned {response.status}: {response.failure_classification}")
         return None  # triggers outer retry loop
+
+
+def parse_llm_files(response: str) -> dict[str, str]:
     """
     Parse <file path="...">content</file> blocks from LLM response.
     Returns dict of {relative_path: content}.
@@ -968,14 +971,24 @@ def execute_with_llm(task_id: str, task_description: str, spec_sections: dict,
             print(f"  LLM call returned no response on attempt {attempt}")
             continue
 
-        files = parse_llm_files(response)
-        if not files:
-            print(f"  No <file> blocks found in LLM response on attempt {attempt}")
-            failure_context = "Response contained no <file path='...'> blocks. Generate file blocks."
-            continue
+        try:
+            files = parse_llm_files(response)
+            if not files:
+                print(f"  No <file> blocks found in LLM response on attempt {attempt}")
+                failure_context = "Response contained no <file path='...'> blocks. Generate file blocks."
+                continue
 
-        written = write_llm_files(files)
-        ok, build_error = validate_written_files(written)
+            written = write_llm_files(files)
+            ok, build_error = validate_written_files(written)
+        except Exception as parse_exc:
+            # Runner-side error (not a spec gap): halt task immediately and surface clearly.
+            failure_context = f"RUNNER_PIPELINE_BUG: {type(parse_exc).__name__}: {parse_exc}"
+            print(f"  ❌ {failure_context}")
+            _MONITOR_SIGNAL["task_results"][task_id] = {
+                "result": "PIPELINE_BUG", "error_type": type(parse_exc).__name__,
+                "build_error_snippet": str(parse_exc)[:200], "attempts": attempt, "spec_gap_issue": None,
+            }
+            break
         if ok:
             # Commit the generated files
             git(["add"] + written, check=False)
@@ -1029,7 +1042,11 @@ def execute_with_llm(task_id: str, task_description: str, spec_sections: dict,
             )
             print(f"  Retry Advisor: {diagnosis.error_type} — intelligent retry with fix context")
 
-    # All 3 attempts exhausted — categorize the failure type
+    # All attempts exhausted — categorize the failure type
+    if failure_context.startswith("RUNNER_PIPELINE_BUG:"):
+        print(f"  ⚠️  PIPELINE_BUG: {task_id} failed due to runner logic, not spec content.")
+        return False
+
     if infra_failures == 3:
         # ALL failures were infrastructure (timeout/rate-limit/server error) — NOT a spec gap
         print(f"  ⚠️  INFRA_FAILURE: {task_id} — all 3 attempts were API failures (timeout/rate-limit).")
@@ -3128,7 +3145,9 @@ def main() -> int:
 
     record_evidence("SPRINT_TASKS_EXECUTED", sprint=sprint, tasks_done=tasks_done)
 
-    if tasks_done:
+    all_tasks_completed = len(tasks_done) == len(tasks) and len(tasks) > 0
+
+    if all_tasks_completed:
         update_sprint_state(
             last_attempt_result="SUCCESS",
             consecutive_failures=0,
@@ -3157,8 +3176,17 @@ def main() -> int:
         git(["push", "--force", "origin", branch], check=False)
 
     # ── Step 8: Open/update PR ────────────────────────────────────────────
+    if tasks_not_implemented:
+        run_result = "NOT_IMPLEMENTED"
+    elif all_infra_errors:
+        run_result = "INFRA_ERROR"
+    elif all_tasks_completed:
+        run_result = "SUCCESS"
+    else:
+        run_result = "PARTIAL"
+
     if not github_repo:
-        set_output("result", "SUCCESS")
+        set_output("result", run_result)
         return 0
 
     existing = gh(["pr", "list", "--head", branch,
@@ -3204,19 +3232,19 @@ def main() -> int:
 
     set_output("pr_number", pr_num)
     if tasks_not_implemented:
-        set_output("result", "NOT_IMPLEMENTED")
+        set_output("result", run_result)
         set_output("halt_reason", f"Tasks {tasks_not_implemented} require IB-020 LLM code generation — not yet implemented")
         print(f"\n  ⚠️  {len(tasks_not_implemented)} task(s) require IB-020 (runner code generation).")
         print(f"  Sprint cannot advance until IB-020 is implemented.")
         print(f"  Issue #12 tracks this: github.com/dlai-sd/waooaw-platform/issues/12")
     elif not tasks_done and all_infra_errors:
         # Every task failed due to API infrastructure (timeout/rate-limit/server error)
-        set_output("result", "INFRA_ERROR")
+        set_output("result", run_result)
         set_output("halt_reason", "All tasks failed due to API timeouts or rate limits. No spec gap. Next cron run will retry automatically.")
         print("\n  ⚠️  INFRA_ERROR: all tasks failed due to API failures, not spec issues.")
         print("  Cron will retry. No founder action required.")
     else:
-        set_output("result", "SUCCESS" if tasks_done else "PARTIAL")
+        set_output("result", run_result)
 
     # ── Emit monitor signal artifact (C-069 — observable state for downstream jobs) ──
     # Scaffold task = first task in this run's queue that is in SCAFFOLD_TASKS.
@@ -3224,13 +3252,11 @@ def main() -> int:
     scaffold_t = next((t for t in tasks if t in SCAFFOLD_TASKS), None)
     scaffold_failed = scaffold_t is not None and scaffold_t not in tasks_done
     _MONITOR_SIGNAL["sprint"] = sprint
+    _MONITOR_SIGNAL["tasks_done"] = tasks_done
+    _MONITOR_SIGNAL["tasks_requested"] = tasks
     _MONITOR_SIGNAL["scaffold_task"] = scaffold_t
     _MONITOR_SIGNAL["scaffold_failed"] = scaffold_failed
-    _MONITOR_SIGNAL["overall_result"] = (
-        "SUCCESS" if tasks_done and not scaffold_failed
-        else "INFRA_ERROR" if all_infra_errors
-        else "PARTIAL"
-    )
+    _MONITOR_SIGNAL["overall_result"] = run_result
     signal_path = Path("sprint-context/monitor-signal.json")
     signal_path.parent.mkdir(exist_ok=True)
     import json as _json

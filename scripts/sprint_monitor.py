@@ -58,6 +58,7 @@ CASCADE_PIPELINE_BUG = "CASCADE_PIPELINE_BUG"
 IDEMPOTENCY_BUG      = "IDEMPOTENCY_BUG"
 SPEC_GAP_GENUINE     = "SPEC_GAP_GENUINE"
 ALL_PASS             = "ALL_PASS"
+PARTIAL_EXECUTION    = "PARTIAL_EXECUTION"
 
 # Known constitutional gap patterns → proposed claims
 CONSTITUTIONAL_GAP_MAP = {
@@ -305,7 +306,17 @@ def classify_run(
         })
 
     # Run-level classification
-    if not spec_gap_issues:
+    overall_result = (signal or {}).get("overall_result", "") if signal else ""
+    task_results = (signal or {}).get("task_results", {}) if signal else {}
+    has_pipeline_bug = any(v.get("result") == "PIPELINE_BUG" for v in task_results.values())
+
+    if has_pipeline_bug:
+        run_class = PARTIAL_EXECUTION
+    elif overall_result == "INFRA_ERROR":
+        run_class = INFRA_ERROR
+    elif overall_result in ("PARTIAL", "NOT_IMPLEMENTED"):
+        run_class = PARTIAL_EXECUTION
+    elif not spec_gap_issues and overall_result == "SUCCESS":
         run_class = ALL_PASS
     elif constitutional_gaps:
         run_class = sorted(constitutional_gaps)[0]
@@ -314,7 +325,7 @@ def classify_run(
     elif any(i["classification"] == SPEC_GAP_GENUINE for i in classified_issues):
         run_class = SPEC_GAP_GENUINE
     else:
-        run_class = ALL_PASS
+        run_class = PARTIAL_EXECUTION if overall_result else ALL_PASS
 
     return {
         "run_classification": run_class,
@@ -335,6 +346,20 @@ def act_on_classification(classification: dict) -> None:
     if run_class == ALL_PASS:
         print(f"  ✅ All tasks passed. No false positives. No constitutional gaps.")
         # C-069: silent pass = no dashboard noise. Only post when actionable.
+        return
+
+    if run_class == PARTIAL_EXECUTION:
+        print("  ⚠️  Partial execution detected — at least one task failed or halted.")
+        comment = f"""---
+### Sprint Monitor — {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M')} UTC
+
+**Run classification:** ⚠️ `{PARTIAL_EXECUTION}`  _(C-069 autonomous feedback)_
+
+Runner reported non-success overall result. This run is **not ALL_PASS** and requires follow-up.
+
+_Run [{GITHUB_RUN_ID}](https://github.com/{REPO}/actions/runs/{GITHUB_RUN_ID}) · Sprint Monitor (C-069)_
+"""
+        post_dashboard_comment(comment)
         return
 
     # Close false spec-gap issues
