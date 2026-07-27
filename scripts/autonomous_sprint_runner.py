@@ -782,12 +782,19 @@ def call_llm_via_magiclm(
         return None  # model_hint: none — no LLM needed
 
     try:
+        # Execution context 1: launched from repo root (package path includes "scripts")
         from scripts.magic_llm import MagicLLMPipeline, MagicLLMRequest, TaskCategory
         from scripts.goal_orchestrator.goal_register_github import make_goal_register_writer
-    except ImportError as e:
-        print(f"  WARN: MagicLLM not available ({e}) — falling back to call_llm()")
-        return call_llm(task_id, task_description, spec_content,
-                        constitutional_check, model_hint, max_tokens, attempt)
+    except ImportError:
+        try:
+            # Execution context 2: launched as "python scripts/autonomous_sprint_runner.py"
+            # where sys.path points at scripts/ directly.
+            from magic_llm import MagicLLMPipeline, MagicLLMRequest, TaskCategory
+            from goal_orchestrator.goal_register_github import make_goal_register_writer
+        except ImportError as e:
+            print(f"  WARN: MagicLLM not available ({e}) — falling back to call_llm()")
+            return call_llm(task_id, task_description, spec_content,
+                            constitutional_check, model_hint, max_tokens, attempt)
 
     # Map task to category
     tid = task_id.lower()
@@ -807,7 +814,10 @@ def call_llm_via_magiclm(
     # Assemble PTR 2.0 if not supplied
     if ptr_snapshot is None:
         try:
-            from scripts.ptr_assembler import get_assembler
+            try:
+                from scripts.ptr_assembler import get_assembler
+            except ImportError:
+                from ptr_assembler import get_assembler
             assembler = get_assembler()
             full_ptr = assembler.assemble(scope=["src", "scripts"])
             task_ptr = assembler.extract_task_ptr(full_ptr, context_sections)
