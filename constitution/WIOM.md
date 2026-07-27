@@ -335,6 +335,7 @@ Multiple Goals may execute concurrently. Institutions may contribute to multiple
 - **Capacity** — An Institution may not accept new Goals if its pending Contribution Records indicate it cannot meet constitutional evidence quality standards on all active Goals
 - **Priority** — Constitutional priority (per GEOM Goal Classification) governs which Goal receives Institution attention first, not operational convenience
 - **Independence** — Goals do not share evidence unless explicitly linked by the Goal Orchestrator (INST-013)
+- **PTR Dependency** — Parallel Goals with overlapping Impact Graph components must serialize affected phases. The Goal Orchestrator's PTR Dependency Map (GOAL-003 · architecture/reference/ptr/architecture.md §4) tracks these dependencies and withholds GO Authorizations until PTR prerequisites are met. Generating code against types that another Goal hasn't validated yet is a constitutional knowledge violation.
 
 ---
 

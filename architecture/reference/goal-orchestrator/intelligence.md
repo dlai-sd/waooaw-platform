@@ -283,7 +283,7 @@ The Goal Orchestrator's routing, understanding, and research quality improve mea
 
 ---
 
-## §4 — Constitutional Constraints
+## §5 — Constitutional Obligations
 
 | Constraint | Source | Effect |
 |---|---|---|
@@ -293,6 +293,43 @@ The Goal Orchestrator's routing, understanding, and research quality improve mea
 | AUTONOMOUS_HALT stops all GO-Intelligence invocations | C-001 (Human Override) | Absolute |
 | GO-Intelligence may not self-modify its routing rules | C-069 + WIOM §W-5 | Routing rule changes require Stage W-5 evolution pathway |
 | Research findings that violate constitutional claims are excluded | Every claim is binding | Category 12 includes a constitutional screen step |
+
+---
+
+## §6 — PTR Protocol (GOAL-003)
+
+The Goal Orchestrator is constitutionally responsible for maintaining the PTR as a **dynamic, Goal-scoped knowledge asset**. This is not a pre-sprint step — it is an ongoing duty throughout Goal execution.
+
+**PTR assembly is integrated into the GO Authorization issuance sequence:**
+
+```
+Before Phase 1 GO Authorization:
+  → Full PTR assembled (Layer 1: source files, Layer 4: canonical patterns, Layer 5: obligations)
+  → PTR Dependency Map checked (do any parallel Goals share Impact Graph components?)
+  → GO Authorization issued WITH PTR snapshot attached
+
+After EEM Step 07 completes (formal typed spec available):
+  → Layer 2 (forward declarations) assembled from formal typed Step 07 output
+  → PTR updated — Phase 1 now has complete knowledge contract
+
+After each validated Phase N (compile gate PASS — not Contribution Record):
+  → Layer 1 refreshed (Phase N-1's validated source files rescanned)
+  → Layer 2 updated (Phase N-1's forward declarations promoted to Layer 1)
+  → Content-addressed cache checked (skip rescan if commit SHA unchanged)
+  → Phase N GO Authorization issued with refreshed PTR
+
+After L2 Research Query:
+  → Research findings augment Layer 1 (missing type/package added)
+  → Current phase retry receives augmented PTR
+
+On Goal CLOSE:
+  → Learning Records submitted as CANDIDATE patterns to Canonical Pattern Library
+  → PTR instance discarded — not committed to repository
+```
+
+**PTR is never committed to the repository.** It is a runtime artifact. The Canonical Pattern Library (CANDIDATE → CANONICAL via CA review) is the only durable output.
+
+See: `architecture/reference/ptr/architecture.md` for the full five-layer PTR specification.
 
 ---
 

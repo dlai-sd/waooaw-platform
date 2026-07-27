@@ -355,11 +355,14 @@ If any Goal success criterion is unaddressed in the Work Contract, the Work Cont
 
 **Action — still no production code:**
 
-| Institution | Produces |
-|---|---|
-| Solution Architect (INST-005) | Interface contracts · API contracts (OpenAPI) · Component boundary specs · Integration patterns |
-| Data Architect (INST-006) | Data contracts · Schema designs · Migration strategy · Ledger impact assessment |
-| AI Architect (INST-008) | MagicLLM invocation strategy · Context management design · Prompt architecture (when relevant) |
+| Institution | Produces (natural language) | Produces (formal typed — new PTR 2.0 requirement) |
+|---|---|---|
+| Solution Architect (INST-005) | Interface contracts · API contracts (OpenAPI) · Component boundary specs · Integration patterns | `.cs` interface files · TypeScript `.d.ts` declarations · OpenAPI YAML |
+| Data Architect (INST-006) | Data contracts · Schema designs · Migration strategy · Ledger impact assessment | EF Core `DbSet<>` entity declarations · Python `TypedDict` · DB schema JSON |
+| AI Architect (INST-008) | MagicLLM invocation strategy · Context management design · Prompt architecture | Python `Protocol` definitions for new AI components |
+
+**Formal Typed Output (PTR 2.0 — M-02 resolution):**
+Every formal typed output is committed to `architecture/reference/ptr/forward-declarations/GOAL-NNN/` — NOT to `src/`. These are spec artifacts, not implementation. The PTR assembler reads them as Layer 2 forward declarations. MagicLLM can reference these types as if they already exist. When Phase N validates, Layer 2 entries promote to Layer 1.
 
 Every design artifact is critiqued before proceeding. Critique is by the producing Institution itself (self-review) and by Enterprise Architect (cross-review). A design artifact not reviewed by Enterprise Architect does not pass to Step 08.
 
