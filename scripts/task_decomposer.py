@@ -393,6 +393,32 @@ def execute_file_by_file(
             f"{file_ptr_block}"
         )
 
+        # ── Fix B: Proactive REQUIRED_USINGS injection ────────────────────────
+        # Scan effective_check + spec for PascalCase type names, resolve to
+        # namespaces from USING_MAP, inject as REQUIRED USINGS before LLM call.
+        # Eliminates CS0246 at generation time, not retry time.
+        try:
+            from ptr_assembler import get_assembler as _pga
+            _umap = _pga().build_using_map()
+            if _umap:
+                import re as _re
+                _scan_text = effective_check + file_ptr_block + single_file_check
+                _mentioned = set(_re.findall(r'\b([A-Z][a-zA-Z0-9]+)\b', _scan_text))
+                _required_usings = sorted({
+                    f"using {ns};"
+                    for cls, ns in _umap.items()
+                    if cls in _mentioned
+                })
+                if _required_usings:
+                    _using_block = (
+                        "\n\nREQUIRED USINGS (add ALL of these at top of file):\n"
+                        + "\n".join(_required_usings)
+                    )
+                    single_file_check = single_file_check + _using_block
+                    print(f"  REQUIRED_USINGS: {len(_required_usings)} directives injected")
+        except Exception as _rq_err:
+            pass  # non-blocking
+
         # Per-file token budget: enough for one file, not the whole batch
         per_file_tokens = min(max_tokens, 4000)
 
@@ -519,33 +545,46 @@ def execute_subtask_chain(
     dry_run: bool = False,
 ) -> bool:
     """
-    Execute sub-tasks in dependency order with compile gates between each.
+    Execute sub-tasks with C-084 2.0: continue past non-dependent failures.
 
-    C-084: halts on first failure — no downstream sub-tasks called.
+    C-084 2.0 (industry: fair-attempt sweep):
+      - Scaffold/deterministic failures → halt dependents (hard gate)
+      - LLM subtask failures → mark FAILED, skip direct dependents, continue rest
+      - At end: commit what succeeded, record failures for next-run retry
+      - Next run: branch context shows completed work, retries only failed items
+
     C-083: emits signal after each sub-task, refreshes branch context.
     C-082: compile gate after every sub-task.
-    Backward compatible: called only when task has 'subtasks' key.
     """
-    # Lazy import to avoid circular dependency at module load time.
-    # The runner is always loaded before this function is called.
     _scripts = str(REPO_ROOT / "scripts")
     if _scripts not in sys.path:
-        sys.path.insert(0, _scripts)  # only insert once
+        sys.path.insert(0, _scripts)
     from autonomous_sprint_runner import execute_with_llm, get_branch_context, git
 
     completed: list[str] = []
+    failed: list[str] = []      # C-084 2.0: track failures without halting chain
     all_written_files: list[str] = []
 
     print(f"\n── {task_id}: sub-task chain ({len(subtasks)} sub-tasks) ──")
 
     for st in subtasks:
-        # ── C-084: verify all dependencies completed ───────────────────────────
-        unmet = [d for d in st.depends_on if d not in completed]
-        if unmet:
-            print(f"  [{st.id}] BLOCKED — unmet dependencies: {unmet}")
-            print(f"  C-084: halting chain. {st.id} not executed.")
+        # ── C-084 2.0: dependency check — skip if dependency FAILED ───────────
+        unmet_failed = [d for d in st.depends_on if d in failed]
+        unmet_incomplete = [d for d in st.depends_on if d not in completed and d not in failed]
+
+        if unmet_failed:
+            # Dependency failed — skip this subtask (can't succeed without its inputs)
+            print(f"  [{st.id}] SKIPPED — dependency failed: {unmet_failed}")
             emit_subtask_signal(task_id, st.id, "SKIPPED", monitor_signal)
-            return False
+            failed.append(st.id)  # mark as failed so its dependents also skip
+            continue
+
+        if unmet_incomplete:
+            # Dependency not yet run (shouldn't happen in ordered list, but guard it)
+            print(f"  [{st.id}] BLOCKED — unmet dependencies: {unmet_incomplete}")
+            emit_subtask_signal(task_id, st.id, "SKIPPED", monitor_signal)
+            failed.append(st.id)
+            continue
 
         print(f"\n  ── [{st.id}] {st.description} ({st.type}) ──")
 
@@ -564,7 +603,8 @@ def execute_subtask_chain(
             if st.template_fn is None:
                 print(f"  [{st.id}] ERROR: deterministic sub-task has no template_fn")
                 emit_subtask_signal(task_id, st.id, "FAIL", monitor_signal)
-                return False
+                failed.append(st.id)
+                continue
             print(f"  [{st.id}] Running deterministic template...")
             success = st.template_fn()
 
@@ -577,17 +617,18 @@ def execute_subtask_chain(
                 skeleton_st = st
                 success = _run_llm_subtask(skeleton_st, completed, dry_run)
                 if not success:
-                    print(f"  [{st.id}] SKELETON phase FAILED — halting chain")
+                    print(f"  [{st.id}] SKELETON phase FAILED — marking failed, continuing chain")
                     emit_subtask_signal(task_id, st.id, "FAIL", monitor_signal)
-                    return False
+                    failed.append(st.id)
+                    continue
                 # Compile gate between phases
                 gate_ok, gate_error = run_compile_gate(st.compile_gate, st.service_dir)
                 if not gate_ok:
                     print(f"  [{st.id}] SKELETON compile gate FAILED: {gate_error[:200]}")
                     emit_subtask_signal(task_id, st.id, "FAIL", monitor_signal)
-                    return False
+                    failed.append(st.id)
+                    continue
                 print(f"  [{st.id}] SKELETON compile gate: ✅ PASS — signatures frozen")
-                # Transition to logic phase automatically
                 import copy
                 logic_st = copy.copy(st)
                 logic_st.generation_phase = "logic"
@@ -598,9 +639,9 @@ def execute_subtask_chain(
                     emit_subtask_signal(task_id, st.id, "SUCCESS", monitor_signal)
                     print(f"  [{st.id}] C-083 signal: SUBTASK_COMPLETE emitted")
                 else:
-                    print(f"  [{st.id}] LOGIC phase FAILED — halting chain")
+                    print(f"  [{st.id}] LOGIC phase FAILED — marking failed, continuing chain")
                     emit_subtask_signal(task_id, st.id, "FAIL", monitor_signal)
-                    return False
+                    failed.append(st.id)
                 continue  # Skip standard execution below
 
             print(f"  [{st.id}] Calling LLM ({st.model_hint}, max={st.max_tokens} tokens)...")
@@ -652,21 +693,23 @@ def execute_subtask_chain(
                 )
         else:
             print(f"  [{st.id}] ERROR: unknown type '{st.type}'")
-            return False
+            failed.append(st.id)
+            continue
 
         if not success:
-            print(f"  [{st.id}] FAILED — halting chain (C-084)")
+            print(f"  [{st.id}] FAILED — marking failed, continuing with non-dependents (C-084 2.0)")
             emit_subtask_signal(task_id, st.id, "FAIL", monitor_signal)
-            # C-077: halt immediately — no downstream LLM calls on guaranteed failure
-            return False
+            failed.append(st.id)
+            continue
 
         # ── C-082: compile gate ────────────────────────────────────────────────
         gate_ok, gate_error = run_compile_gate(st.compile_gate, st.service_dir)
         if not gate_ok:
             print(f"  [{st.id}] COMPILE GATE FAILED: {gate_error[:200]}")
-            print(f"  C-084: halting chain — downstream sub-tasks not executed")
+            print(f"  C-084 2.0: marking failed, continuing non-dependent subtasks")
             emit_subtask_signal(task_id, st.id, "FAIL", monitor_signal)
-            return False
+            failed.append(st.id)
+            continue
 
         print(f"  [{st.id}] Compile gate: ✅ PASS")
 
@@ -689,7 +732,7 @@ def execute_subtask_chain(
         completed.append(st.id)
         print(f"  [{st.id}] C-083 signal: SUBTASK_COMPLETE emitted")
 
-    # All sub-tasks completed — commit everything together
+    # All sub-tasks attempted — commit what succeeded
     if not dry_run and completed:
         git(["add", "src/", "tests/"], check=False)
         diff = git(["diff", "--cached", "--quiet"], check=False)
@@ -697,9 +740,12 @@ def execute_subtask_chain(
             git(["commit", "-m",
                  f"feat: {task_id} — {subtasks[-1].description}\n\n"
                  f"IB: IB-009\nConstitutional: C-059, C-073, C-076, C-084\n"
-                 f"Sub-tasks: {', '.join(completed)}"])
+                 f"Sub-tasks: {', '.join(completed)}"
+                 + (f"\nFailed (retry next run): {', '.join(failed)}" if failed else "")])
 
-    print(f"\n  ✅ {task_id} complete — {len(completed)}/{len(subtasks)} sub-tasks passed")
+    print(f"\n  ✅ {task_id}: {len(completed)}/{len(subtasks)} sub-tasks passed"
+          + (f" | {len(failed)} failed (retry next run): {failed}" if failed else ""))
+    return len(failed) == 0
     return len(completed) == len(subtasks)
 
 
