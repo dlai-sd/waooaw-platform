@@ -360,6 +360,43 @@ class PTR2Assembler:
 
         return "\n".join(lines)
 
+    def build_using_map(self, scope_dirs: list[Path] | None = None) -> dict[str, str]:
+        """
+        Build USING_MAP: class/type name → C# namespace.
+        Injected into LLM prompts to prevent CS0246 (missing using) failures.
+        Key industry practice: cross-file namespace index.
+        """
+        using_map: dict[str, str] = {}
+        dirs = scope_dirs or [self._root / "src", self._root / "tests"]
+        for d in dirs:
+            if not d.exists():
+                continue
+            for cs_file in d.rglob("*.cs"):
+                try:
+                    content = cs_file.read_text(encoding="utf-8", errors="ignore")
+                    ns_m = re.search(r"^namespace\s+([\w.]+)", content, re.MULTILINE)
+                    if not ns_m:
+                        continue
+                    namespace = ns_m.group(1)
+                    for class_m in re.finditer(
+                        r"(?:public|internal)\s+(?:class|interface|record|enum|struct)\s+(\w+)",
+                        content,
+                    ):
+                        using_map[class_m.group(1)] = namespace
+                except Exception:
+                    pass
+        return using_map
+
+    def using_map_to_prompt_block(self, using_map: dict[str, str]) -> str:
+        """Format USING_MAP as a prompt injection block."""
+        if not using_map:
+            return ""
+        lines = ["## USING_MAP (namespace index — prevents CS0246 missing-using errors)"]
+        lines.append("Add `using <namespace>;` for any type you reference from this map:")
+        for type_name, ns in sorted(using_map.items())[:40]:
+            lines.append(f"  {type_name} → using {ns};")
+        return "\n".join(lines)
+
 
 # ── Convenience function for sprint runner ────────────────────────────────────
 

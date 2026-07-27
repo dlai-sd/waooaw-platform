@@ -115,6 +115,13 @@ class SubTaskDef:
     # DELTA: task-specific override / additions (primary if wc_task_id empty)
     constitutional_check: str = ""
 
+    # Phase-gated generation (industry: Contract-First + Compile-Gated Development)
+    # "skeleton" → signatures/stubs only, no logic, compile required
+    # "logic"    → fill bodies only, signatures frozen from skeleton phase
+    # "test"     → tests only, no source file changes
+    # "full"     → legacy single-pass (default, backward compatible)
+    generation_phase: str = "full"
+
 
 # ── Effective constitutional check assembly (IB-022) ──────────────────────────
 
@@ -179,7 +186,33 @@ def _build_effective_check(st: SubTaskDef, completed: list[str]) -> str:
         )
         parts.append(rules_section)
 
-    # 5. Task-specific delta
+    # 5. Phase rules (Contract-First + Compile-Gated development)
+    _PHASE_RULES: dict[str, str] = {
+        "skeleton": (
+            "PHASE: SKELETON ONLY.\n"
+            "Generate class/interface/method SIGNATURES, properties, and empty bodies ONLY.\n"
+            "⛔ NO business logic. ⛔ NO implementation in method bodies.\n"
+            "⛔ NO conditional statements, calculations, or DB calls.\n"
+            "Every method body = `throw new NotImplementedException();`\n"
+            "Compile MUST pass. Signatures are FROZEN after this phase — do not change them in later phases."
+        ),
+        "logic": (
+            "PHASE: LOGIC FILL ONLY.\n"
+            "All files already exist on branch with FROZEN signatures from skeleton phase.\n"
+            "Fill method bodies ONLY. ⛔ Do NOT change any signature.\n"
+            "⛔ Do NOT add or remove methods, properties, or constructors.\n"
+            "⛔ Do NOT change class/interface names or namespaces."
+        ),
+        "test": (
+            "PHASE: TEST ONLY.\n"
+            "Write tests for existing source files. ⛔ Do NOT modify any source file.\n"
+            "AAA pattern. ≥90% coverage (C-076). All arguments positional — no mixing named+positional (CS1744)."
+        ),
+    }
+    if st.generation_phase in _PHASE_RULES:
+        parts.append(_PHASE_RULES[st.generation_phase])
+
+    # 6. Task-specific delta
     if st.constitutional_check:
         parts.append(st.constitutional_check)
 

@@ -877,6 +877,92 @@ def diagnose_build_error(
                 constitutional_trace="C-082 (Build Validation — nullable types require explicit conversion)"
             )
 
+    # ── Rule 6b: CS8629 / CS8600 / CS8602 / CS8604 — nullable dereference warnings-as-errors ──
+    if error_codes & {"CS8629", "CS8600", "CS8602", "CS8604", "CS8618"}:
+        hit = sorted(error_codes & {"CS8629", "CS8600", "CS8602", "CS8604", "CS8618"})[0]
+        fix = (
+            f"NULLABLE DEREFERENCE ({hit}): "
+            "A nullable reference or value type is used without null check. "
+            "Pattern: if (x == null) return DENY; var safe = x.Value; "
+            "For optional proto fields that map to long?: use `x ?? 0L` (zero-default) or `x.GetValueOrDefault(0L)`. "
+            "Never assign nullable directly to non-nullable local or field."
+        )
+        print(f"  Retry Advisor: {hit} nullable dereference (confidence=88%)")
+        return RetryDiagnosis(
+            error_type=WRONG_FIELD_NAME,
+            fix_instruction=fix,
+            should_retry=True,
+            confidence=0.88,
+            constitutional_trace="C-082 (Build Validation — nullable dereference must be explicit)"
+        )
+
+    # ── Rule 6c: CS1503 — argument type mismatch ──────────────────────────────
+    if "CS1503" in error_codes:
+        m = re.search(
+            r"Argument (\d+).*?cannot convert from '([^']+)' to '([^']+)'",
+            build_error, re.DOTALL
+        )
+        arg_n = m.group(1) if m else "?"
+        from_t = m.group(2) if m else "?"
+        to_t = m.group(3) if m else "?"
+        fix = (
+            f"CONSTRUCTOR/METHOD ARGUMENT TYPE MISMATCH (CS1503): "
+            f"Argument {arg_n} is '{from_t}' but the parameter expects '{to_t}'. "
+            "Check the BRANCH CONTEXT for the exact constructor or method signature. "
+            "Common causes: (1) passing NullLogger<T> where ILogger<T> expected — use ILogger<T> directly; "
+            "(2) passing a mock where a concrete type expected — use mock.Object; "
+            "(3) wrong generic type parameter — check PTR snapshot for exact class name."
+        )
+        print(f"  Retry Advisor: CS1503 argument type mismatch arg={arg_n} ({from_t}→{to_t}) (confidence=85%)")
+        return RetryDiagnosis(
+            error_type=WRONG_FIELD_NAME,
+            fix_instruction=fix,
+            should_retry=True,
+            confidence=0.85,
+            constitutional_trace="C-082 (Build Validation — constructor argument types must match signature)"
+        )
+
+    # ── Rule 6d: CS1744 — named argument after positional ────────────────────
+    if "CS1744" in error_codes:
+        m = re.search(r"Named argument '(\w+)' specifies a parameter for which a positional", build_error)
+        bad_arg = m.group(1) if m else "unknown"
+        fix = (
+            f"NAMED ARGUMENT AFTER POSITIONAL (CS1744): "
+            f"Named argument '{bad_arg}' is used after positional arguments — this is invalid in C#. "
+            "Rule: either ALL arguments are named, or ALL are positional. Do NOT mix. "
+            "Fix: convert all arguments to positional order matching the constructor/method signature, "
+            "OR convert all arguments to named form. Check PTR/BRANCH CONTEXT for exact parameter order."
+        )
+        print(f"  Retry Advisor: CS1744 named+positional arg conflict on '{bad_arg}' (confidence=92%)")
+        return RetryDiagnosis(
+            error_type=WRONG_FIELD_NAME,
+            fix_instruction=fix,
+            should_retry=True,
+            confidence=0.92,
+            constitutional_trace="C-082 (Build Validation — named and positional args cannot be mixed)"
+        )
+
+    # ── Rule 6e: CS1729 — no matching constructor ─────────────────────────────
+    if "CS1729" in error_codes:
+        m = re.search(r"'([^']+)' does not contain a constructor that takes (\d+) argument", build_error)
+        type_n = m.group(1) if m else "unknown"
+        arg_c = m.group(2) if m else "?"
+        fix = (
+            f"WRONG CONSTRUCTOR ARITY (CS1729): "
+            f"'{type_n}' has no constructor taking {arg_c} argument(s). "
+            "Check the BRANCH CONTEXT and PTR snapshot for the exact constructor signature. "
+            "Common cause in tests: injecting extra mock arguments not present in the actual constructor. "
+            "Fix: match constructor arguments exactly to what is defined in the source file on this branch."
+        )
+        print(f"  Retry Advisor: CS1729 wrong constructor arity for '{type_n}' ({arg_c} args) (confidence=88%)")
+        return RetryDiagnosis(
+            error_type=WRONG_FIELD_NAME,
+            fix_instruction=fix,
+            should_retry=True,
+            confidence=0.88,
+            constitutional_trace="C-082 (Build Validation — constructor arity must match definition)"
+        )
+
     # ── Rule 7: CS0019 — operator applied to non-nullable type ──────────────────
     if "CS0019" in error_codes:
         diagnosis = _classify_cs0019_nullable_operator(build_error)

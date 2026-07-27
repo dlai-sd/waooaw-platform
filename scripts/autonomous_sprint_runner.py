@@ -1004,6 +1004,20 @@ def execute_with_llm(task_id: str, task_description: str, spec_sections: dict,
         spec_content = spec_content + branch_context
         print(f"  Branch context injected ({len(branch_context.splitlines())} lines) — EXTEND-NOT-REPLACE active")
 
+    # Industry practice #6: cross-file namespace index (USING_MAP) — prevents CS0246.
+    try:
+        try:
+            from scripts.ptr_assembler import get_assembler
+        except ImportError:
+            from ptr_assembler import get_assembler
+        _asm = get_assembler()
+        _using_map = _asm.build_using_map()
+        if _using_map:
+            spec_content = spec_content + "\n\n" + _asm.using_map_to_prompt_block(_using_map)
+            print(f"  USING_MAP injected ({len(_using_map)} types) — CS0246 prevention active")
+    except Exception as _ume:
+        print(f"  WARN: USING_MAP build failed ({_ume}) — skipping")
+
     failure_context = ""
     infra_failures = 0  # count of transient API failures (timeout, rate limit, server error)
     # Bounded to 3 to recover simple compile deltas surfaced by Retry Advisor
@@ -1095,6 +1109,15 @@ def execute_with_llm(task_id: str, task_description: str, spec_sections: dict,
             ]
             diagnosis = diagnose_build_error(task_id, build_error, written, branch_cs_files)
 
+            # Stop-loss: if confidence < 30% and no should_retry, skip immediately
+            if diagnosis.confidence < 0.30 and not diagnosis.should_retry:
+                print(f"  Retry Advisor: STOP_LOSS — confidence={diagnosis.confidence:.0%} < 30%; skipping remaining attempts")
+                failure_context = (
+                    f"RETRY ADVISOR: {diagnosis.error_type} — confidence below stop-loss threshold.\n"
+                    f"{build_error[:200]}"
+                )
+                break
+
             if not diagnosis.should_retry:
                 # Advisor says: don't waste another attempt — flag spec-gap now
                 print(f"  Retry Advisor: {diagnosis.error_type} — skipping remaining attempts "
@@ -1136,11 +1159,12 @@ def execute_with_llm(task_id: str, task_description: str, spec_sections: dict,
         gap_desc = (f"{task_id} failed after {max_attempts} attempts ({infra_failures} API timeouts, "
                     f"{max_attempts - infra_failures} build failures). Last build error: {failure_context[:200]}")
     else:
-        # Retry advisor already provided a concrete code fix pattern, but retries exhausted.
-        # This is an implementation-generation miss, not necessarily a specification gap.
+        # Spec-gap policy gate (C-065 + Goal Orchestrator autonomous recovery):
+        # Only escalate to spec-gap issue when failure context has NO known advisor fix.
+        # RETRY ADVISOR DIAGNOSIS = diagnosable build failure = route to cascade, not spec-gap.
         if failure_context.startswith("RETRY ADVISOR DIAGNOSIS:"):
-            print(f"  ⚠️  BUILD_FAILURE: {task_id} exhausted {max_attempts} attempts with actionable retry diagnosis.")
-            print("  No spec-gap issue created; next run will retry task with fresh branch context.")
+            print(f"  ⚠️  BUILD_FAILURE: {task_id} exhausted {max_attempts} attempts with actionable diagnosis.")
+            print("  Routing to cascade for autonomous recovery (not spec-gap issue).")
             _MONITOR_SIGNAL["task_results"][task_id] = {
                 "result": "BUILD_FAILURE", "error_type": "RETRY_EXHAUSTED",
                 "build_error_snippet": failure_context[:200], "attempts": max_attempts, "spec_gap_issue": None,
