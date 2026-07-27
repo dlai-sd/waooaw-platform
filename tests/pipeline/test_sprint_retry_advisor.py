@@ -82,7 +82,7 @@ def test_cct_sra_02_constitutional_service_not_found():
 # ─── CS0117: wrong field name → WRONG_FIELD_NAME ─────────────────────────────
 
 def test_wrong_field_name_invented_property():
-    """CS0117: Claude invented a property name → WRONG_FIELD_NAME with empty constructor advice."""
+    """CS0117: Claude invented a property name → WRONG_FIELD_NAME with actionable fix."""
     error = (
         "error CS0117: 'EmergencyStopResponse' does not contain a definition for 'StopConfirmed'"
     )
@@ -91,7 +91,13 @@ def test_wrong_field_name_invented_property():
 
     assert result.error_type == WRONG_FIELD_NAME
     assert result.should_retry is True
-    assert "constructor" in result.fix_instruction.lower() or "empty" in result.fix_instruction.lower()
+    # PTR-verified path gives class name or property guidance; general path gives constructor/empty advice
+    assert (
+        "EmergencyStopResponse".lower() in result.fix_instruction.lower()
+        or "constructor" in result.fix_instruction.lower()
+        or "empty" in result.fix_instruction.lower()
+        or "property" in result.fix_instruction.lower()
+    )
 
 
 # ─── CCT-SRA-03: UNKNOWN with low confidence → should_retry=False ────────────
