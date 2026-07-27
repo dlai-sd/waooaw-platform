@@ -9,30 +9,53 @@
 ## Platform Status
 
 ```
-Version:              v1.0.0 — Design & Specification Iteration 1 COMPLETE (2026-07-23)
-Constitutional Claims: 79 ratified (C-001→C-076, C-077, C-078, C-079) | ADRs: 30
+Version:              v1.14.0 — Autonomous Codegen Pipeline (2026-07-27)
+Constitutional Claims: 79 ratified (C-001→C-079) + AMENDMENT-001 + AMENDMENT-002 | ADRs: 33
 Customer Agents:      4 approved — DMA v3.0 · Trading v1.7 · Agricultural v2.7 · Private Tutor v1.0
-Internal Agents:      4 — Platform IT Expert · Steward Assistant · Self-Improvement Analyst · Platform Operations
+Internal Agents:      5 — Platform IT Expert · Steward Assistant · Self-Improvement Analyst ·
+                          Platform Operations · RepoNav (AVD-001 v1.0 RATIFIED — INST-014)
 Gates:                G0 ✅  G1 ✅  G2 ✅  G3 ✅  G4 ✅  G5 CLEAR
-Phase:                SPEC COMPLETE → Implementation authorization pending (Yogesh T0-3)
+Phase:                IMPLEMENTATION — WC-012 Sprint active (autonomous, self-healing)
 Infrastructure:       Azure live — waooaw-dev-kv (Key Vault) · OIDC auth · Sprint Dashboard: Issue #7
 Monitoring:           Sprint Dashboard: github.com/dlai-sd/waooaw-platform/issues/7
 Web:                  web/WAOOAWHome.html — Landing page v1.0 + Auth modal
-CCTs:                 52 specified | Simulations: 23 | Audit: 12-chapter agent AI audit PASS
+CCTs:                 52 specified | Simulations: 23 | Pipeline tests: 372 passing
 Company:              DLAI Satellite Data (OPC) Pvt Ltd · CIN: U62090PN2024OPC230499 · Pune, India
 Stewards:             Yogesh Khandge (Founder) · Sujay Khandge (Business Growth) · Ojal Khandge (Ethics Officer)
 ```
 
-### What "Specification Complete" Means
+### What "Implementation Phase" Means (2026-07-27)
 
-Every architectural decision, every constitutional claim, every agent specification, every data schema, every API contract, every security control, and every quality standard is written, reviewed, and ratified. The platform has been audited against all 12 chapters of production agent AI system design. Every gap found has been fixed.
-
-**What remains is execution — writing code.** One sentence from Yogesh starts the autonomous implementation sprint.
+The platform has entered full autonomous implementation. The Autonomous Sprint Agent runs every 2 hours,
+generates production-grade .NET 9 code for the Constitutional Engine, reviews its own PR, merges,
+and advances to the next sprint — without human intervention.
 
 ```
-Next action: "Yogesh authorizes IB-009 Sprint 011 implementation"
-Monitor at:   github.com/dlai-sd/waooaw-platform/issues/7
+Current sprint:  WC-012 — Constitutional Engine skeleton (gRPC + ValidateAction + Evidence First)
+Sprint status:   READY → auto-triggers on next 2-hour cron
+Monitor at:      github.com/dlai-sd/waooaw-platform/issues/7
+PR review:       Autonomous (GitHub App waooaw-reviewer, C-065 compliant)
+Self-healing:    advisor_auto_extend.py — new compiler errors auto-classified and committed
 ```
+
+### Autonomous Codegen Pipeline (built 2026-07-27)
+
+12-item industry-grade pipeline now active:
+
+| Capability | Implementation |
+|---|---|
+| Phase-gated generation | Skeleton → Logic → Test with compile gate between each |
+| Self-healing advisor | New CS error codes auto-classified via Haiku + committed to main |
+| Failure taxonomy routing | 17 C# error families (CS0101–CS8629) + Python/Terraform/TypeScript |
+| Learning cache | Successful retry fixes cached; re-used before LLM fallback |
+| USING_MAP injection | Type→namespace index injected every prompt — prevents CS0246 |
+| Forbidden API list | Known non-existent methods blocked in every LLM prompt |
+| Cost-aware tiering | Skeleton pass → Haiku; Logic/CCT → Sonnet (10× cost reduction) |
+| Canary-file validation | First file compiled in isolation before batch proceeds |
+| Branch freshness | Sprint branch always rebuilt from latest main on clean start |
+| Stop-loss economics | LLM retry skipped if advisor confidence < 30% |
+| False spec-gap prevention | Diagnosable build failures routed to cascade, not GitHub issues |
+| Fail-fast gate | Pre-run preflight checks all prerequisites before any LLM call |
 
 ---
 
@@ -295,6 +318,18 @@ WAOOAW builds its own platform the same way it serves its customers — through 
 The process is governed by the same constitutional rules the platform enforces for customer agents. Every code file must declare which specification it implements and which constitutional principle it upholds. Every commit must reference the backlog item that authorised it. No code can be merged without passing a set of Constitutional Compliance Tests — automated checks that verify the platform cannot accidentally violate its own principles such as Evidence First or Emergency Stop. The review of each pull request is performed by the same Platform IT Expert agent wearing a different hat, using a separate identity so that no agent can approve its own work. The founders retain one absolute control: a single flag in a text file (`AUTONOMOUS_HALT: true`) that, if set by any of the three stewards, stops all autonomous execution immediately.
 
 The practical result is that a founder can authorise a sprint on a Monday morning and return to a merged, tested, deployed feature by Wednesday — without writing a single line of code, reviewing a single PR, or attending a single meeting. The institution builds itself. The constitution ensures it builds itself correctly.
+
+**Self-healing capability (operational from 2026-07-27):** When the autonomous runner encounters a compiler error it has never seen before, the Monitor Agent automatically generates a fix handler using a cheap AI model (Haiku, ~$0.001), validates and tests it, commits it to the repository, and uses it from the very next run. The platform repairs its own diagnostic intelligence without any human intervention.
+
+### 5.7 Institution Operating Model
+
+The platform is governed by three constitutional documents beyond the Constitution itself:
+
+- **WIOM** (`constitution/WIOM.md`) — Institution Operating Model: how WAOOAW as an institution operates, charters institutions (INST-001 through INST-014), and governs itself.
+- **GEOM** (`constitution/GEOM.md`) — Goal Execution Operating Model: how every piece of work is registered as a Goal, executed through a 16-step Engineering Execution Model, and closed with evidence. Every autonomous sprint run is a Goal.
+- **INSTITUTION-REGISTRY** (`constitution/INSTITUTION-REGISTRY.md`) — 14 chartered institutions: Constitutional Engine (INST-001), Business Platform (INST-002), Professional Runtime (INST-003), AI Runtime (INST-004), Runtime Implementation Professional (INST-010), Goal Orchestrator (INST-013), RepoNav Engineering Intelligence (INST-014), and more.
+
+The Goal Orchestrator (INST-013) is the AI institution that coordinates all autonomous work. It understands goals, routes them to the right institutions, monitors execution, and triggers remediation cascades (L1 retry → L2 research → L3 redesign → Founder) when work stalls — with the Founder as the last resort, not the first escalation.
 
 → `.github/workflows/autonomous-sprint.yaml` · `scripts/autonomous_sprint_runner.py` · `constitution/PROJECT_STATE.md` (SPRINT_STATE_MACHINE)
 
