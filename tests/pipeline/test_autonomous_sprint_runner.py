@@ -39,6 +39,7 @@ from autonomous_sprint_runner import (
     _TASK_STACK_MAP,
     parse_llm_files,
     ALLOWED_WRITE_ROOTS,
+    run_runner_integrity_checks,
 )
 
 
@@ -421,6 +422,34 @@ class TestParseLlmFiles:
         result = parse_llm_files(response)
         assert len(result) == 1
         assert "src/constitutional-engine/Ok.cs" in result
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# run_runner_integrity_checks()
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class TestRunnerIntegrityChecks:
+    """Fail-fast guardrail tests for internal runner wiring."""
+
+    def test_integrity_passes_in_normal_state(self):
+        ok, errors = run_runner_integrity_checks()
+        assert ok is True
+        assert errors == []
+
+    def test_integrity_fails_when_parser_missing(self, monkeypatch):
+        monkeypatch.setattr(runner, "parse_llm_files", None)
+        ok, errors = run_runner_integrity_checks()
+        assert ok is False
+        assert any("parse_llm_files" in e for e in errors)
+
+    def test_integrity_fails_on_execute_signature_drift(self, monkeypatch):
+        def bad_execute(task_id: str) -> bool:
+            return bool(task_id)
+
+        monkeypatch.setattr(runner, "execute_with_llm", bad_execute)
+        ok, errors = run_runner_integrity_checks()
+        assert ok is False
+        assert any("signature mismatch" in e for e in errors)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

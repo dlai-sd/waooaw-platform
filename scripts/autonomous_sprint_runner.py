@@ -23,6 +23,7 @@ import os
 import re
 import subprocess
 import sys
+import inspect
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -539,6 +540,53 @@ def update_sprint_state(**kwargs) -> None:
 
 def gh(args: list[str], check: bool = True) -> subprocess.CompletedProcess:
     return run(["gh"] + args, check=check, capture=True)
+
+
+def run_runner_integrity_checks() -> tuple[bool, list[str]]:
+    """
+    Fail-fast checks for internal runner wiring.
+
+    This catches pipeline bugs (for example, missing helper function definitions)
+    before any sprint task execution starts.
+    """
+    errors: list[str] = []
+
+    required_callables = [
+        "parse_llm_files",
+        "write_llm_files",
+        "validate_written_files",
+        "execute_with_llm",
+    ]
+    for symbol in required_callables:
+        candidate = globals().get(symbol)
+        if not callable(candidate):
+            errors.append(f"Missing or non-callable symbol: {symbol}")
+
+    execute_fn = globals().get("execute_with_llm")
+    if callable(execute_fn):
+        params = list(inspect.signature(execute_fn).parameters.keys())
+        required_params = ["task_id", "task_description", "spec_sections", "constitutional_check"]
+        missing = [p for p in required_params if p not in params]
+        if missing:
+            errors.append("execute_with_llm signature mismatch. Missing params: " + ", ".join(missing))
+
+    handlers = globals().get("TASK_HANDLERS")
+    if not isinstance(handlers, dict) or len(handlers) == 0:
+        errors.append("TASK_HANDLERS missing or empty")
+
+    parser = globals().get("parse_llm_files")
+    if callable(parser):
+        probe = (
+            '<file path="src/_integrity_probe.txt">ok</file>'
+            '<file path="constitution/should-never-pass.md">blocked</file>'
+        )
+        parsed = parser(probe)
+        if "src/_integrity_probe.txt" not in parsed:
+            errors.append("parse_llm_files failed to parse valid probe block")
+        if any(path.startswith("constitution/") for path in parsed.keys()):
+            errors.append("parse_llm_files boundary enforcement failed for constitution/")
+
+    return len(errors) == 0, errors
 
 
 # ── ADR-030: LLM code generation functions ────────────────────────────────────
@@ -2995,6 +3043,16 @@ def main() -> int:
     check_platform_phase_gate(state)
 
     set_output("halt", "false")
+
+    # ── Step 2b: Runner integrity gate (fail-fast for internal pipeline bugs) ──
+    integrity_ok, integrity_errors = run_runner_integrity_checks()
+    if not integrity_ok:
+        print("\nRunner integrity gate FAILED:")
+        for err in integrity_errors:
+            print(f"  - {err}")
+        set_output("result", "PIPELINE_BUG")
+        set_output("halt", "true")
+        return 1
 
     # ── Step 3: Consecutive failure check ─────────────────────────────────
     failures = int(state.get("consecutive_failures", "0") or "0")

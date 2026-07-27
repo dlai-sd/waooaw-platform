@@ -92,12 +92,18 @@ jobs:
                         scripts/autonomous_sprint_reviewer.py \
                         scripts/build_sprint_index.py \
                         scripts/sprint_state.py \
-                        scripts/sprint_status_reporter.py; do
+                        scripts/sprint_status_reporter.py \
+                        scripts/runner_integrity_check.py; do
             python3 -m py_compile "$script" 2>/dev/null && echo "  ✅ $script" || {
               echo "  ❌ SYNTAX ERROR: $script"
               FAILURES=$((FAILURES+1))
             }
           done
+
+          # 1b. Runner integrity gate — catch internal wiring bugs before execution
+          python3 scripts/runner_integrity_check.py >/tmp/runner_integrity.log 2>&1 \
+            && { echo "  ✅ runner integrity"; cat /tmp/runner_integrity.log; } \
+            || { echo "  ❌ RUNNER INTEGRITY FAILED"; cat /tmp/runner_integrity.log; FAILURES=$((FAILURES+1)); }
 
           # 2. Required GitHub labels — self-heal: create if missing (prevents run #24/#25/#30 failure pattern)
           # Security Architect note: gh label create is idempotent with --force. Writes only label metadata.
