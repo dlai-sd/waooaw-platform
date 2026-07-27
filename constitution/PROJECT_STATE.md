@@ -97,13 +97,13 @@ GOAL-001 executed all 5 phases in a single session, transforming the WAOOAW cons
 
 ---
 
-## CURRENT PLATFORM STATE (2026-07-27 — v1.13.0 — Session Close)
+## CURRENT PLATFORM STATE (2026-07-27 — v1.13.0 — WC-012 Clean Slate)
 
 ```yaml
 version: 1.13.0
 platform_phase: IMPLEMENTATION
-goals_closed: [GOAL-001, GOAL-002]
-goal_in_progress: NONE — all GOAL-001/002/003 complete
+goals_closed: [GOAL-001, GOAL-002, GOAL-003]
+goal_in_progress: GOAL-WC-012 (Issue #115 — registered, clean slate, ready to trigger)
 session_declared: "Full autonomous sprint lifecycle validated (SIM-GO-007: 14/14 PASS)"
 constitutional_claims: 79 ratified + 2 amendments (AMENDMENT-001, AMENDMENT-002)
 adrs: 33 (ADR-001 through ADR-033)
@@ -121,18 +121,32 @@ simulations_passing:
   SIM-GO-005: 7/7  (Greenfield Goal Register — WAOOAW builds itself)
   SIM-GO-006: 9/9  (Production defect P1 Emergency Stop)
   SIM-GO-007: 14/14 (Full autonomous sprint lifecycle — FINAL)
+
+# ── WC-012 CLEAN SLATE ───────────────────────────────────────────────────────────────────
+sprint: WC-012
 sprint_status: READY
-autonomous_halt: false
+task_id: WC012-01                   # starts from task 1
+tasks_done: []
+tasks_remaining: [WC012-01, WC012-02, WC012-03, WC012-04]
 consecutive_failures: 0
+autonomous_halt: false
+open_prs: none                      # PR #113 closed · PR #96 closed · branch deleted
+goal_register_issue: 115            # [GOAL-WC-012] registered in GitHub Issues
 ```
 
 ## NEXT AUTHORIZED WORK
 
 ```
-Priority 1: Register GOAL-IB009 (WC-012 reset — clean Goal Orchestrator execution)
-  WC-012 branch deleted · PR #96 closed · starting fresh
-  Goal to register: see PROJECT_STATE.md §WC-012 reset note below
-  action: Founder registers Goal → GO produces Execution Plan → sprint executes
+Priority 1: GOAL-WC-012 (Issue #115) — trigger autonomous sprint WC-012
+  CLEAN SLATE:
+    ✓ PR #113 closed (stale run)
+    ✓ PR #96 closed (previous reset)
+    ✓ branch ib/009/sprint-012 deleted
+    ✓ sprint state: READY, WC012-01 first, 0 failures, halt=false
+    ✓ GOAL-WC-012 registered in GitHub Issues (#115)
+    ✓ sprint-context/index.json rebuilt: task=WC012-01, model_hint=reasoning
+  TRIGGER: Dispatch autonomous-sprint.yaml manually OR wait for next 3-hour cron
+  EXPECTED: pre_sprint_sim → WC012-01 scaffold → WC012-02 evaluators → WC012-03 gRPC → WC012-04 tests → PR → merge
 
 Priority 2: GOAL-003 Phase C — PTR 2.0 Python implementation
   files: scripts/ptr_assembler/ (multi-stack: dotnet, python, terraform, ts)
