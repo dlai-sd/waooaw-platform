@@ -46,8 +46,23 @@ class GOIntelligence:
 
     def understand_goal(self, req: GoalUnderstandingRequest) -> GoalUnderstandingRecord:
         """Cat. 9 — Converts raw input into structured Goal Understanding Record.
-        Phase 1: uses Anthropic reasoning model.
-        Evidence committed to Goal Register before returning.
+
+        Implements §7 Goal Intake Conversation Protocol
+        (architecture/reference/goal-orchestrator/intelligence.md §7):
+
+        This method represents the POST-CONVERSATION phase — it is called after
+        the GO has conducted the intake conversation with the Founder/Steward
+        and the user has confirmed the Goal Understanding.
+
+        The conversation (§7 Phase 1-5) must precede this invocation:
+          - GO reads repo context
+          - GO presents empathetic, expert framing
+          - GO asks max 3 business-outcome-focused questions
+          - User confirms all 7 Goal dimensions are covered
+          - THEN this method is called to produce the constitutional record
+
+        Phase 1: uses Anthropic reasoning model for structured extraction.
+        Evidence committed to Goal Register before returning (C-059).
         """
         context = [
             req.raw_input,
