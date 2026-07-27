@@ -396,7 +396,7 @@ class MagicLLMPipeline:
         """Estimates cost in INR for C-077 tracking."""
         r_in  = _COST_PER_1K_INPUT.get(model, 0)
         r_out = _COST_PER_1K_OUTPUT.get(model, 0)
-        return round((in_tok / 1000) * r_in + (out_tok / 1000) * r_out, 4)
+        return round((int(in_tok) / 1000) * r_in + (int(out_tok) / 1000) * r_out, 4)
 
     # ── Private: Default file-based Goal Register writer (Phase 1) ───────────
 

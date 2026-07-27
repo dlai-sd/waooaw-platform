@@ -291,7 +291,7 @@ class CascadeHandler:
         valid = _VALID_TRANSITIONS[self.ctx.state]
         if to not in valid:
             raise ValueError(
-                f"[Cascade] Invalid transition {self.ctx.state.name} → {to.name}. "
+                f"[Cascade] Invalid cascade transition {self.ctx.state.name} → {to.name}. "
                 f"Valid: {[s.name for s in valid]}. Goal: {self.ctx.goal_id}"
             )
         self.ctx.state = to
