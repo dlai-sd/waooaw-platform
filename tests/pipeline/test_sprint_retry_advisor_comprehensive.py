@@ -173,6 +173,29 @@ class TestCS0117AndCS1061WrongFieldName:
         assert result.error_type == WRONG_FIELD_NAME
         assert "EvaluationVerdict" in result.fix_instruction or "Allow" in result.fix_instruction
 
+    def test_cs7036_constructor_argument_mismatch_classified(self):
+        """Constructor arg drift should not fall to UNKNOWN/spec-gap."""
+        error = (
+            "error CS7036: There is no argument given that corresponds to the required parameter "
+            "'logger' of 'ConstitutionalEngineService.ConstitutionalEngineService("
+            "EvaluatorRegistry, ConstitutionalDbContext, EmergencyStopDbContext, "
+            "ILogger<ConstitutionalEngineService>)'"
+        )
+        result = diagnose_build_error("WC012-04c", error, [])
+        assert result.error_type == WRONG_FIELD_NAME
+        assert result.should_retry is True
+        assert result.confidence >= 0.90
+
+    def test_cs7036_fix_instruction_mentions_overload_or_mock(self):
+        error = (
+            "error CS7036: There is no argument given that corresponds to the required parameter "
+            "'logger' of 'ConstitutionalEngineService.ConstitutionalEngineService("
+            "EvaluatorRegistry, ConstitutionalDbContext, EmergencyStopDbContext, "
+            "ILogger<ConstitutionalEngineService>)'"
+        )
+        result = diagnose_build_error("WC012-04c", error, [])
+        assert "overload" in result.fix_instruction or "mock" in result.fix_instruction or "NullLogger" in result.fix_instruction
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Confidence gate (C-077 FinOps)

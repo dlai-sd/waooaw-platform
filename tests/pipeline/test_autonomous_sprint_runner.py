@@ -942,6 +942,27 @@ class TestWc01202bConstitutionalCheck:
             assert f in paths, f"WC012-02b output_files missing {f}"
 
 
+class TestWc01204bConstitutionalCheck:
+    """Tests that WC012-04b preserves constructor compatibility guidance."""
+
+    def _get_check(self) -> str:
+        wc012 = runner.TASK_HANDLERS.get("WC012-04")
+        if not wc012:
+            return ""
+        for st in wc012.get("subtasks", []):
+            if st.id == "WC012-04b":
+                return st.constitutional_check
+        return ""
+
+    def test_check_mentions_constructor_compatibility(self):
+        check = self._get_check()
+        assert "Constructor compatibility" in check or "overload" in check or "optional" in check
+
+    def test_check_mentions_logger_backward_compat(self):
+        check = self._get_check()
+        assert "ILogger" in check and ("NullLogger" in check or "optional" in check or "overload" in check)
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # Allowed write roots — security boundary (ADR-030, C-065)
 # ═══════════════════════════════════════════════════════════════════════════════

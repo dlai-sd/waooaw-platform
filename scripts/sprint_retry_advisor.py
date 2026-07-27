@@ -294,6 +294,38 @@ def _classify_cs0019_nullable_operator(error: str) -> Optional[RetryDiagnosis]:
     )
 
 
+def _classify_cs7036_constructor_args(error: str) -> Optional[RetryDiagnosis]:
+    """
+    CS7036: constructor/method call missing required argument.
+
+    Common WC-012 pattern: service constructor gained a new dependency and older
+    test call-sites were not updated.
+    """
+    if "CS7036" not in error:
+        return None
+
+    m = re.search(r"required parameter '([^']+)'", error)
+    missing_param = m.group(1) if m else "<unknown>"
+
+    ctor_m = re.search(r"'([^']+)\(([^)]*)\)'", error)
+    target_ctor = ctor_m.group(1) if ctor_m else "constructor"
+
+    fix = (
+        f"MISSING CONSTRUCTOR ARG (CS7036): call-site does not provide required parameter '{missing_param}' for {target_ctor}. "
+        f"Update ALL affected call-sites to pass the new dependency. "
+        f"For tests, either inject a mock for the new dependency, or keep backward compatibility by adding "
+        f"a constructor overload / optional parameter with a safe default (for ILogger use NullLogger<T>.Instance)."
+    )
+
+    return RetryDiagnosis(
+        error_type=WRONG_FIELD_NAME,
+        fix_instruction=fix,
+        should_retry=True,
+        confidence=0.92,
+        constitutional_trace="C-082 (Build Validation — constructor contract must match all call sites)",
+    )
+
+
 def _classify_cs0246_missing_using(error: str) -> Optional[RetryDiagnosis]:
     """
     CS0246 general: type not found, likely missing using directive.
@@ -749,6 +781,7 @@ def diagnose_build_error(
                 constitutional_trace="C-082 (Build Validation — generated code must use defined types)"
             )
 
+
     # ── Rule 5: CS1061 — member not found on type ─────────────────────────────
     if "CS1061" in error_codes:
         m = re.search(r"'([^']+)' does not contain a definition for '([^']+)'", build_error)
@@ -836,6 +869,13 @@ def diagnose_build_error(
         diagnosis = _classify_cs0019_nullable_operator(build_error)
         if diagnosis:
             print(f"  Retry Advisor: CS0019 null-coalescing on non-nullable (confidence={diagnosis.confidence:.0%})")
+            return diagnosis
+
+    # ── Rule 7b: CS7036 — missing constructor argument ──────────────────────────
+    if "CS7036" in error_codes:
+        diagnosis = _classify_cs7036_constructor_args(build_error)
+        if diagnosis:
+            print(f"  Retry Advisor: CS7036 constructor-arg mismatch (confidence={diagnosis.confidence:.0%})")
             return diagnosis
 
     # ── Rule 8: CS0539 — explicit interface member not in interface ──────────────

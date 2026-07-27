@@ -2557,6 +2557,9 @@ TASK_HANDLERS = {
                     "Implement TriggerEmergencyStop in the EXISTING ConstitutionalEngineService.cs stub.\n"
                     "Write EmergencyStopEvent to DB FIRST (C-023), THEN signal Temporal (ADR-018).\n"
                     "Use EmergencyStopDbContext injected via constructor DI.\n"
+                    "Constructor compatibility rule: preserve existing constructor call sites in tests.\n"
+                    "If adding ILogger<ConstitutionalEngineService>, make it optional (default null + NullLogger fallback)\n"
+                    "or provide an overload so existing tests still compile unchanged.\n"
                     "Temporalio version in csproj is 0.1.0-beta1 — use that exact API."
                 ),
                 model_hint="reasoning",
@@ -3244,11 +3247,16 @@ def main() -> int:
 
     # Push sprint branch — use -u (set upstream) not --force-with-lease.
     # --force-with-lease fails when no remote tracking ref exists (new branch).
-    push = git(["push", "-u", "origin", branch], check=False)
+    # Use capture=True so stderr/stdout are always available for safe diagnostics.
+    push = run(["git", "push", "-u", "origin", branch], check=False, capture=True)
     if push.returncode != 0:
-        print(f"  WARN: branch push failed (non-fatal): {push.stderr[:200]}")
-        # Retry once with --force in case of ref mismatch
-        git(["push", "--force", "origin", branch], check=False)
+        push_err = (push.stderr or push.stdout or "").strip()
+        print(f"  WARN: branch push failed (non-fatal): {push_err[:200]}")
+        # Retry once with --force in case of ref mismatch.
+        force_push = run(["git", "push", "--force", "origin", branch], check=False, capture=True)
+        if force_push.returncode != 0:
+            force_err = (force_push.stderr or force_push.stdout or "").strip()
+            print(f"  WARN: force push failed (non-fatal): {force_err[:200]}")
 
     # ── Step 8: Open/update PR ────────────────────────────────────────────
     if tasks_not_implemented:
