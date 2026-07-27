@@ -332,6 +332,282 @@ def _classify_cs0246_missing_using(error: str) -> Optional[RetryDiagnosis]:
     return None
 
 
+# ── Multi-stack classifiers (WC013-022 coverage) ──────────────────────────────
+
+def _classify_python_import_error(error: str) -> Optional[RetryDiagnosis]:
+    """Python ImportError / ModuleNotFoundError — wrong package/module name."""
+    if "ImportError" not in error and "ModuleNotFoundError" not in error:
+        return None
+
+    # Temporal SDK — most common wrong import patterns
+    if "temporalio" in error or "temporal" in error.lower():
+        if "No module named" in error:
+            return RetryDiagnosis(
+                error_type="PYTHON_IMPORT_TEMPORAL",
+                fix_instruction=(
+                    "TEMPORAL IMPORT FIX: Use ONLY these imports:\n"
+                    "  from temporalio import activity, workflow\n"
+                    "  from temporalio.client import Client\n"
+                    "  from temporalio.worker import Worker\n"
+                    "NEVER use: 'temporal-sdk', 'temporal-python', 'temporal.client'. "
+                    "The package is 'temporalio' — installed from PyPI as temporalio."
+                ),
+                should_retry=True, confidence=0.95,
+                constitutional_trace="C-082 (Build Validation — Python stack)"
+            )
+
+    # Vertex AI SDK
+    if "vertexai" in error or "google.cloud.aiplatform" in error:
+        return RetryDiagnosis(
+            error_type="PYTHON_IMPORT_VERTEX",
+            fix_instruction=(
+                "VERTEX AI IMPORT FIX: Use 'from google.cloud import aiplatform' "
+                "NOT 'import vertexai'. "
+                "Gemini model name: 'gemini-2.0-flash' NOT 'gemini-pro' (deprecated). "
+                "SA key from env: os.environ.get('GOOGLE_VERTEX_SA_KEY'). "
+                "Region: 'asia-south1' for DPDPA compliance."
+            ),
+            should_retry=True, confidence=0.90,
+            constitutional_trace="C-082 + C-063 (DPDPA — data residency)"
+        )
+
+    # Sarvam AI
+    if "sarvam" in error.lower():
+        return RetryDiagnosis(
+            error_type="PYTHON_IMPORT_SARVAM",
+            fix_instruction=(
+                "SARVAM FIX: There is NO Sarvam Python SDK. "
+                "Use httpx REST calls ONLY: "
+                "async with httpx.AsyncClient() as client: "
+                "resp = await client.post('https://api.sarvam.ai/v1/...', json=..., headers=...)"
+            ),
+            should_retry=True, confidence=0.95,
+            constitutional_trace="C-082 (Build Validation)"
+        )
+
+    # Generic Python import
+    m = re.search(r"No module named '([^']+)'", error)
+    if m:
+        mod = m.group(1)
+        return RetryDiagnosis(
+            error_type="PYTHON_IMPORT_MISSING",
+            fix_instruction=(
+                f"IMPORT FIX: Module '{mod}' not found. "
+                f"Check requirements.txt / pyproject.toml for the correct package name. "
+                f"Do NOT invent package names. Use packages listed in the PTR. "
+                f"httpx replaces requests. asyncpg replaces psycopg2 for async Postgres."
+            ),
+            should_retry=True, confidence=0.75,
+            constitutional_trace="C-082 (Build Validation)"
+        )
+    return None
+
+
+def _classify_python_async_error(error: str) -> Optional[RetryDiagnosis]:
+    """Python async/await misuse — blocking calls inside async context."""
+    if ("RuntimeError" not in error and "coroutine" not in error
+            and "await" not in error.lower()):
+        return None
+
+    if "coroutine was never awaited" in error or "RuntimeWarning" in error:
+        return RetryDiagnosis(
+            error_type="PYTHON_ASYNC_NOT_AWAITED",
+            fix_instruction=(
+                "ASYNC FIX: A coroutine was called without 'await'. "
+                "All async functions must be called with 'await'. "
+                "Never use asyncio.run() inside a Temporal activity or FastAPI handler — "
+                "the event loop is already running. "
+                "For Temporal: activities must be 'async def' and 'await'ed. "
+                "For FastAPI: route handlers must be 'async def'."
+            ),
+            should_retry=True, confidence=0.90,
+            constitutional_trace="C-082 (Build Validation — Python async)"
+        )
+
+    if "asyncio.run() cannot be called" in error:
+        return RetryDiagnosis(
+            error_type="PYTHON_ASYNCIO_RUN_IN_LOOP",
+            fix_instruction=(
+                "ASYNC FIX: asyncio.run() cannot be called inside a running event loop. "
+                "In Temporal activities and FastAPI handlers, the loop is already running. "
+                "Use 'await coro()' directly. "
+                "For one-off async calls: use 'await asyncio.ensure_future(coro())'."
+            ),
+            should_retry=True, confidence=0.95,
+            constitutional_trace="C-082 (Build Validation)"
+        )
+    return None
+
+
+def _classify_temporal_error(error: str) -> Optional[RetryDiagnosis]:
+    """Temporal SDK registration and workflow definition errors."""
+    if "temporalio" not in error.lower() and "temporal" not in error.lower():
+        return None
+
+    if "@workflow.defn" in error or "not a workflow" in error.lower():
+        return RetryDiagnosis(
+            error_type="TEMPORAL_WORKFLOW_DEFN_MISSING",
+            fix_instruction=(
+                "TEMPORAL FIX: Workflow class must have @workflow.defn decorator. "
+                "Workflow run method must have @workflow.run decorator. "
+                "Pattern:\n"
+                "  @workflow.defn\n"
+                "  class MyWorkflow:\n"
+                "      @workflow.run\n"
+                "      async def run(self, input: MyInput) -> MyOutput:\n"
+                "          return await workflow.execute_activity(my_activity, ...)\n"
+                "NEVER call activities directly — always via workflow.execute_activity()."
+            ),
+            should_retry=True, confidence=0.90,
+            constitutional_trace="C-082 (Build Validation — Temporal SDK)"
+        )
+
+    if "not an activity" in error.lower() or "@activity.defn" in error:
+        return RetryDiagnosis(
+            error_type="TEMPORAL_ACTIVITY_DEFN_MISSING",
+            fix_instruction=(
+                "TEMPORAL FIX: Activity function must have @activity.defn decorator. "
+                "Pattern:\n"
+                "  @activity.defn\n"
+                "  async def my_activity(input: MyInput) -> MyOutput:\n"
+                "      ...\n"
+                "Register activities in Worker: worker = Worker(client, ..., "
+                "activities=[my_activity]). "
+                "Activity input/output must be serializable (Pydantic or dataclass)."
+            ),
+            should_retry=True, confidence=0.90,
+            constitutional_trace="C-082 (Build Validation)"
+        )
+    return None
+
+
+def _classify_terraform_error(error: str) -> Optional[RetryDiagnosis]:
+    """Terraform plan/apply errors — provider and resource configuration."""
+    if "Error:" not in error and "error" not in error.lower():
+        return None
+    # Only process if looks like a Terraform error
+    if not any(kw in error for kw in ["azurerm", "terraform", "Unsupported argument",
+                                        "Invalid reference", "provider"]):
+        return None
+
+    if "Unsupported argument" in error:
+        m = re.search(r'An argument named "([^"]+)" is not expected', error)
+        attr = m.group(1) if m else "unknown"
+        return RetryDiagnosis(
+            error_type="TERRAFORM_UNSUPPORTED_ARGUMENT",
+            fix_instruction=(
+                f"TERRAFORM FIX: Attribute '{attr}' does not exist on this resource. "
+                f"Check the Azure provider docs for the exact attribute name. "
+                f"Common mistakes: 'sku' vs 'sku_name', 'resource_group' vs 'resource_group_name', "
+                f"'location' is always required. "
+                f"Pin provider version: azurerm ~> 4.0 in required_providers."
+            ),
+            should_retry=True, confidence=0.85,
+            constitutional_trace="C-082 (Build Validation — Terraform)"
+        )
+
+    if "Invalid reference" in error or "Variables not allowed" in error:
+        return RetryDiagnosis(
+            error_type="TERRAFORM_INVALID_REFERENCE",
+            fix_instruction=(
+                "TERRAFORM FIX: Invalid variable or output reference. "
+                "Use var.name for input variables, local.name for locals, "
+                "module.name.output for module outputs, data.type.name.attr for data sources. "
+                "NEVER hardcode subscription IDs, tenant IDs, or resource IDs. "
+                "NEVER use string interpolation for resource names — use var.* references."
+            ),
+            should_retry=True, confidence=0.85,
+            constitutional_trace="C-082 + C-059 (Terraform — no hardcoded credentials)"
+        )
+
+    if "provider" in error.lower() and "configuration" in error.lower():
+        return RetryDiagnosis(
+            error_type="TERRAFORM_PROVIDER_CONFIG",
+            fix_instruction=(
+                "TERRAFORM FIX: Provider configuration missing or incorrect. "
+                "Add to provider.tf (root module only — NEVER inside a module):\n"
+                "  provider \"azurerm\" {\n"
+                "    features {}\n"
+                "    subscription_id = var.subscription_id\n"
+                "  }\n"
+                "required_providers block: azurerm = { source = 'hashicorp/azurerm', version = '~> 4.0' }"
+            ),
+            should_retry=True, confidence=0.85,
+            constitutional_trace="C-082 (Build Validation)"
+        )
+    return None
+
+
+def _classify_typescript_error(error: str) -> Optional[RetryDiagnosis]:
+    """TypeScript/Next.js compilation and runtime boundary errors."""
+    # TypeScript compile errors
+    if "TS" in error and re.search(r'TS\d{4}', error):
+        ts_code = re.search(r'TS(\d{4})', error)
+        code = int(ts_code.group(1)) if ts_code else 0
+
+        if code == 2307:  # Cannot find module
+            m = re.search(r"Cannot find module '([^']+)'", error)
+            mod = m.group(1) if m else "unknown"
+            return RetryDiagnosis(
+                error_type="TS_MODULE_NOT_FOUND",
+                fix_instruction=(
+                    f"TS FIX: Module '{mod}' not found. "
+                    f"Use @/ alias for absolute imports (configured in tsconfig.json). "
+                    f"Example: import {{ Button }} from '@/components/ui/button' "
+                    f"NEVER use relative paths like '../../components' from src root. "
+                    f"Check package.json for available packages before importing."
+                ),
+                should_retry=True, confidence=0.85,
+                constitutional_trace="C-082 (Build Validation — TypeScript)"
+            )
+
+        if code == 2339:  # Property does not exist
+            m = re.search(r"Property '([^']+)' does not exist on type '([^']+)'", error)
+            if m:
+                prop, typ = m.group(1), m.group(2)
+                return RetryDiagnosis(
+                    error_type="TS_PROPERTY_NOT_EXIST",
+                    fix_instruction=(
+                        f"TS FIX: Property '{prop}' does not exist on '{typ}'. "
+                        f"Check the type definition in the codebase. "
+                        f"For Next.js types: SearchParams are string | string[] | undefined, not string. "
+                        f"For React props: ensure the interface/type includes this prop. "
+                        f"NEVER use 'any' to bypass this — narrow the type properly."
+                    ),
+                    should_retry=True, confidence=0.85,
+                    constitutional_trace="C-082 (Build Validation)"
+                )
+
+    # Next.js runtime boundary errors (not compile errors — need special handling)
+    if "Event handlers cannot be passed to Client Component" in error:
+        return RetryDiagnosis(
+            error_type="NEXTJS_CLIENT_COMPONENT_MISSING",
+            fix_instruction=(
+                "NEXT.JS FIX: Add 'use client'; as the FIRST line of the component file. "
+                "This error means a Server Component is passing event handlers (onClick, etc.) "
+                "or using hooks (useState, useEffect). "
+                "Rule: if you use onClick, onChange, useState, useEffect, useRef, or browser APIs "
+                "→ add 'use client'; to the file. "
+                "Default is Server Component. Only add 'use client' when needed."
+            ),
+            should_retry=True, confidence=0.95,
+            constitutional_trace="C-082 (Build Validation — Next.js App Router)"
+        )
+
+    if "useRouter" in error and "only works in a Client Component" in error:
+        return RetryDiagnosis(
+            error_type="NEXTJS_USE_ROUTER_SERVER",
+            fix_instruction=(
+                "NEXT.JS FIX: useRouter(), usePathname(), useSearchParams() only work in Client Components. "
+                "Add 'use client'; as the first line of the file. "
+                "Alternative: pass the value as a prop from a Server Component parent."
+            ),
+            should_retry=True, confidence=0.95,
+            constitutional_trace="C-082 (Build Validation)"
+        )
+    return None
+
+
 # ── LLM-assisted classifier for UNKNOWN patterns ──────────────────────────────
 
 def _classify_with_llm(task_id: str, error: str) -> RetryDiagnosis:  # pragma: no cover
@@ -608,6 +884,34 @@ def diagnose_build_error(
             confidence=0.95,
             constitutional_trace="C-082 (Build Validation — Grpc.Core.ServerCallContext members are properties)"
         )
+
+    # ── Rules 10-14: Multi-stack classifiers (WC013-022) ─────────────────────
+    # Python/Temporal/Vertex AI/Terraform/TypeScript — added for future sprints
+
+    diagnosis = _classify_python_import_error(build_error)
+    if diagnosis:
+        print(f"  Retry Advisor: Python import error → {diagnosis.error_type} (confidence={diagnosis.confidence:.0%})")
+        return diagnosis
+
+    diagnosis = _classify_python_async_error(build_error)
+    if diagnosis:
+        print(f"  Retry Advisor: Python async error → {diagnosis.error_type} (confidence={diagnosis.confidence:.0%})")
+        return diagnosis
+
+    diagnosis = _classify_temporal_error(build_error)
+    if diagnosis:
+        print(f"  Retry Advisor: Temporal error → {diagnosis.error_type} (confidence={diagnosis.confidence:.0%})")
+        return diagnosis
+
+    diagnosis = _classify_terraform_error(build_error)
+    if diagnosis:
+        print(f"  Retry Advisor: Terraform error → {diagnosis.error_type} (confidence={diagnosis.confidence:.0%})")
+        return diagnosis
+
+    diagnosis = _classify_typescript_error(build_error)
+    if diagnosis:
+        print(f"  Retry Advisor: TypeScript/Next.js error → {diagnosis.error_type} (confidence={diagnosis.confidence:.0%})")
+        return diagnosis
 
     # ── Fallback: LLM classification ───────────────────────────────────────────
     print(f"  Retry Advisor: pattern not recognized — calling cheap LLM classifier")
