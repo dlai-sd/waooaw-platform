@@ -401,6 +401,8 @@ jobs:
             echo "| Status | ⏸ Waiting — PR #$EXISTING_PR open, awaiting review/merge |" >> $GITHUB_STEP_SUMMARY
           elif [ "$RESULT" = "SUCCESS" ]; then
             echo "| Status | ✅ PR #$PR_NUMBER opened — awaiting review |" >> $GITHUB_STEP_SUMMARY
+          elif [ "$RESULT" = "PARTIAL" ]; then
+            echo "| Status | ⚠️ Partial execution — review first failed task before re-trigger |" >> $GITHUB_STEP_SUMMARY
           else
             echo "| Status | ❌ Failed — see job logs |" >> $GITHUB_STEP_SUMMARY
           fi

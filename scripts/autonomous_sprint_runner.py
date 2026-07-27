@@ -785,6 +785,15 @@ def call_llm_via_magiclm(
     if model_hint not in ("reasoning", "auto"):
         return None  # model_hint: none — no LLM needed
 
+    # Ensure both repo-root and scripts/ are importable in GitHub Actions and local script mode.
+    import sys as _sys
+    repo_root_path = str(REPO_ROOT)
+    scripts_path = str(REPO_ROOT / "scripts")
+    if repo_root_path not in _sys.path:
+        _sys.path.insert(0, repo_root_path)
+    if scripts_path not in _sys.path:
+        _sys.path.insert(0, scripts_path)
+
     try:
         # Execution context 1: launched from repo root (package path includes "scripts")
         from scripts.magic_llm import MagicLLMPipeline, MagicLLMRequest, TaskCategory
@@ -997,10 +1006,10 @@ def execute_with_llm(task_id: str, task_description: str, spec_sections: dict,
 
     failure_context = ""
     infra_failures = 0  # count of transient API failures (timeout, rate limit, server error)
-    max_attempts = 2
-    for attempt in range(1, max_attempts + 1):  # 2 attempts: 1 primary + 1 build-failure retry with advisor fix
-                                 # Attempt 3 removed: same model+params = same result, wastes tokens
-                                 # Evidence (run 30104540921): attempt 2+3 were connection-dead waste
+    # Bounded to 3 to recover simple compile deltas surfaced by Retry Advisor
+    # (for example CS0266 nullable conversion) without immediate spec-gap escalation.
+    max_attempts = 3
+    for attempt in range(1, max_attempts + 1):
         print(f"\n── {task_id} (attempt {attempt}/{max_attempts}) ──")
 
         prompt_with_context = spec_content
@@ -1127,6 +1136,17 @@ def execute_with_llm(task_id: str, task_description: str, spec_sections: dict,
         gap_desc = (f"{task_id} failed after {max_attempts} attempts ({infra_failures} API timeouts, "
                     f"{max_attempts - infra_failures} build failures). Last build error: {failure_context[:200]}")
     else:
+        # Retry advisor already provided a concrete code fix pattern, but retries exhausted.
+        # This is an implementation-generation miss, not necessarily a specification gap.
+        if failure_context.startswith("RETRY ADVISOR DIAGNOSIS:"):
+            print(f"  ⚠️  BUILD_FAILURE: {task_id} exhausted {max_attempts} attempts with actionable retry diagnosis.")
+            print("  No spec-gap issue created; next run will retry task with fresh branch context.")
+            _MONITOR_SIGNAL["task_results"][task_id] = {
+                "result": "BUILD_FAILURE", "error_type": "RETRY_EXHAUSTED",
+                "build_error_snippet": failure_context[:200], "attempts": max_attempts, "spec_gap_issue": None,
+            }
+            return False
+
         gap_desc = f"{task_id} failed validation after {max_attempts} LLM attempts. Last error: {failure_context[:300]}"
 
     flag_spec_gap(

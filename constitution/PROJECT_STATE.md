@@ -127,7 +127,11 @@ sprint: WC-012
 sprint_status: READY
 task_id: WC012-01                   # starts from task 1
 tasks_done: []
-tasks_remaining: [WC012-01, WC012-02, WC012-03, WC012-04]
+tasks_remaining:
+  - WC012-01
+  - WC012-02
+  - WC012-03
+  - WC012-04
 consecutive_failures: 0
 autonomous_halt: false
 open_prs: none                      # PR #113 closed · PR #96 closed · branch deleted
