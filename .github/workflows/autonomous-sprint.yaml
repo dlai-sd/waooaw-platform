@@ -22,7 +22,7 @@ name: Autonomous Sprint Agent
 
 on:
   schedule:
-    - cron: '0 */3 * * *'    # Every 3 hours (reduced from 6h per PMO request 2026-07-23)
+    - cron: '0 * * * *'    # Every 1 hour (reduced from 3h 2026-07-27 — avg run is 30min, failed runs auto-recover in next slot)
   workflow_dispatch:
     inputs:
       force_task:
@@ -294,7 +294,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: preflight
     if: needs.preflight.outputs.halt == 'false'
-    timeout-minutes: 60             # Raised from 30: 16k-token tasks take ~6min each; 4 tasks × 3 attempts = up to 72min worst case
+    timeout-minutes: 55             # 55 min hard cap (GitHub default is 360 min). 1-hr cron + 55-min cap ensures
+                                     # the job always completes or times out before next cron fires.
+                                     # Worst case: 4 tasks × 3 attempts × ~4min = ~50min max.
     outputs:
       pr_number:         ${{ steps.runner.outputs.pr_number }}
       halt:              ${{ steps.runner.outputs.halt }}
