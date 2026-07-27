@@ -373,6 +373,7 @@ class MagicLLMPipeline:
         # Industry Item 12: Forbidden API patterns — prevent LLM from inventing non-existent methods.
         _FORBIDDEN_APIS = (
             "## FORBIDDEN API PATTERNS (do NOT use — these do not exist)\n"
+            "  ❌ FIRST LINE RULE: every .cs file MUST start with // or using — NEVER ## or markdown (causes CS1024)\n"
             "  ❌ .AsTask() on Task<T>  — Task<T> IS already awaitable, just use 'await task;'\n"
             "  ❌ .TryGetValue() on string/EvaluationContext — use ctx.GetParameter('key')\n"
             "  ❌ .TryGetValue() on proto fields — proto fields are properties, not dictionaries\n"

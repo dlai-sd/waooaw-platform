@@ -47,6 +47,7 @@ REPO_ROOT = Path(__file__).parent.parent
 
 STACK_BEHAVIORAL_RULES: dict[str, list[str]] = {
     "dotnet": [
+        "⛔ FIRST LINE RULE: The FIRST line of every .cs file MUST be // (comment) or using (directive). NEVER ## or any markdown. CS1024 fires if you start with markdown.",
         "ActionParameters is JSON-encoded — use ctx.GetParameter(\"key\"), NEVER TryGetValue().",
         "TenantId comes from gRPC metadata: context.RequestHeaders.GetValue(\"x-tenant-id\") ?? \"\".",
         "All using directives MUST precede the namespace declaration (proto namespace collision risk).",
