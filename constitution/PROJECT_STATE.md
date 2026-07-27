@@ -104,8 +104,10 @@ consecutive_failures: 0
 ## NEXT AUTHORIZED WORK
 
 ```
-Priority 1: Resume WC-012 sprint (PR #96 open — WC012-01 complete)
-  action: review PR #96, merge when ready, sprint continues to WC012-02
+Priority 1: Register GOAL-IB009 (WC-012 reset — clean Goal Orchestrator execution)
+  WC-012 branch deleted · PR #96 closed · starting fresh
+  Goal to register: see PROJECT_STATE.md §WC-012 reset note below
+  action: Founder registers Goal → GO produces Execution Plan → sprint executes
 
 Priority 2: GOAL-003 Phase C — PTR 2.0 Python implementation
   files: scripts/ptr_assembler/ (multi-stack: dotnet, python, terraform, ts)
