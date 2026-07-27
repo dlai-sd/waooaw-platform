@@ -703,7 +703,112 @@ def call_llm(task_id: str, task_description: str, spec_content: str,
         return None
 
 
-def parse_llm_files(response: str) -> dict[str, str]:
+# ── MagicLLM Bridge — replaces call_llm() with constitutional AI execution ───
+# Implements: architecture/reference/magic-llm/architecture.md §4 Architecture
+# Constitutional basis: C-059 (Evidence First), C-069 (Self-Improvement), C-077
+
+def call_llm_via_magiclm(
+    task_id: str,
+    task_description: str,
+    spec_content: str,
+    constitutional_check: str,
+    model_hint: str = "reasoning",
+    max_tokens: int = 10000,
+    attempt: int = 1,
+    goal_id: str = "",
+    ptr_snapshot: dict | None = None,
+) -> str | None:
+    """
+    MagicLLM bridge — replaces call_llm() with constitutionally governed invocation.
+
+    Adds vs. call_llm():
+      ✓ Task complexity scoring → model selection (O-01: 91% cost reduction)
+      ✓ Dynamic thinking budget (O-03)
+      ✓ MagicLLM Decision Record committed to Goal Register (C-059 Evidence First)
+      ✓ PTR 2.0 snapshot injected (includes .csproj packages — closes CS0246 gap)
+      ✓ Stack-namespaced PTR (dotnet/python/terraform/typescript)
+
+    Returns raw LLM response string (same format as call_llm()) or None.
+    """
+    if model_hint not in ("reasoning", "auto"):
+        return None  # model_hint: none — no LLM needed
+
+    try:
+        from scripts.magic_llm import MagicLLMPipeline, MagicLLMRequest, TaskCategory
+        from scripts.goal_orchestrator.goal_register_github import make_goal_register_writer
+    except ImportError as e:
+        print(f"  WARN: MagicLLM not available ({e}) — falling back to call_llm()")
+        return call_llm(task_id, task_description, spec_content,
+                        constitutional_check, model_hint, max_tokens, attempt)
+
+    # Map task to category
+    tid = task_id.lower()
+    if "cct" in tid or "test" in tid or tid.endswith("-02c"):
+        category = TaskCategory.TEST_GENERATION
+    else:
+        category = TaskCategory.CODE_GENERATION
+
+    # Derive goal ID
+    effective_goal_id = goal_id or f"GOAL-{task_id.split('-')[0].upper()}"
+
+    # Build context sections
+    context_sections: list[str] = [spec_content]
+    if constitutional_check:
+        context_sections.append(f"## CONSTITUTIONAL REQUIREMENTS\n{constitutional_check}")
+
+    # Assemble PTR 2.0 if not supplied
+    if ptr_snapshot is None:
+        try:
+            from scripts.ptr_assembler import get_assembler
+            assembler = get_assembler()
+            full_ptr = assembler.assemble(scope=["src", "scripts"])
+            task_ptr = assembler.extract_task_ptr(full_ptr, context_sections)
+            # Inject stack that matches the task
+            stack = "python" if "WC014" in task_id or "WC015" in task_id else "dotnet"
+            ptr_snapshot = task_ptr.get(stack, {})
+        except Exception as e:
+            print(f"  WARN: PTR 2.0 assembly failed ({e}) — using empty PTR")
+            ptr_snapshot = {}
+
+    request = MagicLLMRequest(
+        goal_id=effective_goal_id,
+        institution_id="INST-010",
+        go_authorization_id=f"GOA-{effective_goal_id}-INST-010-{task_id}",
+        task_category=category,
+        task_description=task_description,
+        context_sections=context_sections,
+        ptr_snapshot=ptr_snapshot,
+        expected_output_format="xml_file_blocks",
+        execution_plan_reference=f"EP-{task_id}",
+        previous_attempt_id=f"attempt-{attempt - 1}" if attempt > 1 else None,
+        cascade_level=None,
+        max_tokens=max_tokens,
+    )
+
+    writer = make_goal_register_writer()
+    pipeline = MagicLLMPipeline(
+        goal_register_writer=writer.write_record,
+        api_key=os.environ.get("ANTHROPIC_API_KEY", ""),
+    )
+
+    try:
+        response = pipeline.invoke(request)
+    except RuntimeError as e:
+        # Propagate infra errors (timeout, rate limit) to outer retry logic
+        raise
+    except Exception as e:
+        print(f"  WARN: MagicLLM invocation error ({e}) — falling back to call_llm()")
+        return call_llm(task_id, task_description, spec_content,
+                        constitutional_check, model_hint, max_tokens, attempt)
+
+    if response.status == "accepted":
+        print(f"  ✓ MagicLLM: {response.model_version} · "
+              f"complexity={response.parsed_artifacts.get('complexity', '?')} · "
+              f"cost=₹{response.cost_inr:.4f} · attempt={attempt}")
+        return response.raw_output
+    else:
+        print(f"  MagicLLM returned {response.status}: {response.failure_classification}")
+        return None  # triggers outer retry loop
     """
     Parse <file path="...">content</file> blocks from LLM response.
     Returns dict of {relative_path: content}.
@@ -837,9 +942,13 @@ def execute_with_llm(task_id: str, task_description: str, spec_sections: dict,
             prompt_with_context += f"\n\n# Previous attempt failed:\n{failure_context}\nFix the issues above."
 
         try:
-            response = call_llm(task_id, task_description, prompt_with_context,
-                               constitutional_check, model_hint, max_tokens,
-                               attempt=attempt)
+            # MagicLLM bridge: constitutional AI execution with Evidence First,
+            # task complexity scoring (O-01), PTR 2.0, MagicLLM Decision Records
+            response = call_llm_via_magiclm(
+                task_id, task_description, prompt_with_context,
+                constitutional_check, model_hint, max_tokens,
+                attempt=attempt,
+            )
         except RuntimeError as infra_err:
             err_str = str(infra_err)
             infra_failures += 1
