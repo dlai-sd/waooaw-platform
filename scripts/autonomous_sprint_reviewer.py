@@ -27,10 +27,23 @@ import re
 import subprocess
 import sys
 import time
-from datetime import date
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).parent.parent
+
+# Goal Register writer (Phase 1: GitHub Issues + JSONL fallback)
+try:
+    sys.path.insert(0, str(REPO_ROOT))
+    from scripts.goal_orchestrator.goal_register_github import make_goal_register_writer
+    _goal_register = make_goal_register_writer()
+except ImportError:
+    _goal_register = None
+
+
+def _goal_id_from_sprint(sprint: str) -> str:
+    """Derive a Goal ID from the sprint name. WC-012 → GOAL-WC-012."""
+    return f"GOAL-{sprint}" if sprint.startswith("WC-") else f"GOAL-{sprint}"
 
 
 def run(cmd: list[str], env: dict | None = None) -> subprocess.CompletedProcess:
@@ -191,6 +204,27 @@ def main() -> int:
         if result.returncode == 0:
             print(f"  ✅ PR #{pr_number} APPROVED (C-065 compliant — GitHub App identity)")
             approved = True
+
+            # ── EEM Step 14: PR Review Contribution Record → Goal Register ──
+            goal_id = _goal_id_from_sprint(sprint)
+            if _goal_register:
+                _goal_register.write_record(goal_id, {
+                    "record_type": "PR Review Contribution Record",
+                    "record_id": f"PRR-{sprint}-{pr_number}",
+                    "institution_id": "INST-010",
+                    "goal_id": goal_id,
+                    "eem_step": 14,
+                    "pr_number": pr_number,
+                    "verdict": "APPROVED",
+                    "reviewer_identity": "waooaw-reviewer GitHub App (C-065)",
+                    "review_dimensions": [
+                        "C-059 traceability headers", "No hardcoded secrets",
+                        "Branch naming", "Commit format", "WC scope", "CCT gates",
+                    ],
+                    "constitutional_basis": "C-065 · C-059 · C-066 Tier 2A",
+                })
+                _goal_register.update_goal_state(goal_id, "VALIDATED")
+                print(f"  ✓ Step 14 evidence record committed to Goal Register [{goal_id}]")
         else:
             print(f"  WARN: Approval failed: {result.stderr[:200]}")
             has_review_token = False  # fall through to advisory
@@ -220,6 +254,25 @@ def main() -> int:
             old_ver, new_ver = bump_version(sprint)
             update_changelog(sprint, new_ver)
             print(f"  📦 Version bump: {old_ver} → {new_ver}")
+
+            # ── EEM Step 15: Production Release Record → Goal Register ───────
+            goal_id = _goal_id_from_sprint(sprint)
+            if _goal_register:
+                _goal_register.write_record(goal_id, {
+                    "record_type": "Production Release Record",
+                    "record_id": f"REL-{sprint}-{pr_number}",
+                    "institution_id": "INST-010",
+                    "goal_id": goal_id,
+                    "eem_step": 15,
+                    "pr_number": pr_number,
+                    "version": new_ver,
+                    "deployment": "squash-merge to main",
+                    "health_check": "CI gates passed",
+                    "rollback_available": True,
+                    "constitutional_basis": "C-066 Tier 2A · C-001 (autonomous merge authorized)",
+                })
+                _goal_register.update_goal_state(goal_id, "COMPLETE")
+                print(f"  ✓ Step 15 evidence record committed to Goal Register [{goal_id}]")
 
             adv = run([
                 "python3", "scripts/sprint_state.py",

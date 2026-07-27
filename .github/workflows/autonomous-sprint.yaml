@@ -287,7 +287,7 @@ jobs:
         uses: azure/get-keyvault-secrets@v1
         with:
           keyvault: ${{ vars.AZURE_KEYVAULT_NAME }}
-          secrets: 'ANTHROPIC-API-KEY, GH-APP-ID, GH-APP-INSTALLATION-ID, GH-APP-PRIVATE-KEY'
+          secrets: 'ANTHROPIC-API-KEY, GH-APP-ID, GH-APP-INSTALLATION-ID, GH-APP-PRIVATE-KEY, GOOGLE-VERTEX-SA-KEY'
 
       # G3 FIX: Skip execution if an open PR already exists for this task
       # Prevents duplicate PRs when a previous run's PR is still open/unmerged
@@ -321,6 +321,7 @@ jobs:
         env:
           GITHUB_TOKEN:      ${{ secrets.GITHUB_TOKEN }}
           ANTHROPIC_API_KEY: ${{ steps.kv_secrets.outputs.ANTHROPIC-API-KEY }}
+          GOOGLE_VERTEX_SA_KEY: ${{ steps.kv_secrets.outputs.GOOGLE-VERTEX-SA-KEY }}
           FORCE_TASK:        ${{ inputs.force_task || '' }}
           DRY_RUN:           ${{ inputs.dry_run || 'false' }}
           GITHUB_REPO:       ${{ github.repository }}
