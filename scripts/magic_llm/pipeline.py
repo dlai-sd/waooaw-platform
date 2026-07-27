@@ -56,6 +56,48 @@ _ANTHROPIC_CATS = {
 # Cost estimates in INR (approximate, for C-077 tracking)
 _COST_PER_1K_INPUT  = {"claude-sonnet-4-6": 0.24, "claude-haiku-20240307": 0.02}
 _COST_PER_1K_OUTPUT = {"claude-sonnet-4-6": 1.20, "claude-haiku-20240307": 0.10}
+# Cached input costs 1/10th (O-02: prompt caching)
+_COST_PER_1K_CACHED = {"claude-sonnet-4-6": 0.024, "claude-haiku-20240307": 0.002}
+
+
+def _task_complexity_score(request: "MagicLLMRequest") -> int:
+    """
+    O-01: Task complexity score determines model + thinking budget.
+    Prevents over-spending Sonnet on boilerplate tasks.
+
+    LOW  (0-39):  Haiku, no thinking  — boilerplate, scaffold, config
+    MEDIUM (40-79): Haiku, no thinking  — standard patterns with light logic
+    HIGH (80+):   Sonnet, thinking on — constitutional logic, CCT gates, security
+    """
+    score = 0
+    score += len(request.context_sections) * 8          # more spec = more complex
+    score += len(request.ptr_snapshot.get("types", {})) * 2  # more types = more context
+
+    desc = (request.task_description or "").lower()
+    # High-stakes markers
+    if any(kw in desc for kw in ["cct", "constitutional", "evidence first", "emergency stop",
+                                  "evaluator", "security", "c-041", "c-023", "c-001"]):
+        score += 30
+    # CCT gate in spec
+    if any("cct" in s.lower() for s in request.context_sections):
+        score += 25
+    # Scaffold / boilerplate markers
+    if any(kw in desc for kw in ["scaffold", "project", "csproj", "setup", "wiring",
+                                  "skeleton", "hello world", "placeholder"]):
+        score -= 20  # boilerplate penalty
+    return max(0, score)
+
+
+def _thinking_budget(complexity: int) -> int:
+    """
+    O-03: Dynamic thinking budget based on task complexity.
+    Avoids burning 8K thinking tokens on simple tasks.
+    """
+    if complexity >= 80:
+        return 8000   # HIGH: full budget
+    if complexity >= 40:
+        return 3000   # MEDIUM: reduced budget (saves ~60% of thinking cost)
+    return 0          # LOW: no thinking (Haiku, no thinking mode)
 
 
 class MagicLLMPipeline:
@@ -92,23 +134,25 @@ class MagicLLMPipeline:
                 f"(Gemini Vertex AI). Current implementation supports Cat. 1-6."
             )
 
-        # ② Model Selector
-        model, temperature = self._select_model(request.task_category)
+        # ② Model Selector (O-01: task complexity scoring)
+        model, temperature = self._select_model(request.task_category, request)
+        complexity = _task_complexity_score(request)
 
         # ③ Context Builder
         prompt = self._build_prompt(request)
 
         # ④ Execution Contract
         max_tokens = request.max_tokens
-        use_thinking = request.task_category.model_hint == "reasoning"
+        # O-03: Dynamic thinking budget based on complexity score
+        thinking_budget = _thinking_budget(complexity)
+        use_thinking = thinking_budget > 0 and model == _ANTHROPIC_MODEL
 
         # ⑤ AI Execution Layer
         raw_response, in_tok, out_tok = self._call_anthropic(
             prompt=prompt,
             model=model,
             max_tokens=max_tokens,
-            use_thinking=use_thinking,
-        )
+            use_thinking=use_thinking,            thinking_budget=thinking_budget,        )
 
         cost = self._estimate_cost(model, in_tok, out_tok)
 
@@ -148,7 +192,10 @@ class MagicLLMPipeline:
             model_version=model,
             temperature=temperature,
             token_allocation=f"{in_tok}/{out_tok}",
-            context_strategy=f"{len(request.context_sections)} sections, PTR={'yes' if request.ptr_snapshot else 'no'}",
+            context_strategy=(
+                f"{len(request.context_sections)} sections, PTR={'yes' if request.ptr_snapshot else 'no'}, "
+                f"complexity={complexity}, thinking_budget={thinking_budget}"
+            ),
             gates_evaluated={k: ("PASS" if v else "FAIL") for k, v in gates.items()},
             retry_count=0 if not request.previous_attempt_id else 1,
             cost_incurred_inr=cost,
@@ -222,15 +269,16 @@ class MagicLLMPipeline:
 
     # ── Private: Model Selector (②) ──────────────────────────────────────────
 
-    def _select_model(self, category: TaskCategory) -> tuple[str, float]:
-        """Returns (model_name, temperature) for the given task category."""
-        if category in (
-            TaskCategory.CODE_GENERATION,
-            TaskCategory.TEST_GENERATION,
-            TaskCategory.DEEP_REASONING,
-            TaskCategory.DESIGN_CONTRACTS,
-        ):
-            return _ANTHROPIC_MODEL, 0.0
+    def _select_model(self, category: TaskCategory, request: "MagicLLMRequest" = None) -> tuple[str, float]:
+        """O-01: Returns (model_name, temperature) using task complexity scoring."""
+        if category in (TaskCategory.CODE_GENERATION, TaskCategory.TEST_GENERATION,
+                        TaskCategory.DEEP_REASONING, TaskCategory.DESIGN_CONTRACTS):
+            if request is not None:
+                complexity = _task_complexity_score(request)
+                if complexity >= 80:
+                    return _ANTHROPIC_MODEL, 0.0   # HIGH → Sonnet
+                return _ANTHROPIC_HAIKU, 0.0       # LOW/MEDIUM → Haiku (10x cheaper)
+            return _ANTHROPIC_MODEL, 0.0           # fallback if no request
         return _ANTHROPIC_HAIKU, 0.0
 
     # ── Private: Context Builder (③) ─────────────────────────────────────────
@@ -270,14 +318,14 @@ class MagicLLMPipeline:
         model: str,
         max_tokens: int,
         use_thinking: bool,
+        thinking_budget: int = 8000,
     ) -> tuple[str | None, int, int]:
-        """Direct Anthropic API call matching existing call_llm() pattern."""
+        """Direct Anthropic API call — O-03: dynamic thinking_budget."""
         if not self._api_key:
             return None, 0, 0
 
-        THINKING_OVERHEAD = 8000
-        THINKING_BUDGET   = 8000
-        effective_max = (max_tokens + THINKING_OVERHEAD) if use_thinking else max_tokens
+        # O-03: dynamic budget — only add overhead when thinking is actually enabled
+        effective_max = (max_tokens + thinking_budget) if use_thinking else max_tokens
 
         body: dict[str, Any] = {
             "model": model,
@@ -285,7 +333,7 @@ class MagicLLMPipeline:
             "messages": [{"role": "user", "content": prompt}],
         }
         if use_thinking:
-            body["thinking"] = {"type": "enabled", "budget_tokens": THINKING_BUDGET}
+            body["thinking"] = {"type": "enabled", "budget_tokens": thinking_budget}
 
         payload = json.dumps(body).encode("utf-8")
         req = urllib.request.Request(
