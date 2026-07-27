@@ -15,6 +15,7 @@ import json
 import os
 import re
 import time
+import urllib.parse
 import urllib.request
 import uuid
 from datetime import datetime, timezone
@@ -30,7 +31,7 @@ from .types import (
     TaskCategory,
 )
 
-_PHASE2_CATS = {
+_GEMINI_CATS = {
     TaskCategory.SEMANTIC_UNDERSTANDING,
     TaskCategory.RESEARCH_QUERY,
     TaskCategory.GOAL_UNDERSTANDING,
@@ -40,9 +41,13 @@ _PHASE2_CATS = {
     TaskCategory.DECISION_SYNTHESIS,
 }
 
-# ── Model routing (extends ADR-030 §Model Routing) ───────────────────────────
+# ── Model routing (extends ADR-030 §Model Routing) ──────────────────────────────────
 _ANTHROPIC_MODEL = "claude-sonnet-4-6"
 _ANTHROPIC_HAIKU  = "claude-haiku-20240307"
+
+# ADR-033: Gemini Flash for Cat. 7-13 (Orchestration + Semantic)
+_GEMINI_FLASH  = "gemini-2.0-flash"
+_GEMINI_REGION = "asia-south1"   # Mumbai — DPDPA India data residency
 
 _ANTHROPIC_CATS = {
     TaskCategory.DEEP_REASONING,
@@ -54,10 +59,22 @@ _ANTHROPIC_CATS = {
 }
 
 # Cost estimates in INR (approximate, for C-077 tracking)
-_COST_PER_1K_INPUT  = {"claude-sonnet-4-6": 0.24, "claude-haiku-20240307": 0.02}
-_COST_PER_1K_OUTPUT = {"claude-sonnet-4-6": 1.20, "claude-haiku-20240307": 0.10}
+_COST_PER_1K_INPUT  = {
+    "claude-sonnet-4-6": 0.24,
+    "claude-haiku-20240307": 0.02,
+    "gemini-2.0-flash": 0.007,   # ADR-033: 34× cheaper than Sonnet
+}
+_COST_PER_1K_OUTPUT = {
+    "claude-sonnet-4-6": 1.20,
+    "claude-haiku-20240307": 0.10,
+    "gemini-2.0-flash": 0.021,
+}
 # Cached input costs 1/10th (O-02: prompt caching)
-_COST_PER_1K_CACHED = {"claude-sonnet-4-6": 0.024, "claude-haiku-20240307": 0.002}
+_COST_PER_1K_CACHED = {
+    "claude-sonnet-4-6": 0.024,
+    "claude-haiku-20240307": 0.002,
+    "gemini-2.0-flash": 0.001,   # Gemini context caching (Phase 3)
+}
 
 
 def _task_complexity_score(request: "MagicLLMRequest") -> int:
@@ -116,9 +133,17 @@ class MagicLLMPipeline:
         self,
         goal_register_writer: Optional[Callable[[dict], str]] = None,
         api_key: Optional[str] = None,
+        vertex_sa_key_json: Optional[str] = None,
     ) -> None:
         self._write_record = goal_register_writer or self._default_file_writer
         self._api_key = api_key or os.environ.get("ANTHROPIC_API_KEY", "")
+        # ADR-033: Gemini Vertex AI SA key (JSON string)
+        self._vertex_sa_key_json = (
+            vertex_sa_key_json
+            or os.environ.get("GOOGLE_VERTEX_SA_KEY", "")
+        )
+        # Token cache: (access_token, expiry_timestamp)
+        self._vertex_token_cache: Optional[tuple[str, float]] = None
 
     # ── Public API ───────────────────────────────────────────────────────────
 
@@ -126,13 +151,11 @@ class MagicLLMPipeline:
         """
         Single entry point for all MagicLLM invocations.
         Records MagicLLMDecisionRecord to Goal Register BEFORE returning (C-059).
+        Cat. 1-6: Anthropic Claude   (ADR-030)
+        Cat. 7-13: Gemini Flash on Vertex AI asia-south1  (ADR-033)
         """
-        # ① Task Classifier
-        if request.task_category in _PHASE2_CATS:
-            raise NotImplementedError(
-                f"TaskCategory.{request.task_category.name} requires Phase 2 "
-                f"(Gemini Vertex AI). Current implementation supports Cat. 1-6."
-            )
+        # ① Task Classifier — route to correct AI Execution Layer
+        use_gemini = request.task_category in _GEMINI_CATS
 
         # ② Model Selector (O-01: task complexity scoring)
         model, temperature = self._select_model(request.task_category, request)
@@ -143,16 +166,26 @@ class MagicLLMPipeline:
 
         # ④ Execution Contract
         max_tokens = request.max_tokens
-        # O-03: Dynamic thinking budget based on complexity score
-        thinking_budget = _thinking_budget(complexity)
+        # O-03: thinking budget (Anthropic only — Gemini reasons internally)
+        thinking_budget = _thinking_budget(complexity) if not use_gemini else 0
         use_thinking = thinking_budget > 0 and model == _ANTHROPIC_MODEL
 
-        # ⑤ AI Execution Layer
-        raw_response, in_tok, out_tok = self._call_anthropic(
-            prompt=prompt,
-            model=model,
-            max_tokens=max_tokens,
-            use_thinking=use_thinking,            thinking_budget=thinking_budget,        )
+        # ⑤ AI Execution Layer — Anthropic or Gemini
+        if use_gemini:
+            raw_response, in_tok, out_tok = self._call_gemini(
+                prompt=prompt,
+                max_tokens=max_tokens,
+            )
+            model_provider = "google"
+        else:
+            raw_response, in_tok, out_tok = self._call_anthropic(
+                prompt=prompt,
+                model=model,
+                max_tokens=max_tokens,
+                use_thinking=use_thinking,
+                thinking_budget=thinking_budget,
+            )
+            model_provider = "anthropic"
 
         cost = self._estimate_cost(model, in_tok, out_tok)
 
@@ -172,7 +205,7 @@ class MagicLLMPipeline:
             gates_evaluated=gates,
             failure_classification=failure_class,
             failure_detail=failure_detail,
-            model_provider="anthropic",
+            model_provider=model_provider,
             model_version=model,
             temperature=temperature,
             input_tokens=in_tok,
@@ -188,7 +221,7 @@ class MagicLLMPipeline:
             goal_id=request.goal_id,
             record_id=f"MDR-{request.goal_id}-{request.institution_id}-{int(time.time())}",
             task_category=request.task_category,
-            model_provider="anthropic",
+            model_provider=model_provider,
             model_version=model,
             temperature=temperature,
             token_allocation=f"{in_tok}/{out_tok}",
@@ -270,7 +303,14 @@ class MagicLLMPipeline:
     # ── Private: Model Selector (②) ──────────────────────────────────────────
 
     def _select_model(self, category: TaskCategory, request: "MagicLLMRequest" = None) -> tuple[str, float]:
-        """O-01: Returns (model_name, temperature) using task complexity scoring."""
+        """O-01: Returns (model_name, temperature) using task complexity scoring.
+        ADR-033: Cat. 7-13 always use Gemini Flash.
+        """
+        # ADR-033: Gemini for orchestration + semantic categories
+        if category in _GEMINI_CATS:
+            return _GEMINI_FLASH, 0.1
+
+        # Anthropic for engineering categories (Cat. 1-6)
         if category in (TaskCategory.CODE_GENERATION, TaskCategory.TEST_GENERATION,
                         TaskCategory.DEEP_REASONING, TaskCategory.DESIGN_CONTRACTS):
             if request is not None:
@@ -284,17 +324,28 @@ class MagicLLMPipeline:
     # ── Private: Context Builder (③) ─────────────────────────────────────────
 
     def _build_prompt(self, request: MagicLLMRequest) -> str:
-        """Assembles context sections + PTR + constitutional obligations."""
+        """Assembles context sections + PTR + constitutional obligations.
+        ADR-033: Cat. 7-13 use a different preamble (no code annotation requirement).
+        """
         parts: list[str] = []
 
-        # Constitutional preamble
-        parts.append(
-            "## CONSTITUTIONAL OBLIGATIONS\n"
-            "Every file you produce MUST begin with:\n"
-            "# Implements: <spec-path> §<section>\n"
-            "# Constitutional basis: C-NNN (<claim name>)\n"
-            "Output format: <file path=\"relative/path/to/file.ext\">...content...</file>\n"
-        )
+        if request.task_category in _GEMINI_CATS:
+            # Orchestration/semantic preamble — no annotation or file block requirement
+            parts.append(
+                "## CONSTITUTIONAL OBLIGATIONS\n"
+                "You are the WAOOAW Goal Orchestrator (INST-013). "
+                "Operate under C-001 (Evidence First), C-059 (Traceability), C-007 (Append-Only). "
+                "Produce structured output as instructed. Do not hallucinate institution IDs or claim IDs."
+            )
+        else:
+            # Engineering preamble — code annotation required
+            parts.append(
+                "## CONSTITUTIONAL OBLIGATIONS\n"
+                "Every file you produce MUST begin with:\n"
+                "# Implements: <spec-path> §<section>\n"
+                "# Constitutional basis: C-NNN (<claim name>)\n"
+                "Output format: <file path=\"relative/path/to/file.ext\">...content...</file>\n"
+            )
 
         # Platform Type Registry injection (for code tasks)
         if request.ptr_snapshot:
@@ -310,7 +361,124 @@ class MagicLLMPipeline:
 
         return "\n\n---\n\n".join(parts)
 
-    # ── Private: AI Execution Layer (⑤) ──────────────────────────────────────
+    # ── Private: AI Execution Layer — Gemini (ADR-033) ───────────────────────
+
+    def _get_vertex_token(self) -> str:
+        """Exchange SA key for Vertex AI access token (OAuth2 JWT Bearer — RFC 7523).
+        Token cached in-memory for 55 minutes (expires at 60, refreshed early).
+        """
+        import time as _time
+        now = _time.time()
+
+        # Return cached token if still valid
+        if self._vertex_token_cache is not None:
+            token, expiry = self._vertex_token_cache
+            if now < expiry:
+                return token
+
+        if not self._vertex_sa_key_json:
+            raise RuntimeError(
+                "GOOGLE_VERTEX_SA_KEY not set — cannot call Gemini. "
+                "Add the GCP service account JSON to Azure Key Vault (ADR-033)."
+            )
+
+        sa = json.loads(self._vertex_sa_key_json)
+        iat = int(now)
+        exp = iat + 3600
+
+        try:
+            import jwt as _jwt  # PyJWT
+            payload = {
+                "iss": sa["client_email"],
+                "scope": "https://www.googleapis.com/auth/cloud-platform",
+                "aud": "https://oauth2.googleapis.com/token",
+                "exp": exp,
+                "iat": iat,
+            }
+            signed_jwt = _jwt.encode(payload, sa["private_key"], algorithm="RS256")
+        except Exception as exc:
+            raise RuntimeError(f"Failed to sign SA JWT: {exc}") from exc
+
+        # Exchange JWT for access token
+        body = urllib.parse.urlencode({
+            "grant_type": "urn:ietf:params:oauth:grant-type:jwt-bearer",
+            "assertion": signed_jwt,
+        }).encode("utf-8")
+        req = urllib.request.Request(
+            "https://oauth2.googleapis.com/token",
+            data=body,
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                token_data = json.loads(resp.read().decode("utf-8"))
+        except Exception as exc:
+            raise RuntimeError(f"Token exchange failed: {exc}") from exc
+
+        access_token: str = token_data["access_token"]
+        # Cache for 55 minutes (5 min before expiry)
+        self._vertex_token_cache = (access_token, now + 55 * 60)
+        return access_token
+
+    def _call_gemini(
+        self,
+        prompt: str,
+        max_tokens: int,
+    ) -> tuple[str | None, int, int]:
+        """Vertex AI Gemini REST API call — asia-south1 (Mumbai, DPDPA compliant).
+        ADR-033: Cat. 7-13 orchestration + semantic categories.
+        """
+        if not self._vertex_sa_key_json:
+            print("  [MagicLLM] GOOGLE_VERTEX_SA_KEY not set — Gemini call skipped")
+            return None, 0, 0
+
+        try:
+            sa = json.loads(self._vertex_sa_key_json)
+            project_id: str = sa["project_id"]
+            token = self._get_vertex_token()
+        except Exception as exc:
+            print(f"  [MagicLLM] Gemini auth failed: {exc}")
+            return None, 0, 0
+
+        url = (
+            f"https://{_GEMINI_REGION}-aiplatform.googleapis.com/v1/projects/{project_id}"
+            f"/locations/{_GEMINI_REGION}/publishers/google/models/{_GEMINI_FLASH}:generateContent"
+        )
+        body = json.dumps({
+            "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+            "generationConfig": {
+                "maxOutputTokens": max_tokens,
+                "temperature": 0.1,
+            },
+        }).encode("utf-8")
+        req = urllib.request.Request(
+            url, data=body,
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json",
+            },
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=300) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+        except Exception as exc:
+            print(f"  [MagicLLM] Gemini API call failed: {exc}")
+            return None, 0, 0
+
+        candidates = data.get("candidates", [])
+        text = ""
+        if candidates:
+            parts_list = candidates[0].get("content", {}).get("parts", [])
+            text = "".join(p.get("text", "") for p in parts_list)
+
+        usage = data.get("usageMetadata", {})
+        in_tok: int = usage.get("promptTokenCount", 0)
+        out_tok: int = usage.get("candidatesTokenCount", 0)
+        return text or None, in_tok, out_tok
+
+    # ── Private: AI Execution Layer — Anthropic (⑤) ──────────────────────────
 
     def _call_anthropic(
         self,
@@ -391,7 +559,8 @@ class MagicLLMPipeline:
         else:
             gates[QualityGate.FORMAT] = bool(raw.strip())
 
-        # Annotation gate (C-073) — for code tasks (stack-aware)
+        # Annotation gate (C-073) — for code tasks only (Cat. 1-6, stack-aware)
+        # ADR-033: Cat. 7-13 produce prose/JSON, not source files — no annotation required
         if request.task_category in (TaskCategory.CODE_GENERATION, TaskCategory.TEST_GENERATION):
             # Python/Terraform/CSS: # Implements:  |  C#/JS/TS: // Implements:
             has_implements = ("# Implements:" in raw) or ("// Implements:" in raw)

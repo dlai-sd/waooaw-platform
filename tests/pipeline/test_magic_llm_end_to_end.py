@@ -159,23 +159,52 @@ class TestMagicLLMPipeline:
         from scripts.magic_llm.types import FailureClassification
         assert response.failure_classification == FailureClassification.ANNOTATION_MISSING
 
-    # AC-04: Phase 2 categories raise NotImplementedError clearly
-    def test_phase2_category_raises_not_implemented(self):
+    # AC-04: Cat. 7-13 (Gemini) — route to Gemini, graceful no-key fallback (ADR-033)
+    def test_gemini_cat_routes_to_gemini_model(self):
+        """ADR-033: Cat. 7-13 use gemini-2.0-flash, not Anthropic."""
         from scripts.magic_llm.types import MagicLLMRequest, TaskCategory
+        from scripts.magic_llm.pipeline import _GEMINI_FLASH
         pipeline = self._make_pipeline()
         req = MagicLLMRequest(
             goal_id="GOAL-SIM",
             institution_id="INST-013",
             go_authorization_id="internal",
             task_category=TaskCategory.GOAL_UNDERSTANDING,
-            task_description="understand",
+            task_description="Parse this goal: implement tenant isolation",
             context_sections=["raw input"],
             ptr_snapshot={},
             expected_output_format="json",
             execution_plan_reference="",
         )
-        with pytest.raises(NotImplementedError, match="Phase 2"):
-            pipeline.invoke(req)
+        # Mock _call_gemini so no real network call needed
+        with patch.object(pipeline, "_call_gemini", return_value=('{"goal_id": "G-001"}', 100, 50)) as mock_gemini:
+            response = pipeline.invoke(req)
+        mock_gemini.assert_called_once()
+        assert response.model_version == _GEMINI_FLASH
+        assert response.model_provider == "google"
+
+    # AC-04b: Cat. 7-13 — no annotation gate applied (ADR-033)
+    def test_gemini_cat_no_annotation_gate(self):
+        """ADR-033: Cat. 7-13 produce prose/JSON, annotation gate must NOT fire."""
+        from scripts.magic_llm.types import MagicLLMRequest, TaskCategory
+        pipeline = self._make_pipeline()
+        req = MagicLLMRequest(
+            goal_id="GOAL-SIM",
+            institution_id="INST-013",
+            go_authorization_id="internal",
+            task_category=TaskCategory.ROUTING_INTELLIGENCE,
+            task_description="Route this Goal to the correct institution",
+            context_sections=["goal context"],
+            ptr_snapshot={},
+            expected_output_format="json",
+            execution_plan_reference="",
+        )
+        # Response has no "# Implements:" — must still pass (no annotation gate for Cat. 7-13)
+        plain_json = '{"institution": "INST-010", "wc": "WC-013"}'
+        with patch.object(pipeline, "_call_gemini", return_value=(plain_json, 80, 30)):
+            response = pipeline.invoke(req)
+        assert response.status == "accepted"
+        assert "ANNOTATION" not in response.gates_evaluated
 
     # AC-05: retry_with_enhanced_context injects correction and re-invokes
     def test_retry_with_enhanced_context(self):

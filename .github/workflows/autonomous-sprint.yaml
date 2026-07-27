@@ -312,7 +312,7 @@ jobs:
           dotnet-version: '9.0.x'
 
       - name: Install dependencies
-        run: pip install pyyaml requests
+        run: pip install pyyaml requests PyJWT cryptography
 
       - name: Configure git
         run: |
