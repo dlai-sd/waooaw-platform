@@ -28,6 +28,16 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
+from compiler_diagnostic_router import (
+    FAMILY_INTERFACE_CONTRACT,
+    FAMILY_NULLABILITY,
+    FAMILY_REFERENCE_CONFIG,
+    FAMILY_SIGNATURE_DRIFT,
+    classify_diagnostic_family,
+    parse_diagnostic_facts,
+    summarize_facts,
+)
+
 
 # ── Error type constants ───────────────────────────────────────────────────────
 
@@ -729,8 +739,11 @@ def diagnose_build_error(
     """
     # Collect all CS error codes from the error output
     error_codes = set(re.findall(r'CS\d+', build_error))
+    facts = parse_diagnostic_facts(build_error)
+    family = classify_diagnostic_family(facts)
 
     print(f"  Retry Advisor: {task_id} — error codes: {sorted(error_codes)}")
+    print(f"  Retry Advisor: diagnostic family={family}")
 
     # ── Rule 1: CS0101 — duplicate class definition ────────────────────────────
     if "CS0101" in error_codes:
@@ -952,6 +965,60 @@ def diagnose_build_error(
     if diagnosis:
         print(f"  Retry Advisor: TypeScript/Next.js error → {diagnosis.error_type} (confidence={diagnosis.confidence:.0%})")
         return diagnosis
+
+    # ── Family fallback (semantic) before expensive LLM fallback ──────────────
+    # This avoids code-by-code whack-a-mole for large C# diagnostic spaces.
+    if family == FAMILY_SIGNATURE_DRIFT:
+        return RetryDiagnosis(
+            error_type=WRONG_FIELD_NAME,
+            fix_instruction=(
+                "SIGNATURE DRIFT: public constructor/method contract changed without updating all call sites. "
+                "Patch all invocations to match the new signature OR add backward-compatible overload/optional arg. "
+                f"Diagnostics: {summarize_facts(facts)}"
+            ),
+            should_retry=True,
+            confidence=0.85,
+            constitutional_trace="C-082 (Build Validation — signature contracts must remain call-site compatible)",
+        )
+
+    if family == FAMILY_NULLABILITY:
+        return RetryDiagnosis(
+            error_type=WRONG_FIELD_NAME,
+            fix_instruction=(
+                "NULLABILITY MISMATCH: add explicit nullable handling (HasValue/Value or GetValueOrDefault) "
+                "and avoid implicit nullable→non-nullable assignment. "
+                f"Diagnostics: {summarize_facts(facts)}"
+            ),
+            should_retry=True,
+            confidence=0.82,
+            constitutional_trace="C-082 (Build Validation — nullability contracts must be explicit)",
+        )
+
+    if family == FAMILY_INTERFACE_CONTRACT:
+        return RetryDiagnosis(
+            error_type=WRONG_FIELD_NAME,
+            fix_instruction=(
+                "INTERFACE/OVERRIDE CONTRACT MISMATCH: align implementation signatures exactly with interface/base members. "
+                "Remove invented members and correct property-vs-method override forms. "
+                f"Diagnostics: {summarize_facts(facts)}"
+            ),
+            should_retry=True,
+            confidence=0.80,
+            constitutional_trace="C-082 (Build Validation — interface and override contracts must match exactly)",
+        )
+
+    if family == FAMILY_REFERENCE_CONFIG:
+        return RetryDiagnosis(
+            error_type=MISSING_USING,
+            fix_instruction=(
+                "REFERENCE/BUILD CONFIG ISSUE: resolve package/project references first (restore/update refs), "
+                "then retry code generation. "
+                f"Diagnostics: {summarize_facts(facts)}"
+            ),
+            should_retry=False,
+            confidence=0.90,
+            constitutional_trace="C-082 (Build Validation — project reference graph must be valid before code retries)",
+        )
 
     # ── Fallback: LLM classification ───────────────────────────────────────────
     print(f"  Retry Advisor: pattern not recognized — calling cheap LLM classifier")
