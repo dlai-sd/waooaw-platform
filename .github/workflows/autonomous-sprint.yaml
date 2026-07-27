@@ -22,7 +22,7 @@ name: Autonomous Sprint Agent
 
 on:
   schedule:
-    - cron: '0 * * * *'    # Every 1 hour (reduced from 3h 2026-07-27 — avg run is 30min, failed runs auto-recover in next slot)
+    - cron: '0 */2 * * *'    # Every 2 hours — matches 2-hr job cap so run always completes before next slot
   workflow_dispatch:
     inputs:
       force_task:
