@@ -676,6 +676,96 @@ Those are implementation decisions. They belong to the Engineering Execution Mod
 
 ---
 
-*Produced by the Constitutional Review Board — GOAL-001 Phase 1*
-*For Founder ratification. This document becomes a constitutional chapter upon ratification.*
-*Pending ratification, this is a proposed constitutional addition — not yet governing.*
+## §11 — Autonomous Goal Execution (Engineering Sprint Pattern)
+
+**Constitutional basis:** C-066 Tier 2A (Autonomous Sprint Authority) · C-065 (SDLC Separation) · C-001 (Human Override) · GOAL-001/002/003
+
+This section documents how the WAOOAW platform implements the GEOM Goal Journey for engineering Goals through the **Autonomous Sprint Workflow** (`autonomous-sprint.yaml`). This is the constitutional record of how GEOM operates in practice — future agents must know this mechanism exists and how it maps to GEOM stages.
+
+### The Autonomous Sprint as a GEOM Goal Journey
+
+Every 3 hours, the Autonomous Sprint Workflow executes the GEOM Goal Journey for engineering Goals:
+
+```
+GEOM Stage      →  Sprint Workflow mechanism
+─────────────────────────────────────────────────────────────────
+G-1 Registration   Founder registers a Goal (or WC → GOAL mapping)
+                   GitHub Issue created: [GOAL-NNN] {statement}
+
+G-4 Planning       preflight job: HALT check + Sprint Index build
+                   Goal Orchestrator identifies next task + issues GO Authorization
+
+G-5 Journey        execute job (INST-010 author hat):
+  EEM Step 08        autonomous_sprint_runner.py + MagicLLM invocation
+                     Code generated → committed to feature branch → PR opened
+                     MagicLLM Decision Record → Goal Register (GitHub Issue comment)
+
+  EEM Step 14        review job (INST-010 reviewer hat — DIFFERENT identity):
+                     autonomous_sprint_reviewer.py + Anthropic/MagicLLM Cat. 4
+                     Code reviewed against constitutional checklist
+                     PR Review Contribution Record → Goal Register (GitHub Issue comment)
+                     If APPROVED: formal GitHub PR approval posted (C-065 compliant)
+
+  EEM Step 15        auto-merge (triggered by reviewer after approval):
+                     gh pr merge --squash → PR merged to main
+                     Version bump (MAJOR.WC_SPRINT_NUM.0) + CHANGELOG update
+                     Production Release Record → Goal Register (GitHub Issue comment)
+                     Goal state → COMPLETE (GitHub Issue label: goal:complete)
+
+G-8 Learning       monitor job (C-069):
+                   sprint_monitor.py classifies run → feeds performance metrics
+                   Sprint state advanced: next task identified for next cycle
+
+G-9 Closure        Sprint state file (PROJECT_STATE.md) updated
+                   Goal Issue closed when all WC tasks in the sprint are COMPLETE
+```
+
+### Constitutional Identity Separation (C-065)
+
+The Autonomous Sprint Workflow enforces constitutional identity separation at the infrastructure level:
+
+| Job | Identity | GitHub token | Constitutional role |
+|---|---|---|---|
+| execute | `GITHUB_TOKEN` (Actions default) | author | INST-010 — Implementation hat |
+| review | GitHub App installation token (from Key Vault) | reviewer | INST-010 — PR Review hat (different identity) |
+| report | `GITHUB_TOKEN` | observer | INST-012 — Delivery Tracker |
+| monitor | `GITHUB_TOKEN` | observer | C-069 self-improvement loop |
+
+The reviewer GitHub App (`waooaw-reviewer`) is authorized in CODEOWNERS to approve and merge implementation artifacts (`src/`, `tests/`, `scripts/`, `web/`) without Founder approval — per C-066 Tier 2A (autonomous execution authority) and the Founder's explicit authorization: *"Our platform instinct — full autonomous execution. I am not supposed to do merging."*
+
+### Human Override (C-001)
+
+The autonomous sprint respects the constitutional Human Override at every level:
+
+| Override mechanism | Effect |
+|---|---|
+| `autonomous_halt: true` in PROJECT_STATE.md | All jobs halt immediately — no code generated, no PRs opened |
+| `consecutive_failures >= 3` in PROJECT_STATE.md | Auto-halt — prevents runaway agent loops |
+| `platform_phase != IMPLEMENTATION` | Sprint does not execute — wrong phase gate |
+| CODEOWNERS `@dlai-sd` on constitutional artifacts | Founder approval required for constitution/, adr/, architecture/ |
+
+### Goal Register Integration (Phase 1)
+
+**Phase 1 (current):** GitHub Issues as Goal Register
+- Each Goal = a GitHub Issue (`[GOAL-NNN] {statement}`)
+- Evidence records = structured JSON comments on the Issue
+- GEOM lifecycle state = GitHub Issue label (`goal:registered` → `goal:complete`)
+- `scripts/goal_orchestrator/goal_register_github.py` — implementation
+
+**Phase 2 (when Constitutional Engine is live):** PostgreSQL `constitutional.goal_register`
+- Append-only, C-007 compliant
+- GitHub Issues remain as human-facing view
+- PostgreSQL becomes the constitutional audit ledger
+
+### Work Contract → Goal Association (Migration Rule)
+
+Existing Work Contracts (WC-012 through WC-019) predate GEOM. They are associated with Goals using the pattern:
+- `WC-012` → `GOAL-WC-012` (retroactive registration)
+- GitHub Issue created for each WC Goal when the sprint runs
+- Constitutional compliance: GEOM Principle G-1 satisfied once the Issue exists
+
+New Goals (after GOAL-001 session) follow the full GEOM intake conversation protocol (GO Intelligence §7) before any Work Contract is created.
+
+---
+
+*Produced by GOAL-001/002/003 session · 2026-07-27 · For Founder ratification.*

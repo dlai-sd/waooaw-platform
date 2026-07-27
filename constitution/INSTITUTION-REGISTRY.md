@@ -219,6 +219,26 @@ Institutions in the engineering governance domain are referred to as "Offices" i
 | **Reviewer** | Solution Architect (INST-005) · Platform Architect (INST-009) |
 | **ORGANIZATION.md Reference** | Office 10 |
 
+**Two-Hat Operation (autonomous sprint — C-065):**
+
+| Hat | Identity | Operation |
+|---|---|---|
+| Author | `GITHUB_TOKEN` (GitHub Actions) | Generates code · commits · opens PR |
+| Reviewer | `waooaw-reviewer` GitHub App (Key Vault) | Reviews PR · formal approval · auto-merge |
+
+These are different constitutional identities. C-065 (SDLC Separation) is satisfied at the GitHub platform level. CODEOWNERS authorizes the reviewer App to approve and merge `src/`, `tests/`, `scripts/`, `web/` without Founder involvement (C-066 Tier 2A).
+
+**Agent Request Guide:**
+
+| Come here when you need | Concrete request example |
+|---|---|
+| Source code implementation | *“Implement [component] per the approved spec section.”* |
+| Unit and integration tests | *“Write tests for [service/class] with ≥ 90% coverage (C-076).”* |
+| DB migrations | *“Create migration for [schema change].”* |
+| PR review of generated code | *“Review PR #NN against constitutional checklist.”* |
+
+**Do NOT come here for:** Architecture decisions (INST-004) · component specs (INST-005) · schema design (INST-006) · security architecture (INST-007)
+
 ---
 
 ### INST-011 — Product Owner

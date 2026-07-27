@@ -591,6 +591,21 @@ Solution Architect (validates architectural faithfulness). Platform Architect (v
 - May not invent business logic not specified in component contracts. *(Engineering Fourth Law: every component exists because a business capability demands it)*
 - May not deploy to production without Platform Architect approval and observability readiness. *(Deployment gate)*
 
+**Two-Hat Operation — Autonomous Sprint (C-065 · C-066 Tier 2A):**
+
+In the autonomous sprint cycle, INST-010 operates under two separate constitutional identities:
+
+| Hat | Identity | GitHub token | Constitutional role |
+|---|---|---|---|
+| **Author** (execute job) | `GITHUB_TOKEN` (Actions default) | Writes code, commits, opens PR | Implementation — author |
+| **Reviewer** (review job) | `waooaw-reviewer` GitHub App (Key Vault credentials) | Reviews PR, posts formal approval, triggers merge | PR Review — reviewer |
+
+These are DIFFERENT identities — C-065 (SDLC Separation) is satisfied at the infrastructure level. The same GitHub token cannot open AND approve a PR (GitHub platform enforces this). CODEOWNERS authorizes the reviewer App to approve and merge `src/`, `tests/`, `scripts/`, `web/` autonomously (C-066 Tier 2A).
+
+Founder authorization: *"Our platform instinct — full autonomous execution. I am not supposed to do merging."* — Yogesh Khandge, 2026-07-23.
+
+See: GEOM §11 (Autonomous Goal Execution) for the full sprint → GEOM lifecycle mapping.
+
 ---
 
 ### Office 11 — Product Owner (under Delivery Office)
