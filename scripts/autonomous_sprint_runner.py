@@ -2588,8 +2588,8 @@ TASK_HANDLERS = {
                     "Use FakeServerCallContext.Create(tenantId) to build test context.\n"
                     "xUnit [Fact] tests. Test EvaluateAsync with Allow/Deny/Escalate scenarios. ≥90% coverage (C-076).\n"
                     "using FluentAssertions; — use .Should().Be() for assertions.\n"
-                    "Namespaces needed: using Waooaw.ConstitutionalEngine.Evaluators; using Waooaw.ConstitutionalEngine.Grpc;\n"
-                    "⛔ Do NOT define FakeServerCallContext — it already exists in this namespace."
+                    "Namespaces needed: using Waooaw.ConstitutionalEngine.Evaluators; using Waooaw.ConstitutionalEngine.Grpc; using Waooaw.ConstitutionalEngine.Tests.Evaluators;\n"
+                    "⛔ Do NOT define FakeServerCallContext — it already exists in namespace Waooaw.ConstitutionalEngine.Tests.Evaluators."
                 ),
                 model_hint="reasoning",
                 max_tokens=5000,

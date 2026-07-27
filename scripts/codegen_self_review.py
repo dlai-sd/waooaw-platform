@@ -136,7 +136,7 @@ Failing code region (lines {start_line}–{end_line}):
 {code_region}
 
 Return ONLY the corrected lines for this region (same line range), inside:
-<patch lines="{start_line}-{end_line}">{corrected_lines}</patch>
+<patch lines="{start_line}-{end_line}">{{corrected_lines}}</patch>
 
 Do NOT return the whole file. Patch only these lines.
 """
