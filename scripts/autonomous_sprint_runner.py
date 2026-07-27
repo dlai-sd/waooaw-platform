@@ -2655,6 +2655,7 @@ TASK_HANDLERS = {
                     "      .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options;\n"
                     "  await using var db = new ConstitutionalDbContext(opts);\n"
                     "Use FakeServerCallContext.Create(tenantId) for server context.\n"
+                    "using Waooaw.ConstitutionalEngine.Tests.Evaluators; — FakeServerCallContext is in THIS namespace.\n"
                     "Assert: db.EvidenceRecords.Count() == 1 after call. ≥90% coverage (C-076).\n"
                     "using FluentAssertions; for assertions. Namespace: Waooaw.ConstitutionalEngine.Services;"
                 ),
@@ -2724,6 +2725,8 @@ TASK_HANDLERS = {
                     "      .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options;\n"
                     "  await using var db = new EmergencyStopDbContext(opts);\n"
                     "Mock ITemporalClient with Moq (it IS an interface — Moq works fine).\n"
+                    "ALL constructor arguments MUST be positional — no named arguments after positional (CS1744).\n"
+                    "NullLogger<T>.Instance for logger args — NOT new NullLogger<T>() (CS1503).\n"
                     "Measure elapsed time with Stopwatch. Assert elapsed.TotalMilliseconds ≤ 250.\n"
                     "using FluentAssertions; for assertions."
                 ),
