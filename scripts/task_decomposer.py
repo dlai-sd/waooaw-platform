@@ -110,6 +110,7 @@ class SubTaskDef:
     output_files: list[str] = field(default_factory=list)  # files this subtask MUST produce
     not_regenerate_from: list[str] = field(default_factory=list)  # prior subtask IDs
     stack: str = "dotnet"                      # selects STACK_BEHAVIORAL_RULES entry
+    inject_source_files: list[str] = field(default_factory=list)  # actual source to paste verbatim
 
     # DELTA: task-specific override / additions (primary if wc_task_id empty)
     constitutional_check: str = ""
@@ -296,6 +297,7 @@ def execute_file_by_file(
     spec_sections: dict,
     model_hint: str,
     max_tokens: int,
+    inject_source_files: list[str] | None = None,
 ) -> bool:
     """
     Generate LLM output one file at a time.

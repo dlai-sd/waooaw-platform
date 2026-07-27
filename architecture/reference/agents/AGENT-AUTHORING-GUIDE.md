@@ -1,8 +1,35 @@
 # Agent Authoring Guide
 
 **Authority:** GENESIS Part 05 — Agent Definition Protocol
-**Date:** 2026-07-09 (v2.0 — gate-enforced template) · **Amended 2026-07-19 (v3.0 — Section 0 Constitutional DNA mandatory, C-070)**
+**Date:** 2026-07-09 (v2.0 — gate-enforced template) · **Amended 2026-07-19 (v3.0 — Section 0 Constitutional DNA mandatory, C-070) · Amended 2026-07-27 (v4.0 — AVD prerequisite gate, GOAL-001 Phase 4)**
 **Purpose:** Mandatory template for every new Digital Professional type on WAOOAW. This is a GATE, not a guide. An agent spec that is incomplete in any section cannot be activated.
+
+---
+
+## PREREQUISITE GATE — Ratified AVD Required (v4.0 — GOAL-001 Phase 4)
+
+**No Agent Specification may be produced without a Founder-ratified AVD v1.0.**
+
+Before opening this template:
+1. Confirm `avd/AVD-NNN-[agent-slug]-v1.0.md` exists and has Status: RATIFIED
+2. Confirm the agent has an INST-NNN entry in `constitution/INSTITUTION-REGISTRY.md` with Status ≠ PROPOSED
+3. Confirm the Agent Specification is authorized by a GO Authorization in the Goal Register
+
+If any of these is missing: stop. Follow `standards/avd-authoring-process.md` from Stage 1.
+
+**AVD → Agent Spec section mapping:**
+
+| Agent Spec Section | Derives from AVD Section |
+|---|---|
+| Section 0 (Constitutional DNA) | AVD §11 (Institution Charter Parameters) + AVD §12 (Why WAOOAW) |
+| Section 1 (Agent Identity) | AVD §1 (Agent Identity) |
+| Section 2 (Customer Personas) | AVD §3 (Customer Universe) |
+| Section 3 (Skill Catalogue) | AVD §6 (Skills) |
+| Skill Execution Models | AVD §9 (Goal Journey) + AVD §10 (AI Execution) |
+
+The Agent Spec refines and implements the AVD. It does not invent. If a skill or feature is not in the AVD, it may not appear in the Agent Spec without first updating the AVD through the AVD authoring process (Stage 3 onwards).
+
+---
 
 **GATE vs GUIDE distinction:**
 - A guide: follow if you remember to. Partial compliance passes.

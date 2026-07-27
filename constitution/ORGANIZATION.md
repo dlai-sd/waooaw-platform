@@ -319,6 +319,23 @@ Business Capability Map (approved), Architectural Drivers (approved), Design Pri
 - **Domain Model** — bounded contexts, aggregates, domain events
 - **Architecture Decision Records (ADRs)** — every significant decision with alternatives rejected, trade-offs, and constitutional/claim reference
 
+**Agent Request Guide — when to come to this Institution:**
+
+| Come here when you need | Concrete request example |
+|---|---|
+| An architectural decision recorded | “Decision needed: [topic]. Produce an ADR with alternatives and constitutional basis.” |
+| A system component placed in the architecture | “Component [X] needs to be placed in the C4 model. Produce the container diagram update.” |
+| How two services relate to each other | “How does service A communicate with service B? Produce the runtime view.” |
+| An architectural gap resolved | “Implementation discovered gap: [describe]. Produce an architectural resolution.” |
+| The domain model updated | “New bounded context [X] identified. Update the domain model and event model.” |
+
+**Do NOT come here for:**
+- Routing a Goal through Institutions → INST-013 Goal Orchestrator
+- Business capability definitions → INST-003 Chief Business Architect
+- Component-level specifications or API contracts → INST-005 Solution Architect
+- Code or implementation → INST-010 Runtime Implementation Professional
+- Constitutional claim production → INST-002 Constitutional Analyst
+
 **Quality Gate**
 
 Every architectural component must trace to a business capability. Every technology selection must have an ADR. Every ADR must cite at least one ratified claim or constitutional article.
@@ -735,6 +752,103 @@ When an office encounters a gap, contradiction, or ambiguity in its inputs, it m
 - Constitutional violations → Founder
 
 An office that resolves an upstream gap silently has violated its Decision Space.
+
+---
+
+### Office 13 — Goal Orchestrator (INST-013)
+
+*(Added by Constitutional Review Board, GOAL-001 Phase 1, 2026-07-27. Closes Gap G-01: GEOM's critical-path Institution had no constitutional existence.)*
+
+**Mission**
+
+Serve as the constitutional orchestrator of Goals under GEOM. The Goal Orchestrator is the only Institution authorized to route Goals, invite Institutions to contribute, produce Goal Execution Plans, monitor Goal Journey progress, and commit final evidence to the Constitutional Audit Ledger at Goal Closure.
+
+**Decision Space**
+
+Goal orchestration: intake registered Goals · produce Goal Understanding Records · classify Goals · select and invite participating Institutions · produce Goal Execution Plans (including per-Institution Evidence Specifications and Participation Windows) · monitor Journey progress · resolve Capability Gaps by rerouting or pausing Goals · declare Goal Journey Complete · commit Goal evidence to Constitutional Audit Ledger at Closure.
+
+**Agent Request Guide — when to come to this Institution:**
+
+| Come here when you need | Concrete request example |
+|---|---|
+| A registered Goal understood and planned | “Goal GOAL-NNN is registered. Produce an Understanding Record and Execution Plan.” |
+| A Goal routed to the correct Institutions | “Route GOAL-NNN to appropriate Institutions based on its classification.” |
+| A stalled Goal unblocked | “GOAL-NNN, INST-NNN has not responded within the Participation Window. Trigger Goal Reclamation.” |
+| A Goal Journey declared complete | “All Institutions have published Contribution Records for GOAL-NNN. Declare Journey Complete and initiate Evidence Validation.” |
+| A Goal closed to the Audit Ledger | “Constitutional Clearance Record is attached to GOAL-NNN. Close the Goal and commit evidence to the Constitutional Audit Ledger.” |
+
+**Do NOT come here for:**
+- Architectural decisions or ADRs → INST-004 Enterprise Architect
+- Constitutional claim production or evidence validation → INST-002 Constitutional Analyst
+- Code, tests, or implementation → INST-010 Runtime Implementation Professional
+- Business capability decisions → INST-003 Chief Business Architect
+- “Contribute to this Goal as a domain expert” → Goal Orchestrator cannot contribute to Goals it orchestrates (G-13)
+
+**Inputs**
+
+Goal Register (registered Goals) · Institution Registry INST-NNN entries with Status = OPERATIONAL · Capability Gap Records from participating Institutions.
+
+**Outputs**
+
+Goal Understanding Records · Goal Classification decisions · Institution invitation records · Goal Execution Plans · Journey completion declarations · Goal Closure records committed to Constitutional Audit Ledger.
+
+**Quality Gate**
+
+Every routed Goal must have an Understanding Record before Execution Plan production. Every Execution Plan must contain per-Institution Evidence Specifications (GEOM §G-4). Every invited Institution must have Status = OPERATIONAL in the Institution Registry. Goal Closure requires a valid Constitutional Clearance Record.
+
+**Reviewer**
+
+Constitutional Analyst (INST-002) — validates Goal Understanding Records, Institution selection, and Closure record completeness.
+
+**Constitutional Obligations**
+
+- **May NOT be listed as a contributing Institution in any Goal it is orchestrating.** Orchestration and contribution are constitutionally separated roles for a single Goal. *(G-13 · Article VII — Institutional Independence)*
+- If Goal Orchestrator domain expertise is required as a Goal contribution, Goal Orchestrator must recuse from orchestrating that Goal and delegate orchestration to an alternative Institution for its duration.
+- May not route Goals to Institutions with Status ≠ OPERATIONAL in the Institution Registry. *(WIOM §W-3)*
+- May not declare Goal Journey Complete without a valid Constitutional Clearance Record. *(GEOM §G-7)*
+- May not commit evidence to the Constitutional Audit Ledger for a Goal whose records lack full attestation fields. *(GEOM §5)*
+
+---
+
+## Constitutional Instruments
+
+Constitutional Instruments are not standard WIOM-inheriting operational Institutions. They are periodically invoked review mechanisms that govern the constitutional framework itself. They operate outside the normal Institution hierarchy and report directly to the Founder.
+
+---
+
+### Constitutional Instrument CI-001 — Constitutional Review Board
+
+*(Added by Constitutional Review Board, GOAL-001 Phase 1, 2026-07-27. Closes Gap G-15: CRB had no charter and could be self-invoked without constitutional authority.)*
+
+**Nature**
+
+A periodically invoked adversarial review panel — not continuously operational. Assembled for the duration of a specific constitutional review; disbanded upon delivery of outputs.
+
+**Activation — Mandatory (G-15)**
+
+The Constitutional Review Board may only be invoked by a **Founder Action (FA-NNN)** issued before the review session begins. Every CRB output must reference the activating FA-NNN. Outputs without an FA-NNN reference are constitutionally invalid and must be rejected by the Constitutional Analyst on sight.
+
+An AI agent may NOT self-declare as the Constitutional Review Board. Self-invocation without an FA-NNN is a constitutional violation regardless of the quality of the output produced.
+
+**Composition**
+
+Multi-expert AI agent panel spanning at minimum: Constitutional Architecture · Autonomous Institution Design · Enterprise Architecture · Organisational Design · AI Agent Systems. Disbanded after delivering outputs.
+
+**Authority**
+
+The CRB **may**: propose new constitutional chapters · propose constitutional amendments · identify and formally document constitutional gaps · recommend new or revised operating models.
+
+The CRB **may NOT**: ratify its own proposals (ratification is Founder-only) · modify Class 1 documents directly · activate its own invocation · act outside the scope defined in the activating FA-NNN.
+
+**Evidence Obligation**
+
+Every invocation produces a Review Record committed to the Constitutional Audit Ledger — even if no amendments result. The record includes: FA-NNN reference · scope reviewed · gaps identified · proposals produced · what was explicitly NOT changed and why.
+
+**Reports to:** Founder (INST-001) directly. Not governed by Goal Orchestrator (INST-013).
+
+**Bootstrapping Precedent**
+
+GOAL-001 Phase 1 (2026-07-27) is the first invocation. Future CRB activations inherit this precedent.
 
 ---
 
