@@ -375,6 +375,35 @@ def execute_file_by_file(
         sys.path.insert(0, _scripts)
     from autonomous_sprint_runner import execute_with_llm, write_llm_files, parse_llm_files, validate_written_files, call_llm_via_magiclm
 
+    # ── FinOps Pattern 1: augment spec_sections from sprint RAG index ──────────
+    # The index pre-computes semantically-relevant spec files with token-budget
+    # awareness. Merge them in so GoalExecutor/ContextBuilder gets a richer
+    # context than the hardcoded SubTaskDef spec_sections alone.
+    # SubTaskDef entries take priority (more specific); index fills gaps.
+    _index_path = REPO_ROOT / "sprint-context" / "index.json"
+    if _index_path.exists():
+        try:
+            import json as _ijson
+            _idx = _ijson.loads(_index_path.read_text(encoding="utf-8"))
+            _idx_specs: dict[str, str] = {
+                s["file"]: (
+                    s.get("section", "full")
+                    if "TOO_LARGE" not in s.get("section", "")
+                    else "full"
+                )
+                for s in _idx.get("spec_sections", [])
+                if s.get("file") and (REPO_ROOT / s["file"]).exists()
+            }
+            # SubTaskDef wins on overlap — index fills the gaps
+            _augmented = {**_idx_specs, **spec_sections}
+            if len(_augmented) > len(spec_sections):
+                print(f"  FILE-BY-FILE: RAG index augmented spec_sections "
+                      f"{len(spec_sections)} → {len(_augmented)} files "
+                      f"(+{len(_augmented) - len(spec_sections)} from index)")
+            spec_sections = _augmented
+        except Exception as _idx_e:
+            pass  # non-blocking — SubTaskDef spec_sections still used
+
     # ── Path 1: GoalExecutor (canonical — A7 fix) ──────────────────────────────
     effective_goal_id = goal_id or f"GOAL-{task_id.split('-')[0].upper()}"
     _go_available = False
