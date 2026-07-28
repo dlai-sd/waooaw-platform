@@ -3382,14 +3382,12 @@ def main() -> int:
                     print(f"  HALT: scaffold task {task} failed — downstream tasks cannot build. "
                           f"Stopping sprint. (C-084)")
                     break
-                # Dependent chain halt: any non-scaffold failure also halts remaining tasks.
-                # In a multi-task sprint, tasks share the same codebase. WC012-02 failing
-                # means WC012-03/04 reference missing types → guaranteed to fail too.
-                # Running them wastes 6 Claude API calls — C-077 FinOps violation.
-                # On the next run, branch context (EXTEND-NOT-REPLACE) gives full state.
-                print(f"  HALT: task {task} failed — stopping sprint to avoid wasted API calls "
-                      f"on dependent tasks. Next run gets full branch context. (C-077 + C-084)")
-                break
+                # C-084 2.0: task-level fair-sweep — do NOT halt on non-scaffold failures.
+                # WC012-03 and WC012-04 have their own deterministic data layers and
+                # independent subtasks. They do not depend on WC012-02 at the task level.
+                # Continue — branch context gives next task full state from prior completed work.
+                print(f"  CONTINUE: task {task} failed — proceeding with remaining independent tasks "
+                      f"(C-084 2.0 fair-sweep). Next run retries failed tasks. (C-077 + C-084)")
         except Exception as exc:
             print(f"  FAILED: {task}: {exc}")
             # RC#1 / chain halt on exception too
