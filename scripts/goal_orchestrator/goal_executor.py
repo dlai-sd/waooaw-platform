@@ -121,19 +121,35 @@ class GoalExecutor:
     ) -> list[FileGenerationResult]:
         """
         Execute one sprint task via GO→MagicLLM pipeline.
-
-        Reads spec from WCSpecReader, generates each file via ContextBuilder+LLM,
-        gates via ResponseEvaluator, handles failures via CascadeHandler.
-
-        Returns list of FileGenerationResult — one per output file.
         """
-        # Resolve prior output files from completed tasks for frozen injection
+        # P1 Fix 5: GEOM lifecycle label — mark Goal as IN_JOURNEY
+        self._update_geom_label("goal:in-journey")
+
         prior_files = self._collect_prior_files(completed_tasks or [])
+        # P1 Fix 4: load per-file failure counts from persistent state
+        file_failure_counts = self._load_file_failure_counts()
 
         results: list[FileGenerationResult] = []
         already_frozen: list[str] = []
 
         for output_file in output_files:
+            # P1 Fix 4: skip if this file has failed 3+ consecutive runs
+            file_key = output_file.replace("/", "_")
+            prior_failures = file_failure_counts.get(file_key, 0)
+            if prior_failures >= 3:
+                print(f"  [GO] {Path(output_file).name} — {prior_failures} consecutive run failures → genuine spec-gap")
+                results.append(FileGenerationResult(
+                    task=FileGenerationTask(
+                        goal_id=self.goal_id, task_id=f"{task_id}:{Path(output_file).name}",
+                        output_file=output_file, spec_sections=spec_sections,
+                        constitutional_check=constitutional_check, stack=stack,
+                        model_hint=model_hint, max_tokens=max_tokens,
+                    ),
+                    status="failed",
+                    final_error=f"Skipped: {prior_failures} consecutive run failures — spec-gap required"
+                ))
+                continue
+
             task = FileGenerationTask(
                 goal_id=self.goal_id,
                 task_id=f"{task_id}:{Path(output_file).name}",
@@ -150,15 +166,19 @@ class GoalExecutor:
             results.append(result)
 
             if result.status == "success":
-                # Freeze artifact after success — available to subsequent files
                 if self._cb:
                     self._cb.freeze_artifact(output_file, task_id)
                     already_frozen.append(output_file)
+                # P1 Fix 4: reset failure count on success
+                file_failure_counts[file_key] = 0
                 self._write_evidence("FILE_GENERATED", task, result)
             else:
-                # C-084 2.0: skip dependents but continue with independent files
+                # P1 Fix 4: increment failure count
+                file_failure_counts[file_key] = prior_failures + 1
                 self._write_evidence("FILE_FAILED", task, result)
 
+        # P1 Fix 4: persist updated failure counts
+        self._save_file_failure_counts(file_failure_counts)
         return results
 
     def all_succeeded(self, results: list[FileGenerationResult]) -> bool:
@@ -409,3 +429,39 @@ class GoalExecutor:
         with path.open("a", encoding="utf-8") as f:
             f.write(json.dumps(record) + "\n")
         return record.get("task_id", "")
+
+    # P1 Fix 5: GEOM lifecycle labels on GitHub Issues
+    def _update_geom_label(self, label: str) -> None:
+        """Update GEOM lifecycle label on the Goal Register Issue."""
+        try:
+            github_repo = os.environ.get("GITHUB_REPO", "")
+            if not github_repo:
+                return
+            issue_num = os.environ.get("GOAL_REGISTER_ISSUE", "")
+            if not issue_num:
+                return
+            subprocess.run(
+                ["gh", "issue", "edit", issue_num,
+                 "--add-label", label,
+                 "--repo", github_repo],
+                capture_output=True, timeout=10
+            )
+        except Exception:
+            pass  # non-blocking
+
+    # P1 Fix 4: per-file failure count persistence
+    _FILE_FAILURE_PATH = REPO_ROOT / "sprint-context" / "file-failure-counts.json"
+
+    def _load_file_failure_counts(self) -> dict[str, int]:
+        path = self._root / "sprint-context" / "file-failure-counts.json"
+        if path.exists():
+            try:
+                return json.loads(path.read_text(encoding="utf-8"))
+            except Exception:
+                pass
+        return {}
+
+    def _save_file_failure_counts(self, counts: dict[str, int]) -> None:
+        path = self._root / "sprint-context" / "file-failure-counts.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(counts, indent=2), encoding="utf-8")

@@ -19,6 +19,12 @@ import pytest
 REPO_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
+
+
+def _go_unavailable():
+    """Make GoalExecutor unavailable so tests exercise inline MagicLLM path."""
+    return {"goal_orchestrator.goal_executor": None, "goal_orchestrator": None}
+
 from task_decomposer import (
     SubTaskDef,
     run_compile_gate,
@@ -540,7 +546,7 @@ class TestExecuteSubtaskChainLivePaths:
         )
 
         with patch("task_decomposer.REPO_ROOT", tmp_path):
-            with patch.dict("sys.modules", {"autonomous_sprint_runner": mock_runner}):
+            with patch.dict("sys.modules", {"autonomous_sprint_runner": mock_runner, **_go_unavailable()}):
                 with patch("task_decomposer.run_compile_gate", return_value=(True, "")):
                     st = SubTaskDef(
                         id="WC012-02b", description="evaluators", type="llm",
@@ -638,13 +644,17 @@ class TestExecuteFileByFile:
             get_branch_context=lambda: "",
         )
 
+    def _go_unavailable(self):
+        """Patch dict that makes GoalExecutor unavailable so tests use inline path."""
+        return {"goal_orchestrator.goal_executor": None, "goal_orchestrator": None}
+
     def test_single_file_success(self, tmp_path, monkeypatch):
         """Single output_file generates, compile passes, returns True."""
         import task_decomposer
         mock_runner = self._make_mock_runner(success=True)
 
         with patch("task_decomposer.REPO_ROOT", tmp_path):
-            with patch.dict("sys.modules", {"autonomous_sprint_runner": mock_runner}):
+            with patch.dict("sys.modules", {"autonomous_sprint_runner": mock_runner, **_go_unavailable()}):
                 with patch("task_decomposer.load_ptr", return_value={}, create=True):
                     result = execute_file_by_file(
                         task_id="WC012-02b",
@@ -679,7 +689,7 @@ class TestExecuteFileByFile:
         ]
 
         with patch("task_decomposer.REPO_ROOT", tmp_path):
-            with patch.dict("sys.modules", {"autonomous_sprint_runner": mock_runner}):
+            with patch.dict("sys.modules", {"autonomous_sprint_runner": mock_runner, **_go_unavailable()}):
                 with patch("task_decomposer.load_ptr", return_value={}, create=True):
                     result = execute_file_by_file(
                         task_id="WC012-02b",
@@ -709,7 +719,7 @@ class TestExecuteFileByFile:
         )
 
         with patch("task_decomposer.REPO_ROOT", tmp_path):
-            with patch.dict("sys.modules", {"autonomous_sprint_runner": mock_runner}):
+            with patch.dict("sys.modules", {"autonomous_sprint_runner": mock_runner, **_go_unavailable()}):
                 with patch("task_decomposer.load_ptr", return_value={}, create=True):
                     result = execute_file_by_file(
                         task_id="WC012-02b",
@@ -738,7 +748,7 @@ class TestExecuteFileByFile:
         )
 
         with patch("task_decomposer.REPO_ROOT", tmp_path):
-            with patch.dict("sys.modules", {"autonomous_sprint_runner": mock_runner}):
+            with patch.dict("sys.modules", {"autonomous_sprint_runner": mock_runner, **_go_unavailable()}):
                 with patch("task_decomposer.load_ptr", return_value={}, create=True):
                     execute_file_by_file(
                         task_id="WC012-02b",
@@ -772,7 +782,7 @@ class TestExecuteFileByFile:
         )
 
         with patch("task_decomposer.REPO_ROOT", tmp_path):
-            with patch.dict("sys.modules", {"autonomous_sprint_runner": mock_runner}):
+            with patch.dict("sys.modules", {"autonomous_sprint_runner": mock_runner, **_go_unavailable()}):
                 with patch("task_decomposer.load_ptr", return_value={}, create=True):
                     execute_file_by_file(
                         task_id="WC012-02b",
@@ -801,7 +811,7 @@ class TestExecuteFileByFile:
         )
 
         with patch("task_decomposer.REPO_ROOT", tmp_path):
-            with patch.dict("sys.modules", {"autonomous_sprint_runner": mock_runner}):
+            with patch.dict("sys.modules", {"autonomous_sprint_runner": mock_runner, **_go_unavailable()}):
                 with patch("task_decomposer.load_ptr", return_value={}, create=True):
                     execute_file_by_file(
                         task_id="WC012-02b",
@@ -833,7 +843,7 @@ class TestExecuteFileByFile:
         monitor = {"task_results": {}}
 
         with patch("task_decomposer.REPO_ROOT", tmp_path):
-            with patch.dict("sys.modules", {"autonomous_sprint_runner": mock_runner}):
+            with patch.dict("sys.modules", {"autonomous_sprint_runner": mock_runner, **_go_unavailable()}):
                 with patch("task_decomposer.run_compile_gate", return_value=(True, "")):
                     with patch("task_decomposer.execute_file_by_file", fake_file_by_file):
                         st = SubTaskDef(
@@ -883,7 +893,7 @@ class TestPTRWiring:
             ptr_calls.append((task_id, files))
 
         with patch("task_decomposer.REPO_ROOT", tmp_path):
-            with patch.dict("sys.modules", {"autonomous_sprint_runner": mock_runner}):
+            with patch.dict("sys.modules", {"autonomous_sprint_runner": mock_runner, **_go_unavailable()}):
                 with patch("task_decomposer.run_compile_gate", return_value=(True, "")):
                     # Patch the source module since execute_subtask_chain does a local import
                     with patch("platform_type_registry.update_ptr_from_task", fake_update_ptr):
@@ -934,7 +944,7 @@ class TestPTRWiring:
         }
 
         with patch("task_decomposer.REPO_ROOT", tmp_path):
-            with patch.dict("sys.modules", {"autonomous_sprint_runner": mock_runner}):
+            with patch.dict("sys.modules", {"autonomous_sprint_runner": mock_runner, **_go_unavailable()}):
                 with patch("task_decomposer.run_compile_gate", return_value=(True, "")):
                     # Patch source module — local imports resolve to the patched versions
                     with patch("platform_type_registry.load_ptr", return_value=fake_ptr):
@@ -971,7 +981,7 @@ class TestPTRWiring:
         )
 
         with patch("task_decomposer.REPO_ROOT", tmp_path):
-            with patch.dict("sys.modules", {"autonomous_sprint_runner": mock_runner}):
+            with patch.dict("sys.modules", {"autonomous_sprint_runner": mock_runner, **_go_unavailable()}):
                 with patch("task_decomposer.run_compile_gate", return_value=(True, "")):
                     # Simulate PTR raising on call — sprint must still succeed
                     with patch("platform_type_registry.update_ptr_from_task",

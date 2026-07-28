@@ -201,8 +201,41 @@ class CascadeHandler:
         self._transition(CascadeState.L1_EXHAUSTED)
 
     def _run_l2(self, failure_evidence: dict) -> None:
-        """Level 2: Research/Industry Expert Query."""
+        """Level 2: Research/Industry Expert Query — advisor_auto_extend as Phase 1 L2."""
         print(f"  [Cascade] Initiating L2 research query")
+
+        # Phase 1 L2: use advisor_auto_extend to auto-generate a new error handler.
+        # If the failure contains an unknown error code, auto-extend the advisor.
+        # This is the self-healing L2 — no external call needed.
+        task_id = failure_evidence.get("task", "")
+        failure_text = failure_evidence.get("failure", "")
+        try:
+            import sys as _sys
+            _scripts = str(__import__("pathlib").Path(__file__).parent.parent.parent / "scripts")
+            if _scripts not in _sys.path:
+                _sys.path.insert(0, _scripts)
+            from advisor_auto_extend import run_auto_extend
+            import re as _re
+            codes = _re.findall(r'\bCS\d{4}\b', failure_text)
+            if codes:
+                mock_signal = {"task_results": {task_id: {
+                    "result": "BUILD_FAILURE",
+                    "error_type": "UNKNOWN",
+                    "build_error_snippet": failure_text[:200],
+                }}}
+                new_handlers = run_auto_extend(mock_signal)
+                if new_handlers > 0:
+                    print(f"  [Cascade] L2 self-heal: {new_handlers} new advisor handler(s) generated")
+                    self.ctx.l2_attempts = 1
+                    self._transition(CascadeState.RESOLVED)
+                    self.ctx.resolved_by_level = 2
+                    self.ctx.resolved_at = datetime.now(timezone.utc)
+                    return
+        except Exception as _l2_err:
+            print(f"  [Cascade] L2 advisor_auto_extend failed ({_l2_err})")
+
+        # L2 research via GOIntelligence (Phase 2 — Gemini)
+        print(f"  [Cascade] L2 GOIntelligence research (Phase 2 not yet available)")
         try:
             research = self._go.research_query(
                 goal_id=self.ctx.goal_id,
@@ -211,7 +244,6 @@ class CascadeHandler:
             )
             self.ctx.l2_research_record_id = research.record_id
         except NotImplementedError:
-            # Phase 2 not yet available — skip to L3
             print(f"  [Cascade] L2 research (Phase 2) not yet available — skipping to L3")
             self._transition(CascadeState.L2_EXHAUSTED)
             return

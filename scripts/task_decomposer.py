@@ -890,6 +890,18 @@ def execute_subtask_chain(
                 frozen_count = _cb.freeze_artifacts_from_task(st.output_files, st.id)
                 if frozen_count > 0:
                     print(f"  [{st.id}] Frozen {frozen_count} artifact signature(s) → registry updated")
+                    # P0 Fix 1: commit frozen-artifacts.json to sprint branch
+                    # Without this, frozen signatures are lost when runner workspace is discarded
+                    frozen_path = REPO_ROOT / "sprint-context" / "frozen-artifacts.json"
+                    if frozen_path.exists():
+                        git(["add", str(frozen_path)], check=False)
+                        diff = git(["diff", "--cached", "--quiet"], check=False)
+                        if diff.returncode != 0:
+                            git(["commit", "-m",
+                                 f"chore(frozen): {st.id} artifact signatures committed\n\n"
+                                 "Constitutional: C-085 (Idempotency — frozen signatures persist across runs)"],
+                                check=False)
+                            print(f"  [{st.id}] Frozen registry committed to sprint branch")
             except Exception as _freeze_err:
                 print(f"  [{st.id}] WARN: artifact freeze failed ({_freeze_err}) — non-blocking")
 

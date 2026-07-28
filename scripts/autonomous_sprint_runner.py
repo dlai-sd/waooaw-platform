@@ -3334,6 +3334,19 @@ def main() -> int:
 
         record_evidence("AUTONOMOUS_SPRINT_STARTED", sprint=sprint,
                         branch=branch, tasks=tasks)
+
+        # P0 Fix 1b: Restore frozen-artifacts.json from sprint branch if present.
+        # This ensures constructor signatures from prior runs are available to ContextBuilder.
+        frozen_registry_path = REPO_ROOT / "sprint-context" / "frozen-artifacts.json"
+        if not frozen_registry_path.exists() and (REPO_ROOT / "sprint-context").is_dir():
+            print(f"  INFO: frozen-artifacts.json not found — fresh ContextBuilder registry will be built")
+        elif frozen_registry_path.exists():
+            import json as _json
+            try:
+                frozen = _json.loads(frozen_registry_path.read_text())
+                print(f"  Frozen registry restored: {len(frozen)} artifact(s) available for ContextBuilder")
+            except Exception:
+                pass
         update_sprint_state(
             sprint_status="IN_PROGRESS",
             last_attempt_utc=datetime.now(timezone.utc).isoformat(),
@@ -3443,14 +3456,28 @@ def main() -> int:
         update_sprint_state(
             last_attempt_result="SUCCESS",
             consecutive_failures=0,
+            consecutive_infra_failures=0,
             current_task="",
         )
     else:
-        failures_new = failures + 1
-        update_sprint_state(
-            last_attempt_result="PARTIAL",
-            consecutive_failures=str(failures_new),
-        )
+        # P0 Fix 2: Separate infra vs spec failure counters.
+        # Infrastructure failures (API timeout/rate-limit) do not count toward spec consecutive_failures.
+        # This prevents premature AUTONOMOUS_HALT on transient infrastructure issues.
+        if all_infra_errors:
+            infra_fail_count = int(state.get("consecutive_infra_failures", "0") or "0") + 1
+            update_sprint_state(
+                last_attempt_result="INFRA_ERROR",
+                consecutive_infra_failures=str(infra_fail_count),
+                # consecutive_failures unchanged — infrastructure, not spec
+            )
+            print(f"  INFRA_ERROR: consecutive_infra_failures={infra_fail_count} (spec counter unchanged)")
+        else:
+            failures_new = failures + 1
+            update_sprint_state(
+                last_attempt_result="PARTIAL",
+                consecutive_failures=str(failures_new),
+                consecutive_infra_failures=0,
+            )
 
     git(["add", "constitution/PROJECT_STATE.md", "logs/"], check=False)
     diff = git(["diff", "--cached", "--quiet"], check=False)
