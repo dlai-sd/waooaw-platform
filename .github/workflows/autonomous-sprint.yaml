@@ -455,7 +455,7 @@ jobs:
     if: |
       needs.execute.outputs.halt != 'true' &&
       needs.execute.outputs.pr_number != '' &&
-      (needs.execute.outputs.result == 'SUCCESS' || needs.execute.outputs.result == 'PARTIAL')
+      needs.execute.outputs.result == 'SUCCESS'
     steps:
       - uses: actions/checkout@v4
 
