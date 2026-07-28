@@ -9,7 +9,7 @@
 ## Platform Status
 
 ```
-Version:              v1.16.0 — Pipeline Hardening (2026-07-28)
+Version:              v1.17.0 — WC013 Pipeline Fixes (2026-07-28)
 Constitutional Claims: 86 ratified (C-001→C-086) | ADRs: 33
 Customer Agents:      4 approved — DMA v3.0 · Trading v1.7 · Agricultural v2.7 · Private Tutor v1.0
 Internal Agents:      5 — Platform IT Expert · Steward Assistant · Self-Improvement Analyst ·
