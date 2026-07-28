@@ -2554,7 +2554,10 @@ TASK_HANDLERS = {
                     "  ConstitutionalEngineService.cs: EXTEND only — add ValidateAction impl. Do NOT rewrite existing methods.\n"
                     "  Do NOT call RecordEvidence — that is WC012-03.\n"
                     "  Do NOT generate test files — that is WC012-02c.\n"
-                    "  Do NOT generate Data/ files — that is WC012-03."
+                    "  Do NOT generate Data/ files — that is WC012-03.\n"
+                    "  ⛔ SCOPE BOUNDARY: Do NOT reference ITemporalClient, ITemporalWorkflowHandle, or any Temporalio namespace.\n"
+                    "  Temporal integration is WC012-04b scope — it is NOT part of ConstitutionalEngineService at this stage.\n"
+                    "  Leave TriggerEmergencyStop as a stub that returns empty response."
                 ),
                 model_hint="reasoning",
                 max_tokens=4000,
@@ -3256,27 +3259,41 @@ def main() -> int:
         remote_check = git(["ls-remote", "--exit-code", "--heads", "origin", branch], check=False)
 
         if is_fresh_start:
-            print(f"  Branch freshness guard: rebuilding {branch} from latest origin/main")
-            # Ensure we are not on the sprint branch before deleting/resetting it.
-            current_branch = git(["branch", "--show-current"]).stdout.strip()
-            if current_branch == branch:
-                git(["checkout", "main"], check=False)
-
-            git(["checkout", "main"], check=False)
-            git(["pull", "origin", "main"], check=False)
-
-            # Delete stale local sprint branch if present.
-            local_ref = git(["show-ref", "--verify", "--quiet", f"refs/heads/{branch}"], check=False)
-            if local_ref.returncode == 0:
-                git(["branch", "-D", branch], check=False)
-
-            # Delete stale remote sprint branch if present.
+            # Extra check: if the remote branch already has commits beyond main,
+            # it contains work from a completed successful run — preserve it.
+            branch_has_work = False
             if remote_check.returncode == 0:
-                del_remote = git(["push", "origin", "--delete", branch], check=False)
-                if del_remote.returncode != 0:
-                    print(f"  WARN: could not delete remote {branch}; continuing with local fresh branch")
+                ahead = git(["rev-list", "--count", f"origin/main..origin/{branch}"], check=False)
+                if ahead.returncode == 0 and int(ahead.stdout.strip() or "0") > 0:
+                    branch_has_work = True
+                    print(f"  Branch freshness guard: {branch} has {ahead.stdout.strip()} commit(s) ahead of main — preserving completed work")
 
-            git(["checkout", "-b", branch, "origin/main"])
+            if branch_has_work:
+                # Resume from the existing branch — don't discard completed work
+                git(["checkout", branch], check=False)
+                git(["pull", "origin", branch], check=False)
+            else:
+                print(f"  Branch freshness guard: rebuilding {branch} from latest origin/main")
+                # Ensure we are not on the sprint branch before deleting/resetting it.
+                current_branch = git(["branch", "--show-current"]).stdout.strip()
+                if current_branch == branch:
+                    git(["checkout", "main"], check=False)
+
+                git(["checkout", "main"], check=False)
+                git(["pull", "origin", "main"], check=False)
+
+                # Delete stale local sprint branch if present.
+                local_ref = git(["show-ref", "--verify", "--quiet", f"refs/heads/{branch}"], check=False)
+                if local_ref.returncode == 0:
+                    git(["branch", "-D", branch], check=False)
+
+                # Delete stale remote sprint branch if present.
+                if remote_check.returncode == 0:
+                    del_remote = git(["push", "origin", "--delete", branch], check=False)
+                    if del_remote.returncode != 0:
+                        print(f"  WARN: could not delete remote {branch}; continuing with local fresh branch")
+
+                git(["checkout", "-b", branch, "origin/main"])
         else:
             if remote_check.returncode == 0:
                 git(["checkout", branch])
