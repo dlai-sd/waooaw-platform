@@ -121,9 +121,9 @@ sprint_status: IN_PROGRESS
 task_id: WC012-01
 tasks_done:
   - WC012-01
-  - WC012-02
-tasks_remaining:
   - WC012-03
+tasks_remaining:
+  - WC012-02
   - WC012-04
 consecutive_failures: 1
 autonomous_halt: false              # ← GO seam closed 2026-07-28: GoalExecutor in execution path
@@ -238,9 +238,9 @@ WC012-02b `CS1061: string.TryGetValue` fixed at three layers:
 sprint_status: IN_PROGRESS
 tasks_done:
   - WC012-01
-  - WC012-02
-tasks_remaining:
   - WC012-03
+tasks_remaining:
+  - WC012-02
   - WC012-04
 consecutive_failures: 1
 autonomous_halt: true
@@ -560,9 +560,9 @@ last_attempt_result: PARTIAL
 consecutive_failures: 1
 tasks_done:
   - WC012-01
-  - WC012-02
-tasks_remaining:
   - WC012-03
+tasks_remaining:
+  - WC012-02
   - WC012-04
 
 current_task:
