@@ -6,13 +6,12 @@ using Waooaw.ConstitutionalEngine.Evaluators;
 namespace Waooaw.ConstitutionalEngine.Evaluators;
 
 /// <summary>
-/// Enforces C-043 (Budget Ceiling): denies or escalates any action whose combined
-/// current + proposed spend meets or exceeds the contract's approved monthly budget.
-/// Escalates when spend reaches the 90 % warning threshold.
+/// Enforces C-043 (Budget Ceiling): denies any proposed action that would cause total spend
+/// (current + proposed) to exceed the approved monthly budget in INR paise.
+/// Escalates when total spend would exceed 90% of the approved ceiling.
 /// </summary>
 public sealed class C043BudgetCeilingEvaluator : IClaimEvaluator
 {
-    // Escalation fires when totalSpend / approvedBudget >= EscalateNumerator / EscalateDenominator (0.90)
     private const long EscalateNumerator   = 9;
     private const long EscalateDenominator = 10;
 
@@ -20,37 +19,50 @@ public sealed class C043BudgetCeilingEvaluator : IClaimEvaluator
 
     public Task<EvaluationResult> EvaluateAsync(EvaluationContext ctx, CancellationToken ct)
     {
-        long total    = ctx.CurrentSpendInrPaise + ctx.ProposedSpendInrPaise;
-        long approved = ctx.ApprovedBudgetInrPaise;
+        var approved  = ctx.ApprovedBudgetInrPaise;
+        var current   = ctx.CurrentSpendInrPaise;
+        var proposed  = ctx.ProposedSpendInrPaise;
 
-        // Hard ceiling: total spend exceeds approved budget → DENY
-        if (total > approved)
+        var totalAfter = current + proposed;
+
+        // Hard ceiling: total spend would exceed the approved budget — DENY
+        if (totalAfter > approved)
         {
             return Task.FromResult(new EvaluationResult(
-                ClaimId,
-                EvaluationVerdict.Deny,
-                $"C-043: Budget ceiling breached. " +
-                $"Total spend {total} paise exceeds approved budget {approved} paise " +
-                $"(skill: {ctx.BudgetSkillType})."));
+                ClaimId:  "C-043",
+                Verdict:  EvaluationVerdict.Deny,
+                Reason:   $"C-043: Budget ceiling exceeded. " +
+                          $"Approved={approved} paise, " +
+                          $"Current={current} paise, " +
+                          $"Proposed={proposed} paise, " +
+                          $"Total={totalAfter} paise."
+            ));
         }
 
-        // Soft ceiling (≥ 90 %): escalate for human review — guard against zero-budget division
-        if (approved > 0 && total * EscalateDenominator >= approved * EscalateNumerator)
+        // Escalation band: total spend would exceed 90% of the approved budget — ESCALATE
+        // Compute threshold using integer arithmetic to avoid floating-point imprecision.
+        // threshold = (approved * 9) / 10  (integer division — safe because approved is non-negative long)
+        var escalateThreshold = approved * EscalateNumerator / EscalateDenominator;
+
+        if (totalAfter > escalateThreshold)
         {
-            long pct = total * 100 / approved;
             return Task.FromResult(new EvaluationResult(
-                ClaimId,
-                EvaluationVerdict.Escalate,
-                $"C-043: Budget utilisation at {pct}% of approved ceiling ({total}/{approved} paise). " +
-                $"Escalating for human approval (skill: {ctx.BudgetSkillType})."));
+                ClaimId:  "C-043",
+                Verdict:  EvaluationVerdict.Escalate,
+                Reason:   $"C-043: Spend within budget but exceeds 90% escalation threshold. " +
+                          $"Approved={approved} paise, " +
+                          $"Threshold={escalateThreshold} paise, " +
+                          $"Total={totalAfter} paise."
+            ));
         }
 
-        // Within budget — permit
+        // Within safe spend envelope — ALLOW
         return Task.FromResult(new EvaluationResult(
-            ClaimId,
-            EvaluationVerdict.Allow,
-            $"C-043: Budget within ceiling. " +
-            $"Total spend {total} paise of {approved} paise approved " +
-            $"(skill: {ctx.BudgetSkillType})."));
+            ClaimId:  "C-043",
+            Verdict:  EvaluationVerdict.Allow,
+            Reason:   $"C-043: Spend within approved budget. " +
+                      $"Approved={approved} paise, " +
+                      $"Total={totalAfter} paise."
+        ));
     }
 }
