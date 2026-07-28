@@ -117,7 +117,7 @@ session_declared: "Architecture correction 2026-07-28: WC-012 execution requires
 
 # ── WC-013 STATUS ────────────────────────────────────────────────────────────────────────
 sprint: WC-013
-sprint_status: AUTHORIZED
+sprint_status: IN_PROGRESS
 task_id: WC013-01
 tasks_done: []
 tasks_remaining:
@@ -553,9 +553,9 @@ platform_phase: IMPLEMENTATION  # SPEC | IMPLEMENTATION | LIVE
 
 current_sprint: WC-013
 sprint_ib_item: IB-009
-sprint_status: AUTHORIZED
+sprint_status: IN_PROGRESS
 branch: ib/009/sprint-013
-last_attempt_utc: 2026-07-28T16:30:00.000000+00:00
+last_attempt_utc: 2026-07-28T17:19:49.008921+00:00
 last_attempt_result: WC012_COMPLETE
 consecutive_failures: 0
 tasks_done: []
@@ -568,7 +568,7 @@ tasks_remaining:
 current_task:
 
 
-                                            ## NEXT SESSION OPTIONS
+                                            WC013-01    ## NEXT SESSION OPTIONS
 
 ```
 CURRENT STATE: platform_phase=IMPLEMENTATION · AUTONOMOUS_HALT=false
