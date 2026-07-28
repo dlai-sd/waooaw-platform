@@ -161,5 +161,17 @@
       "RecordEvidence_EmptyConstitutionalBasis_ThrowsInvalidArgument"
     ],
     "public_properties": []
+  },
+  "tests/constitutional-engine.Tests/EmergencyStop/CCT_HO01_EmergencyStopLatencyTests.cs": {
+    "frozen_at_task": "WC012-04c",
+    "namespace": "Waooaw.ConstitutionalEngine.Tests.EmergencyStop",
+    "public_constructors": [],
+    "public_methods": [
+      "TriggerEmergencyStop_CompletesWithinConstitutionalSlaBudget",
+      "TriggerEmergencyStop_ReturnsAffectedSessionIds_ForRequestedSessions",
+      "TriggerEmergencyStop_RecordId_HasConstitutionalPrefix",
+      "TriggerEmergencyStop_SingleSession_CompletesWithinSlaBudget"
+    ],
+    "public_properties": []
   }
 }
