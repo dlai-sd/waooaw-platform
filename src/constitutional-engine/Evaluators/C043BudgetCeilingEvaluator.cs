@@ -1,14 +1,11 @@
 // Implements: architecture/reference/ce-validate-action-evaluators.md §C-043 Evaluator — Budget Ceiling
-// Constitutional basis: C-043 (Budget Ceiling), C-051 (Resource Transparency), C-059 (Traceability)
-
-using Waooaw.ConstitutionalEngine.Evaluators;
+// constitutional_basis: C-043 (Budget Ceiling), C-059 (Traceability), C-023 (Evidence First)
 
 namespace Waooaw.ConstitutionalEngine.Evaluators;
 
 /// <summary>
-/// Enforces C-043 (Budget Ceiling): denies any proposed action that would cause total spend
-/// (current + proposed) to exceed the approved monthly budget in INR paise.
-/// Escalates when total spend would exceed 90% of the approved ceiling.
+/// Enforces C-043: no action may cause total spend (current + proposed) to meet or exceed
+/// the approved budget ceiling. Escalates when spend reaches the 90 % warning threshold.
 /// </summary>
 public sealed class C043BudgetCeilingEvaluator : IClaimEvaluator
 {
@@ -19,50 +16,35 @@ public sealed class C043BudgetCeilingEvaluator : IClaimEvaluator
 
     public Task<EvaluationResult> EvaluateAsync(EvaluationContext ctx, CancellationToken ct)
     {
-        var approved  = ctx.ApprovedBudgetInrPaise;
-        var current   = ctx.CurrentSpendInrPaise;
-        var proposed  = ctx.ProposedSpendInrPaise;
+        long total    = ctx.CurrentSpendInrPaise + ctx.ProposedSpendInrPaise;
+        long approved = ctx.ApprovedBudgetInrPaise;
 
-        var totalAfter = current + proposed;
-
-        // Hard ceiling: total spend would exceed the approved budget — DENY
-        if (totalAfter > approved)
+        // Hard ceiling: total spend at or above approved budget → DENY
+        if (total >= approved)
         {
             return Task.FromResult(new EvaluationResult(
-                ClaimId:  "C-043",
-                Verdict:  EvaluationVerdict.Deny,
-                Reason:   $"C-043: Budget ceiling exceeded. " +
-                          $"Approved={approved} paise, " +
-                          $"Current={current} paise, " +
-                          $"Proposed={proposed} paise, " +
-                          $"Total={totalAfter} paise."
-            ));
+                ClaimId: ClaimId,
+                Verdict: EvaluationVerdict.Deny,
+                Reason:  $"C-043: Total spend ({total} paise) meets or exceeds approved budget " +
+                         $"({approved} paise). Action denied to protect budget ceiling."));
         }
 
-        // Escalation band: total spend would exceed 90% of the approved budget — ESCALATE
-        // Compute threshold using integer arithmetic to avoid floating-point imprecision.
-        // threshold = (approved * 9) / 10  (integer division — safe because approved is non-negative long)
-        var escalateThreshold = approved * EscalateNumerator / EscalateDenominator;
-
-        if (totalAfter > escalateThreshold)
+        // Soft ceiling: total spend at or above 90 % of approved budget → ESCALATE
+        // Use integer arithmetic: total >= approved * 9 / 10
+        // Integer division is intentional — errs on the side of caution for large budgets.
+        long escalateThreshold = approved * EscalateNumerator / EscalateDenominator;
+        if (total >= escalateThreshold)
         {
             return Task.FromResult(new EvaluationResult(
-                ClaimId:  "C-043",
-                Verdict:  EvaluationVerdict.Escalate,
-                Reason:   $"C-043: Spend within budget but exceeds 90% escalation threshold. " +
-                          $"Approved={approved} paise, " +
-                          $"Threshold={escalateThreshold} paise, " +
-                          $"Total={totalAfter} paise."
-            ));
+                ClaimId: ClaimId,
+                Verdict: EvaluationVerdict.Escalate,
+                Reason:  $"C-043: Total spend ({total} paise) is at or above 90 % of approved budget " +
+                         $"({approved} paise, threshold {escalateThreshold} paise). Human escalation required."));
         }
 
-        // Within safe spend envelope — ALLOW
         return Task.FromResult(new EvaluationResult(
-            ClaimId:  "C-043",
-            Verdict:  EvaluationVerdict.Allow,
-            Reason:   $"C-043: Spend within approved budget. " +
-                      $"Approved={approved} paise, " +
-                      $"Total={totalAfter} paise."
-        ));
+            ClaimId: ClaimId,
+            Verdict: EvaluationVerdict.Allow,
+            Reason:  $"C-043: Total spend ({total} paise) is within approved budget ({approved} paise)."));
     }
 }
