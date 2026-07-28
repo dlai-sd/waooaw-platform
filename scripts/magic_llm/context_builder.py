@@ -204,8 +204,15 @@ class ContextBuilder:
             ctx.blocks.append(ContextBlock("PRIOR", prior_block))
 
         # [8] TASK — description + file target
+        # If the output file already exists on the sprint branch, inject current
+        # content so the LLM extends it instead of generating from scratch.
+        existing_block = self._build_existing_file_block(output_file)
+        if existing_block:
+            ctx.blocks.append(ContextBlock("EXISTING_FILE", existing_block))
+
         ctx.blocks.append(ContextBlock("TASK", self._build_task_block(
-            task_id, output_file, constitutional_check
+            task_id, output_file, constitutional_check,
+            file_exists=existing_block != ""
         )))
 
         # [9] FORMAT — output format instruction
@@ -445,12 +452,38 @@ class ContextBuilder:
             return ""
         return "\n".join(lines)
 
+    def _build_existing_file_block(self, output_file: str) -> str:
+        """If the output file already exists on disk, inject its current content.
+        This prevents the LLM from generating a replacement instead of an extension.
+        Capped at 6,000 chars to stay within budget."""
+        full = self._root / output_file
+        if not full.exists():
+            return ""
+        content = self._read_cached(full)
+        if not content.strip():
+            return ""
+        cap = 6000
+        truncated = content[:cap]
+        suffix = f"\n... [truncated at {cap} chars — full file is longer] ..." if len(content) > cap else ""
+        return (
+            f"EXISTING FILE CONTENT — THIS FILE ALREADY EXISTS ON THE SPRINT BRANCH.\n"
+            f"⛔ DO NOT regenerate this file from scratch.\n"
+            f"⛔ DO NOT remove any existing methods, classes, or using directives.\n"
+            f"ONLY add or modify what the TASK REQUIREMENTS specify. "
+            f"Output the COMPLETE file including all existing content plus your additions.\n\n"
+            f"Current content of {output_file}:\n"
+            f"```\n{truncated}{suffix}\n```"
+        )
+
     def _build_task_block(
-        self, task_id: str, output_file: str, constitutional_check: str
+        self, task_id: str, output_file: str, constitutional_check: str,
+        file_exists: bool = False
     ) -> str:
+        action = "EXTEND" if file_exists else "Generate"
+        note = " (EXISTING FILE — see EXISTING_FILE slot above)" if file_exists else ""
         return (
             f"TASK: {task_id}\n"
-            f"Generate ONLY this file: {output_file}\n"
+            f"{action} ONLY this file: {output_file}{note}\n"
             f"Do NOT generate any other file.\n\n"
             f"TASK-SPECIFIC REQUIREMENTS:\n{constitutional_check}"
         )
