@@ -831,6 +831,13 @@ def call_llm_via_magiclm(
     else:
         category = TaskCategory.CODE_GENERATION
 
+    # Respect explicit model_hint="reasoning" — map to DEEP_REASONING so pipeline
+    # bypasses complexity scoring and uses Sonnet directly. CODE_GENERATION with
+    # score=16 (2 context sections × 8) always routes to Haiku which is insufficient
+    # for complex middleware/service tasks at 70-80K context.
+    if model_hint == "reasoning" and category == TaskCategory.CODE_GENERATION:
+        category = TaskCategory.DEEP_REASONING
+
     # Derive goal ID
     effective_goal_id = goal_id or f"GOAL-{task_id.split('-')[0].upper()}"
 
