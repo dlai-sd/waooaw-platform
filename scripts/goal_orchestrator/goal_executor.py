@@ -457,7 +457,7 @@ class GoalExecutor:
                 self._advisor_module = _m
                 advisor = _m
             diagnosis = advisor.diagnose_build_error(task_id, failure.detail, written, [])
-            if diagnosis.should_retry and diagnosis.confidence >= 0.3:
+            if diagnosis is not None and diagnosis.should_retry and diagnosis.confidence >= 0.3:
                 return (
                     f"COMPILE FAILED ({','.join(failure.error_codes)}):\n"
                     f"{failure.detail[:300]}\n\n"
