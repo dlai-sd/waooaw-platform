@@ -32,7 +32,7 @@ public sealed class CCT_EF01_C043BudgetCeilingEvaluatorTests
 
     // ── ClaimId ──────────────────────────────────────────────────────────────
 
-    [FactAttribute]
+    [Fact]
     public void ClaimId_IsC043()
     {
         _sut.ClaimId.Should().Be("C-043");
@@ -40,7 +40,7 @@ public sealed class CCT_EF01_C043BudgetCeilingEvaluatorTests
 
     // ── Allow paths ───────────────────────────────────────────────────────────
 
-    [FactAttribute]
+    [Fact]
     public async Task EvaluateAsync_ProposedWellWithinBudget_ReturnsAllow()
     {
         var ctx = BuildContext(
