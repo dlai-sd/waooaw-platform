@@ -1,5 +1,5 @@
 // Implements: architecture/reference/ce-validate-action-evaluators.md §C-041 Evaluator — Tool Authorization
-// constitutional_basis: C-041 (Tool Authorization)
+// Constitutional basis: C-041 (Tool Authorization)
 using System.Text.Json;
 using Waooaw.ConstitutionalEngine.Evaluators;
 using Waooaw.ConstitutionalEngine.Grpc;
@@ -7,8 +7,9 @@ using Waooaw.ConstitutionalEngine.Grpc;
 namespace Waooaw.ConstitutionalEngine.Evaluators;
 
 /// <summary>
-/// Enforces C-041 (Tool Authorization): every MCP tool call must be in the contract's
-/// authorized_actions list. Default deny — unlisted tool = DENY.
+/// Enforces C-041 (Tool Authorization): every MCP_TOOL_CALL must name a tool that
+/// appears in the contract's authorized_tools list.  Default-deny — an unlisted tool
+/// is ALWAYS denied without further evaluation.
 /// </summary>
 public sealed class C041ToolAuthorizationEvaluator : IClaimEvaluator
 {
@@ -18,92 +19,96 @@ public sealed class C041ToolAuthorizationEvaluator : IClaimEvaluator
     private const string EscalationToolsKey = "escalation_required_tools";
 
     private static readonly JsonSerializerOptions _jsonOpts =
-        new(JsonSerializerDefaults.Web);
+        new JsonSerializerOptions { PropertyNameCaseInsensitive = false };
+
+    // ── IClaimEvaluator ──────────────────────────────────────────────────────
 
     public string ClaimId => "C-041";
 
     public Task<EvaluationResult> EvaluateAsync(EvaluationContext ctx, CancellationToken ct)
     {
-        // C-041 only governs MCP_TOOL_CALL actions; all other action types pass through.
+        // C-041 only applies to MCP_TOOL_CALL; all other action types pass through.
         if (!string.Equals(ctx.ActionType, McpToolCall, StringComparison.Ordinal))
         {
             return Task.FromResult(new EvaluationResult(
                 "C-041",
                 EvaluationVerdict.Allow,
-                "C-041 does not apply: action type is not MCP_TOOL_CALL."));
+                $"Action type '{ctx.ActionType}' is not MCP_TOOL_CALL; C-041 does not apply."));
         }
 
-        // ── 1. Extract tool_name ─────────────────────────────────────────────────
+        // ── 1. Require a non-empty tool_name ────────────────────────────────
         var toolName = ctx.GetParameter(ToolNameKey);
         if (string.IsNullOrEmpty(toolName))
         {
             return Task.FromResult(new EvaluationResult(
                 "C-041",
                 EvaluationVerdict.Deny,
-                "C-041: tool_name is missing or empty in ActionParameters; default deny."));
+                "MCP_TOOL_CALL has a missing or empty tool_name parameter; default deny (C-041)."));
         }
 
-        // ── 2. Extract authorized_tools list ────────────────────────────────────
+        // ── 2. Require a parseable authorized_tools list ─────────────────────
         var authorizedToolsJson = ctx.GetParameter(AuthorizedToolsKey);
         var authorizedTools = ParseStringSet(authorizedToolsJson);
-
-        if (authorizedTools.Count == 0)
+        if (authorizedTools is null)
         {
             return Task.FromResult(new EvaluationResult(
                 "C-041",
                 EvaluationVerdict.Deny,
-                $"C-041: No authorized_tools list found for contract '{ctx.ContractId}'; default deny."));
+                $"Tool '{toolName}' cannot be authorized: authorized_tools list is absent or malformed; default deny (C-041)."));
         }
 
-        // ── 3. Escalation check (takes priority over plain authorization) ────────
+        // ── 3. Escalation-required check (takes priority over authorization) ─
         var escalationToolsJson = ctx.GetParameter(EscalationToolsKey);
-        var escalationTools     = ParseStringSet(escalationToolsJson);
+        var escalationTools = ParseStringSet(escalationToolsJson)
+                              ?? new HashSet<string>(StringComparer.Ordinal);
 
         if (escalationTools.Contains(toolName))
         {
             return Task.FromResult(new EvaluationResult(
                 "C-041",
                 EvaluationVerdict.Escalate,
-                $"C-041: Tool '{toolName}' requires human escalation before execution."));
+                $"Tool '{toolName}' is listed under escalation_required_tools and requires human approval before use (C-041)."));
         }
 
-        // ── 4. Authorization check ───────────────────────────────────────────────
+        // ── 4. Authorization check ───────────────────────────────────────────
         if (authorizedTools.Contains(toolName))
         {
             return Task.FromResult(new EvaluationResult(
                 "C-041",
                 EvaluationVerdict.Allow,
-                $"C-041: Tool '{toolName}' is authorized for contract '{ctx.ContractId}'."));
+                $"Tool '{toolName}' is in the authorized_tools list for this contract (C-041)."));
         }
 
-        // ── 5. Default deny ──────────────────────────────────────────────────────
+        // ── 5. Default deny — unlisted tool ──────────────────────────────────
         return Task.FromResult(new EvaluationResult(
             "C-041",
             EvaluationVerdict.Deny,
-            $"C-041: Tool '{toolName}' is not in the authorized_tools list for contract '{ctx.ContractId}'; default deny."));
+            $"Tool '{toolName}' is not present in the authorized_tools list; default deny (C-041)."));
     }
 
+    // ── Helpers ──────────────────────────────────────────────────────────────
+
     /// <summary>
-    /// Deserializes a JSON string array into a case-sensitive HashSet.
-    /// Returns an empty set on null, empty, or malformed input — never throws.
+    /// Deserialises a JSON string array into a case-sensitive <see cref="HashSet{T}"/>.
+    /// Returns <c>null</c> when <paramref name="json"/> is null/white-space or invalid JSON.
+    /// Returns an empty set when the array is syntactically valid but contains no elements.
     /// </summary>
-    private static HashSet<string> ParseStringSet(string? json)
+    private static HashSet<string>? ParseStringSet(string? json)
     {
         if (string.IsNullOrWhiteSpace(json))
-            return new HashSet<string>(StringComparer.Ordinal);
+            return null;
 
         try
         {
             var items = JsonSerializer.Deserialize<string[]>(json, _jsonOpts);
             if (items is null)
-                return new HashSet<string>(StringComparer.Ordinal);
+                return null;
 
             return new HashSet<string>(items, StringComparer.Ordinal);
         }
         catch (JsonException)
         {
-            // Malformed JSON → treat as empty list → default deny path applies.
-            return new HashSet<string>(StringComparer.Ordinal);
+            return null;
         }
     }
 }
