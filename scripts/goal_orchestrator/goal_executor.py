@@ -30,6 +30,7 @@ LLM code generation MUST go through GoalExecutor.
 
 from __future__ import annotations
 
+import fcntl
 import json
 import os
 import subprocess
@@ -40,6 +41,34 @@ from pathlib import Path
 from typing import Any, Callable
 
 REPO_ROOT = Path(__file__).parent.parent.parent
+
+# ── Docker-safe file parser/writer (no autonomous_sprint_runner dependency) ──
+import re as _re
+
+_WRITE_BOUNDARY = _re.compile(r'^(src|tests|scripts|web|infrastructure)/', _re.IGNORECASE)
+
+
+def _parse_llm_files_local(response: str) -> dict[str, str]:
+    """Parse <file path="...">content</file> blocks from LLM response."""
+    files: dict[str, str] = {}
+    pattern = _re.compile(r'<file\s+path="([^"]+)">(.*?)</file>', _re.DOTALL)
+    for m in pattern.finditer(response or ""):
+        path, content = m.group(1).strip(), m.group(2)
+        if _WRITE_BOUNDARY.match(path):
+            files[path] = content.strip("\n")
+    return files
+
+
+def _write_llm_files_local(files: dict[str, str]) -> list[str]:
+    """Write parsed files to disk under REPO_ROOT."""
+    written: list[str] = []
+    for rel_path, content in files.items():
+        full = REPO_ROOT / rel_path
+        full.parent.mkdir(parents=True, exist_ok=True)
+        full.write_text(content, encoding="utf-8")
+        written.append(rel_path)
+    return written
+
 
 # Ensure scripts/ is on path
 _scripts = str(REPO_ROOT / "scripts")
@@ -205,6 +234,7 @@ class GoalExecutor:
         # §9 Retry loop: 3 attempts with targeted correction
         failure_context = ""
         max_attempts = 3
+        last_prompt = ""  # captured for cascade original_request
 
         for attempt in range(1, max_attempts + 1):
             result.attempts = attempt
@@ -232,7 +262,7 @@ class GoalExecutor:
                 )
                 print(f"\n  [GO] {task.task_id} attempt {attempt}/{max_attempts} "
                       f"— {ctx.total_chars:,} chars ({len(ctx.blocks)} slots)")
-
+                last_prompt = ctx.full_prompt
                 # LLM invocation
                 response = self._call_llm(task, ctx.full_prompt, api_key, attempt)
                 if not response:
@@ -240,7 +270,13 @@ class GoalExecutor:
                     continue
 
                 # Parse + pre-compile self-review before write
-                from autonomous_sprint_runner import parse_llm_files, write_llm_files
+                # Docker-safe: use local parser, fall back to autonomous_sprint_runner
+                try:
+                    from autonomous_sprint_runner import parse_llm_files, write_llm_files
+                except ImportError:
+                    parse_llm_files = _parse_llm_files_local
+                    write_llm_files = _write_llm_files_local
+
                 files_parsed = parse_llm_files(response)
                 if not files_parsed:
                     failure_context = "No <file> blocks in response."
@@ -285,7 +321,7 @@ class GoalExecutor:
 
         # All attempts exhausted — route to Cascade (not spec-gap issue)
         result.final_error = failure_context
-        cascade_resolved = self._run_cascade(task, failure_context)
+        cascade_resolved = self._run_cascade(task, failure_context, last_prompt)
         if cascade_resolved:
             result.status = "success"
             result.cascade_level_reached = 1
@@ -297,7 +333,7 @@ class GoalExecutor:
 
     # ── Private: cascade (C-069 — not spec-gap) ───────────────────────────────
 
-    def _run_cascade(self, task: FileGenerationTask, failure_evidence: str) -> bool:
+    def _run_cascade(self, task: FileGenerationTask, failure_evidence: str, last_prompt: str = "") -> bool:
         """
         Route to CascadeHandler instead of creating spec-gap issue.
         L1 → L2 → L3 → Founder (last resort, not first escalation).
@@ -306,6 +342,7 @@ class GoalExecutor:
         try:
             from goal_orchestrator.cascade_handler import CascadeHandler, CascadeContext, CascadeState
             from magic_llm.pipeline import MagicLLMPipeline
+            from magic_llm.types import MagicLLMRequest, TaskCategory
 
             api_key = os.environ.get("ANTHROPIC_API_KEY", "")
             ctx_go = CascadeContext(
@@ -316,12 +353,31 @@ class GoalExecutor:
                 goal_register_writer=self._write,
                 api_key=api_key,
             )
+            # Build original_request so L1 retry_with_enhanced_context has context
+            cat = (
+                TaskCategory.TEST_GENERATION
+                if "test" in task.output_file.lower()
+                else TaskCategory.CODE_GENERATION
+            )
+            original_req = MagicLLMRequest(
+                goal_id=task.goal_id,
+                institution_id="INST-010",
+                go_authorization_id=f"GOA-{task.goal_id}-INST-010",
+                task_category=cat,
+                task_description=f"Generate {Path(task.output_file).name}",
+                context_sections=[last_prompt] if last_prompt else [],
+                ptr_snapshot={},
+                expected_output_format="xml_file_blocks",
+                execution_plan_reference=f"EP-{task.task_id}",
+                max_tokens=task.max_tokens,
+            )
             handler = CascadeHandler(
                 context=ctx_go,
                 goal_register_writer=self._write,
                 magic_llm=pipeline,
                 go_intelligence=self._load_go_intelligence(pipeline),
             )
+            handler.set_original_request(original_req)
             state = handler.on_gate_fail({"failure": failure_evidence, "task": task.task_id})
             return state.name == "RESOLVED"
         except Exception as e:
@@ -331,15 +387,56 @@ class GoalExecutor:
     # ── Private: LLM invocation ────────────────────────────────────────────────
 
     def _call_llm(self, task: FileGenerationTask, prompt: str, api_key: str, attempt: int) -> str | None:
-        """Invoke LLM via MagicLLM bridge or direct API."""
+        """Invoke LLM via MagicLLM bridge (autonomous_sprint_runner) or direct
+        Anthropic API via MagicLLMPipeline. Docker-safe: ImportError falls through
+        to the direct-API path instead of returning None.
+        """
+        # Primary: runner bridge (non-Docker, full runner available)
         try:
             from autonomous_sprint_runner import call_llm_via_magiclm
             return call_llm_via_magiclm(
                 task.task_id, f"Generate {Path(task.output_file).name}",
                 prompt, "", task.model_hint, task.max_tokens, attempt=attempt,
             )
+        except ImportError:
+            pass  # Docker mode — fall through to direct API
         except Exception as e:
-            print(f"  [GO] LLM call failed: {e}")
+            print(f"  [GO] MagicLLM bridge error ({type(e).__name__}: {e}) — trying direct API")
+
+        # Fallback: direct Anthropic API via MagicLLMPipeline (Docker-safe)
+        try:
+            from magic_llm.pipeline import MagicLLMPipeline
+            from magic_llm.types import MagicLLMRequest, TaskCategory
+
+            # Map model_hint → TaskCategory so pipeline complexity scoring kicks in
+            if task.model_hint == "reasoning":
+                cat = TaskCategory.TEST_GENERATION if "test" in task.output_file.lower() else TaskCategory.DEEP_REASONING
+            elif task.model_hint == "none":
+                cat = TaskCategory.CODE_GENERATION  # cheapest path
+            else:  # "auto" — let complexity score decide
+                cat = TaskCategory.TEST_GENERATION if "test" in task.output_file.lower() else TaskCategory.CODE_GENERATION
+
+            pipeline = MagicLLMPipeline(api_key=api_key)
+            llm_req = MagicLLMRequest(
+                goal_id=task.goal_id,
+                institution_id="INST-010",
+                go_authorization_id=f"GOA-{task.goal_id}-INST-010",
+                task_category=cat,
+                task_description=f"Generate {Path(task.output_file).name}",
+                context_sections=[prompt],
+                ptr_snapshot={},
+                expected_output_format="xml_file_blocks",
+                execution_plan_reference=f"EP-{task.task_id}",
+                previous_attempt_id=f"attempt-{attempt - 1}" if attempt > 1 else None,
+                max_tokens=task.max_tokens,
+            )
+            response = pipeline.invoke(llm_req)
+            if response.status == "accepted" and response.raw_output:
+                return response.raw_output
+            print(f"  [GO] MagicLLMPipeline returned {response.status} — no output")
+            return None
+        except Exception as e:
+            print(f"  [GO] Direct API call failed ({type(e).__name__}: {e})")
             return None
 
     def _classify_and_fix(self, failure: Any, written: list[str], task_id: str) -> str:
@@ -458,19 +555,29 @@ class GoalExecutor:
         except Exception as e:
             print(f"  [GO] GEOM label update failed ({type(e).__name__}: {e}) — non-blocking")
 
-    # P1 Fix 4: per-file failure count persistence
+    # P1 Fix 4: per-file failure count persistence with advisory file locking
     _FILE_FAILURE_PATH = REPO_ROOT / "sprint-context" / "file-failure-counts.json"
 
     def _load_file_failure_counts(self) -> dict[str, int]:
         path = self._root / "sprint-context" / "file-failure-counts.json"
-        if path.exists():
-            try:
-                return json.loads(path.read_text(encoding="utf-8"))
-            except Exception:
-                pass
-        return {}
+        if not path.exists():
+            return {}
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                fcntl.flock(f.fileno(), fcntl.LOCK_SH)
+                try:
+                    return json.loads(f.read()) or {}
+                finally:
+                    fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+        except Exception:
+            return {}
 
     def _save_file_failure_counts(self, counts: dict[str, int]) -> None:
         path = self._root / "sprint-context" / "file-failure-counts.json"
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(counts, indent=2), encoding="utf-8")
+        with open(path, "w", encoding="utf-8") as f:
+            fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+            try:
+                f.write(json.dumps(counts, indent=2))
+            finally:
+                fcntl.flock(f.fileno(), fcntl.LOCK_UN)

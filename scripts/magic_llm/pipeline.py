@@ -43,7 +43,7 @@ _GEMINI_CATS = {
 
 # ── Model routing (extends ADR-030 §Model Routing) ──────────────────────────────────
 _ANTHROPIC_MODEL = "claude-sonnet-4-6"
-_ANTHROPIC_HAIKU  = "claude-haiku-20240307"
+_ANTHROPIC_HAIKU  = "claude-haiku-4-5"
 
 # ADR-033: Gemini Flash for Cat. 7-13 (Orchestration + Semantic)
 _GEMINI_FLASH  = "gemini-2.0-flash"
