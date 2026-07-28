@@ -97,35 +97,28 @@ GOAL-001 executed all 5 phases in a single session, transforming the WAOOAW cons
 
 ---
 
-## CURRENT PLATFORM STATE (2026-07-27 — v1.13.0 — WC-012 Clean Slate)
+## CURRENT PLATFORM STATE (2026-07-28 — v1.14.0 — WC-012 AWAITING GOAL ORCHESTRATOR)
 
 ```yaml
-version: 1.13.0
+version: 1.14.0
 platform_phase: IMPLEMENTATION
 goals_closed: [GOAL-001, GOAL-002, GOAL-003]
-goal_in_progress: GOAL-WC-012 (Issue #115 — registered, clean slate, ready to trigger)
-session_declared: "Full autonomous sprint lifecycle validated (SIM-GO-007: 14/14 PASS)"
-constitutional_claims: 79 ratified + 2 amendments (AMENDMENT-001, AMENDMENT-002)
-adrs: 33 (ADR-001 through ADR-033)
-customer_agents: 4 approved
-institutions_chartered: 14 (INST-001 through INST-014)
-magic_llm: fully operational (Cat. 1-13) · Phase 2 live (ADR-033) · 34× cost saving on orchestration
-go_intelligence: fully operational (Cat. 9-13 live on Gemini Flash)
-cascade_handler: fully operational · 9-state machine
-ptr_2_0: architecture complete (5 layers, multi-stack, 8 CRB challenges resolved)
-simulations_passing:
-  SIM-GO-001: 6/6  (MagicLLM end-to-end cascade)
-  SIM-GO-002: 6/6  (WC-012 CS1061 use case)
-  SIM-GO-003: 8/8  (WC-012 PTR 2.0 phase refresh)
-  SIM-GO-004: 8/8  (WC-015 constitutional blocker)
-  SIM-GO-005: 7/7  (Greenfield Goal Register — WAOOAW builds itself)
-  SIM-GO-006: 9/9  (Production defect P1 Emergency Stop)
-  SIM-GO-007: 14/14 (Full autonomous sprint lifecycle — FINAL)
+goal_in_progress: GOAL-WC-012 (Issue #115 — registered, awaiting GO-driven execution)
+session_declared: "Architecture correction 2026-07-28: WC-012 execution requires Goal Orchestrator in path"
 
-# ── WC-012 CLEAN SLATE ───────────────────────────────────────────────────────────────────
+# ── ARCHITECTURE CORRECTION (2026-07-28) ─────────────────────────────────────────────────
+# WC-012 was being executed via hardcoded runner (autonomous_sprint_runner.py TASK_HANDLERS).
+# This is architecturally incorrect. The correct execution path is:
+#   Goal → Goal Orchestrator → MagicLLM Context Builder → LLM → Code
+# The runner-based shortcut approach has been withdrawn.
+# WC-012 execution is halted until Goal Orchestrator is in the execution path.
+# MagicLLM §7 ContextBuilder + §8 ResponseEvaluator are implemented and ready.
+# Required before WC-012 can re-execute: GO→Runner seam (IB item required).
+
+# ── WC-012 STATUS ────────────────────────────────────────────────────────────────────────
 sprint: WC-012
-sprint_status: READY
-task_id: WC012-01                   # starts from task 1
+sprint_status: AWAITING_GO
+task_id: WC012-01
 tasks_done: []
 tasks_remaining:
   - WC012-01
@@ -133,9 +126,16 @@ tasks_remaining:
   - WC012-03
   - WC012-04
 consecutive_failures: 0
-autonomous_halt: false
-open_prs: none                      # PR #113 closed · PR #96 closed · branch deleted
-goal_register_issue: 115            # [GOAL-WC-012] registered in GitHub Issues
+autonomous_halt: true               # ← halted until GO is in execution path
+open_prs: none
+goal_register_issue: 115
+
+# ── MAGICLLM STATUS (2026-07-28) ─────────────────────────────────────────────────────────
+magic_llm_spec: RATIFIED (architecture.md — 10 violations corrected)
+magic_llm_context_builder: IMPLEMENTED (scripts/magic_llm/context_builder.py)
+magic_llm_response_evaluator: IMPLEMENTED (scripts/magic_llm/response_evaluator.py)
+magic_llm_wired_to: execute_file_by_file() in task_decomposer.py
+magic_llm_missing: Goal Orchestrator in execution path (A7)
 ```
 
 ## NEXT AUTHORIZED WORK
@@ -235,7 +235,7 @@ WC012-02b `CS1061: string.TryGetValue` fixed at three layers:
 ### State at Session Close
 
 ```yaml
-sprint_status: READY
+sprint_status: AWAITING_GO
 tasks_done: []
 tasks_remaining:
   - WC012-01
@@ -243,7 +243,7 @@ tasks_remaining:
   - WC012-03
   - WC012-04
 consecutive_failures: 0
-autonomous_halt: false
+autonomous_halt: true
 platform_phase: IMPLEMENTATION
 ```
 
@@ -543,7 +543,7 @@ OPTION C — Nothing needed from you until sprint opens first PR
 <!-- Edit ONLY the fields below. Do not alter the block structure. -->
 
 ```yaml
-autonomous_halt: false        # ← IMPLEMENTATION AUTHORIZED by Yogesh Khandge 2026-07-23 18:00 IST
+autonomous_halt: true        # ← IMPLEMENTATION AUTHORIZED by Yogesh Khandge 2026-07-23 18:00 IST
                               #   Authorization: "Yogesh authorizes IB-009 Sprint 011 implementation"
                               #   Recorded: constitution/PROJECT_STATE.md + FOUNDER-ACTION.md
 
@@ -553,10 +553,10 @@ platform_phase: IMPLEMENTATION  # SPEC | IMPLEMENTATION | LIVE
 
 current_sprint: WC-012
 sprint_ib_item: IB-009
-sprint_status: READY
+sprint_status: AWAITING_GO
 branch: ib/009/sprint-012
 last_attempt_utc: 2026-07-23T18:15:00.000000+00:00
-last_attempt_result: SUCCESS
+last_attempt_result: ARCHITECTURE_CORRECTION
 consecutive_failures: 0
 tasks_done: []
 tasks_remaining:
