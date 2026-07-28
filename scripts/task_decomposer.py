@@ -334,29 +334,58 @@ def execute_file_by_file(
     inject_source_files: list[str] | None = None,
     prior_output_files: list[str] | None = None,
     stack: str = "dotnet",
+    goal_id: str = "",
 ) -> bool:
     """
-    Generate LLM output one file at a time using MagicLLM §7 ContextBuilder.
+    Generate LLM output one file at a time.
 
-    # Implements: architecture/reference/magic-llm/architecture.md §7 Context Management
-    # constitutional_basis: C-032 (ordered context assembly), C-082 (per-file compile gate),
-    #                       C-059 (traceability header), C-073 (annotation gate)
+    # Implements: architecture/reference/magic-llm/architecture.md §7+§8
+    #             architecture/reference/goal-orchestrator/component-contracts.md §2
+    # constitutional_basis: C-032, C-059, C-065, C-073, C-082
 
-    Uses ContextBuilder for §7.1 ordered 9-slot context assembly:
-      - Preamble pre-written (LLM cannot omit usings)
-      - Frozen artifact signatures injected (no invented constructors)
-      - PTR + USING_MAP auto-populated from filesystem
-      - Context 91% smaller than ad-hoc runner prompts
+    Execution path (in priority order):
+      1. GoalExecutor (GO→MagicLLM): canonical path — GO in execution path (A7 fix)
+      2. Inline MagicLLM (ContextBuilder + ResponseEvaluator): fallback if GO unavailable
+      3. Ad-hoc assembly: last-resort fallback for infrastructure failures
 
-    Uses ResponseEvaluator for §8 5-gate quality validation.
-    Falls back to ad-hoc assembly if ContextBuilder unavailable.
+    GoalExecutor uses:
+      - §7.1 ContextBuilder (9-slot ordered context)
+      - §8 ResponseEvaluator (5 gates)
+      - CascadeHandler (not spec-gap issues on failure)
+      - Frozen Artifact Registry
     """
-    # Lazy import — avoids circular dependency at module load
     _scripts = str(REPO_ROOT / "scripts")
     if _scripts not in sys.path:
         sys.path.insert(0, _scripts)
     from autonomous_sprint_runner import execute_with_llm, write_llm_files, parse_llm_files, validate_written_files, call_llm_via_magiclm
 
+    # ── Path 1: GoalExecutor (canonical — A7 fix) ──────────────────────────────
+    effective_goal_id = goal_id or f"GOAL-{task_id.split('-')[0].upper()}"
+    try:
+        from goal_orchestrator.goal_executor import GoalExecutor
+        executor = GoalExecutor(goal_id=effective_goal_id, repo_root=REPO_ROOT)
+        print(f"  FILE-BY-FILE: using GoalExecutor (canonical GO path)")
+        results = executor.execute_sprint_task(
+            task_id=task_id,
+            wc_number=task_id[2:5] if task_id.startswith("WC") else "012",
+            output_files=output_files,
+            spec_sections=spec_sections,
+            constitutional_check=effective_check,
+            stack=stack,
+            model_hint=model_hint,
+            max_tokens=max_tokens,
+            completed_tasks=[],
+        )
+        # C-084 2.0: return True only if ALL files succeeded
+        all_ok = all(r.status == "success" for r in results)
+        for r in results:
+            mark = "✅" if r.status == "success" else "❌"
+            print(f"  {mark} FILE-BY-FILE: {Path(r.task.output_file).name} ({r.status}, {r.attempts} attempt(s))")
+        return all_ok
+    except Exception as _go_err:
+        print(f"  FILE-BY-FILE: GoalExecutor unavailable ({_go_err}) — falling back to inline MagicLLM")
+
+    # ── Path 2: Inline MagicLLM (fallback) ────────────────────────────────────
     # Try to load MagicLLM components
     try:
         from magic_llm.context_builder import ContextBuilder
