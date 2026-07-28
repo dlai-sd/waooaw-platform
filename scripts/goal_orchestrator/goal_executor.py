@@ -286,8 +286,8 @@ class GoalExecutor:
                     from codegen_self_review import pre_compile_review
                     from ptr_assembler import get_assembler as _pga
                     files_parsed = pre_compile_review(files_parsed, api_key, _pga().build_using_map())
-                except Exception:
-                    pass
+                except Exception as _pre_e:
+                    print(f"  [GO] pre_compile_review skipped ({type(_pre_e).__name__}: {_pre_e})")
 
                 written = write_llm_files(files_parsed)
 

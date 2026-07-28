@@ -77,6 +77,8 @@ def _investigate_repo(goal_input: str) -> dict[str, str]:
     This is NOT optional. Calling understand_goal() without repo investigation
     is a C-059 violation — the LLM would be responding without evidence.
     """
+    # S1 defense-in-depth: sanitize at the function boundary regardless of caller
+    goal_input = _sanitize_input(goal_input)
     context: dict[str, str] = {}
 
     # 1. Always read PROJECT_STATE.md — current sprint, phase, what is blocked

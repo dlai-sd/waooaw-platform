@@ -30,6 +30,14 @@ from typing import Any
 
 REPO_ROOT = Path(__file__).parent.parent.parent
 
+# ── Module-level compiled regexes (P2: avoid recompile on every evaluation) ──
+_RE_FILE_BLOCK  = re.compile(r'<file\s+path="[^"]+">', re.IGNORECASE)
+_RE_XML_BLOCK   = re.compile(r'<file\s+path="([^"]+)">(.*?)</file>', re.DOTALL)
+_RE_IMPLEMENTS  = re.compile(r'(?://|#)\s*Implements:', re.MULTILINE)
+_RE_BASIS       = re.compile(r'(?://|#)\s*constitutional_basis:', re.MULTILINE)
+_RE_CS_ERRORS   = re.compile(r'CS\d+')
+_RE_TEMPORAL_NS = re.compile(r'using\s+.*Temporal')
+
 
 @dataclass
 class GateResult:
@@ -147,8 +155,7 @@ class ResponseEvaluator:
         For code tasks: at least one <file path="...">...</file> block.
         """
         if expected_format == "xml_file_blocks":
-            pattern = re.compile(r'<file\s+path="[^"]+">', re.IGNORECASE)
-            if pattern.search(raw_response or ""):
+            if _RE_FILE_BLOCK.search(raw_response or ""):
                 return GateResult("FORMAT", True, "", "XML file block found")
             # Check for markdown code blocks with file indicators
             if "```" in (raw_response or "") and ("using " in (raw_response or "") or "def " in (raw_response or "")):
@@ -216,7 +223,7 @@ class ResponseEvaluator:
             if proc.returncode != 0:
                 output = (proc.stdout or "") + (proc.stderr or "")
                 errors.append(output[:600])
-                codes = re.findall(r'CS\d+', output)
+                codes = _RE_CS_ERRORS.findall(output)
                 error_codes.extend(codes)
 
         if errors:
@@ -277,8 +284,8 @@ class ResponseEvaluator:
             content = full.read_text(encoding="utf-8", errors="replace")
             first_1000 = content[:1000]
 
-            has_implements = bool(re.search(r'(?://|#)\s*Implements:', first_1000))
-            has_basis = bool(re.search(r'(?://|#)\s*constitutional_basis:', first_1000))
+            has_implements = bool(_RE_IMPLEMENTS.search(first_1000))
+            has_basis = bool(_RE_BASIS.search(first_1000))
 
             if not (has_implements and has_basis):
                 missing.append(full.name)
@@ -308,7 +315,7 @@ class ResponseEvaluator:
             content = full.read_text(encoding="utf-8", errors="replace")
 
             # Detect known scope violations
-            if re.search(r'using\s+.*Temporal', content) and "WC012-02" in f or "WC012-02" in str(spec_sections):
+            if _RE_TEMPORAL_NS.search(content) and "WC012-02" in f or "WC012-02" in str(spec_sections):
                 violations.append(f"{full.name}: Temporal namespace is WC012-04b scope, not WC012-02")
 
             # Detect invented types not in spec (fast heuristic: look for types not in USING_MAP)

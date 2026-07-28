@@ -53,6 +53,29 @@ _FORBIDDEN_PATTERNS = (
     "⛔ ITemporalClient or any Temporalio.* namespace in WC012-02b — that is WC012-04b scope"
 )
 
+# ── Module-level compiled regexes (P2: avoid recompile on every build call) ──
+_RE_CAPITAL_WORDS = re.compile(r'\b([A-Z][a-zA-Z0-9]+)\b')
+_RE_WHITESPACE    = re.compile(r'\s+')
+_RE_NAMESPACE     = re.compile(r'^namespace\s+([\w.]+)', re.MULTILINE)
+_RE_CLAIMS        = re.compile(r'C-\d{3}')
+_RE_WC_CTOR       = re.compile(
+    r'public\s+\w+\s*\(([^)]*)\)',
+    re.MULTILINE,
+)
+_RE_METHODS       = re.compile(
+    r'public\s+(?:async\s+)?(?:Task(?:<[^>]+>)?|void|bool|string|int|[A-Z]\w*)\s+'
+    r'(\w+)\s*\([^)]*\)',
+    re.MULTILINE,
+)
+_RE_CLASS_NAMES   = re.compile(
+    r'public\s+(?:sealed\s+)?(?:class|interface|record)\s+(\w+)',
+    re.MULTILINE,
+)
+_RE_PROPERTIES    = re.compile(
+    r'public\s+(?:required\s+)?(\w[\w<>\[\]?]*)\s+(\w+)\s*\{[^}]*get',
+    re.MULTILINE,
+)
+
 # Stack-specific using directives that must be present in every output file preamble
 _STACK_BASE_USINGS: dict[str, list[str]] = {
     "dotnet": [],  # task-specific usings added per §7.5
@@ -120,6 +143,8 @@ class ContextBuilder:
         self._frozen_registry_path = self._root / "sprint-context" / "frozen-artifacts.json"
         self._frozen: dict[str, dict] = self._load_frozen_registry()
         self._assembler = self._get_ptr_assembler()
+        # P3: per-instance file read cache — key=(path_str, mtime), value=content
+        self._file_cache: dict[tuple[str, float], str] = {}
 
     # ── Public API ─────────────────────────────────────────────────────────────
 
@@ -217,7 +242,7 @@ class ContextBuilder:
     # ── Private: slot builders ─────────────────────────────────────────────────
 
     def _build_system(self, stack: str) -> str:
-        return (
+        base = (
             "CONSTITUTIONAL OBLIGATIONS (C-059, C-073, C-032):\n"
             "Every file you produce MUST begin with:\n"
             "  // Implements: <spec-path> §<section>\n"
@@ -226,6 +251,20 @@ class ContextBuilder:
             "FORBIDDEN PATTERNS (non-negotiable — any violation = compile failure):\n"
             + _FORBIDDEN_PATTERNS
         )
+        # Inject EA-approved stack error-handling standards (STACK_BEHAVIORAL_RULES)
+        try:
+            from task_decomposer import STACK_BEHAVIORAL_RULES
+            rules = STACK_BEHAVIORAL_RULES.get(stack, [])
+            if rules:
+                error_rules = [r for r in rules if r.startswith("ERROR HANDLING")]
+                if error_rules:
+                    base += (
+                        "\n\nCONSTITUTIONAL ERROR HANDLING STANDARDS (C-082, C-059):\n"
+                        + "\n".join(f"  • {r}" for r in error_rules)
+                    )
+        except Exception as _sbr_e:
+            print(f"  [CB] STACK_BEHAVIORAL_RULES unavailable ({type(_sbr_e).__name__}: {_sbr_e})")
+        return base
 
     def _build_preamble(
         self,
@@ -283,7 +322,7 @@ class ContextBuilder:
 
             lines.append(f"\n  // {class_name} — namespace: {ns}")
             for ctor in ctors[:2]:  # max 2 constructors
-                ctor_clean = re.sub(r'\s+', ' ', ctor).strip()
+                ctor_clean = _RE_WHITESPACE.sub(' ', ctor).strip()
                 lines.append(f"  constructor: {class_name}({ctor_clean})")
             for method in methods[:4]:  # max 4 methods
                 lines.append(f"  method: {method}(...)")
@@ -333,7 +372,7 @@ class ContextBuilder:
                 return ""
             # Find types mentioned in the check or output file name
             scan_text = constitutional_check + " " + output_file
-            mentioned = set(re.findall(r'\b([A-Z][a-zA-Z0-9]+)\b', scan_text))
+            mentioned = set(_RE_CAPITAL_WORDS.findall(scan_text))
             relevant = {cls: ns for cls, ns in using_map.items() if cls in mentioned}
             if not relevant:
                 return ""
@@ -352,7 +391,7 @@ class ContextBuilder:
             if not full.exists():
                 parts.append(f"\n## {file_path} ({section})\n[file not found]")
                 continue
-            content = full.read_text(encoding="utf-8", errors="replace")
+            content = self._read_cached(full)
             # Truncate at structural boundary (heading) to max 3,000 chars
             if len(content) > 3000:
                 lines = content.splitlines()
@@ -383,18 +422,18 @@ class ContextBuilder:
                     class_name = Path(file_path).stem
                     lines.append(f"\n  {class_name} (from frozen registry):")
                     for ctor in ctors[:2]:
-                        ctor_clean = re.sub(r'\s+', ' ', ctor).strip()
+                        ctor_clean = _RE_WHITESPACE.sub(' ', ctor).strip()
                         lines.append(f"    constructor: {class_name}({ctor_clean})")
                     found = True
                 continue
-            content = full.read_text(encoding="utf-8", errors="replace")
+            content = self._read_cached(full)
             sigs = self._extract_public_signatures(content)
             class_name = Path(file_path).stem
             ctors = sigs.get("public_constructors", [])
             if ctors:
                 lines.append(f"\n  {class_name} — {sigs.get('namespace', '')}:")
                 for ctor in ctors[:2]:
-                    ctor_clean = re.sub(r'\s+', ' ', ctor).strip()
+                    ctor_clean = _RE_WHITESPACE.sub(' ', ctor).strip()
                     lines.append(f"    constructor: {class_name}({ctor_clean})")
                 lines.append(
                     f"    ⛔ Use this exact constructor — all positional, this order. "
@@ -432,7 +471,7 @@ class ContextBuilder:
 
     def _extract_public_signatures(self, content: str) -> dict:
         """Extract namespace, constructors, methods, properties from .cs source."""
-        ns_m = re.search(r'^namespace\s+([\w.]+)', content, re.MULTILINE)
+        ns_m = _RE_NAMESPACE.search(content)
         namespace = ns_m.group(1) if ns_m else ""
 
         # Multi-line constructor: capture from opening paren to closing paren
@@ -441,7 +480,7 @@ class ContextBuilder:
             r'public\s+\w+\s*\(\s*((?:[^()]*|\([^()]*\))*)\s*\)',
             content, re.DOTALL
         ):
-            param_block = re.sub(r'\s+', ' ', m.group(1)).strip()
+            param_block = _RE_WHITESPACE.sub(' ', m.group(1)).strip()
             if param_block and len(param_block) > 2:
                 ctors.append(param_block)
 
@@ -451,7 +490,7 @@ class ContextBuilder:
             content
         )
         # Filter out constructors (same name as class)
-        class_names = re.findall(r'public\s+(?:sealed\s+)?(?:class|interface|record)\s+(\w+)', content)
+        class_names = _RE_CLASS_NAMES.findall(content)
         methods = [m for m in methods if m not in class_names]
 
         # Properties
@@ -487,12 +526,12 @@ class ContextBuilder:
         if self._assembler:
             try:
                 using_map = self._assembler.build_using_map()
-                mentioned = set(re.findall(r'\b([A-Z][a-zA-Z0-9]+)\b', constitutional_check))
+                mentioned = set(_RE_CAPITAL_WORDS.findall(constitutional_check))
                 for cls in mentioned:
                     if cls in using_map:
                         usings.add(f"using {using_map[cls]};")
-            except Exception:
-                pass
+            except Exception as _um_e:
+                print(f"  [CB] using_map lookup skipped ({type(_um_e).__name__}: {_um_e})")
 
         # Frozen artifact namespaces for types that appear in check
         for file_path, sigs in self._frozen.items():
@@ -507,7 +546,7 @@ class ContextBuilder:
 
     def _extract_claims_from_check(self, constitutional_check: str) -> str:
         """Extract C-NNN references from constitutional check."""
-        claims = re.findall(r'C-\d{3}', constitutional_check)
+        claims = _RE_CLAIMS.findall(constitutional_check)
         if not claims:
             return "C-059, C-076, C-082"
         return ", ".join(sorted(set(claims))[:5])
@@ -533,6 +572,18 @@ class ContextBuilder:
 
     # ── Private: infrastructure ───────────────────────────────────────────────
 
+    def _read_cached(self, path: Path) -> str:
+        """P3: Read file with mtime-keyed cache. Avoids re-reading unchanged files
+        across the 3-attempt retry loop (spec files, prior outputs, frozen registry)."""
+        try:
+            mtime = path.stat().st_mtime
+        except OSError:
+            return ""
+        key = (str(path), mtime)
+        if key not in self._file_cache:
+            self._file_cache[key] = path.read_text(encoding="utf-8", errors="replace")
+        return self._file_cache[key]
+
     def _get_ptr_assembler(self):
         """Get PTR assembler, gracefully degrading if unavailable."""
         try:
@@ -542,7 +593,8 @@ class ContextBuilder:
                 sys.path.insert(0, scripts_path)
             from ptr_assembler import PTR2Assembler
             return PTR2Assembler(self._root)
-        except Exception:
+        except Exception as _ptr_e:
+            print(f"  [CB] PTR2Assembler unavailable ({type(_ptr_e).__name__}: {_ptr_e})")
             return None
 
     def _load_frozen_registry(self) -> dict:
