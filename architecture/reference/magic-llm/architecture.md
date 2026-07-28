@@ -1,11 +1,13 @@
 # MagicLLM — Engineering AI Execution Layer
 
 **Classification:** Reference Architecture — **Universal Constitutional AI Execution Layer**
-**Status:** Proposed — amended for GOAL-002 (universal scope)
-**Produced by:** AI Architect (INST-008) — GOAL-001 Phase 3 (2026-07-27) · Amended GOAL-002 Phase A (2026-07-27)
+**Status:** RATIFIED — governing from 2026-07-28 (amended by Constitutional Review Board after production sprint evidence)
+**Produced by:** AI Architect (INST-008) — GOAL-001 Phase 3 (2026-07-27) · Amended GOAL-002 Phase A (2026-07-27) · Gap-closed 2026-07-28 (10 constitutional violations corrected)
 **Constitutional Basis:** C-069 (Platform Self-Improvement) · C-059 (Traceability) · C-073 (@constitutional annotations) · C-070 (Three Basic Instincts) · ORGANIZATION.md Office 08
 **Goal Reference:** GOAL-001 Phase 3 · GOAL-002 Phase A
 **ADR Reference:** ADR-032 (amended — Universal Constitutional AI Execution Layer)
+
+**AMENDMENT RECORD (2026-07-28):** Ten constitutional violations identified through production sprint evidence (runs 30294588380 through 30349793469). All violations corrected in this document. Violations were: unratified status (governance gap), aspirational Context Builder (no algorithm), undefined Prior Task Injection, incomplete Response Evaluator (1/5 gates), disconnected Retry Advisor, auto-PTR population gap, missing File Preamble Contract, undefined retry loop algorithm, missing frozen artifact concept, and undefined fallback behavior.
 
 ---
 
@@ -262,37 +264,112 @@ Where `compile_success_rate` = tasks where model output compiled on first attemp
 
 ## 7. Context Management Strategy
 
-Context quality is the primary determinant of code generation correctness. MagicLLM's Context Builder applies these strategies by task category:
+Context quality is the primary determinant of code generation correctness. MagicLLM's Context Builder applies these strategies by task category.
 
-### 7.1 Spec Section Loading
-For all engineering tasks: load only the spec sections directly relevant to the task from the Work Contract's `spec_sections` field. Do not load the entire architecture document. Context contamination degrades output quality.
+**Constitutional basis:** C-032 (spec-code alignment), C-085 (idempotency — no assumption about prior state), C-059 (traceability). **Deviation from §7.1 ordered assembly is a constitutional violation.**
 
-### 7.2 Platform Type Registry Injection
-For Code Generation and Test Generation: inject the current compiled types from the Platform Type Registry (PTR) before the spec sections. The PTR prevents CS1061 (missing property) and CS0246 (missing type) errors by grounding the model in the actual compiled state of the codebase.
+### 7.1 Ordered Context Assembly (MANDATORY — constitutional enforcement)
+
+For Code Generation and Test Generation, context MUST be assembled in this exact order:
 
 ```
-Context assembly order for Code Generation:
-1. [System] Constitutional obligations + C-059 annotation rules
-2. [PTR] Current compiled types relevant to this task
-3. [Spec] Exact spec sections for this task (from Work Contract)
-4. [Prior] Prior task outputs that this task depends on (GEOM phase ordering)
-5. [Task] Exact task description + acceptance criteria
-6. [Format] Output format instruction (XML file blocks)
+1. [SYSTEM]      Constitutional obligations + C-059 annotation rules + forbidden patterns
+2. [PREAMBLE]    File Preamble Contract (§7.5) — mandatory first lines of the output file
+3. [FROZEN]      Frozen Artifact Signatures (§7.6) — compiled constructor/interface signatures
+4. [PTR]         Platform Type Registry — auto-populated from filesystem at call time (§7.2)
+5. [USING_MAP]   Namespace index — class → using directive mapping, auto-populated (§7.3)
+6. [SPEC]        Exact spec sections from Work Contract spec_sections field only
+7. [PRIOR]       Prior Task Compiled Output — public API signatures from prior task (§7.4)
+8. [TASK]        Exact task description + acceptance criteria + output file list
+9. [FORMAT]      Output format: XML file blocks with mandatory preamble header
 ```
 
-### 7.3 Semantic Chunking for Large Context
-For Deep Reasoning tasks requiring repository-scale context (Semantic Impact Discovery — EEM Step 02): use semantic chunking to load the most relevant repository sections within the model's context window. Chunking is based on structural boundaries (file-level) + semantic relevance (embedding similarity to task description).
+Any context section exceeding 4,000 characters MUST be truncated at a structural boundary. Never truncate mid-line or mid-method.
 
-Maximum context: 1M tokens (Gemini 2.5 Pro). When exceeded: load repository index + top-N most relevant files.
+### 7.2 Platform Type Registry — Auto-Population (Gap 1 fix)
 
-### 7.4 Prior Task Output Injection
-For sequential task phases: inject the compilation output and type definitions from Phase N-1 before generating Phase N code. This is the constitutional enforcement of C-085 (Idempotency) — each phase builds on verified prior output, not assumptions.
+PTR is NOT caller-supplied. MagicLLM auto-populates from the filesystem at invocation time:
+
+```python
+scope = ["src/", "tests/"]  # always both — test types are dependencies
+ptr = assembler.assemble(scope=scope)         # scans current sprint branch state
+using_map = assembler.build_using_map()       # auto-builds namespace index
+relevant = assembler.extract_task_ptr(ptr, spec_sections, stack=stack)
+```
+
+Relevance: extract types whose PascalCase names appear in the task description or spec sections. Fallback: all types in the stack. Maximum 30 types. **A caller MUST NOT pass a stale PTR snapshot.**
+
+### 7.3 USING_MAP — Namespace Index (Gap 5 + 6 fix)
+
+USING_MAP maps every public class/interface/enum/record name to its `using` directive. Auto-built from filesystem at invocation time. Injected as a structured block before spec sections:
+
+```
+USING_MAP — every type you reference requires its using directive:
+  FakeServerCallContext → using Waooaw.ConstitutionalEngine.Tests.Evaluators;
+  ConstitutionalEngineService → using Waooaw.ConstitutionalEngine.Services;
+  EvaluationContext → using Waooaw.ConstitutionalEngine.Evaluators;
+```
+
+USING_MAP is structural, not advisory. Missing a using directive for a USING_MAP type is a format failure.
+
+### 7.4 Prior Task Compiled Output Injection (Gap 2 fix)
+
+For sequential subtask chains (e.g. WC012-02b → WC012-02c), MagicLLM MUST inject the compiled public API surface of the immediately preceding subtask's output files.
+
+**Algorithm:**
+1. For each file in `depends_on` prior tasks: read the file from the sprint branch (not main)
+2. Extract: all `public` constructor signatures (full parameter list with types+names), all `public` method signatures, all `public` property declarations, namespace
+3. Format as COMPILED SIGNATURES block and inject at [FROZEN] position
+4. If prior file does not exist: log warning, skip — do NOT fabricate signatures
+
+**Critical:** Constructor parameter names and order are injected verbatim. The LLM MUST use the exact constructor signature when writing test instantiation code. This eliminates CS1503/CS1744/CS1729.
+
+### 7.5 File Preamble Contract (Gap 6 fix — NEW)
+
+Every output file produced by MagicLLM MUST begin with a preamble pre-generated by the Context Builder, NOT by the LLM. The LLM extends the file after the preamble. It MUST NOT alter the preamble.
+
+**C# preamble (auto-generated from USING_MAP + spec metadata):**
+```
+// Implements: {spec_file} {spec_section}
+// constitutional_basis: {constitutional_claims}
+using {all_usings_from_using_map_relevant_to_this_file};
+```
+
+**Python preamble:**
+```
+# Implements: {spec_file} {spec_section}
+# constitutional_basis: {constitutional_claims}
+from __future__ import annotations
+```
+
+The LLM instruction: "The first N lines are already written. Extend from line N+1. Never modify the preamble."
+
+### 7.6 Frozen Artifact Registry (Gap 8 fix — NEW)
+
+Once a file passes the compile gate, its public API surface is frozen. The Context Builder maintains a Frozen Artifact Registry at `sprint-context/frozen-artifacts.json`:
+
+```json
+{
+  "src/constitutional-engine/Services/ConstitutionalEngineService.cs": {
+    "frozen_at_task": "WC012-02b",
+    "namespace": "Waooaw.ConstitutionalEngine.Services",
+    "public_constructors": ["ConstitutionalEngineService(ConstitutionalDbContext db, EmergencyStopDbContext emergencyDb, ITemporalClient? temporalClient, EvaluatorRegistry registry, ILogger<ConstitutionalEngineService> logger)"],
+    "public_methods": ["RecordEvidence(RecordEvidenceRequest, ServerCallContext)", "ValidateAction(ValidateActionRequest, ServerCallContext)"]
+  }
+}
+```
+
+Any subsequent task that references a frozen file receives its exact signatures. The LLM may not invent alternative signatures for a frozen artifact. Violation = compile failure that is non-retriable.
+
+### 7.7 Semantic Chunking for Large Context (Phase 2 only)
+
+For Deep Reasoning tasks requiring repository-scale context (EEM Step 02): semantic chunking based on structural boundaries + embedding similarity. Maximum 1M tokens (Gemini 2.5 Pro). **Not applicable to Code Generation or Test Generation tasks.**
 
 ---
 
 ## 8. Response Evaluator — Quality Gates
 
-Every LLM response passes through five gates in sequence. Any gate failure produces a classified failure record for the Retry Advisor.
+Every LLM response passes through five gates in sequence. Any gate failure produces a classified failure record for the Retry Advisor. **Gates 2–5 were not implemented in Phase 1 — this is a constitutional violation corrected by this amendment.**
 
 | Gate | Applies to | Pass condition | Failure classification |
 |---|---|---|---|
@@ -306,25 +383,76 @@ A response that passes all applicable gates is ACCEPTED. A response that fails a
 
 ---
 
-## 9. Retry Advisor
+## 9. Retry Advisor (Gap 4 fix — unified, not disconnected)
 
-The Retry Advisor classifies failures and produces targeted corrections for the next attempt. Targeted corrections outperform generic retry because they modify the exact context element that caused the failure.
+The Retry Advisor is the SAME component as `scripts/sprint_retry_advisor.py`. MagicLLM does not maintain a separate retry logic. The existing 17-family error classifier IS the MagicLLM Retry Advisor. This is the constitutional connection.
 
-| Failure classification | Root cause | Targeted correction |
+**Retry loop algorithm (Gap 7 fix):**
+
+```
+Attempt 1:
+  Context Builder assembles context (§7.1 ordered assembly)
+  LLM generates output
+  Response Evaluator runs 5 gates (§8)
+  IF all gates PASS → ACCEPTED, return response
+
+  IF gate fails:
+    Retry Advisor classifies failure (sprint_retry_advisor.diagnose_build_error())
+    Advisor produces: {error_family, fix_instruction, confidence, should_retry}
+
+    IF confidence < 30% OR should_retry=False:
+      STOP_LOSS: skip remaining attempts, emit BUILD_FAILURE (not spec-gap)
+
+    ELSE:
+      Rebuild context with TARGETED CORRECTION:
+        - Re-inject PTR with corrected type (if CS1061/CS0246)
+        - Re-inject frozen signatures (if CS1503/CS1744/CS1729)
+        - Re-inject File Preamble Contract (if ANNOTATION_MISSING)
+        - Append: "Previous attempt failed. Fix instruction: {fix_instruction}"
+
+Attempt 2: same as attempt 1 with updated context
+
+Attempt 3: same
+
+After 3 failures (all with diagnosable error classes):
+  → Emit BUILD_FAILURE (not spec-gap) — LLM generation miss, not specification gap
+  → Next cron run retries with same context + learning cache consulted first
+
+After 3 failures (with UNKNOWN at stop-loss):
+  → Auto-extend advisor (scripts/advisor_auto_extend.py) — generate handler for new code
+  → Commit handler to main — next run uses it
+  → Emit SPEC_GAP only if auto-extend fails AND failure recurs 3+ times across runs
+```
+
+**Error family table (implemented in sprint_retry_advisor.py):**
+
+| Failure classification | Error codes | Targeted correction |
 |---|---|---|
-| `COMPILE_FAILURE: CS1061` | Model referenced a property that does not exist on the type | Inject PTR entry for the exact type; explicitly list available properties; ban `TryGetValue()` for this type |
-| `COMPILE_FAILURE: CS0246` | Model referenced a type that is not imported | Add missing type to PTR injection; add `using` statement to context |
-| `COMPILE_FAILURE: CS0505` | Model overrode a non-virtual method | Inject base class signature; specify `override` vs `new` requirement |
-| `SPEC_DRIFT` | Model invented fields/methods not in spec | Re-inject spec section; explicitly list what is and is not in scope |
-| `FORMAT_FAILURE` | Model did not follow XML file block format | Re-inject format instruction; provide example of correctly formatted output |
-| `ANNOTATION_MISSING` | Constitutional traceability header absent | Re-inject C-059/C-073 rules; provide header template as first line of system prompt |
-| `SCHEMA_VIOLATION` | Structured output JSON malformed | Re-inject schema; provide correct example |
+| SIGNATURE_DRIFT | CS7036, CS1501, CS1503, CS1729, CS1744 | Inject frozen constructor signatures; use all-positional args |
+| NULLABILITY_MISMATCH | CS0266, CS0037, CS8629, CS8600, CS8602, CS8604, CS8618 | Inject nullable handling pattern; use GetValueOrDefault |
+| SYMBOL_RESOLUTION | CS0246, CS0103, CS0117, CS1061 | Re-inject USING_MAP + PTR; list exact available members |
+| INTERFACE_CONTRACT | CS0539, CS0505, CS0115, CS0738, CS1024 | Inject interface/base class signature verbatim |
+| ASYNC_FLOW | CS1998, CS4014 | Re-inject async/await rules |
+| REFERENCE_CONFIG | NU*, MSB* | Package/project reference fix; do not retry code generation |
+| FORMAT_FAILURE | No error code | Re-inject XML format template |
+| ANNOTATION_MISSING | — | Re-inject File Preamble Contract (§7.5) |
 
-**Retry limit:** 3 attempts per task. After 3 failures:
-1. MagicLLM escalates to Runtime Implementation Professional (INST-010) with the full failure record
-2. INST-010 raises a Capability Gap Record to the Goal Orchestrator
-3. Goal is paused pending INST-008 (AI Architect) review of the failure pattern
-4. If the failure pattern reveals a systematic gap in the model's capability for this task category, AI Architect initiates Stage W-5 (Goal-Driven Evolution) for MagicLLM
+**Retry limit:** 3 attempts. After exhaustion: BUILD_FAILURE (retriable next cron run). SPEC_GAP issued only when failure recurs 3+ runs AND auto-extend cannot generate a handler.
+
+---
+
+## 9b. MagicLLM Fallback Behavior (Gap 10 fix — NEW)
+
+When MagicLLM is unavailable (import error, no API key, infrastructure failure):
+
+| Condition | Permitted fallback | Evidence required |
+|---|---|---|
+| API key missing | Call `call_llm()` directly | Log warning: "MagicLLM fallback — no API key. MDR not produced." |
+| MagicLLM import error | Call `call_llm()` directly | Log warning with import error detail |
+| Infrastructure timeout | Raise RuntimeError to outer retry loop | No fallback — let retry advisor handle |
+| MagicLLM returns ESCALATE | Call `call_llm()` directly with same context | Log: "MagicLLM escalated — falling back for this attempt" |
+
+**Constitutional constraint:** Fallback is PERMITTED for at most 3 consecutive invocations. If 3 consecutive fallbacks occur, MagicLLM must halt and notify via Sprint Dashboard (C-001: Human Override). Silent indefinite fallback is a C-059 violation (no Decision Record = no evidence).
 
 ---
 
@@ -437,9 +565,14 @@ Future ADR-033 (when available): evaluate Anthropic models via AWS Bedrock `ap-s
 | No authority beyond Decision Space | Constitution Article III | MagicLLM may not invoke MCP tools that are not in the authorized tool list for the current Work Contract |
 | Cost ceiling is a constitutional floor | C-077 | MagicLLM cost governance is not optional — it is constitutionally enforced |
 | Self-improvement is mandatory | C-069 | MagicLLM must update its performance model from evidence — static routing violates C-069 |
+| Context assembly order is mandatory | C-032 | §7.1 ordered context assembly is not optional — prose instructions as substitutes for structured facts is a spec violation |
+| Frozen artifacts are immutable | C-085 | Once a file's public API passes a compile gate, its signatures may not be changed by downstream tasks |
+| File preamble is pre-written | C-073 | The `// Implements:` header and using directives are generated by Context Builder, not by the LLM |
+| Fallback is time-bounded | C-059 | Maximum 3 consecutive fallback invocations without a Decision Record before human notification |
+| Spec-gap is the last resort | C-065 | A diagnosable build failure (known error family) is NOT a spec gap — it is a generation miss, retriable next run |
 
 ---
 
 *Produced by AI Architect (INST-008) — GOAL-001 Phase 3*
-*For Solution Architect review (INST-005) and Founder acknowledgement.*
-*Pending review, this is a proposed reference architecture document — not yet governing.*
+*Ratified 2026-07-28 — governing from this date. Ten constitutional violations corrected.*
+*All WAOOAW code generation via MagicLLM is bound by this document from ratification date.*
