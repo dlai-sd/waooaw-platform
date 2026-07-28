@@ -140,5 +140,19 @@
     "public_properties": [
       "CCT_EF01_C043BudgetCeilingEvaluatorTests"
     ]
+  },
+  "tests/constitutional-engine.Tests/Services/CCT_EF01_EvidenceFirstTests.cs": {
+    "frozen_at_task": "WC012-03c",
+    "namespace": "Waooaw.ConstitutionalEngine.Services",
+    "public_constructors": [],
+    "public_methods": [
+      "RecordEvidence_WritesExactlyOneRow_BeforeReturningResponse",
+      "RecordEvidence_PersistedRecord_CarriesCorrectFields",
+      "RecordEvidence_CalledTwice_ProducesTwoRows_NeverUpdate",
+      "RecordEvidence_EmptyConstitutionalBasis_ThrowsInvalidArgument",
+      "RecordEvidence_MissingTenantMetadata_ThrowsUnauthenticated",
+      "RecordEvidence_ResponseTimestamp_MatchesLedgerTimestamp"
+    ],
+    "public_properties": []
   }
 }
