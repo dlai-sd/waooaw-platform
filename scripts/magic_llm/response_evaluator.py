@@ -205,7 +205,16 @@ class ResponseEvaluator:
             parts = Path(f).parts
             if len(parts) > 1:
                 csproj_dirs.add(str(self._root / parts[0] / parts[1]))
-        csproj_dirs.add(str(self._root / "tests" / "constitutional-engine.Tests"))
+        # Only add CE tests if the written files are in CE (tests/ or src/constitutional-engine).
+        # For BP (src/business-platform), do NOT build CE tests — hardcoding caused
+        # WC013-02a to fail: CE tests were always compiled, LLM-generated extra file blocks
+        # for CE types overwrote them with incorrect versions → CS0117 on CE tests.
+        has_ce_files = any(
+            "constitutional-engine" in f or (f.startswith("tests/") and "constitutional" in f)
+            for f in cs_files
+        )
+        if has_ce_files:
+            csproj_dirs.add(str(self._root / "tests" / "constitutional-engine.Tests"))
 
         errors: list[str] = []
         error_codes: list[str] = []
