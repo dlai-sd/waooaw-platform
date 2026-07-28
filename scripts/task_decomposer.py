@@ -375,73 +375,130 @@ def execute_file_by_file(
         print(f"\n  FILE-BY-FILE: generating {file_name}")
 
         if _use_magic:
-            # ── §7.1 Ordered Context Assembly via ContextBuilder ──────────────
-            try:
-                ctx = _cb.build(
-                    task_id=f"{task_id}:{file_name}",
-                    output_file=output_file,
-                    spec_sections=spec_sections,
-                    constitutional_check=effective_check,
-                    depends_on_tasks=[],
-                    prior_output_files=prior_output_files or already_written,
-                    stack=stack,
-                )
-                print(f"  CONTEXT: {ctx.total_chars:,} chars via §7 ContextBuilder "
-                      f"({len(ctx.blocks)} slots, preamble={len(ctx.preamble_lines)} lines)")
+            # ── §7.1 Ordered Context Assembly + §8 Response Evaluator with retry ──
+            # E3: retry loop (was single attempt — all 3 attempts wasted)
+            # E4: fresh ContextBuilder per attempt (reloads frozen registry)
+            # E5: pre-compile self-review before write
+            # E7: retry advisor on compile gate failure
+            import os as _os
+            api_key = _os.environ.get("ANTHROPIC_API_KEY", "")
+            if not api_key:
+                print(f"  WARN: no API key — falling back to ad-hoc path")
+                _use_magic = False
+            else:
+                max_magic_attempts = 3
+                magic_failure_context = ""
+                magic_success = False
 
-                import os as _os
-                api_key = _os.environ.get("ANTHROPIC_API_KEY", "")
-                if not api_key:
-                    print(f"  WARN: no API key — cannot call LLM")
+                for attempt in range(1, max_magic_attempts + 1):
+                    # E4: fresh ContextBuilder per attempt — reloads frozen registry
+                    try:
+                        from magic_llm.context_builder import ContextBuilder as _CB
+                        _cb_fresh = _CB(REPO_ROOT)
+                    except Exception:
+                        _cb_fresh = _cb  # fallback to outer instance
+
+                    try:
+                        # Build context with failure context from prior attempt
+                        ctx = _cb_fresh.build(
+                            task_id=f"{task_id}:{file_name}",
+                            output_file=output_file,
+                            spec_sections=spec_sections,
+                            constitutional_check=(
+                                effective_check +
+                                (f"\n\nPREVIOUS ATTEMPT FAILED:\n{magic_failure_context}" if magic_failure_context else "")
+                            ),
+                            depends_on_tasks=[],
+                            prior_output_files=prior_output_files or already_written,
+                            stack=stack,
+                        )
+                        print(f"\n── {task_id}:{file_name} (attempt {attempt}/{max_magic_attempts}) ──")
+                        print(f"  CONTEXT: {ctx.total_chars:,} chars ({len(ctx.blocks)} slots)")
+
+                        response = call_llm_via_magiclm(
+                            f"{task_id}:{file_name}",
+                            f"Generate {file_name}",
+                            ctx.full_prompt,
+                            "",
+                            model_hint,
+                            min(max_tokens, 4000),
+                            attempt=attempt,
+                        )
+
+                        if not response:
+                            magic_failure_context = "LLM returned no response."
+                            continue
+
+                        files_parsed = parse_llm_files(response)
+                        if not files_parsed:
+                            magic_failure_context = "No <file> blocks in response — wrap output in <file path=\"...\">.</file>"
+                            continue
+
+                        # E5: pre-compile self-review before write
+                        try:
+                            from codegen_self_review import pre_compile_review
+                            from ptr_assembler import get_assembler as _pga2
+                            _um2 = _pga2().build_using_map()
+                            files_parsed = pre_compile_review(files_parsed, api_key, _um2)
+                            print(f"  PRE-REVIEW: self-review complete ({len(files_parsed)} file(s))")
+                        except Exception as _pr_err:
+                            pass  # non-blocking
+
+                        written = write_llm_files(files_parsed)
+
+                        # §8 Response Evaluator — 5 gates
+                        eval_result = _re_eval.evaluate(
+                            task_id=f"{task_id}:{file_name}",
+                            raw_response=response,
+                            written_files=written,
+                            stack=stack,
+                            spec_sections=spec_sections,
+                        )
+                        for gate in eval_result.gates:
+                            status = "✅" if gate.passed else "❌"
+                            print(f"  {status} Gate {gate.gate}: {gate.detail[:80]}")
+
+                        if eval_result.all_passed:
+                            already_written.append(output_file)
+                            print(f"  FILE-BY-FILE: {file_name} ✅")
+                            magic_success = True
+                            break
+
+                        # E7: retry advisor on compile failure
+                        failure = eval_result.first_failure
+                        if failure and failure.error_codes:
+                            try:
+                                import importlib.util as _ilu
+                                _s = _ilu.spec_from_file_location("sprint_retry_advisor",
+                                     str(REPO_ROOT / "scripts" / "sprint_retry_advisor.py"))
+                                _m = _ilu.module_from_spec(_s); _s.loader.exec_module(_m)
+                                diagnosis = _m.diagnose_build_error(
+                                    f"{task_id}:{file_name}", failure.detail, written, []
+                                )
+                                if diagnosis.should_retry and diagnosis.confidence >= 0.3:
+                                    magic_failure_context = (
+                                        f"COMPILE FAILED ({','.join(failure.error_codes)}):\n"
+                                        f"{failure.detail[:300]}\n\n"
+                                        f"TARGETED FIX: {diagnosis.fix_instruction}"
+                                    )
+                                    print(f"  Retry Advisor: {diagnosis.error_type} (confidence={diagnosis.confidence:.0%})")
+                                    continue
+                            except Exception:
+                                pass
+                        magic_failure_context = f"Gate {failure.gate} failed: {failure.detail[:300]}"
+
+                    except Exception as _magic_err:
+                        print(f"  MagicLLM error on attempt {attempt}: {_magic_err}")
+                        magic_failure_context = str(_magic_err)[:200]
+
+                if magic_success:
+                    continue
+                if not magic_failure_context.startswith("LLM"):
+                    print(f"  FILE-BY-FILE: {file_name} ❌ — exhausted {max_magic_attempts} attempts")
                     return False
-
-                # Call LLM with assembled context
-                response = call_llm_via_magiclm(
-                    f"{task_id}:{file_name}",
-                    f"Generate {file_name}",
-                    ctx.full_prompt,
-                    "",  # constitutional_check already in context
-                    model_hint,
-                    min(max_tokens, 4000),
-                    attempt=1,
-                )
-
-                if not response:
-                    print(f"  LLM returned no response for {file_name}")
-                    return False
-
-                # Parse and write files
-                files = parse_llm_files(response)
-                if not files:
-                    print(f"  No <file> blocks found for {file_name}")
-                    return False
-
-                written = write_llm_files(files)
-
-                # ── §8 Response Evaluator — 5 gates ────────────────────────────
-                eval_result = _re_eval.evaluate(
-                    task_id=f"{task_id}:{file_name}",
-                    raw_response=response,
-                    written_files=written,
-                    stack=stack,
-                    spec_sections=spec_sections,
-                )
-                for gate in eval_result.gates:
-                    status = "✅" if gate.passed else "❌"
-                    print(f"  {status} Gate {gate.gate}: {gate.detail[:80]}")
-
-                if not eval_result.all_passed:
-                    failure = eval_result.first_failure
-                    print(f"  FILE-BY-FILE: {file_name} ❌ — {failure.gate} gate failed")
-                    return False
-
-                already_written.append(output_file)
-                print(f"  FILE-BY-FILE: {file_name} ✅")
-                continue
-
-            except Exception as _magic_err:
-                print(f"  FILE-BY-FILE: MagicLLM error ({_magic_err}) — falling back to ad-hoc")
-                # fall through to ad-hoc below
+                # If all failures were LLM/infra, fall through to ad-hoc
+                print(f"  FILE-BY-FILE: MagicLLM exhausted — falling back to ad-hoc for {file_name}")
+                _use_magic = False
 
         # ── Ad-hoc assembly fallback (pre-MagicLLM path, kept for resilience) ─
         # Collect all PTR types for selective injection
@@ -541,6 +598,8 @@ def _run_llm_subtask(st: "SubTaskDef", completed: list[str], dry_run: bool) -> b
         return execute_file_by_file(
             st.id, st.output_files, effective_check, spec_with_context,
             st.model_hint, st.max_tokens,
+            stack=st.stack,
+            prior_output_files=list(spec_with_context.keys()),  # spec keys hint at dependencies
         )
     else:
         return execute_with_llm(
@@ -740,6 +799,13 @@ def execute_subtask_chain(
             # IB-023: file-by-file generation when output_files defined (industry best practice)
             if st.output_files:
                 print(f"  [{st.id}] File-by-file mode: {len(st.output_files)} file(s)")
+                # E1+E2 fix: pass stack + prior_output_files so ContextBuilder has frozen signatures
+                # prior = all output files from already-completed subtasks in this chain
+                prior_files = [
+                    f for prev_st in subtasks
+                    if prev_st.id in completed and hasattr(prev_st, 'output_files')
+                    for f in (prev_st.output_files or [])
+                ]
                 success = execute_file_by_file(
                     st.id,
                     st.output_files,
@@ -747,6 +813,8 @@ def execute_subtask_chain(
                     spec_with_context,
                     st.model_hint,
                     st.max_tokens,
+                    stack=st.stack,
+                    prior_output_files=prior_files,
                 )
             else:
                 # Legacy batch mode — backward compat for subtasks without output_files
