@@ -26,7 +26,7 @@ import time
 from pathlib import Path
 from typing import Any, Callable, Optional
 
-from scripts.magic_llm.orchestration import (
+from magic_llm.orchestration import (
     FounderDecisionBrief,
     GoalUnderstandingRecord,
     GoalUnderstandingRequest,
@@ -37,7 +37,7 @@ from scripts.magic_llm.orchestration import (
     RoutingDecisionRecord,
     RoutingRequest,
 )
-from scripts.magic_llm.types import MagicLLMRequest, TaskCategory
+from magic_llm.types import MagicLLMRequest, TaskCategory
 
 REPO_ROOT = Path(__file__).parent.parent.parent
 
