@@ -19,7 +19,6 @@ namespace Waooaw.ConstitutionalEngine.Tests.EmergencyStop;
 public sealed class CCT_HO01_EmergencyStopLatencyTests
 {
     // ── Factory helpers ──────────────────────────────────────────────────────
-
     private static EmergencyStopDbContext CreateEmergencyDb() =>
         new EmergencyStopDbContext(
             new DbContextOptionsBuilder<EmergencyStopDbContext>()
@@ -32,8 +31,9 @@ public sealed class CCT_HO01_EmergencyStopLatencyTests
                 .UseInMemoryDatabase(Guid.NewGuid().ToString())
                 .Options);
 
-    private static ITemporalClient MockedTemporalClient()
-    {
+    private static ITemporalClient MockedTemporalClient() =>
+        Substitute.For<ITemporalClient>();
+
     private static ConstitutionalEngineService CreateSut(
         EmergencyStopDbContext emergencyDb,
         ITemporalClient? temporalClient = null)

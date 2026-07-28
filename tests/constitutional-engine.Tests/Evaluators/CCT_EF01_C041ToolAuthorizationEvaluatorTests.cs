@@ -1,9 +1,8 @@
 // Implements: architecture/reference/ce-validate-action-evaluators.md §C-041 Evaluator — Tool Authorization
-// Constitutional basis: C-041 (Tool Authorization), C-076 (test coverage), C-082 (build validation)
+// constitutional_basis: C-041 (Tool Authorization), C-076 (test coverage), C-082 (build validation)
 using System.Text.Json;
 using FluentAssertions;
 using Waooaw.ConstitutionalEngine.Evaluators;
-using Xunit;
 
 namespace Waooaw.ConstitutionalEngine.Tests.Evaluators;
 
@@ -13,99 +12,116 @@ public sealed class CCT_EF01_C041ToolAuthorizationEvaluatorTests
 
     private static EvaluationContext MakeContext(
         string actionType = "MCP_TOOL_CALL",
-        string? toolName = "my_tool",
+        string? toolName = "calc",
         string[]? authorizedTools = null,
         string[]? escalationTools = null,
-        string tenantId = "tenant-001",
+        string tenantId = "tenant-abc",
         string contractId = "contract-001")
     {
-        var parameters = new Dictionary<string, object?>();
+        var authorizedJson = authorizedTools is not null
+            ? JsonSerializer.Serialize(authorizedTools)
+            : null;
+        var escalationJson = escalationTools is not null
+            ? JsonSerializer.Serialize(escalationTools)
+            : null;
 
+        var parameters = new Dictionary<string, object?>();
         if (toolName is not null)
             parameters["tool_name"] = toolName;
-
-        if (authorizedTools is not null)
-            parameters["authorized_tools"] = authorizedTools;
-
-        if (escalationTools is not null)
-            parameters["escalation_required_tools"] = escalationTools;
+        if (authorizedJson is not null)
+            parameters["authorized_tools"] = authorizedJson;
+        if (escalationJson is not null)
+            parameters["escalation_required_tools"] = escalationJson;
 
         var actionParameters = JsonSerializer.Serialize(parameters);
 
         return new EvaluationContext(
-            ContractId: contractId,
-            ActionType: actionType,
-            ActionParameters: actionParameters,
-            DecisionSpaceVersion: 1,
-            TenantId: tenantId,
-            SkillId: null,
-            ApprovedBudgetInrPaise: 100_000L,
-            CurrentSpendInrPaise: 0L,
-            ProposedSpendInrPaise: 1_000L,
-            BudgetSkillType: "generic");
+            contractId,
+            actionType,
+            actionParameters,
+            1,
+            tenantId,
+            null,
+            100_000L,
+            0L,
+            0L,
+            "GENERAL");
     }
 
-    // ── Non-MCP action type ────────────────────────────────────────────────
+    // ── Allow scenarios ────────────────────────────────────────────────────────
 
     [Fact]
     public async Task NonMcpActionType_ShouldAllow()
     {
-        var ctx = MakeContext(actionType: "REST_CALL");
+        var ctx = MakeContext(actionType: "HTTP_CALL", toolName: "calc",
+            authorizedTools: new[] { "calc" });
+
         var result = await _sut.EvaluateAsync(ctx, CancellationToken.None);
+
         result.Verdict.Should().Be(EvaluationVerdict.Allow);
     }
-
-    // ── Authorized tool scenarios ──────────────────────────────────────────
 
     [Fact]
     public async Task McpToolCall_AuthorizedTool_ShouldAllow()
     {
-        var ctx = MakeContext(
-            toolName: "approved_tool",
-            authorizedTools: ["approved_tool", "other_tool"]);
+        var ctx = MakeContext(toolName: "calculator",
+            authorizedTools: new[] { "calculator", "search" });
+
         var result = await _sut.EvaluateAsync(ctx, CancellationToken.None);
+
         result.Verdict.Should().Be(EvaluationVerdict.Allow);
     }
 
     [Fact]
     public async Task McpToolCall_AnotherAuthorizedTool_ShouldAllow()
     {
-        var ctx = MakeContext(
-            toolName: "other_tool",
-            authorizedTools: ["approved_tool", "other_tool"]);
+        var ctx = MakeContext(toolName: "search",
+            authorizedTools: new[] { "calculator", "search", "summarise" });
+
         var result = await _sut.EvaluateAsync(ctx, CancellationToken.None);
+
         result.Verdict.Should().Be(EvaluationVerdict.Allow);
     }
 
-    // ── Deny scenarios ─────────────────────────────────────────────────────
+    // ── Deny scenarios ─────────────────────────────────────────────────────────
 
     [Fact]
     public async Task McpToolCall_UnlistedTool_ShouldDeny()
     {
-        var ctx = MakeContext(
-            toolName: "unknown_tool",
-            authorizedTools: ["approved_tool"]);
+        var ctx = MakeContext(toolName: "delete_all",
+            authorizedTools: new[] { "calculator", "search" });
+
         var result = await _sut.EvaluateAsync(ctx, CancellationToken.None);
+
         result.Verdict.Should().Be(EvaluationVerdict.Deny);
     }
 
     [Fact]
     public async Task McpToolCall_MissingToolNameKey_ShouldDeny()
     {
-        var ctx = MakeContext(
-            toolName: null,
-            authorizedTools: ["approved_tool"]);
+        // Construct parameters without tool_name
+        var actionParameters = JsonSerializer.Serialize(new Dictionary<string, object?>
+        {
+            ["authorized_tools"] = JsonSerializer.Serialize(new[] { "calculator" })
+        });
+
+        var ctx = new EvaluationContext(
+            "contract-001", "MCP_TOOL_CALL", actionParameters,
+            1, "tenant-abc", null, 100_000L, 0L, 0L, "GENERAL");
+
         var result = await _sut.EvaluateAsync(ctx, CancellationToken.None);
+
         result.Verdict.Should().Be(EvaluationVerdict.Deny);
     }
 
     [Fact]
     public async Task McpToolCall_EmptyToolName_ShouldDeny()
     {
-        var ctx = MakeContext(
-            toolName: "",
-            authorizedTools: ["approved_tool"]);
+        var ctx = MakeContext(toolName: "",
+            authorizedTools: new[] { "calculator", "search" });
+
         var result = await _sut.EvaluateAsync(ctx, CancellationToken.None);
+
         result.Verdict.Should().Be(EvaluationVerdict.Deny);
     }
 
@@ -113,17 +129,11 @@ public sealed class CCT_EF01_C041ToolAuthorizationEvaluatorTests
     public async Task McpToolCall_EmptyActionParameters_ShouldDeny()
     {
         var ctx = new EvaluationContext(
-            ContractId: "c-1",
-            ActionType: "MCP_TOOL_CALL",
-            ActionParameters: "",
-            DecisionSpaceVersion: 1,
-            TenantId: "t-1",
-            SkillId: null,
-            ApprovedBudgetInrPaise: 100_000L,
-            CurrentSpendInrPaise: 0L,
-            ProposedSpendInrPaise: 0L,
-            BudgetSkillType: "generic");
+            "contract-001", "MCP_TOOL_CALL", "{}",
+            1, "tenant-abc", null, 100_000L, 0L, 0L, "GENERAL");
+
         var result = await _sut.EvaluateAsync(ctx, CancellationToken.None);
+
         result.Verdict.Should().Be(EvaluationVerdict.Deny);
     }
 
@@ -131,60 +141,67 @@ public sealed class CCT_EF01_C041ToolAuthorizationEvaluatorTests
     public async Task McpToolCall_MalformedJson_ShouldDeny()
     {
         var ctx = new EvaluationContext(
-            ContractId: "c-1",
-            ActionType: "MCP_TOOL_CALL",
-            ActionParameters: "not-valid-json{{{{",
-            DecisionSpaceVersion: 1,
-            TenantId: "t-1",
-            SkillId: null,
-            ApprovedBudgetInrPaise: 100_000L,
-            CurrentSpendInrPaise: 0L,
-            ProposedSpendInrPaise: 0L,
-            BudgetSkillType: "generic");
+            "contract-001", "MCP_TOOL_CALL", "NOT_VALID_JSON",
+            1, "tenant-abc", null, 100_000L, 0L, 0L, "GENERAL");
+
         var result = await _sut.EvaluateAsync(ctx, CancellationToken.None);
+
         result.Verdict.Should().Be(EvaluationVerdict.Deny);
     }
 
     [Fact]
     public async Task McpToolCall_NoAuthorizedToolsList_ShouldDeny()
     {
-        var ctx = MakeContext(
-            toolName: "some_tool",
-            authorizedTools: null);
+        var actionParameters = JsonSerializer.Serialize(new Dictionary<string, object?>
+        {
+            ["tool_name"] = "calculator"
+            // no authorized_tools key
+        });
+
+        var ctx = new EvaluationContext(
+            "contract-001", "MCP_TOOL_CALL", actionParameters,
+            1, "tenant-abc", null, 100_000L, 0L, 0L, "GENERAL");
+
         var result = await _sut.EvaluateAsync(ctx, CancellationToken.None);
+
         result.Verdict.Should().Be(EvaluationVerdict.Deny);
     }
 
     [Fact]
     public async Task McpToolCall_EmptyAuthorizedToolsList_ShouldDeny()
     {
-        var ctx = MakeContext(
-            toolName: "some_tool",
-            authorizedTools: []);
+        var ctx = MakeContext(toolName: "calculator",
+            authorizedTools: Array.Empty<string>());
+
         var result = await _sut.EvaluateAsync(ctx, CancellationToken.None);
+
         result.Verdict.Should().Be(EvaluationVerdict.Deny);
     }
 
     [Fact]
     public async Task McpToolCall_ToolNameCaseMismatch_ShouldDeny()
     {
-        var ctx = MakeContext(
-            toolName: "Approved_Tool",
-            authorizedTools: ["approved_tool"]);
+        // authorized_tools has "Calculator" (capital C), tool_name is "calculator" (lower c)
+        var ctx = MakeContext(toolName: "calculator",
+            authorizedTools: new[] { "Calculator", "Search" });
+
         var result = await _sut.EvaluateAsync(ctx, CancellationToken.None);
+
         result.Verdict.Should().Be(EvaluationVerdict.Deny);
     }
 
-    // ── Escalate scenarios ─────────────────────────────────────────────────
+    // ── Escalate scenarios ─────────────────────────────────────────────────────
 
     [Fact]
     public async Task McpToolCall_EscalationRequiredTool_ShouldEscalate()
     {
         var ctx = MakeContext(
-            toolName: "sensitive_tool",
-            authorizedTools: ["sensitive_tool"],
-            escalationTools: ["sensitive_tool"]);
+            toolName: "send_email",
+            authorizedTools: new[] { "calculator", "send_email" },
+            escalationTools: new[] { "send_email" });
+
         var result = await _sut.EvaluateAsync(ctx, CancellationToken.None);
+
         result.Verdict.Should().Be(EvaluationVerdict.Escalate);
     }
 
@@ -192,62 +209,77 @@ public sealed class CCT_EF01_C041ToolAuthorizationEvaluatorTests
     public async Task McpToolCall_ToolInBothAuthorizedAndEscalation_ShouldEscalate()
     {
         var ctx = MakeContext(
-            toolName: "dual_tool",
-            authorizedTools: ["dual_tool", "safe_tool"],
-            escalationTools: ["dual_tool"]);
+            toolName: "delete_record",
+            authorizedTools: new[] { "delete_record", "calculator" },
+            escalationTools: new[] { "delete_record" });
+
         var result = await _sut.EvaluateAsync(ctx, CancellationToken.None);
+
         result.Verdict.Should().Be(EvaluationVerdict.Escalate);
     }
 
-    // ── ClaimId and Reason invariants ──────────────────────────────────────
+    // ── Invariant scenarios ────────────────────────────────────────────────────
 
     [Theory]
     [InlineData("MCP_TOOL_CALL")]
-    [InlineData("REST_CALL")]
-    [InlineData("GRAPHQL_QUERY")]
+    [InlineData("HTTP_CALL")]
+    [InlineData("DB_QUERY")]
+    [InlineData("FILE_READ")]
     public async Task EvaluateAsync_AlwaysReturnsClaimIdC041(string actionType)
     {
-        var ctx = MakeContext(actionType: actionType, authorizedTools: ["any"]);
+        var ctx = MakeContext(actionType: actionType,
+            toolName: "calculator",
+            authorizedTools: new[] { "calculator" });
+
         var result = await _sut.EvaluateAsync(ctx, CancellationToken.None);
+
         result.ClaimId.Should().Be("C-041");
     }
 
     [Theory]
     [InlineData("MCP_TOOL_CALL")]
-    [InlineData("REST_CALL")]
-    [InlineData("OTHER_ACTION")]
+    [InlineData("HTTP_CALL")]
+    [InlineData("UNKNOWN_TYPE")]
     public async Task EvaluateAsync_AlwaysPopulatesReason(string actionType)
     {
-        var ctx = MakeContext(actionType: actionType, authorizedTools: ["my_tool"]);
+        var ctx = MakeContext(actionType: actionType,
+            toolName: "calculator",
+            authorizedTools: new[] { "calculator" });
+
         var result = await _sut.EvaluateAsync(ctx, CancellationToken.None);
+
         result.Reason.Should().NotBeNullOrWhiteSpace();
     }
-
-    // ── Cancellation ───────────────────────────────────────────────────────
 
     [Fact]
     public async Task EvaluateAsync_CompletesWithoutCancellation()
     {
-        var ctx = MakeContext(
-            toolName: "approved_tool",
-            authorizedTools: ["approved_tool"]);
-        var act = async () => await _sut.EvaluateAsync(ctx, CancellationToken.None);
+        var ctx = MakeContext(toolName: "calculator",
+            authorizedTools: new[] { "calculator" });
+
+        using var cts = new CancellationTokenSource();
+
+        var act = async () => await _sut.EvaluateAsync(ctx, cts.Token);
+
         await act.Should().NotThrowAsync();
     }
 
-    // ── Cross-tenant consistency ───────────────────────────────────────────
+    // ── Cross-tenant invariant ─────────────────────────────────────────────────
 
     [Theory]
     [InlineData("tenant-alpha")]
     [InlineData("tenant-beta")]
-    [InlineData("tenant-gamma")]
+    [InlineData("org-gamma")]
+    [InlineData("")]
     public async Task McpToolCall_UnlistedTool_DeniedAcrossTenants(string tenantId)
     {
         var ctx = MakeContext(
-            toolName: "unknown_tool",
-            authorizedTools: ["approved_tool"],
+            toolName: "forbidden_tool",
+            authorizedTools: new[] { "calculator" },
             tenantId: tenantId);
+
         var result = await _sut.EvaluateAsync(ctx, CancellationToken.None);
+
         result.Verdict.Should().Be(EvaluationVerdict.Deny);
     }
 }
