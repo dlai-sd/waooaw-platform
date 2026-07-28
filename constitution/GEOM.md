@@ -696,7 +696,16 @@ G-4 Planning       preflight job: HALT check + Sprint Index build
                    Goal Orchestrator identifies next task + issues GO Authorization
 
 G-5 Journey        execute job (INST-010 author hat):
-  EEM Step 08        autonomous_sprint_runner.py + MagicLLM invocation
+  EEM Step 08        autonomous_sprint_runner.py
+                       → task_decomposer.execute_file_by_file() [for LLM tasks]
+                         → Path 1: GoalExecutor.execute_sprint_task() [canonical]
+                              ContextBuilder §7 (9-slot ordered context)
+                              MagicLLM pipeline invocation (claude-sonnet-4-6)
+                              ResponseEvaluator §8 (5 gates: FORMAT→COMPILE→ANNOTATION→SPEC_ALIGN→SCHEMA)
+                              CascadeHandler L1→L2→L3 (not spec-gap on failure)
+                              FrozenArtifactRegistry update on success
+                         → Path 2: inline MagicLLM (fallback — GoalExecutor import failure only)
+                         → Path 3: ad-hoc assembly (last resort — infrastructure failure only)
                      Code generated → committed to feature branch → PR opened
                      MagicLLM Decision Record → Goal Register (GitHub Issue comment)
 

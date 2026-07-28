@@ -117,7 +117,7 @@ session_declared: "Architecture correction 2026-07-28: WC-012 execution requires
 
 # ── WC-012 STATUS ────────────────────────────────────────────────────────────────────────
 sprint: WC-012
-sprint_status: AWAITING_GO
+sprint_status: AUTHORIZED
 task_id: WC012-01
 tasks_done: []
 tasks_remaining:
@@ -126,7 +126,7 @@ tasks_remaining:
   - WC012-03
   - WC012-04
 consecutive_failures: 0
-autonomous_halt: true               # ← halted until GO is in execution path
+autonomous_halt: false              # ← GO seam closed 2026-07-28: GoalExecutor in execution path
 open_prs: none
 goal_register_issue: 115
 
@@ -543,9 +543,9 @@ OPTION C — Nothing needed from you until sprint opens first PR
 <!-- Edit ONLY the fields below. Do not alter the block structure. -->
 
 ```yaml
-autonomous_halt: true        # ← IMPLEMENTATION AUTHORIZED by Yogesh Khandge 2026-07-23 18:00 IST
-                              #   Authorization: "Yogesh authorizes IB-009 Sprint 011 implementation"
-                              #   Recorded: constitution/PROJECT_STATE.md + FOUNDER-ACTION.md
+autonomous_halt: false       # ← GO seam closed 2026-07-28 by Yogesh Khandge
+                              #   GoalExecutor now in execution path (A7 closed)
+                              #   execute_file_by_file() Path 1 = GoalExecutor.execute_sprint_task()
 
 platform_phase: IMPLEMENTATION  # SPEC | IMPLEMENTATION | LIVE
                               # SPEC = design, specs, planning only. No src/ code allowed.
@@ -553,10 +553,10 @@ platform_phase: IMPLEMENTATION  # SPEC | IMPLEMENTATION | LIVE
 
 current_sprint: WC-012
 sprint_ib_item: IB-009
-sprint_status: AWAITING_GO
+sprint_status: AUTHORIZED
 branch: ib/009/sprint-012
-last_attempt_utc: 2026-07-23T18:15:00.000000+00:00
-last_attempt_result: ARCHITECTURE_CORRECTION
+last_attempt_utc: 2026-07-28T00:00:00.000000+00:00
+last_attempt_result: GO_SEAM_CLOSED
 consecutive_failures: 0
 tasks_done: []
 tasks_remaining:

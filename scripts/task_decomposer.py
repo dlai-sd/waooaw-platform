@@ -377,29 +377,44 @@ def execute_file_by_file(
 
     # ── Path 1: GoalExecutor (canonical — A7 fix) ──────────────────────────────
     effective_goal_id = goal_id or f"GOAL-{task_id.split('-')[0].upper()}"
+    _go_available = False
     try:
         from goal_orchestrator.goal_executor import GoalExecutor
-        executor = GoalExecutor(goal_id=effective_goal_id, repo_root=REPO_ROOT)
-        print(f"  FILE-BY-FILE: using GoalExecutor (canonical GO path)")
-        results = executor.execute_sprint_task(
-            task_id=task_id,
-            wc_number=task_id[2:5] if task_id.startswith("WC") else "012",
-            output_files=output_files,
-            spec_sections=spec_sections,
-            constitutional_check=effective_check,
-            stack=stack,
-            model_hint=model_hint,
-            max_tokens=max_tokens,
-            completed_tasks=[],
-        )
-        # C-084 2.0: return True only if ALL files succeeded
-        all_ok = all(r.status == "success" for r in results)
-        for r in results:
-            mark = "✅" if r.status == "success" else "❌"
-            print(f"  {mark} FILE-BY-FILE: {Path(r.task.output_file).name} ({r.status}, {r.attempts} attempt(s))")
-        return all_ok
-    except Exception as _go_err:
-        print(f"  FILE-BY-FILE: GoalExecutor unavailable ({_go_err}) — falling back to inline MagicLLM")
+        _go_available = True
+    except ImportError as _go_import_err:
+        print(f"  FILE-BY-FILE: GoalExecutor not importable ({_go_import_err}) — using MagicLLM inline")
+
+    if _go_available:
+        try:
+            executor = GoalExecutor(goal_id=effective_goal_id, repo_root=REPO_ROOT)
+            print(f"  FILE-BY-FILE: using GoalExecutor (canonical GO path)")
+            results = executor.execute_sprint_task(
+                task_id=task_id,
+                wc_number=task_id[2:5] if task_id.startswith("WC") else "012",
+                output_files=output_files,
+                spec_sections=spec_sections,
+                constitutional_check=effective_check,
+                stack=stack,
+                model_hint=model_hint,
+                max_tokens=max_tokens,
+                completed_tasks=[],
+            )
+            # C-084 2.0: return True only if ALL files succeeded
+            all_ok = all(r.status == "success" for r in results)
+            for r in results:
+                mark = "✅" if r.status == "success" else "❌"
+                print(f"  {mark} FILE-BY-FILE: {Path(r.task.output_file).name} ({r.status}, {r.attempts} attempt(s))")
+            if all_ok:
+                return True
+            # Partial success — identify failed files and log prominently
+            failed = [r.task.output_file for r in results if r.status != "success"]
+            print(f"  FILE-BY-FILE: GoalExecutor partial failure — {len(failed)} file(s) failed: {failed}")
+            print(f"  FILE-BY-FILE: falling back to inline MagicLLM for failed files only")
+            # Only regenerate files that GoalExecutor failed on
+            output_files = failed
+        except Exception as _go_runtime_err:
+            print(f"  FILE-BY-FILE: ⚠️  GoalExecutor runtime error ({type(_go_runtime_err).__name__}: {_go_runtime_err})")
+            print(f"  FILE-BY-FILE: falling back to inline MagicLLM")
 
     # ── Path 2: Inline MagicLLM (fallback) ────────────────────────────────────
     # Try to load MagicLLM components

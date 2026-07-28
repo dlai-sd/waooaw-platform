@@ -83,6 +83,12 @@ STEP 5 — Load ONLY your Office Knowledge Specification (see below)
   Extra context contaminates reasoning AND increases cost.
   Record what you have loaded.
 
+  NOTE: If your office is Platform IT Expert (INST-010) or Goal Orchestrator (INST-013),
+  ALSO read: constitution/GEOM.md
+  This is the Goal Execution Operating Model — it defines the autonomous sprint execution path,
+  EEM Step 08 (GoalExecutor → MagicLLM pipeline), and the Human Override mechanism.
+  Without GEOM.md, agents cannot know the correct execution architecture or the GO seam.
+
 STEP 6 — Read your Work Contract from work-contracts/
   Find the Work Contract assigned to your office and current sprint.
   If a Work Contract exists → load it and proceed to STEP 7.

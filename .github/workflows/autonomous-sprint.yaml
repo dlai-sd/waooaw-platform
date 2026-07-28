@@ -156,20 +156,9 @@ jobs:
           failures = int(failures_match.group(1)) if failures_match else 0
 
           print(f"  autonomous_halt={halt}, consecutive_failures={failures}")
-
-          # FinOps Pattern 4: Halt at 3 consecutive failures to prevent runaway agent loop
-          if halt == "true":
-              print("  HALT: AUTONOMOUS_HALT=true in PROJECT_STATE.md — skipping sprint")
-              with open("$GITHUB_OUTPUT" if False else "/dev/stdout", "a") as f: pass
-              print("halt=true")
-          elif failures >= 3:
-              print(f"  HALT: {failures} consecutive failures — auto-halt until human review (C-001)")
-              print("halt=true")
-          else:
-              print(f"  GO: autonomous_halt=false, failures={failures}/3")
-              print("halt=false")
-          print(f"consecutive_failures={failures}")
           EOF
+          # W2 fix: the block above was dead (printed to stdout, not $GITHUB_OUTPUT)
+          # $GITHUB_OUTPUT is written by the bash block below — keeping only that.
 
           # Proper GITHUB_OUTPUT write
           HALT=$(python3 -c "
@@ -254,19 +243,20 @@ jobs:
 
           if [ -n "$WC_FILE" ]; then
             echo "  Running pre-sprint simulation: $WC_FILE"
-            python3 scripts/pre_sprint_sim.py "$WC_FILE" 2>&1 || true
-            SIM_EXIT=$?
+            # W1 fix: run once, capture — was run 3 separate times (output + summary + count)
+            SIM_OUT=$(python3 scripts/pre_sprint_sim.py "$WC_FILE" 2>&1 || true)
+            echo "$SIM_OUT"
 
             # Post gap summary to GitHub Step Summary
             echo "## 🔍 Pre-Sprint Gap Analysis" >> $GITHUB_STEP_SUMMARY
-            python3 scripts/pre_sprint_sim.py "$WC_FILE" 2>&1 | \
-              grep -E 'CRITICAL|HIGH|MEDIUM|confidence|SUMMARY' | \
+            echo "$SIM_OUT" | grep -E 'CRITICAL|HIGH|MEDIUM|confidence|SUMMARY' | \
               sed 's/^/  /' >> $GITHUB_STEP_SUMMARY || true
 
-            # CRITICAL gaps halt the sprint
-            CRITICAL=$(python3 scripts/pre_sprint_sim.py "$WC_FILE" 2>/dev/null | grep -c 'CRITICAL' || echo '0')
+            # W5 fix: count from captured output, not a new subprocess call
+            CRITICAL=$(echo "$SIM_OUT" | grep -c 'CRITICAL' || true)
+            CRITICAL=${CRITICAL:-0}
             if [ "$CRITICAL" -gt 0 ]; then
-              echo "  ⛔ CRITICAL gaps found — sprint halted (C-086 pre-execution gate)"
+              echo "  ⛔ CRITICAL gaps found ($CRITICAL) — sprint halted (C-086 pre-execution gate)"
               echo "gap_halt=true" >> "$GITHUB_OUTPUT"
             else
               echo "  ✅ No CRITICAL gaps — sprint may proceed"
@@ -441,10 +431,20 @@ jobs:
           PLATFORM_PHASE:     ${{ needs.preflight.outputs.platform_phase }}
           SPRINT_RESULT:      ${{ needs.execute.outputs.result || (needs.preflight.outputs.halt == 'true' && 'HALTED' || 'UNKNOWN') }}
           SPRINT_PR_NUMBER:   ${{ needs.execute.outputs.pr_number }}
-          SPRINT_HALT_REASON: ${{ needs.preflight.outputs.platform_phase != 'IMPLEMENTATION' && 'Platform is in SPEC phase — implementation not authorized' || needs.preflight.outputs.consecutive_failures >= '3' && '3 consecutive failures — auto-halt until Founder review' || '' }}
+          # W3 fix: SPRINT_HALT_REASON computed in bash (YAML >= '3' is string comparison, always wrong)
+          SPRINT_HALT_REASON: ""
           SPRINT_EXISTING_PR: ""
           GITHUB_RUN_ID:      ${{ github.run_id }}
-        run: python3 scripts/sprint_status_reporter.py
+          CONSECUTIVE_FAILURES: ${{ needs.preflight.outputs.consecutive_failures }}
+          PLATFORM_PHASE_VAL: ${{ needs.preflight.outputs.platform_phase }}
+        run: |
+          # W3 fix: compute halt reason numerically in bash before calling reporter
+          if [ "$PLATFORM_PHASE_VAL" != "IMPLEMENTATION" ]; then
+            export SPRINT_HALT_REASON="Platform is in $PLATFORM_PHASE_VAL phase \u2014 implementation not authorized"
+          elif [ "${CONSECUTIVE_FAILURES:-0}" -ge 3 ]; then
+            export SPRINT_HALT_REASON="${CONSECUTIVE_FAILURES} consecutive failures \u2014 auto-halt until Founder review"
+          fi
+          python3 scripts/sprint_status_reporter.py
   # C-065: This job is the REVIEWER. Uses REVIEW_APP_TOKEN (different identity).
   # Until REVIEW_APP_TOKEN is provisioned: advisory comment only.
   review:
@@ -502,7 +502,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15             # Raised from 10: auto-extend may call Haiku + git push
     needs: [preflight, execute, report]
-    if: always() && needs.preflight.outputs.halt == 'false'
+    # W4 fix: run monitor always — even when preflight job itself fails (not just halts).
+    # If preflight fails, halt output is empty/null — monitor still needs to record failures.
+    if: always() && (needs.preflight.outputs.halt == 'false' || needs.preflight.result == 'failure')
     permissions:
       contents: write              # git push for auto-extended advisor handlers
       issues:   write
