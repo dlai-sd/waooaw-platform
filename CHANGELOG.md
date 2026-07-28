@@ -8,6 +8,34 @@ types: `feat` | `fix` | `constitutional` | `cct` | `chore` | `refactor` | `secur
 
 ---
 
+## [1.16.0] — 2026-07-28 (Pipeline Hardening — Live Sprint Observation)
+
+Fixes identified during live WC-012 sprint run #30370343008.
+
+### Root Cause Fixes (not band-aids)
+
+- **fix(ai)**: Retry advisor was dead on every GoalExecutor call — `sprint_retry_advisor.py` loaded via `importlib.util` without registering in `sys.modules` before `exec_module`. `@dataclass` decorator needs the module in `sys.modules`; got `None` → `AttributeError` on every compile failure. Every retry was blind (raw error, no diagnosis). Fix: `sys.modules['sprint_retry_advisor'] = _m` before `exec_module`.
+
+- **feat(ai)**: `ContextBuilder` EXISTING_FILE slot — when `output_file` already exists on the sprint branch, auto-inject current content into context before LLM call. LLM sees the file to extend on attempt 1, not assumptions. Prevents replace-not-extend failures proactively.
+
+- **refactor(ai)**: Frozen signatures auto-injected in `_build_effective_check()` — for every file in `output_files` that exists on the sprint branch, inject its frozen API signatures from `frozen-artifacts.json` (or first 40 lines if not yet frozen). Structural replacement for hardcoded API guidance in `SubTaskDef.constitutional_check` strings.
+
+- **fix(ai)**: `intelligence.py` `scripts.` dot-notation imports → `magic_llm.` — `goal_orchestrator/__init__.py` eagerly imports `GOIntelligence`; `intelligence.py` used `from scripts.magic_llm.*` which only works when repo root (not `scripts/`) is on `sys.path`. Broke GoalExecutor import on every Actions run.
+
+- **fix(workflow)**: Review job runs on `PARTIAL` result reverted — PARTIAL correctly means sprint incomplete; review should not fire. Identified root cause: WC012-03b failed, not a workflow issue.
+
+- **fix(sprint)**: WC012-02c CCT test API mismatch — constitutional_check told LLM to use `FakeServerCallContext` as second arg to `EvaluateAsync`; actual signature is `(EvaluationContext, CancellationToken)`. Fixed to grounded API spec.
+
+### Sprint Run Results (Run #30370343008)
+- WC012-01 ✅ deterministic scaffold — 7 files, dotnet build PASS
+- WC012-02a ✅ deterministic interfaces — 4 files, compile PASS
+- WC012-02b ✅ 6 evaluators + ConstitutionalEngineService via inline MagicLLM (GoalExecutor import fix not yet deployed for this run)
+- WC012-02c ✅ CCT test files via GoalExecutor canonical path (first live GoalExecutor execution), Cascade L1 resolved both files
+- WC012-03a ✅ deterministic data layer — ConstitutionalDbContext, EvidenceRecord
+- WC012-03b ❌ LLM replaced ConstitutionalEngineService.cs instead of extending (EXISTING_FILE slot + frozen sig injection fixes this for next run)
+- PR #143 closed, branch deleted — fresh run queued
+
+
 ## [1.15.0] — 2026-07-28 (GO Seam + MagicLLM Hardening)
 
 ### Autonomous Sprint — GO Seam Closed (A7)
