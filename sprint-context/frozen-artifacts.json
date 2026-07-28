@@ -189,5 +189,28 @@
       "TenantIsolationMiddlewareExtensions"
     ],
     "enum_values": {}
+  },
+  "tests/business-platform.Tests/Infrastructure/CCT_MT01_TenantIsolationTests.cs": {
+    "frozen_at_task": "WC013-02b",
+    "namespace": "Waooaw.BusinessPlatform.Tests.Infrastructure",
+    "public_constructors": [
+      "IOptionsMonitor<TestAuthHandlerOptions> options, ILoggerFactory logger, UrlEncoder encoder",
+      "RequestDelegate next, CapturedSqlRecorder recorder"
+    ],
+    "public_methods": [
+      "Record",
+      "Clear",
+      "InvokeAsync",
+      "ForTenant",
+      "WithoutTenantClaim",
+      "TenantCapturingMiddleware_RecordsSetLocal_WhenTenantClaimPresent",
+      "TenantCapturingMiddleware_DoesNotRecord_WhenNoTenantClaim",
+      "TenantCapturingMiddleware_SetsContextItem_MatchingClaimValue"
+    ],
+    "public_properties": [
+      "Commands",
+      "SqlRecorder"
+    ],
+    "enum_values": {}
   }
 }
