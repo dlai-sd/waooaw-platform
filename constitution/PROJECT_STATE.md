@@ -112,21 +112,21 @@ session_declared: "Architecture correction 2026-07-28: WC-012 execution requires
 #   Goal → Goal Orchestrator → MagicLLM Context Builder → LLM → Code
 # The runner-based shortcut approach has been withdrawn.
 # WC-012 execution is halted until Goal Orchestrator is in the execution path.
-# MagicLLM §7 ContextBuilder + §8 ResponseEvaluator are implemented and ready.
-# Required before WC-012 can re-execute: GO→Runner seam (IB item required).
+# WC-012 COMPLETE — 2026-07-28. All 4 tasks delivered autonomously via GoalExecutor.
+# Next: WC-013 — Business Platform scaffold
 
-# ── WC-012 STATUS ────────────────────────────────────────────────────────────────────────
-sprint: WC-012
-sprint_status: IN_PROGRESS
-task_id: WC012-01
-tasks_done:
-  - WC012-01
-  - WC012-02
-  - WC012-03
-  - WC012-04
-tasks_remaining: []
+# ── WC-013 STATUS ────────────────────────────────────────────────────────────────────────
+sprint: WC-013
+sprint_status: AUTHORIZED
+task_id: WC013-01
+tasks_done: []
+tasks_remaining:
+  - WC013-01
+  - WC013-02
+  - WC013-03
+  - WC013-04
 consecutive_failures: 0
-autonomous_halt: false              # ← GO seam closed 2026-07-28: GoalExecutor in execution path
+autonomous_halt: false
 open_prs: none
 goal_register_issue: 115
 
@@ -551,19 +551,19 @@ platform_phase: IMPLEMENTATION  # SPEC | IMPLEMENTATION | LIVE
                               # SPEC = design, specs, planning only. No src/ code allowed.
                               # Agents MUST check this field before any implementation action.
 
-current_sprint: WC-012
+current_sprint: WC-013
 sprint_ib_item: IB-009
-sprint_status: IN_PROGRESS
-branch: ib/009/sprint-012
-last_attempt_utc: 2026-07-28T15:48:02.602562+00:00
-last_attempt_result: SUCCESS
+sprint_status: AUTHORIZED
+branch: ib/009/sprint-013
+last_attempt_utc: 2026-07-28T16:30:00.000000+00:00
+last_attempt_result: WC012_COMPLETE
 consecutive_failures: 0
-tasks_done:
-  - WC012-01
-  - WC012-02
-  - WC012-03
-  - WC012-04
-tasks_remaining: []
+tasks_done: []
+tasks_remaining:
+  - WC013-01
+  - WC013-02
+  - WC013-03
+  - WC013-04
 
 current_task:
 
