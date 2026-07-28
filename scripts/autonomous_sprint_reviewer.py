@@ -159,6 +159,32 @@ def main() -> int:
         review_token = generate_installation_token(app_id, installation_id, private_key_pem)
 
     has_review_token = review_token is not None
+
+    # P2 Fix 1: Key Vault credential expiry detection
+    # Detect the difference between: credentials missing (not provisioned)
+    # vs credentials present but token generation failed (likely expired/invalid)
+    # Silent advisory-only degradation is a constitutional violation — must notify.
+    if app_id and installation_id and private_key_pem and not has_review_token:
+        print(f"  ⚠️  KEY VAULT CREDENTIAL ISSUE: GH App credentials present but token generation failed.")
+        print(f"  This may indicate expired private key or invalid installation ID.")
+        print(f"  Required action: rotate GH-APP-PRIVATE-KEY in Azure Key Vault (waooaw-dev-kv).")
+        # Post to Sprint Dashboard so Founder is notified — not silent degradation
+        if github_repo and github_token:
+            from subprocess import run as _run
+            _run(["gh", "issue", "comment", "7",
+                  "--body", (
+                      "## ⚠️ Reviewer Credential Issue\n\n"
+                      "GitHub App token generation failed during PR review.\n"
+                      "Credentials are present in Key Vault but token is invalid.\n"
+                      "**Action required:** Rotate `GH-APP-PRIVATE-KEY` in `waooaw-dev-kv`.\n\n"
+                      f"Sprint: {sprint} | PR: #{pr_number}"
+                  ),
+                  "--repo", github_repo],
+                 capture_output=True, env={**os.environ, "GH_TOKEN": github_token})
+            print(f"  ℹ️  Credential issue posted to Sprint Dashboard (Issue #7)")
+    elif not app_id or not installation_id or not private_key_pem:
+        print(f"  ℹ️  GH App credentials not provisioned (FA-023) — running in advisory mode")
+
     effective_token  = review_token or github_token
     print(f"  Mode: {'FULL APPROVAL (GitHub App — C-065 compliant)' if has_review_token else 'ADVISORY (GitHub App token unavailable — using GITHUB_TOKEN, advisory comment only)'}")
     print("=" * 60)
@@ -281,8 +307,6 @@ def main() -> int:
             print(adv.stdout.strip() if adv.stdout else "  (no advance output)")
 
             # ── Action 1: Seed Canonical Pattern Library (C-069 Self-Improvement) ──
-            # Automatically extract patterns from merged code — no manual step.
-            # Goal Orchestrator constitutional duty documented in GEOM §11.
             try:
                 seed_result = run(["python3", "scripts/pattern_seeder.py", sprint])
                 if seed_result.returncode == 0:
@@ -291,6 +315,38 @@ def main() -> int:
                     print(f"  WARN: Pattern seeder returned non-zero (non-blocking)")
             except Exception as e:
                 print(f"  WARN: Pattern seeder failed ({e}) — non-blocking")
+
+            # ── Action 2: P2 Fix 2 — Handoff frozen registry + learning cache to next sprint ──
+            # C-069 (Instinct 2 — Improve Itself): constructor signatures and learned fixes
+            # from this sprint are available to the NEXT sprint's ContextBuilder.
+            # Without this handoff, Instinct 2 does not compound across sprints.
+            try:
+                frozen_src = Path("sprint-context") / "frozen-artifacts.json"
+                if frozen_src.exists():
+                    # Archive frozen artifacts for next sprint (prefix with completed sprint name)
+                    import shutil
+                    archive_dir = Path("sprint-context") / "cross-sprint-context"
+                    archive_dir.mkdir(exist_ok=True)
+                    archive_dest = archive_dir / f"{sprint}-frozen-artifacts.json"
+                    shutil.copy2(frozen_src, archive_dest)
+                    print(f"  ✓ Frozen registry archived for next sprint: {archive_dest.name}")
+
+                learning_src = Path("sprint-context") / "retry-learning-cache.jsonl"
+                if learning_src.exists():
+                    archive_learning = archive_dir / f"{sprint}-retry-learning-cache.jsonl"
+                    shutil.copy2(learning_src, archive_learning)
+                    print(f"  ✓ Learning cache archived for next sprint: {archive_learning.name}")
+
+                if (frozen_src.exists() or learning_src.exists()):
+                    run(["git", "add", "sprint-context/cross-sprint-context/"], check=False)
+                    diff2 = run(["git", "diff", "--cached", "--quiet"])
+                    if diff2.returncode != 0:
+                        run(["git", "commit", "-m",
+                             f"chore(context): {sprint} cross-sprint context archived\n\n"
+                             "Constitutional: C-069 (Self-Improvement — Instinct 2 compounds)"])
+                        print(f"  ✓ Cross-sprint context committed (Instinct 2 compounds)")
+            except Exception as e:
+                print(f"  WARN: Cross-sprint handoff failed ({e}) — non-blocking")
             run(["git", "add", "constitution/PROJECT_STATE.md", "VERSION", "CHANGELOG.md"])
             diff = run(["git", "diff", "--cached", "--quiet"])
             if diff.returncode != 0:

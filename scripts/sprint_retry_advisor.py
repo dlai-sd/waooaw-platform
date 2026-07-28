@@ -676,26 +676,37 @@ def record_successful_fix(error_snippet: str, fix_instruction: str, error_type: 
 
 
 def lookup_learning_cache(error_snippet: str) -> Optional[RetryDiagnosis]:
-    """Check learning cache for a known fix before calling LLM."""
+    """Check learning cache for a known fix before calling LLM.
+    P2 Fix 2: Also checks cross-sprint learning cache archives (Instinct 2 compounds).
+    """
     import json as _json
-    if not _LEARNING_CACHE_PATH.exists():
-        return None
-    try:
-        with _LEARNING_CACHE_PATH.open("r", encoding="utf-8") as f:
-            for line in f:
-                entry = _json.loads(line.strip())
-                # Simple substring match — fast and deterministic
-                if entry.get("error_snippet", "") and entry["error_snippet"][:80] in error_snippet:
-                    print(f"  Retry Advisor: CACHE HIT — using learned fix for {entry['error_type']}")
-                    return RetryDiagnosis(
-                        error_type=entry["error_type"],
-                        fix_instruction=entry["fix_instruction"],
-                        should_retry=True,
-                        confidence=0.82,
-                        constitutional_trace="C-069 (Self-Improvement — learned from prior successful retry)",
-                    )
-    except Exception:
-        pass
+
+    cache_files = [_LEARNING_CACHE_PATH]
+
+    # Also load cross-sprint archived caches
+    cross_dir = _LEARNING_CACHE_PATH.parent / "cross-sprint-context"
+    if cross_dir.exists():
+        cache_files.extend(sorted(cross_dir.glob("*-retry-learning-cache.jsonl")))
+
+    for cache_path in cache_files:
+        if not cache_path.exists():
+            continue
+        try:
+            with cache_path.open("r", encoding="utf-8") as f:
+                for line in f:
+                    entry = _json.loads(line.strip())
+                    if entry.get("error_snippet", "") and entry["error_snippet"][:80] in error_snippet:
+                        source = "cross-sprint" if "cross-sprint" in str(cache_path) else "current-sprint"
+                        print(f"  Retry Advisor: CACHE HIT ({source}) — using learned fix for {entry['error_type']}")
+                        return RetryDiagnosis(
+                            error_type=entry["error_type"],
+                            fix_instruction=entry["fix_instruction"],
+                            should_retry=True,
+                            confidence=0.82,
+                            constitutional_trace="C-069 (Self-Improvement — learned from prior successful retry)",
+                        )
+        except Exception:
+            pass
     return None
 
 

@@ -546,12 +546,28 @@ class ContextBuilder:
             return None
 
     def _load_frozen_registry(self) -> dict:
+        # P2 Fix 2: Load current sprint frozen registry
+        current = {}
         if self._frozen_registry_path.exists():
             try:
-                return json.loads(self._frozen_registry_path.read_text(encoding="utf-8"))
+                current = json.loads(self._frozen_registry_path.read_text(encoding="utf-8"))
             except Exception:
-                return {}
-        return {}
+                pass
+
+        # Also merge cross-sprint frozen artifacts (Instinct 2 — compounds across sprints)
+        cross_sprint_dir = self._frozen_registry_path.parent / "cross-sprint-context"
+        if cross_sprint_dir.exists():
+            for archive_file in sorted(cross_sprint_dir.glob("*-frozen-artifacts.json")):
+                try:
+                    prior = json.loads(archive_file.read_text(encoding="utf-8"))
+                    # Prior sprint signatures available but marked as cross-sprint
+                    for k, v in prior.items():
+                        if k not in current:  # don't override current sprint
+                            current[k] = {**v, "cross_sprint": True}
+                except Exception:
+                    pass
+
+        return current
 
     def _save_frozen_registry(self) -> None:
         self._frozen_registry_path.parent.mkdir(parents=True, exist_ok=True)
