@@ -2587,11 +2587,19 @@ TASK_HANDLERS = {
                 not_regenerate_from=["WC012-02a", "WC012-02b", "WC012-02c-prep"],
                 stack="dotnet",
                 constitutional_check=(
+                    "MANDATORY FILE HEADER — copy these EXACT lines as the first lines of EVERY test file:\n"
+                    "// Implements: tests/QA-STRATEGY.md §5.1 Unit Tests\n"
+                    "// constitutional_basis: C-041 (Tool Authorization), C-076 (Test Coverage)\n"
+                    "using FluentAssertions;\n"
+                    "using Waooaw.ConstitutionalEngine.Evaluators;\n"
+                    "using Waooaw.ConstitutionalEngine.Grpc;\n"
+                    "using Waooaw.ConstitutionalEngine.Tests.Evaluators;\n"
+                    "using Xunit;\n"
+                    "// END MANDATORY HEADER — do not omit any of the above lines\n\n"
                     "FakeServerCallContext.cs is ALREADY on the branch — do NOT regenerate it.\n"
                     "Use FakeServerCallContext.Create(tenantId) to build test context.\n"
                     "xUnit [Fact] tests. Test EvaluateAsync with Allow/Deny/Escalate scenarios. ≥90% coverage (C-076).\n"
                     "using FluentAssertions; — use .Should().Be() for assertions.\n"
-                    "Namespaces needed: using Waooaw.ConstitutionalEngine.Evaluators; using Waooaw.ConstitutionalEngine.Grpc; using Waooaw.ConstitutionalEngine.Tests.Evaluators;\n"
                     "⛔ Do NOT define FakeServerCallContext — it already exists in namespace Waooaw.ConstitutionalEngine.Tests.Evaluators."
                 ),
                 model_hint="reasoning",
@@ -2652,13 +2660,25 @@ TASK_HANDLERS = {
                 not_regenerate_from=["WC012-03a", "WC012-03b"],
                 stack="dotnet",
                 constitutional_check=(
+                    "MANDATORY FILE HEADER — copy these EXACT lines as the first lines of the file:\n"
+                    "// Implements: tests/QA-STRATEGY.md §5.1 Unit Tests\n"
+                    "// constitutional_basis: C-023 (Evidence First), C-007 (Append-Only), C-076 (Test Coverage)\n"
+                    "using FluentAssertions;\n"
+                    "using Microsoft.EntityFrameworkCore;\n"
+                    "using Microsoft.Extensions.Logging.Abstractions;\n"
+                    "using Waooaw.ConstitutionalEngine.Data;\n"
+                    "using Waooaw.ConstitutionalEngine.Evaluators;\n"
+                    "using Waooaw.ConstitutionalEngine.Grpc;\n"
+                    "using Waooaw.ConstitutionalEngine.Services;\n"
+                    "using Waooaw.ConstitutionalEngine.Tests.Evaluators;\n"
+                    "using Xunit;\n"
+                    "// END MANDATORY HEADER\n\n"
                     "Test: RecordEvidence writes DB record BEFORE returning gRPC response.\n"
                     "Use InMemoryDatabase — NOT Moq — for ConstitutionalDbContext:\n"
                     "  var opts = new DbContextOptionsBuilder<ConstitutionalDbContext>()\n"
                     "      .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options;\n"
                     "  await using var db = new ConstitutionalDbContext(opts);\n"
                     "Use FakeServerCallContext.Create(tenantId) for server context.\n"
-                    "using Waooaw.ConstitutionalEngine.Tests.Evaluators; — FakeServerCallContext is in THIS namespace.\n"
                     "Assert: db.EvidenceRecords.Count() == 1 after call. ≥90% coverage (C-076).\n"
                     "using FluentAssertions; for assertions. Namespace: Waooaw.ConstitutionalEngine.Services;"
                 ),
