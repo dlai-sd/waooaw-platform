@@ -195,5 +195,25 @@
       "TenantIsolationServiceExtensions"
     ],
     "enum_values": {}
+  },
+  "tests/business-platform.Tests/Infrastructure/CCT_MT01_TenantIsolationTests.cs": {
+    "frozen_at_task": "WC013-02b",
+    "namespace": "Waooaw.BusinessPlatform.Tests.Infrastructure",
+    "public_constructors": [
+      "TenantIsolationWebAppFactory factory",
+      "IOptionsMonitor<AuthenticationSchemeOptions> options, ILoggerFactory logger, UrlEncoder encoder"
+    ],
+    "public_methods": [
+      "CrossTenantContract_TenantAJwt_Returns404",
+      "ContractList_TenantAJwt_ContainsOnlyTenantAContracts",
+      "CrossTenantApproval_TenantAJwt_Returns404",
+      "CrossTenantApprove_TenantAJwt_Returns404",
+      "CrossTenantEvidence_TenantAJwt_Returns404",
+      "EvidenceList_TenantAJwt_ContainsOnlyTenantARecords",
+      "NoJwt_AnyResource_Returns401",
+      "TenantIsolationMiddleware_SetsTenantId_FromJwtClaim"
+    ],
+    "public_properties": [],
+    "enum_values": {}
   }
 }
