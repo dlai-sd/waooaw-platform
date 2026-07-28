@@ -185,5 +185,24 @@
     ],
     "public_properties": [],
     "enum_values": {}
+  },
+  "tests/business-platform.Tests/Infrastructure/CCT_MT01_TenantIsolationTests.cs": {
+    "frozen_at_task": "WC013-02b",
+    "namespace": "Waooaw.BusinessPlatform.Tests.Infrastructure",
+    "public_constructors": [
+      "TenantIsolationWebFactory factory"
+    ],
+    "public_methods": [
+      "Request_WithNoAuthHeader_Returns401",
+      "Request_WithJwtMissingTenantIdClaim_Returns401",
+      "Request_WithEmptyTenantIdClaim_Returns401",
+      "Request_WithJwtSignedByWrongKey_Returns401",
+      "Request_WithValidTenantAJwt_IsPropagatedPastMiddleware",
+      "Request_WithExpiredJwt_Returns401",
+      "Request_WithWhitespaceTenantIdClaim_Returns401",
+      "TenantA_CannotRead_TenantBContract"
+    ],
+    "public_properties": [],
+    "enum_values": {}
   }
 }
