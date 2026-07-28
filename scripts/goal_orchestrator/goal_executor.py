@@ -453,6 +453,8 @@ class GoalExecutor:
                 _s = _ilu.spec_from_file_location("sprint_retry_advisor",
                      str(self._root / "scripts" / "sprint_retry_advisor.py"))
                 _m = _ilu.module_from_spec(_s)
+                # Register in sys.modules BEFORE exec — @dataclass needs it
+                sys.modules["sprint_retry_advisor"] = _m
                 _s.loader.exec_module(_m)
                 self._advisor_module = _m
                 advisor = _m
