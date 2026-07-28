@@ -1,17 +1,17 @@
 // Implements: architecture/reference/ce-validate-action-evaluators.md §C-043 Evaluator — Budget Ceiling
 // constitutional_basis: C-043 (Budget Ceiling), C-059 (Traceability)
-using System.Threading;
-using System.Threading.Tasks;
 using Waooaw.ConstitutionalEngine.Evaluators;
+using Waooaw.ConstitutionalEngine.Grpc;
 
 namespace Waooaw.ConstitutionalEngine.Evaluators;
 
 /// <summary>
-/// Enforces C-043 Budget Ceiling: denies or escalates any action that would cause
-/// total spend (current + proposed) to exceed or approach the approved monthly budget.
+/// Enforces C-043 (Budget Ceiling): denies any action that would meet or exceed the
+/// approved monthly budget, and escalates when total spend reaches ≥90 % of the ceiling.
 /// </summary>
 public sealed class C043BudgetCeilingEvaluator : IClaimEvaluator
 {
+    // Escalation fires at 90 % of approved budget (9/10).
     private const long EscalateNumerator   = 9;
     private const long EscalateDenominator = 10;
 
@@ -19,39 +19,38 @@ public sealed class C043BudgetCeilingEvaluator : IClaimEvaluator
 
     public Task<EvaluationResult> EvaluateAsync(EvaluationContext ctx, CancellationToken ct)
     {
+        // All three fields are non-nullable long — no null-coalescing needed (see stack rules).
         long total    = ctx.CurrentSpendInrPaise + ctx.ProposedSpendInrPaise;
         long approved = ctx.ApprovedBudgetInrPaise;
 
-        // Hard ceiling: total spend strictly exceeds approved budget → DENY
-        if (total > approved)
+        // Hard ceiling: total spend meets or exceeds approved budget → DENY.
+        // "Exactly equal" is also denied: the agent has consumed every authorised rupee.
+        if (total >= approved)
         {
             return Task.FromResult(new EvaluationResult(
-                ClaimId: ClaimId,
-                Verdict: EvaluationVerdict.Deny,
-                Reason: $"C-043: Total spend {total} paise exceeds approved budget ceiling of {approved} paise " +
-                        $"(current={ctx.CurrentSpendInrPaise}, proposed={ctx.ProposedSpendInrPaise}, " +
-                        $"skill={ctx.BudgetSkillType})."));
+                ClaimId,
+                EvaluationVerdict.Deny,
+                $"C-043: Budget ceiling reached. Total spend {total} paise >= approved {approved} paise " +
+                $"(skill: {ctx.BudgetSkillType}, contract: {ctx.ContractId})."));
         }
 
-        // Approaching ceiling: total ≥ 90% of approved budget → ESCALATE
-        // Guard: only meaningful when approved > 0; zero-budget with zero-spend is Allow.
-        if (approved > 0 && total * EscalateDenominator >= approved * EscalateNumerator)
+        // Escalation window: spend is within 10 % of the ceiling → ESCALATE to human.
+        long escalateThreshold = approved * EscalateNumerator / EscalateDenominator;
+        if (total >= escalateThreshold)
         {
-            long pct = approved > 0 ? (total * 100L / approved) : 0L;
             return Task.FromResult(new EvaluationResult(
-                ClaimId: ClaimId,
-                Verdict: EvaluationVerdict.Escalate,
-                Reason: $"C-043: Total spend {total} paise is {pct}% of approved budget {approved} paise — " +
-                        $"at or above 90% escalation threshold " +
-                        $"(current={ctx.CurrentSpendInrPaise}, proposed={ctx.ProposedSpendInrPaise}, " +
-                        $"skill={ctx.BudgetSkillType}). Human approval required."));
+                ClaimId,
+                EvaluationVerdict.Escalate,
+                $"C-043: Spend approaching budget ceiling ({EscalateNumerator * 100 / EscalateDenominator} % threshold). " +
+                $"Total spend {total} paise against approved {approved} paise " +
+                $"(skill: {ctx.BudgetSkillType}, contract: {ctx.ContractId})."));
         }
 
-        // Within safe range → ALLOW
+        // Spend is safely within the approved ceiling.
         return Task.FromResult(new EvaluationResult(
-            ClaimId: ClaimId,
-            Verdict: EvaluationVerdict.Allow,
-            Reason: $"C-043: Total spend {total} paise is within approved budget ceiling of {approved} paise " +
-                    $"(skill={ctx.BudgetSkillType})."));
+            ClaimId,
+            EvaluationVerdict.Allow,
+            $"C-043: Budget within ceiling. Total spend {total} paise < approved {approved} paise " +
+            $"(skill: {ctx.BudgetSkillType}, contract: {ctx.ContractId})."));
     }
 }
