@@ -8,6 +8,46 @@ types: `feat` | `fix` | `constitutional` | `cct` | `chore` | `refactor` | `secur
 
 ---
 
+## [1.15.0] — 2026-07-28 (GO Seam + MagicLLM Hardening)
+
+### Autonomous Sprint — GO Seam Closed (A7)
+- **feat**: `execute_file_by_file()` Path 1 exception handling tightened — `ImportError` falls back silently; runtime errors log prominently and retry failed files only (not the whole batch)
+- **feat**: `autonomous_halt: false` — WC-012 sprint AUTHORIZED; `sprint_status: AWAITING_GO` → `AUTHORIZED`
+- **constitutional(GEOM.md)**: EEM Step 08 updated to correct execution path: `runner → execute_file_by_file → GoalExecutor → ContextBuilder §7 → MagicLLM → ResponseEvaluator §8 → CascadeHandler`
+- **constitutional(BOOTSTRAP.md)**: STEP 5 now mandates GEOM.md read for Platform IT Expert + Goal Orchestrator offices
+
+### GoalExecutor Hardening (scripts/goal_orchestrator/goal_executor.py)
+- **fix**: Cascade `original_request` — `set_original_request()` now called before `on_gate_fail()`; every L1 retry has context (was raising `ValueError` silently)
+- **fix**: `_call_llm` Docker-safe fallback — `ImportError` from `autonomous_sprint_runner` now falls through to direct `MagicLLMPipeline` call instead of returning `None`
+- **fix**: `model_hint` routing — `"reasoning"` → `TEST_GENERATION` (Sonnet), `"auto"` → complexity-scored, `"none"` → `CODE_GENERATION` (Haiku)
+- **fix**: `_ANTHROPIC_HAIKU` model name — `claude-haiku-20240307` → `claude-haiku-4-5`
+- **fix**: `_load/_save_file_failure_counts` — `fcntl.LOCK_SH/EX` prevents JSON corruption under concurrent Docker requests
+- **feat**: Docker-safe `_parse_llm_files_local` + `_write_llm_files_local` with `_WRITE_BOUNDARY` guard
+
+### Pipeline Security + Performance (scripts/magic_llm/)
+- **security(S1)**: `_investigate_repo()` applies `_sanitize_input()` at function boundary for all callers — strips prompt injection patterns, truncates to 500 chars
+- **fix(R4/R5)**: 3 silent `except: pass` blocks replaced with named + printed exceptions in `goal_executor.py` and `context_builder.py`
+- **perf(P2)**: 12 inline `re.compile/search/findall` → 6 module-level `_RE_*` constants in `response_evaluator.py` + `context_builder.py`
+- **perf(P3)**: `ContextBuilder._read_cached()` — mtime-keyed per-instance cache; spec + prior files read once across 3-attempt retry loop
+- **feat(STACK_BEHAVIORAL_RULES)**: `_build_system()` now injects ERROR HANDLING RULE 1–5 (dotnet/python) into every LLM SYSTEM slot from `task_decomposer.STACK_BEHAVIORAL_RULES`
+
+### MagicLLM Service Hardening (docker/magic-llm-validation branch)
+- **security(OWASP A1)**: `_validate_output_files()` — path traversal blocked at request boundary (`../../etc/passwd` → 400)
+- **security(OWASP A5)**: `_validate_spec_sections()` — 50K chars/section cap, 20 sections max; 200KB input was producing 601K char context
+- **fix**: `_repo_root` depth corrected (`/app/scripts` → `/app`) — failure-count persistence, ContextBuilder reads, frozen registry all correct
+- **fix(ANNOTATION gate)**: ANNOTATION gate false negative — now checks XML blocks in `raw_response` when `written_files=[]`
+
+### Workflow Fixes (.github/workflows/autonomous-sprint.yaml)
+- **fix(W1)**: `pre_sprint_sim.py` was invoked 3× per run → run once, capture to `$SIM_OUT`
+- **fix(W2)**: Dead Python heredoc in `halt_check` (printed to stdout, wrote nothing to `$GITHUB_OUTPUT`) → removed
+- **fix(W3)**: `SPRINT_HALT_REASON` used YAML `>= '3'` (string comparison) → computed numerically in bash
+- **fix(W4)**: Monitor job skipped when preflight job itself failed → added `preflight.result == 'failure'` clause
+- **fix(W5)**: `grep -c` pipe from `python3` masked python3 failure → grep from `$SIM_OUT` variable
+
+### Tests
+- **cct**: `tests/constitutional/pipeline/test_goal_executor_retry.py` — 6 new CCT-GO tests (retry loop attempts 2/3, model_hint routing, concurrent file locking, cascade ordering)
+
+
 ## [1.5.0-doc] — 2026-07-24 (Design & Pipeline Hardening)
 
 ### Constitutional (3 new claims — total 85 ratified)
