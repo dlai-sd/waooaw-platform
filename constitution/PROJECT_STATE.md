@@ -119,13 +119,13 @@ session_declared: "Architecture correction 2026-07-28: WC-012 execution requires
 sprint: WC-012
 sprint_status: IN_PROGRESS
 task_id: WC012-01
-tasks_done: []
-tasks_remaining:
+tasks_done:
   - WC012-01
   - WC012-02
+tasks_remaining:
   - WC012-03
   - WC012-04
-consecutive_failures: 0
+consecutive_failures: 1
 autonomous_halt: false              # ← GO seam closed 2026-07-28: GoalExecutor in execution path
 open_prs: none
 goal_register_issue: 115
@@ -236,13 +236,13 @@ WC012-02b `CS1061: string.TryGetValue` fixed at three layers:
 
 ```yaml
 sprint_status: IN_PROGRESS
-tasks_done: []
-tasks_remaining:
+tasks_done:
   - WC012-01
   - WC012-02
+tasks_remaining:
   - WC012-03
   - WC012-04
-consecutive_failures: 0
+consecutive_failures: 1
 autonomous_halt: true
 platform_phase: IMPLEMENTATION
 ```
@@ -556,12 +556,12 @@ sprint_ib_item: IB-009
 sprint_status: IN_PROGRESS
 branch: ib/009/sprint-012
 last_attempt_utc: 2026-07-28T14:51:12.665755+00:00
-last_attempt_result: GO_SEAM_CLOSED
-consecutive_failures: 0
-tasks_done: []
-tasks_remaining:
+last_attempt_result: PARTIAL
+consecutive_failures: 1
+tasks_done:
   - WC012-01
   - WC012-02
+tasks_remaining:
   - WC012-03
   - WC012-04
 
