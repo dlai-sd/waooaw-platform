@@ -241,6 +241,47 @@ def _build_effective_check(st: SubTaskDef, completed: list[str]) -> str:
             parts.append("EXISTING FILE SIGNATURES (auto-injected from frozen registry):\n"
                          + "\n\n".join(frozen_sigs_parts))
 
+    # 3c. Auto-inject frozen signatures of depends_on subtask types
+    # Fixes CS0117 "invented field on newly created entity": when WC012-03b depends_on WC012-03a,
+    # the entities from 03a exist on disk and are frozen, but they're NOT in output_files (03b
+    # doesn't generate them) so step 3b misses them. Inject them here so the LLM knows
+    # the exact field names before attempt 1.
+    if st.depends_on and st.output_files:
+        dep_sigs_parts: list[str] = []
+        try:
+            import json as _json
+            _frozen_path = REPO_ROOT / "sprint-context" / "frozen-artifacts.json"
+            if _frozen_path.exists():
+                _frozen_reg = _json.loads(_frozen_path.read_text(encoding="utf-8"))
+                # Find all frozen files NOT in output_files (i.e., produced by depends_on tasks)
+                output_set = set(st.output_files)
+                for _fpath, _sigs in _frozen_reg.items():
+                    if _fpath in output_set:
+                        continue  # already handled in 3b
+                    _class = _fpath.rsplit('/', 1)[-1].replace('.cs', '')
+                    _ns = _sigs.get("namespace", "")
+                    _ctors = _sigs.get("public_constructors", [])
+                    _methods = _sigs.get("public_methods", [])
+                    _props = _sigs.get("public_properties", [])
+                    _enums = _sigs.get("enum_values", {})
+                    if _ctors or _methods or _enums:
+                        dep_lines = [f"DEPENDENCY TYPE {_class} ({_ns}):"]
+                        for c in _ctors[:2]:
+                            dep_lines.append(f"  constructor: {_class}({c[:80]})")
+                        for mth in _methods[:4]:
+                            dep_lines.append(f"  method: {mth}()")
+                        for _ename, _evals in _enums.items():
+                            dep_lines.append(f"  enum {_ename}: {' | '.join(_evals)}")
+                        dep_sigs_parts.append("\n".join(dep_lines))
+        except Exception as _dep_e:
+            print(f"  [decomposer] dep sig injection skipped ({_dep_e})")
+
+        if dep_sigs_parts:
+            parts.append(
+                "DEPENDENCY TYPE SIGNATURES (from depends_on subtasks — use these exact members):\n"
+                + "\n\n".join(dep_sigs_parts[:6])  # cap at 6 types to avoid context bloat
+            )
+
     # 4. Stack behavioral rules (EA floor)
     rules = STACK_BEHAVIORAL_RULES.get(st.stack, [])
     if rules:

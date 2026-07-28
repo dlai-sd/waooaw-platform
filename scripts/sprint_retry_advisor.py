@@ -228,9 +228,8 @@ def _build_ptr_fix_instruction(type_name: str, field_name: str, ptr_entry: dict)
 def _classify_cs0117(error: str) -> Optional[RetryDiagnosis]:
     """
     CS0117: 'X' does not contain a definition for 'Y'.
-    Generalized: looks up X in PTR to generate machine-verified fix instruction.
-    Falls back to generic advice if type not in PTR.
-    Covers any type in any sprint — no per-type hardcoding.
+    Generalized: looks up X in frozen registry FIRST (catches types created this sprint),
+    then falls back to PTR, then generic advice.
     constitutional_trace: C-082, C-085
     """
     m = re.search(r"'([^']+)' does not contain a definition for '([^']+)'", error)
@@ -239,7 +238,41 @@ def _classify_cs0117(error: str) -> Optional[RetryDiagnosis]:
 
     class_name, field_name = m.group(1), m.group(2)
 
-    # Try PTR first — fully generalized across all sprints
+    # Try frozen registry first — covers types created in this sprint run
+    # (PTR may lag; frozen registry is committed after each subtask)
+    try:
+        import json as _json
+        from pathlib import Path as _Path
+        _frozen_path = _Path(__file__).parent.parent / "sprint-context" / "frozen-artifacts.json"
+        if _frozen_path.exists():
+            _frozen = _json.loads(_frozen_path.read_text(encoding="utf-8"))
+            for _file_path, _sigs in _frozen.items():
+                if _Path(_file_path).stem == class_name or class_name in _sigs.get("namespace", ""):
+                    methods = _sigs.get("public_methods", [])
+                    props = _sigs.get("public_properties", [])
+                    enums = _sigs.get("enum_values", {})
+                    actual = methods + props + [v for vals in enums.values() for v in vals]
+                    if actual:
+                        display = ", ".join(actual[:15])
+                        enum_hint = ""
+                        for enum_name, vals in enums.items():
+                            enum_hint += f" | enum {enum_name}: {' | '.join(vals)}"
+                        fix = (
+                            f"FROZEN REGISTRY: '{class_name}' does NOT have '{field_name}'. "
+                            f"Actual members: {display}{enum_hint}. "
+                            f"Use ONLY these — do NOT invent names."
+                        )
+                        return RetryDiagnosis(
+                            error_type=WRONG_FIELD_NAME,
+                            fix_instruction=fix,
+                            should_retry=True,
+                            confidence=0.97,
+                            constitutional_trace="C-082 + C-085 (frozen registry — compiled this sprint)"
+                        )
+    except Exception:
+        pass  # fall through to PTR
+
+    # Try PTR — fully generalized across all sprints
     ptr_entry = _lookup_type_in_ptr(class_name)
     if ptr_entry:
         fix = _build_ptr_fix_instruction(class_name, field_name, ptr_entry)

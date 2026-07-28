@@ -334,6 +334,10 @@ class ContextBuilder:
                 lines.append(f"  constructor: {class_name}({ctor_clean})")
             for method in methods[:4]:  # max 4 methods
                 lines.append(f"  method: {method}(...)")
+            # Enum values — eliminates CS1503 string→EnumType pattern
+            for enum_name, values in sigs.get("enum_values", {}).items():
+                lines.append(f"  enum {enum_name}: {' | '.join(values)}")
+                lines.append(f"  ⛔ Use {enum_name}.{values[0]} NOT \"{values[0]}\" (string causes CS1503)")
 
             sigs_note = sigs.get("frozen_at_task", "")
             if sigs_note:
@@ -504,7 +508,7 @@ class ContextBuilder:
     # ── Private: utilities ─────────────────────────────────────────────────────
 
     def _extract_public_signatures(self, content: str) -> dict:
-        """Extract namespace, constructors, methods, properties from .cs source."""
+        """Extract namespace, constructors, methods, properties, enum values from .cs source."""
         ns_m = _RE_NAMESPACE.search(content)
         namespace = ns_m.group(1) if ns_m else ""
 
@@ -533,11 +537,31 @@ class ContextBuilder:
             content
         )
 
+        # Enum values — captures public enum X { A, B, C } → {"X": ["A", "B", "C"]}
+        # Critical for retry advisor: eliminates CS1503 string→EnumType pattern
+        enum_values: dict[str, list[str]] = {}
+        for m in re.finditer(
+            r'public\s+enum\s+(\w+)\s*\{([^}]+)\}',
+            content, re.DOTALL
+        ):
+            enum_name = m.group(1)
+            raw_values = m.group(2)
+            # Strip comments, parse comma-separated identifiers
+            values = [
+                v.strip().split('=')[0].strip().split('//')[0].strip()
+                for v in raw_values.split(',')
+                if v.strip() and not v.strip().startswith('//')
+            ]
+            values = [v for v in values if re.match(r'^\w+$', v)]
+            if values:
+                enum_values[enum_name] = values[:20]
+
         return {
             "namespace": namespace,
             "public_constructors": ctors[:3],
             "public_methods": methods[:8],
             "public_properties": properties[:8],
+            "enum_values": enum_values,
         }
 
     def _resolve_required_usings(
