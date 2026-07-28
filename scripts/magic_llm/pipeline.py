@@ -326,11 +326,19 @@ class MagicLLMPipeline:
         if category in (TaskCategory.CODE_GENERATION, TaskCategory.TEST_GENERATION,
                         TaskCategory.DEEP_REASONING, TaskCategory.DESIGN_CONTRACTS):
             if request is not None:
+                desc = (request.task_description or "").lower()
+                is_skeleton = "skeleton" in desc or "SKELETON PHASE" in " ".join(request.context_sections)
+
+                # DEEP_REASONING = explicit model_hint="reasoning" from task — always Sonnet.
+                # GoalExecutor packs everything into one context_sections entry, so complexity
+                # scoring returns ~8 (1 section × 8) regardless of actual complexity.
+                # "reasoning" is an explicit override — skip scoring, use Sonnet directly.
+                if category == TaskCategory.DEEP_REASONING and not is_skeleton:
+                    return _ANTHROPIC_MODEL, 0.0
+
                 complexity = _task_complexity_score(request)
                 # Cost-aware tiering: SKELETON phase → always Haiku (signatures only, no reasoning needed)
                 # LOGIC/TEST phase → Sonnet when complexity is high, Haiku otherwise
-                desc = (request.task_description or "").lower()
-                is_skeleton = "skeleton" in desc or "SKELETON PHASE" in " ".join(request.context_sections)
                 if is_skeleton:
                     return _ANTHROPIC_HAIKU, 0.0  # skeleton: cheap model always
                 if complexity >= 80:
