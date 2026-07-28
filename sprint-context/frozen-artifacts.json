@@ -92,10 +92,10 @@
     "public_properties": []
   },
   "src/constitutional-engine/Services/ConstitutionalEngineService.cs": {
-    "frozen_at_task": "WC012-02b",
+    "frozen_at_task": "WC012-03b",
     "namespace": "Waooaw.ConstitutionalEngine.Services",
     "public_constructors": [
-      "EvaluatorRegistry registry, ILogger<ConstitutionalEngineService> logger"
+      "EvaluatorRegistry registry, ConstitutionalDbContext db, ILogger<ConstitutionalEngineService> logger"
     ],
     "public_methods": [
       "RecordEvidence",
