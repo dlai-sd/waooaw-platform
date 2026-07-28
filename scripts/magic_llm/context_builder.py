@@ -50,7 +50,8 @@ _FORBIDDEN_PATTERNS = (
     "⛔ new ConstitutionalDbContext() — inject via constructor DI only\n"
     "⛔ Mixed named+positional constructor args (CS1744) — use all positional\n"
     "⛔ NullLogger<T>() constructor — use NullLogger<T>.Instance\n"
-    "⛔ ITemporalClient or any Temporalio.* namespace in WC012-02b — that is WC012-04b scope"
+    "⛔ ITemporalClient or any Temporalio.* namespace in WC012-02b — that is WC012-04b scope\n"
+    "⛔ using Waooaw.*.Tests.* in src/ files — test namespaces must never appear in main project code"
 )
 
 # ── Module-level compiled regexes (P2: avoid recompile on every build call) ──
