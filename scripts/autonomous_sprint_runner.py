@@ -3384,6 +3384,10 @@ def main() -> int:
     tasks_done = []
     tasks_not_implemented = []
     infra_error_tasks = _INFRA_ERROR_TASKS   # populated by execute_with_llm on pure API failures
+    # Accumulate all completed subtask IDs across task boundaries for cross-task
+    # depends_on resolution. WC013-03a depends_on WC013-02a — without this,
+    # WC013-03a is always BLOCKED because completed[] starts fresh each chain.
+    all_completed_subtask_ids: list[str] = []
     # RC#1: scaffold task for this run = first queued task that is in SCAFFOLD_TASKS.
     # If scaffold already succeeded in a prior run, it won't be in tasks — scaffold_run_task=None.
     scaffold_run_task = next((t for t in tasks if t in SCAFFOLD_TASKS), None)
@@ -3424,7 +3428,10 @@ def main() -> int:
                     task, handler["subtasks"], _MONITOR_SIGNAL,
                     infra_error_tasks=infra_error_tasks,
                     dry_run=dry_run,
+                    prior_completed=all_completed_subtask_ids,
                 )
+                # Accumulate this task's subtask IDs for the next task's chain
+                all_completed_subtask_ids.extend([st.id for st in handler["subtasks"]])
             else:
                 print(f"  ⚠️  TASK_NOT_IMPLEMENTED: {task} — unknown handler format")
                 tasks_not_implemented.append(task)

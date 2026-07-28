@@ -846,6 +846,7 @@ def execute_subtask_chain(
     monitor_signal: dict,
     infra_error_tasks: list,
     dry_run: bool = False,
+    prior_completed: list[str] | None = None,
 ) -> bool:
     """
     Execute sub-tasks with C-084 2.0: continue past non-dependent failures.
@@ -858,13 +859,18 @@ def execute_subtask_chain(
 
     C-083: emits signal after each sub-task, refreshes branch context.
     C-082: compile gate after every sub-task.
+
+    prior_completed: subtask IDs completed in EARLIER task chains (cross-task
+    dependency fix). WC013-03a depends_on WC013-02a which ran in a different chain.
     """
     _scripts = str(REPO_ROOT / "scripts")
     if _scripts not in sys.path:
         sys.path.insert(0, _scripts)
     from autonomous_sprint_runner import execute_with_llm, get_branch_context, git
 
-    completed: list[str] = []
+    # Seed completed list with subtask IDs from prior task chains so cross-task
+    # depends_on references (e.g. WC013-03a depends_on WC013-02a) resolve correctly.
+    completed: list[str] = list(prior_completed) if prior_completed else []
     failed: list[str] = []      # C-084 2.0: track failures without halting chain
     all_written_files: list[str] = []
 
