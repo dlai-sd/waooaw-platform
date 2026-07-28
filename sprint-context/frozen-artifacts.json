@@ -142,5 +142,23 @@
     "public_properties": [
       "CCT_EF01_C043BudgetCeilingEvaluatorTests"
     ]
+  },
+  "tests/constitutional-engine.Tests/Services/CCT_EF01_EvidenceFirstTests.cs": {
+    "frozen_at_task": "WC012-03c",
+    "namespace": "Waooaw.ConstitutionalEngine.Tests.Services",
+    "public_constructors": [
+      "DbContextOptions<ConstitutionalDbContext> options"
+    ],
+    "public_methods": [
+      "CreateDbContext",
+      "RecordEvidence_WritesExactlyOneRecord_BeforeReturningResponse",
+      "RecordEvidence_ResponseId_MatchesPersistedRowId",
+      "RecordEvidence_PersistsTenantId_FromGrpcMetadata",
+      "RecordEvidence_PersistsActionInstanceId_AsIdempotencyKey",
+      "RecordEvidence_MultipleCallsOnSameContract_ProduceSeparateRows",
+      "RecordEvidence_Response_CarriesRecordedAtTimestamp",
+      "RecordEvidence_EmptyConstitutionalBasis_ThrowsInvalidArgument"
+    ],
+    "public_properties": []
   }
 }
