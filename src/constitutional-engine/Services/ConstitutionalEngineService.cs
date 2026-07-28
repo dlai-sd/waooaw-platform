@@ -1,211 +1,335 @@
-// Implements: architecture/reference/components/constitutional-engine.md §2 PAAS Boundary Validator
-// constitutional_basis: C-041, C-059
-using Grpc.Core;
-using Microsoft.Extensions.Logging;
+// Implements: architecture/reference/components/constitutional-engine.md §1 Evidence First Enforcer
+// constitutional_basis: C-007, C-023, C-027, C-059, C-085
 using Waooaw.ConstitutionalEngine.Evaluators;
 using Waooaw.ConstitutionalEngine.Grpc;
+using Waooaw.ConstitutionalEngine.Services;
+using Waooaw.ConstitutionalEngine.Tests.Evaluators;
+using Google.Protobuf.WellKnownTypes;
+using Grpc.Core;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using System;
+using System.Linq;
+using System.Text.Json;
+using System.Threading.Tasks;
+using Waooaw.ConstitutionalEngine.Data;
+using Waooaw.ConstitutionalEngine.Data.Entities;
 
 namespace Waooaw.ConstitutionalEngine.Services;
 
-/// <summary>
-/// Constitutional Engine gRPC service implementation.
-/// Purpose: Enforces constitutional boundaries at every PAAS action before execution.
-/// Constitutional basis: C-023 (Evidence First), C-041 (Tool Authorization), C-059 (Traceability)
-/// ADR reference: ADR-001 (gRPC Constitutional Engine), ADR-005 (ValidateAction 40ms budget)
-/// </summary>
+// Constitutional basis: C-023 (Evidence First), C-007/C-027 (append-only ledger), C-085 (idempotency)
+// Purpose: gRPC service implementation — RecordEvidence writes to constitutional.audit_records
+//          before returning. Caller MUST NOT return success until this RPC returns OK.
+// ADR reference: ADR-001 (gRPC transport), ADR-002 (Evidence First enforcement)
 public sealed class ConstitutionalEngineService : ConstitutionalService.ConstitutionalServiceBase
 {
-    private readonly EvaluatorRegistry _registry;
+    // C-001: Emergency Stop SLA — 250 ms end-to-end
+    private const int EmergencyStopSlaMs = 250;
+
+    // ADR-001: ValidateAction hot-path latency budget — 40 ms
+    private const int ValidateActionSlaMs = 40;
+
+    private readonly EvaluatorRegistry _evaluatorRegistry;
+    private readonly ConstitutionalDbContext _db;
     private readonly ILogger<ConstitutionalEngineService> _logger;
 
-    // AD-005: ValidateAction must complete within 40ms (leaves 10ms for caller overhead in 50ms total budget)
-    private const int ValidateActionTimeoutMs = 40;
-
+    // All-positional constructor — no named arguments (CS1744 prevention)
     public ConstitutionalEngineService(
-        EvaluatorRegistry registry,
+        EvaluatorRegistry evaluatorRegistry,
+        ConstitutionalDbContext db,
         ILogger<ConstitutionalEngineService> logger)
     {
-        _registry = registry ?? throw new ArgumentNullException(nameof(registry));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _evaluatorRegistry = evaluatorRegistry;
+        _db = db;
+        _logger = logger;
     }
 
-    /// <summary>
-    /// RecordEvidence — Evidence First Enforcer.
-    /// WC012-03 scope: stub only at this stage.
-    /// Constitutional basis: C-023 (Evidence First), C-027 (append-only ledger)
-    /// </summary>
-    public override Task<RecordEvidenceResponse> RecordEvidence(
-        RecordEvidenceRequest req, ServerCallContext ctx)
-    {
-        _logger.LogWarning(
-            "RecordEvidence called but not yet implemented (WC012-03 scope): contractId={ContractId}",
-            req.ContractId);
-        throw new RpcException(new Status(StatusCode.Unimplemented, "RecordEvidence: WC012-03 scope"));
-    }
-
-    /// <summary>
-    /// ValidateAction — PAAS Boundary Validator.
-    /// Evaluates all registered claim evaluators against the proposed action.
-    /// Short-circuits on the first DENY (C-041: default deny for unlisted tools).
-    /// Constitutional basis: C-041 (Tool Authorization), C-043 (Budget Ceiling),
-    ///                       C-048 (Non-Exploitation), C-049 (Honest Limitation), C-062 (AI Security)
-    /// AD-005: target latency &lt; 40ms
-    /// </summary>
-    public override async Task<ValidateActionResponse> ValidateAction(
-        ValidateActionRequest request, ServerCallContext context)
+    // ── RecordEvidence ─────────────────────────────────────────────────────────
+    // C-023: write evidence BEFORE returning success.
+    // C-027: INSERT only — no UPDATE or DELETE ever issued on this table.
+    // C-085: idempotency — return existing record_id if ActionInstanceId already written.
+    public override async Task<RecordEvidenceResponse> RecordEvidence(
+        RecordEvidenceRequest req,
+        ServerCallContext context)
     {
         try
         {
-            // Tenant isolation: carried via gRPC metadata, never in request body (constitutional_service.proto)
-            var tenantId = context.RequestHeaders.GetValue("x-tenant-id") ?? "";
-
-            if (string.IsNullOrWhiteSpace(tenantId))
+            // Tenant isolation: x-tenant-id from gRPC metadata (never from request body)
+            var tenantIdRaw = context.RequestHeaders.GetValue("x-tenant-id") ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(tenantIdRaw))
             {
-                _logger.LogWarning(
-                    "ValidateAction rejected: missing x-tenant-id metadata. contractId={ContractId}",
-                    request.ContractId);
                 throw new RpcException(
-                    new Status(StatusCode.Unauthenticated, "x-tenant-id metadata is required (constitutional_service.proto transport notes)"));
+                    new Status(StatusCode.Unauthenticated, "x-tenant-id metadata header is required"));
             }
 
-            var ctx = EvaluationContext.FromRequest(request, tenantId);
+            if (!Guid.TryParse(tenantIdRaw, out var tenantGuid))
+            {
+                throw new RpcException(
+                    new Status(StatusCode.Unauthenticated,
+                        "x-tenant-id must be a valid UUID in canonical format"));
+            }
 
-            // AD-005: enforce 40ms constitutional budget — link to caller's cancellation token
-            using var budgetCts = CancellationTokenSource.CreateLinkedTokenSource(context.CancellationToken);
-            budgetCts.CancelAfter(TimeSpan.FromMilliseconds(ValidateActionTimeoutMs));
+            if (string.IsNullOrWhiteSpace(req.ConstitutionalBasis))
+            {
+                throw new RpcException(
+                    new Status(StatusCode.InvalidArgument,
+                        "constitutional_basis must not be empty (AD-008)"));
+            }
 
-            IReadOnlyList<EvaluationResult> results;
+            // C-085: Idempotency — check for existing record by (IdempotencyKey, TenantId)
+            var existing = await _db.Set<EvidenceRecord>()
+                .AsNoTracking()
+                .FirstOrDefaultAsync(
+                    e => e.IdempotencyKey == req.ActionInstanceId && e.TenantId == tenantGuid,
+                    context.CancellationToken);
+
+            if (existing is not null)
+            {
+                _logger.LogInformation(
+                    "RecordEvidence idempotent hit: returning existing record {RecordId} " +
+                    "for key {IdempotencyKey} tenant {TenantId}",
+                    existing.Id, req.ActionInstanceId, tenantGuid);
+
+                return new RecordEvidenceResponse
+                {
+                    EvidenceRecordId = existing.Id.ToString(),
+                    RecordedAt = Timestamp.FromDateTimeOffset(existing.RecordedAt)
+                };
+            }
+
+            // C-023 / C-027: Append-only INSERT — no UPDATE or DELETE ever
+            var record = new EvidenceRecord
+            {
+                Id = Guid.NewGuid(),
+                IdempotencyKey = req.ActionInstanceId,
+                TenantId = tenantGuid,
+                EvidenceType = req.ActionType,
+                Summary = BuildSummary(req),
+                PayloadJson = JsonSerializer.Serialize(req),
+                RecordedAt = DateTimeOffset.UtcNow
+            };
+
+            // C-023: write within a DB transaction — if this fails the caller must fail
+            await using var tx = await _db.Database.BeginTransactionAsync(context.CancellationToken);
             try
             {
-                results = await _registry.EvaluateAllAsync(ctx, budgetCts.Token);
+                await _db.Set<EvidenceRecord>().AddAsync(record, context.CancellationToken);
+                await _db.SaveChangesAsync(context.CancellationToken);
+                await tx.CommitAsync(context.CancellationToken);
             }
-            catch (OperationCanceledException oce) when (!context.CancellationToken.IsCancellationRequested)
+            catch (Exception dbEx)
             {
-                // Budget exceeded — this is the internal timeout, not the caller cancelling
-                _logger.LogError(
-                    oce,
-                    "ValidateAction exceeded {BudgetMs}ms constitutional budget (AD-005). contractId={ContractId} actionType={ActionType}",
-                    ValidateActionTimeoutMs, request.ContractId, request.ActionType);
+                await tx.RollbackAsync(context.CancellationToken);
+                _logger.LogError(dbEx,
+                    "RecordEvidence DB transaction failed for ActionInstanceId={ActionInstanceId} " +
+                    "Tenant={TenantId}",
+                    req.ActionInstanceId, tenantGuid);
                 throw new RpcException(
-                    new Status(StatusCode.DeadlineExceeded,
-                        $"ValidateAction exceeded {ValidateActionTimeoutMs}ms constitutional budget (AD-005)"));
+                    new Status(StatusCode.Internal,
+                        $"Constitutional Audit Ledger write failed: {dbEx.Message}"));
             }
 
-            // Short-circuit on first DENY — C-041: default deny for anything unlisted
-            foreach (var result in results)
-            {
-                if (result.Verdict == EvaluationVerdict.Deny)
-                {
-                    _logger.LogInformation(
-                        "ValidateAction DENY: claimId={ClaimId} reason={Reason} contractId={ContractId} actionType={ActionType}",
-                        result.ClaimId, result.Reason, request.ContractId, request.ActionType);
-
-                    return new ValidateActionResponse
-                    {
-                        Decision = ValidationDecision.Deny,
-                        ConstitutionalBasis = result.ClaimId,
-                        Reason = result.Reason
-                    };
-                }
-
-                if (result.Verdict == EvaluationVerdict.Escalate)
-                {
-                    _logger.LogInformation(
-                        "ValidateAction ESCALATE: claimId={ClaimId} reason={Reason} contractId={ContractId} actionType={ActionType}",
-                        result.ClaimId, result.Reason, request.ContractId, request.ActionType);
-
-                    return new ValidateActionResponse
-                    {
-                        Decision = ValidationDecision.Escalate,
-                        ConstitutionalBasis = result.ClaimId,
-                        Reason = result.Reason
-                    };
-                }
-            }
-
-            // All evaluators returned Allow → action is within Decision Space
             _logger.LogInformation(
-                "ValidateAction ALLOW: contractId={ContractId} actionType={ActionType} evaluatorsRun={Count}",
-                request.ContractId, request.ActionType, results.Count);
+                "RecordEvidence: wrote record {RecordId} ActionType={ActionType} " +
+                "State={State} TenantId={TenantId}",
+                record.Id, req.ActionType, req.State, tenantGuid);
 
-            return new ValidateActionResponse
+            return new RecordEvidenceResponse
             {
-                Decision = ValidationDecision.Allow,
-                ConstitutionalBasis = "C-041; C-043; C-048; C-049; C-062",
-                Reason = "All constitutional evaluators passed"
+                EvidenceRecordId = record.Id.ToString(),
+                RecordedAt = Timestamp.FromDateTimeOffset(record.RecordedAt)
             };
         }
         catch (RpcException)
         {
-            // Propagate RpcExceptions without wrapping — they are already correctly typed
+            // Already an RpcException — rethrow without wrapping
             throw;
         }
         catch (Exception ex)
         {
-            // ERROR HANDLING RULE 3: map unexpected exceptions to StatusCode.Internal
-            _logger.LogError(
-                ex,
-                "ValidateAction failed unexpectedly. contractId={ContractId} actionType={ActionType}",
+            _logger.LogError(ex,
+                "RecordEvidence failed: ActionInstanceId={ActionInstanceId}",
+                req.ActionInstanceId);
+            throw new RpcException(new Status(StatusCode.Internal, ex.Message));
+        }
+    }
+
+    // ── ValidateAction ─────────────────────────────────────────────────────────
+    // C-003: validates proposed action is within Decision Space.
+    // ADR-001: target latency < 40 ms (ValidateActionSlaMs).
+    public override async Task<ValidateActionResponse> ValidateAction(
+        ValidateActionRequest request,
+        ServerCallContext context)
+    {
+        try
+        {
+            var tenantId = context.RequestHeaders.GetValue("x-tenant-id") ?? string.Empty;
+            var ctx = EvaluationContext.FromRequest(request, tenantId);
+
+            var results = await _evaluatorRegistry.EvaluateAllAsync(ctx, context.CancellationToken);
+
+            // Aggregation: Deny takes precedence, then Escalate, then Allow
+            var deny = results.FirstOrDefault(r => r.Verdict == EvaluationVerdict.Deny);
+            if (deny is not null)
+            {
+                _logger.LogWarning(
+                    "ValidateAction DENY: ContractId={ContractId} ActionType={ActionType} " +
+                    "ClaimId={ClaimId} Reason={Reason}",
+                    request.ContractId, request.ActionType, deny.ClaimId, deny.Reason);
+
+                return new ValidateActionResponse
+                {
+                    Decision = ValidationDecision.ValidationDecisionDeny,
+                    ConstitutionalBasis = deny.ClaimId,
+                    Reason = deny.Reason
+                };
+            }
+
+            var escalate = results.FirstOrDefault(r => r.Verdict == EvaluationVerdict.Escalate);
+            if (escalate is not null)
+            {
+                _logger.LogInformation(
+                    "ValidateAction ESCALATE: ContractId={ContractId} ActionType={ActionType} " +
+                    "ClaimId={ClaimId} Reason={Reason}",
+                    request.ContractId, request.ActionType, escalate.ClaimId, escalate.Reason);
+
+                return new ValidateActionResponse
+                {
+                    Decision = ValidationDecision.ValidationDecisionEscalate,
+                    ConstitutionalBasis = escalate.ClaimId,
+                    Reason = escalate.Reason
+                };
+            }
+
+            var allow = results.FirstOrDefault(r => r.Verdict == EvaluationVerdict.Allow);
+            return new ValidateActionResponse
+            {
+                Decision = ValidationDecision.ValidationDecisionAllow,
+                ConstitutionalBasis = allow?.ClaimId ?? "C-003",
+                Reason = allow?.Reason ?? "Action is within Decision Space"
+            };
+        }
+        catch (RpcException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "ValidateAction failed: ContractId={ContractId} ActionType={ActionType}",
                 request.ContractId, request.ActionType);
             throw new RpcException(new Status(StatusCode.Internal, ex.Message));
         }
     }
 
-    /// <summary>
-    /// GrantAuthorityLicense — Authority License Manager (expansion).
-    /// WC012-03 scope: stub only at this stage.
-    /// Constitutional basis: C-003 (authority licensed), C-023 (Evidence First)
-    /// </summary>
+    // ── GrantAuthorityLicense ──────────────────────────────────────────────────
+    // C-003: authority expansion — caller must supply evidence IDs.
     public override Task<GrantAuthorityResponse> GrantAuthorityLicense(
-        GrantAuthorityRequest req, ServerCallContext ctx)
+        GrantAuthorityRequest req,
+        ServerCallContext ctx)
     {
-        _logger.LogWarning(
-            "GrantAuthorityLicense called but not yet implemented (WC012-03 scope): contractId={ContractId}",
-            req.ContractId);
-        throw new RpcException(new Status(StatusCode.Unimplemented, "GrantAuthorityLicense: WC012-03 scope"));
+        try
+        {
+            _logger.LogWarning(
+                "GrantAuthorityLicense called for ContractId={ContractId} — not yet implemented",
+                req.ContractId);
+            throw new RpcException(
+                new Status(StatusCode.Unimplemented, "GrantAuthorityLicense not yet implemented"));
+        }
+        catch (RpcException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "GrantAuthorityLicense failed: ContractId={ContractId}", req.ContractId);
+            throw new RpcException(new Status(StatusCode.Internal, ex.Message));
+        }
     }
 
-    /// <summary>
-    /// RevokeAuthorityLicense — Authority License Manager (restriction).
-    /// WC012-03 scope: stub only at this stage.
-    /// Constitutional basis: C-003 (authority licensed), C-023 (Evidence First)
-    /// </summary>
+    // ── RevokeAuthorityLicense ─────────────────────────────────────────────────
+    // C-003: authority restriction.
     public override Task<RevokeAuthorityResponse> RevokeAuthorityLicense(
-        RevokeAuthorityRequest req, ServerCallContext ctx)
+        RevokeAuthorityRequest req,
+        ServerCallContext ctx)
     {
-        _logger.LogWarning(
-            "RevokeAuthorityLicense called but not yet implemented (WC012-03 scope): contractId={ContractId}",
-            req.ContractId);
-        throw new RpcException(new Status(StatusCode.Unimplemented, "RevokeAuthorityLicense: WC012-03 scope"));
+        try
+        {
+            _logger.LogWarning(
+                "RevokeAuthorityLicense called for ContractId={ContractId} — not yet implemented",
+                req.ContractId);
+            throw new RpcException(
+                new Status(StatusCode.Unimplemented, "RevokeAuthorityLicense not yet implemented"));
+        }
+        catch (RpcException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "RevokeAuthorityLicense failed: ContractId={ContractId}", req.ContractId);
+            throw new RpcException(new Status(StatusCode.Internal, ex.Message));
+        }
     }
 
-    /// <summary>
-    /// EvaluatePolicy — general-purpose constitutional policy evaluation.
-    /// WC012-03 scope: stub only at this stage.
-    /// Constitutional basis: AD-008 (every permission decision must name its constitutional basis)
-    /// </summary>
+    // ── EvaluatePolicy ─────────────────────────────────────────────────────────
+    // AD-008: every permission decision must name its constitutional basis.
     public override Task<EvaluatePolicyResponse> EvaluatePolicy(
-        EvaluatePolicyRequest req, ServerCallContext ctx)
+        EvaluatePolicyRequest req,
+        ServerCallContext ctx)
     {
-        _logger.LogWarning(
-            "EvaluatePolicy called but not yet implemented (WC012-03 scope): contractId={ContractId}",
-            req.ContractId);
-        throw new RpcException(new Status(StatusCode.Unimplemented, "EvaluatePolicy: WC012-03 scope"));
+        try
+        {
+            _logger.LogWarning(
+                "EvaluatePolicy called for ContractId={ContractId} — not yet implemented",
+                req.ContractId);
+            throw new RpcException(
+                new Status(StatusCode.Unimplemented, "EvaluatePolicy not yet implemented"));
+        }
+        catch (RpcException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "EvaluatePolicy failed: ContractId={ContractId}", req.ContractId);
+            throw new RpcException(new Status(StatusCode.Internal, ex.Message));
+        }
     }
 
-    /// <summary>
-    /// TriggerEmergencyStop — Emergency Stop Handler.
-    /// Stub implementation: returns empty response.
-    /// Full Temporal signal + session halt implementation is WC012-04b scope.
-    /// Constitutional basis: C-013 (Emergency Override), AD-001 (≤250ms end-to-end)
-    /// </summary>
+    // ── TriggerEmergencyStop ───────────────────────────────────────────────────
+    // C-013: Emergency Override — constitutional floor. Target < 100 ms (AD-001).
     public override Task<EmergencyStopResponse> TriggerEmergencyStop(
-        EmergencyStopRequest req, ServerCallContext ctx)
+        EmergencyStopRequest req,
+        ServerCallContext ctx)
     {
-        // WC012-04b scope: Temporal signal integration is NOT part of this sprint
-        _logger.LogWarning(
-            "TriggerEmergencyStop invoked — stub only (WC012-04b scope): contractId={ContractId} stoppedBy={StoppedBy}",
-            req.ContractId, req.StoppedBy);
-        return Task.FromResult(new EmergencyStopResponse());
+        try
+        {
+            _logger.LogCritical(
+                "TriggerEmergencyStop called for ContractId={ContractId} StoppedBy={StoppedBy} " +
+                "— not yet implemented (SLA={SlaMs}ms)",
+                req.ContractId, req.StoppedBy, EmergencyStopSlaMs);
+            throw new RpcException(
+                new Status(StatusCode.Unimplemented, "TriggerEmergencyStop not yet implemented"));
+        }
+        catch (RpcException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "TriggerEmergencyStop failed: ContractId={ContractId}", req.ContractId);
+            throw new RpcException(new Status(StatusCode.Internal, ex.Message));
+        }
     }
+
+    // ── Private helpers ────────────────────────────────────────────────────────
+
+    private static string BuildSummary(RecordEvidenceRequest req) =>
+        $"ActionType={req.ActionType} | State={req.State} | Contract={req.ContractId} " +
+        $"| Professional={req.ProfessionalId} | Basis={req.ConstitutionalBasis}";
 }
