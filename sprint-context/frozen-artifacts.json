@@ -173,5 +173,21 @@
       "TriggerEmergencyStop_SingleSession_CompletesWithinSlaBudget"
     ],
     "public_properties": []
+  },
+  "src/business-platform/Infrastructure/TenantIsolationMiddleware.cs": {
+    "frozen_at_task": "WC013-02a",
+    "namespace": "Waooaw.BusinessPlatform.Infrastructure",
+    "public_constructors": [
+      "RequestDelegate next, ILogger<TenantIsolationMiddleware> logger"
+    ],
+    "public_methods": [
+      "InvokeAsync",
+      "UseTenantIsolation"
+    ],
+    "public_properties": [
+      "TenantContextKeys",
+      "TenantIsolationMiddlewareExtensions"
+    ],
+    "enum_values": {}
   }
 }
