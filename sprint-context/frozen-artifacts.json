@@ -94,9 +94,10 @@
     "public_properties": []
   },
   "src/constitutional-engine/Services/ConstitutionalEngineService.cs": {
-    "frozen_at_task": "WC012-03b",
+    "frozen_at_task": "WC012-04b",
     "namespace": "Waooaw.ConstitutionalEngine.Services",
     "public_constructors": [
+      "EvaluatorRegistry registry, ILogger<ConstitutionalEngineService> logger, IDbContextFactory<ConstitutionalDbContext> dbContextFactory, IDbContextFactory<EmergencyStopDbContext> emergencyStopDbContextFactory, ITemporalClient temporalClient",
       "EvaluatorRegistry registry, ILogger<ConstitutionalEngineService> logger, IDbContextFactory<ConstitutionalDbContext> dbContextFactory"
     ],
     "public_methods": [
