@@ -2659,17 +2659,10 @@ TASK_HANDLERS = {
                 not_regenerate_from=["WC012-03a", "WC012-02b"],  # 02b generated ValidateAction — preserve it
                 stack="dotnet",
                 constitutional_check=(
-                    "EXTEND the EXISTING ConstitutionalEngineService.cs — do NOT replace it from scratch.\n"
-                    "The file already has: ValidateAction() implementation, EvaluatorRegistry usage, constructor.\n"
-                    "ONLY ADD: RecordEvidence RPC implementation. Preserve everything else EXACTLY.\n\n"
-                    "RecordEvidence implementation:\n"
-                    "  - Inject ConstitutionalDbContext _db via existing constructor (already there).\n"
-                    "  - Write EvidenceRecord to _db BEFORE returning gRPC response (C-023 Evidence First).\n"
-                    "  - Check ActionInstanceId uniqueness — return existing record_id if already written (C-085).\n"
-                    "  - Append-only — no UPDATE or DELETE ever (C-007/C-027).\n\n"
-                    "⛔ FORBIDDEN: Do NOT add any using directives from test namespaces (Waooaw.*.Tests.*).\n"
-                    "⛔ FORBIDDEN: Do NOT remove or alter the ValidateAction() method.\n"
-                    "⛔ FORBIDDEN: Do NOT change the constructor signature."
+                    "Add RecordEvidence RPC to the existing service.\n"
+                    "Write EvidenceRecord to DB BEFORE returning gRPC response (C-023).\n"
+                    "Check ActionInstanceId uniqueness — return existing record_id if already written (C-085).\n"
+                    "Append-only — no UPDATE or DELETE (C-007/C-027)."
                 ),
                 model_hint="reasoning",
                 max_tokens=8000,
