@@ -546,26 +546,44 @@ class ContextBuilder:
             return None
 
     def _load_frozen_registry(self) -> dict:
-        # P2 Fix 2: Load current sprint frozen registry
+        # P2 Fix 2 + P3 fix: Load current sprint frozen registry.
+        # Cross-sprint archives loaded lazily and cached to avoid repeated disk reads.
         current = {}
         if self._frozen_registry_path.exists():
             try:
                 current = json.loads(self._frozen_registry_path.read_text(encoding="utf-8"))
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"  ContextBuilder: frozen registry read failed ({type(e).__name__}: {e})")
 
-        # Also merge cross-sprint frozen artifacts (Instinct 2 — compounds across sprints)
+        # Cross-sprint: merge but cache with module-level TTL to avoid N reads on N ContextBuilder()s
         cross_sprint_dir = self._frozen_registry_path.parent / "cross-sprint-context"
         if cross_sprint_dir.exists():
-            for archive_file in sorted(cross_sprint_dir.glob("*-frozen-artifacts.json")):
-                try:
-                    prior = json.loads(archive_file.read_text(encoding="utf-8"))
-                    # Prior sprint signatures available but marked as cross-sprint
-                    for k, v in prior.items():
-                        if k not in current:  # don't override current sprint
-                            current[k] = {**v, "cross_sprint": True}
-                except Exception:
-                    pass
+            # Module-level cache: {dir_path: (mtime, merged_dict)}
+            _cache_key = str(cross_sprint_dir)
+            _cross_cache = getattr(ContextBuilder, "_cross_sprint_cache", {})
+            cached_mtime = _cross_cache.get(_cache_key, (0, {}))[0]
+            try:
+                dir_mtime = cross_sprint_dir.stat().st_mtime
+            except OSError:
+                dir_mtime = 0
+
+            if dir_mtime != cached_mtime:
+                # Cache miss — read all archives once
+                merged: dict = {}
+                for archive_file in sorted(cross_sprint_dir.glob("*-frozen-artifacts.json")):
+                    try:
+                        prior = json.loads(archive_file.read_text(encoding="utf-8"))
+                        for k, v in prior.items():
+                            merged.setdefault(k, {**v, "cross_sprint": True})
+                    except Exception as e:
+                        print(f"  ContextBuilder: cross-sprint archive read failed ({archive_file.name}: {e})")
+                _cross_cache[_cache_key] = (dir_mtime, merged)
+                ContextBuilder._cross_sprint_cache = _cross_cache
+
+            _, cross_data = _cross_cache.get(_cache_key, (0, {}))
+            for k, v in cross_data.items():
+                if k not in current:
+                    current[k] = v
 
         return current
 

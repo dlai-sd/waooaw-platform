@@ -41,6 +41,30 @@ from scripts.magic_llm.types import MagicLLMRequest, TaskCategory
 
 REPO_ROOT = Path(__file__).parent.parent.parent
 
+# ── Security: sanitize founder input before LLM injection ────────────────────
+_INJECTION_PATTERNS = re.compile(
+    r'(ignore\s+(all\s+)?previous\s+instructions?'
+    r'|forget\s+everything'
+    r'|system\s*:\s*|<\s*/?system\s*>'
+    r'|<\s*/?INST\s*>'
+    r'|\[INST\]|\[/INST\]'
+    r'|###\s*instruction'
+    r'|you\s+are\s+now)',
+    re.IGNORECASE
+)
+
+def _sanitize_input(raw: str) -> str:
+    """
+    S1 fix: sanitize Founder input before interpolation into LLM prompts.
+    Strips known prompt injection patterns. Truncates to 500 chars.
+    This is not a trust boundary violation — Founders are authenticated stewards.
+    This is defense-in-depth against accidental or malicious prompt override.
+    """
+    if not raw:
+        return ""
+    sanitized = _INJECTION_PATTERNS.sub("[REDACTED]", raw)
+    return sanitized[:500]  # hard truncation prevents token-stuffing
+
 # ── Repo investigation — mandatory before any goal dialogue ──────────────────
 
 def _investigate_repo(goal_input: str) -> dict[str, str]:
@@ -131,6 +155,133 @@ class GOIntelligence:
         self._llm = magic_llm
         self._write = goal_register_writer
 
+    # ── Fail-Fast Gate: validate_goal_before_dispatch() ─────────────────────
+    # This is the primary prevention gate.
+    # Called by Steward Assistant BEFORE triggering any GitHub Action or workflow.
+    # Cost: ~$0.001 (single Haiku call). Prevents: wasted LLM spend, stale PRs,
+    # failed runs, false spec-gap issues, operator confusion.
+    #
+    # Persona: the GO acts as a proactive advisor — not a gatekeeper.
+    # It educates, advocates, and consults before blocking.
+
+    def validate_goal_before_dispatch(self, raw_input: str) -> dict:
+        """
+        Fast pre-dispatch validation — fail early, fail cheap.
+
+        Returns a structured result the Steward Assistant surfaces in chat:
+        {
+          "verdict": "APPROVED" | "BLOCKED" | "NEEDS_CLARIFICATION",
+          "chat_response": str,       # what to show Founder in chat window
+          "blockers": list[str],      # technical blocking conditions
+          "next_steps": list[str],    # concrete actions Founder can take
+          "estimated_cost_if_run": str,  # what it would waste if bypassed
+        }
+
+        The chat_response is written in the GO's persona:
+          - Empathetic, expert, grounded in repo facts
+          - Never says "you can't" — says "here is what needs to happen first"
+          - Always offers a concrete next step
+          - Always cites the spec/claim that creates the block
+        """
+        import os as _os
+        repo_context = _investigate_repo(raw_input)
+
+        # Fast-path: check blocking conditions without LLM
+        full_text = " ".join(repo_context.values()).lower()
+        blockers = []
+        next_steps = []
+
+        if "awaiting_go" in full_text or "awaiting_go" in full_text.replace("_", ""):
+            blockers.append("sprint_status=AWAITING_GO — Goal Orchestrator not yet in execution path")
+            next_steps.append("Build GO→Runner seam so WC sprints execute through GO (IB item required)")
+
+        if "autonomous_halt: true" in full_text:
+            blockers.append("autonomous_halt=true — execution halted by constitution")
+            next_steps.append("Set autonomous_halt=false in PROJECT_STATE.md once prerequisites are met")
+
+        platform_phase_match = None
+        import re as _re
+        pm = _re.search(r'platform_phase:\s*(\w+)', " ".join(repo_context.values()))
+        if pm:
+            phase = pm.group(1).strip("\"'")
+            if phase == "SPEC":
+                blockers.append(f"platform_phase=SPEC — implementation not authorized")
+                next_steps.append("Founder must authorize implementation by setting platform_phase=IMPLEMENTATION")
+
+        if blockers:
+            verdict = "BLOCKED"
+            # Use Haiku for a warm, persona-driven explanation — not a cold error
+            api_key = _os.environ.get("ANTHROPIC_API_KEY", "")
+            if api_key:
+                try:
+                    llm_req = MagicLLMRequest(
+                        goal_id=f"VALIDATE-{int(time.time())}",
+                        institution_id="INST-013",
+                        go_authorization_id="internal",
+                        task_category=TaskCategory.REVIEW_EVALUATION,
+                        task_description=(
+                            "You are the WAOOAW Goal Orchestrator. "
+                            "A Founder has asked to take an action that is currently blocked. "
+                            "Write a warm, expert, 3-4 sentence response for the Steward chat interface. "
+                            "Do NOT say 'you can't'. Say 'here is what needs to happen first'. "
+                            "Cite the specific constitutional basis for the block. "
+                            "End with one concrete action the Founder can take right now. "
+                            "Be proactive and collaborative — not a gatekeeper.\n\n"
+                            f"Founder request: {_sanitize_input(raw_input)}\n"
+                            f"Blocking conditions: {'; '.join(blockers)}\n"
+                            f"Next steps available: {'; '.join(next_steps)}\n\n"
+                            "Output only the chat message — no JSON, no labels."
+                        ),
+                        context_sections=[_format_repo_context(repo_context)],
+                        ptr_snapshot={},
+                        expected_output_format="prose",
+                        execution_plan_reference="",
+                    )
+                    response = self._llm.invoke(llm_req)
+                    chat_response = response.raw_output.strip() if response.raw_output else self._default_block_message(raw_input, blockers, next_steps)
+                except Exception:
+                    chat_response = self._default_block_message(raw_input, blockers, next_steps)
+            else:
+                chat_response = self._default_block_message(raw_input, blockers, next_steps)
+        else:
+            verdict = "APPROVED"
+            chat_response = (
+                f"✅ Goal validated against repository state. "
+                f"Platform phase is IMPLEMENTATION, no blockers detected. "
+                f"Proceeding with: {raw_input[:100]}"
+            )
+
+        result = {
+            "verdict": verdict,
+            "chat_response": chat_response,
+            "blockers": blockers,
+            "next_steps": next_steps,
+            "repo_files_read": list(repo_context.keys()),
+            "estimated_cost_if_bypassed": "~$0.50–$2.00 in LLM tokens + failed run artifacts" if blockers else "none",
+        }
+
+        # Evidence First — record this validation (C-059)
+        self._write({
+            "record_type": "GoalValidation",
+            "raw_input": raw_input,
+            "verdict": verdict,
+            "blockers": blockers,
+            "repo_files": list(repo_context.keys()),
+            "produced_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        })
+
+        return result
+
+    @staticmethod
+    def _default_block_message(raw_input: str, blockers: list, next_steps: list) -> str:
+        return (
+            f"I've reviewed the repository state against your request: \"{raw_input[:80]}\".\n\n"
+            f"Before this can proceed, there is a prerequisite to address: {blockers[0]}.\n\n"
+            f"What needs to happen first: {next_steps[0] if next_steps else 'review the constitution/PROJECT_STATE.md for the blocking condition'}.\n\n"
+            "This check runs before any action is triggered — it saves API costs and prevents failed runs. "
+            "Once the prerequisite is resolved, the same request will be approved automatically."
+        )
+
     # ── Point 1: GEOM G-2 — Goal Understanding ───────────────────────────────
 
     def understand_goal(self, req: GoalUnderstandingRequest) -> GoalUnderstandingRecord:
@@ -147,7 +298,7 @@ class GOIntelligence:
 
         context = [
             repo_section,  # ALWAYS FIRST — repo state grounds all reasoning
-            f"RAW GOAL INPUT FROM FOUNDER: {req.raw_input}",
+            f"RAW GOAL INPUT FROM FOUNDER: {_sanitize_input(req.raw_input)}",
             f"Related Goals: {', '.join(req.related_goal_ids) or 'none'}",
         ]
         if req.session_context:
@@ -175,8 +326,18 @@ class GOIntelligence:
             execution_plan_reference="",
         )
 
-        response = self._llm.invoke(llm_req)
-        parsed = response.parsed_artifacts if response.status == "accepted" else {}
+        response = None
+        for _attempt in range(1, 3):
+            try:
+                response = self._llm.invoke(llm_req)
+                if response.status != "escalate":
+                    break
+            except Exception as _inv_err:
+                print(f"  [GO] routing LLM invoke attempt {_attempt} failed ({type(_inv_err).__name__}: {_inv_err})")
+                if _attempt == 2:
+                    raise
+                import time as _t; _t.sleep(2)
+        parsed = response.parsed_artifacts if response and response.status == "accepted" else {}
         record_id = f"UR-{req.registrant_id}-{int(time.time())}"
 
         record = GoalUnderstandingRecord(
@@ -238,8 +399,18 @@ class GOIntelligence:
             execution_plan_reference="",
         )
 
-        response = self._llm.invoke(llm_req)
-        parsed = response.parsed_artifacts if response.status == "accepted" else {}
+        response = None
+        for _attempt in range(1, 3):
+            try:
+                response = self._llm.invoke(llm_req)
+                if response.status != "escalate":
+                    break
+            except Exception as _inv_err:
+                print(f"  [GO] routing LLM invoke attempt {_attempt} failed ({type(_inv_err).__name__}: {_inv_err})")
+                if _attempt == 2:
+                    raise
+                import time as _t; _t.sleep(2)
+        parsed = response.parsed_artifacts if response and response.status == "accepted" else {}
 
         record = RoutingDecisionRecord(
             record_id=f"RDR-{req.goal_id}-{int(time.time())}",

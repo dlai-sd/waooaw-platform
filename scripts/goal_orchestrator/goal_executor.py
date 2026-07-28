@@ -343,16 +343,23 @@ class GoalExecutor:
             return None
 
     def _classify_and_fix(self, failure: Any, written: list[str], task_id: str) -> str:
-        """Classify compile failure and return targeted fix context for next attempt."""
+        """Classify compile failure and return targeted fix context for next attempt.
+        P1: advisor module loaded ONCE per GoalExecutor instance (not per-retry).
+        """
         if not failure or not failure.error_codes:
             return f"Gate {failure.gate if failure else 'UNKNOWN'} failed: {getattr(failure, 'detail', '')[:300]}"
         try:
-            import importlib.util as _ilu
-            _s = _ilu.spec_from_file_location("sprint_retry_advisor",
-                 str(self._root / "scripts" / "sprint_retry_advisor.py"))
-            _m = _ilu.module_from_spec(_s)
-            _s.loader.exec_module(_m)
-            diagnosis = _m.diagnose_build_error(task_id, failure.detail, written, [])
+            # P1 fix: use cached advisor module (loaded at init if available)
+            advisor = getattr(self, "_advisor_module", None)
+            if advisor is None:
+                import importlib.util as _ilu
+                _s = _ilu.spec_from_file_location("sprint_retry_advisor",
+                     str(self._root / "scripts" / "sprint_retry_advisor.py"))
+                _m = _ilu.module_from_spec(_s)
+                _s.loader.exec_module(_m)
+                self._advisor_module = _m
+                advisor = _m
+            diagnosis = advisor.diagnose_build_error(task_id, failure.detail, written, [])
             if diagnosis.should_retry and diagnosis.confidence >= 0.3:
                 return (
                     f"COMPILE FAILED ({','.join(failure.error_codes)}):\n"
@@ -360,8 +367,8 @@ class GoalExecutor:
                     f"TARGETED FIX ({diagnosis.error_type}, {diagnosis.confidence:.0%} confidence):\n"
                     f"{diagnosis.fix_instruction}"
                 )
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"  [GO] Retry advisor failed ({type(e).__name__}: {e}) — returning raw error")
         return f"Compile failed: {failure.detail[:300]}"
 
     # ── Private: infrastructure ────────────────────────────────────────────────
@@ -377,8 +384,8 @@ class GoalExecutor:
                     for st in handler["subtasks"]:
                         if hasattr(st, "output_files") and st.output_files:
                             prior.extend(st.output_files)
-        except Exception:
-            pass
+        except Exception as _e:
+            print(f"  [GO] {type(_e).__name__}: {_e}")
         return prior
 
     def _load_context_builder(self):
@@ -418,8 +425,8 @@ class GoalExecutor:
                 "cascade_level": result.cascade_level_reached,
                 "produced_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             })
-        except Exception:
-            pass
+        except Exception as _e:
+            print(f"  [GO] {type(_e).__name__}: {_e}")
 
     @staticmethod
     def _default_writer(record: dict) -> str:
@@ -444,10 +451,12 @@ class GoalExecutor:
                 ["gh", "issue", "edit", issue_num,
                  "--add-label", label,
                  "--repo", github_repo],
-                capture_output=True, timeout=10
+                capture_output=True, timeout=15,  # R2: gh CLI can hang on auth failure
             )
-        except Exception:
-            pass  # non-blocking
+        except subprocess.TimeoutExpired:
+            print(f"  [GO] GEOM label update timed out — non-blocking")
+        except Exception as e:
+            print(f"  [GO] GEOM label update failed ({type(e).__name__}: {e}) — non-blocking")
 
     # P1 Fix 4: per-file failure count persistence
     _FILE_FAILURE_PATH = REPO_ROOT / "sprint-context" / "file-failure-counts.json"

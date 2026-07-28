@@ -210,7 +210,8 @@ class ResponseEvaluator:
             build_target = str(csproj_files[0])
             proc = subprocess.run(
                 ["dotnet", "build", build_target, "--nologo", "-v", "quiet"],
-                capture_output=True, text=True, cwd=self._root
+                capture_output=True, text=True, cwd=self._root,
+                timeout=120,  # R1: 2-min hard cap — prevents infinite hang on corrupted dotnet cache
             )
             if proc.returncode != 0:
                 output = (proc.stdout or "") + (proc.stderr or "")
@@ -235,7 +236,8 @@ class ResponseEvaluator:
                 continue
             proc = subprocess.run(
                 ["python3", "-m", "py_compile", str(full)],
-                capture_output=True, text=True
+                capture_output=True, text=True,
+                timeout=30,  # R1: py_compile should be instant
             )
             if proc.returncode != 0:
                 errors.append(f"{f}: {proc.stderr[:200]}")
@@ -249,7 +251,8 @@ class ResponseEvaluator:
             return GateResult("COMPILE", True, "", "No TypeScript project found — gate skipped")
         proc = subprocess.run(
             ["npx", "tsc", "--noEmit", "--strict"],
-            capture_output=True, text=True, cwd=web_dir
+            capture_output=True, text=True, cwd=web_dir,
+            timeout=60,  # R1: tsc type check hard cap
         )
         if proc.returncode != 0:
             return GateResult("COMPILE", False, "COMPILE_FAILURE: TS", proc.stdout[:400])

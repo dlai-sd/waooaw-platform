@@ -53,18 +53,34 @@ STACK_BEHAVIORAL_RULES: dict[str, list[str]] = {
         "All using directives MUST precede the namespace declaration (proto namespace collision risk).",
         "PROTO NAMESPACE: using Waooaw.ConstitutionalEngine.Grpc; on files referencing gRPC types.",
         "C-059 header required on every .cs file: // Implements: <spec> and // constitutional_basis: <claims>.",
+        # ── Constitutional Error Handling Standards (C-082, C-059) ──────────────
+        "ERROR HANDLING RULE 1: Never swallow exceptions silently. catch (Exception ex) MUST log: _logger.LogError(ex, 'Operation failed: {Context}', context) before returning/rethrowing.",
+        "ERROR HANDLING RULE 2: Every public method that can fail must return a Result<T>/bool or throw — never return null to indicate failure.",
+        "ERROR HANDLING RULE 3: gRPC methods must map exceptions to StatusCode: catch (Exception ex) { _logger.LogError(ex, ...); throw new RpcException(new Status(StatusCode.Internal, ex.Message)); }",
+        "ERROR HANDLING RULE 4: Every subprocess/external call needs timeout: CancellationToken or TimeSpan.FromSeconds(N). Never block indefinitely.",
+        "ERROR HANDLING RULE 5: C-059 compliance — every caught exception that is swallowed MUST write to constitutional.audit_records with error_type='SWALLOWED_EXCEPTION'.",
     ],
     "python": [
         "No synchronous DB calls from Temporal activities — use async/await throughout.",
         "Every FastAPI endpoint must call CE.ValidateAction before execution (C-023).",
         "PII must not appear in any log statement (C-063).",
         "C-059 header required: # Implements: <spec> and # constitutional_basis: <claims>.",
+        # ── Constitutional Error Handling Standards ──────────────────────────────
+        "ERROR HANDLING RULE 1: Never use bare 'except: pass' or 'except Exception: pass'. Always log: logger.error('Operation failed', exc_info=True, extra={'context': context})",
+        "ERROR HANDLING RULE 2: Use specific exception types. 'except (ValueError, KeyError) as e:' not 'except Exception as e:'.",
+        "ERROR HANDLING RULE 3: Every async function must handle CancelledError separately: except asyncio.CancelledError: raise — never swallow it.",
+        "ERROR HANDLING RULE 4: All subprocess calls need timeout=N seconds. subprocess.TimeoutExpired must be caught and logged.",
+        "ERROR HANDLING RULE 5: C-059 compliance — every exception caught and not re-raised must produce an evidence record.",
     ],
     "typescript": [
         "JWT stored in httpOnly cookie ONLY — never localStorage or sessionStorage.",
         "All API mutations require CE.ValidateAction call before execution (C-023).",
         "Emergency Stop button must be rendered on every authenticated page (C-001).",
         "C-059 header required: // Implements: <spec> and // constitutional_basis: <claims>.",
+        # ── Constitutional Error Handling Standards ──────────────────────────────
+        "ERROR HANDLING RULE 1: Never swallow errors in catch blocks. catch (e) { console.error(e); } is not acceptable — must use structured logging with context.",
+        "ERROR HANDLING RULE 2: async functions must have try/catch or .catch() — unhandled promise rejections are a constitutional violation (no evidence record).",
+        "ERROR HANDLING RULE 3: All fetch/API calls need AbortController with timeout. Never await fetch() without a timeout.",
     ],
     "terraform": [
         "All outputs must be named and described — they become PTR terraform_output entries.",
