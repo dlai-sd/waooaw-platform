@@ -106,5 +106,39 @@
       "TriggerEmergencyStop"
     ],
     "public_properties": []
+  },
+  "tests/constitutional-engine.Tests/Evaluators/CCT_EF01_C041ToolAuthorizationEvaluatorTests.cs": {
+    "frozen_at_task": "WC012-02c",
+    "namespace": "Waooaw.ConstitutionalEngine.Tests.Evaluators",
+    "public_constructors": [],
+    "public_methods": [
+      "UnlistedActionType_ShouldReturn_Deny_ConstitutionalFloor",
+      "EmptyActionType_ShouldReturn_Deny",
+      "WhitespaceActionType_ShouldReturn_Deny",
+      "EvaluateAsync_AlwaysReturnsNonNullResult",
+      "EvaluateAsync_ClaimId_ShouldBe_C041",
+      "EvaluateAsync_Reason_ShouldNotBeNullOrEmpty",
+      "EvaluateAsync_Verdict_ShouldBeValidEnumValue",
+      "MultipleUnlistedTools_AllShouldReturn_Deny"
+    ],
+    "public_properties": []
+  },
+  "tests/constitutional-engine.Tests/Evaluators/CCT_EF01_C043BudgetCeilingEvaluatorTests.cs": {
+    "frozen_at_task": "WC012-02c",
+    "namespace": "Waooaw.ConstitutionalEngine.Tests.Evaluators",
+    "public_constructors": [],
+    "public_methods": [
+      "WhenProposedSpendWellWithinBudget_ShouldReturn_Allow",
+      "WhenProposedSpendExactlyConsumesRemainingBudget_ShouldReturn_Allow",
+      "WhenProposedSpendIsZero_ShouldReturn_Allow",
+      "WhenCurrentSpendIsZeroAndProposedWithinBudget_ShouldReturn_Allow",
+      "WhenProposedSpendExceedsBudget_ShouldReturn_Deny",
+      "WhenZeroApprovedBudgetAndNonZeroProposedSpend_ShouldReturn_Deny",
+      "WhenBudgetExhaustedAndProposedSpendIsOne_ShouldReturn_Deny",
+      "WhenProposedSpendAloneExceedsFullApprovedBudget_ShouldReturn_Deny"
+    ],
+    "public_properties": [
+      "CCT_EF01_C043BudgetCeilingEvaluatorTests"
+    ]
   }
 }
