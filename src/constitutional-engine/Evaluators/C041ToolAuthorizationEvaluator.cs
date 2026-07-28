@@ -1,5 +1,5 @@
 // Implements: architecture/reference/ce-validate-action-evaluators.md §C-041 Evaluator — Tool Authorization
-// constitutional_basis: C-041 (Tool Authorization), C-059 (Traceability)
+// Constitutional basis: C-041 (Tool Authorization), C-059 (Traceability)
 using System.Text.Json;
 using Waooaw.ConstitutionalEngine.Evaluators;
 using Waooaw.ConstitutionalEngine.Grpc;
@@ -7,8 +7,10 @@ using Waooaw.ConstitutionalEngine.Grpc;
 namespace Waooaw.ConstitutionalEngine.Evaluators;
 
 /// <summary>
-/// Enforces C-041 Tool Authorization: every MCP tool call must be explicitly listed
-/// in the contract's authorized_tools. Default deny — unlisted tool = DENY.
+/// Enforces C-041 (Tool Authorization): every MCP tool call must be explicitly
+/// listed in the contract's authorized_tools parameter. Default deny — an unlisted
+/// tool is always DENY. Tools in escalation_required_tools produce ESCALATE instead
+/// of ALLOW, routing to human oversight per C-049.
 /// </summary>
 public sealed class C041ToolAuthorizationEvaluator : IClaimEvaluator
 {
@@ -18,72 +20,85 @@ public sealed class C041ToolAuthorizationEvaluator : IClaimEvaluator
     private const string EscalationToolsKey = "escalation_required_tools";
 
     private static readonly JsonSerializerOptions _jsonOpts =
-        new() { PropertyNameCaseInsensitive = false };
+        new(JsonSerializerDefaults.Web);
 
+    /// <inheritdoc/>
     public string ClaimId => "C-041";
 
+    /// <inheritdoc/>
     public Task<EvaluationResult> EvaluateAsync(EvaluationContext ctx, CancellationToken ct)
     {
-        // Non-MCP actions are outside the scope of this evaluator — pass through.
+        // C-041 only governs MCP_TOOL_CALL actions; all other action types pass through.
         if (!string.Equals(ctx.ActionType, McpToolCall, StringComparison.Ordinal))
         {
             return Task.FromResult(new EvaluationResult(
-                ClaimId,
+                "C-041",
                 EvaluationVerdict.Allow,
-                "C-041: Action type is not MCP_TOOL_CALL — evaluator not applicable."));
+                "Action type is not MCP_TOOL_CALL — C-041 does not apply."));
         }
 
-        // ── Step 1: extract tool_name from JSON-encoded ActionParameters ──────────
+        // A missing or empty tool_name cannot be authorized — default deny.
         var toolName = ctx.GetParameter(ToolNameKey);
         if (string.IsNullOrWhiteSpace(toolName))
         {
             return Task.FromResult(new EvaluationResult(
-                ClaimId,
+                "C-041",
                 EvaluationVerdict.Deny,
-                "C-041: MCP tool call denied — tool_name is missing or empty in ActionParameters."));
+                "C-041: MCP tool call denied — missing or empty tool_name parameter."));
         }
 
-        // ── Step 2: load the authorized_tools list ────────────────────────────────
-        var authorizedTools = ParseStringSet(ctx.GetParameter(AuthorizedToolsKey));
+        // A missing or empty ActionParameters JSON string cannot yield an authorized list — default deny.
+        if (string.IsNullOrWhiteSpace(ctx.ActionParameters))
+        {
+            return Task.FromResult(new EvaluationResult(
+                "C-041",
+                EvaluationVerdict.Deny,
+                $"C-041: MCP tool call denied — ActionParameters is absent; cannot authorize tool '{toolName}'. Default deny."));
+        }
+
+        // Parse the authorized_tools list; absence or malformed JSON → default deny.
+        var authorizedJson  = ctx.GetParameter(AuthorizedToolsKey);
+        var authorizedTools = ParseStringSet(authorizedJson);
         if (authorizedTools is null || authorizedTools.Count == 0)
         {
             return Task.FromResult(new EvaluationResult(
-                ClaimId,
+                "C-041",
                 EvaluationVerdict.Deny,
-                $"C-041: MCP tool call denied — no authorized_tools list configured " +
-                $"(tool='{toolName}')."));
+                $"C-041: MCP tool call denied — no authorized_tools list found for tool '{toolName}'. Default deny."));
         }
 
-        // ── Step 3: check escalation_required_tools (takes priority over allow) ──
-        var escalationTools = ParseStringSet(ctx.GetParameter(EscalationToolsKey));
+        // Escalation check takes precedence over plain authorization.
+        // A tool present in escalation_required_tools must be reviewed by a human
+        // before it may execute, even if it also appears in authorized_tools.
+        var escalationJson  = ctx.GetParameter(EscalationToolsKey);
+        var escalationTools = ParseStringSet(escalationJson);
         if (escalationTools is not null && escalationTools.Contains(toolName))
         {
             return Task.FromResult(new EvaluationResult(
-                ClaimId,
+                "C-041",
                 EvaluationVerdict.Escalate,
-                $"C-041: MCP tool call '{toolName}' requires human escalation — " +
-                $"listed in escalation_required_tools."));
+                $"C-041: MCP tool '{toolName}' requires human escalation before execution (escalation_required_tools)."));
         }
 
-        // ── Step 4: authorize if explicitly listed ────────────────────────────────
+        // The tool must appear in authorized_tools — exact case-sensitive match required.
         if (authorizedTools.Contains(toolName))
         {
             return Task.FromResult(new EvaluationResult(
-                ClaimId,
+                "C-041",
                 EvaluationVerdict.Allow,
-                $"C-041: MCP tool call '{toolName}' is authorized."));
+                $"C-041: MCP tool '{toolName}' is in the authorized_tools list — permitted."));
         }
 
-        // ── Step 5: default deny — unlisted tool ─────────────────────────────────
+        // Default deny: tool is not in the authorized list.
         return Task.FromResult(new EvaluationResult(
-            ClaimId,
+            "C-041",
             EvaluationVerdict.Deny,
-            $"C-041: MCP tool call denied — '{toolName}' is not in the authorized_tools list."));
+            $"C-041: MCP tool '{toolName}' is not in the authorized_tools list. Default deny."));
     }
 
     /// <summary>
-    /// Parses a JSON array of strings into a case-sensitive HashSet.
-    /// Returns null on null/empty input or any JSON parse error.
+    /// Deserializes a JSON string array into a case-sensitive hash set.
+    /// Returns <c>null</c> on null/whitespace input or any JSON parse failure.
     /// </summary>
     private static HashSet<string>? ParseStringSet(string? json)
     {
@@ -100,6 +115,7 @@ public sealed class C041ToolAuthorizationEvaluator : IClaimEvaluator
         }
         catch (JsonException)
         {
+            // Malformed JSON — treat as absent; caller applies default deny.
             return null;
         }
     }
