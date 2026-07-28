@@ -347,25 +347,6 @@ def _classify_cs0246_missing_using(error: str) -> Optional[RetryDiagnosis]:
 
     missing_type = type_match.group(1)
 
-    # Test-namespace type in a main project file (e.g., FakeServerCallContext, NullLogger<T>.Instance issues)
-    # This happens when LLM adds 'using Waooaw.*.Tests.*' to src/ files
-    if re.search(r'Tests?\b|Fake[A-Z]|Mock[A-Z]|InMemory', missing_type):
-        fix = (
-            f"TEST NAMESPACE IN MAIN PROJECT: '{missing_type}' is a test helper and "
-            f"MUST NOT be used in src/ files. "
-            f"⛔ Remove any 'using Waooaw.*.Tests.*' directives from this file. "
-            f"⛔ Do NOT reference FakeServerCallContext, Mock<T>, or InMemory helpers in main project code. "
-            f"Use CancellationToken.None for cancellation, not ServerCallContext. "
-            f"If this is a service/evaluator file, it must not depend on test assemblies."
-        )
-        return RetryDiagnosis(
-            error_type=WRONG_NAMESPACE,
-            fix_instruction=fix,
-            should_retry=True,
-            confidence=0.95,
-            constitutional_trace="C-082 (Build Validation) — test types must not leak into main project"
-        )
-
     # Known type → namespace mappings
     TYPE_NAMESPACES = {
         "ServerCallContext":   "Grpc.Core",

@@ -195,6 +195,52 @@ def _build_effective_check(st: SubTaskDef, completed: list[str]) -> str:
             f"Do NOT regenerate files from prior subtasks: {', '.join(preserved)}"
         )
 
+    # 3b. Auto-inject frozen signatures for output_files that already exist
+    # This is the structural replacement for hardcoded "EXTEND not replace" prompts.
+    # If a file is in output_files AND exists on the sprint branch, the LLM must
+    # extend it — inject its frozen signatures so it knows the exact current API.
+    if st.output_files:
+        frozen_sigs_parts: list[str] = []
+        try:
+            import json as _json
+            _frozen_path = REPO_ROOT / "sprint-context" / "frozen-artifacts.json"
+            frozen_registry: dict = {}
+            if _frozen_path.exists():
+                frozen_registry = _json.loads(_frozen_path.read_text(encoding="utf-8"))
+
+            for output_file in st.output_files:
+                full_path = REPO_ROOT / output_file
+                if full_path.exists():
+                    # File exists on branch — inject its public API from frozen registry or direct read
+                    sigs = frozen_registry.get(output_file, {})
+                    class_name = full_path.stem
+                    ns = sigs.get("namespace", "")
+                    methods = sigs.get("public_methods", [])
+                    ctors = sigs.get("public_constructors", [])
+
+                    if methods or ctors:
+                        sig_lines = [f"FROZEN API of {class_name} (namespace: {ns}) — MUST be preserved:"]
+                        for ctor in ctors[:2]:
+                            sig_lines.append(f"  constructor: {class_name}({ctor[:80]})")
+                        for m in methods[:6]:
+                            sig_lines.append(f"  method: {m}()")
+                        sig_lines.append(f"  ⛔ Do NOT remove or alter any of the above — ONLY add new members.")
+                        frozen_sigs_parts.append("\n".join(sig_lines))
+                    elif full_path.suffix == ".cs":
+                        # Not yet frozen — fall back to first 40 lines of actual file
+                        content_lines = full_path.read_text(encoding="utf-8").splitlines()[:40]
+                        frozen_sigs_parts.append(
+                            f"EXISTING FILE {output_file} (not yet in frozen registry — first 40 lines):\n"
+                            + "\n".join(content_lines)
+                            + "\n  ⛔ This file exists — EXTEND ONLY, do NOT replace."
+                        )
+        except Exception as _frozen_e:
+            print(f"  [decomposer] frozen sig injection skipped ({_frozen_e})")
+
+        if frozen_sigs_parts:
+            parts.append("EXISTING FILE SIGNATURES (auto-injected from frozen registry):\n"
+                         + "\n\n".join(frozen_sigs_parts))
+
     # 4. Stack behavioral rules (EA floor)
     rules = STACK_BEHAVIORAL_RULES.get(st.stack, [])
     if rules:
