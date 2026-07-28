@@ -34,10 +34,6 @@ public sealed class CCT_HO01_EmergencyStopLatencyTests
 
     private static ITemporalClient MockedTemporalClient()
     {
-        var mock = new Mock<ITemporalClient>(MockBehavior.Loose);
-        return mock.Object;
-    }
-
     private static ConstitutionalEngineService CreateSut(
         EmergencyStopDbContext emergencyDb,
         ITemporalClient? temporalClient = null)
@@ -50,7 +46,7 @@ public sealed class CCT_HO01_EmergencyStopLatencyTests
             CreateConstitutionalDb(),
             NullLogger<ConstitutionalEngineService>.Instance,
             registry,
-            emergencyDb,
+            emergencyDb ?? new EmergencyStopDbContext(),
             temporalClient);
     }
 
@@ -64,6 +60,7 @@ public sealed class CCT_HO01_EmergencyStopLatencyTests
             ContractId = contractId,
             StoppedBy = stoppedBy
         };
+
 
         req.ActiveSessionIds.AddRange(sessionIds);
 

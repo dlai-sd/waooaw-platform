@@ -34,8 +34,8 @@ public sealed class CCT_EF01_EvidenceFirstTests
 
         return new ConstitutionalEngineService(
             db,
-            new ConstitutionalDbContext(
-                new DbContextOptionsBuilder<ConstitutionalDbContext>()
+            new EmergencyStopDbContext(
+                new DbContextOptionsBuilder<EmergencyStopDbContext>()
                     .UseInMemoryDatabase(Guid.NewGuid().ToString())
                     .Options),
             null,
