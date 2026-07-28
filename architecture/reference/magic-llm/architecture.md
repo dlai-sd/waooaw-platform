@@ -346,7 +346,15 @@ The LLM instruction: "The first N lines are already written. Extend from line N+
 
 ### 7.6 Frozen Artifact Registry (Gap 8 fix — NEW)
 
-Once a file passes the compile gate, its public API surface is frozen. The Context Builder maintains a Frozen Artifact Registry at `sprint-context/frozen-artifacts.json`:
+Once a file passes the compile gate, its public API surface is frozen. The Context Builder maintains a Frozen Artifact Registry at `sprint-context/frozen-artifacts.json`.
+
+**Timing (Gap 1 fix):** The Frozen Artifact Registry is written by `task_decomposer.execute_subtask_chain()` immediately after each compile gate PASS, not by the LLM and not by the caller. The call sequence is:
+1. Subtask compile gate runs → returns PASS
+2. `task_decomposer` calls `context_builder.freeze_artifacts_from_task(output_files, task_id)`
+3. Frozen registry updated on disk at `sprint-context/frozen-artifacts.json`
+4. Next subtask's Context Builder reads registry and injects [FROZEN] block
+
+**Deterministic tasks (Gap 2 fix):** Deterministic SubTaskDef instances MUST declare `output_files` for their generated files. Without `output_files`, the Context Builder cannot freeze their signatures. Every deterministic task that produces .cs files must list them explicitly (e.g. WC012-02a must list EvaluationResult.cs, EvaluationContext.cs, IClaimEvaluator.cs, EvaluatorRegistry.cs).
 
 ```json
 {

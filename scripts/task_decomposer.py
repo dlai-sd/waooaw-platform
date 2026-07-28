@@ -713,6 +713,21 @@ def execute_subtask_chain(
 
         print(f"  [{st.id}] Compile gate: ✅ PASS")
 
+        # §7.6: Freeze artifact signatures immediately after compile gate PASS
+        # Context Builder for next subtask will inject [FROZEN] block from registry
+        if st.output_files:
+            try:
+                _scripts = str(REPO_ROOT / "scripts")
+                if _scripts not in sys.path:
+                    sys.path.insert(0, _scripts)
+                from magic_llm.context_builder import ContextBuilder
+                _cb = ContextBuilder(REPO_ROOT)
+                frozen_count = _cb.freeze_artifacts_from_task(st.output_files, st.id)
+                if frozen_count > 0:
+                    print(f"  [{st.id}] Frozen {frozen_count} artifact signature(s) → registry updated")
+            except Exception as _freeze_err:
+                print(f"  [{st.id}] WARN: artifact freeze failed ({_freeze_err}) — non-blocking")
+
         # C-083 Emit: extract compiled types → write to PTR for downstream subtasks.
         # Best-effort — never blocks sprint execution.
         try:

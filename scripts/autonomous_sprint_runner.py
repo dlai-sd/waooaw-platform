@@ -2504,6 +2504,14 @@ TASK_HANDLERS = {
                 depends_on=[],
                 compile_gate="dotnet_build",
                 template_fn=lambda: _generate_wc012_02a_evaluator_interfaces(),
+                # output_files declared so Frozen Artifact Registry can freeze interface signatures
+                # Required by §7.6: deterministic tasks must declare output_files for freezing
+                output_files=[
+                    "src/constitutional-engine/Evaluators/EvaluationResult.cs",
+                    "src/constitutional-engine/Evaluators/EvaluationContext.cs",
+                    "src/constitutional-engine/Evaluators/IClaimEvaluator.cs",
+                    "src/constitutional-engine/Evaluators/EvaluatorRegistry.cs",
+                ],
             ),
             SubTaskDef(
                 id="WC012-02b",
