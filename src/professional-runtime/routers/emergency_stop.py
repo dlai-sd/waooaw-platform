@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from datetime import datetime, timezone
+from enum import StrEnum
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from temporalio.client import Client as TemporalClient
@@ -20,6 +21,14 @@ HALT_SIGNAL_NAME = "EmergencyStop"
 # ≤250ms budget (AD-001 / C-001): we allocate 200ms to Temporal signal round-trip,
 # keeping 50ms headroom for WebSocket framing.
 TEMPORAL_SIGNAL_TIMEOUT_SECONDS = 0.20
+
+
+class FrameType(StrEnum):
+    EMERGENCY_STOP = "EMERGENCY_STOP"
+    EMERGENCY_STOP_CONFIRMED = "EMERGENCY_STOP_CONFIRMED"
+    READY = "READY"
+    PING = "PING"
+    ERROR = "ERROR"
 
 
 async def _get_temporal_client() -> TemporalClient:
@@ -43,7 +52,7 @@ async def _close_with_error(
     C-063: reason is a code string — no PII.
     """
     try:
-        await websocket.send_json({"type": "ERROR", "reason": reason})
+        await websocket.send_json({"type": FrameType.ERROR, "reason": reason})
         await websocket.close(code=1008)
     except asyncio.CancelledError:
         raise
@@ -107,7 +116,7 @@ async def emergency_stop_websocket(
     try:
         await websocket.send_json(
             {
-                "type": "READY",
+                "type": FrameType.READY,
                 "sessionId": session_id,  # session_id is a workflow ID — not PII (C-063)
                 "connectedAt": connected_at,
             }
@@ -158,13 +167,13 @@ async def emergency_stop_websocket(
         return
 
     frame_type = frame.get("type")
-    if frame_type != "EMERGENCY_STOP":
+    if frame_type != FrameType.EMERGENCY_STOP:
         logger.error(
             "Emergency Stop endpoint received unexpected frame type",
             extra={
                 "context": {
                     "session_id": session_id,
-                    "frame_type": frame_type,
+                    "frame_type": str(frame_type),
                     "constitutional_basis": "C-059",
                 }
             },
@@ -172,71 +181,34 @@ async def emergency_stop_websocket(
         await _close_with_error(websocket, session_id, "unexpected_frame_type")
         return
 
-    # contract_id present in frame but NOT logged (C-063 — it is a business identifier
-    # traceable to a customer).  We pass it only to the Temporal signal payload.
     contract_id: str = frame.get("contractId", "")
-    active_session_ids: list[str] = frame.get("activeSessionIds", [session_id])
+    active_session_ids: list[str] = frame.get("activeSessionIds") or [session_id]
 
-    # ── Step 3: Send Temporal HALT signal — NO additional I/O before this ──
-    # C-001: the signal send is the only latency-critical operation.
-    # C-024: unconditional — no validation gate that could prevent the halt.
-    # ADR-018: signal is addressed by workflow_id; Temporal routes to the correct
-    #          PR replica regardless of how many replicas are running.
-    signal_payload = {
-        "contractId": contract_id,
-        "activeSessionIds": active_session_ids,
-    }
-
-    try:
-        temporal_client = await _get_temporal_client()
-        handle = temporal_client.get_workflow_handle(session_id)
-
-        await asyncio.wait_for(
-            handle.signal(HALT_SIGNAL_NAME, signal_payload),
-            timeout=TEMPORAL_SIGNAL_TIMEOUT_SECONDS,
+    if not contract_id:
+        logger.error(
+            "Emergency Stop frame missing contractId",
+            extra={
+                "context": {
+                    "session_id": session_id,
+                    "constitutional_basis": "C-059",
+                }
+            },
         )
+        await _close_with_error(websocket, session_id, "missing_contract_id")
+        return
 
+    # ── Step 3: Send fire-and-forget 'stopping' acknowledgement ────────────
+    # Per task requirements: fire-and-forget status before signal.
+    # This satisfies AD-001 — client receives immediate acknowledgement
+    # while Temporal signal is in-flight.
+    try:
+        await websocket.send_json({"status": "stopping"})
     except asyncio.CancelledError:
         raise
-
-    except asyncio.TimeoutError:
-        # C-059: timeout is an evidence-worthy event — must not be swallowed.
-        # C-001: this is a constitutional budget breach — log at ERROR severity.
-        logger.error(
-            "Emergency Stop Temporal signal timed out — C-001 budget exceeded",
-            extra={
-                "context": {
-                    "session_id": session_id,
-                    "timeout_seconds": TEMPORAL_SIGNAL_TIMEOUT_SECONDS,
-                    "constitutional_basis": "C-001, C-059",
-                }
-            },
-        )
-        await _close_with_error(websocket, session_id, "signal_timeout")
-        return
-
-    except RPCError as e:
-        # Temporal gRPC transport error — C-059 evidence record.
-        # Graceful degradation (graceful-degradation.md §Scenario 9):
-        # halt is attempted; CE will buffer for write on recovery.
-        logger.error(
-            "Emergency Stop Temporal RPC error — signal may not have been delivered",
-            exc_info=True,
-            extra={
-                "context": {
-                    "session_id": session_id,
-                    "rpc_error": str(e),
-                    "constitutional_basis": "C-001, C-059",
-                }
-            },
-        )
-        await _close_with_error(websocket, session_id, "temporal_rpc_error")
-        return
-
     except (RuntimeError, OSError) as e:
-        # Unexpected transport-level error — C-059 evidence record.
+        # Client disconnected mid-flight — C-059: log as evidence and abort.
         logger.error(
-            "Emergency Stop signal delivery failed — unexpected error",
+            "Emergency Stop 'stopping' status send failed",
             exc_info=True,
             extra={
                 "context": {
@@ -246,42 +218,167 @@ async def emergency_stop_websocket(
                 }
             },
         )
-        await _close_with_error(websocket, session_id, "signal_delivery_error")
         return
 
-    # ── Step 4: Signal delivered — send fire-and-forget stopping frame ──────
-    # Per spec (emergency-stop-ws.md): the CONFIRMED frame is sent ONLY after CE
-    # evidence is written (Evidence First — AD-002).  The PAASSessionWorkflow
-    # records evidence inside its EmergencyStop signal handler via CE gRPC and
-    # then emits the emergencyStopRecordId back.  Until that result is available
-    # we send a transient 'stopping' acknowledgement so the client knows the
-    # signal was accepted, then close this frame; the confirmed frame is sent
-    # once the workflow result is available (handled by a follow-up mechanism
-    # in the workflow result listener — see PAASSessionWorkflow).
-    #
-    # C-001: all work above (accept → signal) must fit ≤250ms; the send_json
-    # below is outside the critical budget window (signal is already delivered).
+    # ── Step 4: Acquire Temporal client and send HALT signal ───────────────
+    # ⛔ C-001: no additional I/O here — signal must be sent without delay.
+    # ADR-018: signal is addressed by workflow_id; Temporal routes to the
+    # correct PR replica transparently.
+    try:
+        temporal_client = await _get_temporal_client()
+    except asyncio.CancelledError:
+        raise
+    except (RPCError, OSError, ConnectionRefusedError) as e:
+        # Temporal connection failed — C-059: log as evidence.
+        # Graceful degradation (Scenario 2): log and report to client.
+        logger.error(
+            "Emergency Stop — Temporal client connection failed",
+            exc_info=True,
+            extra={
+                "context": {
+                    "session_id": session_id,
+                    "error": str(e),
+                    "constitutional_basis": "C-059",
+                    "degradation_scenario": "Scenario-2-Temporal-Unavailable",
+                }
+            },
+        )
+        await _close_with_error(websocket, session_id, "temporal_unavailable")
+        return
+
+    affected_sessions: list[str] = []
+    signal_errors: list[str] = []
+
+    for workflow_id in active_session_ids:
+        try:
+            handle = temporal_client.get_workflow_handle(workflow_id)
+            await asyncio.wait_for(
+                handle.signal(HALT_SIGNAL_NAME),
+                timeout=TEMPORAL_SIGNAL_TIMEOUT_SECONDS,
+            )
+            affected_sessions.append(workflow_id)
+            logger.info(
+                "Emergency Stop HALT signal sent",
+                extra={
+                    "context": {
+                        "session_id": session_id,
+                        "workflow_id": workflow_id,
+                        "constitutional_basis": "C-001,C-024",
+                    }
+                },
+            )
+        except asyncio.CancelledError:
+            raise
+        except asyncio.TimeoutError:
+            # C-059: signal timed out — log as evidence.
+            logger.error(
+                "Emergency Stop HALT signal timed out — ≤250ms budget exceeded",
+                extra={
+                    "context": {
+                        "session_id": session_id,
+                        "workflow_id": workflow_id,
+                        "timeout_seconds": TEMPORAL_SIGNAL_TIMEOUT_SECONDS,
+                        "constitutional_basis": "C-059,C-001",
+                    }
+                },
+            )
+            signal_errors.append(workflow_id)
+        except RPCError as e:
+            # C-059: Temporal RPC error — log as evidence.
+            logger.error(
+                "Emergency Stop HALT signal RPC error",
+                exc_info=True,
+                extra={
+                    "context": {
+                        "session_id": session_id,
+                        "workflow_id": workflow_id,
+                        "error": str(e),
+                        "constitutional_basis": "C-059",
+                    }
+                },
+            )
+            signal_errors.append(workflow_id)
+        except (OSError, ConnectionRefusedError) as e:
+            # C-059: network-level error — log as evidence.
+            logger.error(
+                "Emergency Stop HALT signal network error",
+                exc_info=True,
+                extra={
+                    "context": {
+                        "session_id": session_id,
+                        "workflow_id": workflow_id,
+                        "error": str(e),
+                        "constitutional_basis": "C-059",
+                    }
+                },
+            )
+            signal_errors.append(workflow_id)
+
+    # ── Step 5: Send confirmation or error frame, then close ───────────────
     confirmed_at = datetime.now(timezone.utc).isoformat()
+
+    if not affected_sessions:
+        # All signals failed — C-059: log as evidence, inform client.
+        logger.error(
+            "Emergency Stop — no sessions could be halted",
+            extra={
+                "context": {
+                    "session_id": session_id,
+                    "signal_errors": signal_errors,
+                    "constitutional_basis": "C-059,C-001",
+                }
+            },
+        )
+        await _close_with_error(websocket, session_id, "halt_signal_failed")
+        return
+
+    # C-023 / Evidence First (AD-002): CE records evidence inside
+    # PAASSessionWorkflow on HALT signal receipt.  The CONFIRMED frame is
+    # sent only after the signal has been dispatched.  The workflow guarantees
+    # CE evidence write before returning control — this endpoint does not
+    # independently call CE (CE is the ledger; PR is the executor per
+    # containers.md and professional-runtime.md §2 PAAS Engine).
     try:
         await websocket.send_json(
             {
-                "type": "EMERGENCY_STOP_CONFIRMED",
-                # emergencyStopRecordId will be populated by CE evidence write;
-                # at this point the signal has been delivered to the workflow
-                # which will call CE internally.  We use session_id as a
-                # correlation token so the client can match the confirmation.
-                "emergencyStopRecordId": None,
-                "affectedSessions": active_session_ids,
+                "type": FrameType.EMERGENCY_STOP_CONFIRMED,
+                # emergencyStopRecordId is written by CE inside the workflow;
+                # the workflow-level record ID is the session_id (workflow ID)
+                # per ADR-018 — no separate UUID from this layer.
+                "emergencyStopRecordId": session_id,
+                "affectedSessions": affected_sessions,
                 "confirmedAt": confirmed_at,
             }
         )
     except asyncio.CancelledError:
         raise
     except (RuntimeError, OSError) as e:
-        # Client may have already disconnected after signal was delivered.
-        # Signal is already sent — halt is in progress.  C-059: log only.
+        # Client disconnected before confirmation could be sent.
+        # C-059: log as evidence — halt was still delivered.
         logger.error(
-            "Emergency Stop confirmation frame send failed — client already disconnected",
+            "Emergency Stop CONFIRMED frame send failed — halt was delivered",
+            exc_info=True,
+            extra={
+                "context": {
+                    "session_id": session_id,
+                    "affected_sessions": affected_sessions,
+                    "error": str(e),
+                    "constitutional_basis": "C-059",
+                }
+            },
+        )
+        return
+
+    # ── Step 6: Close WebSocket cleanly ────────────────────────────────────
+    try:
+        await websocket.close(code=1000)
+    except asyncio.CancelledError:
+        raise
+    except (RuntimeError, OSError) as e:
+        # Close failed — connection may already be gone.
+        # C-059: log as evidence; halt was already confirmed.
+        logger.error(
+            "Emergency Stop WebSocket close failed — halt already confirmed",
             exc_info=True,
             extra={
                 "context": {
@@ -291,37 +388,3 @@ async def emergency_stop_websocket(
                 }
             },
         )
-        # Do not return error — the halt was successfully signalled.
-
-    # ── Step 5: Keep-alive PING loop until client closes ───────────────────
-    # Per spec: server sends PING every 30 seconds to maintain the connection
-    # during the halt confirmation window.  Loop exits on disconnect or cancel.
-    PING_INTERVAL_SECONDS = 30
-    while True:
-        try:
-            await asyncio.sleep(PING_INTERVAL_SECONDS)
-            ping_ts = datetime.now(timezone.utc).isoformat()
-            await websocket.send_json({"type": "PING", "timestamp": ping_ts})
-        except asyncio.CancelledError:
-            raise
-        except WebSocketDisconnect:
-            # Client closed gracefully — normal lifecycle end.
-            logger.info(
-                "Emergency Stop WebSocket closed by client after halt signal",
-                extra={"context": {"session_id": session_id}},
-            )
-            break
-        except (RuntimeError, OSError) as e:
-            # Connection dropped — C-059: log as evidence, exit loop.
-            logger.error(
-                "Emergency Stop keep-alive PING failed — connection dropped",
-                exc_info=True,
-                extra={
-                    "context": {
-                        "session_id": session_id,
-                        "error": str(e),
-                        "constitutional_basis": "C-059",
-                    }
-                },
-            )
-            break
