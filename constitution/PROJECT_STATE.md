@@ -624,7 +624,7 @@ OPTION C — Nothing needed from you until sprint opens first PR
 <!-- Edit ONLY the fields below. Do not alter the block structure. -->
 
 ```yaml
-autonomous_halt: true       # ← semi-autonomous mode — manual trigger only
+autonomous_halt: false       # ← semi-autonomous mode — manual trigger only
 
 platform_phase: IMPLEMENTATION  # SPEC | IMPLEMENTATION | LIVE
 
