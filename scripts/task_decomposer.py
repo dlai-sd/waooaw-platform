@@ -78,6 +78,9 @@ STACK_BEHAVIORAL_RULES: dict[str, list[str]] = {
         "use either: (1) 'response = client.post(...)' and then 'assert response.status_code == 200', or "
         "(2) prefix with underscore: '_response = client.post(...)'. NEVER assign to a plain name like "
         "'handle = ...' or 'result = ...' without using the variable — ruff F841 will block the compile gate.",
+        "LOG015 ROOT LOGGER (ruff): In tests, pyproject.toml ignores LOG015 via per-file-ignores. "
+        "But in src/ files, NEVER call 'logging.info(...)' / 'logging.error(...)' directly on the root logger. "
+        "Always: 'logger = logging.getLogger(__name__)' at module level, then 'logger.info(...)'.",
         # ── Constitutional Error Handling Standards ──────────────────────────────
         "ERROR HANDLING RULE 1: Never use bare 'except: pass' or 'except Exception: pass'. Always log: logger.error('Operation failed', exc_info=True, extra={'context': context})",
         "ERROR HANDLING RULE 2: Use specific exception types. 'except (ValueError, KeyError) as e:' not 'except Exception as e:'.",
