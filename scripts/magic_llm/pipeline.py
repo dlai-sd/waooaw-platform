@@ -61,17 +61,20 @@ _ANTHROPIC_CATS = {
 # Cost estimates in INR (approximate, for C-077 tracking)
 _COST_PER_1K_INPUT  = {
     "claude-sonnet-4-6": 0.24,
-    "claude-haiku-20240307": 0.02,
+    "claude-haiku-4-5":  0.02,   # current Haiku model
+    "claude-haiku-20240307": 0.02,  # legacy alias
     "gemini-2.0-flash": 0.007,   # ADR-033: 34× cheaper than Sonnet
 }
 _COST_PER_1K_OUTPUT = {
     "claude-sonnet-4-6": 1.20,
+    "claude-haiku-4-5":  0.10,
     "claude-haiku-20240307": 0.10,
     "gemini-2.0-flash": 0.021,
 }
 # Cached input costs 1/10th (O-02: prompt caching)
 _COST_PER_1K_CACHED = {
     "claude-sonnet-4-6": 0.024,
+    "claude-haiku-4-5":  0.002,
     "claude-haiku-20240307": 0.002,
     "gemini-2.0-flash": 0.001,   # Gemini context caching (Phase 3)
 }

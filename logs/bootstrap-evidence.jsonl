@@ -9,3 +9,39 @@
 {"event": "llm_call", "timestamp": "2026-07-24T15:58:54.361800+00:00", "run_id": "local", "stub_mode": true, "task": "WC012-02", "attempt": 1, "tokens_in": 5897, "tokens_out": 18279, "latency_s": 234.0, "stop_reason": "end_turn", "block_types": ["thinking", "text"], "text_chars": 52003, "thinking_blocks": 1, "thinking_chars": 3320, "prompt_chars": 21814}
 {"event": "AUTONOMOUS_SPRINT_STARTED", "timestamp": "2026-07-28T15:48:02.602343+00:00", "run_id": "30375069218", "stub_mode": true, "sprint": "WC-012", "branch": "ib/009/sprint-012", "tasks": ["WC012-01", "WC012-02", "WC012-03", "WC012-04"]}
 {"event": "SPRINT_TASKS_EXECUTED", "timestamp": "2026-07-28T16:27:12.153827+00:00", "run_id": "30375069218", "stub_mode": true, "sprint": "WC-012", "tasks_done": ["WC012-01", "WC012-02", "WC012-03", "WC012-04"]}
+{"event": "AUTONOMOUS_SPRINT_STARTED", "timestamp": "2026-07-29T08:59:16.150249+00:00", "run_id": "30437677489", "stub_mode": true, "sprint": "WC-014", "branch": "ib/009/sprint-014", "tasks": ["WC014-01", "WC014-02", "WC014-03", "WC014-04"]}
+{"event": "SPRINT_TASKS_EXECUTED", "timestamp": "2026-07-29T09:06:17.120890+00:00", "run_id": "30437677489", "stub_mode": true, "sprint": "WC-014", "tasks_done": ["WC014-01"]}
+{"event": "AUTONOMOUS_SPRINT_STARTED", "timestamp": "2026-07-29T09:19:08.067624+00:00", "run_id": "30439060017", "stub_mode": true, "sprint": "WC-014", "branch": "ib/009/sprint-014", "tasks": ["WC014-02", "WC014-03", "WC014-04"]}
+{"event": "SPRINT_TASKS_EXECUTED", "timestamp": "2026-07-29T09:23:41.545587+00:00", "run_id": "30439060017", "stub_mode": true, "sprint": "WC-014", "tasks_done": []}
+{"event": "AUTONOMOUS_SPRINT_STARTED", "timestamp": "2026-07-29T09:45:08.512690+00:00", "run_id": "30440820287", "stub_mode": true, "sprint": "WC-014", "branch": "ib/009/sprint-014", "tasks": ["WC014-02", "WC014-03", "WC014-04"]}
+{"event": "SPRINT_TASKS_EXECUTED", "timestamp": "2026-07-29T09:53:15.859893+00:00", "run_id": "30440820287", "stub_mode": true, "sprint": "WC-014", "tasks_done": []}
+{"event": "AUTONOMOUS_SPRINT_STARTED", "timestamp": "2026-07-29T10:19:35.048453+00:00", "run_id": "30443165761", "stub_mode": true, "sprint": "WC-014", "branch": "ib/009/sprint-014", "tasks": ["WC014-02", "WC014-03", "WC014-04"]}
+{"event": "SPRINT_TASKS_EXECUTED", "timestamp": "2026-07-29T10:25:18.105235+00:00", "run_id": "30443165761", "stub_mode": true, "sprint": "WC-014", "tasks_done": []}
+{"event": "AUTONOMOUS_SPRINT_STARTED", "timestamp": "2026-07-29T10:46:08.175444+00:00", "run_id": "30444873942", "stub_mode": true, "sprint": "WC-014", "branch": "ib/009/sprint-014", "tasks": ["WC014-02", "WC014-03", "WC014-04"]}
+{"event": "SPRINT_TASKS_EXECUTED", "timestamp": "2026-07-29T10:56:37.480932+00:00", "run_id": "30444873942", "stub_mode": true, "sprint": "WC-014", "tasks_done": ["WC014-02", "WC014-04"]}
+{"event": "AUTONOMOUS_SPRINT_STARTED", "timestamp": "2026-07-29T11:03:09.477827+00:00", "run_id": "30445995833", "stub_mode": true, "sprint": "WC-014", "branch": "ib/009/sprint-014", "tasks": ["WC014-03"]}
+{"event": "SPRINT_TASKS_EXECUTED", "timestamp": "2026-07-29T11:03:09.556389+00:00", "run_id": "30445995833", "stub_mode": true, "sprint": "WC-014", "tasks_done": []}
+{"event": "AUTONOMOUS_SPRINT_STARTED", "timestamp": "2026-07-29T11:11:43.032354+00:00", "run_id": "30446549175", "stub_mode": true, "sprint": "WC-014", "branch": "ib/009/sprint-014", "tasks": ["WC014-03"]}
+{"event": "SPRINT_TASKS_EXECUTED", "timestamp": "2026-07-29T11:11:43.110124+00:00", "run_id": "30446549175", "stub_mode": true, "sprint": "WC-014", "tasks_done": []}
+{"event": "AUTONOMOUS_SPRINT_STARTED", "timestamp": "2026-07-29T11:17:11.848060+00:00", "run_id": "30446926392", "stub_mode": true, "sprint": "WC-014", "branch": "ib/009/sprint-014", "tasks": ["WC014-03"]}
+{"event": "SPRINT_TASKS_EXECUTED", "timestamp": "2026-07-29T11:17:11.927787+00:00", "run_id": "30446926392", "stub_mode": true, "sprint": "WC-014", "tasks_done": []}
+{"event": "AUTONOMOUS_SPRINT_STARTED", "timestamp": "2026-07-29T12:31:36.824889+00:00", "run_id": "30451910207", "stub_mode": true, "sprint": "WC-014", "branch": "ib/009/sprint-014", "tasks": ["WC014-03"]}
+{"event": "SPRINT_TASKS_EXECUTED", "timestamp": "2026-07-29T12:31:36.912479+00:00", "run_id": "30451910207", "stub_mode": true, "sprint": "WC-014", "tasks_done": []}
+{"event": "AUTONOMOUS_SPRINT_STARTED", "timestamp": "2026-07-29T12:48:49.537210+00:00", "run_id": "30453001155", "stub_mode": true, "sprint": "WC-014", "branch": "ib/009/sprint-014", "tasks": ["WC014-03"]}
+{"event": "SPRINT_TASKS_EXECUTED", "timestamp": "2026-07-29T12:48:49.608501+00:00", "run_id": "30453001155", "stub_mode": true, "sprint": "WC-014", "tasks_done": []}
+{"event": "AUTONOMOUS_SPRINT_STARTED", "timestamp": "2026-07-29T12:56:31.573213+00:00", "run_id": "30453674173", "stub_mode": true, "sprint": "WC-014", "branch": "ib/009/sprint-014", "tasks": ["WC014-03"]}
+{"event": "SPRINT_TASKS_EXECUTED", "timestamp": "2026-07-29T12:56:31.651944+00:00", "run_id": "30453674173", "stub_mode": true, "sprint": "WC-014", "tasks_done": []}
+{"event": "AUTONOMOUS_SPRINT_STARTED", "timestamp": "2026-07-29T13:01:06.976526+00:00", "run_id": "30454031226", "stub_mode": true, "sprint": "WC-014", "branch": "ib/009/sprint-014", "tasks": ["WC014-03"]}
+{"event": "SPRINT_TASKS_EXECUTED", "timestamp": "2026-07-29T13:01:07.055731+00:00", "run_id": "30454031226", "stub_mode": true, "sprint": "WC-014", "tasks_done": []}
+{"event": "AUTONOMOUS_SPRINT_STARTED", "timestamp": "2026-07-29T13:08:48.588598+00:00", "run_id": "30454629592", "stub_mode": true, "sprint": "WC-014", "branch": "ib/009/sprint-014", "tasks": ["WC014-03"]}
+{"event": "SPRINT_TASKS_EXECUTED", "timestamp": "2026-07-29T13:13:09.641657+00:00", "run_id": "30454629592", "stub_mode": true, "sprint": "WC-014", "tasks_done": []}
+{"event": "AUTONOMOUS_SPRINT_STARTED", "timestamp": "2026-07-29T13:25:19.414626+00:00", "run_id": "30455848821", "stub_mode": true, "sprint": "WC-014", "branch": "ib/009/sprint-014", "tasks": ["WC014-03"]}
+{"event": "SPRINT_TASKS_EXECUTED", "timestamp": "2026-07-29T13:31:49.251431+00:00", "run_id": "30455848821", "stub_mode": true, "sprint": "WC-014", "tasks_done": []}
+{"event": "AUTONOMOUS_SPRINT_STARTED", "timestamp": "2026-07-29T13:50:56.388213+00:00", "run_id": "30457854420", "stub_mode": true, "sprint": "WC-014", "branch": "ib/009/sprint-014", "tasks": ["WC014-03"]}
+{"event": "SPRINT_TASKS_EXECUTED", "timestamp": "2026-07-29T13:54:16.974174+00:00", "run_id": "30457854420", "stub_mode": true, "sprint": "WC-014", "tasks_done": []}
+{"event": "AUTONOMOUS_SPRINT_STARTED", "timestamp": "2026-07-29T14:21:56.465130+00:00", "run_id": "30460414921", "stub_mode": true, "sprint": "WC-014", "branch": "ib/009/sprint-014", "tasks": ["WC014-03"]}
+{"event": "SPRINT_TASKS_EXECUTED", "timestamp": "2026-07-29T14:25:29.528823+00:00", "run_id": "30460414921", "stub_mode": true, "sprint": "WC-014", "tasks_done": []}
+{"event": "AUTONOMOUS_SPRINT_STARTED", "timestamp": "2026-07-29T16:13:45.735768+00:00", "run_id": "30469644492", "stub_mode": true, "sprint": "WC-014", "branch": "ib/009/sprint-014", "tasks": ["WC014-03"]}
+{"event": "SPRINT_TASKS_EXECUTED", "timestamp": "2026-07-29T16:17:05.453325+00:00", "run_id": "30469644492", "stub_mode": true, "sprint": "WC-014", "tasks_done": []}
+{"event": "AUTONOMOUS_SPRINT_STARTED", "timestamp": "2026-07-29T16:34:01.573716+00:00", "run_id": "30471238399", "stub_mode": true, "sprint": "WC-014", "branch": "ib/009/sprint-014", "tasks": ["WC014-03"]}
+{"event": "SPRINT_TASKS_EXECUTED", "timestamp": "2026-07-29T16:36:39.605295+00:00", "run_id": "30471238399", "stub_mode": true, "sprint": "WC-014", "tasks_done": ["WC014-03"]}
