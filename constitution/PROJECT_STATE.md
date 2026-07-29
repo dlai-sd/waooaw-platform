@@ -196,7 +196,7 @@ session_declared: "Architecture correction 2026-07-28: WC-012 execution requires
 
 # ── WC-013 STATUS ────────────────────────────────────────────────────────────────────────
 sprint: WC-014
-sprint_status: IN_PROGRESS
+sprint_status: AUTHORIZED
 task_id: WC013-01
 tasks_done:
   - WC014-01
@@ -204,23 +204,7 @@ tasks_done:
   - WC014-04
 tasks_remaining:
   - WC014-03
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-consecutive_failures: 3
-=======
-consecutive_failures: 3
->>>>>>> origin/main
-=======
-consecutive_failures: 3
->>>>>>> origin/main
-=======
-consecutive_failures: 3
->>>>>>> origin/main
-=======
-consecutive_failures: 3
->>>>>>> origin/main
+consecutive_failures: 2
 autonomous_halt: false
 open_prs: none
 goal_register_issue: 115
@@ -330,29 +314,13 @@ WC012-02b `CS1061: string.TryGetValue` fixed at three layers:
 ### State at Session Close
 
 ```yaml
-<<<<<<< HEAD
-sprint_status: IN_PROGRESS
-=======
-sprint_status: IN_PROGRESS
->>>>>>> origin/main
+sprint_status: AUTHORIZED
 tasks_done:
   - WC014-02
   - WC014-04
 tasks_remaining:
   - WC014-03
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-consecutive_failures: 3
-=======
-consecutive_failures: 3
->>>>>>> origin/main
-=======
-consecutive_failures: 3
->>>>>>> origin/main
-=======
-consecutive_failures: 3
->>>>>>> origin/main
+consecutive_failures: 1
 autonomous_halt: false
 platform_phase: IMPLEMENTATION
 ```
@@ -659,32 +627,11 @@ platform_phase: IMPLEMENTATION  # SPEC | IMPLEMENTATION | LIVE
 
 current_sprint: WC-014
 sprint_ib_item: IB-009
-sprint_status: IN_PROGRESS
+sprint_status: AUTHORIZED
 branch: ib/009/sprint-014
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-last_attempt_utc: 2026-07-29T14:21:56.465381+00:00
+last_attempt_utc: 2026-07-29T00:00:00.000000+00:00
 last_attempt_result: PARTIAL
-consecutive_failures: 3
-<<<<<<< HEAD
-=======
-last_attempt_utc: 2026-07-29T14:21:56.465381+00:00
-last_attempt_result: PARTIAL
-consecutive_failures: 3
->>>>>>> origin/main
-=======
-last_attempt_utc: 2026-07-29T14:21:56.465381+00:00
-last_attempt_result: PARTIAL
-consecutive_failures: 3
->>>>>>> origin/main
-=======
-last_attempt_utc: 2026-07-29T14:21:56.465381+00:00
-last_attempt_result: PARTIAL
-consecutive_failures: 3
->>>>>>> origin/main
-=======
->>>>>>> origin/main
+consecutive_failures: 2
 consecutive_infra_failures: 0
 tasks_done:
   - WC014-01
@@ -693,7 +640,8 @@ tasks_done:
 tasks_remaining:
   - WC014-03
 
-current_task: WC014-03
+current_task: WC014-01
+
 ```
 CURRENT STATE: platform_phase=IMPLEMENTATION · AUTONOMOUS_HALT=false
                current_sprint=WC-012 · sprint_status=READY
