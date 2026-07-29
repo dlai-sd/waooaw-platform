@@ -321,7 +321,7 @@ WC012-02b `CS1061: string.TryGetValue` fixed at three layers:
 <<<<<<< HEAD
 sprint_status: IN_PROGRESS
 =======
-sprint_status: AUTHORIZED
+sprint_status: IN_PROGRESS
 >>>>>>> origin/main
 tasks_done:
   - WC014-01
@@ -643,11 +643,11 @@ sprint_ib_item: IB-009
 sprint_status: IN_PROGRESS
 branch: ib/009/sprint-014
 <<<<<<< HEAD
-last_attempt_utc: 2026-07-29T09:45:08.512933+00:00
+last_attempt_utc: 2026-07-29T10:19:35.048704+00:00
 last_attempt_result: PARTIAL
 consecutive_failures: 2
 =======
-last_attempt_utc: 2026-07-29T00:00:00.000000+00:00
+last_attempt_utc: 2026-07-29T10:19:35.048704+00:00
 last_attempt_result: PARTIAL
 consecutive_failures: 1
 >>>>>>> origin/main
