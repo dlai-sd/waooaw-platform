@@ -56,9 +56,12 @@ _FORBIDDEN_PATTERNS = (
     "⛔ Mixed named+positional constructor args (CS1744) — use all positional\n"
     "⛔ NullLogger<T>() constructor — use NullLogger<T>.Instance\n"
     "⛔ ITemporalClient or any Temporalio.* namespace in WC012-02b — that is WC012-04b scope\n"
-    "⛔ using Waooaw.*.Tests.* in src/ files — test namespaces must never appear in main project code"
-)  # Note: project-boundary violations (cross-project namespace imports) are now prevented
-   # dynamically by ProjectDependencyMap — no hard-coded per-project rules needed here.
+    "⛔ using Waooaw.*.Tests.* in src/ files — test namespaces must never appear in main project code\n"
+    "⛔ using Waooaw.ConstitutionalEngine.Evaluators (or .Services, .Data, .EmergencyStop) in "
+    "business-platform files — BP has NO ProjectReference to CE; CE is accessible ONLY via gRPC. "
+    "Only valid CE namespace in BP files: Waooaw.ConstitutionalEngine.Grpc (proto-generated client). "
+    "Remove ALL other CE usings. This rule applies even if PDM boundary text is not visible above."
+)
 
 # ── Module-level compiled regexes (P2: avoid recompile on every build call) ──
 _RE_CAPITAL_WORDS = re.compile(r'\b([A-Z][a-zA-Z0-9]+)\b')

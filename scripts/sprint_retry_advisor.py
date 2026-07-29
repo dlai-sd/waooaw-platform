@@ -1299,6 +1299,30 @@ def diagnose_build_error(
             constitutional_trace="C-082 (Build Validation), ADR-001 (gRPC \u2014 use proto-generated types correctly)",
         )
 
+    # ── Rule 10c: CS8609 — async method return type mismatch ─────────────────────────────
+    # CS8609: "The return type of an async method must be void, Task, Task<T>, ..."
+    # Cause in BP: implementing interface method as async when interface return type differs.
+    if "CS8609" in error_codes:
+        m8609 = re.search(r"'([^']+)'[^C]*CS8609", build_error)
+        method_name = m8609.group(1) if m8609 else "the method"
+        fix = (
+            f"CS8609 ASYNC RETURN TYPE MISMATCH on '{method_name}': "
+            f"This async method's return type does not match the interface or base class declaration.\n"
+            f"Check the interface/base class signature and match it exactly:\n"
+            f"  Interface declares Task<T> Method() → implementation: async Task<T> Method()\n"
+            f"  Interface declares void Method()    → do NOT use async keyword\n"
+            f"  Interface declares Task Method()    → implementation: async Task Method()\n"
+            f"Remove 'async' if the interface method is not async, or fix return type to match."
+        )
+        print(f"  Retry Advisor: CS8609 async return type mismatch (confidence=85%)")
+        return RetryDiagnosis(
+            error_type="WRONG_RETURN_TYPE",
+            fix_instruction=fix,
+            should_retry=True,
+            confidence=0.85,
+            constitutional_trace="C-082 (Build Validation) \u2014 method signature must match interface contract",
+        )
+
     diagnosis = _classify_python_import_error(build_error)
     if diagnosis:
         print(f"  Retry Advisor: Python import error → {diagnosis.error_type} (confidence={diagnosis.confidence:.0%})")
