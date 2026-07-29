@@ -3705,7 +3705,7 @@ def main() -> int:
     import json as _json
     signal_path.write_text(_json.dumps(_MONITOR_SIGNAL, indent=2))
     print(f"  📡 Monitor signal emitted: {signal_path}")
-    git(["add", str(signal_path)], check=False)
+    git(["add", "-f", str(signal_path)], check=False)  # -f: signal_path is in .gitignore
     sig_diff = git(["diff", "--cached", "--quiet"], check=False)
     if sig_diff.returncode != 0:
         git(["commit", "-m",
