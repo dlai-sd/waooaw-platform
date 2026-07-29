@@ -178,7 +178,7 @@ tasks_remaining:
   - WC013-03
   - WC013-04
 consecutive_failures: 0
-autonomous_halt: false
+autonomous_halt: true
 open_prs: none
 goal_register_issue: 115
 
@@ -295,7 +295,7 @@ tasks_remaining:
   - WC013-03
   - WC013-04
 consecutive_failures: 0
-autonomous_halt: false
+autonomous_halt: true
 platform_phase: IMPLEMENTATION
 ```
 
@@ -595,7 +595,7 @@ OPTION C — Nothing needed from you until sprint opens first PR
 <!-- Edit ONLY the fields below. Do not alter the block structure. -->
 
 ```yaml
-autonomous_halt: false       # ← GO seam closed 2026-07-28 by Yogesh Khandge
+autonomous_halt: true       # ← GO seam closed 2026-07-28 by Yogesh Khandge
                               #   GoalExecutor now in execution path (A7 closed)
                               #   execute_file_by_file() Path 1 = GoalExecutor.execute_sprint_task()
 
