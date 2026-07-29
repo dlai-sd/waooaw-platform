@@ -2,10 +2,10 @@
 # constitutional_basis: C-051 (Token Economy — 66-74% cost reduction)
 # PSE-R01 to PSE-R08 routing rules defined here.
 
-from enum import Enum
+from enum import StrEnum
 
 
-class LlmTier(str, Enum):
+class LlmTier(StrEnum):
     """ADR-029 §3 routing tiers. NEVER add tiers without EA approval."""
     LOCAL = "local"        # Ollama (₹0/token) — default for dev
     MID = "mid"            # Sarvam AI (Indian SMEs, optimised cost)
