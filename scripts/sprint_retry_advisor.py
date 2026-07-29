@@ -101,6 +101,51 @@ def _classify_cs0101(error: str, written_files: list[str]) -> Optional[RetryDiag
     )
 
 
+def _classify_cs0234_cross_project_ref(error: str) -> Optional[RetryDiagnosis]:
+    """
+    CS0234: sub-namespace does not exist in the parent namespace.
+    Root cause in BP: LLM generates 'using Waooaw.ConstitutionalEngine.Evaluators'
+    (or .Services, .Data, .EmergencyStop) — these exist in CE but BP has no
+    ProjectReference to CE. BP communicates with CE via gRPC only.
+    Fix: remove the offending using; use Waooaw.ConstitutionalEngine.Grpc only.
+    constitutional_trace: C-082 (build validation), C-059 (traceability)
+    """
+    # CE internal namespaces that BP must never import directly
+    CE_INTERNAL = ["Evaluators", "Services", "EmergencyStop", "Data"]
+
+    ns_match = re.search(r"does not exist in the namespace '([^']+)'", error)
+    child_match = re.search(r"type or namespace name '([^']+)' does not exist", error)
+
+    missing_ns = ns_match.group(1) if ns_match else ""
+    missing_child = child_match.group(1) if child_match else ""
+
+    if "Waooaw.ConstitutionalEngine" not in missing_ns and "Waooaw.ConstitutionalEngine" not in error:
+        return None
+
+    offending = next((ns for ns in CE_INTERNAL if ns in error), None)
+    if not offending and missing_child not in CE_INTERNAL:
+        return None
+
+    fix = (
+        f"CS0234 CROSS-PROJECT REFERENCE ERROR: "
+        f"'Waooaw.ConstitutionalEngine.{offending or missing_child}' does not exist in the "
+        f"business-platform project because BP has NO <ProjectReference> to the CE project. "
+        f"BP communicates with CE via gRPC ONLY. "
+        f"ACTION: Remove ALL 'using Waooaw.ConstitutionalEngine.Evaluators;' (and .Services, "
+        f".Data, .EmergencyStop) from this file. "
+        f"The ONLY valid CE namespace in BP files is: using Waooaw.ConstitutionalEngine.Grpc; "
+        f"(proto-generated client types: ConstitutionalServiceClient, ValidateActionRequest, etc.). "
+        f"Do not reference CE internal types directly — call CE via gRPC and use proto response types."
+    )
+    return RetryDiagnosis(
+        error_type=WRONG_NAMESPACE,
+        fix_instruction=fix,
+        should_retry=True,
+        confidence=0.95,
+        constitutional_trace="C-082 (build validation) + C-059 (traceability — CE called via gRPC only)"
+    )
+
+
 def _classify_cs0246_namespace(error: str) -> Optional[RetryDiagnosis]:
     """
     CS0246 with namespace hint: type not found because Claude used wrong namespace.
@@ -857,6 +902,16 @@ def diagnose_build_error(
         diagnosis = _classify_cs0246_missing_using(build_error)
         if diagnosis:
             print(f"  Retry Advisor: MISSING_USING (confidence={diagnosis.confidence:.0%})")
+            return diagnosis
+
+    # ── Rule 2b: CS0234 — sub-namespace does not exist ────────────────────────
+    # CS0234: "The type or namespace name 'X' does not exist in the namespace 'Y'"
+    # Most common: 'using Waooaw.ConstitutionalEngine.Evaluators' in BP files.
+    # BP has no ProjectReference to CE — CE accessible only via gRPC proto client.
+    if "CS0234" in error_codes:
+        diagnosis = _classify_cs0234_cross_project_ref(build_error)
+        if diagnosis:
+            print(f"  Retry Advisor: CS0234_CROSS_PROJECT (confidence={diagnosis.confidence:.0%})")
             return diagnosis
 
     # ── Rule 3: CS0117 — field/property not found ─────────────────────────────

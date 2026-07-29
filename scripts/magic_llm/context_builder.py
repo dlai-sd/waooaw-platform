@@ -51,7 +51,10 @@ _FORBIDDEN_PATTERNS = (
     "⛔ Mixed named+positional constructor args (CS1744) — use all positional\n"
     "⛔ NullLogger<T>() constructor — use NullLogger<T>.Instance\n"
     "⛔ ITemporalClient or any Temporalio.* namespace in WC012-02b — that is WC012-04b scope\n"
-    "⛔ using Waooaw.*.Tests.* in src/ files — test namespaces must never appear in main project code"
+    "⛔ using Waooaw.*.Tests.* in src/ files — test namespaces must never appear in main project code\n"
+    "⛔ using Waooaw.ConstitutionalEngine.Evaluators (or .Services, .Data, .EmergencyStop) in "
+    "business-platform files — BP has NO ProjectReference to CE; CE is accessible only via gRPC. "
+    "Only valid CE namespace in BP files: Waooaw.ConstitutionalEngine.Grpc (proto-generated client)."
 )
 
 # ── Module-level compiled regexes (P2: avoid recompile on every build call) ──
