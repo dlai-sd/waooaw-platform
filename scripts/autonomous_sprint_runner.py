@@ -484,7 +484,7 @@ def parse_sprint_state() -> dict:
             k, _, v = line.partition(":")
             state[k.strip()] = v.strip().strip('"').strip("'")
 
-    # Parse tasks_remaining list
+    # Parse tasks_remaining list (YAML list format: "  - WC014-02")
     tasks_block = re.search(
         r"tasks_remaining:\n((?:  - [^\n]+\n?)*)",
         match.group(1)
@@ -494,6 +494,18 @@ def parse_sprint_state() -> dict:
         state["tasks_remaining"] = [t for t in tasks if not t.startswith("#")]
     else:
         state["tasks_remaining"] = []
+
+    # Parse tasks_done list (same YAML list format — was previously missing,
+    # causing tasks_done_state to always be "" instead of ['WC014-02', ...])
+    done_block = re.search(
+        r"tasks_done:\n((?:  - [^\n]+\n?)*)",
+        match.group(1)
+    )
+    if done_block:
+        done = re.findall(r"  - (\S+)", done_block.group(1))
+        state["tasks_done"] = [t for t in done if not t.startswith("#")]
+    else:
+        state["tasks_done"] = []
 
     return state
 
