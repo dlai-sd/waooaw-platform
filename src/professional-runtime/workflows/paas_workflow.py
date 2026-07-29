@@ -2,6 +2,7 @@
 # constitutional_basis: C-023, C-025, C-059, C-063
 from __future__ import annotations
 
+import asyncio
 import logging
 from dataclasses import dataclass, field
 from datetime import timedelta
@@ -217,125 +218,134 @@ class PAASSessionWorkflow:
     """
 
     def __init__(self) -> None:
-        # Per-instance state — never shared across workflow instances (C-025)
+        # Per-instance state — never module-level (C-025 session isolation).
         self._state: SessionState = SessionState.STARTING
         self._decision_space: DecisionSpace | None = None
         self._actions_executed: int = 0
+        self._pending_action: PAASActionInput | None = None
+        self._pending_action_result: PAASActionResult | None = None
         self._emergency_stop_payload: EmergencyStopSignalPayload | None = None
-        self._pause_requested: bool = False
-        self._resume_requested: bool = False
-        self._terminate_requested: bool = False
-        self._terminate_reason: str = ""
-        self._in_flight_action_instance_id: str | None = None
+        self._pause_reason: str | None = None
+        self._terminate_reason: str | None = None
+        # Signals use asyncio.Event for deterministic Temporal scheduling.
+        self._action_signal_received: asyncio.Event = asyncio.Event()
+        self._resume_signal_received: asyncio.Event = asyncio.Event()
+        self._terminate_signal_received: asyncio.Event = asyncio.Event()
+        self._emergency_stop_signal_received: asyncio.Event = asyncio.Event()
 
     # -----------------------------------------------------------------------
-    # Queries — safe to call from any state (read-only, no side effects)
+    # Signal handlers
     # -----------------------------------------------------------------------
 
-    @workflow.query
-    def session_state(self) -> str:
-        """Return the current session state string."""
+    @workflow.signal(name="ExecuteAction")
+    async def signal_execute_action(self, inp: PAASActionInput) -> None:
+        """
+        Signal: request execution of a PAAS action.
+        Only accepted while ACTIVE; ignored (with log) otherwise.
+        C-025: each action execution is isolated to this workflow instance.
+        """
+        if self._state != SessionState.ACTIVE:
+            workflow.logger.warning(
+                "ExecuteAction signal received in non-ACTIVE state",
+                extra={"state": self._state},
+            )
+            return
+        self._pending_action = inp
+        self._action_signal_received.set()
+
+    @workflow.signal(name="PauseSession")
+    async def signal_pause_session(self, inp: PauseSessionInput) -> None:
+        """Signal: pause this session. Only accepted while ACTIVE."""
+        if self._state != SessionState.ACTIVE:
+            workflow.logger.warning(
+                "PauseSession signal received in non-ACTIVE state",
+                extra={"state": self._state},
+            )
+            return
+        self._pause_reason = inp.reason
+        self._state = SessionState.PAUSED
+        workflow.logger.info("Session paused")
+
+    @workflow.signal(name="ResumeSession")
+    async def signal_resume_session(self, inp: ResumeSessionInput) -> None:
+        """Signal: resume a paused session."""
+        if self._state != SessionState.PAUSED:
+            workflow.logger.warning(
+                "ResumeSession signal received but session is not PAUSED",
+                extra={"state": self._state},
+            )
+            return
+        self._pause_reason = None
+        self._state = SessionState.ACTIVE
+        self._resume_signal_received.set()
+        workflow.logger.info("Session resumed")
+
+    @workflow.signal(name="TerminateSession")
+    async def signal_terminate_session(self, inp: TerminateSessionInput) -> None:
+        """Signal: begin orderly termination of this session."""
+        if self._state in (SessionState.TERMINATED, SessionState.EMERGENCY_STOPPED):
+            return
+        self._terminate_reason = inp.reason
+        self._state = SessionState.TERMINATING
+        self._terminate_signal_received.set()
+        workflow.logger.info("Session termination requested")
+
+    @workflow.signal(name="EmergencyStop")
+    async def signal_emergency_stop(self, payload: EmergencyStopSignalPayload) -> None:
+        """
+        Signal: Emergency Stop. Highest-priority signal.
+        Must be handled ≤250ms (AD-001). Temporal signal delivery is near-immediate;
+        the handler transitions state atomically before any next activity is scheduled.
+        C-023: abandoned evidence is recorded before workflow terminates.
+        """
+        if self._state == SessionState.EMERGENCY_STOPPED:
+            return
+        self._emergency_stop_payload = payload
+        self._state = SessionState.EMERGENCY_STOPPED
+        self._emergency_stop_signal_received.set()
+        workflow.logger.warning(
+            "Emergency Stop signal received — halting session",
+        )
+
+    # -----------------------------------------------------------------------
+    # Query handlers
+    # -----------------------------------------------------------------------
+
+    @workflow.query(name="GetSessionState")
+    def query_session_state(self) -> str:
         return str(self._state)
 
-    @workflow.query
-    def actions_executed(self) -> int:
-        """Return total actions executed in this session."""
-        return self._actions_executed
-
-    @workflow.query
-    def budget_used_inr_paise(self) -> int:
-        """Return budget consumed so far. Zero if Decision Space not yet loaded."""
+    @workflow.query(name="GetBudgetUsed")
+    def query_budget_used(self) -> int:
         if self._decision_space is None:
             return 0
         return self._decision_space.budget_used_inr_paise
 
-    @workflow.query
-    def decision_space_version(self) -> str | None:
-        """Return loaded Decision Space version, or None if not yet loaded."""
-        if self._decision_space is None:
-            return None
-        return self._decision_space.version
+    @workflow.query(name="GetActionsExecuted")
+    def query_actions_executed(self) -> int:
+        return self._actions_executed
 
     # -----------------------------------------------------------------------
-    # Signals — transition triggers sent from external callers
-    # -----------------------------------------------------------------------
-
-    @workflow.signal(name="ExecuteAction")
-    async def execute_action_signal(self, inp: PAASActionInput) -> None:
-        """
-        Signal to execute one PAAS action within the active session.
-        Queued if session is PAUSED; rejected if TERMINATING/TERMINATED/EMERGENCY_STOPPED.
-        C-025: execution only via this Temporal signal path — never direct call.
-        """
-        if self._state not in (SessionState.ACTIVE,):
-            # Signal arrived in invalid state; log without PII (C-063)
-            workflow.logger.warning(
-                "ExecuteAction signal received in non-ACTIVE state",
-                extra={"state": str(self._state), "action_instance_id": inp.action_instance_id},
-            )
-            return
-        self._in_flight_action_instance_id = inp.action_instance_id
-
-    @workflow.signal(name="Pause")
-    async def pause_signal(self, inp: PauseSessionInput) -> None:
-        """Signal to pause the session. Valid from ACTIVE state."""
-        if self._state == SessionState.ACTIVE:
-            self._pause_requested = True
-
-    @workflow.signal(name="Resume")
-    async def resume_signal(self, inp: ResumeSessionInput) -> None:
-        """Signal to resume a PAUSED session."""
-        if self._state == SessionState.PAUSED:
-            self._resume_requested = True
-
-    @workflow.signal(name="Terminate")
-    async def terminate_signal(self, inp: TerminateSessionInput) -> None:
-        """
-        Signal to terminate the session gracefully.
-        Valid from ACTIVE or PAUSED states.
-        """
-        if self._state in (SessionState.ACTIVE, SessionState.PAUSED):
-            self._terminate_requested = True
-            self._terminate_reason = inp.reason
-
-    @workflow.signal(name="EmergencyStop")
-    async def emergency_stop_signal(self, payload: EmergencyStopSignalPayload) -> None:
-        """
-        Emergency Stop signal — highest priority override (C-001).
-        Valid from ANY state. Transitions immediately to EMERGENCY_STOPPED.
-        C-023: ABANDONED evidence written before workflow terminates.
-        """
-        self._emergency_stop_payload = payload
-        self._state = SessionState.EMERGENCY_STOPPED
-
-    # -----------------------------------------------------------------------
-    # Main workflow run
+    # Main workflow entrypoint
     # -----------------------------------------------------------------------
 
     @workflow.run
     async def run(self, inp: PAASSessionInput) -> PAASSessionResult:
         """
-        PAAS session lifecycle:
-          1. Load Decision Space (STARTING)
-          2. Enter ACTIVE loop — process action signals
-          3. Handle PAUSE / RESUME transitions
-          4. Handle TERMINATE signal — graceful shutdown
-          5. Handle EmergencyStop signal — immediate halt + evidence write
+        Main workflow execution. Follows the PAAS session state machine.
 
-        C-025: All professional execution flows through this Temporal workflow.
-        C-023: Evidence recorded before any action is confirmed executed.
-        C-059: All failures produce evidence or log entries; CancelledError never swallowed.
+        C-025: inp is the sole source of configuration for this session.
+        No module-level or class-level shared state is read.
+        C-023: evidence is recorded before any execution returns success.
+        C-059: every caught exception produces a log or evidence record.
         """
-        workflow.logger.info(
-            "PAASSessionWorkflow starting",
-            extra={"session_id": inp.session_id, "contract_id": inp.contract_id},
-        )
+        workflow.logger.info("PAASSessionWorkflow starting")
 
         # ------------------------------------------------------------------
-        # Phase 1: Load Decision Space (STARTING → ACTIVE)
+        # Phase 1 — STARTING: load Decision Space
         # ------------------------------------------------------------------
         try:
-            raw_ds = await workflow.execute_activity(
+            ds_raw: dict[str, Any] = await workflow.execute_activity(
                 load_decision_space,
                 LoadDecisionSpaceInput(
                     inp.session_id,
@@ -345,7 +355,6 @@ class PAASSessionWorkflow:
                     inp.budget_limit_inr_paise,
                 ),
                 start_to_close_timeout=timedelta(seconds=30),
-                retry_policy=workflow.RetryPolicy(maximum_attempts=3),
             )
         except ActivityError as exc:
             workflow.logger.error(
@@ -359,282 +368,254 @@ class PAASSessionWorkflow:
                 0,
             )
 
-        # Emergency Stop may have arrived during startup
-        if self._emergency_stop_payload is not None:
-            return await self._handle_emergency_stop(inp, None)
-
         self._decision_space = DecisionSpace(
             contract_id=inp.contract_id,
             professional_id=inp.professional_id,
-            version=raw_ds.get("version", inp.decision_space_version),
-            parameters=raw_ds.get("parameters", {}),
+            version=inp.decision_space_version,
+            parameters=ds_raw.get("parameters", {}),
             budget_limit_inr_paise=inp.budget_limit_inr_paise,
-            budget_used_inr_paise=raw_ds.get("budget_used_inr_paise", 0),
-            allowed_action_types=raw_ds.get("allowed_action_types", []),
+            budget_used_inr_paise=ds_raw.get("budget_used_inr_paise", 0),
+            allowed_action_types=ds_raw.get("allowed_action_types", []),
         )
         self._state = SessionState.ACTIVE
-
-        workflow.logger.info(
-            "PAASSessionWorkflow ACTIVE — Decision Space loaded",
-            extra={"session_id": inp.session_id, "ds_version": self._decision_space.version},
-        )
+        workflow.logger.info("Decision Space loaded — session ACTIVE")
 
         # ------------------------------------------------------------------
-        # Phase 2: Main event loop
+        # Phase 2 — ACTIVE: process action signals until terminal condition
         # ------------------------------------------------------------------
-        while True:
-            # Emergency Stop — highest priority check (C-001)
-            if self._emergency_stop_payload is not None:
-                return await self._handle_emergency_stop(inp, self._in_flight_action_instance_id)
+        while self._state not in (
+            SessionState.TERMINATING,
+            SessionState.TERMINATED,
+            SessionState.EMERGENCY_STOPPED,
+        ):
+            # Wait for one of: action, resume (if paused), terminate, emergency stop.
+            self._action_signal_received.clear()
 
-            # Graceful terminate
-            if self._terminate_requested:
-                self._state = SessionState.TERMINATING
-                workflow.logger.info(
-                    "PAASSessionWorkflow TERMINATING",
-                    extra={"session_id": inp.session_id, "reason": self._terminate_reason},
-                )
-                break
-
-            # Pause transition
-            if self._pause_requested and self._state == SessionState.ACTIVE:
-                self._pause_requested = False
-                self._state = SessionState.PAUSED
-                workflow.logger.info(
-                    "PAASSessionWorkflow PAUSED",
-                    extra={"session_id": inp.session_id},
-                )
-
-            # Resume transition
-            if self._resume_requested and self._state == SessionState.PAUSED:
-                self._resume_requested = False
-                self._state = SessionState.ACTIVE
-                workflow.logger.info(
-                    "PAASSessionWorkflow RESUMED",
-                    extra={"session_id": inp.session_id},
-                )
-
-            # Process pending action if ACTIVE and one has arrived
-            if self._state == SessionState.ACTIVE and self._in_flight_action_instance_id is not None:
-                action_instance_id = self._in_flight_action_instance_id
-                self._in_flight_action_instance_id = None
-
-                # Retrieve action detail from workflow memo / query — simplified:
-                # The signal handler stored action_instance_id; for full
-                # implementation, PAASActionInput queue would be maintained.
-                # Placeholder: execute the validate-and-record + execute path.
-                await self._execute_paas_action(
-                    inp=inp,
-                    action_instance_id=action_instance_id,
-                )
-                continue
-
-            # Yield control until a signal arrives (prevents tight spin)
             await workflow.wait_condition(
                 lambda: (
-                    self._emergency_stop_payload is not None
-                    or self._terminate_requested
-                    or self._pause_requested
-                    or self._resume_requested
-                    or self._in_flight_action_instance_id is not None
-                ),
-                timeout=timedelta(hours=8),  # PAAS sessions bounded to trading hours
+                    self._action_signal_received.is_set()
+                    or self._terminate_signal_received.is_set()
+                    or self._emergency_stop_signal_received.is_set()
+                    or (
+                        self._state == SessionState.ACTIVE
+                        and self._pending_action is not None
+                    )
+                )
             )
 
-            # Timeout means no activity for 8h — treat as natural session end
-            if not (
-                self._emergency_stop_payload is not None
-                or self._terminate_requested
-                or self._pause_requested
-                or self._resume_requested
-                or self._in_flight_action_instance_id is not None
-            ):
-                workflow.logger.info(
-                    "PAASSessionWorkflow idle timeout — terminating",
-                    extra={"session_id": inp.session_id},
-                )
+            # Priority 1: Emergency Stop
+            if self._emergency_stop_signal_received.is_set():
                 break
 
+            # Priority 2: Terminate
+            if self._terminate_signal_received.is_set():
+                break
+
+            # Priority 3: Execute pending action (only when ACTIVE)
+            if self._state == SessionState.ACTIVE and self._pending_action is not None:
+                action = self._pending_action
+                self._pending_action = None
+                self._action_signal_received.clear()
+                await self._execute_single_action(inp, action)
+
         # ------------------------------------------------------------------
-        # Phase 3: Normal termination
+        # Phase 3 — Handle terminal states
         # ------------------------------------------------------------------
-        self._state = SessionState.TERMINATED
-        workflow.logger.info(
-            "PAASSessionWorkflow TERMINATED",
-            extra={
-                "session_id": inp.session_id,
-                "total_actions": self._actions_executed,
-            },
+        final_budget = (
+            self._decision_space.budget_used_inr_paise
+            if self._decision_space is not None
+            else 0
         )
 
-        budget_used = self._decision_space.budget_used_inr_paise if self._decision_space else 0
+        if self._state == SessionState.EMERGENCY_STOPPED:
+            # Record abandoned evidence for any in-flight action (C-023).
+            if self._pending_action is not None:
+                assert self._emergency_stop_payload is not None
+                await self._record_abandoned(inp, self._pending_action, self._emergency_stop_payload)
+            workflow.logger.warning("Session terminated via Emergency Stop")
+            return PAASSessionResult(
+                inp.session_id,
+                str(SessionState.EMERGENCY_STOPPED),
+                self._actions_executed,
+                final_budget,
+            )
+
+        # Orderly termination
+        self._state = SessionState.TERMINATED
+        workflow.logger.info(
+            "Session terminated orderly",
+            extra={"reason": self._terminate_reason},
+        )
         return PAASSessionResult(
             inp.session_id,
             str(SessionState.TERMINATED),
             self._actions_executed,
-            budget_used,
+            final_budget,
         )
 
     # -----------------------------------------------------------------------
-    # Internal helpers
+    # Internal helpers (workflow-deterministic — only workflow.execute_activity
+    # and workflow.wait_condition; no direct I/O)
     # -----------------------------------------------------------------------
 
-    async def _execute_paas_action(
+    async def _execute_single_action(
         self,
-        inp: PAASSessionInput,
-        action_instance_id: str,
+        session_inp: PAASSessionInput,
+        action: PAASActionInput,
     ) -> None:
         """
-        Execute one PAAS action through the constitutional hot path.
+        Execute one PAAS action through the full hot path.
 
-        Hot path:
-          1. In-memory Decision Space validation (<1ms, done before this call)
-          2. CE.ValidateAction + CE.RecordEvidence via Temporal activity (C-023)
-          3. Execute via AI Runtime via Temporal activity (only if evidence confirmed)
+        Hot path (AD-005 — <50ms total):
+          1. In-memory Decision Space check (<1ms, synchronous)
+          2. Budget check (<1ms, synchronous)
+          3. CE ValidateAction + RecordEvidence (gRPC, ~50-80ms) — activity
+          4. Execute via AI Runtime — activity (only if step 3 allows)
 
-        C-023: Evidence First — execution never precedes evidence record confirmation.
-        C-025: All execution via Temporal activities.
+        C-023: execution NEVER proceeds before evidence is confirmed written.
+        C-059: every rejection or error produces a log entry (evidence via activity).
         """
-        assert self._decision_space is not None  # guaranteed by state machine
+        assert self._decision_space is not None
 
-        validate_inp = ValidateAndRecordInput(
-            session_id=inp.session_id,
-            contract_id=inp.contract_id,
-            professional_id=inp.professional_id,
-            action_type="",          # populated from queued action in full impl
-            action_parameters={},    # populated from queued action in full impl
-            action_instance_id=action_instance_id,
-            decision_space_version=self._decision_space.version,
-            budget_used_inr_paise=self._decision_space.budget_used_inr_paise,
-            budget_limit_inr_paise=self._decision_space.budget_limit_inr_paise,
+        # Step 1 — in-memory Decision Space check (<1ms, no I/O)
+        if action.action_type not in self._decision_space.allowed_action_types:
+            workflow.logger.warning(
+                "Action type not in Decision Space — denied without CE call",
+                extra={"action_instance_id": action.action_instance_id},
+            )
+            return
+
+        # Step 2 — budget check (<1ms, no I/O)
+        # Budget remaining is computed from the two budget fields on DecisionSpace.
+        budget_remaining = (
+            self._decision_space.budget_limit_inr_paise
+            - self._decision_space.budget_used_inr_paise
         )
+        if budget_remaining <= 0:
+            workflow.logger.warning(
+                "Budget exhausted — action denied without CE call",
+                extra={"action_instance_id": action.action_instance_id},
+            )
+            return
 
+        # Step 3 — CE ValidateAction + RecordEvidence (C-023 Evidence First)
         try:
-            validate_result: ValidateAndRecordResult = await workflow.execute_activity(
+            val_result: ValidateAndRecordResult = await workflow.execute_activity(
                 validate_and_record_evidence,
-                validate_inp,
+                ValidateAndRecordInput(
+                    session_inp.session_id,
+                    session_inp.contract_id,
+                    session_inp.professional_id,
+                    action.action_type,
+                    action.action_parameters,
+                    action.action_instance_id,
+                    session_inp.decision_space_version,
+                    self._decision_space.budget_used_inr_paise,
+                    self._decision_space.budget_limit_inr_paise,
+                ),
                 start_to_close_timeout=timedelta(seconds=10),
-                retry_policy=workflow.RetryPolicy(maximum_attempts=2),
             )
         except ActivityError as exc:
+            # C-059: exception caught without re-raise — log as evidence.
             workflow.logger.error(
                 "validate_and_record_evidence activity failed",
-                extra={"session_id": inp.session_id, "action_instance_id": action_instance_id, "error": str(exc)},
-            )
-            return
-
-        if not validate_result.allowed:
-            workflow.logger.info(
-                "Action denied by Constitutional Engine",
                 extra={
-                    "session_id": inp.session_id,
-                    "action_instance_id": action_instance_id,
-                    "reason": validate_result.reason,
-                    "constitutional_basis": validate_result.constitutional_basis,
-                },
-            )
-            return
-
-        # Evidence confirmed written — now execute (C-023)
-        assert validate_result.evidence_record_id is not None
-
-        exec_inp = ExecuteActionInput(
-            session_id=inp.session_id,
-            contract_id=inp.contract_id,
-            action_type="",          # populated from queued action in full impl
-            action_parameters={},    # populated from queued action in full impl
-            action_instance_id=action_instance_id,
-            evidence_record_id=validate_result.evidence_record_id,
-        )
-
-        try:
-            await workflow.execute_activity(
-                execute_action,
-                exec_inp,
-                start_to_close_timeout=timedelta(seconds=30),
-                retry_policy=workflow.RetryPolicy(maximum_attempts=1),
-            )
-            self._actions_executed += 1
-        except ActivityError as exc:
-            workflow.logger.error(
-                "execute_action activity failed",
-                extra={
-                    "session_id": inp.session_id,
-                    "action_instance_id": action_instance_id,
-                    "evidence_record_id": validate_result.evidence_record_id,
+                    "action_instance_id": action.action_instance_id,
                     "error": str(exc),
                 },
             )
+            return
 
-    async def _handle_emergency_stop(
-        self,
-        inp: PAASSessionInput,
-        in_flight_action_instance_id: str | None,
-    ) -> PAASSessionResult:
-        """
-        Emergency Stop handler — C-001 (absolute human override).
-
-        Steps:
-          1. Record ABANDONED evidence for any in-flight action (C-023)
-          2. Transition to EMERGENCY_STOPPED
-          3. Return terminal result
-
-        C-023: evidence written before workflow returns.
-        C-059: evidence record produced for every in-flight action.
-        """
-        assert self._emergency_stop_payload is not None
-
-        self._state = SessionState.EMERGENCY_STOPPED
-        ds = self._decision_space
-
-        if in_flight_action_instance_id is not None and ds is not None:
-            abandon_inp = RecordAbandonedEvidenceInput(
-                session_id=inp.session_id,
-                contract_id=inp.contract_id,
-                professional_id=inp.professional_id,
-                action_instance_id=in_flight_action_instance_id,
-                decision_space_version=ds.version,
-                stopped_by=self._emergency_stop_payload.stopped_by,
+        if not val_result.allowed:
+            workflow.logger.info(
+                "Action denied by Constitutional Engine",
+                extra={
+                    "action_instance_id": action.action_instance_id,
+                    "reason": val_result.reason,
+                    "constitutional_basis": val_result.constitutional_basis,
+                },
             )
-            try:
-                evidence_record_id = await workflow.execute_activity(
-                    record_abandoned_evidence,
-                    abandon_inp,
-                    start_to_close_timeout=timedelta(seconds=10),
-                    retry_policy=workflow.RetryPolicy(maximum_attempts=3),
-                )
-                workflow.logger.info(
-                    "ABANDONED evidence recorded for in-flight action",
-                    extra={
-                        "session_id": inp.session_id,
-                        "action_instance_id": in_flight_action_instance_id,
-                        "evidence_record_id": evidence_record_id,
-                    },
-                )
-            except ActivityError as exc:
-                # C-059: log evidence failure — cannot re-raise as session must terminate
-                workflow.logger.error(
-                    "CRITICAL: Failed to record ABANDONED evidence on Emergency Stop",
-                    extra={
-                        "session_id": inp.session_id,
-                        "action_instance_id": in_flight_action_instance_id,
-                        "error": str(exc),
-                    },
-                )
+            return
 
-        budget_used = ds.budget_used_inr_paise if ds is not None else 0
+        # C-023: evidence is confirmed written — proceed to execution.
+        assert val_result.evidence_record_id is not None
 
+        # Step 4 — Execute via AI Runtime
+        try:
+            await workflow.execute_activity(
+                execute_action,
+                ExecuteActionInput(
+                    session_inp.session_id,
+                    session_inp.contract_id,
+                    action.action_type,
+                    action.action_parameters,
+                    action.action_instance_id,
+                    val_result.evidence_record_id,
+                ),
+                start_to_close_timeout=timedelta(seconds=30),
+            )
+        except ActivityError as exc:
+            # C-059: execution failure logged; evidence already written (C-023 preserved).
+            workflow.logger.error(
+                "execute_action activity failed — evidence record remains intact",
+                extra={
+                    "action_instance_id": action.action_instance_id,
+                    "evidence_record_id": val_result.evidence_record_id,
+                    "error": str(exc),
+                },
+            )
+            return
+
+        self._actions_executed += 1
+        # Update in-memory budget tracking from Decision Space.
+        # Actual cost accounting is owned by CE; we track locally for fast budget check.
+        # This is an approximation — CE is authoritative.
+        self._decision_space.budget_used_inr_paise += (
+            self._decision_space.parameters.get("action_cost_inr_paise", 0)
+        )
         workflow.logger.info(
-            "PAASSessionWorkflow EMERGENCY_STOPPED",
-            extra={
-                "session_id": inp.session_id,
-                "total_actions": self._actions_executed,
-            },
+            "Action executed successfully",
+            extra={"action_instance_id": action.action_instance_id},
         )
 
-        return PAASSessionResult(
-            inp.session_id,
-            str(SessionState.EMERGENCY_STOPPED),
-            self._actions_executed,
-            budget_used,
-        )
+    async def _record_abandoned(
+        self,
+        session_inp: PAASSessionInput,
+        action: PAASActionInput,
+        stop_payload: EmergencyStopSignalPayload,
+    ) -> None:
+        """
+        Record ABANDONED evidence for an in-flight action on Emergency Stop.
+        C-023: evidence must be written before the workflow terminates.
+        C-059: failure to record is logged as evidence of the failure itself.
+        """
+        try:
+            evidence_id: str = await workflow.execute_activity(
+                record_abandoned_evidence,
+                RecordAbandonedEvidenceInput(
+                    session_inp.session_id,
+                    session_inp.contract_id,
+                    session_inp.professional_id,
+                    action.action_instance_id,
+                    session_inp.decision_space_version,
+                    stop_payload.stopped_by,
+                ),
+                start_to_close_timeout=timedelta(seconds=10),
+            )
+            workflow.logger.warning(
+                "Abandoned evidence recorded for in-flight action",
+                extra={
+                    "action_instance_id": action.action_instance_id,
+                    "evidence_record_id": evidence_id,
+                },
+            )
+        except ActivityError as exc:
+            # C-059: failure to record abandoned evidence must be logged.
+            workflow.logger.error(
+                "CRITICAL: Failed to record abandoned evidence on Emergency Stop — "
+                "C-023 may be violated; manual reconciliation required",
+                extra={
+                    "action_instance_id": action.action_instance_id,
+                    "error": str(exc),
+                },
+            )
