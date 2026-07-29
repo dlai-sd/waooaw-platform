@@ -205,7 +205,7 @@ tasks_remaining:
   - WC015-03
   - WC015-04
   - WC015-05
-consecutive_failures: 1
+consecutive_failures: 2
 autonomous_halt: false
 open_prs: none
 goal_register_issue: 115
@@ -327,7 +327,7 @@ tasks_remaining:
   - WC015-03
   - WC015-04
   - WC015-05
-consecutive_failures: 1
+consecutive_failures: 2
 autonomous_halt: false
 platform_phase: IMPLEMENTATION
 ```
@@ -642,7 +642,7 @@ last_attempt_utc: 2026-07-29T17:19:15.181456+00:00
 last_attempt_utc: 2026-07-29T17:19:15.181456+00:00
 >>>>>>> origin/main
 last_attempt_result: PARTIAL
-consecutive_failures: 1
+consecutive_failures: 2
 consecutive_infra_failures: 0
 tasks_done:
   - WC015-01
