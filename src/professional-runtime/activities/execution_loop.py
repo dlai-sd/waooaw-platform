@@ -218,7 +218,11 @@ async def retrieve(retrieve_input: RetrieveInput) -> RetrieveOutput:
         logger.error(
             "RETRIEVE activity failed",
             exc_info=True,
-            extra={"observation_id": retrieve_input.observation_id, "error_type": type(e).__name__}
+            extra={
+                "observation_id": retrieve_input.observation_id,
+                "decision_space_id": retrieve_input.decision_space_id,
+                "error_type": type(e).__name__
+            }
         )
         raise
 
@@ -229,14 +233,14 @@ async def retrieve(retrieve_input: RetrieveInput) -> RetrieveOutput:
 @activity.defn
 async def reason(reason_input: ReasonInput) -> ReasonOutput:
     """
-    REASON activity: Compose proposed action based on observation and retrieval.
+    REASON activity: Reason over retrieved information to propose an action.
 
-    Stub implementation: returns placeholder proposed_action.
-    Real implementation: calls AI Runtime LLM (WC015 scope).
+    Stub implementation: returns placeholder proposed action.
+    Real implementation: calls AI Runtime LLM for reasoning.
+    ⛔ NO LLM CALLS HERE — that is AI Runtime's responsibility (WC015).
 
     C-047: Step 3 of 5 in execution sequence.
     C-063: No PII in logs.
-    ⛔ No LLM calls here — AI Runtime responsibility.
     """
     try:
         reasoning_id = str(uuid.uuid4())
@@ -246,22 +250,23 @@ async def reason(reason_input: ReasonInput) -> ReasonOutput:
                 "reasoning_id": reasoning_id,
                 "observation_id": reason_input.observation_id,
                 "retrieval_id": reason_input.retrieval_id,
-                "document_count": len(reason_input.documents)
+                "decision_space_id": reason_input.decision_space_id
             }
         )
 
-        # Stub: simulate reasoning with placeholder output
+        # Stub: simulate reasoning
         await asyncio.sleep(0.03)
         proposed_action = {
-            "action_type": "PLACEHOLDER",
-            "description": "Stub action pending AI Runtime implementation (WC015)",
+            "action_type": "send_communication",
+            "target": "placeholder_recipient",
+            "content_template": "sample_template_id",
             "parameters": {}
         }
 
         result = ReasonOutput(
             reasoning_id=reasoning_id,
             proposed_action=proposed_action,
-            confidence=0.75,
+            confidence=0.85,
             status="reasoned"
         )
 
@@ -269,7 +274,7 @@ async def reason(reason_input: ReasonInput) -> ReasonOutput:
             "REASON activity completed",
             extra={
                 "reasoning_id": reasoning_id,
-                "action_type": proposed_action.get("action_type"),
+                "proposed_action_type": proposed_action.get("action_type"),
                 "confidence": result.confidence,
                 "status": result.status
             }
@@ -285,7 +290,7 @@ async def reason(reason_input: ReasonInput) -> ReasonOutput:
             exc_info=True,
             extra={
                 "observation_id": reason_input.observation_id,
-                "retrieval_id": reason_input.retrieval_id,
+                "decision_space_id": reason_input.decision_space_id,
                 "error_type": type(e).__name__
             }
         )
@@ -300,11 +305,12 @@ async def act(act_input: ActInput) -> ActOutput:
     """
     ACT activity: Execute the proposed action.
 
-    Stub implementation: returns placeholder action result.
-    Real implementation: calls external APIs, professional tools (WC015 scope).
+    Stub implementation: returns placeholder execution result.
+    Real implementation: calls AI Runtime to execute action (dispatch, store, etc.).
+    ⛔ NO EXTERNAL API CALLS HERE YET — that is AI Runtime's responsibility (WC015).
 
     C-047: Step 4 of 5 in execution sequence.
-    C-023: Evidence recording (RECORD) must follow this step.
+    C-023: Every action execution must be preceded by Constitutional Engine validation.
     """
     try:
         execution_id = str(uuid.uuid4())
@@ -314,19 +320,17 @@ async def act(act_input: ActInput) -> ActOutput:
                 "execution_id": execution_id,
                 "reasoning_id": act_input.reasoning_id,
                 "session_id": act_input.session_id,
-                "action_type": act_input.proposed_action.get("action_type")
+                "decision_space_id": act_input.decision_space_id
             }
         )
 
         # Stub: simulate action execution
-        await asyncio.sleep(0.05)
+        await asyncio.sleep(0.04)
         action_result = {
-            "execution_status": "COMPLETED",
-            "timestamp": activity.info().started_at.isoformat() if activity.info().started_at else None,
-            "output": {
-                "success": True,
-                "message": "Stub action executed. Real implementation in AI Runtime (WC015)."
-            }
+            "status": "success",
+            "execution_timestamp": activity.info().started_at.isoformat() if activity.info().started_at else None,
+            "resource_id": str(uuid.uuid4()),
+            "details": {}
         }
 
         result = ActOutput(
@@ -339,7 +343,7 @@ async def act(act_input: ActInput) -> ActOutput:
             "ACT activity completed",
             extra={
                 "execution_id": execution_id,
-                "execution_status": action_result.get("execution_status"),
+                "action_status": action_result.get("status"),
                 "status": result.status
             }
         )
@@ -355,6 +359,7 @@ async def act(act_input: ActInput) -> ActOutput:
             extra={
                 "reasoning_id": act_input.reasoning_id,
                 "session_id": act_input.session_id,
+                "decision_space_id": act_input.decision_space_id,
                 "error_type": type(e).__name__
             }
         )
@@ -367,19 +372,19 @@ async def act(act_input: ActInput) -> ActOutput:
 @activity.defn
 async def record(record_input: RecordInput) -> RecordOutput:
     """
-    RECORD activity: Persist evidence of action execution to Constitutional Engine.
+    RECORD activity: Record evidence of the action execution via Constitutional Engine.
 
-    Stub implementation: returns placeholder evidence record ID.
-    Real implementation: calls Constitutional Engine gRPC RecordEvidence (WC012-04b).
+    Stub implementation: returns placeholder evidence record.
+    Real implementation: calls Constitutional Engine gRPC RecordEvidence endpoint.
 
+    C-023: RECORD must always execute (Evidence First principle).
+         This activity should be called in a try/finally block by the workflow.
     C-047: Step 5 of 5 in execution sequence.
-    C-023: RECORD MUST ALWAYS EXECUTE — even on error (caller uses try/finally).
-    C-059: Evidence record is the proof of execution.
+    C-059: Every exception caught must produce an evidence record (C-059 compliance).
     C-063: No PII in logs.
 
-    ⛔ CRITICAL: This activity is ALWAYS called, even if ACT fails.
-    Caller must use try/finally to guarantee RECORD execution.
-    On ACT error: record_input.error will contain error message.
+    This activity simulates calling CE.RecordEvidence(EvaluationContext) → ValidateActionResponse
+    with decision (Allow/Deny/Escalate) and evidence_record_id persisted to Constitutional schema.
     """
     try:
         evidence_record_id = str(uuid.uuid4())
@@ -394,24 +399,13 @@ async def record(record_input: RecordInput) -> RecordOutput:
             }
         )
 
-        # Stub: simulate Constitutional Engine gRPC call
-        await asyncio.sleep(0.02)
-
-        # In real implementation, this calls:
-        # await ce_client.RecordEvidence(
-        #     evidence_type=record_input.evidence_type,
-        #     contract_id=record_input.contract_id,
-        #     session_id=record_input.session_id,
-        #     decision_space_id=record_input.decision_space_id,
-        #     proposed_action=record_input.proposed_action,
-        #     action_result=record_input.action_result,
-        #     error=record_input.error,
-        # )
-        # Returns: RecordEvidenceResponse with evidence_record_id, persisted_at
+        # Stub: simulate Constitutional Engine gRPC call and evidence persistence
+        await asyncio.sleep(0.05)  # Simulate RPC latency (~50-80ms per spec)
+        persisted_at = activity.info().started_at.isoformat() if activity.info().started_at else None
 
         result = RecordOutput(
             evidence_record_id=evidence_record_id,
-            persisted_at=activity.info().started_at.isoformat() if activity.info().started_at else None,
+            persisted_at=persisted_at,
             status="recorded"
         )
 
@@ -420,8 +414,8 @@ async def record(record_input: RecordInput) -> RecordOutput:
             extra={
                 "evidence_record_id": evidence_record_id,
                 "execution_id": record_input.execution_id,
-                "evidence_type": record_input.evidence_type,
-                "status": result.status
+                "status": result.status,
+                "persisted_at": persisted_at
             }
         )
         return result
@@ -434,6 +428,7 @@ async def record(record_input: RecordInput) -> RecordOutput:
             "RECORD activity failed",
             exc_info=True,
             extra={
+                "evidence_record_id": str(uuid.uuid4()),
                 "execution_id": record_input.execution_id,
                 "session_id": record_input.session_id,
                 "evidence_type": record_input.evidence_type,
