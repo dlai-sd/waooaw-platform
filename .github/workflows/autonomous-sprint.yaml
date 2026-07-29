@@ -472,6 +472,27 @@ jobs:
           if-no-files-found: ignore   # may not exist if execute was cancelled or dry-run
           retention-days: 7
 
+      # C-069 COMPLETION PROTOCOL: record failures to registry, close stale PRs, reset state
+      # Does NOT apply any code fix — failures accumulate for pattern analysis.
+      - name: Complete sprint — failure registry + state reset (C-069)
+        if: always() && steps.pr_check.outputs.skip != 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          PR_NUMBER: ${{ steps.runner.outputs.pr_number }}
+          RESULT: ${{ steps.runner.outputs.result }}
+        run: |
+          git config user.name  "WAOOAW AI Agent - Platform IT Expert"
+          git config user.email "platform-it-expert@waooaw.ai"
+          git fetch origin main
+          git checkout main
+          PR_ARG=""
+          if [ -n "$PR_NUMBER" ] && [ "$PR_NUMBER" != "0" ] && [ "$RESULT" != "SUCCESS" ]; then
+            PR_ARG="--pr $PR_NUMBER"
+          fi
+          python3 scripts/complete_sprint.py $PR_ARG || true
+
   # ── Job 3: Sprint Dashboard reporter ─────────────────────────────────────
   # Posts a human-readable status comment to Issue #7 (Sprint Dashboard) after
   # every run — success, skip, halt, or failure. Yogesh monitors via GitHub
