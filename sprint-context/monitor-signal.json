@@ -1,7 +1,7 @@
 {
-  "run_id": "30473484548",
+  "run_id": "30474712071",
   "sprint": "WC-015",
-  "scaffold_task": "WC015-01",
+  "scaffold_task": null,
   "scaffold_failed": false,
   "task_results": {},
   "spec_gap_issues": [],
@@ -9,26 +9,26 @@
   "file_costs": {},
   "subtask_results": {
     "WC015-02a": {
-      "result": "SUCCESS",
-      "task_id": "WC015-02",
-      "error_codes": [],
-      "error_text": ""
-    },
-    "WC015-02b": {
       "result": "FAIL",
       "task_id": "WC015-02",
       "error_codes": [
-        "ANN401"
+        "E501"
       ],
-      "error_text": "ANN401 Dynamically typed expressions (typing.Any) are disallowed in `db_pool`\n  --> src/ai-runtime/providers/ollama_provider.py:35:18\n   |\n33 |         self,\n34 |         http_client: httpx.AsyncClient,\n35 |         db_pool: Any,\n   |                  ^^^\n36 |         model: str = _DEFAULT_MODEL,\n37"
+      "error_text": "E501 Line too long (135 > 130)\n  --> src/ai-runtime/pii/injection_guard.py:25:131\n   |\n23 |     re.compile(r\"\\byou\\s+are\\s+now\\s+(a\\s+|an\\s+)?(different|new|unrestricted|free|jailbroken|unfiltered)\\b\", re.I),\n24 |     re.compile(r\"\\bpretend\\s+(you\\s+are|to\\s+be)\\s+(a\\s+|an\\s+)?(unrestricted|evil|una"
+    },
+    "WC015-02b": {
+      "result": "SKIPPED",
+      "task_id": "WC015-02",
+      "error_codes": [],
+      "error_text": ""
     },
     "WC015-03a": {
       "result": "FAIL",
       "task_id": "WC015-03",
       "error_codes": [
-        "ANN401"
+        "E501"
       ],
-      "error_text": "ANN401 Dynamically typed expressions (typing.Any) are disallowed in `db_pool`\n  --> src/ai-runtime/providers/ollama_provider.py:35:18\n   |\n33 |         self,\n34 |         http_client: httpx.AsyncClient,\n35 |         db_pool: Any,\n   |                  ^^^\n36 |         model: str = _DEFAULT_MODEL,\n37"
+      "error_text": "E501 Line too long (135 > 130)\n  --> src/ai-runtime/pii/injection_guard.py:25:131\n   |\n23 |     re.compile(r\"\\byou\\s+are\\s+now\\s+(a\\s+|an\\s+)?(different|new|unrestricted|free|jailbroken|unfiltered)\\b\", re.I),\n24 |     re.compile(r\"\\bpretend\\s+(you\\s+are|to\\s+be)\\s+(a\\s+|an\\s+)?(unrestricted|evil|una"
     },
     "WC015-04a": {
       "result": "FAIL",
@@ -36,7 +36,7 @@
       "error_codes": [
         "E501"
       ],
-      "error_text": "E501 Line too long (125 > 120)\n  --> src/ai-runtime/pii/injection_guard.py:20:121\n   |\n18 | # \u2500\u2500 Category 1: Role / Persona override \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n19 | _ROLE_OVERRIDE_PATTERNS: list[re.Pattern[str]] = [\n20 |     re.compile(r\"\\bignore\\s+(all\\s+)?(previous|prior|above|earlier)\\s"
+      "error_text": "E501 Line too long (135 > 130)\n  --> src/ai-runtime/pii/injection_guard.py:25:131\n   |\n23 |     re.compile(r\"\\byou\\s+are\\s+now\\s+(a\\s+|an\\s+)?(different|new|unrestricted|free|jailbroken|unfiltered)\\b\", re.I),\n24 |     re.compile(r\"\\bpretend\\s+(you\\s+are|to\\s+be)\\s+(a\\s+|an\\s+)?(unrestricted|evil|una"
     },
     "WC015-05a": {
       "result": "FAIL",
@@ -45,11 +45,8 @@
       "error_text": ""
     }
   },
-  "tasks_done": [
-    "WC015-01"
-  ],
+  "tasks_done": [],
   "tasks_requested": [
-    "WC015-01",
     "WC015-02",
     "WC015-03",
     "WC015-04",
