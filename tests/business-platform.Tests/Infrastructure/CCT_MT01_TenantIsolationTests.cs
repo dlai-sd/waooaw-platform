@@ -71,7 +71,7 @@ file sealed class TestAuthHandler : AuthenticationHandler<TestAuthHandlerOptions
 
 // ─── Custom WebApplicationFactory ────────────────────────────────────────────
 
-file sealed class TenantIsolationWebFactory : WebApplicationFactory<Program>
+public sealed class TenantIsolationWebFactory : WebApplicationFactory<Program>
 {
     protected override void ConfigureWebHost(Microsoft.AspNetCore.Hosting.IWebHostBuilder builder)
     {

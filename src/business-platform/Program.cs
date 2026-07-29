@@ -94,3 +94,6 @@ app.UseTenantIsolation();
 app.MapControllers();
 
 app.Run();
+
+// Required for WebApplicationFactory in tests (CCT-MT-01)
+public partial class Program { }
