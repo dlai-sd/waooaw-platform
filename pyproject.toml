@@ -33,6 +33,11 @@ ignore = [
     "ANN101",  # 'self' type annotation not required
     "ANN102",  # 'cls' type annotation not required
     "S101",    # 'assert' in tests is fine (not in production code)
+    "N999",    # Invalid module name — hyphenated service dirs (professional-runtime, ai-runtime)
+               # are intentional kebab-case names, not Python module names. The Python
+               # code inside uses underscore imports; the dir name follows ADR naming convention.
+    "UP017",   # datetime.UTC alias — prefer explicit timezone.utc for readability
+    "G201",    # Use logger.exception() — we use logger.error(exc_info=True) per STACK_BEHAVIORAL_RULES
 ]
 
 [tool.ruff.lint.per-file-ignores]
