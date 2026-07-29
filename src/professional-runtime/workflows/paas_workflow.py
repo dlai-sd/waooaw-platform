@@ -2,7 +2,6 @@
 # constitutional_basis: C-023, C-025, C-059, C-063
 from __future__ import annotations
 
-import asyncio
 import logging
 from dataclasses import dataclass, field
 from datetime import timedelta
@@ -10,7 +9,7 @@ from enum import StrEnum
 from typing import Any
 
 from temporalio import activity, workflow
-from temporalio.exceptions import ActivityError, CancelledError
+from temporalio.exceptions import ActivityError
 
 logger = logging.getLogger(__name__)
 
