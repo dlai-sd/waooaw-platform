@@ -1119,6 +1119,70 @@ def diagnose_build_error(
     # ── Rules 10-14: Multi-stack classifiers (WC013-022) ─────────────────────
     # Python/Temporal/Vertex AI/Terraform/TypeScript — added for future sprints
 
+    # ── Rule 10b: CS0234 — cross-service namespace boundary violation ────────────
+    # RCA-fix (2026-07-29): LLM imported CE-internal namespace into BP code.
+    # Root cause: branch context injected CE Evaluator files into BP LLM prompt.
+    # Generator fix: service boundary filter in get_branch_context() + forbidden
+    # imports in system prompt. Retry advisor fix: route to specific fix instruction.
+    if "CS0234" in error_codes:
+        ce_internal_ns = ["Evaluators", "Data.Entities", "ConstitutionalEngine.Data",
+                          "ConstitutionalEngine.Services"]
+        is_ce_internal = any(ns in build_error for ns in ce_internal_ns)
+        if is_ce_internal:
+            ns_match = re.search(r"namespace name '(\w+)'.*'Waooaw\.ConstitutionalEngine'", build_error)
+            bad_ns = ns_match.group(1) if ns_match else "unknown CE-internal namespace"
+            fix = (
+                f"CROSS-SERVICE NAMESPACE BOUNDARY VIOLATION (CS0234): "
+                f"'Waooaw.ConstitutionalEngine.{bad_ns}' is CE-INTERNAL and must not be imported "
+                f"from the Business Platform or any other service.\n"
+                f"Remove ALL 'using Waooaw.ConstitutionalEngine.Evaluators;' directives from BP files.\n"
+                f"Remove ALL 'using Waooaw.ConstitutionalEngine.Data;' directives from BP files.\n"
+                f"Remove ALL 'using Waooaw.ConstitutionalEngine.Services;' directives from BP files.\n"
+                f"BP communicates with CE ONLY via gRPC: 'using Waooaw.ConstitutionalEngine.Grpc;'\n"
+                f"Replace any CE-internal type references with the gRPC equivalent from "
+                f"ValidateActionRequest/Response or drop them entirely from BP code."
+            )
+            print(f"  Retry Advisor: CS0234 CE-internal namespace in BP (confidence=97%)")
+            return RetryDiagnosis(
+                error_type="CROSS_SERVICE_NAMESPACE",
+                fix_instruction=fix,
+                should_retry=True,
+                confidence=0.97,
+                constitutional_trace=(
+                    "C-082 (Build Validation), ADR-001 (gRPC for CE — BP must use gRPC client only), "
+                    "C-059 (Traceability — implementation must match architectural boundary)"
+                ),
+            )
+
+    # ── Rule 10c: CS0019 — CE gRPC enum type confusion (ValidationDecision vs PolicyDecision) ──
+    # RCA-fix (2026-07-29): LLM compared ValidateActionResponse.Decision (ValidationDecision)
+    # against PolicyDecision.* (different enum, different RPC). Root cause: system prompt
+    # didn't disambiguate the two similarly-named enums. Generator fix: added CE gRPC
+    # DECISION TYPE DISAMBIGUATION section to _EXPERT_DOTNET.
+    if "CS0019" in error_codes and (
+        "ValidationDecision" in build_error and "PolicyDecision" in build_error
+    ):
+        fix = (
+            "CE gRPC ENUM TYPE MISMATCH (CS0019): ValidateActionResponse.Decision is "
+            "ValidationDecision, NOT PolicyDecision.\n"
+            "CORRECT: ceResponse.Decision != ValidationDecision.Allow\n"
+            "WRONG:   ceResponse.Decision != PolicyDecision.Permit   ← CS0019\n"
+            "WRONG:   ceResponse.Decision != PolicyDecision.Allow    ← CS0019 (type mismatch)\n"
+            "Replace ALL PolicyDecision.* comparisons on ValidateActionResponse.Decision "
+            "with ValidationDecision.Allow / ValidationDecision.Deny.\n"
+            "PolicyDecision is used on EvaluatePolicyResponse.Decision only (different RPC)."
+        )
+        print(f"  Retry Advisor: CS0019 ValidationDecision/PolicyDecision CE gRPC confusion (confidence=97%)")
+        return RetryDiagnosis(
+            error_type="WRONG_ENUM_TYPE",
+            fix_instruction=fix,
+            should_retry=True,
+            confidence=0.97,
+            constitutional_trace=(
+                "C-082 (Build Validation), ADR-001 (gRPC — use proto-generated types correctly)"
+            ),
+        )
+
     diagnosis = _classify_python_import_error(build_error)
     if diagnosis:
         print(f"  Retry Advisor: Python import error → {diagnosis.error_type} (confidence={diagnosis.confidence:.0%})")

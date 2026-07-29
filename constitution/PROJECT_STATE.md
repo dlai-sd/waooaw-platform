@@ -557,7 +557,8 @@ sprint_status: IN_PROGRESS
 branch: ib/009/sprint-013
 last_attempt_utc: 2026-07-29T03:08:15.246307+00:00
 last_attempt_result: PARTIAL
-consecutive_failures: 1
+consecutive_failures: 0
+consecutive_infra_failures: 0
 tasks_done:
   - WC013-01
   - WC013-02

@@ -121,8 +121,8 @@ public sealed class CustomersController : ControllerBase
         if (ceDecision is null)
             return StatusCode(503, "Constitutional Engine returned no decision — registration denied.");
 
-        // Fix CS0019: ceDecision.Decision is PolicyDecision — compare against PolicyDecision.Permit
-        if (ceDecision.Decision != PolicyDecision.Permit)
+        // ValidationDecision is from ValidateActionResponse; Allow = permitted
+        if (ceDecision.Decision != ValidationDecision.Allow)
         {
             _logger.LogWarning(
                 "CE denied CUSTOMER_REGISTRATION for tenant {TenantId}. Reason: {Reason}",
@@ -198,8 +198,8 @@ public sealed class CustomersController : ControllerBase
         if (ceDecision is null)
             return StatusCode(503, "Constitutional Engine returned no decision — hire denied.");
 
-        // Fix CS0019: ceDecision.Decision is PolicyDecision — compare against PolicyDecision.Permit
-        if (ceDecision.Decision != PolicyDecision.Permit)
+        // ValidationDecision is from ValidateActionResponse; Allow = permitted
+        if (ceDecision.Decision != ValidationDecision.Allow)
         {
             _logger.LogWarning(
                 "CE denied HIRE_AGENT for tenant {TenantId}, type {ProfessionalType}. Reason: {Reason}",

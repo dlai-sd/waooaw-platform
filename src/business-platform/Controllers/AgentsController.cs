@@ -2,7 +2,6 @@
 // constitutional_basis: C-023, C-038, C-059
 using Microsoft.AspNetCore.Mvc;
 using Waooaw.BusinessPlatform.Controllers;
-using Waooaw.ConstitutionalEngine.Evaluators;
 using Waooaw.ConstitutionalEngine.Grpc;
 using Grpc.Net.Client;
 
@@ -82,7 +81,7 @@ public sealed class AgentsController : ControllerBase
         }
 
         // C-023: only proceed when CE explicitly permits — deny on anything else
-        if (ceResponse.Decision != PolicyDecision.Permit)
+        if (ceResponse.Decision != ValidationDecision.Allow)
         {
             _logger.LogWarning(
                 "CE denied HIRE_AGENT for contract {ContractId} tenant={TenantId}: {Reason}",
@@ -113,9 +112,11 @@ public sealed class AgentsController : ControllerBase
             tenantId,
             request.ProfessionalType,
             request.ContractDisplayName,
-            "EVALUATION",           // C-034: lifecycle begins in EVALUATION state
-            now,                    // ProRataBillingStartDate — C-038
-            now                     // CreatedAt
+            "EVALUATION",                   // C-034: lifecycle begins in EVALUATION state
+            request.ApprovedBudgetInrPaise, // C-038: budget locked at hire
+            now,                            // ProRataBillingStartDate — C-038
+            request.BillingPreference,      // "SEPARATE" | "COMBINED"
+            now                             // CreatedAt
         );
 
         _logger.LogInformation(

@@ -2,7 +2,6 @@
 // constitutional_basis: C-023, C-038, C-059
 using Microsoft.AspNetCore.Mvc;
 using Waooaw.BusinessPlatform.Controllers;
-using Waooaw.ConstitutionalEngine.Evaluators;
 using Waooaw.ConstitutionalEngine.Grpc;
 using Grpc.Core;
 using Grpc.Net.Client;
@@ -89,7 +88,7 @@ public sealed class EmploymentService : IEmploymentService
             decisionSpaceVersion: 1,
             cancellationToken: cancellationToken);
 
-        if (ceDecision.Decision != PolicyDecision.Permit)
+        if (ceDecision.Decision != ValidationDecision.Allow)
         {
             _logger.LogWarning(
                 "CE denied CUSTOMER_REGISTRATION for {Email}. Decision={Decision} Reason={Reason}",
@@ -142,7 +141,7 @@ public sealed class EmploymentService : IEmploymentService
             decisionSpaceVersion: 1,
             cancellationToken: cancellationToken);
 
-        if (ceDecision.Decision != PolicyDecision.Permit)
+        if (ceDecision.Decision != ValidationDecision.Allow)
         {
             _logger.LogWarning(
                 "CE denied AGENT_HIRE for TenantId={TenantId} ProfessionalType={ProfessionalType}. " +
@@ -169,7 +168,9 @@ public sealed class EmploymentService : IEmploymentService
             request.ProfessionalType,
             request.ContractDisplayName,
             "EVALUATION",
+            request.ApprovedBudgetInrPaise,
             proRataBillingStartDate,
+            request.BillingPreference,
             createdAt);
     }
 

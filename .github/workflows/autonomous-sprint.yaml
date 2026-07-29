@@ -308,6 +308,16 @@ jobs:
         with:
           dotnet-version: '9.0.x'
 
+      # E3 FIX: NuGet package cache — avoids cold-restore on every runner VM spin
+      # Saves ~8-10s per run on dotnet build. Cache keyed on .csproj hash.
+      - name: Cache NuGet packages (E3 — cold-restore elimination)
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
       - name: Install dependencies
         run: pip install pyyaml requests PyJWT cryptography
 
@@ -332,23 +342,42 @@ jobs:
           keyvault: ${{ vars.AZURE_KEYVAULT_NAME }}
           secrets: 'ANTHROPIC-API-KEY, GH-APP-ID, GH-APP-INSTALLATION-ID, GH-APP-PRIVATE-KEY, GOOGLE-VERTEX-SA-KEY'
 
-      # G3 FIX: Skip execution if an open PR already exists for this task
-      # Prevents duplicate PRs when a previous run's PR is still open/unmerged
+      # G3 FIX: Skip execution if an open PR already exists for the sprint branch.
+      # D2 FIX: check by HEAD BRANCH (ib/009/sprint-NNN), not task title.
+      # Task-title search missed sprint-level PRs (e.g. "WC-013" PR not found for "WC013-01").
+      # Branch-level check is correct: if the sprint branch has an open PR, wait for it.
       - name: Check for existing open PR (G3 — duplicate prevention)
         id: pr_check
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TASK_ID: ${{ needs.preflight.outputs.task_id }}
         run: |
-          EXISTING=$(gh pr list --repo "$GITHUB_REPOSITORY" --state open \
-            --search "$TASK_ID in:title" --json number --jq '.[0].number // empty' 2>/dev/null || echo "")
+          # Derive sprint branch name from task ID (WC013-01 → ib/009/sprint-013)
+          SPRINT_NUM=$(echo "$TASK_ID" | grep -oP 'WC\K\d+' | head -1 || echo "")
+          SPRINT_BRANCH=""
+          if [ -n "$SPRINT_NUM" ]; then
+            SPRINT_BRANCH="ib/009/sprint-$(printf '%03d' $((10#$SPRINT_NUM)))"
+          fi
+
+          EXISTING=""
+          # Primary: check by branch
+          if [ -n "$SPRINT_BRANCH" ]; then
+            EXISTING=$(gh pr list --repo "$GITHUB_REPOSITORY" --state open \
+              --head "$SPRINT_BRANCH" --json number --jq '.[0].number // empty' 2>/dev/null || echo "")
+          fi
+          # Fallback: if no branch PR, check by task title (backwards compat)
+          if [ -z "$EXISTING" ]; then
+            EXISTING=$(gh pr list --repo "$GITHUB_REPOSITORY" --state open \
+              --search "$TASK_ID in:title" --json number --jq '.[0].number // empty' 2>/dev/null || echo "")
+          fi
+
           if [ -n "$EXISTING" ]; then
             echo "skip=true"  >> "$GITHUB_OUTPUT"
             echo "existing_pr=$EXISTING" >> "$GITHUB_OUTPUT"
-            echo "⚠️  PR #$EXISTING already open for $TASK_ID — skipping. Waiting for review."
+            echo "⚠️  PR #$EXISTING already open for sprint branch $SPRINT_BRANCH — skipping. Waiting for review."
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"
-            echo "✅ No open PR for $TASK_ID — proceeding."
+            echo "✅ No open PR for $TASK_ID (branch: $SPRINT_BRANCH) — proceeding."
           fi
 
       - name: Download sprint index artifact
@@ -373,15 +402,40 @@ jobs:
           SPRINT_TASK_ID:    ${{ needs.preflight.outputs.task_id }}
         run: python3 scripts/autonomous_sprint_runner.py
 
+      # D3 FIX: Write autonomous_halt=true to main when scaffold fails.
+      # Scaffold failures are permanent until a human fixes the code.
+      # consecutive_failures on the sprint branch is invisible to pre-flight (reads main).
+      # Writing halt to main ensures the next run stops immediately and doesn't waste compute.
+      - name: Halt-to-main on scaffold failure (D3 — state persistence fix)
+        if: steps.runner.outputs.scaffold_failed == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "  🛑 Scaffold failed — writing autonomous_halt=true to main to stop retry loop"
+          git config user.name  "WAOOAW AI Agent - Platform IT Expert"
+          git config user.email "platform-it-expert@waooaw.ai"
+          git fetch origin main
+          git checkout main
+          python3 scripts/sprint_state.py set autonomous_halt true
+          git add constitution/PROJECT_STATE.md
+          git diff --cached --quiet || git commit -m "chore(pm): halt autonomous sprint — scaffold failed, requires human fix
+
+IB: IB-009
+Constitutional: C-001 (Human Override — autonomous halt after scaffold failure)
+C-084 (scaffold failure stops downstream tasks)"
+          git push origin main
+          echo "  ✅ autonomous_halt=true written to main — next cron run will skip until Founder clears"
+
       # G7 FIX: Human-readable summary — visible at Actions tab without reading logs
       - name: Write run summary (G7 — status visibility)
         if: always()
         env:
-          TASK_ID:     ${{ needs.preflight.outputs.task_id }}
-          SKIP:        ${{ steps.pr_check.outputs.skip }}
-          EXISTING_PR: ${{ steps.pr_check.outputs.existing_pr }}
-          PR_NUMBER:   ${{ steps.runner.outputs.pr_number }}
-          RESULT:      ${{ steps.runner.outputs.result }}
+          TASK_ID:        ${{ needs.preflight.outputs.task_id }}
+          SKIP:           ${{ steps.pr_check.outputs.skip }}
+          EXISTING_PR:    ${{ steps.pr_check.outputs.existing_pr }}
+          PR_NUMBER:      ${{ steps.runner.outputs.pr_number }}
+          RESULT:         ${{ steps.runner.outputs.result }}
+          SCAFFOLD_FAILED: ${{ steps.runner.outputs.scaffold_failed }}
         run: |
           echo "## 🤖 WAOOAW Autonomous Sprint" >> $GITHUB_STEP_SUMMARY
           echo "| | |" >> $GITHUB_STEP_SUMMARY
@@ -389,14 +443,25 @@ jobs:
           echo "| Task | \`$TASK_ID\` |" >> $GITHUB_STEP_SUMMARY
           echo "| Time | $(date -u '+%Y-%m-%d %H:%M UTC') |" >> $GITHUB_STEP_SUMMARY
           if [ "$SKIP" = "true" ]; then
+            PLAIN="Code for $TASK_ID is done and waiting for review. PR #$EXISTING_PR is open. No action needed — the reviewer bot will handle it."
             echo "| Status | ⏸ Waiting — PR #$EXISTING_PR open, awaiting review/merge |" >> $GITHUB_STEP_SUMMARY
+          elif [ "$SCAFFOLD_FAILED" = "true" ]; then
+            PLAIN="The robot tried to write $TASK_ID code but it broke at the start (build error). It has stopped itself so it doesn't keep failing. A developer needs to look at the build error and fix it before it can try again."
+            echo "| Status | 🛑 Scaffold build failed — sprint halted, requires human fix |" >> $GITHUB_STEP_SUMMARY
           elif [ "$RESULT" = "SUCCESS" ]; then
+            PLAIN="$TASK_ID is done! New code is written and PR #$PR_NUMBER is open for review. The review bot is checking it — no action needed from you right now."
             echo "| Status | ✅ PR #$PR_NUMBER opened — awaiting review |" >> $GITHUB_STEP_SUMMARY
           elif [ "$RESULT" = "PARTIAL" ]; then
+            PLAIN="Some tasks ran but one failed. PR #${PR_NUMBER:-'(none)'} may be open with partial work. Check the logs to see which task broke — fix that before the next run."
             echo "| Status | ⚠️ Partial execution — review first failed task before re-trigger |" >> $GITHUB_STEP_SUMMARY
           else
+            PLAIN="The run failed and no code was produced. Check the job logs — something went wrong before any tasks could execute."
             echo "| Status | ❌ Failed — see job logs |" >> $GITHUB_STEP_SUMMARY
           fi
+          # User req (2026-07-29): write plain English 3-line summary in LOUD, CLEAR language
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🗣️ What Happened (Plain English)" >> $GITHUB_STEP_SUMMARY
+          echo "$PLAIN" >> $GITHUB_STEP_SUMMARY
 
       - name: Upload monitor signal as artifact
         if: always()     # upload even if runner failed — partial signals are still useful
@@ -455,7 +520,7 @@ jobs:
     if: |
       needs.execute.outputs.halt != 'true' &&
       needs.execute.outputs.pr_number != '' &&
-      needs.execute.outputs.result == 'SUCCESS'
+      (needs.execute.outputs.result == 'SUCCESS' || needs.execute.outputs.result == 'PARTIAL')
     steps:
       - uses: actions/checkout@v4
 
