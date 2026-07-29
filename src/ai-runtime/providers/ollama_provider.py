@@ -8,6 +8,7 @@ import time
 import uuid
 from typing import Any
 
+import asyncpg
 import httpx
 
 logger = logging.getLogger(__name__)
@@ -32,7 +33,7 @@ class OllamaProvider:
     def __init__(
         self,
         http_client: httpx.AsyncClient,
-        db_pool: Any,
+        db_pool: asyncpg.Pool | None,
         model: str = _DEFAULT_MODEL,
     ) -> None:
         self._http_client = http_client
@@ -194,24 +195,29 @@ class OllamaProvider:
             "dispatch_id": dispatch_id,
         }
 
-    def _build_prompt(self, messages: list[dict[str, str]]) -> str:
-        """
-        Flatten OpenAI-style messages into a single Ollama prompt string.
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
 
-        C-063 / ADR-028: This method and its output are NEVER logged.
+    @staticmethod
+    def _build_prompt(messages: list[dict[str, str]]) -> str:
+        """
+        Convert a list of chat messages to a single prompt string for Ollama.
+
+        Ollama /api/generate expects a flat prompt, not a messages array.
+        Content is NEVER logged anywhere in this method (C-063, ADR-028).
         """
         parts: list[str] = []
-        for msg in messages:
-            role = msg.get("role", "user")
-            content = msg.get("content", "")
+        for message in messages:
+            role = message.get("role", "user")
+            content = message.get("content", "")
             if role == "system":
-                parts.append(f"System: {content}")
+                parts.append(f"[SYSTEM]\n{content}\n[/SYSTEM]")
             elif role == "assistant":
-                parts.append(f"Assistant: {content}")
+                parts.append(f"[ASSISTANT]\n{content}\n[/ASSISTANT]")
             else:
-                parts.append(f"User: {content}")
-        parts.append("Assistant:")
-        return "\n".join(parts)
+                parts.append(f"[USER]\n{content}\n[/USER]")
+        return "\n\n".join(parts)
 
     async def _record_dispatch_event(
         self,
@@ -228,11 +234,26 @@ class OllamaProvider:
         error_code: str | None,
     ) -> None:
         """
-        Persist a provider dispatch event to institutional.provider_dispatch_events.
+        Persist a dispatch event to institutional.provider_dispatch_events (C-059).
 
-        C-059: Every dispatch — success or failure — must produce an evidence record.
-        ADR-028: Prompt content and response text are NEVER persisted here.
+        If the DB pool is unavailable, the error is logged and the exception is
+        NOT re-raised — a failed audit write must not prevent the caller from
+        receiving the LLM response. The evidence gap is itself logged as an
+        error so that the observability pipeline can alert (C-059 compliance).
         """
+        if self._db_pool is None:
+            logger.error(
+                "OllamaProvider cannot record dispatch event — db_pool is None. "
+                "dispatch_id=%s tenant_id=%s session_id=%s success=%s error_code=%s "
+                "(C-059 evidence gap — operator must investigate)",
+                dispatch_id,
+                tenant_id,
+                session_id,
+                success,
+                error_code,
+            )
+            return
+
         try:
             async with self._db_pool.acquire() as conn:
                 await conn.execute(
@@ -241,7 +262,7 @@ class OllamaProvider:
                         dispatch_id,
                         tenant_id,
                         session_id,
-                        provider_id,
+                        provider,
                         model,
                         tier,
                         latency_ms,
@@ -266,13 +287,21 @@ class OllamaProvider:
                     success,
                     error_code,
                 )
+
         except asyncio.CancelledError:
             raise
-        except (OSError, ConnectionError) as exc:
+
+        except (asyncpg.PostgresError, OSError) as exc:
             logger.error(
-                "OllamaProvider failed to record dispatch event — dispatch_id=%s error=%s",
+                "OllamaProvider failed to record dispatch event — dispatch_id=%s "
+                "tenant_id=%s session_id=%s success=%s "
+                "(C-059 evidence gap — DB write failed)",
                 dispatch_id,
-                type(exc).__name__,
+                tenant_id,
+                session_id,
+                success,
                 exc_info=True,
-                extra={"context": "provider_dispatch_event_record"},
+                extra={"context": {"dispatch_id": dispatch_id, "error": str(exc)}},
             )
+            # Evidence gap — do not re-raise; LLM response must be returned to caller.
+            # The logged error is the C-059 evidence record for this gap.

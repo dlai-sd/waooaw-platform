@@ -8,6 +8,7 @@ import time
 import uuid
 from typing import Any
 
+import asyncpg
 import httpx
 
 logger = logging.getLogger(__name__)
@@ -42,7 +43,7 @@ class SarvamProvider:
     def __init__(
         self,
         api_key: str,
-        db_pool: Any | None = None,
+        db_pool: asyncpg.Pool | None = None,
         timeout_seconds: float = REQUEST_TIMEOUT_SECONDS,
     ) -> None:
         """
@@ -170,37 +171,64 @@ class SarvamProvider:
                 model=params.get("model", "saaras"),
                 usage={},
             )
-            raise SarvamProviderError("Sarvam API response is not valid JSON") from exc
+            raise SarvamProviderError("Sarvam API returned non-JSON body") from exc
 
-        normalised = self._parse_response(body, dispatch_event_id, latency_ms)
+        try:
+            content = body["choices"][0]["message"]["content"]
+            model = body.get("model", params.get("model", "saaras"))
+            usage = body.get("usage", {})
+        except (KeyError, IndexError) as exc:
+            logger.error(
+                "Sarvam API response missing expected fields — dispatch_event_id=%s",
+                dispatch_event_id,
+                exc_info=True,
+            )
+            await self._record_dispatch_event(
+                dispatch_event_id=dispatch_event_id,
+                status="malformed_response",
+                latency_ms=latency_ms,
+                model=params.get("model", "saaras"),
+                usage={},
+            )
+            raise SarvamProviderError(
+                "Sarvam API response missing expected fields"
+            ) from exc
 
         await self._record_dispatch_event(
             dispatch_event_id=dispatch_event_id,
             status="success",
             latency_ms=latency_ms,
-            model=normalised["model"],
-            usage=normalised["usage"],
+            model=model,
+            usage=usage,
         )
 
-        return normalised
+        return {
+            "content": content,
+            "model": model,
+            "provider": SARVAM_PROVIDER_ID,
+            "usage": usage,
+            "latency_ms": latency_ms,
+            "dispatch_event_id": dispatch_event_id,
+        }
 
     async def close(self) -> None:
-        """Release underlying httpx client resources."""
+        """Release the underlying httpx.AsyncClient."""
         await self._client.aclose()
 
     # ------------------------------------------------------------------
-    # Private helpers
+    # Internal helpers
     # ------------------------------------------------------------------
 
-    @staticmethod
     def _build_payload(
+        self,
         messages: list[dict[str, str]],
         params: dict[str, Any],
     ) -> dict[str, Any]:
         """
-        Construct the JSON payload for Sarvam AI chat completions.
+        Construct the JSON payload for the Sarvam chat completions endpoint.
 
-        ADR-028: This method must never log or surface prompt content.
+        C-063: No PII inspection or logging of message content here.
+        ADR-028: Payload content never surfaced in logs.
         """
         payload: dict[str, Any] = {
             "model": params.get("model", "saaras"),
@@ -214,45 +242,6 @@ class SarvamProvider:
             payload["top_p"] = params["top_p"]
         return payload
 
-    @staticmethod
-    def _parse_response(
-        body: dict[str, Any],
-        dispatch_event_id: str,
-        latency_ms: float,
-    ) -> dict[str, Any]:
-        """
-        Normalise Sarvam AI response to the platform's LLMProvider contract shape.
-
-        Raises:
-            SarvamProviderError: if the payload is missing expected fields.
-        """
-        try:
-            choice = body["choices"][0]
-            content: str = choice["message"]["content"]
-            model: str = body.get("model", "saaras")
-            usage: dict[str, Any] = body.get(
-                "usage",
-                {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
-            )
-        except (KeyError, IndexError, TypeError) as exc:
-            logger.error(
-                "Sarvam response missing expected fields — dispatch_event_id=%s",
-                dispatch_event_id,
-                exc_info=True,
-            )
-            raise SarvamProviderError(
-                "Unexpected Sarvam response shape"
-            ) from exc
-
-        return {
-            "content": content,
-            "model": model,
-            "provider": SARVAM_PROVIDER_ID,
-            "usage": usage,
-            "latency_ms": latency_ms,
-            "dispatch_event_id": dispatch_event_id,
-        }
-
     async def _record_dispatch_event(
         self,
         dispatch_event_id: str,
@@ -264,69 +253,56 @@ class SarvamProvider:
         """
         Persist a row to institutional.provider_dispatch_events.
 
-        C-059: Every call that touches an external LLM must produce an evidence record,
-        including failures.  If the DB pool is unavailable the error is logged but NOT
-        re-raised — the caller already received or will raise SarvamProviderError for
-        the actual dispatch failure; swallowing the record-write error here is
-        intentional and documented as a C-059 evidence gap of last resort.
+        C-059: Every non-re-raised exception produces this evidence record.
+        ADR-029: Dispatch events feed the PSE performance ranking (C-069).
 
-        ADR-028: prompt_tokens / completion_tokens are stored; prompt TEXT is never stored.
+        If db_pool is None (unit-test context) or the insert fails, the error is
+        logged but NOT propagated — recording failure must not mask inference errors.
         """
         if self._db_pool is None:
-            logger.warning(
-                "No DB pool configured — dispatch event not persisted; "
-                "dispatch_event_id=%s status=%s",
+            logger.debug(
+                "No db_pool configured — skipping dispatch event recording for dispatch_event_id=%s",
                 dispatch_event_id,
-                status,
             )
             return
 
-        sql = """
-            INSERT INTO institutional.provider_dispatch_events (
-                id,
-                provider_id,
-                model,
-                status,
-                latency_ms,
-                prompt_tokens,
-                completion_tokens,
-                total_tokens,
-                recorded_at
-            ) VALUES (
-                $1, $2, $3, $4, $5, $6, $7, $8, NOW()
-            )
-            ON CONFLICT (id) DO NOTHING
-        """
+        prompt_tokens = usage.get("prompt_tokens", 0)
+        completion_tokens = usage.get("completion_tokens", 0)
+        total_tokens = usage.get("total_tokens", 0)
+
         try:
             async with self._db_pool.acquire() as conn:
                 await conn.execute(
-                    sql,
+                    """
+                    INSERT INTO institutional.provider_dispatch_events (
+                        dispatch_event_id,
+                        provider_id,
+                        model,
+                        status,
+                        latency_ms,
+                        prompt_tokens,
+                        completion_tokens,
+                        total_tokens,
+                        recorded_at
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+                    """,
                     dispatch_event_id,
                     SARVAM_PROVIDER_ID,
                     model,
                     status,
                     latency_ms,
-                    usage.get("prompt_tokens", 0),
-                    usage.get("completion_tokens", 0),
-                    usage.get("total_tokens", 0),
+                    prompt_tokens,
+                    completion_tokens,
+                    total_tokens,
                 )
         except asyncio.CancelledError:
             raise
-        except (OSError, RuntimeError) as exc:
-            # C-059: log the evidence gap; do not re-raise (dispatch result already
-            # propagated to caller).
+        except (asyncpg.PostgresError, OSError) as exc:
             logger.error(
-                "Failed to record dispatch event to DB — "
-                "dispatch_event_id=%s status=%s",
+                "Failed to record dispatch event dispatch_event_id=%s status=%s — DB error",
                 dispatch_event_id,
                 status,
                 exc_info=True,
-                extra={"context": "provider_dispatch_events INSERT"},
             )
-            # Evidence gap record — satisfies C-059 requirement to document every
-            # swallowed exception.
-            logger.warning(
-                "C-059 evidence gap: dispatch_event_id=%s was NOT persisted due to: %s",
-                dispatch_event_id,
-                type(exc).__name__,
-            )
+            # C-059: error is logged but not re-raised — inference result must not be masked.
+            _ = exc  # suppress F841; exc already referenced in logger call above

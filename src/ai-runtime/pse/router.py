@@ -166,7 +166,7 @@ async def _dispatch_frontier(prompt: str) -> dict[str, Any]:
 
 
 async def _record_dispatch_event(
-    async_session_factory: sa_async.async_sessionmaker,
+    async_session_factory: sa_async.async_sessionmaker,  # type: ignore[type-arg]
     event_id: str,
     tier: LlmTier,
     provider_id: str,
@@ -174,50 +174,50 @@ async def _record_dispatch_event(
     task_complexity: str,
     language: str | None,
     status: str,
-    error_detail: str | None,
+    error_detail: str,
 ) -> None:
     """
-    Persists one row to institutional.provider_dispatch_events.
+    Persists a provider dispatch event to institutional.provider_dispatch_events.
 
-    C-059: Every dispatch — success or failure — must be recorded.
-    No prompt content is stored (C-063).
-    Uses async SQLAlchemy session — never synchronous (Temporal activity safe).
+    C-059: every dispatch — success or failure — must produce an evidence record.
+    No PII is written here (C-063): only tier, provider, model, status metadata.
     """
-    async with async_session_factory() as session:
-        try:
-            await session.execute(
-                _DB_INSERT_DISPATCH_EVENT,
-                {
-                    "id": event_id,
-                    "tier": tier.value,
-                    "provider_id": provider_id,
-                    "model_id": model_id,
-                    "routed_at": datetime.now(timezone.utc),
-                    "task_complexity": task_complexity,
-                    "language": language,
-                    "status": status,
-                    "error_detail": error_detail,
-                },
-            )
-            await session.commit()
-        except asyncio.CancelledError:
-            raise
-        except Exception:
-            logger.error(
-                "Failed to record dispatch event id=%s tier=%s status=%s",
-                event_id,
-                tier.value,
-                status,
-                exc_info=True,
-                extra={"context": "record_dispatch_event_db_failure"},
-            )
-            # C-059: log the failure; do not swallow silently.
-            # Re-raise so the caller can decide whether to propagate.
-            raise
+    routed_at = datetime.now(tz=timezone.utc)
+
+    params: dict[str, str | None] = {
+        "id": event_id,
+        "tier": tier.value,
+        "provider_id": provider_id,
+        "model_id": model_id,
+        "routed_at": routed_at.isoformat(),
+        "task_complexity": task_complexity,
+        "language": language,
+        "status": status,
+        "error_detail": error_detail if error_detail else None,
+    }
+
+    try:
+        async with async_session_factory() as session:
+            async with session.begin():
+                await session.execute(_DB_INSERT_DISPATCH_EVENT, params)
+    except asyncio.CancelledError:
+        raise
+    except Exception:
+        # C-059: log evidence of evidence-recording failure — do not swallow silently
+        logger.error(
+            "Failed to persist dispatch event id=%s tier=%s provider=%s status=%s",
+            event_id,
+            tier.value,
+            provider_id,
+            status,
+            exc_info=True,
+            extra={"context": "record_dispatch_event_db_failure"},
+        )
+        raise
 
 
 # ---------------------------------------------------------------------------
-# Primary public entry point
+# Public entry point — route_and_dispatch
 # ---------------------------------------------------------------------------
 
 
@@ -225,165 +225,194 @@ async def route_and_dispatch(
     prompt: str,
     task_complexity: str,
     language: str | None,
-    async_session_factory: sa_async.async_sessionmaker,
+    async_session_factory: sa_async.async_sessionmaker,  # type: ignore[type-arg]
 ) -> dict[str, Any]:
     """
-    PSE entry point — selects tier, dispatches to provider, records evidence.
+    PSE entry point.  Selects tier, dispatches to the appropriate provider,
+    records an evidence event to institutional.provider_dispatch_events, and
+    returns the provider response dict.
+
+    Constitutional invariants enforced here:
+    - C-051: tier selection enforces ≥66% LOCAL/MID routing via _select_tier()
+    - C-059: every dispatch attempt records evidence — success AND failure paths
+    - C-063: prompt content is never logged
+    - ADR-028: prompt content is never logged
 
     Args:
-        prompt:                Scrubbed prompt text (PII already removed per C-078).
-                               C-063: this value is NEVER logged.
-        task_complexity:       One of 'simple' | 'medium' | 'complex'.
-        language:              BCP-47 language code (e.g. 'hi', 'en') or None.
-        async_session_factory: Async SQLAlchemy session factory for evidence recording.
+        prompt:                Scrubbed prompt (PII already removed by §7 PII Scrubber).
+        task_complexity:       One of "simple" | "medium" | "complex".
+        language:              BCP-47 language code or None (e.g. "hi", "en").
+        async_session_factory: SQLAlchemy async_sessionmaker bound to institutional DB.
 
     Returns:
-        Provider response dict with keys:
-            tier, provider_id, model_id, response, done, total_duration_ns,
-            dispatch_event_id.
+        dict with keys: tier, provider_id, model_id, response, done,
+        total_duration_ns (LOCAL only), and event_id.
 
     Raises:
-        httpx.TimeoutException: Ollama timed out (already logged).
-        httpx.HTTPStatusError:  Ollama returned non-2xx (already logged).
-        httpx.RequestError:     Ollama connection failure (already logged).
-        NotImplementedError:    MID / FRONTIER adapters not yet wired (WC015-02b).
-        Exception:              DB evidence recording failure (already logged).
-
-    Constitutional guarantees:
-        C-051 — PSE-R01/R02/R03 ensure ≥66% LOCAL/MID routing.
-        C-059 — every dispatch attempt writes an evidence record (success or failure).
-        C-063 — prompt is never logged or stored.
-        ADR-028 — provider response content is never logged.
+        NotImplementedError: MID/FRONTIER dispatchers not yet wired (WC015-02b).
+        httpx.TimeoutException: Ollama timed out.
+        httpx.HTTPStatusError: Ollama returned non-2xx.
+        httpx.RequestError: Network-level connection failure to Ollama.
     """
-    event_id = str(uuid.uuid4())
     tier = _select_tier(task_complexity, language)
+    event_id = str(uuid.uuid4())
 
-    # C-059: record the attempt before dispatch so an outage never loses the event.
-    # We record optimistically; on failure we update status to 'error'.
-    # (Single-insert pattern: insert with status=dispatching, then update.)
-    # For simplicity and atomicity, we record after dispatch with final status.
-    # The event_id is generated before dispatch so it can be correlated in logs.
-
-    logger.info(
-        "PSE routing: event_id=%s tier=%s task_complexity=%s language=%s",
-        event_id,
-        tier.value,
-        task_complexity,
-        language,
-    )
-
+    # Resolve provider metadata before dispatch so we can record on failure too
     provider_id: str
     model_id: str
+
+    if tier == LlmTier.LOCAL:
+        provider_id = "ollama"
+        model_id = _OLLAMA_MODEL
+    elif tier == LlmTier.MID:
+        # PSE-R02: indic language → sarvam/saaras; otherwise gemini-2.0-flash
+        _INDIC_LANGUAGES = {"hi", "mr", "te", "ta", "kn", "pa", "bn", "gu"}
+        lang_code = (language or "").strip().lower()
+        if lang_code in _INDIC_LANGUAGES:
+            provider_id = "sarvam"
+            model_id = "saaras"
+        else:
+            provider_id = "google"
+            model_id = "gemini-2.0-flash"
+    else:
+        # FRONTIER
+        provider_id = "google"
+        model_id = "gemini-2.5-pro"
+
+    logger.info(
+        "PSE dispatch: event_id=%s tier=%s provider=%s model=%s complexity=%s",
+        event_id,
+        tier.value,
+        provider_id,
+        model_id,
+        task_complexity,
+    )
+
     result: dict[str, Any]
     status: str
-    error_detail: str | None = None
+    error_detail: str
 
     try:
         if tier == LlmTier.LOCAL:
             result = await _dispatch_ollama(prompt)
-            provider_id = result["provider_id"]
-            model_id = result["model_id"]
-            status = "success"
-
         elif tier == LlmTier.MID:
             result = await _dispatch_mid(prompt, language)
-            provider_id = result["provider_id"]
-            model_id = result["model_id"]
-            status = "success"
-
         else:
-            # LlmTier.FRONTIER
             result = await _dispatch_frontier(prompt)
-            provider_id = result["provider_id"]
-            model_id = result["model_id"]
-            status = "success"
+
+        status = "success"
+        error_detail = ""
 
     except asyncio.CancelledError:
-        # C-059: record the cancellation before propagating.
-        _provider_id_for_tier = _provider_id_from_tier(tier)
-        _model_id_for_tier = _model_id_from_tier(tier)
-        try:
-            await _record_dispatch_event(
-                async_session_factory,
-                event_id,
-                tier,
-                _provider_id_for_tier,
-                _model_id_for_tier,
-                task_complexity,
-                language,
-                "cancelled",
-                "asyncio.CancelledError",
-            )
-        except Exception:
-            logger.error(
-                "Evidence recording failed during CancelledError handling event_id=%s",
-                event_id,
-                exc_info=True,
-                extra={"context": "evidence_record_on_cancel"},
-            )
+        # C-059: record cancellation evidence before propagating
+        await _record_dispatch_event(
+            async_session_factory,
+            event_id,
+            tier,
+            provider_id,
+            model_id,
+            task_complexity,
+            language,
+            "cancelled",
+            "asyncio.CancelledError",
+        )
         raise
 
     except NotImplementedError as exc:
-        # Stub adapters not yet implemented — record and propagate.
-        _provider_id_for_tier = _provider_id_from_tier(tier)
-        _model_id_for_tier = _model_id_from_tier(tier)
-        error_detail = "NotImplementedError: adapter not wired"
+        error_detail = str(exc)
         logger.error(
-            "Dispatch not implemented for tier=%s event_id=%s",
-            tier.value,
+            "PSE dispatch: provider not implemented event_id=%s tier=%s provider=%s",
             event_id,
+            tier.value,
+            provider_id,
             exc_info=True,
-            extra={"context": "dispatch_not_implemented"},
+            extra={"context": "pse_dispatch_not_implemented"},
         )
-        try:
-            await _record_dispatch_event(
-                async_session_factory,
-                event_id,
-                tier,
-                _provider_id_for_tier,
-                _model_id_for_tier,
-                task_complexity,
-                language,
-                "not_implemented",
-                error_detail,
-            )
-        except Exception:
-            logger.error(
-                "Evidence recording failed for not_implemented event_id=%s",
-                event_id,
-                exc_info=True,
-                extra={"context": "evidence_record_on_not_implemented"},
-            )
-        raise exc
+        await _record_dispatch_event(
+            async_session_factory,
+            event_id,
+            tier,
+            provider_id,
+            model_id,
+            task_complexity,
+            language,
+            "not_implemented",
+            error_detail,
+        )
+        raise
 
-    except (httpx.TimeoutException, httpx.HTTPStatusError, httpx.RequestError) as exc:
-        # Network/provider failure — record evidence, then propagate.
-        _provider_id_for_tier = _provider_id_from_tier(tier)
-        _model_id_for_tier = _model_id_from_tier(tier)
-        error_detail = type(exc).__name__
-        status = "error"
-        try:
-            await _record_dispatch_event(
-                async_session_factory,
-                event_id,
-                tier,
-                _provider_id_for_tier,
-                _model_id_for_tier,
-                task_complexity,
-                language,
-                status,
-                error_detail,
-            )
-        except Exception:
-            logger.error(
-                "Evidence recording failed after provider error event_id=%s",
-                event_id,
-                exc_info=True,
-                extra={"context": "evidence_record_on_provider_error"},
-            )
-        raise exc
+    except httpx.TimeoutException:
+        error_detail = "httpx.TimeoutException"
+        logger.error(
+            "PSE dispatch: timeout event_id=%s tier=%s provider=%s",
+            event_id,
+            tier.value,
+            provider_id,
+            exc_info=True,
+            extra={"context": "pse_dispatch_timeout"},
+        )
+        await _record_dispatch_event(
+            async_session_factory,
+            event_id,
+            tier,
+            provider_id,
+            model_id,
+            task_complexity,
+            language,
+            "timeout",
+            error_detail,
+        )
+        raise
 
-    # --- Success path: record evidence ---
+    except httpx.HTTPStatusError as exc:
+        error_detail = f"httpx.HTTPStatusError status={exc.response.status_code}"
+        logger.error(
+            "PSE dispatch: HTTP error event_id=%s tier=%s provider=%s status=%s",
+            event_id,
+            tier.value,
+            provider_id,
+            exc.response.status_code,
+            exc_info=True,
+            extra={"context": "pse_dispatch_http_error"},
+        )
+        await _record_dispatch_event(
+            async_session_factory,
+            event_id,
+            tier,
+            provider_id,
+            model_id,
+            task_complexity,
+            language,
+            "http_error",
+            error_detail,
+        )
+        raise
+
+    except httpx.RequestError as exc:
+        error_detail = f"httpx.RequestError type={type(exc).__name__}"
+        logger.error(
+            "PSE dispatch: connection error event_id=%s tier=%s provider=%s error_type=%s",
+            event_id,
+            tier.value,
+            provider_id,
+            type(exc).__name__,
+            exc_info=True,
+            extra={"context": "pse_dispatch_connection_error"},
+        )
+        await _record_dispatch_event(
+            async_session_factory,
+            event_id,
+            tier,
+            provider_id,
+            model_id,
+            task_complexity,
+            language,
+            "connection_error",
+            error_detail,
+        )
+        raise
+
+    # C-059: record successful dispatch evidence
     await _record_dispatch_event(
         async_session_factory,
         event_id,
@@ -396,36 +425,5 @@ async def route_and_dispatch(
         error_detail,
     )
 
-    result["dispatch_event_id"] = event_id
+    result["event_id"] = event_id
     return result
-
-
-# ---------------------------------------------------------------------------
-# Tier → provider/model name helpers (used in error branches before result exists)
-# ---------------------------------------------------------------------------
-
-
-def _provider_id_from_tier(tier: LlmTier) -> str:
-    """
-    Returns the canonical provider_id string for a given tier.
-    Used in error-handling branches where the dispatch never returned a result dict.
-    """
-    if tier == LlmTier.LOCAL:
-        return "ollama"
-    if tier == LlmTier.MID:
-        return "sarvam"
-    # FRONTIER
-    return "google-vertex"
-
-
-def _model_id_from_tier(tier: LlmTier) -> str:
-    """
-    Returns the canonical model_id string for a given tier.
-    Used in error-handling branches where the dispatch never returned a result dict.
-    """
-    if tier == LlmTier.LOCAL:
-        return _OLLAMA_MODEL
-    if tier == LlmTier.MID:
-        return "saaras"
-    # FRONTIER
-    return "gemini-2.5-pro"
