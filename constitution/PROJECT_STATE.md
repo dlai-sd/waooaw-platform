@@ -201,10 +201,10 @@ task_id: WC013-01
 tasks_done:
   - WC014-01
   - WC014-02
-  - WC014-04
-tasks_remaining:
   - WC014-03
-consecutive_failures: 3
+  - WC014-04
+tasks_remaining: []
+consecutive_failures: 0
 autonomous_halt: false
 open_prs: none
 goal_register_issue: 115
@@ -316,11 +316,12 @@ WC012-02b `CS1061: string.TryGetValue` fixed at three layers:
 ```yaml
 sprint_status: IN_PROGRESS
 tasks_done:
+  - WC014-01
   - WC014-02
-  - WC014-04
-tasks_remaining:
   - WC014-03
-consecutive_failures: 3
+  - WC014-04
+tasks_remaining: []
+consecutive_failures: 0
 autonomous_halt: false
 platform_phase: IMPLEMENTATION
 ```
@@ -630,17 +631,17 @@ sprint_ib_item: IB-009
 sprint_status: IN_PROGRESS
 branch: ib/009/sprint-014
 last_attempt_utc: 2026-07-29T16:34:01.573961+00:00
-last_attempt_result: PARTIAL
-consecutive_failures: 3
+last_attempt_result: SUCCESS
+consecutive_failures: 0
 consecutive_infra_failures: 0
 tasks_done:
   - WC014-01
   - WC014-02
-  - WC014-04
-tasks_remaining:
   - WC014-03
+  - WC014-04
+tasks_remaining: []
 
-current_task: WC014-03
+current_task:
 ```
 CURRENT STATE: platform_phase=IMPLEMENTATION · AUTONOMOUS_HALT=false
                current_sprint=WC-012 · sprint_status=READY
