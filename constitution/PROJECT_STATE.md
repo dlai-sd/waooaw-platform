@@ -318,7 +318,7 @@ WC012-02b `CS1061: string.TryGetValue` fixed at three layers:
 <<<<<<< HEAD
 sprint_status: IN_PROGRESS
 =======
-sprint_status: AUTHORIZED
+sprint_status: IN_PROGRESS
 >>>>>>> origin/main
 tasks_done:
   - WC015-01
@@ -637,9 +637,9 @@ sprint_ib_item: IB-009
 sprint_status: IN_PROGRESS
 branch: ib/009/sprint-015
 <<<<<<< HEAD
-last_attempt_utc: 2026-07-29T17:03:00.739838+00:00
+last_attempt_utc: 2026-07-29T17:19:15.181456+00:00
 =======
-last_attempt_utc: 2026-07-29T00:00:00.000000+00:00
+last_attempt_utc: 2026-07-29T17:19:15.181456+00:00
 >>>>>>> origin/main
 last_attempt_result: PARTIAL
 consecutive_failures: 1
@@ -653,7 +653,7 @@ tasks_remaining:
   - WC015-05
 
 current_task:
-WC015-01
+WC015-02
 CURRENT STATE: platform_phase=IMPLEMENTATION · AUTONOMOUS_HALT=false
                current_sprint=WC-012 · sprint_status=READY
                CLAIMS: 80 RATIFIED (C-001→C-080) · ADRs: 31
