@@ -21,8 +21,9 @@
 name: Autonomous Sprint Agent
 
 on:
-  schedule:
-    - cron: '0 */2 * * *'    # Every 2 hours — matches 2-hr job cap so run always completes before next slot
+  # schedule:
+  #   - cron: '0 */2 * * *'    # Every 2 hours — DISABLED (semi-autonomous mode)
+  #   Re-enable when ready: uncomment schedule block above + set autonomous_halt=false
   workflow_dispatch:
     inputs:
       force_task:
