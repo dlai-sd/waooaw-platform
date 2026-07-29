@@ -3464,7 +3464,20 @@ def main() -> int:
     # Accumulate all completed subtask IDs across task boundaries for cross-task
     # depends_on resolution. WC013-03a depends_on WC013-02a — without this,
     # WC013-03a is always BLOCKED because completed[] starts fresh each chain.
+    #
+    # CROSS-SESSION FIX: seed from tasks_done in sprint state so that subtasks
+    # completed in previous runs are recognised as fulfilled dependencies.
+    # Without this, resumed runs see BLOCKED for any task whose depends_on
+    # subtask was completed in a prior session (e.g. WC014-03a depends on WC014-02a).
     all_completed_subtask_ids: list[str] = []
+    for prior_task_id in tasks_done_state:
+        prior_handler = TASK_HANDLERS.get(prior_task_id)
+        if isinstance(prior_handler, dict) and "subtasks" in prior_handler:
+            all_completed_subtask_ids.extend(
+                [st.id for st in prior_handler["subtasks"]]
+            )
+    if all_completed_subtask_ids:
+        print(f"  Cross-session subtask IDs seeded: {all_completed_subtask_ids}")
     # RC#1: scaffold task for this run = first queued task that is in SCAFFOLD_TASKS.
     # If scaffold already succeeded in a prior run, it won't be in tasks — scaffold_run_task=None.
     scaffold_run_task = next((t for t in tasks if t in SCAFFOLD_TASKS), None)
