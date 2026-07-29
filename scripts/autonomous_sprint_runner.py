@@ -3420,10 +3420,16 @@ def main() -> int:
                 merge = git(["merge", "origin/main", "--no-edit",
                              "-m", f"chore: merge main pipeline fixes into {branch}"], check=False)
                 if merge.returncode != 0:
-                    # Auto-resolve: take main's version of pipeline config files
-                    git(["checkout", "origin/main", "--", "pyproject.toml"], check=False)
-                    git(["add", "pyproject.toml"], check=False)
-                    git(["merge", "--continue", "--no-edit"], check=False)
+                    # Auto-resolve conflicts: always take main's version of pipeline config files.
+                    # These are canonical — the sprint branch should never diverge from main's pipeline.
+                    for config_file in ["pyproject.toml", "scripts/task_decomposer.py",
+                                        "scripts/autonomous_sprint_runner.py",
+                                        "scripts/magic_llm/context_builder.py",
+                                        "scripts/sprint_retry_advisor.py"]:
+                        git(["checkout", "origin/main", "--", config_file], check=False)
+                    git(["add", "-A"], check=False)
+                    # git merge --continue does NOT accept --no-edit; use git commit instead
+                    git(["commit", "--no-edit"], check=False)
                     print(f"  Branch main-merge: conflict resolved (took main's pipeline config)")
             else:
                 # Branch may already exist locally (local dev or resume run) — try checkout first
