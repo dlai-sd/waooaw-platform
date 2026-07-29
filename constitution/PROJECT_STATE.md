@@ -1,9 +1,33 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-07-27 (GOAL-001 + GOAL-002 + GOAL-003 + MagicLLM Phase 2 complete)
-**Version:** 1.13.0
-**Declared by:** Yogesh Khandge (Founder)
-**Session:** 2026-07-27 — Semantic Brain Transformation + Universal AI Execution Layer + PTR 2.0 + Proactive Quality
+**Last Updated:** 2026-07-29 (WC-013 clean slate — CS0234 pipeline fix applied)
+**Version:** 1.18.0
+**Declared by:** Platform IT Expert (INST-010) — session 2026-07-29
+**Session:** 2026-07-29 — RCA + pipeline fix + WC-013 clean slate reset
+
+---
+
+## SESSION RECORD — 2026-07-29 (CS0234 Pipeline Fix — COMPLETE)
+
+### What Was Built
+
+| Phase | Institution | Output | Status |
+|---|---|---|---|
+| RCA | Platform IT Expert (INST-010) | CS0234 root cause identified: spurious `using Waooaw.ConstitutionalEngine.Evaluators` in BP files | DONE |
+| Fix 1 — Prevention | Platform IT Expert (INST-010) | `_FORBIDDEN_PATTERNS` rule added to `context_builder.py` — LLM blocked from generating CE-internal usings in BP | MERGED |
+| Fix 2 — Recovery | Platform IT Expert (INST-010) | `_classify_cs0234_cross_project_ref()` handler added to `sprint_retry_advisor.py` (Rule 2b, confidence 0.95) | MERGED |
+| Clean Slate | Platform IT Expert (INST-010) | PR #152 closed, branch `ib/009/sprint-013` deleted, sprint state reset | DONE |
+
+### Root Cause Summary
+LLM generated `using Waooaw.ConstitutionalEngine.Evaluators;` as unused import in BP controller/service files.
+BP has no `<ProjectReference>` to CE — CE accessible via gRPC only. CS0234 had no handler in Retry Advisor;
+fell through to Cascade L1 with no architectural fix context, exhausting all retries on WC013-03a, WC013-03b, WC013-04a.
+
+### Commit
+- `567e94e` — `fix(pipeline): CS0234 cross-project ref handler + FORBIDDEN_PATTERNS rule`
+- Tests: 56/56 retry advisor tests passing | 2 files changed, 59 insertions
+
+---
 
 ---
 
@@ -235,15 +259,15 @@ WC012-02b `CS1061: string.TryGetValue` fixed at three layers:
 ### State at Session Close
 
 ```yaml
-sprint_status: IN_PROGRESS
-tasks_done:
-  - WC012-01
-  - WC012-02
-  - WC012-03
-  - WC012-04
-tasks_remaining: []
+sprint_status: AUTHORIZED
+tasks_done: []
+tasks_remaining:
+  - WC013-01
+  - WC013-02
+  - WC013-03
+  - WC013-04
 consecutive_failures: 0
-autonomous_halt: true
+autonomous_halt: false
 platform_phase: IMPLEMENTATION
 ```
 
@@ -556,7 +580,7 @@ sprint_ib_item: IB-009
 sprint_status: AUTHORIZED
 branch: ib/009/sprint-013
 last_attempt_utc: 2026-07-28T16:30:00.000000+00:00
-last_attempt_result: CLEAN_SLATE_2026-07-29
+last_attempt_result: NONE
 consecutive_failures: 0
 consecutive_infra_failures: 0
 tasks_done: []
@@ -569,7 +593,7 @@ tasks_remaining:
 current_task:
 
 
-                                            ## NEXT SESSION OPTIONS
+                                            WC013-01    ## NEXT SESSION OPTIONS
 
 ```
 CURRENT STATE: platform_phase=IMPLEMENTATION · AUTONOMOUS_HALT=false
