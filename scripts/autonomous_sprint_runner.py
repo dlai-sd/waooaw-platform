@@ -955,6 +955,10 @@ def call_llm_via_magiclm(
         print(f"  ✓ MagicLLM: {response.model_version} · "
               f"complexity={response.parsed_artifacts.get('complexity', '?')} · "
               f"cost=₹{response.cost_inr:.4f} · attempt={attempt}")
+        # Record per-file cost in monitor signal (consumed by G7 step summary)
+        _MONITOR_SIGNAL["file_costs"][task_id] = (
+            _MONITOR_SIGNAL["file_costs"].get(task_id, 0.0) + response.cost_inr
+        )
         return response.raw_output
     else:
         print(f"  MagicLLM returned {response.status}: {response.failure_classification}")
@@ -2538,6 +2542,7 @@ _MONITOR_SIGNAL: dict = {
     "task_results": {},        # per-task: result, error_type, snippet, attempts, issue
     "spec_gap_issues": [],     # GitHub issue numbers opened by flag_spec_gap()
     "overall_result": "UNKNOWN",
+    "file_costs": {},          # task_id:file_name → ₹ cost — populated by call_llm_via_magiclm
 }
 
 TASK_HANDLERS = {

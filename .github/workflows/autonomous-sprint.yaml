@@ -460,6 +460,9 @@ jobs:
           echo "### 🗣️ What Happened (Plain English)" >> $GITHUB_STEP_SUMMARY
           echo "$PLAIN" >> $GITHUB_STEP_SUMMARY
 
+          # ── File cost + pending summary ──
+          python3 scripts/sprint_summary_writer.py || true
+
       - name: Upload monitor signal as artifact
         if: always()     # upload even if runner failed — partial signals are still useful
         uses: actions/upload-artifact@v4
