@@ -176,16 +176,11 @@ def check_merge_syntax() -> bool:
 
 # ── 11. Signal committed to sprint branch ────────────────────────────────────
 def check_signal_committed() -> bool:
-    """Signal must be git-add'd so complete_sprint can read via 'git show' after stash/checkout."""
+    """Signal must be force-added (git add -f) since monitor-signal.json is in .gitignore."""
     runner_src = (REPO_ROOT / "scripts" / "autonomous_sprint_runner.py").read_text()
-    ok = 'git(["add", str(signal_path)]' in runner_src or \
-         'git(["add", str(_signal_path)]' in runner_src or \
-         '"add"' in runner_src and "signal_path" in runner_src
-    # More specific: check git add is near the signal write
-    ok = bool(re.search(r'signal_path.*\n.*git\(\["add".*signal', runner_src, re.DOTALL) or
-              re.search(r'git\(\["add".*signal_path', runner_src))
-    return check("signal git-add'd for sprint branch commit", ok,
-                 "present" if ok else "MISSING — signal is untracked, git stash will hide it from complete_sprint")
+    ok = bool(re.search(r'git\(\["add", "-f".*signal_path', runner_src))
+    return check("signal uses 'git add -f' (file is in .gitignore)", ok,
+                 "present" if ok else "MISSING '-f' — git add silently ignored, signal never committed or pushed")
 
 
 # ── 12. Signal before early returns (step 8.1) ───────────────────────────────
