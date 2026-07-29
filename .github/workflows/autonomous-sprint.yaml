@@ -401,7 +401,20 @@ jobs:
           GITHUB_RUN_ID:     ${{ github.run_id }}
           SPRINT_MODEL_HINT: ${{ needs.preflight.outputs.model_hint }}
           SPRINT_TASK_ID:    ${{ needs.preflight.outputs.task_id }}
-        run: python3 scripts/autonomous_sprint_runner.py
+        run: |
+          # PIPELINE SYNC: always run main's pipeline scripts regardless of what's on the sprint branch.
+          # Breaks the circular dependency where a broken merge resolver in the sprint branch's
+          # autonomous_sprint_runner.py prevents main's fixes from reaching the sprint branch.
+          # These files are canonical on main — sprint branches never have authoritative versions.
+          git fetch origin main
+          git checkout origin/main -- \
+            scripts/autonomous_sprint_runner.py \
+            scripts/task_decomposer.py \
+            scripts/magic_llm/context_builder.py \
+            scripts/sprint_retry_advisor.py \
+            scripts/complete_sprint.py \
+            pyproject.toml || true
+          python3 scripts/autonomous_sprint_runner.py
 
       # D3 FIX: Write autonomous_halt=true to main when scaffold fails.
       # Scaffold failures are permanent until a human fixes the code.
