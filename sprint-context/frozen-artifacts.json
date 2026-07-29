@@ -195,5 +195,25 @@
       "TenantIsolationMiddlewareExtensions"
     ],
     "enum_values": {}
+  },
+  "tests/business-platform.Tests/Infrastructure/CCT_MT01_TenantIsolationTests.cs": {
+    "frozen_at_task": "WC013-02b",
+    "namespace": "Waooaw.BusinessPlatform.Tests.Infrastructure",
+    "public_constructors": [
+      "IOptionsMonitor<TestAuthHandlerOptions> options, ILoggerFactory logger, UrlEncoder encoder",
+      "TenantIsolationWebFactory factory"
+    ],
+    "public_methods": [
+      "Request_WithNoAuthHeader_Returns401",
+      "Request_WithNoAuthHeader_EvidenceEndpoint_Returns401",
+      "Request_WithTenantAToken_EvidenceEndpoint_DoesNotLeakTenantBRecords",
+      "Request_WithTenantAToken_ContractsEndpoint_DoesNotLeakTenantBRecords",
+      "Request_WithNoAuthHeader_ApprovalsEndpoint_Returns401",
+      "Request_WithNoAuthHeader_AuthorityEndpoint_Returns401",
+      "Request_WithTenantAToken_ApprovalsEndpoint_DoesNotLeakTenantBRecords",
+      "Request_TwoUsersInSameTenant_BothSucceed_WithSameTenantScope"
+    ],
+    "public_properties": [],
+    "enum_values": {}
   }
 }
