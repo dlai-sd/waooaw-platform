@@ -503,11 +503,17 @@ jobs:
           git config user.name  "WAOOAW AI Agent - Platform IT Expert"
           git config user.email "platform-it-expert@waooaw.ai"
           git fetch origin main
+          # Save monitor-signal.json BEFORE stash — it is untracked so git stash
+          # would hide it, causing complete_sprint.py to exit early with
+          # "WARN: no monitor-signal.json" and lose all registry + state updates.
+          cp sprint-context/monitor-signal.json /tmp/monitor-signal.json 2>/dev/null || true
           # Stash any uncommitted sprint-branch files (frozen artifacts etc)
           # before switching to main so the checkout doesn't abort
           git stash --include-untracked || true
           git checkout main
           git pull origin main --ff-only || true
+          # Restore signal file so complete_sprint.py can read it
+          mkdir -p sprint-context && cp /tmp/monitor-signal.json sprint-context/monitor-signal.json 2>/dev/null || true
           PR_ARG=""
           if [ -n "$PR_NUMBER" ] && [ "$PR_NUMBER" != "0" ] && [ "$RESULT" != "SUCCESS" ]; then
             PR_ARG="--pr $PR_NUMBER"

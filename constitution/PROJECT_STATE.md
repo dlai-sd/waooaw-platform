@@ -199,11 +199,12 @@ sprint: WC-014
 sprint_status: AUTHORIZED
 task_id: WC013-01
 tasks_done:
+  - WC014-01
   - WC014-02
   - WC014-04
 tasks_remaining:
   - WC014-03
-consecutive_failures: 1
+consecutive_failures: 2
 autonomous_halt: false
 open_prs: none
 goal_register_issue: 115
@@ -630,9 +631,10 @@ sprint_status: AUTHORIZED
 branch: ib/009/sprint-014
 last_attempt_utc: 2026-07-29T00:00:00.000000+00:00
 last_attempt_result: PARTIAL
-consecutive_failures: 1
+consecutive_failures: 2
 consecutive_infra_failures: 0
 tasks_done:
+  - WC014-01
   - WC014-02
   - WC014-04
 tasks_remaining:
