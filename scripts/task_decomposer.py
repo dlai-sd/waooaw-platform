@@ -355,6 +355,14 @@ def run_compile_gate(gate_type: str, service_dir: str = "src/constitutional-engi
         return result.returncode == 0, result.stderr[:500] if result.returncode != 0 else ""
 
     if gate_type == "ruff":
+        # Auto-fix all fixable issues first (whitespace, import sorting, unused imports).
+        # Then check for remaining unfixable violations. This prevents LLM-generated
+        # style issues (W293 trailing whitespace, I001 import order, F401 unused imports)
+        # from blocking the compile gate — they're not semantic errors.
+        subprocess.run(
+            ["python3", "-m", "ruff", "check", service_dir, "--fix", "--exit-zero"],
+            capture_output=True, text=True, cwd=REPO_ROOT
+        )
         result = subprocess.run(
             ["python3", "-m", "ruff", "check", service_dir],
             capture_output=True, text=True, cwd=REPO_ROOT
