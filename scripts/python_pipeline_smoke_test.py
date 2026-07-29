@@ -242,48 +242,108 @@ def check_per_file_ignores() -> bool:
                  f"MISSING: {', '.join(missing)} — LLM-generated tests will fail ruff compile gate")
 
 
-# ── 17. ruff dry-run against LLM-pattern template ────────────────────────────
+# ── 17. ruff dry-run — src/ equivalent (no per-file-ignores) ────────────────
 def check_ruff_dry_run() -> bool:
     """
-    Run ruff against a synthetic Python file that mimics common LLM-generated
-    patterns. Catches ruff config gaps BEFORE a real sprint run wastes 30 min.
-    Covers: ANN401 (Any params), E501 (long regex), B018 (bare expr), F841 (unused var).
+    Run ruff against two synthetic files mimicking LLM-generated patterns:
+      - src_template: placed at /tmp/src_ai_runtime/ to avoid ALL per-file-ignores.
+        Tests that ANN401/E501/B018/F841/UP042 pass in SOURCE files.
+        These only pass if pyproject.toml global ignores are correct.
+      - test_template: placed at tests/_smoke/ to get tests/** per-file-ignores.
+        Tests that LOG015/G004/ANN pass in TEST files.
+
+    BUG CAUGHT: writing template to scripts/ gave false ANN401 PASS because
+    scripts/** has ["ANN"] in per-file-ignores — masked the missing global ignore.
     """
-    template = '''\
-# Implements: test spec | constitutional_basis: C-059
+    import tempfile, os
+    src_template = '''\
+# Implements: ai-runtime | constitutional_basis: C-059, C-062
 import re
 import logging
 from typing import Any
+from enum import Enum, StrEnum
 
 logger = logging.getLogger(__name__)
 
-PATTERNS: list[re.Pattern[str]] = [
+# E501: regex patterns legitimately exceed 120 chars — must pass with line-length=130
+INJECTION_PATTERNS: list[re.Pattern[str]] = [
     re.compile(r"\\bignore\\s+(all\\s+)?(previous|prior|above|earlier)\\s+(instructions?|prompts?|context|directives?)\\b", re.I),
+    re.compile(r"\\bforget\\s+(all\\s+)?(previous|prior|above|earlier)\\s+(instructions?|prompts?|context|directives?)\\b", re.I),
 ]
 
-def process(db_pool: Any, value: str) -> dict[str, Any]:
-    handle = logger.info("processing %s", value)
-    result = {"status": "ok", "value": value}
-    return result
+# UP042: LLM may generate str+Enum — must be auto-fixed to StrEnum by ruff --fix
+class ProviderTier(str, Enum):
+    LOCAL = "local"
+    MID = "mid"
+
+# ANN401: LLM uses Any for dynamic params like asyncpg.Pool — must pass globally
+def route(db_pool: Any, model_hint: str) -> dict[str, Any]:
+    # F841: unused variable — must be auto-fixed by ruff --unsafe-fixes
+    _handle = logger.info("routing %s", model_hint)
+    return {"tier": ProviderTier.LOCAL, "db": db_pool}
 '''
-    tmp = REPO_ROOT / "scripts" / "_smoke_ruff_template.py"
-    try:
-        tmp.write_text(template)
-        # Mirror compile gate: auto-fix first, then check (same as run_compile_gate)
+
+    test_template = '''\
+# Implements: test | constitutional_basis: C-076
+import logging
+import pytest
+
+logger = logging.getLogger(__name__)
+
+def test_route_local():
+    # LOG015: root logger call — OK in tests (per-file-ignores)
+    logging.info(f"testing route: {\'local\'}")  # G004: f-string in log — OK in tests
+    assert True
+
+class TestPSE:
+    def __init__(self):  # ANN204: missing __init__ return type — OK in tests (ANN suppressed)
+        self.tier = "local"
+'''
+
+    errors = []
+
+    # Test src-equivalent: /tmp path, no per-file-ignores apply
+    import tempfile
+    with tempfile.TemporaryDirectory() as tmpdir:
+        src_file = Path(tmpdir) / "router.py"
+        src_file.write_text(src_template)
         subprocess.run(
-            ["python3", "-m", "ruff", "check", str(tmp), "--fix", "--unsafe-fixes", "--exit-zero"],
-            capture_output=True, text=True, cwd=REPO_ROOT
+            ["python3", "-m", "ruff", "check", str(src_file), "--fix", "--unsafe-fixes",
+             "--exit-zero", "--config", str(REPO_ROOT / "pyproject.toml")],
+            capture_output=True, text=True
         )
         r = subprocess.run(
-            ["python3", "-m", "ruff", "check", str(tmp)],
-            capture_output=True, text=True, cwd=REPO_ROOT
+            ["python3", "-m", "ruff", "check", str(src_file),
+             "--config", str(REPO_ROOT / "pyproject.toml")],
+            capture_output=True, text=True
         )
-        violations = (r.stdout + r.stderr).strip()
-        ok = r.returncode == 0
-        return check("ruff dry-run: LLM-pattern template passes ruff (ANN401/E501/B018/F841)", ok,
-                     "clean" if ok else f"VIOLATIONS — fix pyproject.toml before sprint: {violations[:300]}")
-    finally:
-        tmp.unlink(missing_ok=True)
+        if r.returncode != 0:
+            errors.append(f"src/: {(r.stdout + r.stderr).strip()[:200]}")
+
+        # Test test-equivalent: must use tests/ path so per-file-ignores apply
+        tests_dir = REPO_ROOT / "tests" / "_smoke_check"
+        tests_dir.mkdir(exist_ok=True)
+        test_file = tests_dir / "test_smoke.py"
+        try:
+            test_file.write_text(test_template)
+            subprocess.run(
+                ["python3", "-m", "ruff", "check", str(test_file), "--fix", "--unsafe-fixes", "--exit-zero"],
+                capture_output=True, text=True, cwd=REPO_ROOT
+            )
+            r2 = subprocess.run(
+                ["python3", "-m", "ruff", "check", str(test_file)],
+                capture_output=True, text=True, cwd=REPO_ROOT
+            )
+            if r2.returncode != 0:
+                errors.append(f"tests/: {(r2.stdout + r2.stderr).strip()[:200]}")
+        finally:
+            test_file.unlink(missing_ok=True)
+            tests_dir.rmdir()
+
+    ok = len(errors) == 0
+    detail = " | ".join(errors) if errors else "src/ and tests/ both clean"
+    return check("ruff dry-run: src/ + tests/ LLM patterns pass (ANN401/E501/B018/F841/UP042/LOG015/G004)", ok,
+                 detail if ok else f"VIOLATIONS — fix pyproject.toml: {detail}")
 
 
 
