@@ -320,7 +320,7 @@ jobs:
             ${{ runner.os }}-nuget-
 
       - name: Install dependencies
-        run: pip install pyyaml requests PyJWT cryptography
+        run: pip install pyyaml requests PyJWT cryptography ruff
 
       - name: Configure git
         run: |

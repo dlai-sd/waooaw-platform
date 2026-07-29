@@ -358,9 +358,6 @@ def run_compile_gate(gate_type: str, service_dir: str = "src/constitutional-engi
 
     if gate_type == "ruff":
         # Auto-fix all fixable issues first (whitespace, import sorting, unused imports).
-        # Then check for remaining unfixable violations. This prevents LLM-generated
-        # style issues (W293 trailing whitespace, I001 import order, F401 unused imports)
-        # from blocking the compile gate — they're not semantic errors.
         subprocess.run(
             ["python3", "-m", "ruff", "check", service_dir, "--fix", "--exit-zero"],
             capture_output=True, text=True, cwd=REPO_ROOT
@@ -369,7 +366,9 @@ def run_compile_gate(gate_type: str, service_dir: str = "src/constitutional-engi
             ["python3", "-m", "ruff", "check", service_dir],
             capture_output=True, text=True, cwd=REPO_ROOT
         )
-        return result.returncode == 0, result.stdout[:500]
+        # Capture both stdout (violations) and stderr (ruff errors, e.g. TOML parse)
+        error_output = (result.stdout + result.stderr)[:500]
+        return result.returncode == 0, error_output
 
     if gate_type == "pytest":
         result = subprocess.run(
@@ -383,17 +382,25 @@ def run_compile_gate(gate_type: str, service_dir: str = "src/constitutional-engi
 
 # ── Signal emission (C-083) ───────────────────────────────────────────────────
 
-def emit_subtask_signal(task_id: str, subtask_id: str, result: str, monitor_signal: dict) -> None:
+def emit_subtask_signal(
+    task_id: str, subtask_id: str, result: str, monitor_signal: dict,
+    error_codes: list[str] | None = None,
+    error_text: str = "",
+) -> None:
     """
     C-083 (Emit-Transport-Listen): emit sub-task completion signal.
     Written to monitor-signal.json before next sub-task begins.
-    The next sub-task's branch context read AFTER this signal is emitted.
+
+    error_codes: CS/ruff codes from the build error (enables C-087 gate in registry).
+    error_text: first 300 chars of the error (for pattern matching).
     """
     if "subtask_results" not in monitor_signal:
         monitor_signal["subtask_results"] = {}
     monitor_signal["subtask_results"][subtask_id] = {
-        "result": result,  # "SUCCESS" | "FAIL" | "SKIPPED"
+        "result": result,
         "task_id": task_id,
+        "error_codes": error_codes or [],
+        "error_text": error_text[:300],
     }
 
 
@@ -1039,7 +1046,10 @@ def execute_subtask_chain(
         if not gate_ok:
             print(f"  [{st.id}] COMPILE GATE FAILED: {gate_error[:200]}")
             print(f"  C-084 2.0: marking failed, continuing non-dependent subtasks")
-            emit_subtask_signal(task_id, st.id, "FAIL", monitor_signal)
+            import re as _re_ec
+            _codes = sorted(set(_re_ec.findall(r'(?:CS|NU|MSB|E|W|N|F|B|UP|ANN|I|G)\d+', gate_error)))
+            emit_subtask_signal(task_id, st.id, "FAIL", monitor_signal,
+                                error_codes=_codes, error_text=gate_error)
             failed.append(st.id)
             continue
 
