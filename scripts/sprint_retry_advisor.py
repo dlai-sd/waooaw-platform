@@ -139,6 +139,21 @@ def _classify_out_of_boundary_reference(
     if not offending_ns:
         return None
 
+    # Only proceed when the offending string looks like a namespace path.
+    # Bare type names (e.g. 'IClaimEvaluator', 'Mock', 'DbContext') are
+    # type-resolution errors — let the SYMBOL_RESOLUTION handlers deal with them.
+    # Namespace paths are: dotted strings OR known project-root prefixes.
+    _is_ns_path = (
+        "." in offending_ns
+        or offending_ns.startswith("Waooaw")
+        or offending_ns.startswith("Grpc")
+        or offending_ns.startswith("Temporalio")
+        or offending_ns.startswith("Microsoft.")
+        or offending_ns.startswith("System.")
+    )
+    if not _is_ns_path:
+        return None  # bare type name — fall through to SYMBOL_RESOLUTION handlers
+
     try:
         from pathlib import Path as _Path
         _scripts = str(_Path(__file__).parent)
