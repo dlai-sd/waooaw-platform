@@ -101,6 +101,82 @@ def _classify_cs0101(error: str, written_files: list[str]) -> Optional[RetryDiag
     )
 
 
+def _classify_out_of_boundary_reference(
+    error: str, output_file: str
+) -> Optional[RetryDiagnosis]:
+    """
+    Generic handler for any build error where the referenced namespace/type is
+    not reachable from the target project's .csproj dependency graph.
+
+    Replaces all per-CS-code namespace handlers for the cross-project pattern.
+    Fires before CS0246/CS0234 dispatch — covers CS0234, CS0246, CS0103, CS1061,
+    CS0122 and any future code triggered by an out-of-boundary reference.
+
+    constitutional_trace: C-082 (build validation), C-059 (traceability)
+    """
+    if not output_file:
+        return None
+
+    # Extract offending namespace from any CS error format:
+    #   CS0234: "...name 'X' does not exist in the namespace 'Y'"
+    #   CS0246: "...type or namespace name 'X' could not be found"
+    #   CS0103/CS1061: "...name 'X' does not exist..."
+    offending_ns: Optional[str] = None
+
+    m = re.search(r"does not exist in the namespace '([^']+)'", error)
+    if m:
+        # CS0234: parent namespace 'Y' exists, child doesn't — combine them
+        parent = m.group(1)
+        child_m = re.search(r"namespace name '([^']+)' does not exist", error)
+        offending_ns = f"{parent}.{child_m.group(1)}" if child_m else parent
+
+    if not offending_ns:
+        # CS0246: type/namespace couldn't be found at all
+        m2 = re.search(r"type or namespace name '([^']+)' could not be found", error)
+        if m2:
+            offending_ns = m2.group(1)
+
+    if not offending_ns:
+        return None
+
+    try:
+        from pathlib import Path as _Path
+        _scripts = str(_Path(__file__).parent)
+        import sys as _sys
+        if _scripts not in _sys.path:
+            _sys.path.insert(0, _scripts)
+        from project_dependency_map import (
+            find_csproj_for_file, is_namespace_reachable,
+            get_reachable_prefixes, REPO_ROOT as _REPO,
+        )
+        csproj = find_csproj_for_file(output_file, _REPO)
+        if not csproj:
+            return None  # can't determine boundary — fall through to specific handlers
+
+        if is_namespace_reachable(offending_ns, csproj):
+            return None  # namespace IS reachable — different kind of error
+
+        prefixes = sorted(get_reachable_prefixes(csproj))
+        project_name = csproj.stem
+        fix = (
+            f"PROJECT BOUNDARY VIOLATION in {project_name}: "
+            f"'{offending_ns}' is not reachable — "
+            f"{csproj.name} has no <PackageReference> or <ProjectReference> for that assembly. "
+            f"Remove every 'using {offending_ns};' (and any other unreachable imports). "
+            f"Reachable namespace prefixes for {project_name}: {prefixes}. "
+            f"Only use namespaces that start with a listed prefix."
+        )
+        return RetryDiagnosis(
+            error_type=WRONG_NAMESPACE,
+            fix_instruction=fix,
+            should_retry=True,
+            confidence=0.95,
+            constitutional_trace="C-082 (build validation) + C-059 (traceability — boundary derived from .csproj)"
+        )
+    except Exception:
+        return None  # non-blocking — fall through to specific handlers
+
+
 def _classify_cs0234_cross_project_ref(error: str) -> Optional[RetryDiagnosis]:
     """
     CS0234: sub-namespace does not exist in the parent namespace.
@@ -865,6 +941,7 @@ def diagnose_build_error(
     build_error: str,
     written_files: list[str],
     branch_files: Optional[list[str]] = None,
+    output_file: str = "",
 ) -> RetryDiagnosis:
     """
     Classify a build error and return a targeted fix instruction.
@@ -890,7 +967,18 @@ def diagnose_build_error(
             print(f"  Retry Advisor: EXTEND_NOT_REPLACE (confidence={diagnosis.confidence:.0%})")
             return diagnosis
 
-    # ── Rule 2: CS0246 — namespace/type not found ──────────────────────────────
+    # ── Rule 2a: generic project boundary violation (any CS namespace error) ───
+    # Fires BEFORE error-code-specific handlers.
+    # Handles CS0234, CS0246, CS0103, CS1061, CS0122 caused by importing a
+    # namespace/type not in the target project's .csproj dependency graph.
+    # One handler replaces all per-project hard-coded namespace rules.
+    if output_file and error_codes & {"CS0234", "CS0246", "CS0103", "CS1061", "CS0122"}:
+        diagnosis = _classify_out_of_boundary_reference(build_error, output_file)
+        if diagnosis:
+            print(f"  Retry Advisor: OUT_OF_BOUNDARY (confidence={diagnosis.confidence:.0%})")
+            return diagnosis
+
+    # ── Rule 2b: CS0246 — namespace/type not found (non-boundary cases) ────────
     if "CS0246" in error_codes:
         # Try namespace-specific classification first
         diagnosis = _classify_cs0246_namespace(build_error)
@@ -904,10 +992,7 @@ def diagnose_build_error(
             print(f"  Retry Advisor: MISSING_USING (confidence={diagnosis.confidence:.0%})")
             return diagnosis
 
-    # ── Rule 2b: CS0234 — sub-namespace does not exist ────────────────────────
-    # CS0234: "The type or namespace name 'X' does not exist in the namespace 'Y'"
-    # Most common: 'using Waooaw.ConstitutionalEngine.Evaluators' in BP files.
-    # BP has no ProjectReference to CE — CE accessible only via gRPC proto client.
+    # ── Rule 2c: CS0234 — sub-namespace fallback (no csproj available) ─────────
     if "CS0234" in error_codes:
         diagnosis = _classify_cs0234_cross_project_ref(build_error)
         if diagnosis:

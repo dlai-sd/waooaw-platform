@@ -649,7 +649,8 @@ def execute_file_by_file(
                                      str(REPO_ROOT / "scripts" / "sprint_retry_advisor.py"))
                                 _m = _ilu.module_from_spec(_s); _s.loader.exec_module(_m)
                                 diagnosis = _m.diagnose_build_error(
-                                    f"{task_id}:{file_name}", failure.detail, written, []
+                                    f"{task_id}:{file_name}", failure.detail, written, [],
+                                    output_file=output_file,
                                 )
                                 if diagnosis.should_retry and diagnosis.confidence >= 0.3:
                                     magic_failure_context = (

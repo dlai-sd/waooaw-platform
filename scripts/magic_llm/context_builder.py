@@ -51,11 +51,9 @@ _FORBIDDEN_PATTERNS = (
     "⛔ Mixed named+positional constructor args (CS1744) — use all positional\n"
     "⛔ NullLogger<T>() constructor — use NullLogger<T>.Instance\n"
     "⛔ ITemporalClient or any Temporalio.* namespace in WC012-02b — that is WC012-04b scope\n"
-    "⛔ using Waooaw.*.Tests.* in src/ files — test namespaces must never appear in main project code\n"
-    "⛔ using Waooaw.ConstitutionalEngine.Evaluators (or .Services, .Data, .EmergencyStop) in "
-    "business-platform files — BP has NO ProjectReference to CE; CE is accessible only via gRPC. "
-    "Only valid CE namespace in BP files: Waooaw.ConstitutionalEngine.Grpc (proto-generated client)."
-)
+    "⛔ using Waooaw.*.Tests.* in src/ files — test namespaces must never appear in main project code"
+)  # Note: project-boundary violations (cross-project namespace imports) are now prevented
+   # dynamically by ProjectDependencyMap — no hard-coded per-project rules needed here.
 
 # ── Module-level compiled regexes (P2: avoid recompile on every build call) ──
 _RE_CAPITAL_WORDS = re.compile(r'\b([A-Z][a-zA-Z0-9]+)\b')
@@ -169,7 +167,7 @@ class ContextBuilder:
         ctx = AssembledContext(task_id=task_id, output_file=output_file)
 
         # [1] SYSTEM
-        ctx.blocks.append(ContextBlock("SYSTEM", self._build_system(stack)))
+        ctx.blocks.append(ContextBlock("SYSTEM", self._build_system(stack, output_file)))
 
         # [2] PREAMBLE — pre-written file header (C-073, §7.5)
         preamble = self._build_preamble(output_file, spec_sections, stack, constitutional_check)
@@ -252,7 +250,7 @@ class ContextBuilder:
 
     # ── Private: slot builders ─────────────────────────────────────────────────
 
-    def _build_system(self, stack: str) -> str:
+    def _build_system(self, stack: str, output_file: str = "") -> str:
         base = (
             "CONSTITUTIONAL OBLIGATIONS (C-059, C-073, C-032):\n"
             "Every file you produce MUST begin with:\n"
@@ -262,6 +260,15 @@ class ContextBuilder:
             "FORBIDDEN PATTERNS (non-negotiable — any violation = compile failure):\n"
             + _FORBIDDEN_PATTERNS
         )
+        # Inject PROJECT_BOUNDARY — auto-derived from .csproj (replaces hard-coded namespace rules)
+        if stack == "dotnet" and output_file:
+            try:
+                from project_dependency_map import find_csproj_for_file, get_boundary_injection_text
+                csproj = find_csproj_for_file(output_file, self._root)
+                if csproj:
+                    base += "\n\n" + get_boundary_injection_text(csproj)
+            except Exception as _pdm_e:
+                pass  # non-blocking — boundary enforcement degrades gracefully
         # Inject EA-approved stack error-handling standards (STACK_BEHAVIORAL_RULES)
         try:
             from task_decomposer import STACK_BEHAVIORAL_RULES
@@ -378,13 +385,23 @@ class ContextBuilder:
             return f"PTR: unavailable ({e})"
 
     def _build_using_map_block(self, output_file: str, constitutional_check: str, stack: str) -> str:
-        """§7.3: USING_MAP structural injection."""
+        """§7.3: USING_MAP structural injection — filtered by ProjectDependencyMap."""
         if not self._assembler or stack != "dotnet":
             return ""
         try:
             using_map = self._assembler.build_using_map()
             if not using_map:
                 return ""
+
+            # Filter using_map to only types reachable from the target project
+            try:
+                from project_dependency_map import find_csproj_for_file, filter_using_map as _pdm_filter
+                csproj = find_csproj_for_file(output_file, self._root)
+                if csproj:
+                    using_map = _pdm_filter(using_map, csproj)
+            except Exception:
+                pass  # non-blocking — degrade to unfiltered map
+
             # Find types mentioned in the check or output file name
             scan_text = constitutional_check + " " + output_file
             mentioned = set(_RE_CAPITAL_WORDS.findall(scan_text))
@@ -584,15 +601,24 @@ class ContextBuilder:
             usings.add(f"using {m.group(1)};")
 
         # Resolve type names mentioned in constitutional_check via USING_MAP
+        # filtered through ProjectDependencyMap to only include reachable types
         if self._assembler:
             try:
                 using_map = self._assembler.build_using_map()
+                # Filter to only reachable namespaces for this project
+                try:
+                    from project_dependency_map import find_csproj_for_file, filter_using_map as _pdm_filter
+                    csproj = find_csproj_for_file(output_file, self._root)
+                    if csproj:
+                        using_map = _pdm_filter(using_map, csproj)
+                except Exception:
+                    pass  # non-blocking
                 mentioned = set(_RE_CAPITAL_WORDS.findall(constitutional_check))
                 for cls in mentioned:
                     if cls in using_map:
                         usings.add(f"using {using_map[cls]};")
             except Exception as _um_e:
-                print(f"  [CB] using_map lookup skipped ({type(_um_e).__name__}: {_um_e})")
+                print(f"  [CB] using_map lookup skipped ({type(_um_e).__name__}: {_um_e}).")
 
         # Frozen artifact namespaces for types that appear in check
         for file_path, sigs in self._frozen.items():
