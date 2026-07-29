@@ -374,6 +374,33 @@ def _generate_next_sprint_simulations(
         print(f"  SIM-GEN: all {next_prefix} simulations already exist — no action needed")
 
 
+def check_c087_gate(error_codes: list[str], proposed_fix: str) -> None:
+    """
+    C-087 gate: warn if a targeted fix is applied without ≥3 run_ids in registry.
+    Call this before committing any pyproject.toml ignore rule, FORBIDDEN_PATTERNS
+    change, or retry advisor handler addition.
+    This is a WARNING — does not block. Creates an audit trail.
+    """
+    if not error_codes:
+        return
+    entries = read_registry()
+    matching_runs: set[str] = set()
+    for e in entries:
+        if set(e.get("error_codes", [])) & set(error_codes):
+            rid = e.get("run_id", "")
+            if rid and rid.isdigit():
+                matching_runs.add(rid)
+    if len(matching_runs) < 3:
+        print(
+            f"\n  ⚠️  C-087 GATE WARNING: fix for {error_codes} has {len(matching_runs)}/3 run_ids.\n"
+            f"  Fix: {proposed_fix[:80]}\n"
+            f"  Collect {3 - len(matching_runs)} more run(s) before applying targeted fix.\n"
+            f"  Emergency override: document as EMERGENCY in commit message.\n"
+        )
+    else:
+        print(f"  ✓ C-087 gate: {len(matching_runs)} run_ids confirm pattern — fix authorized.")
+
+
 def complete_sprint(pr_number: int = 0, dry_run: bool = False) -> int:
     """
     Execute the sprint completion protocol.
@@ -407,17 +434,20 @@ def complete_sprint(pr_number: int = 0, dry_run: bool = False) -> int:
     for sid, info in subtasks.items():
         if info.get("result") in ("FAIL", "SKIPPED"):
             task_id = info.get("task_id", sid[:7])
-            # Try to get build error from task_results
+            # Read error_codes and error_text from signal (captured by emit_subtask_signal)
+            signal_codes = info.get("error_codes", [])
+            signal_text  = info.get("error_text", "")
             tr = task_results.get(task_id, {})
-            error_text  = tr.get("build_error_snippet", "")
+            error_text   = signal_text or tr.get("build_error_snippet", "")
             advisor_type = tr.get("error_type", "")
-            confidence  = tr.get("advisor_confidence", 0.0)
-            retry_count = tr.get("attempts", 0)
+            confidence   = tr.get("advisor_confidence", 0.0)
+            retry_count  = tr.get("attempts", 0)
             entries.append(_make_registry_entry(
                 run_id=run_id, sprint=sprint,
                 task_id=task_id, subtask_id=sid,
                 result=info["result"],
                 build_error=error_text,
+                error_codes=signal_codes if signal_codes else None,
                 retry_count=retry_count,
                 advisor_type=advisor_type,
                 confidence=confidence,
