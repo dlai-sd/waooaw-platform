@@ -290,12 +290,76 @@ _TASK_STACK_MAP: dict[str, str] = {
     "WC018": "dotnet",   # Integration tests
 }
 
+# ── Data-driven service boundary context ─────────────────────────────────────
+# Replaces hardcoded FORBIDDEN IMPORTS + CE gRPC disambiguation text.
+# Source of truth: architecture/reference/service-boundaries.json (EA-maintained).
+# TEMPORARY scaffold: injected as prompt text until IB-PTR-v3 embeds this into
+# the PTR assembler with service_owner + accessible_from fields.
+_SERVICE_BOUNDARIES_FILE = REPO_ROOT / "architecture" / "reference" / "service-boundaries.json"
+
+def _load_service_boundary_context(task_id: str) -> str:
+    """
+    Reads service-boundaries.json and returns task-specific cross-service
+    constraint text to append to the system prompt.
+    Returns empty string if the file is absent or the task has no constraints.
+    """
+    try:
+        boundaries = json.loads(_SERVICE_BOUNDARIES_FILE.read_text())
+    except Exception:
+        return ""  # file absent or malformed — fail open, not hard
+
+    prefix = task_id[:5]
+    task_service = boundaries.get("task_service_map", {}).get(prefix)
+    if not task_service:
+        return ""
+
+    svc = boundaries.get("services", {}).get(task_service, {})
+    internal_ns = svc.get("internal_namespaces", [])
+    src_path    = svc.get("src_path", "")
+
+    # Build cross-service forbidden-import section from other services' internal namespaces
+    all_services = boundaries.get("services", {})
+    forbidden_lines = []
+    for svc_name, svc_data in all_services.items():
+        if svc_name == task_service:
+            continue
+        for ns in svc_data.get("internal_namespaces", []):
+            forbidden_lines.append(
+                f"     using {ns};   ← {svc_name.upper()}-INTERNAL — CS0234 if referenced from {task_service}"
+            )
+
+    # Build gRPC decision type disambiguation from the source service's config
+    grpc_types = {}
+    for svc_name, svc_data in all_services.items():
+        grpc_types.update(svc_data.get("grpc_decision_types", {}))
+
+    sections = []
+
+    if forbidden_lines:
+        forbidden_block = "\n".join(forbidden_lines)
+        sections.append(
+            f"\n## CROSS-SERVICE BOUNDARY (data: architecture/reference/service-boundaries.json)\n"
+            f"  ⛔ FORBIDDEN in {src_path}**:\n{forbidden_block}\n"
+            f"  Use only the public gRPC/REST interfaces of other services — never their internal namespaces."
+        )
+
+    if grpc_types:
+        lines = [f"## CE gRPC DECISION TYPE DISAMBIGUATION (source: service-boundaries.json)"]
+        for field, dtype in grpc_types.items():
+            lines.append(f"  {field} → {dtype}")
+        lines.append("  NEVER mix ValidationDecision and PolicyDecision — they are different enums for different RPCs.")
+        sections.append("\n" + "\n".join(lines))
+
+    return "\n".join(sections)
+
+
 def _build_system_prompt(task_id: str) -> str:
-    """Build stack-aware system prompt: universal base + selected expert block."""
+    """Build stack-aware system prompt: universal base + expert block + data-driven boundary."""
     prefix = task_id[:5]  # e.g. 'WC012'
-    stack = _TASK_STACK_MAP.get(prefix, "dotnet")  # default: dotnet for current sprint
+    stack = _TASK_STACK_MAP.get(prefix, "dotnet")
     expert_block = _STACK_EXPERTS.get(stack, _EXPERT_DOTNET)
-    return _BASE_SYSTEM_PROMPT + expert_block
+    boundary_context = _load_service_boundary_context(task_id)
+    return _BASE_SYSTEM_PROMPT + expert_block + boundary_context
 
 # Legacy alias — used until all call sites are updated to _build_system_prompt()
 CONSTITUTIONAL_SYSTEM_PROMPT = _build_system_prompt("WC012")
@@ -306,13 +370,35 @@ def get_branch_context(service_dir: str = "src/constitutional-engine") -> str:
     Scan the current sprint branch for files already committed from prior tasks.
     Returns a formatted BRANCH CONTEXT block injected into every LLM prompt.
 
-    This implements the RAG insight: the LLM must know the current state of the
-    branch before generating new code. Without this, Task 2 regenerates Task 1's
-    files, causing duplicate class definitions and build failures.
-
     C-083 (Emit-Transport-Listen): the branch state IS the signal from prior tasks.
     C-085 (Idempotency): the LLM must check existing state before acting.
+
+    RCA-fix (2026-07-29): Added two generator-level fixes:
+    1. Cross-service boundary filter — CE-internal files are excluded from BP prompts.
+       Root cause of CS0234 in WC013-02: branch context injected CE Evaluator files
+       (EvaluationContext.cs, IClaimEvaluator.cs) into BP LLM call. LLM imported their
+       namespace. Fix: filter by the task's own service directory only.
+    2. Full record/DTO signature extraction — previously capped at 30 declaration lines,
+       silently truncating multi-field records. Root cause of CS7036 (missing EmploymentContractDto
+       constructor args). Fix: capture complete record positional constructor signatures.
     """
+    # ── Service boundary map: task_prefix → which src/ subdirs are IN-SCOPE ──────
+    # Only files within the task's own service are injected as context.
+    # CE-internal files are NEVER injected into BP prompts (and vice versa).
+    _SERVICE_SCOPE: dict[str, list[str]] = {
+        "WC012": ["src/constitutional-engine/", "tests/constitutional-engine.Tests/"],
+        "WC013": ["src/business-platform/", "tests/business-platform.Tests/"],
+        "WC014": ["src/professional-runtime/", "tests/"],
+        "WC015": ["src/ai-runtime/", "tests/"],
+        "WC016": ["infrastructure/"],
+        "WC017": ["web/"],
+        "WC018": ["src/", "tests/"],  # integration — cross-service by design
+    }
+
+    task_id = os.environ.get("SPRINT_TASK_ID", "")
+    task_prefix = task_id[:5] if task_id else ""
+    allowed_prefixes = _SERVICE_SCOPE.get(task_prefix, [])  # empty = no filter
+
     try:
         # Find all code files added/modified on this branch vs main
         result = run(["git", "diff", "--name-only", "origin/main...HEAD"], check=False, capture=True)
@@ -321,6 +407,14 @@ def get_branch_context(service_dir: str = "src/constitutional-engine") -> str:
 
         branch_files = [f.strip() for f in result.stdout.splitlines() if f.strip()]
         code_files = [f for f in branch_files if f.endswith((".cs", ".py", ".ts", ".proto", ".csproj"))]
+
+        # ── Cross-service boundary filter ────────────────────────────────────────
+        if allowed_prefixes:
+            filtered = [f for f in code_files if any(f.startswith(p) for p in allowed_prefixes)]
+            excluded = len(code_files) - len(filtered)
+            if excluded:
+                print(f"  BRANCH CONTEXT: filtered {excluded} out-of-scope file(s) (service boundary {task_prefix})")
+            code_files = filtered
 
         if not code_files:
             return ""
@@ -348,23 +442,46 @@ def get_branch_context(service_dir: str = "src/constitutional-engine") -> str:
                 lines.append("")
                 continue
 
-            # For .cs source files: include namespace, class declaration, and method signatures
-            # This tells the LLM what types already exist without full file content
+            # ── Full record/DTO signature extraction (RCA-fix: CS7036 prevention) ──
+            # Previously: 30 declaration-line cap silently truncated multi-field records.
+            # Now: record and class declarations captured in full until the closing paren/brace.
             important_lines = []
+            in_record_signature = False
+            paren_depth = 0
+
             for line in content.splitlines():
                 stripped = line.strip()
+
+                # Capture full positional record constructors (multi-line)
+                if in_record_signature:
+                    important_lines.append(line)
+                    paren_depth += line.count("(") - line.count(")")
+                    if paren_depth <= 0:
+                        in_record_signature = False
+                    if len(important_lines) > 60:  # hard cap per file
+                        break
+                    continue
+
                 if any(stripped.startswith(kw) for kw in (
                     "namespace ", "public ", "internal ", "protected ", "private ",
                     "// Implements:", "// constitutional_basis:", "interface ", "record ",
                     "sealed class", "abstract class", "static class",
                 )):
                     important_lines.append(line)
-                    if len(important_lines) > 30:  # cap per file
+                    # Detect start of multi-line record/positional constructor
+                    if re.match(r".*\brecord\b.*\($", stripped) or (
+                        stripped.startswith("public sealed record") and "(" in stripped
+                        and stripped.count("(") > stripped.count(")")
+                    ):
+                        in_record_signature = True
+                        paren_depth = stripped.count("(") - stripped.count(")")
+
+                    if len(important_lines) > 60:  # raised from 30 for full DTO coverage
                         break
 
             if important_lines:
                 lines.append(f"## EXISTING (may EXTEND but not duplicate): {file_path}")
-                lines.append("\n".join(important_lines[:30]))
+                lines.append("\n".join(important_lines[:60]))
                 lines.append("")
 
         if len(lines) <= 4:  # only header, no files
@@ -2205,11 +2322,12 @@ def execute_wc013_01() -> bool:
     )
     print("  ✅ business-platform.Tests.csproj written")
 
-    # 7. Build validate
+    # 7. Build validate — D1 fix: -v minimal so CS errors appear; stdout not stderr
     build = run(["dotnet", "build", str(src_dir / "business-platform.csproj"),
-                 "--nologo", "-v", "quiet"], check=False, capture=True)
+                 "--nologo", "-v", "minimal"], check=False, capture=True)
     if build.returncode != 0:
-        print(f"  ❌ dotnet build FAILED:\n{build.stderr[:500]}")
+        build_output = (build.stdout.strip() or build.stderr.strip())[:800]
+        print(f"  ❌ dotnet build FAILED:\n{build_output}")
         return False
     print("  ✅ dotnet build PASSED")
 

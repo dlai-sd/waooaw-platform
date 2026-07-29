@@ -28,26 +28,31 @@ run_url = f"https://github.com/{REPO}/actions/runs/{RUN_ID}"
 if PLATFORM_PHASE != "IMPLEMENTATION":
     status_line  = "⏸ **Platform in SPEC phase** — implementation not authorized yet"
     action_line  = "**Your action:** Say _'Yogesh authorizes IB-009 Sprint 011 implementation'_ to start."
+    plain_english = "The robot is waiting. Platform is not in coding mode yet. No code was written and none will be written until you give the go-ahead."
     label_to_set = "sprint:waiting"
 
 elif RESULT == "SUCCESS" and PR_NUMBER:
     status_line  = f"✅ **Task complete** — PR [#{PR_NUMBER}](https://github.com/{REPO}/pull/{PR_NUMBER}) opened"
     action_line  = "**Your action:** None — the autonomous reviewer is checking the PR."
+    plain_english = f"Task done. The robot wrote the code, it builds clean, and PR #{PR_NUMBER} is open. The reviewer bot is now checking it. You don't need to do anything."
     label_to_set = "sprint:pr-open"
 
 elif RESULT == "SKIPPED" and EXISTING_PR:
     status_line  = f"⏸ **Waiting for review** — PR [#{EXISTING_PR}](https://github.com/{REPO}/pull/{EXISTING_PR}) is open"
     action_line  = "**Your action:** None — waiting for the PR reviewer to approve and merge."
+    plain_english = f"Code is already written and PR #{EXISTING_PR} is waiting for review. The robot skipped this run to avoid duplicate work. Reviewer needs to approve and merge."
     label_to_set = "sprint:waiting"
 
 elif RESULT == "HALTED" or "halt" in HALT_REASON.lower():
     status_line  = f"🔴 **Sprint halted** — {HALT_REASON or 'see logs'}"
     action_line  = f"**Your action:** Check the [run logs]({run_url}) and the FOUNDER-ACTION.md file in the repo."
+    plain_english = f"The robot stopped itself. Reason: {HALT_REASON or 'unknown — check logs'}. It will not retry until the halt flag is cleared. Check FOUNDER-ACTION.md for next steps."
     label_to_set = "sprint:halted"
 
 elif RESULT == "FAILED":
     status_line  = "❌ **Run failed** — infrastructure or code error"
     action_line  = f"**Your action:** Check the [run logs]({run_url}). If this keeps happening, tell Copilot: 'The sprint is failing, please investigate'."
+    plain_english = "Something went wrong and no code was produced. This is not a spec problem — something broke in the runner itself. Check the logs. If it keeps happening after 2 more runs, it needs manual investigation."
     label_to_set = "sprint:halted"
 
 elif RESULT == "INFRA_ERROR":
@@ -59,6 +64,7 @@ elif RESULT == "INFRA_ERROR":
         f"If this happens 3 runs in a row, tell Copilot: 'sprint is stuck on INFRA_ERROR'. "
         f"[View run logs]({run_url})"
     )
+    plain_english = "The robot hit an API time limit — not a code problem. It will automatically retry in the next scheduled run (within 2 hours). You don't need to do anything unless this happens 3 times in a row."
     label_to_set = "sprint:waiting"  # not halted — auto-retry, no human action needed
 
 elif RESULT == "PARTIAL":
@@ -71,14 +77,17 @@ elif RESULT == "PARTIAL":
             f"**Your action:** Review the [run logs]({run_url}) for the first failed task and fix runner/spec issues "
             f"before re-triggering."
         )
+        plain_english = f"The robot completed some tasks and opened PR #{PR_NUMBER}, but then hit an error. The PR has partial work. Check which task failed in the logs — fix that, then trigger the next run."
     else:
         status_line = "⚠️ **Partial execution** — no PR opened"
         action_line = f"**Your action:** Check [run logs]({run_url}) and resolve the first failed task before retry."
+        plain_english = "The robot started but failed before it could open a PR. No code was committed. Check what broke in the logs."
     label_to_set = "sprint:halted"
 
 else:
     status_line  = f"ℹ️ Status: {RESULT or 'unknown'}"
     action_line  = f"**Your action:** Check [run logs]({run_url})"
+    plain_english = f"Unknown result: {RESULT or 'nothing recorded'}. Check the logs."
     label_to_set = "sprint:waiting"
 
 comment = f"""---
@@ -88,6 +97,11 @@ comment = f"""---
 **{status_line}**
 
 {action_line}
+
+---
+**🗣️ In plain English:** {plain_english}
+
+---
 
 <details><summary>Technical details</summary>
 

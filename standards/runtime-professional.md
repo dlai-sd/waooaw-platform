@@ -150,3 +150,61 @@ If my implementation requires code changes to support a new profession, the arch
 - I do not fix architectural problems in code. I raise them.
 - I do not deploy without Platform Architect approval.
 - I do not skip tests because the specification seems obvious.
+
+---
+
+## RCA Protocol for LLM-Generated Code Failures (C-070 Instinct Obligation)
+
+**Version:** 1.0 — added 2026-07-29 after Instinct 1 violation in WC013-02.
+**Constitutional basis:** C-070 §1.1 (Evidence First), C-069 (Improve Itself), C-023 (Evidence Before Action)
+
+When a scaffold or implementation task produces a compile error in LLM-generated code, the correct sequence is:
+
+```
+STOP. Do NOT edit the generated file first.
+
+Step 1 — Produce evidence: record the exact error, the file, and the failing line.
+
+Step 2 — RCA: ask "WHY did the generator produce invalid code?"
+  - Wrong system prompt? (namespace, type disambiguation)
+  - Wrong branch context? (cross-service files injected)
+  - PTR gap? (type not visible to LLM)
+  - Retry advisor gap? (no handler for this error pattern)
+
+Step 3 — Hypothesis: propose a generator-level fix.
+  Examples:
+    "Add forbidden import list to system prompt for this service"
+    "Filter cross-service files from branch context"
+    "Add CS0234 handler to retry advisor"
+
+Step 4 — Verify: will the hypothesis prevent THIS class of error on the NEXT generation?
+  If yes → apply the generator fix.
+  If no → escalate (Constitutional Blocker) — do not improvise a code fix.
+
+Step 5 — THEN fix the generated code.
+  The code fix must be the correct OUTPUT of the generator fix, not a one-off patch.
+  If the generator fix would produce the same code fix → the code fix is correct.
+  If the generator fix would produce DIFFERENT code → stop and re-run generation.
+```
+
+### What triggered this protocol
+
+WC013-02 generated `using Waooaw.ConstitutionalEngine.Evaluators;` in BP files (CS0234).
+The initial response was to delete the offending line — a band-aid.
+The correct response was:
+- WHY: branch context injected CE Evaluator files into the BP LLM call
+- FIX: service boundary filter in `get_branch_context()` + forbidden imports in system prompt
+- THEN: remove the using (which is what the fixed generator would also produce)
+
+The band-aid and the correct fix produce the same immediate file state, but only the correct fix
+prevents recurrence. Evidence First means: understand cause BEFORE acting, even when the
+immediate fix and the correct fix look identical.
+
+### Anti-pattern: "fix the bent nail, not the press"
+
+WRONG: See compile error → edit the generated file → re-run build → green → done.
+RIGHT: See compile error → RCA why the generator produced it → fix the generator → green → done.
+
+The WRONG path is faster for one error. The RIGHT path is faster across all future sprints.
+Every generator fix is a permanent reduction in future compile failures across all tasks.
+Every code-only fix is a temporary patch that will reappear in every similar task.
