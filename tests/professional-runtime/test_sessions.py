@@ -96,7 +96,7 @@ class TestSessionLifecycle:
             async def run(self, input_data):
                 return {"session_id": input_data.get("session_id")}
         
-        handle = await mock_temporal_client.start_workflow(
+        await mock_temporal_client.start_workflow(
             MockPAASSessionWorkflow,
             id=session_id,
             task_queue="paas-task-queue",
@@ -301,7 +301,7 @@ class TestSessionLifecycle:
         
         async def session_operation():
             try:
-                handle = await mock_temporal_client.get_workflow_handle(session_id)
+                await mock_temporal_client.get_workflow_handle(session_id)
                 await asyncio.sleep(10)  # Simulate long operation
             except asyncio.CancelledError:
                 # Must re-raise, not swallow
@@ -344,7 +344,7 @@ class TestSessionEvidence:
         session_id_b = str(uuid.uuid4())
         
         # Record evidence for session A
-        evidence_a_id = str(uuid.uuid4())
+        str(uuid.uuid4())
         await mock_ce_service.RecordEvidence(
             session_id=session_id_a,
             action="action_a",
@@ -352,7 +352,7 @@ class TestSessionEvidence:
         )
         
         # Record evidence for session B
-        evidence_b_id = str(uuid.uuid4())
+        str(uuid.uuid4())
         await mock_ce_service.RecordEvidence(
             session_id=session_id_b,
             action="action_b",
