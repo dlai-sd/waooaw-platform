@@ -411,7 +411,12 @@ def complete_sprint(pr_number: int = 0, dry_run: bool = False) -> int:
         print("  WARN: no monitor-signal.json — nothing to record")
         return 0
 
-    signal    = json.loads(SIGNAL_PATH.read_text())
+    raw_signal = SIGNAL_PATH.read_text().strip()
+    if not raw_signal:
+        print("  WARN: monitor-signal.json is empty (git show wrote 0 bytes — signal not pushed to sprint branch yet)")
+        return 0
+
+    signal    = json.loads(raw_signal)
     sprint    = signal.get("sprint", "unknown")
     run_id    = signal.get("run_id") or os.environ.get("GITHUB_RUN_ID", "manual")
     result    = signal.get("overall_result", "UNKNOWN")

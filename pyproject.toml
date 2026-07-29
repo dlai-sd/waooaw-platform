@@ -47,7 +47,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S", "ANN", "LOG015"]   # Security + annotation rules + root logger relaxed in tests
+"tests/**" = ["S", "ANN", "LOG015", "G004"]   # Security + annotation + root logger + f-string logging relaxed in tests
 "scripts/**" = ["ANN"]       # CLI scripts don't need full annotations
 
 [tool.ruff.format]

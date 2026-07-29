@@ -3765,17 +3765,19 @@ def main() -> int:
     import json as _json
     signal_path.write_text(_json.dumps(_MONITOR_SIGNAL, indent=2))
     print(f"  📡 Monitor signal emitted: {signal_path}")
-    # Commit the signal to the sprint branch so complete_sprint.py can access it
-    # via 'git show BRANCH:sprint-context/monitor-signal.json' after switching to main.
-    # Previously the signal was untracked and was lost by 'git stash --include-untracked'.
+    # Commit signal to sprint branch so complete_sprint can read it via 'git show'
+    # after 'git stash + git checkout main' wipe the untracked working-tree file.
+    # Uses a fresh App token push (push_token may still be valid within the hour).
     git(["add", str(signal_path)], check=False)
     sig_diff = git(["diff", "--cached", "--quiet"], check=False)
     if sig_diff.returncode != 0:
-        git(["commit", "--no-edit", "-m",
-             f"chore(signal): emit monitor signal for {sprint} run\n\n"
-             f"Constitutional: C-069 (observable state — complete_sprint reads this via git show)"],
+        git(["commit", "-m",
+             f"chore(signal): emit monitor signal {sprint} run {os.environ.get('GITHUB_RUN_ID', 'local')}\n\n"
+             f"Constitutional: C-069 — observable state for complete_sprint step"],
             check=False)
-        git(["push", "-u", "origin", "ib/009/sprint-014"], check=False)
+        # Push using the App token (same token, still valid for the run duration)
+        _git_push_with_token(push_token, ["-f"])
+        print("  📡 Monitor signal pushed to sprint branch ✓")
     # Scalar outputs consumed directly by the monitor job
     set_output("scaffold_failed", str(scaffold_failed).lower())
     set_output("infra_error_tasks", ",".join(str(t) for t in infra_error_tasks))

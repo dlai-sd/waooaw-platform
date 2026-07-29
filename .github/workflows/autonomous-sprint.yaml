@@ -507,6 +507,8 @@ jobs:
           # and pushes it before exiting. Read it from git history — this is reliable
           # even after 'git stash' and 'git checkout main' wipe the working tree.
           SPRINT_BRANCH=$(git branch --show-current 2>/dev/null || echo "ib/009/sprint-014")
+          # Fetch sprint branch so 'git show origin/BRANCH:...' resolves correctly
+          git fetch origin "$SPRINT_BRANCH" 2>/dev/null || true
           git stash --include-untracked || true
           git checkout main
           git pull origin main --ff-only || true
