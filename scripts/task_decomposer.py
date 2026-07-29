@@ -88,6 +88,10 @@ STACK_BEHAVIORAL_RULES: dict[str, list[str]] = {
         "G004 F-STRING LOGGING (ruff): In tests, G004 is suppressed via per-file-ignores. In src/ files, "
         "NEVER use f-strings in logging calls: NOT 'logger.info(f\"val={x}\")'. "
         "USE lazy format: 'logger.info(\"val=%s\", x)'. This is both a style rule and a performance rule.",
+        "ANN401 TYPING.ANY (ruff): Avoid using 'Any' as a type annotation in src/ files. "
+        "For DB connection pools use 'asyncpg.Pool | None'. For httpx use 'httpx.AsyncClient'. "
+        "For FastAPI dependencies use the actual Pydantic model. 'Any' is acceptable ONLY if the "
+        "type genuinely cannot be specified (e.g. generic callback handlers).",
         # ── Constitutional Error Handling Standards ──────────────────────────────
         "ERROR HANDLING RULE 1: Never use bare 'except: pass' or 'except Exception: pass'. Always log: logger.error('Operation failed', exc_info=True, extra={'context': context})",
         "ERROR HANDLING RULE 2: Use specific exception types. 'except (ValueError, KeyError) as e:' not 'except Exception as e:'.",

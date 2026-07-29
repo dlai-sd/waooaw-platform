@@ -315,7 +315,11 @@ WC012-02b `CS1061: string.TryGetValue` fixed at three layers:
 ### State at Session Close
 
 ```yaml
+<<<<<<< HEAD
 sprint_status: IN_PROGRESS
+=======
+sprint_status: AUTHORIZED
+>>>>>>> origin/main
 tasks_done:
   - WC015-01
 tasks_remaining:
@@ -632,7 +636,11 @@ current_sprint: WC-015
 sprint_ib_item: IB-009
 sprint_status: IN_PROGRESS
 branch: ib/009/sprint-015
+<<<<<<< HEAD
 last_attempt_utc: 2026-07-29T17:03:00.739838+00:00
+=======
+last_attempt_utc: 2026-07-29T00:00:00.000000+00:00
+>>>>>>> origin/main
 last_attempt_result: PARTIAL
 consecutive_failures: 1
 consecutive_infra_failures: 0
