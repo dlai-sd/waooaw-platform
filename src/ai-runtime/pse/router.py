@@ -174,13 +174,14 @@ async def _record_dispatch_event(
     task_complexity: str,
     language: str | None,
     status: str,
-    error_detail: str | None = None,
+    error_detail: str | None,
 ) -> None:
     """
-    Records a provider dispatch event to institutional.provider_dispatch_events.
+    Persists one row to institutional.provider_dispatch_events.
 
-    C-059: every dispatch (success or failure) must produce an evidence record.
-    C-063: no PII written — only metadata (tier, provider, model, status).
+    C-059: Every dispatch — success or failure — must be recorded.
+    No prompt content is stored (C-063).
+    Uses async SQLAlchemy session — never synchronous (Temporal activity safe).
     """
     async with async_session_factory() as session:
         try:
@@ -200,23 +201,23 @@ async def _record_dispatch_event(
             )
             await session.commit()
         except asyncio.CancelledError:
-            await session.rollback()
             raise
-        except (ValueError, KeyError, sa_async.exc.SQLAlchemyError):
-            await session.rollback()
+        except Exception:
             logger.error(
-                "Failed to record provider dispatch event id=%s status=%s",
+                "Failed to record dispatch event id=%s tier=%s status=%s",
                 event_id,
+                tier.value,
                 status,
                 exc_info=True,
-                extra={"context": "record_dispatch_event", "event_id": event_id},
+                extra={"context": "record_dispatch_event_db_failure"},
             )
-            # C-059: log evidence of evidence-recording failure — do not re-raise
-            # so as not to mask the original dispatch result from the caller.
+            # C-059: log the failure; do not swallow silently.
+            # Re-raise so the caller can decide whether to propagate.
+            raise
 
 
 # ---------------------------------------------------------------------------
-# Public entry point
+# Primary public entry point
 # ---------------------------------------------------------------------------
 
 
@@ -227,110 +228,162 @@ async def route_and_dispatch(
     async_session_factory: sa_async.async_sessionmaker,
 ) -> dict[str, Any]:
     """
-    PSE Router — selects tier, dispatches to provider, records evidence.
+    PSE entry point — selects tier, dispatches to provider, records evidence.
 
     Args:
-        prompt:                Sanitised (PII-free) prompt text.  C-063 requires
-                               the caller to have scrubbed PII before reaching here.
-        task_complexity:       "simple" | "medium" | "complex"
-        language:              BCP-47 language code or None (e.g. "hi", "en")
-        async_session_factory: SQLAlchemy async session factory for evidence writes.
+        prompt:                Scrubbed prompt text (PII already removed per C-078).
+                               C-063: this value is NEVER logged.
+        task_complexity:       One of 'simple' | 'medium' | 'complex'.
+        language:              BCP-47 language code (e.g. 'hi', 'en') or None.
+        async_session_factory: Async SQLAlchemy session factory for evidence recording.
 
     Returns:
-        dict containing tier, provider_id, model_id, response text, and metadata.
+        Provider response dict with keys:
+            tier, provider_id, model_id, response, done, total_duration_ns,
+            dispatch_event_id.
 
     Raises:
-        NotImplementedError: MID / FRONTIER tiers not yet wired (WC015-02b).
-        httpx.RequestError / httpx.HTTPStatusError: Ollama transport failures.
+        httpx.TimeoutException: Ollama timed out (already logged).
+        httpx.HTTPStatusError:  Ollama returned non-2xx (already logged).
+        httpx.RequestError:     Ollama connection failure (already logged).
+        NotImplementedError:    MID / FRONTIER adapters not yet wired (WC015-02b).
+        Exception:              DB evidence recording failure (already logged).
+
+    Constitutional guarantees:
+        C-051 — PSE-R01/R02/R03 ensure ≥66% LOCAL/MID routing.
+        C-059 — every dispatch attempt writes an evidence record (success or failure).
+        C-063 — prompt is never logged or stored.
+        ADR-028 — provider response content is never logged.
     """
     event_id = str(uuid.uuid4())
     tier = _select_tier(task_complexity, language)
 
+    # C-059: record the attempt before dispatch so an outage never loses the event.
+    # We record optimistically; on failure we update status to 'error'.
+    # (Single-insert pattern: insert with status=dispatching, then update.)
+    # For simplicity and atomicity, we record after dispatch with final status.
+    # The event_id is generated before dispatch so it can be correlated in logs.
+
     logger.info(
-        "PSE routing decision event_id=%s tier=%s complexity=%s",
+        "PSE routing: event_id=%s tier=%s task_complexity=%s language=%s",
         event_id,
         tier.value,
         task_complexity,
-        # C-063: language code is metadata, not PII — safe to log
+        language,
     )
 
     provider_id: str
     model_id: str
     result: dict[str, Any]
+    status: str
+    error_detail: str | None = None
 
     try:
         if tier == LlmTier.LOCAL:
-            provider_id = "ollama"
-            model_id = _OLLAMA_MODEL
             result = await _dispatch_ollama(prompt)
+            provider_id = result["provider_id"]
+            model_id = result["model_id"]
+            status = "success"
 
         elif tier == LlmTier.MID:
-            _INDIC_LANGUAGES = {"hi", "mr", "te", "ta", "kn", "pa", "bn", "gu"}
-            lang_code = (language or "").strip().lower()
-            provider_id = "sarvam" if lang_code in _INDIC_LANGUAGES else "google-gemini-flash"
-            model_id = "saaras" if provider_id == "sarvam" else "gemini-2.0-flash"
             result = await _dispatch_mid(prompt, language)
+            provider_id = result["provider_id"]
+            model_id = result["model_id"]
+            status = "success"
 
         else:
-            # FRONTIER
-            provider_id = "google-gemini-pro"
-            model_id = "gemini-2.5-pro"
+            # LlmTier.FRONTIER
             result = await _dispatch_frontier(prompt)
+            provider_id = result["provider_id"]
+            model_id = result["model_id"]
+            status = "success"
 
     except asyncio.CancelledError:
-        await _record_dispatch_event(
-            async_session_factory,
-            event_id,
-            tier,
-            provider_id if "provider_id" in dir() else "unknown",
-            model_id if "model_id" in dir() else "unknown",
-            task_complexity,
-            language,
-            status="cancelled",
-            error_detail="CancelledError",
-        )
+        # C-059: record the cancellation before propagating.
+        _provider_id_for_tier = _provider_id_from_tier(tier)
+        _model_id_for_tier = _model_id_from_tier(tier)
+        try:
+            await _record_dispatch_event(
+                async_session_factory,
+                event_id,
+                tier,
+                _provider_id_for_tier,
+                _model_id_for_tier,
+                task_complexity,
+                language,
+                "cancelled",
+                "asyncio.CancelledError",
+            )
+        except Exception:
+            logger.error(
+                "Evidence recording failed during CancelledError handling event_id=%s",
+                event_id,
+                exc_info=True,
+                extra={"context": "evidence_record_on_cancel"},
+            )
         raise
 
     except NotImplementedError as exc:
-        provider_id_safe = provider_id if "provider_id" in locals() else "unknown"
-        model_id_safe = model_id if "model_id" in locals() else "unknown"
-        await _record_dispatch_event(
-            async_session_factory,
-            event_id,
-            tier,
-            provider_id_safe,
-            model_id_safe,
-            task_complexity,
-            language,
-            status="not_implemented",
-            error_detail=str(exc),
-        )
+        # Stub adapters not yet implemented — record and propagate.
+        _provider_id_for_tier = _provider_id_from_tier(tier)
+        _model_id_for_tier = _model_id_from_tier(tier)
+        error_detail = "NotImplementedError: adapter not wired"
         logger.error(
-            "Provider dispatch not implemented event_id=%s tier=%s",
-            event_id,
+            "Dispatch not implemented for tier=%s event_id=%s",
             tier.value,
+            event_id,
             exc_info=True,
-            extra={"context": "route_and_dispatch", "event_id": event_id},
+            extra={"context": "dispatch_not_implemented"},
         )
-        raise
+        try:
+            await _record_dispatch_event(
+                async_session_factory,
+                event_id,
+                tier,
+                _provider_id_for_tier,
+                _model_id_for_tier,
+                task_complexity,
+                language,
+                "not_implemented",
+                error_detail,
+            )
+        except Exception:
+            logger.error(
+                "Evidence recording failed for not_implemented event_id=%s",
+                event_id,
+                exc_info=True,
+                extra={"context": "evidence_record_on_not_implemented"},
+            )
+        raise exc
 
     except (httpx.TimeoutException, httpx.HTTPStatusError, httpx.RequestError) as exc:
-        provider_id_safe = provider_id if "provider_id" in locals() else "unknown"
-        model_id_safe = model_id if "model_id" in locals() else "unknown"
-        await _record_dispatch_event(
-            async_session_factory,
-            event_id,
-            tier,
-            provider_id_safe,
-            model_id_safe,
-            task_complexity,
-            language,
-            status="error",
-            error_detail=type(exc).__name__,
-        )
-        raise
+        # Network/provider failure — record evidence, then propagate.
+        _provider_id_for_tier = _provider_id_from_tier(tier)
+        _model_id_for_tier = _model_id_from_tier(tier)
+        error_detail = type(exc).__name__
+        status = "error"
+        try:
+            await _record_dispatch_event(
+                async_session_factory,
+                event_id,
+                tier,
+                _provider_id_for_tier,
+                _model_id_for_tier,
+                task_complexity,
+                language,
+                status,
+                error_detail,
+            )
+        except Exception:
+            logger.error(
+                "Evidence recording failed after provider error event_id=%s",
+                event_id,
+                exc_info=True,
+                extra={"context": "evidence_record_on_provider_error"},
+            )
+        raise exc
 
-    # Success path — record evidence
+    # --- Success path: record evidence ---
     await _record_dispatch_event(
         async_session_factory,
         event_id,
@@ -339,9 +392,40 @@ async def route_and_dispatch(
         model_id,
         task_complexity,
         language,
-        status="success",
-        error_detail=None,
+        status,
+        error_detail,
     )
 
-    result["event_id"] = event_id
+    result["dispatch_event_id"] = event_id
     return result
+
+
+# ---------------------------------------------------------------------------
+# Tier → provider/model name helpers (used in error branches before result exists)
+# ---------------------------------------------------------------------------
+
+
+def _provider_id_from_tier(tier: LlmTier) -> str:
+    """
+    Returns the canonical provider_id string for a given tier.
+    Used in error-handling branches where the dispatch never returned a result dict.
+    """
+    if tier == LlmTier.LOCAL:
+        return "ollama"
+    if tier == LlmTier.MID:
+        return "sarvam"
+    # FRONTIER
+    return "google-vertex"
+
+
+def _model_id_from_tier(tier: LlmTier) -> str:
+    """
+    Returns the canonical model_id string for a given tier.
+    Used in error-handling branches where the dispatch never returned a result dict.
+    """
+    if tier == LlmTier.LOCAL:
+        return _OLLAMA_MODEL
+    if tier == LlmTier.MID:
+        return "saaras"
+    # FRONTIER
+    return "gemini-2.5-pro"

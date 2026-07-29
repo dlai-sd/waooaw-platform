@@ -1,4 +1,4 @@
-# Implements: architecture/reference/components/ai-runtime.md §0 Provider Abstraction Layer,§1 LLM Gateway
+# Implements: architecture/reference/components/ai-runtime.md §7 PII Scrubber
 # constitutional_basis: C-023, C-059, C-063
 from __future__ import annotations
 
