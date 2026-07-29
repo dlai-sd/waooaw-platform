@@ -1,5 +1,5 @@
 {
-  "run_id": "30474712071",
+  "run_id": "30475834890",
   "sprint": "WC-015",
   "scaffold_task": null,
   "scaffold_failed": false,
@@ -9,34 +9,28 @@
   "file_costs": {},
   "subtask_results": {
     "WC015-02a": {
-      "result": "FAIL",
+      "result": "SUCCESS",
       "task_id": "WC015-02",
-      "error_codes": [
-        "E501"
-      ],
-      "error_text": "E501 Line too long (135 > 130)\n  --> src/ai-runtime/pii/injection_guard.py:25:131\n   |\n23 |     re.compile(r\"\\byou\\s+are\\s+now\\s+(a\\s+|an\\s+)?(different|new|unrestricted|free|jailbroken|unfiltered)\\b\", re.I),\n24 |     re.compile(r\"\\bpretend\\s+(you\\s+are|to\\s+be)\\s+(a\\s+|an\\s+)?(unrestricted|evil|una"
+      "error_codes": [],
+      "error_text": ""
     },
     "WC015-02b": {
-      "result": "SKIPPED",
+      "result": "SUCCESS",
       "task_id": "WC015-02",
       "error_codes": [],
       "error_text": ""
     },
     "WC015-03a": {
-      "result": "FAIL",
+      "result": "SUCCESS",
       "task_id": "WC015-03",
-      "error_codes": [
-        "E501"
-      ],
-      "error_text": "E501 Line too long (135 > 130)\n  --> src/ai-runtime/pii/injection_guard.py:25:131\n   |\n23 |     re.compile(r\"\\byou\\s+are\\s+now\\s+(a\\s+|an\\s+)?(different|new|unrestricted|free|jailbroken|unfiltered)\\b\", re.I),\n24 |     re.compile(r\"\\bpretend\\s+(you\\s+are|to\\s+be)\\s+(a\\s+|an\\s+)?(unrestricted|evil|una"
+      "error_codes": [],
+      "error_text": ""
     },
     "WC015-04a": {
-      "result": "FAIL",
+      "result": "SUCCESS",
       "task_id": "WC015-04",
-      "error_codes": [
-        "E501"
-      ],
-      "error_text": "E501 Line too long (135 > 130)\n  --> src/ai-runtime/pii/injection_guard.py:25:131\n   |\n23 |     re.compile(r\"\\byou\\s+are\\s+now\\s+(a\\s+|an\\s+)?(different|new|unrestricted|free|jailbroken|unfiltered)\\b\", re.I),\n24 |     re.compile(r\"\\bpretend\\s+(you\\s+are|to\\s+be)\\s+(a\\s+|an\\s+)?(unrestricted|evil|una"
+      "error_codes": [],
+      "error_text": ""
     },
     "WC015-05a": {
       "result": "FAIL",
@@ -45,7 +39,11 @@
       "error_text": ""
     }
   },
-  "tasks_done": [],
+  "tasks_done": [
+    "WC015-02",
+    "WC015-03",
+    "WC015-04"
+  ],
   "tasks_requested": [
     "WC015-02",
     "WC015-03",
