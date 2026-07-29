@@ -1274,6 +1274,31 @@ def diagnose_build_error(
     # ── Rules 10-14: Multi-stack classifiers (WC013-022) ─────────────────────
     # Python/Temporal/Vertex AI/Terraform/TypeScript — added for future sprints
 
+    # ── Rule 10b: CS0019 — CE gRPC enum type confusion (ValidationDecision vs PolicyDecision) ──
+    # RCA-fix (2026-07-29): LLM compared ValidateActionResponse.Decision (ValidationDecision)
+    # against PolicyDecision.* (different enum, different RPC).
+    if "CS0019" in error_codes and (
+        "ValidationDecision" in build_error and "PolicyDecision" in build_error
+    ):
+        fix = (
+            "CE gRPC ENUM TYPE MISMATCH (CS0019): ValidateActionResponse.Decision is "
+            "ValidationDecision, NOT PolicyDecision.\n"
+            "CORRECT: ceResponse.Decision != ValidationDecision.Allow\n"
+            "WRONG:   ceResponse.Decision != PolicyDecision.Permit   \u2190 CS0019\n"
+            "WRONG:   ceResponse.Decision != PolicyDecision.Allow    \u2190 CS0019 (type mismatch)\n"
+            "Replace ALL PolicyDecision.* comparisons on ValidateActionResponse.Decision "
+            "with ValidationDecision.Allow / ValidationDecision.Deny.\n"
+            "PolicyDecision is used on EvaluatePolicyResponse.Decision only (different RPC)."
+        )
+        print(f"  Retry Advisor: CS0019 ValidationDecision/PolicyDecision CE gRPC enum mismatch (confidence=97%)")
+        return RetryDiagnosis(
+            error_type="WRONG_ENUM_TYPE",
+            fix_instruction=fix,
+            should_retry=True,
+            confidence=0.97,
+            constitutional_trace="C-082 (Build Validation), ADR-001 (gRPC \u2014 use proto-generated types correctly)",
+        )
+
     diagnosis = _classify_python_import_error(build_error)
     if diagnosis:
         print(f"  Retry Advisor: Python import error → {diagnosis.error_type} (confidence={diagnosis.confidence:.0%})")

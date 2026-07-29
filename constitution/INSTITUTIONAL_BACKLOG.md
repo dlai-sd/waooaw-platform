@@ -952,4 +952,5 @@ When this IB is authorized and completed:
 | IB-020 | Zero-Cost Dev Agent ADR-030 | EA + PIT Expert | P0-parallel | Pre-impl | WAITING |
 | IB-021 | Dependency Graph Task Decomposition | EA + PIT Expert | P0 | Pre-WC012-03 | AUTHORIZED |
 | IB-022 | WC-Spec-Driven Runner (Option B) | EA + PIT Expert | P1 | Post-WC012 | PLANNED |
+| IB-023 | PTR v3: Service Boundary Schema | EA + PIT Expert | P1 | Post-WC013 | PLANNED |
 

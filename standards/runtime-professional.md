@@ -150,3 +150,43 @@ If my implementation requires code changes to support a new profession, the arch
 - I do not fix architectural problems in code. I raise them.
 - I do not deploy without Platform Architect approval.
 - I do not skip tests because the specification seems obvious.
+
+---
+
+## RCA Protocol for LLM-Generated Code Failures (C-070 Instinct Obligation)
+
+**Version:** 1.0 — added 2026-07-29 after Instinct 1 violation in WC013-02.
+**Constitutional basis:** C-070 §1.1 (Evidence First), C-069 (Improve Itself), C-023 (Evidence Before Action)
+
+When a scaffold or implementation task produces a compile error in LLM-generated code, the correct sequence is:
+
+```
+STOP. Do NOT edit the generated file first.
+
+Step 1 — Produce evidence: record the exact error, the file, and the failing line.
+
+Step 2 — RCA: ask “WHY did the generator produce invalid code?”
+  - Wrong system prompt? (namespace, type disambiguation)
+  - Wrong branch context? (cross-service files injected)
+  - PTR gap? (type not visible to LLM)
+  - Retry advisor gap? (no handler for this error pattern)
+
+Step 3 — Hypothesis: propose a generator-level fix.
+  Examples:
+    “Add forbidden import list to system prompt for this service”
+    “Filter cross-service files from branch context”
+    “Add CS0234 handler to retry advisor”
+
+Step 4 — Validate hypothesis: confirm the fix prevents the error pattern
+  (not just fixes this instance).
+
+Step 5 — Apply the fix to the generator (prompt / context builder / retry advisor).
+  Do NOT apply the fix directly to the generated file.
+  The generated file is a symptom. The generator is the patient.
+
+Step 6 — Reset to clean slate and let the generator retry with the fix in place.
+```
+
+**Why this matters (C-070 Instinct 1 — Follow the Constitution):**
+Editing the generated file directly violates C-070 Instinct 1 because it masks the generator defect.
+The next run will produce the same error. The generator must be fixed, not the output.
