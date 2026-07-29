@@ -85,6 +85,9 @@ STACK_BEHAVIORAL_RULES: dict[str, list[str]] = {
         "as a statement — no standalone variable names ('session'), no bare type annotations ('WorkflowHandle'), "
         "no standalone strings outside docstring position. Every statement must be an assignment, function call, "
         "return, yield, raise, import, assert, del, or control flow. B018 will block the compile gate.",
+        "G004 F-STRING LOGGING (ruff): In tests, G004 is suppressed via per-file-ignores. In src/ files, "
+        "NEVER use f-strings in logging calls: NOT 'logger.info(f\"val={x}\")'. "
+        "USE lazy format: 'logger.info(\"val=%s\", x)'. This is both a style rule and a performance rule.",
         # ── Constitutional Error Handling Standards ──────────────────────────────
         "ERROR HANDLING RULE 1: Never use bare 'except: pass' or 'except Exception: pass'. Always log: logger.error('Operation failed', exc_info=True, extra={'context': context})",
         "ERROR HANDLING RULE 2: Use specific exception types. 'except (ValueError, KeyError) as e:' not 'except Exception as e:'.",
