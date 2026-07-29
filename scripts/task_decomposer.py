@@ -81,6 +81,10 @@ STACK_BEHAVIORAL_RULES: dict[str, list[str]] = {
         "LOG015 ROOT LOGGER (ruff): In tests, pyproject.toml ignores LOG015 via per-file-ignores. "
         "But in src/ files, NEVER call 'logging.info(...)' / 'logging.error(...)' directly on the root logger. "
         "Always: 'logger = logging.getLogger(__name__)' at module level, then 'logger.info(...)'.",
+        "B018 USELESS EXPRESSION (ruff): Every line of code must DO something. Never write a bare expression "
+        "as a statement — no standalone variable names ('session'), no bare type annotations ('WorkflowHandle'), "
+        "no standalone strings outside docstring position. Every statement must be an assignment, function call, "
+        "return, yield, raise, import, assert, del, or control flow. B018 will block the compile gate.",
         # ── Constitutional Error Handling Standards ──────────────────────────────
         "ERROR HANDLING RULE 1: Never use bare 'except: pass' or 'except Exception: pass'. Always log: logger.error('Operation failed', exc_info=True, extra={'context': context})",
         "ERROR HANDLING RULE 2: Use specific exception types. 'except (ValueError, KeyError) as e:' not 'except Exception as e:'.",
