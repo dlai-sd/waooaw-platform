@@ -418,11 +418,9 @@ jobs:
           git checkout main
           python3 scripts/sprint_state.py set autonomous_halt true
           git add constitution/PROJECT_STATE.md
-          git diff --cached --quiet || git commit -m "chore(pm): halt autonomous sprint — scaffold failed, requires human fix
-
-IB: IB-009
-Constitutional: C-001 (Human Override — autonomous halt after scaffold failure)
-C-084 (scaffold failure stops downstream tasks)"
+          git diff --cached --quiet || git commit -m "chore(pm): halt autonomous sprint — scaffold failed, requires human fix" \
+            -m "IB: IB-009" \
+            -m "Constitutional: C-001 (Human Override) C-084 (scaffold failure stops downstream tasks)"
           git push origin main
           echo "  ✅ autonomous_halt=true written to main — next cron run will skip until Founder clears"
 
