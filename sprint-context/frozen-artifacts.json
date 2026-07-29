@@ -188,5 +188,27 @@
       "TenantIsolationMiddlewareExtensions"
     ],
     "enum_values": {}
+  },
+  "tests/business-platform.Tests/Infrastructure/CCT_MT01_TenantIsolationTests.cs": {
+    "frozen_at_task": "WC013-02b",
+    "namespace": "Waooaw.BusinessPlatform.Tests.Infrastructure",
+    "public_constructors": [
+      "TenantIsolationWebApplicationFactory factory",
+      "IOptionsMonitor<TestAuthHandlerOptions> options, ILoggerFactory logger, UrlEncoder encoder"
+    ],
+    "public_methods": [
+      "CCT_MT01_01_Unauthenticated_Employment_List_Returns401",
+      "CCT_MT01_02_Unauthenticated_Approvals_Returns401",
+      "CCT_MT01_03_Unauthenticated_Evidence_Returns401",
+      "CCT_MT01_04_Unauthenticated_Authority_Returns401",
+      "CCT_MT01_05_TenantA_CannotRead_TenantB_Contract",
+      "CCT_MT01_06_TenantA_Employment_List_NeverContains_TenantB_Data",
+      "CCT_MT01_07_TenantA_CannotRead_TenantB_Approval",
+      "CCT_MT01_08_TenantA_Approvals_List_NeverContains_TenantB_Data"
+    ],
+    "public_properties": [
+      "Claims"
+    ],
+    "enum_values": {}
   }
 }
