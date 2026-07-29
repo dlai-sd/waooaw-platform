@@ -74,6 +74,10 @@ STACK_BEHAVIORAL_RULES: dict[str, list[str]] = {
         "do NOT use 'from src.professional_runtime.main import app' — hyphen dirs are not importable. "
         "Instead add 'sys.path.insert(0, str(Path(__file__).parent.parent.parent / 'src' / 'professional-runtime'))' "
         "then 'from main import app'.",
+        "F841 UNUSED VARIABLE (ruff): When calling an endpoint in tests and the return value is not asserted, "
+        "use either: (1) 'response = client.post(...)' and then 'assert response.status_code == 200', or "
+        "(2) prefix with underscore: '_response = client.post(...)'. NEVER assign to a plain name like "
+        "'handle = ...' or 'result = ...' without using the variable — ruff F841 will block the compile gate.",
         # ── Constitutional Error Handling Standards ──────────────────────────────
         "ERROR HANDLING RULE 1: Never use bare 'except: pass' or 'except Exception: pass'. Always log: logger.error('Operation failed', exc_info=True, extra={'context': context})",
         "ERROR HANDLING RULE 2: Use specific exception types. 'except (ValueError, KeyError) as e:' not 'except Exception as e:'.",
@@ -362,8 +366,10 @@ def run_compile_gate(gate_type: str, service_dir: str = "src/constitutional-engi
 
     if gate_type == "ruff":
         # Auto-fix all fixable issues first (whitespace, import sorting, unused imports).
+        # --unsafe-fixes enables ruff to rename unused variables (F841: `handle` → `_handle`)
+        # and other semantic-safe transformations that are disabled in the default safe mode.
         subprocess.run(
-            ["python3", "-m", "ruff", "check", service_dir, "--fix", "--exit-zero"],
+            ["python3", "-m", "ruff", "check", service_dir, "--fix", "--unsafe-fixes", "--exit-zero"],
             capture_output=True, text=True, cwd=REPO_ROOT
         )
         result = subprocess.run(

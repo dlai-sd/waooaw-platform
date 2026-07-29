@@ -199,6 +199,7 @@ sprint: WC-014
 sprint_status: IN_PROGRESS
 task_id: WC013-01
 tasks_done:
+  - WC014-01
   - WC014-02
   - WC014-04
 tasks_remaining:
@@ -206,7 +207,11 @@ tasks_remaining:
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 consecutive_failures: 2
+=======
+consecutive_failures: 2
+>>>>>>> origin/main
 =======
 consecutive_failures: 2
 >>>>>>> origin/main
@@ -662,6 +667,7 @@ branch: ib/009/sprint-014
 last_attempt_utc: 2026-07-29T13:25:19.414868+00:00
 last_attempt_result: PARTIAL
 consecutive_failures: 2
+<<<<<<< HEAD
 =======
 last_attempt_utc: 2026-07-29T13:25:19.414868+00:00
 last_attempt_result: PARTIAL
@@ -676,9 +682,12 @@ consecutive_failures: 2
 last_attempt_utc: 2026-07-29T13:25:19.414868+00:00
 last_attempt_result: PARTIAL
 consecutive_failures: 2
+>>>>>>> origin/main
+=======
 >>>>>>> origin/main
 consecutive_infra_failures: 0
 tasks_done:
+  - WC014-01
   - WC014-02
   - WC014-04
 tasks_remaining:
