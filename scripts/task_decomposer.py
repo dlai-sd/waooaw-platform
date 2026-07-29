@@ -65,6 +65,9 @@ STACK_BEHAVIORAL_RULES: dict[str, list[str]] = {
         "Every FastAPI endpoint must call CE.ValidateAction before execution (C-023).",
         "PII must not appear in any log statement (C-063).",
         "C-059 header required: # Implements: <spec> and # constitutional_basis: <claims>.",
+        "TEMPORAL IMPORT (mandatory): 'from temporalio import activity, workflow' — "
+        "NOT 'import temporal', NOT 'from temporal import', NOT 'temporalio.client' at top level. "
+        "Client: 'from temporalio.client import Client'. Worker: 'from temporalio.worker import Worker'.",
         # ── Constitutional Error Handling Standards ──────────────────────────────
         "ERROR HANDLING RULE 1: Never use bare 'except: pass' or 'except Exception: pass'. Always log: logger.error('Operation failed', exc_info=True, extra={'context': context})",
         "ERROR HANDLING RULE 2: Use specific exception types. 'except (ValueError, KeyError) as e:' not 'except Exception as e:'.",
