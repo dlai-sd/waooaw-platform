@@ -3,15 +3,13 @@
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
 import uuid
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from fastapi.testclient import TestClient
-from temporalio.client import Client, WorkflowHandle
+from temporalio.client import WorkflowHandle
 
 # Assume the main application is importable from src
 # Adjust import paths based on actual project structure
@@ -275,7 +273,7 @@ class TestSessionLifecycle:
             try:
                 # Simulate a validation error
                 await mock_temporal_client.get_workflow_handle(session_id)
-            except (ValueError, KeyError) as e:
+            except (ValueError, KeyError):
                 logging.error(
                     "Session initialization failed",
                     exc_info=True,
@@ -308,7 +306,7 @@ class TestSessionLifecycle:
             except asyncio.CancelledError:
                 # Must re-raise, not swallow
                 raise
-            except (ValueError, KeyError) as e:
+            except (ValueError, KeyError):
                 logging.error("Session operation failed", exc_info=True)
                 raise
         

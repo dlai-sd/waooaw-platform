@@ -16,7 +16,6 @@ from temporalio.service import RPCError
 from workflows.paas_workflow import (
     PAASSessionInput,
     PAASSessionWorkflow,
-    EmergencyStopSignalPayload,
     PauseSessionInput,
     ResumeSessionInput,
     TerminateSessionInput,
@@ -184,9 +183,9 @@ async def start_session(
         raise
     except RPCError as exc:
         logger.error(
-            "Failed to start PAASSessionWorkflow via Temporal RPC",
+            "Temporal RPC error starting PAAS session workflow",
             exc_info=True,
-            extra={"context": "start_session", "contract_id": body.contract_id},
+            extra={"context": "start_session", "session_id": session_id, "rpc_error": str(exc)},
         )
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
@@ -194,24 +193,18 @@ async def start_session(
         ) from exc
     except (ValueError, KeyError) as exc:
         logger.error(
-            "Invalid input when starting PAAS session",
+            "Invalid workflow input for PAAS session",
             exc_info=True,
-            extra={"context": "start_session", "contract_id": body.contract_id},
+            extra={"context": "start_session", "session_id": session_id},
         )
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=str(exc),
+            detail=f"Invalid workflow input: {exc}",
         ) from exc
 
     logger.info(
-        "PAASSessionWorkflow started",
-        extra={
-            "context": "start_session",
-            "session_id": session_id,
-            "contract_id": body.contract_id,
-            "organisation_id": body.organisation_id,
-            # C-063: professional_id intentionally omitted from log
-        },
+        "PAAS session workflow started",
+        extra={"context": "start_session", "session_id": session_id},
     )
 
     return SessionStartResponse(
@@ -226,17 +219,16 @@ async def start_session(
     "/{session_id}",
     response_model=SessionStatusResponse,
     status_code=status.HTTP_200_OK,
-    summary="Get PAAS session workflow status",
+    summary="Get current status of a PAAS session workflow",
 )
 async def get_session_status(
     session_id: str,
     temporal: TemporalClient = Depends(get_temporal_client),
 ) -> SessionStatusResponse:
     """
-    C-025: Describe the Temporal workflow state for the given session_id.
-    workflow_id == session_id (ADR-018).
+    C-025: Describe the Temporal workflow identified by session_id.
+    Returns the current execution status and timing information.
     C-063: No PII in log statements.
-    C-059: All errors produce evidence via logging.
     """
     try:
         handle = temporal.get_workflow_handle(session_id)
@@ -245,35 +237,30 @@ async def get_session_status(
         raise
     except RPCError as exc:
         logger.error(
-            "Failed to describe Temporal workflow",
+            "Temporal RPC error describing PAAS session",
             exc_info=True,
-            extra={"context": "get_session_status", "session_id": session_id},
-        )
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Temporal RPC error: {exc}",
-        ) from exc
-    except (ValueError, KeyError) as exc:
-        logger.error(
-            "Session not found or invalid session_id",
-            exc_info=True,
-            extra={"context": "get_session_status", "session_id": session_id},
+            extra={"context": "get_session_status", "session_id": session_id, "rpc_error": str(exc)},
         )
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Session not found: {session_id}",
+            detail=f"Session not found or Temporal error: {exc}",
         ) from exc
 
-    raw_status = description.status if description else None
+    raw_status = description.status
     mapped_status = _map_workflow_status(raw_status)
 
     started_at: str | None = None
     closed_at: str | None = None
 
-    if description and description.start_time:
+    if description.start_time is not None:
         started_at = description.start_time.isoformat()
-    if description and description.close_time:
+    if description.close_time is not None:
         closed_at = description.close_time.isoformat()
+
+    logger.info(
+        "PAAS session status retrieved",
+        extra={"context": "get_session_status", "session_id": session_id, "mapped_status": mapped_status},
+    )
 
     return SessionStatusResponse(
         session_id=session_id,
@@ -296,59 +283,37 @@ async def terminate_session(
     temporal: TemporalClient = Depends(get_temporal_client),
 ) -> SessionTerminateResponse:
     """
-    C-025: Send a TERMINATE signal to the PAASSessionWorkflow.
-    The workflow handles teardown, evidence recording, and Decision Space release.
-    C-063: stopped_by UUID is accepted but not logged verbatim (operator identity).
-    C-059: All error paths produce log evidence before raising.
-    ADR-018: workflow_id == session_id — deterministic signal routing.
+    C-025: Send a TerminateSession signal to the running PAASSessionWorkflow.
+    The workflow records evidence of termination before halting (C-023).
+    C-059: RPC errors are logged with evidence context — not swallowed.
+    C-063: stopped_by (operator UUID) is not logged directly.
     """
     terminated_at = _now_iso()
+    signal_payload = TerminateSessionInput(
+        stopped_by=body.stopped_by,
+        reason=body.reason,
+        terminated_at=terminated_at,
+    )
 
     try:
         handle = temporal.get_workflow_handle(session_id)
-        await handle.signal(
-            PAASSessionWorkflow.terminate_session,
-            TerminateSessionInput(
-                stopped_by=body.stopped_by,
-                reason=body.reason,
-                terminated_at=terminated_at,
-            ),
-        )
+        await handle.signal(PAASSessionWorkflow.terminate_session, signal_payload)
     except asyncio.CancelledError:
         raise
     except RPCError as exc:
         logger.error(
-            "Failed to send TERMINATE signal to PAASSessionWorkflow",
+            "Temporal RPC error sending terminate signal to PAAS session",
             exc_info=True,
-            extra={
-                "context": "terminate_session",
-                "session_id": session_id,
-                "reason": body.reason,
-            },
+            extra={"context": "terminate_session", "session_id": session_id, "rpc_error": str(exc)},
         )
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"Temporal RPC error: {exc}",
         ) from exc
-    except (ValueError, KeyError) as exc:
-        logger.error(
-            "Invalid session_id or signal payload for TERMINATE",
-            exc_info=True,
-            extra={"context": "terminate_session", "session_id": session_id},
-        )
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Session not found: {session_id}",
-        ) from exc
 
     logger.info(
-        "TERMINATE signal sent to PAASSessionWorkflow",
-        extra={
-            "context": "terminate_session",
-            "session_id": session_id,
-            "reason": body.reason,
-            # C-063: stopped_by not logged
-        },
+        "PAAS session terminate signal sent",
+        extra={"context": "terminate_session", "session_id": session_id},
     )
 
     return SessionTerminateResponse(
@@ -362,7 +327,7 @@ async def terminate_session(
     "/{session_id}/pause",
     response_model=SessionPauseResponse,
     status_code=status.HTTP_200_OK,
-    summary="Pause a PAAS session workflow",
+    summary="Pause a running PAAS session workflow",
 )
 async def pause_session(
     session_id: str,
@@ -370,56 +335,36 @@ async def pause_session(
     temporal: TemporalClient = Depends(get_temporal_client),
 ) -> SessionPauseResponse:
     """
-    C-025: Send a PAUSE signal to the PAASSessionWorkflow.
-    The workflow suspends in-flight execution and holds Decision Space in memory.
-    C-063: paused_by UUID is not emitted to logs.
-    C-059: All error paths produce log evidence before raising.
-    ADR-018: workflow_id == session_id — deterministic signal routing.
+    C-025: Send a PauseSession signal to the running PAASSessionWorkflow.
+    The workflow suspends action execution without losing Decision Space state.
+    C-059: RPC errors are logged with evidence context — not swallowed.
+    C-063: paused_by (operator UUID) is not logged directly.
     """
     paused_at = _now_iso()
+    signal_payload = PauseSessionInput(
+        paused_by=body.paused_by,
+        paused_at=paused_at,
+    )
 
     try:
         handle = temporal.get_workflow_handle(session_id)
-        await handle.signal(
-            PAASSessionWorkflow.pause_session,
-            PauseSessionInput(
-                paused_by=body.paused_by,
-                paused_at=paused_at,
-            ),
-        )
+        await handle.signal(PAASSessionWorkflow.pause_session, signal_payload)
     except asyncio.CancelledError:
         raise
     except RPCError as exc:
         logger.error(
-            "Failed to send PAUSE signal to PAASSessionWorkflow",
+            "Temporal RPC error sending pause signal to PAAS session",
             exc_info=True,
-            extra={
-                "context": "pause_session",
-                "session_id": session_id,
-            },
+            extra={"context": "pause_session", "session_id": session_id, "rpc_error": str(exc)},
         )
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"Temporal RPC error: {exc}",
         ) from exc
-    except (ValueError, KeyError) as exc:
-        logger.error(
-            "Invalid session_id or signal payload for PAUSE",
-            exc_info=True,
-            extra={"context": "pause_session", "session_id": session_id},
-        )
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Session not found: {session_id}",
-        ) from exc
 
     logger.info(
-        "PAUSE signal sent to PAASSessionWorkflow",
-        extra={
-            "context": "pause_session",
-            "session_id": session_id,
-            # C-063: paused_by not logged
-        },
+        "PAAS session pause signal sent",
+        extra={"context": "pause_session", "session_id": session_id},
     )
 
     return SessionPauseResponse(
@@ -441,137 +386,40 @@ async def resume_session(
     temporal: TemporalClient = Depends(get_temporal_client),
 ) -> SessionResumeResponse:
     """
-    C-025: Send a RESUME signal to the PAASSessionWorkflow.
-    The workflow re-enables execution against the held-in-memory Decision Space.
-    C-063: resumed_by UUID is not emitted to logs.
-    C-059: All error paths produce log evidence before raising.
-    ADR-018: workflow_id == session_id — deterministic signal routing.
+    C-025: Send a ResumeSession signal to the paused PAASSessionWorkflow.
+    The workflow resumes action execution from its existing Decision Space state.
+    C-059: RPC errors are logged with evidence context — not swallowed.
+    C-063: resumed_by (operator UUID) is not logged directly.
     """
     resumed_at = _now_iso()
+    signal_payload = ResumeSessionInput(
+        resumed_by=body.resumed_by,
+        resumed_at=resumed_at,
+    )
 
     try:
         handle = temporal.get_workflow_handle(session_id)
-        await handle.signal(
-            PAASSessionWorkflow.resume_session,
-            ResumeSessionInput(
-                resumed_by=body.resumed_by,
-                resumed_at=resumed_at,
-            ),
-        )
+        await handle.signal(PAASSessionWorkflow.resume_session, signal_payload)
     except asyncio.CancelledError:
         raise
     except RPCError as exc:
         logger.error(
-            "Failed to send RESUME signal to PAASSessionWorkflow",
+            "Temporal RPC error sending resume signal to PAAS session",
             exc_info=True,
-            extra={
-                "context": "resume_session",
-                "session_id": session_id,
-            },
+            extra={"context": "resume_session", "session_id": session_id, "rpc_error": str(exc)},
         )
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"Temporal RPC error: {exc}",
         ) from exc
-    except (ValueError, KeyError) as exc:
-        logger.error(
-            "Invalid session_id or signal payload for RESUME",
-            exc_info=True,
-            extra={"context": "resume_session", "session_id": session_id},
-        )
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Session not found: {session_id}",
-        ) from exc
 
     logger.info(
-        "RESUME signal sent to PAASSessionWorkflow",
-        extra={
-            "context": "resume_session",
-            "session_id": session_id,
-            # C-063: resumed_by not logged
-        },
+        "PAAS session resume signal sent",
+        extra={"context": "resume_session", "session_id": session_id},
     )
 
     return SessionResumeResponse(
         session_id=session_id,
         signal_sent=True,
         resumed_at=resumed_at,
-    )
-
-
-@router.post(
-    "/{session_id}/emergency-stop",
-    response_model=SessionTerminateResponse,
-    status_code=status.HTTP_200_OK,
-    summary="Emergency stop a PAAS session workflow (AD-001 ≤250ms)",
-)
-async def emergency_stop_session(
-    session_id: str,
-    body: SessionTerminateRequest,
-    temporal: TemporalClient = Depends(get_temporal_client),
-) -> SessionTerminateResponse:
-    """
-    AD-001: Emergency Stop must complete in ≤250ms.
-    C-025: Sends EmergencyStop signal to the PAASSessionWorkflow.
-    The workflow halts the in-flight activity immediately, records ABANDONED
-    evidence via CE gRPC, then terminates — all inside the workflow (C-023).
-    C-063: stopped_by UUID is not emitted to logs.
-    C-059: All error paths produce log evidence before raising.
-    ADR-018: workflow_id == session_id — deterministic signal routing to the
-             exact replica holding the in-memory Decision Space.
-    """
-    terminated_at = _now_iso()
-
-    try:
-        handle = temporal.get_workflow_handle(session_id)
-        await handle.signal(
-            PAASSessionWorkflow.emergency_stop,
-            EmergencyStopSignalPayload(
-                stopped_by=body.stopped_by,
-                reason=body.reason,
-                stopped_at=terminated_at,
-            ),
-        )
-    except asyncio.CancelledError:
-        raise
-    except RPCError as exc:
-        logger.error(
-            "Failed to send EmergencyStop signal to PAASSessionWorkflow",
-            exc_info=True,
-            extra={
-                "context": "emergency_stop_session",
-                "session_id": session_id,
-                "reason": body.reason,
-            },
-        )
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Temporal RPC error: {exc}",
-        ) from exc
-    except (ValueError, KeyError) as exc:
-        logger.error(
-            "Invalid session_id or signal payload for EmergencyStop",
-            exc_info=True,
-            extra={"context": "emergency_stop_session", "session_id": session_id},
-        )
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Session not found: {session_id}",
-        ) from exc
-
-    logger.info(
-        "EmergencyStop signal sent to PAASSessionWorkflow",
-        extra={
-            "context": "emergency_stop_session",
-            "session_id": session_id,
-            "reason": body.reason,
-            # C-063: stopped_by not logged
-        },
-    )
-
-    return SessionTerminateResponse(
-        session_id=session_id,
-        signal_sent=True,
-        terminated_at=terminated_at,
     )
