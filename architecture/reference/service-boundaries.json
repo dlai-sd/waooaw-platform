@@ -1,0 +1,56 @@
+{
+  "_comment": "Machine-readable service boundary definitions. Maintained by Enterprise Architect when architecture changes. Read by autonomous_sprint_runner.py to inject cross-service constraints into LLM prompts. Replaces hardcoded FORBIDDEN IMPORTS in _EXPERT_DOTNET. Constitutional basis: ADR-001 (gRPC for CE), C-059 (Traceability).",
+  "_owner": "Enterprise Architect (INST-004)",
+  "_replaces": "Hardcoded forbidden-imports in _EXPERT_DOTNET system prompt (TEMPORARY until IB-PTR-v3 is implemented)",
+  "_next_step": "IB-PTR-v3: migrate this file into PTR assembler with service_owner + accessible_from fields extracted from compiled source",
+
+  "services": {
+    "constitutional-engine": {
+      "src_path": "src/constitutional-engine/",
+      "internal_namespaces": [
+        "Waooaw.ConstitutionalEngine.Evaluators",
+        "Waooaw.ConstitutionalEngine.Data",
+        "Waooaw.ConstitutionalEngine.Data.Entities",
+        "Waooaw.ConstitutionalEngine.Services",
+        "Waooaw.ConstitutionalEngine.EmergencyStop"
+      ],
+      "public_namespaces": [
+        "Waooaw.ConstitutionalEngine.Grpc"
+      ],
+      "grpc_decision_types": {
+        "ValidateActionResponse.Decision": "ValidationDecision",
+        "EvaluatePolicyResponse.Decision": "PolicyDecision",
+        "ValidationDecision.allow_value": "ValidationDecision.Allow",
+        "PolicyDecision.allow_value": "PolicyDecision.Permit"
+      }
+    },
+    "business-platform": {
+      "src_path": "src/business-platform/",
+      "internal_namespaces": [
+        "Waooaw.BusinessPlatform.Infrastructure"
+      ],
+      "public_namespaces": [
+        "Waooaw.BusinessPlatform.Controllers",
+        "Waooaw.BusinessPlatform.Services"
+      ]
+    },
+    "professional-runtime": {
+      "src_path": "src/professional-runtime/",
+      "internal_namespaces": [],
+      "public_namespaces": []
+    },
+    "ai-runtime": {
+      "src_path": "src/ai-runtime/",
+      "internal_namespaces": [],
+      "public_namespaces": []
+    }
+  },
+
+  "task_service_map": {
+    "WC012": "constitutional-engine",
+    "WC013": "business-platform",
+    "WC014": "professional-runtime",
+    "WC015": "ai-runtime",
+    "WC018": null
+  }
+}

@@ -168,14 +168,6 @@ Proto-generated gRPC types — using Waooaw.ConstitutionalEngine.Grpc;
   TriggerEmergencyStopRequest/Response, ConstitutionalService.ConstitutionalServiceBase
   ⛔ NEVER: Waooaw.ConstitutionalEngine.Protos (does not exist)
 
-## CE gRPC DECISION TYPE DISAMBIGUATION (CS0019 prevention)
-ValidateActionResponse.Decision is ValidationDecision (NOT PolicyDecision).
-  ValidationDecision.Allow     — action is within Decision Space → proceed
-  ValidationDecision.Deny      — action is outside Decision Space → halt
-  ValidationDecision.Unspecified — default (0) — treat as Deny
-EvaluatePolicyResponse.Decision is PolicyDecision (different type, different RPC).
-NEVER compare ValidateActionResponse.Decision against PolicyDecision.* — CS0019.
-
 gRPC Core:    using Grpc.Core;                              → ServerCallContext
 EF Core:      using Microsoft.EntityFrameworkCore;          → DbContext, DbSet<T>
 DI:           using Microsoft.Extensions.DependencyInjection; → IServiceCollection
@@ -189,15 +181,7 @@ Project namespaces:
   Waooaw.ConstitutionalEngine.Evaluators   (IClaimEvaluator, EvaluatorRegistry, evaluators)
   Waooaw.ConstitutionalEngine.Data         (ConstitutionalDbContext)
   Waooaw.ConstitutionalEngine.Data.Entities (EvidenceRecord, EmergencyStopEvent)
-
-## CROSS-SERVICE BOUNDARY — BUSINESS PLATFORM (WC013) ONLY
-  ⛔ FORBIDDEN in src/business-platform/**:
-     using Waooaw.ConstitutionalEngine.Evaluators;   ← CE-INTERNAL — CS0234 if referenced from BP
-     using Waooaw.ConstitutionalEngine.Data;          ← CE-INTERNAL — CS0234 if referenced from BP
-     using Waooaw.ConstitutionalEngine.Services;      ← CE-INTERNAL — CS0234 if referenced from BP
-  BP communicates with CE ONLY through gRPC (Waooaw.ConstitutionalEngine.Grpc).
-  Evaluator types, DbContext, and service implementations are CE-internal.
-  If you see these in BRANCH CONTEXT for BP tasks: they are CE files — do NOT import them."""
+"""
 
 _EXPERT_PYTHON = """
 ## EXPERT IDENTITY — Python 3.12 / async
@@ -306,12 +290,76 @@ _TASK_STACK_MAP: dict[str, str] = {
     "WC018": "dotnet",   # Integration tests
 }
 
+# ── Data-driven service boundary context ─────────────────────────────────────
+# Replaces hardcoded FORBIDDEN IMPORTS + CE gRPC disambiguation text.
+# Source of truth: architecture/reference/service-boundaries.json (EA-maintained).
+# TEMPORARY scaffold: injected as prompt text until IB-PTR-v3 embeds this into
+# the PTR assembler with service_owner + accessible_from fields.
+_SERVICE_BOUNDARIES_FILE = REPO_ROOT / "architecture" / "reference" / "service-boundaries.json"
+
+def _load_service_boundary_context(task_id: str) -> str:
+    """
+    Reads service-boundaries.json and returns task-specific cross-service
+    constraint text to append to the system prompt.
+    Returns empty string if the file is absent or the task has no constraints.
+    """
+    try:
+        boundaries = json.loads(_SERVICE_BOUNDARIES_FILE.read_text())
+    except Exception:
+        return ""  # file absent or malformed — fail open, not hard
+
+    prefix = task_id[:5]
+    task_service = boundaries.get("task_service_map", {}).get(prefix)
+    if not task_service:
+        return ""
+
+    svc = boundaries.get("services", {}).get(task_service, {})
+    internal_ns = svc.get("internal_namespaces", [])
+    src_path    = svc.get("src_path", "")
+
+    # Build cross-service forbidden-import section from other services' internal namespaces
+    all_services = boundaries.get("services", {})
+    forbidden_lines = []
+    for svc_name, svc_data in all_services.items():
+        if svc_name == task_service:
+            continue
+        for ns in svc_data.get("internal_namespaces", []):
+            forbidden_lines.append(
+                f"     using {ns};   ← {svc_name.upper()}-INTERNAL — CS0234 if referenced from {task_service}"
+            )
+
+    # Build gRPC decision type disambiguation from the source service's config
+    grpc_types = {}
+    for svc_name, svc_data in all_services.items():
+        grpc_types.update(svc_data.get("grpc_decision_types", {}))
+
+    sections = []
+
+    if forbidden_lines:
+        forbidden_block = "\n".join(forbidden_lines)
+        sections.append(
+            f"\n## CROSS-SERVICE BOUNDARY (data: architecture/reference/service-boundaries.json)\n"
+            f"  ⛔ FORBIDDEN in {src_path}**:\n{forbidden_block}\n"
+            f"  Use only the public gRPC/REST interfaces of other services — never their internal namespaces."
+        )
+
+    if grpc_types:
+        lines = [f"## CE gRPC DECISION TYPE DISAMBIGUATION (source: service-boundaries.json)"]
+        for field, dtype in grpc_types.items():
+            lines.append(f"  {field} → {dtype}")
+        lines.append("  NEVER mix ValidationDecision and PolicyDecision — they are different enums for different RPCs.")
+        sections.append("\n" + "\n".join(lines))
+
+    return "\n".join(sections)
+
+
 def _build_system_prompt(task_id: str) -> str:
-    """Build stack-aware system prompt: universal base + selected expert block."""
+    """Build stack-aware system prompt: universal base + expert block + data-driven boundary."""
     prefix = task_id[:5]  # e.g. 'WC012'
-    stack = _TASK_STACK_MAP.get(prefix, "dotnet")  # default: dotnet for current sprint
+    stack = _TASK_STACK_MAP.get(prefix, "dotnet")
     expert_block = _STACK_EXPERTS.get(stack, _EXPERT_DOTNET)
-    return _BASE_SYSTEM_PROMPT + expert_block
+    boundary_context = _load_service_boundary_context(task_id)
+    return _BASE_SYSTEM_PROMPT + expert_block + boundary_context
 
 # Legacy alias — used until all call sites are updated to _build_system_prompt()
 CONSTITUTIONAL_SYSTEM_PROMPT = _build_system_prompt("WC012")

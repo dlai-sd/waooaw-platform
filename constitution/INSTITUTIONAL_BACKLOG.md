@@ -931,6 +931,43 @@ When this IB is authorized and completed:
 
 ---
 
+### IB-023 — PTR v3: Service Boundary Schema
+
+**Goal:** Replace the temporary `service-boundaries.json` scaffolding (added 2026-07-29) with proper service boundary data embedded in the PTR assembler. Every type in the codebase will carry `service_owner`, `accessible_from`, and `access_mode` fields — extracted from compiled source, not authored by hand. The LLM prompt boundary context is then generated from PTR data, not static JSON.
+
+**Office:** Enterprise Architect (schema design + ADR amendment) + Platform IT Expert (implementation in `ptr_assembler.py`)
+
+**Priority:** P1 — current scaffold (`service-boundaries.json`) works but requires manual updates. Replace before WC-015+ introduces new services.
+
+**Gate:** Post-WC013 (business platform and its cross-service calls are the primary test case)
+
+**What exists now (temporary scaffold):**
+- `architecture/reference/service-boundaries.json` — hand-authored JSON mapping services to internal/public namespaces
+- `_load_service_boundary_context(task_id)` in `autonomous_sprint_runner.py` reads this file and generates prompt text
+- Retry advisor Rules 10b/10c handle CS0234/CS0019 when boundary violations still occur
+
+**What PTR v3 replaces this with:**
+- `ptr_assembler.py`: each extracted type entry gains `service_owner` (derived from `src/<service>/` path) and `access_mode` (`PUBLIC` or `SERVICE_INTERNAL`)
+- `accessible_from` list derived from: (1) public API types exposed in proto/OpenAPI, (2) explicitly marked public types
+- `_load_service_boundary_context()` reads PTR output, not a static JSON file
+- `check_spec_against_ptr()` extended to flag cross-service namespace imports at pre-flight
+
+**Constitutional Basis:**
+- C-059 (Traceability) — architectural boundary must be machine-checkable, not narrative text
+- C-083 (Emit-Transport-Listen) — PTR is the emit signal; service boundaries are part of the type contract
+- ADR-001 (gRPC for CE) — architectural boundary enforcement belongs in the PTR, not LLM prompts
+
+**Scope:**
+1. EA: extend `ptr_assembler.py` schema spec to include `service_owner`, `accessible_from`, `access_mode`
+2. IT Expert: implement extraction in `ptr_assembler.py` (path-based `service_owner`, proto/OpenAPI-based `PUBLIC`)
+3. IT Expert: update `_load_service_boundary_context()` to read from PTR, not `service-boundaries.json`
+4. IT Expert: extend `check_spec_against_ptr()` with cross-service boundary gate
+5. EA: delete `service-boundaries.json` once PTR v3 is producing equivalent data
+
+**Status:** PLANNED — begin after WC-013 sprint completes and is merged
+
+---
+
 ## Backlog Summary Table (updated 2026-07-22)
 
 | ID | Title | Office | Priority | Gate | Status |
@@ -952,4 +989,5 @@ When this IB is authorized and completed:
 | IB-020 | Zero-Cost Dev Agent ADR-030 | EA + PIT Expert | P0-parallel | Pre-impl | WAITING |
 | IB-021 | Dependency Graph Task Decomposition | EA + PIT Expert | P0 | Pre-WC012-03 | AUTHORIZED |
 | IB-022 | WC-Spec-Driven Runner (Option B) | EA + PIT Expert | P1 | Post-WC012 | PLANNED |
+| IB-023 | PTR v3: Service Boundary Schema | EA + PIT Expert | P1 | Post-WC013 | PLANNED |
 
