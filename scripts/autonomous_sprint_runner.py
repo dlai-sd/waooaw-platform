@@ -3573,15 +3573,55 @@ def main() -> int:
              f"chore(pm): {sprint} tasks done: {', '.join(tasks_done)}\n\n"
              f"IB: IB-009\nConstitutional: C-059"])
 
-    # Push sprint branch — use -u (set upstream) not --force-with-lease.
-    # --force-with-lease fails when no remote tracking ref exists (new branch).
-    # Use capture=True so stderr/stdout are always available for safe diagnostics.
-    push = run(["git", "push", "-u", "origin", branch], check=False, capture=True)
+    # ── Push sprint branch using App installation token (workflows scope) ────
+    # GITHUB_TOKEN (Actions default) cannot push branches containing .github/workflows/
+    # because it lacks the `workflows` write scope. The App token has this scope.
+    # Registry entry: SPRINT_BRANCH_PUSH GH_WORKFLOW_SCOPE — 3 runs blocked (2026-07-29).
+    def _get_push_token() -> str:
+        """Return App installation token if credentials available, else GITHUB_TOKEN."""
+        app_id  = os.environ.get("GH-APP-ID", "")
+        inst_id = os.environ.get("GH-APP-INSTALLATION-ID", "")
+        pem_key = os.environ.get("GH-APP-PRIVATE-KEY", "")
+        if app_id and inst_id and pem_key:
+            try:
+                import importlib.util as _ilu, sys as _sys
+                _scripts = str(REPO_ROOT / "scripts")
+                if _scripts not in _sys.path:
+                    _sys.path.insert(0, _scripts)
+                _s = _ilu.spec_from_file_location(
+                    "autonomous_sprint_reviewer",
+                    str(REPO_ROOT / "scripts" / "autonomous_sprint_reviewer.py"))
+                _m = _ilu.module_from_spec(_s); _s.loader.exec_module(_m)
+                token = _m.generate_installation_token(app_id, inst_id, pem_key)
+                if token:
+                    print("  PUSH: using App installation token (workflows scope) ✓")
+                    return token
+            except Exception as _te:
+                print(f"  PUSH: App token generation failed ({_te}) — falling back to GITHUB_TOKEN")
+        return os.environ.get("GITHUB_TOKEN", "")
+
+    push_token = _get_push_token()
+
+    def _git_push_with_token(token: str, extra_args: list[str]) -> subprocess.CompletedProcess:
+        """Configure git to use the given token for a single push, then push."""
+        import urllib.parse as _up
+        repo_url = f"https://x-access-token:{token}@github.com/{os.environ.get('GITHUB_REPOSITORY', 'dlai-sd/waooaw-platform')}.git"
+        env_with_url = {**os.environ, "GIT_REMOTE_URL": repo_url}
+        # Temporarily override origin URL for this push only
+        run(["git", "remote", "set-url", "origin", repo_url], check=False)
+        result = run(["git", "push"] + extra_args + ["origin", branch], check=False, capture=True)
+        # Restore origin to HTTPS without token
+        run(["git", "remote", "set-url", "origin",
+             f"https://github.com/{os.environ.get('GITHUB_REPOSITORY', 'dlai-sd/waooaw-platform')}.git"],
+            check=False)
+        return result
+
+    push = _git_push_with_token(push_token, ["-u"])
     if push.returncode != 0:
         push_err = (push.stderr or push.stdout or "").strip()
         print(f"  WARN: branch push failed (non-fatal): {push_err[:200]}")
         # Retry once with --force in case of ref mismatch.
-        force_push = run(["git", "push", "--force", "origin", branch], check=False, capture=True)
+        force_push = _git_push_with_token(push_token, ["--force"])
         if force_push.returncode != 0:
             force_err = (force_push.stderr or force_push.stdout or "").strip()
             print(f"  WARN: force push failed (non-fatal): {force_err[:200]}")

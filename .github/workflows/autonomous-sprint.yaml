@@ -487,7 +487,11 @@ jobs:
           git config user.name  "WAOOAW AI Agent - Platform IT Expert"
           git config user.email "platform-it-expert@waooaw.ai"
           git fetch origin main
+          # Stash any uncommitted sprint-branch files (frozen artifacts etc)
+          # before switching to main so the checkout doesn't abort
+          git stash --include-untracked || true
           git checkout main
+          git pull origin main --ff-only || true
           PR_ARG=""
           if [ -n "$PR_NUMBER" ] && [ "$PR_NUMBER" != "0" ] && [ "$RESULT" != "SUCCESS" ]; then
             PR_ARG="--pr $PR_NUMBER"
