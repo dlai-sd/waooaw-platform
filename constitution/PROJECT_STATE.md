@@ -1,31 +1,59 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-07-29 (WC-013 clean slate — CS0234 pipeline fix applied)
-**Version:** 1.18.0
+**Last Updated:** 2026-07-29 (PDM + audit complete — clean slate for WC-013)
+**Version:** 1.19.0
 **Declared by:** Platform IT Expert (INST-010) — session 2026-07-29
-**Session:** 2026-07-29 — RCA + pipeline fix + WC-013 clean slate reset
+**Session:** 2026-07-29 — RCA + CS0234 fix + PDM generic solution + MagicLLM audit
 
 ---
 
-## SESSION RECORD — 2026-07-29 (CS0234 Pipeline Fix — COMPLETE)
+## SESSION RECORD — 2026-07-29 (ProjectDependencyMap — COMPLETE)
 
 ### What Was Built
 
-| Phase | Institution | Output | Status |
+| Commit | Change | Result |
+|---|---|---|
+| `567e94e` | CS0234 handler + FORBIDDEN_PATTERNS (band-aid — superseded) | Fixed immediate blocker |
+| `a692bae` | **ProjectDependencyMap** — generic cross-project boundary enforcement | Generic solution |
+| `8ae7d46` | namespace_path guard — bare type names skip PDM (audit finding) | Correctness fix |
+
+### Architecture Decision: ProjectDependencyMap
+Root cause: LLM sees USING_MAP entry `EvaluationContext → Waooaw.ConstitutionalEngine.Evaluators`
+and imports it in BP files. BP has no ProjectReference to CE — only gRPC.
+This causes CS0234/CS0246/CS0103/CS1061 (error code varies with what was generated).
+
+**Generic fix (not per-error-code):**
+- `scripts/project_dependency_map.py` — derives reachable namespace prefixes from `.csproj`
+  (self + PackageReferences + ProjectReferences + Protobuf includes). `@lru_cache` per csproj.
+- `context_builder.py` — injects `PROJECT_BOUNDARY` block auto-derived from csproj.
+  Filters `USING_MAP` to only inject types reachable from target project.
+- `sprint_retry_advisor.py` — Rule 2a: `_classify_out_of_boundary_reference()` — one generic
+  handler replaces all per-project hard-coded namespace rules. Namespace_path guard ensures
+  bare type names (CS0246 type resolution) fall through to SYMBOL_RESOLUTION handlers.
+- `task_decomposer.py` — passes `output_file` to `diagnose_build_error()`.
+- **Backward compatible:** `autonomous_sprint_runner.py` still calls without `output_file` →
+  Rule 2a skipped → WC012 behavior identical.
+
+### MagicLLM Audit (vs architecture/reference/magic-llm/architecture.md)
+
+| Spec Family | Error Codes | Handler | Status |
 |---|---|---|---|
-| RCA | Platform IT Expert (INST-010) | CS0234 root cause identified: spurious `using Waooaw.ConstitutionalEngine.Evaluators` in BP files | DONE |
-| Fix 1 — Prevention | Platform IT Expert (INST-010) | `_FORBIDDEN_PATTERNS` rule added to `context_builder.py` — LLM blocked from generating CE-internal usings in BP | MERGED |
-| Fix 2 — Recovery | Platform IT Expert (INST-010) | `_classify_cs0234_cross_project_ref()` handler added to `sprint_retry_advisor.py` (Rule 2b, confidence 0.95) | MERGED |
-| Clean Slate | Platform IT Expert (INST-010) | PR #152 closed, branch `ib/009/sprint-013` deleted, sprint state reset | DONE |
+| PROJECT_BOUNDARY (new) | CS0234/CS0246/CS0103/CS1061/CS0122 (dotted ns) | Rule 2a OUT_OF_BOUNDARY | ✅ New |
+| SYMBOL_RESOLUTION | CS0246/CS0103/CS0117/CS1061 (bare types) | Rules 2b/3/4/5 | ✅ Unchanged |
+| SIGNATURE_DRIFT | CS7036/CS1503/CS1744/CS1729 | Rules 6c/6d/6e/7b | ✅ Unchanged |
+| NULLABILITY_MISMATCH | CS0266/CS0037/CS8629-CS8618/CS0019 | Rules 6/6b/7 | ✅ Unchanged |
+| INTERFACE_CONTRACT | CS0539/CS0505 | Rules 8/9 | ✅ Unchanged |
+| Multi-stack | Python/Terraform/TypeScript | Rules 10-14 | ✅ Unchanged |
 
-### Root Cause Summary
-LLM generated `using Waooaw.ConstitutionalEngine.Evaluators;` as unused import in BP controller/service files.
-BP has no `<ProjectReference>` to CE — CE accessible via gRPC only. CS0234 had no handler in Retry Advisor;
-fell through to Cascade L1 with no architectural fix context, exhausting all retries on WC013-03a, WC013-03b, WC013-04a.
+### Tests
+- 40 new PDM tests: all pass
+- 434/435 pipeline tests passing (1 pre-existing context_size failure)
+- WC012 simulation verified: all handlers route correctly
 
-### Commit
-- `567e94e` — `fix(pipeline): CS0234 cross-project ref handler + FORBIDDEN_PATTERNS rule`
-- Tests: 56/56 retry advisor tests passing | 2 files changed, 59 insertions
+### Open Items
+- PR #151 (Founder, `fix/pipeline-wc013-gaps`): 7 pipeline fixes + NuGet cache + service boundary filter.
+  Touches `sprint_retry_advisor.py` + `autonomous_sprint_runner.py`. Merge conflict likely.
+  **Founder action required** to resolve conflicts and merge.
 
 ---
 
