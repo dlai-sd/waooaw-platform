@@ -242,7 +242,51 @@ def check_per_file_ignores() -> bool:
                  f"MISSING: {', '.join(missing)} — LLM-generated tests will fail ruff compile gate")
 
 
-# ── Main ──────────────────────────────────────────────────────────────────────
+# ── 17. ruff dry-run against LLM-pattern template ────────────────────────────
+def check_ruff_dry_run() -> bool:
+    """
+    Run ruff against a synthetic Python file that mimics common LLM-generated
+    patterns. Catches ruff config gaps BEFORE a real sprint run wastes 30 min.
+    Covers: ANN401 (Any params), E501 (long regex), B018 (bare expr), F841 (unused var).
+    """
+    template = '''\
+# Implements: test spec | constitutional_basis: C-059
+import re
+import logging
+from typing import Any
+
+logger = logging.getLogger(__name__)
+
+PATTERNS: list[re.Pattern[str]] = [
+    re.compile(r"\\bignore\\s+(all\\s+)?(previous|prior|above|earlier)\\s+(instructions?|prompts?|context|directives?)\\b", re.I),
+]
+
+def process(db_pool: Any, value: str) -> dict[str, Any]:
+    handle = logger.info("processing %s", value)
+    result = {"status": "ok", "value": value}
+    return result
+'''
+    tmp = REPO_ROOT / "scripts" / "_smoke_ruff_template.py"
+    try:
+        tmp.write_text(template)
+        # Mirror compile gate: auto-fix first, then check (same as run_compile_gate)
+        subprocess.run(
+            ["python3", "-m", "ruff", "check", str(tmp), "--fix", "--unsafe-fixes", "--exit-zero"],
+            capture_output=True, text=True, cwd=REPO_ROOT
+        )
+        r = subprocess.run(
+            ["python3", "-m", "ruff", "check", str(tmp)],
+            capture_output=True, text=True, cwd=REPO_ROOT
+        )
+        violations = (r.stdout + r.stderr).strip()
+        ok = r.returncode == 0
+        return check("ruff dry-run: LLM-pattern template passes ruff (ANN401/E501/B018/F841)", ok,
+                     "clean" if ok else f"VIOLATIONS — fix pyproject.toml before sprint: {violations[:300]}")
+    finally:
+        tmp.unlink(missing_ok=True)
+
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--service", default="professional-runtime")
@@ -252,7 +296,7 @@ def main() -> int:
 
     print(f"\n{'='*60}")
     print(f"  Python Pipeline Smoke Test v2 — {args.service}")
-    print(f"  16 checks · covers all 38 WC-014 failure registry entries")
+    print(f"  17 checks · covers all WC-014 + WC-015 failure registry entries")
     print(f"{'='*60}\n")
 
     check_ruff_installed()
@@ -271,6 +315,7 @@ def main() -> int:
     check_complete_sprint_union()
     check_workflow_fetches_sprint_branch()
     check_per_file_ignores()
+    check_ruff_dry_run()
 
     passed = sum(1 for _, s, _ in results if s == PASS)
     failed = sum(1 for _, s, _ in results if s == FAIL)
