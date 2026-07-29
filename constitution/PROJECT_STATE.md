@@ -556,8 +556,9 @@ sprint_ib_item: IB-009
 sprint_status: AUTHORIZED
 branch: ib/009/sprint-013
 last_attempt_utc: 2026-07-28T16:30:00.000000+00:00
-last_attempt_result: WC012_COMPLETE
+last_attempt_result: CLEAN_SLATE_2026-07-29
 consecutive_failures: 0
+consecutive_infra_failures: 0
 tasks_done: []
 tasks_remaining:
   - WC013-01
