@@ -3617,8 +3617,24 @@ def main() -> int:
             )
 
     # Final commit: use cumulative tasks_done (merge with prior sessions)
+    # Write monitor signal BEFORE the commit so it can be included in the push.
+    # Signal must be committed to allow complete_sprint to read it via 'git show'
+    # after switching branches (untracked files are lost by 'git stash/checkout').
     cumulative_final = sorted(set(tasks_done) | set(tasks_done_state))
-    git(["add", "constitution/PROJECT_STATE.md", "logs/"], check=False)
+    scaffold_t_pre = next((t for t in tasks if t in SCAFFOLD_TASKS), None)
+    scaffold_failed_pre = scaffold_t_pre is not None and scaffold_t_pre not in tasks_done
+    _MONITOR_SIGNAL["sprint"] = sprint
+    _MONITOR_SIGNAL["tasks_done"] = tasks_done
+    _MONITOR_SIGNAL["tasks_requested"] = tasks
+    _MONITOR_SIGNAL["scaffold_task"] = scaffold_t_pre
+    _MONITOR_SIGNAL["scaffold_failed"] = scaffold_failed_pre
+    _MONITOR_SIGNAL["overall_result"] = run_result
+    _signal_path = Path("sprint-context/monitor-signal.json")
+    _signal_path.parent.mkdir(exist_ok=True)
+    import json as _json
+    _signal_path.write_text(_json.dumps(_MONITOR_SIGNAL, indent=2))
+    print(f"  \U0001f4e1 Monitor signal pre-emitted for chore commit: {_signal_path}")
+    git(["add", "constitution/PROJECT_STATE.md", "logs/", str(_signal_path)], check=False)
     diff = git(["diff", "--cached", "--quiet"], check=False)
     if diff.returncode != 0:
         git(["commit", "-m",
@@ -3750,32 +3766,11 @@ def main() -> int:
         set_output("result", run_result)
 
     # ── Emit monitor signal artifact (C-069 — observable state for downstream jobs) ──
-    # Scaffold task = first task in this run's queue that is in SCAFFOLD_TASKS.
-    # If scaffold already succeeded in a prior run, it's not in the queue → scaffold_task=None.
-    scaffold_t = next((t for t in tasks if t in SCAFFOLD_TASKS), None)
-    scaffold_failed = scaffold_t is not None and scaffold_t not in tasks_done
-    _MONITOR_SIGNAL["sprint"] = sprint
-    _MONITOR_SIGNAL["tasks_done"] = tasks_done
-    _MONITOR_SIGNAL["tasks_requested"] = tasks
-    _MONITOR_SIGNAL["scaffold_task"] = scaffold_t
-    _MONITOR_SIGNAL["scaffold_failed"] = scaffold_failed
-    _MONITOR_SIGNAL["overall_result"] = run_result
-    signal_path = Path("sprint-context/monitor-signal.json")
-    signal_path.parent.mkdir(exist_ok=True)
-    import json as _json
-    signal_path.write_text(_json.dumps(_MONITOR_SIGNAL, indent=2))
-    print(f"  📡 Monitor signal emitted: {signal_path}")
-    # Commit the signal to the sprint branch so complete_sprint.py can access it
-    # via 'git show BRANCH:sprint-context/monitor-signal.json' after switching to main.
-    # Previously the signal was untracked and was lost by 'git stash --include-untracked'.
-    git(["add", str(signal_path)], check=False)
-    sig_diff = git(["diff", "--cached", "--quiet"], check=False)
-    if sig_diff.returncode != 0:
-        git(["commit", "--no-edit", "-m",
-             f"chore(signal): emit monitor signal for {sprint} run\n\n"
-             f"Constitutional: C-069 (observable state — complete_sprint reads this via git show)"],
-            check=False)
-        git(["push", "-u", "origin", "ib/009/sprint-014"], check=False)
+    # Signal was already written and committed in the chore commit above.
+    # Re-read scaffold values from the pre-emitted signal for set_output calls.
+    scaffold_t = _MONITOR_SIGNAL.get("scaffold_task")
+    scaffold_failed = _MONITOR_SIGNAL.get("scaffold_failed", False)
+    print(f"  📡 Monitor signal committed to sprint branch: sprint-context/monitor-signal.json")
     # Scalar outputs consumed directly by the monitor job
     set_output("scaffold_failed", str(scaffold_failed).lower())
     set_output("infra_error_tasks", ",".join(str(t) for t in infra_error_tasks))
