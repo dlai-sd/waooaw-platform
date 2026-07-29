@@ -3,7 +3,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Waooaw.BusinessPlatform.Controllers;
 using Waooaw.BusinessPlatform.Infrastructure;
-using Waooaw.ConstitutionalEngine.Evaluators;
 using Waooaw.ConstitutionalEngine.Grpc;
 using Grpc.Net.Client;
 
@@ -61,7 +60,7 @@ public sealed class AgentsController : ControllerBase
                     $"{{\"professional_type\":\"{request.ProfessionalType}\"," +
                     $"\"skill_id\":\"{request.SkillId}\"," +
                     $"\"approved_budget_inr_paise\":\"{request.ApprovedBudgetInrPaise}\"}}",
-                DecisionSpaceVersion = request.DecisionSpaceVersion,
+                DecisionSpaceVersion = int.TryParse(request.DecisionSpaceVersion, out var dsvA) ? dsvA : 1,
             };
 
             // ERROR HANDLING RULE 4: bounded timeout — never block indefinitely

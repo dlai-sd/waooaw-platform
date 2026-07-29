@@ -103,7 +103,7 @@ public sealed class EmploymentService
                     ContractId           = string.Empty,   // no contract yet for new customer
                     ActionType           = "REGISTER_CUSTOMER",
                     ActionParameters     = $"{{\"email\":\"{EscapeJson(request.Email)}\",\"name\":\"{EscapeJson(request.Name)}\"}}",
-                    DecisionSpaceVersion = "1",
+                    DecisionSpaceVersion = 1,
                 },
                 cancellationToken: cts.Token);
         }
@@ -180,7 +180,7 @@ public sealed class EmploymentService
                     ContractId           = request.ContractId,
                     ActionType           = "HIRE_AGENT",
                     ActionParameters     = actionParameters,
-                    DecisionSpaceVersion = request.DecisionSpaceVersion,
+                    DecisionSpaceVersion = int.TryParse(request.DecisionSpaceVersion, out var dsvE) ? dsvE : 1,
                 },
                 cancellationToken: cts.Token);
         }
