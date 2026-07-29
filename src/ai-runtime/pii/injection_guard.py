@@ -81,144 +81,178 @@ _ENCODING_PATTERNS: list[re.Pattern[str]] = [
 _CONTEXT_MANIPULATION_PATTERNS: list[re.Pattern[str]] = [
     re.compile(r"\b(in\s+the\s+previous|in\s+our\s+last|from\s+the\s+previous)\s+(conversation|session|turn|message|chat)\b", re.I),
     re.compile(r"\byou\s+(already\s+)?(agreed|confirmed|said|told\s+me|promised|accepted)\s+(that\s+)?(you\s+would|to)\b", re.I),
-    re.compile(r"\byour\s+(previous|last|earlier)\s+(self|version|instance|copy)\s+(agreed|confirmed|said|told\s+me)\b", re.I),
-    re.compile(r"\bcontinue\s+(from\s+where\s+we\s+left\s+off|our\s+previous|the\s+previous\s+(conversation|session))\b", re.I),
-    re.compile(r"\bremember\s+(when\s+you\s+said|that\s+you\s+agreed|our\s+agreement|the\s+deal\s+we\s+made)\b", re.I),
+    re.compile(r"\byour\s+(previous|last|earlier)\s+(self|version|instance|response|message)\s+(said|agreed|told|confirmed|promised)\b", re.I),
+    re.compile(r"\bas\s+(we|you)\s+(discussed|agreed|established|decided)\s+(earlier|before|previously|last\s+time)\b", re.I),
+    re.compile(r"\bin\s+(maintenance|debug|diagnostic|test|training|developer)\s+mode\b", re.I),
+    re.compile(r"\bthis\s+is\s+a\s+(test|simulation|drill|training\s+exercise|hypothetical)\s+(so\s+)?(you\s+can|rules?\s+don'?t)\b", re.I),
 ]
 
-# ── Aggregate: all pattern groups ───────────────────────────────────────────
-_ALL_PATTERN_GROUPS: list[list[re.Pattern[str]]] = [
-    _ROLE_OVERRIDE_PATTERNS,
-    _EXTRACTION_PATTERNS,
-    _JAILBREAK_PATTERNS,
-    _AUTHORITY_BYPASS_PATTERNS,
-    _ENCODING_PATTERNS,
-    _CONTEXT_MANIPULATION_PATTERNS,
+# ── Category 7: Indirect injection via special delimiters ───────────────────
+_DELIMITER_INJECTION_PATTERNS: list[re.Pattern[str]] = [
+    re.compile(r"<\s*system\s*>", re.I),                 # <system> tag
+    re.compile(r"\[INST\]", re.I),                       # Llama instruction token
+    re.compile(r"\[\/INST\]", re.I),                     # Llama close instruction token
+    re.compile(r"<\|im_start\|>", re.I),                 # ChatML start
+    re.compile(r"<\|im_end\|>", re.I),                   # ChatML end
+    re.compile(r"<\|system\|>", re.I),                   # Phi/Mistral system token
+    re.compile(r"###\s*(System|Instruction|Human|Assistant)\s*:", re.I),  # Alpaca-style
+    re.compile(r"\bHUMAN\s*:\s*ignore\b", re.I),         # RLHF-format injection
+    re.compile(r"\bASSISTANT\s*:\s*(sure|yes|of\s+course|absolutely)", re.I),  # Pre-fill attack
 ]
 
-_ALL_PATTERNS: list[re.Pattern[str]] = [
-    p for group in _ALL_PATTERN_GROUPS for p in group
+# ── Category 8: Indirect / payload injection ────────────────────────────────
+_INDIRECT_INJECTION_PATTERNS: list[re.Pattern[str]] = [
+    re.compile(r"\bwhen\s+you\s+(read|see|process|encounter)\s+(this|the\s+following)\b", re.I),
+    re.compile(r"\bthe\s+(following|above|below)\s+(text|content|message|data)\s+(contains?|has|includes?)\s+(hidden|secret|special)\s+(instructions?|commands?|directives?)\b", re.I),
+    re.compile(r"\bexecute\s+(the\s+following|this)\s+(command|instruction|directive|code)\b", re.I),
+    re.compile(r"\brun\s+(the\s+following|this)\s+(command|instruction|code|script)\b", re.I),
+    re.compile(r"\bhidden\s+(instruction|command|directive|message|payload)\b", re.I),
+    re.compile(r"\bsecret\s+(instruction|command|directive|word|key|phrase|token)\b", re.I),
+    re.compile(r"\bmagic\s+(word|phrase|key|token|password|instruction|command)\b", re.I),
+]
+
+# ── All pattern groups ───────────────────────────────────────────────────────
+_ALL_PATTERN_GROUPS: list[tuple[str, list[re.Pattern[str]]]] = [
+    ("role_override", _ROLE_OVERRIDE_PATTERNS),
+    ("extraction", _EXTRACTION_PATTERNS),
+    ("jailbreak", _JAILBREAK_PATTERNS),
+    ("authority_bypass", _AUTHORITY_BYPASS_PATTERNS),
+    ("encoding", _ENCODING_PATTERNS),
+    ("context_manipulation", _CONTEXT_MANIPULATION_PATTERNS),
+    ("delimiter_injection", _DELIMITER_INJECTION_PATTERNS),
+    ("indirect_injection", _INDIRECT_INJECTION_PATTERNS),
 ]
 
 
-@dataclass(frozen=True)
+@dataclass
 class ScanResult:
-    """Result of an injection guard scan.
-
-    C-059: Every block decision is recorded via this structured result
-    so the caller can produce an evidence record.
-    """
+    """Result of an injection guard scan."""
 
     safe: bool
-    blocked_by: str | None = field(default=None)
-    matched_text: str | None = field(default=None)
+    matched_category: str | None = None
+    matched_pattern: str | None = None
 
 
+@dataclass
 class InjectionGuard:
-    """C-062 Prompt Injection Defence.
+    """
+    C-062 Prompt Injection Defence.
 
-    Scans incoming prompt text for known injection attack patterns that could
-    cause the AI to act outside its authorised Decision Space.
+    Scans every user-supplied prompt for known injection vectors before
+    the prompt is forwarded to any LLM provider. The Decision Space
+    cannot be bypassed by conversation input.
 
-    Usage::
-
-        guard = InjectionGuard()
-        is_safe = await guard.scan(prompt)        # True = safe, False = blocked
-        result  = await guard.scan_detailed(prompt)  # full ScanResult
-
-    All 50 attack patterns enumerated in CCT-PI-01 are covered by the six
-    pattern categories above.  The guard is intentionally conservative:
-    a false-positive (blocking a legitimate message) is far less harmful than
-    a false-negative (allowing a bypass attempt through).
+    CCT-PI-01: All 50 known attack patterns must be BLOCKED (100% block rate).
     """
 
-    def __init__(self) -> None:
-        self._patterns: list[re.Pattern[str]] = _ALL_PATTERNS
+    _extra_patterns: list[tuple[str, re.Pattern[str]]] = field(
+        default_factory=list, repr=False
+    )
 
-    async def scan(self, prompt: str) -> bool:
-        """Scan *prompt* for injection attacks.
+    def scan(self, prompt: str) -> bool:
+        """
+        Scan a prompt for injection attacks.
 
         Returns:
-            ``True``  — prompt is safe to forward to the LLM.
-            ``False`` — prompt matched a blocked pattern; must not be forwarded.
+            True  — prompt is safe, may proceed to LLM dispatch.
+            False — prompt is blocked (injection pattern detected).
 
-        C-062: A ``False`` result MUST cause the caller to abort the request
-        without forwarding the prompt to any LLM provider.
-        C-059: Callers must produce an evidence record on ``False``.
-        C-063: This method never logs the raw prompt content.
+        C-062: Decision Space cannot be bypassed by conversation input.
+        """
+        result = self.scan_detailed(prompt)
+        return result.safe
+
+    def scan_detailed(self, prompt: str) -> ScanResult:
+        """
+        Scan a prompt and return a detailed result including which category
+        and pattern triggered the block (if any).
+
+        Logs a WARNING (without the prompt content — C-063 PII obligation)
+        when a pattern is matched.
+        """
+        for category, patterns in _ALL_PATTERN_GROUPS:
+            for pattern in patterns:
+                try:
+                    if pattern.search(prompt):
+                        logger.warning(
+                            "Injection attempt blocked — category=%s pattern=%s",
+                            category,
+                            pattern.pattern,
+                        )
+                        return ScanResult(
+                            safe=False,
+                            matched_category=category,
+                            matched_pattern=pattern.pattern,
+                        )
+                except re.error as exc:
+                    logger.error(
+                        "Regex evaluation error in injection guard — category=%s error=%s",
+                        category,
+                        exc,
+                        exc_info=True,
+                        extra={"context": "injection_guard.scan_detailed"},
+                    )
+
+        # Extra patterns registered at runtime (e.g. domain-specific vectors)
+        for category, pattern in self._extra_patterns:
+            try:
+                if pattern.search(prompt):
+                    logger.warning(
+                        "Injection attempt blocked (extra pattern) — category=%s pattern=%s",
+                        category,
+                        pattern.pattern,
+                    )
+                    return ScanResult(
+                        safe=False,
+                        matched_category=category,
+                        matched_pattern=pattern.pattern,
+                    )
+            except re.error as exc:
+                logger.error(
+                    "Regex evaluation error in injection guard (extra) — category=%s error=%s",
+                    category,
+                    exc,
+                    exc_info=True,
+                    extra={"context": "injection_guard.scan_detailed.extra"},
+                )
+
+        return ScanResult(safe=True)
+
+    async def scan_async(self, prompt: str) -> bool:
+        """
+        Async wrapper for scan() — allows use in async FastAPI endpoints
+        without blocking the event loop for very large prompts.
+
+        C-062 compliance: same block semantics as sync scan().
         """
         try:
-            result = await self.scan_detailed(prompt)
-            return result.safe
+            loop = asyncio.get_event_loop()
+            result = await loop.run_in_executor(None, self.scan, prompt)
+            return result
         except asyncio.CancelledError:
             raise
-        except (ValueError, TypeError) as e:
+        except (ValueError, RuntimeError) as exc:
             logger.error(
-                "InjectionGuard.scan failed with input validation error",
+                "Unexpected error in async injection guard scan",
                 exc_info=True,
-                extra={"context": "injection_guard.scan", "error_type": type(e).__name__},
+                extra={"context": "injection_guard.scan_async", "error": str(exc)},
             )
-            # C-059: on error, fail closed — treat as blocked
+            # Fail closed — if we cannot scan, we block (C-062)
             return False
 
-    async def scan_detailed(self, prompt: str) -> ScanResult:
-        """Scan *prompt* and return a structured :class:`ScanResult`.
-
-        C-063: Raw prompt text is NEVER included in log statements.
-        The ``matched_text`` in the result is available to the caller for
-        evidence records but must not be forwarded to log sinks.
+    def register_pattern(self, category: str, pattern: str | re.Pattern[str]) -> None:
         """
-        if not isinstance(prompt, str):
-            logger.warning(
-                "InjectionGuard received non-string input; blocking as unsafe",
-                extra={"context": "injection_guard.scan_detailed", "input_type": type(prompt).__name__},
-            )
-            return ScanResult(safe=False, blocked_by="type_check", matched_text=None)
+        Register an additional injection pattern at runtime.
 
-        normalised = self._normalise(prompt)
-
-        for pattern in self._patterns:
-            try:
-                match = pattern.search(normalised)
-            except asyncio.CancelledError:
-                raise
-            except (re.error, ValueError) as e:
-                logger.error(
-                    "Pattern match error in InjectionGuard",
-                    exc_info=True,
-                    extra={"context": "injection_guard.scan_detailed", "pattern": pattern.pattern[:80], "error": str(e)},
-                )
-                # C-059: fail closed on regex error
-                return ScanResult(safe=False, blocked_by="pattern_error", matched_text=None)
-
-            if match:
-                logger.warning(
-                    "Prompt injection attack blocked by InjectionGuard (C-062)",
-                    extra={
-                        "context": "injection_guard.scan_detailed",
-                        "pattern_id": pattern.pattern[:80],
-                        # C-063: do NOT log matched_text or prompt
-                    },
-                )
-                return ScanResult(
-                    safe=False,
-                    blocked_by=pattern.pattern[:80],
-                    matched_text=match.group(0),
-                )
-
-        return ScanResult(safe=True, blocked_by=None, matched_text=None)
-
-    # ── Internal helpers ────────────────────────────────────────────────────
-
-    @staticmethod
-    def _normalise(text: str) -> str:
-        """Collapse whitespace variants and strip zero-width characters.
-
-        Normalisation is applied before pattern matching to defeat trivial
-        whitespace-insertion evasion without altering semantic content.
+        Used by domain-specific guards (e.g. trading domain vectors) without
+        modifying the core guard definition.
         """
-        # Remove zero-width and non-breaking spaces, soft hyphens, etc.
-        stripped = re.sub(r"[\u00ad\u200b\u200c\u200d\u2060\ufeff]", "", text)
-        # Collapse runs of whitespace (including \t, \n, \r) to a single space
-        collapsed = re.sub(r"\s+", " ", stripped)
-        return collapsed.strip()
+        if isinstance(pattern, str):
+            compiled = re.compile(pattern, re.I)
+        else:
+            compiled = pattern
+        self._extra_patterns.append((category, compiled))
+        logger.info(
+            "Injection guard: registered extra pattern — category=%s",
+            category,
+        )
