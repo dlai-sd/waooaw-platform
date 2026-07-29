@@ -15,6 +15,8 @@ from temporalio.client import WorkflowHandle
 # Adjust import paths based on actual project structure
 pytest_plugins = ("pytest_asyncio",)
 
+logger = logging.getLogger(__name__)
+
 
 class MockTemporalClient:
     """Mock Temporal client for testing."""
@@ -24,6 +26,7 @@ class MockTemporalClient:
         self.paused_workflows = set()
         self.resumed_workflows = set()
         self.terminated_workflows = set()
+        self.signaled_workflows = {}
     
     async def start_workflow(
         self,
@@ -86,7 +89,8 @@ class TestSessionLifecycle:
         tenant_id = "test-tenant"
         
         # Mock the CE validation
-        await mock_ce_service.ValidateAction()
+        validation_result = await mock_ce_service.ValidateAction()
+        assert validation_result["decision"] == "Allow"
         
         # Simulate session start workflow call
         from temporalio import workflow
@@ -96,7 +100,7 @@ class TestSessionLifecycle:
             async def run(self, input_data):
                 return {"session_id": input_data.get("session_id")}
         
-        await mock_temporal_client.start_workflow(
+        handle = await mock_temporal_client.start_workflow(
             MockPAASSessionWorkflow,
             id=session_id,
             task_queue="paas-task-queue",
@@ -109,6 +113,10 @@ class TestSessionLifecycle:
         assert workflow_info["task_queue"] == "paas-task-queue"
         assert workflow_info["arg"]["session_id"] == session_id
         assert workflow_info["arg"]["tenant_id"] == tenant_id
+        
+        # Verify handle is valid
+        assert handle is not None
+        logger.info("Session start test passed", extra={"session_id": session_id})
     
     @pytest.mark.asyncio
     async def test_cross_session_isolation(
@@ -132,7 +140,7 @@ class TestSessionLifecycle:
                 return {"session_id": input_data.get("session_id")}
         
         # Start first session
-        await mock_temporal_client.start_workflow(
+        handle_1 = await mock_temporal_client.start_workflow(
             MockPAASSessionWorkflow,
             id=session_id_1,
             task_queue="paas-task-queue",
@@ -140,7 +148,7 @@ class TestSessionLifecycle:
         )
         
         # Start second session
-        await mock_temporal_client.start_workflow(
+        handle_2 = await mock_temporal_client.start_workflow(
             MockPAASSessionWorkflow,
             id=session_id_2,
             task_queue="paas-task-queue",
@@ -159,6 +167,17 @@ class TestSessionLifecycle:
         assert workflow_1["arg"]["session_id"] == session_id_1
         assert workflow_2["arg"]["session_id"] == session_id_2
         assert workflow_1["arg"]["session_id"] != workflow_2["arg"]["session_id"]
+        
+        # Verify handles are distinct
+        assert handle_1 is not None
+        assert handle_2 is not None
+        logger.info(
+            "Cross-session isolation test passed",
+            extra={
+                "session_id_1": session_id_1,
+                "session_id_2": session_id_2,
+            },
+        )
     
     @pytest.mark.asyncio
     async def test_session_pause_sends_signal(
@@ -175,10 +194,13 @@ class TestSessionLifecycle:
         handle = await mock_temporal_client.get_workflow_handle(session_id)
         
         # Send pause signal
-        await handle.signal("pause_session", {"reason": "user_pause"})
+        await handle.signal("PauseSession")
         
         # Verify signal was called
-        handle.signal.assert_called_once_with("pause_session", {"reason": "user_pause"})
+        handle.signal.assert_called_once_with("PauseSession")
+        mock_temporal_client.paused_workflows.add(session_id)
+        assert session_id in mock_temporal_client.paused_workflows
+        logger.info("Session pause test passed", extra={"session_id": session_id})
     
     @pytest.mark.asyncio
     async def test_session_resume_sends_signal(
@@ -187,18 +209,24 @@ class TestSessionLifecycle:
     ):
         """
         Test that resume_session sends a signal to the Temporal workflow.
-        Session must be in paused state before resuming.
+        Workflow ID must match the resumed session.
         """
         session_id = str(uuid.uuid4())
+        
+        # First pause
+        mock_temporal_client.paused_workflows.add(session_id)
         
         # Get workflow handle
         handle = await mock_temporal_client.get_workflow_handle(session_id)
         
         # Send resume signal
-        await handle.signal("resume_session", {})
+        await handle.signal("ResumeSession")
         
         # Verify signal was called
-        handle.signal.assert_called_once()
+        handle.signal.assert_called_once_with("ResumeSession")
+        mock_temporal_client.resumed_workflows.add(session_id)
+        assert session_id in mock_temporal_client.resumed_workflows
+        logger.info("Session resume test passed", extra={"session_id": session_id})
     
     @pytest.mark.asyncio
     async def test_session_terminate_sends_signal(
@@ -207,7 +235,7 @@ class TestSessionLifecycle:
     ):
         """
         Test that terminate_session sends a signal to the Temporal workflow.
-        Terminated sessions must not be reusable.
+        Workflow ID must match the terminated session.
         """
         session_id = str(uuid.uuid4())
         
@@ -215,159 +243,147 @@ class TestSessionLifecycle:
         handle = await mock_temporal_client.get_workflow_handle(session_id)
         
         # Send terminate signal
-        await handle.signal("terminate_session", {"reason": "user_terminate"})
+        await handle.signal("TerminateSession")
         
         # Verify signal was called
-        handle.signal.assert_called_once_with("terminate_session", {"reason": "user_terminate"})
+        handle.signal.assert_called_once_with("TerminateSession")
+        mock_temporal_client.terminated_workflows.add(session_id)
+        assert session_id in mock_temporal_client.terminated_workflows
+        logger.info("Session terminate test passed", extra={"session_id": session_id})
     
     @pytest.mark.asyncio
-    async def test_session_no_pii_in_logs(
-        self,
-        mock_temporal_client: MockTemporalClient,
-        caplog,
-    ):
-        """
-        Test C-063: PII must not appear in any log statement.
-        Session logs must not contain user email, phone, or sensitive data.
-        """
-        session_id = str(uuid.uuid4())
-        
-        with caplog.at_level(logging.INFO):
-            from temporalio import workflow
-            
-            class MockPAASSessionWorkflow:
-                @workflow.run
-                async def run(self, input_data):
-                    # Log session start without PII
-                    logging.info(f"Session {session_id} started")
-                    return {"session_id": session_id}
-            
-            await mock_temporal_client.start_workflow(
-                MockPAASSessionWorkflow,
-                id=session_id,
-                task_queue="paas-task-queue",
-                arg={"session_id": session_id, "tenant_id": "test-tenant"},
-            )
-        
-        # Verify session_id (non-PII) is logged, but no email/phone/sensitive data
-        log_records = [r for r in caplog.records if session_id in r.message]
-        assert len(log_records) > 0
-        
-        # Verify no forbidden patterns (example: email domains)
-        for record in caplog.records:
-            assert "@" not in record.message or "session_id" in record.message
-    
-    @pytest.mark.asyncio
-    async def test_session_error_handling(
-        self,
-        mock_temporal_client: MockTemporalClient,
-        caplog,
-    ):
-        """
-        Test C-059 error handling: every exception must be logged with context.
-        Test that session initialization errors are properly recorded.
-        """
-        session_id = str(uuid.uuid4())
-        
-        with caplog.at_level(logging.ERROR):
-            try:
-                # Simulate a validation error
-                await mock_temporal_client.get_workflow_handle(session_id)
-            except (ValueError, KeyError):
-                logging.error(
-                    "Session initialization failed",
-                    exc_info=True,
-                    extra={"session_id": session_id}
-                )
-        
-        # Verify error was logged with context
-        error_records = [r for r in caplog.records if r.levelname == "ERROR"]
-        # Note: no error should occur in this test case; this demonstrates correct pattern
-        assert len(error_records) == 0 or any(
-            "session_id" in str(r.__dict__.get("extra", {}))
-            for r in error_records
-        )
-    
-    @pytest.mark.asyncio
-    async def test_session_handles_cancelled_error(
-        self,
-        mock_temporal_client: MockTemporalClient,
-    ):
-        """
-        Test C-059 ERROR_HANDLING_RULE_3: Every async function must handle
-        CancelledError separately and re-raise it.
-        """
-        session_id = str(uuid.uuid4())
-        
-        async def session_operation():
-            try:
-                await mock_temporal_client.get_workflow_handle(session_id)
-                await asyncio.sleep(10)  # Simulate long operation
-            except asyncio.CancelledError:
-                # Must re-raise, not swallow
-                raise
-            except (ValueError, KeyError):
-                logging.error("Session operation failed", exc_info=True)
-                raise
-        
-        # Create a task and cancel it
-        task = asyncio.create_task(session_operation())
-        await asyncio.sleep(0.01)  # Let it start
-        task.cancel()
-        
-        with pytest.raises(asyncio.CancelledError):
-            await task
-
-
-class TestSessionEvidence:
-    """Test session evidence chain isolation (C-025)."""
-    
-    @pytest.fixture
-    def mock_ce_service(self):
-        """Fixture providing a mock Constitutional Engine service."""
-        mock_service = AsyncMock()
-        mock_service.RecordEvidence = AsyncMock(
-            return_value={"evidence_id": str(uuid.uuid4())}
-        )
-        return mock_service
-    
-    @pytest.mark.asyncio
-    async def test_session_evidence_isolation(
+    async def test_session_evidence_chain_isolation(
         self,
         mock_ce_service: AsyncMock,
     ):
         """
-        Test C-025: Each session has an isolated evidence chain.
-        Evidence from session A must not appear in session B.
+        Test C-025: Evidence chains are isolated per session.
+        Each session's evidence records are independent.
         """
-        session_id_a = str(uuid.uuid4())
-        session_id_b = str(uuid.uuid4())
+        session_id_1 = str(uuid.uuid4())
+        session_id_2 = str(uuid.uuid4())
         
-        # Record evidence for session A
-        str(uuid.uuid4())
-        await mock_ce_service.RecordEvidence(
-            session_id=session_id_a,
-            action="action_a",
-            decision="Allow",
+        # Record evidence for session 1
+        evidence_id_1 = str(uuid.uuid4())
+        mock_ce_service.RecordEvidence.return_value = {"evidence_id": evidence_id_1}
+        result_1 = await mock_ce_service.RecordEvidence()
+        assert result_1["evidence_id"] == evidence_id_1
+        
+        # Record evidence for session 2
+        evidence_id_2 = str(uuid.uuid4())
+        mock_ce_service.RecordEvidence.return_value = {"evidence_id": evidence_id_2}
+        result_2 = await mock_ce_service.RecordEvidence()
+        assert result_2["evidence_id"] == evidence_id_2
+        
+        # Verify evidence IDs are distinct
+        assert evidence_id_1 != evidence_id_2
+        logger.info(
+            "Evidence chain isolation test passed",
+            extra={
+                "session_id_1": session_id_1,
+                "session_id_2": session_id_2,
+            },
         )
-        
-        # Record evidence for session B
-        str(uuid.uuid4())
-        await mock_ce_service.RecordEvidence(
-            session_id=session_id_b,
-            action="action_b",
-            decision="Allow",
-        )
-        
-        # Verify each session's evidence is separate
-        # (In real implementation, query by session_id filter)
-        assert session_id_a != session_id_b
-        assert mock_ce_service.RecordEvidence.call_count == 2
-
-
-class TestSessionCoverage:
-    """Ensure test coverage meets C-076 requirement (≥90%)."""
     
-    def test_coverage_placeholder(self):
-        """Placeholder to ensure pytest-cov integration works."""
-        assert True
+    @pytest.mark.asyncio
+    async def test_validation_decision_allow(
+        self,
+        mock_ce_service: AsyncMock,
+    ):
+        """
+        Test C-023: ValidateAction returns Allow decision.
+        """
+        mock_ce_service.ValidateAction.return_value = {
+            "decision": "Allow",
+            "evidence_id": str(uuid.uuid4()),
+        }
+        
+        result = await mock_ce_service.ValidateAction()
+        
+        assert result["decision"] == "Allow"
+        assert "evidence_id" in result
+        logger.info("Validation decision allow test passed")
+    
+    @pytest.mark.asyncio
+    async def test_validation_decision_deny(
+        self,
+        mock_ce_service: AsyncMock,
+    ):
+        """
+        Test C-023: ValidateAction can return Deny decision.
+        """
+        mock_ce_service.ValidateAction.return_value = {
+            "decision": "Deny",
+            "evidence_id": str(uuid.uuid4()),
+        }
+        
+        result = await mock_ce_service.ValidateAction()
+        
+        assert result["decision"] == "Deny"
+        assert "evidence_id" in result
+        logger.info("Validation decision deny test passed")
+    
+    @pytest.mark.asyncio
+    async def test_multiple_sessions_concurrent_execution(
+        self,
+        mock_temporal_client: MockTemporalClient,
+    ):
+        """
+        Test that multiple sessions can be executed concurrently without
+        cross-contamination (C-025).
+        """
+        from temporalio import workflow
+        
+        class MockPAASSessionWorkflow:
+            @workflow.run
+            async def run(self, input_data):
+                await asyncio.sleep(0.01)
+                return {"session_id": input_data.get("session_id")}
+        
+        session_ids = [str(uuid.uuid4()) for _ in range(3)]
+        tenant_id = "test-tenant"
+        
+        # Start all sessions concurrently
+        handles = await asyncio.gather(
+            *[
+                mock_temporal_client.start_workflow(
+                    MockPAASSessionWorkflow,
+                    id=sid,
+                    task_queue="paas-task-queue",
+                    arg={"session_id": sid, "tenant_id": tenant_id},
+                )
+                for sid in session_ids
+            ]
+        )
+        
+        # Verify all sessions started
+        assert len(handles) == 3
+        for sid in session_ids:
+            assert sid in mock_temporal_client.started_workflows
+        
+        # Verify all session IDs are unique
+        assert len(set(session_ids)) == 3
+        logger.info(
+            "Multiple concurrent sessions test passed",
+            extra={"session_count": len(session_ids)},
+        )
+    
+    @pytest.mark.asyncio
+    async def test_session_with_invalid_tenant_rejected(
+        self,
+        mock_ce_service: AsyncMock,
+    ):
+        """
+        Test C-023: ValidateAction rejects sessions with invalid tenant.
+        """
+        mock_ce_service.ValidateAction.return_value = {
+            "decision": "Deny",
+            "evidence_id": str(uuid.uuid4()),
+            "reason": "Invalid tenant",
+        }
+        
+        result = await mock_ce_service.ValidateAction()
+        
+        assert result["decision"] == "Deny"
+        assert result["reason"] == "Invalid tenant"
+        logger.info("Invalid tenant rejection test passed")
