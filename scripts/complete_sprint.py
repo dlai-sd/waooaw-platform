@@ -417,8 +417,15 @@ def complete_sprint(pr_number: int = 0, dry_run: bool = False) -> int:
     result    = signal.get("overall_result", "UNKNOWN")
     subtasks  = signal.get("subtask_results", {})
     task_results = signal.get("task_results", {})
-    tasks_done   = signal.get("tasks_done", [])
     tasks_req    = signal.get("tasks_requested", [])
+
+    # MERGE tasks_done: take the UNION of signal (this run) + existing state (cumulative).
+    # Never overwrite cumulative progress with a per-run subset.
+    # A BLOCKED/PARTIAL run reporting tasks_done=[] must not erase prior WC014-02/WC014-04.
+    signal_done  = signal.get("tasks_done", [])
+    current_state_for_merge = _read_sprint_state()
+    state_done   = current_state_for_merge.get("tasks_done", [])
+    tasks_done   = sorted(set(signal_done) | set(state_done))
 
     print(f"\n── Sprint Completion Protocol ──")
     print(f"  Sprint:  {sprint}")

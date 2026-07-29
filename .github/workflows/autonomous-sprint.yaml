@@ -414,6 +414,9 @@ jobs:
             scripts/sprint_retry_advisor.py \
             scripts/complete_sprint.py \
             pyproject.toml || true
+          # Also sync PROJECT_STATE.md from main — complete_sprint.py on sprint branch
+          # may have reset tasks_done to [] (per-run signal); main has cumulative truth.
+          git checkout origin/main -- constitution/PROJECT_STATE.md || true
           python3 scripts/autonomous_sprint_runner.py
 
       # D3 FIX: Write autonomous_halt=true to main when scaffold fails.
