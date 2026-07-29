@@ -1,18 +1,45 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-07-29 (PDM + audit complete — clean slate for WC-013)
-**Version:** 1.19.0
-**Declared by:** Platform IT Expert (INST-010) — session 2026-07-29
-**Session:** 2026-07-29 — RCA + CS0234 fix + PDM generic solution + MagicLLM audit
+**Last Updated:** 2026-07-29 (WC-013 MERGED — WC-014 next)
+**Version:** 1.20.0
+**Declared by:** Platform IT Expert (INST-010) — semi-autonomous session 2026-07-29
+**Session:** 2026-07-29 — WC-013 complete + pipeline fixes + failure registry
 
 ---
 
-## SESSION RECORD — 2026-07-29 (ProjectDependencyMap — COMPLETE)
+## SESSION RECORD — 2026-07-29 (WC-013 Business Platform — MERGED)
 
-### What Was Built
+### Sprint Completion: WC-013
 
-| Commit | Change | Result |
+| Task | Subtask | Result | Notes |
+|---|---|---|---|
+| WC013-01 | BP scaffold | ✅ MERGED | Deterministic, clean first attempt |
+| WC013-02 | 02a JWT middleware | ✅ MERGED | Attempt 1 clean |
+| WC013-02 | 02b CCT-MT-01 | ✅ MERGED | Cascade L1 resolved CS7036 |
+| WC013-03 | 03a endpoints | ✅ MERGED | Manual fix: CE.Evaluators + CS0029 |
+| WC013-03 | 03b tests | ✅ MERGED | Manual fix: CS9051/CS0122 |
+| WC013-04 | 04a Schemathesis | ⏭ Deferred | Requires running service — noted |
+
+**PR #155** merged (squash) → `f1d2fe8`
+
+### Pipeline Fixes (Track A) Applied to Main
+
+| Commit | Fix | Pattern |
 |---|---|---|
+| `32bc54d` | CE namespace guard restored to FORBIDDEN_PATTERNS + CS8609 handler | CS0234 × 4 runs → C-087 confirmed |
+| `15736d7` | CS0019 ValidationDecision/PolicyDecision explicit guard | CS0019 × 2 runs |
+| `daba5ee` | App token for sprint branch push (GH_WORKFLOW_SCOPE) | All 3 runs blocked |
+| `a692bae` | ProjectDependencyMap — generic cross-project boundary | Architecture improvement |
+
+### Failure Registry (15 entries)
+- `logs/failure-registry.jsonl` — 15 entries across 4 run_ids + 3 manual sprint entries
+- Patterns identified: CS0234_CE_EVALUATORS_IN_BP (C-087 gate ≥3 ✓), SPRINT_BRANCH_PUSH, CS0029_DTO_TO_PROTO, CS9051_FILE_LOCAL_FIXTURE
+
+### Canonical Patterns Seeded
+- `architecture/reference/ptr/canonical-patterns/dotnet/wc-013-patterns.md` — 13 patterns (CANDIDATE)
+- `architecture/reference/ptr/canonical-patterns/python/wc-013-patterns.md` — 2 patterns (CANDIDATE)
+
+---
 | `567e94e` | CS0234 handler + FORBIDDEN_PATTERNS (band-aid — superseded) | Fixed immediate blocker |
 | `a692bae` | **ProjectDependencyMap** — generic cross-project boundary enforcement | Generic solution |
 | `8ae7d46` | namespace_path guard — bare type names skip PDM (audit finding) | Correctness fix |
@@ -168,17 +195,17 @@ session_declared: "Architecture correction 2026-07-28: WC-012 execution requires
 # Next: WC-013 — Business Platform scaffold
 
 # ── WC-013 STATUS ────────────────────────────────────────────────────────────────────────
-sprint: WC-013
+sprint: WC-014
 sprint_status: AUTHORIZED
 task_id: WC013-01
-tasks_done:
-  - WC013-01
-  - WC013-02
+tasks_done: []
 tasks_remaining:
-  - WC013-03
-  - WC013-04
-consecutive_failures: 1
-autonomous_halt: true
+  - WC014-01
+  - WC014-02
+  - WC014-03
+  - WC014-04
+consecutive_failures: 0
+autonomous_halt: false
 open_prs: none
 goal_register_issue: 115
 
@@ -288,14 +315,14 @@ WC012-02b `CS1061: string.TryGetValue` fixed at three layers:
 
 ```yaml
 sprint_status: AUTHORIZED
-tasks_done:
-  - WC013-01
-  - WC013-02
+tasks_done: []
 tasks_remaining:
-  - WC013-03
-  - WC013-04
-consecutive_failures: 1
-autonomous_halt: true
+  - WC014-01
+  - WC014-02
+  - WC014-03
+  - WC014-04
+consecutive_failures: 0
+autonomous_halt: false
 platform_phase: IMPLEMENTATION
 ```
 
@@ -595,7 +622,7 @@ OPTION C — Nothing needed from you until sprint opens first PR
 <!-- Edit ONLY the fields below. Do not alter the block structure. -->
 
 ```yaml
-autonomous_halt: true       # ← GO seam closed 2026-07-28 by Yogesh Khandge
+autonomous_halt: false       # ← GO seam closed 2026-07-28 by Yogesh Khandge
                               #   GoalExecutor now in execution path (A7 closed)
                               #   execute_file_by_file() Path 1 = GoalExecutor.execute_sprint_task()
 
@@ -608,20 +635,20 @@ sprint_ib_item: IB-009
 sprint_status: AUTHORIZED
 branch: ib/009/sprint-013
 last_attempt_utc: 2026-07-28T16:30:00.000000+00:00
-last_attempt_result: PARTIAL
-consecutive_failures: 1
+last_attempt_result: NONE
+consecutive_failures: 0
 consecutive_infra_failures: 0
-tasks_done:
-  - WC013-01
-  - WC013-02
+tasks_done: []
 tasks_remaining:
-  - WC013-03
-  - WC013-04
+  - WC014-01
+  - WC014-02
+  - WC014-03
+  - WC014-04
 
 current_task:
 
 
-                                            WC013-01    ## NEXT SESSION OPTIONS
+                                            WC014-01    ## NEXT SESSION OPTIONS
 
 ```
 CURRENT STATE: platform_phase=IMPLEMENTATION · AUTONOMOUS_HALT=false
