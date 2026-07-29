@@ -81,52 +81,56 @@ _ENCODING_PATTERNS: list[re.Pattern[str]] = [
 _CONTEXT_MANIPULATION_PATTERNS: list[re.Pattern[str]] = [
     re.compile(r"\b(in\s+the\s+previous|in\s+our\s+last|from\s+the\s+previous)\s+(conversation|session|turn|message|chat)\b", re.I),
     re.compile(r"\byou\s+(already\s+)?(agreed|confirmed|said|told\s+me|promised|accepted)\s+(that\s+)?(you\s+would|to)\b", re.I),
-    re.compile(r"\byour\s+(previous|last|earlier)\s+(self|version|instance|response|message)\s+(said|agreed|told|confirmed|promised)\b", re.I),
-    re.compile(r"\bas\s+(we|you)\s+(discussed|agreed|established|decided)\s+(earlier|before|previously|last\s+time)\b", re.I),
-    re.compile(r"\bin\s+(maintenance|debug|diagnostic|test|training|developer)\s+mode\b", re.I),
-    re.compile(r"\bthis\s+is\s+a\s+(test|simulation|drill|training\s+exercise|hypothetical)\s+(so\s+)?(you\s+can|rules?\s+don'?t)\b", re.I),
+    re.compile(r"\byour\s+(previous|last|earlier)\s+(self|version|response|answer|message)\s+(said|told|confirmed|agreed)\b", re.I),
+    re.compile(r"\bwe\s+(already\s+)?(established|agreed|decided|confirmed)\s+(that\s+)?(you\s+(can|will|should|are\s+allowed))\b", re.I),
+    re.compile(r"\bin\s+(maintenance|debug|test|dev|developer|admin|root|god|privileged)\s+mode\b", re.I),
+    re.compile(r"\bsimulation\s+(mode|context|scenario)\b", re.I),
+    re.compile(r"\bhypothetically\s+(speaking|if\s+you\s+(had\s+no|were\s+without|could\s+ignore))\b", re.I),
 ]
 
-# ── Category 7: Indirect injection via special delimiters ───────────────────
-_DELIMITER_INJECTION_PATTERNS: list[re.Pattern[str]] = [
-    re.compile(r"<\s*system\s*>", re.I),                 # <system> tag
-    re.compile(r"\[INST\]", re.I),                       # Llama instruction token
-    re.compile(r"\[\/INST\]", re.I),                     # Llama close instruction token
-    re.compile(r"<\|im_start\|>", re.I),                 # ChatML start
-    re.compile(r"<\|im_end\|>", re.I),                   # ChatML end
-    re.compile(r"<\|system\|>", re.I),                   # Phi/Mistral system token
-    re.compile(r"###\s*(System|Instruction|Human|Assistant)\s*:", re.I),  # Alpaca-style
-    re.compile(r"\bHUMAN\s*:\s*ignore\b", re.I),         # RLHF-format injection
-    re.compile(r"\bASSISTANT\s*:\s*(sure|yes|of\s+course|absolutely)", re.I),  # Pre-fill attack
-]
-
-# ── Category 8: Indirect / payload injection ────────────────────────────────
+# ── Category 7: Indirect / nested injection ─────────────────────────────────
 _INDIRECT_INJECTION_PATTERNS: list[re.Pattern[str]] = [
-    re.compile(r"\bwhen\s+you\s+(read|see|process|encounter)\s+(this|the\s+following)\b", re.I),
-    re.compile(r"\bthe\s+(following|above|below)\s+(text|content|message|data)\s+(contains?|has|includes?)\s+(hidden|secret|special)\s+(instructions?|commands?|directives?)\b", re.I),
-    re.compile(r"\bexecute\s+(the\s+following|this)\s+(command|instruction|directive|code)\b", re.I),
-    re.compile(r"\brun\s+(the\s+following|this)\s+(command|instruction|code|script)\b", re.I),
-    re.compile(r"\bhidden\s+(instruction|command|directive|message|payload)\b", re.I),
-    re.compile(r"\bsecret\s+(instruction|command|directive|word|key|phrase|token)\b", re.I),
-    re.compile(r"\bmagic\s+(word|phrase|key|token|password|instruction|command)\b", re.I),
+    re.compile(r"\bthe\s+(document|file|page|article|text|content|data)\s+(says?|states?|instructs?|tells?\s+you|asks?\s+you)\s+(to\s+)?(ignore|forget|disregard|override|bypass)\b", re.I),
+    re.compile(r"\b(translate|summarize|rewrite|paraphrase)\s+(this|the\s+following)\s+(and\s+then|then\s+also|but\s+also)\s+(ignore|forget|disregard)\b", re.I),
+    re.compile(r"\bnew\s+instruction\s*:", re.I),
+    re.compile(r"\bsystem\s*:\s*(ignore|you\s+are|from\s+now|new\s+role|new\s+instruction)\b", re.I),
+    re.compile(r"\[system\]", re.I),
+    re.compile(r"<\s*system\s*>", re.I),
+    re.compile(r"\bASSTANT\s*:", re.I),  # typosquat of ASSISTANT
+    re.compile(r"\bINSTRUCTION\s*:", re.I),
+    re.compile(r"\bCOMMAND\s*:", re.I),
+    re.compile(r"\bOVERRIDE\s*:", re.I),
 ]
 
-# ── All pattern groups ───────────────────────────────────────────────────────
-_ALL_PATTERN_GROUPS: list[tuple[str, list[re.Pattern[str]]]] = [
-    ("role_override", _ROLE_OVERRIDE_PATTERNS),
-    ("extraction", _EXTRACTION_PATTERNS),
-    ("jailbreak", _JAILBREAK_PATTERNS),
-    ("authority_bypass", _AUTHORITY_BYPASS_PATTERNS),
-    ("encoding", _ENCODING_PATTERNS),
-    ("context_manipulation", _CONTEXT_MANIPULATION_PATTERNS),
-    ("delimiter_injection", _DELIMITER_INJECTION_PATTERNS),
-    ("indirect_injection", _INDIRECT_INJECTION_PATTERNS),
+# ── Category 8: Goal / objective hijacking ──────────────────────────────────
+_GOAL_HIJACK_PATTERNS: list[re.Pattern[str]] = [
+    re.compile(r"\byour\s+(only|primary|main|sole|real|true|actual)\s+(goal|objective|purpose|task|job|mission)\s+is\s+now\b", re.I),
+    re.compile(r"\bfrom\s+now\s+(on|forward)\s+(you\s+)?(must|should|will|shall|are\s+to)\b", re.I),
+    re.compile(r"\bstarting\s+(now|from\s+this\s+point|from\s+here)\s+(you\s+)?(must|should|will|shall|are\s+to)\b", re.I),
+    re.compile(r"\bI\s+(hereby|now|officially)\s+(authorize|permit|allow|grant)\s+(you\s+to)?\s*(bypass|override|ignore|skip)\b", re.I),
+    re.compile(r"\bthe\s+(founder|admin|owner|developer|creator|operator)\s+(says?|told|wants?|authorized?|permits?)\s+(you\s+to)?\s*(bypass|override|ignore)\b", re.I),
 ]
 
+# ── All pattern groups combined ─────────────────────────────────────────────
+_ALL_PATTERN_GROUPS: list[list[re.Pattern[str]]] = [
+    _ROLE_OVERRIDE_PATTERNS,
+    _EXTRACTION_PATTERNS,
+    _JAILBREAK_PATTERNS,
+    _AUTHORITY_BYPASS_PATTERNS,
+    _ENCODING_PATTERNS,
+    _CONTEXT_MANIPULATION_PATTERNS,
+    _INDIRECT_INJECTION_PATTERNS,
+    _GOAL_HIJACK_PATTERNS,
+]
+
+
+# ---------------------------------------------------------------------------
+# InjectionGuard — C-062 enforcement
+# ---------------------------------------------------------------------------
 
 @dataclass
-class ScanResult:
-    """Result of an injection guard scan."""
+class InjectionScanResult:
+    """Result of a prompt injection scan."""
 
     safe: bool
     matched_category: str | None = None
@@ -136,123 +140,97 @@ class ScanResult:
 @dataclass
 class InjectionGuard:
     """
-    C-062 Prompt Injection Defence.
+    C-062: Guards prompts against injection attacks that could cause the AI to
+    act outside its authorised Decision Space.
 
-    Scans every user-supplied prompt for known injection vectors before
-    the prompt is forwarded to any LLM provider. The Decision Space
-    cannot be bypassed by conversation input.
-
-    CCT-PI-01: All 50 known attack patterns must be BLOCKED (100% block rate).
+    Usage:
+        guard = InjectionGuard()
+        is_safe = await guard.scan(prompt)
     """
 
-    _extra_patterns: list[tuple[str, re.Pattern[str]]] = field(
-        default_factory=list, repr=False
-    )
+    _category_names: list[str] = field(default_factory=lambda: [
+        "role_override",
+        "extraction",
+        "jailbreak",
+        "authority_bypass",
+        "encoding_obfuscation",
+        "context_manipulation",
+        "indirect_injection",
+        "goal_hijack",
+    ])
 
-    def scan(self, prompt: str) -> bool:
+    async def scan(self, prompt: str) -> bool:
         """
-        Scan a prompt for injection attacks.
+        Scan a prompt for injection attack patterns.
 
         Returns:
-            True  — prompt is safe, may proceed to LLM dispatch.
-            False — prompt is blocked (injection pattern detected).
+            True  — prompt is safe to proceed
+            False — prompt is blocked (injection attack detected)
 
         C-062: Decision Space cannot be bypassed by conversation input.
-        """
-        result = self.scan_detailed(prompt)
-        return result.safe
-
-    def scan_detailed(self, prompt: str) -> ScanResult:
-        """
-        Scan a prompt and return a detailed result including which category
-        and pattern triggered the block (if any).
-
-        Logs a WARNING (without the prompt content — C-063 PII obligation)
-        when a pattern is matched.
-        """
-        for category, patterns in _ALL_PATTERN_GROUPS:
-            for pattern in patterns:
-                try:
-                    if pattern.search(prompt):
-                        logger.warning(
-                            "Injection attempt blocked — category=%s pattern=%s",
-                            category,
-                            pattern.pattern,
-                        )
-                        return ScanResult(
-                            safe=False,
-                            matched_category=category,
-                            matched_pattern=pattern.pattern,
-                        )
-                except re.error as exc:
-                    logger.error(
-                        "Regex evaluation error in injection guard — category=%s error=%s",
-                        category,
-                        exc,
-                        exc_info=True,
-                        extra={"context": "injection_guard.scan_detailed"},
-                    )
-
-        # Extra patterns registered at runtime (e.g. domain-specific vectors)
-        for category, pattern in self._extra_patterns:
-            try:
-                if pattern.search(prompt):
-                    logger.warning(
-                        "Injection attempt blocked (extra pattern) — category=%s pattern=%s",
-                        category,
-                        pattern.pattern,
-                    )
-                    return ScanResult(
-                        safe=False,
-                        matched_category=category,
-                        matched_pattern=pattern.pattern,
-                    )
-            except re.error as exc:
-                logger.error(
-                    "Regex evaluation error in injection guard (extra) — category=%s error=%s",
-                    category,
-                    exc,
-                    exc_info=True,
-                    extra={"context": "injection_guard.scan_detailed.extra"},
-                )
-
-        return ScanResult(safe=True)
-
-    async def scan_async(self, prompt: str) -> bool:
-        """
-        Async wrapper for scan() — allows use in async FastAPI endpoints
-        without blocking the event loop for very large prompts.
-
-        C-062 compliance: same block semantics as sync scan().
+        C-059: All blocked prompts are logged as evidence.
         """
         try:
-            loop = asyncio.get_event_loop()
-            result = await loop.run_in_executor(None, self.scan, prompt)
-            return result
+            result = await asyncio.get_event_loop().run_in_executor(
+                None, self._scan_sync, prompt
+            )
         except asyncio.CancelledError:
             raise
-        except (ValueError, RuntimeError) as exc:
+        except (ValueError, TypeError) as e:
             logger.error(
-                "Unexpected error in async injection guard scan",
+                "InjectionGuard scan failed due to invalid input: %s",
+                type(e).__name__,
                 exc_info=True,
-                extra={"context": "injection_guard.scan_async", "error": str(exc)},
+                extra={"context": "injection_guard_scan"},
             )
-            # Fail closed — if we cannot scan, we block (C-062)
+            # C-059: fail closed — if scan errors, block the prompt
             return False
 
-    def register_pattern(self, category: str, pattern: str | re.Pattern[str]) -> None:
-        """
-        Register an additional injection pattern at runtime.
+        if not result.safe:
+            # C-059: evidence record — log the block (no PII — pattern/category only)
+            logger.warning(
+                "C-062 injection blocked: category=%s pattern=%s",
+                result.matched_category,
+                result.matched_pattern,
+            )
 
-        Used by domain-specific guards (e.g. trading domain vectors) without
-        modifying the core guard definition.
+        return result.safe
+
+    def _scan_sync(self, prompt: str) -> InjectionScanResult:
         """
-        if isinstance(pattern, str):
-            compiled = re.compile(pattern, re.I)
-        else:
-            compiled = pattern
-        self._extra_patterns.append((category, compiled))
-        logger.info(
-            "Injection guard: registered extra pattern — category=%s",
-            category,
-        )
+        Synchronous inner scan — iterates all pattern groups.
+        Separated so it can be run in an executor without blocking the event loop.
+        """
+        for group_idx, pattern_group in enumerate(_ALL_PATTERN_GROUPS):
+            category_name = (
+                self._category_names[group_idx]
+                if group_idx < len(self._category_names)
+                else f"category_{group_idx}"
+            )
+            for pattern in pattern_group:
+                if pattern.search(prompt):
+                    return InjectionScanResult(
+                        safe=False,
+                        matched_category=category_name,
+                        matched_pattern=pattern.pattern,
+                    )
+
+        return InjectionScanResult(safe=True)
+
+    def scan_sync(self, prompt: str) -> bool:
+        """
+        Synchronous variant for callers that cannot await.
+        Prefer scan() in async contexts.
+
+        Returns:
+            True  — prompt is safe
+            False — blocked
+        """
+        result = self._scan_sync(prompt)
+        if not result.safe:
+            logger.warning(
+                "C-062 injection blocked (sync): category=%s pattern=%s",
+                result.matched_category,
+                result.matched_pattern,
+            )
+        return result.safe
