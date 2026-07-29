@@ -196,7 +196,7 @@ session_declared: "Architecture correction 2026-07-28: WC-012 execution requires
 
 # ── WC-013 STATUS ────────────────────────────────────────────────────────────────────────
 sprint: WC-014
-sprint_status: AUTHORIZED
+sprint_status: IN_PROGRESS
 task_id: WC013-01
 tasks_done: []
 tasks_remaining:
@@ -314,7 +314,7 @@ WC012-02b `CS1061: string.TryGetValue` fixed at three layers:
 ### State at Session Close
 
 ```yaml
-sprint_status: AUTHORIZED
+sprint_status: IN_PROGRESS
 tasks_done: []
 tasks_remaining:
   - WC014-01
@@ -628,9 +628,9 @@ platform_phase: IMPLEMENTATION  # SPEC | IMPLEMENTATION | LIVE
 
 current_sprint: WC-014
 sprint_ib_item: IB-009
-sprint_status: AUTHORIZED
+sprint_status: IN_PROGRESS
 branch: ib/009/sprint-014
-last_attempt_utc: 2026-07-29T00:00:00.000000+00:00
+last_attempt_utc: 2026-07-29T08:59:16.150490+00:00
 last_attempt_result: NONE
 consecutive_failures: 0
 consecutive_infra_failures: 0
@@ -642,7 +642,6 @@ tasks_remaining:
   - WC014-04
 
 current_task: WC014-01
-
 ```
 CURRENT STATE: platform_phase=IMPLEMENTATION · AUTONOMOUS_HALT=false
                current_sprint=WC-012 · sprint_status=READY
