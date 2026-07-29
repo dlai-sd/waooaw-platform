@@ -265,10 +265,11 @@ from enum import Enum, StrEnum
 
 logger = logging.getLogger(__name__)
 
-# E501: regex patterns legitimately exceed 120 chars — must pass with line-length=130
+# E501: very long lines (140+ chars) must pass — PSE routing rules, SQL, regex naturally exceed 130
 INJECTION_PATTERNS: list[re.Pattern[str]] = [
-    re.compile(r"\\bignore\\s+(all\\s+)?(previous|prior|above|earlier)\\s+(instructions?|prompts?|context|directives?)\\b", re.I),
-    re.compile(r"\\bforget\\s+(all\\s+)?(previous|prior|above|earlier)\\s+(instructions?|prompts?|context|directives?)\\b", re.I),
+    re.compile(r"\\bignore\\s+(all\\s+)?(previous|prior|above|earlier)\\s+(instructions?|prompts?|context|directives?|commands?|rules?|guidelines?)\\b", re.I),
+    re.compile(r"\\bforget\\s+(all\\s+)?(previous|prior|above|earlier)\\s+(instructions?|prompts?|context|directives?|commands?|rules?|guidelines?)\\b", re.I),
+    re.compile(r"\\byou\\s+are\\s+now\\s+(a\\s+|an\\s+)?(different|new|unrestricted|free|jailbroken|unfiltered|uncensored|liberated|unchained)\\b", re.I),
 ]
 
 # UP042: LLM may generate str+Enum — must be auto-fixed to StrEnum by ruff --fix
