@@ -622,19 +622,15 @@ OPTION C — Nothing needed from you until sprint opens first PR
 <!-- Edit ONLY the fields below. Do not alter the block structure. -->
 
 ```yaml
-autonomous_halt: false       # ← GO seam closed 2026-07-28 by Yogesh Khandge
-                              #   GoalExecutor now in execution path (A7 closed)
-                              #   execute_file_by_file() Path 1 = GoalExecutor.execute_sprint_task()
+autonomous_halt: false       # ← semi-autonomous mode — manual trigger only
 
 platform_phase: IMPLEMENTATION  # SPEC | IMPLEMENTATION | LIVE
-                              # SPEC = design, specs, planning only. No src/ code allowed.
-                              # Agents MUST check this field before any implementation action.
 
-current_sprint: WC-013
+current_sprint: WC-014
 sprint_ib_item: IB-009
 sprint_status: AUTHORIZED
-branch: ib/009/sprint-013
-last_attempt_utc: 2026-07-28T16:30:00.000000+00:00
+branch: ib/009/sprint-014
+last_attempt_utc: 2026-07-29T00:00:00.000000+00:00
 last_attempt_result: NONE
 consecutive_failures: 0
 consecutive_infra_failures: 0
@@ -645,10 +641,7 @@ tasks_remaining:
   - WC014-03
   - WC014-04
 
-current_task:
-
-
-                                            WC014-01    ## NEXT SESSION OPTIONS
+current_task: WC014-01
 
 ```
 CURRENT STATE: platform_phase=IMPLEMENTATION · AUTONOMOUS_HALT=false
