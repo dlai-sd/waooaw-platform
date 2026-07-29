@@ -3765,6 +3765,17 @@ def main() -> int:
     import json as _json
     signal_path.write_text(_json.dumps(_MONITOR_SIGNAL, indent=2))
     print(f"  📡 Monitor signal emitted: {signal_path}")
+    # Commit the signal to the sprint branch so complete_sprint.py can access it
+    # via 'git show BRANCH:sprint-context/monitor-signal.json' after switching to main.
+    # Previously the signal was untracked and was lost by 'git stash --include-untracked'.
+    git(["add", str(signal_path)], check=False)
+    sig_diff = git(["diff", "--cached", "--quiet"], check=False)
+    if sig_diff.returncode != 0:
+        git(["commit", "--no-edit", "-m",
+             f"chore(signal): emit monitor signal for {sprint} run\n\n"
+             f"Constitutional: C-069 (observable state — complete_sprint reads this via git show)"],
+            check=False)
+        git(["push", "-u", "origin", "ib/009/sprint-014"], check=False)
     # Scalar outputs consumed directly by the monitor job
     set_output("scaffold_failed", str(scaffold_failed).lower())
     set_output("infra_error_tasks", ",".join(str(t) for t in infra_error_tasks))
