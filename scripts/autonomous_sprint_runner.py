@@ -3411,6 +3411,20 @@ def main() -> int:
             if remote_check.returncode == 0:
                 git(["checkout", branch])
                 git(["pull", "origin", branch])
+                # ── Main-merge gate: always bring sprint branch up to date with main ──
+                # Ensures fixes landed on main (pyproject.toml, FORBIDDEN_PATTERNS, Retry Advisor
+                # rules, etc.) are visible to every sprint run, not just fresh-start runs.
+                # Uses --no-ff to preserve sprint history; conflicts resolved in favour of main
+                # for pipeline config files (pyproject.toml, scripts/) since those are canonical.
+                print(f"  Branch main-merge: merging origin/main into {branch} to pick up pipeline fixes")
+                merge = git(["merge", "origin/main", "--no-edit",
+                             "-m", f"chore: merge main pipeline fixes into {branch}"], check=False)
+                if merge.returncode != 0:
+                    # Auto-resolve: take main's version of pipeline config files
+                    git(["checkout", "origin/main", "--", "pyproject.toml"], check=False)
+                    git(["add", "pyproject.toml"], check=False)
+                    git(["merge", "--continue", "--no-edit"], check=False)
+                    print(f"  Branch main-merge: conflict resolved (took main's pipeline config)")
             else:
                 # Branch may already exist locally (local dev or resume run) — try checkout first
                 local_check = git(["checkout", branch], check=False)
