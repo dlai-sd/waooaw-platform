@@ -38,15 +38,12 @@ ignore = [
                # code inside uses underscore imports; the dir name follows ADR naming convention.
     "UP017",   # datetime.UTC alias — prefer explicit timezone.utc for readability
     "G201",    # Use logger.exception() — we use logger.error(exc_info=True) per STACK_BEHAVIORAL_RULES
-<<<<<<< HEAD
-=======
     "B008",    # Depends() in FastAPI argument defaults — intentional architectural pattern (ADR-002)
     "N806",    # Uppercase variable in function — config constants in function scope (e.g. PING_INTERVAL)
     "W293",    # Blank line with whitespace — LLM-generated; auto-fixed by ruff --fix before gate
     "W292",    # No newline at end of file — LLM-generated; auto-fixed by ruff --fix before gate
     "UP041",   # Replace aliased errors — asyncio.TimeoutError alias is intentional for clarity
     "I001",    # Import sorting — auto-fixed; not a semantic error
->>>>>>> origin/main
 ]
 
 [tool.ruff.lint.per-file-ignores]
