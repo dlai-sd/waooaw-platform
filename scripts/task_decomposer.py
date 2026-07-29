@@ -65,6 +65,9 @@ STACK_BEHAVIORAL_RULES: dict[str, list[str]] = {
         "Every FastAPI endpoint must call CE.ValidateAction before execution (C-023).",
         "PII must not appear in any log statement (C-063).",
         "C-059 header required: # Implements: <spec> and # constitutional_basis: <claims>.",
+        "TEMPORAL IMPORT (mandatory): 'from temporalio import activity, workflow' — "
+        "NOT 'import temporal', NOT 'from temporal import', NOT 'temporalio.client' at top level. "
+        "Client: 'from temporalio.client import Client'. Worker: 'from temporalio.worker import Worker'.",
         # ── Constitutional Error Handling Standards ──────────────────────────────
         "ERROR HANDLING RULE 1: Never use bare 'except: pass' or 'except Exception: pass'. Always log: logger.error('Operation failed', exc_info=True, extra={'context': context})",
         "ERROR HANDLING RULE 2: Use specific exception types. 'except (ValueError, KeyError) as e:' not 'except Exception as e:'.",
@@ -352,6 +355,14 @@ def run_compile_gate(gate_type: str, service_dir: str = "src/constitutional-engi
         return result.returncode == 0, result.stderr[:500] if result.returncode != 0 else ""
 
     if gate_type == "ruff":
+        # Auto-fix all fixable issues first (whitespace, import sorting, unused imports).
+        # Then check for remaining unfixable violations. This prevents LLM-generated
+        # style issues (W293 trailing whitespace, I001 import order, F401 unused imports)
+        # from blocking the compile gate — they're not semantic errors.
+        subprocess.run(
+            ["python3", "-m", "ruff", "check", service_dir, "--fix", "--exit-zero"],
+            capture_output=True, text=True, cwd=REPO_ROOT
+        )
         result = subprocess.run(
             ["python3", "-m", "ruff", "check", service_dir],
             capture_output=True, text=True, cwd=REPO_ROOT

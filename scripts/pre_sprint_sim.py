@@ -362,7 +362,11 @@ def simulate_wc(wc_path: Path) -> WCSimResult:
             # CCT-EF (Evidence First), CCT-HO (Human Override), CCT-MT (Multi-Tenant),
             # CCT-ES (Emergency Stop), CCT-PIPE (Pipeline) are constitutional infrastructure.
             # Sprint authors write task-specific CCTs; framework CCTs already have suites.
-            _FRAMEWORK_CCTS = {"EF", "HO", "MT", "ES", "PIPE", "CE"}
+            _FRAMEWORK_CCTS = {"EF", "HO", "MT", "ES", "PIPE", "CE", "PS", "PI"}
+            # EF=Evidence First, HO=Human Override, MT=Multi-Tenant, ES=Emergency Stop
+            # PIPE=Pipeline, CE=Constitutional Engine, PS=PAAS Session isolation,
+            # PI=Prompt Injection — all are platform-level constitutional CCTs,
+            # not sprint-specific. Sprint authors implement them; platform proves them.
             cct_refs = re.findall(r'CCT-([A-Z]+)', spec_text)
             for cct in cct_refs:
                 if cct in _FRAMEWORK_CCTS:

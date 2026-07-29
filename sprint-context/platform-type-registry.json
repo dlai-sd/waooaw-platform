@@ -1,0 +1,766 @@
+{
+  "tasks": {
+    "WC012-02a": {
+      "types": {
+        "EvaluatorRegistry": {
+          "kind": "class",
+          "properties": {},
+          "methods": [
+            {
+              "name": "EvaluateAllAsync",
+              "return_type": "Task",
+              "params": "EvaluationContext ctx"
+            }
+          ]
+        }
+      },
+      "files": []
+    },
+    "WC012-02b": {
+      "types": {
+        "EvidenceState": {
+          "kind": "enum",
+          "namespace": "Waooaw.ConstitutionalEngine.Grpc",
+          "values": []
+        },
+        "ValidationDecision": {
+          "kind": "enum",
+          "namespace": "Waooaw.ConstitutionalEngine.Grpc",
+          "values": [
+            "[pbr::OriginalName(\"VALIDATION_DECISION_UNSPECIFIED\")] Unspecified = 0"
+          ]
+        },
+        "PolicyDecision": {
+          "kind": "enum",
+          "namespace": "Waooaw.ConstitutionalEngine.Grpc",
+          "values": [
+            "[pbr::OriginalName(\"POLICY_DECISION_UNSPECIFIED\")] Unspecified = 0",
+            "[pbr::OriginalName(\"POLICY_DECISION_PERMIT\")] Permit = 1",
+            "[pbr::OriginalName(\"POLICY_DECISION_DENY\")] Deny = 2"
+          ]
+        },
+        "ApprovalType": {
+          "kind": "enum",
+          "namespace": "Waooaw.ConstitutionalEngine.Grpc",
+          "values": [
+            "[pbr::OriginalName(\"APPROVAL_TYPE_UNSPECIFIED\")] Unspecified = 0"
+          ]
+        },
+        "RecordEvidenceRequest": {
+          "kind": "proto_message",
+          "namespace": "Waooaw.ConstitutionalEngine.Grpc",
+          "fields": {
+            "ActionInstanceId": "string",
+            "ContractId": "string",
+            "ProfessionalId": "string",
+            "ActionType": "string",
+            "State": "EvidenceState",
+            "ProposedContent": "string?",
+            "ExecutedContent": "string?",
+            "IsScopeBoundary": "bool",
+            "ScopeBoundaryName": "string?",
+            "ScopeBoundaryAcknowledgment": "string?",
+            "DecisionSpaceVersion": "int",
+            "ConstitutionalBasis": "string"
+          },
+          "note": "Proto-generated C# class in namespace Waooaw.ConstitutionalEngine.Grpc. Use property names EXACTLY as listed — do NOT invent fields."
+        },
+        "RecordEvidenceResponse": {
+          "kind": "proto_message",
+          "namespace": "Waooaw.ConstitutionalEngine.Grpc",
+          "fields": {
+            "EvidenceRecordId": "string"
+          },
+          "note": "Proto-generated C# class in namespace Waooaw.ConstitutionalEngine.Grpc. Use property names EXACTLY as listed — do NOT invent fields."
+        },
+        "ValidateActionRequest": {
+          "kind": "proto_message",
+          "namespace": "Waooaw.ConstitutionalEngine.Grpc",
+          "fields": {
+            "ContractId": "string",
+            "ActionType": "string",
+            "ActionParameters": "string",
+            "DecisionSpaceVersion": "int",
+            "BudgetContext": "BudgetContext?",
+            "SyntheticApprovalContext": "SyntheticApprovalContext?",
+            "ApprovalType": "ApprovalType",
+            "SkillId": "string?",
+            "ReasoningTraceId": "string?"
+          },
+          "note": "Proto-generated C# class in namespace Waooaw.ConstitutionalEngine.Grpc. Use property names EXACTLY as listed — do NOT invent fields."
+        },
+        "BudgetContext": {
+          "kind": "proto_message",
+          "namespace": "Waooaw.ConstitutionalEngine.Grpc",
+          "fields": {
+            "ApprovedMonthlyBudgetInrPaise": "long",
+            "CurrentMonthSpendInrPaise": "long",
+            "ProposedSpendInrPaise": "long",
+            "SkillType": "string"
+          },
+          "note": "Proto-generated C# class in namespace Waooaw.ConstitutionalEngine.Grpc. Use property names EXACTLY as listed — do NOT invent fields."
+        },
+        "SyntheticApprovalContext": {
+          "kind": "proto_message",
+          "namespace": "Waooaw.ConstitutionalEngine.Grpc",
+          "fields": {
+            "ConfidenceScore": "float",
+            "ConfiguredThreshold": "float",
+            "PriorApprovalCount": "int",
+            "MinHistoryRequired": "int",
+            "BasisApprovalIds": "RepeatedField<string>",
+            "ActionDescription": "string",
+            "OverrideWindowHours": "int"
+          },
+          "note": "Proto-generated C# class in namespace Waooaw.ConstitutionalEngine.Grpc. Use property names EXACTLY as listed — do NOT invent fields."
+        },
+        "ValidateActionResponse": {
+          "kind": "proto_message",
+          "namespace": "Waooaw.ConstitutionalEngine.Grpc",
+          "fields": {
+            "Decision": "ValidationDecision",
+            "ConstitutionalBasis": "string",
+            "Reason": "string",
+            "BudgetRemainingInrPaise": "long?",
+            "SyntheticApprovalRecordId": "string?"
+          },
+          "note": "Proto-generated C# class in namespace Waooaw.ConstitutionalEngine.Grpc. Use property names EXACTLY as listed — do NOT invent fields."
+        },
+        "GrantAuthorityRequest": {
+          "kind": "proto_message",
+          "namespace": "Waooaw.ConstitutionalEngine.Grpc",
+          "fields": {
+            "ContractId": "string",
+            "NewAuthorityLevel": "int",
+            "GrantedBy": "string",
+            "EvidenceIds": "RepeatedField<string>",
+            "ConstitutionalBasis": "string"
+          },
+          "note": "Proto-generated C# class in namespace Waooaw.ConstitutionalEngine.Grpc. Use property names EXACTLY as listed — do NOT invent fields."
+        },
+        "GrantAuthorityResponse": {
+          "kind": "proto_message",
+          "namespace": "Waooaw.ConstitutionalEngine.Grpc",
+          "fields": {
+            "LicenseId": "string"
+          },
+          "note": "Proto-generated C# class in namespace Waooaw.ConstitutionalEngine.Grpc. Use property names EXACTLY as listed — do NOT invent fields."
+        },
+        "RevokeAuthorityRequest": {
+          "kind": "proto_message",
+          "namespace": "Waooaw.ConstitutionalEngine.Grpc",
+          "fields": {
+            "ContractId": "string",
+            "NewAuthorityLevel": "int",
+            "RevokedBy": "string",
+            "Reason": "string",
+            "ConstitutionalBasis": "string"
+          },
+          "note": "Proto-generated C# class in namespace Waooaw.ConstitutionalEngine.Grpc. Use property names EXACTLY as listed — do NOT invent fields."
+        },
+        "RevokeAuthorityResponse": {
+          "kind": "proto_message",
+          "namespace": "Waooaw.ConstitutionalEngine.Grpc",
+          "fields": {
+            "LicenseId": "string"
+          },
+          "note": "Proto-generated C# class in namespace Waooaw.ConstitutionalEngine.Grpc. Use property names EXACTLY as listed — do NOT invent fields."
+        },
+        "EvaluatePolicyRequest": {
+          "kind": "proto_message",
+          "namespace": "Waooaw.ConstitutionalEngine.Grpc",
+          "fields": {
+            "ContractId": "string",
+            "ActionType": "string",
+            "ActionContext": "string"
+          },
+          "note": "Proto-generated C# class in namespace Waooaw.ConstitutionalEngine.Grpc. Use property names EXACTLY as listed — do NOT invent fields."
+        },
+        "EvaluatePolicyResponse": {
+          "kind": "proto_message",
+          "namespace": "Waooaw.ConstitutionalEngine.Grpc",
+          "fields": {
+            "Decision": "PolicyDecision",
+            "ConstitutionalBasis": "string",
+            "Rationale": "string"
+          },
+          "note": "Proto-generated C# class in namespace Waooaw.ConstitutionalEngine.Grpc. Use property names EXACTLY as listed — do NOT invent fields."
+        },
+        "EmergencyStopRequest": {
+          "kind": "proto_message",
+          "namespace": "Waooaw.ConstitutionalEngine.Grpc",
+          "fields": {
+            "ContractId": "string",
+            "StoppedBy": "string",
+            "ActiveSessionIds": "RepeatedField<string>"
+          },
+          "note": "Proto-generated C# class in namespace Waooaw.ConstitutionalEngine.Grpc. Use property names EXACTLY as listed — do NOT invent fields."
+        },
+        "EmergencyStopResponse": {
+          "kind": "proto_message",
+          "namespace": "Waooaw.ConstitutionalEngine.Grpc",
+          "fields": {
+            "EmergencyStopRecordId": "string",
+            "AffectedSessions": "RepeatedField<string>"
+          },
+          "note": "Proto-generated C# class in namespace Waooaw.ConstitutionalEngine.Grpc. Use property names EXACTLY as listed — do NOT invent fields."
+        },
+        "AgentsController": {
+          "kind": "class",
+          "namespace": "Waooaw.BusinessPlatform.Controllers",
+          "properties": {},
+          "methods": [
+            {
+              "name": "HireAgentAsync",
+              "return_type": "Task<IActionResult>",
+              "params": "[FromBody] HireAgentRequest request,\n        CancellationToken cancellationToken"
+            }
+          ]
+        },
+        "RegisterCustomerRequest": {
+          "kind": "record",
+          "namespace": "Waooaw.BusinessPlatform.Controllers",
+          "properties": {
+            "Name": "string",
+            "Email": "string",
+            "TenantId": "string"
+          },
+          "methods": [
+            {
+              "name": "FormEmploymentContract",
+              "return_type": "IActionResult",
+              "params": ""
+            },
+            {
+              "name": "GetEmploymentContract",
+              "return_type": "IActionResult",
+              "params": "Guid id"
+            },
+            {
+              "name": "RegisterCustomerAsync",
+              "return_type": "Task<IActionResult>",
+              "params": "[FromBody] RegisterCustomerRequest request,\n        CancellationToken cancellationToken"
+            },
+            {
+              "name": "HireAgentAsync",
+              "return_type": "Task<IActionResult>",
+              "params": "[FromBody] HireAgentRequest request,\n        CancellationToken cancellationToken"
+            }
+          ]
+        },
+        "HireAgentRequest": {
+          "kind": "record",
+          "namespace": "Waooaw.BusinessPlatform.Controllers",
+          "properties": {
+            "ContractId": "string",
+            "ProfessionalType": "string",
+            "SkillId": "string",
+            "DecisionSpaceVersion": "string",
+            "ApprovedBudgetInrPaise": "long",
+            "BillingCycleAnchorDay": "string"
+          },
+          "methods": [
+            {
+              "name": "FormEmploymentContract",
+              "return_type": "IActionResult",
+              "params": ""
+            },
+            {
+              "name": "GetEmploymentContract",
+              "return_type": "IActionResult",
+              "params": "Guid id"
+            },
+            {
+              "name": "RegisterCustomerAsync",
+              "return_type": "Task<IActionResult>",
+              "params": "[FromBody] RegisterCustomerRequest request,\n        CancellationToken cancellationToken"
+            },
+            {
+              "name": "HireAgentAsync",
+              "return_type": "Task<IActionResult>",
+              "params": "[FromBody] HireAgentRequest request,\n        CancellationToken cancellationToken"
+            }
+          ]
+        },
+        "CustomersController": {
+          "kind": "class",
+          "namespace": "Waooaw.BusinessPlatform.Controllers",
+          "properties": {},
+          "methods": [
+            {
+              "name": "FormEmploymentContract",
+              "return_type": "IActionResult",
+              "params": ""
+            },
+            {
+              "name": "GetEmploymentContract",
+              "return_type": "IActionResult",
+              "params": "Guid id"
+            },
+            {
+              "name": "RegisterCustomerAsync",
+              "return_type": "Task<IActionResult>",
+              "params": "[FromBody] RegisterCustomerRequest request,\n        CancellationToken cancellationToken"
+            },
+            {
+              "name": "HireAgentAsync",
+              "return_type": "Task<IActionResult>",
+              "params": "[FromBody] HireAgentRequest request,\n        CancellationToken cancellationToken"
+            }
+          ]
+        },
+        "RegisterCustomerResult": {
+          "kind": "record",
+          "namespace": "Waooaw.BusinessPlatform.Services",
+          "properties": {
+            "Success": "bool",
+            "CustomerId": "Guid?",
+            "DenialReason": "string?"
+          },
+          "methods": [
+            {
+              "name": "RegisterCustomerAsync",
+              "return_type": "Task<RegisterCustomerResult>",
+              "params": "RegisterCustomerRequest request,\n        CancellationToken cancellationToken"
+            },
+            {
+              "name": "HireAgentAsync",
+              "return_type": "Task<HireAgentResult>",
+              "params": "HireAgentRequest request,\n        CancellationToken cancellationToken"
+            }
+          ]
+        },
+        "HireAgentResult": {
+          "kind": "record",
+          "namespace": "Waooaw.BusinessPlatform.Services",
+          "properties": {
+            "Success": "bool",
+            "AgentId": "Guid?",
+            "ProRataBillingStartDate": "DateTimeOffset?",
+            "DenialReason": "string?"
+          },
+          "methods": [
+            {
+              "name": "RegisterCustomerAsync",
+              "return_type": "Task<RegisterCustomerResult>",
+              "params": "RegisterCustomerRequest request,\n        CancellationToken cancellationToken"
+            },
+            {
+              "name": "HireAgentAsync",
+              "return_type": "Task<HireAgentResult>",
+              "params": "HireAgentRequest request,\n        CancellationToken cancellationToken"
+            }
+          ]
+        },
+        "EmploymentService": {
+          "kind": "class",
+          "namespace": "Waooaw.BusinessPlatform.Services",
+          "properties": {},
+          "methods": [
+            {
+              "name": "RegisterCustomerAsync",
+              "return_type": "Task<RegisterCustomerResult>",
+              "params": "RegisterCustomerRequest request,\n        CancellationToken cancellationToken"
+            },
+            {
+              "name": "HireAgentAsync",
+              "return_type": "Task<HireAgentResult>",
+              "params": "HireAgentRequest request,\n        CancellationToken cancellationToken"
+            }
+          ]
+        },
+        "TenantIsolationMiddleware": {
+          "kind": "class",
+          "namespace": "Waooaw.BusinessPlatform.Infrastructure",
+          "properties": {},
+          "methods": [
+            {
+              "name": "InvokeAsync",
+              "return_type": "Task",
+              "params": "HttpContext context"
+            },
+            {
+              "name": "ReaderExecuting",
+              "return_type": "InterceptionResult<DbDataReader>",
+              "params": "DbCommand command,\n        CommandEventData eventData,\n        InterceptionResult<DbDataReader> result"
+            },
+            {
+              "name": "ScalarExecuting",
+              "return_type": "InterceptionResult<object?>",
+              "params": "DbCommand command,\n        CommandEventData eventData,\n        InterceptionResult<object?> result"
+            },
+            {
+              "name": "NonQueryExecuting",
+              "return_type": "InterceptionResult<int>",
+              "params": "DbCommand command,\n        CommandEventData eventData,\n        InterceptionResult<int> result"
+            },
+            {
+              "name": "ReaderExecutingAsync",
+              "return_type": "ValueTask<InterceptionResult<DbDataReader>>",
+              "params": "DbCommand command,\n        CommandEventData eventData,\n        InterceptionResult<DbDataReader> result,\n        CancellationToken cancellationToken = default"
+            },
+            {
+              "name": "ScalarExecutingAsync",
+              "return_type": "ValueTask<InterceptionResult<object?>>",
+              "params": "DbCommand command,\n        CommandEventData eventData,\n        InterceptionResult<object?> result,\n        CancellationToken cancellationToken = default"
+            },
+            {
+              "name": "NonQueryExecutingAsync",
+              "return_type": "ValueTask<InterceptionResult<int>>",
+              "params": "DbCommand command,\n        CommandEventData eventData,\n        InterceptionResult<int> result,\n        CancellationToken cancellationToken = default"
+            },
+            {
+              "name": "AddTenantIsolation",
+              "return_type": "IServiceCollection",
+              "params": "this IServiceCollection services"
+            },
+            {
+              "name": "UseTenantIsolation",
+              "return_type": "IApplicationBuilder",
+              "params": "this IApplicationBuilder app"
+            }
+          ]
+        },
+        "TenantDbConnectionInterceptor": {
+          "kind": "class",
+          "namespace": "Waooaw.BusinessPlatform.Infrastructure",
+          "properties": {},
+          "methods": [
+            {
+              "name": "InvokeAsync",
+              "return_type": "Task",
+              "params": "HttpContext context"
+            },
+            {
+              "name": "ReaderExecuting",
+              "return_type": "InterceptionResult<DbDataReader>",
+              "params": "DbCommand command,\n        CommandEventData eventData,\n        InterceptionResult<DbDataReader> result"
+            },
+            {
+              "name": "ScalarExecuting",
+              "return_type": "InterceptionResult<object?>",
+              "params": "DbCommand command,\n        CommandEventData eventData,\n        InterceptionResult<object?> result"
+            },
+            {
+              "name": "NonQueryExecuting",
+              "return_type": "InterceptionResult<int>",
+              "params": "DbCommand command,\n        CommandEventData eventData,\n        InterceptionResult<int> result"
+            },
+            {
+              "name": "ReaderExecutingAsync",
+              "return_type": "ValueTask<InterceptionResult<DbDataReader>>",
+              "params": "DbCommand command,\n        CommandEventData eventData,\n        InterceptionResult<DbDataReader> result,\n        CancellationToken cancellationToken = default"
+            },
+            {
+              "name": "ScalarExecutingAsync",
+              "return_type": "ValueTask<InterceptionResult<object?>>",
+              "params": "DbCommand command,\n        CommandEventData eventData,\n        InterceptionResult<object?> result,\n        CancellationToken cancellationToken = default"
+            },
+            {
+              "name": "NonQueryExecutingAsync",
+              "return_type": "ValueTask<InterceptionResult<int>>",
+              "params": "DbCommand command,\n        CommandEventData eventData,\n        InterceptionResult<int> result,\n        CancellationToken cancellationToken = default"
+            },
+            {
+              "name": "AddTenantIsolation",
+              "return_type": "IServiceCollection",
+              "params": "this IServiceCollection services"
+            },
+            {
+              "name": "UseTenantIsolation",
+              "return_type": "IApplicationBuilder",
+              "params": "this IApplicationBuilder app"
+            }
+          ]
+        },
+        "TenantIsolationMiddlewareExtensions": {
+          "kind": "class",
+          "namespace": "Waooaw.BusinessPlatform.Infrastructure",
+          "properties": {},
+          "methods": [
+            {
+              "name": "InvokeAsync",
+              "return_type": "Task",
+              "params": "HttpContext context"
+            },
+            {
+              "name": "ReaderExecuting",
+              "return_type": "InterceptionResult<DbDataReader>",
+              "params": "DbCommand command,\n        CommandEventData eventData,\n        InterceptionResult<DbDataReader> result"
+            },
+            {
+              "name": "ScalarExecuting",
+              "return_type": "InterceptionResult<object?>",
+              "params": "DbCommand command,\n        CommandEventData eventData,\n        InterceptionResult<object?> result"
+            },
+            {
+              "name": "NonQueryExecuting",
+              "return_type": "InterceptionResult<int>",
+              "params": "DbCommand command,\n        CommandEventData eventData,\n        InterceptionResult<int> result"
+            },
+            {
+              "name": "ReaderExecutingAsync",
+              "return_type": "ValueTask<InterceptionResult<DbDataReader>>",
+              "params": "DbCommand command,\n        CommandEventData eventData,\n        InterceptionResult<DbDataReader> result,\n        CancellationToken cancellationToken = default"
+            },
+            {
+              "name": "ScalarExecutingAsync",
+              "return_type": "ValueTask<InterceptionResult<object?>>",
+              "params": "DbCommand command,\n        CommandEventData eventData,\n        InterceptionResult<object?> result,\n        CancellationToken cancellationToken = default"
+            },
+            {
+              "name": "NonQueryExecutingAsync",
+              "return_type": "ValueTask<InterceptionResult<int>>",
+              "params": "DbCommand command,\n        CommandEventData eventData,\n        InterceptionResult<int> result,\n        CancellationToken cancellationToken = default"
+            },
+            {
+              "name": "AddTenantIsolation",
+              "return_type": "IServiceCollection",
+              "params": "this IServiceCollection services"
+            },
+            {
+              "name": "UseTenantIsolation",
+              "return_type": "IApplicationBuilder",
+              "params": "this IApplicationBuilder app"
+            }
+          ]
+        },
+        "EvaluatorRegistry": {
+          "kind": "class",
+          "namespace": "Waooaw.ConstitutionalEngine.Evaluators",
+          "properties": {},
+          "methods": [
+            {
+              "name": "EvaluateAllAsync",
+              "return_type": "Task<IReadOnlyList<EvaluationResult>>",
+              "params": "EvaluationContext context,\n        CancellationToken cancellationToken = default"
+            }
+          ]
+        },
+        "IClaimEvaluator": {
+          "kind": "interface",
+          "namespace": "Waooaw.ConstitutionalEngine.Evaluators",
+          "methods": []
+        },
+        "C062AiSecurityEvaluator": {
+          "kind": "class",
+          "namespace": "Waooaw.ConstitutionalEngine.Evaluators",
+          "properties": {},
+          "methods": [
+            {
+              "name": "EvaluateAsync",
+              "return_type": "Task<EvaluationResult>",
+              "params": "EvaluationContext ctx, CancellationToken ct"
+            }
+          ]
+        },
+        "C043BudgetCeilingEvaluator": {
+          "kind": "class",
+          "namespace": "Waooaw.ConstitutionalEngine.Evaluators",
+          "properties": {},
+          "methods": [
+            {
+              "name": "EvaluateAsync",
+              "return_type": "Task<EvaluationResult>",
+              "params": "EvaluationContext ctx, CancellationToken ct"
+            }
+          ]
+        },
+        "C041ToolAuthorizationEvaluator": {
+          "kind": "class",
+          "namespace": "Waooaw.ConstitutionalEngine.Evaluators",
+          "properties": {},
+          "methods": [
+            {
+              "name": "EvaluateAsync",
+              "return_type": "Task<EvaluationResult>",
+              "params": "EvaluationContext ctx, CancellationToken ct"
+            }
+          ]
+        },
+        "C048NonExploitationEvaluator": {
+          "kind": "class",
+          "namespace": "Waooaw.ConstitutionalEngine.Evaluators",
+          "properties": {},
+          "methods": [
+            {
+              "name": "EvaluateAsync",
+              "return_type": "Task<EvaluationResult>",
+              "params": "EvaluationContext ctx, CancellationToken ct"
+            }
+          ]
+        },
+        "C049HonestLimitationEvaluator": {
+          "kind": "class",
+          "namespace": "Waooaw.ConstitutionalEngine.Evaluators",
+          "properties": {},
+          "methods": [
+            {
+              "name": "EvaluateAsync",
+              "return_type": "Task<EvaluationResult>",
+              "params": "EvaluationContext ctx, CancellationToken ct"
+            }
+          ]
+        },
+        "EvaluationResult": {
+          "kind": "record",
+          "namespace": "Waooaw.ConstitutionalEngine.Evaluators",
+          "properties": {
+            "ClaimId": "string",
+            "Verdict": "EvaluationVerdict",
+            "Reason": "string"
+          }
+        },
+        "EvaluationVerdict": {
+          "kind": "enum",
+          "namespace": "Waooaw.ConstitutionalEngine.Evaluators",
+          "values": [
+            "Allow",
+            "Deny",
+            "Escalate"
+          ]
+        },
+        "EvaluationContext": {
+          "kind": "record",
+          "namespace": "Waooaw.ConstitutionalEngine.Evaluators",
+          "properties": {
+            "ContractId": "string",
+            "ActionType": "string",
+            "ActionParameters": "string",
+            "DecisionSpaceVersion": "int",
+            "TenantId": "string",
+            "SkillId": "string?",
+            "ApprovedBudgetInrPaise": "long",
+            "CurrentSpendInrPaise": "long",
+            "ProposedSpendInrPaise": "long",
+            "BudgetSkillType": "string"
+          },
+          "methods": [
+            {
+              "name": "GetParameter",
+              "return_type": "string?",
+              "params": "string key"
+            },
+            {
+              "name": "FromRequest",
+              "return_type": "EvaluationContext",
+              "params": "ValidateActionRequest request, string tenantId"
+            }
+          ]
+        },
+        "ConstitutionalEngineService": {
+          "kind": "class",
+          "namespace": "Waooaw.ConstitutionalEngine.Services",
+          "properties": {},
+          "methods": [
+            {
+              "name": "RecordEvidence",
+              "return_type": "Task<RecordEvidenceResponse>",
+              "params": "RecordEvidenceRequest req, ServerCallContext ctx"
+            },
+            {
+              "name": "ValidateAction",
+              "return_type": "Task<ValidateActionResponse>",
+              "params": "ValidateActionRequest req, ServerCallContext ctx"
+            },
+            {
+              "name": "GrantAuthorityLicense",
+              "return_type": "Task<GrantAuthorityResponse>",
+              "params": "GrantAuthorityRequest req, ServerCallContext ctx"
+            },
+            {
+              "name": "RevokeAuthorityLicense",
+              "return_type": "Task<RevokeAuthorityResponse>",
+              "params": "RevokeAuthorityRequest req, ServerCallContext ctx"
+            },
+            {
+              "name": "EvaluatePolicy",
+              "return_type": "Task<EvaluatePolicyResponse>",
+              "params": "EvaluatePolicyRequest req, ServerCallContext ctx"
+            },
+            {
+              "name": "TriggerEmergencyStop",
+              "return_type": "Task<EmergencyStopResponse>",
+              "params": "EmergencyStopRequest req, ServerCallContext ctx"
+            }
+          ]
+        },
+        "ConstitutionalDbContext": {
+          "kind": "class",
+          "namespace": "Waooaw.ConstitutionalEngine.Data",
+          "properties": {},
+          "methods": []
+        },
+        "EmergencyStopDbContext": {
+          "kind": "class",
+          "namespace": "Waooaw.ConstitutionalEngine.EmergencyStop",
+          "properties": {},
+          "methods": []
+        },
+        "EmergencyStopEvent": {
+          "kind": "class",
+          "namespace": "Waooaw.ConstitutionalEngine.EmergencyStop",
+          "properties": {
+            "Id": "Guid",
+            "ContractId": "Guid",
+            "InitiatedByUserId": "string",
+            "AffectedSessionIds": "string[]",
+            "TriggeredAt": "DateTimeOffset",
+            "TemporalSignalledAt": "DateTimeOffset?",
+            "StopSource": "string"
+          },
+          "methods": []
+        },
+        "EvidenceRecord": {
+          "kind": "class",
+          "namespace": "Waooaw.ConstitutionalEngine.Data.Entities",
+          "properties": {
+            "Id": "Guid",
+            "IdempotencyKey": "string",
+            "TenantId": "Guid",
+            "EvidenceType": "string",
+            "Summary": "string",
+            "PayloadJson": "string?",
+            "RecordedAt": "DateTimeOffset"
+          },
+          "methods": []
+        }
+      },
+      "files": [
+        "src/business-platform/Program.cs",
+        "src/constitutional-engine/Program.cs",
+        "src/business-platform/Protos/constitutional_service.proto",
+        "src/business-platform/Controllers/AgentsController.cs",
+        "src/business-platform/Controllers/CustomersController.cs",
+        "src/business-platform/Services/EmploymentService.cs",
+        "src/business-platform/Infrastructure/TenantIsolationMiddleware.cs",
+        "src/business-platform/obj/Debug/net9.0/.NETCoreApp,Version=v9.0.AssemblyAttributes.cs",
+        "src/business-platform/obj/Debug/net9.0/business-platform.GlobalUsings.g.cs",
+        "src/business-platform/obj/Debug/net9.0/BusinessPlatform.MvcApplicationPartsAssemblyInfo.cs",
+        "src/business-platform/obj/Debug/net9.0/business-platform.AssemblyInfo.cs",
+        "src/business-platform/obj/Debug/net9.0/Protos/ConstitutionalService.cs",
+        "src/business-platform/obj/Debug/net9.0/Protos/ConstitutionalServiceGrpc.cs",
+        "src/constitutional-engine/Protos/constitutional_service.proto",
+        "src/constitutional-engine/Evaluators/EvaluatorRegistry.cs",
+        "src/constitutional-engine/Evaluators/IClaimEvaluator.cs",
+        "src/constitutional-engine/Evaluators/C062AiSecurityEvaluator.cs",
+        "src/constitutional-engine/Evaluators/C043BudgetCeilingEvaluator.cs",
+        "src/constitutional-engine/Evaluators/C041ToolAuthorizationEvaluator.cs",
+        "src/constitutional-engine/Evaluators/C048NonExploitationEvaluator.cs",
+        "src/constitutional-engine/Evaluators/C049HonestLimitationEvaluator.cs",
+        "src/constitutional-engine/Evaluators/EvaluationResult.cs",
+        "src/constitutional-engine/Evaluators/EvaluationContext.cs",
+        "src/constitutional-engine/Services/ConstitutionalEngineService.cs",
+        "src/constitutional-engine/Data/ConstitutionalDbContext.cs",
+        "src/constitutional-engine/EmergencyStop/EmergencyStopDbContext.cs",
+        "src/constitutional-engine/EmergencyStop/EmergencyStopEvent.cs",
+        "src/constitutional-engine/obj/Debug/net9.0/.NETCoreApp,Version=v9.0.AssemblyAttributes.cs",
+        "src/constitutional-engine/obj/Debug/net9.0/constitutional-engine.AssemblyInfo.cs",
+        "src/constitutional-engine/obj/Debug/net9.0/constitutional-engine.GlobalUsings.g.cs",
+        "src/constitutional-engine/obj/Debug/net9.0/Protos/ConstitutionalService.cs",
+        "src/constitutional-engine/obj/Debug/net9.0/Protos/ConstitutionalServiceGrpc.cs",
+        "src/constitutional-engine/Data/Entities/EvidenceRecord.cs"
+      ]
+    }
+  }
+}
