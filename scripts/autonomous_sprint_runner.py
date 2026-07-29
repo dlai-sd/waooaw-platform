@@ -2932,7 +2932,12 @@ TASK_HANDLERS = {
                     "           var ceClient = new ConstitutionalService.ConstitutionalServiceClient(channel);\n"
                     "C-038: Hire endpoint must populate pro_rata_billing_start_date on contract creation.\n"
                     "⛔ Do NOT call CE inside a DB transaction — CE call is pre-condition, not part of TX.\n"
-                    "Namespace: Waooaw.BusinessPlatform.Controllers and Waooaw.BusinessPlatform.Services."
+                    "Namespace: Waooaw.BusinessPlatform.Controllers and Waooaw.BusinessPlatform.Services.\n"
+                    "⛔ CS0019 CE gRPC ENUM: ValidateActionResponse.Decision is type ValidationDecision (NOT PolicyDecision).\n"
+                    "  CORRECT: ceResponse.Decision != ValidationDecision.Allow  OR  ceResponse.Decision == ValidationDecision.Deny\n"
+                    "  WRONG:   ceResponse.Decision != PolicyDecision.Permit  ← CS0019 (type mismatch)\n"
+                    "  WRONG:   ceResponse.Decision != PolicyDecision.Allow    ← CS0019 (type mismatch)\n"
+                    "  PolicyDecision is ONLY used with EvaluatePolicyResponse.Decision (different RPC, different type)."
                 ),
                 model_hint="reasoning",
                 max_tokens=8000,
