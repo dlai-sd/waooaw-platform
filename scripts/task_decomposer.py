@@ -68,6 +68,8 @@ STACK_BEHAVIORAL_RULES: dict[str, list[str]] = {
         "TEMPORAL IMPORT (mandatory): 'from temporalio import activity, workflow' — "
         "NOT 'import temporal', NOT 'from temporal import', NOT 'temporalio.client' at top level. "
         "Client: 'from temporalio.client import Client'. Worker: 'from temporalio.worker import Worker'.",
+        "STRENUM PATTERN (mandatory for Python 3.12): use 'class X(StrEnum)' NOT 'class X(str, Enum)'. "
+        "Import: 'from enum import StrEnum'. Never combine (str, Enum) — use StrEnum directly.",
         # ── Constitutional Error Handling Standards ──────────────────────────────
         "ERROR HANDLING RULE 1: Never use bare 'except: pass' or 'except Exception: pass'. Always log: logger.error('Operation failed', exc_info=True, extra={'context': context})",
         "ERROR HANDLING RULE 2: Use specific exception types. 'except (ValueError, KeyError) as e:' not 'except Exception as e:'.",
