@@ -1,0 +1,40 @@
+# requirements-professional-runtime.txt
+# Reference dependency file for src/professional-runtime/
+# Constitutional basis: ADR-005 (PAAS isolation), ADR-015 (Temporal), ADR-018 (Emergency Stop)
+# C-001 (Emergency Stop ≤250ms), C-025 (PAAS exclusive model)
+# DO NOT add packages without EA approval. These versions are pinned and tested.
+
+# ─── Web framework ────────────────────────────────────────────────────────────
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+pydantic==2.9.2
+pydantic-settings==2.5.2
+
+# ─── Temporal workflow engine ─────────────────────────────────────────────────
+# NOTE: The Python package is 'temporalio' (same name as .NET).
+# DO NOT use 'temporal-sdk', 'temporal-python', or any other variant.
+# The 1.x series is stable. Do NOT use 0.x-beta versions.
+temporalio==1.7.1
+
+# ─── gRPC client — calls Constitutional Engine (ADR-001) ─────────────────────
+grpcio==1.67.1
+grpcio-tools==1.67.1
+grpcio-status==1.67.1
+protobuf==5.28.3
+
+# ─── Async HTTP client — calls Business Platform ─────────────────────────────
+httpx==0.27.2
+
+# ─── Database — PostgreSQL (session persistence) ─────────────────────────────
+asyncpg==0.30.0
+sqlalchemy[asyncio]==2.0.36
+
+# ─── Observability (ADR-009) ──────────────────────────────────────────────────
+opentelemetry-api==1.27.0
+opentelemetry-sdk==1.27.0
+opentelemetry-instrumentation-fastapi==0.48b0
+opentelemetry-exporter-otlp==1.27.0
+
+# ─── Utilities ───────────────────────────────────────────────────────────────
+python-jose[cryptography]==3.3.0
+python-multipart==0.0.12
