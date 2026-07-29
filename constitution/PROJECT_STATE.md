@@ -206,15 +206,15 @@ tasks_remaining:
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
-consecutive_failures: 1
+consecutive_failures: 2
 =======
-consecutive_failures: 1
+consecutive_failures: 2
 >>>>>>> origin/main
 =======
-consecutive_failures: 1
+consecutive_failures: 2
 >>>>>>> origin/main
 =======
-consecutive_failures: 1
+consecutive_failures: 2
 >>>>>>> origin/main
 autonomous_halt: false
 open_prs: none
@@ -338,15 +338,15 @@ tasks_remaining:
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
-consecutive_failures: 1
+consecutive_failures: 2
 =======
-consecutive_failures: 1
+consecutive_failures: 2
 >>>>>>> origin/main
 =======
-consecutive_failures: 1
+consecutive_failures: 2
 >>>>>>> origin/main
 =======
-consecutive_failures: 1
+consecutive_failures: 2
 >>>>>>> origin/main
 autonomous_halt: false
 platform_phase: IMPLEMENTATION
@@ -661,21 +661,21 @@ branch: ib/009/sprint-014
 <<<<<<< HEAD
 last_attempt_utc: 2026-07-29T11:03:09.478183+00:00
 last_attempt_result: PARTIAL
-consecutive_failures: 1
+consecutive_failures: 2
 =======
 last_attempt_utc: 2026-07-29T11:03:09.478183+00:00
 last_attempt_result: PARTIAL
-consecutive_failures: 1
+consecutive_failures: 2
 >>>>>>> origin/main
 =======
 last_attempt_utc: 2026-07-29T11:03:09.478183+00:00
 last_attempt_result: PARTIAL
-consecutive_failures: 1
+consecutive_failures: 2
 >>>>>>> origin/main
 =======
 last_attempt_utc: 2026-07-29T11:03:09.478183+00:00
 last_attempt_result: PARTIAL
-consecutive_failures: 1
+consecutive_failures: 2
 >>>>>>> origin/main
 consecutive_infra_failures: 0
 tasks_done:
