@@ -198,12 +198,13 @@ session_declared: "Architecture correction 2026-07-28: WC-012 execution requires
 sprint: WC-014
 sprint_status: AUTHORIZED
 task_id: WC013-01
-tasks_done:
-  - WC014-01
-  - WC014-02
-  - WC014-03
-  - WC014-04
-tasks_remaining: []
+tasks_done: []
+tasks_remaining:
+  - WC015-01
+  - WC015-02
+  - WC015-03
+  - WC015-04
+  - WC015-05
 consecutive_failures: 0
 autonomous_halt: false
 open_prs: none
@@ -315,12 +316,13 @@ WC012-02b `CS1061: string.TryGetValue` fixed at three layers:
 
 ```yaml
 sprint_status: AUTHORIZED
-tasks_done:
-  - WC014-01
-  - WC014-02
-  - WC014-03
-  - WC014-04
-tasks_remaining: []
+tasks_done: []
+tasks_remaining:
+  - WC015-01
+  - WC015-02
+  - WC015-03
+  - WC015-04
+  - WC015-05
 consecutive_failures: 0
 autonomous_halt: false
 platform_phase: IMPLEMENTATION
@@ -626,23 +628,23 @@ autonomous_halt: false       # ← semi-autonomous mode — manual trigger only
 
 platform_phase: IMPLEMENTATION  # SPEC | IMPLEMENTATION | LIVE
 
-current_sprint: WC-014
+current_sprint: WC-015
 sprint_ib_item: IB-009
 sprint_status: AUTHORIZED
-branch: ib/009/sprint-014
-last_attempt_utc: 2026-07-29T16:36:45+00:00
-last_attempt_result: SUCCESS
+branch: ib/009/sprint-015
+last_attempt_utc: 2026-07-29T00:00:00.000000+00:00
+last_attempt_result: READY
 consecutive_failures: 0
 consecutive_infra_failures: 0
-tasks_done:
-  - WC014-01
-  - WC014-02
-  - WC014-03
-  - WC014-04
-tasks_remaining: []
+tasks_done: []
+tasks_remaining:
+  - WC015-01
+  - WC015-02
+  - WC015-03
+  - WC015-04
+  - WC015-05
 
-current_task: WC014-01
-
+current_task:
 ```
 CURRENT STATE: platform_phase=IMPLEMENTATION · AUTONOMOUS_HALT=false
                current_sprint=WC-012 · sprint_status=READY
