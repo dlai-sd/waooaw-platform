@@ -199,19 +199,18 @@ sprint: WC-014
 sprint_status: IN_PROGRESS
 task_id: WC013-01
 tasks_done:
-  - WC014-01
-tasks_remaining:
   - WC014-02
-  - WC014-03
   - WC014-04
+tasks_remaining:
+  - WC014-03
 <<<<<<< HEAD
 <<<<<<< HEAD
-consecutive_failures: 2
+consecutive_failures: 1
 =======
-consecutive_failures: 2
+consecutive_failures: 1
 >>>>>>> origin/main
 =======
-consecutive_failures: 0
+consecutive_failures: 1
 >>>>>>> origin/main
 autonomous_halt: false
 open_prs: none
@@ -328,19 +327,18 @@ sprint_status: IN_PROGRESS
 sprint_status: IN_PROGRESS
 >>>>>>> origin/main
 tasks_done:
-  - WC014-01
-tasks_remaining:
   - WC014-02
-  - WC014-03
   - WC014-04
+tasks_remaining:
+  - WC014-03
 <<<<<<< HEAD
 <<<<<<< HEAD
-consecutive_failures: 2
+consecutive_failures: 1
 =======
-consecutive_failures: 2
+consecutive_failures: 1
 >>>>>>> origin/main
 =======
-consecutive_failures: 0
+consecutive_failures: 1
 >>>>>>> origin/main
 autonomous_halt: false
 platform_phase: IMPLEMENTATION
@@ -654,24 +652,23 @@ branch: ib/009/sprint-014
 <<<<<<< HEAD
 last_attempt_utc: 2026-07-29T10:46:08.175753+00:00
 last_attempt_result: PARTIAL
-consecutive_failures: 2
+consecutive_failures: 1
 =======
 last_attempt_utc: 2026-07-29T10:46:08.175753+00:00
 last_attempt_result: PARTIAL
-consecutive_failures: 2
+consecutive_failures: 1
 >>>>>>> origin/main
 =======
 last_attempt_utc: 2026-07-29T10:46:08.175753+00:00
-last_attempt_result: NONE
-consecutive_failures: 0
+last_attempt_result: PARTIAL
+consecutive_failures: 1
 >>>>>>> origin/main
 consecutive_infra_failures: 0
 tasks_done:
-  - WC014-01
-tasks_remaining:
   - WC014-02
-  - WC014-03
   - WC014-04
+tasks_remaining:
+  - WC014-03
 
 current_task: WC014-02
 ```
