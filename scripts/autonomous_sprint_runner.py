@@ -3535,10 +3535,10 @@ def main() -> int:
             if success:
                 tasks_done.append(task)
                 # RC#2: Write tasks_done/tasks_remaining to PROJECT_STATE.md after each success.
-                # Prevents duplicate re-execution across cron runs on the same open PR.
-                # C-083 (Emit-Transport-Listen), C-059 (Traceability), C-085 (Idempotency)
-                all_remaining = [t for t in state.get("tasks_remaining", []) if t not in tasks_done]
-                run([sys.executable, "scripts/sprint_state.py", "set-list", "tasks_done"] + tasks_done)
+                # MERGE with tasks_done_state (prior sessions) so cross-session completions are preserved.
+                cumulative_done = sorted(set(tasks_done) | set(tasks_done_state))
+                all_remaining = [t for t in state.get("tasks_remaining", []) if t not in cumulative_done]
+                run([sys.executable, "scripts/sprint_state.py", "set-list", "tasks_done"] + cumulative_done)
                 run([sys.executable, "scripts/sprint_state.py", "set-list", "tasks_remaining"] + all_remaining)
                 print(f"  DONE: {task}")
             else:
@@ -3604,11 +3604,13 @@ def main() -> int:
                 consecutive_infra_failures=0,
             )
 
+    # Final commit: use cumulative tasks_done (merge with prior sessions)
+    cumulative_final = sorted(set(tasks_done) | set(tasks_done_state))
     git(["add", "constitution/PROJECT_STATE.md", "logs/"], check=False)
     diff = git(["diff", "--cached", "--quiet"], check=False)
     if diff.returncode != 0:
         git(["commit", "-m",
-             f"chore(pm): {sprint} tasks done: {', '.join(tasks_done)}\n\n"
+             f"chore(pm): {sprint} tasks done: {', '.join(cumulative_final)}\n\n"
              f"IB: IB-009\nConstitutional: C-059"])
 
     # ── Push sprint branch using App installation token (workflows scope) ────
