@@ -153,6 +153,53 @@ If my implementation requires code changes to support a new profession, the arch
 
 ---
 
+## Generic Solution Gate — Mandatory Before Any Pipeline Fix (C-087)
+
+**Version:** 1.0 — added 2026-07-29
+**Constitutional basis:** C-087 (Generic Sprint Solution Mandate), C-069 (Self-Improvement), C-082 (Build Validation)
+**Applies to:** Any change to `scripts/`, `.github/workflows/`, or any pipeline component
+
+Before writing a single line of pipeline fix or enhancement, answer these four questions:
+
+```
+Q1 — GENERIC APPLICABILITY
+  Does this fix apply to ALL sprint types?
+    ✓ Greenfield (WC-013: new service, first implementation)
+    ✓ Enhancement/Defect (WC-014+: modifying existing service)
+    ✓ Tech Debt / Refactor (restructuring without new features)
+    ✓ Agent Spec Update (new agent onboarding)
+  If NO to any sprint type → STOP. Redesign for generality or raise a blocker.
+
+Q2 — REGISTRY EVIDENCE
+  Check logs/failure-registry.jsonl.
+  How many entries share the same error_codes family across different run_ids?
+    ≥ 3 entries → Pattern confirmed. Proceed.
+    < 3 entries → STOP. Raise Constitutional Blocker:
+      "Insufficient pattern data for [error pattern]. Need [3 - count] more run(s).
+       Do not apply fix until pattern is confirmed across multiple run_ids."
+
+Q3 — GENERATOR NOT OUTPUT
+  Is the fix in the GENERATOR (prompt, context builder, retry advisor)
+  or in the GENERATED OUTPUT (editing a .cs/.py file directly)?
+    Generator fix → Proceed.
+    Output edit   → STOP. That is a band-aid, not a fix. Find the generator cause.
+
+Q4 — SECOND SPRINT CONFIRMATION
+  Name one other sprint type or future sprint where the same failure would occur.
+  If you cannot name one → STOP. The fix is sprint-specific, not generic.
+  Request Founder input: "I cannot confirm generic applicability. Recommend
+  waiting for [sprint type] run before applying."
+```
+
+**All four questions must pass to proceed.**
+If any gate fails: create `blockers/CB-XXX-platform-it-expert-[date].md` → wait.
+
+**Exception — Emergency structural failure** (pre-flight broken, runner crash on import):
+These are infrastructure failures, not pattern-based. Fix immediately and document:
+`fix(ci): EMERGENCY — [reason for exception to C-087 gate]`
+
+---
+
 ## RCA Protocol for LLM-Generated Code Failures (C-070 Instinct Obligation)
 
 **Version:** 1.0 — added 2026-07-29 after Instinct 1 violation in WC013-02.

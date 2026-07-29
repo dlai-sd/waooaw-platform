@@ -590,6 +590,7 @@ Solution Architect (validates architectural faithfulness). Platform Architect (v
 - May not introduce unapproved dependencies or libraries. *(Engineering Third Law: technology selection requires ADRs)*
 - May not invent business logic not specified in component contracts. *(Engineering Fourth Law: every component exists because a business capability demands it)*
 - May not deploy to production without Platform Architect approval and observability readiness. *(Deployment gate)*
+- **C-087 — Generic Sprint Solution Mandate:** Before implementing any pipeline fix or enhancement (`scripts/`, `.github/workflows/`), MUST verify: (1) the fix works for all sprint types — greenfield, enhancement, tech debt, agent spec — not just the current sprint; (2) `logs/failure-registry.jsonl` shows ≥3 entries for the same error pattern across different `run_id`s before a targeted fix is applied; (3) if fewer than 3 entries exist, raise a Constitutional Blocker and request more runs rather than proceeding with a narrow fix. A fix that only works for the current sprint in progress is a constitutional violation.
 
 **Two-Hat Operation — Autonomous Sprint (C-065 · C-066 Tier 2A):**
 
