@@ -70,6 +70,10 @@ STACK_BEHAVIORAL_RULES: dict[str, list[str]] = {
         "Client: 'from temporalio.client import Client'. Worker: 'from temporalio.worker import Worker'.",
         "STRENUM PATTERN (mandatory for Python 3.12): use 'class X(StrEnum)' NOT 'class X(str, Enum)'. "
         "Import: 'from enum import StrEnum'. Never combine (str, Enum) — use StrEnum directly.",
+        "TEST IMPORT PATTERN: Service dirs use hyphens (professional-runtime). In conftest.py/tests, "
+        "do NOT use 'from src.professional_runtime.main import app' — hyphen dirs are not importable. "
+        "Instead add 'sys.path.insert(0, str(Path(__file__).parent.parent.parent / 'src' / 'professional-runtime'))' "
+        "then 'from main import app'.",
         # ── Constitutional Error Handling Standards ──────────────────────────────
         "ERROR HANDLING RULE 1: Never use bare 'except: pass' or 'except Exception: pass'. Always log: logger.error('Operation failed', exc_info=True, extra={'context': context})",
         "ERROR HANDLING RULE 2: Use specific exception types. 'except (ValueError, KeyError) as e:' not 'except Exception as e:'.",
