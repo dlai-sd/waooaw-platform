@@ -626,9 +626,13 @@ sprint_status: AUTHORIZED
 branch: ib/009/sprint-015
 last_attempt_utc: 2026-07-29T00:00:00.000000+00:00
 last_attempt_result: PARTIAL
-consecutive_failures: 1
+consecutive_failures: 0
 consecutive_infra_failures: 0
-tasks_done: []
+tasks_done:
+  - WC015-01
+  - WC015-02
+  - WC015-03
+  - WC015-04
 tasks_remaining:
   - WC015-05
 
