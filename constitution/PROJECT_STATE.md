@@ -787,13 +787,13 @@ OPTION C — Nothing needed from you until sprint opens first PR
 <!-- Edit ONLY the fields below. Do not alter the block structure. -->
 
 ```yaml
-autonomous_halt: false       # ← semi-autonomous mode — manual trigger only
+autonomous_halt: true        # ← parked — Founder deciding next sprint (2026-07-30)
 
 platform_phase: IMPLEMENTATION  # SPEC | IMPLEMENTATION | LIVE
 
 current_sprint: WC-016
 sprint_ib_item: IB-009
-sprint_status: READY
+sprint_status: WAITING
 branch: ib/009/sprint-016
 last_attempt_utc: 2026-07-30T19:58:38.040181+00:00
 last_attempt_result:
@@ -810,7 +810,11 @@ tasks_done:
   - WC026-03
   - WC026-04
   - WC026-05
-tasks_remaining: WC016-01,WC016-02,WC016-03,WC016-04
+tasks_remaining:
+  - WC016-01
+  - WC016-02
+  - WC016-03
+  - WC016-04
 current_task: WC-016
 ```
 
