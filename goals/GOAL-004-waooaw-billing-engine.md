@@ -160,7 +160,7 @@ The following claims do not yet exist and must be ratified before implementation
 
 | Institution | Role | Deliverables | Authorization |
 |---|---|---|---|
-| Platform IT Expert (INST-010) | Autonomous sprint execution | WC-017 through WC-024 (code, tests, CCTs) | Authorized when D-10 is approved AND Founder sets implementation authorization per C-066 |
+| Platform IT Expert (INST-010) | Autonomous sprint execution | WBE-S1 through WBE-S8 (code, tests, CCTs) | Authorized when D-10 is approved AND Founder sets implementation authorization per C-066 |
 
 ### GO Authorizations
 
@@ -226,7 +226,7 @@ GOA-GOAL-004-INST-013-01
 GOA-GOAL-004-INST-010-01
   goal_id:            GOAL-004
   institution_id:     INST-010 (Platform IT Expert)
-  contribution_scope: WC-017 through WC-024 — implementation of all approved specs
+  contribution_scope: WBE-S1 through WBE-S8 — implementation of all approved specs
   participation_window: Implementation Phase — begins after D-10 approved AND Founder C-066 authorization
   collaboration_type: Primary
   issued_by:          INST-013
@@ -435,16 +435,19 @@ Agency-ready columns (added now, used in GOAL-AGENCY):
 
 **Produced by:** Goal Orchestrator (INST-013) — 2026-07-30
 **All D-01 through D-09 inputs confirmed approved.**
-**Founder authorization to begin implementation:** REQUIRED before WC-017 triggers.
+**Founder authorization to begin implementation:** REQUIRED before first WBE sprint triggers.
 **Authorization record location:** security/FOUNDER-ACTIONS.md — FA-NNN (WBE Implementation)
 
-**Sprint sequence:** WC-017 → WC-018 → WC-019 → WC-020 → WC-021 → WC-022 → WC-023 → WC-024
+**Sprint assignment:** Product Owner (INST-011) assigns WC numbers after current sprint queue.
+WBE implementation must be sequenced AFTER WC-016 (Web Portal) and WC-017 (DMA v3.0 — already planned).
+The 8 WBE sprints are labelled WBE-S1 through WBE-S8 here; Product Owner converts to WC-NNN.
+
 **Estimated delivery:** 8 autonomous sprint cycles (~24 hours at 3-hour cadence)
-**Branch pattern:** `ib/009/sprint-017`, `ib/009/sprint-018`, etc.
+**Branch pattern:** `ib/009/sprint-{WC-number}` (assigned by PO)
 
 ---
 
-### WC-017 — WBE Service Scaffold + DB Migration + Thread Catalog
+### WBE-S1 — WBE Service Scaffold + DB Migration + Thread Catalog
 
 **Sprint Goal:** New `src/billing-engine/` Python FastAPI service running on port 8140,
 11-billing-engine.sql migration applied, Thread Catalog seeded from D-06, all health checks passing.
@@ -459,12 +462,12 @@ Agency-ready columns (added now, used in GOAL-AGENCY):
 | WC017-05 | Tests ≥90% coverage: thread catalog load, cache hit/miss, health endpoint, migration applied | `standard` |
 
 **Required inputs:** D-06 thread-catalog.md, D-08 billing-schema-updates.md, D-03 ADR-034
-**CCTs:** none yet (introduced in WC-024)
+**CCTs:** none yet (introduced in WBE-S8)
 **Definition of done:** `docker compose up wbe` → port 8140 serves /health; `docker compose up postgres` → 11-billing-engine.sql applies clean; all tests pass
 
 ---
 
-### WC-018 — Wallet Engine
+### WBE-S2 — Wallet Engine
 
 **Sprint Goal:** One wallet / multiple bucket architecture operational. AI Runtime can
 call WBE to check balance, reserve, and release for any thread type. ≤50ms p99 on GET /buckets/.
@@ -484,7 +487,7 @@ call WBE to check balance, reserve, and release for any thread type. ≤50ms p99
 
 ---
 
-### WC-019 — Markup Engine + C-089 Enforcement
+### WBE-S3 — Markup Engine + C-089 Enforcement
 
 **Sprint Goal:** Markup Engine derives bundle cost floors from Thread Catalog, enforces
 C-089 constitutional minimum margin floor. No below-floor price can be activated.
@@ -503,7 +506,7 @@ C-089 constitutional minimum margin floor. No below-floor price can be activated
 
 ---
 
-### WC-020 — DMA Bundle Profiles + Pacing Choice
+### WBE-S4 — DMA Bundle Profiles + Pacing Choice
 
 **Sprint Goal:** DMA Starter/Runner/Winner bundles are live in institutional.bundle_profiles.
 Customer pacing choice (SPREAD/BURST) is configurable and enforced by wallet_buckets.
@@ -524,7 +527,7 @@ Subscription activation seeds correct buckets per bundle.
 
 ---
 
-### WC-021 — Usage Meter + Alert Engine + Proactive Offer Engine
+### WBE-S5 — Usage Meter + Alert Engine + Proactive Offer Engine
 
 **Sprint Goal:** Threshold alerts fire correctly at 50%/60%/85%/95% with quiet hours
 enforcement. Daily proactive offer scan runs at 06:00 IST. Platform procurement runway
@@ -545,7 +548,7 @@ projected daily.
 
 ---
 
-### WC-022 — Platform Procurement Ledger + Founder Action Auto-Generation
+### WBE-S6 — Platform Procurement Ledger + Founder Action Auto-Generation
 
 **Sprint Goal:** WAOOAW's own provider spend is tracked per customer attribution.
 Runway projection < 7 days triggers automatic Founder Action entry.
@@ -565,7 +568,7 @@ Runway projection < 7 days triggers automatic Founder Action entry.
 
 ---
 
-### WC-023 — Single Onboarding Payment + Progressive Renewal Failure Saga
+### WBE-S7 — Single Onboarding Payment + Progressive Renewal Failure Saga
 
 **Sprint Goal:** One Razorpay payment tap activates subscription + seeds wallet in ≤90s.
 Day 1/3/7/14 progressive renewal failure policy implemented as Temporal workflow saga.
@@ -585,7 +588,7 @@ Day 1/3/7/14 progressive renewal failure policy implemented as Temporal workflow
 
 ---
 
-### WC-024 — Reconciliation Engine + All CCTs + Coverage Gate
+### WBE-S8 — Reconciliation Engine + All CCTs + Coverage Gate
 
 **Sprint Goal:** WBE self-audit runs daily. All 4 CCTs pass. ≥90% test coverage on
 all WBE modules. GOAL-004 implementation complete.
@@ -610,7 +613,7 @@ all WBE modules. GOAL-004 implementation complete.
 Work Contracts created as stubs in `work-contracts/`. Full task decomposition is
 provided above. Each sprint is self-sufficient with all required inputs available.
 
-Files created: WC-017 through WC-024 (see work-contracts/ directory).
+Files created: WBE-S1 through WBE-S8 (see work-contracts/ directory).
 
 ---
 
@@ -619,21 +622,21 @@ Files created: WC-017 through WC-024 (see work-contracts/ directory).
 ```
 WC-016 (Web Portal — IN PROGRESS)
   ↓ (completes independently)
-WC-017 WBE Scaffold + DB + Thread Catalog
+WBE-S1 WBE Scaffold + DB + Thread Catalog
   ↓
-WC-018 Wallet Engine (buckets, reserve, release)
+WBE-S2 Wallet Engine (buckets, reserve, release)
   ↓
-WC-019 Markup Engine + C-089 enforcement
+WBE-S3 Markup Engine + C-089 enforcement
   ↓
-WC-020 DMA Bundles + Pacing Choice (first billable product)
+WBE-S4 DMA Bundles + Pacing Choice (first billable product)
   ↓
-WC-021 Meter + Alert + Proactive Offer Engine
+WBE-S5 Meter + Alert + Proactive Offer Engine
   ↓
-WC-022 Platform Procurement Ledger + FA auto-generation
+WBE-S6 Platform Procurement Ledger + FA auto-generation
   ↓
-WC-023 Single Onboarding Payment + Renewal Failure Saga
+WBE-S7 Single Onboarding Payment + Renewal Failure Saga
   ↓
-WC-024 Reconciliation + All CCTs + Coverage Gate
+WBE-S8 Reconciliation + All CCTs + Coverage Gate
         ↓
         GOAL-004 IMPLEMENTATION COMPLETE
         → Update GOAL-004 Evidence Register: all PRODUCED
@@ -670,7 +673,7 @@ Week 3–4:
 Week 4:
   D-10 (GO) ─── Autonomous Sprint Execution Plan  After all approved
   Founder authorizes implementation (C-066)
-  Autonomous pipeline begins WC-017
+  Autonomous pipeline begins WBE-S1 (PO-assigned WC number)
 ```
 
 ---
@@ -709,7 +712,7 @@ The following decisions are needed before the corresponding spec can be finalize
 | 2026-07-30 | INST-003 (BA) | D-09 Agent Billing Profiles × 4 | ✅ PRODUCED |
 | 2026-07-30 | INST-005 (SA) | D-07 WBE Component Spec | ✅ PRODUCED |
 | 2026-07-30 | INST-006 (DA) | D-08 DB Schema Update Spec | ✅ PRODUCED |
-| 2026-07-30 | INST-013 (GO) | D-10 Autonomous Sprint Execution Plan (WC-017→WC-024) | ✅ PRODUCED |
+| 2026-07-30 | INST-013 (GO) | D-10 Autonomous Sprint Execution Plan (WBE-S1→WBE-S8) | ✅ PRODUCED |
 
 ---
 

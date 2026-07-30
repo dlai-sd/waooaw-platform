@@ -1,0 +1,1 @@
+{"task_results": {"WC012-02c": {"result": "BUILD_FAILURE", "error_type": "UNKNOWN", "build_error_snippet": "error CS1024: Preprocessor directive expected. File starts with '## Self-Calibration' \u2014 LLM output markdown before C# code.", "attempts": 3}}, "spec_gap_issues": []}

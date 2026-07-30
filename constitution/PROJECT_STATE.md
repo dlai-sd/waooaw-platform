@@ -19,21 +19,21 @@
 | D-09 | Chief Business Architect (INST-003) | Agent Billing Profiles × 4 (DMA, Trading, Agricultural, Private Tutor) | ✅ APPROVED |
 | D-07 | Solution Architect (INST-005) | WBE Component Spec — 5 sub-components, API contracts, CCTs, data models | ✅ APPROVED |
 | D-08 | Chief Data Architect (INST-006) | DB Schema Update Spec — 10 new tables, 3 amendments, wbe_app role, seed data | ✅ APPROVED |
-| D-10 | Goal Orchestrator (INST-013) | Autonomous Sprint Execution Plan (WC-017→WC-024, 8 sprints, WC stubs created) | ✅ PRODUCED |
+| D-10 | Goal Orchestrator (INST-013) | Autonomous Sprint Execution Plan (WBE-S1→WBE-S8, 8 sprints, WC stubs created) | ✅ PRODUCED |
 
 ### GOAL-004 Status: SPEC PHASE COMPLETE
 
 All 10 deliverables D-01 through D-10 produced and committed to main.
 
 **7 open Founder pricing decisions remain** (D-05 §7) — required before WBE goes live for
-production customers. These do NOT block implementation (WC-017 through WC-024 can run).
+production customers. These do NOT block implementation (WBE-S1 through WBE-S8 can run).
 They DO block WBE activation for real customer subscriptions.
 
 ### Next Session Options
 
 ```
 OPTION A — Authorize WBE implementation (recommended)
-  → Say: "Yogesh authorizes GOAL-004 WBE implementation (WC-017 through WC-024)"
+  → Say: "Yogesh authorizes GOAL-004 WBE implementation (WBE-S1 through WBE-S8)"
   → Record FA-NNN in security/FOUNDER-ACTIONS.md
   → Set current_sprint: WC-017 in SPRINT_STATE_MACHINE
   → Trigger autonomous-sprint.yaml → WBE scaffold begins
