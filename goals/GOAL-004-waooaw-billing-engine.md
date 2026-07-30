@@ -431,14 +431,216 @@ Agency-ready columns (added now, used in GOAL-AGENCY):
 
 ---
 
-## Autonomous Sprint Execution Plan (D-10 — to be written)
+## Autonomous Sprint Execution Plan (D-10)
 
-*This section is intentionally empty. It will be completed by Goal Orchestrator (INST-013)
-as D-10 — the final act of the spec phase — once D-01 through D-09 are all approved.*
+**Produced by:** Goal Orchestrator (INST-013) — 2026-07-30
+**All D-01 through D-09 inputs confirmed approved.**
+**Founder authorization to begin implementation:** REQUIRED before WC-017 triggers.
+**Authorization record location:** security/FOUNDER-ACTIONS.md — FA-NNN (WBE Implementation)
 
-*Estimated sprint sequence: WC-017 through WC-024 (8 sprints)*
-*Estimated total implementation time: 4 weeks at current autonomous sprint cadence (3 hours)*
-*The actual sprint decomposition and task specifications will be derived from approved specs.*
+**Sprint sequence:** WC-017 → WC-018 → WC-019 → WC-020 → WC-021 → WC-022 → WC-023 → WC-024
+**Estimated delivery:** 8 autonomous sprint cycles (~24 hours at 3-hour cadence)
+**Branch pattern:** `ib/009/sprint-017`, `ib/009/sprint-018`, etc.
+
+---
+
+### WC-017 — WBE Service Scaffold + DB Migration + Thread Catalog
+
+**Sprint Goal:** New `src/billing-engine/` Python FastAPI service running on port 8140,
+11-billing-engine.sql migration applied, Thread Catalog seeded from D-06, all health checks passing.
+
+**Tasks:**
+| Task | Scope | model_hint |
+|---|---|---|
+| WC017-01 | Python project scaffold: `src/billing-engine/` with pyproject.toml, Dockerfile, main.py, config.py, /health endpoint | `reasoning` |
+| WC017-02 | DB migration: `infrastructure/postgres/init/11-billing-engine.sql` — all tables from D-08, wbe_app role, seed data | `reasoning` |
+| WC017-03 | Thread Catalog service: `markup/thread_catalog.py` — load from DB, Redis cache (30s TTL), cache invalidation API | `standard` |
+| WC017-04 | docker-compose update: add `wbe` service on port 8140; add to healthcheck dependencies | `standard` |
+| WC017-05 | Tests ≥90% coverage: thread catalog load, cache hit/miss, health endpoint, migration applied | `standard` |
+
+**Required inputs:** D-06 thread-catalog.md, D-08 billing-schema-updates.md, D-03 ADR-034
+**CCTs:** none yet (introduced in WC-024)
+**Definition of done:** `docker compose up wbe` → port 8140 serves /health; `docker compose up postgres` → 11-billing-engine.sql applies clean; all tests pass
+
+---
+
+### WC-018 — Wallet Engine
+
+**Sprint Goal:** One wallet / multiple bucket architecture operational. AI Runtime can
+call WBE to check balance, reserve, and release for any thread type. ≤50ms p99 on GET /buckets/.
+
+**Tasks:**
+| Task | Scope | model_hint |
+|---|---|---|
+| WC018-01 | `wallet/models.py`: SQLAlchemy models CustomerWallet, WalletBucket, BucketReservation | `reasoning` |
+| WC018-02 | `wallet/service.py`: get_balance (Redis cache), reserve (idempotent), release, refill_on_renewal | `reasoning` |
+| WC018-03 | `wallet/cache.py`: Redis cache layer — 30s TTL, write-through invalidation on every deduction | `standard` |
+| WC018-04 | `wallet/router.py`: FastAPI routes GET /buckets/{customer_id}, POST /reserve, POST /release | `standard` |
+| WC018-05 | Tests ≥90%: balance check SLA ≤50ms, reserve idempotency, 402 on empty bucket, cache invalidation | `standard` |
+
+**Required inputs:** D-08 wallet tables, D-07 WBE component spec §2.1 + §3
+**Constitutional hooks:** 402 response must match CCT-PREPAID-01 contract
+**Definition of done:** Balance check ≤50ms p99 under load; reserve/release cycle atomic; 402 on empty bucket
+
+---
+
+### WC-019 — Markup Engine + C-089 Enforcement
+
+**Sprint Goal:** Markup Engine derives bundle cost floors from Thread Catalog, enforces
+C-089 constitutional minimum margin floor. No below-floor price can be activated.
+
+**Tasks:**
+| Task | Scope | model_hint |
+|---|---|---|
+| WC019-01 | `markup/bundle_engine.py`: cost_floor() from thread_rations × marked_up_paise; infrastructure_share; Layer 2 derivation | `reasoning` |
+| WC019-02 | `markup/bundle_engine.py`: derive_price() Layer 3 — platform margin; validate_margin() C-089 gate; pricing_floor_log write | `reasoning` |
+| WC019-03 | `markup/router.py`: GET /pricing/thread-catalog, GET /pricing/bundle-cost-floor/{agent_type}/{bundle_tier}, POST /pricing/validate, POST /pricing/derive | `standard` |
+| WC019-04 | Tests ≥90%: cost floor calculation correct for Starter/Runner/Winner; 422 on below-floor price; pricing_floor_log written on reject | `standard` |
+
+**Required inputs:** D-05 bundle definitions, D-06 thread catalog, D-07 §2.2, D-08 bundle_profiles/pricing_floor_log
+**Constitutional hooks:** C-089 enforcement — never 200 on below-floor price; always 422
+**Definition of done:** Starter cost floor ₹217 ± 5%; Runner ₹374 ± 5%; Winner ₹949 ± 5%
+
+---
+
+### WC-020 — DMA Bundle Profiles + Pacing Choice
+
+**Sprint Goal:** DMA Starter/Runner/Winner bundles are live in institutional.bundle_profiles.
+Customer pacing choice (SPREAD/BURST) is configurable and enforced by wallet_buckets.
+Subscription activation seeds correct buckets per bundle.
+
+**Tasks:**
+| Task | Scope | model_hint |
+|---|---|---|
+| WC020-01 | Seed DMA bundle profiles to institutional.bundle_profiles (migration or fixture): thread_rations per D-05, trial_substitutions, available_topups | `reasoning` |
+| WC020-02 | `wallet/service.py`: activate_subscription() — atomic wallet creation + bucket seeding from bundle profile | `reasoning` |
+| WC020-03 | `wallet/service.py`: pacing_preference handling — SPREAD enforces weekly_sub_limit_paise; BURST no sub-limit | `standard` |
+| WC020-04 | `wallet/router.py`: POST /subscriptions/activate; POST /subscriptions/renew with C-090 grandfather check | `standard` |
+| WC020-05 | Tests ≥90%: activate seeds all 7 bucket types for Starter; SPREAD enforces weekly cap; renew refills correctly | `standard` |
+
+**Required inputs:** D-05 bundle definitions (rations), D-07 §2.1 activate contract, D-08 wallet + pacing tables
+**Constitutional hooks:** C-090 grandfather check at renewal; C-088 billing profile lookup before activation
+**Definition of done:** POST /subscriptions/activate for DMA Starter → 7 buckets created → mode flipped to LIVE
+
+---
+
+### WC-021 — Usage Meter + Alert Engine + Proactive Offer Engine
+
+**Sprint Goal:** Threshold alerts fire correctly at 50%/60%/85%/95% with quiet hours
+enforcement. Daily proactive offer scan runs at 06:00 IST. Platform procurement runway
+projected daily.
+
+**Tasks:**
+| Task | Scope | model_hint |
+|---|---|---|
+| WC021-01 | `meter/service.py`: record_usage(), project_depletion() (velocity × days_remaining), check_thresholds() | `reasoning` |
+| WC021-02 | `meter/alert_policy.py`: ThresholdPolicy per bundle tier; quiet hours 23:00–07:00 IST; hold/send logic | `reasoning` |
+| WC021-03 | `meter/proactive_offer.py`: daily scan — velocity projection, seasonal event calendar, offer generation | `reasoning` |
+| WC021-04 | `meter/whatsapp_notifier.py`: format alert messages (customer vocabulary, no technical terms); send via 360Dialog/BSP | `standard` |
+| WC021-05 | Tests ≥90%: 50% threshold fires advisory; 85% fires immediate; quiet hours hold 50%/60%; proactive offer on <50% days remaining | `standard` |
+
+**Required inputs:** D-07 §2.3 meter API, D-05 bundle definitions (thresholds per resource)
+**Constitutional hooks:** C-049 disclosure language used in all alert messages; no provider names in customer-facing text
+**Definition of done:** CCT-BILLINGLOOP-01 passes (S-02 scenario simulated and alert fired correctly)
+
+---
+
+### WC-022 — Platform Procurement Ledger + Founder Action Auto-Generation
+
+**Sprint Goal:** WAOOAW's own provider spend is tracked per customer attribution.
+Runway projection < 7 days triggers automatic Founder Action entry.
+
+**Tasks:**
+| Task | Scope | model_hint |
+|---|---|---|
+| WC022-01 | `procurement/service.py`: record_cost() — writes to platform_cost_ledger with FX rate; project_runway() per provider | `reasoning` |
+| WC022-02 | `procurement/founder_action.py`: auto-generate FA-NNN entry in FOUNDER-ACTION.md when runway < 7 days; idempotent (no duplicate FAs) | `reasoning` |
+| WC022-03 | `procurement/router.py`: POST /platform/procurement/record-cost; GET /platform/procurement/status | `standard` |
+| WC022-04 | FX rate snapshot job: daily at 09:00 IST, fetches INR/USD from RBI reference rate API; stores in institutional.fx_rates | `standard` |
+| WC022-05 | Tests ≥90%: cost recorded with correct FX; runway < 7 days triggers FA write; duplicate FA not created | `standard` |
+
+**Required inputs:** D-08 platform_cost_ledger + provider_accounts, D-07 §2.4
+**Constitutional hooks:** C-091 — any unregistered thread triggers auto-FA; C-007 — cost ledger append-only
+**Definition of done:** AI Runtime can call POST /platform/procurement/record-cost after every LLM call; provider_accounts.days_remaining calculated correctly
+
+---
+
+### WC-023 — Single Onboarding Payment + Progressive Renewal Failure Saga
+
+**Sprint Goal:** One Razorpay payment tap activates subscription + seeds wallet in ≤90s.
+Day 1/3/7/14 progressive renewal failure policy implemented as Temporal workflow saga.
+
+**Tasks:**
+| Task | Scope | model_hint |
+|---|---|---|
+| WC023-01 | Razorpay Order+Subscription combination: `razorpay-mcp` extended to support create_onboarding_order() that bundles subscription + wallet seed amount | `reasoning` |
+| WC023-02 | payment.captured webhook handler: atomic activation at payment_intent CONFIRMED (mode flip precedes subscription creation — race condition fix S-09) | `reasoning` |
+| WC023-03 | `reconciliation/service.py` (partial): C-090 grandfather check at renewal — compare Razorpay plan price vs agreed_monthly_price_paise; block if mismatch + no notice | `reasoning` |
+| WC023-04 | Temporal saga: `RenewalFailureSaga` — Day1/Day3/Day7/Day14 states; campaign pause as gate at Day7 | `reasoning` |
+| WC023-05 | Tests ≥90%: single payment activates both subscription and wallet; saga progresses through states correctly; campaign pause failure rolls back billing state | `standard` |
+
+**Required inputs:** D-02 ADR-022 Amendment §1.2 + §1.3 + §1.4, D-07 §2.1 activate contract, D-08 price_change_notices
+**Constitutional hooks:** C-090 grandfather at renewal; C-049 agent disclosure when in reduced mode (Day 7+)
+**Definition of done:** CCT-ONBOARD-01 passes (≤90s total from payment to LIVE mode); saga state machine tested
+
+---
+
+### WC-024 — Reconciliation Engine + All CCTs + Coverage Gate
+
+**Sprint Goal:** WBE self-audit runs daily. All 4 CCTs pass. ≥90% test coverage on
+all WBE modules. GOAL-004 implementation complete.
+
+**Tasks:**
+| Task | Scope | model_hint |
+|---|---|---|
+| WC024-01 | `reconciliation/service.py`: daily_audit() — balance vs ledger sum; discrepancy > 1 paise → halt flag + Founder Action; margin_report() | `reasoning` |
+| WC024-02 | `reconciliation/scheduler.py`: APScheduler 02:00 IST daily job; halt detection; ops router GET /reconciliation/status | `standard` |
+| WC024-03 | `tests/test_ccts.py`: CCT-PREPAID-01, CCT-ONBOARD-01, CCT-BILLINGLOOP-01, CCT-SELFAUDIT-01 — all must pass | `reasoning` |
+| WC024-04 | AI Runtime integration: add WBE client calls (balance check + reserve before LLM dispatch, release after, procurement record after); update PSE per ADR-024 Amendment | `reasoning` |
+| WC024-05 | Coverage gate: pytest-cov on all billing-engine modules ≥90%; CI pipeline adds WBE coverage to Codecov | `standard` |
+
+**Required inputs:** All D-01 through D-09, D-07 §4 CCTs, D-08 reconciliation, ADR-024 Amendment
+**Constitutional hooks:** C-076 (≥90% coverage blocks PR merge); C-059 (# Implements: headers in every src/ file)
+**Definition of done:** All 4 CCTs GREEN; ≥90% coverage; AI Runtime dispatches 0 LLM calls without prior WBE reserve
+
+---
+
+### Work Contract Stubs
+
+Work Contracts created as stubs in `work-contracts/`. Full task decomposition is
+provided above. Each sprint is self-sufficient with all required inputs available.
+
+Files created: WC-017 through WC-024 (see work-contracts/ directory).
+
+---
+
+### Implementation Sequence Diagram
+
+```
+WC-016 (Web Portal — IN PROGRESS)
+  ↓ (completes independently)
+WC-017 WBE Scaffold + DB + Thread Catalog
+  ↓
+WC-018 Wallet Engine (buckets, reserve, release)
+  ↓
+WC-019 Markup Engine + C-089 enforcement
+  ↓
+WC-020 DMA Bundles + Pacing Choice (first billable product)
+  ↓
+WC-021 Meter + Alert + Proactive Offer Engine
+  ↓
+WC-022 Platform Procurement Ledger + FA auto-generation
+  ↓
+WC-023 Single Onboarding Payment + Renewal Failure Saga
+  ↓
+WC-024 Reconciliation + All CCTs + Coverage Gate
+        ↓
+        GOAL-004 IMPLEMENTATION COMPLETE
+        → Update GOAL-004 Evidence Register: all PRODUCED
+        → Founder reviews: 7 open pricing decisions (D-05 §7)
+        → Founder authorizes final pricing via Founder Action
+        → WBE goes live for first DMA customer onboarding
+```
 
 ---
 
@@ -507,7 +709,7 @@ The following decisions are needed before the corresponding spec can be finalize
 | 2026-07-30 | INST-003 (BA) | D-09 Agent Billing Profiles × 4 | ✅ PRODUCED |
 | 2026-07-30 | INST-005 (SA) | D-07 WBE Component Spec | ✅ PRODUCED |
 | 2026-07-30 | INST-006 (DA) | D-08 DB Schema Update Spec | ✅ PRODUCED |
-| — | INST-013 (GO) | D-10 Autonomous Sprint Execution Plan | PENDING |
+| 2026-07-30 | INST-013 (GO) | D-10 Autonomous Sprint Execution Plan (WC-017→WC-024) | ✅ PRODUCED |
 
 ---
 

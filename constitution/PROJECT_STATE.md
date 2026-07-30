@@ -4,26 +4,69 @@
 
 ---
 
-## IN-PROGRESS CHECKPOINT — GOAL-004 Spec Phase (2026-07-30)
+## SESSION RECORD — 2026-07-30 (GOAL-004 Spec Phase — COMPLETE)
 
-| Milestone | Status |
-|---|---|
-| D-01: Claims C-088–C-091 (CA — INST-002) | ✅ DONE — C-088, C-089, C-090, C-091 in knowledge/claims/ |
-| D-02: ADR-022 Amendment (EA — INST-004) | ✅ DONE — Universal prepaid + single onboarding + renewal failure policy |
-| D-03: ADR-034 WBE Architecture (EA — INST-004) | ✅ DONE — 5 sub-components, agent-agnostic, port 8140 |
-| D-04: ADR-024 Amendment (EA — INST-004) | ✅ DONE — Bundle rations gate PSE, pacing choice, downgrade disclosure |
-| D-05: DMA Bundle Definitions (BA — INST-003) | ✅ DONE — Starter/Runner/Winner with cost floor derivation |
-| D-06: Thread Catalog Reference (BA — INST-003) | ✅ DONE — All 4 agents, all providers, markup % |
-| D-09: Agent Billing Profiles × 4 (BA — INST-003) | ✅ DONE — DMA, Trading, Agricultural, Private Tutor |
-| D-07: WBE Component Spec (SA — INST-005) | ✅ DONE — 5 sub-components, API contracts, CCTs, data models |
-| D-08: DB Schema Update Spec (DA — INST-006) | ✅ DONE — 10 new tables, 3 table amendments, wbe_app role, seed data |
-| D-10: Autonomous Sprint Execution Plan (GO — INST-013) | pending |
+### What Was Built
 
-*Resume: read `goals/GOAL-004-waooaw-billing-engine.md` Evidence Register → find first PENDING → continue.*
+| Phase | Institution | Output | Status |
+|---|---|---|---|
+| D-01 | Constitutional Analyst (INST-002) | Claims C-088, C-089, C-090, C-091 | ✅ RATIFIED |
+| D-02 | Enterprise Architect (INST-004) | ADR-022 Amendment 1 (universal prepaid + single onboarding + renewal saga + C-090) | ✅ APPROVED |
+| D-03 | Enterprise Architect (INST-004) | ADR-034 WAOOAW Billing Engine (new, port 8140, 5 sub-components) | ✅ APPROVED |
+| D-04 | Enterprise Architect (INST-004) | ADR-024 Amendment 1 (bundle rations gate PSE + pacing choice) | ✅ APPROVED |
+| D-05 | Chief Business Architect (INST-003) | DMA Starter/Runner/Winner bundle definitions with cost floor derivation | ✅ APPROVED |
+| D-06 | Chief Business Architect (INST-003) | Thread Catalog Reference — all 4 agents, all providers, markup % | ✅ APPROVED |
+| D-09 | Chief Business Architect (INST-003) | Agent Billing Profiles × 4 (DMA, Trading, Agricultural, Private Tutor) | ✅ APPROVED |
+| D-07 | Solution Architect (INST-005) | WBE Component Spec — 5 sub-components, API contracts, CCTs, data models | ✅ APPROVED |
+| D-08 | Chief Data Architect (INST-006) | DB Schema Update Spec — 10 new tables, 3 amendments, wbe_app role, seed data | ✅ APPROVED |
+| D-10 | Goal Orchestrator (INST-013) | Autonomous Sprint Execution Plan (WC-017→WC-024, 8 sprints, WC stubs created) | ✅ PRODUCED |
+
+### GOAL-004 Status: SPEC PHASE COMPLETE
+
+All 10 deliverables D-01 through D-10 produced and committed to main.
+
+**7 open Founder pricing decisions remain** (D-05 §7) — required before WBE goes live for
+production customers. These do NOT block implementation (WC-017 through WC-024 can run).
+They DO block WBE activation for real customer subscriptions.
+
+### Next Session Options
+
+```
+OPTION A — Authorize WBE implementation (recommended)
+  → Say: "Yogesh authorizes GOAL-004 WBE implementation (WC-017 through WC-024)"
+  → Record FA-NNN in security/FOUNDER-ACTIONS.md
+  → Set current_sprint: WC-017 in SPRINT_STATE_MACHINE
+  → Trigger autonomous-sprint.yaml → WBE scaffold begins
+
+OPTION B — Review 7 open pricing decisions first (D-05 §7)
+  → Review dma-bundle-definitions.md §7
+  → Set final prices for Starter/Runner/Winner
+  → Set Constitutional Minimum Margin % (C-089 floor)
+  → Record Founder pricing authorization in FOUNDER-ACTIONS.md
+
+OPTION C — WC-016 (Web Portal) review
+  → Check autonomous-sprint.yaml for WC-016 status
+  → Review PR when opened
+```
+
+### New Artifacts (GOAL-004 Spec Phase)
+- `knowledge/claims/C-088.md` — Agent Billing Profile Requirement
+- `knowledge/claims/C-089.md` — Constitutional Minimum Margin Floor
+- `knowledge/claims/C-090.md` — Grandfather Pricing Protection (LAW)
+- `knowledge/claims/C-091.md` — Thread Catalog Sovereignty
+- `adr/ADR-022-*.md` — Amendment 1: universal prepaid + single onboarding + renewal saga
+- `adr/ADR-034-waooaw-billing-engine.md` — new ADR
+- `adr/ADR-024-*.md` — Amendment 1: bundle ration gate + pacing choice
+- `architecture/reference/billing/thread-catalog.md`
+- `architecture/reference/billing/dma-bundle-definitions.md`
+- `architecture/reference/billing/wbe-component-spec.md`
+- `architecture/reference/billing/billing-schema-updates.md`
+- `architecture/reference/billing/billing-profiles/` — 4 agent profiles
+- `goals/GOAL-004-waooaw-billing-engine.md` — full Goal Understanding Record + D-10 sprint plan
+- `goals/GOAL-BACKLOG.md` — GOAL-004 PLANNED, GOAL-AGENCY backlog
+- `work-contracts/WC-017` through `WC-024` — 8 sprint stubs
 
 ---
-
-**Last Updated (prior):** 2026-07-30 (WC-015 MERGED — WC-016 next)
 **Version:** 1.21.0
 **Declared by:** Platform IT Expert (INST-010) — semi-autonomous session 2026-07-30
 **Session:** 2026-07-30 — WC-015 complete + 6 pipeline fixes
