@@ -275,3 +275,63 @@ component addition to detect which agents need spec updates. Zero manual agent-h
 
 **Industry Alignment:** AsyncAPI 3.0 (signal contracts), CloudEvents 1.0 (envelope),
 Anthropic Constitutional AI (document-based base spec model)
+
+---
+
+### GOAL-SERVICING-CENTER — Constitutional Customer Servicing and Agent Lifecycle Management
+
+**Registrant:** Yogesh Khandge (Founder) via EA session 2026-07-30
+**Registered:** 2026-07-30
+**Prerequisite:** WBE-S1→S8 (customer wallets must exist); GOAL-AGENT-BASE spec work (Base Spec v1.1 triggers from this Goal)
+
+**Desired Outcome:**
+WAOOAW has a defined, constitutional, and operational servicing mechanism for every
+live customer employment contract. Customers are protected when platform changes
+affect their agent. The institution learns from every customer outcome. The flywheel
+spins without manual intervention.
+
+**Five Components (S-1 through S-5):**
+
+S-1 Agent Version Governance Policy (new ADR)
+  Defines three update tiers: SECURITY (silent), BEHAVIORAL (next session),
+  CAPABILITY (30-day notice + consent). Customer protection for mid-contract changes.
+  Impact on PAC: needs agent_spec_version field + version_governance signal handlers.
+
+S-2 Customer Health Monitor (Platform Operations agent extension)
+  Per-customer daily health check: goal velocity, engagement signals, anomaly detection.
+  Proactive outreach before customer churns. Platform-ops-signal-schema.yaml needed.
+
+S-3 Constitutional Complaint Investigation (Platform Operations extension)
+  Structured process: evidence audit → constitutional assessment → remediation → root cause routing.
+  Routes to: Platform IT Expert (code bug) | Goal Orchestrator (spec gap) | CA (constitutional gap).
+
+S-4 Monthly Business Review Dual Output (agent spec amendment for all agents)
+  Adds OUTPUT B: institutional signal to institutional.customer_outcome_signals.
+  Fields: goal_achievement_pct, skills_used_vs_available, customer_health_signal, improvement_proposals.
+  Self-Improvement Analyst reads this to close the production→design feedback loop.
+
+S-5 Constitutional Recall Mechanism (Platform Operations + WBE + all agents)
+  When a bug or constitutional gap affects live customers: identify scope, remediate,
+  notify each affected customer, record every remediation action per C-007.
+
+**Direct Impact on Agent Base Spec → triggers v1.1 bump:**
+  B-7: Monthly Business Review Institutional Output (S-4 connection)
+  B-8: Version Update Consent Behavior (S-1 connection)
+  B-9: Recall Mode Behavior (S-5 connection)
+
+**New Signal Schemas needed:**
+  architecture/reference/signals/platform-ops-signal-schema.yaml
+  Channels: recall-initiated, recall-complete, capability-update-notice,
+            security-update-applied, customer-health-alert
+
+**New PAC service block in all agents:**
+  platform_ops: { handles_signals: [...], schema_version: "1.0" }
+  version_governance: { agent_spec_version: "[current]", handles_signals: [...] }
+
+**The Flywheel Connection:**
+  Without this Goal: production behavior never feeds back to design office.
+  With this Goal: every 30-day Monthly Business Review produces an institutional
+  signal → Self-Improvement Analyst aggregates → Goal Orchestrator routes improvements.
+  The flywheel turns on customer time, not human session time.
+
+---
