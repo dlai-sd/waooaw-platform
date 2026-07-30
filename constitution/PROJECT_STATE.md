@@ -645,9 +645,9 @@ sprint_ib_item: IB-009
 sprint_status: IN_PROGRESS
 branch: ib/009/sprint-015
 <<<<<<< HEAD
-last_attempt_utc: 2026-07-29T17:33:51.426054+00:00
+last_attempt_utc: 2026-07-30T05:54:20.821140+00:00
 =======
-last_attempt_utc: 2026-07-29T17:33:51.426054+00:00
+last_attempt_utc: 2026-07-30T05:54:20.821140+00:00
 >>>>>>> origin/main
 last_attempt_result: PARTIAL
 <<<<<<< HEAD
@@ -665,7 +665,7 @@ tasks_remaining:
   - WC015-05
 
 current_task:
-WC015-02
+WC015-05
 CURRENT STATE: platform_phase=IMPLEMENTATION · AUTONOMOUS_HALT=false
                current_sprint=WC-012 · sprint_status=READY
                CLAIMS: 80 RATIFIED (C-001→C-080) · ADRs: 31
