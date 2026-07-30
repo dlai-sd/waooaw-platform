@@ -399,7 +399,10 @@ def run_compile_gate(gate_type: str, service_dir: str = "src/constitutional-engi
             ["python3", "-m", "pytest", service_dir, "-q", "--tb=short"],
             capture_output=True, text=True, cwd=REPO_ROOT
         )
-        return result.returncode == 0, result.stdout[-500:] if result.returncode != 0 else ""
+        # Capture both stdout+stderr (same as ruff gate) — ImportErrors from missing
+        # deps (asyncpg, httpx) go to stderr; silent failure if only stdout captured.
+        error_output = (result.stdout + result.stderr)[-500:] if result.returncode != 0 else ""
+        return result.returncode == 0, error_output
 
     return False, f"Unknown gate_type: {gate_type}"
 

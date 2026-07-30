@@ -150,10 +150,13 @@ jobs:
           from pathlib import Path
 
           content = Path("constitution/PROJECT_STATE.md").read_text()
-          halt_match = re.search(r"autonomous_halt:\s*(true|false)", content)
+          # Scope to SPRINT_STATE_MACHINE block — avoids matching stale session records
+          sm_idx = content.find('## SPRINT_STATE_MACHINE')
+          sm = content[sm_idx:] if sm_idx >= 0 else content
+          halt_match = re.search(r"autonomous_halt:\s*(true|false)", sm)
           halt = halt_match.group(1) if halt_match else "false"
 
-          failures_match = re.search(r"consecutive_failures:\s*(\d+)", content)
+          failures_match = re.search(r"consecutive_failures:\s*(\d+)", sm)
           failures = int(failures_match.group(1)) if failures_match else 0
 
           print(f"  autonomous_halt={halt}, consecutive_failures={failures}")
@@ -165,6 +168,8 @@ jobs:
           HALT=$(python3 -c "
           import re
           content = open('constitution/PROJECT_STATE.md').read()
+          sm_idx = content.find('## SPRINT_STATE_MACHINE')
+          content = content[sm_idx:] if sm_idx >= 0 else content
           halt = re.search(r'autonomous_halt:\s*(true|false)', content)
           failures = re.search(r'consecutive_failures:\s*(\d+)', content)
           phase = re.search(r'platform_phase:\s*(\S+)', content)
@@ -184,12 +189,16 @@ jobs:
           PHASE=$(python3 -c "
           import re
           content = open('constitution/PROJECT_STATE.md').read()
+          sm_idx = content.find('## SPRINT_STATE_MACHINE')
+          content = content[sm_idx:] if sm_idx >= 0 else content
           m = re.search(r'platform_phase:\s*(\S+)', content)
           print(m.group(1).strip('\"\'') if m else 'SPEC')
           ")
           FAILURES=$(python3 -c "
           import re
           content = open('constitution/PROJECT_STATE.md').read()
+          sm_idx = content.find('## SPRINT_STATE_MACHINE')
+          content = content[sm_idx:] if sm_idx >= 0 else content
           m = re.search(r'consecutive_failures:\s*(\d+)', content)
           print(m.group(1) if m else '0')
           ")

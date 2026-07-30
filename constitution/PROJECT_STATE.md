@@ -206,7 +206,11 @@ tasks_done:
 tasks_remaining:
   - WC015-05
 consecutive_failures: 3
+<<<<<<< HEAD
 autonomous_halt: false
+=======
+autonomous_halt: true
+>>>>>>> origin/main
 open_prs: none
 goal_register_issue: 115
 
@@ -328,7 +332,11 @@ tasks_done:
 tasks_remaining:
   - WC015-05
 consecutive_failures: 3
+<<<<<<< HEAD
 autonomous_halt: false
+=======
+autonomous_halt: true
+>>>>>>> origin/main
 platform_phase: IMPLEMENTATION
 ```
 
@@ -642,7 +650,11 @@ last_attempt_utc: 2026-07-29T17:33:51.426054+00:00
 last_attempt_utc: 2026-07-29T17:33:51.426054+00:00
 >>>>>>> origin/main
 last_attempt_result: PARTIAL
+<<<<<<< HEAD
 consecutive_failures: 3
+=======
+consecutive_failures: 0
+>>>>>>> origin/main
 consecutive_infra_failures: 0
 tasks_done:
   - WC015-01
