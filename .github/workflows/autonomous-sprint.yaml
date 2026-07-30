@@ -188,8 +188,10 @@ jobs:
           ")
           PHASE=$(python3 -c "
           import re
-          content = open('constitution/PROJECT_STATE.md').read()          sm_idx = content.find('## SPRINT_STATE_MACHINE')
-          content = content[sm_idx:] if sm_idx >= 0 else content          m = re.search(r'platform_phase:\s*(\S+)', content)
+          content = open('constitution/PROJECT_STATE.md').read()
+          sm_idx = content.find('## SPRINT_STATE_MACHINE')
+          content = content[sm_idx:] if sm_idx >= 0 else content
+          m = re.search(r'platform_phase:\s*(\S+)', content)
           print(m.group(1).strip('\"\'') if m else 'SPEC')
           ")
           FAILURES=$(python3 -c "
