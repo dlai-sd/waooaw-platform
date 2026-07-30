@@ -148,7 +148,10 @@ def _run(cmd: list[str], check: bool = True) -> subprocess.CompletedProcess:
 
 def _read_sprint_state() -> dict:
     """Parse key sprint state fields from PROJECT_STATE.md."""
-    text = STATE_PATH.read_text(encoding="utf-8")
+    full_text = STATE_PATH.read_text(encoding="utf-8")
+    # Scope to SPRINT_STATE_MACHINE block — avoids matching stale session records
+    sm_idx = full_text.find("## SPRINT_STATE_MACHINE")
+    text = full_text[sm_idx:] if sm_idx >= 0 else full_text
     state: dict = {}
     for key in ["sprint", "sprint_status", "task_id", "consecutive_failures",
                 "autonomous_halt", "last_attempt_result"]:

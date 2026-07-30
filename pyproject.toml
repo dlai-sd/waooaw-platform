@@ -50,6 +50,8 @@ ignore = [
     "E501",    # Line too long — AI-generated PSE rules, regex patterns, SQL queries exceed any fixed limit.
                # Line length is a style preference; it never affects correctness or security.
                # Disabled globally: per-file approach (120/130) was chased across 3 runs and still blocked.
+    "RUF001",  # Ambiguous unicode — valid in security tests (unicode normalization bypass test data).
+               # LLM legitimately writes confusable chars in injection-guard test vectors.
 ]
 
 [tool.ruff.lint.per-file-ignores]
