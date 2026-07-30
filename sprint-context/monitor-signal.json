@@ -1,23 +1,23 @@
 {
-  "run_id": "local-wc026-01-r2",
+  "run_id": "local-wc026-01-r3",
   "sprint": "WC-026",
   "scaffold_task": null,
   "scaffold_failed": false,
   "task_results": {},
   "spec_gap_issues": [],
-  "overall_result": "PARTIAL",
+  "overall_result": "SUCCESS",
   "file_costs": {},
   "subtask_results": {
     "WC026-01a": {
-      "result": "FAIL",
+      "result": "SUCCESS",
       "task_id": "WC026-01",
-      "error_codes": [
-        "F003"
-      ],
-      "error_text": "S105 Possible hardcoded password assigned to: \"wbe_db_password\"\n  --> src/billing-engine/config.py:23:28\n   |\n22 |     # ADR-014: secrets from Key Vault in production; env vars in dev\n23 |     wbe_db_password: str = \"changeme\"\n   |                            ^^^^^^^^^^\n   |\n\nRUF003 Comment contains "
+      "error_codes": [],
+      "error_text": ""
     }
   },
-  "tasks_done": [],
+  "tasks_done": [
+    "WC026-01"
+  ],
   "tasks_requested": [
     "WC026-01"
   ]
