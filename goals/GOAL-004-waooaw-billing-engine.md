@@ -117,10 +117,10 @@ The following claims do not yet exist and must be ratified before implementation
 
 | Claim ID | Title | Statement |
 |---|---|---|
-| C-087 | Agent Billing Profile Requirement | No WAOOAW agent may be published to customers without a Founder-authorized Agent Billing Profile. An agent without a Profile is constitutionally unpublishable regardless of how complete its agent specification is. |
-| C-088 | Constitutional Minimum Margin Floor | The final offering price for any WAOOAW product must exceed the bundle cost floor by at least the Founder-set minimum margin %. No agent, bundle, or top-up may be priced below this floor. WBE enforces this computationally; the Founder sets and may revise the floor % via Founder Action only. |
-| C-089 | Grandfather Pricing Protection | A customer's subscription price may not increase during an active contract period. Price changes apply only at renewal and require 30-day advance notice. This notice is a constitutional act recorded in the audit ledger with customer acknowledgment, not a marketing communication. |
-| C-090 | Thread Catalog Sovereignty | Every billable cost incurred by WAOOAW in service delivery must have an entry in the Thread Catalog before that cost may be absorbed or charged to any customer. Costs outside the Thread Catalog are unaccounted institutional liability and trigger an automatic Founder Action for catalog registration. |
+| C-088 | Agent Billing Profile Requirement | No WAOOAW agent may be published to customers without a Founder-authorized Agent Billing Profile. An agent without a Profile is constitutionally unpublishable regardless of how complete its agent specification is. |
+| C-089 | Constitutional Minimum Margin Floor | The final offering price for any WAOOAW product must exceed the bundle cost floor by at least the Founder-set minimum margin %. No agent, bundle, or top-up may be priced below this floor. WBE enforces this computationally; the Founder sets and may revise the floor % via Founder Action only. |
+| C-090 | Grandfather Pricing Protection | A customer's subscription price may not increase during an active contract period. Price changes apply only at renewal and require 30-day advance notice. This notice is a constitutional act recorded in the audit ledger with customer acknowledgment, not a marketing communication. |
+| C-091 | Thread Catalog Sovereignty | Every billable cost incurred by WAOOAW in service delivery must have an entry in the Thread Catalog before that cost may be absorbed or charged to any customer. Costs outside the Thread Catalog are unaccounted institutional liability and trigger an automatic Founder Action for catalog registration. |
 
 ---
 
@@ -149,7 +149,7 @@ The following claims do not yet exist and must be ratified before implementation
 
 | Institution | Role | Deliverables | Sequence |
 |---|---|---|---|
-| Constitutional Analyst (INST-002) | Produce + validate constitutional claims | D-01: Claims C-087–C-090 | First — all other spec work depends on the constitutional foundation |
+| Constitutional Analyst (INST-002) | Produce + validate constitutional claims | D-01: Claims C-088–C-091 | First — all other spec work depends on the constitutional foundation |
 | Chief Business Architect (INST-003) | Business model and product definitions | D-05: Bundle Definitions (DMA Starter/Runner/Winner) · D-06: Thread Catalog reference · D-09: Agent Billing Profiles × 4 | Parallel with EA (D-03 available) |
 | Enterprise Architect (INST-004) | Architectural decisions | D-02: ADR-022 Amendment · D-03: ADR-034 (WBE) · D-04: ADR-024 Amendment | After D-01; D-02/D-03/D-04 in parallel |
 | Solution Architect (INST-005) | Component specification | D-07: WBE Component Spec (5 sub-components) | After D-03 |
@@ -168,7 +168,7 @@ The following claims do not yet exist and must be ratified before implementation
 GOA-GOAL-004-INST-002-01
   goal_id:            GOAL-004
   institution_id:     INST-002 (Constitutional Analyst)
-  contribution_scope: D-01 — Produce claims C-087, C-088, C-089, C-090
+  contribution_scope: D-01 — Produce claims C-088, C-089, C-090, C-091
                       Then serve as reviewer for D-02 through D-09 spec outputs
   participation_window: Spec Phase — begin immediately; complete before D-02 begins
   collaboration_type: Primary
@@ -237,7 +237,8 @@ GOA-GOAL-004-INST-010-01
 
 ## Spec Phase — Deliverable Specifications
 
-### D-01 — Constitutional Claims C-087 through C-090
+### D-01 — Constitutional Claims C-088 through C-091
+**Claims:** C-088, C-089, C-090, C-091
 **Producer:** Constitutional Analyst (INST-002)
 **Input:** Brainstorm record (this document), CONSTITUTION.md, existing claims corpus
 **Output:** Four ratified claims in `knowledge/claims/` with simulation evidence
@@ -266,7 +267,7 @@ scenario validating it, and has been reviewed by CA before submission for Founde
 - Five sub-component architecture: Wallet Engine, Markup Engine, Usage Meter + Alert Engine,
   Platform Procurement Ledger, Reconciliation Engine
 - Thread Catalog as single source of truth (C-090)
-- Agent Billing Profile as constitutional gate (C-087)
+- Agent Billing Profile as constitutional gate (C-088)
 - Minimum margin floor as computational enforcement (C-088)
 - Agency-model-ready schema constraint (no closed doors)
 - WBE self-audit: daily balance reconciliation against ledger sum
@@ -372,7 +373,7 @@ New tables:
 - `business.pacing_preferences` — customer's monthly pacing choice per bundle resource
 - `institutional.platform_procurement_ledger` — WAOOAW's own provider spend tracking
 - `institutional.provider_accounts` — WAOOAW's accounts at each provider with balance + threshold
-- `business.billing_profiles` — Agent Billing Profile per agent type (C-087 compliance)
+- `business.billing_profiles` — Agent Billing Profile per agent type (C-088 compliance)
 
 Updated tables:
 - `business.ad_spend_wallets` → migrate to wallet_buckets (ad_spend becomes a bucket type)
@@ -425,8 +426,8 @@ Agency-ready columns (added now, used in GOAL-AGENCY):
 | SC-06 | Single onboarding payment: subscription activation + wallet seed in one Razorpay transaction | CCT-ONBOARD-01: one UPI tap → subscription active + wallet seeded (≤2 min) |
 | SC-07 | Autonomous Billing Loop: daily projection, threshold alerts (50/60/85/95%), proactive top-up offers, progressive renewal failure | CCT-BILLINGLOOP-01: simulated 17 operational scenarios all handled per policy |
 | SC-08 | Platform Procurement Ledger: WAOOAW provider spend tracked; Founder Action auto-generated when days_remaining < 7 | Platform Operations agent produces procurement projection daily; FA auto-created in test |
-| SC-09 | All 4 existing agents have completed Agent Billing Profiles (C-087 compliance) | 4 files in `architecture/reference/billing/billing-profiles/` — reviewed and approved |
-| SC-10 | Claims C-087, C-088, C-089, C-090 ratified | 4 files in `knowledge/claims/` with Founder ratification stamps |
+| SC-09 | All 4 existing agents have completed Agent Billing Profiles (C-088 compliance) | 4 files in `architecture/reference/billing/billing-profiles/` — reviewed and approved |
+| SC-10 | Claims C-088, C-089, C-090, C-091 ratified | 4 files in `knowledge/claims/` with Founder ratification stamps |
 
 ---
 
@@ -445,7 +446,7 @@ as D-10 — the final act of the spec phase — once D-01 through D-09 are all a
 
 ```
 Week 1:
-  D-01 (CA) — Constitutional Claims C-087–C-090
+  D-01 (CA) — Constitutional Claims C-088–C-091
     ↓
   D-02 (EA) ─── ADR-022 Amendment           ┐
   D-03 (EA) ─── ADR-034 WBE Architecture   ─┤ Parallel
@@ -497,7 +498,7 @@ The following decisions are needed before the corresponding spec can be finalize
 | 2026-07-30 | INST-013 (Goal Orchestrator) | Goal Understanding Record (this document) | PRODUCED |
 | 2026-07-30 | INST-013 (Goal Orchestrator) | Goal Classification + GO Authorizations issued | PRODUCED |
 | 2026-07-30 | INST-013 (Goal Orchestrator) | Spec Phase Deliverable Specifications D-01 through D-10 | PRODUCED |
-| — | INST-002 (CA) | D-01 Claims C-087–C-090 | PENDING |
+| 2026-07-30 | INST-002 (CA) | D-01 Claims C-088–C-091 | ✅ PRODUCED |
 | — | INST-004 (EA) | D-02, D-03, D-04 ADRs | PENDING |
 | — | INST-003 (BA) | D-05, D-06, D-09 | PENDING |
 | — | INST-005 (SA) | D-07 WBE Component Spec | PENDING |

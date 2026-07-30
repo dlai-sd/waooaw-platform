@@ -1,6 +1,29 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-07-30 (WC-015 MERGED — WC-016 next)
+**Last Updated:** 2026-07-30 (GOAL-004 spec phase — INST-013 session)
+
+---
+
+## IN-PROGRESS CHECKPOINT — GOAL-004 Spec Phase (2026-07-30)
+
+| Milestone | Status |
+|---|---|
+| D-01: Claims C-088–C-091 (CA — INST-002) | ✅ DONE — C-088, C-089, C-090, C-091 in knowledge/claims/ |
+| D-02: ADR-022 Amendment (EA — INST-004) | pending |
+| D-03: ADR-034 WBE Architecture (EA — INST-004) | pending |
+| D-04: ADR-024 Amendment (EA — INST-004) | pending |
+| D-05: DMA Bundle Definitions (BA — INST-003) | pending |
+| D-06: Thread Catalog Reference (BA — INST-003) | pending |
+| D-09: Agent Billing Profiles × 4 (BA — INST-003) | pending |
+| D-07: WBE Component Spec (SA — INST-005) | pending |
+| D-08: DB Schema Update Spec (DA — INST-006) | pending |
+| D-10: Autonomous Sprint Execution Plan (GO — INST-013) | pending |
+
+*Resume: read `goals/GOAL-004-waooaw-billing-engine.md` Evidence Register → find first PENDING → continue.*
+
+---
+
+**Last Updated (prior):** 2026-07-30 (WC-015 MERGED — WC-016 next)
 **Version:** 1.21.0
 **Declared by:** Platform IT Expert (INST-010) — semi-autonomous session 2026-07-30
 **Session:** 2026-07-30 — WC-015 complete + 6 pipeline fixes
