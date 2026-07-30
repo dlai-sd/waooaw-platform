@@ -1,24 +1,14 @@
 {
-  "run_id": "local-wc026-01-r3",
+  "run_id": "30565862315",
   "sprint": "WC-026",
   "scaffold_task": null,
   "scaffold_failed": false,
   "task_results": {},
   "spec_gap_issues": [],
-  "overall_result": "SUCCESS",
+  "overall_result": "NOT_IMPLEMENTED",
   "file_costs": {},
-  "subtask_results": {
-    "WC026-01a": {
-      "result": "SUCCESS",
-      "task_id": "WC026-01",
-      "error_codes": [],
-      "error_text": ""
-    }
-  },
-  "tasks_done": [
-    "WC026-01"
-  ],
+  "tasks_done": [],
   "tasks_requested": [
-    "WC026-01"
+    "WC-026"
   ]
 }
