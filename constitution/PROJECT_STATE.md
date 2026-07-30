@@ -790,8 +790,8 @@ sprint_ib_item: IB-009
 sprint_status: IN_PROGRESS
 branch: ib/009/sprint-026
 last_attempt_utc: 2026-07-30T17:25:51.646756+00:00
-last_attempt_result: SUCCESS
-consecutive_failures: 0
+last_attempt_result: PARTIAL
+consecutive_failures: 1
 consecutive_infra_failures: 0
 tasks_done:
   - WC025-01
