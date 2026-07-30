@@ -793,9 +793,9 @@ platform_phase: IMPLEMENTATION  # SPEC | IMPLEMENTATION | LIVE
 
 current_sprint: WC-026
 sprint_ib_item: IB-009
-sprint_status: AUTHORIZED
+sprint_status: IN_PROGRESS
 branch: ib/009/sprint-026
-last_attempt_utc: 2026-07-30T17:35:03.183401+00:00
+last_attempt_utc: 2026-07-30T19:58:38.040181+00:00
 last_attempt_result: PARTIAL
 consecutive_failures: 2
 consecutive_infra_failures: 0
