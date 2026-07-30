@@ -288,6 +288,14 @@ _TASK_STACK_MAP: dict[str, str] = {
     "WC016": "terraform",# Infrastructure
     "WC017": "typescript",# Web (Next.js)
     "WC018": "dotnet",   # Integration tests
+    "WC025": "python",   # Wallet & Billing Engine (WBE)
+    "WC026": "python",   # WBE Wallet Engine (buckets, reserve, release)
+    "WC027": "python",   # WBE future sprints
+    "WC028": "python",
+    "WC029": "python",
+    "WC030": "python",
+    "WC031": "python",
+    "WC032": "python",
 }
 
 def _build_system_prompt(task_id: str) -> str:
@@ -329,6 +337,9 @@ def get_branch_context(service_dir: str = "src/constitutional-engine") -> str:
         "WC016": ["infrastructure/"],
         "WC017": ["web/"],
         "WC018": ["src/", "tests/"],  # integration — cross-service by design
+        "WC025": ["src/billing-engine/", "tests/billing-engine/"],
+        "WC026": ["src/billing-engine/", "tests/billing-engine/"],
+        "WC027": ["src/billing-engine/", "tests/billing-engine/"],
     }
 
     task_id = os.environ.get("SPRINT_TASK_ID", "")
@@ -922,7 +933,8 @@ def call_llm_via_magiclm(
             full_ptr = assembler.assemble(scope=["src", "scripts"])
             task_ptr = assembler.extract_task_ptr(full_ptr, context_sections)
             # Inject stack that matches the task
-            stack = "python" if "WC014" in task_id or "WC015" in task_id else "dotnet"
+            # Derive stack from _TASK_STACK_MAP — authoritative source for all task prefixes (WC026 → python)
+            stack = _TASK_STACK_MAP.get(task_id[:5], "dotnet")
             ptr_snapshot = task_ptr.get(stack, {})
         except Exception as e:
             print(f"  WARN: PTR 2.0 assembly failed ({e}) — using empty PTR")
@@ -2855,6 +2867,215 @@ TASK_HANDLERS = {
                 ),
                 model_hint="reasoning",
                 max_tokens=5000,
+            ),
+        ]
+    },
+    # ══════════════════════════════════════════════════════════════════════════
+    # WC-026 — WBE Wallet Engine (Python / FastAPI / SQLAlchemy 2.x)
+    # src/billing-engine/wallet/ — buckets, reserve, release, renew (C-090)
+    # ══════════════════════════════════════════════════════════════════════════
+    "WC026-01": {
+        "subtasks": [
+            SubTaskDef(
+                id="WC026-01a",
+                description="SQLAlchemy models: CustomerWallet, WalletBucket, BucketReservation mapped to business.* tables",
+                type="llm",
+                depends_on=[],
+                compile_gate="ruff",
+                service_dir="src/billing-engine",
+                wc_task_id="WC026-01",
+                stack="python",
+                output_files=[
+                    "src/billing-engine/wallet/__init__.py",
+                    "src/billing-engine/wallet/models.py",
+                ],
+                inject_source_files=[
+                    "src/billing-engine/config.py",
+                    "infrastructure/postgres/init/12-billing-engine.sql",
+                ],
+                spec_sections={
+                    "architecture/reference/billing/billing-schema-updates.md": "full",
+                    "work-contracts/WC-026-wbe-s2-wallet-engine.md": "full",
+                },
+                constitutional_check=(
+                    "SQLAlchemy 2.x declarative: use Mapped[T] + mapped_column() syntax.\n"
+                    "Table schema: __table_args__ = ({'schema': 'business'},) for all three models.\n"
+                    "CustomerWallet → business.customer_wallets, WalletBucket → business.wallet_buckets, "
+                    "BucketReservation → business.bucket_reservations.\n"
+                    "UniqueConstraint on BucketReservation.idempotency_key (maps to DB unique index).\n"
+                    "Use Optional[datetime] for nullable timestamp fields.\n"
+                    "Flat import: no 'billing_engine' package prefix — conftest.py adds src/billing-engine/ to sys.path.\n"
+                    "wallet/__init__.py must be empty (enables flat import: from wallet.models import ...)."
+                ),
+                model_hint="reasoning",
+                max_tokens=5000,
+            ),
+        ]
+    },
+    "WC026-02": {
+        "subtasks": [
+            SubTaskDef(
+                id="WC026-02a",
+                description="Wallet service: get_balance, reserve (idempotent), release, activate_subscription, renew (C-090 grandfather)",
+                type="llm",
+                depends_on=["WC026-01a"],
+                compile_gate="ruff",
+                service_dir="src/billing-engine",
+                wc_task_id="WC026-02",
+                stack="python",
+                output_files=[
+                    "src/billing-engine/wallet/service.py",
+                    "src/billing-engine/wallet/exceptions.py",
+                ],
+                inject_source_files=[
+                    "src/billing-engine/config.py",
+                    "src/billing-engine/wallet/models.py",
+                    "infrastructure/postgres/init/12-billing-engine.sql",
+                ],
+                not_regenerate_from=["WC026-01a"],
+                spec_sections={
+                    "architecture/reference/billing/wbe-component-spec.md": "full",
+                    "work-contracts/WC-026-wbe-s2-wallet-engine.md": "full",
+                    "adr/ADR-034-waooaw-billing-engine.md": "§ Wallet",
+                },
+                constitutional_check=(
+                    "Async functions using SQLAlchemy AsyncSession (from sqlalchemy.ext.asyncio import AsyncSession).\n"
+                    "reserve(wallet_id, thread_type, quantity, idempotency_key) must be IDEMPOTENT:\n"
+                    "  catch IntegrityError from sqlalchemy.exc on idempotency_key unique violation → return existing row.\n"
+                    "renew(wallet_id, subscription_tier) — C-090 grandfather pricing:\n"
+                    "  if billing_profile.legacy_tier matches subscription_tier AND date.today() <= billing_profile.grandfather_until:\n"
+                    "  → use legacy_price_inr; else → standard_price_inr.\n"
+                    "All mutations call ce_stub.record_evidence(action, payload) — C-059 traceability.\n"
+                    "wallet/exceptions.py: define InsufficientFundsError(Exception).\n"
+                    "redis.set(key, value, ex=ttl) — NOT setex() (deprecated, treated as error by pyproject.toml).\n"
+                    "Flat import: from wallet.models import CustomerWallet, WalletBucket, BucketReservation."
+                ),
+                model_hint="reasoning",
+                max_tokens=8000,
+            ),
+        ]
+    },
+    "WC026-03": {
+        "subtasks": [
+            SubTaskDef(
+                id="WC026-03a",
+                description="Wallet Redis cache: get_balance_cached (<=50ms SLA), set_balance_cache, invalidate_wallet",
+                type="llm",
+                depends_on=["WC026-02a"],
+                compile_gate="ruff",
+                service_dir="src/billing-engine",
+                wc_task_id="WC026-03",
+                stack="python",
+                output_files=[
+                    "src/billing-engine/wallet/cache.py",
+                ],
+                inject_source_files=[
+                    "src/billing-engine/config.py",
+                    "src/billing-engine/markup/thread_catalog.py",
+                ],
+                not_regenerate_from=["WC026-01a", "WC026-02a"],
+                spec_sections={
+                    "work-contracts/WC-026-wbe-s2-wallet-engine.md": "WC026-03",
+                },
+                constitutional_check=(
+                    "Mirror the thread_catalog.py Redis pattern exactly (inject_source_files provided).\n"
+                    "Cache key pattern: 'wallet:{wallet_id}:balance' — no collision with thread_catalog keys.\n"
+                    "redis.set(key, json.dumps(data), ex=ttl) — NOT setex() (deprecated).\n"
+                    "get_balance_cached(redis_client, wallet_id) → dict | None (cache miss returns None).\n"
+                    "invalidate_wallet(redis_client, wallet_id) → deletes the key.\n"
+                    "TTL from config.settings.thread_catalog_cache_ttl_seconds (same field, same config).\n"
+                    "Use redis.asyncio.Redis type hint — async/await throughout."
+                ),
+                model_hint="auto",
+                max_tokens=3000,
+            ),
+        ]
+    },
+    "WC026-04": {
+        "subtasks": [
+            SubTaskDef(
+                id="WC026-04a",
+                description="Wallet FastAPI router: GET /buckets/{wallet_id}, POST /reserve, POST /release; mount at /wallet in main.py",
+                type="llm",
+                depends_on=["WC026-02a", "WC026-03a"],
+                compile_gate="ruff",
+                service_dir="src/billing-engine",
+                wc_task_id="WC026-04",
+                stack="python",
+                output_files=[
+                    "src/billing-engine/wallet/router.py",
+                ],
+                inject_source_files=[
+                    "src/billing-engine/main.py",
+                    "src/billing-engine/markup/thread_catalog.py",
+                    "src/billing-engine/wallet/service.py",
+                    "src/billing-engine/wallet/exceptions.py",
+                ],
+                not_regenerate_from=["WC026-01a", "WC026-02a", "WC026-03a"],
+                spec_sections={
+                    "work-contracts/WC-026-wbe-s2-wallet-engine.md": "WC026-04",
+                },
+                constitutional_check=(
+                    "Three endpoints mounted at /wallet prefix in main.py:\n"
+                    "  GET /wallet/buckets/{wallet_id} → list[WalletBucketSchema]\n"
+                    "  POST /wallet/reserve → ReserveRequest body → ReservationSchema | 422 InsufficientFunds\n"
+                    "  POST /wallet/release → ReleaseRequest body → 200 OK\n"
+                    "Pydantic v2 schemas: model_config = ConfigDict(from_attributes=True).\n"
+                    "InsufficientFundsError → HTTPException(status_code=422, detail='insufficient_funds').\n"
+                    "Dependency injection: AsyncSession + redis.asyncio.Redis via Depends().\n"
+                    "Flat import in router: from wallet.service import ... (no package prefix).\n"
+                    "Update main.py: add 'from wallet.router import router as wallet_router' + "
+                    "'app.include_router(wallet_router, prefix=\"/wallet\")'.\n"
+                    "⛔ Do NOT modify main.py imports for catalog_router — only add the wallet_router line."
+                ),
+                model_hint="auto",
+                max_tokens=5000,
+            ),
+        ]
+    },
+    "WC026-05": {
+        "subtasks": [
+            SubTaskDef(
+                id="WC026-05a",
+                description="Wallet tests: cache layer, service idempotency, C-090 grandfather, router endpoints — >=90% coverage",
+                type="llm",
+                depends_on=["WC026-01a", "WC026-02a", "WC026-03a", "WC026-04a"],
+                compile_gate="pytest",
+                service_dir="tests/billing-engine",
+                wc_task_id="WC026-05",
+                stack="python",
+                output_files=[
+                    "tests/billing-engine/test_wallet.py",
+                ],
+                inject_source_files=[
+                    "tests/billing-engine/conftest.py",
+                    "tests/billing-engine/test_thread_catalog.py",
+                    "src/billing-engine/wallet/models.py",
+                    "src/billing-engine/wallet/service.py",
+                    "src/billing-engine/wallet/cache.py",
+                    "src/billing-engine/wallet/router.py",
+                ],
+                not_regenerate_from=["WC026-01a", "WC026-02a", "WC026-03a", "WC026-04a"],
+                spec_sections={
+                    "work-contracts/WC-026-wbe-s2-wallet-engine.md": "WC026-05",
+                },
+                constitutional_check=(
+                    "Mirror test_thread_catalog.py structure exactly (inject_source_files provided).\n"
+                    "Use fakeredis.aioredis.FakeRedis for all Redis interactions (already installed).\n"
+                    "asyncio.run() for async pre-population in sync TestClient tests — NOT get_event_loop().\n"
+                    "TestWalletCacheLayer (async, 5 tests): cache hit, miss, invalidation, TTL, concurrent reserve.\n"
+                    "TestWalletServiceIdempotency (async, 4 tests): reserve same idempotency_key twice → same result;\n"
+                    "  mock IntegrityError on second session.commit() call.\n"
+                    "TestWalletHttpEndpoints (sync TestClient, 4 tests): GET buckets, POST reserve 200, "
+                    "POST reserve 422 insufficient_funds, POST release 200.\n"
+                    "TestC090GrandfatherInvariant (3 tests): freeze datetime.date.today with unittest.mock.patch;\n"
+                    "  legacy_price when grandfather_until in future; standard_price when expired.\n"
+                    "conftest.py already adds src/billing-engine/ to sys.path — all imports are flat.\n"
+                    "redis.set(key, value, ex=ttl) — NOT setex() (deprecated, filterwarnings=error).\n"
+                    "⛔ Do NOT modify conftest.py."
+                ),
+                model_hint="reasoning",
+                max_tokens=8000,
             ),
         ]
     },

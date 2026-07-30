@@ -352,7 +352,7 @@ def _build_effective_check(st: SubTaskDef, completed: list[str]) -> str:
 
 # ── Compile gates ──────────────────────────────────────────────────────────────
 
-def run_compile_gate(gate_type: str, service_dir: str = "src/constitutional-engine") -> tuple[bool, str]:
+def run_compile_gate(gate_type: str, service_dir: str = "src/constitutional-engine", target_files: list[str] | None = None) -> tuple[bool, str]:
     """
     Run the appropriate compile gate for the technology stack.
     C-082: build validation required after every sub-task.
@@ -379,15 +379,18 @@ def run_compile_gate(gate_type: str, service_dir: str = "src/constitutional-engi
         return result.returncode == 0, result.stderr[:500] if result.returncode != 0 else ""
 
     if gate_type == "ruff":
+        # Scope to specific output_files when provided — avoids pre-existing lint failures.
+        # Pre-existing files are already accepted by the repo; only gating new LLM output.
+        ruff_targets: list[str] = target_files if target_files else [service_dir]
         # Auto-fix all fixable issues first (whitespace, import sorting, unused imports).
         # --unsafe-fixes enables ruff to rename unused variables (F841: `handle` → `_handle`)
         # and other semantic-safe transformations that are disabled in the default safe mode.
         subprocess.run(
-            ["python3", "-m", "ruff", "check", service_dir, "--fix", "--unsafe-fixes", "--exit-zero"],
+            ["python3", "-m", "ruff", "check", *ruff_targets, "--fix", "--unsafe-fixes", "--exit-zero"],
             capture_output=True, text=True, cwd=REPO_ROOT
         )
         result = subprocess.run(
-            ["python3", "-m", "ruff", "check", service_dir],
+            ["python3", "-m", "ruff", "check", *ruff_targets],
             capture_output=True, text=True, cwd=REPO_ROOT
         )
         # Capture both stdout (violations) and stderr (ruff errors, e.g. TOML parse)
@@ -878,7 +881,7 @@ def run_canary_validation(
     if not success:
         return False, f"Canary file {canary_file} failed — stopping batch"
 
-    gate_ok, gate_error = run_compile_gate(compile_gate, service_dir)
+    gate_ok, gate_error = run_compile_gate(compile_gate, service_dir, target_files=[canary_file])
     if not gate_ok:
         return False, f"Canary compile failed: {gate_error[:200]}"
 
@@ -994,8 +997,8 @@ def execute_subtask_chain(
                     emit_subtask_signal(task_id, st.id, "FAIL", monitor_signal)
                     failed.append(st.id)
                     continue
-                # Compile gate between phases
-                gate_ok, gate_error = run_compile_gate(st.compile_gate, st.service_dir)
+                # Compile gate between phases — scope to output_files (B-2 fix)
+                gate_ok, gate_error = run_compile_gate(st.compile_gate, st.service_dir, target_files=st.output_files or None)
                 if not gate_ok:
                     print(f"  [{st.id}] SKELETON compile gate FAILED: {gate_error[:200]}")
                     emit_subtask_signal(task_id, st.id, "FAIL", monitor_signal)
@@ -1084,8 +1087,8 @@ def execute_subtask_chain(
             failed.append(st.id)
             continue
 
-        # ── C-082: compile gate ────────────────────────────────────────────────
-        gate_ok, gate_error = run_compile_gate(st.compile_gate, st.service_dir)
+        # ── C-082: compile gate — scoped to output_files (B-2: avoids pre-existing lint) ─
+        gate_ok, gate_error = run_compile_gate(st.compile_gate, st.service_dir, target_files=st.output_files or None)
         if not gate_ok:
             print(f"  [{st.id}] COMPILE GATE FAILED: {gate_error[:200]}")
             print(f"  C-084 2.0: marking failed, continuing non-dependent subtasks")
