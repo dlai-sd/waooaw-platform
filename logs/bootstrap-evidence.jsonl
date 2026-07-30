@@ -57,3 +57,11 @@
 {"event": "SPRINT_TASKS_EXECUTED", "timestamp": "2026-07-30T06:09:17.928998+00:00", "run_id": "30518666347", "stub_mode": true, "sprint": "WC-015", "tasks_done": []}
 {"event": "AUTONOMOUS_SPRINT_STARTED", "timestamp": "2026-07-30T06:26:56.052194+00:00", "run_id": "30519565137", "stub_mode": true, "sprint": "WC-015", "branch": "ib/009/sprint-015", "tasks": ["WC015-05"]}
 {"event": "SPRINT_TASKS_EXECUTED", "timestamp": "2026-07-30T06:28:30.297601+00:00", "run_id": "30519565137", "stub_mode": true, "sprint": "WC-015", "tasks_done": ["WC015-05"]}
+{"event": "AUTONOMOUS_SPRINT_STARTED", "timestamp": "2026-07-30T14:52:50.385356+00:00", "run_id": "local-wc026-01", "stub_mode": true, "sprint": "WC-026", "branch": "ib/009/sprint-026", "tasks": ["WC026-01"]}
+{"event": "SPRINT_TASKS_EXECUTED", "timestamp": "2026-07-30T14:52:51.458233+00:00", "run_id": "local-wc026-01", "stub_mode": true, "sprint": "WC-026", "tasks_done": []}
+{"event": "AUTONOMOUS_SPRINT_STARTED", "timestamp": "2026-07-30T14:59:34.234081+00:00", "run_id": "local-wc026-01-r2", "stub_mode": true, "sprint": "WC-026", "branch": "ib/009/sprint-026", "tasks": ["WC026-01"]}
+{"event": "SPRINT_TASKS_EXECUTED", "timestamp": "2026-07-30T15:01:45.159306+00:00", "run_id": "local-wc026-01-r2", "stub_mode": true, "sprint": "WC-026", "tasks_done": []}
+{"event": "AUTONOMOUS_SPRINT_STARTED", "timestamp": "2026-07-30T15:06:04.539013+00:00", "run_id": "local-wc026-01-r3", "stub_mode": true, "sprint": "WC-026", "branch": "ib/009/sprint-026", "tasks": ["WC026-01"]}
+{"event": "SPRINT_TASKS_EXECUTED", "timestamp": "2026-07-30T15:07:12.024443+00:00", "run_id": "local-wc026-01-r3", "stub_mode": true, "sprint": "WC-026", "tasks_done": ["WC026-01"]}
+{"event": "AUTONOMOUS_SPRINT_STARTED", "timestamp": "2026-07-30T17:25:51.646432+00:00", "run_id": "30565862315", "stub_mode": true, "sprint": "WC-026", "branch": "ib/009/sprint-026", "tasks": ["WC-026"]}
+{"event": "SPRINT_TASKS_EXECUTED", "timestamp": "2026-07-30T17:25:51.701496+00:00", "run_id": "30565862315", "stub_mode": true, "sprint": "WC-026", "tasks_done": []}

@@ -57,6 +57,7 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S", "ANN", "LOG015", "G004"]   # Security + annotation + root logger + f-string logging relaxed in tests
 "scripts/**" = ["ANN"]       # CLI scripts don't need full annotations
+"**/skeleton/**" = ["E", "W", "F", "S", "ANN", "RUF", "B", "N"]  # ADR-036: skeleton files are interface stubs, not production code
 
 [tool.ruff.format]
 quote-style = "double"

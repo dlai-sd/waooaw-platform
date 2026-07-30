@@ -4,14 +4,13 @@
 
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
-from enum import Enum
+from dataclasses import dataclass
+from enum import StrEnum
 from uuid import UUID
 from datetime import date, datetime
-from typing import Optional
 
 
-class PacingMode(str, Enum):
+class PacingMode(StrEnum):
     SPREAD = "SPREAD"
     BURST  = "BURST"
 
@@ -93,7 +92,7 @@ class BucketBalance:
     wallet_id: UUID; thread_type: str; balance_paise: int
     reserved_paise: int; available_paise: int
     period_end: date; pacing_mode: PacingMode
-    weekly_sub_limit_paise: Optional[int]
+    weekly_sub_limit_paise: int | None
 
 @dataclass(frozen=True)
 class BucketReservation:
@@ -123,7 +122,7 @@ class DailyScanResult:
 
 
 class InsufficientBalanceError(Exception):
-    def __init__(self, thread_type: str, requested: int, available: int): ...
+    def __init__(self, thread_type: str, requested: int, available: int) -> None: ...
 class BucketNotFoundError(Exception): pass
 class DuplicateReservationError(Exception): pass
 class BillingProfileMissingError(Exception):
