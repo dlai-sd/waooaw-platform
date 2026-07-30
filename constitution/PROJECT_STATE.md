@@ -346,16 +346,10 @@ sprint: WC-014
 sprint_status: IN_PROGRESS
 task_id: WC013-01
 tasks_done:
-  - WC025-01
-  - WC025-02
-  - WC025-03
-  - WC025-04
-  - WC025-05
-  - WC026-01
-tasks_remaining:
-  - WC026-02
   - WC026-03
   - WC026-04
+tasks_remaining:
+  - WC026-02
   - WC026-05
 consecutive_failures: 1
 autonomous_halt: true
@@ -469,16 +463,10 @@ WC012-02b `CS1061: string.TryGetValue` fixed at three layers:
 ```yaml
 sprint_status: MERGED
 tasks_done:
-  - WC025-01
-  - WC025-02
-  - WC025-03
-  - WC025-04
-  - WC025-05
-  - WC026-01
-tasks_remaining:
-  - WC026-02
   - WC026-03
   - WC026-04
+tasks_remaining:
+  - WC026-02
   - WC026-05
 consecutive_failures: 0
 autonomous_halt: false
@@ -787,23 +775,17 @@ platform_phase: IMPLEMENTATION  # SPEC | IMPLEMENTATION | LIVE
 
 current_sprint: WC-026
 sprint_ib_item: IB-009
-sprint_status: IN_PROGRESS
+sprint_status: AUTHORIZED
 branch: ib/009/sprint-026
 last_attempt_utc: 2026-07-30T17:25:51.646756+00:00
 last_attempt_result: PARTIAL
-consecutive_failures: 1
+consecutive_failures: 2
 consecutive_infra_failures: 0
 tasks_done:
-  - WC025-01
-  - WC025-02
-  - WC025-03
-  - WC025-04
-  - WC025-05
-  - WC026-01
-tasks_remaining:
-  - WC026-02
   - WC026-03
   - WC026-04
+tasks_remaining:
+  - WC026-02
   - WC026-05
 current_task:WC-026
 ```
