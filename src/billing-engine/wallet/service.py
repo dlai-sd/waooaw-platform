@@ -6,6 +6,7 @@ import asyncio
 import json
 import logging
 from datetime import date, datetime, timezone
+from typing import Any
 from uuid import UUID, uuid4
 
 from sqlalchemy import select
@@ -49,8 +50,8 @@ class WalletService:
     def __init__(
         self,
         db_session: AsyncSession,
-        redis_client,          # redis.asyncio.Redis — ANN401 justified: redis typing varies
-        ce_stub,               # gRPC stub (ConstitutionalEngineStub) — injected
+        redis_client: Any,     # redis.asyncio.Redis — ANN401 justified: redis typing varies
+        ce_stub: Any,          # gRPC stub (ConstitutionalEngineStub) — injected
     ) -> None:
         self._db = db_session
         self._redis = redis_client

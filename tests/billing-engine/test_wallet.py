@@ -5,14 +5,14 @@ from __future__ import annotations
 import asyncio
 import logging
 from datetime import date, timedelta
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
 from unittest import mock
 
 import fakeredis.aioredis
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import sessionmaker
 
 from cache import WalletCacheLayer
 from models import BucketReservation, CustomerWallet, WalletBucket

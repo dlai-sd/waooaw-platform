@@ -16,7 +16,6 @@ Coverage targets (C-076: ≥90% line coverage):
   flag_spec_gap()               → no github token path (safe offline path)
   execute_with_llm()            → no API key path, spec_content building
   _build_system_prompt()        → dotnet/python/terraform/typescript stacks
-  _generate_wc012_02a_*()       → verifies 4 files written to disk
 """
 
 import os
@@ -41,6 +40,10 @@ from autonomous_sprint_runner import (
     ALLOWED_WRITE_ROOTS,
     run_runner_integrity_checks,
 )
+# Submodule references for accurate monkeypatching after runner/ extraction
+import runner.sprint_ops as _sprint_ops
+import runner.system_prompts as _sys_prompts
+import runner.task_executor as _task_ex
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -132,7 +135,7 @@ class TestParseSprintState:
     """Tests for PROJECT_STATE.md YAML parsing."""
 
     def test_parses_all_fields(self, project_state_valid: Path, monkeypatch):
-        monkeypatch.setattr(runner, "STATE_FILE", project_state_valid)
+        monkeypatch.setattr(_sprint_ops, "STATE_FILE", project_state_valid)
         state = runner.parse_sprint_state()
         assert state["platform_phase"] == "IMPLEMENTATION"
         assert state["autonomous_halt"] == "false"
@@ -147,7 +150,7 @@ class TestParseSprintState:
     def test_raises_when_block_missing(self, tmp_repo: Path, monkeypatch):
         state_file = tmp_repo / "constitution" / "PROJECT_STATE.md"
         state_file.write_text("# No SPRINT_STATE_MACHINE block here\n")
-        monkeypatch.setattr(runner, "STATE_FILE", state_file)
+        monkeypatch.setattr(_sprint_ops, "STATE_FILE", state_file)
         with pytest.raises(ValueError, match="SPRINT_STATE_MACHINE"):
             runner.parse_sprint_state()
 
@@ -165,7 +168,7 @@ class TestParseSprintState:
         """)
         state_file = tmp_repo / "constitution" / "PROJECT_STATE.md"
         state_file.write_text(content)
-        monkeypatch.setattr(runner, "STATE_FILE", state_file)
+        monkeypatch.setattr(_sprint_ops, "STATE_FILE", state_file)
         state = runner.parse_sprint_state()
         assert state["tasks_remaining"] == []
 
@@ -183,7 +186,7 @@ class TestParseSprintState:
         """)
         state_file = tmp_repo / "constitution" / "PROJECT_STATE.md"
         state_file.write_text(content)
-        monkeypatch.setattr(runner, "STATE_FILE", state_file)
+        monkeypatch.setattr(_sprint_ops, "STATE_FILE", state_file)
         state = runner.parse_sprint_state()
         assert state["platform_phase"] == "IMPLEMENTATION"
         assert state["autonomous_halt"] == "false"
@@ -206,7 +209,7 @@ class TestParseSprintState:
         )
         state_file = tmp_repo / "constitution" / "PROJECT_STATE.md"
         state_file.write_text(content)
-        monkeypatch.setattr(runner, "STATE_FILE", state_file)
+        monkeypatch.setattr(_sprint_ops, "STATE_FILE", state_file)
         state = runner.parse_sprint_state()
         assert "WC012-03" in state["tasks_remaining"]
         assert "WC012-04" in state["tasks_remaining"]
@@ -233,7 +236,7 @@ class TestCheckPlatformPhaseGate:
         """platform_phase=SPEC runs spec validation, not implementation (C-001)."""
         monkeypatch.setattr(runner, "set_output", lambda k, v: None)
         monkeypatch.setattr(runner, "record_evidence", lambda *a, **kw: None)
-        monkeypatch.setattr(runner, "run_spec_validation", lambda: None)
+        monkeypatch.setattr(_sprint_ops, "run_spec_validation", lambda: None)
         state = {"platform_phase": "SPEC", "autonomous_halt": "false"}
         with pytest.raises(SystemExit) as exc:
             runner.check_platform_phase_gate(state)
@@ -432,13 +435,14 @@ class TestRunnerIntegrityChecks:
     """Fail-fast guardrail tests for internal runner wiring."""
 
     def test_integrity_passes_in_normal_state(self):
-        ok, errors = run_runner_integrity_checks()
+        ok, errors = run_runner_integrity_checks(vars(runner))
         assert ok is True
         assert errors == []
 
     def test_integrity_fails_when_parser_missing(self, monkeypatch):
         monkeypatch.setattr(runner, "parse_llm_files", None)
-        ok, errors = run_runner_integrity_checks()
+        ns = dict(vars(runner))
+        ok, errors = run_runner_integrity_checks(ns)
         assert ok is False
         assert any("parse_llm_files" in e for e in errors)
 
@@ -447,7 +451,8 @@ class TestRunnerIntegrityChecks:
             return bool(task_id)
 
         monkeypatch.setattr(runner, "execute_with_llm", bad_execute)
-        ok, errors = run_runner_integrity_checks()
+        ns = dict(vars(runner))
+        ok, errors = run_runner_integrity_checks(ns)
         assert ok is False
         assert any("signature mismatch" in e for e in errors)
 
@@ -464,7 +469,7 @@ class TestGetBranchContext:
         mock_result = MagicMock()
         mock_result.returncode = 1
         mock_result.stdout = ""
-        monkeypatch.setattr(runner, "run", lambda *a, **kw: mock_result)
+        monkeypatch.setattr(_sys_prompts, "run", lambda *a, **kw: mock_result)
         result = runner.get_branch_context()
         assert result == ""
 
@@ -473,7 +478,7 @@ class TestGetBranchContext:
         mock_result = MagicMock()
         mock_result.returncode = 0
         mock_result.stdout = "constitution/PROJECT_STATE.md\nREADME.md\n"
-        monkeypatch.setattr(runner, "run", lambda *a, **kw: mock_result)
+        monkeypatch.setattr(_sys_prompts, "run", lambda *a, **kw: mock_result)
         result = runner.get_branch_context()
         assert result == ""
 
@@ -490,8 +495,8 @@ class TestGetBranchContext:
         mock_result.returncode = 0
         mock_result.stdout = "src/constitutional-engine/Evaluators/Foo.cs\n"
 
-        monkeypatch.setattr(runner, "run", lambda *a, **kw: mock_result)
-        monkeypatch.setattr(runner, "REPO_ROOT", tmp_path)
+        monkeypatch.setattr(_sys_prompts, "run", lambda *a, **kw: mock_result)
+        monkeypatch.setattr(_sys_prompts, "REPO_ROOT", tmp_path)
 
         result = runner.get_branch_context()
         assert "Foo.cs" in result
@@ -502,7 +507,7 @@ class TestGetBranchContext:
         mock_result = MagicMock()
         mock_result.returncode = 0
         mock_result.stdout = "src/constitutional-engine/bin/Debug/Foo.dll\n"
-        monkeypatch.setattr(runner, "run", lambda *a, **kw: mock_result)
+        monkeypatch.setattr(_sys_prompts, "run", lambda *a, **kw: mock_result)
         result = runner.get_branch_context()
         assert result == ""
 
@@ -516,8 +521,8 @@ class TestGetBranchContext:
         mock_result.returncode = 0
         mock_result.stdout = "src/svc/X.cs\n"
 
-        monkeypatch.setattr(runner, "run", lambda *a, **kw: mock_result)
-        monkeypatch.setattr(runner, "REPO_ROOT", tmp_path)
+        monkeypatch.setattr(_sys_prompts, "run", lambda *a, **kw: mock_result)
+        monkeypatch.setattr(_sys_prompts, "REPO_ROOT", tmp_path)
 
         result = runner.get_branch_context()
         assert "BRANCH CONTEXT" in result
@@ -527,7 +532,7 @@ class TestGetBranchContext:
         """Any exception in get_branch_context returns '' — never crashes runner."""
         def raise_exc(*a, **kw):
             raise RuntimeError("git exploded")
-        monkeypatch.setattr(runner, "run", raise_exc)
+        monkeypatch.setattr(_sys_prompts, "run", raise_exc)
         result = runner.get_branch_context()
         assert result == ""
 
@@ -555,8 +560,8 @@ class TestGetBranchContext:
         mock_result.returncode = 0
         mock_result.stdout = "src/ce/Eval/EvaluationContext.cs\n"
 
-        monkeypatch.setattr(runner, "run", lambda *a, **kw: mock_result)
-        monkeypatch.setattr(runner, "REPO_ROOT", tmp_path)
+        monkeypatch.setattr(_sys_prompts, "run", lambda *a, **kw: mock_result)
+        monkeypatch.setattr(_sys_prompts, "REPO_ROOT", tmp_path)
 
         result = runner.get_branch_context()
         # Should see the record definition since file is small
@@ -678,9 +683,9 @@ class TestExecuteWithLlm:
     def test_no_api_key_returns_false(self, monkeypatch, tmp_path, capsys):
         """Without ANTHROPIC_API_KEY, execute_with_llm must fail gracefully."""
         monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-        monkeypatch.setattr(runner, "REPO_ROOT", tmp_path)
-        monkeypatch.setattr(runner, "get_branch_context", lambda: "")
-        monkeypatch.setattr(runner, "flag_spec_gap", lambda **kw: None)
+        monkeypatch.setattr(_task_ex, "REPO_ROOT", tmp_path)
+        monkeypatch.setattr(_task_ex, "get_branch_context", lambda: "")
+        monkeypatch.setattr(_task_ex, "flag_spec_gap", lambda **kw: None)
         monkeypatch.setattr(runner, "git", lambda *a, **kw: MagicMock(returncode=0))
 
         # Create a dummy spec file
@@ -698,10 +703,10 @@ class TestExecuteWithLlm:
         assert ok is False
 
     def test_model_hint_none_skips_llm(self, monkeypatch, tmp_path):
-        """model_hint='none' returns None from call_llm (no LLM call)."""
+        """model_hint='none' returns None from _call_llm_direct (no LLM call)."""
         monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-        # call_llm with model_hint not in (reasoning, auto) returns None
-        result = runner.call_llm(
+        from runner.llm_codegen import _call_llm_direct
+        result = _call_llm_direct(
             task_id="WC011-01",
             task_description="validate",
             spec_content="",
@@ -717,20 +722,19 @@ class TestExecuteWithLlm:
         spec_file.write_text("# Spec Title\n\nSome content here.\n")
 
         monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-        monkeypatch.setattr(runner, "REPO_ROOT", tmp_path)
-        monkeypatch.setattr(runner, "get_branch_context", lambda: "")
-        monkeypatch.setattr(runner, "flag_spec_gap", lambda **kw: None)
+        monkeypatch.setattr(_task_ex, "REPO_ROOT", tmp_path)
+        monkeypatch.setattr(_task_ex, "get_branch_context", lambda: "")
+        monkeypatch.setattr(_task_ex, "flag_spec_gap", lambda **kw: None)
 
-        # Capture what call_llm receives as spec_content
+        # Capture what call_llm_via_magiclm receives as spec_content
         captured_spec = []
 
         def fake_call_llm(task_id, task_desc, spec_content, *args, **kwargs):
             captured_spec.append(spec_content)
             return None  # simulate no API key
 
-        monkeypatch.setattr(runner, "call_llm", fake_call_llm)
-        # call_llm_via_magiclm falls through to call_llm; ensure it reaches it
-        monkeypatch.setattr(runner, "call_llm_via_magiclm", fake_call_llm)
+        # patch the governed layer in its actual module
+        monkeypatch.setattr(_task_ex, "call_llm_via_magiclm", fake_call_llm)
 
         runner.execute_with_llm(
             task_id="WC012-99",
@@ -741,228 +745,6 @@ class TestExecuteWithLlm:
         )
         assert len(captured_spec) > 0
         assert "Spec Title" in captured_spec[0] or "spec.md" in captured_spec[0]
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# _generate_wc012_02a_evaluator_interfaces()
-# ═══════════════════════════════════════════════════════════════════════════════
-
-class TestGenerateWc01202aEvaluatorInterfaces:
-    """Tests for deterministic EvaluationContext / evaluator interface generation."""
-
-    def test_writes_four_files(self, monkeypatch, tmp_path):
-        """WC012-02a must write exactly 4 files: EvaluationResult, EvaluationContext, IClaimEvaluator, EvaluatorRegistry."""
-        ev_dir = tmp_path / "src" / "constitutional-engine" / "Evaluators"
-        monkeypatch.setattr(runner, "REPO_ROOT", tmp_path)
-        monkeypatch.setattr(runner, "git", lambda *a, **kw: MagicMock(returncode=0))
-
-        runner._generate_wc012_02a_evaluator_interfaces()
-
-        assert (ev_dir / "EvaluationResult.cs").exists()
-        assert (ev_dir / "EvaluationContext.cs").exists()
-        assert (ev_dir / "IClaimEvaluator.cs").exists()
-        assert (ev_dir / "EvaluatorRegistry.cs").exists()
-
-    def test_evaluation_context_has_correct_namespace(self, monkeypatch, tmp_path):
-        ev_dir = tmp_path / "src" / "constitutional-engine" / "Evaluators"
-        monkeypatch.setattr(runner, "REPO_ROOT", tmp_path)
-        monkeypatch.setattr(runner, "git", lambda *a, **kw: MagicMock(returncode=0))
-
-        runner._generate_wc012_02a_evaluator_interfaces()
-
-        ctx = (ev_dir / "EvaluationContext.cs").read_text()
-        assert "Waooaw.ConstitutionalEngine.Evaluators" in ctx
-
-    def test_evaluation_context_has_from_request(self, monkeypatch, tmp_path):
-        """EvaluationContext.FromRequest must exist (C-082: LLM must use it)."""
-        ev_dir = tmp_path / "src" / "constitutional-engine" / "Evaluators"
-        monkeypatch.setattr(runner, "REPO_ROOT", tmp_path)
-        monkeypatch.setattr(runner, "git", lambda *a, **kw: MagicMock(returncode=0))
-
-        runner._generate_wc012_02a_evaluator_interfaces()
-
-        ctx = (ev_dir / "EvaluationContext.cs").read_text()
-        assert "FromRequest" in ctx
-
-    def test_evaluation_context_has_tenant_id(self, monkeypatch, tmp_path):
-        """EvaluationContext must include TenantId — required by C-041 evaluator DB reads."""
-        ev_dir = tmp_path / "src" / "constitutional-engine" / "Evaluators"
-        monkeypatch.setattr(runner, "REPO_ROOT", tmp_path)
-        monkeypatch.setattr(runner, "git", lambda *a, **kw: MagicMock(returncode=0))
-
-        runner._generate_wc012_02a_evaluator_interfaces()
-
-        ctx = (ev_dir / "EvaluationContext.cs").read_text()
-        assert "TenantId" in ctx, (
-            "EvaluationContext must have TenantId property — "
-            "spec evaluators reference ctx.TenantId for DB reads (C-041, C-043, C-049)"
-        )
-
-    def test_evaluation_context_has_budget_properties(self, monkeypatch, tmp_path):
-        """EvaluationContext must expose BudgetContext fields for C-043 evaluator."""
-        ev_dir = tmp_path / "src" / "constitutional-engine" / "Evaluators"
-        monkeypatch.setattr(runner, "REPO_ROOT", tmp_path)
-        monkeypatch.setattr(runner, "git", lambda *a, **kw: MagicMock(returncode=0))
-
-        runner._generate_wc012_02a_evaluator_interfaces()
-
-        ctx = (ev_dir / "EvaluationContext.cs").read_text()
-        assert "ProposedSpend" in ctx or "BudgetContext" in ctx or "ApprovedBudget" in ctx, (
-            "EvaluationContext must expose BudgetContext fields for C-043 financial ceiling evaluator"
-        )
-
-    def test_evaluation_context_has_get_parameter(self, monkeypatch, tmp_path):
-        """EvaluationContext must have GetParameter() for JSON ActionParameters parsing."""
-        ev_dir = tmp_path / "src" / "constitutional-engine" / "Evaluators"
-        monkeypatch.setattr(runner, "REPO_ROOT", tmp_path)
-        monkeypatch.setattr(runner, "git", lambda *a, **kw: MagicMock(returncode=0))
-
-        runner._generate_wc012_02a_evaluator_interfaces()
-
-        ctx = (ev_dir / "EvaluationContext.cs").read_text()
-        assert "GetParameter" in ctx, (
-            "EvaluationContext must have GetParameter(string key) to parse "
-            "ActionParameters JSON — prevents LLM calling .TryGetValue() on string"
-        )
-
-    def test_evaluation_verdict_has_three_values(self, monkeypatch, tmp_path):
-        """EvaluationVerdict must have exactly Allow, Deny, Escalate."""
-        ev_dir = tmp_path / "src" / "constitutional-engine" / "Evaluators"
-        monkeypatch.setattr(runner, "REPO_ROOT", tmp_path)
-        monkeypatch.setattr(runner, "git", lambda *a, **kw: MagicMock(returncode=0))
-
-        runner._generate_wc012_02a_evaluator_interfaces()
-
-        result = (ev_dir / "EvaluationResult.cs").read_text()
-        assert "Allow" in result
-        assert "Deny" in result
-        assert "Escalate" in result
-
-    def test_all_files_have_constitutional_headers(self, monkeypatch, tmp_path):
-        """All generated files must have C-059 traceability headers."""
-        ev_dir = tmp_path / "src" / "constitutional-engine" / "Evaluators"
-        monkeypatch.setattr(runner, "REPO_ROOT", tmp_path)
-        monkeypatch.setattr(runner, "git", lambda *a, **kw: MagicMock(returncode=0))
-
-        runner._generate_wc012_02a_evaluator_interfaces()
-
-        for fname in ["EvaluationResult.cs", "EvaluationContext.cs", "IClaimEvaluator.cs", "EvaluatorRegistry.cs"]:
-            content = (ev_dir / fname).read_text()
-            assert "// Implements:" in content, f"{fname} missing // Implements: header (C-059)"
-            assert "constitutional_basis" in content, f"{fname} missing constitutional_basis (C-073)"
-
-    def test_returns_true_on_success(self, monkeypatch, tmp_path):
-        monkeypatch.setattr(runner, "REPO_ROOT", tmp_path)
-        monkeypatch.setattr(runner, "git", lambda *a, **kw: MagicMock(returncode=0))
-        result = runner._generate_wc012_02a_evaluator_interfaces()
-        assert result is True
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# WC012-02b constitutional_check content
-# ═══════════════════════════════════════════════════════════════════════════════
-
-class TestWc01202bConstitutionalCheck:
-    """Tests that WC012-02b constitutional_check contains the right type contract."""
-
-    def _get_subtask(self):
-        """Return the WC012-02b SubTaskDef from TASK_HANDLERS."""
-        wc012 = runner.TASK_HANDLERS.get("WC012-02")
-        if not wc012:
-            return None
-        for st in wc012.get("subtasks", []):
-            if st.id == "WC012-02b":
-                return st
-        return None
-
-    def _get_check(self) -> str:
-        """Extract WC012-02b constitutional_check from TASK_HANDLERS."""
-        handler = runner.TASK_HANDLERS.get("WC012-02b")
-        if handler and callable(handler):
-            return ""
-        wc012 = runner.TASK_HANDLERS.get("WC012-02")
-        if not wc012:
-            return ""
-        for st in wc012.get("subtasks", []):
-            if st.id == "WC012-02b":
-                return st.constitutional_check
-        return ""
-
-    def test_check_lists_evaluation_context_properties(self):
-        """constitutional_check references EvaluationContext behavioral patterns.
-
-        Type properties are injected by PTR (C-085/DP-009), not hardcoded here.
-        The check must contain behavioral rules for USING the context, not listing fields.
-        """
-        check = self._get_check()
-        # PTR injects the full type contract — check must contain behavioral usage patterns
-        assert "GetParameter" in check or "TenantId" in check or "FromRequest" in check, (
-            "WC012-02b check must contain EvaluationContext behavioral usage guidance"
-        )
-
-    def test_check_explains_get_parameter(self):
-        """check must explain how to parse ActionParameters JSON (prevents TryGetValue)."""
-        check = self._get_check()
-        assert "GetParameter" in check or "ActionParameters" in check, (
-            "WC012-02b check must explain ActionParameters JSON parsing"
-        )
-
-    def test_check_prohibits_trygetvalue(self):
-        """check must explicitly prohibit string.TryGetValue (the failure mode)."""
-        check = self._get_check()
-        assert "TryGetValue" in check, (
-            "WC012-02b check must mention TryGetValue to explicitly prohibit it"
-        )
-
-    def test_check_lists_budget_properties(self):
-        """check must reference budget evaluation logic for C-043.
-
-        Budget field names (ProposedSpendInrPaise etc.) come from PTR type contracts.
-        The check must contain behavioral guidance about the EvaluatorRegistry call.
-        """
-        check = self._get_check()
-        # PTR injects budget field names — check must reference evaluator registry usage
-        assert "EvaluateAllAsync" in check or "EvaluatorRegistry" in check or "DENY" in check, (
-            "WC012-02b check must contain evaluator behavioral guidance (budget ceiling is in PTR)"
-        )
-
-    def test_check_lists_six_output_files(self):
-        """WC012-02b must declare 6 output_files (used for file-by-file routing)."""
-        st = self._get_subtask()
-        assert st is not None, "WC012-02b subtask not found"
-        assert st.output_files, "WC012-02b must have output_files for file-by-file mode"
-        required = [
-            "C041ToolAuthorizationEvaluator",
-            "C043BudgetCeiling",
-            "C048NonExploitation",
-            "C049HonestLimitation",
-            "C062AiSecurity",
-            "ConstitutionalEngineService",
-        ]
-        paths = " ".join(st.output_files)
-        for f in required:
-            assert f in paths, f"WC012-02b output_files missing {f}"
-
-
-class TestWc01204bConstitutionalCheck:
-    """Tests that WC012-04b preserves constructor compatibility guidance."""
-
-    def _get_check(self) -> str:
-        wc012 = runner.TASK_HANDLERS.get("WC012-04")
-        if not wc012:
-            return ""
-        for st in wc012.get("subtasks", []):
-            if st.id == "WC012-04b":
-                return st.constitutional_check
-        return ""
-
-    def test_check_mentions_constructor_compatibility(self):
-        check = self._get_check()
-        assert "Constructor compatibility" in check or "overload" in check or "optional" in check
-
-    def test_check_mentions_logger_backward_compat(self):
-        check = self._get_check()
-        assert "ILogger" in check and ("NullLogger" in check or "optional" in check or "overload" in check)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1001,25 +783,18 @@ class TestWriteBoundary:
 class TestTaskHandlers:
     """Tests that TASK_HANDLERS is correctly structured."""
 
-    def test_all_wc011_tasks_registered(self):
-        for task in ["WC011-01", "WC011-02", "WC011-03", "WC011-04", "WC011-05", "WC011-07"]:
-            assert task in runner.TASK_HANDLERS, f"{task} not in TASK_HANDLERS"
-            assert callable(runner.TASK_HANDLERS[task])
+    def test_task_handlers_is_dict_with_injection_point(self):
+        """TASK_HANDLERS must be a dict; groomer injection populates it at runtime."""
+        assert isinstance(runner.TASK_HANDLERS, dict)
 
-    def test_wc012_01_is_callable(self):
-        assert callable(runner.TASK_HANDLERS["WC012-01"])
-
-    def test_wc012_02_03_04_are_decomposed_dicts(self):
-        for task in ["WC012-02", "WC012-03", "WC012-04"]:
-            h = runner.TASK_HANDLERS[task]
-            assert isinstance(h, dict), f"{task} should be decomposed dict"
-            assert "subtasks" in h, f"{task} dict missing 'subtasks' key"
-            assert len(h["subtasks"]) > 0
-
-    def test_scaffold_tasks_frozenset(self):
-        assert "WC012-01" in runner.SCAFFOLD_TASKS
-        assert "WC013-01" in runner.SCAFFOLD_TASKS
+    def test_scaffold_tasks_frozenset_future_sprints(self):
+        """SCAFFOLD_TASKS must be a frozenset referencing future sprint scaffold gates."""
         assert isinstance(runner.SCAFFOLD_TASKS, frozenset)
+        # WC011-WC015 are complete — they must NOT be in SCAFFOLD_TASKS
+        for done_task in ["WC011-01", "WC012-01", "WC013-01", "WC014-01", "WC015-01"]:
+            assert done_task not in runner.SCAFFOLD_TASKS, (
+                f"{done_task} is a completed sprint — must not be in SCAFFOLD_TASKS"
+            )
 
     def test_monitor_signal_structure(self):
         """_MONITOR_SIGNAL must have all required keys for C-069."""
