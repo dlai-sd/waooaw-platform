@@ -6,7 +6,6 @@ from __future__ import annotations
 import json
 import logging
 from dataclasses import dataclass
-from typing import Optional
 
 import redis.asyncio as aioredis
 from fastapi import APIRouter, HTTPException
@@ -21,7 +20,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 # ── Redis client (shared singleton) ──────────────────────────────────────────
-_redis: Optional[aioredis.Redis] = None
+_redis: aioredis.Redis | None = None
 
 CACHE_KEY_PREFIX = "wbe:thread_catalog:"
 FULL_CATALOG_KEY = "wbe:thread_catalog:all"
@@ -36,7 +35,7 @@ def _get_redis() -> aioredis.Redis:
 
 # ── DB engine (shared singleton) ─────────────────────────────────────────────
 _engine = None
-_async_session: Optional[sessionmaker] = None
+_async_session: sessionmaker | None = None
 
 
 def _get_session_factory() -> sessionmaker:
@@ -115,7 +114,7 @@ async def get_all_threads() -> list[ThreadCatalogEntry]:
     return entries
 
 
-async def get_thread(thread_id: str) -> Optional[ThreadCatalogEntry]:
+async def get_thread(thread_id: str) -> ThreadCatalogEntry | None:
     """Single-thread lookup via per-key cache."""
     redis_client = _get_redis()
     key = f"{CACHE_KEY_PREFIX}{thread_id}"

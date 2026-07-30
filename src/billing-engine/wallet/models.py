@@ -181,17 +181,24 @@ class WalletBucket(Base):
 
 class BucketReservation(Base):
     """
-    Holds paise in escrow between reserve() and release() calls.
-    Idempotency is enforced via a unique DB constraint on idempotency_key so
-    that a duplicate reserve() with the same key returns the existing row
-    rather than double-debiting the bucket (ADR-034 §idempotency).
+    Holds paise reserved against a WalletBucket for in-flight agent actions.
 
-    Status transitions:
-        PENDING  → CONSUMED  (release called with consumed=True)
-        PENDING  → RELEASED  (release called with consumed=False — funds restored)
-        PENDING  → EXPIRED   (TTL sweep job — funds restored automatically)
+    Lifecycle:
+      PENDING   — amount_paise deducted from bucket.balance_paise,
+                  added to bucket.reserved_paise.
+      CONSUMED  — agent action completed; reserved_paise decremented,
+                  balance_paise decremented permanently.
+      RELEASED  — agent action aborted; reserved_paise decremented,
+                  balance_paise restored (no net change).
+      EXPIRED   — TTL elapsed without CONSUMED/RELEASED; treated as RELEASED
+                  by the expiry sweep job.
 
-    C-059: every transition MUST emit a CE evidence record prior to commit.
+    Idempotency: idempotency_key (UUID supplied by caller) carries a DB-level
+    UniqueConstraint — duplicate reserve calls with the same key return the
+    existing row without double-debiting the bucket.
+
+    C-059: every transition away from PENDING MUST emit a CE evidence record
+    before the owning DB transaction commits.
     """
 
     __tablename__ = "bucket_reservations"
@@ -211,13 +218,17 @@ class BucketReservation(Base):
         nullable=False,
         index=True,
     )
-    # Caller-supplied idempotency key (UUID v4) — unique per reservation attempt.
+    # Caller-supplied idempotency key — unique per reservation attempt.
+    # DB UniqueConstraint prevents double-debit on retry.
     idempotency_key: Mapped[UUID] = mapped_column(
         PgUUID(as_uuid=True),
         nullable=False,
         unique=True,
     )
-    # Amount held in escrow — must equal the deduction applied to bucket.reserved_paise.
+    # Paise reserved at the time of the reserve() call.
+    # Captures the marked-up unit cost from thread_catalog at reservation time
+    # so that subsequent thread_catalog price changes do not affect in-flight
+    # reservations (C-090 principle extended to reservations).
     amount_paise: Mapped[int] = mapped_column(BigInteger, nullable=False)
 
     status: Mapped[str] = mapped_column(
@@ -226,7 +237,10 @@ class BucketReservation(Base):
         default=ReservationStatus.PENDING,
     )
 
-    # Lifecycle timestamps — nullable because they are set only on transition.
+    # Optional: agent session or workflow run that created this reservation.
+    # Not FK-enforced — stored for audit/traceability (C-059).
+    session_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -238,15 +252,9 @@ class BucketReservation(Base):
         server_default=func.now(),
         onupdate=func.now(),
     )
-    consumed_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True),
-        nullable=True,
-    )
-    released_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True),
-        nullable=True,
-    )
-    expired_at: Mapped[datetime | None] = mapped_column(
+    # TTL: reservation expires if not CONSUMED/RELEASED within this window.
+    # The expiry sweep job queries WHERE status='PENDING' AND expires_at < NOW().
+    expires_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         nullable=True,
     )
