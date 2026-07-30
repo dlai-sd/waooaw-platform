@@ -198,14 +198,10 @@ session_declared: "Architecture correction 2026-07-28: WC-012 execution requires
 sprint: WC-014
 sprint_status: AUTHORIZED
 task_id: WC013-01
-tasks_done:
-  - WC015-01
-  - WC015-02
-  - WC015-03
-  - WC015-04
+tasks_done: []
 tasks_remaining:
   - WC015-05
-consecutive_failures: 3
+consecutive_failures: 4
 autonomous_halt: true
 open_prs: none
 goal_register_issue: 115
@@ -316,14 +312,10 @@ WC012-02b `CS1061: string.TryGetValue` fixed at three layers:
 
 ```yaml
 sprint_status: AUTHORIZED
-tasks_done:
-  - WC015-01
-  - WC015-02
-  - WC015-03
-  - WC015-04
+tasks_done: []
 tasks_remaining:
   - WC015-05
-consecutive_failures: 3
+consecutive_failures: 4
 autonomous_halt: true
 platform_phase: IMPLEMENTATION
 ```
@@ -624,7 +616,7 @@ OPTION C — Nothing needed from you until sprint opens first PR
 <!-- Edit ONLY the fields below. Do not alter the block structure. -->
 
 ```yaml
-autonomous_halt: false       # ← semi-autonomous mode — manual trigger only
+autonomous_halt: true       # ← semi-autonomous mode — manual trigger only
 
 platform_phase: IMPLEMENTATION  # SPEC | IMPLEMENTATION | LIVE
 
@@ -634,13 +626,9 @@ sprint_status: AUTHORIZED
 branch: ib/009/sprint-015
 last_attempt_utc: 2026-07-29T00:00:00.000000+00:00
 last_attempt_result: PARTIAL
-consecutive_failures: 0
+consecutive_failures: 4
 consecutive_infra_failures: 0
-tasks_done:
-  - WC015-01
-  - WC015-02
-  - WC015-03
-  - WC015-04
+tasks_done: []
 tasks_remaining:
   - WC015-05
 
