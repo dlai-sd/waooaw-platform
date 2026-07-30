@@ -505,7 +505,7 @@ The following decisions are needed before the corresponding spec can be finalize
 | 2026-07-30 | INST-003 (BA) | D-05 DMA Bundle Definitions | ✅ PRODUCED |
 | 2026-07-30 | INST-003 (BA) | D-06 Thread Catalog Reference | ✅ PRODUCED |
 | 2026-07-30 | INST-003 (BA) | D-09 Agent Billing Profiles × 4 | ✅ PRODUCED |
-| — | INST-005 (SA) | D-07 WBE Component Spec | PENDING |
+| 2026-07-30 | INST-005 (SA) | D-07 WBE Component Spec | ✅ PRODUCED |
 | — | INST-006 (DA) | D-08 DB Schema Updates | PENDING |
 | — | INST-013 (GO) | D-10 Autonomous Sprint Execution Plan | PENDING |
 

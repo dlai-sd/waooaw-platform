@@ -15,7 +15,7 @@
 | D-05: DMA Bundle Definitions (BA — INST-003) | ✅ DONE — Starter/Runner/Winner with cost floor derivation |
 | D-06: Thread Catalog Reference (BA — INST-003) | ✅ DONE — All 4 agents, all providers, markup % |
 | D-09: Agent Billing Profiles × 4 (BA — INST-003) | ✅ DONE — DMA, Trading, Agricultural, Private Tutor |
-| D-07: WBE Component Spec (SA — INST-005) | pending |
+| D-07: WBE Component Spec (SA — INST-005) | ✅ DONE — 5 sub-components, API contracts, CCTs, data models |
 | D-08: DB Schema Update Spec (DA — INST-006) | pending |
 | D-10: Autonomous Sprint Execution Plan (GO — INST-013) | pending |
 
