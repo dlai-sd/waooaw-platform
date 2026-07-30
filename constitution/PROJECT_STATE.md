@@ -205,7 +205,7 @@ tasks_done:
   - WC015-04
 tasks_remaining:
   - WC015-05
-consecutive_failures: 3
+consecutive_failures: 1
 <<<<<<< HEAD
 autonomous_halt: false
 =======
@@ -331,7 +331,7 @@ tasks_done:
   - WC015-04
 tasks_remaining:
   - WC015-05
-consecutive_failures: 3
+consecutive_failures: 1
 <<<<<<< HEAD
 autonomous_halt: false
 =======
@@ -651,9 +651,9 @@ last_attempt_utc: 2026-07-30T05:54:20.821140+00:00
 >>>>>>> origin/main
 last_attempt_result: PARTIAL
 <<<<<<< HEAD
-consecutive_failures: 3
+consecutive_failures: 1
 =======
-consecutive_failures: 0
+consecutive_failures: 1
 >>>>>>> origin/main
 consecutive_infra_failures: 0
 tasks_done:
