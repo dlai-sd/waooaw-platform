@@ -68,3 +68,6 @@
 {"event": "AUTONOMOUS_SPRINT_STARTED", "timestamp": "2026-07-30T17:35:03.183157+00:00", "run_id": "30566526755", "stub_mode": true, "sprint": "WC-026", "branch": "ib/009/sprint-026", "tasks": ["WC026-02", "WC026-03", "WC026-04", "WC026-05"]}
 {"event": "SPRINT_TASKS_EXECUTED", "timestamp": "2026-07-30T17:37:38.240313+00:00", "run_id": "30566526755", "stub_mode": true, "sprint": "WC-026", "tasks_done": ["WC026-03", "WC026-04"]}
 {"event": "AUTONOMOUS_SPRINT_STARTED", "timestamp": "2026-07-30T19:58:38.026627+00:00", "run_id": "local", "stub_mode": true, "sprint": "WC-026", "branch": "ib/009/sprint-026", "tasks": ["WC026-02", "WC026-05"]}
+{"event": "spec_gap_halt", "timestamp": "2026-07-30T19:58:52.226900+00:00", "run_id": "local", "stub_mode": true, "task": "WC026-02a:service.py", "issue": "171", "gap": "WC026-02a:service.py failed validation after 3 LLM attempts. Last error: "}
+{"event": "spec_gap_halt", "timestamp": "2026-07-30T19:59:03.064989+00:00", "run_id": "local", "stub_mode": true, "task": "WC026-05a:test_wallet.py", "issue": "172", "gap": "WC026-05a:test_wallet.py failed validation after 3 LLM attempts. Last error: "}
+{"event": "SPRINT_TASKS_EXECUTED", "timestamp": "2026-07-30T19:59:03.311217+00:00", "run_id": "local", "stub_mode": true, "sprint": "WC-026", "tasks_done": []}
