@@ -732,3 +732,165 @@ class TestGenerateSubtaskChain:
         # but here we verify it doesn't corrupt the assembled result
         assert result is not None
         assert '"WC027-01a"' in result
+
+    def test_scaffold_fenced_response_is_handled(self, monkeypatch):
+        fenced = f"```python\n{_SAMPLE_SCAFFOLD_LITERAL}\n```"
+        monkeypatch.setattr(groom_sprint, "_llm_call", self._make_llm([fenced, _SAMPLE_TEST_LITERAL]))
+        result = groom_sprint._generate_subtask_chain(
+            task=self._task, skeleton="", prior_subtask_id=None,
+            sprint_prefix="WC027", wc_filename="WC-027-billing.md", api_key="x",
+        )
+        assert result is not None
+        assert '"WC027-01a"' in result
+        assert '"WC027-01b"' in result
+
+    def test_scaffold_preamble_text_is_stripped(self, monkeypatch):
+        with_preamble = f"Here is the SubTaskDef literal:\n{_SAMPLE_SCAFFOLD_LITERAL}"
+        monkeypatch.setattr(groom_sprint, "_llm_call", self._make_llm([with_preamble, _SAMPLE_TEST_LITERAL]))
+        result = groom_sprint._generate_subtask_chain(
+            task=self._task, skeleton="", prior_subtask_id=None,
+            sprint_prefix="WC027", wc_filename="WC-027-billing.md", api_key="x",
+        )
+        assert result is not None
+        assert '"WC027-01a"' in result
+
+    def test_prompt_contains_task_id_and_skeleton(self, monkeypatch):
+        captured: list[str] = []
+
+        def capture(prompt: str, system: str, api_key: str, max_tokens: int = 2048) -> str:
+            captured.append(prompt)
+            return [_SAMPLE_SCAFFOLD_LITERAL, _SAMPLE_TEST_LITERAL][len(captured) - 1]
+
+        monkeypatch.setattr(groom_sprint, "_llm_call", capture)
+        groom_sprint._generate_subtask_chain(
+            task=self._task, skeleton="SKELETON_CONTENT_HERE", prior_subtask_id=None,
+            sprint_prefix="WC027", wc_filename="WC-027-billing.md", api_key="x",
+        )
+        scaffold_prompt = captured[0]
+        assert "WC027-01" in scaffold_prompt
+        assert "py_compile" in scaffold_prompt
+        assert "SKELETON_CONTENT_HERE" in scaffold_prompt
+
+    def test_prompt_includes_prior_subtask_id(self, monkeypatch):
+        captured: list[str] = []
+
+        def capture(prompt: str, system: str, api_key: str, max_tokens: int = 2048) -> str:
+            captured.append(prompt)
+            return [_SAMPLE_SCAFFOLD_LITERAL, _SAMPLE_TEST_LITERAL][len(captured) - 1]
+
+        monkeypatch.setattr(groom_sprint, "_llm_call", capture)
+        groom_sprint._generate_subtask_chain(
+            task=self._task, skeleton="", prior_subtask_id="WC026-03a",
+            sprint_prefix="WC027", wc_filename="WC-027.md", api_key="x",
+        )
+        assert "WC026-03a" in captured[0]
+
+
+# ─────────────────────────────────────────────────────────────
+# _strip_llm_fences
+# ─────────────────────────────────────────────────────────────
+
+class TestStripLlmFences:
+    def test_strips_python_fence(self):
+        raw = "```python\nSubTaskDef(\n    id='x',\n)\n```"
+        assert groom_sprint._strip_llm_fences(raw) == "SubTaskDef(\n    id='x',\n)"
+
+    def test_strips_plain_fence(self):
+        raw = "```\nSubTaskDef(\n    id='x',\n)\n```"
+        assert groom_sprint._strip_llm_fences(raw) == "SubTaskDef(\n    id='x',\n)"
+
+    def test_no_fence_unchanged(self):
+        raw = "SubTaskDef(\n    id='x',\n)"
+        assert groom_sprint._strip_llm_fences(raw) == raw
+
+    def test_strips_preamble_before_subtaskdef(self):
+        raw = "Here is the generated literal:\nSubTaskDef(\n    id='x',\n)"
+        assert groom_sprint._strip_llm_fences(raw).startswith("SubTaskDef(")
+
+    def test_fence_plus_preamble(self):
+        raw = "```python\nHere you go:\nSubTaskDef(\n    id='x',\n)\n```"
+        result = groom_sprint._strip_llm_fences(raw)
+        assert result.startswith("SubTaskDef(")
+
+    def test_subtaskdef_at_start_not_stripped(self):
+        raw = "SubTaskDef(\n    id='x',\n    description='test',\n)"
+        assert groom_sprint._strip_llm_fences(raw) == raw
+
+
+# ─────────────────────────────────────────────────────────────
+# _extract_output_files
+# ─────────────────────────────────────────────────────────────
+
+class TestExtractOutputFiles:
+    def test_double_quoted_path(self):
+        literal = 'output_files=["src/billing-engine/wallet/service.py"]'
+        assert groom_sprint._extract_output_files(literal) == ["src/billing-engine/wallet/service.py"]
+
+    def test_single_quoted_path(self):
+        literal = "output_files=['src/billing-engine/wallet/service.py']"
+        assert groom_sprint._extract_output_files(literal) == ["src/billing-engine/wallet/service.py"]
+
+    def test_multiple_files(self):
+        literal = 'output_files=["src/billing-engine/wallet/service.py", "src/billing-engine/wallet/repo.py"]'
+        result = groom_sprint._extract_output_files(literal)
+        assert len(result) == 2
+        assert "src/billing-engine/wallet/service.py" in result
+
+    def test_multiline_with_whitespace(self):
+        literal = 'output_files=[\n    "src/billing-engine/wallet/service.py",\n]'
+        assert groom_sprint._extract_output_files(literal) == ["src/billing-engine/wallet/service.py"]
+
+    def test_excludes_test_files(self):
+        literal = 'output_files=["tests/billing-engine/test_service.py"]'
+        assert groom_sprint._extract_output_files(literal) == []
+
+    def test_excludes_skeleton_files(self):
+        literal = 'output_files=["src/billing-engine/skeleton/wbe_interfaces.py"]'
+        assert groom_sprint._extract_output_files(literal) == []
+
+    def test_impl_and_test_mixed(self):
+        literal = 'output_files=["src/billing-engine/wallet/service.py", "tests/billing-engine/test_service.py"]'
+        result = groom_sprint._extract_output_files(literal)
+        assert result == ["src/billing-engine/wallet/service.py"]
+
+    def test_returns_empty_when_no_output_files_key(self):
+        literal = 'SubTaskDef(id="WC027-01a", compile_gate="py_compile")'
+        assert groom_sprint._extract_output_files(literal) == []
+
+    def test_returns_empty_for_empty_list(self):
+        literal = 'output_files=[]'
+        assert groom_sprint._extract_output_files(literal) == []
+
+
+# ─────────────────────────────────────────────────────────────
+# _indent_subtask
+# ─────────────────────────────────────────────────────────────
+
+class TestIndentSubtask:
+    def test_all_lines_indented(self):
+        literal = "SubTaskDef(\n    id='x',\n)"
+        result = groom_sprint._indent_subtask(literal, 8)
+        lines = result.splitlines()
+        assert lines[0] == "        SubTaskDef("
+        assert lines[1] == "            id='x',"
+        assert lines[2] == "        )"
+
+    def test_blank_lines_have_no_trailing_spaces(self):
+        literal = "SubTaskDef(\n\n    id='x',\n)"
+        result = groom_sprint._indent_subtask(literal, 8)
+        for line in result.splitlines():
+            assert line == line.rstrip() or line.strip()
+
+    def test_default_8_spaces(self):
+        assert groom_sprint._indent_subtask("SubTaskDef()").startswith("        SubTaskDef()")
+
+    def test_custom_indent(self):
+        result = groom_sprint._indent_subtask("SubTaskDef()", 4)
+        assert result == "    SubTaskDef()"
+
+    def test_assembled_entry_format(self):
+        literal = "SubTaskDef(\n    id='WC027-01b',\n    compile_gate='ruff',\n)"
+        result = groom_sprint._indent_subtask(literal, 8)
+        # First line at 8 spaces, fields at 12 spaces — matches VALID_SUBTASKDEF_ENTRY format
+        assert "        SubTaskDef(" in result
+        assert "            id='WC027-01b'" in result

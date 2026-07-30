@@ -234,6 +234,30 @@ def _llm_call(prompt: str, system: str, api_key: str, max_tokens: int = 2048) ->
         return None
 
 
+def _strip_llm_fences(text: str) -> str:
+    """Strip markdown fences and any leading preamble before SubTaskDef(."""
+    text = text.strip()
+    if text.startswith("```"):
+        text = re.sub(r'^```\w*\n?', '', text)
+        text = re.sub(r'\n?```\s*$', '', text)
+        text = text.strip()
+    idx = text.find("SubTaskDef(")
+    if idx > 0:
+        text = text[idx:]
+    return text
+
+
+def _extract_output_files(subtaskdef_literal: str) -> list[str]:
+    """Extract implementation .py paths from output_files in a SubTaskDef literal."""
+    m = re.search(r'output_files\s*=\s*\[(.*?)\]', subtaskdef_literal, re.DOTALL)
+    if not m:
+        return []
+    return [
+        p for p in re.findall(r'["\']([^"\']+\.py)["\']', m.group(1))
+        if not p.startswith("tests/") and "skeleton" not in p
+    ]
+
+
 def _generate_scaffold_subtaskdef(
     task: dict,
     stack: str,
@@ -293,7 +317,8 @@ SubTaskDef(
     max_tokens={max_tokens},
 )
 """
-    return _llm_call(prompt, _SCAFFOLD_SYSTEM_PROMPT, api_key)
+    result = _llm_call(prompt, _SCAFFOLD_SYSTEM_PROMPT, api_key)
+    return _strip_llm_fences(result) if result else None
 
 
 def _generate_polish_subtaskdef(
@@ -390,7 +415,8 @@ SubTaskDef(
     max_tokens=6000,
 )
 """
-    return _llm_call(prompt, _TEST_SYSTEM_PROMPT, api_key)
+    result = _llm_call(prompt, _TEST_SYSTEM_PROMPT, api_key)
+    return _strip_llm_fences(result) if result else None
 
 
 def _indent_subtask(literal: str, spaces: int = 8) -> str:
@@ -425,14 +451,7 @@ def _generate_subtask_chain(
         return None
 
     # Extract output_files from scaffold literal to feed polish and test
-    output_files_match = re.findall(r'output_files=\[\s*((?:"[^"]+",?\s*)+)\]', scaffold_literal)
-    scaffold_output_files: list[str] = []
-    if output_files_match:
-        scaffold_output_files = re.findall(r'"([^"]+\.py)"', output_files_match[0])
-    scaffold_output_files = [
-        f for f in scaffold_output_files
-        if not f.startswith("tests/") and "skeleton" not in f
-    ]
+    scaffold_output_files = _extract_output_files(scaffold_literal)
 
     if not scaffold_output_files:
         print(f"  ❌ {task_id}: scaffold output_files not parseable — cannot build polish/test chain")
