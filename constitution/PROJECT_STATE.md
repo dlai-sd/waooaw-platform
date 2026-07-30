@@ -1,13 +1,39 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-07-29 (WC-013 MERGED — WC-014 next)
-**Version:** 1.20.0
-**Declared by:** Platform IT Expert (INST-010) — semi-autonomous session 2026-07-29
-**Session:** 2026-07-29 — WC-013 complete + pipeline fixes + failure registry
+**Last Updated:** 2026-07-30 (WC-015 MERGED — WC-016 next)
+**Version:** 1.21.0
+**Declared by:** Platform IT Expert (INST-010) — semi-autonomous session 2026-07-30
+**Session:** 2026-07-30 — WC-015 complete + 6 pipeline fixes
 
 ---
 
-## SESSION RECORD — 2026-07-29 (WC-013 Business Platform — MERGED)
+## SESSION RECORD — 2026-07-30 (WC-015 AI Runtime — MERGED)
+
+### Sprint Completion: WC-015
+
+| Task | Subtask | Result | Notes |
+|---|---|---|---|
+| WC015-01 | AIR scaffold | ✅ MERGED | Prior session |
+| WC015-02 | LLM dispatch + Ollama | ✅ MERGED | Prior session |
+| WC015-03 | RAG retrieval (pgvector) | ✅ MERGED | Prior session |
+| WC015-04 | PII injection guard + CCT-PI-01 | ✅ MERGED | Prior session |
+| WC015-05 | Unit tests ≥90% + PSE routing | ✅ MERGED | This session — PR #165 |
+
+**PR #165** merged (squash) → `9cfaecc`
+
+### Pipeline Fixes Applied (6 fixes — 7 runs to unblock)
+
+| Commit | Fix | Root cause |
+|---|---|---|
+| `3f94b06` | Pre-flight regex scoped to SPRINT_STATE_MACHINE block | `re.search` matched stale session record `autonomous_halt: true` |
+| `8671b49` | PHASE block Python statements merged onto one line | Edit tool collapsed newlines → SyntaxError → exit code 1 |
+| `f34fdb1` | `_read_sprint_state()` + `set_field()` scoped + RUF001 disabled | Same regex bug in complete_sprint + sprint_state; RUF001 on unicode test data |
+| `4ca3b87` | `tasks_done` seeded with WC015-01..04 for resume | Empty tasks_done → dependency check blocked WC015-05a |
+
+### Root Cause (all 4 pipeline failures)
+Single recurring pattern: `re.search()` on full PROJECT_STATE.md file matches first occurrence (stale session record) instead of authoritative SPRINT_STATE_MACHINE block. Fixed in pre-flight YAML, `complete_sprint.py`, and `sprint_state.py`.
+
+---
 
 ### Sprint Completion: WC-013
 
@@ -205,16 +231,8 @@ tasks_done:
   - WC015-04
   - WC015-05
 tasks_remaining: []
-<<<<<<< HEAD
 consecutive_failures: 1
-<<<<<<< HEAD
-autonomous_halt: false
-=======
-=======
-consecutive_failures: 4
->>>>>>> origin/main
 autonomous_halt: true
->>>>>>> origin/main
 open_prs: none
 goal_register_issue: 115
 
@@ -323,12 +341,7 @@ WC012-02b `CS1061: string.TryGetValue` fixed at three layers:
 ### State at Session Close
 
 ```yaml
-<<<<<<< HEAD
-<<<<<<< HEAD
-sprint_status: IN_PROGRESS
-=======
-sprint_status: IN_PROGRESS
->>>>>>> origin/main
+sprint_status: MERGED
 tasks_done:
   - WC015-01
   - WC015-02
@@ -336,23 +349,8 @@ tasks_done:
   - WC015-04
   - WC015-05
 tasks_remaining: []
-consecutive_failures: 1
-<<<<<<< HEAD
+consecutive_failures: 0
 autonomous_halt: false
-=======
-=======
-sprint_status: AUTHORIZED
-tasks_done:
-  - WC015-01
-  - WC015-02
-  - WC015-03
-  - WC015-04
-  - WC015-05
-tasks_remaining: []
-consecutive_failures: 4
->>>>>>> origin/main
-autonomous_halt: true
->>>>>>> origin/main
 platform_phase: IMPLEMENTATION
 ```
 
@@ -656,21 +654,13 @@ autonomous_halt: false       # ← semi-autonomous mode — manual trigger only
 
 platform_phase: IMPLEMENTATION  # SPEC | IMPLEMENTATION | LIVE
 
-current_sprint: WC-015
+current_sprint: WC-016
 sprint_ib_item: IB-009
-sprint_status: IN_PROGRESS
+sprint_status: AUTHORIZED
 branch: ib/009/sprint-015
-<<<<<<< HEAD
 last_attempt_utc: 2026-07-30T06:26:56.052465+00:00
-=======
-last_attempt_utc: 2026-07-30T06:26:56.052465+00:00
->>>>>>> origin/main
 last_attempt_result: SUCCESS
-<<<<<<< HEAD
 consecutive_failures: 0
-=======
-consecutive_failures: 0
->>>>>>> origin/main
 consecutive_infra_failures: 0
 tasks_done:
   - WC015-01

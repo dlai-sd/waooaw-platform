@@ -1,8 +1,8 @@
-# Canonical Patterns — WC-013 (python)
+# Canonical Patterns — WC-015 (python)
 
 **Status:** CANDIDATE — awaiting Constitutional Analyst review  
 
-**Source sprint:** WC-013  
+**Source sprint:** WC-015  
 
 **Extracted:** 2026-07-30  
 
@@ -11,15 +11,15 @@
 
 ---
 
-### PYTHON-FASTAPI-WC013-emergency_stop.py
+### PYTHON-FASTAPI-WC015-emergency_stop.py
 
 **Status:** CANDIDATE  
 **Category:** fastapi-router  
 **Confidence:** 0.5  
-**Source:** `src/professional-runtime/routers/emergency_stop.py` (from GOAL-WC013)  
+**Source:** `src/professional-runtime/routers/emergency_stop.py` (from GOAL-WC015)  
 **Created:** 2026-07-30
 
-FastAPI router pattern from WC-013: async routes with dependency injection.
+FastAPI router pattern from WC-015: async routes with dependency injection.
 
 ```
 from fastapi import APIRouter, Depends
@@ -35,15 +35,15 @@ async def get_item(id: str, db: AsyncSession = Depends(get_db)):
 
 ---
 
-### PYTHON-FASTAPI-WC013-sessions.py
+### PYTHON-FASTAPI-WC015-sessions.py
 
 **Status:** CANDIDATE  
 **Category:** fastapi-router  
 **Confidence:** 0.5  
-**Source:** `src/professional-runtime/routers/sessions.py` (from GOAL-WC013)  
+**Source:** `src/professional-runtime/routers/sessions.py` (from GOAL-WC015)  
 **Created:** 2026-07-30
 
-FastAPI router pattern from WC-013: async routes with dependency injection.
+FastAPI router pattern from WC-015: async routes with dependency injection.
 
 ```
 from fastapi import APIRouter, Depends
@@ -59,15 +59,15 @@ async def get_item(id: str, db: AsyncSession = Depends(get_db)):
 
 ---
 
-### PYTHON-ANNO-WC013-test_project_dependency_map.py
+### PYTHON-ANNO-WC015-test_project_dependency_map.py
 
 **Status:** CANDIDATE  
 **Category:** annotations  
 **Confidence:** 0.5  
-**Source:** `tests/pipeline/test_project_dependency_map.py` (from GOAL-WC013)  
+**Source:** `tests/pipeline/test_project_dependency_map.py` (from GOAL-WC015)  
 **Created:** 2026-07-30
 
-Python file header convention from WC-013 (C-059).
+Python file header convention from WC-015 (C-059).
 
 ```
 # Implements: architecture/reference/components/{service}.md §{Section}
