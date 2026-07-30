@@ -198,17 +198,17 @@ session_declared: "Architecture correction 2026-07-28: WC-012 execution requires
 sprint: WC-014
 sprint_status: IN_PROGRESS
 task_id: WC013-01
-tasks_done:
-  - WC015-01
-  - WC015-02
-  - WC015-03
-  - WC015-04
+tasks_done: []
 tasks_remaining:
   - WC015-05
+<<<<<<< HEAD
 consecutive_failures: 1
 <<<<<<< HEAD
 autonomous_halt: false
 =======
+=======
+consecutive_failures: 4
+>>>>>>> origin/main
 autonomous_halt: true
 >>>>>>> origin/main
 open_prs: none
@@ -320,6 +320,7 @@ WC012-02b `CS1061: string.TryGetValue` fixed at three layers:
 
 ```yaml
 <<<<<<< HEAD
+<<<<<<< HEAD
 sprint_status: IN_PROGRESS
 =======
 sprint_status: IN_PROGRESS
@@ -335,6 +336,13 @@ consecutive_failures: 1
 <<<<<<< HEAD
 autonomous_halt: false
 =======
+=======
+sprint_status: AUTHORIZED
+tasks_done: []
+tasks_remaining:
+  - WC015-05
+consecutive_failures: 4
+>>>>>>> origin/main
 autonomous_halt: true
 >>>>>>> origin/main
 platform_phase: IMPLEMENTATION
@@ -656,11 +664,7 @@ consecutive_failures: 1
 consecutive_failures: 1
 >>>>>>> origin/main
 consecutive_infra_failures: 0
-tasks_done:
-  - WC015-01
-  - WC015-02
-  - WC015-03
-  - WC015-04
+tasks_done: []
 tasks_remaining:
   - WC015-05
 

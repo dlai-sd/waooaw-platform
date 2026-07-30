@@ -53,6 +53,14 @@ def set_field(content: str, key: str, value: str) -> str:
     Update a scalar field inside the ```yaml block under ## SPRINT_STATE_MACHINE.
     Handles both populated and empty values. Preserves inline comments.
     """
+    # Scope replacement to SPRINT_STATE_MACHINE block only — avoids clobbering session records
+    sm_idx = content.find("## SPRINT_STATE_MACHINE")
+    if sm_idx < 0:
+        print(f"WARNING: ## SPRINT_STATE_MACHINE not found — skipping {key}", file=sys.stderr)
+        return content
+    prefix_part = content[:sm_idx]
+    sm_part = content[sm_idx:]
+
     # Pattern: key: <value_part> <whitespace> # optional comment
     pattern = re.compile(
         r'^(' + re.escape(key) + r':\s*)([^\n#]*?)(\s*)(#[^\n]*)?$',
@@ -60,15 +68,15 @@ def set_field(content: str, key: str, value: str) -> str:
     )
 
     def replacer(m: re.Match) -> str:
-        prefix = m.group(1)          # "key: "
+        pfx = m.group(1)          # "key: "
         padding = m.group(3) or "    "  # whitespace before comment
         comment = m.group(4) or ""   # "# optional comment"
-        return f"{prefix}{value}{padding}{comment}".rstrip()
+        return f"{pfx}{value}{padding}{comment}".rstrip()
 
-    new_content, n = pattern.subn(replacer, content)
+    new_sm_part, n = pattern.subn(replacer, sm_part)
     if n == 0:
         print(f"WARNING: key '{key}' not found in SPRINT_STATE_MACHINE — skipping", file=sys.stderr)
-    return new_content
+    return prefix_part + new_sm_part
 
 
 def cmd_set(args: argparse.Namespace) -> None:
