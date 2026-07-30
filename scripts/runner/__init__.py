@@ -15,9 +15,11 @@ Package layout:
   git_ops.py       — shell/git/gh helpers
   system_prompts.py — constitutional system prompt + stack expert blocks
   sprint_ops.py    — sprint state parsing, phase gate, integrity checks
-  llm_codegen.py   — LLM call (call_llm, call_llm_via_magiclm), file parse/write/validate
+  llm_codegen.py   — call_llm_via_magiclm, file parse/write/validate
   task_executor.py — execute_with_llm, flag_spec_gap
-  legacy_handlers.py — per-WC deterministic handlers (WC011–WC015)
+
+WC011–WC015 are complete. legacy_handlers.py retired — all sprint handling via
+groom_sprint.py → SubTaskDef → execute_with_llm via the governed MagicLLM layer.
 """
 from runner.constants import REPO_ROOT, STATE_FILE, EVIDENCE_LOG, ALLOWED_WRITE_ROOTS  # noqa: F401
 from runner.state import _MONITOR_SIGNAL, _INFRA_ERROR_TASKS  # noqa: F401
@@ -35,14 +37,3 @@ from runner.llm_codegen import (  # noqa: F401
     parse_llm_files, write_llm_files, validate_written_files,
 )
 from runner.task_executor import execute_with_llm, flag_spec_gap  # noqa: F401
-from runner.legacy_handlers import (  # noqa: F401
-    execute_wc011_01, execute_wc011_02, execute_wc011_03,
-    execute_wc011_04, execute_wc011_05, execute_wc011_07,
-    execute_wc012_01,
-    _generate_wc012_02a_evaluator_interfaces,
-    _generate_wc012_02c_prep,
-    _generate_wc012_03a_data_layer,
-    _generate_wc012_04a_emergency_stop_entities,
-    execute_wc013_01, execute_wc014_01, execute_wc015_01,
-    _skip_schemathesis_gate,
-)

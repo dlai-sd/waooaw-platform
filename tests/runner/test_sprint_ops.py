@@ -147,9 +147,17 @@ class TestRunRunnerIntegrityChecks:
         ok, errors = run_runner_integrity_checks(ns)
         assert not ok
 
-    def test_fails_when_task_handlers_empty(self):
+    def test_empty_task_handlers_is_allowed(self):
+        """TASK_HANDLERS may be empty at startup — groomer injects entries at runtime."""
         ns = self._make_namespace()
         ns["TASK_HANDLERS"] = {}
+        ok, errors = run_runner_integrity_checks(ns)
+        assert ok is True
+        assert not any("TASK_HANDLERS" in e for e in errors)
+
+    def test_fails_when_task_handlers_not_dict(self):
+        ns = self._make_namespace()
+        ns["TASK_HANDLERS"] = "not a dict"
         ok, errors = run_runner_integrity_checks(ns)
         assert not ok
         assert any("TASK_HANDLERS" in e for e in errors)

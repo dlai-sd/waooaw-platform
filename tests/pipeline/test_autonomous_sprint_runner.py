@@ -16,7 +16,6 @@ Coverage targets (C-076: ≥90% line coverage):
   flag_spec_gap()               → no github token path (safe offline path)
   execute_with_llm()            → no API key path, spec_content building
   _build_system_prompt()        → dotnet/python/terraform/typescript stacks
-  _generate_wc012_02a_*()       → verifies 4 files written to disk
 """
 
 import os
@@ -44,7 +43,6 @@ from autonomous_sprint_runner import (
 # Submodule references for accurate monkeypatching after runner/ extraction
 import runner.sprint_ops as _sprint_ops
 import runner.system_prompts as _sys_prompts
-import runner.legacy_handlers as _legacy_h
 import runner.task_executor as _task_ex
 
 
@@ -750,228 +748,6 @@ class TestExecuteWithLlm:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# _generate_wc012_02a_evaluator_interfaces()
-# ═══════════════════════════════════════════════════════════════════════════════
-
-class TestGenerateWc01202aEvaluatorInterfaces:
-    """Tests for deterministic EvaluationContext / evaluator interface generation."""
-
-    def test_writes_four_files(self, monkeypatch, tmp_path):
-        """WC012-02a must write exactly 4 files: EvaluationResult, EvaluationContext, IClaimEvaluator, EvaluatorRegistry."""
-        ev_dir = tmp_path / "src" / "constitutional-engine" / "Evaluators"
-        monkeypatch.setattr(_legacy_h, "REPO_ROOT", tmp_path)
-        monkeypatch.setattr(_legacy_h, "git", lambda *a, **kw: MagicMock(returncode=0))
-
-        runner._generate_wc012_02a_evaluator_interfaces()
-
-        assert (ev_dir / "EvaluationResult.cs").exists()
-        assert (ev_dir / "EvaluationContext.cs").exists()
-        assert (ev_dir / "IClaimEvaluator.cs").exists()
-        assert (ev_dir / "EvaluatorRegistry.cs").exists()
-
-    def test_evaluation_context_has_correct_namespace(self, monkeypatch, tmp_path):
-        ev_dir = tmp_path / "src" / "constitutional-engine" / "Evaluators"
-        monkeypatch.setattr(_legacy_h, "REPO_ROOT", tmp_path)
-        monkeypatch.setattr(_legacy_h, "git", lambda *a, **kw: MagicMock(returncode=0))
-
-        runner._generate_wc012_02a_evaluator_interfaces()
-
-        ctx = (ev_dir / "EvaluationContext.cs").read_text()
-        assert "Waooaw.ConstitutionalEngine.Evaluators" in ctx
-
-    def test_evaluation_context_has_from_request(self, monkeypatch, tmp_path):
-        """EvaluationContext.FromRequest must exist (C-082: LLM must use it)."""
-        ev_dir = tmp_path / "src" / "constitutional-engine" / "Evaluators"
-        monkeypatch.setattr(_legacy_h, "REPO_ROOT", tmp_path)
-        monkeypatch.setattr(_legacy_h, "git", lambda *a, **kw: MagicMock(returncode=0))
-
-        runner._generate_wc012_02a_evaluator_interfaces()
-
-        ctx = (ev_dir / "EvaluationContext.cs").read_text()
-        assert "FromRequest" in ctx
-
-    def test_evaluation_context_has_tenant_id(self, monkeypatch, tmp_path):
-        """EvaluationContext must include TenantId — required by C-041 evaluator DB reads."""
-        ev_dir = tmp_path / "src" / "constitutional-engine" / "Evaluators"
-        monkeypatch.setattr(_legacy_h, "REPO_ROOT", tmp_path)
-        monkeypatch.setattr(_legacy_h, "git", lambda *a, **kw: MagicMock(returncode=0))
-
-        runner._generate_wc012_02a_evaluator_interfaces()
-
-        ctx = (ev_dir / "EvaluationContext.cs").read_text()
-        assert "TenantId" in ctx, (
-            "EvaluationContext must have TenantId property — "
-            "spec evaluators reference ctx.TenantId for DB reads (C-041, C-043, C-049)"
-        )
-
-    def test_evaluation_context_has_budget_properties(self, monkeypatch, tmp_path):
-        """EvaluationContext must expose BudgetContext fields for C-043 evaluator."""
-        ev_dir = tmp_path / "src" / "constitutional-engine" / "Evaluators"
-        monkeypatch.setattr(_legacy_h, "REPO_ROOT", tmp_path)
-        monkeypatch.setattr(_legacy_h, "git", lambda *a, **kw: MagicMock(returncode=0))
-
-        runner._generate_wc012_02a_evaluator_interfaces()
-
-        ctx = (ev_dir / "EvaluationContext.cs").read_text()
-        assert "ProposedSpend" in ctx or "BudgetContext" in ctx or "ApprovedBudget" in ctx, (
-            "EvaluationContext must expose BudgetContext fields for C-043 financial ceiling evaluator"
-        )
-
-    def test_evaluation_context_has_get_parameter(self, monkeypatch, tmp_path):
-        """EvaluationContext must have GetParameter() for JSON ActionParameters parsing."""
-        ev_dir = tmp_path / "src" / "constitutional-engine" / "Evaluators"
-        monkeypatch.setattr(_legacy_h, "REPO_ROOT", tmp_path)
-        monkeypatch.setattr(_legacy_h, "git", lambda *a, **kw: MagicMock(returncode=0))
-
-        runner._generate_wc012_02a_evaluator_interfaces()
-
-        ctx = (ev_dir / "EvaluationContext.cs").read_text()
-        assert "GetParameter" in ctx, (
-            "EvaluationContext must have GetParameter(string key) to parse "
-            "ActionParameters JSON — prevents LLM calling .TryGetValue() on string"
-        )
-
-    def test_evaluation_verdict_has_three_values(self, monkeypatch, tmp_path):
-        """EvaluationVerdict must have exactly Allow, Deny, Escalate."""
-        ev_dir = tmp_path / "src" / "constitutional-engine" / "Evaluators"
-        monkeypatch.setattr(_legacy_h, "REPO_ROOT", tmp_path)
-        monkeypatch.setattr(_legacy_h, "git", lambda *a, **kw: MagicMock(returncode=0))
-
-        runner._generate_wc012_02a_evaluator_interfaces()
-
-        result = (ev_dir / "EvaluationResult.cs").read_text()
-        assert "Allow" in result
-        assert "Deny" in result
-        assert "Escalate" in result
-
-    def test_all_files_have_constitutional_headers(self, monkeypatch, tmp_path):
-        """All generated files must have C-059 traceability headers."""
-        ev_dir = tmp_path / "src" / "constitutional-engine" / "Evaluators"
-        monkeypatch.setattr(_legacy_h, "REPO_ROOT", tmp_path)
-        monkeypatch.setattr(_legacy_h, "git", lambda *a, **kw: MagicMock(returncode=0))
-
-        runner._generate_wc012_02a_evaluator_interfaces()
-
-        for fname in ["EvaluationResult.cs", "EvaluationContext.cs", "IClaimEvaluator.cs", "EvaluatorRegistry.cs"]:
-            content = (ev_dir / fname).read_text()
-            assert "// Implements:" in content, f"{fname} missing // Implements: header (C-059)"
-            assert "constitutional_basis" in content, f"{fname} missing constitutional_basis (C-073)"
-
-    def test_returns_true_on_success(self, monkeypatch, tmp_path):
-        monkeypatch.setattr(_legacy_h, "REPO_ROOT", tmp_path)
-        monkeypatch.setattr(_legacy_h, "git", lambda *a, **kw: MagicMock(returncode=0))
-        result = runner._generate_wc012_02a_evaluator_interfaces()
-        assert result is True
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# WC012-02b constitutional_check content
-# ═══════════════════════════════════════════════════════════════════════════════
-
-class TestWc01202bConstitutionalCheck:
-    """Tests that WC012-02b constitutional_check contains the right type contract."""
-
-    def _get_subtask(self):
-        """Return the WC012-02b SubTaskDef from TASK_HANDLERS."""
-        wc012 = runner.TASK_HANDLERS.get("WC012-02")
-        if not wc012:
-            return None
-        for st in wc012.get("subtasks", []):
-            if st.id == "WC012-02b":
-                return st
-        return None
-
-    def _get_check(self) -> str:
-        """Extract WC012-02b constitutional_check from TASK_HANDLERS."""
-        handler = runner.TASK_HANDLERS.get("WC012-02b")
-        if handler and callable(handler):
-            return ""
-        wc012 = runner.TASK_HANDLERS.get("WC012-02")
-        if not wc012:
-            return ""
-        for st in wc012.get("subtasks", []):
-            if st.id == "WC012-02b":
-                return st.constitutional_check
-        return ""
-
-    def test_check_lists_evaluation_context_properties(self):
-        """constitutional_check references EvaluationContext behavioral patterns.
-
-        Type properties are injected by PTR (C-085/DP-009), not hardcoded here.
-        The check must contain behavioral rules for USING the context, not listing fields.
-        """
-        check = self._get_check()
-        # PTR injects the full type contract — check must contain behavioral usage patterns
-        assert "GetParameter" in check or "TenantId" in check or "FromRequest" in check, (
-            "WC012-02b check must contain EvaluationContext behavioral usage guidance"
-        )
-
-    def test_check_explains_get_parameter(self):
-        """check must explain how to parse ActionParameters JSON (prevents TryGetValue)."""
-        check = self._get_check()
-        assert "GetParameter" in check or "ActionParameters" in check, (
-            "WC012-02b check must explain ActionParameters JSON parsing"
-        )
-
-    def test_check_prohibits_trygetvalue(self):
-        """check must explicitly prohibit string.TryGetValue (the failure mode)."""
-        check = self._get_check()
-        assert "TryGetValue" in check, (
-            "WC012-02b check must mention TryGetValue to explicitly prohibit it"
-        )
-
-    def test_check_lists_budget_properties(self):
-        """check must reference budget evaluation logic for C-043.
-
-        Budget field names (ProposedSpendInrPaise etc.) come from PTR type contracts.
-        The check must contain behavioral guidance about the EvaluatorRegistry call.
-        """
-        check = self._get_check()
-        # PTR injects budget field names — check must reference evaluator registry usage
-        assert "EvaluateAllAsync" in check or "EvaluatorRegistry" in check or "DENY" in check, (
-            "WC012-02b check must contain evaluator behavioral guidance (budget ceiling is in PTR)"
-        )
-
-    def test_check_lists_six_output_files(self):
-        """WC012-02b must declare 6 output_files (used for file-by-file routing)."""
-        st = self._get_subtask()
-        assert st is not None, "WC012-02b subtask not found"
-        assert st.output_files, "WC012-02b must have output_files for file-by-file mode"
-        required = [
-            "C041ToolAuthorizationEvaluator",
-            "C043BudgetCeiling",
-            "C048NonExploitation",
-            "C049HonestLimitation",
-            "C062AiSecurity",
-            "ConstitutionalEngineService",
-        ]
-        paths = " ".join(st.output_files)
-        for f in required:
-            assert f in paths, f"WC012-02b output_files missing {f}"
-
-
-class TestWc01204bConstitutionalCheck:
-    """Tests that WC012-04b preserves constructor compatibility guidance."""
-
-    def _get_check(self) -> str:
-        wc012 = runner.TASK_HANDLERS.get("WC012-04")
-        if not wc012:
-            return ""
-        for st in wc012.get("subtasks", []):
-            if st.id == "WC012-04b":
-                return st.constitutional_check
-        return ""
-
-    def test_check_mentions_constructor_compatibility(self):
-        check = self._get_check()
-        assert "Constructor compatibility" in check or "overload" in check or "optional" in check
-
-    def test_check_mentions_logger_backward_compat(self):
-        check = self._get_check()
-        assert "ILogger" in check and ("NullLogger" in check or "optional" in check or "overload" in check)
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
 # Allowed write roots — security boundary (ADR-030, C-065)
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -1007,25 +783,18 @@ class TestWriteBoundary:
 class TestTaskHandlers:
     """Tests that TASK_HANDLERS is correctly structured."""
 
-    def test_all_wc011_tasks_registered(self):
-        for task in ["WC011-01", "WC011-02", "WC011-03", "WC011-04", "WC011-05", "WC011-07"]:
-            assert task in runner.TASK_HANDLERS, f"{task} not in TASK_HANDLERS"
-            assert callable(runner.TASK_HANDLERS[task])
+    def test_task_handlers_is_dict_with_injection_point(self):
+        """TASK_HANDLERS must be a dict; groomer injection populates it at runtime."""
+        assert isinstance(runner.TASK_HANDLERS, dict)
 
-    def test_wc012_01_is_callable(self):
-        assert callable(runner.TASK_HANDLERS["WC012-01"])
-
-    def test_wc012_02_03_04_are_decomposed_dicts(self):
-        for task in ["WC012-02", "WC012-03", "WC012-04"]:
-            h = runner.TASK_HANDLERS[task]
-            assert isinstance(h, dict), f"{task} should be decomposed dict"
-            assert "subtasks" in h, f"{task} dict missing 'subtasks' key"
-            assert len(h["subtasks"]) > 0
-
-    def test_scaffold_tasks_frozenset(self):
-        assert "WC012-01" in runner.SCAFFOLD_TASKS
-        assert "WC013-01" in runner.SCAFFOLD_TASKS
+    def test_scaffold_tasks_frozenset_future_sprints(self):
+        """SCAFFOLD_TASKS must be a frozenset referencing future sprint scaffold gates."""
         assert isinstance(runner.SCAFFOLD_TASKS, frozenset)
+        # WC011-WC015 are complete — they must NOT be in SCAFFOLD_TASKS
+        for done_task in ["WC011-01", "WC012-01", "WC013-01", "WC014-01", "WC015-01"]:
+            assert done_task not in runner.SCAFFOLD_TASKS, (
+                f"{done_task} is a completed sprint — must not be in SCAFFOLD_TASKS"
+            )
 
     def test_monitor_signal_structure(self):
         """_MONITOR_SIGNAL must have all required keys for C-069."""

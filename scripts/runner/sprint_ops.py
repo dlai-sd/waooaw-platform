@@ -198,8 +198,9 @@ def run_runner_integrity_checks(
             errors.append("execute_with_llm signature mismatch. Missing params: " + ", ".join(missing))
 
     handlers = namespace.get("TASK_HANDLERS")
-    if not isinstance(handlers, dict) or len(handlers) == 0:
-        errors.append("TASK_HANDLERS missing or empty")
+    if not isinstance(handlers, dict):
+        errors.append("TASK_HANDLERS missing or not a dict")
+    # Note: TASK_HANDLERS may be empty at startup — groomer injects entries at runtime.
 
     parser = namespace.get("parse_llm_files")
     if callable(parser):
