@@ -499,7 +499,9 @@ The following decisions are needed before the corresponding spec can be finalize
 | 2026-07-30 | INST-013 (Goal Orchestrator) | Goal Classification + GO Authorizations issued | PRODUCED |
 | 2026-07-30 | INST-013 (Goal Orchestrator) | Spec Phase Deliverable Specifications D-01 through D-10 | PRODUCED |
 | 2026-07-30 | INST-002 (CA) | D-01 Claims C-088–C-091 | ✅ PRODUCED |
-| — | INST-004 (EA) | D-02, D-03, D-04 ADRs | PENDING |
+| 2026-07-30 | INST-004 (EA) | D-02 ADR-022 Amendment | ✅ PRODUCED |
+| 2026-07-30 | INST-004 (EA) | D-03 ADR-034 WBE Architecture | ✅ PRODUCED |
+| 2026-07-30 | INST-004 (EA) | D-04 ADR-024 Amendment | ✅ PRODUCED |
 | — | INST-003 (BA) | D-05, D-06, D-09 | PENDING |
 | — | INST-005 (SA) | D-07 WBE Component Spec | PENDING |
 | — | INST-006 (DA) | D-08 DB Schema Updates | PENDING |

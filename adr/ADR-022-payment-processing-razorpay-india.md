@@ -208,3 +208,114 @@ Invoice numbering: sequential, financial-year-prefixed: `WAOOAW/2026-27/000001`
 - New SQL tables needed: `payment_transactions` (Razorpay payment record), `gst_invoices` (GST invoice record)
 - Registration form: add optional `customer_gstin` field (for B2B customers claiming input credit)
 - `organisations` table: add `gstin` nullable column
+
+---
+
+## Amendment 1 — GOAL-004 Billing Engine Extensions (2026-07-30)
+
+**Author:** Enterprise Architect (INST-004)
+**Constitutional Basis:** C-088 (Agent Billing Profile), C-089 (Minimum Margin Floor),
+C-090 (Grandfather Pricing), C-091 (Thread Catalog Sovereignty)
+**Amends:** Sections 1, 2, and Consequences above
+
+### Amendment 1.1 — Universal Prepaid Enforcement
+
+The original ADR scoped prepaid enforcement to ad spend wallets only (ADR-026). This amendment
+extends the prepaid gate to ALL constrained resource threads, consistent with C-090 Grandfather
+Pricing and the GOAL-004 prepaid insurance principle.
+
+**Thread bucket types (added to wallet model):**
+
+| Bucket Type | Thread | Unit | Refilled By |
+|---|---|---|---|
+| `llm_local` | LOCAL tier LLM | Classification calls | Period renewal (unlimited — zero cost) |
+| `llm_mid` | MID_TIER LLM | Calls (counted at dispatch) | Period renewal; top-up |
+| `llm_frontier` | FRONTIER LLM | Calls (counted at dispatch) | Period renewal; top-up |
+| `video_clips` | Video generation (Kling, HeyGen, Runway) | Clips | Period renewal; top-up |
+| `whatsapp_windows` | WhatsApp conversation windows | 24hr windows | Period renewal; top-up |
+| `image_gen` | Image generation | Images | Period renewal; top-up |
+| `ad_spend` | Ad spend (existing — ADR-026) | INR paise | Customer top-up; no auto-refill |
+
+**Prepaid gate rule (extended):** Before any WAOOAW service dispatches a thread call, WBE
+is queried for available bucket balance. Zero balance → call rejected → graceful degradation
+path invoked (ZERO_COST template or honest C-049 disclosure). The gate applies to every
+thread type without exception.
+
+**Trial mode:** In Demo/Trial mode, all thread calls route to zero-cost substitutes. No
+bucket deduction occurs. The Agent Billing Profile (C-088) defines the zero-cost substitutes
+per thread per agent. WBE enforces trial/live mode separation.
+
+### Amendment 1.2 — Single Onboarding Payment
+
+The original ADR created separate Razorpay subscription activation and ad wallet funding
+flows. This creates friction at trial-to-paid conversion (two separate payment events).
+
+**New onboarding payment pattern:**
+
+```
+Customer says "hire me" → WBE generates Razorpay Order (one-time, covers):
+  1. First month subscription amount (pre-paid)
+  2. Initial wallet seed amount (configurable per bundle — default ₹2,000 for DMA)
+  → Single Razorpay Order ID
+
+Customer taps UPI → Single payment confirmation from Razorpay
+
+razorpay-mcp receives payment.captured webhook:
+  Step 1: Activate Razorpay subscription (links to the Order)
+  Step 2: Seed wallet buckets (all non-ad-spend buckets via WBE)
+  Step 3: Seed ad_spend wallet (if agent requires ad spend)
+  Step 4: Flip customer mode: TRIAL → LIVE (at payment_intent CONFIRMED,
+           not subscription object creation — eliminates the race condition in S-09)
+  Step 5: Notify agent: customer is now LIVE
+
+Target latency: ≤ 90 seconds from UPI tap to agent first LIVE response.
+```
+
+**Important:** The mode flip (Step 4) happens at payment.captured event, before subscription
+object creation completes. This is intentional: eliminates the 4-second race condition where
+a customer message arrives between payment and activation.
+
+### Amendment 1.3 — Progressive Renewal Failure Policy
+
+When a Razorpay subscription renewal payment fails, the platform applies a timed policy:
+
+```
+Day 0 (1st failure):
+  → WhatsApp: "Payment failed. Update your payment method. Agent continues fully."
+  → Agent: full capability maintained
+
+Day 3 (2nd retry failure):
+  → WhatsApp: "Second attempt failed. Agent continues for 4 more days. Update now."
+  → Agent: full capability; no NEW campaigns launched (ad_spend gate tightened)
+  → New campaigns require manual approval until payment resolved
+
+Day 7 (3rd retry failure):
+  → SAGA initiated: pause all active Meta/Google campaigns (Step 1 — must succeed)
+  → If campaign pause saga succeeds: freeze LLM buckets to ZERO_COST path only
+  → WhatsApp: "Account in recovery mode. One tap to restore."
+  → Agent discloses limited mode per C-049: "I'm in recovery mode — billing needs attention."
+
+Day 14 (no resolution):
+  → Full suspension: employment_contracts.status = SUSPENDED
+  → C-038 pro-rata credit calculated for unused subscription days
+  → Evidence preserved per C-007 (append-only, not deleted)
+  → Data retained 90 days per data protection policy
+```
+
+**Campaign pause saga (Day 7):** The campaign pause is a Temporal workflow saga. If Meta/Google
+API pause fails after 3 retries, the billing state change is rolled back (subscription not
+suspended). The failure is escalated to Platform Operations agent for manual resolution.
+Billing cannot advance to suspension state while provider campaigns are unconfirmed-paused.
+
+### Amendment 1.4 — Grandfather Pricing Enforcement (C-090)
+
+Each employment contract row records the price at which it was sold:
+- `employment_contracts.agreed_monthly_price_paise` — locked at contract formation
+- `employment_contracts.price_change_notice_sent_at` — populated when 30-day notice issued
+- `employment_contracts.price_change_effective_date` — must be ≥ notice_sent_at + 30 days
+- Razorpay subscription plan update (to new pricing tier plan) is only applied AFTER
+  `price_change_effective_date` is reached AND customer acknowledgment is recorded
+
+WBE enforces: Razorpay plan update API call is blocked until both conditions are met.
+Any attempt to update the subscription plan before acknowledgment is a C-090 violation
+and triggers an automatic compliance alert to the Constitutional Audit Ledger.

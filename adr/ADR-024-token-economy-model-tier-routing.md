@@ -293,3 +293,85 @@ Governed by:
 
 **Supersedes:** Nothing (new decision)
 **Related ADRs:** ADR-020 (MCP Integration), ADR-022 (Razorpay billing), ADR-018 (Prompt Versioning)
+
+---
+
+## Amendment 1 — GOAL-004 Bundle Ration Integration (2026-07-30)
+
+**Author:** Enterprise Architect (INST-004)
+**Constitutional Basis:** C-088 (Agent Billing Profile), C-089 (Minimum Margin Floor),
+C-091 (Thread Catalog Sovereignty), ADR-034 (WBE)
+
+### Amendment 1.1 — Bundle Rations Gate the PSE
+
+Prior to GOAL-004, ADR-024's Token Economy routed messages based on `minimum_model_tier`
+declared in the prompt version and `plan_tier` from the JWT. There was no per-period
+budget cap — a customer on the `professional` plan had unlimited FRONTIER access within
+their plan definition.
+
+GOAL-004 introduces **bundle ration limits**: each bundle tier (Starter/Runner/Winner)
+has a declared monthly allocation of calls per LLM tier. The PSE now adds a WBE balance
+check as a pre-condition to any LLM tier routing:
+
+```python
+def route_llm_request(jwt_claims: dict, message: Message) -> LLMTier:
+    # Steward bypass — always FRONTIER, no bundle limits (ADR-028)
+    if jwt_claims.get("role") == "steward":
+        return LLMTier.FRONTIER
+
+    # Bundle ration check — new gate added by GOAL-004
+    customer_id = jwt_claims["tenant_id"]
+    required_tier = classify_and_get_tier(message, jwt_claims.get("plan_tier"))
+
+    available = wbe_client.get_bucket_balance(customer_id, f"llm_{required_tier.lower()}")
+    if available <= 0:
+        # Ration exhausted — downgrade path
+        next_tier = get_downgrade_tier(required_tier, jwt_claims.get("plan_tier"))
+        if next_tier == "ZERO_COST":
+            return LLMTier.ZERO_COST  # Graceful degradation — agent discloses per C-049
+        return next_tier
+
+    # Reserve before dispatch (released on completion or failure)
+    wbe_client.reserve_bucket(customer_id, f"llm_{required_tier.lower()}", amount=1)
+    return required_tier
+```
+
+**Downgrade path (ration exhausted):**
+- FRONTIER exhausted → downgrade to MID_TIER (if plan permits) + C-049 disclosure
+- MID_TIER exhausted → ZERO_COST path + C-049 disclosure ("I'm at my advisory limit for
+  this month. I can still help with quick questions and templates.")
+- ZERO_COST is never downgraded further — it is always available
+
+**No downgrade without disclosure (C-049):** Any tier downgrade due to ration exhaustion
+MUST be surfaced to the customer in the agent's next response. The PSE passes a
+`tier_downgraded_reason: RATION_EXHAUSTED` flag to the AI Runtime, which adds a
+constitutional disclosure to the response.
+
+### Amendment 1.2 — Customer Pacing Choice Affects Ration Availability
+
+Customers choose their monthly allocation pacing (SPREAD or BURST) at the start of each
+billing period via a WBE-managed preference:
+
+- **SPREAD:** WBE enforces sub-weekly limits (total_ration / 4.3 per week). If a customer
+  tries to consume more than their weekly sub-limit, requests queue to the next week window.
+- **BURST:** No sub-weekly enforcement. Total ration is available from day 1. Customer
+  may exhaust in day 1 — this is their explicit choice, stamped in `pacing_preferences`.
+
+The PSE does not implement pacing logic directly. It reads the available balance from WBE,
+which applies pacing enforcement on the bucket side.
+
+### Amendment 1.3 — ADR-028 (plan_tier) Remains Unchanged
+
+ADR-028's steward/customer separation and plan_tier-based tier permissions remain unchanged.
+The bundle ration layer (this amendment) operates BELOW the plan_tier permission layer:
+
+```
+1. Is user a steward? → Always FRONTIER (ADR-028, unchanged)
+2. Is requested tier permitted by plan_tier? → Check ADR-028 rules (unchanged)
+3. Is the bundle ration available? → Check WBE bucket (THIS AMENDMENT)
+4. If all yes: dispatch to provider (ADR-029, unchanged)
+```
+
+The addition of layer 3 is backward-compatible: existing customers with unlimited-tier plans
+have their ration set to a very large number (effectively unlimited) until their bundle is
+explicitly configured by the BA in the Agent Billing Profile.
