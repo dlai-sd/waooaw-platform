@@ -26,7 +26,7 @@ Understanding Record and the Founder acknowledges the Execution Plan.
 | GOAL-001 | Semantic Brain Transformation — transform WAOOAW into a Goal-driven semantic brain capable of outcome-based dialogue and execution | CLOSED | — | 2026-07-27 |
 | GOAL-002 | Universal AI Execution Layer — implement MagicLLM + GoalExecutor as the universal AI intelligence substrate for all autonomous sprint execution | CLOSED | — | 2026-07-27 |
 | GOAL-003 | PTR Dynamic Knowledge Asset — replace static JSON context with a live, multi-stack Prompt Template Repository assembled from source files | CLOSED | — | 2026-07-27 |
-| GOAL-004 | WAOOAW Bilateral Billing Pipeline — design and implement the Billing Engine that makes every WAOOAW product commercially sustainable, prepaid-enforced, autonomous, and extensible to any future agent without a code change | **IN UNDERSTANDING** | TBD | — |
+| GOAL-004 | WAOOAW Billing Engine — design and implement the Billing Engine that makes every WAOOAW product commercially sustainable, prepaid-enforced, autonomous, and extensible to any future agent without a code change | **PLANNED** (spec phase) | WC-017→WC-024 (est.) | — |
 
 ---
 
@@ -139,8 +139,11 @@ EA begins architecture. Not suitable for single sprint delivery.
   Constitutional review flags raised for formalization.
   Founder to decide on scope boundaries before this Goal is formalized.
 
-  GOAL-004 objectives drafted and presented for Founder review.
-  Awaiting Founder SC confirmation before Goal Understanding Record is produced.
+  GOAL-004 objectives confirmed by Founder. Goal Understanding Record produced.
+  10 Success Criteria confirmed. Spec phase deliverables D-01 through D-10 specified.
+  GO Authorizations issued to INST-002, INST-003, INST-004, INST-005, INST-006,
+  INST-013, INST-010. GOAL-004 status: PLANNED — awaiting spec phase execution.
+  Full Goal document: goals/GOAL-004-waooaw-billing-engine.md
 ```
 
 ---
