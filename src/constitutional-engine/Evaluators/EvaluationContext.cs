@@ -9,10 +9,8 @@ using Waooaw.ConstitutionalEngine.Grpc;
 
 /// <summary>
 /// Immutable context derived from ValidateActionRequest + gRPC metadata.
-/// Exposes all fields evaluators need — no DB access, no external calls.
 /// TenantId: from gRPC metadata 'x-tenant-id' (not a proto field).
 /// ActionParameters: JSON-encoded string — use GetParameter(key) to parse.
-/// Budget fields: from BudgetContext nested proto message.
 /// </summary>
 public sealed record EvaluationContext(
     string ContractId,
@@ -26,12 +24,6 @@ public sealed record EvaluationContext(
     long ProposedSpendInrPaise = 0,
     string BudgetSkillType = "")
 {
-    /// <summary>
-    /// Parse a named key from the JSON-encoded ActionParameters string.
-    /// Evaluators use this instead of treating ActionParameters as a Dictionary.
-    /// NEVER call .TryGetValue() on ActionParameters — it is a plain string, not a Dictionary.
-    /// Example: ctx.GetParameter("tool_name") for C-041 tool authorization.
-    /// </summary>
     public string? GetParameter(string key)
     {
         try
@@ -45,10 +37,6 @@ public sealed record EvaluationContext(
         catch { return null; }
     }
 
-    /// <summary>
-    /// Build context from gRPC request + tenant ID extracted from metadata.
-    /// Called in ConstitutionalEngineService.ValidateAction before passing to evaluators.
-    /// </summary>
     public static EvaluationContext FromRequest(
         ValidateActionRequest request, string tenantId) => new(
         ContractId:            request.ContractId,

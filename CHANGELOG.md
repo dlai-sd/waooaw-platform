@@ -8,6 +8,21 @@ types: `feat` | `fix` | `constitutional` | `cct` | `chore` | `refactor` | `secur
 
 ---
 
+## [1.22.0] — 2026-07-30 (Runner Package Extraction + Prompt Caching)
+
+### Refactored
+- **`scripts/runner/` package**: Extracted 8 focused modules from `autonomous_sprint_runner.py` (4,034 → 1,572 lines). Modules: `constants`, `state`, `git_ops`, `system_prompts`, `sprint_ops`, `llm_codegen`, `task_executor`, `legacy_handlers`.
+- **Anthropic prompt caching** (`anthropic-beta: prompt-caching-2024-07-31`) added to all LLM call sites in `llm_codegen.py` and `groom_sprint.py` — system prompt cached as `ephemeral` block. Tokens procured once and reused across retries (C-077 cost reduction).
+- `run_runner_integrity_checks` now accepts `namespace: dict | None = None` for testability; `main()` passes `globals()` explicitly.
+- `RUNNER_ANCHOR` and `TASK_HANDLERS` preserved in `autonomous_sprint_runner.py` entry-point — `groom_sprint.py` injection workflow unchanged.
+
+### Tests
+- **129 new tests** in `tests/runner/` — 95%+ line coverage for all 8 runner modules.
+- `pyproject.toml` `pythonpath = ["scripts"]` added so pytest resolves `runner` package from `scripts/runner/`.
+- All 77 existing `tests/test_groom_sprint.py` tests continue to pass (206 total).
+
+---
+
 ## [1.16.0] — 2026-07-28 (Pipeline Hardening — Live Sprint Observation)
 
 Fixes identified during live WC-012 sprint run #30370343008.

@@ -73,6 +73,27 @@ EA-approved dependency version files that autonomous agents MUST copy verbatim:
 
 ---
 
+## `scripts/runner/` Package
+
+Modular package extracted from `autonomous_sprint_runner.py` (4,034 → 1,572 lines) in sprint IB-009:
+
+| Module | Responsibility |
+|---|---|
+| `constants.py` | `REPO_ROOT`, `STATE_FILE`, `EVIDENCE_LOG`, `ALLOWED_WRITE_ROOTS` — single path source of truth |
+| `state.py` | Shared mutable runtime state (`_MONITOR_SIGNAL`, `_INFRA_ERROR_TASKS`) — module-level singletons |
+| `git_ops.py` | Shell/git/gh helpers: `run`, `git`, `gh`, `set_output`, `record_evidence` |
+| `system_prompts.py` | Constitutional LLM system prompt architecture: `_build_system_prompt`, `get_branch_context` |
+| `sprint_ops.py` | Sprint state lifecycle: `parse_sprint_state`, `check_platform_phase_gate`, `run_runner_integrity_checks` |
+| `llm_codegen.py` | LLM code generation with Anthropic prompt caching (ADR-030, C-077): `call_llm`, `call_llm_via_magiclm`, `parse_llm_files`, `write_llm_files`, `validate_written_files` |
+| `task_executor.py` | Retry loop with Retry Advisor: `execute_with_llm`, `flag_spec_gap` |
+| `legacy_handlers.py` | Deterministic per-WC task handlers: `execute_wc011_01` through `execute_wc015_01` |
+
+`autonomous_sprint_runner.py` remains the CLI entry-point and TASK_HANDLERS registry. `groom_sprint.py` injects new handlers at the `RUNNER_ANCHOR` comment preserved inside that file.
+
+**Prompt Caching**: All LLM call sites use `anthropic-beta: prompt-caching-2024-07-31` with system prompt wrapped in `cache_control: {type: ephemeral}` — tokens procured once and reused across retries (C-077 cost reduction).
+
+---
+
 ## Architecture Decision Records
 
 18 ADRs govern all technology selections. Quick reference: [adr/ADR-INDEX.md](adr/ADR-INDEX.md)

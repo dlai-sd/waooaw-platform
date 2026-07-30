@@ -6,10 +6,6 @@ namespace Waooaw.ConstitutionalEngine.Evaluators;
 
 using Microsoft.Extensions.Logging;
 
-/// <summary>
-/// Runs all registered IClaimEvaluator instances in parallel.
-/// DENY from any evaluator → ValidateAction returns DENY (C-041 default-deny).
-/// </summary>
 public sealed class EvaluatorRegistry
 {
     private readonly IReadOnlyList<IClaimEvaluator> _evaluators;

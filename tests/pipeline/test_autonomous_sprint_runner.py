@@ -41,6 +41,11 @@ from autonomous_sprint_runner import (
     ALLOWED_WRITE_ROOTS,
     run_runner_integrity_checks,
 )
+# Submodule references for accurate monkeypatching after runner/ extraction
+import runner.sprint_ops as _sprint_ops
+import runner.system_prompts as _sys_prompts
+import runner.legacy_handlers as _legacy_h
+import runner.task_executor as _task_ex
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -132,7 +137,7 @@ class TestParseSprintState:
     """Tests for PROJECT_STATE.md YAML parsing."""
 
     def test_parses_all_fields(self, project_state_valid: Path, monkeypatch):
-        monkeypatch.setattr(runner, "STATE_FILE", project_state_valid)
+        monkeypatch.setattr(_sprint_ops, "STATE_FILE", project_state_valid)
         state = runner.parse_sprint_state()
         assert state["platform_phase"] == "IMPLEMENTATION"
         assert state["autonomous_halt"] == "false"
@@ -147,7 +152,7 @@ class TestParseSprintState:
     def test_raises_when_block_missing(self, tmp_repo: Path, monkeypatch):
         state_file = tmp_repo / "constitution" / "PROJECT_STATE.md"
         state_file.write_text("# No SPRINT_STATE_MACHINE block here\n")
-        monkeypatch.setattr(runner, "STATE_FILE", state_file)
+        monkeypatch.setattr(_sprint_ops, "STATE_FILE", state_file)
         with pytest.raises(ValueError, match="SPRINT_STATE_MACHINE"):
             runner.parse_sprint_state()
 
@@ -165,7 +170,7 @@ class TestParseSprintState:
         """)
         state_file = tmp_repo / "constitution" / "PROJECT_STATE.md"
         state_file.write_text(content)
-        monkeypatch.setattr(runner, "STATE_FILE", state_file)
+        monkeypatch.setattr(_sprint_ops, "STATE_FILE", state_file)
         state = runner.parse_sprint_state()
         assert state["tasks_remaining"] == []
 
@@ -183,7 +188,7 @@ class TestParseSprintState:
         """)
         state_file = tmp_repo / "constitution" / "PROJECT_STATE.md"
         state_file.write_text(content)
-        monkeypatch.setattr(runner, "STATE_FILE", state_file)
+        monkeypatch.setattr(_sprint_ops, "STATE_FILE", state_file)
         state = runner.parse_sprint_state()
         assert state["platform_phase"] == "IMPLEMENTATION"
         assert state["autonomous_halt"] == "false"
@@ -206,7 +211,7 @@ class TestParseSprintState:
         )
         state_file = tmp_repo / "constitution" / "PROJECT_STATE.md"
         state_file.write_text(content)
-        monkeypatch.setattr(runner, "STATE_FILE", state_file)
+        monkeypatch.setattr(_sprint_ops, "STATE_FILE", state_file)
         state = runner.parse_sprint_state()
         assert "WC012-03" in state["tasks_remaining"]
         assert "WC012-04" in state["tasks_remaining"]
@@ -233,7 +238,7 @@ class TestCheckPlatformPhaseGate:
         """platform_phase=SPEC runs spec validation, not implementation (C-001)."""
         monkeypatch.setattr(runner, "set_output", lambda k, v: None)
         monkeypatch.setattr(runner, "record_evidence", lambda *a, **kw: None)
-        monkeypatch.setattr(runner, "run_spec_validation", lambda: None)
+        monkeypatch.setattr(_sprint_ops, "run_spec_validation", lambda: None)
         state = {"platform_phase": "SPEC", "autonomous_halt": "false"}
         with pytest.raises(SystemExit) as exc:
             runner.check_platform_phase_gate(state)
@@ -432,13 +437,14 @@ class TestRunnerIntegrityChecks:
     """Fail-fast guardrail tests for internal runner wiring."""
 
     def test_integrity_passes_in_normal_state(self):
-        ok, errors = run_runner_integrity_checks()
+        ok, errors = run_runner_integrity_checks(vars(runner))
         assert ok is True
         assert errors == []
 
     def test_integrity_fails_when_parser_missing(self, monkeypatch):
         monkeypatch.setattr(runner, "parse_llm_files", None)
-        ok, errors = run_runner_integrity_checks()
+        ns = dict(vars(runner))
+        ok, errors = run_runner_integrity_checks(ns)
         assert ok is False
         assert any("parse_llm_files" in e for e in errors)
 
@@ -447,7 +453,8 @@ class TestRunnerIntegrityChecks:
             return bool(task_id)
 
         monkeypatch.setattr(runner, "execute_with_llm", bad_execute)
-        ok, errors = run_runner_integrity_checks()
+        ns = dict(vars(runner))
+        ok, errors = run_runner_integrity_checks(ns)
         assert ok is False
         assert any("signature mismatch" in e for e in errors)
 
@@ -464,7 +471,7 @@ class TestGetBranchContext:
         mock_result = MagicMock()
         mock_result.returncode = 1
         mock_result.stdout = ""
-        monkeypatch.setattr(runner, "run", lambda *a, **kw: mock_result)
+        monkeypatch.setattr(_sys_prompts, "run", lambda *a, **kw: mock_result)
         result = runner.get_branch_context()
         assert result == ""
 
@@ -473,7 +480,7 @@ class TestGetBranchContext:
         mock_result = MagicMock()
         mock_result.returncode = 0
         mock_result.stdout = "constitution/PROJECT_STATE.md\nREADME.md\n"
-        monkeypatch.setattr(runner, "run", lambda *a, **kw: mock_result)
+        monkeypatch.setattr(_sys_prompts, "run", lambda *a, **kw: mock_result)
         result = runner.get_branch_context()
         assert result == ""
 
@@ -490,8 +497,8 @@ class TestGetBranchContext:
         mock_result.returncode = 0
         mock_result.stdout = "src/constitutional-engine/Evaluators/Foo.cs\n"
 
-        monkeypatch.setattr(runner, "run", lambda *a, **kw: mock_result)
-        monkeypatch.setattr(runner, "REPO_ROOT", tmp_path)
+        monkeypatch.setattr(_sys_prompts, "run", lambda *a, **kw: mock_result)
+        monkeypatch.setattr(_sys_prompts, "REPO_ROOT", tmp_path)
 
         result = runner.get_branch_context()
         assert "Foo.cs" in result
@@ -502,7 +509,7 @@ class TestGetBranchContext:
         mock_result = MagicMock()
         mock_result.returncode = 0
         mock_result.stdout = "src/constitutional-engine/bin/Debug/Foo.dll\n"
-        monkeypatch.setattr(runner, "run", lambda *a, **kw: mock_result)
+        monkeypatch.setattr(_sys_prompts, "run", lambda *a, **kw: mock_result)
         result = runner.get_branch_context()
         assert result == ""
 
@@ -516,8 +523,8 @@ class TestGetBranchContext:
         mock_result.returncode = 0
         mock_result.stdout = "src/svc/X.cs\n"
 
-        monkeypatch.setattr(runner, "run", lambda *a, **kw: mock_result)
-        monkeypatch.setattr(runner, "REPO_ROOT", tmp_path)
+        monkeypatch.setattr(_sys_prompts, "run", lambda *a, **kw: mock_result)
+        monkeypatch.setattr(_sys_prompts, "REPO_ROOT", tmp_path)
 
         result = runner.get_branch_context()
         assert "BRANCH CONTEXT" in result
@@ -527,7 +534,7 @@ class TestGetBranchContext:
         """Any exception in get_branch_context returns '' — never crashes runner."""
         def raise_exc(*a, **kw):
             raise RuntimeError("git exploded")
-        monkeypatch.setattr(runner, "run", raise_exc)
+        monkeypatch.setattr(_sys_prompts, "run", raise_exc)
         result = runner.get_branch_context()
         assert result == ""
 
@@ -555,8 +562,8 @@ class TestGetBranchContext:
         mock_result.returncode = 0
         mock_result.stdout = "src/ce/Eval/EvaluationContext.cs\n"
 
-        monkeypatch.setattr(runner, "run", lambda *a, **kw: mock_result)
-        monkeypatch.setattr(runner, "REPO_ROOT", tmp_path)
+        monkeypatch.setattr(_sys_prompts, "run", lambda *a, **kw: mock_result)
+        monkeypatch.setattr(_sys_prompts, "REPO_ROOT", tmp_path)
 
         result = runner.get_branch_context()
         # Should see the record definition since file is small
@@ -678,9 +685,9 @@ class TestExecuteWithLlm:
     def test_no_api_key_returns_false(self, monkeypatch, tmp_path, capsys):
         """Without ANTHROPIC_API_KEY, execute_with_llm must fail gracefully."""
         monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-        monkeypatch.setattr(runner, "REPO_ROOT", tmp_path)
-        monkeypatch.setattr(runner, "get_branch_context", lambda: "")
-        monkeypatch.setattr(runner, "flag_spec_gap", lambda **kw: None)
+        monkeypatch.setattr(_task_ex, "REPO_ROOT", tmp_path)
+        monkeypatch.setattr(_task_ex, "get_branch_context", lambda: "")
+        monkeypatch.setattr(_task_ex, "flag_spec_gap", lambda **kw: None)
         monkeypatch.setattr(runner, "git", lambda *a, **kw: MagicMock(returncode=0))
 
         # Create a dummy spec file
@@ -698,10 +705,10 @@ class TestExecuteWithLlm:
         assert ok is False
 
     def test_model_hint_none_skips_llm(self, monkeypatch, tmp_path):
-        """model_hint='none' returns None from call_llm (no LLM call)."""
+        """model_hint='none' returns None from _call_llm_direct (no LLM call)."""
         monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-        # call_llm with model_hint not in (reasoning, auto) returns None
-        result = runner.call_llm(
+        from runner.llm_codegen import _call_llm_direct
+        result = _call_llm_direct(
             task_id="WC011-01",
             task_description="validate",
             spec_content="",
@@ -717,20 +724,19 @@ class TestExecuteWithLlm:
         spec_file.write_text("# Spec Title\n\nSome content here.\n")
 
         monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-        monkeypatch.setattr(runner, "REPO_ROOT", tmp_path)
-        monkeypatch.setattr(runner, "get_branch_context", lambda: "")
-        monkeypatch.setattr(runner, "flag_spec_gap", lambda **kw: None)
+        monkeypatch.setattr(_task_ex, "REPO_ROOT", tmp_path)
+        monkeypatch.setattr(_task_ex, "get_branch_context", lambda: "")
+        monkeypatch.setattr(_task_ex, "flag_spec_gap", lambda **kw: None)
 
-        # Capture what call_llm receives as spec_content
+        # Capture what call_llm_via_magiclm receives as spec_content
         captured_spec = []
 
         def fake_call_llm(task_id, task_desc, spec_content, *args, **kwargs):
             captured_spec.append(spec_content)
             return None  # simulate no API key
 
-        monkeypatch.setattr(runner, "call_llm", fake_call_llm)
-        # call_llm_via_magiclm falls through to call_llm; ensure it reaches it
-        monkeypatch.setattr(runner, "call_llm_via_magiclm", fake_call_llm)
+        # patch the governed layer in its actual module
+        monkeypatch.setattr(_task_ex, "call_llm_via_magiclm", fake_call_llm)
 
         runner.execute_with_llm(
             task_id="WC012-99",
@@ -753,8 +759,8 @@ class TestGenerateWc01202aEvaluatorInterfaces:
     def test_writes_four_files(self, monkeypatch, tmp_path):
         """WC012-02a must write exactly 4 files: EvaluationResult, EvaluationContext, IClaimEvaluator, EvaluatorRegistry."""
         ev_dir = tmp_path / "src" / "constitutional-engine" / "Evaluators"
-        monkeypatch.setattr(runner, "REPO_ROOT", tmp_path)
-        monkeypatch.setattr(runner, "git", lambda *a, **kw: MagicMock(returncode=0))
+        monkeypatch.setattr(_legacy_h, "REPO_ROOT", tmp_path)
+        monkeypatch.setattr(_legacy_h, "git", lambda *a, **kw: MagicMock(returncode=0))
 
         runner._generate_wc012_02a_evaluator_interfaces()
 
@@ -765,8 +771,8 @@ class TestGenerateWc01202aEvaluatorInterfaces:
 
     def test_evaluation_context_has_correct_namespace(self, monkeypatch, tmp_path):
         ev_dir = tmp_path / "src" / "constitutional-engine" / "Evaluators"
-        monkeypatch.setattr(runner, "REPO_ROOT", tmp_path)
-        monkeypatch.setattr(runner, "git", lambda *a, **kw: MagicMock(returncode=0))
+        monkeypatch.setattr(_legacy_h, "REPO_ROOT", tmp_path)
+        monkeypatch.setattr(_legacy_h, "git", lambda *a, **kw: MagicMock(returncode=0))
 
         runner._generate_wc012_02a_evaluator_interfaces()
 
@@ -776,8 +782,8 @@ class TestGenerateWc01202aEvaluatorInterfaces:
     def test_evaluation_context_has_from_request(self, monkeypatch, tmp_path):
         """EvaluationContext.FromRequest must exist (C-082: LLM must use it)."""
         ev_dir = tmp_path / "src" / "constitutional-engine" / "Evaluators"
-        monkeypatch.setattr(runner, "REPO_ROOT", tmp_path)
-        monkeypatch.setattr(runner, "git", lambda *a, **kw: MagicMock(returncode=0))
+        monkeypatch.setattr(_legacy_h, "REPO_ROOT", tmp_path)
+        monkeypatch.setattr(_legacy_h, "git", lambda *a, **kw: MagicMock(returncode=0))
 
         runner._generate_wc012_02a_evaluator_interfaces()
 
@@ -787,8 +793,8 @@ class TestGenerateWc01202aEvaluatorInterfaces:
     def test_evaluation_context_has_tenant_id(self, monkeypatch, tmp_path):
         """EvaluationContext must include TenantId — required by C-041 evaluator DB reads."""
         ev_dir = tmp_path / "src" / "constitutional-engine" / "Evaluators"
-        monkeypatch.setattr(runner, "REPO_ROOT", tmp_path)
-        monkeypatch.setattr(runner, "git", lambda *a, **kw: MagicMock(returncode=0))
+        monkeypatch.setattr(_legacy_h, "REPO_ROOT", tmp_path)
+        monkeypatch.setattr(_legacy_h, "git", lambda *a, **kw: MagicMock(returncode=0))
 
         runner._generate_wc012_02a_evaluator_interfaces()
 
@@ -801,8 +807,8 @@ class TestGenerateWc01202aEvaluatorInterfaces:
     def test_evaluation_context_has_budget_properties(self, monkeypatch, tmp_path):
         """EvaluationContext must expose BudgetContext fields for C-043 evaluator."""
         ev_dir = tmp_path / "src" / "constitutional-engine" / "Evaluators"
-        monkeypatch.setattr(runner, "REPO_ROOT", tmp_path)
-        monkeypatch.setattr(runner, "git", lambda *a, **kw: MagicMock(returncode=0))
+        monkeypatch.setattr(_legacy_h, "REPO_ROOT", tmp_path)
+        monkeypatch.setattr(_legacy_h, "git", lambda *a, **kw: MagicMock(returncode=0))
 
         runner._generate_wc012_02a_evaluator_interfaces()
 
@@ -814,8 +820,8 @@ class TestGenerateWc01202aEvaluatorInterfaces:
     def test_evaluation_context_has_get_parameter(self, monkeypatch, tmp_path):
         """EvaluationContext must have GetParameter() for JSON ActionParameters parsing."""
         ev_dir = tmp_path / "src" / "constitutional-engine" / "Evaluators"
-        monkeypatch.setattr(runner, "REPO_ROOT", tmp_path)
-        monkeypatch.setattr(runner, "git", lambda *a, **kw: MagicMock(returncode=0))
+        monkeypatch.setattr(_legacy_h, "REPO_ROOT", tmp_path)
+        monkeypatch.setattr(_legacy_h, "git", lambda *a, **kw: MagicMock(returncode=0))
 
         runner._generate_wc012_02a_evaluator_interfaces()
 
@@ -828,8 +834,8 @@ class TestGenerateWc01202aEvaluatorInterfaces:
     def test_evaluation_verdict_has_three_values(self, monkeypatch, tmp_path):
         """EvaluationVerdict must have exactly Allow, Deny, Escalate."""
         ev_dir = tmp_path / "src" / "constitutional-engine" / "Evaluators"
-        monkeypatch.setattr(runner, "REPO_ROOT", tmp_path)
-        monkeypatch.setattr(runner, "git", lambda *a, **kw: MagicMock(returncode=0))
+        monkeypatch.setattr(_legacy_h, "REPO_ROOT", tmp_path)
+        monkeypatch.setattr(_legacy_h, "git", lambda *a, **kw: MagicMock(returncode=0))
 
         runner._generate_wc012_02a_evaluator_interfaces()
 
@@ -841,8 +847,8 @@ class TestGenerateWc01202aEvaluatorInterfaces:
     def test_all_files_have_constitutional_headers(self, monkeypatch, tmp_path):
         """All generated files must have C-059 traceability headers."""
         ev_dir = tmp_path / "src" / "constitutional-engine" / "Evaluators"
-        monkeypatch.setattr(runner, "REPO_ROOT", tmp_path)
-        monkeypatch.setattr(runner, "git", lambda *a, **kw: MagicMock(returncode=0))
+        monkeypatch.setattr(_legacy_h, "REPO_ROOT", tmp_path)
+        monkeypatch.setattr(_legacy_h, "git", lambda *a, **kw: MagicMock(returncode=0))
 
         runner._generate_wc012_02a_evaluator_interfaces()
 
@@ -852,8 +858,8 @@ class TestGenerateWc01202aEvaluatorInterfaces:
             assert "constitutional_basis" in content, f"{fname} missing constitutional_basis (C-073)"
 
     def test_returns_true_on_success(self, monkeypatch, tmp_path):
-        monkeypatch.setattr(runner, "REPO_ROOT", tmp_path)
-        monkeypatch.setattr(runner, "git", lambda *a, **kw: MagicMock(returncode=0))
+        monkeypatch.setattr(_legacy_h, "REPO_ROOT", tmp_path)
+        monkeypatch.setattr(_legacy_h, "git", lambda *a, **kw: MagicMock(returncode=0))
         result = runner._generate_wc012_02a_evaluator_interfaces()
         assert result is True
 

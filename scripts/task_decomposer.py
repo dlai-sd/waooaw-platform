@@ -378,6 +378,19 @@ def run_compile_gate(gate_type: str, service_dir: str = "src/constitutional-engi
         )
         return result.returncode == 0, result.stderr[:500] if result.returncode != 0 else ""
 
+    if gate_type == "py_compile":
+        # Scaffold gate — syntax only, no style rules. Scaffold pass uses this.
+        if not target_files:
+            return False, "py_compile gate requires explicit target_files — none provided"
+        for f in target_files:
+            result = subprocess.run(
+                ["python3", "-m", "py_compile", str(REPO_ROOT / f)],
+                capture_output=True, text=True, cwd=REPO_ROOT
+            )
+            if result.returncode != 0:
+                return False, result.stderr[:500]
+        return True, ""
+
     if gate_type == "ruff":
         # Scope to specific output_files when provided — avoids pre-existing lint failures.
         # Pre-existing files are already accepted by the repo; only gating new LLM output.

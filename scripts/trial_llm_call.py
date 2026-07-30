@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
-"""
-Local LLM Trial Script
+"""Local LLM Trial Script
 ======================
-Tests call_llm() against the real Anthropic API without triggering a full CI run.
+Tests _call_llm_direct() against the real Anthropic API without triggering a full CI run.
 Reads ANTHROPIC_API_KEY from environment — never from chat.
 
 Usage:
@@ -13,7 +12,7 @@ Usage:
 
 What it does:
     1. Loads the exact spec + constitutional_check for the task from TASK_HANDLERS
-    2. Calls call_llm() with current parameters (thinking mode, budget, max_tokens)
+    2. Calls _call_llm_direct() with current parameters (thinking mode, budget, max_tokens)
     3. Prints full observability block: REQ / LLM / THINK / RESP / TEXT
     4. If files returned: lists each file and first 100 chars
     5. Does NOT commit, push, open PRs, or mutate any state
@@ -42,9 +41,10 @@ os.environ.setdefault("GITHUB_REPO", "dlai-sd/waooaw-platform")
 # ── Import runner ──────────────────────────────────────────────────────────────
 print("Loading runner...")
 from autonomous_sprint_runner import (   # type: ignore[import]
-    TASK_HANDLERS, call_llm, parse_llm_files, _build_system_prompt,
+    TASK_HANDLERS, parse_llm_files, _build_system_prompt,
     get_branch_context, REPO_ROOT as _REPO,
 )
+from runner.llm_codegen import _call_llm_direct
 
 # ── Select task ────────────────────────────────────────────────────────────────
 task_id = sys.argv[1] if len(sys.argv) > 1 else "WC012-02"
@@ -136,7 +136,7 @@ print("─" * 60)
 print(f"Calling LLM now... (this takes 1-3 minutes)")
 print("─" * 60)
 
-response = call_llm(
+response = _call_llm_direct(
     task_id=task_id,
     task_description=task_description,
     spec_content=spec_content,
@@ -154,7 +154,7 @@ print("TRIAL RESULT")
 print("─" * 60)
 
 if not response:
-    print("❌ call_llm returned None or empty — check WARN lines above")
+    print("❌ _call_llm_direct returned None or empty — check WARN lines above")
     sys.exit(1)
 
 files = parse_llm_files(response)
