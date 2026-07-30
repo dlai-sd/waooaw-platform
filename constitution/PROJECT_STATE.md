@@ -789,7 +789,7 @@ current_sprint: WC-026
 sprint_ib_item: IB-009
 sprint_status: IN_PROGRESS
 branch: ib/009/sprint-026
-last_attempt_utc: 2026-07-30T17:25:51.646756+00:00
+last_attempt_utc: 2026-07-30T17:35:03.183401+00:00
 last_attempt_result: PARTIAL
 consecutive_failures: 1
 consecutive_infra_failures: 0
@@ -805,7 +805,7 @@ tasks_remaining:
   - WC026-03
   - WC026-04
   - WC026-05
-current_task:WC-026
+current_task:WC026-02
 ```
 
 
