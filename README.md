@@ -9,13 +9,13 @@
 ## Platform Status
 
 ```
-Version:              v1.17.0 — WC013 Pipeline Fixes (2026-07-28)
+Version:              v1.21.0 — WC-015 AI Runtime MERGED (2026-07-30)
 Constitutional Claims: 86 ratified (C-001→C-086) | ADRs: 33
 Customer Agents:      4 approved — DMA v3.0 · Trading v1.7 · Agricultural v2.7 · Private Tutor v1.0
 Internal Agents:      5 — Platform IT Expert · Steward Assistant · Self-Improvement Analyst ·
                           Platform Operations · RepoNav (AVD-001 v1.0 RATIFIED — INST-014)
 Gates:                G0 ✅  G1 ✅  G2 ✅  G3 ✅  G4 ✅  G5 CLEAR
-Phase:                IMPLEMENTATION — WC-012 Sprint AUTHORIZED (autonomous, GoalExecutor in path)
+Phase:                IMPLEMENTATION — WC-016 Sprint AUTHORIZED (autonomous, GoalExecutor in path)
 Infrastructure:       Azure live — waooaw-dev-kv (Key Vault) · OIDC auth · Sprint Dashboard: Issue #7
 Monitoring:           Sprint Dashboard: github.com/dlai-sd/waooaw-platform/issues/7
 Web:                  web/WAOOAWHome.html — Landing page v1.0 + Auth modal
@@ -26,13 +26,12 @@ Stewards:             Yogesh Khandge (Founder) · Sujay Khandge (Business Growth
 
 ### What "Implementation Phase" Means (2026-07-27)
 
-The platform has entered full autonomous implementation. The Autonomous Sprint Agent runs every 2 hours,
-generates production-grade .NET 9 code for the Constitutional Engine, reviews its own PR, merges,
-and advances to the next sprint — without human intervention.
+The platform has entered full autonomous implementation. The Autonomous Sprint Agent runs every 3 hours,
+generates production-grade code, reviews its own PR, merges, and advances to the next sprint — without human intervention.
 
 ```
-Current sprint:  WC-012 — Constitutional Engine skeleton (gRPC + ValidateAction + Evidence First)
-Sprint status:   AUTHORIZED — GoalExecutor in execution path (A7 closed)
+Current sprint:  WC-016 — Web Portal Skeleton (Next.js 14 PWA + Registration + Emergency Stop)
+Sprint status:   AUTHORIZED — GoalExecutor in execution path
 Execution path:  autonomous-sprint.yaml → execute_file_by_file() → GoalExecutor → ContextBuilder §7 → MagicLLM → ResponseEvaluator §8
 Monitor at:      github.com/dlai-sd/waooaw-platform/issues/7
 PR review:       Autonomous (GitHub App waooaw-reviewer, C-065 compliant)

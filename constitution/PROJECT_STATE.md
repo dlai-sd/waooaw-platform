@@ -224,13 +224,13 @@ session_declared: "Architecture correction 2026-07-28: WC-012 execution requires
 sprint: WC-014
 sprint_status: IN_PROGRESS
 task_id: WC013-01
-tasks_done:
-  - WC015-01
-  - WC015-02
-  - WC015-03
-  - WC015-04
-  - WC015-05
-tasks_remaining: []
+tasks_done: []
+tasks_remaining:
+  - WC016-01
+  - WC016-02
+  - WC016-03
+  - WC016-04
+  - WC016-05
 consecutive_failures: 1
 autonomous_halt: true
 open_prs: none
@@ -342,13 +342,13 @@ WC012-02b `CS1061: string.TryGetValue` fixed at three layers:
 
 ```yaml
 sprint_status: MERGED
-tasks_done:
-  - WC015-01
-  - WC015-02
-  - WC015-03
-  - WC015-04
-  - WC015-05
-tasks_remaining: []
+tasks_done: []
+tasks_remaining:
+  - WC016-01
+  - WC016-02
+  - WC016-03
+  - WC016-04
+  - WC016-05
 consecutive_failures: 0
 autonomous_halt: false
 platform_phase: IMPLEMENTATION
@@ -657,21 +657,14 @@ platform_phase: IMPLEMENTATION  # SPEC | IMPLEMENTATION | LIVE
 current_sprint: WC-016
 sprint_ib_item: IB-009
 sprint_status: AUTHORIZED
-branch: ib/009/sprint-015
+branch: ib/009/sprint-016
 last_attempt_utc: 2026-07-30T06:26:56.052465+00:00
 last_attempt_result: SUCCESS
 consecutive_failures: 0
 consecutive_infra_failures: 0
-tasks_done:
-  - WC015-01
-  - WC015-02
-  - WC015-03
-  - WC015-04
-  - WC015-05
-tasks_remaining: []
-
+tasks_done: []
+tasks_remaining: WC016-01
 current_task:
-CURRENT STATE: platform_phase=IMPLEMENTATION · AUTONOMOUS_HALT=false
                current_sprint=WC-012 · sprint_status=READY
                CLAIMS: 80 RATIFIED (C-001→C-080) · ADRs: 31
 

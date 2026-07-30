@@ -7,17 +7,11 @@
 ## ⛔ IMPLEMENTATION GATE — READ BEFORE ANYTHING ELSE
 
 ```
-CURRENT PLATFORM PHASE: SPEC
-  → Design, specs, planning only.
-  → No src/ code. No docker builds. No database migrations.
-  → Any agent that creates implementation code in SPEC phase is in constitutional violation.
+CURRENT PLATFORM PHASE: IMPLEMENTATION
+  → G5 CLEAR. Autonomous sprint execution authorized.
+  → Implementation gate: confirmed per session (semi-autonomous mode).
 
-Check constitution/PROJECT_STATE.md SPRINT_STATE_MACHINE first:
-  platform_phase: SPEC        → spec/governance/standards work only (current state)
-  platform_phase: IMPLEMENTATION → implementation authorized, but STILL requires per-session
-                                   Founder confirmation in Mode A (human sessions)
-
-AUTONOMOUS_HALT: true (set 2026-07-22 by Founder — do not clear without explicit instruction)
+AUTONOMOUS_HALT: false
 ```
 
 ---
@@ -25,16 +19,14 @@ AUTONOMOUS_HALT: true (set 2026-07-22 by Founder — do not clear without explic
 ## Current Platform State (updated each session)
 
 ```
-Version:    1.0.0  |  Gate: G5 CLEAR  |  Epoch: 1 — Employment  |  Phase: SPEC
-Last update: 2026-07-23 — 12-chapter audit complete; C-078/C-079 ratified; Azure+OIDC live;
-             Sprint Dashboard Issue #7 active; T0-1/T0-2/T0-4/T0-5 done; T0-3 pending Founder auth
-Phase:      SPEC — design, specs, planning only. NO implementation. NO src/ code.
-Implementation: HALTED — AUTONOMOUS_HALT: true · platform_phase: SPEC · IB-009 status = GATE_CLEAR
-Constitutional Claims: C-001 to C-076 + C-078 + C-079 = 78 RATIFIED · C-077 DRAFT
-ADRs: ADR-001 to ADR-029 + ADR-031 = 30 ADRs · ADR-030 reserved for IB-020
+Version:    1.21.0  |  Gate: G5 CLEAR  |  Epoch: 1 — Employment  |  Phase: IMPLEMENTATION
+Last update: 2026-07-30 — WC-015 AI Runtime MERGED (PR #165) · WC-016 Web Portal AUTHORIZED
+Current sprint: WC-016 — Web Portal Skeleton (Next.js 14 PWA + Registration + Emergency Stop)
+Completed:  WC-012 (CE) · WC-013 (BP) · WC-014 (PR) · WC-015 (AIR) — all merged
+Constitutional Claims: 86 RATIFIED (C-001→C-086) | ADRs: 33
 Agents (customer): DMA v3.0 | Trading v1.7 | Agricultural Advisor v2.7 | Private Tutor v1.0
-Agents (internal): Platform IT Expert v1.0 | Steward Assistant v1.0 | Self-Improvement Analyst v1.0 | Platform Operations v1.0
-CCTs: 52 specified (added CCT-PII-01, CCT-PII-02, CCT-CE-AVAIL-01) | ADRs: 30
+Agents (internal): Platform IT Expert · Steward Assistant · Self-Improvement Analyst · Platform Operations · RepoNav (INST-014)
+CCTs: 52 specified | Pipeline tests: 434 passing | Simulations: 7 (all PASS)
 Web: web/WAOOAWHome.html — Landing page v1.0 + Auth modal
 Three Humans: Yogesh Khandge (Founder) · Sujay Khandge (Business Growth) · Ojal Khandge (Ethics Officer)
 Company: DLAI Satellite Data (OPC) Pvt Ltd | CIN: U62090PN2024OPC230499 | GSTIN: 27AAKCD8188R1ZH
