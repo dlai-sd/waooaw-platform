@@ -1,0 +1,53 @@
+# requirements-ai-runtime.txt
+# Reference dependency file for src/ai-runtime/
+# Constitutional basis: ADR-029 (Multi-Provider LLM), C-051 (Token Economy),
+# C-062 (AI Security), C-063 (Data Minimisation), C-078 (PII Scrubbing)
+# DO NOT add packages without EA approval. These versions are pinned and tested.
+
+# ─── CRITICAL: Sarvam AI has NO Python SDK ────────────────────────────────────
+# DO NOT import 'sarvam', 'sarvam_ai', 'sarvam-client', or any sarvam package.
+# SarvamProvider calls the Sarvam REST API directly via httpx.
+# Endpoint: https://api.sarvam.ai/v1/chat/completions (HTTP POST with API key)
+# The API key is in Azure Key Vault as SARVAM-API-KEY.
+
+# ─── Web framework ────────────────────────────────────────────────────────────
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+pydantic==2.9.2
+pydantic-settings==2.5.2
+
+# ─── Async HTTP client — used by SarvamProvider and OllamaProvider ────────────
+httpx==0.27.2
+
+# ─── Vertex AI / Gemini (FA-021 gate: GOOGLE_VERTEX_SA_KEY required in KV) ────
+# CORRECT import: from google.cloud import aiplatform
+# WRONG imports: import vertexai, from vertexai import..., from google.cloud.aiplatform import...
+# The SDK is 'google-cloud-aiplatform' (PyPI). Import path is 'google.cloud.aiplatform'.
+google-cloud-aiplatform==1.70.0
+
+# ─── Anthropic (for FRONTIER tier — ADR-028) ─────────────────────────────────
+anthropic==0.34.2
+
+# ─── AI4Bharat IndicNER — PII detection for Indian languages (C-078) ─────────
+# AI4Bharat models are loaded via HuggingFace transformers, NOT a direct package.
+# DO NOT 'pip install ai4bharat' or 'import ai4bharat' — no such PyPI package.
+# Implementation: transformers.pipeline('ner', model='ai4bharat/IndicNER')
+# The model downloads automatically on first run from HuggingFace Hub.
+transformers==4.46.1
+torch==2.4.1          # CPU-only for dev; GPU for prod
+
+# ─── Vector database client — pgvector for RAG (ADR-019) ─────────────────────
+asyncpg==0.30.0
+sqlalchemy[asyncio]==2.0.36
+pgvector==0.3.5
+
+# ─── gRPC client — calls Constitutional Engine ───────────────────────────────
+grpcio==1.67.1
+grpcio-tools==1.67.1
+protobuf==5.28.3
+
+# ─── Observability (ADR-009) ──────────────────────────────────────────────────
+opentelemetry-api==1.27.0
+opentelemetry-sdk==1.27.0
+opentelemetry-instrumentation-fastapi==0.48b0
+opentelemetry-exporter-otlp==1.27.0
