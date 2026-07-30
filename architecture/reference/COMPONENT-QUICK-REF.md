@@ -12,6 +12,7 @@
 | **Business Platform** | .NET 9 REST | 5001 (public) | REST: /api/v1/employment/\*, /api/v1/approvals/\*, /api/v1/evidence/\*, /api/v1/authority/\* | Browser/mobile, Web app | Write to constitutional schema directly, call AI Runtime, maintain WebSocket |
 | **Professional Runtime** | Python 3.12 FastAPI | 5003 (public WSS) | REST internal: /api/v1/paas/sessions, /api/v1/internal/approvals/{id}/signal; WSS: /ws/emergency-stop | BP (REST), Customer (WSS) | Act without CE confirmation, expose gRPC, store persistent state outside DB |
 | **AI Runtime** | Python 3.12 FastAPI | 5004 (internal) | REST: /api/v1/inference, /api/v1/tools/execute | PR only | Write to any ledger, make authority decisions, call BP or CE, know customer identity |
+| **Billing Engine (WBE)** | Python 3.12 FastAPI | 8140 (internal) | REST: /buckets/\*, /pricing/\*, /subscriptions/\*, /topups, /meter/\*, /platform/procurement/\*, /reconciliation/\* | AIR (balance check + reserve), BP (subscription events), Platform Ops (reports) | Expose to internet, make CE calls, hold customer PII, send customer-visible messages (agent does that) |
 
 ---
 
