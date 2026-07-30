@@ -253,7 +253,7 @@ def run() -> None:
         ("SC-01: All 3 tasks accepted", all(r.status == "accepted" for r in [r01, r02, r03])),
         ("SC-02: Goal Understanding Record produced from plain English", any(r.get("record_type") == "Goal Understanding Record" for r in evidence_chain)),
         ("SC-03: PTR grew from 0 → 5 types through phases", len(ptr_state["python"]["types"]) >= 5),
-        ("SC-04: Model routing used cost-optimal models", any(r.model_version == "claude-haiku-20240307" for r in [r01, r02, r03])),
+        ("SC-04: Model routing used cost-optimal models", any(r.model_version in ("claude-haiku-4-5", "claude-haiku-20240307") for r in [r01, r02, r03])),
         ("SC-05: HIGH complexity task got Sonnet (CCT gate task)", any(c >= 80 for c in complexity_scores)),
         ("SC-06: 4 constitutional records in Goal Register", len(evidence_chain) == 4),
         ("SC-07: Total sprint cost within ₹5 (C-077 efficiency)", total_cost < 5.0),
