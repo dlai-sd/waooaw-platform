@@ -664,7 +664,11 @@ consecutive_failures: 1
 consecutive_failures: 1
 >>>>>>> origin/main
 consecutive_infra_failures: 0
-tasks_done: []
+tasks_done:
+  - WC015-01
+  - WC015-02
+  - WC015-03
+  - WC015-04
 tasks_remaining:
   - WC015-05
 
