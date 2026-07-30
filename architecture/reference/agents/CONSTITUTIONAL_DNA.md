@@ -178,3 +178,27 @@ Every new agent spec must declare and confirm:
 - [ ] Trust Tier progression: any domain-specific overrides to the universal model declared
 - [ ] Emergency Stop path: confirmed always reachable (no skill may block it)
 - [ ] Constitutional Blocker triggers: domain-specific triggers listed (beyond the universal ones)
+
+---
+
+## Agent Base Spec Compliance (C-094 — added 2026-07-30)
+
+Every WAOOAW agent inherits the Constitutional DNA above AND must implement the
+**Agent Base Spec** (architecture/reference/agents/AGENT-BASE-SPEC.md).
+
+**The Agent Base Spec is not optional.** It is a constitutional extension of the
+three instincts, defining HOW the instincts are expressed in platform-aware behavior.
+
+Every agent spec must declare `base_spec_version: "[current]"` in its
+Platform-Agent Contract (PAC) section. An agent that does not declare a base spec
+version, or that is behind the current version, is **not a WAOOAW agent** — it is
+an incomplete product and must not be published to customers per C-088 and C-094.
+
+**Base Spec Reviewer Checklist (added to Constitutional DNA gate):**
+- [ ] `base_spec_version` declared and matches current AGENT-BASE-SPEC.md version
+- [ ] `platform_agent_contract.wbe.budget_vocabulary` defined for all active threads
+- [ ] `platform_agent_contract.wbe.budget_responses` at 50%, 85%, 0% defined
+- [ ] All 0% (BUCKET_EMPTY) responses include explicit C-049 disclosure
+- [ ] Trial profile disclosure sentence defined (domain vocabulary, non-commercial)
+- [ ] Graceful degradation hierarchy declared
+- [ ] C-060 Private Tutor rule respected: budget signals to parent ONLY

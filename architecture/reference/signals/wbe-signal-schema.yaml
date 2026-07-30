@@ -1,0 +1,155 @@
+# WAOOAW Platform Signal Schemas — WBE (Billing Engine)
+
+# AsyncAPI 3.0-aligned declaration
+# Authority: Enterprise Architect (INST-004) — 2026-07-30
+# Constitutional Basis: C-091 (Thread Catalog Sovereignty), ADR-034 (WBE), ADR-035 (PAC Standard)
+# Every signal here corresponds to a row in institutional.platform_signal_schemas
+
+asyncapi: "3.0-aligned"
+info:
+  title: WAOOAW Billing Engine Signal Schema
+  version: "1.0.0"
+  component: wbe
+  description: >
+    Signals emitted by the WAOOAW Billing Engine (WBE) to AI Runtime, which
+    passes them as context flags to the active agent session. Agents declare
+    their handlers for these signals in their Platform-Agent Contract (PAC).
+  constitutional_basis: C-091, C-049, C-051, ADR-034
+
+# Versioning rules:
+#   MINOR bump (1.0 → 1.1): adding optional field — agents at 1.0 continue working
+#   MAJOR bump (1.0 → 2.0): removing/renaming field — all agents must update PAC
+#   Breaking change detection: run on every PR touching this file
+
+channels:
+
+  platform/billing/bucket-at-50pct:
+    description: Emitted when a customer's resource bucket reaches 50% consumed
+    version: "1.0"
+    publish:
+      message:
+        contentType: application/json
+        payload:
+          type: object
+          required: [signal_id, contract_id, thread_type, pct_consumed, pct_remaining,
+                     period_end_date, schema_version]
+          properties:
+            signal_id:       { type: string, format: uuid }
+            contract_id:     { type: string, format: uuid }
+            thread_type:     { type: string, description: "e.g. llm_mid, video_clips" }
+            pct_consumed:    { type: integer, minimum: 0, maximum: 100 }
+            pct_remaining:   { type: integer, minimum: 0, maximum: 100 }
+            days_remaining_in_period: { type: integer, description: "Calendar days left" }
+            period_end_date: { type: string, format: date }
+            schema_version:  { type: string, enum: ["1.0"] }
+          additionalProperties: false
+    agent_handling: ADVISORY  # agent informs customer gently; quiet hours apply
+
+  platform/billing/bucket-at-60pct:
+    description: Emitted at 60% consumed — proactive top-up offer window
+    version: "1.0"
+    publish:
+      message:
+        contentType: application/json
+        payload:
+          $ref: "#/channels/platform~1billing~1bucket-at-50pct/publish/message/payload"
+          # Same schema as 50pct; agent behavior differs, not the payload
+    agent_handling: PROACTIVE_OFFER  # agent presents top-up option once; no repeat < 48h
+
+  platform/billing/bucket-at-85pct:
+    description: Emitted at 85% consumed — urgent notice; bypasses quiet hours
+    version: "1.0"
+    publish:
+      message:
+        contentType: application/json
+        payload:
+          type: object
+          required: [signal_id, contract_id, thread_type, pct_consumed, pct_remaining,
+                     period_end_date, schema_version, topup_options]
+          properties:
+            signal_id:       { type: string, format: uuid }
+            contract_id:     { type: string, format: uuid }
+            thread_type:     { type: string }
+            pct_consumed:    { type: integer, minimum: 0, maximum: 100 }
+            pct_remaining:   { type: integer, minimum: 0, maximum: 100 }
+            days_remaining_in_period: { type: integer }
+            period_end_date: { type: string, format: date }
+            topup_options:
+              type: array
+              items:
+                type: object
+                properties:
+                  topup_type:    { type: string }    # e.g. "unit_llm_mid_30"
+                  display_label: { type: string }    # e.g. "+30 advisory conversations"
+                  price_inr:     { type: integer }   # paise
+                required: [topup_type, display_label, price_inr]
+            schema_version:  { type: string, enum: ["1.0"] }
+          additionalProperties: false
+    agent_handling: URGENT  # immediate regardless of quiet hours; show topup_options
+
+  platform/billing/bucket-empty:
+    description: Emitted when bucket reaches 0 — agent MUST switch to ZERO_COST path
+    version: "1.0"
+    publish:
+      message:
+        contentType: application/json
+        payload:
+          type: object
+          required: [signal_id, contract_id, thread_type, period_end_date,
+                     zero_cost_substitutes_available, schema_version]
+          properties:
+            signal_id:       { type: string, format: uuid }
+            contract_id:     { type: string, format: uuid }
+            thread_type:     { type: string }
+            period_end_date: { type: string, format: date }
+            period_reset_utc: { type: string, format: date-time }
+            zero_cost_substitutes_available: { type: boolean }
+            topup_available: { type: boolean }
+            schema_version:  { type: string, enum: ["1.0"] }
+          additionalProperties: false
+    agent_handling: MANDATORY_DISCLOSE  # C-049 LAW — must disclose mode change
+
+  platform/billing/topup-applied:
+    description: Emitted when a top-up purchase is confirmed and buckets are refilled
+    version: "1.0"
+    publish:
+      message:
+        contentType: application/json
+        payload:
+          type: object
+          required: [signal_id, contract_id, thread_type, units_added, schema_version]
+          properties:
+            signal_id:       { type: string, format: uuid }
+            contract_id:     { type: string, format: uuid }
+            thread_type:     { type: string }
+            units_added:     { type: integer }
+            new_balance:     { type: integer }
+            topup_type:      { type: string }
+            schema_version:  { type: string, enum: ["1.0"] }
+          additionalProperties: false
+    agent_handling: ACKNOWLEDGE  # confirm top-up in customer vocabulary; resume full mode
+
+  platform/billing/subscription-renewed:
+    description: Emitted at start of new billing period — all buckets refilled
+    version: "1.0"
+    publish:
+      message:
+        contentType: application/json
+        payload:
+          type: object
+          required: [signal_id, contract_id, new_period_start, new_period_end,
+                     buckets_refilled, schema_version]
+          properties:
+            signal_id:        { type: string, format: uuid }
+            contract_id:      { type: string, format: uuid }
+            new_period_start: { type: string, format: date }
+            new_period_end:   { type: string, format: date }
+            buckets_refilled: { type: array, items: { type: string } }
+            schema_version:   { type: string, enum: ["1.0"] }
+          additionalProperties: false
+    agent_handling: SILENT  # no customer notification needed; agent resumes full capability
+
+# DB registration (institutional.platform_signal_schemas):
+# INSERT INTO institutional.platform_signal_schemas
+#   (signal_name, schema_version, json_schema, released_date)
+# VALUES for each channel above at version 1.0

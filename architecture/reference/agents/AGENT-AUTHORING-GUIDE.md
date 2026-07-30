@@ -1926,3 +1926,87 @@ Platform work required alongside specs:
 ```
 
 These are P1 items before the IB-009 implementation sprint begins. Section 11 gate must pass for all three agents before implementation.
+
+---
+
+## Amendment v5.0 — Platform-Agent Contract (PAC) Mandatory Section (2026-07-30)
+
+**Authority:** Enterprise Architect (INST-004)
+**Constitutional Basis:** C-094 (Agent Base Spec Compliance), ADR-035 (PAC Standard)
+
+### Section 3.x — Platform-Agent Contract (PAC) [MANDATORY — every agent]
+
+Every agent spec MUST include a `## Platform-Agent Contract` section with a YAML
+block conforming to ADR-035. This is a GATE section — missing PAC = spec rejected
+at EA review regardless of all other sections passing.
+
+**References:**
+- Base spec: `architecture/reference/agents/AGENT-BASE-SPEC.md` (current version)
+- WBE signals: `architecture/reference/signals/wbe-signal-schema.yaml`
+- Standard: `adr/ADR-035-platform-agent-contract-standard.md`
+
+**What the PAC YAML block must contain:**
+
+```yaml
+base_spec_version: "[current — must match AGENT-BASE-SPEC.md version field]"
+
+platform_services:
+  wbe:
+    schema_version: "1.0"          # Update when WBE signal schema version bumps
+    handles_signals: [...]         # All 5 WBE signals with customer-vocabulary handlers
+    does_not_handle: [...]         # Explicitly list any deliberately unhandled signals
+    unavailability: "..."          # Default: "continue_silent"
+    budget_vocabulary:             # ALL active thread types for this agent
+      llm_mid:          "[term]"
+      llm_frontier:     "[term or null]"
+      video_clips:      "[term or null]"
+      whatsapp_windows: "[term]"
+      image_gen:        "[term or null]"
+  ce:
+    unavailability: "halt_and_disclose_advisory_only"   # DO NOT change
+  air:
+    unavailability: "zero_cost_templates_with_C049_disclosure"  # may override with reason
+  trial_profile:
+    trial_disclosure_opening: "[one sentence, domain vocabulary, non-commercial]"
+    zero_cost_thread_substitutes: {...}
+    live_only_features: [...]
+```
+
+**C-060 Private Tutor Exception:**
+For child-facing agents, ALL budget signal handlers must route to parent/guardian
+contact only. The student interface is billing-invisible per C-060 (LAW).
+
+**When to update the PAC:**
+1. New platform component added → Gap Scanner raises issue → add new service block
+2. WBE signal schema MAJOR version bumped → update `schema_version` + re-declare handlers
+3. Agent base spec version bumped → update `base_spec_version` + implement new sections
+4. New thread type added to bundle → add to `budget_vocabulary`
+
+**Section ordering in agent spec (updated mandatory order):**
+
+```
+§0  Constitutional DNA Inheritance (C-070)
+§1  Agent Identity + Mission
+§2  Customer Persona
+§3  Skills (Decision Space)
+...
+§N  Platform-Agent Contract (PAC)  ← NEW MANDATORY LAST SECTION
+```
+
+The PAC section is placed LAST in the spec because it references specific platform
+component versions — it is the most frequently updated section as the platform evolves.
+Placing it last minimizes merge conflicts with domain-specific content.
+
+**Activation Gate — Section 11 (updated):**
+PAC section is added to the Activation Gate checklist. An agent without a complete
+PAC cannot pass Section 11 gate regardless of simulation results.
+
+```
+Section 11 gate PAC checks:
+- [ ] base_spec_version declared and current
+- [ ] All 5 WBE signals declared with handlers
+- [ ] Budget vocabulary defined for all active threads
+- [ ] BUCKET_EMPTY handler includes explicit C-049 language
+- [ ] Trial disclosure sentence defined and non-commercial
+- [ ] Graceful degradation hierarchy complete
+```

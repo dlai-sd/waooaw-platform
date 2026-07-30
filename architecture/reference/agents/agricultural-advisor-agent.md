@@ -2484,3 +2484,89 @@ Farmer's response (positive/neutral/negative) is logged as `AGRI_OUTCOME_FEEDBAC
 | 60 messages, trust ≥ 0.95 | Consistent positive feedback | Full seasonal plan sent without per-recommendation confirmation |
 
 **Vocabulary trust expansion:** After 30 interactions, agent learns Suresh's regional vocabulary (recorded in Tier 2 RAG Customer Context). Uses his terms, not standard textbook terms. This is trust made linguistic.
+
+---
+
+## Platform-Agent Contract (PAC)
+<!-- ADR-035 mandatory section. Do not remove. Update when AGENT-BASE-SPEC version bumps. -->
+
+```yaml
+base_spec_version: "1.0"
+
+platform_services:
+  wbe:
+    schema_version: "1.0"
+    handles_signals:
+      - channel: "platform/billing/bucket-at-50pct"
+        handler: >
+          In farmer's language: "Ramesh bhai, is mahine ke aadhe sawaal
+          ho gaye hain. [X] din baaki hain — koi dikkat nahi,
+          bas bataa raha hoon."
+          (Translated: "Ramesh bhai, half the month's advisory is used.
+          [X] days remain — no problem, just informing.")
+      - channel: "platform/billing/bucket-at-60pct"
+        handler: >
+          One-time in farmer's language: "Is mahine ke 60% sawaal ho gaye.
+          Agar aap zyada poochh rahe hain to ek chota top-up le sakte hain
+          ₹[price] mein. Warna main zyada zaroori sawaalon ko pehle dunga."
+      - channel: "platform/billing/bucket-at-85pct"
+        handler: >
+          Immediate — critical crop season context: "Aapki farming advisory
+          bilkul kam hai — sirf 15% bachi hai. Main basic sawaalon ka
+          jawab deta rahunga par gehri salah [date] tak limited hogi.
+          Agar koi zaroori faisle lene hain toh abhi poochho."
+      - channel: "platform/billing/bucket-empty"
+        handler: >
+          C-049 MANDATORY DISCLOSE — C-042 must be in farmer's language:
+          "Is mahine ki farming advisory khatam ho gayi. Main abhi bhi
+          mausam, mandi bhav aur sarkari yojana ki jaankari deta rahunga —
+          lekin gehri salah [reset date] tak nahi de sakta.
+          Aapki kheti ke liye koi taatkaalik samasyaa ho to zaroor batao."
+          Note: C-042 (Vocabulary Mandate — LAW) takes precedence over any
+          cost-saving measure. Language quality cannot be degraded.
+      - channel: "platform/billing/topup-applied"
+        handler: >
+          "Advisory wapis aayi! Ab poori madad kar sakta hoon —
+           kya koi naya sawaal hai?"
+      - channel: "platform/billing/subscription-renewed"
+        handler: "silent_full_capability_resume"
+    does_not_handle: []
+    unavailability: "continue_silent"
+
+    budget_vocabulary:
+      llm_mid:          "farming advisory sessions"
+      llm_frontier:     "deep farming analysis"
+      video_clips:      null
+      whatsapp_windows: "WhatsApp conversations"
+      image_gen:        null
+
+  ce:
+    unavailability: "halt_and_disclose_advisory_only"
+
+  air:
+    # CRITICAL: C-042 overrides AIR degradation — if LOCAL model cannot maintain
+    # regional language quality, disclose but do NOT degrade language
+    unavailability: >
+      zero_cost_LOCAL_with_C042_language_check:
+      If LOCAL model (AI4Bharat IndicBERT) can maintain regional language
+      fidelity → use it. If not → disclose and queue until MID_TIER available.
+      Silent language degradation is a C-042 violation.
+
+  trial_profile:
+    trial_disclosure_opening: >
+      "Main aaj demonstration mode mein hoon. Aapke khet ke liye kaisa kaam
+       kar sakta hoon yeh dikhaunga — sample data ke saath.
+       Jab aap mujhe hire karoge tab aapke asli khet aur mausam ke hisaab
+       se kaam karunga."
+    zero_cost_thread_substitutes:
+      llm_mid:      "ollama/ai4bharat-indic-bert"
+      llm_frontier: "ollama/ai4bharat-indic-bert"
+      video_clips:  null
+      image_gen:    null
+    live_only_features:
+      - skill: "Personalised crop plan for your farm"
+        trial_response: >
+          "Yeh ek sample crop plan hai Vidarbha ke cotton farmer ke liye.
+           Jab aap hire karoge, main aapke khet ki mitti, paani aur budget
+           ke hisaab se alag plan banaunga."
+```

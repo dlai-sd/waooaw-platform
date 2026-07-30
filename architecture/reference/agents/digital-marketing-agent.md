@@ -5125,3 +5125,87 @@ Agent message: "Here's your Q3 review and Q4 plan. Two things I need your input 
 | 60 sessions, trust ≥ 0.97 | Zero C-043 violations | Ad spend decisions within pre-set monthly budget (no per-campaign approval) |
 
 **Never reaches Tier 0:** Financial actions above ₹500 single spend; any new ad creative type not in approved calendar; any MCP tool not previously used with this customer.
+
+---
+
+## Platform-Agent Contract (PAC)
+<!-- ADR-035 mandatory section. Do not remove. Update when AGENT-BASE-SPEC version bumps. -->
+
+```yaml
+base_spec_version: "1.0"
+
+platform_services:
+  wbe:
+    schema_version: "1.0"
+    handles_signals:
+      - channel: "platform/billing/bucket-at-50pct"
+        handler: >
+          Send WhatsApp: "Dr. [Name], you've used half your monthly marketing
+          package. [X] advisory sessions and [Y] content pieces remain for
+          [days] more days. All good — just keeping you informed."
+      - channel: "platform/billing/bucket-at-60pct"
+        handler: >
+          Send WhatsApp with one-time top-up offer: "You're at 60% of your
+          monthly package. At your current pace, you may run short before
+          month end. Want to add [top-up name] for ₹[price]?
+          One tap to add — otherwise carry on as usual."
+      - channel: "platform/billing/bucket-at-85pct"
+        handler: >
+          Immediate (bypass quiet hours): "Your marketing package is running
+          low — 15% remaining. Your campaigns will continue but I'll switch
+          to simpler content once it runs out. Options: [top-up] or I'll
+          manage carefully until reset on [date]."
+      - channel: "platform/billing/bucket-empty"
+        handler: >
+          C-049 MANDATORY DISCLOSE: "I've used up my [resource-type] for
+          this month. I'm switching to basic mode: I can still answer
+          questions, schedule posts from your approved calendar, and monitor
+          your campaigns — but I won't create new content or run new AI
+          analysis until [reset date] or if you add a top-up.
+          Your campaigns continue running untouched."
+      - channel: "platform/billing/topup-applied"
+        handler: >
+          "Top-up added! Your [resource-type] is refreshed.
+          I'm back to full capability — shall I pick up where we left off?"
+      - channel: "platform/billing/subscription-renewed"
+        handler: "silent_full_capability_resume"
+    does_not_handle: []
+    unavailability: "continue_silent"
+
+    budget_vocabulary:
+      llm_mid:          "advisory sessions"
+      llm_frontier:     "strategic analysis sessions"
+      video_clips:      "video reels"
+      whatsapp_windows: "messaging days"
+      image_gen:        "creative graphics"
+      ad_spend:         "campaign budget"
+
+  ce:
+    unavailability: "halt_and_disclose_advisory_only"
+
+  air:
+    unavailability: "zero_cost_templates_with_C049_disclosure"
+
+  trial_profile:
+    trial_disclosure_opening: >
+      "I'm showing you what I can do for your business today.
+       I'm in demonstration mode — when you hire me, I'll have full access
+       to your real business data and can take real actions for you.
+       Let me show you what a typical month looks like."
+    zero_cost_thread_substitutes:
+      llm_mid:      "ollama/llama3.2-3b"
+      llm_frontier: "ollama/llama3.2-3b"
+      video_clips:  "sample_library"
+      image_gen:    "stock_library"
+    live_only_features:
+      - skill: "Skill 11 — Paid Advertising"
+        trial_response: >
+          "When you hire me, I'll manage your ad campaigns on Meta and Google.
+           Let me show you what a sample campaign for a business like yours
+           would look like, and the kind of results I'd target."
+      - skill: "Skill 8 — Video Reels"
+        trial_response: >
+          "Here's a sample Reel I'd create for your business:
+           [shows sample from library]. When hired, I'll create these
+           specifically for you each month."
+```

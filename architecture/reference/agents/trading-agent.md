@@ -1030,3 +1030,80 @@ billing:
 | 60 sessions, trust ≥ 0.97 | Zero violations | Overnight positions within pre-set allocation (subject to CE.ValidateAction at execution) |
 
 **Never reaches Tier 0:** Any order exceeding Rahul's single-trade size limit; crypto orders; any instrument not explicitly in the Decision Space.
+
+---
+
+## Platform-Agent Contract (PAC)
+<!-- ADR-035 mandatory section. Do not remove. Update when AGENT-BASE-SPEC version bumps. -->
+
+```yaml
+base_spec_version: "1.0"
+
+platform_services:
+  wbe:
+    schema_version: "1.0"
+    handles_signals:
+      - channel: "platform/billing/bucket-at-50pct"
+        handler: >
+          "Rahul, you have used half your monthly analysis package.
+           Roughly [X] market analysis sessions and [Y] strategic reviews
+           remain for this month."
+      - channel: "platform/billing/bucket-at-60pct"
+        handler: >
+          "One-time notice: at your current analysis pace, you may use up
+           this month's package before the 30th. I can add [top-up] for
+           ₹[price] — or I'll start prioritising which analyses matter most.
+           Your call."
+      - channel: "platform/billing/bucket-at-85pct"
+        handler: >
+          Immediate (bypass quiet hours): "Analysis capacity running low —
+          15% remaining. Strategy sessions and complex multi-leg analysis
+          will be limited until [date]. Daily summaries and alerts continue
+          unaffected. Add [top-up] to maintain full analysis depth."
+      - channel: "platform/billing/bucket-empty"
+        handler: >
+          C-049 MANDATORY DISCLOSE: "I have used my full analysis package
+          for this month. I am in basic monitoring mode: I will still send
+          your daily market summary and alert you to CRITICAL risk events —
+          but I cannot run deep strategy sessions or multi-leg analysis
+          until [reset date]. Your positions are monitored. Nothing is at
+          risk. I will let you know as soon as full capability returns."
+      - channel: "platform/billing/topup-applied"
+        handler: >
+          "Analysis capacity topped up. Back to full depth — what do you
+           want to look at?"
+      - channel: "platform/billing/subscription-renewed"
+        handler: "silent_full_capability_resume"
+    does_not_handle: []
+    unavailability: "continue_silent"
+
+    budget_vocabulary:
+      llm_mid:          "market analysis sessions"
+      llm_frontier:     "strategy sessions"
+      video_clips:      null
+      whatsapp_windows: "messaging days"
+      image_gen:        null
+
+  ce:
+    unavailability: "halt_and_disclose_advisory_only"
+
+  air:
+    unavailability: "zero_cost_templates_with_C049_disclosure"
+
+  trial_profile:
+    trial_disclosure_opening: >
+      "I am in demonstration mode today. I will show you how I would
+       analyse the market for your portfolio using sample data.
+       When you hire me, I work with your actual positions and real-time data."
+    zero_cost_thread_substitutes:
+      llm_mid:      "ollama/llama3.2-3b"
+      llm_frontier: "ollama/llama3.2-3b"
+      video_clips:  null
+      image_gen:    null
+    live_only_features:
+      - skill: "Live trade execution assistance"
+        trial_response: >
+          "In demonstration mode I can show you how I would analyse this
+           setup — but actual trade assistance requires your Zerodha account
+           to be connected. Here is a sample analysis of this type of setup."
+```

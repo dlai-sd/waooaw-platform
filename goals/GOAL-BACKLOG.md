@@ -245,3 +245,33 @@ Recommend: one dedicated Goal after WC-016 completes.
 
 *Archive: All closed Goal evidence is in `goals/GOAL-00N-*.md` + `goals/goal_register.jsonl`*
 *This register is updated by Goal Orchestrator at each session close.*
+
+---
+
+### GOAL-AGENT-BASE — Agent Base Specification and Platform-Agent Contract Framework
+
+**Registrant:** Yogesh Khandge (Founder) via EA session 2026-07-30
+**Registered:** 2026-07-30
+**Prerequisite:** WBE-S8 (Gap Scanner needs WBE signal infrastructure)
+
+**Desired Outcome:**
+Every WAOOAW agent — current and future — has a formally declared Platform-Agent
+Contract specifying its behavior for platform signals, trial/live mode, and
+graceful degradation. The Gap Scanner runs automatically after every platform
+component addition to detect which agents need spec updates. Zero manual agent-hunting.
+
+**Spec Work Already Done (2026-07-30):**
+- AGENT-BASE-SPEC.md v1.0 — architecture/reference/agents/AGENT-BASE-SPEC.md
+- WBE Signal Schema (AsyncAPI-aligned) — architecture/reference/signals/wbe-signal-schema.yaml
+- ADR-035 (PAC Standard) — adr/ADR-035-platform-agent-contract-standard.md
+- C-094 ratified (Agent Base Spec Compliance)
+- PAC sections added to all 4 existing agent specs (DMA, Trading, Agricultural, Private Tutor)
+- CONSTITUTIONAL_DNA.md + AGENT-AUTHORING-GUIDE v5.0 updated
+
+**Remaining Implementation:**
+- scripts/gap_scanner.py (WBE-S8 or dedicated sprint)
+- institutional.platform_signal_schemas table (addendum to D-08)
+- Gap Scanner wired into CI PR gate
+
+**Industry Alignment:** AsyncAPI 3.0 (signal contracts), CloudEvents 1.0 (envelope),
+Anthropic Constitutional AI (document-based base spec model)

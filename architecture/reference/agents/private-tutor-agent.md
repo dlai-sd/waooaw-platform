@@ -1356,3 +1356,99 @@ After each concept explanation, agent records: questions attempted, correct rate
 **Student trust signals (GAP-TUTOR-06 resolved):** Parent reports "child is excited about maths now" or student asks for extra sessions → `customer_satisfaction_signals++` in trust_ledger. Engagement duration per session is a proxy signal.
 
 **Parent-agent trust model (GAP-TUTOR-05 resolved):** Parent's approval pattern tracked: if parent never rejects agent's lesson plan suggestions for 30 consecutive sessions, agent earns `LESSON_PLAN_AUTONOMY` flag for that child.
+
+---
+
+## Platform-Agent Contract (PAC)
+<!-- ADR-035 mandatory section. Do not remove. Update when AGENT-BASE-SPEC version bumps. -->
+<!-- C-060 CRITICAL: ALL budget signals go to PARENT/GUARDIAN — never to student -->
+
+```yaml
+base_spec_version: "1.0"
+
+platform_services:
+  wbe:
+    schema_version: "1.0"
+    # C-060 (Minor Student Protection — LAW):
+    # ALL WBE budget signal responses are sent to PARENT WhatsApp ONLY.
+    # The student session NEVER references budget, billing, or subscription.
+    # Student-side: agent behaves exactly the same at 50%, 85%, or 0% capacity.
+    handles_signals:
+      - channel: "platform/billing/bucket-at-50pct"
+        handler: >
+          → PARENT WhatsApp ONLY: "[Child name]'s tutoring package is halfway
+          through this month. [X] learning sessions remain. Everything is going
+          well — just keeping you informed."
+          → STUDENT SESSION: no change in behavior.
+      - channel: "platform/billing/bucket-at-60pct"
+        handler: >
+          → PARENT WhatsApp ONLY (one-time): "[Child name] is doing a great
+          job — learning sessions are being used well. At this pace, we may
+          run short before the 30th. Add [top-up] for ₹[price] to keep the
+          momentum going without any interruption."
+          → STUDENT SESSION: no change.
+      - channel: "platform/billing/bucket-at-85pct"
+        handler: >
+          → PARENT WhatsApp ONLY (immediate — bypass quiet hours):
+          "[Child name]'s tutoring package is 85% used. [X] full learning
+          sessions remain this month. Please top up to ensure no interruption,
+          especially with exams coming up."
+          → STUDENT SESSION: no change. Student must never experience
+          degradation or notice any difference due to billing.
+      - channel: "platform/billing/bucket-empty"
+        handler: >
+          C-049 + C-060 COMBINED OBLIGATION:
+          → PARENT WhatsApp: "The tutoring package for [child name] has been
+          fully used this month. Sessions will continue in basic mode until
+          [reset date]: I will still answer questions and help with homework,
+          but deep exam preparation and personalised worksheets will resume
+          on [date] or sooner if you add a top-up."
+          → STUDENT SESSION: "Let's keep studying! I can help with today's
+          homework and answer any questions you have." — NO mention of limits.
+          EXAM DAY EXCEPTION (C-060): If today is an exam date, do NOT switch
+          to degraded mode. Exam-day sessions always run at full capability
+          regardless of bucket state.
+      - channel: "platform/billing/topup-applied"
+        handler: >
+          → PARENT WhatsApp: "Top-up confirmed! [Child name]'s full tutoring
+          capability is restored."
+          → STUDENT SESSION: seamless — no mention of top-up.
+      - channel: "platform/billing/subscription-renewed"
+        handler: "silent_full_capability_resume"
+    does_not_handle: []
+    unavailability: "continue_silent"
+
+    budget_vocabulary:
+      llm_mid:          "learning sessions"
+      llm_frontier:     "exam preparation sessions"
+      video_clips:      null
+      whatsapp_windows: "parent updates"
+      image_gen:        "whiteboard diagrams"
+
+  ce:
+    unavailability: "halt_and_disclose_advisory_only"
+
+  air:
+    unavailability: "zero_cost_templates_with_C049_disclosure"
+
+  trial_profile:
+    trial_disclosure_opening: >
+      Spoken to PARENT (not student): "Today I will demonstrate how I work
+      with [child name]. This is a free demonstration session — everything
+      you see is what [child name] will experience when you hire me.
+      No commitments needed today."
+      Said to STUDENT: "Hi! Let's have a study session today.
+      What subject are you working on?" — zero commercial framing.
+    zero_cost_thread_substitutes:
+      llm_mid:      "ollama/llama3.2-3b"
+      llm_frontier: "ollama/llama3.2-3b"
+      video_clips:  null
+      image_gen:    "pre_generated_sample_diagrams"
+    live_only_features:
+      - skill: "Personalised practice paper generation"
+        trial_response: >
+          "Here is a sample practice paper I would create for [child name]
+           based on their class and board. When hired, these are customised
+           to exactly what [child name] has covered and where they need more
+           practice."
+```
