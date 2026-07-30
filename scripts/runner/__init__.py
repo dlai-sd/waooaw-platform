@@ -31,7 +31,7 @@ from runner.sprint_ops import (  # noqa: F401
     update_sprint_state, run_runner_integrity_checks,
 )
 from runner.llm_codegen import (  # noqa: F401
-    call_llm, call_llm_via_magiclm,
+    call_llm_via_magiclm,
     parse_llm_files, write_llm_files, validate_written_files,
 )
 from runner.task_executor import execute_with_llm, flag_spec_gap  # noqa: F401

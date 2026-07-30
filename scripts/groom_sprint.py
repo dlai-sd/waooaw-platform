@@ -38,15 +38,18 @@ from __future__ import annotations
 
 import argparse
 import ast
-import json
 import os
 import re
 import subprocess
 import sys
-import urllib.request
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).parent.parent
+_SCRIPTS = str(REPO_ROOT / "scripts")
+if _SCRIPTS not in sys.path:
+    sys.path.insert(0, _SCRIPTS)
+
+from runner.llm_codegen import call_llm_via_magiclm  # noqa: E402
 RUNNER_PATH = REPO_ROOT / "scripts" / "autonomous_sprint_runner.py"
 STATE_PATH  = REPO_ROOT / "scripts" / "sprint_state.py"
 PROJECT_STATE = REPO_ROOT / "constitution" / "PROJECT_STATE.md"
@@ -208,40 +211,20 @@ TEST RULES:
 
 
 def _llm_call(prompt: str, system: str, api_key: str, max_tokens: int = 2048) -> str | None:
-    """Single Haiku LLM call. Returns text content or None on failure.
+    """Groom LLM call — delegates to the governed MagicLLM layer (C-077, ADR-030).
 
-    Prompt caching (ADR-030 §4 — "procure token once"):
-      The system prompt is marked cache_control: ephemeral so that retry
-      attempts within the same groomer run reuse the cached system-prompt
-      tokens — up to 90% cost reduction on system-prompt input tokens.
+    api_key is accepted for backward compatibility but MagicLLM reads it from
+    ANTHROPIC_API_KEY env directly.  system is forwarded as constitutional_check
+    so MagicLLM appends it to the context block seen by the model.
     """
-    body = json.dumps({
-        "model": "claude-haiku-4-5",
-        "max_tokens": max_tokens,
-        # Prompt caching: mark system prompt as cacheable (C-077 cost reduction).
-        # Cost savings: ~90% on system-prompt tokens across retry calls in same run.
-        "system": [{"type": "text", "text": system,
-                    "cache_control": {"type": "ephemeral"}}],
-        "messages": [{"role": "user", "content": prompt}],
-    }).encode()
-    req = urllib.request.Request(
-        "https://api.anthropic.com/v1/messages",
-        data=body,
-        headers={
-            "x-api-key": api_key,
-            "anthropic-version": "2023-06-01",
-            "anthropic-beta": "prompt-caching-2024-07-31",
-            "content-type": "application/json",
-        },
-        method="POST",
+    return call_llm_via_magiclm(
+        task_id="GROOM-SUBTASK",
+        task_description=prompt,
+        spec_content="",
+        constitutional_check=system,
+        model_hint="auto",
+        max_tokens=max_tokens,
     )
-    try:
-        with urllib.request.urlopen(req, timeout=60) as resp:
-            data = json.loads(resp.read())
-        return data["content"][0]["text"].strip()
-    except Exception as exc:
-        print(f"  ⚠️  LLM call failed: {exc}")
-        return None
 
 
 def _strip_llm_fences(text: str) -> str:

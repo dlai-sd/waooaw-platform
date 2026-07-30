@@ -139,10 +139,10 @@ class TestValidateWrittenFiles:
 
 
 class TestCallLlmPayload:
-    """Tests that call_llm builds correct payload (unit — no real HTTP)."""
+    """Tests that _call_llm_direct builds correct payload (unit — no real HTTP)."""
 
     def test_prompt_caching_header_sent(self, monkeypatch):
-        """call_llm must send anthropic-beta: prompt-caching-2024-07-31."""
+        """_call_llm_direct must send anthropic-beta: prompt-caching-2024-07-31."""
         import runner.llm_codegen as lc
         import urllib.request
 
@@ -166,7 +166,7 @@ class TestCallLlmPayload:
         monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
         monkeypatch.setenv("ANTHROPIC_API_KEY", "fake-key-for-test")
 
-        result = lc.call_llm(
+        result = lc._call_llm_direct(
             "WC012-01", "Test task", "spec content",
             "check", model_hint="auto", max_tokens=100,
         )
@@ -199,7 +199,7 @@ class TestCallLlmPayload:
         monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
         monkeypatch.setenv("ANTHROPIC_API_KEY", "fake-key-for-test")
 
-        lc.call_llm("WC014-01", "desc", "spec", "check",
+        lc._call_llm_direct("WC014-01", "desc", "spec", "check",
                     model_hint="auto", max_tokens=100)
 
         system = captured_payload.get("system")
@@ -210,12 +210,12 @@ class TestCallLlmPayload:
     def test_returns_none_when_no_api_key(self, monkeypatch):
         import runner.llm_codegen as lc
         monkeypatch.setenv("ANTHROPIC_API_KEY", "")
-        result = lc.call_llm("WC012-01", "desc", "spec", "check")
+        result = lc._call_llm_direct("WC012-01", "desc", "spec", "check")
         assert result is None
 
     def test_returns_none_for_model_hint_none(self, monkeypatch):
         import runner.llm_codegen as lc
-        result = lc.call_llm("WC012-01", "desc", "spec", "check", model_hint="none")
+        result = lc._call_llm_direct("WC012-01", "desc", "spec", "check", model_hint="none")
         assert result is None
 
     def test_raises_runtime_error_on_429(self, monkeypatch):
@@ -231,7 +231,7 @@ class TestCallLlmPayload:
         monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
 
         with pytest.raises(RuntimeError, match="RATE_LIMIT"):
-            lc.call_llm("WC012-01", "desc", "spec", "check",
+            lc._call_llm_direct("WC012-01", "desc", "spec", "check",
                         model_hint="auto", max_tokens=100)
 
     def test_raises_runtime_error_on_timeout(self, monkeypatch):
@@ -245,5 +245,5 @@ class TestCallLlmPayload:
         monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
 
         with pytest.raises(RuntimeError, match="API_TIMEOUT"):
-            lc.call_llm("WC012-01", "desc", "spec", "check",
+            lc._call_llm_direct("WC012-01", "desc", "spec", "check",
                         model_hint="auto", max_tokens=100)

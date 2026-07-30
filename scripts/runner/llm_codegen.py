@@ -2,14 +2,13 @@
 # constitutional_basis: ADR-030 (code generation protocol), C-059, C-077 (cost ceiling)
 # ib_item: IB-020
 """
-LLM code generation: call_llm() (direct Anthropic), call_llm_via_magiclm() (bridge),
+LLM code generation: call_llm_via_magiclm() (governed bridge), _call_llm_direct() (private fallback),
 parse_llm_files(), write_llm_files(), validate_written_files().
 
 Prompt caching (ADR-030 §4 — "procure token once"):
-  Both call_llm() and call_llm_via_magiclm() set anthropic-beta: prompt-caching-2024-07-31
-  and mark the system prompt with cache_control: {"type": "ephemeral"}.
-  On retry attempts the cached system prompt tokens are served from Anthropic's cache,
-  reducing cost by up to 90% on system-prompt tokens across retry loops.
+  call_llm_via_magiclm() marks the system prompt cache_control: ephemeral so retry
+  attempts reuse the cached token block from Anthropic — up to 90% cost reduction.
+  _call_llm_direct() is the private fallback used when MagicLLM is unavailable.
 """
 from __future__ import annotations
 
@@ -24,7 +23,7 @@ from runner.state import _MONITOR_SIGNAL
 from runner.system_prompts import _build_system_prompt, _TASK_STACK_MAP
 
 
-def call_llm(
+def _call_llm_direct(
     task_id: str,
     task_description: str,
     spec_content: str,
@@ -34,7 +33,7 @@ def call_llm(
     attempt: int = 1,
 ) -> str | None:
     """
-    Call Claude Sonnet 4.6 directly (fallback path when MagicLLM unavailable).
+    Direct Anthropic call — private fallback used by call_llm_via_magiclm.
     Returns raw LLM response string, or None on failure.
 
     For model_hint='reasoning' tasks: enables extended thinking (budget_tokens=8000).
@@ -228,9 +227,9 @@ def call_llm_via_magiclm(
             from magic_llm import MagicLLMPipeline, MagicLLMRequest, TaskCategory
             from goal_orchestrator.goal_register_github import make_goal_register_writer
         except ImportError as e:
-            print(f"  WARN: MagicLLM not available ({e}) — falling back to call_llm()")
-            return call_llm(task_id, task_description, spec_content,
-                            constitutional_check, model_hint, max_tokens, attempt)
+            print(f"  WARN: MagicLLM not available ({e}) — falling back to _call_llm_direct()")
+            return _call_llm_direct(task_id, task_description, spec_content,
+                                    constitutional_check, model_hint, max_tokens, attempt)
 
     tid = task_id.lower()
     if "cct" in tid or "test" in tid or tid.endswith("-02c") or tid.endswith("-03c") or tid.endswith("-04c"):
@@ -294,9 +293,9 @@ def call_llm_via_magiclm(
     except RuntimeError:
         raise
     except Exception as e:
-        print(f"  WARN: MagicLLM invocation error ({e}) — falling back to call_llm()")
-        return call_llm(task_id, task_description, spec_content,
-                        constitutional_check, model_hint, max_tokens, attempt)
+        print(f"  WARN: MagicLLM invocation error ({e}) — falling back to _call_llm_direct()")
+        return _call_llm_direct(task_id, task_description, spec_content,
+                                constitutional_check, model_hint, max_tokens, attempt)
 
     if response.status == "accepted":
         print(f"  ✓ MagicLLM: {response.model_version} · "

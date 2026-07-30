@@ -24,7 +24,7 @@ Architecture note (post-refactor):
     runner/git_ops.py      — shell/git/gh helpers
     runner/system_prompts.py — constitutional system prompt + stack expert blocks
     runner/sprint_ops.py   — sprint state parsing, phase gate, integrity checks
-    runner/llm_codegen.py  — LLM call (call_llm, call_llm_via_magiclm), file parse/write/validate
+    runner/llm_codegen.py  — LLM call (call_llm_via_magiclm), file parse/write/validate
     runner/task_executor.py — execute_with_llm, flag_spec_gap
     runner/legacy_handlers.py — per-WC deterministic handlers (WC011–WC015)
 """
@@ -84,7 +84,7 @@ from runner.sprint_ops import (                                         # sprint
     update_sprint_state, run_runner_integrity_checks,
 )
 from runner.llm_codegen import (                                        # LLM code generation
-    call_llm, call_llm_via_magiclm,
+    call_llm_via_magiclm,
     parse_llm_files, write_llm_files, validate_written_files,
 )
 from runner.task_executor import execute_with_llm, flag_spec_gap       # task execution
