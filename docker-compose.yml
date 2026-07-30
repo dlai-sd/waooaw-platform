@@ -356,6 +356,47 @@ services:
       retries: 5
 
   # =============================================================================
+  # Redis — Thread Catalog cache + Wallet balance cache (WBE ADR-034)
+  # =============================================================================
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      retries: 5
+
+  # =============================================================================
+  # Wallet & Billing Engine (WBE) — ADR-034, port 8140
+  # Constitutional: C-088, C-089, C-090, C-091, C-038
+  # FA-027: Yogesh Khandge 2026-07-30
+  # =============================================================================
+
+  billing-engine:
+    build:
+      context: ./src/billing-engine
+      dockerfile: Dockerfile
+    ports:
+      - "8140:8140"
+    environment:
+      ENVIRONMENT: development
+      DATABASE_URL: "postgresql+asyncpg://wbe_app:${POSTGRES_PASSWORD:-changeme}@postgres:5432/waooaw"
+      REDIS_URL: "redis://redis:6379/0"
+      THREAD_CATALOG_CACHE_TTL_SECONDS: "30"
+      OTLP_ENDPOINT: http://jaeger:4317
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8140/health || exit 1"]
+      interval: 10s
+      retries: 5
+
+  # =============================================================================
   # MCP Integration Layer (ADR-020) — dev stubs
   # All MCP servers: stateless adapters only. No business logic.
   # C-041: CE.ValidateAction called by ai-runtime BEFORE any tool invocation.

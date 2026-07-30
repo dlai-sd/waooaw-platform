@@ -1,0 +1,29 @@
+# requirements.txt — billing-engine (WBE)
+# Implements: architecture/reference/billing/wbe-component-spec.md §1 Tech Stack
+# Constitutional basis: ADR-034, C-059
+# DO NOT add packages without EA approval.
+
+# ─── Web framework ────────────────────────────────────────────────────────────
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+pydantic==2.9.2
+pydantic-settings==2.5.2
+
+# ─── Database — async PostgreSQL + SQLAlchemy ─────────────────────────────────
+asyncpg==0.30.0
+sqlalchemy[asyncio]==2.0.36
+
+# ─── Redis cache (Thread Catalog 30s TTL, Wallet balance cache) ───────────────
+redis[hiredis]==5.0.8
+
+# ─── HTTP client (Razorpay API, 360Dialog BSP) ───────────────────────────────
+httpx==0.27.2
+
+# ─── Async task scheduler (reconciliation + alert cron jobs) ─────────────────
+apscheduler==3.10.4
+
+# ─── Observability (ADR-009) ──────────────────────────────────────────────────
+opentelemetry-api==1.27.0
+opentelemetry-sdk==1.27.0
+opentelemetry-instrumentation-fastapi==0.48b0
+opentelemetry-exporter-otlp==1.27.0
