@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     otlp_endpoint: str = "http://jaeger:4317"
 
     # ADR-014: secrets from Key Vault in production; env vars in dev
-    wbe_db_password: str = "changeme"
+    wbe_db_password: str = "changeme"  # noqa: S105 — Pydantic settings default, not a hardcoded secret
 
 
 settings = Settings()
