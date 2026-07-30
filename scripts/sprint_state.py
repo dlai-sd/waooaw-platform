@@ -39,6 +39,7 @@ SPRINT_TASK_MANIFEST: dict[str, list[str]] = {
     "WC-018": ["WC018-01", "WC018-02", "WC018-03", "WC018-04", "WC018-05", "WC018-06", "WC018-07"],
     "WC-025": ["WC025-01", "WC025-02", "WC025-03", "WC025-04", "WC025-05"],
     "WC-026": ["WC026-01", "WC026-02", "WC026-03", "WC026-04", "WC026-05"],
+    # ── GROOMER MANIFEST INJECTION POINT — groom_sprint.py injects new sprint manifest here ──
 }
 
 

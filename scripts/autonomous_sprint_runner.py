@@ -3079,6 +3079,7 @@ TASK_HANDLERS = {
             ),
         ]
     },
+    # ── GROOMER INJECTION POINT — groom_sprint.py injects new sprint handlers here ──
     # ══════════════════════════════════════════════════════════════════════════
     # WC-013 — Business Platform (.NET 9 REST)
     # ══════════════════════════════════════════════════════════════════════════

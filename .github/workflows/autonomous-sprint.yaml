@@ -35,6 +35,11 @@ on:
         required: false
         type: boolean
         default: false
+      sprint_name:
+        description: 'Sprint to groom + run (e.g. WC-027). Overrides current_sprint in PROJECT_STATE.md.'
+        required: false
+        type: string
+        default: ''
 
 # G1 FIX: Prevent overlapping runs. New cron-triggered run waits for running sprint.
 # cancel-in-progress: false — never kill a running sprint mid-task.
@@ -409,6 +414,26 @@ jobs:
         with:
           name: sprint-context-index
           path: sprint-context/
+
+      - name: Groom sprint SubTaskDefs — Blueprint-First (G-0, ADR-036)
+        # ── Sprint Groomer — runs BEFORE PIPELINE SYNC so groomed files reach main first.
+        # Reads WC-NNN table + EA skeleton → Haiku LLM → SubTaskDef structs.
+        # Injects into TASK_HANDLERS (autonomous_sprint_runner.py) + SPRINT_TASK_MANIFEST.
+        # Commits to main. PIPELINE SYNC step below then fetches from main → groomed files.
+        # Constitutional basis: C-066 Tier 2A, C-070, C-077, ADR-036
+        # SIM gate: simulation/SIM-PL-004-groom-sprint.md PASS
+        # ANTHROPIC_API_KEY is available here via kv_secrets above.
+        if: steps.pr_check.outputs.skip != 'true'
+        env:
+          SPRINT_NAME: ${{ inputs.sprint_name || '' }}
+          ANTHROPIC_API_KEY: ${{ steps.kv_secrets.outputs.ANTHROPIC-API-KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ -n "$SPRINT_NAME" ]; then
+            python3 scripts/groom_sprint.py --sprint "$SPRINT_NAME"
+          else
+            python3 scripts/groom_sprint.py
+          fi
 
       - name: Run autonomous sprint agent
         id: runner

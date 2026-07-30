@@ -522,6 +522,8 @@ MODE A — HUMAN SESSION (GitHub Copilot chat / agent invoked by a human)
 MODE B — AUTONOMOUS SPRINT AGENT (GitHub Actions scheduled trigger)
   You were invoked by .github/workflows/autonomous-sprint.yaml (cron / workflow_dispatch).
   The environment variable AUTONOMOUS_SPRINT_AGENT=true will be set.
+  Full pipeline specification: standards/AUTONOMOUS-PIPELINE-STANDARD.md
+  Decision gate (autonomous vs. Copilot session): standards/AUTONOMOUS-VS-COPILOT.md
 
   AUTHORIZATION CHECKS (all must pass — fail any = halt gracefully):
     ✓ Check AUTONOMOUS_HALT: false  (if true → log and exit — C-001 Human Override)

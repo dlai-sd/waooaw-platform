@@ -9,8 +9,8 @@
 ## Platform Status
 
 ```
-Version:              v1.21.0 — WC-015 AI Runtime MERGED (2026-07-30)
-Constitutional Claims: 86 ratified (C-001→C-086) | ADRs: 33
+Version:              v1.22.0 — WC-026 Sprint Groomer + Autonomous Pipeline Standard (2026-07-30)
+Constitutional Claims: 86 ratified (C-001→C-086) | ADRs: 36
 Customer Agents:      4 approved — DMA v3.0 · Trading v1.7 · Agricultural v2.7 · Private Tutor v1.0
 Internal Agents:      5 — Platform IT Expert · Steward Assistant · Self-Improvement Analyst ·
                           Platform Operations · RepoNav (AVD-001 v1.0 RATIFIED — INST-014)
@@ -19,7 +19,8 @@ Phase:                IMPLEMENTATION — WC-016 Sprint AUTHORIZED (autonomous, G
 Infrastructure:       Azure live — waooaw-dev-kv (Key Vault) · OIDC auth · Sprint Dashboard: Issue #7
 Monitoring:           Sprint Dashboard: github.com/dlai-sd/waooaw-platform/issues/7
 Web:                  web/WAOOAWHome.html — Landing page v1.0 + Auth modal
-CCTs:                 52 specified | Simulations: 23 | Pipeline tests: 378 passing
+CCTs:                 52 specified | Simulations: 24 | Pipeline tests: 408 passing
+                      (30 new: test_groom_sprint.py — groom_sprint.py unit tests)
 Company:              DLAI Satellite Data (OPC) Pvt Ltd · CIN: U62090PN2024OPC230499 · Pune, India
 Stewards:             Yogesh Khandge (Founder) · Sujay Khandge (Business Growth) · Ojal Khandge (Ethics Officer)
 ```
@@ -38,9 +39,9 @@ PR review:       Autonomous (GitHub App waooaw-reviewer, C-065 compliant)
 Self-healing:    advisor_auto_extend.py — new compiler errors auto-classified and committed
 ```
 
-### Autonomous Codegen Pipeline (built 2026-07-27)
+### Autonomous Codegen Pipeline (built 2026-07-27, groomer added 2026-07-30)
 
-12-item industry-grade pipeline now active:
+12-item industry-grade pipeline now active. See `standards/AUTONOMOUS-PIPELINE-STANDARD.md` for full spec.
 
 | Capability | Implementation |
 |---|---|
@@ -56,6 +57,9 @@ Self-healing:    advisor_auto_extend.py — new compiler errors auto-classified 
 | Stop-loss economics | LLM retry skipped if advisor confidence < 30% |
 | False spec-gap prevention | Diagnosable build failures routed to cascade, not GitHub issues |
 | Fail-fast gate | Pre-run preflight checks all prerequisites before any LLM call |
+| **Sprint Groomer** | **groom_sprint.py: WC table + EA skeleton → SubTaskDefs via Haiku (ADR-036)** |
+
+**Decision gate: autonomous pipeline vs. Copilot session** → `standards/AUTONOMOUS-VS-COPILOT.md`
 
 ---
 
