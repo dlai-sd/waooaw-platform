@@ -1,0 +1,44 @@
+component_id:     pr
+display_name:     Professional Runtime
+version:          "1.0.0"
+status:           LIVE
+since_sprint:     WC-014
+owner_institution:     INST-010
+governing_institution: INST-004
+constitutional_basis:
+  claims: [C-001, C-023, C-059, C-065, C-066]
+  adrs:   [ADR-004, ADR-005, ADR-015, ADR-018]
+surface:
+  type: REST_SERVICE
+  language: python
+  framework: fastapi
+  port: 5003
+  health_check: { path: /health, expected_status: 200 }
+  called_by: [bp, customer_websocket]
+  calls: [ce, postgres]
+  endpoints:
+    - path: /api/v1/paas/sessions
+      methods: [POST, GET]
+      constitutional: C-001
+    - path: /ws/emergency-stop
+      type: websocket
+      sla_ms: 250
+      constitutional: C-001
+signals:
+  emits: []
+  consumes: []
+data:
+  db_role: pr_app
+  owns:
+    professional: [paas_sessions, session_evidence]
+configuration:
+  env_vars: [DATABASE_URL, CE_GRPC_ENDPOINT]
+  key_vault_secrets: [PR_DB_PASSWORD]
+ccts:
+  - id: CCT-HO-03
+    description: UI Emergency Stop reaches PR in ≤250ms
+    test_file: tests/constitutional/test_cct_ho03.py
+assurance:
+  blueprint_conformance_checks:
+    - check: health_endpoint_returns_200
+    - check: websocket_emergency_stop_latency_under_250ms

@@ -1,0 +1,81 @@
+component_id:     wbe
+display_name:     WAOOAW Billing Engine
+version:          "1.0.0"
+status:           SPEC_APPROVED
+since_goal:       GOAL-004
+since_sprint:     WBE-S1
+owner_institution:     INST-010
+governing_institution: INST-004
+constitutional_basis:
+  claims: [C-088, C-089, C-090, C-091, C-038, C-048, C-051]
+  adrs:   [ADR-022, ADR-034]
+surface:
+  type: REST_SERVICE
+  language: python
+  framework: fastapi
+  port: 8140
+  health_check: { path: /health, expected_status: 200 }
+  called_by: [air, bp, platform_ops]
+  calls: [postgres, redis, razorpay_mcp]
+  must_not_call: [ce, pr, air]
+  must_not_expose_to_internet: true
+  endpoints:
+    - path: /buckets/{customer_id}/{thread_type}
+      method: GET
+      sla_ms: 50
+      called_by: [air]
+    - path: /buckets/{customer_id}/reserve
+      method: POST
+      idempotent: true
+      called_by: [air]
+    - path: /subscriptions/activate
+      method: POST
+      called_by: [bp]
+      constitutional: C-088
+    - path: /subscriptions/renew
+      method: POST
+      called_by: [bp]
+      constitutional: C-090
+    - path: /pricing/validate
+      method: POST
+      called_by: [bp]
+      constitutional: C-089
+signals:
+  emits:
+    schema_file: architecture/reference/signals/wbe-signal-schema.yaml
+    channels: [platform/billing/bucket-at-50pct, platform/billing/bucket-at-60pct,
+               platform/billing/bucket-at-85pct, platform/billing/bucket-empty,
+               platform/billing/topup-applied, platform/billing/subscription-renewed]
+  consumes: []
+data:
+  db_role: wbe_app
+  schema_spec: architecture/reference/billing/billing-schema-updates.md
+  migration_file: infrastructure/postgres/init/11-billing-engine.sql
+  owns:
+    business: [customer_wallets, wallet_buckets, bucket_reservations, topup_orders, pacing_preferences, price_change_notices]
+    institutional: [thread_catalog, bundle_profiles, billing_profiles, platform_cost_ledger, provider_accounts, pricing_floor_log]
+configuration:
+  env_vars: [DATABASE_URL, REDIS_URL, RAZORPAY_WEBHOOK_SECRET, CONSTITUTIONAL_MINIMUM_MARGIN_PCT]
+  key_vault_secrets: [WBE_DB_PASSWORD, RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET]
+agent_pac_impact:
+  mandatory_for_all_agents: true
+  required_pac_section: wbe
+  signal_handler_requirements:
+    - channel: platform/billing/bucket-at-50pct
+      priority: P1
+    - channel: platform/billing/bucket-empty
+      priority: P1
+      constitutional_basis: C-049
+    - channel: platform/billing/bucket-at-85pct
+      priority: P1
+ccts:
+  - id: CCT-PREPAID-01
+    test_file: tests/billing/test_ccts.py::test_prepaid_gate_blocks_empty_bucket
+  - id: CCT-ONBOARD-01
+    test_file: tests/billing/test_ccts.py::test_single_onboarding_activation
+assurance:
+  blueprint_conformance_checks:
+    - check: health_endpoint_returns_200
+    - check: db_tables_exist_with_correct_schema
+    - check: agent_pacs_declare_all_required_handlers
+    - check: constitutional_minimum_margin_enforced

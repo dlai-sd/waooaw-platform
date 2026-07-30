@@ -1402,6 +1402,34 @@ def diagnose_build_error(
             constitutional_trace="C-082 (Build Validation — project reference graph must be valid before code retries)",
         )
 
+    # ── Rule 16: Skeleton drift — IMPLEMENTATION modified skeleton interface ──
+    # ADR-036: if the LLM changed a class name, method name, or parameter type
+    # defined in a skeleton file, this is a SPEC_GAP, not a retry-fixable error.
+    # Route to EA session, do NOT retry.
+    _skeleton_drift_patterns = [
+        "abstract method",
+        "does not implement interface",
+        "does not implement inherited abstract member",
+        "cannot override sealed",
+        "override of abstract member",
+    ]
+    _build_lower = build_error.lower()
+    if any(p in _build_lower for p in _skeleton_drift_patterns):
+        return RetryDiagnosis(
+            error_type="SKELETON_DRIFT",
+            error_class="SPEC_GAP",
+            confidence=0.95,
+            should_retry=False,
+            fix_instruction=(
+                "The IMPLEMENTATION sprint modified a skeleton interface (class name, method "
+                "signature, or parameter type defined in src/{service}/skeleton/). "
+                "Per ADR-036, skeleton contracts are frozen after EA approval. "
+                "Resolution: raise SPEC_GAP → EA session amends skeleton → re-run implementation. "
+                "DO NOT attempt to fix this by modifying the skeleton in the implementation sprint."
+            ),
+            constitutional_trace="ADR-036 (EA Skeleton Standard), C-095 (Component Manifest Obligation)",
+        )
+
     # ── Fallback 1: Learning cache (C-069 self-improvement) ──────────────────
     cache_hit = lookup_learning_cache(build_error[:200])
     if cache_hit:

@@ -966,6 +966,22 @@ def execute_subtask_chain(
             success = st.template_fn()
 
         elif st.type == "llm":
+            # ── C-095 pre-flight: verify skeleton exists for LOGIC phase tasks ─
+            # ADR-036: IMPLEMENTATION tasks (generation_phase="logic") require
+            # EA-produced skeleton files in src/{service}/skeleton/ before firing.
+            if st.generation_phase == "logic":
+                _skel_dir = REPO_ROOT / st.service_dir / "skeleton"
+                if not _skel_dir.exists() or not any(_skel_dir.iterdir()):
+                    msg = (
+                        f"SKELETON_MISSING: {st.service_dir}/skeleton/ does not exist or is empty. "
+                        f"Per C-095, an IMPLEMENTATION task cannot run without EA-produced skeleton. "
+                        f"Resolution: run EA skeleton sprint (PL-EA-01) first, then retry this task."
+                    )
+                    print(f"  [{st.id}] BLOCKED — {msg}")
+                    emit_subtask_signal(task_id, st.id, "BLOCKED_SKELETON_MISSING", monitor_signal)
+                    failed.append(st.id)
+                    continue
+
             # ── Industry Item 1: Generalized skeleton→logic two-pass executor ──
             # If generation_phase="skeleton", we run an automatic second "logic" pass
             # after the skeleton compiles. This is fully general — no per-task code.

@@ -1,0 +1,54 @@
+component_id:     air
+display_name:     AI Runtime
+version:          "1.0.0"
+status:           LIVE
+since_sprint:     WC-015
+owner_institution:     INST-010
+governing_institution: INST-004
+constitutional_basis:
+  claims: [C-042, C-049, C-051, C-059, C-062, C-063]
+  adrs:   [ADR-019, ADR-020, ADR-024, ADR-028, ADR-029, ADR-034]
+surface:
+  type: REST_SERVICE
+  language: python
+  framework: fastapi
+  port: 5004
+  health_check: { path: /health, expected_status: 200 }
+  called_by: [pr]
+  calls: [ce, postgres, redis, wbe, ollama, vertex_ai, sarvam_ai]
+  must_not_call: [bp]
+  must_not_write_to_ledgers: true
+  endpoints:
+    - path: /api/v1/inference
+      methods: [POST]
+      constitutional: C-051
+    - path: /api/v1/tools/execute
+      methods: [POST]
+      constitutional: C-041
+signals:
+  emits: []
+  consumes:
+    - component: wbe
+      channels: [platform/billing/bucket-at-50pct, platform/billing/bucket-at-85pct,
+                 platform/billing/bucket-empty, platform/billing/topup-applied]
+data:
+  db_role: ai_runtime_app
+  owns:
+    institutional: [provider_dispatch_events, message_classification_log]
+  reads_from:
+    professional: [agent_prompt_versions]
+configuration:
+  env_vars: [DATABASE_URL, REDIS_URL, WBE_URL, CE_GRPC_ENDPOINT]
+  key_vault_secrets: [AIR_DB_PASSWORD, GOOGLE_VERTEX_SA_KEY, SARVAM_API_KEY, ANTHROPIC_API_KEY]
+agent_pac_impact:
+  mandatory_for_all_agents: false
+  signals_requiring_handler: []
+ccts:
+  - id: CCT-PI-01
+    description: PII not leaked to LLM — injection guard blocks sensitive fields
+    test_file: tests/ai_runtime/test_cct_pi01.py
+assurance:
+  blueprint_conformance_checks:
+    - check: health_endpoint_returns_200
+    - check: pii_injection_guard_active
+    - check: wbe_balance_check_before_dispatch

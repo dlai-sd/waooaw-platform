@@ -1,0 +1,86 @@
+# WAOOAW Platform Component Registry
+# Authority: Enterprise Architect (INST-004) — GOAL-PLATFORM-REGISTRY WC-021
+# Constitutional Basis: C-095 (Component Manifest Obligation), ADR-035, ADR-036
+# Read by: Gap Scanner, Blueprint Assurance Run, Steward Interface, CI gate
+# Updated: when a new component is added (EA session, PR required)
+
+registry_version: "1.0"
+last_updated: "2026-07-30"
+total_components: 5
+
+components:
+
+  - id: ce
+    display_name: Constitutional Engine
+    manifest: architecture/reference/components/manifest/ce.yaml
+    skeleton: src/constitutional-engine/skeleton/
+    status: LIVE
+    language: dotnet
+    port: 5002
+    surface_type: GRPC_SERVICE
+    since_sprint: WC-012
+    since_goal: IB-009
+    emits_signals: false
+
+  - id: bp
+    display_name: Business Platform
+    manifest: architecture/reference/components/manifest/bp.yaml
+    skeleton: src/business-platform/skeleton/
+    status: LIVE
+    language: dotnet
+    port: 5001
+    surface_type: REST_SERVICE
+    since_sprint: WC-013
+    since_goal: IB-009
+    emits_signals: false
+
+  - id: pr
+    display_name: Professional Runtime
+    manifest: architecture/reference/components/manifest/pr.yaml
+    skeleton: src/professional-runtime/skeleton/
+    status: LIVE
+    language: python
+    port: 5003
+    surface_type: REST_SERVICE
+    since_sprint: WC-014
+    since_goal: IB-009
+    emits_signals: false
+
+  - id: air
+    display_name: AI Runtime
+    manifest: architecture/reference/components/manifest/air.yaml
+    skeleton: src/ai-runtime/skeleton/
+    status: LIVE
+    language: python
+    port: 5004
+    surface_type: REST_SERVICE
+    since_sprint: WC-015
+    since_goal: IB-009
+    emits_signals: false
+
+  - id: wbe
+    display_name: WAOOAW Billing Engine
+    manifest: architecture/reference/components/manifest/wbe.yaml
+    skeleton: src/billing-engine/skeleton/
+    status: SPEC_APPROVED
+    language: python
+    port: 8140
+    surface_type: REST_SERVICE
+    since_sprint: WBE-S1
+    since_goal: GOAL-004
+    emits_signals: true
+    signal_schema: architecture/reference/signals/wbe-signal-schema.yaml
+
+# Planned (not yet specced):
+planned:
+  - id: platform_ops
+    goal: GOAL-SERVICING-CENTER
+    status: BACKLOG
+
+  - id: steward_interface
+    goal: GOAL-STEWARD-INTERFACE
+    status: BACKLOG
+
+  - id: translation_service
+    goal: ~
+    status: FUTURE

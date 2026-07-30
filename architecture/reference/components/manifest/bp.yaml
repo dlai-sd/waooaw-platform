@@ -1,0 +1,54 @@
+component_id:     bp
+display_name:     Business Platform
+version:          "1.0.0"
+status:           LIVE
+since_sprint:     WC-013
+owner_institution:     INST-010
+governing_institution: INST-004
+constitutional_basis:
+  claims: [C-038, C-043, C-051, C-059, C-065, C-076]
+  adrs:   [ADR-002, ADR-003, ADR-006, ADR-008, ADR-022, ADR-034]
+surface:
+  type: REST_SERVICE
+  language: dotnet
+  framework: aspnet_core
+  port: 5001
+  health_check: { path: /health, expected_status: 200 }
+  called_by: [browser, web_portal, wbe]
+  calls: [ce, postgres, razorpay_mcp, oauth_vault]
+  must_not_call: [air]
+  endpoints:
+    - path: /api/v1/employment/contracts
+      methods: [GET, POST]
+      constitutional: C-059
+    - path: /api/v1/customers
+      methods: [POST]
+      constitutional: C-059
+    - path: /api/v1/payments/subscriptions
+      methods: [POST]
+      constitutional: C-038
+    - path: /api/v1/payments/webhooks/razorpay
+      methods: [POST]
+      constitutional: C-038
+signals:
+  emits: []
+  consumes: []
+data:
+  db_role: business_app
+  owns:
+    business: [organisations, employment_contracts, agent_skill_graph, subscription_billing_events, gst_invoices]
+configuration:
+  env_vars: [DATABASE_URL, ASPNETCORE_ENVIRONMENT, KEYCLOAK_AUTHORITY]
+  key_vault_secrets: [BP_DB_PASSWORD, RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET]
+agent_pac_impact:
+  mandatory_for_all_agents: false
+  signals_requiring_handler: []
+ccts:
+  - id: CCT-MT-01
+    description: Tenant isolation — tenant A cannot access tenant B data
+    test_file: tests/constitutional/test_cct_mt01.py
+assurance:
+  blueprint_conformance_checks:
+    - check: health_endpoint_returns_200
+    - check: openapi_endpoints_match_manifest
+    - check: tenant_isolation_enforced

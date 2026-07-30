@@ -1,0 +1,80 @@
+component_id:     ce
+display_name:     Constitutional Engine
+version:          "1.0.0"
+status:           LIVE
+since_goal:       IB-009
+since_sprint:     WC-012
+
+owner_institution:     INST-010
+governing_institution: INST-004
+constitutional_basis:
+  claims: [C-001, C-007, C-023, C-041, C-043, C-048, C-049, C-059, C-062, C-073, C-079]
+  adrs:   [ADR-001, ADR-007, ADR-031]
+
+surface:
+  type: GRPC_SERVICE
+  language: dotnet
+  framework: grpc
+  port: 5002
+  health_check: { path: /health, expected_status: 200 }
+  proto: architecture/reference/proto/constitutional_service.proto
+  endpoints:
+    - rpc: RecordEvidence
+      sla_ms: 100
+      called_by: [bp, pr]
+      constitutional: C-023  # Evidence First — MUST succeed before caller returns
+    - rpc: ValidateAction
+      sla_ms: 40
+      called_by: [bp, pr]
+      constitutional: C-041  # Tool authorization gate
+    - rpc: TriggerEmergencyStop
+      sla_ms: 250
+      called_by: [pr]
+      constitutional: C-001  # Human Override — always reachable
+    - rpc: EvaluatePolicy
+      sla_ms: 40
+      called_by: [bp]
+    - rpc: GrantAuthorityLicense
+      sla_ms: 100
+      called_by: [bp]
+    - rpc: RevokeAuthorityLicense
+      sla_ms: 100
+      called_by: [bp]
+
+called_by: [bp, pr]
+calls: [postgres]
+must_not_call: [air, wbe]
+must_not_expose_to_internet: true
+
+signals:
+  emits: []
+  consumes: []
+
+data:
+  db_role: ce_app
+  owns:
+    constitutional: [evidence_records, authority_licenses, emergency_stop_events, engine_availability_events]
+
+configuration:
+  env_vars: [DATABASE_URL, GRPC_PORT]
+  key_vault_secrets: [CE_DB_PASSWORD]
+
+agent_pac_impact:
+  mandatory_for_all_agents: false
+  signals_requiring_handler: []
+  note: "CE does not emit signals — agents handle CE unavailability per B-3 (halt_and_disclose_advisory_only)"
+
+ccts:
+  - id: CCT-EF-01
+    description: Evidence First — RecordEvidence called before caller returns success
+    test_file: tests/constitutional/test_cct_ef01.py
+  - id: CCT-HO-01
+    description: Emergency Stop executes in ≤250ms
+    test_file: tests/constitutional/test_cct_ho01.py
+
+assurance:
+  blueprint_conformance_checks:
+    - check: health_endpoint_returns_200
+    - check: grpc_service_responding
+    - check: evidence_first_honored_in_sessions
+    - check: emergency_stop_latency_under_250ms

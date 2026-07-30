@@ -307,6 +307,30 @@ def simulate_wc(wc_path: Path) -> WCSimResult:
         spec_text = task["body"] + " " + task["description"]
         print(f"\n  Analysing {task_id}: {task['description'][:50]}...")
 
+        # 0. C-095 skeleton existence check (ADR-036)
+        # If WC declares task_type=IMPLEMENTATION or generation_phase=logic,
+        # verify skeleton/ directory exists and is non-empty for the target service.
+        wc_text = wc_path.read_text()
+        if "task_type: IMPLEMENTATION" in wc_text or "generation_phase: logic" in spec_text:
+            _svc_match = re.search(r"src/([\w-]+)/", spec_text + wc_text)
+            if _svc_match:
+                skel_dir = REPO_ROOT / "src" / _svc_match.group(1) / "skeleton"
+                if not skel_dir.exists() or not any(skel_dir.iterdir()):
+                    result.gaps.append(TaskGap(
+                        task_id=task_id,
+                        gap_type="SKELETON_MISSING",
+                        severity="CRITICAL",
+                        description=(
+                            f"IMPLEMENTATION task requires skeleton but "
+                            f"src/{_svc_match.group(1)}/skeleton/ is missing or empty. "
+                            f"Per C-095 + ADR-036, run EA skeleton sprint (PL-EA-01) first."
+                        ),
+                        fix_suggestion="Run WC-020 (PL-EA-01 EA skeleton sprint) before this sprint."
+                    ))
+                    print(f"    ⛔ SKELETON_MISSING (CRITICAL): src/{_svc_match.group(1)}/skeleton/ empty")
+                else:
+                    print(f"    ✅ SKELETON exists: src/{_svc_match.group(1)}/skeleton/")
+
         # 1. Type gaps
         type_gaps = _detect_type_gaps(spec_text, ptr, stack)
         for type_name, reason in type_gaps[:5]:  # cap per task

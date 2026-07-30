@@ -197,6 +197,11 @@ class ContextBuilder:
         if ptr_block:
             ctx.blocks.append(ContextBlock("PTR", ptr_block))
 
+        # [4b] SKELETON — EA-produced type contracts for IMPLEMENTATION tasks (ADR-036, C-095)
+        skeleton_block = self._build_skeleton_block(output_file, stack)
+        if skeleton_block:
+            ctx.blocks.append(ContextBlock("SKELETON", skeleton_block))
+
         # [5] USING_MAP — namespace index (§7.3)
         using_block = self._build_using_map_block(output_file, constitutional_check, stack)
         if using_block:
@@ -391,6 +396,41 @@ class ContextBuilder:
             return "\n".join(lines)
         except Exception as e:
             return f"PTR: unavailable ({e})"
+
+    def _build_skeleton_block(self, output_file: str, stack: str) -> str:
+        """ADR-036 §3: Inject EA-produced skeleton for IMPLEMENTATION tasks.
+        Skeleton files live in src/{service}/skeleton/. Provides type contracts
+        so LLM fills bodies only — never invents class names or method signatures."""
+        skeleton_dirs: dict[str, str] = {
+            "constitutional-engine": "src/constitutional-engine/skeleton",
+            "business-platform": "src/business-platform/skeleton",
+            "professional-runtime": "src/professional-runtime/skeleton",
+            "ai-runtime": "src/ai-runtime/skeleton",
+            "billing-engine": "src/billing-engine/skeleton",
+        }
+        # Only inject skeleton for src/ implementation files — not tests
+        if not (output_file or "").startswith("src/"):
+            return ""
+        # Match output_file to a service
+        service_dir = None
+        for service, skel_dir in skeleton_dirs.items():
+            if service in (output_file or ""):
+                service_dir = self._root / skel_dir
+                break
+        if not service_dir or not service_dir.exists():
+            return ""
+        ext = ".cs" if stack == "dotnet" else ".py"
+        lines = [
+            "EA SKELETON (ADR-036): These are the type contracts. "
+            "DO NOT change class names, method signatures, or field types. "
+            "Your task is to fill method bodies only. "
+            "If a change to the interface is needed, raise SPEC_GAP — do not modify skeleton.",
+            ""
+        ]
+        for skel_file in sorted(service_dir.glob(f"*{ext}")):
+            lines.append(f"# --- {skel_file.name} ---")
+            lines.append(skel_file.read_text()[:2000])  # cap per file to stay within context
+        return "\n".join(lines) if len(lines) > 2 else ""
 
     def _build_using_map_block(self, output_file: str, constitutional_check: str, stack: str) -> str:
         """§7.3: USING_MAP structural injection — filtered by ProjectDependencyMap."""

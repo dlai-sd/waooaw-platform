@@ -46,6 +46,24 @@ def _goal_id_from_sprint(sprint: str) -> str:
     return f"GOAL-{sprint}" if sprint.startswith("WC-") else f"GOAL-{sprint}"
 
 
+def _check_skeleton_drift() -> list[str]:
+    """ADR-036 §5: detect if any skeleton/ file was modified in the PR diff.
+    Returns list of violation descriptions; empty list means no drift."""
+    try:
+        diff = run(["git", "diff", "origin/main..HEAD", "--name-only"])
+        changed = diff.stdout.splitlines()
+        violations = []
+        for path in changed:
+            if "/skeleton/" in path:
+                violations.append(
+                    f"{path} — skeleton file modified in implementation sprint. "
+                    f"Skeleton contracts are EA-owned (ADR-036). Raise SPEC_GAP."
+                )
+        return violations
+    except Exception:
+        return []  # non-blocking — advisory only if git not available
+
+
 def run(cmd: list[str], env: dict | None = None) -> subprocess.CompletedProcess:
     merged_env = {**os.environ, **(env or {})}
     return subprocess.run(cmd, capture_output=True, text=True, env=merged_env, cwd=REPO_ROOT)
@@ -280,6 +298,26 @@ def main() -> int:
         "  [PASS] WC tasks are within authorized scope",
         "  [PENDING] CCT-EF-01 — Sprint 012 required (CE not yet built)",
         "  [PENDING] CCT-HO-01 — Sprint 012 required",
+    ]
+
+    # ADR-036 §5: Skeleton API surface immutability check
+    # PR must not modify public method signatures in skeleton/ directories.
+    skeleton_drift = _check_skeleton_drift()
+    if skeleton_drift:
+        review_lines += [
+            "",
+            "⛔ SKELETON DRIFT DETECTED (ADR-036 violation):",
+        ]
+        for drift in skeleton_drift:
+            review_lines.append(f"  ❌ {drift}")
+        review_lines += [
+            "  Resolution: skeleton/ files are EA-owned contracts — raise SPEC_GAP.",
+            "  EA session required to amend skeleton before implementation can proceed.",
+        ]
+    else:
+        review_lines.append("  [PASS] ADR-036: No skeleton API surface modifications detected")
+
+    review_lines += [
         "",
         "Engineering Standards (engineering-standards.md):",
         "  [PASS] No business logic in Sprint 011 (infrastructure only — correct)",
