@@ -12,9 +12,9 @@
 | D-02: ADR-022 Amendment (EA — INST-004) | ✅ DONE — Universal prepaid + single onboarding + renewal failure policy |
 | D-03: ADR-034 WBE Architecture (EA — INST-004) | ✅ DONE — 5 sub-components, agent-agnostic, port 8140 |
 | D-04: ADR-024 Amendment (EA — INST-004) | ✅ DONE — Bundle rations gate PSE, pacing choice, downgrade disclosure |
-| D-05: DMA Bundle Definitions (BA — INST-003) | pending |
-| D-06: Thread Catalog Reference (BA — INST-003) | pending |
-| D-09: Agent Billing Profiles × 4 (BA — INST-003) | pending |
+| D-05: DMA Bundle Definitions (BA — INST-003) | ✅ DONE — Starter/Runner/Winner with cost floor derivation |
+| D-06: Thread Catalog Reference (BA — INST-003) | ✅ DONE — All 4 agents, all providers, markup % |
+| D-09: Agent Billing Profiles × 4 (BA — INST-003) | ✅ DONE — DMA, Trading, Agricultural, Private Tutor |
 | D-07: WBE Component Spec (SA — INST-005) | pending |
 | D-08: DB Schema Update Spec (DA — INST-006) | pending |
 | D-10: Autonomous Sprint Execution Plan (GO — INST-013) | pending |
