@@ -59,3 +59,4 @@
 {"event": "SPRINT_TASKS_EXECUTED", "timestamp": "2026-07-30T06:28:30.297601+00:00", "run_id": "30519565137", "stub_mode": true, "sprint": "WC-015", "tasks_done": ["WC015-05"]}
 {"event": "AUTONOMOUS_SPRINT_STARTED", "timestamp": "2026-07-30T14:52:50.385356+00:00", "run_id": "local-wc026-01", "stub_mode": true, "sprint": "WC-026", "branch": "ib/009/sprint-026", "tasks": ["WC026-01"]}
 {"event": "SPRINT_TASKS_EXECUTED", "timestamp": "2026-07-30T14:52:51.458233+00:00", "run_id": "local-wc026-01", "stub_mode": true, "sprint": "WC-026", "tasks_done": []}
+{"event": "AUTONOMOUS_SPRINT_STARTED", "timestamp": "2026-07-30T14:59:34.234081+00:00", "run_id": "local-wc026-01-r2", "stub_mode": true, "sprint": "WC-026", "branch": "ib/009/sprint-026", "tasks": ["WC026-01"]}
