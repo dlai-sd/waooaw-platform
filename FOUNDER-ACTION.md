@@ -146,3 +146,21 @@ does not yet exist. The Founder has explicitly flagged that ALL future Founder A
 must be performed through an authenticated, role-gated interface — not via markdown or
 AI conversation. This file is a bootstrap artifact. See constitutional gap raised in
 GOAL-004 session 2026-07-30: "Steward Interface as constitutional enforcement mechanism."
+
+---
+
+## FA-026 — GOAL-PLATFORM-REGISTRY Implementation Authorization + EA Skeleton Authority
+
+**Date:** 2026-07-30
+**Authorized by:** Yogesh Khandge (Founder)
+**Status:** ✅ AUTHORIZED
+
+**Authorization 1:** "Yogesh authorizes GOAL-PLATFORM-REGISTRY implementation."
+
+**Authorization 2:** "EA institution (INST-004) is authorized to produce skeleton files
+in src/{service}/skeleton/ directories. Skeleton files are specification artifacts
+expressed in the target language — they contain only type contracts (interfaces, data
+models, exception classes, router stubs) with NO business logic. This is constitutional
+per ADR-036."
+
+**Pricing note:** No pricing decisions in this Goal. Blueprint engineering model only.

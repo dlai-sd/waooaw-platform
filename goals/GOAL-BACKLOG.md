@@ -335,3 +335,32 @@ S-5 Constitutional Recall Mechanism (Platform Operations + WBE + all agents)
   The flywheel turns on customer time, not human session time.
 
 ---
+
+---
+
+### GOAL-PLATFORM-REGISTRY — Blueprint-First Platform Engineering Model (Final Flywheel)
+
+**Registrant:** Yogesh Khandge (Founder)
+**Registered:** 2026-07-30
+**Status:** PLANNED — spec complete, awaiting FA-026 authorization
+**Full Goal Document:** goals/GOAL-PLATFORM-REGISTRY.md
+**Simulation:** SIM-PLATFORM-001 PASS (30/30) — simulation/sim_platform_001_manifest_skeleton_pipeline_impact.py
+
+**Desired Outcome:**
+Blueprint-first engineering model operational. Every platform component has a
+Component Manifest (YAML) and EA-produced Code Skeleton before implementation.
+The autonomous pipeline reads manifests and skeletons, eliminating type-invention
+errors (75% token reduction proven). 15-day Blueprint Assurance Run validates
+runtime conformance to blueprints. This is the final flywheel model.
+
+**Scope:**
+- Manifests + skeletons for 5 existing services (CE, BP, PR, AIR, WBE — retroactive)
+- ADR-036 (EA Skeleton Standard) + C-095 (Component Manifest Obligation) — done
+- 6 pipeline upgrades (context_builder, task_decomposer, retry_advisor, etc.)
+- gap_scanner.py + blueprint_assurance.py
+- Platform Component Registry YAML
+
+**Prerequisites:** None — can begin immediately after FA-026
+**Enables:** GOAL-004 WBE sprints (75% cheaper) + all future Goals run blueprint-first
+
+---
