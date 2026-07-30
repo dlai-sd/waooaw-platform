@@ -171,131 +171,50 @@ def _read_skeleton(sprint_prefix: str) -> str:
 
 # ── LLM SubTaskDef generation ──────────────────────────────────────────────────
 
-_SUBTASKDEF_TEMPLATE = '''
-SubTaskDef(
-    id="{subtask_id}",
-    description="<one sentence: what this task implements>",
-    type="llm",
-    depends_on=[{depends_on}],
-    compile_gate="ruff",
-    service_dir="{service_dir}",
-    wc_task_id="{task_id}",
-    stack="{stack}",
-    output_files=[
-        {output_files}
-    ],
-    inject_source_files=[
-        {inject_files}
-    ],
-    {not_regen_line}
-    spec_sections={{
-        "work-contracts/{wc_file_name}": "{task_id}",
-    }},
-    constitutional_check=(
-        "<derived from skeleton: exact interface to implement, constitutional claims, SLA constraints>"
-    ),
-    model_hint="{model_hint}",
-    max_tokens={max_tokens},
-)
-'''.strip()
+# ── Staged generation: 3-subtask chain per WC task ───────────────────────────
+#
+# Scaffold  (compile_gate="py_compile") — LLM implements business logic only
+# Polish    (compile_gate="ruff")       — LLM adds type annotations only (templated, no LLM call)
+# Test      (compile_gate="ruff")       — LLM writes tests against scaffold output
 
-_SYSTEM_PROMPT = """You are a Python code generator for the WAOOAW autonomous sprint pipeline.
-You produce SubTaskDef struct literals that tell the autonomous runner what to implement.
+_SCAFFOLD_SYSTEM_PROMPT = """You are a Python code generator for the WAOOAW autonomous sprint pipeline.
+You produce the SCAFFOLD SubTaskDef for a WC task — the first of three staged subtasks.
 
-CRITICAL RULES (ADR-036 Blueprint-First):
-1. output_files MUST be derived from the scope text — choose existing service module structure
-2. constitutional_check MUST reference skeleton interface method names EXACTLY as written
-3. constitutional_check MUST include "DO NOT change signatures — implement only, no invention"
-4. inject_source_files MUST include the skeleton file path for skeleton-backed tasks
-5. model_hint MUST be exactly as specified in the WC table (reasoning/auto — never 'standard')
-6. max_tokens: 8000 for reasoning tasks, 3000–5000 for auto tasks
-7. depends_on: use the prior_subtask_id exactly as given, or [] for the first task
-8. Output ONLY the SubTaskDef(...) literal — no imports, no assignments, no explanation
+SCAFFOLD RULES (staged generation — see architecture/reference/pipeline/staged-generation.md):
+1. compile_gate MUST be "py_compile" — scaffold gate is syntax only, NOT ruff
+2. output_files MUST be derived from the scope — real module paths under the service dir
+3. constitutional_check MUST reference exact skeleton ABC class and method names
+4. constitutional_check MUST say: "Implement business logic. Type annotations optional here — polish pass adds them."
+5. inject_source_files MUST include the skeleton file
+6. model_hint from WC table (reasoning/auto — never 'standard')
+7. depends_on: prior scaffold subtask id, or [] for first task in sprint
+8. Output ONLY the dict entry literal — no imports, no assignments
 """
 
-def _generate_subtaskdef(
-    task: dict,
-    skeleton: str,
-    prior_subtask_id: str | None,
-    sprint_prefix: str,
-    wc_filename: str,
-    api_key: str,
-) -> str | None:
-    """
-    Use Claude Haiku to generate a SubTaskDef Python literal grounded in the skeleton.
-    Cost: ~$0.002 per call. Returns the SubTaskDef(...) string or None on failure.
-    """
+_TEST_SYSTEM_PROMPT = """You are a Python test generator for the WAOOAW autonomous sprint pipeline.
+You produce the TEST SubTaskDef for a WC task — the third of three staged subtasks.
+
+TEST RULES:
+1. compile_gate MUST be "ruff" — tests exempt from ANN per pyproject.toml per-file-ignores
+2. output_files MUST be test files under tests/{service}/ directory
+3. inject_source_files MUST include scaffold output files (the implementation being tested)
+4. constitutional_check must list: happy path, idempotency cases, error cases, constitutional invariants
+5. model_hint MUST be "reasoning" — test quality requires understanding edge cases
+6. max_tokens: 6000
+7. depends_on: the polish subtask id (e.g. WC027-02b)
+8. Output ONLY the SubTaskDef(...) literal — no imports, no assignments
+"""
+
+
+def _llm_call(prompt: str, system: str, api_key: str, max_tokens: int = 2048) -> str | None:
+    """Single Haiku LLM call. Returns text content or None on failure."""
     import urllib.request
-
-    stack, service_dir = _SERVICE_MAP.get(sprint_prefix, ("python", "src/billing-engine"))
-    task_id = task["task_id"]
-    subtask_id = task_id.lower().replace("-", "") + "a"  # e.g. WC027-01 → wc02701a... fix below
-    # Proper format: WC027-01 → WC027-01a
-    subtask_id = task_id + "a"
-    depends_on_str = f'"{prior_subtask_id}"' if prior_subtask_id else ""
-    model_hint = task.get("model_hint", "auto")
-    if model_hint not in ("reasoning", "auto", "none"):
-        model_hint = "auto"
-    max_tokens = 8000 if model_hint == "reasoning" else 4000
-
-    user_msg = f"""Generate a SubTaskDef literal for this WC task.
-
-Task ID: {task_id}
-Scope: {task['scope']}
-model_hint: {model_hint}
-Stack: {stack}
-Service dir: {service_dir}
-Prior subtask id (for depends_on): {prior_subtask_id or 'none — this is the first task'}
-WC file name: {wc_filename}
-
-EA SKELETON (the blueprint — method signatures are FROZEN):
-{skeleton[:6000]}
-
-Output format (fill ALL placeholders):
-    "{task_id}": {{
-        "subtasks": [
-            SubTaskDef(
-                id="{task_id}a",
-                description="<one sentence>",
-                type="llm",
-                depends_on=[{depends_on_str}],
-                compile_gate="ruff",
-                service_dir="{service_dir}",
-                wc_task_id="{task_id}",
-                stack="{stack}",
-                output_files=[
-                    "<derive from scope — e.g. src/billing-engine/wallet/service.py>",
-                ],
-                inject_source_files=[
-                    "{service_dir}/skeleton/wbe_interfaces.py",
-                    "<other relevant existing files>",
-                ],
-                spec_sections={{
-                    "work-contracts/{wc_filename}": "{task_id}",
-                }},
-                constitutional_check=(
-                    "<skeleton interface to implement + DO NOT change signatures + C-xxx claims from skeleton annotations>"
-                ),
-                model_hint="{model_hint}",
-                max_tokens={max_tokens},
-            ),
-        ]
-    }},
-
-Rules:
-- output_files must be real Python module paths under {service_dir}/
-- inject_source_files must start with the skeleton file above, then any prior-task output files
-- constitutional_check must name the exact ABC class from skeleton that this task implements
-- DO NOT include imports or module-level assignments — only the dict entry literal
-"""
-
     body = json.dumps({
         "model": "claude-haiku-4-5",
-        "max_tokens": 2048,
-        "system": _SYSTEM_PROMPT,
-        "messages": [{"role": "user", "content": user_msg}],
+        "max_tokens": max_tokens,
+        "system": system,
+        "messages": [{"role": "user", "content": prompt}],
     }).encode()
-
     req = urllib.request.Request(
         "https://api.anthropic.com/v1/messages",
         data=body,
@@ -313,6 +232,239 @@ Rules:
     except Exception as exc:
         print(f"  ⚠️  LLM call failed: {exc}")
         return None
+
+
+def _generate_scaffold_subtaskdef(
+    task: dict,
+    skeleton: str,
+    prior_subtask_id: str | None,
+    sprint_prefix: str,
+    wc_filename: str,
+    api_key: str,
+) -> str | None:
+    """Generate the scaffold SubTaskDef via Haiku. compile_gate='py_compile'."""
+    stack, service_dir = _SERVICE_MAP.get(sprint_prefix, ("python", "src/billing-engine"))
+    task_id = task["task_id"]
+    depends_on_str = f'"{prior_subtask_id}"' if prior_subtask_id else ""
+    model_hint = task.get("model_hint", "auto")
+    if model_hint not in ("reasoning", "auto"):
+        model_hint = "auto"
+    max_tokens = 8000 if model_hint == "reasoning" else 4000
+
+    prompt = f"""Generate a SCAFFOLD SubTaskDef for this WC task.
+
+Task ID: {task_id}
+Scope: {task['scope']}
+model_hint: {model_hint}
+Stack: {stack}
+Service dir: {service_dir}
+Prior subtask id (depends_on): {prior_subtask_id or 'none — first task'}
+WC file: {wc_filename}
+
+EA SKELETON (frozen — do not invent new names):
+{skeleton[:6000]}
+
+Output ONLY this dict entry (fill all placeholders):
+    "{task_id}": {{
+        "subtasks": [
+            SubTaskDef(
+                id="{task_id}a",
+                description="<one sentence: business logic implemented>",
+                type="llm",
+                depends_on=[{depends_on_str}],
+                compile_gate="py_compile",
+                service_dir="{service_dir}",
+                wc_task_id="{task_id}",
+                stack="{stack}",
+                output_files=[
+                    "<service module path, e.g. {service_dir}/wallet/service.py>",
+                ],
+                inject_source_files=[
+                    "{service_dir}/skeleton/wbe_interfaces.py",
+                ],
+                spec_sections={{
+                    "work-contracts/{wc_filename}": "{task_id}",
+                }},
+                constitutional_check=(
+                    "Implement <ExactABCClass>.<method>() from skeleton.\\n"
+                    "DO NOT change signatures — implement bodies only (ADR-036).\\n"
+                    "Type annotations optional in scaffold — polish pass enforces ANN001.\\n"
+                    "<C-xxx: constitutional invariant from skeleton annotations>"
+                ),
+                model_hint="{model_hint}",
+                max_tokens={max_tokens},
+            ),
+            # POLISH and TEST subtasks added by groomer below — do not generate them here
+        ]
+    }},
+"""
+    return _llm_call(prompt, _SCAFFOLD_SYSTEM_PROMPT, api_key)
+
+
+def _generate_polish_subtaskdef(
+    task_id: str,
+    scaffold_output_files: list[str],
+    service_dir: str,
+    wc_filename: str,
+    stack: str,
+) -> str:
+    """Return polish SubTaskDef as a Python literal string. No LLM call needed — fully templated."""
+    files_str = "\n                    ".join(f'"{f}",' for f in scaffold_output_files)
+    inject_str = "\n                    ".join(f'"{f}",' for f in scaffold_output_files)
+    return f'''SubTaskDef(
+                id="{task_id}b",
+                description="Add complete type annotations and fix ruff style (ANN001/ANN201 enforcement)",
+                type="llm",
+                depends_on=["{task_id}a"],
+                compile_gate="ruff",
+                service_dir="{service_dir}",
+                wc_task_id="{task_id}",
+                stack="{stack}",
+                output_files=[
+                    {files_str}
+                ],
+                inject_source_files=[
+                    {inject_str}
+                ],
+                spec_sections={{
+                    "work-contracts/{wc_filename}": "{task_id}",
+                }},
+                constitutional_check=(
+                    "POLISH PASS — type annotation enforcement only.\\n"
+                    "Add type annotations to ALL function parameters (ANN001).\\n"
+                    "Add return type annotations to ALL functions (ANN201, ANN202).\\n"
+                    "DO NOT change function names, business logic, or structure.\\n"
+                    "DO NOT add new imports beyond those needed for type annotations."
+                ),
+                model_hint="auto",
+                max_tokens=3000,
+            )'''
+
+
+def _generate_test_subtaskdef(
+    task: dict,
+    scaffold_output_files: list[str],
+    service_dir: str,
+    wc_filename: str,
+    stack: str,
+    api_key: str,
+) -> str | None:
+    """Generate the test SubTaskDef via Haiku. compile_gate='ruff' (tests ANN-exempt)."""
+    task_id = task["task_id"]
+    # Derive test file path from service output files
+    test_dir = service_dir.replace("src/", "tests/")
+    svc_file = scaffold_output_files[0] if scaffold_output_files else ""
+    svc_name = Path(svc_file).stem if svc_file else task_id.lower().replace("-", "_")
+    test_file = f"{test_dir}/test_{svc_name}.py"
+    files_str = "\n                    ".join(f'"{f}",' for f in scaffold_output_files)
+
+    prompt = f"""Generate a TEST SubTaskDef for this WC task.
+
+Task ID: {task_id}
+Scope: {task['scope']}
+Implementation files (inject these — tests target the actual code):
+{chr(10).join(scaffold_output_files)}
+Test file to produce: {test_file}
+WC file: {wc_filename}
+
+Output ONLY the SubTaskDef(...) literal (no dict wrapper, no imports):
+SubTaskDef(
+    id="{task_id}c",
+    description="<one sentence: what this test suite covers>",
+    type="llm",
+    depends_on=["{task_id}b"],
+    compile_gate="ruff",
+    service_dir="{service_dir}",
+    wc_task_id="{task_id}",
+    stack="{stack}",
+    output_files=[
+        "{test_file}",
+    ],
+    inject_source_files=[
+        {files_str}
+    ],
+    spec_sections={{
+        "work-contracts/{wc_filename}": "{task_id}",
+    }},
+    constitutional_check=(
+        "TEST PASS — write pytest tests against the provided implementation.\\n"
+        "Cover: happy path, error cases, <idempotency/invariant specific to scope>.\\n"
+        "Tests file is exempt from ANN (per pyproject.toml per-file-ignores).\\n"
+        "Use pytest-asyncio for async tests. Mock Redis/DB with pytest fixtures."
+    ),
+    model_hint="reasoning",
+    max_tokens=6000,
+)
+"""
+    return _llm_call(prompt, _TEST_SYSTEM_PROMPT, api_key)
+
+
+def _generate_subtask_chain(
+    task: dict,
+    skeleton: str,
+    prior_subtask_id: str | None,
+    sprint_prefix: str,
+    wc_filename: str,
+    api_key: str,
+) -> str | None:
+    """
+    Generate a 3-subtask chain (scaffold → polish → test) for one WC task row.
+    Returns the complete TASK_HANDLERS dict entry string, or None on failure.
+    Architecture: staged generation — see architecture/reference/pipeline/staged-generation.md
+    """
+    stack, service_dir = _SERVICE_MAP.get(sprint_prefix, ("python", "src/billing-engine"))
+    task_id = task["task_id"]
+
+    # --- Pass 1: Scaffold (LLM call) ---
+    scaffold_entry = _generate_scaffold_subtaskdef(
+        task=task, skeleton=skeleton, prior_subtask_id=prior_subtask_id,
+        sprint_prefix=sprint_prefix, wc_filename=wc_filename, api_key=api_key,
+    )
+    if not scaffold_entry:
+        return None
+
+    # Extract output_files from scaffold entry to feed polish and test
+    output_files_match = re.findall(r'output_files=\[\s*((?:"[^"]+",?\s*)+)\]', scaffold_entry)
+    scaffold_output_files: list[str] = []
+    if output_files_match:
+        scaffold_output_files = re.findall(r'"([^"]+\.py)"', output_files_match[0])
+    # Filter to implementation files only (exclude test files and skeleton)
+    scaffold_output_files = [
+        f for f in scaffold_output_files
+        if not f.startswith("tests/") and "skeleton" not in f
+    ]
+
+    if not scaffold_output_files:
+        print(f"  ⚠️  {task_id}: could not extract output_files from scaffold — skipping polish/test")
+        return scaffold_entry  # return scaffold-only, better than nothing
+
+    # --- Pass 2: Polish (templated, no LLM call) ---
+    polish_subtaskdef = _generate_polish_subtaskdef(
+        task_id=task_id, scaffold_output_files=scaffold_output_files,
+        service_dir=service_dir, wc_filename=wc_filename, stack=stack,
+    )
+
+    # --- Pass 3: Test (LLM call) ---
+    test_subtaskdef = _generate_test_subtaskdef(
+        task=task, scaffold_output_files=scaffold_output_files,
+        service_dir=service_dir, wc_filename=wc_filename, stack=stack, api_key=api_key,
+    )
+
+    # Splice polish and test into the scaffold entry's subtasks list
+    # Scaffold LLM output has: "subtasks": [ SubTaskDef(...), # POLISH and TEST subtasks ... ]
+    # We replace the comment placeholder with actual subtasks
+    combined = scaffold_entry.replace(
+        "            # POLISH and TEST subtasks added by groomer below — do not generate them here\n",
+        "",
+    )
+
+    # Insert polish + test before the closing ] of "subtasks"
+    insert_target = "        ]\n    },"
+    polish_block = f"\n            {polish_subtaskdef},"
+    test_block = f"\n            {test_subtaskdef}," if test_subtaskdef else ""
+    combined = combined.replace(insert_target, f"{polish_block}{test_block}\n        ]\n    }},")
+
+    return combined
 
 
 # ── Validation ────────────────────────────────────────────────────────────────
@@ -503,8 +655,8 @@ def main() -> int:
         task_id = task["task_id"]
         print(f"\n  Grooming {task_id}: {task['scope'][:60]}...")
 
-        # Generate SubTaskDef via Haiku
-        generated = _generate_subtaskdef(
+        # Generate 3-subtask chain: scaffold → polish → test
+        generated = _generate_subtask_chain(
             task=task,
             skeleton=skeleton,
             prior_subtask_id=prior_subtask_id,
@@ -525,7 +677,7 @@ def main() -> int:
         if args.dry_run:
             print(f"  [dry-run] Would inject {task_id}:\n{generated[:300]}...")
             groomed_task_ids.append(task_id)
-            prior_subtask_id = task_id + "a"
+            prior_subtask_id = task_id + "c"  # next task depends on test subtask (end of chain)
             continue
 
         # Inject into TASK_HANDLERS
@@ -535,8 +687,8 @@ def main() -> int:
 
         groomed_count += 1
         groomed_task_ids.append(task_id)
-        prior_subtask_id = task_id + "a"
-        print(f"  ✅ {task_id}: injected into TASK_HANDLERS")
+        prior_subtask_id = task_id + "c"  # next task depends on test subtask (end of chain)
+        print(f"  ✅ {task_id}: 3-subtask chain injected (scaffold/polish/test)")
 
     # 7. Update SPRINT_TASK_MANIFEST with all tasks (groomed + already-groomed)
     all_task_ids = [t["task_id"] for t in tasks]

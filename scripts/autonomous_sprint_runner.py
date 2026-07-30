@@ -3910,6 +3910,20 @@ def main() -> int:
     else:
         run_result = "PARTIAL"
 
+    # ── Step 8.0: Print cost-per-file summary ─────────────────────────────────
+    if _MONITOR_SIGNAL.get("file_costs"):
+        total_cost = sum(_MONITOR_SIGNAL["file_costs"].values())
+        print("\n  ╔══════════════════════════════════════════════════════╗")
+        print(  "  ║           LLM COST SUMMARY (C-077 FinOps)           ║")
+        print(  "  ╠══════════════════════════════════════════════════════╣")
+        for key, cost in sorted(_MONITOR_SIGNAL["file_costs"].items(), key=lambda x: -x[1]):
+            label = key[:48].ljust(48)
+            print(f"  ║  {label}  ₹{cost:>7.4f} ║")
+        print(  "  ╠══════════════════════════════════════════════════════╣")
+        print(f"  ║  {'TOTAL'.ljust(48)}  ₹{total_cost:>7.4f} ║")
+        print(  "  ╚══════════════════════════════════════════════════════╝")
+        _MONITOR_SIGNAL["total_cost_inr"] = total_cost
+
     # ── Step 8.1: Emit monitor signal BEFORE any early returns in PR section ──
     # Any early return below (no github_repo, no tasks done, infra error) would
     # skip the signal write at the end of main(). Writing it here ensures

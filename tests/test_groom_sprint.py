@@ -86,7 +86,7 @@ VALID_SUBTASKDEF_ENTRY = textwrap.dedent("""
             description="Implement SQLAlchemy models for MarkupRule and BundleItem",
             type="llm",
             depends_on=[],
-            compile_gate="ruff",
+            compile_gate="py_compile",
             service_dir="src/billing-engine",
             wc_task_id="WC027-01",
             stack="python",
@@ -102,10 +102,61 @@ VALID_SUBTASKDEF_ENTRY = textwrap.dedent("""
             constitutional_check=(
                 "Implement MarkupRule and BundleItem SQLAlchemy models.\\n"
                 "DO NOT change signatures — implement bodies only (ADR-036).\\n"
+                "Type annotations optional in scaffold — polish pass enforces ANN001."
             ),
             model_hint="auto",
             max_tokens=4000,
-        )
+        ),
+        SubTaskDef(
+            id="WC027-01b",
+            description="Add complete type annotations and fix ruff style (ANN001/ANN201 enforcement)",
+            type="llm",
+            depends_on=["WC027-01a"],
+            compile_gate="ruff",
+            service_dir="src/billing-engine",
+            wc_task_id="WC027-01",
+            stack="python",
+            output_files=[
+                "src/billing-engine/models/markup.py",
+            ],
+            inject_source_files=[
+                "src/billing-engine/models/markup.py",
+            ],
+            spec_sections={
+                "work-contracts/WC-027-markup.md": "WC027-01",
+            },
+            constitutional_check=(
+                "POLISH PASS — type annotation enforcement only.\\n"
+                "Add type annotations to ALL function parameters (ANN001).\\n"
+                "DO NOT change function names, business logic, or structure."
+            ),
+            model_hint="auto",
+            max_tokens=3000,
+        ),
+        SubTaskDef(
+            id="WC027-01c",
+            description="Write pytest tests for SQLAlchemy models",
+            type="llm",
+            depends_on=["WC027-01b"],
+            compile_gate="ruff",
+            service_dir="src/billing-engine",
+            wc_task_id="WC027-01",
+            stack="python",
+            output_files=[
+                "tests/billing-engine/test_markup.py",
+            ],
+            inject_source_files=[
+                "src/billing-engine/models/markup.py",
+            ],
+            spec_sections={
+                "work-contracts/WC-027-markup.md": "WC027-01",
+            },
+            constitutional_check=(
+                "TEST PASS — write pytest tests against the provided implementation."
+            ),
+            model_hint="reasoning",
+            max_tokens=6000,
+        ),
     ]
 },
 """).strip()
@@ -422,3 +473,100 @@ class TestMainDryRun:
         assert exit_code == 0
         captured = capsys.readouterr()
         assert "already groomed" in captured.out
+
+
+# ─────────────────────────────────────────────────────────────
+# Staged generation: _generate_polish_subtaskdef
+# ─────────────────────────────────────────────────────────────
+
+class TestGeneratePolishSubtaskdef:
+    def test_returns_subtaskdef_literal(self):
+        result = groom_sprint._generate_polish_subtaskdef(
+            task_id="WC027-02",
+            scaffold_output_files=["src/billing-engine/wallet/service.py"],
+            service_dir="src/billing-engine",
+            wc_filename="WC-027-billing.md",
+            stack="python",
+        )
+        assert 'id="WC027-02b"' in result
+        assert 'depends_on=["WC027-02a"]' in result
+        assert 'compile_gate="ruff"' in result
+        assert 'model_hint="auto"' in result
+        assert "POLISH PASS" in result
+        assert "ANN001" in result
+
+    def test_output_files_match_scaffold(self):
+        files = ["src/billing-engine/wallet/service.py", "src/billing-engine/wallet/repo.py"]
+        result = groom_sprint._generate_polish_subtaskdef(
+            task_id="WC027-02",
+            scaffold_output_files=files,
+            service_dir="src/billing-engine",
+            wc_filename="WC-027-billing.md",
+            stack="python",
+        )
+        assert '"src/billing-engine/wallet/service.py",' in result
+        assert '"src/billing-engine/wallet/repo.py",' in result
+
+    def test_inject_source_files_match_scaffold(self):
+        files = ["src/billing-engine/wallet/service.py"]
+        result = groom_sprint._generate_polish_subtaskdef(
+            task_id="WC027-01",
+            scaffold_output_files=files,
+            service_dir="src/billing-engine",
+            wc_filename="WC-027-billing.md",
+            stack="python",
+        )
+        # inject_source_files should be the scaffold output files
+        assert '"src/billing-engine/wallet/service.py",' in result
+
+    def test_no_llm_call_needed(self):
+        """Polish subtask is fully templated — no API key required."""
+        # Just calling it with no api_key param should succeed
+        result = groom_sprint._generate_polish_subtaskdef(
+            task_id="WC027-03",
+            scaffold_output_files=["src/billing-engine/cache/redis.py"],
+            service_dir="src/billing-engine",
+            wc_filename="WC-027.md",
+            stack="python",
+        )
+        assert result  # non-empty string returned without network call
+
+    def test_wc_filename_in_spec_sections(self):
+        result = groom_sprint._generate_polish_subtaskdef(
+            task_id="WC027-02",
+            scaffold_output_files=["src/billing-engine/wallet/service.py"],
+            service_dir="src/billing-engine",
+            wc_filename="WC-027-billing-engine.md",
+            stack="python",
+        )
+        assert '"work-contracts/WC-027-billing-engine.md"' in result
+
+
+# ─────────────────────────────────────────────────────────────
+# Staged generation: _validate_generated_entry — 3-subtask chain
+# ─────────────────────────────────────────────────────────────
+
+class TestValidateGeneratedEntryThreeSubtasks:
+    def test_valid_3subtask_entry_passes(self):
+        """3-subtask chain entry should pass validation."""
+        assert groom_sprint._validate_generated_entry(VALID_SUBTASKDEF_ENTRY, "WC027-01") is True
+
+    def test_scaffold_uses_py_compile_gate(self):
+        """VALID_SUBTASKDEF_ENTRY fixture should have py_compile for scaffold."""
+        assert 'compile_gate="py_compile"' in VALID_SUBTASKDEF_ENTRY
+
+    def test_polish_uses_ruff_gate(self):
+        assert VALID_SUBTASKDEF_ENTRY.count('compile_gate="ruff"') >= 2  # polish + test
+
+    def test_scaffold_subtask_id_has_a_suffix(self):
+        assert '"WC027-01a"' in VALID_SUBTASKDEF_ENTRY
+
+    def test_polish_subtask_id_has_b_suffix(self):
+        assert '"WC027-01b"' in VALID_SUBTASKDEF_ENTRY
+
+    def test_test_subtask_id_has_c_suffix(self):
+        assert '"WC027-01c"' in VALID_SUBTASKDEF_ENTRY
+
+    def test_depends_on_chain(self):
+        assert 'depends_on=["WC027-01a"]' in VALID_SUBTASKDEF_ENTRY
+        assert 'depends_on=["WC027-01b"]' in VALID_SUBTASKDEF_ENTRY
