@@ -380,7 +380,9 @@ def run_compile_gate(gate_type: str, service_dir: str = "src/constitutional-engi
 
     if gate_type == "py_compile":
         # Scaffold gate — syntax only, no style rules. Scaffold pass uses this.
-        for f in (target_files or []):
+        if not target_files:
+            return False, "py_compile gate requires explicit target_files — none provided"
+        for f in target_files:
             result = subprocess.run(
                 ["python3", "-m", "py_compile", str(REPO_ROOT / f)],
                 capture_output=True, text=True, cwd=REPO_ROOT

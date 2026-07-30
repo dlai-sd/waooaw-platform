@@ -570,3 +570,165 @@ class TestValidateGeneratedEntryThreeSubtasks:
     def test_depends_on_chain(self):
         assert 'depends_on=["WC027-01a"]' in VALID_SUBTASKDEF_ENTRY
         assert 'depends_on=["WC027-01b"]' in VALID_SUBTASKDEF_ENTRY
+
+
+# ─────────────────────────────────────────────────────────────
+# _validate_generated_entry — requires full 3-subtask chain
+# ─────────────────────────────────────────────────────────────
+
+class TestValidateRequiresFullChain:
+    _base = textwrap.dedent("""\
+        "WC027-01": {
+            "subtasks": [
+                SubTaskDef(id="WC027-01a", compile_gate="py_compile"),
+                SubTaskDef(id="WC027-01b", compile_gate="ruff"),
+                SubTaskDef(id="WC027-01c", compile_gate="ruff"),
+            ]
+        },""")
+
+    def test_full_chain_passes(self):
+        assert groom_sprint._validate_generated_entry(self._base, "WC027-01") is True
+
+    def test_missing_polish_fails(self):
+        code = self._base.replace('SubTaskDef(id="WC027-01b", compile_gate="ruff"),\n', "")
+        assert groom_sprint._validate_generated_entry(code, "WC027-01") is False
+
+    def test_missing_test_fails(self):
+        code = self._base.replace('SubTaskDef(id="WC027-01c", compile_gate="ruff"),\n', "")
+        assert groom_sprint._validate_generated_entry(code, "WC027-01") is False
+
+    def test_scaffold_only_fails(self):
+        code = textwrap.dedent("""\
+            "WC027-01": {
+                "subtasks": [
+                    SubTaskDef(id="WC027-01a", compile_gate="py_compile"),
+                ]
+            },""")
+        assert groom_sprint._validate_generated_entry(code, "WC027-01") is False
+
+
+# ─────────────────────────────────────────────────────────────
+# _generate_subtask_chain — integration with mocked _llm_call
+# ─────────────────────────────────────────────────────────────
+
+_SAMPLE_SCAFFOLD_LITERAL = textwrap.dedent("""\
+    SubTaskDef(
+        id="WC027-01a",
+        description="Implement SQLAlchemy models for MarkupRule and BundleItem",
+        type="llm",
+        depends_on=[],
+        compile_gate="py_compile",
+        service_dir="src/billing-engine",
+        wc_task_id="WC027-01",
+        stack="python",
+        output_files=[
+            "src/billing-engine/models/markup.py",
+        ],
+        inject_source_files=[
+            "src/billing-engine/skeleton/wbe_interfaces.py",
+        ],
+        spec_sections={
+            "work-contracts/WC-027-billing.md": "WC027-01",
+        },
+        constitutional_check="Implement MarkupRule model.",
+        model_hint="auto",
+        max_tokens=4000,
+    )""")
+
+_SAMPLE_TEST_LITERAL = textwrap.dedent("""\
+    SubTaskDef(
+        id="WC027-01c",
+        description="Tests for MarkupRule SQLAlchemy models",
+        type="llm",
+        depends_on=["WC027-01b"],
+        compile_gate="ruff",
+        service_dir="src/billing-engine",
+        wc_task_id="WC027-01",
+        stack="python",
+        output_files=[
+            "tests/billing-engine/test_markup.py",
+        ],
+        inject_source_files=[
+            "src/billing-engine/models/markup.py",
+        ],
+        spec_sections={
+            "work-contracts/WC-027-billing.md": "WC027-01",
+        },
+        constitutional_check="TEST PASS",
+        model_hint="reasoning",
+        max_tokens=6000,
+    )""")
+
+
+class TestGenerateSubtaskChain:
+    _task = {"task_id": "WC027-01", "scope": "SQLAlchemy models", "model_hint": "auto"}
+
+    def _make_llm(self, responses: list) -> object:
+        it = iter(responses)
+        return lambda *a, **kw: next(it, None)
+
+    def test_produces_all_three_subtask_ids(self, monkeypatch):
+        monkeypatch.setattr(groom_sprint, "_llm_call", self._make_llm([_SAMPLE_SCAFFOLD_LITERAL, _SAMPLE_TEST_LITERAL]))
+        result = groom_sprint._generate_subtask_chain(
+            task=self._task, skeleton="", prior_subtask_id=None,
+            sprint_prefix="WC027", wc_filename="WC-027-billing.md", api_key="x",
+        )
+        assert result is not None
+        assert '"WC027-01a"' in result
+        assert '"WC027-01b"' in result
+        assert '"WC027-01c"' in result
+
+    def test_result_passes_validation(self, monkeypatch):
+        monkeypatch.setattr(groom_sprint, "_llm_call", self._make_llm([_SAMPLE_SCAFFOLD_LITERAL, _SAMPLE_TEST_LITERAL]))
+        result = groom_sprint._generate_subtask_chain(
+            task=self._task, skeleton="", prior_subtask_id=None,
+            sprint_prefix="WC027", wc_filename="WC-027-billing.md", api_key="x",
+        )
+        assert groom_sprint._validate_generated_entry(result, "WC027-01") is True
+
+    def test_result_is_valid_python(self, monkeypatch):
+        monkeypatch.setattr(groom_sprint, "_llm_call", self._make_llm([_SAMPLE_SCAFFOLD_LITERAL, _SAMPLE_TEST_LITERAL]))
+        result = groom_sprint._generate_subtask_chain(
+            task=self._task, skeleton="", prior_subtask_id=None,
+            sprint_prefix="WC027", wc_filename="WC-027-billing.md", api_key="x",
+        )
+        # ast.parse on the assembled entry must not raise
+        import ast as _ast
+        wrapper = "class SubTaskDef:\n    def __init__(self, **kw): pass\n_d = {" + result + "}"
+        _ast.parse(wrapper)  # raises SyntaxError if invalid
+
+    def test_returns_none_when_scaffold_llm_fails(self, monkeypatch):
+        monkeypatch.setattr(groom_sprint, "_llm_call", self._make_llm([None]))
+        result = groom_sprint._generate_subtask_chain(
+            task=self._task, skeleton="", prior_subtask_id=None,
+            sprint_prefix="WC027", wc_filename="WC-027.md", api_key="x",
+        )
+        assert result is None
+
+    def test_returns_none_when_output_files_empty(self, monkeypatch):
+        scaffold_no_files = 'SubTaskDef(\n    id="WC027-01a",\n    output_files=[],\n    compile_gate="py_compile",\n)'
+        monkeypatch.setattr(groom_sprint, "_llm_call", self._make_llm([scaffold_no_files]))
+        result = groom_sprint._generate_subtask_chain(
+            task=self._task, skeleton="", prior_subtask_id=None,
+            sprint_prefix="WC027", wc_filename="WC-027.md", api_key="x",
+        )
+        assert result is None
+
+    def test_returns_none_when_test_llm_fails(self, monkeypatch):
+        monkeypatch.setattr(groom_sprint, "_llm_call", self._make_llm([_SAMPLE_SCAFFOLD_LITERAL, None]))
+        result = groom_sprint._generate_subtask_chain(
+            task=self._task, skeleton="", prior_subtask_id=None,
+            sprint_prefix="WC027", wc_filename="WC-027.md", api_key="x",
+        )
+        assert result is None
+
+    def test_prior_subtask_id_sets_depends_on(self, monkeypatch):
+        monkeypatch.setattr(groom_sprint, "_llm_call", self._make_llm([_SAMPLE_SCAFFOLD_LITERAL, _SAMPLE_TEST_LITERAL]))
+        result = groom_sprint._generate_subtask_chain(
+            task=self._task, skeleton="", prior_subtask_id="WC027-00a",
+            sprint_prefix="WC027", wc_filename="WC-027-billing.md", api_key="x",
+        )
+        # The scaffold prompt gets the prior_subtask_id — it appears in the LLM prompt,
+        # but here we verify it doesn't corrupt the assembled result
+        assert result is not None
+        assert '"WC027-01a"' in result
