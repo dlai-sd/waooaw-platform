@@ -130,7 +130,102 @@ EA begins architecture. Not suitable for single sprint delivery.
 
 ---
 
-## Backlog Grooming Notes
+### GOAL-STEWARD-INTERFACE — Steward Interface and Authenticated Governance Platform
+
+**Registrant:** Yogesh Khandge (Founder)
+**Registered:** 2026-07-30
+**Prerequisite:** WC-016 (Web Portal infrastructure must exist before Steward Portal is built)
+
+**The Observation That Registered This Goal:**
+During GOAL-004 pricing authorization, the Founder explicitly rejected the pattern of
+approving pricing decisions via AI conversation and markdown files:
+> "I don't want to put it as design/development time values. I want a login, role, and
+> interface for these inputs on the running app."
+
+This is constitutionally correct. Every Founder Action, Tier 1 authorization, and Ethics
+Officer review must eventually be performed through an authenticated, auditable interface
+— not through markdown files or AI conversations. FOUNDER-ACTION.md is a bootstrap
+artifact, valid only until the platform is live with paying customers.
+
+**Desired Outcome:**
+WAOOAW has an authenticated Steward Interface at `ops.waooaw.ai` where all three stewards
+perform their constitutional duties through their own login and role-gated panels. Every
+action is recorded as an immutable entry in the Constitutional Audit Ledger — not in a
+markdown file. The Steward Interface IS the constitutional enforcement mechanism for
+human governance of the platform.
+
+**Three Roles — Three Access Profiles:**
+
+```
+Yogesh (Founder):
+  → Founder Action Panel: approve/reject pricing, implementation gates, agent publication
+  → Thread Catalog management: add/modify/deprecate cost entries (C-091)
+  → Minimum margin floor setting (C-089)
+  → Constitutional ratification panel (claim ratification log)
+  → Platform margin dashboard + procurement runway view
+  → Emergency Override (C-001 Human Override button — always visible)
+
+Sujay (Business Growth / Tier 1):
+  → Sprint Dashboard: monitor autonomous pipeline, open PRs
+  → Skill Proposal review (Product Owner — Office 11)
+  → Key Vault Tier-1 secret updates (non-FA-level)
+  → Agent output quality review panel
+
+Ojal (Ethics Officer):
+  → Constitutional violation alerts (flagged by CA)
+  → Agent approval for domains involving minors (C-060 — Private Tutor)
+  → Ethics incident review and response panel
+  → New agent constitutional obligation sign-off
+```
+
+**Why This Is Constitutional, Not Just UX:**
+
+The current markdown approach has three structural failures:
+1. **No authentication** — any AI agent in a session can write to FOUNDER-ACTION.md. There
+   is no cryptographic proof that Yogesh approved something vs an agent doing it on his behalf.
+2. **No role separation enforcement** — Sujay could technically write a Founder Action in
+   markdown. The interface enforces this technically, not by convention.
+3. **No audit chain** — constitutional audit requires immutable records. A markdown file is
+   mutable and not signed. The DB is the right audit ledger per C-007.
+
+**Proposed New Constitutional Claims (to be ratified by CA before spec begins):**
+
+- **C-092: Steward Interface as Constitutional Enforcement Mechanism** — All Founder Actions,
+  Tier 1 authorizations, and Ethics Officer reviews must be performed through the
+  authenticated Steward Interface. Actions via markdown or AI conversation are provisional
+  bootstrap artifacts only — they expire when the first paying customer is onboarded.
+
+- **C-093: Steward Role Separation** — The three steward roles are enforced at the
+  authentication layer. No steward may perform actions assigned to another role. Technical
+  enforcement, not policy convention.
+
+**New DB Tables Needed:**
+- `constitutional.steward_actions` — immutable log of every action taken by any steward
+- `constitutional.ratification_log` — formal claim ratification records
+- `constitutional.founder_action_queue` — pending FA items served to Yogesh's panel
+- `constitutional.pricing_authorization_log` — every pricing change with steward signature
+
+**Bootstrap Migration Plan:**
+- All entries in `FOUNDER-ACTION.md` must be migrated to `constitutional.steward_actions`
+  before the platform accepts its first paying customer
+- Migration is a formal IB item created from this Goal
+- Until migration: FOUNDER-ACTION.md remains valid as bootstrap-only artifact
+
+**Inputs Required at Formalization:**
+- WC-016 (Web Portal) complete — Steward Interface shares the Next.js infrastructure
+- C-092 and C-093 ratified (CA session)
+- Legal review of cryptographic audit requirements (Ojal)
+
+**Relationship to Existing Architecture:**
+- Steward Assistant agent (INST-009 — ops.waooaw.ai) is already approved
+- ADR-008 (Keycloak) already defines the OAuth allowlist for 3 steward accounts (C-068)
+- The interface panel is the frontend that invokes the Steward Assistant AND records
+  governance actions to the DB — not just a chat interface
+
+**Estimated Scope:** Medium-large. Frontend + DB tables + auth + migration.
+Recommend: one dedicated Goal after WC-016 completes.
+
+---
 
 ```
 2026-07-30 (Goal Orchestrator — INST-013):

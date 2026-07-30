@@ -116,3 +116,33 @@ AFTER META BM VERIFIES (2-4 weeks):
 | Azure dev infrastructure (C-067) | ₹10,000 | ₹6,000–₹8,000 |
 | Azure QA infrastructure (C-067) | ₹10,000 | ₹6,000–₹8,000 |
 | Total dev tooling (C-077 scope) | **₹5,000** | **₹1,746–₹2,196** |
+
+---
+
+## FA-025 — GOAL-004 WBE Pricing Authorization
+
+**Date:** 2026-07-30
+**Authorized by:** Yogesh Khandge (Founder)
+**Recorded by:** Goal Orchestrator (INST-013) on Founder's behalf
+**Status:** ✅ AUTHORIZED
+
+**Authorization statement:** "Yogesh authorizes GOAL-004 WBE implementation and approves the following initial pricing configuration."
+
+**Pricing decisions authorized:**
+
+| Parameter | Value | Constitutional Reference |
+|---|---|---|
+| DMA Starter price (incl. GST) | ₹999/month | C-051, C-089 |
+| DMA Runner price (incl. GST) | ₹1,999/month | C-051, C-089 |
+| DMA Winner price (incl. GST) | ₹3,499/month | C-051, C-089 |
+| Constitutional Minimum Margin % (C-089 floor) | 55% | C-089 |
+| Auto-refill ceiling (no re-ask below this) | ₹500/month | C-048, C-051 |
+| FX buffer % on USD-billed threads | 5% | C-091 |
+| ElevenLabs amortisation base (Winner customers) | 10 customers | C-089 |
+
+**Note — BOOTSTRAP LIMITATION ACKNOWLEDGED BY FOUNDER:**
+This FA is recorded in a markdown file because the Steward Interface (ops.waooaw.ai)
+does not yet exist. The Founder has explicitly flagged that ALL future Founder Actions
+must be performed through an authenticated, role-gated interface — not via markdown or
+AI conversation. This file is a bootstrap artifact. See constitutional gap raised in
+GOAL-004 session 2026-07-30: "Steward Interface as constitutional enforcement mechanism."
