@@ -208,11 +208,20 @@ TEST RULES:
 
 
 def _llm_call(prompt: str, system: str, api_key: str, max_tokens: int = 2048) -> str | None:
-    """Single Haiku LLM call. Returns text content or None on failure."""
+    """Single Haiku LLM call. Returns text content or None on failure.
+
+    Prompt caching (ADR-030 §4 — "procure token once"):
+      The system prompt is marked cache_control: ephemeral so that retry
+      attempts within the same groomer run reuse the cached system-prompt
+      tokens — up to 90% cost reduction on system-prompt input tokens.
+    """
     body = json.dumps({
         "model": "claude-haiku-4-5",
         "max_tokens": max_tokens,
-        "system": system,
+        # Prompt caching: mark system prompt as cacheable (C-077 cost reduction).
+        # Cost savings: ~90% on system-prompt tokens across retry calls in same run.
+        "system": [{"type": "text", "text": system,
+                    "cache_control": {"type": "ephemeral"}}],
         "messages": [{"role": "user", "content": prompt}],
     }).encode()
     req = urllib.request.Request(
@@ -221,6 +230,7 @@ def _llm_call(prompt: str, system: str, api_key: str, max_tokens: int = 2048) ->
         headers={
             "x-api-key": api_key,
             "anthropic-version": "2023-06-01",
+            "anthropic-beta": "prompt-caching-2024-07-31",
             "content-type": "application/json",
         },
         method="POST",

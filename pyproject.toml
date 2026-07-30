@@ -112,6 +112,7 @@ addopts = [
     "--tb=short",                # Shorter tracebacks
 ]
 testpaths = ["tests"]
+pythonpath = ["scripts"]         # Makes scripts/runner/ importable as 'runner'
 markers = [
     "cct: Constitutional Compliance Test — C-071",
     "acceptance: Acceptance Scenario test (AS-NNN) — Grade A required",
