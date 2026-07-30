@@ -799,22 +799,19 @@ last_attempt_utc: 2026-07-30T19:58:38.040181+00:00
 last_attempt_result: SUCCESS
 consecutive_failures: 0
 consecutive_infra_failures: 0
-tasks_done:WC025-01,WC025-02,WC025-03,WC025-04,WC025-05,WC026-01,WC026-02,WC026-03,WC026-04,WC026-05
-<<<<<<< HEAD
+tasks_done:
   - WC025-01
   - WC025-02
   - WC025-03
   - WC025-04
   - WC025-05
   - WC026-01
-=======
->>>>>>> origin/main
+  - WC026-02
   - WC026-03
   - WC026-04
-tasks_remaining:
-  - WC026-02
   - WC026-05
-current_task:WC026-02
+tasks_remaining: []
+current_task: WC-026
 ```
 
 
