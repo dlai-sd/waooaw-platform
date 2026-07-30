@@ -1,0 +1,183 @@
+{
+  "timestamp": "2026-07-30T13:51:35.217700+00:00",
+  "score_pct": 93.1,
+  "total_checks": 29,
+  "passed": 27,
+  "high_severity_gaps": 1,
+  "checks": [
+    {
+      "component": "ce",
+      "check": "manifest_exists",
+      "passed": true,
+      "severity": "HIGH"
+    },
+    {
+      "component": "ce",
+      "check": "skeleton_exists",
+      "passed": true,
+      "severity": "HIGH"
+    },
+    {
+      "component": "ce",
+      "check": "skeleton_compiles",
+      "passed": true,
+      "severity": "LOW"
+    },
+    {
+      "component": "ce",
+      "check": "signal_schema_exists",
+      "passed": true,
+      "severity": "LOW"
+    },
+    {
+      "component": "ce",
+      "check": "adr_references_component",
+      "passed": true,
+      "severity": "MEDIUM"
+    },
+    {
+      "component": "bp",
+      "check": "manifest_exists",
+      "passed": true,
+      "severity": "HIGH"
+    },
+    {
+      "component": "bp",
+      "check": "skeleton_exists",
+      "passed": true,
+      "severity": "HIGH"
+    },
+    {
+      "component": "bp",
+      "check": "skeleton_compiles",
+      "passed": true,
+      "severity": "LOW"
+    },
+    {
+      "component": "bp",
+      "check": "signal_schema_exists",
+      "passed": true,
+      "severity": "LOW"
+    },
+    {
+      "component": "bp",
+      "check": "adr_references_component",
+      "passed": true,
+      "severity": "MEDIUM"
+    },
+    {
+      "component": "pr",
+      "check": "manifest_exists",
+      "passed": true,
+      "severity": "HIGH"
+    },
+    {
+      "component": "pr",
+      "check": "skeleton_exists",
+      "passed": true,
+      "severity": "HIGH"
+    },
+    {
+      "component": "pr",
+      "check": "skeleton_compiles",
+      "passed": true,
+      "severity": "HIGH"
+    },
+    {
+      "component": "pr",
+      "check": "signal_schema_exists",
+      "passed": true,
+      "severity": "LOW"
+    },
+    {
+      "component": "pr",
+      "check": "adr_references_component",
+      "passed": true,
+      "severity": "MEDIUM"
+    },
+    {
+      "component": "air",
+      "check": "manifest_exists",
+      "passed": true,
+      "severity": "HIGH"
+    },
+    {
+      "component": "air",
+      "check": "skeleton_exists",
+      "passed": true,
+      "severity": "HIGH"
+    },
+    {
+      "component": "air",
+      "check": "skeleton_compiles",
+      "passed": true,
+      "severity": "HIGH"
+    },
+    {
+      "component": "air",
+      "check": "signal_schema_exists",
+      "passed": true,
+      "severity": "LOW"
+    },
+    {
+      "component": "air",
+      "check": "adr_references_component",
+      "passed": true,
+      "severity": "MEDIUM"
+    },
+    {
+      "component": "wbe",
+      "check": "manifest_exists",
+      "passed": true,
+      "severity": "HIGH"
+    },
+    {
+      "component": "wbe",
+      "check": "skeleton_exists",
+      "passed": true,
+      "severity": "HIGH"
+    },
+    {
+      "component": "wbe",
+      "check": "skeleton_compiles",
+      "passed": true,
+      "severity": "HIGH"
+    },
+    {
+      "component": "wbe",
+      "check": "signal_schema_exists",
+      "passed": true,
+      "severity": "HIGH"
+    },
+    {
+      "component": "translation_service",
+      "check": "manifest_exists",
+      "passed": true,
+      "severity": "HIGH"
+    },
+    {
+      "component": "translation_service",
+      "check": "skeleton_exists",
+      "passed": false,
+      "severity": "HIGH"
+    },
+    {
+      "component": "translation_service",
+      "check": "skeleton_compiles",
+      "passed": true,
+      "severity": "LOW"
+    },
+    {
+      "component": "translation_service",
+      "check": "signal_schema_exists",
+      "passed": true,
+      "severity": "LOW"
+    },
+    {
+      "component": "translation_service",
+      "check": "adr_references_component",
+      "passed": false,
+      "severity": "MEDIUM"
+    }
+  ]
+}

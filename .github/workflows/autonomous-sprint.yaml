@@ -130,8 +130,21 @@ jobs:
           ")
           echo "  ℹ️  platform_phase=$PHASE"
 
-          # 4. C-086 Pre-Execution Simulation gate (WC-019)
+          # 4. Bootstrap SIM-PL-002 stubs for any tasks missing simulation files
+          # Idempotent: skips tasks that already have SIM files. Creates PASS stubs for
+          # known-safe patterns (scaffold/cache/router/models/tests) and PENDING stubs
+          # for novel patterns — engineers must change PENDING→PASS before sprint runs.
+          python3 scripts/bootstrap_sprint_sims.py \
+            && echo "  ✅ SIM bootstrap complete" \
+            || { echo "  ⚠️  SIM bootstrap warning (non-blocking)"; }
+
+          # 4b. C-086 Pre-Execution Simulation gate (WC-019)
           python3 scripts/check_c086_gate.py || { echo "  ❌ C-086 gate FAILED"; FAILURES=$((FAILURES+1)); }
+
+          # 4c. PAC compliance gate — all agent specs must declare Platform-Agent Contract
+          # gap_scanner.py exits 1 if any P1 gaps found (missing PAC section)
+          python3 scripts/gap_scanner.py | tail -5 \
+            || { echo "  ❌ PAC compliance FAILED (P1 agent spec gaps)"; FAILURES=$((FAILURES+1)); }
 
           echo "── Health Check: $FAILURES failure(s) ─────────────────────"
           if [ "$FAILURES" -gt 0 ]; then

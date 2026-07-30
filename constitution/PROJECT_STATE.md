@@ -775,38 +775,27 @@ autonomous_halt: false       # ← semi-autonomous mode — manual trigger only
 
 platform_phase: IMPLEMENTATION  # SPEC | IMPLEMENTATION | LIVE
 
-current_sprint: WC-016
+current_sprint: WC-026
 sprint_ib_item: IB-009
 sprint_status: AUTHORIZED
-branch: ib/009/sprint-016
-last_attempt_utc: 2026-07-30T06:26:56.052465+00:00
+branch: ib/009/sprint-026
+last_attempt_utc: 2026-07-30T00:00:00.000000+00:00
 last_attempt_result: SUCCESS
 consecutive_failures: 0
 consecutive_infra_failures: 0
-tasks_done: []
-tasks_remaining: WC016-01
-current_task:
-               current_sprint=WC-012 · sprint_status=READY
-               CLAIMS: 80 RATIFIED (C-001→C-080) · ADRs: 31
-
-SPRINT SCOPE — WC-012 (Constitutional Engine v1 — 4 tasks):
-  WC012-01: .NET 9 gRPC project scaffold    → src/constitutional-engine/ created
-  WC012-02: ValidateAction RPC + tests ≥90% → core business logic
-  WC012-03: Evidence First + CCT-EF-01      → C-059 constitutional enforcement
-  WC012-04: Emergency Stop + CCT-HO-01      → C-073 emergency stop
-  Full CE v1 delivered by end of sprint — not just skeleton.
-
-OPTION A — Trigger WC-012 now (recommended)
-  → github.com/dlai-sd/waooaw-platform/actions/workflows/autonomous-sprint.yaml → Run workflow
-  → Claude Sonnet 4.6 will generate 4 tasks of .NET 9 CE code
-  → Monitor: github.com/dlai-sd/waooaw-platform/issues/7
-
-OPTION B — Wait for next 3-hour cron (no action needed)
-  → Cron: 0 */3 * * * — auto-fires within 3 hours
-
-OPTION C — Pending founder action (non-blocking)
-  → FA-002 Meta BM verification: IN PROGRESS externally (2-4 weeks)
-  → FA-003 Azure OpenAI model deployment: deferred (fallback only, non-critical)
+tasks_done:
+  - WC025-01
+  - WC025-02
+  - WC025-03
+  - WC025-04
+  - WC025-05
+tasks_remaining:
+  - WC026-01
+  - WC026-02
+  - WC026-03
+  - WC026-04
+  - WC026-05
+current_task: WC026-01
 ```
 
 

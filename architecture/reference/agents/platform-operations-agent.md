@@ -250,3 +250,59 @@ Registry updated: on every agent execution loop completion; on skill mode change
 **EA Review:** Pending
 **Founder Approval:** Pending
 **Status:** DRAFT — requires EA review before activation
+
+---
+
+## Platform-Agent Contract (PAC)
+<!-- ADR-035 mandatory section. Do not remove. Update when AGENT-BASE-SPEC version bumps. -->
+<!-- Platform-internal agent: no customer session. WBE signals are operational events only. -->
+
+```yaml
+base_spec_version: "1.0"
+
+platform_services:
+  wbe:
+    schema_version: "1.0"
+    # Platform Operations Agent runs under platform budget — no customer wallet.
+    # C-049 applies: halt LLM ops when bucket empty; log to audit_records.
+    handles_signals:
+      - channel: "platform/billing/bucket-at-50pct"
+        handler: "log_internal_event_only — no customer notification required"
+      - channel: "platform/billing/bucket-at-60pct"
+        handler: "log_internal_event_only — no customer notification required"
+      - channel: "platform/billing/bucket-at-85pct"
+        handler: "shift_to_mid_tier_models — reduce frontier LLM usage for ops analysis"
+      - channel: "platform/billing/bucket-empty"
+        handler: >
+          C-049 platform obligation: halt proactive LLM operations.
+          Emergency Stop monitoring continues (zero-cost). Log evidence to
+          constitutional.audit_records. Notify Founder via Steward assistant.
+      - channel: "platform/billing/topup-applied"
+        handler: "resume_normal_operations — clear internal throttle"
+      - channel: "platform/billing/subscription-renewed"
+        handler: "silent_full_capability_resume"
+    does_not_handle: []
+    unavailability: "continue_silent_emergency_stop_only"
+
+    budget_vocabulary:
+      llm_mid:          "deployment operations"
+      llm_frontier:     "infrastructure analysis sessions"
+      video_clips:      null
+      whatsapp_windows: null
+      image_gen:        null
+
+  ce:
+    unavailability: "halt_and_disclose_advisory_only"
+
+  air:
+    unavailability: "zero_cost_templates_with_C049_disclosure"
+
+  trial_profile:
+    trial_disclosure_opening: "not_applicable — platform-internal agent, no customer session"
+    zero_cost_thread_substitutes:
+      llm_mid:      "ollama/llama3.2-3b"
+      llm_frontier: "ollama/llama3.2-3b"
+      video_clips:  null
+      image_gen:    null
+    live_only_features: []
+```

@@ -29,9 +29,14 @@ LEGACY_TASKS = {
 def main() -> int:
     print("── C-086 Pre-Execution Simulation Gate ──────────────────────")
 
-    # Read tasks_remaining from PROJECT_STATE.md
+    # Scope to SPRINT_STATE_MACHINE block — not first occurrence in file
     state_content = (REPO_ROOT / "constitution" / "PROJECT_STATE.md").read_text()
-    tasks_block = re.search(r"tasks_remaining:\s*\n((?:  - [^\n]+\n?)*)", state_content)
+    sm_match = re.search(r"## SPRINT_STATE_MACHINE.*?```yaml(.*?)```", state_content, re.DOTALL)
+    if not sm_match:
+        print("  ❌ SPRINT_STATE_MACHINE block not found in PROJECT_STATE.md")
+        return 1
+    sm_yaml = sm_match.group(1)
+    tasks_block = re.search(r"tasks_remaining:\s*\n((?:  - [^\n]+\n?)*)", sm_yaml)
     tasks = re.findall(r"  - (\S+)", tasks_block.group(1)) if tasks_block else []
 
     if not tasks:

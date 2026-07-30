@@ -197,3 +197,59 @@ This feedback loop is the mechanism by which C-069 ("platform improves itself") 
 | **WAOOAW AI Agent — Steward Assistant** | Steward Assistant is the delivery channel — the analyst generates proposals; Steward Assistant delivers them to Sujay in chat and provides the Prompt Workspace for remediation. |
 | **WAOOAW AI Agent — Developer** | After Sujay approves a proposal, Developer implements it under the standard Tier 1/2 cycle. Self-Improvement Analyst has no interaction with Developer directly. |
 | **WAOOAW AI Agent — QA** | QA runs the simulation that validates the improvement before production. Self-Improvement Analyst's proposal is the input; QA's Grade A is the output gate. |
+
+---
+
+## Platform-Agent Contract (PAC)
+<!-- ADR-035 mandatory section. Do not remove. Update when AGENT-BASE-SPEC version bumps. -->
+<!-- Platform-internal agent: no customer session. WBE signals are operational events only. -->
+
+```yaml
+base_spec_version: "1.0"
+
+platform_services:
+  wbe:
+    schema_version: "1.0"
+    # Self-Improvement Analyst runs under platform budget — no customer wallet.
+    # C-049 applies: halt scan LLM ops when bucket empty; proposals are evidence-backed.
+    handles_signals:
+      - channel: "platform/billing/bucket-at-50pct"
+        handler: "log_internal_event_only — no customer notification required"
+      - channel: "platform/billing/bucket-at-60pct"
+        handler: "log_internal_event_only — no customer notification required"
+      - channel: "platform/billing/bucket-at-85pct"
+        handler: "shift_to_mid_tier_models — reduce frontier LLM scan depth"
+      - channel: "platform/billing/bucket-empty"
+        handler: >
+          C-049 platform obligation: halt improvement-scan LLM operations.
+          Defer pending proposals to next budget cycle. Log evidence to
+          constitutional.audit_records. No proposals written without evidence.
+      - channel: "platform/billing/topup-applied"
+        handler: "resume_normal_operations — clear internal throttle"
+      - channel: "platform/billing/subscription-renewed"
+        handler: "silent_full_capability_resume"
+    does_not_handle: []
+    unavailability: "defer_scan_with_ce_evidence"
+
+    budget_vocabulary:
+      llm_mid:          "improvement scan runs"
+      llm_frontier:     "pattern analysis sessions"
+      video_clips:      null
+      whatsapp_windows: null
+      image_gen:        null
+
+  ce:
+    unavailability: "halt_and_disclose_advisory_only"
+
+  air:
+    unavailability: "zero_cost_templates_with_C049_disclosure"
+
+  trial_profile:
+    trial_disclosure_opening: "not_applicable — platform-internal agent, no customer session"
+    zero_cost_thread_substitutes:
+      llm_mid:      "ollama/llama3.2-3b"
+      llm_frontier: "ollama/llama3.2-3b"
+      video_clips:  null
+      image_gen:    null
+    live_only_features: []
+```

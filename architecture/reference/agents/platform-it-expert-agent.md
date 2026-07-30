@@ -582,3 +582,59 @@ Step 4:
     # CE Evidence recorded before rollback
     ./scripts/rollback.sh ${{ env.ENVIRONMENT }} ${{ env.PREVIOUS_SHA }}
 ```
+
+---
+
+## Platform-Agent Contract (PAC)
+<!-- ADR-035 mandatory section. Do not remove. Update when AGENT-BASE-SPEC version bumps. -->
+<!-- Platform-internal agent: no customer session. WBE signals are operational events only. -->
+
+```yaml
+base_spec_version: "1.0"
+
+platform_services:
+  wbe:
+    schema_version: "1.0"
+    # Platform IT Expert runs under platform budget — no customer wallet.
+    # C-049 applies: halt LLM ops when bucket empty; log to audit_records.
+    handles_signals:
+      - channel: "platform/billing/bucket-at-50pct"
+        handler: "log_internal_event_only — no customer notification required"
+      - channel: "platform/billing/bucket-at-60pct"
+        handler: "log_internal_event_only — no customer notification required"
+      - channel: "platform/billing/bucket-at-85pct"
+        handler: "shift_to_mid_tier_models — reduce frontier LLM usage"
+      - channel: "platform/billing/bucket-empty"
+        handler: >
+          C-049 platform obligation: halt code-generation LLM operations.
+          Set autonomous_halt=true in sprint_state.py. Log evidence to
+          constitutional.audit_records. Await next budget cycle or top-up.
+      - channel: "platform/billing/topup-applied"
+        handler: "resume_normal_operations — clear internal throttle"
+      - channel: "platform/billing/subscription-renewed"
+        handler: "silent_full_capability_resume"
+    does_not_handle: []
+    unavailability: "halt_sprint_with_ce_evidence"
+
+    budget_vocabulary:
+      llm_mid:          "code generation runs"
+      llm_frontier:     "architecture reasoning sessions"
+      video_clips:      null
+      whatsapp_windows: null
+      image_gen:        null
+
+  ce:
+    unavailability: "halt_and_disclose_advisory_only"
+
+  air:
+    unavailability: "zero_cost_templates_with_C049_disclosure"
+
+  trial_profile:
+    trial_disclosure_opening: "not_applicable — platform-internal agent, no customer session"
+    zero_cost_thread_substitutes:
+      llm_mid:      "ollama/llama3.2-3b"
+      llm_frontier: "ollama/llama3.2-3b"
+      video_clips:  null
+      image_gen:    null
+    live_only_features: []
+```
