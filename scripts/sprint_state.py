@@ -37,6 +37,8 @@ SPRINT_TASK_MANIFEST: dict[str, list[str]] = {
     "WC-016": ["WC016-01", "WC016-02", "WC016-03", "WC016-04"],
     "WC-017": ["WC017-01", "WC017-02", "WC017-03", "WC017-04"],
     "WC-018": ["WC018-01", "WC018-02", "WC018-03", "WC018-04", "WC018-05", "WC018-06", "WC018-07"],
+    "WC-025": ["WC025-01", "WC025-02", "WC025-03", "WC025-04", "WC025-05"],
+    "WC-026": ["WC026-01", "WC026-02", "WC026-03", "WC026-04", "WC026-05"],
 }
 
 
@@ -62,8 +64,9 @@ def set_field(content: str, key: str, value: str) -> str:
     sm_part = content[sm_idx:]
 
     # Pattern: key: <value_part> <whitespace> # optional comment
+    # Use [ \t]* (not \s*) to prevent consuming newlines and stripping the closing ``` fence
     pattern = re.compile(
-        r'^(' + re.escape(key) + r':\s*)([^\n#]*?)(\s*)(#[^\n]*)?$',
+        r'^(' + re.escape(key) + r':[ \t]*)([^\n#]*?)([ \t]*)(#[^\n]*)?$',
         re.MULTILINE,
     )
 

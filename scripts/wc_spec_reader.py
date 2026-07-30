@@ -113,6 +113,32 @@ def _extract_field(block: str, field_name: str) -> str:
     return value
 
 
+def _parse_wc_table(content: str) -> dict[str, WCTaskSpec]:
+    """
+    Parse WC documents that use a markdown table format instead of ### headers.
+    Handles rows like: | WC026-02 | Scope text | `model_hint` | status |
+    """
+    result: dict[str, WCTaskSpec] = {}
+    row_pattern = re.compile(
+        r'^\|\s*(WC\d{3}-\d{2}(?:-\w+)?)\s*\|([^|]+)\|([^|]+)\|',
+        re.MULTILINE,
+    )
+    for m in row_pattern.finditer(content):
+        task_id    = m.group(1).strip()
+        scope      = m.group(2).strip()
+        model_hint = re.sub(r'^`([^`]+)`$', r'\1', m.group(3).strip())
+        result[task_id] = WCTaskSpec(
+            task_id=task_id,
+            title=scope[:80],
+            scope=scope,
+            model_hint=model_hint,
+            constitutional_check="",
+            cct_gate="",
+            stack=_infer_stack(scope, scope),
+        )
+    return result
+
+
 def _parse_wc_file(content: str) -> dict[str, WCTaskSpec]:
     """
     Parse all task blocks from a WC document.
@@ -129,7 +155,8 @@ def _parse_wc_file(content: str) -> dict[str, WCTaskSpec]:
     # Find all task header positions
     headers = list(task_pattern.finditer(content))
     if not headers:
-        return result
+        # Fallback: try table format (| WCxxx-xx | scope | model_hint | status |)
+        return _parse_wc_table(content)
 
     for i, header in enumerate(headers):
         task_id = header.group(1).strip()
