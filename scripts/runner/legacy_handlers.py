@@ -12,7 +12,6 @@ TASK_HANDLERS and go through execute_with_llm() in task_executor.py.
 from __future__ import annotations
 
 import json as _json_mod
-import sys
 
 from runner.constants import REPO_ROOT
 from runner.git_ops import git, run

@@ -1,7 +1,7 @@
 # Implements: tests/runner/test_llm_codegen.py
 # constitutional_basis: C-076 (≥90% coverage), ADR-030 (code gen protocol), C-077 (cost ceiling)
 """Tests for runner/llm_codegen.py — parse_llm_files, write_llm_files, validate_written_files,
-call_llm (mocked), prompt caching header."""
+_call_llm_direct (mocked), prompt caching header."""
 from __future__ import annotations
 
 import json

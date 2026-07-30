@@ -4,10 +4,6 @@
 #nullable enable
 namespace Waooaw.ConstitutionalEngine.Evaluators;
 
-/// <summary>
-/// Constitutional claim evaluator contract.
-/// Each implementation enforces one constitutional claim against a ValidateAction request.
-/// </summary>
 public interface IClaimEvaluator
 {
     string ClaimId { get; }

@@ -30,12 +30,9 @@ Architecture note (post-refactor):
 """
 from __future__ import annotations
 
-import json
 import os
-import re
 import subprocess
 import sys
-import inspect
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -46,7 +43,7 @@ EVIDENCE_LOG = REPO_ROOT / "logs" / "bootstrap-evidence.jsonl"
 # TaskDecomposer — sub-task decomposition for multi-layer sprint tasks (IB-021 / WC-019)
 # Implements: architecture/reference/pipeline/dependency-graph-task-decomposition.md
 # constitutional_basis: C-084 (Step Dependency), C-086 (Pre-Execution Simulation)
-import importlib.util as _ilu, types as _types, sys as _sys
+import importlib.util as _ilu, sys as _sys
 _td_path = str(Path(__file__).parent / "task_decomposer.py")
 _td_spec = _ilu.spec_from_file_location("task_decomposer", _td_path)
 _td_mod = _ilu.module_from_spec(_td_spec)
@@ -75,19 +72,19 @@ if _runner_pkg not in _sys.path:
 
 from runner.state import _MONITOR_SIGNAL, _INFRA_ERROR_TASKS          # shared mutable state
 from runner.git_ops import run, git, gh, set_output, record_evidence  # shell helpers
-from runner.system_prompts import (                                     # LLM prompt architecture
-    _BASE_SYSTEM_PROMPT, _STACK_EXPERTS, _TASK_STACK_MAP,
-    _build_system_prompt, CONSTITUTIONAL_SYSTEM_PROMPT, get_branch_context,
-)
 from runner.sprint_ops import (                                         # sprint lifecycle
-    parse_sprint_state, check_platform_phase_gate, run_spec_validation,
-    update_sprint_state, run_runner_integrity_checks,
+    parse_sprint_state, check_platform_phase_gate, update_sprint_state, run_runner_integrity_checks,
 )
-from runner.llm_codegen import (                                        # LLM code generation
+# Namespace injection — required by run_runner_integrity_checks(globals())  # noqa: F401
+from runner.system_prompts import (                                     # noqa: F401
+    _build_system_prompt, _TASK_STACK_MAP,
+    CONSTITUTIONAL_SYSTEM_PROMPT, get_branch_context,
+)
+from runner.llm_codegen import (                                        # noqa: F401
     call_llm_via_magiclm,
     parse_llm_files, write_llm_files, validate_written_files,
 )
-from runner.task_executor import execute_with_llm, flag_spec_gap       # task execution
+from runner.task_executor import execute_with_llm, flag_spec_gap        # noqa: F401
 from runner.legacy_handlers import (                                    # deterministic handlers
     execute_wc011_01, execute_wc011_02, execute_wc011_03,
     execute_wc011_04, execute_wc011_05, execute_wc011_07,
@@ -1416,7 +1413,6 @@ def main() -> int:
 
     def _git_push_with_token(token: str, extra_args: list[str]) -> subprocess.CompletedProcess:
         """Configure git to use the given token for a single push, then push."""
-        import urllib.parse as _up
         repo_url = f"https://x-access-token:{token}@github.com/{os.environ.get('GITHUB_REPOSITORY', 'dlai-sd/waooaw-platform')}.git"
         env_with_url = {**os.environ, "GIT_REMOTE_URL": repo_url}
         # Temporarily override origin URL for this push only
