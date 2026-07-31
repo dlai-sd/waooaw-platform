@@ -3,8 +3,58 @@
 **Authority:** Solution Architect (INST-005) — GOAL-004 D-07
 **Architecture Decision:** ADR-034 (WAOOAW Billing Engine)
 **Constitutional Basis:** C-088, C-089, C-090, C-091, C-038, C-049, C-051
-**Status:** APPROVED — 2026-07-30
+**Status:** APPROVED — 2026-07-30 | **Amendment 1:** 2026-07-31 (threshold ladder + customer acquisition placement)
 **Service:** `src/billing-engine/` | Port: 8140 | Language: Python 3.12 + FastAPI
+
+---
+
+## Amendment 1 — Customer Acquisition Features (2026-07-31)
+
+**Decision:** Two customer acquisition features are scoped to a future **GOAL-005 (Customer Acquisition & Growth)** spec phase.
+They are **not** part of WBE-S3 through WBE-S8. They require Founder pricing decisions before implementation can begin.
+
+### Feature A — 2-Week Free Trial with Founder Markup Designer
+
+**What it is:** New customers get a 2-week trial allocation (zero cash, time-bounded wallet buckets).
+During trial, the PSE router forces `LlmTier.LOCAL` (Ollama, ₹0 cost). For thread types that have
+no free-tier equivalent (e.g., paid video generation), a cap of N free units is granted from
+WAOOAW's procurement budget. Founder can view and adjust per-agent markup and service provider
+selection via a protected admin page in the Web Portal.
+
+**Architecture placement:**
+| Concern | Layer | Component |
+|---|---|---|
+| Trial wallet seeding (time-bounded, zero-payment buckets) | Vertical — WBE | New sub-component 6: `trial/` — `TrialService`, `TrialAllocation` model |
+| PSE tier forcing to LOCAL during trial | Horizontal — AIR | `pse/router.py` — add `customer_mode=TRIAL` → override to `LlmTier.LOCAL` |
+| Trial activation + expiry lifecycle | Vertical — BP | New endpoint: `POST /subscriptions/trial-start`, Temporal saga for expiry |
+| Founder markup designer UI | Surface — Web Portal | Admin-only Next.js page: reads `/pricing/thread-catalog`, POSTs `/pricing/derive` |
+| Free-tier image/video service cap | Vertical — WBE trial/ | `TrialAllocation` includes `free_unit_caps: dict[thread_type, int]` |
+
+**Spec gate:** Founder must authorize trial budget per agent type (e.g., DMA trial = 50 LLM calls, 5 images) before GOAL-005 spec phase begins.
+
+### Feature B — Discount Codes / Referral Coupons
+
+**What it is:** Agent-specific campaign codes that reduce first-month price or grant bonus bucket credits.
+Referral codes track who referred whom and credit the referrer's next billing cycle.
+
+**Architecture placement:**
+| Concern | Layer | Component |
+|---|---|---|
+| Coupon + referral code storage | Vertical — WBE | New sub-component 7: `promotions/` — `CouponCode`, `ReferralRecord` models |
+| Coupon validation at subscription time | Vertical — WBE | `PromotionsService.validate_coupon()` called inside `POST /subscriptions/activate` |
+| Referral attribution + credit | Vertical — WBE | `ReferralService.credit_referrer()` — adds bucket credits to referrer wallet |
+| Campaign management UI | Surface — Web Portal | Founder admin page: create/expire coupon codes, view referral tree |
+| Razorpay discount application | Vertical — WBE payment/ | Apply discount before creating Razorpay order; store pre-discount price |
+
+**Spec gate:** Founder must decide: discount cap (%), referral credit (₹ or thread units), expiry rules, per-agent eligibility before GOAL-005 spec phase begins.
+
+**GOAL-005 sprint sequence (after payment integration WC-031 is done):**
+```
+GOAL-005-D1: Founder pricing decisions for trial budget + coupon caps  ← Founder action required first
+GOAL-005-D2: EA spec — TrialService + PromotionsService + DB schema
+GOAL-005-WC: WBE sub-components 6 + 7 + BP trial endpoints + PSE tier override
+GOAL-005-WC: Founder admin UI in Web Portal (trial config + coupon management)
+```
 
 ---
 
@@ -143,6 +193,51 @@ GET  /platform/margin/report
 POST /meter/daily-scan  (called by scheduler at 06:00 IST)
      → DailyScanResult { customers_scanned, alerts_sent, offers_generated, fa_items_created }
 ```
+
+#### 2.3a ThresholdPolicy — Alert Ladder (Amendment 1, 2026-07-31)
+
+**Scope:** Three independent threshold ladders run simultaneously. Each scope fires its own
+alert channel and generates its own FA entry when applicable.
+
+**Scope 1 — Customer wallet bucket (per thread_type):**
+
+| Threshold | % of period allocation consumed | Action |
+|---|---|---|
+| WARN_10 | ≥ 90% consumed (10% remaining) | WhatsApp to customer + steward. Proactive offer triggered (topup/upgrade). |
+| WARN_30 | ≥ 70% consumed (30% remaining) | WhatsApp to customer. Daily velocity projection attached. |
+| WARN_50 | ≥ 50% consumed (50% remaining) | In-platform notification only. No WhatsApp unless pacing=BURST. |
+| INFO_70 | ≥ 30% consumed (70% remaining) | Logged only. No alert. Used for velocity trending. |
+
+Only the highest-severity crossing fires per 24-hour window (no alert storm on fast burn).
+Quiet hours: **23:00–06:00 IST** — no WhatsApp sent; queued for 06:00 IST delivery.
+Ad wallet (DMA): separate ladder — WARN_10 at ₹0 balance (AD_WALLET_BELOW_MINIMUM).
+
+**Scope 2 — Agency sub-wallet (spending_quota_paise enforcement):**
+
+Same percentage ladder as Scope 1 applied against `spending_quota_paise`.
+NULL spending_quota → no alerts (unlimited agency child, managed externally).
+Alert channel: agency owner WhatsApp + steward.
+FA entry auto-created at WARN_10 if quota < 7 days of current burn rate.
+
+**Scope 3 — WAOOAW platform procurement runway (provider accounts):**
+
+| Days remaining at current burn | Action |
+|---|---|
+| ≤ 30 days | Founder Action auto-created (priority: P2). Logged. |
+| ≤ 14 days | Founder Action upgraded to P1. Steward WhatsApp alert. |
+| ≤ 7 days | P0 Founder Action. Steward WhatsApp every 12h until topped up. |
+| ≤ 3 days | CRITICAL: autonomous sprint halted for that provider. New tasks using that provider blocked. |
+| ≤ 1 day | Emergency: CE informed. All sessions using that provider gracefully suspended. |
+
+Provider runway = `provider_accounts.balance_paise / rolling_7d_avg_daily_burn_paise`.
+
+**Implementation notes for WBE-S4:**
+- `alert_policy.py` → `ThresholdPolicy` dataclass: `{ scope, thresholds: List[ThresholdRule], quiet_hours_ist, channel }`.
+- `ThresholdRule` → `{ name, consumed_pct_trigger, action: Enum[LOG|NOTIFY|FA|BLOCK] }`.
+- Daily scan deduplication: `meter_alert_log(customer_id, bucket_type, threshold_name, fired_at)` — unique per (customer, bucket, threshold, period). No repeat fires within same billing period until bucket refills above threshold then drops again.
+- Alert message templates live in `infrastructure/postgres/init/07-agent-prompts.sql` (WBE alert prompt IDs: `WBE_ALERT_WARN_10`, `WBE_ALERT_WARN_30`, `WBE_ALERT_PROCUREMENT_P0`).
+
+
 
 ### 2.4 Platform Procurement API
 
