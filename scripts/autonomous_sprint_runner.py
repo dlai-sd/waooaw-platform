@@ -498,7 +498,7 @@ def main() -> int:
             # it contains work from a completed successful run — preserve it.
             branch_has_work = False
             if remote_check.returncode == 0:
-                ahead = git(["rev-list", "--count", f"origin/main..origin/{branch}"], check=False)
+                ahead = run(["git", "rev-list", "--count", f"origin/main..origin/{branch}"], check=False, capture=True)
                 if ahead.returncode == 0 and int(ahead.stdout.strip() or "0") > 0:
                     branch_has_work = True
                     print(f"  Branch freshness guard: {branch} has {ahead.stdout.strip()} commit(s) ahead of main — preserving completed work")
