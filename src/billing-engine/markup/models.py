@@ -1,5 +1,5 @@
 # Implements: work-contracts/WC-027-wbe-s3-markup-engine.md WC027-01a
-# constitutional_basis: C-023, C-048, C-051, C-059, C-063
+# constitutional_basis: C-023, C-059, C-063, C-089
 from __future__ import annotations
 
 from datetime import datetime
@@ -15,6 +15,8 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class PriceOutcome(StrEnum):
+    """Constitutional outcome of price validation (C-089 margin floor gate)."""
+
     APPROVED = "APPROVED"
     REJECTED = "REJECTED"
 
@@ -45,10 +47,13 @@ class BundleProfile(BaseModel):
     """
     Mirrors institutional.bundle_profiles DB row.
     cost_floor_paise is READ from DB — never recomputed here (C-089).
+    minimum_margin_pct enforces the constitutional margin floor per C-089.
     """
 
     agent_type: str = Field(..., description="Agent type identifier")
-    bundle_tier: str = Field(..., description="Bundle tier (e.g. STARTER, PRO, ENTERPRISE)")
+    bundle_tier: str = Field(
+        ..., description="Bundle tier (e.g. STARTER, PRO, ENTERPRISE)"
+    )
     cost_floor_paise: int = Field(
         ..., ge=0, description="Pre-computed cost floor in INR paise — read from DB"
     )
@@ -130,7 +135,7 @@ class PriceDeriveRequest(BaseModel):
     )
 
     @model_validator(mode="after")
-    def target_margin_must_allow_finite_price(self) -> "PriceDeriveRequest":
+    def target_margin_must_allow_finite_price(self) -> PriceDeriveRequest:
         if self.target_margin_pct is not None and self.target_margin_pct >= 100.0:
             raise ValueError("target_margin_pct must be < 100")
         return self
@@ -145,18 +150,22 @@ class PriceValidation(BaseModel):
     """
     Response from validate_price / POST /pricing/validate.
 
+    Constitutional outcome of price validation against C-089 margin floor.
+    Writes to pricing_floor_log on BOTH APPROVED and REJECTED outcomes (C-059).
+
     Fields
     ------
-    outcome                           : APPROVED or REJECTED
+    outcome                           : APPROVED or REJECTED (PriceOutcome enum)
     cost_floor_paise                  : raw cost floor read from bundle_profiles
-    constitutional_minimum_margin_pct : minimum_margin_pct from bundle_profiles
+    constitutional_minimum_margin_pct : minimum_margin_pct from bundle_profiles (C-089)
     minimum_compliant_price_paise     : floor / (1 - margin/100) — the constitutional minimum
-    proposed_price_paise              : the price that was validated
+                                        derived from cost_floor_paise and margin_pct
+    proposed_price_paise              : the price that was validated (from request)
     below_floor                       : True when proposed < minimum_compliant_price_paise
-    margin_pct                        : effective margin of proposed price on revenue (may be
-                                        None when proposed_price_paise == 0 to avoid zero-div)
-    log_id                            : UUID of the pricing_floor_log row written (C-059)
-    evaluated_at                      : UTC timestamp of evaluation
+    margin_pct                        : effective margin % of proposed price on revenue;
+                                        None when proposed_price_paise == 0 (zero-div avoidance)
+    log_id                            : UUID of the pricing_floor_log row written (C-059 audit)
+    evaluated_at                      : UTC timestamp of validation evaluation
     """
 
     outcome: PriceOutcome
@@ -168,101 +177,13 @@ class PriceValidation(BaseModel):
     margin_pct: float | None = Field(
         None,
         description=(
-            "Effective margin % of proposed price on revenue; "
-            "None when proposed_price_paise is 0"
+            "Effective margin % of proposed price on revenue; None when "
+            "proposed_price_paise == 0 to avoid division by zero"
         ),
     )
     log_id: UUID = Field(
-        ...,
-        description="UUID of the pricing_floor_log row written for C-059 audit",
+        ..., description="UUID of pricing_floor_log row written (C-059 traceability)"
     )
     evaluated_at: datetime = Field(
-        ...,
-        description="UTC timestamp at which the validation was evaluated",
+        ..., description="UTC datetime when validation was performed"
     )
-
-
-# ---------------------------------------------------------------------------
-# Derive result model
-# ---------------------------------------------------------------------------
-
-
-class PriceDeriveResult(BaseModel):
-    """
-    Response from derive_price / POST /pricing/derive.
-
-    Fields
-    ------
-    agent_type           : as supplied
-    bundle_tier          : as supplied
-    cost_floor_paise     : raw cost floor read from bundle_profiles (C-089)
-    applied_margin_pct   : margin actually used (override or constitutional minimum)
-    derived_price_paise  : floor / (1 - margin/100) — margin-on-revenue formula
-    is_constitutional_minimum : True when target_margin_pct was None and the
-                                constitutional minimum was applied
-    """
-
-    agent_type: str
-    bundle_tier: str
-    cost_floor_paise: int
-    applied_margin_pct: float
-    derived_price_paise: int
-    is_constitutional_minimum: bool = Field(
-        ...,
-        description=(
-            "True when no target_margin_pct override was supplied and the "
-            "bundle_profiles.minimum_margin_pct was used"
-        ),
-    )
-
-
-# ---------------------------------------------------------------------------
-# Custom exceptions
-# ---------------------------------------------------------------------------
-
-
-class BelowConstitutionalFloorError(ValueError):
-    """
-    Raised by validate_price when proposed_price_paise is below the
-    constitutional minimum compliant price (C-089 margin floor violation).
-
-    Attributes
-    ----------
-    proposed_price_paise          : the price submitted for validation
-    minimum_compliant_price_paise : the C-089 constitutional minimum
-    cost_floor_paise              : underlying cost floor from bundle_profiles
-    constitutional_minimum_margin_pct : minimum margin from bundle_profiles
-    """
-
-    def __init__(
-        self,
-        proposed_price_paise: int,
-        minimum_compliant_price_paise: int,
-        cost_floor_paise: int,
-        constitutional_minimum_margin_pct: float,
-    ) -> None:
-        self.proposed_price_paise = proposed_price_paise
-        self.minimum_compliant_price_paise = minimum_compliant_price_paise
-        self.cost_floor_paise = cost_floor_paise
-        self.constitutional_minimum_margin_pct = constitutional_minimum_margin_pct
-        super().__init__(
-            f"Proposed price {proposed_price_paise} paise is below the "
-            f"constitutional minimum of {minimum_compliant_price_paise} paise "
-            f"(C-089 margin floor: {constitutional_minimum_margin_pct}%)"
-        )
-
-
-class BundleProfileNotFoundError(KeyError):
-    """
-    Raised when no bundle_profiles row exists for the requested
-    (agent_type, bundle_tier) combination.
-    """
-
-    def __init__(self, agent_type: str, bundle_tier: str) -> None:
-        self.agent_type = agent_type
-        self.bundle_tier = bundle_tier
-        # Avoid logging PII — agent_type/bundle_tier are structural, not PII (C-063)
-        super().__init__(
-            f"No bundle profile found for agent_type={agent_type!r}, "
-            f"bundle_tier={bundle_tier!r}"
-        )
