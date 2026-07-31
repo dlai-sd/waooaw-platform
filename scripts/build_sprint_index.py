@@ -272,6 +272,43 @@ TASK_CONTEXT_MAP: dict[str, dict] = {
         "relevant_adrs": [],
         "constitutional_check": "21 skills in professional.agent_prompts. seed-prompts.py idempotent (can re-run safely).",
     },
+
+    # WC-027: WBE-S3 Markup Engine
+    "WC027-01a": {
+        "description": "markup/models.py (Pydantic models) + markup/bundle_engine.py (BundleEngine — cost_floor, derive_price, validate_price)",
+        "model_hint": "reasoning",
+        "spec_sections": {
+            "architecture/reference/billing/wbe-component-spec.md": "§2.3 Markup Engine",
+            "work-contracts/WC-027-wbe-s3-markup-engine.md": "full",
+            "src/billing-engine/markup/thread_catalog.py": "full",
+        },
+        "relevant_claims": ["C-059", "C-089", "C-088"],
+        "relevant_adrs": ["ADR-034", "ADR-024"],
+        "constitutional_check": "validate_price() MUST write pricing_floor_log on both APPROVED and REJECTED (C-059). derive_price uses margin-on-revenue formula: floor/(1-margin/100). C-088: check billing_profiles.status==FOUNDER_AUTHORIZED.",
+    },
+    "WC027-01b": {
+        "description": "markup/router.py — FastAPI router prefix /pricing with GET /thread-catalog, GET /bundle-cost-floor, POST /validate, POST /derive; mount in main.py",
+        "model_hint": "auto",
+        "spec_sections": {
+            "architecture/reference/billing/wbe-component-spec.md": "§2.3 Markup Engine",
+            "work-contracts/WC-027-wbe-s3-markup-engine.md": "full",
+            "src/billing-engine/main.py": "full",
+        },
+        "relevant_claims": ["C-059", "C-089"],
+        "relevant_adrs": ["ADR-034", "ADR-002"],
+        "constitutional_check": "POST /validate returns 422 with minimum_compliant_price_paise on C-089 violation. Router mounted in main.py.",
+    },
+    "WC027-02": {
+        "description": "tests/billing-engine/test_markup.py — pytest + hypothesis property-based tests for BundleEngine and /pricing endpoints, ≥90% coverage",
+        "model_hint": "auto",
+        "spec_sections": {
+            "work-contracts/WC-027-wbe-s3-markup-engine.md": "full",
+            "architecture/reference/billing/wbe-component-spec.md": "§2.3 Markup Engine",
+        },
+        "relevant_claims": ["C-059", "C-071", "C-076"],
+        "relevant_adrs": ["ADR-034"],
+        "constitutional_check": "≥90% line coverage. pricing_floor_log row written on BOTH APPROVED and REJECTED paths. Property-based tests with hypothesis @given on derive_price and validate_price.",
+    },
 }
 
 # Global context always injected (condensed — not full corpus)
@@ -486,8 +523,6 @@ def build_index(task_id: str) -> dict:
             "constitution/CONSTITUTION.md", "constitution/GENESIS.md",
             "constitution/ORGANIZATION.md", "constitution/PROJECT_STATE_ARCHIVE.md",
         ],
-
-        "tasks_remaining": sprint_state.get("tasks_remaining", []),
     }
 
 
@@ -511,8 +546,26 @@ def main() -> None:
     task_id = args.task
     if not task_id:
         state = parse_sprint_state()
-        remaining = state.get("tasks_remaining", [])
-        task_id = remaining[0] if isinstance(remaining, list) and remaining else None
+        # Primary: read from WC file (source of truth since sprint-as-state-machine, 9abe8af)
+        sprint = state.get("current_sprint", "")
+        if sprint:
+            wc_files = list((REPO_ROOT / "work-contracts").glob(f"{sprint}-*.md"))
+            if wc_files:
+                task_id_pat = re.compile(r"^WC\d+-\d+[a-z]?$")
+                for line in wc_files[0].read_text(encoding="utf-8").splitlines():
+                    if not line.startswith("|"):
+                        continue
+                    cells = [c.strip() for c in line.split("|")]
+                    if len(cells) < 6:
+                        continue
+                    tid = cells[1].strip()
+                    if task_id_pat.match(tid) and cells[-3].strip().lower() == "pending":
+                        task_id = tid
+                        break
+        # Fallback: legacy tasks_remaining in PROJECT_STATE (kept for backward compat)
+        if not task_id:
+            remaining = state.get("tasks_remaining", [])
+            task_id = remaining[0] if isinstance(remaining, list) and remaining else None
 
     if not task_id:
         print("ERROR: No task ID. Pass --task or ensure tasks_remaining is set.")
