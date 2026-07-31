@@ -98,6 +98,7 @@ class ResponseEvaluator:
         stack: str = "dotnet",
         spec_sections: dict[str, str] | None = None,
         expected_output_format: str = "xml_file_blocks",
+        expected_output_file: str = "",
     ) -> EvaluationResult:
         """
         Run all applicable gates in §8 sequence.
@@ -112,6 +113,14 @@ class ResponseEvaluator:
         if not g1.passed:
             result.status = "retry_needed"
             return result
+
+        # Gate 1b: PATH — expected output file must be among written files
+        if expected_output_file:
+            gp = self._gate_path(expected_output_file, written_files)
+            result.gates.append(gp)
+            if not gp.passed:
+                result.status = "retry_needed"
+                return result
 
         # Gate 2: COMPILE (for code tasks)
         if stack in ("dotnet", "python", "typescript") and written_files:
@@ -178,6 +187,26 @@ class ResponseEvaluator:
                 return GateResult("FORMAT", False, "SCHEMA_VIOLATION", "Response is not valid JSON")
 
         return GateResult("FORMAT", True, "", f"Format {expected_format} accepted")
+
+    # ── Gate 1b: PATH ──────────────────────────────────────────────────────────
+
+    def _gate_path(self, expected_output_file: str, written_files: list[str]) -> GateResult:
+        """
+        §8 Gate PATH: LLM must write to the expected output path.
+        Prevents silent pass when LLM writes to a wrong subdirectory:
+        evaluate() checks written files (what was actually written), not SubTaskDef.output_files.
+        Without this gate, a wrong-path file passes COMPILE/ANNOTATION/SPEC_ALIGN and the
+        pipeline returns success, but run_compile_gate then fails with E902 (file not found).
+        """
+        if expected_output_file in written_files:
+            return GateResult("PATH", True, "", f"Expected file written: {expected_output_file}")
+        return GateResult(
+            "PATH", False, "PATH_MISMATCH",
+            f"Expected output file not written. "
+            f"Expected: {expected_output_file} — "
+            f"LLM wrote to: {written_files or '(nothing)'}. "
+            f"Rewrite the file at the exact path: {expected_output_file}"
+        )
 
     # ── Gate 2: COMPILE ────────────────────────────────────────────────────────
 

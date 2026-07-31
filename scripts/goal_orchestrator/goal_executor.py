@@ -299,6 +299,7 @@ class GoalExecutor:
                     written_files=written,
                     stack=task.stack,
                     spec_sections=task.spec_sections,
+                    expected_output_file=task.output_file,
                 )
 
                 for gate in eval_result.gates:

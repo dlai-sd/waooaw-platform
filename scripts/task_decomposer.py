@@ -698,6 +698,7 @@ def execute_file_by_file(
                             written_files=written,
                             stack=stack,
                             spec_sections=spec_sections,
+                            expected_output_file=output_file,
                         )
                         for gate in eval_result.gates:
                             status = "✅" if gate.passed else "❌"
