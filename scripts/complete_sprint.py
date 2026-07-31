@@ -147,38 +147,16 @@ def _run(cmd: list[str], check: bool = True) -> subprocess.CompletedProcess:
 
 
 def _read_sprint_state() -> dict:
-    """Parse key sprint state fields from PROJECT_STATE.md."""
+    """Parse key sprint state fields from PROJECT_STATE.md (5-field control panel)."""
     full_text = STATE_PATH.read_text(encoding="utf-8")
-    # Scope to SPRINT_STATE_MACHINE block — avoids matching stale session records
     sm_idx = full_text.find("## SPRINT_STATE_MACHINE")
     text = full_text[sm_idx:] if sm_idx >= 0 else full_text
     state: dict = {}
     for key in ["sprint", "sprint_status", "task_id", "consecutive_failures",
-                "autonomous_halt", "last_attempt_result"]:
+                "autonomous_halt"]:
         m = re.search(rf"^{key}:\s*(.+)$", text, re.MULTILINE)
         if m:
             state[key] = m.group(1).strip()
-
-    # tasks_done list
-    m = re.search(r"^tasks_done:\s*\[(.*?)\]", text, re.MULTILINE | re.DOTALL)
-    if m:
-        raw = m.group(1).strip()
-        state["tasks_done"] = [t.strip().strip("'\"") for t in raw.split(",") if t.strip()]
-    else:
-        done_lines = re.findall(r"^  - (.+)$",
-            re.search(r"tasks_done:\s*\n((?:  - .+\n?)*)", text, re.MULTILINE).group(1)
-            if re.search(r"tasks_done:\s*\n((?:  - .+\n?)*)", text, re.MULTILINE) else "")
-        state["tasks_done"] = done_lines
-
-    # tasks_remaining list
-    m = re.search(r"tasks_remaining:\n((?:  - .+\n?)*)", text, re.MULTILINE)
-    if m:
-        state["tasks_remaining"] = [
-            t.strip().lstrip("- ") for t in m.group(1).splitlines() if t.strip()
-        ]
-    else:
-        state["tasks_remaining"] = []
-
     return state
 
 
@@ -186,31 +164,19 @@ def _update_sprint_state(
     sprint_status: str,
     consecutive_failures: int,
     autonomous_halt: bool,
-    tasks_done: list[str],
-    tasks_remaining: list[str],
-    last_result: str,
     dry_run: bool = False,
 ) -> None:
-    """Write sprint state fields to PROJECT_STATE.md via sprint_state.py."""
+    """Write sprint control-panel fields to PROJECT_STATE.md. Task progress lives in WC file."""
     if dry_run:
         print(f"  [DRY-RUN] sprint_state: status={sprint_status} failures={consecutive_failures} halt={autonomous_halt}")
-        print(f"  [DRY-RUN] tasks_done={tasks_done} remaining={tasks_remaining}")
         return
 
     state_script = str(REPO_ROOT / "scripts" / "sprint_state.py")
     py = sys.executable
-
     _run([py, state_script, "set",
           "sprint_status", sprint_status,
           "consecutive_failures", str(consecutive_failures),
-          "autonomous_halt", str(autonomous_halt).lower(),
-          "last_attempt_result", last_result])
-
-    done_args = [py, state_script, "set-list", "tasks_done"] + tasks_done
-    _run(done_args)
-
-    remaining_args = [py, state_script, "set-list", "tasks_remaining"] + tasks_remaining
-    _run(remaining_args)
+          "autonomous_halt", str(autonomous_halt).lower()])
 
 
 # ── PR closure ────────────────────────────────────────────────────────────────
@@ -426,20 +392,13 @@ def complete_sprint(pr_number: int = 0, dry_run: bool = False) -> int:
     subtasks  = signal.get("subtask_results", {})
     task_results = signal.get("task_results", {})
     tasks_req    = signal.get("tasks_requested", [])
-
-    # MERGE tasks_done: take the UNION of signal (this run) + existing state (cumulative).
-    # Never overwrite cumulative progress with a per-run subset.
-    # A BLOCKED/PARTIAL run reporting tasks_done=[] must not erase prior WC014-02/WC014-04.
     signal_done  = signal.get("tasks_done", [])
-    current_state_for_merge = _read_sprint_state()
-    state_done   = current_state_for_merge.get("tasks_done", [])
-    tasks_done   = sorted(set(signal_done) | set(state_done))
 
     print(f"\n── Sprint Completion Protocol ──")
     print(f"  Sprint:  {sprint}")
     print(f"  Run:     {run_id}")
     print(f"  Result:  {result}")
-    print(f"  Done:    {tasks_done}")
+    print(f"  Done:    {signal_done}")
     print(f"  Requested: {tasks_req}")
 
     # ── Step 2: Build registry entries for every failure ──────────────────────
@@ -528,16 +487,13 @@ def complete_sprint(pr_number: int = 0, dry_run: bool = False) -> int:
         halt = False
         new_status = "AUTHORIZED"
 
-    # tasks_remaining = all requested tasks not in tasks_done
-    tasks_remaining = [t for t in tasks_req if t not in tasks_done]
+    # tasks_remaining = all requested tasks not in signal_done (WC file is authoritative but signal is current run)
+    tasks_remaining = [t for t in tasks_req if t not in signal_done]
 
     _update_sprint_state(
         sprint_status=new_status,
         consecutive_failures=new_failures,
         autonomous_halt=halt,
-        tasks_done=tasks_done,
-        tasks_remaining=tasks_remaining,
-        last_result=result,
         dry_run=dry_run,
     )
     print(f"  ✓ Sprint state: failures={new_failures} halt={halt} remaining={tasks_remaining}")

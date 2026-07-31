@@ -151,6 +151,11 @@ jobs:
           python3 scripts/gap_scanner.py | tail -5 \
             || { echo "  ❌ PAC compliance FAILED (P1 agent spec gaps)"; FAILURES=$((FAILURES+1)); }
 
+          # 4d. Dependency chain validation — prior sprint foundations must compile clean
+          # and done task output files must not still be skeleton stubs (QA Technique #1)
+          python3 scripts/check_import_chain.py \
+            || { echo "  ❌ Dependency chain BROKEN — fix foundation before running sprint"; FAILURES=$((FAILURES+1)); }
+
           echo "── Health Check: $FAILURES failure(s) ─────────────────────"
           if [ "$FAILURES" -gt 0 ]; then
             echo "  ❌ Pipeline health check FAILED — fix issues above before sprint can run"
@@ -526,6 +531,10 @@ jobs:
 
           # ── File cost + pending summary ──
           python3 scripts/sprint_summary_writer.py || true
+
+          # ── Architectural fitness functions — structural invariants (QA Technique #3) ──
+          python3 scripts/check_arch_fitness.py \
+            || { echo "  ⚠️  Architecture fitness violation (non-blocking — recorded in logs)"; }
 
       - name: Upload monitor signal as artifact
         if: always()     # upload even if runner failed — partial signals are still useful

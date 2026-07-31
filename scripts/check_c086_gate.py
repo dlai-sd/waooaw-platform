@@ -13,6 +13,7 @@ Checks that every decomposed sprint task has a SIM-PL-002 simulation with PASS v
 Exits 1 (halts pipeline) if any decomposed task lacks a passing simulation.
 """
 
+import os
 import re
 import sys
 from pathlib import Path
@@ -26,21 +27,52 @@ LEGACY_TASKS = {
 }
 
 
+def _read_pending_tasks() -> list[str]:
+    """Read pending tasks from WC file (source of truth) or FORCE_TASK env var."""
+    force = os.environ.get("FORCE_TASK", "").strip()
+    if force:
+        return [force]
+
+    # Get current sprint from PROJECT_STATE.md
+    state = (REPO_ROOT / "constitution" / "PROJECT_STATE.md").read_text()
+    sm = re.search(r"## SPRINT_STATE_MACHINE.*?```yaml(.*?)```", state, re.DOTALL)
+    if not sm:
+        return []
+    sprint_match = re.search(r"^current_sprint:\s*(\S+)", sm.group(1), re.MULTILINE)
+    if not sprint_match:
+        return []
+    sprint = sprint_match.group(1).strip()
+
+    # Find WC file and parse pending tasks
+    wc_files = list((REPO_ROOT / "work-contracts").glob(f"{sprint}-*.md"))
+    if not wc_files:
+        return []
+
+    content = wc_files[0].read_text(encoding="utf-8")
+    task_id_pat = re.compile(r"^WC\d+-\d+[a-z]?$")
+    pending = []
+    for line in content.splitlines():
+        if not line.startswith("|"):
+            continue
+        cells = [c.strip() for c in line.split("|")]
+        if len(cells) < 6:
+            continue
+        task_id = cells[1].strip()
+        if not task_id_pat.match(task_id):
+            continue
+        status = cells[-3].strip().lower()
+        if status == "pending":
+            pending.append(task_id)
+    return pending
+
+
 def main() -> int:
     print("── C-086 Pre-Execution Simulation Gate ──────────────────────")
 
-    # Scope to SPRINT_STATE_MACHINE block — not first occurrence in file
-    state_content = (REPO_ROOT / "constitution" / "PROJECT_STATE.md").read_text()
-    sm_match = re.search(r"## SPRINT_STATE_MACHINE.*?```yaml(.*?)```", state_content, re.DOTALL)
-    if not sm_match:
-        print("  ❌ SPRINT_STATE_MACHINE block not found in PROJECT_STATE.md")
-        return 1
-    sm_yaml = sm_match.group(1)
-    tasks_block = re.search(r"tasks_remaining:\s*\n((?:  - [^\n]+\n?)*)", sm_yaml)
-    tasks = re.findall(r"  - (\S+)", tasks_block.group(1)) if tasks_block else []
+    tasks = _read_pending_tasks()
 
     if not tasks:
-        print("  ℹ️  No tasks_remaining — nothing to gate")
+        print("  ℹ️  No pending tasks — nothing to gate")
         return 0
 
     sim_dir = REPO_ROOT / "simulation"
