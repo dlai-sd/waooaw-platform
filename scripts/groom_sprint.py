@@ -151,10 +151,40 @@ def _parse_wc_tasks(wc_file: Path, sprint_prefix: str) -> list[dict]:
 
 # ── Already-groomed detection ──────────────────────────────────────────────────
 
+def _remove_groomed_entry(task_id: str) -> None:
+    """Remove a corrupted task entry block from TASK_HANDLERS so it can be re-injected."""
+    lines = RUNNER_PATH.read_text().splitlines(keepends=True)
+    start = None
+    for i, line in enumerate(lines):
+        if line.rstrip("\n") == f'        "{task_id}": {{':
+            start = i
+            break
+    if start is None:
+        return
+    # Find where this entry ends: next 8-space "WC task key or the injection anchor
+    end = len(lines)
+    for i in range(start + 1, len(lines)):
+        stripped = lines[i].lstrip()
+        if lines[i].startswith('        "WC') or lines[i].startswith('    # ──'):
+            end = i
+            break
+    RUNNER_PATH.write_text("".join(lines[:start] + lines[end:]))
+
+
 def _already_groomed(task_id: str) -> bool:
-    """Return True if task_id already has an entry in TASK_HANDLERS."""
+    """Return True only if task_id has an entry with the canonical scaffold id.
+
+    If the entry exists but scaffold id is non-canonical, remove it so the groomer re-injects.
+    """
     content = RUNNER_PATH.read_text()
-    return f'"{task_id}"' in content or f"'{task_id}'" in content
+    if f'"{task_id}"' not in content and f"'{task_id}'" not in content:
+        return False
+    canonical_scaffold = f"{task_id}a"
+    if f'id="{canonical_scaffold}"' not in content and f"id=\'{canonical_scaffold}\'" not in content:
+        print(f"  ⚠️  {task_id}: entry has non-canonical scaffold id — removing for re-groom")
+        _remove_groomed_entry(task_id)
+        return False
+    return True
 
 
 # ── Skeleton reading ───────────────────────────────────────────────────────────

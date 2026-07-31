@@ -100,7 +100,7 @@ TASK_HANDLERS = {
         "WC027-01a": {
         "subtasks": [
             SubTaskDef(
-                id="WC027-01a-scaffold",
+                id="WC027-01aa",
                 description="Implement IMarkupEngine.derive_bundle_cost_floor(), validate_price() and BundleEngine data models with C-089 constitutional margin floor enforcement and C-059 audit logging.",
                 type="llm",
                 depends_on=[],
@@ -311,7 +311,7 @@ TASK_HANDLERS = {
         "WC027-01b": {
         "subtasks": [
             SubTaskDef(
-                id="WC027-01b",
+                id="WC027-01ba",
                 description="Implement FastAPI router for pricing endpoints: thread-catalog delegation, bundle-cost-floor lookup, price validation with C-089 margin enforcement, and price derivation; mount in main.py",
                 type="llm",
                 depends_on=["WC027-01aa"],
