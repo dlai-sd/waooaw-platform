@@ -1,29 +1,92 @@
 {
-  "run_id": "",
-  "sprint": "WC-026",
+  "run_id": "30642696489",
+  "sprint": "WC-027",
   "scaffold_task": null,
   "scaffold_failed": false,
   "task_results": {},
   "spec_gap_issues": [],
   "overall_result": "PARTIAL",
-  "file_costs": {},
+  "file_costs": {
+    "WC027-01aa:models.py": 4.6824,
+    "WC027-01aa:bundle_engine.py": 6.1759,
+    "WC027-01ab:models.py": 0.4538,
+    "WC027-01ab:bundle_engine.py": 1.637,
+    "WC027-01ac:test_models.py": 2.4443,
+    "WC027-01ba:router.py": 0.6026,
+    "WC027-01ba:main.py": 0.5246,
+    "WC027-01bb:router.py": 0.5043,
+    "WC027-01bb:main.py": 0.2489,
+    "WC027-01bc:test_router.py": 0.6424,
+    "WC027-02a:test_markup.py": 1.8276
+  },
   "subtask_results": {
-    "WC026-02a": {
-      "result": "FAIL",
-      "task_id": "WC026-02",
+    "WC027-01aa": {
+      "result": "SUCCESS",
+      "task_id": "WC027-01a",
       "error_codes": [],
       "error_text": ""
     },
-    "WC026-05a": {
+    "WC027-01ab": {
+      "result": "SUCCESS",
+      "task_id": "WC027-01a",
+      "error_codes": [],
+      "error_text": ""
+    },
+    "WC027-01ac": {
+      "result": "SUCCESS",
+      "task_id": "WC027-01a",
+      "error_codes": [],
+      "error_text": ""
+    },
+    "WC027-01ba": {
+      "result": "SUCCESS",
+      "task_id": "WC027-01b",
+      "error_codes": [],
+      "error_text": ""
+    },
+    "WC027-01bb": {
+      "result": "SUCCESS",
+      "task_id": "WC027-01b",
+      "error_codes": [],
+      "error_text": ""
+    },
+    "WC027-01bc": {
+      "result": "SUCCESS",
+      "task_id": "WC027-01b",
+      "error_codes": [],
+      "error_text": ""
+    },
+    "WC027-02a": {
       "result": "FAIL",
-      "task_id": "WC026-05",
+      "task_id": "WC027-02",
+      "error_codes": [
+        "ANN101",
+        "ANN102",
+        "E902"
+      ],
+      "error_text": "E902 No such file or directory (os error 2)\n--> tests/billing-engine/test_markup.py:1:1\n\nFound 1 error.\nwarning: The following rules have been removed and ignoring them has no effect:\n    - ANN101\n    - ANN102\n\n"
+    },
+    "WC027-02b": {
+      "result": "SKIPPED",
+      "task_id": "WC027-02",
+      "error_codes": [],
+      "error_text": ""
+    },
+    "WC027-02c": {
+      "result": "SKIPPED",
+      "task_id": "WC027-02",
       "error_codes": [],
       "error_text": ""
     }
   },
-  "tasks_done": [],
+  "total_cost_inr": 19.7438,
+  "tasks_done": [
+    "WC027-01a",
+    "WC027-01b"
+  ],
   "tasks_requested": [
-    "WC026-02",
-    "WC026-05"
+    "WC027-01a",
+    "WC027-01b",
+    "WC027-02"
   ]
 }
