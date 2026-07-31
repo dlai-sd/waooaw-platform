@@ -394,6 +394,90 @@ TASK_HANDLERS = {
             ),
         ]
     },
+        "WC027-02": {
+        "subtasks": [
+            SubTaskDef(
+                id='WC027-02a',
+                description='Write pytest tests for test_markup.py per WC scope specification',
+                type="llm",
+                depends_on=['WC027-01ba'],
+                compile_gate='ruff',
+                service_dir='',
+                wc_task_id='WC027-02',
+                stack='python',
+                output_files=[
+                    'tests/billing-engine/test_markup.py',
+                ],
+                inject_source_files=[
+                    'src/billing-engine/markup/models.py',
+                    'src/billing-engine/markup/bundle_engine.py',
+                    'src/billing-engine/markup/router.py',
+                    'src/billing-engine/main.py',
+                    'src/billing-engine/skeleton/wbe_interfaces.py',
+                ],
+                spec_sections={
+                    'work-contracts/WC-027-wbe-s3-markup-engine.md': 'WC027-02',
+                },
+                constitutional_check='TEST PASS — write pytest tests exactly as described in the WC scope:\n`tests/billing-engine/test_markup.py` — test: cost_floor reads `bundle_profiles.cost_floor_paise` (not recomputed), derive_price formula uses margin-on-revenue `floor / (1 - margin/100)`, `POST /pricing/validate` 200 path (APPROVED, `pricing_floor_log` row written), `POST /pricing/validate` 422 path (REJECTED — body includes `minimum_compliant_price_paise`, `pricing_floor_log` row written), `GET /pricing/thread-catalog` response shape, ≥90% line coverage; **property-based tests using `hypothesis`**: `@given` strategy on `derive_price(cost_floor_paise, margin_pct)` covering zero margin, near-10\n\nC-097: property-based testing required — use hypothesis @given for all financial math.\nC-059: verify audit log row written for APPROVED and REJECTED pricing outcomes.\nC-073: # Implements: header required at top of test file.\nUse pytest-asyncio for async tests. Mock Redis/DB with pytest fixtures.\nNever use % string formatting — use f-strings only.',
+                model_hint='auto',
+                max_tokens=4000,
+            ),
+            SubTaskDef(
+                id="WC027-02b",
+                description="Add complete type annotations and fix ruff style (ANN001/ANN201 enforcement)",
+                type="llm",
+                depends_on=["WC027-02a"],
+                compile_gate="ruff",
+                service_dir="",
+                wc_task_id="WC027-02",
+                stack="python",
+                output_files=[
+                    "tests/billing-engine/test_markup.py",
+                ],
+                inject_source_files=[
+                    "tests/billing-engine/test_markup.py",
+                ],
+                spec_sections={
+                    "work-contracts/WC-027-wbe-s3-markup-engine.md": "WC027-02",
+                },
+                constitutional_check=(
+                    "POLISH PASS — type annotation enforcement only.\n"
+                    "Add type annotations to ALL function parameters (ANN001).\n"
+                    "Add return type annotations to ALL functions (ANN201, ANN202).\n"
+                    "DO NOT change function names, business logic, or structure.\n"
+                    "DO NOT add new imports beyond those needed for type annotations."
+                ),
+                model_hint="auto",
+                max_tokens=3000,
+            ),
+            SubTaskDef(
+                id="WC027-02c",
+                description="Run pytest on tests/billing-engine to verify all tests pass",
+                type="llm",
+                depends_on=["WC027-02b"],
+                compile_gate="pytest",
+                service_dir="tests/billing-engine",
+                wc_task_id="WC027-02",
+                stack="python",
+                output_files=[
+                    "tests/billing-engine/test_markup.py",
+                ],
+                inject_source_files=[
+                    "tests/billing-engine/test_markup.py",
+                ],
+                spec_sections={
+                    "work-contracts/WC-027-wbe-s3-markup-engine.md": "WC027-02",
+                },
+                constitutional_check=(
+                    "PYTEST RUN — execute the test file and confirm all tests pass.\n"
+                    "If tests fail due to missing fixtures or imports, fix the test file.\n"
+                    "Do NOT modify the implementation under test."
+                ),
+                model_hint="auto",
+                max_tokens=2000,
+            ),
+        ]
+    },
     # ── GROOMER INJECTION POINT — groom_sprint.py injects new sprint handlers here ──
 }
 
