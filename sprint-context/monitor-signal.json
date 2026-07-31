@@ -1,12 +1,72 @@
 {
-  "run_id": "30608458389",
+  "run_id": "30610130533",
   "sprint": "WC-027",
   "scaffold_task": null,
   "scaffold_failed": false,
   "task_results": {},
   "spec_gap_issues": [],
-  "overall_result": "NOT_IMPLEMENTED",
-  "file_costs": {},
+  "overall_result": "PARTIAL",
+  "file_costs": {
+    "WC027-01a-scaffold:models.py": 3.2558,
+    "WC027-01a-scaffold:bundle_engine.py": 5.1526
+  },
+  "subtask_results": {
+    "WC027-01a-scaffold": {
+      "result": "SUCCESS",
+      "task_id": "WC027-01a",
+      "error_codes": [],
+      "error_text": ""
+    },
+    "WC027-01ab": {
+      "result": "SKIPPED",
+      "task_id": "WC027-01a",
+      "error_codes": [],
+      "error_text": ""
+    },
+    "WC027-01ac": {
+      "result": "SKIPPED",
+      "task_id": "WC027-01a",
+      "error_codes": [],
+      "error_text": ""
+    },
+    "WC027-01b": {
+      "result": "SKIPPED",
+      "task_id": "WC027-01b",
+      "error_codes": [],
+      "error_text": ""
+    },
+    "WC027-01bb": {
+      "result": "SKIPPED",
+      "task_id": "WC027-01b",
+      "error_codes": [],
+      "error_text": ""
+    },
+    "WC027-01bc": {
+      "result": "SKIPPED",
+      "task_id": "WC027-01b",
+      "error_codes": [],
+      "error_text": ""
+    },
+    "WC027-02a": {
+      "result": "SKIPPED",
+      "task_id": "WC027-02",
+      "error_codes": [],
+      "error_text": ""
+    },
+    "WC027-02b": {
+      "result": "SKIPPED",
+      "task_id": "WC027-02",
+      "error_codes": [],
+      "error_text": ""
+    },
+    "WC027-02c": {
+      "result": "SKIPPED",
+      "task_id": "WC027-02",
+      "error_codes": [],
+      "error_text": ""
+    }
+  },
+  "total_cost_inr": 8.4084,
   "tasks_done": [],
   "tasks_requested": [
     "WC027-01a",
