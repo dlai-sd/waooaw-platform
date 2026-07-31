@@ -504,8 +504,14 @@ def main() -> int:
                     print(f"  Branch freshness guard: {branch} has {ahead.stdout.strip()} commit(s) ahead of main — preserving completed work")
 
             if branch_has_work:
-                # Resume from the existing branch — don't discard completed work
-                git(["checkout", branch], check=False)
+                # Resume from the existing branch — don't discard completed work.
+                # Use checkout -b to create a local tracking branch; plain checkout
+                # of a remote-only ref results in detached HEAD which breaks git push.
+                local_ref = git(["show-ref", "--verify", "--quiet", f"refs/heads/{branch}"], check=False)
+                if local_ref.returncode == 0:
+                    git(["checkout", branch], check=False)
+                else:
+                    git(["checkout", "-b", branch, f"origin/{branch}"], check=False)
                 git(["pull", "origin", branch], check=False)
             else:
                 print(f"  Branch freshness guard: rebuilding {branch} from latest origin/main")

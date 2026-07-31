@@ -460,23 +460,42 @@ def _generate_scaffold_subtaskdef(
     max_tokens = 8000 if model_hint == "reasoning" else 4000
 
     if is_test:
-        system_prompt = _TEST_PROSE_PROMPT
-        prompt = (
-            f"Task: {task_id}\n"
-            f"Scope: {task['scope']}\n"
-            f"Output files (already determined — do NOT change): {output_files}\n"
-            f"Skeleton interfaces to test:\n{skeleton[:3000]}\n\n"
-            f'Return ONLY JSON: {{"description": "Write pytest tests for ...", "constitutional_check": "..."}}'
+        # Build prose deterministically — MagicLLM enforces XML file-block format which
+        # conflicts with the JSON-only groomer prompt; skip LLM entirely for test tasks.
+        file_names = ", ".join(Path(f).name for f in output_files) if output_files else task_id
+        description = f"Write pytest tests for {file_names} per WC scope specification"
+        constitutional_check = (
+            f"TEST PASS — write pytest tests exactly as described in the WC scope:\n"
+            f"{task.get('scope', '')[:600]}\n\n"
+            "C-097: property-based testing required — use hypothesis @given for all financial math.\n"
+            "C-059: verify audit log row written for APPROVED and REJECTED pricing outcomes.\n"
+            "C-073: # Implements: header required at top of test file.\n"
+            "Use pytest-asyncio for async tests. Mock Redis/DB with pytest fixtures.\n"
+            "Never use % string formatting — use f-strings only."
         )
-    else:
-        system_prompt = _SCAFFOLD_PROSE_PROMPT
-        prompt = (
-            f"Task: {task_id}\n"
-            f"Scope: {task['scope']}\n"
-            f"Output files (already determined — do NOT change): {output_files}\n"
-            f"Skeleton (frozen — do not invent new names):\n{skeleton[:5000]}\n\n"
-            f'Return ONLY JSON: {{"description": "...", "constitutional_check": "Implement <ABCClass>.<method> from skeleton..."}}'
+        return _build_scaffold_subtaskdef(
+            task_id=task_id,
+            output_files=output_files,
+            service_dir=service_dir,
+            inject_source_files=inject_source_files,
+            description=description,
+            constitutional_check=constitutional_check,
+            is_test=is_test,
+            stack=stack,
+            wc_filename=wc_filename,
+            prior_subtask_id=prior_subtask_id,
+            model_hint=model_hint,
+            max_tokens=max_tokens,
         )
+
+    system_prompt = _SCAFFOLD_PROSE_PROMPT
+    prompt = (
+        f"Task: {task_id}\n"
+        f"Scope: {task['scope']}\n"
+        f"Output files (already determined — do NOT change): {output_files}\n"
+        f"Skeleton (frozen — do not invent new names):\n{skeleton[:5000]}\n\n"
+        f'Return ONLY JSON: {{"description": "...", "constitutional_check": "Implement <ABCClass>.<method> from skeleton..."}}'
+    )
 
     result = _llm_call(prompt, system_prompt, api_key, max_tokens=512)
     if not result:

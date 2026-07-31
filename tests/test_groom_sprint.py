@@ -1387,41 +1387,32 @@ class TestGenerateSubtaskChainTestTask:
         assert 'service_dir=""' in result
 
     def test_test_task_scaffold_uses_test_prose_prompt(self, monkeypatch):
-        """Test tasks must use _TEST_PROSE_PROMPT for scaffold generation, not _SCAFFOLD_PROSE_PROMPT."""
-        captured_systems: list[str] = []
+        """Test task scaffold is built deterministically — LLM is NOT called (no FORMAT_FAILURE risk)."""
+        call_count = [0]
 
-        def capture(prompt: str, system: str, api_key: str, max_tokens: int = 2048) -> str:
-            captured_systems.append(system)
+        def counting_llm(prompt: str, system: str, api_key: str, max_tokens: int = 2048) -> str:
+            call_count[0] += 1
             return _SAMPLE_TEST_SCAFFOLD_LITERAL
 
-        monkeypatch.setattr(groom_sprint, "_llm_call", capture)
-        groom_sprint._generate_subtask_chain(
+        monkeypatch.setattr(groom_sprint, "_llm_call", counting_llm)
+        result = groom_sprint._generate_subtask_chain(
             task=self._test_task, skeleton="", prior_subtask_id=None,
             sprint_prefix="WC027", wc_filename="WC-027-wbe.md", api_key="x",
         )
-        assert captured_systems, "LLM must be called at least once for test task scaffold"
-        assert captured_systems[0] is groom_sprint._TEST_PROSE_PROMPT, (
-            "Test task scaffold must use _TEST_PROSE_PROMPT, not _SCAFFOLD_PROSE_PROMPT"
+        assert result is not None, "chain must succeed"
+        assert call_count[0] == 0, (
+            "Test task scaffold must NOT call LLM — prose is built deterministically to avoid FORMAT_FAILURE"
         )
 
     def test_test_task_prompt_includes_scope_paths(self, monkeypatch):
-        """The scaffold prose prompt for test tasks must include the pre-extracted output_files."""
-        captured_prompts: list[str] = []
-
-        def capture(prompt: str, system: str, api_key: str, max_tokens: int = 2048) -> str:
-            captured_prompts.append(prompt)
-            return _SAMPLE_TEST_SCAFFOLD_LITERAL
-
-        monkeypatch.setattr(groom_sprint, "_llm_call", capture)
-        groom_sprint._generate_subtask_chain(
+        """Test task SubTaskDef output_files must contain the scope path (deterministic — no LLM)."""
+        result = groom_sprint._generate_subtask_chain(
             task=self._test_task, skeleton="", prior_subtask_id=None,
             sprint_prefix="WC027", wc_filename="WC-027-wbe.md", api_key="x",
         )
-        assert captured_prompts, "LLM must be called"
-        scaffold_prompt = captured_prompts[0]
-        # Prompt must include the deterministic output files extracted from scope
-        assert "tests/billing-engine/test_markup.py" in scaffold_prompt
-        assert "Output files" in scaffold_prompt
+        assert result is not None, "chain must succeed"
+        # Scope path appears in the generated SubTaskDef output_files
+        assert "tests/billing-engine/test_markup.py" in result
 
     def test_test_task_produces_pytest_run_as_c_subtask(self, monkeypatch):
         """c-subtask for a test task must use compile_gate='pytest', not LLM-generated tests."""
@@ -1435,7 +1426,7 @@ class TestGenerateSubtaskChainTestTask:
         assert 'compile_gate="pytest"' in result
 
     def test_test_task_only_calls_llm_once(self, monkeypatch):
-        """Test task chain: scaffold (LLM) + polish (templated) + pytest run (templated) = 1 LLM call."""
+        """Test task chain makes 0 LLM calls — all prose built deterministically to avoid FORMAT_FAILURE."""
         call_count = [0]
 
         def counting_llm(*a, **kw):
@@ -1448,8 +1439,8 @@ class TestGenerateSubtaskChainTestTask:
             sprint_prefix="WC027", wc_filename="WC-027-wbe.md", api_key="x",
         )
         assert result is not None
-        assert call_count[0] == 1, (
-            f"Test task chain should make exactly 1 LLM call (scaffold only), got {call_count[0]}"
+        assert call_count[0] == 0, (
+            f"Test task chain must make 0 LLM calls (deterministic prose), got {call_count[0]}"
         )
 
     def test_test_task_output_files_includes_tests_path(self, monkeypatch):
