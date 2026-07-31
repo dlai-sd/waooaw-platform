@@ -192,7 +192,8 @@ SCAFFOLD RULES (staged generation — see architecture/reference/pipeline/staged
 5. inject_source_files MUST include the skeleton file
 6. model_hint from WC table (reasoning/auto — never 'standard')
 7. depends_on: prior scaffold subtask id, or [] for first task in sprint
-8. Output ONLY the dict entry literal — no imports, no assignments
+8. Wrap your output in exactly one XML file block — required by the pipeline FORMAT gate:
+   <file path="scripts/autonomous_sprint_runner.py">SubTaskDef(...)</file>
 """
 
 _TEST_SYSTEM_PROMPT = """You are a Python test generator for the WAOOAW autonomous sprint pipeline.
@@ -206,7 +207,8 @@ TEST RULES:
 5. model_hint MUST be "reasoning" — test quality requires understanding edge cases
 6. max_tokens: 6000
 7. depends_on: the polish subtask id (e.g. WC027-02b)
-8. Output ONLY the SubTaskDef(...) literal — no imports, no assignments
+8. Wrap your output in exactly one XML file block — required by the pipeline FORMAT gate:
+   <file path="scripts/autonomous_sprint_runner.py">SubTaskDef(...)</file>
 """
 
 
@@ -228,7 +230,7 @@ def _llm_call(prompt: str, system: str, api_key: str, max_tokens: int = 2048) ->
 
 
 def _strip_llm_fences(text: str) -> str:
-    """Strip markdown fences and any leading preamble before SubTaskDef(."""
+    """Extract bare SubTaskDef literal from XML file-block envelope, fences, or plain output."""
     text = text.strip()
     if text.startswith("```"):
         text = re.sub(r'^```\w*\n?', '', text)
@@ -237,6 +239,10 @@ def _strip_llm_fences(text: str) -> str:
     idx = text.find("SubTaskDef(")
     if idx > 0:
         text = text[idx:]
+    # Strip XML closing tag when LLM wraps output in <file path="...">...</file>
+    end_tag = text.rfind("</file>")
+    if end_tag != -1:
+        text = text[:end_tag].rstrip()
     return text
 
 
@@ -281,7 +287,8 @@ WC file: {wc_filename}
 EA SKELETON (frozen — do not invent new names):
 {skeleton[:6000]}
 
-Output ONLY the SubTaskDef(...) literal (no dict wrapper, no imports):
+Wrap output in one XML file block (pipeline FORMAT gate requirement):
+<file path="scripts/autonomous_sprint_runner.py">
 SubTaskDef(
     id="{task_id}a",
     description="<one sentence: business logic implemented>",
@@ -309,6 +316,7 @@ SubTaskDef(
     model_hint="{model_hint}",
     max_tokens={max_tokens},
 )
+</file>
 """
     result = _llm_call(prompt, _SCAFFOLD_SYSTEM_PROMPT, api_key)
     return _strip_llm_fences(result) if result else None
@@ -379,7 +387,8 @@ Implementation files (inject these — tests target the actual code):
 Test file to produce: {test_file}
 WC file: {wc_filename}
 
-Output ONLY the SubTaskDef(...) literal (no dict wrapper, no imports):
+Wrap output in one XML file block (pipeline FORMAT gate requirement):
+<file path="scripts/autonomous_sprint_runner.py">
 SubTaskDef(
     id="{task_id}c",
     description="<one sentence: what this test suite covers>",
@@ -407,6 +416,7 @@ SubTaskDef(
     model_hint="reasoning",
     max_tokens=6000,
 )
+</file>
 """
     result = _llm_call(prompt, _TEST_SYSTEM_PROMPT, api_key)
     return _strip_llm_fences(result) if result else None
