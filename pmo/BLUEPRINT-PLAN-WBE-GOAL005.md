@@ -1,94 +1,98 @@
-# Blueprint Execution Plan — WBE Core Sprints + GOAL-005 Customer Acquisition
+# GO Execution Plan — WBE Sprints WC-027 through WC-031
 
 **Authority:** Enterprise Architect (INST-005) — session 2026-07-31
-**Scope:** WC-027 → WC-030 (WBE remaining sub-components) + GOAL-005 (cross-module customer acquisition)
-**Purpose:** Produce all work contracts, spec documents, and groomed sprint state so each sprint
-is ready for handover to the anonymous batch executor (GitHub Actions autonomous-sprint.yaml).
-**Execution agent:** Goal Orchestrator — reads this file top-to-bottom, executes each `[ ]` step,
-checks it off, commits progress at end of each Phase.
-**Handover definition:** A sprint is ready for the batch executor when:
+**Scope:** WC-027, WC-028, WC-029, WC-030, WC-031 — five sequential sprints
+**Purpose:** Single GO input document. GO reads this top-to-bottom, executes each `[ ]` step for
+the active phase, checks it off, and commits. Each phase activates only after Founder authorises.
+**Execution agent:** Goal Orchestrator
+**All sprints parked:** `autonomous_halt: true` — Founder must explicitly authorise each sprint
+before GO sets `sprint_status: READY` and runs the groomer.
+
+**Handover definition — a sprint is ready for the batch executor when ALL of the following are true:**
   - `work-contracts/WC-NNN-*.md` exists with valid task table (task_id | scope | model_hint | status)
   - `constitution/PROJECT_STATE.md` has `current_sprint: WC-NNN`, `sprint_status: READY`, `autonomous_halt: false`
-  - `scripts/groom_sprint.py WC-NNN` has run successfully (SubTaskDefs injected into TASK_HANDLERS)
+  - `scripts/groom_sprint.py --sprint WC-NNN` has run successfully (SubTaskDefs injected into TASK_HANDLERS)
   - All files committed and pushed to `main`
+
+**GO must not set `autonomous_halt: false` without explicit Founder instruction.**
 
 ---
 
 ## Phase 1 — WC-027: WBE-S3 Markup Engine
 
-**Batch executor will run after:** WC-026 (Wallet Engine) PR merged ✅
+**Prerequisite:** WC-026 (Wallet Engine) PR merged ✅
+**WC file:** `work-contracts/WC-027-wbe-s3-markup-engine.md` ✅ created
+**State:** PARKED — `autonomous_halt: true`, `sprint_status: WAITING`
 
-### Blueprint Steps
+### GO Activation Steps (run when Founder authorises WC-027)
 
-- [x] **1.1** Create `work-contracts/WC-027-wbe-s3-markup-engine.md` — task table with WC027-01, WC027-02
-- [x] **1.2** Update `constitution/PROJECT_STATE.md` SPRINT_STATE_MACHINE:
-      `current_sprint: WC-027`, `sprint_status: READY`, `branch: ib/009/sprint-027`,
-      `tasks_remaining: [WC027-01, WC027-02]`, `autonomous_halt: false`
-- [x] **1.3** Run: `python3 scripts/groom_sprint.py WC-027` — verify SubTaskDefs injected
-- [x] **1.4** Commit: `chore(pm): WC-027 markup engine blueprint ready for batch executor`
-- [x] **1.5** Push to `main`
+- [ ] **1.1** `python3 scripts/sprint_state.py set current_sprint WC-027 sprint_status READY branch ib/009/sprint-027 tasks_remaining "WC027-01,WC027-02" consecutive_failures 0 autonomous_halt false`
+- [ ] **1.2** `python3 scripts/groom_sprint.py --sprint WC-027` — verify output shows WC027-01 and WC027-02 SubTaskDefs injected
+- [ ] **1.3** `git add -A && git commit -m "chore(pm): WC-027 READY — markup engine authorised" && git push`
 
-**✅ HANDOVER POINT:** WC-027 active sprint — batch executor will create branch `ib/009/sprint-027`,
-implement markup engine, open PR. Reviewer merges → advances to Phase 2.
+**⏳ HANDOVER POINT:** Batch executor creates branch `ib/009/sprint-027`, implements markup engine, opens PR.
+Reviewer merges → Founder authorises Phase 2.
 
 ---
 
 ## Phase 2 — WC-028: WBE-S4 Meter + Alert Engine
 
-**Batch executor will run after:** WC-027 PR merged (markup/ sub-component live)
-**Prerequisite:** `architecture/reference/billing/wbe-component-spec.md §2.3a` (threshold ladder) must be
-committed before this sprint runs. ✅ Done — committed `d591b6c` (Amendment 1, 2026-07-31).
+**Prerequisite:** WC-027 PR merged ✅ (markup/ sub-component live)
+**Prerequisite:** `wbe-component-spec.md §2.3a` threshold ladder ✅ committed `d591b6c`
+**WC file:** `work-contracts/WC-028-wbe-s4-meter-alert-engine.md` ✅ created
+**State:** PARKED — waiting for Phase 1 merge + Founder authorisation
 
-### Blueprint Steps
+### GO Activation Steps (run when Founder authorises WC-028)
 
-- [x] **2.1** Create `work-contracts/WC-028-wbe-s4-meter-alert-engine.md` — task table with WC028-01, WC028-02, WC028-03
-- [ ] **2.2** After WC-027 merges: Update PROJECT_STATE to `current_sprint: WC-028`, `sprint_status: READY`,
-      `branch: ib/009/sprint-028`, `autonomous_halt: false`
-- [ ] **2.3** After PROJECT_STATE update: Run `python3 scripts/groom_sprint.py WC-028`
-- [ ] **2.4** Commit + push
+- [ ] **2.1** `python3 scripts/sprint_state.py set current_sprint WC-028 sprint_status READY branch ib/009/sprint-028 tasks_remaining "WC028-01,WC028-02,WC028-03" consecutive_failures 0 autonomous_halt false`
+- [ ] **2.2** `python3 scripts/groom_sprint.py --sprint WC-028` — verify WC028-01, WC028-02, WC028-03 injected
+- [ ] **2.3** `git add -A && git commit -m "chore(pm): WC-028 READY — meter + alert engine authorised" && git push`
 
-**✅ HANDOVER POINT:** WC-028 active sprint — batch executor implements meter/ + alert_policy.py.
+**⏳ HANDOVER POINT:** Batch executor creates branch `ib/009/sprint-028`, implements meter/ + alert_policy.py.
 
 ---
 
 ## Phase 3 — WC-029: WBE-S5 Platform Procurement Ledger
 
-**Batch executor will run after:** WC-028 PR merged (MeterService live for ThresholdPolicy import)
+**Prerequisite:** WC-028 PR merged (MeterService + PROCUREMENT_POLICY live)
+**WC file:** `work-contracts/WC-029-wbe-s5-platform-procurement.md` ✅ created
+**State:** PARKED — waiting for Phase 2 merge + Founder authorisation
 
-### Blueprint Steps
+### GO Activation Steps (run when Founder authorises WC-029)
 
-- [x] **3.1** Create `work-contracts/WC-029-wbe-s5-platform-procurement.md` — task table with WC029-01, WC029-02
-- [ ] **3.2** After WC-028 merges: Update PROJECT_STATE to `current_sprint: WC-029`, `sprint_status: READY`,
-      `branch: ib/009/sprint-029`, `autonomous_halt: false`
-- [ ] **3.3** After PROJECT_STATE update: Run `python3 scripts/groom_sprint.py WC-029`
-- [ ] **3.4** Commit + push
+- [ ] **3.1** `python3 scripts/sprint_state.py set current_sprint WC-029 sprint_status READY branch ib/009/sprint-029 tasks_remaining "WC029-01,WC029-02" consecutive_failures 0 autonomous_halt false`
+- [ ] **3.2** `python3 scripts/groom_sprint.py --sprint WC-029` — verify WC029-01, WC029-02 injected
+- [ ] **3.3** `git add -A && git commit -m "chore(pm): WC-029 READY — procurement ledger authorised" && git push`
 
-**✅ HANDOVER POINT:** WC-029 active sprint — batch executor implements procurement/ + FA generation.
+**⏳ HANDOVER POINT:** Batch executor creates branch `ib/009/sprint-029`, implements procurement/ + FA generation.
 
 ---
 
 ## Phase 4 — WC-030: WBE-S6 Reconciliation Engine
 
-**Batch executor will run after:** WC-029 PR merged (ProcurementService live for margin data)
+**Prerequisite:** WC-029 PR merged (ProcurementService live for margin data)
+**WC file:** `work-contracts/WC-030-wbe-s6-reconciliation.md` ✅ created
+**State:** PARKED — waiting for Phase 3 merge + Founder authorisation
 
-### Blueprint Steps
+### GO Activation Steps (run when Founder authorises WC-030)
 
-- [x] **4.1** Create `work-contracts/WC-030-wbe-s6-reconciliation.md` — task table with WC030-01, WC030-02, WC030-03
-- [ ] **4.2** After WC-029 merges: Update PROJECT_STATE to `current_sprint: WC-030`, `sprint_status: READY`,
-      `branch: ib/009/sprint-030`, `autonomous_halt: false`
-- [ ] **4.3** After PROJECT_STATE update: Run `python3 scripts/groom_sprint.py WC-030`
-- [ ] **4.4** Commit + push
+- [ ] **4.1** `python3 scripts/sprint_state.py set current_sprint WC-030 sprint_status READY branch ib/009/sprint-030 tasks_remaining "WC030-01,WC030-02,WC030-03" consecutive_failures 0 autonomous_halt false`
+- [ ] **4.2** `python3 scripts/groom_sprint.py --sprint WC-030` — verify WC030-01, WC030-02, WC030-03 injected
+- [ ] **4.3** `git add -A && git commit -m "chore(pm): WC-030 READY — reconciliation engine authorised" && git push`
 
-**✅ HANDOVER POINT:** WC-030 active sprint — batch executor implements reconciliation/ + APScheduler.
-After WC-030 merges: WBE core is complete. Advance to GOAL-005 Phase 5.
+**⏳ HANDOVER POINT:** Batch executor creates branch `ib/009/sprint-030`, implements reconciliation/ + APScheduler.
+After WC-030 merges: WBE core complete. Advance to Phase 5.
 
 ---
 
-## Phase 5 — GOAL-005: Customer Acquisition Blueprint (Cross-Module Spec + WC Files)
+## Phase 5 — WC-031: GOAL-005 WBE Trial + Promotions Engine
 
-**Authorisation gate:** Founder must record pricing decisions in `security/FOUNDER-ACTIONS.md` before
-any GOAL-005 implementation sprint runs. The blueprint steps below (spec + WC files) can be
-executed immediately, but `autonomous_halt` remains `true` for all GOAL-005 sprints until FA is received.
+**Prerequisite:** WC-030 PR merged (full WBE core complete)
+**Prerequisite (hard gate):** Founder FA in `security/FOUNDER-ACTIONS.md` with trial budget + discount caps
+**WC file:** `work-contracts/WC-031-goal005-wbe-trial-promotions.md` ✅ created
+**Spec doc:** `architecture/reference/billing/customer-acquisition-spec.md` ✅ created
+**DB migration:** `infrastructure/postgres/init/13-customer-acquisition.sql` ✅ created
+**State:** PARKED — blocked on Founder pricing FA (see spec doc §Founder Action Gate)
 
 ### Why this is complex — cross-module state map
 
@@ -135,29 +139,30 @@ executed immediately, but `autonomous_halt` remains `true` for all GOAL-005 spri
 
 #### 5B — Activation (after Founder FA received + WC-030 merged)
 
-- [ ] **5B.1** Verify FA received: `security/FOUNDER-ACTIONS.md` has trial budget + coupon caps signed by Founder
-- [ ] **5B.2** Update PROJECT_STATE: `current_sprint: WC-031`, `sprint_status: READY`, `autonomous_halt: false`
-- [ ] **5B.3** Run `python3 scripts/groom_sprint.py WC-031`
-- [ ] **5B.4** Commit + push → batch executor activates
+### GO Activation Steps (run when Founder FA received + WC-030 merged)
 
-**✅ HANDOVER POINT (GOAL-005 WBE):** WC-031 active — batch executor implements trial/ + promotions/.
-WC-032, WC-033, WC-034 follow in sequence after each prior sprint merges (same advance pattern as Phases 2–4).
+- [ ] **5.1** Verify `security/FOUNDER-ACTIONS.md` has FA with trial budget + coupon caps signed by Founder
+- [ ] **5.2** `python3 scripts/sprint_state.py set current_sprint WC-031 sprint_status READY branch ib/009/sprint-031 tasks_remaining "WC031-01,WC031-02,WC031-03" consecutive_failures 0 autonomous_halt false`
+- [ ] **5.3** `python3 scripts/groom_sprint.py --sprint WC-031` — verify WC031-01, WC031-02, WC031-03 injected
+- [ ] **5.4** `git add -A && git commit -m "chore(pm): WC-031 READY — trial + promotions engine authorised" && git push`
+
+**⏳ HANDOVER POINT (WC-031):** Batch executor implements trial/ + promotions/.
+WC-032, WC-033, WC-034 follow same pattern after each prior sprint merges.
 
 ---
 
 ## Execution Summary
 
-| Phase | WC | Status | Handover condition |
-|---|---|---|---|
-| 1 | WC-027 Markup Engine | ✅ Blueprint complete — sprint ACTIVE | Batch executor running |
-| 2 | WC-028 Meter + Alert | ✅ WC file created | WC-027 PR merged → advance state → groom |
-| 3 | WC-029 Procurement | ✅ WC file created | WC-028 PR merged → advance state → groom |
-| 4 | WC-030 Reconciliation | ✅ WC file created | WC-029 PR merged → advance state → groom |
-| 5A | GOAL-005 Spec | ✅ Spec + WC files created | WC-030 merged + Founder FA received |
-| 5B | WC-031 Trial + Promos | ⏳ Blocked on Founder FA | FA received → set READY → groom |
-| — | WC-032 PSE override | ⏳ Blocked on WC-031 | WC-031 merged → advance |
-| — | WC-033 BP trial lifecycle | ⏳ Blocked on WC-031 | WC-031 merged → advance |
-| — | WC-034 Web Portal admin | ⏳ Blocked on WC-016 + WC-031 | Both merged → advance |
+| Phase | WC | WC File | State | GO activates when |
+|---|---|---|---|---|
+| 1 | WC-027 Markup Engine | ✅ ready | ⏳ PARKED | Founder says "run WC-027" |
+| 2 | WC-028 Meter + Alert | ✅ ready | ⏳ PARKED | WC-027 merged + Founder authorises |
+| 3 | WC-029 Procurement | ✅ ready | ⏳ PARKED | WC-028 merged + Founder authorises |
+| 4 | WC-030 Reconciliation | ✅ ready | ⏳ PARKED | WC-029 merged + Founder authorises |
+| 5 | WC-031 Trial + Promos | ✅ ready | ⏳ PARKED | WC-030 merged + Founder FA (pricing) received |
+| — | WC-032 PSE override | ✅ ready | ⏳ PARKED | WC-031 merged + Founder authorises |
+| — | WC-033 BP trial lifecycle | ✅ ready | ⏳ PARKED | WC-031 merged + Founder authorises |
+| — | WC-034 Web Portal admin | ✅ ready | ⏳ PARKED | WC-016 + WC-031 merged + Founder authorises |
 
 **State-advance command template (run after each PR merges):**
 ```bash
