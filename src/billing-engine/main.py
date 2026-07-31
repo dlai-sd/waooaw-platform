@@ -1,44 +1,47 @@
-# Implements: architecture/reference/billing/wbe-component-spec.md §2.0 WBE Service
-# constitutional_basis: C-088, C-089, C-090, C-091, C-038, C-048, C-051, C-059
+# Implements: architecture/reference/billing/wbe-component-spec.md §2.3 Markup Engine
+# constitutional_basis: C-023, C-038, C-048, C-051, C-059
 from __future__ import annotations
 
 import logging
-from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.billing_engine.config import settings
-from src.billing_engine.markup.router import router as markup_router
+from src.billing_engine.markup.router import router as pricing_router
 
 logger = logging.getLogger(__name__)
 
+# ── FastAPI application setup ────────────────────────────────────────────────
 
-@asynccontextmanager
-async def lifespan(app: FastAPI) -> object:
-    """Lifecycle hooks: startup and shutdown."""
-    logger.info("WBE service starting on port %d", settings.port)
-    yield
-    logger.info("WBE service shutting down")
-
-
-app = FastAPI(
+app: FastAPI = FastAPI(
     title="WAOOAW Billing Engine",
-    description="Constitutional billing, pricing, and metering service",
+    description="WBE — Wallet, Markup, Meter, Procurement, Reconciliation services",
     version="1.0.0",
-    lifespan=lifespan,
 )
 
 # ── CORS middleware ──────────────────────────────────────────────────────────
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.cors_allowed_origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
-# ── Mount routers ────────────────────────────────────────────────────────────
-app.include_router(markup_router, prefix="/pricing", tags=["pricing"])
+if settings.environment != "production":
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
-logger.info("WBE service initialized")
+# ── Health check endpoint ────────────────────────────────────────────────────
+
+
+@app.get("/health")
+async def health() -> dict[str, str]:
+    """Kubernetes liveness probe."""
+    return {"status": "healthy"}
+
+
+# ── Router registration ─────────────────────────────────────────────────────
+
+app.include_router(pricing_router)
+
+logger.info("WAOOAW Billing Engine started on port %d", settings.port)
