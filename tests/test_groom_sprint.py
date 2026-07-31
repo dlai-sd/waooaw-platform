@@ -166,6 +166,19 @@ VALID_SUBTASKDEF_ENTRY = textwrap.dedent("""
 # _parse_wc_tasks: table format
 # ─────────────────────────────────────────────────────────────
 
+SAMPLE_WC_TABLE_SPLIT = textwrap.dedent("""
+# WC-027 — Billing Engine: Markup & Bundle Engine (split tasks)
+
+## Tasks
+
+| Task ID | Scope | model_hint | Status |
+|---|---|---|---|
+| WC027-01a | SQLAlchemy models for MarkupRule, BundleItem | `reasoning` | 🔲 TODO |
+| WC027-01b | FastAPI router for markup engine | `auto` | 🔲 TODO |
+| WC027-02 | pytest tests for markup calculations | `auto` | 🔲 TODO |
+""").strip()
+
+
 class TestParseWcTasksTableFormat:
     def test_parses_three_tasks(self, tmp_path):
         wc_file = tmp_path / "WC-027-markup.md"
@@ -179,6 +192,22 @@ class TestParseWcTasksTableFormat:
         tasks = groom_sprint._parse_wc_tasks(wc_file, "WC027")
         ids = [t["task_id"] for t in tasks]
         assert ids == ["WC027-01", "WC027-02", "WC027-03"]
+
+    def test_split_task_ids_letter_suffix(self, tmp_path):
+        """Regression: WC027-01a, WC027-01b must be parsed (not skipped)."""
+        wc_file = tmp_path / "WC-027-markup-split.md"
+        wc_file.write_text(SAMPLE_WC_TABLE_SPLIT)
+        tasks = groom_sprint._parse_wc_tasks(wc_file, "WC027")
+        ids = [t["task_id"] for t in tasks]
+        assert ids == ["WC027-01a", "WC027-01b", "WC027-02"]
+
+    def test_split_task_model_hints_correct(self, tmp_path):
+        """Regression: model_hint must be read correctly for split tasks."""
+        wc_file = tmp_path / "WC-027-markup-split.md"
+        wc_file.write_text(SAMPLE_WC_TABLE_SPLIT)
+        tasks = groom_sprint._parse_wc_tasks(wc_file, "WC027")
+        assert tasks[0]["model_hint"] == "reasoning"
+        assert tasks[1]["model_hint"] == "auto"
 
     def test_model_hint_backtick_stripped(self, tmp_path):
         wc_file = tmp_path / "WC-027-markup.md"

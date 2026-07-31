@@ -109,9 +109,9 @@ def _parse_wc_tasks(wc_file: Path, sprint_prefix: str) -> list[dict]:
     text = wc_file.read_text()
     tasks: list[dict] = []
 
-    # Format 1: table rows
+    # Format 1: table rows — optional [a-z] suffix for split tasks (WC027-01a, WC027-01b)
     table_row = re.compile(
-        r"\|\s*(" + re.escape(sprint_prefix) + r"-\d{2})\s*\|"
+        r"\|\s*(" + re.escape(sprint_prefix) + r"-\d{2}[a-z]?)\s*\|"
         r"\s*([^|]+)\s*\|\s*(`?)(reasoning|auto|none)`?\s*\|"
     )
     for m in table_row.finditer(text):
@@ -125,10 +125,10 @@ def _parse_wc_tasks(wc_file: Path, sprint_prefix: str) -> list[dict]:
     if tasks:
         return tasks
 
-    # Format 2: ### WCxxx-NN — Title headers
-    blocks = re.split(r"(?=###\s+" + re.escape(sprint_prefix) + r"-\d{2})", text)
+    # Format 2: ### WCxxx-NN[a-z] — Title headers (optional letter suffix for split tasks)
+    blocks = re.split(r"(?=###\s+" + re.escape(sprint_prefix) + r"-\d{2}[a-z]?)", text)
     for block in blocks:
-        m = re.match(r"###\s+(" + re.escape(sprint_prefix) + r"-\d{2})\s*[—-]?\s*(.+)", block)
+        m = re.match(r"###\s+(" + re.escape(sprint_prefix) + r"-\d{2}[a-z]?)\s*[—-]?\s*(.+)", block)
         if not m:
             continue
         task_id = m.group(1)
