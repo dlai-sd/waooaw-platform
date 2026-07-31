@@ -420,3 +420,22 @@ VALUES
 ('meta_mbm',      'Meta Business Manager',            'INR', 14, 'FA-002'),
 ('google_mcc',    'Google Ads MCC',                   'INR', 14, NULL)
 ON CONFLICT (provider_name) DO NOTHING;
+
+-- ---------------------------------------------------------------------------
+-- institutional.meter_alert_log (Amendment WC-028 — deduplication for §2.3a)
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS institutional.meter_alert_log (
+    id              BIGSERIAL       PRIMARY KEY,
+    customer_id     UUID            NOT NULL,
+    bucket_type     VARCHAR(50)     NOT NULL,
+    threshold_name  VARCHAR(30)     NOT NULL,
+    period_id       VARCHAR(7)      NOT NULL,  -- YYYY-MM billing month
+    fired_at        TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
+    CONSTRAINT uq_alert_dedup UNIQUE (customer_id, bucket_type, threshold_name, period_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_alert_log_customer
+    ON institutional.meter_alert_log (customer_id, period_id);
+
+GRANT SELECT, INSERT, DELETE ON institutional.meter_alert_log TO wbe_app;
+GRANT USAGE, SELECT ON SEQUENCE institutional.meter_alert_log_id_seq TO wbe_app;

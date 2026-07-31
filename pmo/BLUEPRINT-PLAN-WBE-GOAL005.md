@@ -39,7 +39,9 @@ Reviewer merges → Founder authorises Phase 2.
 
 **Prerequisite:** WC-027 PR merged ✅ (markup/ sub-component live)
 **Prerequisite:** `wbe-component-spec.md §2.3a` threshold ladder ✅ committed `d591b6c`
-**WC file:** `work-contracts/WC-028-wbe-s4-meter-alert-engine.md` ✅ created
+**WC file:** `work-contracts/WC-028-wbe-s4-meter-alert-engine.md` ✅ created + GO-validated (2026-07-31)
+**GO record:** `goals/GOAL-WC028-meter-alert-engine.md` ✅ — G-1→G-5 complete, 6 spec gaps fixed
+**DB migration:** `12-billing-engine.sql` ✅ `meter_alert_log` amendment added (WC-028 SA contribution)
 **State:** PARKED — waiting for Phase 1 merge + Founder authorisation
 
 ### GO Activation Steps (run when Founder authorises WC-028)

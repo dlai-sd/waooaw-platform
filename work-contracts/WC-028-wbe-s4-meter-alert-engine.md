@@ -26,8 +26,8 @@ per the §2.3a ladder, and expose FastAPI endpoints. Daily scan runs at 06:00 IS
 
 | Task | Scope | model_hint | Status |
 |---|---|---|---|
-| WC028-01 | `src/billing-engine/meter/service.py` — `MeterService`: `record_usage(customer_id, thread_type, consumed_paise)` (writes to platform_cost_ledger), `project_depletion(customer_id, thread_type) -> int` (days remaining at 7d rolling avg burn), `check_thresholds(customer_id) -> list[AlertFired]` (fires per §2.3a scope 1+2 ladder, deduplicates via meter_alert_log); `src/billing-engine/meter/alert_policy.py` — `ThresholdRule` dataclass (name, consumed_pct_trigger, action enum: LOG/NOTIFY/FA/BLOCK, bypass_quiet_hours: bool), `ThresholdPolicy` dataclass (scope, thresholds, quiet_hours_start_ist=23, quiet_hours_end_ist=6), three singletons: `CUSTOMER_BUCKET_POLICY`, `AGENCY_POLICY`, `PROCUREMENT_POLICY` per §2.3a | reasoning | 🔲 TODO |
-| WC028-02 | `src/billing-engine/meter/whatsapp_notifier.py` — `WhatsAppNotifier`: `send(customer_id, template_id, params: dict) -> bool` (stubs to 360dialog MCP call — raise `NotImplementedError` with TODO comment pointing to ADR-023; in tests mock this stub); `src/billing-engine/meter/router.py` — FastAPI prefix `/meter`: `GET /{customer_id}/status` returns `UsageStatus`, `GET /platform/margin/report` (ops-auth required), `POST /daily-scan` (internal scheduler call); mount router in `src/billing-engine/main.py` | auto | 🔲 TODO |
+| WC028-01 | `src/billing-engine/meter/service.py` — `MeterService` implementing `IMeterService`: `record_usage(customer_id, thread_type, **amount_paise**)` (resolves `provider_account_id` via `thread_catalog → provider_accounts` lookup, then writes to `platform_cost_ledger`), `project_depletion(customer_id, thread_type) -> DepletionProjection` (7d rolling avg from `platform_cost_ledger`), `run_daily_scan() -> DailyScanResult` (calls `check_thresholds` for all active customers), `check_thresholds(customer_id) -> list[AlertFired]` (concrete non-ABC helper — NOT in `IMeterService`; tests call it directly on the concrete class; computes `pct_consumed = SUM(platform_cost_ledger.marked_up_cost_inr_paise WHERE customer_id + current billing_period) / (consumed + wallet_buckets.balance_paise)`; fires per §2.3a scope 1+2+3 ladder; deduplicates via `meter_alert_log`); `src/billing-engine/meter/alert_policy.py` — `ThresholdRule` dataclass (name, consumed_pct_trigger, action: Enum[LOG\|NOTIFY\|FA\|BLOCK], bypass_quiet_hours: bool), `ThresholdPolicy` dataclass (scope, thresholds: list[ThresholdRule], quiet_hours_start_ist=23, quiet_hours_end_ist=6), singletons: `CUSTOMER_BUCKET_POLICY`, `AGENCY_POLICY`, `PROCUREMENT_POLICY` per §2.3a — Scope 3 threshold names: `RUNWAY_P2` (≤30d), `RUNWAY_P1` (≤14d), `RUNWAY_P0` (≤7d), `RUNWAY_CRITICAL` (≤3d), `RUNWAY_EMERGENCY` (≤1d) | reasoning | 🔲 TODO |
+| WC028-02 | `src/billing-engine/meter/whatsapp_notifier.py` — `WhatsAppNotifier`: `send(customer_id, template_id, params: dict) -> bool` (stubs to 360dialog MCP call — raise `NotImplementedError` with TODO comment pointing to ADR-023; in tests mock this stub); `src/billing-engine/meter/router.py` — FastAPI prefix `/meter`: `GET /{customer_id}/status` returns `UsageStatus`, `POST /daily-scan` (internal scheduler call, triggers `run_daily_scan()`); mount router in `src/billing-engine/main.py`. NOTE: `GET /platform/margin/report` is Procurement API (§2.4) — deferred to WC-029 scope. | auto | 🔲 TODO |
 | WC028-03 | `tests/billing-engine/test_meter.py` — test: threshold fires at correct % (30% remaining triggers WARN_30), no double-fire within 24h deduplication window, quiet hours suppress WhatsApp (23:00–06:00 IST, notifications queued), procurement runway P0 escalation at ≤7 days, agency NULL quota produces no alert, `POST /meter/daily-scan` calls check_thresholds for all customers, `CCT-BILLINGLOOP-01` scenario: AD wallet hits zero → `alerts_sent == 1` type `AD_WALLET_BELOW_MINIMUM` — ≥90% line coverage | auto | 🔲 TODO |
 
 ---
@@ -47,7 +47,7 @@ per the §2.3a ladder, and expose FastAPI endpoints. Daily scan runs at 06:00 IS
 ## Definition of Done
 
 - [ ] `from meter.service import MeterService` — no import errors
-- [ ] `check_thresholds(customer_id)` with bucket at 15% remaining → fires `WARN_10` alert, writes to `meter_alert_log`
+- [ ] `check_thresholds(customer_id)` with bucket at **8% remaining** (92% consumed) → fires `WARN_10` alert, writes `meter_alert_log` row
 - [ ] Second call within 24h same customer + same threshold → returns empty list (deduplicated)
 - [ ] `ThresholdPolicy` quiet hours: 23:15 IST → alert created but WhatsApp NOT dispatched
 - [ ] `GET /meter/{customer_id}/status` → 200 with `UsageStatus`
@@ -59,14 +59,45 @@ per the §2.3a ladder, and expose FastAPI endpoints. Daily scan runs at 06:00 IS
 
 ## Alert Deduplication Implementation Note
 
-Create `meter_alert_log` table if not in `12-billing-engine.sql` (add a migration or CREATE IF NOT EXISTS
-inside the service startup). Schema: `(id SERIAL PK, customer_id UUID, thread_type TEXT, threshold_name TEXT,
-fired_at TIMESTAMPTZ, period_id TEXT)` with UNIQUE on `(customer_id, thread_type, threshold_name, period_id)`.
-`period_id` = `YYYY-MM` billing period. Alert re-fires if bucket refills above threshold and drops again
-within same period (period_id unchanged but threshold_name entry would have been cleared on refill).
+`meter_alert_log` is **NOT in `12-billing-engine.sql`** and must be added as a SQL amendment there (not in service
+startup — DDL in service code is prohibited per ADR-011). The batch executor must add it as an `ALTER`/`CREATE`
+amendment block in `infrastructure/postgres/init/12-billing-engine.sql`. Schema:
+```sql
+CREATE TABLE IF NOT EXISTS institutional.meter_alert_log (
+    id              BIGSERIAL       PRIMARY KEY,
+    customer_id     UUID            NOT NULL,
+    bucket_type     VARCHAR(50)     NOT NULL,
+    threshold_name  VARCHAR(30)     NOT NULL,
+    period_id       VARCHAR(7)      NOT NULL,  -- YYYY-MM format
+    fired_at        TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
+    CONSTRAINT uq_alert_dedup UNIQUE (customer_id, bucket_type, threshold_name, period_id)
+);
+```
+Alert re-fires within the same period only if the bucket refills above the threshold and drops below again —
+implemented by deleting the dedup row on bucket refill (WalletService top-up hook).
+
+## C-043 Implementation Note — % Consumed Formula
+
+`wallet_buckets.balance_paise` stores the **remaining** balance only — there is no `initial_allocation` column.
+`pct_consumed` must be computed as:
+```python
+consumed = SUM(platform_cost_ledger.marked_up_cost_inr_paise
+               WHERE customer_id = X AND billing_period_start = current_period)
+pct_consumed = consumed / (consumed + balance_paise)  # avoids divide-by-zero: if both zero, pct=0
+```
+This requires a `platform_cost_ledger` aggregate JOIN per customer per period.
+
+`record_usage` must resolve `provider_account_id` before inserting into `platform_cost_ledger`:
+```python
+provider_name = await db.scalar(SELECT provider_name FROM institutional.thread_catalog WHERE thread_id = ?)
+provider_id   = await db.scalar(SELECT id FROM institutional.provider_accounts WHERE provider_name = ?)
+```
 
 ## Notes
 
 - WhatsApp stub must be mockable — inject `WhatsAppNotifier` as a dependency (not module-level import).
 - `project_depletion` uses last 7 calendar days of `platform_cost_ledger` entries for rolling avg.
-- All threshold names must match `wbe-component-spec.md §2.3a` table exactly (WARN_10, WARN_30, WARN_50).
+- `check_thresholds` is a **concrete** `MeterService` method — not in `IMeterService` ABC. Tests call it via the concrete class. `run_daily_scan` calls it per customer internally.
+- All Scope 1+2 threshold names must match §2.3a exactly: `WARN_10`, `WARN_30`, `WARN_50`, `INFO_70`, `AD_WALLET_BELOW_MINIMUM`.
+- Scope 3 procurement threshold names: `RUNWAY_P2` (≤30d), `RUNWAY_P1` (≤14d), `RUNWAY_P0` (≤7d), `RUNWAY_CRITICAL` (≤3d), `RUNWAY_EMERGENCY` (≤1d).
+- **GO validation:** This WC was reviewed by EA (GOA-WC028-01) and SA (GOA-WC028-02). See `goals/GOAL-WC028-meter-alert-engine.md` for full institutional record.
