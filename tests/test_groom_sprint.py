@@ -845,6 +845,32 @@ class TestStripLlmFences:
         raw = "SubTaskDef(\n    id='x',\n    description='test',\n)"
         assert groom_sprint._strip_llm_fences(raw) == raw
 
+    # Option B regression: XML file-block envelope handling
+    def test_strips_xml_file_envelope(self):
+        """Regression: MagicLLM FORMAT gate requires <file path=...> wrapping."""
+        raw = '<file path="scripts/autonomous_sprint_runner.py">\nSubTaskDef(\n    id=\'x\',\n)\n</file>'
+        result = groom_sprint._strip_llm_fences(raw)
+        assert result == "SubTaskDef(\n    id='x',\n)"
+        assert "</file>" not in result
+
+    def test_strips_xml_envelope_with_whitespace(self):
+        raw = '<file path="scripts/autonomous_sprint_runner.py">\nSubTaskDef(\n    id=\'x\',\n)\n</file>\n'
+        result = groom_sprint._strip_llm_fences(raw)
+        assert result.startswith("SubTaskDef(")
+        assert "</file>" not in result
+
+    def test_no_xml_envelope_still_works(self):
+        """Plain SubTaskDef (no XML wrapper) still parses correctly."""
+        raw = "SubTaskDef(\n    id='x',\n    description='test',\n)"
+        result = groom_sprint._strip_llm_fences(raw)
+        assert result == raw
+
+    def test_xml_envelope_preserves_full_subtaskdef_body(self):
+        body = "SubTaskDef(\n    id='WC027-01a',\n    description='Implements markup engine',\n    type='llm',\n)"
+        raw = f'<file path="scripts/autonomous_sprint_runner.py">\n{body}\n</file>'
+        result = groom_sprint._strip_llm_fences(raw)
+        assert result == body
+
 
 # ─────────────────────────────────────────────────────────────
 # _extract_output_files

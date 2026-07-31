@@ -234,7 +234,10 @@ def call_llm_via_magiclm(
     tid = task_id.lower()
     if "cct" in tid or "test" in tid or tid.endswith("-02c") or tid.endswith("-03c") or tid.endswith("-04c"):
         category = TaskCategory.TEST_GENERATION
-    elif task_id.endswith("-skeleton") or "skeleton" in task_id.lower():
+    elif task_id.endswith("-skeleton") or "skeleton" in tid:
+        category = TaskCategory.DESIGN_CONTRACTS
+    elif "groom" in tid:
+        # Groomer generates SubTaskDef metadata (design artifact), not source code
         category = TaskCategory.DESIGN_CONTRACTS
     else:
         category = TaskCategory.CODE_GENERATION
