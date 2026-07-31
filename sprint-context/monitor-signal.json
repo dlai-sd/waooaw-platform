@@ -1,29 +1,16 @@
 {
-  "run_id": "",
-  "sprint": "WC-026",
+  "run_id": "30607925327",
+  "sprint": "WC-027",
   "scaffold_task": null,
   "scaffold_failed": false,
   "task_results": {},
   "spec_gap_issues": [],
-  "overall_result": "PARTIAL",
+  "overall_result": "NOT_IMPLEMENTED",
   "file_costs": {},
-  "subtask_results": {
-    "WC026-02a": {
-      "result": "FAIL",
-      "task_id": "WC026-02",
-      "error_codes": [],
-      "error_text": ""
-    },
-    "WC026-05a": {
-      "result": "FAIL",
-      "task_id": "WC026-05",
-      "error_codes": [],
-      "error_text": ""
-    }
-  },
   "tasks_done": [],
   "tasks_requested": [
-    "WC026-02",
-    "WC026-05"
+    "WC027-01a",
+    "WC027-01b",
+    "WC027-02"
   ]
 }
