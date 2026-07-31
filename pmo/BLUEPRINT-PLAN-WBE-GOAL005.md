@@ -47,7 +47,7 @@ Reviewer merges → Founder authorises Phase 2.
 
 ### GO Activation Steps (run when Founder authorises WC-028)
 
-- [ ] **2.1** `python3 scripts/sprint_state.py set current_sprint WC-028 sprint_status READY branch ib/009/sprint-028 tasks_remaining "WC028-01,WC028-02,WC028-03" consecutive_failures 0 autonomous_halt false`
+- [ ] **2.1** `python3 scripts/sprint_state.py set current_sprint WC-028 sprint_status READY branch ib/009/sprint-028 consecutive_failures 0 autonomous_halt false`
 - [ ] **2.2** `python3 scripts/groom_sprint.py --sprint WC-028` — verify WC028-01, WC028-02, WC028-03 injected
 - [ ] **2.3** `git add -A && git commit -m "chore(pm): WC-028 READY — meter + alert engine authorised" && git push`
 
@@ -64,7 +64,7 @@ Reviewer merges → Founder authorises Phase 2.
 
 ### GO Activation Steps (run when Founder authorises WC-029)
 
-- [ ] **3.1** `python3 scripts/sprint_state.py set current_sprint WC-029 sprint_status READY branch ib/009/sprint-029 tasks_remaining "WC029-01,WC029-02" consecutive_failures 0 autonomous_halt false`
+- [ ] **3.1** `python3 scripts/sprint_state.py set current_sprint WC-029 sprint_status READY branch ib/009/sprint-029 consecutive_failures 0 autonomous_halt false`
 - [ ] **3.2** `python3 scripts/groom_sprint.py --sprint WC-029` — verify WC029-01, WC029-02 injected
 - [ ] **3.3** `git add -A && git commit -m "chore(pm): WC-029 READY — procurement ledger authorised" && git push`
 
@@ -81,7 +81,7 @@ Reviewer merges → Founder authorises Phase 2.
 
 ### GO Activation Steps (run when Founder authorises WC-030)
 
-- [ ] **4.1** `python3 scripts/sprint_state.py set current_sprint WC-030 sprint_status READY branch ib/009/sprint-030 tasks_remaining "WC030-01,WC030-02,WC030-03" consecutive_failures 0 autonomous_halt false`
+- [ ] **4.1** `python3 scripts/sprint_state.py set current_sprint WC-030 sprint_status READY branch ib/009/sprint-030 consecutive_failures 0 autonomous_halt false`
 - [ ] **4.2** `python3 scripts/groom_sprint.py --sprint WC-030` — verify WC030-01, WC030-02, WC030-03 injected
 - [ ] **4.3** `git add -A && git commit -m "chore(pm): WC-030 READY — reconciliation engine authorised" && git push`
 
@@ -148,7 +148,7 @@ After WC-030 merges: WBE core complete. Advance to Phase 5.
 ### GO Activation Steps (run when Founder FA received + WC-030 merged)
 
 - [ ] **5.1** Verify `security/FOUNDER-ACTIONS.md` has FA with trial budget + coupon caps signed by Founder
-- [ ] **5.2** `python3 scripts/sprint_state.py set current_sprint WC-031 sprint_status READY branch ib/009/sprint-031 tasks_remaining "WC031-01,WC031-02,WC031-03" consecutive_failures 0 autonomous_halt false`
+- [ ] **5.2** `python3 scripts/sprint_state.py set current_sprint WC-031 sprint_status READY branch ib/009/sprint-031 consecutive_failures 0 autonomous_halt false`
 - [ ] **5.3** `python3 scripts/groom_sprint.py --sprint WC-031` — verify WC031-01, WC031-02, WC031-03 injected
 - [ ] **5.4** `git add -A && git commit -m "chore(pm): WC-031 READY — trial + promotions engine authorised" && git push`
 
@@ -176,8 +176,7 @@ python3 scripts/sprint_state.py set \
   current_sprint WC-NNN \
   sprint_status READY \
   branch ib/009/sprint-NNN \
-  tasks_done "" \
-  tasks_remaining "WCNNN-01,WCNNN-02,..." \
+
   consecutive_failures 0 \
   autonomous_halt false
 python3 scripts/groom_sprint.py WC-NNN
