@@ -25,10 +25,10 @@ Redis check. Add tests that prove trial customers get LOCAL regardless of their 
 
 ## Tasks
 
-| Task | Scope | model_hint | Status |
-|---|---|---|---|
-| WC032-01 | Read `src/ai-runtime/pse/router.py` in full. Find the existing `select_provider()` (or equivalent) function. Inject: before returning the tier, do `customer_mode = await redis.get(f"wbe:customer:{customer_id}:mode")` — if `customer_mode == b"TRIAL"` return `LlmTier.LOCAL`. Inject Redis import if not already present (use existing Redis client dependency from `ai-runtime/dependencies.py` or equivalent — do not create a new client). No other changes to pse/router.py. | reasoning | 🔲 TODO |
-| WC032-02 | Add tests to `tests/ai-runtime/test_pse_router.py` (create if not exists): CCT-TRIAL-02 integration test: customer with TRIAL mode in Redis → PSE returns LOCAL tier regardless of customer configured tier; customer without TRIAL mode → PSE returns configured tier (existing behaviour unchanged); Redis key TTL expiry → PSE falls back to configured tier. ≥90% line coverage on modified lines. | auto | 🔲 TODO |
+| task_id | scope | model_hint | status | completed_at |
+|---|---|---|---|---|
+| WC032-01 | Read `src/ai-runtime/pse/router.py` in full. Find the existing `select_provider()` (or equivalent) function. Inject: before returning the tier, do `customer_mode = await redis.get(f"wbe:customer:{customer_id}:mode")` — if `customer_mode == b"TRIAL"` return `LlmTier.LOCAL`. Inject Redis import if not already present (use existing Redis client dependency from `ai-runtime/dependencies.py` or equivalent — do not create a new client). No other changes to pse/router.py. | reasoning | pending | — |
+| WC032-02 | Add tests to `tests/ai-runtime/test_pse_router.py` (create if not exists): CCT-TRIAL-02 integration test: customer with TRIAL mode in Redis → PSE returns LOCAL tier regardless of customer configured tier; customer without TRIAL mode → PSE returns configured tier (existing behaviour unchanged); Redis key TTL expiry → PSE falls back to configured tier. ≥90% line coverage on modified lines. | auto | pending | — |
 
 ---
 

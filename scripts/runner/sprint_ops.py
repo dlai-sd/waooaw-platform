@@ -9,13 +9,18 @@ from __future__ import annotations
 import inspect
 import re
 import sys
+from datetime import datetime, timezone
+from pathlib import Path
 
 from runner.constants import REPO_ROOT, STATE_FILE
 from runner.git_ops import record_evidence, run, set_output
 
 
 def parse_sprint_state() -> dict:
-    """Extract SPRINT_STATE_MACHINE YAML block from PROJECT_STATE.md."""
+    """
+    Extract SPRINT_STATE_MACHINE YAML block from PROJECT_STATE.md.
+    Returns only the 5 control-panel fields. Task progress is in the WC file.
+    """
     content = STATE_FILE.read_text(encoding="utf-8")
     match = re.search(
         r"## SPRINT_STATE_MACHINE.*?```yaml\n(.*?)```",
@@ -31,29 +36,98 @@ def parse_sprint_state() -> dict:
             k, _, v = line.partition(":")
             state[k.strip()] = v.strip().strip('"').strip("'")
 
-    # Parse tasks_remaining list (YAML list format: "  - WC014-02")
-    tasks_block = re.search(
-        r"tasks_remaining:\n((?:  - [^\n]+\n?)*)",
-        match.group(1)
-    )
-    if tasks_block:
-        tasks = re.findall(r"  - (\S+)", tasks_block.group(1))
-        state["tasks_remaining"] = [t for t in tasks if not t.startswith("#")]
-    else:
-        state["tasks_remaining"] = []
-
-    # Parse tasks_done list
-    done_block = re.search(
-        r"tasks_done:\n((?:  - [^\n]+\n?)*)",
-        match.group(1)
-    )
-    if done_block:
-        done = re.findall(r"  - (\S+)", done_block.group(1))
-        state["tasks_done"] = [t for t in done if not t.startswith("#")]
-    else:
-        state["tasks_done"] = []
-
     return state
+
+
+def _find_wc_file(sprint: str) -> Path:
+    """Locate the work-contract markdown file for the given sprint (e.g. 'WC-027')."""
+    slug = sprint.replace("-", "").replace("WC", "WC-")  # normalise to WC-027
+    # canonical form is already WC-027; handle bare "WC027" too
+    if not slug.startswith("WC-"):
+        slug = sprint
+    matches = list((REPO_ROOT / "work-contracts").glob(f"{slug}-*.md"))
+    if not matches:
+        raise FileNotFoundError(f"No work-contract file found for sprint {sprint}")
+    return matches[0]
+
+
+def parse_wc_tasks(sprint: str) -> dict[str, list[str]]:
+    """
+    Parse the task table from the work-contract file for the given sprint.
+    Returns {'pending': [...], 'done': [...], 'failed': [...]} lists of task_ids in order.
+    The WC file is the single source of truth for task progress.
+    """
+    wc_file = _find_wc_file(sprint)
+    content = wc_file.read_text(encoding="utf-8")
+
+    # Task id pattern: WCxxx-NNa (e.g. WC027-01a, WC028-03)
+    task_id_pat = re.compile(r"^WC\d+-\d+[a-z]?$")
+    known_statuses = {"pending", "done", "failed", "in-progress"}
+
+    result: dict[str, list[str]] = {"pending": [], "done": [], "failed": []}
+
+    for line in content.splitlines():
+        if not line.startswith("|"):
+            continue
+        cells = [c.strip() for c in line.split("|")]
+        # cells[0] is empty (before first |), cells[1] is task_id cell
+        if len(cells) < 6:
+            continue
+        task_id = cells[1].strip()
+        if not task_id_pat.match(task_id):
+            continue
+        # status is second-to-last non-empty cell (cells[-2] is empty after trailing |)
+        status = cells[-3].strip().lower()
+        if status not in known_statuses:
+            status = "pending"
+        if status == "done":
+            result["done"].append(task_id)
+        elif status == "failed":
+            result["failed"].append(task_id)
+        else:
+            result["pending"].append(task_id)
+
+    return result
+
+
+def update_task_status(sprint: str, task_id: str, status: str) -> None:
+    """
+    Update the status (and completed_at timestamp) for a task row in the WC file.
+    The runner calls this after each task completes — it never touches PROJECT_STATE.md.
+    """
+    wc_file = _find_wc_file(sprint)
+    content = wc_file.read_text(encoding="utf-8")
+
+    completed_at = (
+        datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%MZ")
+        if status == "done"
+        else "—"
+    )
+
+    lines = content.splitlines(keepends=True)
+    updated = False
+    for i, line in enumerate(lines):
+        if not line.startswith(f"| {task_id} ") and f"| {task_id} |" not in line:
+            continue
+        if not re.match(rf"^\|\s*{re.escape(task_id)}\s*\|", line):
+            continue
+        # Replace status and completed_at — the last two data cells before trailing |
+        # Pattern: match known status values to avoid false matches in scope text
+        new_line = re.sub(
+            r"\|\s*(?:pending|done|failed|in-progress|🔲 TODO)\s*\|\s*[^\|]*\s*\|\s*$",
+            f"| {status} | {completed_at} |\n",
+            line,
+        )
+        lines[i] = new_line
+        updated = True
+        break
+
+    if not updated:
+        print(f"WARNING: task {task_id} not found in {wc_file.name}", file=sys.stderr)
+        return
+
+    wc_file.write_text("".join(lines), encoding="utf-8")
+    print(f"✓ {wc_file.name}: {task_id} → {status} ({completed_at})")
 
 
 def check_platform_phase_gate(state: dict) -> None:

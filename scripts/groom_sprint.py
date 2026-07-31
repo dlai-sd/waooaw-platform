@@ -853,7 +853,7 @@ def _git_commit(sprint_key: str, dry_run: bool) -> None:
     for cmd in [
         ["git", "config", "user.email", "autonomy@waooaw.ai"],
         ["git", "config", "user.name", "WAOOAW Sprint Groomer"],
-        ["git", "add", str(RUNNER_PATH), str(STATE_PATH)],
+        ["git", "add", str(RUNNER_PATH)],
         ["git", "commit", "-m",
          f"chore(pr): groom {sprint_key} SubTaskDefs from skeleton (ADR-036, C-059)"],
         ["git", "push", "origin", "main"],
@@ -980,29 +980,21 @@ def main() -> int:
         prior_subtask_id = task_id + "a"  # cross-task: scaffold-to-scaffold dep only
         print(f"  ✅ {task_id}: 3-subtask chain injected (scaffold/polish/test)")
 
-    # 7. Update SPRINT_TASK_MANIFEST with all tasks (groomed + already-groomed)
-    all_task_ids = [t["task_id"] for t in tasks]
-    if groomed_count > 0 and not args.dry_run:
-        _inject_manifest_entry(sprint_key, all_task_ids)
-        print(f"\n  ✅ SPRINT_TASK_MANIFEST updated: {sprint_key} → {all_task_ids}")
-
-    # 8. Lint gate
+    # 7. Lint gate — runner only (sprint_state.py no longer managed by groomer)
     if groomed_count > 0 and not args.dry_run:
         _run_ruff(RUNNER_PATH)
-        _run_ruff(STATE_PATH)
 
-    # 9. Compile gate (syntax check)
+    # 8. Compile gate (syntax check)
     if groomed_count > 0 and not args.dry_run:
-        for path in [RUNNER_PATH, STATE_PATH]:
-            r = subprocess.run(
-                ["python3", "-m", "py_compile", str(path)],
-                capture_output=True, text=True
-            )
-            if r.returncode != 0:
-                print(f"  ❌ Syntax error after injection in {path.name}: {r.stderr[:300]}")
-                print(f"  CRITICAL: manual fix required — reverting is not possible in CI")
-                return 1
-        print(f"  ✅ Syntax check passed for runner and sprint_state")
+        r = subprocess.run(
+            ["python3", "-m", "py_compile", str(RUNNER_PATH)],
+            capture_output=True, text=True
+        )
+        if r.returncode != 0:
+            print(f"  ❌ Syntax error after injection in {RUNNER_PATH.name}: {r.stderr[:300]}")
+            print(f"  CRITICAL: manual fix required — reverting is not possible in CI")
+            return 1
+        print(f"  ✅ Syntax check passed for runner")
 
     # 10. Commit to main
     if groomed_count > 0:

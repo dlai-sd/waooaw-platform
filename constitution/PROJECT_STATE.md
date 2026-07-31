@@ -864,25 +864,15 @@ Each sprint has EA spec gaps documented, SA corrections applied to WC files, and
 ## SPRINT_STATE_MACHINE
 <!-- Machine-readable by autonomous-sprint.yaml. YAML-parseable block. -->
 <!-- Edit ONLY the fields below. Do not alter the block structure. -->
+<!-- Task progress lives in work-contracts/WC-NNN.md — not here. -->
 
 ```yaml
-autonomous_halt: false        # ← ACTIVATED 2026-07-31 — Founder authorised WC-027; CI workflow ready
-
-platform_phase: IMPLEMENTATION  # SPEC | IMPLEMENTATION | LIVE
-
+autonomous_halt: false
+platform_phase: IMPLEMENTATION
 current_sprint: WC-027
-sprint_ib_item: IB-009
 sprint_status: AUTHORIZED
 branch: ib/009/sprint-027
-last_attempt_utc: 2026-07-31T00:00:00.000000+00:00
-last_attempt_result:PARTIAL
-consecutive_failures: 2
-consecutive_infra_failures: 0
-tasks_done: []
-tasks_remaining:
-  - WC026-02
-  - WC026-05
-current_task: WC027-01a
+consecutive_failures: 0
 ```
 
 

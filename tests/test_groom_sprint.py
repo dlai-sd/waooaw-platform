@@ -396,55 +396,6 @@ class TestInjectTaskHandler:
 
 
 # ─────────────────────────────────────────────────────────────
-# _inject_manifest_entry
-# ─────────────────────────────────────────────────────────────
-
-class TestInjectManifestEntry:
-    def test_injects_new_sprint(self, tmp_path, monkeypatch):
-        state = tmp_path / "sprint_state.py"
-        state.write_text(SAMPLE_STATE_WITH_ANCHOR)
-        monkeypatch.setattr(groom_sprint, "STATE_PATH", state)
-
-        result = groom_sprint._inject_manifest_entry("WC-027", ["WC027-01", "WC027-02"])
-
-        assert result is True
-        content = state.read_text()
-        assert '"WC-027"' in content
-        assert '"WC027-01"' in content
-
-    def test_anchor_preserved_after_injection(self, tmp_path, monkeypatch):
-        state = tmp_path / "sprint_state.py"
-        state.write_text(SAMPLE_STATE_WITH_ANCHOR)
-        monkeypatch.setattr(groom_sprint, "STATE_PATH", state)
-
-        groom_sprint._inject_manifest_entry("WC-027", ["WC027-01"])
-
-        content = state.read_text()
-        assert groom_sprint.MANIFEST_ANCHOR in content
-
-    def test_idempotent_when_sprint_already_present(self, tmp_path, monkeypatch):
-        state = tmp_path / "sprint_state.py"
-        state.write_text(SAMPLE_STATE_WITH_ANCHOR)
-        monkeypatch.setattr(groom_sprint, "STATE_PATH", state)
-
-        # Inject once
-        groom_sprint._inject_manifest_entry("WC-027", ["WC027-01"])
-        # Inject again — should not duplicate
-        groom_sprint._inject_manifest_entry("WC-027", ["WC027-01"])
-
-        content = state.read_text()
-        assert content.count('"WC-027"') == 1
-
-    def test_fails_when_anchor_missing(self, tmp_path, monkeypatch):
-        state = tmp_path / "sprint_state.py"
-        state.write_text("SPRINT_TASK_MANIFEST = {}\n")
-        monkeypatch.setattr(groom_sprint, "STATE_PATH", state)
-
-        result = groom_sprint._inject_manifest_entry("WC-027", ["WC027-01"])
-        assert result is False
-
-
-# ─────────────────────────────────────────────────────────────
 # _read_current_sprint
 # ─────────────────────────────────────────────────────────────
 

@@ -27,11 +27,11 @@ Add the trial lifecycle to the Business Platform:
 
 ## Tasks
 
-| Task | Scope | model_hint | Status |
-|---|---|---|---|
-| WC033-01 | Read the existing BP subscription router (find `src/bp/subscriptions/router.py` or equivalent). Add endpoint: `POST /subscriptions/trial-start` — validates `{ customer_id, agent_type, phone_verified: bool }`, checks phone_verified=True (C-023 evidence gate), calls WBE `POST /trial/start` via internal httpx, returns `TrialStartResponse`. If WBE returns 409 TRIAL_ALREADY_USED: propagate as 409. Mount endpoint alongside existing subscription routes. | reasoning | 🔲 TODO |
-| WC033-02 | Create `src/bp/subscriptions/workflows/trial_expiry.py` — Temporal workflow: `TrialExpiryWorkflow(trial_id, customer_id, expires_at)` — (1) sleep until `expires_at - 48h`, (2) send WhatsApp reminder via WBE WhatsAppNotifier stub, (3) sleep until `expires_at`, (4) check if trial status=CONVERTED (poll WBE `GET /trial/status`), (5) if not converted: call WBE `POST /trial/convert` with lapse mode OR mark LAPSED and send lapse notification. Register workflow in existing Temporal worker (`src/bp/worker.py` or equivalent). | reasoning | 🔲 TODO |
-| WC033-03 | `tests/bp/test_trial_lifecycle.py` — test: `POST /subscriptions/trial-start` with phone_verified=True → 200 + TrialStartResponse, phone_verified=False → 422 PHONE_NOT_VERIFIED, WBE 409 propagated as 409; Temporal workflow unit tests (mock WBE calls): 48h reminder fires at correct time, conversion path marks CONVERTED, lapse path marks LAPSED — ≥90% line coverage on new files | auto | 🔲 TODO |
+| task_id | scope | model_hint | status | completed_at |
+|---|---|---|---|---|
+| WC033-01 | Read the existing BP subscription router (find `src/bp/subscriptions/router.py` or equivalent). Add endpoint: `POST /subscriptions/trial-start` — validates `{ customer_id, agent_type, phone_verified: bool }`, checks phone_verified=True (C-023 evidence gate), calls WBE `POST /trial/start` via internal httpx, returns `TrialStartResponse`. If WBE returns 409 TRIAL_ALREADY_USED: propagate as 409. Mount endpoint alongside existing subscription routes. | reasoning | pending | — |
+| WC033-02 | Create `src/bp/subscriptions/workflows/trial_expiry.py` — Temporal workflow: `TrialExpiryWorkflow(trial_id, customer_id, expires_at)` — (1) sleep until `expires_at - 48h`, (2) send WhatsApp reminder via WBE WhatsAppNotifier stub, (3) sleep until `expires_at`, (4) check if trial status=CONVERTED (poll WBE `GET /trial/status`), (5) if not converted: call WBE `POST /trial/convert` with lapse mode OR mark LAPSED and send lapse notification. Register workflow in existing Temporal worker (`src/bp/worker.py` or equivalent). | reasoning | pending | — |
+| WC033-03 | `tests/bp/test_trial_lifecycle.py` — test: `POST /subscriptions/trial-start` with phone_verified=True → 200 + TrialStartResponse, phone_verified=False → 422 PHONE_NOT_VERIFIED, WBE 409 propagated as 409; Temporal workflow unit tests (mock WBE calls): 48h reminder fires at correct time, conversion path marks CONVERTED, lapse path marks LAPSED — ≥90% line coverage on new files | auto | pending | — |
 
 ---
 

@@ -76,6 +76,7 @@ from runner.state import _MONITOR_SIGNAL, _INFRA_ERROR_TASKS          # shared m
 from runner.git_ops import run, git, gh, set_output, record_evidence  # shell helpers
 from runner.sprint_ops import (                                         # sprint lifecycle
     parse_sprint_state, check_platform_phase_gate, update_sprint_state, run_runner_integrity_checks,
+    parse_wc_tasks, update_task_status,
 )
 # Namespace injection — required by run_runner_integrity_checks(globals())  # noqa: F401
 from runner.system_prompts import (                                     # noqa: F401
@@ -424,7 +425,6 @@ def main() -> int:
     print(f"  autonomous_halt   : {state.get('autonomous_halt', 'true')}")
     print(f"  current_sprint    : {state.get('current_sprint', '')}")
     print(f"  sprint_status     : {state.get('sprint_status', '')}")
-    print(f"  tasks_remaining   : {state.get('tasks_remaining', [])}")
 
     # ── Step 2: Platform phase + HALT gate (C-001, platform_phase check) ──
     # check_platform_phase_gate calls sys.exit(0) on SPEC phase or HALT=true.
@@ -462,19 +462,28 @@ def main() -> int:
         set_output("result", "FAILED")
         return 1
 
-    # ── Step 4: Determine tasks to run ────────────────────────────────────
+    # ── Step 4: Determine tasks to run — read from WC file, not PROJECT_STATE ──
     sprint = state.get("current_sprint", "")
     set_output("sprint", sprint)
-    tasks = [force_task] if force_task else state.get("tasks_remaining", [])
+
+    try:
+        wc_tasks = parse_wc_tasks(sprint)
+    except FileNotFoundError as e:
+        print(f"ERROR: {e}")
+        set_output("result", "FAILED")
+        return 1
+
+    tasks_done_state = wc_tasks["done"]
+    tasks = [force_task] if force_task else wc_tasks["pending"]
+    print(f"  tasks_pending     : {wc_tasks['pending']}")
+    print(f"  tasks_done        : {tasks_done_state}")
 
     if not tasks:
         print("\nNo tasks remaining. Sprint may already be DONE.")
         set_output("result", "SKIPPED")
         return 0
 
-    # Fresh-start signal: READY + no completed tasks means start from latest main,
-    # not from any stale/diverged sprint branch left by prior interrupted runs.
-    tasks_done_state = state.get("tasks_done", [])
+    # Fresh-start signal: READY + no completed tasks means start from latest main.
     has_completed_tasks = bool(tasks_done_state)
     is_fresh_start = str(state.get("sprint_status", "")).upper() == "READY" and not has_completed_tasks
 
@@ -565,16 +574,7 @@ def main() -> int:
                 print(f"  Frozen registry restored: {len(frozen)} artifact(s) available for ContextBuilder")
             except Exception:
                 pass
-        update_sprint_state(
-            sprint_status="IN_PROGRESS",
-            last_attempt_utc=datetime.now(timezone.utc).isoformat(),
-            current_task=tasks[0] if tasks else "",
-        )
-        git(["add", "constitution/PROJECT_STATE.md", "logs/"], check=False)
-        diff = git(["diff", "--cached", "--quiet"], check=False)
-        if diff.returncode != 0:
-            git(["commit", "-m",
-                 f"chore(pm): {sprint} execution started\n\nIB: IB-009\nConstitutional: C-059"])
+        update_sprint_state(sprint_status="IN_PROGRESS")
 
     # ── Step 6: Execute each task ─────────────────────────────────────────
     tasks_done = []
@@ -647,12 +647,8 @@ def main() -> int:
                 continue
             if success:
                 tasks_done.append(task)
-                # RC#2: Write tasks_done/tasks_remaining to PROJECT_STATE.md after each success.
-                # MERGE with tasks_done_state (prior sessions) so cross-session completions are preserved.
-                cumulative_done = sorted(set(tasks_done) | set(tasks_done_state))
-                all_remaining = [t for t in state.get("tasks_remaining", []) if t not in cumulative_done]
-                run([sys.executable, "scripts/sprint_state.py", "set-list", "tasks_done"] + cumulative_done)
-                run([sys.executable, "scripts/sprint_state.py", "set-list", "tasks_remaining"] + all_remaining)
+                # RC#2: Write task status to WC file — single source of truth for task progress.
+                update_task_status(sprint, task, "done")
                 print(f"  DONE: {task}")
             else:
                 print(f"  FAILED: {task}")
@@ -691,39 +687,21 @@ def main() -> int:
     all_tasks_completed = len(tasks_done) == len(tasks) and len(tasks) > 0
 
     if all_tasks_completed:
-        update_sprint_state(
-            last_attempt_result="SUCCESS",
-            consecutive_failures=0,
-            consecutive_infra_failures=0,
-            current_task="",
-        )
+        update_sprint_state(consecutive_failures=0)
     else:
-        # P0 Fix 2: Separate infra vs spec failure counters.
-        # Infrastructure failures (API timeout/rate-limit) do not count toward spec consecutive_failures.
-        # This prevents premature AUTONOMOUS_HALT on transient infrastructure issues.
+        # Infrastructure failures do not count toward spec consecutive_failures.
         if all_infra_errors:
-            infra_fail_count = int(state.get("consecutive_infra_failures", "0") or "0") + 1
-            update_sprint_state(
-                last_attempt_result="INFRA_ERROR",
-                consecutive_infra_failures=str(infra_fail_count),
-                # consecutive_failures unchanged — infrastructure, not spec
-            )
-            print(f"  INFRA_ERROR: consecutive_infra_failures={infra_fail_count} (spec counter unchanged)")
+            print(f"  INFRA_ERROR: transient infrastructure failure (spec failure counter unchanged)")
         else:
             failures_new = failures + 1
-            update_sprint_state(
-                last_attempt_result="PARTIAL",
-                consecutive_failures=str(failures_new),
-                consecutive_infra_failures=0,
-            )
+            update_sprint_state(consecutive_failures=str(failures_new))
 
-    # Final commit: use cumulative tasks_done (merge with prior sessions)
-    cumulative_final = sorted(set(tasks_done) | set(tasks_done_state))
-    git(["add", "constitution/PROJECT_STATE.md", "logs/"], check=False)
+    # Final commit: WC file + logs (PROJECT_STATE.md not touched by runner)
+    git(["add", "work-contracts/", "logs/"], check=False)
     diff = git(["diff", "--cached", "--quiet"], check=False)
     if diff.returncode != 0:
         git(["commit", "-m",
-             f"chore(pm): {sprint} tasks done: {', '.join(cumulative_final)}\n\n"
+             f"chore(pm): {sprint} tasks done: {', '.join(tasks_done)}\n\n"
              f"IB: IB-009\nConstitutional: C-059"])
 
     # ── Push sprint branch using App installation token (workflows scope) ────

@@ -16,7 +16,7 @@ _scripts = str(Path(__file__).parent.parent.parent / "scripts")
 if _scripts not in sys.path:
     sys.path.insert(0, _scripts)
 
-from runner.sprint_ops import parse_sprint_state, run_runner_integrity_checks
+from runner.sprint_ops import parse_sprint_state, run_runner_integrity_checks, parse_wc_tasks, update_task_status
 
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -56,22 +56,6 @@ class TestParseSprintState:
         state = parse_sprint_state()
         assert state["current_sprint"] == "WC026"
 
-    def test_parses_tasks_remaining_list(self, tmp_path, monkeypatch):
-        import runner.sprint_ops as sp
-        state_file = tmp_path / "PROJECT_STATE.md"
-        state_file.write_text(_MINIMAL_STATE_FILE)
-        monkeypatch.setattr(sp, "STATE_FILE", state_file)
-        state = parse_sprint_state()
-        assert state["tasks_remaining"] == ["WC026-01", "WC026-02"]
-
-    def test_parses_tasks_done_list(self, tmp_path, monkeypatch):
-        import runner.sprint_ops as sp
-        state_file = tmp_path / "PROJECT_STATE.md"
-        state_file.write_text(_MINIMAL_STATE_FILE)
-        monkeypatch.setattr(sp, "STATE_FILE", state_file)
-        state = parse_sprint_state()
-        assert state["tasks_done"] == ["WC025-01"]
-
     def test_raises_on_missing_block(self, tmp_path, monkeypatch):
         import runner.sprint_ops as sp
         state_file = tmp_path / "PROJECT_STATE.md"
@@ -79,22 +63,6 @@ class TestParseSprintState:
         monkeypatch.setattr(sp, "STATE_FILE", state_file)
         with pytest.raises(ValueError, match="SPRINT_STATE_MACHINE"):
             parse_sprint_state()
-
-    def test_empty_tasks_when_no_list(self, tmp_path, monkeypatch):
-        import runner.sprint_ops as sp
-        content = dedent("""\
-            ## SPRINT_STATE_MACHINE
-            ```yaml
-            platform_phase: SPEC
-            autonomous_halt: false
-            ```
-            """)
-        state_file = tmp_path / "PROJECT_STATE.md"
-        state_file.write_text(content)
-        monkeypatch.setattr(sp, "STATE_FILE", state_file)
-        state = parse_sprint_state()
-        assert state["tasks_remaining"] == []
-        assert state["tasks_done"] == []
 
     def test_strips_yaml_comments(self, tmp_path, monkeypatch):
         import runner.sprint_ops as sp
@@ -179,3 +147,120 @@ class TestRunRunnerIntegrityChecks:
         ok, errors = run_runner_integrity_checks({})
         assert not ok
         assert len(errors) > 0
+
+
+_WC_FILE_CONTENT = dedent("""\
+    # Work Contract 099
+    ## Tasks
+    | task_id | scope | model_hint | status | completed_at |
+    |---|---|---|---|---|
+    | WC099-01 | `src/svc/models.py` — models | auto | done | 2026-07-30T10:00Z |
+    | WC099-02 | `src/svc/service.py` — service | auto | pending | — |
+    | WC099-03 | `tests/svc/test_svc.py` — tests | auto | pending | — |
+    """)
+
+
+class TestParseWcTasks:
+    def _write_wc(self, tmp_path, sprint="WC-099"):
+        wc_dir = tmp_path / "work-contracts"
+        wc_dir.mkdir()
+        wc_file = wc_dir / f"{sprint}-test.md"
+        wc_file.write_text(_WC_FILE_CONTENT)
+        return wc_dir
+
+    def test_returns_pending_tasks(self, tmp_path, monkeypatch):
+        import runner.sprint_ops as sp
+        self._write_wc(tmp_path)
+        monkeypatch.setattr(sp, "REPO_ROOT", tmp_path)
+        result = parse_wc_tasks("WC-099")
+        assert result["pending"] == ["WC099-02", "WC099-03"]
+
+    def test_returns_done_tasks(self, tmp_path, monkeypatch):
+        import runner.sprint_ops as sp
+        self._write_wc(tmp_path)
+        monkeypatch.setattr(sp, "REPO_ROOT", tmp_path)
+        result = parse_wc_tasks("WC-099")
+        assert result["done"] == ["WC099-01"]
+
+    def test_failed_status_categorised(self, tmp_path, monkeypatch):
+        import runner.sprint_ops as sp
+        wc_dir = tmp_path / "work-contracts"
+        wc_dir.mkdir()
+        (wc_dir / "WC-099-test.md").write_text(dedent("""\
+            ## Tasks
+            | task_id | scope | model_hint | status | completed_at |
+            |---|---|---|---|---|
+            | WC099-01 | `src/svc/a.py` — a | auto | failed | — |
+            """))
+        monkeypatch.setattr(sp, "REPO_ROOT", tmp_path)
+        result = parse_wc_tasks("WC-099")
+        assert result["failed"] == ["WC099-01"]
+        assert result["pending"] == []
+
+    def test_raises_when_wc_file_missing(self, tmp_path, monkeypatch):
+        import runner.sprint_ops as sp
+        (tmp_path / "work-contracts").mkdir()
+        monkeypatch.setattr(sp, "REPO_ROOT", tmp_path)
+        with pytest.raises(FileNotFoundError):
+            parse_wc_tasks("WC-099")
+
+    def test_scope_with_escaped_pipes_does_not_corrupt_parsing(self, tmp_path, monkeypatch):
+        import runner.sprint_ops as sp
+        wc_dir = tmp_path / "work-contracts"
+        wc_dir.mkdir()
+        (wc_dir / "WC-099-test.md").write_text(dedent("""\
+            ## Tasks
+            | task_id | scope | model_hint | status | completed_at |
+            |---|---|---|---|---|
+            | WC099-01 | `Enum[LOG\\|NOTIFY\\|BLOCK]` — scope | auto | pending | — |
+            """))
+        monkeypatch.setattr(sp, "REPO_ROOT", tmp_path)
+        result = parse_wc_tasks("WC-099")
+        assert "WC099-01" in result["pending"]
+
+
+class TestUpdateTaskStatus:
+    def _write_wc(self, tmp_path):
+        wc_dir = tmp_path / "work-contracts"
+        wc_dir.mkdir()
+        wc_file = wc_dir / "WC-099-test.md"
+        wc_file.write_text(_WC_FILE_CONTENT)
+        return wc_file
+
+    def test_marks_task_done(self, tmp_path, monkeypatch):
+        import runner.sprint_ops as sp
+        wc_file = self._write_wc(tmp_path)
+        monkeypatch.setattr(sp, "REPO_ROOT", tmp_path)
+        update_task_status("WC-099", "WC099-02", "done")
+        content = wc_file.read_text()
+        assert "| WC099-02 |" in content
+        assert "| done |" in content
+        assert "| pending |" not in content.split("WC099-02")[1].split("\n")[0]
+
+    def test_done_task_gets_timestamp(self, tmp_path, monkeypatch):
+        import runner.sprint_ops as sp
+        wc_file = self._write_wc(tmp_path)
+        monkeypatch.setattr(sp, "REPO_ROOT", tmp_path)
+        update_task_status("WC-099", "WC099-02", "done")
+        content = wc_file.read_text()
+        row = [l for l in content.splitlines() if "WC099-02" in l][0]
+        assert "2026" in row  # timestamp written
+
+    def test_failed_task_gets_dash_not_timestamp(self, tmp_path, monkeypatch):
+        import runner.sprint_ops as sp
+        wc_file = self._write_wc(tmp_path)
+        monkeypatch.setattr(sp, "REPO_ROOT", tmp_path)
+        update_task_status("WC-099", "WC099-02", "failed")
+        content = wc_file.read_text()
+        row = [l for l in content.splitlines() if "WC099-02" in l][0]
+        assert "| failed | — |" in row
+
+    def test_other_tasks_unchanged(self, tmp_path, monkeypatch):
+        import runner.sprint_ops as sp
+        wc_file = self._write_wc(tmp_path)
+        monkeypatch.setattr(sp, "REPO_ROOT", tmp_path)
+        update_task_status("WC-099", "WC099-02", "done")
+        result = parse_wc_tasks("WC-099")
+        # WC099-01 was already done, WC099-03 still pending
+        assert "WC099-01" in result["done"]
+        assert "WC099-03" in result["pending"]
