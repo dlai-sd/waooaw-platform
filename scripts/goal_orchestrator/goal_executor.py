@@ -51,7 +51,8 @@ _WRITE_BOUNDARY = _re.compile(r'^(src|tests|scripts|web|infrastructure)/', _re.I
 def _parse_llm_files_local(response: str) -> dict[str, str]:
     """Parse <file path="...">content</file> blocks from LLM response."""
     files: dict[str, str] = {}
-    pattern = _re.compile(r'<file\s+path="([^"]+)">(.*?)</file>', _re.DOTALL)
+    # IGNORECASE: keep consistent with FORMAT gate's _RE_FILE_BLOCK
+    pattern = _re.compile(r'<file\s+path="([^"]+)">(.*?)</file>', _re.DOTALL | _re.IGNORECASE)
     for m in pattern.finditer(response or ""):
         path, content = m.group(1).strip(), m.group(2)
         if _WRITE_BOUNDARY.match(path):

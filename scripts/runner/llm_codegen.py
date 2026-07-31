@@ -321,7 +321,8 @@ def parse_llm_files(response: str) -> dict[str, str]:
     Enforces ADR-030 write boundary (ALLOWED_WRITE_ROOTS).
     """
     files: dict[str, str] = {}
-    pattern = re.compile(r'<file\s+path=["\']([^"\']+)["\']>(.*?)</file>', re.DOTALL)
+    # IGNORECASE: LLMs sometimes emit <FILE path="..."> — FORMAT gate already uses IGNORECASE
+    pattern = re.compile(r'<file\s+path=["\']([^"\']+)["\']>(.*?)</file>', re.DOTALL | re.IGNORECASE)
     for match in pattern.finditer(response):
         path = match.group(1).strip()
         content = match.group(2).strip()
