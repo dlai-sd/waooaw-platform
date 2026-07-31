@@ -866,7 +866,7 @@ Each sprint has EA spec gaps documented, SA corrections applied to WC files, and
 <!-- Edit ONLY the fields below. Do not alter the block structure. -->
 
 ```yaml
-autonomous_halt: true        # ← ACTIVATED 2026-07-31 — Founder authorised WC-027; CI workflow ready
+autonomous_halt: false        # ← ACTIVATED 2026-07-31 — Founder authorised WC-027; CI workflow ready
 
 platform_phase: IMPLEMENTATION  # SPEC | IMPLEMENTATION | LIVE
 
