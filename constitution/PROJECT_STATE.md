@@ -358,7 +358,6 @@ tasks_done:
   - WC026-03
   - WC026-04
 tasks_remaining:
-  - WC027-01a
   - WC027-02
 consecutive_failures: 1
 autonomous_halt: true
@@ -484,7 +483,6 @@ tasks_done:
   - WC026-03
   - WC026-04
 tasks_remaining:
-  - WC027-01a
   - WC027-02
 consecutive_failures: 0
 autonomous_halt: false
@@ -883,15 +881,15 @@ last_attempt_utc: 2026-07-31T11:50:05.054464+00:00
 >>>>>>> origin/main
 last_attempt_result:PARTIAL
 <<<<<<< HEAD
-consecutive_failures: 3
+consecutive_failures: 1
 =======
-consecutive_failures: 0
+consecutive_failures: 1
 >>>>>>> origin/main
 consecutive_infra_failures: 0
 tasks_done:
+  - WC027-01a
   - WC027-01b
 tasks_remaining:
-  - WC027-01a
   - WC027-02
 current_task: WC027-01a
 ```
