@@ -26,8 +26,9 @@ derivation, C-089 margin gate), Pydantic models, and FastAPI `/pricing/` router.
 
 | Task | Scope | model_hint | Status |
 |---|---|---|---|
-| WC027-01 | `src/billing-engine/markup/bundle_engine.py` — `BundleEngine`: `cost_floor(agent_type, bundle_tier) -> int` (paise), `derive_price(cost_floor_paise, markup_pct) -> int`, `validate_margin(proposed_price_paise, cost_floor_paise) -> None` raises `MarginViolation` if below floor (C-089); `src/billing-engine/markup/models.py` — Pydantic: `ThreadEntry`, `BundleProfile`, `PriceConfig`, `PriceValidationRequest`, `PriceDeriveRequest`, `PriceResponse`; `src/billing-engine/markup/router.py` — FastAPI router prefix `/pricing`: `GET /thread-catalog`, `GET /bundle-cost-floor/{agent_type}/{bundle_tier}`, `POST /validate` (422 on C-089 violation), `POST /derive`; mount router in `src/billing-engine/main.py` | reasoning | 🔲 TODO |
-| WC027-02 | `tests/billing-engine/test_markup.py` — test cost_floor calculation for all 4 agent types × bundle tiers from thread catalog, C-089 gate (422 when proposed_price < cost_floor), derive_price margin arithmetic, `GET /pricing/thread-catalog` endpoint response shape, `POST /pricing/validate` 200 + 422 paths — ≥90% line coverage | auto | 🔲 TODO |
+| WC027-01a | `src/billing-engine/markup/models.py` — Pydantic: `ThreadEntry`, `BundleProfile`, `PriceConfig`, `PriceValidationRequest`, `PriceDeriveRequest`, `PriceValidation` (response from validate_price — includes `outcome`, `cost_floor_paise`, `minimum_compliant_price_paise`, `proposed_price_paise`); `src/billing-engine/markup/bundle_engine.py` — `BundleEngine` implementing `IMarkupEngine`: `cost_floor(agent_type, bundle_tier) -> int` (reads `bundle_profiles.cost_floor_paise` from DB — do NOT recompute), `derive_price(agent_type, bundle_tier, target_margin_pct=None) -> int` (formula: `floor / (1 - margin/100)` — margin-on-revenue, uses `bundle_profiles.minimum_margin_pct` if target_margin_pct is None), `validate_price(agent_type, bundle_tier, proposed_price_paise) -> PriceValidation` (writes to `pricing_floor_log` on BOTH APPROVED and REJECTED — C-059 audit obligation; returns `minimum_compliant_price_paise` in result) | reasoning | 🔲 TODO |
+| WC027-01b | `src/billing-engine/markup/router.py` — FastAPI router prefix `/pricing`: `GET /thread-catalog` (delegates to existing ThreadCatalogService), `GET /bundle-cost-floor/{agent_type}/{bundle_tier}`, `POST /validate` (422 body includes `minimum_compliant_price_paise` on C-089 violation), `POST /derive`; mount router in `src/billing-engine/main.py` | auto | 🔲 TODO |
+| WC027-02 | `tests/billing-engine/test_markup.py` — test: cost_floor reads `bundle_profiles.cost_floor_paise` (not recomputed), derive_price formula uses margin-on-revenue `floor / (1 - margin/100)`, `POST /pricing/validate` 200 path (APPROVED, `pricing_floor_log` row written), `POST /pricing/validate` 422 path (REJECTED — body includes `minimum_compliant_price_paise`, `pricing_floor_log` row written), `GET /pricing/thread-catalog` response shape, ≥90% line coverage | auto | 🔲 TODO |
 
 ---
 
@@ -40,16 +41,17 @@ derivation, C-089 margin gate), Pydantic models, and FastAPI `/pricing/` router.
 | D-08 Schema Updates | `architecture/reference/billing/billing-schema-updates.md` |
 | Existing ThreadCatalogService | `src/billing-engine/markup/thread_catalog.py` — read before writing bundle_engine.py |
 | WBE Skeleton interfaces | `src/billing-engine/skeleton/wbe_interfaces.py` — implement the MarkupEngineABC |
-| DB Migration | `infrastructure/postgres/init/12-billing-engine.sql` — bundle_profiles, markup_thread_catalog tables |
+| DB Migration | `infrastructure/postgres/init/12-billing-engine.sql` — `institutional.bundle_profiles` (columns: `agent_type`, `bundle_tier`, `cost_floor_paise`, `minimum_margin_pct`) and `institutional.pricing_floor_log` (columns: `proposed_price_paise`, `cost_floor_paise`, `constitutional_minimum_margin_pct`, `minimum_compliant_price_paise`, `outcome`) |
 
 ---
 
 ## Definition of Done
 
 - [ ] `from markup.bundle_engine import BundleEngine` — no import errors
-- [ ] `BundleEngine.validate_margin(proposed=900, cost_floor=1000)` → raises `MarginViolation`
-- [ ] `POST /pricing/validate` with `proposed_price_paise < cost_floor_paise` → HTTP 422 `MARGIN_FLOOR_VIOLATION`
-- [ ] `POST /pricing/derive` with valid markup_pct → HTTP 200 with `derived_price_paise`
+- [ ] `BundleEngine.validate_price(agent_type, bundle_tier, proposed)` returns `PriceValidation` with `outcome="REJECTED"` when proposed < cost_floor
+- [ ] `POST /pricing/validate` with `proposed_price_paise < cost_floor_paise` → HTTP 422 `MARGIN_FLOOR_VIOLATION`; body includes `minimum_compliant_price_paise`
+- [ ] `POST /pricing/validate` any call (pass or fail) → `pricing_floor_log` row inserted (C-059 audit)
+- [ ] `POST /pricing/derive` → HTTP 200 with `derived_price_paise` computed as `floor / (1 - margin/100)` (margin-on-revenue)
 - [ ] `GET /pricing/thread-catalog` → HTTP 200 list of `ThreadEntry` objects
 - [ ] `pytest tests/billing-engine/test_markup.py` → all tests pass, ≥90% coverage
 - [ ] `ruff check src/billing-engine/markup/ tests/billing-engine/test_markup.py` → clean
@@ -58,12 +60,17 @@ derivation, C-089 margin gate), Pydantic models, and FastAPI `/pricing/` router.
 
 ## C-089 Implementation Note
 
-`validate_margin` must call `ce.record_evidence()` stub with `evidence_type="PRICING_DECISION"` on
-every call — success AND rejection — to maintain a complete audit trail per C-059.
+`validate_price(agent_type, bundle_tier, proposed_price_paise)` must write to `institutional.pricing_floor_log`
+on every call — APPROVED **and** REJECTED — to maintain a complete audit trail per C-059.
+The log row captures: `proposed_price_paise`, `cost_floor_paise`, `constitutional_minimum_margin_pct`,
+`minimum_compliant_price_paise`, `outcome` (VARCHAR(10): `"APPROVED"` or `"REJECTED"`), `evaluated_by`.
 
-The cost floor is the sum of: `thread_catalog.provider_cost_paise × bundle_tier_multiplier`.
-`markup_pct` is read from `markup_thread_catalog.markup_pct` (stored as integer basis points or %).
-Confirm the column type from `12-billing-engine.sql` before implementing arithmetic.
+The cost floor (`cost_floor_paise`) is **pre-stored** in `institutional.bundle_profiles.cost_floor_paise`.
+Do NOT recompute it from thread catalog at runtime — read it from the DB.
+
+The margin formula is **margin-on-revenue** (standard billing): `price = cost_floor / (1 - margin_pct / 100)`.
+Example: cost_floor=1000, margin=20% → price = 1000 / 0.80 = 1250 paise (not 1000 × 1.20 = 1200).
+`minimum_margin_pct` is read from `bundle_profiles.minimum_margin_pct` (NUMERIC(5,2), nullable, default 20.0).
 
 ---
 
@@ -71,5 +78,8 @@ Confirm the column type from `12-billing-engine.sql` before implementing arithme
 
 - Flat imports: `from markup.bundle_engine import BundleEngine` — conftest.py adds `src/billing-engine/` to sys.path.
 - `thread_catalog.py` has `ThreadCatalogService` and caching — import it; do not duplicate.
-- `MarginViolation` exception should be an `HTTPException(status_code=422, detail={"code": "MARGIN_FLOOR_VIOLATION", ...})`.
+- `MarginViolation` exception should be an `HTTPException(status_code=422, detail={"code": "MARGIN_FLOOR_VIOLATION", "minimum_compliant_price_paise": <int>, "cost_floor_paise": <int>})`.
 - Tests: use `pytest-asyncio` and `httpx.AsyncClient` (same pattern as `test_wallet.py`).
+- Test fixtures must seed `bundle_profiles` rows for at least 2 agent_types × 2 bundle_tiers before running pricing assertions.
+- `IMarkupEngine` in `src/billing-engine/skeleton/wbe_interfaces.py` is the authoritative interface — `BundleEngine` must implement it exactly.
+- **GO validation:** This WC was reviewed by EA (GOA-WC027-01) and SA (GOA-WC027-02). See `goals/GOAL-WC027-markup-engine.md` for full institutional record.

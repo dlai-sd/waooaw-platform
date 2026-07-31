@@ -760,7 +760,32 @@ All 12 chapters passed. 4 new constitutional claims ratified. 8 new/updated spec
 ## NEXT SESSION OPTIONS
 
 ```
-CURRENT STATE: platform_phase=SPEC · AUTONOMOUS_HALT=true · Version=v1.0.0
+CURRENT STATE: platform_phase=IMPLEMENTATION · AUTONOMOUS_HALT=true · SPRINT_STATUS=READY · Version=v1.27.0
+GO VALIDATION: COMPLETE (2026-07-31) — GOAL-WC027 fully processed through GEOM G-1→G-5
+WC-027: 3 spec gaps fixed (EA + SA institutional contributions) — groomer-safe
+TASKS: WC027-01a (bundle_engine + models), WC027-01b (router), WC027-02 (tests)
+
+OPTION A — Authorize WC-027 sprint
+  → Say: "Authorize WC-027 — set autonomous_halt: false"
+  → Sprint runs autonomously every 3h via autonomous-sprint.yaml
+  → Monitor: github.com/dlai-sd/waooaw-platform/issues/7
+
+OPTION B — Review GOAL-WC027 institutional records before authorising
+  → File: goals/GOAL-WC027-markup-engine.md
+  → G-2 Understanding | G-3 Classification | G-4 Plan | G-5 EA+SA+PO records
+  → Verify G-6 checklist before authorising
+
+OPTION C — Proceed with next GO pipeline stage for WC-028 (Meter + Alert Engine)
+  → GO can process WC-028 through same GEOM pipeline while WC-027 executes
+
+```
+
+---
+
+## NEXT SESSION OPTIONS (ARCHIVED — pre-GO-pipeline)
+
+```
+CURRENT STATE (PRE-GO): platform_phase=SPEC · AUTONOMOUS_HALT=true · Version=v1.0.0
 CLAIMS: 78 RATIFIED (C-001→C-076 + C-078 + C-079) · C-077 RATIFIED ₹5,000/month
 ADRs: 30 (ADR-001→ADR-029 + ADR-031 · ADR-030 reserved IB-020)
 
@@ -787,15 +812,15 @@ OPTION C — Nothing needed from you until sprint opens first PR
 <!-- Edit ONLY the fields below. Do not alter the block structure. -->
 
 ```yaml
-autonomous_halt: true        # ← parked — Founder deciding next sprint (2026-07-30)
+autonomous_halt: true        # ← PARKED-READY — GO validation complete 2026-07-31; awaiting Founder authorisation
 
 platform_phase: IMPLEMENTATION  # SPEC | IMPLEMENTATION | LIVE
 
 current_sprint: WC-027
 sprint_ib_item: IB-009
-sprint_status: WAITING
+sprint_status: READY
 branch: ib/009/sprint-027
-last_attempt_utc: 2026-07-30T19:58:38.040181+00:00
+last_attempt_utc: 2026-07-31T00:00:00.000000+00:00
 last_attempt_result:
 consecutive_failures: 0
 consecutive_infra_failures: 0
@@ -810,12 +835,11 @@ tasks_done:
   - WC026-03
   - WC026-04
   - WC026-05
-tasks_remaining:WC027-01,WC027-02
-  - WC016-01
-  - WC016-02
-  - WC016-03
-  - WC016-04
-current_task: WC-016
+tasks_remaining:
+  - WC027-01a
+  - WC027-01b
+  - WC027-02
+current_task: WC027-01a
 ```
 
 
