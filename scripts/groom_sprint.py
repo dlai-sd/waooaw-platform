@@ -246,6 +246,36 @@ def _strip_llm_fences(text: str) -> str:
     return text
 
 
+def _extract_subtaskdef_id(literal: str) -> str | None:
+    """Return the value of id= from a SubTaskDef literal, or None if not found."""
+    m = re.search(r'\bid\s*=\s*["\'](.*?)["\']', literal)
+    return m.group(1) if m else None
+
+
+def _normalize_subtask_id(literal: str, task_id: str, suffix: str) -> str:
+    """
+    Enforce canonical SubTaskDef id: {task_id}{suffix}.
+
+    LLMs sometimes invent non-canonical ids (e.g. 'WC027-01a-scaffold' instead
+    of 'WC027-01aa'). This causes depends_on mismatches at runtime: polish
+    declares depends_on=['WC027-01aa'] but completed only has 'WC027-01a-scaffold'
+    → all downstream subtasks are BLOCKED even when scaffold succeeded.
+
+    This is a pure string normalisation — no semantic change.
+    """
+    actual = _extract_subtaskdef_id(literal)
+    expected = f"{task_id}{suffix}"
+    if actual and actual != expected:
+        print(f"  ⚠️  SubTaskDef id normalised: '{actual}' → '{expected}'")
+        literal = re.sub(
+            r'\bid\s*=\s*["\'][^"\'\']+["\']',
+            f'id="{expected}"',
+            literal,
+            count=1,
+        )
+    return literal
+
+
 def _extract_output_files(subtaskdef_literal: str) -> list[str]:
     """Extract implementation .py paths from output_files in a SubTaskDef literal."""
     m = re.search(r'output_files\s*=\s*\[(.*?)\]', subtaskdef_literal, re.DOTALL)
@@ -328,15 +358,18 @@ def _generate_polish_subtaskdef(
     service_dir: str,
     wc_filename: str,
     stack: str,
+    scaffold_id: str = "",
 ) -> str:
     """Returns bare SubTaskDef(...) literal (4-space fields). No LLM call — fully templated."""
+    # scaffold_id is the normalised id of the scaffold subtask — defaults to {task_id}a
+    depends_on_id = scaffold_id or f"{task_id}a"
     files_str = "\n        ".join(f'"{f}",' for f in scaffold_output_files)
     inject_str = "\n        ".join(f'"{f}",' for f in scaffold_output_files)
     return f'''SubTaskDef(
     id="{task_id}b",
     description="Add complete type annotations and fix ruff style (ANN001/ANN201 enforcement)",
     type="llm",
-    depends_on=["{task_id}a"],
+    depends_on=["{depends_on_id}"],
     compile_gate="ruff",
     service_dir="{service_dir}",
     wc_task_id="{task_id}",
@@ -453,6 +486,11 @@ def _generate_subtask_chain(
     if not scaffold_literal:
         return None
 
+    # Enforce canonical scaffold id — LLMs sometimes use {task_id}-scaffold instead
+    # of {task_id}a, which breaks the depends_on chain for polish and cross-task deps.
+    scaffold_literal = _normalize_subtask_id(scaffold_literal, task_id, "a")
+    scaffold_id = f"{task_id}a"  # always canonical after normalisation above
+
     # Extract output_files from scaffold literal to feed polish and test
     scaffold_output_files = _extract_output_files(scaffold_literal)
 
@@ -464,6 +502,7 @@ def _generate_subtask_chain(
     polish_literal = _generate_polish_subtaskdef(
         task_id=task_id, scaffold_output_files=scaffold_output_files,
         service_dir=service_dir, wc_filename=wc_filename, stack=stack,
+        scaffold_id=scaffold_id,
     )
 
     # Pass 3: test (LLM) — returns bare SubTaskDef(...) literal
@@ -474,6 +513,9 @@ def _generate_subtask_chain(
     if not test_literal:
         print(f"  ❌ {task_id}: test SubTaskDef LLM call failed — cannot build complete chain")
         return None
+
+    # Enforce canonical test id — same guard as scaffold above
+    test_literal = _normalize_subtask_id(test_literal, task_id, "c")
 
     # Assemble entirely in Python — indent each literal to 8 spaces inside "subtasks" list
     blocks = [scaffold_literal, polish_literal, test_literal]
@@ -496,11 +538,20 @@ def _validate_generated_entry(code: str, task_id: str) -> bool:
     if "SubTaskDef(" not in code:
         print(f"  ❌ Validation: no SubTaskDef( in generated code")
         return False
+    if f'"{task_id}a"' not in code and f"'{task_id}a'" not in code:
+        print(f"  ❌ Validation: missing scaffold subtask '{task_id}a' — id not normalised")
+        return False
     if f'"{task_id}b"' not in code and f"'{task_id}b'" not in code:
         print(f"  ❌ Validation: missing polish subtask '{task_id}b' — incomplete chain")
         return False
     if f'"{task_id}c"' not in code and f"'{task_id}c'" not in code:
         print(f"  ❌ Validation: missing test subtask '{task_id}c' — incomplete chain")
+        return False
+    if f'depends_on=["{task_id}a"]' not in code and f"depends_on=['{task_id}a']" not in code:
+        print(f"  ❌ Validation: polish depends_on chain broken — '{task_id}b' must depend on '{task_id}a'")
+        return False
+    if f'depends_on=["{task_id}b"]' not in code and f"depends_on=['{task_id}b']" not in code:
+        print(f"  ❌ Validation: test depends_on chain broken — '{task_id}c' must depend on '{task_id}b'")
         return False
     # Wrap in parseable context for ast.parse
     wrapper = f"""
