@@ -1,5 +1,5 @@
 {
-  "run_id": "30624494792",
+  "run_id": "30628288678",
   "sprint": "WC-027",
   "scaffold_task": null,
   "scaffold_failed": false,
@@ -7,19 +7,13 @@
   "spec_gap_issues": [],
   "overall_result": "PARTIAL",
   "file_costs": {
-    "WC027-01aa:models.py": 4.1544,
-    "WC027-01aa:bundle_engine.py": 5.1775,
-    "WC027-01ab:models.py": 0.3218,
-    "WC027-01ab:bundle_engine.py": 1.3469,
-    "WC027-01ba:router.py": 0.4246,
-    "WC027-01ba:main.py": 0.1513,
-    "WC027-01bb:router.py": 0.4167,
-    "WC027-01bb:main.py": 0.1516,
-    "WC027-01bc:test_router.py": 0.5297,
-    "WC027-02a:engine.py": 0.3833,
-    "WC027-02a:endpoints.py": 0.3783,
-    "WC027-02a:models.py": 0.2467,
-    "WC027-02a:test_markup.py": 1.5431
+    "WC027-01aa:models.py": 4.8828,
+    "WC027-01aa:bundle_engine.py": 5.0194,
+    "WC027-01ab:models.py": 0.355,
+    "WC027-01ab:bundle_engine.py": 0.4424,
+    "WC027-01ac:test_models.py": 0.6047,
+    "WC027-02a:test_markup.py": 2.1486,
+    "WC027-02a:conftest.py": 0.6009
   },
   "subtask_results": {
     "WC027-01aa": {
@@ -29,42 +23,26 @@
       "error_text": ""
     },
     "WC027-01ab": {
-      "result": "FAIL",
+      "result": "SUCCESS",
       "task_id": "WC027-01a",
-      "error_codes": [
-        "UP031"
-      ],
-      "error_text": "UP031 Use format specifiers instead of percent format\n  --> src/billing-engine/markup/bundle_engine.py:44:13\n   |\n42 |           self.constitutional_minimum_margin_pct = margin_pct\n43 |           super().__init__(\n44 | /             \"Proposed price %d paise is below constitutional minimum %d paise \""
+      "error_codes": [],
+      "error_text": ""
     },
     "WC027-01ac": {
-      "result": "SKIPPED",
+      "result": "SUCCESS",
       "task_id": "WC027-01a",
-      "error_codes": [],
-      "error_text": ""
-    },
-    "WC027-01ba": {
-      "result": "SUCCESS",
-      "task_id": "WC027-01b",
-      "error_codes": [],
-      "error_text": ""
-    },
-    "WC027-01bb": {
-      "result": "SUCCESS",
-      "task_id": "WC027-01b",
-      "error_codes": [],
-      "error_text": ""
-    },
-    "WC027-01bc": {
-      "result": "SUCCESS",
-      "task_id": "WC027-01b",
       "error_codes": [],
       "error_text": ""
     },
     "WC027-02a": {
       "result": "FAIL",
       "task_id": "WC027-02",
-      "error_codes": [],
-      "error_text": "[Errno 2] No such file or directory: '/home/runner/work/waooaw-platform/waooaw-platform/tests/billing-engine/test_markup.py'"
+      "error_codes": [
+        "ANN101",
+        "ANN102",
+        "E902"
+      ],
+      "error_text": "E902 No such file or directory (os error 2)\n--> tests/billing_engine/test_markup.py:1:1\n\nFound 1 error.\nwarning: The following rules have been removed and ignoring them has no effect:\n    - ANN101\n    - ANN102\n\n"
     },
     "WC027-02b": {
       "result": "SKIPPED",
@@ -79,13 +57,12 @@
       "error_text": ""
     }
   },
-  "total_cost_inr": 15.2259,
+  "total_cost_inr": 14.053799999999999,
   "tasks_done": [
-    "WC027-01b"
+    "WC027-01a"
   ],
   "tasks_requested": [
     "WC027-01a",
-    "WC027-01b",
     "WC027-02"
   ]
 }
