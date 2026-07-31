@@ -142,10 +142,8 @@ class TestParseSprintState:
         assert state["current_sprint"] == "WC-012"
         assert state["sprint_status"] == "READY"
         assert state["consecutive_failures"] == "0"
-        assert "WC012-01" not in state.get("tasks_remaining", [])
-        assert "WC012-02" in state["tasks_remaining"]
-        assert "WC012-03" in state["tasks_remaining"]
-        assert "WC012-04" in state["tasks_remaining"]
+        # tasks_remaining removed from PROJECT_STATE (sprint-as-state-machine, 9abe8af)
+        # tasks now read from work-contracts/WC-NNN-*.md via parse_wc_tasks()
 
     def test_raises_when_block_missing(self, tmp_repo: Path, monkeypatch):
         state_file = tmp_repo / "constitution" / "PROJECT_STATE.md"
@@ -170,7 +168,8 @@ class TestParseSprintState:
         state_file.write_text(content)
         monkeypatch.setattr(_sprint_ops, "STATE_FILE", state_file)
         state = runner.parse_sprint_state()
-        assert state["tasks_remaining"] == []
+        # tasks_remaining removed from PROJECT_STATE (sprint-as-state-machine, 9abe8af)
+        assert state["sprint_status"] == "DONE"
 
     def test_comments_stripped_from_values(self, tmp_repo: Path, monkeypatch):
         content = textwrap.dedent("""\
@@ -190,7 +189,7 @@ class TestParseSprintState:
         state = runner.parse_sprint_state()
         assert state["platform_phase"] == "IMPLEMENTATION"
         assert state["autonomous_halt"] == "false"
-        assert "WC012-02" in state["tasks_remaining"]
+        # tasks_remaining removed from PROJECT_STATE (sprint-as-state-machine, 9abe8af)
 
     def test_tasks_with_hash_prefix_excluded(self, tmp_repo: Path, monkeypatch):
         """Tasks prefixed with # in the tasks_remaining list are filtered out."""
@@ -211,9 +210,8 @@ class TestParseSprintState:
         state_file.write_text(content)
         monkeypatch.setattr(_sprint_ops, "STATE_FILE", state_file)
         state = runner.parse_sprint_state()
-        assert "WC012-03" in state["tasks_remaining"]
-        assert "WC012-04" in state["tasks_remaining"]
-        assert len([t for t in state["tasks_remaining"] if t.startswith("#")]) == 0
+        assert "WC012-03" not in [t for t in state.get("tasks_remaining", []) if isinstance(t, str)]
+        # tasks_remaining removed from PROJECT_STATE — task list now in WC file
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

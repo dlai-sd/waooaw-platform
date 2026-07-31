@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# constitutional_basis: C-098 (Architectural Fitness Functions), C-059 (Traceability)
+# ib_item: IB-009
 """
 check_arch_fitness.py — Architectural Fitness Functions (QA Technique #3)
 

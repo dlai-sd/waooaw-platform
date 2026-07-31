@@ -27,21 +27,16 @@ import check_c086_gate
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def make_project_state(tasks: list[str], tmp_path: Path) -> Path:
-    """Write a minimal PROJECT_STATE.md with the given tasks_remaining."""
-    tasks_lines = "\n".join(f"  - {t}" for t in tasks)
-    # Do NOT use textwrap.dedent here — the regex in check_c086_gate.main()
-    # expects '  - ' (2-space indent) which must be preserved exactly.
-    if tasks:
-        remaining_block = f"tasks_remaining:\n{tasks_lines}\n"
-    else:
-        remaining_block = "tasks_remaining: []\n"
+    """Write a minimal PROJECT_STATE.md with current_sprint set (tasks come from WC file or FORCE_TASK)."""
     content = (
         "# PROJECT_STATE.md\n"
         "## SPRINT_STATE_MACHINE\n"
         "```yaml\n"
         "platform_phase: IMPLEMENTATION\n"
         "autonomous_halt: false\n"
-        + remaining_block +
+        "current_sprint: WC-012\n"
+        "sprint_status: READY\n"
+        "consecutive_failures: 0\n"
         "```\n"
     )
     state_file = tmp_path / "constitution" / "PROJECT_STATE.md"
@@ -71,9 +66,10 @@ class TestC086Gate:
 
     def test_legacy_task_skipped(self, tmp_path, monkeypatch, capsys):
         """WC012-01 is a legacy callable handler — gate skips it (passes)."""
-        make_project_state(["WC012-01"], tmp_path)
+        make_project_state([], tmp_path)
         (tmp_path / "simulation").mkdir(parents=True, exist_ok=True)
         monkeypatch.setattr(check_c086_gate, "REPO_ROOT", tmp_path)
+        monkeypatch.setenv("FORCE_TASK", "WC012-01")  # inject via FORCE_TASK (new gate architecture)
         result = check_c086_gate.main()
         assert result == 0
         out = capsys.readouterr().out
@@ -81,17 +77,19 @@ class TestC086Gate:
 
     def test_legacy_wc012_02_skipped(self, tmp_path, monkeypatch):
         """WC012-02 is also legacy callable — no simulation required."""
-        make_project_state(["WC012-02"], tmp_path)
+        make_project_state([], tmp_path)
         (tmp_path / "simulation").mkdir(parents=True, exist_ok=True)
         monkeypatch.setattr(check_c086_gate, "REPO_ROOT", tmp_path)
+        monkeypatch.setenv("FORCE_TASK", "WC012-02")
         result = check_c086_gate.main()
         assert result == 0
 
     def test_decomposed_task_without_simulation_fails(self, tmp_path, monkeypatch, capsys):
         """WC012-03 requires SIM-PL-002 — missing file → gate fails."""
-        make_project_state(["WC012-03"], tmp_path)
+        make_project_state([], tmp_path)
         (tmp_path / "simulation").mkdir(parents=True, exist_ok=True)
         monkeypatch.setattr(check_c086_gate, "REPO_ROOT", tmp_path)
+        monkeypatch.setenv("FORCE_TASK", "WC012-03")
         result = check_c086_gate.main()
         assert result == 1
         out = capsys.readouterr().out
@@ -99,29 +97,41 @@ class TestC086Gate:
 
     def test_decomposed_task_with_pass_simulation_passes(self, tmp_path, monkeypatch):
         """WC012-03 with PASS simulation → gate passes."""
-        make_project_state(["WC012-03"], tmp_path)
+        make_project_state([], tmp_path)
         sim_dir = tmp_path / "simulation"
         sim_dir.mkdir(parents=True, exist_ok=True)
         make_sim_file("WC012-03", "✅ PASS", sim_dir)
         monkeypatch.setattr(check_c086_gate, "REPO_ROOT", tmp_path)
+        monkeypatch.setenv("FORCE_TASK", "WC012-03")
         result = check_c086_gate.main()
         assert result == 0
 
     def test_decomposed_task_with_fail_simulation_fails(self, tmp_path, monkeypatch, capsys):
         """WC012-03 with FAIL verdict → gate fails."""
-        make_project_state(["WC012-03"], tmp_path)
+        make_project_state([], tmp_path)
         sim_dir = tmp_path / "simulation"
         sim_dir.mkdir(parents=True, exist_ok=True)
         make_sim_file("WC012-03", "❌ FAIL", sim_dir)
         monkeypatch.setattr(check_c086_gate, "REPO_ROOT", tmp_path)
+        monkeypatch.setenv("FORCE_TASK", "WC012-03")
         result = check_c086_gate.main()
         assert result == 1
 
     def test_multiple_tasks_mixed_result_fails(self, tmp_path, monkeypatch, capsys):
-        """One PASS + one missing → gate fails overall."""
-        make_project_state(["WC012-03", "WC012-04"], tmp_path)
+        """FORCE_TASK checks single task; for multi-task test use WC file approach.
+        One task with missing sim → gate fails."""
+        make_project_state([], tmp_path)
         sim_dir = tmp_path / "simulation"
         sim_dir.mkdir(parents=True, exist_ok=True)
+        # Set up WC file with two pending tasks for multi-task scenario
+        wc_dir = tmp_path / "work-contracts"
+        wc_dir.mkdir(parents=True, exist_ok=True)
+        (wc_dir / "WC-012-test.md").write_text(
+            "| task_id | scope | model_hint | status | completed_at |\n"
+            "|---|---|---|---|---|\n"
+            "| WC012-03 | test scope | auto | pending | — |\n"
+            "| WC012-04 | test scope | auto | pending | — |\n"
+        )
         make_sim_file("WC012-03", "✅ PASS", sim_dir)
         # WC012-04 has no sim file
         monkeypatch.setattr(check_c086_gate, "REPO_ROOT", tmp_path)
@@ -130,11 +140,19 @@ class TestC086Gate:
 
     def test_multiple_tasks_all_pass(self, tmp_path, monkeypatch):
         """Both WC012-03 and WC012-04 have PASS → gate passes."""
-        make_project_state(["WC012-03", "WC012-04"], tmp_path)
+        make_project_state([], tmp_path)
         sim_dir = tmp_path / "simulation"
         sim_dir.mkdir(parents=True, exist_ok=True)
         make_sim_file("WC012-03", "✅ PASS", sim_dir)
         make_sim_file("WC012-04", "VERDICT: ✅ PASS", sim_dir)
+        wc_dir = tmp_path / "work-contracts"
+        wc_dir.mkdir(parents=True, exist_ok=True)
+        (wc_dir / "WC-012-test.md").write_text(
+            "| task_id | scope | model_hint | status | completed_at |\n"
+            "|---|---|---|---|---|\n"
+            "| WC012-03 | scope | auto | pending | — |\n"
+            "| WC012-04 | scope | auto | pending | — |\n"
+        )
         monkeypatch.setattr(check_c086_gate, "REPO_ROOT", tmp_path)
         result = check_c086_gate.main()
         assert result == 0

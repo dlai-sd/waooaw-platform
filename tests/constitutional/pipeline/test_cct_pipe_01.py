@@ -29,6 +29,8 @@ PIPELINE_SCRIPTS = [
     "scripts/build_sprint_index.py",
     "scripts/sprint_state.py",
     "scripts/sprint_status_reporter.py",
+    "scripts/check_import_chain.py",   # C-096
+    "scripts/check_arch_fitness.py",   # C-098
 ]
 
 

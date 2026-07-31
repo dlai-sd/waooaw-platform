@@ -3,17 +3,18 @@
 # ib_item: IB-009
 # office: Platform IT Expert — Implementation hat
 # produced_by: EA post-mortem 2026-07-23 + QA sign-off 2026-07-23
+# amended: 2026-07-31 — sprint-as-state-machine refactor (9abe8af)
+#   SPRINT_TASK_MANIFEST removed; task progress lives in WC files not PROJECT_STATE
 
 """
 CCT-PIPE-02 — Sprint State Machine Coherence After Merge
 
-Runs on: every PR touching scripts/autonomous_sprint_reviewer.py or scripts/sprint_state.py
+Runs on: every PR touching scripts/sprint_state.py or work-contracts/
 Blocking: Yes — infinite loop risk blocks merge
 
-Constitutional principle: After a sprint PR is merged, the SPRINT_STATE_MACHINE
-must advance to the next sprint with tasks_remaining populated. An infinite loop
-where a completed sprint re-executes on every 6-hour cron is a C-059 traceability
-violation — the agent executes tasks it has no valid trace to.
+Constitutional principle: Every planned sprint must have a WC file with a valid
+task table. cmd_advance() must mark sprint_status=DONE so the completed sprint
+does not re-execute on the next 6-hour cron (infinite loop risk, C-059 violation).
 """
 import sys
 import re
@@ -24,106 +25,120 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).parent.parent.parent.parent
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
-from sprint_state import SPRINT_TASK_MANIFEST  # noqa: E402
+# Sprints with WC files expected in work-contracts/ (grow as sprints are created)
+KNOWN_SPRINTS = [
+    "WC-027", "WC-028", "WC-029", "WC-030", "WC-031",
+    "WC-032", "WC-033", "WC-034",
+]
+
+TASK_ID_PATTERN = re.compile(r'^WC\d+-\d+[a-z]?$')
 
 
-class TestSprintTaskManifest:
-    """CCT-PIPE-02a/b: Manifest coverage and format."""
+class TestWcFilesCoverage:
+    """CCT-PIPE-02a/b: WC files exist and have valid task tables."""
 
-    def test_manifest_covers_all_planned_sprints(self) -> None:
-        """CCT-PIPE-02a: SPRINT_TASK_MANIFEST must cover WC-011 through WC-018.
+    def test_wc_files_exist_for_known_sprints(self) -> None:
+        """CCT-PIPE-02a: Each known sprint must have a WC file in work-contracts/.
 
-        If a sprint exists in the plan but not in the manifest, cmd_advance()
-        will set tasks_remaining=[] and the sprint silently skips all tasks.
-        The cron will re-run the completed sprint indefinitely.
+        A sprint without a WC file cannot be groomed, cannot be run, and
+        the pipeline will silently skip it — C-059 traceability violation.
         """
-        for sprint_num in range(11, 19):
-            sprint = f"WC-0{sprint_num:02d}"
-            assert sprint in SPRINT_TASK_MANIFEST, (
-                f"CCT-PIPE-02a FAIL: {sprint} missing from SPRINT_TASK_MANIFEST.\n"
-                f"Infinite loop risk: advance() will set tasks_remaining=[] and "
-                f"the sprint will re-execute on every 6-hour cron.\n"
-                f"Fix: add {sprint}: [...tasks...] to SPRINT_TASK_MANIFEST in sprint_state.py"
-            )
-            assert len(SPRINT_TASK_MANIFEST[sprint]) > 0, (
-                f"CCT-PIPE-02a FAIL: {sprint} has an empty task list in SPRINT_TASK_MANIFEST.\n"
-                f"All tasks would be skipped silently."
-            )
+        work_contracts = REPO_ROOT / "work-contracts"
+        missing = []
+        for sprint in KNOWN_SPRINTS:
+            matches = list(work_contracts.glob(f"{sprint}-*.md"))
+            if not matches:
+                missing.append(sprint)
+        assert not missing, (
+            f"CCT-PIPE-02a FAIL: WC files missing for sprints: {missing}.\n"
+            f"Each sprint must have work-contracts/WC-NNN-*.md with a task table."
+        )
 
-    def test_manifest_task_ids_follow_correct_format(self) -> None:
-        """CCT-PIPE-02b: All task IDs must follow WC-NNN-NN format (C-059 traceability)."""
-        pattern = re.compile(r'^WC\d{3}-\d{2}$')
-        for sprint, tasks in SPRINT_TASK_MANIFEST.items():
-            for task in tasks:
-                assert pattern.match(task), (
-                    f"CCT-PIPE-02b FAIL: Invalid task ID '{task}' in {sprint}.\n"
-                    f"Expected format: WC###-## (e.g. WC012-01).\n"
-                    f"C-059: every task must be traceable to its work contract."
-                )
+    def test_wc_task_tables_are_parseable(self) -> None:
+        """CCT-PIPE-02b: WC task tables must have parseable rows with valid task IDs.
+
+        The runner reads task_id and status from the pipe-delimited table.
+        A malformed table causes parse_wc_tasks() to return empty lists,
+        the sprint executes zero tasks, and marks itself done — C-059 violation.
+        """
+        work_contracts = REPO_ROOT / "work-contracts"
+        violations = []
+        for sprint in KNOWN_SPRINTS:
+            matches = list(work_contracts.glob(f"{sprint}-*.md"))
+            if not matches:
+                continue
+            content = matches[0].read_text(encoding="utf-8")
+            task_rows = 0
+            for line in content.splitlines():
+                if not line.startswith("|"):
+                    continue
+                cells = [c.strip() for c in line.split("|")]
+                if len(cells) < 6:
+                    continue
+                task_id = cells[1].strip()
+                if TASK_ID_PATTERN.match(task_id):
+                    task_rows += 1
+                    status = cells[-3].strip().lower()
+                    if status not in ("pending", "done", "failed"):
+                        violations.append(
+                            f"{sprint}: task {task_id} has invalid status '{status}' "
+                            f"(must be pending/done/failed)"
+                        )
+            if task_rows == 0:
+                violations.append(f"{sprint}: no parseable task rows found in WC file")
+
+        assert not violations, (
+            "CCT-PIPE-02b FAIL: WC task table parse errors:\n"
+            + "\n".join(f"  {v}" for v in violations)
+        )
 
 
 class TestSprintAdvancement:
     """CCT-PIPE-02c: cmd_advance() produces correct state."""
 
-    def test_advance_populates_next_sprint_tasks(self, tmp_path: Path) -> None:
-        """CCT-PIPE-02c: After advance(WC-011→WC-012), tasks_remaining contains WC-012 tasks."""
+    def test_advance_marks_sprint_done(self, tmp_path: Path) -> None:
+        """CCT-PIPE-02c: cmd_advance() must set sprint_status=DONE.
+
+        If sprint_status is not DONE after advance, the sprint will re-execute
+        on the next cron run — infinite loop (C-059 traceability violation).
+        Task progress now lives in the WC file, not PROJECT_STATE.
+        """
         import sprint_state as ss
 
-        # Build minimal PROJECT_STATE.md
         state_file = tmp_path / "PROJECT_STATE.md"
         state_file.write_text(
             "## SPRINT_STATE_MACHINE\n"
             "```yaml\n"
             "autonomous_halt: false\n"
             "platform_phase: IMPLEMENTATION\n"
-            "current_sprint: WC-011\n"
-            "sprint_ib_item: IB-009\n"
-            "sprint_status: READY\n"
-            "branch: ib/009/infra-foundation\n"
-            "last_attempt_utc: \"\"\n"
-            "last_attempt_result: \"\"\n"
+            "current_sprint: WC-027\n"
+            "sprint_status: IN_PROGRESS\n"
+            "branch: ib/009/sprint-027\n"
             "consecutive_failures: 0\n"
-            "tasks_done: []\n"
-            "tasks_remaining:\n"
-            "  - WC011-01\n"
-            "current_task: \"\"\n"
-            "current_task_started_utc: \"\"\n"
-            "next_sprint: WC-012\n"
-            "next_sprint_ib_item: IB-009\n"
-            "blocker: \"\"\n"
-            "blocker_raised_utc: \"\"\n"
             "```\n"
         )
 
         original = ss.STATE_FILE
         ss.STATE_FILE = state_file
         try:
-            args = argparse.Namespace(current="WC-011", ib="IB-009")
+            args = argparse.Namespace(current="WC-027", ib="IB-009")
             ss.cmd_advance(args)
             result = state_file.read_text()
-
-            # current_sprint must advance
-            assert "current_sprint: WC-012" in result, (
-                "CCT-PIPE-02c FAIL: current_sprint not advanced to WC-012 after cmd_advance().\n"
-                "WC-011 will re-execute on next cron — infinite loop."
+            assert "sprint_status: DONE" in result, (
+                "CCT-PIPE-02c FAIL: sprint_status not set to DONE after cmd_advance().\n"
+                "Completed sprint will re-execute on next cron — infinite loop.\n"
+                "C-059: a completed sprint must be traceable as DONE in PROJECT_STATE."
             )
-
-            # sprint_status must be READY for the new sprint
-            assert "sprint_status: READY" in result, (
-                "CCT-PIPE-02c FAIL: sprint_status is not READY after advance()."
-            )
-
-            # All WC-012 tasks must be in tasks_remaining
-            for task in SPRINT_TASK_MANIFEST["WC-012"]:
-                assert task in result, (
-                    f"CCT-PIPE-02c FAIL: {task} missing from tasks_remaining after advance().\n"
-                    f"WC-012 sprint would skip this task."
-                )
         finally:
             ss.STATE_FILE = original
 
-    def test_advance_resets_tasks_done_for_next_sprint(self, tmp_path: Path) -> None:
-        """CCT-PIPE-02d: tasks_done is reset to [] after advance() — next sprint starts clean."""
+    def test_advance_does_not_touch_wc_file_tasks(self, tmp_path: Path) -> None:
+        """CCT-PIPE-02d: cmd_advance() must NOT modify the WC file.
+
+        Task progress (done/pending) is owned exclusively by the WC file.
+        cmd_advance() is a control-panel operation — it only writes sprint_status=DONE.
+        Writing to the WC file from advance() would corrupt the task audit trail.
+        """
         import sprint_state as ss
 
         state_file = tmp_path / "PROJECT_STATE.md"
@@ -132,33 +147,23 @@ class TestSprintAdvancement:
             "```yaml\n"
             "autonomous_halt: false\n"
             "platform_phase: IMPLEMENTATION\n"
-            "current_sprint: WC-011\n"
-            "sprint_ib_item: IB-009\n"
-            "sprint_status: READY\n"
-            "branch: ib/009/infra-foundation\n"
-            "last_attempt_utc: \"\"\n"
-            "last_attempt_result: \"\"\n"
+            "current_sprint: WC-027\n"
+            "sprint_status: IN_PROGRESS\n"
+            "branch: ib/009/sprint-027\n"
             "consecutive_failures: 0\n"
-            "tasks_done: [WC011-01, WC011-02]\n"
-            "tasks_remaining:\n"
-            "  - WC011-03\n"
-            "current_task: \"\"\n"
-            "current_task_started_utc: \"\"\n"
-            "next_sprint: WC-012\n"
-            "next_sprint_ib_item: IB-009\n"
-            "blocker: \"\"\n"
-            "blocker_raised_utc: \"\"\n"
             "```\n"
         )
+
         original = ss.STATE_FILE
         ss.STATE_FILE = state_file
         try:
-            args = argparse.Namespace(current="WC-011", ib="IB-009")
-            ss.cmd_advance(args)
-            result = state_file.read_text()
-            assert "tasks_done: []" in result, (
-                "CCT-PIPE-02d FAIL: tasks_done not reset to [] after advance().\n"
-                "Next sprint will appear to have completed tasks it hasn't run."
+            import inspect
+            src = inspect.getsource(ss.cmd_advance)
+            # cmd_advance must not write to any WC file
+            assert "work-contracts" not in src and "wc_file" not in src.lower(), (
+                "CCT-PIPE-02d FAIL: cmd_advance() touches WC files.\n"
+                "Task progress is owned by WC files. cmd_advance() must be a\n"
+                "control-panel operation only (sprint_status=DONE in PROJECT_STATE)."
             )
         finally:
             ss.STATE_FILE = original

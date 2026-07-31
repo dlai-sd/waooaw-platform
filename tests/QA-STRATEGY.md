@@ -1,10 +1,10 @@
 # WAOOAW Quality Framework — Master Strategy
 
-**Version:** 1.2
-**Date:** 2026-07-23 (amended — C-080 Docker Test Execution Mandate)
-**Authority:** C-071 (Quality Obligation — RATIFIED), C-076 (90% Coverage Mandate — RATIFIED), C-080 (Docker Test Isolation — RATIFIED 2026-07-23), GENESIS Engineering Quality Mandate
+**Version:** 1.3
+**Date:** 2026-07-31 (amended — C-096/C-097/C-098 QA Technique Ratification)
+**Authority:** C-071 (Quality Obligation — RATIFIED), C-076 (90% Coverage Mandate — RATIFIED), C-080 (Docker Test Isolation — RATIFIED 2026-07-23), C-096 (Dependency Chain Integrity — RATIFIED 2026-07-31), C-097 (Property-Based Testing — RATIFIED 2026-07-31), C-098 (Architectural Fitness Functions — RATIFIED 2026-07-31), GENESIS Engineering Quality Mandate
 **Owner:** WAOOAW AI Agent — QA (execution) · Sujay Khandge (quality stewardship)
-**Constitutional Basis:** C-002, C-023, C-065, C-070, C-071, C-080
+**Constitutional Basis:** C-002, C-023, C-065, C-070, C-071, C-080, C-096, C-097, C-098
 **Applies to:** All platform services (CE, BP, PR, AIR, Web), all agents (DMA, Trading, Agricultural, Private Tutor, Steward Assistant, Self-Improvement Analyst, Platform IT Expert, Platform Operations)
 
 ---
@@ -404,3 +404,57 @@ Quality metrics (coverage, mutation, CCT pass rate, Grade A rate) are written to
 
 **Instinct 3 — Autonomous:**
 Zero human decisions in the quality pipeline. Every gate is automated. No agent or human may merge code that fails a gate. The only human involvement is reviewing Self-Improvement Analyst quality proposals — and even that happens via Steward Assistant chat, not manual pipeline configuration.
+
+---
+
+## 10. Autonomous Pipeline QA Techniques (C-096, C-097, C-098 — RATIFIED 2026-07-31)
+
+Three constitutional QA techniques are mandated for the autonomous sprint pipeline,
+implemented as pre-flight gates and post-execution validators.
+
+### 10.1 Dependency Chain Validation (C-096)
+
+**Script:** `scripts/check_import_chain.py`
+**Stage:** Pre-flight (blocking — increments FAILURES)
+**CCTs:** CCT-ARCH-01..04 in `tests/constitutional/pipeline/test_cct_qa_96_97_98.py`
+
+Before any LLM code generation task fires, the existing `src/billing-engine/`
+tree must compile cleanly via `ast.parse()`. SyntaxError in any file blocks the
+sprint. Tasks marked `done` in the WC file with no output file on disk emit a
+non-blocking warning. Evidence: exit 0 live run 2026-07-31.
+
+### 10.2 Property-Based Testing for Financial Math (C-097)
+
+**Library:** `hypothesis>=6.100` (in `requirements-test.txt`)
+**Stage:** Embedded in sprint task scope — LLM must write `@given` tests
+**CCT:** CCT-PROP-01 in `tests/constitutional/pipeline/test_cct_qa_96_97_98.py`
+
+Any billing-engine test file covering `derive_price`, `validate_price`, `cost_floor`,
+`debit`, `credit`, `wallet`, `margin`, `paise`, `reconcile`, or `threshold` MUST
+have at least one `@given`-decorated test. CCT-PROP-01 verifies via AST inspection.
+
+Minimum required strategy (C-097 §a–d):
+```python
+@given(st.integers(min_value=100, max_value=1_000_000),
+       st.floats(min_value=0.0, max_value=99.0, allow_nan=False))
+def test_derive_price_above_floor(cost_floor, margin): ...
+```
+
+Six edge cases hypothesis catches that example tests miss — see
+`simulation/SIM-PL-002-PIPE-QA-03-property-based-testing-financial-math.md`.
+
+### 10.3 Architectural Fitness Functions (C-098)
+
+**Script:** `scripts/check_arch_fitness.py`
+**Stage:** Post-execution (non-blocking; promotes to blocking at G4 CLEAR)
+**CCTs:** CCT-ARCH-01..04 in `tests/constitutional/pipeline/test_cct_qa_96_97_98.py`
+
+| Rule | Invariant |
+|---|---|
+| CCT-ARCH-01 | No imports from `ai_runtime`/`ai-runtime`/`bp.`/`business_platform` in billing-engine |
+| CCT-ARCH-02 | No `from X import *` in service files (`service.py`, `models.py`, `router.py`, `bundle_engine.py`) |
+| CCT-ARCH-03 | Every sub-package with `service.py` has `tests/billing-engine/test_{name}.py` |
+| CCT-ARCH-04 | Every sub-package with `service.py` has `models.py` |
+
+Evidence: run 2026-07-31 — 11 files, 1 service package, all 4 rules pass.
+Simulation: `simulation/SIM-PL-002-PIPE-QA-02-architectural-fitness-functions.md`

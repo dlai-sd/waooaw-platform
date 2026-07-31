@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# constitutional_basis: C-096 (Dependency Chain Integrity), C-059 (Traceability)
+# ib_item: IB-009
 """
 check_import_chain.py — Dependency Chain Validation (QA Technique #1)
 

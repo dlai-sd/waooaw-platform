@@ -40,6 +40,7 @@ Pre-existing test failure (test_context_smaller_than_runner_prompt) confirmed pr
 - WBE signal schema (AsyncAPI 3.0-aligned: `architecture/reference/signals/wbe-signal-schema.yaml`)
 - ADR-035 (PAC Standard) + ADR-036 (EA Skeleton Standard)
 - C-094 (Agent Base Spec Compliance) + C-095 (Component Manifest Obligation)
+- C-096 (Dependency Chain Integrity) + C-097 (Property-Based Testing for Financial Math) + C-098 (Architectural Fitness Functions) — ratified 2026-07-31
 - GOAL-SERVICING-CENTER registered in institutional backlog
 - SIM-PLATFORM-001 (30/30 PASS)
 - FA-026 authorization
