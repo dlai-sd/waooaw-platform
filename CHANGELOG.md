@@ -8,6 +8,28 @@ types: `feat` | `fix` | `constitutional` | `cct` | `chore` | `refactor` | `secur
 
 ---
 
+## [1.23.0] — 2026-07-31 (GEOM G-1→G-5 Pipeline — WBE WC-027→031 + WC-027 Activated)
+
+### Institutional Records (Goal Orchestrator)
+- **GOAL-WC027** `goals/GOAL-WC027-markup-engine.md` — GEOM G-1→G-7, 3 spec gaps resolved (markup_thread_catalog non-existent → bundle_profiles; validate_price signature; minimum_compliant_price_paise)
+- **GOAL-WC028** `goals/GOAL-WC028-meter-alert-engine.md` — GEOM G-1→G-7, 6 spec gaps resolved (amount_paise; meter_alert_log DDL in migration; WARN_10 at 8% remaining; pct_consumed formula)
+- **GOAL-WC029** `goals/GOAL-WC029-procurement-ledger.md` — GEOM G-1→G-7, 8 spec gaps resolved (provider_account_id UUID FK; FA format; cost_paise already INR paise; ProviderAccount phantom columns)
+- **GOAL-WC030** `goals/GOAL-WC030-reconciliation-engine.md` — GEOM G-1→G-7, 6 spec gaps resolved (self-audit formula; clear_halt() no args; cross-sprint wallet/service.py reserve() billing halt guard)
+- **GOAL-WC031** `goals/GOAL-WC031-trial-promotions.md` — GEOM G-1→G-7, 9 spec gaps resolved (phone_verified gate; direct wallet_buckets insert; settings.TRIAL_FREE_UNITS; DB-then-Redis; Temporal caller; credit_referrer chain)
+
+### Work Contracts (SA-corrected)
+- `work-contracts/WC-027` through `WC-031` — all task tables corrected per EA gap analysis
+- `pmo/BLUEPRINT-PLAN-WBE-GOAL005.md` — Phases 1-5 annotated as GO-validated
+
+### DB Migrations
+- `infrastructure/postgres/init/12-billing-engine.sql` — `meter_alert_log` table (WC-028 SA amendment)
+- `infrastructure/postgres/init/13-customer-acquisition.sql` — GOAL-005 tables (trial_allocations, coupon_codes, referral_records)
+
+### Sprint Activation
+- WC-027 Markup Engine: `autonomous_halt: false` — READY for CI workflow dispatch
+
+---
+
 ## [1.22.0] — 2026-07-30 (Runner Package Extraction + Prompt Caching)
 
 ### Refactored

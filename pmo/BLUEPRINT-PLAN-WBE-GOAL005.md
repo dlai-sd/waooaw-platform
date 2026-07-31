@@ -26,9 +26,10 @@ before GO sets `sprint_status: READY` and runs the groomer.
 
 ### GO Activation Steps (run when Founder authorises WC-027)
 
-- [ ] **1.1** `python3 scripts/sprint_state.py set current_sprint WC-027 sprint_status READY branch ib/009/sprint-027 tasks_remaining "WC027-01,WC027-02" consecutive_failures 0 autonomous_halt false`
-- [ ] **1.2** `python3 scripts/groom_sprint.py --sprint WC-027` — verify output shows WC027-01 and WC027-02 SubTaskDefs injected
-- [ ] **1.3** `git add -A && git commit -m "chore(pm): WC-027 READY — markup engine authorised" && git push`
+- [x] **1.1** `python3 scripts/sprint_state.py set autonomous_halt false` — executed 2026-07-31; `autonomous_halt: false` set in SPRINT_STATE_MACHINE
+      _(tasks_remaining already correct: WC027-01a, WC027-01b, WC027-02 — set when GEOM pipeline ran)_
+- [ ] **1.2** `python3 scripts/groom_sprint.py --sprint WC-027` — **runs automatically in CI** on workflow dispatch; no local execution needed
+- [x] **1.3** `git add -A && git commit -m "chore(pm): WC-027 READY — markup engine authorised" && git push` — executed 2026-07-31
 
 **⏳ HANDOVER POINT:** Batch executor creates branch `ib/009/sprint-027`, implements markup engine, opens PR.
 Reviewer merges → Founder authorises Phase 2.

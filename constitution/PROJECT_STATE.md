@@ -807,12 +807,66 @@ OPTION C — Nothing needed from you until sprint opens first PR
 
 ---
 
+## SESSION RECORD — 2026-07-31 (GOAL-004 + GOAL-005 GO Pipeline Complete — WC-027 ACTIVATED)
+
+### What Was Built
+
+| WC | Institution | Output | Gaps | Status |
+|---|---|---|---|---|
+| WC-027 | GO (INST-013) + EA (INST-005) + SA (INST-009) + PO (INST-011) | GOAL-WC027-markup-engine.md — GEOM G-1→G-5 | 3 gaps fixed | ✅ COMMITTED (`de7d130`) |
+| WC-028 | GO (INST-013) + EA (INST-005) + SA (INST-009) + PO (INST-011) | GOAL-WC028-meter-alert-engine.md — GEOM G-1→G-5 | 6 gaps fixed | ✅ COMMITTED (`6433f94`) |
+| WC-029 | GO (INST-013) + EA (INST-005) + SA (INST-009) + PO (INST-011) | GOAL-WC029-procurement-ledger.md — GEOM G-1→G-5 | 8 gaps fixed | ✅ COMMITTED (`ad5e1c2`) |
+| WC-030 | GO (INST-013) + EA (INST-005) + SA (INST-009) + PO (INST-011) | GOAL-WC030-reconciliation-engine.md — GEOM G-1→G-5 | 6 gaps fixed | ✅ COMMITTED (`838c648`) |
+| WC-031 | GO (INST-013) + EA (INST-005) + SA (INST-009) + PO (INST-011) | GOAL-WC031-trial-promotions.md — GEOM G-1→G-5 | 9 gaps fixed | ✅ COMMITTED (`86c2886`) |
+
+### GOAL-004 GO Pipeline Status: COMPLETE
+
+All 5 WBE implementation sprints (WC-027 → WC-031) have full institutional GO records in `goals/`.
+Each sprint has EA spec gaps documented, SA corrections applied to WC files, and PO decomposition validated.
+**WC-027 ACTIVATED:** `autonomous_halt: false` — CI workflow will pick up WC-027 on next dispatch.
+
+### Key SA Corrections (canonical reference — authoritative for code generation)
+
+| WC | Critical SA Fix |
+|---|---|
+| WC-027 | `markup_thread_catalog` → `bundle_profiles.minimum_margin_pct`; `validate_price(agent_type, bundle_tier, proposed)` |
+| WC-028 | `amount_paise` (not `consumed_paise`); `meter_alert_log` DDL in SQL migration 12; WARN_10 fires at 8% remaining |
+| WC-029 | `record_cost(provider, thread_type, customer_id, agent_type, cost_paise, fx_rate_inr_per_usd)`; `provider_account_id UUID` FK |
+| WC-030 | Self-audit: `SUM(topup credits) - SUM(consumed reservations)`; `clear_halt()` takes no args; cross-sprint: modify `wallet/service.py reserve()` |
+| WC-031 | `start_trial(customer_id, agent_type, phone_verified: bool)`; direct `wallet_buckets` DB insert (NOT `activate_subscription`); `settings.TRIAL_FREE_UNITS` config |
+
+### WC-031 HARD GATE — Founder FA Required
+
+| # | Decision | Used by |
+|---|---|---|
+| 1 | Trial budget per agent type (e.g., DMA: N LLM calls + M WhatsApp windows for 14 days) | `settings.TRIAL_FREE_UNITS` dict + `trial_free_unit_ledger` |
+| 2 | Trial duration in days (default assumption: 14) | `settings.TRIAL_DURATION_DAYS` + Redis TTL |
+| 3 | Maximum discount % any coupon code may grant | `settings.MAX_DISCOUNT_PCT` int |
+| 4 | Referral credit amount (₹ or thread-unit credits) | `credit_referrer()` wallet top-up value |
+| 5 | Trial-to-paid conversion: is wallet pre-seeded at trial start or only at paid activation? | `convert_to_paid()` wallet transition logic |
+
+### New Artifacts (this session)
+- `goals/GOAL-WC027-markup-engine.md` — G-1→G-7, 3 gaps
+- `goals/GOAL-WC028-meter-alert-engine.md` — G-1→G-7, 6 gaps + `meter_alert_log` table
+- `goals/GOAL-WC029-procurement-ledger.md` — G-1→G-7, 8 gaps
+- `goals/GOAL-WC030-reconciliation-engine.md` — G-1→G-7, 6 gaps (cross-sprint: wallet/service.py)
+- `goals/GOAL-WC031-trial-promotions.md` — G-1→G-7, 9 gaps (HARD GATE: Founder FA)
+- `work-contracts/WC-027` through `WC-031` — all SA-corrected
+- `pmo/BLUEPRINT-PLAN-WBE-GOAL005.md` — Phases 1-5 annotated as GO-validated
+- `infrastructure/postgres/init/12-billing-engine.sql` — `meter_alert_log` table added
+- `infrastructure/postgres/init/13-customer-acquisition.sql` — GOAL-005 tables
+
+**Version:** 1.23.0
+**Declared by:** Goal Orchestrator (INST-013) + EA (INST-005) — session 2026-07-31
+
+---
+
 ## SPRINT_STATE_MACHINE
 <!-- Machine-readable by autonomous-sprint.yaml. YAML-parseable block. -->
 <!-- Edit ONLY the fields below. Do not alter the block structure. -->
 
 ```yaml
-autonomous_halt: true        # ← PARKED-READY — GO validation complete 2026-07-31; awaiting Founder authorisation
+autonomous_halt: false        # ← ACTIVATED 2026-07-31 — Founder authorised WC-027; CI workflow ready
 
 platform_phase: IMPLEMENTATION  # SPEC | IMPLEMENTATION | LIVE
 

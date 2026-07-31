@@ -3,8 +3,44 @@
 **Authority:** Solution Architect (INST-005) — GOAL-004 D-07
 **Architecture Decision:** ADR-034 (WAOOAW Billing Engine)
 **Constitutional Basis:** C-088, C-089, C-090, C-091, C-038, C-049, C-051
-**Status:** APPROVED — 2026-07-30 | **Amendment 1:** 2026-07-31 (threshold ladder + customer acquisition placement)
+**Status:** APPROVED — 2026-07-30 | **Amendment 1:** 2026-07-31 (threshold ladder + customer acquisition placement) | **Amendment 2:** 2026-07-31 (GO validation complete — SA-corrected API contracts)
 **Service:** `src/billing-engine/` | Port: 8140 | Language: Python 3.12 + FastAPI
+
+---
+
+## Amendment 2 — SA-Corrected API Contracts (2026-07-31)
+
+**Source:** GEOM G-5 EA gap analysis + SA corrections across WC-027→WC-031. These are the authoritative contract corrections for code generation. Full records in `goals/GOAL-WC027` through `goals/GOAL-WC031`.
+
+| Sub-component | Corrected Contract | Old (incorrect) |
+|---|---|---|
+| **Markup Engine (WC-027)** | `validate_price(agent_type, bundle_tier, proposed_price_paise) -> ValidationResult` | `validate_margin()` — wrong name + signature |
+| **Markup Engine (WC-027)** | `minimum_compliant_price_paise` in DoD + HTTP 422 response body | field missing from original spec |
+| **Markup Engine (WC-027)** | Reference `bundle_profiles.minimum_margin_pct` for cost floor | `markup_thread_catalog` table — does not exist in DB schema |
+| **Meter Engine (WC-028)** | `record_usage(..., amount_paise: int, ...)` | `consumed_paise` — mismatches skeleton `IMeterService` |
+| **Meter Engine (WC-028)** | `meter_alert_log` DDL in `12-billing-engine.sql` migration | DDL in service startup — ADR-011 violation |
+| **Meter Engine (WC-028)** | WARN_10 fires when `pct_remaining ≤ 8%` (not 15%) | off-by-one threshold error |
+| **Procurement (WC-029)** | `record_cost(provider, thread_type, customer_id, agent_type, cost_paise, fx_rate_inr_per_usd)` | `cost_paise = cost_usd × fx_rate × 100` — incorrect; `cost_paise` is already INR paise |
+| **Procurement (WC-029)** | `PlatformCostLedgerEntry` uses `provider_account_id UUID` FK → `provider_accounts` | `provider_name VARCHAR` — no FK, orphan string |
+| **Procurement (WC-029)** | `ProviderAccount` ORM has no `daily_burn_rate_paise` or `last_fa_level_triggered` columns | phantom columns — not in DB schema |
+| **Reconciliation (WC-030)** | `expected = SUM(topup_orders credits) - SUM(consumed reservations)` | formula omitted top-up credits → always negative |
+| **Reconciliation (WC-030)** | `clear_halt()` — no arguments | `clear_halt(audit_id)` — no `audit_log` table in DB |
+| **Reconciliation (WC-030)** | WC030-01b scope: modify `wallet/service.py reserve()` with Redis halt guard (`wbe:billing_halted`) | halt guard omitted from task scope entirely |
+| **Trial (WC-031)** | `start_trial(customer_id, agent_type, phone_verified: bool)` — C-019 gate | missing `phone_verified` param |
+| **Trial (WC-031)** | Direct `wallet_buckets` DB insert (NOT `WalletService.activate_subscription`) | `activate_subscription` requires Razorpay params — TypeError on trial start |
+| **Trial (WC-031)** | Free unit caps from `settings.TRIAL_FREE_UNITS[agent_type]` env var dict | hardcoded caps — violates Founder FA authority |
+| **Trial (WC-031)** | DB transaction commits first; Redis `wbe:customer:{id}:mode=TRIAL` set after commit | "atomic DB + Redis" — impossible; Redis is not transactional |
+| **Promotions (WC-031)** | `validate_coupon` checks `coupon.discount_pct <= settings.MAX_DISCOUNT_PCT` | no cap enforcement specified |
+| **Promotions (WC-031)** | `apply_discount` calls `credit_referrer` internally when referral PENDING | call chain omitted entirely |
+
+### Redis Key Contracts (authoritative)
+
+| Key | Set by | TTL | Cleared by |
+|---|---|---|---|
+| `wbe:billing_halted` | `set_halt()` in reconciliation | None (permanent until cleared) | `clear_halt()` after audit resolves |
+| `wbe:audit_in_progress:{YYYY-MM-DD}` | reconciliation scheduler | 4 hours | automatic TTL expiry |
+| `wbe:customer:{customer_id}:mode` | `start_trial()` | `(expires_at - now()).total_seconds()` | automatic TTL + `check_expiry()` DEL |
+| `wbe:customer:{id}:balance:{bucket_type}` | `reserve()` / `release()` | 30 seconds | automatic TTL |
 
 ---
 
