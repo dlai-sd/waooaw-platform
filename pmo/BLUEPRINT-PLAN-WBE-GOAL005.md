@@ -93,10 +93,11 @@ After WC-030 merges: WBE core complete. Advance to Phase 5.
 
 **Prerequisite:** WC-030 PR merged (full WBE core complete)
 **Prerequisite (hard gate):** Founder FA in `security/FOUNDER-ACTIONS.md` with trial budget + discount caps
-**WC file:** `work-contracts/WC-031-goal005-wbe-trial-promotions.md` ✅ created
+**WC file:** `work-contracts/WC-031-goal005-wbe-trial-promotions.md` ✅ created + GO-validated (2026-07-31)
+**GO record:** `goals/GOAL-WC031-trial-promotions.md` ✅ — G-1→G-5 complete, 9 spec gaps fixed
 **Spec doc:** `architecture/reference/billing/customer-acquisition-spec.md` ✅ created
 **DB migration:** `infrastructure/postgres/init/13-customer-acquisition.sql` ✅ created
-**State:** PARKED — blocked on Founder pricing FA (see spec doc §Founder Action Gate)
+**State:** PARKED — HARD BLOCKED on Founder FA (5 pricing decisions required — see GO record G-7)
 
 ### Why this is complex — cross-module state map
 
