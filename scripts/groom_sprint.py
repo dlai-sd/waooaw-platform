@@ -306,14 +306,36 @@ def _normalize_subtask_id(literal: str, task_id: str, suffix: str) -> str:
     return literal
 
 
-def _extract_output_files(subtaskdef_literal: str) -> list[str]:
-    """Extract implementation .py paths from output_files in a SubTaskDef literal."""
+def _is_test_task(task: dict) -> bool:
+    """Return True when ALL output files declared in the scope live under tests/.
+
+    Test tasks (e.g. WC027-02) write only pytest files, not implementation modules.
+    They need a different scaffold prompt and service_dir="" so that paths like
+    'tests/billing-engine/test_markup.py' resolve relative to the repo root.
+    """
+    scope = task.get("scope", "")
+    # Collect all file paths mentioned at the start of the scope (before " — ")
+    # Format: "tests/billing-engine/test_markup.py — description..."
+    paths = re.findall(r"(?:src|tests)/[\w/._-]+\.py", scope)
+    if not paths:
+        # No explicit paths — fall back to checking if scope mentions tests/ first
+        return scope.lstrip().startswith("tests/")
+    return all(p.startswith("tests/") for p in paths)
+
+
+def _extract_output_files(subtaskdef_literal: str, include_tests: bool = False) -> list[str]:
+    """Extract .py paths from output_files in a SubTaskDef literal.
+
+    By default, filters out tests/ paths so the caller (polish/test chain builder)
+    receives only implementation files.  Pass include_tests=True for test tasks where
+    the scaffold itself produces test files that the polish pass must annotate.
+    """
     m = re.search(r'output_files\s*=\s*\[(.*?)\]', subtaskdef_literal, re.DOTALL)
     if not m:
         return []
     return [
         p for p in re.findall(r'["\']([^"\']+\.py)["\']', m.group(1))
-        if not p.startswith("tests/") and "skeleton" not in p
+        if (include_tests or not p.startswith("tests/")) and "skeleton" not in p
     ]
 
 
@@ -325,8 +347,14 @@ def _generate_scaffold_subtaskdef(
     wc_filename: str,
     skeleton: str,
     api_key: str,
+    is_test: bool = False,
 ) -> str | None:
-    """Returns bare SubTaskDef(...) literal (no dict wrapper). compile_gate='py_compile'."""
+    """Returns bare SubTaskDef(...) literal (no dict wrapper).
+
+    For implementation tasks (is_test=False): compile_gate='py_compile', service_dir as given.
+    For test tasks (is_test=True): compile_gate='ruff', service_dir='',
+    and uses _TEST_SYSTEM_PROMPT so the LLM generates pytest code, not business logic.
+    """
     task_id = task["task_id"]
     depends_on_str = f'"{prior_subtask_id}"' if prior_subtask_id else ""
     model_hint = task.get("model_hint", "auto")
@@ -334,7 +362,58 @@ def _generate_scaffold_subtaskdef(
         model_hint = "auto"
     max_tokens = 8000 if model_hint == "reasoning" else 4000
 
-    prompt = f"""Generate a SCAFFOLD SubTaskDef for this WC task.
+    if is_test:
+        # Test scaffold: LLM writes pytest file to tests/ directory.
+        # service_dir="" so output_files paths like 'tests/billing-engine/test_x.py'
+        # resolve from the repo root instead of being prefixed with src/...
+        prompt = f"""Generate a SCAFFOLD SubTaskDef for this WC TEST task.
+
+Task ID: {task_id}
+Scope: {task['scope']}
+model_hint: {model_hint}
+Stack: {stack}
+Service dir: "" (repo root — test files live under tests/, not src/)
+Prior subtask id (depends_on): {prior_subtask_id or 'none — first task'}
+WC file: {wc_filename}
+
+EA SKELETON (frozen — for understanding interfaces to test):
+{skeleton[:4000]}
+
+Wrap output in one XML file block (pipeline FORMAT gate requirement):
+<file path="scripts/autonomous_sprint_runner.py">
+SubTaskDef(
+    id="{task_id}a",
+    description="<one sentence starting with 'Write pytest tests for ...'>",
+    type="llm",
+    depends_on=[{depends_on_str}],
+    compile_gate="ruff",
+    service_dir="",
+    wc_task_id="{task_id}",
+    stack="{stack}",
+    output_files=[
+        "<test file path, e.g. tests/billing-engine/test_markup.py>",
+    ],
+    inject_source_files=[
+        "<implementation file from prior scaffold, e.g. src/billing-engine/markup/models.py>",
+    ],
+    spec_sections={{
+        "work-contracts/{wc_filename}": "{task_id}",
+    }},
+    constitutional_check=(
+        "TEST SCAFFOLD — write pytest file to the tests/ directory.\\n"
+        "Use f-strings only — never % string formatting.\\n"
+        "Cover happy path, error cases, and constitutional invariants from scope.\\n"
+        "Use pytest-asyncio for async tests. Mock DB/Redis with pytest fixtures.\\n"
+        "Tests are ANN-exempt (pyproject.toml per-file-ignores) — annotations optional."
+    ),
+    model_hint="{model_hint}",
+    max_tokens={max_tokens},
+)
+</file>
+"""
+        system_prompt = _TEST_SYSTEM_PROMPT
+    else:
+        prompt = f"""Generate a SCAFFOLD SubTaskDef for this WC task.
 
 Task ID: {task_id}
 Scope: {task['scope']}
@@ -378,7 +457,9 @@ SubTaskDef(
 )
 </file>
 """
-    result = _llm_call(prompt, _SCAFFOLD_SYSTEM_PROMPT, api_key)
+        system_prompt = _SCAFFOLD_SYSTEM_PROMPT
+
+    result = _llm_call(prompt, system_prompt, api_key)
     return _strip_llm_fences(result) if result else None
 
 
@@ -422,6 +503,53 @@ def _generate_polish_subtaskdef(
     ),
     model_hint="auto",
     max_tokens=3000,
+)'''
+
+
+def _generate_pytest_run_subtaskdef(
+    task_id: str,
+    test_output_files: list[str],
+    wc_filename: str,
+    stack: str,
+    polish_id: str = "",
+) -> str:
+    """Fully-templated 'c' subtask for TEST tasks: run pytest on the produced test file.
+
+    No LLM call needed — the test file was generated in the 'a' subtask.  This
+    subtask verifies that the tests execute without import/collection errors.
+    compile_gate='pytest' runs the test file directly.
+    """
+    depends_on_id = polish_id or f"{task_id}b"
+    # pytest service_dir: the directory containing the test files
+    # For tests/billing-engine/test_markup.py → tests/billing-engine
+    test_dir = str(Path(test_output_files[0]).parent) if test_output_files else "tests"
+    files_str = "\n        ".join(f'"{f}",' for f in test_output_files)
+    inject_str = "\n        ".join(f'"{f}",' for f in test_output_files)
+    return f'''SubTaskDef(
+    id="{task_id}c",
+    description="Run pytest on {test_dir} to verify all tests pass",
+    type="llm",
+    depends_on=["{depends_on_id}"],
+    compile_gate="pytest",
+    service_dir="{test_dir}",
+    wc_task_id="{task_id}",
+    stack="{stack}",
+    output_files=[
+        {files_str}
+    ],
+    inject_source_files=[
+        {inject_str}
+    ],
+    spec_sections={{
+        "work-contracts/{wc_filename}": "{task_id}",
+    }},
+    constitutional_check=(
+        "PYTEST RUN — execute the test file and confirm all tests pass.\\n"
+        "If tests fail due to missing fixtures or imports, fix the test file.\\n"
+        "Do NOT modify the implementation under test."
+    ),
+    model_hint="auto",
+    max_tokens=2000,
 )'''
 
 
@@ -507,11 +635,19 @@ def _generate_subtask_chain(
     stack, service_dir = _SERVICE_MAP.get(sprint_prefix, ("python", "src/billing-engine"))
     task_id = task["task_id"]
 
+    # Test-task detection: when ALL declared output files live under tests/, the task
+    # IS the test task (e.g. WC027-02).  Use a test-appropriate scaffold prompt and
+    # set service_dir="" so paths like 'tests/billing-engine/test_markup.py' resolve
+    # relative to the repo root instead of being prefixed with the service dir.
+    is_test = _is_test_task(task)
+    if is_test:
+        service_dir = ""  # test files are under tests/, not under src/...
+
     # Pass 1: scaffold (LLM) — returns bare SubTaskDef(...) literal
     scaffold_literal = _generate_scaffold_subtaskdef(
         task=task, stack=stack, service_dir=service_dir,
         prior_subtask_id=prior_subtask_id, wc_filename=wc_filename,
-        skeleton=skeleton, api_key=api_key,
+        skeleton=skeleton, api_key=api_key, is_test=is_test,
     )
     if not scaffold_literal:
         return None
@@ -521,8 +657,10 @@ def _generate_subtask_chain(
     scaffold_literal = _normalize_subtask_id(scaffold_literal, task_id, "a")
     scaffold_id = f"{task_id}a"  # always canonical after normalisation above
 
-    # Extract output_files from scaffold literal to feed polish and test
-    scaffold_output_files = _extract_output_files(scaffold_literal)
+    # Extract output_files from scaffold literal to feed polish and test.
+    # For test tasks, include_tests=True so that tests/ paths (which are filtered
+    # by default to avoid treating test files as impl files) are included.
+    scaffold_output_files = _extract_output_files(scaffold_literal, include_tests=is_test)
 
     if not scaffold_output_files:
         print(f"  ❌ {task_id}: scaffold output_files not parseable — cannot build polish/test chain")
@@ -535,14 +673,22 @@ def _generate_subtask_chain(
         scaffold_id=scaffold_id,
     )
 
-    # Pass 3: test (LLM) — returns bare SubTaskDef(...) literal
-    test_literal = _generate_test_subtaskdef(
-        task=task, scaffold_output_files=scaffold_output_files,
-        service_dir=service_dir, wc_filename=wc_filename, stack=stack, api_key=api_key,
-    )
-    if not test_literal:
-        print(f"  ❌ {task_id}: test SubTaskDef LLM call failed — cannot build complete chain")
-        return None
+    # Pass 3:
+    #   - For test tasks: fully-templated pytest run subtask (no LLM call).
+    #   - For impl tasks: LLM-generated test subtask.
+    if is_test:
+        test_literal = _generate_pytest_run_subtaskdef(
+            task_id=task_id, test_output_files=scaffold_output_files,
+            wc_filename=wc_filename, stack=stack, polish_id=f"{task_id}b",
+        )
+    else:
+        test_literal = _generate_test_subtaskdef(
+            task=task, scaffold_output_files=scaffold_output_files,
+            service_dir=service_dir, wc_filename=wc_filename, stack=stack, api_key=api_key,
+        )
+        if not test_literal:
+            print(f"  ❌ {task_id}: test SubTaskDef LLM call failed — cannot build complete chain")
+            return None
 
     # Enforce canonical test id — same guard as scaffold above
     test_literal = _normalize_subtask_id(test_literal, task_id, "c")

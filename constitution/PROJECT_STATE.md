@@ -882,7 +882,11 @@ branch: ib/009/sprint-027
 last_attempt_utc: 2026-07-31T10:46:11.446227+00:00
 >>>>>>> origin/main
 last_attempt_result:PARTIAL
+<<<<<<< HEAD
 consecutive_failures: 3
+=======
+consecutive_failures: 0
+>>>>>>> origin/main
 consecutive_infra_failures: 0
 tasks_done:
   - WC027-01b

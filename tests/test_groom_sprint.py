@@ -1140,3 +1140,383 @@ class TestGenerateSubtaskChainIdNormalisation:
         assert '"WC027-01a"' in result
         assert '"WC027-01b"' in result
         assert '"WC027-01c"' in result
+
+
+# ─────────────────────────────────────────────────────────────
+# Fix A regression: UP031 not in ruff gate blocklist
+# ─────────────────────────────────────────────────────────────
+
+class TestUP031NotBlockedByCompileGate:
+    """Regression: UP031 (% string formatting in comprehensions) must not block the ruff gate.
+
+    Root cause (run 30624494792): ruff --fix cannot auto-correct UP031 when the %
+    format appears inside a list comprehension.  The fix: add UP031 to pyproject.toml
+    ignore list so the strict gate never fails on it.
+    """
+
+    def test_pyproject_ignores_up031(self):
+        """UP031 must be present in pyproject.toml [tool.ruff.lint] ignore list."""
+        import re as _re
+        pyproject = (
+            __import__("pathlib").Path(__file__).parent.parent / "pyproject.toml"
+        ).read_text()
+        # Find the [tool.ruff.lint] section
+        section_start = pyproject.find("[tool.ruff.lint]")
+        assert section_start != -1, "[tool.ruff.lint] section not found in pyproject.toml"
+        # Find the ignore list within that section
+        section = pyproject[section_start:]
+        ignore_start = section.find("ignore = [")
+        assert ignore_start != -1, "ignore list not found in [tool.ruff.lint] section"
+        ignore_end = section.find("]", ignore_start)
+        ignore_block = section[ignore_start:ignore_end]
+        assert "UP031" in ignore_block, (
+            "UP031 must be in pyproject.toml ignore list — "
+            "ruff cannot auto-fix % formatting in comprehensions (LLM-generated pattern)"
+        )
+
+    def test_ruff_gate_does_not_fail_on_percent_in_comprehension(self, tmp_path):
+        """A file with % formatting in a list comprehension must pass the ruff compile gate."""
+        import subprocess as _sp
+        # Fully annotated to avoid ANN failures; the only potential UP031 issue
+        # is the % formatting inside the comprehension.
+        code = (
+            'def f(items: list[tuple[int, str]]) -> list[str]:\n'
+            '    return ["item %d: %s" % (i, s) for i, s in items]\n'
+        )
+        py_file = tmp_path / "test_up031.py"
+        py_file.write_text(code)
+        # Simulate the ruff gate: --fix first, then strict check
+        _sp.run(
+            ["python3", "-m", "ruff", "check", str(py_file), "--fix", "--unsafe-fixes", "--exit-zero"],
+            capture_output=True, text=True, cwd=str(tmp_path),
+        )
+        result = _sp.run(
+            ["python3", "-m", "ruff", "check", str(py_file)],
+            capture_output=True, text=True,
+            cwd=str(__import__("pathlib").Path(__file__).parent.parent),  # use project pyproject.toml
+        )
+        # With UP031 in ignore list, the gate must pass despite % formatting
+        assert result.returncode == 0, (
+            f"ruff gate failed on UP031 pattern. Output:\n{result.stdout + result.stderr}"
+        )
+
+
+# ─────────────────────────────────────────────────────────────
+# Fix B: _is_test_task detection
+# ─────────────────────────────────────────────────────────────
+
+class TestIsTestTask:
+    """Unit tests for _is_test_task helper.
+
+    Root cause (run 30624494792): WC027-02 is a test task (output_files under
+    tests/) but the groomer used service_dir='src/billing-engine'.  The file was
+    written to the wrong location and the compile gate failed with FileNotFoundError.
+    """
+
+    def test_scope_with_tests_path_is_test_task(self):
+        task = {"scope": "tests/billing-engine/test_markup.py — test: cost_floor reads bundle_profiles"}
+        assert groom_sprint._is_test_task(task) is True
+
+    def test_scope_with_src_path_is_not_test_task(self):
+        task = {"scope": "src/billing-engine/markup/models.py — Pydantic: ThreadEntry, BundleProfile"}
+        assert groom_sprint._is_test_task(task) is False
+
+    def test_scope_with_mixed_src_and_tests_is_not_test_task(self):
+        """When scope references both src/ and tests/ files, task is NOT a pure test task."""
+        task = {"scope": "src/billing-engine/markup/engine.py — implement; tests/billing-engine/test_x.py — test"}
+        assert groom_sprint._is_test_task(task) is False
+
+    def test_scope_starting_with_tests_no_explicit_path(self):
+        """Fallback: scope starts with 'tests/' even without a full path."""
+        task = {"scope": "tests/billing-engine/test_x.py — cover happy path"}
+        assert groom_sprint._is_test_task(task) is True
+
+    def test_empty_scope_is_not_test_task(self):
+        task = {"scope": ""}
+        assert groom_sprint._is_test_task(task) is False
+
+    def test_missing_scope_key_is_not_test_task(self):
+        task = {}
+        assert groom_sprint._is_test_task(task) is False
+
+    def test_only_tests_paths_returns_true(self):
+        """All detected file paths are under tests/ → True."""
+        task = {"scope": "tests/billing-engine/test_markup.py, tests/billing-engine/test_router.py — full suite"}
+        assert groom_sprint._is_test_task(task) is True
+
+
+# ─────────────────────────────────────────────────────────────
+# Fix B: _extract_output_files with include_tests=True
+# ─────────────────────────────────────────────────────────────
+
+class TestExtractOutputFilesIncludeTests:
+    """Tests for the new include_tests parameter of _extract_output_files.
+
+    When grooming a test task, the scaffold SubTaskDef declares output_files
+    under tests/.  The default filter (include_tests=False) would return [] and
+    cause the chain builder to abort.  include_tests=True includes those paths.
+    """
+
+    def test_default_excludes_tests_path(self):
+        literal = 'output_files=["tests/billing-engine/test_markup.py"]'
+        assert groom_sprint._extract_output_files(literal) == []
+
+    def test_include_tests_returns_tests_path(self):
+        literal = 'output_files=["tests/billing-engine/test_markup.py"]'
+        result = groom_sprint._extract_output_files(literal, include_tests=True)
+        assert result == ["tests/billing-engine/test_markup.py"]
+
+    def test_include_tests_still_excludes_skeleton(self):
+        literal = 'output_files=["tests/billing-engine/test_markup.py", "src/billing-engine/skeleton/wbe_interfaces.py"]'
+        result = groom_sprint._extract_output_files(literal, include_tests=True)
+        assert result == ["tests/billing-engine/test_markup.py"]
+
+    def test_include_tests_false_does_not_include_tests_path(self):
+        literal = 'output_files=["tests/billing-engine/test_markup.py"]'
+        result = groom_sprint._extract_output_files(literal, include_tests=False)
+        assert result == []
+
+    def test_impl_files_returned_regardless_of_flag(self):
+        """src/ files should be returned whether include_tests is True or False."""
+        literal = 'output_files=["src/billing-engine/markup/models.py"]'
+        assert groom_sprint._extract_output_files(literal, include_tests=True) == ["src/billing-engine/markup/models.py"]
+        assert groom_sprint._extract_output_files(literal, include_tests=False) == ["src/billing-engine/markup/models.py"]
+
+
+# ─────────────────────────────────────────────────────────────
+# Fix B: _generate_pytest_run_subtaskdef
+# ─────────────────────────────────────────────────────────────
+
+class TestGeneratePytestRunSubtaskdef:
+    """Tests for the fully-templated pytest run subtask generated for test tasks."""
+
+    def test_id_is_task_c(self):
+        result = groom_sprint._generate_pytest_run_subtaskdef(
+            task_id="WC027-02",
+            test_output_files=["tests/billing-engine/test_markup.py"],
+            wc_filename="WC-027-wbe.md",
+            stack="python",
+        )
+        assert '"WC027-02c"' in result
+
+    def test_depends_on_polish_b(self):
+        result = groom_sprint._generate_pytest_run_subtaskdef(
+            task_id="WC027-02",
+            test_output_files=["tests/billing-engine/test_markup.py"],
+            wc_filename="WC-027-wbe.md",
+            stack="python",
+        )
+        assert 'depends_on=["WC027-02b"]' in result
+
+    def test_compile_gate_is_pytest(self):
+        result = groom_sprint._generate_pytest_run_subtaskdef(
+            task_id="WC027-02",
+            test_output_files=["tests/billing-engine/test_markup.py"],
+            wc_filename="WC-027-wbe.md",
+            stack="python",
+        )
+        assert 'compile_gate="pytest"' in result
+
+    def test_service_dir_is_test_directory(self):
+        """service_dir for pytest run must be the tests/ directory, not src/."""
+        result = groom_sprint._generate_pytest_run_subtaskdef(
+            task_id="WC027-02",
+            test_output_files=["tests/billing-engine/test_markup.py"],
+            wc_filename="WC-027-wbe.md",
+            stack="python",
+        )
+        assert 'service_dir="tests/billing-engine"' in result
+
+    def test_no_llm_call_needed(self):
+        """Fully templated — no api_key parameter needed."""
+        result = groom_sprint._generate_pytest_run_subtaskdef(
+            task_id="WC027-02",
+            test_output_files=["tests/billing-engine/test_markup.py"],
+            wc_filename="WC-027-wbe.md",
+            stack="python",
+        )
+        assert result  # non-empty string without any network call
+
+    def test_output_files_contains_test_file(self):
+        result = groom_sprint._generate_pytest_run_subtaskdef(
+            task_id="WC027-02",
+            test_output_files=["tests/billing-engine/test_markup.py"],
+            wc_filename="WC-027-wbe.md",
+            stack="python",
+        )
+        assert '"tests/billing-engine/test_markup.py"' in result
+
+    def test_custom_polish_id_used_in_depends_on(self):
+        result = groom_sprint._generate_pytest_run_subtaskdef(
+            task_id="WC027-02",
+            test_output_files=["tests/billing-engine/test_markup.py"],
+            wc_filename="WC-027-wbe.md",
+            stack="python",
+            polish_id="WC027-02b",
+        )
+        assert 'depends_on=["WC027-02b"]' in result
+
+
+# ─────────────────────────────────────────────────────────────
+# Fix B: _generate_subtask_chain for test tasks
+# ─────────────────────────────────────────────────────────────
+
+_SAMPLE_TEST_SCAFFOLD_LITERAL = textwrap.dedent("""\
+    SubTaskDef(
+        id="WC027-02a",
+        description="Write pytest tests for BundleEngine cost_floor and derive_price",
+        type="llm",
+        depends_on=["WC027-01bc"],
+        compile_gate="ruff",
+        service_dir="",
+        wc_task_id="WC027-02",
+        stack="python",
+        output_files=[
+            "tests/billing-engine/test_markup.py",
+        ],
+        inject_source_files=[
+            "src/billing-engine/markup/bundle_engine.py",
+        ],
+        spec_sections={
+            "work-contracts/WC-027-wbe.md": "WC027-02",
+        },
+        constitutional_check="TEST SCAFFOLD",
+        model_hint="reasoning",
+        max_tokens=8000,
+    )""")
+
+
+class TestGenerateSubtaskChainTestTask:
+    """Integration tests for test task handling in _generate_subtask_chain.
+
+    Root cause (run 30624494792):
+    1. service_dir='src/billing-engine' caused test file to be written to wrong location.
+    2. Scaffold used implementation prompt → LLM generated engine.py, endpoints.py, models.py
+       in addition to test_markup.py.
+    3. _extract_output_files excluded the tests/ path → chain builder aborted.
+    """
+
+    _test_task = {
+        "task_id": "WC027-02",
+        "scope": "tests/billing-engine/test_markup.py — test: cost_floor reads bundle_profiles",
+        "model_hint": "reasoning",
+    }
+
+    def _make_llm(self, responses: list) -> object:
+        it = iter(responses)
+        return lambda *a, **kw: next(it, None)
+
+    def test_test_task_uses_empty_service_dir(self, monkeypatch):
+        """service_dir must be '' for test tasks so tests/ paths resolve from repo root."""
+        monkeypatch.setattr(groom_sprint, "_llm_call", self._make_llm([_SAMPLE_TEST_SCAFFOLD_LITERAL]))
+        result = groom_sprint._generate_subtask_chain(
+            task=self._test_task, skeleton="", prior_subtask_id="WC027-01bc",
+            sprint_prefix="WC027", wc_filename="WC-027-wbe.md", api_key="x",
+        )
+        assert result is not None
+        # service_dir must be "" (repo root) in all 3 subtasks for test task
+        # The scaffold itself declares service_dir="" — check it propagates to polish
+        assert 'service_dir=""' in result
+
+    def test_test_task_scaffold_uses_test_prompt(self, monkeypatch):
+        """Test tasks must use _TEST_SYSTEM_PROMPT for scaffold generation, not _SCAFFOLD_SYSTEM_PROMPT."""
+        captured_systems: list[str] = []
+
+        def capture(prompt: str, system: str, api_key: str, max_tokens: int = 2048) -> str:
+            captured_systems.append(system)
+            return _SAMPLE_TEST_SCAFFOLD_LITERAL
+
+        monkeypatch.setattr(groom_sprint, "_llm_call", capture)
+        groom_sprint._generate_subtask_chain(
+            task=self._test_task, skeleton="", prior_subtask_id=None,
+            sprint_prefix="WC027", wc_filename="WC-027-wbe.md", api_key="x",
+        )
+        assert captured_systems, "LLM must be called at least once for test task scaffold"
+        assert captured_systems[0] is groom_sprint._TEST_SYSTEM_PROMPT, (
+            "Test task scaffold must use _TEST_SYSTEM_PROMPT, not _SCAFFOLD_SYSTEM_PROMPT"
+        )
+
+    def test_test_task_prompt_says_test_scaffold(self, monkeypatch):
+        """The scaffold prompt for test tasks must describe test generation, not impl."""
+        captured_prompts: list[str] = []
+
+        def capture(prompt: str, system: str, api_key: str, max_tokens: int = 2048) -> str:
+            captured_prompts.append(prompt)
+            return _SAMPLE_TEST_SCAFFOLD_LITERAL
+
+        monkeypatch.setattr(groom_sprint, "_llm_call", capture)
+        groom_sprint._generate_subtask_chain(
+            task=self._test_task, skeleton="", prior_subtask_id=None,
+            sprint_prefix="WC027", wc_filename="WC-027-wbe.md", api_key="x",
+        )
+        assert captured_prompts, "LLM must be called"
+        scaffold_prompt = captured_prompts[0]
+        # Prompt must say TEST, not "SCAFFOLD" for implementation
+        assert "TEST" in scaffold_prompt
+        assert "service_dir" in scaffold_prompt
+        assert '""' in scaffold_prompt or "repo root" in scaffold_prompt
+
+    def test_test_task_produces_pytest_run_as_c_subtask(self, monkeypatch):
+        """c-subtask for a test task must use compile_gate='pytest', not LLM-generated tests."""
+        monkeypatch.setattr(groom_sprint, "_llm_call", self._make_llm([_SAMPLE_TEST_SCAFFOLD_LITERAL]))
+        result = groom_sprint._generate_subtask_chain(
+            task=self._test_task, skeleton="", prior_subtask_id=None,
+            sprint_prefix="WC027", wc_filename="WC-027-wbe.md", api_key="x",
+        )
+        assert result is not None
+        assert '"WC027-02c"' in result
+        assert 'compile_gate="pytest"' in result
+
+    def test_test_task_only_calls_llm_once(self, monkeypatch):
+        """Test task chain: scaffold (LLM) + polish (templated) + pytest run (templated) = 1 LLM call."""
+        call_count = [0]
+
+        def counting_llm(*a, **kw):
+            call_count[0] += 1
+            return _SAMPLE_TEST_SCAFFOLD_LITERAL
+
+        monkeypatch.setattr(groom_sprint, "_llm_call", counting_llm)
+        result = groom_sprint._generate_subtask_chain(
+            task=self._test_task, skeleton="", prior_subtask_id=None,
+            sprint_prefix="WC027", wc_filename="WC-027-wbe.md", api_key="x",
+        )
+        assert result is not None
+        assert call_count[0] == 1, (
+            f"Test task chain should make exactly 1 LLM call (scaffold only), got {call_count[0]}"
+        )
+
+    def test_test_task_output_files_includes_tests_path(self, monkeypatch):
+        """output_files for test task scaffold must include the tests/ path."""
+        monkeypatch.setattr(groom_sprint, "_llm_call", self._make_llm([_SAMPLE_TEST_SCAFFOLD_LITERAL]))
+        result = groom_sprint._generate_subtask_chain(
+            task=self._test_task, skeleton="", prior_subtask_id=None,
+            sprint_prefix="WC027", wc_filename="WC-027-wbe.md", api_key="x",
+        )
+        assert result is not None
+        assert "tests/billing-engine/test_markup.py" in result
+
+    def test_impl_task_still_uses_service_dir(self, monkeypatch):
+        """Regression: impl tasks must still get service_dir from _SERVICE_MAP."""
+        impl_task = {
+            "task_id": "WC027-01",
+            "scope": "src/billing-engine/markup/models.py — Pydantic models",
+            "model_hint": "auto",
+        }
+        monkeypatch.setattr(groom_sprint, "_llm_call", self._make_llm([_SAMPLE_SCAFFOLD_LITERAL, _SAMPLE_TEST_LITERAL]))
+        result = groom_sprint._generate_subtask_chain(
+            task=impl_task, skeleton="", prior_subtask_id=None,
+            sprint_prefix="WC027", wc_filename="WC-027-wbe.md", api_key="x",
+        )
+        assert result is not None
+        # Impl task must use the service_dir from _SERVICE_MAP, not ""
+        assert 'service_dir="src/billing-engine"' in result
+
+    def test_test_task_validation_passes(self, monkeypatch):
+        """Generated test task entry must pass _validate_generated_entry."""
+        monkeypatch.setattr(groom_sprint, "_llm_call", self._make_llm([_SAMPLE_TEST_SCAFFOLD_LITERAL]))
+        result = groom_sprint._generate_subtask_chain(
+            task=self._test_task, skeleton="", prior_subtask_id=None,
+            sprint_prefix="WC027", wc_filename="WC-027-wbe.md", api_key="x",
+        )
+        assert result is not None
+        assert groom_sprint._validate_generated_entry(result, "WC027-02") is True

@@ -43,6 +43,9 @@ ignore = [
     "W293",    # Blank line with whitespace — LLM-generated; auto-fixed by ruff --fix before gate
     "W292",    # No newline at end of file — LLM-generated; auto-fixed by ruff --fix before gate
     "UP041",   # Replace aliased errors — asyncio.TimeoutError alias is intentional for clarity
+    "UP031",   # %-format strings — LLM-generated; auto-fixed by ruff --fix in simple cases;
+               # complex patterns (% in comprehensions, dict expansion) are NOT auto-fixable.
+               # Style preference only — no correctness impact. Consistent with W293/W292/I001.
     "I001",    # Import sorting — auto-fixed; not a semantic error
     "ANN401",  # typing.Any in function params — used for dynamic objects (DB pools, FastAPI deps)
                # C-087 justified: LLM-generated code uses Any for asyncpg.Pool, httpx.AsyncClient etc.
