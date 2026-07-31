@@ -100,8 +100,8 @@ TASK_HANDLERS = {
         "WC027-01a": {
         "subtasks": [
             SubTaskDef(
-                id="WC027-01a-scaffold",
-                description="Implement IMarkupEngine.derive_bundle_cost_floor(), validate_price() and BundleEngine data models with C-089 constitutional margin floor enforcement and C-059 audit logging.",
+                id="WC027-01aa",
+                description="Implement IMarkupEngine: cost_floor(), derive_price(), validate_price() with C-089 constitutional margin enforcement and C-059 audit logging.",
                 type="llm",
                 depends_on=[],
                 compile_gate="py_compile",
@@ -119,22 +119,15 @@ TASK_HANDLERS = {
                     "work-contracts/WC-027-wbe-s3-markup-engine.md": "WC027-01a",
                 },
                 constitutional_check=(
-                    "Implement IMarkupEngine.derive_bundle_cost_floor(agent_type: str, bundle_tier: str) → int:\n"
-                    "  - Read cost_floor_paise from bundle_profiles table — DO NOT recompute\n"
-                    "  - Return floor value in INR paise\n\n"
-                    "Implement IMarkupEngine.validate_price(agent_type: str, bundle_tier: str, proposed_price_paise: int) → PriceValidation:\n"
-                    "  - Fetch cost_floor_paise and minimum_margin_pct from bundle_profiles\n"
-                    "  - Calculate minimum_compliant_price_paise = floor / (1 - minimum_margin_pct/100)\n"
-                    "  - C-089: Raise BelowConstitutionalFloorError if proposed_price_paise < minimum_compliant_price_paise\n"
-                    "  - C-059: Write audit record to pricing_floor_log table on BOTH APPROVED and REJECTED outcomes\n"
-                    "  - Return PriceValidation with valid, cost_floor_paise, constitutional_minimum_margin_pct, below_floor, margin_pct fields\n\n"
-                    "Implement BundleEngine.derive_price(agent_type: str, bundle_tier: str, target_margin_pct: int | None = None) → int:\n"
-                    "  - If target_margin_pct is None, use bundle_profiles.minimum_margin_pct\n"
-                    "  - Apply formula: derived_price = cost_floor / (1 - margin/100) [margin-on-revenue]\n"
-                    "  - Return price in INR paise\n\n"
-                    "Create Pydantic models ThreadEntry, BundleProfile, PriceConfig, PriceValidationRequest, PriceDeriveRequest.\n"
-                    "Implement business logic. Type annotations optional here — polish pass adds them.\n"
-                    "Constitutional basis: C-089 (margin floor enforcement), C-059 (pricing audit log), C-088 (billing profile gate), C-048 (non-exploitation), C-051 (institutional transparency)."
+                    "Implement IMarkupEngine.derive_bundle_cost_floor(agent_type, bundle_tier) → int\n"
+                    "Implement IMarkupEngine.validate_price(agent_type, bundle_tier, proposed_price_paise) → PriceValidation\n"
+                    "Implement BundleEngine class with cost_floor(), derive_price(target_margin_pct=None), validate_price() methods.\n"
+                    "C-089: validate_price() MUST enforce minimum_margin_pct from bundle_profiles; raise BelowConstitutionalFloorError if proposed price violates floor.\n"
+                    "C-059: MUST write to pricing_floor_log table on BOTH APPROVED and REJECTED outcomes.\n"
+                    "derive_price() formula: floor / (1 - margin/100); use bundle_profiles.minimum_margin_pct if target_margin_pct is None.\n"
+                    "cost_floor() reads bundle_profiles.cost_floor_paise from database — do NOT recompute.\n"
+                    "PriceValidation response MUST include: outcome, cost_floor_paise, minimum_compliant_price_paise, proposed_price_paise.\n"
+                    "Type annotations optional in scaffold — polish pass adds them per ANN001."
                 ),
                 model_hint="reasoning",
                 max_tokens=8000,
@@ -172,10 +165,10 @@ TASK_HANDLERS = {
             SubTaskDef(
                 id="WC027-01ac",
                 description=(
-                    "Pytest suite for billing-engine markup models and BundleEngine: "
-                    "validates Pydantic schemas, cost_floor DB-read contract, "
-                    "margin-on-revenue derive_price formula, validate_price audit writes "
-                    "on both APPROVED and REJECTED outcomes (C-059), and all error paths."
+                    "Pytest suite covering BundleEngine.cost_floor, derive_price, and validate_price "
+                    "including the C-059 audit-log invariant (pricing_floor_log written on BOTH APPROVED "
+                    "and REJECTED), margin-on-revenue formula correctness, Pydantic model validation, "
+                    "and all error/edge cases."
                 ),
                 type="llm",
                 depends_on=["WC027-01ab"],
@@ -194,114 +187,80 @@ TASK_HANDLERS = {
                     "work-contracts/WC-027-wbe-s3-markup-engine.md": "WC027-01a",
                 },
                 constitutional_check=(
-                    "TEST PASS — write pytest tests against the provided implementation.\n"
+                    "TEST PASS — write pytest tests against the provided implementation files.\n"
                     "\n"
-                    "# ── PYDANTIC MODEL TESTS ──────────────────────────────────────────────\n"
-                    "# happy path:\n"
-                    "#   ThreadEntry: valid construction with all fields; assert field types.\n"
-                    "#   BundleProfile: valid cost_floor_paise (int >= 0), minimum_margin_pct\n"
-                    "#     (float 0–100); assert round-trip JSON serialisation is lossless.\n"
-                    "#   PriceConfig: valid nested BundleProfile list; assert lookup by key.\n"
-                    "#   PriceValidationRequest: agent_type + bundle_tier + proposed_price_paise\n"
-                    "#     all present; assert Pydantic does NOT coerce negative paise.\n"
-                    "#   PriceDeriveRequest: target_margin_pct is Optional; omitting it\n"
-                    "#     produces a valid model (defaults to None, not zero).\n"
-                    "#   PriceValidation: outcome in {'APPROVED','REJECTED'}; assert\n"
-                    "#     minimum_compliant_price_paise and proposed_price_paise are both\n"
-                    "#     present as int fields; cost_floor_paise present as int.\n"
-                    "# error cases:\n"
-                    "#   BundleProfile: minimum_margin_pct > 100 must raise ValidationError.\n"
-                    "#   BundleProfile: cost_floor_paise < 0 must raise ValidationError.\n"
-                    "#   PriceValidationRequest: missing agent_type raises ValidationError.\n"
-                    "#   PriceValidationRequest: proposed_price_paise as float (not int)\n"
-                    "#     must either coerce to int or raise ValidationError — assert\n"
-                    "#     the model's declared behaviour consistently.\n"
-                    "#   PriceValidation: outcome not in allowed set raises ValidationError.\n"
+                    "=== MODELS (test_models.py) ===\n"
                     "\n"
-                    "# ── BUNDLE ENGINE UNIT TESTS ──────────────────────────────────────────\n"
-                    "# Fixture strategy: mock the DB session / repository with pytest fixtures\n"
-                    "# so BundleEngine never touches a real database.\n"
-                    "# Use pytest-asyncio (asyncio_mode='auto') for any async methods.\n"
+                    "HAPPY PATH:\n"
+                    "- ThreadEntry constructs with valid fields; all fields accessible.\n"
+                    "- BundleProfile constructs with cost_floor_paise (int) and minimum_margin_pct (float).\n"
+                    "- PriceConfig round-trips through model_dump / model_validate.\n"
+                    "- PriceValidationRequest accepts agent_type, bundle_tier, proposed_price_paise.\n"
+                    "- PriceDeriveRequest accepts agent_type, bundle_tier, optional target_margin_pct.\n"
+                    "- PriceValidation response carries: outcome ('APPROVED'|'REJECTED'), "
+                    "  cost_floor_paise (int), minimum_compliant_price_paise (int), proposed_price_paise (int).\n"
                     "\n"
-                    "# cost_floor — happy path:\n"
-                    "#   Given a mocked DB that returns bundle_profiles.cost_floor_paise=5000\n"
-                    "#   for agent_type='CODER', bundle_tier='PRO', assert cost_floor returns\n"
-                    "#   exactly 5000 (reads from DB, does NOT recompute).\n"
-                    "#   Assert the DB query was called exactly once (no internal arithmetic).\n"
+                    "ERROR CASES (Pydantic validation):\n"
+                    "- BundleProfile rejects negative cost_floor_paise.\n"
+                    "- BundleProfile rejects minimum_margin_pct >= 100 or <= 0.\n"
+                    "- PriceValidationRequest rejects negative proposed_price_paise.\n"
+                    "- PriceDeriveRequest rejects target_margin_pct >= 100.\n"
+                    "- PriceValidation outcome must be 'APPROVED' or 'REJECTED' (Literal / enum constraint).\n"
                     "\n"
-                    "# cost_floor — error cases:\n"
-                    "#   Unknown agent_type or bundle_tier: DB returns None / raises NotFound;\n"
-                    "#   assert BundleEngine raises a clear exception (ValueError or a domain\n"
-                    "#   exception) — not a silent zero.\n"
+                    "=== BUNDLE ENGINE (test_bundle_engine.py, co-located or in test_models.py) ===\n"
                     "\n"
-                    "# derive_price — happy path (margin-on-revenue formula):\n"
-                    "#   floor=8000, target_margin_pct=20.0  →  price = 8000/(1-0.20) = 10000\n"
-                    "#   floor=5000, target_margin_pct=25.0  →  price = 5000/(1-0.25) = 6667\n"
-                    "#     (assert integer rounding — ceiling or round — is consistent).\n"
-                    "#   floor=6000, target_margin_pct=None  →  uses bundle_profiles.minimum_margin_pct\n"
-                    "#     from DB (e.g. 15.0) → price = 6000/(1-0.15) = 7059; assert DB\n"
-                    "#     minimum_margin_pct was read, not a hardcoded default.\n"
+                    "FIXTURES:\n"
+                    "- mock_db: pytest fixture returning an async mock DB session; "
+                    "  configure bundle_profiles table row with cost_floor_paise=10000 and minimum_margin_pct=20.0.\n"
+                    "- mock_audit_log: captures rows inserted into pricing_floor_log.\n"
+                    "- engine: BundleEngine instance injected with mock_db.\n"
                     "\n"
-                    "# derive_price — error cases:\n"
-                    "#   target_margin_pct=100.0 → division by zero; assert ValueError raised.\n"
-                    "#   target_margin_pct=110.0 → margin > 100; assert ValueError raised.\n"
-                    "#   target_margin_pct=-5.0  → negative margin; assert ValueError raised.\n"
+                    "HAPPY PATH:\n"
+                    "1. cost_floor(agent_type='ANALYST', bundle_tier='PRO') returns exactly the DB value "
+                    "   cost_floor_paise=10000 — does NOT recompute.\n"
+                    "2. derive_price with default margin uses bundle_profiles.minimum_margin_pct=20.0; "
+                    "   result == round(10000 / (1 - 20.0/100)) == 12500.\n"
+                    "3. derive_price with explicit target_margin_pct=25.0; "
+                    "   result == round(10000 / (1 - 25.0/100)) == 13334 (or ceil, assert formula).\n"
+                    "4. validate_price with proposed_price_paise=15000 (above floor) returns "
+                    "   PriceValidation(outcome='APPROVED', cost_floor_paise=10000, "
+                    "   minimum_compliant_price_paise=12500, proposed_price_paise=15000).\n"
+                    "5. validate_price with proposed_price_paise=11000 (below minimum_compliant) returns "
+                    "   PriceValidation(outcome='REJECTED', ..., minimum_compliant_price_paise=12500).\n"
                     "\n"
-                    "# validate_price — happy path APPROVED:\n"
-                    "#   proposed_price_paise >= minimum_compliant_price → outcome='APPROVED'.\n"
-                    "#   Assert PriceValidation.outcome == 'APPROVED'.\n"
-                    "#   Assert PriceValidation.minimum_compliant_price_paise is correct int.\n"
-                    "#   Assert PriceValidation.cost_floor_paise matches mocked DB value.\n"
-                    "#   Assert proposed_price_paise echoed back unchanged.\n"
-                    "#   Assert pricing_floor_log DB write was called exactly once (C-059).\n"
+                    "CONSTITUTIONAL INVARIANT — C-059 AUDIT OBLIGATION:\n"
+                    "6. After validate_price(..., proposed_price_paise=15000) → APPROVED: "
+                    "   assert mock_audit_log received exactly 1 INSERT into pricing_floor_log; "
+                    "   logged row contains agent_type, bundle_tier, proposed_price_paise, outcome='APPROVED'.\n"
+                    "7. After validate_price(..., proposed_price_paise=5000) → REJECTED: "
+                    "   assert mock_audit_log received exactly 1 INSERT into pricing_floor_log; "
+                    "   logged row contains outcome='REJECTED'. "
+                    "   INVARIANT: audit log MUST be written even on rejection — no early-return before log.\n"
+                    "8. Two sequential calls to validate_price produce TWO separate audit rows (log is "
+                    "   append-only, not idempotent — each call is independently audited).\n"
                     "\n"
-                    "# validate_price — happy path REJECTED:\n"
-                    "#   proposed_price_paise < minimum_compliant_price → outcome='REJECTED'.\n"
-                    "#   Assert outcome == 'REJECTED'.\n"
-                    "#   Assert minimum_compliant_price_paise still returned (caller needs it\n"
-                    "#     to know how much to raise by).\n"
-                    "#   Assert pricing_floor_log DB write was called exactly once (C-059).\n"
-                    "#   C-059 INVARIANT: audit must be written even on REJECTED — the mock\n"
-                    "#     assert must fire for both branches, not only APPROVED.\n"
+                    "IDEMPOTENCY / FORMULA INVARIANTS:\n"
+                    "9. derive_price(margin=0.0) raises ValueError or equivalent — zero margin is nonsensical "
+                    "   but 1/(1-0)=1 so floor unchanged; verify behaviour is defined and documented.\n"
+                    "10. cost_floor called twice with same args issues exactly 2 DB reads (no caching unless "
+                    "    spec says otherwise — assert mock_db.execute call count == 2).\n"
+                    "11. minimum_compliant_price_paise == derive_price(agent_type, bundle_tier) — "
+                    "    validate_price must derive the floor-based minimum using the same formula as "
+                    "    derive_price (no divergence between the two code paths).\n"
                     "\n"
-                    "# validate_price — idempotency:\n"
-                    "#   Calling validate_price twice with identical args produces two\n"
-                    "#   independent audit log rows (not deduplicated). Assert mock DB write\n"
-                    "#   call_count == 2 after two calls. Outcomes must be identical.\n"
+                    "ERROR CASES (engine):\n"
+                    "12. cost_floor for unknown agent_type/bundle_tier (DB returns no row) raises "
+                    "    a well-typed exception (e.g. BundleProfileNotFoundError or KeyError).\n"
+                    "13. derive_price with target_margin_pct=100 raises ZeroDivisionError or ValueError "
+                    "    before reaching DB.\n"
+                    "14. derive_price with target_margin_pct > 100 raises ValueError.\n"
+                    "15. DB failure (mock_db raises OperationalError) propagates without silently swallowing.\n"
                     "\n"
-                    "# validate_price — boundary:\n"
-                    "#   proposed_price_paise == minimum_compliant_price_paise exactly →\n"
-                    "#   must be APPROVED (inclusive lower bound).\n"
-                    "#   proposed_price_paise == minimum_compliant_price_paise - 1 →\n"
-                    "#   must be REJECTED.\n"
-                    "\n"
-                    "# validate_price — error cases:\n"
-                    "#   DB write to pricing_floor_log raises; assert exception propagates\n"
-                    "#   (do NOT swallow audit failures — C-059 is non-negotiable).\n"
-                    "#   Unknown agent_type → propagates DB lookup error before writing log.\n"
-                    "\n"
-                    "# ── CONSTITUTIONAL INVARIANTS ─────────────────────────────────────────\n"
-                    "# C-059 (Audit Obligation):\n"
-                    "#   In EVERY validate_price test — APPROVED or REJECTED — assert that\n"
-                    "#   pricing_floor_log insert was called. Use a dedicated parametrised\n"
-                    "#   test: @pytest.mark.parametrize('proposed,expected_outcome', [\n"
-                    "#       (99999, 'APPROVED'), (1, 'REJECTED')]) that asserts both the\n"
-                    "#   outcome AND the audit write in a single table-driven test.\n"
-                    "#   Label this test with @pytest.mark.constitutional to make it easy\n"
-                    "#   to identify in CI.\n"
-                    "# cost_floor DB-read contract:\n"
-                    "#   Assert that cost_floor NEVER performs arithmetic — it returns the\n"
-                    "#   raw DB value. Use a mock that returns an arbitrary odd prime (e.g.\n"
-                    "#   7919) and assert the return value equals 7919 with no transformation.\n"
-                    "\n"
-                    "# ── FIXTURE REQUIREMENTS ─────────────────────────────────────────────\n"
-                    "# mock_db_session: returns a MagicMock/AsyncMock with:\n"
-                    "#   .execute() → returns a mock row with cost_floor_paise, minimum_margin_pct\n"
-                    "#   .add() / .commit() for pricing_floor_log inserts (C-059 audit).\n"
-                    "# bundle_engine(mock_db_session): constructs BundleEngine injected with\n"
-                    "#   the mock session — no real DB, no real file I/O.\n"
-                    "# All async tests use @pytest.mark.asyncio or asyncio_mode='auto'.\n"
-                    "# Tests file is exempt from ANN (per pyproject.toml per-file-ignores).\n"
+                    "TEST TOOLING:\n"
+                    "- Use pytest-asyncio for any async engine methods.\n"
+                    "- Mock DB with unittest.mock.AsyncMock / pytest fixtures — no real DB connections.\n"
+                    "- Tests are exempt from ANN per pyproject.toml per-file-ignores (ruff gate only).\n"
+                    "- All test functions must be discoverable by pytest with no import errors.\n"
                 ),
                 model_hint="reasoning",
                 max_tokens=6000,
@@ -311,8 +270,8 @@ TASK_HANDLERS = {
         "WC027-01b": {
         "subtasks": [
             SubTaskDef(
-                id="WC027-01b",
-                description="Implement FastAPI router for pricing endpoints: thread-catalog delegation, bundle-cost-floor lookup, price validation with C-089 margin enforcement, and price derivation; mount in main.py",
+                id="WC027-01ba",
+                description="Implement FastAPI router for markup engine pricing endpoints (/pricing/thread-catalog, /pricing/bundle-cost-floor/{agent_type}/{bundle_tier}, /pricing/validate, /pricing/derive) with C-089 constitutional floor validation and 422 response handling; mount router in main.py.",
                 type="llm",
                 depends_on=["WC027-01aa"],
                 compile_gate="py_compile",
@@ -330,17 +289,18 @@ TASK_HANDLERS = {
                     "work-contracts/WC-027-wbe-s3-markup-engine.md": "WC027-01b",
                 },
                 constitutional_check=(
-                    "Implement IMarkupEngine.derive_bundle_cost_floor() and IMarkupEngine.validate_price() from skeleton.\n"
-                    "DO NOT change signatures — implement bodies only (ADR-036).\n"
+                    "Implement IMarkupEngine.derive_bundle_cost_floor() and IMarkupEngine.validate_price() "
+                    "routing via FastAPI router at prefix /pricing.\n"
+                    "DO NOT change method signatures — implement bodies and router handlers only (ADR-036).\n"
                     "Type annotations optional in scaffold — polish pass enforces ANN001.\n"
-                    "C-089: validate_price() MUST raise BelowConstitutionalFloorError if proposed_price_paise < cost_floor_paise * (1 + constitutional_minimum_margin_pct / 100).\n"
-                    "C-089: 422 POST /validate response body MUST include minimum_compliant_price_paise on violation.\n"
-                    "C-091: GET /thread-catalog MUST delegate to existing ThreadCatalogService without modification.\n"
-                    "C-088, C-090, C-051, C-048: Constitutional margin floor and billing profile gate enforcement via price validation layer.\n"
-                    "Mount completed router in main.py with prefix /pricing."
+                    "C-089: validate_price() MUST enforce constitutional margin floor; on BelowConstitutionalFloorError, "
+                    "return HTTP 422 with body including minimum_compliant_price_paise.\n"
+                    "C-088: derive_bundle_cost_floor() layer 2 computes Σ(marked_up_thread_cost × ration) + infra_share.\n"
+                    "C-091: GET /thread-catalog delegates to existing ThreadCatalogService.\n"
+                    "C-090: validate_price() logs to institutional.pricing_floor_log regardless of outcome."
                 ),
                 model_hint="auto",
-                max_tokens=4500,
+                max_tokens=4000,
             ),
             SubTaskDef(
                 id="WC027-01bb",
@@ -374,7 +334,7 @@ TASK_HANDLERS = {
             ),
             SubTaskDef(
                 id="WC027-01bc",
-                description="Pytest suite for the /pricing FastAPI router covering all four endpoints, C-089 422 body shape, idempotency of /derive, and error/edge cases.",
+                description="Pytest suite for the /pricing FastAPI router covering all four endpoints, C-089 constitutional 422 body shape, idempotency of /derive, and mount wiring in main.py.",
                 type="llm",
                 depends_on=["WC027-01bb"],
                 compile_gate="ruff",
@@ -392,54 +352,102 @@ TASK_HANDLERS = {
                     "work-contracts/WC-027-wbe-s3-markup-engine.md": "WC027-01b",
                 },
                 constitutional_check=(
-                    "TEST PASS — write pytest tests using httpx.AsyncClient against the FastAPI app "
-                    "mounted in src/billing-engine/main.py. All tests live in tests/billing-engine/test_router.py. "
-                    "File is exempt from ANN per pyproject.toml per-file-ignores. "
-                    "Use pytest-asyncio (asyncio_mode='auto') for every async test. "
-                    "Mock ThreadCatalogService and any Redis/DB dependencies with pytest fixtures "
-                    "(monkeypatch or unittest.mock.AsyncMock); do NOT hit real infrastructure.\n\n"
-
-                    "HAPPY PATH — must cover all four endpoints:\n"
-                    "  1. GET /pricing/thread-catalog → 200, response body matches the stubbed "
-                    "     ThreadCatalogService return value (list of thread entries).\n"
-                    "  2. GET /pricing/bundle-cost-floor/{agent_type}/{bundle_tier} → 200, "
-                    "     response JSON contains a numeric 'floor_price_paise' key > 0.\n"
-                    "  3. POST /pricing/validate with a fully compliant payload → 200 (or 204), "
-                    "     no 'minimum_compliant_price_paise' key in response body.\n"
-                    "  4. POST /pricing/derive with valid inputs → 200, response contains "
-                    "     'derived_price_paise' as an integer.\n\n"
-
-                    "ERROR CASES — must cover:\n"
-                    "  5. POST /pricing/validate with a price below the C-089 floor → 422, "
-                    "     response JSON body MUST include 'minimum_compliant_price_paise' as an integer "
-                    "     (constitutional invariant: violation detail is machine-readable for callers).\n"
-                    "  6. GET /pricing/bundle-cost-floor/{agent_type}/{bundle_tier} with an unknown "
-                    "     agent_type or bundle_tier → 404 with a non-empty detail string.\n"
-                    "  7. POST /pricing/validate with a malformed body (missing required fields) → 422 "
-                    "     FastAPI validation error (standard Pydantic shape, NOT C-089 shape).\n"
-                    "  8. POST /pricing/derive with a malformed body → 422 FastAPI validation error.\n\n"
-
-                    "IDEMPOTENCY / INVARIANTS — must cover:\n"
-                    "  9. POST /pricing/derive called twice with identical inputs returns identical "
-                    "     'derived_price_paise' (pure function invariant — no side-effect drift).\n"
-                    " 10. GET /pricing/bundle-cost-floor is read-only: assert the mocked service "
-                    "     write methods (if any) are never called during the GET.\n"
-                    " 11. Router prefix: assert all routes are reachable under /pricing/... (not /). "
-                    "     Confirm that a bare GET / returns 404 to verify the mount point is correct.\n\n"
-
-                    "CONSTITUTIONAL INVARIANTS — explicit assertions:\n"
-                    " 12. On any C-089 violation response the key 'minimum_compliant_price_paise' MUST "
-                    "     be present, MUST be an int, and MUST be strictly greater than the submitted price.\n"
-                    " 13. No endpoint may return a 5xx for inputs that are structurally valid but "
-                    "     constitutionally non-compliant — those must be 422 with the C-089 detail body.\n\n"
-
-                    "FIXTURES / STRUCTURE:\n"
-                    "  - @pytest.fixture providing an httpx.AsyncClient wired to the FastAPI 'app' "
-                    "    imported from src/billing-engine/main.py (use 'from main import app' with "
-                    "    sys.path manipulation or conftest path fixture).\n"
-                    "  - Separate fixture that patches ThreadCatalogService to return a deterministic "
-                    "    stub list so tests are hermetic.\n"
-                    "  - Use parametrize for agent_type/bundle_tier combos in floor-cost tests.\n"
+                    "TEST PASS — write pytest tests using httpx.AsyncClient + ASGITransport against the FastAPI app"
+                    " imported from src/billing-engine/main.py.\n"
+                    "\n"
+                    "FILE HEADER (first two lines of the generated test file, mandatory):\n"
+                    "# Implements: work-contracts/WC-027-wbe-s3-markup-engine.md §WC027-01b\n"
+                    "# Constitutional basis: C-089 (minimum compliant price disclosure)\n"
+                    "\n"
+                    "FIXTURES:\n"
+                    "- Use pytest-asyncio (asyncio_mode='auto' or per-test @pytest.mark.asyncio).\n"
+                    "- Provide an `app_client` async fixture that wraps the FastAPI app with"
+                    " httpx.AsyncClient(transport=ASGITransport(app=app)).\n"
+                    "- Mock ThreadCatalogService (patch the class or its injected dependency) so tests"
+                    " do not touch Redis or DB; return a deterministic stub catalog.\n"
+                    "- Mock any markup/floor-price computation dependencies similarly; control"
+                    " returned floor values per test via fixture params.\n"
+                    "\n"
+                    "HAPPY PATH TESTS:\n"
+                    "1. GET /pricing/thread-catalog\n"
+                    "   - Returns HTTP 200.\n"
+                    "   - Response JSON is a list (or dict with a list field) of thread-catalog entries.\n"
+                    "   - Each entry contains at minimum an `agent_type` and `bundle_tier` key.\n"
+                    "   - Verifies the router delegates to ThreadCatalogService (assert mock called once).\n"
+                    "\n"
+                    "2. GET /pricing/bundle-cost-floor/{agent_type}/{bundle_tier}\n"
+                    "   - Returns HTTP 200 for a known (agent_type='STANDARD', bundle_tier='BASIC') pair.\n"
+                    "   - Response body contains `floor_price_paise` as a positive integer.\n"
+                    "   - Path parameters are forwarded verbatim to the underlying service.\n"
+                    "\n"
+                    "3. POST /pricing/validate — price above floor\n"
+                    "   - Send JSON body with `proposed_price_paise` strictly greater than the mocked floor.\n"
+                    "   - Returns HTTP 200.\n"
+                    "   - Response body contains `verdict: 'allow'` (or equivalent Allow enum serialisation).\n"
+                    "   - Response body does NOT contain `minimum_compliant_price_paise`"
+                    " (field absent or null only on allow).\n"
+                    "\n"
+                    "4. POST /pricing/derive\n"
+                    "   - Send a valid derive request body (agent_type, bundle_tier, base_cost_paise, margin_bps).\n"
+                    "   - Returns HTTP 200.\n"
+                    "   - Response body contains `derived_price_paise` as a positive integer.\n"
+                    "   - `derived_price_paise` >= `base_cost_paise` (markup is non-negative).\n"
+                    "\n"
+                    "ERROR / VIOLATION TESTS:\n"
+                    "5. GET /pricing/bundle-cost-floor/{agent_type}/{bundle_tier} — unknown pair\n"
+                    "   - Send (agent_type='UNKNOWN_AGENT', bundle_tier='NONEXISTENT').\n"
+                    "   - Returns HTTP 404.\n"
+                    "   - Response body contains a non-empty `detail` string.\n"
+                    "\n"
+                    "6. POST /pricing/validate — C-089 constitutional violation (price below floor)\n"
+                    "   - Mock floor at 10_000 paise; send `proposed_price_paise=5_000`.\n"
+                    "   - Returns HTTP 422 (Unprocessable Entity — constitutional price floor breach).\n"
+                    "   - [CONSTITUTIONAL INVARIANT C-089] Response body MUST contain"
+                    " `minimum_compliant_price_paise` as a positive integer equal to the mocked floor.\n"
+                    "   - Response body MUST contain `violation_claim: 'C-089'` or equivalent field"
+                    " identifying the breached claim.\n"
+                    "   - Response body MUST NOT contain `verdict: 'allow'`.\n"
+                    "\n"
+                    "7. POST /pricing/validate — missing required fields\n"
+                    "   - Send an empty JSON body `{}`.\n"
+                    "   - Returns HTTP 422 (FastAPI validation error, distinct from C-089 422).\n"
+                    "   - The 422 error body is FastAPI's standard `{detail: [...]}` shape"
+                    " (i.e. it is a list, NOT a single string), confirming it is schema validation"
+                    " not a constitutional rejection.\n"
+                    "\n"
+                    "8. POST /pricing/derive — missing required fields\n"
+                    "   - Send `{}` body.\n"
+                    "   - Returns HTTP 422 (FastAPI schema validation).\n"
+                    "\n"
+                    "IDEMPOTENCY / DETERMINISM TESTS:\n"
+                    "9. POST /pricing/derive — idempotency\n"
+                    "   - Call POST /pricing/derive twice with identical request bodies.\n"
+                    "   - Both calls return HTTP 200.\n"
+                    "   - `derived_price_paise` is identical across both responses.\n"
+                    "   - (Confirms derive is a pure function of its inputs; no random/time-dependent drift.)\n"
+                    "\n"
+                    "10. POST /pricing/validate — boundary at exact floor price\n"
+                    "    - Mock floor at 10_000 paise; send `proposed_price_paise=10_000` (equal, not below).\n"
+                    "    - MUST return HTTP 200 with `verdict: 'allow'`"
+                    " (floor is inclusive — at-floor is compliant).\n"
+                    "    - `minimum_compliant_price_paise` absent or null in response.\n"
+                    "\n"
+                    "MOUNT / WIRING TEST:\n"
+                    "11. Router prefix wiring in main.py\n"
+                    "    - Import the FastAPI `app` from main.py and inspect `app.routes`.\n"
+                    "    - Assert at least one route has a `path` starting with '/pricing'.\n"
+                    "    - Assert the four paths exist: '/pricing/thread-catalog',"
+                    " '/pricing/bundle-cost-floor/{agent_type}/{bundle_tier}',"
+                    " '/pricing/validate', '/pricing/derive'.\n"
+                    "    - Assert HTTP methods: GET for thread-catalog and bundle-cost-floor,"
+                    " POST for validate and derive.\n"
+                    "\n"
+                    "STYLE:\n"
+                    "- All test functions are `async def test_*`.\n"
+                    "- No type annotations on test functions or fixtures (file is ANN-exempt per pyproject.toml).\n"
+                    "- Use `assert response.status_code == N` before accessing `.json()`.\n"
+                    "- Keep mocks scoped to individual tests (monkeypatch or unittest.mock.patch as context mgr).\n"
+                    "- No real network, DB, or Redis calls; all external I/O is mocked.\n"
                 ),
                 model_hint="reasoning",
                 max_tokens=6000,
@@ -450,7 +458,7 @@ TASK_HANDLERS = {
         "subtasks": [
             SubTaskDef(
                 id="WC027-02a",
-                description="Implement IMarkupEngine.derive_bundle_cost_floor() and validate_price() with C-089 constitutional margin floor enforcement; implement POST/GET pricing endpoints with 422 rejection path and pricing_floor_log audit trail.",
+                description="Implement IMarkupEngine.derive_bundle_cost_floor() and validate_price() with C-089 constitutional margin floor enforcement; implement GET /pricing/thread-catalog endpoint; add pricing_floor_log instrumentation for 200/422 paths.",
                 type="llm",
                 depends_on=["WC027-01ba"],
                 compile_gate="py_compile",
@@ -459,8 +467,8 @@ TASK_HANDLERS = {
                 stack="python",
                 output_files=[
                     "src/billing-engine/markup/engine.py",
-                    "src/billing-engine/pricing/routes.py",
-                    "src/billing-engine/pricing/dto.py",
+                    "src/billing-engine/pricing/endpoints.py",
+                    "src/billing-engine/pricing/models.py",
                     "tests/billing-engine/test_markup.py",
                 ],
                 inject_source_files=[
@@ -470,22 +478,23 @@ TASK_HANDLERS = {
                     "work-contracts/WC-027-wbe-s3-markup-engine.md": "WC027-02",
                 },
                 constitutional_check=(
-                    "Implement IMarkupEngine.derive_bundle_cost_floor(agent_type, bundle_tier) → int.\n"
-                    "  Layer 2 formula: Σ(marked_up_thread_cost × ration) + infra_share; reads bundle_profiles.cost_floor_paise (NOT recomputed).\n"
-                    "  Price derivation uses margin-on-revenue: floor / (1 - margin/100).\n"
-                    "Implement IMarkupEngine.validate_price(agent_type, bundle_tier, proposed_price_paise) → PriceValidation.\n"
-                    "  C-089: BelowConstitutionalFloorError if margin < constitutional_minimum_margin_pct.\n"
-                    "  MUST log to institutional.pricing_floor_log regardless of Allow/Deny outcome.\n"
-                    "POST /pricing/validate:\n"
-                    "  200 APPROVED path: returns PriceValidation{valid=True}, writes pricing_floor_log row.\n"
-                    "  422 REJECTED path: raises BelowConstitutionalFloorError, body includes minimum_compliant_price_paise, writes pricing_floor_log row.\n"
-                    "GET /pricing/thread-catalog: return shape per WC-027 spec (thread_type, marked_up_cost, ration).\n"
-                    "Tests: cost_floor reads bundle_profiles.cost_floor_paise; margin-on-revenue formula validation; ≥90% line coverage.\n"
-                    "Type annotations optional in scaffold — polish pass adds ANN001 compliance.\n"
-                    "C-088, C-089, C-090, C-091: constitutional constraints enforced in validate_price and activate_subscription path."
+                    "Implement IMarkupEngine.derive_bundle_cost_floor() and IMarkupEngine.validate_price() from skeleton.\n"
+                    "DO NOT change method signatures — implement bodies only (ADR-036).\n"
+                    "Type annotations optional in scaffold — polish pass enforces ANN001.\n"
+                    "Business logic requirements:\n"
+                    "  • derive_bundle_cost_floor: read bundle_profiles.cost_floor_paise (no recomputation); return int (INR paise)\n"
+                    "  • validate_price: apply margin-on-revenue formula floor / (1 - margin/100); raise BelowConstitutionalFloorError if below C-089 minimum margin\n"
+                    "  • validate_price: write institutional.pricing_floor_log row regardless of outcome (valid=True for 200, valid=False for 422)\n"
+                    "  • POST /pricing/validate: return 200 (APPROVED, cost_floor_paise + margin_pct in response) on success; return 422 (REJECTED, include minimum_compliant_price_paise) on C-089 violation\n"
+                    "  • GET /pricing/thread-catalog: return response shape matching skeleton BucketBalance + PacingMode fields\n"
+                    "C-088: Validate billing_profiles.status == FOUNDER_AUTHORIZED in activate_subscription.\n"
+                    "C-089: Constitutional margin floor enforcement — all price validations must log to pricing_floor_log.\n"
+                    "C-090: Renewal price > agreed price requires acknowledged notice.\n"
+                    "C-091: Thread catalog exposes wallet bucket structure.\n"
+                    "Test coverage: ≥90% line coverage in test_markup.py; cover cost_floor read, formula derivation, 200/422 paths, logging."
                 ),
                 model_hint="auto",
-                max_tokens=4500,
+                max_tokens=4000,
             ),
             SubTaskDef(
                 id="WC027-02b",
@@ -498,13 +507,13 @@ TASK_HANDLERS = {
                 stack="python",
                 output_files=[
                     "src/billing-engine/markup/engine.py",
-                    "src/billing-engine/pricing/routes.py",
-                    "src/billing-engine/pricing/dto.py",
+                    "src/billing-engine/pricing/endpoints.py",
+                    "src/billing-engine/pricing/models.py",
                 ],
                 inject_source_files=[
                     "src/billing-engine/markup/engine.py",
-                    "src/billing-engine/pricing/routes.py",
-                    "src/billing-engine/pricing/dto.py",
+                    "src/billing-engine/pricing/endpoints.py",
+                    "src/billing-engine/pricing/models.py",
                 ],
                 spec_sections={
                     "work-contracts/WC-027-wbe-s3-markup-engine.md": "WC027-02",
@@ -521,7 +530,7 @@ TASK_HANDLERS = {
             ),
             SubTaskDef(
                 id="WC027-02c",
-                description="Pytest suite verifying cost_floor DB reads, derive_price margin-on-revenue formula, /pricing/validate 200/422 paths with pricing_floor_log writes, /pricing/thread-catalog response shape, and ≥90% line coverage.",
+                description="Pytest suite for the billing-engine markup engine and pricing endpoints: validates cost_floor sourcing, margin-on-revenue derive_price formula, /pricing/validate 200/422 paths with pricing_floor_log persistence, /pricing/thread-catalog response shape, and ≥90% line coverage.",
                 type="llm",
                 depends_on=["WC027-02b"],
                 compile_gate="ruff",
@@ -533,8 +542,8 @@ TASK_HANDLERS = {
                 ],
                 inject_source_files=[
                     "src/billing-engine/markup/engine.py",
-                    "src/billing-engine/pricing/routes.py",
-                    "src/billing-engine/pricing/dto.py",
+                    "src/billing-engine/pricing/endpoints.py",
+                    "src/billing-engine/pricing/models.py",
                 ],
                 spec_sections={
                     "work-contracts/WC-027-wbe-s3-markup-engine.md": "WC027-02",
@@ -542,75 +551,51 @@ TASK_HANDLERS = {
                 constitutional_check=(
                     "TEST PASS — write pytest tests against the provided implementation.\n"
                     "\n"
-                    "# Implements: work-contracts/WC-027-wbe-s3-markup-engine.md §WC027-02\n"
-                    "# Constitutional basis: C-043 (BudgetCeiling), C-048 (NonExploitation)\n"
+                    "HAPPY PATH:\n"
+                    "  - cost_floor_paise is READ from bundle_profiles.cost_floor_paise column;\n"
+                    "    assert no arithmetic recomputes it (mock DB row, verify field is passed through verbatim).\n"
+                    "  - derive_price formula: given floor=F and margin=M%, assert result == F / (1 - M/100)\n"
+                    "    with at least three concrete examples (e.g. floor=10000, margin=20 → 12500).\n"
+                    "  - POST /pricing/validate with a proposed_price_paise ≥ derived floor:\n"
+                    "    expect HTTP 200, response body contains status='APPROVED',\n"
+                    "    assert one pricing_floor_log row written to DB with correct contract_id, floor, verdict.\n"
                     "\n"
-                    "COVERAGE TARGETS (≥90% line coverage on all three injected source files):\n"
+                    "ERROR / REJECTION CASES:\n"
+                    "  - POST /pricing/validate with proposed_price_paise < derived floor:\n"
+                    "    expect HTTP 422, response body contains status='REJECTED',\n"
+                    "    body MUST include field minimum_compliant_price_paise == derived floor value,\n"
+                    "    assert one pricing_floor_log row written (verdict='REJECTED') — log is always written.\n"
+                    "  - POST /pricing/validate missing required fields → HTTP 422 validation error (no log row).\n"
+                    "  - derive_price with margin=100 raises ValueError or returns Infinity guard (implementation-defined).\n"
                     "\n"
-                    "1. HAPPY PATH — cost_floor reads from DB:\n"
-                    "   - Mock DB query returning bundle_profiles row with cost_floor_paise=50000.\n"
-                    "   - Assert engine.get_cost_floor('STANDARD') returns exactly 50000 (not recomputed).\n"
-                    "   - Assert no arithmetic is applied to the raw DB value.\n"
+                    "IDEMPOTENCY / INVARIANTS:\n"
+                    "  - Calling derive_price twice with identical inputs returns identical results (pure function).\n"
+                    "  - Submitting POST /pricing/validate twice with same payload writes TWO log rows\n"
+                    "    (audit log is append-only, not idempotent-deduped).\n"
+                    "  - cost_floor_paise is never mutated between read and use; assert the mocked DB value\n"
+                    "    equals the floor embedded in the 422 minimum_compliant_price_paise response field.\n"
                     "\n"
-                    "2. FORMULA INVARIANT — derive_price uses margin-on-revenue:\n"
-                    "   - Formula: price = floor / (1 - margin / 100)\n"
-                    "   - Test with floor=50000, margin=20  → expect 62500.\n"
-                    "   - Test with floor=100000, margin=25 → expect 133333 (round per impl).\n"
-                    "   - Test with floor=0, margin=0       → expect 0 (zero floor edge case).\n"
-                    "   - Test with margin=100              → expect ValueError / ZeroDivisionError.\n"
-                    "   - Assert derive_price never reads bundle_profiles again (floor is passed in).\n"
+                    "GET /pricing/thread-catalog:\n"
+                    "  - HTTP 200, response is a JSON array.\n"
+                    "  - Each item contains at minimum: thread_type (str), cost_floor_paise (int), margin_pct (number).\n"
+                    "  - Empty catalog (no bundle profiles in DB) → 200 with empty list, not 404.\n"
                     "\n"
-                    "3. POST /pricing/validate — 200 APPROVED path:\n"
-                    "   - Mock get_cost_floor to return 50000, derive_price to return 62500.\n"
-                    "   - POST body: proposed_price_paise=70000 (above floor price).\n"
-                    "   - Assert response status 200.\n"
-                    "   - Assert response JSON contains verdict='APPROVED'.\n"
-                    "   - Assert pricing_floor_log row inserted with verdict='APPROVED',\n"
-                    "     proposed_price_paise=70000, minimum_compliant_price_paise=62500.\n"
-                    "   - Assert response JSON does NOT contain minimum_compliant_price_paise\n"
-                    "     (field only present on REJECTED per spec).\n"
+                    "COVERAGE GATE:\n"
+                    "  - Add a pytest-cov marker/comment: --cov=markup.engine --cov=pricing.endpoints\n"
+                    "    --cov-fail-under=90 so CI enforces ≥90% line coverage.\n"
                     "\n"
-                    "4. POST /pricing/validate — 422 REJECTED path:\n"
-                    "   - Mock get_cost_floor to return 50000, derive_price to return 62500.\n"
-                    "   - POST body: proposed_price_paise=40000 (below derived price).\n"
-                    "   - Assert response status 422.\n"
-                    "   - Assert response JSON contains verdict='REJECTED'.\n"
-                    "   - Assert response JSON contains minimum_compliant_price_paise=62500.\n"
-                    "   - Assert pricing_floor_log row inserted with verdict='REJECTED',\n"
-                    "     proposed_price_paise=40000, minimum_compliant_price_paise=62500.\n"
-                    "\n"
-                    "5. IDEMPOTENCY — pricing_floor_log writes:\n"
-                    "   - Call POST /pricing/validate twice with identical body.\n"
-                    "   - Assert two separate log rows are written (log is append-only, not upsert).\n"
-                    "   - Assert both rows share identical input fields but have distinct IDs/timestamps.\n"
-                    "\n"
-                    "6. GET /pricing/thread-catalog — response shape:\n"
-                    "   - Mock DB returning 2 bundle profile rows.\n"
-                    "   - Assert response status 200.\n"
-                    "   - Assert response JSON is a list of objects.\n"
-                    "   - Assert each object contains keys: bundle_tier, cost_floor_paise, margin_pct.\n"
-                    "   - Assert no extra undocumented keys leak into the response.\n"
-                    "\n"
-                    "7. ERROR CASES:\n"
-                    "   - POST /pricing/validate with missing required field → 422 validation error.\n"
-                    "   - POST /pricing/validate with unknown bundle_tier → 404 or 422 (per impl).\n"
-                    "   - DB unavailable during get_cost_floor → 503 or propagated exception.\n"
-                    "   - margin=100 in derive_price → ZeroDivisionError is caught or raised cleanly.\n"
+                    "CONSTITUTIONAL INVARIANTS:\n"
+                    "  - C-043: no action may exceed approved budget; the REJECTED path ensures the platform\n"
+                    "    surfaces minimum_compliant_price_paise so callers can comply rather than guess.\n"
+                    "  - C-041: pricing decisions are logged to pricing_floor_log on EVERY validate call\n"
+                    "    (both APPROVED and REJECTED) to maintain a full audit trail.\n"
                     "\n"
                     "FIXTURE RULES:\n"
-                    "   - Use pytest-asyncio for async route handlers.\n"
-                    "   - Mock Redis with unittest.mock.AsyncMock or pytest-mock mocker.\n"
-                    "   - Mock DB (asyncpg / SQLAlchemy session) with mocker.patch or AsyncMock.\n"
-                    "   - Use httpx.AsyncClient with ASGITransport to test FastAPI routes in-process.\n"
-                    "   - Do NOT spin up real Postgres or Redis — all external I/O must be mocked.\n"
-                    "   - pricing_floor_log assertion: capture the mock DB execute/add call args.\n"
-                    "\n"
-                    "FILE HEADER (first two lines of test_engine.py must be):\n"
-                    "   # Implements: work-contracts/WC-027-wbe-s3-markup-engine.md §WC027-02\n"
-                    "   # Constitutional basis: C-043 (BudgetCeiling), C-048 (NonExploitation)\n"
-                    "\n"
-                    "LINT: file is exempt from ANN per pyproject.toml per-file-ignores.\n"
-                    "COVERAGE: run with pytest --cov=markup --cov=pricing --cov-fail-under=90.\n"
+                    "  - Use pytest-asyncio for any async endpoint tests.\n"
+                    "  - Mock the database session/repository with pytest fixtures (no real Postgres).\n"
+                    "  - Mock Redis if the engine uses it for caching bundle_profiles.\n"
+                    "  - Use httpx.AsyncClient or FastAPI TestClient for HTTP-layer tests.\n"
+                    "  - Tests file is exempt from ANN (per pyproject.toml per-file-ignores).\n"
                 ),
                 model_hint="reasoning",
                 max_tokens=6000,

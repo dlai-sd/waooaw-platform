@@ -292,7 +292,7 @@ class TestFindWcFile:
 class TestAlreadyGroomed:
     def test_returns_true_when_task_id_in_runner(self, tmp_path, monkeypatch):
         runner = tmp_path / "autonomous_sprint_runner.py"
-        runner.write_text('TASK_HANDLERS = {\n    "WC026-05": {},\n}\n')
+        runner.write_text('TASK_HANDLERS = {\n    "WC026-05": {"subtasks": [SubTaskDef(id="WC026-05a")]},\n}\n')
         monkeypatch.setattr(groom_sprint, "RUNNER_PATH", runner)
         assert groom_sprint._already_groomed("WC026-05") is True
 
@@ -304,9 +304,29 @@ class TestAlreadyGroomed:
 
     def test_detects_single_quote_key(self, tmp_path, monkeypatch):
         runner = tmp_path / "autonomous_sprint_runner.py"
-        runner.write_text("TASK_HANDLERS = {\n    'WC027-01': {},\n}\n")
+        runner.write_text("TASK_HANDLERS = {\n    'WC027-01': {'subtasks': [SubTaskDef(id='WC027-01a')]},\n}\n")
         monkeypatch.setattr(groom_sprint, "RUNNER_PATH", runner)
         assert groom_sprint._already_groomed("WC027-01") is True
+
+    def test_non_canonical_scaffold_id_returns_false_and_removes_entry(self, tmp_path, monkeypatch):
+        runner = tmp_path / "autonomous_sprint_runner.py"
+        # Entry exists with broken scaffold id — must match real multi-line format
+        runner.write_text(
+            'TASK_HANDLERS = {\n'
+            '        "WC027-01a": {\n'
+            '        "subtasks": [\n'
+            '            SubTaskDef(id="WC027-01a-scaffold"),\n'
+            '        ]\n'
+            '    },\n'
+            '    # ── GROOMER INJECTION POINT ──\n'
+            '}\n'
+        )
+        monkeypatch.setattr(groom_sprint, "RUNNER_PATH", runner)
+        result = groom_sprint._already_groomed("WC027-01a")
+        assert result is False
+        # Entry should be stripped so groomer re-injects on next call
+        content = runner.read_text()
+        assert '"WC027-01a":' not in content and "'WC027-01a':" not in content
 
 
 # ─────────────────────────────────────────────────────────────
@@ -486,10 +506,12 @@ class TestMainDryRun:
 
         runner = tmp_path / "scripts" / "autonomous_sprint_runner.py"
         runner.parent.mkdir(parents=True, exist_ok=True)
-        # Mark all tasks as already groomed
+        # Mark all tasks as already groomed with canonical scaffold ids
         runner.write_text(
             SAMPLE_RUNNER_WITH_ANCHOR
-            + '\n    "WC026-01": {},\n    "WC026-02": {},\n    "WC026-03": {},\n'
+            + '\n    "WC026-01": {"subtasks": [SubTaskDef(id="WC026-01a")]},\n'
+            + '    "WC026-02": {"subtasks": [SubTaskDef(id="WC026-02a")]},\n'
+            + '    "WC026-03": {"subtasks": [SubTaskDef(id="WC026-03a")]},\n'
         )
         monkeypatch.setattr(groom_sprint, "RUNNER_PATH", runner)
         state = tmp_path / "scripts" / "sprint_state.py"
