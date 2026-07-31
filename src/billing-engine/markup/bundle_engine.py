@@ -174,8 +174,9 @@ class BundleEngine:
         DO NOT recompute — reads the DB column directly (Amendment 2).
 
         Raises:
-            KeyError: if agent_type/bundle_tier combination does not exist.
-            asyncio.CancelledError: propagated — never swallowed.
+            KeyError: if no bundle_profiles row exists for the given
+                      agent_type + bundle_tier combination.
+            asyncio.CancelledError: propagated without swallowing.
         """
         try:
             profile = await self._fetch_bundle_profile(agent_type, bundle_tier)
@@ -191,6 +192,14 @@ class BundleEngine:
 
         return profile.cost_floor_paise
 
+    # Alias — IMarkupEngine surface name used by router
+    async def derive_bundle_cost_floor(self, agent_type: str, bundle_tier: str) -> int:
+        """
+        IMarkupEngine surface alias for cost_floor().
+        Reads bundle_profiles.cost_floor_paise from DB — does NOT recompute.
+        """
+        return await self.cost_floor(agent_type, bundle_tier)
+
     async def derive_price(
         self,
         agent_type: str,
@@ -201,14 +210,15 @@ class BundleEngine:
         Derive a compliant price using margin-on-revenue formula:
             price = floor / (1 - margin / 100)
 
-        If target_margin_pct is None, uses bundle_profiles.minimum_margin_pct.
+        If target_margin_pct is None, falls back to
+        bundle_profiles.minimum_margin_pct (Amendment 2).
 
-        Returns price rounded UP to the nearest paise (ceiling) so that
-        the actual margin is always >= the requested margin.
+        Returns the ceiling integer paise value — never rounds down
+        (rounding down would violate C-089 by yielding margin < floor).
 
         Raises:
-            KeyError: if bundle profile not found.
-            ValueError: if margin_pct >= 100 (degenerate — infinite price).
+            KeyError: bundle_profiles row missing.
+            ValueError: target_margin_pct >= 100 (undefined / infinite price).
             asyncio.CancelledError: propagated.
         """
         try:
@@ -227,28 +237,28 @@ class BundleEngine:
 
         if margin >= 100.0:
             raise ValueError(
-                "margin_pct=%.2f is >= 100 — price would be infinite" % margin
+                "target_margin_pct must be < 100; got %.4f" % margin
             )
         if margin < 0.0:
             raise ValueError(
-                "margin_pct=%.2f is negative — invalid" % margin
+                "target_margin_pct must be >= 0; got %.4f" % margin
             )
 
-        # Margin-on-revenue: floor / (1 - margin/100)
+        # Margin-on-revenue: price = floor / (1 - margin/100)
+        # math.ceil ensures we never deliver a margin below the stated floor.
         raw = profile.cost_floor_paise / (1.0 - margin / 100.0)
-        # Ceiling so actual realised margin >= requested margin
-        price = math.ceil(raw)
+        derived = math.ceil(raw)
 
         logger.info(
-            "derive_price: agent_type=%s bundle_tier=%s cost_floor_paise=%d "
-            "margin_pct=%.4f derived_price_paise=%d",
+            "derive_price: agent_type=%s bundle_tier=%s margin_pct=%.4f "
+            "cost_floor_paise=%d derived_paise=%d",
             agent_type,
             bundle_tier,
-            profile.cost_floor_paise,
             margin,
-            price,
+            profile.cost_floor_paise,
+            derived,
         )
-        return price
+        return derived
 
     async def validate_price(
         self,
@@ -257,24 +267,23 @@ class BundleEngine:
         proposed_price_paise: int,
     ) -> PriceValidation:
         """
-        C-089 constitutional margin gate.
+        C-089: Validate that proposed_price_paise respects the constitutional
+        minimum margin floor.
 
-        Computes minimum_compliant_price_paise from bundle_profiles and
-        validates proposed_price_paise against it.
-
-        C-059 audit obligation: writes to pricing_floor_log on BOTH
-        APPROVED and REJECTED outcomes — no exception.
+        C-059: Writes to billing.pricing_floor_log on BOTH APPROVED and
+        REJECTED outcomes — no audit-free path.
 
         Returns PriceValidation with:
             outcome                      — APPROVED | REJECTED
-            cost_floor_paise             — raw cost floor from DB
-            minimum_compliant_price_paise — floor / (1 - min_margin/100), ceiling
-            proposed_price_paise         — echoed from input
+            cost_floor_paise             — raw cost from bundle_profiles
+            minimum_compliant_price_paise — price at minimum_margin_pct
+            proposed_price_paise         — the price under review
 
         Raises:
-            BelowConstitutionalFloorError — if proposed < minimum_compliant
-                (caller may convert to HTTP 422; log_id is already written).
-            KeyError: if bundle profile not found.
+            BelowConstitutionalFloorError — when outcome is REJECTED.
+              The audit log row is written BEFORE this exception is raised
+              so that C-059 traceability is never bypassed.
+            KeyError: bundle_profiles row missing.
             asyncio.CancelledError: propagated.
         """
         try:
@@ -289,78 +298,68 @@ class BundleEngine:
             )
             raise
 
-        margin = profile.minimum_margin_pct
+        cost_floor_paise = profile.cost_floor_paise
+        minimum_margin_pct = profile.minimum_margin_pct
 
-        if margin >= 100.0:
-            # Degenerate profile — escalate rather than silently pass
-            raise ValueError(
-                "bundle_profiles.minimum_margin_pct=%.2f >= 100 for agent_type=%s bundle_tier=%s"
-                % (margin, agent_type, bundle_tier)
-            )
+        # Minimum compliant price at the constitutional margin floor.
+        # Use math.ceil — rounding down would violate C-089.
+        raw_minimum = cost_floor_paise / (1.0 - minimum_margin_pct / 100.0)
+        minimum_compliant_price_paise = math.ceil(raw_minimum)
 
-        # Minimum compliant price: smallest price at which margin >= floor
-        raw_minimum = profile.cost_floor_paise / (1.0 - margin / 100.0)
-        minimum_compliant = math.ceil(raw_minimum)
-
-        if proposed_price_paise >= minimum_compliant:
+        if proposed_price_paise >= minimum_compliant_price_paise:
             outcome = ValidationOutcome.APPROVED
         else:
             outcome = ValidationOutcome.REJECTED
 
-        # C-059: write audit record regardless of outcome
+        # C-059: audit log written unconditionally — both APPROVED and REJECTED.
         try:
             log_id = await self._write_floor_log(
                 agent_type=agent_type,
                 bundle_tier=bundle_tier,
                 proposed_price_paise=proposed_price_paise,
-                cost_floor_paise=profile.cost_floor_paise,
-                minimum_compliant_price_paise=minimum_compliant,
+                cost_floor_paise=cost_floor_paise,
+                minimum_compliant_price_paise=minimum_compliant_price_paise,
                 outcome=outcome,
             )
         except asyncio.CancelledError:
             raise
-        except Exception:
-            # C-059: evidence write failure is itself evidence — log and re-raise
-            # so the caller knows the audit trail is broken.
+        except (OSError, RuntimeError) as exc:
+            # C-059 compliance: log failure to produce evidence record.
             logger.error(
-                "validate_price: pricing_floor_log write FAILED — "
-                "agent_type=%s bundle_tier=%s proposed=%d outcome=%s",
+                "validate_price: CRITICAL — pricing_floor_log write failed; "
+                "agent_type=%s bundle_tier=%s outcome=%s error=%s",
                 agent_type,
                 bundle_tier,
-                proposed_price_paise,
                 outcome.value,
+                str(exc),
                 exc_info=True,
             )
             raise
 
-        result = PriceValidation(
+        logger.info(
+            "validate_price: agent_type=%s bundle_tier=%s proposed_paise=%d "
+            "minimum_compliant_paise=%d outcome=%s log_id=%s",
+            agent_type,
+            bundle_tier,
+            proposed_price_paise,
+            minimum_compliant_price_paise,
+            outcome.value,
+            log_id,
+        )
+
+        validation = PriceValidation(
             outcome=outcome,
-            cost_floor_paise=profile.cost_floor_paise,
-            minimum_compliant_price_paise=minimum_compliant,
+            cost_floor_paise=cost_floor_paise,
+            minimum_compliant_price_paise=minimum_compliant_price_paise,
             proposed_price_paise=proposed_price_paise,
-            log_id=log_id,
         )
 
         if outcome == ValidationOutcome.REJECTED:
-            # C-089: raise after the audit record is safely written
             raise BelowConstitutionalFloorError(
                 proposed=proposed_price_paise,
-                minimum_compliant=minimum_compliant,
-                cost_floor=profile.cost_floor_paise,
-                margin_floor_pct=margin,
+                minimum_compliant=minimum_compliant_price_paise,
+                cost_floor=cost_floor_paise,
+                margin_floor_pct=minimum_margin_pct,
             )
 
-        return result
-
-    # ------------------------------------------------------------------
-    # IMarkupEngine alias (skeleton name)
-    # ------------------------------------------------------------------
-
-    async def derive_bundle_cost_floor(
-        self, agent_type: str, bundle_tier: str
-    ) -> int:
-        """
-        Alias satisfying IMarkupEngine.derive_bundle_cost_floor().
-        Delegates to cost_floor() — reads bundle_profiles.cost_floor_paise directly.
-        """
-        return await self.cost_floor(agent_type, bundle_tier)
+        return validation

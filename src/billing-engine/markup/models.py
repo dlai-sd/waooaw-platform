@@ -12,14 +12,16 @@ from pydantic import BaseModel, Field, field_validator
 # ── Enumerations ──────────────────────────────────────────────────────────────
 
 class PriceOutcome(StrEnum):
+    """Constitutional outcome states for price validation (C-089)."""
     APPROVED = "APPROVED"
     REJECTED = "REJECTED"
 
 
 class BundleTier(StrEnum):
-    STARTER    = "STARTER"
-    GROWTH     = "GROWTH"
-    SCALE      = "SCALE"
+    """Standard bundle tier levels per customer acquisition spec."""
+    STARTER = "STARTER"
+    GROWTH = "GROWTH"
+    SCALE = "SCALE"
     ENTERPRISE = "ENTERPRISE"
 
 
@@ -30,6 +32,7 @@ class PriceValidationRequest(BaseModel):
     Request body for POST /pricing/validate.
     Constitutional: C-089 — proposed price is checked against margin floor.
     """
+
     agent_type: str = Field(
         ...,
         min_length=1,
@@ -51,6 +54,7 @@ class PriceValidationRequest(BaseModel):
     @field_validator("proposed_price_paise")
     @classmethod
     def must_be_non_negative(cls, v: int) -> int:
+        """Validate that proposed price is non-negative."""
         if v < 0:
             raise ValueError("proposed_price_paise must be non-negative")
         return v
@@ -61,6 +65,7 @@ class PriceDeriveRequest(BaseModel):
     Request body for POST /pricing/derive.
     If target_margin_pct is omitted, bundle_profiles.minimum_margin_pct is used.
     """
+
     agent_type: str = Field(
         ...,
         min_length=1,
@@ -91,6 +96,7 @@ class ThreadEntry(BaseModel):
     Lightweight view of institutional.thread_catalog row used inside markup logic.
     Not the full ThreadCatalogEntry — only the fields markup engine needs.
     """
+
     thread_id: str
     provider: str
     raw_cost_inr_paise: int
@@ -106,6 +112,7 @@ class BundleProfile(BaseModel):
     cost_floor_paise  — pre-computed by Founder FA process; do NOT recompute.
     minimum_margin_pct — constitutional minimum margin (C-089).
     """
+
     agent_type: str
     bundle_tier: str
     cost_floor_paise: int = Field(..., ge=0)
@@ -115,9 +122,10 @@ class BundleProfile(BaseModel):
 class PriceConfig(BaseModel):
     """
     Resolved pricing configuration combining BundleProfile with an optional
-    override margin.  Used internally by BundleEngine before committing a
+    override margin. Used internally by BundleEngine before committing a
     validation or derivation decision.
     """
+
     agent_type: str
     bundle_tier: str
     cost_floor_paise: int
@@ -138,6 +146,7 @@ class PriceValidation(BaseModel):
       C-089 — outcome=REJECTED when proposed < minimum_compliant_price_paise.
       C-059 — every call (APPROVED or REJECTED) is persisted to pricing_floor_log.
     """
+
     validation_id: UUID = Field(
         default_factory=uuid4,
         description="UUID of the pricing_floor_log row written for this validation.",
@@ -180,6 +189,7 @@ class CostFloorResponse(BaseModel):
     """
     Response for GET /pricing/bundle-cost-floor/{agent_type}/{bundle_tier}.
     """
+
     agent_type: str
     bundle_tier: str
     cost_floor_paise: int
@@ -191,9 +201,58 @@ class DerivePriceResponse(BaseModel):
     """
     Response for POST /pricing/derive.
     """
+
     agent_type: str
     bundle_tier: str
     cost_floor_paise: int
     effective_margin_pct: float
     derived_price_paise: int
     derived_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+# ── Domain exceptions ─────────────────────────────────────────────────────────
+
+class BelowConstitutionalFloorError(ValueError):
+    """
+    Raised when proposed_price_paise < minimum_compliant_price_paise.
+    Constitutional basis: C-089 (Margin Floor).
+    """
+
+    def __init__(
+        self,
+        agent_type: str,
+        bundle_tier: str,
+        proposed_price_paise: int,
+        minimum_compliant_price_paise: int,
+    ) -> None:
+        """Initialize exception with pricing context."""
+        self.agent_type = agent_type
+        self.bundle_tier = bundle_tier
+        self.proposed_price_paise = proposed_price_paise
+        self.minimum_compliant_price_paise = minimum_compliant_price_paise
+        msg = (
+            f"Proposed price ({proposed_price_paise} paise) violates constitutional floor "
+            f"({minimum_compliant_price_paise} paise) for {agent_type}/{bundle_tier}"
+        )
+        super().__init__(msg)
+
+
+class BundleNotFoundError(ValueError):
+    """
+    Raised when bundle_profiles row does not exist for (agent_type, bundle_tier).
+    """
+
+    def __init__(self, agent_type: str, bundle_tier: str) -> None:
+        """Initialize exception with bundle context."""
+        self.agent_type = agent_type
+        self.bundle_tier = bundle_tier
+        msg = f"No bundle profile found for {agent_type}/{bundle_tier}"
+        super().__init__(msg)
+
+
+class PricingFloorLogError(ValueError):
+    """
+    Raised when pricing_floor_log persistence fails (C-059 audit obligation).
+    """
+
+    pass
