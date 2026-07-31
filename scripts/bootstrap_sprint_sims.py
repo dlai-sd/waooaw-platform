@@ -85,9 +85,9 @@ def _extract_wc_tasks(wc_file: Path) -> dict[str, str]:
     """Extract task descriptions from the WC task table. Returns {task_id: scope_text}."""
     content = wc_file.read_text()
     tasks: dict[str, str] = {}
-    # Match table rows: | WC026-01 | scope text | model_hint | status |
+    # Match table rows: | WC026-01 | or | WC027-01a | (optional letter suffix for split tasks)
     for match in re.finditer(
-        r"\|\s*(WC\d{3}-\d{2})\s*\|\s*([^|]+)\|[^|]+\|[^|]+\|", content
+        r"\|\s*(WC\d{3}-\d{2}[a-z]?)\s*\|\s*([^|]+)\|[^|]+\|[^|]+\|", content
     ):
         task_id = match.group(1).strip()
         scope = match.group(2).strip()
