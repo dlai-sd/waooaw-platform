@@ -884,7 +884,7 @@ branch: ib/009/sprint-027
 last_attempt_utc: 2026-07-31T10:23:57.247833+00:00
 >>>>>>> origin/main
 last_attempt_result:PARTIAL
-consecutive_failures: 1
+consecutive_failures: 2
 consecutive_infra_failures: 0
 tasks_done: []
 tasks_remaining:
