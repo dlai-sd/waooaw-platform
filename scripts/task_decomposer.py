@@ -584,13 +584,19 @@ def execute_file_by_file(
                 mark = "✅" if r.status == "success" else "❌"
                 print(f"  {mark} FILE-BY-FILE: {Path(r.task.output_file).name} ({r.status}, {r.attempts} attempt(s))")
             if all_ok:
-                return True
-            # Partial success — identify failed files and log prominently
-            failed = [r.task.output_file for r in results if r.status != "success"]
-            print(f"  FILE-BY-FILE: GoalExecutor partial failure — {len(failed)} file(s) failed: {failed}")
+                # Belt-and-suspenders: confirm every file is on disk at the declared path.
+                # Cascade can claim RESOLVED after writing to a wrong path (LLM path mismatch).
+                missing = [f for f in output_files if not (REPO_ROOT / f).exists()]
+                if not missing:
+                    return True
+                print(f"  FILE-BY-FILE: GoalExecutor path mismatch — expected but missing: {missing}")
+                print(f"  FILE-BY-FILE: falling back to inline MagicLLM with explicit path constraint")
+                output_files = missing
+            else:
+                # Partial success — identify failed files and log prominently
+                output_files = [r.task.output_file for r in results if r.status != "success"]
+                print(f"  FILE-BY-FILE: GoalExecutor partial failure — {len(output_files)} file(s) failed: {output_files}")
             print(f"  FILE-BY-FILE: falling back to inline MagicLLM for failed files only")
-            # Only regenerate files that GoalExecutor failed on
-            output_files = failed
         except Exception as _go_runtime_err:
             print(f"  FILE-BY-FILE: ⚠️  GoalExecutor runtime error ({type(_go_runtime_err).__name__}: {_go_runtime_err})")
             print(f"  FILE-BY-FILE: falling back to inline MagicLLM")

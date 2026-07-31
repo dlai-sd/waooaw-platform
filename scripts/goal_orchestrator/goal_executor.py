@@ -323,8 +323,17 @@ class GoalExecutor:
         result.final_error = failure_context
         cascade_resolved = self._run_cascade(task, failure_context, last_prompt)
         if cascade_resolved:
-            result.status = "success"
-            result.cascade_level_reached = 1
+            # Cascade claims RESOLVED — verify file is actually on disk at the declared path
+            if (REPO_ROOT / task.output_file).exists():
+                result.status = "success"
+                result.cascade_level_reached = 1
+            else:
+                result.status = "failed"
+                result.final_error = (
+                    f"Cascade RESOLVED but {task.output_file} not found on disk — "
+                    f"LLM wrote to a different path. Path must match output_files exactly."
+                )
+                print(f"  [GO] {task.task_id} — cascade path mismatch: {task.output_file} not on disk")
         else:
             result.status = "failed"
             print(f"  [GO] {task.task_id} — exhausted retries + cascade. BUILD_FAILURE (not spec-gap).")
