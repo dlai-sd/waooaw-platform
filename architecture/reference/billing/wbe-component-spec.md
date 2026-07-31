@@ -96,6 +96,16 @@ src/billing-engine/
 │   ├── scheduler.py               # APScheduler: 02:00 IST daily reconciliation job
 │   └── router.py                  # FastAPI router: /reconciliation/... (internal/ops only)
 │
+├── trial/                         # Sub-component 6: Trial Engine (GOAL-005 — blocked on Founder FA)
+│   ├── models.py                  # TrialAllocation, TrialFreeUnitLedger
+│   ├── service.py                 # TrialService: start_trial, check_expiry, convert_to_paid
+│   └── router.py                  # FastAPI router: /trial/start, /trial/status, /trial/convert
+│
+├── promotions/                    # Sub-component 7: Promotions Engine (GOAL-005 — blocked on Founder FA)
+│   ├── models.py                  # CouponCode, ReferralRecord
+│   ├── service.py                 # PromotionsService: validate_coupon, apply_discount, credit_referrer
+│   └── router.py                  # FastAPI router: /promotions/validate-coupon, /promotions/referral-status
+│
 └── tests/
     ├── test_wallet.py             # Wallet Engine: balance, reserve, release, refill (≥90% coverage C-076)
     ├── test_markup.py             # Markup Engine: cost floor, price derivation, C-089 gate
