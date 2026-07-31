@@ -211,35 +211,22 @@ def _read_skeleton(sprint_prefix: str) -> str:
 # Polish    (compile_gate="ruff")       — LLM adds type annotations only (templated, no LLM call)
 # Test      (compile_gate="ruff")       — LLM writes tests against scaffold output
 
-_SCAFFOLD_SYSTEM_PROMPT = """You are a Python code generator for the WAOOAW autonomous sprint pipeline.
-You produce the SCAFFOLD SubTaskDef for a WC task — the first of three staged subtasks.
+# LLM is asked for prose only — paths and structure are built deterministically in Python.
+_SCAFFOLD_PROSE_PROMPT = """You are generating metadata for a Python scaffold subtask in the WAOOAW platform.
+Return ONLY a JSON object with exactly these two fields:
+{
+  "description": "one sentence starting with a verb — the business logic implemented",
+  "constitutional_check": "multi-line string: exact ABC class and method names from skeleton, constitutional references (C-NNN), ADR references"
+}
+No code. No SubTaskDef struct. JSON only."""
 
-SCAFFOLD RULES (staged generation — see architecture/reference/pipeline/staged-generation.md):
-1. compile_gate MUST be "py_compile" — scaffold gate is syntax only, NOT ruff
-2. output_files MUST be derived from the scope — real module paths under the service dir
-3. constitutional_check MUST reference exact skeleton ABC class and method names
-4. constitutional_check MUST say: "Implement business logic. Type annotations optional here — polish pass adds them."
-5. inject_source_files MUST include the skeleton file
-6. model_hint from WC table (reasoning/auto — never 'standard')
-7. depends_on: prior scaffold subtask id, or [] for first task in sprint
-8. Wrap your output in exactly one XML file block — required by the pipeline FORMAT gate:
-   <file path="scripts/autonomous_sprint_runner.py">SubTaskDef(...)</file>
-"""
-
-_TEST_SYSTEM_PROMPT = """You are a Python test generator for the WAOOAW autonomous sprint pipeline.
-You produce the TEST SubTaskDef for a WC task — the third of three staged subtasks.
-
-TEST RULES:
-1. compile_gate MUST be "ruff" — tests exempt from ANN per pyproject.toml per-file-ignores
-2. output_files MUST be test files under tests/{service}/ directory
-3. inject_source_files MUST include scaffold output files (the implementation being tested)
-4. constitutional_check must list: happy path, idempotency cases, error cases, constitutional invariants
-5. model_hint MUST be "reasoning" — test quality requires understanding edge cases
-6. max_tokens: 6000
-7. depends_on: the polish subtask id (e.g. WC027-02b)
-8. Wrap your output in exactly one XML file block — required by the pipeline FORMAT gate:
-   <file path="scripts/autonomous_sprint_runner.py">SubTaskDef(...)</file>
-"""
+_TEST_PROSE_PROMPT = """You are generating metadata for a pytest scaffold subtask in the WAOOAW platform.
+Return ONLY a JSON object with exactly these two fields:
+{
+  "description": "one sentence starting with 'Write pytest tests for ...'",
+  "constitutional_check": "multi-line string: test cases required, constitutional invariants (C-NNN), audit obligations"
+}
+No code. No SubTaskDef struct. JSON only."""
 
 
 def _llm_call(prompt: str, system: str, api_key: str, max_tokens: int = 2048) -> str | None:
@@ -339,10 +326,113 @@ def _extract_output_files(subtaskdef_literal: str, include_tests: bool = False) 
     ]
 
 
+def _extract_scope_paths(scope: str) -> list[str]:
+    """Extract explicit .py file paths from a WC task scope string (deterministic, no LLM)."""
+    clean = scope.replace("`", "")
+    return [
+        p for p in re.findall(r"(?:src|tests)/[\w/._-]+\.py", clean)
+        if "skeleton" not in p
+    ]
+
+
+def _derive_service_dir(output_files: list[str]) -> str:
+    """Derive service_dir from output_files without LLM. Returns '' for test-only tasks."""
+    if not output_files or all(p.startswith("tests/") for p in output_files):
+        return ""
+    for p in output_files:
+        if p.startswith("src/"):
+            parts = p.split("/")
+            if len(parts) >= 2:
+                return "/".join(parts[:2])
+    return ""
+
+
+def _list_skeleton_files(sprint_prefix: str) -> list[str]:
+    """Return skeleton file paths for inject_source_files (deterministic)."""
+    skel_dir_rel = _SKELETON_MAP.get(sprint_prefix)
+    if not skel_dir_rel:
+        return []
+    skel_dir = REPO_ROOT / skel_dir_rel
+    if not skel_dir.exists():
+        return []
+    return [f"{skel_dir_rel}/{f.name}" for f in sorted(skel_dir.glob("*.py"))]
+
+
+def _parse_prose_response(text: str) -> tuple[str, str]:
+    """Extract (description, constitutional_check) from LLM JSON prose response."""
+    import json as _json
+    text = re.sub(r"^```\w*\n?", "", text.strip())
+    text = re.sub(r"\n?```\s*$", "", text).strip()
+    try:
+        obj = _json.loads(text)
+        return str(obj.get("description", "")), str(obj.get("constitutional_check", ""))
+    except _json.JSONDecodeError:
+        pass
+    m = re.search(r"\{[^{}]*\"description\"[^{}]*\}", text, re.DOTALL)
+    if m:
+        try:
+            obj = _json.loads(m.group(0))
+            return str(obj.get("description", "")), str(obj.get("constitutional_check", ""))
+        except _json.JSONDecodeError:
+            pass
+    desc_m = re.search(r'"description"\s*:\s*"((?:[^"\\]|\\.)+)"', text)
+    cc_m = re.search(r'"constitutional_check"\s*:\s*"((?:[^"\\]|\\.)+)"', text)
+    description = desc_m.group(1).replace("\\n", "\n") if desc_m else ""
+    const_check = cc_m.group(1).replace("\\n", "\n") if cc_m else ""
+    return description, const_check
+
+
+def _build_scaffold_subtaskdef(
+    task_id: str,
+    output_files: list[str],
+    service_dir: str,
+    inject_source_files: list[str],
+    description: str,
+    constitutional_check: str,
+    is_test: bool,
+    stack: str,
+    wc_filename: str,
+    prior_subtask_id: str | None,
+    model_hint: str,
+    max_tokens: int,
+) -> str:
+    """Build SubTaskDef literal from structured data — zero LLM path generation."""
+    compile_gate = "ruff" if is_test else "py_compile"
+    depends_on_str = f"[{repr(prior_subtask_id)}]" if prior_subtask_id else "[]"
+    files_str = "\n        ".join(f"{repr(f)}," for f in output_files)
+    inject_str = "\n        ".join(f"{repr(f)}," for f in inject_source_files)
+    return (
+        f"SubTaskDef(\n"
+        f"    id={repr(task_id + 'a')},\n"
+        f"    description={repr(description)},\n"
+        f"    type=\"llm\",\n"
+        f"    depends_on={depends_on_str},\n"
+        f"    compile_gate={repr(compile_gate)},\n"
+        f"    service_dir={repr(service_dir)},\n"
+        f"    wc_task_id={repr(task_id)},\n"
+        f"    stack={repr(stack)},\n"
+        f"    output_files=[\n"
+        f"        {files_str}\n"
+        f"    ],\n"
+        f"    inject_source_files=[\n"
+        f"        {inject_str}\n"
+        f"    ],\n"
+        f"    spec_sections={{\n"
+        f"        {repr('work-contracts/' + wc_filename)}: {repr(task_id)},\n"
+        f"    }},\n"
+        f"    constitutional_check={repr(constitutional_check)},\n"
+        f"    model_hint={repr(model_hint)},\n"
+        f"    max_tokens={max_tokens},\n"
+        f")"
+    )
+
+
 def _generate_scaffold_subtaskdef(
     task: dict,
     stack: str,
     service_dir: str,
+    output_files: list[str],
+    inject_source_files: list[str],
     prior_subtask_id: str | None,
     wc_filename: str,
     skeleton: str,
@@ -362,105 +452,56 @@ def _generate_scaffold_subtaskdef(
         model_hint = "auto"
     max_tokens = 8000 if model_hint == "reasoning" else 4000
 
+    """Generate scaffold SubTaskDef literal. LLM generates prose only; paths are deterministic."""
+    task_id = task["task_id"]
+    model_hint = task.get("model_hint", "auto")
+    if model_hint not in ("reasoning", "auto"):
+        model_hint = "auto"
+    max_tokens = 8000 if model_hint == "reasoning" else 4000
+
     if is_test:
-        # Test scaffold: LLM writes pytest file to tests/ directory.
-        # service_dir="" so output_files paths like 'tests/billing-engine/test_x.py'
-        # resolve from the repo root instead of being prefixed with src/...
-        prompt = f"""Generate a SCAFFOLD SubTaskDef for this WC TEST task.
-
-Task ID: {task_id}
-Scope: {task['scope']}
-model_hint: {model_hint}
-Stack: {stack}
-Service dir: "" (repo root — test files live under tests/, not src/)
-Prior subtask id (depends_on): {prior_subtask_id or 'none — first task'}
-WC file: {wc_filename}
-
-EA SKELETON (frozen — for understanding interfaces to test):
-{skeleton[:4000]}
-
-Wrap output in one XML file block (pipeline FORMAT gate requirement):
-<file path="scripts/autonomous_sprint_runner.py">
-SubTaskDef(
-    id="{task_id}a",
-    description="<one sentence starting with 'Write pytest tests for ...'>",
-    type="llm",
-    depends_on=[{depends_on_str}],
-    compile_gate="ruff",
-    service_dir="",
-    wc_task_id="{task_id}",
-    stack="{stack}",
-    output_files=[
-        "<test file path, e.g. tests/billing-engine/test_markup.py>",
-    ],
-    inject_source_files=[
-        "<implementation file from prior scaffold, e.g. src/billing-engine/markup/models.py>",
-    ],
-    spec_sections={{
-        "work-contracts/{wc_filename}": "{task_id}",
-    }},
-    constitutional_check=(
-        "TEST SCAFFOLD — write pytest file to the tests/ directory.\\n"
-        "Use f-strings only — never % string formatting.\\n"
-        "Cover happy path, error cases, and constitutional invariants from scope.\\n"
-        "Use pytest-asyncio for async tests. Mock DB/Redis with pytest fixtures.\\n"
-        "Tests are ANN-exempt (pyproject.toml per-file-ignores) — annotations optional."
-    ),
-    model_hint="{model_hint}",
-    max_tokens={max_tokens},
-)
-</file>
-"""
-        system_prompt = _TEST_SYSTEM_PROMPT
+        system_prompt = _TEST_PROSE_PROMPT
+        prompt = (
+            f"Task: {task_id}\n"
+            f"Scope: {task['scope']}\n"
+            f"Output files (already determined — do NOT change): {output_files}\n"
+            f"Skeleton interfaces to test:\n{skeleton[:3000]}\n\n"
+            f'Return ONLY JSON: {{"description": "Write pytest tests for ...", "constitutional_check": "..."}}'
+        )
     else:
-        prompt = f"""Generate a SCAFFOLD SubTaskDef for this WC task.
+        system_prompt = _SCAFFOLD_PROSE_PROMPT
+        prompt = (
+            f"Task: {task_id}\n"
+            f"Scope: {task['scope']}\n"
+            f"Output files (already determined — do NOT change): {output_files}\n"
+            f"Skeleton (frozen — do not invent new names):\n{skeleton[:5000]}\n\n"
+            f'Return ONLY JSON: {{"description": "...", "constitutional_check": "Implement <ABCClass>.<method> from skeleton..."}}'
+        )
 
-Task ID: {task_id}
-Scope: {task['scope']}
-model_hint: {model_hint}
-Stack: {stack}
-Service dir: {service_dir}
-Prior subtask id (depends_on): {prior_subtask_id or 'none — first task'}
-WC file: {wc_filename}
+    result = _llm_call(prompt, system_prompt, api_key, max_tokens=512)
+    if not result:
+        return None
 
-EA SKELETON (frozen — do not invent new names):
-{skeleton[:6000]}
+    description, constitutional_check = _parse_prose_response(result)
+    if not description:
+        description = f"Implement {task['scope'][:80]}"
+    if not constitutional_check:
+        constitutional_check = "Implement skeleton interfaces per ADR-036. Do not change method signatures."
 
-Wrap output in one XML file block (pipeline FORMAT gate requirement):
-<file path="scripts/autonomous_sprint_runner.py">
-SubTaskDef(
-    id="{task_id}a",
-    description="<one sentence: business logic implemented>",
-    type="llm",
-    depends_on=[{depends_on_str}],
-    compile_gate="py_compile",
-    service_dir="{service_dir}",
-    wc_task_id="{task_id}",
-    stack="{stack}",
-    output_files=[
-        "<service module path, e.g. {service_dir}/wallet/service.py>",
-    ],
-    inject_source_files=[
-        "{service_dir}/skeleton/wbe_interfaces.py",
-    ],
-    spec_sections={{
-        "work-contracts/{wc_filename}": "{task_id}",
-    }},
-    constitutional_check=(
-        "Implement <ExactABCClass>.<method>() from skeleton.\\n"
-        "DO NOT change signatures — implement bodies only (ADR-036).\\n"
-        "Type annotations optional in scaffold — polish pass enforces ANN001.\\n"
-        "<C-xxx: constitutional invariant from skeleton annotations>"
-    ),
-    model_hint="{model_hint}",
-    max_tokens={max_tokens},
-)
-</file>
-"""
-        system_prompt = _SCAFFOLD_SYSTEM_PROMPT
-
-    result = _llm_call(prompt, system_prompt, api_key)
-    return _strip_llm_fences(result) if result else None
+    return _build_scaffold_subtaskdef(
+        task_id=task_id,
+        output_files=output_files,
+        service_dir=service_dir,
+        inject_source_files=inject_source_files,
+        description=description,
+        constitutional_check=constitutional_check,
+        is_test=is_test,
+        stack=stack,
+        wc_filename=wc_filename,
+        prior_subtask_id=prior_subtask_id,
+        model_hint=model_hint,
+        max_tokens=max_tokens,
+    )
 
 
 def _generate_polish_subtaskdef(
@@ -568,21 +609,10 @@ def _generate_test_subtaskdef(
     svc_name = Path(svc_file).stem if svc_file else task_id.lower().replace("-", "_")
     test_file = f"{test_dir}/test_{svc_name}.py"
     files_str = "\n        ".join(f'"{f}",' for f in scaffold_output_files)
-
-    prompt = f"""Generate a TEST SubTaskDef for this WC task.
-
-Task ID: {task_id}
-Scope: {task['scope']}
-Implementation files (inject these — tests target the actual code):
-{chr(10).join(scaffold_output_files)}
-Test file to produce: {test_file}
-WC file: {wc_filename}
-
-Wrap output in one XML file block (pipeline FORMAT gate requirement):
-<file path="scripts/autonomous_sprint_runner.py">
-SubTaskDef(
+    # Fully templated — no LLM call; paths are deterministic from scaffold_output_files
+    return f'''SubTaskDef(
     id="{task_id}c",
-    description="<one sentence: what this test suite covers>",
+    description="Write pytest suite covering happy path, error cases and constitutional invariants for {svc_name}",
     type="llm",
     depends_on=["{task_id}b"],
     compile_gate="ruff",
@@ -600,17 +630,14 @@ SubTaskDef(
     }},
     constitutional_check=(
         "TEST PASS — write pytest tests against the provided implementation.\\n"
-        "Cover: happy path, error cases, <idempotency/invariant specific to scope>.\\n"
+        "Cover: happy path, error cases, idempotency, constitutional invariants from scope.\\n"
         "Tests file is exempt from ANN (per pyproject.toml per-file-ignores).\\n"
-        "Use pytest-asyncio for async tests. Mock Redis/DB with pytest fixtures."
+        "Use pytest-asyncio for async tests. Mock Redis/DB with pytest fixtures.\\n"
+        "Use f-strings only — never % string formatting."
     ),
     model_hint="reasoning",
     max_tokens=6000,
-)
-</file>
-"""
-    result = _llm_call(prompt, _TEST_SYSTEM_PROMPT, api_key)
-    return _strip_llm_fences(result) if result else None
+)'''
 
 
 def _indent_subtask(literal: str, spaces: int = 8) -> str:
@@ -622,60 +649,69 @@ def _indent_subtask(literal: str, spaces: int = 8) -> str:
 def _generate_subtask_chain(
     task: dict,
     skeleton: str,
-    prior_subtask_id: str | None,
-    sprint_prefix: str,
-    wc_filename: str,
-    api_key: str,
+    skeleton_files: list[str] | None = None,
+    prior_subtask_id: str | None = None,
+    sprint_prefix: str = "",
+    wc_filename: str = "",
+    api_key: str = "",
+    accumulated_impl_files: list[str] | None = None,
 ) -> str | None:
     """
     Generate a 3-subtask chain (scaffold → polish → test) for one WC task row.
     Returns the complete TASK_HANDLERS dict entry string, or None on failure.
-    Assembly is done entirely in Python — no string surgery on LLM output.
+
+    Paths are extracted deterministically from the WC scope string; the LLM is
+    called only for prose (description + constitutional_check JSON).
     """
-    stack, service_dir = _SERVICE_MAP.get(sprint_prefix, ("python", "src/billing-engine"))
+    stack, service_dir_fallback = _SERVICE_MAP.get(sprint_prefix, ("python", "src/billing-engine"))
     task_id = task["task_id"]
+    skeleton_files = skeleton_files or []
 
-    # Test-task detection: when ALL declared output files live under tests/, the task
-    # IS the test task (e.g. WC027-02).  Use a test-appropriate scaffold prompt and
-    # set service_dir="" so paths like 'tests/billing-engine/test_markup.py' resolve
-    # relative to the repo root instead of being prefixed with the service dir.
-    is_test = _is_test_task(task)
+    # --- Deterministic path extraction from WC scope ---
+    scope_paths = _extract_scope_paths(task.get("scope", ""))
+    if scope_paths:
+        output_files = scope_paths
+        service_dir = _derive_service_dir(output_files)
+        is_test = all(p.startswith("tests/") for p in output_files)
+    else:
+        # Fallback: scope has no explicit .py paths — use _SERVICE_MAP + heuristic
+        print(f"  ⚠️  {task_id}: no file paths in scope — falling back to LLM path generation")
+        is_test = _is_test_task(task)
+        service_dir = "" if is_test else service_dir_fallback
+        output_files = []
+
+    # --- Compose inject_source_files deterministically ---
     if is_test:
-        service_dir = ""  # test files are under tests/, not under src/...
+        inject_source_files = (accumulated_impl_files or []) + skeleton_files
+    else:
+        inject_source_files = skeleton_files
 
-    # Pass 1: scaffold (LLM) — returns bare SubTaskDef(...) literal
+    # Pass 1: scaffold (LLM for prose only; paths are deterministic)
     scaffold_literal = _generate_scaffold_subtaskdef(
         task=task, stack=stack, service_dir=service_dir,
+        output_files=output_files, inject_source_files=inject_source_files,
         prior_subtask_id=prior_subtask_id, wc_filename=wc_filename,
         skeleton=skeleton, api_key=api_key, is_test=is_test,
     )
     if not scaffold_literal:
         return None
 
-    # Enforce canonical scaffold id — LLMs sometimes use {task_id}-scaffold instead
-    # of {task_id}a, which breaks the depends_on chain for polish and cross-task deps.
     scaffold_literal = _normalize_subtask_id(scaffold_literal, task_id, "a")
-    scaffold_id = f"{task_id}a"  # always canonical after normalisation above
+    scaffold_id = f"{task_id}a"
 
-    # Extract output_files from scaffold literal to feed polish and test.
-    # For test tasks, include_tests=True so that tests/ paths (which are filtered
-    # by default to avoid treating test files as impl files) are included.
     scaffold_output_files = _extract_output_files(scaffold_literal, include_tests=is_test)
-
     if not scaffold_output_files:
         print(f"  ❌ {task_id}: scaffold output_files not parseable — cannot build polish/test chain")
         return None
 
-    # Pass 2: polish (templated, no LLM call) — returns bare SubTaskDef(...) literal
+    # Pass 2: polish (fully templated, no LLM call)
     polish_literal = _generate_polish_subtaskdef(
         task_id=task_id, scaffold_output_files=scaffold_output_files,
         service_dir=service_dir, wc_filename=wc_filename, stack=stack,
         scaffold_id=scaffold_id,
     )
 
-    # Pass 3:
-    #   - For test tasks: fully-templated pytest run subtask (no LLM call).
-    #   - For impl tasks: LLM-generated test subtask.
+    # Pass 3: test/pytest-run (fully templated for both impl and test tasks)
     if is_test:
         test_literal = _generate_pytest_run_subtaskdef(
             task_id=task_id, test_output_files=scaffold_output_files,
@@ -687,13 +723,11 @@ def _generate_subtask_chain(
             service_dir=service_dir, wc_filename=wc_filename, stack=stack, api_key=api_key,
         )
         if not test_literal:
-            print(f"  ❌ {task_id}: test SubTaskDef LLM call failed — cannot build complete chain")
+            print(f"  ❌ {task_id}: test SubTaskDef generation failed — cannot build complete chain")
             return None
 
-    # Enforce canonical test id — same guard as scaffold above
     test_literal = _normalize_subtask_id(test_literal, task_id, "c")
 
-    # Assemble entirely in Python — indent each literal to 8 spaces inside "subtasks" list
     blocks = [scaffold_literal, polish_literal, test_literal]
     subtasks_block = ",\n".join(_indent_subtask(b) for b in blocks)
     return f'"{task_id}": {{\n    "subtasks": [\n{subtasks_block},\n    ]\n}},'
@@ -875,6 +909,7 @@ def main() -> int:
 
     # 4. Read skeleton
     skeleton = _read_skeleton(sprint_prefix)
+    skeleton_files = _list_skeleton_files(sprint_prefix)
     if not skeleton:
         print(f"  ⚠️  No skeleton found for {sprint_prefix} — grooming without blueprint")
         print(f"  EA must produce skeleton before grooming can be skeleton-grounded (ADR-036)")
@@ -886,7 +921,6 @@ def main() -> int:
         return 1
 
     # 6. Build depends_on chain: start from last groomed task's subtask id
-    # Find the last subtask id from already-groomed tasks in this sprint
     prior_subtask_id: str | None = None
     runner_content = RUNNER_PATH.read_text()
     for t in tasks:
@@ -895,6 +929,14 @@ def main() -> int:
             if candidate in runner_content:
                 prior_subtask_id = candidate
 
+    # Pre-accumulate all impl output_files (needed for test task inject_source_files)
+    # Includes already-groomed tasks — test task may run when impl tasks are already done.
+    accumulated_impl_files: list[str] = []
+    for t in tasks:
+        if not _is_test_task(t):
+            t_paths = _extract_scope_paths(t.get("scope", ""))
+            accumulated_impl_files.extend(p for p in t_paths if p not in accumulated_impl_files)
+
     groomed_count = 0
     groomed_task_ids = []
 
@@ -902,14 +944,15 @@ def main() -> int:
         task_id = task["task_id"]
         print(f"\n  Grooming {task_id}: {task['scope'][:60]}...")
 
-        # Generate 3-subtask chain: scaffold → polish → test
         generated = _generate_subtask_chain(
             task=task,
             skeleton=skeleton,
+            skeleton_files=skeleton_files,
             prior_subtask_id=prior_subtask_id,
             sprint_prefix=sprint_prefix,
             wc_filename=wc_file.name,
             api_key=api_key,
+            accumulated_impl_files=accumulated_impl_files,
         )
         if not generated:
             print(f"  ❌ {task_id}: LLM generation failed — skipping")

@@ -712,7 +712,8 @@ _SAMPLE_TEST_LITERAL = textwrap.dedent("""\
 
 
 class TestGenerateSubtaskChain:
-    _task = {"task_id": "WC027-01", "scope": "SQLAlchemy models", "model_hint": "auto"}
+    # Scope with explicit file path so _extract_scope_paths can return a deterministic result.
+    _task = {"task_id": "WC027-01", "scope": "src/billing-engine/markup/models.py — SQLAlchemy models", "model_hint": "auto"}
 
     def _make_llm(self, responses: list) -> object:
         it = iter(responses)
@@ -757,21 +758,31 @@ class TestGenerateSubtaskChain:
         assert result is None
 
     def test_returns_none_when_output_files_empty(self, monkeypatch):
-        scaffold_no_files = 'SubTaskDef(\n    id="WC027-01a",\n    output_files=[],\n    compile_gate="py_compile",\n)'
-        monkeypatch.setattr(groom_sprint, "_llm_call", self._make_llm([scaffold_no_files]))
+        """When scope has no paths and LLM returns None, chain returns None (output_files empty)."""
+        # Use a prose-only scope so _extract_scope_paths returns [] (fallback path)
+        task_no_paths = {"task_id": "WC027-01", "scope": "Implement business logic", "model_hint": "auto"}
+        monkeypatch.setattr(groom_sprint, "_llm_call", self._make_llm([None]))
         result = groom_sprint._generate_subtask_chain(
-            task=self._task, skeleton="", prior_subtask_id=None,
+            task=task_no_paths, skeleton="", prior_subtask_id=None,
             sprint_prefix="WC027", wc_filename="WC-027.md", api_key="x",
         )
         assert result is None
 
-    def test_returns_none_when_test_llm_fails(self, monkeypatch):
-        monkeypatch.setattr(groom_sprint, "_llm_call", self._make_llm([_SAMPLE_SCAFFOLD_LITERAL, None]))
+    def test_impl_task_only_calls_llm_once(self, monkeypatch):
+        """Impl task chain: scaffold prose LLM + polish (templated) + test (templated) = 1 LLM call."""
+        call_count = [0]
+
+        def counting_llm(*a, **kw):
+            call_count[0] += 1
+            return '{"description": "Implement models.", "constitutional_check": "ADR-036."}'
+
+        monkeypatch.setattr(groom_sprint, "_llm_call", counting_llm)
         result = groom_sprint._generate_subtask_chain(
             task=self._task, skeleton="", prior_subtask_id=None,
             sprint_prefix="WC027", wc_filename="WC-027.md", api_key="x",
         )
-        assert result is None
+        assert result is not None
+        assert call_count[0] == 1, f"Impl task chain should make 1 LLM call, got {call_count[0]}"
 
     def test_prior_subtask_id_sets_depends_on(self, monkeypatch):
         monkeypatch.setattr(groom_sprint, "_llm_call", self._make_llm([_SAMPLE_SCAFFOLD_LITERAL, _SAMPLE_TEST_LITERAL]))
@@ -779,14 +790,15 @@ class TestGenerateSubtaskChain:
             task=self._task, skeleton="", prior_subtask_id="WC027-00a",
             sprint_prefix="WC027", wc_filename="WC-027-billing.md", api_key="x",
         )
-        # The scaffold prompt gets the prior_subtask_id — it appears in the LLM prompt,
-        # but here we verify it doesn't corrupt the assembled result
+        # prior_subtask_id is used by _build_scaffold_subtaskdef directly; it must appear in depends_on
         assert result is not None
         assert '"WC027-01a"' in result
+        assert 'depends_on=[\'WC027-00a\']' in result or 'depends_on=["WC027-00a"]' in result
 
-    def test_scaffold_fenced_response_is_handled(self, monkeypatch):
-        fenced = f"```python\n{_SAMPLE_SCAFFOLD_LITERAL}\n```"
-        monkeypatch.setattr(groom_sprint, "_llm_call", self._make_llm([fenced, _SAMPLE_TEST_LITERAL]))
+    def test_scaffold_fenced_json_response_is_handled(self, monkeypatch):
+        """Fenced JSON prose response from LLM is correctly parsed by _parse_prose_response."""
+        fenced_json = '```json\n{"description": "Implement models.", "constitutional_check": "ADR-036."}\n```'
+        monkeypatch.setattr(groom_sprint, "_llm_call", self._make_llm([fenced_json]))
         result = groom_sprint._generate_subtask_chain(
             task=self._task, skeleton="", prior_subtask_id=None,
             sprint_prefix="WC027", wc_filename="WC-027-billing.md", api_key="x",
@@ -795,9 +807,10 @@ class TestGenerateSubtaskChain:
         assert '"WC027-01a"' in result
         assert '"WC027-01b"' in result
 
-    def test_scaffold_preamble_text_is_stripped(self, monkeypatch):
-        with_preamble = f"Here is the SubTaskDef literal:\n{_SAMPLE_SCAFFOLD_LITERAL}"
-        monkeypatch.setattr(groom_sprint, "_llm_call", self._make_llm([with_preamble, _SAMPLE_TEST_LITERAL]))
+    def test_scaffold_non_json_response_falls_back(self, monkeypatch):
+        """Non-JSON LLM prose response uses fallback description; chain still succeeds."""
+        with_preamble = f"Here is some prose text without JSON structure."
+        monkeypatch.setattr(groom_sprint, "_llm_call", self._make_llm([with_preamble]))
         result = groom_sprint._generate_subtask_chain(
             task=self._task, skeleton="", prior_subtask_id=None,
             sprint_prefix="WC027", wc_filename="WC-027-billing.md", api_key="x",
@@ -810,7 +823,7 @@ class TestGenerateSubtaskChain:
 
         def capture(prompt: str, system: str, api_key: str, max_tokens: int = 2048) -> str:
             captured.append(prompt)
-            return [_SAMPLE_SCAFFOLD_LITERAL, _SAMPLE_TEST_LITERAL][len(captured) - 1]
+            return _SAMPLE_SCAFFOLD_LITERAL
 
         monkeypatch.setattr(groom_sprint, "_llm_call", capture)
         groom_sprint._generate_subtask_chain(
@@ -819,22 +832,20 @@ class TestGenerateSubtaskChain:
         )
         scaffold_prompt = captured[0]
         assert "WC027-01" in scaffold_prompt
-        assert "py_compile" in scaffold_prompt
+        # Prose-only LLM prompt includes skeleton content and output files
         assert "SKELETON_CONTENT_HERE" in scaffold_prompt
+        assert "Output files" in scaffold_prompt
 
-    def test_prompt_includes_prior_subtask_id(self, monkeypatch):
-        captured: list[str] = []
-
-        def capture(prompt: str, system: str, api_key: str, max_tokens: int = 2048) -> str:
-            captured.append(prompt)
-            return [_SAMPLE_SCAFFOLD_LITERAL, _SAMPLE_TEST_LITERAL][len(captured) - 1]
-
-        monkeypatch.setattr(groom_sprint, "_llm_call", capture)
-        groom_sprint._generate_subtask_chain(
+    def test_prior_subtask_id_appears_in_result_depends_on(self, monkeypatch):
+        """prior_subtask_id must appear in scaffold depends_on (not in LLM prompt — used by builder)."""
+        monkeypatch.setattr(groom_sprint, "_llm_call", self._make_llm([_SAMPLE_SCAFFOLD_LITERAL]))
+        result = groom_sprint._generate_subtask_chain(
             task=self._task, skeleton="", prior_subtask_id="WC026-03a",
             sprint_prefix="WC027", wc_filename="WC-027.md", api_key="x",
         )
-        assert "WC026-03a" in captured[0]
+        assert result is not None
+        # prior_subtask_id ends up in scaffold depends_on via _build_scaffold_subtaskdef
+        assert "WC026-03a" in result
 
 
 # ─────────────────────────────────────────────────────────────
@@ -1087,40 +1098,44 @@ _SAMPLE_TEST_FOR_SPLIT = textwrap.dedent("""\
 
 
 class TestGenerateSubtaskChainIdNormalisation:
-    """Regression: scaffold id normalisation prevents downstream BLOCKED subtasks."""
+    """Scaffold id is always canonical ({task_id}a) — deterministic from _build_scaffold_subtaskdef."""
 
-    _split_task = {"task_id": "WC027-01a", "scope": "SQLAlchemy models for markup engine", "model_hint": "reasoning"}
+    _split_task = {"task_id": "WC027-01a", "scope": "src/billing-engine/markup/models.py — SQLAlchemy models for markup engine", "model_hint": "reasoning"}
 
     def _make_llm(self, responses: list):
         it = iter(responses)
         return lambda *a, **kw: next(it, None)
 
-    def test_invented_scaffold_id_is_normalised(self, monkeypatch):
-        """Regression: id='WC027-01a-scaffold' → 'WC027-01aa' after normalisation."""
-        monkeypatch.setattr(groom_sprint, "_llm_call", self._make_llm([_SCAFFOLD_WITH_INVENTED_ID, _SAMPLE_TEST_FOR_SPLIT]))
+    def test_scaffold_id_is_always_canonical(self, monkeypatch):
+        """Scaffold id is always {task_id}a — produced by _build_scaffold_subtaskdef, not LLM."""
+        monkeypatch.setattr(groom_sprint, "_llm_call", self._make_llm([
+            '{"description": "Implement models.", "constitutional_check": "ADR-036."}'
+        ]))
         result = groom_sprint._generate_subtask_chain(
             task=self._split_task, skeleton="", prior_subtask_id=None,
             sprint_prefix="WC027", wc_filename="WC-027-markup.md", api_key="x",
         )
         assert result is not None
-        # After normalisation scaffold id must be WC027-01aa
+        # Scaffold id must be WC027-01aa (task_id='WC027-01a' + suffix 'a')
         assert '"WC027-01aa"' in result
-        assert '"WC027-01a-scaffold"' not in result
 
     def test_polish_depends_on_canonical_scaffold_id(self, monkeypatch):
         """Polish depends_on must reference the canonical scaffold id (WC027-01aa)."""
-        monkeypatch.setattr(groom_sprint, "_llm_call", self._make_llm([_SCAFFOLD_WITH_INVENTED_ID, _SAMPLE_TEST_FOR_SPLIT]))
+        monkeypatch.setattr(groom_sprint, "_llm_call", self._make_llm([
+            '{"description": "Implement models.", "constitutional_check": "ADR-036."}'
+        ]))
         result = groom_sprint._generate_subtask_chain(
             task=self._split_task, skeleton="", prior_subtask_id=None,
             sprint_prefix="WC027", wc_filename="WC-027-markup.md", api_key="x",
         )
         assert result is not None
-        # Polish depends_on must be the canonical scaffold id
         assert 'depends_on=["WC027-01aa"]' in result
 
-    def test_full_chain_passes_validation_after_normalisation(self, monkeypatch):
-        """Generated entry must pass _validate_generated_entry after id normalisation."""
-        monkeypatch.setattr(groom_sprint, "_llm_call", self._make_llm([_SCAFFOLD_WITH_INVENTED_ID, _SAMPLE_TEST_FOR_SPLIT]))
+    def test_full_chain_passes_validation(self, monkeypatch):
+        """Generated entry must pass _validate_generated_entry."""
+        monkeypatch.setattr(groom_sprint, "_llm_call", self._make_llm([
+            '{"description": "Implement models.", "constitutional_check": "ADR-036."}'
+        ]))
         result = groom_sprint._generate_subtask_chain(
             task=self._split_task, skeleton="", prior_subtask_id=None,
             sprint_prefix="WC027", wc_filename="WC-027-markup.md", api_key="x",
@@ -1128,12 +1143,14 @@ class TestGenerateSubtaskChainIdNormalisation:
         assert result is not None
         assert groom_sprint._validate_generated_entry(result, "WC027-01a") is True
 
-    def test_canonical_scaffold_id_passes_through_unchanged(self, monkeypatch):
-        """When LLM already used the canonical id, no normalisation occurs."""
-        monkeypatch.setattr(groom_sprint, "_llm_call", self._make_llm([_SAMPLE_SCAFFOLD_LITERAL, _SAMPLE_TEST_LITERAL]))
+    def test_canonical_id_in_chain_for_impl_task(self, monkeypatch):
+        """Canonical a/b/c ids appear in chain output for impl task with explicit scope path."""
+        monkeypatch.setattr(groom_sprint, "_llm_call", self._make_llm([
+            '{"description": "Implement models.", "constitutional_check": "ADR-036."}'
+        ]))
+        task_with_path = {"task_id": "WC027-01", "scope": "src/billing-engine/markup/models.py — models", "model_hint": "auto"}
         result = groom_sprint._generate_subtask_chain(
-            task={"task_id": "WC027-01", "scope": "SQLAlchemy models", "model_hint": "auto"},
-            skeleton="", prior_subtask_id=None,
+            task=task_with_path, skeleton="", prior_subtask_id=None,
             sprint_prefix="WC027", wc_filename="WC-027-billing.md", api_key="x",
         )
         assert result is not None
@@ -1418,8 +1435,8 @@ class TestGenerateSubtaskChainTestTask:
         # The scaffold itself declares service_dir="" — check it propagates to polish
         assert 'service_dir=""' in result
 
-    def test_test_task_scaffold_uses_test_prompt(self, monkeypatch):
-        """Test tasks must use _TEST_SYSTEM_PROMPT for scaffold generation, not _SCAFFOLD_SYSTEM_PROMPT."""
+    def test_test_task_scaffold_uses_test_prose_prompt(self, monkeypatch):
+        """Test tasks must use _TEST_PROSE_PROMPT for scaffold generation, not _SCAFFOLD_PROSE_PROMPT."""
         captured_systems: list[str] = []
 
         def capture(prompt: str, system: str, api_key: str, max_tokens: int = 2048) -> str:
@@ -1432,12 +1449,12 @@ class TestGenerateSubtaskChainTestTask:
             sprint_prefix="WC027", wc_filename="WC-027-wbe.md", api_key="x",
         )
         assert captured_systems, "LLM must be called at least once for test task scaffold"
-        assert captured_systems[0] is groom_sprint._TEST_SYSTEM_PROMPT, (
-            "Test task scaffold must use _TEST_SYSTEM_PROMPT, not _SCAFFOLD_SYSTEM_PROMPT"
+        assert captured_systems[0] is groom_sprint._TEST_PROSE_PROMPT, (
+            "Test task scaffold must use _TEST_PROSE_PROMPT, not _SCAFFOLD_PROSE_PROMPT"
         )
 
-    def test_test_task_prompt_says_test_scaffold(self, monkeypatch):
-        """The scaffold prompt for test tasks must describe test generation, not impl."""
+    def test_test_task_prompt_includes_scope_paths(self, monkeypatch):
+        """The scaffold prose prompt for test tasks must include the pre-extracted output_files."""
         captured_prompts: list[str] = []
 
         def capture(prompt: str, system: str, api_key: str, max_tokens: int = 2048) -> str:
@@ -1451,10 +1468,9 @@ class TestGenerateSubtaskChainTestTask:
         )
         assert captured_prompts, "LLM must be called"
         scaffold_prompt = captured_prompts[0]
-        # Prompt must say TEST, not "SCAFFOLD" for implementation
-        assert "TEST" in scaffold_prompt
-        assert "service_dir" in scaffold_prompt
-        assert '""' in scaffold_prompt or "repo root" in scaffold_prompt
+        # Prompt must include the deterministic output files extracted from scope
+        assert "tests/billing-engine/test_markup.py" in scaffold_prompt
+        assert "Output files" in scaffold_prompt
 
     def test_test_task_produces_pytest_run_as_c_subtask(self, monkeypatch):
         """c-subtask for a test task must use compile_gate='pytest', not LLM-generated tests."""
@@ -1520,3 +1536,242 @@ class TestGenerateSubtaskChainTestTask:
         )
         assert result is not None
         assert groom_sprint._validate_generated_entry(result, "WC027-02") is True
+
+
+# ─────────────────────────────────────────────────────────────
+# Structural refactor: deterministic path extraction
+# ─────────────────────────────────────────────────────────────
+
+class TestExtractScopePaths:
+    """Verify _extract_scope_paths parses exact .py paths from WC scope strings.
+
+    Root cause (run 30628288678): LLM invented 'billing_engine' (Python convention)
+    instead of 'billing-engine' (ADR-016 hyphenated naming). Paths must come from
+    the WC scope string directly, never from LLM re-derivation.
+    """
+
+    def test_hyphenated_service_dir_preserved(self):
+        scope = "`tests/billing-engine/test_markup.py` — test: cost_floor reads"
+        paths = groom_sprint._extract_scope_paths(scope)
+        assert paths == ["tests/billing-engine/test_markup.py"]
+
+    def test_underscore_would_not_appear(self):
+        """The LLM hallucination was 'billing_engine'; confirm we parse 'billing-engine'."""
+        scope = "`tests/billing-engine/test_markup.py` — test"
+        paths = groom_sprint._extract_scope_paths(scope)
+        assert all("billing_engine" not in p for p in paths)
+        assert any("billing-engine" in p for p in paths)
+
+    def test_multiple_src_paths(self):
+        scope = "`src/billing-engine/markup/models.py` — Pydantic; `src/billing-engine/markup/bundle_engine.py` — BundleEngine"
+        paths = groom_sprint._extract_scope_paths(scope)
+        assert "src/billing-engine/markup/models.py" in paths
+        assert "src/billing-engine/markup/bundle_engine.py" in paths
+        assert len(paths) == 2
+
+    def test_backticks_stripped(self):
+        scope = "`src/billing-engine/markup/router.py` — FastAPI"
+        paths = groom_sprint._extract_scope_paths(scope)
+        assert paths == ["src/billing-engine/markup/router.py"]
+
+    def test_skeleton_paths_excluded(self):
+        scope = "see src/billing-engine/skeleton/wbe_interfaces.py for ABC definition"
+        paths = groom_sprint._extract_scope_paths(scope)
+        assert paths == []
+
+    def test_no_paths_returns_empty(self):
+        scope = "Implement ThreadCatalogService.list_threads() — see D-07 spec"
+        paths = groom_sprint._extract_scope_paths(scope)
+        assert paths == []
+
+    def test_non_py_file_not_matched(self):
+        scope = "Update src/billing-engine/migrations/001.sql — alter bundle_profiles"
+        paths = groom_sprint._extract_scope_paths(scope)
+        assert paths == []
+
+    def test_mixed_src_and_tests_paths(self):
+        scope = "src/billing-engine/markup/engine.py; tests/billing-engine/test_engine.py"
+        paths = groom_sprint._extract_scope_paths(scope)
+        assert "src/billing-engine/markup/engine.py" in paths
+        assert "tests/billing-engine/test_engine.py" in paths
+
+    def test_wc027_01a_real_scope(self):
+        scope = (
+            "`src/billing-engine/markup/models.py` — Pydantic: `ThreadEntry`, `BundleProfile`, "
+            "`PriceConfig`; `src/billing-engine/markup/bundle_engine.py` — BundleEngine"
+        )
+        paths = groom_sprint._extract_scope_paths(scope)
+        assert "src/billing-engine/markup/models.py" in paths
+        assert "src/billing-engine/markup/bundle_engine.py" in paths
+
+    def test_wc027_02_real_scope(self):
+        """WC027-02 real scope must return hyphenated path — the root cause of run 30628288678."""
+        scope = (
+            "`tests/billing-engine/test_markup.py` — test: cost_floor reads "
+            "`bundle_profiles.cost_floor_paise` (not recomputed)"
+        )
+        paths = groom_sprint._extract_scope_paths(scope)
+        assert paths == ["tests/billing-engine/test_markup.py"]
+        # Confirm the hallucinated underscore variant never appears
+        assert "billing_engine" not in paths[0]
+
+
+class TestDeriveServiceDir:
+    """Verify _derive_service_dir returns correct service directory deterministically."""
+
+    def test_src_billing_engine(self):
+        paths = ["src/billing-engine/markup/models.py", "src/billing-engine/markup/bundle_engine.py"]
+        assert groom_sprint._derive_service_dir(paths) == "src/billing-engine"
+
+    def test_test_only_returns_empty(self):
+        paths = ["tests/billing-engine/test_markup.py"]
+        assert groom_sprint._derive_service_dir(paths) == ""
+
+    def test_empty_list_returns_empty(self):
+        assert groom_sprint._derive_service_dir([]) == ""
+
+    def test_all_tests_returns_empty(self):
+        paths = ["tests/billing-engine/test_a.py", "tests/billing-engine/test_b.py"]
+        assert groom_sprint._derive_service_dir(paths) == ""
+
+    def test_mixed_returns_src_service(self):
+        """Mixed src+tests scope: service_dir from first src/ path."""
+        paths = ["src/billing-engine/markup/engine.py", "tests/billing-engine/test_engine.py"]
+        assert groom_sprint._derive_service_dir(paths) == "src/billing-engine"
+
+    def test_different_service(self):
+        paths = ["src/constitutional-engine/enforcer.py"]
+        assert groom_sprint._derive_service_dir(paths) == "src/constitutional-engine"
+
+
+class TestBuildScaffoldSubtaskdef:
+    """Verify _build_scaffold_subtaskdef produces correct SubTaskDef literal."""
+
+    def test_impl_task_uses_py_compile_gate(self):
+        result = groom_sprint._build_scaffold_subtaskdef(
+            task_id="WC027-01a", output_files=["src/billing-engine/markup/models.py"],
+            service_dir="src/billing-engine", inject_source_files=["src/billing-engine/skeleton/wbe_interfaces.py"],
+            description="Implement Pydantic models.", constitutional_check="ADR-036.",
+            is_test=False, stack="python", wc_filename="WC-027.md",
+            prior_subtask_id=None, model_hint="auto", max_tokens=4000,
+        )
+        assert 'compile_gate=\'py_compile\'' in result
+        assert 'id=\'WC027-01aa\'' in result
+
+    def test_test_task_uses_ruff_gate(self):
+        result = groom_sprint._build_scaffold_subtaskdef(
+            task_id="WC027-02", output_files=["tests/billing-engine/test_markup.py"],
+            service_dir="", inject_source_files=["src/billing-engine/markup/models.py"],
+            description="Write pytest tests for BundleEngine.", constitutional_check="C-059.",
+            is_test=True, stack="python", wc_filename="WC-027.md",
+            prior_subtask_id=None, model_hint="reasoning", max_tokens=8000,
+        )
+        assert 'compile_gate=\'ruff\'' in result
+        assert 'id=\'WC027-02a\'' in result
+
+    def test_hyphenated_path_preserved_exactly(self):
+        """Key regression: billing-engine hyphen must survive in output_files."""
+        result = groom_sprint._build_scaffold_subtaskdef(
+            task_id="WC027-02", output_files=["tests/billing-engine/test_markup.py"],
+            service_dir="", inject_source_files=[],
+            description="Write pytest tests.", constitutional_check="C-059.",
+            is_test=True, stack="python", wc_filename="WC-027.md",
+            prior_subtask_id=None, model_hint="reasoning", max_tokens=8000,
+        )
+        assert "tests/billing-engine/test_markup.py" in result
+        assert "billing_engine" not in result
+
+    def test_prior_subtask_id_in_depends_on(self):
+        result = groom_sprint._build_scaffold_subtaskdef(
+            task_id="WC027-02", output_files=["tests/billing-engine/test_markup.py"],
+            service_dir="", inject_source_files=[],
+            description="Write pytest tests.", constitutional_check="C-059.",
+            is_test=True, stack="python", wc_filename="WC-027.md",
+            prior_subtask_id="WC027-01bc", model_hint="reasoning", max_tokens=8000,
+        )
+        assert "'WC027-01bc'" in result
+
+    def test_no_prior_subtask_gives_empty_depends_on(self):
+        result = groom_sprint._build_scaffold_subtaskdef(
+            task_id="WC027-01a", output_files=["src/billing-engine/markup/models.py"],
+            service_dir="src/billing-engine", inject_source_files=[],
+            description="Implement models.", constitutional_check="ADR-036.",
+            is_test=False, stack="python", wc_filename="WC-027.md",
+            prior_subtask_id=None, model_hint="auto", max_tokens=4000,
+        )
+        assert "depends_on=[]" in result
+
+    def test_description_with_quotes_safe(self):
+        """repr() must safely handle quotes in description."""
+        result = groom_sprint._build_scaffold_subtaskdef(
+            task_id="WC027-01a", output_files=["src/billing-engine/markup/models.py"],
+            service_dir="src/billing-engine", inject_source_files=[],
+            description="Implement 'BundleEngine' for \"markup\".",
+            constitutional_check="ADR-036.", is_test=False, stack="python",
+            wc_filename="WC-027.md", prior_subtask_id=None, model_hint="auto", max_tokens=4000,
+        )
+        # Must still be ast-parseable
+        import ast as _ast
+        wrapper = "class SubTaskDef:\n    def __init__(self, **kw): pass\n_ = " + result
+        _ast.parse(wrapper)
+
+    def test_output_is_ast_parseable(self):
+        result = groom_sprint._build_scaffold_subtaskdef(
+            task_id="WC027-02", output_files=["tests/billing-engine/test_markup.py"],
+            service_dir="", inject_source_files=["src/billing-engine/markup/models.py"],
+            description="Write pytest tests for BundleEngine markup engine.",
+            constitutional_check="TEST SCAFFOLD — write pytest to tests/billing-engine/.\nCover: C-059.",
+            is_test=True, stack="python", wc_filename="WC-027.md",
+            prior_subtask_id="WC027-01bc", model_hint="reasoning", max_tokens=8000,
+        )
+        import ast as _ast
+        wrapper = "class SubTaskDef:\n    def __init__(self, **kw): pass\n_ = " + result
+        _ast.parse(wrapper)
+
+
+class TestAccumulatedImplFilesForTestTask:
+    """Verify that test tasks receive accumulated impl files as inject_source_files."""
+
+    _test_task = {
+        "task_id": "WC027-02",
+        "scope": "tests/billing-engine/test_markup.py — test: cost_floor",
+        "model_hint": "reasoning",
+    }
+
+    def test_test_task_inject_includes_accumulated_impl(self, monkeypatch):
+        """inject_source_files for test task must include all prior impl output files."""
+        captured_prompts: list[str] = []
+
+        def capture(prompt: str, system: str, api_key: str, max_tokens: int = 2048) -> str:
+            captured_prompts.append(prompt)
+            return '{"description": "Write tests.", "constitutional_check": "C-059."}'
+
+        monkeypatch.setattr(groom_sprint, "_llm_call", capture)
+        impl_files = [
+            "src/billing-engine/markup/models.py",
+            "src/billing-engine/markup/bundle_engine.py",
+            "src/billing-engine/markup/router.py",
+        ]
+        result = groom_sprint._generate_subtask_chain(
+            task=self._test_task, skeleton="", skeleton_files=[],
+            prior_subtask_id=None, sprint_prefix="WC027",
+            wc_filename="WC-027.md", api_key="x",
+            accumulated_impl_files=impl_files,
+        )
+        assert result is not None
+        # All accumulated impl files must appear in inject_source_files
+        for f in impl_files:
+            assert f in result
+
+    def test_test_task_output_files_exact_hyphen(self, monkeypatch):
+        """output_files must use hyphenated path from scope, not LLM-derived underscore."""
+        monkeypatch.setattr(groom_sprint, "_llm_call",
+            lambda *a, **kw: '{"description": "x", "constitutional_check": "y"}')
+        result = groom_sprint._generate_subtask_chain(
+            task=self._test_task, skeleton="", skeleton_files=[],
+            prior_subtask_id=None, sprint_prefix="WC027",
+            wc_filename="WC-027.md", api_key="x",
+        )
+        assert result is not None
+        assert "tests/billing-engine/test_markup.py" in result
+        assert "billing_engine" not in result
