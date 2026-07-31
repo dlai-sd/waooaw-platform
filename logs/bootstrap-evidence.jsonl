@@ -71,3 +71,4 @@
 {"event": "spec_gap_halt", "timestamp": "2026-07-30T19:58:52.226900+00:00", "run_id": "local", "stub_mode": true, "task": "WC026-02a:service.py", "issue": "171", "gap": "WC026-02a:service.py failed validation after 3 LLM attempts. Last error: "}
 {"event": "spec_gap_halt", "timestamp": "2026-07-30T19:59:03.064989+00:00", "run_id": "local", "stub_mode": true, "task": "WC026-05a:test_wallet.py", "issue": "172", "gap": "WC026-05a:test_wallet.py failed validation after 3 LLM attempts. Last error: "}
 {"event": "SPRINT_TASKS_EXECUTED", "timestamp": "2026-07-30T19:59:03.311217+00:00", "run_id": "local", "stub_mode": true, "sprint": "WC-026", "tasks_done": []}
+{"event": "AUTONOMOUS_SPRINT_STARTED", "timestamp": "2026-07-31T05:52:12.975780+00:00", "run_id": "30607925327", "stub_mode": true, "sprint": "WC-027", "branch": "ib/009/sprint-027", "tasks": ["WC027-01a", "WC027-01b", "WC027-02"]}

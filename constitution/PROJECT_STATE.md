@@ -872,9 +872,9 @@ platform_phase: IMPLEMENTATION  # SPEC | IMPLEMENTATION | LIVE
 
 current_sprint: WC-027
 sprint_ib_item: IB-009
-sprint_status: READY
+sprint_status: IN_PROGRESS
 branch: ib/009/sprint-027
-last_attempt_utc: 2026-07-31T00:00:00.000000+00:00
+last_attempt_utc: 2026-07-31T05:52:12.976000+00:00
 last_attempt_result:
 consecutive_failures: 0
 consecutive_infra_failures: 0
