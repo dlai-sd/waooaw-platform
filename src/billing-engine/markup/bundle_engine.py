@@ -181,22 +181,13 @@ class BundleEngine:
         self, agent_type: str, bundle_tier: str
     ) -> int:
         """
-        Return cost_floor_paise as stored in bundle_profiles.
-        DO NOT recompute — read the persisted value (spec: WC027-01a).
+        Read cost_floor_paise directly from bundle_profiles — DO NOT recompute.
+        Returns the floor value in INR paise.
 
-        Returns:
-            cost_floor_paise (int) — floor in INR paise.
-
-        Raises:
-            BundleProfileNotFoundError — if (agent_type, bundle_tier) not found.
+        Implements: IMarkupEngine.derive_bundle_cost_floor
+        Constitutional: C-089 (floor is the single source of truth for cost).
         """
         profile = await self._fetch_bundle_profile(agent_type, bundle_tier)
-        logger.info(
-            "cost_floor fetched agent_type=%s bundle_tier=%s floor_paise=%s",
-            agent_type,
-            bundle_tier,
-            profile.cost_floor_paise,
-        )
         return profile.cost_floor_paise
 
     async def derive_price(
@@ -206,48 +197,35 @@ class BundleEngine:
         target_margin_pct: float | None = None,
     ) -> int:
         """
-        Derive selling price using margin-on-revenue formula:
-            derived_price = cost_floor / (1 - margin / 100)
+        Derive a compliant price using the margin-on-revenue formula:
+            price = cost_floor / (1 - margin/100)
 
-        If target_margin_pct is None, uses bundle_profiles.minimum_margin_pct.
+        If target_margin_pct is None, use bundle_profiles.minimum_margin_pct.
+        Returns price in INR paise, rounded up to the nearest paise (math.ceil)
+        so the result always meets or exceeds the constitutional minimum.
 
-        Returns:
-            Derived price in INR paise (ceiling-rounded to whole paise).
-
-        Raises:
-            BundleProfileNotFoundError — if profile row missing.
-            ValueError — if effective margin >= 100 (division by zero guard).
+        Constitutional: C-089 (margin floor), C-048 (non-exploitation).
         """
         profile = await self._fetch_bundle_profile(agent_type, bundle_tier)
-        effective_margin = (
+
+        margin = (
             target_margin_pct
             if target_margin_pct is not None
             else profile.minimum_margin_pct
         )
 
-        if effective_margin >= 100.0:
+        if margin >= 100.0:
             raise ValueError(
-                "effective_margin_pct must be < 100, got %s" % effective_margin
+                "margin_pct must be < 100; received %s" % margin
             )
-        if effective_margin < 0.0:
+        if margin < 0.0:
             raise ValueError(
-                "effective_margin_pct must be >= 0, got %s" % effective_margin
+                "margin_pct must be >= 0; received %s" % margin
             )
 
-        divisor = 1.0 - (effective_margin / 100.0)
-        raw_price = profile.cost_floor_paise / divisor
-        derived_price = math.ceil(raw_price)
-
-        logger.info(
-            "derive_price agent_type=%s bundle_tier=%s margin_pct=%s "
-            "floor_paise=%s derived_paise=%s",
-            agent_type,
-            bundle_tier,
-            effective_margin,
-            profile.cost_floor_paise,
-            derived_price,
-        )
-        return derived_price
+        # margin-on-revenue: price = floor / (1 - margin/100)
+        raw_price = profile.cost_floor_paise / (1.0 - margin / 100.0)
+        return math.ceil(raw_price)
 
     async def validate_price(
         self,
@@ -259,79 +237,55 @@ class BundleEngine:
         Validate a proposed price against the C-089 constitutional margin floor.
 
         Steps:
-          1. Fetch bundle_profiles row.
-          2. Compute minimum_compliant_price_paise = ceil(floor / (1 - min_margin/100)).
-          3. Determine outcome: APPROVED or REJECTED.
-          4. C-059: Write audit row to pricing_floor_log (always — both outcomes).
-          5. If REJECTED, raise BelowConstitutionalFloorError (caller converts to 422).
-          6. Return PriceValidation.
+          1. Fetch bundle profile (cost_floor_paise, minimum_margin_pct).
+          2. Compute minimum_compliant_price_paise = ceil(floor / (1 - margin/100)).
+          3. Determine outcome: APPROVED if proposed >= minimum_compliant, else REJECTED.
+          4. C-059: Write to pricing_floor_log on BOTH outcomes — always.
+          5. If REJECTED, raise BelowConstitutionalFloorError (caller surfaces 422).
+          6. If APPROVED, return PriceValidation.
 
-        Returns:
-            PriceValidation — populated with outcome and all audit fields.
-
-        Raises:
-            BundleProfileNotFoundError — if profile row missing.
-            BelowConstitutionalFloorError — C-089 violation (price below floor).
+        Constitutional: C-089 (margin floor), C-059 (audit log, no silent pass-through).
         """
         profile = await self._fetch_bundle_profile(agent_type, bundle_tier)
 
-        divisor = 1.0 - (profile.minimum_margin_pct / 100.0)
-        minimum_compliant_price_paise = math.ceil(
-            profile.cost_floor_paise / divisor
-        )
+        margin = profile.minimum_margin_pct
+        if margin >= 100.0:
+            raise ValueError(
+                "minimum_margin_pct in bundle_profiles is >= 100 for "
+                "agent_type=%s bundle_tier=%s — data integrity error"
+                % (agent_type, bundle_tier)
+            )
+
+        # C-089: minimum compliant price via margin-on-revenue formula
+        raw_minimum = profile.cost_floor_paise / (1.0 - margin / 100.0)
+        minimum_compliant_price_paise: int = math.ceil(raw_minimum)
 
         approved = proposed_price_paise >= minimum_compliant_price_paise
         outcome = "APPROVED" if approved else "REJECTED"
 
-        # C-059: audit write on BOTH outcomes — mandatory, non-negotiable.
+        # C-059: ALWAYS write audit record regardless of outcome
         await self._write_pricing_floor_log(
             agent_type=agent_type,
             bundle_tier=bundle_tier,
             proposed_price_paise=proposed_price_paise,
             cost_floor_paise=profile.cost_floor_paise,
-            constitutional_minimum_margin_pct=profile.minimum_margin_pct,
+            constitutional_minimum_margin_pct=margin,
             minimum_compliant_price_paise=minimum_compliant_price_paise,
             outcome=outcome,
         )
 
         if not approved:
-            logger.warning(
-                "C-089 violation: proposed_paise=%s minimum_compliant_paise=%s "
-                "agent_type=%s bundle_tier=%s outcome=REJECTED",
-                proposed_price_paise,
-                minimum_compliant_price_paise,
-                agent_type,
-                bundle_tier,
-            )
             raise BelowConstitutionalFloorError(
                 proposed=proposed_price_paise,
                 minimum_compliant=minimum_compliant_price_paise,
                 cost_floor=profile.cost_floor_paise,
-                margin_pct=profile.minimum_margin_pct,
+                margin_pct=margin,
             )
-
-        actual_margin_pct: float | None = None
-        if proposed_price_paise > 0:
-            actual_margin_pct = (
-                (proposed_price_paise - profile.cost_floor_paise)
-                / proposed_price_paise
-            ) * 100.0
-
-        logger.info(
-            "validate_price APPROVED agent_type=%s bundle_tier=%s "
-            "proposed_paise=%s margin_pct=%s",
-            agent_type,
-            bundle_tier,
-            proposed_price_paise,
-            actual_margin_pct,
-        )
 
         return PriceValidation(
             outcome=outcome,
             cost_floor_paise=profile.cost_floor_paise,
-            constitutional_minimum_margin_pct=profile.minimum_margin_pct,
             minimum_compliant_price_paise=minimum_compliant_price_paise,
             proposed_price_paise=proposed_price_paise,
-            below_floor=False,
-            margin_pct=actual_margin_pct,
+            constitutional_minimum_margin_pct=margin,
         )
