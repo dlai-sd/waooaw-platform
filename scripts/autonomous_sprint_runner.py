@@ -600,7 +600,7 @@ def main() -> int:
             else:
                 print(f"  Branch freshness guard: rebuilding {branch} from latest origin/main")
                 # Ensure we are not on the sprint branch before deleting/resetting it.
-                current_branch = git(["branch", "--show-current"]).stdout.strip()
+                current_branch = run(["git", "branch", "--show-current"], capture=True).stdout.strip()
                 if current_branch == branch:
                     git(["checkout", "main"], check=False)
 
