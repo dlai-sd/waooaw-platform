@@ -57,7 +57,8 @@ Reviewer merges → Founder authorises Phase 2.
 ## Phase 3 — WC-029: WBE-S5 Platform Procurement Ledger
 
 **Prerequisite:** WC-028 PR merged (MeterService + PROCUREMENT_POLICY live)
-**WC file:** `work-contracts/WC-029-wbe-s5-platform-procurement.md` ✅ created
+**WC file:** `work-contracts/WC-029-wbe-s5-platform-procurement.md` ✅ created + GO-validated (2026-07-31)
+**GO record:** `goals/GOAL-WC029-procurement-ledger.md` ✅ — G-1→G-5 complete, 8 spec gaps fixed
 **State:** PARKED — waiting for Phase 2 merge + Founder authorisation
 
 ### GO Activation Steps (run when Founder authorises WC-029)

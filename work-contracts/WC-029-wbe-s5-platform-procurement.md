@@ -27,8 +27,9 @@ Short sprint — 2 tasks.
 
 | Task | Scope | model_hint | Status |
 |---|---|---|---|
-| WC029-01 | `src/billing-engine/procurement/models.py` — SQLAlchemy+Pydantic: `ProviderAccount` (provider_name, balance_paise, daily_burn_rate_paise, days_remaining, last_fa_level_triggered), `PlatformCostLedger` (provider_name, thread_type, customer_id, cost_paise, fx_rate_inr_per_usd, recorded_at); `src/billing-engine/procurement/service.py` — `ProcurementService`: `record_cost(provider, thread_type, customer_id, cost_paise, fx_rate) -> None` (idempotent via recorded_at+customer_id+thread_type composite, updates daily_burn_rate rolling avg), `project_runway(provider_name) -> int` (days at 7d rolling burn), `check_and_alert(provider_name) -> list[FounderActionCreated]` (calls PROCUREMENT_POLICY from meter.alert_policy, creates FA entries for 30d/14d/7d thresholds per §2.3a scope 3); `src/billing-engine/procurement/founder_action.py` — `FounderActionGenerator.maybe_create(provider, days_remaining, priority) -> Optional[str]` (writes FA-NNN entry to security/FOUNDER-ACTIONS.md via append — idempotent: skip if same provider+level already in file, return FA-NNN or None); `src/billing-engine/procurement/router.py` — FastAPI prefix `/platform/procurement`: `GET /status` returns list of `ProviderRunwayStatus`, `POST /record-cost` (called by AI Runtime after each provider call) | reasoning | 🔲 TODO |
-| WC029-02 | `tests/billing-engine/test_procurement.py` — test: cost recording writes to platform_cost_ledger, runway projection formula (balance / rolling_avg_burn = days), FA auto-created at ≤30d threshold (P2), FA upgraded to P1 at ≤14d, P0 at ≤7d, second call same provider+level does NOT create duplicate FA, fx_rate applied correctly to USD provider costs, `GET /platform/procurement/status` returns all providers with days_remaining — ≥90% line coverage | auto | 🔲 TODO |
+| WC029-01a | `src/billing-engine/procurement/models.py` — **SQLAlchemy ORM models** (map to existing DB tables — do NOT add columns): `ProviderAccount` maps `institutional.provider_accounts` (id, provider_name, display_name, currency, balance_paise, low_balance_threshold_days, founder_action_template); `PlatformCostLedgerEntry` maps `institutional.platform_cost_ledger` using `provider_account_id UUID` FK — NOT `provider_name`; **Pydantic response models** (computed fields, NOT DB-mapped): `ProviderRunwayStatus` (provider_name, balance_paise, daily_burn_rate_paise, days_remaining: float, last_fa_level_triggered: Optional[str]), `CostRecordRequest` (provider: str, thread_type: str, customer_id: UUID, agent_type: str, cost_paise: int, fx_rate_inr_per_usd: float); `src/billing-engine/procurement/service.py` — `ProcurementService` (standalone concrete class — no skeleton ABC): `record_cost(provider, thread_type, customer_id, agent_type, cost_paise, fx_rate_inr_per_usd) -> None` (resolves `provider_account_id` from `provider_name` lookup, inserts into `platform_cost_ledger` — append-only, intentionally NOT idempotent per C-007), `project_runway(provider_name) -> float` (7d rolling avg: `SUM(raw_cost_inr_paise WHERE recorded_at >= NOW()-7d) / 7` → `balance_paise / avg`; returns `float('inf')` when avg==0), `check_and_alert(provider_name) -> list[FounderActionCreated]` (reads `PROCUREMENT_POLICY` from `meter.alert_policy`; calls `FounderActionGenerator.maybe_create` for each breached threshold) | reasoning | 🔲 TODO |
+| WC029-01b | `src/billing-engine/procurement/founder_action.py` — `FounderActionGenerator.maybe_create(provider, days_remaining, priority) -> Optional[str]`: reads `security/FOUNDER-ACTIONS.md`, finds max FA number via regex `r'\|\s*\*\*FA-(\d+)\*\*'`, scans for existing entry with same provider + same priority (skip if found — idempotent), appends new table row under correct P0/P1/P2 section in existing table format: `\| **FA-NNN** \| Provider {provider} runway {days_remaining}d — replenishment required \| P{n} \| C-077 procurement runway \| 1 hour \| OPEN \|`; `src/billing-engine/procurement/router.py` — FastAPI prefix `/platform/procurement`: `GET /status` → list[ProviderRunwayStatus], `POST /record-cost` body `CostRecordRequest` → 200; `GET /margin/report` (deferred from WC-028, ops-auth required); mount router in `src/billing-engine/main.py` | auto | 🔲 TODO |
+| WC029-02 | `tests/billing-engine/test_procurement.py` — test: `record_cost` writes one row to `platform_cost_ledger` (verify via DB query), `record_cost` called twice for same event writes TWO rows (append-only — no dedup at DB level), `project_runway` formula (balance / 7d_avg_burn = days), FA auto-created at ≤30d threshold (P2) via `maybe_create`, FA upgraded to P1 at ≤14d and P0 at ≤7d, second `maybe_create` same provider+priority → no duplicate entry in FA file (idempotency), `GET /platform/procurement/status` → 200 list with `days_remaining`; use `tmp_path` pytest fixture for FA file — do NOT modify real `security/FOUNDER-ACTIONS.md` — ≥90% line coverage | auto | 🔲 TODO |
 
 ---
 
@@ -48,9 +49,9 @@ Short sprint — 2 tasks.
 ## Definition of Done
 
 - [ ] `from procurement.service import ProcurementService` — no import errors
-- [ ] `record_cost("anthropic", "DMA_THREAD", uuid, 500, 85.0)` → writes to platform_cost_ledger
-- [ ] Second call same provider+customer+thread within same minute → idempotent (no duplicate row)
-- [ ] `project_runway("anthropic")` with 7d burn data → returns int days remaining
+- [ ] `record_cost("anthropic", "DMA_THREAD", uuid, "dma_v1", 500, 85.0)` → inserts one row into `platform_cost_ledger` (verified by DB query)
+- [ ] Two calls for same event → two rows inserted (append-only — intentionally not deduplicated at DB level)
+- [ ] `project_runway("anthropic")` with 7d burn data → returns float days remaining
 - [ ] `check_and_alert("anthropic")` when days_remaining = 6 → creates P0 FA entry in `security/FOUNDER-ACTIONS.md`
 - [ ] Same call again (days still 6) → no duplicate FA (idempotency)
 - [ ] `GET /platform/procurement/status` → 200 list of providers with `days_remaining`
@@ -62,20 +63,21 @@ Short sprint — 2 tasks.
 
 ## FounderActionGenerator Format
 
-Read `security/FOUNDER-ACTIONS.md` first. Append new entries in the existing format.
-FA number: scan existing `FA-NNN` entries, use next sequential number.
-Entry format (match existing style exactly):
+Read `security/FOUNDER-ACTIONS.md` first to understand the existing table structure.
+FA entries are **table rows** under the appropriate P0/P1/P2 section header, using this format:
 ```
-## FA-NNN (auto-generated): Provider {provider_name} runway {days_remaining}d — replenishment required
-**Priority:** P{0|1|2}
-**Generated:** {ISO date}
-**Trigger:** procurement runway check — {provider_name} balance projects depletion in {days_remaining} days
-**Action required:** Top up {provider_name} API account. Minimum: 30d runway at current burn rate.
-**Status:** OPEN
+| **FA-NNN** | Provider {provider_name} runway {days_remaining}d — replenishment required | P{n} | C-077 procurement runway | 1 hour | OPEN |
 ```
+Scan for the current highest FA number using regex `r'\|\s*\*\*FA-(\d+)\*\*'` to determine next FA-NNN.
+Idempotency check: skip if any row already contains `{provider_name}` + same priority level (case-insensitive).
+Tests MUST use a `tmp_path` pytest fixture copy of the FA file — never write to the real `security/FOUNDER-ACTIONS.md` during test runs.
 
 ## Notes
 
 - `PROCUREMENT_POLICY` is already defined in `meter/alert_policy.py` — import it, do not redefine.
-- FX rate: `cost_paise = cost_usd × fx_rate_inr_per_usd × 100`. Ollama is always 0 cost.
-- `project_runway` returns `float('inf')` for Ollama (no depletion) and for providers with `balance_paise = 0` AND `daily_burn_rate = 0`.
+- `cost_paise` parameter is **already in INR paise** (converted by AI Runtime before calling `record_cost`). Store directly as `raw_cost_inr_paise`. Do NOT apply `fx_rate` inside the service — `fx_rate_inr_per_usd` is recorded for audit traceability only.
+- Ollama `record_cost` calls always pass `cost_paise=0` and `fx_rate=0.0`.
+- `project_runway` returns `float('inf')` for providers with zero 7d burn (including Ollama).
+- `ProcurementService` has **no skeleton ABC** — it is a standalone concrete class.
+- `record_cost` must resolve `provider_account_id` from `provider_name` via DB lookup before insert.
+- **GO validation:** This WC was reviewed by EA (GOA-WC029-01) and SA (GOA-WC029-02). See `goals/GOAL-WC029-procurement-ledger.md` for full institutional record.
