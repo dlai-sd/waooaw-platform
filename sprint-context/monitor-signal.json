@@ -1,5 +1,5 @@
 {
-  "run_id": "30610130533",
+  "run_id": "30623361099",
   "sprint": "WC-027",
   "scaffold_task": null,
   "scaffold_failed": false,
@@ -7,8 +7,8 @@
   "spec_gap_issues": [],
   "overall_result": "PARTIAL",
   "file_costs": {
-    "WC027-01a-scaffold:models.py": 3.2558,
-    "WC027-01a-scaffold:bundle_engine.py": 5.1526
+    "WC027-01a-scaffold:models.py": 4.6666,
+    "WC027-01a-scaffold:bundle_engine.py": 5.077
   },
   "subtask_results": {
     "WC027-01a-scaffold": {
@@ -66,7 +66,7 @@
       "error_text": ""
     }
   },
-  "total_cost_inr": 8.4084,
+  "total_cost_inr": 9.7436,
   "tasks_done": [],
   "tasks_requested": [
     "WC027-01a",
