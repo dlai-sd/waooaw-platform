@@ -463,6 +463,8 @@ jobs:
             scripts/autonomous_sprint_runner.py \
             scripts/task_decomposer.py \
             scripts/magic_llm/context_builder.py \
+            scripts/magic_llm/response_evaluator.py \
+            scripts/goal_orchestrator/goal_executor.py \
             scripts/sprint_retry_advisor.py \
             scripts/complete_sprint.py \
             pyproject.toml || true

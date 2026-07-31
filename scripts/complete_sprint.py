@@ -506,7 +506,7 @@ def complete_sprint(pr_number: int = 0, dry_run: bool = False) -> int:
     # Authority: derived deterministically from TASK_HANDLERS SubTaskDef data
     # (EA-reviewed architecture) — not agent improvisation.
     if result in ("SUCCESS", "PARTIAL") and not dry_run:
-        _generate_next_sprint_simulations(sprint, tasks_done, tasks_remaining)
+        _generate_next_sprint_simulations(sprint, signal_done, tasks_remaining)
 
     # ── Step 7: Commit registry + state to main ────────────────────────────────
     if not dry_run and recorded:
