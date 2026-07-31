@@ -358,7 +358,8 @@ tasks_done:
   - WC026-03
   - WC026-04
 tasks_remaining:
-  - WC027-02
+  - WC026-02
+  - WC026-05
 consecutive_failures: 1
 autonomous_halt: true
 open_prs: none
@@ -483,7 +484,8 @@ tasks_done:
   - WC026-03
   - WC026-04
 tasks_remaining:
-  - WC027-02
+  - WC026-02
+  - WC026-05
 consecutive_failures: 0
 autonomous_halt: false
 platform_phase: IMPLEMENTATION
@@ -874,13 +876,12 @@ sprint_status: AUTHORIZED
 branch: ib/009/sprint-027
 last_attempt_utc: 2026-07-31T00:00:00.000000+00:00
 last_attempt_result:PARTIAL
-consecutive_failures: 1
+consecutive_failures: 2
 consecutive_infra_failures: 0
-tasks_done:
-  - WC027-01a
-  - WC027-01b
+tasks_done: []
 tasks_remaining:
-  - WC027-02
+  - WC026-02
+  - WC026-05
 current_task: WC027-01a
 ```
 
