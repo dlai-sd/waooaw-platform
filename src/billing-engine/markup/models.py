@@ -164,26 +164,53 @@ class PriceValidation(BaseModel):
     below_floor                       : True when proposed < minimum_compliant_price_paise
     margin_pct                        : effective margin % of proposed price on revenue;
                                         None when proposed_price_paise == 0 (zero-div avoidance)
-    log_id                            : UUID of the pricing_floor_log row written (C-059 audit)
-    evaluated_at                      : UTC timestamp of validation evaluation
+    log_id                            : UUID of the pricing_floor_log record written (C-059 audit)
+    logged_at                         : timestamp when audit record was created
     """
 
-    outcome: PriceOutcome
-    cost_floor_paise: int
-    constitutional_minimum_margin_pct: float
-    minimum_compliant_price_paise: int
-    proposed_price_paise: int
-    below_floor: bool
+    outcome: PriceOutcome = Field(..., description="APPROVED or REJECTED")
+    cost_floor_paise: int = Field(
+        ..., ge=0, description="Cost floor in INR paise from bundle_profiles"
+    )
+    constitutional_minimum_margin_pct: float = Field(
+        ..., description="Minimum margin % (C-089) from bundle_profiles"
+    )
+    minimum_compliant_price_paise: int = Field(
+        ..., ge=0, description="Constitutional minimum derived from cost floor and margin"
+    )
+    proposed_price_paise: int = Field(
+        ..., ge=0, description="The proposed price that was validated"
+    )
+    below_floor: bool = Field(
+        ..., description="True if proposed < minimum_compliant_price_paise"
+    )
     margin_pct: float | None = Field(
-        None,
-        description=(
-            "Effective margin % of proposed price on revenue; None when "
-            "proposed_price_paise == 0 to avoid division by zero"
-        ),
+        None, description="Effective margin % of proposed price on revenue"
     )
     log_id: UUID = Field(
-        ..., description="UUID of pricing_floor_log row written (C-059 traceability)"
+        ..., description="UUID of pricing_floor_log record (C-059 audit trail)"
     )
-    evaluated_at: datetime = Field(
-        ..., description="UTC datetime when validation was performed"
+    logged_at: datetime = Field(
+        ..., description="Timestamp when audit record was created"
+    )
+
+
+class PriceDeriveResponse(BaseModel):
+    """
+    Response from derive_price / POST /pricing/derive.
+
+    Derived price using formula: floor / (1 - margin/100) where margin is
+    either target_margin_pct or bundle_profiles.minimum_margin_pct (C-089).
+    """
+
+    agent_type: str = Field(..., description="Agent type from request")
+    bundle_tier: str = Field(..., description="Bundle tier from request")
+    cost_floor_paise: int = Field(
+        ..., ge=0, description="Cost floor in INR paise from bundle_profiles"
+    )
+    margin_pct: float = Field(
+        ..., description="Effective margin % used in derivation (requested or constitutional)"
+    )
+    derived_price_paise: int = Field(
+        ..., ge=0, description="Derived selling price using margin-on-revenue formula"
     )
