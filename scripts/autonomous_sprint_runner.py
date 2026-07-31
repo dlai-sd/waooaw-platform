@@ -97,6 +97,418 @@ SCAFFOLD_TASKS: frozenset[str] = frozenset({
 })
 
 TASK_HANDLERS = {
+        "WC027-01a": {
+        "subtasks": [
+            SubTaskDef(
+                id="WC027-01aa",
+                description="Implement BundleEngine markup derivation and constitutional price validation with audit logging.",
+                type="llm",
+                depends_on=[],
+                compile_gate="py_compile",
+                service_dir="src/billing-engine",
+                wc_task_id="WC027-01a",
+                stack="python",
+                output_files=[
+                    "src/billing-engine/markup/models.py",
+                    "src/billing-engine/markup/bundle_engine.py",
+                ],
+                inject_source_files=[
+                    "src/billing-engine/skeleton/wbe_interfaces.py",
+                ],
+                spec_sections={
+                    "work-contracts/WC-027-wbe-s3-markup-engine.md": "WC027-01a",
+                },
+                constitutional_check=(
+                    "Implement IMarkupEngine.derive_bundle_cost_floor() and IMarkupEngine.validate_price() from skeleton.\n"
+                    "DO NOT change method signatures — implement bodies only (ADR-036).\n"
+                    "Type annotations optional in scaffold — polish pass enforces ANN001.\n"
+                    "C-089: validate_price() MUST enforce constitutional minimum margin floor and raise BelowConstitutionalFloorError if breached.\n"
+                    "C-059: validate_price() MUST write to pricing_floor_log on BOTH APPROVED and REJECTED outcomes for audit.\n"
+                    "derive_bundle_cost_floor() reads bundle_profiles.cost_floor_paise from DB — do NOT recompute.\n"
+                    "derive_price() applies margin-on-revenue formula: floor / (1 - margin/100), defaulting to bundle_profiles.minimum_margin_pct.\n"
+                    "PriceValidation response MUST include outcome, cost_floor_paise, minimum_compliant_price_paise, proposed_price_paise."
+                ),
+                model_hint="reasoning",
+                max_tokens=8000,
+            ),
+            SubTaskDef(
+                id="WC027-01ab",
+                description="Add complete type annotations and fix ruff style (ANN001/ANN201 enforcement)",
+                type="llm",
+                depends_on=["WC027-01aa"],
+                compile_gate="ruff",
+                service_dir="src/billing-engine",
+                wc_task_id="WC027-01a",
+                stack="python",
+                output_files=[
+                    "src/billing-engine/markup/models.py",
+                    "src/billing-engine/markup/bundle_engine.py",
+                ],
+                inject_source_files=[
+                    "src/billing-engine/markup/models.py",
+                    "src/billing-engine/markup/bundle_engine.py",
+                ],
+                spec_sections={
+                    "work-contracts/WC-027-wbe-s3-markup-engine.md": "WC027-01a",
+                },
+                constitutional_check=(
+                    "POLISH PASS — type annotation enforcement only.\n"
+                    "Add type annotations to ALL function parameters (ANN001).\n"
+                    "Add return type annotations to ALL functions (ANN201, ANN202).\n"
+                    "DO NOT change function names, business logic, or structure.\n"
+                    "DO NOT add new imports beyond those needed for type annotations."
+                ),
+                model_hint="auto",
+                max_tokens=3000,
+            ),
+            SubTaskDef(
+                id="WC027-01ac",
+                description="Pytest suite covering Pydantic model validation and BundleEngine cost_floor/derive_price/validate_price behaviour, including C-059 audit-log invariant on both APPROVED and REJECTED outcomes.",
+                type="llm",
+                depends_on=["WC027-01ab"],
+                compile_gate="ruff",
+                service_dir="src/billing-engine",
+                wc_task_id="WC027-01a",
+                stack="python",
+                output_files=[
+                    "tests/billing-engine/test_models.py",
+                ],
+                inject_source_files=[
+                    "src/billing-engine/markup/models.py",
+                    "src/billing-engine/markup/bundle_engine.py",
+                ],
+                spec_sections={
+                    "work-contracts/WC-027-wbe-s3-markup-engine.md": "WC027-01a",
+                },
+                constitutional_check=(
+                    "TEST PASS — write pytest tests against the provided implementation.\n"
+                    "\n"
+                    "## File header (mandatory, first two lines of test file)\n"
+                    "# Implements: work-contracts/WC-027-wbe-s3-markup-engine.md §WC027-01a\n"
+                    "# Constitutional basis: C-059 (audit obligation)\n"
+                    "\n"
+                    "## Pydantic model tests (test_models.py — models section)\n"
+                    "- ThreadEntry: valid construction; reject missing required fields.\n"
+                    "- BundleProfile: valid construction; assert cost_floor_paise and minimum_margin_pct are positive int/float.\n"
+                    "- PriceConfig: valid round-trip; reject negative values.\n"
+                    "- PriceValidationRequest: valid; reject if proposed_price_paise is missing.\n"
+                    "- PriceDeriveRequest: valid; target_margin_pct is optional (defaults to None).\n"
+                    "- PriceValidation response: assert fields outcome, cost_floor_paise,\n"
+                    "  minimum_compliant_price_paise, proposed_price_paise all present and typed.\n"
+                    "\n"
+                    "## BundleEngine.cost_floor tests\n"
+                    "- Happy path: mock DB row returns bundle_profiles.cost_floor_paise=50000;\n"
+                    "  assert cost_floor('researcher', 'starter') == 50000 (reads from DB, no recomputation).\n"
+                    "- Error case: unknown agent_type or bundle_tier → raises KeyError or equivalent domain exception.\n"
+                    "- Idempotency: calling cost_floor twice with same args returns same value (DB mock called each time — no cached mutation).\n"
+                    "\n"
+                    "## BundleEngine.derive_price tests\n"
+                    "- Happy path with explicit target_margin_pct=20:\n"
+                    "  cost_floor=80000 → expected = ceil(80000 / (1 - 20/100)) = ceil(100000) = 100000.\n"
+                    "  Assert derive_price('researcher','starter', target_margin_pct=20) == 100000.\n"
+                    "- Happy path with target_margin_pct=None:\n"
+                    "  DB bundle_profiles.minimum_margin_pct=25; cost_floor=80000 →\n"
+                    "  expected = ceil(80000 / (1 - 25/100)) = ceil(106666.67) = 106667.\n"
+                    "  Assert derive_price('researcher','starter') == 106667 (uses DB minimum_margin_pct).\n"
+                    "- Formula invariant: derive_price result MUST be >= cost_floor for any valid margin 0 < m < 100.\n"
+                    "- Error case: target_margin_pct >= 100 → raises ValueError (division by zero / nonsensical margin).\n"
+                    "- Error case: target_margin_pct <= 0 → raises ValueError.\n"
+                    "\n"
+                    "## BundleEngine.validate_price tests — C-059 CRITICAL\n"
+                    "- APPROVED happy path: proposed_price_paise >= minimum_compliant_price → outcome='APPROVED';\n"
+                    "  assert pricing_floor_log insert was called exactly once.\n"
+                    "- REJECTED path: proposed_price_paise < minimum_compliant_price → outcome='REJECTED';\n"
+                    "  assert pricing_floor_log insert was called exactly once (C-059: audit on REJECTION too).\n"
+                    "- Constitutional invariant (C-059): pricing_floor_log MUST be written for BOTH outcomes;\n"
+                    "  parameterise the test over both APPROVED and REJECTED and assert db_insert_mock.call_count == 1 each.\n"
+                    "- PriceValidation response fields: assert minimum_compliant_price_paise is returned and equals\n"
+                    "  the derive_price result; assert cost_floor_paise matches cost_floor(); assert proposed_price_paise echoes input.\n"
+                    "- Idempotency of audit log: calling validate_price twice → pricing_floor_log written twice\n"
+                    "  (each call independently audited — log is append-only, not deduplicated).\n"
+                    "- Error case: DB write to pricing_floor_log fails → propagate exception (do not silently swallow;\n"
+                    "  C-059 audit MUST NOT be bypassed on error).\n"
+                    "\n"
+                    "## Fixture requirements\n"
+                    "- Use pytest fixtures to provide a mock DB session (AsyncMock or MagicMock with async context manager).\n"
+                    "- Mock the DB query for bundle_profiles to return a BundleProfile-like object with\n"
+                    "  cost_floor_paise and minimum_margin_pct attributes.\n"
+                    "- Mock the DB insert for pricing_floor_log to a MagicMock; assert call args include\n"
+                    "  agent_type, bundle_tier, proposed_price_paise, outcome, and a timestamp field.\n"
+                    "- Use pytest-asyncio for any async methods (mark with @pytest.mark.asyncio).\n"
+                    "- All tests are exempt from ANN annotations per pyproject.toml per-file-ignores.\n"
+                    "\n"
+                    "## Ruff compliance\n"
+                    "- No unused imports. No f-strings with no expressions. No bare excepts.\n"
+                    "- Every test function name starts with test_.\n"
+                    "- File passes ruff check with zero errors.\n"
+                ),
+                model_hint="reasoning",
+                max_tokens=6000,
+            ),
+        ]
+    },
+        "WC027-01b": {
+        "subtasks": [
+            SubTaskDef(
+                id="WC027-01ba",
+                description="Implement FastAPI router for pricing endpoints: /thread-catalog, /bundle-cost-floor, /validate (with C-089 floor enforcement), /derive; mount in main.py",
+                type="llm",
+                depends_on=["WC027-01aa"],
+                compile_gate="py_compile",
+                service_dir="src/billing-engine",
+                wc_task_id="WC027-01b",
+                stack="python",
+                output_files=[
+                    "src/billing-engine/markup/router.py",
+                    "src/billing-engine/main.py",
+                ],
+                inject_source_files=[
+                    "src/billing-engine/skeleton/wbe_interfaces.py",
+                ],
+                spec_sections={
+                    "work-contracts/WC-027-wbe-s3-markup-engine.md": "WC027-01b",
+                },
+                constitutional_check=(
+                    "Implement IMarkupEngine.derive_bundle_cost_floor() and IMarkupEngine.validate_price() method bodies.\n"
+                    "DO NOT change signatures — implement bodies only (ADR-036).\n"
+                    "Type annotations optional in scaffold — polish pass adds them (ANN001).\n"
+                    "C-088: validate_price() MUST check billing_profiles.status == FOUNDER_AUTHORIZED before validation.\n"
+                    "C-089: validate_price() MUST enforce constitutional minimum margin floor; raise BelowConstitutionalFloorError on violation; return PriceValidation with below_floor=True; log to institutional.pricing_floor_log regardless.\n"
+                    "C-090: renew() MUST reject if new plan price > agreed price without C-090 notice.\n"
+                    "C-091: GET /thread-catalog delegates to existing ThreadCatalogService; returns thread definitions.\n"
+                    "C-038: POST /validate returns 422 with minimum_compliant_price_paise field on C-089 floor violation.\n"
+                    "C-048, C-051: include in router setup; wire through service injection."
+                ),
+                model_hint="auto",
+                max_tokens=4000,
+            ),
+            SubTaskDef(
+                id="WC027-01bb",
+                description="Add complete type annotations and fix ruff style (ANN001/ANN201 enforcement)",
+                type="llm",
+                depends_on=["WC027-01ba"],
+                compile_gate="ruff",
+                service_dir="src/billing-engine",
+                wc_task_id="WC027-01b",
+                stack="python",
+                output_files=[
+                    "src/billing-engine/markup/router.py",
+                    "src/billing-engine/main.py",
+                ],
+                inject_source_files=[
+                    "src/billing-engine/markup/router.py",
+                    "src/billing-engine/main.py",
+                ],
+                spec_sections={
+                    "work-contracts/WC-027-wbe-s3-markup-engine.md": "WC027-01b",
+                },
+                constitutional_check=(
+                    "POLISH PASS — type annotation enforcement only.\n"
+                    "Add type annotations to ALL function parameters (ANN001).\n"
+                    "Add return type annotations to ALL functions (ANN201, ANN202).\n"
+                    "DO NOT change function names, business logic, or structure.\n"
+                    "DO NOT add new imports beyond those needed for type annotations."
+                ),
+                model_hint="auto",
+                max_tokens=3000,
+            ),
+            SubTaskDef(
+                id="WC027-01bc",
+                description="Pytest suite covering the /pricing router (thread-catalog, bundle-cost-floor, validate, derive) mounted in main.py, including C-089 422 response shape, GET idempotency, and service-delegation contracts.",
+                type="llm",
+                depends_on=["WC027-01bb"],
+                compile_gate="ruff",
+                service_dir="src/billing-engine",
+                wc_task_id="WC027-01b",
+                stack="python",
+                output_files=[
+                    "tests/billing-engine/test_router.py",
+                ],
+                inject_source_files=[
+                    "src/billing-engine/markup/router.py",
+                    "src/billing-engine/main.py",
+                ],
+                spec_sections={
+                    "work-contracts/WC-027-wbe-s3-markup-engine.md": "WC027-01b",
+                },
+                constitutional_check=(
+                    "TEST PASS — write pytest tests against the provided implementation.\n"
+                    "\n"
+                    "## Endpoints under test (prefix /pricing, mounted in main.py)\n"
+                    "  1. GET  /pricing/thread-catalog\n"
+                    "  2. GET  /pricing/bundle-cost-floor/{agent_type}/{bundle_tier}\n"
+                    "  3. POST /pricing/validate\n"
+                    "  4. POST /pricing/derive\n"
+                    "\n"
+                    "## Test structure requirements\n"
+                    "Use httpx.AsyncClient + pytest-asyncio with `@pytest.mark.asyncio`.\n"
+                    "Import the FastAPI `app` from `main` (or `markup.router.router` as needed).\n"
+                    "Mock all external service calls (ThreadCatalogService, DB, Redis) via\n"
+                    "`unittest.mock.AsyncMock` / `pytest.monkeypatch` or `pytest.fixture`.\n"
+                    "\n"
+                    "## Happy-path cases (one test per endpoint)\n"
+                    "  - GET /pricing/thread-catalog → 200, response is a list (may be empty list);\n"
+                    "    assert ThreadCatalogService delegate was called exactly once.\n"
+                    "  - GET /pricing/bundle-cost-floor/RESEARCHER/STARTER → 200, response body\n"
+                    "    contains a numeric field representing the cost floor in paise (≥ 0).\n"
+                    "  - POST /pricing/validate with a valid payload → 200, body does NOT contain\n"
+                    "    `minimum_compliant_price_paise` key (no violation).\n"
+                    "  - POST /pricing/derive with a valid payload → 200, body contains a derived\n"
+                    "    price field in paise (integer ≥ 0).\n"
+                    "\n"
+                    "## Error / constitutional-invariant cases\n"
+                    "  C-089 INVARIANT — POST /pricing/validate with a proposed price below the\n"
+                    "  constitutional minimum MUST return HTTP 422 and the response JSON MUST\n"
+                    "  contain the key `minimum_compliant_price_paise` with an integer value > 0.\n"
+                    "  Write at least two parameterised sub-cases (zero paise, 1 paise below floor).\n"
+                    "\n"
+                    "  - POST /pricing/validate with a missing required field → 422 FastAPI\n"
+                    "    validation error (standard Pydantic shape, NOT the C-089 shape).\n"
+                    "  - GET /pricing/bundle-cost-floor/{agent_type}/{bundle_tier} with an unknown\n"
+                    "    agent_type or bundle_tier → 404 or 422 (assert the status code is not 200\n"
+                    "    and not 500).\n"
+                    "  - POST /pricing/derive with a malformed body → 422.\n"
+                    "\n"
+                    "## Idempotency invariants\n"
+                    "  - GET /pricing/thread-catalog called twice with identical state MUST return\n"
+                    "    identical payloads (assert response1.json() == response2.json()).\n"
+                    "  - GET /pricing/bundle-cost-floor/{agent_type}/{bundle_tier} called twice MUST\n"
+                    "    return the same cost floor (idempotent read, no side-effects).\n"
+                    "\n"
+                    "## Router-mount invariant\n"
+                    "  - Assert that `app.routes` (or `app.url_path_for`) resolves paths that start\n"
+                    "    with `/pricing/` — confirming the router is mounted at the correct prefix\n"
+                    "    in main.py.\n"
+                    "\n"
+                    "## Additional rules\n"
+                    "  - File is exempt from ANN lint checks (per pyproject.toml per-file-ignores).\n"
+                    "  - Do NOT use `.AsTask()`, `.TryGetValue()`, or any FORBIDDEN API patterns.\n"
+                    "  - Do NOT import or instantiate DB/Redis clients directly; use fixtures/mocks.\n"
+                    "  - All async tests must use `pytest.mark.asyncio` or `asyncio_mode = 'auto'`.\n"
+                    "  - Use `pytest.mark.parametrize` for the C-089 boundary sub-cases.\n"
+                    "  - Keep each test function focused on one behaviour; no multi-assert monoliths.\n"
+                ),
+                model_hint="reasoning",
+                max_tokens=6000,
+            ),
+        ]
+    },
+        "WC027-02": {
+        "subtasks": [
+            SubTaskDef(
+                id="WC027-02a",
+                description="Write pytest tests for markup engine: cost_floor derivation, constitutional margin validation, pricing endpoints (200/422), thread catalog shape, ≥90% line coverage.",
+                type="llm",
+                depends_on=["WC027-01ba"],
+                compile_gate="ruff",
+                service_dir="",
+                wc_task_id="WC027-02",
+                stack="python",
+                output_files=[
+                    "tests/billing_engine/test_markup.py",
+                    "tests/billing_engine/conftest.py",
+                ],
+                inject_source_files=[
+                    "src/billing_engine/markup/engine.py",
+                    "src/billing_engine/markup/models.py",
+                    "src/billing_engine/markup/repository.py",
+                    "src/billing_engine/api/pricing_routes.py",
+                    "src/wbe_interfaces.py",
+                ],
+                spec_sections={
+                    "work-contracts/WC-027-wbe-s3-markup-engine.md": "§2.0, §3.1, §3.2, §3.3, §4.0",
+                },
+                constitutional_check=(
+                    "HAPPY PATH:\n"
+                    "  • cost_floor reads bundle_profiles.cost_floor_paise (no recomputation)\n"
+                    "  • derive_price applies: floor / (1 - margin/100) formula\n"
+                    "  • POST /pricing/validate returns 200 with APPROVED, pricing_floor_log row written\n"
+                    "  • GET /pricing/thread-catalog response matches schema (thread_type, cost_floor_paise, margin_pct_min)\n"
+                    "\n"
+                    "ERROR CASES:\n"
+                    "  • POST /pricing/validate 422 REJECTED: body contains minimum_compliant_price_paise, pricing_floor_log row written\n"
+                    "  • BelowConstitutionalFloorError raises when proposed < (cost_floor / (1 - margin/100))\n"
+                    "  • Missing bundle_tier/agent_type returns 400\n"
+                    "  • Negative proposed_price_paise returns 400\n"
+                    "\n"
+                    "IDEMPOTENCY:\n"
+                    "  • Multiple validate_price calls same inputs → same result + same log row (or deduplicated)\n"
+                    "  • pricing_floor_log respects idempotency_key (no duplicates)\n"
+                    "\n"
+                    "CONSTITUTIONAL INVARIANTS (C-089, C-091):\n"
+                    "  • C-089: margin_pct must be ≥ constitutional_minimum_margin_pct\n"
+                    "  • Pricing validation always logs to pricing_floor_log (regardless Allow/Deny)\n"
+                    "  • Thread catalog enumeration matches wallet bucket types (C-091)\n"
+                    "  • cost_floor ≥ 0; margin_pct ≥ 0; derived_price > 0\n"
+                    "\n"
+                    "COVERAGE: ≥90% line coverage on markup/engine.py, markup/models.py, api/pricing_routes.py\n"
+                    "Use pytest-asyncio, mock IWalletService/repository, mock DB context.\n"
+                    "Use f-strings only; no % formatting.\n"
+                    "Tests are ANN-exempt per pyproject.toml — skip type hints if needed."
+                ),
+                model_hint="auto",
+                max_tokens=6000,
+            ),
+            SubTaskDef(
+                id="WC027-02b",
+                description="Add complete type annotations and fix ruff style (ANN001/ANN201 enforcement)",
+                type="llm",
+                depends_on=["WC027-02a"],
+                compile_gate="ruff",
+                service_dir="",
+                wc_task_id="WC027-02",
+                stack="python",
+                output_files=[
+                    "tests/billing_engine/test_markup.py",
+                    "tests/billing_engine/conftest.py",
+                ],
+                inject_source_files=[
+                    "tests/billing_engine/test_markup.py",
+                    "tests/billing_engine/conftest.py",
+                ],
+                spec_sections={
+                    "work-contracts/WC-027-wbe-s3-markup-engine.md": "WC027-02",
+                },
+                constitutional_check=(
+                    "POLISH PASS — type annotation enforcement only.\n"
+                    "Add type annotations to ALL function parameters (ANN001).\n"
+                    "Add return type annotations to ALL functions (ANN201, ANN202).\n"
+                    "DO NOT change function names, business logic, or structure.\n"
+                    "DO NOT add new imports beyond those needed for type annotations."
+                ),
+                model_hint="auto",
+                max_tokens=3000,
+            ),
+            SubTaskDef(
+                id="WC027-02c",
+                description="Run pytest on tests/billing_engine to verify all tests pass",
+                type="llm",
+                depends_on=["WC027-02b"],
+                compile_gate="pytest",
+                service_dir="tests/billing_engine",
+                wc_task_id="WC027-02",
+                stack="python",
+                output_files=[
+                    "tests/billing_engine/test_markup.py",
+                    "tests/billing_engine/conftest.py",
+                ],
+                inject_source_files=[
+                    "tests/billing_engine/test_markup.py",
+                    "tests/billing_engine/conftest.py",
+                ],
+                spec_sections={
+                    "work-contracts/WC-027-wbe-s3-markup-engine.md": "WC027-02",
+                },
+                constitutional_check=(
+                    "PYTEST RUN — execute the test file and confirm all tests pass.\n"
+                    "If tests fail due to missing fixtures or imports, fix the test file.\n"
+                    "Do NOT modify the implementation under test."
+                ),
+                model_hint="auto",
+                max_tokens=2000,
+            ),
+        ]
+    },
     # ── GROOMER INJECTION POINT — groom_sprint.py injects new sprint handlers here ──
 }
 
