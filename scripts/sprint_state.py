@@ -160,7 +160,7 @@ def cmd_advance(args: argparse.Namespace) -> None:
     if backlog_file.exists():
         backlog = backlog_file.read_text(encoding="utf-8")
         # Mark the sprint's IB item progress (heuristic — finds AUTHORIZED near sprint ref)
-        if f"Status:** AUTHORIZED" in backlog and args.current in backlog:
+        if "Status:** AUTHORIZED" in backlog and args.current in backlog:
             print(f"  (INSTITUTIONAL_BACKLOG.md: IB {args.ib} remains AUTHORIZED — full DONE on Gate passage)")
     # Note: advance-state job should commit PROJECT_STATE.md to the feature branch,
     # NOT push to main directly. The PR merge itself advances main.

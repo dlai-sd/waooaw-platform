@@ -44,7 +44,8 @@ EVIDENCE_LOG = REPO_ROOT / "logs" / "bootstrap-evidence.jsonl"
 # TaskDecomposer — sub-task decomposition for multi-layer sprint tasks (IB-021 / WC-019)
 # Implements: architecture/reference/pipeline/dependency-graph-task-decomposition.md
 # constitutional_basis: C-084 (Step Dependency), C-086 (Pre-Execution Simulation)
-import importlib.util as _ilu, sys as _sys
+import importlib.util as _ilu
+import sys as _sys
 _td_path = str(Path(__file__).parent / "task_decomposer.py")
 _td_spec = _ilu.spec_from_file_location("task_decomposer", _td_path)
 _td_mod = _ilu.module_from_spec(_td_spec)
@@ -960,7 +961,8 @@ def main() -> int:
         pem_key = os.environ.get("GH-APP-PRIVATE-KEY", "")
         if app_id and inst_id and pem_key:
             try:
-                import importlib.util as _ilu, sys as _sys
+                import importlib.util as _ilu  # noqa: E401 (inner scope)
+                import sys as _sys
                 _scripts = str(REPO_ROOT / "scripts")
                 if _scripts not in _sys.path:
                     _sys.path.insert(0, _scripts)

@@ -610,8 +610,8 @@ class TestValidateRequiresFullChain:
         "WC027-01": {
             "subtasks": [
                 SubTaskDef(id="WC027-01a", compile_gate="py_compile"),
-                SubTaskDef(id="WC027-01b", compile_gate="ruff"),
-                SubTaskDef(id="WC027-01c", compile_gate="ruff"),
+                SubTaskDef(id="WC027-01b", depends_on=["WC027-01a"], compile_gate="ruff"),
+                SubTaskDef(id="WC027-01c", depends_on=["WC027-01b"], compile_gate="ruff"),
             ]
         },""")
 
@@ -619,11 +619,11 @@ class TestValidateRequiresFullChain:
         assert groom_sprint._validate_generated_entry(self._base, "WC027-01") is True
 
     def test_missing_polish_fails(self):
-        code = self._base.replace('SubTaskDef(id="WC027-01b", compile_gate="ruff"),\n', "")
+        code = self._base.replace('SubTaskDef(id="WC027-01b", depends_on=["WC027-01a"], compile_gate="ruff"),\n', "")
         assert groom_sprint._validate_generated_entry(code, "WC027-01") is False
 
     def test_missing_test_fails(self):
-        code = self._base.replace('SubTaskDef(id="WC027-01c", compile_gate="ruff"),\n', "")
+        code = self._base.replace('SubTaskDef(id="WC027-01c", depends_on=["WC027-01b"], compile_gate="ruff"),\n', "")
         assert groom_sprint._validate_generated_entry(code, "WC027-01") is False
 
     def test_scaffold_only_fails(self):
@@ -949,3 +949,172 @@ class TestIndentSubtask:
         # First line at 8 spaces, fields at 12 spaces — matches VALID_SUBTASKDEF_ENTRY format
         assert "        SubTaskDef(" in result
         assert "            id='WC027-01b'" in result
+
+
+# ─────────────────────────────────────────────────────────────
+# _extract_subtaskdef_id
+# ─────────────────────────────────────────────────────────────
+
+class TestExtractSubtaskdefId:
+    def test_extracts_double_quoted_id(self):
+        literal = 'SubTaskDef(\n    id="WC027-01a",\n    compile_gate="py_compile",\n)'
+        assert groom_sprint._extract_subtaskdef_id(literal) == "WC027-01a"
+
+    def test_extracts_single_quoted_id(self):
+        literal = "SubTaskDef(\n    id='WC027-01a',\n    compile_gate='py_compile',\n)"
+        assert groom_sprint._extract_subtaskdef_id(literal) == "WC027-01a"
+
+    def test_returns_none_when_no_id(self):
+        literal = 'SubTaskDef(\n    compile_gate="py_compile",\n)'
+        assert groom_sprint._extract_subtaskdef_id(literal) is None
+
+    def test_extracts_hyphenated_llm_invented_id(self):
+        """Regression: LLM sometimes invents id='WC027-01a-scaffold' — must be extractable."""
+        literal = 'SubTaskDef(\n    id="WC027-01a-scaffold",\n    compile_gate="py_compile",\n)'
+        assert groom_sprint._extract_subtaskdef_id(literal) == "WC027-01a-scaffold"
+
+    def test_extracts_first_id_only(self):
+        """Only the first id= field is extracted (other uses of id= should not interfere)."""
+        literal = 'SubTaskDef(\n    id="WC027-01a",\n    wc_task_id="WC027-01",\n)'
+        assert groom_sprint._extract_subtaskdef_id(literal) == "WC027-01a"
+
+
+# ─────────────────────────────────────────────────────────────
+# _normalize_subtask_id
+# ─────────────────────────────────────────────────────────────
+
+class TestNormalizeSubtaskId:
+    def test_canonical_id_unchanged(self):
+        """If LLM already used the canonical id, no change."""
+        literal = 'SubTaskDef(\n    id="WC027-01a",\n    compile_gate="py_compile",\n)'
+        result = groom_sprint._normalize_subtask_id(literal, "WC027-01", "a")
+        assert 'id="WC027-01a"' in result
+
+    def test_scaffold_hyphen_suffix_normalised(self):
+        """Regression: LLM used id='WC027-01a-scaffold' — must be normalised to 'WC027-01aa'."""
+        literal = 'SubTaskDef(\n    id="WC027-01a-scaffold",\n    compile_gate="py_compile",\n)'
+        result = groom_sprint._normalize_subtask_id(literal, "WC027-01a", "a")
+        assert 'id="WC027-01aa"' in result
+        assert 'scaffold' not in result
+
+    def test_normalisation_does_not_touch_other_fields(self):
+        """Only the id= field is rewritten; other fields are untouched."""
+        literal = 'SubTaskDef(\n    id="WC027-01a-scaffold",\n    wc_task_id="WC027-01",\n    compile_gate="py_compile",\n)'
+        result = groom_sprint._normalize_subtask_id(literal, "WC027-01a", "a")
+        assert 'wc_task_id="WC027-01"' in result
+        assert 'compile_gate="py_compile"' in result
+
+    def test_split_task_id_double_letter_suffix(self):
+        """task_id='WC027-01a', suffix='a' → canonical id='WC027-01aa' (double-letter)."""
+        literal = 'SubTaskDef(\n    id="WC027-01a-models",\n    compile_gate="py_compile",\n)'
+        result = groom_sprint._normalize_subtask_id(literal, "WC027-01a", "a")
+        assert 'id="WC027-01aa"' in result
+
+
+# ─────────────────────────────────────────────────────────────
+# _generate_subtask_chain — scaffold id normalisation (regression)
+# ─────────────────────────────────────────────────────────────
+
+_SCAFFOLD_WITH_INVENTED_ID = textwrap.dedent("""\
+    SubTaskDef(
+        id="WC027-01a-scaffold",
+        description="Implement SQLAlchemy models",
+        type="llm",
+        depends_on=[],
+        compile_gate="py_compile",
+        service_dir="src/billing-engine",
+        wc_task_id="WC027-01a",
+        stack="python",
+        output_files=[
+            "src/billing-engine/markup/models.py",
+        ],
+        inject_source_files=[
+            "src/billing-engine/skeleton/wbe_interfaces.py",
+        ],
+        spec_sections={
+            "work-contracts/WC-027-markup.md": "WC027-01a",
+        },
+        constitutional_check="Implement MarkupEngine models.",
+        model_hint="reasoning",
+        max_tokens=8000,
+    )""")
+
+_SAMPLE_TEST_FOR_SPLIT = textwrap.dedent("""\
+    SubTaskDef(
+        id="WC027-01ac",
+        description="Tests for markup engine models",
+        type="llm",
+        depends_on=["WC027-01ab"],
+        compile_gate="ruff",
+        service_dir="src/billing-engine",
+        wc_task_id="WC027-01a",
+        stack="python",
+        output_files=[
+            "tests/billing-engine/test_models.py",
+        ],
+        inject_source_files=[
+            "src/billing-engine/markup/models.py",
+        ],
+        spec_sections={
+            "work-contracts/WC-027-markup.md": "WC027-01a",
+        },
+        constitutional_check="TEST PASS",
+        model_hint="reasoning",
+        max_tokens=6000,
+    )""")
+
+
+class TestGenerateSubtaskChainIdNormalisation:
+    """Regression: scaffold id normalisation prevents downstream BLOCKED subtasks."""
+
+    _split_task = {"task_id": "WC027-01a", "scope": "SQLAlchemy models for markup engine", "model_hint": "reasoning"}
+
+    def _make_llm(self, responses: list):
+        it = iter(responses)
+        return lambda *a, **kw: next(it, None)
+
+    def test_invented_scaffold_id_is_normalised(self, monkeypatch):
+        """Regression: id='WC027-01a-scaffold' → 'WC027-01aa' after normalisation."""
+        monkeypatch.setattr(groom_sprint, "_llm_call", self._make_llm([_SCAFFOLD_WITH_INVENTED_ID, _SAMPLE_TEST_FOR_SPLIT]))
+        result = groom_sprint._generate_subtask_chain(
+            task=self._split_task, skeleton="", prior_subtask_id=None,
+            sprint_prefix="WC027", wc_filename="WC-027-markup.md", api_key="x",
+        )
+        assert result is not None
+        # After normalisation scaffold id must be WC027-01aa
+        assert '"WC027-01aa"' in result
+        assert '"WC027-01a-scaffold"' not in result
+
+    def test_polish_depends_on_canonical_scaffold_id(self, monkeypatch):
+        """Polish depends_on must reference the canonical scaffold id (WC027-01aa)."""
+        monkeypatch.setattr(groom_sprint, "_llm_call", self._make_llm([_SCAFFOLD_WITH_INVENTED_ID, _SAMPLE_TEST_FOR_SPLIT]))
+        result = groom_sprint._generate_subtask_chain(
+            task=self._split_task, skeleton="", prior_subtask_id=None,
+            sprint_prefix="WC027", wc_filename="WC-027-markup.md", api_key="x",
+        )
+        assert result is not None
+        # Polish depends_on must be the canonical scaffold id
+        assert 'depends_on=["WC027-01aa"]' in result
+
+    def test_full_chain_passes_validation_after_normalisation(self, monkeypatch):
+        """Generated entry must pass _validate_generated_entry after id normalisation."""
+        monkeypatch.setattr(groom_sprint, "_llm_call", self._make_llm([_SCAFFOLD_WITH_INVENTED_ID, _SAMPLE_TEST_FOR_SPLIT]))
+        result = groom_sprint._generate_subtask_chain(
+            task=self._split_task, skeleton="", prior_subtask_id=None,
+            sprint_prefix="WC027", wc_filename="WC-027-markup.md", api_key="x",
+        )
+        assert result is not None
+        assert groom_sprint._validate_generated_entry(result, "WC027-01a") is True
+
+    def test_canonical_scaffold_id_passes_through_unchanged(self, monkeypatch):
+        """When LLM already used the canonical id, no normalisation occurs."""
+        monkeypatch.setattr(groom_sprint, "_llm_call", self._make_llm([_SAMPLE_SCAFFOLD_LITERAL, _SAMPLE_TEST_LITERAL]))
+        result = groom_sprint._generate_subtask_chain(
+            task={"task_id": "WC027-01", "scope": "SQLAlchemy models", "model_hint": "auto"},
+            skeleton="", prior_subtask_id=None,
+            sprint_prefix="WC027", wc_filename="WC-027-billing.md", api_key="x",
+        )
+        assert result is not None
+        assert '"WC027-01a"' in result
+        assert '"WC027-01b"' in result
+        assert '"WC027-01c"' in result
