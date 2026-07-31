@@ -27,9 +27,9 @@ After WC-030 merges, the WBE core is complete.
 
 | Task | Scope | model_hint | Status |
 |---|---|---|---|
-| WC030-01 | `src/billing-engine/reconciliation/service.py` — `ReconciliationService`: `run_daily_audit(date: date) -> DailyAuditResult` (sum all release events against deductions per customer per day — emits evidence via C-059), `run_self_audit() -> SelfAuditResult` (compare `wallet_buckets.balance_paise` against `SUM(bucket_reservations where consumed=True)` per bucket — any mismatch > 1p sets `billing_halted=True` in Redis key `wbe:billing_halted` AND creates FA via FounderActionGenerator), `generate_margin_report(date) -> list[CustomerMarginRow]` (join platform_cost_ledger debits against wallet bucket releases to compute actual margin % per customer), `clear_halt(audit_id: str) -> None` (ops-only: clear Redis halt key after manual correction, require re-audit before clearing) | reasoning | 🔲 TODO |
-| WC030-02 | `src/billing-engine/reconciliation/scheduler.py` — APScheduler `AsyncIOScheduler`: job at `02:00 Asia/Kolkata` → calls `run_daily_audit(yesterday)` then `run_self_audit()`; job at `06:00 Asia/Kolkata` → calls `POST /meter/daily-scan` via internal HTTP (httpx AsyncClient to localhost:8140); startup guard: check Redis for in-progress audit flag before starting new run (idempotency); `src/billing-engine/reconciliation/router.py` — FastAPI prefix `/reconciliation`: `GET /status` (returns last audit result + billing_halted flag), `POST /run-now` (ops-auth required — triggers immediate run), `/platform/margin/report` (ops-auth, delegates to generate_margin_report) | auto | 🔲 TODO |
-| WC030-03 | `tests/billing-engine/test_reconciliation.py` — test: clean audit (no discrepancy) → `billing_halted=False`, 1-paise discrepancy detected → `billing_halted=True` + FA created in FOUNDER-ACTIONS.md, subsequent `POST /wallet/reserve` returns 503 `BILLING_INTEGRITY_HALT` when halted, `clear_halt` + re-audit (clean) → billing resumes, margin report arithmetic (margin_pct = (revenue - cost) / revenue), scheduler idempotency (second run within same audit window skipped); implement `CCT-SELFAUDIT-01` exactly as defined in `wbe-component-spec.md §4` — ≥90% line coverage | auto | 🔲 TODO |
+| WC030-01a | `src/billing-engine/reconciliation/service.py` — `ReconciliationService` (standalone concrete class — no skeleton ABC): `run_daily_audit(date: date) -> DailyAuditResult` (for each `bucket_reservation WHERE consumed=True AND consumed_at::date = date`, verify a matching `platform_cost_ledger` row with `bucket_reservation_id` exists; flag unlinked reservations as `DailyAuditResult.unlinked_reservations`; emit C-023 evidence record regardless of outcome); `run_self_audit() -> SelfAuditResult` (for every active `wallet_bucket`: compute `expected_balance = SUM(topup_orders.amount_paise WHERE employment_contract_id = bucket.employment_contract_id AND thread_type = bucket.thread_type AND applied_at IS NOT NULL) - SUM(bucket_reservations.reserved_paise WHERE consumed=True AND bucket_id = X)`; if `\|balance_paise - expected_balance\| > 1`: set Redis `wbe:billing_halted = "1"` (no TTL), call `FounderActionGenerator.maybe_create`, return `SelfAuditResult(discrepancy_paise=delta, billing_halted=True, founder_action_created=True)`); `generate_margin_report(date) -> list[CustomerMarginRow]` (join consumed `bucket_reservations.reserved_paise` as revenue against `platform_cost_ledger.raw_cost_inr_paise` as cost; `margin_pct = (revenue - cost) / revenue`; handle zero-cost = 100% margin); `clear_halt() -> None` (ops-only: deletes `wbe:billing_halted` from Redis — no parameters, no audit_id required; operator must call `POST /reconciliation/run-now` after to confirm clean state) | reasoning | 🔲 TODO |
+| WC030-01b | `src/billing-engine/reconciliation/scheduler.py` — `create_scheduler() -> AsyncIOScheduler`: job at `02:00 Asia/Kolkata` using `zoneinfo.ZoneInfo("Asia/Kolkata")` → calls `run_daily_audit(yesterday)` then `run_self_audit()`; job at `06:00 Asia/Kolkata` → POST to `{settings.WBE_INTERNAL_BASE_URL}/meter/daily-scan` via httpx AsyncClient; scheduler idempotency: set Redis `wbe:audit_in_progress:{YYYY-MM-DD}` at audit start (TTL=4h), skip run if key exists; `src/billing-engine/reconciliation/router.py` — FastAPI prefix `/reconciliation`: `GET /status` (last audit result + billing_halted flag from Redis), `POST /run-now` (ops-auth — triggers `run_self_audit()` immediately), `GET /platform/margin/report` (ops-auth, delegates to `generate_margin_report`); update `src/billing-engine/main.py` lifespan **additively** — import `create_scheduler`, add `scheduler.start()` / `scheduler.shutdown()` to the existing lifespan context manager without replacing it; **CROSS-SPRINT MODIFICATION:** modify `src/billing-engine/wallet/service.py` `WalletService.reserve()` to accept an injected `redis.Redis` client and check `wbe:billing_halted` at the top of the method before any DB write — if key exists: `raise HTTPException(503, detail={"code": "BILLING_INTEGRITY_HALT", "message": "Billing suspended pending reconciliation audit"})` | reasoning | 🔲 TODO |
+| WC030-03 | `tests/billing-engine/test_reconciliation.py` — test: clean `run_self_audit()` → `billing_halted=False`; manually corrupt `balance_paise` in DB (add 2 paise via direct SQL, bypassing ORM) → `run_self_audit()` → `billing_halted=True` + Redis `wbe:billing_halted` set + FA created; `POST /wallet/.../reserve` while halted → HTTP 503 `BILLING_INTEGRITY_HALT`; `clear_halt()` + `run_self_audit()` (fix balance first) → billing resumes; `run_daily_audit` with matched cost-to-reservation → zero unlinked; margin report arithmetic (`margin_pct = (revenue-cost)/revenue`); scheduler idempotency (Redis `wbe:audit_in_progress` key blocks second run); implement `CCT-SELFAUDIT-01` exactly as in `wbe-component-spec.md §4`; use `fakeredis` or dedicated test Redis — never share Redis state with production keys; ≥90% line coverage | auto | 🔲 TODO |
 
 ---
 
@@ -51,9 +51,9 @@ After WC-030 merges, the WBE core is complete.
 
 - [ ] `from reconciliation.service import ReconciliationService` — no import errors
 - [ ] `run_self_audit()` with balanced buckets → `SelfAuditResult(discrepancy_paise=0, billing_halted=False)`
-- [ ] `run_self_audit()` with 2-paise discrepancy → `billing_halted=True`, Redis `wbe:billing_halted=true`, FA created
-- [ ] `POST /wallet/reserve` while `billing_halted=True` → HTTP 503 `{"code": "BILLING_INTEGRITY_HALT"}`
-- [ ] `clear_halt()` + `run_self_audit()` (clean) → billing resumes, 503 no longer returned
+- [ ] `run_self_audit()` with 2-paise discrepancy → `billing_halted=True`, Redis `wbe:billing_halted` set (no TTL), FA created
+- [ ] `POST /wallet/.../reserve` while `billing_halted=True` → HTTP 503 `{"code": "BILLING_INTEGRITY_HALT"}`
+- [ ] `clear_halt()` (no args) + `run_self_audit()` (clean) → billing resumes, 503 no longer returned
 - [ ] APScheduler starts without error; `run_daily_audit` completes for a day with no ledger entries
 - [ ] `GET /reconciliation/status` → 200 with last audit result
 - [ ] `CCT-SELFAUDIT-01` test scenario passes
@@ -66,11 +66,13 @@ After WC-030 merges, the WBE core is complete.
 
 The self-audit gate is **hard** — financial correctness takes precedence over availability.
 When `billing_halted=True`:
-- `WalletService.reserve()` must check Redis `wbe:billing_halted` before any DB write
-- If set: raise `HTTPException(503, detail={"code": "BILLING_INTEGRITY_HALT", "message": "Billing suspended pending reconciliation audit"})` 
-- DO NOT add any override or bypass path — if a bypass is needed, it requires Founder FA + manual clear_halt
+- `WalletService.reserve()` (in `wallet/service.py`) checks Redis `wbe:billing_halted` at the top of the method before any DB write
+- Inject `redis.Redis` client into `WalletService.__init__` — this is a **cross-sprint modification** to code from WC-026
+- If key exists: raise `HTTPException(503, detail={"code": "BILLING_INTEGRITY_HALT", "message": "Billing suspended pending reconciliation audit"})`
+- DO NOT add any override or bypass path — clearing requires Founder FA + `clear_halt()` + clean re-audit
 
-The halt survives service restarts (Redis persistence) and is only cleared by `clear_halt()` after a clean `run_self_audit()`.
+The halt key `wbe:billing_halted` has **no TTL** — it survives restarts and is only removed by `clear_halt()`.
+Use `wbe:audit_in_progress:{YYYY-MM-DD}` (TTL=4h) for scheduler deduplication.
 
 ## CCT-SELFAUDIT-01 Implementation Note
 
@@ -81,6 +83,8 @@ The test must: create a wallet bucket, record a reservation, manually corrupt ba
 ## Notes
 
 - APScheduler timezone: use `zoneinfo.ZoneInfo("Asia/Kolkata")` for IST — do not hardcode UTC offset.
-- The reconciliation scheduler starts as part of FastAPI lifespan (same pattern as existing lifespan in main.py).
-- `generate_margin_report` must handle the case where a customer had bucket releases but zero
-  platform_cost_ledger entries (margin = 100% — pure margin, no LLM cost incurred).
+- Internal HTTP URL for scheduler: read `settings.WBE_INTERNAL_BASE_URL` (env var, default `http://localhost:8140`) — never hardcode.
+- `create_scheduler()` factory in `scheduler.py` exports the scheduler; `main.py` starts/stops it within the **existing lifespan context** — additive only, do not replace existing startup/shutdown code.
+- Tests must use `fakeredis` (or a separate Redis DB index) — never write `wbe:billing_halted` to production Redis during tests.
+- `generate_margin_report` handles zero-cost customers (Ollama-only): `margin = 100%` when `platform_cost_ledger` entries for the customer sum to 0.
+- **GO validation:** This WC reviewed by EA (GOA-WC030-01) and SA (GOA-WC030-02). See `goals/GOAL-WC030-reconciliation-engine.md` for full institutional record.

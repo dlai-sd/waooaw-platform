@@ -74,7 +74,8 @@ Reviewer merges → Founder authorises Phase 2.
 ## Phase 4 — WC-030: WBE-S6 Reconciliation Engine
 
 **Prerequisite:** WC-029 PR merged (ProcurementService live for margin data)
-**WC file:** `work-contracts/WC-030-wbe-s6-reconciliation.md` ✅ created
+**WC file:** `work-contracts/WC-030-wbe-s6-reconciliation.md` ✅ created + GO-validated (2026-07-31)
+**GO record:** `goals/GOAL-WC030-reconciliation-engine.md` ✅ — G-1→G-5 complete, 6 spec gaps fixed
 **State:** PARKED — waiting for Phase 3 merge + Founder authorisation
 
 ### GO Activation Steps (run when Founder authorises WC-030)
