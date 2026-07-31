@@ -11,11 +11,14 @@ from __future__ import annotations
 
 import sys
 
-from autonomous_sprint_runner import run_runner_integrity_checks
+import autonomous_sprint_runner as _runner
+from runner.sprint_ops import run_runner_integrity_checks
 
 
 def main() -> int:
-    ok, errors = run_runner_integrity_checks()
+    # Pass the fully-assembled runner module namespace so the check can
+    # see all re-exported symbols (parse_llm_files, TASK_HANDLERS, etc.)
+    ok, errors = run_runner_integrity_checks(vars(_runner))
     if ok:
         print("runner-integrity: PASS")
         return 0
