@@ -107,6 +107,14 @@ STACK_BEHAVIORAL_RULES: dict[str, list[str]] = {
         "the test body (not as a fixture parameter), or (2) add @settings(suppress_health_check=[HealthCheck.function_scoped_fixture]) "
         "above the @given decorator and import HealthCheck from hypothesis. "
         "Example: '@settings(suppress_health_check=[HealthCheck.function_scoped_fixture])\n@given(st.integers())\nasync def test_x(mock_engine, val): ...'",
+        "ASYNC HYPOTHESIS RULE (CRITICAL): In pytest-asyncio Mode.AUTO, NEVER mix @given-provided "
+        "parameters with pytest fixture parameters in the SAME async test function. "
+        "pytest-asyncio wraps async functions and resolves ALL parameters as pytest fixtures before "
+        "hypothesis injects its values — causing 'fixture X not found' errors at runtime. "
+        "RULE: async hypothesis tests must get ALL inputs from @given (create mocks inside the test body), "
+        "OR use a sync def (not async def) test function if mixing @given with pytest fixtures. "
+        "WRONG: async def test_x(agent_type: str, mock_engine: Any): ... # agent_type is @given but mock_engine is fixture "
+        "RIGHT: async def test_x(mock_engine: Any): agent_type = 'DMA'; ... # all non-hypothesis deps as fixtures, mocks inside",
     ],
     "typescript": [
         "JWT stored in httpOnly cookie ONLY — never localStorage or sessionStorage.",

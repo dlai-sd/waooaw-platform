@@ -12,7 +12,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 from scripts.sprint_retry_advisor import (
     diagnose_build_error,
     EXTEND_NOT_REPLACE, WRONG_NAMESPACE, WRONG_FIELD_NAME, MISSING_USING, UNKNOWN,
-    HYPOTHESIS_HEALTH_CHECK, DATETIME_UTCNOW,
+    HYPOTHESIS_HEALTH_CHECK, HYPOTHESIS_FIXTURE_PARAM, DATETIME_UTCNOW,
 )
 
 import pytest
@@ -247,4 +247,52 @@ def test_cct_sra_07_dtz003_ruff_classified():
 
     assert result.error_type == DATETIME_UTCNOW
     assert result.should_retry is True
+
+
+# ── CCT-SRA-09: async @given param treated as pytest fixture ──────────────────
+
+def test_cct_sra_09_hypothesis_fixture_param_classified():
+    """CCT-SRA-09: fixture 'X' not found when X is a @given param in async test."""
+    error = (
+        "ERRORS\n"
+        "tests/billing-engine/test_markup.py::test_validate_price_property_agent_type_invariant\n"
+        "  fixture 'agent_type' not found\n"
+        "    available fixtures: tmp_path, tmp_path_factory, tmpdir, tmpdir_factory, "
+        "unused_tcp_port, capfd, capsys, mock_bundle_engine\n"
+        "    use 'pytest --fixtures [testpath]' for help on them.\n"
+    )
+
+    result = diagnose_build_error("WC027-02c", error, [])
+
+    assert result.error_type == HYPOTHESIS_FIXTURE_PARAM
+    assert result.should_retry is True
+
+
+def test_cct_sra_09_hypothesis_fixture_param_extracts_name():
+    """CCT-SRA-09: fix instruction mentions the missing fixture name."""
+    error = (
+        "fixture 'agent_type' not found\n"
+        "    available fixtures: tmp_path, capfd\n"
+        "    use 'pytest --fixtures [testpath]' for help on them.\n"
+    )
+
+    result = diagnose_build_error("WC027-02c", error, [])
+
+    assert "agent_type" in result.fix_instruction
+
+
+def test_cct_sra_09_hypothesis_fixture_param_fix_mentions_async_given():
+    """CCT-SRA-09: fix instruction must guide LLM about async @given pattern."""
+    error = (
+        "fixture 'val' not found\n"
+        "    available fixtures: mock_engine\n"
+        "    use 'pytest --fixtures [testpath]' for help.\n"
+    )
+
+    result = diagnose_build_error("WC027-02c", error, [])
+
+    fix = result.fix_instruction.lower()
+    assert "@given" in result.fix_instruction
+    assert "async" in fix or "pytestasyncio" in fix.replace("-", "")
+
 

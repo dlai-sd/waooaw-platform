@@ -62,6 +62,7 @@ RUFF_GENERIC = "RUFF_GENERIC" # Ruff violation with no specific handler
 PYTHON_IMPORT_ERROR = "PYTHON_IMPORT_ERROR"  # pytest collection ImportError / ModuleNotFoundError
 PYTHON_WRONG_SYMBOL = "PYTHON_WRONG_SYMBOL"  # cannot import name 'X' — symbol name mismatch across markup modules
 HYPOTHESIS_HEALTH_CHECK = "HYPOTHESIS_HEALTH_CHECK"  # hypothesis.errors.FailedHealthCheck
+HYPOTHESIS_FIXTURE_PARAM = "HYPOTHESIS_FIXTURE_PARAM"  # fixture 'X' not found — @given param treated as pytest fixture
 DATETIME_UTCNOW = "DATETIME_UTCNOW"  # datetime.utcnow() / DTZ003 naive-datetime violation
 
 
@@ -1194,6 +1195,34 @@ def diagnose_build_error(
             constitutional_trace="C-082 (COMPILE gate: pytest collection ImportError — use conftest sys.path)",
         )
         print(f"  Retry Advisor: {PYTHON_IMPORT_ERROR} (confidence=90%)")
+        return diagnosis
+
+    # ── pytest fixture not found — likely @given param treated as pytest fixture ──
+    if "fixture" in build_error and "not found" in build_error and "available fixtures" in build_error:
+        m = re.search(r"fixture '([^']+)' not found", build_error)
+        missing = m.group(1) if m else "unknown"
+        fix = (
+            f"PYTEST FIXTURE NOT FOUND: `{missing}` is not a registered pytest fixture.\n"
+            "This happens when `@given({missing}=st....)` is used on an async test that ALSO "
+            "requests pytest fixtures as parameters. pytest-asyncio Mode.AUTO resolves ALL "
+            "function parameters as pytest fixtures BEFORE hypothesis injects its values.\n"
+            "Fix (choose one):\n"
+            f"  OPTION 1 (preferred): Remove `{missing}` from the function signature and "
+            f"reference it via the @given strategy only — create any mocks INSIDE the test body.\n"
+            "  OPTION 2: Change the async test to a sync test (remove `async def`, use `def`) "
+            "so pytest-asyncio does not interfere with hypothesis parameter injection.\n"
+            "RULE: In pytest-asyncio Mode.AUTO, do NOT mix @given-provided params with pytest "
+            "fixtures in the same async test function. Keep hypothesis tests pure (all from @given) "
+            "OR pure pytest (all from fixtures, no @given)."
+        )
+        diagnosis = RetryDiagnosis(
+            error_type=HYPOTHESIS_FIXTURE_PARAM,
+            fix_instruction=fix,
+            should_retry=True,
+            confidence=0.92,
+            constitutional_trace="C-082 (COMPILE gate: hypothesis @given param vs pytest fixture conflict in async test)",
+        )
+        print(f"  Retry Advisor: {HYPOTHESIS_FIXTURE_PARAM} (confidence=92%)")
         return diagnosis
 
     # ── Hypothesis FailedHealthCheck — function-scoped fixture + @given ───────────
