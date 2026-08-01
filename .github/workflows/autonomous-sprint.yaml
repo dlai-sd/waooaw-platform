@@ -464,21 +464,18 @@ jobs:
           SPRINT_MODEL_HINT: ${{ needs.preflight.outputs.model_hint }}
           SPRINT_TASK_ID:    ${{ needs.preflight.outputs.task_id }}
         run: |
-          # PIPELINE SYNC: always run main's pipeline scripts regardless of what's on the sprint branch.
-          # Breaks the circular dependency where a broken merge resolver in the sprint branch's
-          # autonomous_sprint_runner.py prevents main's fixes from reaching the sprint branch.
-          # These files are canonical on main — sprint branches never have authoritative versions.
+          # PIPELINE SYNC (bootstrap layer): ensures the runner and its module-level
+          # imports are from main BEFORE Python starts. These two files are exec'd at
+          # Python module init time — before the runner can do its own branch checkout.
+          # All other canonical scripts (sprint_retry_advisor.py, goal_executor.py,
+          # response_evaluator.py) are covered by the runner's own main-merge gate,
+          # which runs in BOTH fresh-start and resume paths after branch checkout.
           git fetch origin main
           git checkout origin/main -- \
             scripts/autonomous_sprint_runner.py \
             scripts/task_decomposer.py \
-            scripts/magic_llm/context_builder.py \
-            scripts/magic_llm/response_evaluator.py \
-            scripts/goal_orchestrator/goal_executor.py \
-            scripts/sprint_retry_advisor.py \
-            scripts/complete_sprint.py \
             pyproject.toml || true
-          # Also sync PROJECT_STATE.md from main — complete_sprint.py on sprint branch
+          # Sync PROJECT_STATE.md from main — complete_sprint.py on sprint branch
           # may have reset tasks_done to [] (per-run signal); main has cumulative truth.
           git checkout origin/main -- constitution/PROJECT_STATE.md || true
           python3 scripts/autonomous_sprint_runner.py
