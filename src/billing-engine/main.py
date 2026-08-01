@@ -4,6 +4,7 @@
 from fastapi import FastAPI
 
 from markup.thread_catalog import router as catalog_router
+from markup.router import router as pricing_router
 
 app = FastAPI(
     title="WAOOAW Wallet & Billing Engine (WBE)",
@@ -12,8 +13,9 @@ app = FastAPI(
 )
 
 app.include_router(catalog_router, prefix="/catalog", tags=["thread-catalog"])
+app.include_router(pricing_router, prefix="/pricing", tags=["pricing"])
 
 
 @app.get("/health")
-async def health() -> dict:
+async def health() -> dict[str, str]:
     return {"status": "ok", "service": "billing-engine", "version": "0.1.0"}
