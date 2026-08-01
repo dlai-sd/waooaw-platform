@@ -36,6 +36,10 @@ deepeval>=1.0                   # LLM output quality assertions
 pyyaml>=6.0                     # YAML parsing (sprint runner)
 PyJWT>=2.8                      # JWT for reviewer GitHub App token
 cryptography>=42.0              # RSA key handling for JWT signing
+fakeredis>=2.0                  # Redis mock for wallet cache tests (test_wallet.py, aioredis built-in since v2)
+fastapi>=0.111                  # FastAPI TestClient for billing-engine tests
+sqlalchemy>=2.0                 # SQLAlchemy for wallet integration tests
+temporalio>=1.0                 # Temporal SDK for professional-runtime session tests
 
 # ── Coverage reporting ───────────────────────────────────────────────────────
 coverage[toml]>=7.5

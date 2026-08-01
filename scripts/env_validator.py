@@ -18,6 +18,24 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 TESTS_DIR = REPO_ROOT / "tests"
 
 
+def _collect_local_modules() -> set[str]:
+    """Module names that exist as files or packages within this repo.
+
+    These are resolvable by conftest.py sys.path injection — not PyPI packages.
+    Excluding them prevents false-positive failures on local scripts/service files.
+    """
+    local: set[str] = set()
+    for root in [REPO_ROOT / "scripts", REPO_ROOT / "src", REPO_ROOT]:
+        if not root.exists():
+            continue
+        for py in root.rglob("*.py"):
+            if py.stem not in ("__init__", "__main__"):
+                local.add(py.stem)
+        for init in root.rglob("__init__.py"):
+            local.add(init.parent.name)
+    return local
+
+
 def collect_imports(path: Path) -> set[str]:
     try:
         tree = ast.parse(path.read_text(encoding="utf-8"))
@@ -58,7 +76,11 @@ def main() -> int:
 
     # sys.stdlib_module_names available from Python 3.10+
     stdlib: set[str] = sys.stdlib_module_names  # type: ignore[attr-defined]
-    third_party = sorted(m for m in all_modules if m not in stdlib and m)
+    local_modules = _collect_local_modules()
+    third_party = sorted(
+        m for m in all_modules
+        if m not in stdlib and m not in local_modules and m
+    )
 
     gaps: list[str] = []
     for module in third_party:
