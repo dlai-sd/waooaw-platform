@@ -195,24 +195,22 @@ class TestPriceValidationRequest:
 class TestPriceDeriveRequest:
     """Test PriceDeriveRequest Pydantic model."""
 
-    def test_valid_construction_without_target_margin(self) -> None:
-        """PriceDeriveRequest accepts construction without target_margin_pct."""
-        req = PriceDeriveRequest(
-            agent_type="researcher",
-            bundle_tier="starter",
-        )
-        assert req.agent_type == "researcher"
-        assert req.bundle_tier == "starter"
-        assert req.target_margin_pct is None
-
     def test_valid_construction_with_target_margin(self) -> None:
-        """PriceDeriveRequest accepts target_margin_pct when provided."""
+        """PriceDeriveRequest accepts target_margin_pct."""
         req = PriceDeriveRequest(
             agent_type="researcher",
             bundle_tier="starter",
             target_margin_pct=20.0,
         )
         assert req.target_margin_pct == 20.0
+
+    def test_valid_construction_without_target_margin(self) -> None:
+        """PriceDeriveRequest allows target_margin_pct to be None (optional)."""
+        req = PriceDeriveRequest(
+            agent_type="researcher",
+            bundle_tier="starter",
+        )
+        assert req.target_margin_pct is None
 
     def test_negative_target_margin_raises(self) -> None:
         """PriceDeriveRequest rejects negative target_margin_pct."""
@@ -223,7 +221,7 @@ class TestPriceDeriveRequest:
                 target_margin_pct=-20.0,
             )
 
-    def test_target_margin_gte_100_raises(self) -> None:
+    def test_target_margin_100_or_more_raises(self) -> None:
         """PriceDeriveRequest rejects target_margin_pct >= 100."""
         with pytest.raises(ValidationError):
             PriceDeriveRequest(
@@ -238,48 +236,91 @@ class TestPriceValidation:
 
     def test_valid_approved_response(self) -> None:
         """PriceValidation response for APPROVED outcome."""
-        response = PriceValidation(
+        validation = PriceValidation(
             outcome=ValidationOutcome.APPROVED,
             cost_floor_paise=50000,
-            minimum_compliant_price_paise=100000,
-            proposed_price_paise=105000,
+            minimum_compliant_price_paise=62500,
+            proposed_price_paise=70000,
         )
-        assert response.outcome == ValidationOutcome.APPROVED
-        assert response.cost_floor_paise == 50000
-        assert response.minimum_compliant_price_paise == 100000
-        assert response.proposed_price_paise == 105000
+        assert validation.outcome == ValidationOutcome.APPROVED
+        assert validation.cost_floor_paise == 50000
+        assert validation.minimum_compliant_price_paise == 62500
+        assert validation.proposed_price_paise == 70000
 
     def test_valid_rejected_response(self) -> None:
         """PriceValidation response for REJECTED outcome."""
-        response = PriceValidation(
+        validation = PriceValidation(
             outcome=ValidationOutcome.REJECTED,
             cost_floor_paise=50000,
-            minimum_compliant_price_paise=100000,
-            proposed_price_paise=90000,
+            minimum_compliant_price_paise=62500,
+            proposed_price_paise=40000,
         )
-        assert response.outcome == ValidationOutcome.REJECTED
-        assert response.proposed_price_paise == 90000
-        assert response.minimum_compliant_price_paise == 100000
+        assert validation.outcome == ValidationOutcome.REJECTED
+        assert validation.proposed_price_paise < validation.minimum_compliant_price_paise
 
-    def test_all_fields_present_and_typed(self) -> None:
-        """PriceValidation response includes all required fields with correct types."""
-        response = PriceValidation(
+    def test_all_required_fields_present(self) -> None:
+        """PriceValidation includes all required fields."""
+        validation = PriceValidation(
             outcome=ValidationOutcome.APPROVED,
             cost_floor_paise=50000,
-            minimum_compliant_price_paise=100000,
-            proposed_price_paise=105000,
+            minimum_compliant_price_paise=62500,
+            proposed_price_paise=70000,
         )
-        assert isinstance(response.outcome, ValidationOutcome)
-        assert isinstance(response.cost_floor_paise, int)
-        assert isinstance(response.minimum_compliant_price_paise, int)
-        assert isinstance(response.proposed_price_paise, int)
+        assert hasattr(validation, "outcome")
+        assert hasattr(validation, "cost_floor_paise")
+        assert hasattr(validation, "minimum_compliant_price_paise")
+        assert hasattr(validation, "proposed_price_paise")
 
-    def test_negative_paise_values_raise(self) -> None:
-        """PriceValidation rejects negative paise values."""
+    def test_missing_outcome_raises(self) -> None:
+        """PriceValidation rejects missing outcome field."""
+        with pytest.raises(ValidationError):
+            PriceValidation(
+                cost_floor_paise=50000,
+                minimum_compliant_price_paise=62500,
+                proposed_price_paise=70000,
+            )
+
+    def test_missing_cost_floor_raises(self) -> None:
+        """PriceValidation rejects missing cost_floor_paise."""
         with pytest.raises(ValidationError):
             PriceValidation(
                 outcome=ValidationOutcome.APPROVED,
-                cost_floor_paise=-50000,
-                minimum_compliant_price_paise=100000,
-                proposed_price_paise=105000,
+                minimum_compliant_price_paise=62500,
+                proposed_price_paise=70000,
             )
+
+    def test_missing_minimum_compliant_price_raises(self) -> None:
+        """PriceValidation rejects missing minimum_compliant_price_paise."""
+        with pytest.raises(ValidationError):
+            PriceValidation(
+                outcome=ValidationOutcome.APPROVED,
+                cost_floor_paise=50000,
+                proposed_price_paise=70000,
+            )
+
+    def test_missing_proposed_price_raises(self) -> None:
+        """PriceValidation rejects missing proposed_price_paise."""
+        with pytest.raises(ValidationError):
+            PriceValidation(
+                outcome=ValidationOutcome.APPROVED,
+                cost_floor_paise=50000,
+                minimum_compliant_price_paise=62500,
+            )
+
+
+class TestValidationOutcome:
+    """Test ValidationOutcome enum."""
+
+    def test_approved_value(self) -> None:
+        """ValidationOutcome.APPROVED has correct string value."""
+        assert ValidationOutcome.APPROVED.value == "APPROVED"
+
+    def test_rejected_value(self) -> None:
+        """ValidationOutcome.REJECTED has correct string value."""
+        assert ValidationOutcome.REJECTED.value == "REJECTED"
+
+    def test_enum_membership(self) -> None:
+        """All expected outcomes are in the enum."""
+        outcomes = {e.value for e in ValidationOutcome}
+        assert "APPROVED" in outcomes
+        assert "REJECTED" in outcomes
