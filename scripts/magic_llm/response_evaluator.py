@@ -317,8 +317,12 @@ class ResponseEvaluator:
                 ruff_output[:500],
                 error_codes=codes,
             )
-        # For test files: --collect-only imports the module (with conftest sys.path) catching
-        # ImportErrors that py_compile misses because it only checks syntax, not import resolution.
+        # AST symbol check runs first — catches wrong symbol names in both src and test files
+        # before pytest runs, giving a cleaner error message than truncated collect output.
+        import_err = self._check_intrapackage_imports(py_files)
+        if import_err:
+            return GateResult("COMPILE", False, "COMPILE_FAILURE: IMPORT_SYMBOL", import_err)
+        # For test files: --collect-only catches import errors the AST check can't (e.g. missing modules).
         test_files = [f for f in py_files if f.startswith("tests/") or "/tests/" in f]
         if test_files:
             collect_proc = subprocess.run(
@@ -333,13 +337,8 @@ class ResponseEvaluator:
                 return GateResult(
                     "COMPILE", False,
                     "COMPILE_FAILURE: PYTEST_COLLECT",
-                    collect_out[:500],
+                    collect_out[:2000],
                 )
-        # For source files: static cross-module symbol check via AST (no imports executed)
-        src_files = [f for f in py_files if not (f.startswith("tests/") or "/tests/" in f)]
-        import_err = self._check_intrapackage_imports(src_files)
-        if import_err:
-            return GateResult("COMPILE", False, "COMPILE_FAILURE: IMPORT_SYMBOL", import_err)
         return GateResult("COMPILE", True, "", "py_compile: PASS | ruff: PASS")
 
     def _check_intrapackage_imports(self, src_files: list[str]) -> str | None:
