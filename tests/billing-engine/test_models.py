@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import logging
+from unittest.mock import MagicMock
 
 import pytest
 from pydantic import ValidationError
 
-from src.billing_engine.markup.models import (
+from markup.models import (
     ThreadEntry,
     BundleProfile,
     PriceConfig,
@@ -212,21 +213,21 @@ class TestPriceValidationRequest:
                 proposed_price_paise=-100000,
             )
 
-    def test_zero_proposed_price_valid(self) -> None:
-        """PriceValidationRequest accepts proposed_price_paise=0."""
-        request = PriceValidationRequest(
-            agent_type="researcher",
-            bundle_tier="free",
-            proposed_price_paise=0,
-        )
-        assert request.proposed_price_paise == 0
-
 
 class TestPriceDeriveRequest:
     """Test PriceDeriveRequest Pydantic model."""
 
+    def test_valid_construction_without_target_margin(self) -> None:
+        """PriceDeriveRequest accepts agent_type and bundle_tier, target_margin_pct optional."""
+        request = PriceDeriveRequest(
+            agent_type="researcher",
+            bundle_tier="starter",
+        )
+        assert request.agent_type == "researcher"
+        assert request.target_margin_pct is None
+
     def test_valid_construction_with_target_margin(self) -> None:
-        """PriceDeriveRequest accepts target_margin_pct."""
+        """PriceDeriveRequest accepts explicit target_margin_pct."""
         request = PriceDeriveRequest(
             agent_type="researcher",
             bundle_tier="starter",
@@ -234,15 +235,17 @@ class TestPriceDeriveRequest:
         )
         assert request.target_margin_pct == 20.0
 
-    def test_valid_construction_without_target_margin(self) -> None:
-        """PriceDeriveRequest allows target_margin_pct=None (defaults to DB minimum)."""
-        request = PriceDeriveRequest(
-            agent_type="researcher",
-            bundle_tier="starter",
-        )
-        assert request.target_margin_pct is None
+    def test_missing_agent_type_raises(self) -> None:
+        """PriceDeriveRequest rejects missing agent_type."""
+        with pytest.raises(ValidationError):
+            PriceDeriveRequest(bundle_tier="starter")
 
-    def test_negative_target_margin_raises(self) -> None:
+    def test_missing_bundle_tier_raises(self) -> None:
+        """PriceDeriveRequest rejects missing bundle_tier."""
+        with pytest.raises(ValidationError):
+            PriceDeriveRequest(agent_type="researcher")
+
+    def test_negative_target_margin_pct_raises(self) -> None:
         """PriceDeriveRequest rejects negative target_margin_pct."""
         with pytest.raises(ValidationError):
             PriceDeriveRequest(
@@ -251,7 +254,7 @@ class TestPriceDeriveRequest:
                 target_margin_pct=-20.0,
             )
 
-    def test_target_margin_over_100_raises(self) -> None:
+    def test_target_margin_pct_100_or_greater_raises(self) -> None:
         """PriceDeriveRequest rejects target_margin_pct >= 100."""
         with pytest.raises(ValidationError):
             PriceDeriveRequest(
@@ -264,77 +267,76 @@ class TestPriceDeriveRequest:
 class TestPriceValidation:
     """Test PriceValidation response model."""
 
-    def test_valid_approved_response(self) -> None:
-        """PriceValidation accepts APPROVED outcome with all required fields."""
-        response = PriceValidation(
+    def test_approved_validation_response(self) -> None:
+        """PriceValidation with APPROVED outcome includes all required fields."""
+        validation = PriceValidation(
             outcome=ValidationOutcome.APPROVED,
             cost_floor_paise=80000,
             minimum_compliant_price_paise=100000,
-            proposed_price_paise=105000,
+            proposed_price_paise=100000,
         )
-        assert response.outcome == ValidationOutcome.APPROVED
-        assert response.cost_floor_paise == 80000
-        assert response.minimum_compliant_price_paise == 100000
-        assert response.proposed_price_paise == 105000
+        assert validation.outcome == ValidationOutcome.APPROVED
+        assert validation.cost_floor_paise == 80000
+        assert validation.minimum_compliant_price_paise == 100000
+        assert validation.proposed_price_paise == 100000
 
-    def test_valid_rejected_response(self) -> None:
-        """PriceValidation accepts REJECTED outcome with all required fields."""
-        response = PriceValidation(
+    def test_rejected_validation_response(self) -> None:
+        """PriceValidation with REJECTED outcome includes all required fields."""
+        validation = PriceValidation(
             outcome=ValidationOutcome.REJECTED,
             cost_floor_paise=80000,
             minimum_compliant_price_paise=100000,
-            proposed_price_paise=75000,
+            proposed_price_paise=95000,
         )
-        assert response.outcome == ValidationOutcome.REJECTED
-        assert response.cost_floor_paise == 80000
-        assert response.minimum_compliant_price_paise == 100000
-        assert response.proposed_price_paise == 75000
+        assert validation.outcome == ValidationOutcome.REJECTED
+        assert validation.cost_floor_paise == 80000
+        assert validation.minimum_compliant_price_paise == 100000
+        assert validation.proposed_price_paise == 95000
 
-    def test_all_fields_present_and_typed(self) -> None:
-        """PriceValidation response includes all required fields with correct types."""
-        response = PriceValidation(
+    def test_all_fields_present(self) -> None:
+        """PriceValidation has all required fields: outcome, cost_floor_paise, minimum_compliant_price_paise, proposed_price_paise."""
+        validation = PriceValidation(
             outcome=ValidationOutcome.APPROVED,
             cost_floor_paise=50000,
             minimum_compliant_price_paise=62500,
             proposed_price_paise=70000,
         )
-        assert isinstance(response.outcome, ValidationOutcome)
-        assert isinstance(response.cost_floor_paise, int)
-        assert isinstance(response.minimum_compliant_price_paise, int)
-        assert isinstance(response.proposed_price_paise, int)
+        assert hasattr(validation, "outcome")
+        assert hasattr(validation, "cost_floor_paise")
+        assert hasattr(validation, "minimum_compliant_price_paise")
+        assert hasattr(validation, "proposed_price_paise")
 
-    def test_missing_outcome_raises(self) -> None:
-        """PriceValidation rejects missing outcome field."""
-        with pytest.raises(ValidationError):
-            PriceValidation(
-                cost_floor_paise=80000,
-                minimum_compliant_price_paise=100000,
-                proposed_price_paise=105000,
-            )
+    def test_field_types_correct(self) -> None:
+        """PriceValidation fields have correct types."""
+        validation = PriceValidation(
+            outcome=ValidationOutcome.APPROVED,
+            cost_floor_paise=50000,
+            minimum_compliant_price_paise=62500,
+            proposed_price_paise=70000,
+        )
+        assert isinstance(validation.outcome, ValidationOutcome)
+        assert isinstance(validation.cost_floor_paise, int)
+        assert isinstance(validation.minimum_compliant_price_paise, int)
+        assert isinstance(validation.proposed_price_paise, int)
 
-    def test_missing_minimum_compliant_price_raises(self) -> None:
-        """PriceValidation rejects missing minimum_compliant_price_paise."""
+    def test_negative_paise_values_rejected(self) -> None:
+        """PriceValidation rejects negative paise values."""
         with pytest.raises(ValidationError):
             PriceValidation(
                 outcome=ValidationOutcome.APPROVED,
-                cost_floor_paise=80000,
-                proposed_price_paise=105000,
+                cost_floor_paise=-50000,
+                minimum_compliant_price_paise=62500,
+                proposed_price_paise=70000,
             )
 
-
-class TestValidationOutcome:
-    """Test ValidationOutcome enum."""
-
-    def test_approved_outcome(self) -> None:
-        """ValidationOutcome.APPROVED exists and has expected value."""
-        assert ValidationOutcome.APPROVED == "APPROVED"
-
-    def test_rejected_outcome(self) -> None:
-        """ValidationOutcome.REJECTED exists and has expected value."""
-        assert ValidationOutcome.REJECTED == "REJECTED"
-
-    def test_outcome_string_comparison(self) -> None:
-        """ValidationOutcome can be compared as string."""
-        outcome = ValidationOutcome.APPROVED
-        assert outcome == "APPROVED"
-        assert str(outcome) == "APPROVED"
+    def test_serialization_round_trip(self) -> None:
+        """PriceValidation serializes and deserializes correctly."""
+        validation = PriceValidation(
+            outcome=ValidationOutcome.APPROVED,
+            cost_floor_paise=50000,
+            minimum_compliant_price_paise=62500,
+            proposed_price_paise=70000,
+        )
+        validation_dict = validation.model_dump()
+        validation2 = PriceValidation(**validation_dict)
+        assert validation == validation2

@@ -43,16 +43,16 @@ class BelowConstitutionalFloorError(ValueError):
     """
 
     def __init__(
-        self,
+        self: BelowConstitutionalFloorError,
         proposed: int,
         minimum_compliant: int,
         cost_floor: int,
         margin_pct: float,
     ) -> None:
-        self.proposed_price_paise = proposed
-        self.minimum_compliant_price_paise = minimum_compliant
-        self.cost_floor_paise = cost_floor
-        self.minimum_margin_pct = margin_pct
+        self.proposed_price_paise: int = proposed
+        self.minimum_compliant_price_paise: int = minimum_compliant
+        self.cost_floor_paise: int = cost_floor
+        self.minimum_margin_pct: float = margin_pct
         super().__init__(
             "Proposed price %d paise is below constitutional floor %d paise "
             "(cost_floor=%d, minimum_margin_pct=%.2f%%)"
@@ -83,7 +83,10 @@ class BundleEngine:
     # ------------------------------------------------------------------
 
     async def _fetch_bundle_profile(
-        self, session: AsyncSession, agent_type: str, bundle_tier: str
+        self: BundleEngine,
+        session: AsyncSession,
+        agent_type: str,
+        bundle_tier: str,
     ) -> dict[str, int | float]:
         """Return the bundle_profiles row for (agent_type, bundle_tier).
 
@@ -112,7 +115,7 @@ class BundleEngine:
         }
 
     async def _write_pricing_floor_log(
-        self,
+        self: BundleEngine,
         session: AsyncSession,
         agent_type: str,
         bundle_tier: str,
@@ -122,7 +125,7 @@ class BundleEngine:
         outcome: str,
     ) -> uuid.UUID:
         """Write one row to pricing_floor_log. C-059 audit obligation."""
-        log_id = uuid.uuid4()
+        log_id: uuid.UUID = uuid.uuid4()
         await session.execute(
             text(
                 "INSERT INTO institutional.pricing_floor_log "
@@ -150,11 +153,23 @@ class BundleEngine:
     # IMarkupEngine surface
     # ------------------------------------------------------------------
 
-    async def cost_floor(self, agent_type: str, bundle_tier: str) -> int:
+    async def cost_floor(
+        self: BundleEngine, agent_type: str, bundle_tier: str
+    ) -> int:
         """Return cost_floor_paise from bundle_profiles.
 
         Reads the pre-computed value from DB — does NOT recompute.
         Spec: WC027-01a — reads bundle_profiles.cost_floor_paise directly.
+
+        Args:
+            agent_type: The agent type (e.g., 'DMA', 'ADVISOR').
+            bundle_tier: The bundle tier (e.g., 'FREE', 'PREMIUM').
+
+        Returns:
+            The cost floor in paise (integer).
+
+        Raises:
+            BundleProfileNotFoundError: If no matching bundle_profile row exists.
         """
         factory = _get_session_factory()
         try:
@@ -177,16 +192,33 @@ class BundleEngine:
             raise
 
     async def derive_price(
-        self, agent_type: str, bundle_tier: str, target_margin_pct: float | None = None
+        self: BundleEngine,
+        agent_type: str,
+        bundle_tier: str,
+        target_margin_pct: float | None = None,
     ) -> int:
-        """Derive a compliant price using margin-on-revenue formula.
+        """Derive selling price from cost floor and margin.
 
-        Formula: price_paise = cost_floor / (1 - margin_pct / 100)
+        Formula: price = floor / (1 - margin/100)
+        This is margin-on-revenue calculation.
 
         If target_margin_pct is None, uses bundle_profiles.minimum_margin_pct.
 
-        Spec: WC027-01a — formula is margin-on-revenue (not margin-on-cost).
-        Returns: int (paise)
+        Spec: WC027-01a.
+        Constitutional: C-089 (margin floor enforced via cost_floor).
+
+        Args:
+            agent_type: The agent type.
+            bundle_tier: The bundle tier.
+            target_margin_pct: Target margin as a percentage (e.g., 25.0 for 25%).
+                              If None, uses the minimum_margin_pct from bundle_profiles.
+
+        Returns:
+            The derived price in paise (integer, rounded up).
+
+        Raises:
+            BundleProfileNotFoundError: If no matching bundle_profile row exists.
+            ValueError: If target_margin_pct >= 100 (would cause division by zero).
         """
         factory = _get_session_factory()
         try:
@@ -195,59 +227,93 @@ class BundleEngine:
                     session, agent_type, bundle_tier
                 )
                 cost_floor_paise = int(profile["cost_floor_paise"])
-                minimum_margin_pct = float(profile["minimum_margin_pct"])
-
                 margin = (
-                    target_margin_pct
-                    if target_margin_pct is not None
-                    else minimum_margin_pct
+                    float(profile["minimum_margin_pct"])
+                    if target_margin_pct is None
+                    else target_margin_pct
                 )
 
-                # Margin-on-revenue formula: P = C / (1 - M/100)
-                # where C = cost_floor, M = margin%, P = price
-                denominator = 1.0 - (margin / 100.0)
-                if denominator <= 0:
-                    logger.error(
-                        "Invalid margin for derive_price: margin_pct=%s would cause "
-                        "division by zero or negative denominator",
-                        margin,
-                    )
-                    raise ValueError(
-                        "Margin %f%% is not valid for derive_price (must be < 100%%)"
+                if margin >= 100.0:
+                    msg = (
+                        "target_margin_pct=%s is invalid (must be < 100%%)"
                         % margin
                     )
+                    raise ValueError(msg)
 
-                derived_price = cost_floor_paise / denominator
-                return math.ceil(derived_price)
+                # Formula: price = floor / (1 - margin/100)
+                divisor = 1.0 - (margin / 100.0)
+                if divisor <= 0.0:
+                    msg = (
+                        "Margin %.2f%% results in non-positive divisor"
+                        % margin
+                    )
+                    raise ValueError(msg)
+
+                price_float = cost_floor_paise / divisor
+                # Round up to nearest paise (ceiling)
+                price_paise = math.ceil(price_float)
+
+                logger.info(
+                    "derive_price: agent_type=%s bundle_tier=%s "
+                    "floor=%d margin=%.2f%% → price=%d",
+                    agent_type,
+                    bundle_tier,
+                    cost_floor_paise,
+                    margin,
+                    price_paise,
+                )
+
+                return price_paise
         except asyncio.CancelledError:
             raise
-        except BundleProfileNotFoundError:
+        except (BundleProfileNotFoundError, ValueError):
             raise
-        except (ValueError, OSError, RuntimeError):
+        except (OSError, RuntimeError):
             logger.error(
-                "derive_price failed for agent_type=%s bundle_tier=%s "
-                "target_margin_pct=%s",
+                "derive_price failed for agent_type=%s bundle_tier=%s",
                 agent_type,
                 bundle_tier,
-                target_margin_pct,
                 exc_info=True,
             )
             raise
 
     async def validate_price(
-        self, agent_type: str, bundle_tier: str, proposed_price_paise: int
+        self: BundleEngine,
+        agent_type: str,
+        bundle_tier: str,
+        proposed_price_paise: int,
     ) -> PriceValidation:
-        """Validate proposed_price_paise against C-089 margin floor.
+        """Validate a proposed price against the constitutional margin floor.
 
-        Writes to pricing_floor_log on both APPROVED and REJECTED (C-059).
+        Spec: WC027-01a.
+        Constitutional: C-089 (never price below cost + minimum margin).
+        Constitutional: C-059 (audit: write to pricing_floor_log on BOTH outcomes).
 
-        Returns PriceValidation with:
-          - outcome: ValidationOutcome.APPROVED or REJECTED
-          - cost_floor_paise: floor from bundle_profiles
-          - minimum_compliant_price_paise: minimum price that meets margin floor
-          - proposed_price_paise: echo of input
+        Algorithm:
+          1. Fetch bundle_profiles row for (agent_type, bundle_tier).
+          2. Calculate minimum_compliant_price_paise = cost_floor / (1 - margin/100).
+          3. If proposed_price_paise >= minimum_compliant_price_paise: outcome=APPROVED.
+          4. Else: outcome=REJECTED.
+          5. Write one row to pricing_floor_log (C-059 audit obligation).
+          6. Return PriceValidation with outcome + all fields.
 
-        Spec: WC027-01a — validates C-089 margin floor, writes audit log.
+        Args:
+            agent_type: The agent type.
+            bundle_tier: The bundle tier.
+            proposed_price_paise: The proposed selling price in paise.
+
+        Returns:
+            PriceValidation object with fields:
+              - outcome: ValidationOutcome.APPROVED or REJECTED
+              - proposed_price_paise: Echo of input
+              - cost_floor_paise: Read from bundle_profiles
+              - minimum_compliant_price_paise: Calculated floor / (1 - margin/100)
+
+        Raises:
+            BelowConstitutionalFloorError: If proposed price is below the floor
+                (caller may catch and convert to HTTP 422).
+            BundleProfileNotFoundError: If no matching bundle_profile row exists
+                (caller may convert to HTTP 404).
         """
         factory = _get_session_factory()
         try:
@@ -256,47 +322,77 @@ class BundleEngine:
                     session, agent_type, bundle_tier
                 )
                 cost_floor_paise = int(profile["cost_floor_paise"])
-                minimum_margin_pct = float(profile["minimum_margin_pct"])
+                margin_pct = float(profile["minimum_margin_pct"])
 
-                # Calculate minimum compliant price using margin-on-revenue
-                denominator = 1.0 - (minimum_margin_pct / 100.0)
-                if denominator <= 0:
-                    denominator = 0.01  # Defensive fallback
+                # Calculate minimum_compliant_price_paise
+                divisor = 1.0 - (margin_pct / 100.0)
+                if divisor <= 0.0:
+                    msg = (
+                        "Invalid margin %.2f%% in bundle_profile "
+                        "for agent_type=%s bundle_tier=%s"
+                        % (margin_pct, agent_type, bundle_tier)
+                    )
+                    raise ValueError(msg)
 
-                minimum_compliant = cost_floor_paise / denominator
-                minimum_compliant_int = math.ceil(minimum_compliant)
+                minimum_compliant = math.ceil(cost_floor_paise / divisor)
 
                 # Determine outcome
-                if proposed_price_paise >= minimum_compliant_int:
+                if proposed_price_paise >= minimum_compliant:
                     outcome = ValidationOutcome.APPROVED
                 else:
                     outcome = ValidationOutcome.REJECTED
 
                 # Write audit log (C-059)
-                _log_id = await self._write_pricing_floor_log(
+                await self._write_pricing_floor_log(
                     session,
                     agent_type,
                     bundle_tier,
                     proposed_price_paise,
                     cost_floor_paise,
-                    minimum_compliant_int,
+                    minimum_compliant,
                     outcome.value,
                 )
 
-                return PriceValidation(
-                    outcome=outcome,
-                    cost_floor_paise=cost_floor_paise,
-                    minimum_compliant_price_paise=minimum_compliant_int,
-                    proposed_price_paise=proposed_price_paise,
+                logger.info(
+                    "validate_price: agent_type=%s bundle_tier=%s "
+                    "proposed=%d floor=%d minimum_compliant=%d outcome=%s",
+                    agent_type,
+                    bundle_tier,
+                    proposed_price_paise,
+                    cost_floor_paise,
+                    minimum_compliant,
+                    outcome.value,
                 )
+
+                result = PriceValidation(
+                    outcome=outcome,
+                    proposed_price_paise=proposed_price_paise,
+                    cost_floor_paise=cost_floor_paise,
+                    minimum_compliant_price_paise=minimum_compliant,
+                )
+
+                # Raise if below floor (caller may catch and convert to HTTP 422)
+                if outcome == ValidationOutcome.REJECTED:
+                    raise BelowConstitutionalFloorError(
+                        proposed_price_paise,
+                        minimum_compliant,
+                        cost_floor_paise,
+                        margin_pct,
+                    )
+
+                return result
         except asyncio.CancelledError:
             raise
-        except BundleProfileNotFoundError:
+        except (
+            BelowConstitutionalFloorError,
+            BundleProfileNotFoundError,
+            ValueError,
+        ):
             raise
-        except (ValueError, OSError, RuntimeError):
+        except (OSError, RuntimeError):
             logger.error(
                 "validate_price failed for agent_type=%s bundle_tier=%s "
-                "proposed_price_paise=%d",
+                "proposed=%d",
                 agent_type,
                 bundle_tier,
                 proposed_price_paise,
