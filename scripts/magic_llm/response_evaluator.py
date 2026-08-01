@@ -335,7 +335,63 @@ class ResponseEvaluator:
                     "COMPILE_FAILURE: PYTEST_COLLECT",
                     collect_out[:500],
                 )
+        # For source files: static cross-module symbol check via AST (no imports executed)
+        src_files = [f for f in py_files if not (f.startswith("tests/") or "/tests/" in f)]
+        import_err = self._check_intrapackage_imports(src_files)
+        if import_err:
+            return GateResult("COMPILE", False, "COMPILE_FAILURE: IMPORT_SYMBOL", import_err)
         return GateResult("COMPILE", True, "", "py_compile: PASS | ruff: PASS")
+
+    def _check_intrapackage_imports(self, src_files: list[str]) -> str | None:
+        """AST-only cross-module symbol check for markup.* intra-package imports.
+
+        Catches `from markup.models import ValidationOutcome` when models.py only
+        defines `PriceOutcome` — no imports are executed, so no side effects.
+        Returns a human-readable error string or None if everything resolves.
+        """
+        import ast as _ast
+
+        for f in src_files:
+            full = self._root / f
+            if not full.exists():
+                continue
+            try:
+                tree = _ast.parse(full.read_text())
+            except SyntaxError:
+                continue
+            for node in _ast.walk(tree):
+                if not isinstance(node, _ast.ImportFrom) or not node.module:
+                    continue
+                # Only check markup.* intra-package imports
+                if not node.module.startswith("markup."):
+                    continue
+                sub = node.module[len("markup."):]
+                pkg_file = self._root / "src" / "billing-engine" / "markup" / f"{sub}.py"
+                if not pkg_file.exists():
+                    continue
+                try:
+                    pkg_tree = _ast.parse(pkg_file.read_text())
+                except SyntaxError:
+                    continue
+                defined: set[str] = set()
+                for n in _ast.walk(pkg_tree):
+                    if isinstance(n, (_ast.ClassDef, _ast.FunctionDef, _ast.AsyncFunctionDef)):
+                        defined.add(n.name)
+                for stmt in pkg_tree.body:
+                    if isinstance(stmt, _ast.Assign):
+                        for t in stmt.targets:
+                            if isinstance(t, _ast.Name):
+                                defined.add(t.id)
+                    elif isinstance(stmt, _ast.AugAssign) and isinstance(stmt.target, _ast.Name):
+                        defined.add(stmt.target.id)
+                for alias in node.names:
+                    if alias.name != "*" and alias.name not in defined:
+                        return (
+                            f"ImportError: cannot import name '{alias.name}' from "
+                            f"'markup.{sub}' ({f})\n"
+                            f"Defined names in markup/{sub}.py: {sorted(defined)}"
+                        )
+        return None
 
     def _compile_typescript(self, ts_files: list[str]) -> GateResult:
         web_dir = self._root / "web"

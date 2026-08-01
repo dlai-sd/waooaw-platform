@@ -60,7 +60,9 @@ RUFF_RUF046 = "RUFF_RUF046"  # Redundant int() cast (value already an integer)
 RUFF_F401   = "RUFF_F401"    # Unused import
 RUFF_GENERIC = "RUFF_GENERIC" # Ruff violation with no specific handler
 PYTHON_IMPORT_ERROR = "PYTHON_IMPORT_ERROR"  # pytest collection ImportError / ModuleNotFoundError
+PYTHON_WRONG_SYMBOL = "PYTHON_WRONG_SYMBOL"  # cannot import name 'X' — symbol name mismatch across markup modules
 HYPOTHESIS_HEALTH_CHECK = "HYPOTHESIS_HEALTH_CHECK"  # hypothesis.errors.FailedHealthCheck
+HYPOTHESIS_FIXTURE_PARAM = "HYPOTHESIS_FIXTURE_PARAM"  # fixture 'X' not found — @given param treated as pytest fixture
 DATETIME_UTCNOW = "DATETIME_UTCNOW"  # datetime.utcnow() / DTZ003 naive-datetime violation
 
 
@@ -1148,8 +1150,32 @@ def diagnose_build_error(
 
     # ── Python import error (pytest collection failure) ────────────────────────
     if "ModuleNotFoundError" in build_error or "ImportError" in build_error:
-        m = re.search(r"No module named '([^']+)'", build_error)
-        module_name = m.group(1) if m else "unknown"
+        wrong_name_m = re.search(r"cannot import name '([^']+)' from '([^']+)'", build_error)
+        no_module_m = re.search(r"No module named '([^']+)'", build_error)
+        if wrong_name_m:
+            # Symbol exists in file with a DIFFERENT name — path is correct, name is wrong
+            symbol = wrong_name_m.group(1)
+            source_mod = wrong_name_m.group(2)
+            # Extract defined names if _check_intrapackage_imports included them
+            defined_m = re.search(r"Defined names in [^:]+: (\[[^\]]+\])", build_error)
+            defined_hint = f"\nActual names defined in {source_mod}: {defined_m.group(1)}" if defined_m else ""
+            fix = (
+                f"IMPORT SYMBOL MISMATCH: cannot import name '{symbol}' from '{source_mod}'.\n"
+                f"The symbol `{symbol}` does NOT exist in `{source_mod}`.{defined_hint}\n"
+                f"Fix: change EVERY import and usage of `{symbol}` to the actual name defined in `{source_mod}`.\n"
+                "Example: if models.py defines `class PriceOutcome` but code imports `ValidationOutcome`, "
+                "change all references to `PriceOutcome`."
+            )
+            diagnosis = RetryDiagnosis(
+                error_type=PYTHON_WRONG_SYMBOL,
+                fix_instruction=fix,
+                should_retry=True,
+                confidence=0.95,
+                constitutional_trace="C-082 (COMPILE gate: import symbol mismatch — wrong class/function name)",
+            )
+            print(f"  Retry Advisor: {PYTHON_WRONG_SYMBOL} (confidence=95%)")
+            return diagnosis
+        module_name = no_module_m.group(1) if no_module_m else "unknown"
         fix = f"PYTEST COLLECTION FAILED — ImportError: No module named '{module_name}'.\n"
         if module_name.startswith("src."):
             # src.service_name.* pattern — service uses flat imports via conftest.py sys.path
@@ -1169,6 +1195,34 @@ def diagnose_build_error(
             constitutional_trace="C-082 (COMPILE gate: pytest collection ImportError — use conftest sys.path)",
         )
         print(f"  Retry Advisor: {PYTHON_IMPORT_ERROR} (confidence=90%)")
+        return diagnosis
+
+    # ── pytest fixture not found — likely @given param treated as pytest fixture ──
+    if "fixture" in build_error and "not found" in build_error and "available fixtures" in build_error:
+        m = re.search(r"fixture '([^']+)' not found", build_error)
+        missing = m.group(1) if m else "unknown"
+        fix = (
+            f"PYTEST FIXTURE NOT FOUND: `{missing}` is not a registered pytest fixture.\n"
+            "This happens when `@given({missing}=st....)` is used on an async test that ALSO "
+            "requests pytest fixtures as parameters. pytest-asyncio Mode.AUTO resolves ALL "
+            "function parameters as pytest fixtures BEFORE hypothesis injects its values.\n"
+            "Fix (choose one):\n"
+            f"  OPTION 1 (preferred): Remove `{missing}` from the function signature and "
+            f"reference it via the @given strategy only — create any mocks INSIDE the test body.\n"
+            "  OPTION 2: Change the async test to a sync test (remove `async def`, use `def`) "
+            "so pytest-asyncio does not interfere with hypothesis parameter injection.\n"
+            "RULE: In pytest-asyncio Mode.AUTO, do NOT mix @given-provided params with pytest "
+            "fixtures in the same async test function. Keep hypothesis tests pure (all from @given) "
+            "OR pure pytest (all from fixtures, no @given)."
+        )
+        diagnosis = RetryDiagnosis(
+            error_type=HYPOTHESIS_FIXTURE_PARAM,
+            fix_instruction=fix,
+            should_retry=True,
+            confidence=0.92,
+            constitutional_trace="C-082 (COMPILE gate: hypothesis @given param vs pytest fixture conflict in async test)",
+        )
+        print(f"  Retry Advisor: {HYPOTHESIS_FIXTURE_PARAM} (confidence=92%)")
         return diagnosis
 
     # ── Hypothesis FailedHealthCheck — function-scoped fixture + @given ───────────
