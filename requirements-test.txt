@@ -14,6 +14,8 @@ pytest-xdist>=3.0              # parallel test execution
 ruff>=0.5                       # linting + formatting (replaces flake8 + isort + black)
 mypy>=1.10                      # type checking
 bandit>=1.7                     # security SAST
+sqlfluff>=3.0                   # SQL lint gate (PostgreSQL dialect) — P1 multi-stack gate
+yamllint>=1.35                  # YAML lint gate (K8s/Helm manifests) — P1 multi-stack gate
 
 # ── Testing utilities ────────────────────────────────────────────────────────
 hypothesis>=6.100               # property-based testing

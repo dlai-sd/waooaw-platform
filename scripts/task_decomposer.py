@@ -408,6 +408,8 @@ def run_compile_gate(gate_type: str, service_dir: str = "src/constitutional-engi
         )
         # Capture both stdout (violations) and stderr (ruff errors, e.g. TOML parse)
         error_output = (result.stdout + result.stderr)[:500]
+        if result.returncode != 0:
+            record_lint_violations("unknown", error_output, "ruff")
         return result.returncode == 0, error_output
 
     if gate_type == "pytest":
@@ -420,7 +422,85 @@ def run_compile_gate(gate_type: str, service_dir: str = "src/constitutional-engi
         error_output = (result.stdout + result.stderr)[-500:] if result.returncode != 0 else ""
         return result.returncode == 0, error_output
 
+    if gate_type == "sqlfluff":
+        sql_targets: list[str] = target_files if target_files else []
+        if not sql_targets:
+            return True, ""  # nothing to lint
+        full_paths = [str(REPO_ROOT / f) for f in sql_targets if (REPO_ROOT / f).exists()]
+        if not full_paths:
+            return True, ""
+        result = subprocess.run(
+            ["python3", "-m", "sqlfluff", "lint", "--dialect", "postgres",
+             "--format", "github-annotation", "--no-progress-bar"] + full_paths,
+            capture_output=True, text=True, cwd=REPO_ROOT
+        )
+        error_output = (result.stdout + result.stderr)[:500] if result.returncode != 0 else ""
+        if result.returncode != 0:
+            record_lint_violations("unknown", error_output, "sqlfluff")
+        return result.returncode == 0, error_output
+
+    if gate_type == "yamllint":
+        yaml_targets: list[str] = target_files if target_files else []
+        if not yaml_targets:
+            return True, ""
+        full_paths = [str(REPO_ROOT / f) for f in yaml_targets if (REPO_ROOT / f).exists()]
+        if not full_paths:
+            return True, ""
+        result = subprocess.run(
+            ["python3", "-m", "yamllint", "-d", "relaxed", "-f", "parsable"] + full_paths,
+            capture_output=True, text=True, cwd=REPO_ROOT
+        )
+        error_output = (result.stdout + result.stderr)[:500] if result.returncode != 0 else ""
+        if result.returncode != 0:
+            record_lint_violations("unknown", error_output, "yamllint")
+        return result.returncode == 0, error_output
+
     return False, f"Unknown gate_type: {gate_type}"
+
+
+# ── Lint violation learning cache (C-069 self-improvement) ────────────────────
+
+_LINT_VIOLATIONS_PATH = REPO_ROOT / "sprint-context" / "lint-violations.json"
+
+def record_lint_violations(task_id: str, error_output: str, gate_type: str) -> None:
+    """
+    Write lint violations to sprint-context/lint-violations.json for next-run prevention.
+    Called when run_compile_gate() fails. context_builder.py reads this cache at prompt time.
+    C-069: self-improvement — violations seen once must not recur.
+    """
+    import json as _json
+    import re as _re
+
+    try:
+        violations: dict = {}
+        if _LINT_VIOLATIONS_PATH.exists():
+            try:
+                violations = _json.loads(_LINT_VIOLATIONS_PATH.read_text(encoding="utf-8"))
+            except Exception:
+                violations = {}
+
+        # Extract ruff/sqlfluff/yamllint rule codes
+        code_pattern = _re.compile(r'\b([A-Z]\d{3,4}|SQL\w+)\b')
+        codes = list(set(code_pattern.findall(error_output)))
+
+        for code in codes:
+            if code not in violations:
+                violations[code] = {
+                    "rule": code,
+                    "last_task": task_id,
+                    "gate": gate_type,
+                    "fix": f"See {gate_type} output for details — rule {code} violated",
+                }
+            else:
+                violations[code]["last_task"] = task_id
+
+        _LINT_VIOLATIONS_PATH.parent.mkdir(parents=True, exist_ok=True)
+        _LINT_VIOLATIONS_PATH.write_text(
+            _json.dumps(violations, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+    except Exception:
+        pass  # non-blocking — learning cache is best-effort
 
 
 # ── Signal emission (C-083) ───────────────────────────────────────────────────

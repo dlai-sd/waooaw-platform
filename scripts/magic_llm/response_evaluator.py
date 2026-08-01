@@ -217,6 +217,8 @@ class ResponseEvaluator:
         cs_files = [f for f in written_files if f.endswith(".cs")]
         py_files = [f for f in written_files if f.endswith(".py")]
         ts_files = [f for f in written_files if f.endswith((".ts", ".tsx"))]
+        sql_files = [f for f in written_files if f.endswith(".sql")]
+        yaml_files = [f for f in written_files if f.endswith((".yaml", ".yml"))]
 
         if stack == "dotnet" and cs_files:
             return self._compile_dotnet(cs_files)
@@ -224,6 +226,10 @@ class ResponseEvaluator:
             return self._compile_python(py_files)
         if stack == "typescript" and ts_files:
             return self._compile_typescript(ts_files)
+        if sql_files:
+            return self._gate_sql(sql_files)
+        if yaml_files:
+            return self._gate_yaml(yaml_files)
 
         return GateResult("COMPILE", True, "", "No compilable files — gate skipped")
 
@@ -321,6 +327,43 @@ class ResponseEvaluator:
         if proc.returncode != 0:
             return GateResult("COMPILE", False, "COMPILE_FAILURE: TS", proc.stdout[:400])
         return GateResult("COMPILE", True, "", "tsc: PASS")
+
+    def _gate_sql(self, sql_files: list[str]) -> GateResult:
+        """
+        SQL lint gate using sqlfluff (PostgreSQL dialect).
+        Runs inside the retry loop so violations feed into failure_context.
+        """
+        full_paths = [str(self._root / f) for f in sql_files if (self._root / f).exists()]
+        if not full_paths:
+            return GateResult("COMPILE", True, "", "SQL files not written yet — gate skipped")
+        proc = subprocess.run(
+            ["python3", "-m", "sqlfluff", "lint", "--dialect", "postgres",
+             "--format", "github-annotation", "--no-progress-bar"] + full_paths,
+            capture_output=True, text=True, cwd=self._root, timeout=60,
+        )
+        if proc.returncode != 0:
+            output = (proc.stdout + proc.stderr).strip()[:500]
+            output = output.replace(str(self._root) + "/", "")
+            return GateResult("COMPILE", False, "COMPILE_FAILURE: SQL_LINT", output)
+        return GateResult("COMPILE", True, "", "sqlfluff: PASS")
+
+    def _gate_yaml(self, yaml_files: list[str]) -> GateResult:
+        """
+        YAML lint gate using yamllint with relaxed config.
+        Kubernetes/Helm manifests use relaxed rules (long lines allowed).
+        """
+        full_paths = [str(self._root / f) for f in yaml_files if (self._root / f).exists()]
+        if not full_paths:
+            return GateResult("COMPILE", True, "", "YAML files not written yet — gate skipped")
+        proc = subprocess.run(
+            ["python3", "-m", "yamllint", "-d", "relaxed", "-f", "parsable"] + full_paths,
+            capture_output=True, text=True, cwd=self._root, timeout=30,
+        )
+        if proc.returncode != 0:
+            output = (proc.stdout + proc.stderr).strip()[:500]
+            output = output.replace(str(self._root) + "/", "")
+            return GateResult("COMPILE", False, "COMPILE_FAILURE: YAML_LINT", output)
+        return GateResult("COMPILE", True, "", "yamllint: PASS")
 
     # ── Gate 3: ANNOTATION ─────────────────────────────────────────────────────
 
