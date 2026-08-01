@@ -121,6 +121,12 @@ STACK_BEHAVIORAL_RULES: dict[str, list[str]] = {
         "mock.async_method = AsyncMock(return_value=expected)  # async method "
         "mock.sync_method = MagicMock(return_value=expected)   # sync method "
         "Check every `await mock.X()` call in the test — the mock for X must be AsyncMock.",
+        "IMPORT DISCIPLINE (ruff F401): ONLY include an import if you explicitly use it in a "
+        "function body in this file. Do NOT add imports speculatively or 'just in case'. "
+        "Before writing each import line ask: where exactly in this file is this symbol used? "
+        "If you cannot name the function, do not add the import. "
+        "Unused imports fail the ruff compile gate and trigger a retry with a fresh generation — "
+        "the fix-then-retry loop wastes 3 attempts on a preventable mistake.",
     ],
     "typescript": [
         "JWT stored in httpOnly cookie ONLY — never localStorage or sessionStorage.",

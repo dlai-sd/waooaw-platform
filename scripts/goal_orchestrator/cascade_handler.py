@@ -190,12 +190,22 @@ class CascadeHandler:
                 # pipeline gates may still have a SyntaxError on disk.
                 write_ok, write_err = self._write_and_verify(result.raw_output)
                 if not write_ok:
-                    print(f"  [Cascade] L1 attempt {self.ctx.l1_attempts}: write/compile verify failed: {write_err[:120]}")
+                    # Log full error tail so CI output is self-diagnosable without pulling raw logs.
+                    print(f"  [Cascade] L1 attempt {self.ctx.l1_attempts}: write/compile verify failed")
+                    print(f"  [Cascade] error (tail-500): {write_err[-500:]}")
                     actual_outcome = "compile_failed"
-                    # D6: propagate the write error into failure_evidence so the next
-                    # retry_with_enhanced_context call sees the real compile error, not
-                    # the stale original failure that triggered the cascade.
                     failure_evidence = {**failure_evidence, "failure": write_err, "failure_detail": write_err}
+                    # Log advisor classification so CI trace shows which handler will fire next retry.
+                    try:
+                        import sys as _sys2
+                        _scripts2 = str(__import__('pathlib').Path(__file__).parent.parent.parent / 'scripts')
+                        if _scripts2 not in _sys2.path:
+                            _sys2.path.insert(0, _scripts2)
+                        from sprint_retry_advisor import diagnose_build_error  # type: ignore[import]
+                        _diag = diagnose_build_error(self.ctx.goal_id, write_err, [])
+                        print(f"  [Cascade] advisor: {_diag.error_type} (confidence={_diag.confidence:.0%})")
+                    except Exception:
+                        pass
 
             record_id = self._write({
                 "record_type": "L1 Attempt Record",
@@ -311,7 +321,8 @@ class CascadeHandler:
                 if collect_proc.returncode != 0:
                     collect_out = (collect_proc.stdout + collect_proc.stderr).strip()
                     collect_out = collect_out.replace(str(_repo_root) + "/", "")
-                    return False, f"PYTEST_FAILED: {collect_out[:2000]}"
+                    # Capture tail: pytest writes progress dots first, failure details last.
+                    return False, f"PYTEST_FAILED: {collect_out[-2000:]}"
 
             return True, ""
         except Exception as _e:
