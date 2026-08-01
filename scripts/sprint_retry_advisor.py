@@ -1045,9 +1045,22 @@ def _classify_ruff_violation(build_error: str) -> RetryDiagnosis | None:
     if "F401" in build_error:
         m = re.search(r'F401.*?`([^`]+)`', build_error)
         import_name = m.group(1) if m else "the import"
-        fix_parts.append(
-            f"[F401] `{import_name}` is imported but never used — remove the import statement."
-        )
+        if import_name.startswith("src."):
+            # Wrong dotted path — this service uses flat imports via conftest.py sys.path
+            parts = import_name.split(".")
+            # parts[0]='src', parts[1]=service_name, parts[2:]=module path
+            flat_path = ".".join(parts[2:]) if len(parts) > 2 else import_name
+            fix_parts.append(
+                f"[F401] `{import_name}` — WRONG IMPORT PATH (src.<service>.* dotted path).\n"
+                f"  This service uses FLAT imports: conftest.py inserts src/<service> into sys.path.\n"
+                f"  WRONG: `from {import_name} import ...`\n"
+                f"  RIGHT: `from {flat_path} import ...` (drop the 'src.<service>.' prefix)\n"
+                f"  Check the CONFTEST slot — copy the exact path pattern shown there."
+            )
+        else:
+            fix_parts.append(
+                f"[F401] `{import_name}` is imported but never used — remove the import statement."
+            )
 
     if not fix_parts:
         # Ruff matched a code we have no specific handler for — return generic guidance

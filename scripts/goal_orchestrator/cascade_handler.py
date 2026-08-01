@@ -281,6 +281,22 @@ class CascadeHandler:
                 )
                 if proc.returncode != 0:
                     return False, f"{f}: {proc.stderr[:200]}"
+
+            # For test files: also run pytest --collect-only to catch import resolution
+            # errors that py_compile misses (py_compile checks syntax only, not imports).
+            test_files = [w for w in written if w.startswith("tests/") or "/tests/" in w]
+            if test_files:
+                collect_proc = _sp.run(
+                    ["python3", "-m", "pytest", "--collect-only", "-q", "--tb=short"]
+                    + [str(_repo_root / f) for f in test_files],
+                    capture_output=True, text=True, cwd=_repo_root,
+                    timeout=30,
+                )
+                if collect_proc.returncode != 0:
+                    collect_out = (collect_proc.stdout + collect_proc.stderr).strip()
+                    collect_out = collect_out.replace(str(_repo_root) + "/", "")
+                    return False, f"PYTEST_COLLECT FAILED: {collect_out[:400]}"
+
             return True, ""
         except Exception as _e:
             return False, str(_e)
