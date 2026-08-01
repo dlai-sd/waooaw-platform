@@ -531,7 +531,7 @@ def complete_sprint(pr_number: int = 0, dry_run: bool = False) -> int:
                 f"chore(registry): sprint {sprint} {result} — "
                 f"{recorded} failure(s) recorded\n\n"
                 f"Run: {run_id}\n"
-                f"Subtasks done: {tasks_done}\n"
+                f"Subtasks done: {signal_done}\n"
                 f"Subtasks remaining: {tasks_remaining}\n"
                 f"Constitutional: C-069 (self-improvement — failures as evidence)"
             )
