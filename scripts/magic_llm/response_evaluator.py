@@ -317,8 +317,12 @@ class ResponseEvaluator:
                 ruff_output[:500],
                 error_codes=codes,
             )
-        # For test files: --collect-only imports the module (with conftest sys.path) catching
-        # ImportErrors that py_compile misses because it only checks syntax, not import resolution.
+        # AST symbol check runs first — catches wrong symbol names in both src and test files
+        # before pytest runs, giving a cleaner error message than truncated collect output.
+        import_err = self._check_intrapackage_imports(py_files)
+        if import_err:
+            return GateResult("COMPILE", False, "COMPILE_FAILURE: IMPORT_SYMBOL", import_err)
+        # For test files: --collect-only catches import errors the AST check can't (e.g. missing modules).
         test_files = [f for f in py_files if f.startswith("tests/") or "/tests/" in f]
         if test_files:
             collect_proc = subprocess.run(
@@ -333,25 +337,37 @@ class ResponseEvaluator:
                 return GateResult(
                     "COMPILE", False,
                     "COMPILE_FAILURE: PYTEST_COLLECT",
-                    collect_out[:500],
+                    collect_out[:2000],
                 )
-        # For source files: static cross-module symbol check via AST (no imports executed)
-        src_files = [f for f in py_files if not (f.startswith("tests/") or "/tests/" in f)]
-        import_err = self._check_intrapackage_imports(src_files)
-        if import_err:
-            return GateResult("COMPILE", False, "COMPILE_FAILURE: IMPORT_SYMBOL", import_err)
         return GateResult("COMPILE", True, "", "py_compile: PASS | ruff: PASS")
 
-    def _check_intrapackage_imports(self, src_files: list[str]) -> str | None:
-        """AST-only cross-module symbol check for markup.* intra-package imports.
+    def _check_intrapackage_imports(self, py_files: list[str]) -> str | None:
+        """AST-only cross-module symbol check for any intra-service package imports.
 
-        Catches `from markup.models import ValidationOutcome` when models.py only
-        defines `PriceOutcome` — no imports are executed, so no side effects.
+        Discovers all modules under src/ dynamically — works across all sprint
+        services (billing-engine, wallet, meter-alert, reconciliation, etc.).
         Returns a human-readable error string or None if everything resolves.
         """
         import ast as _ast
 
-        for f in src_files:
+        # Build module → file map for every .py file under src/ (skipping __init__)
+        # src/billing-engine/markup/models.py → "markup.models"
+        # src/wallet/wallet/services.py       → "wallet.services"
+        module_file_map: dict[str, pathlib.Path] = {}
+        src_root = self._root / "src"
+        if src_root.exists():
+            for py_path in src_root.rglob("*.py"):
+                if py_path.name == "__init__.py":
+                    continue
+                try:
+                    rel_parts = list(py_path.relative_to(src_root).with_suffix("").parts)
+                except ValueError:
+                    continue
+                if len(rel_parts) >= 2:
+                    # Drop the first part (service dir, e.g. "billing-engine")
+                    module_file_map[".".join(rel_parts[1:])] = py_path
+
+        for f in py_files:
             full = self._root / f
             if not full.exists():
                 continue
@@ -362,15 +378,11 @@ class ResponseEvaluator:
             for node in _ast.walk(tree):
                 if not isinstance(node, _ast.ImportFrom) or not node.module:
                     continue
-                # Only check markup.* intra-package imports
-                if not node.module.startswith("markup."):
-                    continue
-                sub = node.module[len("markup."):]
-                pkg_file = self._root / "src" / "billing-engine" / "markup" / f"{sub}.py"
-                if not pkg_file.exists():
+                target_file = module_file_map.get(node.module)
+                if target_file is None:
                     continue
                 try:
-                    pkg_tree = _ast.parse(pkg_file.read_text())
+                    pkg_tree = _ast.parse(target_file.read_text())
                 except SyntaxError:
                     continue
                 defined: set[str] = set()
@@ -386,10 +398,11 @@ class ResponseEvaluator:
                         defined.add(stmt.target.id)
                 for alias in node.names:
                     if alias.name != "*" and alias.name not in defined:
+                        rel_target = target_file.relative_to(self._root)
                         return (
                             f"ImportError: cannot import name '{alias.name}' from "
-                            f"'markup.{sub}' ({f})\n"
-                            f"Defined names in markup/{sub}.py: {sorted(defined)}"
+                            f"'{node.module}' ({f})\n"
+                            f"Defined names in {rel_target}: {sorted(defined)}"
                         )
         return None
 
