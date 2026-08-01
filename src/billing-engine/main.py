@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from config import settings
 from markup.router import router as markup_router
+from markup.thread_catalog import router as thread_catalog_router
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +48,13 @@ app.include_router(
     markup_router,
     prefix="/pricing",
     tags=["pricing"],
+)
+
+# C-091: Thread Catalog routes (delegates to ThreadCatalogService)
+app.include_router(
+    thread_catalog_router,
+    prefix="/pricing",
+    tags=["catalog"],
 )
 
 logger.info(
