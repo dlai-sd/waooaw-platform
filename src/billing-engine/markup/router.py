@@ -184,67 +184,43 @@ async def validate_price(
     Behavior (C-089 margin enforcement):
     - Computes minimum_compliant_price_paise = cost_floor / (1 - minimum_margin_pct/100)
     - If proposed_price_paise >= minimum_compliant_price_paise
-      → outcome=APPROVED, writes to pricing_floor_log (C-059 traceability)
+      → outcome: APPROVED (200 response)
     - If proposed_price_paise < minimum_compliant_price_paise
-      → outcome=REJECTED, writes to pricing_floor_log, returns 422 with
-        minimum_compliant_price_paise in response body (C-038)
+      → outcome: REJECTED (422 response with body including minimum_compliant_price_paise)
 
-    C-059: Always writes to institutional.pricing_floor_log regardless of outcome.
-    C-088: Must check billing_profiles.status == FOUNDER_AUTHORIZED before validation.
+    C-059 Traceability: writes to pricing_floor_log on BOTH APPROVED and REJECTED paths.
 
-    Response 200 (APPROVED):
-      {outcome: "APPROVED", cost_floor_paise: ..., minimum_compliant_price_paise: ..., proposed_price_paise: ...}
-
-    Response 422 (REJECTED):
-      {outcome: "REJECTED", cost_floor_paise: ..., minimum_compliant_price_paise: ..., proposed_price_paise: ...}
-
-    Raises:
-      - 422 if price below constitutional floor (C-089)
-      - 404 if bundle not found
-      - 422 if invalid agent_type
-      - 500 on system error
+    Returns: PriceValidation including outcome, cost_floor_paise, minimum_compliant_price_paise.
+    Raises: 422 if validation fails (includes minimum_compliant_price_paise in body).
+    Raises: 404 if bundle not found.
+    Raises: 500 on DB or system error.
     """
     try:
-        result = await engine.validate_price(
+        validation_result = await engine.validate_price(
             request.agent_type,
             request.bundle_tier,
             request.proposed_price_paise,
         )
 
-        # C-089: If below floor, return 422 with details
-        if result.outcome == "REJECTED":
-            logger.warning(
-                "price_validation_below_floor",
-                extra={
-                    "agent_type": request.agent_type,
-                    "bundle_tier": request.bundle_tier,
-                    "proposed_price_paise": request.proposed_price_paise,
-                    "minimum_compliant_price_paise": result.minimum_compliant_price_paise,
-                },
-            )
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail={
-                    "error": "Price below constitutional margin floor (C-089)",
-                    "outcome": result.outcome,
-                    "cost_floor_paise": result.cost_floor_paise,
-                    "minimum_compliant_price_paise": result.minimum_compliant_price_paise,
-                    "proposed_price_paise": result.proposed_price_paise,
-                },
-            )
-
-        # C-059 + C-089: Log successful validation
+        # C-059: Log validation (already done in engine.validate_price)
         logger.info(
-            "price_validation_approved",
+            "price_validation_completed",
             extra={
                 "agent_type": request.agent_type,
                 "bundle_tier": request.bundle_tier,
-                "proposed_price_paise": request.proposed_price_paise,
-                "minimum_compliant_price_paise": result.minimum_compliant_price_paise,
+                "outcome": validation_result.outcome,
             },
         )
 
-        return result
+        # If REJECTED, return 422 with minimum_compliant_price_paise in response body
+        if validation_result.outcome == "REJECTED":
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=validation_result.model_dump(),
+            )
+
+        # If APPROVED, return 200 with full validation result
+        return validation_result
 
     except ValueError as exc:
         logger.warning(
@@ -288,68 +264,63 @@ async def validate_price(
         ) from exc
 
 
-@router.post("/derive", response_model=DerivedPriceResponse, status_code=200)
+@router.post("/derive", response_model=DerivedPriceResponse)
 async def derive_price(
     request: PriceDeriveRequest,
     engine: Annotated[BundleEngine, Depends(get_bundle_engine)],
 ) -> DerivedPriceResponse:
     """
-    C-088, C-089: Derive a compliant price given cost floor and target margin.
+    C-088, C-089: Derive a compliant price for a bundle given target margin.
 
-    Request body: {agent_type, bundle_tier, target_margin_pct?}
+    Request body: {agent_type, bundle_tier, target_margin_pct: float | None}
 
-    Behavior (C-089):
-    - If target_margin_pct is None: uses bundle_profiles.minimum_margin_pct
-    - Computes derived_price_paise = cost_floor / (1 - margin_pct/100)
-    - Margin-on-revenue formula (not markup): margin_pct% of revenue is margin
-    - Returns derived price (guaranteed to meet C-089 floor)
+    Formula (C-089 margin-on-revenue):
+      derived_price_paise = cost_floor_paise / (1 - target_margin_pct / 100)
 
-    Response 200:
-      {derived_price_paise: int, cost_floor_paise: int, margin_pct: float}
+    If target_margin_pct is None, uses bundle_profiles.minimum_margin_pct from DB.
 
-    Raises:
-      - 422 if invalid agent_type or bundle_tier
-      - 404 if bundle not found
-      - 422 if target_margin_pct invalid (e.g. >= 100)
-      - 500 on system error
+    Returns: DerivedPriceResponse including derived_price_paise, cost_floor_paise,
+             applied_margin_pct, margin_on_revenue_formula.
+
+    Raises: 422 if invalid agent_type or bundle_tier.
+    Raises: 404 if bundle not found.
+    Raises: 500 on DB or system error.
     """
     try:
-        result = await engine.derive_price(
+        derived_result = await engine.derive_price(
             request.agent_type,
             request.bundle_tier,
             request.target_margin_pct,
         )
 
         logger.info(
-            "price_derived",
+            "price_derivation_completed",
             extra={
                 "agent_type": request.agent_type,
                 "bundle_tier": request.bundle_tier,
-                "target_margin_pct": request.target_margin_pct,
-                "derived_price_paise": result.derived_price_paise,
+                "derived_price_paise": derived_result.derived_price_paise,
             },
         )
 
-        return result
+        return derived_result
 
     except ValueError as exc:
         logger.warning(
-            "price_derive_invalid_params",
+            "price_derivation_invalid_params",
             extra={
                 "agent_type": request.agent_type,
                 "bundle_tier": request.bundle_tier,
-                "target_margin_pct": request.target_margin_pct,
                 "error": str(exc),
             },
         )
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Invalid agent_type, bundle_tier, or margin_pct",
+            detail="Invalid agent_type, bundle_tier, or target_margin_pct",
         ) from exc
 
     except KeyError as exc:
         logger.warning(
-            "price_derive_bundle_not_found",
+            "price_derivation_bundle_not_found",
             extra={
                 "agent_type": request.agent_type,
                 "bundle_tier": request.bundle_tier,
@@ -362,7 +333,7 @@ async def derive_price(
 
     except Exception as exc:
         logger.error(
-            "price_derive_error",
+            "price_derivation_error",
             exc_info=True,
             extra={
                 "agent_type": request.agent_type,
