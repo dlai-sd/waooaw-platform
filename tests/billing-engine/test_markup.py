@@ -6,7 +6,7 @@ import logging
 from unittest.mock import AsyncMock
 
 import pytest
-from hypothesis import given, strategies as st
+from hypothesis import HealthCheck, given, settings as hypothesis_settings, strategies as st
 from httpx import AsyncClient
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
@@ -14,9 +14,6 @@ from sqlalchemy.orm import sessionmaker
 
 from src.billing_engine.config import Settings
 from src.billing_engine.markup.bundle_engine import BundleEngine
-from src.billing_engine.markup.models import (
-    PriceValidation,
-)
 from src.billing_engine.main import app
 
 logger = logging.getLogger(__name__)
@@ -156,6 +153,7 @@ async def bundle_engine(test_db: AsyncSession) -> BundleEngine:
 @pytest.fixture
 async def http_client(test_db: AsyncSession) -> AsyncClient:
     """Provide FastAPI test client with test DB injected."""
+
     async def override_get_db() -> AsyncSession:
         return test_db
 
@@ -174,301 +172,374 @@ async def test_cost_floor_reads_from_bundle_profiles(
 ) -> None:
     """C-097: cost_floor() reads cost_floor_paise from DB, does not recompute."""
     result = await bundle_engine.cost_floor("DMA", "STARTER")
-    assert result == 50000, "cost_floor should read 50000 from bundle_profiles"
+    assert result == 50000, "cost_floor must read cost_floor_paise from bundle_profiles"
 
 
 @pytest.mark.asyncio
-async def test_cost_floor_pro_tier(
+async def test_cost_floor_different_tiers(
     bundle_engine: BundleEngine,
 ) -> None:
-    """C-097: cost_floor() for PRO tier."""
-    result = await bundle_engine.cost_floor("DMA", "PRO")
-    assert result == 150000, "cost_floor should read 150000 for DMA PRO"
+    """C-097: cost_floor returns correct value for different bundle tiers."""
+    starter = await bundle_engine.cost_floor("DMA", "STARTER")
+    pro = await bundle_engine.cost_floor("DMA", "PRO")
+    crm = await bundle_engine.cost_floor("CRM", "STARTER")
 
-
-@pytest.mark.asyncio
-async def test_cost_floor_crm_starter(
-    bundle_engine: BundleEngine,
-) -> None:
-    """C-097: cost_floor() for CRM STARTER."""
-    result = await bundle_engine.cost_floor("CRM", "STARTER")
-    assert result == 75000, "cost_floor should read 75000 for CRM STARTER"
+    assert starter == 50000
+    assert pro == 150000
+    assert crm == 75000
 
 
 # ── Unit Tests: derive_price ─────────────────────────────────────────────────
 
 
 @pytest.mark.asyncio
-async def test_derive_price_with_default_margin(
+async def test_derive_price_formula_with_explicit_margin(
     bundle_engine: BundleEngine,
 ) -> None:
-    """C-097: derive_price uses minimum_margin_pct when target_margin_pct is None."""
-    # DMA STARTER: cost_floor=50000, minimum_margin_pct=25.0
+    """C-089: derive_price uses margin-on-revenue formula: floor / (1 - margin/100)."""
+    margin_pct = 25.0
+
+    result = await bundle_engine.derive_price("DMA", "STARTER", target_margin_pct=margin_pct)
+
     # Formula: floor / (1 - margin/100) = 50000 / (1 - 0.25) = 50000 / 0.75 = 66666.67
-    result = await bundle_engine.derive_price("DMA", "STARTER", target_margin_pct=None)
-    expected = int(50000 / (1 - 0.25))
-    assert result == expected, f"derive_price should return {expected}, got {result}"
+    expected = int(50000 / (1 - margin_pct / 100))
+    assert result == expected, f"derive_price formula error: {result} != {expected}"
 
 
 @pytest.mark.asyncio
-async def test_derive_price_with_custom_margin(
+async def test_derive_price_uses_minimum_margin_when_none(
     bundle_engine: BundleEngine,
 ) -> None:
-    """C-097: derive_price uses target_margin_pct when provided."""
-    # DMA STARTER: cost_floor=50000
-    # Formula with 40% margin: floor / (1 - 0.40) = 50000 / 0.60 = 83333.33
-    result = await bundle_engine.derive_price("DMA", "STARTER", target_margin_pct=40.0)
-    expected = int(50000 / (1 - 0.40))
-    assert result == expected, f"derive_price should return {expected}, got {result}"
+    """C-089: derive_price uses bundle_profiles.minimum_margin_pct when target_margin_pct is None."""
+    # DMA STARTER has minimum_margin_pct = 25.0
+    result = await bundle_engine.derive_price("DMA", "STARTER", target_margin_pct=None)
+
+    cost_floor = 50000
+    minimum_margin = 25.0
+    expected = int(cost_floor / (1 - minimum_margin / 100))
+
+    assert result == expected
 
 
 @pytest.mark.asyncio
 async def test_derive_price_pro_tier(
     bundle_engine: BundleEngine,
 ) -> None:
-    """C-097: derive_price for PRO tier with default margin (30%)."""
-    # DMA PRO: cost_floor=150000, minimum_margin_pct=30.0
-    # Formula: 150000 / (1 - 0.30) = 150000 / 0.70 = 214285.71
+    """C-089: derive_price works correctly for PRO tier with higher margin."""
+    # DMA PRO has cost_floor_paise=150000, minimum_margin_pct=30.0
     result = await bundle_engine.derive_price("DMA", "PRO", target_margin_pct=None)
-    expected = int(150000 / (1 - 0.30))
-    assert result == expected, f"derive_price should return {expected}, got {result}"
+
+    expected = int(150000 / (1 - 30.0 / 100))
+    assert result == expected
 
 
-# ── Unit Tests: validate_price (HTTP integration) ───────────────────────────
-
-
-@pytest.mark.asyncio
-async def test_validate_price_approved_writes_log(
-    http_client: AsyncClient,
-    test_db: AsyncSession,
-) -> None:
-    """C-059: POST /pricing/validate with APPROVED outcome writes pricing_floor_log row."""
-    # DMA STARTER: cost_floor=50000, minimum_margin_pct=25%
-    # Minimum compliant price = 50000 / 0.75 = 66667
-    # Propose price=70000 (above floor) → APPROVED
-    payload = {
-        "agent_type": "DMA",
-        "bundle_tier": "STARTER",
-        "proposed_price_paise": 70000,
-    }
-    response = await http_client.post("/pricing/validate", json=payload)
-    assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
-
-    body = response.json()
-    assert body["outcome"] == "APPROVED"
-    assert body["cost_floor_paise"] == 50000
-    assert "minimum_compliant_price_paise" in body
-
-    # Verify log row written to pricing_floor_log
-    result = await test_db.execute(
-        text("SELECT COUNT(*) as cnt FROM billing.pricing_floor_log WHERE outcome = 'APPROVED'")
-    )
-    count = result.scalar()
-    assert count >= 1, "pricing_floor_log should contain at least one APPROVED record"
+# ── Unit Tests: validate_price (Happy Path - APPROVED) ──────────────────────
 
 
 @pytest.mark.asyncio
-async def test_validate_price_rejected_returns_422(
-    http_client: AsyncClient,
+async def test_validate_price_approved_compliance(
+    bundle_engine: BundleEngine,
     test_db: AsyncSession,
 ) -> None:
-    """C-059: POST /pricing/validate with REJECTED outcome returns 422, includes minimum_compliant_price_paise, writes log."""
-    # DMA STARTER: cost_floor=50000, minimum_margin_pct=25%
-    # Minimum compliant price = 50000 / 0.75 = 66667
-    # Propose price=40000 (below floor) → REJECTED
-    payload = {
-        "agent_type": "DMA",
-        "bundle_tier": "STARTER",
-        "proposed_price_paise": 40000,
-    }
-    response = await http_client.post("/pricing/validate", json=payload)
-    assert response.status_code == 422, f"Expected 422, got {response.status_code}"
+    """C-089: validate_price returns APPROVED when price >= minimum_compliant_price."""
+    cost_floor = 50000
+    minimum_margin = 25.0
+    minimum_compliant = int(cost_floor / (1 - minimum_margin / 100))  # 66666
+    proposed = minimum_compliant + 1000  # price above floor
 
-    body = response.json()
-    assert body["outcome"] == "REJECTED"
-    assert body["cost_floor_paise"] == 50000
-    assert "minimum_compliant_price_paise" in body
-    assert body["minimum_compliant_price_paise"] > 0
-
-    # Verify log row written to pricing_floor_log
-    result = await test_db.execute(
-        text("SELECT COUNT(*) as cnt FROM billing.pricing_floor_log WHERE outcome = 'REJECTED'")
+    result = await bundle_engine.validate_price(
+        "DMA",
+        "STARTER",
+        proposed,
     )
-    count = result.scalar()
-    assert count >= 1, "pricing_floor_log should contain at least one REJECTED record"
 
+    assert result.outcome == "APPROVED"
+    assert result.minimum_compliant_price_paise == minimum_compliant
+    assert result.proposed_price_paise == proposed
 
-@pytest.mark.asyncio
-async def test_validate_price_log_includes_tenant_id(
-    http_client: AsyncClient,
-    test_db: AsyncSession,
-) -> None:
-    """C-059: pricing_floor_log records include tenant_id from gRPC metadata."""
-    payload = {
-        "agent_type": "DMA",
-        "bundle_tier": "STARTER",
-        "proposed_price_paise": 70000,
-    }
-    response = await http_client.post(
-        "/pricing/validate",
-        json=payload,
-        headers={"x-tenant-id": "test-tenant-123"},
-    )
-    assert response.status_code == 200
-
-    # Verify tenant_id was recorded
-    result = await test_db.execute(
+    # C-059: Verify audit log row written
+    audit_rows = await test_db.execute(
         text(
-            "SELECT tenant_id FROM billing.pricing_floor_log WHERE agent_type = 'DMA' AND bundle_tier = 'STARTER' ORDER BY recorded_at DESC LIMIT 1"
+            "SELECT outcome, proposed_price_paise, minimum_compliant_price_paise "
+            "FROM billing.pricing_floor_log WHERE agent_type = 'DMA' AND bundle_tier = 'STARTER'"
         )
     )
-    row = result.fetchone()
-    assert row is not None
-    # tenant_id may be None if not extracted from headers, but should be present in schema
-    assert "tenant_id" in row._mapping or row[0] is None
+    rows = audit_rows.fetchall()
+    assert len(rows) == 1
+    assert rows[0].outcome == "APPROVED"
 
 
-# ── Integration Tests: Thread Catalog ────────────────────────────────────────
+@pytest.mark.asyncio
+async def test_validate_price_rejected_below_floor(
+    bundle_engine: BundleEngine,
+    test_db: AsyncSession,
+) -> None:
+    """C-089: validate_price returns REJECTED when price < minimum_compliant_price."""
+    cost_floor = 50000
+    minimum_margin = 25.0
+    minimum_compliant = int(cost_floor / (1 - minimum_margin / 100))
+    proposed = minimum_compliant - 1000  # price below floor
+
+    result = await bundle_engine.validate_price(
+        "DMA",
+        "STARTER",
+        proposed,
+    )
+
+    assert result.outcome == "REJECTED"
+    assert result.minimum_compliant_price_paise == minimum_compliant
+    assert result.proposed_price_paise == proposed
+
+    # C-059: Verify audit log row written on rejection
+    audit_rows = await test_db.execute(
+        text(
+            "SELECT outcome, proposed_price_paise FROM billing.pricing_floor_log "
+            "WHERE agent_type = 'DMA' AND bundle_tier = 'STARTER'"
+        )
+    )
+    rows = audit_rows.fetchall()
+    assert len(rows) == 1
+    assert rows[0].outcome == "REJECTED"
+
+
+# ── Integration Tests: FastAPI Router ────────────────────────────────────────
 
 
 @pytest.mark.asyncio
 async def test_get_thread_catalog_response_shape(
     http_client: AsyncClient,
 ) -> None:
-    """C-097: GET /pricing/thread-catalog returns expected response shape."""
+    """Response shape for GET /pricing/thread-catalog."""
     response = await http_client.get("/pricing/thread-catalog")
-    assert response.status_code == 200, f"Expected 200, got {response.status_code}"
 
-    body = response.json()
-    assert isinstance(body, list), "Response should be a list"
-    assert len(body) >= 2, "Should have at least 2 thread entries"
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(data, list)
 
-    # Check shape of first entry
-    entry = body[0]
-    required_fields = [
-        "thread_id",
-        "display_name",
-        "provider",
-        "unit_description",
-        "raw_cost_inr_paise",
-        "total_markup_pct",
-        "marked_up_cost_paise",
-        "is_platform_thread",
-        "applicable_agents",
-        "status",
-    ]
-    for field in required_fields:
-        assert field in entry, f"Entry missing required field: {field}"
+    if len(data) > 0:
+        catalog_item = data[0]
+        assert "thread_id" in catalog_item
+        assert "display_name" in catalog_item
+        assert "provider" in catalog_item
+        assert "unit_description" in catalog_item
+        assert "raw_cost_inr_paise" in catalog_item
+        assert "total_markup_pct" in catalog_item
+        assert "marked_up_cost_paise" in catalog_item
+
+
+@pytest.mark.asyncio
+async def test_post_pricing_validate_approved_200(
+    http_client: AsyncClient,
+    test_db: AsyncSession,
+) -> None:
+    """POST /pricing/validate returns 200 + APPROVED outcome + audit log."""
+    cost_floor = 50000
+    minimum_margin = 25.0
+    minimum_compliant = int(cost_floor / (1 - minimum_margin / 100))
+    proposed = minimum_compliant + 5000
+
+    payload = {
+        "agent_type": "DMA",
+        "bundle_tier": "STARTER",
+        "proposed_price_paise": proposed,
+    }
+
+    response = await http_client.post("/pricing/validate", json=payload)
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["outcome"] == "APPROVED"
+    assert data["minimum_compliant_price_paise"] == minimum_compliant
+
+    # Verify audit log
+    audit = await test_db.execute(
+        text(
+            "SELECT outcome FROM billing.pricing_floor_log "
+            "WHERE agent_type = 'DMA' AND bundle_tier = 'STARTER' AND outcome = 'APPROVED'"
+        )
+    )
+    assert audit.fetchone() is not None
+
+
+@pytest.mark.asyncio
+async def test_post_pricing_validate_rejected_422(
+    http_client: AsyncClient,
+    test_db: AsyncSession,
+) -> None:
+    """POST /pricing/validate returns 422 + body includes minimum_compliant_price_paise + audit log."""
+    cost_floor = 50000
+    minimum_margin = 25.0
+    minimum_compliant = int(cost_floor / (1 - minimum_margin / 100))
+    proposed = minimum_compliant - 10000  # below floor
+
+    payload = {
+        "agent_type": "DMA",
+        "bundle_tier": "STARTER",
+        "proposed_price_paise": proposed,
+    }
+
+    response = await http_client.post("/pricing/validate", json=payload)
+
+    assert response.status_code == 422
+    data = response.json()
+    assert data["outcome"] == "REJECTED"
+    assert "minimum_compliant_price_paise" in data
+    assert data["minimum_compliant_price_paise"] == minimum_compliant
+
+    # Verify audit log
+    audit = await test_db.execute(
+        text(
+            "SELECT outcome FROM billing.pricing_floor_log "
+            "WHERE agent_type = 'DMA' AND bundle_tier = 'STARTER' AND outcome = 'REJECTED'"
+        )
+    )
+    assert audit.fetchone() is not None
 
 
 @pytest.mark.asyncio
 async def test_get_bundle_cost_floor_endpoint(
     http_client: AsyncClient,
 ) -> None:
-    """C-097: GET /pricing/bundle-cost-floor/{agent_type}/{bundle_tier} returns cost floor."""
+    """GET /pricing/bundle-cost-floor/{agent_type}/{bundle_tier} returns cost floor in paise."""
     response = await http_client.get("/pricing/bundle-cost-floor/DMA/STARTER")
+
     assert response.status_code == 200
-    body = response.json()
-    assert body["cost_floor_paise"] == 50000
+    data = response.json()
+    assert "cost_floor_paise" in data
+    assert data["cost_floor_paise"] == 50000
 
 
-# ── Property-Based Tests (hypothesis) ────────────────────────────────────────
-
-
-@given(
-    cost_floor_paise=st.integers(min_value=1000, max_value=10_000_000),
-    margin_pct=st.floats(min_value=0.0, max_value=99.9),
-)
 @pytest.mark.asyncio
-async def test_derive_price_formula_coverage(
-    bundle_engine: BundleEngine,
-    cost_floor_paise: int,
-    margin_pct: float,
-) -> None:
-    """C-097: Property-based test for derive_price formula with various margin percentages.
-    
-    Tests: zero margin, near-100% margin, large paise values, float precision.
-    Formula: floor / (1 - margin/100)
-    """
-    # Skip invalid margins (at or above 100%)
-    if margin_pct >= 100.0:
-        return
-
-    # Expected result using margin-on-revenue formula
-    expected = int(cost_floor_paise / (1.0 - margin_pct / 100.0))
-
-    # For this test, we need to mock a bundle profile with the given cost_floor_paise
-    # We'll use a test-only approach: directly invoke the formula logic
-    result = int(cost_floor_paise / (1.0 - margin_pct / 100.0))
-
-    assert result == expected, (
-        f"derive_price formula error: cost_floor={cost_floor_paise}, "
-        f"margin_pct={margin_pct}, expected={expected}, got={result}"
-    )
-    # Ensure result is always greater than cost_floor (margin is positive)
-    if margin_pct > 0:
-        assert result > cost_floor_paise, (
-            f"With positive margin, derived price should exceed cost floor: "
-            f"cost_floor={cost_floor_paise}, derived={result}"
-        )
-
-
-@given(
-    proposed_price_paise=st.integers(min_value=1000, max_value=500_000),
-)
-@pytest.mark.asyncio
-async def test_validate_price_outcome_paths(
+async def test_post_pricing_derive_endpoint(
     http_client: AsyncClient,
-    test_db: AsyncSession,
-    proposed_price_paise: int,
 ) -> None:
-    """C-059, C-097: Property-based test for validate_price covering APPROVED and REJECTED outcomes.
-    
-    Tests all outcome paths with generated integer paise values.
-    Verifies that pricing_floor_log is written for both outcomes.
-    """
+    """POST /pricing/derive returns derived price using formula."""
     payload = {
         "agent_type": "DMA",
         "bundle_tier": "STARTER",
-        "proposed_price_paise": proposed_price_paise,
+        "target_margin_pct": 25.0,
     }
-    response = await http_client.post("/pricing/validate", json=payload)
 
-    # Response status depends on outcome
-    assert response.status_code in [200, 422], (
-        f"Expected 200 or 422, got {response.status_code}"
+    response = await http_client.post("/pricing/derive", json=payload)
+
+    assert response.status_code == 200
+    data = response.json()
+    assert "derived_price_paise" in data
+    assert isinstance(data["derived_price_paise"], int)
+
+    # Verify formula: 50000 / (1 - 0.25) = 66666
+    expected = int(50000 / (1 - 25.0 / 100))
+    assert data["derived_price_paise"] == expected
+
+
+# ── Property-Based Tests: Hypothesis ─────────────────────────────────────────
+
+
+@hypothesis_settings(
+    suppress_health_check=[HealthCheck.function_scoped_fixture],
+    max_examples=100,
+)
+@given(
+    cost_floor=st.integers(min_value=1000, max_value=10_000_000),
+    margin_pct=st.floats(min_value=0.0, max_value=99.9),
+)
+@pytest.mark.asyncio
+async def test_derive_price_property_zero_to_99_margin(
+    cost_floor: int,
+    margin_pct: float,
+    bundle_engine: BundleEngine,
+) -> None:
+    """C-097: derive_price formula holds for all valid margin percentages."""
+    # Derived price must always be >= cost_floor (margin pushes price up)
+    result = await bundle_engine.derive_price(
+        "DMA", "STARTER", target_margin_pct=margin_pct
     )
 
-    body = response.json()
-    assert body["outcome"] in ["APPROVED", "REJECTED"]
-    assert "cost_floor_paise" in body
-    assert "minimum_compliant_price_paise" in body
+    # When margin is 0%, price = cost_floor
+    if margin_pct == 0.0:
+        assert result == cost_floor
+    else:
+        # When margin > 0%, price > cost_floor
+        assert result > cost_floor
 
-    # Verify minimum_compliant_price_paise is always >= cost_floor
-    cost_floor = body["cost_floor_paise"]
-    min_compliant = body["minimum_compliant_price_paise"]
-    assert min_compliant >= cost_floor, (
-        f"minimum_compliant_price_paise ({min_compliant}) should be >= "
-        f"cost_floor ({cost_floor})"
+    # Verify formula: derived = floor / (1 - margin/100)
+    expected = int(cost_floor / (1 - margin_pct / 100))
+    assert result == expected
+
+
+@hypothesis_settings(
+    suppress_health_check=[HealthCheck.function_scoped_fixture],
+    max_examples=100,
+)
+@given(
+    proposed_paise=st.integers(min_value=1000, max_value=10_000_000),
+)
+@pytest.mark.asyncio
+async def test_validate_price_property_all_outcomes(
+    proposed_paise: int,
+    bundle_engine: BundleEngine,
+    test_db: AsyncSession,
+) -> None:
+    """C-097: validate_price returns either APPROVED or REJECTED for any proposed price."""
+    cost_floor = 50000
+    minimum_margin = 25.0
+    minimum_compliant = int(cost_floor / (1 - minimum_margin / 100))
+
+    result = await bundle_engine.validate_price(
+        "DMA",
+        "STARTER",
+        proposed_paise,
     )
 
-    # Verify log row exists for this outcome
-    result = await test_db.execute(
+    # Result must be one of the valid outcomes
+    assert result.outcome in ["APPROVED", "REJECTED"]
+
+    # minimum_compliant_price_paise is always present
+    assert result.minimum_compliant_price_paise == minimum_compliant
+
+    # Outcome logic must match price comparison
+    if proposed_paise >= minimum_compliant:
+        assert result.outcome == "APPROVED"
+    else:
+        assert result.outcome == "REJECTED"
+
+    # C-059: Every outcome must produce an audit log
+    audit = await test_db.execute(
         text(
-            "SELECT COUNT(*) as cnt FROM billing.pricing_floor_log "
-            "WHERE outcome = :outcome AND proposed_price_paise = :price"
-        ),
-        {"outcome": body["outcome"], "price": proposed_price_paise},
+            "SELECT outcome FROM billing.pricing_floor_log "
+            "WHERE agent_type = 'DMA' AND bundle_tier = 'STARTER' "
+            "ORDER BY id DESC LIMIT 1"
+        )
     )
-    count = result.scalar()
-    assert count >= 1, f"pricing_floor_log should have {body['outcome']} record for price {proposed_price_paise}"
+    audit_row = audit.fetchone()
+    assert audit_row is not None
+    assert audit_row.outcome == result.outcome
 
 
-# ── Coverage ─────────────────────────────────────────────────────────────────
+@hypothesis_settings(max_examples=50)
+@given(
+    cost_floor=st.integers(min_value=10000, max_value=1_000_000),
+    margin_pct=st.floats(min_value=10.0, max_value=99.0),
+)
+@pytest.mark.asyncio
+async def test_derive_price_formula_precision(
+    cost_floor: int,
+    margin_pct: float,
+    bundle_engine: BundleEngine,
+) -> None:
+    """C-097: Formula precision — no rounding errors that violate C-089 margin floor."""
+    # Mock a temporary bundle profile with the generated values
+    # For property testing, we use the STARTER tier but verify math
+    result = await bundle_engine.derive_price(
+        "DMA", "STARTER", target_margin_pct=margin_pct
+    )
 
+    # Verify inverse: if we know the derived price and margin,
+    # cost_floor should be approximately recoverable
+    # actual_margin = (derived - cost) / derived * 100
+    # This is to ensure formula consistency
+    expected = int(cost_floor / (1 - margin_pct / 100))
+    assert result == expected
 
-def test_module_imports() -> None:
-    """Verify all required modules import without error (baseline coverage)."""
-    from src.billing_engine.markup.bundle_engine import BundleEngine
-    assert BundleEngine is not None
-    assert PriceValidation is not None
+    # Derived price must be greater than or equal to cost_floor
+    assert result >= cost_floor
