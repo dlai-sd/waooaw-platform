@@ -87,6 +87,27 @@ _PYTHON_FORBIDDEN_PATTERNS = (
     "Use lazy format: 'logger.info(\"val=%s\", x)'.\n"
 )
 
+# TypeScript/Next.js constitutional constraints
+_TYPESCRIPT_FORBIDDEN_PATTERNS = (
+    "⛔ [TS-NOANY] Never use 'any' type — use specific types or 'unknown' with type guards.\n"
+    "⛔ [TS-JWT] JWTs MUST be cookie-only (httpOnly, secure, sameSite=strict). "
+    "Never store JWTs in localStorage or sessionStorage.\n"
+    "⛔ [TS-EMSTOP] Emergency Stop must be wired — all AgentSession components must subscribe "
+    "to /api/emergency-stop SSE endpoint and render a visible STOPPED banner.\n"
+    "⛔ [TS-CONSOLE] Never use console.log in src/ — use the platform logger utility.\n"
+    "⛔ [TS-CLIENT] Mark components 'use client' ONLY when they use browser APIs or hooks. "
+    "Default to server components for data-fetching.\n"
+)
+
+# Terraform constitutional constraints
+_TERRAFORM_FORBIDDEN_PATTERNS = (
+    "⛔ [TF-SECRETS] Never hardcode secrets in Terraform — use Key Vault references only. "
+    "WRONG: var.db_password = 'abc123'. RIGHT: data.azurerm_key_vault_secret.db_password.value.\n"
+    "⛔ [TF-STATE] Never put sensitive outputs in Terraform state — mark outputs sensitive=true.\n"
+    "⛔ [TF-OUTPUTS] Every module MUST declare all required outputs listed in the SPEC section.\n"
+    "⛔ [TF-PROVIDER] Only use provider versions pinned in versions.tf — never use 'latest'.\n"
+)
+
 # ── Module-level compiled regexes (P2: avoid recompile on every build call) ──
 _RE_CAPITAL_WORDS = re.compile(r'\b([A-Z][a-zA-Z0-9]+)\b')
 _RE_WHITESPACE    = re.compile(r'\s+')
@@ -328,6 +349,12 @@ class ContextBuilder:
                         )
                 except Exception:
                     pass  # non-blocking — best-effort context injection
+        # Inject TypeScript-specific constraints
+        if stack == "typescript":
+            base += "\n\nTYPESCRIPT CONSTITUTIONAL CONSTRAINTS:\n" + _TYPESCRIPT_FORBIDDEN_PATTERNS
+        # Inject Terraform-specific constraints
+        if stack == "terraform":
+            base += "\n\nTERRAFORM CONSTITUTIONAL CONSTRAINTS:\n" + _TERRAFORM_FORBIDDEN_PATTERNS
         # Inject PROJECT_BOUNDARY — auto-derived from .csproj (replaces hard-coded namespace rules)
         if stack == "dotnet" and output_file:
             try:

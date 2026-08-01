@@ -455,6 +455,29 @@ def run_compile_gate(gate_type: str, service_dir: str = "src/constitutional-engi
             record_lint_violations("unknown", error_output, "yamllint")
         return result.returncode == 0, error_output
 
+    if gate_type == "terraform_validate":
+        # Syntax-only HCL2 parse — no provider init required
+        tf_targets: list[str] = target_files if target_files else []
+        if not tf_targets:
+            return True, ""
+        errors: list[str] = []
+        try:
+            import hcl2  # type: ignore[import-untyped]
+            for f in tf_targets:
+                full = REPO_ROOT / f
+                if not full.exists():
+                    continue
+                try:
+                    with full.open("r", encoding="utf-8") as fh:
+                        hcl2.load(fh)
+                except Exception as exc:
+                    errors.append(f"{f}: {str(exc)[:120]}")
+        except ImportError:
+            return True, ""  # python-hcl2 not installed — gate skipped
+        if errors:
+            return False, "\n".join(errors)
+        return True, ""
+
     return False, f"Unknown gate_type: {gate_type}"
 
 

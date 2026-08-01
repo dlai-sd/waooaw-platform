@@ -16,6 +16,7 @@ mypy>=1.10                      # type checking
 bandit>=1.7                     # security SAST
 sqlfluff>=3.0                   # SQL lint gate (PostgreSQL dialect) — P1 multi-stack gate
 yamllint>=1.35                  # YAML lint gate (K8s/Helm manifests) — P1 multi-stack gate
+python-hcl2>=4.3                # Terraform HCL syntax validation gate — P2 multi-stack gate
 
 # ── Testing utilities ────────────────────────────────────────────────────────
 hypothesis>=6.100               # property-based testing

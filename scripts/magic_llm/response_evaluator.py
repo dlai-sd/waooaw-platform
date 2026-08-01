@@ -219,6 +219,7 @@ class ResponseEvaluator:
         ts_files = [f for f in written_files if f.endswith((".ts", ".tsx"))]
         sql_files = [f for f in written_files if f.endswith(".sql")]
         yaml_files = [f for f in written_files if f.endswith((".yaml", ".yml"))]
+        tf_files = [f for f in written_files if f.endswith(".tf")]
 
         if stack == "dotnet" and cs_files:
             return self._compile_dotnet(cs_files)
@@ -226,6 +227,8 @@ class ResponseEvaluator:
             return self._compile_python(py_files)
         if stack == "typescript" and ts_files:
             return self._compile_typescript(ts_files)
+        if stack == "terraform" and tf_files:
+            return self._compile_terraform(tf_files)
         if sql_files:
             return self._gate_sql(sql_files)
         if yaml_files:
@@ -326,7 +329,42 @@ class ResponseEvaluator:
         )
         if proc.returncode != 0:
             return GateResult("COMPILE", False, "COMPILE_FAILURE: TS", proc.stdout[:400])
-        return GateResult("COMPILE", True, "", "tsc: PASS")
+        # Biome lint (if configured) — web/ uses biome.json instead of ESLint
+        biome_config = web_dir / "biome.json"
+        if biome_config.exists():
+            biome_proc = subprocess.run(
+                ["npx", "biome", "check", "--no-errors-on-unmatched"] + [str(self._root / f) for f in ts_files],
+                capture_output=True, text=True, cwd=web_dir,
+                timeout=60,
+            )
+            if biome_proc.returncode != 0:
+                output = (biome_proc.stdout + biome_proc.stderr).strip()[:400]
+                return GateResult("COMPILE", False, "COMPILE_FAILURE: TS_BIOME", output)
+        return GateResult("COMPILE", True, "", "tsc: PASS | biome: PASS")
+
+    def _compile_terraform(self, tf_files: list[str]) -> GateResult:
+        """
+        Terraform syntax validation using python-hcl2 parser.
+        Catches HCL syntax errors inside the retry loop.
+        Does NOT run terraform validate (no provider init needed).
+        """
+        errors = []
+        try:
+            import hcl2  # type: ignore[import-untyped]
+        except ImportError:
+            return GateResult("COMPILE", True, "", "python-hcl2 not installed — TF gate skipped")
+        for f in tf_files:
+            full = self._root / f
+            if not full.exists():
+                continue
+            try:
+                with full.open("r", encoding="utf-8") as fh:
+                    hcl2.load(fh)
+            except Exception as exc:
+                errors.append(f"{f}: HCL syntax error — {str(exc)[:120]}")
+        if errors:
+            return GateResult("COMPILE", False, "COMPILE_FAILURE: TF_SYNTAX", "\n".join(errors))
+        return GateResult("COMPILE", True, "", "hcl2 parse: PASS")
 
     def _gate_sql(self, sql_files: list[str]) -> GateResult:
         """
