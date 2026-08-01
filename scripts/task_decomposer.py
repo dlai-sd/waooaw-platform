@@ -70,10 +70,11 @@ STACK_BEHAVIORAL_RULES: dict[str, list[str]] = {
         "Client: 'from temporalio.client import Client'. Worker: 'from temporalio.worker import Worker'.",
         "STRENUM PATTERN (mandatory for Python 3.12): use 'class X(StrEnum)' NOT 'class X(str, Enum)'. "
         "Import: 'from enum import StrEnum'. Never combine (str, Enum) — use StrEnum directly.",
-        "TEST IMPORT PATTERN: Service dirs use hyphens (professional-runtime). In conftest.py/tests, "
-        "do NOT use 'from src.professional_runtime.main import app' — hyphen dirs are not importable. "
-        "Instead add 'sys.path.insert(0, str(Path(__file__).parent.parent.parent / 'src' / 'professional-runtime'))' "
-        "then 'from main import app'.",
+        "TEST IMPORT PATTERN: Service dirs use hyphens (professional-runtime, billing-engine). In conftest.py/tests, "
+        "do NOT use 'from src.professional_runtime.main import app' or 'from src.billing_engine.*' — hyphen dirs are not importable as dotted Python paths. "
+        "Instead rely on conftest.py sys.path injection: 'from main import app', 'from config import Settings', "
+        "'from markup.bundle_engine import BundleEngine', 'from markup.models import ThreadEntry'. "
+        "For professional-runtime: 'sys.path.insert(0, str(Path(__file__).parent.parent.parent / 'src' / 'professional-runtime'))' then flat imports.",
         "F841 UNUSED VARIABLE (ruff): When calling an endpoint in tests and the return value is not asserted, "
         "use either: (1) 'response = client.post(...)' and then 'assert response.status_code == 200', or "
         "(2) prefix with underscore: '_response = client.post(...)'. NEVER assign to a plain name like "
