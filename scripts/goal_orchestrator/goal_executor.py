@@ -453,9 +453,18 @@ class GoalExecutor:
     def _classify_and_fix(self, failure: Any, written: list[str], task_id: str) -> str:
         """Classify compile failure and return targeted fix context for next attempt.
         P1: advisor module loaded ONCE per GoalExecutor instance (not per-retry).
+
+        BUG FIX: GateResult.error_codes is always [] for Python failures (it only holds
+        .NET CS codes). The old guard `not failure.error_codes` caused EARLY RETURN for
+        ALL Python compile failures — the retry advisor was never called for 5 consecutive
+        WC027 runs. Now we always call the advisor for COMPILE gate failures.
         """
-        if not failure or not failure.error_codes:
-            return f"Gate {failure.gate if failure else 'UNKNOWN'} failed: {getattr(failure, 'detail', '')[:300]}"
+        if not failure:
+            return "Gate UNKNOWN failed"
+        # Non-compile gates (FORMAT, ANNOTATION, SPEC_ALIGN): return raw detail directly.
+        # Advisor only understands compile error patterns.
+        if getattr(failure, "gate", "") not in ("COMPILE", ""):
+            return f"Gate {failure.gate} failed: {getattr(failure, 'detail', '')[:300]}"
         try:
             # P1 fix: use cached advisor module (loaded at init if available)
             advisor = getattr(self, "_advisor_module", None)
@@ -471,8 +480,14 @@ class GoalExecutor:
                 advisor = _m
             diagnosis = advisor.diagnose_build_error(task_id, failure.detail, written, [])
             if diagnosis is not None and diagnosis.should_retry and diagnosis.confidence >= 0.3:
+                # For Python failures, error_codes=[] — use failure_class instead.
+                code_str = (
+                    ','.join(failure.error_codes)
+                    if failure.error_codes
+                    else getattr(failure, "failure_class", "COMPILE_FAILURE")
+                )
                 return (
-                    f"COMPILE FAILED ({','.join(failure.error_codes)}):\n"
+                    f"COMPILE FAILED ({code_str}):\n"
                     f"{failure.detail[:300]}\n\n"
                     f"TARGETED FIX ({diagnosis.error_type}, {diagnosis.confidence:.0%} confidence):\n"
                     f"{diagnosis.fix_instruction}"

@@ -56,6 +56,10 @@ RUFF_F841   = "RUFF_F841"     # Unused local variable
 RUFF_B018   = "RUFF_B018"     # Useless expression statement
 RUFF_G004   = "RUFF_G004"     # f-string in logging call
 RUFF_E501   = "RUFF_E501"     # Line too long
+RUFF_RUF046 = "RUFF_RUF046"  # Redundant int() cast (value already an integer)
+RUFF_F401   = "RUFF_F401"    # Unused import
+RUFF_GENERIC = "RUFF_GENERIC" # Ruff violation with no specific handler
+PYTHON_IMPORT_ERROR = "PYTHON_IMPORT_ERROR"  # pytest collection ImportError / ModuleNotFoundError
 
 
 @dataclass
@@ -1029,15 +1033,59 @@ def _classify_ruff_violation(build_error: str) -> RetryDiagnosis | None:
             "[E501] Line too long — break at 120 chars using line continuation or restructure."
         )
 
+    # RUF046 — redundant int() cast
+    if "RUF046" in build_error:
+        m = re.search(r'RUF046.*?`([^`]+)`', build_error)
+        expr = m.group(1) if m else "the expression"
+        fix_parts.append(
+            f"[RUF046] `{expr}` is already an integer — remove the redundant `int()` cast."
+        )
+
+    # F401 — unused import
+    if "F401" in build_error:
+        m = re.search(r'F401.*?`([^`]+)`', build_error)
+        import_name = m.group(1) if m else "the import"
+        if import_name.startswith("src."):
+            # Wrong dotted path — this service uses flat imports via conftest.py sys.path
+            parts = import_name.split(".")
+            # parts[0]='src', parts[1]=service_name, parts[2:]=module path
+            flat_path = ".".join(parts[2:]) if len(parts) > 2 else import_name
+            fix_parts.append(
+                f"[F401] `{import_name}` — WRONG IMPORT PATH (src.<service>.* dotted path).\n"
+                f"  This service uses FLAT imports: conftest.py inserts src/<service> into sys.path.\n"
+                f"  WRONG: `from {import_name} import ...`\n"
+                f"  RIGHT: `from {flat_path} import ...` (drop the 'src.<service>.' prefix)\n"
+                f"  Check the CONFTEST slot — copy the exact path pattern shown there."
+            )
+        else:
+            fix_parts.append(
+                f"[F401] `{import_name}` is imported but never used — remove the import statement."
+            )
+
     if not fix_parts:
-        return None
+        # Ruff matched a code we have no specific handler for — return generic guidance
+        # so the LLM gets directed to fix the violation instead of UNKNOWN fallback.
+        codes = re.findall(r'\b[A-Z]{1,3}\d{3,4}\b', build_error)
+        unique_codes = sorted(set(codes))
+        return RetryDiagnosis(
+            error_type=RUFF_GENERIC,
+            fix_instruction=(
+                f"RUFF VIOLATION(S) — fix ALL before resubmitting: {', '.join(unique_codes)}\n"
+                "Review each flagged line and correct to comply with the rule. "
+                "Do not suppress violations with '# noqa' unless the spec explicitly allows it."
+            ),
+            should_retry=True,
+            confidence=0.75,
+            constitutional_trace="C-082 (COMPILE gate: unclassified ruff violation)",
+        )
 
     # Determine primary error_type from first violation found
     first_type = RUFF_ANN201
     for code, rtype in [
         ("ANN201", RUFF_ANN201), ("ANN001", RUFF_ANN001), ("B017", RUFF_B017),
         ("B006", RUFF_B006), ("F841", RUFF_F841), ("B018", RUFF_B018),
-        ("G004", RUFF_G004), ("E501", RUFF_E501),
+        ("G004", RUFF_G004), ("E501", RUFF_E501), ("RUF046", RUFF_RUF046),
+        ("F401", RUFF_F401),
     ]:
         if code in build_error:
             first_type = rtype
@@ -1077,13 +1125,38 @@ def diagnose_build_error(
     """
     # ── Ruff Python violations (classified BEFORE CS code scan) ───────────────
     # Ruff rule codes (ANN*, B*, F*, G*, E5xx) don't overlap with CS codes.
-    ruff_pattern = re.compile(r'\b(ANN\d+|B0\d+|F\d{3}|G\d{3}|E5\d{2}|UP\d{3})\b')
+    ruff_pattern = re.compile(r'\b(ANN\d+|B0\d+|F\d{3}|G\d{3}|E5\d{2}|UP\d{3}|RUF\d+|C9\d+|PL[RCEW]\d+|W\d{3}|N\d{3}|I\d{3}|D\d{3}|T\d{3}|PT\d{3}|SIM\d{3}|ERA\d{3}|TID\d{3})\b')
     ruff_codes = ruff_pattern.findall(build_error)
     if ruff_codes:
         diagnosis = _classify_ruff_violation(build_error)
         if diagnosis:
             print(f"  Retry Advisor: {diagnosis.error_type} (confidence={diagnosis.confidence:.0%})")
             return diagnosis
+
+    # ── Python import error (pytest collection failure) ────────────────────────
+    if "ModuleNotFoundError" in build_error or "ImportError" in build_error:
+        m = re.search(r"No module named '([^']+)'", build_error)
+        module_name = m.group(1) if m else "unknown"
+        fix = f"PYTEST COLLECTION FAILED — ImportError: No module named '{module_name}'.\n"
+        if module_name.startswith("src."):
+            # src.service_name.* pattern — service uses flat imports via conftest.py sys.path
+            fix += (
+                "This service directory uses flat imports (conftest.py adds src/<service> to sys.path).\n"
+                f"WRONG: `from {module_name} import ...`\n"
+                "RIGHT: drop the 'src.<service>.' prefix — use the flat module name shown in CONFTEST slot.\n"
+                "Example: `from config import Settings` NOT `from src.billing_engine.config import Settings`"
+            )
+        else:
+            fix += "Check the CONFTEST slot for sys.path setup and use the flat import names it defines."
+        diagnosis = RetryDiagnosis(
+            error_type=PYTHON_IMPORT_ERROR,
+            fix_instruction=fix,
+            should_retry=True,
+            confidence=0.90,
+            constitutional_trace="C-082 (COMPILE gate: pytest collection ImportError — use conftest sys.path)",
+        )
+        print(f"  Retry Advisor: {PYTHON_IMPORT_ERROR} (confidence=90%)")
+        return diagnosis
 
     # Collect all CS error codes from the error output
     error_codes = set(re.findall(r'CS\d+', build_error))

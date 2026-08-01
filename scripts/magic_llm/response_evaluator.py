@@ -317,6 +317,24 @@ class ResponseEvaluator:
                 ruff_output[:500],
                 error_codes=codes,
             )
+        # For test files: --collect-only imports the module (with conftest sys.path) catching
+        # ImportErrors that py_compile misses because it only checks syntax, not import resolution.
+        test_files = [f for f in py_files if f.startswith("tests/") or "/tests/" in f]
+        if test_files:
+            collect_proc = subprocess.run(
+                ["python3", "-m", "pytest", "--collect-only", "-q", "--tb=short"]
+                + [str(self._root / f) for f in test_files],
+                capture_output=True, text=True, cwd=self._root,
+                timeout=30,
+            )
+            if collect_proc.returncode != 0:
+                collect_out = (collect_proc.stdout + collect_proc.stderr).strip()
+                collect_out = collect_out.replace(str(self._root) + "/", "")
+                return GateResult(
+                    "COMPILE", False,
+                    "COMPILE_FAILURE: PYTEST_COLLECT",
+                    collect_out[:500],
+                )
         return GateResult("COMPILE", True, "", "py_compile: PASS | ruff: PASS")
 
     def _compile_typescript(self, ts_files: list[str]) -> GateResult:

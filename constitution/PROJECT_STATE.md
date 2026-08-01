@@ -392,15 +392,12 @@ sprint: WC-014
 sprint_status: IN_PROGRESS
 task_id: WC013-01
 tasks_done:
-<<<<<<< HEAD
   - WC025-01
   - WC025-02
   - WC025-03
   - WC025-04
   - WC025-05
   - WC026-01
-=======
->>>>>>> origin/main
   - WC026-03
   - WC026-04
 tasks_remaining:
@@ -518,15 +515,12 @@ WC012-02b `CS1061: string.TryGetValue` fixed at three layers:
 ```yaml
 sprint_status: MERGED
 tasks_done:
-<<<<<<< HEAD
   - WC025-01
   - WC025-02
   - WC025-03
   - WC025-04
   - WC025-05
   - WC026-01
-=======
->>>>>>> origin/main
   - WC026-03
   - WC026-04
 tasks_remaining:
@@ -916,9 +910,9 @@ Each sprint has EA spec gaps documented, SA corrections applied to WC files, and
 autonomous_halt: false
 platform_phase: IMPLEMENTATION
 current_sprint: WC-027
-sprint_status: AUTHORIZED
+sprint_status: READY
 branch: ib/009/sprint-027
-consecutive_failures: 1
+consecutive_failures: 0
 ```
 
 

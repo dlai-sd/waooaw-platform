@@ -597,6 +597,24 @@ def main() -> int:
                 else:
                     git(["checkout", "-b", branch, f"origin/{branch}"], check=False)
                 git(["pull", "origin", branch], check=False)
+                # ── Main-merge gate: canonical pipeline scripts (sprint_retry_advisor,
+                # goal_executor, response_evaluator) live on main and must be merged into
+                # every sprint run — fresh-start or not. Without this, the sprint branch
+                # carries stale script versions that silently override the workflow PIPELINE SYNC.
+                print(f"  Branch main-merge (fresh-start resume): merging origin/main into {branch}")
+                _merge_fs = git(["merge", "origin/main", "--no-edit",
+                                 "-m", f"chore: merge main pipeline fixes into {branch}"], check=False)
+                if _merge_fs.returncode != 0:
+                    for _cf in ["pyproject.toml", "scripts/task_decomposer.py",
+                                "scripts/autonomous_sprint_runner.py",
+                                "scripts/magic_llm/context_builder.py",
+                                "scripts/magic_llm/response_evaluator.py",
+                                "scripts/goal_orchestrator/goal_executor.py",
+                                "scripts/sprint_retry_advisor.py"]:
+                        git(["checkout", "origin/main", "--", _cf], check=False)
+                    git(["add", "-A"], check=False)
+                    git(["commit", "--no-edit"], check=False)
+                    print(f"  Branch main-merge: conflict resolved (took main's pipeline config)")
             else:
                 print(f"  Branch freshness guard: rebuilding {branch} from latest origin/main")
                 # Ensure we are not on the sprint branch before deleting/resetting it.
@@ -637,6 +655,8 @@ def main() -> int:
                     for config_file in ["pyproject.toml", "scripts/task_decomposer.py",
                                         "scripts/autonomous_sprint_runner.py",
                                         "scripts/magic_llm/context_builder.py",
+                                        "scripts/magic_llm/response_evaluator.py",
+                                        "scripts/goal_orchestrator/goal_executor.py",
                                         "scripts/sprint_retry_advisor.py"]:
                         git(["checkout", "origin/main", "--", config_file], check=False)
                     git(["add", "-A"], check=False)

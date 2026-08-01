@@ -164,7 +164,14 @@ class CascadeHandler:
     # ── Private level runners ─────────────────────────────────────────────────
 
     def _run_l1(self, failure_evidence: dict) -> None:
-        """Level 1: Context Enhancement — up to l1_max retries."""
+        """Level 1: Context Enhancement — up to l1_max retries.
+
+        Critical: after the LLM returns an accepted response, we MUST write the
+        generated files to disk and verify compile before declaring RESOLVED.
+        pipeline.invoke() evaluates FORMAT+ANNOTATION only — it does NOT write files.
+        Without this step, cascade reports "L1 resolved" but the broken file from the
+        3-attempt loop remains on disk, causing the outer compile gate to fail again.
+        """
         while self.ctx.l1_attempts < self.ctx.l1_max:
             self.ctx.l1_attempts += 1
             print(f"  [Cascade] L1 attempt {self.ctx.l1_attempts}/{self.ctx.l1_max}")
@@ -176,6 +183,16 @@ class CascadeHandler:
                 original_request=self._original_request,
             )
 
+            actual_outcome = result.status
+            if result.status == "accepted":
+                # Write files to disk and re-verify compile — pipeline._evaluate() only
+                # checks FORMAT+ANNOTATION, not py_compile/ruff. A file that passes
+                # pipeline gates may still have a SyntaxError on disk.
+                write_ok, write_err = self._write_and_verify(result.raw_output)
+                if not write_ok:
+                    print(f"  [Cascade] L1 attempt {self.ctx.l1_attempts}: write/compile verify failed: {write_err[:120]}")
+                    actual_outcome = "compile_failed"
+
             record_id = self._write({
                 "record_type": "L1 Attempt Record",
                 "goal_id": self.ctx.goal_id,
@@ -185,12 +202,12 @@ class CascadeHandler:
                     result.failure_classification.value
                     if result.failure_classification else None
                 ),
-                "outcome": result.status,
+                "outcome": actual_outcome,
                 "recorded_at": datetime.now(timezone.utc).isoformat(),
             })
             self.ctx.l1_record_ids.append(record_id)
 
-            if result.status == "accepted":
+            if actual_outcome == "accepted":
                 self.ctx.resolved_by_level = 1
                 self.ctx.resolved_at = datetime.now(timezone.utc)
                 self._transition(CascadeState.RESOLVED)
@@ -199,6 +216,90 @@ class CascadeHandler:
 
         print(f"  [Cascade] L1 exhausted after {self.ctx.l1_max} attempts")
         self._transition(CascadeState.L1_EXHAUSTED)
+
+    def _write_and_verify(self, raw_output: str) -> tuple[bool, str]:
+        """Parse <file> blocks from raw_output, write to disk, verify py_compile.
+
+        Uses the same parse/write pattern as goal_executor._execute_file():
+          1. Try autonomous_sprint_runner.parse_llm_files / write_llm_files (runner available)
+          2. Fall back to inline implementation matching _parse_llm_files_local/_write_llm_files_local
+        _WRITE_BOUNDARY enforced to block LLM from writing outside safe paths.
+
+        Returns (success, error_message).
+        """
+        if not raw_output:
+            return False, "empty raw_output"
+        try:
+            import re as _re
+            import subprocess as _sp
+            import pathlib as _pl
+            import sys as _sys
+
+            _repo_root = _pl.Path(__file__).parent.parent.parent
+            _scripts = str(_repo_root / "scripts")
+            if _scripts not in _sys.path:
+                _sys.path.insert(0, _scripts)
+
+            # Established parse/write pattern — mirrors goal_executor._execute_file()
+            try:
+                from autonomous_sprint_runner import parse_llm_files, write_llm_files  # type: ignore[import]
+            except ImportError:
+                # Inline fallback matching _parse_llm_files_local/_write_llm_files_local exactly
+                _WRITE_BOUNDARY = _re.compile(r'^(src|tests|scripts|web|infrastructure)/', _re.IGNORECASE)
+                _pattern = _re.compile(r'<file\s+path="([^"]+)">(.*?)</file>', _re.DOTALL | _re.IGNORECASE)
+
+                def parse_llm_files(response: str) -> dict:  # type: ignore[misc]
+                    files: dict = {}
+                    for m in _pattern.finditer(response or ""):
+                        path, content = m.group(1).strip(), m.group(2)
+                        if _WRITE_BOUNDARY.match(path):
+                            files[path] = content.strip("\n")
+                    return files
+
+                def write_llm_files(files: dict) -> list:  # type: ignore[misc]
+                    written: list = []
+                    for rel_path, content in files.items():
+                        full = _repo_root / rel_path
+                        full.parent.mkdir(parents=True, exist_ok=True)
+                        full.write_text(content, encoding="utf-8")
+                        written.append(rel_path)
+                    return written
+
+            files_parsed = parse_llm_files(raw_output)
+            if not files_parsed:
+                return False, "no <file> blocks in L1 response (or all paths outside WRITE_BOUNDARY)"
+
+            written = write_llm_files(files_parsed)
+            print(f"  [Cascade] L1 wrote: {', '.join(written)}")
+
+            # Verify py_compile for Python files
+            for f in (w for w in written if w.endswith(".py")):
+                full = _repo_root / f
+                proc = _sp.run(
+                    ["python3", "-m", "py_compile", str(full)],
+                    capture_output=True, text=True,
+                )
+                if proc.returncode != 0:
+                    return False, f"{f}: {proc.stderr[:200]}"
+
+            # For test files: also run pytest --collect-only to catch import resolution
+            # errors that py_compile misses (py_compile checks syntax only, not imports).
+            test_files = [w for w in written if w.startswith("tests/") or "/tests/" in w]
+            if test_files:
+                collect_proc = _sp.run(
+                    ["python3", "-m", "pytest", "--collect-only", "-q", "--tb=short"]
+                    + [str(_repo_root / f) for f in test_files],
+                    capture_output=True, text=True, cwd=_repo_root,
+                    timeout=30,
+                )
+                if collect_proc.returncode != 0:
+                    collect_out = (collect_proc.stdout + collect_proc.stderr).strip()
+                    collect_out = collect_out.replace(str(_repo_root) + "/", "")
+                    return False, f"PYTEST_COLLECT FAILED: {collect_out[:400]}"
+
+            return True, ""
+        except Exception as _e:
+            return False, str(_e)
 
     def _run_l2(self, failure_evidence: dict) -> None:
         """Level 2: Research/Industry Expert Query — advisor_auto_extend as Phase 1 L2."""

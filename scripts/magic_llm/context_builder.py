@@ -269,6 +269,13 @@ class ContextBuilder:
         if existing_block:
             ctx.blocks.append(ContextBlock("EXISTING_FILE", existing_block))
 
+        # [8b] CONFTEST — auto-inject conftest.py when generating test files.
+        # Provides the authoritative sys.path and fixture setup so the LLM derives
+        # import conventions from the actual codebase rather than guessing.
+        conftest_block = self._build_conftest_block(output_file)
+        if conftest_block:
+            ctx.blocks.append(ContextBlock("CONFTEST", conftest_block))
+
         ctx.blocks.append(ContextBlock("TASK", self._build_task_block(
             task_id, output_file, constitutional_check,
             file_exists=existing_block != ""
@@ -311,6 +318,12 @@ class ContextBuilder:
     def _build_system(self, stack: str, output_file: str = "") -> str:
         base = (
             "PIPELINE SELF-MODEL (WAOOAW Platform — INST-010, C-059/C-082):\n"
+            "OPERATING MODES: This pipeline handles greenfield code generation, enhancement\n"
+            "of existing code, defect fixes, production fixes, and test additions on a live\n"
+            "codebase. You are NOT always generating from scratch.\n"
+            "When EXISTING_FILE or CONFTEST slots are present, read them FIRST to derive\n"
+            "the existing conventions (imports, sys.path, fixtures, patterns) before writing\n"
+            "a single line. Never invent a path or import that contradicts those slots.\n\n"
             "Your output passes through these 5 constitutional gates in sequence:\n"
             "  Gate FORMAT:     wrap every file in <file path=\"exact/path\">...</file>\n"
             "  Gate PATH:       the file must be at the EXACT path in the TASK block below\n"
@@ -605,6 +618,26 @@ class ContextBuilder:
         if not found:
             return ""
         return "\n".join(lines)
+
+    def _build_conftest_block(self, output_file: str) -> str:
+        """Inject conftest.py from the target test directory as an authoritative reference.
+        The LLM must derive all import paths from the sys.path.insert() calls it contains."""
+        if not (output_file.startswith("tests/") or "/tests/" in output_file):
+            return ""
+        conftest = (self._root / output_file).parent / "conftest.py"
+        if not conftest.exists():
+            return ""
+        content = self._read_cached(conftest)
+        if not content.strip():
+            return ""
+        rel = str(conftest.relative_to(self._root))
+        return (
+            f"CONFTEST ({rel}) — authoritative source for test sys.path and shared fixtures.\n"
+            f"Derive ALL import statements from the sys.path.insert() calls below. "
+            f"Never use dotted paths that mirror the directory tree (e.g. "
+            f"'from src.service_name.*') — use the flat names the conftest makes importable.\n\n"
+            f"```python\n{content}\n```"
+        )
 
     def _build_existing_file_block(self, output_file: str) -> str:
         """If the output file already exists on disk, inject its current content.
