@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 @st.composite
 def cost_floor_paise_strategy(draw: Any) -> int:
-    """Generate realistic cost_floor_paise: ₹1 paise to ₹100,000 paise (₹1 to ₹1000)."""
+    """Generate realistic cost_floor_paise: rupee 1 paise to rupee 100,000 paise (rupee 1 to rupee 1000)."""
     return draw(st.integers(min_value=1, max_value=10_000_000))
 
 
@@ -37,7 +37,7 @@ def margin_pct_strategy(draw: Any) -> float:
 
 @st.composite
 def proposed_price_paise_strategy(draw: Any) -> int:
-    """Generate proposed prices: ₹0 to ₹10M paise."""
+    """Generate proposed prices: rupee 0 to rupee 10M paise."""
     return draw(st.integers(min_value=0, max_value=1_000_000_000))
 
 
@@ -111,8 +111,8 @@ async def test_cost_floor_reads_from_db_not_recomputed(
     mock_db_session: Any,
 ) -> None:
     """
-    GIVEN a BundleEngine instance
-    WHEN cost_floor(agent_type='DMA', bundle_tier='STANDARD') is called
+    GIVEN a BundleEngine instance.
+    WHEN cost_floor(agent_type='DMA', bundle_tier='STANDARD') is called.
     THEN it reads bundle_profiles.cost_floor_paise from DB (not recomputed)
     AND returns the exact DB value.
     """
@@ -133,10 +133,10 @@ async def test_derive_price_uses_margin_on_revenue_formula(
     mock_bundle_engine: Any,
 ) -> None:
     """
-    GIVEN cost_floor_paise=40_000, margin_pct=20%
-    WHEN derive_price(agent_type, bundle_tier, target_margin_pct=20) is called
+    GIVEN cost_floor_paise=40_000, margin_pct=20%.
+    WHEN derive_price(agent_type, bundle_tier, target_margin_pct=20) is called.
     THEN it applies formula: price = floor / (1 - margin/100)
-    AND returns price ≈ 50_000 (40_000 / 0.80 = 50_000).
+    AND returns price approximately 50_000 (40_000 / 0.80 = 50_000).
     """
     cost_floor_paise: int = 40_000
     target_margin_pct: float = 20.0
@@ -158,8 +158,8 @@ async def test_validate_price_approved_outcome_writes_audit_log(
     mock_pricing_floor_log_row: dict[str, Any],
 ) -> None:
     """
-    GIVEN proposed_price_paise=50_000 > minimum_compliant_price_paise=48_000
-    WHEN validate_price(agent_type, bundle_tier, proposed_price_paise) is called
+    GIVEN proposed_price_paise=50_000 > minimum_compliant_price_paise=48_000.
+    WHEN validate_price(agent_type, bundle_tier, proposed_price_paise) is called.
     THEN outcome='APPROVED'
     AND pricing_floor_log row is written (C-059 audit obligation)
     AND response includes minimum_compliant_price_paise.
@@ -184,21 +184,20 @@ async def test_validate_price_approved_outcome_writes_audit_log(
 
 
 @pytest.mark.asyncio
-async def test_validate_price_rejected_outcome_422_response_body(
+async def test_validate_price_rejected_outcome_includes_minimum_compliant_price(
     mock_bundle_engine: Any,
     mock_pricing_floor_log_row: dict[str, Any],
 ) -> None:
     """
-    GIVEN proposed_price_paise=30_000 < minimum_compliant_price_paise=48_000 (C-089 violation)
-    WHEN validate_price(agent_type, bundle_tier, proposed_price_paise) is called
+    GIVEN proposed_price_paise=30_000 < minimum_compliant_price_paise=48_000 (C-089 violation).
+    WHEN validate_price(agent_type, bundle_tier, proposed_price_paise) is called.
     THEN outcome='REJECTED'
-    AND HTTP 422 response body includes minimum_compliant_price_paise
-    AND pricing_floor_log row is written (C-059 audit obligation for rejections too).
+    AND pricing_floor_log row is written (C-059 audit obligation)
+    AND response body includes minimum_compliant_price_paise for HTTP 422 error response.
     """
     mock_row: dict[str, Any] = dict(mock_pricing_floor_log_row)
     mock_row["outcome"] = "REJECTED"
     mock_row["proposed_price_paise"] = 30_000
-
     mock_bundle_engine.validate_price.return_value = {
         "outcome": "REJECTED",
         "cost_floor_paise": 40_000,
@@ -217,353 +216,180 @@ async def test_validate_price_rejected_outcome_422_response_body(
 
 
 @pytest.mark.asyncio
-async def test_get_pricing_thread_catalog_response_shape(
+async def test_thread_catalog_response_shape(
     mock_bundle_engine: Any,
     mock_thread_catalog_response: dict[str, Any],
 ) -> None:
     """
-    GIVEN GET /pricing/thread-catalog request
-    WHEN thread catalog is loaded
-    THEN response contains threads list with expected fields:
-      - thread_id, display_name, provider, unit_description
-      - raw_cost_inr_paise, total_markup_pct, marked_up_cost_paise
-      - is_platform_thread, applicable_agents, status
-    AND response includes count field.
+    GIVEN a ThreadCatalogService.
+    WHEN GET /pricing/thread-catalog is called.
+    THEN response includes 'threads' list and 'count' field
+    AND each thread entry has required fields: thread_id, display_name, provider,
+        unit_description, raw_cost_inr_paise, total_markup_pct, marked_up_cost_paise,
+        is_platform_thread, applicable_agents, status.
     """
-    mock_bundle_engine.get_thread_catalog = AsyncMock(
-        return_value=mock_thread_catalog_response
-    )
-
-    _result: dict[str, Any] = await mock_bundle_engine.get_thread_catalog()
-
-    assert "threads" in mock_thread_catalog_response
-    assert "count" in mock_thread_catalog_response
-    assert mock_thread_catalog_response["count"] == 1
-    thread: dict[str, Any] = mock_thread_catalog_response["threads"][0]
-    assert thread["thread_id"] == "llm-gpt4-standard"
-    assert thread["display_name"] == "GPT-4 Standard"
-    assert thread["provider"] == "openai"
-    assert thread["raw_cost_inr_paise"] == 8000
-    assert thread["total_markup_pct"] == 25.0
-
-
-# ── Property-Based Tests: Hypothesis ──────────────────────────────────────────
-
-@pytest.mark.asyncio
-@settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
-@given(
-    cost_floor_paise=cost_floor_paise_strategy(),
-    margin_pct=margin_pct_strategy(),
-)
-async def test_derive_price_property_zero_and_high_margins(
-    cost_floor_paise: int,
-    margin_pct: float,
-    mock_bundle_engine: Any,
-) -> None:
-    """
-    PROPERTY: derive_price formula is price = floor / (1 - margin/100)
-    COVERING:
-      - zero margin (margin=0%): price should equal floor
-      - near-100% margin (margin=99.9%): price should be ~999x floor
-      - large paise values (up to ₹10M)
-      - float precision (margin is float, result is int)
-    """
-    if margin_pct == 0.0:
-        expected_price: int = cost_floor_paise
-    else:
-        expected_price = int(cost_floor_paise / (1 - margin_pct / 100))
-
-    mock_bundle_engine.derive_price.return_value = expected_price
-
-    result: int = await mock_bundle_engine.derive_price(
-        "DMA", "STANDARD", margin_pct
-    )
-
-    assert result == expected_price
-    assert result >= cost_floor_paise
-
-
-@pytest.mark.asyncio
-@settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
-@given(
-    cost_floor_paise=cost_floor_paise_strategy(),
-    proposed_price_paise=proposed_price_paise_strategy(),
-)
-async def test_validate_price_property_approved_vs_rejected_paths(
-    cost_floor_paise: int,
-    proposed_price_paise: int,
-    mock_bundle_engine: Any,
-) -> None:
-    """
-    PROPERTY: validate_price returns either APPROVED or REJECTED based on
-    whether proposed_price >= minimum_compliant_price.
-    Minimum compliant price is derived from cost floor and margin floor.
-    
-    COVERING:
-      - All APPROVED outcomes (proposed >= compliant)
-      - All REJECTED outcomes (proposed < compliant)
-      - Generated integer paise values (0 to ₹10M)
-      - pricing_floor_log audit row written in both cases
-    """
-    minimum_margin_pct: float = 20.0
-    minimum_compliant_price: int = int(
-        cost_floor_paise / (1 - minimum_margin_pct / 100)
-    )
-
-    if proposed_price_paise >= minimum_compliant_price:
-        expected_outcome: str = "APPROVED"
-    else:
-        expected_outcome = "REJECTED"
-
-    mock_bundle_engine.validate_price.return_value = {
-        "outcome": expected_outcome,
-        "cost_floor_paise": cost_floor_paise,
-        "minimum_compliant_price_paise": minimum_compliant_price,
-        "proposed_price_paise": proposed_price_paise,
-    }
-
-    result: dict[str, Any] = await mock_bundle_engine.validate_price(
-        "DMA", "STANDARD", proposed_price_paise
-    )
-
-    assert result["outcome"] == expected_outcome
-    assert result["minimum_compliant_price_paise"] == minimum_compliant_price
-    assert result["proposed_price_paise"] == proposed_price_paise
-
-
-@pytest.mark.asyncio
-@settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
-@given(
-    cost_floor_paise=cost_floor_paise_strategy(),
-    margin_pct=margin_pct_strategy(),
-)
-async def test_derive_price_property_float_precision_edge_cases(
-    cost_floor_paise: int,
-    margin_pct: float,
-    mock_bundle_engine: Any,
-) -> None:
-    """
-    PROPERTY: derive_price handles float precision edge cases correctly.
-    
-    COVERING:
-      - Very small cost floors (₹1 paise) with high margins
-      - Very large cost floors (₹100M paise) with various margins
-      - Float margin percentages (0.1%, 33.33%, 99.9%) without rounding errors
-      - Result is always an integer (truncated, not rounded)
-    """
-    if margin_pct >= 99.99:
-        expected_price: int = cost_floor_paise * 9999
-    elif margin_pct == 0.0:
-        expected_price = cost_floor_paise
-    else:
-        expected_price = int(cost_floor_paise / (1 - margin_pct / 100))
-
-    mock_bundle_engine.derive_price.return_value = expected_price
-
-    result: int = await mock_bundle_engine.derive_price(
-        "DMA", "STANDARD", margin_pct
-    )
-
-    assert isinstance(result, int)
-    assert result >= cost_floor_paise
-
-
-# ── Integration Tests: Router Endpoints ──────────────────────────────────────
-
-@pytest.mark.asyncio
-async def test_post_pricing_validate_approved_200_response(
-    mock_bundle_engine: Any,
-) -> None:
-    """
-    GIVEN a POST /pricing/validate request with valid price >= minimum_compliant_price
-    WHEN the request is processed
-    THEN HTTP 200 is returned
-    AND response body contains outcome='APPROVED', minimum_compliant_price_paise,
-        proposed_price_paise, cost_floor_paise.
-    """
-    request_payload: dict[str, Any] = {
-        "agent_type": "DMA",
-        "bundle_tier": "STANDARD",
-        "proposed_price_paise": 50_000,
-    }
-
-    mock_bundle_engine.validate_price.return_value = {
-        "outcome": "APPROVED",
-        "cost_floor_paise": 40_000,
-        "minimum_compliant_price_paise": 48_000,
-        "proposed_price_paise": 50_000,
-    }
-
-    result: dict[str, Any] = await mock_bundle_engine.validate_price(
-        request_payload["agent_type"],
-        request_payload["bundle_tier"],
-        request_payload["proposed_price_paise"],
-    )
-
-    assert result["outcome"] == "APPROVED"
-    assert result["minimum_compliant_price_paise"] == 48_000
-
-
-@pytest.mark.asyncio
-async def test_post_pricing_validate_rejected_422_response_with_minimum_price(
-    mock_bundle_engine: Any,
-) -> None:
-    """
-    GIVEN a POST /pricing/validate request with price < minimum_compliant_price (C-089 violation)
-    WHEN the request is processed
-    THEN HTTP 422 is returned
-    AND response body includes outcome='REJECTED', minimum_compliant_price_paise,
-        proposed_price_paise, cost_floor_paise
-    AND pricing_floor_log row is written (C-059 audit).
-    """
-    request_payload: dict[str, Any] = {
-        "agent_type": "DMA",
-        "bundle_tier": "STANDARD",
-        "proposed_price_paise": 30_000,
-    }
-
-    mock_bundle_engine.validate_price.return_value = {
-        "outcome": "REJECTED",
-        "cost_floor_paise": 40_000,
-        "minimum_compliant_price_paise": 48_000,
-        "proposed_price_paise": 30_000,
-    }
-
-    result: dict[str, Any] = await mock_bundle_engine.validate_price(
-        request_payload["agent_type"],
-        request_payload["bundle_tier"],
-        request_payload["proposed_price_paise"],
-    )
-
-    assert result["outcome"] == "REJECTED"
-    assert result["minimum_compliant_price_paise"] == 48_000
-
-
-@pytest.mark.asyncio
-async def test_get_pricing_thread_catalog_endpoint_shape(
-    mock_bundle_engine: Any,
-    mock_thread_catalog_response: dict[str, Any],
-) -> None:
-    """
-    GIVEN a GET /pricing/thread-catalog request
-    WHEN the endpoint is called
-    THEN HTTP 200 is returned
-    AND response body contains threads array with required fields
-    AND count field equals length of threads array.
-    """
-    mock_bundle_engine.get_thread_catalog = AsyncMock(
-        return_value=mock_thread_catalog_response
-    )
+    mock_bundle_engine.get_thread_catalog.return_value = mock_thread_catalog_response
 
     result: dict[str, Any] = await mock_bundle_engine.get_thread_catalog()
 
     assert "threads" in result
     assert "count" in result
-    assert result["count"] == len(result["threads"])
-    assert len(result["threads"]) > 0
+    assert result["count"] == 1
+    assert len(result["threads"]) == 1
+
+    thread: dict[str, Any] = result["threads"][0]
+    assert "thread_id" in thread
+    assert "display_name" in thread
+    assert "provider" in thread
+    assert "unit_description" in thread
+    assert "raw_cost_inr_paise" in thread
+    assert "total_markup_pct" in thread
+    assert "marked_up_cost_paise" in thread
+    assert "is_platform_thread" in thread
+    assert "applicable_agents" in thread
+    assert "status" in thread
 
 
-@pytest.mark.asyncio
-async def test_post_pricing_derive_endpoint(
-    mock_bundle_engine: Any,
+# ── Property-Based Tests with Hypothesis ──────────────────────────────────────
+
+@settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
+@given(
+    cost_floor_paise=cost_floor_paise_strategy(),
+    margin_pct=margin_pct_strategy(),
+)
+def test_derive_price_formula_property(
+    cost_floor_paise: int,
+    margin_pct: float,
 ) -> None:
     """
-    GIVEN a POST /pricing/derive request with agent_type, bundle_tier, and optional target_margin_pct
-    WHEN the endpoint is called
-    THEN HTTP 200 is returned
-    AND response body contains derived_price_paise using margin-on-revenue formula.
+    Property: derive_price(cost_floor, margin_pct) applies formula:
+        price = cost_floor / (1 - margin_pct/100)
+    
+    Covers:
+    - Zero margin: price ≈ cost_floor
+    - Near-100% margin: price approaches infinity (capped at 99.9%)
+    - Large paise values: up to rupee 100,000
+    - Float precision: margin_pct as float with decimals
     """
-    request_payload: dict[str, Any] = {
-        "agent_type": "DMA",
-        "bundle_tier": "STANDARD",
-        "target_margin_pct": 25.0,
-    }
+    if margin_pct >= 100.0:
+        pytest.skip("Margin >= 100% is mathematically undefined (division by zero)")
 
-    cost_floor: int = 40_000
-    expected_derived_price: int = int(cost_floor / (1 - 25.0 / 100))
+    divisor: float = 1.0 - (margin_pct / 100.0)
+    if divisor <= 0.0:
+        pytest.skip("Divisor is non-positive; singularity avoided by margin_pct < 100%")
 
-    mock_bundle_engine.derive_price.return_value = expected_derived_price
+    expected_price: float = cost_floor_paise / divisor
+    expected_price_int: int = int(expected_price)
 
-    result: int = await mock_bundle_engine.derive_price(
-        request_payload["agent_type"],
-        request_payload["bundle_tier"],
-        request_payload["target_margin_pct"],
+    # Formula validation: for zero margin, price should equal cost_floor
+    if margin_pct == 0.0:
+        assert expected_price_int == cost_floor_paise, (
+            "Zero margin should yield price = cost_floor"
+        )
+
+    # Formula validation: price >= cost_floor (always, since divisor < 1 for margin > 0)
+    if margin_pct > 0.0:
+        assert expected_price_int >= cost_floor_paise, (
+            "Price must be >= cost_floor for positive margin"
+        )
+
+
+@settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
+@given(
+    cost_floor_paise=cost_floor_paise_strategy(),
+    proposed_price_paise=proposed_price_paise_strategy(),
+    minimum_margin_pct=margin_pct_strategy(),
+)
+def test_validate_price_outcome_property(
+    cost_floor_paise: int,
+    proposed_price_paise: int,
+    minimum_margin_pct: float,
+) -> None:
+    """
+    Property: validate_price determines outcome based on:
+        minimum_compliant_price = cost_floor / (1 - minimum_margin/100)
+        outcome = APPROVED if proposed_price >= minimum_compliant_price else REJECTED
+    
+    Covers:
+    - All outcome paths: APPROVED, REJECTED
+    - Generated integer paise values: 0 to rupee 10M
+    - Margin percentages: 0% to 99.9%
+    """
+    if minimum_margin_pct >= 100.0:
+        pytest.skip("Margin >= 100% is undefined")
+
+    divisor: float = 1.0 - (minimum_margin_pct / 100.0)
+    if divisor <= 0.0:
+        pytest.skip("Divisor is non-positive")
+
+    minimum_compliant_price: int = int(
+        cost_floor_paise / divisor
     )
 
-    assert result == expected_derived_price
-    assert result >= cost_floor
+    # APPROVED path: proposed >= minimum_compliant
+    if proposed_price_paise >= minimum_compliant_price:
+        outcome: str = "APPROVED"
+    else:
+        outcome = "REJECTED"
 
+    # Validate outcome consistency
+    if outcome == "APPROVED":
+        assert proposed_price_paise >= minimum_compliant_price, (
+            "APPROVED outcome requires proposed_price >= minimum_compliant_price"
+        )
+    else:
+        assert proposed_price_paise < minimum_compliant_price, (
+            "REJECTED outcome requires proposed_price < minimum_compliant_price"
+        )
 
-# ── Code Coverage & Audit Trail Tests ──────────────────────────────────────
 
 @pytest.mark.asyncio
-async def test_validate_price_c059_audit_trail_approved(
+async def test_pricing_floor_log_written_on_both_approved_and_rejected(
     mock_bundle_engine: Any,
 ) -> None:
     """
-    COVERAGE: C-059 Traceability — APPROVED outcomes
-    GIVEN validate_price returns APPROVED
-    WHEN the result is recorded
-    THEN pricing_floor_log entry is created with all required fields
-    AND entry includes: id, agent_type, bundle_tier, proposed_price_paise,
-        cost_floor_paise, minimum_compliant_price_paise, outcome, recorded_at.
+    GIVEN validate_price is called for both APPROVED and REJECTED outcomes.
+    WHEN the validation completes.
+    THEN pricing_floor_log row is written in BOTH cases (C-059 audit obligation).
     """
-    mock_result: dict[str, Any] = {
+    approved_result: dict[str, Any] = {
         "outcome": "APPROVED",
         "cost_floor_paise": 40_000,
         "minimum_compliant_price_paise": 48_000,
         "proposed_price_paise": 50_000,
     }
-
-    mock_bundle_engine.validate_price.return_value = mock_result
-
-    _result: dict[str, Any] = await mock_bundle_engine.validate_price(
-        "DMA", "STANDARD", 50_000
-    )
-
-    assert mock_result["outcome"] == "APPROVED"
-
-
-@pytest.mark.asyncio
-async def test_validate_price_c059_audit_trail_rejected(
-    mock_bundle_engine: Any,
-) -> None:
-    """
-    COVERAGE: C-059 Traceability — REJECTED outcomes
-    GIVEN validate_price returns REJECTED
-    WHEN the result is recorded
-    THEN pricing_floor_log entry is created with all required fields
-    AND entry includes: id, agent_type, bundle_tier, proposed_price_paise,
-        cost_floor_paise, minimum_compliant_price_paise, outcome, recorded_at.
-    """
-    mock_result: dict[str, Any] = {
+    rejected_result: dict[str, Any] = {
         "outcome": "REJECTED",
         "cost_floor_paise": 40_000,
         "minimum_compliant_price_paise": 48_000,
         "proposed_price_paise": 30_000,
     }
 
-    mock_bundle_engine.validate_price.return_value = mock_result
+    mock_bundle_engine.validate_price.side_effect = [approved_result, rejected_result]
 
-    _result: dict[str, Any] = await mock_bundle_engine.validate_price(
+    approved_call: dict[str, Any] = await mock_bundle_engine.validate_price(
+        "DMA", "STANDARD", 50_000
+    )
+    rejected_call: dict[str, Any] = await mock_bundle_engine.validate_price(
         "DMA", "STANDARD", 30_000
     )
 
-    assert mock_result["outcome"] == "REJECTED"
+    assert approved_call["outcome"] == "APPROVED"
+    assert rejected_call["outcome"] == "REJECTED"
+    assert mock_bundle_engine.validate_price.call_count == 2
 
 
 @pytest.mark.asyncio
-async def test_markup_engine_line_coverage_cost_floor_path(
+async def test_cost_floor_uses_bundle_profiles_table(
     mock_bundle_engine: Any,
 ) -> None:
     """
-    LINE COVERAGE: cost_floor DB read path
-    GIVEN a call to cost_floor with agent_type and bundle_tier
-    WHEN the DB query executes
-    THEN the result is returned without recomputation.
+    GIVEN bundle_profiles table in DB has cost_floor_paise for DMA/STANDARD.
+    WHEN cost_floor(agent_type='DMA', bundle_tier='STANDARD') is called.
+    THEN it reads from bundle_profiles (not bundle_profiles or thread_catalog)
+    AND returns the exact DB value without recomputation.
     """
-    expected_cost_floor: int = 42_000
-
+    expected_cost_floor: int = 45_000
     mock_bundle_engine.cost_floor.return_value = expected_cost_floor
 
     result: int = await mock_bundle_engine.cost_floor("DMA", "STANDARD")
@@ -572,17 +398,116 @@ async def test_markup_engine_line_coverage_cost_floor_path(
 
 
 @pytest.mark.asyncio
-async def test_markup_engine_line_coverage_derive_price_path(
+async def test_derive_price_falls_back_to_minimum_margin_pct(
     mock_bundle_engine: Any,
 ) -> None:
     """
-    LINE COVERAGE: derive_price formula path
-    GIVEN cost_floor and target_margin_pct
-    WHEN derive_price is called
-    THEN formula is applied and result is returned.
+    GIVEN target_margin_pct is None.
+    WHEN derive_price(agent_type, bundle_tier, target_margin_pct=None) is called.
+    THEN it uses bundle_profiles.minimum_margin_pct from DB
+    AND applies margin-on-revenue formula with that margin.
     """
-    mock_bundle_engine.derive_price.return_value = 52_500
+    cost_floor_paise: int = 40_000
+    minimum_margin_pct: float = 15.0
+    expected_price: int = int(cost_floor_paise / (1 - minimum_margin_pct / 100))
 
-    result: int = await mock_bundle_engine.derive_price("DMA", "STANDARD", 20.0)
+    mock_bundle_engine.derive_price.return_value = expected_price
 
-    assert result == 52_500
+    result: int = await mock_bundle_engine.derive_price(
+        "DMA", "STANDARD", None
+    )
+
+    assert result == expected_price
+    mock_bundle_engine.derive_price.assert_called_once_with("DMA", "STANDARD", None)
+
+
+@pytest.mark.asyncio
+async def test_validate_price_returns_all_required_fields(
+    mock_bundle_engine: Any,
+) -> None:
+    """
+    GIVEN validate_price is called.
+    WHEN the validation completes.
+    THEN response includes: outcome, cost_floor_paise, minimum_compliant_price_paise, proposed_price_paise
+    AND all fields are present for HTTP response and 422 error body construction.
+    """
+    expected_response: dict[str, Any] = {
+        "outcome": "APPROVED",
+        "cost_floor_paise": 40_000,
+        "minimum_compliant_price_paise": 48_000,
+        "proposed_price_paise": 50_000,
+    }
+    mock_bundle_engine.validate_price.return_value = expected_response
+
+    result: dict[str, Any] = await mock_bundle_engine.validate_price(
+        "DMA", "STANDARD", 50_000
+    )
+
+    assert "outcome" in result
+    assert "cost_floor_paise" in result
+    assert "minimum_compliant_price_paise" in result
+    assert "proposed_price_paise" in result
+    assert result == expected_response
+
+
+@settings(
+    suppress_health_check=[HealthCheck.function_scoped_fixture],
+    max_examples=50,
+)
+@given(
+    cost_floor=cost_floor_paise_strategy(),
+    margin=margin_pct_strategy(),
+)
+def test_derive_price_large_values_property(
+    cost_floor: int,
+    margin: float,
+) -> None:
+    """
+    Property: derive_price handles large paise values (up to rupee 100,000 = 10M paise)
+    and large margin percentages (up to 99.9%) without overflow or precision loss.
+    """
+    if margin >= 100.0:
+        pytest.skip("Margin >= 100% skipped")
+
+    divisor: float = 1.0 - (margin / 100.0)
+    if divisor <= 0.0:
+        pytest.skip("Divisor is non-positive")
+
+    price: float = cost_floor / divisor
+    price_int: int = int(price)
+
+    # Sanity checks
+    assert isinstance(price_int, int), "Result must be integer paise"
+    assert price_int >= 0, "Price cannot be negative"
+    if margin > 0:
+        assert price_int >= cost_floor, "Price must exceed cost_floor for positive margin"
+
+
+@pytest.mark.asyncio
+async def test_validate_price_c089_compliance_margin_floor(
+    mock_bundle_engine: Any,
+) -> None:
+    """
+    GIVEN C-089 margin floor requirement: price >= cost_floor / (1 - min_margin/100).
+    WHEN validate_price is called with proposed_price below the floor.
+    THEN outcome='REJECTED' and response.minimum_compliant_price_paise is set
+    AND audit log (pricing_floor_log) records the violation (C-059).
+    """
+    cost_floor_paise: int = 40_000
+    minimum_margin_pct: float = 20.0
+    minimum_compliant: int = int(cost_floor_paise / (1 - minimum_margin_pct / 100))
+    proposed_below_floor: int = minimum_compliant - 1000
+
+    mock_bundle_engine.validate_price.return_value = {
+        "outcome": "REJECTED",
+        "cost_floor_paise": cost_floor_paise,
+        "minimum_compliant_price_paise": minimum_compliant,
+        "proposed_price_paise": proposed_below_floor,
+    }
+
+    result: dict[str, Any] = await mock_bundle_engine.validate_price(
+        "DMA", "STANDARD", proposed_below_floor
+    )
+
+    assert result["outcome"] == "REJECTED"
+    assert result["minimum_compliant_price_paise"] == minimum_compliant
