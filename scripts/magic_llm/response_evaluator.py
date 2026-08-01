@@ -341,16 +341,33 @@ class ResponseEvaluator:
                 )
         return GateResult("COMPILE", True, "", "py_compile: PASS | ruff: PASS")
 
-    def _check_intrapackage_imports(self, src_files: list[str]) -> str | None:
-        """AST-only cross-module symbol check for markup.* intra-package imports.
+    def _check_intrapackage_imports(self, py_files: list[str]) -> str | None:
+        """AST-only cross-module symbol check for any intra-service package imports.
 
-        Catches `from markup.models import ValidationOutcome` when models.py only
-        defines `PriceOutcome` — no imports are executed, so no side effects.
+        Discovers all modules under src/ dynamically — works across all sprint
+        services (billing-engine, wallet, meter-alert, reconciliation, etc.).
         Returns a human-readable error string or None if everything resolves.
         """
         import ast as _ast
 
-        for f in src_files:
+        # Build module → file map for every .py file under src/ (skipping __init__)
+        # src/billing-engine/markup/models.py → "markup.models"
+        # src/wallet/wallet/services.py       → "wallet.services"
+        module_file_map: dict[str, pathlib.Path] = {}
+        src_root = self._root / "src"
+        if src_root.exists():
+            for py_path in src_root.rglob("*.py"):
+                if py_path.name == "__init__.py":
+                    continue
+                try:
+                    rel_parts = list(py_path.relative_to(src_root).with_suffix("").parts)
+                except ValueError:
+                    continue
+                if len(rel_parts) >= 2:
+                    # Drop the first part (service dir, e.g. "billing-engine")
+                    module_file_map[".".join(rel_parts[1:])] = py_path
+
+        for f in py_files:
             full = self._root / f
             if not full.exists():
                 continue
@@ -361,15 +378,11 @@ class ResponseEvaluator:
             for node in _ast.walk(tree):
                 if not isinstance(node, _ast.ImportFrom) or not node.module:
                     continue
-                # Only check markup.* intra-package imports
-                if not node.module.startswith("markup."):
-                    continue
-                sub = node.module[len("markup."):]
-                pkg_file = self._root / "src" / "billing-engine" / "markup" / f"{sub}.py"
-                if not pkg_file.exists():
+                target_file = module_file_map.get(node.module)
+                if target_file is None:
                     continue
                 try:
-                    pkg_tree = _ast.parse(pkg_file.read_text())
+                    pkg_tree = _ast.parse(target_file.read_text())
                 except SyntaxError:
                     continue
                 defined: set[str] = set()
@@ -385,10 +398,11 @@ class ResponseEvaluator:
                         defined.add(stmt.target.id)
                 for alias in node.names:
                     if alias.name != "*" and alias.name not in defined:
+                        rel_target = target_file.relative_to(self._root)
                         return (
                             f"ImportError: cannot import name '{alias.name}' from "
-                            f"'markup.{sub}' ({f})\n"
-                            f"Defined names in markup/{sub}.py: {sorted(defined)}"
+                            f"'{node.module}' ({f})\n"
+                            f"Defined names in {rel_target}: {sorted(defined)}"
                         )
         return None
 
