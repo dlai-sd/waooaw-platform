@@ -1,5 +1,5 @@
 {
-  "run_id": "30696054278",
+  "run_id": "30697378900",
   "sprint": "WC-027",
   "scaffold_task": null,
   "scaffold_failed": false,
@@ -7,19 +7,19 @@
   "spec_gap_issues": [],
   "overall_result": "PARTIAL",
   "file_costs": {
-    "WC027-01aa:models.py": 5.1312,
-    "WC027-01aa:bundle_engine.py": 7.4988,
-    "WC027-01ab:models.py": 0.4347,
-    "WC027-01ab:bundle_engine.py": 1.1236,
-    "WC027-01ac:test_models.py": 2.1503,
-    "WC027-01ba:router.py": 1.1663999999999999,
-    "WC027-01ba:main.py": 0.333,
-    "WC027-01bb:router.py": 0.5623,
+    "WC027-01aa:models.py": 5.1557,
+    "WC027-01aa:bundle_engine.py": 7.2504,
+    "WC027-01ab:models.py": 0.4355,
+    "WC027-01ab:bundle_engine.py": 1.6804999999999999,
+    "WC027-01ac:test_models.py": 1.9342000000000001,
+    "WC027-01ba:router.py": 0.6278,
+    "WC027-01ba:main.py": 0.3074,
+    "WC027-01bb:router.py": 1.6943,
     "WC027-01bb:main.py": 0.3037,
-    "WC027-01bc:test_router.py": 2.3531,
-    "WC027-02a:test_markup.py": 2.6027,
-    "WC027-02b:test_markup.py": 1.6602000000000001,
-    "WC027-02c:test_markup.py": 1.3586
+    "WC027-01bc:test_router.py": 2.2927,
+    "WC027-02a:test_markup.py": 2.4823,
+    "WC027-02b:test_markup.py": 1.6874,
+    "WC027-02c:test_markup.py": 1.3857
   },
   "subtask_results": {
     "WC027-01aa": {
@@ -74,10 +74,10 @@
       "result": "FAIL",
       "task_id": "WC027-02",
       "error_codes": [],
-      "error_text": "otstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\ntests/billing-engine/test_markup.py:15: in <module>\n    from src.billing_engine.config import Settings\nE   ModuleNotFoundError: No module named 'src.billing_engine'\n====================="
+      "error_text": "ected_path - AttributeError: 'int' object has no attribute 'validate_price'\nFailing test case: test_validate_price_property_rejected_path(\n    # The test always failed when commented parts were varied together.\n    cost_floor_paise=,  # or any other generated value\n    mock_bundle_engine=,  # or any"
     }
   },
-  "total_cost_inr": 26.6786,
+  "total_cost_inr": 27.2376,
   "tasks_done": [
     "WC027-01a",
     "WC027-01b"
