@@ -968,134 +968,93 @@ def _classify_ruff_violation(build_error: str) -> RetryDiagnosis | None:
     Rule-based, zero LLM cost.
     constitutional_trace: C-082 (build validation), C-069 (self-improvement via targeted fix)
     """
+    # Collect ALL ruff violations present so the fix instruction covers everything
+    fix_parts: list[str] = []
+
     # ANN201 — missing return type annotation
     if "ANN201" in build_error:
         m = re.search(r'ANN201.*?`([^`]+)`', build_error)
         fn_name = m.group(1) if m else "function"
-        return RetryDiagnosis(
-            error_type=RUFF_ANN201,
-            fix_instruction=(
-                f"MISSING RETURN TYPE [ANN201]: function `{fn_name}` has no return type annotation. "
-                "Add '-> ReturnType' to every public function. "
-                "FastAPI route: 'async def get_x(...) -> list[MyModel]:' "
-                "Sync function: 'def compute(...) -> int:' or '-> None' if no return value. "
-                "Check the SPEC block for the exact response model type."
-            ),
-            should_retry=True,
-            confidence=0.95,
-            constitutional_trace="C-082 (COMPILE gate: ruff ANN201 — return type required)"
+        fix_parts.append(
+            f"[ANN201] Add return type to `{fn_name}`. "
+            "FastAPI route: 'async def get_x(...) -> list[MyModel]:'. "
+            "Sync: 'def f(...) -> None:' or the specific return type from the SPEC."
         )
 
     # ANN001 — missing parameter type annotation
     if "ANN001" in build_error:
         m = re.search(r'ANN001.*?`([^`]+)`', build_error)
         param_name = m.group(1) if m else "parameter"
-        return RetryDiagnosis(
-            error_type=RUFF_ANN001,
-            fix_instruction=(
-                f"MISSING PARAMETER TYPE [ANN001]: parameter `{param_name}` has no type annotation. "
-                "Add a type annotation to every function parameter. "
-                "Example: 'def f(x: int, y: str) -> None:' not 'def f(x, y)'. "
-                "For FastAPI dependencies: 'async def handler(db: asyncpg.Pool = Depends(get_db))'."
-            ),
-            should_retry=True,
-            confidence=0.95,
-            constitutional_trace="C-082 (COMPILE gate: ruff ANN001 — parameter type required)"
+        fix_parts.append(
+            f"[ANN001] Add type annotation to parameter `{param_name}`. "
+            "Every parameter needs a type: 'def f(x: int, y: str)'."
         )
 
     # B017 — blind exception in pytest.raises
     if "B017" in build_error:
-        return RetryDiagnosis(
-            error_type=RUFF_B017,
-            fix_instruction=(
-                "BLIND EXCEPTION [B017]: pytest.raises(Exception) is too broad. "
-                "Replace with a specific exception type. "
-                "For HTTP errors: pytest.raises(HTTPException). "
-                "For validation: pytest.raises(ValueError). "
-                "For runtime errors: pytest.raises(RuntimeError). "
-                "If you genuinely need Exception, add a match= parameter: "
-                "pytest.raises(Exception, match='expected message fragment')."
-            ),
-            should_retry=True,
-            confidence=0.95,
-            constitutional_trace="C-082 (COMPILE gate: ruff B017 — blind exception disallowed)"
+        fix_parts.append(
+            "[B017] Replace pytest.raises(Exception) with a specific type: "
+            "pytest.raises(ValueError), pytest.raises(HTTPException), etc."
         )
 
     # B006 — mutable default argument
     if "B006" in build_error:
-        return RetryDiagnosis(
-            error_type=RUFF_B006,
-            fix_instruction=(
-                "MUTABLE DEFAULT [B006]: mutable defaults in function signatures are forbidden. "
-                "Replace 'def f(x: list = [])' with 'def f(x: list | None = None)' and "
-                "initialize inside the body: 'if x is None: x = []'. "
-                "Same for dict defaults: use '| None = None' sentinel."
-            ),
-            should_retry=True,
-            confidence=0.95,
-            constitutional_trace="C-082 (COMPILE gate: ruff B006 — mutable default disallowed)"
+        fix_parts.append(
+            "[B006] Mutable default: replace 'def f(x=[])' with 'def f(x: list | None = None)'."
         )
 
     # F841 — unused variable
     if "F841" in build_error:
         m = re.search(r'F841.*?`([^`]+)`', build_error)
         var_name = m.group(1) if m else "variable"
-        return RetryDiagnosis(
-            error_type=RUFF_F841,
-            fix_instruction=(
-                f"UNUSED VARIABLE [F841]: `{var_name}` is assigned but never read. "
-                "Either: (a) use the variable in an assertion or return statement, "
-                "(b) rename to `_` or `_{var_name}` to signal intentional discard, "
-                "or (c) remove the assignment if the return value is not needed."
-            ),
-            should_retry=True,
-            confidence=0.90,
-            constitutional_trace="C-082 (COMPILE gate: ruff F841 — unused variables disallowed)"
+        fix_parts.append(
+            f"[F841] `{var_name}` assigned but never used — prefix with '_' or assert on it."
         )
 
     # B018 — useless expression
     if "B018" in build_error:
-        return RetryDiagnosis(
-            error_type=RUFF_B018,
-            fix_instruction=(
-                "USELESS EXPRESSION [B018]: a bare expression that is not a call, assignment, "
-                "return, raise, assert, or control flow statement was found. "
-                "Remove it, or convert to an assert if it is a check: 'assert condition, \"message\"'."
-            ),
-            should_retry=True,
-            confidence=0.90,
-            constitutional_trace="C-082 (COMPILE gate: ruff B018 — useless expression disallowed)"
+        fix_parts.append(
+            "[B018] Bare expression statement found — convert to assert or remove."
         )
 
     # G004 — f-string in logging
     if "G004" in build_error:
-        return RetryDiagnosis(
-            error_type=RUFF_G004,
-            fix_instruction=(
-                "F-STRING IN LOGGING [G004]: f-strings in log calls are forbidden in src/ files. "
-                "Replace 'logger.info(f\"val={x}\")' with 'logger.info(\"val=%s\", x)'. "
-                "Use printf-style lazy formatting for ALL logger calls."
-            ),
-            should_retry=True,
-            confidence=0.92,
-            constitutional_trace="C-082 (COMPILE gate: ruff G004 — f-string in logging disallowed)"
+        fix_parts.append(
+            "[G004] f-string in logger call — use 'logger.info(\"val=%s\", x)' instead."
         )
 
     # E501 — line too long
     if "E501" in build_error:
-        return RetryDiagnosis(
-            error_type=RUFF_E501,
-            fix_instruction=(
-                "LINE TOO LONG [E501]: one or more lines exceed the project line-length limit. "
-                "Break long lines with '\\' line continuation or restructure into multiple statements. "
-                "For long strings: use implicit string concatenation across lines inside parentheses."
-            ),
-            should_retry=True,
-            confidence=0.85,
-            constitutional_trace="C-082 (COMPILE gate: ruff E501 — line length limit exceeded)"
+        fix_parts.append(
+            "[E501] Line too long — break at 120 chars using line continuation or restructure."
         )
 
-    return None
+    if not fix_parts:
+        return None
+
+    # Determine primary error_type from first violation found
+    first_type = RUFF_ANN201
+    for code, rtype in [
+        ("ANN201", RUFF_ANN201), ("ANN001", RUFF_ANN001), ("B017", RUFF_B017),
+        ("B006", RUFF_B006), ("F841", RUFF_F841), ("B018", RUFF_B018),
+        ("G004", RUFF_G004), ("E501", RUFF_E501),
+    ]:
+        if code in build_error:
+            first_type = rtype
+            break
+
+    combined_fix = (
+        f"RUFF VIOLATIONS ({len(fix_parts)} issue(s) — fix ALL before resubmitting):\n"
+        + "\n".join(f"  {i + 1}. {p}" for i, p in enumerate(fix_parts))
+    )
+
+    return RetryDiagnosis(
+        error_type=first_type,
+        fix_instruction=combined_fix,
+        should_retry=True,
+        confidence=0.95,
+        constitutional_trace="C-082 (COMPILE gate: ruff violations — fix all listed issues)"
+    )
 
 
 # ── Main entry point ───────────────────────────────────────────────────────────

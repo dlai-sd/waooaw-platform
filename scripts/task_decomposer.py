@@ -352,7 +352,7 @@ def _build_effective_check(st: SubTaskDef, completed: list[str]) -> str:
 
 # ── Compile gates ──────────────────────────────────────────────────────────────
 
-def run_compile_gate(gate_type: str, service_dir: str = "src/constitutional-engine", target_files: list[str] | None = None) -> tuple[bool, str]:
+def run_compile_gate(gate_type: str, service_dir: str = "src/constitutional-engine", target_files: list[str] | None = None, task_id: str = "unknown") -> tuple[bool, str]:
     """
     Run the appropriate compile gate for the technology stack.
     C-082: build validation required after every sub-task.
@@ -409,7 +409,7 @@ def run_compile_gate(gate_type: str, service_dir: str = "src/constitutional-engi
         # Capture both stdout (violations) and stderr (ruff errors, e.g. TOML parse)
         error_output = (result.stdout + result.stderr)[:500]
         if result.returncode != 0:
-            record_lint_violations("unknown", error_output, "ruff")
+            record_lint_violations(task_id, error_output, "ruff")
         return result.returncode == 0, error_output
 
     if gate_type == "pytest":
@@ -436,7 +436,7 @@ def run_compile_gate(gate_type: str, service_dir: str = "src/constitutional-engi
         )
         error_output = (result.stdout + result.stderr)[:500] if result.returncode != 0 else ""
         if result.returncode != 0:
-            record_lint_violations("unknown", error_output, "sqlfluff")
+            record_lint_violations(task_id, error_output, "sqlfluff")
         return result.returncode == 0, error_output
 
     if gate_type == "yamllint":
@@ -452,7 +452,7 @@ def run_compile_gate(gate_type: str, service_dir: str = "src/constitutional-engi
         )
         error_output = (result.stdout + result.stderr)[:500] if result.returncode != 0 else ""
         if result.returncode != 0:
-            record_lint_violations("unknown", error_output, "yamllint")
+            record_lint_violations(task_id, error_output, "yamllint")
         return result.returncode == 0, error_output
 
     if gate_type == "terraform_validate":
@@ -502,8 +502,8 @@ def record_lint_violations(task_id: str, error_output: str, gate_type: str) -> N
             except Exception:
                 violations = {}
 
-        # Extract ruff/sqlfluff/yamllint rule codes
-        code_pattern = _re.compile(r'\b([A-Z]\d{3,4}|SQL\w+)\b')
+        # Match 1–3 uppercase letters + 3–4 digits (covers ANN201, B017, F841, E501, UP007)
+        code_pattern = _re.compile(r'\b([A-Z]{1,3}\d{3,4}|SQL\w+)\b')
         codes = list(set(code_pattern.findall(error_output)))
 
         for code in codes:
@@ -1121,7 +1121,7 @@ def execute_subtask_chain(
                     failed.append(st.id)
                     continue
                 # Compile gate between phases — scope to output_files (B-2 fix)
-                gate_ok, gate_error = run_compile_gate(st.compile_gate, st.service_dir, target_files=st.output_files or None)
+                gate_ok, gate_error = run_compile_gate(st.compile_gate, st.service_dir, target_files=st.output_files or None, task_id=st.id)
                 if not gate_ok:
                     print(f"  [{st.id}] SKELETON compile gate FAILED: {gate_error[:200]}")
                     emit_subtask_signal(task_id, st.id, "FAIL", monitor_signal)
@@ -1211,7 +1211,7 @@ def execute_subtask_chain(
             continue
 
         # ── C-082: compile gate — scoped to output_files (B-2: avoids pre-existing lint) ─
-        gate_ok, gate_error = run_compile_gate(st.compile_gate, st.service_dir, target_files=st.output_files or None)
+        gate_ok, gate_error = run_compile_gate(st.compile_gate, st.service_dir, target_files=st.output_files or None, task_id=st.id)
         if not gate_ok:
             print(f"  [{st.id}] COMPILE GATE FAILED: {gate_error[:200]}")
             print(f"  C-084 2.0: marking failed, continuing non-dependent subtasks")

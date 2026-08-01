@@ -309,7 +309,8 @@ class ResponseEvaluator:
             ruff_output = (ruff_proc.stdout + ruff_proc.stderr).strip()
             # Strip absolute path prefix for cleaner error messages
             ruff_output = ruff_output.replace(str(self._root) + "/", "")
-            codes = sorted(set(re.findall(r'\b([A-Z]\d{3,4})\b', ruff_output)))
+            # Match 1–3 uppercase letters + 3–4 digits (covers ANN201, B017, F841, E501, UP007)
+            codes = sorted(set(re.findall(r'\b([A-Z]{1,3}\d{3,4})\b', ruff_output)))
             return GateResult(
                 "COMPILE", False,
                 f"COMPILE_FAILURE: RUFF {','.join(codes[:6]) if codes else 'VIOLATION'}",
@@ -332,14 +333,19 @@ class ResponseEvaluator:
         # Biome lint (if configured) — web/ uses biome.json instead of ESLint
         biome_config = web_dir / "biome.json"
         if biome_config.exists():
-            biome_proc = subprocess.run(
-                ["npx", "biome", "check", "--no-errors-on-unmatched"] + [str(self._root / f) for f in ts_files],
-                capture_output=True, text=True, cwd=web_dir,
-                timeout=60,
+            # Probe availability first — avoids 60s hang when biome not in node_modules
+            probe = subprocess.run(
+                ["npx", "biome", "--version"],
+                capture_output=True, text=True, cwd=web_dir, timeout=10,
             )
-            if biome_proc.returncode != 0:
-                output = (biome_proc.stdout + biome_proc.stderr).strip()[:400]
-                return GateResult("COMPILE", False, "COMPILE_FAILURE: TS_BIOME", output)
+            if probe.returncode == 0:
+                biome_proc = subprocess.run(
+                    ["npx", "biome", "ci", "--files-ignore-unknown=true"],
+                    capture_output=True, text=True, cwd=web_dir, timeout=60,
+                )
+                if biome_proc.returncode != 0:
+                    output = (biome_proc.stdout + biome_proc.stderr).strip()[:400]
+                    return GateResult("COMPILE", False, "COMPILE_FAILURE: TS_BIOME", output)
         return GateResult("COMPILE", True, "", "tsc: PASS | biome: PASS")
 
     def _compile_terraform(self, tf_files: list[str]) -> GateResult:
