@@ -354,6 +354,16 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements-test.txt anyio
 
+      - name: Validate environment contract — ADR-037
+        # Pre-sprint gate: all imports in tests/ must be importable before groomer runs.
+        # Exit 1 halts the sprint before any LLM token is spent. C-032, C-086.
+        if: steps.pr_check.outputs.skip != 'true'
+        run: |
+          python3 scripts/env_validator.py || {
+            echo "gap_halt=true" >> "$GITHUB_OUTPUT"
+            exit 1
+          }
+
       - name: Configure git
         run: |
           git config user.name  "WAOOAW AI Agent - Platform IT Expert"
