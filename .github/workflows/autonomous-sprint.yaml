@@ -352,7 +352,7 @@ jobs:
             ${{ runner.os }}-nuget-
 
       - name: Install dependencies
-        run: pip install pyyaml requests PyJWT cryptography ruff pytest pytest-asyncio anyio
+        run: pip install -r requirements-test.txt anyio
 
       - name: Configure git
         run: |
