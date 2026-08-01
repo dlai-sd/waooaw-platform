@@ -1,5 +1,5 @@
 {
-  "run_id": "30693169900",
+  "run_id": "30694569495",
   "sprint": "WC-027",
   "scaffold_task": null,
   "scaffold_failed": false,
@@ -7,19 +7,19 @@
   "spec_gap_issues": [],
   "overall_result": "PARTIAL",
   "file_costs": {
-    "WC027-01aa:models.py": 4.9723,
-    "WC027-01aa:bundle_engine.py": 7.4237,
-    "WC027-01ab:models.py": 0.432,
-    "WC027-01ab:bundle_engine.py": 1.6812,
-    "WC027-01ac:test_models.py": 2.0423999999999998,
-    "WC027-01ba:router.py": 0.5943,
-    "WC027-01ba:main.py": 0.2625,
-    "WC027-01bb:router.py": 1.6608,
-    "WC027-01bb:main.py": 0.2594,
-    "WC027-01bc:test_router.py": 0.7556,
-    "WC027-02a:test_markup.py": 1.6715,
-    "WC027-02b:test_markup.py": 1.6568,
-    "WC027-02c:test_markup.py": 1.3551
+    "WC027-01aa:models.py": 5.1312,
+    "WC027-01aa:bundle_engine.py": 7.7652,
+    "WC027-01ab:models.py": 0.4334,
+    "WC027-01ab:bundle_engine.py": 1.6599,
+    "WC027-01ac:test_models.py": 1.8526000000000002,
+    "WC027-01ba:router.py": 0.6266,
+    "WC027-01ba:main.py": 0.3059,
+    "WC027-01bb:router.py": 1.6795,
+    "WC027-01bb:main.py": 0.304,
+    "WC027-01bc:test_router.py": 2.3607,
+    "WC027-02a:test_markup.py": 2.4887,
+    "WC027-02b:test_markup.py": 1.6606999999999998,
+    "WC027-02c:test_markup.py": 1.359
   },
   "subtask_results": {
     "WC027-01aa": {
@@ -77,7 +77,7 @@
       "error_text": "otstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\ntests/billing-engine/test_markup.py:15: in <module>\n    from src.billing_engine.config import Settings\nE   ModuleNotFoundError: No module named 'src.billing_engine'\n====================="
     }
   },
-  "total_cost_inr": 24.7676,
+  "total_cost_inr": 27.6274,
   "tasks_done": [
     "WC027-01a",
     "WC027-01b"
