@@ -1,5 +1,5 @@
 {
-  "run_id": "30700888023",
+  "run_id": "30702494186",
   "sprint": "WC-027",
   "scaffold_task": null,
   "scaffold_failed": false,
@@ -7,19 +7,19 @@
   "spec_gap_issues": [],
   "overall_result": "PARTIAL",
   "file_costs": {
-    "WC027-01aa:models.py": 5.2579,
-    "WC027-01aa:bundle_engine.py": 14.731,
-    "WC027-01ab:models.py": 1.0143,
-    "WC027-01ab:bundle_engine.py": 1.6943000000000001,
-    "WC027-01ac:test_models.py": 4.697699999999999,
-    "WC027-01ba:router.py": 0.6253,
-    "WC027-01ba:main.py": 0.314,
-    "WC027-01bb:router.py": 1.7141000000000002,
-    "WC027-01bb:main.py": 0.3115,
-    "WC027-01bc:test_router.py": 4.230300000000001,
-    "WC027-02a:test_markup.py": 1.7072,
-    "WC027-02b:test_markup.py": 1.7184,
-    "WC027-02c:test_markup.py": 1.4169
+    "WC027-01aa:models.py": 5.3088,
+    "WC027-01aa:bundle_engine.py": 21.839199999999998,
+    "WC027-01ab:models.py": 0.4478,
+    "WC027-01ab:bundle_engine.py": 1.7157,
+    "WC027-01ac:test_models.py": 4.719799999999999,
+    "WC027-01ba:router.py": 1.8953000000000002,
+    "WC027-01ba:main.py": 0.3191,
+    "WC027-01bb:router.py": 1.7258,
+    "WC027-01bb:main.py": 0.3149,
+    "WC027-01bc:test_router.py": 4.2738000000000005,
+    "WC027-02a:test_markup.py": 1.6373,
+    "WC027-02b:test_markup.py": 1.7295,
+    "WC027-02c:test_markup.py": 1.4283
   },
   "subtask_results": {
     "WC027-01aa": {
@@ -71,14 +71,16 @@
       "error_text": ""
     },
     "WC027-02c": {
-      "result": "FAIL",
+      "result": "SUCCESS",
       "task_id": "WC027-02",
       "error_codes": [],
-      "error_text": "tmp_path, tmp_path_factory, tmpdir, tmpdir_factory, unused_tcp_port, unused_tcp_port_factory, unused_udp_port, unused_udp_port_factory, worker_id\n>       use 'pytest --fixtures [testpath]' for help on them.\n\n/home/runner/work/waooaw-platform/waooaw-platform/tests/billing-engine/test_markup.py:401\n=="
+      "error_text": ""
     }
   },
-  "total_cost_inr": 39.432900000000004,
-  "tasks_done": [],
+  "total_cost_inr": 47.3553,
+  "tasks_done": [
+    "WC027-02"
+  ],
   "tasks_requested": [
     "WC027-01a",
     "WC027-01b",
