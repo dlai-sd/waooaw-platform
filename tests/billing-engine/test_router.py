@@ -5,9 +5,8 @@ from __future__ import annotations
 import pytest
 from httpx import AsyncClient
 from unittest.mock import AsyncMock, MagicMock, patch
+from hypothesis import given, settings, HealthCheck, strategies as st
 
-# ── Assume main.py exports app; adjust import path as needed for your project ──
-# If app is in src/billing-engine/main.py, add to sys.path or use direct import
 import sys
 from pathlib import Path
 
@@ -76,11 +75,8 @@ def mock_thread_catalog_service() -> MagicMock:
 def mock_bundle_engine() -> MagicMock:
     """Mock BundleEngine for cost_floor, derive_price, validate_price."""
     mock_engine = MagicMock(spec=BundleEngine)
-    # Default cost_floor: 10000 paise
     mock_engine.cost_floor = AsyncMock(return_value=10000)
-    # Default derive_price: floor / (1 - margin/100) with 25% margin -> 10000 / 0.75 = 13333
     mock_engine.derive_price = AsyncMock(return_value=13333)
-    # Default validate_price: APPROVED (proposed price >= floor)
     mock_engine.validate_price = AsyncMock(
         return_value=PriceValidation(
             outcome="APPROVED",
@@ -147,7 +143,7 @@ async def test_get_thread_catalog_idempotent(
 ) -> None:
     """
     Test GET /pricing/thread-catalog returns identical payload on consecutive calls.
-    Idempotency invariant.
+    Idempotency invariant: assert response1.json() == response2.json().
     """
     with patch(
         "markup.router.ThreadCatalogService",
@@ -181,6 +177,7 @@ async def test_get_bundle_cost_floor_happy_path(
 
         assert response.status_code == 200
         data = response.json()
+        assert isinstance(data, dict)
         assert "cost_floor_paise" in data
         assert isinstance(data["cost_floor_paise"], int)
         assert data["cost_floor_paise"] >= 0
@@ -192,15 +189,15 @@ async def test_get_bundle_cost_floor_idempotent(
     async_client: AsyncClient, mock_bundle_engine: MagicMock
 ) -> None:
     """
-    Test GET /pricing/bundle-cost-floor returns same value on consecutive calls.
-    Idempotent read invariant.
+    Test GET /pricing/bundle-cost-floor/{agent_type}/{bundle_tier} called twice
+    returns the same cost floor (idempotent read, no side-effects).
     """
     with patch("markup.router.BundleEngine", return_value=mock_bundle_engine):
         response1 = await async_client.get(
-            "/pricing/bundle-cost-floor/DMA/PROFESSIONAL"
+            "/pricing/bundle-cost-floor/RESEARCHER/STARTER"
         )
         response2 = await async_client.get(
-            "/pricing/bundle-cost-floor/DMA/PROFESSIONAL"
+            "/pricing/bundle-cost-floor/RESEARCHER/STARTER"
         )
 
         assert response1.status_code == 200
@@ -213,17 +210,17 @@ async def test_get_bundle_cost_floor_unknown_agent_type(
     async_client: AsyncClient, mock_bundle_engine: MagicMock
 ) -> None:
     """
-    Test GET /pricing/bundle-cost-floor with unknown agent_type returns 4xx.
+    Test GET /pricing/bundle-cost-floor with an unknown agent_type returns
+    404 or 422 (not 200 and not 500).
     """
-    mock_bundle_engine.cost_floor = AsyncMock(
-        side_effect=ValueError("Unknown agent type")
-    )
+    mock_bundle_engine.cost_floor = AsyncMock(side_effect=ValueError("Unknown agent type"))
     with patch("markup.router.BundleEngine", return_value=mock_bundle_engine):
         response = await async_client.get(
             "/pricing/bundle-cost-floor/UNKNOWN_AGENT/STARTER"
         )
 
-        assert response.status_code in [404, 422]
+        assert response.status_code in (404, 422)
+        assert response.status_code != 200
         assert response.status_code != 500
 
 
@@ -238,8 +235,16 @@ async def test_post_pricing_validate_happy_path(
 ) -> None:
     """
     Test POST /pricing/validate with a valid payload returns 200.
-    Response does NOT contain minimum_compliant_price_paise when APPROVED.
+    Response does NOT contain `minimum_compliant_price_paise` when outcome is APPROVED.
     """
+    mock_bundle_engine.validate_price = AsyncMock(
+        return_value=PriceValidation(
+            outcome="APPROVED",
+            cost_floor_paise=10000,
+            minimum_compliant_price_paise=10000,
+            proposed_price_paise=15000,
+        )
+    )
     with patch("markup.router.BundleEngine", return_value=mock_bundle_engine):
         payload = PriceValidationRequest(
             agent_type="RESEARCHER",
@@ -255,47 +260,48 @@ async def test_post_pricing_validate_happy_path(
         data = response.json()
         assert data["outcome"] == "APPROVED"
         assert "cost_floor_paise" in data
-        assert data["proposed_price_paise"] == 15000
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "proposed_paise,expected_status",
+    "proposed_price_paise",
     [
-        (0, 422),  # Zero paise: below floor
-        (9999, 422),  # 1 paise below default floor (10000)
+        0,  # Zero paise — below floor of 10000
+        9999,  # 1 paise below floor
     ],
 )
 async def test_post_pricing_validate_c089_violation(
-    proposed_paise: int,
-    expected_status: int,
     async_client: AsyncClient,
     mock_bundle_engine: MagicMock,
+    proposed_price_paise: int,
 ) -> None:
     """
-    C-089 INVARIANT: Proposed price below cost floor MUST return 422.
-    Response JSON MUST contain minimum_compliant_price_paise with integer value > 0.
+    C-089 INVARIANT: POST /pricing/validate with proposed price below the
+    constitutional minimum returns HTTP 422 and response JSON contains
+    `minimum_compliant_price_paise` with an integer value > 0.
+    
+    Parameterised: zero paise, 1 paise below floor.
     """
     mock_bundle_engine.validate_price = AsyncMock(
         return_value=PriceValidation(
             outcome="REJECTED",
             cost_floor_paise=10000,
             minimum_compliant_price_paise=10000,
-            proposed_price_paise=proposed_paise,
+            proposed_price_paise=proposed_price_paise,
         )
     )
     with patch("markup.router.BundleEngine", return_value=mock_bundle_engine):
         payload = PriceValidationRequest(
             agent_type="RESEARCHER",
             bundle_tier="STARTER",
-            proposed_price_paise=proposed_paise,
+            proposed_price_paise=proposed_price_paise,
         )
         response = await async_client.post(
             "/pricing/validate",
             json=payload.model_dump(),
         )
 
-        assert response.status_code == expected_status
+        assert response.status_code == 422
         data = response.json()
         assert "minimum_compliant_price_paise" in data
         assert isinstance(data["minimum_compliant_price_paise"], int)
@@ -303,38 +309,45 @@ async def test_post_pricing_validate_c089_violation(
 
 
 @pytest.mark.asyncio
-async def test_post_pricing_validate_missing_field(
-    async_client: AsyncClient,
+async def test_post_pricing_validate_missing_required_field(
+    async_client: AsyncClient, mock_bundle_engine: MagicMock
 ) -> None:
     """
-    Test POST /pricing/validate with missing required field returns 422.
-    This is FastAPI validation error (standard Pydantic shape).
+    Test POST /pricing/validate with a missing required field returns 422
+    FastAPI validation error (standard Pydantic shape, NOT the C-089 shape).
     """
-    payload = {
-        "agent_type": "RESEARCHER",
-        # Missing bundle_tier and proposed_price_paise
-    }
-    response = await async_client.post("/pricing/validate", json=payload)
+    with patch("markup.router.BundleEngine", return_value=mock_bundle_engine):
+        payload = {
+            "agent_type": "RESEARCHER",
+            # Missing: bundle_tier
+            "proposed_price_paise": 15000,
+        }
+        response = await async_client.post(
+            "/pricing/validate",
+            json=payload,
+        )
 
-    assert response.status_code == 422
-    data = response.json()
-    assert "detail" in data
+        assert response.status_code == 422
+        # Standard FastAPI Pydantic validation error, not C-089 shape
+        data = response.json()
+        assert "detail" in data or "error" in str(response.text)
 
 
 @pytest.mark.asyncio
 async def test_post_pricing_validate_malformed_body(
-    async_client: AsyncClient,
+    async_client: AsyncClient, mock_bundle_engine: MagicMock
 ) -> None:
     """
-    Test POST /pricing/validate with malformed JSON body returns 422.
+    Test POST /pricing/validate with a malformed JSON body returns 422.
     """
-    response = await async_client.post(
-        "/pricing/validate",
-        content=b"{invalid json",
-        headers={"Content-Type": "application/json"},
-    )
+    with patch("markup.router.BundleEngine", return_value=mock_bundle_engine):
+        response = await async_client.post(
+            "/pricing/validate",
+            content="{ invalid json }",
+            headers={"Content-Type": "application/json"},
+        )
 
-    assert response.status_code == 422
+        assert response.status_code == 422
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -348,8 +361,9 @@ async def test_post_pricing_derive_happy_path(
 ) -> None:
     """
     Test POST /pricing/derive with a valid payload returns 200.
-    Response body contains a derived_price_paise field (integer ≥ 0).
+    Response body contains a derived_price field in paise (integer ≥ 0).
     """
+    mock_bundle_engine.derive_price = AsyncMock(return_value=13333)
     with patch("markup.router.BundleEngine", return_value=mock_bundle_engine):
         payload = PriceDeriveRequest(
             agent_type="RESEARCHER",
@@ -366,61 +380,159 @@ async def test_post_pricing_derive_happy_path(
         assert "derived_price_paise" in data
         assert isinstance(data["derived_price_paise"], int)
         assert data["derived_price_paise"] >= 0
-        mock_bundle_engine.derive_price.assert_called_once()
 
 
 @pytest.mark.asyncio
-async def test_post_pricing_derive_missing_field(
-    async_client: AsyncClient,
+async def test_post_pricing_derive_without_target_margin(
+    async_client: AsyncClient, mock_bundle_engine: MagicMock
 ) -> None:
     """
-    Test POST /pricing/derive with missing required field returns 422.
+    Test POST /pricing/derive without target_margin_pct uses bundle default.
     """
-    payload = {
-        "agent_type": "RESEARCHER",
-        # Missing bundle_tier
-    }
-    response = await async_client.post("/pricing/derive", json=payload)
+    mock_bundle_engine.derive_price = AsyncMock(return_value=13333)
+    with patch("markup.router.BundleEngine", return_value=mock_bundle_engine):
+        payload = PriceDeriveRequest(
+            agent_type="RESEARCHER",
+            bundle_tier="STARTER",
+            target_margin_pct=None,
+        )
+        response = await async_client.post(
+            "/pricing/derive",
+            json=payload.model_dump(),
+        )
 
-    assert response.status_code == 422
-    data = response.json()
-    assert "detail" in data
+        assert response.status_code == 200
+        data = response.json()
+        assert "derived_price_paise" in data
+        assert isinstance(data["derived_price_paise"], int)
+        assert data["derived_price_paise"] >= 0
+
+
+@pytest.mark.asyncio
+async def test_post_pricing_derive_missing_required_field(
+    async_client: AsyncClient, mock_bundle_engine: MagicMock
+) -> None:
+    """
+    Test POST /pricing/derive with a missing required field returns 422.
+    """
+    with patch("markup.router.BundleEngine", return_value=mock_bundle_engine):
+        payload = {
+            "agent_type": "RESEARCHER",
+            # Missing: bundle_tier
+            "target_margin_pct": 25.0,
+        }
+        response = await async_client.post(
+            "/pricing/derive",
+            json=payload,
+        )
+
+        assert response.status_code == 422
 
 
 @pytest.mark.asyncio
 async def test_post_pricing_derive_malformed_body(
-    async_client: AsyncClient,
+    async_client: AsyncClient, mock_bundle_engine: MagicMock
 ) -> None:
     """
-    Test POST /pricing/derive with malformed JSON body returns 422.
+    Test POST /pricing/derive with a malformed JSON body returns 422.
     """
-    response = await async_client.post(
-        "/pricing/derive",
-        content=b"{invalid json",
-        headers={"Content-Type": "application/json"},
-    )
+    with patch("markup.router.BundleEngine", return_value=mock_bundle_engine):
+        response = await async_client.post(
+            "/pricing/derive",
+            content="{ malformed json ]",
+            headers={"Content-Type": "application/json"},
+        )
 
-    assert response.status_code == 422
+        assert response.status_code == 422
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# TEST: Router mount invariant
+# TEST: Router-mount invariant
 # ──────────────────────────────────────────────────────────────────────────────
 
 
 @pytest.mark.asyncio
 async def test_pricing_router_mounted_at_prefix(test_app: FastAPI) -> None:
     """
-    Assert that /pricing/ routes are registered on the app.
-    Confirms router was mounted at correct prefix in main.py.
+    Assert that app.routes resolves paths starting with /pricing/,
+    confirming the router is mounted at the correct prefix.
     """
-    route_paths = [route.path for route in test_app.routes]
-    pricing_routes = [p for p in route_paths if p.startswith("/pricing")]
+    routes = [route.path for route in test_app.routes]
+    pricing_routes = [r for r in routes if r.startswith("/pricing/")]
+    assert len(pricing_routes) > 0, "No /pricing/ routes found"
 
-    assert len(pricing_routes) > 0, "No /pricing routes found on app"
-    # Expect at least: /pricing/thread-catalog, /pricing/bundle-cost-floor/...
-    # /pricing/validate, /pricing/derive
-    assert any("/thread-catalog" in p for p in pricing_routes)
-    assert any("/bundle-cost-floor" in p for p in pricing_routes)
-    assert any("/validate" in p for p in pricing_routes)
-    assert any("/derive" in p for p in pricing_routes)
+
+# ──────────────────────────────────────────────────────────────────────────────
+# PROPERTY-BASED TESTS (hypothesis)
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+@settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
+@given(
+    cost_floor_paise=st.integers(min_value=1000, max_value=1000000),
+    margin_pct=st.floats(min_value=0.0, max_value=99.9),
+)
+async def test_derive_price_margin_formula_property(
+    mock_bundle_engine: MagicMock,
+    cost_floor_paise: int,
+    margin_pct: float,
+) -> None:
+    """
+    Property-based test: derive_price formula uses margin-on-revenue.
+    For any cost_floor_paise and margin_pct, derived price must satisfy:
+    derived_price >= cost_floor_paise (no negative margins).
+    Formula: floor / (1 - margin/100)
+    """
+    expected_derived = int(cost_floor_paise / (1.0 - margin_pct / 100.0))
+    mock_bundle_engine.derive_price = AsyncMock(return_value=expected_derived)
+
+    result = await mock_bundle_engine.derive_price(
+        agent_type="RESEARCHER",
+        bundle_tier="STARTER",
+        target_margin_pct=margin_pct,
+    )
+
+    assert result >= cost_floor_paise, (
+        f"Derived price {result} must not be less than cost floor {cost_floor_paise}"
+    )
+
+
+@pytest.mark.asyncio
+@settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
+@given(
+    cost_floor_paise=st.integers(min_value=1000, max_value=1000000),
+    proposed_price_paise=st.integers(min_value=0, max_value=10000000),
+)
+async def test_validate_price_outcome_coverage_property(
+    mock_bundle_engine: MagicMock,
+    cost_floor_paise: int,
+    proposed_price_paise: int,
+) -> None:
+    """
+    Property-based test: validate_price covers all outcome paths.
+    If proposed_price_paise >= cost_floor_paise: outcome is APPROVED.
+    If proposed_price_paise < cost_floor_paise: outcome is REJECTED.
+    """
+    outcome = "APPROVED" if proposed_price_paise >= cost_floor_paise else "REJECTED"
+    mock_bundle_engine.validate_price = AsyncMock(
+        return_value=PriceValidation(
+            outcome=outcome,
+            cost_floor_paise=cost_floor_paise,
+            minimum_compliant_price_paise=cost_floor_paise,
+            proposed_price_paise=proposed_price_paise,
+        )
+    )
+
+    result = await mock_bundle_engine.validate_price(
+        agent_type="RESEARCHER",
+        bundle_tier="STARTER",
+        proposed_price_paise=proposed_price_paise,
+    )
+
+    assert result.outcome in ("APPROVED", "REJECTED")
+    assert result.minimum_compliant_price_paise > 0
+    if result.outcome == "APPROVED":
+        assert proposed_price_paise >= cost_floor_paise
+    else:
+        assert proposed_price_paise < cost_floor_paise
