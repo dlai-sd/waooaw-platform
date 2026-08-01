@@ -1,5 +1,5 @@
 {
-  "run_id": "30702494186",
+  "run_id": "30705092097",
   "sprint": "WC-027",
   "scaffold_task": null,
   "scaffold_failed": false,
@@ -7,19 +7,19 @@
   "spec_gap_issues": [],
   "overall_result": "PARTIAL",
   "file_costs": {
-    "WC027-01aa:models.py": 5.3088,
-    "WC027-01aa:bundle_engine.py": 21.839199999999998,
-    "WC027-01ab:models.py": 0.4478,
-    "WC027-01ab:bundle_engine.py": 1.7157,
-    "WC027-01ac:test_models.py": 4.719799999999999,
-    "WC027-01ba:router.py": 1.8953000000000002,
-    "WC027-01ba:main.py": 0.3191,
-    "WC027-01bb:router.py": 1.7258,
-    "WC027-01bb:main.py": 0.3149,
-    "WC027-01bc:test_router.py": 4.2738000000000005,
-    "WC027-02a:test_markup.py": 1.6373,
-    "WC027-02b:test_markup.py": 1.7295,
-    "WC027-02c:test_markup.py": 1.4283
+    "WC027-01aa:models.py": 5.3117,
+    "WC027-01aa:bundle_engine.py": 14.7792,
+    "WC027-01ab:models.py": 0.4499,
+    "WC027-01ab:bundle_engine.py": 1.7166,
+    "WC027-01ac:test_models.py": 4.7212000000000005,
+    "WC027-01ba:router.py": 0.647,
+    "WC027-01ba:main.py": 0.3258,
+    "WC027-01bb:router.py": 1.1512,
+    "WC027-01bb:main.py": 0.3228,
+    "WC027-01bc:test_router.py": 2.2189,
+    "WC027-02a:test_markup.py": 1.8045,
+    "WC027-02b:test_markup.py": 1.7304,
+    "WC027-02c:test_markup.py": 1.4291
   },
   "subtask_results": {
     "WC027-01aa": {
@@ -53,7 +53,7 @@
       "error_text": ""
     },
     "WC027-01bc": {
-      "result": "FAIL",
+      "result": "SUCCESS",
       "task_id": "WC027-01b",
       "error_codes": [],
       "error_text": ""
@@ -77,8 +77,9 @@
       "error_text": ""
     }
   },
-  "total_cost_inr": 47.3553,
+  "total_cost_inr": 36.6083,
   "tasks_done": [
+    "WC027-01b",
     "WC027-02"
   ],
   "tasks_requested": [
