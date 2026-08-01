@@ -13,6 +13,7 @@ from scripts.sprint_retry_advisor import (
     diagnose_build_error,
     EXTEND_NOT_REPLACE, WRONG_NAMESPACE, WRONG_FIELD_NAME, MISSING_USING, UNKNOWN,
     HYPOTHESIS_HEALTH_CHECK, HYPOTHESIS_FIXTURE_PARAM, DATETIME_UTCNOW, ASYNC_MOCK_MISMATCH,
+    PYDANTIC_VALIDATION_ERROR,
 )
 
 import pytest
@@ -333,4 +334,58 @@ def test_cct_sra_10_async_mock_mismatch_high_confidence():
     result = diagnose_build_error("WC027-02c", error, [])
 
     assert result.confidence >= 0.9
+
+
+# ── CCT-SRA-11: pydantic_core.ValidationError — test data type mismatch ───────
+
+def test_cct_sra_11_pydantic_validation_error_classified():
+    """CCT-SRA-11: pydantic_core.ValidationError is classified as PYDANTIC_VALIDATION_ERROR."""
+    error = (
+        "FAILED tests/billing-engine/test_markup.py::test_price_validation_model\n"
+        "  pydantic_core.ValidationError: 2 validation errors for PriceValidation\n"
+        "  outcome\n"
+        "    Input should be 'APPROVED', 'REJECTED' or 'MARGIN_FLOOR_VIOLATION' [type=enum, ...]"
+    )
+
+    result = diagnose_build_error("WC027-01ac", error, [])
+
+    assert result.error_type == PYDANTIC_VALIDATION_ERROR
+    assert result.should_retry is True
+
+
+def test_cct_sra_11_pydantic_validation_error_via_generic_phrase():
+    """CCT-SRA-11: 'validation errors for' + 'ValidationError' also triggers handler."""
+    error = (
+        "E   pydantic.v1.error_wrappers.ValidationError: 1 validation error for PriceValidation\n"
+        "E   proposed_price_paise\n"
+        "E     value is not a valid integer [type=int_parsing]\n"
+    )
+
+    result = diagnose_build_error("WC027-01ac", error, [])
+
+    assert result.error_type == PYDANTIC_VALIDATION_ERROR
+
+
+def test_cct_sra_11_pydantic_validation_error_fix_mentions_model_name():
+    """CCT-SRA-11: fix instruction must name the model and guide enum/type checks."""
+    error = (
+        "pydantic_core.ValidationError: 3 validation errors for PriceValidation\n"
+        "  outcome\n"
+        "    value is not a valid enumeration member [type=enum_value]"
+    )
+
+    result = diagnose_build_error("WC027-01ac", error, [])
+
+    assert "PriceValidation" in result.fix_instruction
+    assert "StrEnum" in result.fix_instruction or "enum" in result.fix_instruction.lower()
+
+
+def test_cct_sra_11_pydantic_validation_error_confidence():
+    """CCT-SRA-11: confidence must be ≥ 0.85."""
+    error = "pydantic_core.ValidationError: 2 validation errors for PriceValidation\n"
+
+    result = diagnose_build_error("WC027-01ac", error, [])
+
+    assert result.confidence >= 0.85
+
 

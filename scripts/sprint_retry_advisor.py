@@ -65,6 +65,7 @@ HYPOTHESIS_HEALTH_CHECK = "HYPOTHESIS_HEALTH_CHECK"  # hypothesis.errors.FailedH
 HYPOTHESIS_FIXTURE_PARAM = "HYPOTHESIS_FIXTURE_PARAM"  # fixture 'X' not found — @given param treated as pytest fixture
 DATETIME_UTCNOW = "DATETIME_UTCNOW"  # datetime.utcnow() / DTZ003 naive-datetime violation
 ASYNC_MOCK_MISMATCH = "ASYNC_MOCK_MISMATCH"  # await MagicMock() raises TypeError — must use AsyncMock for async methods
+PYDANTIC_VALIDATION_ERROR = "PYDANTIC_VALIDATION_ERROR"  # pydantic_core.ValidationError — test data doesn't match model field types
 
 
 @dataclass
@@ -1293,6 +1294,42 @@ def diagnose_build_error(
         )
         print(f"  Retry Advisor: {DATETIME_UTCNOW} (confidence=95%)")
         return diagnosis
+
+    # ── pydantic_core.ValidationError — test data doesn't match model fields ──
+    if "pydantic_core.ValidationError" in build_error or (
+        re.search(r"validation errors? for", build_error) and "ValidationError" in build_error
+    ):
+        m = re.search(r"validation errors? for (\w+)", build_error)
+        model_name = m.group(1) if m else "the model"
+        # Extract field-level errors for richer hint
+        field_errors = re.findall(r"(\w+)\s*\n\s+([^\n]+)\[type=([^\]]+)\]", build_error)
+        field_hint = ""
+        if field_errors:
+            field_hint = "\nField errors detected:\n" + "\n".join(
+                f"  - field '{f}': {msg} (type={t})" for f, msg, t in field_errors[:5]
+            )
+        fix = (
+            f"PYDANTIC VALIDATION ERROR: test data does not match `{model_name}` field definitions.\n"
+            f"Root cause: one or more fields in your test's instantiation of `{model_name}` have wrong types or values.{field_hint}\n"
+            "Fix checklist:\n"
+            "  1. Open the model file and read EVERY field's type annotation and validator.\n"
+            "  2. StrEnum fields: use the enum member (e.g. PriceOutcome.COMPLIANT), not a bare string.\n"
+            "  3. int fields: use int literals (e.g. 5000), not strings ('5000') or floats.\n"
+            "  4. UUID fields: use uuid.uuid4() or uuid.UUID('...'), not a raw string.\n"
+            "  5. Optional[X] fields: pass None or a valid X — never pass a wrong type.\n"
+            "  6. Do NOT invent field names — use ONLY fields that appear in the model class body.\n"
+            f"Re-read the definition of `{model_name}` in full before generating test data."
+        )
+        diagnosis = RetryDiagnosis(
+            error_type=PYDANTIC_VALIDATION_ERROR,
+            fix_instruction=fix,
+            should_retry=True,
+            confidence=0.88,
+            constitutional_trace="C-082 (COMPILE gate: pydantic_core.ValidationError — test data type mismatch)",
+        )
+        print(f"  Retry Advisor: {PYDANTIC_VALIDATION_ERROR} (confidence=88%)")
+        return diagnosis
+
     error_codes = set(re.findall(r'CS\d+', build_error))
     facts = parse_diagnostic_facts(build_error)
     family = classify_diagnostic_family(facts)

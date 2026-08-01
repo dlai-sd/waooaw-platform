@@ -27,7 +27,7 @@ derivation, C-089 margin gate), Pydantic models, and FastAPI `/pricing/` router.
 | task_id | scope | model_hint | status | completed_at |
 |---|---|---|---|---|
 | WC027-01a | `src/billing-engine/markup/models.py` — Pydantic: `ThreadEntry`, `BundleProfile`, `PriceConfig`, `PriceValidationRequest`, `PriceDeriveRequest`, `PriceValidation` (response from validate_price — includes `outcome`, `cost_floor_paise`, `minimum_compliant_price_paise`, `proposed_price_paise`); `src/billing-engine/markup/bundle_engine.py` — `BundleEngine` implementing `IMarkupEngine`: `cost_floor(agent_type, bundle_tier) -> int` (reads `bundle_profiles.cost_floor_paise` from DB — do NOT recompute), `derive_price(agent_type, bundle_tier, target_margin_pct=None) -> int` (formula: `floor / (1 - margin/100)` — margin-on-revenue, uses `bundle_profiles.minimum_margin_pct` if target_margin_pct is None), `validate_price(agent_type, bundle_tier, proposed_price_paise) -> PriceValidation` (writes to `pricing_floor_log` on BOTH APPROVED and REJECTED — C-059 audit obligation; returns `minimum_compliant_price_paise` in result) | reasoning | pending | — |
-| WC027-01b | `src/billing-engine/markup/router.py` — FastAPI router prefix `/pricing`: `GET /thread-catalog` (delegates to existing ThreadCatalogService), `GET /bundle-cost-floor/{agent_type}/{bundle_tier}`, `POST /validate` (422 body includes `minimum_compliant_price_paise` on C-089 violation), `POST /derive`; mount router in `src/billing-engine/main.py` | auto | pending | — |
+| WC027-01b | `src/billing-engine/markup/router.py` — FastAPI router prefix `/pricing`: `GET /thread-catalog` (delegates to `thread_catalog.py` module functions — see **⛔ THREAD CATALOG API** note below), `GET /bundle-cost-floor/{agent_type}/{bundle_tier}`, `POST /validate` (422 body includes `minimum_compliant_price_paise` on C-089 violation), `POST /derive`; mount router in `src/billing-engine/main.py` | auto | pending | — |
 | WC027-02 | `tests/billing-engine/test_markup.py` — test: cost_floor reads `bundle_profiles.cost_floor_paise` (not recomputed), derive_price formula uses margin-on-revenue `floor / (1 - margin/100)`, `POST /pricing/validate` 200 path (APPROVED, `pricing_floor_log` row written), `POST /pricing/validate` 422 path (REJECTED — body includes `minimum_compliant_price_paise`, `pricing_floor_log` row written), `GET /pricing/thread-catalog` response shape, ≥90% line coverage; **property-based tests using `hypothesis`**: `@given` strategy on `derive_price(cost_floor_paise, margin_pct)` covering zero margin, near-100% margin, large paise values, and float precision; `@given` on `validate_price` covering all outcome paths (APPROVED, REJECTED) with generated integer paise values | auto | pending | — |
 
 ---
@@ -39,7 +39,7 @@ derivation, C-089 margin gate), Pydantic models, and FastAPI `/pricing/` router.
 | D-07 WBE Component Spec | `architecture/reference/billing/wbe-component-spec.md` §2.2 (Markup Engine API) |
 | D-06 Thread Catalog | `architecture/reference/billing/thread-catalog.md` |
 | D-08 Schema Updates | `architecture/reference/billing/billing-schema-updates.md` |
-| Existing ThreadCatalogService | `src/billing-engine/markup/thread_catalog.py` — read before writing bundle_engine.py |
+| Thread Catalog module | `src/billing-engine/markup/thread_catalog.py` — read before writing router.py. ⛔ NO `ThreadCatalogService` class exists — the module exposes standalone async functions. See **⛔ THREAD CATALOG API** note below. |
 | WBE Skeleton interfaces | `src/billing-engine/skeleton/wbe_interfaces.py` — implement the MarkupEngineABC |
 | DB Migration | `infrastructure/postgres/init/12-billing-engine.sql` — `institutional.bundle_profiles` (columns: `agent_type`, `bundle_tier`, `cost_floor_paise`, `minimum_margin_pct`) and `institutional.pricing_floor_log` (columns: `proposed_price_paise`, `cost_floor_paise`, `constitutional_minimum_margin_pct`, `minimum_compliant_price_paise`, `outcome`) |
 
@@ -77,7 +77,12 @@ Example: cost_floor=1000, margin=20% → price = 1000 / 0.80 = 1250 paise (not 1
 ## Notes
 
 - Flat imports: `from markup.bundle_engine import BundleEngine` — conftest.py adds `src/billing-engine/` to sys.path.
-- `thread_catalog.py` has `ThreadCatalogService` and caching — import it; do not duplicate.
+- **⛔ THREAD CATALOG API (CRITICAL):** `thread_catalog.py` does **NOT** have a `ThreadCatalogService` class. It exposes standalone async module-level functions. Use them directly:
+  ```python
+  from markup.thread_catalog import list_threads, get_thread_entry, get_all_threads, invalidate_thread_cache
+  ```
+  Exported symbols: `ThreadCatalogEntry` (dataclass), `get_all_threads()`, `get_thread(thread_id)`, `list_threads()`, `get_thread_entry(thread_id)`, `invalidate_cache()`, `invalidate_thread_cache()`.
+  Do NOT write `from markup.thread_catalog import ThreadCatalogService` — that symbol does not exist and will raise `ImportError`.
 - `MarginViolation` exception should be an `HTTPException(status_code=422, detail={"code": "MARGIN_FLOOR_VIOLATION", "minimum_compliant_price_paise": <int>, "cost_floor_paise": <int>})`.
 - Tests: use `pytest-asyncio` and `httpx.AsyncClient` (same pattern as `test_wallet.py`).
 - Test fixtures must seed `bundle_profiles` rows for at least 2 agent_types × 2 bundle_tiers before running pricing assertions.

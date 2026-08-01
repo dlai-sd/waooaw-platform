@@ -39,6 +39,7 @@ cryptography>=42.0              # RSA key handling for JWT signing
 fakeredis>=2.0                  # Redis mock for wallet cache tests (test_wallet.py, aioredis built-in since v2)
 fastapi>=0.111                  # FastAPI TestClient for billing-engine tests
 sqlalchemy>=2.0                 # SQLAlchemy for wallet integration tests
+aiosqlite>=0.19                 # Async SQLite driver (test_markup.py, billing-engine integration tests)
 temporalio>=1.0                 # Temporal SDK for professional-runtime session tests
 
 # ── Coverage reporting ───────────────────────────────────────────────────────
