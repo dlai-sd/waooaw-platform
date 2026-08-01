@@ -99,6 +99,14 @@ STACK_BEHAVIORAL_RULES: dict[str, list[str]] = {
         "ERROR HANDLING RULE 3: Every async function must handle CancelledError separately: except asyncio.CancelledError: raise — never swallow it.",
         "ERROR HANDLING RULE 4: All subprocess calls need timeout=N seconds. subprocess.TimeoutExpired must be caught and logged.",
         "ERROR HANDLING RULE 5: C-059 compliance — every exception caught and not re-raised must produce an evidence record.",
+        "DATETIME TIMEZONE (ruff DTZ): NEVER use datetime.utcnow() or datetime.utcfromtimestamp(). "
+        "ALWAYS use timezone-aware: datetime.now(timezone.utc) or datetime.fromtimestamp(ts, tz=timezone.utc). "
+        "Import: 'from datetime import datetime, timezone'. DTZ rules block the compile gate.",
+        "HYPOTHESIS FIXTURE RULE: When writing @given property tests that use a pytest fixture, "
+        "the fixture MUST NOT be function-scoped (the default). Either: (1) create the mock INSIDE "
+        "the test body (not as a fixture parameter), or (2) add @settings(suppress_health_check=[HealthCheck.function_scoped_fixture]) "
+        "above the @given decorator and import HealthCheck from hypothesis. "
+        "Example: '@settings(suppress_health_check=[HealthCheck.function_scoped_fixture])\n@given(st.integers())\nasync def test_x(mock_engine, val): ...'",
     ],
     "typescript": [
         "JWT stored in httpOnly cookie ONLY — never localStorage or sessionStorage.",

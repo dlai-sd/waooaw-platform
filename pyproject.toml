@@ -28,6 +28,7 @@ select = [
     "ASYNC",# async/await patterns
     "LOG",  # logging best practices (no f-strings in log calls)
     "G",    # flake8-logging-format
+    "DTZ",  # flake8-datetimez — ban naive datetime (utcnow, utcfromtimestamp)
 ]
 ignore = [
     "ANN101",  # 'self' type annotation not required
@@ -133,7 +134,7 @@ filterwarnings = [
 [tool.hypothesis]
 max_examples = 100               # More thorough in CI (pytest --hypothesis-seed for repro)
 deriving = "best"
-suppress_health_check = ["too_slow"]
+suppress_health_check = ["too_slow", "function_scoped_fixture"]
 
 # ─── coverage ────────────────────────────────────────────────────────────────
 [tool.coverage.run]

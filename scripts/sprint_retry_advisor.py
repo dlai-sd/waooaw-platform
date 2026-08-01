@@ -60,6 +60,8 @@ RUFF_RUF046 = "RUFF_RUF046"  # Redundant int() cast (value already an integer)
 RUFF_F401   = "RUFF_F401"    # Unused import
 RUFF_GENERIC = "RUFF_GENERIC" # Ruff violation with no specific handler
 PYTHON_IMPORT_ERROR = "PYTHON_IMPORT_ERROR"  # pytest collection ImportError / ModuleNotFoundError
+HYPOTHESIS_HEALTH_CHECK = "HYPOTHESIS_HEALTH_CHECK"  # hypothesis.errors.FailedHealthCheck
+DATETIME_UTCNOW = "DATETIME_UTCNOW"  # datetime.utcnow() / DTZ003 naive-datetime violation
 
 
 @dataclass
@@ -1062,6 +1064,17 @@ def _classify_ruff_violation(build_error: str) -> RetryDiagnosis | None:
                 f"[F401] `{import_name}` is imported but never used — remove the import statement."
             )
 
+    # DTZ003 / DTZ — naive datetime (utcnow, utcfromtimestamp)
+    if "DTZ" in build_error or "utcnow" in build_error:
+        m = re.search(r'DTZ0\d\d', build_error)
+        dtz_code = m.group(0) if m else "DTZ003"
+        fix_parts.append(
+            f"[{dtz_code}] Naive datetime detected. "
+            "NEVER use datetime.utcnow() or datetime.utcfromtimestamp(). "
+            "Use timezone-aware: datetime.now(timezone.utc) or datetime.fromtimestamp(ts, tz=timezone.utc). "
+            "Add 'from datetime import datetime, timezone' at the top of the file."
+        )
+
     if not fix_parts:
         # Ruff matched a code we have no specific handler for — return generic guidance
         # so the LLM gets directed to fix the violation instead of UNKNOWN fallback.
@@ -1085,7 +1098,7 @@ def _classify_ruff_violation(build_error: str) -> RetryDiagnosis | None:
         ("ANN201", RUFF_ANN201), ("ANN001", RUFF_ANN001), ("B017", RUFF_B017),
         ("B006", RUFF_B006), ("F841", RUFF_F841), ("B018", RUFF_B018),
         ("G004", RUFF_G004), ("E501", RUFF_E501), ("RUF046", RUFF_RUF046),
-        ("F401", RUFF_F401),
+        ("F401", RUFF_F401), ("DTZ", DATETIME_UTCNOW),
     ]:
         if code in build_error:
             first_type = rtype
@@ -1125,7 +1138,7 @@ def diagnose_build_error(
     """
     # ── Ruff Python violations (classified BEFORE CS code scan) ───────────────
     # Ruff rule codes (ANN*, B*, F*, G*, E5xx) don't overlap with CS codes.
-    ruff_pattern = re.compile(r'\b(ANN\d+|B0\d+|F\d{3}|G\d{3}|E5\d{2}|UP\d{3}|RUF\d+|C9\d+|PL[RCEW]\d+|W\d{3}|N\d{3}|I\d{3}|D\d{3}|T\d{3}|PT\d{3}|SIM\d{3}|ERA\d{3}|TID\d{3})\b')
+    ruff_pattern = re.compile(r'\b(ANN\d+|B0\d+|F\d{3}|G\d{3}|E5\d{2}|UP\d{3}|RUF\d+|C9\d+|PL[RCEW]\d+|W\d{3}|N\d{3}|I\d{3}|D\d{3}|T\d{3}|PT\d{3}|SIM\d{3}|ERA\d{3}|TID\d{3}|DTZ\d{3})\b')
     ruff_codes = ruff_pattern.findall(build_error)
     if ruff_codes:
         diagnosis = _classify_ruff_violation(build_error)
@@ -1158,7 +1171,47 @@ def diagnose_build_error(
         print(f"  Retry Advisor: {PYTHON_IMPORT_ERROR} (confidence=90%)")
         return diagnosis
 
-    # Collect all CS error codes from the error output
+    # ── Hypothesis FailedHealthCheck — function-scoped fixture + @given ───────────
+    if "FailedHealthCheck" in build_error and ("function-scoped" in build_error or "function_scoped_fixture" in build_error):
+        m = re.search(r"'([^']+)' uses a function-scoped fixture '([^']+)'", build_error)
+        test_name = m.group(1).split("::")[-1] if m else "the test"
+        fixture_name = m.group(2) if m else "the fixture"
+        fix = (
+            f"HYPOTHESIS HEALTH CHECK FAILED: `{test_name}` uses function-scoped fixture `{fixture_name}` with @given.\n"
+            "Hypothesis generates many inputs per test call; function-scoped fixtures do NOT reset between inputs.\n"
+            "Fix (choose one):\n"
+            f"  OPTION 1 (preferred): Move `{fixture_name}` creation INSIDE the test body, not as a fixture parameter.\n"
+            "  OPTION 2: Add @settings(suppress_health_check=[HealthCheck.function_scoped_fixture]) "
+            "above @given and add 'from hypothesis import HealthCheck, settings' to imports.\n"
+            "Apply the fix to ALL @given tests that accept fixture parameters."
+        )
+        diagnosis = RetryDiagnosis(
+            error_type=HYPOTHESIS_HEALTH_CHECK,
+            fix_instruction=fix,
+            should_retry=True,
+            confidence=0.95,
+            constitutional_trace="C-082 (COMPILE gate: hypothesis HealthCheck.function_scoped_fixture)",
+        )
+        print(f"  Retry Advisor: {HYPOTHESIS_HEALTH_CHECK} (confidence=95%)")
+        return diagnosis
+
+    # ── DeprecationWarning as error — datetime.utcnow() (pytest filterwarnings=error) ──
+    if "DeprecationWarning" in build_error and "utcnow" in build_error:
+        fix = (
+            "DEPRECATION ERROR: datetime.utcnow() is deprecated (Python 3.12) and pytest treats it as an error.\n"
+            "Replace ALL occurrences of datetime.utcnow() with datetime.now(timezone.utc).\n"
+            "Add 'from datetime import datetime, timezone' at the top of the file.\n"
+            "Also check datetime.utcfromtimestamp() — replace with datetime.fromtimestamp(ts, tz=timezone.utc)."
+        )
+        diagnosis = RetryDiagnosis(
+            error_type=DATETIME_UTCNOW,
+            fix_instruction=fix,
+            should_retry=True,
+            confidence=0.95,
+            constitutional_trace="C-082 (COMPILE gate: datetime.utcnow() deprecated in Python 3.12)",
+        )
+        print(f"  Retry Advisor: {DATETIME_UTCNOW} (confidence=95%)")
+        return diagnosis
     error_codes = set(re.findall(r'CS\d+', build_error))
     facts = parse_diagnostic_facts(build_error)
     family = classify_diagnostic_family(facts)
