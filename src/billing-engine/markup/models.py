@@ -2,7 +2,7 @@
 # constitutional_basis: C-023, C-059, C-063, C-089
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import StrEnum
 from uuid import UUID, uuid4
 
@@ -110,7 +110,9 @@ class PriceValidation(BaseModel):
     minimum_compliant_price_paise: int
     proposed_price_paise: int
     log_id: UUID = Field(default_factory=uuid4)
-    evaluated_at: datetime = Field(default_factory=datetime.utcnow)
+    evaluated_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc)
+    )
 
 
 class PriceDeriveResponse(BaseModel):
@@ -128,7 +130,9 @@ class PriceDeriveResponse(BaseModel):
     derived_price_paise: int
     cost_floor_paise: int
     margin_pct: float
-    evaluated_at: datetime = Field(default_factory=datetime.utcnow)
+    evaluated_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc)
+    )
 
 
 # ── Domain exceptions ─────────────────────────────────────────────────────────
