@@ -1,23 +1,62 @@
-# Implements: architecture/reference/billing/wbe-component-spec.md §1 Service Entry
-# constitutional_basis: C-088 (Billing Profile), C-091 (Thread Catalog), C-059, ADR-034
+# Implements: architecture/reference/billing/wbe-component-spec.md §2.3 Markup Engine
+# constitutional_basis: C-023, C-038, C-048, C-051, C-059
 
 from __future__ import annotations
 
+import logging
+
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
-from markup.thread_catalog import router as catalog_router
-from markup.router import router as pricing_router
+from config import settings
+from markup.router import router as markup_router
 
-app = FastAPI(
-    title="WAOOAW Wallet & Billing Engine (WBE)",
-    description="Prepaid wallet, markup engine, usage meter, alert engine. ADR-034.",
-    version="0.1.0",
+logger = logging.getLogger(__name__)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# FastAPI Application Setup
+# ─────────────────────────────────────────────────────────────────────────────
+
+app: FastAPI = FastAPI(
+    title="WAOOAW Billing Engine",
+    version="1.0.0",
+    description="WBE: Wallet, Markup, Metering, Procurement, Reconciliation",
 )
 
-app.include_router(catalog_router, prefix="/catalog", tags=["thread-catalog"])
-app.include_router(pricing_router, prefix="/pricing", tags=["pricing"])
+# ─────────────────────────────────────────────────────────────────────────────
+# CORS Configuration
+# ─────────────────────────────────────────────────────────────────────────────
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Router Registration
+# ─────────────────────────────────────────────────────────────────────────────
+
+# C-089: Markup Engine (pricing floor, derivation, validation)
+# C-038: Price validation with minimum_compliant_price_paise on floor violation
+# C-051: Non-discrimination (all agent types subject to same margin floor)
+# C-048: Non-exploitation (margin floor prevents cost-inversion pricing)
+app.include_router(
+    markup_router,
+    prefix="/pricing",
+    tags=["pricing"],
+)
+
+logger.info("billing_engine_startup", extra={"service": "wbe", "port": 8140})
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Health Check
+# ─────────────────────────────────────────────────────────────────────────────
 
 @app.get("/health")
-async def health() -> dict[str, str]:
-    return {"status": "ok", "service": "billing-engine", "version": "0.1.0"}
+async def health_check() -> dict[str, str]:
+    """Kubernetes liveness probe."""
+    return {"status": "ok", "service": "billing-engine"}
