@@ -1,6 +1,8 @@
 # Implements: architecture/reference/billing/wbe-component-spec.md §1 Service Entry
 # constitutional_basis: C-088 (Billing Profile), C-091 (Thread Catalog), C-059, ADR-034
 
+from __future__ import annotations
+
 from fastapi import FastAPI
 
 from markup.thread_catalog import router as catalog_router
