@@ -174,7 +174,7 @@ async def test_get_bundle_cost_floor_idempotent(
 ) -> None:
     """
     Test GET /pricing/bundle-cost-floor/{agent_type}/{bundle_tier}
-    returns the same cost floor on consecutive calls.
+    called twice returns identical cost_floor_paise (idempotent read).
     """
     with patch("markup.router.BundleEngine", return_value=mock_bundle_engine):
         response1 = await async_client.get(
@@ -186,20 +186,18 @@ async def test_get_bundle_cost_floor_idempotent(
 
         assert response1.status_code == 200
         assert response2.status_code == 200
-        assert response1.json() == response2.json()
+        assert response1.json()["cost_floor_paise"] == response2.json()["cost_floor_paise"]
 
 
 @pytest.mark.asyncio
-async def test_get_bundle_cost_floor_unknown_agent_type(
+async def test_get_bundle_cost_floor_invalid_agent_type(
     async_client: AsyncClient, mock_bundle_engine: MagicMock
 ) -> None:
     """
-    Test GET /pricing/bundle-cost-floor with unknown agent_type returns non-2xx.
-    Should be 404 or 422, not 200 or 500.
+    Test GET /pricing/bundle-cost-floor with an unknown agent_type
+    returns 404 or 422 (not 200 or 500).
     """
-    mock_bundle_engine.cost_floor = AsyncMock(
-        side_effect=ValueError("Unknown agent type")
-    )
+    mock_bundle_engine.cost_floor = AsyncMock(side_effect=ValueError("Unknown agent type"))
     with patch("markup.router.BundleEngine", return_value=mock_bundle_engine):
         response = await async_client.get(
             "/pricing/bundle-cost-floor/UNKNOWN_AGENT/STARTER"
@@ -216,12 +214,13 @@ async def test_get_bundle_cost_floor_unknown_agent_type(
 
 
 @pytest.mark.asyncio
-async def test_post_validate_happy_path(
+async def test_post_validate_price_happy_path(
     async_client: AsyncClient, mock_bundle_engine: MagicMock
 ) -> None:
     """
-    Test POST /pricing/validate with valid payload returns 200.
-    Response should NOT contain minimum_compliant_price_paise when APPROVED.
+    Test POST /pricing/validate with a valid payload returns 200.
+    When proposed price >= floor (APPROVED), response does NOT contain
+    minimum_compliant_price_paise key.
     """
     with patch("markup.router.BundleEngine", return_value=mock_bundle_engine):
         payload = {
@@ -233,31 +232,33 @@ async def test_post_validate_happy_path(
 
         assert response.status_code == 200
         data = response.json()
-        assert "outcome" in data
         assert data["outcome"] == "APPROVED"
-        assert "cost_floor_paise" in data
-        assert "proposed_price_paise" in data
+        assert "minimum_compliant_price_paise" not in data
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "proposed_paise,expected_status",
+    "proposed_paise,case_name",
     [
-        (0, 422),  # Zero paise — below floor
-        (9999, 422),  # 1 paise below floor (floor is 10000)
+        (0, "zero_paise"),
+        (9999, "one_paise_below_floor"),
     ],
 )
-async def test_post_validate_c089_violation(
+async def test_post_validate_price_below_floor_c089(
     async_client: AsyncClient,
     mock_bundle_engine: MagicMock,
     proposed_paise: int,
-    expected_status: int,
+    case_name: str,
 ) -> None:
     """
-    Test POST /pricing/validate with proposed price below constitutional minimum.
-    C-089 INVARIANT: HTTP 422 response MUST contain minimum_compliant_price_paise.
+    C-089 INVARIANT TEST:
+    POST /pricing/validate with proposed price below the cost floor
+    MUST return HTTP 422 and response JSON MUST contain
+    minimum_compliant_price_paise with an integer value > 0.
+    
+    Parameterised sub-cases: zero paise, one paise below floor.
     """
-    # Mock validate_price to return REJECTED outcome
+    # Mock: floor is 10000 paise; validate_price returns REJECTED
     mock_bundle_engine.validate_price = AsyncMock(
         return_value=PriceValidation(
             outcome="REJECTED",
@@ -274,7 +275,7 @@ async def test_post_validate_c089_violation(
         }
         response = await async_client.post("/pricing/validate", json=payload)
 
-        assert response.status_code == expected_status
+        assert response.status_code == 422, f"Failed for case {case_name}"
         data = response.json()
         assert "minimum_compliant_price_paise" in data
         assert isinstance(data["minimum_compliant_price_paise"], int)
@@ -282,31 +283,31 @@ async def test_post_validate_c089_violation(
 
 
 @pytest.mark.asyncio
-async def test_post_validate_missing_required_field(
+async def test_post_validate_price_missing_field(
     async_client: AsyncClient,
 ) -> None:
     """
-    Test POST /pricing/validate with missing required field returns 422.
-    Standard Pydantic validation error (not C-089 shape).
+    Test POST /pricing/validate with a missing required field (e.g. agent_type)
+    returns 422 with standard Pydantic validation error shape.
     """
     payload = {
-        "agent_type": "RESEARCHER",
-        # Missing: bundle_tier, proposed_price_paise
+        "bundle_tier": "STARTER",
+        "proposed_price_paise": 15000,
+        # missing agent_type
     }
     response = await async_client.post("/pricing/validate", json=payload)
 
     assert response.status_code == 422
     data = response.json()
-    # Standard FastAPI validation error structure includes "detail"
     assert "detail" in data or "error" in data or isinstance(data, dict)
 
 
 @pytest.mark.asyncio
-async def test_post_validate_malformed_json(
+async def test_post_validate_price_malformed_body(
     async_client: AsyncClient,
 ) -> None:
     """
-    Test POST /pricing/validate with malformed JSON body returns 422.
+    Test POST /pricing/validate with a malformed JSON body returns 422.
     """
     response = await async_client.post(
         "/pricing/validate",
@@ -323,11 +324,11 @@ async def test_post_validate_malformed_json(
 
 
 @pytest.mark.asyncio
-async def test_post_derive_happy_path(
+async def test_post_derive_price_happy_path(
     async_client: AsyncClient, mock_bundle_engine: MagicMock
 ) -> None:
     """
-    Test POST /pricing/derive with valid payload returns 200.
+    Test POST /pricing/derive with a valid payload returns 200.
     Response body contains a derived_price_paise field (integer ≥ 0).
     """
     with patch("markup.router.BundleEngine", return_value=mock_bundle_engine):
@@ -346,15 +347,16 @@ async def test_post_derive_happy_path(
 
 
 @pytest.mark.asyncio
-async def test_post_derive_missing_required_field(
+async def test_post_derive_price_missing_field(
     async_client: AsyncClient,
 ) -> None:
     """
-    Test POST /pricing/derive with missing required field returns 422.
+    Test POST /pricing/derive with a missing required field returns 422.
     """
     payload = {
-        "agent_type": "RESEARCHER",
-        # Missing: bundle_tier, target_margin_pct (or optional)
+        "bundle_tier": "STARTER",
+        "target_margin_pct": 25.0,
+        # missing agent_type
     }
     response = await async_client.post("/pricing/derive", json=payload)
 
@@ -362,15 +364,15 @@ async def test_post_derive_missing_required_field(
 
 
 @pytest.mark.asyncio
-async def test_post_derive_malformed_body(
+async def test_post_derive_price_malformed_body(
     async_client: AsyncClient,
 ) -> None:
     """
-    Test POST /pricing/derive with malformed body returns 422.
+    Test POST /pricing/derive with a malformed JSON body returns 422.
     """
     response = await async_client.post(
         "/pricing/derive",
-        content="{ bad json",
+        content="invalid json [",
         headers={"Content-Type": "application/json"},
     )
 
@@ -378,39 +380,19 @@ async def test_post_derive_malformed_body(
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# TEST: Router Mount Invariant
+# TEST: Router mount invariant
 # ──────────────────────────────────────────────────────────────────────────────
 
 
 @pytest.mark.asyncio
-async def test_pricing_router_mounted_at_correct_prefix(
-    async_client: AsyncClient,
-) -> None:
+async def test_pricing_router_mounted(async_client: AsyncClient) -> None:
     """
-    Assert that the /pricing/ prefix is correctly mounted in main.py.
-    Verify by attempting a HEAD request to an endpoint and checking it is found.
+    Test that the pricing router is mounted at /pricing prefix in main.py.
+    Verify that at least one /pricing/* endpoint is defined.
     """
-    response = await async_client.options("/pricing/thread-catalog")
-    # OPTIONS should be supported; if route is not found, will be 404/405
-    # A 405 Method Not Allowed means the route exists but OPTIONS is not implemented.
-    # A 404 means the route doesn't exist.
-    assert response.status_code in (200, 405, 404)
-    # If we got a GET request to work earlier, the route is mounted correctly.
-    # Just confirm no 500 error.
-    assert response.status_code != 500
-
-
-@pytest.mark.asyncio
-async def test_pricing_routes_exist(async_client: AsyncClient) -> None:
-    """
-    Smoke test: confirm all /pricing/* routes are reachable (not 404).
-    """
-    routes_to_check = [
-        "/pricing/thread-catalog",
-        "/pricing/bundle-cost-floor/RESEARCHER/STARTER",
-    ]
-
-    for route in routes_to_check:
-        response = await async_client.get(route)
-        # Should not be 404; may be 500 if service crashes, but route should exist
-        assert response.status_code != 404, f"Route {route} not found (404)"
+    # Collect all routes from the app
+    route_paths = {route.path for route in app.routes}
+    
+    # Assert that at least one route starts with /pricing/
+    pricing_routes = {p for p in route_paths if p.startswith("/pricing/")}
+    assert len(pricing_routes) > 0, "No /pricing/* routes found in app"

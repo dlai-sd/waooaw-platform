@@ -49,7 +49,10 @@ app.include_router(
     tags=["pricing"],
 )
 
-logger.info("billing_engine_startup", extra={"service": "wbe", "port": 8140})
+logger.info(
+    "billing_engine_startup",
+    extra={"service": "wbe", "port": 8140},
+)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
