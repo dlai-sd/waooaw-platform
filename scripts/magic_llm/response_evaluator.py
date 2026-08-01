@@ -288,7 +288,26 @@ class ResponseEvaluator:
                 errors.append(f"{f}: {proc.stderr[:200]}")
         if errors:
             return GateResult("COMPILE", False, "COMPILE_FAILURE: PYTHON_SYNTAX", "\n".join(errors))
-        return GateResult("COMPILE", True, "", "py_compile: PASS")
+        # Style gate: ruff check scoped to only the generated files (no pre-existing violations)
+        # This runs INSIDE the 3-attempt retry loop so violations get targeted fixes.
+        ruff_args = ["python3", "-m", "ruff", "check"] + [str(self._root / f) for f in py_files]
+        ruff_proc = subprocess.run(
+            ruff_args,
+            capture_output=True, text=True, cwd=self._root,
+            timeout=30,
+        )
+        if ruff_proc.returncode != 0:
+            ruff_output = (ruff_proc.stdout + ruff_proc.stderr).strip()
+            # Strip absolute path prefix for cleaner error messages
+            ruff_output = ruff_output.replace(str(self._root) + "/", "")
+            codes = sorted(set(re.findall(r'\b([A-Z]\d{3,4})\b', ruff_output)))
+            return GateResult(
+                "COMPILE", False,
+                f"COMPILE_FAILURE: RUFF {','.join(codes[:6]) if codes else 'VIOLATION'}",
+                ruff_output[:500],
+                error_codes=codes,
+            )
+        return GateResult("COMPILE", True, "", "py_compile: PASS | ruff: PASS")
 
     def _compile_typescript(self, ts_files: list[str]) -> GateResult:
         web_dir = self._root / "web"

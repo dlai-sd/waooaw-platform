@@ -63,6 +63,30 @@ _FORBIDDEN_PATTERNS = (
     "Remove ALL other CE usings. This rule applies even if PDM boundary text is not visible above."
 )
 
+# Python-specific ruff violations observed in prior sprints — C-069 static seed
+_PYTHON_FORBIDDEN_PATTERNS = (
+    "⛔ [ANN201] Every public function MUST have an explicit return type annotation: "
+    "def f() -> None, def f() -> dict[str, Any], def f() -> list[X]. "
+    "FastAPI endpoints: async def get_catalog(...) -> list[ThreadCatalogItem]: "
+    "NEVER write 'async def get_catalog(...)' without a return type.\n"
+    "⛔ [ANN001] Every function parameter MUST have a type annotation: "
+    "def f(x: int, y: str) — never 'def f(x, y)' without types.\n"
+    "⛔ [B017] NEVER use pytest.raises(Exception) — Exception is too broad and masks real bugs. "
+    "Always use a specific exception type: pytest.raises(ValueError), pytest.raises(RuntimeError), "
+    "pytest.raises(HTTPException). If you truly need Exception, add match=: "
+    "pytest.raises(Exception, match='specific message').\n"
+    "⛔ [B006] Never use mutable defaults in function signatures: NOT 'def f(x=[])' or 'def f(x={})'. "
+    "Use None sentinel: 'def f(x: list | None = None): if x is None: x = []'.\n"
+    "⛔ [F841] Never assign to a variable that is never used: NOT 'result = client.post(...)' if "
+    "result is never read. Either assert on it or prefix with underscore: '_result = client.post(...)'.\n"
+    "⛔ [B018] Never write a bare expression as a statement (useless expression). "
+    "Every line must be an assignment, function call, return, raise, assert, import, or control flow.\n"
+    "⛔ [ANN401] Avoid 'Any' as a type annotation unless the type genuinely cannot be specified. "
+    "Use specific types: asyncpg.Pool, httpx.AsyncClient, or the actual Pydantic model.\n"
+    "⛔ [G004] Never use f-strings in logging calls in src/ files: NOT 'logger.info(f\"val={x}\")'. "
+    "Use lazy format: 'logger.info(\"val=%s\", x)'.\n"
+)
+
 # ── Module-level compiled regexes (P2: avoid recompile on every build call) ──
 _RE_CAPITAL_WORDS = re.compile(r'\b([A-Z][a-zA-Z0-9]+)\b')
 _RE_WHITESPACE    = re.compile(r'\s+')
@@ -265,6 +289,15 @@ class ContextBuilder:
 
     def _build_system(self, stack: str, output_file: str = "") -> str:
         base = (
+            "PIPELINE SELF-MODEL (WAOOAW Platform — INST-010, C-059/C-082):\n"
+            "Your output passes through these 5 constitutional gates in sequence:\n"
+            "  Gate FORMAT:     wrap every file in <file path=\"exact/path\">...</file>\n"
+            "  Gate PATH:       the file must be at the EXACT path in the TASK block below\n"
+            "  Gate COMPILE:    stack-specific: must exit 0 (syntax + style; ruff for Python)\n"
+            "  Gate ANNOTATION: first lines must include '# Implements:' and '# constitutional_basis:'\n"
+            "  Gate SPEC_ALIGN: no types or methods invented outside the SPEC block below\n"
+            "If Gate COMPILE fails, you get 2 more attempts with the exact error injected into context.\n"
+            "If all 3 attempts fail, EA Cascade activates — do NOT open spec-gap issues yourself.\n\n"
             "CONSTITUTIONAL OBLIGATIONS (C-059, C-073, C-032):\n"
             "Every file you produce MUST begin with:\n"
             "  // Implements: <spec-path> §<section>\n"
@@ -273,6 +306,28 @@ class ContextBuilder:
             "FORBIDDEN PATTERNS (non-negotiable — any violation = compile failure):\n"
             + _FORBIDDEN_PATTERNS
         )
+        # Inject Python-specific ruff constraints (enforced by ruff check in COMPILE gate)
+        if stack == "python":
+            base += "\n\nPYTHON RUFF CONSTRAINTS (enforced by ruff check in COMPILE gate):\n" + _PYTHON_FORBIDDEN_PATTERNS
+            # Inject violation history from learning cache (C-069 self-improvement)
+            violations_path = Path(__file__).parent.parent.parent / "sprint-context" / "lint-violations.json"
+            if violations_path.exists():
+                try:
+                    import json as _json
+                    violations: dict = _json.loads(violations_path.read_text(encoding="utf-8"))
+                    if violations:
+                        history_lines = []
+                        for code, v in violations.items():
+                            last_task = v.get("last_task", "?")
+                            fix = v.get("fix", "avoid this pattern")
+                            history_lines.append(f"  ⛔ [{code}] seen in {last_task}: {fix}")
+                        base += (
+                            "\n\nVIOLATION HISTORY (do NOT repeat — seen in prior sprint runs):\n"
+                            + "\n".join(history_lines)
+                            + "\n"
+                        )
+                except Exception:
+                    pass  # non-blocking — best-effort context injection
         # Inject PROJECT_BOUNDARY — auto-derived from .csproj (replaces hard-coded namespace rules)
         if stack == "dotnet" and output_file:
             try:

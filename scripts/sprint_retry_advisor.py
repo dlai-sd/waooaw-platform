@@ -47,6 +47,16 @@ WRONG_FIELD_NAME   = "WRONG_FIELD_NAME"      # CS0117: field not found — Claud
 MISSING_USING      = "MISSING_USING"         # CS0246 (general): missing using directive
 UNKNOWN            = "UNKNOWN"               # Cannot classify — skip remaining retries
 
+# Ruff violation constants (Python style gate — Layer 1 ruff inside retry loop)
+RUFF_ANN201 = "RUFF_ANN201"   # Missing return type annotation (public function)
+RUFF_ANN001 = "RUFF_ANN001"   # Missing parameter type annotation
+RUFF_B017   = "RUFF_B017"     # pytest.raises(Exception) — blind exception catch
+RUFF_B006   = "RUFF_B006"     # Mutable default argument
+RUFF_F841   = "RUFF_F841"     # Unused local variable
+RUFF_B018   = "RUFF_B018"     # Useless expression statement
+RUFF_G004   = "RUFF_G004"     # f-string in logging call
+RUFF_E501   = "RUFF_E501"     # Line too long
+
 
 @dataclass
 class RetryDiagnosis:
@@ -949,6 +959,145 @@ def _classify_with_llm(task_id: str, error: str) -> RetryDiagnosis:  # pragma: n
         )
 
 
+# ── Ruff Python violation classifier ─────────────────────────────────────────
+
+def _classify_ruff_violation(build_error: str) -> RetryDiagnosis | None:
+    """
+    Classify ruff check output into targeted fix instructions.
+    Called when error_codes contain non-CS ruff rule codes (ANN*, B*, F*, G*, E5xx).
+    Rule-based, zero LLM cost.
+    constitutional_trace: C-082 (build validation), C-069 (self-improvement via targeted fix)
+    """
+    # ANN201 — missing return type annotation
+    if "ANN201" in build_error:
+        m = re.search(r'ANN201.*?`([^`]+)`', build_error)
+        fn_name = m.group(1) if m else "function"
+        return RetryDiagnosis(
+            error_type=RUFF_ANN201,
+            fix_instruction=(
+                f"MISSING RETURN TYPE [ANN201]: function `{fn_name}` has no return type annotation. "
+                "Add '-> ReturnType' to every public function. "
+                "FastAPI route: 'async def get_x(...) -> list[MyModel]:' "
+                "Sync function: 'def compute(...) -> int:' or '-> None' if no return value. "
+                "Check the SPEC block for the exact response model type."
+            ),
+            should_retry=True,
+            confidence=0.95,
+            constitutional_trace="C-082 (COMPILE gate: ruff ANN201 — return type required)"
+        )
+
+    # ANN001 — missing parameter type annotation
+    if "ANN001" in build_error:
+        m = re.search(r'ANN001.*?`([^`]+)`', build_error)
+        param_name = m.group(1) if m else "parameter"
+        return RetryDiagnosis(
+            error_type=RUFF_ANN001,
+            fix_instruction=(
+                f"MISSING PARAMETER TYPE [ANN001]: parameter `{param_name}` has no type annotation. "
+                "Add a type annotation to every function parameter. "
+                "Example: 'def f(x: int, y: str) -> None:' not 'def f(x, y)'. "
+                "For FastAPI dependencies: 'async def handler(db: asyncpg.Pool = Depends(get_db))'."
+            ),
+            should_retry=True,
+            confidence=0.95,
+            constitutional_trace="C-082 (COMPILE gate: ruff ANN001 — parameter type required)"
+        )
+
+    # B017 — blind exception in pytest.raises
+    if "B017" in build_error:
+        return RetryDiagnosis(
+            error_type=RUFF_B017,
+            fix_instruction=(
+                "BLIND EXCEPTION [B017]: pytest.raises(Exception) is too broad. "
+                "Replace with a specific exception type. "
+                "For HTTP errors: pytest.raises(HTTPException). "
+                "For validation: pytest.raises(ValueError). "
+                "For runtime errors: pytest.raises(RuntimeError). "
+                "If you genuinely need Exception, add a match= parameter: "
+                "pytest.raises(Exception, match='expected message fragment')."
+            ),
+            should_retry=True,
+            confidence=0.95,
+            constitutional_trace="C-082 (COMPILE gate: ruff B017 — blind exception disallowed)"
+        )
+
+    # B006 — mutable default argument
+    if "B006" in build_error:
+        return RetryDiagnosis(
+            error_type=RUFF_B006,
+            fix_instruction=(
+                "MUTABLE DEFAULT [B006]: mutable defaults in function signatures are forbidden. "
+                "Replace 'def f(x: list = [])' with 'def f(x: list | None = None)' and "
+                "initialize inside the body: 'if x is None: x = []'. "
+                "Same for dict defaults: use '| None = None' sentinel."
+            ),
+            should_retry=True,
+            confidence=0.95,
+            constitutional_trace="C-082 (COMPILE gate: ruff B006 — mutable default disallowed)"
+        )
+
+    # F841 — unused variable
+    if "F841" in build_error:
+        m = re.search(r'F841.*?`([^`]+)`', build_error)
+        var_name = m.group(1) if m else "variable"
+        return RetryDiagnosis(
+            error_type=RUFF_F841,
+            fix_instruction=(
+                f"UNUSED VARIABLE [F841]: `{var_name}` is assigned but never read. "
+                "Either: (a) use the variable in an assertion or return statement, "
+                "(b) rename to `_` or `_{var_name}` to signal intentional discard, "
+                "or (c) remove the assignment if the return value is not needed."
+            ),
+            should_retry=True,
+            confidence=0.90,
+            constitutional_trace="C-082 (COMPILE gate: ruff F841 — unused variables disallowed)"
+        )
+
+    # B018 — useless expression
+    if "B018" in build_error:
+        return RetryDiagnosis(
+            error_type=RUFF_B018,
+            fix_instruction=(
+                "USELESS EXPRESSION [B018]: a bare expression that is not a call, assignment, "
+                "return, raise, assert, or control flow statement was found. "
+                "Remove it, or convert to an assert if it is a check: 'assert condition, \"message\"'."
+            ),
+            should_retry=True,
+            confidence=0.90,
+            constitutional_trace="C-082 (COMPILE gate: ruff B018 — useless expression disallowed)"
+        )
+
+    # G004 — f-string in logging
+    if "G004" in build_error:
+        return RetryDiagnosis(
+            error_type=RUFF_G004,
+            fix_instruction=(
+                "F-STRING IN LOGGING [G004]: f-strings in log calls are forbidden in src/ files. "
+                "Replace 'logger.info(f\"val={x}\")' with 'logger.info(\"val=%s\", x)'. "
+                "Use printf-style lazy formatting for ALL logger calls."
+            ),
+            should_retry=True,
+            confidence=0.92,
+            constitutional_trace="C-082 (COMPILE gate: ruff G004 — f-string in logging disallowed)"
+        )
+
+    # E501 — line too long
+    if "E501" in build_error:
+        return RetryDiagnosis(
+            error_type=RUFF_E501,
+            fix_instruction=(
+                "LINE TOO LONG [E501]: one or more lines exceed the project line-length limit. "
+                "Break long lines with '\\' line continuation or restructure into multiple statements. "
+                "For long strings: use implicit string concatenation across lines inside parentheses."
+            ),
+            should_retry=True,
+            confidence=0.85,
+            constitutional_trace="C-082 (COMPILE gate: ruff E501 — line length limit exceeded)"
+        )
+
+    return None
+
+
 # ── Main entry point ───────────────────────────────────────────────────────────
 
 def diagnose_build_error(
@@ -967,6 +1116,16 @@ def diagnose_build_error(
 
     constitutional_basis: C-077 (FinOps), C-082 (build validation), C-059 (traceability)
     """
+    # ── Ruff Python violations (classified BEFORE CS code scan) ───────────────
+    # Ruff rule codes (ANN*, B*, F*, G*, E5xx) don't overlap with CS codes.
+    ruff_pattern = re.compile(r'\b(ANN\d+|B0\d+|F\d{3}|G\d{3}|E5\d{2}|UP\d{3})\b')
+    ruff_codes = ruff_pattern.findall(build_error)
+    if ruff_codes:
+        diagnosis = _classify_ruff_violation(build_error)
+        if diagnosis:
+            print(f"  Retry Advisor: {diagnosis.error_type} (confidence={diagnosis.confidence:.0%})")
+            return diagnosis
+
     # Collect all CS error codes from the error output
     error_codes = set(re.findall(r'CS\d+', build_error))
     facts = parse_diagnostic_facts(build_error)
