@@ -1,5 +1,5 @@
 {
-  "run_id": "30699216319",
+  "run_id": "30700888023",
   "sprint": "WC-027",
   "scaffold_task": null,
   "scaffold_failed": false,
@@ -7,19 +7,19 @@
   "spec_gap_issues": [],
   "overall_result": "PARTIAL",
   "file_costs": {
-    "WC027-01aa:models.py": 5.1799,
-    "WC027-01aa:bundle_engine.py": 8.3942,
-    "WC027-01ab:models.py": 0.437,
-    "WC027-01ab:bundle_engine.py": 1.6911,
-    "WC027-01ac:test_models.py": 4.575399999999999,
-    "WC027-01ba:router.py": 0.6307,
-    "WC027-01ba:main.py": 0.3099,
-    "WC027-01bb:router.py": 1.7004,
-    "WC027-01bb:main.py": 0.3057,
-    "WC027-01bc:test_router.py": 4.3126,
-    "WC027-02a:test_markup.py": 1.7551,
-    "WC027-02b:test_markup.py": 1.7001,
-    "WC027-02c:test_markup.py": 1.3981999999999999
+    "WC027-01aa:models.py": 5.2579,
+    "WC027-01aa:bundle_engine.py": 14.731,
+    "WC027-01ab:models.py": 1.0143,
+    "WC027-01ab:bundle_engine.py": 1.6943000000000001,
+    "WC027-01ac:test_models.py": 4.697699999999999,
+    "WC027-01ba:router.py": 0.6253,
+    "WC027-01ba:main.py": 0.314,
+    "WC027-01bb:router.py": 1.7141000000000002,
+    "WC027-01bb:main.py": 0.3115,
+    "WC027-01bc:test_router.py": 4.230300000000001,
+    "WC027-02a:test_markup.py": 1.7072,
+    "WC027-02b:test_markup.py": 1.7184,
+    "WC027-02c:test_markup.py": 1.4169
   },
   "subtask_results": {
     "WC027-01aa": {
@@ -74,10 +74,10 @@
       "result": "FAIL",
       "task_id": "WC027-02",
       "error_codes": [],
-      "error_text": "nd a different way to achieve your goal (for example, replacing the fixture with a similar context manager inside of the test).\n\nIf you are confident that your test will work correctly even though the fixture is not reset between generated inputs, you can suppress this health check with @settings(su"
+      "error_text": "tmp_path, tmp_path_factory, tmpdir, tmpdir_factory, unused_tcp_port, unused_tcp_port_factory, unused_udp_port, unused_udp_port_factory, worker_id\n>       use 'pytest --fixtures [testpath]' for help on them.\n\n/home/runner/work/waooaw-platform/waooaw-platform/tests/billing-engine/test_markup.py:401\n=="
     }
   },
-  "total_cost_inr": 32.390299999999996,
+  "total_cost_inr": 39.432900000000004,
   "tasks_done": [],
   "tasks_requested": [
     "WC027-01a",
