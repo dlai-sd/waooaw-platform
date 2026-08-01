@@ -11,7 +11,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
 from scripts.sprint_retry_advisor import (
     diagnose_build_error,
-    EXTEND_NOT_REPLACE, WRONG_NAMESPACE, WRONG_FIELD_NAME, MISSING_USING, UNKNOWN
+    EXTEND_NOT_REPLACE, WRONG_NAMESPACE, WRONG_FIELD_NAME, MISSING_USING, UNKNOWN,
+    HYPOTHESIS_HEALTH_CHECK, DATETIME_UTCNOW,
 )
 
 import pytest
@@ -163,3 +164,87 @@ def test_mixed_errors_picks_highest_priority():
 
     # CS0101 is checked first — EXTEND_NOT_REPLACE is more specific
     assert result.error_type == EXTEND_NOT_REPLACE
+
+
+# ─── CCT-SRA-06: HYPOTHESIS_HEALTH_CHECK ─────────────────────────────────────
+
+def test_cct_sra_06_hypothesis_health_check_classified():
+    """CCT-SRA-06: hypothesis FailedHealthCheck → HYPOTHESIS_HEALTH_CHECK with fixture guidance."""
+    error = (
+        "hypothesis.errors.FailedHealthCheck: "
+        "'tests/billing-engine/test_markup.py::test_derive_price_formula_correctness_property' "
+        "uses a function-scoped fixture 'mock_bundle_engine'. "
+        "If you are confident that your test will work correctly even though "
+        "the fixture is not reset between generated inputs, you can suppress this "
+        "health check with @settings(suppress_health_check=[HealthCheck.function_scoped_fixture])."
+    )
+
+    result = diagnose_build_error("WC027-02c", error, [])
+
+    assert result.error_type == HYPOTHESIS_HEALTH_CHECK
+    assert result.should_retry is True
+    assert result.confidence >= 0.90
+    assert "suppress_health_check" in result.fix_instruction
+    assert result.constitutional_trace != ""
+
+
+def test_cct_sra_06_hypothesis_fix_mentions_settings_decorator():
+    """CCT-SRA-06: fix instruction must tell LLM to use @settings decorator."""
+    error = (
+        "hypothesis.errors.FailedHealthCheck: test uses a function_scoped_fixture 'mock_engine'. "
+        "suppress this health check with @settings(suppress_health_check=[HealthCheck.function_scoped_fixture])"
+    )
+
+    result = diagnose_build_error("WC027-02c", error, [])
+
+    assert result.error_type == HYPOTHESIS_HEALTH_CHECK
+    assert "@settings" in result.fix_instruction or "settings" in result.fix_instruction.lower()
+    assert "HealthCheck" in result.fix_instruction
+
+
+# ─── CCT-SRA-07: DATETIME_UTCNOW ─────────────────────────────────────────────
+
+def test_cct_sra_07_datetime_utcnow_deprecation_classified():
+    """CCT-SRA-07: datetime.utcnow() DeprecationWarning → DATETIME_UTCNOW with fix."""
+    error = (
+        "DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal "
+        "in a future version. Use timezone-aware objects to represent datetimes in UTC: "
+        "datetime.datetime.now(datetime.UTC). "
+        "tests/billing-engine/test_markup.py:80: DeprecationWarning"
+    )
+
+    result = diagnose_build_error("WC027-02c", error, [])
+
+    assert result.error_type == DATETIME_UTCNOW
+    assert result.should_retry is True
+    assert result.confidence >= 0.90
+    assert "timezone" in result.fix_instruction.lower() or "utc" in result.fix_instruction.lower()
+    assert result.constitutional_trace != ""
+
+
+def test_cct_sra_07_datetime_fix_mentions_replacement():
+    """CCT-SRA-07: fix instruction must tell LLM to use datetime.now(timezone.utc)."""
+    error = (
+        "E   DeprecationWarning: datetime.datetime.utcnow() is deprecated\n"
+        "tests/billing-engine/test_markup.py:80: DeprecationWarning"
+    )
+
+    result = diagnose_build_error("WC027-02c", error, [])
+
+    assert result.error_type == DATETIME_UTCNOW
+    fix = result.fix_instruction.lower()
+    assert "now" in fix and "utc" in fix  # must reference datetime.now(timezone.utc)
+
+
+def test_cct_sra_07_dtz003_ruff_classified():
+    """CCT-SRA-07: ruff DTZ003 flag on utcnow also classifies as DATETIME_UTCNOW."""
+    error = (
+        "src/billing-engine/markup/router.py:12:20: DTZ003 Use of `datetime.utcnow()` is not allowed\n"
+        "Found 1 error."
+    )
+
+    result = diagnose_build_error("WC027-02c", error, [])
+
+    assert result.error_type == DATETIME_UTCNOW
+    assert result.should_retry is True
+
