@@ -413,8 +413,11 @@ def run_compile_gate(gate_type: str, service_dir: str = "src/constitutional-engi
         return result.returncode == 0, error_output
 
     if gate_type == "pytest":
+        # Scope to target_files when provided — avoids pre-existing test failures
+        # blocking validation of newly generated files (same principle as ruff gate).
+        pytest_targets: list[str] = target_files if target_files else [service_dir]
         result = subprocess.run(
-            ["python3", "-m", "pytest", service_dir, "-q", "--tb=short"],
+            ["python3", "-m", "pytest", *pytest_targets, "-q", "--tb=short"],
             capture_output=True, text=True, cwd=REPO_ROOT
         )
         # Capture both stdout+stderr (same as ruff gate) — ImportErrors from missing

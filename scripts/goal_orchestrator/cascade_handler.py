@@ -164,7 +164,14 @@ class CascadeHandler:
     # ── Private level runners ─────────────────────────────────────────────────
 
     def _run_l1(self, failure_evidence: dict) -> None:
-        """Level 1: Context Enhancement — up to l1_max retries."""
+        """Level 1: Context Enhancement — up to l1_max retries.
+
+        Critical: after the LLM returns an accepted response, we MUST write the
+        generated files to disk and verify compile before declaring RESOLVED.
+        pipeline.invoke() evaluates FORMAT+ANNOTATION only — it does NOT write files.
+        Without this step, cascade reports "L1 resolved" but the broken file from the
+        3-attempt loop remains on disk, causing the outer compile gate to fail again.
+        """
         while self.ctx.l1_attempts < self.ctx.l1_max:
             self.ctx.l1_attempts += 1
             print(f"  [Cascade] L1 attempt {self.ctx.l1_attempts}/{self.ctx.l1_max}")
@@ -176,6 +183,16 @@ class CascadeHandler:
                 original_request=self._original_request,
             )
 
+            actual_outcome = result.status
+            if result.status == "accepted":
+                # Write files to disk and re-verify compile — pipeline._evaluate() only
+                # checks FORMAT+ANNOTATION, not py_compile/ruff. A file that passes
+                # pipeline gates may still have a SyntaxError on disk.
+                write_ok, write_err = self._write_and_verify(result.raw_output)
+                if not write_ok:
+                    print(f"  [Cascade] L1 attempt {self.ctx.l1_attempts}: write/compile verify failed: {write_err[:120]}")
+                    actual_outcome = "compile_failed"
+
             record_id = self._write({
                 "record_type": "L1 Attempt Record",
                 "goal_id": self.ctx.goal_id,
@@ -185,12 +202,12 @@ class CascadeHandler:
                     result.failure_classification.value
                     if result.failure_classification else None
                 ),
-                "outcome": result.status,
+                "outcome": actual_outcome,
                 "recorded_at": datetime.now(timezone.utc).isoformat(),
             })
             self.ctx.l1_record_ids.append(record_id)
 
-            if result.status == "accepted":
+            if actual_outcome == "accepted":
                 self.ctx.resolved_by_level = 1
                 self.ctx.resolved_at = datetime.now(timezone.utc)
                 self._transition(CascadeState.RESOLVED)
@@ -199,6 +216,51 @@ class CascadeHandler:
 
         print(f"  [Cascade] L1 exhausted after {self.ctx.l1_max} attempts")
         self._transition(CascadeState.L1_EXHAUSTED)
+
+    def _write_and_verify(self, raw_output: str) -> tuple[bool, str]:
+        """Parse <file> blocks from raw_output, write to disk, verify py_compile.
+
+        Returns (success, error_message).
+        Only verifies Python files — other stacks either don't reach cascade L1
+        or have their own compile gates run externally.
+        """
+        if not raw_output:
+            return False, "empty raw_output"
+        try:
+            import re as _re
+            import subprocess as _sp
+            import pathlib as _pl
+            _repo_root = _pl.Path(__file__).parent.parent.parent
+
+            file_blocks = _re.findall(
+                r'<file\s+path=["\']([^"\']+)["\'][^>]*>(.*?)</file>',
+                raw_output,
+                _re.DOTALL,
+            )
+            if not file_blocks:
+                return False, "no <file> blocks in L1 response"
+
+            written: list[str] = []
+            for rel_path, content in file_blocks:
+                full = _repo_root / rel_path.strip()
+                full.parent.mkdir(parents=True, exist_ok=True)
+                full.write_text(content, encoding="utf-8")
+                written.append(rel_path.strip())
+                print(f"  [Cascade] L1 wrote: {rel_path.strip()}")
+
+            # Verify py_compile for Python files
+            py_files = [f for f in written if f.endswith(".py")]
+            for f in py_files:
+                full = _repo_root / f
+                proc = _sp.run(
+                    ["python3", "-m", "py_compile", str(full)],
+                    capture_output=True, text=True,
+                )
+                if proc.returncode != 0:
+                    return False, f"{f}: {proc.stderr[:200]}"
+            return True, ""
+        except Exception as _e:
+            return False, str(_e)
 
     def _run_l2(self, failure_evidence: dict) -> None:
         """Level 2: Research/Industry Expert Query — advisor_auto_extend as Phase 1 L2."""

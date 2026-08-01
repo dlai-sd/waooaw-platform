@@ -1077,7 +1077,7 @@ def diagnose_build_error(
     """
     # ── Ruff Python violations (classified BEFORE CS code scan) ───────────────
     # Ruff rule codes (ANN*, B*, F*, G*, E5xx) don't overlap with CS codes.
-    ruff_pattern = re.compile(r'\b(ANN\d+|B0\d+|F\d{3}|G\d{3}|E5\d{2}|UP\d{3})\b')
+    ruff_pattern = re.compile(r'\b(ANN\d+|B0\d+|F\d{3}|G\d{3}|E5\d{2}|UP\d{3}|RUF\d+|C9\d+|PL[RCEW]\d+|W\d{3}|N\d{3}|I\d{3}|D\d{3}|T\d{3}|PT\d{3}|SIM\d{3}|ERA\d{3}|TID\d{3})\b')
     ruff_codes = ruff_pattern.findall(build_error)
     if ruff_codes:
         diagnosis = _classify_ruff_violation(build_error)
