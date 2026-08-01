@@ -446,17 +446,12 @@ def _generate_scaffold_subtaskdef(
     and uses _TEST_SYSTEM_PROMPT so the LLM generates pytest code, not business logic.
     """
     task_id = task["task_id"]
-    depends_on_str = f'"{prior_subtask_id}"' if prior_subtask_id else ""
     model_hint = task.get("model_hint", "auto")
     if model_hint not in ("reasoning", "auto"):
         model_hint = "auto"
-    max_tokens = 8000 if model_hint == "reasoning" else 4000
-
-    """Generate scaffold SubTaskDef literal. LLM generates prose only; paths are deterministic."""
-    task_id = task["task_id"]
-    model_hint = task.get("model_hint", "auto")
-    if model_hint not in ("reasoning", "auto"):
-        model_hint = "auto"
+    # Test generation is always large-output — enforce reasoning regardless of WC column
+    if is_test and model_hint == "auto":
+        model_hint = "reasoning"
     max_tokens = 8000 if model_hint == "reasoning" else 4000
 
     if is_test:
