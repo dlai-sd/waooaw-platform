@@ -1,19 +1,28 @@
-# Implements: architecture/reference/billing/wbe-component-spec.md §1 Service Entry
-# constitutional_basis: C-088 (Billing Profile), C-091 (Thread Catalog), C-059, ADR-034
+# Implements: architecture/reference/billing/wbe-component-spec.md §2.3 Markup Engine
+# constitutional_basis: C-023, C-038, C-048, C-051, C-059
+from __future__ import annotations
+
+import logging
 
 from fastapi import FastAPI
 
-from markup.thread_catalog import router as catalog_router
+from markup.router import router as pricing_router
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI(
-    title="WAOOAW Wallet & Billing Engine (WBE)",
-    description="Prepaid wallet, markup engine, usage meter, alert engine. ADR-034.",
-    version="0.1.0",
+    title="WAOOAW Billing Engine (WBE)",
+    description="Wallet, Markup, Meter, Procurement, Reconciliation, Trial, Promotions",
+    version="1.0.0",
 )
 
-app.include_router(catalog_router, prefix="/catalog", tags=["thread-catalog"])
+# ── Mount routers ────────────────────────────────────────────────────────────
+app.include_router(pricing_router)
+
+logger.info("Billing Engine (WBE) started; pricing router mounted at /pricing")
 
 
-@app.get("/health")
-async def health() -> dict:
-    return {"status": "ok", "service": "billing-engine", "version": "0.1.0"}
+@app.get("/health", tags=["system"])
+async def health_check() -> dict[str, str]:
+    """Health check endpoint for orchestration."""
+    return {"status": "healthy"}
