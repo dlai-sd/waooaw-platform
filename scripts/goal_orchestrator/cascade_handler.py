@@ -282,8 +282,7 @@ class CascadeHandler:
                 if proc.returncode != 0:
                     return False, f"{f}: {proc.stderr[:200]}"
 
-            # Static symbol check via ResponseEvaluator — catches wrong symbol names
-            # (e.g. ValidationOutcome vs PriceOutcome) before pytest runs.
+            # Static symbol check via ResponseEvaluator — catches wrong intra-package symbol names before pytest runs.
             py_files = [w for w in written if w.endswith(".py")]
             if py_files:
                 try:
