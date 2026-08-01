@@ -60,6 +60,7 @@ RUFF_RUF046 = "RUFF_RUF046"  # Redundant int() cast (value already an integer)
 RUFF_F401   = "RUFF_F401"    # Unused import
 RUFF_GENERIC = "RUFF_GENERIC" # Ruff violation with no specific handler
 PYTHON_IMPORT_ERROR = "PYTHON_IMPORT_ERROR"  # pytest collection ImportError / ModuleNotFoundError
+PYTHON_WRONG_SYMBOL = "PYTHON_WRONG_SYMBOL"  # cannot import name 'X' — symbol name mismatch across markup modules
 HYPOTHESIS_HEALTH_CHECK = "HYPOTHESIS_HEALTH_CHECK"  # hypothesis.errors.FailedHealthCheck
 DATETIME_UTCNOW = "DATETIME_UTCNOW"  # datetime.utcnow() / DTZ003 naive-datetime violation
 
@@ -1148,8 +1149,32 @@ def diagnose_build_error(
 
     # ── Python import error (pytest collection failure) ────────────────────────
     if "ModuleNotFoundError" in build_error or "ImportError" in build_error:
-        m = re.search(r"No module named '([^']+)'", build_error)
-        module_name = m.group(1) if m else "unknown"
+        wrong_name_m = re.search(r"cannot import name '([^']+)' from '([^']+)'", build_error)
+        no_module_m = re.search(r"No module named '([^']+)'", build_error)
+        if wrong_name_m:
+            # Symbol exists in file with a DIFFERENT name — path is correct, name is wrong
+            symbol = wrong_name_m.group(1)
+            source_mod = wrong_name_m.group(2)
+            # Extract defined names if _check_intrapackage_imports included them
+            defined_m = re.search(r"Defined names in [^:]+: (\[[^\]]+\])", build_error)
+            defined_hint = f"\nActual names defined in {source_mod}: {defined_m.group(1)}" if defined_m else ""
+            fix = (
+                f"IMPORT SYMBOL MISMATCH: cannot import name '{symbol}' from '{source_mod}'.\n"
+                f"The symbol `{symbol}` does NOT exist in `{source_mod}`.{defined_hint}\n"
+                f"Fix: change EVERY import and usage of `{symbol}` to the actual name defined in `{source_mod}`.\n"
+                "Example: if models.py defines `class PriceOutcome` but code imports `ValidationOutcome`, "
+                "change all references to `PriceOutcome`."
+            )
+            diagnosis = RetryDiagnosis(
+                error_type=PYTHON_WRONG_SYMBOL,
+                fix_instruction=fix,
+                should_retry=True,
+                confidence=0.95,
+                constitutional_trace="C-082 (COMPILE gate: import symbol mismatch — wrong class/function name)",
+            )
+            print(f"  Retry Advisor: {PYTHON_WRONG_SYMBOL} (confidence=95%)")
+            return diagnosis
+        module_name = no_module_m.group(1) if no_module_m else "unknown"
         fix = f"PYTEST COLLECTION FAILED — ImportError: No module named '{module_name}'.\n"
         if module_name.startswith("src."):
             # src.service_name.* pattern — service uses flat imports via conftest.py sys.path
