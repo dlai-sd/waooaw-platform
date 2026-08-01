@@ -180,11 +180,15 @@ class BundleProfileNotFoundError(KeyError):
     operations are attempted.
     """
 
-    def __init__(self: BundleProfileNotFoundError, agent_type: str, bundle_tier: str) -> None:
+    def __init__(
+        self: BundleProfileNotFoundError,
+        agent_type: str,
+        bundle_tier: str,
+    ) -> None:
         self.agent_type = agent_type
         self.bundle_tier = bundle_tier
         super().__init__(
             f"No bundle_profiles row found for agent_type={agent_type!r}, "
             f"bundle_tier={bundle_tier!r}. "
-            "Ensure DB migration and seed data have been applied."
+            "Ensure DB migration and seed data are in place."
         )
