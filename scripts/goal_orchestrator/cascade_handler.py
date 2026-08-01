@@ -282,6 +282,18 @@ class CascadeHandler:
                 if proc.returncode != 0:
                     return False, f"{f}: {proc.stderr[:200]}"
 
+            # Static symbol check via ResponseEvaluator — catches wrong intra-package symbol names before pytest runs.
+            py_files = [w for w in written if w.endswith(".py")]
+            if py_files:
+                try:
+                    from magic_llm.response_evaluator import ResponseEvaluator  # type: ignore[import]
+                    _ev = ResponseEvaluator(_repo_root)
+                    _import_err = _ev._check_intrapackage_imports(py_files)
+                    if _import_err:
+                        return False, f"COMPILE_FAILURE: IMPORT_SYMBOL: {_import_err}"
+                except Exception:
+                    pass  # evaluator not available — fall through to pytest
+
             # For test files: also run pytest --collect-only to catch import resolution
             # errors that py_compile misses (py_compile checks syntax only, not imports).
             test_files = [w for w in written if w.startswith("tests/") or "/tests/" in w]
@@ -295,7 +307,7 @@ class CascadeHandler:
                 if collect_proc.returncode != 0:
                     collect_out = (collect_proc.stdout + collect_proc.stderr).strip()
                     collect_out = collect_out.replace(str(_repo_root) + "/", "")
-                    return False, f"PYTEST_COLLECT FAILED: {collect_out[:400]}"
+                    return False, f"PYTEST_COLLECT FAILED: {collect_out[:2000]}"
 
             return True, ""
         except Exception as _e:
