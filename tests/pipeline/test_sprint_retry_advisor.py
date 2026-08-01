@@ -12,7 +12,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 from scripts.sprint_retry_advisor import (
     diagnose_build_error,
     EXTEND_NOT_REPLACE, WRONG_NAMESPACE, WRONG_FIELD_NAME, MISSING_USING, UNKNOWN,
-    HYPOTHESIS_HEALTH_CHECK, HYPOTHESIS_FIXTURE_PARAM, DATETIME_UTCNOW,
+    HYPOTHESIS_HEALTH_CHECK, HYPOTHESIS_FIXTURE_PARAM, DATETIME_UTCNOW, ASYNC_MOCK_MISMATCH,
 )
 
 import pytest
@@ -295,4 +295,42 @@ def test_cct_sra_09_hypothesis_fixture_param_fix_mentions_async_given():
     assert "@given" in result.fix_instruction
     assert "async" in fix or "pytestasyncio" in fix.replace("-", "")
 
+
+# ── CCT-SRA-10: await MagicMock() raises TypeError — must use AsyncMock ───────
+
+def test_cct_sra_10_async_mock_mismatch_classified():
+    """CCT-SRA-10: TypeError from await MagicMock() is classified as ASYNC_MOCK_MISMATCH."""
+    error = (
+        "FAILED tests/billing-engine/test_markup.py::test_thread_catalog_response_shape\n"
+        "  result: dict[str, Any] = await mock_bundle_engine.get_thread_catalog()\n"
+        "  E   TypeError: object MagicMock can't be used in 'await' expression\n"
+    )
+
+    result = diagnose_build_error("WC027-02c", error, [])
+
+    assert result.error_type == ASYNC_MOCK_MISMATCH
+    assert result.should_retry is True
+
+
+def test_cct_sra_10_async_mock_mismatch_fix_mentions_asyncmock():
+    """CCT-SRA-10: fix instruction must tell LLM to use AsyncMock."""
+    error = (
+        "TypeError: object MagicMock can't be used in 'await' expression\n"
+        "  await mock_engine.get_price()\n"
+    )
+
+    result = diagnose_build_error("WC027-02c", error, [])
+
+    assert "AsyncMock" in result.fix_instruction
+
+
+def test_cct_sra_10_async_mock_mismatch_high_confidence():
+    """CCT-SRA-10: confidence must be ≥ 0.9 for this well-defined pattern."""
+    error = (
+        "TypeError: object MagicMock can't be used in 'await' expression\n"
+    )
+
+    result = diagnose_build_error("WC027-02c", error, [])
+
+    assert result.confidence >= 0.9
 

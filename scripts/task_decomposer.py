@@ -115,6 +115,12 @@ STACK_BEHAVIORAL_RULES: dict[str, list[str]] = {
         "OR use a sync def (not async def) test function if mixing @given with pytest fixtures. "
         "WRONG: async def test_x(agent_type: str, mock_engine: Any): ... # agent_type is @given but mock_engine is fixture "
         "RIGHT: async def test_x(mock_engine: Any): agent_type = 'DMA'; ... # all non-hypothesis deps as fixtures, mocks inside",
+        "ASYNC MOCK RULE (CRITICAL): For any method that is `async def` in production code, the test mock "
+        "MUST use AsyncMock, not MagicMock. `await MagicMock()` raises TypeError at runtime. "
+        "from unittest.mock import AsyncMock, MagicMock  # import both "
+        "mock.async_method = AsyncMock(return_value=expected)  # async method "
+        "mock.sync_method = MagicMock(return_value=expected)   # sync method "
+        "Check every `await mock.X()` call in the test — the mock for X must be AsyncMock.",
     ],
     "typescript": [
         "JWT stored in httpOnly cookie ONLY — never localStorage or sessionStorage.",

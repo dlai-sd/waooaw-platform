@@ -192,6 +192,10 @@ class CascadeHandler:
                 if not write_ok:
                     print(f"  [Cascade] L1 attempt {self.ctx.l1_attempts}: write/compile verify failed: {write_err[:120]}")
                     actual_outcome = "compile_failed"
+                    # D6: propagate the write error into failure_evidence so the next
+                    # retry_with_enhanced_context call sees the real compile error, not
+                    # the stale original failure that triggered the cascade.
+                    failure_evidence = {**failure_evidence, "failure": write_err, "failure_detail": write_err}
 
             record_id = self._write({
                 "record_type": "L1 Attempt Record",
@@ -294,20 +298,20 @@ class CascadeHandler:
                 except Exception:
                     pass  # evaluator not available — fall through to pytest
 
-            # For test files: also run pytest --collect-only to catch import resolution
-            # errors that py_compile misses (py_compile checks syntax only, not imports).
+            # For test files: run full pytest (not collect-only) to catch runtime errors
+            # such as TypeError from await MagicMock() that only manifest at execution time.
             test_files = [w for w in written if w.startswith("tests/") or "/tests/" in w]
             if test_files:
                 collect_proc = _sp.run(
-                    ["python3", "-m", "pytest", "--collect-only", "-q", "--tb=short"]
+                    ["python3", "-m", "pytest", "-q", "--tb=short"]
                     + [str(_repo_root / f) for f in test_files],
                     capture_output=True, text=True, cwd=_repo_root,
-                    timeout=30,
+                    timeout=120,
                 )
                 if collect_proc.returncode != 0:
                     collect_out = (collect_proc.stdout + collect_proc.stderr).strip()
                     collect_out = collect_out.replace(str(_repo_root) + "/", "")
-                    return False, f"PYTEST_COLLECT FAILED: {collect_out[:2000]}"
+                    return False, f"PYTEST_FAILED: {collect_out[:2000]}"
 
             return True, ""
         except Exception as _e:

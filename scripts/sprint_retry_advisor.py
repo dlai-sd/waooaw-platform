@@ -64,6 +64,7 @@ PYTHON_WRONG_SYMBOL = "PYTHON_WRONG_SYMBOL"  # cannot import name 'X' — symbol
 HYPOTHESIS_HEALTH_CHECK = "HYPOTHESIS_HEALTH_CHECK"  # hypothesis.errors.FailedHealthCheck
 HYPOTHESIS_FIXTURE_PARAM = "HYPOTHESIS_FIXTURE_PARAM"  # fixture 'X' not found — @given param treated as pytest fixture
 DATETIME_UTCNOW = "DATETIME_UTCNOW"  # datetime.utcnow() / DTZ003 naive-datetime violation
+ASYNC_MOCK_MISMATCH = "ASYNC_MOCK_MISMATCH"  # await MagicMock() raises TypeError — must use AsyncMock for async methods
 
 
 @dataclass
@@ -1247,6 +1248,32 @@ def diagnose_build_error(
             constitutional_trace="C-082 (COMPILE gate: hypothesis HealthCheck.function_scoped_fixture)",
         )
         print(f"  Retry Advisor: {HYPOTHESIS_HEALTH_CHECK} (confidence=95%)")
+        return diagnosis
+
+    # ── TypeError from awaiting a MagicMock — use AsyncMock instead ──────────
+    if "TypeError" in build_error and ("MagicMock" in build_error or "can't be used in 'await'" in build_error):
+        m = re.search(r"await (\S+)\.?(\w+)\(", build_error)
+        mock_expr = f"`{m.group(0).rstrip('(')}`" if m else "the mock call"
+        fix = (
+            f"ASYNC MOCK MISMATCH: {mock_expr} raises TypeError because MagicMock is not awaitable.\n"
+            "Root cause: unittest.mock.MagicMock() is a sync object. Calling `await MagicMock()` raises\n"
+            "  TypeError: object MagicMock can't be used in 'await' expression\n"
+            "Fix: replace MagicMock with AsyncMock for every method that is `async def`:\n"
+            "  from unittest.mock import AsyncMock, MagicMock\n"
+            "  mock_engine.get_thread_catalog = AsyncMock(return_value={...})  # async method\n"
+            "  mock_engine.sync_method = MagicMock(return_value=...)           # sync method\n"
+            "RULE: Anywhere your test does `await mock.method()`, the mock MUST be AsyncMock.\n"
+            "Check all mock assignments in the test and conftest — replace MagicMock with AsyncMock\n"
+            "for every method that the production code calls with `await`."
+        )
+        diagnosis = RetryDiagnosis(
+            error_type=ASYNC_MOCK_MISMATCH,
+            fix_instruction=fix,
+            should_retry=True,
+            confidence=0.95,
+            constitutional_trace="C-082 (COMPILE gate: TypeError — MagicMock used where AsyncMock required)",
+        )
+        print(f"  Retry Advisor: {ASYNC_MOCK_MISMATCH} (confidence=95%)")
         return diagnosis
 
     # ── DeprecationWarning as error — datetime.utcnow() (pytest filterwarnings=error) ──
