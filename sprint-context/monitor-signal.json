@@ -1,5 +1,5 @@
 {
-  "run_id": "30697378900",
+  "run_id": "30699216319",
   "sprint": "WC-027",
   "scaffold_task": null,
   "scaffold_failed": false,
@@ -7,19 +7,19 @@
   "spec_gap_issues": [],
   "overall_result": "PARTIAL",
   "file_costs": {
-    "WC027-01aa:models.py": 5.1557,
-    "WC027-01aa:bundle_engine.py": 7.2504,
-    "WC027-01ab:models.py": 0.4355,
-    "WC027-01ab:bundle_engine.py": 1.6804999999999999,
-    "WC027-01ac:test_models.py": 1.9342000000000001,
-    "WC027-01ba:router.py": 0.6278,
-    "WC027-01ba:main.py": 0.3074,
-    "WC027-01bb:router.py": 1.6943,
-    "WC027-01bb:main.py": 0.3037,
-    "WC027-01bc:test_router.py": 2.2927,
-    "WC027-02a:test_markup.py": 2.4823,
-    "WC027-02b:test_markup.py": 1.6874,
-    "WC027-02c:test_markup.py": 1.3857
+    "WC027-01aa:models.py": 5.1799,
+    "WC027-01aa:bundle_engine.py": 8.3942,
+    "WC027-01ab:models.py": 0.437,
+    "WC027-01ab:bundle_engine.py": 1.6911,
+    "WC027-01ac:test_models.py": 4.575399999999999,
+    "WC027-01ba:router.py": 0.6307,
+    "WC027-01ba:main.py": 0.3099,
+    "WC027-01bb:router.py": 1.7004,
+    "WC027-01bb:main.py": 0.3057,
+    "WC027-01bc:test_router.py": 4.3126,
+    "WC027-02a:test_markup.py": 1.7551,
+    "WC027-02b:test_markup.py": 1.7001,
+    "WC027-02c:test_markup.py": 1.3981999999999999
   },
   "subtask_results": {
     "WC027-01aa": {
@@ -35,7 +35,7 @@
       "error_text": ""
     },
     "WC027-01ac": {
-      "result": "SUCCESS",
+      "result": "FAIL",
       "task_id": "WC027-01a",
       "error_codes": [],
       "error_text": ""
@@ -53,7 +53,7 @@
       "error_text": ""
     },
     "WC027-01bc": {
-      "result": "SUCCESS",
+      "result": "FAIL",
       "task_id": "WC027-01b",
       "error_codes": [],
       "error_text": ""
@@ -74,14 +74,11 @@
       "result": "FAIL",
       "task_id": "WC027-02",
       "error_codes": [],
-      "error_text": "ected_path - AttributeError: 'int' object has no attribute 'validate_price'\nFailing test case: test_validate_price_property_rejected_path(\n    # The test always failed when commented parts were varied together.\n    cost_floor_paise=,  # or any other generated value\n    mock_bundle_engine=,  # or any"
+      "error_text": "nd a different way to achieve your goal (for example, replacing the fixture with a similar context manager inside of the test).\n\nIf you are confident that your test will work correctly even though the fixture is not reset between generated inputs, you can suppress this health check with @settings(su"
     }
   },
-  "total_cost_inr": 27.2376,
-  "tasks_done": [
-    "WC027-01a",
-    "WC027-01b"
-  ],
+  "total_cost_inr": 32.390299999999996,
+  "tasks_done": [],
   "tasks_requested": [
     "WC027-01a",
     "WC027-01b",
