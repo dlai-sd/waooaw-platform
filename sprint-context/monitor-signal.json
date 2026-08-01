@@ -1,5 +1,5 @@
 {
-  "run_id": "30705092097",
+  "run_id": "30706199298",
   "sprint": "WC-027",
   "scaffold_task": null,
   "scaffold_failed": false,
@@ -7,19 +7,19 @@
   "spec_gap_issues": [],
   "overall_result": "PARTIAL",
   "file_costs": {
-    "WC027-01aa:models.py": 5.3117,
-    "WC027-01aa:bundle_engine.py": 14.7792,
-    "WC027-01ab:models.py": 0.4499,
-    "WC027-01ab:bundle_engine.py": 1.7166,
-    "WC027-01ac:test_models.py": 4.7212000000000005,
-    "WC027-01ba:router.py": 0.647,
-    "WC027-01ba:main.py": 0.3258,
-    "WC027-01bb:router.py": 1.1512,
+    "WC027-01aa:models.py": 5.3534,
+    "WC027-01aa:bundle_engine.py": 7.5938,
+    "WC027-01ab:models.py": 0.4515,
+    "WC027-01ab:bundle_engine.py": 1.7157,
+    "WC027-01ac:test_models.py": 4.7214,
+    "WC027-01ba:router.py": 0.5842,
+    "WC027-01ba:main.py": 0.3808,
+    "WC027-01bb:router.py": 1.7265000000000001,
     "WC027-01bb:main.py": 0.3228,
-    "WC027-01bc:test_router.py": 2.2189,
-    "WC027-02a:test_markup.py": 1.8045,
-    "WC027-02b:test_markup.py": 1.7304,
-    "WC027-02c:test_markup.py": 1.4291
+    "WC027-01bc:test_router.py": 0.8318,
+    "WC027-02a:test_markup.py": 2.4987,
+    "WC027-02b:test_markup.py": 1.7301,
+    "WC027-02c:test_markup.py": 1.4285999999999999
   },
   "subtask_results": {
     "WC027-01aa": {
@@ -71,16 +71,15 @@
       "error_text": ""
     },
     "WC027-02c": {
-      "result": "SUCCESS",
+      "result": "FAIL",
       "task_id": "WC027-02",
       "error_codes": [],
-      "error_text": ""
+      "error_text": "n test_thread_catalog_response_shape\n    result: dict[str, Any] = await mock_bundle_engine.get_thread_catalog()\n                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   TypeError: object dict can't be used in 'await' expression\n=========================== short test summary inf"
     }
   },
-  "total_cost_inr": 36.6083,
+  "total_cost_inr": 29.339299999999998,
   "tasks_done": [
-    "WC027-01b",
-    "WC027-02"
+    "WC027-01b"
   ],
   "tasks_requested": [
     "WC027-01a",
