@@ -154,7 +154,7 @@ class BelowConstitutionalFloorError(ValueError):
     """
 
     def __init__(
-        self,
+        self: BelowConstitutionalFloorError,
         proposed_price_paise: int,
         minimum_compliant_price_paise: int,
         cost_floor_paise: int,
@@ -180,7 +180,7 @@ class BundleProfileNotFoundError(KeyError):
     operations are attempted.
     """
 
-    def __init__(self, agent_type: str, bundle_tier: str) -> None:
+    def __init__(self: BundleProfileNotFoundError, agent_type: str, bundle_tier: str) -> None:
         self.agent_type = agent_type
         self.bundle_tier = bundle_tier
         super().__init__(

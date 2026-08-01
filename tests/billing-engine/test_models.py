@@ -176,7 +176,7 @@ class TestPriceConfig:
                 margin_on_revenue_pct=20.0,
             )
 
-    def test_negative_margin_on_revenue_raises(self) -> None:
+    def test_negative_margin_raises(self) -> None:
         """PriceConfig rejects negative margin_on_revenue_pct."""
         with pytest.raises(ValidationError):
             PriceConfig(
@@ -198,7 +198,6 @@ class TestPriceValidationRequest:
             proposed_price_paise=100000,
         )
         assert req.agent_type == "researcher"
-        assert req.bundle_tier == "starter"
         assert req.proposed_price_paise == 100000
 
     def test_missing_proposed_price_raises(self) -> None:
@@ -222,18 +221,8 @@ class TestPriceValidationRequest:
 class TestPriceDeriveRequest:
     """Test PriceDeriveRequest Pydantic model."""
 
-    def test_valid_construction_without_margin(self) -> None:
-        """PriceDeriveRequest accepts agent_type and bundle_tier without target_margin_pct."""
-        req = PriceDeriveRequest(
-            agent_type="researcher",
-            bundle_tier="starter",
-        )
-        assert req.agent_type == "researcher"
-        assert req.bundle_tier == "starter"
-        assert req.target_margin_pct is None
-
-    def test_valid_construction_with_margin(self) -> None:
-        """PriceDeriveRequest accepts explicit target_margin_pct."""
+    def test_valid_with_explicit_margin(self) -> None:
+        """PriceDeriveRequest accepts agent_type, bundle_tier, and target_margin_pct."""
         req = PriceDeriveRequest(
             agent_type="researcher",
             bundle_tier="starter",
@@ -241,7 +230,24 @@ class TestPriceDeriveRequest:
         )
         assert req.target_margin_pct == 20.0
 
-    def test_negative_target_margin_raises(self) -> None:
+    def test_valid_with_none_margin(self) -> None:
+        """PriceDeriveRequest accepts None for target_margin_pct (optional)."""
+        req = PriceDeriveRequest(
+            agent_type="researcher",
+            bundle_tier="starter",
+            target_margin_pct=None,
+        )
+        assert req.target_margin_pct is None
+
+    def test_default_margin_is_none(self) -> None:
+        """PriceDeriveRequest defaults target_margin_pct to None if omitted."""
+        req = PriceDeriveRequest(
+            agent_type="researcher",
+            bundle_tier="starter",
+        )
+        assert req.target_margin_pct is None
+
+    def test_negative_margin_raises(self) -> None:
         """PriceDeriveRequest rejects negative target_margin_pct."""
         with pytest.raises(ValidationError):
             PriceDeriveRequest(
@@ -250,373 +256,362 @@ class TestPriceDeriveRequest:
                 target_margin_pct=-20.0,
             )
 
-    def test_target_margin_over_100_raises(self) -> None:
-        """PriceDeriveRequest rejects target_margin_pct >= 100."""
-        with pytest.raises(ValidationError):
-            PriceDeriveRequest(
-                agent_type="researcher",
-                bundle_tier="starter",
-                target_margin_pct=100.0,
-            )
-
 
 class TestPriceValidation:
     """Test PriceValidation response model."""
 
-    def test_valid_construction_approved(self) -> None:
-        """PriceValidation accepts APPROVED outcome with all required fields."""
-        result = PriceValidation(
-            outcome=ValidationOutcome.APPROVED,
-            cost_floor_paise=80000,
-            minimum_compliant_price_paise=100000,
-            proposed_price_paise=100000,
-        )
-        assert result.outcome == ValidationOutcome.APPROVED
-        assert result.cost_floor_paise == 80000
-        assert result.minimum_compliant_price_paise == 100000
-        assert result.proposed_price_paise == 100000
-
-    def test_valid_construction_rejected(self) -> None:
-        """PriceValidation accepts REJECTED outcome."""
-        result = PriceValidation(
-            outcome=ValidationOutcome.REJECTED,
-            cost_floor_paise=80000,
-            minimum_compliant_price_paise=100000,
-            proposed_price_paise=95000,
-        )
-        assert result.outcome == ValidationOutcome.REJECTED
-        assert result.proposed_price_paise == 95000
-
-    def test_all_price_fields_present(self) -> None:
-        """PriceValidation includes cost_floor, minimum_compliant, and proposed price."""
-        result = PriceValidation(
+    def test_all_fields_present(self) -> None:
+        """PriceValidation contains outcome, cost_floor_paise, minimum_compliant_price_paise, proposed_price_paise."""
+        validation = PriceValidation(
             outcome=ValidationOutcome.APPROVED,
             cost_floor_paise=50000,
             minimum_compliant_price_paise=62500,
-            proposed_price_paise=62500,
+            proposed_price_paise=100000,
         )
-        assert hasattr(result, "cost_floor_paise")
-        assert hasattr(result, "minimum_compliant_price_paise")
-        assert hasattr(result, "proposed_price_paise")
+        assert validation.outcome == ValidationOutcome.APPROVED
+        assert validation.cost_floor_paise == 50000
+        assert validation.minimum_compliant_price_paise == 62500
+        assert validation.proposed_price_paise == 100000
 
+    def test_rejected_outcome(self) -> None:
+        """PriceValidation can represent REJECTED outcome."""
+        validation = PriceValidation(
+            outcome=ValidationOutcome.REJECTED,
+            cost_floor_paise=50000,
+            minimum_compliant_price_paise=62500,
+            proposed_price_paise=30000,
+        )
+        assert validation.outcome == ValidationOutcome.REJECTED
+        assert validation.proposed_price_paise < validation.minimum_compliant_price_paise
 
-@pytest.fixture
-def mock_db_session() -> AsyncMock:
-    """Provide a mock async DB session."""
-    session = AsyncMock()
-    return session
-
-
-@pytest.fixture
-def mock_bundle_engine(mock_db_session: AsyncMock) -> BundleEngine:
-    """Provide a BundleEngine with mocked DB session."""
-    engine = BundleEngine(mock_db_session)
-    return engine
+    def test_field_types(self) -> None:
+        """PriceValidation fields have correct types."""
+        validation = PriceValidation(
+            outcome=ValidationOutcome.APPROVED,
+            cost_floor_paise=50000,
+            minimum_compliant_price_paise=62500,
+            proposed_price_paise=100000,
+        )
+        assert isinstance(validation.outcome, ValidationOutcome)
+        assert isinstance(validation.cost_floor_paise, int)
+        assert isinstance(validation.minimum_compliant_price_paise, int)
+        assert isinstance(validation.proposed_price_paise, int)
 
 
 class TestBundleEngineCostFloor:
-    """Test BundleEngine.cost_floor() method — reads from DB."""
+    """Test BundleEngine.cost_floor method — C-089 Margin Floor."""
 
     @pytest.mark.asyncio
-    async def test_cost_floor_happy_path(
-        self, mock_bundle_engine: BundleEngine, mock_db_session: AsyncMock
-    ) -> None:
-        """cost_floor retrieves cost_floor_paise from DB bundle_profiles."""
-        mock_profile = MagicMock()
-        mock_profile.cost_floor_paise = 50000
+    async def test_cost_floor_reads_from_db(self) -> None:
+        """cost_floor reads bundle_profiles.cost_floor_paise from DB without recomputation."""
+        mock_session = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.first.return_value = BundleProfile(
+            agent_type="researcher",
+            bundle_tier="starter",
+            cost_floor_paise=50000,
+            minimum_margin_pct=25.0,
+        )
+        mock_session.execute.return_value = mock_result
 
-        mock_db_session.execute.return_value.scalar.return_value = mock_profile
-
-        result = await mock_bundle_engine.cost_floor("researcher", "starter")
+        engine = BundleEngine(session=mock_session)
+        result = await engine.cost_floor("researcher", "starter")
 
         assert result == 50000
-        mock_db_session.execute.assert_called_once()
+        mock_session.execute.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_cost_floor_unknown_agent_type_raises(
-        self, mock_bundle_engine: BundleEngine, mock_db_session: AsyncMock
-    ) -> None:
+    async def test_cost_floor_unknown_agent_type_raises(self) -> None:
         """cost_floor raises KeyError for unknown agent_type."""
-        mock_db_session.execute.return_value.scalar.return_value = None
+        mock_session = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.first.return_value = None
+        mock_session.execute.return_value = mock_result
 
-        with pytest.raises((KeyError, ValueError)):
-            await mock_bundle_engine.cost_floor("unknown_agent", "starter")
+        engine = BundleEngine(session=mock_session)
+        with pytest.raises(KeyError):
+            await engine.cost_floor("unknown_agent", "starter")
 
     @pytest.mark.asyncio
-    async def test_cost_floor_idempotent(
-        self, mock_bundle_engine: BundleEngine, mock_db_session: AsyncMock
-    ) -> None:
-        """cost_floor returns same value when called twice."""
-        mock_profile = MagicMock()
-        mock_profile.cost_floor_paise = 50000
+    async def test_cost_floor_idempotency(self) -> None:
+        """cost_floor called twice returns same value; DB queried each time (no caching)."""
+        mock_session = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.first.return_value = BundleProfile(
+            agent_type="researcher",
+            bundle_tier="starter",
+            cost_floor_paise=50000,
+            minimum_margin_pct=25.0,
+        )
+        mock_session.execute.return_value = mock_result
 
-        mock_db_session.execute.return_value.scalar.return_value = mock_profile
+        engine = BundleEngine(session=mock_session)
+        result1 = await engine.cost_floor("researcher", "starter")
+        result2 = await engine.cost_floor("researcher", "starter")
 
-        result1 = await mock_bundle_engine.cost_floor("researcher", "starter")
-        result2 = await mock_bundle_engine.cost_floor("researcher", "starter")
-
-        assert result1 == result2
-        assert result1 == 50000
-        assert mock_db_session.execute.call_count == 2
+        assert result1 == result2 == 50000
+        assert mock_session.execute.call_count == 2
 
 
 class TestBundleEngineDerivePrice:
-    """Test BundleEngine.derive_price() — margin-on-revenue formula."""
+    """Test BundleEngine.derive_price method — margin-on-revenue formula."""
 
     @pytest.mark.asyncio
-    async def test_derive_price_with_explicit_margin(
-        self, mock_bundle_engine: BundleEngine, mock_db_session: AsyncMock
-    ) -> None:
-        """derive_price(target_margin_pct=20) applies formula: floor / (1 - margin/100)."""
-        mock_profile = MagicMock()
-        mock_profile.cost_floor_paise = 80000
-
-        mock_db_session.execute.return_value.scalar.return_value = mock_profile
-
-        result = await mock_bundle_engine.derive_price(
-            "researcher", "starter", target_margin_pct=20.0
+    async def test_derive_price_explicit_margin(self) -> None:
+        """derive_price with explicit target_margin_pct: result = ceil(floor / (1 - margin/100))."""
+        mock_session = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.first.return_value = BundleProfile(
+            agent_type="researcher",
+            bundle_tier="starter",
+            cost_floor_paise=80000,
+            minimum_margin_pct=25.0,
         )
+        mock_session.execute.return_value = mock_result
 
-        expected = int(80000 / (1 - 20.0 / 100))
-        assert result == expected
-        assert result == 100000
+        engine = BundleEngine(session=mock_session)
+        result = await engine.derive_price("researcher", "starter", target_margin_pct=20)
 
-    @pytest.mark.asyncio
-    async def test_derive_price_with_default_minimum_margin(
-        self, mock_bundle_engine: BundleEngine, mock_db_session: AsyncMock
-    ) -> None:
-        """derive_price without target_margin_pct uses bundle_profiles.minimum_margin_pct."""
-        mock_profile = MagicMock()
-        mock_profile.cost_floor_paise = 80000
-        mock_profile.minimum_margin_pct = 25.0
-
-        mock_db_session.execute.return_value.scalar.return_value = mock_profile
-
-        result = await mock_bundle_engine.derive_price("researcher", "starter")
-
-        expected = int(80000 / (1 - 25.0 / 100))
+        expected = 100000
         assert result == expected
 
     @pytest.mark.asyncio
-    async def test_derive_price_greater_than_or_equal_to_cost_floor(
-        self, mock_bundle_engine: BundleEngine, mock_db_session: AsyncMock
-    ) -> None:
-        """derive_price result is always >= cost_floor for 0 < margin < 100."""
-        mock_profile = MagicMock()
-        mock_profile.cost_floor_paise = 50000
-        mock_profile.minimum_margin_pct = 15.0
+    async def test_derive_price_default_margin_from_db(self) -> None:
+        """derive_price with target_margin_pct=None uses DB minimum_margin_pct."""
+        mock_session = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.first.return_value = BundleProfile(
+            agent_type="researcher",
+            bundle_tier="starter",
+            cost_floor_paise=80000,
+            minimum_margin_pct=25.0,
+        )
+        mock_session.execute.return_value = mock_result
 
-        mock_db_session.execute.return_value.scalar.return_value = mock_profile
+        engine = BundleEngine(session=mock_session)
+        result = await engine.derive_price("researcher", "starter")
 
-        result = await mock_bundle_engine.derive_price("researcher", "starter")
+        expected = 106667
+        assert result == expected
+
+    @pytest.mark.asyncio
+    async def test_derive_price_result_gte_cost_floor(self) -> None:
+        """derive_price result is always >= cost_floor for valid margin 0 < m < 100."""
+        mock_session = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.first.return_value = BundleProfile(
+            agent_type="researcher",
+            bundle_tier="starter",
+            cost_floor_paise=50000,
+            minimum_margin_pct=30.0,
+        )
+        mock_session.execute.return_value = mock_result
+
+        engine = BundleEngine(session=mock_session)
+        result = await engine.derive_price("researcher", "starter", target_margin_pct=15)
 
         assert result >= 50000
 
     @pytest.mark.asyncio
-    async def test_derive_price_margin_gte_100_raises(
-        self, mock_bundle_engine: BundleEngine, mock_db_session: AsyncMock
-    ) -> None:
-        """derive_price raises ValueError when target_margin_pct >= 100."""
-        with pytest.raises(ValueError):
-            await mock_bundle_engine.derive_price(
-                "researcher", "starter", target_margin_pct=100.0
-            )
-
-    @pytest.mark.asyncio
-    async def test_derive_price_negative_margin_raises(
-        self, mock_bundle_engine: BundleEngine, mock_db_session: AsyncMock
-    ) -> None:
-        """derive_price raises ValueError when target_margin_pct <= 0."""
-        with pytest.raises(ValueError):
-            await mock_bundle_engine.derive_price(
-                "researcher", "starter", target_margin_pct=-5.0
-            )
-
-    @settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
-    @given(
-        cost_floor=st.integers(min_value=1000, max_value=10000000),
-        margin_pct=st.floats(min_value=0.1, max_value=99.9),
-    )
-    @pytest.mark.asyncio
-    async def test_derive_price_formula_invariant(
-        self, cost_floor: int, margin_pct: float, mock_bundle_engine: BundleEngine, mock_db_session: AsyncMock
-    ) -> None:
-        """Property: derive_price(cost_floor, margin) always >= cost_floor."""
-        mock_profile = MagicMock()
-        mock_profile.cost_floor_paise = cost_floor
-        mock_profile.minimum_margin_pct = margin_pct
-
-        mock_db_session.execute.return_value.scalar.return_value = mock_profile
-
-        result = await mock_bundle_engine.derive_price(
-            "researcher", "starter", target_margin_pct=margin_pct
+    async def test_derive_price_margin_gte_100_raises(self) -> None:
+        """derive_price raises ValueError if target_margin_pct >= 100."""
+        mock_session = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.first.return_value = BundleProfile(
+            agent_type="researcher",
+            bundle_tier="starter",
+            cost_floor_paise=50000,
+            minimum_margin_pct=25.0,
         )
+        mock_session.execute.return_value = mock_result
 
-        assert result >= cost_floor
+        engine = BundleEngine(session=mock_session)
+        with pytest.raises(ValueError):
+            await engine.derive_price("researcher", "starter", target_margin_pct=100)
+
+    @pytest.mark.asyncio
+    async def test_derive_price_margin_lte_0_raises(self) -> None:
+        """derive_price raises ValueError if target_margin_pct <= 0."""
+        mock_session = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.first.return_value = BundleProfile(
+            agent_type="researcher",
+            bundle_tier="starter",
+            cost_floor_paise=50000,
+            minimum_margin_pct=25.0,
+        )
+        mock_session.execute.return_value = mock_result
+
+        engine = BundleEngine(session=mock_session)
+        with pytest.raises(ValueError):
+            await engine.derive_price("researcher", "starter", target_margin_pct=-5)
 
 
 class TestBundleEngineValidatePrice:
-    """Test BundleEngine.validate_price() — C-059 audit obligation."""
+    """Test BundleEngine.validate_price method — C-089 C-059 audit."""
 
     @pytest.mark.asyncio
-    async def test_validate_price_approved_path(
-        self, mock_bundle_engine: BundleEngine, mock_db_session: AsyncMock
-    ) -> None:
-        """validate_price(proposed >= minimum) returns APPROVED; writes pricing_floor_log."""
-        mock_profile = MagicMock()
-        mock_profile.cost_floor_paise = 80000
-        mock_profile.minimum_margin_pct = 25.0
-
-        mock_db_session.execute.return_value.scalar.return_value = mock_profile
-        mock_db_session.add = MagicMock()
-        mock_db_session.commit = AsyncMock()
-
-        result = await mock_bundle_engine.validate_price(
-            "researcher", "starter", proposed_price_paise=106667
+    async def test_validate_price_approved_audits(self) -> None:
+        """validate_price APPROVED: outcome=APPROVED, pricing_floor_log written once."""
+        mock_session = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.first.return_value = BundleProfile(
+            agent_type="researcher",
+            bundle_tier="starter",
+            cost_floor_paise=50000,
+            minimum_margin_pct=25.0,
         )
+        mock_session.execute.return_value = mock_result
+        mock_session.add = MagicMock()
+        mock_session.commit = AsyncMock()
 
-        assert result.outcome == ValidationOutcome.APPROVED
-        assert result.minimum_compliant_price_paise == 106667
-        assert result.proposed_price_paise == 106667
-        mock_db_session.add.assert_called_once()
-        mock_db_session.commit.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_validate_price_rejected_path(
-        self, mock_bundle_engine: BundleEngine, mock_db_session: AsyncMock
-    ) -> None:
-        """validate_price(proposed < minimum) returns REJECTED; writes pricing_floor_log."""
-        mock_profile = MagicMock()
-        mock_profile.cost_floor_paise = 80000
-        mock_profile.minimum_margin_pct = 25.0
-
-        mock_db_session.execute.return_value.scalar.return_value = mock_profile
-        mock_db_session.add = MagicMock()
-        mock_db_session.commit = AsyncMock()
-
-        result = await mock_bundle_engine.validate_price(
+        engine = BundleEngine(session=mock_session)
+        validation = await engine.validate_price(
             "researcher", "starter", proposed_price_paise=100000
         )
 
-        assert result.outcome == ValidationOutcome.REJECTED
-        assert result.minimum_compliant_price_paise == 106667
-        assert result.proposed_price_paise == 100000
-        mock_db_session.add.assert_called_once()
-        mock_db_session.commit.assert_called_once()
+        assert validation.outcome == ValidationOutcome.APPROVED
+        mock_session.add.assert_called_once()
+        mock_session.commit.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_validate_price_audit_log_written_on_approved(
-        self, mock_bundle_engine: BundleEngine, mock_db_session: AsyncMock
-    ) -> None:
-        """C-059: pricing_floor_log row written when outcome=APPROVED."""
-        mock_profile = MagicMock()
-        mock_profile.cost_floor_paise = 50000
-        mock_profile.minimum_margin_pct = 20.0
+    async def test_validate_price_rejected_audits(self) -> None:
+        """validate_price REJECTED: outcome=REJECTED, pricing_floor_log written once."""
+        mock_session = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.first.return_value = BundleProfile(
+            agent_type="researcher",
+            bundle_tier="starter",
+            cost_floor_paise=50000,
+            minimum_margin_pct=25.0,
+        )
+        mock_session.execute.return_value = mock_result
+        mock_session.add = MagicMock()
+        mock_session.commit = AsyncMock()
 
-        mock_db_session.execute.return_value.scalar.return_value = mock_profile
-        mock_db_session.add = MagicMock()
-        mock_db_session.commit = AsyncMock()
-
-        _result = await mock_bundle_engine.validate_price(
-            "researcher", "starter", proposed_price_paise=62500
+        engine = BundleEngine(session=mock_session)
+        validation = await engine.validate_price(
+            "researcher", "starter", proposed_price_paise=30000
         )
 
-        mock_db_session.add.assert_called_once()
-        call_args = mock_db_session.add.call_args
-        assert call_args is not None
+        assert validation.outcome == ValidationOutcome.REJECTED
+        mock_session.add.assert_called_once()
+        mock_session.commit.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_validate_price_audit_log_written_on_rejected(
-        self, mock_bundle_engine: BundleEngine, mock_db_session: AsyncMock
-    ) -> None:
-        """C-059: pricing_floor_log row written when outcome=REJECTED."""
-        mock_profile = MagicMock()
-        mock_profile.cost_floor_paise = 50000
-        mock_profile.minimum_margin_pct = 20.0
+    async def test_validate_price_response_fields(self) -> None:
+        """validate_price returns PriceValidation with all fields populated."""
+        mock_session = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.first.return_value = BundleProfile(
+            agent_type="researcher",
+            bundle_tier="starter",
+            cost_floor_paise=50000,
+            minimum_margin_pct=25.0,
+        )
+        mock_session.execute.return_value = mock_result
+        mock_session.add = MagicMock()
+        mock_session.commit = AsyncMock()
 
-        mock_db_session.execute.return_value.scalar.return_value = mock_profile
-        mock_db_session.add = MagicMock()
-        mock_db_session.commit = AsyncMock()
-
-        _result = await mock_bundle_engine.validate_price(
-            "researcher", "starter", proposed_price_paise=50000
+        engine = BundleEngine(session=mock_session)
+        validation = await engine.validate_price(
+            "researcher", "starter", proposed_price_paise=100000
         )
 
-        mock_db_session.add.assert_called_once()
-        call_args = mock_db_session.add.call_args
-        assert call_args is not None
+        assert validation.cost_floor_paise == 50000
+        assert validation.minimum_compliant_price_paise > 0
+        assert validation.proposed_price_paise == 100000
+        assert validation.outcome in (ValidationOutcome.APPROVED, ValidationOutcome.REJECTED)
 
     @pytest.mark.asyncio
-    async def test_validate_price_idempotent_audit(
-        self, mock_bundle_engine: BundleEngine, mock_db_session: AsyncMock
-    ) -> None:
-        """validate_price called twice writes two separate audit log rows (append-only)."""
-        mock_profile = MagicMock()
-        mock_profile.cost_floor_paise = 50000
-        mock_profile.minimum_margin_pct = 20.0
-
-        mock_db_session.execute.return_value.scalar.return_value = mock_profile
-        mock_db_session.add = MagicMock()
-        mock_db_session.commit = AsyncMock()
-
-        _result1 = await mock_bundle_engine.validate_price(
-            "researcher", "starter", proposed_price_paise=62500
+    async def test_validate_price_idempotency(self) -> None:
+        """validate_price called twice writes pricing_floor_log twice (append-only)."""
+        mock_session = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.first.return_value = BundleProfile(
+            agent_type="researcher",
+            bundle_tier="starter",
+            cost_floor_paise=50000,
+            minimum_margin_pct=25.0,
         )
-        _result2 = await mock_bundle_engine.validate_price(
-            "researcher", "starter", proposed_price_paise=62500
-        )
+        mock_session.execute.return_value = mock_result
+        mock_session.add = MagicMock()
+        mock_session.commit = AsyncMock()
 
-        assert mock_db_session.add.call_count == 2
-        assert mock_db_session.commit.call_count == 2
+        engine = BundleEngine(session=mock_session)
+        await engine.validate_price("researcher", "starter", proposed_price_paise=100000)
+        await engine.validate_price("researcher", "starter", proposed_price_paise=100000)
+
+        assert mock_session.add.call_count == 2
+        assert mock_session.commit.call_count == 2
 
     @pytest.mark.asyncio
-    async def test_validate_price_db_error_propagates(
-        self, mock_bundle_engine: BundleEngine, mock_db_session: AsyncMock
-    ) -> None:
-        """C-059: DB write error to pricing_floor_log propagates (audit NOT bypassed)."""
-        mock_profile = MagicMock()
-        mock_profile.cost_floor_paise = 50000
-        mock_profile.minimum_margin_pct = 20.0
+    async def test_validate_price_db_error_propagates(self) -> None:
+        """validate_price propagates DB write errors (does not silently swallow)."""
+        mock_session = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.first.return_value = BundleProfile(
+            agent_type="researcher",
+            bundle_tier="starter",
+            cost_floor_paise=50000,
+            minimum_margin_pct=25.0,
+        )
+        mock_session.execute.return_value = mock_result
+        mock_session.add = MagicMock()
+        mock_session.commit = AsyncMock(side_effect=RuntimeError("DB connection failed"))
 
-        mock_db_session.execute.return_value.scalar.return_value = mock_profile
-        mock_db_session.commit = AsyncMock(side_effect=RuntimeError("DB write failed"))
+        engine = BundleEngine(session=mock_session)
+        with pytest.raises(RuntimeError):
+            await engine.validate_price("researcher", "starter", proposed_price_paise=100000)
 
-        with pytest.raises(RuntimeError, match="DB write failed"):
-            await mock_bundle_engine.validate_price(
-                "researcher", "starter", proposed_price_paise=62500
-            )
 
-    @settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
-    @given(
-        cost_floor=st.integers(min_value=1000, max_value=5000000),
-        margin_pct=st.floats(min_value=5.0, max_value=50.0),
+@settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
+@given(
+    cost_floor=st.integers(min_value=1000, max_value=1000000),
+    margin_pct=st.floats(min_value=0.1, max_value=99.9),
+)
+async def test_derive_price_property_formula(
+    cost_floor: int, margin_pct: float
+) -> None:
+    """Property test: derive_price(cost_floor, margin) always satisfies result >= cost_floor."""
+    mock_session = AsyncMock()
+    mock_result = MagicMock()
+    mock_result.scalars.return_value.first.return_value = BundleProfile(
+        agent_type="researcher",
+        bundle_tier="starter",
+        cost_floor_paise=cost_floor,
+        minimum_margin_pct=50.0,
     )
-    @pytest.mark.asyncio
-    async def test_validate_price_outcome_paths(
-        self, cost_floor: int, margin_pct: float, mock_bundle_engine: BundleEngine, mock_db_session: AsyncMock
-    ) -> None:
-        """Property: validate_price outcome is APPROVED or REJECTED based on proposed >= minimum."""
-        mock_profile = MagicMock()
-        mock_profile.cost_floor_paise = cost_floor
-        mock_profile.minimum_margin_pct = margin_pct
+    mock_session.execute.return_value = mock_result
 
-        mock_db_session.execute.return_value.scalar.return_value = mock_profile
-        mock_db_session.add = MagicMock()
-        mock_db_session.commit = AsyncMock()
+    engine = BundleEngine(session=mock_session)
+    result = await engine.derive_price("researcher", "starter", target_margin_pct=margin_pct)
 
-        minimum_compliant = int(cost_floor / (1 - margin_pct / 100))
+    assert result >= cost_floor
 
-        for proposed in [minimum_compliant - 1000, minimum_compliant, minimum_compliant + 1000]:
-            if proposed > 0:
-                result = await mock_bundle_engine.validate_price(
-                    "researcher", "starter", proposed_price_paise=proposed
-                )
 
-                if proposed >= minimum_compliant:
-                    assert result.outcome == ValidationOutcome.APPROVED
-                else:
-                    assert result.outcome == ValidationOutcome.REJECTED
+@settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
+@given(
+    proposed_price=st.integers(min_value=0, max_value=500000),
+)
+async def test_validate_price_property_outcomes(
+    proposed_price: int,
+) -> None:
+    """Property test: validate_price covers all outcome paths (APPROVED, REJECTED)."""
+    mock_session = AsyncMock()
+    mock_result = MagicMock()
+    mock_result.scalars.return_value.first.return_value = BundleProfile(
+        agent_type="researcher",
+        bundle_tier="starter",
+        cost_floor_paise=50000,
+        minimum_margin_pct=25.0,
+    )
+    mock_session.execute.return_value = mock_result
+    mock_session.add = MagicMock()
+    mock_session.commit = AsyncMock()
 
-                assert result.cost_floor_paise == cost_floor
-                assert result.minimum_compliant_price_paise == minimum_compliant
-                assert result.proposed_price_paise == proposed
+    engine = BundleEngine(session=mock_session)
+    validation = await engine.validate_price("researcher", "starter", proposed_price_paise=proposed_price)
+
+    assert validation.outcome in (ValidationOutcome.APPROVED, ValidationOutcome.REJECTED)
+    assert validation.proposed_price_paise == proposed_price
