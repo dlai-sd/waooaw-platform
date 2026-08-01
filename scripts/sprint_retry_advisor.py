@@ -56,6 +56,8 @@ RUFF_F841   = "RUFF_F841"     # Unused local variable
 RUFF_B018   = "RUFF_B018"     # Useless expression statement
 RUFF_G004   = "RUFF_G004"     # f-string in logging call
 RUFF_E501   = "RUFF_E501"     # Line too long
+RUFF_RUF046 = "RUFF_RUF046"  # Redundant int() cast (value already an integer)
+RUFF_GENERIC = "RUFF_GENERIC" # Ruff violation with no specific handler
 
 
 @dataclass
@@ -1029,15 +1031,37 @@ def _classify_ruff_violation(build_error: str) -> RetryDiagnosis | None:
             "[E501] Line too long — break at 120 chars using line continuation or restructure."
         )
 
+    # RUF046 — redundant int() cast
+    if "RUF046" in build_error:
+        m = re.search(r'RUF046.*?`([^`]+)`', build_error)
+        expr = m.group(1) if m else "the expression"
+        fix_parts.append(
+            f"[RUF046] `{expr}` is already an integer — remove the redundant `int()` cast."
+        )
+
     if not fix_parts:
-        return None
+        # Ruff matched a code we have no specific handler for — return generic guidance
+        # so the LLM gets directed to fix the violation instead of UNKNOWN fallback.
+        codes = re.findall(r'\b[A-Z]{1,3}\d{3,4}\b', build_error)
+        unique_codes = sorted(set(codes))
+        return RetryDiagnosis(
+            error_type=RUFF_GENERIC,
+            fix_instruction=(
+                f"RUFF VIOLATION(S) — fix ALL before resubmitting: {', '.join(unique_codes)}\n"
+                "Review each flagged line and correct to comply with the rule. "
+                "Do not suppress violations with '# noqa' unless the spec explicitly allows it."
+            ),
+            should_retry=True,
+            confidence=0.75,
+            constitutional_trace="C-082 (COMPILE gate: unclassified ruff violation)",
+        )
 
     # Determine primary error_type from first violation found
     first_type = RUFF_ANN201
     for code, rtype in [
         ("ANN201", RUFF_ANN201), ("ANN001", RUFF_ANN001), ("B017", RUFF_B017),
         ("B006", RUFF_B006), ("F841", RUFF_F841), ("B018", RUFF_B018),
-        ("G004", RUFF_G004), ("E501", RUFF_E501),
+        ("G004", RUFF_G004), ("E501", RUFF_E501), ("RUF046", RUFF_RUF046),
     ]:
         if code in build_error:
             first_type = rtype

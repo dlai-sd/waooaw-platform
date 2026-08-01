@@ -220,9 +220,12 @@ class CascadeHandler:
     def _write_and_verify(self, raw_output: str) -> tuple[bool, str]:
         """Parse <file> blocks from raw_output, write to disk, verify py_compile.
 
+        Uses the same parse/write pattern as goal_executor._execute_file():
+          1. Try autonomous_sprint_runner.parse_llm_files / write_llm_files (runner available)
+          2. Fall back to inline implementation matching _parse_llm_files_local/_write_llm_files_local
+        _WRITE_BOUNDARY enforced to block LLM from writing outside safe paths.
+
         Returns (success, error_message).
-        Only verifies Python files — other stacks either don't reach cascade L1
-        or have their own compile gates run externally.
         """
         if not raw_output:
             return False, "empty raw_output"
@@ -230,27 +233,47 @@ class CascadeHandler:
             import re as _re
             import subprocess as _sp
             import pathlib as _pl
+            import sys as _sys
+
             _repo_root = _pl.Path(__file__).parent.parent.parent
+            _scripts = str(_repo_root / "scripts")
+            if _scripts not in _sys.path:
+                _sys.path.insert(0, _scripts)
 
-            file_blocks = _re.findall(
-                r'<file\s+path=["\']([^"\']+)["\'][^>]*>(.*?)</file>',
-                raw_output,
-                _re.DOTALL,
-            )
-            if not file_blocks:
-                return False, "no <file> blocks in L1 response"
+            # Established parse/write pattern — mirrors goal_executor._execute_file()
+            try:
+                from autonomous_sprint_runner import parse_llm_files, write_llm_files  # type: ignore[import]
+            except ImportError:
+                # Inline fallback matching _parse_llm_files_local/_write_llm_files_local exactly
+                _WRITE_BOUNDARY = _re.compile(r'^(src|tests|scripts|web|infrastructure)/', _re.IGNORECASE)
+                _pattern = _re.compile(r'<file\s+path="([^"]+)">(.*?)</file>', _re.DOTALL | _re.IGNORECASE)
 
-            written: list[str] = []
-            for rel_path, content in file_blocks:
-                full = _repo_root / rel_path.strip()
-                full.parent.mkdir(parents=True, exist_ok=True)
-                full.write_text(content, encoding="utf-8")
-                written.append(rel_path.strip())
-                print(f"  [Cascade] L1 wrote: {rel_path.strip()}")
+                def parse_llm_files(response: str) -> dict:  # type: ignore[misc]
+                    files: dict = {}
+                    for m in _pattern.finditer(response or ""):
+                        path, content = m.group(1).strip(), m.group(2)
+                        if _WRITE_BOUNDARY.match(path):
+                            files[path] = content.strip("\n")
+                    return files
+
+                def write_llm_files(files: dict) -> list:  # type: ignore[misc]
+                    written: list = []
+                    for rel_path, content in files.items():
+                        full = _repo_root / rel_path
+                        full.parent.mkdir(parents=True, exist_ok=True)
+                        full.write_text(content, encoding="utf-8")
+                        written.append(rel_path)
+                    return written
+
+            files_parsed = parse_llm_files(raw_output)
+            if not files_parsed:
+                return False, "no <file> blocks in L1 response (or all paths outside WRITE_BOUNDARY)"
+
+            written = write_llm_files(files_parsed)
+            print(f"  [Cascade] L1 wrote: {', '.join(written)}")
 
             # Verify py_compile for Python files
-            py_files = [f for f in written if f.endswith(".py")]
-            for f in py_files:
+            for f in (w for w in written if w.endswith(".py")):
                 full = _repo_root / f
                 proc = _sp.run(
                     ["python3", "-m", "py_compile", str(full)],
