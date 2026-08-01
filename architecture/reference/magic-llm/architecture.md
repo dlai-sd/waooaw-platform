@@ -382,7 +382,7 @@ Every LLM response passes through five gates in sequence. Any gate failure produ
 | Gate | Applies to | Pass condition | Failure classification |
 |---|---|---|---|
 | **Format Gate** | All | Response contains expected output structure (XML file blocks for code, valid JSON for structured outputs) | `FORMAT_FAILURE` |
-| **Compile Gate** | Code Generation · Test Generation | `dotnet build` or `python -m py_compile` or `tsc --noEmit` exits 0 | `COMPILE_FAILURE: [error_code]` |
+| **Compile Gate** | Code Generation · Test Generation | Stack-specific (ADR-038): Python = `py_compile` + `ruff check`; .NET = `dotnet build`; TypeScript = `tsc --noEmit` + `biome ci`; SQL = `sqlfluff lint`; YAML = `yamllint`; Terraform = `hcl2.load()` — all must exit 0 | `COMPILE_FAILURE: [error_code]` |
 | **Spec Alignment Gate** | Code Generation · Design | `check_spec_against_ptr()` finds no drift between spec requirements and produced code types (C-032) | `SPEC_DRIFT: [gap_description]` |
 | **Annotation Gate** | Code Generation | Every constitutional function carries `@constitutional` annotation + `# Implements:` header (C-073) | `ANNOTATION_MISSING: [file_path]` |
 | **Schema Gate** | Structured outputs (Design, Review) | Output JSON satisfies the Execution Contract's schema | `SCHEMA_VIOLATION: [field_name]` |
@@ -406,8 +406,9 @@ Attempt 1:
 
   IF gate fails:
     Retry Advisor classifies failure (sprint_retry_advisor.diagnose_build_error())
-    Advisor produces: {error_family, fix_instruction, confidence, should_retry}
-
+    Advisor produces: {error_family, fix_instruction, confidence, should_retry}    For ruff violations: _classify_ruff_violation() fires BEFORE CS-code scan,
+    returns a COMBINED fix instruction covering ALL ruff violations in the output
+    (not just the first — prevents retry exhaustion on multi-violation files).
     IF confidence < 30% OR should_retry=False:
       STOP_LOSS: skip remaining attempts, emit BUILD_FAILURE (not spec-gap)
 

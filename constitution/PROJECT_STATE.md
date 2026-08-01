@@ -1,6 +1,51 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-07-30 (GOAL-PLATFORM-REGISTRY — IMPLEMENTATION COMPLETE)
+**Last Updated:** 2026-08-01 (ADR-038 Multi-Stack Compile Gate — COMPLETE)
+
+---
+
+## SESSION RECORD — 2026-08-01 (ADR-038 PIPELINE GATE ARCHITECTURE — COMPLETE)
+
+### What Was Built
+
+| WC / IB | Institution | Output | Status |
+|---|---|---|---|
+| ADR-038 P0 | Platform IT Expert (INST-010) | `_PYTHON_FORBIDDEN_PATTERNS` in SYSTEM slot; ruff check inside `_compile_python()` retry loop; `_classify_ruff_violation()` in sprint_retry_advisor | ✅ `1f404ec` |
+| ADR-038 P1 | Platform IT Expert (INST-010) | `_gate_sql()` sqlfluff + `_gate_yaml()` yamllint in ResponseEvaluator; `run_compile_gate(sqlfluff/yamllint)` in task_decomposer; lint-violations.json learning cache | ✅ `c050aec` |
+| ADR-038 P2 | Platform IT Expert (INST-010) | `_TYPESCRIPT_FORBIDDEN_PATTERNS` + `_TERRAFORM_FORBIDDEN_PATTERNS`; `_compile_terraform()` hcl2; biome probe guard in `_compile_typescript()` | ✅ `f85eb0d` |
+| ADR-038 P3 | Platform IT Expert (INST-010) | `office-runtime-professional.md` — pipeline self-model, gate table, work_item_type docs | ✅ `4bec166` |
+| Post-review fixes | Platform IT Expert (INST-010) | 5 defects fixed: regex `[A-Z]{1,3}`, multi-violation combined fix, biome not-installed guard, learning cache ANN codes, task_id propagation | ✅ `bf6fb6d` |
+
+### Root Cause Closed
+
+WC-027 run 30686443609 structural gap **closed**:
+
+- **WC027-01bb ANN201**: ruff now runs inside 3-attempt retry loop; `_classify_ruff_violation()` injects targeted fix at attempt 2
+- **WC027-02a B017**: same — `B017` is in the classifier; combined fix covers all violations in one pass
+
+### Stack Coverage After This Session
+
+| Stack | Inner gate | Outer gate | SYSTEM forbidden patterns |
+|---|---|---|---|
+| .NET C# | dotnet build ✅ | dotnet_build ✅ | `_FORBIDDEN_PATTERNS` ✅ |
+| Python | py_compile + ruff ✅ | ruff ✅ | `_PYTHON_FORBIDDEN_PATTERNS` ✅ |
+| TypeScript | tsc + biome ✅ | none | `_TYPESCRIPT_FORBIDDEN_PATTERNS` ✅ |
+| SQL | sqlfluff ✅ | sqlfluff ✅ | — |
+| YAML | yamllint ✅ | yamllint ✅ | — |
+| Terraform | hcl2 parse ✅ | terraform_validate ✅ | `_TERRAFORM_FORBIDDEN_PATTERNS` ✅ |
+
+### New Artifacts
+- `adr/ADR-038-multi-stack-compile-gate-architecture.md`
+- `sprint-context/lint-violations.json` (empty seed — filled on first gate failure)
+- `scripts/magic_llm/context_builder.py` — `_PYTHON_FORBIDDEN_PATTERNS`, `_TYPESCRIPT_FORBIDDEN_PATTERNS`, `_TERRAFORM_FORBIDDEN_PATTERNS`, Pipeline Self-Model, Violation History injection
+- `scripts/magic_llm/response_evaluator.py` — `_compile_python()` ruff, `_gate_sql()`, `_gate_yaml()`, `_compile_terraform()`, biome probe
+- `scripts/sprint_retry_advisor.py` — `_classify_ruff_violation()` with combined multi-violation fix
+- `scripts/task_decomposer.py` — sqlfluff/yamllint/terraform_validate gates, `record_lint_violations()`, `task_id` in `run_compile_gate()`
+- `requirements-test.txt` — sqlfluff>=3.0, yamllint>=1.35, python-hcl2>=4.3
+- `.github/agent-context/office-runtime-professional.md` — full pipeline gate reference
+
+### Version
+**v1.24.0** — 443 pipeline tests passing
 
 ---
 

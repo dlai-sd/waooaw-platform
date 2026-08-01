@@ -9,8 +9,8 @@
 ## Platform Status
 
 ```
-Version:              v1.22.0 — WC-026 Sprint Groomer + Autonomous Pipeline Standard (2026-07-30)
-Constitutional Claims: 86 ratified (C-001→C-086) | ADRs: 36
+Version:              v1.24.0 — ADR-038 Multi-Stack Compile Gate Architecture (2026-08-01)
+Constitutional Claims: 86 ratified (C-001→C-086) | ADRs: 38
 Customer Agents:      4 approved — DMA v3.0 · Trading v1.7 · Agricultural v2.7 · Private Tutor v1.0
 Internal Agents:      5 — Platform IT Expert · Steward Assistant · Self-Improvement Analyst ·
                           Platform Operations · RepoNav (AVD-001 v1.0 RATIFIED — INST-014)
@@ -19,8 +19,7 @@ Phase:                IMPLEMENTATION — WC-016 Sprint AUTHORIZED (autonomous, G
 Infrastructure:       Azure live — waooaw-dev-kv (Key Vault) · OIDC auth · Sprint Dashboard: Issue #7
 Monitoring:           Sprint Dashboard: github.com/dlai-sd/waooaw-platform/issues/7
 Web:                  web/WAOOAWHome.html — Landing page v1.0 + Auth modal
-CCTs:                 52 specified | Simulations: 24 | Pipeline tests: 408 passing
-                      (30 new: test_groom_sprint.py — groom_sprint.py unit tests)
+CCTs:                 52 specified | Simulations: 24 | Pipeline tests: 443 passing
 Company:              DLAI Satellite Data (OPC) Pvt Ltd · CIN: U62090PN2024OPC230499 · Pune, India
 Stewards:             Yogesh Khandge (Founder) · Sujay Khandge (Business Growth) · Ojal Khandge (Ethics Officer)
 ```
@@ -49,6 +48,9 @@ Self-healing:    advisor_auto_extend.py — new compiler errors auto-classified 
 | Self-healing advisor | New CS error codes auto-classified via Haiku + committed to main |
 | Failure taxonomy routing | 17 C# error families (CS0101–CS8629) + Python/Terraform/TypeScript |
 | Learning cache | Successful retry fixes cached; re-used before LLM fallback |
+| **Multi-stack compile gate** | **ruff inside retry loop (Python); sqlfluff (SQL); yamllint (YAML); hcl2 (TF); biome (TS) — ADR-038** |
+| **Ruff violation classifier** | **ANN201/ANN001/B017/B006/F841 → combined fix instruction (all violations, not just first)** |
+| **Lint-violations cache** | **sprint-context/lint-violations.json: first occurrence writes; subsequent runs see it in SYSTEM slot** |
 | USING_MAP injection | Type→namespace index injected every prompt — prevents CS0246 |
 | Forbidden API list | Known non-existent methods blocked in every LLM prompt |
 | Cost-aware tiering | Skeleton pass → Haiku; Logic/CCT → Sonnet (10× cost reduction) |

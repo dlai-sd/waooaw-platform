@@ -19,14 +19,14 @@ AUTONOMOUS_HALT: false
 ## Current Platform State (updated each session)
 
 ```
-Version:    1.21.0  |  Gate: G5 CLEAR  |  Epoch: 1 — Employment  |  Phase: IMPLEMENTATION
-Last update: 2026-07-30 — WC-015 AI Runtime MERGED (PR #165) · WC-016 Web Portal AUTHORIZED
+Version:    1.24.0  |  Gate: G5 CLEAR  |  Epoch: 1 — Employment  |  Phase: IMPLEMENTATION
+Last update: 2026-08-01 — ADR-038 Multi-Stack Compile Gate (P0–P3 + 5 defect fixes) · WC-027 root cause closed
 Current sprint: WC-016 — Web Portal Skeleton (Next.js 14 PWA + Registration + Emergency Stop)
 Completed:  WC-012 (CE) · WC-013 (BP) · WC-014 (PR) · WC-015 (AIR) — all merged
-Constitutional Claims: 86 RATIFIED (C-001→C-086) | ADRs: 33
+Constitutional Claims: 86 RATIFIED (C-001→C-086) | ADRs: 38
 Agents (customer): DMA v3.0 | Trading v1.7 | Agricultural Advisor v2.7 | Private Tutor v1.0
 Agents (internal): Platform IT Expert · Steward Assistant · Self-Improvement Analyst · Platform Operations · RepoNav (INST-014)
-CCTs: 52 specified | Pipeline tests: 434 passing | Simulations: 7 (all PASS)
+CCTs: 52 specified | Pipeline tests: 443 passing | Simulations: 7 (all PASS)
 Web: web/WAOOAWHome.html — Landing page v1.0 + Auth modal
 Three Humans: Yogesh Khandge (Founder) · Sujay Khandge (Business Growth) · Ojal Khandge (Ethics Officer)
 Company: DLAI Satellite Data (OPC) Pvt Ltd | CIN: U62090PN2024OPC230499 | GSTIN: 27AAKCD8188R1ZH
