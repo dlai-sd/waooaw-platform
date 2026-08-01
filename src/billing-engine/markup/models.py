@@ -13,6 +13,8 @@ from pydantic import BaseModel, Field
 
 
 class PriceOutcome(StrEnum):
+    """Constitutional outcome of a price validation against C-089 margin floor."""
+
     APPROVED = "APPROVED"
     REJECTED = "REJECTED"
 
