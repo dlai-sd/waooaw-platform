@@ -1144,14 +1144,14 @@ class TestUDCPDispatch:
             max_tokens=8000,
         )
 
-        with patch("task_decomposer.REPO_ROOT", tmp_path):
+        with patch.object(task_decomposer, "REPO_ROOT", tmp_path):
             with patch.dict("sys.modules", {
                 "autonomous_sprint_runner": self._mock_runner(),
                 "runner.task_executor": mock_executor,
                 **_go_unavailable(),
             }):
-                with patch("task_decomposer.run_compile_gate", return_value=(True, "")):
-                    execute_subtask_chain(
+                with patch.object(task_decomposer, "run_compile_gate", return_value=(True, "")):
+                    task_decomposer.execute_subtask_chain(
                         task_id="WC027-01",
                         subtasks=[st],
                         monitor_signal=self._make_monitor(),
@@ -1188,15 +1188,15 @@ class TestUDCPDispatch:
             max_tokens=8000,
         )
 
-        with patch("task_decomposer.REPO_ROOT", tmp_path):
+        with patch.object(task_decomposer, "REPO_ROOT", tmp_path):
             with patch.dict("sys.modules", {
                 "autonomous_sprint_runner": self._mock_runner(),
                 "runner.task_executor": mock_executor,
                 **_go_unavailable(),
             }):
-                with patch("task_decomposer.run_compile_gate", return_value=(True, "")):
+                with patch.object(task_decomposer, "run_compile_gate", return_value=(True, "")):
                     # Must not raise
-                    result = execute_subtask_chain(
+                    result = task_decomposer.execute_subtask_chain(
                         task_id="WC027-01",
                         subtasks=[st],
                         monitor_signal=self._make_monitor(),
@@ -1333,14 +1333,14 @@ class TestUDCPDispatch:
             gate_calls.append({"gate": gate, "task_id": task_id})
             return (True, "")
 
-        with patch("task_decomposer.REPO_ROOT", tmp_path):
+        with patch.object(task_decomposer, "REPO_ROOT", tmp_path):
             with patch.dict("sys.modules", {
                 "autonomous_sprint_runner": self._mock_runner(),
                 "runner.task_executor": mock_executor,
                 **_go_unavailable(),
             }):
-                with patch("task_decomposer.run_compile_gate", side_effect=fake_compile_gate):
-                    execute_subtask_chain(
+                with patch.object(task_decomposer, "run_compile_gate", side_effect=fake_compile_gate):
+                    task_decomposer.execute_subtask_chain(
                         task_id="WC027-01",
                         subtasks=[st],
                         monitor_signal=self._make_monitor(),
@@ -1414,14 +1414,14 @@ class TestUDCPDispatch:
             model_hint="reasoning", max_tokens=8000,
         )
 
-        with patch("task_decomposer.REPO_ROOT", tmp_path):
+        with patch.object(task_decomposer, "REPO_ROOT", tmp_path):
             with patch.dict("sys.modules", {
                 "autonomous_sprint_runner": self._mock_runner(),
                 "runner.task_executor": mock_executor,
                 **_go_unavailable(),
             }):
-                with patch("task_decomposer.run_compile_gate", return_value=(True, "")):
-                    execute_subtask_chain(
+                with patch.object(task_decomposer, "run_compile_gate", return_value=(True, "")):
+                    task_decomposer.execute_subtask_chain(
                         task_id="WC027-01",
                         subtasks=[st],
                         monitor_signal=self._make_monitor(),

@@ -17,3 +17,7 @@ app.include_router(catalog_router, prefix="/catalog", tags=["thread-catalog"])
 @app.get("/health")
 async def health() -> dict:
     return {"status": "ok", "service": "billing-engine", "version": "0.1.0"}
+
+from markup.router import router as pricing_router
+
+app.include_router(pricing_router, prefix="/pricing", tags=["pricing"])
