@@ -121,6 +121,113 @@ class DailyScanResult:
     customers_scanned: int; alerts_sent: int; offers_generated: int; fa_items_created: int
 
 
+@dataclass(frozen=True)
+class AlertFired:
+    """Return type of MeterService.check_thresholds(). C-043 threshold breach record."""
+    customer_id: UUID
+    bucket_type: str       # thread_type | "AGENCY" | "PROCUREMENT"
+    threshold_name: str    # e.g. WARN_10, RUNWAY_P0
+    pct_consumed: float    # 0.0–1.0
+    scope: str             # CUSTOMER_BUCKET | AGENCY | PROCUREMENT
+    fired_at: datetime
+
+
+@dataclass
+class UsageStatus:
+    """Response model for GET /meter/{customer_id}/status."""
+    customer_id: UUID
+    depletion_projections: list[DepletionProjection]
+    alerts_active: list[str]    # threshold_names in meter_alert_log for current period
+    billing_halted: bool        # from Redis wbe:billing_halted
+
+
+@dataclass(frozen=True)
+class FounderActionCreated:
+    """Returned by ProcurementService.check_and_alert() when FA entry is appended."""
+    fa_number: str         # e.g. FA-042
+    provider_name: str
+    days_remaining: float
+    priority: str          # P0 | P1 | P2
+    created_at: datetime
+
+
+@dataclass(frozen=True)
+class ProviderRunwayStatus:
+    """One entry in GET /platform/procurement/status response. ADR-029 providers."""
+    provider_name: str
+    balance_paise: int
+    daily_burn_rate_paise: float
+    days_remaining: float
+    last_fa_level_triggered: str | None
+
+
+@dataclass
+class DailyAuditResult:
+    """Returned by ReconciliationService.run_daily_audit()."""
+    audit_date: date
+    reservations_checked: int
+    unlinked_reservations: list[UUID]  # bucket_reservation_ids with no cost_ledger match
+    completed_at: datetime
+
+
+@dataclass
+class SelfAuditResult:
+    """C-091: discrepancy >1 paise → billing_halted=True + FA created."""
+    discrepancy_paise: int
+    billing_halted: bool
+    founder_action_created: bool
+    buckets_checked: int
+    audited_at: datetime
+
+
+@dataclass(frozen=True)
+class CustomerMarginRow:
+    """One row in ReconciliationService.generate_margin_report(). margin_pct=(rev-cost)/rev."""
+    customer_id: UUID
+    revenue_paise: int
+    cost_paise: int
+    margin_pct: float    # 1.0 = 100%
+    period_date: date
+
+
+@dataclass
+class TrialStartResult:
+    """Returned by TrialService.start_trial(). C-019: phone_verified gate enforced before creation."""
+    trial_id: UUID
+    customer_id: UUID
+    agent_type: str
+    expires_at: datetime
+    wallet_bucket_ids: list[UUID]
+    units_granted: dict[str, int]   # thread_type → granted units
+
+
+@dataclass(frozen=True)
+class ConvertResult:
+    """Returned by TrialService.convert_to_paid(). C-090 grandfather applies ≤14d from trial start."""
+    trial_id: UUID
+    converted_at: datetime
+    c090_grandfather_applied: bool
+    subscription_id: UUID
+
+
+@dataclass(frozen=True)
+class CouponValidation:
+    """Returned by PromotionsService.validate_coupon(). valid=False carries error_code."""
+    valid: bool
+    discount_pct: float | None   # None when valid=False
+    error_code: str | None       # COUPON_EXPIRED | COUPON_USED | DISCOUNT_EXCEEDS_CAP | AGENT_TYPE_MISMATCH | TIER_MISMATCH
+
+
+@dataclass(frozen=True)
+class DiscountResult:
+    """Returned by PromotionsService.apply_discount(). SELECT FOR UPDATE guards coupon double-spend."""
+    original_price_paise: int
+    discount_pct: float
+    discounted_price_paise: int
+    coupon_id: UUID
+    referral_credited: bool
+
+
 class InsufficientBalanceError(Exception):
     def __init__(self, thread_type: str, requested: int, available: int) -> None: ...
 class BucketNotFoundError(Exception): pass
@@ -133,3 +240,9 @@ class GrandfatherPriceViolationError(Exception):
     """C-090: renewal price exceeds agreed price without acknowledged notice."""
 class BillingIntegrityHaltError(Exception):
     """Raised when reconciliation detects discrepancy >1 paise — halts all billing."""
+class TrialAlreadyActiveError(Exception):
+    """CCT-TRIAL-01: start_trial called when active or converted trial already exists → HTTP 409."""
+class TrialConfigMissingError(Exception):
+    """settings.TRIAL_FREE_UNITS missing key for agent_type → HTTP 422 TRIAL_CONFIG_MISSING."""
+class PhoneVerificationRequiredError(Exception):
+    """C-019: phone_verified=False on start_trial — informed consent gate → HTTP 422."""
