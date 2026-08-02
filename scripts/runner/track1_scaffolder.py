@@ -46,6 +46,15 @@ class Track1Scaffolder:
             written.append(out_path)
         return written
 
+    def scaffold_preview(self) -> dict[str, str]:
+        """Render all target_artifacts in memory (no write). Returns {rel_path: content}."""
+        result: dict[str, str] = {}
+        for artifact in self.tis.get("target_artifacts", []):
+            source = self._render_artifact(artifact)
+            _compile_gate(source, artifact["file_path"])
+            result[artifact["file_path"]] = source
+        return result
+
     # ── Rendering ─────────────────────────────────────────────────────────────
 
     def _render_artifact(self, artifact: dict[str, Any]) -> str:

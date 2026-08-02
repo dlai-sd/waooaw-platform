@@ -1,0 +1,45 @@
+# Dockerfile.udcp-runner
+# constitutional_basis: C-080 (Docker Test Isolation), ADR-039 §5 (UDCP local harness)
+# ib_item: IB-009
+#
+# Lightweight UDCP-only image — Python 3.12-slim + git only.
+# No .NET, no Node, no testcontainers.  ~120MB vs 2GB for test-runner.
+#
+# Usage:
+#   # dry-run (no API key, inspect scaffold):
+#   docker compose run --rm udcp-runner python scripts/udcp_cli.py --task-id WC027-01a --mode dry
+#
+#   # mock run (full pipeline, no API cost):
+#   docker compose run --rm udcp-runner python scripts/udcp_cli.py --task-id WC027-01a --mode mock
+#
+#   # live run (real LLM, cheap model):
+#   ANTHROPIC_API_KEY=sk-... docker compose run --rm udcp-runner \
+#       python scripts/udcp_cli.py --task-id WC027-01a --mode live --model haiku
+#
+#   # run UDCP unit tests only:
+#   docker compose run --rm udcp-runner pytest tests/pipeline/test_udcp_engines.py -v
+
+FROM python:3.12-slim-bookworm
+
+# Security: run as non-root
+RUN groupadd -r waooaw && useradd -r -g waooaw waooaw
+
+WORKDIR /workspace
+
+# git required by runner/git_ops.py (live mode commit)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Python test/lint deps (kept minimal — only what UDCP actually needs)
+COPY requirements-udcp.txt /tmp/requirements-udcp.txt
+RUN pip install --no-cache-dir -r /tmp/requirements-udcp.txt
+
+# Mark workspace as safe for git (bind-mounted repo)
+RUN git config --global --add safe.directory /workspace
+
+ENV PYTHONPATH=/workspace
+ENV PYTHONDONTWRITEBYTECODE=1
+
+# Default: show help
+CMD ["python", "scripts/udcp_cli.py", "--help"]

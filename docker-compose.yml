@@ -24,6 +24,26 @@ services:
       - test                            # only starts when --profile test is specified
     # No ports — test-runner is not a server, it's an on-demand command executor
 
+  # ─── UDCP standalone harness (ADR-039 §5 local iteration loop) ─────────────
+  # Lightweight Python-only image (~120MB).  No API key needed for dry/mock modes.
+  # Usage:
+  #   docker compose run --rm udcp-runner python scripts/udcp_cli.py --task-id WC027-01a --mode dry
+  #   docker compose run --rm udcp-runner python scripts/udcp_cli.py --task-id WC027-01a --mode mock
+  #   ANTHROPIC_API_KEY=sk-... docker compose run --rm udcp-runner \
+  #       python scripts/udcp_cli.py --task-id WC027-01a --mode live --model haiku
+  udcp-runner:
+    build:
+      context: .
+      dockerfile: architecture/reference/dockerfiles/Dockerfile.udcp-runner
+    volumes:
+      - .:/workspace                    # bind mount — writes scaffold files into repo tree
+    environment:
+      PYTHONPATH: /workspace
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      SPRINT_LLM_MODEL: ${SPRINT_LLM_MODEL:-claude-haiku-4-5}
+    profiles:
+      - udcp                            # docker compose run --rm udcp-runner ...
+
   # ─── Infrastructure ────────────────────────────────────────────────────────
 
   postgres:

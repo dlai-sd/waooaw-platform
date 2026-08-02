@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -31,6 +32,8 @@ class TaskResult:
     attempts: int = 1
     track: str = "UNKNOWN"
     files_written: list[str] = field(default_factory=list)
+    dry_run: bool = False
+    prompt_preview: str = ""  # populated in dry_run mode
 
 
 class UDCPOrchestrator:
@@ -52,8 +55,12 @@ class UDCPOrchestrator:
         skeleton_path: Path | None = None,
         sys_path_roots: list[str] | None = None,
         repo_root: Path | None = None,
+        dry_run: bool = False,
+        llm_fn: Callable[..., str | None] | None = None,
     ) -> None:
         self.repo_root = repo_root or REPO_ROOT
+        self.dry_run = dry_run
+        self._llm_fn = llm_fn
         self.groom = UDCPGroomingEngine(skeleton_path=skeleton_path, repo_root=self.repo_root)
         self.ptr = WorkspaceSymbolIndex(sys_path_roots=sys_path_roots, repo_root=self.repo_root)
 
@@ -125,6 +132,17 @@ class UDCPOrchestrator:
 
         try:
             scaffolder = Track1Scaffolder(tis, repo_root=self.repo_root)
+            # 4. Dry-run: render in memory — no write, no disk mutation
+            if self.dry_run:
+                previews = scaffolder.scaffold_preview()
+                preview_text = "\n".join(
+                    f"=== {rp} ===\n{content}" for rp, content in previews.items()
+                )
+                return TaskResult(
+                    success=True, track="GREENFIELD",
+                    files_written=list(previews.keys()),
+                    dry_run=True, prompt_preview=preview_text,
+                )
             written_paths = scaffolder.scaffold_artifacts()
         except Track1ScaffoldError as exc:
             return TaskResult(
@@ -156,13 +174,20 @@ class UDCPOrchestrator:
         max_tokens: int,
     ) -> TaskResult:
         """Send scaffolded file to LLM and ask it to fill in LOGIC_FILLER sections."""
-        try:
-            from runner.llm_codegen import call_llm_via_magiclm, parse_llm_files
-        except ImportError:
-            return TaskResult(
-                success=False, error_type="IMPORT_ERROR",
-                error_snippet="call_llm_via_magiclm not available", track="GREENFIELD",
-            )
+        _call_llm: Callable[..., str | None]
+        if self._llm_fn is not None:
+            _call_llm = self._llm_fn
+            _parse = _parse_llm_files_local
+        else:
+            try:
+                from runner.llm_codegen import call_llm_via_magiclm, parse_llm_files
+            except ImportError:
+                return TaskResult(
+                    success=False, error_type="IMPORT_ERROR",
+                    error_snippet="call_llm_via_magiclm not available", track="GREENFIELD",
+                )
+            _call_llm = call_llm_via_magiclm
+            _parse = parse_llm_files
 
         scaffold_content = scaffold_path.read_text(encoding="utf-8")
         rel_path = str(scaffold_path.relative_to(self.repo_root))
@@ -186,7 +211,7 @@ class UDCPOrchestrator:
 
         # 2-attempt retry: logic-only prompts are small but first attempt can timeout
         for attempt in range(1, 3):
-            response = call_llm_via_magiclm(
+            response = _call_llm(
                 task_id=task_id,
                 task_description=f"Logic fill for {rel_path}",
                 spec_content=prompt,
@@ -204,7 +229,7 @@ class UDCPOrchestrator:
                 error_snippet="call_llm_via_magiclm returned None", track="GREENFIELD",
             )
 
-        files = parse_llm_files(response)
+        files = _parse(response)
         if not files:
             return TaskResult(
                 success=False, error_type="NO_FILE_BLOCKS",
@@ -314,13 +339,17 @@ class UDCPOrchestrator:
         model_hint: str,
         max_tokens: int,
     ) -> TaskResult:
-        try:
-            from runner.llm_codegen import call_llm_via_magiclm
-        except ImportError:
-            return TaskResult(
-                success=False, error_type="IMPORT_ERROR",
-                error_snippet="call_llm_via_magiclm not available", track="DIFFERENTIAL",
-            )
+        if self._llm_fn is not None:
+            _call_llm: Callable[..., str | None] = self._llm_fn
+        else:
+            try:
+                from runner.llm_codegen import call_llm_via_magiclm
+            except ImportError:
+                return TaskResult(
+                    success=False, error_type="IMPORT_ERROR",
+                    error_snippet="call_llm_via_magiclm not available", track="DIFFERENTIAL",
+                )
+            _call_llm = call_llm_via_magiclm
 
         try:
             node_source = engine.extract_node_for_llm(method_name, class_name)
@@ -345,7 +374,7 @@ class UDCPOrchestrator:
             f"```"
         )
 
-        response = call_llm_via_magiclm(
+        response = _call_llm(
             task_id=task_id,
             task_description=f"Track 2 logic fill for {target_label}",
             spec_content=prompt,
@@ -384,6 +413,17 @@ class UDCPOrchestrator:
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
+def _parse_llm_files_local(response: str) -> dict[str, str]:
+    """Minimal <file path="...">...</file> parser used when llm_codegen is not on sys.path."""
+    from runner.constants import ALLOWED_WRITE_ROOTS
+    files: dict[str, str] = {}
+    for m in re.finditer(r'<file\s+path=["\']([^"\']+)["\']>(.*?)</file>', response, re.DOTALL | re.IGNORECASE):
+        path, content = m.group(1).strip(), m.group(2).strip()
+        if any(path.startswith(r) for r in ALLOWED_WRITE_ROOTS):
+            files[path] = content
+    return files
+
 
 def _extract_function_block(response: str) -> str | None:
     """Extract the first ```python ... ``` block containing a function definition."""
