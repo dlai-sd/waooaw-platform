@@ -1,0 +1,702 @@
+# Implements: WC-036 — WC036-06
+# constitutional_basis: C-076 (≥90% test coverage), C-082 (Build Validation)
+from __future__ import annotations
+
+import ast
+import json
+import sys
+import textwrap
+from pathlib import Path
+
+import pytest
+
+# Ensure scripts/ is on path for runner.* imports
+_REPO_ROOT = Path(__file__).parent.parent.parent
+if str(_REPO_ROOT / "scripts") not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT / "scripts"))
+
+from runner.ptr_validation_gate import WorkspaceSymbolIndex, _is_external
+from runner.track1_scaffolder import (
+    Track1ScaffoldError,
+    Track1Scaffolder,
+    _compile_gate,
+    _needs_router,
+    _render_args,
+    _render_class,
+    _render_function,
+)
+from runner.track2_polymorphic_engine import (
+    Track2PolymorphicEngine,
+    Track2SpliceError,
+    _signature_string,
+)
+from runner.udcp_grooming_engine import UDCPGroomingEngine, _path_to_func_name
+
+
+# ── WorkspaceSymbolIndex ──────────────────────────────────────────────────────
+
+class TestWorkspaceSymbolIndex:
+    def test_index_finds_classes_and_functions(self, tmp_path: Path) -> None:
+        pkg = tmp_path / "mypkg"
+        pkg.mkdir()
+        (pkg / "__init__.py").write_text("")
+        (pkg / "models.py").write_text(
+            "class MyModel:\n    pass\n\ndef my_func():\n    pass\n"
+        )
+        idx = WorkspaceSymbolIndex(sys_path_roots=[str(tmp_path)], repo_root=tmp_path)
+        result = idx.index_workspace()
+        assert "mypkg.models" in result
+        assert "MyModel" in result["mypkg.models"]
+        assert "my_func" in result["mypkg.models"]
+
+    def test_index_resolves_reexports(self, tmp_path: Path) -> None:
+        pkg = tmp_path / "pkg"
+        pkg.mkdir()
+        (pkg / "__init__.py").write_text(
+            "from pkg.models import Foo\nfrom pkg.models import Bar as Baz\n"
+        )
+        (pkg / "models.py").write_text("class Foo:\n    pass\nclass Bar:\n    pass\n")
+        idx = WorkspaceSymbolIndex(sys_path_roots=[str(tmp_path)], repo_root=tmp_path)
+        result = idx.index_workspace()
+        assert "Foo" in result["pkg"]
+        assert "Baz" in result["pkg"]
+
+    def test_validate_tis_passes_on_known_symbols(self, tmp_path: Path) -> None:
+        pkg = tmp_path / "markup"
+        pkg.mkdir()
+        (pkg / "models.py").write_text("class BundleProfile:\n    pass\n")
+        idx = WorkspaceSymbolIndex(sys_path_roots=[str(tmp_path)], repo_root=tmp_path)
+        tis = {
+            "target_artifacts": [
+                {
+                    "file_path": "markup/bundle_engine.py",
+                    "imports": [{"from": "markup.models", "import": ["BundleProfile"]}],
+                    "interfaces": [],
+                }
+            ]
+        }
+        errors = idx.validate_tis(tis)
+        assert errors == []
+
+    def test_validate_tis_rejects_invented_symbol(self, tmp_path: Path) -> None:
+        pkg = tmp_path / "markup"
+        pkg.mkdir()
+        (pkg / "models.py").write_text("class BundleProfile:\n    pass\n")
+        idx = WorkspaceSymbolIndex(sys_path_roots=[str(tmp_path)], repo_root=tmp_path)
+        tis = {
+            "target_artifacts": [
+                {
+                    "file_path": "markup/bundle_engine.py",
+                    "imports": [
+                        {"from": "markup.models", "import": ["PriceDeriveResponse"]}
+                    ],
+                    "interfaces": [],
+                }
+            ]
+        }
+        errors = idx.validate_tis(tis)
+        assert any("PriceDeriveResponse" in e for e in errors)
+
+    def test_validate_tis_rejects_missing_module(self, tmp_path: Path) -> None:
+        idx = WorkspaceSymbolIndex(sys_path_roots=[str(tmp_path)], repo_root=tmp_path)
+        tis = {
+            "target_artifacts": [
+                {
+                    "file_path": "x.py",
+                    "imports": [{"from": "nonexistent.module", "import": ["Thing"]}],
+                    "interfaces": [],
+                }
+            ]
+        }
+        errors = idx.validate_tis(tis)
+        assert any("nonexistent.module" in e for e in errors)
+
+    def test_skips_external_modules(self, tmp_path: Path) -> None:
+        idx = WorkspaceSymbolIndex(sys_path_roots=[str(tmp_path)], repo_root=tmp_path)
+        tis = {
+            "target_artifacts": [
+                {
+                    "file_path": "x.py",
+                    "imports": [
+                        {"from": "fastapi", "import": ["APIRouter", "Depends"]},
+                        {"from": "pydantic", "import": ["BaseModel"]},
+                        {"from": "os", "import": ["path"]},
+                    ],
+                    "interfaces": [],
+                }
+            ]
+        }
+        errors = idx.validate_tis(tis)
+        assert errors == []
+
+    def test_wildcard_reexport_skips_name_check(self, tmp_path: Path) -> None:
+        pkg = tmp_path / "pkg"
+        pkg.mkdir()
+        (pkg / "__init__.py").write_text("from pkg.models import *\n")
+        (pkg / "models.py").write_text("class Foo:\n    pass\n")
+        idx = WorkspaceSymbolIndex(sys_path_roots=[str(tmp_path)], repo_root=tmp_path)
+        tis = {
+            "target_artifacts": [
+                {
+                    "file_path": "x.py",
+                    "imports": [{"from": "pkg", "import": ["Foo", "Bar"]}],
+                    "interfaces": [],
+                }
+            ]
+        }
+        errors = idx.validate_tis(tis)
+        # Wildcard present — names not individually verifiable, no errors expected
+        assert errors == []
+
+    def test_is_external(self) -> None:
+        assert _is_external("fastapi") is True
+        assert _is_external("fastapi.routing") is True
+        assert _is_external("markup.models") is False
+        assert _is_external("os") is True
+
+
+# ── Track1Scaffolder ──────────────────────────────────────────────────────────
+
+class TestTrack1Scaffolder:
+    def _minimal_tis(self, file_path: str, interfaces: list) -> dict:
+        return {
+            "sprint_id": "WC-027",
+            "task_id": "WC027-01",
+            "target_artifacts": [
+                {
+                    "file_path": file_path,
+                    "imports": [
+                        {"from": "fastapi", "import": ["APIRouter"]},
+                    ],
+                    "interfaces": interfaces,
+                }
+            ],
+        }
+
+    def test_scaffold_produces_compilable_file(self, tmp_path: Path) -> None:
+        tis = self._minimal_tis(
+            "markup/router.py",
+            [
+                {
+                    "type": "function",
+                    "name": "derive_price",
+                    "decorators": ["router.post('/derive')"],
+                    "arguments": [],
+                    "return_type": "dict",
+                    "docstring": "Derive price.",
+                }
+            ],
+        )
+        scaffolder = Track1Scaffolder(tis, repo_root=tmp_path)
+        paths = scaffolder.scaffold_artifacts()
+        assert len(paths) == 1
+        content = paths[0].read_text()
+        compile(content, "test", "exec")  # must not raise
+
+    def test_router_emitted_when_route_decorator_present(self, tmp_path: Path) -> None:
+        tis = self._minimal_tis(
+            "markup/router.py",
+            [
+                {
+                    "type": "function",
+                    "name": "get_catalog",
+                    "decorators": ["router.get('/catalog')"],
+                    "arguments": [],
+                    "return_type": "list",
+                    "docstring": "",
+                }
+            ],
+        )
+        scaffolder = Track1Scaffolder(tis, repo_root=tmp_path)
+        paths = scaffolder.scaffold_artifacts()
+        content = paths[0].read_text()
+        assert "router = APIRouter()" in content
+
+    def test_no_router_when_no_route_decorators(self, tmp_path: Path) -> None:
+        tis = self._minimal_tis(
+            "markup/models.py",
+            [
+                {
+                    "type": "function",
+                    "name": "helper",
+                    "decorators": [],
+                    "arguments": [],
+                    "return_type": "None",
+                    "docstring": "",
+                }
+            ],
+        )
+        scaffolder = Track1Scaffolder(tis, repo_root=tmp_path)
+        paths = scaffolder.scaffold_artifacts()
+        content = paths[0].read_text()
+        assert "router = APIRouter()" not in content
+
+    def test_filler_markers_present_in_function_stub(self, tmp_path: Path) -> None:
+        tis = self._minimal_tis(
+            "markup/service.py",
+            [
+                {
+                    "type": "function",
+                    "name": "cost_floor",
+                    "decorators": [],
+                    "arguments": [{"name": "agent_type", "type": "str"}],
+                    "return_type": "int",
+                    "docstring": "Returns cost floor.",
+                }
+            ],
+        )
+        scaffolder = Track1Scaffolder(tis, repo_root=tmp_path)
+        paths = scaffolder.scaffold_artifacts()
+        content = paths[0].read_text()
+        assert "# [WAOOAW_LOGIC_FILLER_START]" in content
+        assert "# [WAOOAW_LOGIC_FILLER_END]" in content
+
+    def test_class_scaffold_with_fields(self, tmp_path: Path) -> None:
+        tis = {
+            "sprint_id": "WC-027",
+            "task_id": "WC027-01a",
+            "target_artifacts": [
+                {
+                    "file_path": "markup/models.py",
+                    "imports": [{"from": "pydantic", "import": ["BaseModel"]}],
+                    "interfaces": [
+                        {
+                            "type": "class",
+                            "name": "BundleProfile",
+                            "bases": ["BaseModel"],
+                            "fields": [
+                                {"name": "agent_type", "type": "str"},
+                                {"name": "cost_floor_paise", "type": "int", "default": "0"},
+                            ],
+                            "docstring": "Bundle pricing profile.",
+                        }
+                    ],
+                }
+            ],
+        }
+        scaffolder = Track1Scaffolder(tis, repo_root=tmp_path)
+        paths = scaffolder.scaffold_artifacts()
+        content = paths[0].read_text()
+        compile(content, "test", "exec")
+        assert "class BundleProfile(BaseModel):" in content
+        assert "agent_type: str" in content
+        assert "cost_floor_paise: int = 0" in content
+
+    def test_class_scaffold_no_fields_has_filler_markers(self, tmp_path: Path) -> None:
+        tis = {
+            "sprint_id": "WC-027",
+            "task_id": "WC027-01a",
+            "target_artifacts": [
+                {
+                    "file_path": "markup/models.py",
+                    "imports": [{"from": "pydantic", "import": ["BaseModel"]}],
+                    "interfaces": [
+                        {
+                            "type": "class",
+                            "name": "ThreadEntry",
+                            "bases": ["BaseModel"],
+                            "fields": [],
+                            "docstring": "",
+                        }
+                    ],
+                }
+            ],
+        }
+        scaffolder = Track1Scaffolder(tis, repo_root=tmp_path)
+        paths = scaffolder.scaffold_artifacts()
+        content = paths[0].read_text()
+        assert "# [WAOOAW_LOGIC_FILLER_START]" in content
+
+    def test_compile_gate_raises_on_bad_source(self) -> None:
+        with pytest.raises(Track1ScaffoldError):
+            _compile_gate("def bad(:\n    pass", "test.py")
+
+    def test_needs_router_true(self) -> None:
+        ifaces = [{"decorators": ["router.get('/x')"]}]
+        assert _needs_router(ifaces) is True
+
+    def test_needs_router_false(self) -> None:
+        ifaces = [{"decorators": ["staticmethod"]}]
+        assert _needs_router(ifaces) is False
+
+    def test_render_args_with_defaults(self) -> None:
+        args = [
+            {"name": "x", "type": "int"},
+            {"name": "y", "type": "str", "default": "'hello'"},
+        ]
+        result = _render_args(args)
+        assert result == "x: int, y: str = 'hello'"
+
+
+# ── Track2PolymorphicEngine ───────────────────────────────────────────────────
+
+class TestTrack2PolymorphicEngine:
+    def _make_service_file(self, tmp_path: Path) -> Path:
+        src = textwrap.dedent("""\
+            from __future__ import annotations
+
+            class BundleEngine:
+                @staticmethod
+                def cost_floor(agent_type: str, bundle_tier: str) -> int:
+                    \"\"\"Returns cost floor in paise.\"\"\"
+                    return 0
+
+                def derive_price(self, agent_type: str) -> int:
+                    return 100
+        """)
+        path = tmp_path / "bundle_engine.py"
+        path.write_text(src)
+        return path
+
+    def _make_test_file(self, tmp_path: Path) -> Path:
+        src = textwrap.dedent("""\
+            import pytest
+
+            def test_cost_floor():
+                assert True
+
+            def test_derive_price():
+                pass
+        """)
+        path = tmp_path / "test_bundle.py"
+        path.write_text(src)
+        return path
+
+    def test_find_class_method(self, tmp_path: Path) -> None:
+        path = self._make_service_file(tmp_path)
+        eng = Track2PolymorphicEngine(path)
+        node = eng.find_target_node("cost_floor", "BundleEngine")
+        assert node.name == "cost_floor"
+
+    def test_find_top_level_function(self, tmp_path: Path) -> None:
+        path = self._make_test_file(tmp_path)
+        eng = Track2PolymorphicEngine(path)
+        node = eng.find_target_node("test_cost_floor")
+        assert node.name == "test_cost_floor"
+
+    def test_find_raises_when_not_found(self, tmp_path: Path) -> None:
+        path = self._make_service_file(tmp_path)
+        eng = Track2PolymorphicEngine(path)
+        with pytest.raises(Track2SpliceError):
+            eng.find_target_node("nonexistent", "BundleEngine")
+
+    def test_extract_node_strips_decorators(self, tmp_path: Path) -> None:
+        path = self._make_service_file(tmp_path)
+        eng = Track2PolymorphicEngine(path)
+        result = eng.extract_node_for_llm("cost_floor", "BundleEngine")
+        assert "staticmethod" not in result
+        assert "def cost_floor" in result
+
+    def test_extract_node_does_not_permanently_remove_decorators(self, tmp_path: Path) -> None:
+        path = self._make_service_file(tmp_path)
+        eng = Track2PolymorphicEngine(path)
+        # Extract once — should not mutate the on-disk AST
+        eng.extract_node_for_llm("cost_floor", "BundleEngine")
+        # Reload and verify decorators are still present in source
+        content = path.read_text()
+        assert "@staticmethod" in content
+
+    def test_splice_method_with_new_logic(self, tmp_path: Path) -> None:
+        path = self._make_service_file(tmp_path)
+        eng = Track2PolymorphicEngine(path)
+        new_logic = textwrap.dedent("""\
+            def derive_price(self, agent_type: str) -> int:
+                return 999
+        """)
+        eng.splice_node_safely("derive_price", new_logic, "BundleEngine")
+        new_content = path.read_text()
+        compile(new_content, "test", "exec")
+        assert "return 999" in new_content
+
+    def test_splice_preserves_decorators(self, tmp_path: Path) -> None:
+        path = self._make_service_file(tmp_path)
+        eng = Track2PolymorphicEngine(path)
+        new_logic = textwrap.dedent("""\
+            def cost_floor(agent_type: str, bundle_tier: str) -> int:
+                return 500
+        """)
+        eng.splice_node_safely("cost_floor", new_logic, "BundleEngine")
+        content = path.read_text()
+        assert "@staticmethod" in content
+        assert "return 500" in content
+
+    def test_splice_top_level_function(self, tmp_path: Path) -> None:
+        path = self._make_test_file(tmp_path)
+        eng = Track2PolymorphicEngine(path)
+        new_logic = textwrap.dedent("""\
+            def test_cost_floor():
+                assert 1 + 1 == 2
+        """)
+        eng.splice_node_safely("test_cost_floor", new_logic)
+        content = path.read_text()
+        assert "assert 1 + 1 == 2" in content
+
+    def test_splice_rejects_signature_mutation(self, tmp_path: Path) -> None:
+        path = self._make_service_file(tmp_path)
+        eng = Track2PolymorphicEngine(path)
+        new_logic = textwrap.dedent("""\
+            def derive_price(self, agent_type: str, extra_arg: int) -> int:
+                return 0
+        """)
+        with pytest.raises(Track2SpliceError, match="mutated signature"):
+            eng.splice_node_safely(
+                "derive_price",
+                new_logic,
+                "BundleEngine",
+                locked_signature="def derive_price(self, agent_type: str) -> int:",
+            )
+
+    def test_splice_compile_gate_rejects_bad_logic(self, tmp_path: Path) -> None:
+        path = self._make_service_file(tmp_path)
+        eng = Track2PolymorphicEngine(path)
+        bad_logic = "def derive_price(self, agent_type: str) -> int:\n    return !!!"
+        with pytest.raises(Track2SpliceError, match="parse error|compile gate"):
+            eng.splice_node_safely("derive_price", bad_logic, "BundleEngine")
+
+    def test_splice_preserves_surrounding_methods(self, tmp_path: Path) -> None:
+        path = self._make_service_file(tmp_path)
+        eng = Track2PolymorphicEngine(path)
+        new_logic = textwrap.dedent("""\
+            def derive_price(self, agent_type: str) -> int:
+                return 42
+        """)
+        eng.splice_node_safely("derive_price", new_logic, "BundleEngine")
+        content = path.read_text()
+        # cost_floor method must still be present
+        assert "def cost_floor" in content
+
+    def test_signature_string(self) -> None:
+        src = "def f(x: int, y: str = 'a') -> bool:\n    return True\n"
+        tree = ast.parse(src)
+        node = tree.body[0]
+        sig = _signature_string(node)
+        # ast.unparse() omits spaces around = in keyword defaults
+        assert sig == "def f(x: int, y: str='a') -> bool:"
+
+
+# ── UDCPGroomingEngine ────────────────────────────────────────────────────────
+
+class TestUDCPGroomingEngine:
+    _WC027_01B_SCOPE = (
+        "`src/billing-engine/markup/router.py` — FastAPI router prefix `/pricing`: "
+        "`GET /thread-catalog` (delegates to thread_catalog.py), "
+        "`GET /bundle-cost-floor/{agent_type}/{bundle_tier}`, "
+        "`POST /validate` (422 body includes minimum_compliant_price_paise), "
+        "`POST /derive`; mount router in `src/billing-engine/main.py`"
+    )
+
+    def test_detect_track_greenfield_no_files(self, tmp_path: Path) -> None:
+        groom = UDCPGroomingEngine(repo_root=tmp_path)
+        assert groom.detect_track(self._WC027_01B_SCOPE) == "GREENFIELD"
+
+    def test_detect_track_differential_existing_file(self, tmp_path: Path) -> None:
+        (tmp_path / "src/billing-engine/markup").mkdir(parents=True)
+        (tmp_path / "src/billing-engine/markup/router.py").write_text("# existing")
+        groom = UDCPGroomingEngine(repo_root=tmp_path)
+        assert groom.detect_track(self._WC027_01B_SCOPE) in ("DIFFERENTIAL", "MIXED")
+
+    def test_generate_tis_contains_file_paths(self, tmp_path: Path) -> None:
+        groom = UDCPGroomingEngine(repo_root=tmp_path)
+        tis = groom.generate_tis("WC027-01b", self._WC027_01B_SCOPE, "WC-027")
+        file_paths = [a["file_path"] for a in tis["target_artifacts"]]
+        assert "src/billing-engine/markup/router.py" in file_paths
+
+    def test_generate_tis_detects_fastapi_imports(self, tmp_path: Path) -> None:
+        groom = UDCPGroomingEngine(repo_root=tmp_path)
+        tis = groom.generate_tis("WC027-01b", self._WC027_01B_SCOPE, "WC-027")
+        router_artifact = next(
+            a for a in tis["target_artifacts"]
+            if "router.py" in a["file_path"]
+        )
+        import_froms = [i["from"] for i in router_artifact["imports"]]
+        assert "fastapi" in import_froms
+
+    def test_generate_tis_detects_fastapi_endpoints(self, tmp_path: Path) -> None:
+        groom = UDCPGroomingEngine(repo_root=tmp_path)
+        tis = groom.generate_tis("WC027-01b", self._WC027_01B_SCOPE, "WC-027")
+        router_artifact = next(
+            a for a in tis["target_artifacts"]
+            if "router.py" in a["file_path"]
+        )
+        interface_names = [i.get("name") for i in router_artifact["interfaces"]]
+        # At least some endpoints detected
+        assert len(interface_names) > 0
+
+    def test_pydantic_hint_triggers_basemodel_import(self, tmp_path: Path) -> None:
+        scope = (
+            "`src/billing-engine/markup/models.py` — Pydantic: "
+            "`ThreadEntry`, `BundleProfile`, `PriceConfig`"
+        )
+        groom = UDCPGroomingEngine(repo_root=tmp_path)
+        tis = groom.generate_tis("WC027-01a", scope, "WC-027")
+        artifact = tis["target_artifacts"][0]
+        import_froms = [i["from"] for i in artifact["imports"]]
+        assert "pydantic" in import_froms
+
+    def test_path_to_func_name(self) -> None:
+        assert _path_to_func_name("get", "/thread-catalog") == "get_thread_catalog"
+        assert _path_to_func_name("post", "/validate") == "post_validate"
+        assert _path_to_func_name("get", "/bundle-cost-floor/{agent_type}/{bundle_tier}") == (
+            "get_bundle_cost_floor_agent_type_bundle_tier"
+        )
+
+    def test_tis_structure_matches_schema(self, tmp_path: Path) -> None:
+        groom = UDCPGroomingEngine(repo_root=tmp_path)
+        tis = groom.generate_tis("WC027-01b", self._WC027_01B_SCOPE, "WC-027")
+        assert tis["pipeline_track"] == "GREENFIELD"
+        assert tis["sprint_id"] == "WC-027"
+        assert tis["task_id"] == "WC027-01b"
+        assert isinstance(tis["target_artifacts"], list)
+
+    def test_skeleton_cross_reference(self, tmp_path: Path) -> None:
+        skel_dir = tmp_path / "src/billing-engine/skeleton"
+        skel_dir.mkdir(parents=True)
+        skel_path = skel_dir / "wbe_interfaces.py"
+        skel_path.write_text(
+            "class IMarkupEngine:\n"
+            "    def derive_price(self): ...\n"
+        )
+        scope = (
+            "`src/billing-engine/markup/bundle_engine.py` — "
+            "`BundleEngine` implementing `IMarkupEngine`"
+        )
+        groom = UDCPGroomingEngine(skeleton_path=skel_path, repo_root=tmp_path)
+        tis = groom.generate_tis("WC027-01a", scope, "WC-027")
+        artifact = tis["target_artifacts"][0]
+        import_froms = [i["from"] for i in artifact["imports"]]
+        assert "skeleton.wbe_interfaces" in import_froms
+
+    def test_generate_tmd_structure(self, tmp_path: Path) -> None:
+        skel_dir = tmp_path / "src/billing-engine/skeleton"
+        skel_dir.mkdir(parents=True)
+        skel_path = skel_dir / "wbe_interfaces.py"
+        skel_path.write_text(
+            "class IMarkupEngine:\n"
+            "    def derive_price(self): ...\n"
+            "    def validate_price(self): ...\n"
+        )
+        scope = (
+            "`src/billing-engine/markup/bundle_engine.py` — "
+            "`BundleEngine` implementing `IMarkupEngine`"
+        )
+        groom = UDCPGroomingEngine(skeleton_path=skel_path, repo_root=tmp_path)
+        tmd = groom.generate_tmd("WC027-01a", scope, "WC-027")
+        assert tmd["pipeline_track"] == "DIFFERENTIAL"
+        assert len(tmd["impacted_artifacts"]) == 1
+        artifact = tmd["impacted_artifacts"][0]
+        assert artifact["file_path"] == "src/billing-engine/markup/bundle_engine.py"
+        assert "derive_price" in artifact["target_methods"]
+
+    def test_generate_tmd_no_skeleton(self, tmp_path: Path) -> None:
+        scope = "`src/billing-engine/markup/bundle_engine.py` — fix bug"
+        groom = UDCPGroomingEngine(skeleton_path=None, repo_root=tmp_path)
+        tmd = groom.generate_tmd("WC027-01a", scope, "WC-027")
+        assert tmd["pipeline_track"] == "DIFFERENTIAL"
+        assert tmd["impacted_artifacts"][0]["target_methods"] == []
+
+    def test_detect_track_mixed(self, tmp_path: Path) -> None:
+        (tmp_path / "src/billing-engine/markup").mkdir(parents=True)
+        (tmp_path / "src/billing-engine/markup/router.py").write_text("# existing")
+        scope = (
+            "`src/billing-engine/markup/router.py` and "
+            "`src/billing-engine/markup/models.py`"
+        )
+        groom = UDCPGroomingEngine(repo_root=tmp_path)
+        assert groom.detect_track(scope) == "MIXED"
+
+    def test_detect_track_no_files_in_scope(self, tmp_path: Path) -> None:
+        groom = UDCPGroomingEngine(repo_root=tmp_path)
+        assert groom.detect_track("No file paths here") == "GREENFIELD"
+
+    def test_resolve_skeleton_types_no_match(self, tmp_path: Path) -> None:
+        skel_dir = tmp_path / "src/billing-engine/skeleton"
+        skel_dir.mkdir(parents=True)
+        skel_path = skel_dir / "wbe_interfaces.py"
+        skel_path.write_text("class IMarkupEngine:\n    pass\n")
+        scope = "`src/billing-engine/markup/models.py` — create Pydantic models"
+        groom = UDCPGroomingEngine(skeleton_path=skel_path, repo_root=tmp_path)
+        tis = groom.generate_tis("WC027-01a", scope, "WC-027")
+        # No skeleton classes mentioned in scope — no skeleton import
+        import_froms = [
+            i["from"] for a in tis["target_artifacts"] for i in a["imports"]
+        ]
+        assert "skeleton.wbe_interfaces" not in import_froms
+
+    def test_resolve_skeleton_path_outside_billing_engine(self, tmp_path: Path) -> None:
+        # Skeleton in a non-standard location → ValueError caught → returns []
+        skel_path = tmp_path / "other/wbe_interfaces.py"
+        skel_path.parent.mkdir(parents=True)
+        skel_path.write_text("class IFoo:\n    pass\n")
+        scope = "`src/billing-engine/markup/models.py` — `IFoo`"
+        groom = UDCPGroomingEngine(skeleton_path=skel_path, repo_root=tmp_path)
+        tis = groom.generate_tis("T01", scope, "WC-027")
+        # Should not raise; skeleton cross-reference skipped gracefully
+        assert isinstance(tis, dict)
+
+
+# ── Additional PTR coverage ───────────────────────────────────────────────────
+
+class TestWorkspaceSymbolIndexExtra:
+    def test_index_skips_syntax_error_files(self, tmp_path: Path) -> None:
+        pkg = tmp_path / "pkg"
+        pkg.mkdir()
+        (pkg / "bad.py").write_text("def (:\n    pass\n")  # invalid syntax
+        idx = WorkspaceSymbolIndex(sys_path_roots=[str(tmp_path)], repo_root=tmp_path)
+        result = idx.index_workspace()
+        # bad.py should be silently skipped
+        assert "pkg.bad" not in result
+
+    def test_index_handles_annotated_assign(self, tmp_path: Path) -> None:
+        pkg = tmp_path / "pkg"
+        pkg.mkdir()
+        (pkg / "consts.py").write_text("MY_CONST: int = 42\n")
+        idx = WorkspaceSymbolIndex(sys_path_roots=[str(tmp_path)], repo_root=tmp_path)
+        result = idx.index_workspace()
+        assert "MY_CONST" in result["pkg.consts"]
+
+    def test_index_handles_plain_assign(self, tmp_path: Path) -> None:
+        pkg = tmp_path / "pkg"
+        pkg.mkdir()
+        (pkg / "consts.py").write_text("MY_CONST = 42\n")
+        idx = WorkspaceSymbolIndex(sys_path_roots=[str(tmp_path)], repo_root=tmp_path)
+        result = idx.index_workspace()
+        assert "MY_CONST" in result["pkg.consts"]
+
+    def test_index_handles_async_function(self, tmp_path: Path) -> None:
+        pkg = tmp_path / "pkg"
+        pkg.mkdir()
+        (pkg / "service.py").write_text("async def my_service():\n    pass\n")
+        idx = WorkspaceSymbolIndex(sys_path_roots=[str(tmp_path)], repo_root=tmp_path)
+        result = idx.index_workspace()
+        assert "my_service" in result["pkg.service"]
+
+    def test_validate_tis_auto_indexes_when_empty(self, tmp_path: Path) -> None:
+        pkg = tmp_path / "markup"
+        pkg.mkdir()
+        (pkg / "models.py").write_text("class Foo:\n    pass\n")
+        idx = WorkspaceSymbolIndex(sys_path_roots=[str(tmp_path)], repo_root=tmp_path)
+        # Don't call index_workspace() first — validate_tis should auto-build it
+        tis = {
+            "target_artifacts": [
+                {
+                    "file_path": "x.py",
+                    "imports": [{"from": "markup.models", "import": ["Foo"]}],
+                    "interfaces": [],
+                }
+            ]
+        }
+        errors = idx.validate_tis(tis)
+        assert errors == []
+
+    def test_file_to_module_string_init(self, tmp_path: Path) -> None:
+        pkg = tmp_path / "mypkg"
+        pkg.mkdir()
+        (pkg / "__init__.py").write_text("")
+        idx = WorkspaceSymbolIndex(sys_path_roots=[str(tmp_path)], repo_root=tmp_path)
+        result = idx._file_to_module_string(pkg / "__init__.py")
+        assert result == "mypkg"
+
+    def test_file_to_module_string_not_in_any_root(self, tmp_path: Path) -> None:
+        idx = WorkspaceSymbolIndex(sys_path_roots=[str(tmp_path / "nonexistent")], repo_root=tmp_path)
+        result = idx._file_to_module_string(tmp_path / "some.py")
+        assert result is None

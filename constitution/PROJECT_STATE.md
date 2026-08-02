@@ -1,6 +1,28 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-08-02 (WC-035 Pipeline Stabilization S1-S4 — COMPLETE)
+**Last Updated:** 2026-08-02 (WC-036 UDCP Engine Implementation — IN PROGRESS)
+
+---
+
+## SESSION RECORD — 2026-08-02 (WC-036 UDCP PIPELINE ENGINE — IN PROGRESS)
+
+### What Was Built
+
+| Task | File | Output | Commit | Status |
+|---|---|---|---|---|
+| WC036-00a | `constitution/PROJECT_STATE.md` | `autonomous_halt: true`, `sprint_status: BLOCKED_PIPELINE_REBUILD` — no more runs on old pipeline | `f4914a0` | ✅ |
+| WC036-00b | `work-contracts/WC-036-udcp-pipeline-engine.md` | 6-task UDCP implementation WC, FA-039 required | `f4914a0` | ✅ |
+| WC036-00c | `scripts/magic_llm/pipeline.py` | Remove WC035-03 unconditional Sonnet gate (`context > 40k`) — D1 root cause of ₹232 burn | `f4914a0` | ✅ |
+| WC036-01 | `scripts/runner/ptr_validation_gate.py` | `WorkspaceSymbolIndex` — AST symbol extractor, re-export resolution, PTR validation gate | pending | ✅ |
+| WC036-02 | `scripts/runner/track1_scaffolder.py` | `Track1Scaffolder` — conditional APIRouter, LOGIC_FILLER stubs, class/field scaffold, compile gate | pending | ✅ |
+| WC036-03 | `scripts/runner/track2_polymorphic_engine.py` | `Track2PolymorphicEngine` — try/finally decorator guard, signature lock, splice with compile gate | pending | ✅ |
+| WC036-04 | `scripts/runner/udcp_grooming_engine.py` | `UDCPGroomingEngine` — LLM-free TIS/TMD from WC markdown, skeleton cross-reference | pending | ✅ |
+| WC036-05 | `scripts/runner/udcp_orchestrator.py` | `UDCPOrchestrator` — Track 1/2 orchestration, logic-fill LLM integration | pending | ✅ |
+| WC036-06 | `tests/pipeline/test_udcp_engines.py` | 52 tests, ≥90% coverage on all 4 engine files | pending | ✅ |
+| WC036-int | `scripts/runner/task_executor.py` | `execute_with_udcp()` entry point — UDCP route for python-stack tasks | pending | ✅ |
+
+### Authorization
+FA-039 granted by Yogesh Khandge 2026-08-02 (verbal "authorized please proceed")
 
 ---
 

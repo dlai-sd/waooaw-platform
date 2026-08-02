@@ -1,0 +1,373 @@
+# Implements: WC-036 — WC036-05
+# constitutional_basis: ADR-039 §5, C-059, C-077, C-082
+from __future__ import annotations
+
+import re
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any
+
+from runner.constants import REPO_ROOT
+from runner.ptr_validation_gate import WorkspaceSymbolIndex
+from runner.track1_scaffolder import Track1Scaffolder, Track1ScaffoldError
+from runner.track2_polymorphic_engine import Track2PolymorphicEngine, Track2SpliceError
+from runner.udcp_grooming_engine import UDCPGroomingEngine
+
+# Filler marker pattern used in Track 1 scaffolds
+_FILLER_START = "# [WAOOAW_LOGIC_FILLER_START]"
+_FILLER_END = "# [WAOOAW_LOGIC_FILLER_END]"
+
+# Track 2 LLM response marker
+_FUNC_BLOCK_RE = re.compile(
+    r"```python\s*((?:async\s+)?def\s.+?)```", re.DOTALL
+)
+
+
+@dataclass
+class TaskResult:
+    success: bool
+    error_type: str | None = None
+    error_snippet: str | None = None
+    attempts: int = 1
+    track: str = "UNKNOWN"
+    files_written: list[str] = field(default_factory=list)
+
+
+class UDCPOrchestrator:
+    """
+    Main UDCP entry point called by task_executor.py for Python-stack tasks.
+
+    Flow:
+      grooming (LLM-free) → PTR gate → Track 1 scaffold OR Track 2 extract
+      → logic-fill LLM → Track 1 file write OR Track 2 splice
+      → compile gate → TaskResult
+
+    Replaces direct full-file MagicLLM generation (ADR-039 supersedes ADR-030 §3).
+    ADR-030 §1-2 (model selection, provider strategy) remain in force - the LLM is
+    still called for the logic-fill step.
+    """
+
+    def __init__(
+        self,
+        skeleton_path: Path | None = None,
+        sys_path_roots: list[str] | None = None,
+        repo_root: Path | None = None,
+    ) -> None:
+        self.repo_root = repo_root or REPO_ROOT
+        self.groom = UDCPGroomingEngine(skeleton_path=skeleton_path, repo_root=self.repo_root)
+        self.ptr = WorkspaceSymbolIndex(sys_path_roots=sys_path_roots, repo_root=self.repo_root)
+
+    # ── Public API ────────────────────────────────────────────────────────────
+
+    def execute_task(
+        self,
+        task_id: str,
+        scope_text: str,
+        sprint_id: str = "",
+        model_hint: str = "reasoning",
+        max_tokens: int = 8000,
+    ) -> TaskResult:
+        """
+        Executes one WC task through the UDCP pipeline.
+        Returns TaskResult — caller decides commit/flag_spec_gap based on success.
+        """
+        track = self.groom.detect_track(scope_text)
+
+        if track in ("GREENFIELD", "MIXED"):
+            return self._run_track1(task_id, scope_text, sprint_id, model_hint, max_tokens)
+        else:
+            return self._run_track2(task_id, scope_text, sprint_id, model_hint, max_tokens)
+
+    # ── Track 1: Greenfield ───────────────────────────────────────────────────
+
+    def _run_track1(
+        self,
+        task_id: str,
+        scope_text: str,
+        sprint_id: str,
+        model_hint: str,
+        max_tokens: int,
+    ) -> TaskResult:
+        # 1. Generate TIS
+        try:
+            tis = self.groom.generate_tis(task_id, scope_text, sprint_id)
+        except Exception as exc:
+            return TaskResult(
+                success=False, error_type="GROOMING_ERROR",
+                error_snippet=str(exc)[:300], track="GREENFIELD",
+            )
+
+        # 2. PTR gate — reject invented imports before scaffold
+        self.ptr.index_workspace()
+        ptr_errors = self.ptr.validate_tis(tis)
+        if ptr_errors:
+            return TaskResult(
+                success=False, error_type="PTR_GATE_FAILURE",
+                error_snippet="; ".join(ptr_errors[:5]), track="GREENFIELD",
+            )
+
+        # 3. Scaffold compilable stub files
+        try:
+            scaffolder = Track1Scaffolder(tis, repo_root=self.repo_root)
+            written_paths = scaffolder.scaffold_artifacts()
+        except Track1ScaffoldError as exc:
+            return TaskResult(
+                success=False, error_type="SCAFFOLD_ERROR",
+                error_snippet=str(exc)[:300], track="GREENFIELD",
+            )
+
+        # 4. Logic-fill LLM call for each scaffolded file
+        filled_paths: list[str] = []
+        for path in written_paths:
+            result = self._fill_track1_logic(
+                task_id, path, scope_text, model_hint, max_tokens
+            )
+            if not result.success:
+                return result
+            filled_paths.extend(result.files_written)
+
+        return TaskResult(
+            success=True, track="GREENFIELD",
+            files_written=filled_paths,
+        )
+
+    def _fill_track1_logic(
+        self,
+        task_id: str,
+        scaffold_path: Path,
+        scope_text: str,
+        model_hint: str,
+        max_tokens: int,
+    ) -> TaskResult:
+        """Send scaffolded file to LLM and ask it to fill in LOGIC_FILLER sections."""
+        try:
+            from runner.llm_codegen import call_llm_via_magiclm, parse_llm_files
+        except ImportError:
+            return TaskResult(
+                success=False, error_type="IMPORT_ERROR",
+                error_snippet="call_llm_via_magiclm not available", track="GREENFIELD",
+            )
+
+        scaffold_content = scaffold_path.read_text(encoding="utf-8")
+        rel_path = str(scaffold_path.relative_to(self.repo_root))
+
+        prompt = (
+            f"UDCP Track 1 — Logic Fill Only\n\n"
+            f"The scaffold below has been pre-generated with correct imports, signatures, "
+            f"and class structure. Your ONLY job is to replace the logic between "
+            f"[WAOOAW_LOGIC_FILLER_START] and [WAOOAW_LOGIC_FILLER_END] markers "
+            f"with working implementation.\n\n"
+            f"RULES:\n"
+            f"- Do NOT change any imports\n"
+            f"- Do NOT change any function/class signatures\n"
+            f"- Do NOT add or remove functions/classes\n"
+            f"- Replace 'pass' between the markers with real logic\n\n"
+            f"Task context:\n{scope_text[:2000]}\n\n"
+            f"Scaffold to fill:\n```python\n{scaffold_content}\n```\n\n"
+            f"Return the complete filled file in a single "
+            f"<file path=\"{rel_path}\"> block."
+        )
+
+        response = call_llm_via_magiclm(
+            task_id=task_id,
+            task_description=f"Logic fill for {rel_path}",
+            spec_content=prompt,
+            constitutional_check="C-082 (compile gate enforced by UDCP orchestrator)",
+            model_hint=model_hint,
+            max_tokens=max_tokens,
+            attempt=1,
+        )
+
+        if not response:
+            return TaskResult(
+                success=False, error_type="LLM_NO_RESPONSE",
+                error_snippet="call_llm_via_magiclm returned None", track="GREENFIELD",
+            )
+
+        files = parse_llm_files(response)
+        if not files:
+            return TaskResult(
+                success=False, error_type="NO_FILE_BLOCKS",
+                error_snippet="LLM response contained no <file> blocks", track="GREENFIELD",
+            )
+
+        # Write and compile-gate the filled file
+        for fpath, content in files.items():
+            try:
+                compile(content, fpath, "exec")
+            except SyntaxError as exc:
+                return TaskResult(
+                    success=False, error_type="COMPILE_GATE_FAILURE",
+                    error_snippet=f"{fpath}: {exc}", track="GREENFIELD",
+                )
+            (self.repo_root / fpath).write_text(content, encoding="utf-8")
+
+        return TaskResult(
+            success=True, track="GREENFIELD",
+            files_written=list(files.keys()),
+        )
+
+    # ── Track 2: Differential ─────────────────────────────────────────────────
+
+    def _run_track2(
+        self,
+        task_id: str,
+        scope_text: str,
+        sprint_id: str,
+        model_hint: str,
+        max_tokens: int,
+    ) -> TaskResult:
+        try:
+            tmd = self.groom.generate_tmd(task_id, scope_text, sprint_id)
+        except Exception as exc:
+            return TaskResult(
+                success=False, error_type="GROOMING_ERROR",
+                error_snippet=str(exc)[:300], track="DIFFERENTIAL",
+            )
+
+        written: list[str] = []
+        for artifact in tmd.get("impacted_artifacts", []):
+            result = self._patch_artifact(
+                task_id, artifact, scope_text, model_hint, max_tokens
+            )
+            if not result.success:
+                return result
+            written.extend(result.files_written)
+
+        return TaskResult(success=True, track="DIFFERENTIAL", files_written=written)
+
+    def _patch_artifact(
+        self,
+        task_id: str,
+        artifact: dict[str, Any],
+        scope_text: str,
+        model_hint: str,
+        max_tokens: int,
+    ) -> TaskResult:
+        fp = self.repo_root / artifact["file_path"]
+        if not fp.is_file():
+            return TaskResult(
+                success=False, error_type="FILE_NOT_FOUND",
+                error_snippet=f"Track 2 target not found: {artifact['file_path']}",
+                track="DIFFERENTIAL",
+            )
+
+        engine = Track2PolymorphicEngine(fp)
+        class_name: str | None = artifact.get("target_class")
+        methods: list[str] = artifact.get("target_methods", [])
+
+        if not methods:
+            return TaskResult(
+                success=False, error_type="NO_TARGET_METHODS",
+                error_snippet=f"No methods identified for {artifact['file_path']}",
+                track="DIFFERENTIAL",
+            )
+
+        written: list[str] = []
+        for method_name in methods:
+            result = self._patch_method(
+                task_id, engine, method_name, class_name,
+                scope_text, model_hint, max_tokens,
+            )
+            if not result.success:
+                return result
+            written.extend(result.files_written)
+            engine._reload()  # reload after each splice
+
+        return TaskResult(success=True, track="DIFFERENTIAL", files_written=written)
+
+    def _patch_method(
+        self,
+        task_id: str,
+        engine: Track2PolymorphicEngine,
+        method_name: str,
+        class_name: str | None,
+        scope_text: str,
+        model_hint: str,
+        max_tokens: int,
+    ) -> TaskResult:
+        try:
+            from runner.llm_codegen import call_llm_via_magiclm
+        except ImportError:
+            return TaskResult(
+                success=False, error_type="IMPORT_ERROR",
+                error_snippet="call_llm_via_magiclm not available", track="DIFFERENTIAL",
+            )
+
+        try:
+            node_source = engine.extract_node_for_llm(method_name, class_name)
+        except Track2SpliceError as exc:
+            return TaskResult(
+                success=False, error_type="EXTRACTION_ERROR",
+                error_snippet=str(exc)[:300], track="DIFFERENTIAL",
+            )
+
+        target_label = f"{class_name}.{method_name}" if class_name else method_name
+        prompt = (
+            f"UDCP Track 2 — Method Logic Implementation\n\n"
+            f"Implement the body of '{target_label}'. "
+            f"Return ONLY the complete function definition "
+            f"(the def line + body — no class wrapper, no imports, no decorators).\n\n"
+            f"Task context:\n{scope_text[:2000]}\n\n"
+            f"Current stub:\n```python\n{node_source}\n```\n\n"
+            f"Return the filled function wrapped in triple backticks:\n"
+            f"```python\n"
+            f"def {method_name}(...):\n"
+            f"    # your implementation\n"
+            f"```"
+        )
+
+        response = call_llm_via_magiclm(
+            task_id=task_id,
+            task_description=f"Track 2 logic fill for {target_label}",
+            spec_content=prompt,
+            constitutional_check="C-082 (compile gate enforced by splice_node_safely)",
+            model_hint=model_hint,
+            max_tokens=max_tokens,
+            attempt=1,
+        )
+
+        if not response:
+            return TaskResult(
+                success=False, error_type="LLM_NO_RESPONSE",
+                error_snippet=f"No response for {target_label}", track="DIFFERENTIAL",
+            )
+
+        new_logic = _extract_function_block(response)
+        if not new_logic:
+            return TaskResult(
+                success=False, error_type="NO_FUNCTION_BLOCK",
+                error_snippet=f"Could not parse function block from LLM response for {target_label}",
+                track="DIFFERENTIAL",
+            )
+
+        try:
+            engine.splice_node_safely(method_name, new_logic, class_name)
+        except Track2SpliceError as exc:
+            return TaskResult(
+                success=False, error_type="SPLICE_ERROR",
+                error_snippet=str(exc)[:300], track="DIFFERENTIAL",
+            )
+
+        return TaskResult(
+            success=True, track="DIFFERENTIAL",
+            files_written=[str(engine.file_path.relative_to(self.repo_root))],
+        )
+
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
+def _extract_function_block(response: str) -> str | None:
+    """Extract the first ```python ... ``` block containing a function definition."""
+    match = _FUNC_BLOCK_RE.search(response)
+    if match:
+        return match.group(1).strip()
+    # Fallback: look for bare 'def' line in response
+    lines = response.splitlines()
+    start = next(
+        (i for i, ln in enumerate(lines) if re.match(r"(?:async\s+)?def\s+\w+", ln.strip())),
+        None,
+    )
+    if start is None:
+        return None
+    return "\n".join(lines[start:]).strip()

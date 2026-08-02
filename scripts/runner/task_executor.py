@@ -1,9 +1,10 @@
 # Implements: scripts/runner/task_executor.py
-# constitutional_basis: ADR-030, C-059, C-065, C-066, C-076, C-077, C-082, C-084
+# constitutional_basis: ADR-030, ADR-039, C-059, C-065, C-066, C-076, C-077, C-082, C-084
 # ib_item: IB-020
 """
 execute_with_llm() — 3-attempt retry loop with validation, symbol-level patching,
                      and Retry Advisor diagnostic escalation.
+execute_with_udcp() — UDCP orchestrator entry point for Python-stack tasks (ADR-039).
 flag_spec_gap()    — halt task and create GitHub Issue for EA/SA/Founder review.
 """
 from __future__ import annotations
@@ -356,3 +357,61 @@ def flag_spec_gap(
     else:
         print(f"  🔴 SPEC GAP — task HALTED (no GitHub token for issue creation)")
         print(f"     Gap: {gap_description}")
+
+
+def execute_with_udcp(
+    task_id: str,
+    scope_text: str,
+    sprint_id: str = "",
+    model_hint: str = "reasoning",
+    max_tokens: int = 8000,
+) -> bool:
+    """
+    UDCP orchestrator entry point for Python-stack tasks (ADR-039).
+    Routes through WorkspaceSymbolIndex → Track 1/2 scaffold → logic-fill LLM.
+    Replaces direct full-file MagicLLM generation for python-stack tasks.
+
+    constitutional_basis: ADR-039, C-059, C-077, C-082
+    ib_item: IB-009
+    """
+    from runner.udcp_orchestrator import UDCPOrchestrator
+
+    orchestrator = UDCPOrchestrator()
+    result = orchestrator.execute_task(
+        task_id=task_id,
+        scope_text=scope_text,
+        sprint_id=sprint_id,
+        model_hint=model_hint,
+        max_tokens=max_tokens,
+    )
+
+    if result.success:
+        written = result.files_written
+        if written:
+            git(["add", *written], check=False)
+            diff = git(["diff", "--cached", "--quiet"], check=False)
+            if diff.returncode != 0:
+                git(["commit", "-m",
+                     f"feat: {task_id} — UDCP {result.track} track\n\n"
+                     f"IB: IB-009\nConstitutional: C-059, C-073, C-076, ADR-039\n"
+                     f"Files: {', '.join(written[:3])}"])
+        print(f"  ✅ {task_id} complete via UDCP {result.track} ({len(written)} files)")
+        _MONITOR_SIGNAL["task_results"][task_id] = {
+            "result": "SUCCESS", "error_type": None,
+            "build_error_snippet": None, "attempts": result.attempts, "spec_gap_issue": None,
+        }
+        return True
+
+    print(f"  ❌ {task_id} UDCP failure: {result.error_type} — {result.error_snippet}")
+    _MONITOR_SIGNAL["task_results"][task_id] = {
+        "result": "UDCP_FAILURE", "error_type": result.error_type,
+        "build_error_snippet": result.error_snippet, "attempts": result.attempts,
+        "spec_gap_issue": None,
+    }
+    flag_spec_gap(
+        task_id=task_id,
+        gap_description=f"UDCP {result.error_type}: {result.error_snippet}",
+        affected_spec=task_id,
+        constitutional_basis="ADR-039 (UDCP pipeline), C-082 (Build Validation)",
+    )
+    return False
