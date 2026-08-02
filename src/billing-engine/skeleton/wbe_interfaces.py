@@ -59,16 +59,21 @@ class IMarkupEngine(ABC):
     """
 
     @abstractmethod
-    def derive_bundle_cost_floor(self, agent_type: str, bundle_tier: str) -> int:
-        # Returns: cost floor in INR paise
-        # Layer 2: Σ(marked_up_thread_cost × ration) + infra_share
+    def cost_floor(self, agent_type: str, bundle_tier: str) -> int:
+        # Returns: cost_floor_paise from bundle_profiles (DB read, not recomputed)
+        ...
+
+    @abstractmethod
+    def derive_price(self, agent_type: str, bundle_tier: str,
+                     target_margin_pct: float | None = None) -> int:
+        # Formula: int(cost_floor / (1 - target_margin_pct / 100))
+        # Uses bundle_profiles.minimum_margin_pct when target_margin_pct is None
         ...
 
     @abstractmethod
     def validate_price(self, agent_type: str, bundle_tier: str,
-                       proposed_price_paise: int) -> PriceValidation:
-        # C-089: raises BelowConstitutionalFloorError if below min margin
-        # Logs to institutional.pricing_floor_log regardless of outcome
+                       proposed_price_paise: int) -> "PriceValidation":
+        # C-089: logs to pricing_floor_log on BOTH APPROVED and REJECTED outcomes
         ...
 
 
@@ -109,8 +114,10 @@ class RenewalResult:
 
 @dataclass(frozen=True)
 class PriceValidation:
-    valid: bool; cost_floor_paise: int; margin_pct: float
-    constitutional_minimum_margin_pct: float; below_floor: bool
+    outcome: str                         # "APPROVED" | "REJECTED"
+    cost_floor_paise: int
+    minimum_compliant_price_paise: int   # int(floor / (1 - min_margin/100))
+    proposed_price_paise: int
 
 @dataclass(frozen=True)
 class DepletionProjection:
