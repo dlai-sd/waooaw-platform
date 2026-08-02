@@ -153,7 +153,110 @@ See also `scripts/build_sprint_index.py` — `TASK_CONTEXT_MAP` provides spec co
 
 ---
 
-## Amendment 1 — Sub-Task Decomposition Protocol (2026-07-24)
+## Amendment 2 — Dynamic Model Upgrade + Framework-Managed Compliance Headers (2026-08-02)
+
+**Authority:** C-077 (Dev Tooling Cost Ceiling — model upgrade must stay within ₹5,000/month),
+  C-082 (Build Validation — quality over cost when retry capacity is exhausted),
+  C-059 (Traceability — compliance headers must be unconditionally present),
+  C-069 (Self-Improvement — pipeline must escalate intelligently, not statically)
+**IB Reference:** IB-009 (Foundation Implementation — pipeline stability)
+**Work Contract:** WC-035
+
+### The gap this amendment closes
+
+External pipeline audit identified two deterministic failure modes not covered by Amendment 1:
+
+**Gap A — Context pressure below Haiku cognitive threshold (~40k chars):**
+`auto`-tier tasks (model_hint: auto, assigned Haiku by complexity scoring) can accumulate context
+beyond Haiku's reliable structural compliance zone, causing format violations, dropped annotations,
+or invalid XML — without triggering the complexity-based Sonnet upgrade (which requires score ≥ 80).
+
+**Gap B — Compliance header dependency on LLM output:**
+The C-059/C-073 header (`# Implements: ... §... / # Constitutional basis: C-NNN`) is currently
+requested via the LLM prompt. Under context pressure or retry state, the model drops or malforms it.
+This causes CCT-TR-01 failures that are not caused by logic errors — they are caused by prompt
+compliance degradation.
+
+### Decision A — Dynamic Model Upgrade Protocol
+
+When `_select_model()` selects Haiku for an `auto`-tier task, apply this upgrade gate before
+returning:
+
+```
+UPGRADE CONDITION (either triggers upgrade from Haiku → Sonnet):
+  1. context_char_count > 40_000         (context pressure threshold)
+  2. attempt_index >= 2 AND context_char_count > 20_000  (retry exhaustion + non-trivial context)
+
+Rationale for condition 2 constraint (>20k chars):
+  attempt_index >= 2 alone would upgrade trivial tasks (<20k context) to Sonnet.
+  Trivial failures are caused by spec gaps or policy errors, not model capability.
+  Spending Sonnet on them wastes budget without fixing the root cause.
+  20k chars = minimum context of a non-trivial task (models + router + conftest).
+```
+
+**C-077 cost documentation:**
+- Context > 40k chars: Sonnet upgrade fires on attempt 1. Est. cost: ₹15/upgrade. Frequency: 1–2
+  tasks per sprint when context accumulates (prior task output + spec + conftest). Extra per WC: ₹30.
+- Retry exhaustion path: fires only when Haiku failed twice. Est. frequency: ≤1 per sprint. Extra: ₹15.
+- Total extra per WC: ≤₹45. WBE-S1→S8 combined extra: ≤₹360. Cumulative total stays within ₹5,000/month.
+
+**Implementation target:** `scripts/magic_llm/pipeline.py` → `_select_model()`
+
+The method signature is amended to accept an optional `context_char_count: int = 0` and
+`attempt_index: int = 0`. The calling site (MagicLLM.invoke) passes these from the request:
+`context_char_count = sum(len(s) for s in request.context_sections)`,
+`attempt_index = request.cascade_level` (cascade_level 0 = attempt 1; treat ≥2 as attempt_index ≥ 2).
+
+### Decision B — Framework-Managed Compliance Headers
+
+C-059/C-073 headers are REMOVED from the LLM's generation responsibility and become a framework
+obligation:
+
+**Before this amendment:**
+```
+LLM prompt instructs: "Every file MUST begin with # Implements: ... § ..."
+→ LLM outputs the header as part of its response
+→ Under context pressure, header is dropped or malformed
+→ CCT-TR-01 fails
+```
+
+**After this amendment:**
+```
+LLM prompt NO LONGER instructs the header requirement (removed from preamble)
+→ LLM outputs code content only
+→ File writer (runner/llm_codegen.py) strips any LLM-generated header lines that start
+  with "# Implements:" or "# Constitutional basis:" (de-dup guard)
+→ File writer prepends the authoritative header from task metadata:
+    header = f"# Implements: {task.spec_path} §{task.section}\n"
+              f"# Constitutional basis: {task.constitutional_claim}\n"
+→ CCT-TR-01 always passes — header is framework-injected, never LLM-dropped
+```
+
+**Constitutional compliance:** This strengthens C-059 — headers are now unconditional. The LLM is
+relieved of a structural responsibility it was unreliable about. The framework holds the obligation.
+
+**CCT impact:** CCT-TR-01 should now pass at 100% rate. If `spec_path` or `constitutional_claim`
+is missing from task metadata → framework logs a warning and injects a placeholder so the file
+is not rejected but the gap is surfaced.
+
+**Implementation target:** `scripts/runner/llm_codegen.py` → `_write_generated_files()`
+
+**What does NOT change:**
+- The LLM's content generation obligation for code correctness, test coverage, constitutional logic
+- `ALLOWED_WRITE_ROOTS` boundary enforcement
+- Retry loop structure (still 3 attempts)
+- model_hint: `reasoning` → always Sonnet (no change — Amendment 2 only affects `auto`-tier)
+
+### Backward Compatibility
+
+Tasks with `model_hint: reasoning` are unaffected — they already use Sonnet unconditionally.
+Tasks with `model_hint: none` are unaffected — no LLM call at all.
+Only `model_hint: auto` tasks may experience Haiku → Sonnet upgrade under this amendment.
+
+The amendment is activated by WC-035 implementation. Prior WC-012 through WC-034 sprint outputs
+are not retroactively affected.
+
+---
 
 **Authority:** C-084 (Step Dependency Ordering — RATIFIED 2026-07-24),
   C-086 (Pre-Execution Simulation Obligation — RATIFIED 2026-07-24),
