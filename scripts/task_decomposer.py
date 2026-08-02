@@ -115,6 +115,13 @@ STACK_BEHAVIORAL_RULES: dict[str, list[str]] = {
         "OR use a sync def (not async def) test function if mixing @given with pytest fixtures. "
         "WRONG: async def test_x(agent_type: str, mock_engine: Any): ... # agent_type is @given but mock_engine is fixture "
         "RIGHT: async def test_x(mock_engine: Any): agent_type = 'DMA'; ... # all non-hypothesis deps as fixtures, mocks inside",
+        "SQLALCHEMY TEXT RULE (mandatory for src/billing-engine): NEVER use '%s' or '?' paramstyle. "
+        "ALWAYS use SQLAlchemy text() with named params: "
+        "text('SELECT col FROM t WHERE id = :id').bindparams(id=val) or "
+        "conn.execute(text('INSERT INTO t (col) VALUES (:val)'), {'val': x}). "
+        "NEVER pass raw f-strings or string concatenation to execute(). "
+        "Applies to ALL Session.execute() and connection.execute() calls. "
+        "Import: 'from sqlalchemy import text'.",
 
     ],
     "typescript": [
@@ -154,7 +161,7 @@ class SubTaskDef:
     """
     id: str                                    # e.g. "WC012-03a"
     description: str
-    type: str                                  # "deterministic" | "llm"
+    type: str                                  # "deterministic" | "llm" | "udcp"
     depends_on: list[str] = field(default_factory=list)
     compile_gate: str = "dotnet_build"         # "dotnet_build" | "dotnet_test" | "ruff" | "tsc"
     service_dir: str = "src/constitutional-engine"  # target service dir for compile gate
@@ -1220,6 +1227,32 @@ def execute_subtask_chain(
                     st.model_hint,
                     st.max_tokens,
                 )
+
+        elif st.type == "udcp":
+            # ── UDCP path: WorkspaceSymbolIndex → Track 1/2 scaffold → logic-fill ─
+            # constitutional_basis: ADR-039, C-059, C-077, C-082
+            # Uses execute_with_udcp() from runner.task_executor (ADR-039 protocol).
+            # scope_text = effective_check assembled from WC spec + stack rules + delta
+            # (the same prompt context MagicLLM would receive, but UDCP does scaffold first)
+            from runner.task_executor import execute_with_udcp
+            effective_check = _build_effective_check(st, completed)
+            # Append spec section content as additional scope context
+            scope_lines = [effective_check]
+            for spec_file, section in st.spec_sections.items():
+                spec_path = REPO_ROOT / spec_file
+                if spec_path.is_file():
+                    content = spec_path.read_text(encoding="utf-8", errors="replace")
+                    scope_lines.append(f"\n## {spec_file}\n{content[:3000]}")
+            scope_text = "\n".join(scope_lines)
+            print(f"  [{st.id}] UDCP path: {st.model_hint} model, scope={len(scope_text)} chars")
+            success = execute_with_udcp(
+                task_id=st.id,
+                scope_text=scope_text,
+                sprint_id=task_id,
+                model_hint=st.model_hint,
+                max_tokens=st.max_tokens,
+            )
+
         else:
             print(f"  [{st.id}] ERROR: unknown type '{st.type}'")
             failed.append(st.id)

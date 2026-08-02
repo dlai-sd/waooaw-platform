@@ -103,7 +103,7 @@ TASK_HANDLERS = {
             SubTaskDef(
                 id="WC027-01aa",
                 description="Implement BundleEngine markup derivation and constitutional price validation with audit logging.",
-                type="llm",
+                type="udcp",
                 depends_on=[],
                 compile_gate="py_compile",
                 service_dir="src/billing-engine",
@@ -135,7 +135,7 @@ TASK_HANDLERS = {
             SubTaskDef(
                 id="WC027-01ab",
                 description="Add complete type annotations and fix ruff style (ANN001/ANN201 enforcement)",
-                type="llm",
+                type="udcp",
                 depends_on=["WC027-01aa"],
                 compile_gate="ruff",
                 service_dir="src/billing-engine",
@@ -165,7 +165,7 @@ TASK_HANDLERS = {
             SubTaskDef(
                 id="WC027-01ac",
                 description="Pytest suite covering Pydantic model validation and BundleEngine cost_floor/derive_price/validate_price behaviour, including C-059 audit-log invariant on both APPROVED and REJECTED outcomes.",
-                type="llm",
+                type="udcp",
                 depends_on=["WC027-01ab"],
                 compile_gate="ruff",
                 service_dir="src/billing-engine",
@@ -253,7 +253,7 @@ TASK_HANDLERS = {
             SubTaskDef(
                 id="WC027-01ba",
                 description="Implement FastAPI router for pricing endpoints: /thread-catalog, /bundle-cost-floor, /validate (with C-089 floor enforcement), /derive; mount in main.py",
-                type="llm",
+                type="udcp",
                 depends_on=["WC027-01aa"],
                 compile_gate="py_compile",
                 service_dir="src/billing-engine",
@@ -270,11 +270,11 @@ TASK_HANDLERS = {
                     "work-contracts/WC-027-wbe-s3-markup-engine.md": "WC027-01b",
                 },
                 constitutional_check=(
-                    "Implement IMarkupEngine.derive_bundle_cost_floor() and IMarkupEngine.validate_price() method bodies.\n"
+                    "Implement IMarkupEngine cost_floor(), derive_price(), and validate_price() method bodies.\n"
                     "DO NOT change signatures — implement bodies only (ADR-036).\n"
                     "Type annotations optional in scaffold — polish pass adds them (ANN001).\n"
                     "C-088: validate_price() MUST check billing_profiles.status == FOUNDER_AUTHORIZED before validation.\n"
-                    "C-089: validate_price() MUST enforce constitutional minimum margin floor; raise BelowConstitutionalFloorError on violation; return PriceValidation with below_floor=True; log to institutional.pricing_floor_log regardless.\n"
+                    "C-089: validate_price() MUST enforce constitutional minimum margin floor; return PriceValidation(outcome='REJECTED', cost_floor_paise=cost_floor, minimum_compliant_price_paise=cost_floor, proposed_price_paise=proposed_price) on violation; log to institutional.pricing_floor_log regardless.\n"
                     "C-090: renew() MUST reject if new plan price > agreed price without C-090 notice.\n"
                     "C-091: GET /thread-catalog delegates to existing ThreadCatalogService; returns thread definitions.\n"
                     "C-038: POST /validate returns 422 with minimum_compliant_price_paise field on C-089 floor violation.\n"
@@ -286,7 +286,7 @@ TASK_HANDLERS = {
             SubTaskDef(
                 id="WC027-01bb",
                 description="Add complete type annotations and fix ruff style (ANN001/ANN201 enforcement)",
-                type="llm",
+                type="udcp",
                 depends_on=["WC027-01ba"],
                 compile_gate="ruff",
                 service_dir="src/billing-engine",
@@ -316,7 +316,7 @@ TASK_HANDLERS = {
             SubTaskDef(
                 id="WC027-01bc",
                 description="Pytest suite covering the /pricing router (thread-catalog, bundle-cost-floor, validate, derive) mounted in main.py, including C-089 422 response shape, GET idempotency, and service-delegation contracts.",
-                type="llm",
+                type="udcp",
                 depends_on=["WC027-01bb"],
                 compile_gate="ruff",
                 service_dir="src/billing-engine",
@@ -399,7 +399,7 @@ TASK_HANDLERS = {
             SubTaskDef(
                 id='WC027-02a',
                 description='Write pytest tests for test_markup.py per WC scope specification',
-                type="llm",
+                type="udcp",
                 depends_on=['WC027-01ba'],
                 compile_gate='ruff',
                 service_dir='',
@@ -425,7 +425,7 @@ TASK_HANDLERS = {
             SubTaskDef(
                 id="WC027-02b",
                 description="Add complete type annotations and fix ruff style (ANN001/ANN201 enforcement)",
-                type="llm",
+                type="udcp",
                 depends_on=["WC027-02a"],
                 compile_gate="ruff",
                 service_dir="",
@@ -453,7 +453,7 @@ TASK_HANDLERS = {
             SubTaskDef(
                 id="WC027-02c",
                 description="Run pytest on tests/billing-engine to verify all tests pass",
-                type="llm",
+                type="udcp",
                 depends_on=["WC027-02b"],
                 compile_gate="pytest",
                 service_dir="tests/billing-engine",
