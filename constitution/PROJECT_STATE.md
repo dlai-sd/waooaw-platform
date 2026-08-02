@@ -1,6 +1,41 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-08-01 (ADR-038 Multi-Stack Compile Gate — COMPLETE)
+**Last Updated:** 2026-08-02 (EA Skeleton WC-028–031 — COMPLETE)
+
+---
+
+## SESSION RECORD — 2026-08-02 (EA SKELETON EXTENSION — COMPLETE)
+
+### What Was Built
+
+| Office | Output | Commit | Status |
+|---|---|---|---|
+| Enterprise Architect (INST-004) | `src/billing-engine/skeleton/wbe_interfaces.py` — 12 data models + 3 error types for WC-028 through WC-031 | `97c85a1` | ✅ COMMITTED |
+
+### Skeleton Gap Closed
+
+ADR-036 requires EA skeleton to precede every implementation sprint. The existing skeleton covered only
+WC-026 (IWalletService) and WC-027 (IMarkupEngine). Four upcoming WBE sprints had no skeleton contracts.
+
+**Added this session:**
+
+| Sprint | Types Added |
+|---|---|
+| WC-028 Meter + Alert Engine | `AlertFired`, `UsageStatus` |
+| WC-029 Platform Procurement Ledger | `FounderActionCreated`, `ProviderRunwayStatus` |
+| WC-030 Reconciliation Engine | `DailyAuditResult`, `SelfAuditResult`, `CustomerMarginRow` |
+| WC-031 Trial + Promotions Engine | `TrialStartResult`, `ConvertResult`, `CouponValidation`, `DiscountResult`, `TrialAlreadyActiveError`, `TrialConfigMissingError`, `PhoneVerificationRequiredError` |
+
+No ABCs added for WC-029/030/031 services — standalone concrete classes per SA directive in
+`goals/GOAL-WC029..031` institutional records. `IMarkupEngine` and `IMeterService` unchanged.
+
+### Constitutional Basis
+- ADR-036 (EA Skeleton Standard — skeleton precedes implementation sprints)
+- C-088 (Billing Profile), C-089 (Margin Floor), C-091 (Self-Audit Gate)
+- C-019 (PhoneVerificationRequiredError — informed consent)
+- C-059 (Implementation Traceability)
+
+---
 
 ---
 
