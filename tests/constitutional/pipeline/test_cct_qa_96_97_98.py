@@ -259,3 +259,142 @@ class TestCCTProp01HypothesisRequired:
             + "     @given(st.integers(min_value=100, max_value=1_000_000), ...)\n"
             + "     def test_derive_price_property(...): ..."
         )
+
+
+# ── UDCP CCTs (ADR-039 — C-096/C-097/C-098 extended for pipeline) ────────────
+
+UDCP_ENGINE_FILES = [
+    REPO_ROOT / "scripts/runner/ptr_validation_gate.py",
+    REPO_ROOT / "scripts/runner/track1_scaffolder.py",
+    REPO_ROOT / "scripts/runner/track2_polymorphic_engine.py",
+    REPO_ROOT / "scripts/runner/udcp_grooming_engine.py",
+    REPO_ROOT / "scripts/runner/udcp_orchestrator.py",
+]
+
+# ADR-039 §7.2: wildcard imports create unresolvable PTR entries — prohibited
+_SRC_IMPORT_RE = __import__("re").compile(
+    r"from\s+(src\.|billing.engine|professional.runtime|ai.runtime)"
+)
+
+
+class TestCCTUDCP01CompileClean:
+    """CCT-UDCP-01 (C-082/C-098): all UDCP engine files must compile without SyntaxError."""
+
+    def test_all_udcp_engines_compile(self) -> None:
+        """Constitutional basis: C-082 (Build Validation), ADR-039."""
+        errors = []
+        for path in UDCP_ENGINE_FILES:
+            if not path.exists():
+                errors.append(f"MISSING: {path.relative_to(REPO_ROOT)}")
+                continue
+            try:
+                compile(path.read_text(encoding="utf-8"), str(path), "exec")
+            except SyntaxError as exc:
+                errors.append(f"SYNTAX_ERROR: {path.relative_to(REPO_ROOT)}: {exc}")
+        assert not errors, (
+            "CCT-UDCP-01 FAIL: UDCP engine files have syntax errors:\n"
+            + "\n".join(f"  {e}" for e in errors)
+        )
+
+
+class TestCCTUDCP02NoWildcardImports:
+    """CCT-UDCP-02 (C-098/ADR-039 §7.2): UDCP modules must not use wildcard imports."""
+
+    def test_no_wildcard_imports_in_udcp_engines(self) -> None:
+        """Constitutional basis: ADR-039 §7.2 — wildcard re-exports emit '*' in PTR, breaking validation."""
+        violations = []
+        for path in UDCP_ENGINE_FILES:
+            if not path.exists():
+                continue
+            try:
+                tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+            except SyntaxError:
+                continue
+            for node in ast.walk(tree):
+                if isinstance(node, ast.ImportFrom):
+                    for alias in node.names:
+                        if alias.name == "*":
+                            violations.append(
+                                f"{path.relative_to(REPO_ROOT)}:{node.lineno} — "
+                                f"'from {node.module} import *'"
+                            )
+        assert not violations, (
+            "CCT-UDCP-02 FAIL: wildcard imports in UDCP engines (ADR-039 §7.2 violation):\n"
+            + "\n".join(f"  {v}" for v in violations)
+        )
+
+
+class TestCCTUDCP03NoCrossBoundaryImports:
+    """CCT-UDCP-03 (C-096): UDCP runner modules must not import directly from src/."""
+
+    def test_udcp_engines_do_not_import_from_src(self) -> None:
+        """Constitutional basis: C-096 (Dependency Chain Integrity).
+        runner/ modules must not reach into src/ — they operate on src/ as files,
+        not as Python imports (avoids circular dependency with generated code)."""
+        violations = []
+        for path in UDCP_ENGINE_FILES:
+            if not path.exists():
+                continue
+            source = path.read_text(encoding="utf-8")
+            for lineno, line in enumerate(source.splitlines(), 1):
+                if _SRC_IMPORT_RE.search(line) and not line.strip().startswith("#"):
+                    violations.append(
+                        f"{path.relative_to(REPO_ROOT)}:{lineno} — {line.strip()}"
+                    )
+        assert not violations, (
+            "CCT-UDCP-03 FAIL: UDCP engines import directly from src/ (C-096 violation):\n"
+            + "\n".join(f"  {v}" for v in violations)
+            + "\nUDCP engines must treat src/ as file targets, not Python imports."
+        )
+
+
+class TestCCTUDCP04DependencyOrder:
+    """CCT-UDCP-04 (C-096): UDCP module dependency order must be acyclic.
+
+    Allowed import chain:
+      constants (no runner imports)
+      └─ ptr_validation_gate (imports constants only from runner)
+         └─ track1_scaffolder (imports constants only)
+            track2_polymorphic_engine (no runner imports)
+         └─ udcp_grooming_engine (no runner imports)
+         └─ udcp_orchestrator (imports ptr, track1, track2, groom)
+    """
+
+    _ALLOWED_RUNNER_IMPORTS: dict[str, set[str]] = {
+        "ptr_validation_gate": {"constants"},
+        "track1_scaffolder": {"constants"},
+        "track2_polymorphic_engine": set(),
+        "udcp_grooming_engine": {"constants"},
+        "udcp_orchestrator": {
+            "constants", "ptr_validation_gate", "track1_scaffolder",
+            "track2_polymorphic_engine", "udcp_grooming_engine", "llm_codegen",
+        },
+    }
+
+    def test_udcp_dependency_order_is_acyclic(self) -> None:
+        """Constitutional basis: C-096 — no circular dependency in UDCP pipeline."""
+        violations = []
+        for path in UDCP_ENGINE_FILES:
+            if not path.exists():
+                continue
+            module_name = path.stem
+            allowed = self._ALLOWED_RUNNER_IMPORTS.get(module_name, set())
+            try:
+                tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+            except SyntaxError:
+                continue
+            for node in ast.walk(tree):
+                if isinstance(node, ast.ImportFrom):
+                    mod = node.module or ""
+                    # Only check imports from runner.*
+                    if mod.startswith("runner."):
+                        imported = mod.split(".")[-1]
+                        if imported not in allowed and imported != module_name:
+                            violations.append(
+                                f"{path.stem} imports runner.{imported} "
+                                f"(not in allowed set {sorted(allowed)})"
+                            )
+        assert not violations, (
+            "CCT-UDCP-04 FAIL: UDCP dependency order violation (C-096):\n"
+            + "\n".join(f"  {v}" for v in violations)
+        )

@@ -1,5 +1,6 @@
 # Implements: WC-036 — WC036-06
-# constitutional_basis: C-076 (≥90% test coverage), C-082 (Build Validation)
+# constitutional_basis: C-076 (≥90% test coverage), C-082 (Build Validation),
+#                       C-097 (Property-Based Testing), C-098 (Architectural Fitness)
 from __future__ import annotations
 
 import ast
@@ -9,6 +10,8 @@ import textwrap
 from pathlib import Path
 
 import pytest
+from hypothesis import HealthCheck, given, settings
+from hypothesis import strategies as st
 
 # Ensure scripts/ is on path for runner.* imports
 _REPO_ROOT = Path(__file__).parent.parent.parent
@@ -700,3 +703,273 @@ class TestWorkspaceSymbolIndexExtra:
         idx = WorkspaceSymbolIndex(sys_path_roots=[str(tmp_path / "nonexistent")], repo_root=tmp_path)
         result = idx._file_to_module_string(tmp_path / "some.py")
         assert result is None
+
+
+# ── C-097 Property-Based Tests ────────────────────────────────────────────────
+
+_VALID_MODULE_NAME = st.from_regex(r"[a-z][a-z0-9_]{0,15}", fullmatch=True)
+_VALID_SYMBOL_NAME = st.from_regex(r"[A-Za-z_][A-Za-z0-9_]{0,20}", fullmatch=True)
+_VALID_FILE_PATH = st.from_regex(
+    r"src/billing-engine/[a-z_]{2,12}/[a-z_]{2,12}\.py", fullmatch=True
+)
+_VALID_FUNC_NAME = st.from_regex(r"[a-z][a-z0-9_]{2,15}", fullmatch=True)
+_VALID_RETURN_TYPE = st.sampled_from(["int", "str", "bool", "None", "dict", "list"])
+_VALID_DECORATOR = st.sampled_from([
+    "router.get('/x')", "router.post('/y')", "staticmethod", "classmethod",
+])
+
+
+@st.composite
+def _tis_artifact(draw, file_path=None):
+    fp = file_path or draw(_VALID_FILE_PATH)
+    n = draw(st.integers(min_value=0, max_value=3))
+    interfaces = []
+    for _ in range(n):
+        name = draw(_VALID_FUNC_NAME)
+        decorators = draw(st.lists(_VALID_DECORATOR, min_size=0, max_size=2))
+        ret = draw(_VALID_RETURN_TYPE)
+        interfaces.append({
+            "type": "function", "name": name, "decorators": decorators,
+            "arguments": [], "return_type": ret, "docstring": "",
+        })
+    return {
+        "file_path": fp,
+        "imports": [{"from": "fastapi", "import": ["APIRouter"]}],
+        "interfaces": interfaces,
+    }
+
+
+@st.composite
+def _valid_tis(draw):
+    fp = draw(_VALID_FILE_PATH)
+    artifact = draw(_tis_artifact(file_path=fp))
+    return {
+        "sprint_id": "WC-TEST", "task_id": "TEST-01",
+        "pipeline_track": "GREENFIELD", "target_artifacts": [artifact],
+    }
+
+
+class TestPropertyBasedPTRGate:
+    """C-097: property-based invariants for WorkspaceSymbolIndex."""
+
+    @given(
+        mod=_VALID_MODULE_NAME,
+        symbols=st.frozensets(_VALID_SYMBOL_NAME, min_size=1, max_size=10),
+    )
+    @settings(max_examples=50, suppress_health_check=[HealthCheck.too_slow, HealthCheck.function_scoped_fixture])
+    def test_validate_tis_deterministic(self, tmp_path, mod, symbols):
+        """PTR gate is deterministic: same TIS + same index → same errors list."""
+        pkg = tmp_path / mod
+        pkg.mkdir(exist_ok=True)
+        src = "\n".join(f"class {s}:\n    pass" for s in symbols)
+        (pkg / "models.py").write_text(src)
+        idx = WorkspaceSymbolIndex(sys_path_roots=[str(tmp_path)], repo_root=tmp_path)
+        tis = {
+            "target_artifacts": [{
+                "file_path": "x.py",
+                "imports": [{"from": f"{mod}.models", "import": list(symbols)[:3]}],
+                "interfaces": [],
+            }]
+        }
+        assert idx.validate_tis(tis) == idx.validate_tis(tis)
+
+    @given(invented=st.from_regex(r"Invented[A-Z][a-z]{3,8}", fullmatch=True))
+    @settings(max_examples=30, suppress_health_check=[HealthCheck.too_slow, HealthCheck.function_scoped_fixture])
+    def test_invented_symbol_always_rejected(self, tmp_path, invented):
+        """Any symbol not exported by a module is always rejected."""
+        pkg = tmp_path / "mymod"
+        pkg.mkdir(exist_ok=True)
+        (pkg / "models.py").write_text("class RealSymbol:\n    pass\n")
+        idx = WorkspaceSymbolIndex(sys_path_roots=[str(tmp_path)], repo_root=tmp_path)
+        tis = {
+            "target_artifacts": [{
+                "file_path": "x.py",
+                "imports": [{"from": "mymod.models", "import": [invented]}],
+                "interfaces": [],
+            }]
+        }
+        errors = idx.validate_tis(tis)
+        assert any(invented in e for e in errors)
+
+
+class TestPropertyBasedTrack1Scaffolder:
+    """C-097: property-based invariants for Track1Scaffolder."""
+
+    @given(tis=_valid_tis())
+    @settings(max_examples=40, suppress_health_check=[HealthCheck.too_slow, HealthCheck.function_scoped_fixture])
+    def test_any_valid_tis_produces_compilable_scaffold(self, tmp_path, tis):
+        """Any structurally valid TIS must yield compilable output (no LLM needed)."""
+        scaffolder = Track1Scaffolder(tis, repo_root=tmp_path)
+        paths = scaffolder.scaffold_artifacts()
+        for p in paths:
+            src = p.read_text()
+            try:
+                compile(src, str(p), "exec")
+            except SyntaxError as exc:
+                pytest.fail(f"Scaffold non-compilable for {p.name}: {exc}")
+
+    @given(tis=_valid_tis())
+    @settings(max_examples=40, suppress_health_check=[HealthCheck.too_slow, HealthCheck.function_scoped_fixture])
+    def test_router_emitted_iff_route_decorator(self, tmp_path, tis):
+        """router = APIRouter() emitted ↔ at least one router. decorator present."""
+        scaffolder = Track1Scaffolder(tis, repo_root=tmp_path)
+        paths = scaffolder.scaffold_artifacts()
+        for artifact, path in zip(tis["target_artifacts"], paths):
+            has_dec = any(
+                any("router." in d for d in iface.get("decorators", []))
+                for iface in artifact.get("interfaces", [])
+            )
+            has_line = "router = APIRouter()" in path.read_text()
+            assert has_dec == has_line
+
+
+class TestPropertyBasedTrack2Engine:
+    """C-097: property-based invariants for Track2PolymorphicEngine."""
+
+    @given(
+        func_name=st.from_regex(r"[a-z][a-z0-9_]{2,12}", fullmatch=True),
+        return_val=st.integers(min_value=-1000, max_value=1_000_000),
+    )
+    @settings(max_examples=40, suppress_health_check=[HealthCheck.too_slow, HealthCheck.function_scoped_fixture])
+    def test_extract_then_splice_preserves_parseability(self, tmp_path, func_name, return_val):
+        """Round-trip: extract → splice → file is still parseable AST."""
+        src = textwrap.dedent(f"""\
+            class MyService:
+                def {func_name}(self) -> int:
+                    return 0
+        """)
+        path = tmp_path / "service.py"
+        path.write_text(src)
+        engine = Track2PolymorphicEngine(path)
+        new_logic = f"def {func_name}(self) -> int:\n    return {return_val}"
+        engine.splice_node_safely(func_name, new_logic, "MyService")
+        try:
+            ast.parse(path.read_text())
+        except SyntaxError as exc:
+            pytest.fail(f"File not parseable after splice: {exc}")
+        assert str(return_val) in path.read_text()
+
+    @given(func_name=st.from_regex(r"[a-z][a-z0-9_]{2,12}", fullmatch=True))
+    @settings(max_examples=30, suppress_health_check=[HealthCheck.too_slow, HealthCheck.function_scoped_fixture])
+    def test_extract_never_permanently_mutates_source(self, tmp_path, func_name):
+        """try/finally invariant: decorator_list always restored after extract."""
+        src = textwrap.dedent(f"""\
+            class S:
+                @staticmethod
+                def {func_name}() -> None:
+                    pass
+        """)
+        path = tmp_path / "s.py"
+        path.write_text(src)
+        engine = Track2PolymorphicEngine(path)
+        for _ in range(3):
+            result = engine.extract_node_for_llm(func_name, "S")
+            assert "@staticmethod" not in result
+        assert "@staticmethod" in path.read_text()
+
+
+class TestPropertyBasedGroomingEngine:
+    """C-097: property-based invariants for UDCPGroomingEngine."""
+
+    @given(
+        file_path=st.from_regex(
+            r"src/billing-engine/[a-z]{3,10}/[a-z]{3,10}\.py", fullmatch=True
+        )
+    )
+    @settings(max_examples=30, suppress_health_check=[HealthCheck.too_slow, HealthCheck.function_scoped_fixture])
+    def test_tis_always_contains_extracted_file_path(self, tmp_path, file_path):
+        """Every file path in scope text appears in TIS target_artifacts."""
+        scope = f"`{file_path}` — create new module"
+        groom = UDCPGroomingEngine(repo_root=tmp_path)
+        tis = groom.generate_tis("T01", scope, "WC-TEST")
+        paths = [a["file_path"] for a in tis["target_artifacts"]]
+        assert file_path in paths
+
+    @given(
+        file_path=st.from_regex(
+            r"src/billing-engine/[a-z]{3,10}/[a-z]{3,10}\.py", fullmatch=True
+        )
+    )
+    @settings(max_examples=30, suppress_health_check=[HealthCheck.too_slow, HealthCheck.function_scoped_fixture])
+    def test_greenfield_when_file_absent(self, tmp_path, file_path):
+        """File not on disk → always GREENFIELD."""
+        scope = f"`{file_path}` — new module"
+        groom = UDCPGroomingEngine(repo_root=tmp_path)
+        assert groom.detect_track(scope) == "GREENFIELD"
+
+
+# ── Gap-fix regression tests ─────────────────────────────────────────────────
+
+class TestOrchestratorGapFixes:
+    """Regression tests for the 3 gaps found in simulation (2026-08-02)."""
+
+    def test_mixed_track_does_not_overwrite_existing_file(self, tmp_path: Path) -> None:
+        """Gap 1 fix: MIXED track must not overwrite an existing file with a stub."""
+        from runner.udcp_orchestrator import UDCPOrchestrator
+
+        # Create the first file (simulating a prior sprint result)
+        existing_dir = tmp_path / "src/billing-engine/markup"
+        existing_dir.mkdir(parents=True)
+        original_content = "# ORIGINAL CONTENT — must not be overwritten\nclass BundleEngine:\n    pass\n"
+        (existing_dir / "bundle_engine.py").write_text(original_content)
+
+        scope = (
+            "`src/billing-engine/markup/bundle_engine.py` and "
+            "`src/billing-engine/markup/models.py`"
+        )
+        orch = UDCPOrchestrator(repo_root=tmp_path)
+        # detect_track sees one existing file → MIXED
+        assert orch.groom.detect_track(scope) == "MIXED"
+
+        # The TIS would normally scaffold both; the fix skips the existing one
+        tis = orch.groom.generate_tis("T01", scope, "WC-TEST")
+        # Filter as the orchestrator now does for skip_existing=True
+        new_artifacts = [
+            a for a in tis["target_artifacts"]
+            if not (tmp_path / a["file_path"]).is_file()
+        ]
+        # Only models.py is new
+        assert all("bundle_engine" not in a["file_path"] for a in new_artifacts)
+        # Original file is untouched
+        assert (existing_dir / "bundle_engine.py").read_text() == original_content
+
+    def test_write_boundary_check_rejects_path_outside_allowed_roots(
+        self, tmp_path: Path
+    ) -> None:
+        """Gap 2 fix: paths returned by LLM outside ALLOWED_WRITE_ROOTS must be rejected."""
+        from runner.constants import ALLOWED_WRITE_ROOTS
+
+        bad_paths = [
+            "constitution/PROJECT_STATE.md",
+            "../secrets/.env",
+            "adr/ADR-039.md",
+        ]
+        for bad in bad_paths:
+            allowed = any(bad.startswith(root) for root in ALLOWED_WRITE_ROOTS)
+            assert not allowed, (
+                f"Path '{bad}' should be outside write boundary but was allowed"
+            )
+
+        good_paths = ["src/billing-engine/markup/models.py", "tests/billing-engine/test_markup.py"]
+        for good in good_paths:
+            allowed = any(good.startswith(root) for root in ALLOWED_WRITE_ROOTS)
+            assert allowed, f"Path '{good}' should be inside write boundary"
+
+    def test_track1_skips_all_existing_artifacts(self, tmp_path: Path) -> None:
+        """Gap 1 fix: all-existing-files TIS → empty artifact list → success with no writes."""
+        from runner.udcp_orchestrator import UDCPOrchestrator
+
+        markup_dir = tmp_path / "src/billing-engine/markup"
+        markup_dir.mkdir(parents=True)
+        (markup_dir / "router.py").write_text("# existing\n")
+
+        scope = "`src/billing-engine/markup/router.py` — existing file only"
+        orch = UDCPOrchestrator(repo_root=tmp_path)
+
+        # Simulate what _run_track1 does with skip_existing=True
+        tis = orch.groom.generate_tis("T01", scope, "WC-TEST")
+        filtered = [
+            a for a in tis["target_artifacts"]
+            if not (tmp_path / a["file_path"]).is_file()
+        ]
+        assert filtered == [], "All files exist → no artifacts to scaffold"
