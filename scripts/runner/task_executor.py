@@ -133,7 +133,7 @@ def execute_with_llm(
                 except Exception as _pre_err:
                     print(f"  PRE-REVIEW: skipped ({_pre_err})")
 
-            written = write_llm_files(files)
+            written = write_llm_files(files, task_id=task_id)
             ok, build_error = validate_written_files(written)
         except Exception as parse_exc:
             failure_context = f"RUNNER_PIPELINE_BUG: {type(parse_exc).__name__}: {parse_exc}"

@@ -1018,7 +1018,10 @@ def _classify_ruff_violation(build_error: str) -> RetryDiagnosis | None:
         m = re.search(r'F841.*?`([^`]+)`', build_error)
         var_name = m.group(1) if m else "variable"
         fix_parts.append(
-            f"[F841] `{var_name}` assigned but never used — prefix with '_' or assert on it."
+            f"[F841] `{var_name}` is assigned but never used.\n"
+            f"  1. Prefix with '_': rename to `_{var_name}` if the assignment has side effects.\n"
+            f"  2. Or delete the assignment line entirely if the value is not needed.\n"
+            f"  3. Do NOT add a new expression or call that uses `{var_name}` — that invents logic."
         )
 
     # B018 — useless expression
@@ -1065,7 +1068,10 @@ def _classify_ruff_violation(build_error: str) -> RetryDiagnosis | None:
             )
         else:
             fix_parts.append(
-                f"[F401] `{import_name}` is imported but never used — remove the import statement."
+                f"[F401] `{import_name}` is imported but never used.\n"
+                f"  1. REMOVE the exact line importing `{import_name}` — nothing else.\n"
+                f"  2. Do NOT add any alternative, replacement, or unreferenced import statement.\n"
+                f"  3. Retain the rest of the file identically — do not restructure."
             )
 
     # DTZ003 / DTZ — naive datetime (utcnow, utcfromtimestamp)

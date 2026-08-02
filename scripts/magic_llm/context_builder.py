@@ -262,6 +262,13 @@ class ContextBuilder:
         if prior_block:
             ctx.blocks.append(ContextBlock("PRIOR", prior_block))
 
+        # [7b] PYTHON_SYMBOL_CONTRACT — AST-extracted exports from within-sprint Python files
+        # Prevents PYTHON_WRONG_SYMBOL failures caused by guessing intra-sprint module APIs
+        if stack == "python" and (prior_output_files or []):
+            sym_block = self._build_python_symbol_contract_block(prior_output_files or [])
+            if sym_block:
+                ctx.blocks.append(ContextBlock("PYTHON_SYMBOL_CONTRACT", sym_block))
+
         # [8] TASK — description + file target
         # If the output file already exists on the sprint branch, inject current
         # content so the LLM extends it instead of generating from scratch.
@@ -618,6 +625,45 @@ class ContextBuilder:
         if not found:
             return ""
         return "\n".join(lines)
+
+    def _build_python_symbol_contract_block(self, prior_output_files: list[str]) -> str:
+        """ADR-030 Amendment 2 S2: AST-parse within-sprint Python files → frozen symbol contract.
+        Prevents PYTHON_WRONG_SYMBOL failures from guessing module APIs (C-082, C-085).
+        """
+        import ast as _ast
+        lines: list[str] = []
+        for file_path in prior_output_files:
+            if not file_path.endswith(".py"):
+                continue
+            full = self._root / file_path
+            if not full.exists():
+                continue
+            try:
+                source = full.read_text(encoding="utf-8")
+                tree = _ast.parse(source)
+                exports = [
+                    node.name for node in tree.body
+                    if isinstance(node, (_ast.FunctionDef, _ast.AsyncFunctionDef, _ast.ClassDef))
+                    and not node.name.startswith("_")
+                ]
+                if not exports:
+                    continue
+                module_name = Path(file_path).stem
+                lines.append(f"\n  {file_path} — importable names: {exports}")
+                lines.append(
+                    f"  ⛔ from {module_name} import X — X MUST be one of the names above. "
+                    "Do NOT guess or invent other names."
+                )
+            except Exception:
+                continue  # parse failure is non-blocking
+        if not lines:
+            return ""
+        return (
+            "FROZEN SYMBOL CONTRACT — within-sprint Python modules (authoritative):\n"
+            + "\n".join(lines)
+            + "\n\nCRITICAL: Only import names listed above from these modules. "
+            "Any other name will raise ImportError at test time."
+        )
 
     def _build_conftest_block(self, output_file: str) -> str:
         """Inject conftest.py from the target test directory as an authoritative reference.

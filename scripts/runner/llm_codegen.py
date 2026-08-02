@@ -337,15 +337,50 @@ def parse_llm_files(response: str) -> dict[str, str]:
     return files
 
 
-def write_llm_files(files: dict[str, str]) -> list[str]:
+def _inject_compliance_header(content: str, rel_path: str, task_id: str) -> str:
+    """ADR-030 Amendment 2 Decision B: strip LLM-generated headers then prepend authoritative one.
+    Ensures CCT-TR-01 always passes regardless of model context pressure (C-059).
+    """
+    ext = Path(rel_path).suffix.lower()
+    if ext not in (".py", ".cs"):
+        return content
+    comment = "#" if ext == ".py" else "//"
+    # Derive spec reference from task_id (e.g. "WC027-01a" → "WC-027")
+    wc_num = ""
+    import re as _re
+    m = _re.match(r'(WC\d+)', task_id, _re.IGNORECASE)
+    if m:
+        raw = m.group(1).upper()           # e.g. "WC027"
+        digits = _re.search(r'\d+', raw)
+        wc_num = f"WC-{int(digits.group()):03d}" if digits else raw
+    spec_ref = (
+        f"work-contracts/{wc_num}-*.md §{task_id}" if wc_num
+        else f"work-contracts/ §{task_id}" if task_id
+        else "<spec-path> §<section>"
+    )
+    header = (
+        f"{comment} Implements: {spec_ref}\n"
+        f"{comment} Constitutional basis: C-059 (Implementation Traceability)\n"
+    )
+    # Strip any LLM-generated header lines to avoid duplication
+    lines = content.splitlines(keepends=True)
+    strip_prefixes = (f"{comment} Implements:", f"{comment} Constitutional basis:",
+                      f"{comment} constitutional_basis:", f"{comment} ib_item:")
+    while lines and lines[0].strip().startswith(strip_prefixes):
+        lines.pop(0)
+    return header + "".join(lines)
+
+
+def write_llm_files(files: dict[str, str], task_id: str = "") -> list[str]:
     """Write parsed files to disk. Returns list of written relative paths."""
     written = []
     for rel_path, content in files.items():
         abs_path = REPO_ROOT / rel_path
         abs_path.parent.mkdir(parents=True, exist_ok=True)
-        abs_path.write_text(content, encoding="utf-8")
+        final_content = _inject_compliance_header(content, rel_path, task_id)
+        abs_path.write_text(final_content, encoding="utf-8")
         written.append(rel_path)
-        print(f"  Written: {rel_path} ({len(content)} chars)")
+        print(f"  Written: {rel_path} ({len(final_content)} chars)")
     return written
 
 

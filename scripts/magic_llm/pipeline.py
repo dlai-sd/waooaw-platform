@@ -340,6 +340,14 @@ class MagicLLMPipeline:
                     return _ANTHROPIC_MODEL, 0.0
 
                 complexity = _task_complexity_score(request)
+                # ADR-030 Amendment 2 Decision A: context-pressure upgrade gate for auto-tier tasks.
+                # Haiku degrades structurally when context > 40k chars or after 2 failed attempts.
+                context_chars = sum(len(s) for s in (request.context_sections or []))
+                attempt_idx = getattr(request, "cascade_level", 0) or 0
+                if context_chars > 40_000:
+                    return _ANTHROPIC_MODEL, 0.0   # context pressure → Sonnet
+                if attempt_idx >= 2 and context_chars > 20_000:
+                    return _ANTHROPIC_MODEL, 0.0   # retry exhaustion on non-trivial context → Sonnet
                 # Cost-aware tiering: SKELETON phase → always Haiku (signatures only, no reasoning needed)
                 # LOGIC/TEST phase → Sonnet when complexity is high, Haiku otherwise
                 if is_skeleton:
@@ -367,13 +375,14 @@ class MagicLLMPipeline:
                 "Produce structured output as instructed. Do not hallucinate institution IDs or claim IDs."
             )
         else:
-            # Engineering preamble — code annotation required
+            # Engineering preamble — ADR-030 Amendment 2 Decision B:
+            # Compliance headers (# Implements / # Constitutional basis) are framework-injected
+            # at write time. LLM generates code content only — do not generate these lines.
             parts.append(
                 "## CONSTITUTIONAL OBLIGATIONS\n"
-                "Every file you produce MUST begin with:\n"
-                "# Implements: <spec-path> §<section>\n"
-                "# Constitutional basis: C-NNN (<claim name>)\n"
                 "Output format: <file path=\"relative/path/to/file.ext\">...content...</file>\n"
+                "Do NOT add '# Implements:' or '# Constitutional basis:' headers — "
+                "the platform framework injects them automatically.\n"
             )
 
         # Platform Type Registry injection (for code tasks)
