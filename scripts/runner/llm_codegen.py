@@ -180,6 +180,100 @@ def _call_llm_direct(
         return None
 
 
+# ── UDCP Direct Caller ────────────────────────────────────────────────────────
+# Implements: ADR-039 §5 — UDCP calls this instead of call_llm_via_magiclm.
+# Constitutional basis: C-082 (compile gate enforced by caller, not here)
+#
+# MagicLLM's annotation/format gates are incompatible with UDCP's contracts:
+#   Track 1 — scaffold already has # Implements: header; LLM fills markers only.
+#   Track 2 — LLM returns ```python def ... ``` not a <file> block.
+# UDCP's own compile gate is strictly stronger than MagicLLM's annotation gate.
+
+_UDCP_MODEL_MAP: dict[str, str] = {
+    "haiku":     "claude-haiku-4-5",
+    "sonnet":    "claude-sonnet-4-6",
+    "auto":      "claude-haiku-4-5",   # UDCP prompts are small — Haiku default
+    "reasoning": "claude-sonnet-4-6",  # reasoning hint → Sonnet for complex fills
+}
+
+_UDCP_SYSTEM = (
+    "You are a Python implementation assistant working inside the WAOOAW platform. "
+    "Follow the user's instructions exactly. Return only what is asked — no extra commentary, "
+    "no explanations outside the requested format."
+)
+
+
+def call_llm_for_udcp(
+    task_id: str,
+    prompt: str,
+    model_hint: str = "auto",
+    max_tokens: int = 8000,
+    attempt: int = 1,
+) -> str | None:
+    """
+    Direct Anthropic call for UDCP logic-fill and method-patch prompts.
+
+    Differences from call_llm_via_magiclm:
+      - Accepts haiku / sonnet / auto / reasoning model hints
+      - No MagicLLM annotation/format validation gates (UDCP compile gate replaces them)
+      - No PTR assembly (UDCP PTR gate already ran)
+      - No goal register overhead per logic-fill call
+      - Simple UDCP-specific system prompt
+    """
+    import json as _json
+    import urllib.request as _urlreq
+
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    if not api_key:
+        print(f"  WARN: ANTHROPIC_API_KEY not set — cannot call LLM for {task_id}")
+        return None
+
+    model_id = _UDCP_MODEL_MAP.get(model_hint, _UDCP_MODEL_MAP["auto"])
+    payload: dict = {
+        "model": model_id,
+        "max_tokens": max_tokens,
+        "temperature": 0,
+        "system": _UDCP_SYSTEM,
+        "messages": [{"role": "user", "content": prompt}],
+    }
+
+    prompt_chars = len(_json.dumps(payload))
+    print(f"  UDCP REQ: {task_id} attempt={attempt} model={model_id} "
+          f"prompt={prompt_chars:,} chars max_tokens={max_tokens}")
+
+    req = _urlreq.Request(
+        "https://api.anthropic.com/v1/messages",
+        data=_json.dumps(payload).encode(),
+        headers={
+            "x-api-key": api_key,
+            "anthropic-version": "2023-06-01",
+            "content-type": "application/json",
+        },
+    )
+    import time as _time
+    timeout = max(60, min(300, (max_tokens // 50) * 3))
+    t0 = _time.monotonic()
+    try:
+        with _urlreq.urlopen(req, timeout=timeout) as resp:
+            result = _json.loads(resp.read())
+    except Exception as exc:
+        err = str(exc)
+        if "timed out" in err.lower() or "timeout" in err.lower():
+            print(f"  INFRA: UDCP API timed out for {task_id}: {err}")
+            return None
+        print(f"  WARN: UDCP LLM call failed for {task_id}: {err}")
+        return None
+
+    latency = _time.monotonic() - t0
+    content = result.get("content", [])
+    text = "".join(b.get("text", "") for b in content if b.get("type") == "text")
+    usage = result.get("usage", {})
+    print(f"  UDCP RSP: {task_id} latency={latency:.1f}s "
+          f"in={usage.get('input_tokens', 0)} out={usage.get('output_tokens', 0)} "
+          f"chars={len(text)}")
+    return text or None
+
+
 # ── MagicLLM Bridge ────────────────────────────────────────────────────────────
 # Implements: architecture/reference/magic-llm/architecture.md §4 Architecture
 # Constitutional basis: C-059 (Evidence First), C-069 (Self-Improvement), C-077

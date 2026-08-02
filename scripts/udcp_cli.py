@@ -73,9 +73,7 @@ _FILE_PATH_RE = re.compile(r'<file path="([^"]+)">')
 def _mock_llm_fn(
     *,
     task_id: str,
-    task_description: str,
-    spec_content: str,
-    constitutional_check: str = "",
+    prompt: str,
     model_hint: str = "auto",
     max_tokens: int = 8000,
     attempt: int = 1,
@@ -85,17 +83,17 @@ def _mock_llm_fn(
     Stub LLM: Track 1 fills LOGIC_FILLER markers with `pass  # [MOCK_LOGIC]`.
     Track 2 returns the stub unchanged (no-op implementation).
     """
-    path_m = _FILE_PATH_RE.search(spec_content)
+    path_m = _FILE_PATH_RE.search(prompt)
     if path_m:
         # Track 1: scaffold block → replace filler sections
         rel_path = path_m.group(1)
-        code_m = _SCAFFOLD_CODE_RE.search(spec_content)
+        code_m = _SCAFFOLD_CODE_RE.search(prompt)
         content = code_m.group(1) if code_m else ""
         filled = _FILLER_BLOCK_RE.sub("pass  # [MOCK_LOGIC]", content)
         return f'<file path="{rel_path}">\n{filled}\n</file>'
 
     # Track 2: return stub unchanged
-    stub_m = _SCAFFOLD_CODE_RE.search(spec_content)
+    stub_m = _SCAFFOLD_CODE_RE.search(prompt)
     if stub_m:
         return f"```python\n{stub_m.group(1)}\n```"
     return None

@@ -93,11 +93,16 @@ class UDCPGroomingEngine:
         Returns 'GREENFIELD' if no target file exists on disk, else 'DIFFERENTIAL'.
         Mixed-track scope (some files exist, some don't) returns 'GREENFIELD' for
         new files — caller must split or handle both tracks.
+        Files containing WAOOAW_LOGIC_FILLER_START are unfilled stubs — treated as non-existing.
         """
         file_paths = _FILE_PATH_RE.findall(scope_text)
         if not file_paths:
             return "GREENFIELD"
-        existing = [fp for fp in file_paths if (self.repo_root / fp).is_file()]
+        existing = [
+            fp for fp in file_paths
+            if (self.repo_root / fp).is_file()
+            and "WAOOAW_LOGIC_FILLER_START" not in (self.repo_root / fp).read_text(encoding="utf-8", errors="replace")
+        ]
         if not existing:
             return "GREENFIELD"
         if len(existing) == len(file_paths):

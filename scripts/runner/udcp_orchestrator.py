@@ -180,42 +180,39 @@ class UDCPOrchestrator:
             _parse = _parse_llm_files_local
         else:
             try:
-                from runner.llm_codegen import call_llm_via_magiclm, parse_llm_files
+                from runner.llm_codegen import call_llm_for_udcp, parse_llm_files
             except ImportError:
                 return TaskResult(
                     success=False, error_type="IMPORT_ERROR",
-                    error_snippet="call_llm_via_magiclm not available", track="GREENFIELD",
+                    error_snippet="call_llm_for_udcp not available", track="GREENFIELD",
                 )
-            _call_llm = call_llm_via_magiclm
+            _call_llm = call_llm_for_udcp
             _parse = parse_llm_files
 
         scaffold_content = scaffold_path.read_text(encoding="utf-8")
         rel_path = str(scaffold_path.relative_to(self.repo_root))
 
         prompt = (
-            f"UDCP Track 1 — Logic Fill Only\n\n"
-            f"The scaffold below has been pre-generated with correct imports, signatures, "
-            f"and class structure. Your ONLY job is to replace the logic between "
-            f"[WAOOAW_LOGIC_FILLER_START] and [WAOOAW_LOGIC_FILLER_END] markers "
-            f"with working implementation.\n\n"
+            f"Fill in the logic sections of the Python scaffold below.\n\n"
             f"RULES:\n"
-            f"- Do NOT change any imports\n"
-            f"- Do NOT change any function/class signatures\n"
-            f"- Do NOT add or remove functions/classes\n"
-            f"- Replace 'pass' between the markers with real logic\n\n"
-            f"Task context:\n{scope_text[:2000]}\n\n"
-            f"Scaffold to fill:\n```python\n{scaffold_content}\n```\n\n"
-            f"Return the complete filled file in a single "
-            f"<file path=\"{rel_path}\"> block."
+            f"- Replace every section between [WAOOAW_LOGIC_FILLER_START] and "
+            f"[WAOOAW_LOGIC_FILLER_END] with working implementation\n"
+            f"- Do NOT change any imports, function signatures, or class names\n"
+            f"- Return the COMPLETE file — every line including all imports and class definitions\n"
+            f"- No markdown code fences, no explanation — only the XML block below\n\n"
+            f"Task context:\n{scope_text[:1500]}\n\n"
+            f"Scaffold:\n{scaffold_content}\n\n"
+            f"Respond with ONLY this format (the complete filled file):\n"
+            f'<file path="{rel_path}">\n'
+            f"...complete file content here...\n"
+            f"</file>"
         )
 
         # 2-attempt retry: logic-only prompts are small but first attempt can timeout
         for attempt in range(1, 3):
             response = _call_llm(
                 task_id=task_id,
-                task_description=f"Logic fill for {rel_path}",
-                spec_content=prompt,
-                constitutional_check="C-082 (compile gate enforced by UDCP orchestrator)",
+                prompt=prompt,
                 model_hint=model_hint,
                 max_tokens=max_tokens,
                 attempt=attempt,
@@ -343,13 +340,13 @@ class UDCPOrchestrator:
             _call_llm: Callable[..., str | None] = self._llm_fn
         else:
             try:
-                from runner.llm_codegen import call_llm_via_magiclm
+                from runner.llm_codegen import call_llm_for_udcp
             except ImportError:
                 return TaskResult(
                     success=False, error_type="IMPORT_ERROR",
-                    error_snippet="call_llm_via_magiclm not available", track="DIFFERENTIAL",
+                    error_snippet="call_llm_for_udcp not available", track="DIFFERENTIAL",
                 )
-            _call_llm = call_llm_via_magiclm
+            _call_llm = call_llm_for_udcp
 
         try:
             node_source = engine.extract_node_for_llm(method_name, class_name)
@@ -376,9 +373,7 @@ class UDCPOrchestrator:
 
         response = _call_llm(
             task_id=task_id,
-            task_description=f"Track 2 logic fill for {target_label}",
-            spec_content=prompt,
-            constitutional_check="C-082 (compile gate enforced by splice_node_safely)",
+            prompt=prompt,
             model_hint=model_hint,
             max_tokens=max_tokens,
             attempt=1,
@@ -417,8 +412,10 @@ class UDCPOrchestrator:
 def _parse_llm_files_local(response: str) -> dict[str, str]:
     """Minimal <file path="...">...</file> parser used when llm_codegen is not on sys.path."""
     from runner.constants import ALLOWED_WRITE_ROOTS
+    # Strip surrounding code fence — Haiku sometimes wraps file blocks in ```python ... ```
+    stripped = re.sub(r"^```[a-z]*\n(.*)\n```$", r"\1", response.strip(), flags=re.DOTALL)
     files: dict[str, str] = {}
-    for m in re.finditer(r'<file\s+path=["\']([^"\']+)["\']>(.*?)</file>', response, re.DOTALL | re.IGNORECASE):
+    for m in re.finditer(r'<file\s+path=["\']([^"\']+)["\']>(.*?)</file>', stripped, re.DOTALL | re.IGNORECASE):
         path, content = m.group(1).strip(), m.group(2).strip()
         if any(path.startswith(r) for r in ALLOWED_WRITE_ROOTS):
             files[path] = content
