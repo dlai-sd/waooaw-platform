@@ -165,6 +165,12 @@ def _parse_args() -> argparse.Namespace:
     )
     p.add_argument("--max-tokens", type=int, default=8000)
     p.add_argument(
+        "--extra-context", action="append", default=[],
+        metavar="FILE",
+        help="Append content of FILE to scope text (repeat for multiple). "
+             "Use to pass prior-task output as context.",
+    )
+    p.add_argument(
         "--show-prompt", action="store_true",
         help="In dry mode: print the full scaffold content to stdout",
     )
@@ -175,6 +181,12 @@ def main() -> int:
     args = _parse_args()
 
     scope_text = _load_scope(args.scope, args.task_id, args.wc)
+    for ctx_file in args.extra_context:
+        p = Path(ctx_file)
+        if p.is_file():
+            scope_text += f"\n\n### Context: {p.name} ###\n{p.read_text(encoding='utf-8')}"
+        else:
+            print(_c(_YELLOW, f"  WARN: --extra-context file not found: {ctx_file}"))
     sprint_id = args.sprint_id or re.sub(r"-\d+\w*$", "", args.task_id)
 
     print(_c(_BOLD, f"\n{'=' * 60}"))
