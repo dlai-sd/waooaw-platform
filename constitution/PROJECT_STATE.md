@@ -1,6 +1,32 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-08-02 (EA Skeleton WC-028–031 — COMPLETE)
+**Last Updated:** 2026-08-02 (WC-035 Pipeline Stabilization S1-S4 — COMPLETE)
+
+---
+
+## SESSION RECORD — 2026-08-02 (WC-035 PIPELINE STABILIZATION — COMPLETE)
+
+### What Was Built
+
+| Task | File | Output | Commit | Status |
+|---|---|---|---|---|
+| WC035-01 | `scripts/sprint_retry_advisor.py` | F401/F841 negative constraints — "DO NOT add replacement imports/expressions" | `2879fb0` | ✅ |
+| WC035-02 | `scripts/magic_llm/context_builder.py` | `_build_python_symbol_contract_block()` — AST-extracts public symbols from within-sprint .py files; block [7b] injected when stack=python | `2879fb0` | ✅ |
+| WC035-03 | `scripts/magic_llm/pipeline.py` | `_select_model()` context-pressure upgrade gate: context>40k or (attempt≥2 AND context>20k) → Haiku→Sonnet | `2879fb0` | ✅ |
+| WC035-04 | `scripts/runner/llm_codegen.py` + `task_executor.py` | `_inject_compliance_header()` strips LLM-generated headers + prepends authoritative header at write time; C-059 preamble removed from LLM prompt | `2879fb0` | ✅ |
+| ADR-030 Amendment 2 | `adr/ADR-030-autonomous-sprint-code-generation.md` | Decision A (dynamic model upgrade) + Decision B (framework-managed headers) | `43b15e0` | ✅ |
+| EA Skeleton WC-028–031 | `src/billing-engine/skeleton/wbe_interfaces.py` | 12 data models + 3 error types for four upcoming WBE sprints | `97c85a1` | ✅ |
+
+### Failure Modes Closed
+
+| Mode | Root Cause | Fix |
+|---|---|---|
+| Import whack-a-mole (F401 loop) | LLM replaces unused import with another unused import | Explicit "DO NOT add replacement" constraint in fix instruction |
+| PYTHON_WRONG_SYMBOL (e.g. ThreadCatalogService) | No contract for within-sprint generated modules | AST-extracted symbol contract injected as block [7b] |
+| Haiku format degradation (>40k context) | Small model loses structural compliance at large context | Auto-upgrade to Sonnet at context threshold |
+| CCT-TR-01 failures under retry | LLM drops C-059 header under context pressure | Framework injects header at write time — unconditional |
+
+---
 
 ---
 
