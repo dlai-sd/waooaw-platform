@@ -34,6 +34,10 @@ from typing import Any
 
 REPO_ROOT = Path(__file__).parent.parent
 
+# Ensure repo root is importable so PTR2Assembler can be loaded as scripts.ptr_assembler
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
 
 # ── Known-risky patterns per stack ────────────────────────────────────────────
 
@@ -212,29 +216,47 @@ def _parse_wc_file(wc_path: Path) -> dict[str, Any]:
         stack = "dotnet"  # default — most WCs are .NET
 
     # Extract task IDs and their descriptions
+    # Supports two formats:
+    #   1. Table rows:   | WC027-01a | scope description | model_hint | status | ... |
+    #   2. Legacy heads: ### WC027-01a — description\nbody
     tasks = []
-    task_pattern = re.compile(
-        r'###\s+(WC\d{3}-\d+[a-z]?)\s+[—–-]\s+([^\n]+)\n(.*?)(?=###|\Z)',
-        re.DOTALL
+
+    table_pattern = re.compile(
+        r'^\|\s*(WC\d{3}-\d+[a-z]?)\s*\|([^|]+)\|([^|]+)\|([^|]+)\|',
+        re.MULTILINE,
     )
-    for m in task_pattern.finditer(content):
-        task_id = m.group(1)
-        description = m.group(2).strip()
-        body = m.group(3)
-
-        # Extract spec_sections references
-        spec_refs = re.findall(r'`([^`]+\.md[^`]*)`|architecture/reference/[^\s]+', body)
-        has_cct = bool(re.search(r'CCT-|cct_', body, re.I))
-        model_hint = re.search(r'model_hint.*?(reasoning|auto|none)', body, re.I)
-
+    for m in table_pattern.finditer(content):
+        task_id = m.group(1).strip()
+        scope_col = m.group(2).strip()
+        model_col = m.group(3).strip()
+        # scope column IS the description + body for analysis purposes
         tasks.append({
             "task_id": task_id,
-            "description": description,
-            "body": body,
-            "spec_refs": spec_refs,
-            "has_cct": has_cct,
-            "model_hint": model_hint.group(1).lower() if model_hint else "reasoning",
+            "description": scope_col[:80],
+            "body": scope_col,
+            "spec_refs": re.findall(r'`([^`]+\.md[^`]*)`|architecture/reference/[^\s`]+', scope_col),
+            "has_cct": bool(re.search(r'CCT-|cct_', scope_col, re.I)),
+            "model_hint": model_col.lower() if model_col in ("reasoning", "auto", "none") else "reasoning",
         })
+
+    if not tasks:
+        # Legacy heading format fallback
+        heading_pattern = re.compile(
+            r'###\s+(WC\d{3}-\d+[a-z]?)\s+[—–-]\s+([^\n]+)\n(.*?)(?=###|\Z)',
+            re.DOTALL,
+        )
+        for m in heading_pattern.finditer(content):
+            task_id = m.group(1)
+            description = m.group(2).strip()
+            body = m.group(3)
+            tasks.append({
+                "task_id": task_id,
+                "description": description,
+                "body": body,
+                "spec_refs": re.findall(r'`([^`]+\.md[^`]*)`|architecture/reference/[^\s]+', body),
+                "has_cct": bool(re.search(r'CCT-|cct_', body, re.I)),
+                "model_hint": (re.search(r'model_hint.*?(reasoning|auto|none)', body, re.I) or type('', (), {"group": lambda self, n: "reasoning"})()).group(1).lower(),
+            })
 
     # Extract dependencies
     deps = re.findall(r'Depends on.*?(WC-\d+)', content, re.I)
