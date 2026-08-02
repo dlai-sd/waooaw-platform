@@ -131,7 +131,8 @@ class WCSimResult:
 
 # ── PTR gap detection ──────────────────────────────────────────────────────────
 
-def _detect_type_gaps(spec_text: str, ptr: dict, stack: str) -> list[tuple[str, str]]:
+def _detect_type_gaps(spec_text: str, ptr: dict, stack: str,
+                      sprint_output_types: set[str] | None = None) -> list[tuple[str, str]]:
     """Find PascalCase type names in spec that are NOT in the PTR."""
     gaps = []
     type_names = set(re.findall(r'\b([A-Z][a-zA-Z0-9]{3,})\b', spec_text))
@@ -144,6 +145,9 @@ def _detect_type_gaps(spec_text: str, ptr: dict, stack: str) -> list[tuple[str, 
               "Dict", "Optional", "Union", "Type", "Class", "Task", "Step"}
 
     for name in sorted(type_names - ignore):
+        # Skip types being defined by an earlier task in this same sprint
+        if sprint_output_types and name in sprint_output_types:
+            continue
         # Check if any PTR key contains this name
         in_ptr = any(name in k for k in stack_types.keys())
         in_packages = any(name.lower() in p.lower() for p in stack_packages.keys())
@@ -154,6 +158,36 @@ def _detect_type_gaps(spec_text: str, ptr: dict, stack: str) -> list[tuple[str, 
                                         "Worker", "Workflow", "Activity")):
                 gaps.append((name, "Not found in PTR — model may invent wrong signature"))
     return gaps
+
+
+def _collect_sprint_output_types(tasks: list[dict]) -> set[str]:
+    """Extract PascalCase type names that this sprint's tasks declare as outputs.
+
+    Matches backtick-quoted names in scope columns, especially after 'Pydantic:',
+    'dataclass', 'class', or 'implements'. These types don't exist in the PTR yet
+    (they're being created) so TYPE_GAP should not fire for them.
+    """
+    output_types: set[str] = set()
+    creation_signals = re.compile(
+        r'(?:Pydantic:|dataclass[:\s]|class\s|implements\s|ABC[:\s]|@dataclass)'
+        r'[^|`]*?`([A-Z][a-zA-Z0-9]+)`'
+        r'|`([A-Z][a-zA-Z0-9]+)`(?=[^|]*?(?:Pydantic|dataclass|model|schema|ABC|interface))',
+        re.IGNORECASE,
+    )
+    # Also capture any backtick-quoted PascalCase names in the scope — if they appear
+    # alongside a .py output file in the same cell they are almost certainly definitions.
+    for task in tasks:
+        body = task.get("body", "")
+        # If scope mentions an output .py file, all backtick PascalCase in that cell = outputs
+        if re.search(r'src/[\w/-]+\.py', body):
+            for m in re.finditer(r'`([A-Z][a-zA-Z0-9]{3,})`', body):
+                output_types.add(m.group(1))
+        # Explicit creation-pattern matches regardless of .py presence
+        for m in creation_signals.finditer(body):
+            name = m.group(1) or m.group(2)
+            if name:
+                output_types.add(name)
+    return output_types
 
 
 def _detect_package_gaps(spec_text: str, ptr: dict, stack: str) -> list[tuple[str, str]]:
@@ -323,6 +357,9 @@ def simulate_wc(wc_path: Path) -> WCSimResult:
                     fix_suggestion=f"Complete and merge {dep} before triggering this sprint"
                 ))
 
+    # Build the set of types this sprint will define — suppress TYPE_GAP for them
+    sprint_output_types = _collect_sprint_output_types(wc_data["tasks"])
+
     # Analyse each task
     for task in wc_data["tasks"]:
         task_id = task["task_id"]
@@ -354,7 +391,7 @@ def simulate_wc(wc_path: Path) -> WCSimResult:
                     print(f"    ✅ SKELETON exists: src/{_svc_match.group(1)}/skeleton/")
 
         # 1. Type gaps
-        type_gaps = _detect_type_gaps(spec_text, ptr, stack)
+        type_gaps = _detect_type_gaps(spec_text, ptr, stack, sprint_output_types)
         for type_name, reason in type_gaps[:5]:  # cap per task
             result.gaps.append(TaskGap(
                 task_id=task_id,
