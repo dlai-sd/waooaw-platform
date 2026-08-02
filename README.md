@@ -9,17 +9,17 @@
 ## Platform Status
 
 ```
-Version:              v1.24.0 — ADR-038 Multi-Stack Compile Gate Architecture (2026-08-01)
+Version:              v1.25.0 — UDCP Batch Dispatch Integration + WC-027 Billing Engine active sprint (2026-08-02)
 Constitutional Claims: 86 ratified (C-001→C-086) | ADRs: 38
 Customer Agents:      4 approved — DMA v3.0 · Trading v1.7 · Agricultural v2.7 · Private Tutor v1.0
 Internal Agents:      5 — Platform IT Expert · Steward Assistant · Self-Improvement Analyst ·
                           Platform Operations · RepoNav (AVD-001 v1.0 RATIFIED — INST-014)
 Gates:                G0 ✅  G1 ✅  G2 ✅  G3 ✅  G4 ✅  G5 CLEAR
-Phase:                IMPLEMENTATION — WC-016 Sprint AUTHORIZED (autonomous, GoalExecutor in path)
+Phase:                IMPLEMENTATION — WC-027 Sprint AUTHORIZED (autonomous, UDCP batch dispatch path)
 Infrastructure:       Azure live — waooaw-dev-kv (Key Vault) · OIDC auth · Sprint Dashboard: Issue #7
 Monitoring:           Sprint Dashboard: github.com/dlai-sd/waooaw-platform/issues/7
 Web:                  web/WAOOAWHome.html — Landing page v1.0 + Auth modal
-CCTs:                 52 specified | Simulations: 24 | Pipeline tests: 443 passing
+CCTs:                 61 specified | Simulations: 24 | Pipeline tests: 547 passing (138 constitutional+UDCP audit, 9 new UDCP dispatch CCTs)
 Company:              DLAI Satellite Data (OPC) Pvt Ltd · CIN: U62090PN2024OPC230499 · Pune, India
 Stewards:             Yogesh Khandge (Founder) · Sujay Khandge (Business Growth) · Ojal Khandge (Ethics Officer)
 ```
@@ -30,9 +30,9 @@ The platform has entered full autonomous implementation. The Autonomous Sprint A
 generates production-grade code, reviews its own PR, merges, and advances to the next sprint — without human intervention.
 
 ```
-Current sprint:  WC-016 — Web Portal Skeleton (Next.js 14 PWA + Registration + Emergency Stop)
-Sprint status:   AUTHORIZED — GoalExecutor in execution path
-Execution path:  autonomous-sprint.yaml → execute_file_by_file() → GoalExecutor → ContextBuilder §7 → MagicLLM → ResponseEvaluator §8
+Current sprint:  WC-027 — Billing Engine (thread catalog, markup/pricing, bundle cost floor)
+Sprint status:   AUTHORIZED — UDCP batch dispatch in execution path
+Execution path:  autonomous-sprint.yaml → execute_subtask_chain() → type=udcp → UDCPOrchestrator → Anthropic API
 Monitor at:      github.com/dlai-sd/waooaw-platform/issues/7
 PR review:       Autonomous (GitHub App waooaw-reviewer, C-065 compliant)
 Self-healing:    advisor_auto_extend.py — new compiler errors auto-classified and committed

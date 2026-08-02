@@ -87,6 +87,46 @@ No ABCs added for WC-029/030/031 services — standalone concrete classes per SA
 
 ---
 
+## SESSION RECORD — 2026-08-02 (UDCP BATCH DISPATCH INTEGRATION + WC-027 ACTIVATED — COMPLETE)
+
+### What Was Built
+
+| WC / IB | Institution | Output | Status |
+|---|---|---|---|
+| UDCP dispatch | Enterprise Architect | `execute_subtask_chain()` — new `type="udcp"` dispatch block; scope text assembly from spec_sections; 3000-char truncation | ✅ `7636fc1` |
+| WC027 activation | Enterprise Architect | All 9 WC027 subtasks set to `type="udcp"`; stale model hints fixed; `autonomous_halt: false`; `sprint_status: READY` | ✅ `b8193a8` |
+| router.py fix | Enterprise Architect | Stray module-level import crash removed; 4 wrong `src.billing_engine.markup.*` imports corrected to `markup.*` + `BundleEngine` | ✅ `cb2c9b0` |
+| TestUDCPDispatch (9 tests) | Enterprise Architect | Unit tests: routes to execute_with_udcp, scope_text assembly, spec append, missing spec skip, model_hint forward, C-084 failure blocks, C-082 gate fires, dry_run skip, 3000-char truncation | ✅ `cb2c9b0` |
+| Test isolation fix | Enterprise Architect | 4 tests converted to `patch.object` to survive `sys.modules` swap from `autonomous_sprint_runner.py`; root cause documented | ✅ `8059bc3` |
+| Billing markup layer | Enterprise Architect | `bundle_engine.py`, `models.py`, `test_markup.py`, `main.py` pricing router wiring | ✅ `8059bc3` |
+| QA run | Enterprise Architect | 3 QA techniques: import chain, property-based (22 tests), arch fitness functions — all PASS | ✅ verified |
+| E2E simulation | Enterprise Architect | 3/3 WC027 chains PASS with `prior_completed` accumulation | ✅ verified |
+| Constitutional audit | Enterprise Architect | 138/138 pass (constitutional + UDCP dispatch + billing-engine) | ✅ verified |
+
+### Root Causes Closed
+
+| Gap | Fix |
+|---|---|
+| `router.py` import crash | Stray module-level executable lines removed (UDCP logic-filler wrote app-wiring as code) |
+| Test assertion too strict | `startswith(check_text)` → `check_text in scope_text` (stack rules prepend before check) |
+| Truncation count unreliable | `long_content not in scope` + `long_content[:3000] in scope` (stack rules contain X chars) |
+| Test isolation contamination | `autonomous_sprint_runner` swaps `sys.modules["task_decomposer"]` at module level; fixed via `patch.object` |
+
+### New Artifacts
+- `scripts/task_decomposer.py` — UDCP dispatch block + SQLAlchemy TEXT RULE in `STACK_BEHAVIORAL_RULES["python"]`
+- `scripts/autonomous_sprint_runner.py` — all 9 WC027 subtasks set to `type="udcp"`
+- `src/billing-engine/markup/router.py` — stray imports removed, function-body imports fixed
+- `src/billing-engine/markup/bundle_engine.py` — bundle cost floor engine
+- `src/billing-engine/markup/models.py` — pricing domain models
+- `src/billing-engine/main.py` — pricing router wired (`/pricing/` prefix)
+- `tests/pipeline/test_task_decomposer.py` — 9 new `TestUDCPDispatch` tests + 4 isolation-fixed tests
+- `tests/billing-engine/test_markup.py` — 22 property-based billing markup tests
+
+### Version
+**v1.25.0** — 547 pipeline+constitutional tests passing | 138 constitutional audit clean
+
+---
+
 ## SESSION RECORD — 2026-08-01 (ADR-038 PIPELINE GATE ARCHITECTURE — COMPLETE)
 
 ### What Was Built
