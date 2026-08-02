@@ -9,7 +9,7 @@ from typing import Any
 from runner.constants import REPO_ROOT
 
 # Regex patterns for scope text parsing
-_FILE_PATH_RE = re.compile(r"`(src/[^\`]+\.py)`")
+_FILE_PATH_RE = re.compile(r"`((?:src|tests)/[^`]+\.py)`")
 _FASTAPI_METHOD_RE = re.compile(
     r"`(GET|POST|PUT|DELETE|PATCH)\s+(/[^`]*)`", re.IGNORECASE
 )
