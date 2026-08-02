@@ -999,3 +999,439 @@ class TestPTRWiring:
                         )
         # Sprint must succeed despite PTR failure
         assert result is True
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# TestUDCPDispatch — unit tests for the new type="udcp" dispatch path
+# constitutional_basis: ADR-039, C-059, C-077, C-082, C-084
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class TestUDCPDispatch:
+    """Unit tests covering the type='udcp' dispatch path in execute_subtask_chain.
+
+    Invariants under test:
+      - UDCP path calls execute_with_udcp(), never execute_with_llm()
+      - scope_text is built from constitutional_check + spec section file content
+      - Missing spec files are silently skipped (no crash)
+      - model_hint, max_tokens, task_id, sprint_id are forwarded unchanged
+      - UDCP failure marks the subtask failed and C-084 blocks dependents
+      - UDCP success triggers run_compile_gate (same as llm path)
+      - dry_run=True skips execution entirely (execute_with_udcp not called)
+    """
+
+    def _make_monitor(self):
+        return MagicMock()
+
+    def _mock_runner(self):
+        """Minimal autonomous_sprint_runner mock required by execute_subtask_chain."""
+        return MagicMock(
+            execute_with_llm=MagicMock(return_value=True),
+            get_branch_context=lambda: "",
+            git=MagicMock(return_value=MagicMock(returncode=1)),
+        )
+
+    def test_udcp_subtask_routes_to_execute_with_udcp_not_llm(self, tmp_path):
+        """type='udcp' must call execute_with_udcp, never execute_with_llm."""
+        import task_decomposer
+
+        udcp_calls = []
+        llm_calls = []
+
+        def fake_udcp(task_id, scope_text, sprint_id, model_hint, max_tokens):
+            udcp_calls.append(task_id)
+            return True
+
+        mock_runner = self._mock_runner()
+        mock_runner.execute_with_llm = MagicMock(side_effect=lambda *a, **kw: llm_calls.append("called") or True)
+
+        mock_executor = MagicMock()
+        mock_executor.execute_with_udcp = fake_udcp
+
+        st = SubTaskDef(
+            id="WC027-01aa", description="interfaces", type="udcp",
+            constitutional_check="implement IMarkupEngine",
+            model_hint="reasoning",
+            max_tokens=8000,
+        )
+
+        with patch("task_decomposer.REPO_ROOT", tmp_path):
+            with patch.dict("sys.modules", {
+                "autonomous_sprint_runner": mock_runner,
+                "runner.task_executor": mock_executor,
+                **_go_unavailable(),
+            }):
+                with patch("task_decomposer.run_compile_gate", return_value=(True, "")):
+                    execute_subtask_chain(
+                        task_id="WC027-01",
+                        subtasks=[st],
+                        monitor_signal=self._make_monitor(),
+                        infra_error_tasks=[],
+                        dry_run=False,
+                    )
+
+        assert len(udcp_calls) == 1, "execute_with_udcp must be called exactly once"
+        assert udcp_calls[0] == "WC027-01aa"
+        assert len(llm_calls) == 0, "execute_with_llm must NOT be called for type='udcp'"
+
+    def test_udcp_scope_text_starts_with_constitutional_check(self, tmp_path):
+        """scope_text first element must be the effective_check (constitutional_check content)."""
+        import task_decomposer
+
+        received_scope = []
+
+        def fake_udcp(task_id, scope_text, sprint_id, model_hint, max_tokens):
+            received_scope.append(scope_text)
+            return True
+
+        mock_executor = MagicMock()
+        mock_executor.execute_with_udcp = fake_udcp
+
+        check_text = "IMPLEMENT cost_floor() per constitutional floor"
+        st = SubTaskDef(
+            id="WC027-01ba", description="markup logic", type="udcp",
+            constitutional_check=check_text,
+            model_hint="reasoning",
+            max_tokens=8000,
+        )
+
+        with patch("task_decomposer.REPO_ROOT", tmp_path):
+            with patch.dict("sys.modules", {
+                "autonomous_sprint_runner": self._mock_runner(),
+                "runner.task_executor": mock_executor,
+                **_go_unavailable(),
+            }):
+                with patch("task_decomposer.run_compile_gate", return_value=(True, "")):
+                    execute_subtask_chain(
+                        task_id="WC027-01",
+                        subtasks=[st],
+                        monitor_signal=self._make_monitor(),
+                        infra_error_tasks=[],
+                        dry_run=False,
+                    )
+
+        assert len(received_scope) == 1
+        # constitutional_check must be present in scope_text
+        # (_build_effective_check prepends STACK RULES before the check text)
+        assert check_text in received_scope[0], (
+            f"constitutional_check must appear in scope_text. Got: {received_scope[0][:80]!r}"
+        )
+
+    def test_udcp_spec_section_appended_when_file_exists(self, tmp_path):
+        """When a spec_sections file exists, its content (first 3000 chars) is in scope_text."""
+        import task_decomposer
+
+        # Create a spec file under tmp_path
+        spec_dir = tmp_path / "work-contracts"
+        spec_dir.mkdir()
+        spec_file = spec_dir / "WC-027.md"
+        spec_content = "# WC-027 Markup Engine\nImplement cost_floor and derive_price.\n"
+        spec_file.write_text(spec_content)
+
+        received_scope = []
+
+        def fake_udcp(task_id, scope_text, sprint_id, model_hint, max_tokens):
+            received_scope.append(scope_text)
+            return True
+
+        mock_executor = MagicMock()
+        mock_executor.execute_with_udcp = fake_udcp
+
+        st = SubTaskDef(
+            id="WC027-01ba", description="markup logic", type="udcp",
+            constitutional_check="base check",
+            spec_sections={"work-contracts/WC-027.md": "full"},
+            model_hint="reasoning",
+            max_tokens=8000,
+        )
+
+        with patch("task_decomposer.REPO_ROOT", tmp_path):
+            with patch.dict("sys.modules", {
+                "autonomous_sprint_runner": self._mock_runner(),
+                "runner.task_executor": mock_executor,
+                **_go_unavailable(),
+            }):
+                with patch("task_decomposer.run_compile_gate", return_value=(True, "")):
+                    execute_subtask_chain(
+                        task_id="WC027-01",
+                        subtasks=[st],
+                        monitor_signal=self._make_monitor(),
+                        infra_error_tasks=[],
+                        dry_run=False,
+                    )
+
+        assert len(received_scope) == 1
+        assert "WC-027 Markup Engine" in received_scope[0], (
+            "spec file content must be included in scope_text"
+        )
+        assert "work-contracts/WC-027.md" in received_scope[0], (
+            "spec file path header must appear in scope_text"
+        )
+
+    def test_udcp_missing_spec_file_silently_skipped(self, tmp_path):
+        """Missing spec files in spec_sections must not raise — silently skipped."""
+        import task_decomposer
+
+        udcp_calls = []
+
+        def fake_udcp(task_id, scope_text, sprint_id, model_hint, max_tokens):
+            udcp_calls.append(scope_text)
+            return True
+
+        mock_executor = MagicMock()
+        mock_executor.execute_with_udcp = fake_udcp
+
+        st = SubTaskDef(
+            id="WC027-01aa", description="interfaces", type="udcp",
+            constitutional_check="base check",
+            spec_sections={"does-not-exist/WC-999.md": "full"},  # file does not exist
+            model_hint="reasoning",
+            max_tokens=8000,
+        )
+
+        with patch("task_decomposer.REPO_ROOT", tmp_path):
+            with patch.dict("sys.modules", {
+                "autonomous_sprint_runner": self._mock_runner(),
+                "runner.task_executor": mock_executor,
+                **_go_unavailable(),
+            }):
+                with patch("task_decomposer.run_compile_gate", return_value=(True, "")):
+                    # Must not raise
+                    result = execute_subtask_chain(
+                        task_id="WC027-01",
+                        subtasks=[st],
+                        monitor_signal=self._make_monitor(),
+                        infra_error_tasks=[],
+                        dry_run=False,
+                    )
+
+        assert result is True
+        assert len(udcp_calls) == 1, "execute_with_udcp must still be called even with missing spec files"
+        # scope_text should only contain the constitutional_check — no extra section header
+        assert "does-not-exist" not in udcp_calls[0], "missing file path must not appear in scope_text"
+
+    def test_udcp_model_hint_and_max_tokens_forwarded(self, tmp_path):
+        """model_hint and max_tokens from SubTaskDef must be forwarded to execute_with_udcp."""
+        import task_decomposer
+
+        received_kwargs = {}
+
+        def fake_udcp(task_id, scope_text, sprint_id, model_hint, max_tokens):
+            received_kwargs.update({
+                "task_id": task_id,
+                "sprint_id": sprint_id,
+                "model_hint": model_hint,
+                "max_tokens": max_tokens,
+            })
+            return True
+
+        mock_executor = MagicMock()
+        mock_executor.execute_with_udcp = fake_udcp
+
+        st = SubTaskDef(
+            id="WC027-02a", description="api layer", type="udcp",
+            constitutional_check="write router tests",
+            model_hint="flash",
+            max_tokens=12000,
+        )
+
+        with patch("task_decomposer.REPO_ROOT", tmp_path):
+            with patch.dict("sys.modules", {
+                "autonomous_sprint_runner": self._mock_runner(),
+                "runner.task_executor": mock_executor,
+                **_go_unavailable(),
+            }):
+                with patch("task_decomposer.run_compile_gate", return_value=(True, "")):
+                    execute_subtask_chain(
+                        task_id="WC027-02",
+                        subtasks=[st],
+                        monitor_signal=self._make_monitor(),
+                        infra_error_tasks=[],
+                        dry_run=False,
+                    )
+
+        assert received_kwargs["task_id"] == "WC027-02a"
+        assert received_kwargs["sprint_id"] == "WC027-02"
+        assert received_kwargs["model_hint"] == "flash"
+        assert received_kwargs["max_tokens"] == 12000
+
+    def test_udcp_failure_marks_task_failed_and_blocks_dependent(self, tmp_path):
+        """C-084: UDCP failure must propagate — dependent subtask must be skipped."""
+        import task_decomposer
+
+        executed = []
+
+        def fake_udcp_fail(task_id, scope_text, sprint_id, model_hint, max_tokens):
+            return False  # simulate UDCP failure
+
+        def fake_udcp_pass(task_id, scope_text, sprint_id, model_hint, max_tokens):
+            executed.append(task_id)
+            return True
+
+        call_n = [0]
+
+        def fake_udcp(task_id, scope_text, sprint_id, model_hint, max_tokens):
+            call_n[0] += 1
+            if call_n[0] == 1:
+                return False  # first task fails
+            executed.append(task_id)
+            return True
+
+        mock_executor = MagicMock()
+        mock_executor.execute_with_udcp = fake_udcp
+
+        subtasks = [
+            SubTaskDef(
+                id="WC027-01aa", description="interfaces", type="udcp",
+                constitutional_check="task A",
+                model_hint="reasoning", max_tokens=8000,
+            ),
+            SubTaskDef(
+                id="WC027-01ab", description="data models", type="udcp",
+                depends_on=["WC027-01aa"],
+                constitutional_check="task B depends on A",
+                model_hint="flash", max_tokens=4000,
+            ),
+        ]
+
+        with patch("task_decomposer.REPO_ROOT", tmp_path):
+            with patch.dict("sys.modules", {
+                "autonomous_sprint_runner": self._mock_runner(),
+                "runner.task_executor": mock_executor,
+                **_go_unavailable(),
+            }):
+                with patch("task_decomposer.run_compile_gate", return_value=(True, "")):
+                    result = execute_subtask_chain(
+                        task_id="WC027-01",
+                        subtasks=subtasks,
+                        monitor_signal=self._make_monitor(),
+                        infra_error_tasks=[],
+                        dry_run=False,
+                    )
+
+        assert result is False, "chain must return False when any subtask fails"
+        assert "WC027-01ab" not in executed, "C-084: dependent must be skipped when dependency fails"
+
+    def test_udcp_success_triggers_compile_gate(self, tmp_path):
+        """After UDCP success, run_compile_gate must be called (C-082)."""
+        import task_decomposer
+
+        gate_calls = []
+
+        def fake_udcp(task_id, scope_text, sprint_id, model_hint, max_tokens):
+            return True
+
+        mock_executor = MagicMock()
+        mock_executor.execute_with_udcp = fake_udcp
+
+        st = SubTaskDef(
+            id="WC027-01aa", description="interfaces", type="udcp",
+            constitutional_check="implement interface",
+            model_hint="reasoning", max_tokens=8000,
+        )
+
+        def fake_compile_gate(gate, service_dir=None, target_files=None, task_id=None):
+            gate_calls.append({"gate": gate, "task_id": task_id})
+            return (True, "")
+
+        with patch("task_decomposer.REPO_ROOT", tmp_path):
+            with patch.dict("sys.modules", {
+                "autonomous_sprint_runner": self._mock_runner(),
+                "runner.task_executor": mock_executor,
+                **_go_unavailable(),
+            }):
+                with patch("task_decomposer.run_compile_gate", side_effect=fake_compile_gate):
+                    execute_subtask_chain(
+                        task_id="WC027-01",
+                        subtasks=[st],
+                        monitor_signal=self._make_monitor(),
+                        infra_error_tasks=[],
+                        dry_run=False,
+                    )
+
+        assert len(gate_calls) >= 1, "C-082: compile gate must be called after UDCP success"
+        assert gate_calls[0]["task_id"] == "WC027-01aa"
+
+    def test_udcp_dry_run_skips_execution(self, tmp_path):
+        """dry_run=True must never invoke execute_with_udcp."""
+        import task_decomposer
+
+        udcp_calls = []
+
+        def fake_udcp(task_id, scope_text, sprint_id, model_hint, max_tokens):
+            udcp_calls.append(task_id)
+            return True
+
+        mock_executor = MagicMock()
+        mock_executor.execute_with_udcp = fake_udcp
+
+        st = SubTaskDef(
+            id="WC027-01aa", description="interfaces", type="udcp",
+            constitutional_check="implement",
+            model_hint="reasoning", max_tokens=8000,
+        )
+
+        with patch("task_decomposer.REPO_ROOT", tmp_path):
+            with patch.dict("sys.modules", {
+                "autonomous_sprint_runner": self._mock_runner(),
+                "runner.task_executor": mock_executor,
+                **_go_unavailable(),
+            }):
+                result = execute_subtask_chain(
+                    task_id="WC027-01",
+                    subtasks=[st],
+                    monitor_signal=self._make_monitor(),
+                    infra_error_tasks=[],
+                    dry_run=True,
+                )
+
+        assert result is True, "dry_run chain must return True"
+        assert len(udcp_calls) == 0, "dry_run=True must not call execute_with_udcp"
+
+    def test_udcp_spec_content_truncated_to_3000_chars(self, tmp_path):
+        """Spec file content in scope_text is capped at 3000 chars to prevent token overflow."""
+        import task_decomposer
+
+        # Create a large spec file (>3000 chars)
+        spec_dir = tmp_path / "work-contracts"
+        spec_dir.mkdir()
+        spec_file = spec_dir / "WC-027-big.md"
+        long_content = "X" * 5000  # 5000-char file
+        spec_file.write_text(long_content)
+
+        received_scope = []
+
+        def fake_udcp(task_id, scope_text, sprint_id, model_hint, max_tokens):
+            received_scope.append(scope_text)
+            return True
+
+        mock_executor = MagicMock()
+        mock_executor.execute_with_udcp = fake_udcp
+
+        st = SubTaskDef(
+            id="WC027-01aa", description="interfaces", type="udcp",
+            constitutional_check="check",
+            spec_sections={"work-contracts/WC-027-big.md": "full"},
+            model_hint="reasoning", max_tokens=8000,
+        )
+
+        with patch("task_decomposer.REPO_ROOT", tmp_path):
+            with patch.dict("sys.modules", {
+                "autonomous_sprint_runner": self._mock_runner(),
+                "runner.task_executor": mock_executor,
+                **_go_unavailable(),
+            }):
+                with patch("task_decomposer.run_compile_gate", return_value=(True, "")):
+                    execute_subtask_chain(
+                        task_id="WC027-01",
+                        subtasks=[st],
+                        monitor_signal=self._make_monitor(),
+                        infra_error_tasks=[],
+                        dry_run=False,
+                    )
+
+        assert len(received_scope) == 1
+        # 3000-char truncation: the 5000-char file must NOT appear in full
+        # We verify the full unreduced content is absent (stack rules may contain uppercase
+        # letters so we check the raw file slice rather than counting characters).
+        assert long_content not in received_scope[0], "5000-char spec content must be truncated"
+        assert long_content[:3000] in received_scope[0], "First 3000 chars of spec must be present"
