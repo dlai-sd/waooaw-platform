@@ -968,12 +968,12 @@ Each sprint has EA spec gaps documented, SA corrections applied to WC files, and
 <!-- Task progress lives in work-contracts/WC-NNN.md — not here. -->
 
 ```yaml
-autonomous_halt: false
+autonomous_halt: true
 platform_phase: IMPLEMENTATION
 current_sprint: WC-027
-sprint_status: AUTHORIZED
+sprint_status: BLOCKED_PIPELINE_REBUILD
 branch: ib/009/sprint-027
-consecutive_failures: 1
+consecutive_failures: 0
 ```
 
 
