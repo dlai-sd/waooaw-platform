@@ -970,3 +970,118 @@ class TestOrchestratorGapFixes:
             if not (tmp_path / a["file_path"]).is_file()
         ]
         assert filtered == [], "All files exist → no artifacts to scaffold"
+
+
+class TestForceGreenfieldAndAppendSkipFixes:
+    """Regression tests for D-9 pre-cursor fixes (2026-08-03):
+    1. force_greenfield=True bypasses detect_track even when output files exist.
+    2. test/* files containing APIRouter mocks do not trigger APPEND SKIP.
+    """
+
+    def test_force_greenfield_bypasses_differential(self, tmp_path: Path) -> None:
+        """execute_task(force_greenfield=True) must use GREENFIELD even when file exists."""
+        from runner.udcp_orchestrator import UDCPOrchestrator
+
+        tests_dir = tmp_path / "tests/billing-engine"
+        tests_dir.mkdir(parents=True)
+        existing = (
+            "# EA mock scaffold — wrong content\n"
+            "from fastapi import APIRouter\n"
+            "router = APIRouter()\n"
+        )
+        (tests_dir / "test_markup.py").write_text(existing)
+
+        orch = UDCPOrchestrator(repo_root=tmp_path)
+
+        # Without force_greenfield → file exists → DIFFERENTIAL
+        assert orch.groom.detect_track(["tests/billing-engine/test_markup.py"]) == "DIFFERENTIAL"
+
+        # With force_greenfield=True → track is forced to GREENFIELD before any LLM call
+        track_seen: list[str] = []
+
+        def capture_llm(**kwargs: object) -> str:  # type: ignore[override]
+            track_seen.append("called")
+            # Track 1 fill step expects <file path="..."> XML blocks
+            return (
+                '<file path="tests/billing-engine/test_markup.py">\n'
+                "# generated\ndef test_placeholder() -> None:\n    pass\n"
+                "</file>\n"
+            )
+
+        orch2 = UDCPOrchestrator(repo_root=tmp_path, llm_fn=capture_llm)
+        result = orch2.execute_task(
+            task_id="T-fg",
+            scope_text="`tests/billing-engine/test_markup.py` — full pytest suite",
+            required_output_files=["tests/billing-engine/test_markup.py"],
+            force_greenfield=True,
+        )
+        # Track must be GREENFIELD regardless of file existence
+        assert result.track == "GREENFIELD"
+        assert result.success
+
+    def test_append_skip_not_triggered_for_test_file_with_mock_router(
+        self, tmp_path: Path
+    ) -> None:
+        """A test file that defines router = APIRouter() must NOT hit APPEND SKIP."""
+        from runner.udcp_orchestrator import UDCPOrchestrator
+
+        tests_dir = tmp_path / "tests/billing-engine"
+        tests_dir.mkdir(parents=True)
+        mock_content = (
+            "from __future__ import annotations\n"
+            "from fastapi import APIRouter\n"
+            "router = APIRouter()\n\n"
+            "def test_placeholder() -> None:\n"
+            "    pass\n"
+        )
+        (tests_dir / "test_markup.py").write_text(mock_content)
+
+        appended: list[str] = []
+
+        def stub_llm(**kwargs: object) -> str:  # type: ignore[override]
+            appended.append("called")
+            return "def test_new_case() -> None:\n    assert True\n"
+
+        orch = UDCPOrchestrator(repo_root=tmp_path, llm_fn=stub_llm)
+        result = orch._append_module_lines(
+            task_id="T-as",
+            fp=tests_dir / "test_markup.py",
+            rel_path="tests/billing-engine/test_markup.py",
+            scope_text="add test cases",
+            model_hint="auto",
+            max_tokens=1000,
+        )
+        # APPEND SKIP must NOT fire — LLM must have been called
+        assert appended, "LLM was never called — APPEND SKIP incorrectly fired for test file"
+        assert result.success
+
+    def test_append_skip_still_fires_for_src_router_file(self, tmp_path: Path) -> None:
+        """src/ router files still trigger APPEND SKIP (idempotency guard must stay)."""
+        from runner.udcp_orchestrator import UDCPOrchestrator
+
+        router_dir = tmp_path / "src/billing-engine/markup"
+        router_dir.mkdir(parents=True)
+        router_content = (
+            "from fastapi import APIRouter\n"
+            "router = APIRouter(prefix='/pricing')\n"
+        )
+        (router_dir / "router.py").write_text(router_content)
+
+        called: list[str] = []
+
+        def stub_llm(**kwargs: object) -> str:  # type: ignore[override]
+            called.append("called")
+            return "app.include_router(router)\n"
+
+        orch = UDCPOrchestrator(repo_root=tmp_path, llm_fn=stub_llm)
+        result = orch._append_module_lines(
+            task_id="T-sr",
+            fp=router_dir / "router.py",
+            rel_path="src/billing-engine/markup/router.py",
+            scope_text="mount router",
+            model_hint="auto",
+            max_tokens=1000,
+        )
+        # APPEND SKIP must fire — src/ router files must still be protected
+        assert not called, "APPEND SKIP should have fired for src/ router file"
+        assert result.success

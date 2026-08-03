@@ -405,6 +405,7 @@ TASK_HANDLERS = {
                 service_dir='',
                 wc_task_id='WC027-02',
                 stack='python',
+                force_greenfield=True,  # existing EA mock must be replaced entirely
                 output_files=[
                     'tests/billing-engine/test_markup.py',
                 ],

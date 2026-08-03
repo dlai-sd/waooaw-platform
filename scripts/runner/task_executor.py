@@ -367,6 +367,7 @@ def execute_with_udcp(
     max_tokens: int = 8000,
     required_output_files: list[str] | None = None,
     inject_source_files: list[str] | None = None,
+    force_greenfield: bool = False,
 ) -> tuple[bool, list[str]]:
     """
     UDCP orchestrator entry point for Python-stack tasks (ADR-039).
@@ -386,6 +387,7 @@ def execute_with_udcp(
         max_tokens=max_tokens,
         required_output_files=required_output_files,
         inject_source_files=inject_source_files,
+        force_greenfield=force_greenfield,
     )
 
     if result.success:
