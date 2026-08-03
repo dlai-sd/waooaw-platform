@@ -132,3 +132,16 @@
 {"event": "SPRINT_TASKS_EXECUTED", "timestamp": "2026-08-03T16:05:33.113656+00:00", "run_id": "30830276253", "stub_mode": true, "sprint": "WC-027", "tasks_done": ["WC027-01a", "WC027-01b", "WC027-02"]}
 {"event": "AUTONOMOUS_SPRINT_STARTED", "timestamp": "2026-08-03T17:34:28.513757+00:00", "run_id": "", "stub_mode": true, "sprint": "WC-027", "branch": "ib/009/sprint-027", "tasks": ["WC027-01a", "WC027-01b", "WC027-02"]}
 {"event": "SPRINT_TASKS_EXECUTED", "timestamp": "2026-08-03T17:37:25.812549+00:00", "run_id": "", "stub_mode": true, "sprint": "WC-027", "tasks_done": []}
+{"event": "autonomous_halt_active", "timestamp": "2026-08-03T18:37:21.306501+00:00", "run_id": "", "stub_mode": true, "reason": "AUTONOMOUS_HALT=true in PROJECT_STATE.md"}
+{"event": "spec_phase_validation_mode", "timestamp": "2026-08-03T18:37:21.327541+00:00", "run_id": "", "stub_mode": true, "platform_phase": "SPEC"}
+{"event": "platform_phase_gate_blocked", "timestamp": "2026-08-03T18:37:21.329620+00:00", "run_id": "", "stub_mode": true, "platform_phase": "ARCHIVED", "reason": "platform_phase=ARCHIVED, not IMPLEMENTATION."}
+{"event": "autonomous_halt_active", "timestamp": "2026-08-03T18:37:21.332968+00:00", "run_id": "", "stub_mode": true, "reason": "AUTONOMOUS_HALT=true in PROJECT_STATE.md"}
+{"event": "autonomous_halt_active", "timestamp": "2026-08-03T18:37:21.333571+00:00", "run_id": "", "stub_mode": true, "reason": "AUTONOMOUS_HALT=true in PROJECT_STATE.md"}
+{"event": "autonomous_halt_active", "timestamp": "2026-08-03T18:37:21.334152+00:00", "run_id": "", "stub_mode": true, "reason": "AUTONOMOUS_HALT=true in PROJECT_STATE.md"}
+{"event": "llm_call", "timestamp": "2026-08-03T18:38:02.229961+00:00", "run_id": "", "stub_mode": true, "task": "WC012-01", "attempt": 1, "tokens_in": 0, "tokens_out": 0, "cache_read": 0, "cache_write": 0, "latency_s": 0.0, "stop_reason": "end_turn", "block_types": ["text"], "text_chars": 33, "thinking_blocks": 0, "thinking_chars": 0, "prompt_chars": 7743}
+{"event": "llm_call", "timestamp": "2026-08-03T18:38:02.235299+00:00", "run_id": "", "stub_mode": true, "task": "WC014-01", "attempt": 1, "tokens_in": 0, "tokens_out": 0, "cache_read": 0, "cache_write": 0, "latency_s": 0.0, "stop_reason": "end_turn", "block_types": ["text"], "text_chars": 2, "thinking_blocks": 0, "thinking_chars": 0, "prompt_chars": 6132}
+{"event": "spec_gap_halt", "timestamp": "2026-08-03T18:38:02.377934+00:00", "run_id": "", "stub_mode": true, "task": "WC999-03", "issue": "999", "gap": "test gap"}
+{"event": "AUTONOMOUS_SPRINT_STARTED", "timestamp": "2026-08-03T18:48:54.154079+00:00", "run_id": "local", "stub_mode": true, "sprint": "WC-027", "branch": "ib/009/sprint-027", "tasks": ["WC027-01a", "WC027-01b", "WC027-02"]}
+{"event": "spec_gap_halt", "timestamp": "2026-08-03T18:50:16.322578+00:00", "run_id": "local", "stub_mode": true, "task": "WC027-01ac", "issue": "217", "gap": "UDCP NO_FILE_BLOCKS: LLM response contained no <file> blocks"}
+{"event": "spec_gap_halt", "timestamp": "2026-08-03T18:51:54.818857+00:00", "run_id": "local", "stub_mode": true, "task": "WC027-02a", "issue": "218", "gap": "UDCP NO_FILE_BLOCKS: LLM response contained no <file> blocks"}
+{"event": "SPRINT_TASKS_EXECUTED", "timestamp": "2026-08-03T18:51:54.931347+00:00", "run_id": "local", "stub_mode": true, "sprint": "WC-027", "tasks_done": []}
