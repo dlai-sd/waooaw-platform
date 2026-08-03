@@ -365,11 +365,10 @@ def execute_with_udcp(
     sprint_id: str = "",
     model_hint: str = "reasoning",
     max_tokens: int = 8000,
-) -> bool:
+) -> tuple[bool, list[str]]:
     """
     UDCP orchestrator entry point for Python-stack tasks (ADR-039).
-    Routes through WorkspaceSymbolIndex → Track 1/2 scaffold → logic-fill LLM.
-    Replaces direct full-file MagicLLM generation for python-stack tasks.
+    Returns (success, files_written) so callers can scope compile gates to actual output.
 
     constitutional_basis: ADR-039, C-059, C-077, C-082
     ib_item: IB-009
@@ -396,11 +395,12 @@ def execute_with_udcp(
                      f"IB: IB-009\nConstitutional: C-059, C-073, C-076, ADR-039\n"
                      f"Files: {', '.join(written[:3])}"])
         print(f"  ✅ {task_id} complete via UDCP {result.track} ({len(written)} files)")
+        # task_results entry is provisional — compile gate in execute_subtask_chain may override it
         _MONITOR_SIGNAL["task_results"][task_id] = {
             "result": "SUCCESS", "error_type": None,
             "build_error_snippet": None, "attempts": result.attempts, "spec_gap_issue": None,
         }
-        return True
+        return True, written
 
     print(f"  ❌ {task_id} UDCP failure: {result.error_type} — {result.error_snippet}")
     _MONITOR_SIGNAL["task_results"][task_id] = {
@@ -414,4 +414,4 @@ def execute_with_udcp(
         affected_spec=task_id,
         constitutional_basis="ADR-039 (UDCP pipeline), C-082 (Build Validation)",
     )
-    return False
+    return False, []

@@ -1049,6 +1049,7 @@ def execute_subtask_chain(
     infra_error_tasks: list,
     dry_run: bool = False,
     prior_completed: list[str] | None = None,
+    prior_failed: list[str] | None = None,
 ) -> bool:
     """
     Execute sub-tasks with C-084 2.0: continue past non-dependent failures.
@@ -1062,8 +1063,8 @@ def execute_subtask_chain(
     C-083: emits signal after each sub-task, refreshes branch context.
     C-082: compile gate after every sub-task.
 
-    prior_completed: subtask IDs completed in EARLIER task chains (cross-task
-    dependency fix). WC013-03a depends_on WC013-02a which ran in a different chain.
+    prior_completed: subtask IDs that PASSED in earlier task chains.
+    prior_failed: subtask IDs that FAILED in earlier task chains (cross-task dep guard).
     """
     _scripts = str(REPO_ROOT / "scripts")
     if _scripts not in sys.path:
@@ -1073,7 +1074,8 @@ def execute_subtask_chain(
     # Seed completed list with subtask IDs from prior task chains so cross-task
     # depends_on references (e.g. WC013-03a depends_on WC013-02a) resolve correctly.
     completed: list[str] = list(prior_completed) if prior_completed else []
-    failed: list[str] = []      # C-084 2.0: track failures without halting chain
+    # Seed with cross-task failures so depends_on across task chains is honoured
+    failed: list[str] = list(prior_failed) if prior_failed else []
     all_written_files: list[str] = []
 
     print(f"\n── {task_id}: sub-task chain ({len(subtasks)} sub-tasks) ──")
@@ -1098,6 +1100,7 @@ def execute_subtask_chain(
             continue
 
         print(f"\n  ── [{st.id}] {st.description} ({st.type}) ──")
+        udcp_files_written: list[str] = []  # reset per subtask; UDCP path sets this
 
         if dry_run:
             print(f"  DRY RUN: would execute sub-task {st.id}")
@@ -1245,7 +1248,7 @@ def execute_subtask_chain(
                     scope_lines.append(f"\n## {spec_file}\n{content[:3000]}")
             scope_text = "\n".join(scope_lines)
             print(f"  [{st.id}] UDCP path: {st.model_hint} model, scope={len(scope_text)} chars")
-            success = execute_with_udcp(
+            success, udcp_files_written = execute_with_udcp(
                 task_id=st.id,
                 scope_text=scope_text,
                 sprint_id=task_id,
@@ -1264,8 +1267,28 @@ def execute_subtask_chain(
             failed.append(st.id)
             continue
 
-        # ── C-082: compile gate — scoped to output_files (B-2: avoids pre-existing lint) ─
-        gate_ok, gate_error = run_compile_gate(st.compile_gate, st.service_dir, target_files=st.output_files or None, task_id=st.id)
+        # ── C-082: compile gate ────────────────────────────────────────────────
+        # For UDCP: scope to files UDCP actually wrote — avoids E902 (file not created)
+        # and pre-existing lint in declared-but-unwritten output_files.
+        # Missing declared deliverables surface as MISSING_DELIVERABLE, not E902.
+        if st.type == "udcp" and st.output_files:
+            declared = set(st.output_files)
+            written_set = set(udcp_files_written)
+            missing = declared - written_set
+            if missing:
+                gate_ok = False
+                gate_error = f"MISSING_DELIVERABLE: UDCP did not write declared output(s): {sorted(missing)}"
+            else:
+                gate_files = [f for f in udcp_files_written if f in declared]
+                gate_ok, gate_error = run_compile_gate(
+                    st.compile_gate, st.service_dir,
+                    target_files=gate_files or None, task_id=st.id,
+                )
+        else:
+            gate_ok, gate_error = run_compile_gate(
+                st.compile_gate, st.service_dir,
+                target_files=st.output_files or None, task_id=st.id,
+            )
         if not gate_ok:
             print(f"  [{st.id}] COMPILE GATE FAILED: {gate_error[:200]}")
             print(f"  C-084 2.0: marking failed, continuing non-dependent subtasks")
@@ -1273,6 +1296,15 @@ def execute_subtask_chain(
             _codes = sorted(set(_re_ec.findall(r'(?:CS|NU|MSB|E|W|N|F|B|UP|ANN|I|G)\d+', gate_error)))
             emit_subtask_signal(task_id, st.id, "FAIL", monitor_signal,
                                 error_codes=_codes, error_text=gate_error)
+            # P2: correct the provisional SUCCESS written by execute_with_udcp
+            if st.id in monitor_signal.get("task_results", {}):
+                monitor_signal["task_results"][st.id] = {
+                    "result": "COMPILE_GATE_FAILURE",
+                    "error_type": "COMPILE_GATE_FAILURE",
+                    "build_error_snippet": gate_error[:200],
+                    "attempts": monitor_signal["task_results"][st.id].get("attempts", 1),
+                    "spec_gap_issue": None,
+                }
             failed.append(st.id)
             continue
 

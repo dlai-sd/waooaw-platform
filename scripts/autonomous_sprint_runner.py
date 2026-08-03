@@ -699,6 +699,7 @@ def main() -> int:
     # Without this, resumed runs see BLOCKED for any task whose depends_on
     # subtask was completed in a prior session (e.g. WC014-03a depends on WC014-02a).
     all_completed_subtask_ids: list[str] = []
+    all_failed_subtask_ids: list[str] = []  # P1: cross-task failed-dep guard
     for prior_task_id in tasks_done_state:
         prior_handler = TASK_HANDLERS.get(prior_task_id)
         if isinstance(prior_handler, dict) and "subtasks" in prior_handler:
@@ -748,9 +749,16 @@ def main() -> int:
                     infra_error_tasks=infra_error_tasks,
                     dry_run=dry_run,
                     prior_completed=all_completed_subtask_ids,
+                    prior_failed=all_failed_subtask_ids,
                 )
-                # Accumulate this task's subtask IDs for the next task's chain
-                all_completed_subtask_ids.extend([st.id for st in handler["subtasks"]])
+                # P1: accumulate by actual outcome, not unconditionally
+                _sr = _MONITOR_SIGNAL.get("subtask_results", {})
+                for _st in handler["subtasks"]:
+                    _outcome = _sr.get(_st.id, {}).get("result", "")
+                    if _outcome in ("FAIL", "SKIPPED", "BLOCKED_SKELETON_MISSING"):
+                        all_failed_subtask_ids.append(_st.id)
+                    else:
+                        all_completed_subtask_ids.append(_st.id)
             else:
                 print(f"  ⚠️  TASK_NOT_IMPLEMENTED: {task} — unknown handler format")
                 tasks_not_implemented.append(task)

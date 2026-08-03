@@ -1039,7 +1039,7 @@ class TestUDCPDispatch:
 
         def fake_udcp(task_id, scope_text, sprint_id, model_hint, max_tokens):
             udcp_calls.append(task_id)
-            return True
+            return True, []
 
         mock_runner = self._mock_runner()
         mock_runner.execute_with_llm = MagicMock(side_effect=lambda *a, **kw: llm_calls.append("called") or True)
@@ -1081,7 +1081,7 @@ class TestUDCPDispatch:
 
         def fake_udcp(task_id, scope_text, sprint_id, model_hint, max_tokens):
             received_scope.append(scope_text)
-            return True
+            return True, []
 
         mock_executor = MagicMock()
         mock_executor.execute_with_udcp = fake_udcp
@@ -1131,7 +1131,7 @@ class TestUDCPDispatch:
 
         def fake_udcp(task_id, scope_text, sprint_id, model_hint, max_tokens):
             received_scope.append(scope_text)
-            return True
+            return True, []
 
         mock_executor = MagicMock()
         mock_executor.execute_with_udcp = fake_udcp
@@ -1175,7 +1175,7 @@ class TestUDCPDispatch:
 
         def fake_udcp(task_id, scope_text, sprint_id, model_hint, max_tokens):
             udcp_calls.append(scope_text)
-            return True
+            return True, []
 
         mock_executor = MagicMock()
         mock_executor.execute_with_udcp = fake_udcp
@@ -1222,7 +1222,7 @@ class TestUDCPDispatch:
                 "model_hint": model_hint,
                 "max_tokens": max_tokens,
             })
-            return True
+            return True, []
 
         mock_executor = MagicMock()
         mock_executor.execute_with_udcp = fake_udcp
@@ -1272,9 +1272,9 @@ class TestUDCPDispatch:
         def fake_udcp(task_id, scope_text, sprint_id, model_hint, max_tokens):
             call_n[0] += 1
             if call_n[0] == 1:
-                return False  # first task fails
+                return False, []  # first task fails
             executed.append(task_id)
-            return True
+            return True, []
 
         mock_executor = MagicMock()
         mock_executor.execute_with_udcp = fake_udcp
@@ -1318,7 +1318,7 @@ class TestUDCPDispatch:
         gate_calls = []
 
         def fake_udcp(task_id, scope_text, sprint_id, model_hint, max_tokens):
-            return True
+            return True, []
 
         mock_executor = MagicMock()
         mock_executor.execute_with_udcp = fake_udcp
@@ -1359,7 +1359,7 @@ class TestUDCPDispatch:
 
         def fake_udcp(task_id, scope_text, sprint_id, model_hint, max_tokens):
             udcp_calls.append(task_id)
-            return True
+            return True, []
 
         mock_executor = MagicMock()
         mock_executor.execute_with_udcp = fake_udcp
@@ -1402,7 +1402,7 @@ class TestUDCPDispatch:
 
         def fake_udcp(task_id, scope_text, sprint_id, model_hint, max_tokens):
             received_scope.append(scope_text)
-            return True
+            return True, []
 
         mock_executor = MagicMock()
         mock_executor.execute_with_udcp = fake_udcp
