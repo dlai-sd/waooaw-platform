@@ -238,3 +238,5 @@ engine = BundleEngine()
 
 # Module-level initialization for bundle_engine.py
 engine = BundleEngine()
+
+engine = BundleEngine()
