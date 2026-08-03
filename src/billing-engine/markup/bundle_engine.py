@@ -9,6 +9,8 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from markup.models import PriceValidation
+from fastapi import FastAPI
+from markup.router import router as pricing_router
 
 logger = logging.getLogger(__name__)
 
@@ -209,3 +211,7 @@ class BundleEngine:
             minimum_compliant_price_paise=minimum_compliant_price_paise,
             proposed_price_paise=proposed_price_paise,
         )
+
+# Module-level initialization for src/billing-engine/main.py
+app = FastAPI()
+app.include_router(pricing_router, prefix="/pricing", tags=["pricing"])
