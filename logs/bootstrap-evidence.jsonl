@@ -156,3 +156,4 @@
 {"event": "AUTONOMOUS_SPRINT_STARTED", "timestamp": "2026-08-03T19:19:26.608224+00:00", "run_id": "", "stub_mode": true, "sprint": "WC-027", "branch": "ib/009/sprint-027", "tasks": ["WC027-01a", "WC027-01b", "WC027-02"]}
 {"event": "spec_gap_halt", "timestamp": "2026-08-03T19:21:07.627771+00:00", "run_id": "", "stub_mode": true, "task": "WC027-02a", "issue": "221", "gap": "UDCP NO_FILE_BLOCKS: LLM response contained no <file> blocks"}
 {"event": "SPRINT_TASKS_EXECUTED", "timestamp": "2026-08-03T19:21:07.639969+00:00", "run_id": "", "stub_mode": true, "sprint": "WC-027", "tasks_done": []}
+{"event": "autonomous_halt_active", "timestamp": "2026-08-03T19:23:03.688689+00:00", "run_id": "", "stub_mode": true, "reason": "AUTONOMOUS_HALT=true in PROJECT_STATE.md"}
