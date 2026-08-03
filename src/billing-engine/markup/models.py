@@ -2,10 +2,9 @@
 # constitutional_basis: C-059, C-082
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 from enum import StrEnum
-from typing import Optional
 from decimal import Decimal
 from fastapi import FastAPI
 
@@ -94,7 +93,7 @@ class ThreadEntry(BaseModel):
     base_cost: Decimal = Field(..., ge=Decimal("0"), description="Base cost in USD")
     markup_rate: Decimal = Field(default=Decimal("0.15"), ge=Decimal("0"), le=Decimal("1"), description="Markup rate as a fraction")
     is_active: bool = Field(default=True, description="Whether this thread is currently active")
-    description: Optional[str] = Field(default=None, description="Optional description of the thread")
+    description: str | None = Field(default=None, description="Optional description of the thread")
     # [WAOOAW_LOGIC_FILLER_END]
 
 
@@ -105,9 +104,9 @@ class BundleProfile(BaseModel):
     bundle_tier: BundleTier = Field(..., description="Tier level of the bundle")
     thread_ids: list[str] = Field(default_factory=list, description="List of thread IDs included in this bundle")
     base_price: Decimal = Field(..., ge=Decimal("0"), description="Base price of the bundle in USD")
-    markup_override: Optional[Decimal] = Field(default=None, ge=Decimal("0"), le=Decimal("1"), description="Optional markup override")
+    markup_override: Decimal | None = Field(default=None, ge=Decimal("0"), le=Decimal("1"), description="Optional markup override")
     is_active: bool = Field(default=True, description="Whether this bundle is currently active")
-    metadata: Optional[dict] = Field(default=None, description="Additional metadata for the bundle")
+    metadata: dict | None = Field(default=None, description="Additional metadata for the bundle")
     # [WAOOAW_LOGIC_FILLER_END]
 
 
