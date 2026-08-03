@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from decimal import Decimal, ROUND_HALF_UP
-from typing import Any
+from typing import ClassVar, Any
 
 from temporalio import activity, workflow
 
@@ -17,21 +17,21 @@ class BundleEngine:
     """Core pricing and bundle derivation engine for the billing service."""
 
     # Markup rates by tier
-    _TIER_MARKUP: dict[str, Decimal] = {
+    _TIER_MARKUP: ClassVar[dict[str, Decimal]] = {
         BundleTier.BASIC: Decimal("0.10"),
         BundleTier.PROFESSIONAL: Decimal("0.15"),
         BundleTier.ELITE: Decimal("0.20"),
     }
 
     # Agent type multipliers
-    _AGENT_MULTIPLIER: dict[str, Decimal] = {
+    _AGENT_MULTIPLIER: ClassVar[dict[str, Decimal]] = {
         AgentType.STANDARD: Decimal("1.00"),
         AgentType.PREMIUM: Decimal("1.25"),
         AgentType.ENTERPRISE: Decimal("1.75"),
     }
 
     # Cost floors per (agent_type, bundle_tier)
-    _COST_FLOOR: dict[tuple[str, str], Decimal] = {
+    _COST_FLOOR: ClassVar[dict[tuple[str, str], Decimal]] = {
         ("standard", "basic"): Decimal("9.99"),
         ("standard", "professional"): Decimal("29.99"),
         ("standard", "elite"): Decimal("79.99"),
@@ -232,4 +232,6 @@ engine = BundleEngine()
 engine = BundleEngine()
 
 # Module-level initialization for bundle_engine.py
+engine = BundleEngine()
+
 engine = BundleEngine()
