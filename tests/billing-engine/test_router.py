@@ -14,6 +14,8 @@ from httpx import ASGITransport, AsyncClient
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src" / "billing-engine"))
 
 from main import app
+from fastapi import FastAPI
+from markup.router import router as pricing_router
 
 
 # ---------------------------------------------------------------------------
@@ -457,3 +459,6 @@ def test_app_url_path_for_thread_catalog():
     """Assert url_path_for resolves the thread-catalog route."""
     url = app.url_path_for("get_thread_catalog")
     assert str(url).startswith("/pricing/")
+
+app = FastAPI(title="Billing Engine")
+app.include_router(pricing_router, prefix="/pricing")
