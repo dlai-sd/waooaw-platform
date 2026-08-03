@@ -12,11 +12,18 @@
       "spec_gap_issue": null
     },
     "WC027-01ab": {
-      "result": "COMPILE_GATE_FAILURE",
-      "error_type": "COMPILE_GATE_FAILURE",
-      "build_error_snippet": "F811 Redefinition of unused `PricingOutcome` from line 14\n  --> src/billing-engine/markup/models.py:17:7\n   |\n17 | class PricingOutcome(StrEnum):\n   |       ^^^^^^^^^^^^^^ `PricingOutcome` redefined h",
+      "result": "SUCCESS",
+      "error_type": null,
+      "build_error_snippet": null,
       "attempts": 1,
       "spec_gap_issue": null
+    },
+    "WC027-01ac": {
+      "result": "SPEC_GAP",
+      "error_type": "BUILD_ERROR",
+      "build_error_snippet": "UDCP NO_FILE_BLOCKS: LLM response contained no <file> blocks",
+      "attempts": 3,
+      "spec_gap_issue": "217"
     },
     "WC027-01ba": {
       "result": "SUCCESS",
@@ -33,41 +40,31 @@
       "spec_gap_issue": null
     },
     "WC027-01bc": {
-      "result": "SUCCESS",
-      "error_type": null,
-      "build_error_snippet": null,
+      "result": "COMPILE_GATE_FAILURE",
+      "error_type": "COMPILE_GATE_FAILURE",
+      "build_error_snippet": "F811 Redefinition of unused `app` from line 16\n   --> tests/billing-engine/test_router.py:463:1\n    |\n461 |     assert str(url).startswith(\"/pricing/\")\n462 |\n463 | app = FastAPI(title=\"Billing Engine\"",
       "attempts": 1,
       "spec_gap_issue": null
     },
     "WC027-02a": {
-      "result": "SUCCESS",
-      "error_type": null,
-      "build_error_snippet": null,
-      "attempts": 1,
-      "spec_gap_issue": null
-    },
-    "WC027-02b": {
-      "result": "SUCCESS",
-      "error_type": null,
-      "build_error_snippet": null,
-      "attempts": 1,
-      "spec_gap_issue": null
-    },
-    "WC027-02c": {
-      "result": "SUCCESS",
-      "error_type": null,
-      "build_error_snippet": null,
-      "attempts": 1,
-      "spec_gap_issue": null
+      "result": "SPEC_GAP",
+      "error_type": "BUILD_ERROR",
+      "build_error_snippet": "UDCP NO_FILE_BLOCKS: LLM response contained no <file> blocks",
+      "attempts": 3,
+      "spec_gap_issue": "218"
     }
   },
-  "spec_gap_issues": [],
+  "spec_gap_issues": [
+    "217",
+    "218"
+  ],
   "overall_result": "PARTIAL",
   "file_costs": {
-    "WC027-01aa": 7.8172,
-    "WC027-01ab": 0.381,
-    "WC027-01ba": 0.7271000000000001,
-    "WC027-01bc": 6.265
+    "WC027-01aa": 2.1542,
+    "WC027-01ab": 0.1056,
+    "WC027-01ac": 8.964,
+    "WC027-01bc": 1.8996,
+    "WC027-02a": 11.6947
   },
   "subtask_results": {
     "WC027-01aa": {
@@ -77,15 +74,13 @@
       "error_text": ""
     },
     "WC027-01ab": {
-      "result": "FAIL",
+      "result": "SUCCESS",
       "task_id": "WC027-01a",
-      "error_codes": [
-        "F811"
-      ],
-      "error_text": "F811 Redefinition of unused `PricingOutcome` from line 14\n  --> src/billing-engine/markup/models.py:17:7\n   |\n17 | class PricingOutcome(StrEnum):\n   |       ^^^^^^^^^^^^^^ `PricingOutcome` redefined here\n18 |     APPROVED = \"APPROVED\"\n19 |     REJECTED = \"REJECTED\"\n   |\n  ::: src/billing-engine/mark"
+      "error_codes": [],
+      "error_text": ""
     },
     "WC027-01ac": {
-      "result": "SKIPPED",
+      "result": "FAIL",
       "task_id": "WC027-01a",
       "error_codes": [],
       "error_text": ""
@@ -103,31 +98,33 @@
       "error_text": ""
     },
     "WC027-01bc": {
-      "result": "SUCCESS",
+      "result": "FAIL",
       "task_id": "WC027-01b",
-      "error_codes": [],
-      "error_text": ""
+      "error_codes": [
+        "F811"
+      ],
+      "error_text": "F811 Redefinition of unused `app` from line 16\n   --> tests/billing-engine/test_router.py:463:1\n    |\n461 |     assert str(url).startswith(\"/pricing/\")\n462 |\n463 | app = FastAPI(title=\"Billing Engine\")\n    | ^^^ `app` redefined here\n464 | app.include_router(pricing_router, prefix=\"/pricing\")\n    |\n "
     },
     "WC027-02a": {
-      "result": "SUCCESS",
+      "result": "FAIL",
       "task_id": "WC027-02",
       "error_codes": [],
       "error_text": ""
     },
     "WC027-02b": {
-      "result": "SUCCESS",
+      "result": "SKIPPED",
       "task_id": "WC027-02",
       "error_codes": [],
       "error_text": ""
     },
     "WC027-02c": {
-      "result": "SUCCESS",
+      "result": "SKIPPED",
       "task_id": "WC027-02",
       "error_codes": [],
       "error_text": ""
     }
   },
-  "total_cost_inr": 15.190299999999999,
+  "total_cost_inr": 24.8181,
   "tasks_done": [],
   "tasks_requested": [
     "WC027-01a",
