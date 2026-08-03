@@ -58,6 +58,28 @@ def _hoist_imports(existing: str, new_lines: str) -> tuple[str, str]:
     body = [ln for ln in parts if not _IMPORT_LINE_RE.match(ln)]
     if not imports:
         return existing, new_lines
+    # Names defined in the body (assignment, def, class) — any import of such a
+    # name is redundant and must not be hoisted (e.g. self-circular router import).
+    body_defined: set[str] = set()
+    for ln in body:
+        m = re.match(r"^(\w+)\s*=", ln.strip())
+        if m:
+            body_defined.add(m.group(1))
+        m2 = re.match(r"^(?:async\s+)?def\s+(\w+)", ln.strip())
+        if m2:
+            body_defined.add(m2.group(1))
+        m3 = re.match(r"^class\s+(\w+)", ln.strip())
+        if m3:
+            body_defined.add(m3.group(1))
+
+    def _imports_defined_name(imp: str) -> bool:
+        fm = re.match(r"^from\s+\S+\s+import\s+(.+)$", imp.strip())
+        if fm:
+            names = {n.strip().split(" as ")[0].strip() for n in fm.group(1).split(",")}
+            return bool(names & body_defined)
+        return False
+
+    imports = [imp for imp in imports if not _imports_defined_name(imp)]
     ex_lines = existing.splitlines()
     last_import = max(
         (i for i, ln in enumerate(ex_lines) if _IMPORT_LINE_RE.match(ln)),
