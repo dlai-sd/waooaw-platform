@@ -137,7 +137,8 @@ def _fix_ruf012(content: str) -> str:
         line = lines[lineno]
         m = re.match(r"^(\s*\w+:\s*)([^=\n]+?)(\s*=\s*[{[\(])", line)
         if m and "ClassVar" not in m.group(2):
-            lines[lineno] = f"{m.group(1)}ClassVar[{m.group(2).rstrip()}]{m.group(3)}\n"
+            old_ann = m.group(2).rstrip()
+            lines[lineno] = line.replace(old_ann, f"ClassVar[{old_ann}]", 1)
             classvar_added = True
     result = "".join(lines)
     if classvar_added and "ClassVar" not in content:
