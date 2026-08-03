@@ -77,7 +77,8 @@ def _greenfield_test_dirs() -> set[Path]:
     greenfield: set[Path] = set()
     for conftest in TESTS_DIR.rglob("conftest.py"):
         for injected in _extract_sys_path_inserts(conftest):
-            if not injected.exists():
+            # Greenfield if path absent OR exists but has no .py files yet (post-clean-slate empty dirs)
+            if not (injected.exists() and any(injected.rglob("*.py"))):
                 greenfield.add(conftest.parent)
                 break
     return greenfield
