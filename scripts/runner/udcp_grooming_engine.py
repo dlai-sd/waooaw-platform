@@ -46,12 +46,21 @@ class UDCPGroomingEngine:
         task_id: str,
         scope_text: str,
         sprint_id: str = "",
+        required_output_files: list[str] | None = None,
     ) -> dict[str, Any]:
-        """
-        Returns a TIS dict for Track 1 (Greenfield) tasks.
-        Raises ValueError if any extracted file already exists (should use Track 2).
-        """
-        artifacts = self._extract_artifacts(scope_text, track=1)
+        """Returns a TIS dict for Track 1 (Greenfield) tasks."""
+        if required_output_files:
+            # Contract-driven: targets come from sprint output_files, not scope_text regex
+            artifacts = [
+                {
+                    "file_path": fp,
+                    "imports": self._extract_imports(scope_text, fp),
+                    "interfaces": self._extract_interfaces(scope_text, fp),
+                }
+                for fp in required_output_files
+            ]
+        else:
+            artifacts = self._extract_artifacts(scope_text, track=1)
         return {
             "sprint_id": sprint_id,
             "task_id": task_id,
@@ -64,12 +73,10 @@ class UDCPGroomingEngine:
         task_id: str,
         scope_text: str,
         sprint_id: str = "",
+        required_output_files: list[str] | None = None,
     ) -> dict[str, Any]:
-        """
-        Returns a TMD dict for Track 2 (Differential) tasks.
-        Extracts target class + method from scope text.
-        """
-        file_paths = _FILE_PATH_RE.findall(scope_text)
+        """Returns a TMD dict for Track 2 (Differential) tasks."""
+        file_paths = required_output_files if required_output_files else _FILE_PATH_RE.findall(scope_text)
         artifacts = []
         for fp in file_paths:
             class_match = _IMPLEMENTS_RE.search(scope_text)
@@ -88,24 +95,18 @@ class UDCPGroomingEngine:
             "impacted_artifacts": artifacts,
         }
 
-    def detect_track(self, scope_text: str) -> str:
-        """
-        Returns 'GREENFIELD' if no target file exists on disk, else 'DIFFERENTIAL'.
-        Mixed-track scope (some files exist, some don't) returns 'GREENFIELD' for
-        new files — caller must split or handle both tracks.
-        Files containing WAOOAW_LOGIC_FILLER_START are unfilled stubs — treated as non-existing.
-        """
-        file_paths = _FILE_PATH_RE.findall(scope_text)
-        if not file_paths:
+    def detect_track(self, required_output_files: list[str]) -> str:
+        """Returns track based on which declared output files exist on disk."""
+        if not required_output_files:
             return "GREENFIELD"
         existing = [
-            fp for fp in file_paths
+            fp for fp in required_output_files
             if (self.repo_root / fp).is_file()
             and "WAOOAW_LOGIC_FILLER_START" not in (self.repo_root / fp).read_text(encoding="utf-8", errors="replace")
         ]
         if not existing:
             return "GREENFIELD"
-        if len(existing) == len(file_paths):
+        if len(existing) == len(required_output_files):
             return "DIFFERENTIAL"
         return "MIXED"
 

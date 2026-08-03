@@ -1254,6 +1254,7 @@ def execute_subtask_chain(
                 sprint_id=task_id,
                 model_hint=st.model_hint,
                 max_tokens=st.max_tokens,
+                required_output_files=st.output_files or None,
             )
 
         else:

@@ -490,13 +490,13 @@ class TestUDCPGroomingEngine:
 
     def test_detect_track_greenfield_no_files(self, tmp_path: Path) -> None:
         groom = UDCPGroomingEngine(repo_root=tmp_path)
-        assert groom.detect_track(self._WC027_01B_SCOPE) == "GREENFIELD"
+        assert groom.detect_track(["src/billing-engine/markup/router.py", "src/billing-engine/main.py"]) == "GREENFIELD"
 
     def test_detect_track_differential_existing_file(self, tmp_path: Path) -> None:
         (tmp_path / "src/billing-engine/markup").mkdir(parents=True)
         (tmp_path / "src/billing-engine/markup/router.py").write_text("# existing")
         groom = UDCPGroomingEngine(repo_root=tmp_path)
-        assert groom.detect_track(self._WC027_01B_SCOPE) in ("DIFFERENTIAL", "MIXED")
+        assert groom.detect_track(["src/billing-engine/markup/router.py", "src/billing-engine/main.py"]) in ("DIFFERENTIAL", "MIXED")
 
     def test_generate_tis_contains_file_paths(self, tmp_path: Path) -> None:
         groom = UDCPGroomingEngine(repo_root=tmp_path)
@@ -600,16 +600,13 @@ class TestUDCPGroomingEngine:
     def test_detect_track_mixed(self, tmp_path: Path) -> None:
         (tmp_path / "src/billing-engine/markup").mkdir(parents=True)
         (tmp_path / "src/billing-engine/markup/router.py").write_text("# existing")
-        scope = (
-            "`src/billing-engine/markup/router.py` and "
-            "`src/billing-engine/markup/models.py`"
-        )
         groom = UDCPGroomingEngine(repo_root=tmp_path)
-        assert groom.detect_track(scope) == "MIXED"
+        assert groom.detect_track(["src/billing-engine/markup/router.py",
+                                    "src/billing-engine/markup/models.py"]) == "MIXED"
 
     def test_detect_track_no_files_in_scope(self, tmp_path: Path) -> None:
         groom = UDCPGroomingEngine(repo_root=tmp_path)
-        assert groom.detect_track("No file paths here") == "GREENFIELD"
+        assert groom.detect_track([]) == "GREENFIELD"
 
     def test_resolve_skeleton_types_no_match(self, tmp_path: Path) -> None:
         skel_dir = tmp_path / "src/billing-engine/skeleton"
@@ -893,9 +890,8 @@ class TestPropertyBasedGroomingEngine:
     @settings(max_examples=30, suppress_health_check=[HealthCheck.too_slow, HealthCheck.function_scoped_fixture])
     def test_greenfield_when_file_absent(self, tmp_path, file_path):
         """File not on disk → always GREENFIELD."""
-        scope = f"`{file_path}` — new module"
         groom = UDCPGroomingEngine(repo_root=tmp_path)
-        assert groom.detect_track(scope) == "GREENFIELD"
+        assert groom.detect_track([file_path]) == "GREENFIELD"
 
 
 # ── Gap-fix regression tests ─────────────────────────────────────────────────
@@ -919,7 +915,8 @@ class TestOrchestratorGapFixes:
         )
         orch = UDCPOrchestrator(repo_root=tmp_path)
         # detect_track sees one existing file → MIXED
-        assert orch.groom.detect_track(scope) == "MIXED"
+        assert orch.groom.detect_track(["src/billing-engine/markup/bundle_engine.py",
+                                         "src/billing-engine/markup/models.py"]) == "MIXED"
 
         # The TIS would normally scaffold both; the fix skips the existing one
         tis = orch.groom.generate_tis("T01", scope, "WC-TEST")

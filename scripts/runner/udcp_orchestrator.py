@@ -158,23 +158,28 @@ class UDCPOrchestrator:
         sprint_id: str = "",
         model_hint: str = "reasoning",
         max_tokens: int = 8000,
+        required_output_files: list[str] | None = None,
     ) -> TaskResult:
         """
         Executes one WC task through the UDCP pipeline.
         Returns TaskResult — caller decides commit/flag_spec_gap based on success.
         """
-        track = self.groom.detect_track(scope_text)
+        track = self.groom.detect_track(required_output_files or [])
 
         if track == "GREENFIELD":
-            return self._run_track1(task_id, scope_text, sprint_id, model_hint, max_tokens)
+            return self._run_track1(task_id, scope_text, sprint_id, model_hint, max_tokens,
+                                    required_output_files=required_output_files)
         elif track == "DIFFERENTIAL":
-            return self._run_track2(task_id, scope_text, sprint_id, model_hint, max_tokens)
+            return self._run_track2(task_id, scope_text, sprint_id, model_hint, max_tokens,
+                                    required_output_files=required_output_files)
         else:
             # MIXED: scaffold new files (Track 1), then patch existing files (Track 2).
-            r1 = self._run_track1(task_id, scope_text, sprint_id, model_hint, max_tokens, skip_existing=True)
+            r1 = self._run_track1(task_id, scope_text, sprint_id, model_hint, max_tokens,
+                                   skip_existing=True, required_output_files=required_output_files)
             if not r1.success:
                 return r1
-            r2 = self._run_track2(task_id, scope_text, sprint_id, model_hint, max_tokens)
+            r2 = self._run_track2(task_id, scope_text, sprint_id, model_hint, max_tokens,
+                                   required_output_files=required_output_files)
             # GROOMING_ERROR on Track 2 means no existing-file methods found — non-fatal for MIXED
             if not r2.success and r2.error_type != "GROOMING_ERROR":
                 return r2
@@ -193,10 +198,12 @@ class UDCPOrchestrator:
         model_hint: str,
         max_tokens: int,
         skip_existing: bool = False,
+        required_output_files: list[str] | None = None,
     ) -> TaskResult:
         # 1. Generate TIS
         try:
-            tis = self.groom.generate_tis(task_id, scope_text, sprint_id)
+            tis = self.groom.generate_tis(task_id, scope_text, sprint_id,
+                                          required_output_files=required_output_files)
         except Exception as exc:
             return TaskResult(
                 success=False, error_type="GROOMING_ERROR",
@@ -356,9 +363,11 @@ class UDCPOrchestrator:
         sprint_id: str,
         model_hint: str,
         max_tokens: int,
+        required_output_files: list[str] | None = None,
     ) -> TaskResult:
         try:
-            tmd = self.groom.generate_tmd(task_id, scope_text, sprint_id)
+            tmd = self.groom.generate_tmd(task_id, scope_text, sprint_id,
+                                          required_output_files=required_output_files)
         except Exception as exc:
             return TaskResult(
                 success=False, error_type="GROOMING_ERROR",
