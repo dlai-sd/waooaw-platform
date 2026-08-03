@@ -8,7 +8,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src" / "billing-engine"))
 
 import pytest
-from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from main import app  # type: ignore[import]
