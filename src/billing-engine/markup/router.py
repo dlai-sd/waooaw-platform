@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from fastapi import FastAPI
-from markup.router import router
 
 router = APIRouter()
 
