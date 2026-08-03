@@ -246,6 +246,10 @@ fi
 echo "── [EXECUTE] Configure git ─────────────────────────────────────────────"
 git config user.name  "WAOOAW AI Agent - Platform IT Expert"
 git config user.email "platform-it-expert@waooaw.ai"
+# Override local repo gpgsign=true (set by codespace) without touching .git/config on host
+export GIT_CONFIG_COUNT=1
+export GIT_CONFIG_KEY_0=commit.gpgsign
+export GIT_CONFIG_VALUE_0=false
 echo "  ✅ git configured"
 echo ""
 
