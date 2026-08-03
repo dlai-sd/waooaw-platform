@@ -22,5 +22,17 @@
     "last_task": "WC027-02a",
     "gate": "ruff",
     "fix": "See ruff output for details — rule B904 violated"
+  },
+  "ANN201": {
+    "rule": "ANN201",
+    "last_task": "WC027-01bb",
+    "gate": "ruff",
+    "fix": "See ruff output for details — rule ANN201 violated"
+  },
+  "S104": {
+    "rule": "S104",
+    "last_task": "WC027-01bb",
+    "gate": "ruff",
+    "fix": "See ruff output for details — rule S104 violated"
   }
 }
