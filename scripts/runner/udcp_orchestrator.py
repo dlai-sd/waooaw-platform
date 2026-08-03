@@ -70,7 +70,7 @@ def _hoist_imports(existing: str, new_lines: str) -> tuple[str, str]:
 
 
 def _ruff_normalization_check(content: str) -> str | None:
-    """Return ruff violation text if E402/B904 remain after normalization, else None."""
+    """Return ruff output if E402/B904 violations remain after normalization; None otherwise."""
     with tempfile.NamedTemporaryFile(suffix=".py", delete=False, mode="w") as tf:
         tf.write(content)
         tf_path = tf.name
@@ -79,9 +79,34 @@ def _ruff_normalization_check(content: str) -> str | None:
             ["ruff", "check", "--select", "E402,B904", tf_path],  # noqa: S607
             capture_output=True, text=True,
         )
-        return (result.stdout.strip() or result.stderr.strip()) if result.returncode != 0 else None
+        if result.returncode != 0:
+            output = result.stdout.strip() or result.stderr.strip()
+            # Only fail for our declared target rules; syntax errors propagate to compile()
+            if "E402" in output or "B904" in output:
+                return output
+        return None
     finally:
         os.unlink(tf_path)
+
+
+def _normalize_and_write(path: Path, content: str, label: str, track: str) -> TaskResult | None:
+    """Single write gateway: normalize → compile-gate → write. Returns None on success."""
+    content = _fix_b904(content)
+    ruff_err = _ruff_normalization_check(content)
+    if ruff_err:
+        return TaskResult(
+            success=False, error_type="NORMALIZATION_INCOMPLETE",
+            error_snippet=f"{label}: {ruff_err[:300]}", track=track,
+        )
+    try:
+        compile(content, label, "exec")
+    except SyntaxError as exc:
+        return TaskResult(
+            success=False, error_type="COMPILE_GATE_FAILURE",
+            error_snippet=f"{label}: {exc}", track=track,
+        )
+    path.write_text(content, encoding="utf-8")
+    return None
 
 
 @dataclass
@@ -303,7 +328,7 @@ class UDCPOrchestrator:
                 error_snippet="LLM response contained no <file> blocks", track="GREENFIELD",
             )
 
-        # Write and compile-gate the filled file
+        # Write each filled file through the normalization + compile gateway
         for fpath, content in files.items():
             # Boundary check: reject paths outside ALLOWED_WRITE_ROOTS (C-065)
             from runner.constants import ALLOWED_WRITE_ROOTS
@@ -313,21 +338,9 @@ class UDCPOrchestrator:
                     error_snippet=f"LLM returned path outside write boundary: {fpath}",
                     track="GREENFIELD",
                 )
-            content = _fix_b904(content)
-            ruff_err = _ruff_normalization_check(content)
-            if ruff_err:
-                return TaskResult(
-                    success=False, error_type="NORMALIZATION_INCOMPLETE",
-                    error_snippet=f"{fpath}: {ruff_err[:300]}", track="GREENFIELD",
-                )
-            try:
-                compile(content, fpath, "exec")
-            except SyntaxError as exc:
-                return TaskResult(
-                    success=False, error_type="COMPILE_GATE_FAILURE",
-                    error_snippet=f"{fpath}: {exc}", track="GREENFIELD",
-                )
-            (self.repo_root / fpath).write_text(content, encoding="utf-8")
+            fail = _normalize_and_write(self.repo_root / fpath, content, fpath, "GREENFIELD")
+            if fail is not None:
+                return fail
 
         return TaskResult(
             success=True, track="GREENFIELD",
@@ -446,19 +459,21 @@ class UDCPOrchestrator:
 
         # Strip code fences if present
         new_lines = re.sub(r"^```[a-z]*\n(.*)\n```$", r"\1", response.strip(), flags=re.DOTALL)
+        # Skip if LLM returned no callable expression (bare `app = None` etc. signal no-op)
+        # A meaningful append must contain at least one function/constructor call in a non-comment line.
+        has_callable = any(
+            "(" in ln
+            for ln in new_lines.splitlines()
+            if ln.strip() and not ln.strip().startswith("#") and not _IMPORT_LINE_RE.match(ln)
+        )
+        if not has_callable:
+            print(f"  APPEND SKIP: {rel_path} — LLM returned no callable expression")
+            return TaskResult(success=True, track="DIFFERENTIAL", files_written=[])
         existing, new_lines = _hoist_imports(existing, new_lines)
         updated = existing.rstrip() + "\n\n" + new_lines.strip() + "\n"
-        updated = _fix_b904(updated)
-        ruff_err = _ruff_normalization_check(updated)
-        if ruff_err:
-            return TaskResult(success=False, error_type="NORMALIZATION_INCOMPLETE",
-                              error_snippet=f"{rel_path}: {ruff_err[:300]}", track="DIFFERENTIAL")
-        try:
-            compile(updated, rel_path, "exec")
-        except SyntaxError as exc:
-            return TaskResult(success=False, error_type="COMPILE_GATE_FAILURE",
-                              error_snippet=f"{rel_path}: {exc}", track="DIFFERENTIAL")
-        fp.write_text(updated, encoding="utf-8")
+        fail = _normalize_and_write(fp, updated, rel_path, "DIFFERENTIAL")
+        if fail is not None:
+            return fail
         return TaskResult(success=True, track="DIFFERENTIAL", files_written=[rel_path])
 
     def _patch_method(
@@ -539,10 +554,13 @@ class UDCPOrchestrator:
                 error_snippet=str(exc)[:300], track="DIFFERENTIAL",
             )
 
-        return TaskResult(
-            success=True, track="DIFFERENTIAL",
-            files_written=[str(engine.file_path.relative_to(self.repo_root))],
-        )
+        # Normalize the full patched file so all tracks benefit from the same guarantees
+        rel = str(engine.file_path.relative_to(self.repo_root))
+        patched = engine.file_path.read_text(encoding="utf-8")
+        fail = _normalize_and_write(engine.file_path, patched, rel, "DIFFERENTIAL")
+        if fail is not None:
+            return fail
+        return TaskResult(success=True, track="DIFFERENTIAL", files_written=[rel])
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
