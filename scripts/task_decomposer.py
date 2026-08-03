@@ -685,6 +685,12 @@ def execute_file_by_file(
         except Exception as _idx_e:
             pass  # non-blocking — SubTaskDef spec_sections still used
 
+    # D-4: inject declared source files so ContextBuilder/GoalExecutor receives them as spec context
+    if inject_source_files:
+        for _inj in inject_source_files:
+            if _inj not in spec_sections and (REPO_ROOT / _inj).is_file():
+                spec_sections[_inj] = "full"
+
     # ── Path 1: GoalExecutor (canonical — A7 fix) ──────────────────────────────
     effective_goal_id = goal_id or f"GOAL-{task_id.split('-')[0].upper()}"
     _go_available = False
@@ -1218,6 +1224,7 @@ def execute_subtask_chain(
                     st.max_tokens,
                     stack=st.stack,
                     prior_output_files=prior_files,
+                    inject_source_files=st.inject_source_files or None,
                 )
             else:
                 # Legacy batch mode — backward compat for subtasks without output_files
@@ -1255,6 +1262,7 @@ def execute_subtask_chain(
                 model_hint=st.model_hint,
                 max_tokens=st.max_tokens,
                 required_output_files=st.output_files or None,
+                inject_source_files=st.inject_source_files or None,
             )
 
         else:

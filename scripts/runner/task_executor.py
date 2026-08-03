@@ -366,6 +366,7 @@ def execute_with_udcp(
     model_hint: str = "reasoning",
     max_tokens: int = 8000,
     required_output_files: list[str] | None = None,
+    inject_source_files: list[str] | None = None,
 ) -> tuple[bool, list[str]]:
     """
     UDCP orchestrator entry point for Python-stack tasks (ADR-039).
@@ -384,6 +385,7 @@ def execute_with_udcp(
         model_hint=model_hint,
         max_tokens=max_tokens,
         required_output_files=required_output_files,
+        inject_source_files=inject_source_files,
     )
 
     if result.success:

@@ -199,7 +199,12 @@ _UDCP_MODEL_MAP: dict[str, str] = {
 _UDCP_SYSTEM = (
     "You are a Python implementation assistant working inside the WAOOAW platform. "
     "Follow the user's instructions exactly. Return only what is asked — no extra commentary, "
-    "no explanations outside the requested format."
+    "no explanations outside the requested format.\n"
+    "Python rules: SQLAlchemy — text() with named params only, never %s or ?. "
+    "Timestamps — datetime.now(timezone.utc), never datetime.utcnow(). "
+    "Exceptions — never swallow; use `raise X from err` in except blocks. "
+    "Currency — PAISE (int), never float USD. "
+    "Margin formula — floor / (1 - margin/100), never cost-plus."
 )
 
 
@@ -247,6 +252,7 @@ def call_llm_for_udcp(
         headers={
             "x-api-key": api_key,
             "anthropic-version": "2023-06-01",
+            "anthropic-beta": "prompt-caching-2024-07-31",
             "content-type": "application/json",
         },
     )
@@ -268,9 +274,16 @@ def call_llm_for_udcp(
     content = result.get("content", [])
     text = "".join(b.get("text", "") for b in content if b.get("type") == "text")
     usage = result.get("usage", {})
+    in_tok = usage.get("input_tokens", 0)
+    out_tok = usage.get("output_tokens", 0)
     print(f"  UDCP RSP: {task_id} latency={latency:.1f}s "
-          f"in={usage.get('input_tokens', 0)} out={usage.get('output_tokens', 0)} "
-          f"chars={len(text)}")
+          f"in={in_tok} out={out_tok} chars={len(text)}")
+    _r_in = {"claude-sonnet-4-6": 0.24, "claude-haiku-4-5": 0.02}.get(model_id, 0.02)
+    _r_out = {"claude-sonnet-4-6": 1.20, "claude-haiku-4-5": 0.10}.get(model_id, 0.10)
+    _MONITOR_SIGNAL["file_costs"][task_id] = (
+        _MONITOR_SIGNAL["file_costs"].get(task_id, 0.0)
+        + round((in_tok / 1000) * _r_in + (out_tok / 1000) * _r_out, 4)
+    )
     return text or None
 
 

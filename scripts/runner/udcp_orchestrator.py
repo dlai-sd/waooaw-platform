@@ -254,6 +254,7 @@ class UDCPOrchestrator:
         model_hint: str = "reasoning",
         max_tokens: int = 8000,
         required_output_files: list[str] | None = None,
+        inject_source_files: list[str] | None = None,
     ) -> TaskResult:
         """
         Executes one WC task through the UDCP pipeline.
@@ -263,18 +264,22 @@ class UDCPOrchestrator:
 
         if track == "GREENFIELD":
             return self._run_track1(task_id, scope_text, sprint_id, model_hint, max_tokens,
-                                    required_output_files=required_output_files)
+                                    required_output_files=required_output_files,
+                                    inject_source_files=inject_source_files)
         elif track == "DIFFERENTIAL":
             return self._run_track2(task_id, scope_text, sprint_id, model_hint, max_tokens,
-                                    required_output_files=required_output_files)
+                                    required_output_files=required_output_files,
+                                    inject_source_files=inject_source_files)
         else:
             # MIXED: scaffold new files (Track 1), then patch existing files (Track 2).
             r1 = self._run_track1(task_id, scope_text, sprint_id, model_hint, max_tokens,
-                                   skip_existing=True, required_output_files=required_output_files)
+                                   skip_existing=True, required_output_files=required_output_files,
+                                   inject_source_files=inject_source_files)
             if not r1.success:
                 return r1
             r2 = self._run_track2(task_id, scope_text, sprint_id, model_hint, max_tokens,
-                                   required_output_files=required_output_files)
+                                   required_output_files=required_output_files,
+                                   inject_source_files=inject_source_files)
             # GROOMING_ERROR on Track 2 means no existing-file methods found — non-fatal for MIXED
             if not r2.success and r2.error_type != "GROOMING_ERROR":
                 return r2
@@ -294,6 +299,7 @@ class UDCPOrchestrator:
         max_tokens: int,
         skip_existing: bool = False,
         required_output_files: list[str] | None = None,
+        inject_source_files: list[str] | None = None,
     ) -> TaskResult:
         # 1. Generate TIS
         try:
@@ -347,7 +353,8 @@ class UDCPOrchestrator:
         filled_paths: list[str] = []
         for path in written_paths:
             result = self._fill_track1_logic(
-                task_id, path, scope_text, model_hint, max_tokens
+                task_id, path, scope_text, model_hint, max_tokens,
+                inject_source_files=inject_source_files,
             )
             if not result.success:
                 return result
@@ -365,6 +372,7 @@ class UDCPOrchestrator:
         scope_text: str,
         model_hint: str,
         max_tokens: int,
+        inject_source_files: list[str] | None = None,
     ) -> TaskResult:
         """Send scaffolded file to LLM and ask it to fill in LOGIC_FILLER sections."""
         _call_llm: Callable[..., str | None]
@@ -385,6 +393,16 @@ class UDCPOrchestrator:
         scaffold_content = scaffold_path.read_text(encoding="utf-8")
         rel_path = str(scaffold_path.relative_to(self.repo_root))
 
+        _ref_block = ""
+        if inject_source_files:
+            _parts = []
+            for _rel in inject_source_files:
+                _p = self.repo_root / _rel
+                if _p.is_file():
+                    _parts.append(f"## REFERENCE FILE: {_rel}\n{_p.read_text(encoding='utf-8')}")
+            if _parts:
+                _ref_block = "Reference files:\n" + "\n\n".join(_parts) + "\n\n"
+
         prompt = (
             f"Fill in the logic sections of the Python scaffold below.\n\n"
             f"RULES:\n"
@@ -397,7 +415,8 @@ class UDCPOrchestrator:
             f"- In except blocks always use `raise ... from err` or `raise ... from None` (never bare raise)\n"
             f"- Return the COMPLETE file — every line including all imports and class definitions\n"
             f"- No markdown code fences, no explanation — only the XML block below\n\n"
-            f"Task context:\n{scope_text[:1500]}\n\n"
+            f"Task context:\n{scope_text}\n\n"
+            f"{_ref_block}"
             f"Scaffold:\n{scaffold_content}\n\n"
             f"Respond with ONLY this format (the complete filled file):\n"
             f'<file path="{rel_path}">\n'
@@ -459,6 +478,7 @@ class UDCPOrchestrator:
         model_hint: str,
         max_tokens: int,
         required_output_files: list[str] | None = None,
+        inject_source_files: list[str] | None = None,
     ) -> TaskResult:
         try:
             tmd = self.groom.generate_tmd(task_id, scope_text, sprint_id,
@@ -472,7 +492,8 @@ class UDCPOrchestrator:
         written: list[str] = []
         for artifact in tmd.get("impacted_artifacts", []):
             result = self._patch_artifact(
-                task_id, artifact, scope_text, model_hint, max_tokens
+                task_id, artifact, scope_text, model_hint, max_tokens,
+                inject_source_files=inject_source_files,
             )
             if not result.success:
                 return result
@@ -487,6 +508,7 @@ class UDCPOrchestrator:
         scope_text: str,
         model_hint: str,
         max_tokens: int,
+        inject_source_files: list[str] | None = None,
     ) -> TaskResult:
         fp = self.repo_root / artifact["file_path"]
         if not fp.is_file():
@@ -509,6 +531,7 @@ class UDCPOrchestrator:
             result = self._patch_method(
                 task_id, engine, method_name, class_name,
                 scope_text, model_hint, max_tokens,
+                inject_source_files=inject_source_files,
             )
             if not result.success:
                 return result
@@ -561,7 +584,7 @@ class UDCPOrchestrator:
 
         prompt = (
             f"The file below needs module-level initialization lines appended at the end.\n\n"
-            f"Task: {scope_text[:1000]}\n\n"
+            f"Task: {scope_text}\n\n"
             f"Current file content:\n{existing}\n\n"
             f"Return ONLY the module-level app initialization and include_router call(s) "
             f"(e.g. `app = FastAPI()`, `app.include_router(...)`). "
@@ -603,6 +626,7 @@ class UDCPOrchestrator:
         scope_text: str,
         model_hint: str,
         max_tokens: int,
+        inject_source_files: list[str] | None = None,
     ) -> TaskResult:
         if self._llm_fn is not None:
             _call_llm: Callable[..., str | None] = self._llm_fn
@@ -625,6 +649,17 @@ class UDCPOrchestrator:
             )
 
         target_label = f"{class_name}.{method_name}" if class_name else method_name
+
+        _ref_block = ""
+        if inject_source_files:
+            _parts = []
+            for _rel in inject_source_files:
+                _p = self.repo_root / _rel
+                if _p.is_file():
+                    _parts.append(f"## REFERENCE FILE: {_rel}\n{_p.read_text(encoding='utf-8')}")
+            if _parts:
+                _ref_block = "Reference files:\n" + "\n\n".join(_parts) + "\n\n"
+
         prompt = (
             f"UDCP Track 2 — Method Logic Implementation\n\n"
             f"Implement the body of '{target_label}'. "
@@ -633,7 +668,8 @@ class UDCPOrchestrator:
             f"DB: use SQLAlchemy text() + named params. "
             f"Timestamps: datetime.now(timezone.utc) not utcnow(). "
             f"Never swallow exceptions with bare except.\n\n"
-            f"Task context:\n{scope_text[:2000]}\n\n"
+            f"Task context:\n{scope_text}\n\n"
+            f"{_ref_block}"
             f"Current stub:\n```python\n{node_source}\n```\n\n"
             f"Return the filled function wrapped in triple backticks:\n"
             f"```python\n"
