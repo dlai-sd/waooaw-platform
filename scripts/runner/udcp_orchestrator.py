@@ -356,15 +356,17 @@ class UDCPOrchestrator:
 
         existing = fp.read_text(encoding="utf-8")
         prompt = (
-            f"The file below needs new lines appended at the end.\n\n"
+            f"The file below needs module-level initialization lines appended at the end.\n\n"
             f"Task: {scope_text[:1000]}\n\n"
             f"Current file content:\n{existing}\n\n"
-            f"Return ONLY the new lines to append (imports + code). "
+            f"Return ONLY the module-level app initialization and include_router call(s) "
+            f"(e.g. `app = FastAPI()`, `app.include_router(...)`). "
+            f"Do NOT generate route handler functions — those belong in router.py. "
             f"No explanation. No file wrapper. Just the raw Python lines."
         )
 
         response = _call_llm(task_id=task_id, prompt=prompt, model_hint=model_hint,
-                             max_tokens=1000, attempt=1)
+                             max_tokens=max_tokens, attempt=1)
         if not response:
             return TaskResult(success=False, error_type="LLM_NO_RESPONSE",
                               error_snippet="No response for module append", track="DIFFERENTIAL")
