@@ -3,13 +3,11 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from enum import StrEnum
-from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
-from markup.models import AgentType, BundleProfile, BundleTier, ThreadEntry
+from markup.models import AgentType, BundleTier, ThreadEntry
 
 router = APIRouter()
 
@@ -77,7 +75,7 @@ class ValidateRequest(BaseModel):
 
 class ValidateResponse(BaseModel):
     valid: bool
-    reason: Optional[str] = None
+    reason: str | None = None
     cost_floor_usd: float
     proposed_cost_usd: float
     validated_at: datetime
@@ -87,7 +85,7 @@ class DeriveRequest(BaseModel):
     agent_type: AgentType = Field(..., description="Agent type")
     bundle_tier: BundleTier = Field(..., description="Bundle tier")
     base_cost_usd: float = Field(..., ge=0.0, description="Base cost before markup")
-    markup_pct: Optional[float] = Field(default=None, ge=0.0, le=100.0, description="Override markup percentage")
+    markup_pct: float | None = Field(default=None, ge=0.0, le=100.0, description="Override markup percentage")
 
 
 class DeriveResponse(BaseModel):
@@ -127,7 +125,7 @@ class BundleEngine:
     def validate_cost(
         proposed_cost_usd: float,
         cost_floor_usd: float,
-    ) -> tuple[bool, Optional[str]]:
+    ) -> tuple[bool, str | None]:
         if proposed_cost_usd < cost_floor_usd:
             return (
                 False,
