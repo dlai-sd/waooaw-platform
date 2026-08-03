@@ -37,9 +37,3 @@ async def calculate_markup(request: MarkupRequest) -> MarkupResponse:
         markup_amount=markup_amount,
         total_amount=total_amount
     )
-
-# src/billing-engine/main.py
-# Implements: WC027-01b — WC027-01ba
-# constitutional_basis: C-059, C-082
-app = FastAPI()
-app.include_router(router, prefix="/markup", tags=["markup"])
