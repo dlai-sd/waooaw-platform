@@ -107,7 +107,7 @@ def post_pricing_validate(request: PriceValidationRequest) -> dict:
                 "pricing_floor_paise": bundle.cost_floor_paise
             }
     except Exception as e:
-        raise HTTPException(status_code=422, detail=str(e))
+        raise HTTPException(status_code=422, detail=str(e)) from e
 
 @router.get('/pricing/thread-catalog')
 def get_pricing_thread_catalog() -> dict:
