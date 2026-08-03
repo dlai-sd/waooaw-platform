@@ -526,8 +526,8 @@ tasks_done:
 tasks_remaining:
   - WC026-02
   - WC026-05
-consecutive_failures: 1
-autonomous_halt: true
+consecutive_failures: 0
+autonomous_halt: false
 open_prs: none
 goal_register_issue: 115
 
@@ -1030,12 +1030,12 @@ Each sprint has EA spec gaps documented, SA corrections applied to WC files, and
 <!-- Task progress lives in work-contracts/WC-NNN.md — not here. -->
 
 ```yaml
-autonomous_halt: true
+autonomous_halt: false
 platform_phase: IMPLEMENTATION
 current_sprint: WC-027
 sprint_status: AUTHORIZED
 branch: ib/009/sprint-027
-consecutive_failures: 6
+consecutive_failures: 0
 ```
 
 
