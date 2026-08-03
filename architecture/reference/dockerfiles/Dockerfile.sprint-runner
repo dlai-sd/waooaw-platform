@@ -48,8 +48,10 @@ RUN pip install --no-cache-dir \
     -r /tmp/requirements-udcp.txt \
     anthropic
 
-# Mark workspace as safe for git (bind-mounted repo)
-RUN git config --global --add safe.directory /workspace
+# Mark workspace as safe for git (bind-mounted repo) and disable GPG signing
+RUN git config --global --add safe.directory /workspace \
+ && git config --global commit.gpgsign false \
+ && git config --global tag.gpgsign false
 
 # Entrypoint script — mirrors all phases of autonomous-sprint.yaml
 COPY architecture/reference/dockerfiles/sprint-runner-entrypoint.sh /usr/local/bin/sprint-runner
