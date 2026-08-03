@@ -9,17 +9,17 @@
 ## Platform Status
 
 ```
-Version:              v1.25.0 — UDCP Batch Dispatch Integration + WC-027 Billing Engine active sprint (2026-08-02)
+Version:              v1.25.1 — P0/P1/P2 pipeline fixes: UDCP gate scoping, cross-task dep tracking, task_results accuracy (2026-08-03)
 Constitutional Claims: 86 ratified (C-001→C-086) | ADRs: 38
 Customer Agents:      4 approved — DMA v3.0 · Trading v1.7 · Agricultural v2.7 · Private Tutor v1.0
 Internal Agents:      5 — Platform IT Expert · Steward Assistant · Self-Improvement Analyst ·
                           Platform Operations · RepoNav (AVD-001 v1.0 RATIFIED — INST-014)
 Gates:                G0 ✅  G1 ✅  G2 ✅  G3 ✅  G4 ✅  G5 CLEAR
-Phase:                IMPLEMENTATION — WC-027 Sprint AUTHORIZED (autonomous, UDCP batch dispatch path)
+Phase:                IMPLEMENTATION — WC-027 Sprint READY (autonomous, UDCP batch dispatch path)
 Infrastructure:       Azure live — waooaw-dev-kv (Key Vault) · OIDC auth · Sprint Dashboard: Issue #7
 Monitoring:           Sprint Dashboard: github.com/dlai-sd/waooaw-platform/issues/7
 Web:                  web/WAOOAWHome.html — Landing page v1.0 + Auth modal
-CCTs:                 61 specified | Simulations: 24 | Pipeline tests: 547 passing (138 constitutional+UDCP audit, 9 new UDCP dispatch CCTs)
+CCTs:                 61 specified | Simulations: 24 | Pipeline tests: 646 passing (138 constitutional+UDCP audit, 9 new UDCP dispatch CCTs)
 Company:              DLAI Satellite Data (OPC) Pvt Ltd · CIN: U62090PN2024OPC230499 · Pune, India
 Stewards:             Yogesh Khandge (Founder) · Sujay Khandge (Business Growth) · Ojal Khandge (Ethics Officer)
 ```
