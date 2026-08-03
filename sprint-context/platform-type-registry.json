@@ -3143,6 +3143,30 @@
             "async run"
           ]
         },
+        "MarkupRequest": {
+          "kind": "pydantic_model",
+          "bases": [
+            "BaseModel"
+          ],
+          "fields": {
+            "base_amount": "float",
+            "markup_percentage": "float"
+          },
+          "methods": []
+        },
+        "MarkupResponse": {
+          "kind": "pydantic_model",
+          "bases": [
+            "BaseModel"
+          ],
+          "fields": {
+            "base_amount": "float",
+            "markup_percentage": "float",
+            "markup_amount": "float",
+            "total_amount": "float"
+          },
+          "methods": []
+        },
         "AgentType": {
           "kind": "class",
           "bases": [
@@ -4036,6 +4060,7 @@
       },
       "files": [
         "src/business-platform/Program.cs",
+        "src/billing-engine/main.py",
         "src/constitutional-engine/Program.cs",
         "src/professional-runtime/main.py",
         "src/professional-runtime/__init__.py",
@@ -4054,6 +4079,7 @@
         "src/business-platform/obj/Debug/net9.0/Protos/ConstitutionalService.cs",
         "src/business-platform/obj/Debug/net9.0/Protos/ConstitutionalServiceGrpc.cs",
         "src/billing-engine/markup/bundle_engine.py",
+        "src/billing-engine/markup/router.py",
         "src/billing-engine/markup/models.py",
         "src/constitutional-engine/Protos/constitutional_service.proto",
         "src/constitutional-engine/Evaluators/EvaluatorRegistry.cs",

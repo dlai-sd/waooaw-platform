@@ -60,7 +60,7 @@ def git(args: list[str], check: bool = True) -> subprocess.CompletedProcess:
     """Thin wrapper: run git with given args."""
     # Local .git/config has commit.gpgsign=true (codespace). Override for container runs.
     in_container = os.environ.get("AUTONOMOUS_SPRINT_AGENT") == "true"
-    prefix = ["-c", "commit.gpgsign=false"] if in_container and args and args[0] == "commit" else []
+    prefix = ["-c", "commit.gpgsign=false"] if in_container and args and args[0] in ("commit", "merge") else []
     return run(["git"] + prefix + args, check=check)
 
 

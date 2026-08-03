@@ -1279,9 +1279,12 @@ def execute_subtask_chain(
             missing = {f for f in declared - written_set if not (REPO_ROOT / f).exists()}
             if missing:
                 gate_ok = False
-                gate_error = f"MISSING_DELIVERABLE: UDCP did not write declared output(s): {sorted(missing)}" 
+                gate_error = f"MISSING_DELIVERABLE: UDCP did not write declared output(s): {sorted(missing)}"
             else:
-                gate_files = [f for f in udcp_files_written if f in declared]
+                # Use written files if available; fall back to declared files for DIFFERENTIAL no-ops
+                gate_files = [f for f in udcp_files_written if f in declared] or [
+                    f for f in declared if (REPO_ROOT / f).exists()
+                ]
                 gate_ok, gate_error = run_compile_gate(
                     st.compile_gate, st.service_dir,
                     target_files=gate_files or None, task_id=st.id,

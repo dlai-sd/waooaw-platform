@@ -142,9 +142,17 @@ def read_registry() -> list[dict]:
 # ── Sprint state helpers ───────────────────────────────────────────────────────
 
 def _run(cmd: list[str], check: bool = True) -> subprocess.CompletedProcess:
-    # Bypass codespace GPG signing when running inside the sprint-runner container
-    if os.environ.get("AUTONOMOUS_SPRINT_AGENT") == "true" and cmd[:2] == ["git", "commit"]:
+    in_container = os.environ.get("AUTONOMOUS_SPRINT_AGENT") == "true"
+    if in_container and len(cmd) > 1 and cmd[0] == "git" and cmd[1] in ("commit", "merge"):
         cmd = ["git", "-c", "commit.gpgsign=false"] + cmd[1:]
+    if in_container and cmd == ["git", "push", "origin", "main"]:
+        # Inject GITHUB_TOKEN into remote URL for authenticated push inside container
+        token = os.environ.get("GITHUB_TOKEN", "")
+        repo = os.environ.get("GITHUB_REPO", "dlai-sd/waooaw-platform")
+        if token:
+            subprocess.run(["git", "remote", "set-url", "origin",
+                            f"https://x-access-token:{token}@github.com/{repo}.git"],
+                           cwd=REPO_ROOT, capture_output=True)
     return subprocess.run(cmd, capture_output=True, text=True, check=check,
                           cwd=REPO_ROOT)
 
