@@ -255,12 +255,15 @@ class UDCPOrchestrator:
         max_tokens: int = 8000,
         required_output_files: list[str] | None = None,
         inject_source_files: list[str] | None = None,
+        force_greenfield: bool = False,
     ) -> TaskResult:
         """
         Executes one WC task through the UDCP pipeline.
         Returns TaskResult — caller decides commit/flag_spec_gap based on success.
+        force_greenfield=True forces GREENFIELD track even when output files exist
+        (use when existing content is an EA skeleton that must be replaced entirely).
         """
-        track = self.groom.detect_track(required_output_files or [])
+        track = "GREENFIELD" if force_greenfield else self.groom.detect_track(required_output_files or [])
 
         if track == "GREENFIELD":
             return self._run_track1(task_id, scope_text, sprint_id, model_hint, max_tokens,
@@ -565,7 +568,12 @@ class UDCPOrchestrator:
         existing = fp.read_text(encoding="utf-8")
         # Idempotency guard: skip if module-level app init already present (RC-A),
         # or if the file is a router file (APIRouter — never needs app init appended).
-        _is_router_file = "router = APIRouter()" in existing or "= APIRouter(" in existing
+        # Exclude test files: a test file that imports/instantiates APIRouter for mocking
+        # should NOT be treated as a router file — it needs real test content generated.
+        _is_router_file = (
+            not rel_path.startswith("tests/")
+            and ("router = APIRouter()" in existing or "= APIRouter(" in existing)
+        )
         if "app = FastAPI()" in existing or "app.include_router(" in existing or _is_router_file:
             _reason = "already has FastAPI app init" if not _is_router_file else "is a router file"
             print(f"  APPEND SKIP: {rel_path} {_reason} — no-op")

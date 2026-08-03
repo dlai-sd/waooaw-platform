@@ -191,6 +191,11 @@ class SubTaskDef:
     # "full"     → legacy single-pass (default, backward compatible)
     generation_phase: str = "full"
 
+    # Force GREENFIELD track even when output_files already exist on disk.
+    # Use when an existing file has wrong content that must be replaced entirely
+    # (e.g. EA-session mock scaffolds that must be regenerated from spec).
+    force_greenfield: bool = False
+
 
 # ── Effective constitutional check assembly (IB-022) ──────────────────────────
 
@@ -1263,6 +1268,7 @@ def execute_subtask_chain(
                 max_tokens=st.max_tokens,
                 required_output_files=st.output_files or None,
                 inject_source_files=st.inject_source_files or None,
+                force_greenfield=st.force_greenfield,
             )
 
         else:
