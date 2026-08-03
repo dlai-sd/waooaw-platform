@@ -4,9 +4,8 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timezone
-from typing import Optional
 
-from temporalio import activity, workflow
+from temporalio import activity
 
 from markup.models import BundleProfile, ThreadEntry
 
@@ -27,7 +26,7 @@ class BundleEngine:
             ("gpt35", "premium"): 0.01,
         }
 
-    def get_cost_floor(self, agent_type: str, bundle_tier: str) -> Optional[float]:
+    def get_cost_floor(self, agent_type: str, bundle_tier: str) -> float | None:
         """Return the cost floor for a given agent_type and bundle_tier."""
         key = (agent_type.lower(), bundle_tier.lower())
         return self._cost_floors.get(key)
@@ -69,7 +68,7 @@ class BundleEngine:
             )
         return entries
 
-    def derive_from_catalog(self, agent_type: str, bundle_tier: str) -> Optional[dict]:
+    def derive_from_catalog(self, agent_type: str, bundle_tier: str) -> dict | None:
         """Derive pricing for a specific agent_type/bundle_tier from the catalog."""
         cost_floor = self.get_cost_floor(agent_type, bundle_tier)
         if cost_floor is None:

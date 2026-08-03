@@ -2,10 +2,8 @@
 # constitutional_basis: C-059, C-082
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
-from enum import StrEnum
-from typing import Optional
 from datetime import datetime, timezone
 
 router = APIRouter()
@@ -155,7 +153,7 @@ class ThreadEntry(BaseModel):
     cost_floor: float = Field(..., ge=0.0, description="Minimum cost floor for this thread")
     markup_pct: float = Field(..., ge=0.0, le=200.0, description="Markup percentage applied")
     active: bool = Field(default=True, description="Whether this thread entry is active")
-    created_at: Optional[datetime] = Field(default=None, description="Creation timestamp")
+    created_at: datetime | None = Field(default=None, description="Creation timestamp")
     # [WAOOAW_LOGIC_FILLER_END]
 
 
@@ -165,6 +163,6 @@ class BundleProfile(BaseModel):
     bundle_tier: str = Field(..., description="Bundle tier (e.g. standard, premium)")
     cost_floor: float = Field(..., ge=0.0, description="Minimum cost floor for this bundle")
     markup_pct: float = Field(..., ge=0.0, le=200.0, description="Markup percentage applied")
-    description: Optional[str] = Field(default=None, description="Optional description")
+    description: str | None = Field(default=None, description="Optional description")
     active: bool = Field(default=True, description="Whether this bundle profile is active")
     # [WAOOAW_LOGIC_FILLER_END]
