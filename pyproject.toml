@@ -62,6 +62,7 @@ ignore = [
 "tests/**" = ["S", "ANN", "LOG015", "G004", "N801"]  # N801: test class names use underscore suffixes (e.g. TestFoo_PropertyBased) — legitimate pytest convention
 "scripts/**" = ["ANN"]       # CLI scripts don't need full annotations
 "**/skeleton/**" = ["E", "W", "F", "S", "ANN", "RUF", "B", "N"]  # ADR-036: skeleton files are interface stubs, not production code
+"src/**/main.py" = ["S104"]  # container entrypoints intentionally bind to 0.0.0.0
 
 [tool.ruff.format]
 quote-style = "double"
