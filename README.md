@@ -9,7 +9,7 @@
 ## Platform Status
 
 ```
-Version:              v1.25.1 — P0/P1/P2 pipeline fixes: UDCP gate scoping, cross-task dep tracking, task_results accuracy (2026-08-03)
+Version:              v1.25.2 — Option A: UDCP contract-driven track detection, eliminates MISSING_DELIVERABLE loop (2026-08-03)
 Constitutional Claims: 86 ratified (C-001→C-086) | ADRs: 38
 Customer Agents:      4 approved — DMA v3.0 · Trading v1.7 · Agricultural v2.7 · Private Tutor v1.0
 Internal Agents:      5 — Platform IT Expert · Steward Assistant · Self-Improvement Analyst ·
