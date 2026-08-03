@@ -1,1 +1,26 @@
-{}
+{
+  "RUF012": {
+    "rule": "RUF012",
+    "last_task": "WC027-01ab",
+    "gate": "ruff",
+    "fix": "See ruff output for details — rule RUF012 violated"
+  },
+  "ANN101": {
+    "rule": "ANN101",
+    "last_task": "WC027-01bb",
+    "gate": "ruff",
+    "fix": "See ruff output for details — rule ANN101 violated"
+  },
+  "F811": {
+    "rule": "F811",
+    "last_task": "WC027-01bb",
+    "gate": "ruff",
+    "fix": "See ruff output for details — rule F811 violated"
+  },
+  "B904": {
+    "rule": "B904",
+    "last_task": "WC027-02a",
+    "gate": "ruff",
+    "fix": "See ruff output for details — rule B904 violated"
+  }
+}
