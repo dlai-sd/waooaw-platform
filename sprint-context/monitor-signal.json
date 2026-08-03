@@ -12,9 +12,16 @@
       "spec_gap_issue": null
     },
     "WC027-01ab": {
-      "result": "COMPILE_GATE_FAILURE",
-      "error_type": "COMPILE_GATE_FAILURE",
-      "build_error_snippet": "RUF012 Mutable default value for class attribute\n  --> src/billing-engine/markup/bundle_engine.py:20:40\n   |\n19 |       # Markup rates by tier\n20 |       _TIER_MARKUP: dict[str, Decimal] = {\n   |  ___",
+      "result": "SUCCESS",
+      "error_type": null,
+      "build_error_snippet": null,
+      "attempts": 1,
+      "spec_gap_issue": null
+    },
+    "WC027-01ac": {
+      "result": "SUCCESS",
+      "error_type": null,
+      "build_error_snippet": null,
       "attempts": 1,
       "spec_gap_issue": null
     },
@@ -28,14 +35,28 @@
     "WC027-01bb": {
       "result": "COMPILE_GATE_FAILURE",
       "error_type": "COMPILE_GATE_FAILURE",
-      "build_error_snippet": "ANN201 Missing return type annotation for public function `lifespan`\n  --> src/billing-engine/main.py:13:11\n   |\n12 | @asynccontextmanager\n13 | async def lifespan(app: FastAPI):\n   |           ^^^^^^^",
+      "build_error_snippet": "S104 Possible binding to all interfaces\n  --> src/billing-engine/main.py:44:27\n   |\n42 | if __name__ == \"__main__\":\n43 |     import uvicorn\n44 |     uvicorn.run(app, host=\"0.0.0.0\", port=8000)\n   |   ",
       "attempts": 1,
       "spec_gap_issue": null
     },
     "WC027-02a": {
-      "result": "COMPILE_GATE_FAILURE",
-      "error_type": "COMPILE_GATE_FAILURE",
-      "build_error_snippet": "B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling\n   --> tests/billing-engine/test_markup.py:110",
+      "result": "SUCCESS",
+      "error_type": null,
+      "build_error_snippet": null,
+      "attempts": 1,
+      "spec_gap_issue": null
+    },
+    "WC027-02b": {
+      "result": "SUCCESS",
+      "error_type": null,
+      "build_error_snippet": null,
+      "attempts": 1,
+      "spec_gap_issue": null
+    },
+    "WC027-02c": {
+      "result": "SUCCESS",
+      "error_type": null,
+      "build_error_snippet": null,
       "attempts": 1,
       "spec_gap_issue": null
     }
@@ -51,15 +72,13 @@
       "error_text": ""
     },
     "WC027-01ab": {
-      "result": "FAIL",
+      "result": "SUCCESS",
       "task_id": "WC027-01a",
-      "error_codes": [
-        "F012"
-      ],
-      "error_text": "RUF012 Mutable default value for class attribute\n  --> src/billing-engine/markup/bundle_engine.py:20:40\n   |\n19 |       # Markup rates by tier\n20 |       _TIER_MARKUP: dict[str, Decimal] = {\n   |  ________________________________________^\n21 | |         BundleTier.BASIC: Decimal(\"0.10\"),\n22 | |     "
+      "error_codes": [],
+      "error_text": ""
     },
     "WC027-01ac": {
-      "result": "SKIPPED",
+      "result": "SUCCESS",
       "task_id": "WC027-01a",
       "error_codes": [],
       "error_text": ""
@@ -74,10 +93,9 @@
       "result": "FAIL",
       "task_id": "WC027-01b",
       "error_codes": [
-        "ANN201",
         "F811"
       ],
-      "error_text": "ANN201 Missing return type annotation for public function `lifespan`\n  --> src/billing-engine/main.py:13:11\n   |\n12 | @asynccontextmanager\n13 | async def lifespan(app: FastAPI):\n   |           ^^^^^^^^\n14 |     yield\n   |\nhelp: Add return type annotation\n\nS104 Possible binding to all interfaces\n  --"
+      "error_text": "S104 Possible binding to all interfaces\n  --> src/billing-engine/main.py:44:27\n   |\n42 | if __name__ == \"__main__\":\n43 |     import uvicorn\n44 |     uvicorn.run(app, host=\"0.0.0.0\", port=8000)\n   |                           ^^^^^^^^^\n\nF811 Redefinition of unused `router` from line 8\n  --> src/billin"
     },
     "WC027-01bc": {
       "result": "SKIPPED",
@@ -86,27 +104,27 @@
       "error_text": ""
     },
     "WC027-02a": {
-      "result": "FAIL",
+      "result": "SUCCESS",
       "task_id": "WC027-02",
-      "error_codes": [
-        "B904"
-      ],
-      "error_text": "B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling\n   --> tests/billing-engine/test_markup.py:110:9\n    |\n108 |             }\n109 |     except Exception as e:\n110 |         raise HTTPException(stat"
+      "error_codes": [],
+      "error_text": ""
     },
     "WC027-02b": {
-      "result": "SKIPPED",
+      "result": "SUCCESS",
       "task_id": "WC027-02",
       "error_codes": [],
       "error_text": ""
     },
     "WC027-02c": {
-      "result": "SKIPPED",
+      "result": "SUCCESS",
       "task_id": "WC027-02",
       "error_codes": [],
       "error_text": ""
     }
   },
-  "tasks_done": [],
+  "tasks_done": [
+    "WC027-01a"
+  ],
   "tasks_requested": [
     "WC027-01a",
     "WC027-01b",
