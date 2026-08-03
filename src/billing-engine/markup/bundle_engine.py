@@ -225,3 +225,6 @@ class BundlePricingWorkflow:
             "errors": [],
             "pricing": pricing_result.get("pricing"),
         }
+
+# Module-level initialization for bundle_engine.py
+engine = BundleEngine()

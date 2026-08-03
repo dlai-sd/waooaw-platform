@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 from enum import StrEnum
 from typing import Optional
 from decimal import Decimal
+from fastapi import FastAPI
 
 router = APIRouter()
 
@@ -201,3 +202,6 @@ def _derive_pricing(profile: BundleProfile) -> dict:
         "final_price": str(final_price.quantize(Decimal("0.01"))),
         "thread_count": len(profile.thread_ids),
     }
+
+app = FastAPI(title="billing-engine-markup")
+app.include_router(router, prefix="/markup", tags=["markup"])
