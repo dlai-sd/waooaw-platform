@@ -2,7 +2,11 @@
 # constitutional_basis: ADR-039 §5, C-059, C-077, C-082
 from __future__ import annotations
 
+import ast
+import os
 import re
+import subprocess
+import tempfile
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -22,6 +26,62 @@ _FILLER_END = "# [WAOOAW_LOGIC_FILLER_END]"
 _FUNC_BLOCK_RE = re.compile(
     r"```python\s*((?:async\s+)?def\s.+?)```", re.DOTALL
 )
+
+_IMPORT_LINE_RE = re.compile(r"^(import |from )", re.MULTILINE)
+
+
+def _fix_b904(content: str) -> str:
+    """Deterministically chain bare raises inside except handlers: raise X → raise X from var."""
+    try:
+        tree = ast.parse(content)
+    except SyntaxError:
+        return content
+    lines = content.splitlines(keepends=True)
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ExceptHandler) and node.name:
+            var = node.name
+            for stmt in ast.walk(node):
+                if (
+                    isinstance(stmt, ast.Raise)
+                    and stmt.exc is not None
+                    and stmt.cause is None
+                ):
+                    end = stmt.end_lineno - 1  # 0-indexed; handles multi-line raises
+                    lines[end] = lines[end].rstrip("\n").rstrip() + f" from {var}\n"
+    return "".join(lines)
+
+
+def _hoist_imports(existing: str, new_lines: str) -> tuple[str, str]:
+    """Move any import lines in new_lines to the existing file's import block; return (existing, body)."""
+    parts = new_lines.splitlines()
+    imports = [ln for ln in parts if _IMPORT_LINE_RE.match(ln)]
+    body = [ln for ln in parts if not _IMPORT_LINE_RE.match(ln)]
+    if not imports:
+        return existing, new_lines
+    ex_lines = existing.splitlines()
+    last_import = max(
+        (i for i, ln in enumerate(ex_lines) if _IMPORT_LINE_RE.match(ln)),
+        default=-1,
+    )
+    new_imports = [imp for imp in imports if imp not in existing]
+    if new_imports:
+        ex_lines.insert(last_import + 1, "\n".join(new_imports))
+    return "\n".join(ex_lines), "\n".join(ln for ln in body if ln.strip())
+
+
+def _ruff_normalization_check(content: str) -> str | None:
+    """Return ruff violation text if E402/B904 remain after normalization, else None."""
+    with tempfile.NamedTemporaryFile(suffix=".py", delete=False, mode="w") as tf:
+        tf.write(content)
+        tf_path = tf.name
+    try:
+        result = subprocess.run(  # noqa: S603
+            ["ruff", "check", "--select", "E402,B904", tf_path],  # noqa: S607
+            capture_output=True, text=True,
+        )
+        return (result.stdout.strip() or result.stderr.strip()) if result.returncode != 0 else None
+    finally:
+        os.unlink(tf_path)
 
 
 @dataclass
@@ -253,6 +313,13 @@ class UDCPOrchestrator:
                     error_snippet=f"LLM returned path outside write boundary: {fpath}",
                     track="GREENFIELD",
                 )
+            content = _fix_b904(content)
+            ruff_err = _ruff_normalization_check(content)
+            if ruff_err:
+                return TaskResult(
+                    success=False, error_type="NORMALIZATION_INCOMPLETE",
+                    error_snippet=f"{fpath}: {ruff_err[:300]}", track="GREENFIELD",
+                )
             try:
                 compile(content, fpath, "exec")
             except SyntaxError as exc:
@@ -379,7 +446,13 @@ class UDCPOrchestrator:
 
         # Strip code fences if present
         new_lines = re.sub(r"^```[a-z]*\n(.*)\n```$", r"\1", response.strip(), flags=re.DOTALL)
+        existing, new_lines = _hoist_imports(existing, new_lines)
         updated = existing.rstrip() + "\n\n" + new_lines.strip() + "\n"
+        updated = _fix_b904(updated)
+        ruff_err = _ruff_normalization_check(updated)
+        if ruff_err:
+            return TaskResult(success=False, error_type="NORMALIZATION_INCOMPLETE",
+                              error_snippet=f"{rel_path}: {ruff_err[:300]}", track="DIFFERENTIAL")
         try:
             compile(updated, rel_path, "exec")
         except SyntaxError as exc:
