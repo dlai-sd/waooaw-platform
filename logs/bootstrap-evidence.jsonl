@@ -148,3 +148,8 @@
 {"event": "AUTONOMOUS_SPRINT_STARTED", "timestamp": "2026-08-03T18:55:52.107827+00:00", "run_id": "", "stub_mode": true, "sprint": "WC-027", "branch": "ib/009/sprint-027", "tasks": ["WC027-01a", "WC027-01b", "WC027-02"]}
 {"event": "spec_gap_halt", "timestamp": "2026-08-03T18:57:28.862760+00:00", "run_id": "", "stub_mode": true, "task": "WC027-02a", "issue": "219", "gap": "UDCP NO_FILE_BLOCKS: LLM response contained no <file> blocks"}
 {"event": "SPRINT_TASKS_EXECUTED", "timestamp": "2026-08-03T18:57:28.885976+00:00", "run_id": "", "stub_mode": true, "sprint": "WC-027", "tasks_done": []}
+{"event": "autonomous_halt_active", "timestamp": "2026-08-03T19:04:17.944770+00:00", "run_id": "", "stub_mode": true, "reason": "AUTONOMOUS_HALT=true in PROJECT_STATE.md"}
+{"event": "autonomous_halt_active", "timestamp": "2026-08-03T19:07:22.268970+00:00", "run_id": "", "stub_mode": true, "reason": "AUTONOMOUS_HALT=true in PROJECT_STATE.md"}
+{"event": "AUTONOMOUS_SPRINT_STARTED", "timestamp": "2026-08-03T19:16:52.437574+00:00", "run_id": "", "stub_mode": true, "sprint": "WC-027", "branch": "ib/009/sprint-027", "tasks": ["WC027-01a", "WC027-01b", "WC027-02"]}
+{"event": "spec_gap_halt", "timestamp": "2026-08-03T19:18:28.503527+00:00", "run_id": "", "stub_mode": true, "task": "WC027-02a", "issue": "220", "gap": "UDCP NO_FILE_BLOCKS: LLM response contained no <file> blocks"}
+{"event": "SPRINT_TASKS_EXECUTED", "timestamp": "2026-08-03T19:18:28.541730+00:00", "run_id": "", "stub_mode": true, "sprint": "WC-027", "tasks_done": []}
