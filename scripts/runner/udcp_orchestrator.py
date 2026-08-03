@@ -539,9 +539,12 @@ class UDCPOrchestrator:
             _call_llm = call_llm_for_udcp
 
         existing = fp.read_text(encoding="utf-8")
-        # Idempotency guard: skip if module-level app init already present (RC-A).
-        if "app = FastAPI()" in existing or "app.include_router(" in existing:
-            print(f"  APPEND SKIP: {rel_path} already has FastAPI app init — no-op")
+        # Idempotency guard: skip if module-level app init already present (RC-A),
+        # or if the file is a router file (APIRouter — never needs app init appended).
+        _is_router_file = "router = APIRouter()" in existing or "= APIRouter(" in existing
+        if "app = FastAPI()" in existing or "app.include_router(" in existing or _is_router_file:
+            _reason = "already has FastAPI app init" if not _is_router_file else "is a router file"
+            print(f"  APPEND SKIP: {rel_path} {_reason} — no-op")
             # Still apply deterministic lint fixers — the existing file may have
             # RUF012/ANN201/B904 violations that weren't present at write time.
             fixed = _fix_b904(existing)
