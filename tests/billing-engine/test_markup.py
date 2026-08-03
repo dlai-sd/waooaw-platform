@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import pytest
 from hypothesis import given, strategies as st
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.testclient import TestClient
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from datetime import datetime, timezone
+from typing import Optional
+import json
 
 # Mock implementations for testing
 class BundleProfile(BaseModel):
@@ -31,8 +33,8 @@ class PriceValidationRequest(BaseModel):
 
 class PriceValidationResponse(BaseModel):
     status: str
-    pricing_floor_paise: int | None = None
-    minimum_compliant_price_paise: int | None = None
+    pricing_floor_paise: Optional[int] = None
+    minimum_compliant_price_paise: Optional[int] = None
 
 class ThreadCatalogResponse(BaseModel):
     threads: list[dict]
@@ -51,9 +53,9 @@ def derive_price(cost_floor_paise: int, margin_pct: float) -> int:
         raise ValueError("Invalid margin percentage")
     
     derived = cost_floor_paise / divisor
-    return round(derived)
+    return int(round(derived))
 
-def validate_price(proposed_price_paise: int, cost_floor_paise: int, margin_pct: float) -> tuple[str, int | None]:
+def validate_price(proposed_price_paise: int, cost_floor_paise: int, margin_pct: float) -> tuple[str, Optional[int]]:
     """Validate price against cost floor and margin requirements"""
     minimum_compliant = derive_price(cost_floor_paise, margin_pct)
     
@@ -107,7 +109,7 @@ def post_pricing_validate(request: PriceValidationRequest) -> dict:
                 "pricing_floor_paise": bundle.cost_floor_paise
             }
     except Exception as e:
-        raise HTTPException(status_code=422, detail=str(e)) from e
+        raise HTTPException(status_code=422, detail=str(e))
 
 @router.get('/pricing/thread-catalog')
 def get_pricing_thread_catalog() -> dict:
@@ -143,7 +145,7 @@ class TestDerivePrice:
     def test_derive_price_large_values(self):
         """Test derive_price with large paise values"""
         result = derive_price(999999, 50)
-        assert result == round(999999 / 0.5)
+        assert result == int(round(999999 / 0.5))
     
     def test_derive_price_precision(self):
         """Test derive_price float precision handling"""
@@ -255,4 +257,4 @@ class TestCoverageAndIntegration:
         )
         assert bundle.cost_floor_paise == 5000
         derived = derive_price(bundle.cost_floor_paise, bundle.margin_pct)
-        assert derived == round(5000 / 0.6)
+        assert derived == int(round(5000 / 0.6))
