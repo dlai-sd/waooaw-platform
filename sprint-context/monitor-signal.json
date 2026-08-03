@@ -44,11 +44,11 @@
       "error_type": "BUILD_ERROR",
       "build_error_snippet": "UDCP NO_FILE_BLOCKS: LLM response contained no <file> blocks",
       "attempts": 3,
-      "spec_gap_issue": "221"
+      "spec_gap_issue": "222"
     }
   },
   "spec_gap_issues": [
-    "221"
+    "222"
   ],
   "overall_result": "PARTIAL",
   "file_costs": {
