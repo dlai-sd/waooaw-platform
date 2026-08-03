@@ -89,9 +89,81 @@ def _ruff_normalization_check(content: str) -> str | None:
         os.unlink(tf_path)
 
 
+def _fix_ruf012(content: str) -> str:
+    """Wrap mutable class-level attribute type annotations with ClassVar (RUF012)."""
+    try:
+        tree = ast.parse(content)
+    except SyntaxError:
+        return content
+    lines = content.splitlines(keepends=True)
+    violations: list[int] = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ClassDef):
+            for stmt in node.body:
+                if (
+                    isinstance(stmt, ast.AnnAssign)
+                    and isinstance(stmt.annotation, ast.Subscript)
+                    and isinstance(stmt.value, (ast.Dict, ast.List, ast.Set))
+                ):
+                    ann_name = getattr(stmt.annotation.value, "id", None)
+                    if ann_name in ("dict", "list", "set"):
+                        violations.append(stmt.lineno - 1)
+    if not violations:
+        return content
+    classvar_added = False
+    for lineno in violations:
+        line = lines[lineno]
+        m = re.match(r"^(\s*\w+:\s*)([^=\n]+?)(\s*=\s*[{[\(])", line)
+        if m and "ClassVar" not in m.group(2):
+            lines[lineno] = f"{m.group(1)}ClassVar[{m.group(2).rstrip()}]{m.group(3)}\n"
+            classvar_added = True
+    result = "".join(lines)
+    if classvar_added and "ClassVar" not in content:
+        typing_m = re.search(r"(from typing import\s+)(\S[^\n]*)", result)
+        if typing_m:
+            result = result[: typing_m.start(2)] + "ClassVar, " + result[typing_m.start(2) :]
+        else:
+            last = max(
+                (m.start() for m in re.finditer(r"^(?:import |from )\w", result, re.MULTILINE)),
+                default=0,
+            )
+            ins = result.index("\n", last) + 1
+            result = result[:ins] + "from typing import ClassVar\n" + result[ins:]
+    return result
+
+
+def _fix_ann201_asynccontextmanager(content: str) -> str:
+    """Add -> AsyncIterator[None] to @asynccontextmanager functions missing a return type (ANN201)."""
+    _ACM_RE = re.compile(
+        r"(@asynccontextmanager\s*\n\s*async\s+def\s+\w+\s*\([^)]*\)\s*)(:)",
+        re.MULTILINE,
+    )
+
+    def _add_ret(m: re.Match) -> str:
+        return m.group(1) if "->" in m.group(1) else m.group(1) + " -> AsyncIterator[None]"
+
+    patched = _ACM_RE.sub(lambda m: _add_ret(m) + m.group(2), content)
+    if patched == content:
+        return content
+    if "AsyncIterator" not in content:
+        abc_m = re.search(r"(from collections\.abc import\s+)(\S[^\n]*)", patched)
+        if abc_m:
+            patched = patched[: abc_m.start(2)] + "AsyncIterator, " + patched[abc_m.start(2) :]
+        else:
+            last = max(
+                (m.start() for m in re.finditer(r"^(?:import |from )\w", patched, re.MULTILINE)),
+                default=0,
+            )
+            ins = patched.index("\n", last) + 1
+            patched = patched[:ins] + "from collections.abc import AsyncIterator\n" + patched[ins:]
+    return patched
+
+
 def _normalize_and_write(path: Path, content: str, label: str, track: str) -> TaskResult | None:
     """Single write gateway: normalize → compile-gate → write. Returns None on success."""
     content = _fix_b904(content)
+    content = _fix_ruf012(content)
+    content = _fix_ann201_asynccontextmanager(content)
     ruff_err = _ruff_normalization_check(content)
     if ruff_err:
         return TaskResult(
@@ -448,6 +520,17 @@ class UDCPOrchestrator:
         # Idempotency guard: skip if module-level app init already present (RC-A).
         if "app = FastAPI()" in existing or "app.include_router(" in existing:
             print(f"  APPEND SKIP: {rel_path} already has FastAPI app init — no-op")
+            # Still apply deterministic lint fixers — the existing file may have
+            # RUF012/ANN201/B904 violations that weren't present at write time.
+            fixed = _fix_b904(existing)
+            fixed = _fix_ruf012(fixed)
+            fixed = _fix_ann201_asynccontextmanager(fixed)
+            if fixed != existing:
+                print(f"  LINT FIX: deterministic fixers applied to {rel_path}")
+                fail = _normalize_and_write(fp, fixed, rel_path, "DIFFERENTIAL")
+                if fail is not None:
+                    return fail
+                return TaskResult(success=True, track="DIFFERENTIAL", files_written=[rel_path])
             return TaskResult(success=True, track="DIFFERENTIAL", files_written=[])
 
         prompt = (
