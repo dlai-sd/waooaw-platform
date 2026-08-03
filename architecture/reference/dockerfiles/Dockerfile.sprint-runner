@@ -1,0 +1,60 @@
+# Dockerfile.sprint-runner
+# constitutional_basis: C-080, C-065, C-066 Tier 2A, ADR-039
+# ib_item: IB-009
+#
+# Full local CI mirror for autonomous-sprint.yaml.
+# Replaces Azure OIDC + Key Vault with direct ANTHROPIC_API_KEY env var injection.
+#
+# Usage:
+#   # Dry-run (no API key, preflight only):
+#   docker compose --profile sprint run --rm sprint-runner --dry-run
+#
+#   # Force a specific subtask (requires API key):
+#   ANTHROPIC_API_KEY=sk-... GITHUB_TOKEN=ghp_... \
+#       docker compose --profile sprint run --rm sprint-runner --force-task WC027-01aa
+#
+#   # Full autonomous sprint (requires API key + GitHub PAT):
+#   ANTHROPIC_API_KEY=sk-... GITHUB_TOKEN=ghp_... \
+#       docker compose --profile sprint run --rm sprint-runner
+#
+#   # Run only pipeline tests (no API key needed):
+#   docker compose --profile sprint run --rm sprint-runner --test
+
+FROM python:3.12-slim-bookworm
+
+# Security: run as non-root by default but with git push capability
+RUN groupadd -r waooaw && useradd -r -g waooaw -m waooaw
+
+WORKDIR /workspace
+
+# git + gh CLI + curl (needed for git operations and GitHub API calls)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    curl \
+    && curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+       | dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg \
+    && chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
+       > /etc/apt/sources.list.d/github-cli.list \
+    && apt-get update && apt-get install -y --no-install-recommends gh \
+    && rm -rf /var/lib/apt/lists/*
+
+# Python deps: test suite + UDCP orchestrator + Anthropic SDK
+COPY requirements-test.txt /tmp/requirements-test.txt
+COPY requirements-udcp.txt /tmp/requirements-udcp.txt
+RUN pip install --no-cache-dir \
+    -r /tmp/requirements-test.txt \
+    -r /tmp/requirements-udcp.txt \
+    anthropic
+
+# Mark workspace as safe for git (bind-mounted repo)
+RUN git config --global --add safe.directory /workspace
+
+# Entrypoint script — mirrors all phases of autonomous-sprint.yaml
+COPY architecture/reference/dockerfiles/sprint-runner-entrypoint.sh /usr/local/bin/sprint-runner
+RUN chmod +x /usr/local/bin/sprint-runner
+
+ENV AUTONOMOUS_SPRINT_AGENT=true
+ENV PYTHONUNBUFFERED=1
+
+ENTRYPOINT ["/usr/local/bin/sprint-runner"]

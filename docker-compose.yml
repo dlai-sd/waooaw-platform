@@ -44,6 +44,35 @@ services:
     profiles:
       - udcp                            # docker compose run --rm udcp-runner ...
 
+  # ─── Sprint Runner — full local CI mirror (autonomous-sprint.yaml) ───────────
+  # Replaces Azure OIDC + Key Vault with direct ANTHROPIC_API_KEY env var injection.
+  # Usage:
+  #   docker compose --profile sprint run --rm sprint-runner --dry-run
+  #   ANTHROPIC_API_KEY=sk-... GITHUB_TOKEN=ghp_... \
+  #       docker compose --profile sprint run --rm sprint-runner
+  #   docker compose --profile sprint run --rm sprint-runner --force-task WC027-01aa
+  #   docker compose --profile sprint run --rm sprint-runner --test
+  sprint-runner:
+    build:
+      context: .
+      dockerfile: architecture/reference/dockerfiles/Dockerfile.sprint-runner
+    volumes:
+      - .:/workspace                    # bind mount — writes generated files into repo tree
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      PYTHONPATH: /workspace
+      PYTHONUNBUFFERED: "1"
+      AUTONOMOUS_SPRINT_AGENT: "true"
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      GITHUB_REPO: ${GITHUB_REPO:-dlai-sd/waooaw-platform}
+      GITHUB_RUN_ID: ${GITHUB_RUN_ID:-}
+      FORCE_TASK: ${FORCE_TASK:-}
+      SPRINT_NAME: ${SPRINT_NAME:-}
+      DRY_RUN: ${DRY_RUN:-false}
+    profiles:
+      - sprint                          # docker compose --profile sprint run --rm sprint-runner
+
   # ─── Infrastructure ────────────────────────────────────────────────────────
 
   postgres:
