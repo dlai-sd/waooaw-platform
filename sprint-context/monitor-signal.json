@@ -12,18 +12,11 @@
       "spec_gap_issue": null
     },
     "WC027-01ab": {
-      "result": "SUCCESS",
-      "error_type": null,
-      "build_error_snippet": null,
+      "result": "COMPILE_GATE_FAILURE",
+      "error_type": "COMPILE_GATE_FAILURE",
+      "build_error_snippet": "F821 Undefined name `FastAPI`\n  --> src/billing-engine/markup/models.py:53:7\n   |\n51 |     proposed_price_paise: int\n52 |\n53 | app = FastAPI(title=\"Billing Engine \u2014 Markup Pricing\", version=\"1.0.0\")\n ",
       "attempts": 1,
       "spec_gap_issue": null
-    },
-    "WC027-01ac": {
-      "result": "SPEC_GAP",
-      "error_type": "BUILD_ERROR",
-      "build_error_snippet": "UDCP NO_FILE_BLOCKS: LLM response contained no <file> blocks",
-      "attempts": 3,
-      "spec_gap_issue": "217"
     },
     "WC027-01ba": {
       "result": "SUCCESS",
@@ -51,19 +44,14 @@
       "error_type": "BUILD_ERROR",
       "build_error_snippet": "UDCP NO_FILE_BLOCKS: LLM response contained no <file> blocks",
       "attempts": 3,
-      "spec_gap_issue": "218"
+      "spec_gap_issue": "219"
     }
   },
   "spec_gap_issues": [
-    "217",
-    "218"
+    "219"
   ],
   "overall_result": "PARTIAL",
   "file_costs": {
-    "WC027-01aa": 2.1542,
-    "WC027-01ab": 0.1056,
-    "WC027-01ac": 8.964,
-    "WC027-01bc": 1.8996,
     "WC027-02a": 11.6947
   },
   "subtask_results": {
@@ -74,13 +62,15 @@
       "error_text": ""
     },
     "WC027-01ab": {
-      "result": "SUCCESS",
+      "result": "FAIL",
       "task_id": "WC027-01a",
-      "error_codes": [],
-      "error_text": ""
+      "error_codes": [
+        "F821"
+      ],
+      "error_text": "F821 Undefined name `FastAPI`\n  --> src/billing-engine/markup/models.py:53:7\n   |\n51 |     proposed_price_paise: int\n52 |\n53 | app = FastAPI(title=\"Billing Engine \u2014 Markup Pricing\", version=\"1.0.0\")\n   |       ^^^^^^^\n54 | app.include_router(pricing_router, prefix=\"/pricing\", tags=[\"pricing\"])\n   |\n"
     },
     "WC027-01ac": {
-      "result": "FAIL",
+      "result": "SKIPPED",
       "task_id": "WC027-01a",
       "error_codes": [],
       "error_text": ""
@@ -124,7 +114,7 @@
       "error_text": ""
     }
   },
-  "total_cost_inr": 24.8181,
+  "total_cost_inr": 11.6947,
   "tasks_done": [],
   "tasks_requested": [
     "WC027-01a",
