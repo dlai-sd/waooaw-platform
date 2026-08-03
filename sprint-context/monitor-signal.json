@@ -1,5 +1,5 @@
 {
-  "run_id": "30830276253",
+  "run_id": "",
   "sprint": "WC-027",
   "scaffold_task": null,
   "scaffold_failed": false,
@@ -12,16 +12,9 @@
       "spec_gap_issue": null
     },
     "WC027-01ab": {
-      "result": "SUCCESS",
-      "error_type": null,
-      "build_error_snippet": null,
-      "attempts": 1,
-      "spec_gap_issue": null
-    },
-    "WC027-01ac": {
-      "result": "SUCCESS",
-      "error_type": null,
-      "build_error_snippet": null,
+      "result": "COMPILE_GATE_FAILURE",
+      "error_type": "COMPILE_GATE_FAILURE",
+      "build_error_snippet": "F811 Redefinition of unused `PricingOutcome` from line 14\n  --> src/billing-engine/markup/models.py:17:7\n   |\n17 | class PricingOutcome(StrEnum):\n   |       ^^^^^^^^^^^^^^ `PricingOutcome` redefined h",
       "attempts": 1,
       "spec_gap_issue": null
     },
@@ -69,8 +62,13 @@
     }
   },
   "spec_gap_issues": [],
-  "overall_result": "SUCCESS",
-  "file_costs": {},
+  "overall_result": "PARTIAL",
+  "file_costs": {
+    "WC027-01aa": 7.8172,
+    "WC027-01ab": 0.381,
+    "WC027-01ba": 0.7271000000000001,
+    "WC027-01bc": 6.265
+  },
   "subtask_results": {
     "WC027-01aa": {
       "result": "SUCCESS",
@@ -79,13 +77,15 @@
       "error_text": ""
     },
     "WC027-01ab": {
-      "result": "SUCCESS",
+      "result": "FAIL",
       "task_id": "WC027-01a",
-      "error_codes": [],
-      "error_text": ""
+      "error_codes": [
+        "F811"
+      ],
+      "error_text": "F811 Redefinition of unused `PricingOutcome` from line 14\n  --> src/billing-engine/markup/models.py:17:7\n   |\n17 | class PricingOutcome(StrEnum):\n   |       ^^^^^^^^^^^^^^ `PricingOutcome` redefined here\n18 |     APPROVED = \"APPROVED\"\n19 |     REJECTED = \"REJECTED\"\n   |\n  ::: src/billing-engine/mark"
     },
     "WC027-01ac": {
-      "result": "SUCCESS",
+      "result": "SKIPPED",
       "task_id": "WC027-01a",
       "error_codes": [],
       "error_text": ""
@@ -127,11 +127,8 @@
       "error_text": ""
     }
   },
-  "tasks_done": [
-    "WC027-01a",
-    "WC027-01b",
-    "WC027-02"
-  ],
+  "total_cost_inr": 15.190299999999999,
+  "tasks_done": [],
   "tasks_requested": [
     "WC027-01a",
     "WC027-01b",
