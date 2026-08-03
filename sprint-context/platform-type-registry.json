@@ -3126,13 +3126,17 @@
         "BundleEngine": {
           "kind": "class",
           "bases": [],
-          "fields": {},
+          "fields": {
+            "_TIER_MARKUP": "dict[str, Decimal]",
+            "_AGENT_MULTIPLIER": "dict[str, Decimal]",
+            "_COST_FLOOR": "dict[tuple[str, str], Decimal]"
+          },
           "methods": [
-            "derive_price",
-            "validate_profile",
+            "validate_bundle",
+            "derive_pricing",
             "get_cost_floor",
-            "enforce_cost_floor",
-            "build_pricing_summary"
+            "apply_thread_markup",
+            "build_bundle_summary"
           ]
         },
         "BundlePricingWorkflow": {
@@ -3142,30 +3146,6 @@
           "methods": [
             "async run"
           ]
-        },
-        "MarkupRequest": {
-          "kind": "pydantic_model",
-          "bases": [
-            "BaseModel"
-          ],
-          "fields": {
-            "base_amount": "float",
-            "markup_percentage": "float"
-          },
-          "methods": []
-        },
-        "MarkupResponse": {
-          "kind": "pydantic_model",
-          "bases": [
-            "BaseModel"
-          ],
-          "fields": {
-            "base_amount": "float",
-            "markup_percentage": "float",
-            "markup_amount": "float",
-            "total_amount": "float"
-          },
-          "methods": []
         },
         "AgentType": {
           "kind": "class",
@@ -3183,20 +3163,6 @@
           "fields": {},
           "methods": []
         },
-        "BundleProfile": {
-          "kind": "pydantic_model",
-          "bases": [
-            "BaseModel"
-          ],
-          "fields": {
-            "agent_type": "str",
-            "bundle_tier": "str",
-            "base_cost": "float",
-            "markup_pct": "float",
-            "description": "Optional[str]"
-          },
-          "methods": []
-        },
         "ThreadEntry": {
           "kind": "pydantic_model",
           "bases": [
@@ -3204,12 +3170,30 @@
           ],
           "fields": {
             "thread_id": "str",
-            "agent_type": "str",
-            "bundle_tier": "str",
-            "base_cost": "float",
-            "markup_pct": "float",
-            "derived_price": "Optional[float]",
-            "created_at": "Optional[str]"
+            "thread_name": "str",
+            "agent_type": "AgentType",
+            "bundle_tier": "BundleTier",
+            "base_cost": "Decimal",
+            "markup_rate": "Decimal",
+            "is_active": "bool",
+            "description": "Optional[str]"
+          },
+          "methods": []
+        },
+        "BundleProfile": {
+          "kind": "pydantic_model",
+          "bases": [
+            "BaseModel"
+          ],
+          "fields": {
+            "bundle_id": "str",
+            "agent_type": "AgentType",
+            "bundle_tier": "BundleTier",
+            "thread_ids": "list[str]",
+            "base_price": "Decimal",
+            "markup_override": "Optional[Decimal]",
+            "is_active": "bool",
+            "metadata": "Optional[dict]"
           },
           "methods": []
         },
@@ -4060,7 +4044,6 @@
       },
       "files": [
         "src/business-platform/Program.cs",
-        "src/billing-engine/main.py",
         "src/constitutional-engine/Program.cs",
         "src/professional-runtime/main.py",
         "src/professional-runtime/__init__.py",
@@ -4079,7 +4062,6 @@
         "src/business-platform/obj/Debug/net9.0/Protos/ConstitutionalService.cs",
         "src/business-platform/obj/Debug/net9.0/Protos/ConstitutionalServiceGrpc.cs",
         "src/billing-engine/markup/bundle_engine.py",
-        "src/billing-engine/markup/router.py",
         "src/billing-engine/markup/models.py",
         "src/constitutional-engine/Protos/constitutional_service.proto",
         "src/constitutional-engine/Evaluators/EvaluatorRegistry.cs",
@@ -4707,13 +4689,17 @@
         "BundleEngine": {
           "kind": "class",
           "bases": [],
-          "fields": {},
+          "fields": {
+            "_TIER_MARKUP": "dict[str, Decimal]",
+            "_AGENT_MULTIPLIER": "dict[str, Decimal]",
+            "_COST_FLOOR": "dict[tuple[str, str], Decimal]"
+          },
           "methods": [
-            "derive_price",
-            "validate_profile",
+            "validate_bundle",
+            "derive_pricing",
             "get_cost_floor",
-            "enforce_cost_floor",
-            "build_pricing_summary"
+            "apply_thread_markup",
+            "build_bundle_summary"
           ]
         },
         "BundlePricingWorkflow": {
@@ -4764,20 +4750,6 @@
           "fields": {},
           "methods": []
         },
-        "BundleProfile": {
-          "kind": "pydantic_model",
-          "bases": [
-            "BaseModel"
-          ],
-          "fields": {
-            "agent_type": "str",
-            "bundle_tier": "str",
-            "base_cost": "float",
-            "markup_pct": "float",
-            "description": "Optional[str]"
-          },
-          "methods": []
-        },
         "ThreadEntry": {
           "kind": "pydantic_model",
           "bases": [
@@ -4785,12 +4757,30 @@
           ],
           "fields": {
             "thread_id": "str",
-            "agent_type": "str",
-            "bundle_tier": "str",
-            "base_cost": "float",
-            "markup_pct": "float",
-            "derived_price": "Optional[float]",
-            "created_at": "Optional[str]"
+            "thread_name": "str",
+            "agent_type": "AgentType",
+            "bundle_tier": "BundleTier",
+            "base_cost": "Decimal",
+            "markup_rate": "Decimal",
+            "is_active": "bool",
+            "description": "str | None"
+          },
+          "methods": []
+        },
+        "BundleProfile": {
+          "kind": "pydantic_model",
+          "bases": [
+            "BaseModel"
+          ],
+          "fields": {
+            "bundle_id": "str",
+            "agent_type": "AgentType",
+            "bundle_tier": "BundleTier",
+            "thread_ids": "list[str]",
+            "base_price": "Decimal",
+            "markup_override": "Decimal | None",
+            "is_active": "bool",
+            "metadata": "dict | None"
           },
           "methods": []
         },
