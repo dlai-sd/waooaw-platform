@@ -207,6 +207,7 @@ class UDCPOrchestrator:
             f"- DB: use SQLAlchemy text() with named params — db.execute(text('... WHERE x = :x'), {{'x': val}}), never %s or ?\n"
             f"- Timestamps: datetime.now(timezone.utc), never datetime.utcnow() (deprecated, raises error under filterwarnings=error)\n"
             f"- Never catch bare Exception to suppress errors; let exceptions propagate\n"
+            f"- In except blocks always use `raise ... from err` or `raise ... from None` (never bare raise)\n"
             f"- Return the COMPLETE file — every line including all imports and class definitions\n"
             f"- No markdown code fences, no explanation — only the XML block below\n\n"
             f"Task context:\n{scope_text[:1500]}\n\n"
@@ -355,6 +356,11 @@ class UDCPOrchestrator:
             _call_llm = call_llm_for_udcp
 
         existing = fp.read_text(encoding="utf-8")
+        # Idempotency guard: skip if module-level app init already present (RC-A).
+        if "app = FastAPI()" in existing or "app.include_router(" in existing:
+            print(f"  APPEND SKIP: {rel_path} already has FastAPI app init — no-op")
+            return TaskResult(success=True, track="DIFFERENTIAL", files_written=[])
+
         prompt = (
             f"The file below needs module-level initialization lines appended at the end.\n\n"
             f"Task: {scope_text[:1000]}\n\n"
