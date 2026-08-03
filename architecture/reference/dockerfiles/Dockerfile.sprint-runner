@@ -27,9 +27,10 @@ RUN groupadd -r waooaw && useradd -r -g waooaw -m waooaw
 
 WORKDIR /workspace
 
-# git + gh CLI + curl (needed for git operations and GitHub API calls)
+# git + gh CLI + git-lfs (post-checkout hook fails without it, causing false non-zero exits)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
+    git-lfs \
     curl \
     && curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
        | dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg \
