@@ -312,3 +312,5 @@ class TestBundleProfile:
         assert isinstance(profile.bundle_id, str)
 
 pytest.main([__file__, "-v"])
+
+pytest.main([__file__, "-v"])
