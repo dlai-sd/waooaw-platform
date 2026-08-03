@@ -8,7 +8,6 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from config import Settings
 from database import init_db, close_db
 from markup.router import router as pricing_router
 from collections.abc import AsyncIterator

@@ -3,13 +3,10 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from config import Settings
 from database import get_db
 from markup.bundle_engine import BundleEngine
 from markup.models import (

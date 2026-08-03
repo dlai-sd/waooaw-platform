@@ -13,7 +13,7 @@ from httpx import ASGITransport, AsyncClient
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src" / "billing-engine"))
 
-from main import app  # noqa: E402
+from main import app
 
 
 # ---------------------------------------------------------------------------
@@ -317,7 +317,6 @@ async def test_post_validate_missing_field_returns_422_pydantic(mock_ce):
 
 @pytest.mark.asyncio
 async def test_get_bundle_cost_floor_unknown_type_not_200_not_500(mock_ce):
-    from markup.bundle_engine import BundleEngineError  # type: ignore[attr-defined]
 
     engine = MagicMock()
     engine.cost_floor = AsyncMock(side_effect=Exception("unknown agent_type"))
