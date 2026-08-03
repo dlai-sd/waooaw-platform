@@ -25,7 +25,9 @@ def _collect_local_modules() -> set[str]:
     Excluding them prevents false-positive failures on local scripts/service files.
     """
     local: set[str] = set()
-    for root in [REPO_ROOT / "scripts", REPO_ROOT / "src", REPO_ROOT]:
+    # Scope to known repo source roots only — scanning REPO_ROOT pulls in .venv
+    # site-packages which masks real gaps locally but not in CI.
+    for root in [REPO_ROOT / "scripts", REPO_ROOT / "src"]:
         if not root.exists():
             continue
         for py in root.rglob("*.py"):
@@ -34,6 +36,51 @@ def _collect_local_modules() -> set[str]:
         for init in root.rglob("__init__.py"):
             local.add(init.parent.name)
     return local
+
+
+def _extract_sys_path_inserts(conftest: Path) -> list[Path]:
+    """Return paths injected by sys.path.insert calls in a conftest.py."""
+    try:
+        tree = ast.parse(conftest.read_text(encoding="utf-8"))
+    except SyntaxError:
+        return []
+    paths: list[Path] = []
+    for node in ast.walk(tree):
+        if not (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and node.func.attr == "insert"
+            and isinstance(node.func.value, ast.Attribute)
+            and node.func.value.attr == "path"
+            and isinstance(node.func.value.value, ast.Name)
+            and node.func.value.value.id == "sys"
+            and len(node.args) >= 2
+        ):
+            continue
+        try:
+            resolved = eval(  # noqa: S307 — namespace constrained to Path/str/__file__ only
+                ast.unparse(node.args[1]),
+                {"__builtins__": {}, "__file__": str(conftest), "Path": Path, "str": str},
+            )
+            paths.append(Path(resolved))
+        except Exception:  # noqa: S112 — silently skip unparseable path expressions
+            continue
+    return paths
+
+
+def _greenfield_test_dirs() -> set[Path]:
+    """Test directories whose conftest.py injects a src/ path that doesn't exist yet.
+
+    UDCP greenfield pattern: test files are committed before the sprint generates
+    their source. Validating these imports pre-sprint is always a false positive.
+    """
+    greenfield: set[Path] = set()
+    for conftest in TESTS_DIR.rglob("conftest.py"):
+        for injected in _extract_sys_path_inserts(conftest):
+            if not injected.exists():
+                greenfield.add(conftest.parent)
+                break
+    return greenfield
 
 
 def collect_imports(path: Path) -> set[str]:
@@ -62,12 +109,19 @@ def check_importable(name: str) -> bool:
 
 
 def main() -> int:
-    py_files = list(TESTS_DIR.rglob("*.py"))
+    greenfield_dirs = _greenfield_test_dirs()
+
+    py_files = [
+        f for f in TESTS_DIR.rglob("*.py")
+        if not any(f.is_relative_to(gd) for gd in greenfield_dirs)
+    ]
     if not py_files:
         print("  env_validator: no test files found — skipping")
         return 0
 
-    print(f"\n── Environment Contract Validator (ADR-037) ────────────────────────────")
+    print("\n── Environment Contract Validator (ADR-037) ────────────────────────────")
+    for gd in sorted(greenfield_dirs):
+        print(f"  ⏭  {gd.relative_to(REPO_ROOT)}: src not generated yet — skipped (UDCP greenfield)")
     print(f"  Scanning {len(py_files)} test file(s)...")
 
     all_modules: set[str] = set()
