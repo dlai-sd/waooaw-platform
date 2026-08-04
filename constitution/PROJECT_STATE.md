@@ -1032,15 +1032,15 @@ Each sprint has EA spec gaps documented, SA corrections applied to WC files, and
 ```yaml
 autonomous_halt: false
 platform_phase: IMPLEMENTATION
-current_sprint: WC-027
+current_sprint: WC-028
 sprint_status: AUTHORIZED
-branch: ib/009/sprint-027
+branch: main
 consecutive_failures: 0
-tasks_done:
-  - WC027-01a
-  - WC027-01b
+tasks_done: []
 tasks_remaining:
-  - WC027-02
+  - WC028-01
+  - WC028-02
+  - WC028-03
 ```
 
 ---
@@ -1148,6 +1148,43 @@ ADR-041 (Batch Operating Model) implementation — all 7 items:
 A. **Open PR** `ib/009/adr-041-batch-impl` → `main` (7 ADR-041 commits + 93% test coverage)
 B. **WC-027 attempt 3** — re-trigger autonomous sprint (consecutive_failures: 2, 1 remaining before halt)
 C. **Open PR** `ib/009/sprint-027` → `main` (C-099, DNA v2.0, 5 agent gates, CCT-DCM, ADR-040, CE proto, pipeline fix)
+
+---
+
+## SESSION CHECKPOINT — 2026-08-04 (WC-027 Complete + C-100 + UDCP Pipeline Fix)
+
+**Session type:** Code quality audit + constitutional authoring + pipeline hardening
+**Office:** Platform IT Expert (INST-010)
+**Status:** CHECKPOINT — WC-027 closed; WC-028 AUTHORIZED; pushing to GHA
+
+### Commits this session (main)
+
+| Commit | Description |
+|---|---|
+| `07ce06c` | fix(ci): replace azure/get-keyvault-secrets@v3 with inline az CLI — all 5 GHA jobs green |
+| `810cf81` | fix(wbe): WC-027 code quality — 5 defects + SEC-01 + 17 real tests |
+| `f6b022d` | constitutional(security): C-100 CORS obligation + UDCP LOGIC_FILLER idempotency fix |
+
+### WC-027 closed
+
+All tasks complete: WC027-01a (skipped_idempotent), WC027-01b (done), WC027-02 (skipped_idempotent).
+Post-run audit fixed: BUG-01..04 (LLM scaffold artifacts), SEC-01 (OWASP A05 CORS), 17 real tests written.
+
+### C-100 ratified
+
+CORS security obligation — wildcard origin + credentials=True is prohibited (OWASP A05).
+Enforcement added to `_PYTHON_FORBIDDEN_PATTERNS` in every UDCP LLM prompt.
+
+### UDCP idempotency gap closed
+
+`_all_outputs_present_and_compile()` now rejects files containing `# [WAOOAW_LOGIC_FILLER_START]` — root cause of WC-027 BUG-03 cannot recur.
+
+### Next authorized actions
+
+**WC-028 autonomous sprint — GHA workflow trigger** (all prerequisites met):
+- WC-026 (WalletService) ✅, WC-027 (BundleEngine) ✅
+- Skeleton interfaces in `src/billing-engine/skeleton/wbe_interfaces.py` ✅
+- Work contract: `work-contracts/WC-028-wbe-s4-meter-alert-engine.md`
 
 ---
 
