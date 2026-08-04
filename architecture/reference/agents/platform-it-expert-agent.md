@@ -79,7 +79,7 @@ The Platform IT Expert raises a Constitutional Blocker and stops work if:
 
 ---
 
-## 3. Skill Catalogue — 14 SDLC Skills
+## 3. Skill Catalogue — 15 SDLC Skills
 
 ---
 
@@ -709,6 +709,53 @@ docker compose --profile sprint run --rm --entrypoint bash sprint-runner
 python3 -c "import sys; [print(p) for p in sys.path]"
 python3 -c "from runner.task_executor import execute_with_udcp; print('import OK')"
 ```
+
+---
+
+### Skill 15: YAML Authoring and Validation
+
+**Scope:** All YAML files in the platform — GitHub Actions workflows, Docker Compose profiles, OpenAPI specs, Kubernetes manifests, configuration files, and any structured YAML consumed by pipeline tooling.
+
+**Authoring standards:**
+- Literal block scalars (`|`) for multi-line shell scripts — all content lines must be indented beyond the block header indent level
+- Folded scalars (`>`) for long single-line strings that should wrap in the source
+- Quoted strings (`""` or `''`) when the value contains `:`, `#`, `{`, `}`, `[`, `]`, or leading/trailing spaces
+- Anchors (`&`) and aliases (`*`) for DRY repeated structures (e.g. shared job defaults)
+- Never use tabs — YAML requires spaces only
+- Maximum line length: 120 characters; break long `run:` scripts with `\` continuation or restructure into sub-steps
+
+**Embedded script rules (GitHub Actions `run: |`):**
+- Python code inside `$(python3 -c "...")` must be indented to the block's indentation level so YAML strips the prefix — Python then sees zero-indented code (no IndentationError)
+- Use `python3 - <<'PYEOF'` heredoc style for scripts longer than 5 lines to avoid quoting conflicts
+- NEVER embed multi-line Python at column 1 inside a YAML literal block — YAML parser terminates the block prematurely
+
+**Validation gate (mandatory before commit):**
+```bash
+# Structural validity
+python3 -c "import yaml; yaml.safe_load(open('FILE').read()); print('YAML valid')"
+
+# GitHub Actions workflow schema (actionlint — if available)
+actionlint .github/workflows/FILE.yaml
+
+# Docker Compose
+docker compose -f docker-compose.yml config --quiet && echo 'compose valid'
+
+# OpenAPI spec
+python3 -m openapi_spec_validator FILE.yaml 2>&1 | head -5
+```
+
+**Common defect patterns and fixes:**
+
+| Defect | Symptom | Fix |
+|---|---|---|
+| Embedded Python at col 1 in `run: \|` | `ScannerError: could not find expected ':'` | Indent to block level; YAML strips prefix |
+| Unquoted value with `:` | Parse error or key split | Wrap in `""` or `''` |
+| Tabs instead of spaces | `found character '\t'` | Convert with `sed -i 's/\t/  /g'` |
+| Missing `if: always()` on step after failing step | Downstream steps silently skipped | Add `if: always()` or `if: failure()` |
+| `${{ expr && 'A' || 'B' }}` ternary when A is falsy | Always evaluates to B | Use explicit `if/else` in a `run:` step |
+| YAML boolean coercion (`yes`/`no`/`on`/`off`) | Parsed as `true`/`false` | Quote: `"yes"`, `"on"` |
+
+**Evidence:** `python3 -c "import yaml; yaml.safe_load(...)"` output saved to CI log before any YAML commit.
 
 ---
 
