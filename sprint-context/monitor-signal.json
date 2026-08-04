@@ -1,18 +1,39 @@
 {
-  "run_id": "",
-  "sprint": "WC-027",
+  "run_id": "30935141093",
+  "sprint": "WC-028",
   "scaffold_task": null,
   "scaffold_failed": false,
   "task_results": {},
   "spec_gap_issues": [],
-  "overall_result": "SUCCESS",
-  "file_costs": {},
-  "tasks_done": [
-    "WC027-01a",
-    "WC027-02"
-  ],
+  "overall_result": "NOT_IMPLEMENTED",
+  "file_costs": {
+    "WC028-03a:test_meter.py": 4.7115
+  },
+  "subtask_results": {
+    "WC028-03a": {
+      "result": "FAIL",
+      "task_id": "WC028-03",
+      "error_codes": [],
+      "error_text": ""
+    },
+    "WC028-03b": {
+      "result": "SKIPPED_CASCADE",
+      "task_id": "WC028-03",
+      "error_codes": [],
+      "error_text": ""
+    },
+    "WC028-03c": {
+      "result": "SKIPPED_CASCADE",
+      "task_id": "WC028-03",
+      "error_codes": [],
+      "error_text": ""
+    }
+  },
+  "total_cost_inr": 4.7115,
+  "tasks_done": [],
   "tasks_requested": [
-    "WC027-01a",
-    "WC027-02"
+    "WC028-01",
+    "WC028-02",
+    "WC028-03"
   ]
 }
