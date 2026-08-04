@@ -167,6 +167,7 @@ jobs:
 
       - name: Check AUTONOMOUS_HALT + consecutive failures (C-001)
         id: halt_check
+        if: always()   # must emit outputs even when health_check fails
         run: |
           python3 - <<'EOF'
           import re, sys
@@ -233,6 +234,28 @@ jobs:
             echo "  Halt reason: autonomous_halt or consecutive_failures>=3 or platform_phase!= IMPLEMENTATION"
             echo "  platform_phase=$PHASE (must be IMPLEMENTATION to execute)"
           fi
+
+      - name: Increment consecutive_failures on pre-flight error
+        if: steps.health_check.outcome == 'failure'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # health_check failed (C-086, syntax error, PAC gap, etc.) — count it
+          CURRENT=$(python3 -c "
+          import re
+          content = open('constitution/PROJECT_STATE.md').read()
+          sm_idx = content.find('## SPRINT_STATE_MACHINE')
+          content = content[sm_idx:] if sm_idx >= 0 else content
+          m = re.search(r'consecutive_failures:\s*(\d+)', content)
+          print(m.group(1) if m else '0')
+          ")
+          NEXT=$((CURRENT + 1))
+          python3 scripts/sprint_state.py set consecutive_failures "$NEXT"
+          git config user.email "platform-it-expert@waooaw.ai"
+          git config user.name "WAOOAW AI Agent - Platform IT Expert"
+          git add constitution/PROJECT_STATE.md
+          git diff --cached --quiet || git commit -m "chore(state): increment consecutive_failures — pre-flight health check failed [run ${{ github.run_id }}]" --no-gpg-sign
+          git push origin main || echo "  ⚠️  push failed (concurrent run) — state update will retry next run"
 
       - name: Build Sprint Context Index (FinOps RAG — Pattern 1)
         id: index_build
@@ -620,7 +643,7 @@ jobs:
           GITHUB_REPO:        ${{ github.repository }}
           SPRINT_TASK_ID:     ${{ needs.preflight.outputs.task_id }}
           PLATFORM_PHASE:     ${{ needs.preflight.outputs.platform_phase }}
-          SPRINT_RESULT:      ${{ needs.execute.outputs.result || (needs.preflight.outputs.halt == 'true' && 'HALTED' || 'UNKNOWN') }}
+          SPRINT_RESULT:      ${{ needs.execute.outputs.result || (needs.preflight.outputs.halt == 'true' && 'HALTED' || (needs.preflight.result == 'failure' && 'FAILED' || 'UNKNOWN')) }}
           SPRINT_PR_NUMBER:   ${{ needs.execute.outputs.pr_number }}
           # W3 fix: SPRINT_HALT_REASON computed in bash (YAML >= '3' is string comparison, always wrong)
           SPRINT_HALT_REASON: ""
