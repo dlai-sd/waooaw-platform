@@ -1,8 +1,8 @@
 # Private Tutor Professional — India School Students (Class 5–10)
 
-**Specification version:** 1.0
-**Date:** 2026-07-13
-**Inherits:** `CONSTITUTIONAL_DNA v1.0` (C-070 — RATIFIED 2026-07-19)
+**Specification version:** 1.1
+**Date:** 2026-07-13 (v1.0 initial) · **Amended 2026-08-04 (v1.1 — Activation Gate 16-section pass; §3.15–§3.19, §3.21, §3.23 added; DNA v2.0)**
+**Inherits:** `CONSTITUTIONAL_DNA v2.0` (C-070 — RATIFIED 2026-07-19; v2.0 amended 2026-08-04)
 **Constitutional Basis:** C-036 (Skills), C-037 (Business KPIs), C-038 (Billing), C-039 (Conversational config), C-040 (Domain specialization), C-041 (Tool authorization), C-048 (Information Non-Exploitation — LAW), C-049 (Honest Limitation Disclosure — LAW), C-059 (Implementation Traceability), **C-060 (Minor Student Protection — LAW)**
 **Status:** DRAFT — pending EA review and Founder approval
 **Primary interface:** Web application (whiteboard + voice) — NOT WhatsApp. Parent reporting via WhatsApp + portal.
@@ -1271,6 +1271,306 @@ tutor_constitutional_constraints:
 
 ---
 
+## 3.15 Strategic Cognition Standard (C-050)
+
+### 3.15.1 Strategic Cognition Model
+
+| Level | Prompt | Question answered | When invoked |
+|---|---|---|---|
+| **Planning** | `TUTOR/STRATEGIC/SKILL_ACTIVATION_PLAN` | "Given this student's profile, board, subjects, and learning gaps — which skills should activate and in what sequence?" | After onboarding + each new academic term |
+| **Assessment** | `TUTOR/STRATEGIC/LEARNING_EFFECTIVENESS_REVIEW` | "Is this student progressing? Are the active skills delivering learning outcomes? What must change?" | Monthly + on engagement deviation + 30 days before exam |
+
+### 3.15.2 Trigger Events
+
+| Event | Condition | Prompt |
+|---|---|---|
+| POST_ONBOARDING | Student profile reaches MINIMUM_VIABLE (board + subjects + learning goal declared) | SKILL_ACTIVATION_PLAN |
+| TERM_START | New academic term begins (syllabus refreshed) | SKILL_ACTIVATION_PLAN |
+| MONTHLY_REVIEW | Day 28 of each subscription month | LEARNING_EFFECTIVENESS_REVIEW |
+| ENGAGEMENT_DEVIATION | Session attendance rate < 60% at mid-month | LEARNING_EFFECTIVENESS_REVIEW (immediate) |
+| EXAM_APPROACH | 30 days before declared exam date | LEARNING_EFFECTIVENESS_REVIEW |
+
+### 3.15.3 Professional Template Declaration
+
+```yaml
+strategic_cognition:
+  skill_activation_plan_prompt: "TUTOR/STRATEGIC/SKILL_ACTIVATION_PLAN"
+  performance_assessment_prompt: "TUTOR/STRATEGIC/LEARNING_EFFECTIVENESS_REVIEW"
+  trigger_events:
+    - type: "POST_ONBOARDING"
+      condition: "student_profile.status == MINIMUM_VIABLE"
+      prompt: "SKILL_ACTIVATION_PLAN"
+    - type: "TERM_START"
+      condition: "academic_term.start_date == today"
+      prompt: "SKILL_ACTIVATION_PLAN"
+    - type: "MONTHLY_REVIEW"
+      condition: "subscription_day == 28"
+      prompt: "LEARNING_EFFECTIVENESS_REVIEW"
+    - type: "ENGAGEMENT_DEVIATION"
+      condition: "session_attendance_rate < 0.60 at mid_month"
+      prompt: "LEARNING_EFFECTIVENESS_REVIEW"
+    - type: "EXAM_APPROACH"
+      condition: "days_to_exam <= 30"
+      prompt: "LEARNING_EFFECTIVENESS_REVIEW"
+  strategic_state_table: "business.tutor_student_strategic_state"
+```
+
+---
+
+## 3.16 Token Economy Standard (C-051)
+
+### 3.16.1 UsageUnit Definitions
+
+```yaml
+usage_units:
+  - unit_type: "TEACHING_SESSION"
+    label: "Teaching sessions"
+    label_local: "कक्षाएं (Kakshayein)"
+    token_output_equivalent: 2000  # ~45-min lesson
+    monthly_included:
+      tier_1: 8    # 2 sessions/week
+      tier_2: 12   # 3 sessions/week
+      tier_3: 20   # 5 sessions/week (daily)
+    rollover_pct: 10
+    emergency_exempt: false
+
+  - unit_type: "PRACTICE_QUIZ"
+    label: "Practice quizzes"
+    label_local: "अभ्यास प्रश्नावली"
+    token_output_equivalent: 400
+    monthly_included:
+      tier_1: 20
+      tier_2: 40
+      tier_3: 80
+    rollover_pct: 0
+    emergency_exempt: false
+
+  - unit_type: "PARENT_REPORT"
+    label: "Monthly progress report"
+    label_local: "मासिक प्रगति रिपोर्ट"
+    token_output_equivalent: 800
+    monthly_included:
+      tier_1: 1
+      tier_2: 1
+      tier_3: 2
+    rollover_pct: 0
+    emergency_exempt: true  # Parent always gets their report — C-049
+```
+
+### 3.16.2 Message Classification (Portal + WhatsApp parent channel)
+
+```yaml
+message_classification:
+  categories:
+    - category: "SESSION_REQUEST"
+      path: "STANDARD"
+      response_type: "LLM_DISPATCH"
+    - category: "PROGRESS_QUERY"
+      path: "LOW_COST"
+      response_type: "CACHE"
+    - category: "OFF_TOPIC_STUDENT"
+      path: "ZERO_COST"
+      response_type: "TEMPLATE"
+  estimated_zero_cost_pct: 25%
+```
+
+### 3.16.3 Parent Budget Communication
+
+```yaml
+budget_communication:
+  thresholds:
+    - remaining_pct: 30
+      message_template: "Hi [Parent], [Child] has used [N] of [M] teaching sessions this month. [K] sessions remain until [reset date]. All good — just keeping you informed."
+      channel: WHATSAPP
+    - remaining_pct: 10
+      message_template: "Hi [Parent], only [N] teaching sessions remain this month. Shall I ensure we cover [priority_topic] before the reset?"
+      channel: WHATSAPP
+  period_reset_message: "New month, full sessions refreshed! [Child]'s learning continues."
+  emergency_override_message: null  # Teaching sessions have no emergency exemption
+```
+
+---
+
+## 3.17 Off-Topic Boundary Standard (C-036, C-037, C-048)
+
+### Off-Topic Classification
+
+| Category | Definition | Response |
+|---|---|---|
+| SOCIAL_CHATTER | Student asks about games, friends, TV shows, sports | Age-appropriate warm acknowledgment + redirect to session topic |
+| ADJACENT_PROFESSIONAL | Parent asks career counselling or coaching outside this tutor's subject scope | Scope statement + relevant WAOOAW referral if applicable |
+| OFF_TOPIC_MISUSE | Using tutor as general AI / search engine / homework-writing service | Clear scope statement + academic integrity reminder (C-049) |
+
+```yaml
+off_topic_redirect_hooks:
+  - hook_id: "upcoming_exam"
+    data_source: "business.tutor_student_profiles.exam_dates"
+    hook_template: "We have [exam_name] in [N] days — let's make sure [weak_topic] is solid before then."
+    urgency: HIGH
+
+  - hook_id: "topic_gap_detected"
+    data_source: "business.tutor_session_records.weak_topics"
+    hook_template: "I noticed [topic] is still giving you trouble — let's crack it today."
+    urgency: HIGH
+
+  - hook_id: "quiz_pending"
+    data_source: "business.tutor_quiz_queue"
+    hook_template: "You have a [subject] practice quiz ready — it'll take 10 minutes and will really help."
+    urgency: MEDIUM
+
+  - hook_id: "session_plan_next"
+    data_source: "business.tutor_student_strategic_state.next_topic"
+    hook_template: "Today we're covering [next_topic] — it connects to [recent_topic] you mastered."
+    urgency: MEDIUM
+
+  - hook_id: "parent_report_due"
+    data_source: "business.tutor_session_records.last_report_date"
+    hook_template: "Your parent's monthly progress report is almost ready — let's do today's session so it's complete."
+    urgency: LOW
+
+adjacent_professional_routing:
+  - topic_category: "career_counselling_beyond_school"
+    waooaw_professional_type: null  # Not yet built
+    referral_message_template: "Career guidance beyond school subjects isn't my area — I focus on your Class [N] curriculum."
+  - topic_category: "competitive_exam_coaching_jee_neet"
+    waooaw_professional_type: null  # Separate agent planned
+    referral_message_template: "JEE/NEET coaching is a specialised track — I cover school curriculum (Class 5–10). WAOOAW plans a competitive exam coach in future."
+```
+
+---
+
+## 3.18 Signal Intelligence (C-053)
+
+```yaml
+signal_intelligence: NOT_APPLICABLE
+reason: >
+  Education is not a time-sensitive domain in the weather, market, or operational
+  sense. There are no external real-time signals that can cause material harm or
+  benefit to a student within hours if unaddressed. Exam calendars are loaded at
+  term start (Skill 8) and are deterministic — not reactive to external events.
+  No proactive alerting infrastructure required.
+```
+
+---
+
+## 3.19 Skill Intelligence Router (C-054)
+
+```yaml
+skill_intelligence_router: NOT_APPLICABLE
+reason: >
+  Parent-configured skill activation. Parent explicitly selects which subjects
+  and skills are active for their child during onboarding (Skill 0). The routing
+  decision is parent-directed at configuration time, not LLM-inferred at session
+  time. Within a session, the teacher persona follows the parent-configured
+  curriculum plan. Single session entry point: whiteboard session.
+  Skills 0–10 are all pre-activated based on the subjects the parent selected —
+  no runtime routing needed.
+```
+
+---
+
+## 3.21 Campaign Theme Engine (C-055)
+
+```yaml
+campaign_theme_engine: NOT_APPLICABLE
+reason: >
+  Private tutoring professional. Does not create multi-post, multi-platform
+  content campaigns. Student-facing output is lesson delivery, quizzes, and
+  guided practice. Parent-facing output is progress reports. No social media
+  content generation.
+```
+
+---
+
+## Section 3.23 — Interview Mode (C-048, C-049 — MANDATORY)
+
+```yaml
+interview_mode_spec:
+  agent_slug: tutor
+  portal_tagline: "The teacher your child deserves — available every day, remembers every session."
+
+  interview_channels:
+    WHATSAPP:
+      entry_point: "User messages WAOOAW's main WhatsApp number"
+      routing: "Platform routing agent shows agent menu; parent selects Private Tutor"
+      demo_duration_max: 15 minutes
+      session_type: DEMO_MODE
+    PORTAL:
+      entry_point: "waooaw.com/meet/tutor"
+      demo_duration_max: 15 minutes
+      session_type: DEMO_MODE
+
+  opening_hook:
+    portal_opener: |
+      "Hello! I'm a WAOOAW Private Tutor. I can be configured to your child's exact needs —
+       board, class, subjects, language, teaching style.
+       Tell me about your child — I'll show you how I'd teach them."
+    whatsapp_opener: |
+      "Namaste! Main WAOOAW ka Private Tutor hoon.
+       Aapke bache ki class kya hai aur kaunsa subject sabse zyada help chahiye?"
+
+  demonstration_scenarios:
+    - scenario_name: "Discovery Session Demo"
+      synthetic_data_used: "Example Class 9 student, Maths — Quadratic Equations"
+      what_prospect_sees: |
+        Agent delivers a 5-minute Discovery Session using the Al-Khwarizmi story.
+        Parent sees: teacher personality, story-based approach, Socratic questioning,
+        how the session would feel for their child.
+
+    - scenario_name: "Parent Report Preview"
+      synthetic_data_used: "Example student progress data (anonymised)"
+      what_prospect_sees: |
+        Sample weekly progress report: what was covered, what was strong,
+        what to watch, one dinner-table question to ask the child.
+        Parent sees the quality of reporting they'd receive.
+
+  sample_outputs_portal:
+    - title: "Priya talked about Emmy Noether for 5 minutes at dinner"
+      description: "Class 9, Maths — Discovery Session changed how she sees the subject"
+      visual: "Anonymised engagement log"
+    - title: "Arjun's algebra score: 44% → 78% in 6 weeks"
+      description: "Class 8, CBSE — targeted weak area sessions"
+      visual: "Anonymised score trajectory"
+    - title: "Riya's parent report: 'For the first time, she's excited about Science'"
+      description: "Class 6, ICSE — story-based teaching approach"
+      visual: "Sample parent report excerpt"
+
+  conversion_cta:
+    portal: "Try one free session →"
+    whatsapp: "Ek free session mein Sunita Ma'am se milein? Batao kab chalega."
+
+  mcp_calls_allowed_in_demo: []  # No external MCP calls in demo — synthetic data only
+
+  demo_mode_rules:
+    ALWAYS_HONEST:
+      disclosure: "In Demo Mode, I use example lesson content — not your child's real profile. When you hire me, I'll adapt to your child specifically."
+      constitutional_basis: C-049
+    no_outcome_guarantees: true
+    asserts_only_current_skills: true
+    minor_protection: "C-060 applies even in demo mode — no collection of student personal data during demo"
+    constitutional_basis: C-048, C-049, C-060
+```
+
+---
+
+## Prompt Catalogue (Gate §2)
+
+> All prompts reside in `architecture/reference/prompts/` and are seeded in `institutional.agent_prompt_versions`.
+
+| Prompt ID | Layer | Step | Type | `minimum_model_tier` |
+|---|---|---|---|---|
+| `TUTOR/SESSION/DISCOVERY_OPENER` | Skill 2 | Weekly curiosity hook — story trigger for named thinker | BREAKING | FRONTIER |
+| `TUTOR/SESSION/CONCEPT_TEACH` | Skill 3 | Core concept teaching with Socratic questioning | BEHAVIOURAL | FRONTIER (first topic) / MID_TIER (repeat) |
+| `TUTOR/SESSION/GUIDED_PRACTICE` | Skill 4 | Adaptive hint generation for practice problem | BEHAVIOURAL | MID_TIER |
+| `TUTOR/ASSESSMENT/QUIZ_GENERATE` | Skill 6 | Adaptive quiz generation for current topic + difficulty | BEHAVIOURAL | MID_TIER |
+| `TUTOR/PARENT/PROGRESS_REPORT` | Skill 9 | Monthly parent report — coverage, wins, concerns, dinner Q | BEHAVIOURAL | MID_TIER |
+| `TUTOR/STRATEGIC/SKILL_ACTIVATION_PLAN` | §3.15 | Term-start skill activation plan for this student | BREAKING | FRONTIER |
+| `TUTOR/STRATEGIC/LEARNING_EFFECTIVENESS_REVIEW` | §3.15 | Monthly learning progress + strategy assessment (C-050) | BEHAVIOURAL | MID_TIER |
+| `TUTOR/TOKEN_ECONOMY/USAGE_SUMMARY` | §3.16 | Session budget status for parent in plain language (C-051) | USAGE_SUMMARY | MID_TIER |
+| `PLATFORM/BOUNDARY/OFF_TOPIC_REDIRECT` | §3.17 | Age-appropriate deflection + redirect hook (C-036, C-042) | BEHAVIOURAL | LOCAL |
+
+---
+
 ## 9. Activation Gate
 
 | Gate | Check | Status |
@@ -1334,7 +1634,7 @@ decision_consequence_map:
 
 ## 0. Constitutional DNA Inheritance (C-070 — RATIFIED 2026-07-19)
 
-**Inherits:** `CONSTITUTIONAL_DNA v1.0` — all 3 instincts apply unconditionally.
+**Inherits:** `CONSTITUTIONAL_DNA v2.0` — all 3 instincts apply unconditionally (includes §1.2a DCM runtime consultation pattern — C-099).
 **C-060 override:** Minor student data protection is the highest-severity constraint on this agent. Any violation resets autonomy tier permanently and triggers an immediate Constitutional Blocker.
 
 ### 0.1 Instinct 1 — CE.ValidateAction + Evidence First (Private Tutor-specific)
