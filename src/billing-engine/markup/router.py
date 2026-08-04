@@ -36,8 +36,8 @@ async def get_thread_catalog() -> list[ThreadEntry]:
     C-091: ThreadCatalogService delegation.
     """
     await CE.ValidateAction("pricing.thread_catalog.read")
-    catalog = thread_catalog.get_catalog()
-    return catalog
+    catalog = await thread_catalog.get_all_threads()
+    return [ThreadEntry(**e.__dict__) for e in catalog]
 
 
 @router.get("/bundle-cost-floor/{agent_type}/{bundle_tier}", response_model=dict[str, int])

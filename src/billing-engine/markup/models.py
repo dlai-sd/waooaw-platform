@@ -6,12 +6,17 @@ from pydantic import BaseModel, Field
 
 
 class ThreadEntry(BaseModel):
-    """Thread catalog entry"""
+    """Thread catalog entry — mirrors institutional.thread_catalog"""
     thread_id: str
-    thread_name: str
-    description: str | None = None
-    agent_type: str
-    bundle_tier: str
+    display_name: str
+    provider: str
+    unit_description: str
+    raw_cost_inr_paise: int
+    total_markup_pct: float
+    marked_up_cost_paise: int
+    is_platform_thread: bool
+    applicable_agents: list[str]
+    status: str
 
 
 class BundleProfile(BaseModel):
