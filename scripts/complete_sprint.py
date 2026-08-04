@@ -56,7 +56,13 @@ import re
 import subprocess
 import sys
 from datetime import datetime, timezone
+import sys as _sys
 from pathlib import Path
+
+_scripts_path = Path(__file__).parent
+if str(_scripts_path) not in _sys.path:
+    _sys.path.insert(0, str(_scripts_path))
+from runner.sprint_ops import close_run_heartbeat  # ADR-041 P2a
 
 REPO_ROOT   = Path(__file__).parent.parent
 SIGNAL_PATH = REPO_ROOT / "sprint-context" / "monitor-signal.json"
@@ -577,6 +583,9 @@ def complete_sprint(pr_number: int = 0, dry_run: bool = False) -> int:
     print(f"\n  Sprint completion protocol DONE.")
     print(f"  Registry entries this run: {recorded}")
     print(f"  Total registry entries: {len(read_registry())}")
+    # ADR-041 P2a: close heartbeat — signals clean completion to next RESUME
+    if not dry_run:
+        close_run_heartbeat(run_id, sprint, result)
     return 0
 
 

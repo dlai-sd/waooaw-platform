@@ -77,6 +77,7 @@ from runner.git_ops import run, git, gh, set_output, record_evidence  # shell he
 from runner.sprint_ops import (                                         # sprint lifecycle
     parse_sprint_state, check_platform_phase_gate, update_sprint_state, run_runner_integrity_checks,
     parse_wc_tasks, update_task_status,
+    write_run_heartbeat,
 )
 # Namespace injection — required by run_runner_integrity_checks(globals())  # noqa: F401
 from runner.system_prompts import (                                     # noqa: F401
@@ -707,6 +708,9 @@ def main() -> int:
             except Exception:
                 pass
         update_sprint_state(sprint_status="IN_PROGRESS")
+        # ADR-041 P2a: write OPEN heartbeat so container kills are detectable
+        _hb_run_id = _MONITOR_SIGNAL.get("run_id") or os.environ.get("GITHUB_RUN_ID", "local")
+        write_run_heartbeat(_hb_run_id, sprint)
 
     # ── Step 6: Execute each task ─────────────────────────────────────────
     tasks_done = []
