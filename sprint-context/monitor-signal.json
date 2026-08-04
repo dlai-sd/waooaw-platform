@@ -12,47 +12,18 @@
       "spec_gap_issue": null
     },
     "WC027-01ab": {
-      "result": "COMPILE_GATE_FAILURE",
+      "result": "UDCP_FAILURE",
       "error_type": "COMPILE_GATE_FAILURE",
-      "build_error_snippet": "F821 Undefined name `FastAPI`\n  --> src/billing-engine/markup/models.py:53:7\n   |\n51 |     proposed_price_paise: int\n52 |\n53 | app = FastAPI(title=\"Billing Engine \u2014 Markup Pricing\", version=\"1.0.0\")\n ",
+      "build_error_snippet": "src/billing-engine/markup/models.py: invalid syntax (models.py, line 94)",
       "attempts": 1,
       "spec_gap_issue": null
-    },
-    "WC027-01ba": {
-      "result": "SUCCESS",
-      "error_type": null,
-      "build_error_snippet": null,
-      "attempts": 1,
-      "spec_gap_issue": null
-    },
-    "WC027-01bb": {
-      "result": "SUCCESS",
-      "error_type": null,
-      "build_error_snippet": null,
-      "attempts": 1,
-      "spec_gap_issue": null
-    },
-    "WC027-01bc": {
-      "result": "COMPILE_GATE_FAILURE",
-      "error_type": "COMPILE_GATE_FAILURE",
-      "build_error_snippet": "F811 Redefinition of unused `app` from line 16\n   --> tests/billing-engine/test_router.py:463:1\n    |\n461 |     assert str(url).startswith(\"/pricing/\")\n462 |\n463 | app = FastAPI(title=\"Billing Engine\"",
-      "attempts": 1,
-      "spec_gap_issue": null
-    },
-    "WC027-02a": {
-      "result": "SPEC_GAP",
-      "error_type": "BUILD_ERROR",
-      "build_error_snippet": "UDCP NO_FILE_BLOCKS: LLM response contained no <file> blocks",
-      "attempts": 3,
-      "spec_gap_issue": "222"
     }
   },
-  "spec_gap_issues": [
-    "222"
-  ],
+  "spec_gap_issues": [],
   "overall_result": "PARTIAL",
   "file_costs": {
-    "WC027-02a": 11.6947
+    "WC027-01aa": 0.9403,
+    "WC027-01ab": 0.3008
   },
   "subtask_results": {
     "WC027-01aa": {
@@ -64,61 +35,19 @@
     "WC027-01ab": {
       "result": "FAIL",
       "task_id": "WC027-01a",
-      "error_codes": [
-        "F821"
-      ],
-      "error_text": "F821 Undefined name `FastAPI`\n  --> src/billing-engine/markup/models.py:53:7\n   |\n51 |     proposed_price_paise: int\n52 |\n53 | app = FastAPI(title=\"Billing Engine \u2014 Markup Pricing\", version=\"1.0.0\")\n   |       ^^^^^^^\n54 | app.include_router(pricing_router, prefix=\"/pricing\", tags=[\"pricing\"])\n   |\n"
+      "error_codes": [],
+      "error_text": ""
     },
     "WC027-01ac": {
       "result": "SKIPPED",
       "task_id": "WC027-01a",
       "error_codes": [],
       "error_text": ""
-    },
-    "WC027-01ba": {
-      "result": "SUCCESS",
-      "task_id": "WC027-01b",
-      "error_codes": [],
-      "error_text": ""
-    },
-    "WC027-01bb": {
-      "result": "SUCCESS",
-      "task_id": "WC027-01b",
-      "error_codes": [],
-      "error_text": ""
-    },
-    "WC027-01bc": {
-      "result": "FAIL",
-      "task_id": "WC027-01b",
-      "error_codes": [
-        "F811"
-      ],
-      "error_text": "F811 Redefinition of unused `app` from line 16\n   --> tests/billing-engine/test_router.py:463:1\n    |\n461 |     assert str(url).startswith(\"/pricing/\")\n462 |\n463 | app = FastAPI(title=\"Billing Engine\")\n    | ^^^ `app` redefined here\n464 | app.include_router(pricing_router, prefix=\"/pricing\")\n    |\n "
-    },
-    "WC027-02a": {
-      "result": "FAIL",
-      "task_id": "WC027-02",
-      "error_codes": [],
-      "error_text": ""
-    },
-    "WC027-02b": {
-      "result": "SKIPPED",
-      "task_id": "WC027-02",
-      "error_codes": [],
-      "error_text": ""
-    },
-    "WC027-02c": {
-      "result": "SKIPPED",
-      "task_id": "WC027-02",
-      "error_codes": [],
-      "error_text": ""
     }
   },
-  "total_cost_inr": 11.6947,
+  "total_cost_inr": 1.2411,
   "tasks_done": [],
   "tasks_requested": [
-    "WC027-01a",
-    "WC027-01b",
-    "WC027-02"
+    "WC027-01a"
   ]
 }
