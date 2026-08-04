@@ -1,8 +1,8 @@
 # Digital Marketing Professional — Any Local Service Business
 
-**Specification version:** 3.0
-**Date:** 2026-07-19 (v3.0 — Critical gap bridge: Skill 7b + booking-mcp close the enquiry-to-booking loop; Skill 16 Customer Lifecycle; Skill 11 Performance Max + Advantage+ + Click-to-WhatsApp + LSA; 8 new MCPs; DVE domain-agnostic refactor)
-**Inherits:** `CONSTITUTIONAL_DNA v1.0` (C-070 — RATIFIED 2026-07-19)
+**Specification version:** 3.1
+**Date:** 2026-07-19 (v3.0 — Critical gap bridge: Skill 7b + booking-mcp; Skill 16; Skill 11 Advantage+) · **Amended 2026-08-04 (v3.1 — Activation Gate pass; Section 3.23 Interview Mode; DNA v2.0)**
+**Inherits:** `CONSTITUTIONAL_DNA v2.0` (C-070 — RATIFIED 2026-07-19; v2.0 amended 2026-08-04)
 **Change from v2.9:** Agent was acquisition-only and dental-centric. v3.0 is domain-agnostic (serves any local service business via DVE), closes the enquiry→booking→lifecycle loop, and upgrades advertising to 2026 standards.
 **Constitutional Basis:** C-036 (Skills), C-037 (Business KPIs), C-038 (Billing), C-039 (Conversational config), C-040 (Domain specialization), C-041 (Tool authorization), ADR-019 (RAG), ADR-020 (MCP), C-048 (Information Non-Exploitation — LAW), C-049 (Honest Limitation Disclosure — LAW), C-050 (Strategic Cognition Obligation — LAW), C-055 (Campaign Coherence — LAW), C-056 (Ad Spend Transparency — LAW), C-057 (AI Agency Professional Standard — LAW)
 **Reviewed by:** Enterprise Architect — R-014 (v2.0), R-015 (v2.7), v3.0 pending
@@ -4757,6 +4757,79 @@ ProfessionalTemplate:
 
 ---
 
+## Section 3.23 — Interview Mode (C-048, C-049 — MANDATORY)
+
+```yaml
+interview_mode_spec:
+  agent_slug: dma
+  portal_tagline: "The digital marketing professional your business deserves. ₹1,499/month."
+
+  interview_channels:
+    WHATSAPP:
+      entry_point: "User messages WAOOAW’s main WhatsApp number"
+      routing: "Platform routing agent asks: ‘Which professional would you like to meet?’"
+      demo_duration_max: 15 minutes
+      session_type: DEMO_MODE
+    PORTAL:
+      entry_point: "waooaw.com/meet/dma"
+      demo_duration_max: 15 minutes
+      session_type: DEMO_MODE
+
+  opening_hook:
+    whatsapp_opener: |
+      "Namaste! Main WAOOAW ka Digital Marketing Professional hoon.
+       Batao — aapka business kya hai aur city kahan hai?
+       Main 2 minute mein aapke competitors ka analysis karke dikhata hoon."
+    portal_opener: |
+      "Hello! I’m WAOOAW’s Digital Marketing Professional — I work for local businesses
+       across India the way a senior agency account manager would, but at ₹1,499/month.
+       Tell me about your business — I’ll show you exactly what I’d do for you in the first 30 days."
+
+  demonstration_scenarios:
+    - scenario_name: "Competitor Intelligence Demo"
+      synthetic_data_used: "Example dental clinic, Pune (anonymised, representative)"
+      what_prospect_sees: |
+        Agent researches (simulated): competitor Instagram activity, GBP review gap,
+        Meta ad library presence. Delivers: "Your top competitor has 94 GBP reviews —
+        you have 47. That gap costs you 5-8 patients/month. Here’s exactly how I’d close it."
+
+    - scenario_name: "First Month Plan"
+      synthetic_data_used: "Prospect’s stated business type and city"
+      what_prospect_sees: |
+        Agent produces a 4-week content calendar outline + 2 sample Instagram captions
+        + one ad brief for their business type — all using their stated business info.
+
+  sample_outputs_portal:
+    - title: "Review gap closed: 47 → 94 Google reviews in 4 months"
+      description: "Dental clinic, Pune — GBP review generation campaign"
+      visual: "Anonymised performance chart"
+    - title: "October campaign: +18 bookings vs target of 15"
+      description: "Healthcare campaign — Instagram + WhatsApp + GBP"
+      visual: "Sample campaign calendar"
+    - title: "₹3,800 revenue per ₹1,000 ad spend (ROAS 3.8×)"
+      description: "Meta + Google paid campaign for beauty studio, Mumbai"
+      visual: "Anonymised ROAS chart"
+
+  conversion_cta:
+    whatsapp: |
+      "Aapke business ke liye yahi sab main karonga — aur bhi.
+       Trial session mein mile? Ek message mein shuru hota hai."
+    portal: "Start my free trial →"
+
+  mcp_calls_allowed_in_demo: []  # No external MCP calls in demo — all synthetic data
+
+  demo_mode_rules:
+    ALWAYS_HONEST:
+      disclosure: "Main tumhe ek example scenario mein dikhata hoon — yeh ek real customer
+                   ka data nahi hai, but yahi main tumhare business ke liye karunga."
+      constitutional_basis: C-049
+    no_outcome_guarantees: true
+    asserts_only_current_skills: true
+    constitutional_basis: C-048, C-049
+```
+
+---
+
 ## 3.25 Decision Consequence Map (C-099 — MANDATORY)
 
 ```yaml
@@ -4816,10 +4889,10 @@ decision_consequence_map:
 - [x] **C-051 check (Resource Transparency): Section 3.16 added. UsageUnits defined (Content Creation, Quick Edit, Research, Strategy, Report). minimum_model_tier declared for every prompt in Prompt Catalogue. Customer budget communication thresholds (30%, 10%) declared. Emergency override never blocks service. DMA/TOKEN_ECONOMY/USAGE_SUMMARY prompt added.**
 - [x] **C-036/C-037/C-048 check (Off-Topic Boundary): Section 3.17 added. 5 redirect hooks declared (competitor_activity, kpi_pace, pending_approval, maturity_score_change, google_review_alert). Adjacent professional routing declared (accounting, HR, legal). PLATFORM/BOUNDARY/OFF_TOPIC_REDIRECT prompt in Prompt Catalogue. 3-attempt graduation pattern declared.**
 - [x] **C-052 check (Context Fidelity, Isolation, Uniqueness): Context Bootstrap Protocol loads Decision Space, session state, performance history, and Creative Fingerprint before every session. Creative Fingerprint Enforcer (M-3) runs before every content generation — uniqueness_score computed vs competitor content (threshold 0.75) and own recent content (threshold 0.85). Fingerprint is updated online after every approval/rejection. Two competing dental clinics in the same neighbourhood are guaranteed differentiated content. Tier 3 has 24-hour write lag — no real-time cross-customer data.**
-- [ ] **C-055 check (Campaign Coherence): Section 3.21 added (v2.5). Platform Intelligence declared with 10 platform coverage + dependency status. Campaign Theme Cascade declared (3 levels, all required fields). SCR 5-check criteria declared with thresholds, model tiers, and fail actions. SCR Check 3 (Compliance) fail_action = ROUTE_TO_CUSTOMER (never silent). Content Approval Modes declared (POST_APPROVAL→CAMPAIGN_APPROVAL→CAMPAIGN_AUTO) with upgrade/downgrade criteria. Campaign Digest declared (weekly, Monday 09:00 IST, 3 channels). 6 new campaign prompts + 1 Platform Intelligence prompt in Prompt Catalogue. MASTER_THEME_PROPOSAL is FRONTIER/BREAKING. Campaign SQL tables referenced (4 tables).**
+- [x] **C-055 check (Campaign Coherence): Section 3.21 added (v2.5). Platform Intelligence declared with 10 platform coverage + dependency status. Campaign Theme Cascade declared (3 levels, all required fields). SCR 5-check criteria declared with thresholds, model tiers, and fail actions. SCR Check 3 (Compliance) fail_action = ROUTE_TO_CUSTOMER (never silent). Content Approval Modes declared (POST_APPROVAL→CAMPAIGN_APPROVAL→CAMPAIGN_AUTO) with upgrade/downgrade criteria. Campaign Digest declared (weekly, Monday 09:00 IST, 3 channels). 6 new campaign prompts + 1 Platform Intelligence prompt in Prompt Catalogue. MASTER_THEME_PROPOSAL is FRONTIER/BREAKING. Campaign SQL tables referenced (4 tables).**
 - [ ] **C-056 check (Ad Spend Transparency): ADR-026 declared. Skill 11 uses WAOOAW_MANAGED connection model. customer_ad_accounts + ad_spend_wallets + ad_spend_ledger tables referenced. management_fee_pct = 10 declared in Skill 11. PAGE_ACCESS_GRANT_REQUEST as always-ask action. ad_spend_ledger is append-only (no UPDATE/DELETE). CUSTOMER_OWNED declared with PENDING_FOUNDER_AUTHORIZATION.**
 - [ ] **C-057 check (AI Agency Professional Standard): Section 4.0 (agency pitch) declared with portfolio claim format and prohibited claims. Section 4.2 (professional intake opening) includes expertise-first model — agent demonstrates market knowledge before asking configuration questions. Competitive positioning response declared (honest comparison with C-049 limitations disclosure). institutional.dma_performance_portfolio referenced as Tier 3 source. portfolio_claim_approved = TRUE enforced before any portfolio stat appears in conversation. Skill 14 (WAOOAW self-marketing) declared with PENDING_FOUNDER_AUTHORIZATION.**
-- [ ] **C-099 check (Decision Consequence Map): Section 3.25 present. All 6 decision types classified: campaign_publish, ad_spend_allocation, customer_charge as DETERMINISTIC_REQUIRED with independent_verification_method declared; content_draft, strategy_recommendation, platform_research as CONSISTENT_SUFFICIENT. CE.ValidateAction DCM path declared for all DETERMINISTIC_REQUIRED decisions.**
+- [x] **C-099 check (Decision Consequence Map): Section 3.25 present. All 6 decision types classified: campaign_publish, ad_spend_allocation, customer_charge as DETERMINISTIC_REQUIRED with independent_verification_method declared; content_draft, strategy_recommendation, platform_research as CONSISTENT_SUFFICIENT. CE.ValidateAction DCM path declared for all DETERMINISTIC_REQUIRED decisions.**
 
 ---
 
@@ -5119,7 +5192,7 @@ Agent message: "Here's your Q3 review and Q4 plan. Two things I need your input 
 
 ## 0. Constitutional DNA Inheritance (C-070 — RATIFIED 2026-07-19)
 
-**Inherits:** `CONSTITUTIONAL_DNA v1.0` — all 3 instincts apply unconditionally.
+**Inherits:** `CONSTITUTIONAL_DNA v2.0` — all 3 instincts apply unconditionally (includes §1.2a DCM runtime consultation pattern — C-099).
 
 ### 0.1 Instinct 1 — CE.ValidateAction + Evidence First (DMA-specific)
 
