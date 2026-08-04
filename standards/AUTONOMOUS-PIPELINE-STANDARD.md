@@ -272,7 +272,80 @@ This means the Founder never needs to edit `PROJECT_STATE.md` between sprints. P
 
 ---
 
-## 11. Constitutional Anchors
+## 11. Batch Operating Model (ADR-041)
+
+Full specification: `adr/ADR-041-autonomous-batch-operating-model.md`
+
+### 11.1 Four Operating Modes
+
+| Mode | LLM Cost | When | What it does |
+|---|---|---|---|
+| **PLAN** | ₹0 | Mandatory before every EXECUTE | Validates dependency graph, checks C-086 SIM, estimates LLM calls. Blocks EXECUTE if preconditions fail. |
+| **EXECUTE** | N calls | Fresh sprint — all tasks pending | Runs tasks in dependency order. Writes heartbeat at start. Writes task state to WC file after each subtask. |
+| **RESUME** | <N calls | Prior run was PARTIAL or container-killed | Reads heartbeat mismatch, reclassifies `in-progress` → `failed_structural`, skips `done` and `skipped_idempotent`. |
+| **CLOSE** | ₹0 | Always, regardless of EXECUTE/RESUME outcome | Idempotent. Appends to failure registry. Updates PROJECT_STATE. Takes PR action. Writes `run_complete` to heartbeat. |
+
+### 11.2 Task Status Values
+
+The WC file task table uses these seven status values:
+
+| Status | Meaning | Next action |
+|---|---|---|
+| `pending` | Not yet started | Execute on next run |
+| `in-progress` | Started — LLM call in flight or container killed mid-task | On heartbeat mismatch: reclassify as `failed_structural` |
+| `done` | All gates passed | Skip on RESUME (SKIPPED_IDEMPOTENT) |
+| `failed_structural` | Compile/ruff/LLM gate failure | Retry next run with failure context injected |
+| `failed_transient` | API timeout / rate limit | Retry same run with backoff |
+| `failed_terminal` | Constitutional violation / spec gap confirmed | `autonomous_halt=true`, GitHub Issue opened |
+| `skipped_cascade` | Upstream task is `failed_*` | Retry automatically when root cause task passes |
+
+### 11.3 Error Code Quick Reference
+
+| Error Code | Class | Expected Action |
+|---|---|---|
+| `LLM_IMPORT_VIOLATION` | STRUCTURAL | Retry next run. Closed-world import constraint active from ADR-041. |
+| `PTR_GATE_FAILURE` | STRUCTURAL | Retry next run. TIS references symbol not in workspace index. |
+| `COMPILE_GATE_FAILURE` | STRUCTURAL | Retry next run with error context. Check ruff E402/B904. |
+| `NORMALIZATION_INCOMPLETE` | STRUCTURAL | Retry next run. E402/B904 survived normalization. |
+| `SCAFFOLD_ERROR` | STRUCTURAL | Retry next run. TIS artifact malformed. |
+| `GROOMING_ERROR` | STRUCTURAL | Retry next run. Scope text parse failed. |
+| `LLM_NO_RESPONSE` | TRANSIENT | Retry same run. |
+| `API_TIMEOUT` | TRANSIENT | Retry same run, 30s backoff. |
+| `RATE_LIMIT` | TRANSIENT | Retry same run, 60s backoff. |
+| `WRITE_BOUNDARY_VIOLATION` | TERMINAL | `autonomous_halt=true`. LLM attempted write outside `src/`/`tests/`. |
+| `SPEC_GAP` | TERMINAL | `autonomous_halt=true`. GitHub Issue opened. EA/SA/Founder review. |
+| `CONTAINER_KILLED` | STRUCTURAL | Auto-detected via heartbeat. RESUME reclassifies `in-progress` tasks. |
+
+### 11.4 Halt Policy
+
+`autonomous_halt=true` is set **only** by TERMINAL failures. PARTIAL runs with STRUCTURAL or TRANSIENT failures leave `halt=false` so RESUME proceeds automatically without manual intervention.
+
+Three separate failure counters:
+- `spec_failures` — structural failures. Threshold: ≥3 → terminal.
+- `infra_failures` — transient API failures. Never drives halt.
+- `terminal_count` — terminal failures. Threshold: ≥1 → immediate halt.
+
+### 11.5 Manual Recovery Commands
+
+```bash
+# Check current batch state
+python3 scripts/sprint_state.py get
+
+# Reset halt after investigating a terminal failure
+python3 scripts/sprint_state.py set autonomous_halt false
+python3 scripts/sprint_state.py set consecutive_failures 0
+
+# Force re-run a specific task (skips dependency check)
+docker compose --profile sprint run --rm sprint-runner --force-task WC027-02
+
+# Run completion protocol manually after a container kill
+python3 scripts/complete_sprint.py --dry-run   # inspect first
+python3 scripts/complete_sprint.py             # apply
+```
+
+---
+
+## 12. Constitutional Anchors
 
 | Principle | Pipeline expression |
 |---|---|

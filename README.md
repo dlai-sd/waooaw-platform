@@ -419,6 +419,105 @@ python scripts/scan-traceability.py --changed-only
 python scripts/scan-traceability.py --claim C-041
 ```
 
+### Autonomous Batch Runs — Code Generation
+
+The autonomous sprint runner operates in four modes. Full specification: `adr/ADR-041-autonomous-batch-operating-model.md` and `standards/AUTONOMOUS-PIPELINE-STANDARD.md §11`.
+
+#### How a Batch Run Works
+
+```
+PLAN (₹0)     → validates dependency graph, checks C-086 SIM, estimates LLM calls
+     ↓ PASS
+EXECUTE / RESUME → processes tasks in dependency order, writes heartbeat + task state
+     ↓ always
+CLOSE (₹0)    → appends to failure registry, updates sprint state, opens/closes PR
+```
+
+**EXECUTE** runs all pending tasks from scratch.
+**RESUME** detects a prior partial run (via heartbeat), skips `done` tasks, retries `failed_structural` tasks only. Use after a container kill or PARTIAL result.
+
+#### Triggering a Run
+
+```bash
+# Via GitHub Actions (primary path — runs every 3 hours or on dispatch)
+gh workflow run autonomous-sprint.yaml -f sprint_name=WC-027
+
+# Via Docker (local / debug)
+docker compose --profile sprint run --rm sprint-runner
+
+# Force a specific task (skips dependency check, useful for re-running a failed subtask)
+docker compose --profile sprint run --rm sprint-runner --force-task WC027-02
+```
+
+#### Reading Batch Status
+
+```bash
+# Current sprint state (halt flag, failure counters, current sprint)
+python3 scripts/sprint_state.py get
+
+# Task progress (WC file is the authoritative source)
+grep "| WC027" work-contracts/WC-027-wbe-s3-markup-engine.md
+
+# Failure history for this sprint
+python3 -c "
+import json
+entries = [json.loads(l) for l in open('logs/failure-registry.jsonl') if l.strip()]
+for e in entries:
+    if 'WC027' in e.get('sprint',''):
+        print(e['subtask_id'], e['result'], e.get('error_codes'))
+"
+```
+
+#### Task Status Values (WC file)
+
+| Status | Meaning | What to do |
+|---|---|---|
+| `pending` | Not yet attempted | Runs automatically next batch |
+| `in-progress` | Started — container may have been killed | RESUME detects and reclassifies |
+| `done` | All gates passed | Skipped on RESUME — never re-executed |
+| `failed_structural` | Compile/ruff/LLM gate failure | Retried next run with failure context |
+| `failed_transient` | API timeout / rate limit | Retried same run automatically |
+| `failed_terminal` | Constitutional violation / confirmed spec gap | `autonomous_halt=true` — requires Founder review |
+| `skipped_cascade` | Upstream task failed | Retried automatically when root cause passes |
+
+#### Error Codes and Actions
+
+| Code | Severity | Action |
+|---|---|---|
+| `LLM_IMPORT_VIOLATION` | STRUCTURAL | Auto-retry. LLM invented an import not in scaffold. Closed-world constraint re-enforced. |
+| `PTR_GATE_FAILURE` | STRUCTURAL | Auto-retry. TIS references symbol not in workspace index. |
+| `COMPILE_GATE_FAILURE` | STRUCTURAL | Auto-retry with error context. |
+| `LLM_NO_RESPONSE` / `API_TIMEOUT` / `RATE_LIMIT` | TRANSIENT | Auto-retry same run with backoff. Never halts. |
+| `WRITE_BOUNDARY_VIOLATION` | TERMINAL | **HALT.** LLM attempted write outside `src/`/`tests/`. Requires investigation. |
+| `SPEC_GAP` | TERMINAL | **HALT.** GitHub Issue opened. EA/SA/Founder review required. |
+| `CONTAINER_KILLED` | STRUCTURAL (auto-detected) | Auto-detected via heartbeat mismatch. RESUME handles. |
+
+#### Manual Recovery
+
+```bash
+# After a TERMINAL failure — investigate, then reset
+python3 scripts/sprint_state.py set autonomous_halt false
+python3 scripts/sprint_state.py set consecutive_failures 0
+git add constitution/PROJECT_STATE.md && git commit -m "fix(pm): reset halt after investigation"
+git push origin main
+
+# Run completion protocol after a container kill (CLOSE never ran)
+python3 scripts/complete_sprint.py --dry-run   # inspect first
+python3 scripts/complete_sprint.py             # apply state + registry
+```
+
+#### Cost Model
+
+| Scenario | LLM calls vs. baseline |
+|---|---|
+| Fresh sprint, all tasks pending | N calls (baseline) |
+| RESUME after 1 subtask failure | Only failed + downstream tasks — 40–67% savings |
+| RESUME after container kill (tasks were in-progress) | Same as partial failure — good work preserved |
+| PLAN mode validation | ₹0 — zero LLM spend |
+| Infra failure (API timeout) | Auto-retry same run — no wasted sprint |
+
+---
+
 ### Sprint Operations (Founder)
 
 ```bash
