@@ -1,7 +1,7 @@
 # WAOOAW AI Agent — Platform IT Expert
 
-**Specification version:** 1.0
-**Date:** 2026-07-18
+**Specification version:** 1.1
+**Date:** 2026-08-04
 **Type:** Internal Platform Agent (not customer-facing)
 **Constitutional Basis:** C-001 (Human Override), C-023 (Evidence First), C-041 (Tool Authorization), C-059 (Implementation Traceability), C-064 (Three-Human Institution), C-065 (SDLC Separation of Duties), C-066 (Autonomous Development Authorization Tiers)
 **Status:** RATIFIED — Founder authorization 2026-07-18
@@ -79,7 +79,7 @@ The Platform IT Expert raises a Constitutional Blocker and stops work if:
 
 ---
 
-## 3. Skill Catalogue — 11 SDLC Skills
+## 3. Skill Catalogue — 14 SDLC Skills
 
 ---
 
@@ -446,6 +446,272 @@ Step 4:
 
 ---
 
+### Skill 12: Local Docker Image Build and Compose Profile Management
+
+**Trigger:** Need to build or rebuild any of the three local sprint images, or a `docker compose run` fails due to a stale image.
+
+**Three images and their profiles:**
+
+| Profile flag | Image | Dockerfile | Purpose |
+|---|---|---|---|
+| `--profile test` | `test-runner` | `Dockerfile.test-runner` | Full CCT + pipeline test suite (C-080) |
+| `--profile udcp` | `udcp-runner` | `Dockerfile.udcp-runner` | Lightweight UDCP harness — dry/mock/live (ADR-039 §5) |
+| `--profile sprint` | `sprint-runner` | `Dockerfile.sprint-runner` | Full CI mirror of `autonomous-sprint.yaml` |
+
+**Build commands (always run from repo root — context is `.`):**
+
+```bash
+# Force a clean rebuild of a single image (no cache):
+docker compose build --no-cache sprint-runner
+
+# Rebuild only if Dockerfile or COPY sources changed (normal dev cycle):
+docker compose build sprint-runner
+
+# Build all three at once:
+docker compose build test-runner udcp-runner sprint-runner
+
+# Verify image was built and note layer digest:
+docker images | grep waooaw
+```
+
+**Layer caching rules — know when to `--no-cache`:**
+
+| Change | Invalidates cache from | Required action |
+|---|---|---|
+| `requirements-test.txt` or `requirements-udcp.txt` changed | `COPY requirements*.txt` layer | `--no-cache` or `docker compose build` (detects change) |
+| `sprint-runner-entrypoint.sh` changed | `COPY ...entrypoint.sh` layer | Normal `build` (COPY layer invalidated) |
+| Base `python:3.12-slim-bookworm` updated | All layers | `docker compose build --pull --no-cache` |
+| Only repo `.py` files changed | Not invalidated — bind mount | No rebuild needed (bind mount reflects changes live) |
+
+**Bind mount behaviour (critical for sprint iteration):**
+All three images bind-mount `. → /workspace`. Any file edited on the host is immediately visible inside the running container. You do NOT need to rebuild after editing `scripts/*.py`, `src/**`, `tests/**`. Rebuild is only needed when the image layer itself changes (Dockerfile, pip requirements, entrypoint script).
+
+**Troubleshooting build failures:**
+
+```bash
+# 1. See full build output (suppress BuildKit progress compression):
+DOCKER_BUILDKIT=0 docker compose build sprint-runner
+
+# 2. Inspect the broken layer interactively:
+docker run --rm -it python:3.12-slim-bookworm bash
+# then reproduce the failing apt-get / pip install manually
+
+# 3. Verify entrypoint is executable inside image:
+docker run --rm --entrypoint="" \
+  $(docker compose config --images sprint-runner 2>/dev/null | head -1) \
+  ls -la /usr/local/bin/sprint-runner
+
+# 4. Check pip install actually resolved (no silent --no-deps skip):
+docker run --rm sprint-runner pip show anthropic sqlfluff yamllint
+```
+
+**Evidence:** Log the image digest after every build: `docker inspect --format '{{.Id}}' <image>` → note in session log so any regression can be bisected to an image change.
+
+---
+
+### Skill 13: Docker External Variable and Secret Propagation (Local Dev Mode)
+
+**Scope:** This skill applies EXCLUSIVELY to local development iteration. The production path uses Azure OIDC + Key Vault (ADR-014). The compromises documented here are explicitly authorized for the local testing phase and MUST NOT be replicated in production configuration.
+
+**Security compromise boundary (explicit):**
+
+| Pattern | Production (Azure OIDC) | Local dev (this skill) | Risk |
+|---|---|---|---|
+| `ANTHROPIC_API_KEY` | Fetched from Key Vault via OIDC in workflow | Passed as env var in shell or `.env` file | Key visible in shell history, `.env` file on disk |
+| `GITHUB_TOKEN` | Auto-provisioned by Actions runner | Personal PAT with `repo` scope | PAT has broader scope than Actions token |
+| No `.env` in git | Enforced by `.gitignore` | Must verify `.gitignore` blocks `.env` before use | Accidental commit exposes secrets |
+
+**Mitigation for local mode (mandatory before using any of the patterns below):**
+```bash
+# Verify .env is blocked before creating it:
+grep -q "^\.env" .gitignore || echo "⛔ .env NOT in .gitignore — do not create it until fixed"
+# Verify gitleaks won't catch it either (local pre-commit check):
+docker compose run --rm test-runner python3 -m py_compile scripts/autonomous_sprint_runner.py
+```
+
+**Pattern A — Inline env var (safest for one-off runs, no file on disk):**
+```bash
+# UDCP dry-run (no key needed):
+docker compose --profile udcp run --rm udcp-runner \
+  python scripts/udcp_cli.py --task-id WC027-01a --mode dry
+
+# UDCP live run (key injected inline — not written to disk):
+ANTHROPIC_API_KEY=sk-ant-... \
+  docker compose --profile udcp run --rm udcp-runner \
+  python scripts/udcp_cli.py --task-id WC027-01a --mode live --model haiku
+
+# Sprint runner dry-run (no key):
+docker compose --profile sprint run --rm sprint-runner --dry-run
+
+# Sprint runner force specific task (key + GitHub PAT required):
+ANTHROPIC_API_KEY=sk-ant-... GITHUB_TOKEN=ghp_... \
+  docker compose --profile sprint run --rm sprint-runner \
+  --force-task WC027-01a
+```
+
+**Pattern B — `.env` file (for repeated runs during a local session):**
+```bash
+# Create .env with session-scoped values (delete after session):
+cat > .env <<'EOF'
+ANTHROPIC_API_KEY=sk-ant-...
+GITHUB_TOKEN=ghp_...
+POSTGRES_PASSWORD=changeme
+GITHUB_REPO=dlai-sd/waooaw-platform
+EOF
+
+# docker compose picks up .env automatically:
+docker compose --profile sprint run --rm sprint-runner --force-task WC027-01a
+
+# Mandatory cleanup at end of session:
+rm .env
+```
+
+**Pattern C — Named Docker secret (most secure local option — no env var in process list):**
+```bash
+# Create a one-time secret (Linux):
+echo "sk-ant-..." | docker secret create anthropic_key -   # swarm only
+
+# For compose (non-swarm) use a temp file pattern:
+printf 'sk-ant-...' > /tmp/anthropic_key.tmp
+ANTHROPIC_API_KEY=$(cat /tmp/anthropic_key.tmp) \
+  docker compose --profile sprint run --rm sprint-runner --dry-run
+rm /tmp/anthropic_key.tmp
+```
+
+**Verifying a variable reached the container:**
+```bash
+# Confirm env var is present inside container (dry-run — no LLM call):
+docker compose --profile sprint run --rm --entrypoint="" sprint-runner \
+  env | grep -E "ANTHROPIC|GITHUB_TOKEN|AUTONOMOUS_SPRINT"
+```
+
+**ARG vs ENV in Dockerfiles — when to use each:**
+
+| Directive | Scope | Use for |
+|---|---|---|
+| `ARG` | Build-time only — NOT in running container | Pip index URL, build flags; never secrets |
+| `ENV` | Persisted in image layer and container | `PYTHONUNBUFFERED`, `AUTONOMOUS_SPRINT_AGENT` — non-secret defaults |
+| `docker run -e` / compose `environment:` | Runtime injection | API keys, tokens — never baked into image |
+
+**⛔ Never pass secrets as `ARG` — they appear in `docker history` and image manifests.**
+
+---
+
+### Skill 14: Docker Container Output Tracing and Log Inspection
+
+**Trigger:** A `docker compose run` completes (or fails mid-run) and the agent needs to understand what files were written, what the pipeline decided, and why a task succeeded or failed.
+
+**Primary output files (all written to bind-mounted `/workspace` = repo root):**
+
+| File | Written by | Contains |
+|---|---|---|
+| `sprint-context/index.json` | `build_sprint_index.py` (preflight) | Current task ID, model hint, spec sections |
+| `sprint-context/monitor-signal.json` | `task_decomposer.py` per subtask | Per-subtask result, error codes, error text |
+| `sprint-context/lint-violations.json` | `record_lint_violations()` | Ruff/sqlfluff codes seen — LLM prevention cache |
+| `src/**/*.py` / `src/**/*.cs` | LLM codegen / UDCP | Generated source files |
+| `tests/**/*.py` | LLM codegen | Generated test files |
+| `constitution/PROJECT_STATE.md` | `complete_sprint.py` / `sprint_state.py` | SPRINT_STATE_MACHINE updates |
+| `logs/bootstrap-evidence.jsonl` | `record_evidence()` | Append-only evidence ledger |
+
+**Reading live container stdout (real-time log tracing):**
+
+```bash
+# Attach to a running sprint-runner and stream logs live:
+docker compose --profile sprint logs -f sprint-runner
+
+# Same for udcp-runner:
+docker compose --profile udcp logs -f udcp-runner
+
+# Filter to only lines that indicate file writes or gate results:
+docker compose --profile sprint logs sprint-runner 2>&1 | \
+  grep -E "FILE-BY-FILE|compile gate|✅|❌|PHASE|UDCP|Track [12]"
+```
+
+**Inspecting files written by the container after a run:**
+
+```bash
+# See all files modified in the last 60 seconds (catches generated src/ files):
+find . -newer sprint-context/index.json \
+  -not -path './.git/*' \
+  -not -path './__pycache__/*' \
+  -not -name '*.pyc' \
+  | sort
+
+# Read what the monitor signal captured (per-subtask results):
+cat sprint-context/monitor-signal.json | python3 -m json.tool
+
+# Check which subtasks succeeded vs failed:
+python3 -c "
+import json
+sig = json.load(open('sprint-context/monitor-signal.json'))
+for sid, r in sig.get('subtask_results', {}).items():
+    print(f\"{sid}: {r['result']} — {r.get('error_text','')[:60]}\")
+"
+
+# Inspect the sprint index to confirm which task was selected:
+cat sprint-context/index.json | python3 -m json.tool | head -30
+```
+
+**Tracing generated source files specifically:**
+
+```bash
+# List all .py files under src/ modified today:
+find src/ -name "*.py" -newer constitution/PROJECT_STATE.md | sort
+
+# Quick content check on a generated file (constitutional header present?):
+head -5 src/billing-engine/markup/bundle_engine.py
+
+# Confirm ruff is clean on what was generated (mirrors the compile gate):
+python3 -m ruff check src/billing-engine/markup/ --select ALL 2>&1 | head -20
+```
+
+**Reading container exit code to classify the failure type:**
+
+```bash
+# Capture exit code from a run:
+docker compose --profile sprint run --rm sprint-runner --force-task WC027-01a
+EXIT_CODE=$?
+
+# Interpret:
+# 0 → success (task ran, files written, compile gate passed)
+# 1 → pipeline failure (preflight failed, scaffold error, compile gate failed)
+# 130 → user interrupt (Ctrl+C)
+# 137 → OOM kill (container ran out of memory — increase Docker RAM limit)
+```
+
+**Diagnosing `consecutive_failures` without waiting for next GitHub Actions run:**
+
+```bash
+# Check current state machine values:
+python3 -c "
+import re
+text = open('constitution/PROJECT_STATE.md').read()
+sm = text[text.find('## SPRINT_STATE_MACHINE'):]
+for line in sm.splitlines()[:12]:
+    print(line)
+"
+
+# Manually reset consecutive_failures after a local fix (before next CI run):
+python3 scripts/sprint_state.py set consecutive_failures 0
+git diff constitution/PROJECT_STATE.md   # verify change before committing
+```
+
+**Container filesystem inspection (when bind mount is not enough):**
+
+```bash
+# Enter a running container's shell mid-execution (attach):
+docker exec -it $(docker compose --profile sprint ps -q sprint-runner) bash
+
+# Or start a one-off shell in the same image to reproduce a failure:
+docker compose --profile sprint run --rm --entrypoint bash sprint-runner
+
+# From inside: check Python path resolution (common PYTHONPATH issues):
+python3 -c "import sys; [print(p) for p in sys.path]"
+python3 -c "from runner.task_executor import execute_with_udcp; print('import OK')"
+```
+
+---
+
 ## 4. GitHub Component Integration Map
 
 | GitHub Component | Platform IT Expert Usage |
@@ -464,6 +730,9 @@ Step 4:
 | **GitHub Copilot (Agent)** | The underlying AI capability — governed by this spec |
 | **GitHub Releases** | Version tagging post-promotion; CHANGELOG artifact |
 | **GitHub Deployments API** | Deployment history; rollback reference points |
+| **Docker (local)** | `test-runner` / `udcp-runner` / `sprint-runner` — three profiles for local CI iteration (Skills 12–14) |
+| **docker compose profiles** | `--profile test` (CCTs), `--profile udcp` (task harness), `--profile sprint` (full CI mirror) |
+| **sprint-context/ JSON files** | `index.json`, `monitor-signal.json`, `lint-violations.json` — machine-readable pipeline state (Skill 14) |
 
 ---
 
