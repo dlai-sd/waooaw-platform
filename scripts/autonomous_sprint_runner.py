@@ -745,6 +745,8 @@ def main() -> int:
                     tasks_not_implemented.append(task)
                     continue
                 print(f"  ✅ C-086 gate: {sim_msg}")
+                # ADR-041 P0a: mark in-progress before any LLM call so container kills are detectable
+                update_task_status(sprint, task, "in-progress")
                 success = _execute_task_decomposed(
                     task, handler["subtasks"], _MONITOR_SIGNAL,
                     infra_error_tasks=infra_error_tasks,
@@ -756,7 +758,7 @@ def main() -> int:
                 _sr = _MONITOR_SIGNAL.get("subtask_results", {})
                 for _st in handler["subtasks"]:
                     _outcome = _sr.get(_st.id, {}).get("result", "")
-                    if _outcome in ("FAIL", "SKIPPED", "BLOCKED_SKELETON_MISSING"):
+                    if _outcome in ("FAIL", "SKIPPED", "SKIPPED_CASCADE", "BLOCKED_SKELETON_MISSING"):
                         all_failed_subtask_ids.append(_st.id)
                     else:
                         all_completed_subtask_ids.append(_st.id)
@@ -771,6 +773,8 @@ def main() -> int:
                 print(f"  DONE: {task}")
             else:
                 print(f"  FAILED: {task}")
+                # ADR-041 P1b: record failure type so next RESUME skips cascade dependents
+                update_task_status(sprint, task, "failed_structural")
                 # RC#1: Halt on scaffold failure (C-084 Step Dependency Ordering)
                 if task == scaffold_run_task:
                     print(f"  HALT: scaffold task {task} failed — downstream tasks cannot build. "

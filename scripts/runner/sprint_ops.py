@@ -62,7 +62,12 @@ def parse_wc_tasks(sprint: str) -> dict[str, list[str]]:
 
     # Task id pattern: WCxxx-NNa (e.g. WC027-01a, WC028-03)
     task_id_pat = re.compile(r"^WC\d+-\d+[a-z]?$")
-    known_statuses = {"pending", "done", "failed", "in-progress"}
+    # ADR-041: 7-state task machine — map new statuses to canonical buckets
+    known_statuses = {
+        "pending", "done", "failed", "in-progress",
+        "failed_structural", "failed_transient", "failed_terminal",
+        "skipped_cascade", "skipped_idempotent",
+    }
 
     result: dict[str, list[str]] = {"pending": [], "done": [], "failed": []}
 
@@ -80,11 +85,13 @@ def parse_wc_tasks(sprint: str) -> dict[str, list[str]]:
         status = cells[-3].strip().lower()
         if status not in known_statuses:
             status = "pending"
-        if status == "done":
+        if status in ("done", "skipped_idempotent"):
             result["done"].append(task_id)
-        elif status == "failed":
+        elif status in ("failed", "failed_structural", "failed_transient",
+                        "failed_terminal", "skipped_cascade"):
             result["failed"].append(task_id)
         else:
+            # pending, in-progress (container-killed mid-task) → re-runnable
             result["pending"].append(task_id)
 
     return result
@@ -114,7 +121,9 @@ def update_task_status(sprint: str, task_id: str, status: str) -> None:
         # Replace status and completed_at — the last two data cells before trailing |
         # Pattern: match known status values to avoid false matches in scope text
         new_line = re.sub(
-            r"\|\s*(?:pending|done|failed|in-progress|🔲 TODO)\s*\|\s*[^\|]*\s*\|\s*$",
+            r"\|\s*(?:pending|done|failed|in-progress|failed_structural|"
+            r"failed_transient|failed_terminal|skipped_cascade|skipped_idempotent|"
+            r"🔲 TODO)\s*\|\s*[^\|]*\s*\|\s*$",
             f"| {status} | {completed_at} |\n",
             line,
         )
