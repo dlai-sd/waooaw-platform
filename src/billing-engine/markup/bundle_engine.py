@@ -9,13 +9,12 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from markup.models import PriceValidation
-from fastapi import FastAPI
-from markup.router import router as pricing_router
+from skeleton.wbe_interfaces import IMarkupEngine
 
 logger = logging.getLogger(__name__)
 
 
-class BundleEngine:
+class BundleEngine(IMarkupEngine):
     """
     BundleEngine implements IMarkupEngine for cost floor calculation,
     price derivation, and C-089 margin validation.
@@ -212,6 +211,4 @@ class BundleEngine:
             proposed_price_paise=proposed_price_paise,
         )
 
-# Module-level initialization for src/billing-engine/main.py
-app = FastAPI()
-app.include_router(pricing_router, prefix="/pricing", tags=["pricing"])
+

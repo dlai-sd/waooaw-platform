@@ -34,12 +34,13 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
     
+    # allow_credentials=False with wildcard origin — OWASP A05 compliance
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_credentials=False,
+        allow_methods=["GET", "POST"],
+        allow_headers=["Content-Type", "Authorization"],
     )
     
     app.include_router(pricing_router)
