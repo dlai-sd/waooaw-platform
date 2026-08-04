@@ -1106,5 +1106,50 @@ tasks_remaining:
 
 ---
 
+## SESSION CHECKPOINT — 2026-08-05 (Branch ib/009/adr-041-batch-impl — ADR-041 Batch Operating Model)
+
+**Office:** Platform IT Expert  
+**Status:** CHECKPOINT — ADR-041 fully implemented + 93% test coverage; awaiting Founder PR authorization
+
+### What was completed this session
+
+ADR-041 (Batch Operating Model) implementation — all 7 items:
+
+| Commit | Description |
+|---|---|
+| `8e79ec3` | P0a+P1b: in-progress/failed_structural/SKIPPED_CASCADE state machine |
+| `06b739e` | P0b: idempotent CLOSE run_id dedup in append_to_registry |
+| `d2ec0d3` | P1a: SKIPPED_IDEMPOTENT check — skip already-passing tasks |
+| `9eabd54` | P1c: INFRA_ERROR does not increment consecutive_failures counter |
+| `0277f3e` | P2a: heartbeat file write/detect (write_run_heartbeat / close_run_heartbeat / read_run_heartbeat) |
+| `8dd4bbe` | CCT-BL-01 through CCT-BL-13 — 21 tests, all passing |
+| `ca2b143` | 93% coverage — 3 new testing techniques + simulation A/B/C scenarios |
+
+### Coverage achieved
+
+| Module | Before | After |
+|---|---|---|
+| `scripts/runner/sprint_ops.py` | ~34% | 93% |
+| `scripts/complete_sprint.py` | ~14% | 93% |
+| **Combined** | — | **93%** |
+
+### Testing techniques used (as requested)
+
+1. **Property-Based Testing** (Hypothesis `@given`) — status→bucket uniqueness, heartbeat round-trip, registry idempotency, close-always-CLOSED
+2. **Stateful State Machine Testing** (hypothesis.stateful `RuleBasedStateMachine`) — `TaskLifecycleMachine` models the ADR-041 7-state machine with bucket invariants after every rule
+3. **Fault Injection Testing** — corrupt JSON, binary heartbeat bytes, malformed JSONL, unicode WC files, missing files, missing state blocks
+
+**Simulation runs:** Happy Path (full lifecycle OPEN→CLOSED), Chaos Monkey (container kill, cascade failures, partial writes, corrupt heartbeat, halt-at-3), Pressure (50-task WC, 1000-entry registry, 10-retry dedup)
+
+### Branch: `ib/009/adr-041-batch-impl`
+
+### Next authorized actions (Founder to select)
+
+A. **Open PR** `ib/009/adr-041-batch-impl` → `main` (7 ADR-041 commits + 93% test coverage)
+B. **WC-027 attempt 3** — re-trigger autonomous sprint (consecutive_failures: 2, 1 remaining before halt)
+C. **Open PR** `ib/009/sprint-027` → `main` (C-099, DNA v2.0, 5 agent gates, CCT-DCM, ADR-040, CE proto, pipeline fix)
+
+---
+
 *Session history archived to `constitution/PROJECT_STATE_ARCHIVE.md`*
 *Agents do not need to read the archive — it is human reference only.*

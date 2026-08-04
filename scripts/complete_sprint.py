@@ -56,7 +56,13 @@ import re
 import subprocess
 import sys
 from datetime import datetime, timezone
+import sys as _sys
 from pathlib import Path
+
+_scripts_path = Path(__file__).parent
+if str(_scripts_path) not in _sys.path:
+    _sys.path.insert(0, str(_scripts_path))
+from runner.sprint_ops import close_run_heartbeat  # ADR-041 P2a
 
 REPO_ROOT   = Path(__file__).parent.parent
 SIGNAL_PATH = REPO_ROOT / "sprint-context" / "monitor-signal.json"
@@ -110,14 +116,31 @@ def _extract_error_codes(error_text: str) -> list[str]:
 # ── Registry I/O ──────────────────────────────────────────────────────────────
 
 def append_to_registry(entries: list[dict], dry_run: bool = False) -> int:
-    """Append entries to logs/failure-registry.jsonl. Returns count appended."""
+    """Append entries to logs/failure-registry.jsonl. Returns count appended.
+
+    ADR-041 P0b — Idempotent CLOSE: if any entry with the same run_id already
+    exists in the registry (from a prior interrupted run), the entire batch is
+    skipped.  A partial write that was committed can never be re-appended.
+    """
     if not entries:
         return 0
+    run_id = entries[0].get("run_id", "")
     REGISTRY.parent.mkdir(exist_ok=True)
     if dry_run:
         for e in entries:
             print(f"  [DRY-RUN] registry ← {e['subtask_id']} {e['result']} {e['error_codes']}")
         return len(entries)
+    # Dedup guard: skip if this run_id is already recorded
+    if run_id and REGISTRY.exists():
+        existing_run_ids = {
+            entry.get("run_id", "")
+            for line in REGISTRY.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+            for entry in [json.loads(line)]
+        }
+        if run_id in existing_run_ids:
+            print(f"  [IDEMPOTENT-CLOSE] run_id={run_id} already in registry — skipping append")
+            return 0
     with REGISTRY.open("a", encoding="utf-8") as f:
         for entry in entries:
             f.write(json.dumps(entry, ensure_ascii=False) + "\n")
@@ -417,7 +440,7 @@ def complete_sprint(pr_number: int = 0, dry_run: bool = False) -> int:
 
     # From subtask_results (task_decomposer path — WC013+)
     for sid, info in subtasks.items():
-        if info.get("result") in ("FAIL", "SKIPPED"):
+        if info.get("result") in ("FAIL", "SKIPPED", "SKIPPED_CASCADE"):
             task_id = info.get("task_id", sid[:7])
             # Read error_codes and error_text from signal (captured by emit_subtask_signal)
             signal_codes = info.get("error_codes", [])
@@ -489,6 +512,13 @@ def complete_sprint(pr_number: int = 0, dry_run: bool = False) -> int:
         new_failures = 0
         halt = False
         new_status = "AUTHORIZED"
+    elif result == "INFRA_ERROR":
+        # ADR-041 P1c: pure infrastructure failure (API/network) — do NOT
+        # increment consecutive_failures; spec failures are the only counter
+        # that drives autonomous_halt.  Infra errors self-resolve on retry.
+        new_failures = current_failures
+        halt = False
+        new_status = "AUTHORIZED"
     elif result in ("PARTIAL", "FAIL", "BUILD_FAILURE"):
         new_failures = current_failures + 1
         halt = new_failures >= 3
@@ -553,6 +583,9 @@ def complete_sprint(pr_number: int = 0, dry_run: bool = False) -> int:
     print(f"\n  Sprint completion protocol DONE.")
     print(f"  Registry entries this run: {recorded}")
     print(f"  Total registry entries: {len(read_registry())}")
+    # ADR-041 P2a: close heartbeat — signals clean completion to next RESUME
+    if not dry_run:
+        close_run_heartbeat(run_id, sprint, result)
     return 0
 
 
