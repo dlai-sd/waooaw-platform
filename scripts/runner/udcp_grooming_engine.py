@@ -19,6 +19,7 @@ _SKELETON_ABSTRACT_RE = re.compile(
 )
 _PYDANTIC_HINT_RE = re.compile(r"\bPydantic\b|\bBaseModel\b", re.IGNORECASE)
 _IMPLEMENTS_RE = re.compile(r"implementing\s+`([A-Z][A-Za-z0-9_]+)`")
+_HYPOTHESIS_RE = re.compile(r"\bhypothesis\b|@given\b", re.IGNORECASE)
 
 
 class UDCPGroomingEngine:
@@ -112,6 +113,12 @@ class UDCPGroomingEngine:
 
     # ── Private extraction ────────────────────────────────────────────────────
 
+    @staticmethod
+    def _is_test_file(file_path: str) -> bool:
+        """Returns True if file_path is a pytest test file (tests/ dir or test_*.py)."""
+        p = Path(file_path)
+        return p.parts[0] == "tests" or p.name.startswith("test_")
+
     def _extract_artifacts(
         self, scope_text: str, track: int
     ) -> list[dict[str, Any]]:
@@ -132,7 +139,19 @@ class UDCPGroomingEngine:
     ) -> list[dict[str, Any]]:
         imports: list[dict[str, Any]] = []
 
-        # FastAPI imports when endpoints are mentioned
+        if self._is_test_file(file_path):
+            # Test files: emit pytest imports, not FastAPI router imports
+            imports.append({"import": ["pytest"]})
+            endpoints = _FASTAPI_METHOD_RE.findall(scope_text)
+            if endpoints:
+                imports.append({"from": "httpx", "import": ["AsyncClient"]})
+                imports.append({"import": ["pytest_asyncio"]})
+            if _HYPOTHESIS_RE.search(scope_text):
+                imports.append({"from": "hypothesis", "import": ["given", "settings"]})
+                imports.append({"from": "hypothesis", "import": ["strategies as st"]})
+            return imports
+
+        # Source files: FastAPI imports when endpoints are mentioned
         endpoints = _FASTAPI_METHOD_RE.findall(scope_text)
         if endpoints:
             imports.append(
@@ -155,7 +174,42 @@ class UDCPGroomingEngine:
     ) -> list[dict[str, Any]]:
         interfaces: list[dict[str, Any]] = []
 
-        # FastAPI route functions
+        if self._is_test_file(file_path):
+            # Test files: generate async test function stubs per endpoint (deduped)
+            seen: set[tuple[str, str]] = set()
+            for method, path in _FASTAPI_METHOD_RE.findall(scope_text):
+                key = (method.upper(), path)
+                if key in seen:
+                    continue
+                seen.add(key)
+                func_name = f"test_{_path_to_func_name(method.lower(), path)}"
+                interfaces.append({
+                    "type": "function",
+                    "async": True,
+                    "name": func_name,
+                    "decorators": ["pytest.mark.asyncio"],
+                    "arguments": [{"name": "client", "type": "AsyncClient"}],
+                    "return_type": "None",
+                    "docstring": f"Test {method.upper()} {path}",
+                })
+            if _HYPOTHESIS_RE.search(scope_text):
+                interfaces.append({
+                    "type": "function",
+                    "name": "test_property_based",
+                    "decorators": [
+                        "given(a=st.integers(min_value=0), b=st.floats(min_value=0.0, max_value=99.9))",
+                        "settings(max_examples=200)",
+                    ],
+                    "arguments": [
+                        {"name": "a", "type": "int"},
+                        {"name": "b", "type": "float"},
+                    ],
+                    "return_type": "None",
+                    "docstring": "Hypothesis property-based test",
+                })
+            return interfaces
+
+        # Source files: FastAPI route functions
         for method, path in _FASTAPI_METHOD_RE.findall(scope_text):
             func_name = _path_to_func_name(method.lower(), path)
             interfaces.append(
