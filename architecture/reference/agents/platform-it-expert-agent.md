@@ -854,6 +854,45 @@ python3 -c "from runner.task_executor import execute_with_udcp; print('import OK
 
 ---
 
+## 3.25 Decision Consequence Map (C-099 — MANDATORY)
+
+```yaml
+decision_consequence_map:
+  - decision_type: implementation_sprint_execution
+    category: CONSISTENT_SUFFICIENT
+    verification_method: "Compile gate (ruff/mypy/hcl2) + CCT gate catches errors; sprint is retryable; consecutive_failures halt prevents runaway"
+    constitutional_basis: C-059, C-082
+
+  - decision_type: constitutional_claim_amendment
+    category: DETERMINISTIC_REQUIRED
+    independent_verification_method: "Founder ratification required before claim is RATIFIED; amendment is DRAFT until Founder signs off; commit to main only after ratification"
+    constitutional_basis: C-023, C-070
+
+  - decision_type: agent_spec_amendment
+    category: DETERMINISTIC_REQUIRED
+    independent_verification_method: "EA review + Founder sign-off before amendment is committed to main branch; reviewed via PR — agent does not merge own PRs"
+    constitutional_basis: C-023, C-065
+
+  - decision_type: production_deployment_authorization
+    category: DETERMINISTIC_REQUIRED
+    independent_verification_method: "Founder explicit authorization per sprint; implementation gate check before any src/ file is written; CE.ValidateAction PROCEED_DETERMINISTIC required"
+    constitutional_basis: C-066, C-023
+
+  - decision_type: code_generation
+    category: CONSISTENT_SUFFICIENT
+    verification_method: "Compile gate + CCT gate + PR review; errors caught before merge; no customer impact until Founder merges"
+    constitutional_basis: C-082, C-076
+
+  - decision_type: sprint_halt_trigger
+    category: DETERMINISTIC_REQUIRED
+    independent_verification_method: "autonomous_halt=true written to SPRINT_STATE_MACHINE before any LLM operation; evidence record in constitutional.audit_records before halt is declared"
+    constitutional_basis: C-023, C-077
+```
+
+- [ ] **C-099 check (Decision Consequence Map): Section 3.25 present. All 6 decision types classified: constitutional_claim_amendment, agent_spec_amendment, production_deployment_authorization, sprint_halt_trigger as DETERMINISTIC_REQUIRED with independent_verification_method declared; implementation_sprint_execution and code_generation as CONSISTENT_SUFFICIENT. CE.ValidateAction DCM path declared for all DETERMINISTIC_REQUIRED decisions.**
+
+---
+
 ## Platform-Agent Contract (PAC)
 <!-- ADR-035 mandatory section. Do not remove. Update when AGENT-BASE-SPEC version bumps. -->
 <!-- Platform-internal agent: no customer session. WBE signals are operational events only. -->

@@ -202,6 +202,12 @@ message ValidateActionRequest {
   // CE uses this for EvaluatePolicy constitutional reasoning context.
   // Required when the decision requires EvaluatePolicy (novel actions, boundary cases).
   optional string reasoning_trace_id = 9;
+
+  // dcm_category: Decision Consequence Map category for this action (C-099).
+  // Agent looks up its DCM, determines the category, and passes it here.
+  // CE uses this to route: DETERMINISTIC_REQUIRED → PROCEED_DETERMINISTIC (verification required);
+  // CONSISTENT_SUFFICIENT → PROCEED_AUTONOMOUS; unspecified → DCM_BLOCKED.
+  optional DcmCategory dcm_category = 10;
 }
 
 // BudgetContext — carries financial spend state for budget ceiling enforcement.
@@ -259,6 +265,23 @@ enum ApprovalType {
   APPROVAL_TYPE_PRE_AUTHORIZED      = 4;  // pre-authorized class at contract formation
 }
 
+// DcmCategory — Decision Consequence Map category (C-099).
+// Agent classifies each consequential action before calling ValidateAction.
+enum DcmCategory {
+  DCM_CATEGORY_UNSPECIFIED             = 0;  // agent did not declare DCM category — CE returns DCM_BLOCKED
+  DCM_CATEGORY_DETERMINISTIC_REQUIRED  = 1;  // irreversible / financial / constitutional — requires independent verification
+  DCM_CATEGORY_CONSISTENT_SUFFICIENT   = 2;  // reversible / retryable / advisory — autonomous execution permitted
+}
+
+// DcmOutcome — CE’s routing decision based on DCM category (C-099).
+// Returned in ValidateActionResponse.dcm_outcome.
+enum DcmOutcome {
+  DCM_OUTCOME_UNSPECIFIED    = 0;
+  DCM_PROCEED_AUTONOMOUS     = 1;  // CONSISTENT_SUFFICIENT — agent may act and self-certify
+  DCM_PROCEED_DETERMINISTIC  = 2;  // DETERMINISTIC_REQUIRED — invoke independent_verification_method first
+  DCM_BLOCKED                = 3;  // decision_type not in DCM — escalate to Founder before proceeding
+}
+
 message ValidateActionResponse {
   // decision is the validation outcome: ALLOW, DENY, or ESCALATE.
   ValidationDecision decision = 1;
@@ -285,6 +308,12 @@ message ValidateActionResponse {
   // Only set when approval_type = SYNTHETIC and decision = ALLOW.
   // The caller must store this ID in the synthetic_approval_records table extension.
   optional string synthetic_approval_record_id = 5;
+
+  // dcm_outcome: Decision Consequence Map routing outcome (C-099).
+  // PROCEED_AUTONOMOUS        — CONSISTENT_SUFFICIENT; agent self-certifies output.
+  // PROCEED_DETERMINISTIC     — DETERMINISTIC_REQUIRED; invoke independent_verification_method before commit.
+  // DCM_BLOCKED               — decision_type absent from agent DCM; escalate to Founder.
+  DcmOutcome dcm_outcome = 6;
 }
 
 // ─── GrantAuthorityLicense ───────────────────────────────────────────────────
