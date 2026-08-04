@@ -182,27 +182,13 @@ def _fix_ann201_asynccontextmanager(content: str) -> str:
     return patched
 
 
-# Standard test-helper imports are never hallucinations — scaffold stubs omit them by design
-_TEST_IMPORT_WHITELIST: frozenset[str] = frozenset({
-    "import pytest", "import pytest_asyncio", "import asyncio", "import json", "import uuid",
-    "from hypothesis import given", "from hypothesis import settings",
-    "from hypothesis import strategies as st", "from hypothesis import HealthCheck",
-    "from hypothesis import given, settings", "from hypothesis import given, settings, strategies as st",
-    "from httpx import AsyncClient", "from httpx import ASGITransport, AsyncClient",
-    "from fastapi.testclient import TestClient",
-    "from unittest.mock import MagicMock", "from unittest.mock import AsyncMock",
-    "from unittest.mock import MagicMock, AsyncMock", "from unittest.mock import MagicMock, AsyncMock, patch",
-    "from unittest.mock import patch",
-})
-
-
 def _detect_invented_imports(scaffold_content: str, llm_content: str) -> list[str]:
     """Return import lines in llm_content absent from scaffold — these are LLM hallucinations."""
     scaffold_imports = {
         ln.strip()
         for ln in scaffold_content.splitlines()
         if ln.strip().startswith(("import ", "from "))
-    } | _TEST_IMPORT_WHITELIST
+    }
     llm_imports = {
         ln.strip()
         for ln in llm_content.splitlines()
