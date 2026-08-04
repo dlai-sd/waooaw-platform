@@ -55,3 +55,5 @@ class PriceValidation(BaseModel):
     minimum_compliant_price_paise: int
     proposed_price_paise: int
 
+app = FastAPI(title="Billing Engine — Markup & Pricing")
+app.include_router(pricing_router, prefix="/pricing", tags=["pricing"])
