@@ -12,18 +12,15 @@ import pytest
 import pytest_asyncio
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
-from hypothesis import HealthCheck, given, settings
+from hypothesis import given, settings
 from hypothesis import strategies as st
 
 # --- sys.path injection (hyphen dirs are not importable as dotted paths) ---
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src" / "billing-engine"))
 
-from markup.bundle_engine import BundleEngine  # noqa: E402
-from markup.models import (  # noqa: E402
-    BundleProfile,
-    PriceDeriveRequest,
+from markup.bundle_engine import BundleEngine
+from markup.models import (
     PriceValidation,
-    PriceValidationRequest,
     ThreadEntry,
 )
 
@@ -44,7 +41,7 @@ def _row(values: tuple[Any, ...]) -> MagicMock:
     row = MagicMock()
     row.__getitem__ = lambda self, idx: values[idx]
     # Support positional attribute access via index
-    for i, v in enumerate(values):
+    for _i, _v in enumerate(values):
         row.__getitem__ = lambda self, idx, _v=values: _v[idx]
     return row
 
