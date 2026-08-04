@@ -76,7 +76,7 @@ jobs:
       platform_phase: ${{ steps.halt_check.outputs.platform_phase }}
       consecutive_failures: ${{ steps.halt_check.outputs.consecutive_failures }}
     steps:
-      - uses: actions/checkout@v4.2.2
+      - uses: actions/checkout@v4.4.0
 
       - uses: actions/setup-python@v5.4.0
         with:
@@ -327,7 +327,7 @@ jobs:
       scaffold_failed:   ${{ steps.runner.outputs.scaffold_failed }}
       infra_error_tasks: ${{ steps.runner.outputs.infra_error_tasks }}
     steps:
-      - uses: actions/checkout@v4.2.2
+      - uses: actions/checkout@v4.4.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
@@ -380,10 +380,21 @@ jobs:
 
       - name: Fetch secrets from Azure Key Vault
         id: kv_secrets
-        uses: azure/get-keyvault-secrets@v3
-        with:
-          keyvault: ${{ vars.AZURE_KEYVAULT_NAME }}
-          secrets: 'ANTHROPIC-API-KEY, GH-APP-ID, GH-APP-INSTALLATION-ID, GH-APP-PRIVATE-KEY, GOOGLE-VERTEX-SA-KEY'
+        # Inline az CLI — azure/get-keyvault-secrets has no v2/v3 (abandoned 2021)
+        run: |
+          AZ_KV="${{ vars.AZURE_KEYVAULT_NAME }}"
+          az_get() { az keyvault secret show --vault-name "$AZ_KV" --name "$1" --query value -o tsv; }
+          {
+            echo "ANTHROPIC-API-KEY=$(az_get ANTHROPIC-API-KEY)"
+            echo "GH-APP-ID=$(az_get GH-APP-ID)"
+            echo "GH-APP-INSTALLATION-ID=$(az_get GH-APP-INSTALLATION-ID)"
+            echo "GH-APP-PRIVATE-KEY<<WAOOAW_EOF"
+            az_get GH-APP-PRIVATE-KEY
+            echo "WAOOAW_EOF"
+            echo "GOOGLE-VERTEX-SA-KEY<<WAOOAW_EOF"
+            az_get GOOGLE-VERTEX-SA-KEY
+            echo "WAOOAW_EOF"
+          } >> "$GITHUB_OUTPUT"
 
       # G3 FIX: Skip execution if an open PR already exists for the sprint branch.
       # D2 FIX: check by HEAD BRANCH (ib/009/sprint-NNN), not task title.
@@ -598,7 +609,7 @@ jobs:
     needs: [preflight, execute]
     if: always()
     steps:
-      - uses: actions/checkout@v4.2.2
+      - uses: actions/checkout@v4.4.0
       - uses: actions/setup-python@v5.4.0
         with:
           python-version: '3.12'
@@ -637,7 +648,7 @@ jobs:
       needs.execute.outputs.pr_number != '' &&
       (needs.execute.outputs.result == 'SUCCESS' || needs.execute.outputs.result == 'PARTIAL')
     steps:
-      - uses: actions/checkout@v4.2.2
+      - uses: actions/checkout@v4.4.0
 
       - uses: actions/setup-python@v5.4.0
         with:
@@ -655,10 +666,18 @@ jobs:
 
       - name: Fetch reviewer secrets from Key Vault
         id: kv_review
-        uses: azure/get-keyvault-secrets@v3
-        with:
-          keyvault: ${{ vars.AZURE_KEYVAULT_NAME }}
-          secrets: 'GH-APP-ID, GH-APP-INSTALLATION-ID, GH-APP-PRIVATE-KEY, ANTHROPIC-API-KEY'
+        # Inline az CLI — azure/get-keyvault-secrets has no v2/v3 (abandoned 2021)
+        run: |
+          AZ_KV="${{ vars.AZURE_KEYVAULT_NAME }}"
+          az_get() { az keyvault secret show --vault-name "$AZ_KV" --name "$1" --query value -o tsv; }
+          {
+            echo "GH-APP-ID=$(az_get GH-APP-ID)"
+            echo "GH-APP-INSTALLATION-ID=$(az_get GH-APP-INSTALLATION-ID)"
+            echo "GH-APP-PRIVATE-KEY<<WAOOAW_EOF"
+            az_get GH-APP-PRIVATE-KEY
+            echo "WAOOAW_EOF"
+            echo "ANTHROPIC-API-KEY=$(az_get ANTHROPIC-API-KEY)"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Run PR review
         env:
@@ -691,7 +710,7 @@ jobs:
       id-token: write              # OIDC for KV secret fetch (ANTHROPIC key for auto-extend)
 
     steps:
-      - uses: actions/checkout@v4.2.2
+      - uses: actions/checkout@v4.4.0
 
       - uses: actions/setup-python@v5.4.0
         with:
@@ -710,11 +729,11 @@ jobs:
 
       - name: Fetch ANTHROPIC key for advisor auto-extend
         id: kv_monitor
-        uses: azure/get-keyvault-secrets@v3
-        with:
-          keyvault: ${{ vars.AZURE_KEYVAULT_NAME }}
-          secrets: 'ANTHROPIC-API-KEY'
+        # Inline az CLI — azure/get-keyvault-secrets has no v2/v3 (abandoned 2021)
         continue-on-error: true   # non-fatal — auto-extend skips gracefully without key
+        run: |
+          AZ_KV="${{ vars.AZURE_KEYVAULT_NAME }}"
+          echo "ANTHROPIC-API-KEY=$(az keyvault secret show --vault-name "$AZ_KV" --name ANTHROPIC-API-KEY --query value -o tsv)" >> "$GITHUB_OUTPUT"
 
       - name: Download monitor signal artifact
         uses: actions/download-artifact@v4.3.0
