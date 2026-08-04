@@ -483,6 +483,27 @@ TASK_HANDLERS = {
 }
 
 
+# ── ADR-041 P1a: SKIPPED_IDEMPOTENT helper ───────────────────────────────────
+
+def _all_outputs_present_and_compile(subtasks: list) -> bool:
+    """Return True if every output_file from all subtasks exists and passes
+    py_compile.  Used to skip WC tasks that were already completed in a prior
+    run (SKIPPED_IDEMPOTENT mode — see ADR-041 §5).
+    """
+    import py_compile
+    for st in subtasks:
+        for rel_path in getattr(st, "output_files", []):
+            fpath = REPO_ROOT / rel_path
+            if not fpath.exists():
+                return False
+            if str(fpath).endswith(".py"):
+                try:
+                    py_compile.compile(str(fpath), doraise=True)
+                except py_compile.PyCompileError:
+                    return False
+    return True
+
+
 # ── Main execution ────────────────────────────────────────────────────────────
 
 def main() -> int:
@@ -745,6 +766,13 @@ def main() -> int:
                     tasks_not_implemented.append(task)
                     continue
                 print(f"  ✅ C-086 gate: {sim_msg}")
+                # ADR-041 P1a: SKIPPED_IDEMPOTENT — all outputs exist & compile → skip LLM
+                if _all_outputs_present_and_compile(handler["subtasks"]):
+                    print(f"  ⏭  SKIPPED_IDEMPOTENT: {task} — all outputs already present and compile-clean")
+                    tasks_done.append(task)
+                    update_task_status(sprint, task, "skipped_idempotent")
+                    all_completed_subtask_ids.extend([st.id for st in handler["subtasks"]])
+                    continue
                 # ADR-041 P0a: mark in-progress before any LLM call so container kills are detectable
                 update_task_status(sprint, task, "in-progress")
                 success = _execute_task_decomposed(
