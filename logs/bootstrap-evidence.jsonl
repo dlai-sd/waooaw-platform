@@ -168,3 +168,7 @@
 {"event": "SPRINT_TASKS_EXECUTED", "timestamp": "2026-08-04T08:57:39.527006+00:00", "run_id": "", "stub_mode": true, "sprint": "WC-027", "tasks_done": []}
 {"event": "AUTONOMOUS_SPRINT_STARTED", "timestamp": "2026-08-04T08:58:38.422286+00:00", "run_id": "", "stub_mode": true, "sprint": "WC-027", "branch": "ib/009/sprint-027", "tasks": ["WC027-02"]}
 {"event": "SPRINT_TASKS_EXECUTED", "timestamp": "2026-08-04T08:58:38.499828+00:00", "run_id": "", "stub_mode": true, "sprint": "WC-027", "tasks_done": []}
+{"event": "autonomous_halt_active", "timestamp": "2026-08-04T09:01:34.447067+00:00", "run_id": "", "stub_mode": true, "reason": "AUTONOMOUS_HALT=true in PROJECT_STATE.md"}
+{"event": "AUTONOMOUS_SPRINT_STARTED", "timestamp": "2026-08-04T09:02:35.393682+00:00", "run_id": "", "stub_mode": true, "sprint": "WC-027", "branch": "ib/009/sprint-027", "tasks": ["WC027-02"]}
+{"event": "spec_gap_halt", "timestamp": "2026-08-04T09:04:18.038211+00:00", "run_id": "", "stub_mode": true, "task": "WC027-02c", "issue": "223", "gap": "UDCP COMPILE_GATE_FAILURE: tests/billing-engine/test_markup.py: invalid syntax (test_markup.py, line"}
+{"event": "SPRINT_TASKS_EXECUTED", "timestamp": "2026-08-04T09:04:18.112174+00:00", "run_id": "", "stub_mode": true, "sprint": "WC-027", "tasks_done": []}
