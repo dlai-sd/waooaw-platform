@@ -506,6 +506,13 @@ def complete_sprint(pr_number: int = 0, dry_run: bool = False) -> int:
         new_failures = 0
         halt = False
         new_status = "AUTHORIZED"
+    elif result == "INFRA_ERROR":
+        # ADR-041 P1c: pure infrastructure failure (API/network) — do NOT
+        # increment consecutive_failures; spec failures are the only counter
+        # that drives autonomous_halt.  Infra errors self-resolve on retry.
+        new_failures = current_failures
+        halt = False
+        new_status = "AUTHORIZED"
     elif result in ("PARTIAL", "FAIL", "BUILD_FAILURE"):
         new_failures = current_failures + 1
         halt = new_failures >= 3
