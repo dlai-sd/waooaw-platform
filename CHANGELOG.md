@@ -8,6 +8,26 @@ types: `feat` | `fix` | `constitutional` | `cct` | `chore` | `refactor` | `secur
 
 ---
 
+## [1.26.0] — 2026-08-04 (Track 1 Constitutional — C-099 Decision Consequence Map)
+
+### Constitutional
+
+- **C-099 ratified:** Decision Consequence Map obligation — every agent must classify each consequential decision as `DETERMINISTIC_REQUIRED` (irreversible/financial/constitutional) or `CONSISTENT_SUFFICIENT` (reversible/retryable/advisory) before committing. CE.ValidateAction extended with DCM category routing: PROCEED_AUTONOMOUS / PROCEED_DETERMINISTIC / BLOCKED.
+- **AGENT-AUTHORING-GUIDE v5.0:** New §9k (Section 3.25 DCM standard), Activation Gate Section 16 (DCM Gate, 5 checks), Constitutional Checklist C-099 check added. Gate count 15 → 16.
+- **CONSTITUTIONAL_DNA v2.0:** §1.2a Decision Consequence Map Consultation runtime pattern added as universal instinct. Every agent inheriting v2.0 gets the DCM consultation pseudocode and CE.ValidateAction response code table.
+
+### Agent Uplift (all 7 specs — C-099 compliance)
+
+- `trading-agent`: trade_execution / position_rebalance / customer_charge = DETERMINISTIC_REQUIRED
+- `agricultural-advisor-agent`: pmfby_submission / financial_recommendation = DETERMINISTIC_REQUIRED
+- `platform-operations-agent`: config_change / kill_switch / emergency_stop = DETERMINISTIC_REQUIRED
+- `digital-marketing-agent`: campaign_publish / ad_spend / customer_charge = DETERMINISTIC_REQUIRED
+- `private-tutor-agent`: customer_charge / lesson_plan_commitment = DETERMINISTIC_REQUIRED
+- `reasoning-sprint-analyst-agent`: sprint_auth / claim_proposal / state_machine_update = DETERMINISTIC_REQUIRED
+- `self-improvement-analyst-agent`: prompt_version_promotion / spec_amendment = DETERMINISTIC_REQUIRED
+
+---
+
 ## [1.23.0] — 2026-07-31 (GEOM G-1→G-5 Pipeline — WBE WC-027→031 + WC-027 Activated)
 
 ### Institutional Records (Goal Orchestrator)

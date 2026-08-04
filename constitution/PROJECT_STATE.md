@@ -1038,6 +1038,39 @@ branch: ib/009/sprint-027
 consecutive_failures: 2
 ```
 
+---
+
+## SESSION CHECKPOINT — 2026-08-04 (Track 1 Constitutional — C-099 DCM Complete)
+
+**Session type:** Constitutional authoring + all-agent uplift (no implementation code)
+**Office:** Platform IT Expert
+**Status:** CHECKPOINT — returning control to Founder for next selection
+
+### Commits this session (ib/009/sprint-027)
+
+| Commit | Description |
+|---|---|
+| `49254a4` | C-099 Decision Consequence Map claim ratified |
+| `97f101e` | AGENT-AUTHORING-GUIDE v5.0 — Section 3.25 + Activation Gate Section 16 |
+| `765bff8` | CONSTITUTIONAL_DNA v2.0 — §1.2a DCM runtime pattern |
+| `f9a190e` | All 7 agent specs uplifted — Section 3.25 + C-099 checklist checks |
+
+### Constitutional delta this session
+
+- **C-099 ratified:** Decision Consequence Map obligation — every agent must classify each decision as `DETERMINISTIC_REQUIRED` or `CONSISTENT_SUFFICIENT` before committing
+- **AGENT-AUTHORING-GUIDE v5.0:** §9k (Section 3.25 standard), Section 16 gate, Constitutional Checklist C-099 check
+- **CONSTITUTIONAL_DNA v2.0:** §1.2a DCM runtime consultation pattern with CE.ValidateAction response codes
+- **7 agent specs:** agricultural-advisor, digital-marketing, platform-operations, private-tutor, reasoning-sprint-analyst, self-improvement-analyst, trading — all carry domain-specific DCM with decision types classified
+
+### WC-027 state (unchanged — Track 2 deferred)
+
+- src/billing-engine/markup/: bundle_engine.py, thread_catalog.py, models.py, router.py — all FIXED and committed
+- `tests/billing-engine/test_markup.py` — still contains router scaffold, NOT real pytest tests
+- consecutive_failures: 2 (limit 3 before halt)
+- **Reason deferred:** Founder decision — no implementation sprint without assurance WC-027 will succeed. Track 1 constitutional self-refinement prioritised first.
+
+### Next authorized actions (see below)
+
 
 ---
 
