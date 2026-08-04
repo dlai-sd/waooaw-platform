@@ -1040,13 +1040,13 @@ consecutive_failures: 2
 
 ---
 
-## SESSION CHECKPOINT — 2026-08-04 (Track 1 Constitutional — C-099 DCM Complete)
+## SESSION CHECKPOINT — 2026-08-04 (Track 3G — RSA Activation Gate PASS)
 
-**Session type:** Constitutional authoring + all-agent uplift (no implementation code)
-**Office:** Platform IT Expert
-**Status:** CHECKPOINT — returning control to Founder for next selection
+**Session type:** Constitutional authoring + Track 3G Activation Gate execution (no implementation code)
+**Office:** Enterprise Architect
+**Status:** CHECKPOINT — Track 3G complete; returning control to Founder for next selection
 
-### Commits this session (ib/009/sprint-027)
+### Commits this session (ib/009/sprint-027) — continuation
 
 | Commit | Description |
 |---|---|
@@ -1054,23 +1054,31 @@ consecutive_failures: 2
 | `97f101e` | AGENT-AUTHORING-GUIDE v5.0 — Section 3.25 + Activation Gate Section 16 |
 | `765bff8` | CONSTITUTIONAL_DNA v2.0 — §1.2a DCM runtime pattern |
 | `f9a190e` | All 7 agent specs uplifted — Section 3.25 + C-099 checklist checks |
+| `28824b6` | VERSION 1.26.0; CHANGELOG v1.26.0; knowledge/index.md Claims 76→85; PROJECT_STATE checkpoint |
+| `45d6cfe` | Track 1 complete: CCT-DCM-01/02/03 (60 PASS 1 SKIP); CE proto DCM enums; ADR-040; platform-it-expert DCM uplift |
+| `c1a6f5e` | reasoning-sprint-analyst v1.4 — Activation Gate PASS all 16 sections |
 
-### Constitutional delta this session
+### Constitutional delta this session (full sprint-027)
 
-- **C-099 ratified:** Decision Consequence Map obligation — every agent must classify each decision as `DETERMINISTIC_REQUIRED` or `CONSISTENT_SUFFICIENT` before committing
-- **AGENT-AUTHORING-GUIDE v5.0:** §9k (Section 3.25 standard), Section 16 gate, Constitutional Checklist C-099 check
-- **CONSTITUTIONAL_DNA v2.0:** §1.2a DCM runtime consultation pattern with CE.ValidateAction response codes
-- **7 agent specs:** agricultural-advisor, digital-marketing, platform-operations, private-tutor, reasoning-sprint-analyst, self-improvement-analyst, trading — all carry domain-specific DCM with decision types classified
+- **C-099 ratified:** Decision Consequence Map obligation
+- **AGENT-AUTHORING-GUIDE v5.0:** §9k + Section 16 gate
+- **CONSTITUTIONAL_DNA v2.0:** §1.2a DCM runtime pattern
+- **All 8 agent specs:** DCM §3.25 uplifted (agricultural, digital-marketing, platform-operations, platform-it-expert, private-tutor, reasoning-sprint-analyst, self-improvement-analyst, trading)
+- **CE proto extended:** DcmCategory + DcmOutcome enums; ValidateActionRequest field 10; ValidateActionResponse field 6
+- **CCT-DCM-01/02/03:** 60 passing, 1 skipped (runtime, pending implementation gate)
+- **ADR-040:** Decision Consequence Map architecture decision
+- **Track 3G:** reasoning-sprint-analyst v1.4 — all 16 Activation Gate sections PASS; gate result review R-RSA-activation-gate-sprint-027-ea-review.md
 
 ### WC-027 state (unchanged — Track 2 deferred)
 
-- src/billing-engine/markup/: bundle_engine.py, thread_catalog.py, models.py, router.py — all FIXED and committed
-- `tests/billing-engine/test_markup.py` — still contains router scaffold, NOT real pytest tests
 - consecutive_failures: 2 (limit 3 before halt)
-- **Reason deferred:** Founder decision — no implementation sprint without assurance WC-027 will succeed. Track 1 constitutional self-refinement prioritised first.
+- **Reason deferred:** Track 1 constitutional self-refinement + Track 3 agent activation gates prioritised first.
 
-### Next authorized actions (see below)
+### Next authorized actions (Founder to select)
 
+1. **WC-027 Track 2** — write real pytest tests for src/billing-engine/ (deferred, consecutive_failures: 2)
+2. **Other agent activation gates** — run §16 gate on remaining agents (digital-marketing, agricultural-advisor, private-tutor, self-improvement-analyst, trading, platform-operations)
+3. **Implementation sprint** — any other IB item per Founder selection (requires Implementation AUTHORIZED confirmation)
 
 ---
 
