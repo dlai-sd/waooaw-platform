@@ -1,8 +1,8 @@
 # WAOOAW Constitutional DNA — Universal Agent Inheritance Spec
 
-**Version:** 1.0
-**Date:** 2026-07-19
-**Authority:** C-070 (Constitutional DNA Inheritance Obligation — RATIFIED 2026-07-19)
+**Version:** 2.0
+**Date:** 2026-07-19 (v1.0) · **Amended 2026-08-04 (v2.0 — §1.2a Decision Consequence Map runtime pattern, C-099)**
+**Authority:** C-070 (Constitutional DNA Inheritance Obligation — RATIFIED 2026-07-19), C-099 (Decision Consequence Map — RATIFIED 2026-08-04)
 **Applies to:** ALL agents — customer-facing and internal, present and future
 **Status:** RATIFIED — Founder authorization 2026-07-19
 
@@ -38,6 +38,44 @@ Before any action that produces an observable effect in the world — a post pub
 Before dispatching to any MCP tool, the Professional Runtime calls `CE.ValidateAction`. The 6 claim evaluators (C-041, C-043, C-048, C-049, C-051, C-062 — see `ce-validate-action-evaluators.md`) run in ≤40ms. If the result is DENY, the action is abandoned and the agent issues a C-049 honest disclosure to the customer. If ESCALATE, the agent pauses and notifies the customer that human review is needed.
 
 **DENY does not mean the agent failed. DENY means the constitution protected the customer.**
+
+### 1.2a Decision Consequence Map Consultation (C-099) — Universal
+
+Every consequential action must be classified against the agent's Decision Consequence Map (Section 3.25 of the agent spec) before CE.ValidateAction is invoked. The consequence of error — not the complexity of the decision — determines the path:
+
+```python
+# Step 1: Look up the decision type in the agent's DCM
+dcm_entry = agent_dcm.lookup(decision_type="skill.action_name")
+
+if dcm_entry is None:
+    # Undeclared decision type — constitutional blocker
+    await CE.RecordBlocker(reason="undeclared_decision_type", action="skill.action_name")
+    raise ConstitutionalBlocker("DCM entry missing — escalate to Founder before proceeding")
+
+# Step 2: Route based on consequence category
+if dcm_entry.category == "DETERMINISTIC_REQUIRED":
+    # Irreversible / financial / constitutional / external commitment
+    result = await CE.ValidateAction(action="skill.action_name", dcm_category="DETERMINISTIC_REQUIRED")
+    # result == PROCEED_DETERMINISTIC
+    await dcm_entry.independent_verification_method()  # must pass before commit
+    await commit_action()  # only after verification
+
+elif dcm_entry.category == "CONSISTENT_SUFFICIENT":
+    # Reversible / retryable / advisory
+    result = await CE.ValidateAction(action="skill.action_name", dcm_category="CONSISTENT_SUFFICIENT")
+    # result == PROCEED_AUTONOMOUS
+    await commit_action()  # self-certify; verification loop catches errors
+```
+
+**The DCM is not a performance optimisation.** It is a constitutional obligation. An agent that charges a customer without going through the DETERMINISTIC_REQUIRED path has committed an Evidence First violation (C-023) and a financial commitment without verification — regardless of whether the charge was correct.
+
+**CE.ValidateAction response codes for DCM:**
+
+| Response | Meaning | Action |
+|---|---|---|
+| `PROCEED_AUTONOMOUS` | CONSISTENT_SUFFICIENT, no risks flagged | execute and self-certify |
+| `PROCEED_DETERMINISTIC` | DETERMINISTIC_REQUIRED, proceed after verification | invoke `independent_verification_method` first |
+| `BLOCKED` | CE blocked the action (claim violation detected) | abandon, file C-049 escalation |
 
 ### 1.3 Emergency Stop (C-001) — Universal, Pre-emptive
 
@@ -178,6 +216,7 @@ Every new agent spec must declare and confirm:
 - [ ] Trust Tier progression: any domain-specific overrides to the universal model declared
 - [ ] Emergency Stop path: confirmed always reachable (no skill may block it)
 - [ ] Constitutional Blocker triggers: domain-specific triggers listed (beyond the universal ones)
+- [ ] Decision Consequence Map (C-099): Section 3.25 present OR `decision_consequence_map: NOT_APPLICABLE` stated; every DETERMINISTIC_REQUIRED decision has `independent_verification_method` declared and CE.ValidateAction call pattern implemented
 
 ---
 
