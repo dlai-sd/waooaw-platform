@@ -1,7 +1,7 @@
 # Agent Authoring Guide
 
 **Authority:** GENESIS Part 05 — Agent Definition Protocol
-**Date:** 2026-07-09 (v2.0 — gate-enforced template) · **Amended 2026-07-19 (v3.0 — Section 0 Constitutional DNA mandatory, C-070) · Amended 2026-07-27 (v4.0 — AVD prerequisite gate, GOAL-001 Phase 4)**
+**Date:** 2026-07-09 (v2.0 — gate-enforced template) · **Amended 2026-07-19 (v3.0 — Section 0 Constitutional DNA mandatory, C-070) · Amended 2026-07-27 (v4.0 — AVD prerequisite gate, GOAL-001 Phase 4) · Amended 2026-08-04 (v5.0 — Section 3.25 Decision Consequence Map mandatory, C-099)**
 **Purpose:** Mandatory template for every new Digital Professional type on WAOOAW. This is a GATE, not a guide. An agent spec that is incomplete in any section cannot be activated.
 
 ---
@@ -256,6 +256,7 @@ Before submitting for EA review, confirm:
 - [ ] No prohibited action violates a Constitutional Floor (Emergency Stop, Evidence First, Audit Ledger)
 - [ ] **Learning from R011-01 / R012-01: any real-world authorization the agent needs from the customer (image consent, broker API access, platform credentials) must be an always-ask action type that creates a constitutional evidence record. An assumed authorization is a constitutional gap.**
 - [ ] **C-042 check: if your agent serves customers with limited technical or digital literacy — farmers, healthcare workers, artisans — the Vocabulary Mandate applies. Add a Vocabulary Translation Layer to every Skill. No technical data surfaced to customer. All outputs actionable in their vocabulary.**
+- [ ] **C-099 check (Decision Consequence Map): does Section 3.25 exist? Is every consequential decision type classified as DETERMINISTIC_REQUIRED or CONSISTENT_SUFFICIENT? Does every DETERMINISTIC_REQUIRED decision declare an independent_verification_method? If no consequential decisions exist, `decision_consequence_map: NOT_APPLICABLE` stated with reason.**
 - [ ] **C-048 check (Information Non-Exploitation): does any Skill use the agent's information advantage against the customer's interests — steering them toward higher-tier plans they don't need, continuing execution of a known-failing strategy, or optimising for platform metrics at the expense of customer outcomes? If yes → redesign the Skill. C-048 violations cannot be fixed in the Decision Space — they require redesigning the Skill's objective.**
 - [ ] **C-049 check (Honest Limitation Disclosure): does every Self-Governance Diagnosis reasoning step include a C-049 check — "Can I deliver this customer's goal with my current capabilities? If not, do I say so explicitly?" The Self-Governance Escalation (Section 3.14.4) must include `c049_honest_assessment` in its output schema.**
 - [ ] **C-050 check (Strategic Cognition): does Section 3.15 exist in this spec? Are both SKILL_ACTIVATION_PLAN and PERFORMANCE_ASSESSMENT prompts catalogued? Are trigger events declared in the Professional Template? An agent without strategic cognition is a schedule, not a professional.**
@@ -1025,6 +1026,51 @@ STAGE 4 — SKILL IMPLEMENTATION (Standard Section 15 Type 1 flow)
 
 ---
 
+## 9k. Section 3.25 — Decision Consequence Map (MANDATORY — every agent)
+
+> **Why required (C-099):** Every agent makes decisions of different consequence. A financial commitment and a content draft require different verification depth before they are committed. Without a declared Decision Consequence Map, the agent has no constitutional basis for routing decisions to the correct verification level — every decision is treated uniformly, which either over-blocks autonomous action or under-protects irreversible outcomes. C-099 makes the DCM a constitutional obligation. This section is gate-enforced (Activation Gate Section 16). Missing this section = GATE BLOCKED.
+
+### 3.25.1 Decision Consequence Map (MANDATORY)
+
+Classify every consequential decision type this agent makes. Use the consequence of error as the sole classification criterion — not complexity.
+
+```yaml
+decision_consequence_map:
+  - decision_type: "[name — e.g. customer_charge, contract_commit]"
+    category: DETERMINISTIC_REQUIRED  # irreversible / financial / constitutional / external commitment
+    independent_verification_method: "[what verifies this — e.g. CCT-DCM-03 audit log check, dual-entry ledger]"
+    constitutional_basis: "[C-XXX]"
+
+  - decision_type: "[name — e.g. content_draft, code_generation, improvement_proposal]"
+    category: CONSISTENT_SUFFICIENT   # reversible / retryable / advisory
+    verification_method: "[what catches errors — e.g. verification loop, approval gate, CCT]"
+    constitutional_basis: "[C-XXX]"
+```
+
+**Classification rule:** if a wrong output causes harm that cannot be corrected by a subsequent run → DETERMINISTIC_REQUIRED. If a wrong output is caught by the verification loop or escalation protocol without harm → CONSISTENT_SUFFICIENT.
+
+**Undeclared decision types:** any decision type not in the DCM must return BLOCKED via CE.ValidateAction. The agent must escalate to Founder before proceeding with an undeclared decision type.
+
+### 3.25.2 CE.ValidateAction DCM Integration
+
+Every consequential action must invoke CE.ValidateAction with the decision_type parameter before execution:
+
+```python
+# DETERMINISTIC_REQUIRED path — must obtain verification record before commit
+result = await CE.ValidateAction(action="skill.decision_type", dcm_category="DETERMINISTIC_REQUIRED")
+# result == PROCEED_DETERMINISTIC → invoke independent_verification_method → then commit
+
+# CONSISTENT_SUFFICIENT path — may proceed autonomously
+result = await CE.ValidateAction(action="skill.decision_type", dcm_category="CONSISTENT_SUFFICIENT")
+# result == PROCEED_AUTONOMOUS → execute → self-certify output
+```
+
+### 3.25.3 Constitutional Checklist Addition
+
+- [ ] **C-099 check (Decision Consequence Map): does Section 3.25 exist? Is every consequential decision type classified as DETERMINISTIC_REQUIRED or CONSISTENT_SUFFICIENT? Does every DETERMINISTIC_REQUIRED decision declare an independent_verification_method? If NOT applicable (agent makes zero consequential decisions), state `decision_consequence_map: NOT_APPLICABLE` with reason.**
+
+---
+
 ## 9i. Section 3.23 — Agent Interview Mode (MANDATORY — every agent)
 
 > **Why required:** WAOOAW's primary customer acquisition channel is the agent demonstrating its own expertise before the customer commits. Every agent must define how a prospective customer can "interview" it — have a live, uninstructed conversation — on WhatsApp or the WAOOAW portal. The agent IS the marketing. This section is gate-enforced (Activation Gate Section 15). Missing this section = GATE BLOCKED.
@@ -1757,8 +1803,21 @@ SECTION 15 — INTERVIEW MODE GATE (MANDATORY — every agent)
           FAIL condition: Section 3.23 absent → agent cannot be marketed → GATE BLOCKED
           FAIL condition: conversion_cta uses urgency or pressure language → C-048 violation
 
+SECTION 16 — DECISION CONSEQUENCE MAP GATE (C-099 — MANDATORY — every agent)
+[ ] 16.1  Section 3.25 (Decision Consequence Map) exists in the spec OR
+         `decision_consequence_map: NOT_APPLICABLE` stated with reason
+[ ] 16.2  Every consequential decision type is classified as either
+         DETERMINISTIC_REQUIRED or CONSISTENT_SUFFICIENT — no unclassified decisions
+         FAIL condition: any consequential decision type absent from DCM → GATE BLOCKED
+[ ] 16.3  Every DETERMINISTIC_REQUIRED decision declares an independent_verification_method
+         FAIL condition: DETERMINISTIC_REQUIRED without verification method → C-099 + C-023 violation
+[ ] 16.4  Every DETERMINISTIC_REQUIRED decision has a CE.ValidateAction call declared in
+         the agent's execution pattern before the action is committed
+         FAIL condition: DETERMINISTIC_REQUIRED action without CE.ValidateAction → GATE BLOCKED
+[ ] 16.5  C-099 check present in the Constitutional Checklist section
+
 OVERALL GATE RESULT:
-  All 15 sections PASS → AGENT MAY BE ACTIVATED
+  All 16 sections PASS → AGENT MAY BE ACTIVATED
   Any section FAIL → CONSTITUTIONAL BLOCKER → raise blocker in blockers/ → agent NOT activated
 ```
 [ ] 12.1  Section 3.18 exists in the spec OR `signal_intelligence: NOT_APPLICABLE` with reason stated
