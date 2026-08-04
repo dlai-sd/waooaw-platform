@@ -1057,6 +1057,11 @@ consecutive_failures: 2
 | `28824b6` | VERSION 1.26.0; CHANGELOG v1.26.0; knowledge/index.md Claims 76→85; PROJECT_STATE checkpoint |
 | `45d6cfe` | Track 1 complete: CCT-DCM-01/02/03 (60 PASS 1 SKIP); CE proto DCM enums; ADR-040; platform-it-expert DCM uplift |
 | `c1a6f5e` | reasoning-sprint-analyst v1.4 — Activation Gate PASS all 16 sections |
+| `bd88f3e` | PROJECT_STATE checkpoint — Track 3G RSA gate pass |
+| `4092bc0` | digital-marketing-professional v3.1 — Activation Gate PASS all 16 sections |
+| `1a27e6c` | agricultural-advisor v2.8 — Activation Gate PASS all 16 sections |
+| `78647de` | private-tutor v1.1 — Activation Gate PASS all 16 sections |
+| `906deee` | trading-professional v1.8 — Activation Gate PASS all 16 sections |
 
 ### Constitutional delta this session (full sprint-027)
 
