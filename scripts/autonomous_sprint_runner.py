@@ -77,6 +77,7 @@ from runner.git_ops import run, git, gh, set_output, record_evidence  # shell he
 from runner.sprint_ops import (                                         # sprint lifecycle
     parse_sprint_state, check_platform_phase_gate, update_sprint_state, run_runner_integrity_checks,
     parse_wc_tasks, update_task_status,
+    write_run_heartbeat,
 )
 # Namespace injection — required by run_runner_integrity_checks(globals())  # noqa: F401
 from runner.system_prompts import (                                     # noqa: F401
@@ -483,6 +484,27 @@ TASK_HANDLERS = {
 }
 
 
+# ── ADR-041 P1a: SKIPPED_IDEMPOTENT helper ───────────────────────────────────
+
+def _all_outputs_present_and_compile(subtasks: list) -> bool:
+    """Return True if every output_file from all subtasks exists and passes
+    py_compile.  Used to skip WC tasks that were already completed in a prior
+    run (SKIPPED_IDEMPOTENT mode — see ADR-041 §5).
+    """
+    import py_compile
+    for st in subtasks:
+        for rel_path in getattr(st, "output_files", []):
+            fpath = REPO_ROOT / rel_path
+            if not fpath.exists():
+                return False
+            if str(fpath).endswith(".py"):
+                try:
+                    py_compile.compile(str(fpath), doraise=True)
+                except py_compile.PyCompileError:
+                    return False
+    return True
+
+
 # ── Main execution ────────────────────────────────────────────────────────────
 
 def main() -> int:
@@ -686,6 +708,9 @@ def main() -> int:
             except Exception:
                 pass
         update_sprint_state(sprint_status="IN_PROGRESS")
+        # ADR-041 P2a: write OPEN heartbeat so container kills are detectable
+        _hb_run_id = _MONITOR_SIGNAL.get("run_id") or os.environ.get("GITHUB_RUN_ID", "local")
+        write_run_heartbeat(_hb_run_id, sprint)
 
     # ── Step 6: Execute each task ─────────────────────────────────────────
     tasks_done = []
@@ -745,6 +770,15 @@ def main() -> int:
                     tasks_not_implemented.append(task)
                     continue
                 print(f"  ✅ C-086 gate: {sim_msg}")
+                # ADR-041 P1a: SKIPPED_IDEMPOTENT — all outputs exist & compile → skip LLM
+                if _all_outputs_present_and_compile(handler["subtasks"]):
+                    print(f"  ⏭  SKIPPED_IDEMPOTENT: {task} — all outputs already present and compile-clean")
+                    tasks_done.append(task)
+                    update_task_status(sprint, task, "skipped_idempotent")
+                    all_completed_subtask_ids.extend([st.id for st in handler["subtasks"]])
+                    continue
+                # ADR-041 P0a: mark in-progress before any LLM call so container kills are detectable
+                update_task_status(sprint, task, "in-progress")
                 success = _execute_task_decomposed(
                     task, handler["subtasks"], _MONITOR_SIGNAL,
                     infra_error_tasks=infra_error_tasks,
@@ -756,7 +790,7 @@ def main() -> int:
                 _sr = _MONITOR_SIGNAL.get("subtask_results", {})
                 for _st in handler["subtasks"]:
                     _outcome = _sr.get(_st.id, {}).get("result", "")
-                    if _outcome in ("FAIL", "SKIPPED", "BLOCKED_SKELETON_MISSING"):
+                    if _outcome in ("FAIL", "SKIPPED", "SKIPPED_CASCADE", "BLOCKED_SKELETON_MISSING"):
                         all_failed_subtask_ids.append(_st.id)
                     else:
                         all_completed_subtask_ids.append(_st.id)
@@ -771,6 +805,8 @@ def main() -> int:
                 print(f"  DONE: {task}")
             else:
                 print(f"  FAILED: {task}")
+                # ADR-041 P1b: record failure type so next RESUME skips cascade dependents
+                update_task_status(sprint, task, "failed_structural")
                 # RC#1: Halt on scaffold failure (C-084 Step Dependency Ordering)
                 if task == scaffold_run_task:
                     print(f"  HALT: scaffold task {task} failed — downstream tasks cannot build. "

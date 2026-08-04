@@ -1098,8 +1098,8 @@ def execute_subtask_chain(
 
         if unmet_failed:
             # Dependency failed — skip this subtask (can't succeed without its inputs)
-            print(f"  [{st.id}] SKIPPED — dependency failed: {unmet_failed}")
-            emit_subtask_signal(task_id, st.id, "SKIPPED", monitor_signal)
+            print(f"  [{st.id}] SKIPPED_CASCADE — dependency failed: {unmet_failed}")
+            emit_subtask_signal(task_id, st.id, "SKIPPED_CASCADE", monitor_signal)
             failed.append(st.id)  # mark as failed so its dependents also skip
             continue
 

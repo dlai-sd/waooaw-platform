@@ -7,6 +7,7 @@ Sprint state operations: parse, gate checks, spec validation, integrity checks.
 from __future__ import annotations
 
 import inspect
+import json
 import re
 import sys
 from datetime import datetime, timezone
@@ -62,7 +63,12 @@ def parse_wc_tasks(sprint: str) -> dict[str, list[str]]:
 
     # Task id pattern: WCxxx-NNa (e.g. WC027-01a, WC028-03)
     task_id_pat = re.compile(r"^WC\d+-\d+[a-z]?$")
-    known_statuses = {"pending", "done", "failed", "in-progress"}
+    # ADR-041: 7-state task machine — map new statuses to canonical buckets
+    known_statuses = {
+        "pending", "done", "failed", "in-progress",
+        "failed_structural", "failed_transient", "failed_terminal",
+        "skipped_cascade", "skipped_idempotent",
+    }
 
     result: dict[str, list[str]] = {"pending": [], "done": [], "failed": []}
 
@@ -80,11 +86,13 @@ def parse_wc_tasks(sprint: str) -> dict[str, list[str]]:
         status = cells[-3].strip().lower()
         if status not in known_statuses:
             status = "pending"
-        if status == "done":
+        if status in ("done", "skipped_idempotent"):
             result["done"].append(task_id)
-        elif status == "failed":
+        elif status in ("failed", "failed_structural", "failed_transient",
+                        "failed_terminal", "skipped_cascade"):
             result["failed"].append(task_id)
         else:
+            # pending, in-progress (container-killed mid-task) → re-runnable
             result["pending"].append(task_id)
 
     return result
@@ -114,7 +122,9 @@ def update_task_status(sprint: str, task_id: str, status: str) -> None:
         # Replace status and completed_at — the last two data cells before trailing |
         # Pattern: match known status values to avoid false matches in scope text
         new_line = re.sub(
-            r"\|\s*(?:pending|done|failed|in-progress|🔲 TODO)\s*\|\s*[^\|]*\s*\|\s*$",
+            r"\|\s*(?:pending|done|failed|in-progress|failed_structural|"
+            r"failed_transient|failed_terminal|skipped_cascade|skipped_idempotent|"
+            r"🔲 TODO)\s*\|\s*[^\|]*\s*\|\s*$",
             f"| {status} | {completed_at} |\n",
             line,
         )
@@ -289,3 +299,56 @@ def run_runner_integrity_checks(
             errors.append("parse_llm_files boundary enforcement failed for constitution/")
 
     return len(errors) == 0, errors
+
+
+# ── ADR-041 P2a: Heartbeat file ────────────────────────────────────────────────
+
+_HEARTBEAT_PATH = REPO_ROOT / "logs" / "run-heartbeat.json"
+
+
+def write_run_heartbeat(run_id: str, sprint: str) -> None:
+    """Write OPEN heartbeat at run start (ADR-041 §6 — container-kill detection).
+
+    Pattern: { status: 'OPEN', run_id, sprint, started_at }
+    A heartbeat with status=OPEN on the next run means the prior container
+    was killed before CLOSE completed (P2b RESUME detection).
+    """
+    _HEARTBEAT_PATH.parent.mkdir(exist_ok=True)
+    _HEARTBEAT_PATH.write_text(
+        json.dumps({
+            "status": "OPEN",
+            "run_id": run_id,
+            "sprint": sprint,
+            "started_at": datetime.now(tz=timezone.utc).isoformat(),
+        }, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+
+
+def close_run_heartbeat(run_id: str, sprint: str, result: str) -> None:
+    """Write CLOSED heartbeat at run end — signals clean completion.
+
+    Called by complete_sprint.py as the very last step before exit.
+    A missing close (status still OPEN) indicates container kill.
+    """
+    _HEARTBEAT_PATH.parent.mkdir(exist_ok=True)
+    _HEARTBEAT_PATH.write_text(
+        json.dumps({
+            "status": "CLOSED",
+            "run_id": run_id,
+            "sprint": sprint,
+            "result": result,
+            "closed_at": datetime.now(tz=timezone.utc).isoformat(),
+        }, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+
+
+def read_run_heartbeat() -> dict:
+    """Return the current heartbeat dict, or {} if no heartbeat file exists."""
+    if not _HEARTBEAT_PATH.exists():
+        return {}
+    try:
+        return json.loads(_HEARTBEAT_PATH.read_text(encoding="utf-8").strip())
+    except (json.JSONDecodeError, OSError, UnicodeDecodeError):
+        return {}
