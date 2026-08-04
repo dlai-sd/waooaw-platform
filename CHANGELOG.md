@@ -8,6 +8,45 @@ types: `feat` | `fix` | `constitutional` | `cct` | `chore` | `refactor` | `secur
 
 ---
 
+## [1.27.0] — 2026-08-04 (Pipeline Hardening + C-100 + WC-028 Stage-Set)
+
+### Constitutional
+
+- **C-100 ratified:** CORS Security Obligation — HTTP services MUST NOT combine `allow_origins=["*"]` with `allow_credentials=True` (OWASP A05). Wildcard origin requires `allow_credentials=False`; credentials require explicit origin allowlist.
+- **Claims count:** 97 ratified (C-001→C-100, gaps at C-087/C-092/C-093)
+
+### Agent Spec
+
+- **Platform IT Expert (INST-010) Skill 15:** YAML Authoring and Validation — authoring standards, embedded script rules for GHA `run: |` blocks, validation gate commands, common defect table
+- **Skill catalogue updated:** 14 → 15 SDLC Skills
+
+### Fix (CI/Pipeline)
+
+- **GHA graceful exit path (3 defects):** `halt_check` step now has `if: always()` — outputs always emitted even when health check fails; new `Increment consecutive_failures` step fires on health check failure; `SPRINT_RESULT` now reports `FAILED` not `UNKNOWN` on pre-flight error
+- **env_validator namespace package detection:** `_collect_local_modules()` now scans conftest sys.path-injected directories for namespace packages (Python 3.3+ dirs without `__init__.py`) — prevents false-positive third-party import failures for local service packages
+- **UDCP LOGIC_FILLER idempotency:** `_all_outputs_present_and_compile()` rejects files containing `# [WAOOAW_LOGIC_FILLER_START]` — prevents skipped_idempotent false positives
+- **C-100 LLM enforcement:** CORS forbidden pattern added to `_PYTHON_FORBIDDEN_PATTERNS` in every UDCP code generation prompt
+- **azure/get-keyvault-secrets replaced:** Abandoned action (only v1 existed) replaced with inline `az keyvault secret show` across all 3 GHA jobs
+
+### Fix (WBE — WC-027 post-run audit)
+
+- **SEC-01:** `allow_origins=["*"]` + `allow_credentials=True` → fixed to `allow_credentials=False` + restricted methods/headers (OWASP A05)
+- **BUG-01/02:** Stale FastAPI app init in `models.py` and `bundle_engine.py` removed
+- **BUG-03:** 14 LOGIC_FILLER stub test functions replaced with 17 real tests (8 in test_markup.py, 9 in test_models.py)
+- **BUG-04:** `BundleEngine` restored to inherit `IMarkupEngine` ABC; `skeleton/wbe_interfaces.py` recovered from git
+- **skeleton/__init__.py:** Added — `env_validator` now correctly classifies `skeleton` as a local package
+
+### CCT
+
+- **SIM-PL-002 for WC028-01/02/03:** Pre-execution simulations with PASS verdict committed — C-086 gate unblocked for WC-028 sprint
+
+### Chore
+
+- **Sprint advanced:** WC-027 → WC-028 (Meter + Alert Engine)
+- **knowledge/index.md:** C-100 row added
+
+---
+
 ## [1.26.0] — 2026-08-04 (Track 1 Constitutional — C-099 Decision Consequence Map)
 
 ### Constitutional

@@ -1188,5 +1188,44 @@ Enforcement added to `_PYTHON_FORBIDDEN_PATTERNS` in every UDCP LLM prompt.
 
 ---
 
+## SESSION CHECKPOINT — 2026-08-04 (Pipeline Hardening + WC-028 Stage-Set)
+
+**Session type:** Pipeline defect resolution + constitutional authoring + sprint staging
+**Office:** Platform IT Expert (INST-010)
+**Status:** CHECKPOINT — WC-028 sprint triggered (run 30935141093); resuming tomorrow
+
+### Commits this session (main) — full list
+
+| Commit | Description |
+|---|---|
+| `07ce06c` | fix(ci): replace azure/get-keyvault-secrets with inline az CLI |
+| `810cf81` | fix(wbe): WC-027 code quality — 5 defects + SEC-01 + 17 real tests |
+| `f6b022d` | constitutional(security): C-100 CORS + UDCP LOGIC_FILLER idempotency fix |
+| `5fc82b5` | chore(state): advance sprint WC-027→WC-028; session checkpoint |
+| `8989e5a` | cct(wbe): SIM-PL-002 PASS for WC028-01/02/03 — C-086 gate unblocked |
+| `d0768a3` | fix(ci): 3 graceful exit defects — halt_check always runs, consecutive_failures, SPRINT_RESULT |
+| `f32f193` | agent(spec): Platform IT Expert Skill 15 — YAML Authoring and Validation |
+| `1781362` | fix(pipeline): skeleton __init__.py + env_validator namespace package detection |
+| `(current)` | chore: VERSION 1.27.0; CHANGELOG v1.27.0; session checkpoint; RAG index refresh |
+
+### Pipeline defects closed this session
+
+| Defect | Fix | Commit |
+|---|---|---|
+| azure/get-keyvault-secrets@v3 doesn't exist | Replaced with inline az CLI (all 3 jobs) | `07ce06c` |
+| halt_check skipped on health_check failure | `if: always()` on halt_check step | `d0768a3` |
+| consecutive_failures not incremented on pre-flight fail | New increment step with `if: steps.health_check.outcome == 'failure'` | `d0768a3` |
+| SPRINT_RESULT = UNKNOWN on pre-flight failure | Expression now detects `needs.preflight.result == 'failure'` → FAILED | `d0768a3` |
+| env_validator blind to namespace packages | `_collect_local_modules()` scans conftest sys.path injections | `1781362` |
+| UDCP skipped_idempotent on LOGIC_FILLER stub files | `_all_outputs_present_and_compile()` rejects files with filler markers | `f6b022d` |
+
+### Sprint state at session close
+
+- `current_sprint: WC-028`, `sprint_status: AUTHORIZED`, `consecutive_failures: 0`
+- All 3 pre-flight gates pass locally: C-086 ✅, env_validator ✅, dependency chain ✅
+- WC-028 run 30935141093 in progress — check result at next session start
+
+---
+
 *Session history archived to `constitution/PROJECT_STATE_ARCHIVE.md`*
 *Agents do not need to read the archive — it is human reference only.*
