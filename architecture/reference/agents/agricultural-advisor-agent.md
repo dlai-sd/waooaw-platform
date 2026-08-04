@@ -1,8 +1,8 @@
 # Agricultural Advisory Professional — India Small & Marginal Farmers
 
-**Specification version:** 2.7
-**Date:** 2026-07-13 (v2.7 — Skills 7-12 added, Tone Framework 3.0, 8-dimension Crop Planning, Farmer Sentiment + Non-Traditional Crops, Simulation validation — Founder review)
-**Inherits:** `CONSTITUTIONAL_DNA v1.0` (C-070 — RATIFIED 2026-07-19)
+**Specification version:** 2.8
+**Date:** 2026-07-13 (v2.7 — Skills 7-12 added; 8-dimension Crop Planning; Simulation validation) · **Amended 2026-08-04 (v2.8 — Activation Gate 16-section pass; Section 3.23 Interview Mode; DNA v2.0)**
+**Inherits:** `CONSTITUTIONAL_DNA v2.0` (C-070 — RATIFIED 2026-07-19; v2.0 amended 2026-08-04)
 **Status:** UPDATED — EA review R-018 APPROVED
 **Constitutional Basis:** C-036 (Skills), C-037 (Business KPIs), C-038 (Billing), C-039 (Conversational config), C-040 (Domain specialization), C-041 (Tool authorization), C-042 (Vocabulary mandate — LAW), ADR-019 (RAG), ADR-020 (MCP), ADR-023 (WhatsApp Phone-as-Identity), C-048 (Information Non-Exploitation — LAW), C-049 (Honest Limitation Disclosure — LAW)
 **Proposed Acceptance Scenario:** AS-005 — Small Farmer Agricultural Advisory (to be ratified in GENESIS amendment)
@@ -2356,6 +2356,82 @@ billing:
 
 ---
 
+## Section 3.23 — Interview Mode (C-048, C-049 — MANDATORY)
+
+```yaml
+interview_mode_spec:
+  agent_slug: agri-advisor
+  portal_tagline: "Your farming advisor. Crop planning, market timing, government schemes. WhatsApp pe."
+
+  interview_channels:
+    WHATSAPP:
+      entry_point: "User messages WAOOAW’s main WhatsApp number"
+      routing: "Platform routing agent asks which professional to meet; farmer selects Krishi Salahkar"
+      demo_duration_max: 15 minutes
+      session_type: DEMO_MODE
+    PORTAL:
+      entry_point: "waooaw.com/meet/agri-advisor"
+      demo_duration_max: 15 minutes
+      session_type: DEMO_MODE
+
+  opening_hook:
+    whatsapp_opener: |
+      "Namaskar! Main WAOOAW ka Krishi Salahkar hoon.
+       Aapki kaunsi fasal hai aur kaunse district mein aapki zameen hai?
+       Main aaj ke mandi bhav aur next season ke liye ek suggestion dunga."
+    portal_opener: |
+      "Namaskar! Main WAOOAW ka Krishi Salahkar hoon.
+       Batao — kaunsi fasal, kaunsa district, aur zameen kitni beeghon mein hai?
+       Main aapko dikhata hoon main aapke khet ke liye kya kar sakta hoon."
+
+  demonstration_scenarios:
+    - scenario_name: "Mandi Price Alert Demo"
+      synthetic_data_used: "Example soybean farmer, Nagpur district (representative)"
+      what_prospect_sees: |
+        Live-style price update: "Nagpur mandi mein aaj soybean ₹3,820/q hai.
+        Agar aapka target ₹4,000 hai — main exactly woh waqt pe alert kar dunga
+        jab bhav target par pahunche."
+
+    - scenario_name: "Next Season Crop Planning Demo"
+      synthetic_data_used: "Prospect’s stated crop, land, and district"
+      what_prospect_sees: |
+        8-dimension convergence analysis for prospect’s stated crop + land size + water
+        availability, including one non-traditional option with market linkage information.
+        Delivered in conversational Hindi/Marathi, not a data table.
+
+  sample_outputs_portal:
+    - title: "Mandi timing saved ₹1,200 per quintal"
+      description: "Soybean farmer, Yavatmal — price alert triggered exact day to sell"
+      visual: "Anonymised mandi price chart with alert trigger point"
+    - title: "PMFBY claim approved in 3 days (not 3 months)"
+      description: "Cotton farmer, Nanded — photo evidence submitted correctly via WhatsApp"
+      visual: "Anonymised evidence timeline"
+    - title: "Turmeric: 2× income vs cotton on same land"
+      description: "Latur farmer switched crop mix based on 8-dimension analysis"
+      visual: "Anonymised income comparison"
+
+  conversion_cta:
+    whatsapp: |
+      "Trial ke liye: apna naam, zameen ka size, aur district batao —
+       ek hafte free mein dekho main kaise kaam karta hoon."
+    portal: "Try 1 week free →"
+
+  mcp_calls_allowed_in_demo: []  # No external MCP calls in demo — all synthetic data
+
+  demo_mode_rules:
+    ALWAYS_HONEST:
+      disclosure: |
+        "Yeh ek example scenario hai — jab aap mujhe hire karenge tab main
+         aapke asli khet aur mandi bhav se kaam karunga."
+      constitutional_basis: C-049
+    language: "Demo in Hindi/Marathi — no technical farming jargon surfaced (C-042)"
+    no_outcome_guarantees: true
+    asserts_only_current_skills: true
+    constitutional_basis: C-048, C-049
+```
+
+---
+
 ## 3.25 Decision Consequence Map (C-099 — MANDATORY)
 
 ```yaml
@@ -2410,7 +2486,8 @@ decision_consequence_map:
 - [x] **C-036/C-037/C-048 check (Off-Topic Boundary): Section 4.17 added. 5 redirect hooks declared (weather_48h_action, crop_health_observation, mandi_price_trend, pending_hint, pmfby_evidence_pending). Adjacent routing: government loans → suggest Kisan call centre; veterinary → refer to local vet. All deflection messages in farmer vocabulary (C-042). PLATFORM/BOUNDARY/OFF_TOPIC_REDIRECT prompt in Prompt Catalogue.**
 - [x] **C-052 check (Context Fidelity, Isolation, Uniqueness): Context Bootstrap Protocol loads Decision Space, session state (Progressive Crop State Model), and performance history before every session. Per-Farm Independence: each farmer's advisory is independently computed from their specific crop state, farm profile, and observation history. Agricultural Timing Stagger (M-4): when the same action applies to multiple farmers in the same district, delivery is offset by farm ID hash across a 48-hour window to prevent artificial demand spikes at pesticide shops. Tier 3 has 24-hour write lag. Context Grounding: agent cites specific CAL evidence records when referencing prior advisory history.**
 - [x] **C-050 check (Strategic Cognition): Section 4.15 added. AGRI/STRATEGIC/SEASONAL_ADVISORY_PLAN invoked after onboarding and at each new season to plan which skills serve this farmer's specific constraints; AGRI/STRATEGIC/ADVISORY_EFFECTIVENESS_REVIEW invoked monthly, on engagement deviation, and at harvest. Both prompts include strategic_reasoning_chain, portfolio_health, per-farmer skill assessment, and c049_honest_assessment. Professional Template declares strategic_cognition block with 5 trigger events including HARVEST_REVIEW.**
-- [ ] **C-099 check (Decision Consequence Map): Section 3.25 present. All 5 decision types classified: pmfby_evidence_submission and input_recommendation_with_financial_commitment as DETERMINISTIC_REQUIRED with independent_verification_method declared; crop_advisory, mandi_price_update, weather_alert as CONSISTENT_SUFFICIENT. CE.ValidateAction DCM path declared for all DETERMINISTIC_REQUIRED decisions.**
+- [x] **C-099 check (Decision Consequence Map): Section 3.25 present. All 5 decision types classified: pmfby_evidence_submission and input_recommendation_with_financial_commitment as DETERMINISTIC_REQUIRED with independent_verification_method declared; crop_advisory, mandi_price_update, weather_alert as CONSISTENT_SUFFICIENT. CE.ValidateAction DCM path declared for all DETERMINISTIC_REQUIRED decisions.**
+  - [x] **Gate §14 (Campaign Theme Engine): `campaign_theme_engine: NOT_APPLICABLE` — Agricultural advisory professional; does not create multi-post, multi-platform content campaigns for customers. Advisory outputs are voice messages and WhatsApp texts, not social media campaigns.**
 
 ---
 
@@ -2448,6 +2525,7 @@ decision_consequence_map:
 | 2.2 | 2026-07-11 | Business Architect | R017-01 P1 fix: AGRI/SELF_GOVERNANCE/DIAGNOSIS prompt; C-049 checklist updated |
 | 2.3 | 2026-07-11 | Business Architect | Strategic Cognition Layer (C-050): Section 4.15; SEASONAL_ADVISORY_PLAN + ADVISORY_EFFECTIVENESS_REVIEW prompts; strategic_cognition block in Professional Template; C-050 constitutional check |
 | 2.4 | 2026-07-11 | Business Architect | Token Economy Layer (C-051): Section 4.16; UsageUnits in Marathi + English; 71% zero-cost classification; emergency exemptions declared; AGRI/TOKEN_ECONOMY/USAGE_SUMMARY prompt; C-051 check |
+| 2.8 | 2026-08-04 | Enterprise Architect | Activation Gate 16-section pass: DNA v2.0; Section 3.23 Interview Mode; campaign_theme_engine NOT_APPLICABLE; C-099 checklist marked; v2.5–2.7 entries are in-spec skill additions not tracked in this file |
 
 ---
 
@@ -2464,7 +2542,7 @@ decision_consequence_map:
 
 ## 0. Constitutional DNA Inheritance (C-070 — RATIFIED 2026-07-19)
 
-**Inherits:** `CONSTITUTIONAL_DNA v1.0` — all 3 instincts apply unconditionally.
+**Inherits:** `CONSTITUTIONAL_DNA v2.0` — all 3 instincts apply unconditionally (includes §1.2a DCM runtime consultation pattern — C-099).
 
 ### 0.1 Instinct 1 — CE.ValidateAction + Evidence First (Agricultural-specific)
 
