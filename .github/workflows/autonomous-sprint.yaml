@@ -76,9 +76,9 @@ jobs:
       platform_phase: ${{ steps.halt_check.outputs.platform_phase }}
       consecutive_failures: ${{ steps.halt_check.outputs.consecutive_failures }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4.2.2
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5.4.0
         with:
           python-version: '3.12'
 
@@ -302,7 +302,7 @@ jobs:
 
       - name: Upload sprint index as artifact
         if: steps.halt_check.outputs.halt == 'false'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4.6.2
         with:
           name: sprint-context-index
           path: sprint-context/index.json
@@ -327,24 +327,24 @@ jobs:
       scaffold_failed:   ${{ steps.runner.outputs.scaffold_failed }}
       infra_error_tasks: ${{ steps.runner.outputs.infra_error_tasks }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4.2.2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5.4.0
         with:
           python-version: '3.12'
 
       # P1-02: .NET 9 SDK — required for WC-012+ (CE + BP skeleton tasks)
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v4.3.1
         with:
           dotnet-version: '9.0.x'
 
       # E3 FIX: NuGet package cache — avoids cold-restore on every runner VM spin
       # Saves ~8-10s per run on dotnet build. Cache keyed on .csproj hash.
       - name: Cache NuGet packages (E3 — cold-restore elimination)
-        uses: actions/cache@v4
+        uses: actions/cache@v4.2.3
         with:
           path: ~/.nuget/packages
           key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
@@ -372,7 +372,7 @@ jobs:
       # G2 FIX: Login to Azure via OIDC then fetch all secrets from Key Vault
       # No long-lived credentials stored anywhere — 5-minute OIDC token only
       - name: Login to Azure (OIDC)
-        uses: azure/login@v2
+        uses: azure/login@v3
         with:
           client-id:       ${{ vars.AZURE_CLIENT_ID }}
           tenant-id:       ${{ vars.AZURE_TENANT_ID }}
@@ -380,7 +380,7 @@ jobs:
 
       - name: Fetch secrets from Azure Key Vault
         id: kv_secrets
-        uses: azure/get-keyvault-secrets@v1
+        uses: azure/get-keyvault-secrets@v3
         with:
           keyvault: ${{ vars.AZURE_KEYVAULT_NAME }}
           secrets: 'ANTHROPIC-API-KEY, GH-APP-ID, GH-APP-INSTALLATION-ID, GH-APP-PRIVATE-KEY, GOOGLE-VERTEX-SA-KEY'
@@ -425,7 +425,7 @@ jobs:
 
       - name: Download sprint index artifact
         if: steps.pr_check.outputs.skip != 'true'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v4.3.0
         with:
           name: sprint-context-index
           path: sprint-context/
@@ -547,7 +547,7 @@ jobs:
 
       - name: Upload monitor signal as artifact
         if: always()     # upload even if runner failed — partial signals are still useful
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4.6.2
         with:
           name: sprint-monitor-signal
           path: sprint-context/monitor-signal.json
@@ -598,8 +598,8 @@ jobs:
     needs: [preflight, execute]
     if: always()
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v4.2.2
+      - uses: actions/setup-python@v5.4.0
         with:
           python-version: '3.12'
       - run: pip install requests -q
@@ -637,9 +637,9 @@ jobs:
       needs.execute.outputs.pr_number != '' &&
       (needs.execute.outputs.result == 'SUCCESS' || needs.execute.outputs.result == 'PARTIAL')
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4.2.2
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5.4.0
         with:
           python-version: '3.12'
 
@@ -647,7 +647,7 @@ jobs:
         run: pip install requests PyJWT cryptography -q
 
       - name: Login to Azure (OIDC) and fetch reviewer credentials
-        uses: azure/login@v2
+        uses: azure/login@v3
         with:
           client-id:       ${{ vars.AZURE_CLIENT_ID }}
           tenant-id:       ${{ vars.AZURE_TENANT_ID }}
@@ -655,7 +655,7 @@ jobs:
 
       - name: Fetch reviewer secrets from Key Vault
         id: kv_review
-        uses: azure/get-keyvault-secrets@v1
+        uses: azure/get-keyvault-secrets@v3
         with:
           keyvault: ${{ vars.AZURE_KEYVAULT_NAME }}
           secrets: 'GH-APP-ID, GH-APP-INSTALLATION-ID, GH-APP-PRIVATE-KEY, ANTHROPIC-API-KEY'
@@ -691,9 +691,9 @@ jobs:
       id-token: write              # OIDC for KV secret fetch (ANTHROPIC key for auto-extend)
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4.2.2
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5.4.0
         with:
           python-version: '3.12'
 
@@ -701,7 +701,7 @@ jobs:
         run: pip install requests -q
 
       - name: Login to Azure (OIDC) for auto-extend key
-        uses: azure/login@v2
+        uses: azure/login@v3
         with:
           client-id:       ${{ vars.AZURE_CLIENT_ID }}
           tenant-id:       ${{ vars.AZURE_TENANT_ID }}
@@ -710,14 +710,14 @@ jobs:
 
       - name: Fetch ANTHROPIC key for advisor auto-extend
         id: kv_monitor
-        uses: azure/get-keyvault-secrets@v1
+        uses: azure/get-keyvault-secrets@v3
         with:
           keyvault: ${{ vars.AZURE_KEYVAULT_NAME }}
           secrets: 'ANTHROPIC-API-KEY'
         continue-on-error: true   # non-fatal — auto-extend skips gracefully without key
 
       - name: Download monitor signal artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v4.3.0
         with:
           name: sprint-monitor-signal
           path: sprint-context/
