@@ -35,6 +35,16 @@ def _collect_local_modules() -> set[str]:
                 local.add(py.stem)
         for init in root.rglob("__init__.py"):
             local.add(init.parent.name)
+
+    # Also detect namespace packages: dirs importable via conftest sys.path injection
+    # but lacking __init__.py (Python 3.3+ implicit namespace packages).
+    for conftest in (REPO_ROOT / "tests").rglob("conftest.py"):
+        for injected in _extract_sys_path_inserts(conftest):
+            if not injected.exists():
+                continue
+            for subdir in injected.iterdir():
+                if subdir.is_dir() and not subdir.name.startswith((".", "_")):
+                    local.add(subdir.name)
     return local
 
 
