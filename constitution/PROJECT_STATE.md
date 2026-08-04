@@ -1035,7 +1035,7 @@ platform_phase: IMPLEMENTATION
 current_sprint: WC-027
 sprint_status: AUTHORIZED
 branch: ib/009/sprint-027
-consecutive_failures: 2
+consecutive_failures: 0
 tasks_done:
   - WC027-01a
   - WC027-01b

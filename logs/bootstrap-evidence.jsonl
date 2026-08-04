@@ -172,3 +172,10 @@
 {"event": "AUTONOMOUS_SPRINT_STARTED", "timestamp": "2026-08-04T09:02:35.393682+00:00", "run_id": "", "stub_mode": true, "sprint": "WC-027", "branch": "ib/009/sprint-027", "tasks": ["WC027-02"]}
 {"event": "spec_gap_halt", "timestamp": "2026-08-04T09:04:18.038211+00:00", "run_id": "", "stub_mode": true, "task": "WC027-02c", "issue": "223", "gap": "UDCP COMPILE_GATE_FAILURE: tests/billing-engine/test_markup.py: invalid syntax (test_markup.py, line"}
 {"event": "SPRINT_TASKS_EXECUTED", "timestamp": "2026-08-04T09:04:18.112174+00:00", "run_id": "", "stub_mode": true, "sprint": "WC-027", "tasks_done": []}
+{"event": "AUTONOMOUS_SPRINT_STARTED", "timestamp": "2026-08-04T12:05:05.588610+00:00", "run_id": "", "stub_mode": true, "sprint": "WC-027", "branch": "ib/009/sprint-027", "tasks": ["WC027-01a", "WC027-01b", "WC027-02"]}
+{"event": "spec_gap_halt", "timestamp": "2026-08-04T12:06:21.927234+00:00", "run_id": "", "stub_mode": true, "task": "WC027-01ac", "issue": "224", "gap": "UDCP NO_FILE_BLOCKS: LLM response contained no <file> blocks"}
+{"event": "spec_gap_halt", "timestamp": "2026-08-04T12:07:32.553985+00:00", "run_id": "", "stub_mode": true, "task": "WC027-02a", "issue": "225", "gap": "UDCP LLM_IMPORT_VIOLATION: tests/billing-engine/test_markup.py: LLM invented imports not in scaffold"}
+{"event": "SPRINT_TASKS_EXECUTED", "timestamp": "2026-08-04T12:07:32.637840+00:00", "run_id": "", "stub_mode": true, "sprint": "WC-027", "tasks_done": []}
+{"event": "autonomous_halt_active", "timestamp": "2026-08-04T12:25:40.466378+00:00", "run_id": "", "stub_mode": true, "reason": "AUTONOMOUS_HALT=true in PROJECT_STATE.md"}
+{"event": "AUTONOMOUS_SPRINT_STARTED", "timestamp": "2026-08-04T12:26:45.779672+00:00", "run_id": "", "stub_mode": true, "sprint": "WC-027", "branch": "ib/009/sprint-027", "tasks": ["WC027-01a", "WC027-02"]}
+{"event": "SPRINT_TASKS_EXECUTED", "timestamp": "2026-08-04T12:26:45.832202+00:00", "run_id": "", "stub_mode": true, "sprint": "WC-027", "tasks_done": ["WC027-01a", "WC027-02"]}
