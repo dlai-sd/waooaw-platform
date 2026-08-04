@@ -110,14 +110,31 @@ def _extract_error_codes(error_text: str) -> list[str]:
 # ── Registry I/O ──────────────────────────────────────────────────────────────
 
 def append_to_registry(entries: list[dict], dry_run: bool = False) -> int:
-    """Append entries to logs/failure-registry.jsonl. Returns count appended."""
+    """Append entries to logs/failure-registry.jsonl. Returns count appended.
+
+    ADR-041 P0b — Idempotent CLOSE: if any entry with the same run_id already
+    exists in the registry (from a prior interrupted run), the entire batch is
+    skipped.  A partial write that was committed can never be re-appended.
+    """
     if not entries:
         return 0
+    run_id = entries[0].get("run_id", "")
     REGISTRY.parent.mkdir(exist_ok=True)
     if dry_run:
         for e in entries:
             print(f"  [DRY-RUN] registry ← {e['subtask_id']} {e['result']} {e['error_codes']}")
         return len(entries)
+    # Dedup guard: skip if this run_id is already recorded
+    if run_id and REGISTRY.exists():
+        existing_run_ids = {
+            entry.get("run_id", "")
+            for line in REGISTRY.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+            for entry in [json.loads(line)]
+        }
+        if run_id in existing_run_ids:
+            print(f"  [IDEMPOTENT-CLOSE] run_id={run_id} already in registry — skipping append")
+            return 0
     with REGISTRY.open("a", encoding="utf-8") as f:
         for entry in entries:
             f.write(json.dumps(entry, ensure_ascii=False) + "\n")
@@ -417,7 +434,7 @@ def complete_sprint(pr_number: int = 0, dry_run: bool = False) -> int:
 
     # From subtask_results (task_decomposer path — WC013+)
     for sid, info in subtasks.items():
-        if info.get("result") in ("FAIL", "SKIPPED"):
+        if info.get("result") in ("FAIL", "SKIPPED", "SKIPPED_CASCADE"):
             task_id = info.get("task_id", sid[:7])
             # Read error_codes and error_text from signal (captured by emit_subtask_signal)
             signal_codes = info.get("error_codes", [])
