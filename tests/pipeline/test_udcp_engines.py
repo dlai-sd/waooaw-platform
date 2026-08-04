@@ -1160,3 +1160,151 @@ class TestForceGreenfieldAndAppendSkipFixes:
         # APPEND SKIP must fire — src/ router files must still be protected
         assert not called, "APPEND SKIP should have fired for src/ router file"
         assert result.success
+
+
+class TestClosedWorldImportPrevention:
+    """CCT: preventive fix for LLM inventing imports during logic-fill (CMMI L5 RCA 2026-08-04)."""
+
+    def test_tis_artifact_contains_allowed_imports_field(self, tmp_path: Path) -> None:
+        """TIS artifact must carry allowed_imports as flat import strings (import budget)."""
+        from runner.udcp_grooming_engine import UDCPGroomingEngine
+
+        engine = UDCPGroomingEngine(repo_root=tmp_path)
+        scope = (
+            "Implement `src/billing-engine/markup/router.py` with "
+            "`GET /pricing/thread-catalog` and `POST /pricing/validate`. "
+            "Pydantic BaseModel for request/response."
+        )
+        tis = engine.generate_tis("T-cwi", scope, "WC-TEST",
+                                   required_output_files=["src/billing-engine/markup/router.py"])
+
+        artifact = tis["target_artifacts"][0]
+        assert "allowed_imports" in artifact, "TIS artifact must have allowed_imports field"
+        budget = artifact["allowed_imports"]
+        assert isinstance(budget, list)
+        # Every entry must be a valid import statement string
+        for stmt in budget:
+            assert stmt.startswith(("import ", "from ")), (
+                f"allowed_imports entry is not a valid import statement: {stmt!r}"
+            )
+
+    def test_allowed_imports_matches_imports_field(self, tmp_path: Path) -> None:
+        """allowed_imports must be the string-rendered form of the imports dicts."""
+        from runner.udcp_grooming_engine import UDCPGroomingEngine
+
+        engine = UDCPGroomingEngine(repo_root=tmp_path)
+        imports = [
+            {"from": "fastapi", "import": ["APIRouter", "Depends"]},
+            {"import": ["pytest"]},
+        ]
+        result = engine._imports_to_strings(imports)
+        assert "from fastapi import APIRouter, Depends" in result
+        assert "import pytest" in result
+
+    def test_detect_invented_imports_catches_hallucination(self) -> None:
+        """_detect_invented_imports must flag import lines absent from the scaffold."""
+        from runner.udcp_orchestrator import _detect_invented_imports
+
+        scaffold = (
+            "from __future__ import annotations\n"
+            "import pytest\n"
+            "from httpx import AsyncClient\n"
+            "\n"
+            "def test_foo() -> None:\n"
+            "    pass\n"
+        )
+        # LLM invents two extra imports
+        llm_output = (
+            "from __future__ import annotations\n"
+            "import pytest\n"
+            "from httpx import AsyncClient\n"
+            "from database import get_db\n"
+            "from config import settings\n"
+            "\n"
+            "def test_foo() -> None:\n"
+            "    assert True\n"
+        )
+        invented = _detect_invented_imports(scaffold, llm_output)
+        assert "from database import get_db" in invented
+        assert "from config import settings" in invented
+
+    def test_detect_invented_imports_passes_clean_output(self) -> None:
+        """_detect_invented_imports must return empty list when LLM adds no new imports."""
+        from runner.udcp_orchestrator import _detect_invented_imports
+
+        scaffold = "import pytest\nfrom httpx import AsyncClient\n\ndef test_x() -> None:\n    pass\n"
+        llm_output = "import pytest\nfrom httpx import AsyncClient\n\ndef test_x() -> None:\n    assert True\n"
+        assert _detect_invented_imports(scaffold, llm_output) == []
+
+    def test_invented_import_causes_llm_import_violation(self, tmp_path: Path) -> None:
+        """execute_task must return LLM_IMPORT_VIOLATION if LLM adds imports beyond scaffold."""
+        from runner.udcp_orchestrator import UDCPOrchestrator
+
+        tests_dir = tmp_path / "tests/billing-engine"
+        tests_dir.mkdir(parents=True)
+
+        def hallucinating_llm(**kwargs: object) -> str:  # type: ignore[override]
+            # LLM invents a non-existent module during logic-fill
+            return (
+                '<file path="tests/billing-engine/test_router.py">\n'
+                "import pytest\n"
+                "from httpx import AsyncClient\n"
+                "from database import get_db\n"  # ← invented — not in scaffold
+                "\n"
+                "async def test_get_catalog(client: AsyncClient) -> None:\n"
+                "    response = await client.get('/pricing/thread-catalog')\n"
+                "    assert response.status_code == 200\n"
+                "</file>\n"
+            )
+
+        orch = UDCPOrchestrator(repo_root=tmp_path, llm_fn=hallucinating_llm)
+        result = orch.execute_task(
+            task_id="T-hal",
+            scope_text=(
+                "Implement `tests/billing-engine/test_router.py` with "
+                "`GET /pricing/thread-catalog` endpoint tests."
+            ),
+            required_output_files=["tests/billing-engine/test_router.py"],
+            force_greenfield=True,
+        )
+        assert not result.success
+        assert result.error_type == "LLM_IMPORT_VIOLATION"
+        assert "database" in (result.error_snippet or "")
+        # Scaffold exists but must NOT contain the LLM's invented import
+        written = (tmp_path / "tests/billing-engine/test_router.py").read_text()
+        assert "from database import get_db" not in written
+
+    def test_closed_world_rule_appears_in_prompt(self, tmp_path: Path) -> None:
+        """Logic-fill prompt must include the closed-world import constraint text."""
+        from runner.udcp_orchestrator import UDCPOrchestrator
+
+        tests_dir = tmp_path / "tests/billing-engine"
+        tests_dir.mkdir(parents=True)
+
+        captured_prompt: list[str] = []
+
+        def capture_llm(**kwargs: object) -> str:  # type: ignore[override]
+            captured_prompt.append(str(kwargs.get("prompt", "")))
+            return (
+                '<file path="tests/billing-engine/test_x.py">\n'
+                "import pytest\n\n"
+                "def test_placeholder() -> None:\n"
+                "    pass\n"
+                "</file>\n"
+            )
+
+        orch = UDCPOrchestrator(repo_root=tmp_path, llm_fn=capture_llm)
+        orch.execute_task(
+            task_id="T-cp",
+            scope_text="Implement `tests/billing-engine/test_x.py` with `GET /health` tests.",
+            required_output_files=["tests/billing-engine/test_x.py"],
+            force_greenfield=True,
+        )
+        assert captured_prompt, "LLM was never called"
+        prompt_text = captured_prompt[0]
+        assert "CLOSED-WORLD IMPORT CONSTRAINT" in prompt_text, (
+            "Prompt must contain the closed-world import constraint header"
+        )
+        assert "Permitted imports" in prompt_text, (
+            "Prompt must list the permitted imports from the scaffold"
+        )

@@ -52,14 +52,16 @@ class UDCPGroomingEngine:
         """Returns a TIS dict for Track 1 (Greenfield) tasks."""
         if required_output_files:
             # Contract-driven: targets come from sprint output_files, not scope_text regex
-            artifacts = [
-                {
+            artifacts = []
+            for fp in required_output_files:
+                imports = self._extract_imports(scope_text, fp)
+                artifacts.append({
                     "file_path": fp,
-                    "imports": self._extract_imports(scope_text, fp),
+                    "imports": imports,
+                    # PTR-validated import budget — logic-fill may not exceed this list
+                    "allowed_imports": self._imports_to_strings(imports),
                     "interfaces": self._extract_interfaces(scope_text, fp),
-                }
-                for fp in required_output_files
-            ]
+                })
         else:
             artifacts = self._extract_artifacts(scope_text, track=1)
         return {
@@ -119,16 +121,31 @@ class UDCPGroomingEngine:
         p = Path(file_path)
         return p.parts[0] == "tests" or p.name.startswith("test_")
 
+    @staticmethod
+    def _imports_to_strings(imports: list[dict[str, Any]]) -> list[str]:
+        """Convert TIS import dicts to import statement strings for prompt injection."""
+        lines: list[str] = []
+        for imp in imports:
+            if imp.get("from"):
+                names = ", ".join(imp["import"])
+                lines.append(f"from {imp['from']} import {names}")
+            else:
+                for name in imp.get("import", []):
+                    lines.append(f"import {name}")
+        return lines
+
     def _extract_artifacts(
         self, scope_text: str, track: int
     ) -> list[dict[str, Any]]:
         file_paths = _FILE_PATH_RE.findall(scope_text)
         artifacts = []
         for fp in file_paths:
+            imports = self._extract_imports(scope_text, fp)
             artifacts.append(
                 {
                     "file_path": fp,
-                    "imports": self._extract_imports(scope_text, fp),
+                    "imports": imports,
+                    "allowed_imports": self._imports_to_strings(imports),
                     "interfaces": self._extract_interfaces(scope_text, fp),
                 }
             )

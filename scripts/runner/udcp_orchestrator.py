@@ -182,6 +182,21 @@ def _fix_ann201_asynccontextmanager(content: str) -> str:
     return patched
 
 
+def _detect_invented_imports(scaffold_content: str, llm_content: str) -> list[str]:
+    """Return import lines in llm_content absent from scaffold — these are LLM hallucinations."""
+    scaffold_imports = {
+        ln.strip()
+        for ln in scaffold_content.splitlines()
+        if ln.strip().startswith(("import ", "from "))
+    }
+    llm_imports = {
+        ln.strip()
+        for ln in llm_content.splitlines()
+        if ln.strip().startswith(("import ", "from "))
+    }
+    return sorted(llm_imports - scaffold_imports)
+
+
 def _normalize_and_write(path: Path, content: str, label: str, track: str) -> TaskResult | None:
     """Single write gateway: normalize → compile-gate → write. Returns None on success."""
     content = _fix_b904(content)
@@ -406,12 +421,28 @@ class UDCPOrchestrator:
             if _parts:
                 _ref_block = "Reference files:\n" + "\n\n".join(_parts) + "\n\n"
 
+        # Closed-world import budget: extract exactly what PTR-validated scaffold contains
+        _scaffold_imports = [
+            ln.strip()
+            for ln in scaffold_content.splitlines()
+            if ln.strip().startswith(("import ", "from "))
+        ]
+        _import_budget = (
+            "\n".join(f"  {ln}" for ln in _scaffold_imports)
+            if _scaffold_imports else "  (none)"
+        )
+
         prompt = (
             f"Fill in the logic sections of the Python scaffold below.\n\n"
             f"RULES:\n"
             f"- Replace every section between [WAOOAW_LOGIC_FILLER_START] and "
             f"[WAOOAW_LOGIC_FILLER_END] with working implementation\n"
-            f"- Do NOT change any imports, function signatures, or class names\n"
+            f"- CLOSED-WORLD IMPORT CONSTRAINT: Do NOT add any import statements.\n"
+            f"  The scaffold already contains every import this file is permitted to use.\n"
+            f"  Any import you add that is not already in the scaffold will be rejected as a fatal error.\n"
+            f"  Permitted imports (complete — adding anything else causes test failures):\n"
+            f"{_import_budget}\n"
+            f"- Do NOT change function signatures or class names\n"
             f"- DB: use SQLAlchemy text() with named params — db.execute(text('... WHERE x = :x'), {{'x': val}}), never %s or ?\n"
             f"- Timestamps: datetime.now(timezone.utc), never datetime.utcnow() (deprecated, raises error under filterwarnings=error)\n"
             f"- Never catch bare Exception to suppress errors; let exceptions propagate\n"
@@ -454,6 +485,17 @@ class UDCPOrchestrator:
 
         # Write each filled file through the normalization + compile gateway
         for fpath, content in files.items():
+            # Gate: reject invented imports before write — preventive fix (C-082)
+            invented = _detect_invented_imports(scaffold_content, content)
+            if invented:
+                return TaskResult(
+                    success=False, error_type="LLM_IMPORT_VIOLATION",
+                    error_snippet=(
+                        f"{fpath}: LLM invented imports not in scaffold: "
+                        + "; ".join(invented[:5])
+                    ),
+                    track="GREENFIELD",
+                )
             # Boundary check: reject paths outside ALLOWED_WRITE_ROOTS (C-065)
             from runner.constants import ALLOWED_WRITE_ROOTS
             if not any(fpath.startswith(root) for root in ALLOWED_WRITE_ROOTS):
