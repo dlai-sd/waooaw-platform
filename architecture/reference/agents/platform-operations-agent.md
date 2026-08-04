@@ -233,6 +233,38 @@ Registry updated: on every agent execution loop completion; on skill mode change
 
 ---
 
+## 3.25 Decision Consequence Map (C-099 — MANDATORY)
+
+```yaml
+decision_consequence_map:
+  - decision_type: production_config_change
+    category: DETERMINISTIC_REQUIRED
+    independent_verification_method: "L2/L3 dual-approval gate; change written to audit_records before applying; rollback plan declared"
+    constitutional_basis: C-023, C-041
+
+  - decision_type: agent_kill_switch
+    category: DETERMINISTIC_REQUIRED
+    independent_verification_method: "CE.ValidateAction PROCEED_DETERMINISTIC; Emergency Stop constitutional path confirmed reachable (C-001); Steward notified before execution"
+    constitutional_basis: C-001, C-023
+
+  - decision_type: emergency_stop_trigger
+    category: DETERMINISTIC_REQUIRED
+    independent_verification_method: "Pre-warmed SignalR path; EmergencyStopSignal to Temporal; CE.ValidateAction outcome logged before propagation"
+    constitutional_basis: C-001
+
+  - decision_type: monitoring_alert
+    category: CONSISTENT_SUFFICIENT
+    verification_method: "Alert is advisory; human operator confirms before escalation action; false positive caught in next monitoring cycle"
+    constitutional_basis: C-049
+
+  - decision_type: health_check_report
+    category: CONSISTENT_SUFFICIENT
+    verification_method: "Report stored in audit_records; operators review; errors corrected in next cycle"
+    constitutional_basis: C-002
+```
+
+---
+
 ## 6. Constitutional Checklist
 
 - [x] Every L1 action has a CE.RecordEvidence call (C-023)
@@ -242,6 +274,7 @@ Registry updated: on every agent execution loop completion; on skill mode change
 - [x] Reasoning traces produced for all LLM inferences in this agent (C-047)
 - [x] All prompts reference approved prompt versions (C-045)
 - [x] Override rights apply to platform operations — customers can reverse L1/L2 actions affecting their engagements (C-001)
+- [ ] **C-099 check (Decision Consequence Map): Section 3.25 present. All 5 decision types classified: production_config_change, agent_kill_switch, emergency_stop_trigger as DETERMINISTIC_REQUIRED with independent_verification_method declared; monitoring_alert, health_check_report as CONSISTENT_SUFFICIENT. CE.ValidateAction DCM path declared for all DETERMINISTIC_REQUIRED decisions.**
 
 ---
 

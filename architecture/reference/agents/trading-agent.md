@@ -912,6 +912,43 @@ billing:
 
 ---
 
+## 3.25 Decision Consequence Map (C-099 — MANDATORY)
+
+```yaml
+decision_consequence_map:
+  - decision_type: trade_execution
+    category: DETERMINISTIC_REQUIRED
+    independent_verification_method: "CE.ValidateAction returns PROCEED_DETERMINISTIC; dual-entry ledger check in institutional.trade_ledger before order dispatch"
+    constitutional_basis: C-023, C-041
+
+  - decision_type: position_rebalance
+    category: DETERMINISTIC_REQUIRED
+    independent_verification_method: "Cross-Customer Isolation Enforcer (M-2) verification; Financial Ceiling check (C-043) before order placed"
+    constitutional_basis: C-023, C-043
+
+  - decision_type: customer_charge
+    category: DETERMINISTIC_REQUIRED
+    independent_verification_method: "WBE billing_profiles status == FOUNDER_AUTHORIZED; pricing_floor_log written before charge committed"
+    constitutional_basis: C-023, C-051
+
+  - decision_type: market_signal_alert
+    category: CONSISTENT_SUFFICIENT
+    verification_method: "Verification loop — subsequent signal cycle corrects any stale data; alert is advisory only"
+    constitutional_basis: C-049
+
+  - decision_type: portfolio_analysis_report
+    category: CONSISTENT_SUFFICIENT
+    verification_method: "Customer review gate; agent cites specific evidence records (C-052)"
+    constitutional_basis: C-023, C-052
+
+  - decision_type: session_summary
+    category: CONSISTENT_SUFFICIENT
+    verification_method: "Stored in audit_records; customer can request correction"
+    constitutional_basis: C-002
+```
+
+---
+
 ## 9. Constitutional Checklist
 
 - [x] Every Skill has a measurable business KPI (C-037) — daily return, drawdown, Sharpe
@@ -933,6 +970,7 @@ billing:
 - [x] **C-051 check (Resource Transparency): Section 4.16 added. Trading agent uses monitoring-based UsageUnits (sessions executed/deferred, monthly reviews). minimum_model_tier declared for all prompts. ESCALATION_DECISION path emergency-exempt (C-001). TRADING/TOKEN_ECONOMY/USAGE_SUMMARY prompt added.**
 - [x] **C-036/C-037/C-048 check (Off-Topic Boundary): Section 4.17 added. 5 redirect hooks declared (session_preopen_signal, daily_pnl_status, pending_escalation, vix_regime_alert, monthly_review_available). Adjacent routing: general investment advice boundary clearly stated (SEBI regulatory, not just C-036). PLATFORM/BOUNDARY/OFF_TOPIC_REDIRECT prompt in Prompt Catalogue.**
 - [x] **C-052 check (Context Fidelity, Isolation, Uniqueness): Context Bootstrap Protocol declared (loads Decision Space, session state, performance history at session start). Real-time Cross-Customer Isolation: each customer's PAAS session is an independent Temporal workflow; Tier 3 writes have 24-hour lag; active session position data NEVER enters Tier 3. SEBI compliance: Trading Agent is NOT a PMS; same trade for multiple customers simultaneously = SEBI violation; Cross-Customer Isolation Enforcer (M-2) enforces at runtime. Context Grounding: every historical assertion cites a specific evidence record; ungrounded assertions trigger GROUNDING_VIOLATION alert.**
+- [ ] **C-099 check (Decision Consequence Map): Section 3.25 present. All 6 decision types classified: trade_execution, position_rebalance, customer_charge as DETERMINISTIC_REQUIRED with independent_verification_method declared; market_signal_alert, portfolio_analysis_report, session_summary as CONSISTENT_SUFFICIENT. CE.ValidateAction DCM path declared for all DETERMINISTIC_REQUIRED decisions.****
 
 ---
 

@@ -1292,6 +1292,38 @@ tutor_constitutional_constraints:
 
 ---
 
+## 3.25 Decision Consequence Map (C-099 — MANDATORY)
+
+```yaml
+decision_consequence_map:
+  - decision_type: customer_charge
+    category: DETERMINISTIC_REQUIRED
+    independent_verification_method: "WBE billing_profiles status == FOUNDER_AUTHORIZED; pricing_floor_log written before charge committed"
+    constitutional_basis: C-023, C-051
+
+  - decision_type: lesson_plan_commitment
+    category: DETERMINISTIC_REQUIRED
+    independent_verification_method: "Parent/guardian confirmation (PLAN_CONFIRMED always-ask for minors); CE.ValidateAction PROCEED_DETERMINISTIC; C-060 guardian disclosure before commitment"
+    constitutional_basis: C-023, C-060
+
+  - decision_type: content_delivery
+    category: CONSISTENT_SUFFICIENT
+    verification_method: "Lesson delivery is retryable; errors caught by session quality signal; parent review gate available"
+    constitutional_basis: C-049
+
+  - decision_type: progress_report
+    category: CONSISTENT_SUFFICIENT
+    verification_method: "Report is advisory; parent/student can challenge; monthly effectiveness review corrects errors"
+    constitutional_basis: C-002, C-050
+
+  - decision_type: quiz_generation
+    category: CONSISTENT_SUFFICIENT
+    verification_method: "Quiz is retryable/skippable; educator reviews content; errors corrected in next session"
+    constitutional_basis: C-049
+```
+
+---
+
 ## 10. Review and Approval
 
 **Status:** DRAFT v1.0 — 2026-07-13

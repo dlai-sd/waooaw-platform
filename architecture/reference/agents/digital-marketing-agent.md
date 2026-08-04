@@ -4757,6 +4757,43 @@ ProfessionalTemplate:
 
 ---
 
+## 3.25 Decision Consequence Map (C-099 — MANDATORY)
+
+```yaml
+decision_consequence_map:
+  - decision_type: campaign_publish
+    category: DETERMINISTIC_REQUIRED
+    independent_verification_method: "Customer approval gate (POST_APPROVAL or CAMPAIGN_APPROVAL mode); SCR 5-check passed; CE.ValidateAction PROCEED_DETERMINISTIC before platform API call"
+    constitutional_basis: C-023, C-055
+
+  - decision_type: ad_spend_allocation
+    category: DETERMINISTIC_REQUIRED
+    independent_verification_method: "ad_spend_ledger append-only write before allocation; customer budget ceiling checked (C-043 equivalent); PAGE_ACCESS_GRANT_REQUEST as always-ask"
+    constitutional_basis: C-023, C-048, C-056
+
+  - decision_type: customer_charge
+    category: DETERMINISTIC_REQUIRED
+    independent_verification_method: "WBE billing_profiles status == FOUNDER_AUTHORIZED; pricing_floor_log written before charge committed"
+    constitutional_basis: C-023, C-051
+
+  - decision_type: content_draft
+    category: CONSISTENT_SUFFICIENT
+    verification_method: "SCR quality check (5-criteria); customer approval gate catches errors before publish; draft is reversible"
+    constitutional_basis: C-055
+
+  - decision_type: strategy_recommendation
+    category: CONSISTENT_SUFFICIENT
+    verification_method: "Customer retains decision authority; Strategic Cognition review cycle catches errors; C-049 honest assessment field required"
+    constitutional_basis: C-049, C-050
+
+  - decision_type: platform_research
+    category: CONSISTENT_SUFFICIENT
+    verification_method: "Research is informational only; errors retryable; customer decision gate before action"
+    constitutional_basis: C-023
+```
+
+---
+
 ## 9. Constitutional Checklist
 
 - [x] Every Skill has a measurable business KPI (C-037) — appointment enquiries, bookings, calls, CPL, ROAS, maturity score
@@ -4782,6 +4819,7 @@ ProfessionalTemplate:
 - [ ] **C-055 check (Campaign Coherence): Section 3.21 added (v2.5). Platform Intelligence declared with 10 platform coverage + dependency status. Campaign Theme Cascade declared (3 levels, all required fields). SCR 5-check criteria declared with thresholds, model tiers, and fail actions. SCR Check 3 (Compliance) fail_action = ROUTE_TO_CUSTOMER (never silent). Content Approval Modes declared (POST_APPROVAL→CAMPAIGN_APPROVAL→CAMPAIGN_AUTO) with upgrade/downgrade criteria. Campaign Digest declared (weekly, Monday 09:00 IST, 3 channels). 6 new campaign prompts + 1 Platform Intelligence prompt in Prompt Catalogue. MASTER_THEME_PROPOSAL is FRONTIER/BREAKING. Campaign SQL tables referenced (4 tables).**
 - [ ] **C-056 check (Ad Spend Transparency): ADR-026 declared. Skill 11 uses WAOOAW_MANAGED connection model. customer_ad_accounts + ad_spend_wallets + ad_spend_ledger tables referenced. management_fee_pct = 10 declared in Skill 11. PAGE_ACCESS_GRANT_REQUEST as always-ask action. ad_spend_ledger is append-only (no UPDATE/DELETE). CUSTOMER_OWNED declared with PENDING_FOUNDER_AUTHORIZATION.**
 - [ ] **C-057 check (AI Agency Professional Standard): Section 4.0 (agency pitch) declared with portfolio claim format and prohibited claims. Section 4.2 (professional intake opening) includes expertise-first model — agent demonstrates market knowledge before asking configuration questions. Competitive positioning response declared (honest comparison with C-049 limitations disclosure). institutional.dma_performance_portfolio referenced as Tier 3 source. portfolio_claim_approved = TRUE enforced before any portfolio stat appears in conversation. Skill 14 (WAOOAW self-marketing) declared with PENDING_FOUNDER_AUTHORIZATION.**
+- [ ] **C-099 check (Decision Consequence Map): Section 3.25 present. All 6 decision types classified: campaign_publish, ad_spend_allocation, customer_charge as DETERMINISTIC_REQUIRED with independent_verification_method declared; content_draft, strategy_recommendation, platform_research as CONSISTENT_SUFFICIENT. CE.ValidateAction DCM path declared for all DETERMINISTIC_REQUIRED decisions.**
 
 ---
 

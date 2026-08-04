@@ -2356,6 +2356,38 @@ billing:
 
 ---
 
+## 3.25 Decision Consequence Map (C-099 — MANDATORY)
+
+```yaml
+decision_consequence_map:
+  - decision_type: pmfby_evidence_submission
+    category: DETERMINISTIC_REQUIRED
+    independent_verification_method: "C-023 evidence record (CAL record type PMFBY_SUBMISSION) written and CE.ValidateAction PROCEED_DETERMINISTIC returned before portal submission"
+    constitutional_basis: C-023, C-041
+
+  - decision_type: input_recommendation_with_financial_commitment
+    category: DETERMINISTIC_REQUIRED
+    independent_verification_method: "Farmer confirms land profile (FARMER_LAND_PROFILE_CONFIRMED always-ask); recommendation cites ICAR source evidence record"
+    constitutional_basis: C-023, C-048
+
+  - decision_type: crop_advisory
+    category: CONSISTENT_SUFFICIENT
+    verification_method: "Farmer retains decision authority; agent marks advisory as FARMER_DECISION_REQUIRED; errors caught by monthly effectiveness review"
+    constitutional_basis: C-049
+
+  - decision_type: mandi_price_update
+    category: CONSISTENT_SUFFICIENT
+    verification_method: "Data is informational only; farmer verifies at mandi; stale data caught in next poll cycle"
+    constitutional_basis: C-052
+
+  - decision_type: weather_alert
+    category: CONSISTENT_SUFFICIENT
+    verification_method: "Alert is advisory; farmer verifies conditions; errors retryable on next weather cycle"
+    constitutional_basis: C-049
+```
+
+---
+
 ## 11. Constitutional Checklist
 
 - [x] Every Skill has a measurable business KPI in farmer's terms (C-037)
@@ -2378,6 +2410,7 @@ billing:
 - [x] **C-036/C-037/C-048 check (Off-Topic Boundary): Section 4.17 added. 5 redirect hooks declared (weather_48h_action, crop_health_observation, mandi_price_trend, pending_hint, pmfby_evidence_pending). Adjacent routing: government loans → suggest Kisan call centre; veterinary → refer to local vet. All deflection messages in farmer vocabulary (C-042). PLATFORM/BOUNDARY/OFF_TOPIC_REDIRECT prompt in Prompt Catalogue.**
 - [x] **C-052 check (Context Fidelity, Isolation, Uniqueness): Context Bootstrap Protocol loads Decision Space, session state (Progressive Crop State Model), and performance history before every session. Per-Farm Independence: each farmer's advisory is independently computed from their specific crop state, farm profile, and observation history. Agricultural Timing Stagger (M-4): when the same action applies to multiple farmers in the same district, delivery is offset by farm ID hash across a 48-hour window to prevent artificial demand spikes at pesticide shops. Tier 3 has 24-hour write lag. Context Grounding: agent cites specific CAL evidence records when referencing prior advisory history.**
 - [x] **C-050 check (Strategic Cognition): Section 4.15 added. AGRI/STRATEGIC/SEASONAL_ADVISORY_PLAN invoked after onboarding and at each new season to plan which skills serve this farmer's specific constraints; AGRI/STRATEGIC/ADVISORY_EFFECTIVENESS_REVIEW invoked monthly, on engagement deviation, and at harvest. Both prompts include strategic_reasoning_chain, portfolio_health, per-farmer skill assessment, and c049_honest_assessment. Professional Template declares strategic_cognition block with 5 trigger events including HARVEST_REVIEW.**
+- [ ] **C-099 check (Decision Consequence Map): Section 3.25 present. All 5 decision types classified: pmfby_evidence_submission and input_recommendation_with_financial_commitment as DETERMINISTIC_REQUIRED with independent_verification_method declared; crop_advisory, mandi_price_update, weather_alert as CONSISTENT_SUFFICIENT. CE.ValidateAction DCM path declared for all DETERMINISTIC_REQUIRED decisions.**
 
 ---
 

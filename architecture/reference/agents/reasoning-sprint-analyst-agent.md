@@ -505,6 +505,38 @@ canonical reference for the CCT-RSA-01 traceability check.
 
 ---
 
+## 3.25 Decision Consequence Map (C-099 — MANDATORY)
+
+```yaml
+decision_consequence_map:
+  - decision_type: sprint_authorization_or_block
+    category: DETERMINISTIC_REQUIRED
+    independent_verification_method: "Constitutional Compliance Tests (CCTs) must pass before AUTHORIZE is returned; BLOCK triggers Constitutional Blocker file written to blockers/; CE.ValidateAction PROCEED_DETERMINISTIC before gate decision emitted"
+    constitutional_basis: C-023, C-059
+
+  - decision_type: constitutional_claim_proposal
+    category: DETERMINISTIC_REQUIRED
+    independent_verification_method: "Founder ratification required before claim is RATIFIED; proposal is DRAFT until Founder signs off; written to knowledge/claims/ only after ratification"
+    constitutional_basis: C-002, C-023
+
+  - decision_type: rca_report
+    category: CONSISTENT_SUFFICIENT
+    verification_method: "Report is advisory input to Founder decision; errors caught in review cycle; RCA does not itself authorize any action"
+    constitutional_basis: C-049
+
+  - decision_type: code_analysis_finding
+    category: CONSISTENT_SUFFICIENT
+    verification_method: "Findings are advisory; sprint reviewer validates before merge; false positives caught in CCT run"
+    constitutional_basis: C-023
+
+  - decision_type: sprint_state_machine_update
+    category: DETERMINISTIC_REQUIRED
+    independent_verification_method: "PROJECT_STATE.md SPRINT_STATE_MACHINE block updated atomically; git commit is the evidence record; CE.ValidateAction before consecutive_failures increment"
+    constitutional_basis: C-023, C-059
+```
+
+---
+
 ## Platform-Agent Contract (PAC)
 <!-- ADR-035 mandatory section. Do not remove. Update when AGENT-BASE-SPEC version bumps. -->
 <!-- Platform-internal agent: no customer session. WBE signals are operational events only. -->
