@@ -3,30 +3,59 @@
   "sprint": "WC-027",
   "scaffold_task": null,
   "scaffold_failed": false,
-  "task_results": {},
-  "spec_gap_issues": [],
+  "task_results": {
+    "WC027-02a": {
+      "result": "SUCCESS",
+      "error_type": null,
+      "build_error_snippet": null,
+      "attempts": 1,
+      "spec_gap_issue": null
+    },
+    "WC027-02b": {
+      "result": "SUCCESS",
+      "error_type": null,
+      "build_error_snippet": null,
+      "attempts": 1,
+      "spec_gap_issue": null
+    },
+    "WC027-02c": {
+      "result": "SPEC_GAP",
+      "error_type": "BUILD_ERROR",
+      "build_error_snippet": "UDCP COMPILE_GATE_FAILURE: tests/billing-engine/test_markup.py: invalid syntax (test_markup.py, line 23)",
+      "attempts": 3,
+      "spec_gap_issue": "223"
+    }
+  },
+  "spec_gap_issues": [
+    "223"
+  ],
   "overall_result": "PARTIAL",
-  "file_costs": {},
+  "file_costs": {
+    "WC027-02a": 11.1348,
+    "WC027-02b": 0.2227,
+    "WC027-02c": 0.2314
+  },
   "subtask_results": {
     "WC027-02a": {
-      "result": "SKIPPED",
+      "result": "SUCCESS",
       "task_id": "WC027-02",
       "error_codes": [],
       "error_text": ""
     },
     "WC027-02b": {
-      "result": "SKIPPED",
+      "result": "SUCCESS",
       "task_id": "WC027-02",
       "error_codes": [],
       "error_text": ""
     },
     "WC027-02c": {
-      "result": "SKIPPED",
+      "result": "FAIL",
       "task_id": "WC027-02",
       "error_codes": [],
       "error_text": ""
     }
   },
+  "total_cost_inr": 11.5889,
   "tasks_done": [],
   "tasks_requested": [
     "WC027-02"
