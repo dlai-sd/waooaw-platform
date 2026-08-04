@@ -350,5 +350,5 @@ def read_run_heartbeat() -> dict:
         return {}
     try:
         return json.loads(_HEARTBEAT_PATH.read_text(encoding="utf-8").strip())
-    except (json.JSONDecodeError, OSError):
+    except (json.JSONDecodeError, OSError, UnicodeDecodeError):
         return {}
