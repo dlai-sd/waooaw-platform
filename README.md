@@ -10,7 +10,7 @@
 
 ```
 Version:              v1.25.2 — Option A: UDCP contract-driven track detection, eliminates MISSING_DELIVERABLE loop (2026-08-03)
-Constitutional Claims: 86 ratified (C-001→C-086) | ADRs: 38
+Constitutional Claims: 97 ratified (C-001→C-100, with gaps at C-087/C-092/C-093) | ADRs: 38
 Customer Agents:      4 approved — DMA v3.0 · Trading v1.7 · Agricultural v2.7 · Private Tutor v1.0
 Internal Agents:      5 — Platform IT Expert · Steward Assistant · Self-Improvement Analyst ·
                           Platform Operations · RepoNav (AVD-001 v1.0 RATIFIED — INST-014)

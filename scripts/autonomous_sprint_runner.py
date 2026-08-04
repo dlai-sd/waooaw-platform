@@ -487,11 +487,11 @@ TASK_HANDLERS = {
 # ── ADR-041 P1a: SKIPPED_IDEMPOTENT helper ───────────────────────────────────
 
 def _all_outputs_present_and_compile(subtasks: list) -> bool:
-    """Return True if every output_file from all subtasks exists and passes
-    py_compile.  Used to skip WC tasks that were already completed in a prior
-    run (SKIPPED_IDEMPOTENT mode — see ADR-041 §5).
+    """Return True if every output_file from all subtasks exists, passes
+    py_compile, and contains no LOGIC_FILLER stubs — see ADR-041 §5.
     """
     import py_compile
+    _FILLER_MARKER = "# [WAOOAW_LOGIC_FILLER_START]"
     for st in subtasks:
         for rel_path in getattr(st, "output_files", []):
             fpath = REPO_ROOT / rel_path
@@ -501,6 +501,9 @@ def _all_outputs_present_and_compile(subtasks: list) -> bool:
                 try:
                     py_compile.compile(str(fpath), doraise=True)
                 except py_compile.PyCompileError:
+                    return False
+                # Unfilled logic stubs mean Track 2 (logic fill) was never completed
+                if _FILLER_MARKER in fpath.read_text(encoding="utf-8"):
                     return False
     return True
 

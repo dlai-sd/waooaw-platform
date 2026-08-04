@@ -85,6 +85,9 @@ _PYTHON_FORBIDDEN_PATTERNS = (
     "Use specific types: asyncpg.Pool, httpx.AsyncClient, or the actual Pydantic model.\n"
     "⛔ [G004] Never use f-strings in logging calls in src/ files: NOT 'logger.info(f\"val={x}\")'. "
     "Use lazy format: 'logger.info(\"val=%s\", x)'.\n"
+    "⛔ [C-100] NEVER combine allow_origins=['*'] with allow_credentials=True — "
+    "this is OWASP A05 CSRF. Use allow_credentials=False with wildcard, or "
+    "restrict allow_origins to explicit domains when credentials are needed.\n"
 )
 
 # TypeScript/Next.js constitutional constraints

@@ -155,6 +155,7 @@ Derived from CONFIRMED or LAW claims. These authorize specific architectural dec
 | C-097 | OBLIGATION | Any sprint task implementing a function performing financial computation must have a corresponding CCT that validates the arithmetic to 6 decimal places | 2026-07-31 |
 | C-098 | OBLIGATION | The platform software architecture must enforce the EA Skeleton Standard at the compile gate; skeletons missing from src/ block the sprint before code generation | 2026-07-31 |
 | C-099 | OBLIGATION + ARCHITECTURAL_CONSTRAINT | Every WAOOAW agent must declare a Decision Consequence Map classifying all consequential decisions as DETERMINISTIC_REQUIRED or CONSISTENT_SUFFICIENT; DETERMINISTIC_REQUIRED decisions require independent verification before commit | 2026-08-04 |
+| C-100 | SECURITY_OBLIGATION | Every WAOOAW HTTP service MUST NOT combine allow_origins=["*"] with allow_credentials=True; wildcard origin requires allow_credentials=False; credentials require explicit origin allowlist (OWASP A05) | 2026-08-04 |
 
 ---
 
