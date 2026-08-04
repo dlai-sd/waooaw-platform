@@ -1033,7 +1033,7 @@ Each sprint has EA spec gaps documented, SA corrections applied to WC files, and
 autonomous_halt: false
 platform_phase: IMPLEMENTATION
 current_sprint: WC-027
-sprint_status: AUTHORIZED
+sprint_status: PIPELINE_FIX_APPLIED
 branch: ib/009/sprint-027
 consecutive_failures: 2
 ```
@@ -1062,6 +1062,8 @@ consecutive_failures: 2
 | `1a27e6c` | agricultural-advisor v2.8 — Activation Gate PASS all 16 sections |
 | `78647de` | private-tutor v1.1 — Activation Gate PASS all 16 sections |
 | `906deee` | trading-professional v1.8 — Activation Gate PASS all 16 sections |
+| `75a74d4` | PROJECT_STATE checkpoint — all 4 customer-facing agent activation gates PASS |
+| `485cfb1` | fix(udcp): test-file-aware skeleton — Level 1 root cause for WC-027 pipeline failure |
 
 ### Constitutional delta this session (full sprint-027)
 
@@ -1074,16 +1076,28 @@ consecutive_failures: 2
 - **ADR-040:** Decision Consequence Map architecture decision
 - **Track 3G:** reasoning-sprint-analyst v1.4 — all 16 Activation Gate sections PASS; gate result review R-RSA-activation-gate-sprint-027-ea-review.md
 
-### WC-027 state (unchanged — Track 2 deferred)
+### WC-027 state (PIPELINE FIX APPLIED — ready for attempt 3)
 
 - consecutive_failures: 2 (limit 3 before halt)
-- **Reason deferred:** Track 1 constitutional self-refinement + Track 3 agent activation gates prioritised first.
+- **Pipeline bug diagnosed and fixed** (commit `485cfb1`):
+  - RSA Level 1 root cause: `_extract_imports`/`_extract_interfaces` in
+    `UDCPGroomingEngine` emitted FastAPI router stubs for ALL files containing
+    HTTP endpoint mentions — including test files. `test_markup.py` was being
+    scaffolded as a FastAPI router, not a pytest test suite.
+  - Fix: `_is_test_file()` guard — test files now get pytest/httpx/hypothesis
+    imports and `async def test_*` stubs with `@pytest.mark.asyncio`; source
+    files unchanged
+  - Supporting fixes: Track1Scaffolder supports `import X` (no `from`) and
+    `async def`; PTR gate adds hypothesis/pytest_asyncio to external roots
+  - +6 regression tests in test_udcp_engines.py — 70 passed, 0 new failures
+- **Next action:** Re-trigger WC-027 autonomous sprint run (attempt 3) — pipeline
+  will now scaffold `test_markup.py` with correct pytest structure for LLM fill
 
 ### Next authorized actions (Founder to select)
 
-1. **WC-027 Track 2** — write real pytest tests for src/billing-engine/ (deferred, consecutive_failures: 2)
-2. **Other agent activation gates** — run §16 gate on remaining agents (digital-marketing, agricultural-advisor, private-tutor, self-improvement-analyst, trading, platform-operations)
-3. **Implementation sprint** — any other IB item per Founder selection (requires Implementation AUTHORIZED confirmation)
+1. **WC-027 attempt 3** — re-trigger autonomous sprint; pipeline now scaffolds pytest stubs correctly (consecutive_failures: 2, 1 remaining before halt)
+2. **Open PR** — ib/009/sprint-027 → main (substantial work accumulated: C-099, DNA v2.0, 5 agent gates, CCT-DCM, ADR-040, CE proto, pipeline fix)
+3. **CE DcmEvaluator.cs** — implement runtime DCM enforcement (unblocks CCT-DCM-03b)
 
 ---
 
