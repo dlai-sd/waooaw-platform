@@ -167,6 +167,7 @@ TASK_HANDLERS = {
                 description="Pytest suite covering Pydantic model validation and BundleEngine cost_floor/derive_price/validate_price behaviour, including C-059 audit-log invariant on both APPROVED and REJECTED outcomes.",
                 type="udcp",
                 depends_on=["WC027-01ab"],
+                max_tokens=16000,
                 compile_gate="ruff",
                 service_dir="src/billing-engine",
                 wc_task_id="WC027-01a",
@@ -244,7 +245,6 @@ TASK_HANDLERS = {
                     "- File passes ruff check with zero errors.\n"
                 ),
                 model_hint="reasoning",
-                max_tokens=6000,
             ),
         ]
     },
@@ -421,7 +421,7 @@ TASK_HANDLERS = {
                 },
                 constitutional_check='TEST PASS — write pytest tests exactly as described in the WC scope:\n`tests/billing-engine/test_markup.py` — test: cost_floor reads `bundle_profiles.cost_floor_paise` (not recomputed), derive_price formula uses margin-on-revenue `floor / (1 - margin/100)`, `POST /pricing/validate` 200 path (APPROVED, `pricing_floor_log` row written), `POST /pricing/validate` 422 path (REJECTED — body includes `minimum_compliant_price_paise`, `pricing_floor_log` row written), `GET /pricing/thread-catalog` response shape, ≥90% line coverage; **property-based tests using `hypothesis`**: `@given` strategy on `derive_price(cost_floor_paise, margin_pct)` covering zero margin, near-10\n\nC-097: property-based testing required — use hypothesis @given for all financial math.\nC-059: verify audit log row written for APPROVED and REJECTED pricing outcomes.\nC-073: # Implements: header required at top of test file.\nUse pytest-asyncio for async tests. Mock Redis/DB with pytest fixtures.\nNever use % string formatting — use f-strings only.',
                 model_hint='reasoning',
-                max_tokens=8000,
+                max_tokens=16000,
             ),
             SubTaskDef(
                 id="WC027-02b",
