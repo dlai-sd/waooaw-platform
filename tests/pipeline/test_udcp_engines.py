@@ -633,6 +633,81 @@ class TestUDCPGroomingEngine:
         # Should not raise; skeleton cross-reference skipped gracefully
         assert isinstance(tis, dict)
 
+    # ── Test-file-aware skeleton (Level 1 fix for WC027-02 failure) ───────────
+
+    _WC027_02_SCOPE = (
+        "`tests/billing-engine/test_markup.py` — test: cost_floor reads, "
+        "derive_price formula uses margin-on-revenue `floor / (1 - margin/100)`, "
+        "`POST /pricing/validate` 200 path (APPROVED), "
+        "`POST /pricing/validate` 422 path (REJECTED), "
+        "`GET /pricing/thread-catalog` response shape; "
+        "property-based tests using hypothesis: @given strategy on derive_price"
+    )
+
+    def test_test_file_gets_pytest_imports_not_fastapi(self, tmp_path: Path) -> None:
+        """Test files must not receive FastAPI imports — they should get pytest imports."""
+        groom = UDCPGroomingEngine(repo_root=tmp_path)
+        tis = groom.generate_tis(
+            "WC027-02", self._WC027_02_SCOPE, "WC-027",
+            required_output_files=["tests/billing-engine/test_markup.py"],
+        )
+        artifact = tis["target_artifacts"][0]
+        import_keys = [list(i.keys()) for i in artifact["imports"]]
+        import_froms = [i.get("from", "") for i in artifact["imports"]]
+        import_names = [n for i in artifact["imports"] for n in i.get("import", [])]
+        # Must NOT have FastAPI
+        assert "fastapi" not in import_froms
+        # Must have pytest (bare import — no 'from' key)
+        assert "pytest" in import_names
+        # Must have httpx for async client
+        assert "httpx" in import_froms
+        # Must have hypothesis (because @given mentioned in scope)
+        assert "hypothesis" in import_froms
+
+    def test_test_file_gets_async_test_stubs_not_router_stubs(self, tmp_path: Path) -> None:
+        """Test files must receive async test function stubs, not FastAPI router handlers."""
+        groom = UDCPGroomingEngine(repo_root=tmp_path)
+        tis = groom.generate_tis(
+            "WC027-02", self._WC027_02_SCOPE, "WC-027",
+            required_output_files=["tests/billing-engine/test_markup.py"],
+        )
+        artifact = tis["target_artifacts"][0]
+        interfaces = artifact["interfaces"]
+        func_names = [i["name"] for i in interfaces]
+        # Must have test_* function names (not route handler names)
+        assert all(n.startswith("test_") for n in func_names)
+        # Must NOT have router decorators
+        decorator_strings = [d for i in interfaces for d in i.get("decorators", [])]
+        assert not any("router." in d for d in decorator_strings)
+        # Must be async
+        assert all(i.get("async") is True for i in interfaces if not i["name"].startswith("test_property"))
+        # Must have pytest.mark.asyncio decorator for HTTP test stubs
+        assert any("pytest.mark.asyncio" in d for d in decorator_strings)
+        # Deduplication: POST /pricing/validate appears twice but only one test stub
+        post_validate_stubs = [n for n in func_names if "pricing_validate" in n]
+        assert len(post_validate_stubs) == 1
+
+    def test_test_file_hypothesis_stub_emitted(self, tmp_path: Path) -> None:
+        """Hypothesis scope trigger generates property-based test stub."""
+        groom = UDCPGroomingEngine(repo_root=tmp_path)
+        tis = groom.generate_tis(
+            "WC027-02", self._WC027_02_SCOPE, "WC-027",
+            required_output_files=["tests/billing-engine/test_markup.py"],
+        )
+        artifact = tis["target_artifacts"][0]
+        func_names = [i["name"] for i in artifact["interfaces"]]
+        assert "test_property_based" in func_names
+
+    def test_src_file_still_gets_fastapi_imports(self, tmp_path: Path) -> None:
+        """Regression: source (router.py) files must still get FastAPI imports."""
+        groom = UDCPGroomingEngine(repo_root=tmp_path)
+        tis = groom.generate_tis("WC027-01b", self._WC027_01B_SCOPE, "WC-027")
+        router_artifact = next(
+            a for a in tis["target_artifacts"] if "router.py" in a["file_path"]
+        )
+        import_froms = [i.get("from", "") for i in router_artifact["imports"]]
+        assert "fastapi" in import_froms
+
 
 # ── Additional PTR coverage ───────────────────────────────────────────────────
 

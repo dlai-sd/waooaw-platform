@@ -200,6 +200,33 @@ This feedback loop is the mechanism by which C-069 ("platform improves itself") 
 
 ---
 
+## 3.25 Decision Consequence Map (C-099 — MANDATORY)
+
+```yaml
+decision_consequence_map:
+  - decision_type: prompt_version_promotion
+    category: DETERMINISTIC_REQUIRED
+    independent_verification_method: "Sujay (EA) approval required before version is promoted to ACTIVE in institutional.agent_prompt_versions; promotion is the irreversible moment — live agent behavior changes"
+    constitutional_basis: C-023, C-069
+
+  - decision_type: spec_amendment_proposal
+    category: DETERMINISTIC_REQUIRED
+    independent_verification_method: "Founder ratification required before any AGENT-AUTHORING-GUIDE or CONSTITUTIONAL_DNA amendment is committed to main; proposal is DRAFT until Founder signs off"
+    constitutional_basis: C-023, C-070
+
+  - decision_type: quality_signal_analysis
+    category: CONSISTENT_SUFFICIENT
+    verification_method: "Analysis is advisory input to Sujay; errors caught in weekly review cycle; no live system change results from analysis alone"
+    constitutional_basis: C-049
+
+  - decision_type: improvement_proposal
+    category: CONSISTENT_SUFFICIENT
+    verification_method: "Proposal requires Sujay approval before any action; the approval gate is the verification loop"
+    constitutional_basis: C-069
+```
+
+---
+
 ## Platform-Agent Contract (PAC)
 <!-- ADR-035 mandatory section. Do not remove. Update when AGENT-BASE-SPEC version bumps. -->
 <!-- Platform-internal agent: no customer session. WBE signals are operational events only. -->

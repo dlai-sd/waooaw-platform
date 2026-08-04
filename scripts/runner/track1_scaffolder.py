@@ -68,7 +68,10 @@ class Track1Scaffolder:
 
         for imp in artifact.get("imports", []):
             names = ", ".join(imp["import"])
-            lines.append(f"from {imp['from']} import {names}")
+            if imp.get("from"):
+                lines.append(f"from {imp['from']} import {names}")
+            else:
+                lines.append(f"import {names}")
 
         interfaces: list[dict[str, Any]] = artifact.get("interfaces", [])
 
@@ -104,7 +107,8 @@ def _render_function(iface: dict[str, Any]) -> list[str]:
         lines.append(f"@{dec}")
     args_str = _render_args(iface.get("arguments", []))
     ret = iface.get("return_type", "None")
-    lines.append(f"def {iface['name']}({args_str}) -> {ret}:")
+    prefix = "async def" if iface.get("async") else "def"
+    lines.append(f"{prefix} {iface['name']}({args_str}) -> {ret}:")
     doc = iface.get("docstring", "")
     if doc:
         lines.append(f'    """{doc}"""')

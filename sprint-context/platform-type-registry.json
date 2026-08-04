@@ -3126,66 +3126,13 @@
         "BundleEngine": {
           "kind": "class",
           "bases": [],
-          "fields": {
-            "_TIER_MARKUP": "ClassVar[dict[str, Decimal]]",
-            "_AGENT_MULTIPLIER": "ClassVar[dict[str, Decimal]]",
-            "_COST_FLOOR": "ClassVar[dict[tuple[str, str], Decimal]]"
-          },
-          "methods": [
-            "validate_bundle",
-            "derive_pricing",
-            "get_cost_floor",
-            "apply_thread_markup",
-            "build_bundle_summary"
-          ]
-        },
-        "BundlePricingWorkflow": {
-          "kind": "class",
-          "bases": [],
           "fields": {},
           "methods": [
-            "async run"
+            "__init__",
+            "async cost_floor",
+            "async derive_price",
+            "async validate_price"
           ]
-        },
-        "MarkupRequest": {
-          "kind": "pydantic_model",
-          "bases": [
-            "BaseModel"
-          ],
-          "fields": {
-            "base_amount": "float",
-            "markup_percentage": "float"
-          },
-          "methods": []
-        },
-        "MarkupResponse": {
-          "kind": "pydantic_model",
-          "bases": [
-            "BaseModel"
-          ],
-          "fields": {
-            "base_amount": "float",
-            "markup_percentage": "float",
-            "markup_amount": "float",
-            "total_amount": "float"
-          },
-          "methods": []
-        },
-        "AgentType": {
-          "kind": "class",
-          "bases": [
-            "StrEnum"
-          ],
-          "fields": {},
-          "methods": []
-        },
-        "BundleTier": {
-          "kind": "class",
-          "bases": [
-            "StrEnum"
-          ],
-          "fields": {},
-          "methods": []
         },
         "ThreadEntry": {
           "kind": "pydantic_model",
@@ -3195,12 +3142,9 @@
           "fields": {
             "thread_id": "str",
             "thread_name": "str",
-            "agent_type": "AgentType",
-            "bundle_tier": "BundleTier",
-            "base_cost": "Decimal",
-            "markup_rate": "Decimal",
-            "is_active": "bool",
-            "description": "str | None"
+            "description": "str | None",
+            "agent_type": "str",
+            "bundle_tier": "str"
           },
           "methods": []
         },
@@ -3210,14 +3154,59 @@
             "BaseModel"
           ],
           "fields": {
-            "bundle_id": "str",
-            "agent_type": "AgentType",
-            "bundle_tier": "BundleTier",
-            "thread_ids": "list[str]",
-            "base_price": "Decimal",
-            "markup_override": "Decimal | None",
-            "is_active": "bool",
-            "metadata": "dict | None"
+            "agent_type": "str",
+            "bundle_tier": "str",
+            "cost_floor_paise": "int",
+            "minimum_margin_pct": "int"
+          },
+          "methods": []
+        },
+        "PriceConfig": {
+          "kind": "pydantic_model",
+          "bases": [
+            "BaseModel"
+          ],
+          "fields": {
+            "agent_type": "str",
+            "bundle_tier": "str",
+            "target_margin_pct": "int | None"
+          },
+          "methods": []
+        },
+        "PriceValidationRequest": {
+          "kind": "pydantic_model",
+          "bases": [
+            "BaseModel"
+          ],
+          "fields": {
+            "agent_type": "str",
+            "bundle_tier": "str",
+            "proposed_price_paise": "int"
+          },
+          "methods": []
+        },
+        "PriceDeriveRequest": {
+          "kind": "pydantic_model",
+          "bases": [
+            "BaseModel"
+          ],
+          "fields": {
+            "agent_type": "str",
+            "bundle_tier": "str",
+            "target_margin_pct": "int | None"
+          },
+          "methods": []
+        },
+        "PriceValidation": {
+          "kind": "pydantic_model",
+          "bases": [
+            "BaseModel"
+          ],
+          "fields": {
+            "outcome": "str",
+            "cost_floor_paise": "int",
+            "minimum_compliant_price_paise": "int",
+            "proposed_price_paise": "int"
           },
           "methods": []
         },
@@ -4074,6 +4063,7 @@
         "src/professional-runtime/__init__.py",
         "src/ai-runtime/main.py",
         "src/ai-runtime/__init__.py",
+        "src/test/File.cs",
         "src/business-platform/Protos/constitutional_service.proto",
         "src/business-platform/Controllers/AgentsController.cs",
         "src/business-platform/Controllers/CustomersController.cs",
@@ -4087,6 +4077,7 @@
         "src/business-platform/obj/Debug/net9.0/Protos/ConstitutionalService.cs",
         "src/business-platform/obj/Debug/net9.0/Protos/ConstitutionalServiceGrpc.cs",
         "src/billing-engine/markup/bundle_engine.py",
+        "src/billing-engine/markup/__init__.py",
         "src/billing-engine/markup/router.py",
         "src/billing-engine/markup/models.py",
         "src/constitutional-engine/Protos/constitutional_service.proto",
@@ -4715,66 +4706,13 @@
         "BundleEngine": {
           "kind": "class",
           "bases": [],
-          "fields": {
-            "_TIER_MARKUP": "ClassVar[dict[str, Decimal]]",
-            "_AGENT_MULTIPLIER": "ClassVar[dict[str, Decimal]]",
-            "_COST_FLOOR": "ClassVar[dict[tuple[str, str], Decimal]]"
-          },
-          "methods": [
-            "validate_bundle",
-            "derive_pricing",
-            "get_cost_floor",
-            "apply_thread_markup",
-            "build_bundle_summary"
-          ]
-        },
-        "BundlePricingWorkflow": {
-          "kind": "class",
-          "bases": [],
           "fields": {},
           "methods": [
-            "async run"
+            "__init__",
+            "async cost_floor",
+            "async derive_price",
+            "async validate_price"
           ]
-        },
-        "MarkupRequest": {
-          "kind": "pydantic_model",
-          "bases": [
-            "BaseModel"
-          ],
-          "fields": {
-            "base_amount": "float",
-            "markup_percentage": "float"
-          },
-          "methods": []
-        },
-        "MarkupResponse": {
-          "kind": "pydantic_model",
-          "bases": [
-            "BaseModel"
-          ],
-          "fields": {
-            "base_amount": "float",
-            "markup_percentage": "float",
-            "markup_amount": "float",
-            "total_amount": "float"
-          },
-          "methods": []
-        },
-        "AgentType": {
-          "kind": "class",
-          "bases": [
-            "StrEnum"
-          ],
-          "fields": {},
-          "methods": []
-        },
-        "BundleTier": {
-          "kind": "class",
-          "bases": [
-            "StrEnum"
-          ],
-          "fields": {},
-          "methods": []
         },
         "ThreadEntry": {
           "kind": "pydantic_model",
@@ -4784,12 +4722,9 @@
           "fields": {
             "thread_id": "str",
             "thread_name": "str",
-            "agent_type": "AgentType",
-            "bundle_tier": "BundleTier",
-            "base_cost": "Decimal",
-            "markup_rate": "Decimal",
-            "is_active": "bool",
-            "description": "str | None"
+            "description": "str | None",
+            "agent_type": "str",
+            "bundle_tier": "str"
           },
           "methods": []
         },
@@ -4799,14 +4734,59 @@
             "BaseModel"
           ],
           "fields": {
-            "bundle_id": "str",
-            "agent_type": "AgentType",
-            "bundle_tier": "BundleTier",
-            "thread_ids": "list[str]",
-            "base_price": "Decimal",
-            "markup_override": "Decimal | None",
-            "is_active": "bool",
-            "metadata": "dict | None"
+            "agent_type": "str",
+            "bundle_tier": "str",
+            "cost_floor_paise": "int",
+            "minimum_margin_pct": "int"
+          },
+          "methods": []
+        },
+        "PriceConfig": {
+          "kind": "pydantic_model",
+          "bases": [
+            "BaseModel"
+          ],
+          "fields": {
+            "agent_type": "str",
+            "bundle_tier": "str",
+            "target_margin_pct": "int | None"
+          },
+          "methods": []
+        },
+        "PriceValidationRequest": {
+          "kind": "pydantic_model",
+          "bases": [
+            "BaseModel"
+          ],
+          "fields": {
+            "agent_type": "str",
+            "bundle_tier": "str",
+            "proposed_price_paise": "int"
+          },
+          "methods": []
+        },
+        "PriceDeriveRequest": {
+          "kind": "pydantic_model",
+          "bases": [
+            "BaseModel"
+          ],
+          "fields": {
+            "agent_type": "str",
+            "bundle_tier": "str",
+            "target_margin_pct": "int | None"
+          },
+          "methods": []
+        },
+        "PriceValidation": {
+          "kind": "pydantic_model",
+          "bases": [
+            "BaseModel"
+          ],
+          "fields": {
+            "outcome": "str",
+            "cost_floor_paise": "int",
+            "minimum_compliant_price_paise": "int",
+            "proposed_price_paise": "int"
           },
           "methods": []
         },
@@ -5663,6 +5643,7 @@
         "src/professional-runtime/__init__.py",
         "src/ai-runtime/main.py",
         "src/ai-runtime/__init__.py",
+        "src/test/File.cs",
         "src/business-platform/Protos/constitutional_service.proto",
         "src/business-platform/Controllers/AgentsController.cs",
         "src/business-platform/Controllers/CustomersController.cs",
@@ -5676,6 +5657,7 @@
         "src/business-platform/obj/Debug/net9.0/Protos/ConstitutionalService.cs",
         "src/business-platform/obj/Debug/net9.0/Protos/ConstitutionalServiceGrpc.cs",
         "src/billing-engine/markup/bundle_engine.py",
+        "src/billing-engine/markup/__init__.py",
         "src/billing-engine/markup/router.py",
         "src/billing-engine/markup/models.py",
         "src/constitutional-engine/Protos/constitutional_service.proto",
@@ -6304,66 +6286,13 @@
         "BundleEngine": {
           "kind": "class",
           "bases": [],
-          "fields": {
-            "_TIER_MARKUP": "ClassVar[dict[str, Decimal]]",
-            "_AGENT_MULTIPLIER": "ClassVar[dict[str, Decimal]]",
-            "_COST_FLOOR": "ClassVar[dict[tuple[str, str], Decimal]]"
-          },
-          "methods": [
-            "validate_bundle",
-            "derive_pricing",
-            "get_cost_floor",
-            "apply_thread_markup",
-            "build_bundle_summary"
-          ]
-        },
-        "BundlePricingWorkflow": {
-          "kind": "class",
-          "bases": [],
           "fields": {},
           "methods": [
-            "async run"
+            "__init__",
+            "async cost_floor",
+            "async derive_price",
+            "async validate_price"
           ]
-        },
-        "MarkupRequest": {
-          "kind": "pydantic_model",
-          "bases": [
-            "BaseModel"
-          ],
-          "fields": {
-            "base_amount": "float",
-            "markup_percentage": "float"
-          },
-          "methods": []
-        },
-        "MarkupResponse": {
-          "kind": "pydantic_model",
-          "bases": [
-            "BaseModel"
-          ],
-          "fields": {
-            "base_amount": "float",
-            "markup_percentage": "float",
-            "markup_amount": "float",
-            "total_amount": "float"
-          },
-          "methods": []
-        },
-        "AgentType": {
-          "kind": "class",
-          "bases": [
-            "StrEnum"
-          ],
-          "fields": {},
-          "methods": []
-        },
-        "BundleTier": {
-          "kind": "class",
-          "bases": [
-            "StrEnum"
-          ],
-          "fields": {},
-          "methods": []
         },
         "ThreadEntry": {
           "kind": "pydantic_model",
@@ -6373,12 +6302,9 @@
           "fields": {
             "thread_id": "str",
             "thread_name": "str",
-            "agent_type": "AgentType",
-            "bundle_tier": "BundleTier",
-            "base_cost": "Decimal",
-            "markup_rate": "Decimal",
-            "is_active": "bool",
-            "description": "str | None"
+            "description": "str | None",
+            "agent_type": "str",
+            "bundle_tier": "str"
           },
           "methods": []
         },
@@ -6388,14 +6314,59 @@
             "BaseModel"
           ],
           "fields": {
-            "bundle_id": "str",
-            "agent_type": "AgentType",
-            "bundle_tier": "BundleTier",
-            "thread_ids": "list[str]",
-            "base_price": "Decimal",
-            "markup_override": "Decimal | None",
-            "is_active": "bool",
-            "metadata": "dict | None"
+            "agent_type": "str",
+            "bundle_tier": "str",
+            "cost_floor_paise": "int",
+            "minimum_margin_pct": "int"
+          },
+          "methods": []
+        },
+        "PriceConfig": {
+          "kind": "pydantic_model",
+          "bases": [
+            "BaseModel"
+          ],
+          "fields": {
+            "agent_type": "str",
+            "bundle_tier": "str",
+            "target_margin_pct": "int | None"
+          },
+          "methods": []
+        },
+        "PriceValidationRequest": {
+          "kind": "pydantic_model",
+          "bases": [
+            "BaseModel"
+          ],
+          "fields": {
+            "agent_type": "str",
+            "bundle_tier": "str",
+            "proposed_price_paise": "int"
+          },
+          "methods": []
+        },
+        "PriceDeriveRequest": {
+          "kind": "pydantic_model",
+          "bases": [
+            "BaseModel"
+          ],
+          "fields": {
+            "agent_type": "str",
+            "bundle_tier": "str",
+            "target_margin_pct": "int | None"
+          },
+          "methods": []
+        },
+        "PriceValidation": {
+          "kind": "pydantic_model",
+          "bases": [
+            "BaseModel"
+          ],
+          "fields": {
+            "outcome": "str",
+            "cost_floor_paise": "int",
+            "minimum_compliant_price_paise": "int",
+            "proposed_price_paise": "int"
           },
           "methods": []
         },
@@ -7252,6 +7223,7 @@
         "src/professional-runtime/__init__.py",
         "src/ai-runtime/main.py",
         "src/ai-runtime/__init__.py",
+        "src/test/File.cs",
         "src/business-platform/Protos/constitutional_service.proto",
         "src/business-platform/Controllers/AgentsController.cs",
         "src/business-platform/Controllers/CustomersController.cs",
@@ -7265,6 +7237,7 @@
         "src/business-platform/obj/Debug/net9.0/Protos/ConstitutionalService.cs",
         "src/business-platform/obj/Debug/net9.0/Protos/ConstitutionalServiceGrpc.cs",
         "src/billing-engine/markup/bundle_engine.py",
+        "src/billing-engine/markup/__init__.py",
         "src/billing-engine/markup/router.py",
         "src/billing-engine/markup/models.py",
         "src/constitutional-engine/Protos/constitutional_service.proto",
@@ -9482,66 +9455,13 @@
         "BundleEngine": {
           "kind": "class",
           "bases": [],
-          "fields": {
-            "_TIER_MARKUP": "ClassVar[dict[str, Decimal]]",
-            "_AGENT_MULTIPLIER": "ClassVar[dict[str, Decimal]]",
-            "_COST_FLOOR": "ClassVar[dict[tuple[str, str], Decimal]]"
-          },
-          "methods": [
-            "validate_bundle",
-            "derive_pricing",
-            "get_cost_floor",
-            "apply_thread_markup",
-            "build_bundle_summary"
-          ]
-        },
-        "BundlePricingWorkflow": {
-          "kind": "class",
-          "bases": [],
           "fields": {},
           "methods": [
-            "async run"
+            "__init__",
+            "async cost_floor",
+            "async derive_price",
+            "async validate_price"
           ]
-        },
-        "MarkupRequest": {
-          "kind": "pydantic_model",
-          "bases": [
-            "BaseModel"
-          ],
-          "fields": {
-            "base_amount": "float",
-            "markup_percentage": "float"
-          },
-          "methods": []
-        },
-        "MarkupResponse": {
-          "kind": "pydantic_model",
-          "bases": [
-            "BaseModel"
-          ],
-          "fields": {
-            "base_amount": "float",
-            "markup_percentage": "float",
-            "markup_amount": "float",
-            "total_amount": "float"
-          },
-          "methods": []
-        },
-        "AgentType": {
-          "kind": "class",
-          "bases": [
-            "StrEnum"
-          ],
-          "fields": {},
-          "methods": []
-        },
-        "BundleTier": {
-          "kind": "class",
-          "bases": [
-            "StrEnum"
-          ],
-          "fields": {},
-          "methods": []
         },
         "ThreadEntry": {
           "kind": "pydantic_model",
@@ -9551,12 +9471,9 @@
           "fields": {
             "thread_id": "str",
             "thread_name": "str",
-            "agent_type": "AgentType",
-            "bundle_tier": "BundleTier",
-            "base_cost": "Decimal",
-            "markup_rate": "Decimal",
-            "is_active": "bool",
-            "description": "str | None"
+            "description": "str | None",
+            "agent_type": "str",
+            "bundle_tier": "str"
           },
           "methods": []
         },
@@ -9566,14 +9483,59 @@
             "BaseModel"
           ],
           "fields": {
-            "bundle_id": "str",
-            "agent_type": "AgentType",
-            "bundle_tier": "BundleTier",
-            "thread_ids": "list[str]",
-            "base_price": "Decimal",
-            "markup_override": "Decimal | None",
-            "is_active": "bool",
-            "metadata": "dict | None"
+            "agent_type": "str",
+            "bundle_tier": "str",
+            "cost_floor_paise": "int",
+            "minimum_margin_pct": "int"
+          },
+          "methods": []
+        },
+        "PriceConfig": {
+          "kind": "pydantic_model",
+          "bases": [
+            "BaseModel"
+          ],
+          "fields": {
+            "agent_type": "str",
+            "bundle_tier": "str",
+            "target_margin_pct": "int | None"
+          },
+          "methods": []
+        },
+        "PriceValidationRequest": {
+          "kind": "pydantic_model",
+          "bases": [
+            "BaseModel"
+          ],
+          "fields": {
+            "agent_type": "str",
+            "bundle_tier": "str",
+            "proposed_price_paise": "int"
+          },
+          "methods": []
+        },
+        "PriceDeriveRequest": {
+          "kind": "pydantic_model",
+          "bases": [
+            "BaseModel"
+          ],
+          "fields": {
+            "agent_type": "str",
+            "bundle_tier": "str",
+            "target_margin_pct": "int | None"
+          },
+          "methods": []
+        },
+        "PriceValidation": {
+          "kind": "pydantic_model",
+          "bases": [
+            "BaseModel"
+          ],
+          "fields": {
+            "outcome": "str",
+            "cost_floor_paise": "int",
+            "minimum_compliant_price_paise": "int",
+            "proposed_price_paise": "int"
           },
           "methods": []
         },
@@ -11071,66 +11033,13 @@
         "BundleEngine": {
           "kind": "class",
           "bases": [],
-          "fields": {
-            "_TIER_MARKUP": "ClassVar[dict[str, Decimal]]",
-            "_AGENT_MULTIPLIER": "ClassVar[dict[str, Decimal]]",
-            "_COST_FLOOR": "ClassVar[dict[tuple[str, str], Decimal]]"
-          },
-          "methods": [
-            "validate_bundle",
-            "derive_pricing",
-            "get_cost_floor",
-            "apply_thread_markup",
-            "build_bundle_summary"
-          ]
-        },
-        "BundlePricingWorkflow": {
-          "kind": "class",
-          "bases": [],
           "fields": {},
           "methods": [
-            "async run"
+            "__init__",
+            "async cost_floor",
+            "async derive_price",
+            "async validate_price"
           ]
-        },
-        "MarkupRequest": {
-          "kind": "pydantic_model",
-          "bases": [
-            "BaseModel"
-          ],
-          "fields": {
-            "base_amount": "float",
-            "markup_percentage": "float"
-          },
-          "methods": []
-        },
-        "MarkupResponse": {
-          "kind": "pydantic_model",
-          "bases": [
-            "BaseModel"
-          ],
-          "fields": {
-            "base_amount": "float",
-            "markup_percentage": "float",
-            "markup_amount": "float",
-            "total_amount": "float"
-          },
-          "methods": []
-        },
-        "AgentType": {
-          "kind": "class",
-          "bases": [
-            "StrEnum"
-          ],
-          "fields": {},
-          "methods": []
-        },
-        "BundleTier": {
-          "kind": "class",
-          "bases": [
-            "StrEnum"
-          ],
-          "fields": {},
-          "methods": []
         },
         "ThreadEntry": {
           "kind": "pydantic_model",
@@ -11140,12 +11049,9 @@
           "fields": {
             "thread_id": "str",
             "thread_name": "str",
-            "agent_type": "AgentType",
-            "bundle_tier": "BundleTier",
-            "base_cost": "Decimal",
-            "markup_rate": "Decimal",
-            "is_active": "bool",
-            "description": "str | None"
+            "description": "str | None",
+            "agent_type": "str",
+            "bundle_tier": "str"
           },
           "methods": []
         },
@@ -11155,14 +11061,59 @@
             "BaseModel"
           ],
           "fields": {
-            "bundle_id": "str",
-            "agent_type": "AgentType",
-            "bundle_tier": "BundleTier",
-            "thread_ids": "list[str]",
-            "base_price": "Decimal",
-            "markup_override": "Decimal | None",
-            "is_active": "bool",
-            "metadata": "dict | None"
+            "agent_type": "str",
+            "bundle_tier": "str",
+            "cost_floor_paise": "int",
+            "minimum_margin_pct": "int"
+          },
+          "methods": []
+        },
+        "PriceConfig": {
+          "kind": "pydantic_model",
+          "bases": [
+            "BaseModel"
+          ],
+          "fields": {
+            "agent_type": "str",
+            "bundle_tier": "str",
+            "target_margin_pct": "int | None"
+          },
+          "methods": []
+        },
+        "PriceValidationRequest": {
+          "kind": "pydantic_model",
+          "bases": [
+            "BaseModel"
+          ],
+          "fields": {
+            "agent_type": "str",
+            "bundle_tier": "str",
+            "proposed_price_paise": "int"
+          },
+          "methods": []
+        },
+        "PriceDeriveRequest": {
+          "kind": "pydantic_model",
+          "bases": [
+            "BaseModel"
+          ],
+          "fields": {
+            "agent_type": "str",
+            "bundle_tier": "str",
+            "target_margin_pct": "int | None"
+          },
+          "methods": []
+        },
+        "PriceValidation": {
+          "kind": "pydantic_model",
+          "bases": [
+            "BaseModel"
+          ],
+          "fields": {
+            "outcome": "str",
+            "cost_floor_paise": "int",
+            "minimum_compliant_price_paise": "int",
+            "proposed_price_paise": "int"
           },
           "methods": []
         },
@@ -12660,66 +12611,13 @@
         "BundleEngine": {
           "kind": "class",
           "bases": [],
-          "fields": {
-            "_TIER_MARKUP": "ClassVar[dict[str, Decimal]]",
-            "_AGENT_MULTIPLIER": "ClassVar[dict[str, Decimal]]",
-            "_COST_FLOOR": "ClassVar[dict[tuple[str, str], Decimal]]"
-          },
-          "methods": [
-            "validate_bundle",
-            "derive_pricing",
-            "get_cost_floor",
-            "apply_thread_markup",
-            "build_bundle_summary"
-          ]
-        },
-        "BundlePricingWorkflow": {
-          "kind": "class",
-          "bases": [],
           "fields": {},
           "methods": [
-            "async run"
+            "__init__",
+            "async cost_floor",
+            "async derive_price",
+            "async validate_price"
           ]
-        },
-        "MarkupRequest": {
-          "kind": "pydantic_model",
-          "bases": [
-            "BaseModel"
-          ],
-          "fields": {
-            "base_amount": "float",
-            "markup_percentage": "float"
-          },
-          "methods": []
-        },
-        "MarkupResponse": {
-          "kind": "pydantic_model",
-          "bases": [
-            "BaseModel"
-          ],
-          "fields": {
-            "base_amount": "float",
-            "markup_percentage": "float",
-            "markup_amount": "float",
-            "total_amount": "float"
-          },
-          "methods": []
-        },
-        "AgentType": {
-          "kind": "class",
-          "bases": [
-            "StrEnum"
-          ],
-          "fields": {},
-          "methods": []
-        },
-        "BundleTier": {
-          "kind": "class",
-          "bases": [
-            "StrEnum"
-          ],
-          "fields": {},
-          "methods": []
         },
         "ThreadEntry": {
           "kind": "pydantic_model",
@@ -12729,12 +12627,9 @@
           "fields": {
             "thread_id": "str",
             "thread_name": "str",
-            "agent_type": "AgentType",
-            "bundle_tier": "BundleTier",
-            "base_cost": "Decimal",
-            "markup_rate": "Decimal",
-            "is_active": "bool",
-            "description": "str | None"
+            "description": "str | None",
+            "agent_type": "str",
+            "bundle_tier": "str"
           },
           "methods": []
         },
@@ -12744,14 +12639,3217 @@
             "BaseModel"
           ],
           "fields": {
-            "bundle_id": "str",
-            "agent_type": "AgentType",
-            "bundle_tier": "BundleTier",
-            "thread_ids": "list[str]",
-            "base_price": "Decimal",
-            "markup_override": "Decimal | None",
-            "is_active": "bool",
-            "metadata": "dict | None"
+            "agent_type": "str",
+            "bundle_tier": "str",
+            "cost_floor_paise": "int",
+            "minimum_margin_pct": "int"
+          },
+          "methods": []
+        },
+        "PriceConfig": {
+          "kind": "pydantic_model",
+          "bases": [
+            "BaseModel"
+          ],
+          "fields": {
+            "agent_type": "str",
+            "bundle_tier": "str",
+            "target_margin_pct": "int | None"
+          },
+          "methods": []
+        },
+        "PriceValidationRequest": {
+          "kind": "pydantic_model",
+          "bases": [
+            "BaseModel"
+          ],
+          "fields": {
+            "agent_type": "str",
+            "bundle_tier": "str",
+            "proposed_price_paise": "int"
+          },
+          "methods": []
+        },
+        "PriceDeriveRequest": {
+          "kind": "pydantic_model",
+          "bases": [
+            "BaseModel"
+          ],
+          "fields": {
+            "agent_type": "str",
+            "bundle_tier": "str",
+            "target_margin_pct": "int | None"
+          },
+          "methods": []
+        },
+        "PriceValidation": {
+          "kind": "pydantic_model",
+          "bases": [
+            "BaseModel"
+          ],
+          "fields": {
+            "outcome": "str",
+            "cost_floor_paise": "int",
+            "minimum_compliant_price_paise": "int",
+            "proposed_price_paise": "int"
+          },
+          "methods": []
+        },
+        "EvaluatorRegistry": {
+          "kind": "class",
+          "namespace": "Waooaw.ConstitutionalEngine.Evaluators",
+          "properties": {},
+          "methods": [
+            {
+              "name": "EvaluateAllAsync",
+              "return_type": "Task<IReadOnlyList<EvaluationResult>>",
+              "params": "EvaluationContext context,\n        CancellationToken cancellationToken = default"
+            }
+          ]
+        },
+        "IClaimEvaluator": {
+          "kind": "interface",
+          "namespace": "Waooaw.ConstitutionalEngine.Evaluators",
+          "methods": []
+        },
+        "C062AiSecurityEvaluator": {
+          "kind": "class",
+          "namespace": "Waooaw.ConstitutionalEngine.Evaluators",
+          "properties": {},
+          "methods": [
+            {
+              "name": "EvaluateAsync",
+              "return_type": "Task<EvaluationResult>",
+              "params": "EvaluationContext ctx, CancellationToken ct"
+            }
+          ]
+        },
+        "C043BudgetCeilingEvaluator": {
+          "kind": "class",
+          "namespace": "Waooaw.ConstitutionalEngine.Evaluators",
+          "properties": {},
+          "methods": [
+            {
+              "name": "EvaluateAsync",
+              "return_type": "Task<EvaluationResult>",
+              "params": "EvaluationContext ctx, CancellationToken ct"
+            }
+          ]
+        },
+        "C041ToolAuthorizationEvaluator": {
+          "kind": "class",
+          "namespace": "Waooaw.ConstitutionalEngine.Evaluators",
+          "properties": {},
+          "methods": [
+            {
+              "name": "EvaluateAsync",
+              "return_type": "Task<EvaluationResult>",
+              "params": "EvaluationContext ctx, CancellationToken ct"
+            }
+          ]
+        },
+        "C048NonExploitationEvaluator": {
+          "kind": "class",
+          "namespace": "Waooaw.ConstitutionalEngine.Evaluators",
+          "properties": {},
+          "methods": [
+            {
+              "name": "EvaluateAsync",
+              "return_type": "Task<EvaluationResult>",
+              "params": "EvaluationContext ctx, CancellationToken ct"
+            }
+          ]
+        },
+        "C049HonestLimitationEvaluator": {
+          "kind": "class",
+          "namespace": "Waooaw.ConstitutionalEngine.Evaluators",
+          "properties": {},
+          "methods": [
+            {
+              "name": "EvaluateAsync",
+              "return_type": "Task<EvaluationResult>",
+              "params": "EvaluationContext ctx, CancellationToken ct"
+            }
+          ]
+        },
+        "EvaluationResult": {
+          "kind": "record",
+          "namespace": "Waooaw.ConstitutionalEngine.Evaluators",
+          "properties": {
+            "ClaimId": "string",
+            "Verdict": "EvaluationVerdict",
+            "Reason": "string"
+          }
+        },
+        "EvaluationVerdict": {
+          "kind": "enum",
+          "namespace": "Waooaw.ConstitutionalEngine.Evaluators",
+          "values": [
+            "Allow",
+            "Deny",
+            "Escalate"
+          ]
+        },
+        "EvaluationContext": {
+          "kind": "record",
+          "namespace": "Waooaw.ConstitutionalEngine.Evaluators",
+          "properties": {
+            "ContractId": "string",
+            "ActionType": "string",
+            "ActionParameters": "string",
+            "DecisionSpaceVersion": "int",
+            "TenantId": "string",
+            "SkillId": "string?",
+            "ApprovedBudgetInrPaise": "long",
+            "CurrentSpendInrPaise": "long",
+            "ProposedSpendInrPaise": "long",
+            "BudgetSkillType": "string"
+          },
+          "methods": [
+            {
+              "name": "GetParameter",
+              "return_type": "string?",
+              "params": "string key"
+            },
+            {
+              "name": "FromRequest",
+              "return_type": "EvaluationContext",
+              "params": "ValidateActionRequest request, string tenantId"
+            }
+          ]
+        },
+        "ConstitutionalDecision": {
+          "kind": "enum",
+          "namespace": "Waooaw.ConstitutionalEngine.Skeleton",
+          "values": [
+            "Allow",
+            "Deny",
+            "Escalate"
+          ]
+        },
+        "CeUnavailableException": {
+          "kind": "class",
+          "namespace": "Waooaw.ConstitutionalEngine.Skeleton",
+          "properties": {
+            "IConstitutionalEngineService": "interface"
+          },
+          "methods": []
+        },
+        "IConstitutionalEngineService": {
+          "kind": "interface",
+          "namespace": "Waooaw.ConstitutionalEngine.Skeleton",
+          "methods": []
+        },
+        "ConstitutionalEngineService": {
+          "kind": "class",
+          "namespace": "Waooaw.ConstitutionalEngine.Services",
+          "properties": {},
+          "methods": [
+            {
+              "name": "RecordEvidence",
+              "return_type": "Task<RecordEvidenceResponse>",
+              "params": "RecordEvidenceRequest req, ServerCallContext ctx"
+            },
+            {
+              "name": "ValidateAction",
+              "return_type": "Task<ValidateActionResponse>",
+              "params": "ValidateActionRequest req, ServerCallContext ctx"
+            },
+            {
+              "name": "GrantAuthorityLicense",
+              "return_type": "Task<GrantAuthorityResponse>",
+              "params": "GrantAuthorityRequest req, ServerCallContext ctx"
+            },
+            {
+              "name": "RevokeAuthorityLicense",
+              "return_type": "Task<RevokeAuthorityResponse>",
+              "params": "RevokeAuthorityRequest req, ServerCallContext ctx"
+            },
+            {
+              "name": "EvaluatePolicy",
+              "return_type": "Task<EvaluatePolicyResponse>",
+              "params": "EvaluatePolicyRequest req, ServerCallContext ctx"
+            },
+            {
+              "name": "TriggerEmergencyStop",
+              "return_type": "Task<EmergencyStopResponse>",
+              "params": "EmergencyStopRequest req, ServerCallContext ctx"
+            }
+          ]
+        },
+        "ConstitutionalDbContext": {
+          "kind": "class",
+          "namespace": "Waooaw.ConstitutionalEngine.Data",
+          "properties": {},
+          "methods": []
+        },
+        "EmergencyStopDbContext": {
+          "kind": "class",
+          "namespace": "Waooaw.ConstitutionalEngine.EmergencyStop",
+          "properties": {},
+          "methods": []
+        },
+        "EmergencyStopEvent": {
+          "kind": "class",
+          "namespace": "Waooaw.ConstitutionalEngine.EmergencyStop",
+          "properties": {
+            "Id": "Guid",
+            "ContractId": "Guid",
+            "InitiatedByUserId": "string",
+            "AffectedSessionIds": "string[]",
+            "TriggeredAt": "DateTimeOffset",
+            "TemporalSignalledAt": "DateTimeOffset?",
+            "StopSource": "string"
+          },
+          "methods": []
+        },
+        "EvidenceRecord": {
+          "kind": "class",
+          "namespace": "Waooaw.ConstitutionalEngine.Data.Entities",
+          "properties": {
+            "Id": "Guid",
+            "IdempotencyKey": "string",
+            "TenantId": "Guid",
+            "EvidenceType": "string",
+            "Summary": "string",
+            "PayloadJson": "string?",
+            "RecordedAt": "DateTimeOffset"
+          },
+          "methods": []
+        },
+        "IPAASEngine": {
+          "kind": "class",
+          "bases": [
+            "ABC"
+          ],
+          "fields": {},
+          "methods": [
+            "async create_session",
+            "async get_session",
+            "async emergency_stop"
+          ]
+        },
+        "PAASSession": {
+          "kind": "dataclass",
+          "bases": [],
+          "fields": {
+            "session_id": "UUID",
+            "contract_id": "UUID",
+            "tenant_id": "str",
+            "agent_type": "str",
+            "status": "str",
+            "created_at": "datetime",
+            "temporal_workflow_id": "Optional[str]"
+          },
+          "methods": []
+        },
+        "EmergencyStopResult": {
+          "kind": "dataclass",
+          "bases": [],
+          "fields": {
+            "sessions_stopped": "list[UUID]",
+            "evidence_record_id": "UUID",
+            "stopped_at": "datetime",
+            "latency_ms": "float"
+          },
+          "methods": []
+        },
+        "SessionNotFoundError": {
+          "kind": "class",
+          "bases": [
+            "Exception"
+          ],
+          "fields": {},
+          "methods": []
+        },
+        "SessionCreationError": {
+          "kind": "class",
+          "bases": [
+            "Exception"
+          ],
+          "fields": {},
+          "methods": []
+        },
+        "SessionState": {
+          "kind": "class",
+          "bases": [
+            "StrEnum"
+          ],
+          "fields": {},
+          "methods": []
+        },
+        "DecisionSpace": {
+          "kind": "dataclass",
+          "bases": [],
+          "fields": {
+            "contract_id": "str",
+            "professional_id": "str",
+            "version": "str",
+            "parameters": "dict[str, Any]",
+            "budget_limit_inr_paise": "int",
+            "budget_used_inr_paise": "int",
+            "allowed_action_types": "list[str]"
+          },
+          "methods": []
+        },
+        "PAASSessionInput": {
+          "kind": "dataclass",
+          "bases": [],
+          "fields": {
+            "session_id": "str",
+            "contract_id": "str",
+            "professional_id": "str",
+            "organisation_id": "str",
+            "decision_space_version": "str",
+            "budget_limit_inr_paise": "int"
+          },
+          "methods": []
+        },
+        "PAASActionInput": {
+          "kind": "dataclass",
+          "bases": [],
+          "fields": {
+            "action_type": "str",
+            "action_parameters": "dict[str, Any]",
+            "action_instance_id": "str"
+          },
+          "methods": []
+        },
+        "PAASActionResult": {
+          "kind": "dataclass",
+          "bases": [],
+          "fields": {
+            "action_instance_id": "str",
+            "allowed": "bool",
+            "evidence_record_id": "str | None",
+            "reason": "str",
+            "executed_content": "dict[str, Any] | None"
+          },
+          "methods": []
+        },
+        "EmergencyStopSignalPayload": {
+          "kind": "dataclass",
+          "bases": [],
+          "fields": {
+            "stopped_by": "str",
+            "reason": "str"
+          },
+          "methods": []
+        },
+        "PAASSessionResult": {
+          "kind": "dataclass",
+          "bases": [],
+          "fields": {
+            "session_id": "str",
+            "terminal_state": "str",
+            "total_actions_executed": "int",
+            "final_budget_used_inr_paise": "int"
+          },
+          "methods": []
+        },
+        "LoadDecisionSpaceInput": {
+          "kind": "dataclass",
+          "bases": [],
+          "fields": {
+            "session_id": "str",
+            "contract_id": "str",
+            "professional_id": "str",
+            "decision_space_version": "str",
+            "budget_limit_inr_paise": "int"
+          },
+          "methods": []
+        },
+        "ValidateAndRecordInput": {
+          "kind": "dataclass",
+          "bases": [],
+          "fields": {
+            "session_id": "str",
+            "contract_id": "str",
+            "professional_id": "str",
+            "action_type": "str",
+            "action_parameters": "dict[str, Any]",
+            "action_instance_id": "str",
+            "decision_space_version": "str",
+            "budget_used_inr_paise": "int",
+            "budget_limit_inr_paise": "int"
+          },
+          "methods": []
+        },
+        "ValidateAndRecordResult": {
+          "kind": "dataclass",
+          "bases": [],
+          "fields": {
+            "allowed": "bool",
+            "evidence_record_id": "str | None",
+            "reason": "str",
+            "constitutional_basis": "str"
+          },
+          "methods": []
+        },
+        "ExecuteActionInput": {
+          "kind": "dataclass",
+          "bases": [],
+          "fields": {
+            "session_id": "str",
+            "contract_id": "str",
+            "action_type": "str",
+            "action_parameters": "dict[str, Any]",
+            "action_instance_id": "str",
+            "evidence_record_id": "str"
+          },
+          "methods": []
+        },
+        "RecordAbandonedEvidenceInput": {
+          "kind": "dataclass",
+          "bases": [],
+          "fields": {
+            "session_id": "str",
+            "contract_id": "str",
+            "professional_id": "str",
+            "action_instance_id": "str",
+            "decision_space_version": "str",
+            "stopped_by": "str"
+          },
+          "methods": []
+        },
+        "PauseSessionInput": {
+          "kind": "dataclass",
+          "bases": [],
+          "fields": {
+            "session_id": "str",
+            "reason": "str"
+          },
+          "methods": []
+        },
+        "ResumeSessionInput": {
+          "kind": "dataclass",
+          "bases": [],
+          "fields": {
+            "session_id": "str"
+          },
+          "methods": []
+        },
+        "TerminateSessionInput": {
+          "kind": "dataclass",
+          "bases": [],
+          "fields": {
+            "session_id": "str",
+            "reason": "str"
+          },
+          "methods": []
+        },
+        "PAASSessionWorkflow": {
+          "kind": "class",
+          "bases": [],
+          "fields": {},
+          "methods": [
+            "__init__",
+            "async signal_execute_action",
+            "async signal_pause",
+            "async signal_resume",
+            "async signal_terminate",
+            "async signal_emergency_stop",
+            "query_session_state",
+            "query_budget_used",
+            "query_total_actions_executed",
+            "async run",
+            "async _execute_paas_action",
+            "async _handle_emergency_stop"
+          ]
+        },
+        "SenseInput": {
+          "kind": "dataclass",
+          "bases": [],
+          "fields": {
+            "session_id": "str",
+            "contract_id": "str",
+            "decision_space_id": "str"
+          },
+          "methods": []
+        },
+        "SenseOutput": {
+          "kind": "dataclass",
+          "bases": [],
+          "fields": {
+            "observation_id": "str",
+            "context": "dict[str, Any]",
+            "status": "str"
+          },
+          "methods": []
+        },
+        "RetrieveInput": {
+          "kind": "dataclass",
+          "bases": [],
+          "fields": {
+            "observation_id": "str",
+            "decision_space_id": "str",
+            "context": "dict[str, Any]"
+          },
+          "methods": []
+        },
+        "RetrieveOutput": {
+          "kind": "dataclass",
+          "bases": [],
+          "fields": {
+            "retrieval_id": "str",
+            "documents": "list[dict[str, Any]]",
+            "status": "str"
+          },
+          "methods": []
+        },
+        "ReasonInput": {
+          "kind": "dataclass",
+          "bases": [],
+          "fields": {
+            "observation_id": "str",
+            "retrieval_id": "str",
+            "decision_space_id": "str",
+            "context": "dict[str, Any]",
+            "documents": "list[dict[str, Any]]"
+          },
+          "methods": []
+        },
+        "ReasonOutput": {
+          "kind": "dataclass",
+          "bases": [],
+          "fields": {
+            "reasoning_id": "str",
+            "proposed_action": "dict[str, Any]",
+            "confidence": "float",
+            "status": "str"
+          },
+          "methods": []
+        },
+        "ActInput": {
+          "kind": "dataclass",
+          "bases": [],
+          "fields": {
+            "reasoning_id": "str",
+            "proposed_action": "dict[str, Any]",
+            "session_id": "str",
+            "contract_id": "str",
+            "decision_space_id": "str"
+          },
+          "methods": []
+        },
+        "ActOutput": {
+          "kind": "dataclass",
+          "bases": [],
+          "fields": {
+            "execution_id": "str",
+            "action_result": "dict[str, Any]",
+            "status": "str"
+          },
+          "methods": []
+        },
+        "RecordInput": {
+          "kind": "dataclass",
+          "bases": [],
+          "fields": {
+            "execution_id": "str",
+            "session_id": "str",
+            "contract_id": "str",
+            "decision_space_id": "str",
+            "proposed_action": "dict[str, Any]",
+            "action_result": "dict[str, Any]",
+            "evidence_type": "str",
+            "error": "str | None"
+          },
+          "methods": []
+        },
+        "RecordOutput": {
+          "kind": "dataclass",
+          "bases": [],
+          "fields": {
+            "evidence_record_id": "str",
+            "persisted_at": "str",
+            "status": "str"
+          },
+          "methods": []
+        },
+        "SessionStartRequest": {
+          "kind": "pydantic_model",
+          "bases": [
+            "BaseModel"
+          ],
+          "fields": {
+            "contract_id": "str",
+            "professional_id": "str",
+            "decision_space_version": "str",
+            "organisation_id": "str",
+            "tenant_id": "str"
+          },
+          "methods": []
+        },
+        "SessionStartResponse": {
+          "kind": "pydantic_model",
+          "bases": [
+            "BaseModel"
+          ],
+          "fields": {
+            "session_id": "str",
+            "workflow_id": "str",
+            "started_at": "str",
+            "status": "str"
+          },
+          "methods": []
+        },
+        "SessionStatusResponse": {
+          "kind": "pydantic_model",
+          "bases": [
+            "BaseModel"
+          ],
+          "fields": {
+            "session_id": "str",
+            "workflow_id": "str",
+            "status": "str",
+            "started_at": "str | None",
+            "closed_at": "str | None"
+          },
+          "methods": []
+        },
+        "SessionTerminateRequest": {
+          "kind": "pydantic_model",
+          "bases": [
+            "BaseModel"
+          ],
+          "fields": {
+            "stopped_by": "str",
+            "reason": "str"
+          },
+          "methods": []
+        },
+        "SessionTerminateResponse": {
+          "kind": "pydantic_model",
+          "bases": [
+            "BaseModel"
+          ],
+          "fields": {
+            "session_id": "str",
+            "signal_sent": "bool",
+            "terminated_at": "str"
+          },
+          "methods": []
+        },
+        "SessionPauseRequest": {
+          "kind": "pydantic_model",
+          "bases": [
+            "BaseModel"
+          ],
+          "fields": {
+            "paused_by": "str"
+          },
+          "methods": []
+        },
+        "SessionPauseResponse": {
+          "kind": "pydantic_model",
+          "bases": [
+            "BaseModel"
+          ],
+          "fields": {
+            "session_id": "str",
+            "signal_sent": "bool",
+            "paused_at": "str"
+          },
+          "methods": []
+        },
+        "SessionResumeRequest": {
+          "kind": "pydantic_model",
+          "bases": [
+            "BaseModel"
+          ],
+          "fields": {
+            "resumed_by": "str"
+          },
+          "methods": []
+        },
+        "SessionResumeResponse": {
+          "kind": "pydantic_model",
+          "bases": [
+            "BaseModel"
+          ],
+          "fields": {
+            "session_id": "str",
+            "signal_sent": "bool",
+            "resumed_at": "str"
+          },
+          "methods": []
+        },
+        "FrameType": {
+          "kind": "class",
+          "bases": [
+            "StrEnum"
+          ],
+          "fields": {},
+          "methods": []
+        },
+        "LlmTierEnum": {
+          "kind": "class",
+          "bases": [
+            "str",
+            "Enum"
+          ],
+          "fields": {},
+          "methods": []
+        },
+        "IPSERouter": {
+          "kind": "class",
+          "bases": [
+            "ABC"
+          ],
+          "fields": {},
+          "methods": [
+            "async route"
+          ]
+        },
+        "ILLMDispatcher": {
+          "kind": "class",
+          "bases": [
+            "ABC"
+          ],
+          "fields": {},
+          "methods": [
+            "async dispatch"
+          ]
+        },
+        "IPIIGuard": {
+          "kind": "class",
+          "bases": [
+            "ABC"
+          ],
+          "fields": {},
+          "methods": [
+            "sanitize"
+          ]
+        },
+        "InferenceRequest": {
+          "kind": "dataclass",
+          "bases": [],
+          "fields": {
+            "contract_id": "UUID",
+            "tenant_id": "str",
+            "prompt": "str",
+            "task_complexity": "str",
+            "language": "Optional[str]",
+            "skill_id": "Optional[str]",
+            "session_id": "Optional[UUID]"
+          },
+          "methods": []
+        },
+        "InferenceResponse": {
+          "kind": "dataclass",
+          "bases": [],
+          "fields": {
+            "content": "str",
+            "tier_used": "LlmTierEnum",
+            "provider_id": "str",
+            "input_tokens": "int",
+            "output_tokens": "int",
+            "latency_ms": "float",
+            "pii_redacted": "list[str]"
+          },
+          "methods": []
+        },
+        "BucketEmptyError": {
+          "kind": "class",
+          "bases": [
+            "Exception"
+          ],
+          "fields": {},
+          "methods": [
+            "__init__"
+          ]
+        },
+        "ProviderUnavailableError": {
+          "kind": "class",
+          "bases": [
+            "Exception"
+          ],
+          "fields": {},
+          "methods": [
+            "__init__"
+          ]
+        },
+        "PIILeakageError": {
+          "kind": "class",
+          "bases": [
+            "Exception"
+          ],
+          "fields": {},
+          "methods": []
+        },
+        "InjectionScanResult": {
+          "kind": "dataclass",
+          "bases": [],
+          "fields": {
+            "safe": "bool",
+            "matched_category": "str | None",
+            "matched_pattern": "str | None"
+          },
+          "methods": []
+        },
+        "InjectionGuard": {
+          "kind": "dataclass",
+          "bases": [],
+          "fields": {
+            "_category_names": "list[str]"
+          },
+          "methods": [
+            "async scan",
+            "_scan_sync",
+            "scan_sync"
+          ]
+        },
+        "LlmTier": {
+          "kind": "class",
+          "bases": [
+            "StrEnum"
+          ],
+          "fields": {},
+          "methods": []
+        },
+        "SarvamProviderError": {
+          "kind": "class",
+          "bases": [
+            "Exception"
+          ],
+          "fields": {},
+          "methods": []
+        },
+        "SarvamProvider": {
+          "kind": "class",
+          "bases": [],
+          "fields": {},
+          "methods": [
+            "__init__",
+            "async complete",
+            "async close",
+            "_build_payload",
+            "async _record_dispatch_event"
+          ]
+        },
+        "OllamaProvider": {
+          "kind": "class",
+          "bases": [],
+          "fields": {},
+          "methods": [
+            "__init__",
+            "async complete",
+            "_build_prompt",
+            "async _record_dispatch_event"
+          ]
+        }
+      },
+      "files": [
+        "src/business-platform/Program.cs",
+        "src/billing-engine/main.py",
+        "src/constitutional-engine/Program.cs",
+        "src/professional-runtime/main.py",
+        "src/professional-runtime/__init__.py",
+        "src/ai-runtime/main.py",
+        "src/ai-runtime/__init__.py",
+        "src/business-platform/Protos/constitutional_service.proto",
+        "src/business-platform/Controllers/AgentsController.cs",
+        "src/business-platform/Controllers/CustomersController.cs",
+        "src/business-platform/skeleton/IBusinessPlatformServices.cs",
+        "src/business-platform/Services/EmploymentService.cs",
+        "src/business-platform/Infrastructure/TenantIsolationMiddleware.cs",
+        "src/business-platform/obj/Debug/net9.0/.NETCoreApp,Version=v9.0.AssemblyAttributes.cs",
+        "src/business-platform/obj/Debug/net9.0/business-platform.GlobalUsings.g.cs",
+        "src/business-platform/obj/Debug/net9.0/BusinessPlatform.MvcApplicationPartsAssemblyInfo.cs",
+        "src/business-platform/obj/Debug/net9.0/business-platform.AssemblyInfo.cs",
+        "src/business-platform/obj/Debug/net9.0/Protos/ConstitutionalService.cs",
+        "src/business-platform/obj/Debug/net9.0/Protos/ConstitutionalServiceGrpc.cs",
+        "src/billing-engine/markup/bundle_engine.py",
+        "src/billing-engine/markup/router.py",
+        "src/billing-engine/markup/models.py",
+        "src/constitutional-engine/Protos/constitutional_service.proto",
+        "src/constitutional-engine/Evaluators/EvaluatorRegistry.cs",
+        "src/constitutional-engine/Evaluators/IClaimEvaluator.cs",
+        "src/constitutional-engine/Evaluators/C062AiSecurityEvaluator.cs",
+        "src/constitutional-engine/Evaluators/C043BudgetCeilingEvaluator.cs",
+        "src/constitutional-engine/Evaluators/C041ToolAuthorizationEvaluator.cs",
+        "src/constitutional-engine/Evaluators/C048NonExploitationEvaluator.cs",
+        "src/constitutional-engine/Evaluators/C049HonestLimitationEvaluator.cs",
+        "src/constitutional-engine/Evaluators/EvaluationResult.cs",
+        "src/constitutional-engine/Evaluators/EvaluationContext.cs",
+        "src/constitutional-engine/skeleton/IConstitutionalEngineService.cs",
+        "src/constitutional-engine/Services/ConstitutionalEngineService.cs",
+        "src/constitutional-engine/Data/ConstitutionalDbContext.cs",
+        "src/constitutional-engine/EmergencyStop/EmergencyStopDbContext.cs",
+        "src/constitutional-engine/EmergencyStop/EmergencyStopEvent.cs",
+        "src/constitutional-engine/obj/Debug/net9.0/.NETCoreApp,Version=v9.0.AssemblyAttributes.cs",
+        "src/constitutional-engine/obj/Debug/net9.0/constitutional-engine.AssemblyInfo.cs",
+        "src/constitutional-engine/obj/Debug/net9.0/constitutional-engine.GlobalUsings.g.cs",
+        "src/constitutional-engine/obj/Debug/net9.0/Protos/ConstitutionalService.cs",
+        "src/constitutional-engine/obj/Debug/net9.0/Protos/ConstitutionalServiceGrpc.cs",
+        "src/constitutional-engine/Data/Entities/EvidenceRecord.cs",
+        "src/professional-runtime/skeleton/paas_engine.py",
+        "src/professional-runtime/workflows/paas_workflow.py",
+        "src/professional-runtime/proto/constitutional_service.proto",
+        "src/professional-runtime/activities/execution_loop.py",
+        "src/professional-runtime/routers/sessions.py",
+        "src/professional-runtime/routers/emergency_stop.py",
+        "src/ai-runtime/skeleton/ai_runtime_interfaces.py",
+        "src/ai-runtime/proto/constitutional_service.proto",
+        "src/ai-runtime/pii/__init__.py",
+        "src/ai-runtime/pii/injection_guard.py",
+        "src/ai-runtime/rag/__init__.py",
+        "src/ai-runtime/rag/retriever.py",
+        "src/ai-runtime/pse/__init__.py",
+        "src/ai-runtime/pse/router.py",
+        "src/ai-runtime/pse/tiers.py",
+        "src/ai-runtime/providers/sarvam_provider.py",
+        "src/ai-runtime/providers/ollama_provider.py",
+        "src/ai-runtime/providers/__init__.py"
+      ]
+    },
+    "WC027-01bb": {
+      "types": {
+        "EvidenceState": {
+          "kind": "proto_enum",
+          "namespace": "Waooaw.ConstitutionalEngine.Grpc",
+          "values": [
+            "Unspecified",
+            "Proposed",
+            "AwaitingApproval",
+            "Approved",
+            "Rejected",
+            "Executed",
+            "Abandoned"
+          ],
+          "proto_values": [
+            "EVIDENCE_STATE_UNSPECIFIED",
+            "EVIDENCE_STATE_PROPOSED",
+            "EVIDENCE_STATE_AWAITING_APPROVAL",
+            "EVIDENCE_STATE_APPROVED",
+            "EVIDENCE_STATE_REJECTED",
+            "EVIDENCE_STATE_EXECUTED",
+            "EVIDENCE_STATE_ABANDONED"
+          ],
+          "note": "C# enum in namespace Waooaw.ConstitutionalEngine.Grpc. Values are PascalCased from proto."
+        },
+        "ValidationDecision": {
+          "kind": "proto_enum",
+          "namespace": "Waooaw.ConstitutionalEngine.Grpc",
+          "values": [
+            "Unspecified",
+            "Allow",
+            "Deny",
+            "Escalate"
+          ],
+          "proto_values": [
+            "VALIDATION_DECISION_UNSPECIFIED",
+            "VALIDATION_DECISION_ALLOW",
+            "VALIDATION_DECISION_DENY",
+            "VALIDATION_DECISION_ESCALATE"
+          ],
+          "note": "C# enum in namespace Waooaw.ConstitutionalEngine.Grpc. Values are PascalCased from proto."
+        },
+        "PolicyDecision": {
+          "kind": "proto_enum",
+          "namespace": "Waooaw.ConstitutionalEngine.Grpc",
+          "values": [
+            "Unspecified",
+            "Permit",
+            "Deny",
+            "Escalate"
+          ],
+          "proto_values": [
+            "POLICY_DECISION_UNSPECIFIED",
+            "POLICY_DECISION_PERMIT",
+            "POLICY_DECISION_DENY",
+            "POLICY_DECISION_ESCALATE"
+          ],
+          "note": "C# enum in namespace Waooaw.ConstitutionalEngine.Grpc. Values are PascalCased from proto."
+        },
+        "ApprovalType": {
+          "kind": "proto_enum",
+          "namespace": "Waooaw.ConstitutionalEngine.Grpc",
+          "values": [
+            "Unspecified",
+            "CustomerExplicit",
+            "CalendarAuthorized",
+            "Synthetic",
+            "PreAuthorized"
+          ],
+          "proto_values": [
+            "APPROVAL_TYPE_UNSPECIFIED",
+            "APPROVAL_TYPE_CUSTOMER_EXPLICIT",
+            "APPROVAL_TYPE_CALENDAR_AUTHORIZED",
+            "APPROVAL_TYPE_SYNTHETIC",
+            "APPROVAL_TYPE_PRE_AUTHORIZED"
+          ],
+          "note": "C# enum in namespace Waooaw.ConstitutionalEngine.Grpc. Values are PascalCased from proto."
+        },
+        "RecordEvidenceRequest": {
+          "kind": "proto_message",
+          "namespace": "Waooaw.ConstitutionalEngine.Grpc",
+          "fields": {
+            "ActionInstanceId": "string",
+            "ContractId": "string",
+            "ProfessionalId": "string",
+            "ActionType": "string",
+            "State": "EvidenceState",
+            "ProposedContent": "string?",
+            "ExecutedContent": "string?",
+            "IsScopeBoundary": "bool",
+            "ScopeBoundaryName": "string?",
+            "ScopeBoundaryAcknowledgment": "string?",
+            "DecisionSpaceVersion": "int",
+            "ConstitutionalBasis": "string"
+          },
+          "note": "Proto-generated C# class in namespace Waooaw.ConstitutionalEngine.Grpc. Use property names EXACTLY as listed — do NOT invent fields."
+        },
+        "RecordEvidenceResponse": {
+          "kind": "proto_message",
+          "namespace": "Waooaw.ConstitutionalEngine.Grpc",
+          "fields": {
+            "EvidenceRecordId": "string"
+          },
+          "note": "Proto-generated C# class in namespace Waooaw.ConstitutionalEngine.Grpc. Use property names EXACTLY as listed — do NOT invent fields."
+        },
+        "ValidateActionRequest": {
+          "kind": "proto_message",
+          "namespace": "Waooaw.ConstitutionalEngine.Grpc",
+          "fields": {
+            "ContractId": "string",
+            "ActionType": "string",
+            "ActionParameters": "string",
+            "DecisionSpaceVersion": "int",
+            "BudgetContext": "BudgetContext?",
+            "SyntheticApprovalContext": "SyntheticApprovalContext?",
+            "ApprovalType": "ApprovalType",
+            "SkillId": "string?",
+            "ReasoningTraceId": "string?"
+          },
+          "note": "Proto-generated C# class in namespace Waooaw.ConstitutionalEngine.Grpc. Use property names EXACTLY as listed — do NOT invent fields."
+        },
+        "BudgetContext": {
+          "kind": "proto_message",
+          "namespace": "Waooaw.ConstitutionalEngine.Grpc",
+          "fields": {
+            "ApprovedMonthlyBudgetInrPaise": "long",
+            "CurrentMonthSpendInrPaise": "long",
+            "ProposedSpendInrPaise": "long",
+            "SkillType": "string"
+          },
+          "note": "Proto-generated C# class in namespace Waooaw.ConstitutionalEngine.Grpc. Use property names EXACTLY as listed — do NOT invent fields."
+        },
+        "SyntheticApprovalContext": {
+          "kind": "proto_message",
+          "namespace": "Waooaw.ConstitutionalEngine.Grpc",
+          "fields": {
+            "ConfidenceScore": "float",
+            "ConfiguredThreshold": "float",
+            "PriorApprovalCount": "int",
+            "MinHistoryRequired": "int",
+            "BasisApprovalIds": "RepeatedField<string>",
+            "ActionDescription": "string",
+            "OverrideWindowHours": "int"
+          },
+          "note": "Proto-generated C# class in namespace Waooaw.ConstitutionalEngine.Grpc. Use property names EXACTLY as listed — do NOT invent fields."
+        },
+        "ValidateActionResponse": {
+          "kind": "proto_message",
+          "namespace": "Waooaw.ConstitutionalEngine.Grpc",
+          "fields": {
+            "Decision": "ValidationDecision",
+            "ConstitutionalBasis": "string",
+            "Reason": "string",
+            "BudgetRemainingInrPaise": "long?",
+            "SyntheticApprovalRecordId": "string?"
+          },
+          "note": "Proto-generated C# class in namespace Waooaw.ConstitutionalEngine.Grpc. Use property names EXACTLY as listed — do NOT invent fields."
+        },
+        "GrantAuthorityRequest": {
+          "kind": "proto_message",
+          "namespace": "Waooaw.ConstitutionalEngine.Grpc",
+          "fields": {
+            "ContractId": "string",
+            "NewAuthorityLevel": "int",
+            "GrantedBy": "string",
+            "EvidenceIds": "RepeatedField<string>",
+            "ConstitutionalBasis": "string"
+          },
+          "note": "Proto-generated C# class in namespace Waooaw.ConstitutionalEngine.Grpc. Use property names EXACTLY as listed — do NOT invent fields."
+        },
+        "GrantAuthorityResponse": {
+          "kind": "proto_message",
+          "namespace": "Waooaw.ConstitutionalEngine.Grpc",
+          "fields": {
+            "LicenseId": "string"
+          },
+          "note": "Proto-generated C# class in namespace Waooaw.ConstitutionalEngine.Grpc. Use property names EXACTLY as listed — do NOT invent fields."
+        },
+        "RevokeAuthorityRequest": {
+          "kind": "proto_message",
+          "namespace": "Waooaw.ConstitutionalEngine.Grpc",
+          "fields": {
+            "ContractId": "string",
+            "NewAuthorityLevel": "int",
+            "RevokedBy": "string",
+            "Reason": "string",
+            "ConstitutionalBasis": "string"
+          },
+          "note": "Proto-generated C# class in namespace Waooaw.ConstitutionalEngine.Grpc. Use property names EXACTLY as listed — do NOT invent fields."
+        },
+        "RevokeAuthorityResponse": {
+          "kind": "proto_message",
+          "namespace": "Waooaw.ConstitutionalEngine.Grpc",
+          "fields": {
+            "LicenseId": "string"
+          },
+          "note": "Proto-generated C# class in namespace Waooaw.ConstitutionalEngine.Grpc. Use property names EXACTLY as listed — do NOT invent fields."
+        },
+        "EvaluatePolicyRequest": {
+          "kind": "proto_message",
+          "namespace": "Waooaw.ConstitutionalEngine.Grpc",
+          "fields": {
+            "ContractId": "string",
+            "ActionType": "string",
+            "ActionContext": "string"
+          },
+          "note": "Proto-generated C# class in namespace Waooaw.ConstitutionalEngine.Grpc. Use property names EXACTLY as listed — do NOT invent fields."
+        },
+        "EvaluatePolicyResponse": {
+          "kind": "proto_message",
+          "namespace": "Waooaw.ConstitutionalEngine.Grpc",
+          "fields": {
+            "Decision": "PolicyDecision",
+            "ConstitutionalBasis": "string",
+            "Rationale": "string"
+          },
+          "note": "Proto-generated C# class in namespace Waooaw.ConstitutionalEngine.Grpc. Use property names EXACTLY as listed — do NOT invent fields."
+        },
+        "EmergencyStopRequest": {
+          "kind": "proto_message",
+          "namespace": "Waooaw.ConstitutionalEngine.Grpc",
+          "fields": {
+            "ContractId": "string",
+            "StoppedBy": "string",
+            "ActiveSessionIds": "RepeatedField<string>"
+          },
+          "note": "Proto-generated C# class in namespace Waooaw.ConstitutionalEngine.Grpc. Use property names EXACTLY as listed — do NOT invent fields."
+        },
+        "EmergencyStopResponse": {
+          "kind": "proto_message",
+          "namespace": "Waooaw.ConstitutionalEngine.Grpc",
+          "fields": {
+            "EmergencyStopRecordId": "string",
+            "AffectedSessions": "RepeatedField<string>"
+          },
+          "note": "Proto-generated C# class in namespace Waooaw.ConstitutionalEngine.Grpc. Use property names EXACTLY as listed — do NOT invent fields."
+        },
+        "AgentsController": {
+          "kind": "class",
+          "namespace": "Waooaw.BusinessPlatform.Controllers",
+          "properties": {},
+          "methods": [
+            {
+              "name": "HireAgentAsync",
+              "return_type": "Task<IActionResult>",
+              "params": "[FromBody] HireAgentRequest request,\n        CancellationToken cancellationToken"
+            }
+          ]
+        },
+        "RegisterCustomerRequest": {
+          "kind": "record",
+          "namespace": "Waooaw.BusinessPlatform.Skeleton",
+          "properties": {
+            "DisplayName": "string",
+            "Email": "string",
+            "Phone": "string?",
+            "Gstin": "string?"
+          }
+        },
+        "HireAgentRequest": {
+          "kind": "record",
+          "namespace": "Waooaw.BusinessPlatform.Controllers",
+          "properties": {
+            "ContractId": "string",
+            "ProfessionalType": "string",
+            "SkillId": "string",
+            "DecisionSpaceVersion": "string",
+            "ApprovedBudgetInrPaise": "long",
+            "BillingCycleAnchorDay": "string"
+          },
+          "methods": [
+            {
+              "name": "FormEmploymentContract",
+              "return_type": "IActionResult",
+              "params": ""
+            },
+            {
+              "name": "GetEmploymentContract",
+              "return_type": "IActionResult",
+              "params": "Guid id"
+            },
+            {
+              "name": "RegisterCustomerAsync",
+              "return_type": "Task<IActionResult>",
+              "params": "[FromBody] RegisterCustomerRequest request,\n        CancellationToken cancellationToken"
+            },
+            {
+              "name": "HireAgentAsync",
+              "return_type": "Task<IActionResult>",
+              "params": "[FromBody] HireAgentRequest request,\n        CancellationToken cancellationToken"
+            }
+          ]
+        },
+        "CustomersController": {
+          "kind": "class",
+          "namespace": "Waooaw.BusinessPlatform.Controllers",
+          "properties": {},
+          "methods": [
+            {
+              "name": "FormEmploymentContract",
+              "return_type": "IActionResult",
+              "params": ""
+            },
+            {
+              "name": "GetEmploymentContract",
+              "return_type": "IActionResult",
+              "params": "Guid id"
+            },
+            {
+              "name": "RegisterCustomerAsync",
+              "return_type": "Task<IActionResult>",
+              "params": "[FromBody] RegisterCustomerRequest request,\n        CancellationToken cancellationToken"
+            },
+            {
+              "name": "HireAgentAsync",
+              "return_type": "Task<IActionResult>",
+              "params": "[FromBody] HireAgentRequest request,\n        CancellationToken cancellationToken"
+            }
+          ]
+        },
+        "CreateContractRequest": {
+          "kind": "record",
+          "namespace": "Waooaw.BusinessPlatform.Skeleton",
+          "properties": {
+            "OrganisationId": "Guid",
+            "AgentType": "string",
+            "BundleTier": "string",
+            "AuthorisedSkills": "string[]"
+          }
+        },
+        "EmploymentContractDto": {
+          "kind": "record",
+          "namespace": "Waooaw.BusinessPlatform.Skeleton",
+          "properties": {
+            "Id": "Guid",
+            "OrganisationId": "Guid",
+            "AgentType": "string",
+            "Status": "string",
+            "CreatedAt": "DateTimeOffset"
+          }
+        },
+        "OrganisationDto": {
+          "kind": "record",
+          "namespace": "Waooaw.BusinessPlatform.Skeleton",
+          "properties": {
+            "Id": "Guid",
+            "DisplayName": "string",
+            "Status": "string"
+          }
+        },
+        "ConstitutionalDenyException": {
+          "kind": "class",
+          "namespace": "Waooaw.BusinessPlatform.Skeleton",
+          "properties": {},
+          "methods": []
+        },
+        "IEmploymentService": {
+          "kind": "interface",
+          "namespace": "Waooaw.BusinessPlatform.Skeleton",
+          "methods": []
+        },
+        "ICustomerService": {
+          "kind": "interface",
+          "namespace": "Waooaw.BusinessPlatform.Skeleton",
+          "methods": []
+        },
+        "RegisterCustomerResult": {
+          "kind": "record",
+          "namespace": "Waooaw.BusinessPlatform.Services",
+          "properties": {
+            "Success": "bool",
+            "CustomerId": "Guid?",
+            "DenialReason": "string?"
+          },
+          "methods": [
+            {
+              "name": "RegisterCustomerAsync",
+              "return_type": "Task<RegisterCustomerResult>",
+              "params": "RegisterCustomerRequest request,\n        CancellationToken cancellationToken"
+            },
+            {
+              "name": "HireAgentAsync",
+              "return_type": "Task<HireAgentResult>",
+              "params": "HireAgentRequest request,\n        CancellationToken cancellationToken"
+            }
+          ]
+        },
+        "HireAgentResult": {
+          "kind": "record",
+          "namespace": "Waooaw.BusinessPlatform.Services",
+          "properties": {
+            "Success": "bool",
+            "AgentId": "Guid?",
+            "ProRataBillingStartDate": "DateTimeOffset?",
+            "DenialReason": "string?"
+          },
+          "methods": [
+            {
+              "name": "RegisterCustomerAsync",
+              "return_type": "Task<RegisterCustomerResult>",
+              "params": "RegisterCustomerRequest request,\n        CancellationToken cancellationToken"
+            },
+            {
+              "name": "HireAgentAsync",
+              "return_type": "Task<HireAgentResult>",
+              "params": "HireAgentRequest request,\n        CancellationToken cancellationToken"
+            }
+          ]
+        },
+        "EmploymentService": {
+          "kind": "class",
+          "namespace": "Waooaw.BusinessPlatform.Services",
+          "properties": {},
+          "methods": [
+            {
+              "name": "RegisterCustomerAsync",
+              "return_type": "Task<RegisterCustomerResult>",
+              "params": "RegisterCustomerRequest request,\n        CancellationToken cancellationToken"
+            },
+            {
+              "name": "HireAgentAsync",
+              "return_type": "Task<HireAgentResult>",
+              "params": "HireAgentRequest request,\n        CancellationToken cancellationToken"
+            }
+          ]
+        },
+        "TenantIsolationMiddleware": {
+          "kind": "class",
+          "namespace": "Waooaw.BusinessPlatform.Infrastructure",
+          "properties": {},
+          "methods": [
+            {
+              "name": "InvokeAsync",
+              "return_type": "Task",
+              "params": "HttpContext context"
+            },
+            {
+              "name": "ReaderExecuting",
+              "return_type": "InterceptionResult<DbDataReader>",
+              "params": "DbCommand command,\n        CommandEventData eventData,\n        InterceptionResult<DbDataReader> result"
+            },
+            {
+              "name": "ScalarExecuting",
+              "return_type": "InterceptionResult<object?>",
+              "params": "DbCommand command,\n        CommandEventData eventData,\n        InterceptionResult<object?> result"
+            },
+            {
+              "name": "NonQueryExecuting",
+              "return_type": "InterceptionResult<int>",
+              "params": "DbCommand command,\n        CommandEventData eventData,\n        InterceptionResult<int> result"
+            },
+            {
+              "name": "ReaderExecutingAsync",
+              "return_type": "ValueTask<InterceptionResult<DbDataReader>>",
+              "params": "DbCommand command,\n        CommandEventData eventData,\n        InterceptionResult<DbDataReader> result,\n        CancellationToken cancellationToken = default"
+            },
+            {
+              "name": "ScalarExecutingAsync",
+              "return_type": "ValueTask<InterceptionResult<object?>>",
+              "params": "DbCommand command,\n        CommandEventData eventData,\n        InterceptionResult<object?> result,\n        CancellationToken cancellationToken = default"
+            },
+            {
+              "name": "NonQueryExecutingAsync",
+              "return_type": "ValueTask<InterceptionResult<int>>",
+              "params": "DbCommand command,\n        CommandEventData eventData,\n        InterceptionResult<int> result,\n        CancellationToken cancellationToken = default"
+            },
+            {
+              "name": "AddTenantIsolation",
+              "return_type": "IServiceCollection",
+              "params": "this IServiceCollection services"
+            },
+            {
+              "name": "UseTenantIsolation",
+              "return_type": "IApplicationBuilder",
+              "params": "this IApplicationBuilder app"
+            }
+          ]
+        },
+        "TenantDbConnectionInterceptor": {
+          "kind": "class",
+          "namespace": "Waooaw.BusinessPlatform.Infrastructure",
+          "properties": {},
+          "methods": [
+            {
+              "name": "InvokeAsync",
+              "return_type": "Task",
+              "params": "HttpContext context"
+            },
+            {
+              "name": "ReaderExecuting",
+              "return_type": "InterceptionResult<DbDataReader>",
+              "params": "DbCommand command,\n        CommandEventData eventData,\n        InterceptionResult<DbDataReader> result"
+            },
+            {
+              "name": "ScalarExecuting",
+              "return_type": "InterceptionResult<object?>",
+              "params": "DbCommand command,\n        CommandEventData eventData,\n        InterceptionResult<object?> result"
+            },
+            {
+              "name": "NonQueryExecuting",
+              "return_type": "InterceptionResult<int>",
+              "params": "DbCommand command,\n        CommandEventData eventData,\n        InterceptionResult<int> result"
+            },
+            {
+              "name": "ReaderExecutingAsync",
+              "return_type": "ValueTask<InterceptionResult<DbDataReader>>",
+              "params": "DbCommand command,\n        CommandEventData eventData,\n        InterceptionResult<DbDataReader> result,\n        CancellationToken cancellationToken = default"
+            },
+            {
+              "name": "ScalarExecutingAsync",
+              "return_type": "ValueTask<InterceptionResult<object?>>",
+              "params": "DbCommand command,\n        CommandEventData eventData,\n        InterceptionResult<object?> result,\n        CancellationToken cancellationToken = default"
+            },
+            {
+              "name": "NonQueryExecutingAsync",
+              "return_type": "ValueTask<InterceptionResult<int>>",
+              "params": "DbCommand command,\n        CommandEventData eventData,\n        InterceptionResult<int> result,\n        CancellationToken cancellationToken = default"
+            },
+            {
+              "name": "AddTenantIsolation",
+              "return_type": "IServiceCollection",
+              "params": "this IServiceCollection services"
+            },
+            {
+              "name": "UseTenantIsolation",
+              "return_type": "IApplicationBuilder",
+              "params": "this IApplicationBuilder app"
+            }
+          ]
+        },
+        "TenantIsolationMiddlewareExtensions": {
+          "kind": "class",
+          "namespace": "Waooaw.BusinessPlatform.Infrastructure",
+          "properties": {},
+          "methods": [
+            {
+              "name": "InvokeAsync",
+              "return_type": "Task",
+              "params": "HttpContext context"
+            },
+            {
+              "name": "ReaderExecuting",
+              "return_type": "InterceptionResult<DbDataReader>",
+              "params": "DbCommand command,\n        CommandEventData eventData,\n        InterceptionResult<DbDataReader> result"
+            },
+            {
+              "name": "ScalarExecuting",
+              "return_type": "InterceptionResult<object?>",
+              "params": "DbCommand command,\n        CommandEventData eventData,\n        InterceptionResult<object?> result"
+            },
+            {
+              "name": "NonQueryExecuting",
+              "return_type": "InterceptionResult<int>",
+              "params": "DbCommand command,\n        CommandEventData eventData,\n        InterceptionResult<int> result"
+            },
+            {
+              "name": "ReaderExecutingAsync",
+              "return_type": "ValueTask<InterceptionResult<DbDataReader>>",
+              "params": "DbCommand command,\n        CommandEventData eventData,\n        InterceptionResult<DbDataReader> result,\n        CancellationToken cancellationToken = default"
+            },
+            {
+              "name": "ScalarExecutingAsync",
+              "return_type": "ValueTask<InterceptionResult<object?>>",
+              "params": "DbCommand command,\n        CommandEventData eventData,\n        InterceptionResult<object?> result,\n        CancellationToken cancellationToken = default"
+            },
+            {
+              "name": "NonQueryExecutingAsync",
+              "return_type": "ValueTask<InterceptionResult<int>>",
+              "params": "DbCommand command,\n        CommandEventData eventData,\n        InterceptionResult<int> result,\n        CancellationToken cancellationToken = default"
+            },
+            {
+              "name": "AddTenantIsolation",
+              "return_type": "IServiceCollection",
+              "params": "this IServiceCollection services"
+            },
+            {
+              "name": "UseTenantIsolation",
+              "return_type": "IApplicationBuilder",
+              "params": "this IApplicationBuilder app"
+            }
+          ]
+        },
+        "BundleEngine": {
+          "kind": "class",
+          "bases": [],
+          "fields": {},
+          "methods": [
+            "__init__",
+            "async cost_floor",
+            "async derive_price",
+            "async validate_price"
+          ]
+        },
+        "ThreadEntry": {
+          "kind": "pydantic_model",
+          "bases": [
+            "BaseModel"
+          ],
+          "fields": {
+            "thread_id": "str",
+            "thread_name": "str",
+            "description": "str | None",
+            "agent_type": "str",
+            "bundle_tier": "str"
+          },
+          "methods": []
+        },
+        "BundleProfile": {
+          "kind": "pydantic_model",
+          "bases": [
+            "BaseModel"
+          ],
+          "fields": {
+            "agent_type": "str",
+            "bundle_tier": "str",
+            "cost_floor_paise": "int",
+            "minimum_margin_pct": "int"
+          },
+          "methods": []
+        },
+        "PriceConfig": {
+          "kind": "pydantic_model",
+          "bases": [
+            "BaseModel"
+          ],
+          "fields": {
+            "agent_type": "str",
+            "bundle_tier": "str",
+            "target_margin_pct": "int | None"
+          },
+          "methods": []
+        },
+        "PriceValidationRequest": {
+          "kind": "pydantic_model",
+          "bases": [
+            "BaseModel"
+          ],
+          "fields": {
+            "agent_type": "str",
+            "bundle_tier": "str",
+            "proposed_price_paise": "int"
+          },
+          "methods": []
+        },
+        "PriceDeriveRequest": {
+          "kind": "pydantic_model",
+          "bases": [
+            "BaseModel"
+          ],
+          "fields": {
+            "agent_type": "str",
+            "bundle_tier": "str",
+            "target_margin_pct": "int | None"
+          },
+          "methods": []
+        },
+        "PriceValidation": {
+          "kind": "pydantic_model",
+          "bases": [
+            "BaseModel"
+          ],
+          "fields": {
+            "outcome": "str",
+            "cost_floor_paise": "int",
+            "minimum_compliant_price_paise": "int",
+            "proposed_price_paise": "int"
+          },
+          "methods": []
+        },
+        "EvaluatorRegistry": {
+          "kind": "class",
+          "namespace": "Waooaw.ConstitutionalEngine.Evaluators",
+          "properties": {},
+          "methods": [
+            {
+              "name": "EvaluateAllAsync",
+              "return_type": "Task<IReadOnlyList<EvaluationResult>>",
+              "params": "EvaluationContext context,\n        CancellationToken cancellationToken = default"
+            }
+          ]
+        },
+        "IClaimEvaluator": {
+          "kind": "interface",
+          "namespace": "Waooaw.ConstitutionalEngine.Evaluators",
+          "methods": []
+        },
+        "C062AiSecurityEvaluator": {
+          "kind": "class",
+          "namespace": "Waooaw.ConstitutionalEngine.Evaluators",
+          "properties": {},
+          "methods": [
+            {
+              "name": "EvaluateAsync",
+              "return_type": "Task<EvaluationResult>",
+              "params": "EvaluationContext ctx, CancellationToken ct"
+            }
+          ]
+        },
+        "C043BudgetCeilingEvaluator": {
+          "kind": "class",
+          "namespace": "Waooaw.ConstitutionalEngine.Evaluators",
+          "properties": {},
+          "methods": [
+            {
+              "name": "EvaluateAsync",
+              "return_type": "Task<EvaluationResult>",
+              "params": "EvaluationContext ctx, CancellationToken ct"
+            }
+          ]
+        },
+        "C041ToolAuthorizationEvaluator": {
+          "kind": "class",
+          "namespace": "Waooaw.ConstitutionalEngine.Evaluators",
+          "properties": {},
+          "methods": [
+            {
+              "name": "EvaluateAsync",
+              "return_type": "Task<EvaluationResult>",
+              "params": "EvaluationContext ctx, CancellationToken ct"
+            }
+          ]
+        },
+        "C048NonExploitationEvaluator": {
+          "kind": "class",
+          "namespace": "Waooaw.ConstitutionalEngine.Evaluators",
+          "properties": {},
+          "methods": [
+            {
+              "name": "EvaluateAsync",
+              "return_type": "Task<EvaluationResult>",
+              "params": "EvaluationContext ctx, CancellationToken ct"
+            }
+          ]
+        },
+        "C049HonestLimitationEvaluator": {
+          "kind": "class",
+          "namespace": "Waooaw.ConstitutionalEngine.Evaluators",
+          "properties": {},
+          "methods": [
+            {
+              "name": "EvaluateAsync",
+              "return_type": "Task<EvaluationResult>",
+              "params": "EvaluationContext ctx, CancellationToken ct"
+            }
+          ]
+        },
+        "EvaluationResult": {
+          "kind": "record",
+          "namespace": "Waooaw.ConstitutionalEngine.Evaluators",
+          "properties": {
+            "ClaimId": "string",
+            "Verdict": "EvaluationVerdict",
+            "Reason": "string"
+          }
+        },
+        "EvaluationVerdict": {
+          "kind": "enum",
+          "namespace": "Waooaw.ConstitutionalEngine.Evaluators",
+          "values": [
+            "Allow",
+            "Deny",
+            "Escalate"
+          ]
+        },
+        "EvaluationContext": {
+          "kind": "record",
+          "namespace": "Waooaw.ConstitutionalEngine.Evaluators",
+          "properties": {
+            "ContractId": "string",
+            "ActionType": "string",
+            "ActionParameters": "string",
+            "DecisionSpaceVersion": "int",
+            "TenantId": "string",
+            "SkillId": "string?",
+            "ApprovedBudgetInrPaise": "long",
+            "CurrentSpendInrPaise": "long",
+            "ProposedSpendInrPaise": "long",
+            "BudgetSkillType": "string"
+          },
+          "methods": [
+            {
+              "name": "GetParameter",
+              "return_type": "string?",
+              "params": "string key"
+            },
+            {
+              "name": "FromRequest",
+              "return_type": "EvaluationContext",
+              "params": "ValidateActionRequest request, string tenantId"
+            }
+          ]
+        },
+        "ConstitutionalDecision": {
+          "kind": "enum",
+          "namespace": "Waooaw.ConstitutionalEngine.Skeleton",
+          "values": [
+            "Allow",
+            "Deny",
+            "Escalate"
+          ]
+        },
+        "CeUnavailableException": {
+          "kind": "class",
+          "namespace": "Waooaw.ConstitutionalEngine.Skeleton",
+          "properties": {
+            "IConstitutionalEngineService": "interface"
+          },
+          "methods": []
+        },
+        "IConstitutionalEngineService": {
+          "kind": "interface",
+          "namespace": "Waooaw.ConstitutionalEngine.Skeleton",
+          "methods": []
+        },
+        "ConstitutionalEngineService": {
+          "kind": "class",
+          "namespace": "Waooaw.ConstitutionalEngine.Services",
+          "properties": {},
+          "methods": [
+            {
+              "name": "RecordEvidence",
+              "return_type": "Task<RecordEvidenceResponse>",
+              "params": "RecordEvidenceRequest req, ServerCallContext ctx"
+            },
+            {
+              "name": "ValidateAction",
+              "return_type": "Task<ValidateActionResponse>",
+              "params": "ValidateActionRequest req, ServerCallContext ctx"
+            },
+            {
+              "name": "GrantAuthorityLicense",
+              "return_type": "Task<GrantAuthorityResponse>",
+              "params": "GrantAuthorityRequest req, ServerCallContext ctx"
+            },
+            {
+              "name": "RevokeAuthorityLicense",
+              "return_type": "Task<RevokeAuthorityResponse>",
+              "params": "RevokeAuthorityRequest req, ServerCallContext ctx"
+            },
+            {
+              "name": "EvaluatePolicy",
+              "return_type": "Task<EvaluatePolicyResponse>",
+              "params": "EvaluatePolicyRequest req, ServerCallContext ctx"
+            },
+            {
+              "name": "TriggerEmergencyStop",
+              "return_type": "Task<EmergencyStopResponse>",
+              "params": "EmergencyStopRequest req, ServerCallContext ctx"
+            }
+          ]
+        },
+        "ConstitutionalDbContext": {
+          "kind": "class",
+          "namespace": "Waooaw.ConstitutionalEngine.Data",
+          "properties": {},
+          "methods": []
+        },
+        "EmergencyStopDbContext": {
+          "kind": "class",
+          "namespace": "Waooaw.ConstitutionalEngine.EmergencyStop",
+          "properties": {},
+          "methods": []
+        },
+        "EmergencyStopEvent": {
+          "kind": "class",
+          "namespace": "Waooaw.ConstitutionalEngine.EmergencyStop",
+          "properties": {
+            "Id": "Guid",
+            "ContractId": "Guid",
+            "InitiatedByUserId": "string",
+            "AffectedSessionIds": "string[]",
+            "TriggeredAt": "DateTimeOffset",
+            "TemporalSignalledAt": "DateTimeOffset?",
+            "StopSource": "string"
+          },
+          "methods": []
+        },
+        "EvidenceRecord": {
+          "kind": "class",
+          "namespace": "Waooaw.ConstitutionalEngine.Data.Entities",
+          "properties": {
+            "Id": "Guid",
+            "IdempotencyKey": "string",
+            "TenantId": "Guid",
+            "EvidenceType": "string",
+            "Summary": "string",
+            "PayloadJson": "string?",
+            "RecordedAt": "DateTimeOffset"
+          },
+          "methods": []
+        },
+        "IPAASEngine": {
+          "kind": "class",
+          "bases": [
+            "ABC"
+          ],
+          "fields": {},
+          "methods": [
+            "async create_session",
+            "async get_session",
+            "async emergency_stop"
+          ]
+        },
+        "PAASSession": {
+          "kind": "dataclass",
+          "bases": [],
+          "fields": {
+            "session_id": "UUID",
+            "contract_id": "UUID",
+            "tenant_id": "str",
+            "agent_type": "str",
+            "status": "str",
+            "created_at": "datetime",
+            "temporal_workflow_id": "Optional[str]"
+          },
+          "methods": []
+        },
+        "EmergencyStopResult": {
+          "kind": "dataclass",
+          "bases": [],
+          "fields": {
+            "sessions_stopped": "list[UUID]",
+            "evidence_record_id": "UUID",
+            "stopped_at": "datetime",
+            "latency_ms": "float"
+          },
+          "methods": []
+        },
+        "SessionNotFoundError": {
+          "kind": "class",
+          "bases": [
+            "Exception"
+          ],
+          "fields": {},
+          "methods": []
+        },
+        "SessionCreationError": {
+          "kind": "class",
+          "bases": [
+            "Exception"
+          ],
+          "fields": {},
+          "methods": []
+        },
+        "SessionState": {
+          "kind": "class",
+          "bases": [
+            "StrEnum"
+          ],
+          "fields": {},
+          "methods": []
+        },
+        "DecisionSpace": {
+          "kind": "dataclass",
+          "bases": [],
+          "fields": {
+            "contract_id": "str",
+            "professional_id": "str",
+            "version": "str",
+            "parameters": "dict[str, Any]",
+            "budget_limit_inr_paise": "int",
+            "budget_used_inr_paise": "int",
+            "allowed_action_types": "list[str]"
+          },
+          "methods": []
+        },
+        "PAASSessionInput": {
+          "kind": "dataclass",
+          "bases": [],
+          "fields": {
+            "session_id": "str",
+            "contract_id": "str",
+            "professional_id": "str",
+            "organisation_id": "str",
+            "decision_space_version": "str",
+            "budget_limit_inr_paise": "int"
+          },
+          "methods": []
+        },
+        "PAASActionInput": {
+          "kind": "dataclass",
+          "bases": [],
+          "fields": {
+            "action_type": "str",
+            "action_parameters": "dict[str, Any]",
+            "action_instance_id": "str"
+          },
+          "methods": []
+        },
+        "PAASActionResult": {
+          "kind": "dataclass",
+          "bases": [],
+          "fields": {
+            "action_instance_id": "str",
+            "allowed": "bool",
+            "evidence_record_id": "str | None",
+            "reason": "str",
+            "executed_content": "dict[str, Any] | None"
+          },
+          "methods": []
+        },
+        "EmergencyStopSignalPayload": {
+          "kind": "dataclass",
+          "bases": [],
+          "fields": {
+            "stopped_by": "str",
+            "reason": "str"
+          },
+          "methods": []
+        },
+        "PAASSessionResult": {
+          "kind": "dataclass",
+          "bases": [],
+          "fields": {
+            "session_id": "str",
+            "terminal_state": "str",
+            "total_actions_executed": "int",
+            "final_budget_used_inr_paise": "int"
+          },
+          "methods": []
+        },
+        "LoadDecisionSpaceInput": {
+          "kind": "dataclass",
+          "bases": [],
+          "fields": {
+            "session_id": "str",
+            "contract_id": "str",
+            "professional_id": "str",
+            "decision_space_version": "str",
+            "budget_limit_inr_paise": "int"
+          },
+          "methods": []
+        },
+        "ValidateAndRecordInput": {
+          "kind": "dataclass",
+          "bases": [],
+          "fields": {
+            "session_id": "str",
+            "contract_id": "str",
+            "professional_id": "str",
+            "action_type": "str",
+            "action_parameters": "dict[str, Any]",
+            "action_instance_id": "str",
+            "decision_space_version": "str",
+            "budget_used_inr_paise": "int",
+            "budget_limit_inr_paise": "int"
+          },
+          "methods": []
+        },
+        "ValidateAndRecordResult": {
+          "kind": "dataclass",
+          "bases": [],
+          "fields": {
+            "allowed": "bool",
+            "evidence_record_id": "str | None",
+            "reason": "str",
+            "constitutional_basis": "str"
+          },
+          "methods": []
+        },
+        "ExecuteActionInput": {
+          "kind": "dataclass",
+          "bases": [],
+          "fields": {
+            "session_id": "str",
+            "contract_id": "str",
+            "action_type": "str",
+            "action_parameters": "dict[str, Any]",
+            "action_instance_id": "str",
+            "evidence_record_id": "str"
+          },
+          "methods": []
+        },
+        "RecordAbandonedEvidenceInput": {
+          "kind": "dataclass",
+          "bases": [],
+          "fields": {
+            "session_id": "str",
+            "contract_id": "str",
+            "professional_id": "str",
+            "action_instance_id": "str",
+            "decision_space_version": "str",
+            "stopped_by": "str"
+          },
+          "methods": []
+        },
+        "PauseSessionInput": {
+          "kind": "dataclass",
+          "bases": [],
+          "fields": {
+            "session_id": "str",
+            "reason": "str"
+          },
+          "methods": []
+        },
+        "ResumeSessionInput": {
+          "kind": "dataclass",
+          "bases": [],
+          "fields": {
+            "session_id": "str"
+          },
+          "methods": []
+        },
+        "TerminateSessionInput": {
+          "kind": "dataclass",
+          "bases": [],
+          "fields": {
+            "session_id": "str",
+            "reason": "str"
+          },
+          "methods": []
+        },
+        "PAASSessionWorkflow": {
+          "kind": "class",
+          "bases": [],
+          "fields": {},
+          "methods": [
+            "__init__",
+            "async signal_execute_action",
+            "async signal_pause",
+            "async signal_resume",
+            "async signal_terminate",
+            "async signal_emergency_stop",
+            "query_session_state",
+            "query_budget_used",
+            "query_total_actions_executed",
+            "async run",
+            "async _execute_paas_action",
+            "async _handle_emergency_stop"
+          ]
+        },
+        "SenseInput": {
+          "kind": "dataclass",
+          "bases": [],
+          "fields": {
+            "session_id": "str",
+            "contract_id": "str",
+            "decision_space_id": "str"
+          },
+          "methods": []
+        },
+        "SenseOutput": {
+          "kind": "dataclass",
+          "bases": [],
+          "fields": {
+            "observation_id": "str",
+            "context": "dict[str, Any]",
+            "status": "str"
+          },
+          "methods": []
+        },
+        "RetrieveInput": {
+          "kind": "dataclass",
+          "bases": [],
+          "fields": {
+            "observation_id": "str",
+            "decision_space_id": "str",
+            "context": "dict[str, Any]"
+          },
+          "methods": []
+        },
+        "RetrieveOutput": {
+          "kind": "dataclass",
+          "bases": [],
+          "fields": {
+            "retrieval_id": "str",
+            "documents": "list[dict[str, Any]]",
+            "status": "str"
+          },
+          "methods": []
+        },
+        "ReasonInput": {
+          "kind": "dataclass",
+          "bases": [],
+          "fields": {
+            "observation_id": "str",
+            "retrieval_id": "str",
+            "decision_space_id": "str",
+            "context": "dict[str, Any]",
+            "documents": "list[dict[str, Any]]"
+          },
+          "methods": []
+        },
+        "ReasonOutput": {
+          "kind": "dataclass",
+          "bases": [],
+          "fields": {
+            "reasoning_id": "str",
+            "proposed_action": "dict[str, Any]",
+            "confidence": "float",
+            "status": "str"
+          },
+          "methods": []
+        },
+        "ActInput": {
+          "kind": "dataclass",
+          "bases": [],
+          "fields": {
+            "reasoning_id": "str",
+            "proposed_action": "dict[str, Any]",
+            "session_id": "str",
+            "contract_id": "str",
+            "decision_space_id": "str"
+          },
+          "methods": []
+        },
+        "ActOutput": {
+          "kind": "dataclass",
+          "bases": [],
+          "fields": {
+            "execution_id": "str",
+            "action_result": "dict[str, Any]",
+            "status": "str"
+          },
+          "methods": []
+        },
+        "RecordInput": {
+          "kind": "dataclass",
+          "bases": [],
+          "fields": {
+            "execution_id": "str",
+            "session_id": "str",
+            "contract_id": "str",
+            "decision_space_id": "str",
+            "proposed_action": "dict[str, Any]",
+            "action_result": "dict[str, Any]",
+            "evidence_type": "str",
+            "error": "str | None"
+          },
+          "methods": []
+        },
+        "RecordOutput": {
+          "kind": "dataclass",
+          "bases": [],
+          "fields": {
+            "evidence_record_id": "str",
+            "persisted_at": "str",
+            "status": "str"
+          },
+          "methods": []
+        },
+        "SessionStartRequest": {
+          "kind": "pydantic_model",
+          "bases": [
+            "BaseModel"
+          ],
+          "fields": {
+            "contract_id": "str",
+            "professional_id": "str",
+            "decision_space_version": "str",
+            "organisation_id": "str",
+            "tenant_id": "str"
+          },
+          "methods": []
+        },
+        "SessionStartResponse": {
+          "kind": "pydantic_model",
+          "bases": [
+            "BaseModel"
+          ],
+          "fields": {
+            "session_id": "str",
+            "workflow_id": "str",
+            "started_at": "str",
+            "status": "str"
+          },
+          "methods": []
+        },
+        "SessionStatusResponse": {
+          "kind": "pydantic_model",
+          "bases": [
+            "BaseModel"
+          ],
+          "fields": {
+            "session_id": "str",
+            "workflow_id": "str",
+            "status": "str",
+            "started_at": "str | None",
+            "closed_at": "str | None"
+          },
+          "methods": []
+        },
+        "SessionTerminateRequest": {
+          "kind": "pydantic_model",
+          "bases": [
+            "BaseModel"
+          ],
+          "fields": {
+            "stopped_by": "str",
+            "reason": "str"
+          },
+          "methods": []
+        },
+        "SessionTerminateResponse": {
+          "kind": "pydantic_model",
+          "bases": [
+            "BaseModel"
+          ],
+          "fields": {
+            "session_id": "str",
+            "signal_sent": "bool",
+            "terminated_at": "str"
+          },
+          "methods": []
+        },
+        "SessionPauseRequest": {
+          "kind": "pydantic_model",
+          "bases": [
+            "BaseModel"
+          ],
+          "fields": {
+            "paused_by": "str"
+          },
+          "methods": []
+        },
+        "SessionPauseResponse": {
+          "kind": "pydantic_model",
+          "bases": [
+            "BaseModel"
+          ],
+          "fields": {
+            "session_id": "str",
+            "signal_sent": "bool",
+            "paused_at": "str"
+          },
+          "methods": []
+        },
+        "SessionResumeRequest": {
+          "kind": "pydantic_model",
+          "bases": [
+            "BaseModel"
+          ],
+          "fields": {
+            "resumed_by": "str"
+          },
+          "methods": []
+        },
+        "SessionResumeResponse": {
+          "kind": "pydantic_model",
+          "bases": [
+            "BaseModel"
+          ],
+          "fields": {
+            "session_id": "str",
+            "signal_sent": "bool",
+            "resumed_at": "str"
+          },
+          "methods": []
+        },
+        "FrameType": {
+          "kind": "class",
+          "bases": [
+            "StrEnum"
+          ],
+          "fields": {},
+          "methods": []
+        },
+        "LlmTierEnum": {
+          "kind": "class",
+          "bases": [
+            "str",
+            "Enum"
+          ],
+          "fields": {},
+          "methods": []
+        },
+        "IPSERouter": {
+          "kind": "class",
+          "bases": [
+            "ABC"
+          ],
+          "fields": {},
+          "methods": [
+            "async route"
+          ]
+        },
+        "ILLMDispatcher": {
+          "kind": "class",
+          "bases": [
+            "ABC"
+          ],
+          "fields": {},
+          "methods": [
+            "async dispatch"
+          ]
+        },
+        "IPIIGuard": {
+          "kind": "class",
+          "bases": [
+            "ABC"
+          ],
+          "fields": {},
+          "methods": [
+            "sanitize"
+          ]
+        },
+        "InferenceRequest": {
+          "kind": "dataclass",
+          "bases": [],
+          "fields": {
+            "contract_id": "UUID",
+            "tenant_id": "str",
+            "prompt": "str",
+            "task_complexity": "str",
+            "language": "Optional[str]",
+            "skill_id": "Optional[str]",
+            "session_id": "Optional[UUID]"
+          },
+          "methods": []
+        },
+        "InferenceResponse": {
+          "kind": "dataclass",
+          "bases": [],
+          "fields": {
+            "content": "str",
+            "tier_used": "LlmTierEnum",
+            "provider_id": "str",
+            "input_tokens": "int",
+            "output_tokens": "int",
+            "latency_ms": "float",
+            "pii_redacted": "list[str]"
+          },
+          "methods": []
+        },
+        "BucketEmptyError": {
+          "kind": "class",
+          "bases": [
+            "Exception"
+          ],
+          "fields": {},
+          "methods": [
+            "__init__"
+          ]
+        },
+        "ProviderUnavailableError": {
+          "kind": "class",
+          "bases": [
+            "Exception"
+          ],
+          "fields": {},
+          "methods": [
+            "__init__"
+          ]
+        },
+        "PIILeakageError": {
+          "kind": "class",
+          "bases": [
+            "Exception"
+          ],
+          "fields": {},
+          "methods": []
+        },
+        "InjectionScanResult": {
+          "kind": "dataclass",
+          "bases": [],
+          "fields": {
+            "safe": "bool",
+            "matched_category": "str | None",
+            "matched_pattern": "str | None"
+          },
+          "methods": []
+        },
+        "InjectionGuard": {
+          "kind": "dataclass",
+          "bases": [],
+          "fields": {
+            "_category_names": "list[str]"
+          },
+          "methods": [
+            "async scan",
+            "_scan_sync",
+            "scan_sync"
+          ]
+        },
+        "LlmTier": {
+          "kind": "class",
+          "bases": [
+            "StrEnum"
+          ],
+          "fields": {},
+          "methods": []
+        },
+        "SarvamProviderError": {
+          "kind": "class",
+          "bases": [
+            "Exception"
+          ],
+          "fields": {},
+          "methods": []
+        },
+        "SarvamProvider": {
+          "kind": "class",
+          "bases": [],
+          "fields": {},
+          "methods": [
+            "__init__",
+            "async complete",
+            "async close",
+            "_build_payload",
+            "async _record_dispatch_event"
+          ]
+        },
+        "OllamaProvider": {
+          "kind": "class",
+          "bases": [],
+          "fields": {},
+          "methods": [
+            "__init__",
+            "async complete",
+            "_build_prompt",
+            "async _record_dispatch_event"
+          ]
+        }
+      },
+      "files": [
+        "src/business-platform/Program.cs",
+        "src/billing-engine/main.py",
+        "src/constitutional-engine/Program.cs",
+        "src/professional-runtime/main.py",
+        "src/professional-runtime/__init__.py",
+        "src/ai-runtime/main.py",
+        "src/ai-runtime/__init__.py",
+        "src/test/File.cs",
+        "src/business-platform/Protos/constitutional_service.proto",
+        "src/business-platform/Controllers/AgentsController.cs",
+        "src/business-platform/Controllers/CustomersController.cs",
+        "src/business-platform/skeleton/IBusinessPlatformServices.cs",
+        "src/business-platform/Services/EmploymentService.cs",
+        "src/business-platform/Infrastructure/TenantIsolationMiddleware.cs",
+        "src/business-platform/obj/Debug/net9.0/.NETCoreApp,Version=v9.0.AssemblyAttributes.cs",
+        "src/business-platform/obj/Debug/net9.0/business-platform.GlobalUsings.g.cs",
+        "src/business-platform/obj/Debug/net9.0/BusinessPlatform.MvcApplicationPartsAssemblyInfo.cs",
+        "src/business-platform/obj/Debug/net9.0/business-platform.AssemblyInfo.cs",
+        "src/business-platform/obj/Debug/net9.0/Protos/ConstitutionalService.cs",
+        "src/business-platform/obj/Debug/net9.0/Protos/ConstitutionalServiceGrpc.cs",
+        "src/billing-engine/markup/bundle_engine.py",
+        "src/billing-engine/markup/__init__.py",
+        "src/billing-engine/markup/router.py",
+        "src/billing-engine/markup/models.py",
+        "src/constitutional-engine/Protos/constitutional_service.proto",
+        "src/constitutional-engine/Evaluators/EvaluatorRegistry.cs",
+        "src/constitutional-engine/Evaluators/IClaimEvaluator.cs",
+        "src/constitutional-engine/Evaluators/C062AiSecurityEvaluator.cs",
+        "src/constitutional-engine/Evaluators/C043BudgetCeilingEvaluator.cs",
+        "src/constitutional-engine/Evaluators/C041ToolAuthorizationEvaluator.cs",
+        "src/constitutional-engine/Evaluators/C048NonExploitationEvaluator.cs",
+        "src/constitutional-engine/Evaluators/C049HonestLimitationEvaluator.cs",
+        "src/constitutional-engine/Evaluators/EvaluationResult.cs",
+        "src/constitutional-engine/Evaluators/EvaluationContext.cs",
+        "src/constitutional-engine/skeleton/IConstitutionalEngineService.cs",
+        "src/constitutional-engine/Services/ConstitutionalEngineService.cs",
+        "src/constitutional-engine/Data/ConstitutionalDbContext.cs",
+        "src/constitutional-engine/EmergencyStop/EmergencyStopDbContext.cs",
+        "src/constitutional-engine/EmergencyStop/EmergencyStopEvent.cs",
+        "src/constitutional-engine/obj/Debug/net9.0/.NETCoreApp,Version=v9.0.AssemblyAttributes.cs",
+        "src/constitutional-engine/obj/Debug/net9.0/constitutional-engine.AssemblyInfo.cs",
+        "src/constitutional-engine/obj/Debug/net9.0/constitutional-engine.GlobalUsings.g.cs",
+        "src/constitutional-engine/obj/Debug/net9.0/Protos/ConstitutionalService.cs",
+        "src/constitutional-engine/obj/Debug/net9.0/Protos/ConstitutionalServiceGrpc.cs",
+        "src/constitutional-engine/Data/Entities/EvidenceRecord.cs",
+        "src/professional-runtime/skeleton/paas_engine.py",
+        "src/professional-runtime/workflows/paas_workflow.py",
+        "src/professional-runtime/proto/constitutional_service.proto",
+        "src/professional-runtime/activities/execution_loop.py",
+        "src/professional-runtime/routers/sessions.py",
+        "src/professional-runtime/routers/emergency_stop.py",
+        "src/ai-runtime/skeleton/ai_runtime_interfaces.py",
+        "src/ai-runtime/proto/constitutional_service.proto",
+        "src/ai-runtime/pii/__init__.py",
+        "src/ai-runtime/pii/injection_guard.py",
+        "src/ai-runtime/rag/__init__.py",
+        "src/ai-runtime/rag/retriever.py",
+        "src/ai-runtime/pse/__init__.py",
+        "src/ai-runtime/pse/router.py",
+        "src/ai-runtime/pse/tiers.py",
+        "src/ai-runtime/providers/sarvam_provider.py",
+        "src/ai-runtime/providers/ollama_provider.py",
+        "src/ai-runtime/providers/__init__.py"
+      ]
+    },
+    "WC027-01bc": {
+      "types": {
+        "EvidenceState": {
+          "kind": "proto_enum",
+          "namespace": "Waooaw.ConstitutionalEngine.Grpc",
+          "values": [
+            "Unspecified",
+            "Proposed",
+            "AwaitingApproval",
+            "Approved",
+            "Rejected",
+            "Executed",
+            "Abandoned"
+          ],
+          "proto_values": [
+            "EVIDENCE_STATE_UNSPECIFIED",
+            "EVIDENCE_STATE_PROPOSED",
+            "EVIDENCE_STATE_AWAITING_APPROVAL",
+            "EVIDENCE_STATE_APPROVED",
+            "EVIDENCE_STATE_REJECTED",
+            "EVIDENCE_STATE_EXECUTED",
+            "EVIDENCE_STATE_ABANDONED"
+          ],
+          "note": "C# enum in namespace Waooaw.ConstitutionalEngine.Grpc. Values are PascalCased from proto."
+        },
+        "ValidationDecision": {
+          "kind": "proto_enum",
+          "namespace": "Waooaw.ConstitutionalEngine.Grpc",
+          "values": [
+            "Unspecified",
+            "Allow",
+            "Deny",
+            "Escalate"
+          ],
+          "proto_values": [
+            "VALIDATION_DECISION_UNSPECIFIED",
+            "VALIDATION_DECISION_ALLOW",
+            "VALIDATION_DECISION_DENY",
+            "VALIDATION_DECISION_ESCALATE"
+          ],
+          "note": "C# enum in namespace Waooaw.ConstitutionalEngine.Grpc. Values are PascalCased from proto."
+        },
+        "PolicyDecision": {
+          "kind": "proto_enum",
+          "namespace": "Waooaw.ConstitutionalEngine.Grpc",
+          "values": [
+            "Unspecified",
+            "Permit",
+            "Deny",
+            "Escalate"
+          ],
+          "proto_values": [
+            "POLICY_DECISION_UNSPECIFIED",
+            "POLICY_DECISION_PERMIT",
+            "POLICY_DECISION_DENY",
+            "POLICY_DECISION_ESCALATE"
+          ],
+          "note": "C# enum in namespace Waooaw.ConstitutionalEngine.Grpc. Values are PascalCased from proto."
+        },
+        "ApprovalType": {
+          "kind": "proto_enum",
+          "namespace": "Waooaw.ConstitutionalEngine.Grpc",
+          "values": [
+            "Unspecified",
+            "CustomerExplicit",
+            "CalendarAuthorized",
+            "Synthetic",
+            "PreAuthorized"
+          ],
+          "proto_values": [
+            "APPROVAL_TYPE_UNSPECIFIED",
+            "APPROVAL_TYPE_CUSTOMER_EXPLICIT",
+            "APPROVAL_TYPE_CALENDAR_AUTHORIZED",
+            "APPROVAL_TYPE_SYNTHETIC",
+            "APPROVAL_TYPE_PRE_AUTHORIZED"
+          ],
+          "note": "C# enum in namespace Waooaw.ConstitutionalEngine.Grpc. Values are PascalCased from proto."
+        },
+        "RecordEvidenceRequest": {
+          "kind": "proto_message",
+          "namespace": "Waooaw.ConstitutionalEngine.Grpc",
+          "fields": {
+            "ActionInstanceId": "string",
+            "ContractId": "string",
+            "ProfessionalId": "string",
+            "ActionType": "string",
+            "State": "EvidenceState",
+            "ProposedContent": "string?",
+            "ExecutedContent": "string?",
+            "IsScopeBoundary": "bool",
+            "ScopeBoundaryName": "string?",
+            "ScopeBoundaryAcknowledgment": "string?",
+            "DecisionSpaceVersion": "int",
+            "ConstitutionalBasis": "string"
+          },
+          "note": "Proto-generated C# class in namespace Waooaw.ConstitutionalEngine.Grpc. Use property names EXACTLY as listed — do NOT invent fields."
+        },
+        "RecordEvidenceResponse": {
+          "kind": "proto_message",
+          "namespace": "Waooaw.ConstitutionalEngine.Grpc",
+          "fields": {
+            "EvidenceRecordId": "string"
+          },
+          "note": "Proto-generated C# class in namespace Waooaw.ConstitutionalEngine.Grpc. Use property names EXACTLY as listed — do NOT invent fields."
+        },
+        "ValidateActionRequest": {
+          "kind": "proto_message",
+          "namespace": "Waooaw.ConstitutionalEngine.Grpc",
+          "fields": {
+            "ContractId": "string",
+            "ActionType": "string",
+            "ActionParameters": "string",
+            "DecisionSpaceVersion": "int",
+            "BudgetContext": "BudgetContext?",
+            "SyntheticApprovalContext": "SyntheticApprovalContext?",
+            "ApprovalType": "ApprovalType",
+            "SkillId": "string?",
+            "ReasoningTraceId": "string?"
+          },
+          "note": "Proto-generated C# class in namespace Waooaw.ConstitutionalEngine.Grpc. Use property names EXACTLY as listed — do NOT invent fields."
+        },
+        "BudgetContext": {
+          "kind": "proto_message",
+          "namespace": "Waooaw.ConstitutionalEngine.Grpc",
+          "fields": {
+            "ApprovedMonthlyBudgetInrPaise": "long",
+            "CurrentMonthSpendInrPaise": "long",
+            "ProposedSpendInrPaise": "long",
+            "SkillType": "string"
+          },
+          "note": "Proto-generated C# class in namespace Waooaw.ConstitutionalEngine.Grpc. Use property names EXACTLY as listed — do NOT invent fields."
+        },
+        "SyntheticApprovalContext": {
+          "kind": "proto_message",
+          "namespace": "Waooaw.ConstitutionalEngine.Grpc",
+          "fields": {
+            "ConfidenceScore": "float",
+            "ConfiguredThreshold": "float",
+            "PriorApprovalCount": "int",
+            "MinHistoryRequired": "int",
+            "BasisApprovalIds": "RepeatedField<string>",
+            "ActionDescription": "string",
+            "OverrideWindowHours": "int"
+          },
+          "note": "Proto-generated C# class in namespace Waooaw.ConstitutionalEngine.Grpc. Use property names EXACTLY as listed — do NOT invent fields."
+        },
+        "ValidateActionResponse": {
+          "kind": "proto_message",
+          "namespace": "Waooaw.ConstitutionalEngine.Grpc",
+          "fields": {
+            "Decision": "ValidationDecision",
+            "ConstitutionalBasis": "string",
+            "Reason": "string",
+            "BudgetRemainingInrPaise": "long?",
+            "SyntheticApprovalRecordId": "string?"
+          },
+          "note": "Proto-generated C# class in namespace Waooaw.ConstitutionalEngine.Grpc. Use property names EXACTLY as listed — do NOT invent fields."
+        },
+        "GrantAuthorityRequest": {
+          "kind": "proto_message",
+          "namespace": "Waooaw.ConstitutionalEngine.Grpc",
+          "fields": {
+            "ContractId": "string",
+            "NewAuthorityLevel": "int",
+            "GrantedBy": "string",
+            "EvidenceIds": "RepeatedField<string>",
+            "ConstitutionalBasis": "string"
+          },
+          "note": "Proto-generated C# class in namespace Waooaw.ConstitutionalEngine.Grpc. Use property names EXACTLY as listed — do NOT invent fields."
+        },
+        "GrantAuthorityResponse": {
+          "kind": "proto_message",
+          "namespace": "Waooaw.ConstitutionalEngine.Grpc",
+          "fields": {
+            "LicenseId": "string"
+          },
+          "note": "Proto-generated C# class in namespace Waooaw.ConstitutionalEngine.Grpc. Use property names EXACTLY as listed — do NOT invent fields."
+        },
+        "RevokeAuthorityRequest": {
+          "kind": "proto_message",
+          "namespace": "Waooaw.ConstitutionalEngine.Grpc",
+          "fields": {
+            "ContractId": "string",
+            "NewAuthorityLevel": "int",
+            "RevokedBy": "string",
+            "Reason": "string",
+            "ConstitutionalBasis": "string"
+          },
+          "note": "Proto-generated C# class in namespace Waooaw.ConstitutionalEngine.Grpc. Use property names EXACTLY as listed — do NOT invent fields."
+        },
+        "RevokeAuthorityResponse": {
+          "kind": "proto_message",
+          "namespace": "Waooaw.ConstitutionalEngine.Grpc",
+          "fields": {
+            "LicenseId": "string"
+          },
+          "note": "Proto-generated C# class in namespace Waooaw.ConstitutionalEngine.Grpc. Use property names EXACTLY as listed — do NOT invent fields."
+        },
+        "EvaluatePolicyRequest": {
+          "kind": "proto_message",
+          "namespace": "Waooaw.ConstitutionalEngine.Grpc",
+          "fields": {
+            "ContractId": "string",
+            "ActionType": "string",
+            "ActionContext": "string"
+          },
+          "note": "Proto-generated C# class in namespace Waooaw.ConstitutionalEngine.Grpc. Use property names EXACTLY as listed — do NOT invent fields."
+        },
+        "EvaluatePolicyResponse": {
+          "kind": "proto_message",
+          "namespace": "Waooaw.ConstitutionalEngine.Grpc",
+          "fields": {
+            "Decision": "PolicyDecision",
+            "ConstitutionalBasis": "string",
+            "Rationale": "string"
+          },
+          "note": "Proto-generated C# class in namespace Waooaw.ConstitutionalEngine.Grpc. Use property names EXACTLY as listed — do NOT invent fields."
+        },
+        "EmergencyStopRequest": {
+          "kind": "proto_message",
+          "namespace": "Waooaw.ConstitutionalEngine.Grpc",
+          "fields": {
+            "ContractId": "string",
+            "StoppedBy": "string",
+            "ActiveSessionIds": "RepeatedField<string>"
+          },
+          "note": "Proto-generated C# class in namespace Waooaw.ConstitutionalEngine.Grpc. Use property names EXACTLY as listed — do NOT invent fields."
+        },
+        "EmergencyStopResponse": {
+          "kind": "proto_message",
+          "namespace": "Waooaw.ConstitutionalEngine.Grpc",
+          "fields": {
+            "EmergencyStopRecordId": "string",
+            "AffectedSessions": "RepeatedField<string>"
+          },
+          "note": "Proto-generated C# class in namespace Waooaw.ConstitutionalEngine.Grpc. Use property names EXACTLY as listed — do NOT invent fields."
+        },
+        "AgentsController": {
+          "kind": "class",
+          "namespace": "Waooaw.BusinessPlatform.Controllers",
+          "properties": {},
+          "methods": [
+            {
+              "name": "HireAgentAsync",
+              "return_type": "Task<IActionResult>",
+              "params": "[FromBody] HireAgentRequest request,\n        CancellationToken cancellationToken"
+            }
+          ]
+        },
+        "RegisterCustomerRequest": {
+          "kind": "record",
+          "namespace": "Waooaw.BusinessPlatform.Skeleton",
+          "properties": {
+            "DisplayName": "string",
+            "Email": "string",
+            "Phone": "string?",
+            "Gstin": "string?"
+          }
+        },
+        "HireAgentRequest": {
+          "kind": "record",
+          "namespace": "Waooaw.BusinessPlatform.Controllers",
+          "properties": {
+            "ContractId": "string",
+            "ProfessionalType": "string",
+            "SkillId": "string",
+            "DecisionSpaceVersion": "string",
+            "ApprovedBudgetInrPaise": "long",
+            "BillingCycleAnchorDay": "string"
+          },
+          "methods": [
+            {
+              "name": "FormEmploymentContract",
+              "return_type": "IActionResult",
+              "params": ""
+            },
+            {
+              "name": "GetEmploymentContract",
+              "return_type": "IActionResult",
+              "params": "Guid id"
+            },
+            {
+              "name": "RegisterCustomerAsync",
+              "return_type": "Task<IActionResult>",
+              "params": "[FromBody] RegisterCustomerRequest request,\n        CancellationToken cancellationToken"
+            },
+            {
+              "name": "HireAgentAsync",
+              "return_type": "Task<IActionResult>",
+              "params": "[FromBody] HireAgentRequest request,\n        CancellationToken cancellationToken"
+            }
+          ]
+        },
+        "CustomersController": {
+          "kind": "class",
+          "namespace": "Waooaw.BusinessPlatform.Controllers",
+          "properties": {},
+          "methods": [
+            {
+              "name": "FormEmploymentContract",
+              "return_type": "IActionResult",
+              "params": ""
+            },
+            {
+              "name": "GetEmploymentContract",
+              "return_type": "IActionResult",
+              "params": "Guid id"
+            },
+            {
+              "name": "RegisterCustomerAsync",
+              "return_type": "Task<IActionResult>",
+              "params": "[FromBody] RegisterCustomerRequest request,\n        CancellationToken cancellationToken"
+            },
+            {
+              "name": "HireAgentAsync",
+              "return_type": "Task<IActionResult>",
+              "params": "[FromBody] HireAgentRequest request,\n        CancellationToken cancellationToken"
+            }
+          ]
+        },
+        "CreateContractRequest": {
+          "kind": "record",
+          "namespace": "Waooaw.BusinessPlatform.Skeleton",
+          "properties": {
+            "OrganisationId": "Guid",
+            "AgentType": "string",
+            "BundleTier": "string",
+            "AuthorisedSkills": "string[]"
+          }
+        },
+        "EmploymentContractDto": {
+          "kind": "record",
+          "namespace": "Waooaw.BusinessPlatform.Skeleton",
+          "properties": {
+            "Id": "Guid",
+            "OrganisationId": "Guid",
+            "AgentType": "string",
+            "Status": "string",
+            "CreatedAt": "DateTimeOffset"
+          }
+        },
+        "OrganisationDto": {
+          "kind": "record",
+          "namespace": "Waooaw.BusinessPlatform.Skeleton",
+          "properties": {
+            "Id": "Guid",
+            "DisplayName": "string",
+            "Status": "string"
+          }
+        },
+        "ConstitutionalDenyException": {
+          "kind": "class",
+          "namespace": "Waooaw.BusinessPlatform.Skeleton",
+          "properties": {},
+          "methods": []
+        },
+        "IEmploymentService": {
+          "kind": "interface",
+          "namespace": "Waooaw.BusinessPlatform.Skeleton",
+          "methods": []
+        },
+        "ICustomerService": {
+          "kind": "interface",
+          "namespace": "Waooaw.BusinessPlatform.Skeleton",
+          "methods": []
+        },
+        "RegisterCustomerResult": {
+          "kind": "record",
+          "namespace": "Waooaw.BusinessPlatform.Services",
+          "properties": {
+            "Success": "bool",
+            "CustomerId": "Guid?",
+            "DenialReason": "string?"
+          },
+          "methods": [
+            {
+              "name": "RegisterCustomerAsync",
+              "return_type": "Task<RegisterCustomerResult>",
+              "params": "RegisterCustomerRequest request,\n        CancellationToken cancellationToken"
+            },
+            {
+              "name": "HireAgentAsync",
+              "return_type": "Task<HireAgentResult>",
+              "params": "HireAgentRequest request,\n        CancellationToken cancellationToken"
+            }
+          ]
+        },
+        "HireAgentResult": {
+          "kind": "record",
+          "namespace": "Waooaw.BusinessPlatform.Services",
+          "properties": {
+            "Success": "bool",
+            "AgentId": "Guid?",
+            "ProRataBillingStartDate": "DateTimeOffset?",
+            "DenialReason": "string?"
+          },
+          "methods": [
+            {
+              "name": "RegisterCustomerAsync",
+              "return_type": "Task<RegisterCustomerResult>",
+              "params": "RegisterCustomerRequest request,\n        CancellationToken cancellationToken"
+            },
+            {
+              "name": "HireAgentAsync",
+              "return_type": "Task<HireAgentResult>",
+              "params": "HireAgentRequest request,\n        CancellationToken cancellationToken"
+            }
+          ]
+        },
+        "EmploymentService": {
+          "kind": "class",
+          "namespace": "Waooaw.BusinessPlatform.Services",
+          "properties": {},
+          "methods": [
+            {
+              "name": "RegisterCustomerAsync",
+              "return_type": "Task<RegisterCustomerResult>",
+              "params": "RegisterCustomerRequest request,\n        CancellationToken cancellationToken"
+            },
+            {
+              "name": "HireAgentAsync",
+              "return_type": "Task<HireAgentResult>",
+              "params": "HireAgentRequest request,\n        CancellationToken cancellationToken"
+            }
+          ]
+        },
+        "TenantIsolationMiddleware": {
+          "kind": "class",
+          "namespace": "Waooaw.BusinessPlatform.Infrastructure",
+          "properties": {},
+          "methods": [
+            {
+              "name": "InvokeAsync",
+              "return_type": "Task",
+              "params": "HttpContext context"
+            },
+            {
+              "name": "ReaderExecuting",
+              "return_type": "InterceptionResult<DbDataReader>",
+              "params": "DbCommand command,\n        CommandEventData eventData,\n        InterceptionResult<DbDataReader> result"
+            },
+            {
+              "name": "ScalarExecuting",
+              "return_type": "InterceptionResult<object?>",
+              "params": "DbCommand command,\n        CommandEventData eventData,\n        InterceptionResult<object?> result"
+            },
+            {
+              "name": "NonQueryExecuting",
+              "return_type": "InterceptionResult<int>",
+              "params": "DbCommand command,\n        CommandEventData eventData,\n        InterceptionResult<int> result"
+            },
+            {
+              "name": "ReaderExecutingAsync",
+              "return_type": "ValueTask<InterceptionResult<DbDataReader>>",
+              "params": "DbCommand command,\n        CommandEventData eventData,\n        InterceptionResult<DbDataReader> result,\n        CancellationToken cancellationToken = default"
+            },
+            {
+              "name": "ScalarExecutingAsync",
+              "return_type": "ValueTask<InterceptionResult<object?>>",
+              "params": "DbCommand command,\n        CommandEventData eventData,\n        InterceptionResult<object?> result,\n        CancellationToken cancellationToken = default"
+            },
+            {
+              "name": "NonQueryExecutingAsync",
+              "return_type": "ValueTask<InterceptionResult<int>>",
+              "params": "DbCommand command,\n        CommandEventData eventData,\n        InterceptionResult<int> result,\n        CancellationToken cancellationToken = default"
+            },
+            {
+              "name": "AddTenantIsolation",
+              "return_type": "IServiceCollection",
+              "params": "this IServiceCollection services"
+            },
+            {
+              "name": "UseTenantIsolation",
+              "return_type": "IApplicationBuilder",
+              "params": "this IApplicationBuilder app"
+            }
+          ]
+        },
+        "TenantDbConnectionInterceptor": {
+          "kind": "class",
+          "namespace": "Waooaw.BusinessPlatform.Infrastructure",
+          "properties": {},
+          "methods": [
+            {
+              "name": "InvokeAsync",
+              "return_type": "Task",
+              "params": "HttpContext context"
+            },
+            {
+              "name": "ReaderExecuting",
+              "return_type": "InterceptionResult<DbDataReader>",
+              "params": "DbCommand command,\n        CommandEventData eventData,\n        InterceptionResult<DbDataReader> result"
+            },
+            {
+              "name": "ScalarExecuting",
+              "return_type": "InterceptionResult<object?>",
+              "params": "DbCommand command,\n        CommandEventData eventData,\n        InterceptionResult<object?> result"
+            },
+            {
+              "name": "NonQueryExecuting",
+              "return_type": "InterceptionResult<int>",
+              "params": "DbCommand command,\n        CommandEventData eventData,\n        InterceptionResult<int> result"
+            },
+            {
+              "name": "ReaderExecutingAsync",
+              "return_type": "ValueTask<InterceptionResult<DbDataReader>>",
+              "params": "DbCommand command,\n        CommandEventData eventData,\n        InterceptionResult<DbDataReader> result,\n        CancellationToken cancellationToken = default"
+            },
+            {
+              "name": "ScalarExecutingAsync",
+              "return_type": "ValueTask<InterceptionResult<object?>>",
+              "params": "DbCommand command,\n        CommandEventData eventData,\n        InterceptionResult<object?> result,\n        CancellationToken cancellationToken = default"
+            },
+            {
+              "name": "NonQueryExecutingAsync",
+              "return_type": "ValueTask<InterceptionResult<int>>",
+              "params": "DbCommand command,\n        CommandEventData eventData,\n        InterceptionResult<int> result,\n        CancellationToken cancellationToken = default"
+            },
+            {
+              "name": "AddTenantIsolation",
+              "return_type": "IServiceCollection",
+              "params": "this IServiceCollection services"
+            },
+            {
+              "name": "UseTenantIsolation",
+              "return_type": "IApplicationBuilder",
+              "params": "this IApplicationBuilder app"
+            }
+          ]
+        },
+        "TenantIsolationMiddlewareExtensions": {
+          "kind": "class",
+          "namespace": "Waooaw.BusinessPlatform.Infrastructure",
+          "properties": {},
+          "methods": [
+            {
+              "name": "InvokeAsync",
+              "return_type": "Task",
+              "params": "HttpContext context"
+            },
+            {
+              "name": "ReaderExecuting",
+              "return_type": "InterceptionResult<DbDataReader>",
+              "params": "DbCommand command,\n        CommandEventData eventData,\n        InterceptionResult<DbDataReader> result"
+            },
+            {
+              "name": "ScalarExecuting",
+              "return_type": "InterceptionResult<object?>",
+              "params": "DbCommand command,\n        CommandEventData eventData,\n        InterceptionResult<object?> result"
+            },
+            {
+              "name": "NonQueryExecuting",
+              "return_type": "InterceptionResult<int>",
+              "params": "DbCommand command,\n        CommandEventData eventData,\n        InterceptionResult<int> result"
+            },
+            {
+              "name": "ReaderExecutingAsync",
+              "return_type": "ValueTask<InterceptionResult<DbDataReader>>",
+              "params": "DbCommand command,\n        CommandEventData eventData,\n        InterceptionResult<DbDataReader> result,\n        CancellationToken cancellationToken = default"
+            },
+            {
+              "name": "ScalarExecutingAsync",
+              "return_type": "ValueTask<InterceptionResult<object?>>",
+              "params": "DbCommand command,\n        CommandEventData eventData,\n        InterceptionResult<object?> result,\n        CancellationToken cancellationToken = default"
+            },
+            {
+              "name": "NonQueryExecutingAsync",
+              "return_type": "ValueTask<InterceptionResult<int>>",
+              "params": "DbCommand command,\n        CommandEventData eventData,\n        InterceptionResult<int> result,\n        CancellationToken cancellationToken = default"
+            },
+            {
+              "name": "AddTenantIsolation",
+              "return_type": "IServiceCollection",
+              "params": "this IServiceCollection services"
+            },
+            {
+              "name": "UseTenantIsolation",
+              "return_type": "IApplicationBuilder",
+              "params": "this IApplicationBuilder app"
+            }
+          ]
+        },
+        "BundleEngine": {
+          "kind": "class",
+          "bases": [],
+          "fields": {},
+          "methods": [
+            "__init__",
+            "async cost_floor",
+            "async derive_price",
+            "async validate_price"
+          ]
+        },
+        "ThreadEntry": {
+          "kind": "pydantic_model",
+          "bases": [
+            "BaseModel"
+          ],
+          "fields": {
+            "thread_id": "str",
+            "thread_name": "str",
+            "description": "str | None",
+            "agent_type": "str",
+            "bundle_tier": "str"
+          },
+          "methods": []
+        },
+        "BundleProfile": {
+          "kind": "pydantic_model",
+          "bases": [
+            "BaseModel"
+          ],
+          "fields": {
+            "agent_type": "str",
+            "bundle_tier": "str",
+            "cost_floor_paise": "int",
+            "minimum_margin_pct": "int"
+          },
+          "methods": []
+        },
+        "PriceConfig": {
+          "kind": "pydantic_model",
+          "bases": [
+            "BaseModel"
+          ],
+          "fields": {
+            "agent_type": "str",
+            "bundle_tier": "str",
+            "target_margin_pct": "int | None"
+          },
+          "methods": []
+        },
+        "PriceValidationRequest": {
+          "kind": "pydantic_model",
+          "bases": [
+            "BaseModel"
+          ],
+          "fields": {
+            "agent_type": "str",
+            "bundle_tier": "str",
+            "proposed_price_paise": "int"
+          },
+          "methods": []
+        },
+        "PriceDeriveRequest": {
+          "kind": "pydantic_model",
+          "bases": [
+            "BaseModel"
+          ],
+          "fields": {
+            "agent_type": "str",
+            "bundle_tier": "str",
+            "target_margin_pct": "int | None"
+          },
+          "methods": []
+        },
+        "PriceValidation": {
+          "kind": "pydantic_model",
+          "bases": [
+            "BaseModel"
+          ],
+          "fields": {
+            "outcome": "str",
+            "cost_floor_paise": "int",
+            "minimum_compliant_price_paise": "int",
+            "proposed_price_paise": "int"
           },
           "methods": []
         },

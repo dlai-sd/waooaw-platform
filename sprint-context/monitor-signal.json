@@ -1,5 +1,5 @@
 {
-  "run_id": "30830276253",
+  "run_id": "",
   "sprint": "WC-027",
   "scaffold_task": null,
   "scaffold_failed": false,
@@ -12,65 +12,19 @@
       "spec_gap_issue": null
     },
     "WC027-01ab": {
-      "result": "SUCCESS",
-      "error_type": null,
-      "build_error_snippet": null,
-      "attempts": 1,
-      "spec_gap_issue": null
-    },
-    "WC027-01ac": {
-      "result": "SUCCESS",
-      "error_type": null,
-      "build_error_snippet": null,
-      "attempts": 1,
-      "spec_gap_issue": null
-    },
-    "WC027-01ba": {
-      "result": "SUCCESS",
-      "error_type": null,
-      "build_error_snippet": null,
-      "attempts": 1,
-      "spec_gap_issue": null
-    },
-    "WC027-01bb": {
-      "result": "SUCCESS",
-      "error_type": null,
-      "build_error_snippet": null,
-      "attempts": 1,
-      "spec_gap_issue": null
-    },
-    "WC027-01bc": {
-      "result": "SUCCESS",
-      "error_type": null,
-      "build_error_snippet": null,
-      "attempts": 1,
-      "spec_gap_issue": null
-    },
-    "WC027-02a": {
-      "result": "SUCCESS",
-      "error_type": null,
-      "build_error_snippet": null,
-      "attempts": 1,
-      "spec_gap_issue": null
-    },
-    "WC027-02b": {
-      "result": "SUCCESS",
-      "error_type": null,
-      "build_error_snippet": null,
-      "attempts": 1,
-      "spec_gap_issue": null
-    },
-    "WC027-02c": {
-      "result": "SUCCESS",
-      "error_type": null,
-      "build_error_snippet": null,
+      "result": "UDCP_FAILURE",
+      "error_type": "COMPILE_GATE_FAILURE",
+      "build_error_snippet": "src/billing-engine/markup/models.py: invalid syntax (models.py, line 94)",
       "attempts": 1,
       "spec_gap_issue": null
     }
   },
   "spec_gap_issues": [],
-  "overall_result": "SUCCESS",
-  "file_costs": {},
+  "overall_result": "PARTIAL",
+  "file_costs": {
+    "WC027-01aa": 0.9403,
+    "WC027-01ab": 0.3008
+  },
   "subtask_results": {
     "WC027-01aa": {
       "result": "SUCCESS",
@@ -79,62 +33,21 @@
       "error_text": ""
     },
     "WC027-01ab": {
-      "result": "SUCCESS",
+      "result": "FAIL",
       "task_id": "WC027-01a",
       "error_codes": [],
       "error_text": ""
     },
     "WC027-01ac": {
-      "result": "SUCCESS",
+      "result": "SKIPPED",
       "task_id": "WC027-01a",
-      "error_codes": [],
-      "error_text": ""
-    },
-    "WC027-01ba": {
-      "result": "SUCCESS",
-      "task_id": "WC027-01b",
-      "error_codes": [],
-      "error_text": ""
-    },
-    "WC027-01bb": {
-      "result": "SUCCESS",
-      "task_id": "WC027-01b",
-      "error_codes": [],
-      "error_text": ""
-    },
-    "WC027-01bc": {
-      "result": "SUCCESS",
-      "task_id": "WC027-01b",
-      "error_codes": [],
-      "error_text": ""
-    },
-    "WC027-02a": {
-      "result": "SUCCESS",
-      "task_id": "WC027-02",
-      "error_codes": [],
-      "error_text": ""
-    },
-    "WC027-02b": {
-      "result": "SUCCESS",
-      "task_id": "WC027-02",
-      "error_codes": [],
-      "error_text": ""
-    },
-    "WC027-02c": {
-      "result": "SUCCESS",
-      "task_id": "WC027-02",
       "error_codes": [],
       "error_text": ""
     }
   },
-  "tasks_done": [
-    "WC027-01a",
-    "WC027-01b",
-    "WC027-02"
-  ],
+  "total_cost_inr": 1.2411,
+  "tasks_done": [],
   "tasks_requested": [
-    "WC027-01a",
-    "WC027-01b",
-    "WC027-02"
+    "WC027-01a"
   ]
 }

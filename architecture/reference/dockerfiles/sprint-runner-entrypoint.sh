@@ -42,6 +42,8 @@ done
 
 FORCE_TASK_DISPLAY="${FORCE_TASK:-auto}"
 RUN_ID="${GITHUB_RUN_ID:-local-$(date +%Y%m%d-%H%M%S)}"
+# Persist key immediately — some subprocess clears it between here and the check
+_SAVED_ANTHROPIC_KEY="${ANTHROPIC_API_KEY:-}"
 
 cd /workspace
 
@@ -291,7 +293,11 @@ if [ -n "$FORCE_TASK" ]; then
   FORCE_FLAG="--force-task $FORCE_TASK"
 fi
 
-# Validate API key before spending tokens
+# Load API key from gitignored keyfile when env var not set (local dev)
+if [ -z "${ANTHROPIC_API_KEY:-}" ] && [ -f /workspace/.anthropic-key ]; then
+  ANTHROPIC_API_KEY="$(cat /workspace/.anthropic-key)"
+  export ANTHROPIC_API_KEY
+fi
 if [ -z "${ANTHROPIC_API_KEY:-}" ]; then
   echo "  ❌ ANTHROPIC_API_KEY not set — cannot run sprint agent"
   exit 1

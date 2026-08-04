@@ -1,8 +1,8 @@
 # WAOOAW AI Agent — Reasoning Sprint Analyst
 
-**Specification version:** 1.3
-**Date:** 2026-07-24
-**Inherits:** `CONSTITUTIONAL_DNA v1.0` (C-070 — RATIFIED 2026-07-19)
+**Specification version:** 1.4
+**Date:** 2026-07-24 · **Amended 2026-08-04 (v1.4 — Activation Gate pass; DCM §3.25; DNA v2.0)**
+**Inherits:** `CONSTITUTIONAL_DNA v2.0` (C-070 — RATIFIED 2026-07-19; v2.0 amended 2026-08-04)
 **Type:** Internal Platform Agent (not customer-facing)
 **Constitutional Basis:** C-069 (Self-Improvement), C-070 (Constitutional DNA),
   C-083 (Emit-Transport-Listen), C-084 (Step Dependency Ordering),
@@ -14,7 +14,7 @@
 
 ## 0. Constitutional DNA Inheritance (C-070 — MANDATORY)
 
-**Inherits:** `CONSTITUTIONAL_DNA v1.0` (architecture/reference/agents/CONSTITUTIONAL_DNA.md)
+**Inherits:** `CONSTITUTIONAL_DNA v2.0` (architecture/reference/agents/CONSTITUTIONAL_DNA.md)
 
 ### 0.1 Instinct 1 — Follow the Constitution (RSA-specific parameters)
 
@@ -375,6 +375,35 @@ In each case: the agent's **Self-Improvement loop** reads its quality signals (�
 
 ## 9. CCTs (Constitutional Compliance Tests)
 
+> **Gate §3 (MCP):** This agent uses no external MCP tools. All evidence intake is via GitHub artifact download and file reads. No MCP tool registration required.
+>
+> **Gate §10 (Strategic Cognition):** `strategic_cognition: NOT_APPLICABLE` — Platform pipeline intelligence agent. This agent IS the strategic cognition loop for the sprint pipeline (four-level diagnosis replaces the SKILL_ACTIVATION_PLAN / PERFORMANCE_ASSESSMENT cycle). Has no customer portfolio to manage.
+>
+> **Gate §11 (Token Economy):** `token_economy: NOT_APPLICABLE_COVERED_BY_PAC` — Budget managed by platform WBE directly. Budget vocabulary and threshold signals declared in Platform-Agent Contract (PAC). No customer-facing UsageUnit translation required.
+>
+> **Gate §12 (Signal Intelligence):** `signal_intelligence: NOT_APPLICABLE` — RSA is triggered by GitHub Actions workflow events (sprint failure), not external time-sensitive signals (weather, market, operational). Has no continuous signal poll loop.
+>
+> **Gate §13 (Skill Intelligence Routing):** `skill_intelligence_router: NOT_APPLICABLE` — Single-skill agent (DIAGNOSIS). No routing between skills needed.
+>
+> **Gate §14 (Campaign Theme Engine):** `campaign_theme_engine: NOT_APPLICABLE` — Platform internal intelligence agent. Does not create multi-post, multi-platform content.
+>
+> **Gate §15 (Interview Mode):** `interview_mode: NOT_APPLICABLE` — Internal platform agent. Not customer-facing. Cannot be marketed to prospective customers. No demo mode required.
+
+## Constitutional Checklist (Gate §7)
+
+- [x] Every diagnosis action traces to at least one constitutional claim (C-059)
+- [x] Every MCP tool call has a Decision Space authorization entry (C-041) — no MCP tools used
+- [x] Every prohibited action explicitly protects a constitutional principle (§5.2)
+- [x] At least one Acceptance Scenario is cited (AS-RSA-001 in §12)
+- [x] Section 0 Constitutional DNA present and declared (C-070)
+- [x] No prohibited action violates a Constitutional Floor (Emergency Stop, Evidence First, Audit Ledger)
+- [x] Evidence First: `reasoning-output.json` must be written BEFORE any action — enforced by CCT-RSA-03
+- [x] **C-048 check (Information Non-Exploitation): RSA has no customer. Its diagnosis serves the platform improvement loop (C-069), not any commercial interest. No commercial incentive to misclassify a failure level.**
+- [x] **C-049 check (Honest Limitation Disclosure): confidence < 0.60 triggers escalation to human review and NOT autonomous action. CCT-RSA-01 enforces constitutional traceability. Diagnosis-without-confidence = C-049 violation (§0.2).**
+- [x] **C-099 check (Decision Consequence Map): Section 3.25 present. All 5 decision types classified: sprint_authorization_or_block, constitutional_claim_proposal, sprint_state_machine_update as DETERMINISTIC_REQUIRED with independent_verification_method declared; rca_report, code_analysis_finding as CONSISTENT_SUFFICIENT. CE.ValidateAction DCM path declared for all DETERMINISTIC_REQUIRED decisions.**
+- [x] **C-053 check (Signal Intelligence): NOT_APPLICABLE — internal pipeline agent triggered by workflow events, not external signals.**
+- [x] **C-054 check (Skill Intelligence Routing): NOT_APPLICABLE — single-skill agent.**
+
 | CCT ID | Test | Pass Criteria |
 |---|---|---|
 | **CCT-RSA-01** | Reasoning traces to claim | Every reasoning output references at least one constitutional claim in `evidence_chain` |
@@ -505,6 +534,53 @@ canonical reference for the CCT-RSA-01 traceability check.
 
 ---
 
+## Section 3.23 — Interview Mode
+
+```yaml
+interview_mode: NOT_APPLICABLE
+reason: >
+  Platform-internal intelligence agent. RSA activates via GitHub Actions workflow
+  on sprint failure detection — not via customer WhatsApp or WAOOAW portal.
+  Has no Employment Contract with customers. Has no prospect audience.
+  Cannot be marketed or demonstrated to prospective customers.
+  The agent's "demonstration" is its real autonomous operation in the sprint pipeline.
+  Declaring NOT_APPLICABLE satisfies Activation Gate §15.
+```
+
+---
+
+## 3.25 Decision Consequence Map (C-099 — MANDATORY)
+
+```yaml
+decision_consequence_map:
+  - decision_type: sprint_authorization_or_block
+    category: DETERMINISTIC_REQUIRED
+    independent_verification_method: "Constitutional Compliance Tests (CCTs) must pass before AUTHORIZE is returned; BLOCK triggers Constitutional Blocker file written to blockers/; CE.ValidateAction PROCEED_DETERMINISTIC before gate decision emitted"
+    constitutional_basis: C-023, C-059
+
+  - decision_type: constitutional_claim_proposal
+    category: DETERMINISTIC_REQUIRED
+    independent_verification_method: "Founder ratification required before claim is RATIFIED; proposal is DRAFT until Founder signs off; written to knowledge/claims/ only after ratification"
+    constitutional_basis: C-002, C-023
+
+  - decision_type: rca_report
+    category: CONSISTENT_SUFFICIENT
+    verification_method: "Report is advisory input to Founder decision; errors caught in review cycle; RCA does not itself authorize any action"
+    constitutional_basis: C-049
+
+  - decision_type: code_analysis_finding
+    category: CONSISTENT_SUFFICIENT
+    verification_method: "Findings are advisory; sprint reviewer validates before merge; false positives caught in CCT run"
+    constitutional_basis: C-023
+
+  - decision_type: sprint_state_machine_update
+    category: DETERMINISTIC_REQUIRED
+    independent_verification_method: "PROJECT_STATE.md SPRINT_STATE_MACHINE block updated atomically; git commit is the evidence record; CE.ValidateAction before consecutive_failures increment"
+    constitutional_basis: C-023, C-059
+```
+
+---
+
 ## Platform-Agent Contract (PAC)
 <!-- ADR-035 mandatory section. Do not remove. Update when AGENT-BASE-SPEC version bumps. -->
 <!-- Platform-internal agent: no customer session. WBE signals are operational events only. -->
@@ -558,3 +634,15 @@ platform_services:
       image_gen:    null
     live_only_features: []
 ```
+
+---
+
+## Version History
+
+| Version | Date | Author (Office) | Change |
+|---|---|---|---|
+| 1.0 | 2026-07-19 | Enterprise Architect | Initial draft |
+| 1.1 | 2026-07-21 | Enterprise Architect | PAC + three-level diagnosis |
+| 1.2 | 2026-07-23 | Enterprise Architect | CCT-RSA-01–07 + acceptance scenario |
+| 1.3 | 2026-07-24 | Sujay Khandge | RATIFIED — final review |
+| 1.4 | 2026-08-04 | Enterprise Architect | Activation Gate pass: DNA v2.0 inheritance; Section 3.23 NOT_APPLICABLE; Section 3.25 DCM (C-099); Constitutional Checklist; gate §10–§15 NOT_APPLICABLE declarations |

@@ -19,7 +19,8 @@ _DEFAULT_SYS_PATH_ROOTS: list[str] = [
 _EXTERNAL_ROOTS: frozenset[str] = frozenset({
     "fastapi", "pydantic", "sqlalchemy", "redis", "httpx", "uvicorn",
     "starlette", "jose", "passlib", "celery", "anthropic", "openai",
-    "google", "requests", "pytest", "unittest", "typing", "typing_extensions",
+    "google", "requests", "pytest", "pytest_asyncio", "hypothesis",
+    "unittest", "typing", "typing_extensions",
     "abc", "ast", "os", "sys", "re", "json", "pathlib", "datetime",
     "dataclasses", "enum", "uuid", "logging", "time", "io", "collections",
     "itertools", "functools", "contextlib", "asyncio", "inspect",
@@ -89,6 +90,9 @@ class WorkspaceSymbolIndex:
             for imp in artifact.get("imports", []):
                 module = imp.get("from", "")
                 names: list[str] = imp.get("import", [])
+                if not module:
+                    # Bare 'import X' statement — no module path to validate
+                    continue
                 if _is_external(module):
                     continue
                 if module not in self._index:

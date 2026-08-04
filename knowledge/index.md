@@ -3,7 +3,7 @@
 **Produced by:** Constitutional Analyst (Sprint 001)
 **Date:** 2026-07-07
 **Work Contract:** WC-001
-**Total Claims:** 76 (ratified through 2026-07-22)
+**Total Claims:** 85 (ratified through 2026-08-04)
 
 ---
 
@@ -145,6 +145,16 @@ Derived from CONFIRMED or LAW claims. These authorize specific architectural dec
 | C-084 | ARCHITECTURAL_CONSTRAINT | Step Dependency Ordering — step N+1 must not execute if step N produced FAIL/HALT/ERROR signal | 2026-07-24 |
 | C-085 | ARCHITECTURAL_CONSTRAINT | Idempotency Obligation — before executing any step with external side effects, check for existing SUCCESS signal | 2026-07-24 |
 | C-086 | PLATFORM_INTEGRITY | Pre-Execution Simulation Obligation — before any LLM code generation task runs for the first time, SIM-PL-002 with verdict PASS must exist; no LLM call without prior simulation | 2026-07-24 |
+| C-088 | OBLIGATION | No WAOOAW agent may be offered to any customer in trial, demo, or live until it has a declared Agent Billing Profile (ABP); unprofiled agents must not be activatable | 2026-07-30 |
+| C-089 | OBLIGATION | Final customer-facing price for any WAOOAW product must never fall below the platform cost floor; Markup Engine enforces minimum margin before any invoice is generated | 2026-07-30 |
+| C-090 | LAW | A customer's subscription price may not increase during an active subscription period without explicit Founder authorization and customer notification (grandfather pricing) | 2026-07-30 |
+| C-091 | OBLIGATION | Every cost incurred by WAOOAW in delivering any service must be recorded in the Thread Catalog; Thread Catalog is the single source of truth for all cost attribution | 2026-07-30 |
+| C-094 | OBLIGATION | Every WAOOAW agent specification must declare compliance with the current Agent Base Spec version; agents below current version must not be published to customers | 2026-07-30 |
+| C-095 | OBLIGATION | Every new WAOOAW platform service or component must have an EA-produced Code Skeleton before any implementation sprint fires (EA Skeleton Standard) | 2026-07-30 |
+| C-096 | OBLIGATION | Before any sprint task executes in the autonomous pipeline, the Environment Contract must be validated; missing dependencies halt the sprint before LLM tokens are spent | 2026-07-31 |
+| C-097 | OBLIGATION | Any sprint task implementing a function performing financial computation must have a corresponding CCT that validates the arithmetic to 6 decimal places | 2026-07-31 |
+| C-098 | OBLIGATION | The platform software architecture must enforce the EA Skeleton Standard at the compile gate; skeletons missing from src/ block the sprint before code generation | 2026-07-31 |
+| C-099 | OBLIGATION + ARCHITECTURAL_CONSTRAINT | Every WAOOAW agent must declare a Decision Consequence Map classifying all consequential decisions as DETERMINISTIC_REQUIRED or CONSISTENT_SUFFICIENT; DETERMINISTIC_REQUIRED decisions require independent verification before commit | 2026-08-04 |
 
 ---
 

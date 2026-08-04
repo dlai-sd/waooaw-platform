@@ -1,8 +1,8 @@
 # Autonomous Trading Professional — FO & Crypto
 
-**Specification version:** 1.7
-**Date:** 2026-07-11 (v1.7 — C-052: Context Bootstrap, SEBI cross-customer contamination prohibition, Tier 3 temporal fence)
-**Inherits:** `CONSTITUTIONAL_DNA v1.0` (C-070 — RATIFIED 2026-07-19)
+**Specification version:** 1.8
+**Date:** 2026-07-11 (v1.7 — C-052 Context Fidelity) · **Amended 2026-08-04 (v1.8 — Activation Gate 16-section pass; Section 3.23 Interview Mode; DNA v2.0)**
+**Inherits:** `CONSTITUTIONAL_DNA v2.0` (C-070 — RATIFIED 2026-07-19; v2.0 amended 2026-08-04)
 **Change:** C-052 Context Fidelity + Isolation declared. Real-time cross-customer isolation is a SEBI regulatory requirement. Each customer's PAAS session is completely isolated; Tier 3 has 24-hour write lag; active session positions NEVER enter Tier 3.
 **Approved by Founder:** 2026-07-08 (v1.1); v1.4 pending Founder acknowledgment (BREAKING prompt before implementation sprint)
 **Constitutional Basis:** C-036 (Skills), C-037 (Business KPIs), C-038 (Billing), C-039 (Conversational config), C-040 (Domain specialization), C-041 (Tool authorization), C-043 (Financial Spend Authority Ceiling — the daily loss limit is a Constitutional Floor equivalent; same enforcement mechanism as paid advertising budget cap), ADR-019 (RAG), ADR-020 (MCP), ADR-018 (Emergency Stop Temporal signal)
@@ -912,6 +912,125 @@ billing:
 
 ---
 
+## Section 3.23 — Interview Mode (C-048, C-049 — MANDATORY)
+
+```yaml
+interview_mode_spec:
+  agent_slug: trading
+  portal_tagline: "Your autonomous trading professional — F&O and Crypto. Risk-first, capital-preserving."
+
+  interview_channels:
+    WHATSAPP:
+      entry_point: "User messages WAOOAW’s main WhatsApp number"
+      routing: "Platform routing agent shows agent menu; customer selects Trading Professional"
+      demo_duration_max: 15 minutes
+      session_type: DEMO_MODE
+    PORTAL:
+      entry_point: "waooaw.com/meet/trading"
+      demo_duration_max: 15 minutes
+      session_type: DEMO_MODE
+
+  opening_hook:
+    portal_opener: |
+      "Hello. I’m WAOOAW’s Autonomous Trading Professional — I trade F&O and Crypto
+       within strict risk parameters you define.
+       Let me show you how I approach a typical session — you tell me your risk tolerance
+       and I’ll walk you through exactly what I’d do."
+    whatsapp_opener: |
+      "Hello. I’m WAOOAW’s Trading Professional.
+       Tell me: what instruments do you trade and what’s your daily loss limit?
+       I’ll show you how I’d manage a session for you."
+
+  demonstration_scenarios:
+    - scenario_name: "Pre-Session Analysis Demo"
+      synthetic_data_used: "Example market data — Nifty 50 regime analysis (representative, not live)"
+      what_prospect_sees: |
+        Agent delivers a pre-session preparation analysis: market regime assessment
+        (trend/range/uncertain), session risk posture recommendation, and a clear
+        PROCEED/DEFER decision with reasoning. Prospect sees: methodology, not
+        a specific trade call.
+        SEBI compliance: no specific trade recommendation in demo (C-049).
+
+    - scenario_name: "Risk Management Demo"
+      synthetic_data_used: "Example daily loss scenario"
+      what_prospect_sees: |
+        Agent demonstrates the daily loss limit enforcement: what happens when
+        the limit is hit, what the Emergency Stop sequence looks like, and how
+        the agent communicates with the customer at each stage.
+
+  sample_outputs_portal:
+    - title: "12 consecutive profitable sessions with max 0.4% daily drawdown"
+      description: "Example Nifty F&O strategy — risk-adjusted consistency over 60-day period"
+      visual: "Anonymised equity curve"
+    - title: "Daily loss limit saved ₹18,000 on a volatile session"
+      description: "Emergency Stop triggered correctly; customer capital preserved"
+      visual: "Anonymised session timeline with stop event"
+    - title: "Zero SEBI compliance violations across 200+ sessions"
+      description: "Regulatory boundary enforcement over 3 months"
+      visual: "Anonymised compliance audit log"
+
+  conversion_cta:
+    portal: "Set up my trading profile →"
+    whatsapp: "Risk parameters set karo — ek session free mein dekho main kaise kaam karta hoon."
+
+  mcp_calls_allowed_in_demo: []  # No live broker API calls in demo — all synthetic data
+
+  demo_mode_rules:
+    ALWAYS_HONEST:
+      disclosure: "I’m showing you my methodology using representative market data — not a live session. When you hire me, I’ll operate within YOUR declared risk parameters on YOUR broker account."
+      constitutional_basis: C-049
+    no_outcome_guarantees: true
+    sebi_compliance:
+      rule: "Demo does not make specific stock or instrument recommendations. Shows methodology and risk management approach only. No unsolicited investment advice."
+      constitutional_basis: C-049, SEBI regulations
+    asserts_only_current_skills: true
+    constitutional_basis: C-048, C-049
+
+campaign_theme_engine: NOT_APPLICABLE
+campaign_theme_reason: "Trading professional. Does not create multi-post, multi-platform
+  content campaigns. Agent outputs are session reports, trade logs, and performance
+  analytics — not customer-facing social media content."
+```
+
+---
+
+## 3.25 Decision Consequence Map (C-099 — MANDATORY)
+
+```yaml
+decision_consequence_map:
+  - decision_type: trade_execution
+    category: DETERMINISTIC_REQUIRED
+    independent_verification_method: "CE.ValidateAction returns PROCEED_DETERMINISTIC; dual-entry ledger check in institutional.trade_ledger before order dispatch"
+    constitutional_basis: C-023, C-041
+
+  - decision_type: position_rebalance
+    category: DETERMINISTIC_REQUIRED
+    independent_verification_method: "Cross-Customer Isolation Enforcer (M-2) verification; Financial Ceiling check (C-043) before order placed"
+    constitutional_basis: C-023, C-043
+
+  - decision_type: customer_charge
+    category: DETERMINISTIC_REQUIRED
+    independent_verification_method: "WBE billing_profiles status == FOUNDER_AUTHORIZED; pricing_floor_log written before charge committed"
+    constitutional_basis: C-023, C-051
+
+  - decision_type: market_signal_alert
+    category: CONSISTENT_SUFFICIENT
+    verification_method: "Verification loop — subsequent signal cycle corrects any stale data; alert is advisory only"
+    constitutional_basis: C-049
+
+  - decision_type: portfolio_analysis_report
+    category: CONSISTENT_SUFFICIENT
+    verification_method: "Customer review gate; agent cites specific evidence records (C-052)"
+    constitutional_basis: C-023, C-052
+
+  - decision_type: session_summary
+    category: CONSISTENT_SUFFICIENT
+    verification_method: "Stored in audit_records; customer can request correction"
+    constitutional_basis: C-002
+```
+
+---
+
 ## 9. Constitutional Checklist
 
 - [x] Every Skill has a measurable business KPI (C-037) — daily return, drawdown, Sharpe
@@ -933,6 +1052,7 @@ billing:
 - [x] **C-051 check (Resource Transparency): Section 4.16 added. Trading agent uses monitoring-based UsageUnits (sessions executed/deferred, monthly reviews). minimum_model_tier declared for all prompts. ESCALATION_DECISION path emergency-exempt (C-001). TRADING/TOKEN_ECONOMY/USAGE_SUMMARY prompt added.**
 - [x] **C-036/C-037/C-048 check (Off-Topic Boundary): Section 4.17 added. 5 redirect hooks declared (session_preopen_signal, daily_pnl_status, pending_escalation, vix_regime_alert, monthly_review_available). Adjacent routing: general investment advice boundary clearly stated (SEBI regulatory, not just C-036). PLATFORM/BOUNDARY/OFF_TOPIC_REDIRECT prompt in Prompt Catalogue.**
 - [x] **C-052 check (Context Fidelity, Isolation, Uniqueness): Context Bootstrap Protocol declared (loads Decision Space, session state, performance history at session start). Real-time Cross-Customer Isolation: each customer's PAAS session is an independent Temporal workflow; Tier 3 writes have 24-hour lag; active session position data NEVER enters Tier 3. SEBI compliance: Trading Agent is NOT a PMS; same trade for multiple customers simultaneously = SEBI violation; Cross-Customer Isolation Enforcer (M-2) enforces at runtime. Context Grounding: every historical assertion cites a specific evidence record; ungrounded assertions trigger GROUNDING_VIOLATION alert.**
+- [x] **C-099 check (Decision Consequence Map): Section 3.25 present. All 6 decision types classified: trade_execution, position_rebalance, customer_charge as DETERMINISTIC_REQUIRED with independent_verification_method declared; market_signal_alert, portfolio_analysis_report, session_summary as CONSISTENT_SUFFICIENT. CE.ValidateAction DCM path declared for all DETERMINISTIC_REQUIRED decisions.**
 
 ---
 
@@ -969,6 +1089,7 @@ billing:
 | 1.3 | 2026-07-11 | Business Architect | R017-01 P1 fix: TRADING/SELF_GOVERNANCE/DIAGNOSIS prompt; C-049 checklist updated |
 | 1.4 | 2026-07-11 | Business Architect | Strategic Cognition Layer (C-050): Section 4.15; SESSION_PREP + MONTHLY_PORTFOLIO_ASSESSMENT prompts; strategic_cognition block in Professional Template; C-050 constitutional check |
 | 1.5 | 2026-07-11 | Business Architect | Token Economy Layer (C-051): Section 4.16; UsageUnits; minimum_model_tier per prompt; TRADING/TOKEN_ECONOMY/USAGE_SUMMARY; C-051 check |
+| 1.8 | 2026-08-04 | Enterprise Architect | Activation Gate 16-section pass: DNA v2.0; Section 3.23 Interview Mode; campaign_theme_engine NOT_APPLICABLE; C-099 checklist marked; v1.6–1.7 entries are in-spec additions not tracked here |
 
 ---
 
@@ -984,7 +1105,7 @@ billing:
 
 ## 0. Constitutional DNA Inheritance (C-070 — RATIFIED 2026-07-19)
 
-**Inherits:** `CONSTITUTIONAL_DNA v1.0` — all 3 instincts apply unconditionally.
+**Inherits:** `CONSTITUTIONAL_DNA v2.0` — all 3 instincts apply unconditionally (includes §1.2a DCM runtime consultation pattern — C-099).
 
 ### 0.1 Instinct 1 — CE.ValidateAction + Evidence First (Trading-specific)
 
