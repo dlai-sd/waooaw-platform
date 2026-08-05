@@ -181,3 +181,6 @@
 {"event": "SPRINT_TASKS_EXECUTED", "timestamp": "2026-08-04T12:26:45.832202+00:00", "run_id": "", "stub_mode": true, "sprint": "WC-027", "tasks_done": ["WC027-01a", "WC027-02"]}
 {"event": "AUTONOMOUS_SPRINT_STARTED", "timestamp": "2026-08-04T17:44:06.706363+00:00", "run_id": "30935141093", "stub_mode": true, "sprint": "WC-028", "branch": "main", "tasks": ["WC028-01", "WC028-02", "WC028-03"]}
 {"event": "SPRINT_TASKS_EXECUTED", "timestamp": "2026-08-04T17:49:09.908838+00:00", "run_id": "30935141093", "stub_mode": true, "sprint": "WC-028", "tasks_done": []}
+{"event": "AUTONOMOUS_SPRINT_STARTED", "timestamp": "2026-08-05T02:28:07.275059+00:00", "run_id": "30969371126", "stub_mode": true, "sprint": "WC-028", "branch": "main", "tasks": ["WC028-01", "WC028-02"]}
+{"event": "spec_gap_halt", "timestamp": "2026-08-05T02:32:44.255934+00:00", "run_id": "30969371126", "stub_mode": true, "task": "WC028-01a:service.py", "issue": "228", "gap": "WC028-01a:service.py failed validation after 3 LLM attempts. Last error: "}
+{"event": "SPRINT_TASKS_EXECUTED", "timestamp": "2026-08-05T02:32:44.259234+00:00", "run_id": "30969371126", "stub_mode": true, "sprint": "WC-028", "tasks_done": []}
