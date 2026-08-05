@@ -215,6 +215,13 @@ class GoalExecutor:
                 ))
                 continue
 
+            task_model_hint = model_hint
+            task_max_tokens = max_tokens
+            # ADR-032 Decision 9 backstop: test files must never use reasoning model
+            if Path(output_file).name.startswith("test_"):
+                task_model_hint = "auto"
+                task_max_tokens = max(max_tokens, 12000)
+
             task = FileGenerationTask(
                 goal_id=self.goal_id,
                 task_id=f"{task_id}:{Path(output_file).name}",
@@ -222,8 +229,8 @@ class GoalExecutor:
                 spec_sections=spec_sections,
                 constitutional_check=constitutional_check,
                 stack=stack,
-                model_hint=model_hint,
-                max_tokens=max_tokens,
+                model_hint=task_model_hint,
+                max_tokens=task_max_tokens,
                 depends_on_files=prior_files + already_frozen + self._peer_test_examples(output_file),
             )
 

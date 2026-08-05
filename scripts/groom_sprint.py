@@ -484,10 +484,10 @@ def _generate_scaffold_subtaskdef(
     model_hint = task.get("model_hint", "auto")
     if model_hint not in ("reasoning", "auto"):
         model_hint = "auto"
-    # Test generation is always large-output — enforce reasoning regardless of WC column
-    if is_test and model_hint == "auto":
-        model_hint = "reasoning"
-    max_tokens = 8000 if model_hint == "reasoning" else 4000
+    # ADR-032 Decision 9: test tasks must NOT use reasoning — thinking tokens consume output budget
+    if is_test:
+        model_hint = "auto"
+    max_tokens = 12000 if is_test else (8000 if model_hint == "reasoning" else 4000)
 
     if is_test:
         # Build prose deterministically — MagicLLM enforces XML file-block format which
@@ -684,8 +684,8 @@ def _generate_test_subtaskdef(
         "Use pytest-asyncio for async tests. Mock Redis/DB with pytest fixtures.\\n"
         "Use f-strings only — never % string formatting."
     ),
-    model_hint="reasoning",
-    max_tokens=6000,
+    model_hint="auto",
+    max_tokens=12000,
 )'''
 
 

@@ -1435,3 +1435,113 @@ class TestUDCPDispatch:
         # letters so we check the raw file slice rather than counting characters).
         assert long_content not in received_scope[0], "5000-char spec content must be truncated"
         assert long_content[:3000] in received_scope[0], "First 3000 chars of spec must be present"
+
+
+class TestADR032D9TestTaskModelSelection:
+    """CCT: ADR-032 Decision 9 — test tasks must use model_hint='auto' + max_tokens=12000.
+
+    constitutional_basis: ADR-032 Decision 9 (Test Generation Output Budget)
+    Root cause: groom_sprint.py previously forced model_hint='reasoning' for all test tasks,
+    consuming thinking_budget=8000 tokens before any code output, causing truncated test files.
+    These tests assert both the groomer output and the executor backstop cannot produce
+    DEEP_REASONING for test output files.
+    """
+
+    def _run_scaffold(self, wc_model_hint: str) -> str:
+        """Helper: call _generate_scaffold_subtaskdef with is_test=True."""
+        import sys
+        sys.path.insert(0, str(REPO_ROOT / "scripts"))
+        from groom_sprint import _generate_scaffold_subtaskdef
+
+        task = {
+            "task_id": "WC028-01",
+            "scope": "tests/billing-engine/test_service.py — write pytest suite",
+            "model_hint": wc_model_hint,
+        }
+        return _generate_scaffold_subtaskdef(
+            task=task,
+            stack="python",
+            service_dir="",
+            output_files=["tests/billing-engine/test_service.py"],
+            inject_source_files=[],
+            prior_subtask_id=None,
+            wc_filename="WC-028-test.md",
+            skeleton="",
+            api_key="",
+            is_test=True,
+        )
+
+    def test_test_scaffold_model_hint_is_auto_when_wc_says_auto(self):
+        """ADR-032 D9: is_test + WC model_hint='auto' → must produce model_hint='auto'."""
+        import re
+        result = self._run_scaffold("auto")
+        match = re.search(r"model_hint=([^\n,]+)", result)
+        assert match, "model_hint not found in scaffold output"
+        assert match.group(1).strip().strip("'\"") == "auto"
+
+    def test_test_scaffold_model_hint_is_auto_when_wc_says_reasoning(self):
+        """ADR-032 D9: groomer must override WC 'reasoning' to 'auto' for test tasks."""
+        import re
+        result = self._run_scaffold("reasoning")
+        match = re.search(r"model_hint=([^\n,]+)", result)
+        assert match, "model_hint not found in scaffold output"
+        assert match.group(1).strip().strip("'\"") == "auto", (
+            "Groomer must NOT forward model_hint='reasoning' to test scaffold — "
+            "thinking tokens consume output budget (ADR-032 Decision 9)"
+        )
+
+    def test_test_scaffold_max_tokens_is_12000(self):
+        """ADR-032 D9: test scaffold must always request 12000 output tokens."""
+        import re
+        result = self._run_scaffold("auto")
+        match = re.search(r"max_tokens=(\d+)", result)
+        assert match, "max_tokens not found in scaffold output"
+        assert int(match.group(1)) == 12000, (
+            f"Test scaffold max_tokens must be 12000, got {match.group(1)} "
+            "(test files exceed 500 lines — 8000 is insufficient)"
+        )
+
+    def test_executor_backstop_clamps_test_file_to_auto_and_12000(self, tmp_path):
+        """ADR-032 D9 backstop: goal_executor must clamp test_*.py to auto+12000."""
+        import sys
+        sys.path.insert(0, str(REPO_ROOT / "scripts"))
+        from goal_orchestrator.goal_executor import GoalExecutor
+
+        captured: list[dict] = []
+
+        def fake_execute_file(task):
+            captured.append({"model_hint": task.model_hint, "max_tokens": task.max_tokens})
+            from goal_orchestrator.goal_executor import FileGenerationResult
+            return FileGenerationResult(task=task, status="success")
+
+        executor = GoalExecutor.__new__(GoalExecutor)
+        executor.goal_id = "GOAL-TEST"
+        executor._cb = None
+        executor._evaluator = None
+        executor._root = tmp_path
+        executor._execute_file = fake_execute_file
+        executor._collect_prior_files = lambda _: []
+        executor._load_file_failure_counts = lambda: {}
+        executor._save_file_failure_counts = lambda _: None
+        executor._peer_test_examples = lambda _: []
+        executor._update_geom_label = lambda _: None
+        executor._write_evidence = lambda *a, **kw: None
+
+        executor.execute_sprint_task(
+            task_id="WC028-01",
+            wc_number="WC-028",
+            output_files=["tests/billing-engine/test_service.py"],
+            spec_sections={},
+            constitutional_check="",
+            stack="python",
+            model_hint="reasoning",   # groomer accidentally passed reasoning
+            max_tokens=8000,          # groomer accidentally passed low budget
+        )
+
+        assert len(captured) == 1
+        assert captured[0]["model_hint"] == "auto", (
+            "Executor must override model_hint='reasoning' → 'auto' for test_*.py files"
+        )
+        assert captured[0]["max_tokens"] == 12000, (
+            "Executor must override max_tokens to 12000 for test_*.py files"
+        )

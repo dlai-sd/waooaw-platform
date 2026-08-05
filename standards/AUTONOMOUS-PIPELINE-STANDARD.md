@@ -146,20 +146,22 @@ Every implementation sprint operates in blueprint-first mode:
 
 ## 6. SubTaskDef — Structure Reference
 
+### 6a. Implementation task (src/ output)
+
 ```python
 SubTaskDef(
-    id="WC027-02a",                    # {task_id}a — always single subtask per task
-    description="...",                  # one sentence from WC scope
-    type="llm",                         # always "llm" for implementation tasks
-    depends_on=["WC027-01a"],           # prior task's subtask ID, or []
-    compile_gate="ruff",                # "ruff" (python), "pytest" (tests), "dotnet_build"
-    service_dir="src/billing-engine",   # from _SERVICE_SCOPE
-    wc_task_id="WC027-02",             # links to WC file (C-059)
-    stack="python",                     # from _TASK_STACK_MAP
-    output_files=[                      # files LLM must produce (ruff scopes to these)
+    id="WC027-02a",
+    description="...",
+    type="llm",
+    depends_on=["WC027-01a"],
+    compile_gate="ruff",
+    service_dir="src/billing-engine",
+    wc_task_id="WC027-02",
+    stack="python",
+    output_files=[
         "src/billing-engine/markup/bundle_engine.py",
     ],
-    inject_source_files=[               # skeleton always injected for python tasks
+    inject_source_files=[
         "src/billing-engine/skeleton/wbe_interfaces.py",
     ],
     spec_sections={
@@ -170,8 +172,49 @@ SubTaskDef(
         "DO NOT change signatures — implement bodies only (ADR-036).\n"
         "C-089: validate_price MUST raise BelowConstitutionalFloorError if margin < floor.\n"
     ),
-    model_hint="reasoning",             # from WC table — must be "reasoning" or "auto"
-    max_tokens=8000,                    # 8000 for reasoning, 3000–5000 for auto
+    model_hint="reasoning",      # from WC table
+    max_tokens=8000,             # 8000 for reasoning; 3000–5000 for auto
+)
+```
+
+### 6b. Test task (tests/ output) — ADR-032 Decision 9
+
+Test tasks differ from implementation tasks in three ways: model_hint is always `"auto"`,
+max_tokens is always `12000`, and `service_dir=""`.
+
+> **NEVER** set `model_hint="reasoning"` for a test task. Extended thinking consumes 8000
+> thinking tokens before writing a single line of test code — output is always truncated.
+> The `goal_executor.py` backstop will override this, but the groomer should not produce it.
+
+```python
+SubTaskDef(
+    id="WC028-01a",
+    description="Write pytest suite for meter/service.py covering happy path, dedup, procurement scope",
+    type="llm",
+    depends_on=[],
+    compile_gate="ruff",
+    service_dir="",              # always "" for test-only tasks
+    wc_task_id="WC028-01",
+    stack="python",
+    output_files=[
+        "tests/billing-engine/test_service.py",
+    ],
+    inject_source_files=[        # inject ONLY the public API — not the full implementation
+        "src/billing-engine/skeleton/wbe_interfaces.py",
+        "src/billing-engine/meter/service.py",
+    ],
+    spec_sections={
+        "work-contracts/WC-028-*.md": "WC028-01",
+    },
+    constitutional_check=(
+        "TEST PASS — write pytest tests as described in the WC scope.\n"
+        "Use pytest-asyncio for async tests. Use AsyncMock for async methods.\n"
+        "Always await AsyncMock calls: `result = await mock.method(args)`.\n"
+        "Insert datetime objects directly into SQLite bindparams — never .isoformat().\n"
+        "StaticPool required for in-memory engine (see FORBIDDEN_APIS).\n"
+    ),
+    model_hint="auto",           # REQUIRED — never "reasoning" for test tasks (ADR-032 D9)
+    max_tokens=12000,            # REQUIRED — test files exceed 500 lines (ADR-032 D9)
 )
 ```
 
@@ -180,6 +223,7 @@ SubTaskDef(
 - `compile_gate="ruff"` scopes to `output_files` only — pre-existing files not gated (B-2 fix)
 - `depends_on` uses prior task's subtask ID for cross-task chain integrity (C-084)
 - `wc_task_id` is the traceability link required by C-059
+- Test tasks: `model_hint` MUST be `"auto"`, `max_tokens` MUST be `12000` (ADR-032 Decision 9)
 
 ---
 
@@ -269,6 +313,65 @@ This means the Founder never needs to edit `PROJECT_STATE.md` between sprints. P
 | B-A | CRITICAL | `sprint_state.set_field()` `\s*` → `[ \t]*` (YAML fence corruption) | `9341a64` |
 | B-B | MEDIUM | `WCSpecReader._parse_wc_table()` fallback for table-format WC files | `9341a64` |
 | B-C | LOW | `SPRINT_TASK_MANIFEST` extended with WC-025/WC-026 | `9341a64` |
+| B-D | CRITICAL | Test task groomer forced `model_hint="reasoning"` + `max_tokens=8000` — thinking tokens consumed output budget → truncated test files | `8463c01` |
+| B-E | HIGH | Test task groomer injected full service.py (29K chars) into test context — async pattern knowledge crowded out by implementation detail | `8463c01` |
+| B-F | HIGH | No positive async test pattern in FORBIDDEN_APIS → LLM invented `.isoformat()` datetime serialization and omitted `await` on AsyncMock | `8463c01` |
+
+---
+
+## 13. Python Async Test Patterns (Positive Reference)
+
+These patterns are injected into every `TEST_GENERATION` task via `pipeline.py _build_prompt`. They exist here as the constitutional source of truth.
+
+### 13a. AsyncMock — correct usage
+
+```python
+# ✅ CORRECT: set return_value, then await the call
+mock_service.check_thresholds = AsyncMock(return_value=[])
+alerts = await mock_service.check_thresholds(customer_id)
+
+# ✅ CORRECT: await every AsyncMock call — including "setup" calls
+await mock_redis.setex(key, ttl, value)     # setex is AsyncMock → must await
+
+# ❌ WRONG: calling without await creates unawaited coroutine → PytestUnraisableExceptionWarning
+mock_redis.setex(key, ttl, value)           # missing await
+```
+
+### 13b. SQLite datetime in test fixtures
+
+```python
+# ✅ CORRECT: pass datetime object directly — SQLAlchemy converts to space-separated TEXT
+await session.execute(text("INSERT INTO log (fired_at) VALUES (:t)").bindparams(t=fired_at))
+
+# ❌ WRONG: .isoformat() produces T-separator ('T' > ' ' in SQLite string compare)
+# fired_at stored as '2026-08-05T07:00:00+00:00' but dedup_window as '2026-08-05 08:00:00+00:00'
+# SQLite comparison: 'T'(84) > ' '(32) → stale row sorts AFTER window → dedup triggers incorrectly
+await session.execute(text("INSERT INTO log (fired_at) VALUES (:t)").bindparams(t=fired_at.isoformat()))
+```
+
+### 13c. In-memory SQLite engine (StaticPool)
+
+```python
+# ✅ CORRECT: StaticPool ensures all sessions share the same connection
+from sqlalchemy.pool import StaticPool
+engine = create_async_engine(
+    "sqlite+aiosqlite:///:memory:",
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
+)
+```
+
+### 13d. pytest-asyncio fixture injection
+
+```python
+# ✅ CORRECT: pytest-asyncio executes async fixtures before the test body
+async def test_something(meter_service: MeterService, session_factory: async_sessionmaker):
+    alerts = await meter_service.check_thresholds(customer_id)
+
+# ❌ WRONG: fixture parameter is already the resolved value — do not await it
+async def test_something(meter_service):
+    service = await meter_service   # wrong — meter_service is already a MeterService instance
+```
 
 ---
 

@@ -442,6 +442,24 @@ class MagicLLMPipeline:
         )
         parts.append(_FORBIDDEN_APIS)
 
+        # Positive async test patterns for TEST_GENERATION tasks (AUTONOMOUS-PIPELINE-STANDARD §13)
+        if request.task_category == TaskCategory.TEST_GENERATION:
+            parts.append(
+                "## ASYNC PYTHON TEST PATTERNS (positive reference — replicate exactly)\n"
+                "✅ AsyncMock + await: `mock.method = AsyncMock(return_value=x)` then "
+                "`result = await mock.method(args)` — every AsyncMock call MUST be awaited, "
+                "including 'setup' calls like `await mock_redis.setex(key, ttl, val)`.\n"
+                "✅ SQLite datetime: pass `datetime` objects directly to bindparams — "
+                "`bindparams(fired_at=my_datetime)` NOT `fired_at=my_datetime.isoformat()`. "
+                "`.isoformat()` uses T-separator; SQLAlchemy uses space-separator; "
+                "SQLite string compare: 'T'(84) > ' '(32) → stale rows sort after window → wrong dedup.\n"
+                "✅ StaticPool: `create_async_engine('sqlite+aiosqlite:///:memory:', "
+                "connect_args={'check_same_thread': False}, poolclass=StaticPool)` — required "
+                "so all sessions share one connection and fixture writes are visible to the service.\n"
+                "✅ Fixture injection: pytest-asyncio resolves async fixtures before the test body. "
+                "The parameter IS the resolved value — never `await` a fixture parameter inside the test."
+            )
+
         # Spec sections
         for i, section in enumerate(request.context_sections):
             parts.append(f"## CONTEXT SECTION {i + 1}\n{section}")

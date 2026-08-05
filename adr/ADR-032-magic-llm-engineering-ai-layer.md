@@ -112,6 +112,35 @@ Phase 3 (future): Multi-model orchestration, self-critique loop, automated bench
 
 ---
 
+### Amendment A002 — Operating Principles Formalization + Test Generation Output Budget
+
+**Triggered by:** WC-028 sprint analysis — recurring test generation failures (2026-08-05)
+**Root cause:** O-01/O-02/O-03 existed only as pipeline.py code comments. `groom_sprint.py` bypassed O-01 by forcing `DEEP_REASONING` for all test tasks, which short-circuits the complexity-scoring path in `_select_model`. With `max_tokens=8000` and `thinking_budget=8000`, only 8000 output tokens remained for a test file that routinely exceeds 500 lines (~5000 tokens). Truncation and generic Python mistakes (incorrect datetime serialization, unawaited AsyncMock) were the direct result.
+
+#### Decision 8: Operating Principles (formally ratified)
+
+| Principle | Rule | Enforcement |
+|---|---|---|
+| **O-01** | Task complexity score (0–100) determines model tier. Score ≥ 80 → Sonnet + thinking. Score 40–79 → Haiku, no thinking. Score < 40 → Haiku, no thinking. `DEEP_REASONING` category BYPASSES complexity scoring and always routes to Sonnet — this is an explicit override, not a bug. | `_task_complexity_score()` + `_select_model()` in `pipeline.py` |
+| **O-02** | Cached input tokens cost 1/10th. Repeated context sections across retries are eligible for caching. | Anthropic API cache header; cost estimate uses `CACHE_INPUT_COST_PER_TOKEN`. |
+| **O-03** | Dynamic thinking budget: complexity ≥ 80 → `thinking_budget=8000`; 40–79 → `3000`; < 40 → `0`. `thinking_budget` is added to `max_tokens` to form `effective_max` sent to the Anthropic API. | `_thinking_budget()` in `pipeline.py`; `_call_anthropic_api()` |
+
+#### Decision 9: Test Generation Output Budget
+
+Test tasks (all `output_files` under `tests/`) SHALL use:
+
+| Field | Value | Rationale |
+|---|---|---|
+| `model_hint` | `"auto"` | Extended thinking (DEEP_REASONING) adds 8000 thinking tokens consumed BEFORE output. Test code has no design decisions to reason about — thinking tokens are wasted. Complexity scoring (O-01) routes correctly without override. |
+| `max_tokens` | `12000` | Test files routinely exceed 500 lines. 12000 output tokens covers a 1000-line test file with margin. |
+| `task_category` | `TEST_GENERATION` (not `DEEP_REASONING`) | Routed via O-01 complexity scoring so model tier adapts to context complexity. |
+| Groomer override | PROHIBITED | `groom_sprint.py` SHALL NOT override `model_hint` to `"reasoning"` for test tasks regardless of WC column value. |
+| Executor backstop | REQUIRED | `goal_executor.py` SHALL clamp any output file matching `test_*.py` to `max_tokens=12000, model_hint="auto"` regardless of SubTaskDef. This prevents groomer bugs from reaching the executor. |
+
+**CCT requirement:** `tests/pipeline/test_task_decomposer.py` SHALL contain a test asserting that `_generate_scaffold_subtaskdef(is_test=True, ...)` produces `model_hint="auto"` and `max_tokens=12000` regardless of WC column value. `goal_executor.py` SHALL be similarly tested.
+
+---
+
 ### Amendment A001 — Semantic Understanding Task Category (Phase 2)
 
 **Triggered by:** RepoNav AVD onboarding — Tension T-02 (2026-07-27)
