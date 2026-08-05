@@ -1,5 +1,5 @@
 {
-  "run_id": "30969371126",
+  "run_id": "30970874295",
   "sprint": "WC-028",
   "scaffold_task": null,
   "scaffold_failed": false,
@@ -9,16 +9,14 @@
       "error_type": "BUILD_ERROR",
       "build_error_snippet": "WC028-01a:service.py failed validation after 3 LLM attempts. Last error: ",
       "attempts": 3,
-      "spec_gap_issue": "228"
+      "spec_gap_issue": "229"
     }
   },
   "spec_gap_issues": [
-    "228"
+    "229"
   ],
   "overall_result": "PARTIAL",
-  "file_costs": {
-    "WC028-01a:service.py": 34.2815
-  },
+  "file_costs": {},
   "subtask_results": {
     "WC028-01a": {
       "result": "FAIL",
@@ -55,12 +53,30 @@
       "task_id": "WC028-02",
       "error_codes": [],
       "error_text": ""
+    },
+    "WC028-03a": {
+      "result": "SKIPPED_CASCADE",
+      "task_id": "WC028-03",
+      "error_codes": [],
+      "error_text": ""
+    },
+    "WC028-03b": {
+      "result": "SKIPPED_CASCADE",
+      "task_id": "WC028-03",
+      "error_codes": [],
+      "error_text": ""
+    },
+    "WC028-03c": {
+      "result": "SKIPPED_CASCADE",
+      "task_id": "WC028-03",
+      "error_codes": [],
+      "error_text": ""
     }
   },
-  "total_cost_inr": 34.2815,
   "tasks_done": [],
   "tasks_requested": [
     "WC028-01",
-    "WC028-02"
+    "WC028-02",
+    "WC028-03"
   ]
 }
