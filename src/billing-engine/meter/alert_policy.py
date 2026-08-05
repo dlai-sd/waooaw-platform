@@ -55,7 +55,7 @@ class ThresholdPolicy:
 
     @property
     def rules(self) -> list[ThresholdRule | RunwayThresholdRule]:
-        """Uniform accessor — returns whichever rule list is populated for this scope."""
+        """Uniform accessor - returns whichever rule list is populated for this scope."""
         return self.runway_thresholds if self.runway_thresholds else self.thresholds
 
 
