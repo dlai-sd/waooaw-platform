@@ -1030,12 +1030,12 @@ Each sprint has EA spec gaps documented, SA corrections applied to WC files, and
 <!-- Task progress lives in work-contracts/WC-NNN.md — not here. -->
 
 ```yaml
-autonomous_halt: false
+autonomous_halt: true
 platform_phase: IMPLEMENTATION
 current_sprint: WC-028
 sprint_status: AUTHORIZED
 branch: main
-consecutive_failures: 2
+consecutive_failures: 3
 tasks_done: []
 tasks_remaining:
   - WC028-01
