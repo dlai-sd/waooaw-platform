@@ -1061,9 +1061,9 @@ Each sprint has EA spec gaps documented, SA corrections applied to WC files, and
 autonomous_halt: false
 platform_phase: IMPLEMENTATION
 current_sprint: WC-029
-sprint_status: READY
+sprint_status: AUTHORIZED
 branch: main
-consecutive_failures: 0
+consecutive_failures: 1
 tasks_done: []
 tasks_remaining:
   - WC029-01
