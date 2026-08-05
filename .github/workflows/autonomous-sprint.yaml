@@ -75,6 +75,7 @@ jobs:
       model_hint:   ${{ steps.index_build.outputs.model_hint }}
       platform_phase: ${{ steps.halt_check.outputs.platform_phase }}
       consecutive_failures: ${{ steps.halt_check.outputs.consecutive_failures }}
+      gap_halt:     ${{ steps.gap_analysis.outputs.gap_halt }}
     steps:
       - uses: actions/checkout@v4.4.0
 
@@ -300,7 +301,12 @@ jobs:
           if [ -n "$WC_FILE" ]; then
             echo "  Running pre-sprint simulation: $WC_FILE"
             # W1 fix: run once, capture — was run 3 separate times (output + summary + count)
-            SIM_OUT=$(python3 scripts/pre_sprint_sim.py "$WC_FILE" 2>&1 || true)
+            # 5-Why fix (W6): use exit code not grep-c 'CRITICAL'.
+            # pre_sprint_sim.py exits 1 on critical gaps, 0 otherwise (line 512).
+            # grep -c 'CRITICAL' matched summary text like "Gaps: 0 CRITICAL" and
+            # "✅  No CRITICAL gaps." — producing false-positive CRITICAL=2 every run.
+            SIM_OUT=$(python3 scripts/pre_sprint_sim.py "$WC_FILE" 2>&1)
+            SIM_EXIT=$?
             echo "$SIM_OUT"
 
             # Post gap summary to GitHub Step Summary
@@ -308,11 +314,8 @@ jobs:
             echo "$SIM_OUT" | grep -E 'CRITICAL|HIGH|MEDIUM|confidence|SUMMARY' | \
               sed 's/^/  /' >> $GITHUB_STEP_SUMMARY || true
 
-            # W5 fix: count from captured output, not a new subprocess call
-            CRITICAL=$(echo "$SIM_OUT" | grep -c 'CRITICAL' || true)
-            CRITICAL=${CRITICAL:-0}
-            if [ "$CRITICAL" -gt 0 ]; then
-              echo "  ⛔ CRITICAL gaps found ($CRITICAL) — sprint halted (C-086 pre-execution gate)"
+            if [ "$SIM_EXIT" -ne 0 ]; then
+              echo "  ⛔ CRITICAL gaps found — sprint halted (C-086 pre-execution gate)"
               echo "gap_halt=true" >> "$GITHUB_OUTPUT"
             else
               echo "  ✅ No CRITICAL gaps — sprint may proceed"
@@ -339,7 +342,7 @@ jobs:
     name: "Execute sprint (Platform IT Expert — Implementation)"
     runs-on: ubuntu-latest
     needs: preflight
-    if: needs.preflight.outputs.halt == 'false'
+    if: needs.preflight.outputs.halt == 'false' && needs.preflight.outputs.gap_halt != 'true'
     timeout-minutes: 120            # 2-hour cap. Worst case: 4 tasks × 4 subtasks × 3 attempts × ~3min = ~144min.
                                      # Concurrency group (cancel-in-progress: false) prevents overlap with next cron.
     outputs:
@@ -643,7 +646,7 @@ jobs:
           GITHUB_REPO:        ${{ github.repository }}
           SPRINT_TASK_ID:     ${{ needs.preflight.outputs.task_id }}
           PLATFORM_PHASE:     ${{ needs.preflight.outputs.platform_phase }}
-          SPRINT_RESULT:      ${{ needs.execute.outputs.result || (needs.preflight.outputs.halt == 'true' && 'HALTED' || (needs.preflight.result == 'failure' && 'FAILED' || 'UNKNOWN')) }}
+          SPRINT_RESULT:      ${{ needs.execute.outputs.result || (needs.preflight.outputs.halt == 'true' && 'HALTED' || (needs.preflight.outputs.gap_halt == 'true' && 'HALTED_C086' || (needs.preflight.result == 'failure' && 'FAILED' || 'UNKNOWN'))) }}
           SPRINT_PR_NUMBER:   ${{ needs.execute.outputs.pr_number }}
           # W3 fix: SPRINT_HALT_REASON computed in bash (YAML >= '3' is string comparison, always wrong)
           SPRINT_HALT_REASON: ""
