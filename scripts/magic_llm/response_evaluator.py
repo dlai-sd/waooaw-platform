@@ -522,10 +522,15 @@ class ResponseEvaluator:
                 missing.append(full.name)
 
         if missing:
+            ext_hint = "py"
+            if missing:
+                first_ext = Path(missing[0]).suffix.lower()
+                ext_hint = first_ext.lstrip(".")
+            comment = "//" if ext_hint in ("cs", "ts", "tsx") else "#"
             return GateResult(
                 "ANNOTATION", False, "ANNOTATION_MISSING",
                 f"Files missing C-059/C-073 header: {', '.join(missing)}. "
-                "First lines must be: // Implements: <spec> and // constitutional_basis: <claims>"
+                f"First lines must be: {comment} Implements: <spec> and {comment} constitutional_basis: <claims>"
             )
         return GateResult("ANNOTATION", True, "", "C-059/C-073 headers: PASS")
 

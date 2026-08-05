@@ -844,8 +844,13 @@ def main() -> int:
         return 1
 
     tasks_done_state = wc_tasks["done"]
-    tasks = [force_task] if force_task else wc_tasks["pending"]
+    # ADR-041 P1c: failed tasks (failed_structural, failed_transient, skipped_cascade)
+    # are retry-eligible — they are NOT excluded from the next run's queue.
+    # Only "done" / "skipped_idempotent" are truly complete and excluded.
+    pending_and_failed = wc_tasks["pending"] + wc_tasks["failed"]
+    tasks = [force_task] if force_task else pending_and_failed
     print(f"  tasks_pending     : {wc_tasks['pending']}")
+    print(f"  tasks_failed(retry): {wc_tasks['failed']}")
     print(f"  tasks_done        : {tasks_done_state}")
 
     if not tasks:

@@ -60,13 +60,48 @@ def _parse_llm_files_local(response: str) -> dict[str, str]:
     return files
 
 
-def _write_llm_files_local(files: dict[str, str]) -> list[str]:
-    """Write parsed files to disk under REPO_ROOT."""
+def _inject_compliance_header_local(content: str, rel_path: str, task_id: str) -> str:
+    """ADR-030 Amendment 2 Decision B: inject authoritative compliance header.
+    Mirrors runner/llm_codegen._inject_compliance_header — kept in sync.
+    Docker-safe fallback for when llm_codegen is not importable.
+    """
+    ext = Path(rel_path).suffix.lower()
+    if ext not in (".py", ".cs"):
+        return content
+    comment = "#" if ext == ".py" else "//"
+    wc_num = ""
+    m = _re.match(r'(WC\d+)', task_id, _re.IGNORECASE)
+    if m:
+        raw = m.group(1).upper()
+        digits = _re.search(r'\d+', raw)
+        wc_num = f"WC-{int(digits.group()):03d}" if digits else raw
+    spec_ref = (
+        f"work-contracts/{wc_num}-*.md §{task_id}" if wc_num
+        else f"work-contracts/ §{task_id}" if task_id
+        else "<spec-path> §<section>"
+    )
+    header = (
+        f"{comment} Implements: {spec_ref}\n"
+        f"{comment} Constitutional basis: C-059 (Implementation Traceability)\n"
+    )
+    lines = content.splitlines(keepends=True)
+    strip_prefixes = (f"{comment} Implements:", f"{comment} Constitutional basis:",
+                      f"{comment} constitutional_basis:", f"{comment} ib_item:")
+    while lines and lines[0].strip().startswith(strip_prefixes):
+        lines.pop(0)
+    return header + "".join(lines)
+
+
+def _write_llm_files_local(files: dict[str, str], task_id: str = "") -> list[str]:
+    """Write parsed files to disk under REPO_ROOT.
+    ADR-030 Amendment 2 Decision B: compliance header injected at write time.
+    """
     written: list[str] = []
     for rel_path, content in files.items():
         full = REPO_ROOT / rel_path
         full.parent.mkdir(parents=True, exist_ok=True)
-        full.write_text(content, encoding="utf-8")
+        final_content = _inject_compliance_header_local(content, rel_path, task_id)
+        full.write_text(final_content, encoding="utf-8")
         written.append(rel_path)
     return written
 
@@ -273,7 +308,9 @@ class GoalExecutor:
                 # Parse + pre-compile self-review before write
                 # Docker-safe: use local parser, fall back to autonomous_sprint_runner
                 try:
-                    from autonomous_sprint_runner import parse_llm_files, write_llm_files
+                    from autonomous_sprint_runner import parse_llm_files, write_llm_files as _wlf_runner
+                    def write_llm_files(f: dict, tid: str = "") -> list[str]:
+                        return _wlf_runner(f, task_id=tid)
                 except ImportError:
                     parse_llm_files = _parse_llm_files_local
                     write_llm_files = _write_llm_files_local
@@ -290,7 +327,7 @@ class GoalExecutor:
                 except Exception as _pre_e:
                     print(f"  [GO] pre_compile_review skipped ({type(_pre_e).__name__}: {_pre_e})")
 
-                written = write_llm_files(files_parsed)
+                written = write_llm_files(files_parsed, task.task_id)
 
                 # §8 ResponseEvaluator — 5 gates
                 eval_result = self._evaluator.evaluate(
