@@ -1,21 +1,34 @@
 {
-  "run_id": "30971738271",
+  "run_id": "30973200240",
   "sprint": "WC-028",
   "scaffold_task": null,
   "scaffold_failed": false,
   "task_results": {},
   "spec_gap_issues": [],
   "overall_result": "PARTIAL",
-  "file_costs": {},
+  "file_costs": {
+    "WC028-01a:service.py": 34.5219,
+    "WC028-01a:alert_policy.py": 15.238599999999998,
+    "WC028-01b:service.py": 3.6483000000000003,
+    "WC028-01b:alert_policy.py": 1.4986,
+    "WC028-02a:whatsapp_notifier.py": 0.7995,
+    "WC028-02a:router.py": 1.1381999999999999,
+    "WC028-02a:main.py": 0.784,
+    "WC028-02b:whatsapp_notifier.py": 0.8097,
+    "WC028-02b:router.py": 1.2021,
+    "WC028-02b:main.py": 0.9414,
+    "WC028-02c:test_whatsapp_notifier.py": 3.3676999999999997,
+    "WC028-03a:test_meter.py": 4.5136
+  },
   "subtask_results": {
     "WC028-01a": {
-      "result": "FAIL",
+      "result": "SUCCESS",
       "task_id": "WC028-01",
       "error_codes": [],
       "error_text": ""
     },
     "WC028-01b": {
-      "result": "SKIPPED_CASCADE",
+      "result": "FAIL",
       "task_id": "WC028-01",
       "error_codes": [],
       "error_text": ""
@@ -27,25 +40,25 @@
       "error_text": ""
     },
     "WC028-02a": {
-      "result": "SKIPPED_CASCADE",
+      "result": "SUCCESS",
       "task_id": "WC028-02",
       "error_codes": [],
       "error_text": ""
     },
     "WC028-02b": {
-      "result": "SKIPPED_CASCADE",
+      "result": "SUCCESS",
       "task_id": "WC028-02",
       "error_codes": [],
       "error_text": ""
     },
     "WC028-02c": {
-      "result": "SKIPPED_CASCADE",
+      "result": "FAIL",
       "task_id": "WC028-02",
       "error_codes": [],
       "error_text": ""
     },
     "WC028-03a": {
-      "result": "SKIPPED_CASCADE",
+      "result": "FAIL",
       "task_id": "WC028-03",
       "error_codes": [],
       "error_text": ""
@@ -63,6 +76,7 @@
       "error_text": ""
     }
   },
+  "total_cost_inr": 68.4636,
   "tasks_done": [],
   "tasks_requested": [
     "WC028-01",
