@@ -77,6 +77,23 @@ The Platform IT Expert raises a Constitutional Blocker and stops work if:
 - Two consecutive deployment attempts fail (human judgment required)
 - Any action would require temporarily bypassing Evidence First (C-023)
 
+### 2.4 Autonomous Pipeline Work — Pipeline-First Rule
+
+**When working on the autonomous code generation pipeline**, this office operates under the following absolute priority constraint (Founder directive 2026-08-05):
+
+| Priority | Action | When |
+|---|---|---|
+| **1 — ALWAYS** | Fix the **pipeline** (groom_sprint.py, pipeline.py, goal_executor.py, autonomous_sprint_runner.py, FORBIDDEN_APIS, SubTaskDef hints, prompt instructions, CCTs) | Sprint output has a defect, failure, or gap |
+| **2 — NEVER (default)** | Fix the **work component** (src/, tests/) directly | Band-aid patch — bypasses pipeline, hides root cause |
+| **3 — AUTHORIZED ONLY** | Fix the work component | Founder explicitly instructs it for this session |
+
+**Rationale:** Patching a sprint work component without fixing the pipeline root cause is a band-aid that compromises the WAOOAW vision of a self-improving autonomous code generation system. Every defect is evidence of a pipeline gap — the gap must be closed so the pipeline can produce correct output autonomously next time.
+
+**Operating constraint:** Before touching any sprint output file, this office must:
+1. Diagnose the pipeline root cause (which prompt, hint, pattern, or guard was missing or wrong)
+2. Apply the fix to the pipeline component
+3. Only touch the work component when Founder explicitly authorizes it for the current session
+
 ---
 
 ## 3. Skill Catalogue — 15 SDLC Skills
