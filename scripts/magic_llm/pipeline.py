@@ -425,7 +425,20 @@ class MagicLLMPipeline:
             "  ❌ await <pytest_fixture_name> inside a test body — pytest-asyncio already executes "
             "async fixtures before the test body runs; the fixture parameter holds the return value "
             "(often None), not a coroutine. Never write 'await setup_data' or 'await my_fixture'. "
-            "Just include the fixture name as a function parameter — pytest handles execution."
+            "Just include the fixture name as a function parameter — pytest handles execution.\n"
+            "  ❌ policy.thresholds when iterating a runway-based policy — use policy.rules "
+            "(uniform @property on ThresholdPolicy, returns whichever of .thresholds / "
+            ".runway_thresholds is populated). Never hardcode .thresholds on a policy object "
+            "without verifying it is non-empty for that scope. "
+            "# model-specific (WC-028): PROCUREMENT_POLICY populates .runway_thresholds "
+            "not .thresholds; supplement with equivalent attribute names when new policy "
+            "types are added in future sprints\n"
+            "  ❌ CREATE TABLE provider_runway_view / INSERT INTO provider_runway_view in tests — "
+            "this view does not exist in the schema; always test via the real source tables. "
+            "# model-specific (WC-028): seed provider_accounts (provider_name, balance_paise, "
+            "daily_burn_rate_paise, is_active) and platform_cost_ledger rows; compute "
+            "days_remaining = balance_paise / daily_burn_rate_paise in the service — "
+            "supplement with equivalent real table names for other domain models in future sprints"
         )
         parts.append(_FORBIDDEN_APIS)
 

@@ -68,6 +68,8 @@ ASYNC_MOCK_MISMATCH = "ASYNC_MOCK_MISMATCH"  # await MagicMock() raises TypeErro
 PYDANTIC_VALIDATION_ERROR = "PYDANTIC_VALIDATION_ERROR"  # pydantic_core.ValidationError — test data doesn't match model field types
 SQLITE_ISOLATION = "SQLITE_ISOLATION"  # SQLite in-memory sessions return empty results — StaticPool missing
 PYTEST_FIXTURE_AWAIT = "PYTEST_FIXTURE_AWAIT"  # await <fixture> in test body — fixture already ran, value is None
+WRONG_COLLECTION_ATTRIBUTE = "WRONG_COLLECTION_ATTRIBUTE"  # assert 'X' in [] — test iterates the wrong attribute on the model
+OUTPUT_TRUNCATED = "OUTPUT_TRUNCATED"  # LLM response had no <file> blocks — max_tokens too low for context size
 
 
 @dataclass
@@ -586,6 +588,8 @@ def _tally_pytest_failures(error: str) -> dict[str, int]:
             tallies["did_not_raise"] = tallies.get("did_not_raise", 0) + 1
         elif "typeerror" in reason and ("magicmock" in reason or "await" in reason):
             tallies["async_mock"] = tallies.get("async_mock", 0) + 1
+        elif ("assertionerror" in reason or "assert" in reason) and ("in []" in reason or "in set()" in reason):
+            tallies["empty_collection"] = tallies.get("empty_collection", 0) + 1
         elif "assertionerror" in reason or "assert" in reason:
             tallies["assertion"] = tallies.get("assertion", 0) + 1
         else:
@@ -664,6 +668,64 @@ def _classify_pytest_fixture_await(error: str) -> Optional[RetryDiagnosis]:
         should_retry=True,
         confidence=0.95,
         constitutional_trace="C-082 (Build Validation — pytest-asyncio fixture lifecycle)",
+    )
+
+
+def _classify_empty_collection_assertion(error: str) -> Optional[RetryDiagnosis]:
+    """assert 'X' in [] / assert 'X' in set() — test iterates the wrong attribute on the model.
+
+    Pattern: test checks membership against an empty list or set, meaning the code
+    reads an attribute that is never populated for the specific model instance under test.
+    Applies to any domain model with multiple collection fields (e.g. ThresholdPolicy).
+    """
+    import re as _re
+    tallies = _tally_pytest_failures(error)
+    if tallies.get("empty_collection", 0) == 0:
+        return None
+    m = _re.search(r"assert\s+'([^']+)'\s+in\s+(?:\[\]|set\(\))", error)
+    member = m.group(1) if m else "item"
+    return RetryDiagnosis(
+        error_type=WRONG_COLLECTION_ATTRIBUTE,
+        fix_instruction=(
+            f"WRONG COLLECTION ATTRIBUTE: `assert '{member}' in []` — the test checks "
+            "membership in an EMPTY collection, meaning the code reads the WRONG attribute "
+            "name on the model object.\n"
+            "Fix: inspect the model class and identify which field actually holds the items. "
+            "Use policy.rules (uniform @property on ThresholdPolicy) rather than hardcoding "
+            ".thresholds or .runway_thresholds — policy.rules returns whichever list is "
+            "populated for that scope.\n"
+            "Rule: never assert membership against a hardcoded attribute name without first "
+            "confirming that attribute is populated for the specific instance under test."
+        ),
+        should_retry=True,
+        confidence=0.88,
+        constitutional_trace="C-082 (Build Validation — test attribute access must match model interface)",
+    )
+
+
+def _classify_output_truncated(error: str) -> Optional[RetryDiagnosis]:
+    """LLM response contained no <file> blocks — token budget too low for context size.
+
+    Pattern: GoalExecutor or cascade returns a response with explanation text but no
+    XML <file> blocks, because max_tokens was exhausted before the LLM could emit code.
+    Applies to any task where the prompt exceeds ~50k chars with a low max_tokens cap.
+    """
+    if "no `<file>` blocks" not in error and "no <file> blocks" not in error:
+        return None
+    return RetryDiagnosis(
+        error_type=OUTPUT_TRUNCATED,
+        fix_instruction=(
+            "OUTPUT TRUNCATED: the LLM produced no <file> XML blocks — the model emitted "
+            "explanation text but ran out of token budget before producing code output.\n"
+            "Root cause: prompt context is large (typically >50k chars) and max_tokens is "
+            "too low to produce a complete file after reading it.\n"
+            "Fix: on the next attempt double max_tokens (cap at 12000) and reduce context "
+            "slots by dropping the lowest-priority sections (e.g. trim large ADR excerpts "
+            "or existing-file dumps that the LLM has already seen in prior attempts)."
+        ),
+        should_retry=True,
+        confidence=0.90,
+        constitutional_trace="C-082 (Build Validation — LLM output must contain at least one <file> block)",
     )
 
 
@@ -1799,6 +1861,11 @@ def diagnose_build_error(
             constitutional_trace="C-082 (Build Validation) \u2014 method signature must match interface contract",
         )
 
+    diagnosis = _classify_output_truncated(build_error)
+    if diagnosis:
+        print(f"  Retry Advisor: {diagnosis.error_type} (confidence={diagnosis.confidence:.0%})")
+        return diagnosis
+
     diagnosis = _classify_python_import_error(build_error)
     if diagnosis:
         print(f"  Retry Advisor: Python import error → {diagnosis.error_type} (confidence={diagnosis.confidence:.0%})")
@@ -1814,6 +1881,11 @@ def diagnose_build_error(
         return diagnosis
 
     diagnosis = _classify_pytest_fixture_await(build_error)
+    if diagnosis:
+        print(f"  Retry Advisor: {diagnosis.error_type} (confidence={diagnosis.confidence:.0%})")
+        return diagnosis
+
+    diagnosis = _classify_empty_collection_assertion(build_error)
     if diagnosis:
         print(f"  Retry Advisor: {diagnosis.error_type} (confidence={diagnosis.confidence:.0%})")
         return diagnosis

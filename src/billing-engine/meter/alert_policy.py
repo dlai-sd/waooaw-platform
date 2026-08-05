@@ -53,6 +53,11 @@ class ThresholdPolicy:
     quiet_hours_start_ist: int = 23
     quiet_hours_end_ist: int = 6
 
+    @property
+    def rules(self) -> list[ThresholdRule | RunwayThresholdRule]:
+        """Uniform accessor — returns whichever rule list is populated for this scope."""
+        return self.runway_thresholds if self.runway_thresholds else self.thresholds
+
 
 # ---------------------------------------------------------------------------
 # Section 2.3a Scope 1 -- Customer Bucket
