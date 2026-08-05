@@ -876,6 +876,9 @@ def execute_file_by_file(
                                 pass
                         magic_failure_context = f"Gate {failure.gate} failed: {failure.detail[:300]}"
 
+                    except RuntimeError as _billing_err:
+                        print(f"  [MagicLLM] BILLING_ERROR: {_billing_err} — halting sprint.")
+                        return False
                     except Exception as _magic_err:
                         print(f"  MagicLLM error on attempt {attempt}: {_magic_err}")
                         magic_failure_context = str(_magic_err)[:200]

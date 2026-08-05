@@ -570,6 +570,17 @@ class MagicLLMPipeline:
         try:
             with urllib.request.urlopen(req, timeout=300) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
+        except urllib.error.HTTPError as exc:
+            err_body = ""
+            try:
+                err_body = exc.read().decode("utf-8", errors="replace")
+            except Exception:
+                pass
+            print(f"  [MagicLLM] API call failed: HTTP {exc.code} {exc.reason} — {err_body[:300]}")
+            # Billing / quota errors are unrecoverable — halt immediately rather than retry.
+            if "credit balance" in err_body or "quota" in err_body.lower() or "billing" in err_body.lower():
+                raise RuntimeError(f"API_BILLING_ERROR: {err_body[:200]}")
+            return None, 0, 0
         except Exception as exc:
             print(f"  [MagicLLM] API call failed: {exc}")
             return None, 0, 0

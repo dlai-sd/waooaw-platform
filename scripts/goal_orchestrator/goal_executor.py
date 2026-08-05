@@ -354,6 +354,11 @@ class GoalExecutor:
                     failure, written, task.task_id
                 )
 
+            except RuntimeError as exc:
+                # Billing / quota errors are unrecoverable — skip all retries and cascade.
+                result.final_error = str(exc)
+                print(f"  [GO] {task.task_id} — BILLING_ERROR: {exc}. Sprint halted.")
+                return result
             except Exception as exc:
                 failure_context = f"Exception: {exc}"
                 print(f"  [GO] attempt {attempt} error: {exc}")
@@ -448,6 +453,8 @@ class GoalExecutor:
             )
         except ImportError:
             pass  # Docker mode — fall through to direct API
+        except RuntimeError:
+            raise  # billing/quota errors — propagate immediately, do not retry
         except Exception as e:
             print(f"  [GO] MagicLLM bridge error ({type(e).__name__}: {e}) — trying direct API")
 
