@@ -421,7 +421,11 @@ class MagicLLMPipeline:
             "(__call__, __aenter__, __aexit__, __iter__, __next__) on the TYPE, not the instance; "
             "patching the instance silently has no effect. "
             "Patch on the class instead: patch.object(type(instance), '__call__', side_effect=...) "
-            "OR raise the exception from a regular named method that IS patchable."
+            "OR raise the exception from a regular named method that IS patchable.\n"
+            "  ❌ await <pytest_fixture_name> inside a test body — pytest-asyncio already executes "
+            "async fixtures before the test body runs; the fixture parameter holds the return value "
+            "(often None), not a coroutine. Never write 'await setup_data' or 'await my_fixture'. "
+            "Just include the fixture name as a function parameter — pytest handles execution."
         )
         parts.append(_FORBIDDEN_APIS)
 

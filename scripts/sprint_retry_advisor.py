@@ -67,6 +67,7 @@ DATETIME_UTCNOW = "DATETIME_UTCNOW"  # datetime.utcnow() / DTZ003 naive-datetime
 ASYNC_MOCK_MISMATCH = "ASYNC_MOCK_MISMATCH"  # await MagicMock() raises TypeError — must use AsyncMock for async methods
 PYDANTIC_VALIDATION_ERROR = "PYDANTIC_VALIDATION_ERROR"  # pydantic_core.ValidationError — test data doesn't match model field types
 SQLITE_ISOLATION = "SQLITE_ISOLATION"  # SQLite in-memory sessions return empty results — StaticPool missing
+PYTEST_FIXTURE_AWAIT = "PYTEST_FIXTURE_AWAIT"  # await <fixture> in test body — fixture already ran, value is None
 
 
 @dataclass
@@ -627,6 +628,42 @@ def _classify_sqlite_isolation(error: str) -> Optional[RetryDiagnosis]:
         should_retry=True,
         confidence=0.93,
         constitutional_trace="C-082 (Build Validation — SQLAlchemy async SQLite isolation)",
+    )
+
+
+def _classify_pytest_fixture_await(error: str) -> Optional[RetryDiagnosis]:
+    """pytest async fixture awaited in test body — fixture value is None, not a coroutine.
+
+    Pattern: test does `await setup_test_data` where setup_test_data is a pytest
+    fixture parameter. pytest-asyncio already executed the fixture before the test
+    body runs; the parameter holds the return value (None if the fixture yields/returns
+    nothing), not the coroutine.
+    """
+    if "NoneType" not in error or "can't be used in 'await'" not in error:
+        return None
+    # Narrow to pytest fixture context: coroutine or function type awaits are different errors
+    if "TypeError" not in error:
+        return None
+    import re as _re
+    # Try to extract the fixture name from the traceback line
+    m = _re.search(r"await (\w+)", error)
+    fixture_name = m.group(1) if m else "the fixture"
+    return RetryDiagnosis(
+        error_type=PYTEST_FIXTURE_AWAIT,
+        fix_instruction=(
+            f"PYTEST FIXTURE AWAIT ERROR: `await {fixture_name}` in the test body fails "
+            f"because pytest-asyncio already executed the async fixture before the test runs. "
+            f"The parameter `{fixture_name}` holds the fixture's RETURN VALUE (None if it "
+            f"yields without a value), not a coroutine.\n"
+            f"Fix: REMOVE `await {fixture_name}` from the test body. "
+            f"The fixture was already run by pytest — just include `{fixture_name}` as a "
+            f"function parameter and pytest-asyncio handles execution.\n"
+            f"RULE: Never write `await <fixture_name>` in a test body. "
+            f"Fixtures are not coroutines at call time — they are injected values."
+        ),
+        should_retry=True,
+        confidence=0.95,
+        constitutional_trace="C-082 (Build Validation — pytest-asyncio fixture lifecycle)",
     )
 
 
@@ -1325,13 +1362,10 @@ def diagnose_build_error(
         return diagnosis
 
     # ── TypeError from awaiting a MagicMock — use AsyncMock instead ──────────
-    # Guard: require the literal CPython error message, not just "MagicMock" appearing
-    # anywhere (MagicMock repr shows up in unrelated assertion tracebacks and caused
-    # misclassification of SQLite isolation failures as ASYNC_MOCK_MISMATCH).
-    _async_mock_signal = (
-        "object MagicMock can't be used in 'await'" in build_error
-        or "can't be used in 'await' expression" in build_error
-    )
+    # Guard: require the exact CPython message for awaiting a MagicMock object.
+    # "can't be used in 'await' expression" alone also matches NoneType (pytest
+    # fixture await anti-pattern) and is handled separately below.
+    _async_mock_signal = "object MagicMock can't be used in 'await'" in build_error
     if "TypeError" in build_error and _async_mock_signal:
         m = re.search(r"await (\S+)\.?(\w+)\(", build_error)
         mock_expr = f"`{m.group(0).rstrip('(')}`" if m else "the mock call"
@@ -1775,6 +1809,11 @@ def diagnose_build_error(
     # types (e.g. 2 ASYNC_MOCK failures) from masking the dominant class (e.g.
     # 10 SQLITE_ISOLATION failures) when both appear in the same pytest run.
     diagnosis = _classify_sqlite_isolation(build_error)
+    if diagnosis:
+        print(f"  Retry Advisor: {diagnosis.error_type} (confidence={diagnosis.confidence:.0%})")
+        return diagnosis
+
+    diagnosis = _classify_pytest_fixture_await(build_error)
     if diagnosis:
         print(f"  Retry Advisor: {diagnosis.error_type} (confidence={diagnosis.confidence:.0%})")
         return diagnosis

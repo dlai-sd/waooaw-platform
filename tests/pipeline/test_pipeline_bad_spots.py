@@ -38,10 +38,12 @@ sys.path.insert(0, str(REPO_ROOT / "scripts" / "goal_orchestrator"))
 from sprint_retry_advisor import (
     SQLITE_ISOLATION,
     ASYNC_MOCK_MISMATCH,
+    PYTEST_FIXTURE_AWAIT,
     UNKNOWN,
     diagnose_build_error,
     _tally_pytest_failures,
     _classify_sqlite_isolation,
+    _classify_pytest_fixture_await,
 )
 
 
@@ -353,3 +355,85 @@ def test_forbidden_01_staticpool_rule_still_present():
     prompt = pipeline._build_prompt(req)
     assert "StaticPool" in prompt
     assert "poolclass" in prompt
+
+
+# ── ADVISOR-07: PYTEST_FIXTURE_AWAIT — await fixture_name in test body ────────
+# Locally reproduced: test_service.py line 224 — `await setup_test_data`
+# TypeError: object NoneType can't be used in 'await' expression
+
+_FIXTURE_AWAIT_ERROR = (
+    "FAILED tests/billing-engine/test_service.py::test_record_usage_success - TypeError\n"
+    "tests/billing-engine/test_service.py:224: in test_record_usage_success\n"
+    "    await setup_test_data\n"
+    "E   TypeError: object NoneType can't be used in 'await' expression\n"
+)
+
+_FIXTURE_AWAIT_MULTI = (
+    "FAILED tests/billing-engine/test_service.py::test_record_usage - TypeError\n"
+    "    await setup_test_data\n"
+    "E   TypeError: object NoneType can't be used in 'await' expression\n"
+    "FAILED tests/billing-engine/test_service.py::test_check_thresholds - TypeError\n"
+    "    await setup_test_data\n"
+    "E   TypeError: object NoneType can't be used in 'await' expression\n"
+    "FAILED tests/billing-engine/test_service.py::test_daily_scan - TypeError\n"
+    "    await setup_test_data\n"
+    "E   TypeError: object NoneType can't be used in 'await' expression\n"
+)
+
+
+def test_advisor_07_fixture_await_classified():
+    result = diagnose_build_error("WC028-01c", _FIXTURE_AWAIT_ERROR, [])
+    assert result.error_type == PYTEST_FIXTURE_AWAIT
+
+
+def test_advisor_07_fixture_await_names_fixture_in_fix():
+    result = diagnose_build_error("WC028-01c", _FIXTURE_AWAIT_ERROR, [])
+    assert "setup_test_data" in result.fix_instruction
+    assert "remove" in result.fix_instruction.lower() or "REMOVE" in result.fix_instruction
+
+
+def test_advisor_07_fixture_await_high_confidence():
+    result = diagnose_build_error("WC028-01c", _FIXTURE_AWAIT_ERROR, [])
+    assert result.confidence >= 0.90
+    assert result.should_retry is True
+
+
+def test_advisor_07_fixture_await_multi_classified():
+    result = diagnose_build_error("WC028-01c", _FIXTURE_AWAIT_MULTI, [])
+    assert result.error_type == PYTEST_FIXTURE_AWAIT
+
+
+def test_advisor_07_not_triggered_for_magicmock_nonetype():
+    """A different NoneType context (not await fixture) must not fire PYTEST_FIXTURE_AWAIT."""
+    error = "AttributeError: 'NoneType' object has no attribute 'execute'\n"
+    result = _classify_pytest_fixture_await(error)
+    assert result is None
+
+
+def test_advisor_07_not_triggered_for_asyncmock_error():
+    """Real ASYNC_MOCK TypeError must not fire PYTEST_FIXTURE_AWAIT."""
+    result = _classify_pytest_fixture_await(_ASYNC_MOCK_REAL_ERROR)
+    assert result is None
+
+
+def test_forbidden_01_fixture_await_rule_in_prompt():
+    """FORBIDDEN_APIS block must warn against await <fixture_name> in test bodies."""
+    from magic_llm.pipeline import MagicLLMPipeline
+    from magic_llm.types import MagicLLMRequest, TaskCategory
+
+    pipeline = MagicLLMPipeline(api_key="dummy")
+    req = MagicLLMRequest(
+        goal_id="GOAL-TEST",
+        institution_id="INST-010",
+        go_authorization_id="GOA-TEST",
+        task_category=TaskCategory.TEST_GENERATION,
+        task_description="generate test_service.py",
+        context_sections=["spec section"],
+        ptr_snapshot={},
+        expected_output_format="xml_file_blocks",
+        execution_plan_reference="EP-TEST",
+    )
+    prompt = pipeline._build_prompt(req)
+    assert "await" in prompt.lower() and "fixture" in prompt.lower(), (
+        "FORBIDDEN_APIS must warn against await <fixture> in test body"
+    )
