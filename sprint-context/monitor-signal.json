@@ -1,20 +1,10 @@
 {
-  "run_id": "30970874295",
+  "run_id": "30971738271",
   "sprint": "WC-028",
   "scaffold_task": null,
   "scaffold_failed": false,
-  "task_results": {
-    "WC028-01a:service.py": {
-      "result": "SPEC_GAP",
-      "error_type": "BUILD_ERROR",
-      "build_error_snippet": "WC028-01a:service.py failed validation after 3 LLM attempts. Last error: ",
-      "attempts": 3,
-      "spec_gap_issue": "229"
-    }
-  },
-  "spec_gap_issues": [
-    "229"
-  ],
+  "task_results": {},
+  "spec_gap_issues": [],
   "overall_result": "PARTIAL",
   "file_costs": {},
   "subtask_results": {
