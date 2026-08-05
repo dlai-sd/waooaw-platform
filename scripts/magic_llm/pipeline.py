@@ -438,7 +438,19 @@ class MagicLLMPipeline:
             "# model-specific (WC-028): seed provider_accounts (provider_name, balance_paise, "
             "daily_burn_rate_paise, is_active) and platform_cost_ledger rows; compute "
             "days_remaining = balance_paise / daily_burn_rate_paise in the service — "
-            "supplement with equivalent real table names for other domain models in future sprints"
+            "supplement with equivalent real table names for other domain models in future sprints\n"
+            "  ❌ text('... WHERE col = :param') WITHOUT .bindparams(param=value) — SQLAlchemy raises "
+            "ArgumentError: This text() construct doesn't define a bound parameter named 'param'. "
+            "ALWAYS chain .bindparams(): text('SELECT * FROM t WHERE x = :x').bindparams(x=value). "
+            "This applies to both application code and test helper INSERT/SELECT statements. "
+            "# model-specific (WC-028): test helpers _insert_alert_log, _insert_bucket etc. must "
+            "all use .bindparams(); supplement with equivalent patterns for future domain tests\n"
+            "  ❌ fired_at=datetime_obj.isoformat() in meter_alert_log INSERT test helpers — "
+            "SQLAlchemy sends Python datetime to SQLite as 'YYYY-MM-DD HH:MM:SS' (space separator); "
+            ".isoformat() produces 'YYYY-MM-DDThh:mm:ss+00:00' (T separator). "
+            "SQLite string compare: 'T'(84) > ' '(32) → stale rows sort AFTER the dedup window "
+            "→ _alert_already_fired() returns False → dedup silently fails. "
+            "ALWAYS pass a datetime object directly as the bind param: .bindparams(fa=fired_at)"
         )
         parts.append(_FORBIDDEN_APIS)
 

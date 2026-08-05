@@ -1024,23 +1024,51 @@ Each sprint has EA spec gaps documented, SA corrections applied to WC files, and
 
 ---
 
+## SESSION CHECKPOINT — 2026-08-05 (WC-028 COMPLETE — Manually Authored Tests)
+
+**Session type:** Manual test authoring + pipeline hardening + sprint close
+**Office:** Engineering AI Runtime (ADR-032 compliance)
+**Status:** COMPLETE — WC-028 merged; WC-029 queued as READY
+
+### Commits this session
+
+| Commit | Description |
+|---|---|
+| `8463c01` | fix(billing-engine): datetime isoformat + AsyncMock await dedup fix |
+| `9e1ee62` | constitutional(pipeline): ADR-032 A002, groom_sprint/pipeline/executor fixes, 4 CCTs |
+| Final commit | WC-028 COMPLETE — manually authored test_service.py (63 tests pass), pipeline FORBIDDEN_APIS updated, SubTaskDef hints fixed, PROJECT_STATE advanced to WC-029 |
+
+### Deliverables
+- `tests/billing-engine/test_service.py` — 63 manually authored tests, 0 LLM-invented invariants, 0 hypothesis @given tests
+- `tests/billing-engine/test_meter.py` — 12 tests (fixed from prior run), 0 failures
+- `scripts/magic_llm/pipeline.py` — FORBIDDEN_APIS: SQLAlchemy text().bindparams() + datetime isoformat patterns added
+- `scripts/autonomous_sprint_runner.py` — WC028-01c + WC028-03a: model_hint="auto", max_tokens=12000
+- `work-contracts/WC-028-wbe-s4-meter-alert-engine.md` — all tasks: skipped_idempotent or done
+- `constitution/PROJECT_STATE.md` — current_sprint: WC-029, consecutive_failures: 0, READY
+
+### Test results at close
+- 762 tests passing (billing-engine + pipeline suites)
+- 0 failures in scope
+
+---
+
 ## SPRINT_STATE_MACHINE
 <!-- Machine-readable by autonomous-sprint.yaml. YAML-parseable block. -->
 <!-- Edit ONLY the fields below. Do not alter the block structure. -->
 <!-- Task progress lives in work-contracts/WC-NNN.md — not here. -->
 
 ```yaml
-autonomous_halt: true
+autonomous_halt: false
 platform_phase: IMPLEMENTATION
-current_sprint: WC-028
-sprint_status: AUTHORIZED
+current_sprint: WC-029
+sprint_status: READY
 branch: main
-consecutive_failures: 3
+consecutive_failures: 0
 tasks_done: []
 tasks_remaining:
-  - WC028-01
-  - WC028-02
-  - WC028-03
+  - WC029-01
+  - WC029-02
+  - WC029-03
 ```
 
 ---

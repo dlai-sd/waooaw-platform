@@ -569,8 +569,8 @@ TASK_HANDLERS = {
                     "patch('meter.service._now_ist') NOT patch('service._now_ist').\n"
                     "Import style: always 'from meter.service import MeterService' not 'import service'."
                 ),
-                model_hint="reasoning",
-                max_tokens=6000,
+                model_hint="auto",
+                max_tokens=12000,
             ),
         ]
     },
@@ -688,8 +688,8 @@ TASK_HANDLERS = {
                     'work-contracts/WC-028-wbe-s4-meter-alert-engine.md': 'WC028-03',
                 },
                 constitutional_check='TEST PASS — write pytest tests exactly as described in the WC scope:\n`tests/billing-engine/test_meter.py` — test: threshold fires at correct % (30% remaining triggers WARN_30), no double-fire within 24h deduplication window, quiet hours suppress WhatsApp (23:00–06:00 IST, notifications queued), procurement runway P0 escalation at ≤7 days, agency NULL quota produces no alert, `POST /meter/daily-scan` calls check_thresholds for all customers, `CCT-BILLINGLOOP-01` scenario: AD wallet hits zero → `alerts_sent == 1` type `AD_WALLET_BELOW_MINIMUM` — ≥90% line coverage\n\nC-097: property-based testing required — use hypothesis @given for all financial math.\nC-059: verify audit log row written for APPROVED and REJECTED pricing outcomes.\nC-073: # Implements: header required at top of test file.\nUse pytest-asyncio for async tests. Mock Redis/DB with pytest fixtures.\nNever use % string formatting — use f-strings only.',
-                model_hint='reasoning',
-                max_tokens=8000,
+                model_hint='auto',
+                max_tokens=12000,
             ),
             SubTaskDef(
                 id="WC028-03b",
