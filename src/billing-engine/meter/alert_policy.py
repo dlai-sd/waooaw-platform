@@ -7,7 +7,7 @@ from enum import StrEnum
 
 
 class AlertAction(StrEnum):
-    """Alert action types per §2.3a threshold ladder."""
+    """Alert action types per section 2.3a threshold ladder."""
 
     LOG = "LOG"
     NOTIFY = "NOTIFY"
@@ -28,7 +28,7 @@ class ThresholdRule:
     """One rung on the section 2.3a threshold ladder."""
 
     name: str
-    consumed_pct_trigger: float  # 0.0-1.0  (e.g. 0.70 means 70 % consumed)
+    consumed_pct_trigger: float  # 0.0-1.0  (e.g. 0.70 means 70% consumed)
     action: AlertAction
     bypass_quiet_hours: bool = False
 
@@ -55,14 +55,14 @@ class ThresholdPolicy:
 
 
 # ---------------------------------------------------------------------------
-# section 2.3a Scope 1 -- Customer Bucket
+# Section 2.3a Scope 1 -- Customer Bucket
 # ---------------------------------------------------------------------------
 CUSTOMER_BUCKET_POLICY: ThresholdPolicy = ThresholdPolicy(
     scope=AlertScope.CUSTOMER_BUCKET,
     thresholds=[
         ThresholdRule(
             name="WARN_30",
-            consumed_pct_trigger=0.70,  # 30 % remaining -> 70 % consumed
+            consumed_pct_trigger=0.70,  # 30% remaining -> 70% consumed
             action=AlertAction.NOTIFY,
             bypass_quiet_hours=False,
         ),
@@ -88,7 +88,7 @@ CUSTOMER_BUCKET_POLICY: ThresholdPolicy = ThresholdPolicy(
 )
 
 # ---------------------------------------------------------------------------
-# section 2.3a Scope 2 -- Agency Sub-wallet
+# Section 2.3a Scope 2 -- Agency Sub-wallet
 # ---------------------------------------------------------------------------
 AGENCY_POLICY: ThresholdPolicy = ThresholdPolicy(
     scope=AlertScope.AGENCY,
@@ -115,7 +115,7 @@ AGENCY_POLICY: ThresholdPolicy = ThresholdPolicy(
 )
 
 # ---------------------------------------------------------------------------
-# section 2.3a Scope 3 -- WAOOAW Procurement Runway
+# Section 2.3a Scope 3 -- WAOOAW Procurement Runway
 # ---------------------------------------------------------------------------
 PROCUREMENT_POLICY: ThresholdPolicy = ThresholdPolicy(
     scope=AlertScope.PROCUREMENT,

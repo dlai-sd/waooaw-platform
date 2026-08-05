@@ -162,71 +162,65 @@ class MeterService(IMeterService):
         7-day rolling average burn rate -> days_remaining + projected_empty_date.
 
         Reads platform_cost_ledger (last 7 days) + wallet_buckets.balance_paise.
-        C-051: transparent projection based on observed burn rate.
+        C-051: transparent projection base.
         """
         try:
             async with self._session_factory() as session:
                 now_utc = datetime.now(timezone.utc)
-                seven_days_ago = now_utc - timedelta(days=_ROLLING_DAYS)
+                window_start = now_utc - timedelta(days=_ROLLING_DAYS)
 
-                # 1. Sum cost over last 7 days
-                cost_row = await session.execute(
+                # Sum usage over the rolling 7-day window
+                usage_row = await session.execute(
                     text(
                         """
-                        SELECT COALESCE(SUM(marked_up_cost_inr_paise), 0) as total_cost
+                        SELECT COALESCE(SUM(marked_up_cost_inr_paise), 0) AS total_paise
                         FROM   platform_cost_ledger
                         WHERE  customer_id = :customer_id
-                               AND thread_type = :thread_type
-                               AND recorded_at >= :seven_days_ago
+                          AND  thread_type = :thread_type
+                          AND  recorded_at >= :window_start
                         """
                     ).bindparams(
                         customer_id=customer_id,
                         thread_type=thread_type,
-                        seven_days_ago=seven_days_ago,
+                        window_start=window_start,
                     )
                 )
-                cost_result = cost_row.fetchone()
-                total_cost_7d = cost_result.total_cost if cost_result else 0
+                usage_result = usage_row.fetchone()
+                total_paise: float = float(usage_result.total_paise if usage_result else 0)
+                daily_burn_rate = total_paise / _ROLLING_DAYS
 
-                # 2. Get current bucket balance
+                # Get current bucket balance
                 balance_row = await session.execute(
                     text(
                         """
-                        SELECT COALESCE(balance_paise, 0) as balance
-                        FROM   wallet_buckets
-                        WHERE  customer_id = :customer_id
-                               AND thread_type = :thread_type
+                        SELECT wb.balance_paise
+                        FROM   wallet_buckets wb
+                        JOIN   customer_wallets cw ON cw.id = wb.wallet_id
+                        WHERE  cw.customer_id = :customer_id
+                          AND  wb.thread_type  = :thread_type
                         LIMIT  1
                         """
                     ).bindparams(customer_id=customer_id, thread_type=thread_type)
                 )
                 balance_result = balance_row.fetchone()
-                current_balance = balance_result.balance if balance_result else 0
-
-                # 3. Calculate daily burn rate
-                daily_burn_rate = total_cost_7d / _ROLLING_DAYS
-
-                # 4. Project days remaining
-                if daily_burn_rate <= 0:
-                    # No burn observed; assume >999 days remaining
-                    days_remaining = 999.0
-                    projected_empty = now_utc.date() + timedelta(days=999)
-                else:
-                    days_remaining = current_balance / daily_burn_rate
-                    projected_empty = now_utc.date() + timedelta(days=days_remaining)
-
-                logger.info(
-                    "project_depletion customer=%s thread_type=%s days_remaining=%.1f daily_burn_rate=%d",
-                    customer_id,
-                    thread_type,
-                    days_remaining,
-                    int(daily_burn_rate),
+                balance_paise: float = float(
+                    balance_result.balance_paise if balance_result else 0
                 )
+
+                if daily_burn_rate <= 0:
+                    # No burn - bucket does not deplete
+                    days_remaining = float("inf")
+                    projected_empty_date = date(9999, 12, 31)
+                else:
+                    days_remaining = balance_paise / daily_burn_rate
+                    projected_empty_date = (
+                        now_utc + timedelta(days=days_remaining)
+                    ).date()
 
                 return DepletionProjection(
                     days_remaining=days_remaining,
-                    projected_empty_date=projected_empty,
-                    daily_burn_rate_paise=float(daily_burn_rate),
+                    projected_empty_date=projected_empty_date,
+                    daily_burn_rate_paise=daily_burn_rate,
                 )
         except asyncio.CancelledError:
             raise
@@ -245,63 +239,52 @@ class MeterService(IMeterService):
     # ------------------------------------------------------------------
     async def run_daily_scan(self) -> DailyScanResult:
         """
-        Daily scan: 06:00 IST triggers for all active customers.
-        Calls check_thresholds per customer, fires alerts, deduplicates.
-        """
-        try:
-            customers_scanned = 0
-            alerts_sent = 0
-            offers_generated = 0
-            fa_items_created = 0
+        Daily scan runs at 06:00 IST (scheduler stub).
 
+        Fetches all active customers from wallet_buckets, then calls
+        check_thresholds for each. Aggregates alerts_sent + fa_items_created.
+        C-059: each scan result is traceable via meter_alert_log.
+        """
+        result = DailyScanResult(
+            customers_scanned=0,
+            alerts_sent=0,
+            offers_generated=0,
+            fa_items_created=0,
+        )
+        try:
             async with self._session_factory() as session:
-                # Fetch all active customers (billing_profiles.status = 'ACTIVE')
-                customer_rows = await session.execute(
+                # Fetch all distinct active customer IDs with a wallet bucket
+                rows = await session.execute(
                     text(
                         """
-                        SELECT DISTINCT customer_id
-                        FROM   billing_profiles
-                        WHERE  status = 'ACTIVE'
+                        SELECT DISTINCT cw.customer_id
+                        FROM   customer_wallets cw
+                        JOIN   wallet_buckets wb ON wb.wallet_id = cw.id
+                        WHERE  wb.balance_paise > 0
                         """
                     )
                 )
+                customer_ids: list[UUID] = [r.customer_id for r in rows.fetchall()]
 
-                customer_ids = [row.customer_id for row in customer_rows]
-                customers_scanned = len(customer_ids)
+            result.customers_scanned = len(customer_ids)
 
-                # For each customer, run check_thresholds
-                for cust_id in customer_ids:
-                    try:
-                        fired_alerts = await self.check_thresholds(cust_id)
-                        alerts_sent += len(fired_alerts)
-                        logger.info(
-                            "run_daily_scan checked customer=%s alerts=%d",
-                            cust_id,
-                            len(fired_alerts),
-                        )
-                    except asyncio.CancelledError:
-                        raise
-                    except (ValueError, RuntimeError, OSError) as exc:
-                        logger.error(
-                            "check_thresholds failed customer=%s",
-                            cust_id,
-                            exc_info=True,
-                            extra={"context": str(exc)},
-                        )
-                        # Continue scanning other customers
+            for customer_id in customer_ids:
+                try:
+                    alerts = await self.check_thresholds(customer_id)
+                    for alert in alerts:
+                        result.alerts_sent += 1
+                        if alert.scope == "PROCUREMENT" and "RUNWAY" in alert.threshold_name:
+                            result.fa_items_created += 1
+                except asyncio.CancelledError:
+                    raise
+                except (ValueError, RuntimeError, OSError) as exc:
+                    logger.error(
+                        "run_daily_scan check_thresholds failed customer=%s",
+                        customer_id,
+                        exc_info=True,
+                        extra={"context": str(exc)},
+                    )
 
-            logger.info(
-                "run_daily_scan completed customers_scanned=%d alerts_sent=%d",
-                customers_scanned,
-                alerts_sent,
-            )
-
-            return DailyScanResult(
-                customers_scanned=customers_scanned,
-                alerts_sent=alerts_sent,
-                offers_generated=offers_generated,
-                fa_items_created=fa_items_created,
-            )
         except asyncio.CancelledError:
             raise
         except (ValueError, RuntimeError, OSError) as exc:
@@ -310,162 +293,51 @@ class MeterService(IMeterService):
                 exc_info=True,
                 extra={"context": str(exc)},
             )
-            raise
+
+        logger.info(
+            "run_daily_scan complete scanned=%d alerts=%d fa=%d",
+            result.customers_scanned,
+            result.alerts_sent,
+            result.fa_items_created,
+        )
+        return result
 
     # ------------------------------------------------------------------
-    # MeterService.check_thresholds (concrete helper, NOT abstract)
+    # Concrete helper: check_thresholds  (NOT in IMeterService ABC)
     # ------------------------------------------------------------------
     async def check_thresholds(self, customer_id: UUID) -> list[AlertFired]:
         """
-        Check thresholds for one customer across 3 scopes:
-        - Scope 1: CUSTOMER_BUCKET (per thread_type)
-        - Scope 2: AGENCY (agency sub-wallet)
-        - Scope 3: PROCUREMENT (provider runway)
+        Evaluate all three threshold scopes for a customer and fire alerts.
 
-        Computes pct_consumed = SUM(platform_cost_ledger.marked_up_cost_inr_paise WHERE
-        customer_id + current billing_period) / (consumed + wallet_buckets.balance_paise).
+        Scope 1 - CUSTOMER_BUCKET: per thread_type bucket depletion %.
+        Scope 2 - AGENCY: sub-wallet aggregate depletion % (NULL quota -> skip).
+        Scope 3 - PROCUREMENT: provider runway days remaining.
 
-        Fires per §2.3a scope 1+2+3 ladder. Deduplicates via meter_alert_log.
-        C-043: budget ceiling enforcement with threshold ladder.
+        Deduplication: alert suppressed if a same (customer_id, threshold_name,
+        bucket_type) entry exists in meter_alert_log within _DEDUP_WINDOW_HOURS.
+        Quiet hours: suppress NOTIFY action unless bypass_quiet_hours=True.
+
+        C-043: AlertFired structure is the authoritative breach record.
         """
-        alerts: list[AlertFired] = []
+        fired: list[AlertFired] = []
+        now_ist = _now_ist()
 
         try:
             async with self._session_factory() as session:
-                now_utc = datetime.now(timezone.utc)
-                now_ist = now_utc.astimezone(_IST_TZ)
-                billing_period_start = _current_billing_period_start(now_utc)
-
-                # ============================================================
-                # SCOPE 1: CUSTOMER_BUCKET (per thread_type)
-                # ============================================================
-                bucket_rows = await session.execute(
-                    text(
-                        """
-                        SELECT thread_type, balance_paise
-                        FROM   wallet_buckets
-                        WHERE  customer_id = :customer_id
-                        """
-                    ).bindparams(customer_id=customer_id)
+                # -- Scope 1: Customer bucket thresholds --
+                await self._check_scope1_customer_buckets(
+                    session, customer_id, now_ist, fired
                 )
 
-                for bucket_row in bucket_rows:
-                    thread_type = bucket_row.thread_type
-                    balance = bucket_row.balance_paise
-
-                    # Get consumed amount from platform_cost_ledger for this period
-                    cost_row = await session.execute(
-                        text(
-                            """
-                            SELECT COALESCE(SUM(marked_up_cost_inr_paise), 0) as total_cost
-                            FROM   platform_cost_ledger
-                            WHERE  customer_id = :customer_id
-                                   AND thread_type = :thread_type
-                                   AND billing_period_start = :billing_period_start
-                            """
-                        ).bindparams(
-                            customer_id=customer_id,
-                            thread_type=thread_type,
-                            billing_period_start=billing_period_start,
-                        )
-                    )
-                    cost_result = cost_row.fetchone()
-                    consumed = cost_result.total_cost if cost_result else 0
-
-                    # Compute pct_consumed
-                    total_budget = consumed + balance
-                    if total_budget > 0:
-                        pct_consumed = consumed / total_budget
-                    else:
-                        pct_consumed = 0.0
-
-                    # Check thresholds for CUSTOMER_BUCKET scope
-                    fired = await self._check_scope_thresholds(
-                        session,
-                        customer_id=customer_id,
-                        bucket_type=thread_type,
-                        pct_consumed=pct_consumed,
-                        policy=CUSTOMER_BUCKET_POLICY,
-                        scope="CUSTOMER_BUCKET",
-                        now_ist=now_ist,
-                        billing_period_start=billing_period_start,
-                    )
-                    alerts.extend(fired)
-
-                # ============================================================
-                # SCOPE 2: AGENCY (agency sub-wallet)
-                # ============================================================
-                agency_cost_row = await session.execute(
-                    text(
-                        """
-                        SELECT COALESCE(SUM(marked_up_cost_inr_paise), 0) as total_cost
-                        FROM   platform_cost_ledger
-                        WHERE  customer_id = :customer_id
-                               AND billing_period_start = :billing_period_start
-                        """
-                    ).bindparams(
-                        customer_id=customer_id,
-                        billing_period_start=billing_period_start,
-                    )
-                )
-                agency_cost_result = agency_cost_row.fetchone()
-                agency_consumed = agency_cost_result.total_cost if agency_cost_result else 0
-
-                # Get agency balance (sum of all buckets)
-                agency_balance_row = await session.execute(
-                    text(
-                        """
-                        SELECT COALESCE(SUM(balance_paise), 0) as total_balance
-                        FROM   wallet_buckets
-                        WHERE  customer_id = :customer_id
-                        """
-                    ).bindparams(customer_id=customer_id)
-                )
-                agency_balance_result = agency_balance_row.fetchone()
-                agency_balance = (
-                    agency_balance_result.total_balance if agency_balance_result else 0
+                # -- Scope 2: Agency sub-wallet thresholds --
+                await self._check_scope2_agency(
+                    session, customer_id, now_ist, fired
                 )
 
-                agency_total = agency_consumed + agency_balance
-                if agency_total > 0:
-                    agency_pct_consumed = agency_consumed / agency_total
-                else:
-                    agency_pct_consumed = 0.0
-
-                fired_agency = await self._check_scope_thresholds(
-                    session,
-                    customer_id=customer_id,
-                    bucket_type="AGENCY",
-                    pct_consumed=agency_pct_consumed,
-                    policy=AGENCY_POLICY,
-                    scope="AGENCY",
-                    now_ist=now_ist,
-                    billing_period_start=billing_period_start,
+                # -- Scope 3: Procurement runway thresholds --
+                await self._check_scope3_procurement(
+                    session, customer_id, now_ist, fired
                 )
-                alerts.extend(fired_agency)
-
-                # ============================================================
-                # SCOPE 3: PROCUREMENT (provider runway)
-                # ============================================================
-                fired_procurement = await self._check_scope_thresholds(
-                    session,
-                    customer_id=customer_id,
-                    bucket_type="PROCUREMENT",
-                    pct_consumed=0.0,  # Not used for procurement; use projection
-                    policy=PROCUREMENT_POLICY,
-                    scope="PROCUREMENT",
-                    now_ist=now_ist,
-                    billing_period_start=billing_period_start,
-                )
-                alerts.extend(fired_procurement)
-
-                logger.info(
-                    "check_thresholds completed customer=%s total_alerts=%d",
-                    customer_id,
-                    len(alerts),
-                )
-
-                return alerts
 
         except asyncio.CancelledError:
             raise
@@ -476,123 +348,345 @@ class MeterService(IMeterService):
                 exc_info=True,
                 extra={"context": str(exc)},
             )
-            raise
+
+        return fired
 
     # ------------------------------------------------------------------
-    # Helper: _check_scope_thresholds
+    # Scope 1 - Customer bucket thresholds
     # ------------------------------------------------------------------
-    async def _check_scope_thresholds(
+    async def _check_scope1_customer_buckets(
+        self,
+        session: AsyncSession,
+        customer_id: UUID,
+        now_ist: datetime,
+        fired: list[AlertFired],
+    ) -> None:
+        """
+        Evaluate CUSTOMER_BUCKET_POLICY thresholds for each thread_type bucket.
+
+        pct_consumed = SUM(ledger costs this period) / (consumed + bucket.balance_paise)
+        """
+        now_utc = datetime.now(timezone.utc)
+        period_start = _current_billing_period_start(now_utc)
+
+        # Get all bucket balances for this customer
+        bucket_rows = await session.execute(
+            text(
+                """
+                SELECT wb.thread_type,
+                       wb.balance_paise,
+                       COALESCE(
+                           (SELECT SUM(pcl.marked_up_cost_inr_paise)
+                            FROM   platform_cost_ledger pcl
+                            WHERE  pcl.customer_id = :customer_id
+                              AND  pcl.thread_type  = wb.thread_type
+                              AND  pcl.billing_period_start = :period_start),
+                           0
+                       ) AS consumed_paise
+                FROM   wallet_buckets wb
+                JOIN   customer_wallets cw ON cw.id = wb.wallet_id
+                WHERE  cw.customer_id = :customer_id
+                """
+            ).bindparams(customer_id=customer_id, period_start=period_start)
+        )
+        buckets = bucket_rows.fetchall()
+
+        policy = CUSTOMER_BUCKET_POLICY
+        quiet = _is_quiet_hours(policy, now_ist)
+
+        for bucket in buckets:
+            thread_type: str = bucket.thread_type
+            balance_paise: int = bucket.balance_paise
+            consumed_paise: int = bucket.consumed_paise
+            total_paise = consumed_paise + balance_paise
+
+            if total_paise <= 0:
+                # No quota - nothing to evaluate
+                continue
+
+            pct_consumed: float = consumed_paise / total_paise
+
+            for rule in policy.thresholds:
+                if pct_consumed < rule.consumed_pct_trigger:
+                    continue
+
+                # Quiet hours check
+                if quiet and not rule.bypass_quiet_hours:
+                    if rule.action == AlertAction.NOTIFY:
+                        logger.info(
+                            "quiet hours suppressing NOTIFY threshold=%s customer=%s",
+                            rule.name,
+                            customer_id,
+                        )
+                        continue
+
+                # Deduplication check
+                already_fired = await self._is_deduped(
+                    session, customer_id, thread_type, rule.name
+                )
+                if already_fired:
+                    continue
+
+                alert = AlertFired(
+                    customer_id=customer_id,
+                    bucket_type=thread_type,
+                    threshold_name=rule.name,
+                    pct_consumed=pct_consumed,
+                    scope="CUSTOMER_BUCKET",
+                    fired_at=datetime.now(timezone.utc),
+                )
+                await self._record_alert(session, alert)
+                fired.append(alert)
+                logger.info(
+                    "alert fired scope=CUSTOMER_BUCKET threshold=%s customer=%s pct=%.3f",
+                    rule.name,
+                    customer_id,
+                    pct_consumed,
+                )
+
+    # ------------------------------------------------------------------
+    # Scope 2 - Agency sub-wallet thresholds
+    # ------------------------------------------------------------------
+    async def _check_scope2_agency(
+        self,
+        session: AsyncSession,
+        customer_id: UUID,
+        now_ist: datetime,
+        fired: list[AlertFired],
+    ) -> None:
+        """
+        Evaluate AGENCY_POLICY thresholds for the agency sub-wallet aggregate.
+
+        NULL quota -> skip (no alert).
+        """
+        # Fetch agency sub-wallet quota; NULL means no agency limit configured
+        agency_row = await session.execute(
+            text(
+                """
+                SELECT asw.quota_paise,
+                       COALESCE(asw.consumed_paise, 0) AS consumed_paise
+                FROM   agency_sub_wallets asw
+                WHERE  asw.customer_id = :customer_id
+                LIMIT  1
+                """
+            ).bindparams(customer_id=customer_id)
+        )
+        agency = agency_row.fetchone()
+
+        if agency is None or agency.quota_paise is None:
+            # NULL quota - no alert per spec
+            return
+
+        quota_paise: int = agency.quota_paise
+        consumed_paise: int = agency.consumed_paise
+
+        if quota_paise <= 0:
+            return
+
+        total_paise = quota_paise  # quota is the ceiling
+        pct_consumed: float = consumed_paise / total_paise
+
+        policy = AGENCY_POLICY
+        quiet = _is_quiet_hours(policy, now_ist)
+
+        for rule in policy.thresholds:
+            if pct_consumed < rule.consumed_pct_trigger:
+                continue
+
+            if quiet and not rule.bypass_quiet_hours:
+                if rule.action == AlertAction.NOTIFY:
+                    logger.info(
+                        "quiet hours suppressing AGENCY NOTIFY threshold=%s customer=%s",
+                        rule.name,
+                        customer_id,
+                    )
+                    continue
+
+            already_fired = await self._is_deduped(
+                session, customer_id, "AGENCY", rule.name
+            )
+            if already_fired:
+                continue
+
+            alert = AlertFired(
+                customer_id=customer_id,
+                bucket_type="AGENCY",
+                threshold_name=rule.name,
+                pct_consumed=pct_consumed,
+                scope="AGENCY",
+                fired_at=datetime.now(timezone.utc),
+            )
+            await self._record_alert(session, alert)
+            fired.append(alert)
+            logger.info(
+                "alert fired scope=AGENCY threshold=%s customer=%s pct=%.3f",
+                rule.name,
+                customer_id,
+                pct_consumed,
+            )
+
+    # ------------------------------------------------------------------
+    # Scope 3 - Procurement runway thresholds
+    # ------------------------------------------------------------------
+    async def _check_scope3_procurement(
+        self,
+        session: AsyncSession,
+        customer_id: UUID,
+        now_ist: datetime,
+        fired: list[AlertFired],
+    ) -> None:
+        """
+        Evaluate PROCUREMENT_POLICY thresholds based on provider runway days.
+
+        Runway days = provider_balance_paise / daily_burn_rate (7d rolling avg).
+        Threshold names: RUNWAY_P2 (<=30d), RUNWAY_P1 (<=14d), RUNWAY_P0 (<=7d),
+        RUNWAY_CRITICAL (<=3d), RUNWAY_EMERGENCY (<=1d).
+        C-043: BLOCK action at RUNWAY_EMERGENCY fires even in quiet hours.
+        """
+        now_utc = datetime.now(timezone.utc)
+        window_start = now_utc - timedelta(days=_ROLLING_DAYS)
+
+        # Get all provider accounts with their balances and 7d burn
+        provider_rows = await session.execute(
+            text(
+                """
+                SELECT pa.id              AS provider_account_id,
+                       pa.name            AS provider_name,
+                       pa.balance_paise   AS balance_paise,
+                       COALESCE(
+                           (SELECT SUM(pcl.marked_up_cost_inr_paise)
+                            FROM   platform_cost_ledger pcl
+                            WHERE  pcl.provider_account_id = pa.id
+                              AND  pcl.recorded_at >= :window_start),
+                           0
+                       ) AS rolling_cost_paise
+                FROM   provider_accounts pa
+                WHERE  pa.active = TRUE
+                """
+            ).bindparams(window_start=window_start)
+        )
+        providers = provider_rows.fetchall()
+
+        policy = PROCUREMENT_POLICY
+        quiet = _is_quiet_hours(policy, now_ist)
+
+        for provider in providers:
+            balance_paise: float = float(provider.balance_paise)
+            rolling_cost: float = float(provider.rolling_cost_paise)
+            daily_burn = rolling_cost / _ROLLING_DAYS if rolling_cost > 0 else 0.0
+
+            if daily_burn <= 0:
+                # No burn - runway is infinite; skip
+                continue
+
+            days_remaining: float = balance_paise / daily_burn
+            bucket_type = f"PROCUREMENT:{provider.provider_name}"
+
+            for rule in policy.thresholds:
+                # For PROCUREMENT rules, consumed_pct_trigger stores days threshold
+                # We compare days_remaining against the rule's days_threshold attribute
+                # The ThresholdRule uses consumed_pct_trigger as days ceiling for runway
+                if days_remaining > rule.consumed_pct_trigger:
+                    continue
+
+                if quiet and not rule.bypass_quiet_hours:
+                    if rule.action == AlertAction.NOTIFY:
+                        logger.info(
+                            "quiet hours suppressing PROCUREMENT NOTIFY threshold=%s",
+                            rule.name,
+                        )
+                        continue
+
+                already_fired = await self._is_deduped(
+                    session, customer_id, bucket_type, rule.name
+                )
+                if already_fired:
+                    continue
+
+                # pct_consumed for procurement = 1 - days_remaining / 30 (normalized)
+                pct_consumed = max(0.0, min(1.0, 1.0 - days_remaining / 30.0))
+                alert = AlertFired(
+                    customer_id=customer_id,
+                    bucket_type=bucket_type,
+                    threshold_name=rule.name,
+                    pct_consumed=pct_consumed,
+                    scope="PROCUREMENT",
+                    fired_at=datetime.now(timezone.utc),
+                )
+                await self._record_alert(session, alert)
+                fired.append(alert)
+                logger.info(
+                    "alert fired scope=PROCUREMENT threshold=%s provider=%s days_remaining=%.1f",
+                    rule.name,
+                    provider.provider_name,
+                    days_remaining,
+                )
+
+    # ------------------------------------------------------------------
+    # Deduplication helpers
+    # ------------------------------------------------------------------
+    async def _is_deduped(
         self,
         session: AsyncSession,
         customer_id: UUID,
         bucket_type: str,
-        pct_consumed: float,
-        policy: ThresholdPolicy,
-        scope: str,
-        now_ist: datetime,
-        billing_period_start: date,
-    ) -> list[AlertFired]:
+        threshold_name: str,
+    ) -> bool:
         """
-        Helper to check thresholds for a single scope.
-        Respects quiet_hours and deduplicates via meter_alert_log.
+        Return True if this (customer_id, bucket_type, threshold_name) was already
+        fired within _DEDUP_WINDOW_HOURS.
+        C-059: dedup check is non-destructive - only reads meter_alert_log.
         """
-        alerts: list[AlertFired] = []
-
-        try:
-            # Check if in quiet hours
-            in_quiet = _is_quiet_hours(policy, now_ist)
-
-            # Iterate over threshold rules in policy
-            for rule in policy.thresholds:
-                # If pct_consumed >= trigger threshold, fire alert
-                if pct_consumed >= rule.consumed_pct_trigger:
-                    # Check if already fired within dedup window
-                    dedup_row = await session.execute(
-                        text(
-                            """
-                            SELECT id FROM meter_alert_log
-                            WHERE  customer_id = :customer_id
-                                   AND bucket_type = :bucket_type
-                                   AND threshold_name = :threshold_name
-                                   AND scope = :scope
-                                   AND fired_at >= :dedup_cutoff
-                            LIMIT  1
-                            """
-                        ).bindparams(
-                            customer_id=customer_id,
-                            bucket_type=bucket_type,
-                            threshold_name=rule.name,
-                            scope=scope,
-                            dedup_cutoff=now_ist - timedelta(hours=_DEDUP_WINDOW_HOURS),
-                        )
-                    )
-                    dedup_result = dedup_row.fetchone()
-
-                    if dedup_result is None:
-                        # Not deduplicated; fire alert
-                        alert = AlertFired(
-                            customer_id=customer_id,
-                            bucket_type=bucket_type,
-                            threshold_name=rule.name,
-                            pct_consumed=pct_consumed,
-                            scope=scope,
-                            fired_at=now_ist,
-                        )
-
-                        # Log to meter_alert_log
-                        await session.execute(
-                            text(
-                                """
-                                INSERT INTO meter_alert_log
-                                    (id, customer_id, bucket_type, threshold_name, scope,
-                                     pct_consumed, fired_at, action)
-                                VALUES
-                                    (:id, :customer_id, :bucket_type, :threshold_name, :scope,
-                                     :pct_consumed, :fired_at, :action)
-                                """
-                            ).bindparams(
-                                id=uuid4(),
-                                customer_id=customer_id,
-                                bucket_type=bucket_type,
-                                threshold_name=rule.name,
-                                scope=scope,
-                                pct_consumed=pct_consumed,
-                                fired_at=now_ist,
-                                action=rule.action.value,
-                            )
-                        )
-                        await session.commit()
-
-                        # Respect quiet hours + bypass_quiet_hours flag
-                        should_notify = (not in_quiet) or rule.bypass_quiet_hours
-
-                        if should_notify and rule.action in (
-                            AlertAction.NOTIFY,
-                            AlertAction.FA,
-                            AlertAction.BLOCK,
-                        ):
-                            logger.info(
-                                "alert fired customer=%s threshold=%s scope=%s action=%s pct=%.1f",
-                                customer_id,
-                                rule.name,
-                                scope,
-                                rule.action.value,
-                                pct_consumed * 100,
-                            )
-
-                        alerts.append(alert)
-                    # else: already logged recently, skip
-
-            return alerts
-
-        except asyncio.CancelledError:
-            raise
-        except (ValueError, RuntimeError, OSError) as exc:
-            logger.error(
-                "_check_scope_thresholds failed customer=%s scope=%s",
-                customer_id,
-                scope,
-                exc_info=True,
-                extra={"context": str(exc)},
+        window_start = datetime.now(timezone.utc) - timedelta(hours=_DEDUP_WINDOW_HOURS)
+        row = await session.execute(
+            text(
+                """
+                SELECT 1
+                FROM   meter_alert_log
+                WHERE  customer_id     = :customer_id
+                  AND  bucket_type     = :bucket_type
+                  AND  threshold_name  = :threshold_name
+                  AND  fired_at        >= :window_start
+                LIMIT  1
+                """
+            ).bindparams(
+                customer_id=customer_id,
+                bucket_type=bucket_type,
+                threshold_name=threshold_name,
+                window_start=window_start,
             )
-            raise
+        )
+        return row.fetchone() is not None
+
+    async def _record_alert(
+        self,
+        session: AsyncSession,
+        alert: AlertFired,
+    ) -> None:
+        """
+        Persist alert to meter_alert_log for deduplication and audit.
+        C-059: every fired alert is traceable.
+        C-063: no PII written - only UUIDs and enum strings.
+        """
+        await session.execute(
+            text(
+                """
+                INSERT INTO meter_alert_log
+                    (id, customer_id, bucket_type, threshold_name,
+                     pct_consumed, scope, fired_at)
+                VALUES
+                    (:id, :customer_id, :bucket_type, :threshold_name,
+                     :pct_consumed, :scope, :fired_at)
+                ON CONFLICT DO NOTHING
+                """
+            ).bindparams(
+                id=uuid4(),
+                customer_id=alert.customer_id,
+                bucket_type=alert.bucket_type,
+                threshold_name=alert.threshold_name,
+                pct_consumed=alert.pct_consumed,
+                scope=alert.scope,
+                fired_at=alert.fired_at,
+            )
+        )
+        await session.commit()
