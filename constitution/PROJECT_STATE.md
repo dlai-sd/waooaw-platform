@@ -1035,7 +1035,7 @@ platform_phase: IMPLEMENTATION
 current_sprint: WC-028
 sprint_status: AUTHORIZED
 branch: main
-consecutive_failures: 1
+consecutive_failures: 2
 tasks_done: []
 tasks_remaining:
   - WC028-01
