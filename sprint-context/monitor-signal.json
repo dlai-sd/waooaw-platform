@@ -1,46 +1,16 @@
 {
-  "run_id": "30975168599",
+  "run_id": "30977112176",
   "sprint": "WC-028",
   "scaffold_task": null,
   "scaffold_failed": false,
   "task_results": {},
   "spec_gap_issues": [],
-  "overall_result": "PARTIAL",
-  "file_costs": {
-    "WC028-01a:service.py": 35.518299999999996,
-    "WC028-01a:alert_policy.py": 8.773399999999999,
-    "WC028-01b:service.py": 1.8218,
-    "WC028-01b:alert_policy.py": 0.4387,
-    "WC028-01c:test_service.py": 4.7412
-  },
-  "subtask_results": {
-    "WC028-01a": {
-      "result": "SUCCESS",
-      "task_id": "WC028-01",
-      "error_codes": [],
-      "error_text": ""
-    },
-    "WC028-01b": {
-      "result": "SUCCESS",
-      "task_id": "WC028-01",
-      "error_codes": [],
-      "error_text": ""
-    },
-    "WC028-01c": {
-      "result": "FAIL",
-      "task_id": "WC028-01",
-      "error_codes": [],
-      "error_text": ""
-    }
-  },
-  "total_cost_inr": 51.2934,
+  "overall_result": "SUCCESS",
+  "file_costs": {},
   "tasks_done": [
-    "WC028-02",
-    "WC028-03"
+    "WC028-01"
   ],
   "tasks_requested": [
-    "WC028-01",
-    "WC028-02",
-    "WC028-03"
+    "WC028-01"
   ]
 }
