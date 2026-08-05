@@ -1,4 +1,4 @@
-# Implements: <spec-path> §<section>
+# Implements: work-contracts/WC-029-*.md §WC029-01bb:main.py
 # constitutional_basis: C-059 (Implementation Traceability)
 from __future__ import annotations
 
@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from database import init_db, close_db
 from markup.router import router as pricing_router
 from meter.router import router as meter_router
+from procurement.router import router as procurement_router
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +46,7 @@ def create_app() -> FastAPI:
     
     Configures:
     - CORS middleware (allow_origins=['*'], allow_credentials=False per OWASP A05)
-    - Router mounts: /pricing (markup), /meter (usage meter + alerts)
+    - Router mounts: /pricing (markup), /meter (usage meter + alerts), /platform/procurement (cost ledger + runway)
     - Health check endpoint (/health)
     - Lifespan context manager for DB init/cleanup
     
@@ -55,10 +56,14 @@ def create_app() -> FastAPI:
     Constitutional basis:
     - C-023: All endpoints require ValidateAction gate (implemented in router layer)
     - C-029: Billing profile enforcement via WalletService dependency injection
-    - C-051: /meter endpoint exposes resource transparency (bucket balances, projections)
-    - C-059: Structured logging on app lifecycle
+    - C-038: Request shape validation via Pydantic models (CostRecordRequest)
+    - C-043: Threshold breach alerts (PROCUREMENT_POLICY thresholds in procurement router)
+    - C-048: Response shape compliance (ProviderRunwayStatus, FounderActionCreated)
+    - C-051: /meter and /platform/procurement endpoints expose resource transparency (bucket balances, runway projections)
+    - C-059: Structured logging on app lifecycle and all router mounts
     - C-063: CORS middleware enforces credential policy (allow_credentials=False)
     - C-073: Type safety on all function signatures and returns
+    - C-077: WAOOAW procurement ledger enforces ₹5,000/month budget ceiling via runway projection
     """
     app: FastAPI = FastAPI(
         title="Billing Engine",
@@ -67,7 +72,7 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
     
-    # allow_credentials=False with wildcard origin — OWASP A05 compliance (C-100).
+    # allow_credentials=False with wildcard origin -- OWASP A05 compliance (C-100).
     # Prevents CSRF attacks when credentials are not required.
     app.add_middleware(
         CORSMiddleware,
@@ -83,6 +88,11 @@ def create_app() -> FastAPI:
     # Mount meter (usage + alerts) router at /meter prefix
     # Endpoints: GET /meter/{customer_id}/status, POST /meter/daily-scan
     app.include_router(meter_router)
+    
+    # Mount procurement (cost ledger + runway projection) router at /platform/procurement prefix
+    # Endpoints: GET /platform/procurement/status, POST /platform/procurement/record-cost, GET /platform/procurement/margin/report
+    # Constitutional: C-077 (procurement runway enforces ₹5k/month ceiling), C-043 (threshold breach to Founder Actions)
+    app.include_router(procurement_router)
     
     @app.get("/health", response_model=dict[str, str])
     async def health_check() -> dict[str, str]:
