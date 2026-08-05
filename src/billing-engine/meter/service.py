@@ -22,7 +22,9 @@ from meter.alert_policy import (
     CUSTOMER_BUCKET_POLICY,
     PROCUREMENT_POLICY,
     AlertAction,
+    RunwayThresholdRule,
     ThresholdPolicy,
+    ThresholdRule,
 )
 
 logger = logging.getLogger(__name__)
@@ -166,43 +168,38 @@ class MeterService(IMeterService):
         self, customer_id: UUID, thread_type: str
     ) -> DepletionProjection:
         """
-        Project bucket depletion using 7-day rolling average burn rate.
+        Project bucket depletion using 7-day rolling average.
 
-        Formula: days_remaining = balance_paise / daily_burn_rate_paise
-        C-049: honest limitation - returns 0 days if already depleted.
-        C-051: resource transparency via projected_empty_date.
+        Reads platform_cost_ledger for the last 7 days to compute daily burn rate,
+        then divides remaining wallet_buckets.balance_paise by that rate.
+        C-049: discloses low balance honestly via projection.
         """
         try:
             async with self._session_factory() as session:
                 now_utc = datetime.now(timezone.utc)
-                window_start = now_utc - timedelta(days=_ROLLING_DAYS)
+                window_start = (now_utc - timedelta(days=_ROLLING_DAYS)).date()
 
-                # 7-day rolling average from platform_cost_ledger
-                burn_row = await session.execute(
+                # 7-day rolling total spend
+                spend_row = await session.execute(
                     text(
                         """
-                        SELECT COALESCE(SUM(marked_up_cost_inr_paise), 0) AS total_cost,
-                               COUNT(DISTINCT DATE(recorded_at))            AS active_days
+                        SELECT COALESCE(SUM(marked_up_cost_inr_paise), 0) AS total_spend
                         FROM   platform_cost_ledger
                         WHERE  customer_id = :customer_id
-                          AND  thread_type = :thread_type
-                          AND  recorded_at >= :window_start
+                          AND  thread_type  = :thread_type
+                          AND  DATE(recorded_at) >= :window_start
                         """
                     ).bindparams(
                         customer_id=_sid(customer_id),
                         thread_type=thread_type,
-                        window_start=window_start,
+                        window_start=str(window_start),
                     )
                 )
-                burn_result = burn_row.fetchone()
-                total_cost: float = float(burn_result.total_cost) if burn_result else 0.0
-                active_days: int = int(burn_result.active_days) if burn_result else 0
+                spend_result = spend_row.fetchone()
+                total_spend: float = float(spend_result.total_spend) if spend_result else 0.0
+                daily_burn: float = total_spend / _ROLLING_DAYS if total_spend > 0 else 0.0
 
-                # Daily burn rate: use active days if > 0, else use full window
-                denominator = active_days if active_days > 0 else _ROLLING_DAYS
-                daily_burn_rate: float = total_cost / denominator
-
-                # Current bucket balance (quota denominator)
+                # Current bucket balance
                 balance_row = await session.execute(
                     text(
                         """
@@ -218,49 +215,20 @@ class MeterService(IMeterService):
                     )
                 )
                 balance_result = balance_row.fetchone()
-                balance_paise: float = (
-                    float(balance_result.balance_paise) if balance_result else 0.0
-                )
+                balance_paise: float = float(balance_result.balance_paise) if balance_result else 0.0
 
-                # Consumed so far this billing period
-                period_start = _current_billing_period_start(now_utc)
-                consumed_row = await session.execute(
-                    text(
-                        """
-                        SELECT COALESCE(SUM(marked_up_cost_inr_paise), 0) AS consumed
-                        FROM   platform_cost_ledger
-                        WHERE  customer_id           = :customer_id
-                          AND  thread_type            = :thread_type
-                          AND  billing_period_start  = :period_start
-                        """
-                    ).bindparams(
-                        customer_id=_sid(customer_id),
-                        thread_type=thread_type,
-                        period_start=period_start,
-                    )
-                )
-                consumed_result = consumed_row.fetchone()
-                consumed_paise: float = (
-                    float(consumed_result.consumed) if consumed_result else 0.0
-                )
-
-                remaining_paise = max(0.0, balance_paise - consumed_paise)
-
-                if daily_burn_rate <= 0.0:
-                    # No burn data - cannot project; return far future
-                    days_remaining = float("inf") if remaining_paise > 0 else 0.0
-                    days_remaining = min(days_remaining, 9999.0)
+                if daily_burn <= 0.0:
+                    # No burn rate - effectively infinite runway; report 999 days
+                    days_remaining: float = 999.0
                 else:
-                    days_remaining = remaining_paise / daily_burn_rate
+                    days_remaining = balance_paise / daily_burn
 
-                projected_empty_date = (
-                    now_utc + timedelta(days=days_remaining)
-                ).date()
+                projected_empty = (now_utc + timedelta(days=days_remaining)).date()
 
                 return DepletionProjection(
                     days_remaining=days_remaining,
-                    projected_empty_date=projected_empty_date,
-                    daily_burn_rate_paise=daily_burn_rate,
+                    projected_empty_date=projected_empty,
+                    daily_burn_rate_paise=daily_burn,
                 )
         except asyncio.CancelledError:
             raise
@@ -275,114 +243,30 @@ class MeterService(IMeterService):
             raise
 
     # ------------------------------------------------------------------
-    # IMeterService.run_daily_scan
-    # ------------------------------------------------------------------
-    async def run_daily_scan(self) -> DailyScanResult:
-        """
-        Daily scan at 06:00 IST: projection + threshold checks + proactive offers.
-
-        Iterates all active customers and calls check_thresholds for each.
-        C-043: budget ceiling enforcement across all buckets.
-        C-059: every alert fired produces a meter_alert_log evidence record.
-        """
-        result = DailyScanResult(
-            customers_scanned=0,
-            alerts_sent=0,
-            offers_generated=0,
-            fa_items_created=0,
-        )
-        try:
-            async with self._session_factory() as session:
-                # Fetch all active customer IDs from wallet_buckets
-                customers_row = await session.execute(
-                    text(
-                        """
-                        SELECT DISTINCT customer_id
-                        FROM   wallet_buckets
-                        WHERE  is_active = 1
-                           OR  is_active = TRUE
-                        """
-                    )
-                )
-                customer_ids = [str(r.customer_id) for r in customers_row.fetchall()]
-
-            for cid_str in customer_ids:
-                try:
-                    cid = UUID(cid_str)
-                    alerts = await self.check_thresholds(cid)
-                    result.customers_scanned += 1
-                    for alert in alerts:
-                        result.alerts_sent += 1
-                        if alert.threshold_name.startswith("RUNWAY_P"):
-                            result.fa_items_created += 1
-                except asyncio.CancelledError:
-                    raise
-                except (ValueError, RuntimeError, OSError) as exc:
-                    logger.error(
-                        "run_daily_scan: check_thresholds failed for customer=%s",
-                        cid_str,
-                        exc_info=True,
-                        extra={"context": str(exc)},
-                    )
-
-        except asyncio.CancelledError:
-            raise
-        except (ValueError, RuntimeError, OSError) as exc:
-            logger.error(
-                "run_daily_scan failed",
-                exc_info=True,
-                extra={"context": str(exc)},
-            )
-            raise
-
-        logger.info(
-            "run_daily_scan complete scanned=%d alerts=%d fa=%d",
-            result.customers_scanned,
-            result.alerts_sent,
-            result.fa_items_created,
-        )
-        return result
-
-    # ------------------------------------------------------------------
-    # Concrete helper: check_thresholds (NOT in IMeterService ABC)
+    # MeterService.check_thresholds (concrete helper, not in IMeterService)
     # ------------------------------------------------------------------
     async def check_thresholds(self, customer_id: UUID) -> list[AlertFired]:
         """
-        Evaluate §2.3a scope 1+2+3 threshold ladder for a single customer.
-
-        Scope 1 - CUSTOMER_BUCKET: pct_consumed per thread_type bucket.
-        Scope 2 - AGENCY: agency-level sub-wallet aggregation.
-        Scope 3 - PROCUREMENT: provider runway days remaining.
-
-        Deduplication: skips firing if a matching alert exists in meter_alert_log
-        within the last _DEDUP_WINDOW_HOURS hours.
-
-        C-043: budget ceiling - BLOCK action triggers billing halt.
-        C-059: every fired alert written to meter_alert_log as evidence.
-        C-063: no PII in log statements.
+        Evaluate Scope 1 (customer bucket), Scope 2 (agency), Scope 3 (procurement)
+        threshold ladder per §2.3a. Deduplicates via meter_alert_log within 24h window.
+        C-043: fires alerts when pct_consumed crosses ladder rungs.
+        C-049: honest disclosure of low balance state.
+        Returns list of newly-fired AlertFired records (already persisted to meter_alert_log).
         """
-        fired: list[AlertFired] = []
+        alerts: list[AlertFired] = []
         now_ist = _now_ist()
-        now_utc = datetime.now(timezone.utc)
-        period_start = _current_billing_period_start(now_utc)
 
         try:
             async with self._session_factory() as session:
-                # ---- Scope 1: CUSTOMER_BUCKET per thread_type ----
-                fired += await self._check_scope1_customer_bucket(
-                    session, customer_id, period_start, now_ist, now_utc
+                alerts = await self._check_scope1_customer(
+                    session, customer_id, now_ist, alerts
                 )
-
-                # ---- Scope 2: AGENCY sub-wallet ----
-                fired += await self._check_scope2_agency(
-                    session, customer_id, period_start, now_ist, now_utc
+                alerts = await self._check_scope2_agency(
+                    session, customer_id, now_ist, alerts
                 )
-
-                # ---- Scope 3: PROCUREMENT runway ----
-                fired += await self._check_scope3_procurement(
-                    session, now_ist, now_utc
+                alerts = await self._check_scope3_procurement(
+                    session, now_ist, alerts
                 )
-
         except asyncio.CancelledError:
             raise
         except (ValueError, RuntimeError, OSError) as exc:
@@ -394,112 +278,105 @@ class MeterService(IMeterService):
             )
             raise
 
-        return fired
+        return alerts
 
-    # ------------------------------------------------------------------
-    # Internal scope helpers
-    # ------------------------------------------------------------------
-
-    async def _check_scope1_customer_bucket(
+    async def _check_scope1_customer(
         self,
         session: AsyncSession,
         customer_id: UUID,
-        period_start: date,
         now_ist: datetime,
-        now_utc: datetime,
+        alerts: list[AlertFired],
     ) -> list[AlertFired]:
-        """Scope 1: per-bucket threshold checks for a customer."""
-        alerts: list[AlertFired] = []
+        """
+        Scope 1: per-customer-bucket thresholds.
+        pct_consumed = SUM(ledger cost for current period) / wallet_bucket.balance_paise
+        """
+        now_utc = datetime.now(timezone.utc)
+        period_start = _current_billing_period_start(now_utc)
 
-        # Get all buckets for this customer
-        buckets_row = await session.execute(
+        # Get all thread_types active for this customer this period
+        types_row = await session.execute(
             text(
                 """
-                SELECT thread_type, balance_paise
-                FROM   wallet_buckets
+                SELECT DISTINCT thread_type,
+                       COALESCE(SUM(marked_up_cost_inr_paise), 0) AS period_spend
+                FROM   platform_cost_ledger
                 WHERE  customer_id = :customer_id
+                  AND  billing_period_start = :period_start
+                GROUP BY thread_type
                 """
-            ).bindparams(customer_id=_sid(customer_id))
+            ).bindparams(
+                customer_id=_sid(customer_id),
+                period_start=str(period_start),
+            )
         )
-        buckets = buckets_row.fetchall()
+        type_rows = types_row.fetchall()
 
-        for bucket in buckets:
-            thread_type: str = bucket.thread_type
-            quota_paise: float = float(bucket.balance_paise)
+        for type_row in type_rows:
+            thread_type: str = type_row.thread_type
+            period_spend: float = float(type_row.period_spend)
 
-            if quota_paise <= 0.0:
-                # No quota - cannot compute percentage; skip per C-043 note
-                continue
-
-            # Sum consumed this billing period
-            consumed_row = await session.execute(
+            # Get bucket quota (balance_paise is the period quota)
+            bucket_row = await session.execute(
                 text(
                     """
-                    SELECT COALESCE(SUM(marked_up_cost_inr_paise), 0) AS consumed
-                    FROM   platform_cost_ledger
-                    WHERE  customer_id          = :customer_id
-                      AND  thread_type           = :thread_type
-                      AND  billing_period_start = :period_start
+                    SELECT balance_paise
+                    FROM   wallet_buckets
+                    WHERE  customer_id = :customer_id
+                      AND  thread_type  = :thread_type
+                    LIMIT  1
                     """
                 ).bindparams(
                     customer_id=_sid(customer_id),
                     thread_type=thread_type,
-                    period_start=period_start,
                 )
             )
-            consumed_result = consumed_row.fetchone()
-            consumed_paise: float = (
-                float(consumed_result.consumed) if consumed_result else 0.0
-            )
+            bucket_result = bucket_row.fetchone()
+            if bucket_result is None or bucket_result.balance_paise <= 0:
+                continue
 
-            pct_consumed = consumed_paise / quota_paise  # 0.0 - 1.0+
+            quota: float = float(bucket_result.balance_paise)
+            pct_consumed: float = period_spend / quota
 
-            policy = CUSTOMER_BUCKET_POLICY
-            quiet = _is_quiet_hours(policy, now_ist)
-
-            for rule in policy.rules:
-                # ThresholdRule uses consumed_pct_trigger
-                trigger = getattr(rule, "consumed_pct_trigger", None)
-                if trigger is None:
+            for rule in CUSTOMER_BUCKET_POLICY.rules:
+                # Scope 1 uses ThresholdRule (pct-based), skip RunwayThresholdRule
+                if not isinstance(rule, ThresholdRule):
                     continue
+                trigger = rule.consumed_pct_trigger
                 if pct_consumed < trigger:
                     continue
 
-                # Quiet hours suppression (unless bypass_quiet_hours)
-                if quiet and not rule.bypass_quiet_hours:
-                    if rule.action == AlertAction.NOTIFY:
-                        logger.info(
-                            "scope1 quiet_hours suppressed rule=%s customer=%s",
-                            rule.name,
-                            _sid(customer_id),
-                        )
-                        continue
+                # Quiet hours check
+                if _is_quiet_hours(CUSTOMER_BUCKET_POLICY, now_ist) and not rule.bypass_quiet_hours:
+                    logger.info(
+                        "scope1 alert suppressed (quiet hours) customer=%s rule=%s",
+                        _sid(customer_id),
+                        rule.name,
+                    )
+                    continue
 
                 # Deduplication check
-                already_fired = await self._is_alert_deduped(
-                    session,
-                    customer_id=customer_id,
-                    bucket_type=thread_type,
-                    threshold_name=rule.name,
-                    now_utc=now_utc,
+                already_fired = await self._alert_already_fired(
+                    session, customer_id, thread_type, rule.name, now_utc
                 )
                 if already_fired:
                     continue
 
-                alert = AlertFired(
+                fired = AlertFired(
                     customer_id=customer_id,
                     bucket_type=thread_type,
                     threshold_name=rule.name,
                     pct_consumed=pct_consumed,
                     scope="CUSTOMER_BUCKET",
-                    fired_at=now_utc,
+                    fired_at=now_ist,
                 )
-                await self._record_alert_log(session, alert)
-                alerts.append(alert)
+                await self._persist_alert(session, fired, now_utc)
+                alerts.append(fired)
                 logger.info(
-                    "scope1 alert fired rule=%s customer=%s pct_consumed=%.3f",
-                    rule.name,
+                    "scope1 alert fired customer=%s thread=%s rule=%s pct=%.3f",
                     _sid(customer_id),
+                    thread_type,
+                    rule.name,
                     pct_consumed,
                 )
 
@@ -509,99 +386,90 @@ class MeterService(IMeterService):
         self,
         session: AsyncSession,
         customer_id: UUID,
-        period_start: date,
         now_ist: datetime,
-        now_utc: datetime,
+        alerts: list[AlertFired],
     ) -> list[AlertFired]:
-        """Scope 2: agency sub-wallet threshold checks."""
-        alerts: list[AlertFired] = []
+        """
+        Scope 2: agency sub-wallet thresholds.
+        Uses agency_sub_wallets table if present; skips gracefully if NULL quota.
+        """
+        now_utc = datetime.now(timezone.utc)
+        period_start = _current_billing_period_start(now_utc)
 
-        # Resolve agency_id for this customer
+        # Check agency_sub_wallets for this customer
         agency_row = await session.execute(
             text(
                 """
-                SELECT agency_id, agency_quota_paise
-                FROM   agency_wallet_members
+                SELECT id, quota_paise
+                FROM   agency_sub_wallets
                 WHERE  customer_id = :customer_id
                 LIMIT  1
                 """
             ).bindparams(customer_id=_sid(customer_id))
         )
         agency_result = agency_row.fetchone()
-        if agency_result is None:
-            # Not part of any agency - skip scope 2
+
+        # NULL quota or missing agency wallet -> no alert (per spec)
+        if agency_result is None or agency_result.quota_paise is None:
             return alerts
 
-        agency_id: str = str(agency_result.agency_id)
-        agency_quota: float = float(agency_result.agency_quota_paise or 0)
-
-        if agency_quota <= 0.0:
-            # NULL quota produces no alert (per spec)
+        quota: float = float(agency_result.quota_paise)
+        if quota <= 0:
             return alerts
 
-        # Sum all agency member consumption for this billing period
-        agency_consumed_row = await session.execute(
+        # Sum spend for this customer this period across all thread types
+        spend_row = await session.execute(
             text(
                 """
-                SELECT COALESCE(SUM(pcl.marked_up_cost_inr_paise), 0) AS consumed
-                FROM   platform_cost_ledger pcl
-                JOIN   agency_wallet_members awm
-                       ON awm.customer_id = pcl.customer_id
-                WHERE  awm.agency_id          = :agency_id
-                  AND  pcl.billing_period_start = :period_start
+                SELECT COALESCE(SUM(marked_up_cost_inr_paise), 0) AS period_spend
+                FROM   platform_cost_ledger
+                WHERE  customer_id = :customer_id
+                  AND  billing_period_start = :period_start
                 """
-            ).bindparams(agency_id=agency_id, period_start=period_start)
+            ).bindparams(
+                customer_id=_sid(customer_id),
+                period_start=str(period_start),
+            )
         )
-        agency_consumed_result = agency_consumed_row.fetchone()
-        agency_consumed: float = (
-            float(agency_consumed_result.consumed) if agency_consumed_result else 0.0
-        )
+        spend_result = spend_row.fetchone()
+        period_spend: float = float(spend_result.period_spend) if spend_result else 0.0
+        pct_consumed: float = period_spend / quota
 
-        pct_consumed = agency_consumed / agency_quota
-
-        policy = AGENCY_POLICY
-        quiet = _is_quiet_hours(policy, now_ist)
-
-        for rule in policy.rules:
-            trigger = getattr(rule, "consumed_pct_trigger", None)
-            if trigger is None:
+        for rule in AGENCY_POLICY.rules:
+            if not isinstance(rule, ThresholdRule):
                 continue
+            trigger = rule.consumed_pct_trigger
             if pct_consumed < trigger:
                 continue
 
-            if quiet and not rule.bypass_quiet_hours:
-                if rule.action == AlertAction.NOTIFY:
-                    logger.info(
-                        "scope2 quiet_hours suppressed rule=%s agency=%s",
-                        rule.name,
-                        agency_id,
-                    )
-                    continue
+            if _is_quiet_hours(AGENCY_POLICY, now_ist) and not rule.bypass_quiet_hours:
+                logger.info(
+                    "scope2 alert suppressed (quiet hours) customer=%s rule=%s",
+                    _sid(customer_id),
+                    rule.name,
+                )
+                continue
 
-            already_fired = await self._is_alert_deduped(
-                session,
-                customer_id=customer_id,
-                bucket_type="AGENCY",
-                threshold_name=rule.name,
-                now_utc=now_utc,
+            already_fired = await self._alert_already_fired(
+                session, customer_id, "AGENCY", rule.name, now_utc
             )
             if already_fired:
                 continue
 
-            alert = AlertFired(
+            fired = AlertFired(
                 customer_id=customer_id,
                 bucket_type="AGENCY",
                 threshold_name=rule.name,
                 pct_consumed=pct_consumed,
                 scope="AGENCY",
-                fired_at=now_utc,
+                fired_at=now_ist,
             )
-            await self._record_alert_log(session, alert)
-            alerts.append(alert)
+            await self._persist_alert(session, fired, now_utc)
+            alerts.append(fired)
             logger.info(
-                "scope2 agency alert fired rule=%s agency=%s pct_consumed=%.3f",
+                "scope2 alert fired customer=%s rule=%s pct=%.3f",
+                _sid(customer_id),
                 rule.name,
-                agency_id,
                 pct_consumed,
             )
 
@@ -611,100 +479,84 @@ class MeterService(IMeterService):
         self,
         session: AsyncSession,
         now_ist: datetime,
-        now_utc: datetime,
+        alerts: list[AlertFired],
     ) -> list[AlertFired]:
         """
-        Scope 3: PROCUREMENT runway checks across all active providers.
-
-        Uses provider_accounts (provider_name, balance_paise, daily_burn_rate_paise, is_active).
-        days_remaining = balance_paise / daily_burn_rate_paise.
-        Runway threshold rules use days_remaining_trigger (not pct_consumed).
-        C-059: each firing written to meter_alert_log with customer_id=UUID(int=0) sentinel.
+        Scope 3: WAOOAW platform procurement runway thresholds.
+        Reads provider_accounts (balance_paise, daily_burn_rate_paise).
+        Uses RunwayThresholdRule (days_remaining_trigger) from PROCUREMENT_POLICY.
+        Fires global procurement alerts (not per-customer - uses nil UUID sentinel).
         """
-        alerts: list[AlertFired] = []
+        now_utc = datetime.now(timezone.utc)
 
+        # Read all active provider accounts
         providers_row = await session.execute(
             text(
                 """
-                SELECT provider_name, balance_paise, daily_burn_rate_paise
+                SELECT id, provider_name, balance_paise, daily_burn_rate_paise
                 FROM   provider_accounts
-                WHERE  is_active = 1
-                   OR  is_active = TRUE
+                WHERE  is_active = TRUE
                 """
             )
         )
-        providers = providers_row.fetchall()
+        provider_rows = providers_row.fetchall()
 
-        policy = PROCUREMENT_POLICY
-        quiet = _is_quiet_hours(policy, now_ist)
+        # Sentinel customer_id for procurement-scope alerts (no specific customer)
+        procurement_customer_id = UUID("00000000-0000-0000-0000-000000000000")
 
-        # Sentinel customer_id for platform-level procurement alerts
-        platform_sentinel = UUID(int=0)
-
-        for provider in providers:
-            provider_name: str = str(provider.provider_name)
-            balance: float = float(provider.balance_paise or 0)
-            burn_rate: float = float(provider.daily_burn_rate_paise or 0)
+        for prow in provider_rows:
+            provider_name: str = prow.provider_name
+            balance: float = float(prow.balance_paise)
+            burn_rate: float = float(prow.daily_burn_rate_paise) if prow.daily_burn_rate_paise else 0.0
 
             if burn_rate <= 0.0:
-                # Cannot compute runway without burn rate
                 continue
 
-            days_remaining = balance / burn_rate
+            days_remaining: float = balance / burn_rate
 
-            for rule in policy.rules:
-                trigger = getattr(rule, "days_remaining_trigger", None)
-                if trigger is None:
+            for rule in PROCUREMENT_POLICY.rules:
+                if not isinstance(rule, RunwayThresholdRule):
                     continue
-                if days_remaining > trigger:
+                if days_remaining > rule.days_remaining_trigger:
                     continue
 
-                if quiet and not rule.bypass_quiet_hours:
-                    if rule.action == AlertAction.NOTIFY:
-                        logger.info(
-                            "scope3 quiet_hours suppressed rule=%s provider=%s",
-                            rule.name,
-                            provider_name,
-                        )
-                        continue
+                if _is_quiet_hours(PROCUREMENT_POLICY, now_ist) and not rule.bypass_quiet_hours:
+                    logger.info(
+                        "scope3 alert suppressed (quiet hours) provider=%s rule=%s",
+                        provider_name,
+                        rule.name,
+                    )
+                    continue
 
-                already_fired = await self._is_alert_deduped(
-                    session,
-                    customer_id=platform_sentinel,
-                    bucket_type=provider_name,
-                    threshold_name=rule.name,
-                    now_utc=now_utc,
+                already_fired = await self._alert_already_fired(
+                    session, procurement_customer_id, provider_name, rule.name, now_utc
                 )
                 if already_fired:
                     continue
 
-                # pct_consumed not meaningful for runway; encode as days_remaining ratio
-                pct_consumed_proxy = days_remaining / max(trigger, 1.0)
+                # pct_consumed not directly applicable for runway; encode as days_remaining ratio
+                pct_consumed_proxy: float = min(1.0, days_remaining / 30.0) if days_remaining > 0 else 1.0
 
-                alert = AlertFired(
-                    customer_id=platform_sentinel,
+                fired = AlertFired(
+                    customer_id=procurement_customer_id,
                     bucket_type=provider_name,
                     threshold_name=rule.name,
                     pct_consumed=pct_consumed_proxy,
                     scope="PROCUREMENT",
-                    fired_at=now_utc,
+                    fired_at=now_ist,
                 )
-                await self._record_alert_log(session, alert)
-                alerts.append(alert)
+                await self._persist_alert(session, fired, now_utc)
+                alerts.append(fired)
                 logger.info(
-                    "scope3 procurement alert fired rule=%s provider=%s days_remaining=%.1f",
-                    rule.name,
+                    "scope3 alert fired provider=%s rule=%s days_remaining=%.1f",
                     provider_name,
+                    rule.name,
                     days_remaining,
                 )
 
         return alerts
 
-    # ------------------------------------------------------------------
-    # Deduplication + logging helpers
-    # ------------------------------------------------------------------
-
-    async def _is_alert_deduped(
+    async def _alert_already_fired(
         self,
         session: AsyncSession,
         customer_id: UUID,
@@ -713,9 +565,8 @@ class MeterService(IMeterService):
         now_utc: datetime,
     ) -> bool:
         """
-        Return True if an identical alert was already fired within the dedup window.
-
-        C-059: dedup prevents duplicate evidence records from polluting the audit log.
+        Check meter_alert_log for a matching alert fired within the dedup window.
+        Returns True if a duplicate exists within _DEDUP_WINDOW_HOURS.
         """
         window_start = now_utc - timedelta(hours=_DEDUP_WINDOW_HOURS)
         dedup_row = await session.execute(
@@ -726,7 +577,7 @@ class MeterService(IMeterService):
                 WHERE  customer_id     = :customer_id
                   AND  bucket_type     = :bucket_type
                   AND  threshold_name  = :threshold_name
-                  AND  fired_at       >= :window_start
+                  AND  fired_at        >= :window_start
                 """
             ).bindparams(
                 customer_id=_sid(customer_id),
@@ -736,19 +587,15 @@ class MeterService(IMeterService):
             )
         )
         dedup_result = dedup_row.fetchone()
-        count: int = int(dedup_result.cnt) if dedup_result else 0
-        return count > 0
+        return bool(dedup_result and dedup_result.cnt > 0)
 
-    async def _record_alert_log(
+    async def _persist_alert(
         self,
         session: AsyncSession,
         alert: AlertFired,
+        now_utc: datetime,
     ) -> None:
-        """
-        Write fired alert to meter_alert_log as C-059 evidence record.
-
-        C-063: no PII - only UUID and threshold name recorded.
-        """
+        """Persist an AlertFired record to meter_alert_log for deduplication and audit trail."""
         await session.execute(
             text(
                 """
@@ -766,7 +613,100 @@ class MeterService(IMeterService):
                 threshold_name=alert.threshold_name,
                 pct_consumed=alert.pct_consumed,
                 scope=alert.scope,
-                fired_at=alert.fired_at,
+                fired_at=now_utc,
             )
         )
         await session.commit()
+
+    # ------------------------------------------------------------------
+    # IMeterService.run_daily_scan
+    # ------------------------------------------------------------------
+    async def run_daily_scan(self) -> DailyScanResult:
+        """
+        Runs at 06:00 IST (invoked by scheduler stub).
+        Scans all active customers, calls check_thresholds for each,
+        aggregates DailyScanResult.
+        C-059: each scan produces an evidence trail via meter_alert_log.
+        """
+        customers_scanned = 0
+        alerts_sent = 0
+        offers_generated = 0
+        fa_items_created = 0
+
+        try:
+            async with self._session_factory() as session:
+                # Fetch all active customers from wallet_buckets
+                cust_row = await session.execute(
+                    text(
+                        """
+                        SELECT DISTINCT customer_id
+                        FROM   wallet_buckets
+                        WHERE  is_active = TRUE
+                        """
+                    )
+                )
+                customer_rows = cust_row.fetchall()
+
+            for crow in customer_rows:
+                cid = UUID(str(crow.customer_id))
+                customers_scanned += 1
+                try:
+                    fired = await self.check_thresholds(cid)
+                    alerts_sent += len(fired)
+                    # Escalate FA items for BLOCK-action alerts
+                    for alert in fired:
+                        rule_action = self._resolve_action_for_alert(alert)
+                        if rule_action == AlertAction.FA:
+                            fa_items_created += 1
+                except asyncio.CancelledError:
+                    raise
+                except (ValueError, RuntimeError, OSError) as exc:
+                    logger.error(
+                        "run_daily_scan: check_thresholds failed for customer=%s",
+                        str(cid),
+                        exc_info=True,
+                        extra={"context": str(exc)},
+                    )
+
+        except asyncio.CancelledError:
+            raise
+        except (ValueError, RuntimeError, OSError) as exc:
+            logger.error(
+                "run_daily_scan failed",
+                exc_info=True,
+                extra={"context": str(exc)},
+            )
+            raise
+
+        logger.info(
+            "run_daily_scan complete scanned=%d alerts=%d fa_items=%d",
+            customers_scanned,
+            alerts_sent,
+            fa_items_created,
+        )
+        return DailyScanResult(
+            customers_scanned=customers_scanned,
+            alerts_sent=alerts_sent,
+            offers_generated=offers_generated,
+            fa_items_created=fa_items_created,
+        )
+
+    def _resolve_action_for_alert(self, alert: AlertFired) -> AlertAction:
+        """
+        Resolve the AlertAction for a fired alert by looking up the matching rule
+        in the appropriate policy.
+        Returns AlertAction.LOG as default if rule not found.
+        """
+        if alert.scope == "CUSTOMER_BUCKET":
+            policy = CUSTOMER_BUCKET_POLICY
+        elif alert.scope == "AGENCY":
+            policy = AGENCY_POLICY
+        elif alert.scope == "PROCUREMENT":
+            policy = PROCUREMENT_POLICY
+        else:
+            return AlertAction.LOG
+
+        for rule in policy.rules:
+            if rule.name == alert.threshold_name:
+                return rule.action
+        return AlertAction.LOG
