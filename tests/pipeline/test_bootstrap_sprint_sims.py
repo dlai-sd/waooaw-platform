@@ -30,38 +30,37 @@ class TestExtractWcTasks:
 
     def _make_wc(self, tmp_path: Path, rows: str) -> Path:
         wc = tmp_path / "WC027-test.md"
-        wc.write_text(textwrap.dedent(f"""\
-            # Work Contract
-            ## Tasks
-            | Task | Scope | model_hint | Status |
-            |---|---|---|---|
-            {rows}
-        """))
+        wc.write_text(
+            "# Work Contract\n## Tasks\n"
+            "| Task | Scope | model_hint | Status | completed_at |\n"
+            "|---|---|---|---|---|\n"
+            + rows + "\n"
+        )
         return wc
 
     def test_plain_task_ids_parsed(self, tmp_path):
-        wc = self._make_wc(tmp_path, "| WC027-01 | `src/foo/models.py` — Pydantic models | auto | TODO |")
+        wc = self._make_wc(tmp_path, "| WC027-01 | `src/foo/models.py` — Pydantic models | auto | pending | — |")
         tasks = bss._extract_wc_tasks(wc)
         assert "WC027-01" in tasks
         assert "models" in tasks["WC027-01"].lower()
 
     def test_letter_suffix_a_parsed(self, tmp_path):
         """Regression: WC027-01a was not matched before the fix."""
-        wc = self._make_wc(tmp_path, "| WC027-01a | `src/foo/models.py` — Pydantic models | reasoning | TODO |")
+        wc = self._make_wc(tmp_path, "| WC027-01a | `src/foo/models.py` — Pydantic models | reasoning | pending | — |")
         tasks = bss._extract_wc_tasks(wc)
         assert "WC027-01a" in tasks, "letter-suffix task IDs must be extracted"
 
     def test_letter_suffix_b_parsed(self, tmp_path):
         """Regression: WC027-01b was not matched before the fix."""
-        wc = self._make_wc(tmp_path, "| WC027-01b | `src/foo/router.py` — FastAPI router | auto | TODO |")
+        wc = self._make_wc(tmp_path, "| WC027-01b | `src/foo/router.py` — FastAPI router | auto | pending | — |")
         tasks = bss._extract_wc_tasks(wc)
         assert "WC027-01b" in tasks
 
     def test_mixed_plain_and_suffix_all_parsed(self, tmp_path):
         rows = "\n".join([
-            "| WC027-01a | `markup/models.py` — Pydantic models | reasoning | TODO |",
-            "| WC027-01b | `markup/router.py` — FastAPI router prefix /pricing | auto | TODO |",
-            "| WC027-02  | `tests/test_markup.py` — unit tests | auto | TODO |",
+            "| WC027-01a | `markup/models.py` — Pydantic models | reasoning | pending | — |",
+            "| WC027-01b | `markup/router.py` — FastAPI router prefix /pricing | auto | pending | — |",
+            "| WC027-02  | `tests/test_markup.py` — unit tests | auto | pending | — |",
         ])
         wc = self._make_wc(tmp_path, rows)
         tasks = bss._extract_wc_tasks(wc)
@@ -100,6 +99,17 @@ class TestClassifyTask:
     def test_sensitive_patterns_are_pending(self, scope):
         assert bss._classify_task(scope) == "PENDING"
 
+    def test_customer_id_does_not_trigger_custom_pending_false_positive(self):
+        # BUG-2: 'custom' in PENDING_PATTERNS matched 'customer_id' (substring).
+        # Word-boundary fix: \bcustom\b must NOT match 'customer_id'.
+        scope = "`procurement/models.py` — record_cost(customer_id: UUID, cost_paise: int)"
+        assert bss._classify_task(scope) == "PASS"
+
+    def test_custom_keyword_still_triggers_pending_when_standalone(self):
+        # Regression guard: \bcustom\b must still match standalone 'custom' usage.
+        scope = "`custom/engine.py` — experimental custom logic"
+        assert bss._classify_task(scope) == "PENDING"
+
 
 # ── full bootstrap produces correct verdicts for split tasks ───────────────
 
@@ -127,11 +137,11 @@ class TestBootstrapProducesPassForSplitTasks:
         wc.write_text(textwrap.dedent("""\
             # WC-027
             ## Tasks
-            | Task | Scope | model_hint | Status |
-            |---|---|---|---|
-            | WC027-01a | `markup/models.py` — Pydantic models | reasoning | TODO |
-            | WC027-01b | `markup/router.py` — FastAPI router | auto | TODO |
-            | WC027-02 | `tests/test_markup.py` — unit tests | auto | TODO |
+            | Task | Scope | model_hint | Status | completed_at |
+            |---|---|---|---|---|
+            | WC027-01a | `markup/models.py` — Pydantic models | reasoning | pending | — |
+            | WC027-01b | `markup/router.py` — FastAPI router | auto | pending | — |
+            | WC027-02 | `tests/test_markup.py` — unit tests | auto | pending | — |
         """))
         return wc
 
@@ -160,10 +170,17 @@ class TestBootstrapProducesPassForSplitTasks:
             )
 
     def test_fallback_scope_stays_pending(self, tmp_path, monkeypatch):
-        """Tasks not found in WC file → fallback scope → PENDING (human review required)."""
+        """Tasks in WC file with unrecognised scope → PENDING (human review required)."""
         self._make_state(tmp_path, ["WC027-99"])
         (tmp_path / "work-contracts").mkdir(parents=True, exist_ok=True)
-        (tmp_path / "work-contracts" / "WC027-empty.md").write_text("# No task table\n")
+        wc = tmp_path / "work-contracts" / "WC027-empty.md"
+        # Scope has no known-safe AND no pending keyword → default PENDING
+        wc.write_text(
+            "# Work Contract\n## Tasks\n"
+            "| Task | Scope | model_hint | Status | completed_at |\n"
+            "|---|---|---|---|---|\n"
+            "| WC027-99 | `bizlogic/engine.py` — some complex pipeline | auto | pending | — |\n"
+        )
         sim_dir = tmp_path / "simulation"
         sim_dir.mkdir()
 

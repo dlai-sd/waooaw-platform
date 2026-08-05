@@ -82,24 +82,39 @@ def _find_wc_file(sprint: str) -> Path | None:
 
 
 def _extract_wc_tasks(wc_file: Path) -> dict[str, str]:
-    """Extract task descriptions from the WC task table. Returns {task_id: scope_text}."""
+    """Extract pending task IDs + scopes from WC file. Returns {task_id: scope_text}.
+
+    Uses same source-of-truth as check_c086_gate.py: subtask-level rows, status=pending.
+    """
     content = wc_file.read_text()
     tasks: dict[str, str] = {}
-    # Match table rows: | WC026-01 | or | WC027-01a | (optional letter suffix for split tasks)
-    for match in re.finditer(
-        r"\|\s*(WC\d{3}-\d{2}[a-z]?)\s*\|\s*([^|]+)\|[^|]+\|[^|]+\|", content
-    ):
-        task_id = match.group(1).strip()
-        scope = match.group(2).strip()
+    task_id_pat = re.compile(r"^WC\d+-\d+[a-z]?$")
+    for line in content.splitlines():
+        if not line.startswith("|"):
+            continue
+        cells = [c.strip() for c in line.split("|")]
+        if len(cells) < 6:
+            continue
+        task_id = cells[1].strip()
+        if not task_id_pat.match(task_id):
+            continue
+        status = cells[-3].strip().lower()
+        if status != "pending":
+            continue
+        scope = cells[2].strip()
         tasks[task_id] = scope
     return tasks
 
 
 def _classify_task(scope: str) -> str:
-    """Return 'PASS' for known-safe patterns, 'PENDING' for novel logic."""
+    """Return 'PASS' for known-safe patterns, 'PENDING' for novel logic.
+
+    PENDING_PATTERNS use word-boundary regex to prevent false positives
+    (e.g. 'custom' must not match 'customer_id').
+    """
     scope_lower = scope.lower()
     for keyword in PENDING_PATTERNS:
-        if keyword in scope_lower:
+        if re.search(r"\b" + re.escape(keyword) + r"\b", scope_lower):
             return "PENDING"
     for keyword in KNOWN_SAFE_PATTERNS:
         if keyword in scope_lower:
@@ -152,16 +167,21 @@ def main(dry_run: bool = False) -> int:
     wc_file = _find_wc_file(current_sprint)
     wc_tasks = _extract_wc_tasks(wc_file) if wc_file else {}
     if not wc_file:
-        print(f"  ⚠️  No WC file found for {current_sprint} — using task IDs only")
+        print(f"  ⚠️  No WC file found for {current_sprint} — cannot bootstrap subtask SIMs")
+        return 1
 
     created = 0
-    for task_id in tasks_remaining:
+    if not wc_file:
+        print(f"  ⚠️  No WC file found for {current_sprint} — cannot bootstrap subtask SIMs")
+        return 1
+
+    # Iterate over pending subtask IDs from WC file (same source as check_c086_gate.py)
+    for task_id, scope in wc_tasks.items():
         existing = list(SIM_DIR.glob(f"SIM-PL-002-{task_id}-*.md"))
         if existing:
             print(f"  ✅ {task_id}: SIM file exists — {existing[0].name}")
             continue
 
-        scope = wc_tasks.get(task_id, f"{current_sprint} task")
         verdict = _classify_task(scope)
         slug = re.sub(r"[^a-z0-9]+", "-", scope[:40].lower()).strip("-")
         sim_path = SIM_DIR / f"SIM-PL-002-{task_id}-{slug}.md"
