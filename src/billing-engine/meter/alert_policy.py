@@ -1,8 +1,8 @@
-# Implements: <spec-path> §<section>
+# Implements: work-contracts/WC-028-*.md §WC028-01b:alert_policy.py
 # constitutional_basis: C-059 (Implementation Traceability)
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import StrEnum
 
 
@@ -16,7 +16,7 @@ class AlertAction(StrEnum):
 
 
 class AlertScope(StrEnum):
-    """Alert scope levels: customer bucket, agency sub-wallet, or procurement runway."""
+    """Three scopes for threshold monitoring."""
 
     CUSTOMER_BUCKET = "CUSTOMER_BUCKET"
     AGENCY = "AGENCY"
@@ -25,53 +25,50 @@ class AlertScope(StrEnum):
 
 @dataclass(frozen=True)
 class ThresholdRule:
-    """
-    A single threshold rule in the section 2.3a ladder.
-
-    Constitutional: C-051 (resource transparency), C-043 (budget ceiling).
-
-    consumed_pct_trigger: float in [0.0, 1.0] - fires when pct_consumed >= this value.
-    action: AlertAction - what to do when the threshold is breached.
-    bypass_quiet_hours: bool - if True, alert fires even during quiet hours (23:00-06:00 IST).
-    """
+    """One rung on the section 2.3a threshold ladder."""
 
     name: str
-    consumed_pct_trigger: float
+    consumed_pct_trigger: float  # 0.0-1.0  (e.g. 0.70 means 70 % consumed)
     action: AlertAction
     bypass_quiet_hours: bool = False
 
 
 @dataclass(frozen=True)
+class RunwayThresholdRule:
+    """Procurement scope: triggers on days_remaining <= threshold."""
+
+    name: str
+    days_remaining_trigger: float  # e.g. 30.0
+    action: AlertAction
+    bypass_quiet_hours: bool = False
+
+
+@dataclass
 class ThresholdPolicy:
-    """
-    Full threshold ladder for a given scope.
-
-    Constitutional: C-049 (honest limitation — escalating alerts), C-051 (transparency).
-
-    quiet_hours_start_ist: int - hour (24h) when quiet window begins (default 23).
-    quiet_hours_end_ist: int  - hour (24h) when quiet window ends   (default  6).
-    Thresholds are evaluated in list order; first match fires.
-    """
+    """Ordered list of ThresholdRules for one scope."""
 
     scope: AlertScope
-    thresholds: list[ThresholdRule]
+    thresholds: list[ThresholdRule] = field(default_factory=list)
+    runway_thresholds: list[RunwayThresholdRule] = field(default_factory=list)
     quiet_hours_start_ist: int = 23
     quiet_hours_end_ist: int = 6
 
 
 # ---------------------------------------------------------------------------
-# Section 2.3a Scope 1 - Customer Bucket
-# Ladder: WARN_30 (70% consumed) -> WARN_10 (90%) -> BLOCK (100%)
-# 70% consumed means 30% remaining; 90% consumed means 10% remaining.
-# BLOCK bypasses quiet hours so billing halt is never silently deferred.
-# Constitutional: C-043 (budget ceiling enforcement), C-049 (honest limitation).
+# section 2.3a Scope 1 -- Customer Bucket
 # ---------------------------------------------------------------------------
 CUSTOMER_BUCKET_POLICY: ThresholdPolicy = ThresholdPolicy(
     scope=AlertScope.CUSTOMER_BUCKET,
     thresholds=[
         ThresholdRule(
             name="WARN_30",
-            consumed_pct_trigger=0.70,
+            consumed_pct_trigger=0.70,  # 30 % remaining -> 70 % consumed
+            action=AlertAction.NOTIFY,
+            bypass_quiet_hours=False,
+        ),
+        ThresholdRule(
+            name="WARN_20",
+            consumed_pct_trigger=0.80,
             action=AlertAction.NOTIFY,
             bypass_quiet_hours=False,
         ),
@@ -79,11 +76,11 @@ CUSTOMER_BUCKET_POLICY: ThresholdPolicy = ThresholdPolicy(
             name="WARN_10",
             consumed_pct_trigger=0.90,
             action=AlertAction.NOTIFY,
-            bypass_quiet_hours=False,
+            bypass_quiet_hours=True,
         ),
         ThresholdRule(
             name="AD_WALLET_BELOW_MINIMUM",
-            consumed_pct_trigger=1.00,
+            consumed_pct_trigger=1.00,  # balance reaches zero
             action=AlertAction.BLOCK,
             bypass_quiet_hours=True,
         ),
@@ -91,10 +88,7 @@ CUSTOMER_BUCKET_POLICY: ThresholdPolicy = ThresholdPolicy(
 )
 
 # ---------------------------------------------------------------------------
-# Section 2.3a Scope 2 - Agency Sub-Wallet
-# Agency budgets have a softer ladder: LOG at 50%, NOTIFY at 75%, FA at 90%.
-# A NULL agency quota produces no alert (handled in MeterService.check_thresholds).
-# Constitutional: C-049 (honest limitation at agency level), C-051 (transparency).
+# section 2.3a Scope 2 -- Agency Sub-wallet
 # ---------------------------------------------------------------------------
 AGENCY_POLICY: ThresholdPolicy = ThresholdPolicy(
     scope=AlertScope.AGENCY,
@@ -106,14 +100,14 @@ AGENCY_POLICY: ThresholdPolicy = ThresholdPolicy(
             bypass_quiet_hours=False,
         ),
         ThresholdRule(
-            name="AGENCY_WARN_75",
-            consumed_pct_trigger=0.75,
+            name="AGENCY_WARN_80",
+            consumed_pct_trigger=0.80,
             action=AlertAction.NOTIFY,
             bypass_quiet_hours=False,
         ),
         ThresholdRule(
-            name="AGENCY_CRITICAL_90",
-            consumed_pct_trigger=0.90,
+            name="AGENCY_CRITICAL",
+            consumed_pct_trigger=0.95,
             action=AlertAction.FA,
             bypass_quiet_hours=True,
         ),
@@ -121,63 +115,40 @@ AGENCY_POLICY: ThresholdPolicy = ThresholdPolicy(
 )
 
 # ---------------------------------------------------------------------------
-# Section 2.3a Scope 3 - WAOOAW Procurement Runway
-# Expressed in days_remaining, not pct_consumed.
-# Sentinel: consumed_pct_trigger is unused for runway rules; MeterService uses
-# the days_remaining comparison directly. We encode the day thresholds in the
-# rule name: RUNWAY_P2 (≤30d), RUNWAY_P1 (≤14d), RUNWAY_P0 (≤7d),
-# RUNWAY_CRITICAL (≤3d), RUNWAY_EMERGENCY (≤1d).
-# Constitutional: C-043 (procurement runway ceiling), C-051 (transparency on provider availability).
+# section 2.3a Scope 3 -- WAOOAW Procurement Runway
 # ---------------------------------------------------------------------------
-@dataclass(frozen=True)
-class RunwayThresholdRule(ThresholdRule):
-    """
-    Extension of ThresholdRule for Scope 3 (Procurement Runway).
-
-    days_trigger: int - fires when provider runway days_remaining <= this value.
-    consumed_pct_trigger is set to 0.0 and ignored by MeterService for runway rules.
-    """
-
-    days_trigger: int = 0
-
-
 PROCUREMENT_POLICY: ThresholdPolicy = ThresholdPolicy(
     scope=AlertScope.PROCUREMENT,
-    thresholds=[
+    runway_thresholds=[
         RunwayThresholdRule(
             name="RUNWAY_P2",
-            consumed_pct_trigger=0.0,
+            days_remaining_trigger=30.0,
             action=AlertAction.LOG,
             bypass_quiet_hours=False,
-            days_trigger=30,
         ),
         RunwayThresholdRule(
             name="RUNWAY_P1",
-            consumed_pct_trigger=0.0,
+            days_remaining_trigger=14.0,
             action=AlertAction.NOTIFY,
             bypass_quiet_hours=False,
-            days_trigger=14,
         ),
         RunwayThresholdRule(
             name="RUNWAY_P0",
-            consumed_pct_trigger=0.0,
+            days_remaining_trigger=7.0,
             action=AlertAction.FA,
             bypass_quiet_hours=True,
-            days_trigger=7,
         ),
         RunwayThresholdRule(
             name="RUNWAY_CRITICAL",
-            consumed_pct_trigger=0.0,
+            days_remaining_trigger=3.0,
             action=AlertAction.FA,
             bypass_quiet_hours=True,
-            days_trigger=3,
         ),
         RunwayThresholdRule(
             name="RUNWAY_EMERGENCY",
-            consumed_pct_trigger=0.0,
+            days_remaining_trigger=1.0,
             action=AlertAction.BLOCK,
             bypass_quiet_hours=True,
-            days_trigger=1,
         ),
     ],
 )
