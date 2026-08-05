@@ -64,7 +64,7 @@ Tests call it directly via the concrete `MeterService` class, not through the AB
 `wallet_buckets` only stores `balance_paise` (remaining). There is no `initial_allocation_paise`
 column. The correct % consumed computation is:
   `consumed_paise = SUM(platform_cost_ledger.marked_up_cost_inr_paise WHERE customer_id = X AND billing_period_start = current_period)`
-  `pct_consumed = consumed_paise / (consumed_paise + balance_paise)`
+  `pct_consumed = consumed_paise / wallet_buckets.balance_paise  # balance_paise is the initial quota, not remaining`
 This requires a join to `platform_cost_ledger` — it cannot be derived from `wallet_buckets` alone.
 
 **The deduplication contract:**
@@ -87,12 +87,12 @@ period_id VARCHAR(7), fired_at TIMESTAMPTZ)` with UNIQUE on `(customer_id, bucke
 |---|---|---|
 | `record_usage` parameter name | `amount_paise` — matches `IMeterService` skeleton | `wbe_interfaces.py` line 79 |
 | `provider_account_id` resolution | Lookup `thread_catalog` → `provider_accounts` by thread_type | `platform_cost_ledger` NOT NULL constraint |
-| `% consumed` formula | `consumed / (consumed + balance)` — `platform_cost_ledger` SUM join | `wallet_buckets` has no initial_allocation column |
+| `% consumed` formula | `consumed / balance_paise` (balance_paise = initial quota) — `platform_cost_ledger` SUM join | `wallet_buckets.balance_paise` is the initial quota, never decremented |
 | `check_thresholds` is NOT a skeleton method | It is a `MeterService` public helper, called by `run_daily_scan` | `IMeterService` ABC has `run_daily_scan`, not `check_thresholds` |
 | `meter_alert_log` DDL location | Must be in `12-billing-engine.sql` amendment (ADR-011) | Not in service startup — DDL in service code is prohibited |
 | WARN_10 triggers at ≤10% remaining | Bucket at 5–10% remaining fires WARN_10 — NOT 15% | §2.3a: "≥90% consumed = 10% remaining" |
 | Scope 3 threshold names | Not named in spec — derive from days: RUNWAY_P2 (≤30d), RUNWAY_P1 (≤14d), RUNWAY_P0 (≤7d), RUNWAY_CRITICAL (≤3d), RUNWAY_EMERGENCY (≤1d) | §2.3a Scope 3 table |
-| Quiet hours | 23:00–06:00 IST — WhatsApp not dispatched, queued | §2.3a quiet hours clause |
+| Quiet hours | 23:00-06:00 IST — WhatsApp not dispatched, queued | §2.3a quiet hours clause |
 
 ---
 

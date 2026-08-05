@@ -26,9 +26,9 @@ per the §2.3a ladder, and expose FastAPI endpoints. Daily scan runs at 06:00 IS
 
 | task_id | scope | model_hint | status | completed_at |
 |---|---|---|---|---|
-| WC028-01 | `src/billing-engine/meter/service.py` — `MeterService` implementing `IMeterService`: `record_usage(customer_id, thread_type, **amount_paise**)` (resolves `provider_account_id` via `thread_catalog → provider_accounts` lookup, then writes to `platform_cost_ledger`), `project_depletion(customer_id, thread_type) -> DepletionProjection` (7d rolling avg from `platform_cost_ledger`), `run_daily_scan() -> DailyScanResult` (calls `check_thresholds` for all active customers), `check_thresholds(customer_id) -> list[AlertFired]` (concrete non-ABC helper — NOT in `IMeterService`; tests call it directly on the concrete class; computes `pct_consumed = SUM(platform_cost_ledger.marked_up_cost_inr_paise WHERE customer_id + current billing_period) / (consumed + wallet_buckets.balance_paise)`; fires per §2.3a scope 1+2+3 ladder; deduplicates via `meter_alert_log`); `src/billing-engine/meter/alert_policy.py` — `ThresholdRule` dataclass (name, consumed_pct_trigger, action: Enum[LOG\|NOTIFY\|FA\|BLOCK], bypass_quiet_hours: bool), `ThresholdPolicy` dataclass (scope, thresholds: list[ThresholdRule], quiet_hours_start_ist=23, quiet_hours_end_ist=6), singletons: `CUSTOMER_BUCKET_POLICY`, `AGENCY_POLICY`, `PROCUREMENT_POLICY` per §2.3a — Scope 3 threshold names: `RUNWAY_P2` (≤30d), `RUNWAY_P1` (≤14d), `RUNWAY_P0` (≤7d), `RUNWAY_CRITICAL` (≤3d), `RUNWAY_EMERGENCY` (≤1d) | reasoning | failed_structural | — |
+| WC028-01 | `src/billing-engine/meter/service.py` — `MeterService` implementing `IMeterService`: `record_usage(customer_id, thread_type, **amount_paise**)` (resolves `provider_account_id` via `thread_catalog → provider_accounts` lookup, then writes to `platform_cost_ledger`), `project_depletion(customer_id, thread_type) -> DepletionProjection` (7d rolling avg from `platform_cost_ledger`), `run_daily_scan() -> DailyScanResult` (calls `check_thresholds` for all active customers), `check_thresholds(customer_id) -> list[AlertFired]` (concrete non-ABC helper — NOT in `IMeterService`; tests call it directly on the concrete class; computes `pct_consumed = SUM(platform_cost_ledger.marked_up_cost_inr_paise WHERE customer_id + current billing_period) / wallet_buckets.balance_paise` (quota; see C-043 note below); fires per §2.3a scope 1+2+3 ladder; deduplicates via `meter_alert_log`); `src/billing-engine/meter/alert_policy.py` — `ThresholdRule` dataclass (name, consumed_pct_trigger, action: Enum[LOG\|NOTIFY\|FA\|BLOCK], bypass_quiet_hours: bool), `ThresholdPolicy` dataclass (scope, thresholds: list[ThresholdRule], quiet_hours_start_ist=23, quiet_hours_end_ist=6), singletons: `CUSTOMER_BUCKET_POLICY`, `AGENCY_POLICY`, `PROCUREMENT_POLICY` per §2.3a — Scope 3 threshold names: `RUNWAY_P2` (≤30d), `RUNWAY_P1` (≤14d), `RUNWAY_P0` (≤7d), `RUNWAY_CRITICAL` (≤3d), `RUNWAY_EMERGENCY` (≤1d) | reasoning | failed_structural | — |
 | WC028-02 | `src/billing-engine/meter/whatsapp_notifier.py` — `WhatsAppNotifier`: `send(customer_id, template_id, params: dict) -> bool` (stubs to 360dialog MCP call — raise `NotImplementedError` with TODO comment pointing to ADR-023; in tests mock this stub); `src/billing-engine/meter/router.py` — FastAPI prefix `/meter`: `GET /{customer_id}/status` returns `UsageStatus`, `POST /daily-scan` (internal scheduler call, triggers `run_daily_scan()`); mount router in `src/billing-engine/main.py`. NOTE: `GET /platform/margin/report` is Procurement API (§2.4) — deferred to WC-029 scope. | auto | skipped_idempotent | — |
-| WC028-03 | `tests/billing-engine/test_meter.py` — test: threshold fires at correct % (30% remaining triggers WARN_30), no double-fire within 24h deduplication window, quiet hours suppress WhatsApp (23:00–06:00 IST, notifications queued), procurement runway P0 escalation at ≤7 days, agency NULL quota produces no alert, `POST /meter/daily-scan` calls check_thresholds for all customers, `CCT-BILLINGLOOP-01` scenario: AD wallet hits zero → `alerts_sent == 1` type `AD_WALLET_BELOW_MINIMUM` — ≥90% line coverage | auto | failed_structural | — |
+| WC028-03 | `tests/billing-engine/test_meter.py` — test: threshold fires at correct % (30% remaining triggers WARN_30), no double-fire within 24h deduplication window, quiet hours suppress WhatsApp (23:00-06:00 IST, notifications queued), procurement runway P0 escalation at ≤7 days, agency NULL quota produces no alert, `POST /meter/daily-scan` calls check_thresholds for all customers, `CCT-BILLINGLOOP-01` scenario: AD wallet hits zero → `alerts_sent == 1` type `AD_WALLET_BELOW_MINIMUM` — ≥90% line coverage | auto | failed_structural | — |
 
 ---
 
@@ -78,13 +78,17 @@ implemented by deleting the dedup row on bucket refill (WalletService top-up hoo
 
 ## C-043 Implementation Note — % Consumed Formula
 
-`wallet_buckets.balance_paise` stores the **remaining** balance only — there is no `initial_allocation` column.
+`wallet_buckets.balance_paise` is the **initial quota** set at wallet creation.
+`record_usage` writes to `platform_cost_ledger` only and never decrements it.
 `pct_consumed` must be computed as:
 ```python
 consumed = SUM(platform_cost_ledger.marked_up_cost_inr_paise
                WHERE customer_id = X AND billing_period_start = current_period)
-pct_consumed = consumed / (consumed + balance_paise)  # avoids divide-by-zero: if both zero, pct=0
+quota = wallet_buckets.balance_paise  # initial allocation, unchanged by usage
+pct_consumed = consumed / quota if quota > 0 else (1.0 if consumed > 0 else 0.0)
 ```
+Do NOT use `consumed / (consumed + balance_paise)` — that formula underestimates
+consumption because `balance_paise` is a fixed quota, not a live remaining value.
 This requires a `platform_cost_ledger` aggregate JOIN per customer per period.
 
 `record_usage` must resolve `provider_account_id` before inserting into `platform_cost_ledger`:
@@ -99,5 +103,5 @@ provider_id   = await db.scalar(SELECT id FROM institutional.provider_accounts W
 - `project_depletion` uses last 7 calendar days of `platform_cost_ledger` entries for rolling avg.
 - `check_thresholds` is a **concrete** `MeterService` method — not in `IMeterService` ABC. Tests call it via the concrete class. `run_daily_scan` calls it per customer internally.
 - All Scope 1+2 threshold names must match §2.3a exactly: `WARN_10`, `WARN_30`, `WARN_50`, `INFO_70`, `AD_WALLET_BELOW_MINIMUM`.
-- Scope 3 procurement threshold names: `RUNWAY_P2` (≤30d), `RUNWAY_P1` (≤14d), `RUNWAY_P0` (≤7d), `RUNWAY_CRITICAL` (≤3d), `RUNWAY_EMERGENCY` (≤1d).
+- Scope 3 procurement threshold names: `RUNWAY_P2` (≤30d), `RUNWAY_P1` (≤14d), `RUNWAY_P0` (≤7d), `RUNWAY_CRITICAL` (≤3d), `RUNWAY_EMERGENCY` (≤1d). Use `PROCUREMENT_POLICY.runway_thresholds` (NOT `.thresholds`) and compare `days_remaining <= rule.days_remaining_trigger`.
 - **GO validation:** This WC was reviewed by EA (GOA-WC028-01) and SA (GOA-WC028-02). See `goals/GOAL-WC028-meter-alert-engine.md` for full institutional record.
