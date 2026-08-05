@@ -110,16 +110,22 @@ def _parse_wc_tasks(wc_file: Path, sprint_prefix: str) -> list[dict]:
     tasks: list[dict] = []
 
     # Format 1: table rows — optional [a-z] suffix for split tasks (WC027-01a, WC027-01b)
+    # FIX (5-Why systemic): WC scope columns may contain Markdown-escaped pipes (\|) that
+    # break naive [^|] regex splitting.  Normalise \| → placeholder before matching, then
+    # restore so scope text is clean for downstream path extraction.
+    _PIPE_ESC = "⟦PIPE⟧"
+    safe_text = text.replace(r"\|", _PIPE_ESC)
     table_row = re.compile(
         r"\|\s*(" + re.escape(sprint_prefix) + r"-\d{2}[a-z]?)\s*\|"
         r"\s*([^|]+)\s*\|\s*(`?)(reasoning|auto|none)`?\s*\|"
     )
-    for m in table_row.finditer(text):
+    for m in table_row.finditer(safe_text):
+        scope = m.group(2).strip().replace(_PIPE_ESC, "|")
         tasks.append({
             "task_id": m.group(1).strip(),
-            "scope":      m.group(2).strip(),
+            "scope":      scope,
             "model_hint": m.group(4).strip(),
-            "title":      m.group(2).strip()[:80],
+            "title":      scope[:80],
         })
 
     if tasks:
@@ -230,20 +236,49 @@ No code. No SubTaskDef struct. JSON only."""
 
 
 def _llm_call(prompt: str, system: str, api_key: str, max_tokens: int = 2048) -> str | None:
-    """Groom LLM call — delegates to the governed MagicLLM layer (C-077, ADR-030).
+    """Groom LLM call — direct Anthropic call for prose JSON (description + constitutional_check).
 
-    api_key is accepted for backward compatibility but MagicLLM reads it from
-    ANTHROPIC_API_KEY env directly.  system is forwarded as constitutional_check
-    so MagicLLM appends it to the context block seen by the model.
+    The groomer expects a JSON prose response, not XML file blocks.  Routing through
+    MagicLLM's standard pipeline (expected_output_format=xml_file_blocks) causes
+    FORMAT_FAILURE because the model returns JSON instead of <file> tags.
+    This is a structural mismatch: prose grooming calls must use the raw API directly.
+
+    C-077 (FinOps): uses Haiku (claude-haiku-3-5-latest) — prose metadata, not code generation.
+    Constitutional basis: ADR-036 §Grooming, C-059, C-077.
     """
-    return call_llm_via_magiclm(
-        task_id="GROOM-SUBTASK",
-        task_description=prompt,
-        spec_content="",
-        constitutional_check=system,
-        model_hint="auto",
-        max_tokens=max_tokens,
+    import urllib.request
+    import json as _json
+
+    _api_key = api_key or os.environ.get("ANTHROPIC_API_KEY", "")
+    if not _api_key:
+        return None
+
+    payload = {
+        "model": "claude-haiku-4-5",
+        "max_tokens": max_tokens,
+        "system": system,
+        "messages": [{"role": "user", "content": prompt}],
+    }
+    req = urllib.request.Request(
+        "https://api.anthropic.com/v1/messages",
+        data=_json.dumps(payload).encode(),
+        headers={
+            "x-api-key": _api_key,
+            "anthropic-version": "2023-06-01",
+            "content-type": "application/json",
+        },
+        method="POST",
     )
+    try:
+        with urllib.request.urlopen(req, timeout=60) as resp:
+            body = _json.loads(resp.read().decode())
+        for block in body.get("content", []):
+            if block.get("type") == "text":
+                return block["text"]
+        return None
+    except Exception as exc:
+        print(f"  WARN: _llm_call direct API error ({exc})")
+        return None
 
 
 def _strip_llm_fences(text: str) -> str:
@@ -695,8 +730,15 @@ def _generate_subtask_chain(
         output_files = []
 
     # --- Compose inject_source_files deterministically ---
+    # FIX (5-Why systemic): inject only files that exist on disk.  Accumulated impl
+    # paths from tasks not yet groomed/executed would otherwise inject non-existent
+    # files into the test task context, giving the LLM empty content and causing
+    # WC028-03a-style failures.  Files produced by the current grooming batch will
+    # exist only after their subtasks run; the task_decomposer will re-inject the
+    # freshly written files at execution time via the output_files mechanism.
     if is_test:
-        inject_source_files = (accumulated_impl_files or []) + skeleton_files
+        existing_impl_files = [f for f in (accumulated_impl_files or []) if Path(f).exists()]
+        inject_source_files = existing_impl_files + skeleton_files
     else:
         inject_source_files = skeleton_files
 

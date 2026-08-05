@@ -480,13 +480,191 @@ TASK_HANDLERS = {
             ),
         ]
     },
+        "WC028-01": {
+        "subtasks": [
+            SubTaskDef(
+                id='WC028-01a',
+                description='Implement meter usage recording, depletion projection, and daily threshold scanning with multi-scope alert policy enforcement for billing runway visibility.',
+                type="llm",
+                depends_on=[],
+                compile_gate='py_compile',
+                service_dir='src/billing-engine',
+                wc_task_id='WC028-01',
+                stack='python',
+                output_files=[
+                    'src/billing-engine/meter/service.py',
+                    'src/billing-engine/meter/alert_policy.py',
+                ],
+                inject_source_files=[
+                    'src/billing-engine/skeleton/__init__.py',
+                    'src/billing-engine/skeleton/wbe_interfaces.py',
+                ],
+                spec_sections={
+                    'work-contracts/WC-028-wbe-s4-meter-alert-engine.md': 'WC028-01',
+                },
+                constitutional_check='Implement IMeterService.record_usage(), IMeterService.project_depletion(), IMeterService.run_daily_scan() from wbe_interfaces.py skeleton. Implement MeterService.check_thresholds(customer_id) → list[AlertFired] as concrete helper (NOT abstract; called directly by tests on concrete class). Define ThresholdRule and ThresholdPolicy dataclasses in alert_policy.py with Scope 3 runway thresholds: RUNWAY_P2 (≤30d), RUNWAY_P1 (≤14d), RUNWAY_P0 (≤7d), RUNWAY_CRITICAL (≤3d), RUNWAY_EMERGENCY (≤1d). Define singletons CUSTOMER_BUCKET_POLICY, AGENCY_POLICY, PROCUREMENT_POLICY. C-043 (AlertFired structure), C-088 (billing_profiles validation), C-089 (margin floor), C-091 (Thread Catalog), §2.3a (scope 1+2+3 ladder), ADR-034 (Redis cache for wallet balance). Threshold logic: compute pct_consumed from platform_cost_ledger.marked_up_cost_inr_paise vs (consumed + wallet_buckets.balance_paise); deduplicate alerts via meter_alert_log; respect quiet_hours_ist and bypass_quiet_hours flag; resolve provider_account_id via thread_catalog.provider_accounts lookup; use 7d rolling average for depletion projection.',
+                model_hint='reasoning',
+                max_tokens=8000,
+            ),
+            SubTaskDef(
+                id="WC028-01b",
+                description="Add complete type annotations and fix ruff style (ANN001/ANN201 enforcement)",
+                type="llm",
+                depends_on=["WC028-01a"],
+                compile_gate="ruff",
+                service_dir="src/billing-engine",
+                wc_task_id="WC028-01",
+                stack="python",
+                output_files=[
+                    "src/billing-engine/meter/service.py",
+                    "src/billing-engine/meter/alert_policy.py",
+                ],
+                inject_source_files=[
+                    "src/billing-engine/meter/service.py",
+                    "src/billing-engine/meter/alert_policy.py",
+                ],
+                spec_sections={
+                    "work-contracts/WC-028-wbe-s4-meter-alert-engine.md": "WC028-01",
+                },
+                constitutional_check=(
+                    "POLISH PASS — type annotation enforcement only.\n"
+                    "Add type annotations to ALL function parameters (ANN001).\n"
+                    "Add return type annotations to ALL functions (ANN201, ANN202).\n"
+                    "DO NOT change function names, business logic, or structure.\n"
+                    "DO NOT add new imports beyond those needed for type annotations."
+                ),
+                model_hint="auto",
+                max_tokens=3000,
+            ),
+            SubTaskDef(
+                id="WC028-01c",
+                description="Write pytest suite covering happy path, error cases and constitutional invariants for service",
+                type="llm",
+                depends_on=["WC028-01b"],
+                compile_gate="ruff",
+                service_dir="src/billing-engine",
+                wc_task_id="WC028-01",
+                stack="python",
+                output_files=[
+                    "tests/billing-engine/test_service.py",
+                ],
+                inject_source_files=[
+                    "src/billing-engine/meter/service.py",
+                    "src/billing-engine/meter/alert_policy.py",
+                ],
+                spec_sections={
+                    "work-contracts/WC-028-wbe-s4-meter-alert-engine.md": "WC028-01",
+                },
+                constitutional_check=(
+                    "TEST PASS — write pytest tests against the provided implementation.\n"
+                    "Cover: happy path, error cases, idempotency, constitutional invariants from scope.\n"
+                    "Tests file is exempt from ANN (per pyproject.toml per-file-ignores).\n"
+                    "Use pytest-asyncio for async tests. Mock Redis/DB with pytest fixtures.\n"
+                    "Use f-strings only — never % string formatting."
+                ),
+                model_hint="reasoning",
+                max_tokens=6000,
+            ),
+        ]
+    },
+        "WC028-02": {
+        "subtasks": [
+            SubTaskDef(
+                id='WC028-02a',
+                description='Implement WhatsApp notification stub for customer alerts and meter status endpoint with daily scan scheduling.',
+                type="llm",
+                depends_on=['WC028-01a'],
+                compile_gate='py_compile',
+                service_dir='src/billing-engine',
+                wc_task_id='WC028-02',
+                stack='python',
+                output_files=[
+                    'src/billing-engine/meter/whatsapp_notifier.py',
+                    'src/billing-engine/meter/router.py',
+                    'src/billing-engine/main.py',
+                ],
+                inject_source_files=[
+                    'src/billing-engine/skeleton/__init__.py',
+                    'src/billing-engine/skeleton/wbe_interfaces.py',
+                ],
+                spec_sections={
+                    'work-contracts/WC-028-wbe-s4-meter-alert-engine.md': 'WC028-02',
+                },
+                constitutional_check='Implement IWalletService, IMarkupEngine, IMeterService from wbe_interfaces.py skeleton (C-088, C-089, C-090, C-091, C-038, C-048, C-051); WhatsAppNotifier.send() raises NotImplementedError with TODO→ADR-023; IMeterService.run_daily_scan() and IMeterService.project_depletion() per §surface.endpoints; FastAPI router: GET /meter/{customer_id}/status returns UsageStatus, POST /meter/daily-scan triggers run_daily_scan(); mount in main.py; ADR-034 (Redis SLA ≤50ms p99 for get_bucket_balance)',
+                model_hint='auto',
+                max_tokens=4000,
+            ),
+            SubTaskDef(
+                id="WC028-02b",
+                description="Add complete type annotations and fix ruff style (ANN001/ANN201 enforcement)",
+                type="llm",
+                depends_on=["WC028-02a"],
+                compile_gate="ruff",
+                service_dir="src/billing-engine",
+                wc_task_id="WC028-02",
+                stack="python",
+                output_files=[
+                    "src/billing-engine/meter/whatsapp_notifier.py",
+                    "src/billing-engine/meter/router.py",
+                    "src/billing-engine/main.py",
+                ],
+                inject_source_files=[
+                    "src/billing-engine/meter/whatsapp_notifier.py",
+                    "src/billing-engine/meter/router.py",
+                    "src/billing-engine/main.py",
+                ],
+                spec_sections={
+                    "work-contracts/WC-028-wbe-s4-meter-alert-engine.md": "WC028-02",
+                },
+                constitutional_check=(
+                    "POLISH PASS — type annotation enforcement only.\n"
+                    "Add type annotations to ALL function parameters (ANN001).\n"
+                    "Add return type annotations to ALL functions (ANN201, ANN202).\n"
+                    "DO NOT change function names, business logic, or structure.\n"
+                    "DO NOT add new imports beyond those needed for type annotations."
+                ),
+                model_hint="auto",
+                max_tokens=3000,
+            ),
+            SubTaskDef(
+                id="WC028-02c",
+                description="Write pytest suite covering happy path, error cases and constitutional invariants for whatsapp_notifier",
+                type="llm",
+                depends_on=["WC028-02b"],
+                compile_gate="ruff",
+                service_dir="src/billing-engine",
+                wc_task_id="WC028-02",
+                stack="python",
+                output_files=[
+                    "tests/billing-engine/test_whatsapp_notifier.py",
+                ],
+                inject_source_files=[
+                    "src/billing-engine/meter/whatsapp_notifier.py",
+                    "src/billing-engine/meter/router.py",
+                    "src/billing-engine/main.py",
+                ],
+                spec_sections={
+                    "work-contracts/WC-028-wbe-s4-meter-alert-engine.md": "WC028-02",
+                },
+                constitutional_check=(
+                    "TEST PASS — write pytest tests against the provided implementation.\n"
+                    "Cover: happy path, error cases, idempotency, constitutional invariants from scope.\n"
+                    "Tests file is exempt from ANN (per pyproject.toml per-file-ignores).\n"
+                    "Use pytest-asyncio for async tests. Mock Redis/DB with pytest fixtures.\n"
+                    "Use f-strings only — never % string formatting."
+                ),
+                model_hint="reasoning",
+                max_tokens=6000,
+            ),
+        ]
+    },
         "WC028-03": {
         "subtasks": [
             SubTaskDef(
                 id='WC028-03a',
                 description='Write pytest tests for test_meter.py per WC scope specification',
                 type="llm",
-                depends_on=[],
+                depends_on=['WC028-02a'],
                 compile_gate='ruff',
                 service_dir='',
                 wc_task_id='WC028-03',
@@ -495,8 +673,6 @@ TASK_HANDLERS = {
                     'tests/billing-engine/test_meter.py',
                 ],
                 inject_source_files=[
-                    'src/billing-engine/meter/whatsapp_notifier.py',
-                    'src/billing-engine/meter/router.py',
                     'src/billing-engine/main.py',
                     'src/billing-engine/skeleton/__init__.py',
                     'src/billing-engine/skeleton/wbe_interfaces.py',
