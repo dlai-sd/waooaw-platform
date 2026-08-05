@@ -224,7 +224,7 @@ class GoalExecutor:
                 stack=stack,
                 model_hint=model_hint,
                 max_tokens=max_tokens,
-                depends_on_files=prior_files + already_frozen,
+                depends_on_files=prior_files + already_frozen + self._peer_test_examples(output_file),
             )
 
             result = self._execute_file(task)
@@ -558,6 +558,24 @@ class GoalExecutor:
         except Exception as _e:
             print(f"  [GO] {type(_e).__name__}: {_e}")
         return prior
+
+    def _peer_test_examples(self, output_file: str) -> list[str]:
+        """Return up to 2 existing test files from the same directory as output_file.
+        When generating a test file, the LLM sees real passing tests and mirrors
+        their import pattern — generic across all services, no hardcoded rules.
+        """
+        out_path = Path(output_file)
+        if not (out_path.parts[0] == "tests" or "/tests/" in output_file):
+            return []
+        test_dir = self._root / out_path.parent
+        if not test_dir.exists():
+            return []
+        peers = [
+            str(p.relative_to(self._root))
+            for p in sorted(test_dir.glob("test_*.py"))
+            if p.name != out_path.name and not p.name.startswith("__")
+        ]
+        return peers[:2]
 
     def _load_context_builder(self):
         try:

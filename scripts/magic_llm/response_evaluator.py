@@ -297,6 +297,20 @@ class ResponseEvaluator:
                 errors.append(f"{f}: {proc.stderr[:200]}")
         if errors:
             return GateResult("COMPILE", False, "COMPILE_FAILURE: PYTHON_SYNTAX", "\n".join(errors))
+        # Normalise Unicode confusables (EN/EM dash) before ruff — RUF002/RUF003 are not
+        # auto-fixable by ruff but are deterministic text replacements safe to self-heal.
+        _CONFUSABLES = {'\u2013': '-', '\u2014': '--', '\u2018': "'", '\u2019': "'",
+                        '\u201c': '"', '\u201d': '"'}
+        for f in py_files:
+            full = self._root / f
+            if not full.exists():
+                continue
+            text = full.read_text(encoding="utf-8", errors="replace")
+            normalized = text
+            for bad, good in _CONFUSABLES.items():
+                normalized = normalized.replace(bad, good)
+            if normalized != text:
+                full.write_text(normalized, encoding="utf-8")
         # Style gate: ruff check scoped to only the generated files (no pre-existing violations)
         # This runs INSIDE the 3-attempt retry loop so violations get targeted fixes.
         ruff_args = ["python3", "-m", "ruff", "check"] + [str(self._root / f) for f in py_files]
