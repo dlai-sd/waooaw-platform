@@ -1052,6 +1052,35 @@ Each sprint has EA spec gaps documented, SA corrections applied to WC files, and
 
 ---
 
+## SESSION CHECKPOINT — 2026-08-05 (Pipeline Hardening: branch=main guard + C-086 gate fix + Pipeline-First Rule)
+
+**Session type:** Pipeline RCA + fix (two consecutive autonomous sprint failures diagnosed and resolved)
+**Office:** Platform IT Expert (INST-010)
+**Status:** COMPLETE — WC-029 sprint running (run 31028598876 on 18b5a54)
+
+### Commits this session
+
+| Commit | Description |
+|---|---|
+| `1f3392a` | feat(billing-engine): WC-028 COMPLETE — manually authored test_service.py (63 tests) + pipeline FORBIDDEN_APIS |
+| `fdf4967` | agent(spec): Platform IT Expert §2.4 — Pipeline-First Rule (Founder directive 2026-08-05) |
+| `61b7e49` | fix(pipeline): bootstrap_sprint_sims — BUG-1 task ID mismatch, BUG-2 substring false-positive + WC-029 SIM files |
+| `032fefa` | chore(pr): groom WC-029 SubTaskDefs from skeleton (ADR-036, C-059) |
+| `18b5a54` | fix(pipeline): autonomous_sprint_runner — branch=main guard in freshness setup |
+
+### Deliverables
+- `tests/billing-engine/test_service.py` — 63 manually authored tests, 762 total passing
+- `scripts/bootstrap_sprint_sims.py` — BUG-1 (subtask-level task ID matching) + BUG-2 (word-boundary regex for PENDING_PATTERNS) fixed
+- `scripts/autonomous_sprint_runner.py` — `if branch == "main"` guard: skip freshness delete/recreate, just pull
+- `architecture/reference/agents/platform-it-expert-agent.md` — §2.4 Pipeline-First Rule added
+- `simulation/` — SIM-PL-002-WC029-01a/01b/02 PASS verdicts present (C-086 satisfied)
+
+### Test results at close
+- 762 tests passing (billing-engine + pipeline suites)
+- WC-029 autonomous sprint run 31028598876 in progress on `18b5a54`
+
+---
+
 ## SPRINT_STATE_MACHINE
 <!-- Machine-readable by autonomous-sprint.yaml. YAML-parseable block. -->
 <!-- Edit ONLY the fields below. Do not alter the block structure. -->

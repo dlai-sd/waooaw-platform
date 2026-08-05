@@ -9,17 +9,17 @@
 ## Platform Status
 
 ```
-Version:              v1.27.0 — Pipeline hardening: graceful exit + namespace pkg detection + C-100 CORS (2026-08-04)
-Constitutional Claims: 97 ratified (C-001→C-100, with gaps at C-087/C-092/C-093) | ADRs: 38
+Version:              v1.28.0 — WC-028 complete + WC-029 pipeline fixes: branch=main guard, C-086 gate fix, Pipeline-First Rule (2026-08-05)
+Constitutional Claims: 97 ratified (C-001→C-100, with gaps at C-087/C-092/C-093) | ADRs: 41
 Customer Agents:      4 approved — DMA v3.0 · Trading v1.7 · Agricultural v2.7 · Private Tutor v1.0
-Internal Agents:      5 — Platform IT Expert (15 skills) · Steward Assistant · Self-Improvement Analyst ·
+Internal Agents:      5 — Platform IT Expert (15 skills, §2.4 Pipeline-First Rule) · Steward Assistant · Self-Improvement Analyst ·
                           Platform Operations · RepoNav (AVD-001 v1.0 RATIFIED — INST-014)
 Gates:                G0 ✅  G1 ✅  G2 ✅  G3 ✅  G4 ✅  G5 CLEAR
-Phase:                IMPLEMENTATION — WC-028 Sprint AUTHORIZED (Meter + Alert Engine)
+Phase:                IMPLEMENTATION — WC-029 Sprint IN PROGRESS (Platform Procurement Ledger)
 Infrastructure:       Azure live — waooaw-dev-kv (Key Vault) · OIDC auth · Sprint Dashboard: Issue #7
 Monitoring:           Sprint Dashboard: github.com/dlai-sd/waooaw-platform/issues/7
 Web:                  web/WAOOAWHome.html — Landing page v1.0 + Auth modal
-CCTs:                 61 specified | Simulations: 27 (3 new WC-028) | Pipeline tests: 662 passing
+CCTs:                 61 specified | Simulations: 30 (3 new WC-029) | Pipeline tests: 762 passing
 Company:              DLAI Satellite Data (OPC) Pvt Ltd · CIN: U62090PN2024OPC230499 · Pune, India
 Stewards:             Yogesh Khandge (Founder) · Sujay Khandge (Business Growth) · Ojal Khandge (Ethics Officer)
 ```
@@ -30,8 +30,8 @@ The platform has entered full autonomous implementation. The Autonomous Sprint A
 generates production-grade code, reviews its own PR, merges, and advances to the next sprint — without human intervention.
 
 ```
-Current sprint:  WC-028 — Billing Engine (Meter + Alert Engine, usage metering, threshold alerts)
-Sprint status:   AUTHORIZED — run 30935141093 in progress
+Current sprint:  WC-029 — Platform Procurement Ledger (WAOOAW provider spend, runway projection, FA auto-generation)
+Sprint status:   IN PROGRESS — run 31028598876 on 18b5a54
 Execution path:  autonomous-sprint.yaml → execute_subtask_chain() → type=udcp → UDCPOrchestrator → Anthropic API
 Monitor at:      github.com/dlai-sd/waooaw-platform/issues/7
 PR review:       Autonomous (GitHub App waooaw-reviewer, C-065 compliant)

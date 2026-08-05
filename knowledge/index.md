@@ -3,7 +3,7 @@
 **Produced by:** Constitutional Analyst (Sprint 001)
 **Date:** 2026-07-07
 **Work Contract:** WC-001
-**Total Claims:** 85 (ratified through 2026-08-04)
+**Total Claims:** 97 (ratified through 2026-08-05)
 
 ---
 
@@ -88,7 +88,7 @@ Derived from CONFIRMED or LAW claims. These authorize specific architectural dec
 
 | Status | Count | IDs |
 |---|---|---|
-| RATIFIED | 86 | C-001 through C-082, C-083, C-084, C-085, C-086 (all) |
+| RATIFIED | 97 | C-001 through C-100 (gaps: C-087, C-092, C-093) |
 | DRAFT | 0 | — |
 
 ---
@@ -166,7 +166,7 @@ Derived from CONFIRMED or LAW claims. These authorize specific architectural dec
 | Platform IT Expert | Internal development | RATIFIED | `architecture/reference/agents/platform-it-expert-agent.md` |
 | Self-Improvement Analyst | Internal intelligence | RATIFIED 2026-07-19 | `architecture/reference/agents/self-improvement-analyst-agent.md` |
 | Platform Operations | Internal operations | RATIFIED | `architecture/reference/agents/platform-operations-agent.md` |
-| Reasoning Sprint Analyst | Internal intelligence | **DRAFT** — pending EA review | `architecture/reference/agents/reasoning-sprint-analyst-agent.md` |
+| Reasoning Sprint Analyst | Internal intelligence | RATIFIED 2026-08-04 — Activation Gate PASS (v1.4) | `architecture/reference/agents/reasoning-sprint-analyst-agent.md` |
 
 ---
 

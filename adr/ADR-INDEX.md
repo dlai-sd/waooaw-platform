@@ -1,7 +1,7 @@
 # ADR Quick Reference
 
 **21 ADRs — one line each. Read only the full ADR if you need rationale or alternatives.**
-**All status: Accepted. Date: 2026-07-07 (ADR-001 to 018) / 2026-07-08 (ADR-019 to 020) / 2026-08-01 (ADR-037 to 038).**
+**All status: Accepted (ADR-039 Proposed). Date: 2026-07-07 (ADR-001 to 018) / 2026-07-08 (ADR-019 to 020) / 2026-08-01 (ADR-037 to 038) / 2026-08-04 (ADR-039 to 041).**
 
 | ADR | Decision (one line) | Your constraint | Read full if... |
 |---|---|---|---|
