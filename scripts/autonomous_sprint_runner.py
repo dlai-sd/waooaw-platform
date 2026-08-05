@@ -747,6 +747,266 @@ TASK_HANDLERS = {
             ),
         ]
     },
+        "WC029-01a": {
+        "subtasks": [
+            SubTaskDef(
+                id='WC029-01aa',
+                description='Implement SQLAlchemy ORM models for provider accounts and platform cost ledger, Pydantic response models for runway status and cost records, and a ProcurementService to record costs, project runway via 7-day rolling average, and trigger founder action alerts when balance thresholds are breached.',
+                type="llm",
+                depends_on=[],
+                compile_gate='py_compile',
+                service_dir='src/billing-engine',
+                wc_task_id='WC029-01a',
+                stack='python',
+                output_files=[
+                    'src/billing-engine/procurement/models.py',
+                    'src/billing-engine/procurement/service.py',
+                ],
+                inject_source_files=[
+                    'src/billing-engine/skeleton/__init__.py',
+                    'src/billing-engine/skeleton/wbe_interfaces.py',
+                ],
+                spec_sections={
+                    'work-contracts/WC-029-wbe-s5-platform-procurement.md': 'WC029-01a',
+                },
+                constitutional_check='Models: ProviderAccount (maps institutional.provider_accounts), PlatformCostLedgerEntry (maps institutional.platform_cost_ledger with provider_account_id UUID FK); Response models: ProviderRunwayStatus, CostRecordRequest. Service: ProcurementService (concrete, no ABC) with record_cost() [append-only per C-007], project_runway() [7d rolling avg formula], check_and_alert() [reads PROCUREMENT_POLICY, calls FounderActionGenerator.maybe_create]. Constitutional: C-007 (non-idempotency), C-088 (billing profile), C-043 (threshold breach), C-090 (pricing). ADR: ADR-034 (cache strategy).',
+                model_hint='reasoning',
+                max_tokens=8000,
+            ),
+            SubTaskDef(
+                id="WC029-01ab",
+                description="Add complete type annotations and fix ruff style (ANN001/ANN201 enforcement)",
+                type="llm",
+                depends_on=["WC029-01aa"],
+                compile_gate="ruff",
+                service_dir="src/billing-engine",
+                wc_task_id="WC029-01a",
+                stack="python",
+                output_files=[
+                    "src/billing-engine/procurement/models.py",
+                    "src/billing-engine/procurement/service.py",
+                ],
+                inject_source_files=[
+                    "src/billing-engine/procurement/models.py",
+                    "src/billing-engine/procurement/service.py",
+                ],
+                spec_sections={
+                    "work-contracts/WC-029-wbe-s5-platform-procurement.md": "WC029-01a",
+                },
+                constitutional_check=(
+                    "POLISH PASS — type annotation enforcement only.\n"
+                    "Add type annotations to ALL function parameters (ANN001).\n"
+                    "Add return type annotations to ALL functions (ANN201, ANN202).\n"
+                    "DO NOT change function names, business logic, or structure.\n"
+                    "DO NOT add new imports beyond those needed for type annotations."
+                ),
+                model_hint="auto",
+                max_tokens=3000,
+            ),
+            SubTaskDef(
+                id="WC029-01ac",
+                description="Write pytest suite covering happy path, error cases and constitutional invariants for models",
+                type="llm",
+                depends_on=["WC029-01ab"],
+                compile_gate="ruff",
+                service_dir="src/billing-engine",
+                wc_task_id="WC029-01a",
+                stack="python",
+                output_files=[
+                    "tests/billing-engine/test_models.py",
+                ],
+                inject_source_files=[
+                    "src/billing-engine/procurement/models.py",
+                    "src/billing-engine/procurement/service.py",
+                ],
+                spec_sections={
+                    "work-contracts/WC-029-wbe-s5-platform-procurement.md": "WC029-01a",
+                },
+                constitutional_check=(
+                    "TEST PASS — write pytest tests against the provided implementation.\n"
+                    "Cover: happy path, error cases, idempotency, constitutional invariants from scope.\n"
+                    "Tests file is exempt from ANN (per pyproject.toml per-file-ignores).\n"
+                    "Use pytest-asyncio for async tests. Mock Redis/DB with pytest fixtures.\n"
+                    "Use f-strings only — never % string formatting."
+                ),
+                model_hint="auto",
+                max_tokens=12000,
+            ),
+        ]
+    },
+        "WC029-01b": {
+        "subtasks": [
+            SubTaskDef(
+                id='WC029-01ba',
+                description='Reads FOUNDER-ACTIONS.md, extracts max FA number via regex, checks for duplicate provider+priority entries, and appends idempotent new FA table rows under P0/P1/P2 sections; exposes FastAPI endpoints for runway status retrieval, cost recording, and margin reporting at /platform/procurement prefix.',
+                type="llm",
+                depends_on=['WC029-01aa'],
+                compile_gate='py_compile',
+                service_dir='src/billing-engine',
+                wc_task_id='WC029-01b',
+                stack='python',
+                output_files=[
+                    'src/billing-engine/procurement/founder_action.py',
+                    'src/billing-engine/procurement/router.py',
+                    'src/billing-engine/main.py',
+                ],
+                inject_source_files=[
+                    'src/billing-engine/skeleton/__init__.py',
+                    'src/billing-engine/skeleton/wbe_interfaces.py',
+                ],
+                spec_sections={
+                    'work-contracts/WC-029-wbe-s5-platform-procurement.md': 'WC029-01b',
+                },
+                constitutional_check='ABC class: IWalletService (get_bucket_balance, reserve, release, activate_subscription, renew), IMarkupEngine (cost_floor, derive_price, validate_price), IMeterService (record_usage, project_depletion, run_daily_scan). Skeleton method stubs: FounderActionGenerator.maybe_create(provider, days_remaining, priority) → Optional[str]. Router endpoints: GET /status → list[ProviderRunwayStatus], POST /record-cost body CostRecordRequest, GET /margin/report (ops-auth deferred). C-077 procurement runway, C-088 billing profile gate, C-089 margin floor enforcement, C-090 renewal price check, C-091 thread catalog, C-038 request shape, C-043 threshold breach, C-048 response shape, C-051 error handling. ADR-034 Redis cache. Mount in main.py via FastAPI app.include_router().',
+                model_hint='auto',
+                max_tokens=4000,
+            ),
+            SubTaskDef(
+                id="WC029-01bb",
+                description="Add complete type annotations and fix ruff style (ANN001/ANN201 enforcement)",
+                type="llm",
+                depends_on=["WC029-01ba"],
+                compile_gate="ruff",
+                service_dir="src/billing-engine",
+                wc_task_id="WC029-01b",
+                stack="python",
+                output_files=[
+                    "src/billing-engine/procurement/founder_action.py",
+                    "src/billing-engine/procurement/router.py",
+                    "src/billing-engine/main.py",
+                ],
+                inject_source_files=[
+                    "src/billing-engine/procurement/founder_action.py",
+                    "src/billing-engine/procurement/router.py",
+                    "src/billing-engine/main.py",
+                ],
+                spec_sections={
+                    "work-contracts/WC-029-wbe-s5-platform-procurement.md": "WC029-01b",
+                },
+                constitutional_check=(
+                    "POLISH PASS — type annotation enforcement only.\n"
+                    "Add type annotations to ALL function parameters (ANN001).\n"
+                    "Add return type annotations to ALL functions (ANN201, ANN202).\n"
+                    "DO NOT change function names, business logic, or structure.\n"
+                    "DO NOT add new imports beyond those needed for type annotations."
+                ),
+                model_hint="auto",
+                max_tokens=3000,
+            ),
+            SubTaskDef(
+                id="WC029-01bc",
+                description="Write pytest suite covering happy path, error cases and constitutional invariants for founder_action",
+                type="llm",
+                depends_on=["WC029-01bb"],
+                compile_gate="ruff",
+                service_dir="src/billing-engine",
+                wc_task_id="WC029-01b",
+                stack="python",
+                output_files=[
+                    "tests/billing-engine/test_founder_action.py",
+                ],
+                inject_source_files=[
+                    "src/billing-engine/procurement/founder_action.py",
+                    "src/billing-engine/procurement/router.py",
+                    "src/billing-engine/main.py",
+                ],
+                spec_sections={
+                    "work-contracts/WC-029-wbe-s5-platform-procurement.md": "WC029-01b",
+                },
+                constitutional_check=(
+                    "TEST PASS — write pytest tests against the provided implementation.\n"
+                    "Cover: happy path, error cases, idempotency, constitutional invariants from scope.\n"
+                    "Tests file is exempt from ANN (per pyproject.toml per-file-ignores).\n"
+                    "Use pytest-asyncio for async tests. Mock Redis/DB with pytest fixtures.\n"
+                    "Use f-strings only — never % string formatting."
+                ),
+                model_hint="auto",
+                max_tokens=12000,
+            ),
+        ]
+    },
+        "WC029-02": {
+        "subtasks": [
+            SubTaskDef(
+                id='WC029-02a',
+                description='Write pytest tests for test_procurement.py per WC scope specification',
+                type="llm",
+                depends_on=['WC029-01ba'],
+                compile_gate='ruff',
+                service_dir='',
+                wc_task_id='WC029-02',
+                stack='python',
+                output_files=[
+                    'tests/billing-engine/test_procurement.py',
+                ],
+                inject_source_files=[
+                    'src/billing-engine/main.py',
+                    'src/billing-engine/skeleton/__init__.py',
+                    'src/billing-engine/skeleton/wbe_interfaces.py',
+                ],
+                spec_sections={
+                    'work-contracts/WC-029-wbe-s5-platform-procurement.md': 'WC029-02',
+                },
+                constitutional_check='TEST PASS — write pytest tests exactly as described in the WC scope:\n`tests/billing-engine/test_procurement.py` — test: `record_cost` writes one row to `platform_cost_ledger` (verify via DB query), `record_cost` called twice for same event writes TWO rows (append-only — no dedup at DB level), `project_runway` formula (balance / 7d_avg_burn = days), FA auto-created at ≤30d threshold (P2) via `maybe_create`, FA upgraded to P1 at ≤14d and P0 at ≤7d, second `maybe_create` same provider+priority → no duplicate entry in FA file (idempotency), `GET /platform/procurement/status` → 200 list with `days_remaining`; use `tmp_path` pytest fixture for FA file — do NOT modify\n\nC-097: property-based testing required — use hypothesis @given for all financial math.\nC-059: verify audit log row written for APPROVED and REJECTED pricing outcomes.\nC-073: # Implements: header required at top of test file.\nUse pytest-asyncio for async tests. Mock Redis/DB with pytest fixtures.\nNever use % string formatting — use f-strings only.',
+                model_hint='auto',
+                max_tokens=12000,
+            ),
+            SubTaskDef(
+                id="WC029-02b",
+                description="Add complete type annotations and fix ruff style (ANN001/ANN201 enforcement)",
+                type="llm",
+                depends_on=["WC029-02a"],
+                compile_gate="ruff",
+                service_dir="",
+                wc_task_id="WC029-02",
+                stack="python",
+                output_files=[
+                    "tests/billing-engine/test_procurement.py",
+                ],
+                inject_source_files=[
+                    "tests/billing-engine/test_procurement.py",
+                ],
+                spec_sections={
+                    "work-contracts/WC-029-wbe-s5-platform-procurement.md": "WC029-02",
+                },
+                constitutional_check=(
+                    "POLISH PASS — type annotation enforcement only.\n"
+                    "Add type annotations to ALL function parameters (ANN001).\n"
+                    "Add return type annotations to ALL functions (ANN201, ANN202).\n"
+                    "DO NOT change function names, business logic, or structure.\n"
+                    "DO NOT add new imports beyond those needed for type annotations."
+                ),
+                model_hint="auto",
+                max_tokens=3000,
+            ),
+            SubTaskDef(
+                id="WC029-02c",
+                description="Run pytest on tests/billing-engine to verify all tests pass",
+                type="llm",
+                depends_on=["WC029-02b"],
+                compile_gate="pytest",
+                service_dir="tests/billing-engine",
+                wc_task_id="WC029-02",
+                stack="python",
+                output_files=[
+                    "tests/billing-engine/test_procurement.py",
+                ],
+                inject_source_files=[
+                    "tests/billing-engine/test_procurement.py",
+                ],
+                spec_sections={
+                    "work-contracts/WC-029-wbe-s5-platform-procurement.md": "WC029-02",
+                },
+                constitutional_check=(
+                    "PYTEST RUN — execute the test file and confirm all tests pass.\n"
+                    "If tests fail due to missing fixtures or imports, fix the test file.\n"
+                    "Do NOT modify the implementation under test."
+                ),
+                model_hint="auto",
+                max_tokens=2000,
+            ),
+        ]
+    },
     # ── GROOMER INJECTION POINT — groom_sprint.py injects new sprint handlers here ──
 }
 
