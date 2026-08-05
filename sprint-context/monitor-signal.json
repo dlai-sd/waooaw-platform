@@ -1,39 +1,66 @@
 {
-  "run_id": "30935141093",
+  "run_id": "30969371126",
   "sprint": "WC-028",
   "scaffold_task": null,
   "scaffold_failed": false,
-  "task_results": {},
-  "spec_gap_issues": [],
-  "overall_result": "NOT_IMPLEMENTED",
+  "task_results": {
+    "WC028-01a:service.py": {
+      "result": "SPEC_GAP",
+      "error_type": "BUILD_ERROR",
+      "build_error_snippet": "WC028-01a:service.py failed validation after 3 LLM attempts. Last error: ",
+      "attempts": 3,
+      "spec_gap_issue": "228"
+    }
+  },
+  "spec_gap_issues": [
+    "228"
+  ],
+  "overall_result": "PARTIAL",
   "file_costs": {
-    "WC028-03a:test_meter.py": 4.7115
+    "WC028-01a:service.py": 34.2815
   },
   "subtask_results": {
-    "WC028-03a": {
+    "WC028-01a": {
       "result": "FAIL",
-      "task_id": "WC028-03",
+      "task_id": "WC028-01",
       "error_codes": [],
       "error_text": ""
     },
-    "WC028-03b": {
+    "WC028-01b": {
       "result": "SKIPPED_CASCADE",
-      "task_id": "WC028-03",
+      "task_id": "WC028-01",
       "error_codes": [],
       "error_text": ""
     },
-    "WC028-03c": {
+    "WC028-01c": {
       "result": "SKIPPED_CASCADE",
-      "task_id": "WC028-03",
+      "task_id": "WC028-01",
+      "error_codes": [],
+      "error_text": ""
+    },
+    "WC028-02a": {
+      "result": "SKIPPED_CASCADE",
+      "task_id": "WC028-02",
+      "error_codes": [],
+      "error_text": ""
+    },
+    "WC028-02b": {
+      "result": "SKIPPED_CASCADE",
+      "task_id": "WC028-02",
+      "error_codes": [],
+      "error_text": ""
+    },
+    "WC028-02c": {
+      "result": "SKIPPED_CASCADE",
+      "task_id": "WC028-02",
       "error_codes": [],
       "error_text": ""
     }
   },
-  "total_cost_inr": 4.7115,
+  "total_cost_inr": 34.2815,
   "tasks_done": [],
   "tasks_requested": [
     "WC028-01",
-    "WC028-02",
-    "WC028-03"
+    "WC028-02"
   ]
 }
