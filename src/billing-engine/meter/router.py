@@ -8,7 +8,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from wbe_interfaces import IMeterService, UsageStatus, DailyScanResult
+from skeleton.wbe_interfaces import IMeterService, UsageStatus, DailyScanResult
 
 logger = logging.getLogger(__name__)
 

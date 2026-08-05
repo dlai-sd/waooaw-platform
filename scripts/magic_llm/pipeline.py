@@ -402,8 +402,17 @@ class MagicLLMPipeline:
             "  ❌ ValidationDecision.Authorized/Denied/Permit — use Allow/Deny/Escalate\n"
             "  ❌ new ConstitutionalDbContext() — always inject via constructor DI\n"
             "  ❌ Mixed named+positional args: e.g. new Svc(a, b, logger: x) — use all positional\n"
-            "  ❌ In tests/billing-engine/ test files: bare 'import alert_policy' or 'import service' — "
-            "always use 'from meter.X import Y' (e.g. from meter.service import MeterService)"
+            "  ❌ Bare module imports in any Python file: 'import service', 'import module_name', "
+            "'from wbe_interfaces import ...' — always use fully qualified path: "
+            "'from package.module import Symbol' (e.g. from meter.service import MeterService, "
+            "from skeleton.wbe_interfaces import IMeterService)\n"
+            "  ❌ In test files: patch target without package prefix e.g. patch('service._now_ist') — "
+            "always use fully qualified path e.g. patch('meter.service._now_ist')\n"
+            "  ❌ SQLite in-memory test engine without StaticPool — every session sees a fresh empty DB; "
+            "fixture writes are invisible to the service under test. Always: "
+            "from sqlalchemy.pool import StaticPool; "
+            "create_async_engine('sqlite+aiosqlite:///:memory:', "
+            "connect_args={'check_same_thread': False}, poolclass=StaticPool)"
         )
         parts.append(_FORBIDDEN_APIS)
 

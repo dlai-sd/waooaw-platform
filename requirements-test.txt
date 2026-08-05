@@ -24,6 +24,10 @@ pytest-hypothesis                # hypothesis pytest integration
 testcontainers>=4.0             # Docker-based integration test containers
 psycopg2-binary>=2.9            # PostgreSQL for integration tests
 
+# ── Async database drivers ──────────────────────────────────────────────────
+aiosqlite>=0.20                 # SQLite async driver for in-memory test engines
+asyncpg>=0.29                   # PostgreSQL async driver
+
 # ── Contract testing ─────────────────────────────────────────────────────────
 schemathesis>=3.0                # OpenAPI fuzzing — auto-generates adversarial tests from spec (WC-013)
 httpx>=0.27                     # async HTTP client for E2E API tests

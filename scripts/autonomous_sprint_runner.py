@@ -560,7 +560,14 @@ TASK_HANDLERS = {
                     "Cover: happy path, error cases, idempotency, constitutional invariants from scope.\n"
                     "Tests file is exempt from ANN (per pyproject.toml per-file-ignores).\n"
                     "Use pytest-asyncio for async tests. Mock Redis/DB with pytest fixtures.\n"
-                    "Use f-strings only — never % string formatting."
+                    "Use f-strings only — never % string formatting.\n"
+                    "DB fixture: use SQLite in-memory WITH StaticPool so all sessions share one connection:\n"
+                    "  from sqlalchemy.pool import StaticPool\n"
+                    "  engine = create_async_engine('sqlite+aiosqlite:///:memory:', "
+                    "connect_args={'check_same_thread': False}, poolclass=StaticPool)\n"
+                    "Patch targets: always use fully qualified module path — "
+                    "patch('meter.service._now_ist') NOT patch('service._now_ist').\n"
+                    "Import style: always 'from meter.service import MeterService' not 'import service'."
                 ),
                 model_hint="reasoning",
                 max_tokens=6000,
@@ -748,8 +755,13 @@ TASK_HANDLERS = {
 
 def _all_outputs_present_and_compile(subtasks: list) -> bool:
     """Return True if every output_file from all subtasks exists, passes
-    py_compile + ruff, pytest --collect-only (for test files), and contains
-    no LOGIC_FILLER stubs — mirrors response_evaluator._compile_python checks.
+    py_compile + ruff, pytest -x (full execution for test files), and contains
+    no LOGIC_FILLER stubs.
+
+    Root cause fix (5-Why run 30977112176 + 30977112176):
+    --collect-only only catches import errors; logic failures (wrong DB setup,
+    wrong patch targets, wrong assertions) pass collection but fail execution.
+    Running pytest -x ensures generated tests must PASS, not just import.
     """
     import py_compile
     import subprocess
@@ -776,15 +788,16 @@ def _all_outputs_present_and_compile(subtasks: list) -> bool:
         )
         if ruff.returncode != 0:
             return False
-    # pytest --collect-only for test files — catches runtime import errors py_compile misses
+    # pytest -x (full execution) for test files — collect-only misses logic failures
     test_files = [f for f in py_files if f.startswith("tests/") or "/tests/" in f]
     if test_files:
-        collect = subprocess.run(
-            ["python3", "-m", "pytest", "--collect-only", "-q", "--tb=line"]
+        test_run = subprocess.run(
+            ["python3", "-m", "pytest", "-x", "-q", "--tb=short"]
             + [str(REPO_ROOT / f) for f in test_files],
             capture_output=True, text=True, cwd=REPO_ROOT,
+            timeout=120,
         )
-        if collect.returncode != 0:
+        if test_run.returncode != 0:
             return False
     return True
 
