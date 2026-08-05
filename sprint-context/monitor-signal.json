@@ -1,5 +1,5 @@
 {
-  "run_id": "31005934418",
+  "run_id": "31013909529",
   "sprint": "WC-028",
   "scaffold_task": null,
   "scaffold_failed": false,
@@ -7,12 +7,14 @@
   "spec_gap_issues": [],
   "overall_result": "PARTIAL",
   "file_costs": {
-    "WC028-01a:service.py": 11.7451,
+    "WC028-01a:service.py": 22.3157,
     "WC028-01a:alert_policy.py": 4.7059,
-    "WC028-01b:service.py": 1.9685000000000001,
-    "WC028-01b:alert_policy.py": 0.4966,
-    "WC028-01c:test_service.py": 5.190900000000001,
-    "WC028-03a:test_meter.py": 5.2101
+    "WC028-01b:service.py": 1.9422,
+    "WC028-01b:alert_policy.py": 0.4876,
+    "WC028-01c:test_service.py": 6.9709,
+    "WC028-03a:test_meter.py": 3.3338,
+    "WC028-03b:test_meter.py": 3.1504000000000003,
+    "WC028-03c:test_meter.py": 2.7999
   },
   "subtask_results": {
     "WC028-01a": {
@@ -34,25 +36,25 @@
       "error_text": ""
     },
     "WC028-03a": {
-      "result": "FAIL",
+      "result": "SUCCESS",
       "task_id": "WC028-03",
       "error_codes": [],
       "error_text": ""
     },
     "WC028-03b": {
-      "result": "SKIPPED_CASCADE",
+      "result": "SUCCESS",
       "task_id": "WC028-03",
       "error_codes": [],
       "error_text": ""
     },
     "WC028-03c": {
-      "result": "SKIPPED_CASCADE",
+      "result": "SUCCESS",
       "task_id": "WC028-03",
       "error_codes": [],
       "error_text": ""
     }
   },
-  "total_cost_inr": 29.3171,
+  "total_cost_inr": 45.7064,
   "tasks_done": [],
   "tasks_requested": [
     "WC028-01",
