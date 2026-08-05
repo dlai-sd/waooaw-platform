@@ -748,10 +748,13 @@ TASK_HANDLERS = {
 
 def _all_outputs_present_and_compile(subtasks: list) -> bool:
     """Return True if every output_file from all subtasks exists, passes
-    py_compile, and contains no LOGIC_FILLER stubs — see ADR-041 §5.
+    py_compile + ruff, pytest --collect-only (for test files), and contains
+    no LOGIC_FILLER stubs — mirrors response_evaluator._compile_python checks.
     """
     import py_compile
+    import subprocess
     _FILLER_MARKER = "# [WAOOAW_LOGIC_FILLER_START]"
+    py_files: list = []
     for st in subtasks:
         for rel_path in getattr(st, "output_files", []):
             fpath = REPO_ROOT / rel_path
@@ -762,9 +765,27 @@ def _all_outputs_present_and_compile(subtasks: list) -> bool:
                     py_compile.compile(str(fpath), doraise=True)
                 except py_compile.PyCompileError:
                     return False
-                # Unfilled logic stubs mean Track 2 (logic fill) was never completed
                 if _FILLER_MARKER in fpath.read_text(encoding="utf-8"):
                     return False
+                py_files.append(rel_path)
+    # ruff check — matches response_evaluator._compile_python style gate
+    if py_files:
+        ruff = subprocess.run(
+            ["python3", "-m", "ruff", "check"] + [str(REPO_ROOT / f) for f in py_files],
+            capture_output=True, text=True, cwd=REPO_ROOT,
+        )
+        if ruff.returncode != 0:
+            return False
+    # pytest --collect-only for test files — catches runtime import errors py_compile misses
+    test_files = [f for f in py_files if f.startswith("tests/") or "/tests/" in f]
+    if test_files:
+        collect = subprocess.run(
+            ["python3", "-m", "pytest", "--collect-only", "-q", "--tb=line"]
+            + [str(REPO_ROOT / f) for f in test_files],
+            capture_output=True, text=True, cwd=REPO_ROOT,
+        )
+        if collect.returncode != 0:
+            return False
     return True
 
 

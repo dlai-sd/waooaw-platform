@@ -11,14 +11,14 @@ import pytest
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from alert_policy import (
+from meter.alert_policy import (
     AGENCY_POLICY,
     CUSTOMER_BUCKET_POLICY,
     PROCUREMENT_POLICY,
     AlertAction,
     AlertScope,
 )
-from service import MeterService, _current_billing_period_start, _is_quiet_hours, _now_ist
+from meter.service import MeterService, _current_billing_period_start, _is_quiet_hours, _now_ist
 from skeleton.wbe_interfaces import AlertFired, DailyScanResult, DepletionProjection, IMeterService
 
 
