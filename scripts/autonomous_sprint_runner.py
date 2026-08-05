@@ -1162,7 +1162,12 @@ def main() -> int:
         git(["fetch", "origin", "main"], check=False)
         remote_check = git(["ls-remote", "--exit-code", "--heads", "origin", branch], check=False)
 
-        if is_fresh_start:
+        if branch == "main":
+            # main is always the current worktree — delete/recreate is illegal.
+            git(["checkout", "main"], check=False)
+            git(["pull", "origin", "main"], check=False)
+            print("  Branch setup: branch=main — pulled origin/main, skipping freshness guard")
+        elif is_fresh_start:
             # Extra check: if the remote branch already has commits beyond main,
             # it contains work from a completed successful run — preserve it.
             branch_has_work = False
