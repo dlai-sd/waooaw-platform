@@ -910,7 +910,7 @@ def _git_commit(sprint_key: str, dry_run: bool) -> None:
         ["git", "config", "user.email", "autonomy@waooaw.ai"],
         ["git", "config", "user.name", "WAOOAW Sprint Groomer"],
         ["git", "add", str(RUNNER_PATH)],
-        ["git", "commit", "-m",
+        ["git", "commit", "--no-gpg-sign", "-m",
          f"chore(pr): groom {sprint_key} SubTaskDefs from skeleton (ADR-036, C-059)"],
         ["git", "push", "origin", "main"],
     ]:
