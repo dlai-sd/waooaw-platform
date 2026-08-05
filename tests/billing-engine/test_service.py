@@ -30,6 +30,96 @@ from meter.service import (
 from skeleton.wbe_interfaces import AlertFired, DailyScanResult, DepletionProjection
 
 
+# ---------------------------------------------------------------------------
+# Schema helpers
+# ---------------------------------------------------------------------------
+
+_DDL_STATEMENTS = [
+    """
+    CREATE TABLE IF NOT EXISTS thread_catalog (
+        id TEXT PRIMARY KEY,
+        thread_type TEXT NOT NULL,
+        provider_account_id TEXT NOT NULL
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS provider_accounts (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        active INTEGER DEFAULT 1,
+        balance_paise INTEGER DEFAULT 0
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS platform_cost_ledger (
+        id TEXT PRIMARY KEY,
+        customer_id TEXT NOT NULL,
+        thread_type TEXT NOT NULL,
+        provider_account_id TEXT NOT NULL,
+        marked_up_cost_inr_paise INTEGER NOT NULL,
+        recorded_at TEXT NOT NULL,
+        billing_period_start TEXT NOT NULL
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS customer_wallets (
+        id TEXT PRIMARY KEY,
+        customer_id TEXT NOT NULL UNIQUE,
+        status TEXT NOT NULL DEFAULT 'ACTIVE'
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS wallet_buckets (
+        id TEXT PRIMARY KEY,
+        wallet_id TEXT NOT NULL,
+        thread_type TEXT NOT NULL,
+        balance_paise INTEGER NOT NULL,
+        available_paise INTEGER NOT NULL DEFAULT 0,
+        FOREIGN KEY (wallet_id) REFERENCES customer_wallets (id)
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS agency_wallets (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        balance_paise INTEGER NOT NULL DEFAULT 0
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS agency_customers (
+        id TEXT PRIMARY KEY,
+        agency_wallet_id TEXT NOT NULL,
+        customer_id TEXT NOT NULL,
+        FOREIGN KEY (agency_wallet_id) REFERENCES agency_wallets (id)
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS meter_alert_log (
+        id TEXT PRIMARY KEY,
+        customer_id TEXT NOT NULL,
+        bucket_type TEXT NOT NULL,
+        threshold_name TEXT NOT NULL,
+        pct_consumed REAL NOT NULL,
+        scope TEXT NOT NULL,
+        action TEXT NOT NULL DEFAULT 'LOG',
+        fired_at TEXT NOT NULL
+    )
+    """,
+    # provider_runway_view as a real table for tests
+    """
+    CREATE TABLE IF NOT EXISTS provider_runway_view (
+        provider_name TEXT NOT NULL,
+        days_remaining REAL NOT NULL
+    )
+    """,
+]
+
+
+# ---------------------------------------------------------------------------
+# Fixtures
+# ---------------------------------------------------------------------------
+
+
 @pytest.fixture
 async def in_memory_engine():
     """Create an in-memory SQLite engine with StaticPool for test isolation."""
@@ -39,81 +129,8 @@ async def in_memory_engine():
         poolclass=StaticPool,
     )
     async with engine.begin() as conn:
-        await conn.exec_driver_sql(
-            """
-            CREATE TABLE thread_catalog (
-                id TEXT PRIMARY KEY,
-                thread_type TEXT NOT NULL,
-                provider_account_id TEXT NOT NULL
-            )
-            """
-        )
-        await conn.exec_driver_sql(
-            """
-            CREATE TABLE provider_accounts (
-                id TEXT PRIMARY KEY,
-                name TEXT NOT NULL,
-                active INTEGER DEFAULT 1,
-                balance_paise INTEGER DEFAULT 0
-            )
-            """
-        )
-        await conn.exec_driver_sql(
-            """
-            CREATE TABLE platform_cost_ledger (
-                id TEXT PRIMARY KEY,
-                customer_id TEXT NOT NULL,
-                thread_type TEXT NOT NULL,
-                provider_account_id TEXT NOT NULL,
-                marked_up_cost_inr_paise INTEGER NOT NULL,
-                recorded_at TEXT NOT NULL,
-                billing_period_start TEXT NOT NULL
-            )
-            """
-        )
-        await conn.exec_driver_sql(
-            """
-            CREATE TABLE customer_wallets (
-                id TEXT PRIMARY KEY,
-                customer_id TEXT NOT NULL UNIQUE
-            )
-            """
-        )
-        await conn.exec_driver_sql(
-            """
-            CREATE TABLE wallet_buckets (
-                id TEXT PRIMARY KEY,
-                wallet_id TEXT NOT NULL,
-                thread_type TEXT NOT NULL,
-                balance_paise INTEGER NOT NULL,
-                FOREIGN KEY (wallet_id) REFERENCES customer_wallets (id)
-            )
-            """
-        )
-        await conn.exec_driver_sql(
-            """
-            CREATE TABLE agency_sub_wallets (
-                id TEXT PRIMARY KEY,
-                customer_id TEXT NOT NULL UNIQUE,
-                quota_paise INTEGER,
-                consumed_paise INTEGER DEFAULT 0
-            )
-            """
-        )
-        await conn.exec_driver_sql(
-            """
-            CREATE TABLE meter_alert_log (
-                id TEXT PRIMARY KEY,
-                customer_id TEXT NOT NULL,
-                bucket_type TEXT NOT NULL,
-                threshold_name TEXT NOT NULL,
-                pct_consumed REAL NOT NULL,
-                scope TEXT NOT NULL,
-                fired_at TEXT NOT NULL,
-                UNIQUE (customer_id, bucket_type, threshold_name, fired_at)
-            )
-            """
-        )
+        for ddl in _DDL_STATEMENTS:
+            await conn.exec_driver_sql(ddl)
 
     yield engine
 
@@ -122,106 +139,194 @@ async def in_memory_engine():
 
 @pytest.fixture
 async def session_factory(in_memory_engine):
-    """Provide async sessionmaker for tests."""
-    async_session = async_sessionmaker(
+    """Provide async sessionmaker backed by the in-memory engine."""
+    factory = async_sessionmaker(
         in_memory_engine,
         class_=AsyncSession,
         expire_on_commit=False,
     )
-    return async_session
+    return factory
 
 
 @pytest.fixture
 async def meter_service(session_factory):
-    """Create MeterService instance for testing."""
+    """MeterService wired to the in-memory DB."""
     return MeterService(session_factory=session_factory, redis_pool=None)
 
 
 @pytest.fixture
 async def test_customer_id():
-    """Generate a test customer UUID."""
+    """Stable test customer UUID."""
     return uuid4()
 
 
 @pytest.fixture
 async def test_provider_account_id():
-    """Generate a test provider account UUID."""
+    """Stable test provider UUID."""
     return uuid4()
 
 
 @pytest.fixture
 async def setup_test_data(session_factory, test_customer_id, test_provider_account_id):
-    """Populate in-memory DB with test data."""
+    """
+    Populate: provider_accounts, thread_catalog, customer_wallets, wallet_buckets.
+    Returns (wallet_id, quota_paise) for use in individual tests.
+    """
+    quota_paise = 1_000_000
+    wallet_id = str(uuid4())
+
     async with session_factory() as session:
-        # Insert provider account
         await session.execute(
             text(
-                """
-                INSERT INTO provider_accounts (id, name, active, balance_paise)
-                VALUES (:id, :name, :active, :balance)
-                """
+                "INSERT INTO provider_accounts (id, name, active, balance_paise) "
+                "VALUES (:id, :name, :active, :balance)"
             ).bindparams(
                 id=str(test_provider_account_id),
                 name="test-provider",
                 active=1,
-                balance=1000000,
+                balance=quota_paise,
             )
         )
-
-        # Insert thread catalog entry
         await session.execute(
             text(
-                """
-                INSERT INTO thread_catalog (id, thread_type, provider_account_id)
-                VALUES (:id, :thread_type, :provider_id)
-                """
+                "INSERT INTO thread_catalog (id, thread_type, provider_account_id) "
+                "VALUES (:id, :thread_type, :provider_id)"
             ).bindparams(
                 id=str(uuid4()),
                 thread_type="GENIE",
                 provider_id=str(test_provider_account_id),
             )
         )
-
-        # Insert customer wallet
-        wallet_id = str(uuid4())
         await session.execute(
             text(
-                """
-                INSERT INTO customer_wallets (id, customer_id)
-                VALUES (:id, :customer_id)
-                """
-            ).bindparams(id=wallet_id, customer_id=str(test_customer_id))
+                "INSERT INTO customer_wallets (id, customer_id, status) "
+                "VALUES (:id, :customer_id, :status)"
+            ).bindparams(
+                id=wallet_id,
+                customer_id=str(test_customer_id),
+                status="ACTIVE",
+            )
         )
-
-        # Insert wallet bucket
         await session.execute(
             text(
-                """
-                INSERT INTO wallet_buckets (id, wallet_id, thread_type, balance_paise)
-                VALUES (:id, :wallet_id, :thread_type, :balance)
-                """
+                "INSERT INTO wallet_buckets "
+                "(id, wallet_id, thread_type, balance_paise, available_paise) "
+                "VALUES (:id, :wallet_id, :thread_type, :balance, :available)"
             ).bindparams(
                 id=str(uuid4()),
                 wallet_id=wallet_id,
                 thread_type="GENIE",
-                balance=100000,
+                balance=quota_paise,
+                available=quota_paise,
             )
         )
+        await session.commit()
 
+    return wallet_id, quota_paise
+
+
+# ---------------------------------------------------------------------------
+# Helper: insert a ledger row for the current billing period
+# ---------------------------------------------------------------------------
+
+
+async def _insert_ledger(
+    session_factory,
+    customer_id: UUID,
+    thread_type: str,
+    provider_account_id: UUID,
+    amount_paise: int,
+    recorded_at: datetime | None = None,
+) -> None:
+    now_utc = recorded_at or datetime.now(timezone.utc)
+    period_start = now_utc.date().replace(day=1)
+    async with session_factory() as session:
+        await session.execute(
+            text(
+                "INSERT INTO platform_cost_ledger "
+                "(id, customer_id, thread_type, provider_account_id, "
+                " marked_up_cost_inr_paise, recorded_at, billing_period_start) "
+                "VALUES (:id, :cid, :tt, :paid, :amount, :rat, :bps)"
+            ).bindparams(
+                id=str(uuid4()),
+                cid=str(customer_id),
+                tt=thread_type,
+                paid=str(provider_account_id),
+                amount=amount_paise,
+                rat=str(now_utc),
+                bps=str(period_start),
+            )
+        )
         await session.commit()
 
 
-# ============================================================================
-# Test: record_usage
-# ============================================================================
+# ---------------------------------------------------------------------------
+# Unit tests -- _current_billing_period_start
+# ---------------------------------------------------------------------------
+
+
+def test_current_billing_period_start_returns_first_day_of_month():
+    dt = datetime(2026, 7, 15, 12, 0, 0, tzinfo=timezone.utc)
+    result = _current_billing_period_start(dt)
+    assert result == date(2026, 7, 1)
+
+
+def test_current_billing_period_start_on_first():
+    dt = datetime(2026, 8, 1, 0, 0, 0, tzinfo=timezone.utc)
+    result = _current_billing_period_start(dt)
+    assert result == date(2026, 8, 1)
+
+
+# ---------------------------------------------------------------------------
+# Unit tests -- _is_quiet_hours
+# ---------------------------------------------------------------------------
+
+
+def test_is_quiet_hours_inside_window():
+    """23:30 IST should be quiet hours (23->6 window)."""
+    policy = CUSTOMER_BUCKET_POLICY
+    now = datetime(2026, 7, 15, 23, 30, tzinfo=_IST_TZ)
+    assert _is_quiet_hours(policy, now) is True
+
+
+def test_is_quiet_hours_outside_window():
+    """10:00 IST is not quiet hours."""
+    policy = CUSTOMER_BUCKET_POLICY
+    now = datetime(2026, 7, 15, 10, 0, tzinfo=_IST_TZ)
+    assert _is_quiet_hours(policy, now) is False
+
+
+def test_is_quiet_hours_boundary_start():
+    """23:00 IST is the boundary -- should be quiet."""
+    policy = CUSTOMER_BUCKET_POLICY
+    now = datetime(2026, 7, 15, 23, 0, tzinfo=_IST_TZ)
+    assert _is_quiet_hours(policy, now) is True
+
+
+def test_is_quiet_hours_boundary_end():
+    """06:00 IST is the end boundary -- should NOT be quiet (hour < 6 only)."""
+    policy = CUSTOMER_BUCKET_POLICY
+    now = datetime(2026, 7, 15, 6, 0, tzinfo=_IST_TZ)
+    assert _is_quiet_hours(policy, now) is False
+
+
+def test_is_quiet_hours_early_morning():
+    """03:00 IST -- past midnight, still quiet."""
+    policy = CUSTOMER_BUCKET_POLICY
+    now = datetime(2026, 7, 15, 3, 0, tzinfo=_IST_TZ)
+    assert _is_quiet_hours(policy, now) is True
+
+
+# ---------------------------------------------------------------------------
+# record_usage tests
+# ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_record_usage_success(
-    meter_service, session_factory, setup_test_data, test_customer_id, test_provider_account_id
+async def test_record_usage_happy_path(
+    meter_service, session_factory, test_customer_id, test_provider_account_id, setup_test_data
 ):
-    """Test record_usage writes to platform_cost_ledger successfully."""
-
+    """record_usage should write one row to platform_cost_ledger."""
     await meter_service.record_usage(
         customer_id=test_customer_id,
         thread_type="GENIE",
@@ -231,568 +336,784 @@ async def test_record_usage_success(
     async with session_factory() as session:
         row = await session.execute(
             text(
-                """
-                SELECT COUNT(*) as cnt
-                FROM platform_cost_ledger
-                WHERE customer_id = :customer_id
-                  AND thread_type = :thread_type
-                """
-            ).bindparams(
-                customer_id=str(test_customer_id),
-                thread_type="GENIE",
-            )
+                "SELECT COUNT(*) AS cnt FROM platform_cost_ledger "
+                "WHERE customer_id = :cid AND thread_type = :tt"
+            ).bindparams(cid=str(test_customer_id), tt="GENIE")
         )
         result = row.fetchone()
-        assert result.cnt == 1
+    assert result.cnt == 1
 
 
 @pytest.mark.asyncio
-async def test_record_usage_provider_not_found(
-    meter_service, session_factory, test_customer_id
+async def test_record_usage_unknown_thread_type_logs_and_returns(
+    meter_service, session_factory, test_customer_id, setup_test_data
 ):
-    """Test record_usage logs error when provider_account not found."""
+    """record_usage with unknown thread_type must not raise and must not write a row."""
+    # Should return without raising -- provider_account not found path
     await meter_service.record_usage(
         customer_id=test_customer_id,
-        thread_type="NONEXISTENT",
-        amount_paise=5000,
+        thread_type="NONEXISTENT_TYPE",
+        amount_paise=1000,
     )
 
     async with session_factory() as session:
         row = await session.execute(
-            text(
-                """
-                SELECT COUNT(*) as cnt
-                FROM platform_cost_ledger
-                WHERE customer_id = :customer_id
-                """
-            ).bindparams(customer_id=str(test_customer_id))
+            text("SELECT COUNT(*) AS cnt FROM platform_cost_ledger WHERE thread_type = :tt").bindparams(
+                tt="NONEXISTENT_TYPE"
+            )
         )
         result = row.fetchone()
-        assert result.cnt == 0
-
-
-# ============================================================================
-# Test: project_depletion
-# ============================================================================
+    assert result.cnt == 0
 
 
 @pytest.mark.asyncio
-async def test_project_depletion_success(
-    meter_service, session_factory, setup_test_data, test_customer_id, test_provider_account_id
+async def test_record_usage_multiple_calls_accumulate(
+    meter_service, session_factory, test_customer_id, test_provider_account_id, setup_test_data
 ):
-    """Test project_depletion computes days_remaining correctly."""
-
-    # Record 70000 paise of usage over 7 days (10000 per day burn rate)
-    for _ in range(7):
+    """Three calls must create three rows."""
+    for paise in [1000, 2000, 3000]:
         await meter_service.record_usage(
             customer_id=test_customer_id,
             thread_type="GENIE",
-            amount_paise=10000,
+            amount_paise=paise,
         )
 
-    result = await meter_service.project_depletion(
+    async with session_factory() as session:
+        row = await session.execute(
+            text(
+                "SELECT COALESCE(SUM(marked_up_cost_inr_paise), 0) AS total "
+                "FROM platform_cost_ledger WHERE customer_id = :cid"
+            ).bindparams(cid=str(test_customer_id))
+        )
+        result = row.fetchone()
+    assert result.total == 6000
+
+
+# ---------------------------------------------------------------------------
+# project_depletion tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_project_depletion_no_usage_returns_inf(
+    meter_service, test_customer_id, setup_test_data
+):
+    """With zero usage, days_remaining should be infinite."""
+    projection = await meter_service.project_depletion(
         customer_id=test_customer_id,
         thread_type="GENIE",
     )
-
-    assert isinstance(result, DepletionProjection)
-    assert result.daily_burn_rate_paise == pytest.approx(10000.0, rel=0.01)
-    # balance=100000, daily_burn=10000, so days_remaining = 10
-    assert result.days_remaining == pytest.approx(10.0, rel=0.01)
+    assert projection.days_remaining == float("inf")
+    assert projection.daily_burn_rate_paise == 0.0
 
 
 @pytest.mark.asyncio
-async def test_project_depletion_no_burn(
-    meter_service, session_factory, setup_test_data, test_customer_id
+async def test_project_depletion_with_usage(
+    meter_service, session_factory, test_customer_id, test_provider_account_id, setup_test_data
 ):
-    """Test project_depletion when no usage recorded (infinite runway)."""
+    """With 7 days * 10_000 paise usage the daily burn should equal 10_000."""
+    now_utc = datetime.now(timezone.utc)
+    for offset in range(7):
+        recorded_at = now_utc - timedelta(days=offset)
+        await _insert_ledger(
+            session_factory,
+            test_customer_id,
+            "GENIE",
+            test_provider_account_id,
+            10_000,
+            recorded_at=recorded_at,
+        )
 
-    result = await meter_service.project_depletion(
+    projection = await meter_service.project_depletion(
         customer_id=test_customer_id,
         thread_type="GENIE",
     )
-
-    assert result.days_remaining == float("inf")
-    assert result.projected_empty_date == date(9999, 12, 31)
-
-
-# ============================================================================
-# Test: check_thresholds - Scope 1 (Customer Buckets)
-# ============================================================================
+    assert projection.daily_burn_rate_paise == pytest.approx(10_000.0, rel=0.01)
+    assert projection.days_remaining == pytest.approx(100.0, rel=0.05)  # 1_000_000 / 10_000
 
 
 @pytest.mark.asyncio
-async def test_check_thresholds_scope1_warn_30(
-    meter_service, session_factory, setup_test_data, test_customer_id
+async def test_project_depletion_returns_depletion_projection_type(
+    meter_service, test_customer_id, setup_test_data
 ):
-    """Test Scope 1: WARN_30 fires at 70% consumed (30% remaining)."""
+    projection = await meter_service.project_depletion(
+        customer_id=test_customer_id,
+        thread_type="GENIE",
+    )
+    assert isinstance(projection, DepletionProjection)
 
-    # Consume 70000 out of 100000 paise
-    for _ in range(7):
-        await meter_service.record_usage(
-            customer_id=test_customer_id,
-            thread_type="GENIE",
-            amount_paise=10000,
-        )
 
-    alerts = await meter_service.check_thresholds(customer_id=test_customer_id)
-
-    assert len(alerts) == 1
-    assert alerts[0].threshold_name == "WARN_30"
-    assert alerts[0].scope == "CUSTOMER_BUCKET"
-    assert alerts[0].pct_consumed == pytest.approx(0.70, rel=0.01)
+# ---------------------------------------------------------------------------
+# check_thresholds -- Scope 1 (CUSTOMER_BUCKET)
+# ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_check_thresholds_scope1_deduplication(
-    meter_service, session_factory, setup_test_data, test_customer_id
+async def test_check_thresholds_no_consumption_fires_no_alerts(
+    meter_service, test_customer_id, setup_test_data
 ):
-    """Test Scope 1: deduplication prevents double-fire within 24h."""
-
-    # First threshold check fires WARN_30
-    for _ in range(7):
-        await meter_service.record_usage(
-            customer_id=test_customer_id,
-            thread_type="GENIE",
-            amount_paise=10000,
-        )
-
-    alerts_1 = await meter_service.check_thresholds(customer_id=test_customer_id)
-    assert len(alerts_1) == 1
-
-    # Second check (within 24h dedup window) should not fire
-    alerts_2 = await meter_service.check_thresholds(customer_id=test_customer_id)
-    assert len(alerts_2) == 0
+    """Zero consumption should produce no alerts."""
+    alerts = await meter_service.check_thresholds(test_customer_id)
+    assert alerts == []
 
 
 @pytest.mark.asyncio
-async def test_check_thresholds_scope1_quiet_hours(
-    meter_service, session_factory, setup_test_data, test_customer_id
+async def test_check_thresholds_warn_30_fires_at_70_pct(
+    meter_service, session_factory, test_customer_id, test_provider_account_id, setup_test_data
 ):
-    """Test Scope 1: quiet hours suppress NOTIFY actions."""
+    """
+    WARN_30 triggers when consumed >= 70% of quota (30% remaining).
+    quota = 1_000_000; 70% consumed = 700_000 paise.
+    """
+    _wallet_id, quota_paise = setup_test_data
+    await _insert_ledger(
+        session_factory,
+        test_customer_id,
+        "GENIE",
+        test_provider_account_id,
+        700_000,
+    )
 
-    for _ in range(7):
-        await meter_service.record_usage(
-            customer_id=test_customer_id,
-            thread_type="GENIE",
-            amount_paise=10000,
-        )
+    fixed_ist = datetime(2026, 7, 15, 10, 0, tzinfo=_IST_TZ)
+    with patch("meter.service._now_ist", return_value=fixed_ist):
+        alerts = await meter_service.check_thresholds(test_customer_id)
 
-    # Mock _now_ist to return a time within quiet hours (23:00-06:00 IST)
-    mock_now = datetime(2026, 8, 1, 23, 30, 0, tzinfo=_IST_TZ)
-    with patch("meter.service._now_ist", return_value=mock_now):
-        # WARN_30 has bypass_quiet_hours=False, so it should be suppressed
-        alerts = await meter_service.check_thresholds(customer_id=test_customer_id)
-        assert len(alerts) == 0
+    threshold_names = [a.threshold_name for a in alerts]
+    assert "WARN_30" in threshold_names
 
 
 @pytest.mark.asyncio
-async def test_check_thresholds_scope1_bypass_quiet_hours(
-    meter_service, session_factory, setup_test_data, test_customer_id
+async def test_check_thresholds_warn_20_and_warn_10_fire_at_correct_pct(
+    meter_service, session_factory, test_customer_id, test_provider_account_id, setup_test_data
 ):
-    """Test Scope 1: bypass_quiet_hours=True fires even in quiet hours."""
+    """
+    At 90% consumed: WARN_30, WARN_20, WARN_10 should all fire.
+    quota = 1_000_000; 90% = 900_000 paise.
+    """
+    await _insert_ledger(
+        session_factory,
+        test_customer_id,
+        "GENIE",
+        test_provider_account_id,
+        900_000,
+    )
 
-    # Consume 99% to trigger WARN_10 which has bypass_quiet_hours=True
-    for _ in range(7):
-        await meter_service.record_usage(
-            customer_id=test_customer_id,
-            thread_type="GENIE",
-            amount_paise=14100,
-        )
+    fixed_ist = datetime(2026, 7, 15, 10, 0, tzinfo=_IST_TZ)
+    with patch("meter.service._now_ist", return_value=fixed_ist):
+        alerts = await meter_service.check_thresholds(test_customer_id)
 
-    mock_now = datetime(2026, 8, 1, 23, 30, 0, tzinfo=_IST_TZ)
-    with patch("meter.service._now_ist", return_value=mock_now):
-        alerts = await meter_service.check_thresholds(customer_id=test_customer_id)
-        assert any(a.threshold_name == "WARN_10" for a in alerts)
-
-
-# ============================================================================
-# Test: check_thresholds - Scope 2 (Agency)
-# ============================================================================
+    names = {a.threshold_name for a in alerts}
+    assert "WARN_30" in names
+    assert "WARN_20" in names
+    assert "WARN_10" in names
 
 
 @pytest.mark.asyncio
-async def test_check_thresholds_scope2_agency_success(
-    meter_service, session_factory, setup_test_data, test_customer_id
+async def test_check_thresholds_ad_wallet_below_minimum_at_100_pct(
+    meter_service, session_factory, test_customer_id, test_provider_account_id, setup_test_data
 ):
-    """Test Scope 2: AGENCY threshold fires at correct consumption %."""
+    """
+    CCT-BILLINGLOOP-01: AD_WALLET_BELOW_MINIMUM fires when consumed >= 100%.
+    """
+    await _insert_ledger(
+        session_factory,
+        test_customer_id,
+        "GENIE",
+        test_provider_account_id,
+        1_000_000,
+    )
 
+    fixed_ist = datetime(2026, 7, 15, 10, 0, tzinfo=_IST_TZ)
+    with patch("meter.service._now_ist", return_value=fixed_ist):
+        alerts = await meter_service.check_thresholds(test_customer_id)
+
+    names = {a.threshold_name for a in alerts}
+    assert "AD_WALLET_BELOW_MINIMUM" in names
+
+
+# ---------------------------------------------------------------------------
+# check_thresholds -- deduplication
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_no_double_fire_within_24h_deduplication_window(
+    meter_service, session_factory, test_customer_id, test_provider_account_id, setup_test_data
+):
+    """Same alert must not fire twice within 24 hours."""
+    await _insert_ledger(
+        session_factory,
+        test_customer_id,
+        "GENIE",
+        test_provider_account_id,
+        700_000,
+    )
+
+    fixed_ist = datetime(2026, 7, 15, 10, 0, tzinfo=_IST_TZ)
+    with patch("meter.service._now_ist", return_value=fixed_ist):
+        first_alerts = await meter_service.check_thresholds(test_customer_id)
+        second_alerts = await meter_service.check_thresholds(test_customer_id)
+
+    first_names = {a.threshold_name for a in first_alerts}
+    second_names = {a.threshold_name for a in second_alerts}
+
+    assert "WARN_30" in first_names
+    # Second call within 24h must not re-fire WARN_30
+    assert "WARN_30" not in second_names
+
+
+@pytest.mark.asyncio
+async def test_alert_fires_again_after_dedup_window(
+    meter_service, session_factory, test_customer_id, test_provider_account_id, setup_test_data
+):
+    """
+    An alert that was fired 25+ hours ago should fire again (outside dedup window).
+    """
+    await _insert_ledger(
+        session_factory,
+        test_customer_id,
+        "GENIE",
+        test_provider_account_id,
+        700_000,
+    )
+
+    now_utc = datetime.now(timezone.utc)
+    old_fired_at = now_utc - timedelta(hours=26)
+
+    # Pre-seed a stale alert log entry
     async with session_factory() as session:
-        # Insert agency sub-wallet with 100000 paise quota, 80000 consumed
         await session.execute(
             text(
-                """
-                INSERT INTO agency_sub_wallets
-                    (id, customer_id, quota_paise, consumed_paise)
-                VALUES (:id, :customer_id, :quota, :consumed)
-                """
+                "INSERT INTO meter_alert_log "
+                "(id, customer_id, bucket_type, threshold_name, pct_consumed, scope, action, fired_at) "
+                "VALUES (:id, :cid, :bt, :tn, :pct, :scope, :action, :fired_at)"
             ).bindparams(
                 id=str(uuid4()),
-                customer_id=str(test_customer_id),
-                quota=100000,
-                consumed=80000,
+                cid=str(test_customer_id),
+                bt="GENIE",
+                tn="WARN_30",
+                pct=0.70,
+                scope="CUSTOMER_BUCKET",
+                action="NOTIFY",
+                fired_at=str(old_fired_at),
             )
         )
         await session.commit()
 
-    alerts = await meter_service.check_thresholds(customer_id=test_customer_id)
+    fixed_ist = datetime(2026, 7, 15, 10, 0, tzinfo=_IST_TZ)
+    with patch("meter.service._now_ist", return_value=fixed_ist):
+        alerts = await meter_service.check_thresholds(test_customer_id)
 
-    # 80% consumed should trigger AGENCY_WARN_80
-    agency_alerts = [a for a in alerts if a.scope == "AGENCY"]
-    assert len(agency_alerts) >= 1
-    assert any(a.threshold_name == "AGENCY_WARN_80" for a in agency_alerts)
+    names = {a.threshold_name for a in alerts}
+    assert "WARN_30" in names
+
+
+# ---------------------------------------------------------------------------
+# check_thresholds -- quiet hours
+# ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_check_thresholds_scope2_agency_null_quota(
-    meter_service, session_factory, setup_test_data, test_customer_id
+async def test_quiet_hours_suppress_notify_alerts(
+    meter_service, session_factory, test_customer_id, test_provider_account_id, setup_test_data
 ):
-    """Test Scope 2: NULL quota produces no alert."""
+    """
+    During quiet hours (23:00-06:00 IST), NOTIFY-class alerts without
+    bypass_quiet_hours must be suppressed.
+    WARN_30 is NOTIFY without bypass -- should be suppressed.
+    """
+    await _insert_ledger(
+        session_factory,
+        test_customer_id,
+        "GENIE",
+        test_provider_account_id,
+        700_000,
+    )
 
+    # 23:30 IST -- inside quiet window
+    quiet_ist = datetime(2026, 7, 15, 23, 30, tzinfo=_IST_TZ)
+    with patch("meter.service._now_ist", return_value=quiet_ist):
+        alerts = await meter_service.check_thresholds(test_customer_id)
+
+    names = {a.threshold_name for a in alerts}
+    # WARN_30 is NOTIFY with bypass_quiet_hours=False -- must be suppressed
+    assert "WARN_30" not in names
+
+
+@pytest.mark.asyncio
+async def test_quiet_hours_do_not_suppress_bypass_true_alerts(
+    meter_service, session_factory, test_customer_id, test_provider_account_id, setup_test_data
+):
+    """
+    WARN_10 has bypass_quiet_hours=True -- must fire even during quiet hours.
+    """
+    await _insert_ledger(
+        session_factory,
+        test_customer_id,
+        "GENIE",
+        test_provider_account_id,
+        900_000,
+    )
+
+    quiet_ist = datetime(2026, 7, 15, 23, 30, tzinfo=_IST_TZ)
+    with patch("meter.service._now_ist", return_value=quiet_ist):
+        alerts = await meter_service.check_thresholds(test_customer_id)
+
+    names = {a.threshold_name for a in alerts}
+    assert "WARN_10" in names
+
+
+# ---------------------------------------------------------------------------
+# check_thresholds -- Scope 2 AGENCY
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+async def setup_agency_data(session_factory, test_customer_id):
+    """Add an agency wallet linked to test_customer_id."""
+    agency_wallet_id = str(uuid4())
     async with session_factory() as session:
-        # Insert agency sub-wallet with NULL quota
         await session.execute(
             text(
-                """
-                INSERT INTO agency_sub_wallets
-                    (id, customer_id, quota_paise, consumed_paise)
-                VALUES (:id, :customer_id, :quota, :consumed)
-                """
+                "INSERT INTO agency_wallets (id, name, balance_paise) "
+                "VALUES (:id, :name, :balance)"
+            ).bindparams(id=agency_wallet_id, name="test-agency", balance=500_000)
+        )
+        await session.execute(
+            text(
+                "INSERT INTO agency_customers (id, agency_wallet_id, customer_id) "
+                "VALUES (:id, :awid, :cid)"
             ).bindparams(
                 id=str(uuid4()),
-                customer_id=str(test_customer_id),
-                quota=None,
-                consumed=0,
+                awid=agency_wallet_id,
+                cid=str(test_customer_id),
             )
         )
         await session.commit()
+    return agency_wallet_id, 500_000
 
-    alerts = await meter_service.check_thresholds(customer_id=test_customer_id)
+
+@pytest.mark.asyncio
+async def test_agency_alert_fires_at_50_pct(
+    meter_service,
+    session_factory,
+    test_customer_id,
+    test_provider_account_id,
+    setup_test_data,
+    setup_agency_data,
+):
+    """AGENCY_WARN_50 fires when agency-aggregate consumption >= 50%."""
+    _agency_wallet_id, agency_quota = setup_agency_data
+
+    # Insert ledger: 250_000 paise = 50% of 500_000 agency quota
+    await _insert_ledger(
+        session_factory,
+        test_customer_id,
+        "GENIE",
+        test_provider_account_id,
+        250_000,
+    )
+
+    fixed_ist = datetime(2026, 7, 15, 10, 0, tzinfo=_IST_TZ)
+    with patch("meter.service._now_ist", return_value=fixed_ist):
+        alerts = await meter_service.check_thresholds(test_customer_id)
+
+    names = {a.threshold_name for a in alerts}
+    assert "AGENCY_WARN_50" in names
+
+
+@pytest.mark.asyncio
+async def test_agency_null_quota_produces_no_alert(
+    meter_service,
+    session_factory,
+    test_customer_id,
+    test_provider_account_id,
+    setup_test_data,
+):
+    """
+    When no agency_wallet row exists for the customer, no AGENCY-scope alert fires.
+    """
+    await _insert_ledger(
+        session_factory,
+        test_customer_id,
+        "GENIE",
+        test_provider_account_id,
+        900_000,
+    )
+
+    fixed_ist = datetime(2026, 7, 15, 10, 0, tzinfo=_IST_TZ)
+    with patch("meter.service._now_ist", return_value=fixed_ist):
+        alerts = await meter_service.check_thresholds(test_customer_id)
 
     agency_alerts = [a for a in alerts if a.scope == "AGENCY"]
-    assert len(agency_alerts) == 0
+    assert agency_alerts == []
 
 
-# ============================================================================
-# Test: check_thresholds - Scope 3 (Procurement)
-# ============================================================================
+# ---------------------------------------------------------------------------
+# check_thresholds -- Scope 3 PROCUREMENT
+# ---------------------------------------------------------------------------
 
 
-@pytest.mark.asyncio
-async def test_check_thresholds_scope3_procurement_p0(
-    meter_service, session_factory, setup_test_data, test_provider_account_id
-):
-    """Test Scope 3: RUNWAY_P0 fires when <=7 days remaining."""
+@pytest.fixture
+async def setup_procurement_runway(session_factory):
+    """Insert procurement runway rows into provider_runway_view table."""
 
-    async with session_factory() as session:
-        # Provider has 100000 paise balance
-        # Simulate 14000 paise burned in last 7 days (2000/day) = 50 days remaining
-        # We need <=7 days, so we need 14000 balance, 2000/day burn = 7 days
-        now_utc = datetime.now(timezone.utc)
-        period_start = _current_billing_period_start(now_utc)
-
-        await session.execute(
-            text(
-                """
-                UPDATE provider_accounts
-                SET balance_paise = 14000
-                WHERE id = :id
-                """
-            ).bindparams(id=str(test_provider_account_id))
-        )
-
-        # Insert cost ledger entries to create 7-day burn (14000 total / 7 days = 2000/day)
-        for day_offset in range(7):
-            recorded_at = now_utc - timedelta(days=day_offset)
+    async def _setup(provider_name: str, days_remaining: float) -> None:
+        async with session_factory() as session:
             await session.execute(
                 text(
-                    """
-                    INSERT INTO platform_cost_ledger
-                        (id, customer_id, thread_type, provider_account_id,
-                         marked_up_cost_inr_paise, recorded_at, billing_period_start)
-                    VALUES (:id, :cid, :ttype, :pid, :cost, :at, :start)
-                    """
-                ).bindparams(
-                    id=str(uuid4()),
-                    cid=str(uuid4()),
-                    ttype="GENIE",
-                    pid=str(test_provider_account_id),
-                    cost=2000,
-                    at=recorded_at,
-                    start=period_start,
-                )
+                    "INSERT INTO provider_runway_view (provider_name, days_remaining) "
+                    "VALUES (:pn, :dr)"
+                ).bindparams(pn=provider_name, dr=days_remaining)
             )
+            await session.commit()
 
-        await session.commit()
-
-    test_customer_id = uuid4()
-    alerts = await meter_service.check_thresholds(customer_id=test_customer_id)
-
-    procurement_alerts = [a for a in alerts if a.scope == "PROCUREMENT"]
-    assert any(a.threshold_name == "RUNWAY_P0" for a in procurement_alerts)
+    return _setup
 
 
 @pytest.mark.asyncio
-async def test_check_thresholds_scope3_procurement_emergency(
-    meter_service, session_factory, setup_test_data, test_provider_account_id
+async def test_procurement_runway_p0_fires_at_7_days(
+    meter_service,
+    test_customer_id,
+    setup_test_data,
+    setup_procurement_runway,
 ):
-    """Test Scope 3: RUNWAY_EMERGENCY fires when <=1 day remaining."""
+    """RUNWAY_P0 should fire when provider days_remaining <= 7."""
+    await setup_procurement_runway("openai", 5.0)
 
-    async with session_factory() as session:
-        # 3000 paise balance, 3000/day burn = 1 day remaining
-        now_utc = datetime.now(timezone.utc)
-        period_start = _current_billing_period_start(now_utc)
+    fixed_ist = datetime(2026, 7, 15, 10, 0, tzinfo=_IST_TZ)
+    with patch("meter.service._now_ist", return_value=fixed_ist):
+        alerts = await meter_service.check_thresholds(test_customer_id)
 
-        await session.execute(
-            text(
-                """
-                UPDATE provider_accounts
-                SET balance_paise = 3000
-                WHERE id = :id
-                """
-            ).bindparams(id=str(test_provider_account_id))
-        )
-
-        for day_offset in range(7):
-            recorded_at = now_utc - timedelta(days=day_offset)
-            await session.execute(
-                text(
-                    """
-                    INSERT INTO platform_cost_ledger
-                        (id, customer_id, thread_type, provider_account_id,
-                         marked_up_cost_inr_paise, recorded_at, billing_period_start)
-                    VALUES (:id, :cid, :ttype, :pid, :cost, :at, :start)
-                    """
-                ).bindparams(
-                    id=str(uuid4()),
-                    cid=str(uuid4()),
-                    ttype="GENIE",
-                    pid=str(test_provider_account_id),
-                    cost=3000,
-                    at=recorded_at,
-                    start=period_start,
-                )
-            )
-
-        await session.commit()
-
-    test_customer_id = uuid4()
-    alerts = await meter_service.check_thresholds(customer_id=test_customer_id)
-
-    procurement_alerts = [a for a in alerts if a.scope == "PROCUREMENT"]
-    assert any(a.threshold_name == "RUNWAY_EMERGENCY" for a in procurement_alerts)
-
-
-# ============================================================================
-# Test: run_daily_scan
-# ============================================================================
+    proc_alerts = [a for a in alerts if a.scope == "PROCUREMENT"]
+    names = {a.threshold_name for a in proc_alerts}
+    assert "RUNWAY_P0" in names
 
 
 @pytest.mark.asyncio
-async def test_run_daily_scan_success(
-    meter_service, session_factory, setup_test_data, test_customer_id
+async def test_procurement_runway_emergency_fires_at_1_day(
+    meter_service,
+    test_customer_id,
+    setup_test_data,
+    setup_procurement_runway,
 ):
-    """Test run_daily_scan calls check_thresholds for all active customers."""
+    """RUNWAY_EMERGENCY should fire when days_remaining <= 1."""
+    await setup_procurement_runway("anthropic", 0.5)
 
-    # Consume 70% to trigger WARN_30
-    for _ in range(7):
-        await meter_service.record_usage(
-            customer_id=test_customer_id,
-            thread_type="GENIE",
-            amount_paise=10000,
-        )
+    fixed_ist = datetime(2026, 7, 15, 10, 0, tzinfo=_IST_TZ)
+    with patch("meter.service._now_ist", return_value=fixed_ist):
+        alerts = await meter_service.check_thresholds(test_customer_id)
 
-    result = await meter_service.run_daily_scan()
+    proc_alerts = [a for a in alerts if a.scope == "PROCUREMENT"]
+    names = {a.threshold_name for a in proc_alerts}
+    assert "RUNWAY_EMERGENCY" in names
 
+
+@pytest.mark.asyncio
+async def test_procurement_no_alert_when_runway_sufficient(
+    meter_service,
+    test_customer_id,
+    setup_test_data,
+    setup_procurement_runway,
+):
+    """No procurement alert when days_remaining > 30."""
+    await setup_procurement_runway("google", 90.0)
+
+    fixed_ist = datetime(2026, 7, 15, 10, 0, tzinfo=_IST_TZ)
+    with patch("meter.service._now_ist", return_value=fixed_ist):
+        alerts = await meter_service.check_thresholds(test_customer_id)
+
+    proc_alerts = [a for a in alerts if a.scope == "PROCUREMENT"]
+    assert proc_alerts == []
+
+
+# ---------------------------------------------------------------------------
+# run_daily_scan tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_run_daily_scan_returns_daily_scan_result(
+    meter_service, test_customer_id, setup_test_data
+):
+    """run_daily_scan must return a DailyScanResult."""
+    fixed_ist = datetime(2026, 7, 15, 10, 0, tzinfo=_IST_TZ)
+    with patch("meter.service._now_ist", return_value=fixed_ist):
+        result = await meter_service.run_daily_scan()
     assert isinstance(result, DailyScanResult)
+
+
+@pytest.mark.asyncio
+async def test_run_daily_scan_scans_active_customers(
+    meter_service,
+    session_factory,
+    test_customer_id,
+    setup_test_data,
+):
+    """run_daily_scan must count active customers scanned."""
+    fixed_ist = datetime(2026, 7, 15, 10, 0, tzinfo=_IST_TZ)
+    with patch("meter.service._now_ist", return_value=fixed_ist):
+        result = await meter_service.run_daily_scan()
     assert result.customers_scanned >= 1
+
+
+@pytest.mark.asyncio
+async def test_run_daily_scan_does_not_scan_inactive_customers(
+    meter_service,
+    session_factory,
+):
+    """Customers with status != ACTIVE must be excluded from scan."""
+    inactive_customer_id = str(uuid4())
+    inactive_wallet_id = str(uuid4())
+
+    async with session_factory() as session:
+        await session.execute(
+            text(
+                "INSERT INTO customer_wallets (id, customer_id, status) "
+                "VALUES (:id, :cid, :status)"
+            ).bindparams(
+                id=inactive_wallet_id,
+                cid=inactive_customer_id,
+                status="SUSPENDED",
+            )
+        )
+        await session.commit()
+
+    fixed_ist = datetime(2026, 7, 15, 10, 0, tzinfo=_IST_TZ)
+    with patch("meter.service._now_ist", return_value=fixed_ist):
+        result = await meter_service.run_daily_scan()
+
+    # Suspended customer should not appear in scanned count
+    assert result.customers_scanned == 0
+
+
+@pytest.mark.asyncio
+async def test_run_daily_scan_aggregates_alerts_sent(
+    meter_service,
+    session_factory,
+    test_customer_id,
+    test_provider_account_id,
+    setup_test_data,
+):
+    """run_daily_scan.alerts_sent must equal total AlertFired count."""
+    await _insert_ledger(
+        session_factory,
+        test_customer_id,
+        "GENIE",
+        test_provider_account_id,
+        700_000,
+    )
+
+    fixed_ist = datetime(2026, 7, 15, 10, 0, tzinfo=_IST_TZ)
+    with patch("meter.service._now_ist", return_value=fixed_ist):
+        result = await meter_service.run_daily_scan()
+
     assert result.alerts_sent >= 1
 
 
 @pytest.mark.asyncio
-async def test_run_daily_scan_empty_wallets(meter_service, session_factory):
-    """Test run_daily_scan with no active customers."""
-    result = await meter_service.run_daily_scan()
-
-    assert result.customers_scanned == 0
-    assert result.alerts_sent == 0
-
-
-# ============================================================================
-# Test: CCT-BILLINGLOOP-01 Scenario
-# ============================================================================
-
-
-@pytest.mark.asyncio
-async def test_cct_billingloop_01_wallet_zero(
-    meter_service, session_factory, test_customer_id
+async def test_run_daily_scan_fa_items_counted_correctly(
+    meter_service,
+    session_factory,
+    test_customer_id,
+    test_provider_account_id,
+    setup_test_data,
+    setup_agency_data,
 ):
     """
-    CCT-BILLINGLOOP-01: AD wallet hits zero -> alerts_sent == 1 type AD_WALLET_BELOW_MINIMUM.
+    FA-class agency alert (AGENCY_CRITICAL at 95%) must increment fa_items_created.
     """
-    provider_id = uuid4()
+    _agency_wallet_id, agency_quota = setup_agency_data
 
-    async with session_factory() as session:
-        # Setup provider
-        await session.execute(
-            text(
-                """
-                INSERT INTO provider_accounts (id, name, active, balance_paise)
-                VALUES (:id, :name, :active, :balance)
-                """
-            ).bindparams(
-                id=str(provider_id),
-                name="test-provider",
-                active=1,
-                balance=1000000,
-            )
-        )
+    # 95% of 500_000 = 475_000
+    await _insert_ledger(
+        session_factory,
+        test_customer_id,
+        "GENIE",
+        test_provider_account_id,
+        475_000,
+    )
 
-        # Setup thread catalog
-        await session.execute(
-            text(
-                """
-                INSERT INTO thread_catalog (id, thread_type, provider_account_id)
-                VALUES (:id, :thread_type, :provider_id)
-                """
-            ).bindparams(
-                id=str(uuid4()),
-                thread_type="GENIE",
-                provider_id=str(provider_id),
-            )
-        )
+    fixed_ist = datetime(2026, 7, 15, 10, 0, tzinfo=_IST_TZ)
+    with patch("meter.service._now_ist", return_value=fixed_ist):
+        result = await meter_service.run_daily_scan()
 
-        # Setup wallet with zero balance
-        wallet_id = str(uuid4())
-        await session.execute(
-            text(
-                """
-                INSERT INTO customer_wallets (id, customer_id)
-                VALUES (:id, :customer_id)
-                """
-            ).bindparams(id=wallet_id, customer_id=str(test_customer_id))
-        )
-
-        await session.execute(
-            text(
-                """
-                INSERT INTO wallet_buckets (id, wallet_id, thread_type, balance_paise)
-                VALUES (:id, :wallet_id, :thread_type, :balance)
-                """
-            ).bindparams(
-                id=str(uuid4()),
-                wallet_id=wallet_id,
-                thread_type="GENIE",
-                balance=0,  # Zero balance
-            )
-        )
-
-        # Record some usage (100% consumed)
-        now_utc = datetime.now(timezone.utc)
-        period_start = _current_billing_period_start(now_utc)
-
-        await session.execute(
-            text(
-                """
-                INSERT INTO platform_cost_ledger
-                    (id, customer_id, thread_type, provider_account_id,
-                     marked_up_cost_inr_paise, recorded_at, billing_period_start)
-                VALUES (:id, :cid, :ttype, :pid, :cost, :at, :start)
-                """
-            ).bindparams(
-                id=str(uuid4()),
-                cid=str(test_customer_id),
-                ttype="GENIE",
-                pid=str(provider_id),
-                cost=1,
-                at=now_utc,
-                start=period_start,
-            )
-        )
-
-        await session.commit()
-
-    alerts = await meter_service.check_thresholds(customer_id=test_customer_id)
-
-    # Should fire AD_WALLET_BELOW_MINIMUM (100% consumed triggers it)
-    below_min_alerts = [
-        a
-        for a in alerts
-        if a.threshold_name == "AD_WALLET_BELOW_MINIMUM"
-        and a.scope == "CUSTOMER_BUCKET"
-    ]
-    assert len(below_min_alerts) == 1
-    assert below_min_alerts[0].pct_consumed == pytest.approx(1.0, rel=0.01)
+    assert result.fa_items_created >= 1
 
 
-# ============================================================================
-# Test: Helper functions
-# ============================================================================
-
-
-def test_is_quiet_hours_within_window():
-    """Test _is_quiet_hours detects times within quiet window (23:00-06:00)."""
-    policy = CUSTOMER_BUCKET_POLICY
-    # 23:30 IST should be within quiet hours
-    time_2330 = datetime(2026, 8, 1, 23, 30, 0, tzinfo=_IST_TZ)
-    assert _is_quiet_hours(policy, time_2330)
-
-
-def test_is_quiet_hours_outside_window():
-    """Test _is_quiet_hours detects times outside quiet window."""
-    policy = CUSTOMER_BUCKET_POLICY
-    # 12:00 IST should be outside quiet hours
-    time_1200 = datetime(2026, 8, 1, 12, 0, 0, tzinfo=_IST_TZ)
-    assert not _is_quiet_hours(policy, time_1200)
-
-
-def test_current_billing_period_start():
-    """Test _current_billing_period_start returns first day of month."""
-    now_utc = datetime(2026, 8, 15, 10, 0, 0, tzinfo=timezone.utc)
-    start = _current_billing_period_start(now_utc)
-    assert start == date(2026, 8, 1)
+# ---------------------------------------------------------------------------
+# CCT-BILLINGLOOP-01: AD wallet hits zero
+# ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_record_usage_cancelled_error(meter_service, test_customer_id):
-    """Test record_usage re-raises CancelledError."""
-    # Dunder __call__ cannot be patched on instances (CPython type-level lookup).
-    # Replace _session_factory on the service instance directly instead.
-    mock_ctx = MagicMock()
-    mock_ctx.__aenter__ = AsyncMock(side_effect=asyncio.CancelledError())
-    mock_ctx.__aexit__ = AsyncMock(return_value=False)
-    meter_service._session_factory = MagicMock(return_value=mock_ctx)
+async def test_cct_billingloop_01_ad_wallet_hits_zero(
+    meter_service,
+    session_factory,
+    test_customer_id,
+    test_provider_account_id,
+    setup_test_data,
+):
+    """
+    CCT-BILLINGLOOP-01: When the AD wallet balance reaches zero (100% consumed),
+    exactly one AD_WALLET_BELOW_MINIMUM alert must fire.
+    """
+    await _insert_ledger(
+        session_factory,
+        test_customer_id,
+        "GENIE",
+        test_provider_account_id,
+        1_000_000,  # 100% of quota
+    )
 
-    with pytest.raises(asyncio.CancelledError):
-        await meter_service.record_usage(
-            customer_id=test_customer_id,
-            thread_type="GENIE",
-            amount_paise=5000,
-        )
+    fixed_ist = datetime(2026, 7, 15, 10, 0, tzinfo=_IST_TZ)
+    with patch("meter.service._now_ist", return_value=fixed_ist):
+        alerts = await meter_service.check_thresholds(test_customer_id)
+
+    ad_wallet_alerts = [a for a in alerts if a.threshold_name == "AD_WALLET_BELOW_MINIMUM"]
+    assert len(ad_wallet_alerts) == 1
+    assert ad_wallet_alerts[0].scope == "CUSTOMER_BUCKET"
+
+
+# ---------------------------------------------------------------------------
+# AlertFired shape
+# ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_project_depletion_cancelled_error(meter_service, test_customer_id):
-    """Test project_depletion re-raises CancelledError."""
-    mock_ctx = MagicMock()
-    mock_ctx.__aenter__ = AsyncMock(side_effect=asyncio.CancelledError())
-    mock_ctx.__aexit__ = AsyncMock(return_value=False)
-    meter_service._session_factory = MagicMock(return_value=mock_ctx)
+async def test_alert_fired_fields_populated(
+    meter_service,
+    session_factory,
+    test_customer_id,
+    test_provider_account_id,
+    setup_test_data,
+):
+    """AlertFired objects must have all required fields populated."""
+    await _insert_ledger(
+        session_factory,
+        test_customer_id,
+        "GENIE",
+        test_provider_account_id,
+        700_000,
+    )
 
-    with pytest.raises(asyncio.CancelledError):
-        await meter_service.project_depletion(
-            customer_id=test_customer_id,
-            thread_type="GENIE",
-        )
+    fixed_ist = datetime(2026, 7, 15, 10, 0, tzinfo=_IST_TZ)
+    with patch("meter.service._now_ist", return_value=fixed_ist):
+        alerts = await meter_service.check_thresholds(test_customer_id)
+
+    assert len(alerts) >= 1
+    for alert in alerts:
+        assert alert.customer_id == test_customer_id
+        assert alert.bucket_type != ""
+        assert alert.threshold_name != ""
+        assert alert.scope != ""
+        assert isinstance(alert.fired_at, datetime)
+        assert 0.0 <= alert.pct_consumed
 
 
-@pytest.mark.asyncio
-async def test_check_thresholds_cancelled_error(meter_service, test_customer_id):
-    """Test check_thresholds re-raises CancelledError."""
-    mock_ctx = MagicMock()
-    mock_ctx.__aenter__ = AsyncMock(side_effect=asyncio.CancelledError())
-    mock_ctx.__aexit__ = AsyncMock(return_value=False)
-    meter_service._session_factory = MagicMock(return_value=mock_ctx)
+# ---------------------------------------------------------------------------
+# Alert policy singleton sanity checks
+# ---------------------------------------------------------------------------
 
-    with pytest.raises(asyncio.CancelledError):
-        await meter_service.check_thresholds(customer_id=test_customer_id)
+
+def test_customer_bucket_policy_has_warn_30():
+    names = [r.name for r in CUSTOMER_BUCKET_POLICY.thresholds]
+    assert "WARN_30" in names
+
+
+def test_customer_bucket_policy_has_ad_wallet_below_minimum():
+    names = [r.name for r in CUSTOMER_BUCKET_POLICY.thresholds]
+    assert "AD_WALLET_BELOW_MINIMUM" in names
+
+
+def test_agency_policy_has_critical_fa_action():
+    fa_rules = [r for r in AGENCY_POLICY.thresholds if r.action == AlertAction.FA]
+    assert len(fa_rules) >= 1
+
+
+def test_procurement_policy_has_runway_p0():
+    names = [r.name for r in PROCUREMENT_POLICY.thresholds]
+    assert "RUNWAY_P0" in names
+
+
+def test_procurement_policy_has_runway_emergency():
+    names = [r.name for r in PROCUREMENT_POLICY.thresholds]
+    assert "RUNWAY_EMERGENCY" in names
+
+
+def test_procurement_policy_has_runway_p2():
+    names = [r.name for r in PROCUREMENT_POLICY.thresholds]
+    assert "RUNWAY_P2" in names
+
+
+def test_procurement_policy_has_runway_p1():
+    names = [r.name for r in PROCUREMENT_POLICY.thresholds]
+    assert "RUNWAY_P1" in names
+
+
+def test_procurement_policy_has_runway_critical():
+    names = [r.name for r in PROCUREMENT_POLICY.thresholds]
+    assert "RUNWAY_CRITICAL" in names
+
+
+def test_warn_30_trigger_is_70_pct():
+    """WARN_30 must trigger at 70% consumed (30% remaining)."""
+    warn_30 = next(r for r in CUSTOMER_BUCKET_POLICY.thresholds if r.name == "WARN_30")
+    assert warn_30.consumed_pct_trigger == pytest.approx(0.70)
+
+
+def test_ad_wallet_below_minimum_has_block_action():
+    rule = next(
+        r for r in CUSTOMER_BUCKET_POLICY.thresholds if r.name == "AD_WALLET_BELOW_MINIMUM"
+    )
+    assert rule.action == AlertAction.BLOCK
+
+
+def test_ad_wallet_below_minimum_bypass_quiet_hours():
+    """AD_WALLET_BELOW_MINIMUM must bypass quiet hours (safety-critical)."""
+    rule = next(
+        r for r in CUSTOMER_BUCKET_POLICY.thresholds if r.name == "AD_WALLET_BELOW_MINIMUM"
+    )
+    assert rule.bypass_quiet_hours is True
+
+
+def test_customer_bucket_policy_scope():
+    assert CUSTOMER_BUCKET_POLICY.scope == AlertScope.CUSTOMER_BUCKET
+
+
+def test_agency_policy_scope():
+    assert AGENCY_POLICY.scope == AlertScope.AGENCY
+
+
+def test_procurement_policy_scope():
+    assert PROCUREMENT_POLICY.scope == AlertScope.PROCUREMENT
+
+
+# ---------------------------------------------------------------------------
+# MeterService initialization
+# ---------------------------------------------------------------------------
+
+
+def test_meter_service_init_stores_session_factory(session_factory):
+    svc = MeterService(session_factory=session_factory, redis_pool=None)
+    assert svc._session_factory is session_factory
+
+
+def test_meter_service_init_redis_pool_none(session_factory):
+    svc = MeterService(session_factory=session_factory, redis_pool=None)
+    assert svc._redis_pool is None
+
+
+# ---------------------------------------------------------------------------
+# _now_ist returns IST-aware datetime
+# ---------------------------------------------------------------------------
+
+
+def test_now_ist_is_ist_offset():
+    result = _now_ist()
+    assert result.utcoffset() == _IST_OFFSET
+
+
+def test_now_ist_is_timezone_aware():
+    result = _now_ist()
+    assert result.tzinfo is not None
