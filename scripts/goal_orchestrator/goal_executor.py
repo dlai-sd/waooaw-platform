@@ -353,6 +353,8 @@ class GoalExecutor:
                 failure_context = self._classify_and_fix(
                     failure, written, task.task_id
                 )
+                # Always reinforce the target file — prevents LLM from writing a dependency instead
+                failure_context += f"\n\nCRITICAL: This attempt MUST write ONLY `{task.output_file}`. Never write any other file path, even to fix a dependency."
 
             except RuntimeError as exc:
                 # Billing / quota errors are unrecoverable — skip all retries and cascade.

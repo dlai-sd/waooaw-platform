@@ -396,6 +396,8 @@ class ResponseEvaluator:
                                 defined.add(t.id)
                     elif isinstance(stmt, _ast.AugAssign) and isinstance(stmt.target, _ast.Name):
                         defined.add(stmt.target.id)
+                    elif isinstance(stmt, _ast.AnnAssign) and isinstance(stmt.target, _ast.Name):
+                        defined.add(stmt.target.id)
                 for alias in node.names:
                     if alias.name != "*" and alias.name not in defined:
                         rel_target = target_file.relative_to(self._root)

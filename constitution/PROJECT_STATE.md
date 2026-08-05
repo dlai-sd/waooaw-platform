@@ -1265,3 +1265,44 @@ But `_RE_BASIS` in `response_evaluator.py` required:
 - All WC-028 source files committed with correct `# constitutional_basis:` header
 - `tasks_remaining: [WC028-01, WC028-02, WC028-03]` (all `failed_structural` in WC file → runner will retry all)
 - Next run: ANNOTATION gate expected to PASS on all files → sprint should complete
+
+---
+
+## SESSION CHECKPOINT — 2026-08-05 (Run 30975168599 RCA — 4 Pipeline Defects Fixed)
+
+**Session type:** RCA + pipeline defect fix
+
+**Run result:** WC028-01a ✅, WC028-01b ✅, WC028-01c ❌ | WC028-02 SKIPPED_IDEMPOTENT | WC028-03 SKIPPED_IDEMPOTENT
+
+**ANNOTATION gate fix verified:** `# constitutional_basis:` fix from `49388d2` WORKED — all ANNOTATION gates PASS this run. Zero annotation failures.
+
+**Cost anomaly — service.py ₹35.5183 (3 Sonnet retries):**
+
+| Attempt | Gate failed | Root cause |
+|---|---|---|
+| 1 | COMPILE: RUF002 EN DASH | LLM used `–` (U+2013) in docstring — not in FORBIDDEN_APIS |
+| 2 | COMPILE: AGENCY_POLICY ImportError | `_check_intrapackage_imports` only checked `_ast.Assign`; `AGENCY_POLICY: ThresholdPolicy = ...` is `_ast.AnnAssign` — false positive |
+| 3 | PATH: wrote wrong file | Retry context said "AGENCY_POLICY missing from alert_policy.py"; LLM wrote alert_policy.py instead of service.py |
+
+**WC028-01c FAIL — test_service.py ModuleNotFoundError:**
+- LLM generated `import alert_policy` (bare); correct: `from meter.alert_policy import ...`
+- conftest.py adds `src/billing-engine` to sys.path, so `alert_policy` is at `meter.alert_policy` not root level
+
+**Fixes committed this session (commit after this checkpoint):**
+
+| File | Change | Bug fixed |
+|---|---|---|
+| `scripts/magic_llm/response_evaluator.py` | `_check_intrapackage_imports`: add `_ast.AnnAssign` handling | Bug 2 (false positive ImportError) |
+| `scripts/magic_llm/pipeline.py` | FORBIDDEN_APIS: add EN DASH prohibition + billing-engine test import rule | Bug 1 + Bug 4 |
+| `scripts/goal_orchestrator/goal_executor.py` | After `_classify_and_fix`, append target file CRITICAL constraint | Bug 3 (wrong file on retry) |
+| `knowledge/Skill-Implementation.md` | Anthropic Agent Skills fit analysis for WAOOAW | Research |
+
+**State reset:** `consecutive_failures: 0` — WC028-01c failure is a pipeline defect (test import pattern), not a code quality failure.
+
+### Sprint state at session close
+
+- `current_sprint: WC-028`, `sprint_status: AUTHORIZED`, `consecutive_failures: 0`
+- WC028-01: `failed_structural` (01c failed) → will retry next run
+- WC028-02: `skipped_idempotent` → will skip next run (already done)
+- WC028-03: `skipped_idempotent` → will skip next run (already done)
+- Next run: only WC028-01 retries; WC028-01c (test_service.py) should pass with Bug 1+4 fixes

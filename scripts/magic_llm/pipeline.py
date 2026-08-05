@@ -394,13 +394,16 @@ class MagicLLMPipeline:
         _FORBIDDEN_APIS = (
             "## FORBIDDEN API PATTERNS (do NOT use — these do not exist)\n"
             "  ❌ FIRST LINE RULE: every .cs file MUST start with // or using — NEVER ## or markdown (causes CS1024)\n"
+            "  ❌ EN DASH / EM DASH in docstrings or comments — use HYPHEN-MINUS (-) ONLY, never – or — (causes RUF002/RUF003)\n"
             "  ❌ .AsTask() on Task<T>  — Task<T> IS already awaitable, just use 'await task;'\n"
             "  ❌ .TryGetValue() on string/EvaluationContext — use ctx.GetParameter('key')\n"
             "  ❌ .TryGetValue() on proto fields — proto fields are properties, not dictionaries\n"
             "  ❌ BudgetRemainingInrPaise — does not exist on EvaluationContext\n"
             "  ❌ ValidationDecision.Authorized/Denied/Permit — use Allow/Deny/Escalate\n"
             "  ❌ new ConstitutionalDbContext() — always inject via constructor DI\n"
-            "  ❌ Mixed named+positional args: e.g. new Svc(a, b, logger: x) — use all positional"
+            "  ❌ Mixed named+positional args: e.g. new Svc(a, b, logger: x) — use all positional\n"
+            "  ❌ In tests/billing-engine/ test files: bare 'import alert_policy' or 'import service' — "
+            "always use 'from meter.X import Y' (e.g. from meter.service import MeterService)"
         )
         parts.append(_FORBIDDEN_APIS)
 
