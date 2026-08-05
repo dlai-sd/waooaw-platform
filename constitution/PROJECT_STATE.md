@@ -1035,7 +1035,7 @@ platform_phase: IMPLEMENTATION
 current_sprint: WC-028
 sprint_status: AUTHORIZED
 branch: main
-consecutive_failures: 1
+consecutive_failures: 0
 tasks_done: []
 tasks_remaining:
   - WC028-01
@@ -1229,3 +1229,39 @@ Enforcement added to `_PYTHON_FORBIDDEN_PATTERNS` in every UDCP LLM prompt.
 
 *Session history archived to `constitution/PROJECT_STATE_ARCHIVE.md`*
 *Agents do not need to read the archive — it is human reference only.*
+
+---
+
+## SESSION CHECKPOINT — 2026-08-05 (ANNOTATION Gate Bug Fix — 5-Why RCA)
+
+**Session type:** RCA + pipeline defect fix (no new features)
+
+**Root cause confirmed (run 30973200240):**
+
+`_inject_compliance_header` in `llm_codegen.py` and `goal_executor.py` wrote:
+```
+# Constitutional basis: C-059 ...   ← human-readable (capital C, space)
+```
+But `_RE_BASIS` in `response_evaluator.py` required:
+```
+# constitutional_basis: C-059 ...   ← code format (underscore, lowercase)
+```
+`has_basis = False` on every file → ANNOTATION gate fails 100% → 3 Sonnet retries per file → ₹34.52 for service.py, ₹15.24 for alert_policy.py (should be ₹12 and ₹5 with 1 pass).
+
+**Fixes committed this session:**
+
+| File | Change |
+|---|---|
+| `scripts/runner/llm_codegen.py` | `_inject_compliance_header`: `Constitutional basis:` → `constitutional_basis:` |
+| `scripts/goal_orchestrator/goal_executor.py` | `_inject_compliance_header_local`: same fix |
+| `scripts/magic_llm/pipeline.py` | C-073 hint + system prompt comment: same format fix |
+| `src/billing-engine/meter/*.py`, `src/billing-engine/main.py`, `tests/billing-engine/*.py` | Patched committed files to use correct header format |
+
+**State reset:** `consecutive_failures: 0` — failure was a pipeline defect (regex/format mismatch), not a code quality failure.
+
+### Sprint state at session close
+
+- `current_sprint: WC-028`, `sprint_status: AUTHORIZED`, `consecutive_failures: 0`
+- All WC-028 source files committed with correct `# constitutional_basis:` header
+- `tasks_remaining: [WC028-01, WC028-02, WC028-03]` (all `failed_structural` in WC file → runner will retry all)
+- Next run: ANNOTATION gate expected to PASS on all files → sprint should complete

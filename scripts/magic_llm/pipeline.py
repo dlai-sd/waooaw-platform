@@ -381,7 +381,7 @@ class MagicLLMPipeline:
             parts.append(
                 "## CONSTITUTIONAL OBLIGATIONS\n"
                 "Output format: <file path=\"relative/path/to/file.ext\">...content...</file>\n"
-                "Do NOT add '# Implements:' or '# Constitutional basis:' headers — "
+                "Do NOT add '# Implements:' or '# constitutional_basis:' headers — "
                 "the platform framework injects them automatically.\n"
             )
 
@@ -649,7 +649,7 @@ class MagicLLMPipeline:
         if fc == FailureClassification.CS0246_MISSING_TYPE:
             return "CS0246 Fix: The referenced type is not imported. Add the correct using statement from the PTR above."
         if fc == FailureClassification.ANNOTATION_MISSING:
-            return "C-073 Fix: Every file must begin with:\n# Implements: <spec-path> §<section>\n# Constitutional basis: C-NNN"
+            return "C-073 Fix: Every file must begin with:\n# Implements: <spec-path> §<section>\n# constitutional_basis: C-NNN"
         if fc == FailureClassification.FORMAT_FAILURE:
             return "FORMAT Fix: Respond with XML file blocks only: <file path=\"...\">...content...</file>"
         return f"GENERIC Fix: Previous attempt failed with: {fc}. Review spec sections carefully."

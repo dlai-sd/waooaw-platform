@@ -467,7 +467,7 @@ def _inject_compliance_header(content: str, rel_path: str, task_id: str) -> str:
     )
     header = (
         f"{comment} Implements: {spec_ref}\n"
-        f"{comment} Constitutional basis: C-059 (Implementation Traceability)\n"
+        f"{comment} constitutional_basis: C-059 (Implementation Traceability)\n"
     )
     # Strip any LLM-generated header lines to avoid duplication
     lines = content.splitlines(keepends=True)

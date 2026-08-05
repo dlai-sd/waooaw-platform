@@ -1,5 +1,5 @@
 # Implements: <spec-path> §<section>
-# Constitutional basis: C-059 (Implementation Traceability)
+# constitutional_basis: C-059 (Implementation Traceability)
 from __future__ import annotations
 
 from dataclasses import dataclass
