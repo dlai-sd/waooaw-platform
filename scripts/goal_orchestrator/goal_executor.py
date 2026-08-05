@@ -409,10 +409,16 @@ class GoalExecutor:
                 api_key=api_key,
             )
             # Build original_request so L1 retry_with_enhanced_context has context
+            # Cascade inherits model_hint from the task so test files with
+            # "reasoning" hint still get Sonnet in the cascade path.
             cat = (
-                TaskCategory.TEST_GENERATION
-                if "test" in task.output_file.lower()
-                else TaskCategory.CODE_GENERATION
+                TaskCategory.DEEP_REASONING
+                if task.model_hint == "reasoning"
+                else (
+                    TaskCategory.TEST_GENERATION
+                    if "test" in task.output_file.lower()
+                    else TaskCategory.CODE_GENERATION
+                )
             )
             original_req = MagicLLMRequest(
                 goal_id=task.goal_id,
@@ -465,9 +471,12 @@ class GoalExecutor:
             from magic_llm.pipeline import MagicLLMPipeline
             from magic_llm.types import MagicLLMRequest, TaskCategory
 
-            # Map model_hint → TaskCategory so pipeline complexity scoring kicks in
+            # Map model_hint → TaskCategory so pipeline complexity scoring kicks in.
+            # DEEP_REASONING bypasses complexity scoring → always Sonnet.
+            # "reasoning" hint must survive for test files: test generation with
+            # 5+ simultaneous constraints requires Sonnet reliability, not Haiku.
             if task.model_hint == "reasoning":
-                cat = TaskCategory.TEST_GENERATION if "test" in task.output_file.lower() else TaskCategory.DEEP_REASONING
+                cat = TaskCategory.DEEP_REASONING  # always Sonnet; file path does not override explicit hint
             elif task.model_hint == "none":
                 cat = TaskCategory.CODE_GENERATION  # cheapest path
             else:  # "auto" — let complexity score decide

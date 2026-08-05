@@ -66,6 +66,7 @@ HYPOTHESIS_FIXTURE_PARAM = "HYPOTHESIS_FIXTURE_PARAM"  # fixture 'X' not found �
 DATETIME_UTCNOW = "DATETIME_UTCNOW"  # datetime.utcnow() / DTZ003 naive-datetime violation
 ASYNC_MOCK_MISMATCH = "ASYNC_MOCK_MISMATCH"  # await MagicMock() raises TypeError — must use AsyncMock for async methods
 PYDANTIC_VALIDATION_ERROR = "PYDANTIC_VALIDATION_ERROR"  # pydantic_core.ValidationError — test data doesn't match model field types
+SQLITE_ISOLATION = "SQLITE_ISOLATION"  # SQLite in-memory sessions return empty results — StaticPool missing
 
 
 @dataclass
@@ -561,6 +562,72 @@ def _classify_cs0246_missing_using(error: str) -> Optional[RetryDiagnosis]:
             )
 
     return None
+
+
+# ── pytest tally-based pre-classifier ─────────────────────────────────────────
+
+def _tally_pytest_failures(error: str) -> dict[str, int]:
+    """Count pytest FAILED lines by failure category.
+
+    Returns a dict mapping category → count so callers can dispatch on the
+    dominant failure type rather than first-match on the full blob.
+    Avoids misclassification when multiple failure types co-exist in one run.
+    """
+    tallies: dict[str, int] = {}
+    for line in error.splitlines():
+        stripped = line.strip()
+        if not stripped.startswith("FAILED "):
+            continue
+        reason = stripped.split(" - ", 1)[1].lower() if " - " in stripped else stripped.lower()
+        if "assert 0 ==" in reason or "assert 0 >=" in reason or "len([]) ==" in reason or "len([]) >=" in reason:
+            tallies["sqlite_isolation"] = tallies.get("sqlite_isolation", 0) + 1
+        elif "did not raise" in reason:
+            tallies["did_not_raise"] = tallies.get("did_not_raise", 0) + 1
+        elif "typeerror" in reason and ("magicmock" in reason or "await" in reason):
+            tallies["async_mock"] = tallies.get("async_mock", 0) + 1
+        elif "assertionerror" in reason or "assert" in reason:
+            tallies["assertion"] = tallies.get("assertion", 0) + 1
+        else:
+            tallies["other"] = tallies.get("other", 0) + 1
+    return tallies
+
+
+def _classify_sqlite_isolation(error: str) -> Optional[RetryDiagnosis]:
+    """SQLite in-memory sessions return empty results — StaticPool missing.
+
+    Pattern: test inserts data via one async session, service reads via another.
+    Without StaticPool each connection gets a fresh in-memory DB, so the service
+    query always sees an empty table. Applies to any async SQLAlchemy service.
+    """
+    tallies = _tally_pytest_failures(error)
+    if not tallies:
+        return None
+    dominant = max(tallies, key=lambda k: tallies[k])
+    if dominant != "sqlite_isolation":
+        return None
+    return RetryDiagnosis(
+        error_type=SQLITE_ISOLATION,
+        fix_instruction=(
+            "SQLITE ISOLATION FIX: test fixtures insert rows but the service under test\n"
+            "reads zero rows — each async connection sees a separate empty in-memory DB.\n"
+            "Root cause: SQLite in-memory requires a SINGLE shared connection across all\n"
+            "sessions (StaticPool). Without it every `async_session_factory()` call opens\n"
+            "a new connection with its own fresh database.\n"
+            "Fix — apply to EVERY engine/session-factory in the test module and conftest:\n"
+            "  from sqlalchemy.pool import StaticPool\n"
+            "  engine = create_async_engine(\n"
+            "      'sqlite+aiosqlite:///:memory:',\n"
+            "      connect_args={'check_same_thread': False},\n"
+            "      poolclass=StaticPool,   # ← REQUIRED for in-memory isolation\n"
+            "  )\n"
+            "  async_session = async_sessionmaker(engine, expire_on_commit=False)\n"
+            "One engine instance must be shared across ALL fixtures and the service factory.\n"
+            "Do NOT create a second engine anywhere in the test file or conftest."
+        ),
+        should_retry=True,
+        confidence=0.93,
+        constitutional_trace="C-082 (Build Validation — SQLAlchemy async SQLite isolation)",
+    )
 
 
 # ── Multi-stack classifiers (WC013-022 coverage) ──────────────────────────────
@@ -1258,7 +1325,14 @@ def diagnose_build_error(
         return diagnosis
 
     # ── TypeError from awaiting a MagicMock — use AsyncMock instead ──────────
-    if "TypeError" in build_error and ("MagicMock" in build_error or "can't be used in 'await'" in build_error):
+    # Guard: require the literal CPython error message, not just "MagicMock" appearing
+    # anywhere (MagicMock repr shows up in unrelated assertion tracebacks and caused
+    # misclassification of SQLite isolation failures as ASYNC_MOCK_MISMATCH).
+    _async_mock_signal = (
+        "object MagicMock can't be used in 'await'" in build_error
+        or "can't be used in 'await' expression" in build_error
+    )
+    if "TypeError" in build_error and _async_mock_signal:
         m = re.search(r"await (\S+)\.?(\w+)\(", build_error)
         mock_expr = f"`{m.group(0).rstrip('(')}`" if m else "the mock call"
         fix = (
@@ -1694,6 +1768,15 @@ def diagnose_build_error(
     diagnosis = _classify_python_import_error(build_error)
     if diagnosis:
         print(f"  Retry Advisor: Python import error → {diagnosis.error_type} (confidence={diagnosis.confidence:.0%})")
+        return diagnosis
+
+    # ── Tally-based pytest failure classification (dominant-class wins) ───────
+    # Must run before individual string-match handlers to prevent minority failure
+    # types (e.g. 2 ASYNC_MOCK failures) from masking the dominant class (e.g.
+    # 10 SQLITE_ISOLATION failures) when both appear in the same pytest run.
+    diagnosis = _classify_sqlite_isolation(build_error)
+    if diagnosis:
+        print(f"  Retry Advisor: {diagnosis.error_type} (confidence={diagnosis.confidence:.0%})")
         return diagnosis
 
     diagnosis = _classify_python_async_error(build_error)

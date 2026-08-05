@@ -101,6 +101,10 @@ def _task_complexity_score(request: "MagicLLMRequest") -> int:
     # CCT gate in spec
     if any("cct" in s.lower() for s in request.context_sections):
         score += 25
+    # Test generation at high context carries multi-constraint density (StaticPool,
+    # patch paths, asyncio_mode, hypothesis, etc.) that flat section counting underweights.
+    if "test_" in desc and len(request.context_sections) >= 7:
+        score += 20
     # Scaffold / boilerplate markers
     if any(kw in desc for kw in ["scaffold", "project", "csproj", "setup", "wiring",
                                   "skeleton", "hello world", "placeholder"]):
@@ -412,7 +416,12 @@ class MagicLLMPipeline:
             "fixture writes are invisible to the service under test. Always: "
             "from sqlalchemy.pool import StaticPool; "
             "create_async_engine('sqlite+aiosqlite:///:memory:', "
-            "connect_args={'check_same_thread': False}, poolclass=StaticPool)"
+            "connect_args={'check_same_thread': False}, poolclass=StaticPool)\n"
+            "  ❌ patch.object(instance, '__call__', ...) — CPython looks up special methods "
+            "(__call__, __aenter__, __aexit__, __iter__, __next__) on the TYPE, not the instance; "
+            "patching the instance silently has no effect. "
+            "Patch on the class instead: patch.object(type(instance), '__call__', side_effect=...) "
+            "OR raise the exception from a regular named method that IS patchable."
         )
         parts.append(_FORBIDDEN_APIS)
 
