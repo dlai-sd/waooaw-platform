@@ -286,7 +286,7 @@ async def _insert_alert_log_row(
                 threshold_name=threshold_name,
                 pct_consumed=0.75,
                 scope="CUSTOMER_BUCKET",
-                fired_at=fired_at.isoformat(),
+                fired_at=fired_at,
             )
         )
         await session.commit()

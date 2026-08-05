@@ -255,7 +255,7 @@ async def test_no_double_fire_within_24h_deduplication_window(
 
     # Simulate Redis key set after first fire (deduplication window)
     dedup_key = f"alert:dedup:{customer_id}:WARN_30:{thread_type}"
-    mock_redis_client.setex(dedup_key, 86400, "1")
+    await mock_redis_client.setex(dedup_key, 86400, "1")
     mock_redis_client.get.return_value = b"1"
 
     # Second call within 24h - should be suppressed by deduplication
