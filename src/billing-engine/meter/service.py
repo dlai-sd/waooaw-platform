@@ -27,6 +27,12 @@ from meter.alert_policy import (
 
 logger = logging.getLogger(__name__)
 
+# text().bindparams() does not auto-coerce UUID objects in SQLite; use this at
+# every UUID bind site so queries work identically across backends.
+def _sid(v: UUID | str) -> str:
+    return str(v)
+
+
 _IST_OFFSET = timedelta(hours=5, minutes=30)
 _IST_TZ = timezone(_IST_OFFSET)
 _DEDUP_WINDOW_HOURS = 24
@@ -124,10 +130,10 @@ class MeterService(IMeterService):
                              :amount_paise, :recorded_at, :billing_period_start)
                         """
                     ).bindparams(
-                        id=uuid4(),
-                        customer_id=customer_id,
+                        id=_sid(uuid4()),
+                        customer_id=_sid(customer_id),
                         thread_type=thread_type,
-                        provider_account_id=provider_account_id,
+                        provider_account_id=_sid(provider_account_id),
                         amount_paise=amount_paise,
                         recorded_at=now_utc,
                         billing_period_start=_current_billing_period_start(now_utc),
@@ -180,7 +186,7 @@ class MeterService(IMeterService):
                           AND  recorded_at >= :window_start
                         """
                     ).bindparams(
-                        customer_id=customer_id,
+                        customer_id=_sid(customer_id),
                         thread_type=thread_type,
                         window_start=window_start,
                     )
@@ -200,7 +206,7 @@ class MeterService(IMeterService):
                           AND  wb.thread_type  = :thread_type
                         LIMIT  1
                         """
-                    ).bindparams(customer_id=customer_id, thread_type=thread_type)
+                    ).bindparams(customer_id=_sid(customer_id), thread_type=thread_type)
                 )
                 balance_result = balance_row.fetchone()
                 balance_paise: float = float(
@@ -364,7 +370,8 @@ class MeterService(IMeterService):
         """
         Evaluate CUSTOMER_BUCKET_POLICY thresholds for each thread_type bucket.
 
-        pct_consumed = SUM(ledger costs this period) / (consumed + bucket.balance_paise)
+        wallet_buckets.balance_paise is the initial quota (never decremented by
+        record_usage). pct_consumed = consumed_this_period / quota.
         """
         now_utc = datetime.now(timezone.utc)
         period_start = _current_billing_period_start(now_utc)
@@ -387,7 +394,7 @@ class MeterService(IMeterService):
                 JOIN   customer_wallets cw ON cw.id = wb.wallet_id
                 WHERE  cw.customer_id = :customer_id
                 """
-            ).bindparams(customer_id=customer_id, period_start=period_start)
+            ).bindparams(customer_id=_sid(customer_id), period_start=period_start)
         )
         buckets = bucket_rows.fetchall()
 
@@ -396,15 +403,14 @@ class MeterService(IMeterService):
 
         for bucket in buckets:
             thread_type: str = bucket.thread_type
-            balance_paise: int = bucket.balance_paise
+            quota_paise: int = bucket.balance_paise  # initial allocation, never decremented
             consumed_paise: int = bucket.consumed_paise
-            total_paise = consumed_paise + balance_paise
 
-            if total_paise <= 0:
-                # No quota - nothing to evaluate
+            if quota_paise <= 0 and consumed_paise <= 0:
                 continue
 
-            pct_consumed: float = consumed_paise / total_paise
+            # When quota = 0 but usage exists, the bucket is fully overdrawn (100%).
+            pct_consumed: float = (consumed_paise / quota_paise) if quota_paise > 0 else 1.0
 
             for rule in policy.thresholds:
                 if pct_consumed < rule.consumed_pct_trigger:
@@ -428,7 +434,7 @@ class MeterService(IMeterService):
                     continue
 
                 alert = AlertFired(
-                    customer_id=customer_id,
+                    customer_id=_sid(customer_id),
                     bucket_type=thread_type,
                     threshold_name=rule.name,
                     pct_consumed=pct_consumed,
@@ -469,7 +475,7 @@ class MeterService(IMeterService):
                 WHERE  asw.customer_id = :customer_id
                 LIMIT  1
                 """
-            ).bindparams(customer_id=customer_id)
+            ).bindparams(customer_id=_sid(customer_id))
         )
         agency = agency_row.fetchone()
 
@@ -509,7 +515,7 @@ class MeterService(IMeterService):
                 continue
 
             alert = AlertFired(
-                customer_id=customer_id,
+                customer_id=_sid(customer_id),
                 bucket_type="AGENCY",
                 threshold_name=rule.name,
                 pct_consumed=pct_consumed,
@@ -582,11 +588,8 @@ class MeterService(IMeterService):
             days_remaining: float = balance_paise / daily_burn
             bucket_type = f"PROCUREMENT:{provider.provider_name}"
 
-            for rule in policy.thresholds:
-                # For PROCUREMENT rules, consumed_pct_trigger stores days threshold
-                # We compare days_remaining against the rule's days_threshold attribute
-                # The ThresholdRule uses consumed_pct_trigger as days ceiling for runway
-                if days_remaining > rule.consumed_pct_trigger:
+            for rule in policy.runway_thresholds:
+                if days_remaining > rule.days_remaining_trigger:
                     continue
 
                 if quiet and not rule.bypass_quiet_hours:
@@ -606,7 +609,7 @@ class MeterService(IMeterService):
                 # pct_consumed for procurement = 1 - days_remaining / 30 (normalized)
                 pct_consumed = max(0.0, min(1.0, 1.0 - days_remaining / 30.0))
                 alert = AlertFired(
-                    customer_id=customer_id,
+                    customer_id=_sid(customer_id),
                     bucket_type=bucket_type,
                     threshold_name=rule.name,
                     pct_consumed=pct_consumed,
@@ -650,7 +653,7 @@ class MeterService(IMeterService):
                 LIMIT  1
                 """
             ).bindparams(
-                customer_id=customer_id,
+                customer_id=_sid(customer_id),
                 bucket_type=bucket_type,
                 threshold_name=threshold_name,
                 window_start=window_start,
@@ -680,8 +683,8 @@ class MeterService(IMeterService):
                 ON CONFLICT DO NOTHING
                 """
             ).bindparams(
-                id=uuid4(),
-                customer_id=alert.customer_id,
+                id=_sid(uuid4()),
+                customer_id=_sid(alert.customer_id),
                 bucket_type=alert.bucket_type,
                 threshold_name=alert.threshold_name,
                 pct_consumed=alert.pct_consumed,

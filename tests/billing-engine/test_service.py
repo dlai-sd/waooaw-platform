@@ -221,7 +221,6 @@ async def test_record_usage_success(
     meter_service, session_factory, setup_test_data, test_customer_id, test_provider_account_id
 ):
     """Test record_usage writes to platform_cost_ledger successfully."""
-    await setup_test_data
 
     await meter_service.record_usage(
         customer_id=test_customer_id,
@@ -282,7 +281,6 @@ async def test_project_depletion_success(
     meter_service, session_factory, setup_test_data, test_customer_id, test_provider_account_id
 ):
     """Test project_depletion computes days_remaining correctly."""
-    await setup_test_data
 
     # Record 70000 paise of usage over 7 days (10000 per day burn rate)
     for _ in range(7):
@@ -308,7 +306,6 @@ async def test_project_depletion_no_burn(
     meter_service, session_factory, setup_test_data, test_customer_id
 ):
     """Test project_depletion when no usage recorded (infinite runway)."""
-    await setup_test_data
 
     result = await meter_service.project_depletion(
         customer_id=test_customer_id,
@@ -329,7 +326,6 @@ async def test_check_thresholds_scope1_warn_30(
     meter_service, session_factory, setup_test_data, test_customer_id
 ):
     """Test Scope 1: WARN_30 fires at 70% consumed (30% remaining)."""
-    await setup_test_data
 
     # Consume 70000 out of 100000 paise
     for _ in range(7):
@@ -352,7 +348,6 @@ async def test_check_thresholds_scope1_deduplication(
     meter_service, session_factory, setup_test_data, test_customer_id
 ):
     """Test Scope 1: deduplication prevents double-fire within 24h."""
-    await setup_test_data
 
     # First threshold check fires WARN_30
     for _ in range(7):
@@ -375,7 +370,6 @@ async def test_check_thresholds_scope1_quiet_hours(
     meter_service, session_factory, setup_test_data, test_customer_id
 ):
     """Test Scope 1: quiet hours suppress NOTIFY actions."""
-    await setup_test_data
 
     for _ in range(7):
         await meter_service.record_usage(
@@ -397,7 +391,6 @@ async def test_check_thresholds_scope1_bypass_quiet_hours(
     meter_service, session_factory, setup_test_data, test_customer_id
 ):
     """Test Scope 1: bypass_quiet_hours=True fires even in quiet hours."""
-    await setup_test_data
 
     # Consume 99% to trigger WARN_10 which has bypass_quiet_hours=True
     for _ in range(7):
@@ -423,7 +416,6 @@ async def test_check_thresholds_scope2_agency_success(
     meter_service, session_factory, setup_test_data, test_customer_id
 ):
     """Test Scope 2: AGENCY threshold fires at correct consumption %."""
-    await setup_test_data
 
     async with session_factory() as session:
         # Insert agency sub-wallet with 100000 paise quota, 80000 consumed
@@ -456,7 +448,6 @@ async def test_check_thresholds_scope2_agency_null_quota(
     meter_service, session_factory, setup_test_data, test_customer_id
 ):
     """Test Scope 2: NULL quota produces no alert."""
-    await setup_test_data
 
     async with session_factory() as session:
         # Insert agency sub-wallet with NULL quota
@@ -492,7 +483,6 @@ async def test_check_thresholds_scope3_procurement_p0(
     meter_service, session_factory, setup_test_data, test_provider_account_id
 ):
     """Test Scope 3: RUNWAY_P0 fires when <=7 days remaining."""
-    await setup_test_data
 
     async with session_factory() as session:
         # Provider has 100000 paise balance
@@ -547,7 +537,6 @@ async def test_check_thresholds_scope3_procurement_emergency(
     meter_service, session_factory, setup_test_data, test_provider_account_id
 ):
     """Test Scope 3: RUNWAY_EMERGENCY fires when <=1 day remaining."""
-    await setup_test_data
 
     async with session_factory() as session:
         # 3000 paise balance, 3000/day burn = 1 day remaining
@@ -604,7 +593,6 @@ async def test_run_daily_scan_success(
     meter_service, session_factory, setup_test_data, test_customer_id
 ):
     """Test run_daily_scan calls check_thresholds for all active customers."""
-    await setup_test_data
 
     # Consume 70% to trigger WARN_30
     for _ in range(7):
@@ -766,37 +754,45 @@ def test_current_billing_period_start():
 
 
 @pytest.mark.asyncio
-async def test_record_usage_cancelled_error(
-    meter_service, session_factory, test_customer_id
-):
+async def test_record_usage_cancelled_error(meter_service, test_customer_id):
     """Test record_usage re-raises CancelledError."""
-    with patch.object(session_factory, "__call__", side_effect=asyncio.CancelledError()):
-        with pytest.raises(asyncio.CancelledError):
-            await meter_service.record_usage(
-                customer_id=test_customer_id,
-                thread_type="GENIE",
-                amount_paise=5000,
-            )
+    # Dunder __call__ cannot be patched on instances (CPython type-level lookup).
+    # Replace _session_factory on the service instance directly instead.
+    mock_ctx = MagicMock()
+    mock_ctx.__aenter__ = AsyncMock(side_effect=asyncio.CancelledError())
+    mock_ctx.__aexit__ = AsyncMock(return_value=False)
+    meter_service._session_factory = MagicMock(return_value=mock_ctx)
+
+    with pytest.raises(asyncio.CancelledError):
+        await meter_service.record_usage(
+            customer_id=test_customer_id,
+            thread_type="GENIE",
+            amount_paise=5000,
+        )
 
 
 @pytest.mark.asyncio
-async def test_project_depletion_cancelled_error(
-    meter_service, session_factory, test_customer_id
-):
+async def test_project_depletion_cancelled_error(meter_service, test_customer_id):
     """Test project_depletion re-raises CancelledError."""
-    with patch.object(session_factory, "__call__", side_effect=asyncio.CancelledError()):
-        with pytest.raises(asyncio.CancelledError):
-            await meter_service.project_depletion(
-                customer_id=test_customer_id,
-                thread_type="GENIE",
-            )
+    mock_ctx = MagicMock()
+    mock_ctx.__aenter__ = AsyncMock(side_effect=asyncio.CancelledError())
+    mock_ctx.__aexit__ = AsyncMock(return_value=False)
+    meter_service._session_factory = MagicMock(return_value=mock_ctx)
+
+    with pytest.raises(asyncio.CancelledError):
+        await meter_service.project_depletion(
+            customer_id=test_customer_id,
+            thread_type="GENIE",
+        )
 
 
 @pytest.mark.asyncio
-async def test_check_thresholds_cancelled_error(
-    meter_service, session_factory, test_customer_id
-):
+async def test_check_thresholds_cancelled_error(meter_service, test_customer_id):
     """Test check_thresholds re-raises CancelledError."""
-    with patch.object(session_factory, "__call__", side_effect=asyncio.CancelledError()):
-        with pytest.raises(asyncio.CancelledError):
-            await meter_service.check_thresholds(customer_id=test_customer_id)
+    mock_ctx = MagicMock()
+    mock_ctx.__aenter__ = AsyncMock(side_effect=asyncio.CancelledError())
+    mock_ctx.__aexit__ = AsyncMock(return_value=False)
+    meter_service._session_factory = MagicMock(return_value=mock_ctx)
+
+    with pytest.raises(asyncio.CancelledError):
+        await meter_service.check_thresholds(customer_id=test_customer_id)

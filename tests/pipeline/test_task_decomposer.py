@@ -1037,7 +1037,7 @@ class TestUDCPDispatch:
         udcp_calls = []
         llm_calls = []
 
-        def fake_udcp(task_id, scope_text, sprint_id, model_hint, max_tokens, required_output_files=None):
+        def fake_udcp(task_id, scope_text, sprint_id, model_hint, max_tokens, required_output_files=None, **kwargs):
             udcp_calls.append(task_id)
             return True, []
 
@@ -1079,7 +1079,7 @@ class TestUDCPDispatch:
 
         received_scope = []
 
-        def fake_udcp(task_id, scope_text, sprint_id, model_hint, max_tokens, required_output_files=None):
+        def fake_udcp(task_id, scope_text, sprint_id, model_hint, max_tokens, required_output_files=None, **kwargs):
             received_scope.append(scope_text)
             return True, []
 
@@ -1129,7 +1129,7 @@ class TestUDCPDispatch:
 
         received_scope = []
 
-        def fake_udcp(task_id, scope_text, sprint_id, model_hint, max_tokens, required_output_files=None):
+        def fake_udcp(task_id, scope_text, sprint_id, model_hint, max_tokens, required_output_files=None, **kwargs):
             received_scope.append(scope_text)
             return True, []
 
@@ -1173,7 +1173,7 @@ class TestUDCPDispatch:
 
         udcp_calls = []
 
-        def fake_udcp(task_id, scope_text, sprint_id, model_hint, max_tokens, required_output_files=None):
+        def fake_udcp(task_id, scope_text, sprint_id, model_hint, max_tokens, required_output_files=None, **kwargs):
             udcp_calls.append(scope_text)
             return True, []
 
@@ -1215,7 +1215,7 @@ class TestUDCPDispatch:
 
         received_kwargs = {}
 
-        def fake_udcp(task_id, scope_text, sprint_id, model_hint, max_tokens, required_output_files=None):
+        def fake_udcp(task_id, scope_text, sprint_id, model_hint, max_tokens, required_output_files=None, **kwargs):
             received_kwargs.update({
                 "task_id": task_id,
                 "sprint_id": sprint_id,
@@ -1260,16 +1260,16 @@ class TestUDCPDispatch:
 
         executed = []
 
-        def fake_udcp_fail(task_id, scope_text, sprint_id, model_hint, max_tokens, required_output_files=None):
+        def fake_udcp_fail(task_id, scope_text, sprint_id, model_hint, max_tokens, required_output_files=None, **kwargs):
             return False  # simulate UDCP failure
 
-        def fake_udcp_pass(task_id, scope_text, sprint_id, model_hint, max_tokens, required_output_files=None):
+        def fake_udcp_pass(task_id, scope_text, sprint_id, model_hint, max_tokens, required_output_files=None, **kwargs):
             executed.append(task_id)
             return True
 
         call_n = [0]
 
-        def fake_udcp(task_id, scope_text, sprint_id, model_hint, max_tokens, required_output_files=None):
+        def fake_udcp(task_id, scope_text, sprint_id, model_hint, max_tokens, required_output_files=None, **kwargs):
             call_n[0] += 1
             if call_n[0] == 1:
                 return False, []  # first task fails
@@ -1317,7 +1317,7 @@ class TestUDCPDispatch:
 
         gate_calls = []
 
-        def fake_udcp(task_id, scope_text, sprint_id, model_hint, max_tokens, required_output_files=None):
+        def fake_udcp(task_id, scope_text, sprint_id, model_hint, max_tokens, required_output_files=None, **kwargs):
             return True, []
 
         mock_executor = MagicMock()
@@ -1357,7 +1357,7 @@ class TestUDCPDispatch:
 
         udcp_calls = []
 
-        def fake_udcp(task_id, scope_text, sprint_id, model_hint, max_tokens, required_output_files=None):
+        def fake_udcp(task_id, scope_text, sprint_id, model_hint, max_tokens, required_output_files=None, **kwargs):
             udcp_calls.append(task_id)
             return True, []
 
@@ -1400,7 +1400,7 @@ class TestUDCPDispatch:
 
         received_scope = []
 
-        def fake_udcp(task_id, scope_text, sprint_id, model_hint, max_tokens, required_output_files=None):
+        def fake_udcp(task_id, scope_text, sprint_id, model_hint, max_tokens, required_output_files=None, **kwargs):
             received_scope.append(scope_text)
             return True, []
 
