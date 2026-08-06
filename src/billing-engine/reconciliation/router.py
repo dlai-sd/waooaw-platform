@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import asyncio
+import dataclasses
 import json
 import logging
+import uuid
 from datetime import date, datetime, timezone
 
 import redis.asyncio as aioredis
@@ -121,12 +123,27 @@ async def get_reconciliation_status(
         cached_self = await redis_client.get("wbe:last_self_audit_result")
         if cached_self:
             raw = json.loads(cached_self)
-            last_self_audit = SelfAuditResult(**raw)
+            last_self_audit = SelfAuditResult(
+                discrepancy_paise=int(raw["discrepancy_paise"]),
+                billing_halted=bool(raw["billing_halted"]),
+                founder_action_created=bool(raw["founder_action_created"]),
+                buckets_audited=int(raw["buckets_audited"]),
+                evidence_id=uuid.UUID(raw["evidence_id"]),
+                audited_at=datetime.fromisoformat(raw["audited_at"]),
+            )
 
         cached_daily = await redis_client.get("wbe:last_daily_audit_result")
         if cached_daily:
             raw = json.loads(cached_daily)
-            last_daily_audit = DailyAuditResult(**raw)
+            last_daily_audit = DailyAuditResult(
+                audit_date=date.fromisoformat(raw["audit_date"]),
+                total_consumed_reservations=int(raw["total_consumed_reservations"]),
+                unlinked_reservations=[
+                    uuid.UUID(r) for r in raw.get("unlinked_reservations", [])
+                ],
+                evidence_id=uuid.UUID(raw["evidence_id"]),
+                audited_at=datetime.fromisoformat(raw["audited_at"]),
+            )
             if last_daily_audit.audit_date:
                 last_audit_date = last_daily_audit.audit_date
 
@@ -194,7 +211,7 @@ async def run_self_audit_now(
         )
         await redis_client.set(
             "wbe:last_self_audit_result",
-            json.dumps(result.model_dump(mode="json")),
+            json.dumps(dataclasses.asdict(result), default=str),
         )
         logger.info(
             "Ops-triggered self-audit completed: billing_halted=%s discrepancy_paise=%s",

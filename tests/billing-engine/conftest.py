@@ -13,6 +13,10 @@ _db_stub.init_db = AsyncMock()
 _db_stub.close_db = AsyncMock()
 sys.modules.setdefault("database", _db_stub)
 
+_db2_stub = MagicMock()
+_db2_stub.get_session = AsyncMock()
+sys.modules.setdefault("db", _db2_stub)
+
 _ce_stub = MagicMock()
 _ce_stub.CE = MagicMock()
 _ce_stub.CE.ValidateAction = AsyncMock(return_value=None)
