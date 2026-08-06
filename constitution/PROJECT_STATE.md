@@ -1,6 +1,36 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-08-07 (WC-025 + WC-030 Audits — Thread Catalog & Reconciliation Coverage — COMPLETE)
+**Last Updated:** 2026-08-07 (WC-031 Trial Engine + Promotions Engine — COMPLETE)
+
+---
+
+## SESSION RECORD — 2026-08-07 (WC-031 TRIAL ENGINE + PROMOTIONS ENGINE — COMPLETE)
+
+### What Was Built
+
+| Task | File | Output | Status |
+|---|---|---|---|
+| WC031-01 | `src/billing-engine/trial/models.py` | TrialStartResult, TrialStatus, ConvertResult DTOs | ✅ |
+| WC031-01 | `src/billing-engine/trial/service.py` | TrialService: start_trial, check_expiry, convert_to_paid, get_status | ✅ |
+| WC031-01 | `src/billing-engine/trial/router.py` | FastAPI /trial/start, /trial/status/{id}, /trial/convert | ✅ |
+| WC031-02 | `src/billing-engine/promotions/models.py` | CouponValidation, DiscountResult, ReferralStatus DTOs | ✅ |
+| WC031-02 | `src/billing-engine/promotions/service.py` | PromotionsService: validate_coupon, apply_discount, credit_referrer | ✅ |
+| WC031-02 | `src/billing-engine/promotions/router.py` | FastAPI /promotions/validate-coupon, apply-discount, referral-status | ✅ |
+| WC031-02 | `src/billing-engine/main.py` | trial + promotions routers mounted | ✅ |
+| WC031-03 | `tests/billing-engine/test_trial.py` | 26 tests, CCT-TRIAL-01, CCT-TRIAL-02, trial/ 93% | ✅ |
+| WC031-03 | `tests/billing-engine/test_promotions.py` | 24 tests, CCT-COUPON-01, CCT-REFERRAL-01, promotions/ 92% | ✅ |
+| housekeeping | `tests/billing-engine/conftest.py` | TRIAL_FREE_UNITS, TRIAL_DURATION_DAYS, MAX_DISCOUNT_PCT added | ✅ |
+| housekeeping | VERSION, CHANGELOG, PROJECT_STATE | 1.32.0→1.33.0 | ✅ |
+
+### CCT Results
+| CCT | Description | Result |
+|---|---|---|
+| CCT-TRIAL-01 | Second start_trial same agent → 409 TRIAL_ALREADY_USED | ✅ |
+| CCT-TRIAL-02 | Redis wbe:customer:{id}:mode=TRIAL + ledger rows with correct units | ✅ |
+| CCT-COUPON-01 | 50% discount → 500p; discount_pct>cap → DISCOUNT_EXCEEDS_CAP | ✅ |
+| CCT-REFERRAL-01 | Referral credit fires once, idempotent; referrer wallet credited | ✅ |
+
+**338/338 tests passing. VERSION 1.33.0.**
 
 ---
 

@@ -18,6 +18,8 @@ from meter.router import router as meter_router
 from procurement.router import router as procurement_router
 from reconciliation.router import router as reconciliation_router
 from reconciliation.scheduler import create_scheduler
+from trial.router import router as trial_router
+from promotions.router import router as promotions_router
 from reconciliation.service import ReconciliationService, FounderActionGenerator as _FAGBase
 
 logger = logging.getLogger(__name__)
@@ -151,6 +153,11 @@ def create_app() -> FastAPI:
     # Constitutional: C-001 (audit scheduling), C-002 (idempotency),
     #                 C-003 (ops-auth), C-004 (billing halt enforcement)
     app.include_router(reconciliation_router)
+
+    # Mount trial engine router (WC-031 sub-component 6)
+    app.include_router(trial_router)
+    # Mount promotions engine router (WC-031 sub-component 7)
+    app.include_router(promotions_router)
 
     @app.get("/health", response_model=dict[str, str])
     async def health_check() -> dict[str, str]:

@@ -32,6 +32,9 @@ _settings_instance = MagicMock(
     WBE_INTERNAL_BASE_URL="http://localhost:8140",
     thread_catalog_cache_ttl_seconds=30,
     redis_url="redis://localhost:6379/0",
+    TRIAL_FREE_UNITS={"DMA": {"llm_cloud": 50, "llm_local": 200}},
+    TRIAL_DURATION_DAYS=14,
+    MAX_DISCOUNT_PCT=50,
 )
 _config_stub = MagicMock()
 _config_stub.settings = _settings_instance

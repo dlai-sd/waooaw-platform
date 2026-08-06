@@ -8,6 +8,30 @@ types: `feat` | `fix` | `constitutional` | `cct` | `chore` | `refactor` | `secur
 
 ---
 
+## [1.33.0] — 2026-08-07 (WC-031 — Trial Engine + Promotions Engine)
+
+### Feat (Billing Engine — WC-031 GOAL-005)
+
+- **`src/billing-engine/trial/`** — WBE sub-component 6 (TrialService + router)
+  - `start_trial()`: phone-verify gate (C-019), TRIAL_FREE_UNITS config, ONE DB transaction (trial_allocations + wallet_buckets + trial_free_unit_ledger), Redis `wbe:customer:{id}:mode=TRIAL` set after commit (non-fatal on Redis failure)
+  - `check_expiry()`: marks EXPIRED, clears Redis key; idempotent
+  - `convert_to_paid()`: marks CONVERTED, C-090 grandfather within 14 days, sets Redis mode=ACTIVE
+  - `get_status()`: returns TrialStatus with units_consumed/remaining per thread_type
+  - Router: `POST /trial/start`, `GET /trial/status/{customer_id}`, `POST /trial/convert` (ops-auth)
+- **`src/billing-engine/promotions/`** — WBE sub-component 7 (PromotionsService + router)
+  - `validate_coupon()`: COUPON_EXPIRED/USED/AGENT_MISMATCH/TIER_MISMATCH/DISCOUNT_EXCEEDS_CAP checks (C-088 cap enforcement)
+  - `apply_discount()`: atomic uses_count increment, referral credit trigger on PENDING referral
+  - `credit_referrer()`: idempotent UPDATE WHERE credit_status=PENDING; adds credit to referrer wallet
+  - Router: `POST /promotions/validate-coupon`, `POST /promotions/apply-discount`, `GET /promotions/referral-status/{customer_id}`
+- **CCTs passing**: CCT-TRIAL-01, CCT-TRIAL-02 (billing layer), CCT-COUPON-01, CCT-REFERRAL-01
+- **`tests/billing-engine/test_trial.py`**: 26 tests, trial/ 93%
+- **`tests/billing-engine/test_promotions.py`**: 24 tests, promotions/ 92%
+- **`src/billing-engine/main.py`**: trial + promotions routers mounted
+- **`tests/billing-engine/conftest.py`**: TRIAL_FREE_UNITS, TRIAL_DURATION_DAYS, MAX_DISCOUNT_PCT added to settings stub
+- **Full suite: 338/338 tests passing**
+
+---
+
 ## [1.32.0] — 2026-08-07 (WC-025 + WC-030 Audits — Thread Catalog & Reconciliation Coverage)
 
 ### Fix (Billing Engine — Manual Audit)
