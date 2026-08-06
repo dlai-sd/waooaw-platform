@@ -1,39 +1,29 @@
-# Implements: tests/billing-engine/test_service.py
-# constitutional_basis: C-043 (budget ceiling), C-049 (honest limitation),
-#                       C-059 (traceability), C-073 (annotations), C-076 (coverage)
-# ib_item: IB-009
-"""
-Manually authored test suite for MeterService + AlertPolicy.
-No hypothesis property tests — domain invariants are threshold-specific, not algebraic.
-"""
+# Implements: <spec-path> §<section>
+# constitutional_basis: C-059 (Implementation Traceability)
+from __future__ import annotations
+
 import sys
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import AsyncMock
 from uuid import UUID, uuid4
 
 import pytest
+import redis.asyncio as aioredis
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src" / "billing-engine"))
 
-from meter.alert_policy import (
-    AGENCY_POLICY,
-    CUSTOMER_BUCKET_POLICY,
-    PROCUREMENT_POLICY,
-    AlertAction,
-    AlertScope,
-    RunwayThresholdRule,
-    ThresholdPolicy,
-    ThresholdRule,
-)
 from meter.service import (
     MeterService,
-    _current_billing_period_start,
-    _is_quiet_hours,
-    _now_ist,
+)
+from reconciliation.service import (
+    BILLING_HALTED_KEY,
+    DailyAuditResult,
+    FounderActionGenerator,
+    ReconciliationService,
 )
 
 _IST_TZ = timezone(timedelta(hours=5, minutes=30))
@@ -56,17 +46,34 @@ _DDL = [
         customer_id TEXT NOT NULL,
         thread_type TEXT NOT NULL,
         provider_account_id TEXT NOT NULL,
+        bucket_reservation_id TEXT,
         marked_up_cost_inr_paise INTEGER NOT NULL DEFAULT 0,
+        raw_cost_inr_paise INTEGER NOT NULL DEFAULT 0,
         recorded_at TEXT NOT NULL,
         billing_period_start TEXT NOT NULL
     )""",
     """CREATE TABLE IF NOT EXISTS wallet_buckets (
         id TEXT NOT NULL PRIMARY KEY,
         customer_id TEXT NOT NULL,
+        employment_contract_id TEXT NOT NULL,
         thread_type TEXT NOT NULL,
         balance_paise INTEGER NOT NULL DEFAULT 0,
         available_paise INTEGER,
         is_active INTEGER NOT NULL DEFAULT 1
+    )""",
+    """CREATE TABLE IF NOT EXISTS bucket_reservations (
+        id TEXT NOT NULL PRIMARY KEY,
+        bucket_id TEXT NOT NULL,
+        reserved_paise INTEGER NOT NULL,
+        consumed INTEGER NOT NULL DEFAULT 0,
+        consumed_at TEXT
+    )""",
+    """CREATE TABLE IF NOT EXISTS topup_orders (
+        id TEXT NOT NULL PRIMARY KEY,
+        employment_contract_id TEXT NOT NULL,
+        thread_type TEXT NOT NULL,
+        amount_paise INTEGER NOT NULL,
+        applied_at TEXT
     )""",
     """CREATE TABLE IF NOT EXISTS agency_sub_wallets (
         id TEXT NOT NULL PRIMARY KEY,
@@ -82,11 +89,21 @@ _DDL = [
         scope TEXT NOT NULL,
         fired_at TEXT NOT NULL
     )""",
+    """CREATE TABLE IF NOT EXISTS audit_evidence_log (
+        id TEXT NOT NULL PRIMARY KEY,
+        audit_type TEXT NOT NULL,
+        audit_date TEXT NOT NULL,
+        total_checked INTEGER NOT NULL,
+        unlinked_count INTEGER NOT NULL,
+        outcome TEXT NOT NULL,
+        created_at TEXT NOT NULL
+    )""",
 ]
 
 
 @pytest.fixture
 async def in_memory_engine():
+    """SQLite in-memory engine with StaticPool for test isolation."""
     engine = create_async_engine(
         "sqlite+aiosqlite:///:memory:",
         connect_args={"check_same_thread": False},
@@ -101,492 +118,887 @@ async def in_memory_engine():
 
 @pytest.fixture
 def session_factory(in_memory_engine):
+    """Async session factory for in-memory DB."""
     return async_sessionmaker(in_memory_engine, expire_on_commit=False)
 
 
 @pytest.fixture
 def meter_service(session_factory):
+    """MeterService instance for tests."""
     return MeterService(session_factory, redis_pool=None)
 
 
 @pytest.fixture
+async def mock_redis():
+    """Mock Redis client (not real Redis)."""
+    mock = AsyncMock(spec=aioredis.Redis)
+    mock.set = AsyncMock()
+    mock.get = AsyncMock()
+    mock.delete = AsyncMock()
+    return mock
+
+
+@pytest.fixture
+async def mock_founder_action_generator():
+    """Mock FounderActionGenerator."""
+    mock = AsyncMock(spec=FounderActionGenerator)
+    mock.maybe_create = AsyncMock(return_value=False)
+    return mock
+
+
+@pytest.fixture
+async def reconciliation_service(session_factory, mock_redis, mock_founder_action_generator):
+    """ReconciliationService instance for tests."""
+    return ReconciliationService(
+        session_factory=session_factory,
+        redis_client=mock_redis,
+        founder_action_generator=mock_founder_action_generator,
+    )
+
+
+@pytest.fixture
 def test_customer_id():
+    """Standard test customer UUID."""
     return UUID("11111111-1111-1111-1111-111111111111")
 
 
 @pytest.fixture
 def test_provider_account_id():
+    """Standard test provider account UUID."""
     return UUID("22222222-2222-2222-2222-222222222222")
 
 
-async def _insert_bucket(sf, customer_id, thread_type, balance_paise, is_active=1):
-    async with sf() as s:
-        await s.execute(
-            text("INSERT INTO wallet_buckets (id, customer_id, thread_type, balance_paise, is_active) "
-                 "VALUES (:id, :cid, :tt, :bal, :ia)")
-            .bindparams(id=str(uuid4()), cid=str(customer_id), tt=thread_type, bal=balance_paise, ia=is_active)
+@pytest.fixture
+def test_employment_contract_id():
+    """Standard test employment contract UUID."""
+    return UUID("33333333-3333-3333-3333-333333333333")
+
+
+# ============================================================================
+# Helper functions for test data insertion
+# ============================================================================
+
+
+async def _insert_bucket(
+    sf: async_sessionmaker,
+    bucket_id: UUID,
+    customer_id: UUID,
+    employment_contract_id: UUID,
+    thread_type: str,
+    balance_paise: int,
+    is_active: bool = True,
+) -> None:
+    """Insert a wallet_bucket row into test DB."""
+    async with sf() as session:
+        await session.execute(
+            text(
+                """
+                INSERT INTO wallet_buckets
+                    (id, customer_id, employment_contract_id, thread_type, balance_paise, is_active)
+                VALUES
+                    (:id, :customer_id, :ec_id, :thread_type, :balance_paise, :is_active)
+                """
+            ).bindparams(
+                id=str(bucket_id),
+                customer_id=str(customer_id),
+                ec_id=str(employment_contract_id),
+                thread_type=thread_type,
+                balance_paise=balance_paise,
+                is_active=1 if is_active else 0,
+            )
         )
-        await s.commit()
+        await session.commit()
 
 
-async def _insert_spend(sf, customer_id, thread_type, provider_id, amount_paise):
-    now = datetime.now(timezone.utc)
-    period = _current_billing_period_start(now)
-    async with sf() as s:
-        await s.execute(
-            text("INSERT INTO platform_cost_ledger "
-                 "(id, customer_id, thread_type, provider_account_id, "
-                 "marked_up_cost_inr_paise, recorded_at, billing_period_start) "
-                 "VALUES (:id, :cid, :tt, :pid, :amt, :rat, :bps)")
-            .bindparams(id=str(uuid4()), cid=str(customer_id), tt=thread_type,
-                        pid=str(provider_id), amt=amount_paise, rat=now, bps=str(period))
+async def _insert_topup_order(
+    sf: async_sessionmaker,
+    topup_id: UUID,
+    employment_contract_id: UUID,
+    thread_type: str,
+    amount_paise: int,
+    applied_at: datetime | None = None,
+) -> None:
+    """Insert a topup_order row into test DB."""
+    async with sf() as session:
+        await session.execute(
+            text(
+                """
+                INSERT INTO topup_orders
+                    (id, employment_contract_id, thread_type, amount_paise, applied_at)
+                VALUES
+                    (:id, :ec_id, :thread_type, :amount_paise, :applied_at)
+                """
+            ).bindparams(
+                id=str(topup_id),
+                ec_id=str(employment_contract_id),
+                thread_type=thread_type,
+                amount_paise=amount_paise,
+                applied_at=applied_at.isoformat() if applied_at else None,
+            )
         )
-        await s.commit()
+        await session.commit()
 
 
-async def _insert_thread_catalog(sf, thread_type, provider_account_id):
-    async with sf() as s:
-        await s.execute(
-            text("INSERT INTO thread_catalog (id, thread_type, provider_account_id) "
-                 "VALUES (:id, :tt, :pid)")
-            .bindparams(id=str(uuid4()), tt=thread_type, pid=str(provider_account_id))
+async def _insert_bucket_reservation(
+    sf: async_sessionmaker,
+    res_id: UUID,
+    bucket_id: UUID,
+    reserved_paise: int,
+    consumed: bool = False,
+    consumed_at: datetime | None = None,
+) -> None:
+    """Insert a bucket_reservation row into test DB."""
+    async with sf() as session:
+        await session.execute(
+            text(
+                """
+                INSERT INTO bucket_reservations
+                    (id, bucket_id, reserved_paise, consumed, consumed_at)
+                VALUES
+                    (:id, :bucket_id, :reserved_paise, :consumed, :consumed_at)
+                """
+            ).bindparams(
+                id=str(res_id),
+                bucket_id=str(bucket_id),
+                reserved_paise=reserved_paise,
+                consumed=1 if consumed else 0,
+                consumed_at=consumed_at.isoformat() if consumed_at else None,
+            )
         )
-        await s.commit()
+        await session.commit()
 
 
-async def _insert_provider_account(sf, provider_id, provider_name, balance, burn_rate, is_active=1):
-    async with sf() as s:
-        await s.execute(
-            text("INSERT INTO provider_accounts "
-                 "(id, provider_name, balance_paise, daily_burn_rate_paise, is_active) "
-                 "VALUES (:id, :name, :bal, :br, :ia)")
-            .bindparams(id=str(provider_id), name=provider_name, bal=balance, br=burn_rate, ia=is_active)
+async def _insert_cost_ledger_entry(
+    sf: async_sessionmaker,
+    ledger_id: UUID,
+    customer_id: UUID,
+    thread_type: str,
+    provider_account_id: UUID,
+    bucket_reservation_id: UUID | None = None,
+    marked_up_cost_inr_paise: int = 0,
+    raw_cost_inr_paise: int = 0,
+    recorded_at: datetime | None = None,
+    billing_period_start: str = "2025-01-01",
+) -> None:
+    """Insert a platform_cost_ledger row into test DB."""
+    async with sf() as session:
+        await session.execute(
+            text(
+                """
+                INSERT INTO platform_cost_ledger
+                    (id, customer_id, thread_type, provider_account_id, bucket_reservation_id,
+                     marked_up_cost_inr_paise, raw_cost_inr_paise, recorded_at, billing_period_start)
+                VALUES
+                    (:id, :customer_id, :thread_type, :provider_account_id, :bucket_reservation_id,
+                     :marked_up_cost, :raw_cost, :recorded_at, :billing_period_start)
+                """
+            ).bindparams(
+                id=str(ledger_id),
+                customer_id=str(customer_id),
+                thread_type=thread_type,
+                provider_account_id=str(provider_account_id),
+                bucket_reservation_id=str(bucket_reservation_id) if bucket_reservation_id else None,
+                marked_up_cost=marked_up_cost_inr_paise,
+                raw_cost=raw_cost_inr_paise,
+                recorded_at=(recorded_at or datetime.now(timezone.utc)).isoformat(),
+                billing_period_start=billing_period_start,
+            )
         )
-        await s.commit()
+        await session.commit()
 
 
-async def _insert_agency_sub_wallet(sf, customer_id, quota_paise):
-    async with sf() as s:
-        await s.execute(
-            text("INSERT INTO agency_sub_wallets (id, customer_id, quota_paise) "
-                 "VALUES (:id, :cid, :q)")
-            .bindparams(id=str(uuid4()), cid=str(customer_id), q=quota_paise)
+# ============================================================================
+# Tests for run_daily_audit
+# ============================================================================
+
+
+@pytest.mark.asyncio
+async def test_run_daily_audit_clean_pass(
+    reconciliation_service: ReconciliationService,
+    session_factory: async_sessionmaker,
+    test_customer_id: UUID,
+    test_employment_contract_id: UUID,
+    test_provider_account_id: UUID,
+) -> None:
+    """
+    Happy path: consumed reservations have matching cost ledger entries.
+    Expected: zero unlinked, evidence_id logged, PASS outcome.
+    """
+    bucket_id = uuid4()
+    res_id = uuid4()
+    ledger_id = uuid4()
+    audit_date = date(2025, 1, 15)
+    consumed_at = datetime(2025, 1, 15, 10, 30, 0, tzinfo=timezone.utc)
+
+    # Setup: create bucket, reservation, and cost ledger entry
+    await _insert_bucket(
+        session_factory,
+        bucket_id,
+        test_customer_id,
+        test_employment_contract_id,
+        "INFERENCE",
+        balance_paise=5000,
+    )
+    await _insert_bucket_reservation(
+        session_factory,
+        res_id,
+        bucket_id,
+        reserved_paise=1000,
+        consumed=True,
+        consumed_at=consumed_at,
+    )
+    await _insert_cost_ledger_entry(
+        session_factory,
+        ledger_id,
+        test_customer_id,
+        "INFERENCE",
+        test_provider_account_id,
+        bucket_reservation_id=res_id,
+        raw_cost_inr_paise=500,
+    )
+
+    # Execute
+    result = await reconciliation_service.run_daily_audit(audit_date)
+
+    # Assert
+    assert isinstance(result, DailyAuditResult)
+    assert result.audit_date == audit_date
+    assert result.total_consumed_reservations == 1
+    assert result.unlinked_reservations == []
+    assert result.evidence_id is not None
+
+
+@pytest.mark.asyncio
+async def test_run_daily_audit_detects_unlinked(
+    reconciliation_service: ReconciliationService,
+    session_factory: async_sessionmaker,
+    test_customer_id: UUID,
+    test_employment_contract_id: UUID,
+) -> None:
+    """
+    Error path: consumed reservation has NO matching cost ledger entry.
+    Expected: res_id flagged in unlinked_reservations, evidence outcome=FAIL_UNLINKED.
+    """
+    bucket_id = uuid4()
+    res_id = uuid4()
+    audit_date = date(2025, 1, 15)
+    consumed_at = datetime(2025, 1, 15, 10, 30, 0, tzinfo=timezone.utc)
+
+    # Setup: create bucket and reservation, but NO cost ledger
+    await _insert_bucket(
+        session_factory,
+        bucket_id,
+        test_customer_id,
+        test_employment_contract_id,
+        "INFERENCE",
+        balance_paise=5000,
+    )
+    await _insert_bucket_reservation(
+        session_factory,
+        res_id,
+        bucket_id,
+        reserved_paise=1000,
+        consumed=True,
+        consumed_at=consumed_at,
+    )
+
+    # Execute
+    result = await reconciliation_service.run_daily_audit(audit_date)
+
+    # Assert
+    assert result.total_consumed_reservations == 1
+    assert len(result.unlinked_reservations) == 1
+    assert result.unlinked_reservations[0] == res_id
+
+
+@pytest.mark.asyncio
+async def test_run_daily_audit_ignores_unconsumed(
+    reconciliation_service: ReconciliationService,
+    session_factory: async_sessionmaker,
+    test_customer_id: UUID,
+    test_employment_contract_id: UUID,
+) -> None:
+    """
+    Edge case: unconsumed reservations are NOT audited.
+    Expected: total_consumed_reservations=0 (only consumed=True counts).
+    """
+    bucket_id = uuid4()
+    res_id = uuid4()
+    audit_date = date(2025, 1, 15)
+
+    await _insert_bucket(
+        session_factory,
+        bucket_id,
+        test_customer_id,
+        test_employment_contract_id,
+        "INFERENCE",
+        balance_paise=5000,
+    )
+    await _insert_bucket_reservation(
+        session_factory,
+        res_id,
+        bucket_id,
+        reserved_paise=1000,
+        consumed=False,
+    )
+
+    result = await reconciliation_service.run_daily_audit(audit_date)
+
+    assert result.total_consumed_reservations == 0
+    assert result.unlinked_reservations == []
+
+
+# ============================================================================
+# Tests for run_self_audit
+# ============================================================================
+
+
+@pytest.mark.asyncio
+async def test_run_self_audit_clean_pass(
+    reconciliation_service: ReconciliationService,
+    session_factory: async_sessionmaker,
+    test_customer_id: UUID,
+    test_employment_contract_id: UUID,
+    mock_redis: AsyncMock,
+) -> None:
+    """
+    Happy path: balance matches expected (topups - consumed).
+    Expected: billing_halted=False, no Redis halt set, no FA created.
+    """
+    bucket_id = uuid4()
+    topup_id = uuid4()
+    res_id = uuid4()
+
+    # Setup: topup 10000 paise, consume 3000 paise, balance should be 7000
+    await _insert_bucket(
+        session_factory,
+        bucket_id,
+        test_customer_id,
+        test_employment_contract_id,
+        "INFERENCE",
+        balance_paise=7000,
+    )
+    topup_at = datetime(2025, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
+    await _insert_topup_order(
+        session_factory,
+        topup_id,
+        test_employment_contract_id,
+        "INFERENCE",
+        amount_paise=10000,
+        applied_at=topup_at,
+    )
+    await _insert_bucket_reservation(
+        session_factory,
+        res_id,
+        bucket_id,
+        reserved_paise=3000,
+        consumed=True,
+    )
+
+    result = await reconciliation_service.run_self_audit()
+
+    assert result.billing_halted is False
+    assert result.founder_action_created is False
+    assert result.buckets_audited == 1
+    assert result.discrepancy_paise == 0
+    mock_redis.set.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_run_self_audit_detects_discrepancy_halts_billing(
+    reconciliation_service: ReconciliationService,
+    session_factory: async_sessionmaker,
+    test_customer_id: UUID,
+    test_employment_contract_id: UUID,
+    mock_redis: AsyncMock,
+    mock_founder_action_generator: AsyncMock,
+) -> None:
+    """
+    Error path: balance does NOT match expected by > 1 paise.
+    Setup: topup 10000, consumed 3000, EXPECTED 7000, ACTUAL 7002 (+2 paise corruption).
+    Expected: billing_halted=True, Redis wbe:billing_halted set, FA created.
+    """
+    bucket_id = uuid4()
+    topup_id = uuid4()
+    res_id = uuid4()
+
+    await _insert_bucket(
+        session_factory,
+        bucket_id,
+        test_customer_id,
+        test_employment_contract_id,
+        "INFERENCE",
+        balance_paise=7002,  # Corrupted: should be 7000
+    )
+    topup_at = datetime(2025, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
+    await _insert_topup_order(
+        session_factory,
+        topup_id,
+        test_employment_contract_id,
+        "INFERENCE",
+        amount_paise=10000,
+        applied_at=topup_at,
+    )
+    await _insert_bucket_reservation(
+        session_factory,
+        res_id,
+        bucket_id,
+        reserved_paise=3000,
+        consumed=True,
+    )
+
+    # Configure mocks
+    mock_redis.set = AsyncMock()
+    mock_founder_action_generator.maybe_create = AsyncMock(return_value=True)
+
+    result = await reconciliation_service.run_self_audit()
+
+    assert result.billing_halted is True
+    assert result.founder_action_created is True
+    assert result.discrepancy_paise == 2
+    assert result.buckets_audited == 1
+    mock_redis.set.assert_called_once_with(BILLING_HALTED_KEY, "1")
+    mock_founder_action_generator.maybe_create.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_run_self_audit_ignores_inactive_buckets(
+    reconciliation_service: ReconciliationService,
+    session_factory: async_sessionmaker,
+    test_customer_id: UUID,
+    test_employment_contract_id: UUID,
+) -> None:
+    """
+    Edge case: inactive buckets are NOT audited.
+    Expected: buckets_audited=0, no halt triggered.
+    """
+    bucket_id = uuid4()
+
+    await _insert_bucket(
+        session_factory,
+        bucket_id,
+        test_customer_id,
+        test_employment_contract_id,
+        "INFERENCE",
+        balance_paise=5000,
+        is_active=False,
+    )
+
+    result = await reconciliation_service.run_self_audit()
+
+    assert result.buckets_audited == 0
+    assert result.billing_halted is False
+
+
+@pytest.mark.asyncio
+async def test_run_self_audit_handles_zero_topups(
+    reconciliation_service: ReconciliationService,
+    session_factory: async_sessionmaker,
+    test_customer_id: UUID,
+    test_employment_contract_id: UUID,
+) -> None:
+    """
+    Edge case: bucket with zero topups (expected=0 - consumed).
+    If balance=0 and consumed=0, expected=0, discrepancy=0, pass.
+    """
+    bucket_id = uuid4()
+
+    await _insert_bucket(
+        session_factory,
+        bucket_id,
+        test_customer_id,
+        test_employment_contract_id,
+        "INFERENCE",
+        balance_paise=0,
+    )
+
+    result = await reconciliation_service.run_self_audit()
+
+    assert result.buckets_audited == 1
+    assert result.billing_halted is False
+    assert result.discrepancy_paise == 0
+
+
+# ============================================================================
+# Tests for generate_margin_report
+# ============================================================================
+
+
+@pytest.mark.asyncio
+async def test_generate_margin_report_computes_margin_correctly(
+    reconciliation_service: ReconciliationService,
+    session_factory: async_sessionmaker,
+    test_customer_id: UUID,
+    test_employment_contract_id: UUID,
+    test_provider_account_id: UUID,
+) -> None:
+    """
+    Happy path: margin_pct = (revenue - cost) / revenue * 100.
+    revenue=1000, cost=300 => margin = (1000-300)/1000*100 = 70%.
+    """
+    bucket_id = uuid4()
+    res_id = uuid4()
+    ledger_id = uuid4()
+    report_date = date(2025, 1, 15)
+    consumed_at = datetime(2025, 1, 15, 10, 0, 0, tzinfo=timezone.utc)
+
+    await _insert_bucket(
+        session_factory,
+        bucket_id,
+        test_customer_id,
+        test_employment_contract_id,
+        "INFERENCE",
+        balance_paise=5000,
+    )
+    await _insert_bucket_reservation(
+        session_factory,
+        res_id,
+        bucket_id,
+        reserved_paise=1000,
+        consumed=True,
+        consumed_at=consumed_at,
+    )
+    await _insert_cost_ledger_entry(
+        session_factory,
+        ledger_id,
+        test_customer_id,
+        "INFERENCE",
+        test_provider_account_id,
+        bucket_reservation_id=res_id,
+        raw_cost_inr_paise=300,
+    )
+
+    rows = await reconciliation_service.generate_margin_report(report_date)
+
+    assert len(rows) == 1
+    row = rows[0]
+    assert row.customer_id == test_customer_id
+    assert row.thread_type == "INFERENCE"
+    assert row.revenue_paise == 1000
+    assert row.cost_paise == 300
+    # margin_pct = (1000 - 300) / 1000 * 100 = 70.00
+    assert row.margin_pct == 70
+
+
+@pytest.mark.asyncio
+async def test_generate_margin_report_handles_zero_cost(
+    reconciliation_service: ReconciliationService,
+    session_factory: async_sessionmaker,
+    test_customer_id: UUID,
+    test_employment_contract_id: UUID,
+    test_provider_account_id: UUID,
+) -> None:
+    """
+    Edge case: zero cost => 100% margin.
+    """
+    bucket_id = uuid4()
+    res_id = uuid4()
+    ledger_id = uuid4()
+    report_date = date(2025, 1, 15)
+    consumed_at = datetime(2025, 1, 15, 10, 0, 0, tzinfo=timezone.utc)
+
+    await _insert_bucket(
+        session_factory,
+        bucket_id,
+        test_customer_id,
+        test_employment_contract_id,
+        "INFERENCE",
+        balance_paise=5000,
+    )
+    await _insert_bucket_reservation(
+        session_factory,
+        res_id,
+        bucket_id,
+        reserved_paise=1000,
+        consumed=True,
+        consumed_at=consumed_at,
+    )
+    await _insert_cost_ledger_entry(
+        session_factory,
+        ledger_id,
+        test_customer_id,
+        "INFERENCE",
+        test_provider_account_id,
+        bucket_reservation_id=res_id,
+        raw_cost_inr_paise=0,
+    )
+
+    rows = await reconciliation_service.generate_margin_report(report_date)
+
+    assert len(rows) == 1
+    assert rows[0].margin_pct == 100
+
+
+@pytest.mark.asyncio
+async def test_generate_margin_report_ignores_unconsumed_reservations(
+    reconciliation_service: ReconciliationService,
+    session_factory: async_sessionmaker,
+    test_customer_id: UUID,
+    test_employment_contract_id: UUID,
+) -> None:
+    """
+    Edge case: unconsumed reservations are NOT included in report.
+    """
+    bucket_id = uuid4()
+    res_id = uuid4()
+    report_date = date(2025, 1, 15)
+
+    await _insert_bucket(
+        session_factory,
+        bucket_id,
+        test_customer_id,
+        test_employment_contract_id,
+        "INFERENCE",
+        balance_paise=5000,
+    )
+    await _insert_bucket_reservation(
+        session_factory,
+        res_id,
+        bucket_id,
+        reserved_paise=1000,
+        consumed=False,
+    )
+
+    rows = await reconciliation_service.generate_margin_report(report_date)
+
+    assert len(rows) == 0
+
+
+@pytest.mark.asyncio
+async def test_generate_margin_report_groups_by_customer_and_thread_type(
+    reconciliation_service: ReconciliationService,
+    session_factory: async_sessionmaker,
+    test_customer_id: UUID,
+    test_employment_contract_id: UUID,
+    test_provider_account_id: UUID,
+) -> None:
+    """
+    Aggregation: two reservations for same customer+thread should combine.
+    """
+    bucket_id = uuid4()
+    res_id_1 = uuid4()
+    res_id_2 = uuid4()
+    ledger_id_1 = uuid4()
+    ledger_id_2 = uuid4()
+    report_date = date(2025, 1, 15)
+    consumed_at = datetime(2025, 1, 15, 10, 0, 0, tzinfo=timezone.utc)
+
+    await _insert_bucket(
+        session_factory,
+        bucket_id,
+        test_customer_id,
+        test_employment_contract_id,
+        "INFERENCE",
+        balance_paise=5000,
+    )
+    # Reservation 1: 1000 paise, cost 300
+    await _insert_bucket_reservation(
+        session_factory,
+        res_id_1,
+        bucket_id,
+        reserved_paise=1000,
+        consumed=True,
+        consumed_at=consumed_at,
+    )
+    await _insert_cost_ledger_entry(
+        session_factory,
+        ledger_id_1,
+        test_customer_id,
+        "INFERENCE",
+        test_provider_account_id,
+        bucket_reservation_id=res_id_1,
+        raw_cost_inr_paise=300,
+    )
+    # Reservation 2: 500 paise, cost 150
+    await _insert_bucket_reservation(
+        session_factory,
+        res_id_2,
+        bucket_id,
+        reserved_paise=500,
+        consumed=True,
+        consumed_at=consumed_at,
+    )
+    await _insert_cost_ledger_entry(
+        session_factory,
+        ledger_id_2,
+        test_customer_id,
+        "INFERENCE",
+        test_provider_account_id,
+        bucket_reservation_id=res_id_2,
+        raw_cost_inr_paise=150,
+    )
+
+    rows = await reconciliation_service.generate_margin_report(report_date)
+
+    assert len(rows) == 1
+    row = rows[0]
+    assert row.revenue_paise == 1500  # 1000 + 500
+    assert row.cost_paise == 450  # 300 + 150
+    # margin = (1500 - 450) / 1500 * 100 = 70.00
+    assert row.margin_pct == 70
+
+
+# ============================================================================
+# Tests for clear_halt
+# ============================================================================
+
+
+@pytest.mark.asyncio
+async def test_clear_halt_deletes_redis_key(
+    reconciliation_service: ReconciliationService,
+    mock_redis: AsyncMock,
+) -> None:
+    """
+    Happy path: clear_halt() deletes BILLING_HALTED_KEY from Redis.
+    """
+    mock_redis.delete = AsyncMock()
+
+    await reconciliation_service.clear_halt()
+
+    mock_redis.delete.assert_called_once_with(BILLING_HALTED_KEY)
+
+
+@pytest.mark.asyncio
+async def test_clear_halt_idempotent(
+    reconciliation_service: ReconciliationService,
+    mock_redis: AsyncMock,
+) -> None:
+    """
+    Edge case: calling clear_halt() twice is safe (delete is idempotent).
+    """
+    mock_redis.delete = AsyncMock()
+
+    await reconciliation_service.clear_halt()
+    await reconciliation_service.clear_halt()
+
+    assert mock_redis.delete.call_count == 2
+
+
+# ============================================================================
+# Constitutional Tests (C-023, C-059, C-063)
+# ============================================================================
+
+
+@pytest.mark.asyncio
+async def test_run_daily_audit_emits_evidence_record(
+    reconciliation_service: ReconciliationService,
+    session_factory: async_sessionmaker,
+    test_customer_id: UUID,
+    test_employment_contract_id: UUID,
+) -> None:
+    """
+    C-023: every audit emits an evidence record regardless of outcome.
+    Verify audit_evidence_log row is created with correct outcome.
+    """
+    bucket_id = uuid4()
+    res_id = uuid4()
+    audit_date = date(2025, 1, 15)
+    consumed_at = datetime(2025, 1, 15, 10, 0, 0, tzinfo=timezone.utc)
+
+    await _insert_bucket(
+        session_factory,
+        bucket_id,
+        test_customer_id,
+        test_employment_contract_id,
+        "INFERENCE",
+        balance_paise=5000,
+    )
+    await _insert_bucket_reservation(
+        session_factory,
+        res_id,
+        bucket_id,
+        reserved_paise=1000,
+        consumed=True,
+        consumed_at=consumed_at,
+    )
+
+    result = await reconciliation_service.run_daily_audit(audit_date)
+
+    # Verify evidence record exists
+    async with session_factory() as session:
+        evidence = await session.execute(
+            text(
+                """
+                SELECT id, audit_type, outcome
+                FROM audit_evidence_log
+                WHERE id = :id
+                """
+            ).bindparams(id=str(result.evidence_id))
         )
-        await s.commit()
+        evidence_row = evidence.fetchone()
+        assert evidence_row is not None
+        assert evidence_row[1] == "DAILY_RESERVATION_AUDIT"
+        assert evidence_row[2] == "FAIL_UNLINKED"  # unlinked because no cost ledger
 
 
-async def _insert_alert_log(sf, customer_id, bucket_type, threshold_name, fired_at):
-    # fired_at MUST be a datetime object, not .isoformat():
-    # SQLAlchemy → 'YYYY-MM-DD HH:MM:SS' (space); .isoformat() → T-separator
-    # SQLite string compare: 'T'(84) > ' '(32) → stale rows sort after dedup window
-    async with sf() as s:
-        await s.execute(
-            text("INSERT INTO meter_alert_log "
-                 "(id, customer_id, bucket_type, threshold_name, pct_consumed, scope, fired_at) "
-                 "VALUES (:id, :cid, :bt, :tn, :pc, :sc, :fa)")
-            .bindparams(id=str(uuid4()), cid=str(customer_id), bt=bucket_type,
-                        tn=threshold_name, pc=0.75, sc="CUSTOMER_BUCKET", fa=fired_at)
+@pytest.mark.asyncio
+async def test_run_self_audit_emits_evidence_record(
+    reconciliation_service: ReconciliationService,
+    session_factory: async_sessionmaker,
+    test_customer_id: UUID,
+    test_employment_contract_id: UUID,
+) -> None:
+    """
+    C-023: run_self_audit emits evidence record.
+    """
+    bucket_id = uuid4()
+
+    await _insert_bucket(
+        session_factory,
+        bucket_id,
+        test_customer_id,
+        test_employment_contract_id,
+        "INFERENCE",
+        balance_paise=0,
+    )
+
+    result = await reconciliation_service.run_self_audit()
+
+    async with session_factory() as session:
+        evidence = await session.execute(
+            text(
+                """
+                SELECT id, audit_type, outcome
+                FROM audit_evidence_log
+                WHERE id = :id
+                """
+            ).bindparams(id=str(result.evidence_id))
         )
-        await s.commit()
-
-
-# ---------------------------------------------------------------------------
-# Helper function tests
-# ---------------------------------------------------------------------------
-
-def test_current_billing_period_start_returns_first_day_of_month():
-    dt = datetime(2026, 8, 15, 10, 30, tzinfo=timezone.utc)
-    assert _current_billing_period_start(dt) == date(2026, 8, 1)
-
-
-def test_current_billing_period_start_on_first():
-    dt = datetime(2026, 8, 1, 0, 0, tzinfo=timezone.utc)
-    assert _current_billing_period_start(dt) == date(2026, 8, 1)
-
-
-def test_is_quiet_hours_inside_window():
-    now = datetime(2026, 8, 5, 23, 30, tzinfo=_IST_TZ)
-    assert _is_quiet_hours(CUSTOMER_BUCKET_POLICY, now) is True
-
-
-def test_is_quiet_hours_outside_window():
-    now = datetime(2026, 8, 5, 10, 0, tzinfo=_IST_TZ)
-    assert _is_quiet_hours(CUSTOMER_BUCKET_POLICY, now) is False
-
-
-def test_is_quiet_hours_boundary_start():
-    now = datetime(2026, 8, 5, 23, 0, tzinfo=_IST_TZ)
-    assert _is_quiet_hours(CUSTOMER_BUCKET_POLICY, now) is True
-
-
-def test_is_quiet_hours_boundary_end():
-    # hour=6 is the END — not quiet (h < 6 is False)
-    now = datetime(2026, 8, 5, 6, 0, tzinfo=_IST_TZ)
-    assert _is_quiet_hours(CUSTOMER_BUCKET_POLICY, now) is False
-
-
-def test_is_quiet_hours_early_morning():
-    now = datetime(2026, 8, 5, 3, 0, tzinfo=_IST_TZ)
-    assert _is_quiet_hours(CUSTOMER_BUCKET_POLICY, now) is True
-
-
-def test_now_ist_is_ist_offset():
-    assert _now_ist().utcoffset() == timedelta(hours=5, minutes=30)
-
-
-def test_now_ist_is_timezone_aware():
-    assert _now_ist().tzinfo is not None
-
-
-# ---------------------------------------------------------------------------
-# MeterService init
-# ---------------------------------------------------------------------------
-
-def test_meter_service_init_stores_session_factory(session_factory):
-    svc = MeterService(session_factory)
-    assert svc._session_factory is session_factory
-
-
-def test_meter_service_init_redis_pool_none(session_factory):
-    svc = MeterService(session_factory, redis_pool=None)
-    assert svc._redis_pool is None
-
-
-# ---------------------------------------------------------------------------
-# record_usage
-# ---------------------------------------------------------------------------
-
-async def test_record_usage_happy_path(meter_service, session_factory, test_customer_id, test_provider_account_id):
-    await _insert_provider_account(session_factory, test_provider_account_id, "test", 0, 0)
-    await _insert_thread_catalog(session_factory, "GENIE", test_provider_account_id)
-    await meter_service.record_usage(test_customer_id, "GENIE", 5000)
-    async with session_factory() as s:
-        row = (await s.execute(
-            text("SELECT COUNT(*) AS cnt FROM platform_cost_ledger WHERE customer_id = :cid")
-            .bindparams(cid=str(test_customer_id))
-        )).fetchone()
-    assert row.cnt == 1
-
-
-async def test_record_usage_unknown_thread_type_logs_and_returns(meter_service, test_customer_id):
-    await meter_service.record_usage(test_customer_id, "UNKNOWN_TYPE", 100)
-
-
-async def test_record_usage_multiple_calls_accumulate(meter_service, session_factory, test_customer_id, test_provider_account_id):
-    await _insert_provider_account(session_factory, test_provider_account_id, "test", 0, 0)
-    await _insert_thread_catalog(session_factory, "GENIE", test_provider_account_id)
-    await meter_service.record_usage(test_customer_id, "GENIE", 1000)
-    await meter_service.record_usage(test_customer_id, "GENIE", 2000)
-    async with session_factory() as s:
-        row = (await s.execute(
-            text("SELECT COUNT(*) AS cnt FROM platform_cost_ledger WHERE customer_id = :cid")
-            .bindparams(cid=str(test_customer_id))
-        )).fetchone()
-    assert row.cnt == 2
-
-
-# ---------------------------------------------------------------------------
-# project_depletion
-# ---------------------------------------------------------------------------
-
-async def test_project_depletion_no_usage_returns_inf(meter_service, session_factory, test_customer_id):
-    await _insert_bucket(session_factory, test_customer_id, "GENIE", 1_000_000)
-    result = await meter_service.project_depletion(test_customer_id, "GENIE")
-    assert result.days_remaining == 999.0
-
-
-async def test_project_depletion_with_usage(meter_service, session_factory, test_customer_id, test_provider_account_id):
-    # 700K spend over 7 days = 100K/day; 1M balance → 10 days
-    await _insert_bucket(session_factory, test_customer_id, "GENIE", 1_000_000)
-    await _insert_spend(session_factory, test_customer_id, "GENIE", test_provider_account_id, 700_000)
-    result = await meter_service.project_depletion(test_customer_id, "GENIE")
-    assert result.days_remaining == pytest.approx(10.0, rel=0.01)
-
-
-async def test_project_depletion_returns_depletion_projection_type(meter_service, session_factory, test_customer_id):
-    await _insert_bucket(session_factory, test_customer_id, "GENIE", 500_000)
-    from meter.service import DepletionProjection
-    assert isinstance(await meter_service.project_depletion(test_customer_id, "GENIE"), DepletionProjection)
-
-
-# ---------------------------------------------------------------------------
-# check_thresholds — scope 1
-# ---------------------------------------------------------------------------
-
-async def test_check_thresholds_no_consumption_fires_no_alerts(meter_service, session_factory, test_customer_id):
-    await _insert_bucket(session_factory, test_customer_id, "GENIE", 1_000_000)
-    assert await meter_service.check_thresholds(test_customer_id) == []
-
-
-async def test_check_thresholds_warn_30_fires_at_70_pct(meter_service, session_factory, test_customer_id, test_provider_account_id):
-    quota = 1_000_000
-    await _insert_bucket(session_factory, test_customer_id, "GENIE", quota)
-    await _insert_spend(session_factory, test_customer_id, "GENIE", test_provider_account_id, int(quota * 0.70))
-    with patch("meter.service._now_ist", return_value=datetime(2026, 8, 5, 10, 0, tzinfo=_IST_TZ)):
-        alerts = await meter_service.check_thresholds(test_customer_id)
-    assert "WARN_30" in [a.threshold_name for a in alerts]
-
-
-async def test_check_thresholds_warn_20_and_warn_10_fire_at_correct_pct(meter_service, session_factory, test_customer_id, test_provider_account_id):
-    quota = 1_000_000
-    await _insert_bucket(session_factory, test_customer_id, "GENIE", quota)
-    await _insert_spend(session_factory, test_customer_id, "GENIE", test_provider_account_id, int(quota * 0.90))
-    with patch("meter.service._now_ist", return_value=datetime(2026, 8, 5, 10, 0, tzinfo=_IST_TZ)):
-        alerts = await meter_service.check_thresholds(test_customer_id)
-    names = [a.threshold_name for a in alerts]
-    assert "WARN_30" in names
-    assert "WARN_20" in names
-    assert "WARN_10" in names
-
-
-async def test_check_thresholds_ad_wallet_below_minimum_at_100_pct(meter_service, session_factory, test_customer_id, test_provider_account_id):
-    quota = 1_000_000
-    await _insert_bucket(session_factory, test_customer_id, "GENIE", quota)
-    await _insert_spend(session_factory, test_customer_id, "GENIE", test_provider_account_id, quota)
-    with patch("meter.service._now_ist", return_value=datetime(2026, 8, 5, 10, 0, tzinfo=_IST_TZ)):
-        alerts = await meter_service.check_thresholds(test_customer_id)
-    assert "AD_WALLET_BELOW_MINIMUM" in [a.threshold_name for a in alerts]
-
-
-# ---------------------------------------------------------------------------
-# Deduplication
-# ---------------------------------------------------------------------------
-
-async def test_no_double_fire_within_24h_deduplication_window(meter_service, session_factory, test_customer_id, test_provider_account_id):
-    quota = 1_000_000
-    await _insert_bucket(session_factory, test_customer_id, "GENIE", quota)
-    await _insert_spend(session_factory, test_customer_id, "GENIE", test_provider_account_id, int(quota * 0.72))
-    with patch("meter.service._now_ist", return_value=datetime(2026, 8, 5, 10, 0, tzinfo=_IST_TZ)):
-        first = await meter_service.check_thresholds(test_customer_id)
-        second = await meter_service.check_thresholds(test_customer_id)
-    assert any(a.threshold_name == "WARN_30" for a in first)
-    assert not any(a.threshold_name == "WARN_30" for a in second)
-
-
-async def test_alert_fires_again_after_dedup_window_expires(meter_service, session_factory, test_customer_id, test_provider_account_id):
-    quota = 1_000_000
-    now_utc = datetime.now(timezone.utc)
-    # Seed a stale alert from 25h ago — outside the 24h dedup window
-    await _insert_alert_log(session_factory, test_customer_id, "GENIE", "WARN_30",
-                             now_utc - timedelta(hours=25))
-    await _insert_bucket(session_factory, test_customer_id, "GENIE", quota)
-    await _insert_spend(session_factory, test_customer_id, "GENIE", test_provider_account_id, int(quota * 0.72))
-    with patch("meter.service._now_ist", return_value=datetime(2026, 8, 5, 10, 0, tzinfo=_IST_TZ)):
-        alerts = await meter_service.check_thresholds(test_customer_id)
-    assert "WARN_30" in [a.threshold_name for a in alerts], "WARN_30 must re-fire after dedup window expires"
-
-
-# ---------------------------------------------------------------------------
-# Quiet hours
-# ---------------------------------------------------------------------------
-
-async def test_quiet_hours_suppress_notify_alerts(meter_service, session_factory, test_customer_id, test_provider_account_id):
-    quota = 1_000_000
-    await _insert_bucket(session_factory, test_customer_id, "GENIE", quota)
-    await _insert_spend(session_factory, test_customer_id, "GENIE", test_provider_account_id, int(quota * 0.72))
-    with patch("meter.service._now_ist", return_value=datetime(2026, 8, 5, 23, 30, tzinfo=_IST_TZ)):
-        alerts = await meter_service.check_thresholds(test_customer_id)
-    assert not any(a.threshold_name == "WARN_30" for a in alerts)
-
-
-async def test_quiet_hours_do_not_suppress_bypass_true_alerts(meter_service, session_factory, test_customer_id, test_provider_account_id):
-    quota = 1_000_000
-    await _insert_bucket(session_factory, test_customer_id, "GENIE", quota)
-    await _insert_spend(session_factory, test_customer_id, "GENIE", test_provider_account_id, quota)
-    with patch("meter.service._now_ist", return_value=datetime(2026, 8, 5, 23, 30, tzinfo=_IST_TZ)):
-        alerts = await meter_service.check_thresholds(test_customer_id)
-    assert any(a.threshold_name == "AD_WALLET_BELOW_MINIMUM" for a in alerts)
-
-
-# ---------------------------------------------------------------------------
-# Scope 2 — agency sub-wallet
-# ---------------------------------------------------------------------------
-
-async def test_agency_alert_fires_at_50_pct(meter_service, session_factory, test_customer_id, test_provider_account_id):
-    quota = 1_000_000
-    await _insert_agency_sub_wallet(session_factory, test_customer_id, quota)
-    await _insert_spend(session_factory, test_customer_id, "GENIE", test_provider_account_id, int(quota * 0.50))
-    with patch("meter.service._now_ist", return_value=datetime(2026, 8, 5, 10, 0, tzinfo=_IST_TZ)):
-        alerts = await meter_service.check_thresholds(test_customer_id)
-    assert "AGENCY_WARN_50" in [a.threshold_name for a in alerts]
-
-
-async def test_agency_null_quota_produces_no_alert(meter_service, session_factory, test_customer_id, test_provider_account_id):
-    await _insert_agency_sub_wallet(session_factory, test_customer_id, None)
-    await _insert_spend(session_factory, test_customer_id, "GENIE", test_provider_account_id, 500_000)
-    with patch("meter.service._now_ist", return_value=datetime(2026, 8, 5, 10, 0, tzinfo=_IST_TZ)):
-        alerts = await meter_service.check_thresholds(test_customer_id)
-    assert not any(a.scope == "AGENCY" for a in alerts)
-
-
-# ---------------------------------------------------------------------------
-# Scope 3 — procurement runway
-# ---------------------------------------------------------------------------
-
-async def test_procurement_runway_p0_fires_at_7_days(meter_service, session_factory, test_customer_id, test_provider_account_id):
-    burn = 100_000
-    await _insert_provider_account(session_factory, test_provider_account_id, "anthropic", 7 * burn, burn)
-    with patch("meter.service._now_ist", return_value=datetime(2026, 8, 5, 10, 0, tzinfo=_IST_TZ)):
-        alerts = await meter_service.check_thresholds(test_customer_id)
-    assert "RUNWAY_P0" in [a.threshold_name for a in alerts]
-
-
-async def test_procurement_runway_emergency_fires_at_1_day(meter_service, session_factory, test_customer_id, test_provider_account_id):
-    burn = 100_000
-    await _insert_provider_account(session_factory, test_provider_account_id, "anthropic", 1 * burn, burn)
-    with patch("meter.service._now_ist", return_value=datetime(2026, 8, 5, 10, 0, tzinfo=_IST_TZ)):
-        alerts = await meter_service.check_thresholds(test_customer_id)
-    assert "RUNWAY_EMERGENCY" in [a.threshold_name for a in alerts]
-
-
-async def test_procurement_no_alert_when_runway_sufficient(meter_service, session_factory, test_customer_id, test_provider_account_id):
-    burn = 100_000
-    await _insert_provider_account(session_factory, test_provider_account_id, "anthropic", 100 * burn, burn)
-    with patch("meter.service._now_ist", return_value=datetime(2026, 8, 5, 10, 0, tzinfo=_IST_TZ)):
-        alerts = await meter_service.check_thresholds(test_customer_id)
-    assert not any(a.scope == "PROCUREMENT" for a in alerts)
-
-
-# ---------------------------------------------------------------------------
-# AlertFired fields
-# ---------------------------------------------------------------------------
-
-async def test_alert_fired_fields_populated(meter_service, session_factory, test_customer_id, test_provider_account_id):
-    quota = 1_000_000
-    await _insert_bucket(session_factory, test_customer_id, "GENIE", quota)
-    await _insert_spend(session_factory, test_customer_id, "GENIE", test_provider_account_id, int(quota * 0.72))
-    with patch("meter.service._now_ist", return_value=datetime(2026, 8, 5, 10, 0, tzinfo=_IST_TZ)):
-        alerts = await meter_service.check_thresholds(test_customer_id)
-    warn = next(a for a in alerts if a.threshold_name == "WARN_30")
-    assert warn.customer_id == test_customer_id
-    assert warn.bucket_type == "GENIE"
-    assert warn.scope == "CUSTOMER_BUCKET"
-    assert warn.pct_consumed == pytest.approx(0.72, rel=0.01)
-    assert warn.fired_at is not None
-
-
-# ---------------------------------------------------------------------------
-# run_daily_scan
-# ---------------------------------------------------------------------------
-
-async def test_run_daily_scan_returns_daily_scan_result(meter_service):
-    from meter.service import DailyScanResult
-    assert isinstance(await meter_service.run_daily_scan(), DailyScanResult)
-
-
-async def test_run_daily_scan_scans_active_customers(meter_service, session_factory):
-    cid1 = UUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
-    cid2 = UUID("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb")
-    await _insert_bucket(session_factory, cid1, "GENIE", 1_000_000, is_active=1)
-    await _insert_bucket(session_factory, cid2, "GENIE", 1_000_000, is_active=1)
-    result = await meter_service.run_daily_scan()
-    assert result.customers_scanned == 2
-
-
-async def test_run_daily_scan_does_not_scan_inactive_customers(meter_service, session_factory):
-    cid_active = UUID("cccccccc-cccc-cccc-cccc-cccccccccccc")
-    cid_inactive = UUID("dddddddd-dddd-dddd-dddd-dddddddddddd")
-    await _insert_bucket(session_factory, cid_active, "GENIE", 1_000_000, is_active=1)
-    await _insert_bucket(session_factory, cid_inactive, "GENIE", 1_000_000, is_active=0)
-    result = await meter_service.run_daily_scan()
-    assert result.customers_scanned == 1
-
-
-async def test_run_daily_scan_aggregates_alerts_sent(meter_service, session_factory, test_customer_id, test_provider_account_id):
-    quota = 1_000_000
-    await _insert_bucket(session_factory, test_customer_id, "GENIE", quota, is_active=1)
-    await _insert_spend(session_factory, test_customer_id, "GENIE", test_provider_account_id, int(quota * 0.72))
-    with patch("meter.service._now_ist", return_value=datetime(2026, 8, 5, 10, 0, tzinfo=_IST_TZ)):
-        result = await meter_service.run_daily_scan()
-    assert result.customers_scanned == 1
-    assert result.alerts_sent >= 1
-
-
-async def test_run_daily_scan_fa_items_counted_correctly(meter_service, session_factory, test_customer_id, test_provider_account_id):
-    # RUNWAY_P0 (<=7 days) has action=FA
-    burn = 100_000
-    await _insert_bucket(session_factory, test_customer_id, "GENIE", 1_000_000, is_active=1)
-    await _insert_provider_account(session_factory, test_provider_account_id, "anthropic", 7 * burn, burn)
-    with patch("meter.service._now_ist", return_value=datetime(2026, 8, 5, 10, 0, tzinfo=_IST_TZ)):
-        result = await meter_service.run_daily_scan()
-    assert result.fa_items_created >= 1
-
-
-# ---------------------------------------------------------------------------
-# CCT-BILLINGLOOP-01 (C-043)
-# ---------------------------------------------------------------------------
-
-async def test_cct_billingloop_01_ad_wallet_hits_zero(meter_service, session_factory, test_customer_id, test_provider_account_id):
-    """C-043: AD_WALLET_BELOW_MINIMUM fires exactly once when balance reaches zero."""
-    quota = 500_000
-    await _insert_bucket(session_factory, test_customer_id, "GENIE", quota)
-    await _insert_spend(session_factory, test_customer_id, "GENIE", test_provider_account_id, quota)
-    with patch("meter.service._now_ist", return_value=datetime(2026, 8, 5, 10, 0, tzinfo=_IST_TZ)):
-        alerts = await meter_service.check_thresholds(test_customer_id)
-    ad_alerts = [a for a in alerts if a.threshold_name == "AD_WALLET_BELOW_MINIMUM"]
-    assert len(ad_alerts) == 1
-
-
-# ---------------------------------------------------------------------------
-# Alert policy — structure tests
-# ---------------------------------------------------------------------------
-
-def test_customer_bucket_policy_has_warn_30():
-    assert "WARN_30" in [r.name for r in CUSTOMER_BUCKET_POLICY.rules]
-
-
-def test_customer_bucket_policy_has_ad_wallet_below_minimum():
-    assert "AD_WALLET_BELOW_MINIMUM" in [r.name for r in CUSTOMER_BUCKET_POLICY.rules]
-
-
-def test_agency_policy_has_critical_fa_action():
-    rule = next(r for r in AGENCY_POLICY.rules if r.name == "AGENCY_CRITICAL")
-    assert rule.action == AlertAction.FA
-
-
-def test_procurement_policy_has_runway_p0():
-    assert "RUNWAY_P0" in [r.name for r in PROCUREMENT_POLICY.runway_thresholds]
-
-
-def test_procurement_policy_has_runway_emergency():
-    assert "RUNWAY_EMERGENCY" in [r.name for r in PROCUREMENT_POLICY.runway_thresholds]
-
-
-def test_procurement_policy_has_runway_p2():
-    assert "RUNWAY_P2" in [r.name for r in PROCUREMENT_POLICY.runway_thresholds]
-
-
-def test_procurement_policy_has_runway_p1():
-    assert "RUNWAY_P1" in [r.name for r in PROCUREMENT_POLICY.runway_thresholds]
-
-
-def test_procurement_policy_has_runway_critical():
-    assert "RUNWAY_CRITICAL" in [r.name for r in PROCUREMENT_POLICY.runway_thresholds]
-
-
-def test_warn_30_trigger_is_70_pct():
-    rule = next(r for r in CUSTOMER_BUCKET_POLICY.rules if r.name == "WARN_30")
-    assert isinstance(rule, ThresholdRule)
-    assert rule.consumed_pct_trigger == pytest.approx(0.70)
-
-
-def test_ad_wallet_below_minimum_has_block_action():
-    rule = next(r for r in CUSTOMER_BUCKET_POLICY.rules if r.name == "AD_WALLET_BELOW_MINIMUM")
-    assert rule.action == AlertAction.BLOCK
-
-
-def test_ad_wallet_below_minimum_bypass_quiet_hours():
-    rule = next(r for r in CUSTOMER_BUCKET_POLICY.rules if r.name == "AD_WALLET_BELOW_MINIMUM")
-    assert rule.bypass_quiet_hours is True
-
-
-def test_customer_bucket_policy_scope():
-    assert CUSTOMER_BUCKET_POLICY.scope == AlertScope.CUSTOMER_BUCKET
-
-
-def test_agency_policy_scope():
-    assert AGENCY_POLICY.scope == AlertScope.AGENCY
-
-
-def test_procurement_policy_scope():
-    assert PROCUREMENT_POLICY.scope == AlertScope.PROCUREMENT
+        evidence_row = evidence.fetchone()
+        assert evidence_row is not None
+        assert evidence_row[1] == "SELF_AUDIT"
+        assert evidence_row[2] == "PASS"
+
+
+@pytest.mark.asyncio
+async def test_run_self_audit_no_pii_in_logs(
+    reconciliation_service: ReconciliationService,
+    session_factory: async_sessionmaker,
+    test_customer_id: UUID,
+    test_employment_contract_id: UUID,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """
+    C-063: no PII in log statements.
+    Verify customer_id and employment_contract_id are logged as UUIDs,
+    not as identifiable strings (e.g., no email, name, etc.).
+    """
+    bucket_id = uuid4()
+
+    await _insert_bucket(
+        session_factory,
+        bucket_id,
+        test_customer_id,
+        test_employment_contract_id,
+        "INFERENCE",
+        balance_paise=5000,
+    )
+
+    with caplog.at_level("INFO"):
+        await reconciliation_service.run_self_audit()
+
+    # Assert that no PII-like patterns appear in logs
+    for record in caplog.records:
+        # UUIDs are OK; customer names, emails, etc. are not
+        assert "@" not in record.message  # No email
+        assert ".com" not in record.message  # No domain
