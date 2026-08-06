@@ -150,13 +150,13 @@
 | WC036-00a | `constitution/PROJECT_STATE.md` | `autonomous_halt: true`, `sprint_status: BLOCKED_PIPELINE_REBUILD` — no more runs on old pipeline | `f4914a0` | ✅ |
 | WC036-00b | `work-contracts/WC-036-udcp-pipeline-engine.md` | 6-task UDCP implementation WC, FA-039 required | `f4914a0` | ✅ |
 | WC036-00c | `scripts/magic_llm/pipeline.py` | Remove WC035-03 unconditional Sonnet gate (`context > 40k`) — D1 root cause of ₹232 burn | `f4914a0` | ✅ |
-| WC036-01 | `scripts/runner/ptr_validation_gate.py` | `WorkspaceSymbolIndex` — AST symbol extractor, re-export resolution, PTR validation gate | TBD | ✅ |
-| WC036-02 | `scripts/runner/track1_scaffolder.py` | `Track1Scaffolder` — conditional APIRouter, LOGIC_FILLER stubs, class/field scaffold, compile gate | TBD | ✅ |
-| WC036-03 | `scripts/runner/track2_polymorphic_engine.py` | `Track2PolymorphicEngine` — try/finally decorator guard, signature lock, splice with compile gate | TBD | ✅ |
-| WC036-04 | `scripts/runner/udcp_grooming_engine.py` | `UDCPGroomingEngine` — LLM-free TIS/TMD from WC markdown, skeleton cross-reference | TBD | ✅ |
-| WC036-05 | `scripts/runner/udcp_orchestrator.py` | `UDCPOrchestrator` — Track 1/2 orchestration, logic-fill LLM integration | TBD | ✅ |
-| WC036-06 | `tests/pipeline/test_udcp_engines.py` | 124 tests (76→124), 90.93% coverage — all DoD items met | TBD | ✅ |
-| WC036-int | `scripts/runner/task_executor.py` | `execute_with_udcp()` entry point — UDCP route for python-stack tasks | TBD | ✅ |
+| WC036-01 | `scripts/runner/ptr_validation_gate.py` | `WorkspaceSymbolIndex` — AST symbol extractor, re-export resolution, PTR validation gate | `e15996f` | ✅ |
+| WC036-02 | `scripts/runner/track1_scaffolder.py` | `Track1Scaffolder` — conditional APIRouter, LOGIC_FILLER stubs, class/field scaffold, compile gate | `e15996f` | ✅ |
+| WC036-03 | `scripts/runner/track2_polymorphic_engine.py` | `Track2PolymorphicEngine` — try/finally decorator guard, signature lock, splice with compile gate | `e15996f` | ✅ |
+| WC036-04 | `scripts/runner/udcp_grooming_engine.py` | `UDCPGroomingEngine` — LLM-free TIS/TMD from WC markdown, skeleton cross-reference | `e15996f` | ✅ |
+| WC036-05 | `scripts/runner/udcp_orchestrator.py` | `UDCPOrchestrator` — Track 1/2 orchestration, logic-fill LLM integration | `e15996f` | ✅ |
+| WC036-06 | `tests/pipeline/test_udcp_engines.py` | 124 tests (76→124), 90.93% coverage — all DoD items met | `e15996f` | ✅ |
+| WC036-int | `scripts/runner/task_executor.py` | `execute_with_udcp()` entry point — UDCP route for python-stack tasks | `e15996f` | ✅ |
 
 ### DoD Verification
 - `py_compile` on all 5 engine files → exit 0 ✅
