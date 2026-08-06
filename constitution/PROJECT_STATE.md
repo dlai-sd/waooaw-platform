@@ -1098,6 +1098,14 @@ tasks_done:
   - WC030-01b
   - WC030-03
 tasks_remaining: []
+notes: |
+  WC-030 DoD FULLY MET as of commit ca30fbd (2026-08-06).
+  - 59/59 tests passing (41 service/scheduler + 18 router/CCT)
+  - Coverage: 91.42% (router.py 91%, scheduler.py 100%, service.py 88%)
+  - CCT-SELFAUDIT-01 implemented: billing halt → WalletService.reserve() raises HTTP 503 BILLING_INTEGRITY_HALT
+  - router.py bugs fixed: model_dump→dataclasses.asdict, cache JSON parse with UUID/datetime coercion
+  - All 3 reconciliation endpoints tested (GET /status, POST /run-now, GET /platform/margin/report)
+  - conftest.py: added db module stub for procurement.router import chain
 ```
 
 ---
