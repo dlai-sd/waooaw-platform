@@ -8,6 +8,19 @@ types: `feat` | `fix` | `constitutional` | `cct` | `chore` | `refactor` | `secur
 
 ---
 
+## [1.30.0] — 2026-08-06 (WC-027 Audit — Markup Engine Coverage)
+
+### Fix (Billing Engine — Manual Audit)
+
+- **WC-027 test_markup.py rewritten:** 8 mock-SUT tests (51% coverage) replaced with 33 real-service tests; coverage 51% → 94.67%; bundle_engine.py 100%, router.py 100%
+- **BundleEngine unit tests (14):** cost_floor DB read, derive_price with default/target margin, margin=100 guard, validate_price APPROVED/REJECTED paths, C-088 FOUNDER_AUTHORIZED enforcement, C-059 audit log commit verified
+- **thread_catalog unit tests (12):** cache miss/hit paths, get_thread per-key cache, invalidate_cache Redis flush, list_threads/get_thread_entry/invalidate_thread_cache router handlers
+- **get_bundle_engine dependency test:** covers router.py line 28 (100% router coverage)
+- **Full suite: 251/251 tests passing** after WC-027 audit
+- **Constitutional verified:** C-059 (audit log on BOTH outcomes), C-088 (billing status check), C-089 (margin floor formula), C-091 (thread catalog delegation)
+
+---
+
 ## [1.29.0] — 2026-08-06 (WC-028/029 Audit Remediation + Pipeline v2 Design)
 
 ### Fix (Billing Engine — Manual Audit)

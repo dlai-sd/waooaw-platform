@@ -1119,6 +1119,41 @@ Each sprint has EA spec gaps documented, SA corrections applied to WC files, and
 - WC-028, WC-029, WC-030: all audited and remediated; full suite 226/226
 - Next: WC-027 markup engine audit
 
+## SESSION CHECKPOINT — 2026-08-06 (WC-027 Audit — Markup Engine Coverage)
+
+**Session type:** Manual audit + remediation  
+**Office:** Platform IT Expert (INST-010)  
+**Status:** CLOSED — all changes committed and pushed
+
+### Commits this session
+
+| Commit | Description |
+|---|---|
+| `c0761a5` | fix(billing-engine): WC-027 audit — rewrite test_markup.py for ≥90% coverage |
+| `33224ed` | chore(state): WC-027 AUDIT_IN_PROGRESS housekeeping (VERSION 1.29.0) |
+
+### Audit findings and remediation
+
+| Sprint | Defect type | Fix | Result |
+|--------|------------|-----|--------|
+| WC-027 | 51% coverage (mock_engine mocked SUT) | test_markup.py rewritten 8→33 tests | 33/33, 94.67% |
+| WC-027 | bundle_engine.py at 19% (never instantiated) | Real BundleEngine(db=mock) in all tests | 100% |
+| WC-027 | thread_catalog.py at 40% | 12 unit tests for all public functions | 87% |
+| WC-027 | router.py line 28 missing | get_bundle_engine dependency test added | 100% |
+| All | Full suite regression | 251/251 passing | — |
+
+### Constitutional compliance
+
+- C-059: validate_price writes pricing_floor_log on BOTH APPROVED and REJECTED — verified
+- C-088: billing_profiles.status == FOUNDER_AUTHORIZED enforced — verified
+- C-089: margin floor formula `floor / (1 - margin/100)` — Hypothesis-verified
+- C-091: thread_catalog delegation through get_all_threads — verified
+
+### Sprint state at session close
+
+- WC-027: DONE (94.67% coverage, 33/33 tests, 251/251 full suite)
+- VERSION: 1.30.0
+
 ## SPRINT_STATE_MACHINE
 <!-- Machine-readable by autonomous-sprint.yaml. YAML-parseable block. -->
 <!-- Edit ONLY the fields below. Do not alter the block structure. -->
@@ -1128,19 +1163,21 @@ Each sprint has EA spec gaps documented, SA corrections applied to WC files, and
 autonomous_halt: false
 platform_phase: IMPLEMENTATION
 current_sprint: WC-027
-sprint_status: AUDIT_IN_PROGRESS
+sprint_status: DONE
 branch: main
 consecutive_failures: 0
 tasks_done:
   - WC030-01a
   - WC030-01b
   - WC030-03
-tasks_remaining:
   - WC027-02
+tasks_remaining: []
 notes: |
   2026-08-06: WC-028/029/030 audited and remediated (226/226 tests).
   Pipeline v2 design published: standards/PIPELINE-V2-PHASE-MODEL.md.
-  Now auditing WC-027 (markup engine) for coverage and DoD compliance.
+  2026-08-06: WC-027 audit complete. test_markup.py rewritten (33/33 tests, 94.67%
+  coverage). bundle_engine.py 100%, router.py 100%, thread_catalog.py 87%.
+  Full suite: 251/251 tests passing. VERSION 1.30.0.
 ```
 
 ---
