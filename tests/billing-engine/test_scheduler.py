@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import date, datetime, timedelta
+import uuid
+from datetime import date, datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 from zoneinfo import ZoneInfo
 
@@ -27,9 +28,9 @@ _TZ_KOLKATA = ZoneInfo("Asia/Kolkata")
 
 
 @pytest.fixture
-def mock_settings() -> Settings:
+def mock_settings() -> MagicMock:
     """Return mocked Settings object with WBE_INTERNAL_BASE_URL."""
-    settings = MagicMock(spec=Settings)
+    settings = MagicMock()
     settings.WBE_INTERNAL_BASE_URL = "http://localhost:8000"
     settings.REDIS_URL = "redis://localhost:6379/0"
     return settings
@@ -96,11 +97,16 @@ async def test_run_daily_reconciliation_proceeds_if_not_in_progress(
         audit_date=yesterday,
         total_consumed_reservations=10,
         unlinked_reservations=[],
+        evidence_id=uuid.uuid4(),
+        audited_at=datetime.now(tz=timezone.utc),
     )
     self_result = SelfAuditResult(
         discrepancy_paise=0,
         billing_halted=False,
         founder_action_created=False,
+        buckets_audited=0,
+        evidence_id=uuid.uuid4(),
+        audited_at=datetime.now(tz=timezone.utc),
     )
     mock_reconciliation_service.run_daily_audit = AsyncMock(return_value=daily_result)
     mock_reconciliation_service.run_self_audit = AsyncMock(return_value=self_result)
@@ -322,8 +328,8 @@ def test_create_scheduler_daily_reconciliation_job_trigger(
 
     daily_job = scheduler.get_job("wbe_daily_reconciliation")
     assert daily_job is not None
-    assert daily_job.trigger.fields[4].expressions == [2]  # hour=2
-    assert daily_job.trigger.fields[5].expressions == [0]  # minute=0
+    assert daily_job.trigger.fields[5].expressions[0].first == 2  # hour=2
+    assert daily_job.trigger.fields[6].expressions[0].first == 0  # minute=0
 
 
 def test_create_scheduler_meter_daily_scan_job_trigger(
@@ -344,8 +350,8 @@ def test_create_scheduler_meter_daily_scan_job_trigger(
 
     meter_job = scheduler.get_job("wbe_meter_daily_scan")
     assert meter_job is not None
-    assert meter_job.trigger.fields[4].expressions == [6]  # hour=6
-    assert meter_job.trigger.fields[5].expressions == [0]  # minute=0
+    assert meter_job.trigger.fields[5].expressions[0].first == 6  # hour=6
+    assert meter_job.trigger.fields[6].expressions[0].first == 0  # minute=0
 
 
 def test_create_scheduler_job_kwargs(

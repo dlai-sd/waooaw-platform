@@ -119,12 +119,12 @@ class ReconciliationService:
                         SELECT id
                         FROM bucket_reservations
                         WHERE consumed = TRUE
-                          AND consumed_at::date = :audit_date
+                          AND date(consumed_at) = :audit_date
                         """
                     ).bindparams(audit_date=audit_date)
                 )
                 reservation_ids: list[uuid.UUID] = [
-                    row[0] for row in consumed_rows.fetchall()
+                    uuid.UUID(str(row[0])) for row in consumed_rows.fetchall()
                 ]
 
                 for res_id in reservation_ids:
@@ -136,7 +136,7 @@ class ReconciliationService:
                             WHERE bucket_reservation_id = :res_id
                             LIMIT 1
                             """
-                        ).bindparams(res_id=res_id)
+                        ).bindparams(res_id=str(res_id))
                     )
                     if ledger_row.fetchone() is None:
                         unlinked.append(res_id)
@@ -153,13 +153,13 @@ class ReconciliationService:
                              :unlinked_count, :outcome, :created_at)
                         """
                     ).bindparams(
-                        id=evidence_id,
+                        id=str(evidence_id),
                         audit_type="DAILY_RESERVATION_AUDIT",
-                        audit_date=audit_date,
+                        audit_date=audit_date.isoformat(),
                         total_checked=len(reservation_ids),
                         unlinked_count=len(unlinked),
                         outcome="PASS" if not unlinked else "FAIL_UNLINKED",
-                        created_at=audited_at,
+                        created_at=audited_at.isoformat(),
                     )
                 )
                 await session.commit()
@@ -319,13 +319,13 @@ class ReconciliationService:
                              :unlinked_count, :outcome, :created_at)
                         """
                     ).bindparams(
-                        id=evidence_id,
+                        id=str(evidence_id),
                         audit_type="SELF_AUDIT",
-                        audit_date=audited_at.date(),
+                        audit_date=audited_at.date().isoformat(),
                         total_checked=buckets_audited,
                         unlinked_count=0,
                         outcome="HALT" if billing_halted else "PASS",
-                        created_at=audited_at,
+                        created_at=audited_at.isoformat(),
                     )
                 )
                 await session.commit()
@@ -378,7 +378,7 @@ class ReconciliationService:
                         """
                         SELECT
                             wb.customer_id,
-                            br.thread_type,
+                            wb.thread_type,
                             COALESCE(SUM(br.reserved_paise), 0)          AS revenue_paise,
                             COALESCE(SUM(pcl.raw_cost_inr_paise), 0)     AS cost_paise
                         FROM bucket_reservations br
@@ -387,14 +387,14 @@ class ReconciliationService:
                         LEFT JOIN platform_cost_ledger pcl
                             ON pcl.bucket_reservation_id = br.id
                         WHERE br.consumed = TRUE
-                          AND br.consumed_at::date = :report_date
-                        GROUP BY wb.customer_id, br.thread_type
+                          AND date(br.consumed_at) = :report_date
+                        GROUP BY wb.customer_id, wb.thread_type
                         """
                     ).bindparams(report_date=report_date)
                 )
 
                 for row in result.fetchall():
-                    customer_id: uuid.UUID = row[0]
+                    customer_id: uuid.UUID = uuid.UUID(str(row[0]))
                     thread_type: str = row[1]
                     revenue_paise: int = int(row[2])
                     cost_paise: int = int(row[3])
