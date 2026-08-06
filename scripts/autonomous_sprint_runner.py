@@ -1007,6 +1007,262 @@ TASK_HANDLERS = {
             ),
         ]
     },
+        "WC030-01a": {
+        "subtasks": [
+            SubTaskDef(
+                id='WC030-01aa',
+                description='Reconcile billing data by verifying consumed bucket reservations against platform cost ledger, detecting balance discrepancies, and generating margin reports for financial audit and operator control.',
+                type="llm",
+                depends_on=[],
+                compile_gate='py_compile',
+                service_dir='src/billing-engine',
+                wc_task_id='WC030-01a',
+                stack='python',
+                output_files=[
+                    'src/billing-engine/reconciliation/service.py',
+                ],
+                inject_source_files=[
+        
+                ],
+                spec_sections={
+                    'work-contracts/WC-030-wbe-s6-reconciliation.md': 'WC030-01a',
+                },
+                constitutional_check='ReconciliationService.run_daily_audit(date) — verify consumed bucket_reservations have matching platform_cost_ledger entries, emit C-023 evidence; ReconciliationService.run_self_audit() — compute expected wallet bucket balance and halt billing via Redis wbe:billing_halted if discrepancy exceeds ±1 paise, call FounderActionGenerator.maybe_create; ReconciliationService.generate_margin_report(date) — calculate margin percentage from reservation revenue vs platform cost ledger; ReconciliationService.clear_halt() — remove Redis wbe:billing_halted flag (ops-only, no audit tracking)',
+                model_hint='reasoning',
+                max_tokens=8000,
+            ),
+            SubTaskDef(
+                id="WC030-01ab",
+                description="Add complete type annotations and fix ruff style (ANN001/ANN201 enforcement)",
+                type="llm",
+                depends_on=["WC030-01aa"],
+                compile_gate="ruff",
+                service_dir="src/billing-engine",
+                wc_task_id="WC030-01a",
+                stack="python",
+                output_files=[
+                    "src/billing-engine/reconciliation/service.py",
+                ],
+                inject_source_files=[
+                    "src/billing-engine/reconciliation/service.py",
+                ],
+                spec_sections={
+                    "work-contracts/WC-030-wbe-s6-reconciliation.md": "WC030-01a",
+                },
+                constitutional_check=(
+                    "POLISH PASS — type annotation enforcement only.\n"
+                    "Add type annotations to ALL function parameters (ANN001).\n"
+                    "Add return type annotations to ALL functions (ANN201, ANN202).\n"
+                    "DO NOT change function names, business logic, or structure.\n"
+                    "DO NOT add new imports beyond those needed for type annotations."
+                ),
+                model_hint="auto",
+                max_tokens=3000,
+            ),
+            SubTaskDef(
+                id="WC030-01ac",
+                description="Write pytest suite covering happy path, error cases and constitutional invariants for service",
+                type="llm",
+                depends_on=["WC030-01ab"],
+                compile_gate="ruff",
+                service_dir="src/billing-engine",
+                wc_task_id="WC030-01a",
+                stack="python",
+                output_files=[
+                    "tests/billing-engine/test_service.py",
+                ],
+                inject_source_files=[
+                    "src/billing-engine/reconciliation/service.py",
+                ],
+                spec_sections={
+                    "work-contracts/WC-030-wbe-s6-reconciliation.md": "WC030-01a",
+                },
+                constitutional_check=(
+                    "TEST PASS — write pytest tests against the provided implementation.\n"
+                    "Cover: happy path, error cases, idempotency, constitutional invariants from scope.\n"
+                    "Tests file is exempt from ANN (per pyproject.toml per-file-ignores).\n"
+                    "Use pytest-asyncio for async tests. Mock Redis/DB with pytest fixtures.\n"
+                    "Use f-strings only — never % string formatting."
+                ),
+                model_hint="auto",
+                max_tokens=12000,
+            ),
+        ]
+    },
+        "WC030-01b": {
+        "subtasks": [
+            SubTaskDef(
+                id='WC030-01ba',
+                description='Schedule daily reconciliation audits at 02:00 and 06:00 Asia/Kolkata using AsyncIOScheduler with Redis-based idempotency, expose audit status and manual trigger endpoints via FastAPI, and enforce billing halt checks in wallet reservations during audit operations.',
+                type="llm",
+                depends_on=['WC030-01aa'],
+                compile_gate='py_compile',
+                service_dir='src/billing-engine',
+                wc_task_id='WC030-01b',
+                stack='python',
+                output_files=[
+                    'src/billing-engine/reconciliation/scheduler.py',
+                    'src/billing-engine/reconciliation/router.py',
+                    'src/billing-engine/main.py',
+                    'src/billing-engine/wallet/service.py',
+                ],
+                inject_source_files=[
+        
+                ],
+                spec_sections={
+                    'work-contracts/WC-030-wbe-s6-reconciliation.md': 'WC030-01b',
+                },
+                constitutional_check='Implement create_scheduler() -> AsyncIOScheduler in src/billing-engine/reconciliation/scheduler.py; implement ReconciliationRouter with GET /status, POST /run-now (ops-auth), GET /platform/margin/report (ops-auth) in src/billing-engine/reconciliation/router.py; integrate scheduler.start()/scheduler.shutdown() additively into existing lifespan context manager in src/billing-engine/main.py; modify WalletService.reserve() to accept injected redis.Redis client and check wbe:billing_halted key before DB writes in src/billing-engine/wallet/service.py. Redis keys: wbe:audit_in_progress:{YYYY-MM-DD} (TTL=4h), wbe:billing_halted. Timezone: zoneinfo.ZoneInfo(\'Asia/Kolkata\'). HTTP client: httpx.AsyncClient POST to {settings.WBE_INTERNAL_BASE_URL}/meter/daily-scan. Exception: HTTPException(503, detail={"code": "BILLING_INTEGRITY_HALT", ...}). Dependencies: C-001 (audit scheduling), C-002 (idempotency), C-003 (ops-auth), C-004 (billing halt enforcement).',
+                model_hint='reasoning',
+                max_tokens=8000,
+            ),
+            SubTaskDef(
+                id="WC030-01bb",
+                description="Add complete type annotations and fix ruff style (ANN001/ANN201 enforcement)",
+                type="llm",
+                depends_on=["WC030-01ba"],
+                compile_gate="ruff",
+                service_dir="src/billing-engine",
+                wc_task_id="WC030-01b",
+                stack="python",
+                output_files=[
+                    "src/billing-engine/reconciliation/scheduler.py",
+                    "src/billing-engine/reconciliation/router.py",
+                    "src/billing-engine/main.py",
+                    "src/billing-engine/wallet/service.py",
+                ],
+                inject_source_files=[
+                    "src/billing-engine/reconciliation/scheduler.py",
+                    "src/billing-engine/reconciliation/router.py",
+                    "src/billing-engine/main.py",
+                    "src/billing-engine/wallet/service.py",
+                ],
+                spec_sections={
+                    "work-contracts/WC-030-wbe-s6-reconciliation.md": "WC030-01b",
+                },
+                constitutional_check=(
+                    "POLISH PASS — type annotation enforcement only.\n"
+                    "Add type annotations to ALL function parameters (ANN001).\n"
+                    "Add return type annotations to ALL functions (ANN201, ANN202).\n"
+                    "DO NOT change function names, business logic, or structure.\n"
+                    "DO NOT add new imports beyond those needed for type annotations."
+                ),
+                model_hint="auto",
+                max_tokens=3000,
+            ),
+            SubTaskDef(
+                id="WC030-01bc",
+                description="Write pytest suite covering happy path, error cases and constitutional invariants for scheduler",
+                type="llm",
+                depends_on=["WC030-01bb"],
+                compile_gate="ruff",
+                service_dir="src/billing-engine",
+                wc_task_id="WC030-01b",
+                stack="python",
+                output_files=[
+                    "tests/billing-engine/test_scheduler.py",
+                ],
+                inject_source_files=[
+                    "src/billing-engine/reconciliation/scheduler.py",
+                    "src/billing-engine/reconciliation/router.py",
+                    "src/billing-engine/main.py",
+                    "src/billing-engine/wallet/service.py",
+                ],
+                spec_sections={
+                    "work-contracts/WC-030-wbe-s6-reconciliation.md": "WC030-01b",
+                },
+                constitutional_check=(
+                    "TEST PASS — write pytest tests against the provided implementation.\n"
+                    "Cover: happy path, error cases, idempotency, constitutional invariants from scope.\n"
+                    "Tests file is exempt from ANN (per pyproject.toml per-file-ignores).\n"
+                    "Use pytest-asyncio for async tests. Mock Redis/DB with pytest fixtures.\n"
+                    "Use f-strings only — never % string formatting."
+                ),
+                model_hint="auto",
+                max_tokens=12000,
+            ),
+        ]
+    },
+        "WC030-03": {
+        "subtasks": [
+            SubTaskDef(
+                id='WC030-03a',
+                description='Write pytest tests for test_reconciliation.py per WC scope specification',
+                type="llm",
+                depends_on=['WC030-01ba'],
+                compile_gate='ruff',
+                service_dir='',
+                wc_task_id='WC030-03',
+                stack='python',
+                output_files=[
+                    'tests/billing-engine/test_reconciliation.py',
+                ],
+                inject_source_files=[
+                    'src/billing-engine/main.py',
+                ],
+                spec_sections={
+                    'work-contracts/WC-030-wbe-s6-reconciliation.md': 'WC030-03',
+                },
+                constitutional_check='TEST PASS — write pytest tests exactly as described in the WC scope:\n`tests/billing-engine/test_reconciliation.py` — test: clean `run_self_audit()` → `billing_halted=False`; manually corrupt `balance_paise` in DB (add 2 paise via direct SQL, bypassing ORM) → `run_self_audit()` → `billing_halted=True` + Redis `wbe:billing_halted` set + FA created; `POST /wallet/.../reserve` while halted → HTTP 503 `BILLING_INTEGRITY_HALT`; `clear_halt()` + `run_self_audit()` (fix balance first) → billing resumes; `run_daily_audit` with matched cost-to-reservation → zero unlinked; margin report arithmetic (`margin_pct = (revenue-cost)/revenue`); scheduler idempotency (Redis `wbe:\n\nC-097: property-based testing required — use hypothesis @given for all financial math.\nC-059: verify audit log row written for APPROVED and REJECTED pricing outcomes.\nC-073: # Implements: header required at top of test file.\nUse pytest-asyncio for async tests. Mock Redis/DB with pytest fixtures.\nNever use % string formatting — use f-strings only.',
+                model_hint='auto',
+                max_tokens=12000,
+            ),
+            SubTaskDef(
+                id="WC030-03b",
+                description="Add complete type annotations and fix ruff style (ANN001/ANN201 enforcement)",
+                type="llm",
+                depends_on=["WC030-03a"],
+                compile_gate="ruff",
+                service_dir="",
+                wc_task_id="WC030-03",
+                stack="python",
+                output_files=[
+                    "tests/billing-engine/test_reconciliation.py",
+                ],
+                inject_source_files=[
+                    "tests/billing-engine/test_reconciliation.py",
+                ],
+                spec_sections={
+                    "work-contracts/WC-030-wbe-s6-reconciliation.md": "WC030-03",
+                },
+                constitutional_check=(
+                    "POLISH PASS — type annotation enforcement only.\n"
+                    "Add type annotations to ALL function parameters (ANN001).\n"
+                    "Add return type annotations to ALL functions (ANN201, ANN202).\n"
+                    "DO NOT change function names, business logic, or structure.\n"
+                    "DO NOT add new imports beyond those needed for type annotations."
+                ),
+                model_hint="auto",
+                max_tokens=3000,
+            ),
+            SubTaskDef(
+                id="WC030-03c",
+                description="Run pytest on tests/billing-engine to verify all tests pass",
+                type="llm",
+                depends_on=["WC030-03b"],
+                compile_gate="pytest",
+                service_dir="tests/billing-engine",
+                wc_task_id="WC030-03",
+                stack="python",
+                output_files=[
+                    "tests/billing-engine/test_reconciliation.py",
+                ],
+                inject_source_files=[
+                    "tests/billing-engine/test_reconciliation.py",
+                ],
+                spec_sections={
+                    "work-contracts/WC-030-wbe-s6-reconciliation.md": "WC030-03",
+                },
+                constitutional_check=(
+                    "PYTEST RUN — execute the test file and confirm all tests pass.\n"
+                    "If tests fail due to missing fixtures or imports, fix the test file.\n"
+                    "Do NOT modify the implementation under test."
+                ),
+                model_hint="auto",
+                max_tokens=2000,
+            ),
+        ]
+    },
     # ── GROOMER INJECTION POINT — groom_sprint.py injects new sprint handlers here ──
 }
 
