@@ -1081,6 +1081,44 @@ Each sprint has EA spec gaps documented, SA corrections applied to WC files, and
 
 ---
 
+---
+
+## SESSION CHECKPOINT — 2026-08-06 (Audit Remediation WC-028/029/030 + Pipeline v2 Design)
+
+**Session type:** Manual audit + remediation + architecture design  
+**Office:** Platform IT Expert (INST-010)  
+**Status:** CLOSED — all changes committed and pushed
+
+### Commits this session
+
+| Commit | Description |
+|---|---|
+| `fa66164` | fix(billing-engine): add wallet/models.py — WC-030 gap |
+| `30bfe1e` | fix(billing-engine): WC-029 audit — 4 source bugs + test rewrite (93.59%) |
+| `1b3c2cd` | fix(billing-engine): WC-028 audit — test rewrite 0% → 90.24% |
+| `806c097` | docs(standards): PIPELINE-V2-PHASE-MODEL — 7-phase pipeline design |
+
+### Audit findings and remediation
+
+| Sprint | Defect type | Fix | Result |
+|--------|------------|-----|--------|
+| WC-030 | wallet/models.py missing | Created BucketBalance/BucketReservation | 9 tests pass |
+| WC-029 | 4 source bugs (method name, await on sync, attribute name, wrong import) | Fixed service.py + router.py | 35/35, 93.59% |
+| WC-029 | 0% test coverage (raw SQL bypassed service) | test_procurement.py rewritten | — |
+| WC-028 | 0% test coverage (mock_meter_service mocked SUT) | test_meter.py rewritten 12→41 tests | 41/41, 90.24% |
+| All | Full suite regression | 226/226 passing | — |
+
+### Pipeline v2 design
+
+- `standards/PIPELINE-V2-PHASE-MODEL.md`: 7-phase model, 5-why root cause analysis, refactoring plan
+- Primary finding: `compile_gate="ruff"` on test SubTaskDefs — no coverage gate exists
+- Stage 1 fix (2 days): `pytest_cov` gate + `sut_module` field
+
+### Sprint state at session close
+
+- WC-028, WC-029, WC-030: all audited and remediated; full suite 226/226
+- Next: WC-027 markup engine audit
+
 ## SPRINT_STATE_MACHINE
 <!-- Machine-readable by autonomous-sprint.yaml. YAML-parseable block. -->
 <!-- Edit ONLY the fields below. Do not alter the block structure. -->
@@ -1089,23 +1127,20 @@ Each sprint has EA spec gaps documented, SA corrections applied to WC files, and
 ```yaml
 autonomous_halt: false
 platform_phase: IMPLEMENTATION
-current_sprint: WC-030
-sprint_status: DONE
+current_sprint: WC-027
+sprint_status: AUDIT_IN_PROGRESS
 branch: main
 consecutive_failures: 0
 tasks_done:
   - WC030-01a
   - WC030-01b
   - WC030-03
-tasks_remaining: []
+tasks_remaining:
+  - WC027-02
 notes: |
-  WC-030 DoD FULLY MET as of commit ca30fbd (2026-08-06).
-  - 59/59 tests passing (41 service/scheduler + 18 router/CCT)
-  - Coverage: 91.42% (router.py 91%, scheduler.py 100%, service.py 88%)
-  - CCT-SELFAUDIT-01 implemented: billing halt → WalletService.reserve() raises HTTP 503 BILLING_INTEGRITY_HALT
-  - router.py bugs fixed: model_dump→dataclasses.asdict, cache JSON parse with UUID/datetime coercion
-  - All 3 reconciliation endpoints tested (GET /status, POST /run-now, GET /platform/margin/report)
-  - conftest.py: added db module stub for procurement.router import chain
+  2026-08-06: WC-028/029/030 audited and remediated (226/226 tests).
+  Pipeline v2 design published: standards/PIPELINE-V2-PHASE-MODEL.md.
+  Now auditing WC-027 (markup engine) for coverage and DoD compliance.
 ```
 
 ---

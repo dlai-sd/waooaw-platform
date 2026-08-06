@@ -8,6 +8,21 @@ types: `feat` | `fix` | `constitutional` | `cct` | `chore` | `refactor` | `secur
 
 ---
 
+## [1.29.0] — 2026-08-06 (WC-028/029 Audit Remediation + Pipeline v2 Design)
+
+### Fix (Billing Engine — Manual Audit)
+
+- **WC-028 test_meter.py rewritten:** 12 mock-only tests (0% coverage) replaced with 41 real-service tests; coverage 0% → 90.24%; all DoD items verified (WARN_10 at 8% remaining, 24h dedup, quiet hours, RUNWAY_P0, CCT-BILLINGLOOP-01)
+- **WC-029 procurement bugs fixed (4):** `get_all_runway_statuses` method name, `await` on sync classmethod removed, `rule.days_remaining_trigger` attribute name, `ProviderRunwayStatus` import source corrected; 35 tests, 93.59% coverage
+- **wallet/models.py created:** `BucketBalance`, `BucketReservation` dataclasses resolving 0% coverage on test_wallet.py (WC-030 gap)
+- **Full suite: 226/226 tests passing** after all three audits
+
+### Docs (Architecture)
+
+- **PIPELINE-V2-PHASE-MODEL.md:** 7-phase autonomous sprint pipeline redesign — root cause analysis (5-why, 6 defect classes), phase model with design emergence / unit / static / integration / contract+security / CCT phases, concrete refactoring plan on existing infrastructure (pytest_cov gate, sut_module field, import_check gate, design_verify gate), implementation tracking IB table
+
+---
+
 ## [1.27.0] — 2026-08-04 (Pipeline Hardening + C-100 + WC-028 Stage-Set)
 
 ### Constitutional
