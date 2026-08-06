@@ -46,6 +46,7 @@ fastapi>=0.111                  # FastAPI TestClient for billing-engine tests
 sqlalchemy>=2.0                 # SQLAlchemy for wallet integration tests
 aiosqlite>=0.19                 # Async SQLite driver (test_markup.py, billing-engine integration tests)
 temporalio>=1.0                 # Temporal SDK for professional-runtime session tests
+apscheduler>=3.10               # APScheduler — used by reconciliation/scheduler.py (AsyncIOScheduler)
 
 # ── Coverage reporting ───────────────────────────────────────────────────────
 coverage[toml]>=7.5

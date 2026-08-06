@@ -738,7 +738,7 @@ def _classify_python_import_error(error: str) -> Optional[RetryDiagnosis]:
 
     # Temporal SDK — most common wrong import patterns
     if "temporalio" in error or "temporal" in error.lower():
-        if "No module named" in error:
+        if "No module named" in error and "apscheduler" not in error.lower():
             return RetryDiagnosis(
                 error_type="PYTHON_IMPORT_TEMPORAL",
                 fix_instruction=(
@@ -780,6 +780,21 @@ def _classify_python_import_error(error: str) -> Optional[RetryDiagnosis]:
             ),
             should_retry=True, confidence=0.95,
             constitutional_trace="C-082 (Build Validation)"
+        )
+
+    # apscheduler — must not be imported directly in tests; mock instead
+    if "apscheduler" in error.lower():
+        return RetryDiagnosis(
+            error_type=PYTHON_IMPORT_ERROR,
+            fix_instruction=(
+                "MISSING MODULE: 'apscheduler' is NOT installed in the test Docker image.\n"
+                "Do NOT import apscheduler or AsyncIOScheduler directly in the test file.\n"
+                "Instead: mock the scheduler using `unittest.mock.patch` or `unittest.mock.MagicMock`.\n"
+                "Example: `with unittest.mock.patch('reconciliation.scheduler.create_scheduler') as mock_sched:`\n"
+                "The test must verify scheduling behaviour without importing apscheduler directly."
+            ),
+            should_retry=True, confidence=0.97,
+            constitutional_trace="C-082 (Build Validation — missing apscheduler)"
         )
 
     # timezone — not a PyPI package; it lives inside the datetime stdlib module
@@ -1255,8 +1270,17 @@ def _classify_ruff_violation(build_error: str) -> RetryDiagnosis | None:
                 f"  3. Retain the rest of the file identically — do not restructure."
             )
 
+    # DTZ011 — datetime.date.today() (naive date)
+    if "DTZ011" in build_error or "date.today" in build_error:
+        fix_parts.append(
+            "[DTZ011] `datetime.date.today()` is banned (naive date with no timezone). "
+            "Replace EVERY occurrence with: `datetime.datetime.now(tz=datetime.timezone.utc).date()`. "
+            "Ensure `import datetime` is at the top (do NOT use `from datetime import date`). "
+            "Example: `today = datetime.datetime.now(tz=datetime.timezone.utc).date()`."
+        )
+
     # DTZ003 / DTZ — naive datetime (utcnow, utcfromtimestamp)
-    if "DTZ" in build_error or "utcnow" in build_error:
+    elif "DTZ" in build_error or "utcnow" in build_error:
         m = re.search(r'DTZ0\d\d', build_error)
         dtz_code = m.group(0) if m else "DTZ003"
         fix_parts.append(
@@ -1356,12 +1380,12 @@ def _classify_ruff_violation(build_error: str) -> RetryDiagnosis | None:
     first_type = RUFF_ANN201
     for code, rtype in [
         ("ANN201", RUFF_ANN201), ("ANN001", RUFF_ANN001), ("B017", RUFF_B017),
-        ("B006", RUFF_B006), ("F841", RUFF_F841), ("B018", RUFF_B018),
+        ("B006", RUFF_B006), ("DTZ", DATETIME_UTCNOW), ("F841", RUFF_F841), ("B018", RUFF_B018),
         ("G004", RUFF_G004), ("E501", RUFF_E501), ("RUF046", RUFF_RUF046),
         ("RUF012", RUFF_GENERIC), ("UP037", RUFF_GENERIC), ("UP045", RUFF_GENERIC),
         ("UP024", RUFF_GENERIC), ("UP035", RUFF_GENERIC), ("W605", RUFF_GENERIC),
         ("ASYNC240", RUFF_GENERIC),
-        ("F401", RUFF_F401), ("DTZ", DATETIME_UTCNOW),
+        ("F401", RUFF_F401),
     ]:
         if code in build_error:
             first_type = rtype
@@ -1437,6 +1461,21 @@ def diagnose_build_error(
             print(f"  Retry Advisor: {PYTHON_WRONG_SYMBOL} (confidence=95%)")
             return diagnosis
         module_name = no_module_m.group(1) if no_module_m else "unknown"
+        # apscheduler: mock instead of installing
+        if module_name == "apscheduler" or module_name.startswith("apscheduler."):
+            fix = (
+                "MISSING MODULE: 'apscheduler' is NOT in requirements-test.txt.\n"
+                "Do NOT import apscheduler or AsyncIOScheduler directly in the test.\n"
+                "Mock the scheduler: `unittest.mock.patch('reconciliation.scheduler.create_scheduler')`.\n"
+                "Test scheduling behaviour through the service interface, not by importing apscheduler."
+            )
+            diagnosis = RetryDiagnosis(
+                error_type=PYTHON_IMPORT_ERROR,
+                fix_instruction=fix, should_retry=True, confidence=0.97,
+                constitutional_trace="C-082 (Build Validation — apscheduler not installed)"
+            )
+            print(f"  Retry Advisor: {PYTHON_IMPORT_ERROR} (confidence=97%)")
+            return diagnosis
         fix = f"PYTEST COLLECTION FAILED — ImportError: No module named '{module_name}'.\n"
         if module_name.startswith("src."):
             # src.service_name.* pattern — service uses flat imports via conftest.py sys.path
@@ -1456,6 +1495,43 @@ def diagnose_build_error(
             constitutional_trace="C-082 (COMPILE gate: pytest collection ImportError — use conftest sys.path)",
         )
         print(f"  Retry Advisor: {PYTHON_IMPORT_ERROR} (confidence=90%)")
+        return diagnosis
+
+    # ── SQLite unrecognized token — PostgreSQL-specific cast syntax (::date, ::text)
+    if "sqlite3.OperationalError" in build_error and "unrecognized token" in build_error:
+        diagnosis = RetryDiagnosis(
+            error_type="SQLITE_POSTGRES_CAST",
+            fix_instruction=(
+                "SQLITE SYNTAX ERROR: PostgreSQL-specific cast syntax (e.g. `::date`, `::text`, `::int`) \n"
+                "is NOT supported by SQLite used in unit tests.\n"
+                "Fix in the SERVICE under test (not the test file):\n"
+                "  WRONG: `column.cast('date')`, raw SQL `consumed_at::date`, or `text('... ::date')`\n"
+                "  RIGHT: Use SQLAlchemy ORM: `func.date(column)` or `cast(column, Date)`\n"
+                "  Import: `from sqlalchemy import cast, func` and `from sqlalchemy import Date`\n"
+                "Replace ALL raw-SQL PostgreSQL casts with SQLAlchemy equivalents."
+            ),
+            should_retry=True, confidence=0.95,
+            constitutional_trace="C-082 (Build Validation — SQLite/PostgreSQL syntax incompatibility)"
+        )
+        print(f"  Retry Advisor: SQLITE_POSTGRES_CAST (confidence=95%)")
+        return diagnosis
+
+    # ── assert None is not None — method does not return required result object ──
+    if "assert None is not None" in build_error or "AssertionError: assert None" in build_error:
+        diagnosis = RetryDiagnosis(
+            error_type="TEST_ASSERT_NONE",
+            fix_instruction=(
+                "TEST FAILURE: Method under test returns None but the test expects a result object.\n"
+                "The implementation is missing a required return statement.\n"
+                "Check the WC spec: the method must return a typed result dataclass (e.g. SelfAuditResult, \n"
+                "DailyAuditResult, evidence record) — 'None' means the return is missing or conditional.\n"
+                "Fix: ensure the method ALWAYS constructs and returns the result object, even on the happy path.\n"
+                "Per C-023: evidence records must be emitted regardless of outcome."
+            ),
+            should_retry=True, confidence=0.90,
+            constitutional_trace="C-023 (Evidence First) + C-082 (Build Validation)"
+        )
+        print(f"  Retry Advisor: TEST_ASSERT_NONE (confidence=90%)")
         return diagnosis
 
     # ── pytest fixture not found — likely @given param treated as pytest fixture ──

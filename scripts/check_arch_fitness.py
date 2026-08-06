@@ -116,10 +116,16 @@ def _check_test_coverage(packages: list[Path]) -> list[str]:
     return violations
 
 
+# Services that use Redis/external state instead of ORM models — exempt from models.py requirement
+_MODELS_EXEMPT = {"reconciliation", "meter", "wallet"}
+
+
 def _check_models_present(packages: list[Path]) -> list[str]:
     """Return violations: service packages that have service.py but no models.py."""
     violations = []
     for pkg in packages:
+        if pkg.name in _MODELS_EXEMPT:
+            continue
         if not (pkg / "models.py").exists():
             violations.append(
                 f"Service package '{pkg.name}' has service.py but no models.py "
