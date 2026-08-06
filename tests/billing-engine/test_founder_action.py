@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -193,8 +192,8 @@ class TestFounderActionGeneratorFindSectionInsertionPoint:
             "Some P1 entries\n"
         )
         point = FounderActionGenerator._find_section_insertion_point(content, "0")
-        # Should be before "### P1"
-        assert content[point:point + 7] == "### P1"
+        # Insertion point is at the \n preceding ### P1; content[point+1:] starts with ### P1
+        assert content[point + 1:point + 7] == "### P1"
 
     def test_find_section_insertion_point_p2_at_end(self) -> None:
         """
@@ -366,13 +365,15 @@ class TestFounderActionGeneratorMaybeCreate:
         assert "**FA-4**" in content
 
     def test_maybe_create_uses_default_path_when_not_provided(
-        self, tmp_path: Path
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """
-        Default path behavior: when fa_file_path is None, constructor sets FA_FILE_PATH.
-        Note: This test verifies the constructor path is checked; actual file may not exist.
-        Expected: raises FileNotFoundError (since real FA_FILE_PATH likely doesn't exist in test env).
+        Default path behavior: when fa_file_path is None, FA_FILE_PATH is used.
+        Monkeypatches FA_FILE_PATH to a non-existent path so FileNotFoundError is raised.
         """
+        monkeypatch.setattr(
+            FounderActionGenerator, "FA_FILE_PATH", tmp_path / "nonexistent.md"
+        )
         with pytest.raises(FileNotFoundError):
             FounderActionGenerator.maybe_create(
                 provider="anthropic",

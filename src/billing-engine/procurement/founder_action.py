@@ -53,7 +53,7 @@ class FounderActionGenerator:
         Format a new FA table row in markdown format.
         Template: | **FA-NNN** | Provider {provider} runway {days_remaining}d - replenishment required | P{n} | C-077 procurement runway | 1 hour | OPEN |
         """
-        days_str: str = f"{days_remaining:.1f}" if isinstance(days_remaining, float) else str(days_remaining)
+        days_str: str = f"{float(days_remaining):.1f}"
         row: str = (
             f"| **FA-{fa_number}** | Provider {provider} runway {days_str}d - replenishment required "
             f"| P{priority} | C-077 procurement runway | 1 hour | OPEN |"

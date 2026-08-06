@@ -8,6 +8,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from uuid import UUID, uuid4
 
+import anyio
 import pytest
 import pytest_asyncio
 from hypothesis import HealthCheck, given, settings
@@ -475,7 +476,7 @@ async def test_fa_auto_created_at_30d_threshold_p2(
     # (In real implementation, this is called by check_and_alert)
     # For this test, we manually verify FA file can be appended
     
-    fa_content = tmp_fa_file.read_text()
+    fa_content = await anyio.to_thread.run_sync(tmp_fa_file.read_text)
     assert "## Priority 2" in fa_content, "P2 section must exist in FA file"
 
 
@@ -550,7 +551,7 @@ async def test_fa_upgraded_p2_to_p1_at_14d(
     assert days_remaining <= 14, f"Expected ≤14d, got {days_remaining}"
     
     # Assert: P1 section exists in FA file
-    fa_content = tmp_fa_file.read_text()
+    fa_content = await anyio.to_thread.run_sync(tmp_fa_file.read_text)
     assert "## Priority 1" in fa_content, "P1 section must exist"
 
 
@@ -628,7 +629,7 @@ async def test_fa_upgraded_p1_to_p0_at_7d(
     assert days_remaining <= 7, f"Expected ≤7d, got {days_remaining}"
     
     # Assert: P0 section exists in FA file
-    fa_content = tmp_fa_file.read_text()
+    fa_content = await anyio.to_thread.run_sync(tmp_fa_file.read_text)
     assert "## Priority 0" in fa_content, "P0 section must exist"
 
 
@@ -656,7 +657,7 @@ async def test_fa_idempotency_no_duplicate_entry(
     - C-059: Idempotent Founder Action creation
     """
     # Arrange: read initial FA file state
-    initial_content = tmp_fa_file.read_text()
+    initial_content = await anyio.to_thread.run_sync(tmp_fa_file.read_text)
     len(initial_content.splitlines())
     
     # Simulate appending FA entry for anthropic/P2
@@ -665,7 +666,8 @@ async def test_fa_idempotency_no_duplicate_entry(
     fa_number = "FA-001"
     
     # Manual append to P2 section
-    lines = tmp_fa_file.read_text().splitlines(keepends=True)
+    _raw = await anyio.to_thread.run_sync(tmp_fa_file.read_text)
+    lines = _raw.splitlines(keepends=True)
     p2_section_idx = None
     for idx, line in enumerate(lines):
         if "## Priority 2" in line:
@@ -689,11 +691,11 @@ async def test_fa_idempotency_no_duplicate_entry(
         f"| {priority} | C-077 procurement runway | 1 hour | OPEN |\n"
     )
     lines.insert(header_idx + 1, new_row)
-    tmp_fa_file.write_text("".join(lines))
+    await anyio.to_thread.run_sync(lambda: tmp_fa_file.write_text("".join(lines)))
     
     # Act: attempt same FA creation again (idempotent)
     # In real code, maybe_create checks if entry exists and skips
-    second_content = tmp_fa_file.read_text()
+    second_content = await anyio.to_thread.run_sync(tmp_fa_file.read_text)
     
     # Assert: file unchanged on second call (idempotency)
     # Count FA-001 entries

@@ -13,8 +13,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src" / "billing-engine"))
 
-from markup.bundle_engine import BundleEngine
-from skeleton.wbe_interfaces import IMarkupEngine
 from procurement.models import (
     Base,
     CostRecordRequest,
@@ -117,7 +115,7 @@ def test_platform_cost_ledger_entry_fk_constraint() -> None:
     mapper = PlatformCostLedgerEntry.__mapper__
     fk_col = mapper.get_property("provider_account_id").columns[0]
     assert len(fk_col.foreign_keys) == 1
-    fk = list(fk_col.foreign_keys)[0]
+    fk = next(iter(fk_col.foreign_keys))
     assert "provider_accounts" in str(fk.column)
     assert fk.ondelete == "RESTRICT"
 
@@ -278,7 +276,7 @@ def test_base_is_declarative_base() -> None:
 
 def test_provider_account_inherits_from_base() -> None:
     """ProviderAccount is registered with Base registry."""
-    assert ProviderAccount in Base.registry.mappers[0].class_
+    assert any(m.class_ is ProviderAccount for m in Base.registry.mappers)
 
 
 def test_platform_cost_ledger_entry_inherits_from_base() -> None:

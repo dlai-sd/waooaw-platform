@@ -77,3 +77,5 @@
 - **FA-020 (MSG91 DLT)** has no dependencies — can be done immediately. Takes 2-3 days for TRAI approval. Unlocks SMS OTP fallback for rural users.
 - All video API keys (FA-012 through FA-015) can wait until after the first 10 customers — no customer needs video in month 1.
 - **Logo + brand colors** — Founder to provide directly. Unblocks brand color token population in `constitutional-ux-vocabulary.md`.
+
+| **FA-28** | Provider anthropic runway 5.0d - replenishment required | P0 | C-077 procurement runway | 1 hour | OPEN |

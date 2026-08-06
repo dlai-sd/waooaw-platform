@@ -217,3 +217,9 @@
 {"event": "autonomous_halt_active", "timestamp": "2026-08-05T16:02:19.253422+00:00", "run_id": "local", "stub_mode": true, "reason": "AUTONOMOUS_HALT=true in PROJECT_STATE.md"}
 {"event": "AUTONOMOUS_SPRINT_STARTED", "timestamp": "2026-08-05T17:09:45.082064+00:00", "run_id": "31028598876", "stub_mode": true, "sprint": "WC-029", "branch": "main", "tasks": ["WC029-01a", "WC029-01b", "WC029-02"]}
 {"event": "SPRINT_TASKS_EXECUTED", "timestamp": "2026-08-05T17:29:59.239679+00:00", "run_id": "31028598876", "stub_mode": true, "sprint": "WC-029", "tasks_done": []}
+{"event": "autonomous_halt_active", "timestamp": "2026-08-06T01:52:47.715379+00:00", "run_id": "local", "stub_mode": true, "reason": "AUTONOMOUS_HALT=true in PROJECT_STATE.md"}
+{"event": "spec_phase_validation_mode", "timestamp": "2026-08-06T01:52:47.717862+00:00", "run_id": "local", "stub_mode": true, "platform_phase": "SPEC"}
+{"event": "platform_phase_gate_blocked", "timestamp": "2026-08-06T01:52:47.718908+00:00", "run_id": "local", "stub_mode": true, "platform_phase": "ARCHIVED", "reason": "platform_phase=ARCHIVED, not IMPLEMENTATION."}
+{"event": "autonomous_halt_active", "timestamp": "2026-08-06T01:52:47.720728+00:00", "run_id": "local", "stub_mode": true, "reason": "AUTONOMOUS_HALT=true in PROJECT_STATE.md"}
+{"event": "autonomous_halt_active", "timestamp": "2026-08-06T01:52:47.720925+00:00", "run_id": "local", "stub_mode": true, "reason": "AUTONOMOUS_HALT=true in PROJECT_STATE.md"}
+{"event": "autonomous_halt_active", "timestamp": "2026-08-06T01:52:47.721103+00:00", "run_id": "local", "stub_mode": true, "reason": "AUTONOMOUS_HALT=true in PROJECT_STATE.md"}
