@@ -8,6 +8,18 @@ types: `feat` | `fix` | `constitutional` | `cct` | `chore` | `refactor` | `secur
 
 ---
 
+## [1.31.0] — 2026-08-06 (WC-026 Audit — Wallet Engine Coverage)
+
+### Fix (Billing Engine — Manual Audit)
+
+- **WC-026 test_wallet.py expanded:** 9 tests (60% coverage) expanded to 22 tests; coverage 60% → 98.72%; service.py 98%
+- **Schema extended:** `employment_contracts` gains `agreed_price_paise`, `plan_price_paise`, `thread_type`, `period_start`, `renewed_at`; new tables `billing_profiles`, `customers`, `subscriptions` for `activate_subscription()` coverage
+- **13 new tests:** `reserve()` success/idempotency/insufficient-balance/Redis-fail-safe; `release()` consumed=True/False/not-found; `activate_subscription()` authorized/403; `renew()` success/C-090-guard/not-found
+- **DoD verified:** reserve idempotency (DuplicateReservationError), C-090 price-increase guard, release refund path, C-088 billing profile check
+- **Full suite: 264/264 tests passing**
+
+---
+
 ## [1.30.0] — 2026-08-06 (WC-027 Audit — Markup Engine Coverage)
 
 ### Fix (Billing Engine — Manual Audit)

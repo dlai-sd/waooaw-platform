@@ -1154,6 +1154,31 @@ Each sprint has EA spec gaps documented, SA corrections applied to WC files, and
 - WC-027: DONE (94.67% coverage, 33/33 tests, 251/251 full suite)
 - VERSION: 1.30.0
 
+## SESSION CHECKPOINT — 2026-08-06 (WC-026 Audit — Wallet Engine Coverage)
+
+**Session type:** Manual audit + remediation  
+**Office:** Platform IT Expert (INST-010)  
+**Status:** CLOSED — all changes committed and pushed
+
+### Commits this session
+
+| Commit | Description |
+|---|---|
+| `3da7871` | fix(billing-engine): WC-026 audit — expand test_wallet.py to 98.72% coverage |
+
+### Audit findings and remediation
+
+| Sprint | Defect type | Fix | Result |
+|--------|------------|-----|--------|
+| WC-026 | 60% coverage (missing tests for reserve/release/activate/renew) | 13 tests added, schema extended | 22/22, 98.72% |
+| WC-026 | Schema missing columns for renew() and activate_subscription() | Extended _WALLET_SCHEMA, added 3 tables | All methods reachable |
+| All | Full suite regression | 264/264 passing | — |
+
+### Sprint state at session close
+
+- WC-026: DONE (98.72% coverage, 22/22 tests, 264/264 full suite)
+- VERSION: 1.31.0
+
 ## SPRINT_STATE_MACHINE
 <!-- Machine-readable by autonomous-sprint.yaml. YAML-parseable block. -->
 <!-- Edit ONLY the fields below. Do not alter the block structure. -->
@@ -1171,13 +1196,15 @@ tasks_done:
   - WC030-01b
   - WC030-03
   - WC027-02
+  - WC026-05
 tasks_remaining: []
 notes: |
   2026-08-06: WC-028/029/030 audited and remediated (226/226 tests).
   Pipeline v2 design published: standards/PIPELINE-V2-PHASE-MODEL.md.
   2026-08-06: WC-027 audit complete. test_markup.py rewritten (33/33 tests, 94.67%
   coverage). bundle_engine.py 100%, router.py 100%, thread_catalog.py 87%.
-  Full suite: 251/251 tests passing. VERSION 1.30.0.
+  2026-08-06: WC-026 audit complete. test_wallet.py expanded (22/22 tests, 98.72%
+  coverage). All service methods covered. Full suite: 264/264. VERSION 1.31.0.
 ```
 
 ---
