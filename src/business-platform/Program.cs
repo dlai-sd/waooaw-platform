@@ -2,9 +2,11 @@
 // constitutional_basis: C-005, C-023, C-026, C-059
 using Waooaw.BusinessPlatform.Controllers;
 using Waooaw.BusinessPlatform.Infrastructure;
+using Waooaw.BusinessPlatform.Workflows;
 using Waooaw.ConstitutionalEngine.Grpc;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using Temporalio.Extensions.Hosting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -59,8 +61,28 @@ builder.Services.AddAuthorization();
 // so PostgreSQL RLS policies automatically scope all queries to the caller's tenant.
 builder.Services.AddTenantIsolation();
 
-// ── HttpContextAccessor — required by TenantDbConnectionInterceptor ───────────
+// ── HttpContextAccessor — required by TenantDbConnectionInterceptor ──────────────
 builder.Services.AddHttpContextAccessor();
+
+// ── WBE (billing-engine) HttpClient — used by SubscriptionsController + Temporal activities ──
+var wbeBaseUrl = builder.Configuration["BillingEngine:BaseUrl"] ?? "http://billing-engine:8140";
+builder.Services.AddHttpClient("WBE", client =>
+{
+    client.BaseAddress = new Uri(wbeBaseUrl);
+    client.Timeout     = TimeSpan.FromSeconds(30);
+});
+
+// ── Temporal worker — trial expiry saga (ADR-015, conditional on config) ─────
+// Worker is skipped when Temporal:Host is not configured (e.g., in unit tests).
+var temporalHost = builder.Configuration["Temporal:Host"];
+if (!string.IsNullOrWhiteSpace(temporalHost))
+{
+    builder.Services.AddTemporalClient(opts => opts.TargetHost = temporalHost);
+    builder.Services.AddSingleton<TrialExpiryActivities>();
+    builder.Services.AddHostedTemporalWorker("bp-trial-worker")
+        .AddWorkflow<TrialExpiryWorkflow>()
+        .AddSingletonActivities<TrialExpiryActivities>();
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 var app = builder.Build();

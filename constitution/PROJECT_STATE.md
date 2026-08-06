@@ -1,6 +1,32 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-08-06 (WC-032 AIR PSE Trial Tier Override — COMPLETE)
+**Last Updated:** 2026-08-06 (WC-033 BP Trial Lifecycle + Temporal Expiry Saga — COMPLETE)
+
+---
+
+## SESSION RECORD — 2026-08-06 (WC-033 BP TRIAL LIFECYCLE — COMPLETE)
+
+### What Was Built
+
+| Task | File | Output | Status |
+|---|---|---|---|
+| WC033-01 | `src/business-platform/Controllers/SubscriptionsController.cs` | POST /api/v1/subscriptions/trial-start; C-023 phone gate; WBE call; 409 propagation | ✅ |
+| WC033-02 | `src/business-platform/Workflows/TrialExpiryWorkflow.cs` | TrialExpiryWorkflow (Temporal); TrialExpiryActivities (reminder/status/lapse) | ✅ |
+| WC033-02 | `src/business-platform/business-platform.csproj` | Temporalio 1.4.0 + Temporalio.Extensions.Hosting 1.4.0 added | ✅ |
+| WC033-02 | `src/business-platform/Program.cs` | AddHttpClient("WBE") + conditional Temporal worker (skipped if Temporal:Host not set) | ✅ |
+| WC033-03 | `tests/business-platform.Tests/SubscriptionsControllerTests.cs` | 7 controller tests; CCT-PHONE-01; WBE 409/503/502 propagation | ✅ |
+| WC033-03 | `tests/business-platform.Tests/TrialExpiryWorkflowTests.cs` | 12 workflow+activity tests; time-skipping Temporal env | ✅ |
+| housekeeping | VERSION, CHANGELOG, PROJECT_STATE | 1.34.0→1.35.0 | ✅ |
+
+### CCT Results
+| CCT | Description | Result |
+|---|---|---|
+| CCT-PHONE-01 | `phone_verified=false` → 422 PHONE_NOT_VERIFIED, WBE not called (C-023) | ✅ |
+| CCT-TRIAL-LAPSE-01 | Trial ACTIVE at expiry → Temporal workflow calls MarkLapsedAsync | ✅ |
+| CCT-TRIAL-CONVERT-01 | Trial CONVERTED at expiry → workflow skips MarkLapsed | ✅ |
+| CCT-WBE-409-PROP | WBE 409 TRIAL_ALREADY_USED → BP 409 conflict propagation | ✅ |
+
+**29/29 tests passing (19 new WC-033 + 10 pre-existing). VERSION 1.35.0.**
 
 ---
 

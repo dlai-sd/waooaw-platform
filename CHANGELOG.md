@@ -8,6 +8,45 @@ types: `feat` | `fix` | `constitutional` | `cct` | `chore` | `refactor` | `secur
 
 ---
 
+## [1.35.0] — 2026-08-06
+
+### WC-033: BP Trial Lifecycle Endpoints + Temporal Expiry Saga
+
+**Constitutional basis:** C-023 (phone gate), C-088 (trial billing mode), C-090 (grandfather at conversion), C-059, C-076
+
+#### WC033-01 — SubscriptionsController (POST /api/v1/subscriptions/trial-start)
+- `src/business-platform/Controllers/SubscriptionsController.cs` (new)
+- C-023 gate: `phone_verified=false` → 422 `PHONE_NOT_VERIFIED` before any WBE call
+- On `phone_verified=true`: calls WBE `POST /trial/start` via `IHttpClientFactory` ("WBE" client)
+- WBE 409 `TRIAL_ALREADY_USED` propagated as 409 to caller
+- WBE unavailable → 503; WBE 5xx → 502
+
+#### WC033-02 — TrialExpiryWorkflow (Temporal saga)
+- `src/business-platform/Workflows/TrialExpiryWorkflow.cs` (new)
+- `[Workflow] TrialExpiryWorkflow.RunAsync(TrialExpiryInput)`: Temporal-durable sleep until
+  `expires_at - 48h` → `SendReminderAsync`, sleep until `expires_at` → `CheckTrialStatusAsync` →
+  if not `CONVERTED`: `MarkLapsedAsync` (C-088 billing state transition)
+- `TrialExpiryActivities`: `SendReminderAsync` (non-fatal), `CheckTrialStatusAsync` (returns UNKNOWN on failure),
+  `MarkLapsedAsync` (throws on WBE failure — Temporal retries)
+- `src/business-platform/business-platform.csproj`: added `Temporalio 1.4.0` + `Temporalio.Extensions.Hosting 1.4.0`
+- `Program.cs`: `AddHttpClient("WBE")` + conditional `AddHostedTemporalWorker("bp-trial-worker")` (skipped if `Temporal:Host` not configured)
+
+#### WC033-03 — Tests
+- `tests/business-platform.Tests/SubscriptionsControllerTests.cs` (new): 7 controller tests via WebApplicationFactory
+  - CCT-PHONE-01: `phone_verified=false` → 422, WBE not called
+  - Happy path: WBE 200 → BP 200 + TrialStartResponse
+  - WBE 409 → BP 409 conflict propagation
+  - WBE unavailable → 503; WBE 5xx → 502; no auth → 401
+- `tests/business-platform.Tests/TrialExpiryWorkflowTests.cs` (new): 12 tests
+  - Workflow tests via `WorkflowEnvironment.StartTimeSkippingAsync()` (Temporal time-skipping)
+  - 48h reminder fires once; ACTIVE at expiry → LAPSED; CONVERTED → skip lapse
+  - Already-expired trial completes; UNKNOWN status → LAPSED (safe default)
+  - Activity unit tests: SendReminder non-fatal; CheckStatus returns UNKNOWN on failure; MarkLapsed throws on failure
+
+**29/29 tests passing (19 new + 10 pre-existing). Billing-engine 338/338 unchanged.**
+
+---
+
 ## [1.34.0] — 2026-08-06
 
 ### WC-032: AIR PSE Trial Tier Override
