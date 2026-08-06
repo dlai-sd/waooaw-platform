@@ -1,7 +1,7 @@
 # Constitutional Compliance Test (CCT) Framework
 
 **Produced by:** Enterprise Architect (Sprint 010, WC-010)
-**Date:** 2026-07-07 | **Last Updated:** 2026-07-23 (EA review — added CCT-PIPE-01/02, CCT-PII-01/02, CCT-CE-AVAIL-01; total: 52 CCTs)
+**Date:** 2026-07-07 | **Last Updated:** 2026-08-06 (EA review — added CCT-VAULT-01/02/03, CCT-CTG-01/02/03/04, CCT-AUDIT-01, CCT-DPDPA-01, CCT-SKILL-CP-01/02/03, CCT-SKILL-CAT-01, CCT-SKILL-VER-01, CCT-SKILL-AMEND-01; total: 65 CCTs)
 **Constitutional Basis:** GENESIS Engineering Quality Mandate — "Constitutional Compliance Tests — WAOOAW-specific; validates that the platform upholds a specific constitutional principle"; ADR-013 (CCTs are a required CI/CD gate)
 
 ---
@@ -966,6 +966,327 @@ A CCT failure in any environment:
 4. The blocker must be closed (failure fixed, CCT passing) before promotion resumes
 
 **There is no "waive the CCT" procedure.** A CCT represents a constitutional principle. Waiving it is a constitutional violation.
+
+---
+
+## Trust Layer CCTs (ADR-042, ADR-044 — added 2026-08-06)
+
+**CCT-VAULT-01 — Token Value Absent From All Log Output**
+```
+Name:     CCT-VAULT-01 — No Token Leakage Via Logging
+Principle: ADR-042 §4 (Exception Translator); ADR-014 (Secret Management)
+
+Setup:    Mock Azure Key Vault client. Inject a known token value: "test_token_12345".
+          Capture all log output (Python logging at WARNING level and above).
+
+Action:   Call oauth-vault GET /tokens/{contract_id}/meta.
+          Then force a simulated AKV error mid-retrieval.
+
+Assert:   1. Successful retrieval: "test_token_12345" absent from all log records ✓
+          2. Error path: MCPToolError.message does not contain "test_token_12345" ✓
+          3. Error path: "test_token_12345" absent from all log records ✓
+          4. AKV full URL (https://...vault.azure.net/...) absent from all log records ✓
+          5. Log records contain: vault_alias ("waooaw-dev-kv") only ✓
+
+Teardown: Clear mock log capture.
+Constitutional basis: ADR-042 §5 (audit record schema — vault_alias only);
+          ADR-014 (secrets never in logs); C-059 (traceability without credential exposure)
+```
+
+**CCT-VAULT-02 — Revocation Requires CE Evidence Record Before AKV Delete**
+```
+Name:     CCT-VAULT-02 — Revocation Is Constitutionally Gated
+Principle: C-003 (authority is licensed — revocation is a consequential action); C-041
+
+Setup:    Active token stored in mock AKV for (contract_id="con_001", provider="meta").
+          Mock CE client. Mock AKV delete.
+
+Action:   Call oauth-vault DELETE /tokens/con_001/meta.
+
+Assert:   1. CE.ValidateAction called with action_type=CREDENTIAL_REVOCATION BEFORE AKV delete ✓
+          2. CE mock returns ALLOW → AKV delete called ✓
+          3. CE mock returns DENY → AKV delete NOT called; 403 returned ✓
+          4. Order invariant: CE call timestamp < AKV delete timestamp ✓
+
+Teardown: Reset mock state.
+Constitutional basis: ADR-042 §2 (CTG pipeline — CE called before any action);
+          C-041 (every action governed by Decision Space)
+```
+
+**CCT-VAULT-03 — EXPIRING_SOON Token Triggers Proactive Refresh**
+```
+Name:     CCT-VAULT-03 — Background Refresh On EXPIRING_SOON Status
+Principle: ADR-021 §3 (token refresh within 2 hours of expiry)
+
+Setup:    Mock AKV returning token with expiry = now() + 90 minutes (< 2 hours = EXPIRING_SOON).
+          Mock provider token refresh endpoint. Capture refresh calls.
+
+Action:   Trigger refresh_scheduler one cycle (asyncio.run or direct call to refresh function).
+
+Assert:   1. Token with EXPIRING_SOON status identified ✓
+          2. Provider refresh endpoint called with stored refresh_token ✓
+          3. New token stored in mock AKV ✓
+          4. Tokens with status VALID (expiry > 2 hours) NOT refreshed ✓
+
+Teardown: Clear mock AKV + refresh endpoint mock.
+Constitutional basis: ADR-021 §3 (token health is a platform guarantee);
+          ADR-042 §1 (Provider Registry drives refresh for all providers uniformly)
+```
+
+**CCT-CTG-01 — CE.ValidateAction Called Before Every External Call**
+```
+Name:     CCT-CTG-01 — Constitutional Gate Is Non-Bypassable
+Principle: C-041 (every tool call governed by Decision Space); ADR-042 §2 (CTG pipeline step 2)
+
+Setup:    Mock CE client (returns ALLOW). Mock oauth-vault. Mock external HTTP call.
+          Build SessionContext with valid tenant_id, agent_id.
+
+Action:   Call CTG.call("meta.post_content", {"caption": "test"}, session_ctx).
+
+Assert:   1. CE.ValidateAction called with tool_name="meta.post_content" ✓
+          2. CE called BEFORE any call to oauth-vault or external HTTP ✓
+          3. CE called with correct dcm_category from skill definition ✓
+          4. Call order: CE → oauth-vault → external (assert timestamps or mock call order) ✓
+
+Teardown: Reset all mocks.
+Constitutional basis: C-041 (tool authorization); ADR-042 §2 (CTG pipeline ordering)
+```
+
+**CCT-CTG-02 — Token Absent From MCPToolError on Failure**
+```
+Name:     CCT-CTG-02 — Exception Translator Structurally Prevents Token Leakage
+Principle: ADR-042 §4 (Exception Translator — structural prevention, not detection)
+
+Setup:    Mock oauth-vault returning token "bearer_abc123_secret".
+          Mock external HTTP call raising HTTPError with message containing "bearer_abc123_secret".
+
+Action:   Call CTG.call("meta.post_content", {}, session_ctx).
+
+Assert:   1. CTG raises MCPToolError (not raw HTTPError) ✓
+          2. MCPToolError.message does NOT contain "bearer_abc123_secret" ✓
+          3. MCPToolError.message does NOT contain any substring of the token ✓
+          4. MCPToolError.code is one of: PROVIDER_ERROR | TIMEOUT | TOKEN_DEGRADED ✓
+
+Teardown: Reset mocks.
+Constitutional basis: ADR-042 §4 (Exception Translator); ADR-014 (secret management);
+          C-059 (traceability — error details go to secured audit log, not caller)
+```
+
+**CCT-CTG-03 — Evidence Record Written After Every Successful External Call**
+```
+Name:     CCT-CTG-03 — Every CTG Call Produces Constitutional Proof
+Principle: C-059 (Traceability); ADR-044 §5 (every CTG call writes evidence record)
+
+Setup:    Mock CE (returns ALLOW, provides decision_id="DEC-9912").
+          Mock oauth-vault. Mock external HTTP call (returns 200).
+          Mock Audit Sink writer. Capture evidence record written.
+
+Action:   Call CTG.call("meta.post_content", {"campaign_id": "123"}, session_ctx).
+
+Assert:   1. Evidence record written to Audit Sink after call completes ✓
+          2. Record contains: decision_id="DEC-9912" ✓
+          3. Record contains: tool_name="meta.post_content" ✓
+          4. Record contains: args_hash (SHA-256 of canonical JSON) — not raw args ✓
+          5. Record contains: credential_provider="meta", vault_alias="waooaw-dev-kv" ✓
+          6. Record does NOT contain: token value, full AKV URL ✓
+          7. execution_status="SUCCESS" ✓
+
+Teardown: Clear Audit Sink mock.
+Constitutional basis: C-059; ADR-042 §5; ADR-044 §5
+```
+
+**CCT-CTG-04 — CE DENY Stops Execution Before Any External Call**
+```
+Name:     CCT-CTG-04 — Constitutional Denial Is Absolute
+Principle: C-041 (DENY means no execution); ADR-031 (CE fail-safe)
+
+Setup:    Mock CE returning DENY for tool_name="meta.delete_account".
+          Mock oauth-vault (must NOT be called). Mock external HTTP (must NOT be called).
+
+Action:   Call CTG.call("meta.delete_account", {}, session_ctx).
+
+Assert:   1. ConstitutionalBlockError raised ✓
+          2. oauth-vault NOT called ✓
+          3. External HTTP NOT called ✓
+          4. CE evidence record for DENIED action written ✓
+
+Teardown: Reset mocks.
+Constitutional basis: C-041 (authorization before execution — no exceptions);
+          ADR-042 §2 (CTG pipeline — DENY exits before step 3)
+```
+
+**CCT-AUDIT-01 — Every ValidateAction Call Writes an Immutable Evidence Record**
+```
+Name:     CCT-AUDIT-01 — Audit Sink Written On Every CE Decision
+Principle: C-059 (Traceability); ADR-044 §5
+
+Setup:    CE test database with audit_sink schema. Row-Level Security active.
+          No existing evidence records.
+
+Action:   Call CE.ValidateAction for three scenarios:
+          (a) ALLOW path — valid tool, valid tenant
+          (b) DENY path — unauthorized tool
+          (c) ESCALATE path — approval required
+
+Assert:   1. Each call produces exactly ONE evidence_record row in audit_sink ✓
+          2. execution_status matches: AUTHORIZED / DENIED / ESCALATED ✓
+          3. Attempt UPDATE on any evidence_record row → Postgres error (no UPDATE policy) ✓
+          4. Attempt DELETE on any evidence_record row → Postgres error (no DELETE policy) ✓
+          5. evidence_hash (SHA-256 of record) is present and non-null ✓
+
+Teardown: Rollback test transaction; do not commit audit_sink rows.
+Constitutional basis: C-059; ADR-044 §2 (WORM guarantee); C-031
+```
+
+**CCT-DPDPA-01 — Right-to-Erasure Wipes Payloads and Retains Constitutional Proof**
+```
+Name:     CCT-DPDPA-01 — DPDPA Erasure Is Proof-Preserving
+Principle: C-078 (Personal data protection); ADR-044 §1 (Proof/Payload decoupling)
+
+Setup:    BP test database with payload_store schema.
+          CE test database with audit_sink schema.
+          Seed: 3 operational_payload rows for tenant_id="ten_test", agent_instance_id="agt_001".
+          Seed: 3 evidence_record rows referencing those payloads.
+
+Action:   POST /api/v1/customers/ten_test/data (Right-to-Erasure request, Founder auth).
+
+Assert:   1. All 3 payload rows: payload_json = NULL, erased_at = non-null ✓
+          2. All 3 evidence_record rows: erasure_status = 'PAYLOAD_PURGED', erasure_timestamp = non-null ✓
+          3. Evidence records themselves NOT deleted (proof preserved) ✓
+          4. Response body contains: { proof_retained: true, records_wiped: 3 } ✓
+          5. CE audit_sink evidence_records for the RecordErasure call itself exist ✓
+
+Teardown: Rollback test transactions.
+Constitutional basis: C-078 (DPDPA erasure); ADR-044 §1 and §4 (proof/payload decoupling + erasure flow)
+```
+
+---
+
+## Skill Architecture CCTs (ADR-043 — added 2026-08-06)
+
+**CCT-SKILL-CAT-01 — Unknown Skill Rejected at Agent Hire Time**
+```
+Name:     CCT-SKILL-CAT-01 — Skill Catalog Enforces Known-Skills-Only at EmployAgent
+Principle: C-036 (Skills are constitutional units); ADR-043 §3
+
+Setup:    BP Skill Catalog contains: content_publish@1.0.0 (PUBLISHED).
+          No other skills registered.
+
+Action:   POST /api/v1/contracts/employ {
+            agent_type: "digital-marketing-professional",
+            skills: [{ skill_id: "nonexistent_skill", version: "1.0.0" }]
+          }
+
+Assert:   1. Response: HTTP 422 ✓
+          2. Error body: { "error": "SKILL_NOT_FOUND", "skill_id": "nonexistent_skill" } ✓
+          3. No Employment Contract row created ✓
+          4. No CE.ValidateAction called (rejected before constitutional gate) ✓
+
+Teardown: No state created.
+Constitutional basis: C-036 (skills are constitutional — unknown skills cannot be assigned);
+          ADR-043 §3 (EmployAgent validates skill existence)
+```
+
+**CCT-SKILL-VER-01 — Skill Version Is Pinned at Assignment, Not Resolved to Latest**
+```
+Name:     CCT-SKILL-VER-01 — Version Pin Enforcement
+Principle: ADR-043 §5 (skill versioning — agent stays on pinned version)
+
+Setup:    BP Skill Catalog: content_publish@1.0.0 (PUBLISHED) and content_publish@2.0.0 (PUBLISHED).
+          Existing Employment Contract with skills: [{ skill_id: "content_publish", version: "1.0.0" }].
+
+Action:   PR Skill Resolver calls BP GET /api/v1/skills/content_publish/1.0.0 at session open.
+
+Assert:   1. Response returns skill definition for version 1.0.0 (not 2.0.0) ✓
+          2. Session authorized_tools derived from 1.0.0 tool set (not 2.0.0) ✓
+          3. Calling GET /api/v1/skills/content_publish (no version) returns 2.0.0 (latest) ✓
+             — but this endpoint is NOT used by Skill Runtime for pinned contracts ✓
+
+Teardown: No state changes.
+Constitutional basis: ADR-043 §5 (pin at assignment; upgrade requires explicit consent)
+```
+
+**CCT-SKILL-AMEND-01 — Skill Add/Remove Writes CE Evidence Record**
+```
+Name:     CCT-SKILL-AMEND-01 — Constitutional Audit of Skill Amendments
+Principle: C-059 (Traceability); ADR-043 §4 (skill assignment = constitutional event)
+
+Setup:    Active Employment Contract with skills: [content_publish@1.0.0].
+          Mock CE (returns ALLOW). Capture evidence records.
+
+Action:   POST /api/v1/contracts/{id}/amend {
+            add_skills: [{ skill_id: "ad_campaign_manager", version: "1.0.0" }]
+          }
+
+Assert:   1. CE.ValidateAction called with action_type=SKILL_AMENDMENT ✓
+          2. CE called BEFORE contract update ✓
+          3. CE returns ALLOW → Employment Contract updated with new skill ✓
+          4. Evidence record written: action_type=SKILL_AMENDMENT, decision_id present ✓
+          5. If CE returns DENY → contract NOT amended; error returned ✓
+
+Teardown: Rollback contract amendment.
+Constitutional basis: C-059 (traceability); C-041 (skill assignment is a governed action);
+          ADR-043 §4 (amendment requires CE evidence record)
+```
+
+**CCT-SKILL-CP-01 — Intent Crystallizer Called Before First Publish Tool in Session**
+```
+Name:     CCT-SKILL-CP-01 — Crystallizer Enforced for content_publish Skill
+Principle: ADR-043 §6 (Intent Crystallizer — no publish without locked artifact)
+
+Setup:    PAAS session open with Employment Contract: skills=[content_publish@1.0.0].
+          Skill definition has intent_crystallizer.enabled=true.
+          Mock BP Skill Catalog. Mock crystallizer approval flow (customer approves).
+
+Action:   Session receives LLM request to call meta.post_content without prior crystallization.
+
+Assert:   1. PR Skill Runtime intercepts tool call ✓
+          2. IntentCrystallizer.crystallize() called for content_publish skill ✓
+          3. Campaign Brief artifact produced and presented for approval ✓
+          4. Customer approves → LockedArtifact stored in session state ✓
+          5. CE evidence record written: action_type=APPROVAL ✓
+          6. meta.post_content call proceeds AFTER locked artifact stored ✓
+
+Teardown: Clear PAAS session state.
+Constitutional basis: ADR-043 §6; C-041 (tool call requires approval where skill mandates it)
+```
+
+**CCT-SKILL-CP-02 — Tool Call Without Locked Artifact Returns CONSTITUTIONAL_BLOCKED**
+```
+Name:     CCT-SKILL-CP-02 — Publish Blocked Without Crystallization
+Principle: ADR-043 §6 (publish without locked artifact = constitutional violation)
+
+Setup:    PAAS session with content_publish@1.0.0 skill. No LockedArtifact in session state.
+          session_state.crystallization_complete["content_publish"] = False.
+
+Action:   LLM requests CTG.call("meta.post_content", {}, session_ctx).
+
+Assert:   1. PR Skill Runtime blocks before CTG is called ✓
+          2. CrystallizerRequiredError raised ✓
+          3. MCPToolError returned: code=CONSTITUTIONAL_BLOCKED, message includes "Intent crystallization required" ✓
+          4. No call made to CE, oauth-vault, or Meta API ✓
+
+Teardown: Clear session state.
+Constitutional basis: ADR-043 §6; C-041; ADR-042 §2 (Skill Runtime gate precedes CTG)
+```
+
+**CCT-SKILL-CP-03 — CE.ValidateAction Called With Correct DCM Category From Skill Definition**
+```
+Name:     CCT-SKILL-CP-03 — DCM Category Derived From Skill Definition, Not Hardcoded
+Principle: C-099 (DCM); ADR-040; ADR-043 §1 (skill default_dcm_category field)
+
+Setup:    Skill content_publish@1.0.0 has default_dcm_category=DETERMINISTIC_REQUIRED.
+          PAAS session open with this skill. Mock CE (returns ALLOW). LockedArtifact present.
+
+Action:   CTG.call("meta.post_content", {}, session_ctx).
+
+Assert:   1. CE.ValidateAction called with dcm_category=DETERMINISTIC_REQUIRED ✓
+          2. CE returns PROCEED_DETERMINISTIC (not PROCEED_AUTONOMOUS) ✓
+          3. Agent invokes independent_verification_method before committing (per DCM flow) ✓
+
+Teardown: Reset mocks.
+Constitutional basis: C-099 (DCM); ADR-040 §Decision; ADR-043 §1 (dcm_category in skill definition)
+```
 
 ---
 

@@ -1,8 +1,8 @@
 # C4 Level 2 — Container Diagram
 
-**Produced by:** Enterprise Architect (Sprint 003, updated v0.11.0)
-**Date:** 2026-07-07 (updated 2026-07-08)
-**ADR References:** ADR-001 (gRPC), ADR-003 (JWT/RLS), ADR-004 (SignalR), ADR-005 (PAAS session), ADR-008 (Keycloak), ADR-009 (OTel), ADR-012 (GHCR), ADR-019 (RAG), ADR-020 (MCP)
+**Produced by:** Enterprise Architect (Sprint 003, updated v0.12.0 — EA session 2026-08-06)
+**Date:** 2026-07-07 (updated 2026-08-06)
+**ADR References:** ADR-001 (gRPC), ADR-003 (JWT/RLS), ADR-004 (SignalR), ADR-005 (PAAS session), ADR-008 (Keycloak), ADR-009 (OTel), ADR-012 (GHCR), ADR-019 (RAG), ADR-020 (MCP), ADR-021 (oauth-vault), ADR-042 (CTG + Provider Registry), ADR-043 (Skill Architecture), ADR-044 (Audit Trail Sink)
 
 ---
 
@@ -14,58 +14,84 @@ Customer Browser / Mobile App
         │  HTTPS REST  +  WSS (Emergency Stop)
         │
         ▼
-┌──────────────────────────────────────────────────────────────────────┐
-│  Azure Container Apps Environment  /  Docker Compose (dev)           │
-│                                                                      │
-│  ┌─────────────────────────────┐                                     │
-│  │  Next.js Web App            │  Port 3000                          │
-│  │  TypeScript / React         │  Serves customer PWA                │
-│  │  Calls Business Platform    │  → REST /api/*                      │
-│  └──────────────┬──────────────┘                                     │
-│                 │ REST HTTPS                                          │
-│  ┌──────────────▼──────────────┐   gRPC (mTLS cloud / plain dev)    │
-│  │  Business Platform          │──────────────────────────────────►  │
-│  │  .NET 9 Modular Monolith    │   ┌─────────────────────────────┐  │
-│  │  Port 5001 (REST)           │   │  Constitutional Engine       │  │
-│  │                             │   │  .NET 9                      │  │
-│  │  - Employment management    │   │  Port 5002 (gRPC internal)   │  │
-│  │  - Approval workflows       │   │                              │  │
-│  │  - Temporal client          │   │  - Evidence First enforcer   │  │
-│  │  - Customer JWT validation  │◄──│  - Audit Ledger writes       │  │
-│  └──────────────┬──────────────┘   │  - Authority licensing       │  │
-│                 │ REST HTTPS       │  - PAAS boundary validation  │  │
-│                 │ WSS Emergency Stop│  - Emergency Stop handler   │  │
-│  ┌──────────────▼──────────────┐   └─────────────┬───────────────┘  │
-│  │  Professional Runtime       │                 │                   │
-│  │  Python FastAPI             │  gRPC           │                   │
-│  │  Port 5003                  │◄────────────────┘                   │
-│  │                             │                                     │
-│  │  - Approval-gate engine     │  REST (internal)                    │
-│  │  - PAAS execution engine    │──────────────────────────────────►  │
-│  │  - Emergency Stop WSS       │   ┌─────────────────────────────┐  │
-│  │  - Temporal worker          │   │  AI Runtime                 │  │
-│  └─────────────────────────────┘   │  Python FastAPI              │  │
-│                                    │  Port 5004 (internal)        │  │
-│  Infrastructure                    │                              │  │
-│  ┌──────────────────────────────┐  │  - LLM gateway               │  │
-│  │  PostgreSQL 16 + pgvector   │  │  - Decision Space reasoning  │  │
-│  │  Port 5432                  │  │  - Tool execution            │  │
-│  │  - Constitutional schema    │  └─────────────────────────────┘  │
-│  │  - Business schema          │                                     │
-│  │  - Row-Level Security       │  ┌──────────────────────────────┐  │
-│  └──────────────────────────────┘  │  Keycloak                    │  │
-│                                    │  Port 8443                   │  │
-│  ┌──────────────────────────────┐  │  OAuth broker (ADR-008)      │  │
-│  │  Temporal                   │  └──────────────────────────────┘  │
-│  │  Port 7233 (dev: self-host) │                                     │
-│  │  Temporal Cloud (prod)      │  ┌──────────────────────────────┐  │
-│  └──────────────────────────────┘  │  Jaeger (dev only)           │  │
-│                                    │  Port 16686                  │  │
-│  ┌──────────────────────────────┐  │  OTel traces → Azure Monitor │  │
-│  │  Azure SignalR (cloud only) │  │  (cloud, ADR-009)            │  │
-│  │  Emergency Stop backplane   │  └──────────────────────────────┘  │
-│  └──────────────────────────────┘                                     │
-└──────────────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────────────────────┐
+│  Azure Container Apps Environment  /  Docker Compose (dev)                    │
+│                                                                               │
+│  ┌─────────────────────────────┐                                              │
+│  │  Next.js Web App            │  Port 3000                                   │
+│  │  TypeScript / React         │  Serves customer PWA                         │
+│  └──────────────┬──────────────┘                                              │
+│                 │ REST HTTPS                                                   │
+│  ┌──────────────▼──────────────┐   gRPC (mTLS cloud / plain dev)             │
+│  │  Business Platform          │──────────────────────────────────────────►  │
+│  │  .NET 9  Port 5001 (REST)   │   ┌──────────────────────────────────────┐  │
+│  │                             │   │  Constitutional Engine  .NET 9        │  │
+│  │  - Employment management    │   │  Port 5002 (gRPC, internal only)      │  │
+│  │  - Approval workflows       │   │                                       │  │
+│  │  - Skill Catalog (ADR-043)  │   │  - Evidence First enforcer            │  │
+│  │  - Provider Registry        │   │  - audit_sink schema (WORM, ADR-044)  │  │
+│  │    (ADR-042)                │◄──│  - RecordErasure RPC (ADR-044)        │  │
+│  │  - payload_store schema     │   │  - Authority licensing                │  │
+│  │    (erasable, ADR-044)      │   │  - Emergency Stop handler             │  │
+│  └──────────────┬──────────────┘   └──────────────────┬───────────────────┘  │
+│                 │ REST / WSS                           │ gRPC                 │
+│  ┌──────────────▼──────────────┐◄─────────────────────┘                      │
+│  │  Professional Runtime       │                                              │
+│  │  Python FastAPI  Port 5003  │                                              │
+│  │                             │                                              │
+│  │  - Approval-gate engine     │  REST (internal)                            │
+│  │  - PAAS execution engine    │─────────────────────────────────────────►   │
+│  │  - Skill Runtime (ADR-043)  │   ┌──────────────────────────────────────┐  │
+│  │  - CTG library (ADR-042)    │   │  AI Runtime  Python FastAPI           │  │
+│  │  - Emergency Stop WSS       │   │  Port 5004 (internal only)            │  │
+│  │  - Temporal worker          │   │                                       │  │
+│  └──────────────┬──────────────┘   │  - PSE tier routing                   │  │
+│                 │ HTTP (internal)  │  - CTG library (ADR-042) — all        │  │
+│                 │                  │    external calls: LLM + OAuth API    │  │
+│  ┌──────────────▼──────────────┐   │  - RAG pipeline (ADR-019)            │  │
+│  │  oauth-vault                │◄──│  - PII injection guard                │  │
+│  │  Python FastAPI             │   └──────────────────────────────────────┘  │
+│  │  Port 8130 (internal only)  │                                              │
+│  │                             │                                              │
+│  │  - JIT token retrieval      │                                              │
+│  │  - Token health / refresh   │                                              │
+│  │  - Revocation (CE-gated)    │                                              │
+│  └──────────────┬──────────────┘                                              │
+│                 │ HTTPS (external)                                            │
+│  Infrastructure │                                                             │
+│  ┌──────────────▼──────────────┐  ┌──────────────────────────────────────┐  │
+│  │  Azure Key Vault            │  │  PostgreSQL 16 + pgvector            │  │
+│  │  waooaw-dev-kv              │  │  Port 5432                           │  │
+│  │  (master key + tokens)      │  │  - constitutional / audit_sink (CE)  │  │
+│  └─────────────────────────────┘  │  - business / payload_store (BP)     │  │
+│                                   │  - professional / skills (BP)        │  │
+│  ┌─────────────────────────────┐  │  - Row-Level Security (ADR-003)      │  │
+│  │  Temporal  Port 7233        │  └──────────────────────────────────────┘  │
+│  │  Self-host dev / Cloud prod │                                              │
+│  └─────────────────────────────┘  ┌──────────────────────────────────────┐  │
+│                                   │  Keycloak  Port 8443  (ADR-008)      │  │
+│  ┌─────────────────────────────┐  └──────────────────────────────────────┘  │
+│  │  Azure SignalR (cloud only) │                                              │
+│  │  Emergency Stop backplane   │  ┌──────────────────────────────────────┐  │
+│  └─────────────────────────────┘  │  Jaeger (dev) → Azure Monitor (cloud)│  │
+│                                   │  Port 16686  (ADR-009)               │  │
+│                                   └──────────────────────────────────────┘  │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+CTG Call Flow (ADR-042):
+  PR or AIR  →  CTG.call(tool, args, session_ctx)
+                  │ gRPC
+                  ▼
+              CE.ValidateAction → ALLOW/DENY
+                  │ HTTP (internal)
+                  ▼
+              oauth-vault → Azure Key Vault → ephemeral token (in-memory)
+                  │
+                  ▼
+              Execute: inject token at socket boundary → external API
+                  │
+                  ▼
+              Write evidence record → CE audit_sink schema
 ```
 
 ---
@@ -80,37 +106,54 @@ Customer Browser / Mobile App
 
 ### Business Platform
 - **Technology:** .NET 9, ASP.NET Core, Entity Framework Core, Temporal SDK
-- **Responsibility:** External REST API for all customer operations. Employment lifecycle management, approval workflow state machine, Temporal workflow orchestration, JWT validation, multi-tenant isolation
-- **Communication:** Calls Constitutional Engine (gRPC, synchronous, Evidence First); publishes Temporal workflows; reads/writes PostgreSQL business schema
+- **Responsibility:** External REST API for all customer operations. Employment lifecycle management, approval workflow state machine, Temporal workflow orchestration, JWT validation, multi-tenant isolation. Owns **Skill Catalog** (`skills` table, ADR-043), **Provider Registry** (`provider_configs` table, ADR-042), and **Erasable Payload Store** (`payload_store` schema, ADR-044).
+- **Communication:** Calls Constitutional Engine (gRPC, synchronous, Evidence First); publishes Temporal workflows; reads/writes PostgreSQL business + payload_store schemas
 - **Hosting:** Container Apps (cloud) / port 5001 (dev)
 
 ### Constitutional Engine
 - **Technology:** .NET 9, gRPC (Grpc.AspNetCore), Entity Framework Core
-- **Responsibility:** Evidence First enforcer. The only service that writes to the Constitutional Audit Ledger. Authority license management, PAAS Decision Space validation, Emergency Stop processing. Internal-only — never exposed externally.
-- **Communication:** gRPC server (Business Platform and Professional Runtime are clients); reads/writes PostgreSQL constitutional schema (append-only on audit ledger)
+- **Responsibility:** Evidence First enforcer. Owns the **Constitutional Audit Trail Sink** (`audit_sink` schema — INSERT-only, no UPDATE/DELETE, ADR-044). Handles `RecordErasure` RPC for DPDPA compliance. Authority license management, PAAS Decision Space validation, Emergency Stop processing. Internal-only — never exposed externally.
+- **Communication:** gRPC server (Business Platform, Professional Runtime, and CTG library are clients); reads/writes PostgreSQL constitutional + audit_sink schemas
 - **Hosting:** Container Apps (cloud, internal ingress only) / port 5002 (dev, Docker bridge only)
 
 ### Professional Runtime
 - **Technology:** Python 3.12, FastAPI, Temporal SDK (Python)
-- **Responsibility:** Two execution engines in one service: (1) Approval-Gate Engine — manages proposal/approval/execution state machine, calls Constitutional Engine for each governance event; (2) PAAS Engine — in-memory Decision Space validation, zero network calls in hot path, session-affinity per customer (ADR-005)
-- **Communication:** gRPC client to Constitutional Engine; REST client to AI Runtime; WebSocket server for Emergency Stop; Temporal worker
+- **Responsibility:** Three execution engines in one service: (1) Approval-Gate Engine — manages proposal/approval/execution state machine; (2) PAAS Engine — session-affinity per customer (ADR-005); (3) **Skill Runtime** (in-process, ADR-043) — resolves skill manifests from BP Skill Catalog at session open, enforces `authorized_tools`, runs Intent Crystallizer for skills that require it. CTG library imported here for all external tool calls — every call governed by CE.ValidateAction.
+- **Communication:** gRPC client to CE; REST client to AIR; HTTP client to BP (Skill Catalog, Provider Registry); HTTP client to oauth-vault (via CTG); WebSocket server for Emergency Stop; Temporal worker
 - **Hosting:** Container Apps (cloud, session-affinity enabled) / port 5003 (dev)
 
 ### AI Runtime
 - **Technology:** Python 3.12, FastAPI, LLM client libraries
-- **Responsibility:** LLM gateway — abstracts all AI provider communication. Receives Decision Space context for every inference call, ensuring AI never operates beyond licensed scope. Tool execution via MCP clients (ADR-020). Vocabulary Translation Layer (DP-013) for C-042 agents. RAG pipeline for domain specialization (ADR-019). Internal-only.
-- **Communication:** Called by Professional Runtime (REST internal); calls LLM providers (HTTPS external); calls MCP Integration Layer services; calls vector store in PostgreSQL (pgvector)
+- **Responsibility:** LLM gateway — abstracts all AI provider communication. **After WC-039:** all LLM provider calls route through the **CTG library** (ADR-042) — no direct SDK calls remain. CTG → CE.ValidateAction → oauth-vault → LLM API. Every LLM call produces a constitutional evidence record (budget enforcement, C-043). Tool execution via MCP clients (ADR-020). RAG pipeline (ADR-019). PII injection guard. Internal-only.
+- **Communication:** Called by Professional Runtime (REST internal); CTG library calls CE (gRPC) + oauth-vault (HTTP) + LLM provider (HTTPS); calls vector store in PostgreSQL (pgvector)
 - **Hosting:** Container Apps (cloud, internal ingress only) / port 5004 (dev)
+- **Breaking change (ADR-042):** WC-039 refactors direct LLM SDK calls to CTG — no code touches LLM provider SDK directly after WC-039.
 
 ### PostgreSQL 16 + pgvector
 - **Technology:** PostgreSQL 16 with pgvector extension
-- **Responsibility:** All persistent state. Three schema zones: `constitutional` (audit ledger, authority licenses — append-only), `business` (employment contracts, organizations — standard CRUD), `professional` (professional identities, experience ledger). Row-Level Security enforces multi-tenant isolation.
+- **Responsibility:** All persistent state. Schema zones (updated 2026-08-06):
+  - `constitutional` — CE: evidence records, authority licenses (append-only)
+  - `audit_sink` — CE: WORM evidence records (INSERT-only, ADR-044); retains proof forever
+  - `business` — BP: employment contracts, organizations (standard CRUD)
+  - `payload_store` — BP: operational payloads (erasable on DPDPA request, ADR-044)
+  - `skills` — BP: skill catalog (ADR-043)
+  - `provider_configs` — BP: provider registry (ADR-042)
+  - `professional` — PR: professional identities, experience ledger
+  - `vectors` — shared pgvector store (RAG, ADR-019)
+  Row-Level Security enforces multi-tenant isolation across all schemas.
 - **Hosting:** Azure PostgreSQL Flexible Server (cloud) / Docker container (dev)
 
 ### Keycloak
 - **Technology:** Keycloak 25.x (pinned, ADR-008)
 - **Responsibility:** OAuth broker. Federates Google (and future providers) into a single Keycloak JWT. Application services never talk directly to OAuth providers.
 - **Hosting:** Container Apps (cloud) / Docker container (dev)
+
+### oauth-vault *(new — WC-038)*
+- **Technology:** Python 3.12, FastAPI, `azure-identity` (DefaultAzureCredential)
+- **Responsibility:** Dedicated token storage and JIT retrieval service. Stores customer OAuth tokens and platform API keys in Azure Key Vault (`waooaw-dev-kv`). Returns ephemeral tokens to CTG callers — token is held in-memory in CTG, injected at socket boundary, never logged. Runs background refresh scheduler (asyncio) for proactive token renewal. On refresh failure: publishes `PLATFORM_TOKEN_EXPIRED` event to Professional Runtime. Revocation requires a CE evidence record before AKV delete. Internal-only — not exposed externally.
+- **Communication:** Called by CTG library (HTTP, JIT token retrieval); called by BP (OAuth connect/revoke); calls Azure Key Vault (HTTPS external); calls CE (gRPC, revocation evidence)
+- **Hosting:** Container Apps (cloud, internal ingress only) / port 8130 (dev, Docker bridge only)
+- **Security invariant (ADR-042):** Full AKV URL (`https://...vault.azure.net/...`) never written to any log. Only `vault_alias` logged.
 
 ### Temporal
 - **Technology:** Self-hosted Temporal 1.24 (dev/QA) / Temporal Cloud (UAT/prod) — ADR-015

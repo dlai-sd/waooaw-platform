@@ -953,4 +953,61 @@ When this IB is authorized and completed:
 | IB-021 | Dependency Graph Task Decomposition | EA + PIT Expert | P0 | Pre-WC012-03 | AUTHORIZED |
 | IB-022 | WC-Spec-Driven Runner (Option B) | EA + PIT Expert | P1 | Post-WC012 | PLANNED |
 | IB-023 | PTR v3: Service Boundary Schema | EA + PIT Expert | P1 | Post-WC013 | PLANNED |
+| **IB-024** | **Trust Layer & Open Platform Integration** | **PIT Expert** | **P0** | **Post-WC-036** | **AWAITING FOUNDER RATIFICATION** |
+| **IB-025** | **Skill Architecture (Layer 4)** | **PIT Expert** | **P0** | **Post-WC-039** | **AWAITING FOUNDER RATIFICATION** |
+
+
+
+---
+
+## IB-024 — Trust Layer & Open Platform Integration *(AWAITING FOUNDER RATIFICATION)*
+
+**Proposed by:** Enterprise Architect (INST-004) — EA session 2026-08-06  
+**Status:** AWAITING FOUNDER RATIFICATION — Founder must ratify this IB before WC-037 can be opened  
+**Priority:** P0 — blocks all agent external-call capability (DMA, etc.)  
+**Gate prerequisite:** WC-036 DONE (✅)  
+**Owner on activation:** Platform IT Expert (INST-010)
+
+**Problem:** WAOOAW agents cannot call external APIs (Meta, Google, LLM providers) in a constitutionally governed, credential-safe way. Direct LLM SDK calls in AIR have no CE evidence records. OAuth tokens for customer platforms do not exist yet. No Provider Registry means adding a new platform requires code changes, not config.
+
+**Architectural decision basis:** ADR-042 (Provider Registry + CTG), ADR-044 (Audit Trail Sink)
+
+**Work Contracts under this IB:**
+- WC-037: Constitutional Audit Trail Sink (CE + BP migrations)
+- WC-038: Provider Registry (BP) + oauth-vault service
+- WC-039: CTG Python library + AIR refactor (breaking change — declared in ADR-042)
+
+**Acceptance criteria (Founder to verify):**
+- [ ] CCT-VAULT-01/02/03 passing
+- [ ] CCT-CTG-01/02/03/04 passing
+- [ ] CCT-AUDIT-01 + CCT-DPDPA-01 passing
+- [ ] AIR has zero direct LLM SDK calls in `pse/router.py` — all routed through CTG
+- [ ] Meta (OAuth2) and OpenAI (API_KEY) registered in Provider Registry
+- [ ] Token value never appears in any log output (verified by CCT-VAULT-01)
+
+---
+
+## IB-025 — Skill Architecture — Layer 4 *(AWAITING FOUNDER RATIFICATION)*
+
+**Proposed by:** Enterprise Architect (INST-004) — EA session 2026-08-06  
+**Status:** AWAITING FOUNDER RATIFICATION — Founder must ratify this IB before WC-040 can be opened  
+**Priority:** P0 — blocks DMA agent sprint and all multi-skill agent work  
+**Gate prerequisite:** WC-037 + WC-038 DONE (Skill Catalog uses Provider Registry for skill required_providers validation)  
+**Owner on activation:** Platform IT Expert (INST-010)
+
+**Problem:** Agent capabilities are flat tool lists in agent specs. No versioning. No customer-discoverable catalog. No structured mechanism to add/remove capabilities without an agent spec amendment through the full lifecycle gate. The "npm install for agent capabilities" mental model requires a Skill Registry.
+
+**Architectural decision basis:** ADR-043 (Skill Architecture Standard)
+
+**Work Contracts under this IB:**
+- WC-040: Skill Catalog (BP migration + API) + Employment Contract `skills[]` amendment
+- WC-041: Skill Runtime in Professional Runtime + Intent Crystallizer + first skill (`content_publish@1.0.0`)
+
+**Acceptance criteria (Founder to verify):**
+- [ ] CCT-SKILL-CAT-01, CCT-SKILL-VER-01, CCT-SKILL-AMEND-01 passing
+- [ ] CCT-SKILL-CP-01/02/03 passing
+- [ ] `content_publish@1.0.0` published in Skill Catalog
+- [ ] DMA agent Employment Contract can declare `skills: [content_publish@1.0.0]`
+- [ ] PAAS session with content_publish skill requires Intent Crystallization before any meta.post_content call
+- [ ] No 6th service — Skill Runtime is in PR, Skill Catalog is BP Postgres table
 

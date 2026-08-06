@@ -156,6 +156,10 @@
 | EA-03 | `adr/ADR-043-skill-architecture-standard.md` | Skill Runtime in PR, Skill Catalog in BP, 4+1 service mesh preserved, Intent Crystallizer pattern | ✅ |
 | EA-04 | `adr/ADR-044-constitutional-audit-trail-sink.md` | Proof/Payload decoupling, WORM Audit Sink in CE, Erasable Payload Store in BP, DPDPA resolution | ✅ |
 | EA-05 | `ARCHITECTURE.md` | Container diagram updated: 4+1 service mesh, CTG communication map, Planned Components table | ✅ |
+| EA-06 | `work-contracts/WC-037` through `WC-041` | 5 sprint contracts: Trust Layer S1/S2/S3 + Skill Architecture S1/S2 | ✅ |
+| EA-07 | `architecture/reference/containers.md` | C4 Level 2 diagram updated: oauth-vault container, CTG library annotations, Postgres schema zones | ✅ |
+| EA-08 | `tests/constitutional/README.md` | 13 new CCTs: CCT-VAULT-01/02/03, CCT-CTG-01/02/03/04, CCT-AUDIT-01, CCT-DPDPA-01, CCT-SKILL-CP-01/02/03, CCT-SKILL-CAT-01, CCT-SKILL-VER-01, CCT-SKILL-AMEND-01 | ✅ |
+| EA-09 | `constitution/INSTITUTIONAL_BACKLOG.md` | IB-024 (Trust Layer) + IB-025 (Skill Architecture) proposed — AWAITING FOUNDER RATIFICATION | ✅ |
 
 ### Architectural Decisions Locked
 
