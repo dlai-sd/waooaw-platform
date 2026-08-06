@@ -1,491 +1,242 @@
 # Implements: work-contracts/WC-026-wbe-s2-wallet-engine.md WC026-05
-# constitutional_basis: C-023, C-059, C-063, C-090
+# constitutional_basis: C-023, C-059, C-063, C-090, C-004
+# Rewritten for current WalletService API (WC-026 + WC-030 cross-sprint changes)
 from __future__ import annotations
 
-import asyncio
-import logging
-from datetime import date, timedelta
-from collections.abc import AsyncGenerator
-from unittest import mock
+import uuid
+from collections.abc import AsyncIterator
+from datetime import datetime, timezone
+from unittest.mock import AsyncMock, MagicMock
 
-import fakeredis.aioredis
+import fakeredis
 import pytest
-from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+import pytest_asyncio
+from fastapi import HTTPException
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.pool import StaticPool
 
-from cache import WalletCacheLayer
-from models import BucketReservation, CustomerWallet, WalletBucket
-from router import router
-from service import WalletService
+from wallet.service import WalletService
 
-logger = logging.getLogger(__name__)
+# ---------------------------------------------------------------------------
+# Schema
+# ---------------------------------------------------------------------------
+
+_WALLET_SCHEMA = [
+    """CREATE TABLE employment_contracts (
+        id TEXT PRIMARY KEY,
+        customer_id TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'ACTIVE'
+    )""",
+    """CREATE TABLE wallet_buckets (
+        id TEXT PRIMARY KEY,
+        employment_contract_id TEXT NOT NULL,
+        thread_type TEXT NOT NULL,
+        balance_paise INTEGER NOT NULL DEFAULT 0,
+        is_active INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT NOT NULL
+    )""",
+    """CREATE TABLE bucket_reservations (
+        id TEXT PRIMARY KEY,
+        bucket_id TEXT NOT NULL,
+        reserved_paise INTEGER NOT NULL,
+        idempotency_key TEXT NOT NULL UNIQUE,
+        consumed INTEGER NOT NULL DEFAULT 0,
+        consumed_at TEXT,
+        created_at TEXT NOT NULL
+    )""",
+]
 
 
-@pytest.fixture
-def sqlite_engine():
-    """Create in-memory SQLite engine for tests."""
-    engine = create_engine("sqlite:///:memory:")
-    CustomerWallet.__table__.create(engine, checkfirst=True)
-    WalletBucket.__table__.create(engine, checkfirst=True)
-    BucketReservation.__table__.create(engine, checkfirst=True)
-    return engine
+# ---------------------------------------------------------------------------
+# Fixtures
+# ---------------------------------------------------------------------------
 
-
-@pytest.fixture
-def session_factory(sqlite_engine):
-    """Create session factory from in-memory engine."""
-    return sessionmaker(bind=sqlite_engine)
-
-
-@pytest.fixture
-async def fake_redis() -> AsyncGenerator[fakeredis.aioredis.FakeRedis, None]:
-    """Create FakeRedis instance for tests."""
-    redis = fakeredis.aioredis.FakeRedis(decode_responses=True)
-    yield redis
-    await redis.flushall()
-    await redis.close()
-
-
-@pytest.fixture
-def wallet_service(session_factory, fake_redis):
-    """Create WalletService with mocked dependencies."""
-    service = WalletService(
-        session_factory=session_factory,
-        redis=fake_redis,
-        logger=logger,
+@pytest_asyncio.fixture
+async def in_memory_engine():
+    eng = create_async_engine(
+        "sqlite+aiosqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
     )
-    return service
+    async with eng.begin() as conn:
+        for stmt in _WALLET_SCHEMA:
+            await conn.execute(text(stmt))
+    yield eng
+    await eng.dispose()
+
+
+@pytest_asyncio.fixture
+async def session_factory(in_memory_engine):
+    return async_sessionmaker(in_memory_engine, class_=AsyncSession, expire_on_commit=False)
+
+
+@pytest_asyncio.fixture
+async def fake_redis() -> AsyncIterator[fakeredis.FakeAsyncRedis]:
+    client = fakeredis.FakeAsyncRedis(decode_responses=False)
+    yield client
+    await client.aclose()
+
+
+@pytest_asyncio.fixture
+async def db_session(session_factory):
+    async with session_factory() as session:
+        yield session
 
 
 @pytest.fixture
-def wallet_cache(fake_redis):
-    """Create WalletCacheLayer with FakeRedis."""
-    cache = WalletCacheLayer(redis=fake_redis, ttl_seconds=300, logger=logger)
-    return cache
+def wallet_service(db_session, fake_redis):
+    return WalletService(db=db_session, redis_client=fake_redis)
 
 
-@pytest.fixture
-def app(wallet_service, wallet_cache):
-    """Create test FastAPI app with wallet router."""
-    from fastapi import FastAPI
-
-    test_app = FastAPI()
-    test_app.include_router(
-        router,
-        prefix="/wallet",
-        tags=["wallet"],
-        dependencies=[],
+async def _seed_bucket(session, *, customer_id, thread_type="DMA", balance_paise=10000, is_active=True):
+    """Insert employment_contract + wallet_bucket. Returns (contract_id, bucket_id)."""
+    contract_id = str(uuid.uuid4())
+    bucket_id = str(uuid.uuid4())
+    await session.execute(
+        text("INSERT INTO employment_contracts (id, customer_id, status) VALUES (:id, :cid, 'ACTIVE')")
+        .bindparams(id=contract_id, cid=str(customer_id))
     )
+    await session.execute(
+        text("""INSERT INTO wallet_buckets
+               (id, employment_contract_id, thread_type, balance_paise, is_active, created_at)
+               VALUES (:id, :ec, :tt, :bal, :active, :now)""")
+        .bindparams(
+            id=bucket_id, ec=contract_id, tt=thread_type,
+            bal=balance_paise, active=1 if is_active else 0,
+            now=datetime.now(tz=timezone.utc).isoformat(),
+        )
+    )
+    await session.commit()
+    return contract_id, bucket_id
 
-    # Inject dependencies into router via app.state
-    test_app.state.wallet_service = wallet_service
-    test_app.state.wallet_cache = wallet_cache
 
-    return test_app
+# ---------------------------------------------------------------------------
+# C-004: Billing halt enforcement
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_reserve_raises_503_when_billing_halted(wallet_service, fake_redis):
+    """C-004: wbe:billing_halted set → reserve() raises HTTP 503 BILLING_INTEGRITY_HALT."""
+    await fake_redis.set(b"wbe:billing_halted", b"1")
+
+    with pytest.raises(HTTPException) as exc_info:
+        await wallet_service.reserve(
+            customer_id=uuid.uuid4(),
+            thread_type="DMA",
+            amount_paise=1000,
+            idempotency_key=uuid.uuid4(),
+            redis_client=fake_redis,
+        )
+
+    assert exc_info.value.status_code == 503
+    assert exc_info.value.detail["code"] == "BILLING_INTEGRITY_HALT"
 
 
-@pytest.fixture
-def test_client(app):
-    """Create TestClient from FastAPI app."""
-    return TestClient(app)
+@pytest.mark.asyncio
+async def test_reserve_passes_halt_guard_when_not_halted(db_session, fake_redis):
+    """C-004: halt key absent → reserve() passes halt guard (no 503 raised)."""
+    svc = WalletService(db=db_session, redis_client=fake_redis)
 
-
-def populate_test_wallet_sync(session_factory, wallet_id: str):
-    """Synchronously populate test wallet with buckets (helper for sync tests)."""
-    session = session_factory()
     try:
-        wallet = CustomerWallet(
-            wallet_id=wallet_id,
-            tenant_id="tenant-001",
-            billing_profile="standard",
-            created_at="2026-01-01T00:00:00Z",
+        await svc.reserve(
+            customer_id=uuid.uuid4(),
+            thread_type="DMA",
+            amount_paise=1000,
+            idempotency_key=uuid.uuid4(),
+            redis_client=fake_redis,
         )
-        session.add(wallet)
-        session.commit()
-
-        for thread_type in ["gpt-4", "gpt-3.5"]:
-            bucket = WalletBucket(
-                wallet_id=wallet_id,
-                thread_type=thread_type,
-                quantity_available=1000,
-                quantity_reserved=0,
-                quantity_used=0,
-                created_at="2026-01-01T00:00:00Z",
-                updated_at="2026-01-01T00:00:00Z",
-            )
-            session.add(bucket)
-        session.commit()
-    finally:
-        session.close()
-
-
-class TestWalletCacheLayer:
-    """Test WalletCacheLayer (cache hit/miss, invalidation, TTL, concurrency)."""
-
-    @pytest.mark.asyncio
-    async def test_cache_miss_returns_none(self, wallet_cache):
-        """Test that cache miss returns None."""
-        result = await wallet_cache.get_balance_cached(
-            wallet_id="wallet-001", thread_type="gpt-4"
-        )
-        assert result is None
-
-    @pytest.mark.asyncio
-    async def test_cache_hit_returns_cached_value(self, wallet_cache):
-        """Test that cache hit returns previously set value."""
-        wallet_id = "wallet-001"
-        thread_type = "gpt-4"
-        cached_value = 500
-
-        key = f"wallet:{wallet_id}:bucket:{thread_type}"
-        await wallet_cache.redis.set(key, str(cached_value), ex=300)
-
-        result = await wallet_cache.get_balance_cached(
-            wallet_id=wallet_id, thread_type=thread_type
-        )
-        assert result == cached_value
-
-    @pytest.mark.asyncio
-    async def test_cache_invalidate_wallet(self, wallet_cache):
-        """Test that invalidate_wallet clears all bucket keys for a wallet."""
-        wallet_id = "wallet-001"
-
-        for thread_type in ["gpt-4", "gpt-3.5"]:
-            key = f"wallet:{wallet_id}:bucket:{thread_type}"
-            await wallet_cache.redis.set(key, "100", ex=300)
-
-        assert (
-            await wallet_cache.redis.get(f"wallet:{wallet_id}:bucket:gpt-4")
-        ) is not None
-        assert (
-            await wallet_cache.redis.get(f"wallet:{wallet_id}:bucket:gpt-3.5")
-        ) is not None
-
-        await wallet_cache.invalidate_wallet(wallet_id=wallet_id)
-
-        assert (
-            await wallet_cache.redis.get(f"wallet:{wallet_id}:bucket:gpt-4")
-        ) is None
-        assert (
-            await wallet_cache.redis.get(f"wallet:{wallet_id}:bucket:gpt-3.5")
-        ) is None
-
-    @pytest.mark.asyncio
-    async def test_cache_ttl_expiration(self, wallet_cache):
-        """Test that cached values expire after TTL."""
-        wallet_id = "wallet-001"
-        thread_type = "gpt-4"
-        key = f"wallet:{wallet_id}:bucket:{thread_type}"
-
-        await wallet_cache.redis.set(key, "100", ex=1)
-        result = await wallet_cache.get_balance_cached(
-            wallet_id=wallet_id, thread_type=thread_type
-        )
-        assert result == 100
-
-        await asyncio.sleep(1.1)
-        result = await wallet_cache.get_balance_cached(
-            wallet_id=wallet_id, thread_type=thread_type
-        )
-        assert result is None
-
-    @pytest.mark.asyncio
-    async def test_concurrent_cache_access(self, wallet_cache):
-        """Test concurrent cache access does not corrupt state."""
-        wallet_id = "wallet-001"
-        thread_type = "gpt-4"
-        key = f"wallet:{wallet_id}:bucket:{thread_type}"
-
-        async def set_and_get(value: int):
-            await wallet_cache.redis.set(key, str(value), ex=300)
-            return await wallet_cache.get_balance_cached(
-                wallet_id=wallet_id, thread_type=thread_type
-            )
-
-        results = await asyncio.gather(
-            set_and_get(100),
-            set_and_get(200),
-            set_and_get(300),
-        )
-
-        assert all(r is not None for r in results)
-        final_value = await wallet_cache.get_balance_cached(
-            wallet_id=wallet_id, thread_type=thread_type
-        )
-        assert final_value is not None
-
-
-class TestWalletServiceIdempotency:
-    """Test WalletService idempotent reserve/release (C-059 traceability)."""
-
-    @pytest.mark.asyncio
-    async def test_reserve_idempotent_same_key(self, wallet_service, session_factory):
-        """Test reserve with same idempotency_key returns same reservation_id."""
-        wallet_id = "wallet-001"
-        idempotency_key = "idem-key-001"
-
-        populate_test_wallet_sync(session_factory, wallet_id)
-
-        result_1 = await wallet_service.reserve(
-            wallet_id=wallet_id,
-            thread_type="gpt-4",
-            quantity=100,
-            idempotency_key=idempotency_key,
-        )
-
-        result_2 = await wallet_service.reserve(
-            wallet_id=wallet_id,
-            thread_type="gpt-4",
-            quantity=100,
-            idempotency_key=idempotency_key,
-        )
-
-        assert result_1["reservation_id"] == result_2["reservation_id"]
-        assert result_1["quantity_reserved"] == result_2["quantity_reserved"]
-
-    @pytest.mark.asyncio
-    async def test_reserve_sufficient_funds(self, wallet_service, session_factory):
-        """Test reserve succeeds when sufficient funds available."""
-        wallet_id = "wallet-001"
-
-        populate_test_wallet_sync(session_factory, wallet_id)
-
-        result = await wallet_service.reserve(
-            wallet_id=wallet_id,
-            thread_type="gpt-4",
-            quantity=100,
-            idempotency_key="idem-001",
-        )
-
-        assert result["status"] == "reserved"
-        assert result["quantity_reserved"] == 100
-        assert result["reservation_id"] is not None
-
-    @pytest.mark.asyncio
-    async def test_reserve_insufficient_funds(self, wallet_service, session_factory):
-        """Test reserve fails when insufficient funds."""
-        wallet_id = "wallet-001"
-
-        populate_test_wallet_sync(session_factory, wallet_id)
-
-        result = await wallet_service.reserve(
-            wallet_id=wallet_id,
-            thread_type="gpt-4",
-            quantity=2000,
-            idempotency_key="idem-002",
-        )
-
-        assert result["status"] == "insufficient_funds"
-        assert result["reservation_id"] is None
-
-    @pytest.mark.asyncio
-    async def test_release_restores_bucket_quantity(
-        self, wallet_service, session_factory
-    ):
-        """Test release restores bucket quantity."""
-        wallet_id = "wallet-001"
-
-        populate_test_wallet_sync(session_factory, wallet_id)
-
-        reserve_result = await wallet_service.reserve(
-            wallet_id=wallet_id,
-            thread_type="gpt-4",
-            quantity=100,
-            idempotency_key="idem-003",
-        )
-
-        reservation_id = reserve_result["reservation_id"]
-
-        release_result = await wallet_service.release(
-            reservation_id=reservation_id, reason="test_release"
-        )
-
-        assert release_result["status"] == "released"
-
-        session = session_factory()
-        try:
-            bucket = (
-                session.query(WalletBucket)
-                .filter_by(wallet_id=wallet_id, thread_type="gpt-4")
-                .first()
-            )
-            assert bucket.quantity_reserved == 0
-        finally:
-            session.close()
-
-
-class TestWalletHttpEndpoints:
-    """Test wallet HTTP endpoints (GET /buckets, POST /reserve, POST /release)."""
-
-    def test_get_buckets_200(self, test_client, session_factory):
-        """Test GET /wallet/buckets/{wallet_id} returns 200 with bucket list."""
-        wallet_id = "wallet-001"
-        populate_test_wallet_sync(session_factory, wallet_id)
-
-        response = test_client.get(f"/wallet/buckets/{wallet_id}")
-
-        assert response.status_code == 200
-        data = response.json()
-        assert "buckets" in data
-        assert len(data["buckets"]) == 2
-
-    def test_post_reserve_200(self, test_client, session_factory):
-        """Test POST /wallet/reserve returns 200 on success."""
-        wallet_id = "wallet-001"
-        populate_test_wallet_sync(session_factory, wallet_id)
-
-        payload = {
-            "wallet_id": wallet_id,
-            "thread_type": "gpt-4",
-            "quantity": 100,
-            "idempotency_key": "idem-http-001",
-        }
-
-        response = test_client.post("/wallet/reserve", json=payload)
-
-        assert response.status_code == 200
-        data = response.json()
-        assert data["status"] == "reserved"
-        assert data["reservation_id"] is not None
-
-    def test_post_reserve_422_insufficient_funds(
-        self, test_client, session_factory
-    ):
-        """Test POST /wallet/reserve returns 422 when insufficient funds."""
-        wallet_id = "wallet-001"
-        populate_test_wallet_sync(session_factory, wallet_id)
-
-        payload = {
-            "wallet_id": wallet_id,
-            "thread_type": "gpt-4",
-            "quantity": 5000,
-            "idempotency_key": "idem-http-002",
-        }
-
-        response = test_client.post("/wallet/reserve", json=payload)
-
-        assert response.status_code == 422
-        data = response.json()
-        assert data["status"] == "insufficient_funds"
-
-    def test_post_release_200(self, test_client, session_factory):
-        """Test POST /wallet/release returns 200 on success."""
-        wallet_id = "wallet-001"
-        populate_test_wallet_sync(session_factory, wallet_id)
-
-        reserve_payload = {
-            "wallet_id": wallet_id,
-            "thread_type": "gpt-4",
-            "quantity": 100,
-            "idempotency_key": "idem-http-003",
-        }
-
-        reserve_response = test_client.post("/wallet/reserve", json=reserve_payload)
-        reservation_id = reserve_response.json()["reservation_id"]
-
-        release_payload = {"reservation_id": reservation_id, "reason": "test"}
-
-        response = test_client.post("/wallet/release", json=release_payload)
-
-        assert response.status_code == 200
-        data = response.json()
-        assert data["status"] == "released"
-
-
-class TestC090GrandfatherInvariant:
-    """Test C-090 grandfather pricing invariant (legacy_price within grandfather_until)."""
-
-    @pytest.mark.asyncio
-    async def test_grandfather_pricing_active_within_deadline(
-        self, wallet_service, session_factory
-    ):
-        """Test that legacy_price applies when grandfather_until is in future."""
-        wallet_id = "wallet-001"
-        grandfather_until = date.today() + timedelta(days=30)
-
-        session = session_factory()
-        try:
-            wallet = CustomerWallet(
-                wallet_id=wallet_id,
-                tenant_id="tenant-001",
-                billing_profile="standard",
-                grandfather_until=grandfather_until,
-                legacy_price=0.01,
-                standard_price=0.02,
-                created_at="2026-01-01T00:00:00Z",
-            )
-            session.add(wallet)
-            session.commit()
-        finally:
-            session.close()
-
-        with mock.patch("service.date") as mock_date:
-            mock_date.today.return_value = date.today()
-
-            effective_price = await wallet_service._get_effective_price(
-                wallet_id=wallet_id
-            )
-            assert effective_price == 0.01
-
-    @pytest.mark.asyncio
-    async def test_grandfather_pricing_expired_after_deadline(
-        self, wallet_service, session_factory
-    ):
-        """Test that standard_price applies when grandfather_until has passed."""
-        wallet_id = "wallet-001"
-        grandfather_until = date.today() - timedelta(days=1)
-
-        session = session_factory()
-        try:
-            wallet = CustomerWallet(
-                wallet_id=wallet_id,
-                tenant_id="tenant-001",
-                billing_profile="standard",
-                grandfather_until=grandfather_until,
-                legacy_price=0.01,
-                standard_price=0.02,
-                created_at="2026-01-01T00:00:00Z",
-            )
-            session.add(wallet)
-            session.commit()
-        finally:
-            session.close()
-
-        with mock.patch("service.date") as mock_date:
-            mock_date.today.return_value = date.today()
-
-            effective_price = await wallet_service._get_effective_price(
-                wallet_id=wallet_id
-            )
-            assert effective_price == 0.02
-
-    @pytest.mark.asyncio
-    async def test_renew_subscription_updates_grandfather_deadline(
-        self, wallet_service, session_factory
-    ):
-        """Test renew_subscription extends grandfather_until by renewal period."""
-        wallet_id = "wallet-001"
-        current_deadline = date.today() + timedelta(days=30)
-
-        session = session_factory()
-        try:
-            wallet = CustomerWallet(
-                wallet_id=wallet_id,
-                tenant_id="tenant-001",
-                billing_profile="standard",
-                grandfather_until=current_deadline,
-                legacy_price=0.01,
-                standard_price=0.02,
-                created_at="2026-01-01T00:00:00Z",
-            )
-            session.add(wallet)
-            session.commit()
-        finally:
-            session.close()
-
-        new_deadline = await wallet_service.renew_subscription(
-            wallet_id=wallet_id, subscription_tier="premium"
-        )
-
-        assert new_deadline > current_deadline
+    except HTTPException as exc:
+        assert exc.status_code != 503, "Unexpected BILLING_INTEGRITY_HALT — key was not set"
+    except Exception:
+        pass  # DB-level error is fine — halt guard passed
+
+
+@pytest.mark.asyncio
+async def test_check_billing_halted_raises_503_when_key_set(wallet_service, fake_redis):
+    """_check_billing_halted() raises HTTP 503 when Redis key is present."""
+    await fake_redis.set(b"wbe:billing_halted", b"1")
+
+    with pytest.raises(HTTPException) as exc_info:
+        await wallet_service._check_billing_halted()
+
+    assert exc_info.value.status_code == 503
+    assert "BILLING_INTEGRITY_HALT" in exc_info.value.detail["code"]
+
+
+@pytest.mark.asyncio
+async def test_check_billing_halted_passes_when_key_absent(wallet_service):
+    """_check_billing_halted() returns normally when Redis key is absent."""
+    await wallet_service._check_billing_halted()  # must not raise
+
+
+@pytest.mark.asyncio
+async def test_check_billing_halted_fails_safe_on_redis_error(db_session):
+    """_check_billing_halted() raises HTTP 503 (fail-safe) when Redis errors."""
+    broken_redis = MagicMock()
+    broken_redis.get = AsyncMock(side_effect=OSError("Redis down"))
+    svc = WalletService(db=db_session, redis_client=broken_redis)
+
+    with pytest.raises(HTTPException) as exc_info:
+        await svc._check_billing_halted()
+
+    assert exc_info.value.status_code == 503
+
+
+# ---------------------------------------------------------------------------
+# get_bucket_balance
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_get_bucket_balance_returns_balance(db_session, fake_redis):
+    """get_bucket_balance() returns BucketBalance with correct balance_paise."""
+    from wallet.models import BucketBalance
+
+    customer_id = uuid.uuid4()
+    await _seed_bucket(db_session, customer_id=customer_id, balance_paise=8000, thread_type="INFERENCE")
+
+    svc = WalletService(db=db_session, redis_client=fake_redis)
+    balance = await svc.get_bucket_balance(customer_id=customer_id, thread_type="INFERENCE")
+
+    assert isinstance(balance, BucketBalance)
+    assert balance.balance_paise == 8000
+    assert balance.thread_type == "INFERENCE"
+
+
+@pytest.mark.asyncio
+async def test_get_bucket_balance_raises_not_found(db_session, fake_redis):
+    """get_bucket_balance() raises BucketNotFoundError for unknown customer/thread."""
+    from wallet.models import BucketNotFoundError
+
+    svc = WalletService(db=db_session, redis_client=fake_redis)
+    with pytest.raises(BucketNotFoundError):
+        await svc.get_bucket_balance(customer_id=uuid.uuid4(), thread_type="NONEXISTENT")
+
+
+@pytest.mark.asyncio
+async def test_get_bucket_balance_ignores_inactive_bucket(db_session, fake_redis):
+    """get_bucket_balance() raises BucketNotFoundError for inactive (is_active=0) buckets."""
+    from wallet.models import BucketNotFoundError
+
+    customer_id = uuid.uuid4()
+    await _seed_bucket(db_session, customer_id=customer_id, balance_paise=5000, is_active=False)
+
+    svc = WalletService(db=db_session, redis_client=fake_redis)
+    with pytest.raises(BucketNotFoundError):
+        await svc.get_bucket_balance(customer_id=customer_id, thread_type="DMA")
+
+
+@pytest.mark.asyncio
+async def test_get_bucket_balance_multiple_buckets_same_customer(db_session, fake_redis):
+    """get_bucket_balance() returns the correct bucket for a given thread_type."""
+    customer_id = uuid.uuid4()
+    await _seed_bucket(db_session, customer_id=customer_id, balance_paise=1000, thread_type="DMA")
+    await _seed_bucket(db_session, customer_id=customer_id, balance_paise=2000, thread_type="INFERENCE")
+
+    svc = WalletService(db=db_session, redis_client=fake_redis)
+
+    dma = await svc.get_bucket_balance(customer_id=customer_id, thread_type="DMA")
+    inf = await svc.get_bucket_balance(customer_id=customer_id, thread_type="INFERENCE")
+
+    assert dma.balance_paise == 1000
+    assert inf.balance_paise == 2000

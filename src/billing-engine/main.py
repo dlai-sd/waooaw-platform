@@ -11,15 +11,28 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from config import Settings
-from database import init_db, close_db
+from database import init_db, close_db, get_session_factory
 from markup.router import router as pricing_router
+from markup import thread_catalog
 from meter.router import router as meter_router
 from procurement.router import router as procurement_router
 from reconciliation.router import router as reconciliation_router
 from reconciliation.scheduler import create_scheduler
-from reconciliation.service import ReconciliationService
+from reconciliation.service import ReconciliationService, FounderActionGenerator as _FAGBase
 
 logger = logging.getLogger(__name__)
+
+
+class _WBEFounderActionAdapter(_FAGBase):
+    """Concrete FounderActionGenerator for WBE — logs FA creation events."""
+
+    async def maybe_create(self, *, action_type: str, payload: dict) -> bool:
+        logger.warning(
+            "WBE FounderAction: action_type=%s keys=%s",
+            action_type,
+            list(payload.keys()),
+        )
+        return False
 
 
 @asynccontextmanager
@@ -46,8 +59,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings = Settings()
     redis_client = aioredis.from_url(settings.REDIS_URL, decode_responses=True)
     reconciliation_service = ReconciliationService(
-        settings=settings,
+        session_factory=get_session_factory(),
         redis_client=redis_client,
+        founder_action_generator=_WBEFounderActionAdapter(),
     )
 
     scheduler = create_scheduler(
@@ -117,6 +131,9 @@ def create_app() -> FastAPI:
     # Mount pricing (markup) router
     app.include_router(pricing_router)
 
+    # Mount thread catalog router at /catalog
+    app.include_router(thread_catalog.router, prefix="/catalog", tags=["catalog"])
+
     # Mount meter (usage + alerts) router at /meter prefix
     # Endpoints: GET /meter/{customer_id}/status, POST /meter/daily-scan
     app.include_router(meter_router)
@@ -146,7 +163,7 @@ def create_app() -> FastAPI:
         Constitutional basis:
         - C-059: Publicly observable readiness signal for load balancers.
         """
-        return {"status": "ok"}
+        return {"status": "ok", "service": "billing-engine"}
 
     return app
 

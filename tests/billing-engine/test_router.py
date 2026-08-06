@@ -32,18 +32,23 @@ def mock_ce():
 
 @pytest.fixture()
 def mock_thread_catalog():
-    """Patch thread_catalog.get_catalog to return a fixed list."""
-    entry = MagicMock()
-    entry.model_dump = MagicMock(
-        return_value={
-            "thread_id": "t-001",
-            "agent_type": "RESEARCHER",
-            "bundle_tier": "STARTER",
-            "cost_paise": 5000,
-        }
+    """Patch thread_catalog.get_all_threads to return a fixed list."""
+    from markup.thread_catalog import ThreadCatalogEntry
+
+    entry = ThreadCatalogEntry(
+        thread_id="t-001",
+        display_name="Research Thread",
+        provider="anthropic",
+        unit_description="per message",
+        raw_cost_inr_paise=3000,
+        total_markup_pct=25.0,
+        marked_up_cost_paise=3750,
+        is_platform_thread=True,
+        applicable_agents=["RESEARCHER"],
+        status="ACTIVE",
     )
     with patch("markup.router.thread_catalog") as mock_tc:
-        mock_tc.get_catalog = MagicMock(return_value=[entry])
+        mock_tc.get_all_threads = AsyncMock(return_value=[entry])
         yield mock_tc, [entry]
 
 
@@ -102,7 +107,7 @@ def _clear_overrides():
 @pytest.mark.asyncio
 async def test_get_thread_catalog_returns_list(mock_ce, mock_thread_catalog):
     mock_tc, entries = mock_thread_catalog
-    mock_tc.get_catalog = MagicMock(return_value=entries)
+    mock_tc.get_all_threads = AsyncMock(return_value=entries)
 
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
@@ -117,14 +122,14 @@ async def test_get_thread_catalog_returns_list(mock_ce, mock_thread_catalog):
 @pytest.mark.asyncio
 async def test_get_thread_catalog_delegate_called_once(mock_ce, mock_thread_catalog):
     mock_tc, entries = mock_thread_catalog
-    mock_tc.get_catalog = MagicMock(return_value=entries)
+    mock_tc.get_all_threads = AsyncMock(return_value=entries)
 
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
     ) as client:
         await client.get("/pricing/thread-catalog")
 
-    mock_tc.get_catalog.assert_called_once()
+    mock_tc.get_all_threads.assert_awaited_once()
 
 
 # ---------------------------------------------------------------------------
@@ -237,7 +242,7 @@ async def test_post_derive_returns_paise(mock_ce):
 @pytest.mark.parametrize(
     "proposed_price_paise",
     [
-        0,       # zero paise
+        1,       # minimum valid paise (0 is rejected by Pydantic gt=0 before reaching engine)
         6249,    # 1 paise below floor (floor=5000, minimum_compliant=6250)
     ],
 )
@@ -398,7 +403,7 @@ async def test_post_derive_malformed_body_returns_422(mock_ce):
 @pytest.mark.asyncio
 async def test_get_thread_catalog_idempotent(mock_ce, mock_thread_catalog):
     mock_tc, entries = mock_thread_catalog
-    mock_tc.get_catalog = MagicMock(return_value=entries)
+    mock_tc.get_all_threads = AsyncMock(return_value=entries)
 
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
@@ -443,14 +448,22 @@ async def test_get_bundle_cost_floor_idempotent(mock_ce):
 
 def test_pricing_prefix_mounted_in_app():
     """Assert that at least one route starts with /pricing/."""
-    paths = []
-    for route in app.routes:
-        path = getattr(route, "path", "")
-        paths.append(path)
+    def _collect_paths(routes: list) -> list[str]:
+        paths = []
+        for route in routes:
+            path = getattr(route, "path", None)
+            if path:
+                paths.append(path)
+            # FastAPI 0.115+ wraps included routers as _IncludedRouter objects
+            orig = getattr(route, "original_router", None)
+            if orig:
+                paths.extend(_collect_paths(getattr(orig, "routes", [])))
+        return paths
 
-    pricing_routes = [p for p in paths if p.startswith("/pricing/")]
+    all_paths = _collect_paths(app.routes)
+    pricing_routes = [p for p in all_paths if p.startswith("/pricing/")]
     assert len(pricing_routes) > 0, (
-        f"No /pricing/ routes found. Registered paths: {paths}"
+        f"No /pricing/ routes found. All paths: {all_paths}"
     )
 
 

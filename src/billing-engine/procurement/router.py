@@ -10,9 +10,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from skeleton.wbe_interfaces import (
-    ProviderRunwayStatus,
-)
+from procurement.models import ProviderRunwayStatus
 from procurement.service import ProcurementService
 from db import get_session
 
@@ -36,17 +34,9 @@ class CostRecordRequest:
 async def get_procurement_service(
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> ProcurementService:
-    """
-    Dependency: instantiate ProcurementService with DB session.
-    C-023: ValidateAction check performed in main request handler.
-
-    Args:
-        session: AsyncSession dependency injected by FastAPI.
-
-    Returns:
-        ProcurementService instance bound to the session.
-    """
-    return ProcurementService(session=session)
+    """Dependency: instantiate ProcurementService with DB session and default FA generator."""
+    from procurement.founder_action import FounderActionGenerator
+    return ProcurementService(session=session, founder_action_generator=FounderActionGenerator())
 
 
 @router.get("/status", response_model=list[ProviderRunwayStatus])
@@ -69,7 +59,7 @@ async def get_procurement_status(
         HTTPException: 500 if database query fails.
     """
     try:
-        return await service.get_all_provider_status()
+        return await service.get_all_runway_statuses()
     except Exception as exc:
         logger.error(
             "Failed to fetch procurement status",

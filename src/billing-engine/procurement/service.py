@@ -197,11 +197,15 @@ class ProcurementService:
             days_remaining = await self.project_runway(provider_name)
 
             for rule in PROCUREMENT_POLICY.rules:
-                threshold_days: float = rule.threshold_days
-                priority: str = rule.priority  # P0 | P1 | P2
+                # RunwayThresholdRule has .days_remaining_trigger and .name (e.g. RUNWAY_P0)
+                threshold_days: float = rule.days_remaining_trigger
+                _priority_map = {"RUNWAY_P0": "0", "RUNWAY_P1": "1", "RUNWAY_P2": "2"}
+                priority: str | None = _priority_map.get(rule.name)
+                if priority is None:
+                    continue  # RUNWAY_CRITICAL / RUNWAY_EMERGENCY — no standard FA priority
 
                 if days_remaining <= threshold_days:
-                    fa_result = await self._fa_generator.maybe_create(
+                    fa_result = self._fa_generator.maybe_create(
                         provider=provider_name,
                         days_remaining=days_remaining,
                         priority=priority,

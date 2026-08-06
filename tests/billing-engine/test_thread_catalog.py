@@ -161,17 +161,27 @@ class TestThreadCatalogHttpEndpoints:
 
     @pytest.fixture
     def client(self, fake_redis):
-        """TestClient with DB and Redis mocked."""
+        """TestClient with DB, Redis, and lifespan startup mocked."""
         import markup.thread_catalog as tc
         from main import app
+        from unittest.mock import patch, MagicMock, AsyncMock
+
+        mock_scheduler = MagicMock()
+        mock_scheduler.start = MagicMock()
+        mock_scheduler.shutdown = MagicMock()
 
         with (
             patch.object(tc, "_get_redis", return_value=fake_redis),
             patch.object(tc, "_load_from_db", AsyncMock(return_value=[
                 tc.ThreadCatalogEntry(**t) for t in SAMPLE_THREADS
             ])),
+            patch("main.init_db", AsyncMock()),
+            patch("main.close_db", AsyncMock()),
+            patch("main.get_session_factory", return_value=MagicMock()),
+            patch("main.create_scheduler", return_value=mock_scheduler),
+            patch("main.aioredis.from_url", return_value=AsyncMock()),
         ):
-            with TestClient(app) as c:
+            with TestClient(app, raise_server_exceptions=True) as c:
                 yield c
 
     def test_health_endpoint_returns_200(self, client):

@@ -11,6 +11,7 @@ _db_stub = MagicMock()
 _db_stub.get_db = AsyncMock()
 _db_stub.init_db = AsyncMock()
 _db_stub.close_db = AsyncMock()
+_db_stub.get_session_factory = MagicMock(return_value=MagicMock())
 sys.modules.setdefault("database", _db_stub)
 
 _db2_stub = MagicMock()
@@ -22,11 +23,19 @@ _ce_stub.CE = MagicMock()
 _ce_stub.CE.ValidateAction = AsyncMock(return_value=None)
 sys.modules.setdefault("ce_validator", _ce_stub)
 
-_config_stub = MagicMock()
-_config_stub.settings = MagicMock(
-    DATABASE_URL="postgresql+asyncpg://test:test@localhost/test",
+# Single settings instance returned by both `from config import settings`
+# and `Settings()` — ensures string URLs so aioredis.from_url() doesn't fail.
+_settings_instance = MagicMock(
+    DATABASE_URL="sqlite+aiosqlite:///:memory:",
     REDIS_URL="redis://localhost:6379/0",
+    OPS_AUTH_TOKEN="test-ops-token",
+    WBE_INTERNAL_BASE_URL="http://localhost:8140",
+    thread_catalog_cache_ttl_seconds=30,
+    redis_url="redis://localhost:6379/0",
 )
+_config_stub = MagicMock()
+_config_stub.settings = _settings_instance
+_config_stub.Settings = MagicMock(return_value=_settings_instance)
 sys.modules.setdefault("config", _config_stub)
 
 # Suppress function_scoped_fixture health check globally for this service's tests.
