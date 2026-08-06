@@ -1,87 +1,87 @@
 {
-  "run_id": "31028598876",
-  "sprint": "WC-029",
+  "run_id": "31065641010",
+  "sprint": "WC-030",
   "scaffold_task": null,
   "scaffold_failed": false,
   "task_results": {},
   "spec_gap_issues": [],
   "overall_result": "PARTIAL",
   "file_costs": {
-    "WC029-01aa:models.py": 13.9557,
-    "WC029-01aa:service.py": 13.062,
-    "WC029-01ab:models.py": 0.8404,
-    "WC029-01ab:service.py": 1.7177,
-    "WC029-01ac:test_models.py": 4.1929,
-    "WC029-01ba:founder_action.py": 1.2993999999999999,
-    "WC029-01ba:router.py": 1.0754,
-    "WC029-01ba:main.py": 0.3532,
-    "WC029-01bb:founder_action.py": 1.4151,
-    "WC029-01bb:router.py": 0.8458000000000001,
-    "WC029-01bb:main.py": 0.3881,
-    "WC029-01bc:test_founder_action.py": 4.5334,
-    "WC029-02a:test_procurement.py": 3.2258999999999998
+    "WC030-01aa:service.py": 14.1408,
+    "WC030-01ab:service.py": 1.7013000000000003,
+    "WC030-01ac:test_service.py": 5.686100000000001,
+    "WC030-01ba:scheduler.py": 7.8488,
+    "WC030-01ba:router.py": 4.2686,
+    "WC030-01ba:main.py": 4.0483,
+    "WC030-01ba:service.py": 14.476099999999999,
+    "WC030-01bb:scheduler.py": 0.5236,
+    "WC030-01bb:router.py": 0.633,
+    "WC030-01bb:main.py": 0.5448,
+    "WC030-01bb:service.py": 2.0765,
+    "WC030-01bc:test_scheduler.py": 4.929799999999999,
+    "WC030-03a:test_reconciliation.py": 4.7224
   },
   "subtask_results": {
-    "WC029-01aa": {
+    "WC030-01aa": {
       "result": "SUCCESS",
-      "task_id": "WC029-01a",
+      "task_id": "WC030-01a",
       "error_codes": [],
       "error_text": ""
     },
-    "WC029-01ab": {
+    "WC030-01ab": {
       "result": "SUCCESS",
-      "task_id": "WC029-01a",
+      "task_id": "WC030-01a",
       "error_codes": [],
       "error_text": ""
     },
-    "WC029-01ac": {
+    "WC030-01ac": {
       "result": "FAIL",
-      "task_id": "WC029-01a",
+      "task_id": "WC030-01a",
       "error_codes": [],
       "error_text": ""
     },
-    "WC029-01ba": {
+    "WC030-01ba": {
       "result": "SUCCESS",
-      "task_id": "WC029-01b",
+      "task_id": "WC030-01b",
       "error_codes": [],
       "error_text": ""
     },
-    "WC029-01bb": {
+    "WC030-01bb": {
       "result": "SUCCESS",
-      "task_id": "WC029-01b",
+      "task_id": "WC030-01b",
       "error_codes": [],
       "error_text": ""
     },
-    "WC029-01bc": {
+    "WC030-01bc": {
       "result": "FAIL",
-      "task_id": "WC029-01b",
+      "task_id": "WC030-01b",
       "error_codes": [],
       "error_text": ""
     },
-    "WC029-02a": {
+    "WC030-03a": {
       "result": "FAIL",
-      "task_id": "WC029-02",
+      "task_id": "WC030-03",
       "error_codes": [],
-      "error_text": "ASYNC240 Async functions should not use pathlib.Path methods, use trio.Path or anyio.path\n   --> tests/billing-engine/test_procurement.py:478:18\n    |\n476 |     # For this test, we manually verify FA file can be appended\n477 |     \n478 |     fa_content = tmp_fa_file.read_text()\n    |                "
+      "error_text": ""
     },
-    "WC029-02b": {
+    "WC030-03b": {
       "result": "SKIPPED_CASCADE",
-      "task_id": "WC029-02",
+      "task_id": "WC030-03",
       "error_codes": [],
       "error_text": ""
     },
-    "WC029-02c": {
+    "WC030-03c": {
       "result": "SKIPPED_CASCADE",
-      "task_id": "WC029-02",
+      "task_id": "WC030-03",
       "error_codes": [],
       "error_text": ""
     }
   },
-  "total_cost_inr": 46.905,
+  "total_cost_inr": 65.6001,
   "tasks_done": [],
   "tasks_requested": [
-    "WC029-01a",
-    "WC029-01b",
-    "WC029-02"
+    "WC030-01a",
+    "WC030-01b",
+    "WC030-03"
   ]
 }
