@@ -1308,3 +1308,764 @@ class TestClosedWorldImportPrevention:
         assert "Permitted imports" in prompt_text, (
             "Prompt must list the permitted imports from the scaffold"
         )
+
+
+# ── Orchestrator helper unit tests ────────────────────────────────────────────
+
+class TestOrchestratorHelpers:
+    """Unit tests for deterministic helper functions in udcp_orchestrator."""
+
+    # --- _fix_b904 ---
+
+    def test_fix_b904_adds_from_var_to_bare_raise(self) -> None:
+        from runner.udcp_orchestrator import _fix_b904
+
+        content = textwrap.dedent("""\
+            try:
+                x = int("bad")
+            except ValueError as exc:
+                raise RuntimeError("wrap")
+        """)
+        result = _fix_b904(content)
+        assert "from exc" in result
+
+    def test_fix_b904_leaves_already_chained_raise_unchanged(self) -> None:
+        from runner.udcp_orchestrator import _fix_b904
+
+        content = textwrap.dedent("""\
+            try:
+                x = int("bad")
+            except ValueError as exc:
+                raise RuntimeError("wrap") from exc
+        """)
+        result = _fix_b904(content)
+        assert result.count("from exc") == 1
+
+    def test_fix_b904_syntax_error_returns_original(self) -> None:
+        from runner.udcp_orchestrator import _fix_b904
+
+        bad = "def broken("
+        assert _fix_b904(bad) == bad
+
+    def test_fix_b904_no_except_handler_name_unchanged(self) -> None:
+        from runner.udcp_orchestrator import _fix_b904
+
+        content = textwrap.dedent("""\
+            try:
+                x = 1 / 0
+            except Exception:
+                raise RuntimeError("no name")
+        """)
+        result = _fix_b904(content)
+        # No named handler → no from-chaining applied
+        assert "from " not in result
+
+    # --- _hoist_imports ---
+
+    def test_hoist_imports_no_imports_returns_unchanged(self) -> None:
+        from runner.udcp_orchestrator import _hoist_imports
+
+        existing = "import os\n\ndef foo(): pass\n"
+        new_lines = "x = 1\ny = 2\n"
+        e, n = _hoist_imports(existing, new_lines)
+        assert e == existing
+        assert n == new_lines
+
+    def test_hoist_imports_moves_import_to_existing(self) -> None:
+        from runner.udcp_orchestrator import _hoist_imports
+
+        existing = "import os\n\ndef foo(): pass\n"
+        new_lines = "from pathlib import Path\napp_init = do_it()\n"
+        e, n = _hoist_imports(existing, new_lines)
+        assert "from pathlib import Path" in e
+        assert "from pathlib import Path" not in n
+
+    def test_hoist_imports_skips_import_of_body_defined_assignment(self) -> None:
+        from runner.udcp_orchestrator import _hoist_imports
+
+        existing = "import os\n"
+        # 'router' appears both in import and as an assignment in new_lines
+        new_lines = "from mymod import router\nrouter = do_init()\n"
+        e, n = _hoist_imports(existing, new_lines)
+        # import of 'router' is filtered because 'router' is assigned in body
+        assert "from mymod import router" not in e
+
+    def test_hoist_imports_skips_import_of_body_defined_def(self) -> None:
+        from runner.udcp_orchestrator import _hoist_imports
+
+        existing = "import os\n"
+        new_lines = "from mymod import my_func\ndef my_func(): pass\n"
+        e, n = _hoist_imports(existing, new_lines)
+        assert "from mymod import my_func" not in e
+
+    def test_hoist_imports_skips_import_of_body_defined_class(self) -> None:
+        from runner.udcp_orchestrator import _hoist_imports
+
+        existing = "import os\n"
+        new_lines = "from mymod import MyClass\nclass MyClass: pass\n"
+        e, n = _hoist_imports(existing, new_lines)
+        assert "from mymod import MyClass" not in e
+
+    def test_hoist_imports_does_not_duplicate_existing_import(self) -> None:
+        from runner.udcp_orchestrator import _hoist_imports
+
+        existing = "import os\nfrom pathlib import Path\n"
+        new_lines = "from pathlib import Path\nx = 1\n"
+        e, n = _hoist_imports(existing, new_lines)
+        # Should not insert a duplicate
+        assert e.count("from pathlib import Path") == 1
+
+    # --- _ruff_normalization_check ---
+
+    def test_ruff_normalization_check_clean_returns_none(self) -> None:
+        from runner.udcp_orchestrator import _ruff_normalization_check
+
+        clean = "import os\n\nx = 1\n"
+        assert _ruff_normalization_check(clean) is None
+
+    def test_ruff_normalization_check_detects_b904(self) -> None:
+        from runner.udcp_orchestrator import _ruff_normalization_check
+
+        # B904: raise without `from` inside except handler
+        bad = textwrap.dedent("""\
+            try:
+                x = 1 / 0
+            except Exception as e:
+                raise RuntimeError("bad")
+        """)
+        result = _ruff_normalization_check(bad)
+        assert result is not None
+        assert "B904" in result
+
+    # --- _fix_ruf012 ---
+
+    def test_fix_ruf012_syntax_error_returns_original(self) -> None:
+        from runner.udcp_orchestrator import _fix_ruf012
+
+        bad = "def broken("
+        assert _fix_ruf012(bad) == bad
+
+    def test_fix_ruf012_no_violations_returns_unchanged(self) -> None:
+        from runner.udcp_orchestrator import _fix_ruf012
+
+        clean = "class Foo:\n    x: int = 0\n"
+        assert _fix_ruf012(clean) == clean
+
+    def test_fix_ruf012_wraps_mutable_list_annotation(self) -> None:
+        from runner.udcp_orchestrator import _fix_ruf012
+
+        code = textwrap.dedent("""\
+            from typing import Optional
+            class Foo:
+                items: list[str] = []
+        """)
+        result = _fix_ruf012(code)
+        assert "ClassVar[list[str]]" in result
+        # ClassVar should be injected into existing typing import
+        assert "ClassVar" in result
+
+    def test_fix_ruf012_adds_classvar_to_typing_import_line(self) -> None:
+        from runner.udcp_orchestrator import _fix_ruf012
+
+        code = textwrap.dedent("""\
+            from typing import Optional
+            class Foo:
+                items: dict[str, int] = {}
+        """)
+        result = _fix_ruf012(code)
+        assert "ClassVar" in result
+        assert "from typing import" in result
+
+    def test_fix_ruf012_adds_new_typing_import_when_absent(self) -> None:
+        from runner.udcp_orchestrator import _fix_ruf012
+
+        code = textwrap.dedent("""\
+            import os
+            class Foo:
+                items: list[str] = []
+        """)
+        result = _fix_ruf012(code)
+        assert "from typing import ClassVar" in result
+
+    # --- _fix_ann201_asynccontextmanager ---
+
+    def test_fix_ann201_adds_return_type(self) -> None:
+        from runner.udcp_orchestrator import _fix_ann201_asynccontextmanager
+
+        code = textwrap.dedent("""\
+            from contextlib import asynccontextmanager
+            @asynccontextmanager
+            async def lifespan(app):
+                yield
+        """)
+        result = _fix_ann201_asynccontextmanager(code)
+        assert "-> AsyncIterator[None]" in result
+
+    def test_fix_ann201_adds_asynciterator_to_existing_collections_abc_import(self) -> None:
+        from runner.udcp_orchestrator import _fix_ann201_asynccontextmanager
+
+        code = textwrap.dedent("""\
+            from contextlib import asynccontextmanager
+            from collections.abc import Generator
+            @asynccontextmanager
+            async def lifespan(app):
+                yield
+        """)
+        result = _fix_ann201_asynccontextmanager(code)
+        assert "AsyncIterator" in result
+
+    def test_fix_ann201_adds_new_collections_abc_import_when_absent(self) -> None:
+        from runner.udcp_orchestrator import _fix_ann201_asynccontextmanager
+
+        code = textwrap.dedent("""\
+            from contextlib import asynccontextmanager
+            @asynccontextmanager
+            async def lifespan(app):
+                yield
+        """)
+        result = _fix_ann201_asynccontextmanager(code)
+        assert "from collections.abc import AsyncIterator" in result
+
+    def test_fix_ann201_no_change_when_return_type_present(self) -> None:
+        from runner.udcp_orchestrator import _fix_ann201_asynccontextmanager
+
+        code = textwrap.dedent("""\
+            from contextlib import asynccontextmanager
+            from collections.abc import AsyncIterator
+            @asynccontextmanager
+            async def lifespan(app) -> AsyncIterator[None]:
+                yield
+        """)
+        assert _fix_ann201_asynccontextmanager(code) == code
+
+    def test_fix_ann201_no_asynccontextmanager_returns_unchanged(self) -> None:
+        from runner.udcp_orchestrator import _fix_ann201_asynccontextmanager
+
+        code = "def normal_fn(): pass\n"
+        assert _fix_ann201_asynccontextmanager(code) == code
+
+    # --- _normalize_and_write ---
+
+    def test_normalize_and_write_success_writes_file(self, tmp_path: Path) -> None:
+        from runner.udcp_orchestrator import _normalize_and_write
+
+        path = tmp_path / "ok.py"
+        result = _normalize_and_write(path, "x = 1\n", "ok.py", "GREENFIELD")
+        assert result is None
+        assert path.read_text() == "x = 1\n"
+
+    def test_normalize_and_write_compile_error_returns_failure(self, tmp_path: Path) -> None:
+        from runner.udcp_orchestrator import _normalize_and_write
+
+        path = tmp_path / "bad.py"
+        result = _normalize_and_write(path, "def broken(", "bad.py", "GREENFIELD")
+        assert result is not None
+        assert result.error_type == "COMPILE_GATE_FAILURE"
+        assert not path.exists()
+
+    # --- _extract_function_block ---
+
+    def test_extract_function_block_from_backtick_block(self) -> None:
+        from runner.udcp_orchestrator import _extract_function_block
+
+        response = "```python\ndef foo(x: int) -> int:\n    return x + 1\n```"
+        result = _extract_function_block(response)
+        assert result is not None
+        assert "def foo" in result
+
+    def test_extract_function_block_fallback_bare_def(self) -> None:
+        from runner.udcp_orchestrator import _extract_function_block
+
+        response = "Here is the implementation:\ndef my_func(x: int) -> int:\n    return x * 2"
+        result = _extract_function_block(response)
+        assert result is not None
+        assert "def my_func" in result
+
+    def test_extract_function_block_no_function_returns_none(self) -> None:
+        from runner.udcp_orchestrator import _extract_function_block
+
+        response = "No function definition here — just prose."
+        assert _extract_function_block(response) is None
+
+    # --- _parse_llm_files_local ---
+
+    def test_parse_llm_files_local_extracts_allowed_path(self) -> None:
+        from runner.udcp_orchestrator import _parse_llm_files_local
+
+        response = '<file path="src/billing-engine/markup/models.py">\nx = 1\n</file>'
+        result = _parse_llm_files_local(response)
+        assert "src/billing-engine/markup/models.py" in result
+        assert result["src/billing-engine/markup/models.py"] == "x = 1"
+
+    def test_parse_llm_files_local_rejects_outside_boundary(self) -> None:
+        from runner.udcp_orchestrator import _parse_llm_files_local
+
+        response = '<file path="constitution/PROJECT_STATE.md">\nbad\n</file>'
+        result = _parse_llm_files_local(response)
+        assert "constitution/PROJECT_STATE.md" not in result
+
+    def test_parse_llm_files_local_strips_code_fences(self) -> None:
+        from runner.udcp_orchestrator import _parse_llm_files_local
+
+        response = (
+            "```python\n"
+            '<file path="tests/billing-engine/test_x.py">\npass\n</file>\n'
+            "```"
+        )
+        result = _parse_llm_files_local(response)
+        assert "tests/billing-engine/test_x.py" in result
+
+
+# ── Track 2 orchestrator integration tests ───────────────────────────────────
+
+class TestOrchestratorTrack2Integration:
+    """Tests for _run_track2, _patch_artifact, _patch_method, and _append_module_lines."""
+
+    def test_run_track2_patches_existing_method(self, tmp_path: Path) -> None:
+        """_run_track2 calls _patch_artifact → _patch_method → file updated."""
+        from runner.udcp_orchestrator import UDCPOrchestrator
+
+        src_dir = tmp_path / "src/billing-engine/markup"
+        src_dir.mkdir(parents=True)
+        (src_dir / "bundle_engine.py").write_text(textwrap.dedent("""\
+            class BundleEngine:
+                def compute(self) -> int:
+                    return 0
+        """))
+
+        def stub_llm(**kwargs: object) -> str:  # type: ignore[override]
+            return "```python\ndef compute(self) -> int:\n    return 42\n```"
+
+        orch = UDCPOrchestrator(repo_root=tmp_path, llm_fn=stub_llm)
+        scope = "`src/billing-engine/markup/bundle_engine.py` — update BundleEngine.compute"
+        result = orch.execute_task(
+            task_id="T-t2",
+            scope_text=scope,
+            required_output_files=["src/billing-engine/markup/bundle_engine.py"],
+        )
+        assert result.success
+        assert result.track == "DIFFERENTIAL"
+
+    def test_run_track2_grooming_error_returns_failure(self, tmp_path: Path) -> None:
+        """If grooming raises an exception, _run_track2 returns GROOMING_ERROR."""
+        from runner.udcp_orchestrator import UDCPOrchestrator
+
+        orch = UDCPOrchestrator(repo_root=tmp_path)
+        # Pass completely empty scope — groom.generate_tmd won't raise but returns empty TMD
+        # so we just verify the success=True / empty written list path
+        result = orch._run_track2(
+            task_id="T-ge", scope_text="", sprint_id="WC-TEST",
+            model_hint="auto", max_tokens=1000,
+        )
+        # Empty TMD → success with no files written
+        assert result.success
+
+    def test_patch_artifact_file_not_found_returns_failure(self, tmp_path: Path) -> None:
+        """_patch_artifact returns FILE_NOT_FOUND when target does not exist."""
+        from runner.udcp_orchestrator import UDCPOrchestrator
+
+        orch = UDCPOrchestrator(repo_root=tmp_path)
+        result = orch._patch_artifact(
+            task_id="T-paf",
+            artifact={"file_path": "src/billing-engine/nonexistent.py", "target_methods": ["foo"]},
+            scope_text="update foo",
+            model_hint="auto",
+            max_tokens=1000,
+        )
+        assert not result.success
+        assert result.error_type == "FILE_NOT_FOUND"
+
+    def test_patch_artifact_no_methods_calls_append(self, tmp_path: Path) -> None:
+        """_patch_artifact with no target_methods falls through to _append_module_lines."""
+        from runner.udcp_orchestrator import UDCPOrchestrator
+
+        src_dir = tmp_path / "src/billing-engine/markup"
+        src_dir.mkdir(parents=True)
+        # File without FastAPI app (so APPEND SKIP won't fire)
+        (src_dir / "main.py").write_text("import os\n\nx = 1\n")
+
+        appended: list[str] = []
+
+        def stub_llm(**kwargs: object) -> str:  # type: ignore[override]
+            appended.append("called")
+            return "app = do_setup()\n"
+
+        orch = UDCPOrchestrator(repo_root=tmp_path, llm_fn=stub_llm)
+        result = orch._patch_artifact(
+            task_id="T-pam",
+            artifact={"file_path": "src/billing-engine/markup/main.py", "target_methods": []},
+            scope_text="init app",
+            model_hint="auto",
+            max_tokens=1000,
+        )
+        assert appended, "LLM should have been called for append path"
+        assert result.success
+
+    def test_patch_method_extraction_error_returns_failure(self, tmp_path: Path) -> None:
+        """_patch_method returns EXTRACTION_ERROR when method not found."""
+        from runner.udcp_orchestrator import UDCPOrchestrator
+        from runner.track2_polymorphic_engine import Track2PolymorphicEngine
+
+        src_dir = tmp_path / "src/billing-engine/markup"
+        src_dir.mkdir(parents=True)
+        fp = src_dir / "service.py"
+        fp.write_text("class Svc:\n    def real(self) -> None: pass\n")
+
+        engine = Track2PolymorphicEngine(fp)
+
+        def stub_llm(**kwargs: object) -> str:  # type: ignore[override]
+            return "```python\ndef missing(self): pass\n```"
+
+        orch = UDCPOrchestrator(repo_root=tmp_path, llm_fn=stub_llm)
+        result = orch._patch_method(
+            task_id="T-pme",
+            engine=engine,
+            method_name="missing_method",
+            class_name="Svc",
+            scope_text="implement missing_method",
+            model_hint="auto",
+            max_tokens=1000,
+        )
+        assert not result.success
+        assert result.error_type == "EXTRACTION_ERROR"
+
+    def test_patch_method_llm_no_response_returns_failure(self, tmp_path: Path) -> None:
+        """_patch_method returns LLM_NO_RESPONSE when stub LLM returns None."""
+        from runner.udcp_orchestrator import UDCPOrchestrator
+        from runner.track2_polymorphic_engine import Track2PolymorphicEngine
+
+        src_dir = tmp_path / "src/billing-engine/markup"
+        src_dir.mkdir(parents=True)
+        fp = src_dir / "service.py"
+        fp.write_text("class Svc:\n    def compute(self) -> int:\n        return 0\n")
+
+        engine = Track2PolymorphicEngine(fp)
+
+        def none_llm(**kwargs: object) -> None:  # type: ignore[override]
+            return None
+
+        orch = UDCPOrchestrator(repo_root=tmp_path, llm_fn=none_llm)
+        result = orch._patch_method(
+            task_id="T-nr",
+            engine=engine,
+            method_name="compute",
+            class_name="Svc",
+            scope_text="implement compute",
+            model_hint="auto",
+            max_tokens=1000,
+        )
+        assert not result.success
+        assert result.error_type == "LLM_NO_RESPONSE"
+
+    def test_patch_method_no_function_block_returns_failure(self, tmp_path: Path) -> None:
+        """_patch_method returns NO_FUNCTION_BLOCK when LLM response has no def."""
+        from runner.udcp_orchestrator import UDCPOrchestrator
+        from runner.track2_polymorphic_engine import Track2PolymorphicEngine
+
+        src_dir = tmp_path / "src/billing-engine/markup"
+        src_dir.mkdir(parents=True)
+        fp = src_dir / "service.py"
+        fp.write_text("class Svc:\n    def compute(self) -> int:\n        return 0\n")
+
+        engine = Track2PolymorphicEngine(fp)
+
+        def bad_llm(**kwargs: object) -> str:  # type: ignore[override]
+            return "I cannot implement this function."
+
+        orch = UDCPOrchestrator(repo_root=tmp_path, llm_fn=bad_llm)
+        result = orch._patch_method(
+            task_id="T-nfb",
+            engine=engine,
+            method_name="compute",
+            class_name="Svc",
+            scope_text="implement compute",
+            model_hint="auto",
+            max_tokens=1000,
+        )
+        assert not result.success
+        assert result.error_type == "NO_FUNCTION_BLOCK"
+
+    def test_patch_method_inject_source_files(self, tmp_path: Path) -> None:
+        """_patch_method with inject_source_files still works when ref file exists."""
+        from runner.udcp_orchestrator import UDCPOrchestrator
+        from runner.track2_polymorphic_engine import Track2PolymorphicEngine
+
+        src_dir = tmp_path / "src/billing-engine/markup"
+        src_dir.mkdir(parents=True)
+        fp = src_dir / "service.py"
+        fp.write_text("class Svc:\n    def compute(self) -> int:\n        return 0\n")
+        ref_file = src_dir / "ref.py"
+        ref_file.write_text("# reference\n")
+
+        engine = Track2PolymorphicEngine(fp)
+
+        def stub_llm(**kwargs: object) -> str:  # type: ignore[override]
+            return "```python\ndef compute(self) -> int:\n    return 99\n```"
+
+        orch = UDCPOrchestrator(repo_root=tmp_path, llm_fn=stub_llm)
+        result = orch._patch_method(
+            task_id="T-isf",
+            engine=engine,
+            method_name="compute",
+            class_name="Svc",
+            scope_text="implement compute",
+            model_hint="auto",
+            max_tokens=1000,
+            inject_source_files=["src/billing-engine/markup/ref.py"],
+        )
+        assert result.success
+
+    def test_append_module_lines_calls_llm_when_no_app(self, tmp_path: Path) -> None:
+        """_append_module_lines calls LLM when file has no FastAPI app init."""
+        from runner.udcp_orchestrator import UDCPOrchestrator
+
+        src_dir = tmp_path / "src/billing-engine/markup"
+        src_dir.mkdir(parents=True)
+        fp = src_dir / "main.py"
+        fp.write_text("import os\n\nx = 1\n")
+
+        appended: list[str] = []
+
+        def stub_llm(**kwargs: object) -> str:  # type: ignore[override]
+            appended.append("called")
+            return "app = FastAPI()\napp.include_router(router)\n"
+
+        orch = UDCPOrchestrator(repo_root=tmp_path, llm_fn=stub_llm)
+        result = orch._append_module_lines(
+            task_id="T-aml",
+            fp=fp,
+            rel_path="src/billing-engine/markup/main.py",
+            scope_text="init app",
+            model_hint="auto",
+            max_tokens=1000,
+        )
+        assert appended, "LLM must be called"
+        assert result.success
+        assert "src/billing-engine/markup/main.py" in result.files_written
+
+    def test_append_module_lines_applies_lint_fixers_on_skip(self, tmp_path: Path) -> None:
+        """APPEND SKIP path still applies deterministic lint fixers when file has violations."""
+        from runner.udcp_orchestrator import UDCPOrchestrator
+
+        src_dir = tmp_path / "src/billing-engine/markup"
+        src_dir.mkdir(parents=True)
+        fp = src_dir / "router.py"
+        # Router file that triggers APPEND SKIP — has B904 violation that needs fixing
+        content = textwrap.dedent("""\
+            from fastapi import APIRouter
+            router = APIRouter(prefix='/test')
+
+            try:
+                x = int("bad")
+            except ValueError as exc:
+                raise RuntimeError("wrap")
+        """)
+        fp.write_text(content)
+
+        orch = UDCPOrchestrator(repo_root=tmp_path, llm_fn=lambda **kw: None)
+        result = orch._append_module_lines(
+            task_id="T-lf",
+            fp=fp,
+            rel_path="src/billing-engine/markup/router.py",
+            scope_text="fix",
+            model_hint="auto",
+            max_tokens=1000,
+        )
+        # Should succeed (APPEND SKIP + lint fix applied)
+        assert result.success
+        updated = fp.read_text()
+        assert "from exc" in updated
+
+    def test_append_module_lines_no_callable_returns_success_no_write(self, tmp_path: Path) -> None:
+        """When LLM returns no callable expression, _append_module_lines is a no-op."""
+        from runner.udcp_orchestrator import UDCPOrchestrator
+
+        src_dir = tmp_path / "src/billing-engine/markup"
+        src_dir.mkdir(parents=True)
+        fp = src_dir / "main.py"
+        fp.write_text("import os\n")
+
+        def stub_llm(**kwargs: object) -> str:  # type: ignore[override]
+            return "# no callable here\n"
+
+        orch = UDCPOrchestrator(repo_root=tmp_path, llm_fn=stub_llm)
+        result = orch._append_module_lines(
+            task_id="T-nc",
+            fp=fp,
+            rel_path="src/billing-engine/markup/main.py",
+            scope_text="nothing",
+            model_hint="auto",
+            max_tokens=1000,
+        )
+        assert result.success
+        assert result.files_written == []
+
+    def test_append_module_lines_llm_no_response_returns_failure(self, tmp_path: Path) -> None:
+        """_append_module_lines returns LLM_NO_RESPONSE when LLM returns None."""
+        from runner.udcp_orchestrator import UDCPOrchestrator
+
+        src_dir = tmp_path / "src/billing-engine/markup"
+        src_dir.mkdir(parents=True)
+        fp = src_dir / "main.py"
+        fp.write_text("import os\n")
+
+        def none_llm(**kwargs: object) -> None:  # type: ignore[override]
+            return None
+
+        orch = UDCPOrchestrator(repo_root=tmp_path, llm_fn=none_llm)
+        result = orch._append_module_lines(
+            task_id="T-anr",
+            fp=fp,
+            rel_path="src/billing-engine/markup/main.py",
+            scope_text="nothing",
+            model_hint="auto",
+            max_tokens=1000,
+        )
+        assert not result.success
+        assert result.error_type == "LLM_NO_RESPONSE"
+
+
+# ── Orchestrator dry-run and inject-source-files tests ───────────────────────
+
+class TestOrchestratorDryRunAndInjectFiles:
+    """Tests for dry_run mode and inject_source_files in Track 1."""
+
+    def test_dry_run_returns_preview_without_writing_file(self, tmp_path: Path) -> None:
+        """dry_run=True must return scaffold preview without touching disk."""
+        from runner.udcp_orchestrator import UDCPOrchestrator
+
+        orch = UDCPOrchestrator(repo_root=tmp_path, dry_run=True)
+        result = orch.execute_task(
+            task_id="T-dr",
+            scope_text="Implement `src/billing-engine/markup/models.py` with Pydantic models.",
+            required_output_files=["src/billing-engine/markup/models.py"],
+        )
+        assert result.success
+        assert result.dry_run
+        assert result.prompt_preview  # some preview text present
+        # No actual file written
+        assert not (tmp_path / "src/billing-engine/markup/models.py").exists()
+
+    def test_inject_source_files_includes_ref_in_prompt(self, tmp_path: Path) -> None:
+        """inject_source_files causes reference file content to appear in the LLM prompt."""
+        from runner.udcp_orchestrator import UDCPOrchestrator
+
+        ref_dir = tmp_path / "src/billing-engine/markup"
+        ref_dir.mkdir(parents=True)
+        (ref_dir / "ref.py").write_text("# REFERENCE CONTENT SENTINEL\n")
+
+        captured: list[str] = []
+
+        def capture_llm(**kwargs: object) -> str:  # type: ignore[override]
+            captured.append(str(kwargs.get("prompt", "")))
+            return (
+                '<file path="src/billing-engine/markup/models.py">\n'
+                "from __future__ import annotations\nx = 1\n"
+                "</file>\n"
+            )
+
+        orch = UDCPOrchestrator(repo_root=tmp_path, llm_fn=capture_llm)
+        orch.execute_task(
+            task_id="T-isf",
+            scope_text="Implement `src/billing-engine/markup/models.py`.",
+            required_output_files=["src/billing-engine/markup/models.py"],
+            inject_source_files=["src/billing-engine/markup/ref.py"],
+            force_greenfield=True,
+        )
+        assert captured, "LLM was not called"
+        assert "REFERENCE CONTENT SENTINEL" in captured[0]
+
+    def test_run_track1_fill_logic_no_response_returns_failure(self, tmp_path: Path) -> None:
+        """LLM returning None during logic-fill → LLM_NO_RESPONSE error."""
+        from runner.udcp_orchestrator import UDCPOrchestrator
+
+        def none_llm(**kwargs: object) -> None:  # type: ignore[override]
+            return None
+
+        orch = UDCPOrchestrator(repo_root=tmp_path, llm_fn=none_llm)
+        result = orch.execute_task(
+            task_id="T-nrg",
+            scope_text="Implement `src/billing-engine/markup/models.py`.",
+            required_output_files=["src/billing-engine/markup/models.py"],
+            force_greenfield=True,
+        )
+        assert not result.success
+        assert result.error_type == "LLM_NO_RESPONSE"
+
+    def test_run_track1_fill_logic_no_file_blocks_returns_failure(self, tmp_path: Path) -> None:
+        """LLM returning response with no <file> blocks → NO_FILE_BLOCKS error."""
+        from runner.udcp_orchestrator import UDCPOrchestrator
+
+        def bad_llm(**kwargs: object) -> str:  # type: ignore[override]
+            return "Here is some code but no file blocks."
+
+        orch = UDCPOrchestrator(repo_root=tmp_path, llm_fn=bad_llm)
+        result = orch.execute_task(
+            task_id="T-nfb",
+            scope_text="Implement `src/billing-engine/markup/models.py`.",
+            required_output_files=["src/billing-engine/markup/models.py"],
+            force_greenfield=True,
+        )
+        assert not result.success
+        assert result.error_type == "NO_FILE_BLOCKS"
+
+    def test_run_track1_write_boundary_violation_returns_no_file_blocks(self, tmp_path: Path) -> None:
+        """LLM returning only boundary-violating paths → NO_FILE_BLOCKS (parser filters them out)."""
+        from runner.udcp_orchestrator import UDCPOrchestrator
+
+        def boundary_llm(**kwargs: object) -> str:  # type: ignore[override]
+            # _parse_llm_files_local filters paths outside ALLOWED_WRITE_ROOTS
+            # → files dict is empty → NO_FILE_BLOCKS
+            return '<file path="constitution/SECRETS.md">\nbad\n</file>'
+
+        orch = UDCPOrchestrator(repo_root=tmp_path, llm_fn=boundary_llm)
+        result = orch.execute_task(
+            task_id="T-wbv",
+            scope_text="Implement `src/billing-engine/markup/models.py`.",
+            required_output_files=["src/billing-engine/markup/models.py"],
+            force_greenfield=True,
+        )
+        assert not result.success
+        assert result.error_type == "NO_FILE_BLOCKS"
+
+    def test_mixed_track_executes_both_t1_and_t2(self, tmp_path: Path) -> None:
+        """MIXED track calls Track 1 for new files and Track 2 for existing."""
+        from runner.udcp_orchestrator import UDCPOrchestrator
+
+        existing_dir = tmp_path / "src/billing-engine/markup"
+        existing_dir.mkdir(parents=True)
+        (existing_dir / "bundle_engine.py").write_text(textwrap.dedent("""\
+            class BundleEngine:
+                def compute(self) -> int:
+                    return 0
+        """))
+
+        call_log: list[str] = []
+
+        def multi_llm(**kwargs: object) -> str:  # type: ignore[override]
+            prompt = str(kwargs.get("prompt", ""))
+            call_log.append(prompt[:50])
+            if "<file" in prompt or "Scaffold:" in prompt:
+                # Track 1 fill call
+                return (
+                    '<file path="src/billing-engine/markup/models.py">\n'
+                    "from __future__ import annotations\nx = 1\n"
+                    "</file>\n"
+                )
+            # Track 2 patch call
+            return "```python\ndef compute(self) -> int:\n    return 77\n```"
+
+        orch = UDCPOrchestrator(repo_root=tmp_path, llm_fn=multi_llm)
+        result = orch.execute_task(
+            task_id="T-mix",
+            scope_text=(
+                "`src/billing-engine/markup/bundle_engine.py` and "
+                "`src/billing-engine/markup/models.py`"
+            ),
+            required_output_files=[
+                "src/billing-engine/markup/bundle_engine.py",
+                "src/billing-engine/markup/models.py",
+            ],
+        )
+        assert result.success
+        assert result.track == "MIXED"

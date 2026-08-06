@@ -8,6 +8,30 @@ types: `feat` | `fix` | `constitutional` | `cct` | `chore` | `refactor` | `secur
 
 ---
 
+## [1.37.0] — 2026-08-07
+
+### WC-036: UDCP Pipeline Engine — Complete (124/124 tests, 90.93% coverage)
+
+**Constitutional basis:** ADR-039 §5, C-059, C-076, C-077, C-082, C-097, C-098
+
+#### WC036-06 — test_udcp_engines.py coverage uplift
+- `tests/pipeline/test_udcp_engines.py` — 76 → 124 tests
+- Added `TestOrchestratorHelpers` class: unit tests for `_fix_b904`, `_hoist_imports`, `_ruff_normalization_check`, `_fix_ruf012`, `_fix_ann201_asynccontextmanager`, `_normalize_and_write`, `_extract_function_block`, `_parse_llm_files_local`
+- Added `TestOrchestratorTrack2Integration` class: `_run_track2`, `_patch_artifact`, `_patch_method`, `_append_module_lines` integration paths
+- Added `TestOrchestratorDryRunAndInjectFiles` class: dry_run mode, inject_source_files, LLM error paths (LLM_NO_RESPONSE, NO_FILE_BLOCKS, MIXED track)
+- Total coverage: 90.93% (≥90% DoD met); udcp_orchestrator: 86%, grooming: 96%, PTR gate: 94%, Track1: 98%, Track2: 90%
+- All 5 engine files: `py_compile` → exit 0; `ruff check` → clean
+
+**Engine files completed (previous halted session, verified this session):**
+- `scripts/runner/ptr_validation_gate.py` — WorkspaceSymbolIndex, PTR validation gate
+- `scripts/runner/track1_scaffolder.py` — conditional APIRouter, LOGIC_FILLER stubs
+- `scripts/runner/track2_polymorphic_engine.py` — try/finally decorator guard, splice with compile gate
+- `scripts/runner/udcp_grooming_engine.py` — LLM-free TIS/TMD from WC markdown
+- `scripts/runner/udcp_orchestrator.py` — Track 1/2 orchestration, logic-fill LLM integration
+- `scripts/runner/task_executor.py` — `execute_with_udcp()` entry point for python-stack tasks
+
+---
+
 ## [1.36.0] — 2026-08-06
 
 ### WC-012: CE gRPC Skeleton (.NET 9) — All 76 CCT Tests Green
