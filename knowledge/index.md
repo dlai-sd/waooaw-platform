@@ -3,7 +3,7 @@
 **Produced by:** Constitutional Analyst (Sprint 001)
 **Date:** 2026-07-07
 **Work Contract:** WC-001
-**Total Claims:** 97 (ratified through 2026-08-05)
+**Total Claims:** 97 (ratified through 2026-08-05) · **ADRs:** 44 · **CCTs:** 65 · **Last Updated:** 2026-08-06
 
 ---
 
@@ -203,3 +203,8 @@ This section is for the Enterprise Architect. These claims are the constitutiona
 | Constitutional Audit Ledger append-only (ADR-011 migration rule) | C-027, C-007 |
 | Evidence state machine (Data Architecture) | C-028 (Proposed enum), C-029 (ScopeBoundaryConfirmation record) |
 | Core domain: Decision Space as primitive | C-030, C-014 (ECI-001) |
+| Provider Registry — runtime-configurable per-tenant credential routing (ADR-042) | C-041 (tool authorization), C-003 (authority licensed), ADR-014 (secret management) |
+| Constitutional Tool Gateway as shared library — non-bypassable external call entry (ADR-042) | C-041, C-059 (traceability), C-031 |
+| Skill Runtime in PR / Skill Catalog in BP — 4+1 service mesh (ADR-043) | C-036 (Skills are constitutional units), C-041 |
+| Constitutional Audit Trail Sink — WORM INSERT-only schema (ADR-044) | C-059 (Traceability), C-027 (append-only audit), C-007 (no evidence deleted) |
+| Proof/Payload decoupling — DPDPA Right-to-Erasure without destroying proof (ADR-044) | C-078 (personal data protection), C-059 |

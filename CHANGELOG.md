@@ -8,6 +8,25 @@ types: `feat` | `fix` | `constitutional` | `cct` | `chore` | `refactor` | `secur
 
 ---
 
+## [1.37.1] — 2026-08-06 (End-of-Day — EA Architecture + Sprint Planning)
+
+### EA Architecture Session — ADR-042/043/044 + 5 Sprint Contracts
+
+**Constitutional basis:** C-031 (ADR required for architectural decisions)
+
+- `constitutional(arch)`: ADR-042 — Provider Registry + Constitutional Tool Gateway (CTG as shared Python library; AIR breaking change declared)
+- `constitutional(arch)`: ADR-043 — Skill Architecture Standard (Skill Runtime in PR, Skill Catalog in BP, 4+1 service mesh preserved)
+- `constitutional(arch)`: ADR-044 — Constitutional Audit Trail Sink (WORM audit_sink + erasable payload_store, DPDPA proof/payload decoupling)
+- `constitutional(arch)`: C4 container diagram updated to v0.12.0 — oauth-vault, CTG, new Postgres schema zones
+- `constitutional(arch)`: WC-037→041 sprint contracts produced (Trust Layer S1/S2/S3 + Skill Architecture S1/S2)
+- `cct(arch)`: 13 new CCTs — CCT-VAULT-01/02/03, CCT-CTG-01/02/03/04, CCT-AUDIT-01, CCT-DPDPA-01, CCT-SKILL-CP-01/02/03, CCT-SKILL-CAT-01, CCT-SKILL-VER-01, CCT-SKILL-AMEND-01 (total: 65)
+- `docs(strategy)`: Founder strategy session documented — `strategy/FOUNDER-SESSION-2026-08-06-platform-vision.md`
+- `constitutional(gov)`: IB-024 (Trust Layer) + IB-025 (Skill Architecture) ratified by Founder
+- `constitutional(gov)`: GOAL-WC037 registered; SPRINT_STATE_MACHINE → WC-037 AUTHORIZED
+- `docs(repo)`: SPRINT-REGISTRY.md created at repo root — all 40 WCs, active/planned/closed
+
+
+
 ## [1.37.0] — 2026-08-07
 
 ### WC-036: UDCP Pipeline Engine — Complete (124/124 tests, 90.93% coverage)
