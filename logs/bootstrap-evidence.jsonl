@@ -223,3 +223,5 @@
 {"event": "autonomous_halt_active", "timestamp": "2026-08-06T01:52:47.720728+00:00", "run_id": "local", "stub_mode": true, "reason": "AUTONOMOUS_HALT=true in PROJECT_STATE.md"}
 {"event": "autonomous_halt_active", "timestamp": "2026-08-06T01:52:47.720925+00:00", "run_id": "local", "stub_mode": true, "reason": "AUTONOMOUS_HALT=true in PROJECT_STATE.md"}
 {"event": "autonomous_halt_active", "timestamp": "2026-08-06T01:52:47.721103+00:00", "run_id": "local", "stub_mode": true, "reason": "AUTONOMOUS_HALT=true in PROJECT_STATE.md"}
+{"event": "AUTONOMOUS_SPRINT_STARTED", "timestamp": "2026-08-06T02:28:38.405296+00:00", "run_id": "31065641010", "stub_mode": true, "sprint": "WC-030", "branch": "main", "tasks": ["WC030-01a", "WC030-01b", "WC030-03"]}
+{"event": "SPRINT_TASKS_EXECUTED", "timestamp": "2026-08-06T02:51:44.087771+00:00", "run_id": "31065641010", "stub_mode": true, "sprint": "WC-030", "tasks_done": []}
