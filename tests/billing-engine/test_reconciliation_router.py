@@ -5,33 +5,20 @@ from __future__ import annotations
 
 import dataclasses
 import json
-import sys
 import uuid
 from collections.abc import AsyncIterator
 from datetime import date, datetime, timezone
 from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock
-from unittest.mock import MagicMock as _MagicMock
 
 import fakeredis
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
-# Stub wallet.models before importing WalletService (module not in test path)
-_wallet_models_stub = _MagicMock()
-_wallet_models_stub.BucketBalance = type("BucketBalance", (), {})
-_wallet_models_stub.BucketNotFoundError = type("BucketNotFoundError", (Exception,), {})
-_wallet_models_stub.BucketReservation = type("BucketReservation", (), {})
-_wallet_models_stub.DuplicateReservationError = type("DuplicateReservationError", (Exception,), {})
-_wallet_models_stub.InsufficientBalanceError = type("InsufficientBalanceError", (Exception,), {})
-_wallet_models_stub.RenewalResult = type("RenewalResult", (), {})
-_wallet_models_stub.SubscriptionActivationResult = type("SubscriptionActivationResult", (), {})
-sys.modules.setdefault("wallet.models", _wallet_models_stub)
-
-from main import app  # noqa: E402
-from reconciliation.router import _get_redis, _get_service, _require_ops_auth  # noqa: E402
-from reconciliation.service import (  # noqa: E402
+from main import app
+from reconciliation.router import _get_redis, _get_service, _require_ops_auth
+from reconciliation.service import (
     CustomerMarginRow,
     DailyAuditResult,
     ReconciliationService,
