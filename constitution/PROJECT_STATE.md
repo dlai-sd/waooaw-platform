@@ -1370,24 +1370,23 @@ Each sprint has EA spec gaps documented, SA corrections applied to WC files, and
 ```yaml
 autonomous_halt: false
 platform_phase: IMPLEMENTATION
-current_sprint: WC-027
-sprint_status: DONE
+current_sprint: WC-037
+sprint_status: AUTHORIZED
 branch: main
 consecutive_failures: 0
-tasks_done:
-  - WC030-01a
-  - WC030-01b
-  - WC030-03
-  - WC027-02
-  - WC026-05
-tasks_remaining: []
+tasks_done: []
+tasks_remaining:
+  - WC037-01
+  - WC037-02
+  - WC037-03
+  - WC037-04
+  - WC037-05
+  - WC037-06
 notes: |
-  2026-08-06: WC-028/029/030 audited and remediated (226/226 tests).
-  Pipeline v2 design published: standards/PIPELINE-V2-PHASE-MODEL.md.
-  2026-08-06: WC-027 audit complete. test_markup.py rewritten (33/33 tests, 94.67%
-  coverage). bundle_engine.py 100%, router.py 100%, thread_catalog.py 87%.
-  2026-08-06: WC-026 audit complete. test_wallet.py expanded (22/22 tests, 98.72%
-  coverage). All service methods covered. Full suite: 264/264. VERSION 1.31.0.
+  2026-08-06: IB-024 + IB-025 ratified by Founder. WC-037 authorized.
+  WC-037: Constitutional Audit Trail Sink — CE audit_sink schema (WORM) + BP payload_store schema + RecordErasure RPC + DPDPA endpoint.
+  Blocks: WC-038 (Provider Registry + oauth-vault), WC-039 (CTG library + AIR refactor).
+  Parallel track: WC-040 (Skill Catalog) may begin after IB-025 ratified — no trust layer dependency.
 ```
 
 ---

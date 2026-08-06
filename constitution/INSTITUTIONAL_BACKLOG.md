@@ -953,17 +953,17 @@ When this IB is authorized and completed:
 | IB-021 | Dependency Graph Task Decomposition | EA + PIT Expert | P0 | Pre-WC012-03 | AUTHORIZED |
 | IB-022 | WC-Spec-Driven Runner (Option B) | EA + PIT Expert | P1 | Post-WC012 | PLANNED |
 | IB-023 | PTR v3: Service Boundary Schema | EA + PIT Expert | P1 | Post-WC013 | PLANNED |
-| **IB-024** | **Trust Layer & Open Platform Integration** | **PIT Expert** | **P0** | **Post-WC-036** | **AWAITING FOUNDER RATIFICATION** |
-| **IB-025** | **Skill Architecture (Layer 4)** | **PIT Expert** | **P0** | **Post-WC-039** | **AWAITING FOUNDER RATIFICATION** |
+| **IB-024** | **Trust Layer & Open Platform Integration** | **PIT Expert** | **P0** | **Post-WC-036** | **AUTHORIZED — 2026-08-06** |
+| **IB-025** | **Skill Architecture (Layer 4)** | **PIT Expert** | **P0** | **Post-WC-039** | **AUTHORIZED — 2026-08-06** |
 
 
 
 ---
 
-## IB-024 — Trust Layer & Open Platform Integration *(AWAITING FOUNDER RATIFICATION)*
+## IB-024 — Trust Layer & Open Platform Integration
 
 **Proposed by:** Enterprise Architect (INST-004) — EA session 2026-08-06  
-**Status:** AWAITING FOUNDER RATIFICATION — Founder must ratify this IB before WC-037 can be opened  
+**Status:** AUTHORIZED — Founder ratified 2026-08-06. WC-037 authorized for execution.  
 **Priority:** P0 — blocks all agent external-call capability (DMA, etc.)  
 **Gate prerequisite:** WC-036 DONE (✅)  
 **Owner on activation:** Platform IT Expert (INST-010)
@@ -987,10 +987,10 @@ When this IB is authorized and completed:
 
 ---
 
-## IB-025 — Skill Architecture — Layer 4 *(AWAITING FOUNDER RATIFICATION)*
+## IB-025 — Skill Architecture — Layer 4
 
 **Proposed by:** Enterprise Architect (INST-004) — EA session 2026-08-06  
-**Status:** AWAITING FOUNDER RATIFICATION — Founder must ratify this IB before WC-040 can be opened  
+**Status:** AUTHORIZED — Founder ratified 2026-08-06. WC-040 authorized once WC-038 completes.  
 **Priority:** P0 — blocks DMA agent sprint and all multi-skill agent work  
 **Gate prerequisite:** WC-037 + WC-038 DONE (Skill Catalog uses Provider Registry for skill required_providers validation)  
 **Owner on activation:** Platform IT Expert (INST-010)
