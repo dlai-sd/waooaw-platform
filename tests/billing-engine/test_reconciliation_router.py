@@ -559,3 +559,36 @@ async def test_cct_selfaudit_01_wallet_reserve_proceeds_when_not_halted() -> Non
             redis_client=no_halt_redis,
         )
     await no_halt_redis.aclose()
+
+
+# ===========================================================================
+# WC-030 audit additions — router dependency coverage (lines 40, 56->exit)
+# ===========================================================================
+
+
+def test_get_redis_dependency_returns_redis_client():
+    """Cover router.py line 40: _get_redis returns a Redis client."""
+    from reconciliation.router import _get_redis, _get_settings
+    settings = _get_settings()
+    redis_client = _get_redis(settings=settings)
+    assert redis_client is not None
+
+
+@pytest.mark.asyncio
+async def test_require_ops_auth_passes_with_valid_token(
+    fake_redis: fakeredis.FakeAsyncRedis,
+    mock_service: MagicMock,
+) -> None:
+    """Cover router.py 56->exit: valid ops token bypasses the 403 raise."""
+    # Do NOT use bypass_ops_auth — _require_ops_auth must run for real
+    client = await _client(fake_redis, mock_service, bypass_ops_auth=False)
+    try:
+        async with client as c:
+            resp = await c.post(
+                "/reconciliation/run-now",
+                headers={"X-Ops-Token": "test-ops-token"},
+            )
+    finally:
+        _clear_overrides()
+
+    assert resp.status_code == 200

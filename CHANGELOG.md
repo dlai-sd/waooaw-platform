@@ -8,6 +8,22 @@ types: `feat` | `fix` | `constitutional` | `cct` | `chore` | `refactor` | `secur
 
 ---
 
+## [1.32.0] — 2026-08-07 (WC-025 + WC-030 Audits — Thread Catalog & Reconciliation Coverage)
+
+### Fix (Billing Engine — Manual Audit)
+
+- **WC-025 test_thread_catalog.py expanded:** 12 tests → 23 tests; database.py 0% → 100%, thread_catalog.py 88% → 90%
+  - `TestDatabaseModule` (7 tests): init_db, get_session_factory, close_db, get_db using `importlib` to bypass conftest stub
+  - `TestThreadCatalogSingletons` (4 tests): `_get_redis()` and `_get_session_factory()` init branches (lines 31–33, 43–46) + already-initialised return paths
+- **WC-030 test_reconciliation.py expanded:** 14 tests → 24 tests; service.py 86% → 98%, scheduler.py 39% → 91%
+  - Scheduler: `_run_daily_reconciliation` full execution, error propagation; `_trigger_meter_daily_scan` success/HTTPStatusError/RequestError
+  - Service: `founder_action_created=True` path, `revenue_paise==0 → margin 100%`, exception handlers in `run_daily_audit`/`run_self_audit`/`generate_margin_report`, two-bucket loop branch coverage
+- **WC-030 test_reconciliation_router.py expanded:** 18 tests → 20 tests; router.py 91% → 93%
+  - `_get_redis` line 40 direct-call test; `_require_ops_auth` line 56→exit with valid token
+- **Full suite: 288/288 tests passing; total coverage 95.09%**
+
+---
+
 ## [1.31.0] — 2026-08-06 (WC-026 Audit — Wallet Engine Coverage)
 
 ### Fix (Billing Engine — Manual Audit)

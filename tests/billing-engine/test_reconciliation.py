@@ -5,9 +5,10 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import fakeredis
+import httpx
 import pytest
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
@@ -446,3 +447,269 @@ async def test_margin_report_arithmetic_property(revenue_paise: int) -> None:
     row = report[0]
     expected_margin = (Decimal(revenue_paise - cost_paise) / Decimal(revenue_paise) * Decimal("100")).quantize(Decimal("0.01"))
     assert row.margin_pct == expected_margin
+
+
+# ===========================================================================
+# WC-030 audit additions — scheduler + service coverage gaps
+# ===========================================================================
+
+
+# ---------------------------------------------------------------------------
+# Scheduler: _run_daily_reconciliation — full execution path
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_run_daily_reconciliation_executes_both_audits(
+    mock_redis, reconciliation_service
+):
+    """_run_daily_reconciliation sets Redis key and calls both audits."""
+    from reconciliation.scheduler import _run_daily_reconciliation
+
+    await _run_daily_reconciliation(
+        service=reconciliation_service,
+        redis_client=mock_redis,
+    )
+    # No exception and idempotency key was set
+    from datetime import timedelta
+    from zoneinfo import ZoneInfo
+    _TZ = ZoneInfo("Asia/Kolkata")
+    yesterday = (datetime.now(tz=_TZ) - timedelta(days=1)).date()
+    key = f"wbe:audit_in_progress:{yesterday.isoformat()}"
+    assert await mock_redis.exists(key) == 1
+
+
+@pytest.mark.asyncio
+async def test_run_daily_reconciliation_raises_on_service_error(mock_redis):
+    """_run_daily_reconciliation re-raises RuntimeError from service."""
+    from reconciliation.scheduler import _run_daily_reconciliation
+
+    bad_service = MagicMock(spec=ReconciliationService)
+    bad_service.run_daily_audit = AsyncMock(side_effect=RuntimeError("db failure"))
+
+    with pytest.raises(RuntimeError, match="db failure"):
+        await _run_daily_reconciliation(
+            service=bad_service,
+            redis_client=mock_redis,
+        )
+
+
+# ---------------------------------------------------------------------------
+# Scheduler: _trigger_meter_daily_scan
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_trigger_meter_daily_scan_success(mock_settings):
+    """_trigger_meter_daily_scan POSTs and handles a 200 response."""
+    from reconciliation.scheduler import _trigger_meter_daily_scan
+
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.raise_for_status = MagicMock()
+
+    mock_client_instance = AsyncMock()
+    mock_client_instance.post = AsyncMock(return_value=mock_response)
+    mock_client_ctx = MagicMock()
+    mock_client_ctx.__aenter__ = AsyncMock(return_value=mock_client_instance)
+    mock_client_ctx.__aexit__ = AsyncMock(return_value=False)
+
+    with patch("reconciliation.scheduler.httpx.AsyncClient", return_value=mock_client_ctx):
+        await _trigger_meter_daily_scan(mock_settings)
+
+    mock_client_instance.post.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_trigger_meter_daily_scan_http_error_is_swallowed(mock_settings):
+    """_trigger_meter_daily_scan logs and swallows HTTPStatusError."""
+    from reconciliation.scheduler import _trigger_meter_daily_scan
+
+    mock_response = MagicMock()
+    mock_response.status_code = 500
+
+    mock_client_instance = AsyncMock()
+    mock_client_instance.post = AsyncMock(
+        side_effect=httpx.HTTPStatusError(
+            "internal server error",
+            request=MagicMock(),
+            response=mock_response,
+        )
+    )
+    mock_client_ctx = MagicMock()
+    mock_client_ctx.__aenter__ = AsyncMock(return_value=mock_client_instance)
+    mock_client_ctx.__aexit__ = AsyncMock(return_value=False)
+
+    with patch("reconciliation.scheduler.httpx.AsyncClient", return_value=mock_client_ctx):
+        await _trigger_meter_daily_scan(mock_settings)  # must not raise
+
+
+@pytest.mark.asyncio
+async def test_trigger_meter_daily_scan_request_error_is_swallowed(mock_settings):
+    """_trigger_meter_daily_scan logs and swallows httpx.RequestError."""
+    from reconciliation.scheduler import _trigger_meter_daily_scan
+
+    mock_client_instance = AsyncMock()
+    mock_client_instance.post = AsyncMock(
+        side_effect=httpx.ConnectError("connection refused")
+    )
+    mock_client_ctx = MagicMock()
+    mock_client_ctx.__aenter__ = AsyncMock(return_value=mock_client_instance)
+    mock_client_ctx.__aexit__ = AsyncMock(return_value=False)
+
+    with patch("reconciliation.scheduler.httpx.AsyncClient", return_value=mock_client_ctx):
+        await _trigger_meter_daily_scan(mock_settings)  # must not raise
+
+
+# ---------------------------------------------------------------------------
+# Service: founder_action_created=True path
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_run_self_audit_sets_founder_action_created_when_maybe_create_returns_true(
+    session_factory, mock_redis
+):
+    """Line 308: founder_action_created is set True when maybe_create returns True."""
+    fag = AsyncMock(spec=FounderActionGenerator)
+    fag.maybe_create = AsyncMock(return_value=True)
+
+    service = ReconciliationService(
+        session_factory=session_factory,
+        redis_client=mock_redis,
+        founder_action_generator=fag,
+    )
+
+    # Seed a bucket with discrepancy (balance=1002, topup=1000 → discrepancy=2)
+    bucket_id = uuid.uuid4()
+    ec_id = uuid.uuid4()
+    cid = uuid.uuid4()
+    now = datetime.now(tz=timezone.utc)
+    await _ins_bucket(session_factory, bucket_id, cid, ec_id, "AGENT", 1002)
+    await _ins_topup(session_factory, uuid.uuid4(), ec_id, "AGENT", 1000, applied_at=now)
+
+    result = await service.run_self_audit()
+
+    assert result.founder_action_created is True
+
+
+# ---------------------------------------------------------------------------
+# Service: revenue_paise == 0 → margin_pct = 100
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_generate_margin_report_zero_revenue_is_100_percent_margin(
+    session_factory, reconciliation_service
+):
+    """Line 403: when revenue_paise==0, margin_pct defaults to Decimal('100')."""
+    report_date = datetime.now(tz=timezone.utc).date()
+    consumed_at = datetime.now(tz=timezone.utc)
+    customer_id = uuid.uuid4()
+    bucket_id = uuid.uuid4()
+    res_id = uuid.uuid4()
+
+    # reserved_paise=0 → revenue_paise=0 in the aggregated query
+    await _ins_bucket(session_factory, bucket_id, customer_id, uuid.uuid4(), "INFERENCE", 0)
+    await _ins_reservation(
+        session_factory, res_id, bucket_id, 0, consumed=True, consumed_at=consumed_at
+    )
+    await _ins_cost_ledger(
+        session_factory, uuid.uuid4(), customer_id, "INFERENCE", uuid.uuid4(), res_id, 0
+    )
+
+    rows = await reconciliation_service.generate_margin_report(report_date)
+
+    assert len(rows) == 1
+    assert rows[0].margin_pct == Decimal("100")
+
+
+# ---------------------------------------------------------------------------
+# Service: exception handler coverage (run_daily_audit, run_self_audit,
+#          generate_margin_report) and loop branch coverage
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_run_daily_audit_db_error_propagates(mock_redis, mock_founder_action_generator):
+    """Lines 167-176: exception in run_daily_audit is logged and re-raised."""
+    mock_session = AsyncMock()
+    mock_session.execute = AsyncMock(side_effect=RuntimeError("daily audit db error"))
+    mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+    mock_session.__aexit__ = AsyncMock(return_value=False)
+    bad_factory = MagicMock(return_value=mock_session)
+
+    svc = ReconciliationService(
+        session_factory=bad_factory,
+        redis_client=mock_redis,
+        founder_action_generator=mock_founder_action_generator,
+    )
+
+    with pytest.raises(RuntimeError, match="daily audit db error"):
+        await svc.run_daily_audit(datetime.now(tz=timezone.utc).date())
+
+
+@pytest.mark.asyncio
+async def test_run_self_audit_db_error_propagates(mock_redis, mock_founder_action_generator):
+    """Lines 333-341: exception in run_self_audit is logged and re-raised."""
+    mock_session = AsyncMock()
+    mock_session.execute = AsyncMock(side_effect=RuntimeError("self-audit db error"))
+    mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+    mock_session.__aexit__ = AsyncMock(return_value=False)
+    bad_factory = MagicMock(return_value=mock_session)
+
+    svc = ReconciliationService(
+        session_factory=bad_factory,
+        redis_client=mock_redis,
+        founder_action_generator=mock_founder_action_generator,
+    )
+
+    with pytest.raises(RuntimeError, match="self-audit db error"):
+        await svc.run_self_audit()
+
+
+@pytest.mark.asyncio
+async def test_generate_margin_report_db_error_propagates(mock_redis, mock_founder_action_generator):
+    """Lines 421-429: exception in generate_margin_report is logged and re-raised."""
+    mock_session = AsyncMock()
+    mock_session.execute = AsyncMock(side_effect=RuntimeError("margin report db error"))
+    mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+    mock_session.__aexit__ = AsyncMock(return_value=False)
+    bad_factory = MagicMock(return_value=mock_session)
+
+    svc = ReconciliationService(
+        session_factory=bad_factory,
+        redis_client=mock_redis,
+        founder_action_generator=mock_founder_action_generator,
+    )
+
+    with pytest.raises(RuntimeError, match="margin report db error"):
+        await svc.generate_margin_report(datetime.now(tz=timezone.utc).date())
+
+
+@pytest.mark.asyncio
+async def test_run_self_audit_two_buckets_covers_max_discrepancy_and_loop_branches(
+    session_factory, mock_redis, mock_founder_action_generator
+):
+    """
+    281->284: second bucket has smaller discrepancy than first (max unchanged).
+    284->242: second iteration of loop with discrepancy=0 (no halt, loop continues).
+    """
+    svc = ReconciliationService(
+        session_factory=session_factory,
+        redis_client=mock_redis,
+        founder_action_generator=mock_founder_action_generator,
+    )
+    now = datetime.now(tz=timezone.utc)
+    cid = uuid.uuid4()
+
+    # Bucket 1 — discrepancy=2 (balance=1002, topup=1000); triggers halt
+    ec1_id = uuid.uuid4()
+    bucket1_id = uuid.uuid4()
+    await _ins_bucket(session_factory, bucket1_id, cid, ec1_id, "AGENT", 1002)
+    await _ins_topup(session_factory, uuid.uuid4(), ec1_id, "AGENT", 1000, applied_at=now)
+
+    # Bucket 2 — discrepancy=0 (balance=500, topup=500); no halt, max unchanged
+    ec2_id = uuid.uuid4()
+    bucket2_id = uuid.uuid4()
+    await _ins_bucket(session_factory, bucket2_id, cid, ec2_id, "INFERENCE", 500)
+    await _ins_topup(session_factory, uuid.uuid4(), ec2_id, "INFERENCE", 500, applied_at=now)
+
+    result = await svc.run_self_audit()
+
+    assert result.buckets_audited == 2

@@ -1,6 +1,38 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-08-02 (WC-036 UDCP Engine Implementation — IN PROGRESS)
+**Last Updated:** 2026-08-07 (WC-025 + WC-030 Audits — Thread Catalog & Reconciliation Coverage — COMPLETE)
+
+---
+
+## SESSION RECORD — 2026-08-07 (WC-025 + WC-030 AUDITS — COMPLETE)
+
+### What Was Built
+
+| Task | File | Output | Status |
+|---|---|---|---|
+| WC025-audit | `tests/billing-engine/test_thread_catalog.py` | 12 → 23 tests; database.py 0%→100%, thread_catalog.py 88%→90% | ✅ |
+| WC025-db | `TestDatabaseModule` (7 tests) | init_db, get_session_factory, close_db, get_db via importlib bypass | ✅ |
+| WC025-singleton | `TestThreadCatalogSingletons` (4 tests) | _get_redis/get_session_factory init+return-existing branches | ✅ |
+| WC030-scheduler | `tests/billing-engine/test_reconciliation.py` | _run_daily_reconciliation execution+error; _trigger_meter_daily_scan success/HTTPStatus/RequestError | ✅ |
+| WC030-service | `tests/billing-engine/test_reconciliation.py` | founder_action_created=True; revenue_paise=0→100%; exception handlers; 2-bucket loop branches | ✅ |
+| WC030-router | `tests/billing-engine/test_reconciliation_router.py` | _get_redis line 40; _require_ops_auth 56→exit | ✅ |
+| housekeeping | `VERSION`, `CHANGELOG.md`, `PROJECT_STATE.md` | 1.31.0→1.32.0, audit entry added | ✅ |
+
+### Coverage After Session
+| Module | Before | After |
+|---|---|---|
+| database.py | 0% | 100% |
+| markup/thread_catalog.py | 88% | 90% |
+| reconciliation/scheduler.py | 39% | 91% (100% full suite) |
+| reconciliation/service.py | 86% | 98% |
+| reconciliation/router.py | 91% | 93% |
+| **Full suite total** | **91%** | **95.09%** |
+
+**288/288 tests passing. VERSION 1.32.0.**
+
+---
+
+## SESSION RECORD — 2026-08-02 (WC-036 UDCP PIPELINE ENGINE — IN PROGRESS)
 
 ---
 

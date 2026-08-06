@@ -6,7 +6,10 @@ Tests: thread catalog load, cache hit/miss, health endpoint, cache invalidation
 """
 from __future__ import annotations
 
+import importlib.util
 import json
+from pathlib import Path
+
 import pytest
 import fakeredis.aioredis as fake_aioredis
 from unittest.mock import AsyncMock, patch, MagicMock
@@ -247,3 +250,159 @@ class TestC091ThreadCatalogInvariant:
         """llm_local (Ollama) must always have 0 marked_up_cost (self-hosted)."""
         local = next(t for t in SAMPLE_THREADS if t["thread_id"] == "llm_local")
         assert local["marked_up_cost_paise"] == 0
+
+
+# ===========================================================================
+# WC-025 audit additions — database.py and thread_catalog singleton inits
+# ===========================================================================
+
+_DB_PATH = Path(__file__).parent.parent.parent / "src" / "billing-engine" / "database.py"
+
+
+def _load_real_db():
+    """Load database.py directly, bypassing the conftest sys.modules stub."""
+    spec = importlib.util.spec_from_file_location("_billing_db", _DB_PATH)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    mod._engine = None
+    mod._session_factory = None
+    return mod
+
+
+class TestDatabaseModule:
+    """Unit tests for src/billing-engine/database.py."""
+
+    def test_get_session_factory_raises_before_init(self):
+        """get_session_factory() raises RuntimeError when init_db not yet called."""
+        db = _load_real_db()
+        with pytest.raises(RuntimeError, match="not initialized"):
+            db.get_session_factory()
+
+    @pytest.mark.asyncio
+    async def test_get_db_raises_before_init(self):
+        """get_db() raises RuntimeError when called before init_db."""
+        db = _load_real_db()
+        with pytest.raises(RuntimeError, match="not initialized"):
+            async for _ in db.get_db():
+                pass
+
+    @pytest.mark.asyncio
+    async def test_init_db_creates_session_factory(self):
+        """init_db() creates the engine and session_factory globals."""
+        db = _load_real_db()
+        mock_engine = MagicMock()
+        with patch.object(db, "create_async_engine", return_value=mock_engine):
+            await db.init_db()
+        assert db._session_factory is not None
+        assert db._engine is mock_engine
+
+    def test_get_session_factory_returns_factory_after_init(self):
+        """get_session_factory() returns the factory once init_db has been called."""
+        db = _load_real_db()
+        mock_factory = MagicMock()
+        db._engine = MagicMock()
+        db._session_factory = mock_factory
+        assert db.get_session_factory() is mock_factory
+
+    @pytest.mark.asyncio
+    async def test_close_db_disposes_engine(self):
+        """close_db() disposes the engine and sets it to None."""
+        db = _load_real_db()
+        mock_engine = AsyncMock()
+        db._engine = mock_engine
+        await db.close_db()
+        mock_engine.dispose.assert_awaited_once()
+        assert db._engine is None
+
+    @pytest.mark.asyncio
+    async def test_close_db_noop_when_engine_is_none(self):
+        """close_db() does not raise when called before init_db."""
+        db = _load_real_db()
+        db._engine = None
+        await db.close_db()  # must not raise
+
+    @pytest.mark.asyncio
+    async def test_get_db_yields_session(self):
+        """get_db() yields the AsyncSession from the session_factory."""
+        db = _load_real_db()
+        mock_session = AsyncMock()
+        mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_session.__aexit__ = AsyncMock(return_value=False)
+        mock_factory = MagicMock(return_value=mock_session)
+        db._session_factory = mock_factory
+
+        collected = []
+        async for session in db.get_db():
+            collected.append(session)
+
+        assert collected == [mock_session]
+
+
+class TestThreadCatalogSingletons:
+    """Tests covering the _get_redis() and _get_session_factory() singleton-init branches."""
+
+    def test_get_redis_singleton_created_on_first_call(self):
+        """_get_redis() creates aioredis client when _redis is None (lines 31-33)."""
+        import markup.thread_catalog as tc
+
+        original = tc._redis
+        tc._redis = None
+        try:
+            mock_client = MagicMock()
+            with patch("markup.thread_catalog.aioredis.from_url", return_value=mock_client):
+                result = tc._get_redis()
+            assert result is mock_client
+            assert tc._redis is mock_client
+        finally:
+            tc._redis = original
+
+    def test_get_session_factory_singleton_created_on_first_call(self):
+        """_get_session_factory() creates engine+factory when _engine is None (lines 43-46)."""
+        import markup.thread_catalog as tc
+
+        original_engine = tc._engine
+        original_session = tc._async_session
+        tc._engine = None
+        tc._async_session = None
+        try:
+            mock_engine = MagicMock()
+            mock_factory = MagicMock()
+            with (
+                patch("markup.thread_catalog.create_async_engine", return_value=mock_engine),
+                patch("markup.thread_catalog.sessionmaker", return_value=mock_factory),
+            ):
+                result = tc._get_session_factory()
+            assert result is mock_factory
+            assert tc._engine is mock_engine
+        finally:
+            tc._engine = original_engine
+            tc._async_session = original_session
+
+    def test_get_redis_returns_existing_singleton(self):
+        """31->33: _get_redis() returns existing client without recreating."""
+        import markup.thread_catalog as tc
+
+        original = tc._redis
+        mock_client = MagicMock()
+        tc._redis = mock_client  # already initialised
+        try:
+            result = tc._get_redis()
+            assert result is mock_client
+        finally:
+            tc._redis = original
+
+    def test_get_session_factory_returns_existing_singleton(self):
+        """43->46: _get_session_factory() returns existing factory without recreating."""
+        import markup.thread_catalog as tc
+
+        original_engine = tc._engine
+        original_session = tc._async_session
+        mock_factory = MagicMock()
+        tc._engine = MagicMock()        # already initialised
+        tc._async_session = mock_factory
+        try:
+            result = tc._get_session_factory()
+            assert result is mock_factory
+        finally:
+            tc._engine = original_engine
+            tc._async_session = original_session
