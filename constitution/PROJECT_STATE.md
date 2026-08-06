@@ -141,6 +141,39 @@
 
 ---
 
+## SESSION RECORD — 2026-08-06 (EA OFFICE — ADR-042/043/044 + ARCHITECTURE.md — COMPLETE)
+
+**Office:** Enterprise Architect (INST-004)  
+**Session type:** Architectural decision production — no implementation code  
+**Constitutional gate:** G5 CLEAR · All ADRs within INST-004 Decision Space · No src/ files
+
+### What Was Produced
+
+| Output | File | Description | Status |
+|---|---|---|---|
+| EA-01 | `strategy/FOUNDER-SESSION-2026-08-06-platform-vision.md` | Platform vision brainstorm documented — 8 sections, conclusive actionable for EA handover | ✅ `866fc25` |
+| EA-02 | `adr/ADR-042-provider-registry-constitutional-tool-gateway.md` | Provider Registry + CTG as shared library + AIR breaking change declaration + Exception Translator | ✅ |
+| EA-03 | `adr/ADR-043-skill-architecture-standard.md` | Skill Runtime in PR, Skill Catalog in BP, 4+1 service mesh preserved, Intent Crystallizer pattern | ✅ |
+| EA-04 | `adr/ADR-044-constitutional-audit-trail-sink.md` | Proof/Payload decoupling, WORM Audit Sink in CE, Erasable Payload Store in BP, DPDPA resolution | ✅ |
+| EA-05 | `ARCHITECTURE.md` | Container diagram updated: 4+1 service mesh, CTG communication map, Planned Components table | ✅ |
+
+### Architectural Decisions Locked
+
+| Decision | ADR | Breaking Change |
+|---|---|---|
+| Constitutional Tool Gateway is shared Python library (NOT a service) | ADR-042 | YES — AIR must route LLM calls through CTG; no direct SDK calls |
+| Provider Registry in BP Postgres (not code) | ADR-042 | NO — additive migration |
+| Skill Runtime in PR (in-process), Skill Catalog in BP | ADR-043 | NO — new capability, no existing code touched |
+| Audit Sink = WORM schema in CE Postgres | ADR-044 | NO — additive migration |
+| Payload Store = erasable schema in BP Postgres | ADR-044 | NO — additive migration |
+
+### Sprint Gate Update
+
+**WC-037 (Trust Layer) MUST NOT open until ADR-042 + ADR-044 are merged and AIR README updated.**  
+Implementation prerequisites for each ADR documented in ADR §Implementation Prerequisites sections.
+
+---
+
 ## SESSION RECORD — 2026-08-07 (WC-036 UDCP PIPELINE ENGINE — COMPLETE)
 
 ### What Was Built

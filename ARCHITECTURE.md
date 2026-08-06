@@ -31,25 +31,70 @@ WAOOAW is an institution that enables organizations to employ autonomous digital
 
 ---
 
-## Four Services (Current)
+## Service Mesh (Current — 4+1)
 
 | Service | Language | Port | Responsibility |
 |---|---|---|---|
-| Constitutional Engine | .NET 9 gRPC | 5002 (internal) | Evidence First enforcer, audit ledger, authority licensing |
-| Business Platform | .NET 9 REST | 5001 (public) | Employment management, approvals, evidence reading |
-| Professional Runtime | Python 3.12 FastAPI | 5003 (public WSS) | PAAS + approval-gate execution, Emergency Stop WebSocket |
-| AI Runtime | Python 3.12 FastAPI | 5004 (internal) | LLM gateway, tool execution — no governance authority |
+| Constitutional Engine | .NET 9 gRPC | 5002 (internal) | Evidence First enforcer, `audit_sink` schema (WORM evidence records), authority licensing |
+| Business Platform | .NET 9 REST | 5001 (public) | Employment management, approvals, Skill Catalog, Provider Registry, `payload_store` schema |
+| Professional Runtime | Python 3.12 FastAPI | 5003 (public WSS) | PAAS + Skill Runtime (in-process) + approval-gate execution, Emergency Stop WebSocket |
+| AI Runtime | Python 3.12 FastAPI | 5004 (internal) | PSE tier routing + CTG library (LLM + OAuth tool calls) — no governance authority of its own |
+| **oauth-vault** | Python FastAPI | **8130 (internal only)** | **Token storage (Azure KV), JIT retrieval, background refresh — called by CTG only** |
+
+**Constitutional Tool Gateway (CTG):** Python shared library (`src/trust-layer/ctg/`) — NOT a service. Imported by PR and AIR. Every external call (LLM + OAuth-protected APIs) routes through CTG → CE.ValidateAction → oauth-vault → execution → Audit Sink. ADR-042.
+
+**Skill Architecture:** Skill Catalog in BP (Postgres `skills` table). Skill Runtime in PR (in-process, session-open-time resolution). No 6th service. ADR-043.
 
 Quick reference for all services: [architecture/reference/COMPONENT-QUICK-REF.md](architecture/reference/COMPONENT-QUICK-REF.md)
 
 ---
 
-## Planned Components
+## Container Communication Map (EA Decision 2026-08-06)
 
-| Component | Sprint | Stack | Constitutional Pre-requisites |
+```
+Customer / Steward
+      │ HTTPS
+      ▼
+Business Platform (5001)
+  ├── gRPC → Constitutional Engine (5002)        [ValidateAction, RecordErasure]
+  ├── HTTP  → Professional Runtime (5003)        [session management, approvals]
+  └── HTTP  → oauth-vault (8130)                 [connect platform, revoke token]
+
+Professional Runtime (5003)
+  ├── gRPC → Constitutional Engine (5002)        [ValidateAction, EmergencyStop]
+  ├── HTTP  → Business Platform (5001)           [fetch Employment Contract, Skill manifests]
+  ├── HTTP  → AI Runtime (5004)                  [task delegation]
+  └── CTG library → CE (gRPC) + oauth-vault (HTTP)  [all external tool calls]
+
+AI Runtime (5004) — all external calls via CTG library
+  ├── CTG → CE (5002) → oauth-vault (8130) → [LLM API]       [llm.complete]
+  └── CTG → CE (5002) → oauth-vault (8130) → [Platform API]  [meta.*, google.*, etc.]
+
+Constitutional Engine (5002)
+  └── Postgres audit_sink schema (WORM — INSERT only)
+
+Business Platform (5001)
+  └── Postgres payload_store schema (erasable on DPDPA request)
+
+oauth-vault (8130)
+  └── Azure Key Vault (waooaw-dev-kv)            [token storage, master key]
+```
+
+---
+
+## Planned Components (not yet sprinted)
+
+| Component | ADR | Stack | Prerequisites |
 |---|---|---|---|
-| Web Application | WC-016 | Next.js 14 / TypeScript | C-082 (TypeScript validation path required) |
-| Mobile Application | Post WC-018 | Flutter 3 / Dart | C-001 (push stop signal), C-078 (device PII), C-079 (offline halt), C-081 (pubspec.yaml reference), C-082 (flutter analyze validation), ADR-032 (reserved) |
+| CTG library | ADR-042 | Python | ADR-042 + ADR-044 merged; AIR refactored off direct LLM SDK |
+| Provider Registry table | ADR-042 | BP Postgres migration | ADR-042 merged |
+| oauth-vault service | ADR-021, ADR-042 | Python FastAPI | ADR-042 + ADR-044 merged |
+| Skill Catalog (BP) | ADR-043 | BP Postgres migration | ADR-043 merged |
+| Skill Runtime (PR) | ADR-043 | PR Python in-process | ADR-043 + Skill Catalog |
+| Audit Sink schema (CE) | ADR-044 | CE Postgres migration | ADR-044 merged |
+| Payload Store schema (BP) | ADR-044 | BP Postgres migration | ADR-044 merged |
+| Web Application | WC-016 | Next.js 14 / TypeScript | C-082 |
+| Mobile Application | Post WC-018 | Flutter 3 / Dart | C-001, C-078, C-079, C-081, C-082, ADR-032 |
 
 **Mobile authorization gate:** Before any mobile Work Contract is opened, the following must be in place:
 1. `architecture/reference/dotfiles/pubspec.yaml` created and EA-approved (C-081)
