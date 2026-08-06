@@ -296,6 +296,23 @@ class CascadeHandler:
                 if proc.returncode != 0:
                     return False, f"{f}: {proc.stderr[:200]}"
 
+            # Ruff lint gate — mirrors run_compile_gate() exactly so cascade cannot
+            # declare "resolved" when the main compile gate would still fail.
+            py_files = [w for w in written if w.endswith(".py")]
+            if py_files:
+                _sp.run(
+                    ["python3", "-m", "ruff", "check", *[str(_repo_root / f) for f in py_files],
+                     "--fix", "--unsafe-fixes", "--exit-zero"],
+                    capture_output=True, text=True, cwd=_repo_root,
+                )
+                ruff_check = _sp.run(
+                    ["python3", "-m", "ruff", "check", *[str(_repo_root / f) for f in py_files]],
+                    capture_output=True, text=True, cwd=_repo_root,
+                )
+                if ruff_check.returncode != 0:
+                    ruff_err = (ruff_check.stdout + ruff_check.stderr)[:500]
+                    return False, f"RUFF_GATE: {ruff_err}"
+
             # Static symbol check via ResponseEvaluator — catches wrong intra-package symbol names before pytest runs.
             py_files = [w for w in written if w.endswith(".py")]
             if py_files:

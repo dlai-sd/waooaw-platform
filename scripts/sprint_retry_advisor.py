@@ -782,6 +782,21 @@ def _classify_python_import_error(error: str) -> Optional[RetryDiagnosis]:
             constitutional_trace="C-082 (Build Validation)"
         )
 
+    # timezone — not a PyPI package; it lives inside the datetime stdlib module
+    if "No module named 'timezone'" in error or "'timezone'" in error:
+        return RetryDiagnosis(
+            error_type="PYTHON_IMPORT_TIMEZONE",
+            fix_instruction=(
+                "TIMEZONE IMPORT FIX: There is NO top-level 'timezone' module. "
+                "timezone is a class inside the 'datetime' stdlib module. "
+                "CORRECT import: `from datetime import timezone` "
+                "(NOT `import timezone`, NOT `from timezone import timezone`). "
+                "For datetime + timezone together: `from datetime import datetime, timezone`."
+            ),
+            should_retry=True, confidence=0.97,
+            constitutional_trace="C-082 (Build Validation — Python stack)"
+        )
+
     # Generic Python import
     m = re.search(r"No module named '([^']+)'", error)
     if m:
@@ -1251,6 +1266,75 @@ def _classify_ruff_violation(build_error: str) -> RetryDiagnosis | None:
             "Add 'from datetime import datetime, timezone' at the top of the file."
         )
 
+    # RUF012 — mutable default value for class attribute (SQLAlchemy / dataclass)
+    if "RUF012" in build_error:
+        fix_parts.append(
+            "[RUF012] Mutable default for class attribute. "
+            "For SQLAlchemy ORM: use `mapped_column(default=...)` — never `field_name: list = []`. "
+            "For dataclasses: use `field(default_factory=list)` / `field(default_factory=dict)`. "
+            "For Pydantic: use `default_factory=list` in `Field(...)`. "
+            "NEVER assign a bare `[]`, `{}`, or `set()` as a class-level default."
+        )
+
+    # UP037 — quoted type annotation (remove string quotes, use from __future__ import annotations)
+    if "UP037" in build_error:
+        fix_parts.append(
+            "[UP037] Remove quotes from type annotation. "
+            "Add `from __future__ import annotations` as the FIRST import if not already present. "
+            "Then change `-> 'Optional[str]'` to `-> Optional[str]`, `'list[X]'` to `list[X]`, etc. "
+            "Do NOT use string-quoted annotations when `from __future__ import annotations` is present."
+        )
+
+    # UP045 — Optional[X] → X | None (Python 3.10+ union syntax)
+    if "UP045" in build_error:
+        fix_parts.append(
+            "[UP045] Replace `Optional[X]` with `X | None` (Python 3.10+ syntax). "
+            "Change every `Optional[X]` → `X | None`. "
+            "After replacing all usages, REMOVE `from typing import Optional` — it is no longer needed. "
+            "If `from __future__ import annotations` is missing, add it as the first import."
+        )
+
+    # UP024 — aliased OS errors (IOError, EnvironmentError → OSError)
+    if "UP024" in build_error:
+        fix_parts.append(
+            "[UP024] Replace deprecated OS error aliases with `OSError`. "
+            "Change `IOError` → `OSError`, `EnvironmentError` → `OSError`, `WindowsError` → `OSError`. "
+            "These are all aliases for `OSError` in Python 3 — use `OSError` directly."
+        )
+
+    # UP035 — deprecated typing imports (use collections.abc instead)
+    if "UP035" in build_error:
+        fix_parts.append(
+            "[UP035] Replace deprecated `typing` imports with `collections.abc` equivalents. "
+            "Change `from typing import AsyncIterator` → `from collections.abc import AsyncIterator`. "
+            "Same for: Generator, Coroutine, Iterator, Callable, Sequence, Mapping, MutableMapping. "
+            "These moved to `collections.abc` in Python 3.9+; `typing` aliases removed in 3.12+."
+        )
+
+    # W605 — invalid escape sequence (missing r'' prefix on regex strings)
+    if "W605" in build_error:
+        m = re.search(r'W605.*?`([^`]+)`', build_error)
+        escape_seq = m.group(1) if m else r"\pattern"
+        fix_parts.append(
+            f"[W605] Invalid escape sequence `{escape_seq}` in string. "
+            "Use raw string prefix for regex patterns: `r'\\|'` not `'\\|'`. "
+            "Apply `r''` prefix to ALL strings containing regex escapes: "
+            r"`\s`, `\d`, `\b`, `\|`, `\(`, `\)`, `\*`, `\+`, `\.` etc. "
+            "Example: `re.search(r'\\|\\s*\\*\\*FA-(\\d+)\\*\\*', content)`"
+        )
+
+    # ASYNC240 — pathlib.Path methods in async functions (use anyio.Path)
+    if "ASYNC240" in build_error:
+        fix_parts.append(
+            "[ASYNC240] Async function uses blocking `pathlib.Path` methods. "
+            "Replace with `anyio.Path` for async file I/O: "
+            "`import anyio; p = anyio.Path(path_str); content = await p.read_text()`. "
+            "For writing: `await anyio.Path(path_str).write_text(content)`. "
+            "For test files using `tmp_path`: wrap in sync helper called via "
+            "`await anyio.to_thread.run_sync(lambda: path.write_text(content))`. "
+            "Alternatively: move all file I/O into a sync pytest fixture (not async)."
+        )
+
     if not fix_parts:
         # Ruff matched a code we have no specific handler for — return generic guidance
         # so the LLM gets directed to fix the violation instead of UNKNOWN fallback.
@@ -1274,6 +1358,9 @@ def _classify_ruff_violation(build_error: str) -> RetryDiagnosis | None:
         ("ANN201", RUFF_ANN201), ("ANN001", RUFF_ANN001), ("B017", RUFF_B017),
         ("B006", RUFF_B006), ("F841", RUFF_F841), ("B018", RUFF_B018),
         ("G004", RUFF_G004), ("E501", RUFF_E501), ("RUF046", RUFF_RUF046),
+        ("RUF012", RUFF_GENERIC), ("UP037", RUFF_GENERIC), ("UP045", RUFF_GENERIC),
+        ("UP024", RUFF_GENERIC), ("UP035", RUFF_GENERIC), ("W605", RUFF_GENERIC),
+        ("ASYNC240", RUFF_GENERIC),
         ("F401", RUFF_F401), ("DTZ", DATETIME_UTCNOW),
     ]:
         if code in build_error:
