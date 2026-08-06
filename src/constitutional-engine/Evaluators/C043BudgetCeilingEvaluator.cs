@@ -55,26 +55,34 @@ public sealed class C043BudgetCeilingEvaluator : IClaimEvaluator
     {
         ct.ThrowIfCancellationRequested();
 
-        // ── Guard: no approved ceiling configured ────────────────────────────────────────────────
-        // ApprovedBudgetInrPaise == 0 means the skill has no configured ceiling in this Decision
-        // Space version. This is ambiguous — it could mean "free" or "misconfigured". Per C-049
-        // (Honest Limitation), the engine must not assume authorisation when uncertain: ESCALATE.
+        // ── Guard: zero approved budget — treat as ceiling of zero ─────────────────────────────
+        // ApprovedBudgetInrPaise == 0 means the ceiling is set to zero; any positive proposed
+        // spend is denied. Zero proposed spend on a zero ceiling is trivially within bounds.
         if (ctx.ApprovedBudgetInrPaise == 0L)
         {
+            if (ctx.ProposedSpendInrPaise == 0L)
+            {
+                return Task.FromResult(new EvaluationResult(
+                    ClaimIdValue,
+                    EvaluationVerdict.Allow,
+                    "BUDGET_WITHIN_CEILING: Zero proposed spend within a zero-approved ceiling."));
+            }
+
             _logger.LogWarning(
-                "C-043 ESCALATE: No approved budget ceiling configured. " +
+                "C-043 DENY: Proposed spend with zero approved budget ceiling. " +
                 "ContractId={ContractId} SkillId={SkillId} SkillType={BudgetSkillType} " +
-                "DecisionSpaceVersion={DecisionSpaceVersion}",
+                "ProposedSpendPaise={ProposedSpendPaise} DecisionSpaceVersion={DecisionSpaceVersion}",
                 ctx.ContractId,
                 ctx.SkillId ?? "(none)",
                 ctx.BudgetSkillType,
+                ctx.ProposedSpendInrPaise,
                 ctx.DecisionSpaceVersion);
 
             return Task.FromResult(new EvaluationResult(
                 ClaimIdValue,
-                EvaluationVerdict.Escalate,
-                "BUDGET_NOT_CONFIGURED: No approved monthly budget ceiling is set for this skill. " +
-                "Human review required before execution may proceed."));
+                EvaluationVerdict.Deny,
+                $"BUDGET_CEILING_REACHED: No approved budget ceiling is configured (0 paise). " +
+                $"Proposed spend of {ctx.ProposedSpendInrPaise} paise cannot proceed. Skill type: {ctx.BudgetSkillType}."));
         }
 
         // ── C-043 core enforcement ───────────────────────────────────────────────────────────────

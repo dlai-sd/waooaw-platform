@@ -1,6 +1,7 @@
 // Implements: tests/QA-STRATEGY.md §5.1 Unit Tests
 // constitutional_basis: C-023 (Evidence First), C-007 (Append-Only), C-076 (Test Coverage)
 using FluentAssertions;
+using Grpc.Core;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Waooaw.ConstitutionalEngine.Data;
@@ -92,7 +93,7 @@ public sealed class CCT_EF01_EvidenceFirstTests
             ContractId           = contractId,
             ProfessionalId       = Guid.NewGuid().ToString(),
             ActionType           = "MARKETING_POST",
-            State                = EvidenceState.EvidenceStateProposed,
+            State                = EvidenceState.Proposed,
             DecisionSpaceVersion = 1,
             ConstitutionalBasis  = "C-023; AD-002",
             IsScopeBoundary      = false,
@@ -223,7 +224,7 @@ public sealed class CCT_EF01_EvidenceFirstTests
             ContractId           = contractId,
             ProfessionalId       = Guid.NewGuid().ToString(),
             ActionType           = "MARKETING_POST",
-            State                = EvidenceState.EvidenceStateProposed,
+            State                = EvidenceState.Proposed,
             DecisionSpaceVersion = 1,
             ConstitutionalBasis  = "C-023; AD-002",
             IsScopeBoundary      = false,
@@ -267,7 +268,7 @@ public sealed class CCT_EF01_EvidenceFirstTests
             ContractId           = contractId,
             ProfessionalId       = Guid.NewGuid().ToString(),
             ActionType           = "MARKETING_POST",
-            State                = EvidenceState.EvidenceStateProposed,
+            State                = EvidenceState.Proposed,
             DecisionSpaceVersion = 1,
             ConstitutionalBasis  = "C-023; AD-002",
             IsScopeBoundary      = false,
@@ -279,7 +280,7 @@ public sealed class CCT_EF01_EvidenceFirstTests
             ContractId           = contractId,
             ProfessionalId       = proposed.ProfessionalId,
             ActionType           = "MARKETING_POST",
-            State                = EvidenceState.EvidenceStateExecuted,
+            State                = EvidenceState.Executed,
             DecisionSpaceVersion = 1,
             ConstitutionalBasis  = "C-023; AD-002",
             IsScopeBoundary      = false,
@@ -361,7 +362,7 @@ public sealed class CCT_EF01_EvidenceFirstTests
             ContractId           = contractId,
             ProfessionalId       = Guid.NewGuid().ToString(),
             ActionType           = "MARKETING_POST",
-            State                = EvidenceState.EvidenceStateProposed,
+            State                = EvidenceState.Proposed,
             DecisionSpaceVersion = 1,
             ConstitutionalBasis  = string.Empty,  // intentionally empty — must be rejected
             IsScopeBoundary      = false,
@@ -371,7 +372,7 @@ public sealed class CCT_EF01_EvidenceFirstTests
         Func<Task> act = async () => await svc.RecordEvidence(request, grpcCtx);
 
         // Assert — CE must reject with RpcException (INVALID_ARGUMENT) per C-023 / AD-008.
-        await act.Should().ThrowAsync<Grpc.Core.RpcException>(
+        await act.Should().ThrowAsync<RpcException>(
             because: "AD-008 requires CE to return INVALID_ARGUMENT when " +
                      "constitutional_basis is empty — every record must name its authority");
     }

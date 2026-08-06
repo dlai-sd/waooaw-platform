@@ -36,8 +36,8 @@ public interface IConstitutionalEngineService
     /// Constitutional: C-001 — Human Override. NEVER fails. NEVER blocks.
     /// SLA: ≤250ms p99
     /// </summary>
-    Task<TriggerEmergencyStopResponse> TriggerEmergencyStopAsync(
-        TriggerEmergencyStopRequest request,
+    Task<EmergencyStopResponse> TriggerEmergencyStopAsync(
+        EmergencyStopRequest request,
         CancellationToken ct = default);
 
     /// <summary>

@@ -8,6 +8,76 @@ types: `feat` | `fix` | `constitutional` | `cct` | `chore` | `refactor` | `secur
 
 ---
 
+## [1.36.0] — 2026-08-06
+
+### WC-012: CE gRPC Skeleton (.NET 9) — All 76 CCT Tests Green
+
+**Constitutional basis:** C-027 (Evidence First), C-041 (Tool Authorization), C-043 (Budget Ceiling), C-054 (Emergency Stop), C-059
+
+#### WC012-01 — C041 Tool Authorization Evaluator fix
+- `src/constitutional-engine/Evaluators/C041ToolAuthorizationEvaluator.cs`
+- Fixed: was checking `actionType` against tool name lists; now correctly extracts `tool_name`
+  from `ActionParameters` and checks it against `prohibited`/`always_ask`/`authorized` lists
+- `ContainsOrdinal` (case-sensitive) replaces `ContainsIgnoreCase` throughout
+- Added `ToolNameKey = "tool_name"` and `McpToolCallActionType = "MCP_TOOL_CALL"` constants
+
+#### WC012-02 — C043 Budget Ceiling zero-budget fix
+- `src/constitutional-engine/Evaluators/C043BudgetCeilingEvaluator.cs`
+- Zero-budget: `approved=0 && proposed=0` → Allow; `approved=0 && proposed>0` → Deny
+
+#### WC012-03 — Evidence StateCode idempotency
+- `src/constitutional-engine/Data/Entities/EvidenceRecord.cs` — added `StateCode` field
+- `src/constitutional-engine/Services/ConstitutionalEngineService.cs` — idempotency key now
+  scoped to (ActionInstanceId, State, TenantId) to allow separate rows per state transition
+
+#### WC012-04 — Test infrastructure (FakeServerCallContext, InMemory schema pre-warm)
+- `tests/constitutional-engine.Tests/EmergencyStop/CCT_HO01_EmergencyStopLatencyTests.cs`
+- Fixed: `FakeServerCallContext` replaces unmockable Moq stub; EF InMemory `EnsureCreated()`
+  pre-warms schema to avoid cold-start latency exceeding 100 ms budget
+
+#### WC012-05 — 10 new C041 test cases (Allow path + ToolMatrix theory)
+- `tests/constitutional-engine.Tests/Evaluators/CCT_EF01_C041ToolAuthorizationEvaluatorTests.cs`
+- 76/76 CCT tests passing (CE + BP combined: 105/105)
+
+---
+
+### WC-014: PR Python FastAPI + Temporal — 10/10 Tests Green
+
+**Constitutional basis:** C-005 (session isolation), C-059
+
+#### WC014-01 — conftest.py sys.path fix
+- `tests/professional-runtime/conftest.py` — `sys.path.insert` for `src/professional-runtime`
+- `from main import app` (flat import, not `src.professional_runtime.main`)
+
+#### WC014-02 — MockPAASSessionWorkflow module-level fix
+- `tests/professional-runtime/test_sessions.py`
+- `@workflow.run` cannot be applied to local inner classes; moved `MockPAASSessionWorkflow`
+  to module level; removed 3 duplicate inner class definitions
+- 10/10 tests passing
+
+---
+
+### WC-015: AIR Python (PSE, RAG, PII, Ollama) — 32/32 Tests Green
+
+**Constitutional basis:** C-062 (injection guard), C-023, C-059
+
+#### WC015-01 — InjectionGuard scan() sync fix
+- `src/ai-runtime/pii/injection_guard.py`
+- Changed `async def scan()` to synchronous `def scan()` — was returning an unawaited coroutine
+  (always truthy), causing all injection attacks to pass through
+
+#### WC015-02 — Comprehensive injection pattern coverage (CCT-PI-01: 50/50)
+- Added 10 new regex pattern categories covering: injection syntax (SQL, shell, template, EL,
+  YAML, PHP, XXE, LDAP, path traversal, protocol handlers, XSS, base64), unicode obfuscation
+  (BiDi, zero-width, NBSP, ANSI, soft-hyphen, variation selectors, Cyrillic/Greek/Armenian
+  homographs, combining diacritics)
+- Added obfuscation-aware scan transformations: ROT13 decode, text reversal, leet-speak
+  normalisation, pig-Latin decoding, NFKD+diacritic-strip, bracket-stripping, alpha-only
+  keyword substring scan
+- 32/32 AI-runtime tests passing (CCT-PI-01: 50/50 attack patterns blocked, 10/10 legitimate prompts allowed)
+
+---
+
 ## [1.35.0] — 2026-08-06
 
 ### WC-033: BP Trial Lifecycle Endpoints + Temporal Expiry Saga

@@ -257,9 +257,7 @@ public sealed class CCT_EF01_C041ToolAuthorizationEvaluatorTests
 
         // Assert
         result.Verdict.Should().BeOneOf(
-            EvaluationVerdict.Allow,
-            EvaluationVerdict.Deny,
-            EvaluationVerdict.Escalate,
+            new[] { EvaluationVerdict.Allow, EvaluationVerdict.Deny, EvaluationVerdict.Escalate },
             "verdict must always be a valid EvaluationVerdict enum member");
     }
 
@@ -553,5 +551,124 @@ public sealed class CCT_EF01_C041ToolAuthorizationEvaluatorTests
             "correct action type alone is not sufficient; tool name must also be authorised (C-041)");
         result.ClaimId.Should().Be("C-041",
             "the C041 evaluator must always stamp its constitutional basis");
+    }
+
+    // ── CCT-EF-01-L: Allow path — authorized tool invocations ──────────────
+
+    [Fact]
+    public async Task EvaluateAsync_AuthorizedTool_ReturnsAllow()
+    {
+        // Arrange — tool_name is in the authorized_actions list; C-041 must Allow
+        var evaluator = CreateEvaluator();
+        var ctx = BuildContextWithRawParameters(
+            "{\"tool_name\": \"read_file\", \"authorized_actions\": \"read_file\"}");
+
+        // Act
+        var result = await evaluator.EvaluateAsync(ctx, CancellationToken.None);
+
+        // Assert
+        result.Verdict.Should().Be(
+            EvaluationVerdict.Allow,
+            "tool 'read_file' is in the authorized list");
+        result.ClaimId.Should().Be("C-041");
+    }
+
+    [Fact]
+    public async Task EvaluateAsync_SecondAuthorizedTool_ReturnsAllow()
+    {
+        // Arrange — tool_name matches the second entry in a comma-separated authorized list
+        var evaluator = CreateEvaluator();
+        var ctx = BuildContextWithRawParameters(
+            "{\"tool_name\": \"write_file\", \"authorized_actions\": \"read_file,write_file\"}");
+
+        // Act
+        var result = await evaluator.EvaluateAsync(ctx, CancellationToken.None);
+
+        // Assert
+        result.Verdict.Should().Be(
+            EvaluationVerdict.Allow,
+            "tool 'write_file' is the second entry in the authorized list");
+    }
+
+    [Fact]
+    public async Task EvaluateAsync_SingleElementListMatchingTool_ReturnsAllow()
+    {
+        // Arrange — single-element authorized list exactly matching tool_name
+        var evaluator = CreateEvaluator();
+        var ctx = BuildContextWithRawParameters(
+            "{\"tool_name\": \"read_file\", \"authorized_actions\": \"read_file\"}");
+
+        // Act
+        var result = await evaluator.EvaluateAsync(ctx, CancellationToken.None);
+
+        // Assert
+        result.Verdict.Should().Be(
+            EvaluationVerdict.Allow,
+            "single-element authorized list must Allow the matching tool (C-041)");
+    }
+
+    [Fact]
+    public async Task EvaluateAsync_AllowResult_HasNonEmptyReason()
+    {
+        // Arrange — every Allow verdict must carry an audit-ready reason string
+        var evaluator = CreateEvaluator();
+        var ctx = BuildContextWithRawParameters(
+            "{\"tool_name\": \"read_file\", \"authorized_actions\": \"read_file\"}");
+
+        // Act
+        var result = await evaluator.EvaluateAsync(ctx, CancellationToken.None);
+
+        // Assert
+        result.Verdict.Should().Be(EvaluationVerdict.Allow);
+        result.Reason.Should().NotBeNullOrWhiteSpace(
+            "Allow verdicts must carry a human-readable audit reason string");
+    }
+
+    [Fact]
+    public async Task EvaluateAsync_ToolNameWrongCase_ReturnsDeny()
+    {
+        // Arrange — tool name matching is case-sensitive (ordinal); READ_FILE ≠ read_file
+        var evaluator = CreateEvaluator();
+        var ctx = BuildContextWithRawParameters(
+            "{\"tool_name\": \"READ_FILE\", \"authorized_actions\": \"read_file\"}");
+
+        // Act
+        var result = await evaluator.EvaluateAsync(ctx, CancellationToken.None);
+
+        // Assert
+        result.Verdict.Should().Be(
+            EvaluationVerdict.Deny,
+            "tool name matching is case-sensitive; READ_FILE does not equal read_file");
+    }
+
+    public static IEnumerable<object[]> ToolMatrixData =>
+    [
+        new object[] { "read_file",      new[] { "read_file", "write_file" }, true  },
+        new object[] { "write_file",     new[] { "read_file", "write_file" }, true  },
+        new object[] { "exec_shell",     new[] { "read_file", "write_file" }, false },
+        new object[] { "list_directory", new[] { "read_file" },              false },
+        new object[] { "read_file",      new[] { "read_file" },              true  },
+    ];
+
+    [Theory]
+    [MemberData(nameof(ToolMatrixData))]
+    public async Task EvaluateAsync_ToolMatrix_ReturnsExpectedVerdict(
+        string toolName, string[] authorizedTools, bool expectAllow)
+    {
+        // Arrange — parameterized matrix: (tool, authorized list, expected verdict)
+        var evaluator = CreateEvaluator();
+        var authList = string.Join(",", authorizedTools);
+        var ctx = BuildContextWithRawParameters(
+            $"{{\"tool_name\": \"{toolName}\", \"authorized_actions\": \"{authList}\"}}");
+
+        // Act
+        var result = await evaluator.EvaluateAsync(ctx, CancellationToken.None);
+
+        // Assert
+        var expected = expectAllow ? EvaluationVerdict.Allow : EvaluationVerdict.Deny;
+        result.Verdict.Should().Be(expected,
+            expectAllow
+                ? $"tool '{toolName}' is in the authorized list [{authList}]"
+                : $"tool '{toolName}' is NOT in the authorized list [{authList}] — C-041 default deny");
     }
 }

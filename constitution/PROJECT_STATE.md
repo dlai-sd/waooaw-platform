@@ -1,6 +1,37 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-08-06 (WC-033 BP Trial Lifecycle + Temporal Expiry Saga — COMPLETE)
+**Last Updated:** 2026-08-06 (WC-012/WC-014/WC-015 — CE gRPC + PR FastAPI + AIR Python — ALL GREEN)
+
+---
+
+## SESSION RECORD — 2026-08-06 (WC-012 / WC-014 / WC-015 — COMPLETE)
+
+### What Was Built
+
+| Task | File | Output | Status |
+|---|---|---|---|
+| WC012-01 | `src/constitutional-engine/Evaluators/C041ToolAuthorizationEvaluator.cs` | Fixed tool_name extraction; ContainsOrdinal; MCP_TOOL_CALL guard | ✅ |
+| WC012-02 | `src/constitutional-engine/Evaluators/C043BudgetCeilingEvaluator.cs` | Zero-budget: proposed=0→Allow, proposed>0→Deny | ✅ |
+| WC012-03 | `src/constitutional-engine/Data/Entities/EvidenceRecord.cs` | Added `StateCode` field for per-state idempotency | ✅ |
+| WC012-03 | `src/constitutional-engine/Services/ConstitutionalEngineService.cs` | Idempotency keyed on (ActionInstanceId, State, TenantId) | ✅ |
+| WC012-04 | `tests/constitutional-engine.Tests/EmergencyStop/CCT_HO01_EmergencyStopLatencyTests.cs` | FakeServerCallContext + EnsureCreated() pre-warm | ✅ |
+| WC012-05 | `tests/constitutional-engine.Tests/Evaluators/CCT_EF01_C041ToolAuthorizationEvaluatorTests.cs` | 10 new Allow-path + ToolMatrix theory cases; 76/76 | ✅ |
+| WC014-01 | `tests/professional-runtime/conftest.py` | sys.path.insert fix; flat imports | ✅ |
+| WC014-02 | `tests/professional-runtime/test_sessions.py` | Module-level MockPAASSessionWorkflow; removed inner class | ✅ |
+| WC015-01 | `src/ai-runtime/pii/injection_guard.py` | sync def scan(); 10 new pattern categories; 8 obfuscation transformations | ✅ |
+| housekeeping | VERSION, CHANGELOG, PROJECT_STATE | 1.35.0→1.36.0 | ✅ |
+
+### CCT Results
+| CCT | Description | Result |
+|---|---|---|
+| CCT-EF-01 (C041) | C041 tool authorization: Allow/Deny/AlwaysAsk paths; case sensitivity | ✅ 76/76 |
+| CCT-HO-01 | Emergency stop <100ms latency budget (EF InMemory pre-warm) | ✅ |
+| CCT-C043 | Zero-budget ceiling: proposed=0→Allow; proposed>0→Deny | ✅ |
+| CCT-EV-01 | Evidence StateCode idempotency across state transitions | ✅ |
+| CCT-PR-01 | PAAS session workflow Temporal mock (module-level) | ✅ 10/10 |
+| CCT-PI-01 | Injection guard: 50/50 attack patterns blocked, 10/10 legitimate allowed | ✅ 32/32 |
+
+**WC-012: 76/76 CE tests. WC-014: 10/10 PR tests. WC-015: 32/32 AIR tests. VERSION 1.36.0.**
 
 ---
 

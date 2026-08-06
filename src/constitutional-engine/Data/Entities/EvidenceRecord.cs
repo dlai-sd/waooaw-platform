@@ -8,6 +8,7 @@ public sealed class EvidenceRecord
 {
     public Guid Id { get; init; } = Guid.NewGuid();
     public string IdempotencyKey { get; init; } = string.Empty;
+    public int StateCode { get; init; }
     public Guid TenantId { get; init; }
     public string EvidenceType { get; init; } = string.Empty;
     public string Summary { get; init; } = string.Empty;

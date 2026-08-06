@@ -11,6 +11,11 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from temporalio.client import WorkflowHandle
 
+# Module-level workflow stub — Temporalio SDK forbids @workflow.run on local classes
+class MockPAASSessionWorkflow:
+    async def run(self, input_data):
+        return {"session_id": input_data.get("session_id")}
+
 # Assume the main application is importable from src
 # Adjust import paths based on actual project structure
 pytest_plugins = ("pytest_asyncio",)
@@ -93,13 +98,6 @@ class TestSessionLifecycle:
         assert validation_result["decision"] == "Allow"
         
         # Simulate session start workflow call
-        from temporalio import workflow
-        
-        class MockPAASSessionWorkflow:
-            @workflow.run
-            async def run(self, input_data):
-                return {"session_id": input_data.get("session_id")}
-        
         handle = await mock_temporal_client.start_workflow(
             MockPAASSessionWorkflow,
             id=session_id,
@@ -131,13 +129,6 @@ class TestSessionLifecycle:
         session_id_1 = str(uuid.uuid4())
         session_id_2 = str(uuid.uuid4())
         tenant_id = "test-tenant"
-        
-        from temporalio import workflow
-        
-        class MockPAASSessionWorkflow:
-            @workflow.run
-            async def run(self, input_data):
-                return {"session_id": input_data.get("session_id")}
         
         # Start first session
         handle_1 = await mock_temporal_client.start_workflow(
@@ -332,14 +323,6 @@ class TestSessionLifecycle:
         Test that multiple sessions can be executed concurrently without
         cross-contamination (C-025).
         """
-        from temporalio import workflow
-        
-        class MockPAASSessionWorkflow:
-            @workflow.run
-            async def run(self, input_data):
-                await asyncio.sleep(0.01)
-                return {"session_id": input_data.get("session_id")}
-        
         session_ids = [str(uuid.uuid4()) for _ in range(3)]
         tenant_id = "test-tenant"
         

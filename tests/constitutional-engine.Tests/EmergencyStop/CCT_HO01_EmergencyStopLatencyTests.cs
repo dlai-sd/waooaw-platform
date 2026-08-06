@@ -13,6 +13,7 @@ using Waooaw.ConstitutionalEngine.Data;
 using Waooaw.ConstitutionalEngine.EmergencyStop;
 using Waooaw.ConstitutionalEngine.Evaluators;
 using Waooaw.ConstitutionalEngine.Services;
+using Waooaw.ConstitutionalEngine.Tests.Evaluators;
 using Xunit;
 
 namespace Waooaw.ConstitutionalEngine.Tests.EmergencyStop;
@@ -41,6 +42,13 @@ public sealed class CCT_HO01_EmergencyStopLatencyTests
         var sp = services.BuildServiceProvider();
         var constitutionalFactory = sp.GetRequiredService<IDbContextFactory<ConstitutionalDbContext>>();
         var emergencyStopFactory = sp.GetRequiredService<IDbContextFactory<EmergencyStopDbContext>>();
+
+        // Pre-warm InMemory schemas — cold EF InMemory init can exceed the 100ms latency budget
+        using var wc = constitutionalFactory.CreateDbContext();
+        wc.Database.EnsureCreated();
+        using var we = emergencyStopFactory.CreateDbContext();
+        we.Database.EnsureCreated();
+
         return (constitutionalFactory, emergencyStopFactory);
     }
 
@@ -48,6 +56,7 @@ public sealed class CCT_HO01_EmergencyStopLatencyTests
     {
         // EvaluatorRegistry with no evaluators — sufficient for latency test scope
         var registryServices = new ServiceCollection();
+        registryServices.AddLogging();
         registryServices.AddSingleton<EvaluatorRegistry>();
         var sp = registryServices.BuildServiceProvider();
         return sp.GetRequiredService<EvaluatorRegistry>();
@@ -55,18 +64,8 @@ public sealed class CCT_HO01_EmergencyStopLatencyTests
 
     private static ServerCallContext BuildCallContext(string tenantId)
     {
-        var metadata = new Metadata
-        {
-            { TenantIdHeader, tenantId }
-        };
-
-        var mockContext = new Mock<ServerCallContext>();
-        mockContext.Setup(c => c.RequestHeaders).Returns(metadata);
-        mockContext.Setup(c => c.CancellationToken).Returns(CancellationToken.None);
-        mockContext.Setup(c => c.Peer).Returns("ipv4:127.0.0.1:50051");
-        mockContext.Setup(c => c.Method).Returns("/constitutional.v1.ConstitutionalService/TriggerEmergencyStop");
-        mockContext.Setup(c => c.Host).Returns("localhost");
-        return mockContext.Object;
+        var metadata = new Metadata { { TenantIdHeader, tenantId } };
+        return new FakeServerCallContext(metadata);
     }
 
     private static ITemporalClient BuildFastTemporalClientMock()
@@ -82,9 +81,8 @@ public sealed class CCT_HO01_EmergencyStopLatencyTests
                 handleMock
                     .Setup(h => h.SignalAsync(
                         It.IsAny<string>(),
-                        It.IsAny<IReadOnlyCollection<object?>>(),
-                        It.IsAny<WorkflowSignalOptions?>(),
-                        It.IsAny<CancellationToken>()))
+                        It.IsAny<object[]>(),
+                        It.IsAny<WorkflowSignalOptions?>()))
                     .Returns(Task.CompletedTask);
                 return handleMock.Object;
             });

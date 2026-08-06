@@ -136,11 +136,13 @@ public sealed class ConstitutionalEngineService : ConstitutionalService.Constitu
         {
             await using var db = await _dbContextFactory.CreateDbContextAsync(cts.Token);
 
-            // C-085: Idempotency — if record with same IdempotencyKey + TenantId already
-            // exists, return the existing record without re-inserting (append-only, C-027).
+            // C-085: Idempotency — include State so each state transition gets its own row
+            // (C-027 append-only: Proposed + Executed are different ledger entries).
             var existing = await db.Set<EvidenceRecord>()
                 .FirstOrDefaultAsync(
-                    e => e.IdempotencyKey == req.ActionInstanceId && e.TenantId == tenantGuid,
+                    e => e.IdempotencyKey == req.ActionInstanceId &&
+                         e.StateCode      == (int)req.State        &&
+                         e.TenantId       == tenantGuid,
                     cts.Token);
 
             if (existing is not null)
@@ -160,6 +162,7 @@ public sealed class ConstitutionalEngineService : ConstitutionalService.Constitu
             {
                 Id             = Guid.NewGuid(),
                 IdempotencyKey = req.ActionInstanceId,
+                StateCode      = (int)req.State,
                 TenantId       = tenantGuid,
                 EvidenceType   = req.ActionType,
                 Summary        = req.ConstitutionalBasis,
