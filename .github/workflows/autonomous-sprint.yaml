@@ -21,8 +21,8 @@
 name: Autonomous Sprint Agent
 
 on:
-  schedule:
-    - cron: '0 */2 * * *'    # Every 2 hours
+  # schedule:
+  #   - cron: '0 */2 * * *'    # Every 2 hours — DISABLED (semi-autonomous mode)
   workflow_dispatch:
     inputs:
       force_task:
