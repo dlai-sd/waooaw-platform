@@ -1,6 +1,28 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-08-07 (WC-031 Trial Engine + Promotions Engine — COMPLETE)
+**Last Updated:** 2026-08-06 (WC-032 AIR PSE Trial Tier Override — COMPLETE)
+
+---
+
+## SESSION RECORD — 2026-08-06 (WC-032 PSE TRIAL OVERRIDE — COMPLETE)
+
+### What Was Built
+
+| Task | File | Output | Status |
+|---|---|---|---|
+| WC032-01 | `src/ai-runtime/pse/router.py` | `route_and_dispatch()` +2 optional params; Redis trial override (4 lines, C-049) | ✅ |
+| WC032-02 | `tests/ai-runtime/test_pse_router.py` | 24 tests, CCT-TRIAL-02, pse/ 91.84% | ✅ |
+| WC032-fix | `tests/ai-runtime/conftest.py` | Fixed broken `src.ai_runtime` import → `sys.path.insert` pattern | ✅ |
+| housekeeping | VERSION, CHANGELOG, PROJECT_STATE | 1.33.0→1.34.0 | ✅ |
+
+### CCT Results
+| CCT | Description | Result |
+|---|---|---|
+| CCT-TRIAL-02 | Redis `wbe:customer:{id}:mode=TRIAL` → PSE returns `LlmTier.LOCAL` (even for complex task) | ✅ |
+| CCT-TRIAL-02b | Non-TRIAL mode (ACTIVE) → existing tier selection unchanged | ✅ |
+| CCT-TRIAL-02c | No Redis key (TTL expiry) / no redis_client / no customer_id → fallback to configured tier | ✅ |
+
+**24/24 tests passing (ai-runtime). 338/338 billing-engine unchanged. VERSION 1.34.0.**
 
 ---
 

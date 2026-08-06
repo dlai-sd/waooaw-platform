@@ -8,6 +8,40 @@ types: `feat` | `fix` | `constitutional` | `cct` | `chore` | `refactor` | `secur
 
 ---
 
+## [1.34.0] — 2026-08-06
+
+### WC-032: AIR PSE Trial Tier Override
+
+**Constitutional basis:** C-049 (Honest Limitation), C-059 (Traceability), C-076 (≥90% coverage)
+
+#### WC032-01 — PSE Router Trial Override (additive, ≤15 lines)
+- `src/ai-runtime/pse/router.py`: `route_and_dispatch()` gains two optional params
+  `customer_id: str | None` and `redis_client: Any | None`
+- After `_select_tier()`, reads `wbe:customer:{customer_id}:mode` from Redis;
+  if `b"TRIAL"` → forces `LlmTier.LOCAL` regardless of configured tier (C-049)
+- Zero new error paths: Redis unavailability falls through to existing tier
+
+#### WC032-02 — Tests: CCT-TRIAL-02 + full PSE coverage
+- `tests/ai-runtime/test_pse_router.py` (new): 24 tests across 5 classes
+- **CCT-TRIAL-02**: TRIAL Redis key → LOCAL dispatch regardless of complexity (complex→LOCAL, medium/indic→LOCAL)
+- Non-TRIAL mode (ACTIVE key) → configured tier unchanged
+- TTL expiry (no key) + no redis_client + no customer_id → all fall back to configured tier
+- `_dispatch_ollama`: success, timeout, HTTP error, request error (respx mocks)
+- `_dispatch_mid` / `_dispatch_frontier`: NotImplementedError stubs verified
+- Error handlers: CancelledError, TimeoutException, HTTPStatusError, RequestError — all record evidence then re-raise
+- `tests/ai-runtime/conftest.py`: fixed `sys.path.insert` pattern (was broken with `src.ai_runtime` import)
+
+#### Coverage
+| Module | Coverage |
+|---|---|
+| `pse/router.py` | **91%** |
+| `pse/tiers.py` | 100% |
+| Total pse/ | **91.84%** |
+
+**24/24 tests passing. Billing-engine: 338/338 unchanged.**
+
+---
+
 ## [1.33.0] — 2026-08-07 (WC-031 — Trial Engine + Promotions Engine)
 
 ### Feat (Billing Engine — WC-031 GOAL-005)

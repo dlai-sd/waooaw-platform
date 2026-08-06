@@ -226,6 +226,8 @@ async def route_and_dispatch(
     task_complexity: str,
     language: str | None,
     async_session_factory: sa_async.async_sessionmaker,  # type: ignore[type-arg]
+    customer_id: str | None = None,
+    redis_client: Any | None = None,
 ) -> dict[str, Any]:
     """
     PSE entry point.  Selects tier, dispatches to the appropriate provider,
@@ -233,6 +235,7 @@ async def route_and_dispatch(
     returns the provider response dict.
 
     Constitutional invariants enforced here:
+    - C-049: trial customers are constrained to LOCAL tier (WC-032)
     - C-051: tier selection enforces ≥66% LOCAL/MID routing via _select_tier()
     - C-059: every dispatch attempt records evidence — success AND failure paths
     - C-063: prompt content is never logged
@@ -243,6 +246,8 @@ async def route_and_dispatch(
         task_complexity:       One of "simple" | "medium" | "complex".
         language:              BCP-47 language code or None (e.g. "hi", "en").
         async_session_factory: SQLAlchemy async_sessionmaker bound to institutional DB.
+        customer_id:           Customer UUID string — used for trial mode Redis lookup.
+        redis_client:          Async Redis client — shared instance from billing-engine.
 
     Returns:
         dict with keys: tier, provider_id, model_id, response, done,
@@ -255,6 +260,12 @@ async def route_and_dispatch(
         httpx.RequestError: Network-level connection failure to Ollama.
     """
     tier = _select_tier(task_complexity, language)
+
+    # C-049: trial customers must use LOCAL (Ollama) — zero procurement cost
+    if redis_client is not None and customer_id is not None:
+        customer_mode = await redis_client.get(f"wbe:customer:{customer_id}:mode")
+        if customer_mode == b"TRIAL":
+            tier = LlmTier.LOCAL
     event_id = str(uuid.uuid4())
 
     # Resolve provider metadata before dispatch so we can record on failure too
