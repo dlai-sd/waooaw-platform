@@ -264,3 +264,112 @@ The Founder's customer-first decision is not a licence to cut pillars. The follo
 
 *Document prepared as Founder Vision record. Handover to Enterprise Architecture (INST-004) for WC-044 IB grooming and ADR-043 (Skill Architecture) production.*  
 *Next session: Founder authorises WC-044 sprint start or delegates to EA for grooming.*
+
+---
+
+## 10. Session Continuation — DMA Depth & Wave Plan Revision (2026-08-07 Evening)
+
+### 10.1 Founder's Concern
+
+After reviewing the initial wave plan, the Founder raised a critical challenge:
+
+> *"DMA is our best bet and that's how I dreamed about WAOOAW — basically to create CMA and realised the opportunity to make it a broader agent hiring platform. I have too many ideas and business skills for Digital Marketing Agent and Sujay (a veteran in this business) will have plenty more. Customer journey launch with DMA v1 may restrict us from making DMA really an exponential value creator."*
+
+> *"WAOOAW is generic — still it gives a uniform playground to customers irrespective of agent skills. Like Trial, Hire, Learn — customer business/context shall be done in 10 minutes with WhatsApp, our own web or mobile app."*
+
+The concern is valid. The initial wave plan (WC-044 = DMA v1 with 2 skills) was structurally incorrect. This section documents the revised understanding and updated wave plan.
+
+---
+
+### 10.2 The Four Tensions Identified
+
+**Tension 1 — "DMA v1 with 2 skills" misrepresents DMA**
+
+The DMA spec (v3.1, 5,322 lines) defines a clear prerequisite chain:
+
+```
+Skill 0 — Customer Profiling ──────────────→ feeds everything downstream
+Skill 1 — Market Research + Maturity Score → activates Phase 1 execution
+  ↓
+Skills 2–8 — Phase 1 (Curtain Raiser) ────→ activated for all customers
+  ↓ Score 3+ (2–3 months of Phase 1 data)
+Skills 9–11 — Phase 2 (Growth Engine) ────→ the exponential value
+  ↓ Score 5+
+Skills 12–13 — Phase 3 (Maturity) ────────→ the competitive edge
+```
+
+Running `content_publish` or `ad_campaign_manager` without Skills 0 and 1 means: no customer profile, no maturity score, no domain vocabulary, no campaign brief. That is an API wrapper, not a professional. The minimum coherent DMA unit is **Skills 0+1+2+3+4**. The spec's own Phase 1 definition is the floor, not 2 arbitrary skills.
+
+**Tension 2 — DVE is a platform primitive being built as DMA code**
+
+The Domain Vocabulary Engine (DVE) — the mechanism that makes DMA work identically for a dental clinic, a gym, a restaurant, and a law firm via generic tokens (`{CUSTOMER}`, `{VISIT}`, `{BOOKING_PLATFORM}`) — is not DMA-specific. It is the mechanism that makes WAOOAW generic for any business domain. If DVE is built inside a DMA sprint, the Agricultural agent and Trading agent will each need their own version. DVE belongs in the platform layer.
+
+**Tension 3 — WC-044 mixed two different layers**
+
+| Layer | Examples | Correct home |
+|---|---|---|
+| Generic Platform | Trial/Hire/Learn onboarding, Employment Contract, DPDPA consent, Evidence Window, Skill Registry, DVE | Platform — built once, used by every agent |
+| DMA Agent | Skills 0–8, Campaign Brief workflow, Meta/Instagram/GBP integration, DVE instance | DMA — deeply specialised, first instance on generic platform |
+
+Building both in one sprint causes platform decisions to get baked into agent code with no path to reuse.
+
+**Tension 4 — Sujay hasn't reviewed the v3.1 spec**
+
+The DMA spec was written by the platform team. Sujay's domain expertise (15+ years in digital marketing) could: validate and reprioritise Phase 1 skills, add skills the spec missed (event marketing, WhatsApp Business integration, seasonal campaigns, influencer identification), identify customer pain points the spec doesn't address, and define what evidence actually matters to a paying DMA customer. Building DMA code before Sujay validation creates technical debt that arrives on the customer's first day.
+
+---
+
+### 10.3 The Layer Separation Principle (New Standing Decision)
+
+> **WAOOAW Platform Layer** — generic, identical for every agent and every customer.  
+> Trial, Hire, Learn in 10 minutes via WhatsApp/web/mobile. DPDPA consent. Evidence Window. Employment Contract. Skill Registry. DVE.  
+>
+> **Agent Layer** — deeply specialised per domain.  
+> DMA: Sujay-validated skill set, Phase 1 through Phase 3. Agricultural, Trading, Tutor: each equally deep in their domain.  
+>
+> **These layers are built in order, not mixed in one sprint.**
+
+---
+
+### 10.4 Revised Wave Plan
+
+The original Wave 1 (WC-044 = DMA Agent v1 + DPDPA + Evidence Window) is superseded by the following:
+
+| Wave | Sprint | Goal | Objective | Outcome |
+|---|---|---|---|---|
+| **1** | **WC-044** | Generic platform customer journey exists for ANY agent | 10-minute WhatsApp-first onboarding (name + location + website → Employment Contract → Trial state) · DPDPA consent generic · Evidence Window skeleton (reads Audit Trail for any agent) · Skill Registry v1 · DVE platform service · Trial → Active state machine | Any future agent — DMA, Agricultural, Trading, Tutor — can be hired through this identical flow. Platform layer is reusable, not DMA-specific. |
+| **1.5** | **Sujay Workshop** *(design event, runs parallel to WC-044 — not a WC)* | DMA skill design validated and expanded by domain expert before code is written | 2–4 hour session with Sujay: validate Phase 1 skill priorities, expand skill set with domain knowledge, define what evidence a DMA customer needs to see, confirm customer persona table | Sujay-validated DMA Phase 1 design delivered into WC-045. No code written during this event. No rework after. |
+| **2** | **WC-045** | DMA Phase 1 built correctly and deeply on the generic platform | Skills 0+1+1b+2+3+4+5 (Customer Profiling + Market Research + Platform Health Check + Campaign Brief + Instagram + Facebook + GBP) · DVE instance · Meta/Instagram/GBP integration on Trust Layer · Evidence Window DMA instance · Constitutional compliance (C-036 through C-057) | DMA Phase 1 is a genuinely impressive agent. Sujay-validated. Runs on generic platform. Not a prototype. Customer who hires it sees intelligence, not just posting. |
+| **3** | **WC-046** | Customer #1 live with an agent that makes them an advocate | Manual onboarding by Yogesh · Meta account connection via oauth-vault · First campaign executed · Evidence Window live · First revenue collected via Razorpay | First paying customer experiences constitutional governance + DMA Phase 1 excellence. This is the story WAOOAW tells the world. |
+| **4** | **WC-047** | Self-service + distribution channel opens | Web Portal unblock (WC-034) · Agency/Reseller Engine v1 · WhatsApp Hiring Wizard v2 · MBR data collection matures | Customers #2+ onboard self-service. Agencies refer customers. Yogesh is no longer the onboarding bottleneck. |
+| **5** | **WC-048** | DMA Phase 2 + differentiation lock-in | Skills 9–11 (Growth Engine — activated at Score 3+ from Phase 1 data) · Learning Flywheel v1 · Constitutional Audit Trail Sink · DMA Phase 2 is the exponential value Sujay will design | Month-3 agent outperforms month-1 agent. Customer sees evidence of improvement. WAOOAW moat forms. |
+
+---
+
+### 10.5 What the Revision Changes vs. the Original Plan
+
+| Original (superseded) | Revised |
+|---|---|
+| DMA rushed to 2 skills in WC-044 | DMA built fully in WC-045, Sujay-validated before code starts |
+| Platform + DMA mixed in one sprint | Platform layer clean in WC-044 · DMA layer clean in WC-045 |
+| DVE baked into DMA code | DVE in platform layer — Agricultural, Trading, Tutor inherit it for free |
+| Sujay input arrives after code is written | Sujay workshop runs parallel to WC-044 — no timeline delay, no rework |
+| Customer #1 experiences a 2-skill prototype | Customer #1 experiences Phase 1 at full, Sujay-validated capability |
+| Every future agent needs its own onboarding flow | Every future agent runs through the same generic WC-044 platform |
+
+---
+
+### 10.6 Updated Authorisation Record
+
+| Decision | Made By | Date |
+|---|---|---|
+| Original WC-044 scope (DMA v1 with 2 skills) — **superseded** | Session analysis | 2026-08-07 |
+| Layer Separation Principle: Platform layer built generically in WC-044; DMA as first instance in WC-045 | Yogesh Khandge (Founder, INST-001) | 2026-08-07 |
+| Sujay Workshop to run parallel to WC-044 before DMA code begins | Yogesh Khandge (Founder, INST-001) | 2026-08-07 |
+| WC-044 scope: Generic platform customer journey (onboarding + DPDPA + Evidence Window + Skill Registry + DVE) | Yogesh Khandge (Founder, INST-001) | 2026-08-07 |
+| WC-045 scope: DMA Phase 1 full implementation (Skills 0–5+, Sujay-validated) | Pending Founder confirmation after Sujay Workshop | — |
+
+---
+
+*Session closed 2026-08-07. Founder to review tomorrow.*  
+*Next session: Confirm revised wave plan → authorise WC-044 → schedule Sujay Workshop.*
