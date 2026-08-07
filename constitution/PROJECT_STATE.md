@@ -1,10 +1,43 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-08-07 (WC-042 IN PROGRESS — WBE-S7 Single Onboarding Payment + Renewal Saga · 350/350 WBE · VERSION 1.43.0)
+**Last Updated:** 2026-08-07 (WC-043 DONE — WBE-S8 CCT-PREPAID-01 + CCT-SELFAUDIT-01 full + coverage gate · 361/361 WBE · VERSION 1.44.0)
 
 ---
 
-## SESSION RECORD — 2026-08-07 (WC-042 WBE-S7 SINGLE ONBOARDING PAYMENT + RENEWAL SAGA — IN PROGRESS)
+## SESSION RECORD — 2026-08-07 (WC-043 WBE-S8 RECONCILIATION CCT SUITE + COVERAGE GATE — DONE)
+
+### What Was Built
+
+| Task | File | Output | Status |
+|---|---|---|---|
+| WC043-01 | `src/billing-engine/wallet/router.py` | `POST /buckets/{customer_id}/reserve` — C-091 prepaid gate endpoint; 402 BUCKET_EMPTY, 503 BILLING_INTEGRITY_HALT | ✅ |
+| WC043-02 | `src/billing-engine/main.py` | Mount `wallet_router` at `/buckets` | ✅ |
+| WC043-03 | `tests/billing-engine/test_ccts.py` | CCT-PREPAID-01 (4 tests) + CCT-SELFAUDIT-01 full (3 tests) = 7 CCTs | ✅ |
+| WC043-04 | `tests/billing-engine/test_payment.py` | +4 HTTP router tests for payment/router.py coverage | ✅ |
+| D-01 | Coverage gate | 94% coverage (gate: ≥90%) | ✅ |
+
+### CCT Results
+
+| CCT | Description | Result |
+|---|---|---|
+| CCT-PREPAID-01 | Empty bucket → 402 BUCKET_EMPTY; billing halted → 503; success → 200 | ✅ 4/4 |
+| CCT-SELFAUDIT-01 (full) | Discrepancy > 1 paise → halt + Founder Action; clean → no halt; reserve blocked after halt | ✅ 3/3 |
+
+### DoD Status
+
+- [x] `POST /buckets/{customer_id}/reserve` endpoint exposes C-091 prepaid gate (CCT-PREPAID-01)
+- [x] 402 BUCKET_EMPTY returned when wallet bucket balance = 0
+- [x] 503 BILLING_INTEGRITY_HALT passed through when reconciliation halted billing
+- [x] `run_self_audit()` detects discrepancy > 1 paise → sets `wbe:billing_halted` in Redis + fires Founder Action (CCT-SELFAUDIT-01)
+- [x] Clean audit state produces no halt, no Founder Action
+- [x] 94% test coverage on billing-engine (gate: ≥90%)
+- [x] 361/361 billing-engine tests passing (+11 new)
+- [x] ruff clean
+- [x] VERSION 1.44.0
+
+**Test results: WBE 361/361 (+11) · Zero regressions · WC-043 CCTs green**
+
+---
 
 ### What Was Built
 

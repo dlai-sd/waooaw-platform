@@ -3,6 +3,29 @@
 All notable changes to the WAOOAW Platform are documented here.
 This file is auto-generated from conventional commits. Do not edit manually.
 
+## [1.44.0] — 2026-08-07 · WC-043 WBE-S8 Reconciliation CCT Suite + Coverage Gate
+
+### Features
+- `src/billing-engine/wallet/router.py`: `POST /buckets/{customer_id}/reserve` — C-091 Universal Prepaid Gate HTTP endpoint; 402 BUCKET_EMPTY on empty bucket; 503 BILLING_INTEGRITY_HALT pass-through; 404/409 for not-found/duplicate
+- `src/billing-engine/main.py`: wallet router mounted at `/buckets` prefix
+
+### Tests
+- `tests/billing-engine/test_ccts.py`: CCT-PREPAID-01 (4 tests), CCT-SELFAUDIT-01 full (3 tests) — 7 new CCTs
+- `tests/billing-engine/test_payment.py`: +4 HTTP router tests covering payment/router.py onboarding-order endpoint, webhook ignore, MISSING_CUSTOMER_ID, NOT_A_BYPASS_ORDER
+- 361/361 billing-engine tests passing (+11 new)
+
+### Constitutional Compliance
+- C-091 Universal Prepaid: WBE enforces 402 before LLM dispatch can proceed
+- C-004 Billing Halt: 503 propagated correctly through reserve endpoint
+- C-023 Evidence First: `run_self_audit()` emits evidence record on every run (PASS or HALT)
+- C-059 Traceability: Founder Action created on any discrepancy > 1 paise
+
+### Quality
+- Coverage: 94% (gate: ≥90% ✅)
+- ruff: all checks passed
+
+---
+
 ## [1.43.0] — 2026-08-07 · WC-042 WBE-S7 Single Onboarding Payment + Renewal Saga
 
 ### Features

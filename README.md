@@ -9,18 +9,18 @@
 ## Platform Status
 
 ```
-Version:              v1.37.0 — 2026-08-06: WC-036 DONE (UDCP 124/124 tests) · ADR-042/043/044 · WC-037→041 sprint contracts · IB-024/025 ratified
-Constitutional Claims: 97 ratified (C-001→C-100, with gaps at C-087/C-092/C-093) | ADRs: 44 | CCTs: 65
+Version:              v1.44.0 — 2026-08-07: WC-043 DONE (WBE-S8 CCT-PREPAID-01 + CCT-SELFAUDIT-01 full + 94% coverage · 361/361 tests)
+Constitutional Claims: 97 ratified (C-001→C-100, with gaps at C-087/C-092/C-093) | ADRs: 44 | CCTs: 72
 Customer Agents:      4 approved — DMA v3.0 · Trading v1.7 · Agricultural v2.7 · Private Tutor v1.0
 Internal Agents:      5 — Platform IT Expert (15 skills, §2.4 Pipeline-First Rule) · Steward Assistant · Self-Improvement Analyst ·
                           Platform Operations · RepoNav (AVD-001 v1.0 RATIFIED — INST-014)
 Gates:                G0 ✅  G1 ✅  G2 ✅  G3 ✅  G4 ✅  G5 CLEAR
-Phase:                IMPLEMENTATION — WC-037 AUTHORIZED (Trust Layer Sprint 1 — Audit Trail Sink)
+Phase:                IMPLEMENTATION — WC-043 DONE · WC-034 BLOCKED (Keycloak) · WBE complete through GOAL-004
 Infrastructure:       Azure live — waooaw-dev-kv (Key Vault) · OIDC auth · Sprint Dashboard: Issue #7
 Monitoring:           Sprint Dashboard: github.com/dlai-sd/waooaw-platform/issues/7
 Web:                  web/WAOOAWHome.html — Landing page v1.0 + Auth modal
-CCTs:                 65 specified | Simulations: 30 | Pipeline tests: 762 passing
-Sprint Registry:      SPRINT-REGISTRY.md — all 40 WCs, active/planned/closed
+CCTs:                 72 specified | Simulations: 30 | WBE billing-engine: 361/361 passing
+Sprint Registry:      SPRINT-REGISTRY.md — all 41 WCs, 40 closed · 1 blocked
 Company:              DLAI Satellite Data (OPC) Pvt Ltd · CIN: U62090PN2024OPC230499 · Pune, India
 Stewards:             Yogesh Khandge (Founder) · Sujay Khandge (Business Growth) · Ojal Khandge (Ethics Officer)
 ```
@@ -31,9 +31,9 @@ The platform has entered full autonomous implementation. The Autonomous Sprint A
 generates production-grade code, reviews its own PR, merges, and advances to the next sprint — without human intervention.
 
 ```
-Current sprint:  WC-037 — Constitutional Audit Trail Sink (CE audit_sink WORM schema + BP payload_store + DPDPA endpoint)
-Sprint status:   AUTHORIZED — Founder 2026-08-06
-Next sprints:    WC-038 (Provider Registry + oauth-vault) → WC-039 (CTG + AIR refactor) → WC-040/041 (Skill Architecture)
+Last sprint:     WC-043 — WBE-S8 Reconciliation CCT Suite + Coverage Gate (CCT-PREPAID-01, CCT-SELFAUDIT-01 full, 94% coverage)
+Sprint status:   DONE — 2026-08-07 · 361/361 tests passing
+Next sprints:    WC-034 (Web Portal — BLOCKED: Keycloak) · or AIR WBE integration sprint (WBE reserve call before LLM dispatch)
 Sprint registry: SPRINT-REGISTRY.md
 ```
 
