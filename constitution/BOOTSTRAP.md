@@ -563,6 +563,26 @@ Run full test suite (per GENESIS Engineering Quality Mandate):
   - Constitutional Compliance Tests (mandatory — Evidence First, Human Override, etc.)
   - Security scan, performance tests as applicable
 
+⛔ C-080 TEST EXECUTION MANDATE — ALWAYS ENFORCED:
+  Virtual environments (.venv, venv/, pip install on host) are CONSTITUTIONALLY PROHIBITED.
+  Every test run — in any session, in any sprint, for any office — MUST use the Docker test-runner.
+
+  CORRECT:
+    docker compose run --rm test-runner pytest tests/                        # all Python tests
+    docker compose run --rm test-runner pytest tests/<service>/ -v          # scoped
+    docker compose run --rm test-runner pytest tests/<service>/ --cov=<pkg> # with coverage
+    docker compose run --rm test-runner ruff check src/ tests/              # linting
+    dotnet test tests/<project>.Tests/                                       # .NET (host devcontainer SDK — correct)
+
+  PROHIBITED (constitutional violation):
+    source .venv/bin/activate
+    python -m pytest
+    pip install <anything>
+    Any direct host Python invocation for test execution
+
+  The test-runner image IS the test execution environment. Volume-mounted at .:/workspace —
+  code changes reflect immediately without rebuild. No venv needed, none permitted.
+
 Branch strategy:
   - Work on a feature branch (never directly on main)
   - Commit with clear, traceable messages

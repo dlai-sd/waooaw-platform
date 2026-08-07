@@ -457,7 +457,22 @@ python3 scripts/complete_sprint.py             # apply
 | C-066 Tier 2A | Groomer runs autonomously in preflight without per-task approval |
 | C-070 Third Instinct | Production code MUST go through pipeline, never Copilot session |
 | C-077 FinOps | Groomer uses Haiku (cheap), not Frontier model |
+| C-080 Docker Test Isolation | All test execution via `docker compose run --rm test-runner`. Virtual environments PROHIBITED. |
 | C-082 Build Gate | `compile_gate` runs after every subtask |
 | C-084 Step Dependency | `depends_on` chain enforced; scaffold failure halts dependents |
 | C-086 Simulation | SIM-PL-002 PASS required before first LLM call per task |
 | ADR-036 Blueprint-First | Skeleton injected into LLM context; body implementation only |
+
+### C-080 Enforcement — Test Execution Reference
+
+⛔ **Virtual environments are constitutionally prohibited.** Any `source .venv/bin/activate`, `python -m pytest`, or direct host Python invocation for tests is a C-080 violation regardless of sprint, office, or session mode.
+
+| Operation | Correct command |
+|---|---|
+| Run all Python tests | `docker compose run --rm test-runner pytest tests/` |
+| Run scoped tests | `docker compose run --rm test-runner pytest tests/<service>/ -v` |
+| Run with coverage | `docker compose run --rm test-runner pytest tests/<service>/ --cov=<pkg> --cov-report=term-missing` |
+| Lint | `docker compose run --rm test-runner ruff check src/ tests/` |
+| .NET tests | `dotnet test tests/<project>.Tests/` (host devcontainer SDK — correct) |
+
+The `test-runner` service volume-mounts `.:/workspace` — code changes reflect immediately; no rebuild needed between edits.
