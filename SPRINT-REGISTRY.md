@@ -1,6 +1,6 @@
 # WAOOAW Platform — Sprint Registry
 
-**Last Updated:** 2026-08-07 · **Version:** 1.42.0 · **Total WCs:** 40 (38 closed · 1 active · 0 planned · 1 blocked)
+**Last Updated:** 2026-08-07 · **Version:** 1.44.0 · **Total WCs:** 41 (40 closed · 0 active · 0 planned · 1 blocked)
 
 ---
 
@@ -8,10 +8,9 @@
 
 | WC | Title | Track | Status | Depends On | Key Outcome |
 |---|---|---|---|---|---|
-| **WC-042** | WBE-S7 — Single Onboarding Payment + Renewal Saga | WBE + BP Temporal | **✅ AUTHORIZED** | FA-029 ✅ | One Razorpay order activates subscription + wallet; RenewalFailureSaga Day1/3/7/14; C-090 grandfather enforced |
-| WC-034 | Web Portal — Founder Admin + Customer | Next.js 14 | ⚠️ BLOCKED | Keycloak + WBE-S7 | Customer self-service portal — hiring wizard, approval dashboard, performance view |
+| **WC-034** | Web Portal — Founder Admin + Customer | Next.js 14 | ⚠️ BLOCKED | Keycloak + WBE-S7 | Customer self-service portal — hiring wizard, approval dashboard, performance view |
 
-**Next after WC-042:** WBE-S8 (Reconciliation full CCT suite) or WC-034 unblocks once WC-042 ships.
+**Next:** WC-034 unblocks (Keycloak + WBE now ready) or AIR WBE integration sprint.
 
 ---
 
@@ -57,6 +56,8 @@
 | WC-039 | Trust Layer S3 — CTG Library + AIR Refactor | Platform IT Expert | 1.40.0 | `ConstitutionalToolGateway` 9-step pipeline; CE before every LLM call; AIR PSE routes via CTG; TL 20/20 + AIR 22/22 |
 | WC-040 | Skill Architecture S1 — Skill Catalog | Platform IT Expert | 1.41.0 | `content_publish@1.0.0` in catalog; Employment Contract `skills[]`; unknown skills 422 at hire; BP 44/44 |
 | WC-041 | Skill Architecture S2 — Skill Runtime | Platform IT Expert | 1.42.0 | `SkillResolver`, `IntentCrystallizer`, `SessionExecutor`; C-041 tool gate + crystallizer gate; PR 20/20 |
+| WC-042 | WBE-S7 — Single Onboarding Payment + Renewal Saga | Platform IT Expert | 1.43.0 | Razorpay onboarding order + webhook; DEMOWAOOAW/UATWAOOAW bypass; C-090 grandfather; RenewalFailureSaga; 350/350 tests |
+| WC-043 | WBE-S8 — Reconciliation Full CCT Suite + Coverage Gate | Platform IT Expert | 1.44.0 | CCT-PREPAID-01 (`/buckets` reserve endpoint); CCT-SELFAUDIT-01 (discrepancy→halt→FA); 94% coverage; 361/361 tests |
 
 ---
 

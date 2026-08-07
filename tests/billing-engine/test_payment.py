@@ -454,3 +454,113 @@ class TestCCT_GRANDFATHER_01:
             )
 
         assert exc_info.value.status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# Payment router HTTP-level tests (covers payment/router.py lines 52-62, 77-115, 125-143)
+# ---------------------------------------------------------------------------
+
+
+class TestPaymentRouterHTTP:
+    """HTTP-level tests for payment/router.py route handlers."""
+
+    @pytest.mark.asyncio
+    async def test_onboarding_order_endpoint_demo_coupon(self):
+        """POST /payments/onboarding-order with DEMOWAOOAW → router returns bypass order."""
+        from httpx import ASGITransport, AsyncClient
+        from main import app
+
+        body = {
+            "customer_id": str(uuid.uuid4()),
+            "agent_type": "DMA",
+            "bundle_tier": "STARTER",
+            "subscription_amount_paise": 49900,
+            "wallet_seed_paise": 100000,
+            "coupon_code": "DEMOWAOOAW",
+        }
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as c:
+            resp = await c.post("/payments/onboarding-order", json=body)
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["is_bypass"] is True
+        assert data["amount_paise"] == 0
+        assert data["coupon_applied"] == "DEMOWAOOAW"
+
+    @pytest.mark.asyncio
+    async def test_webhook_ignores_non_payment_captured_events(self):
+        """POST /payments/webhooks/razorpay with unknown event → 200 ignored."""
+        from httpx import ASGITransport, AsyncClient
+        from main import app
+
+        payload = {
+            "event": "order.paid",
+            "payload": {},
+        }
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as c:
+            resp = await c.post(
+                "/payments/webhooks/razorpay",
+                json=payload,
+                headers={"X-Razorpay-Signature": ""},
+            )
+
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "ignored"
+        assert resp.json()["event"] == "order.paid"
+
+    @pytest.mark.asyncio
+    async def test_webhook_returns_400_when_customer_id_missing(self):
+        """POST /payments/webhooks/razorpay with missing customer_id → 400 MISSING_CUSTOMER_ID."""
+        from httpx import ASGITransport, AsyncClient
+        from main import app
+
+        payload = {
+            "event": "payment.captured",
+            "payload": {
+                "payment": {
+                    "entity": {
+                        "order_id": "order_abc",
+                        "id": "pay_abc",
+                        "notes": {},
+                    }
+                }
+            },
+        }
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as c:
+            resp = await c.post(
+                "/payments/webhooks/razorpay",
+                json=payload,
+                headers={"X-Razorpay-Signature": "sig"},
+            )
+
+        assert resp.status_code == 400
+        assert resp.json()["detail"]["code"] == "MISSING_CUSTOMER_ID"
+
+    @pytest.mark.asyncio
+    async def test_activate_bypass_returns_400_when_not_bypass(self):
+        """POST /payments/activate-bypass with is_bypass=False → 400 NOT_A_BYPASS_ORDER."""
+        from httpx import ASGITransport, AsyncClient
+        from main import app
+
+        body = {
+            "razorpay_order_id": "order_abc",
+            "razorpay_payment_id": "pay_abc",
+            "razorpay_signature": "",
+            "customer_id": str(uuid.uuid4()),
+            "agent_type": "DMA",
+            "bundle_tier": "STARTER",
+            "is_bypass": False,
+        }
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as c:
+            resp = await c.post("/payments/activate-bypass", json=body)
+
+        assert resp.status_code == 400
+        assert resp.json()["detail"]["code"] == "NOT_A_BYPASS_ORDER"
