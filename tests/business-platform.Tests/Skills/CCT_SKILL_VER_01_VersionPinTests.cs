@@ -131,6 +131,29 @@ public sealed class CCT_SKILL_VER_01_VersionPinTests
         var json = await response.Content.ReadFromJsonAsync<JsonElement>();
         json.GetProperty("error").GetString().Should().Be("SKILL_NOT_FOUND");
     }
+
+    // ── Test 5: GET pinned DEPRECATED version → 200 (ADR-043 §5) ────────────
+    // R-023 GAP-002 fix: a skill that has been deprecated must still be resolvable
+    // by pinned version so existing Employment Contract assignments stay valid.
+
+    [Fact]
+    public async Task GetPinnedVersion_Deprecated_Returns200()
+    {
+        // Arrange — seed a DEPRECATED @0.9.0 entry
+        var client = _factory.CreateClientWithDeprecated(TenantId);
+
+        // Act
+        var response = await client.GetAsync("/api/v1/skills/content_publish/0.9.0");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK,
+            because: "CCT-SKILL-VER-01 / R-023 GAP-002: DEPRECATED skills must be resolvable " +
+                     "for existing Employment Contract assignments (ADR-043 §5)");
+
+        var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+        json.GetProperty("version").GetString().Should().Be("0.9.0");
+        json.GetProperty("status").GetString().Should().Be("DEPRECATED");
+    }
 }
 
 // ─── WebApplicationFactory with two-version catalog ──────────────────────────
@@ -229,6 +252,37 @@ public sealed class SkillVersionTestFactory : WebApplicationFactory<Program>
                     Status      = "PUBLISHED",
                     PublishedAt = now,                // more recent → returned as "latest"
                 });
+            db.SaveChanges();
+        }
+
+        var c = CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        c.DefaultRequestHeaders.Add("x-test-tenant-id", tenantId);
+        return c;
+    }
+
+    /// <summary>
+    /// Returns a client seeded with content_publish@0.9.0 DEPRECATED in addition to the
+    /// normal two PUBLISHED versions — tests ADR-043 §5 pinned resolution of deprecated skills.
+    /// </summary>
+    public HttpClient CreateClientWithDeprecated(string tenantId)
+    {
+        using var scope   = Services.CreateScope();
+        var dbFactory     = scope.ServiceProvider.GetRequiredService<IDbContextFactory<SkillCatalogDbContext>>();
+        using var db      = dbFactory.CreateDbContext();
+
+        if (!db.Skills.Any(s => s.SkillId == "content_publish" && s.Version == "0.9.0"))
+        {
+            db.Skills.Add(new SkillEntry
+            {
+                SkillId      = "content_publish",
+                Version      = "0.9.0",
+                DisplayName  = "Content Publishing (legacy)",
+                Definition   = "{\"version\":\"0.9.0\"}",
+                CctSuite     = [],
+                Status       = "DEPRECATED",
+                PublishedAt  = DateTimeOffset.UtcNow.AddDays(-30),
+                DeprecatedAt = DateTimeOffset.UtcNow.AddDays(-7),
+            });
             db.SaveChanges();
         }
 

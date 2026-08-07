@@ -106,9 +106,12 @@ public sealed class SkillsController : ControllerBase
     {
         await using var db = await _dbFactory.CreateDbContextAsync(ct);
 
+        // ADR-043 §5: DEPRECATED skills remain resolvable for existing Employment Contract
+        // assignments. Only DRAFT skills are excluded — they were never surfaced to callers.
         var skill = await db.Skills
             .FirstOrDefaultAsync(
-                s => s.SkillId == skillId && s.Version == version && s.Status == "PUBLISHED",
+                s => s.SkillId == skillId && s.Version == version
+                  && (s.Status == "PUBLISHED" || s.Status == "DEPRECATED"),
                 ct);
 
         if (skill is null)
@@ -237,15 +240,18 @@ public sealed class SkillsController : ControllerBase
 
     // ─── Helper ──────────────────────────────────────────────────────────────
 
-    private static SkillResponse ToResponse(SkillEntry s)
+    private SkillResponse ToResponse(SkillEntry s)
     {
         JsonElement def;
         try
         {
             def = JsonDocument.Parse(s.Definition).RootElement;
         }
-        catch
+        catch (JsonException ex)
         {
+            _logger.LogError(ex,
+                "SkillEntry Definition is not valid JSON — returning empty object. SkillId={SkillId} Version={Version}",
+                s.SkillId, s.Version);
             def = JsonDocument.Parse("{}").RootElement;
         }
         return new SkillResponse(s.SkillId, s.Version, s.DisplayName, def, s.CctSuite, s.Status, s.PublishedAt);

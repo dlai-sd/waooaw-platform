@@ -33,9 +33,10 @@ CREATE POLICY skills_read_published
     FOR SELECT
     USING (status = 'PUBLISHED');
 
--- Service account (bp_app) may insert / update — no tenant restriction on catalog
-GRANT SELECT ON business.skills TO bp_ro;
-GRANT SELECT, INSERT, UPDATE ON business.skills TO bp_app;
+-- Service account (business_app) may insert / update — no tenant restriction on catalog
+-- runtime_app (Professional Runtime + AI Runtime) may read PUBLISHED rows via RLS policy.
+GRANT SELECT ON business.skills TO runtime_app;
+GRANT SELECT, INSERT, UPDATE ON business.skills TO business_app;
 
 -- ── Seed: content_publish@1.0.0 ──────────────────────────────────────────────
 INSERT INTO business.skills (

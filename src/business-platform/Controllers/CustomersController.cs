@@ -30,7 +30,11 @@ public sealed record RegisterCustomerRequest(
 /// Includes C-038 pro-rata billing anchor fields.
 /// </summary>
 /// <summary>A pinned skill assignment in an Employment Contract (ADR-043 §4).</summary>
-public sealed record SkillAssignment(string SkillId, string Version);
+public sealed record SkillAssignment(
+    string SkillId,
+    string Version,
+    /// <summary>UTC timestamp when the skill was assigned. ADR-043 §4: assigned_at.</summary>
+    DateTimeOffset AssignedAt = default);
 
 public sealed record HireAgentRequest(
     string ContractId,
@@ -284,7 +288,7 @@ public sealed class CustomersController : ControllerBase
                 contract_id                 = request.ContractId,
                 professional_type           = request.ProfessionalType,
                 skill_id                    = request.SkillId,
-                skills                      = request.Skills ?? [],
+                skills                      = request.Skills?.Select(s => s with { AssignedAt = proRataBillingStartDate }).ToList() ?? [],
                 decision_space_version      = request.DecisionSpaceVersion,
                 approved_budget_inr_paise   = request.ApprovedBudgetInrPaise,
                 billing_cycle_anchor_day    = request.BillingCycleAnchorDay,
