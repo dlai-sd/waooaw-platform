@@ -8,6 +8,25 @@ types: `feat` | `fix` | `constitutional` | `cct` | `chore` | `refactor` | `secur
 
 ---
 
+## [1.42.0] — 2026-08-07 (WC-041 Skill Architecture Sprint 2: Skill Runtime in Professional Runtime)
+
+### Skill Runtime — ADR-043 §3
+
+**IB:** IB-011 | **Sprint:** WC-041 | **Office:** Platform IT Expert (INST-010)
+
+- `feat(professional-runtime)`: `skill_resolver.py` — `SkillResolver` resolves skill manifests from BP Skill Catalog at session open; `SessionSkillContext` (authorized_tools, crystallizer_configs, dcm_categories, tool_skill_index); `SkillResolutionError` halts session open on unknown skill (ADR-043 §3)
+- `feat(professional-runtime)`: `intent_crystallizer.py` — `IntentCrystallizer` produces `LockedArtifact` via LLM + CE approval evidence record (C-023); `CrystallizerRequiredError` blocks tool calls until artifact exists
+- `feat(professional-runtime)`: `session_executor.py` — `SessionExecutor` pre-flight gate 1 (C-041 tool authorization) + gate 2 (crystallizer required check); `C041ToolAuthorizationError`; passes `dcm_category` from skill definition to dispatcher (CTG in production)
+- `feat(professional-runtime)`: `workflows/paas_workflow.py` — `_locked_artifacts` + `_crystallization_complete` Temporal session state added (ADR-043 §3 — survives session restart)
+- `cct(professional-runtime)`: CCT-SKILL-CP-01 — crystallizer produces LockedArtifact before first publish tool dispatch
+- `cct(professional-runtime)`: CCT-SKILL-CP-02 — tool call without LockedArtifact raises CrystallizerRequiredError (CONSTITUTIONAL_BLOCKED)
+- `cct(professional-runtime)`: CCT-SKILL-CP-03 — dispatcher receives correct dcm_category from skill definition on every tool call
+- `cct(professional-runtime)`: CCT-SKILL-UNKNOWN-01 — session open with unknown skill raises SkillResolutionError
+
+**Test results:** PR 20/20 (+10) · TL 27/27 · AIR 22/22 · Total 69/69 · Zero regressions · WC-041 DONE
+
+---
+
 ## [1.41.0] — 2026-08-07 (WC-040 Skill Architecture Sprint 1: Skill Catalog + Employment Contract Amendment)
 
 ### Skill Architecture Sprint 1 — ADR-043 §2/§4

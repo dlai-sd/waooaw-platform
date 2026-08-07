@@ -224,6 +224,11 @@ class PAASSessionWorkflow:
         self._total_actions_executed: int = 0
         self._in_flight_action: PAASActionInput | None = None
 
+        # WC041-04: Skill Runtime session state (ADR-043 §3).
+        # Persisted in Temporal workflow state — survives session restart.
+        self._locked_artifacts: dict[str, Any] = {}         # skill_id → LockedArtifact
+        self._crystallization_complete: dict[str, bool] = {}  # skill_id → bool
+
         # Signal queues — populated by signal handlers, drained by run().
         self._pending_actions: list[PAASActionInput] = []
         self._pause_requested: bool = False

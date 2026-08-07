@@ -1,6 +1,46 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-08-07 (WC-040 DONE — Skill Catalog + Employment Amendment · 44/44 BP · 49/49 Python · VERSION 1.41.0)
+**Last Updated:** 2026-08-07 (WC-041 DONE — Skill Runtime in Professional Runtime · 20/20 PR · VERSION 1.42.0)
+
+---
+
+## SESSION RECORD — 2026-08-07 (WC-041 SKILL ARCHITECTURE SPRINT 2 — COMPLETE)
+
+### What Was Built
+
+| Task | File | Output | Status |
+|---|---|---|---|
+| WC041-01 | `src/professional-runtime/skill_resolver.py` | `SkillResolver`, `SessionSkillContext`, `SkillAssignment`, `CrystallizerConfig`, `SkillResolutionError` | ✅ |
+| WC041-03 | `src/professional-runtime/intent_crystallizer.py` | `IntentCrystallizer`, `LockedArtifact`, `CrystallizerRequiredError` | ✅ |
+| WC041-02 | `src/professional-runtime/session_executor.py` | `SessionExecutor` (C-041 gate + crystallizer gate + dispatcher), `C041ToolAuthorizationError` | ✅ |
+| WC041-04 | `src/professional-runtime/workflows/paas_workflow.py` | `_locked_artifacts` + `_crystallization_complete` Temporal session state | ✅ |
+| WC041-05 | `tests/professional-runtime/test_skill_runtime.py` | CCT-SKILL-CP-01 (2 tests), CCT-SKILL-CP-02 (3 tests), CCT-SKILL-CP-03 (2 tests), CCT-SKILL-UNKNOWN-01 (3 tests) = 10 tests | ✅ |
+
+### CCT Results
+
+| CCT | Description | Result |
+|---|---|---|
+| CCT-SKILL-CP-01 | IntentCrystallizer produces LockedArtifact before first publish tool call | ✅ 2/2 |
+| CCT-SKILL-CP-02 | Tool call without LockedArtifact raises CrystallizerRequiredError (CONSTITUTIONAL_BLOCKED) | ✅ 3/3 |
+| CCT-SKILL-CP-03 | CE dispatcher receives correct dcm_category from skill definition on every tool call | ✅ 2/2 |
+| CCT-SKILL-UNKNOWN-01 | Session open with unknown skill raises SkillResolutionError — no tool calls permitted | ✅ 3/3 |
+
+### DoD Verification
+
+- [x] `SkillResolver` resolves skill manifests from BP Skill Catalog at session open
+- [x] `SessionSkillContext.authorized_tools` gates all tool calls before CTG (C-041 enforcement)
+- [x] `IntentCrystallizer` executes for skills with `intent_crystallizer.enabled = true`
+- [x] `LockedArtifact` persisted in Temporal session state — survives restart
+- [x] CCT-SKILL-CP-01: crystallizer called before first publish tool in `content_publish` skill
+- [x] CCT-SKILL-CP-02: tool call without locked artifact → MCPToolError CONSTITUTIONAL_BLOCKED
+- [x] CCT-SKILL-CP-03: dispatcher called with correct dcm_category for every tool call
+- [x] CCT-SKILL-UNKNOWN-01: session fails to open on unresolvable skill
+- [x] All existing PR tests (CCT-PR-01) still passing — 10/10
+- [x] `ruff` clean (3 auto-fixed unused imports)
+- [x] PR 20/20 (+10) · TL 27/27 · AIR 22/22 · Total 69/69 · Zero regressions
+- [x] VERSION 1.42.0, CHANGELOG entry, PROJECT_STATE updated
+
+**Test results: PR 20/20 (+10) · TL 27/27 · AIR 22/22 · Total 69/69 · Zero regressions · Sprint WC-041 = DONE**
 
 ---
 
@@ -1581,7 +1621,7 @@ Each sprint has EA spec gaps documented, SA corrections applied to WC files, and
 ```yaml
 autonomous_halt: false
 platform_phase: IMPLEMENTATION
-current_sprint: WC-041
+current_sprint: WC-042
 sprint_status: READY
 branch: main
 consecutive_failures: 0
@@ -1611,13 +1651,18 @@ tasks_done:
   - WC040-04
   - WC040-05
   - WC040-06
+  - WC041-01
+  - WC041-02
+  - WC041-03
+  - WC041-04
+  - WC041-05
 tasks_remaining: []
 notes: |
-  2026-08-07: WC-040 DONE — Skill Catalog + Employment Contract Amendment.
-  BP 44/44 · TL 27/27 · AIR 22/22 · Total 93/93 · VERSION 1.41.0.
-  CCT-SKILL-CAT-01, CCT-SKILL-VER-01, CCT-SKILL-AMEND-01 all passing.
-  GAP-002 (EA R-022) fixed: CTG startup fail-fast in pse/router.py.
-  WC-041 (Skill Runtime in PR) = READY.
+  2026-08-07: WC-041 DONE — Skill Runtime in Professional Runtime.
+  PR 20/20 (+10) · TL 27/27 · AIR 22/22 · Total 69/69 · VERSION 1.42.0.
+  CCT-SKILL-CP-01/02/03 + CCT-SKILL-UNKNOWN-01 all passing.
+  SkillResolver + SessionExecutor + IntentCrystallizer committed.
+  WC-042 = next sprint (check INSTITUTIONAL_BACKLOG for next item).
 ```
 
 ---
