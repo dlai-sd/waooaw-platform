@@ -1,6 +1,6 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-08-08 (WC-038 EA review DONE — 26/26 tests · 91% coverage · WC-039 READY)
+**Last Updated:** 2026-08-07 (WC-039 DONE — 42/42 tests · ADR-045 docker strategy · WC-040 READY)
 
 ---
 
@@ -57,6 +57,54 @@ EA (INST-004) reviewed the WC-037 implementation and identified **3 bugs**, all 
 - [x] All existing CE + BP tests still passing (82/82, 33/33 — zero regression)
 - [x] `dotnet build` clean on CE + BP
 - [x] VERSION 1.38.0, CHANGELOG entry, PROJECT_STATE updated
+
+---
+
+## SESSION RECORD — 2026-08-07 (WC-039 CTG LIBRARY + AIR PSE REFACTOR — COMPLETE)
+
+### What Was Built
+
+| Task | File | Output | Status |
+|---|---|---|---|
+| WC039-01 | `src/trust-layer/ctg/models.py` | `SessionContext`, `MCPToolError`, `GatewayResult`, `ProviderConfig`, `ConstitutionalBlockError` | ✅ |
+| WC039-02 | `src/trust-layer/ctg/registry_client.py` | `ProviderRegistryClient` with 60s TTL in-memory cache; BP `GET /api/v1/providers/{name}` | ✅ |
+| WC039-03 | `src/trust-layer/ctg/exception_translator.py` | `ExceptionTranslator.translate()` — sanitised TIMEOUT/TOKEN_DEGRADED/PROVIDER_ERROR mapping; token never in error | ✅ |
+| WC039-04 | `src/trust-layer/ctg/gateway.py` | `ConstitutionalToolGateway` — ADR-042 §2 9-step pipeline; CE first; `ConstitutionalBlockError` on DENY | ✅ |
+| WC039-05 | `src/ai-runtime/pse/router.py` | `_make_gateway()` factory; `route_and_dispatch` calls `gateway.call("llm.complete", ...)` via CTG | ✅ |
+| WC039-06 | `tests/trust-layer/test_ctg.py` | CCT-CTG-01/02/03/04 (12 tests) + ExceptionTranslator (6) + RegistryClient cache (2) = 20 tests | ✅ |
+| WC039-06 | `tests/ai-runtime/test_pse_router.py` | TestSelectTier (5), TestTrialTierOverride (6), TestDispatchOllama (4), TestStubDispatchers (2), TestRouteAndDispatch (5) = 22 tests | ✅ |
+| docker | `architecture/reference/dockerfiles/Dockerfile.test-runner` | `COPY --chown=waooaw:waooaw` — eliminates ~500s chown rebuild bottleneck | ✅ |
+| docker | `.dockerignore` | Build context 1.52GB → 613KB (excludes .venv, .NET bin/obj) | ✅ |
+| docker | `adr/ADR-045-per-service-lean-docker-image-strategy.md` | One image per stack; BuildKit cache mounts; image tagging for blue-green; profiles | ✅ |
+| docker | `architecture/reference/dockerfiles/Dockerfile.test-runner-python` | Lean Python-only runner (~350MB vs 1.5GB); `--mount=type=cache` pip | ✅ |
+| docker | `docker-compose.yml` | `test-runner-python` service (profile: test-python); monolithic runner deprecated | ✅ |
+| docker | `requirements-test.txt` | `respx>=0.21` added | ✅ |
+
+### CCT Results
+
+| CCT | Description | Result |
+|---|---|---|
+| CCT-CTG-01 | CE.ValidateAction called before any external call | ✅ 3/3 |
+| CCT-CTG-02 | Token absent from all MCPToolError payloads | ✅ 3/3 |
+| CCT-CTG-03 | Evidence record written to audit_sink on every call | ✅ 3/3 |
+| CCT-CTG-04 | CE DENY raises ConstitutionalBlockError — vault/executor never called | ✅ 3/3 |
+
+### DoD Verification
+
+- [x] `ctg/` package: models, registry_client (60s TTL), exception_translator, gateway
+- [x] ADR-042 §2 9-step pipeline: CE.ValidateAction → oauth-vault → execute → audit_sink
+- [x] ConstitutionalBlockError on CE DENY — no external call made
+- [x] Token held as local var only — never in MCPToolError, never in logs
+- [x] AIR PSE router: direct LLM dispatch replaced with `gateway.call()`
+- [x] CCT-CTG-01/02/03/04 all passing (12 tests)
+- [x] All 42 tests passing (TL 20/20 · AIR 22/22)
+- [x] ruff check clean
+- [x] ADR-045 written — per-service lean Docker image strategy documented
+- [x] `Dockerfile.test-runner-python` created — lean Python runner replacing monolithic
+- [x] Codespaces disk pressure eliminated (no .NET SDK + Node.js in Python test runs)
+- [x] VERSION 1.40.0, CHANGELOG entry, PROJECT_STATE updated
+
+**Test results: TL 20/20 · AIR 22/22 · Total 42/42 · Zero regressions · Sprint WC-039 = DONE · WC-040 = READY**
 
 ---
 
@@ -1488,7 +1536,7 @@ Each sprint has EA spec gaps documented, SA corrections applied to WC files, and
 ```yaml
 autonomous_halt: false
 platform_phase: IMPLEMENTATION
-current_sprint: WC-039
+current_sprint: WC-040
 sprint_status: READY
 branch: main
 consecutive_failures: 0
@@ -1506,13 +1554,18 @@ tasks_done:
   - WC038-05
   - WC038-06
   - WC038-07
-tasks_remaining:
   - WC039-01
   - WC039-02
   - WC039-03
+  - WC039-04
+  - WC039-05
+  - WC039-06
+tasks_remaining: []
 notes: |
-  2026-08-08: WC-038 DONE — Provider Registry + oauth-vault complete.
-  CE 82/82 · BP 33/33 · TL 12/12. WC-039 (CTG + AIR refactor) = READY.
+  2026-08-07: WC-039 DONE — CTG library + AIR PSE router refactor complete.
+  TL 20/20 · AIR 22/22 · Total 42/42. ADR-045 (lean Docker images) written.
+  Dockerfile.test-runner-python created (350MB vs 1.5GB, no .NET/Node).
+  WC-040 (Skill Architecture Sprint 1) = READY.
 ```
 
 ---

@@ -8,6 +8,31 @@ types: `feat` | `fix` | `constitutional` | `cct` | `chore` | `refactor` | `secur
 
 ---
 
+## [1.40.0] — 2026-08-07 (WC-039 CTG Library + AIR PSE Router Refactor)
+
+### Trust Layer Sprint 3 — ADR-042 §2 Constitutional Tool Gateway
+
+**IB:** IB-010 | **Sprint:** WC-039 | **Office:** Platform IT Expert (INST-010)
+
+- `feat(trust-layer)`: `ctg/models.py` — `SessionContext`, `MCPToolError`, `GatewayResult`, `ProviderConfig`, `ConstitutionalBlockError`
+- `feat(trust-layer)`: `ctg/registry_client.py` — `ProviderRegistryClient` with 60s TTL in-memory cache
+- `feat(trust-layer)`: `ctg/exception_translator.py` — sanitising exception-to-`MCPToolError` translation (token never in error payload)
+- `feat(trust-layer)`: `ctg/gateway.py` — `ConstitutionalToolGateway` implementing ADR-042 §2 9-step pipeline (CE.ValidateAction → oauth-vault → execute → audit_sink)
+- `constitutional(ai-runtime)`: `pse/router.py` — direct LLM dispatch replaced with `gateway.call()` via CTG; `ConstitutionalBlockError` propagates unchanged
+- `cct(trust-layer)`: CCT-CTG-01 CE called first before any external call (3 tests)
+- `cct(trust-layer)`: CCT-CTG-02 token absent from all error payloads (3 tests)
+- `cct(trust-layer)`: CCT-CTG-03 evidence record written to audit sink on every call (3 tests)
+- `cct(trust-layer)`: CCT-CTG-04 CE DENY raises ConstitutionalBlockError — vault never called (3 tests)
+- `chore(docker)`: `architecture/reference/dockerfiles/Dockerfile.test-runner` — `COPY --chown` eliminates ~500s chown rebuild bottleneck
+- `chore(docker)`: `.dockerignore` — build context reduced from 1.52GB to 613KB (excludes .venv, .NET bin/obj)
+- `constitutional(docker)`: `ADR-045` — per-service lean Docker image strategy (no multi-runtime images)
+- `chore(docker)`: `Dockerfile.test-runner-python` — lean Python-only runner (~350MB vs 1.5GB); BuildKit pip cache mount
+- `chore(docker)`: `docker-compose.yml` — `test-runner-python` service added (profile: test-python); monolithic runner deprecated
+
+**Test results:** TL 20/20 · AIR 22/22 · Total 42/42 · ruff clean · Zero regressions
+
+---
+
 ## [1.39.1] — 2026-08-08 (WC-038 EA Review — gaps fixed)
 
 ### Enterprise Architect Review (INST-004) — R-021

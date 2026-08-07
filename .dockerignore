@@ -1,0 +1,32 @@
+# Excludes from Docker build context
+# .venv/ is excluded because the test-runner uses its own Python environment (C-080)
+.venv/
+.git/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+node_modules/
+.next/
+coverage/
+.coverage
+htmlcov/
+logs/
+*.log
+
+# .NET build artifacts — bin/ and obj/ are compile outputs, not source
+# Without this exclusion, ~970 DLL files bloat the build context
+src/**/bin/
+src/**/obj/
+tests/**/bin/
+tests/**/obj/
+architecture/**/bin/
+architecture/**/obj/
+*.dll
+*.pdb
+*.nupkg

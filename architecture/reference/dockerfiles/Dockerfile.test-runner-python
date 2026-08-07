@@ -1,0 +1,38 @@
+# Dockerfile.test-runner-python
+# constitutional_basis: C-080 (Docker Test Isolation), ADR-045 (Per-Service Lean Images)
+# ib_item: IB-009
+#
+# Python-only test runner. No .NET SDK. No Node.js.
+# Use for: all Python service tests (trust-layer, ai-runtime, business-platform, gateway).
+#
+# Usage:
+#   docker compose --profile test-python run --rm test-runner-python pytest tests/trust-layer/ tests/ai-runtime/ -v
+#   docker compose --profile test-python run --rm test-runner-python ruff check src/
+#
+# ADR-045 §2: dependency layers precede code layers.
+# ADR-045 §2: --mount=type=cache for pip (no re-download on incremental builds).
+
+FROM python:3.12-slim-bookworm
+
+RUN groupadd -r waooaw && useradd -r -g waooaw waooaw
+
+WORKDIR /workspace
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Layer 3: install deps — busted only when requirements-test.txt changes
+COPY requirements-test.txt /workspace/requirements-test.txt
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install -r requirements-test.txt
+
+# Layer 5: source — bind mount overrides at runtime; baked copy for CI environments without bind mounts
+COPY --chown=waooaw:waooaw . /workspace/
+
+RUN chmod +x scripts/*.sh 2>/dev/null || true
+
+USER waooaw
+
+CMD ["python3", "-m", "pytest", "tests/", "-v", "--tb=short", "--ignore=tests/dotnet", "--ignore=tests/ts"]

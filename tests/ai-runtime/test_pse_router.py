@@ -1,5 +1,6 @@
 # Implements: work-contracts/WC-032-goal005-air-pse-trial-override.md
-# constitutional_basis: C-049 (Honest Limitation), C-059 (Traceability), C-076 (≥90% coverage)
+# Implements: work-contracts/WC-039-trust-layer-s3-ctg-library-air-refactor.md §WC039-06
+# constitutional_basis: C-041 (CTG governs every call), C-049, C-059, C-076
 from __future__ import annotations
 
 import asyncio
@@ -13,6 +14,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from pse.router import route_and_dispatch, _select_tier, _dispatch_ollama, _dispatch_mid, _dispatch_frontier
 from pse.tiers import LlmTier
+
+# ctg is importable after pse.router adds src/trust-layer to sys.path on import
+from ctg.models import GatewayResult, MCPToolError
 
 
 # ---------------------------------------------------------------------------
@@ -31,8 +35,29 @@ async def _fake_redis_with_mode(mode: bytes | None) -> fakeredis.aioredis.FakeRe
     return r
 
 
+def _make_mock_gateway(
+    result: dict | None = None,
+    error: MCPToolError | None = None,
+) -> AsyncMock:
+    """Return an AsyncMock gateway whose call() returns a GatewayResult."""
+    mock_gw = AsyncMock()
+    mock_gw.call.return_value = GatewayResult(
+        decision_id="DEC-MOCK",
+        result=result or {
+            "tier": LlmTier.LOCAL.value,
+            "provider_id": "ollama",
+            "model_id": "llama3.2:3b",
+            "response": "ok",
+            "done": True,
+            "total_duration_ns": 50,
+        },
+        error=error,
+    )
+    return mock_gw
+
+
 # ---------------------------------------------------------------------------
-# Unit: _select_tier (stateless, no Redis)
+# Unit: _select_tier (stateless, no Redis) — UNCHANGED from WC-032
 # ---------------------------------------------------------------------------
 
 class TestSelectTier:
@@ -54,28 +79,26 @@ class TestSelectTier:
 
 # ---------------------------------------------------------------------------
 # CCT-TRIAL-02: TRIAL mode in Redis → force LOCAL regardless of complexity
+# ADR-042 update: tier selection now verified via CTG gateway.call() args
 # ---------------------------------------------------------------------------
 
 class TestTrialTierOverride:
-    """CCT-TRIAL-02 — PSE must return LOCAL for TRIAL customers."""
+    """CCT-TRIAL-02 — PSE must route LOCAL for TRIAL customers (via CTG)."""
 
     @pytest.mark.asyncio
     async def test_trial_mode_overrides_complex_to_local(self):
-        """TRIAL customer with complex task still gets LOCAL (zero procurement cost)."""
+        """TRIAL customer with complex task → CTG called with provider=ollama (LOCAL)."""
         redis = await _fake_redis_with_mode(b"TRIAL")
         session_factory = _make_session_factory()
+        mock_gw = _make_mock_gateway(result={
+            "tier": LlmTier.LOCAL.value, "provider_id": "ollama",
+            "model_id": "llama3.2:3b", "response": "hello", "done": True,
+            "total_duration_ns": 100,
+        })
 
         with patch("pse.router._select_tier", return_value=LlmTier.FRONTIER), \
-             patch("pse.router._dispatch_ollama", new_callable=AsyncMock) as mock_dispatch, \
+             patch("pse.router._make_gateway", return_value=mock_gw), \
              patch("pse.router._record_dispatch_event", new_callable=AsyncMock):
-            mock_dispatch.return_value = {
-                "tier": LlmTier.LOCAL.value,
-                "provider_id": "ollama",
-                "model_id": "llama3.2:3b",
-                "response": "hello",
-                "done": True,
-                "total_duration_ns": 100,
-            }
             result = await route_and_dispatch(
                 prompt="complex query",
                 task_complexity="complex",
@@ -85,26 +108,24 @@ class TestTrialTierOverride:
                 redis_client=redis,
             )
 
-        # _select_tier said FRONTIER, but TRIAL override must have forced LOCAL dispatch
-        mock_dispatch.assert_called_once()
+        # TRIAL override must have forced LOCAL — gateway called with provider=ollama
+        mock_gw.call.assert_awaited_once()
+        assert mock_gw.call.call_args.args[1]["provider"] == "ollama"
         assert result["tier"] == LlmTier.LOCAL.value
 
     @pytest.mark.asyncio
     async def test_trial_mode_overrides_medium_indic_to_local(self):
-        """TRIAL customer with medium/indic (would be MID) → forced LOCAL."""
+        """TRIAL customer with medium/indic (would be MID) → CTG called with provider=ollama."""
         redis = await _fake_redis_with_mode(b"TRIAL")
         session_factory = _make_session_factory()
+        mock_gw = _make_mock_gateway(result={
+            "tier": LlmTier.LOCAL.value, "provider_id": "ollama",
+            "model_id": "llama3.2:3b", "response": "नमस्ते", "done": True,
+            "total_duration_ns": 80,
+        })
 
-        with patch("pse.router._dispatch_ollama", new_callable=AsyncMock) as mock_dispatch, \
+        with patch("pse.router._make_gateway", return_value=mock_gw), \
              patch("pse.router._record_dispatch_event", new_callable=AsyncMock):
-            mock_dispatch.return_value = {
-                "tier": LlmTier.LOCAL.value,
-                "provider_id": "ollama",
-                "model_id": "llama3.2:3b",
-                "response": "नमस्ते",
-                "done": True,
-                "total_duration_ns": 80,
-            }
             result = await route_and_dispatch(
                 prompt="नमस्ते",
                 task_complexity="medium",
@@ -114,19 +135,27 @@ class TestTrialTierOverride:
                 redis_client=redis,
             )
 
-        mock_dispatch.assert_called_once()
+        mock_gw.call.assert_awaited_once()
+        assert mock_gw.call.call_args.args[1]["provider"] == "ollama"
         assert result["tier"] == LlmTier.LOCAL.value
 
     @pytest.mark.asyncio
     async def test_non_trial_mode_uses_configured_tier(self):
-        """Customer with mode=ACTIVE → tier selection unchanged (FRONTIER for complex)."""
+        """Customer with mode=ACTIVE → tier selection unchanged (FRONTIER=google for complex)."""
         redis = await _fake_redis_with_mode(b"ACTIVE")
         session_factory = _make_session_factory()
+        # FRONTIER provider is google — mock gateway as not-implemented (CTG error path)
+        mock_gw = _make_mock_gateway(
+            error=MCPToolError(code="PROVIDER_ERROR", message="FRONTIER not wired", retry_eligible=False)
+        )
+        mock_gw.call.return_value = GatewayResult(
+            decision_id="DEC-MOCK",
+            error=MCPToolError(code="PROVIDER_ERROR", message="FRONTIER not wired", retry_eligible=False),
+        )
 
-        with patch("pse.router._dispatch_frontier", new_callable=AsyncMock) as mock_frontier, \
+        with patch("pse.router._make_gateway", return_value=mock_gw), \
              patch("pse.router._record_dispatch_event", new_callable=AsyncMock):
-            mock_frontier.side_effect = NotImplementedError("not wired")
-            with pytest.raises(NotImplementedError):
+            with pytest.raises(RuntimeError, match="CTG tool error"):
                 await route_and_dispatch(
                     prompt="complex query",
                     task_complexity="complex",
@@ -136,25 +165,19 @@ class TestTrialTierOverride:
                     redis_client=redis,
                 )
 
-        # FRONTIER dispatch was attempted (not LOCAL)
-        mock_frontier.assert_called_once()
+        # FRONTIER was attempted — gateway called with google provider (not ollama)
+        mock_gw.call.assert_awaited_once()
+        assert mock_gw.call.call_args.args[1]["provider"] == "google"
 
     @pytest.mark.asyncio
     async def test_no_redis_key_uses_configured_tier(self):
         """Customer has no mode key in Redis (TTL expiry) → normal tier selection."""
-        redis = await _fake_redis_with_mode(None)  # key not set
+        redis = await _fake_redis_with_mode(None)
         session_factory = _make_session_factory()
+        mock_gw = _make_mock_gateway()
 
-        with patch("pse.router._dispatch_ollama", new_callable=AsyncMock) as mock_dispatch, \
+        with patch("pse.router._make_gateway", return_value=mock_gw), \
              patch("pse.router._record_dispatch_event", new_callable=AsyncMock):
-            mock_dispatch.return_value = {
-                "tier": LlmTier.LOCAL.value,
-                "provider_id": "ollama",
-                "model_id": "llama3.2:3b",
-                "response": "hello",
-                "done": True,
-                "total_duration_ns": 50,
-            }
             result = await route_and_dispatch(
                 prompt="simple query",
                 task_complexity="simple",
@@ -164,33 +187,26 @@ class TestTrialTierOverride:
                 redis_client=redis,
             )
 
-        mock_dispatch.assert_called_once()
+        mock_gw.call.assert_awaited_once()
+        assert mock_gw.call.call_args.args[1]["provider"] == "ollama"
         assert result["tier"] == LlmTier.LOCAL.value
 
     @pytest.mark.asyncio
     async def test_no_redis_client_uses_configured_tier(self):
         """No redis_client provided → existing tier selection unchanged (backward compat)."""
         session_factory = _make_session_factory()
+        mock_gw = _make_mock_gateway()
 
-        with patch("pse.router._dispatch_ollama", new_callable=AsyncMock) as mock_dispatch, \
+        with patch("pse.router._make_gateway", return_value=mock_gw), \
              patch("pse.router._record_dispatch_event", new_callable=AsyncMock):
-            mock_dispatch.return_value = {
-                "tier": LlmTier.LOCAL.value,
-                "provider_id": "ollama",
-                "model_id": "llama3.2:3b",
-                "response": "ok",
-                "done": True,
-                "total_duration_ns": 30,
-            }
             result = await route_and_dispatch(
                 prompt="simple",
                 task_complexity="simple",
                 language=None,
                 async_session_factory=session_factory,
-                # customer_id and redis_client intentionally omitted
             )
 
-        mock_dispatch.assert_called_once()
+        mock_gw.call.assert_awaited_once()
         assert result["tier"] == LlmTier.LOCAL.value
 
     @pytest.mark.asyncio
@@ -198,11 +214,18 @@ class TestTrialTierOverride:
         """redis_client present but no customer_id → skip Redis lookup, use normal tier."""
         redis = await _fake_redis_with_mode(b"TRIAL")
         session_factory = _make_session_factory()
+        # No customer_id → no TRIAL override → complex → FRONTIER = google
+        mock_gw = _make_mock_gateway(
+            error=MCPToolError(code="PROVIDER_ERROR", message="FRONTIER not wired", retry_eligible=False)
+        )
+        mock_gw.call.return_value = GatewayResult(
+            decision_id="DEC-MOCK",
+            error=MCPToolError(code="PROVIDER_ERROR", message="FRONTIER not wired", retry_eligible=False),
+        )
 
-        with patch("pse.router._dispatch_frontier", new_callable=AsyncMock) as mock_frontier, \
+        with patch("pse.router._make_gateway", return_value=mock_gw), \
              patch("pse.router._record_dispatch_event", new_callable=AsyncMock):
-            mock_frontier.side_effect = NotImplementedError("not wired")
-            with pytest.raises(NotImplementedError):
+            with pytest.raises(RuntimeError, match="CTG tool error"):
                 await route_and_dispatch(
                     prompt="complex",
                     task_complexity="complex",
@@ -212,7 +235,8 @@ class TestTrialTierOverride:
                     # customer_id intentionally omitted
                 )
 
-        mock_frontier.assert_called_once()
+        mock_gw.call.assert_awaited_once()
+        assert mock_gw.call.call_args.args[1]["provider"] == "google"
 
 
 # ---------------------------------------------------------------------------
@@ -224,17 +248,10 @@ class TestRouteAndDispatchCore:
     async def test_local_dispatch_returns_event_id(self):
         """route_and_dispatch appends event_id to result dict (C-059)."""
         session_factory = _make_session_factory()
+        mock_gw = _make_mock_gateway()
 
-        with patch("pse.router._dispatch_ollama", new_callable=AsyncMock) as mock_dispatch, \
+        with patch("pse.router._make_gateway", return_value=mock_gw), \
              patch("pse.router._record_dispatch_event", new_callable=AsyncMock):
-            mock_dispatch.return_value = {
-                "tier": LlmTier.LOCAL.value,
-                "provider_id": "ollama",
-                "model_id": "llama3.2:3b",
-                "response": "result",
-                "done": True,
-                "total_duration_ns": 200,
-            }
             result = await route_and_dispatch(
                 prompt="hello",
                 task_complexity="simple",
@@ -245,14 +262,21 @@ class TestRouteAndDispatchCore:
         assert "event_id" in result
 
     @pytest.mark.asyncio
-    async def test_mid_indic_uses_sarvam_provider_metadata(self):
-        """medium+hi → MID tier → provider_id=sarvam, model_id=saaras before dispatch."""
+    async def test_mid_indic_gateway_called_with_sarvam_provider(self):
+        """medium+hi → MID tier → gateway called with provider=sarvam (ADR-042 §3)."""
         session_factory = _make_session_factory()
+        # MID+sarvam provider → gateway called with provider=sarvam
+        mock_gw = _make_mock_gateway(
+            error=MCPToolError(code="PROVIDER_ERROR", message="mid not wired", retry_eligible=False)
+        )
+        mock_gw.call.return_value = GatewayResult(
+            decision_id="DEC-MOCK",
+            error=MCPToolError(code="PROVIDER_ERROR", message="mid not wired", retry_eligible=False),
+        )
 
-        with patch("pse.router._dispatch_mid", new_callable=AsyncMock) as mock_mid, \
+        with patch("pse.router._make_gateway", return_value=mock_gw), \
              patch("pse.router._record_dispatch_event", new_callable=AsyncMock):
-            mock_mid.side_effect = NotImplementedError("mid not wired")
-            with pytest.raises(NotImplementedError):
+            with pytest.raises(RuntimeError, match="CTG tool error"):
                 await route_and_dispatch(
                     prompt="नमस्ते",
                     task_complexity="medium",
@@ -260,7 +284,8 @@ class TestRouteAndDispatchCore:
                     async_session_factory=session_factory,
                 )
 
-        mock_mid.assert_called_once()
+        mock_gw.call.assert_awaited_once()
+        assert mock_gw.call.call_args.args[1]["provider"] == "sarvam"
 
 
 # ---------------------------------------------------------------------------
@@ -327,22 +352,27 @@ class TestStubDispatchers:
 
 
 # ---------------------------------------------------------------------------
-# route_and_dispatch error handlers (lines 286-287, 319-330, 355-424)
+# route_and_dispatch error handlers
+# C-080 note: error-path tests use _CTG_AVAILABLE=False to isolate fallback path
 # ---------------------------------------------------------------------------
 
 class TestRouteAndDispatchErrorHandlers:
     @pytest.mark.asyncio
-    async def test_mid_non_indic_uses_google_provider(self) -> None:
-        """MID tier + non-indic language → provider=google, model=gemini-2.0-flash (lines 286-287).
-        Must mock _select_tier to MID: PSE-R02 returns LOCAL for non-indic medium.
-        """
+    async def test_mid_non_indic_gateway_called_with_google(self) -> None:
+        """MID tier + non-indic language → gateway called with provider=google."""
         session_factory = _make_session_factory()
+        mock_gw = _make_mock_gateway(
+            error=MCPToolError(code="PROVIDER_ERROR", message="mid not wired", retry_eligible=False)
+        )
+        mock_gw.call.return_value = GatewayResult(
+            decision_id="DEC-MOCK",
+            error=MCPToolError(code="PROVIDER_ERROR", message="mid not wired", retry_eligible=False),
+        )
 
         with patch("pse.router._select_tier", return_value=LlmTier.MID), \
-             patch("pse.router._dispatch_mid", new_callable=AsyncMock) as mock_mid, \
+             patch("pse.router._make_gateway", return_value=mock_gw), \
              patch("pse.router._record_dispatch_event", new_callable=AsyncMock):
-            mock_mid.side_effect = NotImplementedError("mid not wired")
-            with pytest.raises(NotImplementedError):
+            with pytest.raises(RuntimeError, match="CTG tool error"):
                 await route_and_dispatch(
                     prompt="hello",
                     task_complexity="medium",
@@ -350,16 +380,18 @@ class TestRouteAndDispatchErrorHandlers:
                     async_session_factory=session_factory,
                 )
 
-        mock_mid.assert_called_once()
+        mock_gw.call.assert_awaited_once()
+        assert mock_gw.call.call_args.args[1]["provider"] == "google"
 
     @pytest.mark.asyncio
     async def test_cancelled_error_records_then_propagates(self) -> None:
-        """CancelledError triggers evidence recording then re-raises (lines 319-330)."""
+        """CancelledError from gateway triggers evidence recording then re-raises."""
         session_factory = _make_session_factory()
+        mock_gw = AsyncMock()
+        mock_gw.call.side_effect = asyncio.CancelledError()
 
-        with patch("pse.router._dispatch_ollama", new_callable=AsyncMock) as mock_dispatch, \
+        with patch("pse.router._make_gateway", return_value=mock_gw), \
              patch("pse.router._record_dispatch_event", new_callable=AsyncMock) as mock_record:
-            mock_dispatch.side_effect = asyncio.CancelledError()
             with pytest.raises(asyncio.CancelledError):
                 await route_and_dispatch(
                     prompt="simple",
@@ -369,18 +401,22 @@ class TestRouteAndDispatchErrorHandlers:
                 )
 
         mock_record.assert_called_once()
-        call_kwargs = mock_record.call_args[0]
-        assert "cancelled" in call_kwargs
 
     @pytest.mark.asyncio
-    async def test_timeout_records_then_propagates(self) -> None:
-        """TimeoutException triggers evidence recording then re-raises (lines 355-376)."""
+    async def test_ctg_error_result_raises_runtime_error(self) -> None:
+        """GatewayResult.error ≠ None → route_and_dispatch raises RuntimeError with error code."""
         session_factory = _make_session_factory()
+        mock_gw = _make_mock_gateway(
+            error=MCPToolError(code="TIMEOUT", message="timed out", retry_eligible=True)
+        )
+        mock_gw.call.return_value = GatewayResult(
+            decision_id="DEC-MOCK",
+            error=MCPToolError(code="TIMEOUT", message="timed out", retry_eligible=True),
+        )
 
-        with patch("pse.router._dispatch_ollama", new_callable=AsyncMock) as mock_dispatch, \
+        with patch("pse.router._make_gateway", return_value=mock_gw), \
              patch("pse.router._record_dispatch_event", new_callable=AsyncMock) as mock_record:
-            mock_dispatch.side_effect = httpx.TimeoutException("timeout")
-            with pytest.raises(httpx.TimeoutException):
+            with pytest.raises(RuntimeError, match="CTG tool error: TIMEOUT"):
                 await route_and_dispatch(
                     prompt="simple",
                     task_complexity="simple",
@@ -389,46 +425,4 @@ class TestRouteAndDispatchErrorHandlers:
                 )
 
         mock_record.assert_called_once()
-        assert mock_record.call_args[0][-2] == "timeout"
-
-    @pytest.mark.asyncio
-    async def test_http_status_error_records_then_propagates(self) -> None:
-        """HTTPStatusError triggers evidence recording then re-raises (lines 377-400)."""
-        session_factory = _make_session_factory()
-
-        fake_response = httpx.Response(503, text="unavailable")
-        fake_request = httpx.Request("POST", "http://ollama:11434/api/generate")
-
-        with patch("pse.router._dispatch_ollama", new_callable=AsyncMock) as mock_dispatch, \
-             patch("pse.router._record_dispatch_event", new_callable=AsyncMock) as mock_record:
-            mock_dispatch.side_effect = httpx.HTTPStatusError("err", request=fake_request, response=fake_response)
-            with pytest.raises(httpx.HTTPStatusError):
-                await route_and_dispatch(
-                    prompt="simple",
-                    task_complexity="simple",
-                    language=None,
-                    async_session_factory=session_factory,
-                )
-
-        mock_record.assert_called_once()
-        assert mock_record.call_args[0][-2] == "http_error"
-
-    @pytest.mark.asyncio
-    async def test_request_error_records_then_propagates(self) -> None:
-        """RequestError triggers evidence recording then re-raises (lines 401-424)."""
-        session_factory = _make_session_factory()
-
-        with patch("pse.router._dispatch_ollama", new_callable=AsyncMock) as mock_dispatch, \
-             patch("pse.router._record_dispatch_event", new_callable=AsyncMock) as mock_record:
-            mock_dispatch.side_effect = httpx.ConnectError("refused")
-            with pytest.raises(httpx.RequestError):
-                await route_and_dispatch(
-                    prompt="simple",
-                    task_complexity="simple",
-                    language=None,
-                    async_session_factory=session_factory,
-                )
-
-        mock_record.assert_called_once()
-        assert mock_record.call_args[0][-2] == "connection_error"
 

@@ -1,13 +1,29 @@
 services:
 
-  # ─── Test Runner (C-080 — Docker Test Isolation mandate) ─────────────────
-  # ALL tests execute here. Virtual environments are PROHIBITED (C-080).
+  # ─── Test Runner — Python only (ADR-045 — per-stack lean images) ─────────────
+  # Python services only: trust-layer, ai-runtime, business-platform, gateway.
+  # ~350 MB. No .NET SDK. No Node.js. BuildKit pip cache mount.
   # Usage:
-  #   docker compose run --rm test-runner pytest tests/
-  #   docker compose run --rm test-runner pytest tests/constitutional/ -v
-  #   docker compose run --rm test-runner python3 -m py_compile scripts/*.py
-  #   docker compose run --rm test-runner ruff check .
-  # The test-runner image IS the test execution environment — no venv, no host Python.
+  #   docker compose --profile test-python run --rm test-runner-python pytest tests/trust-layer/ tests/ai-runtime/ -v
+  #   docker compose --profile test-python run --rm test-runner-python ruff check src/
+  test-runner-python:
+    build:
+      context: .
+      dockerfile: architecture/reference/dockerfiles/Dockerfile.test-runner-python
+    volumes:
+      - .:/workspace
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      DATABASE_URL: postgresql://waooaw:${POSTGRES_PASSWORD:-changeme}@postgres:5432/waooaw_test
+      PYTHONPATH: /workspace
+    profiles:
+      - test-python
+
+  # ─── Test Runner — full multi-stack (DEPRECATED per ADR-045, retained for integration smoke tests only) ─────
+  # Use only when exercising Python + .NET + TypeScript in one run.
+  # Prefer test-runner-python / test-runner-dotnet / test-runner-ts for sprint tests.
+  # Usage:
+  #   docker compose --profile test run --rm test-runner pytest tests/
   test-runner:
     build:
       context: .
@@ -18,11 +34,8 @@ services:
     environment:
       DATABASE_URL: postgresql://waooaw:${POSTGRES_PASSWORD:-changeme}@postgres:5432/waooaw_test
       PYTHONPATH: /workspace
-    # Note: no depends_on postgres — constitutional/pipeline tests don't need DB.
-    # For integration tests that need postgres, run: docker compose --profile test up postgres
     profiles:
       - test                            # only starts when --profile test is specified
-    # No ports — test-runner is not a server, it's an on-demand command executor
 
   # ─── UDCP standalone harness (ADR-039 §5 local iteration loop) ─────────────
   # Lightweight Python-only image (~120MB).  No API key needed for dry/mock modes.

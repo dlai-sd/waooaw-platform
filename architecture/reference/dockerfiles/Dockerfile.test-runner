@@ -43,14 +43,13 @@ RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
 COPY requirements-test.txt /workspace/requirements-test.txt
 RUN pip install --no-cache-dir -r requirements-test.txt
 
-# Copy project files (bind mount in docker-compose.yml overrides this for local dev)
-COPY . /workspace/
+# Copy project files with ownership set at copy-time — eliminates slow post-copy chown layer
+# bind mount in docker-compose.yml overrides this for local dev
+COPY --chown=waooaw:waooaw . /workspace/
 
 # Ensure scripts are executable
 RUN chmod +x scripts/*.sh 2>/dev/null || true
 
-# Run as non-root (OWASP — no root in test containers)
-RUN chown -R waooaw:waooaw /workspace
 USER waooaw
 
 # Default: run all constitutional CCTs

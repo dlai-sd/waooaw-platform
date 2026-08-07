@@ -42,6 +42,7 @@ pyyaml>=6.0                     # YAML parsing (sprint runner)
 PyJWT>=2.8                      # JWT for reviewer GitHub App token
 cryptography>=42.0              # RSA key handling for JWT signing
 fakeredis>=2.0                  # Redis mock for wallet cache tests (test_wallet.py, aioredis built-in since v2)
+respx>=0.21                     # httpx request mock for PSE router / CTG tests
 fastapi>=0.111                  # FastAPI TestClient for billing-engine tests
 sqlalchemy>=2.0                 # SQLAlchemy for wallet integration tests
 aiosqlite>=0.19                 # Async SQLite driver (test_markup.py, billing-engine integration tests)

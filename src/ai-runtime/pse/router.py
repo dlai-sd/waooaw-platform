@@ -1,18 +1,36 @@
 # Implements: architecture/reference/components/ai-runtime.md §0 Provider Abstraction Layer,§1 LLM Gateway
-# constitutional_basis: C-023, C-051, C-059, C-063
+# Implements: adr/ADR-042-provider-registry-constitutional-tool-gateway.md §3 (AIR refactor)
+# constitutional_basis: C-023, C-041, C-051, C-059, C-063
 from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import uuid
 from datetime import datetime, timezone
 from typing import Any
+from uuid import UUID
 
 import httpx
 import sqlalchemy.ext.asyncio as sa_async
 from sqlalchemy import text
 
 from pse.tiers import LlmTier
+
+# CTG import — trust-layer is on PYTHONPATH in Docker (PYTHONPATH=/workspace/src/trust-layer)
+try:
+    import sys
+    import pathlib
+    _tl = str(pathlib.Path(__file__).parent.parent.parent / "trust-layer")
+    if _tl not in sys.path:
+        sys.path.insert(0, _tl)
+    from ctg.gateway import ConstitutionalToolGateway, ToolExecutor
+    from ctg.models import GatewayResult, ProviderConfig, SessionContext
+    _CTG_AVAILABLE = True
+except ImportError:  # pragma: no cover — CTG available in Docker; local dev may lack it
+    _CTG_AVAILABLE = False
+    ConstitutionalToolGateway = None  # type: ignore[assignment,misc]
+    SessionContext = None  # type: ignore[assignment,misc]
 
 logger = logging.getLogger(__name__)
 
@@ -221,6 +239,38 @@ async def _record_dispatch_event(
 # ---------------------------------------------------------------------------
 
 
+def _build_llm_executor() -> "ToolExecutor":
+    """
+    Returns the LLM executor used by CTG for the 'llm.complete' tool.
+    CTG calls this with (tool_name, args, token, config); executor does the HTTP call.
+    """
+    async def _executor(
+        tool_name: str,
+        args: dict[str, Any],
+        token: str | None,
+        config: "ProviderConfig",
+    ) -> dict[str, Any]:
+        provider = args.get("provider", "ollama")
+        language = args.get("language")
+        prompt = args.get("prompt", "")
+        if provider == "ollama":
+            return await _dispatch_ollama(prompt)
+        if provider in ("sarvam", "google") and config.auth_method == "API_KEY":
+            return await _dispatch_mid(prompt, language)
+        return await _dispatch_frontier(prompt)
+    return _executor
+
+
+def _make_gateway() -> "ConstitutionalToolGateway":
+    """Factory used by route_and_dispatch. Tests patch this to inject mocks."""
+    return ConstitutionalToolGateway(
+        bp_base_url=os.getenv("BP_BASE_URL", "http://business-platform:5003"),
+        vault_base_url=os.getenv("OAUTH_VAULT_BASE_URL", "http://oauth-vault:8130"),
+        ce_address=os.getenv("CONSTITUTIONAL_ENGINE_ADDRESS", "constitutional-engine:7000"),
+        executor=_build_llm_executor(),
+    )
+
+
 async def route_and_dispatch(
     prompt: str,
     task_complexity: str,
@@ -228,6 +278,7 @@ async def route_and_dispatch(
     async_session_factory: sa_async.async_sessionmaker,  # type: ignore[type-arg]
     customer_id: str | None = None,
     redis_client: Any | None = None,
+    session_ctx: "SessionContext | None" = None,
 ) -> dict[str, Any]:
     """
     PSE entry point.  Selects tier, dispatches to the appropriate provider,
@@ -303,125 +354,91 @@ async def route_and_dispatch(
     status: str
     error_detail: str
 
-    try:
-        if tier == LlmTier.LOCAL:
-            result = await _dispatch_ollama(prompt)
-        elif tier == LlmTier.MID:
-            result = await _dispatch_mid(prompt, language)
-        else:
-            result = await _dispatch_frontier(prompt)
+    # Build SessionContext for CTG (tenant/contract from session_ctx or platform defaults)
+    _ctx: SessionContext | None = session_ctx
+    if _ctx is None and _CTG_AVAILABLE:
+        try:
+            _tenant_id = UUID(customer_id) if customer_id else UUID(int=0)
+        except ValueError:
+            _tenant_id = UUID(int=0)
+        _ctx = SessionContext(
+            tenant_id=_tenant_id,
+            agent_id="pse",
+            contract_id=customer_id or "",
+            skill_id="llm.complete",
+            decision_space="",
+        )
 
-        status = "success"
-        error_detail = ""
-
-    except asyncio.CancelledError:
-        # C-059: record cancellation evidence before propagating
-        await _record_dispatch_event(
-            async_session_factory,
-            event_id,
-            tier,
-            provider_id,
-            model_id,
-            task_complexity,
-            language,
-            "cancelled",
-            "asyncio.CancelledError",
-        )
-        raise
-
-    except NotImplementedError as exc:
-        error_detail = str(exc)
-        logger.error(
-            "PSE dispatch: provider not implemented event_id=%s tier=%s provider=%s",
-            event_id,
-            tier.value,
-            provider_id,
-            exc_info=True,
-            extra={"context": "pse_dispatch_not_implemented"},
-        )
-        await _record_dispatch_event(
-            async_session_factory,
-            event_id,
-            tier,
-            provider_id,
-            model_id,
-            task_complexity,
-            language,
-            "not_implemented",
-            error_detail,
-        )
-        raise
-
-    except httpx.TimeoutException:
-        error_detail = "httpx.TimeoutException"
-        logger.error(
-            "PSE dispatch: timeout event_id=%s tier=%s provider=%s",
-            event_id,
-            tier.value,
-            provider_id,
-            exc_info=True,
-            extra={"context": "pse_dispatch_timeout"},
-        )
-        await _record_dispatch_event(
-            async_session_factory,
-            event_id,
-            tier,
-            provider_id,
-            model_id,
-            task_complexity,
-            language,
-            "timeout",
-            error_detail,
-        )
-        raise
-
-    except httpx.HTTPStatusError as exc:
-        error_detail = f"httpx.HTTPStatusError status={exc.response.status_code}"
-        logger.error(
-            "PSE dispatch: HTTP error event_id=%s tier=%s provider=%s status=%s",
-            event_id,
-            tier.value,
-            provider_id,
-            exc.response.status_code,
-            exc_info=True,
-            extra={"context": "pse_dispatch_http_error"},
-        )
-        await _record_dispatch_event(
-            async_session_factory,
-            event_id,
-            tier,
-            provider_id,
-            model_id,
-            task_complexity,
-            language,
-            "http_error",
-            error_detail,
-        )
-        raise
-
-    except httpx.RequestError as exc:
-        error_detail = f"httpx.RequestError type={type(exc).__name__}"
-        logger.error(
-            "PSE dispatch: connection error event_id=%s tier=%s provider=%s error_type=%s",
-            event_id,
-            tier.value,
-            provider_id,
-            type(exc).__name__,
-            exc_info=True,
-            extra={"context": "pse_dispatch_connection_error"},
-        )
-        await _record_dispatch_event(
-            async_session_factory,
-            event_id,
-            tier,
-            provider_id,
-            model_id,
-            task_complexity,
-            language,
-            "connection_error",
-            error_detail,
-        )
-        raise
+    # ADR-042 §3: CTG pipeline — CE.ValidateAction → oauth-vault → execute → audit_sink
+    if _CTG_AVAILABLE and _ctx is not None:
+        gw = _make_gateway()
+        try:
+            gw_result: GatewayResult = await gw.call(
+                "llm.complete",
+                {
+                    "provider": provider_id,
+                    "model": model_id,
+                    "prompt": prompt,
+                    "language": language,
+                },
+                _ctx,
+            )
+            if gw_result.error is not None:
+                error_detail = gw_result.error.message
+                status = "failed"
+                await _record_dispatch_event(
+                    async_session_factory,
+                    event_id, tier, provider_id, model_id,
+                    task_complexity, language, status, error_detail,
+                )
+                raise RuntimeError(f"CTG tool error: {gw_result.error.code}")
+            result = gw_result.result or {}
+            status = "success"
+            error_detail = ""
+        except asyncio.CancelledError:
+            await _record_dispatch_event(
+                async_session_factory,
+                event_id, tier, provider_id, model_id,
+                task_complexity, language, "cancelled", "asyncio.CancelledError",
+            )
+            raise
+        except Exception as exc:
+            if not isinstance(exc, RuntimeError) or "CTG tool error" not in str(exc):
+                error_detail = type(exc).__name__
+                status = "failed"
+                await _record_dispatch_event(
+                    async_session_factory,
+                    event_id, tier, provider_id, model_id,
+                    task_complexity, language, status, error_detail,
+                )
+            raise
+    else:
+        # Fallback path when CTG not available (local dev without trust-layer on path)
+        try:
+            if tier == LlmTier.LOCAL:
+                result = await _dispatch_ollama(prompt)
+            elif tier == LlmTier.MID:
+                result = await _dispatch_mid(prompt, language)
+            else:
+                result = await _dispatch_frontier(prompt)
+            status = "success"
+            error_detail = ""
+        except asyncio.CancelledError:
+            await _record_dispatch_event(
+                async_session_factory,
+                event_id, tier, provider_id, model_id,
+                task_complexity, language, "cancelled", "asyncio.CancelledError",
+            )
+            raise
+        except Exception as exc:
+            error_detail = type(exc).__name__
+            status = "not_implemented" if isinstance(exc, NotImplementedError) else "failed"
+            await _record_dispatch_event(
+                async_session_factory,
+                event_id, tier, provider_id, model_id,
+                task_complexity, language, status, error_detail,
+            )
+            raise
 
     # C-059: record successful dispatch evidence
     await _record_dispatch_event(
