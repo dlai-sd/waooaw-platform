@@ -1,6 +1,62 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-08-06 (WC-012/WC-014/WC-015 — CE gRPC + PR FastAPI + AIR Python — ALL GREEN)
+**Last Updated:** 2026-08-07 (WC-037 EA review complete — BUG-001/002/003 fixed — CE 82/82 · BP 33/33)
+
+---
+
+## SESSION RECORD — 2026-08-07 (WC-037 EA REVIEW — COMPLETE)
+
+### Enterprise Architect Review (INST-004)
+
+EA (INST-004) reviewed the WC-037 implementation and identified **3 bugs**, all fixed in this session:
+
+| Bug | Severity | File | Issue | Fix |
+|---|---|---|---|---|
+| BUG-001 | **Critical** | `src/constitutional-engine/Program.cs` | `AuditSinkDbContext` not registered in DI → null factory → all audit writes silently skipped in production | Added `AddDbContextFactory<AuditSinkDbContext>` with `AuditSink` connection string |
+| BUG-002 | Minor | `src/constitutional-engine/Services/ConstitutionalEngineService.cs` | `WriteAuditSinkRecordAsync` returned silently on null factory — misconfiguration undetectable | Added `_logger.LogWarning(...)` log before return |
+| BUG-003 | Minor | `src/constitutional-engine/Data/Entities/AuditSinkEvidenceRecord.cs` | `ExecutionStatus` had `set` accessor on a WORM proof field — mutable after construction | Changed to `init` accessor |
+| BUG-004 | Minor | `tests/constitutional-engine.Tests/EmergencyStop/CCT_HO01_EmergencyStopLatencyTests.cs` | `TriggerEmergencyStop_RecordId_HasConstitutionalPrefix` lacked warmup call — JIT+EF cold-start exceeded 100ms on devcontainer | Added warmup call matching pattern from CCT-HO-01 |
+
+**Post-fix test results: CE 82/82 · BP 33/33 · Zero regressions · Sprint WC-037 = DONE · WC-038 = READY**
+
+---
+
+## SESSION RECORD — 2026-08-07 (WC-037 TRUST LAYER SPRINT 1 — COMPLETE)
+
+### What Was Built
+
+| Task | File | Output | Status |
+|---|---|---|---|
+| WC037-01 | `infrastructure/postgres/init/14-audit-sink.sql` | `audit_sink` schema + `evidence_records` table + INSERT-only RLS WORM policy | ✅ |
+| WC037-02 | `infrastructure/postgres/init/15-payload-store.sql` | `payload_store` schema + `operational_payloads` table with erasure fields | ✅ |
+| WC037-03 | `architecture/reference/proto/constitutional_service.proto` + `src/constitutional-engine/Protos/...` + `src/business-platform/Protos/...` | `RecordErasure` RPC + request/response messages added to all three proto copies | ✅ |
+| WC037-04 | `src/constitutional-engine/Data/Entities/AuditSinkEvidenceRecord.cs` | New entity for audit_sink schema | ✅ |
+| WC037-04 | `src/constitutional-engine/Data/AuditSinkDbContext.cs` | EF Core context for audit_sink schema | ✅ |
+| WC037-04 | `src/constitutional-engine/Services/ConstitutionalEngineService.cs` | `WriteAuditSinkRecordAsync` called on every `ValidateAction`; `RecordErasure` RPC implemented | ✅ |
+| WC037-05 | `src/business-platform/Infrastructure/PayloadStoreDbContext.cs` | `PayloadStoreDbContext` + `OperationalPayload` entity | ✅ |
+| WC037-05 | `src/business-platform/Controllers/CustomerDataController.cs` | `DELETE /api/v1/customers/{tenantId}/data` DPDPA endpoint | ✅ |
+| WC037-05 | `src/business-platform/Program.cs` | `PayloadStoreDbContext` DI registration | ✅ |
+| WC037-06 | `tests/constitutional-engine.Tests/AuditSink/CCT_AUDIT_01_EvidenceRecordWriteTests.cs` | 6 tests: ALLOW/DENY audit rows; WORM; RecordErasure; tenant isolation | ✅ |
+| WC037-06 | `tests/business-platform.Tests/DPDPA/CCT_DPDPA_01_RightToErasureTests.cs` | 4 tests: payload wipe; 403 non-founder; 400 missing order ID; tenant isolation | ✅ |
+| housekeeping | VERSION, CHANGELOG, PROJECT_STATE | 1.37.1→1.38.0 | ✅ |
+
+### CCT Results
+| CCT | Description | Result |
+|---|---|---|
+| CCT-AUDIT-01 | Every ValidateAction (ALLOW/DENY) writes audit_sink row; WORM; RecordErasure stamps PAYLOAD_PURGED | ✅ 6/6 |
+| CCT-DPDPA-01 | Right-to-Erasure: payload wipe + 403 non-founder + 400 missing ID + tenant isolation | ✅ 4/4 |
+
+**WC-037: CE 82/82 (+6) · BP 33/33 (+4) · Zero regressions · VERSION 1.38.0**
+
+### DoD Verification
+- [x] `audit_sink` schema created with INSERT-only Postgres RLS policy (no DELETE granted)
+- [x] `payload_store` schema created with erasure capability
+- [x] `RecordErasure` gRPC RPC implemented and proto updated (CE + BP + reference)
+- [x] Every `ValidateAction` path writes an evidence record (CCT-AUDIT-01)
+- [x] Right-to-Erasure end-to-end: payloads wiped, proof retained with erasure timestamp (CCT-DPDPA-01)
+- [x] All existing CE + BP tests still passing (82/82, 33/33 — zero regression)
+- [x] `dotnet build` clean on CE + BP
+- [x] VERSION 1.38.0, CHANGELOG entry, PROJECT_STATE updated
 
 ---
 
@@ -1370,23 +1426,24 @@ Each sprint has EA spec gaps documented, SA corrections applied to WC files, and
 ```yaml
 autonomous_halt: false
 platform_phase: IMPLEMENTATION
-current_sprint: WC-037
-sprint_status: AUTHORIZED
+current_sprint: WC-038
+sprint_status: READY
 branch: main
 consecutive_failures: 0
-tasks_done: []
-tasks_remaining:
+tasks_done:
   - WC037-01
   - WC037-02
   - WC037-03
   - WC037-04
   - WC037-05
   - WC037-06
+tasks_remaining:
+  - WC038-01
+  - WC038-02
+  - WC038-03
 notes: |
-  2026-08-06: IB-024 + IB-025 ratified by Founder. WC-037 authorized.
-  WC-037: Constitutional Audit Trail Sink — CE audit_sink schema (WORM) + BP payload_store schema + RecordErasure RPC + DPDPA endpoint.
-  Blocks: WC-038 (Provider Registry + oauth-vault), WC-039 (CTG library + AIR refactor).
-  Parallel track: WC-040 (Skill Catalog) may begin after IB-025 ratified — no trust layer dependency.
+  2026-08-07: WC-037 DONE — EA review complete. BUG-001/002/003/004 fixed.
+  CE 82/82 · BP 33/33. WC-037 sprint_status = DONE.
 ```
 
 ---

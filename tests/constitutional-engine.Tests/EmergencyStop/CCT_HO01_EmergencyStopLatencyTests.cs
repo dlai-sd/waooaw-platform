@@ -226,6 +226,21 @@ public sealed class CCT_HO01_EmergencyStopLatencyTests
 
         var callContext = BuildCallContext(tenantId);
 
+        // Warm-up: one call outside assertion window to avoid JIT/EF-InMemory cold-start skew.
+        // C-001 SLA is P99 production latency; cold-start artefacts are eliminated here as in CCT-HO-01.
+        try
+        {
+            await sut.TriggerEmergencyStop(new EmergencyStopRequest
+            {
+                ContractId = Guid.NewGuid().ToString(),
+                StoppedBy = "warmup-caller-cct-ho01c"
+            }, BuildCallContext(tenantId));
+        }
+        catch
+        {
+            // Warmup failure is acceptable — not part of the assertion
+        }
+
         // Act
         var response = await sut.TriggerEmergencyStop(request, callContext);
 

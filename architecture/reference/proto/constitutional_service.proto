@@ -86,6 +86,13 @@ service ConstitutionalService {
   // Caller MUST NOT return halt confirmation until this RPC returns OK.
   // C-013, AD-001
   rpc TriggerEmergencyStop(EmergencyStopRequest) returns (EmergencyStopResponse);
+
+  // RecordErasure — DPDPA Right-to-Erasure marker
+  // Called by Business Platform after wiping payload_store.operational_payloads.
+  // Marks all audit_sink.evidence_records for tenant as PAYLOAD_PURGED.
+  // Proof record is retained; only erasure_status and erasure_timestamp are updated.
+  // C-078 (DPDPA), ADR-044 §4
+  rpc RecordErasure(RecordErasureRequest) returns (RecordErasureResponse);
 }
 
 // ─── ENUMERATIONS ───────────────────────────────────────────────────────────
@@ -393,4 +400,22 @@ message EmergencyStopResponse {
   // recorded_at is when the Emergency Stop event record was written.
   // The caller MUST NOT return halt confirmation until this timestamp is set.
   google.protobuf.Timestamp recorded_at = 3;
+}
+
+// ─── RecordErasure (ADR-044 §4) ────────────────────────────────────────────────
+
+message RecordErasureRequest {
+  // tenant_id identifies whose audit records to mark as PAYLOAD_PURGED.
+  string tenant_id = 1;
+
+  // erasure_order_id is the DPDPA erasure order reference (for certificate generation).
+  string erasure_order_id = 2;
+}
+
+message RecordErasureResponse {
+  // records_updated is the count of evidence_records rows stamped with PAYLOAD_PURGED.
+  int32 records_updated = 1;
+
+  // success is true when the update completed without error.
+  bool success = 2;
 }

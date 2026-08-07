@@ -8,6 +8,26 @@ types: `feat` | `fix` | `constitutional` | `cct` | `chore` | `refactor` | `secur
 
 ---
 
+## [1.38.0] — 2026-08-07 (WC-037 Constitutional Audit Trail Sink)
+
+### Trust Layer Sprint 1 — ADR-044 Implementation
+
+**Constitutional basis:** C-059 (Traceability), C-078 (DPDPA), ADR-044
+
+- `constitutional(ce)`: `audit_sink` Postgres schema + INSERT-only RLS WORM policy (`14-audit-sink.sql`)
+- `constitutional(bp)`: `payload_store` Postgres schema + erasable payload rows (`15-payload-store.sql`)
+- `feat(ce)`: `RecordErasure` gRPC RPC added to proto — marks tenant audit records as PAYLOAD_PURGED
+- `feat(ce)`: `AuditSinkDbContext` + `AuditSinkEvidenceRecord` entity — audit_sink schema EF Core model
+- `constitutional(ce)`: `ValidateAction` now writes one `audit_sink.evidence_records` row per call (ALLOW/DENY/ESCALATED)
+- `feat(bp)`: `PayloadStoreDbContext` + `OperationalPayload` entity — payload_store schema EF Core model
+- `feat(bp)`: `DELETE /api/v1/customers/{tenantId}/data` — DPDPA Right-to-Erasure endpoint (Founder role only)
+- `cct(ce)`: CCT-AUDIT-01 — 6 tests: ALLOW/DENY/ESCALATED paths write audit rows; WORM; RecordErasure stamps PAYLOAD_PURGED; tenant isolation
+- `cct(bp)`: CCT-DPDPA-01 — 4 tests: payload wipe; 403 non-founder; 400 missing order ID; tenant isolation
+
+**Test results:** CE 82/82 (±6 new) | BP 33/33 (±4 new) | Zero regressions
+
+---
+
 ## [1.37.1] — 2026-08-06 (End-of-Day — EA Architecture + Sprint Planning)
 
 ### EA Architecture Session — ADR-042/043/044 + 5 Sprint Contracts

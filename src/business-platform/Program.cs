@@ -1,5 +1,6 @@
 // Implements: architecture/reference/components/business-platform.md § Tenant Isolation
 // constitutional_basis: C-005, C-023, C-026, C-059
+using Microsoft.EntityFrameworkCore;
 using Waooaw.BusinessPlatform.Controllers;
 using Waooaw.BusinessPlatform.Infrastructure;
 using Waooaw.BusinessPlatform.Workflows;
@@ -83,6 +84,13 @@ if (!string.IsNullOrWhiteSpace(temporalHost))
         .AddWorkflow<TrialExpiryWorkflow>()
         .AddSingletonActivities<TrialExpiryActivities>();
 }
+
+// ── Payload Store DbContext — DPDPA Right-to-Erasure (ADR-044) ───────────────
+var payloadStoreConn = builder.Configuration.GetConnectionString("PayloadStore")
+    ?? builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? "Host=localhost;Database=waooaw_bp;Username=bp_app;";
+builder.Services.AddDbContextFactory<Waooaw.BusinessPlatform.Infrastructure.PayloadStoreDbContext>(opts =>
+    opts.UseNpgsql(payloadStoreConn));
 
 // ─────────────────────────────────────────────────────────────────────────────
 var app = builder.Build();

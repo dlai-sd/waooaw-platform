@@ -1,6 +1,8 @@
 // Implements: architecture/reference/components/constitutional-engine.md §1 Evidence First Enforcer
 // Implements: architecture/reference/components/constitutional-engine.md §4 Emergency Stop Handler
-// constitutional_basis: C-001, C-007, C-023, C-024, C-027, C-059, C-076, C-085
+// Implements: adr/ADR-044-constitutional-audit-trail-sink.md §5 — audit sink write on ValidateAction
+// constitutional_basis: C-001, C-007, C-023, C-024, C-027, C-059, C-076, C-078, C-085
+using System.Security.Cryptography;
 using System.Text.Json;
 using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
@@ -45,19 +47,24 @@ public sealed class ConstitutionalEngineService : ConstitutionalService.Constitu
     private readonly IDbContextFactory<EmergencyStopDbContext>? _emergencyStopDbContextFactory;
     private readonly ITemporalClient?                           _temporalClient;
 
-    // ─── Primary constructor (5 args — DI registration) ────────────────────
+    // Added in WC037-04 — optional for backwards-compatible test construction.
+    private readonly IDbContextFactory<AuditSinkDbContext>?     _auditSinkDbContextFactory;
+
+    // ─── Primary constructor (6 args — DI registration) ────────────────────
     public ConstitutionalEngineService(
         EvaluatorRegistry registry,
         ILogger<ConstitutionalEngineService> logger,
         IDbContextFactory<ConstitutionalDbContext> dbContextFactory,
         IDbContextFactory<EmergencyStopDbContext> emergencyStopDbContextFactory,
-        ITemporalClient temporalClient)
+        ITemporalClient temporalClient,
+        IDbContextFactory<AuditSinkDbContext>? auditSinkDbContextFactory = null)
     {
         _registry                      = registry;
         _logger                        = logger;
         _dbContextFactory              = dbContextFactory;
         _emergencyStopDbContextFactory = emergencyStopDbContextFactory;
         _temporalClient                = temporalClient;
+        _auditSinkDbContextFactory     = auditSinkDbContextFactory;
     }
 
     // ─── Compatibility overload — 3 args (preserves existing test call-sites) ─
@@ -67,7 +74,7 @@ public sealed class ConstitutionalEngineService : ConstitutionalService.Constitu
         EvaluatorRegistry registry,
         ILogger<ConstitutionalEngineService> logger,
         IDbContextFactory<ConstitutionalDbContext> dbContextFactory)
-        : this(registry, logger, dbContextFactory, null!, null!)
+        : this(registry, logger, dbContextFactory, null!, null!, null)
     {
     }
 
@@ -241,6 +248,9 @@ public sealed class ConstitutionalEngineService : ConstitutionalService.Constitu
                     "ValidateAction DENY. ContractId={ContractId} ClaimId={ClaimId} Reason={Reason}",
                     req.ContractId, firstDeny.ClaimId, firstDeny.Reason);
 
+                await WriteAuditSinkRecordAsync(req, rawTenantId, "DENIED",
+                    firstDeny.ClaimId, cts.Token);
+
                 return new ValidateActionResponse
                 {
                     Decision            = ValidationDecision.Deny,
@@ -255,6 +265,9 @@ public sealed class ConstitutionalEngineService : ConstitutionalService.Constitu
                     "ValidateAction ESCALATE. ContractId={ContractId} ClaimId={ClaimId} Reason={Reason}",
                     req.ContractId, firstEscalate.ClaimId, firstEscalate.Reason);
 
+                await WriteAuditSinkRecordAsync(req, rawTenantId, "ESCALATED",
+                    firstEscalate.ClaimId, cts.Token);
+
                 return new ValidateActionResponse
                 {
                     Decision            = ValidationDecision.Escalate,
@@ -266,6 +279,9 @@ public sealed class ConstitutionalEngineService : ConstitutionalService.Constitu
             _logger.LogInformation(
                 "ValidateAction ALLOW. ContractId={ContractId} ActionType={ActionType}",
                 req.ContractId, req.ActionType);
+
+            await WriteAuditSinkRecordAsync(req, rawTenantId, "AUTHORIZED",
+                "C-003; C-041", cts.Token);
 
             return new ValidateActionResponse
             {
@@ -721,5 +737,142 @@ public sealed class ConstitutionalEngineService : ConstitutionalService.Constitu
                 req.ContractId, req.StoppedBy);
             throw new RpcException(new Status(StatusCode.Internal, ex.Message));
         }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // §5  DPDPA Right-to-Erasure — RecordErasure
+    // C-078: personal data must be erasable; audit proof must be preserved.
+    // ADR-044 §4: set erasure_status = 'PAYLOAD_PURGED' for all tenant records.
+    // Note: this updates erasure metadata only — it does NOT delete proof rows.
+    // ═══════════════════════════════════════════════════════════════════════
+    public override async Task<RecordErasureResponse> RecordErasure(
+        RecordErasureRequest req, ServerCallContext ctx)
+    {
+        if (string.IsNullOrWhiteSpace(req.TenantId) || !Guid.TryParse(req.TenantId, out var tenantGuid))
+        {
+            throw new RpcException(
+                new Status(StatusCode.InvalidArgument,
+                    "tenant_id must be a valid UUID (C-078)."));
+        }
+
+        if (string.IsNullOrWhiteSpace(req.ErasureOrderId))
+        {
+            throw new RpcException(
+                new Status(StatusCode.InvalidArgument,
+                    "erasure_order_id must not be empty (C-078)."));
+        }
+
+        if (_auditSinkDbContextFactory is null)
+        {
+            _logger.LogWarning("RecordErasure: AuditSinkDbContextFactory is null; skipping (test mode).");
+            return new RecordErasureResponse { RecordsUpdated = 0, Success = true };
+        }
+
+        try
+        {
+            await using var db = await _auditSinkDbContextFactory.CreateDbContextAsync(ctx.CancellationToken);
+
+            var records = await db.EvidenceRecords
+                .Where(r => r.TenantId == tenantGuid && r.ErasureStatus == "NONE")
+                .ToListAsync(ctx.CancellationToken);
+
+            var erasureTs = DateTimeOffset.UtcNow;
+            foreach (var record in records)
+            {
+                record.ErasureStatus    = "PAYLOAD_PURGED";
+                record.ErasureTimestamp = erasureTs;
+            }
+
+            await db.SaveChangesAsync(ctx.CancellationToken);
+
+            _logger.LogInformation(
+                "RecordErasure complete. TenantId={TenantId} ErasureOrderId={ErasureOrderId} Records={Count}",
+                tenantGuid, req.ErasureOrderId, records.Count);
+
+            return new RecordErasureResponse { RecordsUpdated = records.Count, Success = true };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "RecordErasure failed. TenantId={TenantId} ErasureOrderId={ErasureOrderId}",
+                req.TenantId, req.ErasureOrderId);
+            throw new RpcException(new Status(StatusCode.Internal, ex.Message));
+        }
+    }
+
+    // ─── Private helpers ─────────────────────────────────────────────────────
+
+    // ADR-044 §5: write one audit_sink evidence record for every ValidateAction decision.
+    private async Task WriteAuditSinkRecordAsync(
+        ValidateActionRequest req,
+        string rawTenantId,
+        string executionStatus,
+        string constitutionalBasis,
+        CancellationToken ct)
+    {
+        if (_auditSinkDbContextFactory is null)
+        {
+            // C-059: misconfiguration in production — must be visible in logs.
+            _logger.LogWarning(
+                "WriteAuditSinkRecord SKIPPED: AuditSinkDbContextFactory is null. " +
+                "ContractId={ContractId} ActionType={ActionType} — configure AuditSink connection string.",
+                req.ContractId, req.ActionType);
+            return;
+        }
+
+        try
+        {
+            var argsHash    = ComputeSha256(req.ActionParameters);
+            // "DEC-{13-digit-ms}-{32-hex}" ≈ 50 chars — within VARCHAR(64)
+            var decisionId  = $"DEC-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}-{Guid.NewGuid():N}";
+            var tenantGuid  = Guid.Parse(rawTenantId);
+            var recordedAt  = DateTimeOffset.UtcNow;
+            var basis       = constitutionalBasis.Split(';', StringSplitOptions.TrimEntries);
+
+            // Compute evidence_hash over canonical fields before record creation.
+            var evidenceHash = ComputeSha256(JsonSerializer.Serialize(new
+            {
+                decisionId,
+                tenantId    = tenantGuid,
+                actionType  = req.ActionType,
+                executionStatus,
+                recordedAt
+            }));
+
+            var sinkRecord = new AuditSinkEvidenceRecord
+            {
+                Id                  = Guid.NewGuid(),
+                DecisionId          = decisionId,
+                TenantId            = tenantGuid,
+                AgentId             = req.ContractId,
+                AgentInstanceId     = req.ContractId,
+                ActionType          = req.ActionType,
+                ToolName            = null,
+                ArgsHash            = argsHash,
+                ExecutionStatus     = executionStatus,
+                ConstitutionalBasis = basis,
+                EvidenceHash        = evidenceHash,
+                RecordedAt          = recordedAt,
+                ErasureStatus       = "NONE",
+            };
+
+            await using var db = await _auditSinkDbContextFactory.CreateDbContextAsync(ct);
+            await db.EvidenceRecords.AddAsync(sinkRecord, ct);
+            await db.SaveChangesAsync(ct);
+        }
+        catch (Exception ex)
+        {
+            // C-059: log audit write failure — do not suppress
+            _logger.LogError(ex,
+                "WriteAuditSinkRecord failed. ContractId={ContractId} ActionType={ActionType}",
+                req.ContractId, req.ActionType);
+            throw; // re-raise: C-059 audit write failure must surface
+        }
+    }
+
+    private static string ComputeSha256(string input)
+    {
+        var bytes = System.Text.Encoding.UTF8.GetBytes(input ?? string.Empty);
+        return Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
     }
 }

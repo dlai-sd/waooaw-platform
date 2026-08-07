@@ -2,8 +2,13 @@
 # constitutional_basis: C-023, C-059, C-062, C-063
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src" / "ai-runtime"))
+
 import pytest
-from src.ai_runtime.pii.injection_guard import InjectionGuard
+from pii.injection_guard import InjectionGuard
 
 
 # Attack patterns loaded from conftest.py
