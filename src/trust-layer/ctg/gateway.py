@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 # --- CE client protocol (injectable for tests) --------------------------------
 
 
-class CEClient(Protocol):
+class CEClient(Protocol):  # pragma: no cover
     """Minimal interface for CE.ValidateAction. Real impl uses gRPC stub."""
 
     async def validate_action(
@@ -45,7 +45,7 @@ class CEClient(Protocol):
 # --- Audit sink protocol (injectable for tests) --------------------------------
 
 
-class AuditSinkWriter(Protocol):
+class AuditSinkWriter(Protocol):  # pragma: no cover
     """Writes a single evidence record to audit_sink.evidence_records (ADR-044)."""
 
     async def write_record(
@@ -65,7 +65,7 @@ class AuditSinkWriter(Protocol):
 # --- Default CE gRPC client (requires generated pb2 stubs at runtime) ---------
 
 
-class _GrpcCEClient:
+class _GrpcCEClient:  # pragma: no cover
     """
     Production CE client. Uses grpc.aio to call CE.ValidateAction.
     Requires constitutional_service_pb2 + _pb2_grpc generated from the .proto.

@@ -467,3 +467,136 @@ class TestRegistryClientCache:
 
         assert r1.call_count == 1
         assert r2.call_count == 1
+
+
+# ---------------------------------------------------------------------------
+# Unit: _LoggingAuditSinkWriter and gateway internals (GAP-001 — EA R-022)
+# ---------------------------------------------------------------------------
+
+class TestLoggingAuditSinkWriter:
+    """Direct coverage of _LoggingAuditSinkWriter.write_record (default no-op sink)."""
+
+    @pytest.mark.asyncio
+    async def test_write_record_does_not_raise(self):
+        """Default logging sink writes without error."""
+        from ctg.gateway import _LoggingAuditSinkWriter
+        sink = _LoggingAuditSinkWriter()
+        # Must not raise
+        await sink.write_record(
+            decision_id="DEC-LOG-001",
+            agent_id="agt-test",
+            tenant_id="00000000-0000-0000-0000-000000000001",
+            tool_name="llm.complete",
+            args_hash="sha256:abcdef123456",
+            credential_provider="openai",
+            vault_alias="waooaw-dev-kv",
+            execution_status="SUCCESS",
+        )
+
+
+class TestFetchToken:
+    """Coverage for _fetch_token internal vault call paths (GAP-001 — EA R-022)."""
+
+    @pytest.mark.asyncio
+    async def test_fetch_token_404_returns_none(self):
+        """404 from oauth-vault → None (provider needs no credential, e.g. ollama)."""
+        import respx, httpx
+        gw = _make_gateway(
+            ce_client=_make_ce_allow(),
+            audit_sink=_make_audit_sink(),
+            executor=_make_executor(),
+        )
+        gw._vault_base_url = "http://vault:8130"
+
+        with respx.mock:
+            respx.get("http://vault:8130/tokens/contract-001/openai").mock(
+                return_value=httpx.Response(404)
+            )
+            token = await gw._fetch_token("contract-001", "openai")
+
+        assert token is None
+
+    @pytest.mark.asyncio
+    async def test_fetch_token_200_returns_value(self):
+        """200 from oauth-vault → access_token string."""
+        import respx, httpx
+        gw = _make_gateway(
+            ce_client=_make_ce_allow(),
+            audit_sink=_make_audit_sink(),
+            executor=_make_executor(),
+        )
+        gw._vault_base_url = "http://vault:8130"
+
+        with respx.mock:
+            respx.get("http://vault:8130/tokens/ctr-002/meta").mock(
+                return_value=httpx.Response(200, json={"access_token": "tok-abc"})
+            )
+            token = await gw._fetch_token("ctr-002", "meta")
+
+        assert token == "tok-abc"
+
+    @pytest.mark.asyncio
+    async def test_fetch_token_empty_contract_returns_none(self):
+        """Empty contract_id short-circuits without HTTP."""
+        gw = _make_gateway(
+            ce_client=_make_ce_allow(),
+            audit_sink=_make_audit_sink(),
+            executor=_make_executor(),
+        )
+        token = await gw._fetch_token("", "openai")
+        assert token is None
+
+    @pytest.mark.asyncio
+    async def test_fetch_token_non404_status_raises(self):
+        """Non-404 HTTPStatusError propagates (e.g. 500 vault error)."""
+        import respx, httpx
+        gw = _make_gateway(
+            ce_client=_make_ce_allow(),
+            audit_sink=_make_audit_sink(),
+            executor=_make_executor(),
+        )
+        gw._vault_base_url = "http://vault:8130"
+
+        with respx.mock:
+            respx.get("http://vault:8130/tokens/ctr-003/openai").mock(
+                return_value=httpx.Response(500)
+            )
+            with pytest.raises(httpx.HTTPStatusError):
+                await gw._fetch_token("ctr-003", "openai")
+
+    @pytest.mark.asyncio
+    async def test_fetch_token_request_error_raises(self):
+        """Network failure (RequestError) propagates."""
+        import respx, httpx
+        gw = _make_gateway(
+            ce_client=_make_ce_allow(),
+            audit_sink=_make_audit_sink(),
+            executor=_make_executor(),
+        )
+        gw._vault_base_url = "http://vault:8130"
+
+        with respx.mock:
+            respx.get("http://vault:8130/tokens/ctr-004/openai").mock(
+                side_effect=httpx.ConnectError("connection refused")
+            )
+            with pytest.raises(httpx.ConnectError):
+                await gw._fetch_token("ctr-004", "openai")
+
+
+class TestGatewayNoExecutor:
+    """Cover the 'no executor registered' RuntimeError path (GAP-001 — EA R-022)."""
+
+    @pytest.mark.asyncio
+    async def test_no_executor_raises_runtime_error(self):
+        """Gateway with no executor raises RuntimeError explaining the gap."""
+        gw = _make_gateway(
+            ce_client=_make_ce_allow(),
+            audit_sink=_make_audit_sink(),
+            executor=None,  # no executor — gateway not fully wired
+        )
+        with patch.object(gw, "_fetch_token", new_callable=AsyncMock, return_value=None):
+            result = await gw.call("llm.complete", {"provider": "openai"}, _make_session_ctx())
+
+        # No executor → PROVIDER_ERROR via exception translation
+        assert result.error is not None
+        assert result.error.code == "PROVIDER_ERROR"
