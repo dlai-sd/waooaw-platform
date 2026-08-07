@@ -1,0 +1,147 @@
+# Implements: adr/ADR-022-payment-processing-razorpay-india.md §Amendment 1.2
+# constitutional_basis: C-059, C-088, C-090
+"""Payment FastAPI router — onboarding order + Razorpay webhook endpoint."""
+from __future__ import annotations
+
+import logging
+from uuid import UUID
+
+from fastapi import APIRouter, HTTPException, Request
+from pydantic import BaseModel, Field
+
+import redis.asyncio as aioredis
+from database import get_session_factory
+from config import Settings
+from payment.models import OnboardingOrderRequest, PaymentCapturedEvent
+from payment.onboarding import OnboardingService
+from payment.razorpay_client import RazorpayClient
+from payment.webhook import WebhookHandler
+from wallet.service import WalletService
+
+logger = logging.getLogger(__name__)
+router = APIRouter(prefix="/payments", tags=["payments"])
+
+_settings = Settings()
+
+
+class OnboardingOrderBody(BaseModel):
+    customer_id: UUID
+    agent_type: str
+    bundle_tier: str
+    subscription_amount_paise: int = Field(gt=0)
+    wallet_seed_paise: int = Field(ge=0)
+    coupon_code: str = ""
+
+
+class PaymentCaptureBody(BaseModel):
+    razorpay_order_id: str
+    razorpay_payment_id: str
+    razorpay_signature: str
+    customer_id: UUID
+    agent_type: str
+    bundle_tier: str
+    is_bypass: bool = False
+
+
+@router.post("/onboarding-order")
+async def create_onboarding_order(body: OnboardingOrderBody) -> dict:
+    """Create a Razorpay order combining first-month subscription + wallet seed (ADR-022 §1.2).
+
+    Demo/UAT: DEMOWAOOAW / UATWAOOAW coupon → ₹0 bypass order, no Razorpay API call. FA-029.
+    """
+    svc = OnboardingService(settings=_settings)
+    req = OnboardingOrderRequest(
+        customer_id=body.customer_id,
+        agent_type=body.agent_type,
+        bundle_tier=body.bundle_tier,
+        subscription_amount_paise=body.subscription_amount_paise,
+        wallet_seed_paise=body.wallet_seed_paise,
+        coupon_code=body.coupon_code,
+    )
+    result = await svc.create_onboarding_order(req)
+    return {
+        "order_id": result.order_id,
+        "amount_paise": result.amount_paise,
+        "currency": result.currency,
+        "is_bypass": result.is_bypass,
+        "coupon_applied": result.coupon_applied,
+    }
+
+
+@router.post("/webhooks/razorpay")
+async def razorpay_webhook(request: Request) -> dict:
+    """Razorpay webhook endpoint — handles payment.captured.
+
+    Signature verified via HMAC-SHA256 (ADR-014). Idempotent (payment_intents table).
+    """
+    signature = request.headers.get("X-Razorpay-Signature", "")
+    payload = await request.json()
+
+    event_type = payload.get("event", "")
+    if event_type != "payment.captured":
+        # Acknowledge unhandled events gracefully
+        return {"status": "ignored", "event": event_type}
+
+    payment = payload.get("payload", {}).get("payment", {}).get("entity", {})
+    notes = payment.get("notes", {})
+
+    try:
+        customer_id = UUID(notes.get("customer_id", ""))
+    except (ValueError, AttributeError):
+        raise HTTPException(status_code=400, detail={"code": "MISSING_CUSTOMER_ID"}) from None
+
+    event = PaymentCapturedEvent(
+        razorpay_order_id=payment.get("order_id", ""),
+        razorpay_payment_id=payment.get("id", ""),
+        razorpay_signature=signature,
+        customer_id=customer_id,
+        agent_type=notes.get("agent_type", ""),
+        bundle_tier=notes.get("bundle_tier", ""),
+    )
+
+    session_factory = get_session_factory()
+    async with session_factory() as db:
+        redis_client = aioredis.from_url(_settings.REDIS_URL, decode_responses=True)
+        wallet_svc = WalletService(db=db, redis_client=redis_client)
+        razorpay_client = RazorpayClient(settings=_settings)
+        handler = WebhookHandler(
+            db=db,
+            wallet_service=wallet_svc,
+            razorpay_client=razorpay_client,
+            settings=_settings,
+        )
+        result = await handler.handle_payment_captured(event, is_bypass=False)
+
+    return {
+        "status": "activated",
+        "subscription_id": str(result.subscription_id),
+        "customer_id": str(result.customer_id),
+    }
+
+
+@router.post("/activate-bypass")
+async def activate_bypass(body: PaymentCaptureBody) -> dict:
+    """Activate subscription for demo/UAT bypass order (coupon = 100% discount). FA-029."""
+    if not body.is_bypass:
+        raise HTTPException(status_code=400, detail={"code": "NOT_A_BYPASS_ORDER"})
+
+    event = PaymentCapturedEvent(
+        razorpay_order_id=body.razorpay_order_id,
+        razorpay_payment_id=body.razorpay_payment_id,
+        razorpay_signature="",
+        customer_id=body.customer_id,
+        agent_type=body.agent_type,
+        bundle_tier=body.bundle_tier,
+    )
+    session_factory = get_session_factory()
+    async with session_factory() as db:
+        redis_client = aioredis.from_url(_settings.REDIS_URL, decode_responses=True)
+        wallet_svc = WalletService(db=db, redis_client=redis_client)
+        handler = WebhookHandler(db=db, wallet_service=wallet_svc, settings=_settings)
+        result = await handler.handle_payment_captured(event, is_bypass=True)
+
+    return {
+        "status": "activated",
+        "subscription_id": str(result.subscription_id),
+        "customer_id": str(result.customer_id),
+    }

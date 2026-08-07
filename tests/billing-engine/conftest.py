@@ -35,6 +35,9 @@ _settings_instance = MagicMock(
     TRIAL_FREE_UNITS={"DMA": {"llm_cloud": 50, "llm_local": 200}},
     TRIAL_DURATION_DAYS=14,
     MAX_DISCOUNT_PCT=50,
+    RAZORPAY_KEY_ID="rzp_test_key",
+    RAZORPAY_KEY_SECRET="rzp_test_secret",
+    RAZORPAY_WEBHOOK_SECRET="rzp_wh_secret",
 )
 _config_stub = MagicMock()
 _config_stub.settings = _settings_instance

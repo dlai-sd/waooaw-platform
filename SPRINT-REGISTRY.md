@@ -1,6 +1,6 @@
 # WAOOAW Platform — Sprint Registry
 
-**Last Updated:** 2026-08-07 · **Version:** 1.42.0 · **Total WCs:** 39 (38 closed · 0 active · 0 planned · 1 blocked)
+**Last Updated:** 2026-08-07 · **Version:** 1.42.0 · **Total WCs:** 40 (38 closed · 1 active · 0 planned · 1 blocked)
 
 ---
 
@@ -8,9 +8,10 @@
 
 | WC | Title | Track | Status | Depends On | Key Outcome |
 |---|---|---|---|---|---|
+| **WC-042** | WBE-S7 — Single Onboarding Payment + Renewal Saga | WBE + BP Temporal | **✅ AUTHORIZED** | FA-029 ✅ | One Razorpay order activates subscription + wallet; RenewalFailureSaga Day1/3/7/14; C-090 grandfather enforced |
 | WC-034 | Web Portal — Founder Admin + Customer | Next.js 14 | ⚠️ BLOCKED | Keycloak + WBE-S7 | Customer self-service portal — hiring wizard, approval dashboard, performance view |
 
-**Next sprint:** WC-042 — not yet defined. All Trust Layer (WC-037→039) and Skill Architecture (WC-040→041) tracks are complete.
+**Next after WC-042:** WBE-S8 (Reconciliation full CCT suite) or WC-034 unblocks once WC-042 ships.
 
 ---
 

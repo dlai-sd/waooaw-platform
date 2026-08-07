@@ -20,6 +20,7 @@ from reconciliation.router import router as reconciliation_router
 from reconciliation.scheduler import create_scheduler
 from trial.router import router as trial_router
 from promotions.router import router as promotions_router
+from payment.router import router as payment_router
 from reconciliation.service import ReconciliationService, FounderActionGenerator as _FAGBase
 
 logger = logging.getLogger(__name__)
@@ -158,6 +159,8 @@ def create_app() -> FastAPI:
     app.include_router(trial_router)
     # Mount promotions engine router (WC-031 sub-component 7)
     app.include_router(promotions_router)
+    # Mount payment router — onboarding order + Razorpay webhook (WC-042)
+    app.include_router(payment_router)
 
     @app.get("/health", response_model=dict[str, str])
     async def health_check() -> dict[str, str]:

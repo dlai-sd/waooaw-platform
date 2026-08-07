@@ -64,6 +64,7 @@
 
 | **FA-026** | GOAL-PLATFORM-REGISTRY Implementation Authorization — Founder authorized blueprint-first upgrade: Component Manifests, EA Skeletons, Gap Scanner, Blueprint Assurance, DB registry tables for all 5 platform services. | 2026-07-30 — Yogesh Khandge | ✅ DONE |
 | **FA-027** | GOAL-004 WBE Implementation Authorization — Founder authorized Wallet & Billing Engine implementation (WBE-S1 through WBE-S8 = WC-025 through WC-032). Pricing decisions (D-05 §7) remain open but do NOT block implementation. WBE will not go live with real customers until pricing authorization is recorded separately. | 2026-07-30 — Yogesh Khandge | ✅ DONE |
+| **FA-029** | WC-042 = WBE-S7 Authorization — Founder authorized Single Onboarding Payment + Renewal Saga sprint. Implementation decision: all Razorpay configuration via env vars (RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, RAZORPAY_PLAN_ID_{tier}). Lower environments (WAOOAW_ENVIRONMENT=demo\|uat) use 100% discount coupons DEMOWAOOAW/UATWAOOAW to bypass live payment. Production plan IDs to be injected at deploy time. Extends FA-027 coverage to WC-042 (WBE-S7 renumbered from original WC-031 to WC-042 due to sprint sequencing changes). | 2026-08-07 — Yogesh Khandge | ✅ DONE |
 
 ---
 

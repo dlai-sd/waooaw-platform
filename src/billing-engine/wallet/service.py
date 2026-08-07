@@ -503,15 +503,32 @@ class WalletService:
             )
 
         if contract_row.plan_price_paise > contract_row.agreed_price_paise:
-            raise HTTPException(
-                status_code=422,
-                detail={
-                    "code": "PRICE_INCREASE_WITHOUT_NOTICE",
-                    "message": (
-                        "Plan price exceeds agreed price - C-090 notice required"
-                    ),
-                },
+            # C-090: price increase only allowed with an acknowledged price_change_notice
+            notice_result = await self._db.execute(
+                text(
+                    """
+                    SELECT id FROM business.price_change_notices
+                    WHERE employment_contract_id = :contract_id
+                      AND new_price_paise = :new_price
+                      AND acknowledged_at IS NOT NULL
+                    LIMIT 1
+                    """
+                ).bindparams(
+                    contract_id=str(contract_id),
+                    new_price=contract_row.plan_price_paise,
+                )
             )
+            if notice_result.fetchone() is None:
+                raise HTTPException(
+                    status_code=422,
+                    detail={
+                        "code": "PRICE_INCREASE_WITHOUT_NOTICE",
+                        "message": (
+                            "Plan price exceeds agreed price — "
+                            "C-090 requires an acknowledged price_change_notice before renewal"
+                        ),
+                    },
+                )
 
         now_utc: datetime = datetime.now(timezone.utc)
 

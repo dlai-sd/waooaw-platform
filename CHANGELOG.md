@@ -3,6 +3,32 @@
 All notable changes to the WAOOAW Platform are documented here.
 This file is auto-generated from conventional commits. Do not edit manually.
 
+## [1.43.0] — 2026-08-07 · WC-042 WBE-S7 Single Onboarding Payment + Renewal Saga
+
+### Features
+- `src/billing-engine/payment/`: `OnboardingService` creates single Razorpay order combining first-month subscription + wallet seed (ADR-022 §1.2)
+- `src/billing-engine/payment/razorpay_client.py`: Async Razorpay client — all credentials via env vars (ADR-014), HMAC-SHA256 signature verification
+- `src/billing-engine/payment/webhook.py`: `WebhookHandler` — idempotent `payment.captured` handler; mode flip before subscription insert (S-09); bypasses HMAC for demo/UAT coupons
+- `src/billing-engine/payment/router.py`: `POST /payments/onboarding-order` + `POST /payments/webhooks/razorpay`; registered in `main.py`
+- `src/business-platform/Workflows/RenewalFailureSaga.cs`: Temporal saga — Day1/3/7/14 progressive renewal failure; C-049 disclosure at Day3; campaign pause gate at Day7
+- `infrastructure/postgres/init/18-wbe-s7-payment.sql`: `business.payment_intents` table + DEMOWAOOAW/UATWAOOAW coupon seeds
+- `adr/ADR-022`: Amendment 2 — env-var configuration + lower-environment bypass (FA-029)
+
+### Constitutional Compliance
+- C-023 Evidence First: payment_intents IN_PROGRESS recorded before any wallet mutation
+- C-090 Grandfather Pricing: `WalletService.renew()` checks `business.price_change_notices` — blocks renewal if plan price > agreed price without acknowledged notice
+- C-049 Agent Disclosure: `RenewalFailureSaga` Day3 WhatsApp disclosure when entering degraded mode
+- ADR-014 Secret Management: zero Razorpay credentials in source; HMAC verification on every real webhook
+
+### Tests
+- `tests/billing-engine/test_payment.py`: CCT-ONBOARD-01 (5 tests), CCT-WEBHOOK-01 (3 tests), CCT-GRANDFATHER-01 (4 tests) = 12 new tests
+- `tests/billing-engine/test_wallet.py`: `test_renew_price_increase_raises_422` migrated to mock-session pattern (schema-qualified table compatibility)
+- **Total billing-engine: 350/350 (+12)**
+
+### Decisions Recorded
+- `security/FOUNDER-ACTIONS.md`: FA-029 — WC-042 authorization + Razorpay env-var decision
+- `adr/ADR-022`: Amendment 2 — lower-environment bypass + env-var configuration
+
 Format: [Conventional Commits](https://www.conventionalcommits.org/) —
 types: `feat` | `fix` | `constitutional` | `cct` | `chore` | `refactor` | `security` | `docs`
 

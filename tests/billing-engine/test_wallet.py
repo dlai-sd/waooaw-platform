@@ -597,23 +597,37 @@ async def test_renew_success_updates_contract(db_session, fake_redis):
 
 
 @pytest.mark.asyncio
-async def test_renew_price_increase_raises_422(db_session, fake_redis):
-    """renew() raises HTTP 422 when plan_price > agreed_price (C-090 guard)."""
+async def test_renew_price_increase_raises_422(fake_redis):
+    """renew() raises HTTP 422 when plan_price > agreed_price (C-090 guard).
+
+    Uses a mocked session because the notice check queries business.price_change_notices
+    (schema-qualified), which is not available in SQLite test DB.
+    """
     from datetime import date
+    from unittest.mock import AsyncMock, MagicMock
 
-    customer_id = uuid.uuid4()
-    contract_id = await _seed_contract_with_prices(
-        db_session,
-        customer_id=customer_id,
-        agreed_price_paise=5000,
-        plan_price_paise=7000,  # plan > agreed → must be blocked
-    )
+    contract_row = MagicMock()
+    contract_row.id = str(uuid.uuid4())
+    contract_row.agreed_price_paise = 5000
+    contract_row.plan_price_paise = 7000  # plan > agreed → must be blocked
+    contract_row.customer_id = str(uuid.uuid4())
+    contract_row.thread_type = "DMA"
 
-    svc = WalletService(db=db_session, redis_client=fake_redis)
+    contract_result = MagicMock()
+    contract_result.fetchone = MagicMock(return_value=contract_row)
+
+    notice_result = MagicMock()
+    notice_result.fetchone = MagicMock(return_value=None)  # no acknowledged notice
+
+    mock_db = MagicMock()
+    mock_db.execute = AsyncMock(side_effect=[contract_result, notice_result])
+    mock_db.commit = AsyncMock()
+
+    svc = WalletService(db=mock_db, redis_client=fake_redis)
     with pytest.raises(HTTPException) as exc_info:
         await svc.renew(
-            customer_id=customer_id,
-            contract_id=uuid.UUID(contract_id),
+            customer_id=uuid.UUID(contract_row.customer_id),
+            contract_id=uuid.uuid4(),
             new_period_start=date(2026, 9, 1),
         )
 

@@ -1,10 +1,55 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-08-07 (WC-041 DONE — Skill Runtime in Professional Runtime · 20/20 PR · VERSION 1.42.0)
+**Last Updated:** 2026-08-07 (WC-042 IN PROGRESS — WBE-S7 Single Onboarding Payment + Renewal Saga · 350/350 WBE · VERSION 1.43.0)
 
 ---
 
-## SESSION RECORD — 2026-08-07 (WC-041 SKILL ARCHITECTURE SPRINT 2 — COMPLETE)
+## SESSION RECORD — 2026-08-07 (WC-042 WBE-S7 SINGLE ONBOARDING PAYMENT + RENEWAL SAGA — IN PROGRESS)
+
+### What Was Built
+
+| Task | File | Output | Status |
+|---|---|---|---|
+| WC042-01 | `src/billing-engine/payment/models.py` | `OnboardingOrderRequest`, `OnboardingOrderResult`, `PaymentCapturedEvent`, `PaymentEnvironment` | ✅ |
+| WC042-01 | `src/billing-engine/payment/razorpay_client.py` | `RazorpayClient` — async Razorpay API wrapper, HMAC verification, all creds via env vars | ✅ |
+| WC042-01 | `src/billing-engine/payment/onboarding.py` | `OnboardingService.create_onboarding_order()` — combined subscription + wallet seed order; DEMOWAOOAW/UATWAOOAW bypass | ✅ |
+| WC042-02 | `src/billing-engine/payment/webhook.py` | `WebhookHandler.handle_payment_captured()` — idempotent, HMAC verified, S-09 mode flip | ✅ |
+| WC042-02 | `src/billing-engine/payment/router.py` | `POST /payments/onboarding-order` + `POST /payments/webhooks/razorpay`; registered in main.py | ✅ |
+| WC042-02 | `infrastructure/postgres/init/18-wbe-s7-payment.sql` | `business.payment_intents` + DEMOWAOOAW/UATWAOOAW coupon seeds | ✅ |
+| WC042-03 | `src/billing-engine/wallet/service.py` | `renew()` C-090 grandfather check via `business.price_change_notices` | ✅ |
+| WC042-04 | `src/business-platform/Workflows/RenewalFailureSaga.cs` | Temporal saga Day1/3/7/14; C-049 disclosure; campaign pause gate | ✅ |
+| WC042-05 | `tests/billing-engine/test_payment.py` | CCT-ONBOARD-01 (5), CCT-WEBHOOK-01 (3), CCT-GRANDFATHER-01 (4) = 12 tests | ✅ |
+| D-02 | `adr/ADR-022` Amendment 2 | Env-var configuration + lower-environment bypass formally documented | ✅ |
+| FA-029 | `security/FOUNDER-ACTIONS.md` | WC-042 authorization + Razorpay implementation decisions | ✅ |
+
+### CCT Results
+
+| CCT | Description | Result |
+|---|---|---|
+| CCT-ONBOARD-01 | Single onboarding order combines subscription + wallet seed; DEMOWAOOAW/UATWAOOAW bypass | ✅ 5/5 |
+| CCT-WEBHOOK-01 | payment.captured idempotent, HMAC verified, activates wallet (S-09 mode flip) | ✅ 3/3 |
+| CCT-GRANDFATHER-01 | C-090: renewal blocked when plan price > agreed price without acknowledged notice | ✅ 4/4 |
+
+### DoD Status
+
+- [x] Single Razorpay order = subscription_amount + wallet_seed (ADR-022 §1.2)
+- [x] DEMOWAOOAW/UATWAOOAW coupons → ₹0 bypass order, no live Razorpay call (FA-029)
+- [x] All Razorpay config via env vars — no hardcoded credentials (ADR-014)
+- [x] `payment.captured` webhook idempotent via `payment_intents` table (C-002)
+- [x] Mode flip BEFORE subscription insert (S-09 race condition fix)
+- [x] C-090 grandfather check: `renew()` blocked without acknowledged `price_change_notice`
+- [x] `RenewalFailureSaga` Day1/3/7/14 Temporal workflow (ADR-022 §1.3)
+- [x] C-049 WhatsApp disclosure when entering degraded mode at Day3
+- [x] Campaign pause gate at Day7 — billing state change rolled back if pause fails
+- [x] ADR-022 Amendment 2 formally recorded
+- [x] FA-029 recorded in FOUNDER-ACTIONS.md
+- [x] 350/350 billing-engine tests passing (+12 new)
+- [x] ruff clean
+- [x] VERSION 1.43.0
+
+**Test results: WBE 350/350 (+12) · Zero regressions · WC-042 CCTs green**
+
+
 
 ### What Was Built
 

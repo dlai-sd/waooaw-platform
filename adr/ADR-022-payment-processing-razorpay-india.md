@@ -319,3 +319,46 @@ Each employment contract row records the price at which it was sold:
 WBE enforces: Razorpay plan update API call is blocked until both conditions are met.
 Any attempt to update the subscription plan before acknowledgment is a C-090 violation
 and triggers an automatic compliance alert to the Constitutional Audit Ledger.
+
+## Amendment 2 — Lower-Environment Bypass + Environment-Variable Configuration (2026-08-07)
+
+**Authority:** Founder Decision FA-029 (2026-08-07 — Yogesh Khandge)
+**Sprint:** WC-042 = WBE-S7 (Single Onboarding Payment + Renewal Saga)
+**Constitutional Basis:** ADR-014 (secret management), C-059 (implementation traceability)
+
+### Amendment 2.1 — All Razorpay Configuration via Environment Variables
+
+No Razorpay plan IDs, API keys, or webhook secrets are hardcoded in source code (ADR-014).
+All credentials and plan references are injected via environment variables at deploy time:
+
+| Environment Variable | Description |
+|---|---|
+| `RAZORPAY_KEY_ID` | Razorpay API key (test key for demo/UAT, live key for production) |
+| `RAZORPAY_KEY_SECRET` | Razorpay API secret (never logged — ADR-014) |
+| `RAZORPAY_WEBHOOK_SECRET` | HMAC-SHA256 webhook signature verification secret |
+| `RAZORPAY_PLAN_ID_STARTER` | Razorpay plan ID for Starter bundle tier |
+| `RAZORPAY_PLAN_ID_RUNNER` | Razorpay plan ID for Runner bundle tier |
+| `RAZORPAY_PLAN_ID_WINNER` | Razorpay plan ID for Winner bundle tier |
+| `WAOOAW_ENVIRONMENT` | Deployment environment: `demo` \| `uat` \| `production` |
+
+Production Razorpay plan IDs are NOT yet created. They will be injected at go-live time.
+Until then, lower environments use test keys from the Razorpay Test Mode dashboard.
+
+### Amendment 2.2 — Lower-Environment Payment Bypass (Demo / UAT)
+
+For demo and UAT environments, real payment processing is not required. Two reserved coupon
+codes bypass the live Razorpay API entirely:
+
+| Coupon Code | Environment | Discount | Behaviour |
+|---|---|---|---|
+| `DEMOWAOOAW` | demo | 100% | Returns `bypass-{customer_id}` stub order, `amount_paise=0`, no Razorpay API call |
+| `UATWAOOAW` | uat | 100% | Same — bypasses Razorpay, activates wallet seeding directly |
+
+The bypass is implemented in `OnboardingService.create_onboarding_order()`. The
+`WebhookHandler.handle_payment_captured()` skips HMAC signature verification when
+`is_bypass=True`. Both coupons are seeded in `business.coupon_codes` via migration
+`infrastructure/postgres/init/18-wbe-s7-payment.sql`.
+
+**Production guard:** `is_bypass` can only be `True` when the order was created with a bypass
+coupon. The frontend sends `is_bypass` in the payment-capture body. Production deployments
+must never issue bypass-coupon codes; the coupon seed migration is gated by `WAOOAW_ENVIRONMENT`.
