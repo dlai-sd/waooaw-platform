@@ -16,9 +16,6 @@ from .models import TokenData
 
 logger = logging.getLogger(__name__)
 
-# ADR-014: vault_alias logged only — never the full KV URL or any token fragment.
-_NEVER_LOG = frozenset({"access_token", "refresh_token", "token", "secret", "key"})
-
 
 def _make_secret_name(path: str) -> str:
     """Azure Key Vault secret names: alphanumeric + hyphens only, max 127 chars."""

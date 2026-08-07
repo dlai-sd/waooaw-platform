@@ -6,7 +6,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -27,7 +27,6 @@ class _SecureExceptionMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
         except Exception as exc:
             # HTTPException carries its own status code and safe message — let it through.
-            from fastapi import HTTPException
             if isinstance(exc, HTTPException):
                 raise
             # ADR-014: exception type + path logged. No stack trace. No token value.

@@ -62,6 +62,12 @@ CREATE TABLE provider_configs (
 );
 ```
 
+> **WC-038 Corrigendum (2026-08-08):** `tenant_id` is implemented as nullable (`UUID` with no `NOT NULL`
+> constraint) to support platform-level entries (e.g. shared OpenAI API key). `NULL` tenant_id rows
+> represent platform-wide defaults; a partial unique index (`WHERE tenant_id IS NULL`) enforces
+> uniqueness for platform-level entries since standard `UNIQUE` allows multiple NULLs in Postgres.
+> The foreign key reference to `tenants(id)` is omitted for platform-level rows by design.
+
 **Business rules:**
 - Adding a new provider = inserting a row. No code change, no redeployment.
 - `Meta` is the first platform entry. Google OAuth providers (YouTube, GA4, Search Console) are rows 2–5.

@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import sys
 from datetime import datetime, timedelta, timezone
@@ -20,6 +21,9 @@ with patch("azure.identity.DefaultAzureCredential"), \
      patch("azure.keyvault.secrets.SecretClient"):
     from oauth_vault.main import app
     from oauth_vault.models import TokenData
+
+from oauth_vault.vault_client import VaultClient
+from oauth_vault.refresh_scheduler import RefreshScheduler
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -362,3 +366,266 @@ class TestCCTTokenHealth01:
 
         assert resp.status_code == 200
         assert resp.json()["status"] == "VALID"
+
+
+# ─── VaultClient unit tests (C-076 coverage — vault_client.py) ───────────────
+
+
+class TestVaultClientUnit:
+    """Direct unit tests for VaultClient methods. Mocks Azure SDK at the instance level."""
+
+    def _make_vault_client(self) -> VaultClient:
+        with patch("azure.identity.DefaultAzureCredential"), \
+             patch("azure.keyvault.secrets.SecretClient"):
+            return VaultClient("test-kv")
+
+    @pytest.mark.asyncio
+    async def test_store_token_calls_set_secret(self):
+        vc = self._make_vault_client()
+        vc._client.set_secret = MagicMock(return_value=None)
+        await vc.store_token("providers/ctr-001/meta", _make_token_data())
+        vc._client.set_secret.assert_called_once()
+        args = vc._client.set_secret.call_args[0]
+        assert "access_token" in args[1]  # payload JSON contains field name, not value
+
+    @pytest.mark.asyncio
+    async def test_retrieve_token_success(self):
+        vc = self._make_vault_client()
+        secret_mock = MagicMock()
+        secret_mock.value = json.dumps({
+            "access_token": "tok_unit", "refresh_token": None,
+            "expires_at": None, "provider_name": "meta",
+            "contract_id": "ctr-001", "extra_data": {},
+        })
+        vc._client.get_secret = MagicMock(return_value=secret_mock)
+        result = await vc.retrieve_token("providers/ctr-001/meta")
+        assert result is not None
+        assert result.access_token == "tok_unit"
+
+    @pytest.mark.asyncio
+    async def test_retrieve_token_not_found_returns_none(self):
+        vc = self._make_vault_client()
+        vc._client.get_secret = MagicMock(side_effect=Exception("ResourceNotFound"))
+        result = await vc.retrieve_token("providers/ctr-001/meta")
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_retrieve_token_corrupt_payload_returns_none(self):
+        vc = self._make_vault_client()
+        secret_mock = MagicMock()
+        secret_mock.value = "not-valid-json{"
+        vc._client.get_secret = MagicMock(return_value=secret_mock)
+        result = await vc.retrieve_token("providers/ctr-001/meta")
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_delete_token_calls_begin_delete_secret(self):
+        vc = self._make_vault_client()
+        vc._client.begin_delete_secret = MagicMock(return_value=None)
+        await vc.delete_token("providers/ctr-001/meta")
+        vc._client.begin_delete_secret.assert_called_once()
+
+
+# ─── Retrieve path coverage (tokens.py: expired, inline refresh) ─────────────
+
+
+class TestTokensRetrievePaths:
+    """Covers retrieve_token expired/EXPIRING_SOON paths and _try_refresh. C-076."""
+
+    def test_retrieve_expired_returns_410(self):
+        token = _make_token_data(expires_at=datetime.now(tz=timezone.utc) - timedelta(hours=1))
+        vault_mock = MagicMock()
+        vault_mock.retrieve_token = AsyncMock(return_value=token)
+        _inject(vault=vault_mock)
+
+        with TestClient(app) as client:
+            resp = client.get("/tokens/ctr-001/meta")
+        _reset()
+
+        assert resp.status_code == 410
+        assert resp.json()["detail"]["error"] == "TOKEN_EXPIRED"
+
+    def test_retrieve_not_found_returns_404(self):
+        vault_mock = MagicMock()
+        vault_mock.retrieve_token = AsyncMock(return_value=None)
+        _inject(vault=vault_mock)
+
+        with TestClient(app) as client:
+            resp = client.get("/tokens/ctr-001/meta")
+        _reset()
+
+        assert resp.status_code == 404
+
+    def test_retrieve_expiring_soon_inline_refresh_success(self):
+        """EXPIRING_SOON + refresh_token → _try_refresh called; response has new token."""
+        expiring = _make_token_data(
+            access_token="old_tok",
+            refresh_token="ref_xyz",
+            expires_at=datetime.now(tz=timezone.utc) + timedelta(hours=1),
+        )
+        vault_mock = MagicMock()
+        vault_mock.retrieve_token = AsyncMock(return_value=expiring)
+        vault_mock.store_token = AsyncMock(return_value=None)
+        _inject(vault=vault_mock)
+
+        with patch("httpx.AsyncClient") as mock_cls:
+            mock_client = AsyncMock()
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock(return_value=False)
+            resp_mock = MagicMock()
+            resp_mock.status_code = 200
+            resp_mock.json.return_value = {"access_token": "new_tok", "expires_in": 86400}
+            mock_client.post = AsyncMock(return_value=resp_mock)
+            mock_cls.return_value = mock_client
+
+            with TestClient(app) as client:
+                resp = client.get("/tokens/ctr-001/meta")
+        _reset()
+
+        assert resp.status_code == 200
+        assert resp.json()["access_token"] == "new_tok"
+        vault_mock.store_token.assert_called_once()
+
+    def test_retrieve_expiring_soon_no_refresh_token_returns_expiring_soon(self):
+        """No refresh_token → returns EXPIRING_SOON without attempting refresh."""
+        expiring = _make_token_data(
+            refresh_token=None,
+            expires_at=datetime.now(tz=timezone.utc) + timedelta(hours=1),
+        )
+        vault_mock = MagicMock()
+        vault_mock.retrieve_token = AsyncMock(return_value=expiring)
+        _inject(vault=vault_mock)
+
+        with TestClient(app) as client:
+            resp = client.get("/tokens/ctr-001/meta")
+        _reset()
+
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "EXPIRING_SOON"
+
+    def test_revoke_unregisters_from_scheduler(self):
+        """Successful revoke must unregister token from scheduler (ADR-021 §3)."""
+        vault_mock = MagicMock()
+        vault_mock.delete_token = AsyncMock(return_value=None)
+        scheduler_mock = MagicMock()
+
+        class OKCEClient:
+            async def record_revocation(self, *_: object) -> bool:
+                return True
+
+        _inject(vault=vault_mock, ce=OKCEClient())
+
+        with TestClient(app) as client:
+            app.state.scheduler = scheduler_mock  # inject after lifespan runs
+            resp = client.delete("/tokens/ctr-001/meta")
+        _reset()
+
+        assert resp.status_code == 200
+        scheduler_mock.unregister.assert_called_once_with("ctr-001", "meta")
+
+    def test_revoke_ce_http_fallback_503_when_ce_unreachable(self):
+        """Without injected ce_client, HTTP fallback to CE → unreachable → 503 (ADR-031 fail-safe)."""
+        vault_mock = MagicMock()
+        vault_mock.delete_token = AsyncMock(return_value=None)
+        _inject(vault=vault_mock)  # no ce_client → triggers HTTP fallback path
+
+        with patch("httpx.AsyncClient") as mock_cls:
+            mock_client = AsyncMock()
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock(return_value=False)
+            mock_client.post = AsyncMock(side_effect=Exception("ConnectionRefused"))
+            mock_cls.return_value = mock_client
+
+            with TestClient(app) as client:
+                resp = client.delete("/tokens/ctr-001/meta")
+        _reset()
+
+        assert resp.status_code == 503
+        vault_mock.delete_token.assert_not_called()
+
+
+# ─── Scheduler edge-case coverage (refresh_scheduler.py) ─────────────────────
+
+
+
+class TestSchedulerEdgeCases:
+    """Edge-case coverage for RefreshScheduler. C-076."""
+
+    def _make_scheduler(self) -> RefreshScheduler:
+        return RefreshScheduler("test-kv", "http://pr:5003")
+
+    @pytest.mark.asyncio
+    async def test_valid_token_not_refreshed(self):
+        """Scheduler skips tokens with VALID status — no store_token call."""
+        valid_token = _make_token_data(
+            expires_at=datetime.now(tz=timezone.utc) + timedelta(hours=8),
+        )
+        vault_mock = MagicMock()
+        vault_mock.retrieve_token = AsyncMock(return_value=valid_token)
+        vault_mock.store_token = AsyncMock(return_value=None)
+
+        scheduler = self._make_scheduler()
+        scheduler._vault = vault_mock
+        scheduler.register("ctr-001", "meta")
+
+        await scheduler.run_once()
+
+        vault_mock.store_token.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_expired_no_refresh_token_notifies_pr(self):
+        """EXPIRED token with no refresh_token → PR notified directly."""
+        expired_token = _make_token_data(
+            refresh_token=None,
+            expires_at=datetime.now(tz=timezone.utc) - timedelta(hours=1),
+        )
+        vault_mock = MagicMock()
+        vault_mock.retrieve_token = AsyncMock(return_value=expired_token)
+
+        pr_notified = False
+
+        async def _mock_post(url: str, **_: object) -> MagicMock:
+            nonlocal pr_notified
+            if "events" in url:
+                pr_notified = True
+            r = MagicMock()
+            r.status_code = 202
+            return r
+
+        scheduler = self._make_scheduler()
+        scheduler._vault = vault_mock
+        scheduler.register("ctr-001", "meta")
+
+        with patch("httpx.AsyncClient") as mock_cls:
+            mock_client = AsyncMock()
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock(return_value=False)
+            mock_client.post = AsyncMock(side_effect=_mock_post)
+            mock_cls.return_value = mock_client
+
+            await scheduler.run_once()
+
+        assert pr_notified, "PR must receive PLATFORM_TOKEN_EXPIRED for expired token"
+
+    @pytest.mark.asyncio
+    async def test_notify_pr_exception_is_non_fatal(self):
+        """PR notification failure must be caught and logged, never propagate."""
+        expired_token = _make_token_data(
+            refresh_token=None,
+            expires_at=datetime.now(tz=timezone.utc) - timedelta(hours=1),
+        )
+        vault_mock = MagicMock()
+        vault_mock.retrieve_token = AsyncMock(return_value=expired_token)
+
+        scheduler = self._make_scheduler()
+        scheduler._vault = vault_mock
+        scheduler.register("ctr-001", "meta")
+
+        with patch("httpx.AsyncClient") as mock_cls:
+            mock_client = AsyncMock()
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock(return_value=False)
+            mock_client.post = AsyncMock(side_effect=Exception("PR down"))
+            mock_cls.return_value = mock_client
+
+            await scheduler.run_once()  # must not raise

@@ -1,6 +1,6 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-08-08 (WC-038 DONE — CE 82/82 · BP 33/33 · TL 12/12 · WC-039 READY)
+**Last Updated:** 2026-08-08 (WC-038 EA review DONE — 26/26 tests · 91% coverage · WC-039 READY)
 
 ---
 
@@ -57,6 +57,31 @@ EA (INST-004) reviewed the WC-037 implementation and identified **3 bugs**, all 
 - [x] All existing CE + BP tests still passing (82/82, 33/33 — zero regression)
 - [x] `dotnet build` clean on CE + BP
 - [x] VERSION 1.38.0, CHANGELOG entry, PROJECT_STATE updated
+
+---
+
+## SESSION RECORD — 2026-08-08 (WC-038 EA REVIEW — COMPLETE)
+
+### Enterprise Architect Review (INST-004)
+
+EA (INST-004) reviewed WC-038 and identified **6 gaps** (1 critical, 5 significant), all fixed:
+
+| Gap | Severity | Description | Fix |
+|---|---|---|---|
+| GAP-001 | **Critical** | C-076: coverage 73% vs ≥90% required | +14 tests (VaultClientUnit, TokensRetrievePaths, SchedulerEdgeCases) → 91% |
+| GAP-002 | Significant | `_NEVER_LOG` dead code in `vault_client.py` — misleading | Removed constant |
+| GAP-003 | Significant | Duplicate `from .models import TokenData` in `refresh_scheduler._refresh_token` | Removed local import |
+| GAP-004 | Significant | `from datetime import timedelta` local import in `tokens._try_refresh` | Moved to module level |
+| GAP-005 | Significant | `from fastapi import HTTPException` local import in `exception_handler.dispatch` | Moved to module level |
+| GAP-006 | Significant | ADR-042 §1 `tenant_id NOT NULL` vs nullable implementation — undocumented divergence | Added corrigendum note to ADR-042 §1 |
+
+GAP-007 (CE HTTP fallback targets non-existent REST endpoint → production revocations always 503) documented as known constitutional fail-safe per ADR-031. WC-039 CTG will inject Python CE gRPC client.
+
+**Post-review test results: CE 82/82 · BP 33/33 · TL 26/26 (+14) · Coverage 91% · Zero regressions**
+
+### Review File
+
+`reviews/R-021-sprint-038-ea-review.md`
 
 ---
 

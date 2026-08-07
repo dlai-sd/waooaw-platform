@@ -110,7 +110,6 @@ class RefreshScheduler:
                 return False
 
             data = resp.json()
-            from .models import TokenData  # local import to avoid circular
             expires_at = datetime.now(tz=timezone.utc) + timedelta(seconds=data.get("expires_in", 3600))
             refreshed = TokenData(
                 access_token=data["access_token"],

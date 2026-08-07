@@ -8,6 +8,23 @@ types: `feat` | `fix` | `constitutional` | `cct` | `chore` | `refactor` | `secur
 
 ---
 
+## [1.39.1] — 2026-08-08 (WC-038 EA Review — gaps fixed)
+
+### Enterprise Architect Review (INST-004) — R-021
+
+**Review outcome:** 6 gaps found and fixed. WC-039 AUTHORIZED.
+
+- `fix(trust-layer)`: removed dead `_NEVER_LOG` constant from `vault_client.py` (GAP-002)
+- `fix(trust-layer)`: removed duplicate `from .models import TokenData` local import in `refresh_scheduler._refresh_token` (GAP-003)
+- `fix(trust-layer)`: moved `timedelta` import to module level in `tokens.py` (GAP-004)
+- `fix(trust-layer)`: moved `HTTPException` import to module level in `exception_handler.py` (GAP-005)
+- `cct(trust-layer)`: +14 tests — TestVaultClientUnit × 5, TestTokensRetrievePaths × 6, TestSchedulerEdgeCases × 3 (GAP-001: C-076 73%→91%)
+- `constitutional(adr)`: ADR-042 §1 corrigendum — tenant_id nullability for platform-level rows documented (GAP-006)
+
+**Test results:** CE 82/82 · BP 33/33 · TL 26/26 (+14) · Coverage 91% · ruff clean
+
+---
+
 ## [1.39.0] — 2026-08-08 (WC-038 Provider Registry + oauth-vault)
 
 ### Trust Layer Sprint 2 — ADR-042 + ADR-021 Implementation

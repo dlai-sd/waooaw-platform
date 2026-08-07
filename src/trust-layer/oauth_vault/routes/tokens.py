@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import httpx
 from fastapi import APIRouter, HTTPException, Request
@@ -138,7 +138,6 @@ async def _try_refresh(
             )
             return None
         data = resp.json()
-        from datetime import timedelta
         expires_at = datetime.now(tz=timezone.utc) + timedelta(seconds=data.get("expires_in", 3600))
         refreshed = TokenData(
             access_token=data["access_token"],
