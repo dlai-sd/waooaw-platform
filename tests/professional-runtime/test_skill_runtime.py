@@ -16,6 +16,7 @@ from intent_crystallizer import (
 )
 from session_executor import C041ToolAuthorizationError, SessionExecutor
 from skill_resolver import (
+    CrystallizerConfig,
     SessionSkillContext,
     SkillAssignment,
     SkillResolutionError,
@@ -140,15 +141,22 @@ class TestCCT_SKILL_CP_01:
         mock_ce.record_approval.return_value = "evidence-cp-01-approval"
 
         crystallizer = IntentCrystallizer(llm_client=mock_llm, ce_client=mock_ce)
+        config = CrystallizerConfig(
+            enabled=True,
+            prompt_template="skills/content_publish/crystallizer_v1.md",
+            requires_customer_approval=True,
+            locked_artifact_schema="schemas/campaign_brief_v1.json",
+        )
         artifact = await crystallizer.crystallize(
             skill_id="content_publish",
-            prompt_template="skills/content_publish/crystallizer_v1.md",
+            config=config,
         )
 
         assert isinstance(artifact, LockedArtifact)
         assert artifact.skill_id == "content_publish"
         assert artifact.approval_evidence_id == "evidence-cp-01-approval"
         assert artifact.content["campaign_objective"] == "Brand awareness"
+        assert artifact.artifact_type == "campaign_brief"  # GAP-002 fix: derived from locked_artifact_schema
         mock_llm.generate.assert_called_once()
         mock_ce.record_approval.assert_called_once_with(
             "content_publish", artifact.content
@@ -206,9 +214,7 @@ class TestCCT_SKILL_CP_02:
             ctx.authorized_tools.add(tool)
             ctx.dcm_categories[tool] = "DETERMINISTIC_REQUIRED"
             ctx.tool_skill_index[tool] = "content_publish"
-        ctx.crystallizer_configs["content_publish"] = __import__(
-            "skill_resolver"
-        ).CrystallizerConfig(
+        ctx.crystallizer_configs["content_publish"] = CrystallizerConfig(
             enabled=True,
             prompt_template="skills/content_publish/crystallizer_v1.md",
             requires_customer_approval=True,

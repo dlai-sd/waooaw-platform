@@ -5,7 +5,9 @@
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import dataclass, field
+from pathlib import PurePosixPath
 from typing import Any, Protocol
 
 logger = logging.getLogger(__name__)
@@ -20,7 +22,7 @@ class LockedArtifact:
     LockedArtifact exists in session state.
     """
     skill_id: str
-    artifact_type: str  # e.g. "campaign_brief"
+    artifact_type: str  # derived from CrystallizerConfig.locked_artifact_schema
     content: dict[str, Any] = field(default_factory=dict)
     approval_evidence_id: str = ""  # CE evidence record ID for the customer's approval (C-023)
 
@@ -53,6 +55,19 @@ class CEApprovalClient(Protocol):  # pragma: no cover
         ...
 
 
+def _artifact_type_from_schema(schema_path: str) -> str:
+    """Derive a stable artifact_type token from the locked_artifact_schema path.
+
+    "schemas/campaign_brief_v1.json" → "campaign_brief"
+    "schemas/ad_plan_v2.json"        → "ad_plan"
+    ""                                → "artifact"
+    """
+    if not schema_path:
+        return "artifact"
+    stem = PurePosixPath(schema_path).stem           # "campaign_brief_v1"
+    return re.sub(r"_v\d+.*$", "", stem) or "artifact"  # "campaign_brief"
+
+
 class IntentCrystallizer:
     """Produces a LockedArtifact by prompting the LLM and recording customer approval.
 
@@ -75,27 +90,29 @@ class IntentCrystallizer:
     async def crystallize(
         self,
         skill_id: str,
-        prompt_template: str,
-        session_metadata: dict[str, Any] | None = None,
+        config: CrystallizerConfig,  # CrystallizerConfig lives in skill_resolver (imported at module bottom)
     ) -> LockedArtifact:
         """Build structured intent artifact → present for customer approval → record evidence.
 
-        Returns a LockedArtifact with a populated approval_evidence_id.
+        WC-041-03 contract: crystallize(skill_id, config: CrystallizerConfig) → LockedArtifact.
+        Returns a LockedArtifact with a populated approval_evidence_id (C-023).
         """
         logger.info("IntentCrystallizer starting. skill_id=%s", skill_id)
 
-        artifact_content = await self._generate_artifact(skill_id, prompt_template, session_metadata or {})
+        artifact_content = await self._generate_artifact(skill_id, config.prompt_template)
+        artifact_type = _artifact_type_from_schema(config.locked_artifact_schema)
         evidence_id = await self._record_approval(skill_id, artifact_content)
 
         locked = LockedArtifact(
             skill_id=skill_id,
-            artifact_type="campaign_brief",
+            artifact_type=artifact_type,
             content=artifact_content,
             approval_evidence_id=evidence_id,
         )
         logger.info(
-            "IntentCrystallizer complete. skill_id=%s evidence_id=%s",
+            "IntentCrystallizer complete. skill_id=%s artifact_type=%s evidence_id=%s",
             skill_id,
+            artifact_type,
             evidence_id,
         )
         return locked
@@ -104,7 +121,6 @@ class IntentCrystallizer:
         self,
         skill_id: str,
         prompt_template: str,
-        session_metadata: dict[str, Any],
     ) -> dict[str, Any]:
         if self._llm_client is not None:
             return await self._llm_client.generate(
@@ -120,5 +136,15 @@ class IntentCrystallizer:
     async def _record_approval(self, skill_id: str, artifact_content: dict[str, Any]) -> str:
         if self._ce_client is not None:
             return await self._ce_client.record_approval(skill_id, artifact_content)
-        # Stub — real implementation calls CE gRPC with action_type=SKILL_APPROVAL
+        # GAP-004 fix: warn when ce_client absent — C-023 violated in production
+        logger.warning(
+            "ce_client not configured — LockedArtifact has no CE evidence record. "
+            "C-023 violated in production. skill_id=%s",
+            skill_id,
+        )
         return f"evidence-{skill_id}-approval-stub"
+
+
+# Avoid circular import: CrystallizerConfig is defined in skill_resolver but used here
+# only as a type annotation. Import at runtime to keep the dependency direction clear.
+from skill_resolver import CrystallizerConfig as CrystallizerConfig  # noqa: E402

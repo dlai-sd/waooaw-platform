@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
 from typing import Any, Protocol
 
 from intent_crystallizer import CrystallizerRequiredError, LockedArtifact
@@ -19,8 +18,8 @@ class C041ToolAuthorizationError(Exception):
 
     C-041: tool authorization is derived from the Employment Contract skills[].
     A tool not in authorized_tools means the agent does not hold a skill that
-    declares it. This is a constitutional violation — session paused, CE DENY
-    evidence record written.
+    declares it. The caller is responsible for writing a CE DENY evidence record
+    before propagating this error (C-023 obligation belongs to the session layer).
     """
     def __init__(self, tool_name: str, authorized_tools: set[str]) -> None:
         self.tool_name = tool_name
@@ -40,15 +39,6 @@ class ToolDispatcher(Protocol):  # pragma: no cover
         skill_id: str,
     ) -> Any:
         ...
-
-
-@dataclass
-class DispatchRecord:
-    """Record of a single tool dispatch call — used by tests to assert CE parameters."""
-    tool_name: str
-    params: dict[str, Any]
-    dcm_category: str
-    skill_id: str
 
 
 class SessionExecutor:
@@ -138,5 +128,5 @@ class SessionExecutor:
                 skill_id=skill_id,
             )
 
-        logger.debug("No dispatcher injected — stub dispatch. tool=%s", tool_name)
+        logger.warning("No dispatcher injected — tool call returned stub. tool=%s", tool_name)
         return {"status": "dispatched", "tool": tool_name}
