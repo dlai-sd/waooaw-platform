@@ -8,6 +8,33 @@ types: `feat` | `fix` | `constitutional` | `cct` | `chore` | `refactor` | `secur
 
 ---
 
+## [1.39.0] — 2026-08-08 (WC-038 Provider Registry + oauth-vault)
+
+### Trust Layer Sprint 2 — ADR-042 + ADR-021 Implementation
+
+**Constitutional basis:** C-031 (ADR-042 provider routing), C-041 (tool auth), C-003 (authority licensed), ADR-014 (secret management), ADR-021 (OAuth token management)
+
+- `constitutional(bp)`: `business.provider_configs` table — runtime-configurable provider routing; Meta (OAUTH2) + OpenAI (API_KEY) seed rows (`16-provider-registry.sql`)
+- `feat(bp)`: `ProviderRegistryDbContext` + `ProviderConfig` entity — EF Core model for provider_configs
+- `feat(bp)`: `GET /api/v1/providers` + `GET /api/v1/providers/{name}` — internal Provider Registry API; tenant-specific rows take precedence over platform-level
+- `feat(trust-layer)`: `oauth-vault` FastAPI service on port 8130 (ADR-021)
+  - `POST /tokens/{contract_id}/{provider_name}` — stores token in Azure Key Vault; registers in refresh scheduler
+  - `GET /tokens/{contract_id}/{provider_name}` — retrieves token; auto-refreshes if EXPIRING_SOON
+  - `DELETE /tokens/{contract_id}/{provider_name}` — CE evidence record required before AKV delete (C-003)
+  - `GET /tokens/health/{contract_id}/{provider_name}` — VALID/EXPIRING_SOON/EXPIRED/NOT_CONNECTED status
+- `constitutional(trust-layer)`: Azure Key Vault client wraps sync SDK in `asyncio.to_thread`; no token value ever logged (ADR-014)
+- `constitutional(trust-layer)`: 30-minute background refresh scheduler; PLATFORM_TOKEN_EXPIRED notification to PR on failure
+- `constitutional(trust-layer)`: `BaseHTTPMiddleware` global exception handler — sanitized 500 response, no token in body
+- `cct(trust-layer)`: CCT-VAULT-01 — 3 tests: token never in logs on store/retrieve/error paths
+- `cct(trust-layer)`: CCT-VAULT-02 — 2 tests: CE evidence record before AKV delete; 503 if CE unavailable
+- `cct(trust-layer)`: CCT-VAULT-03 — 2 tests: EXPIRING_SOON triggers refresh; refresh failure notifies PR
+- `cct(trust-layer)`: CCT-TOKEN-HEALTH-01 — 5 tests: VALID/EXPIRING_SOON/EXPIRED/NOT_CONNECTED/API_KEY-no-expiry
+- `chore(infra)`: `docker-compose.yml` — `oauth-vault` service on port 8130 with AKV + CE dependencies
+
+**Test results:** CE 82/82 | BP 33/33 | TL 12/12 (new) | Zero regressions
+
+---
+
 ## [1.38.0] — 2026-08-07 (WC-037 Constitutional Audit Trail Sink)
 
 ### Trust Layer Sprint 1 — ADR-044 Implementation

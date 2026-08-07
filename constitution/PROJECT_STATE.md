@@ -1,6 +1,6 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-08-07 (WC-037 EA review complete — BUG-001/002/003 fixed — CE 82/82 · BP 33/33)
+**Last Updated:** 2026-08-08 (WC-038 DONE — CE 82/82 · BP 33/33 · TL 12/12 · WC-039 READY)
 
 ---
 
@@ -57,6 +57,43 @@ EA (INST-004) reviewed the WC-037 implementation and identified **3 bugs**, all 
 - [x] All existing CE + BP tests still passing (82/82, 33/33 — zero regression)
 - [x] `dotnet build` clean on CE + BP
 - [x] VERSION 1.38.0, CHANGELOG entry, PROJECT_STATE updated
+
+---
+
+## SESSION RECORD — 2026-08-08 (WC-038 TRUST LAYER SPRINT 2 — COMPLETE)
+
+### What Was Built
+
+| Task | File | Output | Status |
+|---|---|---|---|
+| WC038-01 | `infrastructure/postgres/init/16-provider-registry.sql` | `business.provider_configs` table + Meta (OAUTH2) + OpenAI (API_KEY) seed rows | ✅ |
+| WC038-01 | `src/business-platform/Infrastructure/ProviderRegistryDbContext.cs` | EF Core context + `ProviderConfig` entity | ✅ |
+| WC038-02 | `src/business-platform/Controllers/ProvidersController.cs` | `GET /api/v1/providers` + `GET /api/v1/providers/{name}` internal API | ✅ |
+| WC038-02 | `src/business-platform/Program.cs` | `AddDbContextFactory<ProviderRegistryDbContext>` DI registration | ✅ |
+| WC038-03 | `src/trust-layer/oauth_vault/main.py` | FastAPI app with lifespan; routes registered; `/health` endpoint | ✅ |
+| WC038-03 | `src/trust-layer/oauth_vault/models.py` | `TokenData`, `StoreTokenRequest`, `TokenHealthResponse` Pydantic models | ✅ |
+| WC038-03 | `src/trust-layer/oauth_vault/routes/tokens.py` | POST/GET/DELETE/health token routes | ✅ |
+| WC038-04 | `src/trust-layer/oauth_vault/vault_client.py` | Azure Key Vault client; `asyncio.to_thread`; no token in logs (ADR-014) | ✅ |
+| WC038-05 | `src/trust-layer/oauth_vault/refresh_scheduler.py` | 30-min background refresh; PLATFORM_TOKEN_EXPIRED PR notification | ✅ |
+| WC038-06 | `src/trust-layer/oauth_vault/exception_handler.py` | `BaseHTTPMiddleware`; sanitized 500; HTTPException passthrough | ✅ |
+| WC038-07 | `tests/trust-layer/test_oauth_vault.py` | CCT-VAULT-01/02/03 + CCT-TOKEN-HEALTH-01 (12 tests) | ✅ |
+| WC038-07 | `docker-compose.yml` | `oauth-vault` service on port 8130 | ✅ |
+
+### DoD Verification
+- [x] `business.provider_configs` table + constraints + unique partial index for platform-level rows
+- [x] Meta (OAUTH2) + OpenAI (API_KEY) seed rows; no code change needed to add a provider
+- [x] Provider Registry API returns tenant-specific rows with platform-level fallback
+- [x] `oauth-vault` FastAPI service stores/retrieves/deletes tokens in Azure Key Vault
+- [x] CE evidence record required before AKV delete (C-003) — blocked 503 if CE unavailable
+- [x] Token value never appears in logs (CCT-VAULT-01; ADR-014)
+- [x] 30-min scheduler refreshes EXPIRING_SOON tokens; notifies PR on failure
+- [x] Global exception handler returns sanitized 500 (no token in body)
+- [x] `ruff check` clean on all trust-layer code + tests
+- [x] All existing CE + BP tests still passing (82/82, 33/33 — zero regression)
+- [x] `dotnet build` clean on CE + BP
+- [x] VERSION 1.39.0, CHANGELOG entry, PROJECT_STATE updated
+
+**Test results: CE 82/82 · BP 33/33 · TL 12/12 · Zero regressions · Sprint WC-038 = DONE · WC-039 = READY**
 
 ---
 
@@ -1426,7 +1463,7 @@ Each sprint has EA spec gaps documented, SA corrections applied to WC files, and
 ```yaml
 autonomous_halt: false
 platform_phase: IMPLEMENTATION
-current_sprint: WC-038
+current_sprint: WC-039
 sprint_status: READY
 branch: main
 consecutive_failures: 0
@@ -1437,13 +1474,20 @@ tasks_done:
   - WC037-04
   - WC037-05
   - WC037-06
-tasks_remaining:
   - WC038-01
   - WC038-02
   - WC038-03
+  - WC038-04
+  - WC038-05
+  - WC038-06
+  - WC038-07
+tasks_remaining:
+  - WC039-01
+  - WC039-02
+  - WC039-03
 notes: |
-  2026-08-07: WC-037 DONE — EA review complete. BUG-001/002/003/004 fixed.
-  CE 82/82 · BP 33/33. WC-037 sprint_status = DONE.
+  2026-08-08: WC-038 DONE — Provider Registry + oauth-vault complete.
+  CE 82/82 · BP 33/33 · TL 12/12. WC-039 (CTG + AIR refactor) = READY.
 ```
 
 ---

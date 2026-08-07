@@ -1,0 +1,15 @@
+# requirements.txt for src/trust-layer/oauth_vault/
+# Constitutional basis: ADR-014 (secret management), ADR-021 (OAuth vault)
+# DO NOT add packages without EA approval. Versions are pinned and tested.
+
+# ─── Web framework ─────────────────────────────────────────────────────────────
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+pydantic==2.9.2
+
+# ─── Azure Key Vault — ADR-014 Tier 3 secret storage ─────────────────────────
+azure-identity==1.17.1
+azure-keyvault-secrets==4.8.0
+
+# ─── Async HTTP — token refresh + PR notification ─────────────────────────────
+httpx==0.27.2

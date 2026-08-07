@@ -92,6 +92,13 @@ var payloadStoreConn = builder.Configuration.GetConnectionString("PayloadStore")
 builder.Services.AddDbContextFactory<Waooaw.BusinessPlatform.Infrastructure.PayloadStoreDbContext>(opts =>
     opts.UseNpgsql(payloadStoreConn));
 
+// ── Provider Registry DbContext — runtime provider routing table (ADR-042) ───
+var providerRegistryConn = builder.Configuration.GetConnectionString("ProviderRegistry")
+    ?? builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? "Host=localhost;Database=waooaw_bp;Username=bp_app;";
+builder.Services.AddDbContextFactory<Waooaw.BusinessPlatform.Infrastructure.ProviderRegistryDbContext>(opts =>
+    opts.UseNpgsql(providerRegistryConn));
+
 // ─────────────────────────────────────────────────────────────────────────────
 var app = builder.Build();
 

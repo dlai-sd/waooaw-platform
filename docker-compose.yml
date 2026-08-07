@@ -294,6 +294,25 @@ services:
       interval: 10s
       retries: 5
 
+  oauth-vault:
+    build:
+      context: ./src/trust-layer/oauth_vault
+      dockerfile: Dockerfile
+    ports:
+      - "8130:8130"
+    environment:
+      OAUTH_VAULT_ALIAS: ${OAUTH_VAULT_ALIAS:-waooaw-dev-kv}
+      CONSTITUTIONAL_ENGINE_ADDRESS: constitutional-engine:7000
+      PROFESSIONAL_RUNTIME_URL: http://professional-runtime:5003
+      BUSINESS_PLATFORM_URL: http://business-platform:5001
+    depends_on:
+      constitutional-engine:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8130/health || exit 1"]
+      interval: 10s
+      retries: 5
+
   ai-runtime:
     build:
       context: ./src/ai-runtime
