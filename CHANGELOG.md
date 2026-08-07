@@ -8,6 +8,27 @@ types: `feat` | `fix` | `constitutional` | `cct` | `chore` | `refactor` | `secur
 
 ---
 
+## [1.41.0] — 2026-08-07 (WC-040 Skill Architecture Sprint 1: Skill Catalog + Employment Contract Amendment)
+
+### Skill Architecture Sprint 1 — ADR-043 §2/§4
+
+**IB:** IB-025 | **Sprint:** WC-040 | **Office:** Platform IT Expert (INST-010)
+
+- `feat(business-platform)`: `17-skill-catalog.sql` — `business.skills` table, indexes, RLS policy, `content_publish@1.0.0` seed (ADR-043 §2)
+- `feat(business-platform)`: `SkillCatalogDbContext.cs` — EF Core context for `business.skills` table
+- `feat(business-platform)`: `SkillsController.cs` — `GET /api/v1/skills`, `GET /api/v1/skills/{id}`, `GET /api/v1/skills/{id}/{version}`, `POST /api/v1/skills` (Founder role + CE gate)
+- `feat(business-platform)`: `CustomersController.cs` — `HireAgentRequest` gains `Skills[]`; skill validation pre-gate before CE; 422 `SKILL_NOT_FOUND` for unknown/unpublished skills (C-036)
+- `feat(business-platform)`: `AmendContract POST /api/v1/agents/amend` — CE evidence record with `action_type=SKILL_AMENDMENT` required before any amendment (C-023, ADR-043 §4)
+- `feat(knowledge)`: `content_publish_v1.0.0.yaml` — first platform skill definition (ADR-043 §1 schema)
+- `cct(business-platform)`: CCT-SKILL-CAT-01 — unknown skill on hire → 422 `SKILL_NOT_FOUND` (3 tests)
+- `cct(business-platform)`: CCT-SKILL-VER-01 — version pinning: @1.0.0 resolves to @1.0.0, not @2.0.0 (4 tests)
+- `cct(business-platform)`: CCT-SKILL-AMEND-01 — skill amendment CE evidence record audit (4 tests)
+- `fix(ai-runtime)`: GAP-002 from EA R-022 — startup fail-fast if `_CTG_AVAILABLE=False` in `PLATFORM_PHASE=IMPLEMENTATION`
+
+**Test results:** BP 44/44 (+11) · TL 27/27 · AIR 22/22 · Total 93/93 · Zero regressions
+
+---
+
 ## [1.40.0] — 2026-08-07 (WC-039 CTG Library + AIR PSE Router Refactor)
 
 ### Trust Layer Sprint 3 — ADR-042 §2 Constitutional Tool Gateway

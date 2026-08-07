@@ -99,6 +99,13 @@ var providerRegistryConn = builder.Configuration.GetConnectionString("ProviderRe
 builder.Services.AddDbContextFactory<Waooaw.BusinessPlatform.Infrastructure.ProviderRegistryDbContext>(opts =>
     opts.UseNpgsql(providerRegistryConn));
 
+// ── Skill Catalog DbContext — ADR-043 §2 ─────────────────────────────────────
+var skillCatalogConn = builder.Configuration.GetConnectionString("SkillCatalog")
+    ?? builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? "Host=localhost;Database=waooaw_bp;Username=bp_app;";
+builder.Services.AddDbContextFactory<Waooaw.BusinessPlatform.Infrastructure.SkillCatalogDbContext>(opts =>
+    opts.UseNpgsql(skillCatalogConn));
+
 // ─────────────────────────────────────────────────────────────────────────────
 var app = builder.Build();
 

@@ -32,6 +32,14 @@ except ImportError:  # pragma: no cover — CTG available in Docker; local dev m
     ConstitutionalToolGateway = None  # type: ignore[assignment,misc]
     SessionContext = None  # type: ignore[assignment,misc]
 
+# GAP-002 (EA R-022): fail-fast in IMPLEMENTATION phase — ungoverned fallback is a C-041 violation.
+if not _CTG_AVAILABLE and os.getenv("PLATFORM_PHASE") == "IMPLEMENTATION":  # pragma: no cover
+    raise ImportError(
+        "CTG unavailable in IMPLEMENTATION phase — "
+        "ensure src/trust-layer is on PYTHONPATH. "
+        "Ungovernated LLM dispatch violates C-041."
+    )
+
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------

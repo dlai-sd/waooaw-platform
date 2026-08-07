@@ -1,0 +1,44 @@
+# Skill Definition — Content Publishing v1.0.0
+# ADR-043 §1 schema
+# constitutional_basis: C-036 (skills are constitutional units), C-041 (tool authorization)
+# Status: PUBLISHED (seeded via 17-skill-catalog.sql)
+
+skill_id: content_publish
+version: "1.0.0"
+display_name: "Content Publishing"
+description: >
+  Publish approved content to connected social platforms on behalf of the customer.
+  All publish actions require a locked CampaignBrief produced by the Intent Crystallizer
+  before any tool call is made.
+
+# Tools this skill authorises for CE.ValidateAction checks (C-041)
+tools:
+  - meta.post_content
+  - meta.post_story
+  - instagram.post_reel
+
+# Providers this skill requires — must exist in Provider Registry (ADR-042)
+required_providers:
+  - meta
+
+# Default DCM category — publishing is irreversible; CE applies DETERMINISTIC_REQUIRED rules
+default_dcm_category: DETERMINISTIC_REQUIRED
+
+# Intent Crystallizer — produces a locked CampaignBrief before any publish action
+intent_crystallizer:
+  enabled: true
+  prompt_template: "skills/content_publish/crystallizer_v1.md"
+  requires_customer_approval: true
+  locked_artifact_schema: "schemas/campaign_brief_v1.json"
+
+# Default autonomy level — customer may tighten; may not loosen without contract amendment
+default_autonomy_level: APPROVAL_REQUIRED
+
+# CCTs that must pass before this skill version may be promoted to PUBLISHED status
+cct_suite:
+  - CCT-SKILL-CP-01   # Intent Crystallizer produces locked brief before first publish
+  - CCT-SKILL-CP-02   # Publishing blocked without locked_artifact in session context
+  - CCT-SKILL-CP-03   # CE.ValidateAction called for every publish tool call
+
+# Billing event emitted when this skill executes a tool call (WBE metering)
+billing_event: SKILL_TOOL_CALL

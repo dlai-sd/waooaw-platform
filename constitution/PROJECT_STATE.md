@@ -1,6 +1,6 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-08-07 (WC-039 DONE — 42/42 tests · ADR-045 docker strategy · WC-040 READY)
+**Last Updated:** 2026-08-07 (WC-040 DONE — Skill Catalog + Employment Amendment · 44/44 BP · 49/49 Python · VERSION 1.41.0)
 
 ---
 
@@ -57,6 +57,51 @@ EA (INST-004) reviewed the WC-037 implementation and identified **3 bugs**, all 
 - [x] All existing CE + BP tests still passing (82/82, 33/33 — zero regression)
 - [x] `dotnet build` clean on CE + BP
 - [x] VERSION 1.38.0, CHANGELOG entry, PROJECT_STATE updated
+
+---
+
+## SESSION RECORD — 2026-08-07 (WC-040 SKILL ARCHITECTURE SPRINT 1 — COMPLETE)
+
+### What Was Built
+
+| Task | File | Output | Status |
+|---|---|---|---|
+| WC040-01 | `infrastructure/postgres/init/17-skill-catalog.sql` | `business.skills` table + RLS policy + indexes + `content_publish@1.0.0` seed | ✅ |
+| WC040-02 | `src/business-platform/Infrastructure/SkillCatalogDbContext.cs` | EF Core context for `business.skills` | ✅ |
+| WC040-02 | `src/business-platform/Controllers/SkillsController.cs` | `GET /api/v1/skills`, `GET /api/v1/skills/{id}`, `GET /api/v1/skills/{id}/{version}`, `POST /api/v1/skills` (Founder + CE gate) | ✅ |
+| WC040-02 | `src/business-platform/Program.cs` | `SkillCatalogDbContext` DI registration | ✅ |
+| WC040-03 | `src/business-platform/Controllers/CustomersController.cs` | `HireAgentRequest.Skills[]` + pre-CE skill validation gate → 422 `SKILL_NOT_FOUND` | ✅ |
+| WC040-04 | `knowledge/skills/content_publish_v1.0.0.yaml` | First platform skill definition (ADR-043 §1 schema) | ✅ |
+| WC040-05 | `src/business-platform/Controllers/CustomersController.cs` | `POST /api/v1/agents/amend` — CE `SKILL_AMENDMENT` evidence record before state change | ✅ |
+| WC040-06 | `tests/business-platform.Tests/Skills/CCT_SKILL_CAT_01_UnknownSkillRejectedTests.cs` | 3 tests: unknown skill 422, wrong version 422, no skills no-op | ✅ |
+| WC040-06 | `tests/business-platform.Tests/Skills/CCT_SKILL_VER_01_VersionPinTests.cs` | 4 tests: @1.0.0 pin, @2.0.0 independent, latest=@2.0.0, 99.0.0→404 | ✅ |
+| WC040-06 | `tests/business-platform.Tests/Skills/CCT_SKILL_AMEND_01_AuditTests.cs` | 4 tests: ADD reaches CE, ADD unknown 422, REMOVE reaches CE, invalid type 400 | ✅ |
+| GAP-002 | `src/ai-runtime/pse/router.py` | Startup fail-fast if `_CTG_AVAILABLE=False` in `PLATFORM_PHASE=IMPLEMENTATION` | ✅ |
+
+### CCT Results
+
+| CCT | Description | Result |
+|---|---|---|
+| CCT-SKILL-CAT-01 | Unknown skill on hire → 422 SKILL_NOT_FOUND | ✅ 3/3 |
+| CCT-SKILL-VER-01 | Pinned version @1.0.0 resolves to @1.0.0 definition, not @2.0.0 | ✅ 4/4 |
+| CCT-SKILL-AMEND-01 | Skill amendment CE evidence record with SKILL_AMENDMENT action_type | ✅ 4/4 |
+
+### DoD Verification
+
+- [x] `business.skills` table with `(skill_id, version)` unique constraint + RLS
+- [x] `content_publish@1.0.0` seeded (status=PUBLISHED) via migration
+- [x] Skill Catalog API: GET list, GET latest, GET pinned version, POST (Founder-gated + CE)
+- [x] `EmployAgent` rejects unknown/unpublished skills with 422 SKILL_NOT_FOUND before CE call
+- [x] `AmendContract` calls CE with `SKILL_AMENDMENT` before any state change (C-023)
+- [x] `knowledge/skills/content_publish_v1.0.0.yaml` committed — first platform skill definition
+- [x] CCT-SKILL-CAT-01, CCT-SKILL-VER-01, CCT-SKILL-AMEND-01 passing (11 new tests)
+- [x] All existing BP tests still passing (44/44 — zero regression)
+- [x] GAP-002 (EA R-022): CTG startup fail-fast added to `pse/router.py`
+- [x] Python tests 49/49 passing — zero regression
+- [x] `dotnet build` clean on BP
+- [x] VERSION 1.41.0, CHANGELOG entry, PROJECT_STATE updated
+
+**Test results: BP 44/44 (+11) · TL 27/27 · AIR 22/22 · Total 93/93 · Zero regressions · Sprint WC-040 = DONE · WC-041 = READY**
 
 ---
 
@@ -1536,7 +1581,7 @@ Each sprint has EA spec gaps documented, SA corrections applied to WC files, and
 ```yaml
 autonomous_halt: false
 platform_phase: IMPLEMENTATION
-current_sprint: WC-040
+current_sprint: WC-041
 sprint_status: READY
 branch: main
 consecutive_failures: 0
@@ -1560,12 +1605,19 @@ tasks_done:
   - WC039-04
   - WC039-05
   - WC039-06
+  - WC040-01
+  - WC040-02
+  - WC040-03
+  - WC040-04
+  - WC040-05
+  - WC040-06
 tasks_remaining: []
 notes: |
-  2026-08-07: WC-039 DONE — CTG library + AIR PSE router refactor complete.
-  TL 20/20 · AIR 22/22 · Total 42/42. ADR-045 (lean Docker images) written.
-  Dockerfile.test-runner-python created (350MB vs 1.5GB, no .NET/Node).
-  WC-040 (Skill Architecture Sprint 1) = READY.
+  2026-08-07: WC-040 DONE — Skill Catalog + Employment Contract Amendment.
+  BP 44/44 · TL 27/27 · AIR 22/22 · Total 93/93 · VERSION 1.41.0.
+  CCT-SKILL-CAT-01, CCT-SKILL-VER-01, CCT-SKILL-AMEND-01 all passing.
+  GAP-002 (EA R-022) fixed: CTG startup fail-fast in pse/router.py.
+  WC-041 (Skill Runtime in PR) = READY.
 ```
 
 ---
