@@ -56,7 +56,7 @@ class PAASSession:
     agent_type: str
     status: str          # ACTIVE | STOPPED | PAUSED
     created_at: datetime
-    temporal_workflow_id: Optional[str]
+    temporal_workflow_id: str | None
 
 
 @dataclass(frozen=True)

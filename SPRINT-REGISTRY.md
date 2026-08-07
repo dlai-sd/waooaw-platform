@@ -1,6 +1,6 @@
 # WAOOAW Platform — Sprint Registry
 
-**Last Updated:** 2026-08-06 · **Version:** 1.37.0 · **Total WCs:** 40 (36 closed · 1 active · 5 planned · 1 blocked)
+**Last Updated:** 2026-08-07 · **Version:** 1.42.0 · **Total WCs:** 39 (38 closed · 0 active · 0 planned · 1 blocked)
 
 ---
 
@@ -8,25 +8,9 @@
 
 | WC | Title | Track | Status | Depends On | Key Outcome |
 |---|---|---|---|---|---|
-| **WC-037** | Trust Layer S1 — Constitutional Audit Trail Sink | CE + BP migrations | **✅ AUTHORIZED** | WC-036 ✅ | WORM evidence records in CE; erasable payload store in BP; DPDPA Right-to-Erasure endpoint |
-| **WC-038** | Trust Layer S2 — Provider Registry + oauth-vault | New service + BP migration | PLANNED | WC-037 done | oauth-vault service (port 8130); Meta + OpenAI in Provider Registry; token never in any log |
-| **WC-039** | Trust Layer S3 — CTG Library + AIR Refactor | Python library + AIR breaking change | PLANNED | WC-038 done | All external calls (LLM + OAuth) governed by CE; constitutional evidence on every LLM call; token injected at socket boundary |
-| **WC-040** | Skill Architecture S1 — Skill Catalog | BP migration + API | PLANNED | IB-025 ✅ (parallel with WC-038) | `content_publish@1.0.0` in catalog; Employment Contract gains `skills[]`; unknown skills rejected at hire time |
-| **WC-041** | Skill Architecture S2 — Skill Runtime | PR in-process extension | PLANNED | WC-040 done + WC-039 done | PAAS sessions are capability-complete; Intent Crystallizer enforced for publishing; DCM category per skill |
 | WC-034 | Web Portal — Founder Admin + Customer | Next.js 14 | ⚠️ BLOCKED | Keycloak + WBE-S7 | Customer self-service portal — hiring wizard, approval dashboard, performance view |
 
-**Authorization gate:** Say **"Authorize WC-038"** after WC-037 DoD passes (CCT-AUDIT-01 + CCT-DPDPA-01 green). WC-040 can be authorized in parallel at any time.
-
----
-
-## When to Authorize Each Subsequent Sprint
-
-| Sprint | Authorize when | Parallel option |
-|---|---|---|
-| **WC-038** | WC-037 CCT-AUDIT-01 + CCT-DPDPA-01 passing | — |
-| **WC-039** | WC-038 oauth-vault running + Provider Registry seeded | — |
-| **WC-040** | Any time — already unblocked (IB-025 ratified ✅) | Can run alongside WC-038 |
-| **WC-041** | WC-040 done + WC-039 done | — |
+**Next sprint:** WC-042 — not yet defined. All Trust Layer (WC-037→039) and Skill Architecture (WC-040→041) tracks are complete.
 
 ---
 
@@ -67,6 +51,11 @@
 | WC-032 | AIR PSE Trial Override | Platform IT Expert | 1.34.0 | Redis trial override → LOCAL tier; CCT-TRIAL-02; 24/24 tests |
 | WC-033 | BP Trial Lifecycle | Platform IT Expert | 1.35.0 | trial-start endpoint; C-023 phone gate; TrialExpiryWorkflow; 29/29 tests |
 | WC-036 | UDCP Pipeline Engine | Platform IT Expert | 1.37.0 | PTR validation gate; Track 1 scaffolder; Track 2 polymorphic engine; UDCP orchestrator; 124/124 tests 90.93% coverage |
+| WC-037 | Trust Layer S1 — Constitutional Audit Trail Sink | Platform IT Expert | 1.38.0 | WORM `audit_sink` evidence records; erasable `payload_store`; DPDPA Right-to-Erasure endpoint; CE 82/82 + BP 33/33 |
+| WC-038 | Trust Layer S2 — Provider Registry + oauth-vault | Platform IT Expert | 1.39.0 | `oauth-vault` service (port 8130); Meta + OpenAI in Provider Registry; token never in any log; TL 26/26 91% coverage |
+| WC-039 | Trust Layer S3 — CTG Library + AIR Refactor | Platform IT Expert | 1.40.0 | `ConstitutionalToolGateway` 9-step pipeline; CE before every LLM call; AIR PSE routes via CTG; TL 20/20 + AIR 22/22 |
+| WC-040 | Skill Architecture S1 — Skill Catalog | Platform IT Expert | 1.41.0 | `content_publish@1.0.0` in catalog; Employment Contract `skills[]`; unknown skills 422 at hire; BP 44/44 |
+| WC-041 | Skill Architecture S2 — Skill Runtime | Platform IT Expert | 1.42.0 | `SkillResolver`, `IntentCrystallizer`, `SessionExecutor`; C-041 tool gate + crystallizer gate; PR 20/20 |
 
 ---
 
@@ -85,7 +74,7 @@
 |---|---|---|---|
 | L0 Constitutional | CE, Evidence First, Emergency Stop, DCM | ~90% | WC-011→015, WC-012 |
 | L1 Execution | UDCP, PTR Gate, PAAS, AIR, Compile Gate | ~95% | WC-022→024, WC-036 |
-| L2 Trust | Provider Registry, oauth-vault, CTG, Token Refresh | ~0% → **ACTIVE** | WC-037→039 |
+| L2 Trust | Provider Registry, oauth-vault, CTG, Token Refresh | ✅ 100% DONE | WC-037→039 |
 | L3 Business | WBE S1–S6 done, S7–S8 pending | ~75% | WC-025→033 |
-| L4 Skill Architecture | Skill Catalog, Skill Runtime, Intent Crystallizer | ~0% → **PLANNED** | WC-040→041 |
+| L4 Skill Architecture | Skill Catalog, Skill Runtime, Intent Crystallizer | ✅ 100% DONE | WC-040→041 |
 | L5 Interface | Landing page only | ~10% | WC-034 BLOCKED |
