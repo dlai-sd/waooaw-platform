@@ -1,6 +1,6 @@
 # WAOOAW Platform — Sprint Registry
 
-**Last Updated:** 2026-08-08 · **Version:** 1.44.0 · **Work Contracts:** 48 recorded (47 closed · 0 active · 1 blocked)
+**Last Updated:** 2026-08-08 · **Version:** 1.44.0 · **Work Contracts:** 48 recorded (46 closed · 1 active · 1 blocked)
 
 ---
 
@@ -9,6 +9,7 @@
 | WC | Title | Track | Status | Depends On | Key Outcome |
 |---|---|---|---|---|---|
 | **WC-034** | Web Portal — Founder Admin + Customer | Next.js 14 | ⚠️ BLOCKED | Keycloak + WBE-S7 | Customer self-service portal — hiring wizard, approval dashboard, performance view |
+| **WC-055** | GOAL-005 Understanding and Classification | Goal Orchestration | READY — R-031 APPROVED; NOT STARTED | WC-053 · WC-054 · R-029 · R-030 | Produce reviewed G-2 Understanding and G-3 Classification; stop before G-4 |
 
 **Reserved customer-first roadmap:** WC-044→WC-048. These identifiers describe Founder-approved sequencing in the 2026-08-07 strategy record; Work Contracts have not yet been created.
 
@@ -64,7 +65,6 @@
 | WC-052 | Agent Employment Program Skeleton | Enterprise Architect | 1.44.0 | GOAL-005; 6 customer-outcome epics; 43 thin stories; AEEC and 37 shared product gaps; R-028 approved |
 | WC-053 | GOAL-005 Orchestration Decision Record | Enterprise Architect | 1.44.0 | Founder debate and decision; just-in-time institutional grooming; handoff to INST-013; R-029 approved |
 | WC-054 | Goal Orchestrator Registry Reconciliation | Constitutional Analyst | 1.44.0 | INST-013 registry synchronized to 2026-07-27 ratification; CB-001 closed; R-030 approved |
-| WC-055 | GOAL-005 Understanding and Classification | Goal Orchestrator | 1.44.0 | G-2 approved by R-032; G-3 challenged, amended through Founder Option A, and approved by R-034; CB-002 closed |
 
 ---
 

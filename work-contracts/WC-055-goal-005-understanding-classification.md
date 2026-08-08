@@ -4,7 +4,7 @@
 **Office:** Goal Orchestrator (INST-013)
 **Reviewer:** Constitutional Analyst (INST-002)
 **Authorized by:** Founder GOAL-005 operating-model decision, 2026-08-08; handoff cleared by WC-054/R-030
-**Status:** DONE — R-034 APPROVED; G-2 and G-3 complete
+**Status:** READY — R-031 APPROVED; NOT STARTED
 **Implementation scope:** Goal Understanding and Classification only; no Planning, GO Authorization, contribution, architecture, or implementation
 
 ## Objective
@@ -29,10 +29,10 @@ Produce and independently validate the GOAL-005 Goal Understanding Record under 
 | Task | Acceptance criterion | Status |
 |---|---|---|
 | WC055-01 | Office 13 charter, GEOM, registry status, handoff, and required inputs validate | DONE — READY |
-| WC055-02 | Goal Understanding Record preserves the original Goal, separates facts/refinements/assumptions/clarifications, and includes all G-10 attestation fields | DONE — GUR-GOAL-005-INST-013-01 |
-| WC055-03 | Constitutional Analyst independently reviews the Understanding Record | DONE — R-032 APPROVED |
-| WC055-04 | Goal Classification covers Scope, Nature, Risk, Urgency, and priority tier with evidence | DONE — GCL-GOAL-005-INST-013-01 provisional |
-| WC055-05 | Classification records the R2-10 challenge-window opening/closing condition, CA election, any Founder adjudication, and progression decision | DONE — Option A ratified; R-034 approved correction; R-033 and CB-002 closed |
+| WC055-02 | Goal Understanding Record preserves the original Goal, separates facts/refinements/assumptions/clarifications, and includes all G-10 attestation fields | NOT STARTED |
+| WC055-03 | Constitutional Analyst independently reviews the Understanding Record | NOT STARTED |
+| WC055-04 | Goal Classification covers Scope, Nature, Risk, Urgency, and priority tier with evidence | NOT STARTED |
+| WC055-05 | Classification records the R2-10 challenge-window opening/closing condition, CA election, any Founder adjudication, and progression decision | NOT STARTED |
 
 ## Boundaries
 
@@ -60,7 +60,3 @@ Produce and independently validate the GOAL-005 Goal Understanding Record under 
 - GEOM G-10 — all constitutional records require complete attestation.
 - GEOM G-13 — Goal Orchestrator may not contribute or self-authorize.
 - Constitution Article VII — Institutional Independence.
-
-## Closure
-
-WC-055 is complete through G-3. R-032 approved the Understanding Record, and R-034 approved the corrected Classification after Founder Option A resolved R-033 and CB-002. G-4 Planning remains outside this Work Contract and requires separate authorization.

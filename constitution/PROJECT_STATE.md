@@ -4,7 +4,7 @@
 
 ---
 
-## SESSION RECORD — 2026-08-08 (WC-055 GOAL-005 UNDERSTANDING AND CLASSIFICATION — DONE)
+## IN-PROGRESS CHECKPOINT — WC-055 GOAL-005 UNDERSTANDING AND CLASSIFICATION
 
 | Milestone | Status |
 |---|---|
@@ -12,10 +12,9 @@
 | Required handoff inputs validated | DONE — all eight inputs present and approved |
 | WC-055 created | DONE — READY; G-2 output not started |
 | R-031 constitutional readiness review | DONE — APPROVED |
-| Goal Understanding Record | DONE — GUR-GOAL-005-INST-013-01 produced; original Goal preserved |
-| Constitutional Analyst review | DONE — R-032 APPROVED without correction |
-| G-3 Classification | DONE — Founder Option A ratified; R-034 APPROVED; R-033 and CB-002 CLOSED |
-| WC-055 closure | DONE — G-2 and G-3 complete; G-4 requires separate authorization |
+| Goal Understanding Record | pending |
+| Constitutional Analyst review | pending |
+| G-3 Classification | pending |
 
 ### Decision Space
 
@@ -23,7 +22,7 @@ INST-013 may understand, classify, plan, route, monitor, resolve Goal-level gaps
 
 ### Current State
 
-G-2 and G-3 are complete. No G-4 plan, GO Authorization, or implementation authority has been produced. The next possible action is Founder selection of a separately scoped G-4 Planning Work Contract.
+READY for GOAL-005 G-2 Understanding under WC-055. No G-2 record, G-4 plan, GO Authorization, or implementation authority has been produced.
 
 ---
 

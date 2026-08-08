@@ -8,7 +8,6 @@
 **Constitutional Basis:** CONSTITUTION.md Articles II, III, VI, VII, VIII
 **Goal Reference:** GOAL-001 — Semantic Brain Transformation
 **Depends on:** WIOM (ratified 2026-07-27)
-**Amended:** 2026-08-08 — Founder ratified narrow G-10 addition of `Classification Record` under CB-002
 
 ---
 
@@ -554,7 +553,7 @@ Every constitutional record committed to the Goal Register must contain the foll
 | `institution_id` | INST-NNN of the producing Institution — must match Institution Registry |
 | `goal_id` | Must match an active or SUSPENDED Goal in the Register |
 | `record_id` | Sequential, unique within this Goal — e.g., `CR-GOAL-001-INST-004-01` |
-| `record_type` | One of: Understanding Record · Classification Record · Execution Plan · Contribution Record · Clearance Record · Learning Record · Closure Record |
+| `record_type` | One of: Understanding Record · Execution Plan · Contribution Record · Clearance Record · Learning Record · Closure Record |
 | `produced_at` | Timestamp of commitment to Goal Register |
 
 Records without all five fields are treated as if they do not exist. An Institution that claims to have contributed but whose records lack attestation fields has, constitutionally, not contributed.
