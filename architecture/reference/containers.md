@@ -1,8 +1,8 @@
 # C4 Level 2 — Container Diagram
 
-**Produced by:** Enterprise Architect (Sprint 003, updated v0.12.0 — EA session 2026-08-06)
-**Date:** 2026-07-07 (updated 2026-08-06)
-**ADR References:** ADR-001 (gRPC), ADR-003 (JWT/RLS), ADR-004 (SignalR), ADR-005 (PAAS session), ADR-008 (Keycloak), ADR-009 (OTel), ADR-012 (GHCR), ADR-019 (RAG), ADR-020 (MCP), ADR-021 (oauth-vault), ADR-042 (CTG + Provider Registry), ADR-043 (Skill Architecture), ADR-044 (Audit Trail Sink)
+**Produced by:** Enterprise Architect (Sprint 003, reconciled for platform v1.44.0 under WC-049)
+**Date:** 2026-07-07 (updated 2026-08-08)
+**ADR References:** ADR-001 (gRPC), ADR-003 (JWT/RLS), ADR-004 (SignalR), ADR-005 (PAAS session), ADR-008 (Keycloak), ADR-009 (OTel), ADR-012 (GHCR), ADR-019 (RAG), ADR-020 (MCP), ADR-021 (oauth-vault), ADR-034 (WBE), ADR-042 (CTG + Provider Registry), ADR-043 (Skill Architecture), ADR-044 (Audit Trail Sink)
 
 ---
 
@@ -58,6 +58,11 @@ Customer Browser / Mobile App
 │  │  - Revocation (CE-gated)    │                                              │
 │  └──────────────┬──────────────┘                                              │
 │                 │ HTTPS (external)                                            │
+│  ┌──────────────▼──────────────┐                                              │
+│  │  WAOOAW Billing Engine      │  Python FastAPI · Port 8140 (internal)       │
+│  │  - Prepaid wallet gate      │  - Payment + renewal lifecycle               │
+│  │  - Metering + pricing       │  - Reconciliation halt                       │
+│  └─────────────────────────────┘                                              │
 │  Infrastructure │                                                             │
 │  ┌──────────────▼──────────────┐  ┌──────────────────────────────────────┐  │
 │  │  Azure Key Vault            │  │  PostgreSQL 16 + pgvector            │  │
@@ -154,6 +159,12 @@ CTG Call Flow (ADR-042):
 - **Communication:** Called by CTG library (HTTP, JIT token retrieval); called by BP (OAuth connect/revoke); calls Azure Key Vault (HTTPS external); calls CE (gRPC, revocation evidence)
 - **Hosting:** Container Apps (cloud, internal ingress only) / port 8130 (dev, Docker bridge only)
 - **Security invariant (ADR-042):** Full AKV URL (`https://...vault.azure.net/...`) never written to any log. Only `vault_alias` logged.
+
+### WAOOAW Billing Engine *(WC-025→033, WC-042→043)*
+- **Technology:** Python 3.12, FastAPI, PostgreSQL, Redis
+- **Responsibility:** Agent-agnostic prepaid wallet buckets, pricing and margin floors, usage metering, platform procurement, Razorpay onboarding/payment lifecycle, renewal failure handling, and reconciliation self-halt.
+- **Communication:** Called by BP for subscription/payment operations and intended to be called by AIR before LLM dispatch; AIR end-to-end reserve integration remains only partially evidenced.
+- **Hosting:** Internal service on port 8140. Repository implementation and tests exist; environment deployment and customer-operation evidence are unverified.
 
 ### Temporal
 - **Technology:** Self-hosted Temporal 1.24 (dev/QA) / Temporal Cloud (UAT/prod) — ADR-015

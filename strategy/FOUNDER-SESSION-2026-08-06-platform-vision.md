@@ -4,6 +4,8 @@
 **Session Type:** Platform Architecture Brainstorm — greenfield phase, hen-vs-egg problem  
 **Handover:** Enterprise Architecture (INST-004) for grooming  
 
+> **Status: SUPERSEDED AS A CURRENT-STATE SOURCE — WC-049, 2026-08-08.** This is a preserved strategy snapshot, not a current component register. Its platform-first sequencing was superseded by the customer-first decision in `FOUNDER-SESSION-2026-08-07-customer-first-decision.md`. Trust Layer, Audit/Payload stores, Skill Architecture, and WBE S7–S8 were subsequently implemented and tested in WC-037→043; use `constitution/PROJECT_STATE.md` and `SPRINT-REGISTRY.md` for current status.
+
 ---
 
 ## 1. Starting Point: The Hen-vs-Egg Problem
@@ -33,7 +35,7 @@ The building layers analogy that guided the session:
 | Evidence First Enforcer | ✅ Built | No claim accepted without evidence — tamper-evident audit trail from day one |
 | Emergency Stop (Temporal signal) | ✅ Built | True stop, not UI state — cancels in-flight Temporal sagas |
 | Decision Consequence Map (DCM) | ✅ Specified, CE extension pending | First platform to route by consequence of error, not complexity |
-| **Constitutional Audit Trail Sink** | 🔲 **Not built** | Every tool call, every decision, timestamped and immutable — GDPR/DPDPA compliance as a sales feature |
+| **Constitutional Audit Trail Sink** | Historical: not built on 2026-08-06; ✅ completed WC-037 | Every tool call, every decision, timestamped and immutable — GDPR/DPDPA compliance as a sales feature |
 
 ### Layer 1 — Execution Infrastructure *(The deterministic engine room)*
 

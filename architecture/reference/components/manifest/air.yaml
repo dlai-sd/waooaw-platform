@@ -3,6 +3,13 @@ display_name:     AI Runtime
 version:          "1.0.0"
 status:           LIVE
 since_sprint:     WC-015
+maturity:
+  specified: true
+  implemented: true
+  tested: true
+  integrated: partial
+  deployed: unverified
+  customer_proven: false
 owner_institution:     INST-010
 governing_institution: INST-004
 constitutional_basis:
@@ -15,7 +22,7 @@ surface:
   port: 5004
   health_check: { path: /health, expected_status: 200 }
   called_by: [pr]
-  calls: [ce, postgres, redis, wbe, ollama, vertex_ai, sarvam_ai]
+  calls: [ctg, ce, oauth_vault, postgres, redis, wbe, ollama, vertex_ai, sarvam_ai]
   must_not_call: [bp]
   must_not_write_to_ledgers: true
   endpoints:
@@ -46,7 +53,10 @@ agent_pac_impact:
 ccts:
   - id: CCT-PI-01
     description: PII not leaked to LLM — injection guard blocks sensitive fields
-    test_file: tests/ai_runtime/test_cct_pi01.py
+    test_file: tests/ai-runtime/test_injection_guard.py
+  - id: CCT-CTG-01/02/03/04
+    description: CE-first dispatch, token-safe errors, evidence recording, and DENY enforcement
+    test_file: tests/trust-layer/test_ctg.py
 assurance:
   blueprint_conformance_checks:
     - check: health_endpoint_returns_200

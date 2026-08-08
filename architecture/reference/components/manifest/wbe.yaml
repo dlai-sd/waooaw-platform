@@ -1,9 +1,16 @@
 component_id:     wbe
 display_name:     WAOOAW Billing Engine
 version:          "1.0.0"
-status:           SPEC_APPROVED
+status:           LIVE
 since_goal:       GOAL-004
-since_sprint:     WBE-S1
+since_sprint:     WC-025
+maturity:
+  specified: true
+  implemented: true
+  tested: true
+  integrated: partial
+  deployed: unverified
+  customer_proven: false
 owner_institution:     INST-010
 governing_institution: INST-004
 constitutional_basis:
@@ -16,7 +23,7 @@ surface:
   port: 8140
   health_check: { path: /health, expected_status: 200 }
   called_by: [air, bp, platform_ops]
-  calls: [postgres, redis, razorpay_mcp]
+  calls: [postgres, redis, razorpay]
   must_not_call: [ce, pr, air]
   must_not_expose_to_internet: true
   endpoints:
@@ -40,6 +47,14 @@ surface:
       method: POST
       called_by: [bp]
       constitutional: C-089
+    - path: /payments/onboarding-order
+      method: POST
+      called_by: [bp]
+      constitutional: C-023
+    - path: /payments/webhooks/razorpay
+      method: POST
+      called_by: [razorpay]
+      constitutional: C-023
 signals:
   emits:
     schema_file: architecture/reference/signals/wbe-signal-schema.yaml
@@ -70,9 +85,15 @@ agent_pac_impact:
       priority: P1
 ccts:
   - id: CCT-PREPAID-01
-    test_file: tests/billing/test_ccts.py::test_prepaid_gate_blocks_empty_bucket
+    test_file: tests/billing-engine/test_ccts.py
   - id: CCT-ONBOARD-01
-    test_file: tests/billing/test_ccts.py::test_single_onboarding_activation
+    test_file: tests/billing-engine/test_payment.py
+  - id: CCT-SELFAUDIT-01
+    test_file: tests/billing-engine/test_ccts.py
+  - id: CCT-WEBHOOK-01
+    test_file: tests/billing-engine/test_payment.py
+  - id: CCT-GRANDFATHER-01
+    test_file: tests/billing-engine/test_payment.py
 assurance:
   blueprint_conformance_checks:
     - check: health_endpoint_returns_200
