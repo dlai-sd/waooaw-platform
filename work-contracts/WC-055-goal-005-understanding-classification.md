@@ -4,7 +4,7 @@
 **Office:** Goal Orchestrator (INST-013)
 **Reviewer:** Constitutional Analyst (INST-002)
 **Authorized by:** Founder GOAL-005 operating-model decision, 2026-08-08; handoff cleared by WC-054/R-030
-**Status:** IN REVIEW — Founder Option A applied; independent R2-10 closure review pending
+**Status:** DONE — R-034 APPROVED; G-2 and G-3 complete
 **Implementation scope:** Goal Understanding and Classification only; no Planning, GO Authorization, contribution, architecture, or implementation
 
 ## Objective
@@ -32,7 +32,7 @@ Produce and independently validate the GOAL-005 Goal Understanding Record under 
 | WC055-02 | Goal Understanding Record preserves the original Goal, separates facts/refinements/assumptions/clarifications, and includes all G-10 attestation fields | DONE — GUR-GOAL-005-INST-013-01 |
 | WC055-03 | Constitutional Analyst independently reviews the Understanding Record | DONE — R-032 APPROVED |
 | WC055-04 | Goal Classification covers Scope, Nature, Risk, Urgency, and priority tier with evidence | DONE — GCL-GOAL-005-INST-013-01 provisional |
-| WC055-05 | Classification records the R2-10 challenge-window opening/closing condition, CA election, any Founder adjudication, and progression decision | IN REVIEW — Option A ratified and correction applied; INST-002 closure review pending |
+| WC055-05 | Classification records the R2-10 challenge-window opening/closing condition, CA election, any Founder adjudication, and progression decision | DONE — Option A ratified; R-034 approved correction; R-033 and CB-002 closed |
 
 ## Boundaries
 
@@ -60,3 +60,7 @@ Produce and independently validate the GOAL-005 Goal Understanding Record under 
 - GEOM G-10 — all constitutional records require complete attestation.
 - GEOM G-13 — Goal Orchestrator may not contribute or self-authorize.
 - Constitution Article VII — Institutional Independence.
+
+## Closure
+
+WC-055 is complete through G-3. R-032 approved the Understanding Record, and R-034 approved the corrected Classification after Founder Option A resolved R-033 and CB-002. G-4 Planning remains outside this Work Contract and requires separate authorization.

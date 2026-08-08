@@ -4,7 +4,7 @@
 **Raised by:** Goal Orchestrator (INST-013), following R-033 challenge by Constitutional Analyst (INST-002)
 **Affected Goal:** GOAL-005
 **Affected Work Contract:** WC-055
-**Status:** RESOLUTION APPLIED — independent INST-002 closure review pending
+**Status:** CLOSED — Founder Option A applied; R-034 APPROVED on 2026-08-08
 **Severity:** Constitutional blocker
 
 ## Blocking Condition
@@ -61,5 +61,9 @@ The Founder ratified the narrow GEOM G-10 amendment adding `Classification Recor
 - DONE — explicit Founder Option A adjudication recorded.
 - DONE — ratified GEOM G-10 text includes `Classification Record`.
 - DONE — GCL-GOAL-005-INST-013-01 contains all five G-10 fields.
-- PENDING — corrected Classification passes independent INST-002 review.
-- PENDING — R-033 and CB-002 record closure.
+- DONE — corrected Classification passed independent INST-002 review in R-034.
+- DONE — R-033 and CB-002 closed on 2026-08-08.
+
+## Closure
+
+R-034 independently verified the narrow amendment, complete G-10 attestation, stable Classification dimensions, and G-13 separation. The blocker is closed. Any G-4 work requires a separate Work Contract and authorization.

@@ -49,7 +49,7 @@ Azure infrastructure:
   App Registration: waooaw-platform-sp (Client ID: ccd13909-d004-4340-aa26-990a00bed9c0)
 ```
 
-**Open Constitutional Blockers:** CB-002 — GEOM G-10 omits a valid Goal Classification record type; GOAL-005 is blocked at G-3 pending Founder adjudication.
+**Open Constitutional Blockers:** None
 
 **Active Founder Resolutions:**
 - FR-001 (CS Agents) · FR-002 (Trial) · FR-003 (Learning IP) · FR-004 (Teams — deferred)

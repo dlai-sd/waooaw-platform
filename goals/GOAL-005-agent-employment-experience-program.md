@@ -1,6 +1,6 @@
 # GOAL-005 — Agent Employment Experience Program
 
-**Status:** G-3 CLASSIFICATION CORRECTED — INDEPENDENT R2-10 CLOSURE REVIEW PENDING; NO IMPLEMENTATION AUTHORIZATION
+**Status:** G-3 CLASSIFIED — R2-10 CLOSED; G-4 REQUIRES SEPARATE AUTHORIZATION; NO IMPLEMENTATION AUTHORIZATION
 **Registrant:** Yogesh Khandge (Founder)
 **Registered:** 2026-08-08
 **Work Contract:** WC-052
@@ -155,7 +155,7 @@ R-032 APPROVED GUR-GOAL-005-INST-013-01 without correction on 2026-08-08. G-3 Cl
 | `record_id` | GCL-GOAL-005-INST-013-01 |
 | `record_type` | Classification Record |
 | `produced_at` | 2026-08-08T09:45:19+00:00 |
-| `status` | CORRECTED — Founder Option A ratified; independent R2-10 closure review pending |
+| `status` | FINAL — Founder Option A ratified; R-034 APPROVED |
 
 Classification is an append-only state transition on the registered Goal. It does not modify the approved Understanding Record.
 
@@ -193,15 +193,15 @@ These consequences constrain future Planning; they do not select Institutions, d
 | Reviewing Institution | INST-002 — Constitutional Analyst |
 | CA election | CHALLENGE — GEOM G-10 omits a valid Classification record type |
 | Founder adjudication | OPTION A — narrow G-10 amendment ratified on 2026-08-08 |
-| Disposition | Classification corrected; R-033 and CB-002 remain open pending independent INST-002 closure review |
+| Disposition | CLOSED — R-034 approved the correction; R-033 and CB-002 closed |
 
-No G-4 Planning activity may begin while the R2-10 challenge remains unresolved.
+The R2-10 challenge is resolved. G-4 remains outside WC-055 and requires a separately authorized Planning Work Contract.
 
 ### R2-10 Challenge Result
 
 R-033 confirms that the classification dimensions and P2 mapping are supported, but challenges the constitutional record format. `Contribution Record` is not an available correction because INST-013 is prohibited from contributing to a Goal it orchestrates. The Founder selected Option A on 2026-08-08, ratifying the narrow GEOM G-10 addition of `Classification Record`; GCL-GOAL-005-INST-013-01 now carries all five attestation fields.
 
-No G-4 Planning, Institution routing, or GO Authorization may begin until independent closure review is recorded.
+R-034 recorded independent closure approval. No G-4 Planning, Institution routing, or GO Authorization may begin without a separately authorized G-4 Work Contract.
 
 ## 1. Program Intent
 

@@ -5,11 +5,11 @@
 **Goal:** GOAL-005 — Agent Employment Experience Program
 **Work Contract:** WC-055
 **Review Date:** 2026-08-08
-**R2-10 Election:** CHALLENGE
+**R2-10 Election:** CHALLENGE — CLOSED by Founder Option A and R-034
 
 ## Verdict
 
-**CHALLENGED — CB-002 blocks classification finality and G-4 progression.**
+**CLOSED — challenge upheld, remediated by the Founder-ratified narrow G-10 amendment, and approved by R-034.**
 
 ## Findings
 
@@ -35,3 +35,7 @@ The narrow constitutionally coherent path is to amend GEOM G-10 to recognize `Cl
 - Founder adjudication is required.
 - WC-055 remains blocked at WC055-05.
 - G-4 Planning and all GO Authorizations remain prohibited.
+
+## Closure
+
+The Founder selected Option A on 2026-08-08. GEOM G-10 now includes `Classification Record`, GCL-GOAL-005-INST-013-01 contains all five attestation fields, and R-034 independently approved the correction. This closes the R2-10 challenge without authorizing G-4.
