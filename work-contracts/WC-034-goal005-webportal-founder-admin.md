@@ -1,68 +1,124 @@
-# Work Contract 034 — GOAL-005: Web Portal Founder Admin Pages
+# Work Contract 034 — WAOOAW Hybrid Web Application Shell
 
-**Office:** WAOOAW AI Agent — Platform IT Expert (INST-010)
-**Sprint:** WC-034
-**Backlog Item:** IB-009 — Foundation Implementation (Gate G5) — GOAL-005 Web Portal Sprint
-**Sprint Track:** Track GOAL-005 — Customer Acquisition (Founder admin tooling)
-**Gate:** G5 → MVI
-**Reviewer:** Autonomous Sprint Reviewer (INST-010 PR Review hat)
-**Constitutional Basis:** C-064 (Three-Human Institution — Founder tooling is constitutional infrastructure), C-059 (Traceability), C-076 (≥90% coverage)
-**Authorization:** ⚠️ BLOCKED — Founder FA required (same gate as WC-031)
+**Goal:** GOAL-005 — Agent Employment Experience Program
+**Backlog Item:** IB-014 — Customer Self-Service Portal
+**Gate:** G5 CLEAR
+**Architecture Office:** Enterprise Architect (INST-004)
+**Implementation Office:** Platform IT Expert (INST-010)
+**Architecture Reviewer:** Solution Architect (INST-005) + Product Owner (INST-011)
+**Implementation Reviewer:** Enterprise Architect (INST-004) in an independent session
+**Status:** ARCHITECTURE REVIEW CANDIDATE — IMPLEMENTATION UNAUTHORIZED
+**Authorization:** Founder selected the WC-034 scope amendment on 2026-08-08. This authorizes architecture and specification work only. A separate Founder Action is required before modifying application source.
+**Constitutional Basis:** C-001, C-009, C-023, C-034, C-042, C-059, C-064, C-065, C-076; ADR-017
 
-**Depends on:** WC-016 (Web Portal scaffold live — Next.js app, auth, routing), WC-031 (WBE trial + promotions APIs live), WC-027 (markup API live)
+## Outcome
 
----
+Define one coherent WAOOAW web application that preserves the existing public home-page direction and introduces a reusable authenticated application layout. The product remains a Next.js App Router PWA with hybrid server and client rendering; "hybrid SPA" does not authorize a client-only React application or a second frontend stack.
 
-## Sprint Goal
+The architecture must make the transition from public discovery to authenticated employment feel continuous while preserving different navigation, density, and constitutional controls for public, customer, and Founder surfaces.
 
-Implement three Founder-only admin pages in the Next.js web portal:
-1. **Markup Designer** — live pricing calculator + per-thread markup editing
-2. **Trial Budget Config** — set trial duration and free unit caps per agent type
-3. **Coupon Manager** — create/expire coupons, view referral tree
+## Scope Boundary
 
-All three pages require `founder=true` JWT claim. Unauthorised access → redirect to 403.
+### Phase A — Architecture and UI/UX Specification (INST-004)
 
----
+Phase A defines the route topology, shell ownership, responsive layout, constitutional control placement, rendering boundaries, design-token migration, and acceptance contract. It may update architecture, UX specifications, this Work Contract, and review evidence. It must not modify `web/app/`, generate build output, or implement APIs.
 
-## Tasks
+### Phase B — Application Implementation (INST-010)
+
+Phase B may begin only after Phase A receives independent architecture review and a separate Founder implementation authorization. It implements the approved shell, migrates the home page into Next.js, and places customer and Founder routes inside their approved layouts.
+
+Founder admin capabilities remain part of WC-034, but they are not the application architecture. Markup Designer, Trial Budget Config, and Coupon Manager are feature routes nested inside the Founder surface after the shared shell exists.
+
+## Required Surface Model
+
+| Surface | Route group | Primary layout | Constitutional controls |
+|---|---|---|---|
+| Public | `(public)` | Brand navigation, responsive content canvas, footer, optional Concierge | Honest capability and limitation disclosure; no authenticated data |
+| Customer | `(authenticated)` | Compact app header, desktop side navigation, mobile bottom navigation, relationship workspace | Persistent Emergency Stop; rights and lifecycle state; tenant-safe identity |
+| Founder | `(founder)` | Customer shell primitives with denser administration navigation | `founder=true` authorization; no customer-facing discovery language |
+| Shared system | global | Loading, empty, error, offline, forbidden, and not-found states | Fail-safe messaging; no fabricated success; correlation support |
+
+The shell must use role-aware route composition rather than runtime CSS hiding. Unauthorized Founder routes redirect to `/403`. Public pages must not load authenticated application data. Customer and Founder navigation must remain usable at 360px without horizontal overflow.
+
+## Architecture Tasks
 
 | task_id | scope | model_hint | status | completed_at |
 |---|---|---|---|---|
-| WC034-01 | Read the existing web portal structure (`web/` or `web/app/` — find auth guard pattern and admin route convention). Create `web/app/admin/markup-designer/page.tsx` — fetches `GET /pricing/thread-catalog` from WBE, renders editable table (thread_type, cost_floor_paise, markup_pct, derived_price_paise, margin_pct), on markup_pct change calls `POST /pricing/validate` (live margin gate — show MARGIN_FLOOR_VIOLATION inline), on save calls `PATCH /pricing/thread-catalog/{thread_id}` (new WBE endpoint — add to WC-027 DoD extension or implement stub here). Founder-only auth guard wraps entire page. | reasoning | pending | — |
-| WC034-02 | Create `web/app/admin/trial-config/page.tsx` — fetches `GET /trial/config` (implement stub endpoint in WBE trial/router.py if not already there), renders form: trial_duration_days (default 14), free_unit_caps table (agent_type × thread_type = N units), on save calls `PUT /trial/config`. Create `web/app/admin/coupon-manager/page.tsx` — fetches `GET /promotions/coupons` list (add to WBE promotions/router.py), renders active/expired coupons with uses_count, create-coupon form (discount_pct, agent_type, max_uses, valid_until), deactivate button (calls `PATCH /promotions/coupons/{coupon_id}` with `{active: false}`), referral tree view for selected customer. | reasoning | pending | — |
-| WC034-03 | Vitest tests for all 3 pages: markup designer renders thread catalog data, margin violation shown inline on bad markup_pct, trial config form submits correct payload, coupon create form validation (discount_pct 0-100), coupon deactivate calls PATCH endpoint, auth guard redirects non-founder users to /403. Mock all WBE API calls. ≥90% line coverage on new page files. | auto | pending | — |
+| WC034-01 | A01 — Inventory the static home, current Next.js routes, WC-057 provisional workspace, and UX vocabulary; record reuse, migration, and retirement decisions without changing source. | reasoning | done | 2026-08-08 — architecture prototype rejected and permanently deleted; `web/WAOOAWHome.html` approved by Founder as the inspiration source for logo, fonts, color themes, design language, and public-page migration |
+| WC034-02 | A02 — Define route groups, layouts, navigation, responsive composition, role/claim and server/client boundaries, application states, and persistent constitutional controls. | reasoning | done | 2026-08-08 — shell, continuity boundary, failure semantics, privacy, and budgets published |
+| WC034-03 | A03 — Map the approved home-page inspiration into shared tokens, typography, spacing, iconography, focus, motion, RTL, and accessibility rules; resolve vocabulary conflicts without replacing its visual character. | reasoning | done | 2026-08-08 — logo treatment, Noto Sans-led typography, blue/green/orange/navy themes, and trust-focused design language carried forward; constitutional constraints control adaptations |
+| WC034-04 | A04 — Define public, customer, relationship, settings/profile, and Founder information architecture and groom the implementation components. | reasoning | done | 2026-08-08 — route families, navigation, relationship views, and F0–F8 decomposition published |
+| WC034-05 | A05 — Define generated-client/API boundaries and route missing operations to their owning services; no UI-created BP/WBE endpoints. | reasoning | done | 2026-08-08 — INST-004 owner/gap matrix complete; INST-005 validation requested under A07 |
+| WC034-06 | A06 — Define executable desktop, exact 360px, keyboard, RTL, reduced-motion, PWA, overflow, axe, privacy, performance, and coverage evidence. | reasoning | done | 2026-08-08 — component, contract, browser, axe, screenshot, and quality matrix published |
+| WC034-07 | A07 — Submit the architecture package for independent INST-005 and INST-011 review and route unresolved product decisions. | reasoning | done | 2026-08-08 — PR #239 open; Solution Architect and Product Owner review requested |
 
----
+## Architecture Package
+
+| Artifact | Responsibility |
+|---|---|
+| `architecture/reference/ux/hybrid-application-shell.md` | Canonical experience, routes, rendering, navigation, API ownership, operational semantics, privacy, and budgets |
+| `architecture/reference/ux/hybrid-visual-system-contract.md` | Static HTML review status, tokens, typography, responsive composition, component and motion rules |
+| `architecture/reference/ux/hybrid-ui-acceptance-contract.md` | Executable component, browser, accessibility, RTL, privacy, PWA, performance, and visual evidence |
+| `architecture/reference/ux/wc-034-implementation-decomposition.md` | WC-016 supersession and F0–F8 dependency-ordered implementation handoff |
+| `architecture/reference/agents/platform-it-expert-nextjs-skill-proposal-input.md` | Evidence for Product Owner review of the required INST-010 frontend skill uplift |
+| `architecture/reference/ux/wc-034-enterprise-architecture-assessment.md` | Formal readiness verdict, risks, resolutions, and remaining gates |
+
+## Implementation Components — Gated
+
+Detailed scope, dependencies, exclusions, and acceptance IDs are normative in `architecture/reference/ux/wc-034-implementation-decomposition.md`.
+
+| Component | Scope | Owner | Status |
+|---|---|---|---|
+| F0 | Architecture and dependency closure | INST-004 + reviewing/owning offices | in progress — independent review and product/API decisions remain |
+| F1 | Experience foundation | INST-010 | blocked — review, skill, and Founder authorization gates |
+| F2 | Identity and registration | INST-010 + identity/BP owners | blocked — canonical identity/API contract plus implementation gates |
+| F3 | Conversation core | INST-010 + BP/PR owners | blocked — canonical conversation/stream contracts plus implementation gates |
+| F4 | Relationship workspace | INST-010 + BP/WBE owners | blocked — Plan/Priority Work and Consumption projections plus implementation gates |
+| F5 | Omnichannel continuity | INST-010 + WC-060 owners | blocked — WC-060 completion plus implementation gates |
+| F6 | Voice interaction | INST-010 + Product/Security/Data/Solution owners | blocked — voice consent, retention, transcription, attachment, and API decisions |
+| F7 | Founder administration | INST-010 + WBE owner | blocked — canonical Founder management APIs plus implementation gates |
+| F8 | Integrated acceptance and hardening | INST-010, independently reviewed | blocked — selected release components complete and authorized |
 
 ## Required Inputs
 
-| Input | File |
+| Input | Status |
 |---|---|
-| GOAL-005 Spec §7 | `architecture/reference/billing/customer-acquisition-spec.md` §7 — UI design and API calls |
-| Web Portal structure | Read `web/` directory — find: auth guard component, admin route pattern, API client setup |
-| WBE markup API | `work-contracts/WC-027-wbe-s3-markup-engine.md` — `/pricing/` endpoints |
-| WBE trial API | `work-contracts/WC-031-goal005-wbe-trial-promotions.md` — `/trial/config`, `/promotions/coupons` |
-| ADR-017 | `adr/ADR-017-web-application-framework.md` — Next.js version, App Router conventions |
+| `web/WAOOAWHome.html` — existing public home-page template | Founder-approved 2026-08-08 — inspiration source for logo, fonts, color themes, design language, and public-page migration; constitutional UX vocabulary controls adaptations |
+| `web/app/` — WC-057 provisional Next.js PWA and relationship workspace | present — implementation baseline |
+| `architecture/reference/ux/constitutional-ux-vocabulary.md` | approved — normative vocabulary and public navigation input |
+| `architecture/reference/ux/suresh-portal-walkthrough.md` | approved input with open items requiring reconciliation |
+| `architecture/reference/api-specs/business-platform.openapi.yaml` | present — canonical BP API source |
+| `architecture/reference/billing/customer-acquisition-spec.md` | present — Founder tooling and acquisition input |
+| ADR-017 — Next.js 14 TypeScript PWA | accepted — framework boundary fixed |
+| WC-057 — Employment Relationship foundation | merged to `main`; independent review evidence remains unresolved |
+| WC-027 and WC-031 — WBE markup/trial/promotions contracts | required before Founder feature implementation |
+| Platform IT Expert frontend skill lifecycle | proposal input complete; Product Owner review, Founder approval, Type 1 update, activation gate, and independent EA review pending |
 
----
+## Architecture Definition of Done
 
-## Definition of Done
+- [x] One application-shell specification defines all four surfaces and route ownership; independent review remains pending.
+- [x] Public-to-authenticated continuity is explicit; no duplicate production home-page implementation remains in the target state.
+- [x] Desktop, tablet, 360px mobile, RTL, keyboard, reduced-motion, offline, loading, empty, error, and forbidden behavior are specified.
+- [x] Emergency Stop placement and behavior remain consistent with C-001 and ADR-017.
+- [x] Every screen family maps to an approved capability and API owner; missing contracts are blocked and owner-routed.
+- [x] Founder feature routes remain subordinate to the shared shell and are separately authorization-gated.
+- [ ] INST-005 and INST-011 review the architecture package before implementation authorization is requested.
 
-- [ ] `/admin/markup-designer` renders thread catalog table with live margin validation
-- [ ] Non-founder JWT → redirected to `/403` (not `/admin/markup-designer`)
-- [ ] `/admin/trial-config` form submits correct `PUT /trial/config` payload
-- [ ] `/admin/coupon-manager` shows coupons list, create form, deactivate button
-- [ ] All Vitest tests pass: `pnpm test web/app/admin/`
-- [ ] `biome lint web/app/admin/` → clean (or equivalent linter per ADR-017)
-- [ ] No WBE API credentials or secrets hardcoded in frontend — all via env var or server-side API route
+## Implementation Definition of Done
 
----
+- [ ] The approved Next.js application shell is implemented with generated API clients and strict TypeScript.
+- [ ] Public, customer, and Founder authorization boundaries pass route-level tests.
+- [ ] Existing home-page content is migrated or explicitly retired; there is one production entry point.
+- [ ] Exact 360px mobile and desktop Playwright projects pass with no horizontal overflow.
+- [ ] Keyboard, RTL, reduced-motion, PWA manifest, and zero-critical-axe acceptance checks pass.
+- [ ] Changed interactive code maintains at least 90% line coverage.
+- [ ] VERSION, CHANGELOG, SPRINT-REGISTRY, and PROJECT_STATE close only after independent review.
 
-## Notes
+## Explicit Exclusions
 
-- The WBE `PATCH /pricing/thread-catalog/{thread_id}` endpoint may not exist yet — if WC-027 did not
-  implement it, add it as a subtask in THIS sprint (scope it in WC034-01 as "add WBE endpoint if missing").
-- `GET /trial/config` and `PUT /trial/config` may need to be added to WBE trial/router.py —
-  check if WC-031 implemented them. If not, add as a subtask here.
-- All three pages are server components with client-side interactivity where needed (Next.js App Router pattern).
-- WBE base URL should come from env var `NEXT_PUBLIC_WBE_URL` (or server-side env `WBE_INTERNAL_URL`).
+- No React/Vite SPA, React Native application, or second web framework.
+- No WC-058 through WC-060 employment-journey implementation.
+- No new BP/WBE endpoint implemented from a UI task without its owning specification and authorization.
+- No Founder-admin implementation during Phase A.
+- No claim that the WC-057 provisional UI is the approved final visual design.
+- No amendment to the ratified Platform IT Expert specification before Product Owner review and Founder approval of the new-skill proposal.

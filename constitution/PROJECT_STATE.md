@@ -4,6 +4,46 @@
 
 ---
 
+## IN-PROGRESS CHECKPOINT — WC-034 HYBRID WEB APPLICATION SHELL
+
+| Milestone | Status |
+|---|---|
+| INST-004 office occupancy | DONE — architecture Decision Space loaded; WC-057 review remains excluded under C-065 |
+| Founder scope selection | DONE — amend WC-034 rather than create a separate precursor contract |
+| Work Contract amendment | DONE — architecture-first Phase A and separately gated implementation Phase B defined |
+| Required input validation | DONE — home template, provisional PWA, UX specifications, OpenAPI, ADR-017, and WBE contracts present |
+| Hybrid application-shell specification | DONE — route/rendering ownership, conversation model, navigation, API gaps, continuity boundary, failure semantics, privacy, and budgets defined |
+| Visual-system and information-architecture contracts | DONE — rejected architecture prototype permanently deleted; `web/WAOOAWHome.html` Founder-approved as the inspiration source for logo, fonts, color themes, design language, and public-page migration; constitutional UX/RTL/accessibility constraints govern adaptations; F0–F8 decomposition published |
+| Executable UI acceptance contract | DONE — component, browser, axe, visual, responsive, RTL, PWA, privacy, resilience, performance, and coverage evidence specified |
+| Platform IT Expert frontend capability assessment | DONE — Skill 16 proposal input prepared; Product Owner review and Founder decision required before Type 1 update |
+| Formal Enterprise Architecture assessment | DONE — architecturally groomed, not implementation-ready; WC-016 superseded for future planning |
+| Independent INST-005 and INST-011 review | REQUESTED — PR #239; approval records pending |
+| Founder implementation authorization | pending — no `web/app/` source changes authorized |
+
+### Decision Space
+
+INST-004 may define the structural application surfaces, route and layout ownership, rendering boundaries, constitutional-control placement, API ownership, and architecture acceptance contract. INST-004 may not finalize product priorities, implement the Next.js source, approve its own architecture package, or review WC-057 in this session.
+
+### Current Authorization Boundary
+
+Architecture authoring and review submission for WC-034 Phase A are complete. PR #239 awaits independent INST-005 and INST-011 approval records. WC-034 Phase B implementation remains unauthorized and also requires approved service contracts for the selected component, completion of the Platform IT Expert new-skill lifecycle, and a separate Founder Action. WC-058 through WC-060 remain outside this Work Contract; transactional omnichannel continuity is explicitly blocked on WC-060.
+
+### Review Candidate Package
+
+- `architecture/reference/ux/hybrid-application-shell.md`
+- `architecture/reference/ux/hybrid-visual-system-contract.md`
+- `architecture/reference/ux/hybrid-ui-acceptance-contract.md`
+- `architecture/reference/ux/wc-034-implementation-decomposition.md`
+- `architecture/reference/ux/wc-034-enterprise-architecture-assessment.md`
+- `architecture/reference/agents/platform-it-expert-nextjs-skill-proposal-input.md`
+- `work-contracts/WC-034-goal005-webportal-founder-admin.md`
+
+### Next Constitutional Action
+
+INST-005 reviews component/API/rendering/continuity ownership and INST-011 reviews product information architecture, release composition, labels, and deferred choices. INST-004 must not approve its own package. After both approvals, Product Ownership may present the frontend skill proposal for Founder decision. No implementation authorization is implied.
+
+---
+
 ## IN-PROGRESS CHECKPOINT — WC-057 AE-01 EMPLOYMENT JOURNEY FOUNDATION
 
 | Milestone | Status |
