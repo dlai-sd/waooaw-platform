@@ -41,8 +41,9 @@
 | D-05 Institution acceptance | DONE — INST-011 and INST-004 accepted after valid GOAs |
 | D-05 contribution | DONE — Wave 1 closure plan and trial policy recorded |
 | D-05 architecture review | DONE — R-039 CLEAR; G5-TRIAL-POLICY-01 accepted |
-| D-06 mandatory Sujay workshop input | BLOCKED — CB-003; no attested workshop record exists |
-| D-06 GO Authorizations | WITHHELD pending CB-003 closure |
+| D-06 mandatory DMA domain input | READY — Founder-directed expert synthesis covers eligibility, progressive context, all-skill 14-day trial, ethical conversion, and S01-S10 decisions |
+| D-06 input attestation and policy amendment | BLOCKED — CB-003 narrowed to INST-011 attestation and INST-004 review of the 14-calendar-day correction |
+| D-06 GO Authorizations | PHASE 6A ONLY — INST-011 and INST-004 authorized; all other D-06 authorizations withheld pending CB-003 closure |
 | Implementation authority | NONE |
 
 ### Decision Space
@@ -51,7 +52,7 @@ INST-013 may understand, classify, plan, route, monitor, resolve Goal-level gaps
 
 ### Current State
 
-G-2 and G-3 are approved. The G-4 Execution Plan passed R-034 and was acknowledged by the Registrant. D-01 passed independent gate review through R-035. Phase 2 GO Authorizations are issued only to INST-004 and INST-006 for D-03. G5-TRIAL-POLICY-01 is deferred to D-05 and blocks D-06 finalization. No implementation authority exists.
+G-2 through G-4 are approved and D-01 through D-05 passed their independent gates. The Founder-directed DMA synthesis is present and validated against CB-003 and AE-01-S01 through S10. Phase 6A authorizes INST-011 to attest the input and propose the 14-calendar-day D-05 amendment, followed by independent INST-004 review. CB-003 remains open until those records are accepted; other D-06 work, D-07, and implementation remain unauthorized.
 
 ---
 
