@@ -19,7 +19,7 @@
 | WC-055 closure | DONE — G-2 and G-3 complete; CB-002 closed |
 | WC-056 created | DONE — G-4 Planning only |
 | G-4 Execution Plan | DONE — GEP-GOAL-005-INST-013-01 provisional |
-| CA Readiness Review | IN PROGRESS |
+| CA Readiness Review | DONE — R-034 APPROVED |
 | Registrant acknowledgement | PENDING |
 | Phase 1 GO Authorizations | PENDING — prohibited until both R2-03 gates close |
 

@@ -7,7 +7,7 @@
 | `record_id` | GEP-GOAL-005-INST-013-01 |
 | `record_type` | Execution Plan |
 | `produced_at` | 2026-08-08T10:40:09+00:00 |
-| Status | PROVISIONAL — R2-03 CA Readiness Review and Registrant acknowledgement pending |
+| Status | REVIEWED — R-034 APPROVED; Registrant acknowledgement pending |
 
 ## Outcome and Boundary
 
