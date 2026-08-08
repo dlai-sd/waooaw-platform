@@ -4,6 +4,28 @@
 
 ---
 
+## IN-PROGRESS CHECKPOINT — WC-055 GOAL-005 UNDERSTANDING AND CLASSIFICATION
+
+| Milestone | Status |
+|---|---|
+| Goal Orchestrator office occupancy | DONE — INST-013 OPERATIONAL; charter and GEOM loaded |
+| Required handoff inputs validated | DONE — all eight inputs present and approved |
+| WC-055 created | DONE — READY; G-2 output not started |
+| R-031 constitutional readiness review | DONE — APPROVED |
+| Goal Understanding Record | pending |
+| Constitutional Analyst review | pending |
+| G-3 Classification | pending |
+
+### Decision Space
+
+INST-013 may understand, classify, plan, route, monitor, resolve Goal-level gaps, and close Goals. It may not contribute architecture, business capability, constitutional analysis, product priority, implementation specifications, code, or tests to GOAL-005, and may not issue a GO Authorization to itself.
+
+### Current State
+
+READY for GOAL-005 G-2 Understanding under WC-055. No G-2 record, G-4 plan, GO Authorization, or implementation authority has been produced.
+
+---
+
 ## SESSION RECORD — 2026-08-08 (WC-054 GOAL ORCHESTRATOR REGISTRY RECONCILIATION — DONE)
 
 | Milestone | Status |

@@ -37,9 +37,9 @@ cct_inventory:
   wbe_tests: { passed: 361, total: 361 }
 
 sprint_inventory:
-  recorded: 47
+  recorded: 48
   closed: 46
-  active: 0
+  active: 1
   blocked: 1
 
 # `LIVE` means implemented and executable in repository scope. It does not prove
