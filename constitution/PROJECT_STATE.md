@@ -20,8 +20,9 @@
 | WC-056 created | DONE — G-4 Planning only |
 | G-4 Execution Plan | DONE — GEP-GOAL-005-INST-013-01 provisional |
 | CA Readiness Review | DONE — R-034 APPROVED |
-| Registrant acknowledgement | PENDING |
-| Phase 1 GO Authorizations | PENDING — prohibited until both R2-03 gates close |
+| Registrant acknowledgement | DONE — ACK-GOAL-005-INST-001-01 |
+| Phase 1 GO Authorizations | DONE — INST-003 and INST-011 authorized for D-01 |
+| D-01 Institution acceptance | IN PROGRESS |
 
 ### Decision Space
 
@@ -29,7 +30,7 @@ INST-013 may understand, classify, plan, route, monitor, resolve Goal-level gaps
 
 ### Current State
 
-G-2 and G-3 are approved. The G-4 Execution Plan is awaiting CA Readiness Review and Registrant acknowledgement. No GO Authorization, specialist contribution, or implementation authority has been produced.
+G-2 and G-3 are approved. The G-4 Execution Plan passed R-034 and was acknowledged by the Registrant. Phase 1 GO Authorizations are issued to INST-003 and INST-011 for D-01 only. No specialist contribution or implementation authority has yet been produced.
 
 ---
 

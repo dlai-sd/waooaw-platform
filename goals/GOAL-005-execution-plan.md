@@ -7,7 +7,53 @@
 | `record_id` | GEP-GOAL-005-INST-013-01 |
 | `record_type` | Execution Plan |
 | `produced_at` | 2026-08-08T10:40:09+00:00 |
-| Status | REVIEWED — R-034 APPROVED; Registrant acknowledgement pending |
+| Status | ACKNOWLEDGED — R-034 APPROVED; Phase 1 GO Authorizations issued |
+
+## Registrant Acknowledgement Record
+
+| Attestation field | Value |
+|---|---|
+| `institution_id` | INST-001 |
+| `goal_id` | GOAL-005 |
+| `record_id` | ACK-GOAL-005-INST-001-01 |
+| `record_type` | Acknowledgement Record |
+| `produced_at` | 2026-08-08T10:53:16+00:00 |
+| Acknowledged plan | GEP-GOAL-005-INST-013-01 |
+| Decision | ACKNOWLEDGED — proceed phase-by-phase through D-07 and stop before implementation |
+
+## Phase 1 Authorization Records
+
+### GOA-GOAL-005-INST-003-01
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GOA-GOAL-005-INST-003-01 |
+| `record_type` | Authorization Record |
+| `produced_at` | 2026-08-08T10:53:17+00:00 |
+| `authorization_id` | GOA-GOAL-005-INST-003-01 |
+| Authorized Institution | INST-003 — Business Architect |
+| Contribution scope | D-01 Employment Capability Confirmation |
+| Participation Window | 2 constitutional sessions after valid acceptance |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-08T10:53:17+00:00 |
+
+### GOA-GOAL-005-INST-011-01
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GOA-GOAL-005-INST-011-01 |
+| `record_type` | Authorization Record |
+| `produced_at` | 2026-08-08T10:53:18+00:00 |
+| `authorization_id` | GOA-GOAL-005-INST-011-01 |
+| Authorized Institution | INST-011 — Product Owner |
+| Contribution scope | D-01 product-outcome and release-boundary input |
+| Participation Window | 1 constitutional session after valid acceptance |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-08T10:53:18+00:00 |
 
 ## Outcome and Boundary
 

@@ -4,7 +4,7 @@
 **Office:** Goal Orchestrator (INST-013)
 **Reviewer:** Constitutional Analyst (INST-002)
 **Authorized by:** Founder confirmation, 2026-08-08 — proceed continuously through D-07 and stop before implementation
-**Status:** AWAITING REGISTRANT ACKNOWLEDGEMENT — R-034 APPROVED
+**Status:** DONE — R-034 APPROVED; Registrant acknowledged; Phase 1 GOAs issued
 **Implementation scope:** Constitutional planning only; no specialist contribution, implementation Work Contract, code, test, deployment, or implementation authorization
 
 ## Objective
@@ -19,8 +19,8 @@ Produce the G-4 Goal Execution Plan that sequences D-01 through D-07, selects on
 | WC056-02 | D-01 through D-07 have explicit dependencies and phase gates | DONE — GEP-GOAL-005-INST-013-01 |
 | WC056-03 | Every participating Institution has an Evidence Specification, Participation Window, and independence constraint | DONE |
 | WC056-04 | CA Readiness Review approves the Execution Plan | DONE — R-034 APPROVED |
-| WC056-05 | Registrant acknowledges the reviewed Execution Plan | PENDING |
-| WC056-06 | Initial phased GO Authorizations are issued only after WC056-04 and WC056-05 | PENDING — prohibited before both gates |
+| WC056-05 | Registrant acknowledges the reviewed Execution Plan | DONE — ACK-GOAL-005-INST-001-01 |
+| WC056-06 | Initial phased GO Authorizations are issued only after WC056-04 and WC056-05 | DONE — GOA-GOAL-005-INST-003-01 and GOA-GOAL-005-INST-011-01 |
 
 ## Boundaries
 
