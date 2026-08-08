@@ -12,7 +12,7 @@
 | Founder scope selection | DONE — amend WC-034 rather than create a separate precursor contract |
 | Work Contract amendment | DONE — architecture-first Phase A and separately gated implementation Phase B defined |
 | Required input validation | DONE — home template, provisional PWA, UX specifications, OpenAPI, ADR-017, and WBE contracts present |
-| Hybrid application-shell specification | pending |
+| Hybrid application-shell specification | IN PROGRESS — canonical conversation model, cross-channel resume, structured work, responsive composition, and login/register experience recorded |
 | Visual-system and information-architecture contracts | pending |
 | Executable UI acceptance contract | pending |
 | Independent INST-005 and INST-011 review | pending |
