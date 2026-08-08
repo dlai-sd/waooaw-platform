@@ -13,7 +13,7 @@
 | WC-055 created | DONE — READY; G-2 output not started |
 | R-031 constitutional readiness review | DONE — APPROVED |
 | Goal Understanding Record | DONE — GUR-GOAL-005-INST-013-01 records Founder-confirmed scope |
-| G-2 independent review | IN PROGRESS — INST-002 review pending |
+| G-2 independent review | DONE — R-032 APPROVED; G-3 may proceed |
 | Goal Understanding Record | pending |
 | Constitutional Analyst review | pending |
 | G-3 Classification | pending |
@@ -24,7 +24,7 @@ INST-013 may understand, classify, plan, route, monitor, resolve Goal-level gaps
 
 ### Current State
 
-G-2 Understanding is recorded and awaiting independent review. No Classification, G-4 plan, GO Authorization, specialist contribution, or implementation authority has been produced.
+G-2 Understanding is approved. G-3 Classification is next. No Classification, G-4 plan, GO Authorization, specialist contribution, or implementation authority has been produced.
 
 ---
 
