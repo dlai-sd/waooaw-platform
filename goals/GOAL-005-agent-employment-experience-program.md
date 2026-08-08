@@ -1,6 +1,6 @@
 # GOAL-005 — Agent Employment Experience Program
 
-**Status:** REGISTERED — FOUNDER AUTHORIZED FOR G-2 UNDERSTANDING; NO IMPLEMENTATION AUTHORIZATION
+**Status:** G-2 UNDERSTANDING RECORDED — INDEPENDENT REVIEW PENDING; NO IMPLEMENTATION AUTHORIZATION
 **Registrant:** Yogesh Khandge (Founder)
 **Registered:** 2026-08-08
 **Work Contract:** WC-052
@@ -8,6 +8,46 @@
 **Constitutional basis:** C-001, C-002, C-009, C-030, C-034, C-037, C-039, C-070, C-094
 
 > This document is a planning skeleton. Story order is directional. Story details, acceptance criteria, estimates, component tasks, and sprint assignments require focused grooming and explicit authorization.
+
+## G-2 — Goal Understanding Record
+
+| Attestation field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GUR-GOAL-005-INST-013-01 |
+| `record_type` | Understanding Record |
+| `produced_at` | 2026-08-08T10:26:34+00:00 |
+| Registrant | Yogesh Khandge, Founder (INST-001) |
+| Reviewer | Constitutional Analyst (INST-002) |
+
+### Original Goal — Preserved
+
+> A customer can discover, hire, work with, govern, and expand a relationship with WAOOAW professionals through one continuous constitutional experience.
+
+### Confirmed Objective
+
+Execute GOAL-005 through D-01 to D-07 in specification and grooming mode. Produce approved shared Agent Employment foundations and implementation-ready AE-01 Work Contract candidates, while retaining AE-02 through AE-06 as outcome and story skeletons. Stop before implementation.
+
+### Confirmed Scope and Sequence
+
+1. D-01 through D-05 must close the Architecture Readiness Gate before D-06 finalizes AE-01 Work Contract candidates. D-06 may prepare drafts in parallel but may not finalize them against unresolved foundations.
+2. AE-01 remains a generic discover-to-hire journey. Its first proof is a simulation of a WhatsApp-first DMA trial-to-hire scenario; DMA validates the shared contract but does not define its boundary.
+3. D-07 independently validates the package and presents required ratification and the implementation decision boundary to the Founder.
+4. AE-02 remains skeletal while the Sujay DMA domain workshop and AE-01 foundation work may proceed in parallel. AE-03 through AE-06 remain skeletal.
+5. After this confirmation, INST-013 may coordinate the specification journey continuously and return to the Founder only for D-07 ratification or a genuine constitutional blocker.
+
+### Institutional Boundaries
+
+INST-013 owns Goal state, dependencies, sequence, authorizations, monitoring, and checkpoint evidence. Specialist Institutions produce D-01 through D-07 contributions within the boundaries recorded in the Founder decision. INST-013 does not create architecture, business capabilities, constitutional analysis, product priorities, implementation specifications, code, or tests and does not issue a GO Authorization to itself.
+
+### Success Condition for This Journey
+
+The specification journey is complete when D-01 through D-07 are independently validated, the shared foundations are approved, AE-01 has proposed implementation-ready Work Contracts at WC-038 through WC-040 quality, and the Founder is presented with a separate implementation decision. No implementation is part of this Goal Orchestrator run.
+
+### Clarification Status
+
+No clarification blocks progression. The Registrant confirmed the completion point, foundation-first dependency, simulation-first WhatsApp/DMA proof, and continuous specification execution authority on 2026-08-08.
 
 ## 1. Program Intent
 
