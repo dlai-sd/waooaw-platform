@@ -26,7 +26,7 @@ institutional_state:
   latest_enterprise_architecture:
     work_contract: WC-053
     title: GOAL-005 Orchestration Decision Record
-    status: DONE
+    status: BLOCKED
   constitutional_claims: { ratified: 97, gaps: [C-087, C-092, C-093] }
   architecture_decisions: { recorded: 44 }
 
@@ -38,9 +38,9 @@ cct_inventory:
 
 sprint_inventory:
   recorded: 46
-  closed: 45
+  closed: 44
   active: 0
-  blocked: 1
+  blocked: 2
 
 # `LIVE` means implemented and executable in repository scope. It does not prove
 # environment deployment or customer operation; use each manifest's maturity block.

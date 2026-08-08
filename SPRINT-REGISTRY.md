@@ -1,6 +1,6 @@
 # WAOOAW Platform — Sprint Registry
 
-**Last Updated:** 2026-08-08 · **Version:** 1.44.0 · **Work Contracts:** 46 recorded (45 closed · 0 active · 1 blocked)
+**Last Updated:** 2026-08-08 · **Version:** 1.44.0 · **Work Contracts:** 46 recorded (44 closed · 0 active · 2 blocked)
 
 ---
 
@@ -9,6 +9,7 @@
 | WC | Title | Track | Status | Depends On | Key Outcome |
 |---|---|---|---|---|---|
 | **WC-034** | Web Portal — Founder Admin + Customer | Next.js 14 | ⚠️ BLOCKED | Keycloak + WBE-S7 | Customer self-service portal — hiring wizard, approval dashboard, performance view |
+| **WC-053** | GOAL-005 Orchestration Decision Record | Enterprise Architecture | BLOCKED — decision approved | CB-001 | Founder decision recorded; INST-013 occupancy awaits registry reconciliation |
 
 **Reserved customer-first roadmap:** WC-044→WC-048. These identifiers describe Founder-approved sequencing in the 2026-08-07 strategy record; Work Contracts have not yet been created.
 
@@ -62,7 +63,6 @@
 | WC-050 | CCT, Traceability, and State Registry Closure | Enterprise Architect | 1.44.0 | 72-entry CCT catalogue; two billing C-059 corrections; canonical state derivation and drift gate; R-026 approved |
 | WC-051 | Agent Domain Gap Registers | Enterprise Architect | 1.44.0 | Grooming-ready domain release gaps for DMA, Agriculture, Trading, and Private Tutor; R-027 approved |
 | WC-052 | Agent Employment Program Skeleton | Enterprise Architect | 1.44.0 | GOAL-005; 6 customer-outcome epics; 43 thin stories; AEEC and 37 shared product gaps; R-028 approved |
-| WC-053 | GOAL-005 Orchestration Decision Record | Enterprise Architect | 1.44.0 | Founder debate and decision; just-in-time institutional grooming; handoff to INST-013; R-029 approved |
 
 ---
 

@@ -5,7 +5,7 @@
 **Session type:** Program operating-model decision
 **Goal:** GOAL-005 — Agent Employment Experience Program
 **Work Contract:** WC-053
-**Status:** FOUNDER DECISION RECORDED — HANDOFF TO GOAL ORCHESTRATOR
+**Status:** FOUNDER DECISION RECORDED — HANDOFF BLOCKED BY CB-001
 **Continues from:** `strategy/FOUNDER-SESSION-2026-08-07-customer-first-decision.md`
 
 ## 1. Context
@@ -199,4 +199,10 @@ The Goal Orchestrator's first authorized action is to load its constitutional op
 
 ---
 
-*Decision recorded by Enterprise Architect (INST-004). Orchestration is handed to Goal Orchestrator (INST-013); the recorder does not participate as orchestrator until the office transition is complete.*
+*Decision recorded by Enterprise Architect (INST-004). The intended handoff to Goal Orchestrator (INST-013) is blocked by CB-001; the recorder does not participate as orchestrator.*
+
+## 11. Post-Review Handoff Blocker
+
+The INST-013 readiness check found a contradiction in `constitution/INSTITUTION-REGISTRY.md`: the Institution entry says `PROPOSED`, while the append-only change log says INST-013 was chartered and activated `OPERATIONAL` by Founder ratification on 2026-07-27.
+
+CB-001 records the contradiction. The Founder decision in this document remains valid, but the office handoff cannot complete until the Constitutional Analyst reconciles the canonical registry. No GOAL-005 G-2 record may be produced before CB-001 closes.

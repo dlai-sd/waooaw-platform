@@ -1,10 +1,10 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-08-08 (WC-053 GOAL-005 Orchestration Decision Record DONE)
+**Last Updated:** 2026-08-08 (WC-053 GOAL-005 Orchestration Decision Record BLOCKED)
 
 ---
 
-## SESSION RECORD — 2026-08-08 (WC-053 GOAL-005 ORCHESTRATION DECISION — DONE)
+## SESSION RECORD — 2026-08-08 (WC-053 GOAL-005 ORCHESTRATION DECISION — BLOCKED HANDOFF)
 
 | Milestone | Status |
 |---|---|
@@ -13,7 +13,7 @@
 | Authorization boundary | DONE — specification/grooming only; no implementation authorization |
 | Institutional separation | DONE — INST-013 orchestrates and may not contribute to GOAL-005 |
 | Independent review | DONE — R-029 APPROVED |
-| Office handoff | READY — INST-013 must assess G-2 Understanding readiness |
+| Office handoff | BLOCKED — CB-001: canonical INST-013 entry says PROPOSED while change log says OPERATIONAL |
 
 ### Output
 
@@ -23,7 +23,7 @@
 
 ### Next Authorized Action
 
-Goal Orchestrator (INST-013) loads its Office Knowledge Specification and reports READY or BLOCKED for GOAL-005 G-2 Understanding. No Goal Understanding Record is produced until that readiness declaration.
+Constitutional Analyst reconciles `constitution/INSTITUTION-REGISTRY.md` and closes CB-001. Goal Orchestrator occupancy and GOAL-005 G-2 Understanding remain prohibited until then.
 
 ---
 
