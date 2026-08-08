@@ -13,7 +13,7 @@
 | Work Contract amendment | DONE — architecture-first Phase A and separately gated implementation Phase B defined |
 | Required input validation | DONE — home template, provisional PWA, UX specifications, OpenAPI, ADR-017, and WBE contracts present |
 | Hybrid application-shell specification | DONE — route/rendering ownership, conversation model, navigation, API gaps, continuity boundary, failure semantics, privacy, and budgets defined |
-| Visual-system and information-architecture contracts | DONE — rejected architecture prototype permanently deleted; `web/WAOOAWHome.html` Founder-approved as public visual direction and migration input; Noto/tokens/themes/RTL/accessibility control and F0–F8 decomposition published |
+| Visual-system and information-architecture contracts | DONE — rejected architecture prototype permanently deleted; `web/WAOOAWHome.html` Founder-approved as the inspiration source for logo, fonts, color themes, design language, and public-page migration; constitutional UX/RTL/accessibility constraints govern adaptations; F0–F8 decomposition published |
 | Executable UI acceptance contract | DONE — component, browser, axe, visual, responsive, RTL, PWA, privacy, resilience, performance, and coverage evidence specified |
 | Platform IT Expert frontend capability assessment | DONE — Skill 16 proposal input prepared; Product Owner review and Founder decision required before Type 1 update |
 | Formal Enterprise Architecture assessment | DONE — architecturally groomed, not implementation-ready; WC-016 superseded for future planning |

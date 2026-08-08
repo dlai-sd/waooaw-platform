@@ -44,9 +44,9 @@ The shell must use role-aware route composition rather than runtime CSS hiding. 
 
 | task_id | scope | model_hint | status | completed_at |
 |---|---|---|---|---|
-| WC034-01 | A01 — Inventory the static home, current Next.js routes, WC-057 provisional workspace, and UX vocabulary; record reuse, migration, and retirement decisions without changing source. | reasoning | done | 2026-08-08 — architecture prototype rejected and permanently deleted; `web/WAOOAWHome.html` approved by Founder as the public home-page visual direction and migration input |
+| WC034-01 | A01 — Inventory the static home, current Next.js routes, WC-057 provisional workspace, and UX vocabulary; record reuse, migration, and retirement decisions without changing source. | reasoning | done | 2026-08-08 — architecture prototype rejected and permanently deleted; `web/WAOOAWHome.html` approved by Founder as the inspiration source for logo, fonts, color themes, design language, and public-page migration |
 | WC034-02 | A02 — Define route groups, layouts, navigation, responsive composition, role/claim and server/client boundaries, application states, and persistent constitutional controls. | reasoning | done | 2026-08-08 — shell, continuity boundary, failure semantics, privacy, and budgets published |
-| WC034-03 | A03 — Map the prototype into shared tokens, typography, spacing, iconography, focus, motion, RTL, and accessibility rules; resolve vocabulary conflicts. | reasoning | done | 2026-08-08 — prototype reconciled; ratified Noto/token/theme rules control |
+| WC034-03 | A03 — Map the approved home-page inspiration into shared tokens, typography, spacing, iconography, focus, motion, RTL, and accessibility rules; resolve vocabulary conflicts without replacing its visual character. | reasoning | done | 2026-08-08 — logo treatment, Noto Sans-led typography, blue/green/orange/navy themes, and trust-focused design language carried forward; constitutional constraints control adaptations |
 | WC034-04 | A04 — Define public, customer, relationship, settings/profile, and Founder information architecture and groom the implementation components. | reasoning | done | 2026-08-08 — route families, navigation, relationship views, and F0–F8 decomposition published |
 | WC034-05 | A05 — Define generated-client/API boundaries and route missing operations to their owning services; no UI-created BP/WBE endpoints. | reasoning | done | 2026-08-08 — INST-004 owner/gap matrix complete; INST-005 validation requested under A07 |
 | WC034-06 | A06 — Define executable desktop, exact 360px, keyboard, RTL, reduced-motion, PWA, overflow, axe, privacy, performance, and coverage evidence. | reasoning | done | 2026-08-08 — component, contract, browser, axe, screenshot, and quality matrix published |
@@ -83,7 +83,7 @@ Detailed scope, dependencies, exclusions, and acceptance IDs are normative in `a
 
 | Input | Status |
 |---|---|
-| `web/WAOOAWHome.html` — existing public home-page template | Founder-approved 2026-08-08 — public visual direction and migration input; constitutional UX vocabulary controls conflicts |
+| `web/WAOOAWHome.html` — existing public home-page template | Founder-approved 2026-08-08 — inspiration source for logo, fonts, color themes, design language, and public-page migration; constitutional UX vocabulary controls adaptations |
 | `web/app/` — WC-057 provisional Next.js PWA and relationship workspace | present — implementation baseline |
 | `architecture/reference/ux/constitutional-ux-vocabulary.md` | approved — normative vocabulary and public navigation input |
 | `architecture/reference/ux/suresh-portal-walkthrough.md` | approved input with open items requiring reconciliation |

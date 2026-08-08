@@ -17,9 +17,18 @@ This contract maps the ratified WAOOAW visual vocabulary into the public, authen
 | Artifact | Founder decision | Architecture treatment |
 |---|---|---|
 | `architecture/reference/ux/homepage-prototype.html` | REJECTED on 2026-08-08 | Permanently deleted; no design, composition, token, copy, or implementation authority remains |
-| `web/WAOOAWHome.html` | APPROVED on 2026-08-08 | Founder-approved public home-page visual direction and migration input; implementation remains gated by WC-034 Phase B |
+| `web/WAOOAWHome.html` | APPROVED on 2026-08-08 | Founder-approved inspiration source for logo, fonts, color themes, design language, and public-page migration; implementation remains gated by WC-034 Phase B |
 
-The approved home page informs public composition, visual character, and content migration. The visual contract below remains derived from the ratified constitutional UX vocabulary, which controls if the approved HTML conflicts with constitutional tokens, accessibility, responsive, RTL, privacy, or governance requirements.
+The approved home page is the design inspiration source for the hybrid application. Its logo treatment, fonts, color themes, and design language must remain recognizably continuous across public and authenticated surfaces; implementation may adapt rather than pixel-copy them for each surface's density and workflow needs.
+
+| Inspiration area | Direction carried forward |
+|---|---|
+| Logo | Use the approved stylized WAOOAW logo asset and preserve its clear-space, proportion, and prominent brand treatment; compact surfaces may use the approved mark treatment |
+| Fonts | Carry forward the Noto Sans-led hierarchy with Inter fallback, restrained weight range, and readable business-language rhythm; locale-specific Noto scripts replace the Latin stack where required |
+| Color themes | Carry forward WAOOAW blue `#1A66C2`, green `#3DAD35`, orange `#F7941D`, navy `#1E3352`, light neutral surfaces, and restrained brand-tinted accents; dark and high-contrast variants preserve the same semantic roles |
+| Design language | Carry forward the light, spacious, trust-focused composition, restrained cards and borders, progressive journey cues, clear calls to action, and visible constitutional status language without turning authenticated work surfaces into marketing pages |
+
+The visual contract below remains derived from the ratified constitutional UX vocabulary, which controls if an inspired treatment conflicts with constitutional tokens, accessibility, responsive, RTL, privacy, or governance requirements. Such constraints require an adapted treatment that retains the approved visual character; they do not authorize replacing it with an unrelated design language.
 
 ## Token Layers
 
