@@ -337,7 +337,7 @@ Apple Sign In requires:
 
 **Constitutional basis:** C-063 (Data Minimisation — only collect what is necessary).
 
-After any OAuth provider completes, Suresh sees a 2-step completion screen (if fields are missing from OAuth):
+After any OAuth provider completes, Suresh sees a short completion flow for fields not supplied and verified by the provider. WhatsApp-native registration collects the same data conversationally.
 
 **Step 1 — The one thing we need (if not from OAuth):**
 ```
@@ -355,9 +355,11 @@ After any OAuth provider completes, Suresh sees a 2-step completion screen (if f
 | Field | Required | Source | Notes |
 |---|---|---|---|
 | Display name | ✓ | OAuth (pre-filled) or text input | 1 field. Not "first name + last name" |
-| Phone number | ✓ for agricultural | OAuth (not available) or OTP flow | WhatsApp agent delivery (ADR-023) |
+| Phone number | ✓ | Meta-verified WhatsApp identity or OTP flow | Confirm rather than re-enter when registration starts on WhatsApp |
+| Verified email | ✓ | Google/Meta verified claim or email verification challenge | Recoverable identity and web/mobile access; no skip |
+| Business name | ✓ | Customer response or approved provider claim | Name customers recognize; not legal-entity detail |
+| Business domain | ✓ | Plain-language business type selection | Agriculture for Suresh; not a website-domain field |
 | Language preference | ✓ | Auto-detected (confirm only) | One tap to confirm, not a form |
-| Email | ✗ | OAuth optional | Not required at registration. Collected if customer wants email invoices. |
 | Farm details | ✗ | Collected by agent | "What crop do you grow?" is the FIRST message from the agent, not a registration field |
 | Address | ✗ | Collected by agent | |
 | GST number | ✗ | Collected by billing system at first payment | |
@@ -369,19 +371,19 @@ The existing Business Platform OpenAPI (`POST /api/v1/employment/contracts`) exp
 **Resolution:**
 ```
 Amend POST /api/v1/employment/contracts:
-  - organisation_name:        OPTIONAL at registration (default to display_name + "'s Farm")
-  - primary_contact_email:    OPTIONAL (nullable — many agricultural customers have no email)
-  - primary_contact_phone:    REQUIRED for agricultural/tutoring agents (ADR-023 basis)
+  - organisation_name:        REQUIRED at registration; customer-facing business name
+  - business_domain:          REQUIRED at registration; plain-language business type
+  - primary_contact_email:    REQUIRED and verified before registration completes
+  - primary_contact_phone:    REQUIRED; Meta-verified or OTP-verified
   - language_preference:      NEW required field (mr/hi/en/ta/te/kn/gu/bn/ml/pa/ur)
 
 Progressive completion:
-  The Business Platform allows "incomplete" organisation records.
-  Missing fields are flagged as `profile_completion_status: PARTIAL`.
-  The agent's first conversation fills these in.
-  A ≥80% profile completeness is required before the agent begins billing (C-037 — Business KPI).
+  Registration completes only when the five identity/business fields above are present and verified where required.
+  Goals, farm details, address, GST, budget, authority, provider connections, and other operating context remain progressive.
+  The professional requests each deferred detail only when trial, configuration, hiring, payment, or work requires it.
 ```
 
-**Registration completes in:** 2 taps (Google OAuth) → phone OTP → language confirm = 3 screens, < 2 minutes for Suresh.
+**Registration target:** verified provider details are pre-filled; WhatsApp registration needs at most four data prompts plus one editable summary. Target completion is under 3 minutes, including email verification under ordinary connectivity.
 
 ---
 

@@ -69,7 +69,9 @@ A customer account may hold multiple Employment Relationships. These may involve
 
 The configuration step gives the professional a customer-facing identity within that relationship, including an approved name, avatar, persona expression, language, and business context. Duplicate professional types are identified by configured name and business context, never by labels such as `Agent 1` and `Agent 2`.
 
-Configured professional avatars are functional identity assets and are permitted. The prohibition on imagery applies to decorative, stock, marketing, and atmospheric images; it does not prohibit the WAOOAW logo, application icons, or the configured professional avatar.
+Configured professional avatars are functional identity assets and are permitted only in identity locations such as the professional switcher, relationship header, and profile. They are not repeated beside every message. The prohibition on imagery applies to decorative, stock, marketing, atmospheric, and background images; it does not prohibit the WAOOAW logo, application icons, the configured professional avatar, or customer/work-product attachments that are necessary to the professional service.
+
+The purpose of the no-image philosophy is productive, text-focused conversation across WhatsApp, web, and mobile. Visual work products may be attached or previewed on demand, but they do not turn the conversation shell into an image feed.
 
 A customer with one relationship enters that conversation directly. A customer with several relationships still resumes the most recently active conversation by default and can use a professional switcher or `My Professionals` to change context.
 
@@ -153,12 +155,14 @@ Initial registration has a five-field ceiling:
 | Detail | WhatsApp behavior | Purpose |
 |---|---|---|
 | Customer name | Ask preferred name | Welcoming identity and communication |
-| Email | Ask once with a plain-language purpose | Account recovery, notices, and future web/mobile access |
+| Email | Ask once, explain that verification is required, then verify through an approved email or federated identity path | Recoverable identity, notices, and web/mobile access |
 | Mobile number | Use the Meta-verified WhatsApp number and ask for confirmation; do not request re-entry | Channel identity and continuity |
 | Business name | Ask the name customers recognize | Establish initial business context |
 | Business domain | Ask as a plain-language business type or industry, not a website-domain field | Route the customer toward a suitable professional |
 
-WhatsApp therefore needs at most four customer prompts because the mobile number is already known. Questions are asked one at a time, may be answered by voice, and end with a single editable summary confirmation.
+WhatsApp therefore needs at most four data-collection prompts because the mobile number is already known. Questions are asked one at a time, may be answered by voice, and end with a single editable summary confirmation. Registration completes only after the supplied email is verified.
+
+Email verification may be satisfied by an approved email verification challenge or by Google/Meta authentication when the identity provider supplies a verified email claim. If the provider does not supply a verified email, WAOOAW collects and verifies it separately. Possession of a WhatsApp number alone is not sufficient for a complete customer account.
 
 The following are deferred until trial, professional configuration, hiring, payment, or the first action that genuinely requires them:
 
@@ -171,7 +175,7 @@ The following are deferred until trial, professional configuration, hiring, paym
 - Professional name, avatar, persona, and relationship-specific configuration
 - Any domain-specific detail not required to create the customer account
 
-**Open product conflict:** Founder discussion makes email mandatory at initial registration. The approved Suresh walkthrough currently permits registration without email for customers who do not use it. INST-011 must resolve this conflict before architecture approval; implementation must not choose silently between the two rules.
+**Founder resolution:** Email is mandatory for access to WAOOAW professionals. The Suresh walkthrough has been amended because its former optional-email rule was superseded by this decision. Registration design must explain the requirement plainly and minimize effort; it must not offer `Skip` or create a fully registered customer with an unverified email.
 
 WhatsApp registration grants only the assurance permitted by ADR-023. Contract acceptance, payment authorization, Stop release, identity attachment to an existing high-assurance account, and other tiered actions still require their approved step-up path.
 
@@ -193,6 +197,8 @@ Their visual and behavioral reference is the Next.js Chatbot Template authentica
 Authentication methods remain Keycloak-brokered and are presented in the approved persona-appropriate order. Controls are commands, not decorative cards. Errors remain inline, preserve entered non-secret values and selected language, and provide a next step.
 
 Registration collects only the minimum mandatory details for the selected identity path. WhatsApp/mobile-number verification links the web or mobile identity to an existing WhatsApp registration when one exists; it must not mint a duplicate customer merely because the customer entered through another channel.
+
+Web and mobile registration require a verified email and an approved strong authentication path. Google or Meta authentication may satisfy the federated identity step when required claims are verified. Email/password or equivalent credential paths require the approved second factor. Authentication assurance is progressive: routine access uses the approved account session, while contract acceptance, payment, Stop release, authority expansion, and other high-risk actions may require fresh or stronger step-up authentication.
 
 After successful login or registration, a safe server-owned return target opens the most recent cross-channel professional conversation or the customer's configured default start view. Authentication itself remains a distinct transition screen.
 
