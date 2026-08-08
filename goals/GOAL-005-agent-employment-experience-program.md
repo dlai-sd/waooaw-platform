@@ -1,6 +1,6 @@
 # GOAL-005 — Agent Employment Experience Program
 
-**Status:** G-2 UNDERSTANDING APPROVED — G-3 CLASSIFICATION AUTHORIZED; NO IMPLEMENTATION AUTHORIZATION
+**Status:** G-3 CLASSIFICATION PROVISIONAL — R2-10 CHALLENGE WINDOW OPEN; NO IMPLEMENTATION AUTHORIZATION
 **Registrant:** Yogesh Khandge (Founder)
 **Registered:** 2026-08-08
 **Work Contract:** WC-052
@@ -143,6 +143,58 @@ Submit this Understanding Record to the Constitutional Analyst for independent r
 ### G-2 Review Disposition
 
 R-032 APPROVED GUR-GOAL-005-INST-013-01 without correction on 2026-08-08. G-3 Classification may proceed. G-4 Planning remains outside WC-055.
+
+## G-3 — Goal Classification
+
+### Classification State Transition
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `classification_id` | GCL-GOAL-005-INST-013-01 |
+| `issued_at` | 2026-08-08T09:45:19+00:00 |
+| `status` | PROVISIONAL — R2-10 Constitutional Analyst challenge window open |
+
+Classification is an append-only state transition on the registered Goal. It does not modify the approved Understanding Record.
+
+### Four-Dimensional Classification
+
+| Dimension | Classification | Evidence and effect |
+|---|---|---|
+| Scope | Cross-domain | The Goal requires coordinated business, enterprise, data, security, solution, constitutional, product, domain, and eventually runtime concerns across multiple institutional domains. |
+| Nature | Build | The complete Goal outcome requires a reusable employment platform and customer-proven waves. The currently authorized journey remains Design/Review specification and grooming only; Nature does not create implementation authority. |
+| Risk | Constitutional | The Goal governs customer rights, consent, Human Override, evidence, employment formation, financial activation, authority boundaries, and later multi-agent delegation. A defect could violate constitutional floors, not merely product quality. |
+| Urgency | Elevated | GOAL-005 is the customer-first path to the first coherent professional employment outcome. Delay postpones customer proof, while Emergency treatment is not justified because no live safety incident or constitutional breach requires preemption. |
+
+### Priority Tier
+
+**P2 — Constitutional Risk.** Under GEOM G-08, the Constitutional risk classification takes scheduling precedence over Elevated and Routine Goals. Founder approval is required before the Goal Orchestrator routes contributing Institutions.
+
+The existing Founder decisions authorize G-2 through G-4 specification and grooming. They do not replace the mandatory G-4 CA Readiness Review, Registrant acknowledgement of the Execution Plan, phased GO Authorization sequence, or separate implementation authorization.
+
+### Classification Consequences
+
+- Cross-domain scope requires explicit institutional sequencing and independence constraints at G-4.
+- Build nature means the eventual evidence chain must include customer outcome proof, not repository completion alone.
+- Constitutional risk requires Founder control before contribution routing and independent constitutional review throughout the Journey.
+- Elevated urgency supports prompt specification work but does not permit bypassing review, acknowledgement, or authorization gates.
+- INST-013 remains orchestrator only and is not a participating contributor.
+
+These consequences constrain future Planning; they do not select Institutions, define Evidence Specifications, establish Participation Windows, or authorize work.
+
+### R2-10 Challenge Window
+
+| Field | Value |
+|---|---|
+| Window opened | 2026-08-08T09:45:19+00:00 |
+| Window closes | End of the independent Constitutional Analyst classification-review session |
+| Reviewing Institution | INST-002 — Constitutional Analyst |
+| CA election | PENDING — challenge or no-challenge decision required |
+| If challenged | Classification remains PROVISIONAL; escalate to Founder (INST-001) for adjudication |
+| If not challenged | Classification stands and WC-055 may close with a recommendation for separately authorized G-4 Planning |
+
+No G-4 Planning activity may begin while this window is open.
 
 ## 1. Program Intent
 
