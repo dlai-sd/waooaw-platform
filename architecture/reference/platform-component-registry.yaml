@@ -4,10 +4,43 @@
 # Read by: Gap Scanner, Blueprint Assurance Run, Steward Interface, CI gate
 # Updated: when a new component is added (EA session, PR required)
 
-registry_version: "1.1"
+registry_version: "2.0"
 platform_baseline: "1.44.0"
 last_updated: "2026-08-08"
 total_components: 5
+
+# Canonical current state. Current-facing summaries are derived by
+# scripts/sync_platform_state.py and checked by tests/platform/test_platform_state_sync.py.
+institutional_state:
+  as_of: "2026-08-08"
+  version: "1.44.0"
+  release_date: "2026-08-07"
+  epoch: { number: 1, name: Employment }
+  gate: "G5 CLEAR"
+  phase: IMPLEMENTATION
+  autonomous_halt: false
+  latest_completed_implementation:
+    work_contract: WC-043
+    title: WBE-S8 Reconciliation CCT Suite + Coverage Gate
+    evidence: "361/361 tests, 94% coverage"
+  latest_enterprise_architecture:
+    work_contract: WC-050
+    title: CCT, Traceability, and State Registry Closure
+    status: DONE
+  constitutional_claims: { ratified: 97, gaps: [C-087, C-092, C-093] }
+  architecture_decisions: { recorded: 44 }
+
+cct_inventory:
+  institutional: 72
+  centrally_catalogued: 72
+  unified_execution_proven: false
+  wbe_tests: { passed: 361, total: 361 }
+
+sprint_inventory:
+  recorded: 43
+  closed: 42
+  active: 0
+  blocked: 1
 
 # `LIVE` means implemented and executable in repository scope. It does not prove
 # environment deployment or customer operation; use each manifest's maturity block.

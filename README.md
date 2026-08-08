@@ -9,18 +9,18 @@
 ## Platform Status
 
 ```
-Version:              v1.44.0 — 2026-08-07: WC-043 DONE (WBE-S8 CCT-PREPAID-01 + CCT-SELFAUDIT-01 full + 94% coverage · 361/361 tests)
-Constitutional Claims: 97 ratified (C-001→C-100, with gaps at C-087/C-092/C-093) | ADRs: 44
+Version:              v1.44.0 — 2026-08-07: WC-043 DONE (361/361 tests, 94% coverage)
+Constitutional Claims: 97 ratified (gaps at C-087/C-092/C-093) | ADRs: 44
 Customer Agents:      DMA v3.1 gate-pass (Founder-approved through v3.0) · Trading v1.8 / Agri v2.8 / Tutor v1.1 gate-pass records without current-version Founder approval · none customer-proven
 Internal Agents:      5 — Platform IT Expert (15 skills, §2.4 Pipeline-First Rule) · Steward Assistant · Self-Improvement Analyst ·
                           Platform Operations · RepoNav (AVD-001 v1.0 RATIFIED — INST-014)
-Gates:                G0 ✅  G1 ✅  G2 ✅  G3 ✅  G4 ✅  G5 CLEAR
-Phase:                IMPLEMENTATION — WC-043 DONE · WC-034 BLOCKED (Keycloak) · WBE complete through GOAL-004
+Gates:                G5 CLEAR
+Phase:                IMPLEMENTATION — WC-043 DONE
 Infrastructure:       Azure live — waooaw-dev-kv (Key Vault) · OIDC auth · Sprint Dashboard: Issue #7
 Monitoring:           Sprint Dashboard: github.com/dlai-sd/waooaw-platform/issues/7
 Web:                  web/WAOOAWHome.html — Landing page v1.0 + Auth modal
-CCT inventory:        72 institutionally declared · 61 unique IDs enumerated in central catalogue · passing evidence recorded per WC (no unified 72/72 run)
-Sprint Registry:      SPRINT-REGISTRY.md — all 41 WCs, 40 closed · 1 blocked
+CCT inventory:        72 institutionally declared · 72 centrally catalogued · no unified 72/72 run
+Sprint Registry:      SPRINT-REGISTRY.md — 43 recorded (42 closed · 0 active · 1 blocked)
 Company:              DLAI Satellite Data (OPC) Pvt Ltd · CIN: U62090PN2024OPC230499 · Pune, India
 Stewards:             Yogesh Khandge (Founder) · Sujay Khandge (Business Growth) · Ojal Khandge (Ethics Officer)
 ```
@@ -31,8 +31,8 @@ The platform has entered full autonomous implementation. The Autonomous Sprint A
 generates production-grade code, reviews its own PR, merges, and advances to the next sprint — without human intervention.
 
 ```
-Last sprint:     WC-043 — WBE-S8 Reconciliation CCT Suite + Coverage Gate (CCT-PREPAID-01, CCT-SELFAUDIT-01 full, 94% coverage)
-Sprint status:   DONE — 2026-08-07 · 361/361 tests passing
+Last sprint:     WC-043 — WBE-S8 Reconciliation CCT Suite + Coverage Gate
+Sprint status:   DONE — 2026-08-07 · 361/361 tests, 94% coverage
 Next work:       WC-044→048 customer-first roadmap reserved; Work Contracts not yet created · WC-034 remains BLOCKED pending revalidation
 Sprint registry: SPRINT-REGISTRY.md
 ```

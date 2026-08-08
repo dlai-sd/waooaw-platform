@@ -1,19 +1,19 @@
 # Constitutional Compliance Test (CCT) Framework
 
 **Produced by:** Enterprise Architect (Sprint 010, WC-010)
-**Date:** 2026-07-07 | **Last Updated:** 2026-08-08 (WC-049 evidence reconciliation)
+**Date:** 2026-07-07 | **Last Updated:** 2026-08-08 (WC-050 catalogue reconciliation)
 **Constitutional Basis:** GENESIS Engineering Quality Mandate — "Constitutional Compliance Tests — WAOOAW-specific; validates that the platform upholds a specific constitutional principle"; ADR-013 (CCTs are a required CI/CD gate)
 
 ## Evidence Status
 
 | Measure | Current evidence |
 |---|---|
-| Institutional inventory | 72 CCTs declared in the current knowledge/status record |
-| Central catalogue | 61 unique `CCT-*` identifiers enumerated in this document as of 2026-08-08 |
+| Institutional inventory | 72 normalized CCTs declared in the current knowledge/status record |
+| Central catalogue | 72 unique parent `CCT-*` identifiers enumerated in this document as of 2026-08-08 |
 | Executable evidence | Distributed across service, platform, pipeline, and constitutional test suites; results are recorded per completed Work Contract |
 | Unified result | No evidence of a single 72/72 execution exists; do not interpret the institutional count as a passing-suite count |
 
-The difference between 72 declared and 61 centrally enumerated is an explicit catalogue debt, not an implied pass. New CCTs must update this catalogue and identify their executable test location.
+Parent identifiers are counted once; lettered scenarios and service-layer variants are evidence under their parent CCT. New CCTs must update this catalogue and identify their executable test location.
 
 ---
 
@@ -103,6 +103,14 @@ Assert:   Business Platform returns 500 (or equivalent failure) to the caller.
           No orphaned approval_request in APPROVED state without an evidence record.
 Constitutional basis: AD-002 — "No action that requires constitutional evidence
           may succeed if the evidence write fails"
+```
+
+**CCT-EF-03 — Reserved Evidence First extension**
+```
+Status:   SPECIFICATION GAP — no approved scenario or executable evidence is recorded.
+Action:   Enterprise Architecture must define the constitutional scenario and test location
+          before this reserved institutional identifier can be claimed as passing.
+Constitutional basis: C-071 — quality evidence may not be implied.
 ```
 
 ### Human Override (HO)
@@ -1298,6 +1306,26 @@ Assert:   1. CE.ValidateAction called with dcm_category=DETERMINISTIC_REQUIRED �
 Teardown: Reset mocks.
 Constitutional basis: C-099 (DCM); ADR-040 §Decision; ADR-043 §1 (dcm_category in skill definition)
 ```
+
+---
+
+## Implemented CCT Additions — WC-031 through WC-043
+
+These parent CCTs were implemented after the preceding detailed catalogue sections. Their executable suites are the controlling scenario definitions; variants and subtests do not create additional institutional IDs.
+
+| CCT | Constitutional purpose | Executable evidence |
+|---|---|---|
+| `CCT-BLUEPRINT-01` | Component blueprints produce a valid conformance score | `tests/platform/test_blueprint_ccts.py` |
+| `CCT-TOKEN-HEALTH-01` | OAuth token health reports valid, expiring, and expired states correctly | `tests/trust-layer/test_oauth_vault.py` |
+| `CCT-TRIAL-01` | A customer receives at most one trial per agent type | `tests/billing-engine/test_trial.py` |
+| `CCT-TRIAL-02` | Trial mode forces the billing and AI-runtime controls required by C-089 | `tests/billing-engine/test_trial.py`; `tests/ai-runtime/test_pse_router.py` |
+| `CCT-COUPON-01` | Promotional discounts cannot exceed the Founder-authorized cap | `tests/billing-engine/test_promotions.py` |
+| `CCT-REFERRAL-01` | Referral credit is applied exactly once | `tests/billing-engine/test_promotions.py` |
+| `CCT-ONBOARD-01` | One onboarding payment activates the subscription and wallet | `tests/billing-engine/test_payment.py` |
+| `CCT-GRANDFATHER-01` | Renewal cannot silently exceed the agreed price | `tests/billing-engine/test_payment.py` |
+| `CCT-WEBHOOK-01` | Payment webhooks are authenticated and idempotent | `tests/billing-engine/test_payment.py` |
+| `CCT-PREPAID-01` | Empty or halted billing state blocks paid execution | `tests/billing-engine/test_ccts.py` |
+| `CCT-SELFAUDIT-01` | Reconciliation discrepancies halt billing and raise evidence | `tests/billing-engine/test_ccts.py`; `tests/billing-engine/test_reconciliation_router.py` |
 
 ---
 

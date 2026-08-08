@@ -1,3 +1,5 @@
+# Implements: architecture/reference/billing/wbe-component-spec.md §3 Data Models
+# Constitutional basis: C-059 (Implementation Traceability)
 """Wallet domain models — dataclasses and exceptions for wallet/service.py."""
 
 from __future__ import annotations

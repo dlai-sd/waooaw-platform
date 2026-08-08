@@ -1,6 +1,26 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-08-08 (WC-049 platform state reconciliation DONE · R-025 APPROVED · evidence baseline VERSION 1.44.0 / WC-043 DONE)
+**Last Updated:** 2026-08-08 (WC-050 CCT, Traceability, and State Registry Closure DONE)
+
+---
+
+## SESSION RECORD — 2026-08-08 (WC-050 CCT, TRACEABILITY, AND STATE REGISTRY CLOSURE — DONE)
+
+### Authorization
+
+- Founder selected the three residual evidence-governance debts after WC-049.
+- Founder explicitly authorized implementation code for this session.
+- Execution is authorized directly on `main` without a new PR; independent review remains required before closure.
+
+### Completed Implementation
+
+| Task | Status |
+|---|---|
+| Catalogue 11 missing institutional CCT entries | DONE — 72 parent IDs centrally catalogued; one explicit specification gap |
+| Correct two billing C-059 headers | DONE — focused suite 8 passed, 1 documented skip |
+| Establish canonical state registry and summary validation | DONE — focused consistency suite 2 passed |
+
+**Review:** R-026 APPROVED after all initial findings were resolved; no constitutional blocker remains.
 
 ---
 

@@ -1,6 +1,6 @@
 # WAOOAW Platform — Sprint Registry
 
-**Last Updated:** 2026-08-08 · **Version:** 1.44.0 · **Work Contracts:** 42 recorded (41 closed · 0 active · 1 blocked)
+**Last Updated:** 2026-08-08 · **Version:** 1.44.0 · **Work Contracts:** 43 recorded (42 closed · 0 active · 1 blocked)
 
 ---
 
@@ -59,6 +59,7 @@
 | WC-042 | WBE-S7 — Single Onboarding Payment + Renewal Saga | Platform IT Expert | 1.43.0 | Razorpay onboarding order + webhook; DEMOWAOOAW/UATWAOOAW bypass; C-090 grandfather; RenewalFailureSaga; 350/350 tests |
 | WC-043 | WBE-S8 — Reconciliation Full CCT Suite + Coverage Gate | Platform IT Expert | 1.44.0 | CCT-PREPAID-01 (`/buckets` reserve endpoint); CCT-SELFAUDIT-01 (discrepancy→halt→FA); 94% coverage; 361/361 tests |
 | WC-049 | Platform State Reconciliation | Enterprise Architect | 1.44.0 | Canonical status baseline; component maturity taxonomy; agent/CCT evidence reconciliation; superseded strategy markers; R-025 approved |
+| WC-050 | CCT, Traceability, and State Registry Closure | Enterprise Architect | 1.44.0 | 72-entry CCT catalogue; two billing C-059 corrections; canonical state derivation and drift gate; R-026 approved |
 
 ---
 
