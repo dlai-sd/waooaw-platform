@@ -50,7 +50,7 @@ The shell must use role-aware route composition rather than runtime CSS hiding. 
 | WC034-04 | A04 — Define public, customer, relationship, settings/profile, and Founder information architecture and groom the implementation components. | reasoning | done | 2026-08-08 — route families, navigation, relationship views, and F0–F8 decomposition published |
 | WC034-05 | A05 — Define generated-client/API boundaries and route missing operations to their owning services; no UI-created BP/WBE endpoints. | reasoning | done | 2026-08-08 — INST-004 owner/gap matrix complete; INST-005 validation requested under A07 |
 | WC034-06 | A06 — Define executable desktop, exact 360px, keyboard, RTL, reduced-motion, PWA, overflow, axe, privacy, performance, and coverage evidence. | reasoning | done | 2026-08-08 — component, contract, browser, axe, screenshot, and quality matrix published |
-| WC034-07 | A07 — Submit the architecture package for independent INST-005 and INST-011 review and route unresolved product decisions. | reasoning | pending | — |
+| WC034-07 | A07 — Submit the architecture package for independent INST-005 and INST-011 review and route unresolved product decisions. | reasoning | done | 2026-08-08 — PR #239 open; Solution Architect and Product Owner review requested |
 
 ## Architecture Package
 
