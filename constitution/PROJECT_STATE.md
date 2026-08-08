@@ -4,6 +4,30 @@
 
 ---
 
+## IN-PROGRESS CHECKPOINT — WC-034 HYBRID WEB APPLICATION SHELL
+
+| Milestone | Status |
+|---|---|
+| INST-004 office occupancy | DONE — architecture Decision Space loaded; WC-057 review remains excluded under C-065 |
+| Founder scope selection | DONE — amend WC-034 rather than create a separate precursor contract |
+| Work Contract amendment | DONE — architecture-first Phase A and separately gated implementation Phase B defined |
+| Required input validation | DONE — home template, provisional PWA, UX specifications, OpenAPI, ADR-017, and WBE contracts present |
+| Hybrid application-shell specification | pending |
+| Visual-system and information-architecture contracts | pending |
+| Executable UI acceptance contract | pending |
+| Independent INST-005 and INST-011 review | pending |
+| Founder implementation authorization | pending — no `web/app/` source changes authorized |
+
+### Decision Space
+
+INST-004 may define the structural application surfaces, route and layout ownership, rendering boundaries, constitutional-control placement, API ownership, and architecture acceptance contract. INST-004 may not finalize product priorities, implement the Next.js source, approve its own architecture package, or review WC-057 in this session.
+
+### Current Authorization Boundary
+
+Architecture and specification work for WC-034 Phase A is authorized. WC-034 Phase B implementation remains unauthorized and requires both independent architecture review and a separate Founder Action. WC-058 through WC-060 remain outside this Work Contract.
+
+---
+
 ## IN-PROGRESS CHECKPOINT — WC-057 AE-01 EMPLOYMENT JOURNEY FOUNDATION
 
 | Milestone | Status |
