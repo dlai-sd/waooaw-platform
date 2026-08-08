@@ -63,6 +63,16 @@ Resume restores the professional, first unread position, active goal context, an
 
 One professional relationship has one durable conversation. Multiple goals are represented in the Professional Plan, not as customer-managed chat threads.
 
+## Multiple Professionals and Configured Identity
+
+A customer account may hold multiple Employment Relationships. These may involve different professional types or repeated hires of the same professional type for different business contexts. Each hire remains a distinct relationship with its own conversation, plan, scope, contract, budget, performance, and evidence history.
+
+The configuration step gives the professional a customer-facing identity within that relationship, including an approved name, avatar, persona expression, language, and business context. Duplicate professional types are identified by configured name and business context, never by labels such as `Agent 1` and `Agent 2`.
+
+Configured professional avatars are functional identity assets and are permitted. The prohibition on imagery applies to decorative, stock, marketing, and atmospheric images; it does not prohibit the WAOOAW logo, application icons, or the configured professional avatar.
+
+A customer with one relationship enters that conversation directly. A customer with several relationships still resumes the most recently active conversation by default and can use a professional switcher or `My Professionals` to change context.
+
 ## Application Composition
 
 ### Desktop
@@ -130,11 +140,38 @@ The conversational flow must:
 
 1. Recognize the Meta-verified WhatsApp number without asking the customer to type it again.
 2. Detect an existing linked customer before creating a new registration.
-3. Collect only mandatory details needed for identity, communication, and the selected professional journey.
+3. Collect only the approved initial registration details.
 4. Support text and voice answers, with explicit confirmation when transcription is uncertain.
 5. Present privacy, terms, communication consent, and material disclosures in plain language with explicit responses.
 6. Confirm the resulting customer profile and selected language.
 7. Continue in the same WhatsApp conversation without creating a second thread.
+
+### Initial Registration Data
+
+Initial registration has a five-field ceiling:
+
+| Detail | WhatsApp behavior | Purpose |
+|---|---|---|
+| Customer name | Ask preferred name | Welcoming identity and communication |
+| Email | Ask once with a plain-language purpose | Account recovery, notices, and future web/mobile access |
+| Mobile number | Use the Meta-verified WhatsApp number and ask for confirmation; do not request re-entry | Channel identity and continuity |
+| Business name | Ask the name customers recognize | Establish initial business context |
+| Business domain | Ask as a plain-language business type or industry, not a website-domain field | Route the customer toward a suitable professional |
+
+WhatsApp therefore needs at most four customer prompts because the mobile number is already known. Questions are asked one at a time, may be answered by voice, and end with a single editable summary confirmation.
+
+The following are deferred until trial, professional configuration, hiring, payment, or the first action that genuinely requires them:
+
+- Goals, baseline, success measures, and detailed business context
+- Address, operating locations, and service area
+- Brand profile, channels, assets, and provider-account connections
+- Budget, authority, approval, and risk preferences
+- Contract, billing, GST, invoicing, and payment details
+- Team members, additional participants, and role assignments
+- Professional name, avatar, persona, and relationship-specific configuration
+- Any domain-specific detail not required to create the customer account
+
+**Open product conflict:** Founder discussion makes email mandatory at initial registration. The approved Suresh walkthrough currently permits registration without email for customers who do not use it. INST-011 must resolve this conflict before architecture approval; implementation must not choose silently between the two rules.
 
 WhatsApp registration grants only the assurance permitted by ADR-023. Contract acceptance, payment authorization, Stop release, identity attachment to an existing high-assurance account, and other tiered actions still require their approved step-up path.
 
@@ -219,4 +256,4 @@ WhatsApp messages use explicit evidence text because transport delivery ticks ca
 4. Which attachment types are required for the first professional release.
 5. Voice-message retention, transcription consent, and transcript correction behavior.
 6. The notification contract when the customer is active on one channel and receives activity on another.
-7. Whether a customer may employ multiple professionals at first release and how global priority ordering behaves.
+7. How global priority ordering behaves when a customer employs multiple configured professionals.
