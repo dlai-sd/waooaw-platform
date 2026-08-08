@@ -39,7 +39,7 @@ It does not approve implementation, select product priorities, amend the Platfor
 - Authentication remains a distinct Keycloak-brokered surface with mandatory verified email and mobile identity handling.
 - Public, authentication, customer, Founder, and system routes have separate layout and authorization ownership.
 - The browser does not own tenant identity, lifecycle transitions, priority ranking, evidence truth, model dispatch, or cross-channel commit.
-- Ratified WAOOAW visual and constitutional tokens remain normative; no static homepage HTML is approved until Founder confirmation.
+- `web/WAOOAWHome.html` is the Founder-approved public home-page visual direction and migration input; ratified WAOOAW visual and constitutional tokens remain normative where constraints conflict.
 - WC-016 is not controlling for future implementation where it conflicts with WC-034 and GOAL-005.
 
 ## Decisions Routed, Not Delegated

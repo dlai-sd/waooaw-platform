@@ -17,9 +17,9 @@ This contract maps the ratified WAOOAW visual vocabulary into the public, authen
 | Artifact | Founder decision | Architecture treatment |
 |---|---|---|
 | `architecture/reference/ux/homepage-prototype.html` | REJECTED on 2026-08-08 | Permanently deleted; no design, composition, token, copy, or implementation authority remains |
-| `web/WAOOAWHome.html` | PENDING CONFIRMATION | May be reviewed as an existing artifact but is not normative and must not be migrated until confirmed |
+| `web/WAOOAWHome.html` | APPROVED on 2026-08-08 | Founder-approved public home-page visual direction and migration input; implementation remains gated by WC-034 Phase B |
 
-The visual contract below is derived from the ratified constitutional UX vocabulary, not from either static HTML artifact.
+The approved home page informs public composition, visual character, and content migration. The visual contract below remains derived from the ratified constitutional UX vocabulary, which controls if the approved HTML conflicts with constitutional tokens, accessibility, responsive, RTL, privacy, or governance requirements.
 
 ## Token Layers
 
