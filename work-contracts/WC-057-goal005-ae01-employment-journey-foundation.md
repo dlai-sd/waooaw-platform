@@ -4,7 +4,7 @@
 **Epic:** AE-01
 **Office on execution:** Platform IT Expert (INST-010)
 **Reviewer:** Enterprise Architect (INST-004)
-**Status:** AUTHORIZED — IMPLEMENTATION IN PROGRESS
+**Status:** IMPLEMENTATION COMPLETE — INDEPENDENT REVIEW PENDING
 **Authorization:** FA-030 — Founder authorized implementation on 2026-08-08: “Authorize implementation of WC-057.”
 **Track:** DIFFERENTIAL — Business Platform persistence and API + GREENFIELD customer web shell
 **Service scope:** Business Platform (.NET 9), PostgreSQL, Next.js customer interface, reference OpenAPI/manifest artifacts
@@ -25,13 +25,24 @@ Establish one durable, tenant-scoped Employment Relationship aggregate and a rea
 
 | Task | Scope | Model hint | Status |
 |---|---|---|---|
-| WC057-01 | Apply the exact Migration 19 blueprint in the D-06 Data Contract: relationship, participant-role binding, state history, and idempotency tables; canonical first-mint key; RLS; correlation indexes and benchmark. Channel bindings belong to Migration 22. Do not modify migrations 01–18. | reasoning | pending |
-| WC057-02 | Add EF Core models and `EmploymentRelationshipDbContext` under `src/business-platform/Infrastructure/`; register the JWT-derived tenant setting/interceptor. Model D-03 and the participant-role contract exactly; reject illegal transitions and append state history only after CE validation/evidence commitment. | reasoning | pending |
-| WC057-03 | Route the existing contract and hire endpoints inventoried in the D-06 Solution Contract through one `EmploymentRelationshipService`. Preserve response compatibility through explicit adapters and deprecation headers; do not retain duplicate lifecycle logic. | reasoning | pending |
-| WC057-04 | Implement the canonical relationship create/read/timeline endpoints in the D-06 Solution Contract and an internal transition endpoint restricted to service JWT. Every request resolves tenant and participant role from authenticated identity, never payload hints. | auto | pending |
-| WC057-05 | Complete the WC-016 Next.js 14 App Router PWA under the component structure in the D-06 Solution Contract. Use Keycloak secure session handling and the generated OpenAPI client; implement responsive authenticated journey state, rights, and persistent Stop entry point with WCAG 2.1 AA, axe, Jest/Testing Library, Playwright, and changed-line coverage gates. | reasoning | pending |
-| WC057-06 | Update BP component spec, BP manifest, canonical OpenAPI source, and C-059 headers. Generated Swagger/proto/build artifacts are regenerated, never hand-edited. | auto | pending |
-| WC057-07 | Add CCTs and integration tests for relationship first mint/retry reuse, illegal transitions, tenant isolation, channel identity non-equivalence, evidence-before-success, and web authentication/state presentation. | auto | pending |
+| WC057-01 | Apply the exact Migration 19 blueprint in the D-06 Data Contract: relationship, participant-role binding, state history, and idempotency tables; canonical first-mint key; RLS; correlation indexes and benchmark. Channel bindings belong to Migration 22. Do not modify migrations 01–18. | reasoning | complete |
+| WC057-02 | Add EF Core models and `EmploymentRelationshipDbContext` under `src/business-platform/Infrastructure/`; register the JWT-derived tenant setting/interceptor. Model D-03 and the participant-role contract exactly; reject illegal transitions and append state history only after CE validation/evidence commitment. | reasoning | complete |
+| WC057-03 | Route the existing contract and hire endpoints inventoried in the D-06 Solution Contract through one `EmploymentRelationshipService`. Preserve response compatibility through explicit adapters and deprecation headers; do not retain duplicate lifecycle logic. | reasoning | complete |
+| WC057-04 | Implement the canonical relationship create/read/timeline endpoints in the D-06 Solution Contract and an internal transition endpoint restricted to service JWT. Every request resolves tenant and participant role from authenticated identity, never payload hints. | auto | complete |
+| WC057-05 | Complete the WC-016 Next.js 14 App Router PWA under the component structure in the D-06 Solution Contract. Use Keycloak secure session handling and the generated OpenAPI client; implement responsive authenticated journey state, rights, and persistent Stop entry point with WCAG 2.1 AA, axe, Jest/Testing Library, Playwright, and changed-line coverage gates. | reasoning | complete — provisional UI shell |
+| WC057-06 | Update BP component spec, BP manifest, canonical OpenAPI source, and C-059 headers. Generated Swagger/proto/build artifacts are regenerated, never hand-edited. | auto | complete |
+| WC057-07 | Add CCTs and integration tests for relationship first mint/retry reuse, illegal transitions, tenant isolation, channel identity non-equivalence, evidence-before-success, and web authentication/state presentation. | auto | complete |
+
+## Implementation Evidence
+
+- Commits: `c5169cc` (relationship persistence/API foundation) and `e458e42` (compatibility adapters, OpenAPI-generated web client, and PWA shell).
+- Business Platform: 55/55 tests passed; project build passed with six pre-existing tenant-interceptor nullability warnings.
+- Web: 5/5 Jest tests passed; changed interactive components reached 93.75% line coverage against the 90% gate; lint, strict type checking, and production build passed.
+- Browser acceptance: Playwright passed desktop Chromium and exact 360px mobile projects with an installable manifest, no horizontal overflow, and zero critical axe violations.
+- Platform metadata: focused platform-state and blueprint checks passed 12 tests with one pre-existing manual-check skip.
+- Migration 19 focused assertions passed duplicate-admission arbitration, append-only history, and cross-tenant invisibility. A full fresh database bootstrap remains blocked by the pre-existing Migration 03 enum/search-path defect and was not repaired under WC-057.
+
+**UI decision boundary:** The Next.js relationship workspace is a provisional technical acceptance shell required by WC057-05. Its visual and product design has not been Founder-confirmed and remains subject to later review and adjustment without changing the canonical relationship API or constitutional controls.
 
 ## Required Inputs
 
@@ -69,4 +80,4 @@ docker compose --profile test-python run --rm test-runner-python pytest tests/pl
 
 ## Boundaries
 
-No professional matching, trial orchestration, contract acceptance, payment, provider execution, or channel handoff is implemented here. No implementation starts without a future explicit Founder authorization.
+No professional matching, trial orchestration, contract acceptance, payment, provider execution, or channel handoff is implemented here. FA-030 authorized WC-057 only; WC-058 through WC-060 remain separately gated and unauthorized.
