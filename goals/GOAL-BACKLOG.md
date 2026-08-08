@@ -1,7 +1,7 @@
 # WAOOAW Goal Backlog Register
 
 **Authority:** Goal Orchestrator (INST-013) — maintained per GEOM §G-2
-**Last Updated:** 2026-07-30
+**Last Updated:** 2026-08-08
 **Status:** Living document — updated at each Goal registration or session close
 
 ---
@@ -27,6 +27,7 @@ Understanding Record and the Founder acknowledges the Execution Plan.
 | GOAL-002 | Universal AI Execution Layer — implement MagicLLM + GoalExecutor as the universal AI intelligence substrate for all autonomous sprint execution | CLOSED | — | 2026-07-27 |
 | GOAL-003 | PTR Dynamic Knowledge Asset — replace static JSON context with a live, multi-stack Prompt Template Repository assembled from source files | CLOSED | — | 2026-07-27 |
 | GOAL-004 | WAOOAW Billing Engine | **SPEC COMPLETE** — implementation WBE-S1→WBE-S8 awaiting Founder authorization | WBE-S1→WBE-S8 (est.) | — |
+| GOAL-005 | Agent Employment Experience Program — one constitutional relationship across discovery, hire, work, lifecycle, multiple agents, and organizational delegation | **SKELETON APPROVED FOR GROOMING** — R-028 | Not assigned; AE-01→AE-06 are outcome epics | — |
 
 ---
 
