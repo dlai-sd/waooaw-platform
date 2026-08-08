@@ -1,6 +1,6 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-08-08 (WC-053 GOAL-005 Orchestration Decision Record DONE)
+**Last Updated:** 2026-08-08 (WC-056 GOAL-005 Specification Orchestration DONE)
 
 ---
 
@@ -42,8 +42,12 @@
 | D-05 contribution | DONE — Wave 1 closure plan and trial policy recorded |
 | D-05 architecture review | DONE — R-039 CLEAR; G5-TRIAL-POLICY-01 accepted |
 | D-06 mandatory DMA domain input | READY — Founder-directed expert synthesis covers eligibility, progressive context, all-skill 14-day trial, ethical conversion, and S01-S10 decisions |
-| D-06 input attestation and policy amendment | BLOCKED — CB-003 narrowed to INST-011 attestation and INST-004 review of the 14-calendar-day correction |
-| D-06 GO Authorizations | PHASE 6A ONLY — INST-011 and INST-004 authorized; all other D-06 authorizations withheld pending CB-003 closure |
+| D-06 input attestation and policy amendment | DONE — INST-011 attested; R-040 accepted the 14-calendar-day correction; CB-003 CLOSED |
+| D-06 GO Authorizations | DONE — all Phase 6B contributions accepted |
+| D-06 release grooming and simulation | DONE — R-041 through R-045 CLEAR with zero conditions |
+| WC-057 through WC-060 | IMPLEMENTATION-READY — ratified by R-046; dependency ordered; unauthorized |
+| D-07 evidence package | DONE — INST-002 prepared complete constitutional traceability and unresolved-risk statement |
+| D-07 final validation | DONE — R-046 Founder RATIFY; implementation decision NONE |
 | Implementation authority | NONE |
 
 ### Decision Space
@@ -52,7 +56,11 @@ INST-013 may understand, classify, plan, route, monitor, resolve Goal-level gaps
 
 ### Current State
 
-G-2 through G-4 are approved and D-01 through D-05 passed their independent gates. The Founder-directed DMA synthesis is present and validated against CB-003 and AE-01-S01 through S10. Phase 6A authorizes INST-011 to attest the input and propose the 14-calendar-day D-05 amendment, followed by independent INST-004 review. CB-003 remains open until those records are accepted; other D-06 work, D-07, and implementation remain unauthorized.
+G-2 through G-4 and D-01 through D-07 are complete. R-041 through R-045 independently cleared the remediated D-06 package with zero conditions, and R-046 records Founder ratification of the specification with implementation authority `NONE`. WC-057 through WC-060 are the implementation-ready AE-01 handoff in dependency order. No source, migration, build, deployment, or INST-010 work is authorized.
+
+### Next Constitutional Action
+
+No action is automatic. A future Founder implementation session may begin only with the exact separate directive `Authorize implementation of WC-057.` WC-058 through WC-060 remain dependency-gated and require their own later explicit authorization.
 
 ---
 
