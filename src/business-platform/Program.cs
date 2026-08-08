@@ -3,6 +3,7 @@
 using Microsoft.EntityFrameworkCore;
 using Waooaw.BusinessPlatform.Controllers;
 using Waooaw.BusinessPlatform.Infrastructure;
+using Waooaw.BusinessPlatform.Services;
 using Waooaw.BusinessPlatform.Workflows;
 using Waooaw.ConstitutionalEngine.Grpc;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -54,7 +55,11 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("InternalService", policy =>
+        policy.RequireClaim("client_type", "service"));
+});
 
 // ── Tenant Isolation — C-005, C-026, ADR-003 ─────────────────────────────────
 // Registers TenantIsolationMiddleware + TenantDbConnectionInterceptor.
@@ -105,6 +110,17 @@ var skillCatalogConn = builder.Configuration.GetConnectionString("SkillCatalog")
     ?? "Host=localhost;Database=waooaw_bp;Username=bp_app;";
 builder.Services.AddDbContextFactory<Waooaw.BusinessPlatform.Infrastructure.SkillCatalogDbContext>(opts =>
     opts.UseNpgsql(skillCatalogConn));
+
+// ── Employment Relationship aggregate — GOAL-005 D-03 / WC-057 ────────────
+var employmentRelationshipConn = builder.Configuration.GetConnectionString("EmploymentRelationship")
+    ?? builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? "Host=localhost;Database=waooaw_bp;Username=business_app;";
+builder.Services.AddDbContextFactory<EmploymentRelationshipDbContext>((services, options) =>
+    options
+        .UseNpgsql(employmentRelationshipConn)
+        .AddInterceptors(services.GetRequiredService<TenantDbConnectionInterceptor>()));
+builder.Services.AddScoped<IRelationshipConstitutionalGateway, RelationshipConstitutionalGateway>();
+builder.Services.AddScoped<EmploymentRelationshipService>();
 
 // ─────────────────────────────────────────────────────────────────────────────
 var app = builder.Build();

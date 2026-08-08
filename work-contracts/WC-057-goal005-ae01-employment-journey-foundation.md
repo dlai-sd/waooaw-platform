@@ -4,8 +4,8 @@
 **Epic:** AE-01
 **Office on execution:** Platform IT Expert (INST-010)
 **Reviewer:** Enterprise Architect (INST-004)
-**Status:** IMPLEMENTATION-READY — D-07 R-046 RATIFIED; implementation not authorized
-**Authorization:** A future session requires explicit Founder authorization: “Authorize implementation of WC-057.”
+**Status:** AUTHORIZED — IMPLEMENTATION IN PROGRESS
+**Authorization:** FA-030 — Founder authorized implementation on 2026-08-08: “Authorize implementation of WC-057.”
 **Track:** DIFFERENTIAL — Business Platform persistence and API + GREENFIELD customer web shell
 **Service scope:** Business Platform (.NET 9), PostgreSQL, Next.js customer interface, reference OpenAPI/manifest artifacts
 
