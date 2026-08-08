@@ -5,6 +5,8 @@
 **Continues from:** `strategy/FOUNDER-SESSION-2026-08-06-platform-vision.md`  
 **Handover:** Enterprise Architecture (INST-004) for WC grooming  
 
+> **Status: PARTIALLY SUPERSEDED — WC-049, 2026-08-08.** The revised Wave 1→5 decision in Section 11 is the controlling roadmap. Earlier alternatives are preserved as deliberation history. Component statuses below are reconciled to WC-043 evidence; roadmap identifiers WC-044→048 are reserved, but their Work Contracts do not yet exist.
+
 ---
 
 ## 1. Context — Where the Platform Stands
@@ -69,7 +71,7 @@ All 17 pillars identified across 2026-08-06 and 2026-08-07 sessions.
 | P-01 | **Constitutional Engine (CE)** | Enforce constitutional constraints on every agent action via gRPC authority | Every tool call, decision, and state change is constitutionally validated before execution | ✅ Built — WC-019 |
 | P-02 | **Evidence First Enforcer** | Reject any claim not backed by tamper-evident evidence | No agent can assert an outcome it did not produce; audit trail is the source of truth | ✅ Built |
 | P-03 | **Emergency Stop** | True operational halt via Temporal signal — cancels in-flight sagas | Customer or platform can halt an agent within 250ms regardless of execution state | ✅ Built — ADR-018 |
-| P-04 | **Constitutional Audit Trail Sink** | Persist every tool call, decision, and state transition to immutable Postgres (WORM) | Full constitutional audit history; DPDPA audit compliance as a product feature | 🔲 Not built — P0 backlog |
+| P-04 | **Constitutional Audit Trail Sink** | Persist every tool call, decision, and state transition to immutable Postgres (WORM) | Full constitutional audit history; DPDPA audit compliance as a product feature | ✅ Implemented and tested — WC-037; deployment/customer proof unverified |
 
 ### Layer 1 — Execution Infrastructure
 
@@ -83,7 +85,7 @@ All 17 pillars identified across 2026-08-06 and 2026-08-07 sessions.
 
 | # | Pillar | Objective | Expected Outcome | Status |
 |---|---|---|---|---|
-| P-08 | **Trust Layer (CTG + oauth-vault + Provider Registry + Token Refresh)** | Constitutional Tool Gateway as the only entry point for external API calls; customer credentials never in LLM history | Platform can connect to any OAuth2 / API-key provider via declarative config; credentials injected at socket boundary only | ⚠ Partially built — CTG + oauth-vault built (WC-037/038); Provider Registry + Token Refresh TBD |
+| P-08 | **Trust Layer (CTG + oauth-vault + Provider Registry + Token Refresh)** | Constitutional Tool Gateway as the only entry point for external API calls; customer credentials never in LLM history | Platform can connect to any OAuth2 / API-key provider via declarative config; credentials injected at socket boundary only | ✅ Core implemented and tested — WC-038/039; real customer platform adapters and production proof remain |
 
 ### Layer 3 — Business Engine
 
@@ -96,7 +98,7 @@ All 17 pillars identified across 2026-08-06 and 2026-08-07 sessions.
 
 | # | Pillar | Objective | Expected Outcome | Status |
 |---|---|---|---|---|
-| P-11 | **Skill Architecture (Registry + Intent Crystallizer + Assignment)** | Skills are platform registry entries, not code changes; agents are skill compositions | Adding a new capability to an agent = registry entry, not a sprint | 🔲 Not built — ADR-043 pending; design specified in previous session |
+| P-11 | **Skill Architecture (Registry + Intent Crystallizer + Assignment)** | Skills are platform registry entries, not code changes; agents are skill compositions | Adding a new capability to an agent = registry entry, not a sprint | ✅ Implemented and tested — WC-040/041; deep agent skill inventory remains |
 | P-12 | **DMA Agent v1** | First customer-facing agent: content_publish + ad_campaign_manager as runnable code on Professional Runtime | Platform serves a real paying customer; constitutional model is proven in production | 🔲 Not built — 5,000-line spec exists; 0 code in `src/` |
 
 ### Layer 5 — Customer Interface & Trust
@@ -224,14 +226,14 @@ Each sprint has a **goal** (strategic), **objective** (what gets built), and **o
 | P-01 Constitutional Engine | ✅ Built | — | — |
 | P-02 Evidence First Enforcer | ✅ Built | — | — |
 | P-03 Emergency Stop | ✅ Built | — | — |
-| P-04 Audit Trail Sink | 🔲 Not built | WC-048 | Customer Journey |
+| P-04 Audit Trail Sink | ✅ Implemented/tested; deployment proof unverified | — | Foundation |
 | P-05 Professional Runtime | ✅ Built | — | — |
 | P-06 AI Runtime | ✅ Built | — | — |
 | P-07 UDCP / Compile Gate | ✅ Built | — | — |
-| P-08 Trust Layer (complete) | ⚠ Partial | WC-046 | Customer Journey |
+| P-08 Trust Layer core | ✅ Implemented/tested; real platform adapters remain | WC-045/046 | Customer Journey |
 | P-09 Billing Engine | ✅ Built | — | — |
 | P-10 Agency / Reseller Engine | 🔲 Not built | WC-047 | Parallel → Customer |
-| P-11 Skill Architecture | 🔲 Not built | WC-047 | Parallel → Customer |
+| P-11 Skill Architecture | ✅ Catalog + Runtime implemented/tested; agent skill depth remains | WC-045 | Customer Journey |
 | P-12 DMA Agent v1 | 🔲 Not built | **WC-044** | **Customer Journey — first** |
 | P-13 DPDPA Compliance Spine | 🔲 Not built | **WC-044** | **Embedded in journey** |
 | P-14 Customer Evidence Window | 🔲 Not built | **WC-044 / WC-045** | **Embedded in journey** |
@@ -248,7 +250,7 @@ The Founder's customer-first decision is not a licence to cut pillars. The follo
 1. **P-13 DPDPA and P-14 Evidence Window ship with WC-044 or WC-044 does not ship.** These are a constitutional unit with the DMA Agent, not optional additions.
 2. **No pillar is closed without a WC.** Grooming is not building. A pillar moves to ✅ only when a Work Contract closes it with passing CCTs.
 3. **Agency Engine and Learning Flywheel have design commitments made now.** They enter the IB as P0 items in their target sprint waves, not as deferred ideas. Their data requirements (referral schema, MBR schema) must be defined in WC-044/045 even if the processing logic ships later.
-4. **The Audit Trail Sink (P-04) must exist before public launch.** It can follow customer #1 but it is a hard gate before marketing or press.
+4. **The Audit Trail Sink (P-04) exists in repository scope.** Environment deployment and customer Evidence Window proof remain hard gates before public launch.
 
 ---
 

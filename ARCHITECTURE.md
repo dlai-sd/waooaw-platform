@@ -1,6 +1,6 @@
 # WAOOAW Platform — Architecture Overview
 
-**Version:** 0.6.0 | **Gate:** G5 CLEAR | **Status:** Implementation AUTHORIZED
+**Platform Baseline:** 1.44.0 | **Architecture Record:** reconciled 2026-08-08 | **Gate:** G5 CLEAR | **Phase:** IMPLEMENTATION
 
 This file is the entry point for understanding the platform architecture.
 For detailed views, use the altitude map below.
@@ -20,8 +20,8 @@ WAOOAW is an institution that enables organizations to employ autonomous digital
 | **100K** | System context — actors, external systems | [architecture/100k/README.md](architecture/100k/README.md) |
 | **50K** | C4 Context diagram | [architecture/reference/context.md](architecture/reference/context.md) |
 | **32K** | Service communication patterns | [architecture/32k/README.md](architecture/32k/README.md) |
-| **20K** | C4 Container diagram — 4 services + infra | [architecture/reference/containers.md](architecture/reference/containers.md) |
-| **10K** | C4 Component specs — all 4 services | [architecture/reference/components/](architecture/reference/components/) |
+| **20K** | C4 Container diagram — core and supporting services + infra | [architecture/reference/containers.md](architecture/reference/containers.md) |
+| **10K** | C4 Component specs and manifests | [architecture/reference/components/](architecture/reference/components/) |
 | **5K** | Domain model — Decision Space, Employment Contract, Evidence state machine | [architecture/reference/domain-model.md](architecture/reference/domain-model.md) |
 | **1K** | API contracts — REST (OpenAPI) + gRPC (proto) | [architecture/reference/api-specs/](architecture/reference/api-specs/) · [architecture/reference/proto/](architecture/reference/proto/) |
 | **500** | Data architecture — three-ledger model, state machine | [architecture/reference/data/](architecture/reference/data/) |
@@ -31,7 +31,7 @@ WAOOAW is an institution that enables organizations to employ autonomous digital
 
 ---
 
-## Service Mesh (Current — 4+1)
+## Service Mesh (Current — 4 Core + 2 Supporting)
 
 | Service | Language | Port | Responsibility |
 |---|---|---|---|
@@ -40,6 +40,7 @@ WAOOAW is an institution that enables organizations to employ autonomous digital
 | Professional Runtime | Python 3.12 FastAPI | 5003 (public WSS) | PAAS + Skill Runtime (in-process) + approval-gate execution, Emergency Stop WebSocket |
 | AI Runtime | Python 3.12 FastAPI | 5004 (internal) | PSE tier routing + CTG library (LLM + OAuth tool calls) — no governance authority of its own |
 | **oauth-vault** | Python FastAPI | **8130 (internal only)** | **Token storage (Azure KV), JIT retrieval, background refresh — called by CTG only** |
+| **WAOOAW Billing Engine** | Python 3.12 FastAPI | **8140 (internal only)** | **Prepaid wallets, pricing, metering, procurement, payment lifecycle, and reconciliation halt** |
 
 **Constitutional Tool Gateway (CTG):** Python shared library (`src/trust-layer/ctg/`) — NOT a service. Imported by PR and AIR. Every external call (LLM + OAuth-protected APIs) routes through CTG → CE.ValidateAction → oauth-vault → execution → Audit Sink. ADR-042.
 
@@ -82,19 +83,19 @@ oauth-vault (8130)
 
 ---
 
-## Planned Components (not yet sprinted)
+## Component Evidence Status
 
-| Component | ADR | Stack | Prerequisites |
-|---|---|---|---|
-| CTG library | ADR-042 | Python | ADR-042 + ADR-044 merged; AIR refactored off direct LLM SDK |
-| Provider Registry table | ADR-042 | BP Postgres migration | ADR-042 merged |
-| oauth-vault service | ADR-021, ADR-042 | Python FastAPI | ADR-042 + ADR-044 merged |
-| Skill Catalog (BP) | ADR-043 | BP Postgres migration | ADR-043 merged |
-| Skill Runtime (PR) | ADR-043 | PR Python in-process | ADR-043 + Skill Catalog |
-| Audit Sink schema (CE) | ADR-044 | CE Postgres migration | ADR-044 merged |
-| Payload Store schema (BP) | ADR-044 | BP Postgres migration | ADR-044 merged |
-| Web Application | WC-016 | Next.js 14 / TypeScript | C-082 |
-| Mobile Application | Post WC-018 | Flutter 3 / Dart | C-001, C-078, C-079, C-081, C-082, ADR-032 |
+| Component | Specified | Implemented | Tested | Integrated | Deployed | Customer-Proven |
+|---|---:|---:|---:|---:|---:|---:|
+| CE / BP / PR / AIR core | Yes | Yes | Yes | Partial | Unverified | No |
+| Audit Sink + Payload Store | Yes | Yes | Yes | Yes | Unverified | No |
+| Provider Registry + oauth-vault + CTG | Yes | Yes | Yes | Partial | Unverified | No |
+| Skill Catalog + Skill Runtime | Yes | Yes | Yes | Partial | Unverified | No |
+| WAOOAW Billing Engine | Yes | Yes | Yes | Partial | Unverified | No |
+| Web Application | Yes | Scaffold only | Partial | No | No | No |
+| Mobile Application | Reserved | No | No | No | No | No |
+
+**Taxonomy:** `Specified` = approved contract or architecture; `Implemented` = repository code exists; `Tested` = executable evidence passed; `Integrated` = cross-component path has executable evidence; `Deployed` = environment deployment is evidenced; `Customer-Proven` = a real customer journey has produced accepted outcome evidence. `Partial` and `Unverified` are intentionally not promoted to `Yes`.
 
 **Mobile authorization gate:** Before any mobile Work Contract is opened, the following must be in place:
 1. `architecture/reference/dotfiles/pubspec.yaml` created and EA-approved (C-081)
@@ -141,12 +142,12 @@ Modular package extracted from `autonomous_sprint_runner.py` (4,034 → 1,572 li
 
 ## Architecture Decision Records
 
-18 ADRs govern all technology selections. Quick reference: [adr/ADR-INDEX.md](adr/ADR-INDEX.md)
+44 ADRs are recorded. The quick-reference index itself requires reconciliation under WC-049: [adr/ADR-INDEX.md](adr/ADR-INDEX.md)
 
 ---
 
 ## Constitutional Traceability
 
-Every architecture decision traces to a ratified constitutional claim (82 claims, `knowledge/claims/`).
+Every architecture decision traces to a ratified constitutional claim (97 claims, `knowledge/claims/`).
 Every component traces to a business capability (26 capabilities, `knowledge/business-capabilities.md`).
 Constitutional compliance is verified by automated tests (`tests/constitutional/`).

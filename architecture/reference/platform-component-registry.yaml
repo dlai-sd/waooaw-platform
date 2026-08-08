@@ -4,9 +4,28 @@
 # Read by: Gap Scanner, Blueprint Assurance Run, Steward Interface, CI gate
 # Updated: when a new component is added (EA session, PR required)
 
-registry_version: "1.0"
-last_updated: "2026-07-30"
+registry_version: "1.1"
+platform_baseline: "1.44.0"
+last_updated: "2026-08-08"
 total_components: 5
+
+# `LIVE` means implemented and executable in repository scope. It does not prove
+# environment deployment or customer operation; use each manifest's maturity block.
+# Supporting/embedded inventory is recorded separately because these components do
+# not have independent C-095 service skeletons and must not be treated as services.
+supporting_runtime_inventory:
+  oauth_vault: { owner: trust_layer, form: supporting_service, implemented: true, tested: true, integrated: partial, deployed: unverified, customer_proven: false }
+  constitutional_tool_gateway: { owner: trust_layer, form: shared_library, implemented: true, tested: true, integrated: partial, deployed: not_applicable, customer_proven: false }
+  skill_catalog: { owner: bp, form: embedded_component, implemented: true, tested: true, integrated: partial, deployed: unverified, customer_proven: false }
+  skill_runtime: { owner: pr, form: embedded_component, implemented: true, tested: true, integrated: partial, deployed: unverified, customer_proven: false }
+  audit_payload_stores: { owner: ce_and_bp, form: embedded_data_components, implemented: true, tested: true, integrated: true, deployed: unverified, customer_proven: false }
+
+# Planned items precede the live list because the current assurance reader is a
+# minimal line parser. Mapping form prevents future items being assessed as live.
+planned_components:
+  platform_ops: { goal: GOAL-SERVICING-CENTER, status: BACKLOG }
+  steward_interface: { goal: GOAL-STEWARD-INTERFACE, status: BACKLOG }
+  translation_service: { goal: null, status: FUTURE }
 
 components:
 
@@ -15,6 +34,7 @@ components:
     manifest: architecture/reference/components/manifest/ce.yaml
     skeleton: src/constitutional-engine/skeleton/
     status: LIVE
+    maturity: { specified: true, implemented: true, tested: true, integrated: partial, deployed: unverified, customer_proven: false }
     language: dotnet
     port: 5002
     surface_type: GRPC_SERVICE
@@ -27,6 +47,7 @@ components:
     manifest: architecture/reference/components/manifest/bp.yaml
     skeleton: src/business-platform/skeleton/
     status: LIVE
+    maturity: { specified: true, implemented: true, tested: true, integrated: partial, deployed: unverified, customer_proven: false }
     language: dotnet
     port: 5001
     surface_type: REST_SERVICE
@@ -39,6 +60,7 @@ components:
     manifest: architecture/reference/components/manifest/pr.yaml
     skeleton: src/professional-runtime/skeleton/
     status: LIVE
+    maturity: { specified: true, implemented: true, tested: true, integrated: partial, deployed: unverified, customer_proven: false }
     language: python
     port: 5003
     surface_type: REST_SERVICE
@@ -51,6 +73,7 @@ components:
     manifest: architecture/reference/components/manifest/air.yaml
     skeleton: src/ai-runtime/skeleton/
     status: LIVE
+    maturity: { specified: true, implemented: true, tested: true, integrated: partial, deployed: unverified, customer_proven: false }
     language: python
     port: 5004
     surface_type: REST_SERVICE
@@ -62,25 +85,12 @@ components:
     display_name: WAOOAW Billing Engine
     manifest: architecture/reference/components/manifest/wbe.yaml
     skeleton: src/billing-engine/skeleton/
-    status: SPEC_APPROVED
+    status: LIVE
+    maturity: { specified: true, implemented: true, tested: true, integrated: partial, deployed: unverified, customer_proven: false }
     language: python
     port: 8140
     surface_type: REST_SERVICE
-    since_sprint: WBE-S1
+    since_sprint: WC-025
     since_goal: GOAL-004
     emits_signals: true
     signal_schema: architecture/reference/signals/wbe-signal-schema.yaml
-
-# Planned (not yet specced):
-planned:
-  - id: platform_ops
-    goal: GOAL-SERVICING-CENTER
-    status: BACKLOG
-
-  - id: steward_interface
-    goal: GOAL-STEWARD-INTERFACE
-    status: BACKLOG
-
-  - id: translation_service
-    goal: ~
-    status: FUTURE

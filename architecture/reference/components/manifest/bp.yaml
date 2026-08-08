@@ -3,6 +3,13 @@ display_name:     Business Platform
 version:          "1.0.0"
 status:           LIVE
 since_sprint:     WC-013
+maturity:
+  specified: true
+  implemented: true
+  tested: true
+  integrated: partial
+  deployed: unverified
+  customer_proven: false
 owner_institution:     INST-010
 governing_institution: INST-004
 constitutional_basis:
@@ -14,8 +21,8 @@ surface:
   framework: aspnet_core
   port: 5001
   health_check: { path: /health, expected_status: 200 }
-  called_by: [browser, web_portal, wbe]
-  calls: [ce, postgres, razorpay_mcp, oauth_vault]
+  called_by: [browser, web_portal, pr]
+  calls: [ce, pr, wbe, postgres, oauth_vault]
   must_not_call: [air]
   endpoints:
     - path: /api/v1/employment/contracts
@@ -30,13 +37,23 @@ surface:
     - path: /api/v1/payments/webhooks/razorpay
       methods: [POST]
       constitutional: C-038
+    - path: /api/v1/skills
+      methods: [GET, POST]
+      constitutional: C-036
+    - path: /api/v1/providers
+      methods: [GET]
+      constitutional: C-041
+    - path: /api/v1/customers/{tenantId}/data
+      methods: [DELETE]
+      constitutional: C-078
 signals:
   emits: []
   consumes: []
 data:
   db_role: business_app
   owns:
-    business: [organisations, employment_contracts, agent_skill_graph, subscription_billing_events, gst_invoices]
+    business: [organisations, employment_contracts, agent_skill_graph, subscription_billing_events, gst_invoices, skills, provider_configs]
+    payload_store: [operational_payloads]
 configuration:
   env_vars: [DATABASE_URL, ASPNETCORE_ENVIRONMENT, KEYCLOAK_AUTHORITY]
   key_vault_secrets: [BP_DB_PASSWORD, RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET]
@@ -46,7 +63,13 @@ agent_pac_impact:
 ccts:
   - id: CCT-MT-01
     description: Tenant isolation — tenant A cannot access tenant B data
-    test_file: tests/constitutional/test_cct_mt01.py
+    test_file: tests/business-platform.Tests/Infrastructure/CCT_MT01_TenantIsolationTests.cs
+  - id: CCT-SKILL-CAT-01
+    description: Unknown or unpublished skill is rejected before hire
+    test_file: tests/business-platform.Tests/Skills/CCT_SKILL_CAT_01_UnknownSkillRejectedTests.cs
+  - id: CCT-DPDPA-01
+    description: Erasure removes payload while preserving constitutional proof
+    test_file: tests/business-platform.Tests/DPDPA/CCT_DPDPA_01_RightToErasureTests.cs
 assurance:
   blueprint_conformance_checks:
     - check: health_endpoint_returns_200

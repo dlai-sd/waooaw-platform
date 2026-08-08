@@ -1,6 +1,6 @@
 # WAOOAW Platform — Sprint Registry
 
-**Last Updated:** 2026-08-07 · **Version:** 1.44.0 · **Total WCs:** 41 (40 closed · 0 active · 0 planned · 1 blocked)
+**Last Updated:** 2026-08-08 · **Version:** 1.44.0 · **Work Contracts:** 42 recorded (41 closed · 0 active · 1 blocked)
 
 ---
 
@@ -10,7 +10,7 @@
 |---|---|---|---|---|---|
 | **WC-034** | Web Portal — Founder Admin + Customer | Next.js 14 | ⚠️ BLOCKED | Keycloak + WBE-S7 | Customer self-service portal — hiring wizard, approval dashboard, performance view |
 
-**Next:** WC-034 unblocks (Keycloak + WBE now ready) or AIR WBE integration sprint.
+**Reserved customer-first roadmap:** WC-044→WC-048. These identifiers describe Founder-approved sequencing in the 2026-08-07 strategy record; Work Contracts have not yet been created.
 
 ---
 
@@ -58,6 +58,7 @@
 | WC-041 | Skill Architecture S2 — Skill Runtime | Platform IT Expert | 1.42.0 | `SkillResolver`, `IntentCrystallizer`, `SessionExecutor`; C-041 tool gate + crystallizer gate; PR 20/20 |
 | WC-042 | WBE-S7 — Single Onboarding Payment + Renewal Saga | Platform IT Expert | 1.43.0 | Razorpay onboarding order + webhook; DEMOWAOOAW/UATWAOOAW bypass; C-090 grandfather; RenewalFailureSaga; 350/350 tests |
 | WC-043 | WBE-S8 — Reconciliation Full CCT Suite + Coverage Gate | Platform IT Expert | 1.44.0 | CCT-PREPAID-01 (`/buckets` reserve endpoint); CCT-SELFAUDIT-01 (discrepancy→halt→FA); 94% coverage; 361/361 tests |
+| WC-049 | Platform State Reconciliation | Enterprise Architect | 1.44.0 | Canonical status baseline; component maturity taxonomy; agent/CCT evidence reconciliation; superseded strategy markers; R-025 approved |
 
 ---
 
@@ -77,6 +78,6 @@
 | L0 Constitutional | CE, Evidence First, Emergency Stop, DCM | ~90% | WC-011→015, WC-012 |
 | L1 Execution | UDCP, PTR Gate, PAAS, AIR, Compile Gate | ~95% | WC-022→024, WC-036 |
 | L2 Trust | Provider Registry, oauth-vault, CTG, Token Refresh | ✅ 100% DONE | WC-037→039 |
-| L3 Business | WBE S1–S6 done, S7–S8 pending | ~75% | WC-025→033 |
+| L3 Business | WBE S1–S8 implemented and tested; AIR/BP end-to-end integration remains partial | ~90% repository evidence | WC-025→033, WC-042→043 |
 | L4 Skill Architecture | Skill Catalog, Skill Runtime, Intent Crystallizer | ✅ 100% DONE | WC-040→041 |
 | L5 Interface | Landing page only | ~10% | WC-034 BLOCKED |

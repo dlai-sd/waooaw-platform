@@ -3,10 +3,10 @@
 **Specification version:** 2.8
 **Date:** 2026-07-13 (v2.7 — Skills 7-12 added; 8-dimension Crop Planning; Simulation validation) · **Amended 2026-08-04 (v2.8 — Activation Gate 16-section pass; Section 3.23 Interview Mode; DNA v2.0)**
 **Inherits:** `CONSTITUTIONAL_DNA v2.0` (C-070 — RATIFIED 2026-07-19; v2.0 amended 2026-08-04)
-**Status:** UPDATED — EA review R-018 APPROVED
+**Lifecycle status:** ACTIVATION GATE PASS RECORDED — v2.8; EA review chain complete; no version-specific Founder approval, customer activation, or customer-proof evidence recorded
 **Constitutional Basis:** C-036 (Skills), C-037 (Business KPIs), C-038 (Billing), C-039 (Conversational config), C-040 (Domain specialization), C-041 (Tool authorization), C-042 (Vocabulary mandate — LAW), ADR-019 (RAG), ADR-020 (MCP), ADR-023 (WhatsApp Phone-as-Identity), C-048 (Information Non-Exploitation — LAW), C-049 (Honest Limitation Disclosure — LAW)
 **Proposed Acceptance Scenario:** AS-005 — Small Farmer Agricultural Advisory (to be ratified in GENESIS amendment)
-**Status:** DRAFT — pending EA review (R-013) and Founder approval (GENESIS Part 05)
+**Review evidence:** R-013, R-015, R-017, and R-018 approved predecessor versions; PROJECT_STATE records v2.8 16-section Activation Gate PASS
 
 ---
 

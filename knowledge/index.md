@@ -3,7 +3,7 @@
 **Produced by:** Constitutional Analyst (Sprint 001)
 **Date:** 2026-07-07
 **Work Contract:** WC-001
-**Total Claims:** 97 (ratified through 2026-08-05) · **ADRs:** 44 · **CCTs:** 72 · **Last Updated:** 2026-08-07
+**Total Claims:** 97 (ratified through 2026-08-05) · **ADRs:** 44 · **CCT inventory:** 72 declared / 61 centrally enumerated / no unified 72/72 run · **Last Updated:** 2026-08-08
 
 ---
 

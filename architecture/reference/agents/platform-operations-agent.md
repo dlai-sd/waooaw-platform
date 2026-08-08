@@ -5,7 +5,7 @@
 **Inherits:** `CONSTITUTIONAL_DNA v1.0` (C-070 — RATIFIED 2026-07-19)
 **Constitutional Basis:** C-046 (Platform under constitutional governance — LAW); C-037 (KPI primacy); C-047 (Agent-Driven Execution); AD-019 (Agent-Driven Orchestration)
 **Reviewed by:** Enterprise Architect (v0.20.0)
-**Approved by:** Founder (pending)
+**Lifecycle status:** DRAFT — EA review and Founder approval pending; NOT ACTIVATED
 
 ---
 
@@ -282,7 +282,7 @@ decision_consequence_map:
 
 **EA Review:** Pending
 **Founder Approval:** Pending
-**Status:** DRAFT — requires EA review before activation
+**Lifecycle status:** DRAFT — requires EA review and Founder approval before activation
 
 ---
 

@@ -10,8 +10,8 @@
 
 ```
 Version:              v1.44.0 — 2026-08-07: WC-043 DONE (WBE-S8 CCT-PREPAID-01 + CCT-SELFAUDIT-01 full + 94% coverage · 361/361 tests)
-Constitutional Claims: 97 ratified (C-001→C-100, with gaps at C-087/C-092/C-093) | ADRs: 44 | CCTs: 72
-Customer Agents:      4 approved — DMA v3.0 · Trading v1.7 · Agricultural v2.7 · Private Tutor v1.0
+Constitutional Claims: 97 ratified (C-001→C-100, with gaps at C-087/C-092/C-093) | ADRs: 44
+Customer Agents:      DMA v3.1 gate-pass (Founder-approved through v3.0) · Trading v1.8 / Agri v2.8 / Tutor v1.1 gate-pass records without current-version Founder approval · none customer-proven
 Internal Agents:      5 — Platform IT Expert (15 skills, §2.4 Pipeline-First Rule) · Steward Assistant · Self-Improvement Analyst ·
                           Platform Operations · RepoNav (AVD-001 v1.0 RATIFIED — INST-014)
 Gates:                G0 ✅  G1 ✅  G2 ✅  G3 ✅  G4 ✅  G5 CLEAR
@@ -19,7 +19,7 @@ Phase:                IMPLEMENTATION — WC-043 DONE · WC-034 BLOCKED (Keycloak
 Infrastructure:       Azure live — waooaw-dev-kv (Key Vault) · OIDC auth · Sprint Dashboard: Issue #7
 Monitoring:           Sprint Dashboard: github.com/dlai-sd/waooaw-platform/issues/7
 Web:                  web/WAOOAWHome.html — Landing page v1.0 + Auth modal
-CCTs:                 72 specified | Simulations: 30 | WBE billing-engine: 361/361 passing
+CCT inventory:        72 institutionally declared · 61 unique IDs enumerated in central catalogue · passing evidence recorded per WC (no unified 72/72 run)
 Sprint Registry:      SPRINT-REGISTRY.md — all 41 WCs, 40 closed · 1 blocked
 Company:              DLAI Satellite Data (OPC) Pvt Ltd · CIN: U62090PN2024OPC230499 · Pune, India
 Stewards:             Yogesh Khandge (Founder) · Sujay Khandge (Business Growth) · Ojal Khandge (Ethics Officer)
@@ -33,7 +33,7 @@ generates production-grade code, reviews its own PR, merges, and advances to the
 ```
 Last sprint:     WC-043 — WBE-S8 Reconciliation CCT Suite + Coverage Gate (CCT-PREPAID-01, CCT-SELFAUDIT-01 full, 94% coverage)
 Sprint status:   DONE — 2026-08-07 · 361/361 tests passing
-Next sprints:    WC-034 (Web Portal — BLOCKED: Keycloak) · or AIR WBE integration sprint (WBE reserve call before LLM dispatch)
+Next work:       WC-044→048 customer-first roadmap reserved; Work Contracts not yet created · WC-034 remains BLOCKED pending revalidation
 Sprint registry: SPRINT-REGISTRY.md
 ```
 
@@ -80,7 +80,7 @@ The result: businesses either hire expensive humans or accept ungoverned AI that
 
 > A world where a small dental clinic in Viman Nagar has the same quality of digital marketing professional as a hospital chain — not because they can afford the same salary, but because they hired the same constitutional AI professional.
 
-**WAOOAW** is an institution, not a software product. The software is the embodiment; the institution is the enduring asset. Every agent on the platform is designated **WAOOAW AI Agent — [Profession]**, carries the same constitutional obligations, and is governed by the same 73 ratified claims regardless of domain.
+**WAOOAW** is an institution, not a software product. The software is the embodiment; the institution is the enduring asset. Every agent on the platform is designated **WAOOAW AI Agent — [Profession]**, carries the same constitutional obligations, and is governed by the same 97 ratified claims regardless of domain.
 
 The three human stewards — Yogesh (Founder), Sujay (Business Growth & Prompt Intelligence), Ojal (Ethics Officer) — govern the institution. They do not build software. They ratify claims, approve agents, review quality, and ensure the constitutional promise to customers is kept.
 
@@ -145,7 +145,7 @@ CONSTITUTION.md (17 Articles — immutable)
     ↓
 GENESIS.md (engineering operating system)
     ↓
-73 Ratified Claims (C-001 to C-073 — the rules in machine-readable form)
+97 Ratified Claims (C-001 to C-100, with reserved gaps — the rules in machine-readable form)
     ↓
 29 ADRs (architectural decisions derived from claims)
     ↓
@@ -160,7 +160,7 @@ No step may be skipped. No implementation may contradict a higher layer.
 
 → `knowledge/claims/` · `adr/ADR-INDEX.md` · `architecture/reference/TRACEABILITY-PROTOCOL.md`
 
-### 4.2 Four-Service Architecture
+### 4.2 Four-Core-Service Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -192,6 +192,14 @@ No step may be skipped. No implementation may contradict a higher layer.
               │  Gemini 2.5 Pro (FRON.) │
               └─────────────────────────┘
 ```
+
+Supporting runtime services extend, but do not replace, the four core ownership boundaries:
+
+- **oauth-vault** (Python FastAPI, port 8130): OAuth token custody and refresh for CTG-mediated calls.
+- **WAOOAW Billing Engine** (Python FastAPI, port 8140): prepaid wallet, pricing, metering, procurement, payment, and reconciliation controls.
+- **Constitutional Tool Gateway:** shared Python library, not a separately deployed service.
+
+**Evidence boundary:** the services above are implemented and tested in repository scope. This status does not by itself assert deployment, production operation, or customer proof.
 
 → `architecture/reference/COMPONENT-QUICK-REF.md` · `architecture/reference/proto/constitutional_service.proto`
 

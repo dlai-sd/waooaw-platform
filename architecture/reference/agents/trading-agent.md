@@ -4,9 +4,9 @@
 **Date:** 2026-07-11 (v1.7 — C-052 Context Fidelity) · **Amended 2026-08-04 (v1.8 — Activation Gate 16-section pass; Section 3.23 Interview Mode; DNA v2.0)**
 **Inherits:** `CONSTITUTIONAL_DNA v2.0` (C-070 — RATIFIED 2026-07-19; v2.0 amended 2026-08-04)
 **Change:** C-052 Context Fidelity + Isolation declared. Real-time cross-customer isolation is a SEBI regulatory requirement. Each customer's PAAS session is completely isolated; Tier 3 has 24-hour write lag; active session positions NEVER enter Tier 3.
-**Approved by Founder:** 2026-07-08 (v1.1); v1.4 pending Founder acknowledgment (BREAKING prompt before implementation sprint)
+**Founder evidence:** v1.1 approved 2026-07-08; FA-005 BREAKING prompt acknowledgment completed 2026-07-23
 **Constitutional Basis:** C-036 (Skills), C-037 (Business KPIs), C-038 (Billing), C-039 (Conversational config), C-040 (Domain specialization), C-041 (Tool authorization), C-043 (Financial Spend Authority Ceiling — the daily loss limit is a Constitutional Floor equivalent; same enforcement mechanism as paid advertising budget cap), ADR-019 (RAG), ADR-020 (MCP), ADR-018 (Emergency Stop Temporal signal)
-**Status:** DRAFT — pending EA review (R-012) and Founder approval (GENESIS Part 05)
+**Lifecycle status:** ACTIVATION GATE PASS RECORDED — v1.8; EA reviews complete and FA-005 complete; no version-specific v1.8 Founder approval, customer activation, or customer-proof evidence recorded
 
 ---
 
@@ -1099,7 +1099,7 @@ decision_consequence_map:
 **EA Review:** R-017 — APPROVED (v1.3 Track A gate compliance)
 **EA Review:** R-018 — APPROVED (v1.4 Strategic Cognition Layer)
 **Founder Approval:** GRANTED — 2026-07-08 (per GENESIS Part 05)
-**Status:** APPROVED — v1.7 active (pending Founder acknowledgment of TRADING/EXECUTION/ESCALATION_DECISION BREAKING prompt before implementation sprint)
+**Historical v1.7 status:** Activation gate passed; FA-005 acknowledgment subsequently completed 2026-07-23
 
 ---
 

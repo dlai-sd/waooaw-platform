@@ -1,8 +1,19 @@
 # Constitutional Compliance Test (CCT) Framework
 
 **Produced by:** Enterprise Architect (Sprint 010, WC-010)
-**Date:** 2026-07-07 | **Last Updated:** 2026-08-06 (EA review — added CCT-VAULT-01/02/03, CCT-CTG-01/02/03/04, CCT-AUDIT-01, CCT-DPDPA-01, CCT-SKILL-CP-01/02/03, CCT-SKILL-CAT-01, CCT-SKILL-VER-01, CCT-SKILL-AMEND-01; total: 65 CCTs)
+**Date:** 2026-07-07 | **Last Updated:** 2026-08-08 (WC-049 evidence reconciliation)
 **Constitutional Basis:** GENESIS Engineering Quality Mandate — "Constitutional Compliance Tests — WAOOAW-specific; validates that the platform upholds a specific constitutional principle"; ADR-013 (CCTs are a required CI/CD gate)
+
+## Evidence Status
+
+| Measure | Current evidence |
+|---|---|
+| Institutional inventory | 72 CCTs declared in the current knowledge/status record |
+| Central catalogue | 61 unique `CCT-*` identifiers enumerated in this document as of 2026-08-08 |
+| Executable evidence | Distributed across service, platform, pipeline, and constitutional test suites; results are recorded per completed Work Contract |
+| Unified result | No evidence of a single 72/72 execution exists; do not interpret the institutional count as a passing-suite count |
+
+The difference between 72 declared and 61 centrally enumerated is an explicit catalogue debt, not an implied pass. New CCTs must update this catalogue and identify their executable test location.
 
 ---
 

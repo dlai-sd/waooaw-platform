@@ -19,14 +19,14 @@ AUTONOMOUS_HALT: false
 ## Current Platform State (updated each session)
 
 ```
-Version:    1.24.0  |  Gate: G5 CLEAR  |  Epoch: 1 — Employment  |  Phase: IMPLEMENTATION
-Last update: 2026-08-01 — ADR-038 Multi-Stack Compile Gate (P0–P3 + 5 defect fixes) · WC-027 root cause closed
-Current sprint: WC-016 — Web Portal Skeleton (Next.js 14 PWA + Registration + Emergency Stop)
-Completed:  WC-012 (CE) · WC-013 (BP) · WC-014 (PR) · WC-015 (AIR) — all merged
-Constitutional Claims: 86 RATIFIED (C-001→C-086) | ADRs: 38
-Agents (customer): DMA v3.0 | Trading v1.7 | Agricultural Advisor v2.7 | Private Tutor v1.0
+Version:    1.44.0  |  Gate: G5 CLEAR  |  Epoch: 1 — Employment  |  Phase: IMPLEMENTATION
+Last update: 2026-08-08 — WC-049 platform state reconciliation DONE; R-025 APPROVED
+Latest completed sprint: WC-043 — WBE-S8 Reconciliation CCT Suite + Coverage Gate
+Latest EA work: WC-049 — Platform State Reconciliation DONE (documentation only)
+Constitutional Claims: 97 RATIFIED (C-001→C-100; gaps C-087/C-092/C-093) | ADRs: 44 recorded
+Agents (customer): DMA v3.1 gate-pass (Founder-approved through v3.0); Trading v1.8, Agri v2.8, Tutor v1.1 gate-pass records without current-version Founder approval; none customer-proven
 Agents (internal): Platform IT Expert · Steward Assistant · Self-Improvement Analyst · Platform Operations · RepoNav (INST-014)
-CCTs: 52 specified | Pipeline tests: 443 passing | Simulations: 7 (all PASS)
+CCTs: 72 institutionally declared; 61 unique IDs centrally enumerated; passing evidence tracked per WC, no unified 72/72 run | WBE: 361/361 passing
 Web: web/WAOOAWHome.html — Landing page v1.0 + Auth modal
 Three Humans: Yogesh Khandge (Founder) · Sujay Khandge (Business Growth) · Ojal Khandge (Ethics Officer)
 Company: DLAI Satellite Data (OPC) Pvt Ltd | CIN: U62090PN2024OPC230499 | GSTIN: 27AAKCD8188R1ZH
@@ -57,15 +57,15 @@ Azure infrastructure:
 
 **CRITICAL before Trading implementation:** `TRADING/EXECUTION/ESCALATION_DECISION` is BREAKING — Founder must acknowledge before Trading sprint begins.
 
-**Approved Agent Specifications (GENESIS Part 05):**
-- **DMA v3.0** — APPROVED. 21 skills (incl. Skill 7b/16/18/19/20/21). 10 new MCPs (C-074). Sims 019/020/021 Grade A.
-- **Trading v1.7** — APPROVED. ⚠️ ESCALATION_DECISION pending Founder ack. Sim 013 Grade A.
-- **Agricultural Advisor v2.7** — APPROVED. WhatsApp primary (ADR-023). Sim 014 Grade A.
-- **Private Tutor v1.0** — APPROVED. C-060 minor protection. Web whiteboard. Sim 018.
+**Customer Agent Lifecycle Evidence:**
+- **DMA v3.1** — Activation Gate PASS; Founder approval recorded through v3.0; not customer-proven.
+- **Trading v1.8** — Activation Gate PASS recorded; FA-005 authorized the escalation protocol only, not v1.8; no current-version Founder approval or customer proof.
+- **Agricultural Advisor v2.8** — Activation Gate PASS recorded; no current-version Founder approval or customer proof.
+- **Private Tutor v1.1** — Activation Gate PASS recorded; standalone review and Founder approval not recorded; NOT ACTIVATED.
 - **Platform IT Expert v1.0** — APPROVED. Internal SDLC agent. C-065/C-066. 11 SDLC skills.
 - **Steward Assistant v1.0** — APPROVED. ops.waooaw.ai entry (C-068). Always FRONTIER (ADR-028).
 - **Self-Improvement Analyst v1.0** — APPROVED. C-069. Prompt improvement pipeline.
-- **Platform Operations v1.0** — APPROVED. Monitoring, incident response, SLA tracking.
+- **Platform Operations v1.0** — DRAFT; EA review and Founder approval pending; NOT ACTIVATED.
 
 **Key constitutional claims C-068 → C-075:**
 - C-068: Steward Access Isolation (ops.waooaw.ai, 3-account OAuth allowlist)
@@ -169,8 +169,8 @@ Operations & Standards
   Change Management Policy              standards/CHANGE-MANAGEMENT-POLICY.md    (pending — ITSM)
   Release Management Policy             standards/RELEASE-MANAGEMENT-POLICY.md   (pending — ITSM)
 
-Implementation (src/ not yet built — IB-009 awaiting authorization)
-  Source code (coming)                  src/{service-name}/
+Implementation (repository baseline v1.44.0; deployment/customer proof tracked separately)
+  Source code                           src/{service-name}/
   CCT framework                         tests/constitutional/README.md + tests/constitutional/{service}/
   Infrastructure init                   infrastructure/postgres/init/*.sql
   Keycloak realm                        infrastructure/keycloak/

@@ -4,7 +4,7 @@
 **Date:** 2026-07-13 (v1.0 initial) · **Amended 2026-08-04 (v1.1 — Activation Gate 16-section pass; §3.15–§3.19, §3.21, §3.23 added; DNA v2.0)**
 **Inherits:** `CONSTITUTIONAL_DNA v2.0` (C-070 — RATIFIED 2026-07-19; v2.0 amended 2026-08-04)
 **Constitutional Basis:** C-036 (Skills), C-037 (Business KPIs), C-038 (Billing), C-039 (Conversational config), C-040 (Domain specialization), C-041 (Tool authorization), C-048 (Information Non-Exploitation — LAW), C-049 (Honest Limitation Disclosure — LAW), C-059 (Implementation Traceability), **C-060 (Minor Student Protection — LAW)**
-**Status:** DRAFT — pending EA review and Founder approval
+**Lifecycle status:** ACTIVATION GATE PASS RECORDED — v1.1; no standalone review artifact or Founder approval, customer activation, or customer-proof evidence recorded; NOT ACTIVATED
 **Primary interface:** Web application (whiteboard + voice) — NOT WhatsApp. Parent reporting via WhatsApp + portal.
 
 ---

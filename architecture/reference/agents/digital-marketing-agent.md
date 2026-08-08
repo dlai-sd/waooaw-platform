@@ -5,7 +5,8 @@
 **Inherits:** `CONSTITUTIONAL_DNA v2.0` (C-070 — RATIFIED 2026-07-19; v2.0 amended 2026-08-04)
 **Change from v2.9:** Agent was acquisition-only and dental-centric. v3.0 is domain-agnostic (serves any local service business via DVE), closes the enquiry→booking→lifecycle loop, and upgrades advertising to 2026 standards.
 **Constitutional Basis:** C-036 (Skills), C-037 (Business KPIs), C-038 (Billing), C-039 (Conversational config), C-040 (Domain specialization), C-041 (Tool authorization), ADR-019 (RAG), ADR-020 (MCP), C-048 (Information Non-Exploitation — LAW), C-049 (Honest Limitation Disclosure — LAW), C-050 (Strategic Cognition Obligation — LAW), C-055 (Campaign Coherence — LAW), C-056 (Ad Spend Transparency — LAW), C-057 (AI Agency Professional Standard — LAW)
-**Reviewed by:** Enterprise Architect — R-014 (v2.0), R-015 (v2.7), v3.0 pending
+**Lifecycle status:** ACTIVATION GATE PASS — v3.1; Founder approval recorded through v3.0; no customer activation or customer-proof evidence recorded
+**Reviewed by:** Enterprise Architect — R-011, R-014, R-015, R-018, R-DMA activation gate (v3.1)
 **Approved by:** Founder — 2026-07-09 (v2.0), 2026-07-12 (v2.7), 2026-07-19 (v3.0 gap bridge)
 
 ---

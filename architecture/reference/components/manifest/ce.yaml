@@ -4,6 +4,13 @@ version:          "1.0.0"
 status:           LIVE
 since_goal:       IB-009
 since_sprint:     WC-012
+maturity:
+  specified: true
+  implemented: true
+  tested: true
+  integrated: partial
+  deployed: unverified
+  customer_proven: false
 
 owner_institution:     INST-010
 governing_institution: INST-004
@@ -40,6 +47,10 @@ surface:
     - rpc: RevokeAuthorityLicense
       sla_ms: 100
       called_by: [bp]
+    - rpc: RecordErasure
+      sla_ms: 100
+      called_by: [bp]
+      constitutional: C-078
 
 called_by: [bp, pr]
 calls: [postgres]
@@ -54,6 +65,7 @@ data:
   db_role: ce_app
   owns:
     constitutional: [evidence_records, authority_licenses, emergency_stop_events, engine_availability_events]
+    audit_sink: [evidence_records]
 
 configuration:
   env_vars: [DATABASE_URL, GRPC_PORT]
@@ -67,10 +79,13 @@ agent_pac_impact:
 ccts:
   - id: CCT-EF-01
     description: Evidence First — RecordEvidence called before caller returns success
-    test_file: tests/constitutional/test_cct_ef01.py
+    test_file: tests/constitutional-engine.Tests/Services/CCT_EF01_EvidenceFirstTests.cs
   - id: CCT-HO-01
     description: Emergency Stop executes in ≤250ms
-    test_file: tests/constitutional/test_cct_ho01.py
+    test_file: tests/constitutional-engine.Tests/EmergencyStop/CCT_HO01_EmergencyStopLatencyTests.cs
+  - id: CCT-AUDIT-01
+    description: ValidateAction writes WORM audit evidence and erasure preserves proof
+    test_file: tests/constitutional-engine.Tests/AuditSink/CCT_AUDIT_01_EvidenceRecordWriteTests.cs
 
 assurance:
   blueprint_conformance_checks:

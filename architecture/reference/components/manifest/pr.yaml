@@ -3,6 +3,13 @@ display_name:     Professional Runtime
 version:          "1.0.0"
 status:           LIVE
 since_sprint:     WC-014
+maturity:
+  specified: true
+  implemented: true
+  tested: true
+  integrated: partial
+  deployed: unverified
+  customer_proven: false
 owner_institution:     INST-010
 governing_institution: INST-004
 constitutional_basis:
@@ -15,7 +22,7 @@ surface:
   port: 5003
   health_check: { path: /health, expected_status: 200 }
   called_by: [bp, customer_websocket]
-  calls: [ce, postgres]
+  calls: [ce, bp, air, ctg, postgres, temporal]
   endpoints:
     - path: /api/v1/paas/sessions
       methods: [POST, GET]
@@ -38,6 +45,12 @@ ccts:
   - id: CCT-HO-03
     description: UI Emergency Stop reaches PR in ≤250ms
     test_file: tests/constitutional/test_cct_ho03.py
+  - id: CCT-SKILL-CP-01/02/03
+    description: Skill authorization, Intent Crystallizer, and DCM category gates
+    test_file: tests/professional-runtime/test_skill_runtime.py
+  - id: CCT-SKILL-UNKNOWN-01
+    description: Session open halts when a pinned skill cannot resolve
+    test_file: tests/professional-runtime/test_skill_runtime.py
 assurance:
   blueprint_conformance_checks:
     - check: health_endpoint_returns_200
