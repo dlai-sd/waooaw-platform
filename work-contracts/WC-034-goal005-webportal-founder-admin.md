@@ -7,7 +7,7 @@
 **Implementation Office:** Platform IT Expert (INST-010)
 **Architecture Reviewer:** Solution Architect (INST-005) + Product Owner (INST-011)
 **Implementation Reviewer:** Enterprise Architect (INST-004) in an independent session
-**Status:** ARCHITECTURE AMENDMENT AUTHORIZED — IMPLEMENTATION UNAUTHORIZED
+**Status:** ARCHITECTURE REVIEW CANDIDATE — IMPLEMENTATION UNAUTHORIZED
 **Authorization:** Founder selected the WC-034 scope amendment on 2026-08-08. This authorizes architecture and specification work only. A separate Founder Action is required before modifying application source.
 **Constitutional Basis:** C-001, C-009, C-023, C-034, C-042, C-059, C-064, C-065, C-076; ADR-017
 
@@ -42,25 +42,42 @@ The shell must use role-aware route composition rather than runtime CSS hiding. 
 
 ## Architecture Tasks
 
-| Task | Scope | Owner | Status |
-|---|---|---|---|
-| WC034-A01 | Inventory `web/WAOOAWHome.html`, the current Next.js root/authenticated routes, WC-057 provisional workspace, and approved UX vocabulary. Record reuse, migration, and retirement decisions without changing source. | INST-004 | complete — architecture prototype identified as design source; duplicate static implementation must retire during migration |
-| WC034-A02 | Produce the hybrid application-shell specification: route groups, nested layouts, navigation model, responsive breakpoints, role/claim boundaries, server/client component rules, loading/error/offline states, and persistent constitutional controls. | INST-004 | in progress — core conversation model and login/register surface recorded |
-| WC034-A03 | Produce the visual-system contract that maps the home-page prototype into shared tokens, typography, spacing, iconography, focus, motion, RTL, and accessibility rules. Resolve conflicts between the prototype and approved constitutional UX vocabulary explicitly. | INST-004 | pending |
-| WC034-A04 | Define page-level information architecture for public Home/Professionals/Blogs, customer Home/My Professionals/Relationship/Settings/Profile, and Founder administration. Activity evidence remains relationship-contextual rather than a generic top-level feed unless separately approved. | INST-004 | pending |
-| WC034-A05 | Define generated-client and API-boundary rules. Identify missing OpenAPI operations as specification gaps; WC-034 implementation may not create undocumented BP or WBE endpoints. | INST-004 + INST-005 | pending |
-| WC034-A06 | Define executable acceptance evidence: desktop and exact 360px layouts, keyboard navigation, RTL integrity, reduced motion, installability, no overflow, zero critical axe violations, and changed-line coverage at or above 90%. | INST-004 | pending |
-| WC034-A07 | Submit the architecture package for independent INST-005 and INST-011 review. Record all unresolved product choices instead of embedding them in implementation tasks. | INST-004 | pending |
+| task_id | scope | model_hint | status | completed_at |
+|---|---|---|---|---|
+| WC034-01 | A01 — Inventory the static home, current Next.js routes, WC-057 provisional workspace, and UX vocabulary; record reuse, migration, and retirement decisions without changing source. | reasoning | done | 2026-08-08 — prototype is composition input; duplicate static production home retires during migration |
+| WC034-02 | A02 — Define route groups, layouts, navigation, responsive composition, role/claim and server/client boundaries, application states, and persistent constitutional controls. | reasoning | done | 2026-08-08 — shell, continuity boundary, failure semantics, privacy, and budgets published |
+| WC034-03 | A03 — Map the prototype into shared tokens, typography, spacing, iconography, focus, motion, RTL, and accessibility rules; resolve vocabulary conflicts. | reasoning | done | 2026-08-08 — prototype reconciled; ratified Noto/token/theme rules control |
+| WC034-04 | A04 — Define public, customer, relationship, settings/profile, and Founder information architecture and groom the implementation components. | reasoning | done | 2026-08-08 — route families, navigation, relationship views, and F0–F8 decomposition published |
+| WC034-05 | A05 — Define generated-client/API boundaries and route missing operations to their owning services; no UI-created BP/WBE endpoints. | reasoning | done | 2026-08-08 — INST-004 owner/gap matrix complete; INST-005 validation requested under A07 |
+| WC034-06 | A06 — Define executable desktop, exact 360px, keyboard, RTL, reduced-motion, PWA, overflow, axe, privacy, performance, and coverage evidence. | reasoning | done | 2026-08-08 — component, contract, browser, axe, screenshot, and quality matrix published |
+| WC034-07 | A07 — Submit the architecture package for independent INST-005 and INST-011 review and route unresolved product decisions. | reasoning | pending | — |
 
-## Implementation Tasks — Gated
+## Architecture Package
 
-| Task | Scope | Owner | Status |
+| Artifact | Responsibility |
+|---|---|
+| `architecture/reference/ux/hybrid-application-shell.md` | Canonical experience, routes, rendering, navigation, API ownership, operational semantics, privacy, and budgets |
+| `architecture/reference/ux/hybrid-visual-system-contract.md` | Prototype reconciliation, tokens, typography, responsive composition, component and motion rules |
+| `architecture/reference/ux/hybrid-ui-acceptance-contract.md` | Executable component, browser, accessibility, RTL, privacy, PWA, performance, and visual evidence |
+| `architecture/reference/ux/wc-034-implementation-decomposition.md` | WC-016 supersession and F0–F8 dependency-ordered implementation handoff |
+| `architecture/reference/agents/platform-it-expert-nextjs-skill-proposal-input.md` | Evidence for Product Owner review of the required INST-010 frontend skill uplift |
+| `architecture/reference/ux/wc-034-enterprise-architecture-assessment.md` | Formal readiness verdict, risks, resolutions, and remaining gates |
+
+## Implementation Components — Gated
+
+Detailed scope, dependencies, exclusions, and acceptance IDs are normative in `architecture/reference/ux/wc-034-implementation-decomposition.md`.
+
+| Component | Scope | Owner | Status |
 |---|---|---|---|
-| WC034-I01 | Create approved route groups and shared layouts; migrate the public home page from static HTML into the approved Next.js public surface without maintaining two production home pages. | INST-010 | blocked — implementation authorization required |
-| WC034-I02 | Implement customer navigation and shared application states around the WC-057 relationship workspace. Preserve the persistent honest Emergency Stop boundary. | INST-010 | blocked — implementation authorization required |
-| WC034-I03 | Implement the Founder layout and Founder-only authorization boundary. | INST-010 | blocked — implementation authorization required |
-| WC034-I04 | Implement Markup Designer, Trial Budget Config, and Coupon Manager only against approved OpenAPI operations and generated clients. Missing APIs return to their owning service Work Contract. | INST-010 | blocked — implementation authorization required |
-| WC034-I05 | Add component, accessibility, route-authorization, responsive, RTL, PWA, and browser acceptance tests required by WC034-A06. | INST-010 | blocked — implementation authorization required |
+| F0 | Architecture and dependency closure | INST-004 + reviewing/owning offices | in progress — independent review and product/API decisions remain |
+| F1 | Experience foundation | INST-010 | blocked — review, skill, and Founder authorization gates |
+| F2 | Identity and registration | INST-010 + identity/BP owners | blocked — canonical identity/API contract plus implementation gates |
+| F3 | Conversation core | INST-010 + BP/PR owners | blocked — canonical conversation/stream contracts plus implementation gates |
+| F4 | Relationship workspace | INST-010 + BP/WBE owners | blocked — Plan/Priority Work and Consumption projections plus implementation gates |
+| F5 | Omnichannel continuity | INST-010 + WC-060 owners | blocked — WC-060 completion plus implementation gates |
+| F6 | Voice interaction | INST-010 + Product/Security/Data/Solution owners | blocked — voice consent, retention, transcription, attachment, and API decisions |
+| F7 | Founder administration | INST-010 + WBE owner | blocked — canonical Founder management APIs plus implementation gates |
+| F8 | Integrated acceptance and hardening | INST-010, independently reviewed | blocked — selected release components complete and authorized |
 
 ## Required Inputs
 
@@ -75,15 +92,16 @@ The shell must use role-aware route composition rather than runtime CSS hiding. 
 | ADR-017 — Next.js 14 TypeScript PWA | accepted — framework boundary fixed |
 | WC-057 — Employment Relationship foundation | merged to `main`; independent review evidence remains unresolved |
 | WC-027 and WC-031 — WBE markup/trial/promotions contracts | required before Founder feature implementation |
+| Platform IT Expert frontend skill lifecycle | proposal input complete; Product Owner review, Founder approval, Type 1 update, activation gate, and independent EA review pending |
 
 ## Architecture Definition of Done
 
-- [ ] One reviewed application-shell specification defines all four surfaces and route ownership.
-- [ ] Public-to-authenticated continuity is explicit; no duplicate production home-page implementation remains in the target state.
-- [ ] Desktop, tablet, 360px mobile, RTL, keyboard, reduced-motion, offline, loading, empty, error, and forbidden behavior are specified.
-- [ ] Emergency Stop placement and behavior remain consistent with C-001 and ADR-017.
-- [ ] Every screen family maps to an approved capability and API owner; no UI-invented endpoint remains.
-- [ ] Founder feature routes remain subordinate to the shared shell and are separately authorization-gated.
+- [x] One application-shell specification defines all four surfaces and route ownership; independent review remains pending.
+- [x] Public-to-authenticated continuity is explicit; no duplicate production home-page implementation remains in the target state.
+- [x] Desktop, tablet, 360px mobile, RTL, keyboard, reduced-motion, offline, loading, empty, error, and forbidden behavior are specified.
+- [x] Emergency Stop placement and behavior remain consistent with C-001 and ADR-017.
+- [x] Every screen family maps to an approved capability and API owner; missing contracts are blocked and owner-routed.
+- [x] Founder feature routes remain subordinate to the shared shell and are separately authorization-gated.
 - [ ] INST-005 and INST-011 review the architecture package before implementation authorization is requested.
 
 ## Implementation Definition of Done
@@ -103,3 +121,4 @@ The shell must use role-aware route composition rather than runtime CSS hiding. 
 - No new BP/WBE endpoint implemented from a UI task without its owning specification and authorization.
 - No Founder-admin implementation during Phase A.
 - No claim that the WC-057 provisional UI is the approved final visual design.
+- No amendment to the ratified Platform IT Expert specification before Product Owner review and Founder approval of the new-skill proposal.
