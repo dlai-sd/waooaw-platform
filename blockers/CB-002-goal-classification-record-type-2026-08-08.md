@@ -4,7 +4,7 @@
 **Office:** Goal Orchestrator (INST-013)
 **Goal:** GOAL-005
 **Work Contract:** WC-055
-**Status:** OPEN — Founder decision required
+**Status:** RESOLUTION APPLIED — independent G-3 review pending
 
 ## Conflict
 
@@ -20,3 +20,7 @@ Authorize one of these paths:
 2. Direct INST-002 to define another constitutionally valid treatment for G-3 Classification.
 
 G-2 remains approved. G-3, G-4, specialist routing, GO Authorizations, and all implementation remain stopped.
+
+## Founder Decision
+
+The Founder selected the narrow `Classification Record` addition on 2026-08-08. GEOM G-10 is amended and GCL-GOAL-005-INST-013-01 is issued with all five attestation fields. CB-002 remains open until INST-002 independently approves the Classification.

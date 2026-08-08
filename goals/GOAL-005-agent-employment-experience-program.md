@@ -1,6 +1,6 @@
 # GOAL-005 — Agent Employment Experience Program
 
-**Status:** G-2 UNDERSTANDING RECORDED — INDEPENDENT REVIEW PENDING; NO IMPLEMENTATION AUTHORIZATION
+**Status:** G-3 CLASSIFICATION ISSUED — INDEPENDENT REVIEW PENDING; NO IMPLEMENTATION AUTHORIZATION
 **Registrant:** Yogesh Khandge (Founder)
 **Registered:** 2026-08-08
 **Work Contract:** WC-052
@@ -48,6 +48,28 @@ The specification journey is complete when D-01 through D-07 are independently v
 ### Clarification Status
 
 No clarification blocks progression. The Registrant confirmed the completion point, foundation-first dependency, simulation-first WhatsApp/DMA proof, and continuous specification execution authority on 2026-08-08.
+
+## G-3 — Goal Classification
+
+| Attestation field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GCL-GOAL-005-INST-013-01 |
+| `record_type` | Classification Record |
+| `produced_at` | 2026-08-08T10:35:05+00:00 |
+| `status` | PROVISIONAL — independent R2-10 review pending |
+
+| Dimension | Classification | Basis |
+|---|---|---|
+| Scope | Cross-domain | D-01 through D-07 require coordinated business, enterprise, constitutional, product, data, security, solution, domain, and later runtime concerns. |
+| Nature | Design | This run produces approved specifications, simulation evidence, and implementation-ready Work Contract candidates; implementation is explicitly excluded. |
+| Risk | Constitutional | Identity, consent, rights, evidence, Human Override, employment formation, billing activation, and authority boundaries are constitutional concerns. |
+| Urgency | Elevated | The foundations gate the next customer outcome, but no live incident justifies Emergency preemption. |
+
+**Priority:** P2 — Constitutional Risk. Founder authorization is required before routing contributing Institutions.
+
+This Classification does not select Institutions, define contributions, create an Execution Plan, issue GO Authorizations, or authorize implementation. G-4 remains stopped until independent R2-10 review closes.
 
 ## 1. Program Intent
 
