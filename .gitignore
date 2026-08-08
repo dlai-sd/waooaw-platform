@@ -28,6 +28,10 @@ dist/
 coverage/
 *.trx
 *.xml
+web/public/sw.js
+web/public/workbox-*.js
+web/playwright-report/
+web/test-results/
 
 # ─── OS / editor ─────────────────────────────────────────────────────────────
 .DS_Store

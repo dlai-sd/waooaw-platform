@@ -1,7 +1,9 @@
 // Implements: architecture/reference/components/business-platform.md §1 Employment Manager
 // constitutional_basis: C-023, C-036, C-038, C-059
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
+using Waooaw.BusinessPlatform.Services;
 using Waooaw.BusinessPlatform.Infrastructure;
 using Waooaw.ConstitutionalEngine.Grpc;
 using Grpc.Net.Client;
@@ -46,6 +48,14 @@ public sealed record HireAgentRequest(
     /// <summary>Optional skills[] array (ADR-043 §4). Each entry must exist at pinned version in Skill Catalog.</summary>
     IReadOnlyList<SkillAssignment>? Skills = null);   // C-036: skills are constitutional units
 
+public sealed record LegacyDecisionSpaceInput(string ProfessionalType);
+
+public sealed record LegacyFormEmploymentContractRequest(
+    Guid ProfessionalId,
+    LegacyDecisionSpaceInput DecisionSpace,
+    Guid? EvaluationIntentId = null,
+    Guid? CorrelationId = null);
+
 /// <summary>Request for POST /api/v1/agents/amend — adds or removes a skill from an existing contract.</summary>
 public sealed record AmendContractRequest(
     string ContractId,
@@ -64,25 +74,75 @@ public sealed class CustomersController : ControllerBase
 
     private readonly IConfiguration _config;
     private readonly IDbContextFactory<SkillCatalogDbContext> _skillDbFactory;
+    private readonly EmploymentRelationshipService _relationshipService;
     private readonly ILogger<CustomersController> _logger;
 
     public CustomersController(
         IConfiguration config,
         IDbContextFactory<SkillCatalogDbContext> skillDbFactory,
+        EmploymentRelationshipService relationshipService,
         ILogger<CustomersController> logger)
     {
         _config         = config;
         _skillDbFactory = skillDbFactory;
+        _relationshipService = relationshipService;
         _logger         = logger;
     }
 
     // ── Existing methods (frozen — must not be removed) ────────────────────
 
+    [Authorize]
     [HttpPost("employment/contracts")]
-    public IActionResult FormEmploymentContract() => Ok();
+    public async Task<IActionResult> FormEmploymentContract(
+        [FromBody] LegacyFormEmploymentContractRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!LegacyEmploymentCompatibility.TryGetIdentity(HttpContext, out var tenantId, out var participantId))
+        {
+            return Forbid();
+        }
 
+        var correlationId = request.CorrelationId ?? Guid.NewGuid();
+        var result = request.EvaluationIntentId.HasValue
+            ? await _relationshipService.AdmitAsync(
+                tenantId,
+                participantId,
+                request.EvaluationIntentId.Value,
+                request.DecisionSpace.ProfessionalType,
+                correlationId,
+                cancellationToken)
+            : await _relationshipService.AdmitLegacyAsync(
+                tenantId,
+                participantId,
+                request.ProfessionalId.ToString(),
+                request.DecisionSpace.ProfessionalType,
+                correlationId,
+                cancellationToken);
+        LegacyEmploymentCompatibility.AddDeprecationHeaders(Response, result.Relationship.RelationshipId);
+        var response = ToLegacyContract(result.Relationship, request.ProfessionalId);
+        return result.Created
+            ? CreatedAtAction(nameof(GetEmploymentContract), new { id = result.Relationship.RelationshipId }, response)
+            : Ok(response);
+    }
+
+    [Authorize]
     [HttpGet("employment/contracts/{id}")]
-    public IActionResult GetEmploymentContract(Guid id) => Ok();
+    public async Task<IActionResult> GetEmploymentContract(Guid id, CancellationToken cancellationToken)
+    {
+        if (!LegacyEmploymentCompatibility.TryGetIdentity(HttpContext, out var tenantId, out _))
+        {
+            return Forbid();
+        }
+
+        var relationship = await _relationshipService.GetAsync(tenantId, id, cancellationToken);
+        if (relationship is null)
+        {
+            return NotFound();
+        }
+
+        LegacyEmploymentCompatibility.AddDeprecationHeaders(Response, relationship.RelationshipId);
+        return Ok(ToLegacyContract(relationship, null));
+    }
 
     // ── New endpoints (WC013-03a) ──────────────────────────────────────────
 
@@ -171,6 +231,7 @@ public sealed class CustomersController : ControllerBase
     /// C-023: CE.ValidateAction confirmed before any write.
     /// C-038: pro_rata_billing_start_date is populated at the moment of hire.
     /// </summary>
+    [Authorize]
     [HttpPost("agents/hire")]
     public async Task<IActionResult> HireAgentAsync(
         [FromBody] HireAgentRequest request,
@@ -209,92 +270,49 @@ public sealed class CustomersController : ControllerBase
             }
         }
 
-        // C-023: Validate action with CE before executing (Evidence First).
-        // ⛔ CE call is a pre-condition — NOT inside any DB transaction.
-        using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        cts.CancelAfter(TimeSpan.FromSeconds(CeValidateTimeoutSeconds));
-
-        ValidationDecision ceDecision;
-        try
+        if (!LegacyEmploymentCompatibility.TryGetIdentity(HttpContext, out var tenantId, out var participantId))
         {
-            var grpcUrl = _config["ConstitutionalEngine:GrpcUrl"]
-                ?? throw new InvalidOperationException("ConstitutionalEngine:GrpcUrl is not configured.");
-
-            var channel = GrpcChannel.ForAddress(grpcUrl);
-            var ceClient = new ConstitutionalService.ConstitutionalServiceClient(channel);
-
-            // C-038: include budget fields in action parameters so CE can enforce ceiling.
-            var actionParams =
-                $"{{\"contract_id\":\"{request.ContractId}\"," +
-                $"\"professional_type\":\"{request.ProfessionalType}\"," +
-                $"\"skill_id\":\"{request.SkillId}\"," +
-                $"\"approved_budget_inr_paise\":{request.ApprovedBudgetInrPaise}," +
-                $"\"billing_cycle_anchor_day\":\"{request.BillingCycleAnchorDay}\"}}";
-
-            var ceResponse = await ceClient.ValidateActionAsync(new ValidateActionRequest
-            {
-                ContractId           = request.ContractId,
-                ActionType           = CeActionHireAgent,
-                ActionParameters     = actionParams,
-                DecisionSpaceVersion = int.TryParse(request.DecisionSpaceVersion, out var dsv) ? dsv : 1
-            }, cancellationToken: cts.Token);
-
-            ceDecision = ceResponse.Decision;
-        }
-        catch (Exception ex)
-        {
-            // ERROR HANDLING RULE 1: log before returning.
-            _logger.LogError(
-                ex,
-                "CE.ValidateAction failed for HIRE_AGENT — contractId={ContractId} skill={SkillId}",
-                request.ContractId, request.SkillId);
-            return StatusCode(503, "Constitutional validation unavailable. Please retry.");
-        }
-
-        // CS0019 guard: ValidationDecision (not PolicyDecision) is the correct type here.
-        if (ceDecision == ValidationDecision.Deny)
-        {
-            _logger.LogWarning(
-                "CE denied HIRE_AGENT — contractId={ContractId} skill={SkillId}",
-                request.ContractId, request.SkillId);
             return Forbid();
         }
 
-        if (ceDecision == ValidationDecision.Unspecified)
+        try
         {
-            _logger.LogWarning(
-                "CE returned Unspecified for HIRE_AGENT — escalating contractId={ContractId}",
-                request.ContractId);
-            return StatusCode(503, "Constitutional decision unspecified. Escalation required.");
-        }
-
-        // CE returned Allow — proceed with agent hire.
-        // C-038: pro_rata_billing_start_date is the exact moment of hire confirmation.
-        var agentHireId = Guid.NewGuid();
-        var proRataBillingStartDate = DateTimeOffset.UtcNow;   // C-038: billing clock starts NOW
-
-        _logger.LogInformation(
-            "Agent hired: hireId={HireId} contractId={ContractId} skill={SkillId} " +
-            "proRataBillingStart={ProRataBillingStart} budgetPaise={BudgetPaise}",
-            agentHireId, request.ContractId, request.SkillId,
-            proRataBillingStartDate, request.ApprovedBudgetInrPaise);
-
-        return CreatedAtAction(
-            nameof(GetEmploymentContract),
-            new { id = agentHireId },
-            new
+            var result = await _relationshipService.AdmitLegacyAsync(
+                tenantId,
+                participantId,
+                request.ContractId,
+                request.ProfessionalType,
+                Guid.NewGuid(),
+                cancellationToken);
+            LegacyEmploymentCompatibility.AddDeprecationHeaders(Response, result.Relationship.RelationshipId);
+            var admittedAt = result.Relationship.CreatedAt;
+            var response = new
             {
-                hire_id                     = agentHireId,
+                hire_id                     = result.Relationship.RelationshipId,
+                relationship_id             = result.Relationship.RelationshipId,
                 contract_id                 = request.ContractId,
                 professional_type           = request.ProfessionalType,
                 skill_id                    = request.SkillId,
-                skills                      = request.Skills?.Select(s => s with { AssignedAt = proRataBillingStartDate }).ToList() ?? [],
+                skills                      = request.Skills?.Select(s => s with { AssignedAt = admittedAt }).ToList() ?? [],
                 decision_space_version      = request.DecisionSpaceVersion,
                 approved_budget_inr_paise   = request.ApprovedBudgetInrPaise,
                 billing_cycle_anchor_day    = request.BillingCycleAnchorDay,
-                pro_rata_billing_start_date = proRataBillingStartDate,   // C-038
-                hired_at                    = proRataBillingStartDate
-            });
+                pro_rata_billing_start_date = admittedAt,
+                hired_at                    = admittedAt,
+            };
+            return result.Created
+                ? CreatedAtAction(nameof(GetEmploymentContract), new { id = result.Relationship.RelationshipId }, response)
+                : Ok(response);
+        }
+        catch (ConstitutionalActionDeniedException exception)
+        {
+            return Problem(statusCode: StatusCodes.Status403Forbidden, title: "Constitutional authorization denied", detail: exception.Message);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            _logger.LogError(exception, "Legacy hire adapter failed for contract {ContractId}", request.ContractId);
+            return Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "Constitutional evidence unavailable");
+        }
     }
 
     // ── WC040-05: Skill amendment — CE evidence record required ──────────────
@@ -406,4 +424,16 @@ public sealed class CustomersController : ControllerBase
             ce_evidence_basis    = ceResponse.ConstitutionalBasis,
         });
     }
+
+    private static object ToLegacyContract(EmploymentRelationship relationship, Guid? professionalId) => new
+    {
+        id = relationship.RelationshipId,
+        relationshipId = relationship.RelationshipId,
+        professionalId,
+        professionalType = relationship.ProfessionalType,
+        state = "EVALUATION",
+        relationshipState = RelationshipStateCodec.ToDatabase(relationship.State),
+        createdAt = relationship.CreatedAt,
+        updatedAt = relationship.UpdatedAt,
+    };
 }

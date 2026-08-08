@@ -9,7 +9,7 @@
 | WC | Title | Track | Status | Depends On | Key Outcome |
 |---|---|---|---|---|---|
 | **WC-034** | Web Portal — Founder Admin + Customer | Next.js 14 | ⚠️ BLOCKED | Keycloak + WBE-S7 | Customer self-service portal — hiring wizard, approval dashboard, performance view |
-| **WC-057** | AE-01 Employment Journey Foundation | Customer outcome | IMPLEMENTATION-READY — UNAUTHORIZED | R-046 · WC-037 · WC-040 · WC-041 | Durable relationship, canonical APIs, participant roles, and authenticated PWA foundation |
+| **WC-057** | AE-01 Employment Journey Foundation | Customer outcome | IMPLEMENTATION COMPLETE — REVIEW PENDING | R-046 · FA-030 · WC-037 · WC-040 · WC-041 | Durable relationship, canonical APIs, participant roles, and provisional authenticated PWA shell |
 | **WC-058** | AE-01 Discover, Trial, Configure | Customer outcome | IMPLEMENTATION-READY — UNAUTHORIZED | WC-057 | Generic S01–S06 journey with DMA 19-skill first proof and 14-day zero-paid-API trial |
 | **WC-059** | AE-01 Contract, Payment, Activation | Customer outcome | IMPLEMENTATION-READY — UNAUTHORIZED | WC-058 · WC-042 · WC-043 | Tier-4 contract/payment and exactly-once activation |
 | **WC-060** | AE-01 Continuity, Evidence, Stop | Customer outcome | IMPLEMENTATION-READY — UNAUTHORIZED | WC-059 · WC-014 · WC-037 | One relationship across channels, Evidence Reader, and fail-safe Emergency Stop |

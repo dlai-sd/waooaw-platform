@@ -4,7 +4,32 @@
 
 ---
 
-## IN-PROGRESS CHECKPOINT — WC-056 GOAL-005 G-4 EXECUTION PLANNING
+## IN-PROGRESS CHECKPOINT — WC-057 AE-01 EMPLOYMENT JOURNEY FOUNDATION
+
+| Milestone | Status |
+|---|---|
+| Founder implementation authorization | DONE — FA-030 authorizes WC-057 only; Google OAuth proof deferred to sprint-end acceptance |
+| Migration 19 relationship foundation | DONE — canonical first mint, participant roles, append-only history, idempotency, RLS, and correlation indexes |
+| Business Platform aggregate and APIs | DONE — canonical admission/read/timeline/transition service with CE validation and evidence-before-mutation |
+| Legacy compatibility adapters | DONE — contract/hire aliases converge on canonical relationship admission with deprecation and successor headers |
+| Authenticated web foundation | DONE — provisional Next.js PWA shell, generated relationship models, Keycloak session boundary, persistent honest Stop control |
+| Implementation validation | DONE — BP 55/55; web 5/5 and 93.75% line coverage; Playwright 2/2; platform metadata 12 passed, 1 known skip |
+| Implementation commits | DONE — `c5169cc`, `e458e42` |
+| Independent Enterprise Architect review | PENDING — C-065 author/reviewer separation required |
+| Release/version/state closure | PENDING — update VERSION/CHANGELOG and mark WC-057 DONE only after review approval |
+
+### Current Authorization Boundary
+
+WC-057 implementation is complete under FA-030 and awaits independent INST-004 review. The web interface is a provisional technical shell, not a Founder-confirmed UI design. WC-058 through WC-060, live Google OAuth proof, deployment, and merge remain outside this implementation session's authority.
+
+### Known Residual Evidence
+
+- Full fresh PostgreSQL bootstrap is blocked by a pre-existing Migration 03 enum/search-path defect; focused Migration 19 invariants passed.
+- The canonical Business Platform OpenAPI contains pre-existing dangling schemas outside the WC-057 relationship surface. WC-057 model generation is intentionally scoped to the validated relationship models.
+
+---
+
+## SESSION RECORD — WC-056 GOAL-005 G-4 EXECUTION PLANNING — DONE
 
 | Milestone | Status |
 |---|---|

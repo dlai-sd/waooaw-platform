@@ -73,6 +73,119 @@ paths:
 
   # ─── Employment ───────────────────────────────────────────────────────────
 
+  /api/v1/employment/relationships:
+    post:
+      tags: [Employment]
+      summary: Admit or replay an employment relationship
+      description: |
+        Mints the tenant's durable employment relationship for the authenticated
+        participant and canonical evaluation intent. Replaying the same participant,
+        professional type, and evaluation intent returns the existing relationship.
+        Constitutional validation and evidence commitment complete before persistence.
+      operationId: admitEmploymentRelationship
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdmitEmploymentRelationshipRequest"
+      responses:
+        "201":
+          description: Relationship admitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmploymentRelationship"
+        "200":
+          description: Existing relationship returned for an idempotent replay
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmploymentRelationship"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Authenticated identity lacks tenant or participant authority
+        "503":
+          description: Constitutional validation or evidence commitment is unavailable
+
+  /api/v1/employment/relationships/{relationshipId}:
+    get:
+      tags: [Employment]
+      summary: Get an employment relationship
+      operationId: getEmploymentRelationship
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+      responses:
+        "200":
+          description: Tenant-scoped employment relationship
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmploymentRelationship"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/employment/relationships/{relationshipId}/timeline:
+    get:
+      tags: [Employment]
+      summary: Get the evidence-linked relationship state timeline
+      operationId: getEmploymentRelationshipTimeline
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+      responses:
+        "200":
+          description: Ordered relationship state history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RelationshipTimelineEntry"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/employment/relationships/{relationshipId}/transitions:
+    post:
+      tags: [Employment]
+      summary: Transition relationship state from an authorized internal service
+      description: |
+        Internal-service endpoint. The actor must have the asserted active participant-role
+        binding in the same tenant. Legal-state, Emergency Stop release, constitutional
+        validation, and evidence commitment checks all complete before state mutation.
+      operationId: transitionEmploymentRelationship
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionEmploymentRelationshipRequest"
+      responses:
+        "200":
+          description: Relationship transitioned with evidence committed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmploymentRelationship"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Service or participant-role authority denied
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "503":
+          description: Constitutional validation or evidence commitment is unavailable
+
   /api/v1/employment/contracts:
     get:
       tags: [Employment]
@@ -109,26 +222,43 @@ paths:
 
     post:
       tags: [Employment]
-      summary: Form a new employment contract
+      summary: Compatibility adapter for relationship admission
+      deprecated: true
       description: |
-        Creates an employment contract in EVALUATION state.
-        The contract transitions to ACTIVE via the /activate endpoint
-        after the customer reviews and accepts the Decision Space.
-        A Constitutional Engine evidence record is created for contract formation.
+        Deprecated compatibility route. Admits or replays a canonical employment
+        relationship and returns a legacy-shaped projection. Use
+        POST /api/v1/employment/relationships for new integrations.
       operationId: formEmploymentContract
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/FormEmploymentContractRequest"
+              $ref: "#/components/schemas/LegacyFormEmploymentContractRequest"
       responses:
         "201":
-          description: Contract created in EVALUATION state
+          description: Canonical relationship admitted through the compatibility adapter
+          headers:
+            Deprecation:
+              schema: { type: string, const: "true" }
+            Link:
+              schema: { type: string }
+              description: Canonical relationship URL with rel="successor-version"
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/EmploymentContract"
+                $ref: "#/components/schemas/LegacyEmploymentRelationshipAdapterResponse"
+        "200":
+          description: Existing canonical relationship returned for adapter replay
+          headers:
+            Deprecation:
+              schema: { type: string, const: "true" }
+            Link:
+              schema: { type: string }
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LegacyEmploymentRelationshipAdapterResponse"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -139,17 +269,23 @@ paths:
   /api/v1/employment/contracts/{contractId}:
     get:
       tags: [Employment]
-      summary: Get a single employment contract
+      summary: Compatibility projection of an employment relationship
+      deprecated: true
       operationId: getEmploymentContract
       parameters:
         - $ref: "#/components/parameters/ContractId"
       responses:
         "200":
+          headers:
+            Deprecation:
+              schema: { type: string, const: "true" }
+            Link:
+              schema: { type: string }
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/EmploymentContract"
-          description: Employment contract
+                $ref: "#/components/schemas/LegacyEmploymentRelationshipAdapterResponse"
+          description: Legacy-shaped relationship projection
         "401":
           $ref: "#/components/responses/Unauthorized"
         "404":
@@ -184,6 +320,65 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
+
+  /api/v1/agents/hire:
+    post:
+      tags: [Employment]
+      summary: Deprecated v1 hire compatibility adapter
+      deprecated: true
+      operationId: hireAgentCompatibilityV1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LegacyHireAgentRequest"
+      responses:
+        "201":
+          description: Relationship admitted through the hire adapter
+          headers:
+            Deprecation: { schema: { type: string, const: "true" } }
+            Link: { schema: { type: string } }
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LegacyHireAgentResponse"
+        "200":
+          description: Existing relationship returned for hire replay
+          headers:
+            Deprecation: { schema: { type: string, const: "true" } }
+            Link: { schema: { type: string } }
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LegacyHireAgentResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/agents/hire:
+    post:
+      tags: [Employment]
+      summary: Deprecated unversioned hire compatibility adapter
+      deprecated: true
+      operationId: hireAgentCompatibilityUnversioned
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LegacyHireAgentRequest"
+      responses:
+        "200":
+          description: Canonical relationship projected through the legacy hire response
+          headers:
+            Deprecation: { schema: { type: string, const: "true" } }
+            Link: { schema: { type: string } }
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LegacyHireAgentResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
 
   /api/v1/employment/contracts/{contractId}/activate:
     put:
@@ -1312,6 +1507,15 @@ components:
       description: Keycloak-issued JWT. Must contain `tenant_id` claim (UUID).
 
   parameters:
+    RelationshipId:
+      name: relationshipId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Tenant-scoped durable employment relationship UUID
+
     ContractId:
       name: contractId
       in: path
@@ -1371,6 +1575,15 @@ components:
       enum: [EVALUATION, ACTIVE, SUSPENDED, TERMINATED]
       description: Employment contract lifecycle state (C-034)
 
+    EmploymentRelationshipState:
+      type: string
+      enum: [DISCOVERED, INTERVIEWING, TRIAL_ACTIVE, CONFIGURING, CONTRACT_PENDING_ACCEPTANCE, CONTRACT_ACCEPTED_PENDING_PAYMENT, ACTIVATION_PENDING, ACTIVE, PAUSED, STOPPED_EMERGENCY, TERMINATED]
+      description: Durable AE-01 relationship lifecycle state
+
+    RelationshipParticipantRole:
+      type: string
+      enum: [EVALUATOR, EMPLOYER, OUTCOME_OWNER, RELATIONSHIP_MANAGER, CONSTITUTIONAL_AUTHORITY]
+
     ApprovalState:
       type: string
       enum: [PENDING, SCOPE_BOUNDARY_PENDING, APPROVED, REJECTED]
@@ -1386,6 +1599,175 @@ components:
       description: How the professional executes work. APPROVAL_GATE requires per-action approval. PRE_AUTHORIZED is PAAS mode.
 
     # ── Domain Objects ────────────────────────────────────────────────────
+
+    AdmitEmploymentRelationshipRequest:
+      type: object
+      additionalProperties: false
+      required: [evaluationIntentId, professionalType]
+      properties:
+        evaluationIntentId:
+          type: string
+          format: uuid
+        professionalType:
+          type: string
+          minLength: 1
+          maxLength: 64
+        correlationId:
+          type: string
+          format: uuid
+          nullable: true
+
+    TransitionEmploymentRelationshipRequest:
+      type: object
+      additionalProperties: false
+      required: [targetState, actorParticipantId, actorRole, correlationId]
+      properties:
+        targetState:
+          $ref: "#/components/schemas/EmploymentRelationshipState"
+        actorParticipantId:
+          type: string
+          format: uuid
+        actorRole:
+          $ref: "#/components/schemas/RelationshipParticipantRole"
+        correlationId:
+          type: string
+          format: uuid
+        explicitEmergencyRelease:
+          type: boolean
+          default: false
+
+    EmploymentRelationship:
+      type: object
+      additionalProperties: false
+      required: [relationshipId, professionalType, state, stateVersion, createdAt, updatedAt]
+      properties:
+        relationshipId:
+          type: string
+          format: uuid
+        professionalType:
+          type: string
+        state:
+          $ref: "#/components/schemas/EmploymentRelationshipState"
+        stateVersion:
+          type: integer
+          minimum: 0
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    RelationshipTimelineEntry:
+      type: object
+      additionalProperties: false
+      required: [stateVersion, toState, actorParticipantId, actorRole, correlationId, evidenceId, occurredAt]
+      properties:
+        stateVersion:
+          type: integer
+          minimum: 0
+        fromState:
+          allOf:
+            - $ref: "#/components/schemas/EmploymentRelationshipState"
+          nullable: true
+        toState:
+          $ref: "#/components/schemas/EmploymentRelationshipState"
+        actorParticipantId:
+          type: string
+          format: uuid
+        actorRole:
+          $ref: "#/components/schemas/RelationshipParticipantRole"
+        correlationId:
+          type: string
+          format: uuid
+        evidenceId:
+          type: string
+          format: uuid
+        occurredAt:
+          type: string
+          format: date-time
+
+    NotificationPreferences:
+      type: object
+      additionalProperties: false
+      required: [approvalRequests, maturityReports, monthlyNarratives, selfGovernanceAlerts]
+      properties:
+        approvalRequests:
+          type: array
+          items:
+            $ref: "#/components/schemas/NotificationChannel"
+        maturityReports:
+          type: array
+          items:
+            $ref: "#/components/schemas/NotificationChannel"
+        monthlyNarratives:
+          type: array
+          items:
+            $ref: "#/components/schemas/NotificationChannel"
+        selfGovernanceAlerts:
+          type: array
+          items:
+            $ref: "#/components/schemas/NotificationChannel"
+
+    NotificationChannel:
+      type: string
+      enum: [IN_APP, EMAIL, WHATSAPP]
+
+    LegacyEmploymentRelationshipAdapterResponse:
+      type: object
+      additionalProperties: false
+      required: [id, relationshipId, professionalType, state, relationshipState, createdAt, updatedAt]
+      properties:
+        id: { type: string, format: uuid }
+        relationshipId: { type: string, format: uuid }
+        professionalId: { type: string, format: uuid, nullable: true }
+        professionalType: { type: string }
+        state: { type: string, const: EVALUATION }
+        relationshipState:
+          $ref: "#/components/schemas/EmploymentRelationshipState"
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    LegacyFormEmploymentContractRequest:
+      type: object
+      additionalProperties: true
+      required: [professionalId, decisionSpace]
+      properties:
+        professionalId: { type: string, format: uuid }
+        decisionSpace:
+          type: object
+          required: [professionalType]
+          properties:
+            professionalType: { type: string, minLength: 1, maxLength: 64 }
+        evaluationIntentId: { type: string, format: uuid, nullable: true }
+        correlationId: { type: string, format: uuid, nullable: true }
+
+    LegacyHireAgentRequest:
+      type: object
+      required: [contractId, professionalType, skillId, decisionSpaceVersion, approvedBudgetInrPaise, billingCycleAnchorDay]
+      properties:
+        contractId: { type: string }
+        professionalType: { type: string }
+        skillId: { type: string }
+        decisionSpaceVersion: { type: string }
+        approvedBudgetInrPaise: { type: integer, format: int64 }
+        billingCycleAnchorDay: { type: string }
+
+    LegacyHireAgentResponse:
+      type: object
+      required: [contract_id, relationship_id, professional_type, skill_id, decision_space_version, approved_budget_inr_paise, billing_cycle_anchor_day, pro_rata_billing_start_date, state]
+      properties:
+        hire_id: { type: string, format: uuid }
+        contract_id: { type: string }
+        relationship_id: { type: string, format: uuid }
+        professional_type: { type: string }
+        skill_id: { type: string }
+        decision_space_version: { type: string }
+        approved_budget_inr_paise: { type: integer, format: int64 }
+        billing_cycle_anchor_day: { type: string }
+        pro_rata_billing_start_date: { type: string, format: date-time }
+        hired_at: { type: string, format: date-time }
+        state: { type: string, const: EVALUATION }
 
     EmploymentContract:
       type: object
