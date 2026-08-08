@@ -4,7 +4,7 @@
 **Office:** Enterprise Architect (INST-004)
 **Reviewer:** Constitutional Analyst
 **Authorized by:** Founder instruction, 2026-08-08
-**Status:** BLOCKED — decision R-029 APPROVED; INST-013 handoff blocked by CB-001
+**Status:** DONE — R-029 APPROVED; INST-013 handoff READY after WC-054 closed CB-001
 **Implementation scope:** Strategy record and institutional handoff only; no architecture contribution or runtime implementation
 
 ## Objective
@@ -19,7 +19,7 @@ Preserve the Founder discussion, alternatives, final sequencing decision, instit
 | WC053-02 | Final decision names Goal Orchestrator coordination and specialist-office contribution boundaries | DONE |
 | WC053-03 | Just-in-time grooming depth and Architecture Readiness Gate sequence are explicit | DONE |
 | WC053-04 | Authorization boundary states specification/grooming only and prohibits implementation | DONE |
-| WC053-05 | Constitutional review and Goal Orchestrator handoff are recorded | BLOCKED — R-029 approved; CB-001 prevents office occupancy |
+| WC053-05 | Constitutional review and Goal Orchestrator handoff are recorded | DONE — R-029 approved; CB-001 closed by WC-054/R-030 |
 
 ## Boundaries
 

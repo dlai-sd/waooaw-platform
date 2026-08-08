@@ -4,7 +4,7 @@
 **Raised during:** WC-053 Goal Orchestrator handoff readiness check
 **Affected Goal:** GOAL-005
 **Affected Institution:** INST-013 — Goal Orchestrator
-**Status:** OPEN
+**Status:** CLOSED — resolved by WC-054 and R-030 on 2026-08-08
 **Severity:** Constitutional blocker
 
 ## Blocking Condition
@@ -39,6 +39,8 @@ If the 2026-07-27 change-log entry is not valid ratification evidence, explicit 
 
 ## Unblock Evidence
 
-- Corrected `constitution/INSTITUTION-REGISTRY.md` reviewed by an independent constitutional authority.
-- INST-013 entry unambiguously reads `OPERATIONAL` with traceable ratification evidence.
-- CB-001 status changed to CLOSED with the correcting review reference.
+- `goals/GOAL-001-semantic-brain-transformation.md` independently confirms Founder ratification of the Institution Registry in Phase 1 on 2026-07-27.
+- The append-only Registry Change Log entry for INST-013 remains unchanged.
+- INST-013 now reads `OPERATIONAL` with Charter Date and Operational Since set to 2026-07-27.
+- R-030 independently APPROVED the clerical reconciliation and confirmed that no fresh Founder ratification is required.
+- WC-054 closed the contradiction without producing GOAL-005 G-2 outputs or implementation authority.
