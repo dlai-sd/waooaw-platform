@@ -3,7 +3,7 @@
 **Document type:** Architecture Reference — Customer Experience
 **Office:** Enterprise Architect (INST-004)
 **Work Contract:** WC-034
-**Status:** DRAFT — Founder discussion decisions recorded 2026-08-08
+**Status:** REVIEW CANDIDATE — WC034-A02 complete; A03-A06 companion contracts published
 **Constitutional basis:** C-001, C-009, C-023, C-034, C-042, C-059, C-065, C-076
 **Architecture decision:** ADR-017 — Next.js 14 TypeScript PWA
 
@@ -23,6 +23,78 @@ The authenticated web experience uses the layout and interaction grammar of a mo
 - The PWA is mobile-first and preserves application state across navigation and temporary connectivity loss.
 
 It does not mean a client-only React SPA, a Vite application, a second frontend, or moving authentication and constitutional authorization into browser code.
+
+## Normative Boundary and Dependencies
+
+This document defines the application shell and customer-experience projection. It does not transfer ownership of identity, relationship, conversation, billing, evidence, or professional execution into the web application.
+
+The shell may render implemented capabilities only through approved service contracts. It must represent a capability as unavailable, pending, or read-only when its owning contract is not implemented; it must never manufacture a successful local state to compensate for a missing platform operation.
+
+Cross-channel history display and cross-channel transactional continuity are different capabilities:
+
+- The shell may display a tenant-scoped merged history when an approved read contract supplies it.
+- Authenticated handoff, checkpoint commit, delivery deduplication, ordering, replay protection, and exactly-once consequential outcomes depend on WC-060.
+- Before WC-060 is complete, the interface must not claim that a WhatsApp-to-web handoff has committed or that an action submitted on one channel cannot be replayed on another.
+- Emergency Stop remains channel-independent and must use the existing constitutional path; ordinary conversation streaming must never share, delay, or replace that path.
+
+## Route and Layout Ownership
+
+Route groups are ownership boundaries, not visible URL segments. Authorization is enforced before protected data is fetched.
+
+| Route family | Route group | Layout owner | Rendering default | Required boundary |
+|---|---|---|---|---|
+| `/`, `/professionals`, `/professionals/[slug]`, `/blogs`, `/blogs/[slug]` | `(public)` | Public layout | Server-first | No authenticated relationship preload; capability and limitation disclosure |
+| `/login`, `/register`, `/verify`, `/auth/error` | `(auth)` | Authentication layout | Server shell with isolated interactive form | Keycloak-brokered identity; safe server-owned return target |
+| `/home`, `/professionals/mine`, `/relationships/[relationshipId]/*`, `/settings`, `/profile` | `(authenticated)` | Customer application layout | Server-authorized shell with client interaction islands | Validated tenant and participant session; persistent Emergency Stop |
+| `/founder/*` | `(founder)` | Founder administration layout | Server-authorized shell | Explicit Founder claim; `/403` on denial; no CSS-only hiding |
+| `/403`, not-found, global error, offline recovery | global | Shared system layout | Static or server-first | No fabricated success; correlation reference where available |
+
+The canonical customer relationship routes are:
+
+| Route | Purpose | Mobile presentation |
+|---|---|---|
+| `/relationships/[relationshipId]` | Redirect to the relationship conversation | Conversation |
+| `/relationships/[relationshipId]/conversation` | Durable conversation and composer | Primary edge-to-edge view |
+| `/relationships/[relationshipId]/plan` | Goals, checkpoints, and next work | Full-screen secondary view |
+| `/relationships/[relationshipId]/work` | Actions, deliverables, approvals, and schedule | Full-screen secondary view |
+| `/relationships/[relationshipId]/performance` | Business outcomes and review history | Full-screen secondary view |
+| `/relationships/[relationshipId]/consumption` | Allowance, usage, forecast, budget, and alerts | Full-screen secondary view |
+| `/relationships/[relationshipId]/governance` | Scope, rights, evidence, pause/resume, and lifecycle | Full-screen secondary view |
+
+Shareable routes identify a view, not a browser-owned authority decision. Relationship and item identifiers are re-authorized on the server for every direct navigation.
+
+## Server and Client Rendering Rules
+
+Server-owned responsibilities:
+
+- session validation, tenant and participant derivation, Founder-claim checks, and safe redirects;
+- relationship authorization and initial read-model retrieval;
+- metadata, locale, text direction, theme bootstrap, and non-secret feature availability;
+- initial conversation page and context summary needed for a stable first render;
+- generated-client invocation through the approved server boundary.
+
+Client-owned interaction islands:
+
+- composer text, attachment selection, voice capture, draft persistence, and explicit send;
+- streamed message presentation, cancellation, retry, and reconnect status;
+- navigation expansion, context-panel selection, sheets, focus restoration, and keyboard behavior;
+- optimistic presentation only when an idempotency key exists and the state remains visibly unconfirmed;
+- local preferences that do not grant authority or alter server-owned lifecycle state.
+
+The browser must not derive tenant identity, authorize relationship access, commit lifecycle transitions, interpret transport delivery as constitutional evidence, or call a foundation model directly. Service responses remain authoritative after every optimistic interaction.
+
+## Navigation Contract
+
+Desktop primary navigation uses `My Professionals`, `Priority Work`, and `Settings`, with Profile and Sign out in the account menu. Relationship context owns Conversation, Plan, Work, Performance, Consumption, and Governance.
+
+Mobile bottom navigation is fixed to four destinations:
+
+1. `Conversation` — current relationship conversation.
+2. `Plan` — goals and next work for the current relationship.
+3. `Work` — customer actions, deliverables, approvals, and schedule.
+4. `Professionals` — relationship switcher and all employed professionals.
+
+Performance, Consumption, Governance, Settings, and Profile remain reachable from the relationship or account header. `Priority Work` is global on desktop and resolves to a professional-scoped item when opened; it is not a fifth mobile destination.
 
 ## Canonical Experience Model
 
@@ -125,6 +197,73 @@ The message stream supports four governed structured objects:
 | Decision Card | Consequential customer choice | States effect, authority, cost/budget impact, and explicit alternatives before commitment |
 
 Performance and consumption remain stable relationship views. Chat receives concise summaries only for material changes, review moments, and threshold alerts.
+
+## API Ownership and Contract Gaps
+
+ADR-002 and ADR-017 control every web-to-service interface: the approved OpenAPI document is updated first, a TypeScript client is generated, and application code consumes the generated model or a thin typed adapter. Browser components must not construct undocumented service URLs or duplicate business rules.
+
+| Experience capability | Owning component | Current contract status | WC-034 implementation rule |
+|---|---|---|---|
+| Relationship admission, detail, timeline, and lifecycle | Business Platform | Canonical operations present | Consume generated client; never mutate lifecycle optimistically |
+| Skill goals and contract performance | Business Platform | Canonical operations present but contract-scoped | Use only where relationship-to-contract ownership is explicit |
+| Approvals and scope-boundary confirmation | Business Platform + Constitutional Engine | Canonical BP operations present | Preserve distinct approval and boundary-confirmation language |
+| Customer evidence list, detail, and export | Business Platform Evidence Reader | Canonical operations present | Never call the Constitutional Audit Ledger directly |
+| Billing summary, invoices, tiers, and preference | Business Platform/WBE projection | Canonical BP operations present | Consumption UI must distinguish billed value from forecast |
+| Durable conversation timeline, send, stream, acknowledgement, read position, and attachment metadata | Business Platform + Professional Runtime | Missing from canonical OpenAPI; interview-message operation exists only in solution contract | BLOCKED until owning contracts add versioned operations and schemas |
+| Professional Plan and Priority Work projections | Business Platform | No canonical aggregate operation | BLOCKED; do not compose conflicting lifecycle truth in the browser |
+| Relationship Consumption projection with allowance, forecast, and thresholds | WBE through Business Platform | Existing billing operations are insufficient for the specified view | BLOCKED pending owner-approved read contract |
+| Registration, email/mobile verification, account linking, and duplicate resolution | Identity boundary + Business Platform | Identity architecture is defined; complete web contract is not canonical here | BLOCKED pending identity/API contract; Keycloak remains credential authority |
+| Cross-channel handoff and continuity checkpoint | Business Platform + Professional Runtime | Specified by AE-01 solution contract; implementation belongs to WC-060 | BLOCKED until WC-060 |
+| Markup Designer management | WBE | Proposed endpoint in acquisition specification, not canonical OpenAPI | BLOCKED; route may not ship against a private URL |
+| Trial Budget management | WBE | Proposed endpoint in acquisition specification, not canonical OpenAPI | BLOCKED pending WBE-owned contract |
+| Coupon creation, listing, and deactivation | WBE | Validation operation exists outside the BP OpenAPI; management contract incomplete | BLOCKED pending WBE-owned Founder contract |
+
+An unavailable contract produces an explicit capability-unavailable state and correlation reference. Mock data is permitted only in isolated tests and Storybook-equivalent development fixtures; it must never be reachable in a production build as a successful service fallback.
+
+## Interaction and Failure Semantics
+
+Every submitted message or consequential command receives a client-generated idempotency key before transport. The visible lifecycle is `draft → sending → accepted | failed`; `delivered` and `read` may appear only when the channel supplies reliable acknowledgements. An accepted command may still be professionally processing and constitutionally uncommitted.
+
+On reconnect, the client re-fetches authoritative state from the last server-confirmed cursor before retrying. Retry reuses the original idempotency key and payload hash. A conflicting payload under the same key is surfaced as a conflict and is never silently replaced.
+
+The shell must provide explicit states for:
+
+- initial loading with stable layout dimensions;
+- empty relationship, conversation, plan, work, performance, consumption, and evidence views;
+- offline with locally retained unsent draft and no false sent state;
+- authentication expiry with preserved non-secret draft and safe re-entry;
+- forbidden relationship or Founder access without resource disclosure;
+- service degradation, timeout, conflict, and unknown outcome;
+- active Emergency Stop, stop pending confirmation, stopped relationship, and unauthorized release attempt;
+- streamed response cancellation and partial-response disclosure.
+
+If Stop is issued during a stream, ordinary rendering stops immediately, the dedicated Stop path remains authoritative, and partial content is labelled incomplete. Reconnect cannot imply release or resume.
+
+## Privacy, Cache, and Telemetry Boundary
+
+- Service workers may cache public static assets and the minimum application shell, but not authenticated HTML, relationship payloads, messages, attachments, evidence, profile data, or API responses.
+- Draft storage is relationship-scoped, contains no authentication token, has a bounded retention period, and is cleared on explicit sign-out or account switch.
+- Tokens remain in secure server-managed sessions; browser storage must not contain bearer or refresh tokens.
+- URLs, analytics events, logs, and error reports must not contain message text, attachment names, email, mobile number, business-sensitive context, or evidence payload.
+- Correlation IDs may be displayed and reported; tenant IDs, internal authority snapshots, and raw constitutional records may not.
+- Attachment preview requires an authorized, short-lived retrieval path and must not create a durable public URL.
+
+## Performance and Resilience Budgets
+
+These budgets are acceptance targets for WC-034 implementation and may be tightened by the owning quality contract:
+
+| Measure | Budget |
+|---|---|
+| Server-rendered shell usable on a supported mid-tier mobile device | ≤3.0 seconds at p75 on a tested constrained mobile profile |
+| Authenticated route transition with cached shell | ≤500ms to visible pending or resolved state at p75 |
+| Composer input response | ≤100ms interaction latency at p75 |
+| Accepted message acknowledgement under healthy service conditions | ≤1.0 second at p95, excluding professional response generation |
+| First streamed professional content after server acceptance | Measured separately by professional/runtime class; never included in message-delivery status |
+| Layout shift | No visible shift caused by late font, avatar, status, or toolbar loading; automated CLS target ≤0.1 |
+| Conversation history | Cursor-paginated and virtualized or incrementally rendered; no unbounded initial payload |
+| Offline recovery | Draft restored without duplicate submission; authoritative cursor reconciled before retry |
+
+Emergency Stop latency is excluded from ordinary UI budgets because AD-001 provides the stricter end-to-end constitutional floor. Frontend changes must neither consume nor obscure that budget.
 
 ## Channel-Specific Login and Registration
 
@@ -254,12 +393,15 @@ WhatsApp messages use explicit evidence text because transport delivery ticks ca
 - Emergency Stop remains reachable from every authenticated professional surface.
 - Theme, locale, drafts, unread position, and chosen default start view survive navigation and reconnect where constitutionally and technically permitted.
 
-## Decisions Still Required
+## Open Product Decisions and Release Gates
 
-1. Final four mobile bottom-navigation destinations.
-2. Desktop navigation labels and whether Priority Work is global or professional-scoped.
-3. Exact customer-visible names for Plan, Work, Performance, Consumption, and Relationship in all language packs.
-4. Which attachment types are required for the first professional release.
-5. Voice-message retention, transcription consent, and transcript correction behavior.
-6. The notification contract when the customer is active on one channel and receives activity on another.
-7. How global priority ordering behaves when a customer employs multiple configured professionals.
+| Decision | Owner | Implementation effect |
+|---|---|---|
+| Localized customer-visible names for Plan, Work, Performance, Consumption, and Governance | Product Owner with language review | Language packs remain review-blocked; route ownership is unaffected |
+| First-release attachment types, limits, scanning, and preview policy | Product Owner + Security Architect + owning service | Attachment control remains unavailable until approved |
+| Voice retention, transcription consent, correction, accessibility, and evidence lineage | Product Owner + Security/Data/Solution Architecture | Voice control may be visually reserved but cannot record or upload |
+| Cross-channel notification and active-channel suppression contract | Product Owner + Solution Architect | Notifications remain out of WC-034 implementation until specified |
+| Global priority ordering across multiple professionals | Product Owner + Business Platform owner | Priority Work uses server-provided order only; no browser ranking |
+| Vercel AI SDK use for typed stream consumption | Solution Architect dependency decision | Optional spike only; no direct model/provider, database, or Auth.js adoption |
+
+The navigation destinations and global-versus-relationship scope are closed by this architecture. The remaining decisions are routed to their owning offices and cannot be silently chosen during implementation.
