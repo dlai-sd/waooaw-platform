@@ -1,6 +1,29 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-08-08 (WC-052 Agent Employment Program Skeleton DONE)
+**Last Updated:** 2026-08-08 (WC-053 GOAL-005 Orchestration Decision Record DONE)
+
+---
+
+## SESSION RECORD — 2026-08-08 (WC-053 GOAL-005 ORCHESTRATION DECISION — DONE)
+
+| Milestone | Status |
+|---|---|
+| Founder debate recorded | DONE — three operating models compared |
+| GOAL-005 operating model selected | DONE — Goal-Orchestrated, just-in-time institutional grooming |
+| Authorization boundary | DONE — specification/grooming only; no implementation authorization |
+| Institutional separation | DONE — INST-013 orchestrates and may not contribute to GOAL-005 |
+| Independent review | DONE — R-029 APPROVED |
+| Office handoff | READY — INST-013 must assess G-2 Understanding readiness |
+
+### Output
+
+- `strategy/FOUNDER-SESSION-2026-08-08-goal-005-orchestration-decision.md` is the controlling operating-model decision for GOAL-005.
+- Shared foundations and AE-01 receive focused, implementation-grade grooming; AE-02 remains skeletal pending Sujay validation and foundation progress; AE-03→AE-06 remain skeletons.
+- GOAL-005 is REGISTERED and authorized for G-2 Understanding, not implementation.
+
+### Next Authorized Action
+
+Goal Orchestrator (INST-013) loads its Office Knowledge Specification and reports READY or BLOCKED for GOAL-005 G-2 Understanding. No Goal Understanding Record is produced until that readiness declaration.
 
 ---
 
