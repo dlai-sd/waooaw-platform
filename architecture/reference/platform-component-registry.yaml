@@ -39,8 +39,8 @@ cct_inventory:
 sprint_inventory:
   recorded: 48
   closed: 46
-  active: 1
-  blocked: 1
+  active: 0
+  blocked: 2
 
 # `LIVE` means implemented and executable in repository scope. It does not prove
 # environment deployment or customer operation; use each manifest's maturity block.

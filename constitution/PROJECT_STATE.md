@@ -14,7 +14,7 @@
 | R-031 constitutional readiness review | DONE — APPROVED |
 | Goal Understanding Record | DONE — GUR-GOAL-005-INST-013-01 produced; original Goal preserved |
 | Constitutional Analyst review | DONE — R-032 APPROVED without correction |
-| G-3 Classification | PROVISIONAL — Cross-domain · Build · Constitutional · Elevated; R2-10 window open |
+| G-3 Classification | BLOCKED — R-033 CHALLENGE; CB-002 awaits Founder adjudication of GEOM G-10 record type |
 
 ### Decision Space
 

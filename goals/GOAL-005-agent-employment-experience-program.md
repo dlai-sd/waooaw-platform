@@ -1,6 +1,6 @@
 # GOAL-005 — Agent Employment Experience Program
 
-**Status:** G-3 CLASSIFICATION PROVISIONAL — R2-10 CHALLENGE WINDOW OPEN; NO IMPLEMENTATION AUTHORIZATION
+**Status:** G-3 CLASSIFICATION CHALLENGED — CB-002 AWAITING FOUNDER ADJUDICATION; NO IMPLEMENTATION AUTHORIZATION
 **Registrant:** Yogesh Khandge (Founder)
 **Registered:** 2026-08-08
 **Work Contract:** WC-052
@@ -188,13 +188,18 @@ These consequences constrain future Planning; they do not select Institutions, d
 | Field | Value |
 |---|---|
 | Window opened | 2026-08-08T09:45:19+00:00 |
-| Window closes | End of the independent Constitutional Analyst classification-review session |
+| Window closed | 2026-08-08 — R-033 review session completed |
 | Reviewing Institution | INST-002 — Constitutional Analyst |
-| CA election | PENDING — challenge or no-challenge decision required |
-| If challenged | Classification remains PROVISIONAL; escalate to Founder (INST-001) for adjudication |
-| If not challenged | Classification stands and WC-055 may close with a recommendation for separately authorized G-4 Planning |
+| CA election | CHALLENGE — GEOM G-10 omits a valid Classification record type |
+| Disposition | Classification remains PROVISIONAL; CB-002 escalates to Founder (INST-001) for adjudication |
 
-No G-4 Planning activity may begin while this window is open.
+No G-4 Planning activity may begin while the R2-10 challenge remains unresolved.
+
+### R2-10 Challenge Result
+
+R-033 confirms that the classification dimensions and P2 mapping are supported, but challenges the constitutional record format. `Contribution Record` is not an available correction because INST-013 is prohibited from contributing to a Goal it orchestrates. CB-002 requests a narrow Founder-ratified GEOM G-10 amendment adding `Classification Record`.
+
+No G-4 Planning, Institution routing, or GO Authorization may begin until Founder adjudication and independent closure review are recorded.
 
 ## 1. Program Intent
 
