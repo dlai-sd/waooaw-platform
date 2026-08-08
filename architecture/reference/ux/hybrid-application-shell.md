@@ -114,49 +114,56 @@ The message stream supports four governed structured objects:
 
 Performance and consumption remain stable relationship views. Chat receives concise summaries only for material changes, review moments, and threshold alerts.
 
-## Login and Registration Experience
+## Channel-Specific Login and Registration
 
-Login and registration use the same restrained, conversation-first application grammar as the Next.js Chatbot Template. They must feel like entering or resuming a conversation, not leaving WAOOAW for a generic enterprise identity page.
+WAOOAW does not force one authentication interaction onto every channel. WhatsApp uses conversational onboarding. Web and mobile use dedicated login and registration pages based on the restrained layout and interaction quality of the Next.js Chatbot Template.
 
-### Shared Layout
+Both paths resolve to one customer identity and one continuous professional relationship. A customer who registers through WhatsApp and later signs in on web or mobile must see the same conversation, plan, work, and relationship state after secure identity linking.
+
+### WhatsApp Registration
+
+WhatsApp registration happens inside the WhatsApp conversation. There is no redirect to a web registration form for ordinary low-risk onboarding.
+
+The verified WhatsApp mobile number is the channel identity under ADR-023. WAOOAW asks for other mandatory details one at a time in the customer's selected language, explains why each detail is needed, and asks the customer to confirm the collected summary before registration completes.
+
+The conversational flow must:
+
+1. Recognize the Meta-verified WhatsApp number without asking the customer to type it again.
+2. Detect an existing linked customer before creating a new registration.
+3. Collect only mandatory details needed for identity, communication, and the selected professional journey.
+4. Support text and voice answers, with explicit confirmation when transcription is uncertain.
+5. Present privacy, terms, communication consent, and material disclosures in plain language with explicit responses.
+6. Confirm the resulting customer profile and selected language.
+7. Continue in the same WhatsApp conversation without creating a second thread.
+
+WhatsApp registration grants only the assurance permitted by ADR-023. Contract acceptance, payment authorization, Stop release, identity attachment to an existing high-assurance account, and other tiered actions still require their approved step-up path.
+
+### Web and Mobile Authentication Layout
+
+Web and mobile login/register are dedicated authentication pages. They do not simulate a chat conversation and do not place authentication fields inside the professional message stream.
+
+Their visual and behavioral reference is the Next.js Chatbot Template authentication experience:
 
 - Full-height application surface with the WAOOAW logo at top-left and language/theme controls at top-right.
 - A focused authentication column on desktop, sized for comfortable reading rather than stretched across the viewport.
-- A full-width, edge-to-edge authentication flow on mobile with safe-area padding and native keyboard behavior.
+- A full-width, edge-to-edge flow on mobile with safe-area padding, stable software-keyboard behavior, and native-feeling transitions.
+- Clear login/register switching without returning to the marketing homepage.
 - No hero illustration, stock image, marketing carousel, decorative background image, or nested card composition.
 - Light and dark themes only.
 - Noto Sans with language-specific Noto subsets loaded before interactive content to avoid script and layout shift.
 - The selected language is resolved before first render and can always be corrected from the header.
 
-### Login
+Authentication methods remain Keycloak-brokered and are presented in the approved persona-appropriate order. Controls are commands, not decorative cards. Errors remain inline, preserve entered non-secret values and selected language, and provide a next step.
 
-The first message is direct: `Continue with your WaooaW professionals.` The page presents the available Keycloak-brokered methods in persona-appropriate order:
+Registration collects only the minimum mandatory details for the selected identity path. WhatsApp/mobile-number verification links the web or mobile identity to an existing WhatsApp registration when one exists; it must not mint a duplicate customer merely because the customer entered through another channel.
 
-1. Continue with Google
-2. Continue with WhatsApp/Phone
-3. Additional approved identity providers when configured
-4. Existing account credentials where institutionally supported
-
-Authentication controls are commands, not decorative cards. Errors remain inline, preserve the selected language, and provide a next step. A safe server-owned return target resumes the exact professional and unread position that initiated login.
-
-### Registration
-
-Registration is progressive and conversational in pacing, but each legal or consequential consent remains an explicit form decision. It collects only the minimum information needed for the selected identity path and professional experience.
-
-The flow:
-
-1. Select or confirm identity method.
-2. Confirm detected language.
-3. Collect and verify WhatsApp/phone only when required for continuity or the selected professional.
-4. Explain why each requested field is needed at the point of collection.
-5. Confirm terms and privacy through explicit, accessible controls.
-6. Resume the pre-authentication conversation or professional context.
-
-A public Concierge conversation may be summarized above the authentication action as `Continue this conversation`, but authentication never displays fabricated message history or treats the Concierge as a hired professional.
+After successful login or registration, a safe server-owned return target opens the most recent cross-channel professional conversation or the customer's configured default start view. Authentication itself remains a distinct transition screen.
 
 ### Authentication Boundaries
 
 - Keycloak remains the identity broker; the application does not implement credential verification.
+- ADR-023 remains the identity authority for WhatsApp-native onboarding; Keycloak does not replace the verified WhatsApp channel identity.
+- Linking WhatsApp and Keycloak identities requires explicit verification and deterministic duplicate-account handling.
 - Tenant, participant, Founder, and role claims are accepted only from the validated server session.
 - Founder routes require an explicit Founder claim and use a server-side route boundary.
 - Public pages never preload authenticated relationship data.
