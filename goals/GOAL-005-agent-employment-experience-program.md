@@ -1,6 +1,6 @@
 # GOAL-005 — Agent Employment Experience Program
 
-**Status:** G-3 CLASSIFICATION CHALLENGED — CB-002 AWAITING FOUNDER ADJUDICATION; NO IMPLEMENTATION AUTHORIZATION
+**Status:** G-3 CLASSIFICATION CORRECTED — INDEPENDENT R2-10 CLOSURE REVIEW PENDING; NO IMPLEMENTATION AUTHORIZATION
 **Registrant:** Yogesh Khandge (Founder)
 **Registered:** 2026-08-08
 **Work Contract:** WC-052
@@ -152,9 +152,10 @@ R-032 APPROVED GUR-GOAL-005-INST-013-01 without correction on 2026-08-08. G-3 Cl
 |---|---|
 | `institution_id` | INST-013 |
 | `goal_id` | GOAL-005 |
-| `classification_id` | GCL-GOAL-005-INST-013-01 |
-| `issued_at` | 2026-08-08T09:45:19+00:00 |
-| `status` | PROVISIONAL — R2-10 Constitutional Analyst challenge window open |
+| `record_id` | GCL-GOAL-005-INST-013-01 |
+| `record_type` | Classification Record |
+| `produced_at` | 2026-08-08T09:45:19+00:00 |
+| `status` | CORRECTED — Founder Option A ratified; independent R2-10 closure review pending |
 
 Classification is an append-only state transition on the registered Goal. It does not modify the approved Understanding Record.
 
@@ -191,15 +192,16 @@ These consequences constrain future Planning; they do not select Institutions, d
 | Window closed | 2026-08-08 — R-033 review session completed |
 | Reviewing Institution | INST-002 — Constitutional Analyst |
 | CA election | CHALLENGE — GEOM G-10 omits a valid Classification record type |
-| Disposition | Classification remains PROVISIONAL; CB-002 escalates to Founder (INST-001) for adjudication |
+| Founder adjudication | OPTION A — narrow G-10 amendment ratified on 2026-08-08 |
+| Disposition | Classification corrected; R-033 and CB-002 remain open pending independent INST-002 closure review |
 
 No G-4 Planning activity may begin while the R2-10 challenge remains unresolved.
 
 ### R2-10 Challenge Result
 
-R-033 confirms that the classification dimensions and P2 mapping are supported, but challenges the constitutional record format. `Contribution Record` is not an available correction because INST-013 is prohibited from contributing to a Goal it orchestrates. CB-002 requests a narrow Founder-ratified GEOM G-10 amendment adding `Classification Record`.
+R-033 confirms that the classification dimensions and P2 mapping are supported, but challenges the constitutional record format. `Contribution Record` is not an available correction because INST-013 is prohibited from contributing to a Goal it orchestrates. The Founder selected Option A on 2026-08-08, ratifying the narrow GEOM G-10 addition of `Classification Record`; GCL-GOAL-005-INST-013-01 now carries all five attestation fields.
 
-No G-4 Planning, Institution routing, or GO Authorization may begin until Founder adjudication and independent closure review are recorded.
+No G-4 Planning, Institution routing, or GO Authorization may begin until independent closure review is recorded.
 
 ## 1. Program Intent
 

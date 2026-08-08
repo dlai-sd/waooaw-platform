@@ -4,7 +4,7 @@
 **Raised by:** Goal Orchestrator (INST-013), following R-033 challenge by Constitutional Analyst (INST-002)
 **Affected Goal:** GOAL-005
 **Affected Work Contract:** WC-055
-**Status:** OPEN — awaiting Founder adjudication
+**Status:** RESOLUTION APPLIED — independent INST-002 closure review pending
 **Severity:** Constitutional blocker
 
 ## Blocking Condition
@@ -43,6 +43,12 @@ Choose one:
 - **B — Direct a broader constitutional design for Goal state-transition record types.** GOAL-005 remains blocked while that design is produced and ratified.
 - **C — Suspend GOAL-005 at G-3.** Preserve all current evidence and take no further specification action.
 
+## Founder Adjudication
+
+**Decision:** OPTION A — ratified by Founder on 2026-08-08.
+
+The Founder ratified the narrow GEOM G-10 amendment adding `Classification Record` and authorized correction of GCL-GOAL-005-INST-013-01. The amendment and corrected attestation are applied. This adjudication does not authorize G-4 Planning or implementation.
+
 ## Prohibited Compensation
 
 - Do not label INST-013's orchestration as a Contribution Record.
@@ -52,7 +58,8 @@ Choose one:
 
 ## Unblock Evidence
 
-- Explicit Founder adjudication recorded.
-- Ratified GEOM text or other constitutionally valid resolution exists.
-- Corrected Classification passes independent INST-002 review.
-- R-033 and CB-002 record closure.
+- DONE — explicit Founder Option A adjudication recorded.
+- DONE — ratified GEOM G-10 text includes `Classification Record`.
+- DONE — GCL-GOAL-005-INST-013-01 contains all five G-10 fields.
+- PENDING — corrected Classification passes independent INST-002 review.
+- PENDING — R-033 and CB-002 record closure.

@@ -14,7 +14,7 @@
 | R-031 constitutional readiness review | DONE — APPROVED |
 | Goal Understanding Record | DONE — GUR-GOAL-005-INST-013-01 produced; original Goal preserved |
 | Constitutional Analyst review | DONE — R-032 APPROVED without correction |
-| G-3 Classification | BLOCKED — R-033 CHALLENGE; CB-002 awaits Founder adjudication of GEOM G-10 record type |
+| G-3 Classification | IN REVIEW — Founder Option A ratified; G-10 amended and GCL corrected; INST-002 closure review pending |
 
 ### Decision Space
 
@@ -22,7 +22,7 @@ INST-013 may understand, classify, plan, route, monitor, resolve Goal-level gaps
 
 ### Current State
 
-READY for GOAL-005 G-2 Understanding under WC-055. No G-2 record, G-4 plan, GO Authorization, or implementation authority has been produced.
+G-2 is approved. G-3 correction is awaiting independent closure review. No G-4 plan, GO Authorization, or implementation authority has been produced.
 
 ---
 
