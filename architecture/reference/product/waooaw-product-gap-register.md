@@ -19,21 +19,21 @@
 
 | Gap | Shared capability | Class | Earliest wave | Grooming owner | Closure evidence skeleton | Status |
 |---|---|---|---|---|---|---|
-| PG-01 | Conversational agent and skill discovery | WAVE_BLOCKER | 1 | Product + Business Architecture | Prospect finds a suitable agent without prior product knowledge | UNGROOMED |
-| PG-02 | Consistent pre-employment rights and capability presentation | FOUNDATION_BLOCKER | 1 | Business Architecture + Constitutional Analysis | Rights, limits, authority, skills, evidence, and price precede commitment | UNGROOMED |
-| PG-03 | Durable relationship and conversation identity | FOUNDATION_BLOCKER | 1 | Enterprise + Data Architecture | Same relationship is resolved without tenant or participant ambiguity | UNGROOMED |
-| PG-04 | Cross-channel Human Override contract | FOUNDATION_BLOCKER | 1 | Enterprise + Security Architecture | Stop is reachable, scoped, evidenced, and channel-independent | UNGROOMED |
-| PG-05 | Generic professional interview runtime | WAVE_BLOCKER | 1 | Product + AI Architecture | Prospect interviews an agent against domain-aware scenarios | UNGROOMED |
-| PG-06 | Shared conversational context capture | WAVE_BLOCKER | 1 | Product + AI Architecture | Minimum context captured in business language within declared burden | UNGROOMED |
-| PG-07 | Generic Decision Space configuration journey | FOUNDATION_BLOCKER | 1 | Enterprise + Solution Architecture | Proposed authority and boundaries are reviewable before commitment | UNGROOMED |
-| PG-08 | Generic demonstration and trial lifecycle | FOUNDATION_BLOCKER | 1 | Business Architecture + Billing | Trial rights, disclosures, data, cost, expiry, and conversion are coherent | UNGROOMED |
-| PG-09 | Trial/live entitlement and price presentation | WAVE_BLOCKER | 1 | Product + Billing | Customer understands current mode and financial consequence | UNGROOMED |
-| PG-10 | Generic Employment Contract composition | FOUNDATION_BLOCKER | 1 | Business Architecture + Legal | Common rights plus domain schedule form one evidenced contract | UNGROOMED |
-| PG-11 | Employment lifecycle state and transition contract | FOUNDATION_BLOCKER | 1 | Enterprise + Data Architecture | Hire and later lifecycle commands are valid, evidenced, and idempotent | UNGROOMED |
-| PG-12 | Shared onboarding payment and spend-authority experience | WAVE_BLOCKER | 1 | Billing + Product | Payment and authority transition exactly once with transparent state | UNGROOMED |
-| PG-13 | Shared billing state and graceful degradation presentation | WAVE_BLOCKER | 1 | Billing + Product | Usage limits and reduced capability are disclosed consistently | UNGROOMED |
-| PG-14 | Omnichannel handoff, routing, and delivery state | WAVE_BLOCKER | 1 | Enterprise + Solution Architecture | Authenticated handoff preserves context and prevents duplicate delivery | UNGROOMED |
-| PG-15 | Customer Evidence Window | WAVE_BLOCKER | 1 | Product + Data Architecture | Customer sees material decisions, actions, outcomes, and charges | UNGROOMED |
+| PG-01 | Conversational agent and skill discovery | WAVE_BLOCKER | 1 | Product + Business Architecture | Prospect finds a suitable agent without prior product knowledge | SPEC_CLOSED — D-06 proof pending |
+| PG-02 | Consistent pre-employment rights and capability presentation | FOUNDATION_BLOCKER | 1 | Business Architecture + Constitutional Analysis | Rights, limits, authority, skills, evidence, and price precede commitment | SPEC_CLOSED — D-06 proof pending |
+| PG-03 | Durable relationship and conversation identity | FOUNDATION_BLOCKER | 1 | Enterprise + Data Architecture | Same relationship is resolved without tenant or participant ambiguity | SPEC_CLOSED — D-06 proof pending |
+| PG-04 | Cross-channel Human Override contract | FOUNDATION_BLOCKER | 1 | Enterprise + Security Architecture | Stop is reachable, scoped, evidenced, and channel-independent | SPEC_CLOSED — D-06 proof pending |
+| PG-05 | Generic professional interview runtime | WAVE_BLOCKER | 1 | Product + AI Architecture | Prospect interviews an agent against domain-aware scenarios | SPEC_CLOSED — D-06 proof pending |
+| PG-06 | Shared conversational context capture | WAVE_BLOCKER | 1 | Product + AI Architecture | Minimum context captured in business language within declared burden | SPEC_CLOSED — D-06 proof pending |
+| PG-07 | Generic Decision Space configuration journey | FOUNDATION_BLOCKER | 1 | Enterprise + Solution Architecture | Proposed authority and boundaries are reviewable before commitment | SPEC_CLOSED — D-06 proof pending |
+| PG-08 | Generic demonstration and trial lifecycle | FOUNDATION_BLOCKER | 1 | Business Architecture + Billing | Trial rights, disclosures, data, cost, expiry, and conversion are coherent | SPEC_CLOSED — D-06 proof pending |
+| PG-09 | Trial/live entitlement and price presentation | WAVE_BLOCKER | 1 | Product + Billing | Customer understands current mode and financial consequence | SPEC_CLOSED — D-06 proof pending |
+| PG-10 | Generic Employment Contract composition | FOUNDATION_BLOCKER | 1 | Business Architecture + Legal | Common rights plus domain schedule form one evidenced contract | SPEC_CLOSED — D-06 proof pending |
+| PG-11 | Employment lifecycle state and transition contract | FOUNDATION_BLOCKER | 1 | Enterprise + Data Architecture | Hire and later lifecycle commands are valid, evidenced, and idempotent | SPEC_CLOSED — D-06 proof pending |
+| PG-12 | Shared onboarding payment and spend-authority experience | WAVE_BLOCKER | 1 | Billing + Product | Payment and authority transition exactly once with transparent state | SPEC_CLOSED — D-06 proof pending |
+| PG-13 | Shared billing state and graceful degradation presentation | WAVE_BLOCKER | 1 | Billing + Product | Usage limits and reduced capability are disclosed consistently | SPEC_CLOSED — D-06 proof pending |
+| PG-14 | Omnichannel handoff, routing, and delivery state | WAVE_BLOCKER | 1 | Enterprise + Solution Architecture | Authenticated handoff preserves context and prevents duplicate delivery | SPEC_CLOSED — D-06 proof pending |
+| PG-15 | Customer Evidence Window | WAVE_BLOCKER | 1 | Product + Data Architecture | Customer sees material decisions, actions, outcomes, and charges | SPEC_CLOSED — D-06 proof pending |
 | PG-16 | Shared provider connection and credential-custody journey | WAVE_BLOCKER | 2 | Security + Solution Architecture | Customer connects, repairs, and revokes providers without credential exposure | UNGROOMED |
 | PG-17 | Domain Vocabulary Engine platform capability | WAVE_BLOCKER | 2 | Enterprise + AI Architecture | Shared engine specializes vocabulary without domain runtime branching | UNGROOMED |
 | PG-18 | Shared intent crystallization and locked-artifact experience | WAVE_BLOCKER | 2 | Product + Solution Architecture | Customer recognizes and governs the artifact controlling execution | UNGROOMED |
@@ -56,6 +56,14 @@
 | PG-35 | Provider ecosystem onboarding and conformance | DEFERRED_CAPABILITY | 5 | Enterprise + Security Architecture | New providers inherit credential, evidence, availability, and revocation controls | UNGROOMED |
 | PG-36 | Organizational outcome delegation and plan contract | WAVE_BLOCKER | 6 | Business + Enterprise Architecture | Customer approves outcome, authority, budget, dependencies, and stop conditions | UNGROOMED |
 | PG-37 | Constitutional multi-agent orchestration | WAVE_BLOCKER | 6 | Enterprise + AI Architecture | Coordination is bounded, observable, idempotent, and interruptible | UNGROOMED |
+
+## GOAL-005 Focused-Grooming Intake
+
+| Intake ID | Source findings | Related gaps | Closure phase | Accountable offices | Gate effect | Status |
+|---|---|---|---|---|---|---|
+| G5-TRIAL-POLICY-01 | BCG-01; PCR-01 | PG-08; PG-09 | D-05 | INST-011 primary; INST-004 review | D-06 must consume policy unchanged or raise governed revision | DECIDED AND ACCEPTED — R-039 |
+
+`G5-TRIAL-POLICY-01` requires one approved policy and evidence set covering duration, included capability, price or credit treatment, output ownership, expiry, conversion trigger, cancellation/refund behavior, qualifying customer profile, and post-implementation proof threshold. Intake records a discovered gap; it does not change PG-08 or PG-09 from `UNGROOMED` or authorize implementation.
 
 ## Gap Intake Rule
 

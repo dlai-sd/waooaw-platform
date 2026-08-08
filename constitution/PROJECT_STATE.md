@@ -22,7 +22,28 @@
 | CA Readiness Review | DONE — R-034 APPROVED |
 | Registrant acknowledgement | DONE — ACK-GOAL-005-INST-001-01 |
 | Phase 1 GO Authorizations | DONE — INST-003 and INST-011 authorized for D-01 |
-| D-01 Institution acceptance | IN PROGRESS |
+| D-01 Institution acceptance | DONE — INST-003 and INST-011 accepted after valid GOAs |
+| D-01 contributions | DONE — capability and product-boundary records published |
+| D-01 gate review | DONE — R-035 CLEAR; shared trial-policy gap routed to D-05 |
+| D-03 GO Authorizations | DONE — INST-004 and INST-006 authorized; no other Phase 2 office authorized |
+| D-03 Institution acceptance | DONE — INST-004 and INST-006 accepted after valid GOAs |
+| D-03 contributions | DONE — architecture and data-semantics records published |
+| D-03 gate review | DONE — R-036-A1 CLEAR after all clarification conditions closed |
+| D-02 GO Authorizations | DONE — INST-004 and INST-002 authorized; no implementation authority |
+| D-02 Institution acceptance | DONE — INST-004 and INST-002 accepted after valid GOAs |
+| D-02 contributions | DONE — AEEC Foundation v1.0 and constitutional obligations recorded |
+| D-02 gate review | DONE — R-037 CLEAR |
+| D-04 GO Authorizations | DONE — INST-004, INST-007, and INST-005 authorized |
+| D-04 Institution acceptance | DONE — INST-004, INST-007, and INST-005 accepted after valid GOAs |
+| D-04 contributions | DONE — continuity architecture, security, and solution contract integrated |
+| D-04 gate review | DONE — R-038 CLEAR WITH CONDITIONS carried to D-05 |
+| D-05 GO Authorizations | DONE — INST-011 primary and INST-004 review authorized |
+| D-05 Institution acceptance | DONE — INST-011 and INST-004 accepted after valid GOAs |
+| D-05 contribution | DONE — Wave 1 closure plan and trial policy recorded |
+| D-05 architecture review | DONE — R-039 CLEAR; G5-TRIAL-POLICY-01 accepted |
+| D-06 mandatory Sujay workshop input | BLOCKED — CB-003; no attested workshop record exists |
+| D-06 GO Authorizations | WITHHELD pending CB-003 closure |
+| Implementation authority | NONE |
 
 ### Decision Space
 
@@ -30,7 +51,7 @@ INST-013 may understand, classify, plan, route, monitor, resolve Goal-level gaps
 
 ### Current State
 
-G-2 and G-3 are approved. The G-4 Execution Plan passed R-034 and was acknowledged by the Registrant. Phase 1 GO Authorizations are issued to INST-003 and INST-011 for D-01 only. No specialist contribution or implementation authority has yet been produced.
+G-2 and G-3 are approved. The G-4 Execution Plan passed R-034 and was acknowledged by the Registrant. D-01 passed independent gate review through R-035. Phase 2 GO Authorizations are issued only to INST-004 and INST-006 for D-03. G5-TRIAL-POLICY-01 is deferred to D-05 and blocks D-06 finalization. No implementation authority exists.
 
 ---
 

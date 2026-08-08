@@ -7,7 +7,7 @@
 | `record_id` | GEP-GOAL-005-INST-013-01 |
 | `record_type` | Execution Plan |
 | `produced_at` | 2026-08-08T10:40:09+00:00 |
-| Status | ACKNOWLEDGED — R-034 APPROVED; Phase 1 GO Authorizations issued |
+| Status | ACTIVE — D-01 CLEAR through R-035; Phase 2 GO Authorizations issued |
 
 ## Registrant Acknowledgement Record
 
@@ -54,6 +54,99 @@
 | Participation Window | 1 constitutional session after valid acceptance |
 | `issued_by` | INST-013 |
 | `issued_at` | 2026-08-08T10:53:18+00:00 |
+
+## Phase 2 Authorization Records
+
+### GOA-GOAL-005-INST-004-01
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GOA-GOAL-005-INST-004-01 |
+| `record_type` | Authorization Record |
+| `produced_at` | 2026-08-08T11:07:00+00:00 |
+| `authorization_id` | GOA-GOAL-005-INST-004-01 |
+| Authorized Institution | INST-004 — Enterprise Architect |
+| Contribution scope | D-03 Identity and Employment State Model architecture |
+| Evidence required | Shared identity invariants, aggregate boundary, lifecycle states and transitions, exactly-once activation semantics, correlation rules, and cross-wave boundary |
+| Participation Window | 3 constitutional sessions after valid acceptance |
+| Constraint | Consume D-01; do not finalize product policy, D-02, D-04, D-06, or implementation design |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-08T11:07:00+00:00 |
+
+### GOA-GOAL-005-INST-006-01
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GOA-GOAL-005-INST-006-01 |
+| `record_type` | Authorization Record |
+| `produced_at` | 2026-08-08T11:07:01+00:00 |
+| `authorization_id` | GOA-GOAL-005-INST-006-01 |
+| Authorized Institution | INST-006 — Data Architect |
+| Contribution scope | D-03 durable identity, state, idempotency, evidence-correlation, and continuity data contribution |
+| Evidence required | Identifier ownership, relationship aggregate semantics, transition persistence, idempotency keys, evidence correlation, retention, and tenant boundaries |
+| Participation Window | 2 constitutional sessions after valid acceptance |
+| Constraint | Contribute data semantics only; do not approve own evidence or derive implementation schemas |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-08T11:07:01+00:00 |
+
+## Phase 3 Authorization Records
+
+### GOA-GOAL-005-INST-004-02
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GOA-GOAL-005-INST-004-02 |
+| `record_type` | Authorization Record |
+| `produced_at` | 2026-08-08T12:31:00+00:00 |
+| `authorization_id` | GOA-GOAL-005-INST-004-02 |
+| Authorized Institution | INST-004 — Enterprise Architect |
+| Contribution scope | D-02 Agent Employment Experience Contract Foundation v1.0 |
+| Participation Window | 3 constitutional sessions after valid acceptance |
+| Constraint | Consume D-01/D-03; define normative foundation only; no D-04 transport or implementation design |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-08T12:31:00+00:00 |
+
+### GOA-GOAL-005-INST-002-01
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GOA-GOAL-005-INST-002-01 |
+| `record_type` | Authorization Record |
+| `produced_at` | 2026-08-08T12:31:01+00:00 |
+| `authorization_id` | GOA-GOAL-005-INST-002-01 |
+| Authorized Institution | INST-002 — Constitutional Analyst |
+| Contribution scope | D-02 constitutional rights, consent, Human Override, evidence, and traceability contribution |
+| Participation Window | 1 constitutional session after valid acceptance |
+| Constraint | Constitutional contribution only; INST-001 remains independent final validator |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-08T12:31:01+00:00 |
+
+## Phase 4 Authorization Records
+
+| Authorization | Authorized Institution | Scope | Issued at | Participation Window |
+|---|---|---|---|---|
+| GOA-GOAL-005-INST-004-03 | INST-004 — Enterprise Architect | D-04 omnichannel continuity architecture and state ownership | 2026-08-08T13:27:00+00:00 | 3 sessions after acceptance |
+| GOA-GOAL-005-INST-007-01 | INST-007 — Security Architect | D-04 authentication, participant verification, tenant isolation, threats and controls | 2026-08-08T13:27:01+00:00 | 2 sessions after acceptance |
+| GOA-GOAL-005-INST-005-01 | INST-005 — Solution Architect | D-04 channel-neutral contract, events, failures, degradation, conformance interfaces | 2026-08-08T13:27:02+00:00 | 2 sessions after acceptance |
+
+Each row is an `Authorization Record` with `institution_id` INST-013, `goal_id` GOAL-005, `record_id` and `authorization_id` equal to the listed Authorization, `produced_at` equal to Issued at, and `issued_by` INST-013. Scope is specification-only: consume D-02/D-03; define no implementation, provider selection, or D-06 release package.
+
+## Phase 5 Authorization Records
+
+| Authorization | Authorized Institution | Scope | Issued at | Participation Window |
+|---|---|---|---|---|
+| GOA-GOAL-005-INST-011-02 | INST-011 — Product Owner | D-05 Shared Gap Closure Plan, including G5-TRIAL-POLICY-01 product decision and all Wave 1 foundation closure evidence | 2026-08-08T14:02:00+00:00 | 2 sessions after acceptance |
+| GOA-GOAL-005-INST-004-04 | INST-004 — Enterprise Architect | D-05 architecture review for sequencing, D-02/D-03/D-04 conformance, ordering evidence, and threat-proof mapping | 2026-08-08T14:02:01+00:00 | 1 session after acceptance |
+
+Each row is an `Authorization Record` with `institution_id` INST-013, `goal_id` GOAL-005, `record_id` and `authorization_id` equal to Authorization, `produced_at` equal to Issued at, and `issued_by` INST-013. D-05 defines closure decisions and evidence only; it authorizes no implementation or D-06 finalization.
 
 ## Outcome and Boundary
 
