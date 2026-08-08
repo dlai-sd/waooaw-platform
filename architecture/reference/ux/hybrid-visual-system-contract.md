@@ -10,23 +10,16 @@
 
 ## Purpose and Precedence
 
-This contract maps the ratified WAOOAW visual vocabulary into the public, authentication, customer, Founder, and shared-system surfaces defined by WC-034. It does not replace the constitutional UX vocabulary. If this contract, the homepage prototype, or a component example conflicts with that vocabulary, the vocabulary controls.
+This contract maps the ratified WAOOAW visual vocabulary into the public, authentication, customer, Founder, and shared-system surfaces defined by WC-034. It does not replace the constitutional UX vocabulary. If this contract, a static HTML design input, or a component example conflicts with that vocabulary, the vocabulary controls.
 
-The homepage prototype is a composition reference only. It contributes hierarchy, conversational focus, clear status grouping, and compact navigation ideas. It is not a source of production tokens or component CSS.
+## Static HTML Review Status
 
-## Prototype Reconciliation
-
-| Prototype characteristic | Decision | Required production treatment |
+| Artifact | Founder decision | Architecture treatment |
 |---|---|---|
-| Dark-only presentation | Reject as default | Light, dark, and system-following themes; light remains default for explicit selection |
-| Inter font | Reject | Noto Sans plus the active language-specific Noto subset; Noto Nastaliq Urdu for Urdu |
-| Alternate blue/green/orange/purple meanings | Reject | Ratified WAOOAW brand, semantic, and constitutional tokens only |
-| Override red used as Emergency Stop | Preserve meaning, replace value | `--color-override: #DC2626`; never reuse for delete, error, or generic danger |
-| Glows and large decorative shadows | Reject | Restrained tokenized elevation; focus rings communicate interaction |
-| 12–28px general card radii | Restrict | Ratified 12px only for genuine cards; 8px controls; avoid cards for page sections |
-| Dark gradients and decorative atmosphere | Reject | Text-first surfaces; gradients only for approved brand transitions or commands |
-| Compact conversational composition | Preserve | Apply to relationship conversation and contextual work surfaces |
-| Clear grouped statuses | Preserve with correction | Keep delivery, professional processing, and constitutional evidence visually distinct |
+| `architecture/reference/ux/homepage-prototype.html` | REJECTED on 2026-08-08 | Permanently deleted; no design, composition, token, copy, or implementation authority remains |
+| `web/WAOOAWHome.html` | PENDING CONFIRMATION | May be reviewed as an existing artifact but is not normative and must not be migrated until confirmed |
+
+The visual contract below is derived from the ratified constitutional UX vocabulary, not from either static HTML artifact.
 
 ## Token Layers
 
@@ -152,7 +145,7 @@ Assets declare dimensions, use responsive sources where applicable, and do not e
 
 A visual implementation fails review if it:
 
-- imports the prototype's Inter font or alternate constitutional colors;
+- imports Inter or alternate constitutional colors outside the ratified token system;
 - uses override red outside Emergency Stop;
 - defaults to a dark-only experience;
 - places cards inside cards or frames whole page sections as cards;

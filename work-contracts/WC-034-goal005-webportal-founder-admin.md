@@ -44,7 +44,7 @@ The shell must use role-aware route composition rather than runtime CSS hiding. 
 
 | task_id | scope | model_hint | status | completed_at |
 |---|---|---|---|---|
-| WC034-01 | A01 — Inventory the static home, current Next.js routes, WC-057 provisional workspace, and UX vocabulary; record reuse, migration, and retirement decisions without changing source. | reasoning | done | 2026-08-08 — prototype is composition input; duplicate static production home retires during migration |
+| WC034-01 | A01 — Inventory the static home, current Next.js routes, WC-057 provisional workspace, and UX vocabulary; record reuse, migration, and retirement decisions without changing source. | reasoning | done | 2026-08-08 — architecture prototype rejected and permanently deleted; `web/WAOOAWHome.html` awaits Founder confirmation |
 | WC034-02 | A02 — Define route groups, layouts, navigation, responsive composition, role/claim and server/client boundaries, application states, and persistent constitutional controls. | reasoning | done | 2026-08-08 — shell, continuity boundary, failure semantics, privacy, and budgets published |
 | WC034-03 | A03 — Map the prototype into shared tokens, typography, spacing, iconography, focus, motion, RTL, and accessibility rules; resolve vocabulary conflicts. | reasoning | done | 2026-08-08 — prototype reconciled; ratified Noto/token/theme rules control |
 | WC034-04 | A04 — Define public, customer, relationship, settings/profile, and Founder information architecture and groom the implementation components. | reasoning | done | 2026-08-08 — route families, navigation, relationship views, and F0–F8 decomposition published |
@@ -57,7 +57,7 @@ The shell must use role-aware route composition rather than runtime CSS hiding. 
 | Artifact | Responsibility |
 |---|---|
 | `architecture/reference/ux/hybrid-application-shell.md` | Canonical experience, routes, rendering, navigation, API ownership, operational semantics, privacy, and budgets |
-| `architecture/reference/ux/hybrid-visual-system-contract.md` | Prototype reconciliation, tokens, typography, responsive composition, component and motion rules |
+| `architecture/reference/ux/hybrid-visual-system-contract.md` | Static HTML review status, tokens, typography, responsive composition, component and motion rules |
 | `architecture/reference/ux/hybrid-ui-acceptance-contract.md` | Executable component, browser, accessibility, RTL, privacy, PWA, performance, and visual evidence |
 | `architecture/reference/ux/wc-034-implementation-decomposition.md` | WC-016 supersession and F0–F8 dependency-ordered implementation handoff |
 | `architecture/reference/agents/platform-it-expert-nextjs-skill-proposal-input.md` | Evidence for Product Owner review of the required INST-010 frontend skill uplift |

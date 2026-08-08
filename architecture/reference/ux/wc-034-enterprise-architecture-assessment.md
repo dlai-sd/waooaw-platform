@@ -26,7 +26,7 @@ It does not approve implementation, select product priorities, amend the Platfor
 | P1 | Voice lacks consent, retention, correction, provider, upload, evidence, and accessibility contracts | F6 isolated and blocked until Product/Security/Data/Solution decisions close |
 | P1 | Delivery, professional processing, and constitutional evidence could collapse into misleading shared status | Three status systems are normative and have explicit CCT acceptance |
 | P1 | Offline/PWA behavior could leak authenticated conversation data | Service-worker and browser-cache boundary prohibits authenticated payload caching |
-| P2 | Prototype visual choices conflict with ratified Noto, token, theme, radius, motion, and accessibility rules | Prototype reconciled as composition input only; visual contract controls production |
+| P2 | The architecture homepage prototype was rejected by the Founder | Artifact permanently deleted; no composition, token, copy, or implementation authority remains |
 | P2 | One broad WC-034 implementation sprint would mix foundation, identity, conversation, continuity, voice, Founder, and hardening risks | F0–F8 decomposition published with independent dependencies and acceptance IDs |
 
 ## Architecture Decisions Closed
@@ -39,7 +39,7 @@ It does not approve implementation, select product priorities, amend the Platfor
 - Authentication remains a distinct Keycloak-brokered surface with mandatory verified email and mobile identity handling.
 - Public, authentication, customer, Founder, and system routes have separate layout and authorization ownership.
 - The browser does not own tenant identity, lifecycle transitions, priority ranking, evidence truth, model dispatch, or cross-channel commit.
-- Ratified WAOOAW visual and constitutional tokens override the prototype.
+- Ratified WAOOAW visual and constitutional tokens remain normative; no static homepage HTML is approved until Founder confirmation.
 - WC-016 is not controlling for future implementation where it conflicts with WC-034 and GOAL-005.
 
 ## Decisions Routed, Not Delegated
