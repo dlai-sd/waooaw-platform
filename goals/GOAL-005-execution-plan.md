@@ -7,7 +7,7 @@
 | `record_id` | GEP-GOAL-005-INST-013-01 |
 | `record_type` | Execution Plan |
 | `produced_at` | 2026-08-08T10:40:09+00:00 |
-| Status | ACTIVE — D-01 through D-05 CLEAR; D-06 Phase 6A authorizations issued under CB-003 |
+| Status | COMPLETE — D-01 through D-07 RATIFIED by R-046; implementation NONE |
 
 ## Registrant Acknowledgement Record
 
@@ -156,6 +156,28 @@ Each row is an `Authorization Record` with `institution_id` INST-013, `goal_id` 
 | GOA-GOAL-005-INST-004-05 | INST-004 — Enterprise Architect | Independently review the proposed D-05 duration amendment for D-02/D-03/D-04 conformance and confirm whether CB-003 may close | 2026-08-08T12:19:29+00:00 | 1 constitutional session after INST-011 contribution |
 
 Each row is an `Authorization Record` with `institution_id` INST-013, `goal_id` GOAL-005, `record_id` and `authorization_id` equal to Authorization, `produced_at` equal to Issued at, and `issued_by` INST-013. Phase 6A is permitted because the mandatory domain input now exists. It does not authorize the remaining D-06 offices, acceptance or finalization of the D-06 package, D-07, implementation Work Contracts, or implementation. INST-011 must not attribute generated synthesis to Sujay; INST-004 remains independent of product ownership.
+
+## Phase 6B Authorization Records
+
+| Authorization | Authorized Institution | Scope | Issued at | Participation Window |
+|---|---|---|---|---|
+| GOA-GOAL-005-INST-011-04 | INST-011 — Product Owner | D-06 primary release-grooming package, simulation acceptance, and proposed implementation Work Contract set | 2026-08-08T12:32:00+00:00 | 3 constitutional sessions after acceptance |
+| GOA-GOAL-005-INST-003-02 | INST-003 — Business Architect | D-06 customer-outcome and generic-capability review | 2026-08-08T12:32:01+00:00 | 1 session after package delivery |
+| GOA-GOAL-005-INST-004-06 | INST-004 — Enterprise Architect | D-06 architecture and cross-wave boundary review | 2026-08-08T12:32:02+00:00 | 1 session after package delivery |
+| GOA-GOAL-005-INST-005-02 | INST-005 — Solution Architect | D-06 component, interface, failure, and Work Contract implementability review | 2026-08-08T12:32:03+00:00 | 1 session after package delivery |
+| GOA-GOAL-005-INST-006-02 | INST-006 — Data Architect | D-06 identity, state, idempotency, evidence, and tenant-data review | 2026-08-08T12:32:04+00:00 | 1 session after package delivery |
+| GOA-GOAL-005-INST-007-02 | INST-007 — Security Architect | D-06 authentication, takeover, replay, downgrade, and cross-tenant review | 2026-08-08T12:32:05+00:00 | 1 session after package delivery |
+
+Each row is an `Authorization Record` with `institution_id` INST-013, `goal_id` GOAL-005, `record_id` and `authorization_id` equal to Authorization, `produced_at` equal to Issued at, and `issued_by` INST-013. Phase 6B starts after R-040 closed CB-003. These authorizations produce specifications, simulation evidence, reviews, and proposed Work Contracts only. They do not authorize INST-010, source changes, schema execution, deployment, or implementation.
+
+## Phase 7 Authorization Records
+
+| Authorization | Authorized Institution | Scope | Issued at | Participation Window |
+|---|---|---|---|---|
+| GOA-GOAL-005-INST-002-02 | INST-002 — Constitutional Analyst | Assemble the D-07 evidence package, trace rights/consent/Human Override/evidence obligations, and state unresolved constitutional risk; no ratification | 2026-08-08T15:20:00+00:00 | 1 session after D-06 acceptance |
+| GOA-GOAL-005-INST-001-02 | INST-001 — Founder | Independently validate accumulated D-01 through D-06 evidence and ratify, return, or block the specification; record implementation boundary separately | 2026-08-08T15:20:01+00:00 | 1 constitutional session after D-07 package delivery |
+
+Each row is an `Authorization Record` issued by INST-013 under the acknowledged plan. INST-002 may prepare but may not ratify because it contributed to D-02. INST-001 alone records the D-07 decision. Ratification approves specifications and proposed Work Contracts only; it does not authorize INST-010, implementation, deployment, or production use.
 
 ## Outcome and Boundary
 

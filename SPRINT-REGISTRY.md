@@ -1,6 +1,6 @@
 # WAOOAW Platform — Sprint Registry
 
-**Last Updated:** 2026-08-08 · **Version:** 1.44.0 · **Work Contracts:** 49 recorded (47 closed · 1 active · 1 blocked)
+**Last Updated:** 2026-08-08 · **Version:** 1.44.0 · **Work Contracts:** 53 recorded (48 closed · 4 active · 1 blocked)
 
 ---
 
@@ -9,7 +9,10 @@
 | WC | Title | Track | Status | Depends On | Key Outcome |
 |---|---|---|---|---|---|
 | **WC-034** | Web Portal — Founder Admin + Customer | Next.js 14 | ⚠️ BLOCKED | Keycloak + WBE-S7 | Customer self-service portal — hiring wizard, approval dashboard, performance view |
-| **WC-056** | GOAL-005 G-4 Execution Planning | Goal Orchestration | IN REVIEW | WC-055 · R-032 · R-033 | Reviewed D-01→D-07 choreography, evidence specifications, windows, and phased authorization gates |
+| **WC-057** | AE-01 Employment Journey Foundation | Customer outcome | IMPLEMENTATION-READY — UNAUTHORIZED | R-046 · WC-037 · WC-040 · WC-041 | Durable relationship, canonical APIs, participant roles, and authenticated PWA foundation |
+| **WC-058** | AE-01 Discover, Trial, Configure | Customer outcome | IMPLEMENTATION-READY — UNAUTHORIZED | WC-057 | Generic S01–S06 journey with DMA 19-skill first proof and 14-day zero-paid-API trial |
+| **WC-059** | AE-01 Contract, Payment, Activation | Customer outcome | IMPLEMENTATION-READY — UNAUTHORIZED | WC-058 · WC-042 · WC-043 | Tier-4 contract/payment and exactly-once activation |
+| **WC-060** | AE-01 Continuity, Evidence, Stop | Customer outcome | IMPLEMENTATION-READY — UNAUTHORIZED | WC-059 · WC-014 · WC-037 | One relationship across channels, Evidence Reader, and fail-safe Emergency Stop |
 
 **Reserved customer-first roadmap:** WC-044→WC-048. These identifiers describe Founder-approved sequencing in the 2026-08-07 strategy record; Work Contracts have not yet been created.
 
@@ -66,6 +69,7 @@
 | WC-053 | GOAL-005 Orchestration Decision Record | Enterprise Architect | 1.44.0 | Founder debate and decision; just-in-time institutional grooming; handoff to INST-013; R-029 approved |
 | WC-054 | Goal Orchestrator Registry Reconciliation | Constitutional Analyst | 1.44.0 | INST-013 registry synchronized to 2026-07-27 ratification; CB-001 closed; R-030 approved |
 | WC-055 | GOAL-005 Understanding and Classification | Goal Orchestrator | 1.44.0 | G-2 and G-3 approved by R-032/R-033; CB-002 closed; no implementation authority |
+| WC-056 | GOAL-005 Specification Orchestration | Goal Orchestrator | 1.44.0 | D-01 through D-07 complete; R-035 through R-046; WC-057 through WC-060 ratified and unauthorized |
 
 ---
 

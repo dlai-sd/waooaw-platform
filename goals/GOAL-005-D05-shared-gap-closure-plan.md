@@ -2,7 +2,7 @@
 
 **Primary Institution:** INST-011 — Product Owner
 **Architecture Reviewer:** INST-004 — Enterprise Architect
-**Status:** CONTRIBUTED — pending final D-05 architecture review
+**Status:** ACCEPTED — R-039 CLEAR; duration amended through R-040
 
 ## Institutional Records
 
@@ -17,7 +17,7 @@ All listed records use `goal_id` GOAL-005, their row Institution as `institution
 
 | Policy field | Decision |
 |---|---|
-| Duration | 14 calendar days from activation or 3 completed trial sessions, whichever occurs first |
+| Duration | 14 calendar days from activation; session count does not shorten the entitlement |
 | Included capability | AE-01 discovery, disclosure, interview, context capture, trial-safe demonstration, evidence, and Emergency Stop visibility; no consequential external execution or AE-02 production work |
 | Price/credit | One zero-price Trial Credit per `tenant_id + professional_type`; any paid variant discloses price before entry and preserves all rights/evidence |
 | Output ownership | Customer retains inputs and customer-approved business artifacts; WAOOAW retains platform telemetry, constitutional evidence, and model/prompt internals |
@@ -55,3 +55,16 @@ For takeover, replay, confused deputy, downgrade, and cross-tenant access, D-06 
 ## D-06 Entry Rule
 
 D-06 may start only after architecture review confirms structural/value separation, all fifteen Wave 1 gaps are `SPEC_CLOSED`, and no D-02/D-03/D-04 invariant changed. D-06 finalization still requires all checkpoints and the Sujay DMA workshop evidence. No implementation is authorized.
+
+## Phase 6A Amendment Record
+
+| Field | Product contribution | Architecture review |
+|---|---|---|
+| `institution_id` | INST-011 | INST-004 |
+| `goal_id` | GOAL-005 | GOAL-005 |
+| `record_id` | CR-GOAL-005-INST-011-03 | R-040 |
+| `record_type` | Contribution Record | Clearance Record |
+| `produced_at` | 2026-08-08T12:30:01+00:00 | 2026-08-08T12:31:00+00:00 |
+| `authorization_id` | GOA-GOAL-005-INST-011-03 | GOA-GOAL-005-INST-004-05 |
+
+The amendment removes only the three-session early-expiry trigger. It does not change trial/live state, the prohibition on consequential trial execution, identity, authority, evidence, continuity, contract acceptance, payment, exactly-once activation, cancellation, ownership, or proof-threshold semantics. R-040 accepts the amendment for D-06 consumption.
