@@ -13,8 +13,8 @@
 | WC-055 created | DONE — READY; G-2 output not started |
 | R-031 constitutional readiness review | DONE — APPROVED |
 | Goal Understanding Record | DONE — GUR-GOAL-005-INST-013-01 produced; original Goal preserved |
-| Constitutional Analyst review | in progress |
-| G-3 Classification | pending |
+| Constitutional Analyst review | DONE — R-032 APPROVED without correction |
+| G-3 Classification | in progress |
 
 ### Decision Space
 
