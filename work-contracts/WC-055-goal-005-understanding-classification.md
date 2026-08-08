@@ -4,7 +4,7 @@
 **Office:** Goal Orchestrator (INST-013)
 **Reviewer:** Constitutional Analyst (INST-002)
 **Authorized by:** Founder GOAL-005 operating-model decision, 2026-08-08; handoff cleared by WC-054/R-030
-**Status:** IN PROGRESS — G-2 approved by R-032; G-3 Classification next
+**Status:** BLOCKED — G-2 approved; CB-002 blocks valid G-3 record issuance
 **Implementation scope:** Goal Understanding and Classification only; no Planning, GO Authorization, contribution, architecture, or implementation
 
 ## Objective
@@ -31,7 +31,7 @@ Produce and independently validate the GOAL-005 Goal Understanding Record under 
 | WC055-01 | Office 13 charter, GEOM, registry status, handoff, and required inputs validate | DONE — READY |
 | WC055-02 | Goal Understanding Record preserves the original Goal, separates facts/refinements/assumptions/clarifications, and includes all G-10 attestation fields | DONE — GUR-GOAL-005-INST-013-01 |
 | WC055-03 | Constitutional Analyst independently reviews the Understanding Record | DONE — R-032 APPROVED |
-| WC055-04 | Goal Classification covers Scope, Nature, Risk, Urgency, and priority tier with evidence | NOT STARTED |
+| WC055-04 | Goal Classification covers Scope, Nature, Risk, Urgency, and priority tier with evidence | BLOCKED — GEOM G-10 has no valid Classification record type |
 | WC055-05 | Classification records the R2-10 challenge-window opening/closing condition, CA election, any Founder adjudication, and progression decision | NOT STARTED |
 
 ## Boundaries
