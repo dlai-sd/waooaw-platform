@@ -1,6 +1,29 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-08-08 (WC-051 Agent Domain Gap Registers DONE)
+**Last Updated:** 2026-08-08 (WC-052 Agent Employment Program Skeleton DONE)
+
+---
+
+## SESSION RECORD — 2026-08-08 (WC-052 AGENT EMPLOYMENT PROGRAM SKELETON — DONE)
+
+| Milestone | Status |
+|---|---|
+| WC-052 created | DONE |
+| GOAL-005 and six customer-outcome epics | DONE — 43 thin stories remain intentionally ungroomed |
+| Agent Employment Experience Contract skeleton | DONE — 16 clauses with constitutional traceability |
+| Shared WAOOAW Product Gap Register | DONE — 37 gaps with enforced grooming and closure routes |
+| Founder precedence and reserved sprint reconciliation | DONE — WC-044→048 remain unmapped reservations |
+| Independent review and closure | DONE — R-028 APPROVED |
+
+### Outputs
+
+- GOAL-005 defines the Architecture Readiness Gate and six customer-outcome epics without authorizing implementation.
+- The generic employment journey is proven first with DMA but remains valid for every supported professional.
+- Shared product gaps are separated from the four professional-domain gap registers and cannot escape their earliest closure gate.
+
+### Next Decision
+
+Founder selects the first focused grooming iteration. Enterprise Architecture recommends grooming the Architecture Readiness Gate and AEEC Foundation clauses before decomposing AE-01 into Work Contracts.
 
 ---
 
