@@ -1,10 +1,10 @@
 # Work Contract 049 — Platform State Reconciliation
 
-**IB:** IB-009  
-**Office:** Enterprise Architect (INST-004)  
-**Reviewer:** Business Architect + Constitutional Analyst  
-**Authorized by:** Founder instruction, 2026-08-08  
-**Status:** DONE — R-025 APPROVED  
+**IB:** IB-009
+**Office:** Enterprise Architect (INST-004)
+**Reviewer:** Business Architect + Constitutional Analyst
+**Authorized by:** Founder instruction, 2026-08-08
+**Status:** DONE — R-025 APPROVED
 **Implementation scope:** Documentation and architecture metadata only; no `src/` or pipeline changes
 
 ## Objective

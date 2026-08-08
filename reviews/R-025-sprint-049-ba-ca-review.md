@@ -1,8 +1,8 @@
 # R-025 — WC-049 Business Architecture + Constitutional Analysis Review
 
-**Work Contract:** WC-049 — Platform State Reconciliation  
-**Date:** 2026-08-08  
-**Review mode:** Independent read-only subagent reviews  
+**Work Contract:** WC-049 — Platform State Reconciliation
+**Date:** 2026-08-08
+**Review mode:** Independent read-only subagent reviews
 **Verdict:** APPROVED WITH NOTES — notes resolved in branch
 
 ## Findings
