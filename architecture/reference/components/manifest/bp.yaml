@@ -25,6 +25,24 @@ surface:
   calls: [ce, pr, wbe, postgres, oauth_vault]
   must_not_call: [air]
   endpoints:
+    - path: /api/v1/employment/relationships
+      methods: [POST]
+      constitutional: C-059
+    - path: /api/v1/employment/relationships/{relationshipId}
+      methods: [GET]
+      constitutional: C-059
+    - path: /api/v1/employment/relationships/{relationshipId}/timeline
+      methods: [GET]
+      constitutional: C-023
+    - path: /api/v1/employment/relationships/{relationshipId}/transitions
+      methods: [POST]
+      constitutional: C-023
+    - path: /api/v1/agents/hire
+      methods: [POST]
+      constitutional: C-059
+    - path: /api/agents/hire
+      methods: [POST]
+      constitutional: C-059
     - path: /api/v1/employment/contracts
       methods: [GET, POST]
       constitutional: C-059
@@ -52,7 +70,7 @@ signals:
 data:
   db_role: business_app
   owns:
-    business: [organisations, employment_contracts, agent_skill_graph, subscription_billing_events, gst_invoices, skills, provider_configs]
+    business: [organisations, employment_contracts, employment_relationships, relationship_participants, relationship_state_history, relationship_idempotency, agent_skill_graph, subscription_billing_events, gst_invoices, skills, provider_configs]
     payload_store: [operational_payloads]
 configuration:
   env_vars: [DATABASE_URL, ASPNETCORE_ENVIRONMENT, KEYCLOAK_AUTHORITY]
@@ -61,6 +79,18 @@ agent_pac_impact:
   mandatory_for_all_agents: false
   signals_requiring_handler: []
 ccts:
+  - id: CCT-AE01-REL-01
+    description: Duplicate first admission reuses the durable relationship identity
+    test_file: tests/business-platform.Tests/EmploymentRelationshipServiceTests.cs
+  - id: CCT-AE01-STATE-01
+    description: Illegal transitions and unbound participant roles cause zero mutation
+    test_file: tests/business-platform.Tests/EmploymentRelationshipServiceTests.cs
+  - id: CCT-AE01-TENANT-01
+    description: Another tenant cannot retrieve relationship state or timeline
+    test_file: tests/business-platform.Tests/EmploymentRelationshipServiceTests.cs
+  - id: CCT-AE01-EF-01
+    description: Relationship mutation cannot succeed without constitutional evidence
+    test_file: tests/business-platform.Tests/EmploymentRelationshipServiceTests.cs
   - id: CCT-MT-01
     description: Tenant isolation — tenant A cannot access tenant B data
     test_file: tests/business-platform.Tests/Infrastructure/CCT_MT01_TenantIsolationTests.cs

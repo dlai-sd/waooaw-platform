@@ -14,17 +14,25 @@ The external-facing service. Every customer interaction enters through this serv
 
 ## Components
 
-### 1. Employment Manager
-Manages the full employment lifecycle per C-034.
+### 1. Employment Relationship Manager
+Owns the durable AE-01 employment relationship lifecycle and the compatibility boundary for legacy employment contracts.
 
 **Responsibilities:**
+- Mint one relationship per tenant, initiating participant, professional type, and evaluation intent
+- Persist same-tenant participant-role bindings and append-only, evidence-linked state history
+- Enforce the D-03 relationship state graph and explicit EMPLOYER authority for Emergency Stop release
+- Resolve tenant and initiating participant from authenticated identity, never request-body tenant hints
 - Create/read/update EmploymentContract and DecisionSpace entities
-- State machine: EVALUATION → ACTIVE → SUSPENDED → TERMINATED
+- Preserve legacy contract lifecycle behavior through compatibility adapters
 - Trigger Temporal workflow on contract formation and state changes
-- Call ConstitutionalEngine.RecordEvidence (gRPC) for every state transition
+- Call ConstitutionalEngine.ValidateAction and RecordEvidence (gRPC) before every relationship mutation
 
 **Key methods:**
 ```
+POST /api/v1/employment/relationships       → AdmitEmploymentRelationship
+GET  /api/v1/employment/relationships/{id}  → GetEmploymentRelationship
+GET  /api/v1/employment/relationships/{id}/timeline
+POST /api/v1/employment/relationships/{id}/transitions  → Internal service policy only
 POST /api/v1/employment/contracts           → FormEmploymentContract
 GET  /api/v1/employment/contracts/{id}      → GetEmploymentContract
 PUT  /api/v1/employment/contracts/{id}/activate
@@ -103,6 +111,19 @@ Durable workflow management for multi-step employment operations.
 - **PostgreSQL** (business schema, RLS enforced)
 - **Temporal** (workflow client)
 - **Keycloak** (JWT public key endpoint for validation)
+
+## AE-01 Relationship Foundation (WC-057)
+
+The relationship foundation is implemented by `EmploymentRelationshipDbContext`,
+`EmploymentRelationshipService`, and `EmploymentRelationshipsController`. PostgreSQL
+migration 19 owns relationship identity, participant-role bindings, append-only state
+history, and idempotency records. Every table forces tenant RLS using
+`app.current_tenant_id`; constitutional cross-tenant audit remains outside BP roles.
+
+The canonical wire contract is `architecture/reference/api-specs/business-platform.openapi.yaml`.
+The customer PWA consumes relationship and timeline reads through an authenticated
+server boundary. Contract/payment activation, evaluation workflow, and relationship-wide
+Emergency Stop session resolution remain later AE-01 work and are not fabricated here.
 
 ## What Business Platform does NOT do
 - Does NOT execute professional work (that is Professional Runtime)

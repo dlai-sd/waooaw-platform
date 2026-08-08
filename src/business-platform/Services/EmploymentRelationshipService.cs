@@ -2,6 +2,8 @@
 // constitutional_basis: C-005, C-023, C-026, C-059
 
 using Microsoft.EntityFrameworkCore;
+using System.Security.Cryptography;
+using System.Text;
 using Waooaw.BusinessPlatform.Infrastructure;
 
 namespace Waooaw.BusinessPlatform.Services;
@@ -148,6 +150,21 @@ public sealed class EmploymentRelationshipService
         }
     }
 
+    public Task<AdmitRelationshipResult> AdmitLegacyAsync(
+        Guid tenantId,
+        Guid participantId,
+        string legacyIdentity,
+        string professionalType,
+        Guid correlationId,
+        CancellationToken cancellationToken) =>
+        AdmitAsync(
+            tenantId,
+            participantId,
+            DeriveLegacyEvaluationIntent(legacyIdentity),
+            professionalType,
+            correlationId,
+            cancellationToken);
+
     public async Task<EmploymentRelationship?> GetAsync(
         Guid tenantId,
         Guid relationshipId,
@@ -278,4 +295,10 @@ public sealed class EmploymentRelationshipService
 
     private static ISet<EmploymentRelationshipState> Set(params EmploymentRelationshipState[] states) =>
         new HashSet<EmploymentRelationshipState>(states);
+
+    private static Guid DeriveLegacyEvaluationIntent(string legacyIdentity)
+    {
+        var digest = SHA256.HashData(Encoding.UTF8.GetBytes($"WC057:LEGACY:{legacyIdentity}"));
+        return new Guid(digest.AsSpan(0, 16));
+    }
 }

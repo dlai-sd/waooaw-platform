@@ -2,6 +2,8 @@
 // constitutional_basis: C-005, C-023, C-026, C-059
 
 using System.Security.Claims;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -16,11 +18,43 @@ public sealed record AdmitEmploymentRelationshipRequest(
     Guid? CorrelationId = null);
 
 public sealed record TransitionEmploymentRelationshipRequest(
-    EmploymentRelationshipState TargetState,
+    [property: JsonConverter(typeof(RelationshipStateJsonConverter))] EmploymentRelationshipState TargetState,
     Guid ActorParticipantId,
-    RelationshipParticipantRole ActorRole,
+    [property: JsonConverter(typeof(RelationshipRoleJsonConverter))] RelationshipParticipantRole ActorRole,
     Guid CorrelationId,
     bool ExplicitEmergencyRelease = false);
+
+public sealed class RelationshipStateJsonConverter : JsonConverter<EmploymentRelationshipState>
+{
+    public override EmploymentRelationshipState Read(
+        ref Utf8JsonReader reader,
+        Type typeToConvert,
+        JsonSerializerOptions options) =>
+        RelationshipStateCodec.FromDatabase(
+            reader.GetString() ?? throw new JsonException("Relationship state must be a string."));
+
+    public override void Write(
+        Utf8JsonWriter writer,
+        EmploymentRelationshipState value,
+        JsonSerializerOptions options) =>
+        writer.WriteStringValue(RelationshipStateCodec.ToDatabase(value));
+}
+
+public sealed class RelationshipRoleJsonConverter : JsonConverter<RelationshipParticipantRole>
+{
+    public override RelationshipParticipantRole Read(
+        ref Utf8JsonReader reader,
+        Type typeToConvert,
+        JsonSerializerOptions options) =>
+        RelationshipRoleCodec.FromDatabase(
+            reader.GetString() ?? throw new JsonException("Relationship role must be a string."));
+
+    public override void Write(
+        Utf8JsonWriter writer,
+        RelationshipParticipantRole value,
+        JsonSerializerOptions options) =>
+        writer.WriteStringValue(RelationshipRoleCodec.ToDatabase(value));
+}
 
 public sealed record EmploymentRelationshipResponse(
     Guid RelationshipId,
