@@ -1,6 +1,6 @@
 # WAOOAW Platform — Sprint Registry
 
-**Last Updated:** 2026-08-08 · **Version:** 1.44.0 · **Work Contracts:** 43 recorded (42 closed · 0 active · 1 blocked)
+**Last Updated:** 2026-08-08 · **Version:** 1.44.0 · **Work Contracts:** 44 recorded (43 closed · 0 active · 1 blocked)
 
 ---
 
@@ -60,6 +60,7 @@
 | WC-043 | WBE-S8 — Reconciliation Full CCT Suite + Coverage Gate | Platform IT Expert | 1.44.0 | CCT-PREPAID-01 (`/buckets` reserve endpoint); CCT-SELFAUDIT-01 (discrepancy→halt→FA); 94% coverage; 361/361 tests |
 | WC-049 | Platform State Reconciliation | Enterprise Architect | 1.44.0 | Canonical status baseline; component maturity taxonomy; agent/CCT evidence reconciliation; superseded strategy markers; R-025 approved |
 | WC-050 | CCT, Traceability, and State Registry Closure | Enterprise Architect | 1.44.0 | 72-entry CCT catalogue; two billing C-059 corrections; canonical state derivation and drift gate; R-026 approved |
+| WC-051 | Agent Domain Gap Registers | Enterprise Architect | 1.44.0 | Grooming-ready domain release gaps for DMA, Agriculture, Trading, and Private Tutor; R-027 approved |
 
 ---
 
