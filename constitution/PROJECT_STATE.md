@@ -4,22 +4,24 @@
 
 ---
 
-## IN-PROGRESS CHECKPOINT — WC-055 GOAL-005 UNDERSTANDING AND CLASSIFICATION
+## IN-PROGRESS CHECKPOINT — WC-056 GOAL-005 G-4 EXECUTION PLANNING
 
 | Milestone | Status |
 |---|---|
 | Goal Orchestrator office occupancy | DONE — INST-013 OPERATIONAL; charter and GEOM loaded |
 | Required handoff inputs validated | DONE — all eight inputs present and approved |
-| WC-055 created | DONE — READY; G-2 output not started |
+| WC-055 created | DONE |
 | R-031 constitutional readiness review | DONE — APPROVED |
 | Goal Understanding Record | DONE — GUR-GOAL-005-INST-013-01 records Founder-confirmed scope |
 | G-2 independent review | DONE — R-032 APPROVED; G-3 may proceed |
 | G-3 preflight | DONE — Founder authorized narrow G-10 amendment under CB-002 |
 | G-3 Classification | DONE — R-033 APPROVED with NO CHALLENGE |
 | WC-055 closure | DONE — G-2 and G-3 complete; CB-002 closed |
-| Goal Understanding Record | pending |
-| Constitutional Analyst review | pending |
-| G-3 Classification | pending |
+| WC-056 created | DONE — G-4 Planning only |
+| G-4 Execution Plan | DONE — GEP-GOAL-005-INST-013-01 provisional |
+| CA Readiness Review | IN PROGRESS |
+| Registrant acknowledgement | PENDING |
+| Phase 1 GO Authorizations | PENDING — prohibited until both R2-03 gates close |
 
 ### Decision Space
 
@@ -27,7 +29,7 @@ INST-013 may understand, classify, plan, route, monitor, resolve Goal-level gaps
 
 ### Current State
 
-G-2 and G-3 are approved. The Founder authorized continuous specification work through D-07, stopping before implementation. G-4 requires its own Planning Work Contract; no G-4 plan, GO Authorization, specialist contribution, or implementation authority has yet been produced.
+G-2 and G-3 are approved. The G-4 Execution Plan is awaiting CA Readiness Review and Registrant acknowledgement. No GO Authorization, specialist contribution, or implementation authority has been produced.
 
 ---
 

@@ -37,8 +37,8 @@ cct_inventory:
   wbe_tests: { passed: 361, total: 361 }
 
 sprint_inventory:
-  recorded: 48
-  closed: 46
+  recorded: 49
+  closed: 47
   active: 1
   blocked: 1
 
