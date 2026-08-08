@@ -1,7 +1,7 @@
 # WAOOAW Institution Registry
 
 **Classification:** Constitutional Registry — append-only after ratification
-**Status:** Proposed — Awaiting Founder Ratification alongside WIOM + GEOM
+**Status:** RATIFIED — Founder ratification, GOAL-001 Phase 1, 2026-07-27
 **Authority:** WIOM §W-1 (Constitutional Birth requires Charter) + GEOM §G-4 (Institution Selection consults this registry)
 **Produced by:** Constitutional Review Board — GOAL-001 Phase 1 (2026-07-27)
 **Gap closed:** G-01 (Goal Orchestrator had no Charter) · G-04 (Institution Directory referenced but not created)
@@ -285,13 +285,13 @@ These are different constitutional identities. C-065 (SDLC Separation) is satisf
 | **Canonical Name** | Goal Orchestrator |
 | **Domain Label** | Institution (Constitutional Orchestration) |
 | **Domain** | Goal Orchestration — cross-domain |
-| **Status** | PROPOSED (awaiting Founder Charter ratification) |
+| **Status** | OPERATIONAL |
 | **Decision Space** | Goal intake · Goal Understanding Records · Goal Classification · Institution Selection · Goal Execution Planning · Journey Monitoring · Gap Resolution · Journey Completion declaration · Evidence Ledger commitment at Closure |
 | **Offering Scope** | Goal Understanding Records · Goal Execution Plans · Journey completion declarations · Constitutional Clearance Record submission to CA · Goal Closure (evidence commit to Audit Ledger) |
-| **Charter Date** | Pending ratification |
-| **Operational Since** | Pending ratification |
+| **Charter Date** | 2026-07-27 |
+| **Operational Since** | 2026-07-27 |
 | **Reviewer** | Constitutional Analyst (INST-002) |
-| **ORGANIZATION.md Reference** | Office 13 (to be added) |
+| **ORGANIZATION.md Reference** | Office 13 |
 | **Constitutional Obligation** | May NOT be listed as a contributing Institution in any Goal it is orchestrating (G-13 / Article VII) |
 | **Gap closed** | G-01 — Goal Orchestrator was GEOM’s critical-path Institution with no constitutional existence |
 

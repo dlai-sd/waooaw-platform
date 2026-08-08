@@ -24,8 +24,8 @@ institutional_state:
     title: WBE-S8 Reconciliation CCT Suite + Coverage Gate
     evidence: "361/361 tests, 94% coverage"
   latest_enterprise_architecture:
-    work_contract: WC-052
-    title: Agent Employment Program Skeleton
+    work_contract: WC-053
+    title: GOAL-005 Orchestration Decision Record
     status: DONE
   constitutional_claims: { ratified: 97, gaps: [C-087, C-092, C-093] }
   architecture_decisions: { recorded: 44 }
@@ -37,9 +37,9 @@ cct_inventory:
   wbe_tests: { passed: 361, total: 361 }
 
 sprint_inventory:
-  recorded: 45
-  closed: 44
-  active: 0
+  recorded: 49
+  closed: 47
+  active: 1
   blocked: 1
 
 # `LIVE` means implemented and executable in repository scope. It does not prove

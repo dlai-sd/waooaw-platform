@@ -20,9 +20,9 @@ AUTONOMOUS_HALT: false
 
 ```
 Version:    1.44.0  |  Gate: G5 CLEAR  |  Epoch: 1 — Employment  |  Phase: IMPLEMENTATION
-Last update: 2026-08-08 — WC-052 Agent Employment Program Skeleton DONE
+Last update: 2026-08-08 — WC-053 GOAL-005 Orchestration Decision Record DONE
 Latest completed sprint: WC-043 — WBE-S8 Reconciliation CCT Suite + Coverage Gate
-Latest EA work: WC-052 — Agent Employment Program Skeleton DONE
+Latest EA work: WC-053 — GOAL-005 Orchestration Decision Record DONE
 Constitutional Claims: 97 RATIFIED (gaps C-087/C-092/C-093) | ADRs: 44 recorded
 Agents (customer): DMA v3.1 gate-pass (Founder-approved through v3.0); Trading v1.8, Agri v2.8, Tutor v1.1 gate-pass records without current-version Founder approval; none customer-proven
 Agents (internal): Platform IT Expert · Steward Assistant · Self-Improvement Analyst · Platform Operations · RepoNav (INST-014)

@@ -1,6 +1,6 @@
 # WAOOAW Platform — Sprint Registry
 
-**Last Updated:** 2026-08-08 · **Version:** 1.44.0 · **Work Contracts:** 45 recorded (44 closed · 0 active · 1 blocked)
+**Last Updated:** 2026-08-08 · **Version:** 1.44.0 · **Work Contracts:** 49 recorded (47 closed · 1 active · 1 blocked)
 
 ---
 
@@ -9,6 +9,7 @@
 | WC | Title | Track | Status | Depends On | Key Outcome |
 |---|---|---|---|---|---|
 | **WC-034** | Web Portal — Founder Admin + Customer | Next.js 14 | ⚠️ BLOCKED | Keycloak + WBE-S7 | Customer self-service portal — hiring wizard, approval dashboard, performance view |
+| **WC-056** | GOAL-005 G-4 Execution Planning | Goal Orchestration | IN REVIEW | WC-055 · R-032 · R-033 | Reviewed D-01→D-07 choreography, evidence specifications, windows, and phased authorization gates |
 
 **Reserved customer-first roadmap:** WC-044→WC-048. These identifiers describe Founder-approved sequencing in the 2026-08-07 strategy record; Work Contracts have not yet been created.
 
@@ -62,6 +63,9 @@
 | WC-050 | CCT, Traceability, and State Registry Closure | Enterprise Architect | 1.44.0 | 72-entry CCT catalogue; two billing C-059 corrections; canonical state derivation and drift gate; R-026 approved |
 | WC-051 | Agent Domain Gap Registers | Enterprise Architect | 1.44.0 | Grooming-ready domain release gaps for DMA, Agriculture, Trading, and Private Tutor; R-027 approved |
 | WC-052 | Agent Employment Program Skeleton | Enterprise Architect | 1.44.0 | GOAL-005; 6 customer-outcome epics; 43 thin stories; AEEC and 37 shared product gaps; R-028 approved |
+| WC-053 | GOAL-005 Orchestration Decision Record | Enterprise Architect | 1.44.0 | Founder debate and decision; just-in-time institutional grooming; handoff to INST-013; R-029 approved |
+| WC-054 | Goal Orchestrator Registry Reconciliation | Constitutional Analyst | 1.44.0 | INST-013 registry synchronized to 2026-07-27 ratification; CB-001 closed; R-030 approved |
+| WC-055 | GOAL-005 Understanding and Classification | Goal Orchestrator | 1.44.0 | G-2 and G-3 approved by R-032/R-033; CB-002 closed; no implementation authority |
 
 ---
 

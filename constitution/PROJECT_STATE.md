@@ -1,6 +1,105 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-08-08 (WC-052 Agent Employment Program Skeleton DONE)
+**Last Updated:** 2026-08-08 (WC-053 GOAL-005 Orchestration Decision Record DONE)
+
+---
+
+## IN-PROGRESS CHECKPOINT — WC-056 GOAL-005 G-4 EXECUTION PLANNING
+
+| Milestone | Status |
+|---|---|
+| Goal Orchestrator office occupancy | DONE — INST-013 OPERATIONAL; charter and GEOM loaded |
+| Required handoff inputs validated | DONE — all eight inputs present and approved |
+| WC-055 created | DONE |
+| R-031 constitutional readiness review | DONE — APPROVED |
+| Goal Understanding Record | DONE — GUR-GOAL-005-INST-013-01 records Founder-confirmed scope |
+| G-2 independent review | DONE — R-032 APPROVED; G-3 may proceed |
+| G-3 preflight | DONE — Founder authorized narrow G-10 amendment under CB-002 |
+| G-3 Classification | DONE — R-033 APPROVED with NO CHALLENGE |
+| WC-055 closure | DONE — G-2 and G-3 complete; CB-002 closed |
+| WC-056 created | DONE — G-4 Planning only |
+| G-4 Execution Plan | DONE — GEP-GOAL-005-INST-013-01 provisional |
+| CA Readiness Review | DONE — R-034 APPROVED |
+| Registrant acknowledgement | DONE — ACK-GOAL-005-INST-001-01 |
+| Phase 1 GO Authorizations | DONE — INST-003 and INST-011 authorized for D-01 |
+| D-01 Institution acceptance | DONE — INST-003 and INST-011 accepted after valid GOAs |
+| D-01 contributions | DONE — capability and product-boundary records published |
+| D-01 gate review | DONE — R-035 CLEAR; shared trial-policy gap routed to D-05 |
+| D-03 GO Authorizations | DONE — INST-004 and INST-006 authorized; no other Phase 2 office authorized |
+| D-03 Institution acceptance | DONE — INST-004 and INST-006 accepted after valid GOAs |
+| D-03 contributions | DONE — architecture and data-semantics records published |
+| D-03 gate review | DONE — R-036-A1 CLEAR after all clarification conditions closed |
+| D-02 GO Authorizations | DONE — INST-004 and INST-002 authorized; no implementation authority |
+| D-02 Institution acceptance | DONE — INST-004 and INST-002 accepted after valid GOAs |
+| D-02 contributions | DONE — AEEC Foundation v1.0 and constitutional obligations recorded |
+| D-02 gate review | DONE — R-037 CLEAR |
+| D-04 GO Authorizations | DONE — INST-004, INST-007, and INST-005 authorized |
+| D-04 Institution acceptance | DONE — INST-004, INST-007, and INST-005 accepted after valid GOAs |
+| D-04 contributions | DONE — continuity architecture, security, and solution contract integrated |
+| D-04 gate review | DONE — R-038 CLEAR WITH CONDITIONS carried to D-05 |
+| D-05 GO Authorizations | DONE — INST-011 primary and INST-004 review authorized |
+| D-05 Institution acceptance | DONE — INST-011 and INST-004 accepted after valid GOAs |
+| D-05 contribution | DONE — Wave 1 closure plan and trial policy recorded |
+| D-05 architecture review | DONE — R-039 CLEAR; G5-TRIAL-POLICY-01 accepted |
+| D-06 mandatory DMA domain input | READY — Founder-directed expert synthesis covers eligibility, progressive context, all-skill 14-day trial, ethical conversion, and S01-S10 decisions |
+| D-06 input attestation and policy amendment | BLOCKED — CB-003 narrowed to INST-011 attestation and INST-004 review of the 14-calendar-day correction |
+| D-06 GO Authorizations | PHASE 6A ONLY — INST-011 and INST-004 authorized; all other D-06 authorizations withheld pending CB-003 closure |
+| Implementation authority | NONE |
+
+### Decision Space
+
+INST-013 may understand, classify, plan, route, monitor, resolve Goal-level gaps, and close Goals. It may not contribute architecture, business capability, constitutional analysis, product priority, implementation specifications, code, or tests to GOAL-005, and may not issue a GO Authorization to itself.
+
+### Current State
+
+G-2 through G-4 are approved and D-01 through D-05 passed their independent gates. The Founder-directed DMA synthesis is present and validated against CB-003 and AE-01-S01 through S10. Phase 6A authorizes INST-011 to attest the input and propose the 14-calendar-day D-05 amendment, followed by independent INST-004 review. CB-003 remains open until those records are accepted; other D-06 work, D-07, and implementation remain unauthorized.
+
+---
+
+## SESSION RECORD — 2026-08-08 (WC-054 GOAL ORCHESTRATOR REGISTRY RECONCILIATION — DONE)
+
+| Milestone | Status |
+|---|---|
+| WC-054 created and inputs validated | DONE — GOAL-001 independently confirms 2026-07-27 Founder ratification |
+| INST-013 registry reconciliation | DONE — canonical row synchronized to existing 2026-07-27 ratification evidence |
+| R-030 independent EA review | DONE — APPROVED |
+| CB-001 closure and handoff restoration | DONE — INST-013 ready for G-2 Understanding |
+| Canonical validation and session close | DONE — 4/4 focused tests; 47/47 parity; drift clean |
+
+### Authorization Boundary
+
+Constitutional reconciliation only. No GOAL-005 G-2 output, architecture, implementation, or GO Authorization is authorized by WC-054.
+
+### Outcome
+
+The existing Founder ratification from GOAL-001 Phase 1 controls. The canonical registry now records INST-013 as OPERATIONAL from 2026-07-27, CB-001 is CLOSED, and no fresh Founder ratification is required.
+
+### Next Authorized Action
+
+Goal Orchestrator (INST-013) may occupy Office 13 and begin GOAL-005 G-2 Understanding. Implementation remains unauthorized.
+
+---
+
+## SESSION RECORD — 2026-08-08 (WC-053 GOAL-005 ORCHESTRATION DECISION — DONE)
+
+| Milestone | Status |
+|---|---|
+| Founder debate recorded | DONE — three operating models compared |
+| GOAL-005 operating model selected | DONE — Goal-Orchestrated, just-in-time institutional grooming |
+| Authorization boundary | DONE — specification/grooming only; no implementation authorization |
+| Institutional separation | DONE — INST-013 orchestrates and may not contribute to GOAL-005 |
+| Independent review | DONE — R-029 APPROVED |
+| Office handoff | READY — WC-054/R-030 reconciled INST-013 as OPERATIONAL and closed CB-001 |
+
+### Output
+
+- `strategy/FOUNDER-SESSION-2026-08-08-goal-005-orchestration-decision.md` is the controlling operating-model decision for GOAL-005.
+- Shared foundations and AE-01 receive focused, implementation-grade grooming; AE-02 remains skeletal pending Sujay validation and foundation progress; AE-03→AE-06 remain skeletons.
+- GOAL-005 is REGISTERED and authorized for G-2 Understanding, not implementation.
+
+### Next Authorized Action
+
+Goal Orchestrator (INST-013) may occupy Office 13 and begin GOAL-005 G-2 Understanding. No implementation is authorized.
 
 ---
 
