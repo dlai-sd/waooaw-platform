@@ -1,6 +1,6 @@
 # GOAL-005 — Agent Employment Experience Program
 
-**Status:** REGISTERED — FOUNDER AUTHORIZED FOR G-2 UNDERSTANDING; NO IMPLEMENTATION AUTHORIZATION
+**Status:** G-2 UNDERSTANDING PRODUCED — AWAITING CONSTITUTIONAL ANALYST REVIEW; NO IMPLEMENTATION AUTHORIZATION
 **Registrant:** Yogesh Khandge (Founder)
 **Registered:** 2026-08-08
 **Work Contract:** WC-052
@@ -8,6 +8,137 @@
 **Constitutional basis:** C-001, C-002, C-009, C-030, C-034, C-037, C-039, C-070, C-094
 
 > This document is a planning skeleton. Story order is directional. Story details, acceptance criteria, estimates, component tasks, and sprint assignments require focused grooming and explicit authorization.
+
+## G-2 — Goal Understanding Record
+
+| Attestation field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GUR-GOAL-005-INST-013-01 |
+| `record_type` | Understanding Record |
+| `produced_at` | 2026-08-08T09:39:10+00:00 |
+| Registrant | Yogesh Khandge, Founder (INST-001) |
+| Reviewer | Constitutional Analyst (INST-002) |
+
+### Original Goal — Preserved
+
+> A customer can discover, hire, work with, govern, and expand a relationship with WAOOAW professionals through one continuous constitutional experience.
+
+The original Goal is unchanged. This record appends the institution's understanding; it does not replace the registered statement or the six program outcomes.
+
+### Understood Outcome
+
+GOAL-005 establishes WAOOAW as a reusable Agent Employment SaaS rather than a collection of unrelated agent tools. A customer relationship with a professional must remain constitutionally coherent across discovery, evaluation, trial, configuration, hire, work, lifecycle changes, channels, and later multi-agent use.
+
+The immediate outcome is narrower than the complete program: approve the shared employment foundation and bring AE-01 to implementation-ready specification quality, using DMA as the first proof without allowing DMA-specific behavior to define the generic platform boundary.
+
+### Detail and Evidence Strategy
+
+| Scope | Understanding of required detail |
+|---|---|
+| Shared foundations that are expensive to migrate | Full normative architecture and contract detail before Wave 1 implementation |
+| AE-01 — next customer outcome | Implementation-ready specification and grooming comparable to WC-038 through WC-040 |
+| AE-02 | Preserve the outcome skeleton until AE-01 foundations stabilize; DMA domain validation may proceed in parallel |
+| AE-03 through AE-06 | Preserve outcome and story skeletons until preceding-wave evidence supports focused detail |
+| Individual future stories | Groom immediately before their entry gate |
+
+This strategy rejects both speculative full-program design and implementation-time architecture invention.
+
+### Architecture Readiness Meaning
+
+Before AE-01 implementation may be proposed, the relevant specialist Institutions must establish and review:
+
+- generic employment capabilities and customer outcomes;
+- a normative Agent Employment Experience Contract foundation;
+- participant roles and durable identity semantics;
+- employment states, transitions, idempotency, and evidence correlation;
+- consent, contract formation, trial, hire, billing activation, and lifecycle evidence;
+- Human Override and customer evidence rights;
+- channel-neutral relationship and conversation ownership;
+- authenticated continuity across WhatsApp, web, mobile, and future supported channels; and
+- accountable closure evidence for every foundation gap.
+
+These are reusable WAOOAW foundations. DMA is the first conformance proof, not the owner or limit of the shared contract.
+
+### Institutional Separation
+
+INST-013 owns Goal state, dependencies, contribution order, Evidence Specifications, Participation Windows, authorizations, and checkpoint evidence. It does not produce specialist contributions.
+
+| Institution | Contribution boundary understood at G-2 |
+|---|---|
+| Product Owner | Prioritize stories, define releases and sprint candidates, and convert approved designs into proposed Work Contracts |
+| Business Architect | Validate customer outcomes, employment capabilities, actors, personas, and business vocabulary |
+| Enterprise Architect | Own AEEC structure, shared product boundaries, cross-wave invariants, and architectural decisions |
+| Constitutional Analyst | Validate rights, consent, Human Override, evidence, Goal records, and constitutional traceability |
+| Data Architect | Define participant identity, employment aggregate, lifecycle state, evidence correlation, and continuity data |
+| Security Architect | Define authentication, participant verification, consent protection, channel handoff, and tenant isolation |
+| Solution Architect | Convert approved contracts into component, API, event, degradation, and failure specifications |
+| Domain authority | Validate the professional instance; Sujay's DMA validation is required before DMA implementation grooming closes |
+| Runtime Implementation Professional | Implement only after approved specifications, skeletons, Work Contracts, and separate session authorization exist |
+
+The Goal Orchestrator may not substitute for any contributor, prioritize on behalf of Product Owner, make architecture on behalf of Enterprise Architect, or issue a GO Authorization to itself.
+
+### Candidate Specification Journey — Not Yet a Plan
+
+D-01 through D-07 are understood as a candidate dependency chain supplied by the Founder, not an issued G-4 Execution Plan:
+
+1. Employment Capability Confirmation.
+2. AEEC Foundation v1.0.
+3. Identity and Employment State Model.
+4. Omnichannel Continuity Contract.
+5. Shared Gap Closure Plan.
+6. AE-01 Release Grooming.
+7. Independent Review and Founder ratification or authorization where constitutionally required.
+
+G-4 must determine valid parallelism, participating OPERATIONAL Institutions, Evidence Specifications, Participation Windows, review gates, and authorization sequence. No contributor is authorized by this candidate list.
+
+### Candidate AE-01 Work Contract Pattern — Not Yet Prioritized
+
+AE-01 is likely to require several focused Work Contracts covering identity and lifecycle, omnichannel continuity, discovery and interview, context and Decision Space configuration, trial, contract and consent, payment and activation, Evidence Window and Emergency Stop, and end-to-end conformance.
+
+These are candidate implementation units only. Product Owner determines actual Work Contract boundaries after the relevant designs are approved; WC-044 through WC-048 remain reserved identifiers and are not assigned by this record.
+
+### Constitutional Implications
+
+- Evidence First and customer auditability apply from the first consequential trial interaction.
+- Human Override must remain continuously reachable and unambiguous across channels.
+- Identity, authority, consent, evidence, billing, and lifecycle may not drift when presentation channel changes.
+- Generic platform rights may not be weakened by professional-domain specialization.
+- Implementation cannot resolve missing architecture, contract semantics, or institutional ownership.
+- Goal evidence belongs to GOAL-005, not to any contributing Institution.
+- Founder ratification of the common employment contract and implementation authorization remain separate later decisions.
+
+### Dependencies and Related Decisions
+
+- The 2026-08-07 customer-first decision controls outcome sequencing.
+- WC-051 domain-gap registers remain separate from shared product gaps.
+- WC-052 supplies the six-epic skeleton, AEEC skeleton, and shared gap register.
+- WC-053 and R-029 authorize Goal-Orchestrated specification and grooming.
+- WC-054 and R-030 establish INST-013 as OPERATIONAL and clear occupancy.
+- AE-01 foundation approval precedes implementation-ready decomposition.
+- Sujay's DMA domain workshop may run in parallel but cannot redefine shared-platform semantics or independently authorize implementation.
+
+No active Goal conflict was identified. GOAL-004 supplies an existing billing foundation but does not settle the customer-facing employment activation experience required by GOAL-005.
+
+### Explicit Non-Goals for This Journey Phase
+
+- Designing all AE-01 through AE-06 stories to implementation detail now.
+- Producing source code, tests, deployments, or implementation skeletons.
+- Treating D-01 through D-07 as pre-authorized contributions.
+- Assigning reserved WC-044 through WC-048 identifiers to epics automatically.
+- Moving professional-domain behavior into the shared employment contract.
+- Allowing repository implementation evidence alone to prove customer outcomes.
+
+### Clarification Status
+
+No clarification blocks G-2. The Registrant confirmed this interpretation by instructing the Goal Orchestrator to proceed on 2026-08-08 after the understanding and orchestration boundary were presented.
+
+Decisions about contribution sequencing, parallelism, Evidence Specifications, Participation Windows, and proposed Work Contract boundaries are intentionally deferred to G-4 and specialist contributions. They are not missing Goal meaning.
+
+### G-2 Progression Recommendation
+
+Submit this Understanding Record to the Constitutional Analyst for independent review. Do not classify or plan GOAL-005 until that review approves the record or required corrections are incorporated.
 
 ## 1. Program Intent
 
