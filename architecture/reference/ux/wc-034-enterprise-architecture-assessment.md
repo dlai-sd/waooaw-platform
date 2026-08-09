@@ -22,7 +22,7 @@ It does not approve implementation, select product priorities, amend the Platfor
 | P0 | Current Platform IT Expert has no dedicated frontend/conversational/PWA skill | Candidate Skill 16 proposal input published; implementation entry gate requires completed new-skill lifecycle |
 | P1 | WC-016 conflicts with current identity, conversation, Stop, testing, and sprint-boundary decisions | Formally superseded for future implementation planning; historical artifact preserved |
 | P1 | Current Vercel chatbot template stack is incompatible with the accepted WAOOAW baseline | Template limited to interaction reference; no scaffold, auth, persistence, provider, or database adoption |
-| P1 | Direct AI SDK/provider use could bypass PR/AIR/CE and Evidence First | Optional typed-stream consumer spike only; no direct provider ownership in web/BFF |
+| P1 | Direct AI SDK/provider use could bypass PR/AIR/CE and Evidence First | INST-005 does not approve `@ai-sdk/react` as an F3 dependency; reconsideration requires the canonical BP/PR stream contract and a presentation-only adapter review |
 | P1 | Voice lacks consent, retention, correction, provider, upload, evidence, and accessibility contracts | F6 isolated and blocked until Product/Security/Data/Solution decisions close |
 | P1 | Delivery, professional processing, and constitutional evidence could collapse into misleading shared status | Three status systems are normative and have explicit CCT acceptance |
 | P1 | Offline/PWA behavior could leak authenticated conversation data | Service-worker and browser-cache boundary prohibits authenticated payload caching |
@@ -39,6 +39,8 @@ It does not approve implementation, select product priorities, amend the Platfor
 - Authentication remains a distinct Keycloak-brokered surface with mandatory verified email and mobile identity handling.
 - Public, authentication, customer, Founder, and system routes have separate layout and authorization ownership.
 - The browser does not own tenant identity, lifecycle transitions, priority ranking, evidence truth, model dispatch, or cross-channel commit.
+- Business Platform is the sole public ingress for ordinary customer and Founder application traffic; WBE and ordinary PR execution remain internal, with only the dedicated Emergency Stop path excepted.
+- `@ai-sdk/react` is not an F3 architecture dependency and may not be introduced before the canonical BP/PR stream contract is approved and independently reviewed.
 - `web/WAOOAWHome.html` is the Founder-approved inspiration source for logo treatment, fonts, color themes, and design language across public and authenticated surfaces; adaptations must retain recognizable continuity while ratified visual and constitutional constraints control conflicts.
 - WC-016 is not controlling for future implementation where it conflicts with WC-034 and GOAL-005.
 
@@ -51,7 +53,6 @@ It does not approve implementation, select product priorities, amend the Platfor
 | Voice consent, retention, transcript correction, provider, and evidence lineage | Product Owner + Security/Data/Solution | F6 |
 | Active-channel notification suppression | Product Owner + Solution Architect | F5 |
 | Global priority ordering contract | Product Owner + Business Platform owner | F4 |
-| AI SDK stream-adapter adoption | Solution Architect | F3 dependency selection |
 | Missing canonical service operations | Respective BP, PR, WBE, and identity owners | F2, F3, F4, F7 |
 
 ## Capability Traceability
@@ -85,7 +86,7 @@ Implementation remains prohibited until all conditions are true:
 INST-005 is requested to review:
 
 - route, rendering, service, stream, generated-client, state, continuity, and failure ownership;
-- API gap routing and the optional AI SDK adapter boundary;
+- API gap routing, the BP public-ingress invariant, and the decision not to adopt an AI SDK dependency before the stream contract;
 - F0–F8 dependency ordering and component separability.
 
 INST-011 is requested to review:

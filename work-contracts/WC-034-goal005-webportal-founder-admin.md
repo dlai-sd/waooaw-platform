@@ -72,11 +72,11 @@ Detailed scope, dependencies, exclusions, and acceptance IDs are normative in `a
 | F0 | Architecture and dependency closure | INST-004 + reviewing/owning offices | in progress — independent review and product/API decisions remain |
 | F1 | Experience foundation | INST-010 | blocked — review, skill, and Founder authorization gates |
 | F2 | Identity and registration | INST-010 + identity/BP owners | blocked — canonical identity/API contract plus implementation gates |
-| F3 | Conversation core | INST-010 + BP/PR owners | blocked — canonical conversation/stream contracts plus implementation gates |
+| F3 | Conversation core | INST-010 + BP/PR owners | blocked — canonical BP public conversation/stream contracts and PR internal execution contract plus implementation gates |
 | F4 | Relationship workspace | INST-010 + BP/WBE owners | blocked — Plan/Priority Work and Consumption projections plus implementation gates |
 | F5 | Omnichannel continuity | INST-010 + WC-060 owners | blocked — WC-060 completion plus implementation gates |
 | F6 | Voice interaction | INST-010 + Product/Security/Data/Solution owners | blocked — voice consent, retention, transcription, attachment, and API decisions |
-| F7 | Founder administration | INST-010 + WBE owner | blocked — canonical Founder management APIs plus implementation gates |
+| F7 | Founder administration | INST-010 + BP/WBE owners | blocked — canonical BP Founder facade and internal WBE management APIs plus implementation gates |
 | F8 | Integrated acceptance and hardening | INST-010, independently reviewed | blocked — selected release components complete and authorized |
 
 ## Required Inputs
@@ -102,7 +102,8 @@ Detailed scope, dependencies, exclusions, and acceptance IDs are normative in `a
 - [x] Emergency Stop placement and behavior remain consistent with C-001 and ADR-017.
 - [x] Every screen family maps to an approved capability and API owner; missing contracts are blocked and owner-routed.
 - [x] Founder feature routes remain subordinate to the shared shell and are separately authorization-gated.
-- [ ] INST-005 and INST-011 review the architecture package before implementation authorization is requested.
+- [x] INST-005 reviewed component, API, rendering, and continuity ownership — R-047 APPROVED.
+- [ ] INST-011 reviews product information architecture, labels, release composition, and deferred choices before implementation authorization is requested.
 
 ## Implementation Definition of Done
 

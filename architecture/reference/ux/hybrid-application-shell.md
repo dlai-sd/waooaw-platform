@@ -9,7 +9,7 @@
 
 ## Decision Summary
 
-WAOOAW provides one continuous professional relationship through WhatsApp, web, and a future mobile application. Each channel is a synchronized projection of the same relationship, conversation, plan, work, and governance state.
+WAOOAW provides one continuous professional relationship through WhatsApp, web, and a future mobile application. Each authorized channel projects the same relationship, conversation, plan, work, and governance state to the extent supported by its approved read and continuity contracts; no channel may infer synchronization from local state.
 
 The authenticated web experience uses the layout and interaction grammar of a modern conversation application, with the Next.js Chatbot Template as a structural reference. WAOOAW does not copy that template's brand, exact components, or visual identity. It applies the ratified WAOOAW typography, colors, language system, constitutional controls, and employment model.
 
@@ -209,16 +209,19 @@ ADR-002 and ADR-017 control every web-to-service interface: the approved OpenAPI
 | Approvals and scope-boundary confirmation | Business Platform + Constitutional Engine | Canonical BP operations present | Preserve distinct approval and boundary-confirmation language |
 | Customer evidence list, detail, and export | Business Platform Evidence Reader | Canonical operations present | Never call the Constitutional Audit Ledger directly |
 | Billing summary, invoices, tiers, and preference | Business Platform/WBE projection | Canonical BP operations present | Consumption UI must distinguish billed value from forecast |
-| Durable conversation timeline, send, stream, acknowledgement, read position, and attachment metadata | Business Platform + Professional Runtime | Missing from canonical OpenAPI; interview-message operation exists only in solution contract | BLOCKED until owning contracts add versioned operations and schemas |
+| Durable conversation timeline, send, acknowledgement, read position, and attachment metadata | Business Platform public API; Professional Runtime supplies internal execution/session outcomes | Missing from canonical OpenAPI; interview-message operation exists only in solution contract | BLOCKED until BP adds versioned customer-facing operations and schemas backed by the PR internal contract |
+| Professional response stream | Business Platform public stream boundary; Professional Runtime owns the internal execution stream | No approved customer-facing stream contract | BLOCKED until BP and PR define one versioned stream contract; ordinary browser traffic must not connect directly to PR |
 | Professional Plan and Priority Work projections | Business Platform | No canonical aggregate operation | BLOCKED; do not compose conflicting lifecycle truth in the browser |
 | Relationship Consumption projection with allowance, forecast, and thresholds | WBE through Business Platform | Existing billing operations are insufficient for the specified view | BLOCKED pending owner-approved read contract |
 | Registration, email/mobile verification, account linking, and duplicate resolution | Identity boundary + Business Platform | Identity architecture is defined; complete web contract is not canonical here | BLOCKED pending identity/API contract; Keycloak remains credential authority |
-| Cross-channel handoff and continuity checkpoint | Business Platform + Professional Runtime | Specified by AE-01 solution contract; implementation belongs to WC-060 | BLOCKED until WC-060 |
-| Markup Designer management | WBE | Proposed endpoint in acquisition specification, not canonical OpenAPI | BLOCKED; route may not ship against a private URL |
-| Trial Budget management | WBE | Proposed endpoint in acquisition specification, not canonical OpenAPI | BLOCKED pending WBE-owned contract |
-| Coupon creation, listing, and deactivation | WBE | Validation operation exists outside the BP OpenAPI; management contract incomplete | BLOCKED pending WBE-owned Founder contract |
+| Cross-channel handoff and continuity checkpoint | Business Platform owns checkpoint truth and public commands; Professional Runtime owns internal channel delivery/session state | Specified by AE-01 solution contract; implementation belongs to WC-060 | BLOCKED until WC-060; the browser consumes only the BP public contract |
+| Markup Designer management | WBE domain service through a Business Platform Founder API | Proposed internal WBE endpoint in acquisition specification; no canonical BP operation | BLOCKED until WBE defines the internal behavior and BP exposes an authorized Founder operation in its OpenAPI |
+| Trial Budget management | WBE domain service through a Business Platform Founder API | No canonical BP operation or complete internal WBE management contract | BLOCKED pending WBE internal contract and BP Founder facade contract |
+| Coupon creation, listing, and deactivation | WBE domain service through a Business Platform Founder API | Validation exists only on internal WBE; management contract and canonical BP operations are incomplete | BLOCKED pending WBE management behavior and BP Founder facade contract |
 
 An unavailable contract produces an explicit capability-unavailable state and correlation reference. Mock data is permitted only in isolated tests and Storybook-equivalent development fixtures; it must never be reachable in a production build as a successful service fallback.
+
+The Business Platform is the sole public REST/stream ingress for ordinary customer and Founder application traffic. WBE remains internal to BP, and PR remains internal for ordinary professional execution; the existing dedicated Emergency Stop WebSocket is the only browser-to-PR exception authorized by this package. Generated web clients target the BP OpenAPI, never private WBE or PR URLs.
 
 ## Interaction and Failure Semantics
 
@@ -353,7 +356,7 @@ After successful login or registration, a safe server-owned return target opens 
 
 ## WhatsApp Interaction Grammar
 
-The first release includes chronological messages, timestamps, date separators, unread boundaries, reply context, text, universal voice recording, relevant attachments, draft preservation, failed-send retry, deep links, and cross-channel continuation.
+The baseline conversation release includes chronological messages, timestamps, date separators, unread boundaries, reply context, text, draft preservation, failed-send retry, and approved deep links. Voice recording, attachments, and transactional cross-channel continuation enter only in releases that include their separately approved F6, attachment, and F5/WC-060 contracts; unavailable controls are absent or explicitly disabled without implying capability.
 
 It defers reactions, stickers, stories/status, disappearing messages, social presence, message editing, and group chat.
 
@@ -386,9 +389,9 @@ WhatsApp messages use explicit evidence text because transport delivery ticks ca
 - Exact 360px mobile and desktop layouts have no horizontal overflow.
 - Login, registration, conversation, Plan, Work, Performance, Consumption, and Relationship surfaces support keyboard navigation.
 - Urdu mirrors layout correctly; Indic scripts do not clip or force manual font-size compensation.
-- Voice controls are available from every professional conversation.
+- When F6 is included, voice controls are available from every professional conversation; before then, no enabled recorder or upload control is rendered.
 - Reduced-motion preference disables nonessential motion.
-- Cross-channel replay does not duplicate messages or create a second conversation.
+- When F5/WC-060 is included, cross-channel replay does not duplicate messages or create a second conversation; before then, the UI makes no committed-handoff or exactly-once claim.
 - Delivery status can never be mistaken for constitutional evidence.
 - Emergency Stop remains reachable from every authenticated professional surface.
 - Theme, locale, drafts, unread position, and chosen default start view survive navigation and reconnect where constitutionally and technically permitted.
@@ -402,6 +405,6 @@ WhatsApp messages use explicit evidence text because transport delivery ticks ca
 | Voice retention, transcription consent, correction, accessibility, and evidence lineage | Product Owner + Security/Data/Solution Architecture | Voice control may be visually reserved but cannot record or upload |
 | Cross-channel notification and active-channel suppression contract | Product Owner + Solution Architect | Notifications remain out of WC-034 implementation until specified |
 | Global priority ordering across multiple professionals | Product Owner + Business Platform owner | Priority Work uses server-provided order only; no browser ranking |
-| Vercel AI SDK use for typed stream consumption | Solution Architect dependency decision | Optional spike only; no direct model/provider, database, or Auth.js adoption |
+| Vercel AI SDK use for typed stream consumption | Solution Architect | **INST-005 decision: not approved as an F3 architecture dependency.** Reconsider only after the canonical BP/PR stream contract exists; any later proposal must remain a typed presentation adapter with no provider, persistence, authentication, or business ownership. |
 
 The navigation destinations and global-versus-relationship scope are closed by this architecture. The remaining decisions are routed to their owning offices and cannot be silently chosen during implementation.

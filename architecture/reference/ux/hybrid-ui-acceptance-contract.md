@@ -38,6 +38,7 @@ Chromium, Firefox, and WebKit are required for the browser suite. Exact 360×800
 | UX-SHELL-04 | Safe return target | External, protocol-relative, and unauthorized return targets are rejected |
 | UX-SHELL-05 | Loading and route error | Layout remains stable; error states provide next action and correlation reference where available |
 | UX-SHELL-06 | Capability contract absent | Feature is unavailable or blocked; no private endpoint or fabricated successful state is used |
+| UX-CONTRACT-01 | Public service ingress | Ordinary customer and Founder traffic uses generated BP contracts; browser bundles and network traces contain no private WBE or PR URL, except the dedicated Emergency Stop path |
 
 ### Responsive and Native-Mobile Behavior
 
@@ -112,6 +113,17 @@ Chromium, Firefox, and WebKit are required for the browser suite. Exact 360×800
 | UX-RES-01 | Service timeout/unknown outcome | UI preserves uncertainty and retry identity; it never reports success by timeout assumption |
 | UX-RES-02 | Cross-channel feature before WC-060 | UI does not claim committed handoff or exactly-once continuity |
 
+### Omnichannel Continuity (F5/WC-060 Only)
+
+| ID | Scenario | Pass condition |
+|---|---|---|
+| UX-CONT-01 | Prepare target-channel handoff | BP returns a prepared checkpoint without changing the active source channel or relationship lifecycle |
+| UX-CONT-02 | Target authentication and activation | Target content renders only after current participant, tenant, role, and assurance are server-verified and checkpoint activation is evidenced |
+| UX-CONT-03 | Handoff failure or timeout | Source remains authoritative; target reports unresolved or reverted state and does not imply synchronization |
+| UX-CONT-04 | Identical and divergent replay | Identical replay renders the prior outcome; divergent payload under the same idempotency key renders conflict with zero local mutation |
+| UX-CONT-05 | Assurance downgrade or cross-tenant attempt | Capability is reduced or denied without relationship existence or protected content disclosure |
+| UX-CONT-06 | Emergency Stop during handoff | Stop preempts handoff, applies across channel projections, and reconnect or handoff activation cannot release it |
+
 ### Visual and Performance
 
 | ID | Scenario | Pass condition |
@@ -133,6 +145,8 @@ Baselines are required for:
 - longest approved labels and representative Indic-script content.
 
 Baseline changes require reviewer-visible artifacts and a stated reason. Bulk baseline replacement without route-by-route inspection fails review.
+
+For component-level closure before F8, only baselines for routes and states owned by that authorized component are required. F8 executes the complete matrix above across the selected release and cannot be inferred from an earlier component's partial visual pass.
 
 ## Quality Gate Commands
 

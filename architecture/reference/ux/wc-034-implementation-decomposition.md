@@ -60,7 +60,7 @@ F2 and the service-contract portion of F3 may be prepared in parallel after F1, 
 **Scope:**
 
 - obtain independent shell, visual, product, API-ownership, security-boundary, and acceptance review;
-- decide whether `@ai-sdk/react` is adopted only as a typed stream consumer;
+- carry the INST-005 decision that `@ai-sdk/react` is not an F3 architecture dependency and may not be introduced before the canonical stream contract is approved;
 - close or route the canonical conversation, Plan/Priority Work, Consumption, registration/linking, and Founder management API gaps;
 - establish performance profiles, supported browser matrix, attachment policy, voice policy, and notification ownership;
 - retire WC-016 as a future authority in the implementation Work Contract.
@@ -83,7 +83,7 @@ F2 and the service-contract portion of F3 may be prepared in parallel after F1, 
 
 **Excludes:** Real registration, conversation transport, relationship data, Founder features, voice capture.
 
-**Acceptance:** UX-SHELL-01, UX-SHELL-03, UX-SHELL-05, UX-RESP-01 through UX-RESP-06, CCT-UX-A11Y-01 through CCT-UX-MOTION-01, UX-PWA-01, UX-PWA-02, UX-VIS-01 through UX-PERF-03.
+**Acceptance:** UX-SHELL-01, UX-SHELL-03, UX-SHELL-05, UX-RESP-01 through UX-RESP-06, CCT-UX-A11Y-01 through CCT-UX-MOTION-01, UX-PWA-01, UX-PWA-02, and UX-PERF-01 through UX-PERF-03 apply to F1 routes and shell states. UX-VIS-01 uses only F1-owned public, authentication, and shared-system baselines here; the complete cross-component screenshot matrix remains an F8 exit condition.
 
 ## F2 — Identity and Registration
 
@@ -118,7 +118,7 @@ F2 and the service-contract portion of F3 may be prepared in parallel after F1, 
 - relevant attachment metadata and preview only after attachment policy/API approval;
 - persistent existing Emergency Stop control without changing its transport.
 
-**Dependencies:** Canonical conversation OpenAPI operations and schemas; Professional Runtime stream contract; no direct model-provider calls. If AI SDK is selected, only the approved adapter enters this component.
+**Dependencies:** Canonical BP conversation OpenAPI operations and schemas for customer-facing reads and commands; an internal Professional Runtime execution/stream contract surfaced through the approved BP public stream boundary; no ordinary browser-to-PR connection and no direct model-provider calls. `@ai-sdk/react` is not an approved F3 dependency.
 
 **Excludes:** Cross-channel checkpoint commit, voice capture, browser-owned plan aggregation, model dispatch.
 
@@ -149,7 +149,8 @@ F2 and the service-contract portion of F3 may be prepared in parallel after F1, 
 **Scope:**
 
 - channel provenance and continuation separators;
-- authenticated handoff preparation, activation, commit/revert, and user feedback;
+- BP-owned authenticated handoff preparation, activation, checkpoint commit/revert, and public outcome retrieval;
+- PR-owned internal channel delivery/session processing behind the BP contract;
 - checkpoint, acknowledgement, cursor, ordering, and duplicate-delivery handling;
 - active-channel notification suppression and reconnect behavior.
 
@@ -157,7 +158,7 @@ F2 and the service-contract portion of F3 may be prepared in parallel after F1, 
 
 **Excludes:** Any pre-WC-060 claim of committed handoff or exactly-once cross-channel action.
 
-**Acceptance:** UX-CONV-03, UX-RES-02 plus WC-060 handoff, replay, downgrade, takeover, and cross-tenant CCTs.
+**Acceptance:** UX-CONV-03, UX-RES-02, UX-CONT-01 through UX-CONT-06, plus WC-060 handoff, replay, downgrade, takeover, and cross-tenant CCTs.
 
 ## F6 — Voice Interaction
 
@@ -186,11 +187,11 @@ F2 and the service-contract portion of F3 may be prepared in parallel after F1, 
 - explicit confirmation, validation, immutable evidence reference, and conflict/error handling;
 - no customer discovery language or customer navigation leakage.
 
-**Dependencies:** Canonical WBE management OpenAPI operations, Founder assurance contract, generated clients, WC-027 and WC-031 outcomes.
+**Dependencies:** Canonical BP Founder-management OpenAPI operations and generated web client; internal WBE management contracts invoked only by BP; Founder assurance contract; WC-027 and WC-031 outcomes.
 
 **Excludes:** Direct database access, private undocumented URLs, CSS-hidden customer routes, or expanding Founder authority in the UI.
 
-**Acceptance:** UX-SHELL-03, UX-SHELL-06, keyboard/RTL/responsive/axe matrix for every Founder route, owner-defined financial and authorization CCTs.
+**Acceptance:** UX-SHELL-03, UX-SHELL-06, UX-CONTRACT-01, keyboard/RTL/responsive/axe matrix for every Founder route, owner-defined financial and authorization CCTs.
 
 ## F8 — Integrated Acceptance and Hardening
 
