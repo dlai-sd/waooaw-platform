@@ -18,6 +18,17 @@ describe('EmergencyStop', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
+  it('lets the runtime halt all known sessions when only contract scope is known', async () => {
+    const fetchMock = jest.fn().mockResolvedValue({ ok: true });
+    global.fetch = fetchMock;
+    render(<EmergencyStop contractId="contract-1" activeSessionIds={[]} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Emergency Stop' }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/emergency-stop', expect.objectContaining({
+      body: JSON.stringify({ contractId: 'contract-1' }),
+    })));
+  });
+
   it('does not show confirmation when the stop request fails', async () => {
     const fetchMock = jest.fn().mockResolvedValue({ ok: false });
     global.fetch = fetchMock;

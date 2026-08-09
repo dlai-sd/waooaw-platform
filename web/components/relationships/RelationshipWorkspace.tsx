@@ -1,4 +1,3 @@
-import { EmergencyStop } from '@/components/constitutional/EmergencyStop';
 import type { EmploymentRelationship, RelationshipTimelineEntry } from '@/lib/api/relationships';
 
 interface RelationshipWorkspaceProps {
@@ -45,7 +44,6 @@ export function RelationshipWorkspace({ relationship, timeline }: RelationshipWo
         </ol>
       </section>
 
-      <EmergencyStop contractId={null} activeSessionIds={[]} />
     </main>
   );
 }

@@ -133,6 +133,33 @@ test('UX-SHELL-03 CCT-UX-HO-01: signed customer and Founder boundaries compose o
   await expect(page.getByRole('navigation', { name: 'Founder navigation' })).toBeVisible();
 });
 
+test('CCT-UX-HO-01: active relationship Stop is persistent and keyboard operable', async ({ context, page }, testInfo) => {
+  test.skip(
+    !['chromium-expanded', 'chromium-compact-360'].includes(testInfo.project.name),
+    'Human Override geometry is normalized at the required compact and expanded widths.',
+  );
+  await addSession(context, false);
+  await page.goto('/relationships/relationship-active');
+  const stop = page.getByRole('button', { name: 'Emergency Stop' });
+  await expect(stop).toBeVisible();
+  await expect(stop).toBeEnabled();
+  const box = await stop.boundingBox();
+  expect(box?.width).toBeGreaterThanOrEqual(56);
+  expect(box?.height).toBeGreaterThanOrEqual(56);
+  expect(box?.x).toBeGreaterThanOrEqual(0);
+  expect((box?.x ?? 0) + (box?.width ?? 0)).toBeLessThanOrEqual(page.viewportSize()?.width ?? 0);
+  expect((box?.y ?? 0) + (box?.height ?? 0)).toBeLessThanOrEqual(page.viewportSize()?.height ?? 0);
+  expect(await stop.evaluate((button) => {
+    const bounds = button.getBoundingClientRect();
+    const topmost = document.elementFromPoint(bounds.left + bounds.width / 2, bounds.top + bounds.height / 2);
+    return topmost === button || button.contains(topmost);
+  })).toBe(true);
+  await stop.focus();
+  await expect(stop).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('button', { name: 'Emergency Stop confirmed' })).toBeDisabled();
+});
+
 test('UX-PWA-02 UX-PRIV-01: generated worker caches static assets only', async ({ page }) => {
   const response = await page.request.get('/sw.js');
   expect(response.ok()).toBe(true);
@@ -158,9 +185,41 @@ test('UX-VIS-01: F1-owned public and system states match reviewed baselines', as
 
 test('UX-PERF-01 UX-PERF-02 UX-PERF-03: public shell remains within F1 budgets', async ({ page, request }, testInfo) => {
   test.skip(testInfo.project.name !== 'chromium-expanded', 'Performance entries use the approved expanded Chromium profile.');
+  await page.addInitScript(() => {
+    const vitals = {
+      cls: 0,
+      clsSupported: PerformanceObserver.supportedEntryTypes.includes('layout-shift'),
+      inp: 0,
+      inpObserved: false,
+      lcp: 0,
+      lcpObserved: false,
+    };
+    Object.defineProperty(window, '__f1Vitals', { value: vitals, writable: false });
+    new PerformanceObserver((list) => {
+      for (const entry of list.getEntries()) {
+        vitals.lcp = entry.startTime;
+        vitals.lcpObserved = true;
+      }
+    }).observe({ type: 'largest-contentful-paint', buffered: true });
+    new PerformanceObserver((list) => {
+      for (const entry of list.getEntries() as Array<PerformanceEntry & { hadRecentInput: boolean; value: number }>) {
+        if (!entry.hadRecentInput) vitals.cls += entry.value;
+      }
+    }).observe({ type: 'layout-shift', buffered: true });
+    new PerformanceObserver((list) => {
+      for (const entry of list.getEntries() as Array<PerformanceEntry & { interactionId: number }>) {
+        if (entry.interactionId > 0) {
+          vitals.inp = Math.max(vitals.inp, entry.duration);
+          vitals.inpObserved = true;
+        }
+      }
+    }).observe({ type: 'event', buffered: true, durationThreshold: 16 } as PerformanceObserverInit & { durationThreshold: number });
+  });
   const publicResponse = await request.get('/');
   const initialHtml = await publicResponse.text();
   await page.goto('/');
+  await page.getByRole('button', { name: messages.en.darkTheme }).click();
+  await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
   const metrics = await page.evaluate((html) => {
     const resources = performance.getEntriesByType('resource') as PerformanceResourceTiming[];
     const initialDocument = new DOMParser().parseFromString(html, 'text/html');
@@ -178,8 +237,17 @@ test('UX-PERF-01 UX-PERF-02 UX-PERF-03: public shell remains within F1 budgets',
     const documentBytes = (performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming)?.encodedBodySize ?? 0;
     const stylesAndFonts = resources.filter((entry) => entry.initiatorType === 'css' || entry.initiatorType === 'font');
     const fcp = performance.getEntriesByName('first-contentful-paint')[0]?.startTime ?? 0;
+    const vitals = (window as typeof window & { __f1Vitals: {
+      cls: number;
+      clsSupported: boolean;
+      inp: number;
+      inpObserved: boolean;
+      lcp: number;
+      lcpObserved: boolean;
+    } }).__f1Vitals;
     return {
       fcp,
+      ...vitals,
       initialJsBytes: scripts.reduce((total, entry) => total + entry.encodedBodySize, 0),
       scripts: scripts.map((entry) => ({ url: entry.name, bytes: entry.encodedBodySize, responseEnd: entry.responseEnd })),
       publicBytes: documentBytes + initialResources.reduce((total, entry) => total + entry.encodedBodySize, 0),
@@ -187,6 +255,12 @@ test('UX-PERF-01 UX-PERF-02 UX-PERF-03: public shell remains within F1 budgets',
     };
   }, initialHtml);
   expect(metrics.fcp).toBeLessThanOrEqual(1500);
+  expect(metrics.lcpObserved).toBe(true);
+  expect(metrics.lcp).toBeLessThanOrEqual(2500);
+  expect(metrics.clsSupported).toBe(true);
+  expect(metrics.cls).toBeLessThanOrEqual(0.1);
+  expect(metrics.inpObserved).toBe(true);
+  expect(metrics.inp).toBeLessThanOrEqual(200);
   expect(metrics.initialJsBytes, JSON.stringify(metrics.scripts)).toBeLessThanOrEqual(100 * 1024);
   expect(metrics.publicBytes).toBeLessThanOrEqual(200 * 1024);
   expect(metrics.loadedFonts).toBeLessThanOrEqual(1);

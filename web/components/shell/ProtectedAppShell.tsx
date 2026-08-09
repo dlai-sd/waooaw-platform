@@ -3,9 +3,9 @@
 
 import { BriefcaseBusiness, Home, MessageSquare, Settings, ShieldCheck } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { EmergencyStop } from '@/components/constitutional/EmergencyStop';
 import type { Messages } from '@/lib/i18n';
 import { AppShell } from './AppShell';
+import { RouteAwareEmergencyStop } from './RouteAwareEmergencyStop';
 
 export interface StopContext {
   contractId: string;
@@ -59,7 +59,7 @@ export function ProtectedAppShell({ children, messages, stopContext, variant }: 
       headerStatus={variant === 'founder' ? <span className="role-label"><ShieldCheck aria-hidden="true" size={17} /> {messages.founder}</span> : undefined}
       messages={messages}
       sideNavigation={sideNavigation}
-      stopControl={<EmergencyStop contractId={stopContext?.contractId ?? null} activeSessionIds={stopContext?.activeSessionIds ?? []} />}
+      stopControl={<RouteAwareEmergencyStop stopContext={stopContext} />}
       variant={variant}
     >
       {children}

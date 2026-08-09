@@ -7,7 +7,7 @@ export async function POST(request: Request) {
   if (!session?.accessToken) return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 });
 
   const body = (await request.json()) as { contractId?: string; activeSessionIds?: string[] };
-  if (!body.contractId || !body.activeSessionIds?.length) {
+  if (!body.contractId) {
     return NextResponse.json({ error: 'NO_ACTIVE_STOP_TARGET' }, { status: 409 });
   }
 

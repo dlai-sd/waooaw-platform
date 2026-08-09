@@ -23,13 +23,12 @@ const timeline: RelationshipTimelineEntry[] = [{
 }];
 
 describe('RelationshipWorkspace', () => {
-  it('presents evaluation state, evidence history, and an honest Stop entry point', () => {
+  it('presents evaluation state and evidence history', () => {
     render(<RelationshipWorkspace relationship={relationship} timeline={timeline} />);
 
     expect(screen.getByText('Evaluation · TRIAL_ACTIVE')).toBeVisible();
     expect(screen.getAllByText('TRIAL ACTIVE')).toHaveLength(2);
     expect(screen.getAllByText('1', { selector: 'dd' })).toHaveLength(2);
-    expect(screen.getByRole('button', { name: 'No active work to stop' })).toBeDisabled();
   });
 
   it('distinguishes an active relationship as live', () => {

@@ -3,6 +3,7 @@
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { signIn } from 'next-auth/react';
+import { usePathname } from 'next/navigation';
 import { AppShell } from './AppShell';
 import { ExperienceControls } from './ExperienceControls';
 import { OfflineNotice } from './OfflineNotice';
@@ -12,10 +13,12 @@ import { StateView } from '@/components/system/StateView';
 import { messages } from '@/lib/i18n';
 
 jest.mock('next-auth/react', () => ({ signIn: jest.fn() }));
+jest.mock('next/navigation', () => ({ usePathname: jest.fn() }));
 
 describe('F1 shell primitives', () => {
   beforeEach(() => {
     jest.mocked(signIn).mockClear();
+    jest.mocked(usePathname).mockReturnValue('/home');
     document.documentElement.lang = 'en';
     document.documentElement.dataset.theme = 'system';
     Object.defineProperty(navigator, 'onLine', { configurable: true, value: true });
@@ -37,6 +40,12 @@ describe('F1 shell primitives', () => {
 
   it('passes an approved active Stop context to the constitutional control', () => {
     render(<ProtectedAppShell messages={messages.en} stopContext={{ contractId: 'contract-1', activeSessionIds: ['session-1'] }} variant="customer"><p>Active work</p></ProtectedAppShell>);
+    expect(screen.getByRole('button', { name: 'Emergency Stop' })).toBeEnabled();
+  });
+
+  it('uses authenticated relationship scope when the runtime owns active session discovery', () => {
+    jest.mocked(usePathname).mockReturnValue('/relationships/relationship-1');
+    render(<ProtectedAppShell messages={messages.en} variant="customer"><p>Relationship</p></ProtectedAppShell>);
     expect(screen.getByRole('button', { name: 'Emergency Stop' })).toBeEnabled();
   });
 
