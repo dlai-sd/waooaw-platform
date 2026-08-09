@@ -13,11 +13,21 @@
 | Canonical F2 component, API, data, error, and integration contracts | DONE — Identity Boundary package defines ownership and deterministic behavior without a new deployable component |
 | Canonical OpenAPI and generated TypeScript client compatibility | DONE — 11 public F2 operations; 29 focused references resolve; F2 TypeScript model generation passes without manual patches |
 | F2 dependency gate table | DONE — every dependency READY or BLOCKED with owner and missing artifact; ADR-008 Meta reconciliation and INST-004 review remain blocking |
-| Independent INST-004 review submission | pending |
+| Independent INST-004 review submission | DONE — PR #248 opened against `main`; INST-004 review requested; no self-approval or merge |
 
 ### Authorization Boundary
 
 This session grooms only WC-034 F2 Identity and Registration into an implementation-ready contract. It does not write application code, create private endpoints, extend into F3–F8, authorize deployment, or approve its own architecture output.
+
+### Review Candidate
+
+- Commit `c36b438` on `ib/014/wc034-f2-identity-contract`
+- PR #248 — independent INST-004 Enterprise Architect review requested
+- R-054 — INST-007 security consultation, CONCUR WITH BLOCKERS
+
+### Next Constitutional Action
+
+INST-004 independently reviews PR #248. F2 implementation remains blocked pending that review and ADR-008 Meta disposition reconciliation. Meta activation additionally requires FA-002 and FA-018 evidence. Deployment remains unauthorized.
 
 ---
 
