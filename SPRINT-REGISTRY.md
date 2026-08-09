@@ -1,6 +1,6 @@
 # WAOOAW Platform — Sprint Registry
 
-**Last Updated:** 2026-08-08 · **Version:** 1.44.0 · **Work Contracts:** 53 recorded (48 closed · 4 active · 1 blocked)
+**Last Updated:** 2026-08-09 · **Version:** 1.45.0 · **Work Contracts:** 53 recorded (48 closed · 4 active · 1 blocked)
 
 ---
 
@@ -8,7 +8,7 @@
 
 | WC | Title | Track | Status | Depends On | Key Outcome |
 |---|---|---|---|---|---|
-| **WC-034** | Hybrid Web Application Shell | Next.js 14 PWA | F1 IMPLEMENTATION COMPLETE — INST-004 REVIEW PENDING | WC-057 · ADR-017 · IB-014 · FA-031 · FA-034 | Public, authentication, customer, Founder, and system-state shells; F2–F8 and deployment remain gated |
+| **WC-034** | Hybrid Web Application Shell | Next.js 14 PWA | R-050 REMEDIATION COMPLETE — INST-004 RE-REVIEW PENDING | WC-057 · ADR-017 · IB-014 · FA-031 · FA-034 | F1 shells, eleven locales, restored homepage, honest Stop context, and reproducible five-project browser evidence; F2–F8 and deployment remain gated |
 | **WC-057** | AE-01 Employment Journey Foundation | Customer outcome | IMPLEMENTATION COMPLETE — REVIEW PENDING | R-046 · FA-030 · WC-037 · WC-040 · WC-041 | Durable relationship, canonical APIs, participant roles, and provisional authenticated PWA shell |
 | **WC-058** | AE-01 Discover, Trial, Configure | Customer outcome | IMPLEMENTATION-READY — UNAUTHORIZED | WC-057 | Generic S01–S06 journey with DMA 19-skill first proof and 14-day zero-paid-API trial |
 | **WC-059** | AE-01 Contract, Payment, Activation | Customer outcome | IMPLEMENTATION-READY — UNAUTHORIZED | WC-058 · WC-042 · WC-043 | Tier-4 contract/payment and exactly-once activation |
@@ -91,4 +91,4 @@
 | L2 Trust | Provider Registry, oauth-vault, CTG, Token Refresh | ✅ 100% DONE | WC-037→039 |
 | L3 Business | WBE S1–S8 implemented and tested; AIR/BP end-to-end integration remains partial | ~90% repository evidence | WC-025→033, WC-042→043 |
 | L4 Skill Architecture | Skill Catalog, Skill Runtime, Intent Crystallizer | ✅ 100% DONE | WC-040→041 |
-| L5 Interface | F1 experience foundation + provisional relationship route | ~40% | WC-034 F1 implemented and tested; independent review pending; F2–F8 gated |
+| L5 Interface | F1 experience foundation + provisional relationship route | ~40% | WC-034 F1 R-050 remediation tested; independent INST-004 re-review pending; F2–F8 gated |

@@ -20,10 +20,11 @@ This file is auto-generated from conventional commits. Do not edit manually.
 
 ### Quality
 - Strict TypeScript and Next.js lint: PASS, zero diagnostics or warnings
-- Jest/Testing Library: 29/29 PASS; 98.68% overall line coverage and 100% on new F1 shell components
-- Playwright/axe: 15/15 PASS across Chromium, Firefox, WebKit, 1440×900, 768×1024, and 360×800
-- Production build: 20/20 routes generated; shared initial JavaScript 89.5 kB; public route 98.4 kB
+- Jest/Testing Library: 34/34 PASS; 98.64% overall line coverage
+- Playwright/axe: eight logical scenarios across five projects; 36 PASS and 4 expected normalized-performance SKIP across Chromium, Firefox, WebKit, 1440×900, 768×1024, and 360×800
+- Production build: 20/20 routes generated; shared initial JavaScript 89.5 kB; public route 89.7 kB
 - Service-worker audit: one approved static cache, three network-only strategies, zero default API/page/RSC/cross-origin caches, and no precached root HTML
+- R-050 remediation restores all homepage content families, completes eleven-locale/script-font coverage, preserves honest absent-context Emergency Stop behavior, and makes browser evidence reproducible from a clean Docker build; independent INST-004 re-review remains pending
 
 ---
 
