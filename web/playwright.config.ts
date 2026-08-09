@@ -20,7 +20,7 @@ export default defineConfig({
     ? undefined
     : {
         command:
-          'NEXTAUTH_SECRET=playwright-only-not-a-runtime-secret NEXTAUTH_URL=http://127.0.0.1:3000 npm run build && NEXTAUTH_SECRET=playwright-only-not-a-runtime-secret NEXTAUTH_URL=http://127.0.0.1:3000 npm run start -- --hostname 127.0.0.1 --port 3000',
+          'rm -rf .next && NEXTAUTH_SECRET=playwright-only-not-a-runtime-secret NEXTAUTH_URL=http://127.0.0.1:3000 npm run build && NEXTAUTH_SECRET=playwright-only-not-a-runtime-secret NEXTAUTH_URL=http://127.0.0.1:3000 npm run start -- --hostname 127.0.0.1 --port 3000',
         url: 'http://127.0.0.1:3000',
         reuseExistingServer: true,
         timeout: 180_000,

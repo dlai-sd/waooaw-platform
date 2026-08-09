@@ -2,4 +2,5 @@
 // Constitutional basis: C-059 (Implementation Traceability)
 
 import { StateView } from '@/components/system/StateView';
-export default function NotFound() { return <main className="system-page"><StateView kind="not-found" title="Page not found" description="The requested page does not exist or is no longer available." /></main>; }
+import { getRequestI18n } from '@/lib/i18n-server';
+export default function NotFound() { const { messages } = getRequestI18n(); return <main className="system-page"><StateView actionLabel={messages.returnHome} kind="not-found" title={messages.pageNotFound} description={messages.pageNotFoundDescription} /></main>; }

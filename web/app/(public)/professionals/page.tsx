@@ -2,4 +2,5 @@
 // Constitutional basis: C-049 (Honest Limitation), C-059 (Implementation Traceability)
 
 import { StateView } from '@/components/system/StateView';
-export default function ProfessionalsPage() { return <StateView kind="empty" title="Professionals" description="The professional catalogue is being prepared. No unavailable capability is presented as ready." />; }
+import { getRequestI18n } from '@/lib/i18n-server';
+export default function ProfessionalsPage() { const { messages } = getRequestI18n(); return <StateView actionLabel={messages.returnHome} kind="empty" title={messages.professionals} description={messages.professionalCatalogueDescription} />; }

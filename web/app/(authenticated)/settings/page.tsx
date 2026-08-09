@@ -1,4 +1,5 @@
 // Implements: architecture/reference/ux/hybrid-application-shell.md §Navigation Contract
 // Constitutional basis: C-059 (Implementation Traceability)
 
-export default function SettingsPage() { return <section className="content-page"><p className="eyebrow">Preferences</p><h1>Settings</h1><p>Language and theme controls are available in the application header.</p></section>; }
+import { getRequestI18n } from '@/lib/i18n-server';
+export default function SettingsPage() { const { messages } = getRequestI18n(); return <section className="content-page"><p className="eyebrow">{messages.preferences}</p><h1>{messages.settings}</h1><p>{messages.settingsDescription}</p></section>; }

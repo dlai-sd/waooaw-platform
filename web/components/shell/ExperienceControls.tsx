@@ -4,8 +4,8 @@
 // Constitutional basis: C-042 (Vocabulary Mandate), C-059 (Implementation Traceability)
 
 import { Languages, Moon, Sun } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import type { Messages } from '@/lib/i18n';
 import { resolveLocale, resolveTheme, supportedLocales, type SupportedLocale, type ThemePreference } from '@/lib/preferences';
 
 const localeNames: Record<SupportedLocale, string> = {
@@ -17,8 +17,10 @@ function setPreference(name: string, value: string) {
   document.cookie = `${name}=${value}; Path=/; Max-Age=31536000; SameSite=Lax`;
 }
 
-export function ExperienceControls() {
-  const router = useRouter();
+export function ExperienceControls({ messages, reload = () => window.location.reload() }: {
+  messages: Pick<Messages, 'darkTheme' | 'language' | 'lightTheme'>;
+  reload?: () => void;
+}) {
   const [locale, setLocale] = useState<SupportedLocale>('en');
   const [theme, setTheme] = useState<ThemePreference>('system');
 
@@ -30,7 +32,7 @@ export function ExperienceControls() {
   function changeLocale(nextLocale: SupportedLocale) {
     setLocale(nextLocale);
     setPreference('waooaw-locale', nextLocale);
-    router.refresh();
+    reload();
   }
 
   function toggleTheme() {
@@ -44,12 +46,12 @@ export function ExperienceControls() {
     <div className="experience-controls">
       <label className="select-control">
         <Languages aria-hidden="true" size={18} />
-        <span className="visually-hidden">Language</span>
-        <select aria-label="Language" value={locale} onChange={(event) => changeLocale(event.target.value as SupportedLocale)}>
+        <span className="visually-hidden">{messages.language}</span>
+        <select aria-label={messages.language} value={locale} onChange={(event) => changeLocale(event.target.value as SupportedLocale)}>
           {supportedLocales.map((option) => <option key={option} value={option}>{localeNames[option]}</option>)}
         </select>
       </label>
-      <button className="icon-command" type="button" onClick={toggleTheme} aria-label={`Use ${theme === 'dark' ? 'light' : 'dark'} theme`}>
+      <button className="icon-command" type="button" onClick={toggleTheme} aria-label={theme === 'dark' ? messages.lightTheme : messages.darkTheme}>
         {theme === 'dark' ? <Sun aria-hidden="true" size={19} /> : <Moon aria-hidden="true" size={19} />}
       </button>
     </div>

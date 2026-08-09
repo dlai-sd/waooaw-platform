@@ -2,4 +2,5 @@
 // Constitutional basis: C-049 (Honest Limitation), C-059 (Implementation Traceability)
 
 import { StateView } from '@/components/system/StateView';
-export default function CustomerHomePage() { return <StateView kind="empty" title="Your workspace is ready" description="Your professional conversations will appear here when the conversation contract is available." />; }
+import { getRequestI18n } from '@/lib/i18n-server';
+export default function CustomerHomePage() { const { messages } = getRequestI18n(); return <StateView actionLabel={messages.returnHome} kind="empty" title={messages.workspaceReady} description={messages.workspaceReadyDescription} />; }

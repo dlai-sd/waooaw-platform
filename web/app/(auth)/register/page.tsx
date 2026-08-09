@@ -2,4 +2,5 @@
 // Constitutional basis: C-049 (Honest Limitation), C-059 (Implementation Traceability)
 
 import { StateView } from '@/components/system/StateView';
-export default function RegisterPage() { return <StateView actionHref="/login" actionLabel="Continue to secure sign in" kind="empty" title="Registration is not available yet" description="F1 provides the authentication shell only. Registration begins after its identity contracts are approved." />; }
+import { getRequestI18n } from '@/lib/i18n-server';
+export default function RegisterPage() { const { messages } = getRequestI18n(); return <StateView actionHref="/login" actionLabel={messages.continueSecureSignIn} kind="empty" title={messages.registrationUnavailable} description={messages.registrationDescription} />; }

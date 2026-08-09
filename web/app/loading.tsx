@@ -2,4 +2,5 @@
 // Constitutional basis: C-059 (Implementation Traceability)
 
 import { StateView } from '@/components/system/StateView';
-export default function Loading() { return <main className="system-page"><StateView kind="loading" title="Loading" description="Preparing the requested view." /></main>; }
+import { getRequestI18n } from '@/lib/i18n-server';
+export default function Loading() { const { messages } = getRequestI18n(); return <main className="system-page"><StateView kind="loading" title={messages.loading} description={messages.loadingDescription} /></main>; }

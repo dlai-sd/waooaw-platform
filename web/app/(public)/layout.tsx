@@ -3,5 +3,9 @@
 
 import type { ReactNode } from 'react';
 import { AppShell } from '@/components/shell/AppShell';
+import { getRequestI18n } from '@/lib/i18n-server';
 
-export default function PublicLayout({ children }: { children: ReactNode }) { return <AppShell variant="public">{children}</AppShell>; }
+export default function PublicLayout({ children }: { children: ReactNode }) {
+	const { messages } = getRequestI18n();
+	return <AppShell messages={messages} variant="public">{children}</AppShell>;
+}

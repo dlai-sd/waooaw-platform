@@ -6,17 +6,15 @@ import { signIn } from 'next-auth/react';
 import { AppShell } from './AppShell';
 import { ExperienceControls } from './ExperienceControls';
 import { OfflineNotice } from './OfflineNotice';
+import { ProtectedAppShell } from './ProtectedAppShell';
 import { SignInCommand } from '@/components/auth/SignInCommand';
 import { StateView } from '@/components/system/StateView';
+import { messages } from '@/lib/i18n';
 
-const refresh = jest.fn();
-
-jest.mock('next/navigation', () => ({ useRouter: () => ({ refresh }) }));
 jest.mock('next-auth/react', () => ({ signIn: jest.fn() }));
 
 describe('F1 shell primitives', () => {
   beforeEach(() => {
-    refresh.mockClear();
     jest.mocked(signIn).mockClear();
     document.documentElement.lang = 'en';
     document.documentElement.dataset.theme = 'system';
@@ -24,24 +22,30 @@ describe('F1 shell primitives', () => {
   });
 
   it('composes public navigation without authenticated controls', () => {
-    render(<AppShell variant="public"><p>Public content</p></AppShell>);
-    expect(screen.getByRole('navigation', { name: 'Public navigation' })).toBeVisible();
-    expect(screen.getByRole('link', { name: 'Register' })).toHaveAttribute('href', '/register');
+    render(<AppShell messages={messages.en} variant="public"><p>Public content</p></AppShell>);
+    expect(screen.getByRole('navigation', { name: messages.en.publicNavigation })).toBeVisible();
+    expect(screen.getByRole('link', { name: messages.en.register })).toHaveAttribute('href', '/register');
     expect(screen.queryByRole('button', { name: /Emergency Stop/i })).not.toBeInTheDocument();
   });
 
   it('composes role-aware customer navigation with persistent Stop', () => {
-    render(<AppShell variant="customer"><p>Customer content</p></AppShell>);
-    expect(screen.getByRole('navigation', { name: 'Customer navigation' })).toBeVisible();
-    expect(screen.getByRole('navigation', { name: 'Customer mobile navigation' })).toBeVisible();
+    render(<ProtectedAppShell messages={messages.en} variant="customer"><p>Customer content</p></ProtectedAppShell>);
+    expect(screen.getByRole('navigation', { name: messages.en.customerNavigation })).toBeVisible();
+    expect(screen.getByRole('navigation', { name: messages.en.customerMobileNavigation })).toBeVisible();
     expect(screen.getByRole('button', { name: 'No active work to stop' })).toBeDisabled();
   });
 
+  it('passes an approved active Stop context to the constitutional control', () => {
+    render(<ProtectedAppShell messages={messages.en} stopContext={{ contractId: 'contract-1', activeSessionIds: ['session-1'] }} variant="customer"><p>Active work</p></ProtectedAppShell>);
+    expect(screen.getByRole('button', { name: 'Emergency Stop' })).toBeEnabled();
+  });
+
   it('changes locale and theme through durable preferences', async () => {
-    render(<ExperienceControls />);
+    const reload = jest.fn();
+    render(<ExperienceControls messages={messages.en} reload={reload} />);
     fireEvent.change(screen.getByRole('combobox', { name: 'Language' }), { target: { value: 'ur' } });
     expect(document.cookie).toContain('waooaw-locale=ur');
-    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(reload).toHaveBeenCalledTimes(1);
 
     fireEvent.click(screen.getByRole('button', { name: 'Use dark theme' }));
     expect(document.documentElement.dataset.theme).toBe('dark');
@@ -62,13 +66,13 @@ describe('F1 shell primitives', () => {
     const { rerender } = render(<StateView kind="loading" title="Loading" description="Preparing" />);
     expect(screen.getByRole('heading', { name: 'Loading' })).toBeVisible();
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
-    rerender(<StateView kind="forbidden" title="Access not permitted" description="Not allowed" />);
-    expect(screen.getByRole('link', { name: /Return home/ })).toHaveAttribute('href', '/');
+    rerender(<StateView actionLabel={messages.en.returnHome} kind="forbidden" title="Access not permitted" description="Not allowed" />);
+    expect(screen.getByRole('link', { name: messages.en.returnHome })).toHaveAttribute('href', '/');
   });
 
   it('uses only the Keycloak sign-in command', () => {
-    render(<SignInCommand />);
-    fireEvent.click(screen.getByRole('button', { name: /Sign in securely/ }));
+    render(<SignInCommand label={messages.en.signInSecurely} />);
+    fireEvent.click(screen.getByRole('button', { name: messages.en.signInSecurely }));
     expect(signIn).toHaveBeenCalledWith('keycloak', { callbackUrl: '/home' });
   });
 });

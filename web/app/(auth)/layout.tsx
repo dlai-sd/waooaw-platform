@@ -3,4 +3,8 @@
 
 import type { ReactNode } from 'react';
 import { AppShell } from '@/components/shell/AppShell';
-export default function AuthLayout({ children }: { children: ReactNode }) { return <AppShell variant="auth">{children}</AppShell>; }
+import { getRequestI18n } from '@/lib/i18n-server';
+export default function AuthLayout({ children }: { children: ReactNode }) {
+	const { messages } = getRequestI18n();
+	return <AppShell messages={messages} variant="auth">{children}</AppShell>;
+}
