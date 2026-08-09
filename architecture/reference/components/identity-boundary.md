@@ -268,7 +268,7 @@ Sign-out clears the server session, browser memory, query cache, relationship ca
 | Gate | Dependency | Status | Owner | Missing artifact or evidence |
 |---|---|---|---|---|
 | `G-F2-01` | F1 experience foundation merged and approved | **READY** | INST-010 / INST-004 | None — R-052 approved and PR #246 merged |
-| `G-F2-02` | ADR-008 provider policy reconciled with FA-035 | **BLOCKED — FOUNDER POLICY APPROVED** | INST-004 Enterprise Architect | ADR-008 amendment naming Google, Facebook, Apple, email fallback, progressive mobile verification, and OAuth-app separation |
+| `G-F2-02` | ADR-008 provider policy reconciled with FA-035 | **READY — ADR-008 Amendment 1 complete (v3, 2026-08-09)** | INST-004 Enterprise Architect | None — Amendment 1 records one provider-agnostic experience, confirmed-email completion, progressive mobile verification, provider-subject binding, proof-of-control linking, non-enumerating behavior, Facebook scope isolation, and provider-specific activation gates |
 | `G-F2-03` | Meta login environment prerequisites | **BLOCKED** | Founder | FA-002 Meta Business Manager verification and FA-018 login app credentials/configuration evidence |
 | `G-F2-04` | Google broker path | **READY** | Keycloak/identity implementation owner | Contract fixed; environment-specific provider proof is an implementation acceptance item |
 | `G-F2-05` | Approved credential path with second factor | **READY** | Keycloak/identity implementation owner | Contract fixed; realm-flow evidence required during implementation |
@@ -284,7 +284,7 @@ Sign-out clears the server session, browser memory, query cache, relationship ca
 
 ### Gate conclusion
 
-The F2 contract package is ready for independent re-review after R-055 remediation. F2 implementation remains **BLOCKED** by `G-F2-02` and `G-F2-12`. Facebook activation additionally remains blocked by `G-F2-03`; Apple activation remains blocked by `G-F2-14`. Deployment remains blocked independently and is not requested by this package.
+The F2 contract package is ready for independent re-review after R-055 remediation and the ADR-008 Amendment 1. F2 implementation remains **BLOCKED** by `G-F2-12` (independent architecture re-review). Facebook activation additionally remains blocked by `G-F2-03`; Apple activation remains blocked by `G-F2-14`. Deployment remains blocked independently and is not requested by this package.
 
 ## 16. Review Request
 

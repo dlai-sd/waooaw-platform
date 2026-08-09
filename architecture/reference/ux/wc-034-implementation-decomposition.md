@@ -106,7 +106,7 @@ F2 and the service-contract portion of F3 may be prepared in parallel after F1, 
 
 **Acceptance:** UX-SHELL-02, UX-SHELL-04, UX-AUTH-01 through UX-AUTH-06, UX-PRIV-01, UX-PWA-04.
 
-**Contract status:** R-055 REMEDIATED — FA-035 fixes the unified provider experience and progressive-mobile policy. `architecture/reference/components/identity-boundary.md` and the 13 F2 operations in the canonical Business Platform OpenAPI define component, API, data, error, assurance, idempotency, retry, tenant, privacy, session, and generated-client boundaries. Implementation remains BLOCKED by that contract's gate table: the INST-004 ADR-008 amendment and independent INST-004 re-review are unresolved. Facebook activation additionally requires FA-002/FA-018 evidence; Apple activation requires FA-019 evidence.
+**Contract status:** ADR-008 Amendment 1 complete (v3, 2026-08-09) — G-F2-02 READY. `architecture/reference/components/identity-boundary.md` and the 13 F2 operations in the canonical Business Platform OpenAPI define component, API, data, error, assurance, idempotency, retry, tenant, privacy, session, and generated-client boundaries. Implementation remains BLOCKED by that contract's gate table: the independent INST-004 re-review (`G-F2-12`) is unresolved. Facebook activation additionally requires FA-002/FA-018 evidence; Apple activation requires FA-019 evidence.
 
 ## F3 — Conversation Core
 

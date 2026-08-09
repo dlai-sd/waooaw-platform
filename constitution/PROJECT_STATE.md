@@ -1,6 +1,6 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-08-09 (WC-034 F2 R-055 contract remediation complete; FA-035 recorded)
+**Last Updated:** 2026-08-09 (WC-034 F2 ADR-008 Amendment 1 complete; FA-035 reconciliation done; G-F2-02 READY)
 
 ---
 
@@ -16,6 +16,7 @@
 | F2 dependency gate table | DONE — FA-035 resolves the Founder policy decision; INST-004 ADR-008 amendment and independent re-review remain blocking; Facebook and Apple activation evidence remain separately gated |
 | Independent INST-004 review submission | DONE — PR #248 opened against `main`; INST-004 review requested; no self-approval or merge |
 | R-055 remediation | DONE — R055-01 uses an internal server-to-server WhatsApp adapter; R055-02 adds applicable privacy-safe 400 responses and `IDENTITY_RESOURCE_NOT_ACCESSIBLE`; R055-03 whitespace defects removed and scoped diff check passes |
+| INST-004 ADR-008 amendment (FA-035 reconciliation) | DONE — ADR-008 v3 adds Amendment 1: one provider-agnostic experience, confirmed-email completion, progressive mobile verification, provider-subject binding, proof-of-control linking, no automatic email-only linking, non-enumerating behavior, Facebook scope isolation, provider-specific activation gates; Facebook BLOCKED by FA-002/FA-018; Apple BLOCKED by FA-019; G-F2-02 unblocked |
 | Independent INST-004 re-review | PENDING — must confirm R055-01 through R055-03, FA-035 contract alignment, and generated-client evidence; no self-approval |
 
 ### Authorization Boundary
@@ -31,7 +32,7 @@ This session grooms only WC-034 F2 Identity and Registration into an implementat
 
 ### Next Constitutional Action
 
-INST-004 drafts the ADR-008 amendment authorized by FA-035, then independently re-reviews the R-055 remediation in a separate review context. Facebook activation remains blocked by FA-002/FA-018 and Apple activation by FA-019. F2 implementation remains blocked until the ADR amendment and independent re-review pass; deployment remains unauthorized.
+INST-004 ADR-008 Amendment 1 is complete; G-F2-02 is now READY. The sole remaining blocker for F2 implementation is `G-F2-12`: an independent INST-004 re-review of the full F2 package (R-055 remediation, FA-035 contract alignment, and generated-client evidence) in a separate context under C-065. Facebook activation remains blocked by FA-002/FA-018; Apple activation remains blocked by FA-019. F2 implementation remains blocked until G-F2-12 passes; deployment remains unauthorized.
 
 ---
 
