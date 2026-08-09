@@ -1,6 +1,6 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-08-09 (ACK-GOAL-005-INST-001-02 recorded; GOA-GOAL-005-INST-010-01 issued 2026-08-09T20:30:01+00:00; INST-010 acceptance pending)
+**Last Updated:** 2026-08-09 (ACC-GOAL-005-INST-010-01 recorded 2026-08-09T20:45:00+00:00; INST-010 acceptance complete; WC-034 F2 implementation in progress)
 
 ---
 
@@ -14,13 +14,27 @@
 | Registrant acknowledgement analysis | ✓ DONE — ACK-GOAL-005-INST-001-02 recorded (2026-08-09T20:30:00+00:00); Founder provided exact required statement referencing GEP-GOAL-005-INST-013-02; R2-03 condition 2 MET |
 | CA Readiness Review (GEP-GOAL-005-INST-013-02) | DONE — R-057 APPROVED WITH CONDITIONS (2026-08-09); R2-03 condition 1 PASSED; GEP-GOAL-005-INST-013-02 is constitutionally sound and accurately limits INST-010 to WC-034 F2; R2-04 does not apply (Registrant present and reachable); CR-GOAL-005-INST-002-03 recorded in Goal Register |
 | GOA-GOAL-005-INST-010-01 issued | ✓ DONE — issued_at 2026-08-09T20:30:01+00:00; INST-013 issuer; both R2-03 conditions met; constitutionally valid |
-| INST-010 Goal Acceptance | PENDING — INST-010 must record acceptance timestamp strictly after 2026-08-09T20:30:01+00:00 to begin WC-034 F2 implementation |
+| INST-010 Goal Acceptance | ✓ DONE — ACC-GOAL-005-INST-010-01 recorded (2026-08-09T20:45:00+00:00); INST-010 formally accepted WC-034 F2 scope; no F3-F8/deployment/provider authority |
 | PROJECT_STATE checkpoint committed | ✓ DONE — this record |
-| Commit and push | ✓ DONE — commits `b3e3831`, `1546c4f`, `092bb4e` pushed; governance issuance commit follows |
+| Commit and push | ✓ DONE — commits `b3e3831`, `1546c4f`, `092bb4e`, `3479041` pushed; governance acceptance commit follows |
+
+### WC-034 F2 Implementation Milestones
+
+| Milestone | Status |
+|---|---|
+| F2 entry criteria validation (ADR-008 v3, identity-boundary.md, F2 operations in business-platform.openapi.yaml) | PENDING |
+| Authentication routes (login, registration, verification, account-linking, auth-error) | PENDING |
+| Keycloak OIDC broker integration — Google and email-fallback providers | PENDING |
+| Identity API generated TypeScript client integration | PENDING |
+| Progressive mobile verification (before consequential actions) | PENDING |
+| WhatsApp-to-web deterministic identity linking and duplicate resolution | PENDING |
+| Session lifecycle (safe return target, expiry, sign-out, account-switch cleanup) | PENDING |
+| F2 test suite (UX-SHELL-02, UX-SHELL-04, UX-AUTH-01–06, UX-PRIV-01, UX-PWA-04) | PENDING |
+| Independent INST-004 review and PR | PENDING |
 
 ### Authorization Boundary
 
-This session prepares governance planning documents only. No source code, migration, API, or build artifact is written or modified. `logs/blueprint_assurance_report.json` is untouched. No PR is opened. No merge occurs. GOA-GOAL-005-INST-010-01 issued in this session (2026-08-09T20:30:01+00:00) following formal ACK-GOAL-005-INST-001-02.
+GOA-GOAL-005-INST-010-01 issued at 2026-08-09T20:30:01+00:00; ACK-GOAL-005-INST-001-02 recorded. ACC-GOAL-005-INST-010-01 recorded at 2026-08-09T20:45:00+00:00 — INST-010 accepted WC-034 F2 scope (Google and email-fallback only). F2 implementation is authorized for the current session. `logs/blueprint_assurance_report.json` is untouched. No PR is opened. No merge occurs.
 
 ### CA Decision (R-057) and Issuance Status
 

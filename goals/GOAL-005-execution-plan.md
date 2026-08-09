@@ -387,3 +387,22 @@ INST-013 may NOT issue GOA-GOAL-005-INST-010-01 until the Registrant records ACK
 | Exact quoted acknowledgement | "I acknowledge GEP-GOAL-005-INST-013-02 and authorize INST-013 to issue GOA-GOAL-005-INST-010-01." |
 
 This record supersedes ACK-GOAL-005-INST-001-01 with respect to INST-010 implementation authorization and satisfies GEOM R2-03 condition (2). ACK-GOAL-005-INST-001-01 remains valid for D-01 through D-07 and is not modified.
+
+---
+
+## Phase 8 Acceptance Record — ACC-GOAL-005-INST-010-01
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-010 |
+| `goal_id` | GOAL-005 |
+| `record_id` | ACC-GOAL-005-INST-010-01 |
+| `record_type` | Acceptance Record |
+| `produced_at` | 2026-08-09T20:45:00+00:00 |
+| `authorization_id` | GOA-GOAL-005-INST-010-01 |
+| `acceptance_timestamp` | 2026-08-09T20:45:00+00:00 |
+| Decision | ACCEPTED |
+| Contribution scope accepted | WC-034 F2 Identity and Registration implementation only — Google and email-fallback provider paths; Facebook and Apple activation remain BLOCKED by G-F2-03/FA-002/FA-018 and G-F2-14/FA-019 respectively |
+| Excluded authority | No deployment (G-F2-13); no F3–F8 implementation; no provider activation beyond Google and email-fallback; no architectural decisions; no self-approval of contribution completeness |
+
+INST-010 accepts this authorization under the Phase 8 scope and Evidence Specification defined in GEP-GOAL-005-INST-013-02 (Amendment 1). Contribution completeness requires independent INST-004 review per G-5.
