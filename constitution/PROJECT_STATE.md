@@ -31,7 +31,7 @@
 | WhatsApp-to-web deterministic identity linking and duplicate resolution | IN PROGRESS — proof-gated BP account-link API and dedicated fail-closed web route complete; internal Phone Identity adapter must supply verified proof before activation |
 | Session lifecycle (safe return target, expiry, sign-out, account-switch cleanup) | DONE — named local targets only; token hidden server-side; protected state cleared before sign-out/select-account; non-secret registration draft preserved while OTP/proofs never persist |
 | F2 test suite (UX-SHELL-02, UX-SHELL-04, UX-AUTH-01–06, UX-PRIV-01, UX-PWA-04) | DONE (available environment) — 52/52 Jest; 92.68% web lines; lint/typecheck/build pass; 4/4 F2 Chromium expanded+360 acceptance; existing Chromium matrix 24 passed/3 skipped; Firefox/WebKit blocked only by missing container shared libraries |
-| Independent INST-004 review and PR | IN PROGRESS — R-058 APPROVED WITH NOTES; both required conditions resolved and 148/148 BP tests pass; PR creation next |
+| Independent INST-004 review and PR | DONE — R-058 APPROVED WITH NOTES; both required conditions resolved; PR #249 open against `main`; `@dlai-sd Ready for constitutional review. PR is complete.` posted; no self-merge |
 
 ### Authorization Boundary
 
@@ -49,7 +49,7 @@ The fresh independent INST-002 instance decided (R-057, 2026-08-09, APPROVED WIT
 
 ### Next Constitutional Action
 
-ACC-GOAL-005-INST-010-01 is complete. R-058 independently approves the WC-034 F2 implementation with both review conditions satisfied. Evidence after remediation: 93/93 focused identity tests; 148/148 full Business Platform tests; 97.26% unique identity backend lines before four validation-only cases; 52/52 web unit tests; 92.68% web lines; clean lint/typecheck/production build; 4/4 F2 Chromium acceptance scenarios at expanded and 360px. Open the implementation PR for constitutional review. Provider delivery and the internal WhatsApp proof adapter remain fail-closed until environment implementations are approved. Facebook, Apple, deployment, and F3–F8 remain unauthorized.
+ACC-GOAL-005-INST-010-01 is complete. R-058 independently approves the WC-034 F2 implementation with both review conditions satisfied. Evidence after remediation: 93/93 focused identity tests; 148/148 full Business Platform tests; 97.26% unique identity backend lines before four validation-only cases; 52/52 web unit tests; 92.68% web lines; clean lint/typecheck/production build; 4/4 F2 Chromium acceptance scenarios at expanded and 360px. PR #249 is open against `main` and the constitutional-review handoff is posted; merge has not occurred. Provider delivery and the internal WhatsApp proof adapter remain fail-closed until environment implementations are approved. Facebook, Apple, deployment, and F3–F8 remain unauthorized.
 
 ---
 
