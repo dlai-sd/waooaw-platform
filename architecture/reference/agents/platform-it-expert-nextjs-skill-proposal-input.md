@@ -4,16 +4,18 @@
 **Agent:** WAOOAW AI Agent — Platform IT Expert
 **Candidate skill:** Next.js Conversational Experience Engineering
 **Change type after approval:** `type:agent-update`, `update-type:new-skill`
-**Status:** PRODUCT OWNER REVIEW COMPLETE — AWAITING FOUNDER DECISION
+**Status:** FOUNDER APPROVED FOR SPEC — TYPE 1 UPDATE PENDING
 **Produced by:** Enterprise Architect (INST-004), WC-034 Phase A
 **Reviewed by:** Product Owner (INST-011), PR #239
+**Founder decision:** FA-032 — `APPROVE_FOR_SPEC`, 2026-08-09
+**Type 1 Work Contract:** GitHub Issue #241 — `type:agent-update`, `update-type:new-skill`, `status:waiting`
 **Constitutional basis:** C-001, C-009, C-023, C-032, C-042, C-059, C-063, C-065, C-071, C-076, C-095, C-100; ADR-002, ADR-008, ADR-017, ADR-023
 
 ## Governance Boundary
 
-This artifact is evidence for the Section 3.20 Product Owner review. It is not the Product Owner's SKILL_PROPOSAL, Founder approval, an agent-spec amendment, or implementation authorization.
+This artifact contains the Section 3.20 Product Owner assessment and records the FA-032 Founder `APPROVE_FOR_SPEC` decision. It is not an agent-spec amendment, activation record, dependency decision, or application implementation authorization.
 
-The ratified Platform IT Expert remains at 15 skills. Section 15 Type 1 work may begin only after Product Owner review and an explicit Founder APPROVE decision. The new skill must then receive independent EA review; the author of the amended spec cannot issue that review under C-065.
+The ratified Platform IT Expert remains at 15 skills until the Section 15 Type 1 update, activation gate, independent EA review, merge, and version bump complete. FA-032 authorizes that lifecycle. The author of the amended spec cannot issue its EA review under C-065.
 
 ## Gap Evidence
 
@@ -76,7 +78,7 @@ WC-034 cannot be assigned responsibly to the current generic Code Implementation
 
 **Confidence:** 95%
 
-This recommendation authorizes only Founder consideration. It does not approve the agent-spec amendment, dependency adoption, WC-034 Phase B, or any application-source change.
+FA-032 accepts this recommendation and authorizes the Section 15 Type 1 specification lifecycle. It does not approve the resulting amendment before independent review, activate Skill 16, adopt a dependency, or authorize application-source changes.
 
 ## Candidate Skill Contract
 
