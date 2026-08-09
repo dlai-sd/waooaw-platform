@@ -1,16 +1,15 @@
-import { getServerSession } from 'next-auth';
 import { redirect } from 'next/navigation';
 import { RelationshipWorkspace } from '@/components/relationships/RelationshipWorkspace';
 import { getRelationship, getRelationshipTimeline } from '@/lib/api/relationships';
-import { authOptions } from '@/lib/auth';
+import { getServerAccessToken } from '@/lib/server-auth';
 
 export default async function RelationshipPage({ params }: { params: { relationshipId: string } }) {
-  const session = await getServerSession(authOptions);
-  if (!session?.accessToken) redirect('/login');
+  const accessToken = await getServerAccessToken();
+  if (!accessToken) redirect('/login');
 
   const [relationship, timeline] = await Promise.all([
-    getRelationship(params.relationshipId, session.accessToken),
-    getRelationshipTimeline(params.relationshipId, session.accessToken),
+    getRelationship(params.relationshipId, accessToken),
+    getRelationshipTimeline(params.relationshipId, accessToken),
   ]);
   return <RelationshipWorkspace relationship={relationship} timeline={timeline} />;
 }

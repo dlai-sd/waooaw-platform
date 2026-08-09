@@ -1,4 +1,5 @@
-import type { NextAuthOptions } from 'next-auth';
+import type { Session, NextAuthOptions } from 'next-auth';
+import type { JWT } from 'next-auth/jwt';
 import KeycloakProvider from 'next-auth/providers/keycloak';
 
 // Implements: architecture/reference/ux/hybrid-application-shell.md §Authentication Boundaries
@@ -14,6 +15,12 @@ export function hasFounderClaim(profile: unknown): boolean {
   if (!realmAccess || typeof realmAccess !== 'object') return false;
   const roles = (realmAccess as Record<string, unknown>).roles;
   return Array.isArray(roles) && roles.includes('founder');
+}
+
+export function projectSession(session: Session, token: JWT): Session {
+  session.authenticated = typeof token.accessToken === 'string';
+  session.founder = token.founder === true;
+  return session;
 }
 
 export const authOptions: NextAuthOptions = {
@@ -32,9 +39,7 @@ export const authOptions: NextAuthOptions = {
       return token;
     },
     session({ session, token }) {
-      session.accessToken = token.accessToken;
-      session.founder = token.founder === true;
-      return session;
+      return projectSession(session, token);
     },
   },
   pages: { signIn: '/login', error: '/auth/error' },

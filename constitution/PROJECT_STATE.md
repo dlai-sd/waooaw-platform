@@ -1,10 +1,59 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-08-09 (WC-034 F2 G-F2-12 independent re-review closed — R-056 APPROVED WITH NOTES; F2 architecture-approved for implementation selection)
+**Last Updated:** 2026-08-09 (WC-034 F2 backend and web implementation validated; independent INST-004 review pending)
 
 ---
 
-## IN-PROGRESS CHECKPOINT — WC-034 F2 IDENTITY AND REGISTRATION CONTRACT
+## IN-PROGRESS CHECKPOINT — INST-013 GOAL-005 EXECUTION PLAN AMENDMENT 1
+
+| Milestone | Status |
+|---|---|
+| INST-013 office occupancy; GEOM, WC-034, FA-031, FA-034, R-056, and GOAL-005 records loaded | DONE — INST-013 OPERATIONAL; G5 CLEAR; all inputs verified present |
+| New facts validated (G-F2-12 closed, Founder session authorization) | DONE — R-056 APPROVED WITH NOTES (2026-08-09); FA-031/FA-034 in effect; Founder stated "I do authorize WC-034 F2 implementation for the current session" |
+| Minimal plan amendment (GEP-GOAL-005-INST-013-02) prepared | DONE — Amendment 1 appended to goals/GOAL-005-execution-plan.md; Phase 8 INST-010 scope and evidence specification recorded; Phased Authorization Rule 5 replaced |
+| Registrant acknowledgement analysis | ✓ DONE — ACK-GOAL-005-INST-001-02 recorded (2026-08-09T20:30:00+00:00); Founder provided exact required statement referencing GEP-GOAL-005-INST-013-02; R2-03 condition 2 MET |
+| CA Readiness Review (GEP-GOAL-005-INST-013-02) | DONE — R-057 APPROVED WITH CONDITIONS (2026-08-09); R2-03 condition 1 PASSED; GEP-GOAL-005-INST-013-02 is constitutionally sound and accurately limits INST-010 to WC-034 F2; R2-04 does not apply (Registrant present and reachable); CR-GOAL-005-INST-002-03 recorded in Goal Register |
+| GOA-GOAL-005-INST-010-01 issued | ✓ DONE — issued_at 2026-08-09T20:30:01+00:00; INST-013 issuer; both R2-03 conditions met; constitutionally valid |
+| INST-010 Goal Acceptance | ✓ DONE — ACC-GOAL-005-INST-010-01 recorded (2026-08-09T20:45:00+00:00); INST-010 formally accepted WC-034 F2 scope; no F3-F8/deployment/provider authority |
+| PROJECT_STATE checkpoint committed | ✓ DONE — this record |
+| Commit and push | ✓ DONE — commits `b3e3831`, `1546c4f`, `092bb4e`, `3479041` pushed; governance acceptance commit follows |
+
+### WC-034 F2 Implementation Milestones
+
+| Milestone | Status |
+|---|---|
+| F2 entry criteria validation (ADR-008 v3, identity-boundary.md, F2 operations in business-platform.openapi.yaml) | DONE — GOA and ACC valid; merged PR #248/R-056 closes architecture entry gates |
+| Identity Boundary backend and persistence | DONE — all 13 canonical operations implemented in BP with issuer-subject binding, tenant-scoped account links, idempotency, privacy-safe errors, secret-backed OTP verification, and Migration 20 |
+| Authentication routes (login, registration, verification, account-linking, auth-error) | DONE — broker-gated registration state machine, account verification, dedicated fail-closed linking route, and stable auth-error treatment implemented |
+| Keycloak OIDC broker integration — Google and email-fallback providers | DONE (web boundary) — NextAuth uses Keycloak as sole broker; browser session exposes authentication state but never the bearer token; provider activation remains Keycloak environment configuration |
+| Identity API generated TypeScript client integration | DONE — canonical OpenAPI 1.1.0 generates `IdentityApi` and all F2 models; server-only BFF consumes the generated client |
+| Progressive mobile verification (before consequential actions) | DONE (application boundary) — registration-optional and account step-up UI/API complete; delivery provider remains fail-closed until an environment adapter is configured |
+| WhatsApp-to-web deterministic identity linking and duplicate resolution | IN PROGRESS — proof-gated BP account-link API and dedicated fail-closed web route complete; internal Phone Identity adapter must supply verified proof before activation |
+| Session lifecycle (safe return target, expiry, sign-out, account-switch cleanup) | DONE — named local targets only; token hidden server-side; protected state cleared before sign-out/select-account; non-secret registration draft preserved while OTP/proofs never persist |
+| F2 test suite (UX-SHELL-02, UX-SHELL-04, UX-AUTH-01–06, UX-PRIV-01, UX-PWA-04) | DONE (available environment) — 52/52 Jest; 92.68% web lines; lint/typecheck/build pass; 4/4 F2 Chromium expanded+360 acceptance; existing Chromium matrix 24 passed/3 skipped; Firefox/WebKit blocked only by missing container shared libraries |
+| Independent INST-004 review and PR | DONE — R-058 APPROVED WITH NOTES; both required conditions resolved; PR #249 open against `main`; `@dlai-sd Ready for constitutional review. PR is complete.` posted; no self-merge |
+
+### Authorization Boundary
+
+GOA-GOAL-005-INST-010-01 issued at 2026-08-09T20:30:01+00:00; ACK-GOAL-005-INST-001-02 recorded. ACC-GOAL-005-INST-010-01 recorded at 2026-08-09T20:45:00+00:00 — INST-010 accepted WC-034 F2 scope (Google and email-fallback only). F2 implementation is authorized for the current session. `logs/blueprint_assurance_report.json` is untouched. No PR is opened. No merge occurs.
+
+### CA Decision (R-057) and Issuance Status
+
+The fresh independent INST-002 instance decided (R-057, 2026-08-09, APPROVED WITH CONDITIONS):
+
+- **R2-03 condition 1:** PASSED — GEP-GOAL-005-INST-013-02 is constitutionally ready; scope accurately limits INST-010 to WC-034 F2; Google/email-fallback first; Facebook/Apple designed not activated; no F3-F8; no deployment.
+- **R2-03 condition 2:** MET — ACK-GOAL-005-INST-001-02 recorded (2026-08-09T20:30:00+00:00); Founder provided: "I acknowledge GEP-GOAL-005-INST-013-02 and authorize INST-013 to issue GOA-GOAL-005-INST-010-01."
+- **R2-04:** DID NOT APPLY — Registrant was present and reachable; formal ACK produced directly.
+
+**GOA-GOAL-005-INST-010-01 issued at 2026-08-09T20:30:01+00:00** — both R2-03 conditions satisfied; constitutionally valid.
+
+### Next Constitutional Action
+
+ACC-GOAL-005-INST-010-01 is complete. R-058 independently approves the WC-034 F2 implementation with both review conditions satisfied. Evidence after remediation: 93/93 focused identity tests; 148/148 full Business Platform tests; 97.26% unique identity backend lines before four validation-only cases; 52/52 web unit tests; 92.68% web lines; clean lint/typecheck/production build; 4/4 F2 Chromium acceptance scenarios at expanded and 360px. PR #249 is open against `main` and the constitutional-review handoff is posted; merge has not occurred. Provider delivery and the internal WhatsApp proof adapter remain fail-closed until environment implementations are approved. Facebook, Apple, deployment, and F3–F8 remain unauthorized.
+
+---
+
+## COMPLETED CHECKPOINT — WC-034 F2 IDENTITY AND REGISTRATION CONTRACT
 
 | Milestone | Status |
 |---|---|
@@ -33,7 +82,7 @@ This session grooms only WC-034 F2 Identity and Registration into an implementat
 
 ### Next Constitutional Action
 
-G-F2-12 is closed by R-056 (APPROVED WITH NOTES, 2026-08-09). F2 is architecture-approved. INST-010 may begin F2 implementation under FA-031 and FA-034 authority when Google and email-fallback provider environment configuration evidence is present. Facebook activation remains gated by G-F2-03 (FA-002/FA-018); Apple activation remains gated by G-F2-14 (FA-019). F2 implementation is now unblocked for Google and email-fallback paths only. Deployment authorization (G-F2-13) requires a separate Founder action. PR #248 remains open for Founder review and merge decision.
+G-F2-12 is closed by R-056 (APPROVED WITH NOTES, 2026-08-09). F2 is architecture-approved. INST-010 may begin F2 implementation under FA-031 and FA-034 authority when Google and email-fallback provider environment configuration evidence is present. Facebook activation remains gated by G-F2-03 (FA-002/FA-018); Apple activation remains gated by G-F2-14 (FA-019). F2 implementation is now unblocked for Google and email-fallback paths only. Deployment authorization (G-F2-13) requires a separate Founder action. PR #248 merged to `main` as `0b82e79` (2026-08-09).
 
 ---
 

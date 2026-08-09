@@ -228,3 +228,181 @@ Sujay's DMA workshop is required input to D-06 simulation and grooming. Because 
 - INST-002 contribution and INST-001 final validation preserve G-02 independence.
 - Simulation-first WhatsApp/DMA proof is mandatory before D-06 acceptance.
 - No implementation authority is implied.
+
+---
+
+## Amendment 1 — INST-010 WC-034 F2 Contribution
+
+| Attestation field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GEP-GOAL-005-INST-013-02 |
+| `record_type` | Execution Plan |
+| `produced_at` | 2026-08-09T18:00:00+00:00 |
+| Amends | GEP-GOAL-005-INST-013-01 |
+| Amendment basis | G-F2-12 closed by R-056 (APPROVED WITH NOTES, 2026-08-09); FA-031 (WC-034 Phase B authorization, 2026-08-09) and FA-034 (execution release, 2026-08-09) in effect; Founder in-session statement "I do authorize WC-034 F2 implementation for the current session" (Yogesh Khandge, 2026-08-09) |
+
+### What This Amendment Changes
+
+The original Execution Plan (GEP-GOAL-005-INST-013-01) was produced for specification-only phases (D-01 through D-07) and explicitly stated: "INST-010 receives no GO Authorization under this plan." That restriction was correct at the time: the specification had not been produced, reviewed, or ratified.
+
+The following facts now obtain and were not present at original plan issuance:
+
+1. D-01 through D-07 are complete and ratified (R-046, Founder).
+2. G-F2-12 (independent INST-004 architecture re-review) is closed by R-056 (APPROVED WITH NOTES, 2026-08-09).
+3. FA-031 authorized WC-034 Phase B implementation; FA-034 released execution under that authorization.
+4. The Founder has stated authorization of WC-034 F2 implementation in the current session (2026-08-09).
+5. GEOM G-7 requires a valid GO Authorization from INST-013 before INST-010 may act on GOAL-005.
+
+This amendment adds a single new phase (Phase 8 — WC-034 F2 Implementation) to the Execution Plan. All D-01 through D-07 contributions, authorization records, and acceptance records are unchanged. This amendment does not affect any prior CA readiness review, acknowledgement, or authorization record.
+
+### Amendment: Phased Authorization Rule 5 Modification
+
+**Rule 5 as written in GEP-GOAL-005-INST-013-01:** "INST-010 receives no GO Authorization under this plan."
+
+**Rule 5 as amended by GEP-GOAL-005-INST-013-02:** INST-010 may receive a GO Authorization under Amendment 1 (GEP-GOAL-005-INST-013-02) for WC-034 F2 implementation only. GOA-GOAL-005-INST-010-01 is reserved and will be issued by INST-013 only after both: (a) CA Readiness Review of this amendment is complete and APPROVED; and (b) a valid Registrant Acknowledgement Record referencing GEP-GOAL-005-INST-013-02 is recorded in the Goal Register.
+
+### Phase 8 — WC-034 F2 Implementation (Amendment 1)
+
+| Field | Value |
+|---|---|
+| Deliverable | WC-034 F2 Identity and Registration implementation |
+| Dependency | Phases 1–7 complete (DONE — D-07 ratified R-046); G-F2-12 closed (DONE — R-056); G-F2-01 READY (DONE — R-052); FA-031/FA-034 in effect |
+| Participating Institutions | INST-010 primary implementation; INST-004 independent review (separate session) |
+| Gate to completion | Independent INST-004 review APPROVED; ≥90% affected-service line coverage achieved; Docker-only evidence committed to PR |
+
+### Evidence Specification — INST-010 WC-034 F2
+
+| Field | Value |
+|---|---|
+| Record types required | Implementation Contribution Record; Docker test evidence record; coverage report; INST-004 independent review Contribution Record |
+| Participation Window | 5 constitutional sessions after valid acceptance |
+| Independence constraint | INST-004 independently reviews in a separate context under C-065; INST-010 may not approve its own PR or declare its own contribution complete |
+
+**Minimum contribution content:**
+
+1. Google OIDC provider: identity/registration implementation for all 13 BP OpenAPI F2 operations per `architecture/reference/api-specs/business-platform.openapi.yaml`; ADR-008 Amendment 1 invariants preserved; Keycloak as sole web credential authority
+2. Email-fallback (Keycloak credential path): registration implementation including confirmed-email completion and progressive mobile verification per ADR-008 Amendment 1 §Customer Account Completion and §Progressive Mobile Verification
+3. Facebook: Keycloak client configuration designed per ADR-008 Amendment 1 §Facebook Login Scope Isolation; activation gate G-F2-03 NOT bypassed; no live Facebook credential flow activated
+4. Apple: Keycloak client configuration designed per ADR-008 Amendment 1; activation gate G-F2-14 NOT bypassed; no live Apple credential flow activated
+5. Canonical 13-operation BP TypeScript client generated from `architecture/reference/api-specs/business-platform.openapi.yaml` F2 surface; strict TypeScript compilation pass (OpenAPI Generator 7.17.0 or compatible)
+6. Approved F2 UX per `architecture/reference/components/identity-boundary.md` and `architecture/reference/ux/wc-034-implementation-decomposition.md`; provider-subject binding, proof-of-control linking, non-enumerating behavior, AAL3\_FRESH freshness gates, and sign-out/account-switch sentinel implemented
+7. Docker-only test evidence; no host Python, no host Node outside the container environment; no manual patches to generated clients
+8. ≥90% line coverage on all affected services (Next.js identity routes, BP identity handlers, and any shared identity middleware)
+9. No WC-034 F3 through F8 implementation
+10. No deployment to any environment; G-F2-13 (deployment authorization) remains independently blocked pending a separate Founder action
+11. No PR merge without independent INST-004 review and Founder review
+
+**Excluded from INST-010 scope under this amendment:**
+
+| Excluded item | Authority blocking |
+|---|---|
+| F3 Conversation core | Canonical BP conversation/stream contracts required |
+| F4 Relationship workspace | Plan/Priority Work and Consumption projections required |
+| F5 Omnichannel continuity | WC-060 completion required |
+| F6 Voice interaction | Voice consent, retention, transcription, and API decisions required |
+| F7 Founder administration | Canonical BP Founder facade and WBE management APIs required |
+| F8 Integrated acceptance and hardening | All selected F-components complete required |
+| Facebook activation | G-F2-03 blocked by FA-002/FA-018 |
+| Apple activation | G-F2-14 blocked by FA-019 |
+| Deployment | G-F2-13 blocked; separate Founder action required |
+| Employment, billing, payment | Outside WC-034 F2 scope |
+
+### Phase 8 Authorization Record — GOA-GOAL-005-INST-010-01 (ISSUED)
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GOA-GOAL-005-INST-010-01 |
+| `record_type` | Authorization Record |
+| `authorization_id` | GOA-GOAL-005-INST-010-01 |
+| Authorized Institution | INST-010 — Platform IT Expert |
+| Contribution scope | WC-034 F2 Identity and Registration implementation (Phase 8 — Amendment 1) per Evidence Specification above |
+| Participation Window | 5 constitutional sessions after valid acceptance |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-09T20:30:01+00:00 |
+
+Both R2-03 conditions are met: (1) CR-GOAL-005-INST-002-03 / R-057 PASSED CA Readiness Review; (2) ACK-GOAL-005-INST-001-02 recorded (produced_at 2026-08-09T20:30:00+00:00). This record is constitutionally valid under GEOM G-7 and GEOM §G-4 R2-05. INST-010 must record Goal Acceptance Timestamp after 2026-08-09T20:30:01+00:00.
+
+### Registrant Authorization Basis
+
+The following Founder statement is recorded as prima facie evidence of Registrant intent, attached to this amendment as supporting context:
+
+> "I do authorize WC-034 F2 implementation for the current session" — Yogesh Khandge, Founder (INST-001), 2026-08-09
+
+**Constitutional status of this statement:** The intent is unambiguous. This statement cannot itself constitute a formal `Acknowledgement Record` for GEP-GOAL-005-INST-013-02 under GEOM R2-03 for the following reason: the statement was made before this amendment document was produced in the current session, and therefore does not — and cannot — reference GEP-GOAL-005-INST-013-02 by record ID. GEOM requires acknowledgement of the specific Execution Plan; the original acknowledgement (ACK-GOAL-005-INST-001-01) acknowledged GEP-GOAL-005-INST-013-01 and explicitly stated "stop before implementation."
+
+A formal `ACK-GOAL-005-INST-001-02` referencing `GEP-GOAL-005-INST-013-02` is required before INST-013 may issue GOA-GOAL-005-INST-010-01. The CA Readiness Review of this amendment must determine whether the Founder's recorded session statement is sufficient for CA to certify acknowledgement under GEOM R2-04 (CA certification when Registrant present but has not produced a formally structured record), or whether the Founder must produce the explicit ACK record.
+
+### Preserved Plan Constraints (Unchanged from GEP-GOAL-005-INST-013-01)
+
+- D-01 through D-07 contribution records, authorization records, and acceptance records are final and unaffected
+- INST-013 may not issue a GO Authorization to itself (GEOM G-13 / R2-11)
+- Rule 6 (Phased Authorization Rules): any Institution beyond INST-010 not yet listed requires a further Collaboration Amendment and updated Execution Plan
+- R2-02: Phase 8 (INST-010) is gated on D-07 ratification — satisfied (R-046 RATIFY)
+- R2-03: Both CA Readiness Review of this amendment AND a valid Registrant Acknowledgement Record are required before GOA-GOAL-005-INST-010-01 is constitutionally valid
+- G-5 Goal Journey rules: INST-010 must publish evidence before releasing the Goal; INST-004 must independently review; INST-010 may not declare its own contribution complete
+
+### Question for Independent CA Readiness Review
+
+The following exact question must be decided by a fresh Constitutional Analyst (one who has not contributed to GOAL-005 in any prior capacity) before INST-013 may issue GOA-GOAL-005-INST-010-01:
+
+> Under GEOM R2-03, does the Founder's in-session statement "I do authorize WC-034 F2 implementation for the current session" (Yogesh Khandge, 2026-08-09) constitute a sufficient Registrant Acknowledgement of GEP-GOAL-005-INST-013-02 (Amendment 1 to the GOAL-005 Execution Plan), given that the statement was made before this amendment document was produced and does not reference it by record ID? If this statement is not constitutionally sufficient as a formal Acknowledgement Record, state precisely what additional action the Founder must take before INST-013 may issue GOA-GOAL-005-INST-010-01. If CA determines that GEOM R2-04 applies — that is, that the success criteria for this amendment are unambiguous and unchanged from Registration, and that the Founder's explicit in-session authorization constitutes effective acknowledgement despite the absence of a formally structured ACK record — state the constitutional basis for that determination and confirm whether CA certification alone is sufficient to satisfy R2-03 condition (2).
+## CA Readiness Review Record — Amendment 1 (R2-03 Condition 1)
+
+| Attestation field | Value |
+|---|---|
+| `institution_id` | INST-002 |
+| `goal_id` | GOAL-005 |
+| `record_id` | CR-GOAL-005-INST-002-03 |
+| `record_type` | Contribution Record |
+| `produced_at` | 2026-08-09 |
+| `references` | R-057 |
+| R2-03 condition 1 | **PASSED** — plan is constitutionally ready; see R-057 for full analysis |
+| R2-03 condition 2 | **NOT MET** — ACK-GOAL-005-INST-001-02 required; Registrant is present and reachable; R2-04 does not apply |
+| **Decision** | **APPROVED WITH CONDITIONS** |
+
+Produced by a fresh independent INST-002 instance that has not contributed to GOAL-005 in any prior capacity (separate from the instance that produced CR-GOAL-005-INST-002-02 / D-07 evidence package).
+
+INST-013 may NOT issue GOA-GOAL-005-INST-010-01 until the Registrant records ACK-GOAL-005-INST-001-02 by providing:
+
+> **"I acknowledge GEP-GOAL-005-INST-013-02 and authorize INST-013 to issue GOA-GOAL-005-INST-010-01."**
+
+---
+
+## Registrant Acknowledgement Record — Amendment 1
+
+| Attestation field | Value |
+|---|---|
+| `institution_id` | INST-001 |
+| `goal_id` | GOAL-005 |
+| `record_id` | ACK-GOAL-005-INST-001-02 |
+| `record_type` | Acknowledgement Record |
+| `produced_at` | 2026-08-09T20:30:00+00:00 |
+| Acknowledged plan | GEP-GOAL-005-INST-013-02 |
+| Registrant | Yogesh Khandge / Founder |
+| Decision | ACKNOWLEDGED — INST-013 authorized to issue GOA-GOAL-005-INST-010-01 |
+| Exact quoted acknowledgement | "I acknowledge GEP-GOAL-005-INST-013-02 and authorize INST-013 to issue GOA-GOAL-005-INST-010-01." |
+
+This record supersedes ACK-GOAL-005-INST-001-01 with respect to INST-010 implementation authorization and satisfies GEOM R2-03 condition (2). ACK-GOAL-005-INST-001-01 remains valid for D-01 through D-07 and is not modified.
+
+---
+
+## Phase 8 Acceptance Record — ACC-GOAL-005-INST-010-01
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-010 |
+| `goal_id` | GOAL-005 |
+| `record_id` | ACC-GOAL-005-INST-010-01 |
+| `record_type` | Acceptance Record |
+| `produced_at` | 2026-08-09T20:45:00+00:00 |
+| `authorization_id` | GOA-GOAL-005-INST-010-01 |
+| `acceptance_timestamp` | 2026-08-09T20:45:00+00:00 |
+| Decision | ACCEPTED |
+| Contribution scope accepted | WC-034 F2 Identity and Registration implementation only — Google and email-fallback provider paths; Facebook and Apple activation remain BLOCKED by G-F2-03/FA-002/FA-018 and G-F2-14/FA-019 respectively |
+| Excluded authority | No deployment (G-F2-13); no F3–F8 implementation; no provider activation beyond Google and email-fallback; no architectural decisions; no self-approval of contribution completeness |
+
+INST-010 accepts this authorization under the Phase 8 scope and Evidence Specification defined in GEP-GOAL-005-INST-013-02 (Amendment 1). Contribution completeness requires independent INST-004 review per G-5.

@@ -10,7 +10,7 @@ import { getRequestI18n } from '@/lib/i18n-server';
 
 export default async function FounderLayout({ children }: { children: ReactNode }) {
   const session = await getServerSession(authOptions);
-  if (!session?.accessToken) redirect('/login');
+  if (!session?.authenticated) redirect('/login');
   if (!session.founder) redirect('/403');
   const { messages } = getRequestI18n();
   return <ProtectedAppShell messages={messages} variant="founder">{children}</ProtectedAppShell>;

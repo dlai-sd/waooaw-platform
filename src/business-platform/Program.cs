@@ -122,6 +122,22 @@ builder.Services.AddDbContextFactory<EmploymentRelationshipDbContext>((services,
 builder.Services.AddScoped<IRelationshipConstitutionalGateway, RelationshipConstitutionalGateway>();
 builder.Services.AddScoped<EmploymentRelationshipService>();
 
+// ── Identity Boundary — WC-034 F2 (identity-boundary.md) ─────────────────
+// Pre-account registration paths use actor subject (JWT sub); no tenant_id required.
+// Account-link and mobile-verification paths require full tenant JWT.
+var identityConn = builder.Configuration.GetConnectionString("Identity")
+    ?? builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? "Host=localhost;Database=waooaw_bp;Username=business_app;";
+builder.Services.AddDbContextFactory<Waooaw.BusinessPlatform.Infrastructure.IdentityDbContext>((services, options) =>
+    options
+        .UseNpgsql(identityConn)
+        .AddInterceptors(services.GetRequiredService<TenantDbConnectionInterceptor>()));
+builder.Services.Configure<Waooaw.BusinessPlatform.Services.IdentityHmacOptions>(
+    builder.Configuration.GetSection("Identity:Hmac"));
+builder.Services.AddSingleton<Waooaw.BusinessPlatform.Services.IIdentityVerificationDispatcher,
+    Waooaw.BusinessPlatform.Services.UnconfiguredVerificationDispatcher>();
+builder.Services.AddScoped<Waooaw.BusinessPlatform.Services.IdentityService>();
+
 // ─────────────────────────────────────────────────────────────────────────────
 var app = builder.Build();
 

@@ -269,6 +269,7 @@ services:
       Temporal__Address: temporal:7233
       Keycloak__Authority: http://keycloak:8080/realms/waooaw
       Keycloak__Audience: waooaw-platform
+      Identity__Hmac__Key: ${IDENTITY_HMAC_KEY}
       OTLP_ENDPOINT: http://jaeger:4317
     depends_on:
       constitutional-engine:
