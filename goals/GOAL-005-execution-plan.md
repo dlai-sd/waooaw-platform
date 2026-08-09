@@ -351,3 +351,22 @@ A formal `ACK-GOAL-005-INST-001-02` referencing `GEP-GOAL-005-INST-013-02` is re
 The following exact question must be decided by a fresh Constitutional Analyst (one who has not contributed to GOAL-005 in any prior capacity) before INST-013 may issue GOA-GOAL-005-INST-010-01:
 
 > Under GEOM R2-03, does the Founder's in-session statement "I do authorize WC-034 F2 implementation for the current session" (Yogesh Khandge, 2026-08-09) constitute a sufficient Registrant Acknowledgement of GEP-GOAL-005-INST-013-02 (Amendment 1 to the GOAL-005 Execution Plan), given that the statement was made before this amendment document was produced and does not reference it by record ID? If this statement is not constitutionally sufficient as a formal Acknowledgement Record, state precisely what additional action the Founder must take before INST-013 may issue GOA-GOAL-005-INST-010-01. If CA determines that GEOM R2-04 applies — that is, that the success criteria for this amendment are unambiguous and unchanged from Registration, and that the Founder's explicit in-session authorization constitutes effective acknowledgement despite the absence of a formally structured ACK record — state the constitutional basis for that determination and confirm whether CA certification alone is sufficient to satisfy R2-03 condition (2).
+## CA Readiness Review Record — Amendment 1 (R2-03 Condition 1)
+
+| Attestation field | Value |
+|---|---|
+| `institution_id` | INST-002 |
+| `goal_id` | GOAL-005 |
+| `record_id` | CR-GOAL-005-INST-002-03 |
+| `record_type` | Contribution Record |
+| `produced_at` | 2026-08-09 |
+| `references` | R-057 |
+| R2-03 condition 1 | **PASSED** — plan is constitutionally ready; see R-057 for full analysis |
+| R2-03 condition 2 | **NOT MET** — ACK-GOAL-005-INST-001-02 required; Registrant is present and reachable; R2-04 does not apply |
+| **Decision** | **APPROVED WITH CONDITIONS** |
+
+Produced by a fresh independent INST-002 instance that has not contributed to GOAL-005 in any prior capacity (separate from the instance that produced CR-GOAL-005-INST-002-02 / D-07 evidence package).
+
+INST-013 may NOT issue GOA-GOAL-005-INST-010-01 until the Registrant records ACK-GOAL-005-INST-001-02 by providing:
+
+> **"I acknowledge GEP-GOAL-005-INST-013-02 and authorize INST-013 to issue GOA-GOAL-005-INST-010-01."**

@@ -1,6 +1,6 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-08-09 (INST-013 GOAL-005 Execution Plan Amendment 1 prepared — GEP-GOAL-005-INST-013-02; GOA-GOAL-005-INST-010-01 reserved pending CA readiness review and Registrant acknowledgement)
+**Last Updated:** 2026-08-09 (CA Readiness Review R-057 APPROVED WITH CONDITIONS — R2-03 condition 1 PASSED; Registrant ACK-GOAL-005-INST-001-02 required before INST-013 may issue GOA-GOAL-005-INST-010-01)
 
 ---
 
@@ -12,23 +12,30 @@
 | New facts validated (G-F2-12 closed, Founder session authorization) | DONE — R-056 APPROVED WITH NOTES (2026-08-09); FA-031/FA-034 in effect; Founder stated "I do authorize WC-034 F2 implementation for the current session" |
 | Minimal plan amendment (GEP-GOAL-005-INST-013-02) prepared | DONE — Amendment 1 appended to goals/GOAL-005-execution-plan.md; Phase 8 INST-010 scope and evidence specification recorded; Phased Authorization Rule 5 replaced |
 | Registrant acknowledgement analysis | DONE — Founder session statement recorded as prima facie Registrant Authorization Basis; formal ACK-GOAL-005-INST-001-02 cannot be pre-created because the statement predates GEP-GOAL-005-INST-013-02 and does not reference it by record ID; CA must decide |
-| GOA-GOAL-005-INST-010-01 issued | PENDING — reserved in amendment; constitutionally void until CA Readiness Review of GEP-GOAL-005-INST-013-02 is APPROVED and a valid Registrant ACK is recorded in the Goal Register |
+| CA Readiness Review (GEP-GOAL-005-INST-013-02) | DONE — R-057 APPROVED WITH CONDITIONS (2026-08-09); R2-03 condition 1 PASSED; GEP-GOAL-005-INST-013-02 is constitutionally sound and accurately limits INST-010 to WC-034 F2; R2-04 does not apply (Registrant present and reachable); CR-GOAL-005-INST-002-03 recorded in Goal Register |
+| GOA-GOAL-005-INST-010-01 issued | PENDING — R2-03 condition 1 met (R-057); constitutionally void until Registrant records ACK-GOAL-005-INST-001-02 referencing GEP-GOAL-005-INST-013-02 |
 | PROJECT_STATE checkpoint committed | DONE — this record |
-| Commit and push | DONE — commit `b3e3831` pushed to `ib/014/wc034-f2-implementation` |
+| Commit and push | DONE — commits `b3e3831` and `1546c4f` pushed; R-057 CA review commit follows |
 
 ### Authorization Boundary
 
 This session prepares governance planning documents only. No source code, migration, API, or build artifact is written or modified. `logs/blueprint_assurance_report.json` is untouched. No PR is opened. No merge occurs. No GOA has been issued.
 
-### CA Question
+### CA Decision (R-057)
 
-The exact question the fresh Constitutional Analyst must decide before INST-013 may issue GOA-GOAL-005-INST-010-01:
+The fresh independent INST-002 instance has decided (R-057, 2026-08-09, APPROVED WITH CONDITIONS):
 
-> Under GEOM R2-03, does the Founder's in-session statement "I do authorize WC-034 F2 implementation for the current session" (Yogesh Khandge, 2026-08-09) constitute a sufficient Registrant Acknowledgement of GEP-GOAL-005-INST-013-02 (Amendment 1 to the GOAL-005 Execution Plan), given that the statement was made before this amendment was produced and does not reference it by record ID? If not sufficient, state precisely what the Founder must additionally provide before INST-013 may issue GOA-GOAL-005-INST-010-01. If GEOM R2-04 applies (CA certification given unambiguous success criteria and present Registrant), state the constitutional basis.
+- **R2-03 condition 1:** PASSED — GEP-GOAL-005-INST-013-02 is constitutionally ready; scope accurately limits INST-010 to WC-034 F2; Google/email-fallback first; Facebook/Apple designed not activated; no F3-F8; no deployment.
+- **R2-03 condition 2:** NOT MET — The Founder's session statement predates the amendment, lacks mandatory G-10 attestation fields, and does not reference GEP-GOAL-005-INST-013-02 by record ID. The original ACK explicitly stated "stop before implementation" and must be superseded by a new ACK.
+- **R2-04:** DOES NOT APPLY — Registrant is present and reachable; 48-hour window has not elapsed; CA may not certify on Registrant's behalf.
 
 ### Next Constitutional Action
 
-Awaiting independent CA Readiness Review of GEP-GOAL-005-INST-013-02. When both R2-03 conditions are satisfied:
+**Founder must provide this single sentence** to unblock GOA issuance:
+
+> **"I acknowledge GEP-GOAL-005-INST-013-02 and authorize INST-013 to issue GOA-GOAL-005-INST-010-01."**
+
+After that statement is recorded as ACK-GOAL-005-INST-001-02 in the Goal Register:
 1. INST-013 sets `issued_at` on GOA-GOAL-005-INST-010-01 (making it constitutionally valid)
 2. INST-010 records Goal Acceptance Timestamp after that `issued_at`
 3. INST-010 begins WC-034 F2 implementation under WC-034 Phase B scope and Phase 8 evidence specification
