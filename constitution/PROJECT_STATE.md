@@ -1,6 +1,6 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-08-09 (WC-034 Phase B Founder Authorization Recorded)
+**Last Updated:** 2026-08-09 (Platform IT Expert Skill 16 Founder Approval Recorded)
 
 ---
 
@@ -15,11 +15,12 @@
 | Hybrid application-shell specification | DONE — route/rendering ownership, conversation model, navigation, API gaps, continuity boundary, failure semantics, privacy, and budgets defined |
 | Visual-system and information-architecture contracts | DONE — rejected architecture prototype permanently deleted; `web/WAOOAWHome.html` Founder-approved as the inspiration source for logo, fonts, color themes, design language, and public-page migration; constitutional UX/RTL/accessibility constraints govern adaptations; F0–F8 decomposition published |
 | Executable UI acceptance contract | DONE — component, browser, axe, visual, responsive, RTL, PWA, privacy, resilience, performance, and coverage evidence specified |
-| Platform IT Expert frontend capability assessment | DONE — Skill 16 proposal input prepared; Product Owner review and Founder decision required before Type 1 update |
+| Platform IT Expert frontend capability assessment | DONE — Skill 16 proposal input prepared; Product Owner reviewed; FA-032 authorizes the Type 1 update and activation review |
 | Formal Enterprise Architecture assessment | DONE — architecturally groomed, not implementation-ready; WC-016 superseded for future planning |
 | Independent INST-005 and INST-011 review | DONE — R-047 INST-005 APPROVED; R-048 INST-011 APPROVED on PR #239 |
 | Product information architecture and release composition | DONE — customer labels fixed; text-only first conversation release; attachments, voice, cross-channel notifications, global priority, and Concierge explicitly deferred |
-| Platform IT Expert Skill 16 Product Owner review | DONE — INST-011 recommends APPROVE_FOR_SPEC at 95% confidence; Founder decision and lifecycle remain pending |
+| Platform IT Expert Skill 16 approval | DONE — INST-011 recommends APPROVE_FOR_SPEC at 95% confidence; FA-032 Founder APPROVE recorded; Type 1 lifecycle pending |
+| Platform IT Expert Skill 16 Type 1 handoff | DONE — GitHub Issue #241 created with `type:agent-update`, `update-type:new-skill`, `status:waiting`; Business Architect execution pending |
 | Founder implementation authorization | DONE — FA-031 authorizes WC-034 Phase B; execution remains blocked on Skill 16 lifecycle and selected-component entry criteria |
 
 ### Decision Space
@@ -28,7 +29,7 @@ INST-004 may define the structural application surfaces, route and layout owners
 
 ### Current Authorization Boundary
 
-Architecture authoring and both independent reviews for WC-034 Phase A are complete. R-047 approves component, API, rendering, and continuity ownership; R-048 approves information architecture, customer labels, release composition, explicit deferrals, and the Skill 16 business case after corrections. FA-031 records Founder authorization for WC-034 Phase B. Execution remains blocked until the Platform IT Expert Skill 16 lifecycle is complete and the selected component's approved service contracts and acceptance prerequisites pass. WC-058 through WC-060 remain outside this Work Contract; transactional omnichannel continuity is explicitly blocked on WC-060.
+Architecture authoring and both independent reviews for WC-034 Phase A are complete. R-047 approves component, API, rendering, and continuity ownership; R-048 approves information architecture, customer labels, release composition, explicit deferrals, and the Skill 16 business case after corrections. FA-031 records Founder authorization for WC-034 Phase B. FA-032 approves Skill 16 for the Section 15 Type 1 update and activation review. Application execution remains blocked until that lifecycle is complete and the selected component's approved service contracts and acceptance prerequisites pass. WC-058 through WC-060 remain outside this Work Contract; transactional omnichannel continuity is explicitly blocked on WC-060.
 
 ### Review Candidate Package
 
@@ -42,7 +43,7 @@ Architecture authoring and both independent reviews for WC-034 Phase A are compl
 
 ### Next Constitutional Action
 
-Present the Platform IT Expert Skill 16 proposal and INST-011 `APPROVE_FOR_SPEC` recommendation for Founder decision. If approved, execute the Section 15 Type 1 update and independent activation review. An INST-010 implementation session may then validate the selected component's remaining entry criteria and execute under FA-031; no deferred component or deployment authority is implied.
+Execute GitHub Issue #241, the `type:agent-update`, `update-type:new-skill` Work Contract for Platform IT Expert Skill 16 under FA-032. After the Type 1 update, activation gate, merge/version bump, and independent EA review pass, an INST-010 implementation session may validate the selected component's remaining entry criteria and execute under FA-031. No deferred component or deployment authority is implied.
 
 ---
 

@@ -25,7 +25,7 @@ Phase A defines the route topology, shell ownership, responsive layout, constitu
 
 ### Phase B — Application Implementation (INST-010)
 
-Phase B is authorized by FA-031 after Phase A received independent architecture review. Execution may begin only after the Platform IT Expert Skill 16 Founder decision, Type 1 update, activation gate, and independent EA review are complete, and only for selected components whose service-contract and acceptance prerequisites pass. It implements the approved shell, migrates the home page into Next.js, and places customer and Founder routes inside their approved layouts.
+Phase B is authorized by FA-031 after Phase A received independent architecture review. Execution may begin only after the FA-032-approved Platform IT Expert Skill 16 Type 1 update, activation gate, and independent EA review are complete, and only for selected components whose service-contract and acceptance prerequisites pass. It implements the approved shell, migrates the home page into Next.js, and places customer and Founder routes inside their approved layouts.
 
 Founder admin capabilities remain part of WC-034, but they are not the application architecture. Markup Designer, Trial Budget Config, and Coupon Manager are feature routes nested inside the Founder surface after the shared shell exists.
 
@@ -92,7 +92,7 @@ Detailed scope, dependencies, exclusions, and acceptance IDs are normative in `a
 | ADR-017 — Next.js 14 TypeScript PWA | accepted — framework boundary fixed |
 | WC-057 — Employment Relationship foundation | merged to `main`; independent review evidence remains unresolved |
 | WC-027 and WC-031 — WBE markup/trial/promotions contracts | required before Founder feature implementation |
-| Platform IT Expert frontend skill lifecycle | Product Owner recommends APPROVE_FOR_SPEC; Founder decision, Type 1 update, activation gate, and independent EA review pending |
+| Platform IT Expert frontend skill lifecycle | FA-032 approves the proposal for specification; Issue #241 is the Type 1 Work Contract; update, activation gate, merge/version bump, and independent EA review pending |
 
 ## Architecture Definition of Done
 
