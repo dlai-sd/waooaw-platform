@@ -1,6 +1,23 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-08-09 (Platform IT Expert Skill 16 Founder Approval Recorded)
+**Last Updated:** 2026-08-09 (Platform IT Expert Skill 16 Type 1 Update In Progress)
+
+---
+
+## IN-PROGRESS CHECKPOINT — ISSUE #241 PLATFORM IT EXPERT SKILL 16
+
+| Milestone | Status |
+|---|---|
+| INST-003 Business Architect occupancy | DONE — Decision Space and constitutional obligations loaded |
+| Work Contract and authorization validation | DONE — Issue #241, FA-032, R-048, and approved candidate contract present |
+| Skill 16 specification and professional template | pending |
+| Section 15 Type 1 architecture-chain update and N/A determinations | pending |
+| Retroactive Agent Activation Gate | pending |
+| Independent `CHANGE_TYPE=NEW_SKILL` EA review | pending — author cannot self-review under C-065 |
+
+### Authorization Boundary
+
+This session may amend the Platform IT Expert specification and required Type 1 architecture-chain records under FA-032. It may not write WC-034 application code, activate Skill 16, perform the independent EA review, or exercise FA-031 before the lifecycle gate passes.
 
 ---
 
