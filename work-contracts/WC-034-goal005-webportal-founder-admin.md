@@ -7,8 +7,8 @@
 **Implementation Office:** Platform IT Expert (INST-010)
 **Architecture Reviewer:** Solution Architect (INST-005) + Product Owner (INST-011)
 **Implementation Reviewer:** Enterprise Architect (INST-004) in an independent session
-**Status:** PHASE A INDEPENDENT REVIEW COMPLETE — IMPLEMENTATION UNAUTHORIZED
-**Authorization:** Founder selected the WC-034 scope amendment on 2026-08-08. This authorizes architecture and specification work only. A separate Founder Action is required before modifying application source.
+**Status:** PHASE B AUTHORIZED — PREREQUISITE GATES PENDING
+**Authorization:** FA-031 — after approving and merging PR #239, Founder authorized WC-034 Phase B implementation on 2026-08-09. Application-source work may begin only when the Platform IT Expert Skill 16 lifecycle and the selected component's local entry criteria are complete.
 **Constitutional Basis:** C-001, C-009, C-023, C-034, C-042, C-059, C-064, C-065, C-076; ADR-017
 
 ## Outcome
@@ -25,7 +25,7 @@ Phase A defines the route topology, shell ownership, responsive layout, constitu
 
 ### Phase B — Application Implementation (INST-010)
 
-Phase B may begin only after Phase A receives independent architecture review and a separate Founder implementation authorization. It implements the approved shell, migrates the home page into Next.js, and places customer and Founder routes inside their approved layouts.
+Phase B is authorized by FA-031 after Phase A received independent architecture review. Execution may begin only after the Platform IT Expert Skill 16 Founder decision, Type 1 update, activation gate, and independent EA review are complete, and only for selected components whose service-contract and acceptance prerequisites pass. It implements the approved shell, migrates the home page into Next.js, and places customer and Founder routes inside their approved layouts.
 
 Founder admin capabilities remain part of WC-034, but they are not the application architecture. Markup Designer, Trial Budget Config, and Coupon Manager are feature routes nested inside the Founder surface after the shared shell exists.
 
