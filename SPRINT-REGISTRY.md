@@ -8,7 +8,7 @@
 
 | WC | Title | Track | Status | Depends On | Key Outcome |
 |---|---|---|---|---|---|
-| **WC-034** | Hybrid Web Application Shell | Next.js 14 PWA | R-050 REMEDIATION COMPLETE — INST-004 RE-REVIEW PENDING | WC-057 · ADR-017 · IB-014 · FA-031 · FA-034 | F1 shells, eleven locales, restored homepage, honest Stop context, and reproducible five-project browser evidence; F2–F8 and deployment remain gated |
+| **WC-034** | Hybrid Web Application Shell | Next.js 14 PWA | R-051 CHANGES REQUIRED — F1 OPEN | WC-057 · ADR-017 · IB-014 · FA-031 · FA-034 | R050-01/03 resolved; complete UX-PERF-01 measurements and enabled Stop evidence remain required; F2–F8 and deployment remain gated |
 | **WC-057** | AE-01 Employment Journey Foundation | Customer outcome | IMPLEMENTATION COMPLETE — REVIEW PENDING | R-046 · FA-030 · WC-037 · WC-040 · WC-041 | Durable relationship, canonical APIs, participant roles, and provisional authenticated PWA shell |
 | **WC-058** | AE-01 Discover, Trial, Configure | Customer outcome | IMPLEMENTATION-READY — UNAUTHORIZED | WC-057 | Generic S01–S06 journey with DMA 19-skill first proof and 14-day zero-paid-API trial |
 | **WC-059** | AE-01 Contract, Payment, Activation | Customer outcome | IMPLEMENTATION-READY — UNAUTHORIZED | WC-058 · WC-042 · WC-043 | Tier-4 contract/payment and exactly-once activation |

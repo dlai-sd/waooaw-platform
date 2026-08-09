@@ -1,6 +1,6 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-08-09 (WC-034 F1 R-050 remediation evidence complete)
+**Last Updated:** 2026-08-09 (WC-034 F1 R-051 re-review — changes required)
 
 ---
 
@@ -61,7 +61,7 @@ FA-034 releases WC-034 Phase B execution under FA-031. INST-010 may begin F1 and
 | R-050 independent INST-004 review | REJECTED — localization/font completeness, reproducible browser evidence, homepage content preservation, and honest Emergency Stop context required remediation |
 | R-050 remediation | DONE — eleven locale catalogs and script fonts, restored homepage content families, optional approved Stop context with honest disabled fallback, clean Docker runner, and deterministic browser/performance evidence implemented |
 | F1 executable validation | DONE — strict TypeScript and lint PASS; Jest 34/34 at 98.64% lines; eight logical Playwright/axe scenarios across five projects produced 36 PASS and 4 expected normalized-performance SKIP; Chromium, Firefox, WebKit, 1440×900, 768×1024, and 360×800 covered; production build 20/20 routes with `/` at 89.7 kB First Load JS |
-| Independent INST-004 re-review | PENDING — C-065 author/reviewer separation required before F1 closure or merge; INST-010 makes no approval claim |
+| Independent INST-004 re-review | CHANGES REQUIRED — R-051 confirms R050-01 and R050-03 resolved; UX-PERF-01 measurements and enabled Stop evidence remain open |
 
 ### Decision Space
 
@@ -69,7 +69,7 @@ INST-004 may define the structural application surfaces, route and layout owners
 
 ### Current Authorization Boundary
 
-Architecture authoring and both independent reviews for WC-034 Phase A are complete. R-047 approves component, API, rendering, and continuity ownership; R-048 approves information architecture, customer labels, release composition, explicit deferrals, and the Skill 16 business case after corrections. FA-031 authorizes WC-034 Phase B; FA-033 and merged PR #244 complete the Skill 16 prerequisite; FA-034 releases execution. INST-010 completed F1 implementation, received the independent R-050 REJECT decision, and completed remediation with Docker-only executable evidence. Independent INST-004 re-review is required before merge or F1 closure. F2–F8 may begin only after their approved local entry criteria pass. WC-058 through WC-060 and deployment remain outside this Work Contract; transactional omnichannel continuity is explicitly blocked on WC-060.
+Architecture authoring and both independent reviews for WC-034 Phase A are complete. R-047 approves component, API, rendering, and continuity ownership; R-048 approves information architecture, customer labels, release composition, explicit deferrals, and the Skill 16 business case after corrections. FA-031 authorizes WC-034 Phase B; FA-033 and merged PR #244 complete the Skill 16 prerequisite; FA-034 releases execution. INST-010 completed F1 implementation, received the independent R-050 REJECT decision, and completed remediation with Docker-only executable evidence. R-051 independently confirms two findings resolved and keeps F1 open for complete UX-PERF-01 measurements and enabled CCT-UX-HO-01 Stop evidence. F2–F8 may begin only after their approved local entry criteria pass. WC-058 through WC-060 and deployment remain outside this Work Contract; transactional omnichannel continuity is explicitly blocked on WC-060.
 
 ### Review Candidate Package
 
@@ -83,7 +83,7 @@ Architecture authoring and both independent reviews for WC-034 Phase A are compl
 
 ### Next Constitutional Action
 
-Submit the R-050 remediation evidence on WC-034 PR #246 and request independent INST-004 Enterprise Architect re-review. Do not self-approve, merge, or begin F2–F8 from this checkpoint; no deferred component or deployment authority is implied.
+Address R051-01 and R051-02 on WC-034 PR #246, then request independent INST-004 confirmation. Do not merge, close F1, begin F2–F8, or authorize deployment from this checkpoint.
 
 ---
 
