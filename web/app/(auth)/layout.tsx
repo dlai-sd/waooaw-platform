@@ -2,9 +2,14 @@
 // Constitutional basis: C-059 (Implementation Traceability)
 
 import type { ReactNode } from 'react';
+import { getServerSession } from 'next-auth';
+import { AccountSwitchCommand, SignOutCommand } from '@/components/auth/SignOutCommand';
 import { AppShell } from '@/components/shell/AppShell';
+import { authOptions } from '@/lib/auth';
 import { getRequestI18n } from '@/lib/i18n-server';
-export default function AuthLayout({ children }: { children: ReactNode }) {
+export default async function AuthLayout({ children }: { children: ReactNode }) {
+	const session = await getServerSession(authOptions);
 	const { messages } = getRequestI18n();
-	return <AppShell messages={messages} variant="auth">{children}</AppShell>;
+	const headerStatus = session?.authenticated ? <><AccountSwitchCommand label="Switch account" /><SignOutCommand label="Sign out" /></> : undefined;
+	return <AppShell headerStatus={headerStatus} messages={messages} variant="auth">{children}</AppShell>;
 }

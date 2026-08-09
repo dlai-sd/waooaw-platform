@@ -3,6 +3,7 @@
 
 import { BriefcaseBusiness, Home, MessageSquare, Settings, ShieldCheck } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { AccountSwitchCommand, SignOutCommand } from '@/components/auth/SignOutCommand';
 import type { Messages } from '@/lib/i18n';
 import { AppShell } from './AppShell';
 import { RouteAwareEmergencyStop } from './RouteAwareEmergencyStop';
@@ -56,7 +57,7 @@ export function ProtectedAppShell({ children, messages, stopContext, variant }: 
   return (
     <AppShell
       bottomNavigation={bottomNavigation}
-      headerStatus={variant === 'founder' ? <span className="role-label"><ShieldCheck aria-hidden="true" size={17} /> {messages.founder}</span> : undefined}
+      headerStatus={<>{variant === 'founder' ? <span className="role-label"><ShieldCheck aria-hidden="true" size={17} /> {messages.founder}</span> : null}<AccountSwitchCommand label="Switch account" /><SignOutCommand label="Sign out" /></>}
       messages={messages}
       sideNavigation={sideNavigation}
       stopControl={<RouteAwareEmergencyStop stopContext={stopContext} />}

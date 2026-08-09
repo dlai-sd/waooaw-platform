@@ -1,6 +1,6 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-08-09 (ACC-GOAL-005-INST-010-01 recorded 2026-08-09T20:45:00+00:00; INST-010 acceptance complete; WC-034 F2 implementation in progress)
+**Last Updated:** 2026-08-09 (WC-034 F2 backend and web implementation validated; independent INST-004 review pending)
 
 ---
 
@@ -24,13 +24,13 @@
 |---|---|
 | F2 entry criteria validation (ADR-008 v3, identity-boundary.md, F2 operations in business-platform.openapi.yaml) | DONE — GOA and ACC valid; merged PR #248/R-056 closes architecture entry gates |
 | Identity Boundary backend and persistence | DONE — all 13 canonical operations implemented in BP with issuer-subject binding, tenant-scoped account links, idempotency, privacy-safe errors, secret-backed OTP verification, and Migration 20 |
-| Authentication routes (login, registration, verification, account-linking, auth-error) | PENDING |
-| Keycloak OIDC broker integration — Google and email-fallback providers | PENDING |
-| Identity API generated TypeScript client integration | PENDING |
-| Progressive mobile verification (before consequential actions) | IN PROGRESS — BP start/confirm API complete; web flow pending; delivery provider remains fail-closed until environment adapter is configured |
-| WhatsApp-to-web deterministic identity linking and duplicate resolution | IN PROGRESS — proof-gated BP account-link API complete; web flow and internal Phone Identity adapter acceptance remain pending |
-| Session lifecycle (safe return target, expiry, sign-out, account-switch cleanup) | PENDING |
-| F2 test suite (UX-SHELL-02, UX-SHELL-04, UX-AUTH-01–06, UX-PRIV-01, UX-PWA-04) | PENDING |
+| Authentication routes (login, registration, verification, account-linking, auth-error) | DONE — broker-gated registration state machine, account verification, dedicated fail-closed linking route, and stable auth-error treatment implemented |
+| Keycloak OIDC broker integration — Google and email-fallback providers | DONE (web boundary) — NextAuth uses Keycloak as sole broker; browser session exposes authentication state but never the bearer token; provider activation remains Keycloak environment configuration |
+| Identity API generated TypeScript client integration | DONE — canonical OpenAPI 1.1.0 generates `IdentityApi` and all F2 models; server-only BFF consumes the generated client |
+| Progressive mobile verification (before consequential actions) | DONE (application boundary) — registration-optional and account step-up UI/API complete; delivery provider remains fail-closed until an environment adapter is configured |
+| WhatsApp-to-web deterministic identity linking and duplicate resolution | IN PROGRESS — proof-gated BP account-link API and dedicated fail-closed web route complete; internal Phone Identity adapter must supply verified proof before activation |
+| Session lifecycle (safe return target, expiry, sign-out, account-switch cleanup) | DONE — named local targets only; token hidden server-side; protected state cleared before sign-out/select-account; non-secret registration draft preserved while OTP/proofs never persist |
+| F2 test suite (UX-SHELL-02, UX-SHELL-04, UX-AUTH-01–06, UX-PRIV-01, UX-PWA-04) | DONE (available environment) — 52/52 Jest; 92.68% web lines; lint/typecheck/build pass; 4/4 F2 Chromium expanded+360 acceptance; existing Chromium matrix 24 passed/3 skipped; Firefox/WebKit blocked only by missing container shared libraries |
 | Independent INST-004 review and PR | PENDING |
 
 ### Authorization Boundary
@@ -49,7 +49,7 @@ The fresh independent INST-002 instance decided (R-057, 2026-08-09, APPROVED WIT
 
 ### Next Constitutional Action
 
-ACC-GOAL-005-INST-010-01 is complete. Continue WC-034 F2 web implementation against the validated Identity Boundary backend. Backend evidence: 89/89 focused identity tests, 144/144 full Business Platform tests, and 97.26% unique-line coverage across the new identity controller, service, and data context. Provider delivery remains fail-closed until an environment-specific dispatcher is configured; no Facebook, Apple, or deployment activation is authorized.
+ACC-GOAL-005-INST-010-01 is complete. Submit the validated WC-034 F2 implementation for independent INST-004 review. Evidence: 89/89 focused identity tests; 144/144 full Business Platform tests; 97.26% unique identity backend lines; 52/52 web unit tests; 92.68% web lines; clean lint/typecheck/production build; 4/4 F2 Chromium acceptance scenarios at expanded and 360px. Provider delivery and the internal WhatsApp proof adapter remain fail-closed until environment implementations are approved. Facebook, Apple, deployment, and F3–F8 remain unauthorized.
 
 ---
 
