@@ -6,6 +6,10 @@ CREATE SCHEMA IF NOT EXISTS identity;
 
 -- ── Registration workflow ─────────────────────────────────────────────────
 
+-- Registrations intentionally have no tenant RLS: a pre-account actor has no tenant_id.
+-- The service binds every read/write to the validated issuer + subject pair; tenant RLS
+-- begins on post-account resources such as account_links after completion mints a tenant.
+
 CREATE TABLE IF NOT EXISTS identity.registrations (
     registration_id         UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
     actor_subject           VARCHAR(256) NOT NULL,

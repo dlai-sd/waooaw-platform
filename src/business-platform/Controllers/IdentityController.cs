@@ -307,6 +307,15 @@ public sealed class IdentityController(
         [FromBody] UpdateRegistrationProfileRequest req,
         CancellationToken ct)
     {
+        if (string.IsNullOrWhiteSpace(req.DisplayName) || req.DisplayName.Length > 120
+            || string.IsNullOrWhiteSpace(req.BusinessName) || req.BusinessName.Length > 160
+            || string.IsNullOrWhiteSpace(req.BusinessDomain) || req.BusinessDomain.Length > 100
+            || string.IsNullOrWhiteSpace(req.LanguagePreference)
+            || !LanguagePattern.IsMatch(req.LanguagePreference))
+        {
+            return IdentityProblem(400, "IDENTITY_REQUEST_INVALID", "Registration profile is invalid.");
+        }
+
         try
         {
             var idempotencyKey = IdempotencyKey;

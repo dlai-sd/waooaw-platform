@@ -946,6 +946,27 @@ public sealed class IdentityInputAndConfigurationTests
 
 public sealed class IdentityUpdateProfileErrorTests
 {
+    [Theory]
+    [InlineData("", "Business", "Retail", "en")]
+    [InlineData("Name", "", "Retail", "en")]
+    [InlineData("Name", "Business", "", "en")]
+    [InlineData("Name", "Business", "Retail", "EN_us")]
+    public async Task F2_UpdateProfile_InvalidFields_Return400(
+        string displayName, string businessName, string businessDomain, string languagePreference)
+    {
+        var factory = new InMemoryIdentityDbContextFactory(Guid.NewGuid().ToString("N"));
+        var ctrl = IdentityTestHelpers.CreateController(factory, subject: "upd-invalid");
+
+        var result = await ctrl.UpdateProfileAsync(Guid.NewGuid(),
+            new UpdateRegistrationProfileRequest(displayName, businessName, businessDomain, languagePreference),
+            CancellationToken.None);
+
+        var obj = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(400, obj.StatusCode);
+        Assert.Equal("IDENTITY_REQUEST_INVALID",
+            JsonSerializer.SerializeToElement(obj.Value).GetProperty("code").GetString());
+    }
+
     [Fact]
     public async Task F2_UpdateProfile_NotFound_Returns404()
     {
