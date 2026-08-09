@@ -24,7 +24,8 @@ This file is auto-generated from conventional commits. Do not edit manually.
 - Playwright/axe: nine logical scenarios across five projects; 38 PASS and 7 expected profile SKIP across Chromium, Firefox, WebKit, 1440×900, 768×1024, and 360×800
 - Production build: 20/20 routes generated; shared initial JavaScript 89.5 kB; public route 89.7 kB
 - Service-worker audit: one approved static cache, three network-only strategies, zero default API/page/RSC/cross-origin caches, and no precached root HTML
-- R-051 remediation adds measured FCP/LCP/CLS/INP assertions and an enabled persistent relationship-route Emergency Stop with compact and expanded keyboard evidence; final independent INST-004 confirmation remains pending
+- R-051 remediation adds measured FCP/LCP/CLS/INP assertions and an enabled persistent relationship-route Emergency Stop with compact and expanded keyboard evidence
+- R-052 independently approved final F1 acceptance; PR #246 merged to `main` as `798c183` and WC-034 F1 is closed while F2–F8 remain separately gated
 
 ---
 

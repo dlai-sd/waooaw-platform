@@ -70,7 +70,7 @@ Detailed scope, dependencies, exclusions, and acceptance IDs are normative in `a
 | Component | Scope | Owner | Status |
 |---|---|---|---|
 | F0 | Architecture and dependency closure | INST-004 + reviewing/owning offices | review complete — remaining API and Founder gates named |
-| F1 | Experience foundation | INST-010 | READY — FA-034 releases execution; acceptance gates remain normative |
+| F1 | Experience foundation | INST-010 | complete — R-052 approved; PR #246 merged to `main` as `798c183` on 2026-08-09 |
 | F2 | Identity and registration | INST-010 + identity/BP owners | blocked — canonical identity/API contract plus implementation gates |
 | F3 | Conversation core | INST-010 + BP/PR owners | blocked — canonical BP public conversation/stream contracts and PR internal execution contract plus implementation gates |
 | F4 | Relationship workspace | INST-010 + BP/WBE owners | blocked — Plan/Priority Work and Consumption projections plus implementation gates |
