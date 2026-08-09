@@ -1,6 +1,6 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-08-09 (WC-034 F2 identity contract grooming in progress)
+**Last Updated:** 2026-08-09 (WC-034 F2 R-055 changes required)
 
 ---
 
@@ -14,6 +14,7 @@
 | Canonical OpenAPI and generated TypeScript client compatibility | DONE — 11 public F2 operations; 29 focused references resolve; F2 TypeScript model generation passes without manual patches |
 | F2 dependency gate table | DONE — every dependency READY or BLOCKED with owner and missing artifact; ADR-008 Meta reconciliation and INST-004 review remain blocking |
 | Independent INST-004 review submission | DONE — PR #248 opened against `main`; INST-004 review requested; no self-approval or merge |
+| Independent INST-004 review | CHANGES REQUIRED — R-055 requires canonical WhatsApp continuation auth, complete privacy-safe 400/404 errors, and corrected diff-check evidence; Meta remains a Founder policy blocker |
 
 ### Authorization Boundary
 
@@ -21,13 +22,14 @@ This session grooms only WC-034 F2 Identity and Registration into an implementat
 
 ### Review Candidate
 
-- Commit `c36b438` on `ib/014/wc034-f2-identity-contract`
+- Commits `c36b438` and `054bfe8` on `ib/014/wc034-f2-identity-contract`
 - PR #248 — independent INST-004 Enterprise Architect review requested
 - R-054 — INST-007 security consultation, CONCUR WITH BLOCKERS
+- R-055 — INST-004 independent review, CHANGES REQUIRED
 
 ### Next Constitutional Action
 
-INST-004 independently reviews PR #248. F2 implementation remains blocked pending that review and ADR-008 Meta disposition reconciliation. Meta activation additionally requires FA-002 and FA-018 evidence. Deployment remains unauthorized.
+INST-005 remediates R055-01 through R055-03 and requests independent INST-004 confirmation. The Founder must decide whether Meta login supersedes ADR-008's accepted deferral before INST-004 can draft an amendment; Meta activation additionally requires FA-002 and FA-018 evidence. F2 implementation and deployment remain unauthorized.
 
 ---
 
