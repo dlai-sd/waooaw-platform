@@ -94,8 +94,8 @@ F2 and the service-contract portion of F3 may be prepared in parallel after F1, 
 **Scope:**
 
 - dedicated login, registration, verification, account-linking, and authentication-error routes;
-- Keycloak-brokered Google/Meta/credential paths;
-- mandatory verified email and verified mobile handling;
+- one Keycloak-brokered Google/Facebook/Apple/email-fallback experience;
+- confirmed email at completion and progressive mobile verification before consequential actions;
 - deterministic WhatsApp-to-web identity linking and duplicate resolution;
 - progressive assurance and fresh step-up for high-risk actions;
 - safe return target, session expiry, sign-out, and account-switch cleanup.
@@ -106,7 +106,7 @@ F2 and the service-contract portion of F3 may be prepared in parallel after F1, 
 
 **Acceptance:** UX-SHELL-02, UX-SHELL-04, UX-AUTH-01 through UX-AUTH-06, UX-PRIV-01, UX-PWA-04.
 
-**Contract status:** GROOMED — `architecture/reference/components/identity-boundary.md` and the F2 operations in the canonical Business Platform OpenAPI define component, API, data, error, assurance, idempotency, retry, tenant, privacy, session, and generated-client boundaries. Implementation remains BLOCKED by that contract's gate table: ADR-008 Meta disposition and independent INST-004 review are unresolved; Meta activation also requires FA-002 and FA-018 evidence.
+**Contract status:** R-055 REMEDIATED — FA-035 fixes the unified provider experience and progressive-mobile policy. `architecture/reference/components/identity-boundary.md` and the 13 F2 operations in the canonical Business Platform OpenAPI define component, API, data, error, assurance, idempotency, retry, tenant, privacy, session, and generated-client boundaries. Implementation remains BLOCKED by that contract's gate table: the INST-004 ADR-008 amendment and independent INST-004 re-review are unresolved. Facebook activation additionally requires FA-002/FA-018 evidence; Apple activation requires FA-019 evidence.
 
 ## F3 — Conversation Core
 

@@ -73,7 +73,7 @@ Detailed scope, dependencies, exclusions, and acceptance IDs are normative in `a
 |---|---|---|---|
 | F0 | Architecture and dependency closure | INST-004 + reviewing/owning offices | review complete — remaining API and Founder gates named |
 | F1 | Experience foundation | INST-010 | complete — R-052 approved; PR #246 merged to `main` as `798c183` on 2026-08-09 |
-| F2 | Identity and registration | INST-010 + identity/BP owners | contract groomed — implementation blocked by ADR-008 Meta reconciliation and independent INST-004 review; Meta activation also blocked by FA-002/FA-018 |
+| F2 | Identity and registration | INST-010 + identity/BP owners | R-055 contract remediation complete — FA-035 fixes Google/Facebook/Apple/email fallback and progressive mobile policy; implementation blocked by INST-004 ADR-008 amendment and independent re-review; Facebook activation blocked by FA-002/FA-018 and Apple by FA-019 |
 | F3 | Conversation core | INST-010 + BP/PR owners | blocked — canonical BP public conversation/stream contracts and PR internal execution contract plus implementation gates |
 | F4 | Relationship workspace | INST-010 + BP/WBE owners | blocked — Plan/Priority Work and Consumption projections plus implementation gates |
 | F5 | Omnichannel continuity | INST-010 + WC-060 owners | blocked — WC-060 completion plus implementation gates |

@@ -33,7 +33,7 @@ servers:
 
 tags:
   - name: Identity
-    description: Registration, mandatory verification, and deterministic account linking
+    description: Registration, confirmed email, progressive mobile verification, and deterministic account linking
   - name: Employment
     description: Employment contract lifecycle management
   - name: Approvals
@@ -82,9 +82,11 @@ paths:
       summary: Start or replay a customer registration
       description: |
         Starts registration from a validated Keycloak pre-account session. Provider
-        claims are accepted only through that brokered session. Duplicate resolution
+        claims and authentication path are derived only from that brokered session. Duplicate resolution
         occurs only after verified identity proof; this operation never exposes whether
         an arbitrary email or mobile already exists and never creates an Employment Relationship.
+        ADR-023 WhatsApp continuation uses an internal server-to-server Identity Boundary
+        adapter, never this browser operation or a browser-held Phone Identity Service token.
       operationId: startIdentityRegistration
       security:
         - PreAccountBearerAuth: []
@@ -109,6 +111,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/IdentityRegistration"
+        "400": { $ref: "#/components/responses/IdentityInvalidRequest" }
         "401": { $ref: "#/components/responses/IdentityUnauthorized" }
         "409": { $ref: "#/components/responses/IdentityConflict" }
         "429": { $ref: "#/components/responses/IdentityRateLimited" }
@@ -130,6 +133,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/IdentityRegistration"
+        "400": { $ref: "#/components/responses/IdentityInvalidRequest" }
         "401": { $ref: "#/components/responses/IdentityUnauthorized" }
         "404": { $ref: "#/components/responses/IdentityNotFound" }
 
@@ -157,6 +161,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/IdentityRegistration"
+        "400": { $ref: "#/components/responses/IdentityInvalidRequest" }
         "401": { $ref: "#/components/responses/IdentityUnauthorized" }
         "404": { $ref: "#/components/responses/IdentityNotFound" }
         "409": { $ref: "#/components/responses/IdentityConflict" }
@@ -186,6 +191,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/IdentityVerificationChallenge"
+        "400": { $ref: "#/components/responses/IdentityInvalidRequest" }
         "401": { $ref: "#/components/responses/IdentityUnauthorized" }
         "404": { $ref: "#/components/responses/IdentityNotFound" }
         "409": { $ref: "#/components/responses/IdentityConflict" }
@@ -215,6 +221,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/IdentityRegistration"
+        "400": { $ref: "#/components/responses/IdentityInvalidRequest" }
         "401": { $ref: "#/components/responses/IdentityUnauthorized" }
         "404": { $ref: "#/components/responses/IdentityNotFound" }
         "409": { $ref: "#/components/responses/IdentityConflict" }
@@ -224,7 +231,7 @@ paths:
   /api/v1/identity/registrations/{registrationId}/mobile-verifications:
     post:
       tags: [Identity]
-      summary: Start or replay mandatory mobile verification
+      summary: Optionally start or replay mobile verification during registration
       description: |
         Uses an approved OTP path when no ADR-023 Meta-verified proof is already bound.
         Returns no account-existence information.
@@ -247,6 +254,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/IdentityVerificationChallenge"
+        "400": { $ref: "#/components/responses/IdentityInvalidRequest" }
         "401": { $ref: "#/components/responses/IdentityUnauthorized" }
         "404": { $ref: "#/components/responses/IdentityNotFound" }
         "409": { $ref: "#/components/responses/IdentityConflict" }
@@ -256,7 +264,7 @@ paths:
   /api/v1/identity/registrations/{registrationId}/mobile-verifications/confirm:
     post:
       tags: [Identity]
-      summary: Confirm mandatory mobile verification
+      summary: Confirm optional mobile verification during registration
       operationId: confirmIdentityMobileVerification
       security:
         - PreAccountBearerAuth: []
@@ -276,6 +284,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/IdentityRegistration"
+        "400": { $ref: "#/components/responses/IdentityInvalidRequest" }
         "401": { $ref: "#/components/responses/IdentityUnauthorized" }
         "404": { $ref: "#/components/responses/IdentityNotFound" }
         "409": { $ref: "#/components/responses/IdentityConflict" }
@@ -287,7 +296,8 @@ paths:
       tags: [Identity]
       summary: Complete registration by minting or reusing one account
       description: |
-        Requires verified email, verified mobile, and the approved minimum profile. Duplicate
+        Requires confirmed email and the approved minimum profile; mobile verification is optional
+        until a server-classified consequential action. Duplicate
         resolution is deterministic and proof-gated. ACCOUNT_CREATED and ACCOUNT_REUSED have
         the same customer-facing success treatment. No Employment Relationship is created.
       operationId: completeIdentityRegistration
@@ -303,6 +313,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/IdentityCompletion"
+        "400": { $ref: "#/components/responses/IdentityInvalidRequest" }
         "401": { $ref: "#/components/responses/IdentityUnauthorized" }
         "404": { $ref: "#/components/responses/IdentityNotFound" }
         "409": { $ref: "#/components/responses/IdentityConflict" }
@@ -338,6 +349,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/IdentityAccountLink"
+        "400": { $ref: "#/components/responses/IdentityInvalidRequest" }
         "401": { $ref: "#/components/responses/IdentityUnauthorized" }
         "403": { $ref: "#/components/responses/IdentityStepUpRequired" }
         "409": { $ref: "#/components/responses/IdentityConflict" }
@@ -358,6 +370,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/IdentityAccountLink"
+        "400": { $ref: "#/components/responses/IdentityInvalidRequest" }
         "401": { $ref: "#/components/responses/IdentityUnauthorized" }
         "403": { $ref: "#/components/responses/IdentityStepUpRequired" }
         "404": { $ref: "#/components/responses/IdentityNotFound" }
@@ -378,8 +391,65 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/IdentityAccountLink"
+        "400": { $ref: "#/components/responses/IdentityInvalidRequest" }
         "401": { $ref: "#/components/responses/IdentityUnauthorized" }
         "404": { $ref: "#/components/responses/IdentityNotFound" }
+
+  /api/v1/identity/mobile-verifications:
+    post:
+      tags: [Identity]
+      summary: Start or replay progressive mobile verification
+      description: |
+        Starts mobile proof for an authenticated account. Basic entry and exploration do not
+        require this proof. A consequential command may require it through server-owned step-up.
+        The accepted response does not disclose whether the mobile is associated elsewhere.
+      operationId: startAccountMobileVerification
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StartMobileVerificationRequest"
+      responses:
+        "202":
+          description: Challenge accepted or replayed without identity-existence disclosure
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IdentityVerificationChallenge"
+        "400": { $ref: "#/components/responses/IdentityInvalidRequest" }
+        "401": { $ref: "#/components/responses/IdentityUnauthorized" }
+        "409": { $ref: "#/components/responses/IdentityConflict" }
+        "429": { $ref: "#/components/responses/IdentityRateLimited" }
+        "503": { $ref: "#/components/responses/IdentityUnavailable" }
+
+  /api/v1/identity/mobile-verifications/confirm:
+    post:
+      tags: [Identity]
+      summary: Confirm progressive mobile verification
+      operationId: confirmAccountMobileVerification
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConfirmIdentityVerificationRequest"
+      responses:
+        "200":
+          description: Mobile proof accepted or replayed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IdentityMobileStatus"
+        "400": { $ref: "#/components/responses/IdentityInvalidRequest" }
+        "401": { $ref: "#/components/responses/IdentityUnauthorized" }
+        "409": { $ref: "#/components/responses/IdentityConflict" }
+        "410": { $ref: "#/components/responses/IdentityChallengeExpired" }
+        "429": { $ref: "#/components/responses/IdentityRateLimited" }
 
   # ─── Employment ───────────────────────────────────────────────────────────
 
@@ -1877,6 +1947,12 @@ components:
       description: Approval request UUID
 
   responses:
+    IdentityInvalidRequest:
+      description: Identity request is malformed or unsupported; no submitted secret is echoed
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/IdentityProblemDetail"
     IdentityUnauthorized:
       description: Identity session is missing, invalid, or expired
       content:
@@ -1884,7 +1960,7 @@ components:
           schema:
             $ref: "#/components/schemas/IdentityProblemDetail"
     IdentityNotFound:
-      description: Identity operation is absent, expired, or inaccessible; existence is not disclosed
+      description: Identity resource is absent, inaccessible, or cross-tenant; one normalized shape and timing class prevents existence disclosure
       content:
         application/problem+json:
           schema:
@@ -1966,7 +2042,7 @@ components:
 
     IdentityRegistrationState:
       type: string
-      enum: [STARTED, FEDERATED_IDENTITY_ACCEPTED, CREDENTIAL_IDENTITY_ACCEPTED, WHATSAPP_IDENTITY_ACCEPTED, EMAIL_VERIFICATION_REQUIRED, MOBILE_VERIFICATION_REQUIRED, DUPLICATE_RESOLUTION_REQUIRED, PROFILE_COMPLETION_REQUIRED, READY_TO_COMPLETE, COMPLETED, EXPIRED, CANCELLED]
+      enum: [STARTED, FEDERATED_IDENTITY_ACCEPTED, CREDENTIAL_IDENTITY_ACCEPTED, WHATSAPP_IDENTITY_ACCEPTED, EMAIL_VERIFICATION_REQUIRED, DUPLICATE_RESOLUTION_REQUIRED, PROFILE_COMPLETION_REQUIRED, READY_TO_COMPLETE, COMPLETED, EXPIRED, CANCELLED]
 
     IdentityNextAction:
       type: string
@@ -1974,7 +2050,7 @@ components:
 
     IdentityAuthenticationPath:
       type: string
-      enum: [GOOGLE, META, CREDENTIAL, WHATSAPP]
+      enum: [GOOGLE, META, APPLE, CREDENTIAL, WHATSAPP]
 
     IdentityAssuranceLevel:
       type: string
@@ -1994,7 +2070,7 @@ components:
 
     IdentityProblemCode:
       type: string
-      enum: [IDENTITY_REQUEST_INVALID, IDENTITY_SESSION_REQUIRED, IDENTITY_STEP_UP_REQUIRED, IDENTITY_ACTION_DENIED, IDENTITY_IDEMPOTENCY_CONFLICT, DUPLICATE_RESOLUTION_REQUIRED, IDENTITY_CHALLENGE_EXPIRED, IDENTITY_VERIFICATION_REQUIRED, IDENTITY_RATE_LIMITED, IDENTITY_DEPENDENCY_UNAVAILABLE]
+      enum: [IDENTITY_REQUEST_INVALID, IDENTITY_SESSION_REQUIRED, IDENTITY_STEP_UP_REQUIRED, IDENTITY_ACTION_DENIED, IDENTITY_RESOURCE_NOT_ACCESSIBLE, IDENTITY_IDEMPOTENCY_CONFLICT, DUPLICATE_RESOLUTION_REQUIRED, IDENTITY_CHALLENGE_EXPIRED, IDENTITY_VERIFICATION_REQUIRED, IDENTITY_RATE_LIMITED, IDENTITY_DEPENDENCY_UNAVAILABLE]
 
     EmploymentState:
       type: string
@@ -2029,10 +2105,8 @@ components:
     StartIdentityRegistrationRequest:
       type: object
       additionalProperties: false
-      required: [authenticationPath, languagePreference]
+      required: [languagePreference]
       properties:
-        authenticationPath:
-          $ref: "#/components/schemas/IdentityAuthenticationPath"
         languagePreference:
           type: string
           pattern: "^[a-z]{2}(-[A-Z]{2})?$"
@@ -2144,6 +2218,15 @@ components:
         maskedDestination: { type: string, maxLength: 254 }
         expiresAt: { type: string, format: date-time }
         resendAfter: { type: string, format: date-time }
+
+    IdentityMobileStatus:
+      type: object
+      additionalProperties: false
+      required: [mobileVerified, maskedMobile, verifiedAt]
+      properties:
+        mobileVerified: { type: boolean, const: true }
+        maskedMobile: { type: string, maxLength: 32 }
+        verifiedAt: { type: string, format: date-time }
 
     IdentityCompletion:
       type: object

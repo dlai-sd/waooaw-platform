@@ -1,24 +1,24 @@
 # WC-034 F2 Identity and Registration Contract
 
-**Document type:** Canonical Component, API, Data, Error, and Integration Contract  
-**Owning office:** INST-005 — Solution Architect  
-**Security consultation:** INST-007 — CONCUR WITH BLOCKERS, 2026-08-09  
-**Work Contract:** WC-034 / IB-014 / F2 only  
-**Status:** REVIEW CANDIDATE — IMPLEMENTATION BLOCKED BY GATE TABLE  
-**Canonical API:** `architecture/reference/api-specs/business-platform.openapi.yaml`  
-**Normative parents:** ADR-002, ADR-003, ADR-008, ADR-017, ADR-023, `ae01-security-contract.md`, `hybrid-application-shell.md`, `hybrid-ui-acceptance-contract.md`  
+**Document type:** Canonical Component, API, Data, Error, and Integration Contract
+**Owning office:** INST-005 — Solution Architect
+**Security consultation:** INST-007 — CONCUR WITH BLOCKERS, 2026-08-09
+**Work Contract:** WC-034 / IB-014 / F2 only
+**Status:** R-055 CONTRACT REMEDIATED — PENDING INDEPENDENT RE-REVIEW; IMPLEMENTATION BLOCKED BY GATE TABLE
+**Canonical API:** `architecture/reference/api-specs/business-platform.openapi.yaml`
+**Normative parents:** ADR-002, ADR-003, ADR-008, ADR-017, ADR-023, `ae01-security-contract.md`, `hybrid-application-shell.md`, `hybrid-ui-acceptance-contract.md`
 **Explicit exclusions:** F3–F8, active Employment Relationship creation, payment, private endpoints, application code, deployment
 
 ## 1. Outcome and Invariants
 
-F2 lets a person register, verify mandatory email and mobile identities, sign in through an approved Keycloak-brokered path, link an existing WhatsApp identity to the web account without duplication, and safely resume the authorized application context.
+F2 lets a person register with confirmed email, enter and explore without mandatory mobile verification, sign in through an approved Keycloak-brokered path, progressively verify mobile before a consequential action, link an existing WhatsApp identity to the web account without duplication, and safely resume the authorized application context.
 
 The following invariants are mandatory:
 
-1. Keycloak is the only web credential authority. WAOOAW applications never verify passwords or call Google or Meta identity APIs directly.
+1. Keycloak is the only web credential authority. WAOOAW applications never verify passwords or call Google, Meta, or Apple identity APIs directly.
 2. ADR-023 is the authority for Meta-verified WhatsApp identity. A WhatsApp session token is not a Keycloak session and cannot become one without a Keycloak round trip.
-3. A complete customer account requires both verified email and verified mobile. Provider identity alone is insufficient when either claim is absent or unverified.
-4. Registration collects no more than display name, verified email, verified mobile, business name, business domain, and confirmed language preference. Language is presentation preference, not an additional identity field.
+3. A complete basic customer account requires confirmed email. Mobile verification is optional during registration and must be completed before hiring, WhatsApp connection, payment, recovery activation, sensitive account changes, or another server-classified consequential action.
+4. Registration collects no more than display name, confirmed email, optional verified mobile, business name, business domain, and confirmed language preference. Language is presentation preference, not an additional identity field.
 5. Registration does not create an Employment Relationship, contract, payment intent, professional authority, or trial entitlement.
 6. Duplicate detection is server-side and proof-gated. No public operation answers whether an arbitrary email or mobile exists.
 7. Tenant identity is server-minted and later sourced only from a validated session claim. It is never accepted from a request body, query, URL, browser store, or provider callback parameter.
@@ -30,7 +30,7 @@ The following invariants are mandatory:
 
 | Boundary | Owns | Must not own |
 |---|---|---|
-| **Keycloak** | Web credential verification; Google, approved Meta, and approved credential flows; provider subject binding; MFA/authentication flow; session and assurance claims | Customer account truth; tenant minting; WhatsApp identity; duplicate resolution; return-target authorization; application drafts |
+| **Keycloak** | Web credential verification; Google, approved Meta, Apple, and approved email fallback flows; provider subject binding; MFA/authentication flow; session and assurance claims | Customer account truth; tenant minting; WhatsApp identity; duplicate resolution; return-target authorization; application drafts |
 | **Identity Boundary** | Registration workflow; normalized identity keys; verified-email/mobile status; deterministic candidate resolution; link challenge and proof; account-switch cleanup policy; identity idempotency ledger | Provider passwords; raw provider tokens; Employment Relationships; professional authority; customer-facing private API |
 | **Phone Identity Service** | ADR-023 webhook validation; Meta phone proof; message replay protection; short-lived internal WhatsApp session; fresh post-link Meta confirmation | Keycloak sessions; web credentials; arbitrary phone-number claims from a browser; Employment Relationships |
 | **Business Platform** | Sole public F2 REST facade; authenticated/pre-account orchestration; tenant/account minting; authorization and assurance enforcement; privacy-safe errors; audit correlation | Credential verification; browser-only authorization; direct identity-provider integration; professional execution |
@@ -43,15 +43,16 @@ The Identity Boundary is a logical Business Platform component, not a separately
 | Path | Contract | F2 disposition |
 |---|---|---|
 | Google | Keycloak-brokered OIDC; request `openid profile email`; accept email only when the brokered claim is verified | READY subject to environment configuration evidence |
-| Meta/Facebook | Keycloak-brokered OIDC; login app limited to `openid` equivalent, `email`, and `public_profile`; separate app and credentials from DMA Business OAuth | CONTRACT READY; ACTIVATION BLOCKED by G-F2-02 and G-F2-03 |
-| Approved credentials | Keycloak-owned credential flow with verified email and approved second factor; no password enters BP or Next.js application code | READY subject to Keycloak flow evidence |
-| WhatsApp native | ADR-023 Meta webhook identity; complete account remains pending until mandatory email is verified | READY for contract; environment proof separately gated |
+| Meta/Facebook | Keycloak-brokered OIDC; login app limited to basic login information (`email` and `public_profile`); separate app and credentials from DMA Business OAuth | POLICY APPROVED by FA-035; ACTIVATION BLOCKED by G-F2-03 |
+| Apple | Keycloak-brokered Sign in with Apple; stable provider subject is the binding key; accept a confirmed Apple private-relay email without requiring disclosure of the underlying mailbox | POLICY APPROVED by FA-035; ACTIVATION BLOCKED by G-F2-14 |
+| Email fallback | Keycloak-owned email flow with confirmed email; no password or email proof enters BP or Next.js application code | READY subject to Keycloak flow evidence |
+| WhatsApp native | ADR-023 Meta webhook identity; complete account remains pending until email is confirmed; mobile proof is already satisfied for later consequential actions while possession remains current | READY for contract; environment proof separately gated |
 
-Microsoft and Apple remain compatible Keycloak providers under ADR-008 but are not required to implement or close WC-034 F2. Adding either is Keycloak configuration plus provider-specific acceptance evidence, not a new BP API.
+Google, Facebook, Apple, and email fallback must be designed as one `Continue with...` experience for new and returning customers. Provider activation is independent: an unavailable provider is not displayed as active until its setup and customer-safety evidence passes. Microsoft remains a compatible future Keycloak provider but is not required to close WC-034 F2.
 
 ### Meta separation rule
 
-The customer-login Meta application and the DMA Business Manager OAuth application are separate security principals with separate client IDs, secrets, redirect URIs, consent text, and scopes. The login application must never request page, ads, WhatsApp Business management, or publishing permissions. This rule does not resolve ADR-008 v2's Meta deferral; G-F2-02 remains blocked until INST-004 records the controlling reconciliation.
+The customer-login Meta application and the DMA Business Manager OAuth application are separate security principals with separate client IDs, secrets, redirect URIs, consent text, and scopes. The login application must never request page, advertisement, post, contact, WhatsApp Business management, publishing, or business-activity permissions. FA-035 resolves the Founder policy decision; INST-004 must still reconcile ADR-008 before implementation begins.
 
 ## 4. Assurance Contract
 
@@ -60,8 +61,8 @@ The customer-login Meta application and the DMA Business Manager OAuth applicati
 | Level | Evidence | Permitted F2 use |
 |---|---|---|
 | `AAL1_CHANNEL` | Current ADR-023 Meta-verified phone session or basic authenticated web session | Discovery and non-sensitive registration continuation only |
-| `AAL2_ACCOUNT` | Keycloak portal session plus mandatory email and mobile verification complete | Routine authenticated application access |
-| `AAL3_FRESH` | Keycloak portal authentication completed within the action's server-declared freshness window and required factor satisfied | Existing-account link approval, account recovery, account deletion initiation, authority expansion, contract acceptance, and other high-risk commands |
+| `AAL2_ACCOUNT` | Keycloak portal session plus confirmed email | Routine authenticated entry, exploration, and non-consequential account use |
+| `AAL3_FRESH` | Keycloak portal authentication completed within the action's server-declared freshness window and every server-required factor, including verified mobile when required, satisfied | Hiring, WhatsApp connection, payment initiation, recovery activation, sensitive account changes, existing-account link approval, account deletion initiation, authority expansion, contract acceptance, and other consequential commands |
 | `AAL4_PAYMENT` | `AAL3_FRESH` plus provider-hosted payment authorization | Payment only; outside F2 implementation |
 
 `AAL3_FRESH` means authentication age no greater than five minutes at command receipt. A command may require an even stronger factor through Keycloak policy. The server returns a `StepUpRequired` contract containing an opaque intent ID and required assurance; it does not expose policy internals.
@@ -74,6 +75,7 @@ Keycloak access tokens expire after 15 minutes and refresh eligibility after eig
 - The attempted command is not executed and no business mutation occurs.
 - Non-secret draft and server-authorized relationship context may survive; protected content is hidden immediately.
 - Completion resumes only the bound command and safe target after server revalidation.
+- A command classified as consequential returns step-up until mobile is verified; basic account entry and exploration never require mobile.
 - Contract acceptance, payment, Emergency Stop release, and authority expansion remain owned by their later component contracts; F2 supplies only the reusable step-up mechanism.
 - Emergency Stop activation is never delayed by F2 step-up.
 
@@ -83,7 +85,6 @@ Keycloak access tokens expire after 15 minutes and refresh eligibility after eig
 STARTED
   -> FEDERATED_IDENTITY_ACCEPTED | CREDENTIAL_IDENTITY_ACCEPTED | WHATSAPP_IDENTITY_ACCEPTED
   -> EMAIL_VERIFICATION_REQUIRED
-  -> MOBILE_VERIFICATION_REQUIRED
   -> DUPLICATE_RESOLUTION_REQUIRED | PROFILE_COMPLETION_REQUIRED
   -> READY_TO_COMPLETE
   -> COMPLETED
@@ -91,9 +92,9 @@ STARTED
 Any nonterminal state -> EXPIRED | CANCELLED
 ```
 
-The order of email and mobile verification may vary by channel. `READY_TO_COMPLETE` requires all five approved registration details plus confirmed language and valid verified proofs. `COMPLETED` atomically mints or reuses one customer account and tenant anchor. It never mints an Employment Relationship.
+`READY_TO_COMPLETE` requires the approved minimum profile, confirmed language, and confirmed email. Mobile may be verified during registration but is not a completion gate. `COMPLETED` atomically mints or reuses one customer account and tenant anchor. It never mints an Employment Relationship.
 
-Provider claims are hints until validated through the Keycloak-brokered server session. A verified email claim may satisfy email verification. Mobile claims from Google or Meta login do not satisfy ADR-023 mobile verification unless the approved Keycloak authentication flow provides a separately verified mobile proof.
+Provider claims are hints until validated through the Keycloak-brokered server session. A confirmed email claim, including an Apple private-relay email, may satisfy email verification. Mobile claims from Google, Meta, or Apple login do not satisfy ADR-023 mobile verification unless the approved Keycloak authentication flow provides a separately verified mobile proof. The stable provider issuer-and-subject binding, never email alone, identifies a login method.
 
 ## 6. Deterministic Duplicate Resolution and Linking
 
@@ -106,7 +107,7 @@ Provider claims are hints until validated through the Keycloak-brokered server s
 
 ### 6.2 Resolution matrix
 
-Resolution runs only after the caller proves control of the relevant email or mobile.
+Resolution runs only after the caller proves control of the identity being attached. Matching email is a candidate signal, never sufficient authority to link accounts.
 
 | Verified match result | Deterministic outcome |
 |---|---|
@@ -130,20 +131,26 @@ There is no `/duplicate-check` endpoint. The public contract exposes only the ne
 
 Changed or unknown phone possession may begin a separate evaluation path but cannot attach to an existing account. Automatic account merge is prohibited.
 
+### 6.4 Login-method linking and removal
+
+Adding Google, Facebook, Apple, or email fallback to an existing account requires `AAL3_FRESH`, proof of the current account, and proof of the new login method. The same email on two providers never auto-links them. Responses and timing do not reveal whether the new method is already attached elsewhere. Removing a login method requires fresh authentication and is denied when it would leave the customer without at least one usable login or recovery path.
+
 ## 7. Canonical Public API
 
 The normative HTTP details and generated models are in `business-platform.openapi.yaml`. All mutation operations require `Idempotency-Key`; same-key replay behavior is uniform.
 
 | Operation | Purpose | Authentication |
 |---|---|---|
-| `POST /api/v1/identity/registrations` | Start or replay registration from a Keycloak broker session or ADR-023 continuation proof | Pre-account Keycloak bearer or approved channel continuation proof |
+| `POST /api/v1/identity/registrations` | Start or replay web registration from a Keycloak broker session | Pre-account Keycloak bearer; provider path is derived from the server session |
 | `GET /api/v1/identity/registrations/{registrationId}` | Read the caller-bound registration projection | Same actor-bound pre-account session |
 | `PUT /api/v1/identity/registrations/{registrationId}/profile` | Set only approved minimum profile fields | Same actor-bound pre-account session |
 | `POST /api/v1/identity/registrations/{registrationId}/email-verifications` | Start or replay an email challenge when no verified broker claim exists | Same actor-bound pre-account session |
 | `POST /api/v1/identity/registrations/{registrationId}/email-verifications/confirm` | Confirm an opaque challenge with a one-time code | Same actor-bound pre-account session |
-| `POST /api/v1/identity/registrations/{registrationId}/mobile-verifications` | Start or replay approved mobile proof | Same actor-bound pre-account session |
-| `POST /api/v1/identity/registrations/{registrationId}/mobile-verifications/confirm` | Confirm OTP/mobile proof | Same actor-bound pre-account session |
-| `POST /api/v1/identity/registrations/{registrationId}/complete` | Resolve duplicate state and atomically mint or reuse one account | Verified email and mobile required |
+| `POST /api/v1/identity/registrations/{registrationId}/mobile-verifications` | Optionally start or replay approved mobile proof during registration | Same actor-bound pre-account session |
+| `POST /api/v1/identity/registrations/{registrationId}/mobile-verifications/confirm` | Confirm optional OTP/mobile proof during registration | Same actor-bound pre-account session |
+| `POST /api/v1/identity/registrations/{registrationId}/complete` | Resolve duplicate state and atomically mint or reuse one account | Confirmed email required; mobile optional |
+| `POST /api/v1/identity/mobile-verifications` | Start or replay progressive mobile proof for an authenticated account | Portal session; returned challenge discloses no account-existence fact |
+| `POST /api/v1/identity/mobile-verifications/confirm` | Confirm progressive mobile proof before a consequential action | Same authenticated account; idempotent and proof-gated |
 | `POST /api/v1/identity/account-links` | Start or replay a WhatsApp-to-web link challenge | `AAL3_FRESH` portal session |
 | `POST /api/v1/identity/account-links/{linkId}/approve` | Record explicit portal approval | Same `AAL3_FRESH` actor |
 | `GET /api/v1/identity/account-links/{linkId}` | Read caller-bound link status after fresh Meta confirmation | Same portal actor |
@@ -188,7 +195,8 @@ Every F2 error uses RFC 9457 `IdentityProblemDetail` with stable `code`, HTTP `s
 | 409 | `IDENTITY_IDEMPOTENCY_CONFLICT` | Same key with a different canonical request hash; zero mutation |
 | 409 | `DUPLICATE_RESOLUTION_REQUIRED` | Automatic completion/linking is unsafe; no conflicting account detail |
 | 410 | `IDENTITY_CHALLENGE_EXPIRED` | Challenge cannot be reused; restarting does not disclose existence |
-| 422 | `IDENTITY_VERIFICATION_REQUIRED` | Mandatory verified email or mobile remains incomplete |
+| 404 | `IDENTITY_RESOURCE_NOT_ACCESSIBLE` | Resource is absent, inaccessible, or cross-tenant; one normalized shape and timing class |
+| 422 | `IDENTITY_VERIFICATION_REQUIRED` | Confirmed email, required mobile proof for a consequential action, or another required factor remains incomplete |
 | 429 | `IDENTITY_RATE_LIMITED` | Retry delay supplied; response remains normalized |
 | 503 | `IDENTITY_DEPENDENCY_UNAVAILABLE` | Keycloak, channel proof, or evidence dependency unavailable; outcome remains unresolved |
 
@@ -227,7 +235,8 @@ Sign-out clears the server session, browser memory, query cache, relationship ca
 - Logs use opaque registration/link IDs and correlation IDs. Security analytics receive classified events, not raw identity values.
 - The service worker caches static assets only. Identity API, auth callback, authenticated HTML, RSC, and protected payload responses use `no-store` and are excluded from runtime caches.
 - Before account completion, access is scoped to an actor-bound pre-account context. After completion, `tenant_id` is read only from the validated session claim and enforced through BP tenant isolation.
-- Provider callbacks bind to server-held state, nonce, PKCE verifier, and intended authentication transaction. Browser parameters cannot choose tenant or account.
+- Provider callbacks bind to server-held state, nonce, PKCE verifier, and intended authentication transaction. Browser parameters cannot choose provider identity, tenant, or account.
+- ADR-023 WhatsApp continuation invokes the logical Identity Boundary through an internal server-to-server adapter. The Phone Identity Service token is never issued to a browser and cannot self-upgrade to a Keycloak session. Web continuation requires a Keycloak round trip and proof-gated binding.
 
 ## 13. UX Acceptance Mapping
 
@@ -248,10 +257,10 @@ Sign-out clears the server session, browser memory, query cache, relationship ca
 
 1. Canonical OpenAPI validates as OpenAPI 3.1 and generates a strict TypeScript client without manual patches.
 2. Generated operations contain no `tenantId` request property and no private service URL.
-3. Google verified/unverified email, credential verification, WhatsApp-first completion, existing-account link, split-account conflict, and same-key replay fixtures conform to the schemas.
+3. Google, Facebook, Apple private-relay email, email fallback, WhatsApp-first completion, existing-account link, split-account conflict, and same-key replay fixtures conform to the schemas.
 4. Anti-enumeration tests compare status, shape, and timing class for existing/non-existing email and mobile.
 5. Cross-tenant access, forged provider claims, forged return targets, expired/replayed challenge, divergent idempotency replay, assurance downgrade, stale session, and account-switch residue deterministically deny or fail unresolved.
-6. Meta scope-separation evidence is mandatory only when the Meta path gate becomes READY.
+6. Meta scope-separation evidence is mandatory before Facebook activation; Apple private-relay, stable-subject, and key-rotation evidence is mandatory before Apple activation.
 7. UX-SHELL-02, UX-SHELL-04, UX-AUTH-01 through UX-AUTH-06, UX-PRIV-01, and UX-PWA-04 pass in the proportional F8 evidence for F2.
 
 ## 15. F2 Dependency Gate Table
@@ -259,11 +268,11 @@ Sign-out clears the server session, browser memory, query cache, relationship ca
 | Gate | Dependency | Status | Owner | Missing artifact or evidence |
 |---|---|---|---|---|
 | `G-F2-01` | F1 experience foundation merged and approved | **READY** | INST-010 / INST-004 | None — R-052 approved and PR #246 merged |
-| `G-F2-02` | ADR-008 Meta deferral reconciled with Founder-approved F2 scope and FA-018 | **BLOCKED** | INST-004 Enterprise Architect, with Founder decision if policy changes | ADR-008 corrigendum/amendment naming Meta login disposition and OAuth-app separation |
+| `G-F2-02` | ADR-008 provider policy reconciled with FA-035 | **BLOCKED — FOUNDER POLICY APPROVED** | INST-004 Enterprise Architect | ADR-008 amendment naming Google, Facebook, Apple, email fallback, progressive mobile verification, and OAuth-app separation |
 | `G-F2-03` | Meta login environment prerequisites | **BLOCKED** | Founder | FA-002 Meta Business Manager verification and FA-018 login app credentials/configuration evidence |
 | `G-F2-04` | Google broker path | **READY** | Keycloak/identity implementation owner | Contract fixed; environment-specific provider proof is an implementation acceptance item |
 | `G-F2-05` | Approved credential path with second factor | **READY** | Keycloak/identity implementation owner | Contract fixed; realm-flow evidence required during implementation |
-| `G-F2-06` | Mandatory verified email and mobile policy | **READY** | Founder / INST-004 | Founder decision and shell contract present |
+| `G-F2-06` | Confirmed email and progressive mobile policy | **READY** | Founder / INST-004 | FA-035 and this contract; mobile gates consequential actions, not basic entry |
 | `G-F2-07` | WhatsApp identity, linking, takeover, and assurance rules | **READY** | INST-007 / ADR-023 owner | AE-01 security contract, ADR-023, and this proof-gated link contract present |
 | `G-F2-08` | Canonical BP public API and generated TypeScript compatibility | **READY** | INST-005 / BP specification owner | This contract plus canonical OpenAPI F2 operations; executable generation proof remains implementation entry evidence |
 | `G-F2-09` | Tenant, idempotency, retry, anti-enumeration, and privacy-safe error contracts | **READY** | INST-005 with INST-007 concurrence | This contract and canonical OpenAPI schemas present |
@@ -271,10 +280,11 @@ Sign-out clears the server session, browser memory, query cache, relationship ca
 | `G-F2-11` | F2 implementation authorization | **READY** | Founder | FA-031 and FA-034 apply when all local entry gates pass |
 | `G-F2-12` | Independent architecture review | **BLOCKED** | INST-004 Enterprise Architect | Independent review record for this F2 package |
 | `G-F2-13` | Deployment authorization | **BLOCKED** | Founder / release authority | Deployment authorization and release evidence; explicitly outside WC-034 F2 grooming |
+| `G-F2-14` | Apple login environment prerequisites | **BLOCKED** | Founder | FA-019 Apple Developer account, Service ID, private key, relay-domain configuration, and provider acceptance evidence |
 
 ### Gate conclusion
 
-The F2 contract package is implementation-ready for independent review. F2 implementation remains **BLOCKED** by `G-F2-02` and `G-F2-12`. Meta activation additionally remains blocked by `G-F2-03`. Deployment remains blocked independently and is not requested by this package.
+The F2 contract package is ready for independent re-review after R-055 remediation. F2 implementation remains **BLOCKED** by `G-F2-02` and `G-F2-12`. Facebook activation additionally remains blocked by `G-F2-03`; Apple activation remains blocked by `G-F2-14`. Deployment remains blocked independently and is not requested by this package.
 
 ## 16. Review Request
 

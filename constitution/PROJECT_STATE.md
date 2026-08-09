@@ -1,6 +1,6 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-08-09 (WC-034 F2 R-055 changes required)
+**Last Updated:** 2026-08-09 (WC-034 F2 R-055 contract remediation complete; FA-035 recorded)
 
 ---
 
@@ -10,11 +10,13 @@
 |---|---|
 | INST-005 Solution Architect occupancy and F2 input validation | DONE — G5 CLEAR; WC-034/IB-014 F2 specification only; no implementation or deployment authority |
 | INST-007 identity and assurance consultation | DONE — CONCUR WITH BLOCKERS; assurance, linking, takeover, anti-enumeration, tenant, retry, and privacy rules incorporated |
-| Canonical F2 component, API, data, error, and integration contracts | DONE — Identity Boundary package defines ownership and deterministic behavior without a new deployable component |
-| Canonical OpenAPI and generated TypeScript client compatibility | DONE — 11 public F2 operations; 29 focused references resolve; F2 TypeScript model generation passes without manual patches |
-| F2 dependency gate table | DONE — every dependency READY or BLOCKED with owner and missing artifact; ADR-008 Meta reconciliation and INST-004 review remain blocking |
+| Founder customer identity policy | DONE — FA-035 records one Google/Facebook/Apple/email-fallback experience, confirmed email, progressive mobile verification, proof-gated linking, provider-specific activation gates, and no implementation/deployment authority |
+| Canonical F2 component, API, data, error, and integration contracts | DONE — Identity Boundary package defines provider-subject binding, progressive mobile assurance, internal WhatsApp continuation, and deterministic behavior without a new deployable component |
+| Canonical OpenAPI and generated TypeScript client compatibility | DONE — 13 public F2 operations; complete privacy-safe 400 coverage; normalized 404 code; OpenAPI Generator 7.17.0 generation and strict TypeScript `IdentityApi.ts` compilation pass without manual patches |
+| F2 dependency gate table | DONE — FA-035 resolves the Founder policy decision; INST-004 ADR-008 amendment and independent re-review remain blocking; Facebook and Apple activation evidence remain separately gated |
 | Independent INST-004 review submission | DONE — PR #248 opened against `main`; INST-004 review requested; no self-approval or merge |
-| Independent INST-004 review | CHANGES REQUIRED — R-055 requires canonical WhatsApp continuation auth, complete privacy-safe 400/404 errors, and corrected diff-check evidence; Meta remains a Founder policy blocker |
+| R-055 remediation | DONE — R055-01 uses an internal server-to-server WhatsApp adapter; R055-02 adds applicable privacy-safe 400 responses and `IDENTITY_RESOURCE_NOT_ACCESSIBLE`; R055-03 whitespace defects removed and scoped diff check passes |
+| Independent INST-004 re-review | PENDING — must confirm R055-01 through R055-03, FA-035 contract alignment, and generated-client evidence; no self-approval |
 
 ### Authorization Boundary
 
@@ -29,7 +31,7 @@ This session grooms only WC-034 F2 Identity and Registration into an implementat
 
 ### Next Constitutional Action
 
-INST-005 remediates R055-01 through R055-03 and requests independent INST-004 confirmation. The Founder must decide whether Meta login supersedes ADR-008's accepted deferral before INST-004 can draft an amendment; Meta activation additionally requires FA-002 and FA-018 evidence. F2 implementation and deployment remain unauthorized.
+INST-004 drafts the ADR-008 amendment authorized by FA-035, then independently re-reviews the R-055 remediation in a separate review context. Facebook activation remains blocked by FA-002/FA-018 and Apple activation by FA-019. F2 implementation remains blocked until the ADR amendment and independent re-review pass; deployment remains unauthorized.
 
 ---
 
