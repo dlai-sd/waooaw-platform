@@ -12,7 +12,7 @@
 Version:              v1.44.0 — 2026-08-07: WC-043 DONE (361/361 tests, 94% coverage)
 Constitutional Claims: 97 ratified (gaps at C-087/C-092/C-093) | ADRs: 44
 Customer Agents:      DMA v3.1 gate-pass (Founder-approved through v3.0) · Trading v1.8 / Agri v2.8 / Tutor v1.1 gate-pass records without current-version Founder approval · none customer-proven
-Internal Agents:      5 — Platform IT Expert (15 skills, §2.4 Pipeline-First Rule) · Steward Assistant · Self-Improvement Analyst ·
+Internal Agents:      5 — Platform IT Expert (16 skills, §2.4 Pipeline-First Rule) · Steward Assistant · Self-Improvement Analyst ·
                           Platform Operations · RepoNav (AVD-001 v1.0 RATIFIED — INST-014)
 Gates:                G5 CLEAR
 Phase:                IMPLEMENTATION — WC-043 DONE
