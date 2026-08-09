@@ -1231,7 +1231,7 @@ reason: >
 | 6 — Data | PASS (N/A) | No SQL table; therefore no new RLS, GRANT, or tenant discriminator |
 | 7 — Constitutional | PASS | Section 12 re-verifies C-037 and C-041 through C-055; Skill 16 adds frontend-specific constraints |
 | 8 — Architecture chain | PASS | Capability, map, README, and Project State handled; all unaffected layers justified in Section 14 |
-| 9 — Review | PENDING | FA-032 is recorded; independent `CHANGE_TYPE=NEW_SKILL` EA review and resolution of findings are still required |
+| 9 — Review | FAIL | R-049 independently reviewed the amendment and returned REQUEST_CHANGES; Founder activation approval is absent and R049-01 through R049-04 remain open |
 | 10 — Strategic cognition | PASS (N/A) | Work Contract selects institutional work; no customer skill portfolio |
 | 11 — Token economy | PASS (PAC) | Internal budget behavior and vocabulary declared in PAC; no customer UsageUnit |
 | 12 — Signal intelligence | PASS (N/A) | Direct operational events, no external signal-feed loop |
@@ -1240,7 +1240,7 @@ reason: >
 | 15 — Interview mode | PASS (N/A) | Section 13 records internal-agent rationale |
 | 16 — DCM | PASS | Section 3.25 classifies six consequential decision types and independent checks |
 
-**Overall author-side gate result:** `BLOCKED_PENDING_INDEPENDENT_EA_REVIEW`. Sections 1–8 and 10–16 are ready for review. Section 9 cannot pass until an independent INST-004 reviewer issues an APPROVED verdict and all findings are resolved. Skill 16 remains inactive.
+**Independent gate result:** `REQUEST_CHANGES_ACTIVATION_BLOCKED` — R-049. Sections 1, 7, 9, 11, and 16 require correction and independent re-review. Skill 16 remains inactive.
 
 ## 16. Version History and Review
 
@@ -1252,6 +1252,6 @@ reason: >
 
 **Founder approval:** FA-032 approves the Skill 16 Section 15 Type 1 specification lifecycle and activation review only. It does not approve this amendment, activate Skill 16, adopt a new dependency, or authorize application-source changes.
 
-**Independent EA review:** PENDING — request `CHANGE_TYPE=NEW_SKILL` review under Issue #241.
+**Independent EA review:** R-049 — REQUEST_CHANGES. Activation Gate Sections 1, 7, 9, 11, and 16 remain open.
 
-**Lifecycle status:** REVIEW CANDIDATE; NOT ACTIVATED.
+**Lifecycle status:** ACTIVATION BLOCKED; NOT ACTIVATED.
