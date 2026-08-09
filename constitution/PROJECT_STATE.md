@@ -1,6 +1,39 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-08-09 (WC-034 F1 closed after PR #246 merge)
+**Last Updated:** 2026-08-09 (WC-034 F2 G-F2-12 independent re-review closed — R-056 APPROVED WITH NOTES; F2 architecture-approved for implementation selection)
+
+---
+
+## IN-PROGRESS CHECKPOINT — WC-034 F2 IDENTITY AND REGISTRATION CONTRACT
+
+| Milestone | Status |
+|---|---|
+| INST-005 Solution Architect occupancy and F2 input validation | DONE — G5 CLEAR; WC-034/IB-014 F2 specification only; no implementation or deployment authority |
+| INST-007 identity and assurance consultation | DONE — CONCUR WITH BLOCKERS; assurance, linking, takeover, anti-enumeration, tenant, retry, and privacy rules incorporated |
+| Founder customer identity policy | DONE — FA-035 records one Google/Facebook/Apple/email-fallback experience, confirmed email, progressive mobile verification, proof-gated linking, provider-specific activation gates, and no implementation/deployment authority |
+| Canonical F2 component, API, data, error, and integration contracts | DONE — Identity Boundary package defines provider-subject binding, progressive mobile assurance, internal WhatsApp continuation, and deterministic behavior without a new deployable component |
+| Canonical OpenAPI and generated TypeScript client compatibility | DONE — 13 public F2 operations; complete privacy-safe 400 coverage; normalized 404 code; OpenAPI Generator 7.17.0 generation and strict TypeScript `IdentityApi.ts` compilation pass without manual patches |
+| F2 dependency gate table | DONE — FA-035 resolves the Founder policy decision; INST-004 ADR-008 amendment and independent re-review remain blocking; Facebook and Apple activation evidence remain separately gated |
+| Independent INST-004 review submission | DONE — PR #248 opened against `main`; INST-004 review requested; no self-approval or merge |
+| R-055 remediation | DONE — R055-01 uses an internal server-to-server WhatsApp adapter; R055-02 adds applicable privacy-safe 400 responses and `IDENTITY_RESOURCE_NOT_ACCESSIBLE`; R055-03 whitespace defects removed and scoped diff check passes |
+| INST-004 ADR-008 amendment (FA-035 reconciliation) | DONE — ADR-008 v3 adds Amendment 1: one provider-agnostic experience, confirmed-email completion, progressive mobile verification, provider-subject binding, proof-of-control linking, no automatic email-only linking, non-enumerating behavior, Facebook scope isolation, provider-specific activation gates; Facebook BLOCKED by FA-002/FA-018; Apple BLOCKED by FA-019; G-F2-02 unblocked |
+| Independent INST-004 re-review | DONE — R-056 APPROVED WITH NOTES (2026-08-09); R055-01 through R055-03 all resolved; FA-035 alignment confirmed across all named documents; G-F2-12 closed; F2 architecture-approved for implementation selection; Facebook blocked by G-F2-03/FA-002/FA-018; Apple blocked by G-F2-14/FA-019; deployment blocked by G-F2-13 |
+
+### Authorization Boundary
+
+This session grooms only WC-034 F2 Identity and Registration into an implementation-ready contract. It does not write application code, create private endpoints, extend into F3–F8, authorize deployment, or approve its own architecture output.
+
+### Review Candidate
+
+- Commits `4df595b` (INST-005 F2 remediation) and `0b629c6` (INST-004 ADR-008 Amendment 1) on `ib/014/wc034-f2-identity-contract`
+- PR #248 — independent INST-004 Enterprise Architect re-review completed
+- R-054 — INST-007 security consultation, CONCUR WITH BLOCKERS
+- R-055 — INST-004 independent review, CHANGES REQUIRED
+- R-056 — INST-004 independent re-review, APPROVED WITH NOTES
+
+### Next Constitutional Action
+
+G-F2-12 is closed by R-056 (APPROVED WITH NOTES, 2026-08-09). F2 is architecture-approved. INST-010 may begin F2 implementation under FA-031 and FA-034 authority when Google and email-fallback provider environment configuration evidence is present. Facebook activation remains gated by G-F2-03 (FA-002/FA-018); Apple activation remains gated by G-F2-14 (FA-019). F2 implementation is now unblocked for Google and email-fallback paths only. Deployment authorization (G-F2-13) requires a separate Founder action. PR #248 remains open for Founder review and merge decision.
 
 ---
 
