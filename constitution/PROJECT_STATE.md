@@ -1,6 +1,6 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-08-09 (Platform IT Expert Skill 16 Activated)
+**Last Updated:** 2026-08-08 (WC-056 GOAL-005 Specification Orchestration DONE)
 
 ---
 
@@ -53,6 +53,13 @@ FA-034 releases WC-034 Phase B execution under FA-031. INST-010 may begin F1 and
 | Platform IT Expert Skill 16 Type 1 handoff | DONE — GitHub Issue #241 completed; PR #244 merged |
 | Founder implementation authorization | DONE — FA-031 authorizes WC-034 Phase B; FA-034 releases execution subject to selected-component entry criteria |
 | Phase B execution release | DONE — FA-033 activated Skill 16, PR #244 merged, and FA-034 releases INST-010 to begin F1; later components retain local entry gates |
+| F1 route and authorization foundation | DONE — public, authentication, customer, Founder, and system-state route groups implemented; server session and explicit Founder claim gates own protected rendering |
+| F1 visual and responsive foundation | DONE — approved WAOOAW logo, semantic themes, Noto typography, English/Urdu direction bootstrap, and expanded/intermediate/360 px navigation implemented |
+| F1 PWA and privacy boundary | DONE — installable manifest; static-assets-only runtime cache; navigation, API, RSC, authenticated HTML, and protected payload caching prohibited and verified in generated worker |
+| F1 system and limitation states | DONE — loading, empty, offline, forbidden, not-found, auth-error, and global-error states; deferred F2–F8 capabilities remain honestly unavailable |
+| Static home migration | DONE — `web/WAOOAWHome.html` retired and App Router `/` is the single production entry point |
+| F1 executable validation | DONE — strict TypeScript and lint PASS; Jest 29/29 at 98.68% lines; Playwright/axe 15/15 across three engines and required widths; production build 20/20 routes |
+| Independent INST-004 review | PENDING — author/reviewer separation required before F1 closure or merge |
 
 ### Decision Space
 
@@ -60,7 +67,7 @@ INST-004 may define the structural application surfaces, route and layout owners
 
 ### Current Authorization Boundary
 
-Architecture authoring and both independent reviews for WC-034 Phase A are complete. R-047 approves component, API, rendering, and continuity ownership; R-048 approves information architecture, customer labels, release composition, explicit deferrals, and the Skill 16 business case after corrections. FA-031 authorizes WC-034 Phase B; FA-033 and merged PR #244 complete the Skill 16 prerequisite; FA-034 releases execution. INST-010 may begin F1 and may implement later components only after their approved service contracts and acceptance prerequisites pass. WC-058 through WC-060 remain outside this Work Contract; transactional omnichannel continuity is explicitly blocked on WC-060.
+Architecture authoring and both independent reviews for WC-034 Phase A are complete. R-047 approves component, API, rendering, and continuity ownership; R-048 approves information architecture, customer labels, release composition, explicit deferrals, and the Skill 16 business case after corrections. FA-031 authorizes WC-034 Phase B; FA-033 and merged PR #244 complete the Skill 16 prerequisite; FA-034 releases execution. INST-010 has completed F1 implementation and executable evidence; independent INST-004 review is now required before merge or F1 closure. F2–F8 may begin only after their approved local entry criteria pass. WC-058 through WC-060 and deployment remain outside this Work Contract; transactional omnichannel continuity is explicitly blocked on WC-060.
 
 ### Review Candidate Package
 
@@ -74,7 +81,7 @@ Architecture authoring and both independent reviews for WC-034 Phase A are compl
 
 ### Next Constitutional Action
 
-Start a new INST-010 Platform IT Expert session for WC-034 Phase B. Validate the selected component's local entry criteria, begin with F1, and execute under FA-031 and FA-034. No deferred component or deployment authority is implied.
+Open the WC-034 F1 pull request and request independent INST-004 Enterprise Architect review. Do not merge or begin F2–F8 from this checkpoint; no deferred component or deployment authority is implied.
 
 ---
 
