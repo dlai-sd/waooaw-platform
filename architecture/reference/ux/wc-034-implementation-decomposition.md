@@ -106,6 +106,8 @@ F2 and the service-contract portion of F3 may be prepared in parallel after F1, 
 
 **Acceptance:** UX-SHELL-02, UX-SHELL-04, UX-AUTH-01 through UX-AUTH-06, UX-PRIV-01, UX-PWA-04.
 
+**Contract status:** GROOMED — `architecture/reference/components/identity-boundary.md` and the F2 operations in the canonical Business Platform OpenAPI define component, API, data, error, assurance, idempotency, retry, tenant, privacy, session, and generated-client boundaries. Implementation remains BLOCKED by that contract's gate table: ADR-008 Meta disposition and independent INST-004 review are unresolved; Meta activation also requires FA-002 and FA-018 evidence.
+
 ## F3 — Conversation Core
 
 **Customer slice:** A customer can resume, read, compose, send, stream, retry, and understand one durable professional conversation.

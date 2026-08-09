@@ -2,7 +2,7 @@ openapi: "3.1.0"
 
 info:
   title: WAOOAW Business Platform API
-  version: "1.0.0"
+  version: "1.1.0"
   description: |
     External customer-facing API for the WAOOAW Business Platform.
     Manages the employment lifecycle, approval workflows, evidence reading,
@@ -15,7 +15,8 @@ info:
     - AD-004 (Multi-tenant isolation — all resources scoped to JWT tenant_id)
 
     **Authentication:**
-    All endpoints require a valid Keycloak-issued JWT Bearer token.
+    All endpoints require a valid Keycloak-issued JWT Bearer token unless an
+    operation declares the pre-account authentication scheme explicitly.
     The `tenant_id` claim in the JWT is the authoritative tenant identifier.
     Never provide `tenant_id` in request bodies — it is always sourced from the JWT.
 
@@ -31,6 +32,8 @@ servers:
     description: Production (Azure Container Apps)
 
 tags:
+  - name: Identity
+    description: Registration, mandatory verification, and deterministic account linking
   - name: Employment
     description: Employment contract lifecycle management
   - name: Approvals
@@ -70,6 +73,313 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthResponse"
+
+  # ─── Identity and Registration ────────────────────────────────────────────
+
+  /api/v1/identity/registrations:
+    post:
+      tags: [Identity]
+      summary: Start or replay a customer registration
+      description: |
+        Starts registration from a validated Keycloak pre-account session. Provider
+        claims are accepted only through that brokered session. Duplicate resolution
+        occurs only after verified identity proof; this operation never exposes whether
+        an arbitrary email or mobile already exists and never creates an Employment Relationship.
+      operationId: startIdentityRegistration
+      security:
+        - PreAccountBearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StartIdentityRegistrationRequest"
+      responses:
+        "201":
+          description: Registration started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IdentityRegistration"
+        "200":
+          description: Prior identical outcome replayed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IdentityRegistration"
+        "401": { $ref: "#/components/responses/IdentityUnauthorized" }
+        "409": { $ref: "#/components/responses/IdentityConflict" }
+        "429": { $ref: "#/components/responses/IdentityRateLimited" }
+        "503": { $ref: "#/components/responses/IdentityUnavailable" }
+
+  /api/v1/identity/registrations/{registrationId}:
+    get:
+      tags: [Identity]
+      summary: Get the caller-bound registration state
+      operationId: getIdentityRegistration
+      security:
+        - PreAccountBearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RegistrationId"
+      responses:
+        "200":
+          description: Privacy-safe registration projection
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IdentityRegistration"
+        "401": { $ref: "#/components/responses/IdentityUnauthorized" }
+        "404": { $ref: "#/components/responses/IdentityNotFound" }
+
+  /api/v1/identity/registrations/{registrationId}/profile:
+    put:
+      tags: [Identity]
+      summary: Set the minimum registration profile
+      description: Accepts only display name, business name, business domain, and language preference.
+      operationId: updateIdentityRegistrationProfile
+      security:
+        - PreAccountBearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RegistrationId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IdentityRegistrationProfileRequest"
+      responses:
+        "200":
+          description: Registration profile accepted or replayed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IdentityRegistration"
+        "401": { $ref: "#/components/responses/IdentityUnauthorized" }
+        "404": { $ref: "#/components/responses/IdentityNotFound" }
+        "409": { $ref: "#/components/responses/IdentityConflict" }
+        "422": { $ref: "#/components/responses/IdentityVerificationRequired" }
+
+  /api/v1/identity/registrations/{registrationId}/email-verifications:
+    post:
+      tags: [Identity]
+      summary: Start or replay mandatory email verification
+      description: Returns the same accepted shape and timing class whether or not the email is already known.
+      operationId: startIdentityEmailVerification
+      security:
+        - PreAccountBearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RegistrationId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StartEmailVerificationRequest"
+      responses:
+        "202":
+          description: Challenge accepted or replayed without identity-existence disclosure
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IdentityVerificationChallenge"
+        "401": { $ref: "#/components/responses/IdentityUnauthorized" }
+        "404": { $ref: "#/components/responses/IdentityNotFound" }
+        "409": { $ref: "#/components/responses/IdentityConflict" }
+        "429": { $ref: "#/components/responses/IdentityRateLimited" }
+        "503": { $ref: "#/components/responses/IdentityUnavailable" }
+
+  /api/v1/identity/registrations/{registrationId}/email-verifications/confirm:
+    post:
+      tags: [Identity]
+      summary: Confirm mandatory email verification
+      operationId: confirmIdentityEmailVerification
+      security:
+        - PreAccountBearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RegistrationId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConfirmIdentityVerificationRequest"
+      responses:
+        "200":
+          description: Email proof accepted or replayed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IdentityRegistration"
+        "401": { $ref: "#/components/responses/IdentityUnauthorized" }
+        "404": { $ref: "#/components/responses/IdentityNotFound" }
+        "409": { $ref: "#/components/responses/IdentityConflict" }
+        "410": { $ref: "#/components/responses/IdentityChallengeExpired" }
+        "429": { $ref: "#/components/responses/IdentityRateLimited" }
+
+  /api/v1/identity/registrations/{registrationId}/mobile-verifications:
+    post:
+      tags: [Identity]
+      summary: Start or replay mandatory mobile verification
+      description: |
+        Uses an approved OTP path when no ADR-023 Meta-verified proof is already bound.
+        Returns no account-existence information.
+      operationId: startIdentityMobileVerification
+      security:
+        - PreAccountBearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RegistrationId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StartMobileVerificationRequest"
+      responses:
+        "202":
+          description: Challenge accepted or replayed without identity-existence disclosure
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IdentityVerificationChallenge"
+        "401": { $ref: "#/components/responses/IdentityUnauthorized" }
+        "404": { $ref: "#/components/responses/IdentityNotFound" }
+        "409": { $ref: "#/components/responses/IdentityConflict" }
+        "429": { $ref: "#/components/responses/IdentityRateLimited" }
+        "503": { $ref: "#/components/responses/IdentityUnavailable" }
+
+  /api/v1/identity/registrations/{registrationId}/mobile-verifications/confirm:
+    post:
+      tags: [Identity]
+      summary: Confirm mandatory mobile verification
+      operationId: confirmIdentityMobileVerification
+      security:
+        - PreAccountBearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RegistrationId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConfirmIdentityVerificationRequest"
+      responses:
+        "200":
+          description: Mobile proof accepted or replayed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IdentityRegistration"
+        "401": { $ref: "#/components/responses/IdentityUnauthorized" }
+        "404": { $ref: "#/components/responses/IdentityNotFound" }
+        "409": { $ref: "#/components/responses/IdentityConflict" }
+        "410": { $ref: "#/components/responses/IdentityChallengeExpired" }
+        "429": { $ref: "#/components/responses/IdentityRateLimited" }
+
+  /api/v1/identity/registrations/{registrationId}/complete:
+    post:
+      tags: [Identity]
+      summary: Complete registration by minting or reusing one account
+      description: |
+        Requires verified email, verified mobile, and the approved minimum profile. Duplicate
+        resolution is deterministic and proof-gated. ACCOUNT_CREATED and ACCOUNT_REUSED have
+        the same customer-facing success treatment. No Employment Relationship is created.
+      operationId: completeIdentityRegistration
+      security:
+        - PreAccountBearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RegistrationId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: Account created, reused, or replayed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IdentityCompletion"
+        "401": { $ref: "#/components/responses/IdentityUnauthorized" }
+        "404": { $ref: "#/components/responses/IdentityNotFound" }
+        "409": { $ref: "#/components/responses/IdentityConflict" }
+        "422": { $ref: "#/components/responses/IdentityVerificationRequired" }
+        "503": { $ref: "#/components/responses/IdentityUnavailable" }
+
+  /api/v1/identity/account-links:
+    post:
+      tags: [Identity]
+      summary: Start or replay a WhatsApp-to-web account link
+      description: |
+        Requires a freshly authenticated AAL3 portal session. The server selects or validates
+        an opaque verified-mobile proof; raw mobile and client-generated hashes are not authority.
+      operationId: startIdentityAccountLink
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StartIdentityAccountLinkRequest"
+      responses:
+        "201":
+          description: Link challenge started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IdentityAccountLink"
+        "200":
+          description: Prior identical link outcome replayed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IdentityAccountLink"
+        "401": { $ref: "#/components/responses/IdentityUnauthorized" }
+        "403": { $ref: "#/components/responses/IdentityStepUpRequired" }
+        "409": { $ref: "#/components/responses/IdentityConflict" }
+        "429": { $ref: "#/components/responses/IdentityRateLimited" }
+
+  /api/v1/identity/account-links/{linkId}/approve:
+    post:
+      tags: [Identity]
+      summary: Explicitly approve a WhatsApp-to-web account link
+      operationId: approveIdentityAccountLink
+      parameters:
+        - $ref: "#/components/parameters/LinkId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: Approval recorded; fresh ADR-023 confirmation remains required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IdentityAccountLink"
+        "401": { $ref: "#/components/responses/IdentityUnauthorized" }
+        "403": { $ref: "#/components/responses/IdentityStepUpRequired" }
+        "404": { $ref: "#/components/responses/IdentityNotFound" }
+        "409": { $ref: "#/components/responses/IdentityConflict" }
+        "410": { $ref: "#/components/responses/IdentityChallengeExpired" }
+
+  /api/v1/identity/account-links/{linkId}:
+    get:
+      tags: [Identity]
+      summary: Get caller-bound account-link status
+      operationId: getIdentityAccountLink
+      parameters:
+        - $ref: "#/components/parameters/LinkId"
+      responses:
+        "200":
+          description: Privacy-safe link status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IdentityAccountLink"
+        "401": { $ref: "#/components/responses/IdentityUnauthorized" }
+        "404": { $ref: "#/components/responses/IdentityNotFound" }
 
   # ─── Employment ───────────────────────────────────────────────────────────
 
@@ -1505,8 +1815,40 @@ components:
       scheme: bearer
       bearerFormat: JWT
       description: Keycloak-issued JWT. Must contain `tenant_id` claim (UUID).
+    PreAccountBearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Keycloak-issued, actor-bound registration JWT. It does not yet assert a tenant.
 
   parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Same key and canonical request hash replay the prior outcome; divergent reuse conflicts.
+
+    RegistrationId:
+      name: registrationId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Opaque registration identifier bound to the authenticated pre-account actor
+
+    LinkId:
+      name: linkId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Opaque account-link challenge identifier bound to the authenticated account
+
     RelationshipId:
       name: relationshipId
       in: path
@@ -1535,6 +1877,58 @@ components:
       description: Approval request UUID
 
   responses:
+    IdentityUnauthorized:
+      description: Identity session is missing, invalid, or expired
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/IdentityProblemDetail"
+    IdentityNotFound:
+      description: Identity operation is absent, expired, or inaccessible; existence is not disclosed
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/IdentityProblemDetail"
+    IdentityStepUpRequired:
+      description: Fresh or stronger Keycloak assurance is required before the command can run
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/IdentityProblemDetail"
+    IdentityConflict:
+      description: Idempotency conflict or duplicate resolution requires a safe recovery path
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/IdentityProblemDetail"
+    IdentityChallengeExpired:
+      description: Verification or link challenge is no longer usable
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/IdentityProblemDetail"
+    IdentityVerificationRequired:
+      description: Mandatory identity verification or minimum profile completion remains outstanding
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/IdentityProblemDetail"
+    IdentityRateLimited:
+      description: Identity operation is rate limited without disclosing account existence
+      headers:
+        Retry-After:
+          schema: { type: integer, minimum: 1 }
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/IdentityProblemDetail"
+    IdentityUnavailable:
+      description: Identity dependency is unavailable and the outcome remains unresolved
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/IdentityProblemDetail"
+
     Unauthorized:
       description: JWT missing, expired, or invalid
       content:
@@ -1570,6 +1964,38 @@ components:
 
     # ── Enumerations ──────────────────────────────────────────────────────
 
+    IdentityRegistrationState:
+      type: string
+      enum: [STARTED, FEDERATED_IDENTITY_ACCEPTED, CREDENTIAL_IDENTITY_ACCEPTED, WHATSAPP_IDENTITY_ACCEPTED, EMAIL_VERIFICATION_REQUIRED, MOBILE_VERIFICATION_REQUIRED, DUPLICATE_RESOLUTION_REQUIRED, PROFILE_COMPLETION_REQUIRED, READY_TO_COMPLETE, COMPLETED, EXPIRED, CANCELLED]
+
+    IdentityNextAction:
+      type: string
+      enum: [VERIFY_EMAIL, VERIFY_MOBILE, COMPLETE_PROFILE, RESOLVE_DUPLICATE, COMPLETE_REGISTRATION, CONTINUE_TO_DEFAULT_TARGET, NONE]
+
+    IdentityAuthenticationPath:
+      type: string
+      enum: [GOOGLE, META, CREDENTIAL, WHATSAPP]
+
+    IdentityAssuranceLevel:
+      type: string
+      enum: [AAL1_CHANNEL, AAL2_ACCOUNT, AAL3_FRESH, AAL4_PAYMENT]
+
+    IdentityVerificationPurpose:
+      type: string
+      enum: [EMAIL, MOBILE]
+
+    IdentityVerificationState:
+      type: string
+      enum: [PENDING, VERIFIED, EXPIRED, CONSUMED]
+
+    IdentityAccountLinkState:
+      type: string
+      enum: [PENDING_PORTAL_APPROVAL, PENDING_WHATSAPP_CONFIRMATION, LINKED, DUPLICATE_RESOLUTION_REQUIRED, EXPIRED, CANCELLED]
+
+    IdentityProblemCode:
+      type: string
+      enum: [IDENTITY_REQUEST_INVALID, IDENTITY_SESSION_REQUIRED, IDENTITY_STEP_UP_REQUIRED, IDENTITY_ACTION_DENIED, IDENTITY_IDEMPOTENCY_CONFLICT, DUPLICATE_RESOLUTION_REQUIRED, IDENTITY_CHALLENGE_EXPIRED, IDENTITY_VERIFICATION_REQUIRED, IDENTITY_RATE_LIMITED, IDENTITY_DEPENDENCY_UNAVAILABLE]
+
     EmploymentState:
       type: string
       enum: [EVALUATION, ACTIVE, SUSPENDED, TERMINATED]
@@ -1599,6 +2025,192 @@ components:
       description: How the professional executes work. APPROVAL_GATE requires per-action approval. PRE_AUTHORIZED is PAAS mode.
 
     # ── Domain Objects ────────────────────────────────────────────────────
+
+    StartIdentityRegistrationRequest:
+      type: object
+      additionalProperties: false
+      required: [authenticationPath, languagePreference]
+      properties:
+        authenticationPath:
+          $ref: "#/components/schemas/IdentityAuthenticationPath"
+        languagePreference:
+          type: string
+          pattern: "^[a-z]{2}(-[A-Z]{2})?$"
+          maxLength: 5
+
+    IdentityRegistrationProfileRequest:
+      type: object
+      additionalProperties: false
+      required: [displayName, businessName, businessDomain, languagePreference]
+      properties:
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 120
+        businessName:
+          type: string
+          minLength: 1
+          maxLength: 160
+        businessDomain:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: Plain-language business type, not an internet domain
+        languagePreference:
+          type: string
+          pattern: "^[a-z]{2}(-[A-Z]{2})?$"
+          maxLength: 5
+
+    IdentityRegistrationProfile:
+      type: object
+      additionalProperties: false
+      properties:
+        displayName: { type: string, maxLength: 120 }
+        businessName: { type: string, maxLength: 160 }
+        businessDomain: { type: string, maxLength: 100 }
+        languagePreference: { type: string, maxLength: 5 }
+
+    IdentityRegistration:
+      type: object
+      additionalProperties: false
+      required: [registrationId, state, nextAction, authenticationPath, emailVerified, mobileVerified, profile, expiresAt, updatedAt]
+      properties:
+        registrationId: { type: string, format: uuid }
+        state:
+          $ref: "#/components/schemas/IdentityRegistrationState"
+        nextAction:
+          $ref: "#/components/schemas/IdentityNextAction"
+        authenticationPath:
+          $ref: "#/components/schemas/IdentityAuthenticationPath"
+        providerLabel:
+          type: string
+          maxLength: 40
+          nullable: true
+        emailVerified: { type: boolean }
+        mobileVerified: { type: boolean }
+        maskedEmail:
+          type: string
+          maxLength: 254
+          nullable: true
+        maskedMobile:
+          type: string
+          maxLength: 32
+          nullable: true
+        profile:
+          $ref: "#/components/schemas/IdentityRegistrationProfile"
+        expiresAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    StartEmailVerificationRequest:
+      type: object
+      additionalProperties: false
+      required: [email]
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 254
+
+    StartMobileVerificationRequest:
+      type: object
+      additionalProperties: false
+      required: [mobile]
+      properties:
+        mobile:
+          type: string
+          pattern: "^\\+[1-9][0-9]{7,14}$"
+
+    ConfirmIdentityVerificationRequest:
+      type: object
+      additionalProperties: false
+      required: [challengeId, code]
+      properties:
+        challengeId: { type: string, format: uuid }
+        code:
+          type: string
+          pattern: "^[0-9]{6}$"
+          writeOnly: true
+
+    IdentityVerificationChallenge:
+      type: object
+      additionalProperties: false
+      required: [challengeId, purpose, state, maskedDestination, expiresAt, resendAfter]
+      properties:
+        challengeId: { type: string, format: uuid }
+        purpose:
+          $ref: "#/components/schemas/IdentityVerificationPurpose"
+        state:
+          $ref: "#/components/schemas/IdentityVerificationState"
+        maskedDestination: { type: string, maxLength: 254 }
+        expiresAt: { type: string, format: date-time }
+        resendAfter: { type: string, format: date-time }
+
+    IdentityCompletion:
+      type: object
+      additionalProperties: false
+      required: [outcome, accountReference, assuranceLevel, defaultTarget]
+      properties:
+        outcome:
+          type: string
+          enum: [ACCOUNT_CREATED, ACCOUNT_REUSED]
+        accountReference:
+          type: string
+          format: uuid
+          description: Opaque account reference for the authenticated server session
+        assuranceLevel:
+          $ref: "#/components/schemas/IdentityAssuranceLevel"
+        defaultTarget:
+          type: string
+          enum: [APPLICATION_HOME, MOST_RECENT_RELATIONSHIP]
+
+    StartIdentityAccountLinkRequest:
+      type: object
+      additionalProperties: false
+      required: [verifiedMobileProofId]
+      properties:
+        verifiedMobileProofId:
+          type: string
+          format: uuid
+          description: Opaque server-issued proof; raw mobile and client-generated hashes are prohibited
+
+    IdentityAccountLink:
+      type: object
+      additionalProperties: false
+      required: [linkId, state, requiredAssurance, maskedMobile, expiresAt, updatedAt]
+      properties:
+        linkId: { type: string, format: uuid }
+        state:
+          $ref: "#/components/schemas/IdentityAccountLinkState"
+        requiredAssurance:
+          $ref: "#/components/schemas/IdentityAssuranceLevel"
+        maskedMobile: { type: string, maxLength: 32 }
+        expiresAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    IdentityProblemDetail:
+      type: object
+      additionalProperties: false
+      description: RFC 9457 identity error with privacy-safe extension fields
+      required: [type, title, status, code, correlationId]
+      properties:
+        type: { type: string, format: uri }
+        title: { type: string }
+        status: { type: integer, minimum: 400, maximum: 599 }
+        detail:
+          type: string
+          maxLength: 300
+          description: Safe display text with no identity value or existence disclosure
+        code:
+          $ref: "#/components/schemas/IdentityProblemCode"
+        correlationId: { type: string, format: uuid }
+        retryAfterSeconds:
+          type: integer
+          minimum: 1
+          nullable: true
+        stepUpIntentId:
+          type: string
+          format: uuid
+          nullable: true
 
     AdmitEmploymentRelationshipRequest:
       type: object

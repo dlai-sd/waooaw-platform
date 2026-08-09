@@ -62,6 +62,8 @@ The shell must use role-aware route composition rather than runtime CSS hiding. 
 | `architecture/reference/ux/wc-034-implementation-decomposition.md` | WC-016 supersession and F0–F8 dependency-ordered implementation handoff |
 | `architecture/reference/agents/platform-it-expert-nextjs-skill-proposal-input.md` | Evidence for Product Owner review of the required INST-010 frontend skill uplift |
 | `architecture/reference/ux/wc-034-enterprise-architecture-assessment.md` | Formal readiness verdict, risks, resolutions, and remaining gates |
+| `architecture/reference/components/identity-boundary.md` | Canonical F2 component, API, data, error, assurance, integration, acceptance mapping, and dependency gate contract |
+| `architecture/reference/api-specs/business-platform.openapi.yaml` | Canonical public F2 registration, verification, completion, and account-linking operations for generated TypeScript clients |
 
 ## Implementation Components — Gated
 
@@ -71,7 +73,7 @@ Detailed scope, dependencies, exclusions, and acceptance IDs are normative in `a
 |---|---|---|---|
 | F0 | Architecture and dependency closure | INST-004 + reviewing/owning offices | review complete — remaining API and Founder gates named |
 | F1 | Experience foundation | INST-010 | complete — R-052 approved; PR #246 merged to `main` as `798c183` on 2026-08-09 |
-| F2 | Identity and registration | INST-010 + identity/BP owners | blocked — canonical identity/API contract plus implementation gates |
+| F2 | Identity and registration | INST-010 + identity/BP owners | contract groomed — implementation blocked by ADR-008 Meta reconciliation and independent INST-004 review; Meta activation also blocked by FA-002/FA-018 |
 | F3 | Conversation core | INST-010 + BP/PR owners | blocked — canonical BP public conversation/stream contracts and PR internal execution contract plus implementation gates |
 | F4 | Relationship workspace | INST-010 + BP/WBE owners | blocked — Plan/Priority Work and Consumption projections plus implementation gates |
 | F5 | Omnichannel continuity | INST-010 + WC-060 owners | blocked — WC-060 completion plus implementation gates |

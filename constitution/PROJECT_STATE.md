@@ -1,6 +1,23 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-08-09 (WC-034 F1 closed after PR #246 merge)
+**Last Updated:** 2026-08-09 (WC-034 F2 identity contract grooming in progress)
+
+---
+
+## IN-PROGRESS CHECKPOINT — WC-034 F2 IDENTITY AND REGISTRATION CONTRACT
+
+| Milestone | Status |
+|---|---|
+| INST-005 Solution Architect occupancy and F2 input validation | DONE — G5 CLEAR; WC-034/IB-014 F2 specification only; no implementation or deployment authority |
+| INST-007 identity and assurance consultation | DONE — CONCUR WITH BLOCKERS; assurance, linking, takeover, anti-enumeration, tenant, retry, and privacy rules incorporated |
+| Canonical F2 component, API, data, error, and integration contracts | DONE — Identity Boundary package defines ownership and deterministic behavior without a new deployable component |
+| Canonical OpenAPI and generated TypeScript client compatibility | DONE — 11 public F2 operations; 29 focused references resolve; F2 TypeScript model generation passes without manual patches |
+| F2 dependency gate table | DONE — every dependency READY or BLOCKED with owner and missing artifact; ADR-008 Meta reconciliation and INST-004 review remain blocking |
+| Independent INST-004 review submission | pending |
+
+### Authorization Boundary
+
+This session grooms only WC-034 F2 Identity and Registration into an implementation-ready contract. It does not write application code, create private endpoints, extend into F3–F8, authorize deployment, or approve its own architecture output.
 
 ---
 
