@@ -1,6 +1,6 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-08-09 (Platform IT Expert Skill 16 Activation Review Blocked)
+**Last Updated:** 2026-08-09 (Platform IT Expert Skill 16 Technical Gate Passed)
 
 ---
 
@@ -14,8 +14,8 @@
 | Section 15 Type 1 architecture-chain update and N/A determinations | DONE — Capability 6.6, capability map, README count, and explicit prompt/MCP/data/ADR N/A decisions recorded |
 | Retroactive Agent Activation Gate | DONE (AUTHOR AUDIT) — Sections 1–8 and 10–16 PASS; Section 9 remains pending independent review; Skill 16 NOT ACTIVATED |
 | Constitutional validation | DONE — focused Docker DCM checks 5/5 PASS; broad baseline 57 PASS, 4 SKIP, 5 unrelated pre-existing failures (proposal-input classification and three canonical-proto drift cases) |
-| Independent `CHANGE_TYPE=NEW_SKILL` EA review | DONE — R-049 REQUEST_CHANGES; Activation Gate Sections 1, 7, 9, 11, and 16 FAIL |
-| Activation closeout | BLOCKED — resolve R049-01 through R049-04, re-review, then obtain explicit Founder v1.2 activation approval |
+| Independent `CHANGE_TYPE=NEW_SKILL` EA review | DONE — R-049 APPROVED after same-session correction; all technical gate sections PASS |
+| Activation closeout | ONE FOUNDER DECISION PENDING — explicit approval of Platform IT Expert v1.2 and Skill 16 activation, then merge PR #244 |
 
 ### Authorization Boundary
 
@@ -30,7 +30,7 @@ This session may amend the Platform IT Expert specification and required Type 1 
 
 ### Next Constitutional Action
 
-Remediate R049-01 through R049-04 in a separate authoring session: complete the legacy skill contracts, Agent Base Spec/PAC behavior, and deterministic DCM validation paths. Then obtain a new independent INST-004 re-review. Explicit Founder approval of v1.2 activation is required only after the technical gate passes. Skill 16 and WC-034 implementation remain blocked.
+Founder records: `I approve Platform IT Expert v1.2 and activate Skill 16 — Next.js Conversational Experience Engineering.` Then merge PR #244. No additional office handoff or agent review is required. WC-034 implementation may begin under FA-031 only for components whose local entry criteria pass.
 
 ---
 
