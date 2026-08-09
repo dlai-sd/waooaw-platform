@@ -62,7 +62,7 @@ Azure infrastructure:
 - **Trading v1.8** — Activation Gate PASS recorded; FA-005 authorized the escalation protocol only, not v1.8; no current-version Founder approval or customer proof.
 - **Agricultural Advisor v2.8** — Activation Gate PASS recorded; no current-version Founder approval or customer proof.
 - **Private Tutor v1.1** — Activation Gate PASS recorded; standalone review and Founder approval not recorded; NOT ACTIVATED.
-- **Platform IT Expert v1.0** — APPROVED. Internal SDLC agent. C-065/C-066. 11 SDLC skills.
+- **Platform IT Expert v1.2** — ACTIVE. Internal SDLC agent. C-065/C-066. 16 skills; Skill 16 Next.js Conversational Experience Engineering activated by FA-033 after R-049 approval.
 - **Steward Assistant v1.0** — APPROVED. ops.waooaw.ai entry (C-068). Always FRONTIER (ADR-028).
 - **Self-Improvement Analyst v1.0** — APPROVED. C-069. Prompt improvement pipeline.
 - **Platform Operations v1.0** — DRAFT; EA review and Founder approval pending; NOT ACTIVATED.

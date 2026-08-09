@@ -1,10 +1,10 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-08-09 (Platform IT Expert Skill 16 Technical Gate Passed)
+**Last Updated:** 2026-08-09 (Platform IT Expert Skill 16 Activated)
 
 ---
 
-## IN-PROGRESS CHECKPOINT — ISSUE #241 PLATFORM IT EXPERT SKILL 16
+## COMPLETED CHECKPOINT — ISSUE #241 PLATFORM IT EXPERT SKILL 16
 
 | Milestone | Status |
 |---|---|
@@ -12,14 +12,14 @@
 | Work Contract and authorization validation | DONE — Issue #241, FA-032, R-048, and approved candidate contract present |
 | Skill 16 specification and professional template | DONE — v1.2 review candidate contains full contract, runtime config, and authorized action |
 | Section 15 Type 1 architecture-chain update and N/A determinations | DONE — Capability 6.6, capability map, README count, and explicit prompt/MCP/data/ADR N/A decisions recorded |
-| Retroactive Agent Activation Gate | DONE (AUTHOR AUDIT) — Sections 1–8 and 10–16 PASS; Section 9 remains pending independent review; Skill 16 NOT ACTIVATED |
+| Retroactive Agent Activation Gate | DONE — all 16 sections PASS after R-049 same-session corrections |
 | Constitutional validation | DONE — focused Docker DCM checks 5/5 PASS; broad baseline 57 PASS, 4 SKIP, 5 unrelated pre-existing failures (proposal-input classification and three canonical-proto drift cases) |
 | Independent `CHANGE_TYPE=NEW_SKILL` EA review | DONE — R-049 APPROVED after same-session correction; all technical gate sections PASS |
-| Activation closeout | ONE FOUNDER DECISION PENDING — explicit approval of Platform IT Expert v1.2 and Skill 16 activation, then merge PR #244 |
+| Activation closeout | DONE — FA-033 activates Platform IT Expert v1.2 and Skill 16; PR #244 pending merge |
 
 ### Authorization Boundary
 
-This session may amend the Platform IT Expert specification and required Type 1 architecture-chain records under FA-032. It may not write WC-034 application code, activate Skill 16, perform the independent EA review, or exercise FA-031 before the lifecycle gate passes.
+The Type 1 lifecycle is complete. This closeout session records activation only and does not write WC-034 application code or grant deployment authority. FA-031 governs later WC-034 execution.
 
 ### Review Candidate Package
 
@@ -30,7 +30,7 @@ This session may amend the Platform IT Expert specification and required Type 1 
 
 ### Next Constitutional Action
 
-Founder records: `I approve Platform IT Expert v1.2 and activate Skill 16 — Next.js Conversational Experience Engineering.` Then merge PR #244. No additional office handoff or agent review is required. WC-034 implementation may begin under FA-031 only for components whose local entry criteria pass.
+Merge PR #244. Then WC-034 implementation may begin under FA-031 only for components whose local entry criteria pass. No additional Skill 16 office handoff or agent review is required.
 
 ---
 

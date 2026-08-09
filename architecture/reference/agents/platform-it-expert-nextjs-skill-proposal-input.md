@@ -4,18 +4,18 @@
 **Agent:** WAOOAW AI Agent — Platform IT Expert
 **Candidate skill:** Next.js Conversational Experience Engineering
 **Change type after approval:** `type:agent-update`, `update-type:new-skill`
-**Status:** FOUNDER APPROVED FOR SPEC — TYPE 1 UPDATE PENDING
+**Status:** LIFECYCLE COMPLETE — SKILL 16 ACTIVE (R-049, FA-033)
 **Produced by:** Enterprise Architect (INST-004), WC-034 Phase A
 **Reviewed by:** Product Owner (INST-011), PR #239
 **Founder decision:** FA-032 — `APPROVE_FOR_SPEC`, 2026-08-09
-**Type 1 Work Contract:** GitHub Issue #241 — `type:agent-update`, `update-type:new-skill`, `status:waiting`
+**Type 1 Work Contract:** GitHub Issue #241 — completed through PR #243 amendment and PR #244 activation closeout
 **Constitutional basis:** C-001, C-009, C-023, C-032, C-042, C-059, C-063, C-065, C-071, C-076, C-095, C-100; ADR-002, ADR-008, ADR-017, ADR-023
 
 ## Governance Boundary
 
 This artifact contains the Section 3.20 Product Owner assessment and records the FA-032 Founder `APPROVE_FOR_SPEC` decision. It is not an agent-spec amendment, activation record, dependency decision, or application implementation authorization.
 
-The ratified Platform IT Expert remains at 15 skills until the Section 15 Type 1 update, activation gate, independent EA review, merge, and version bump complete. FA-032 authorizes that lifecycle. The author of the amended spec cannot issue its EA review under C-065.
+Platform IT Expert v1.2 has 16 active skills. PR #243 added the amendment; R-049 independently approved the corrected activation gate; FA-033 activated Skill 16. C-065 author/reviewer separation was preserved for the original amendment.
 
 ## Gap Evidence
 

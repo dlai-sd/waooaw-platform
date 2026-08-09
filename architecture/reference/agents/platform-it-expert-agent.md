@@ -4,7 +4,7 @@
 **Date:** 2026-08-09
 **Type:** Internal Platform Agent (not customer-facing)
 **Constitutional Basis:** C-001 (Human Override), C-023 (Evidence First), C-032 (Implementation Cannot Create Architecture), C-041 (Tool Authorization), C-042 (Vocabulary Mandate), C-059 (Implementation Traceability), C-063 (Data Minimisation), C-064 (Three-Human Institution), C-065 (SDLC Separation of Duties), C-066 (Autonomous Development Authorization Tiers), C-071 (Quality Gates), C-076 (Coverage), C-095 (EA Skeleton), C-100 (CORS Safety)
-**Status:** v1.2 REVIEW CANDIDATE — Skill 16 approved for specification by FA-032; not activated pending independent EA review
+**Status:** v1.2 ACTIVE — Skill 16 activated by FA-033 after R-049 independent EA approval
 **Implementation tool:** GitHub Copilot (Workspace / Agent mode) operating under this specification
 
 ---
@@ -1322,7 +1322,7 @@ reason: >
 | 6 — Data | PASS (N/A) | No SQL table; therefore no new RLS, GRANT, or tenant discriminator |
 | 7 — Constitutional | PASS | Section 12 re-verifies C-037 and C-041 through C-055; Skill 16 adds frontend-specific constraints |
 | 8 — Architecture chain | PASS | Capability, map, README, and Project State handled; all unaffected layers justified in Section 14 |
-| 9 — Review | PASS for EA / PENDING FOUNDER | R-049 APPROVED after same-session corrections; explicit Founder v1.2 activation approval remains pending under item 9.2 |
+| 9 — Review | PASS | R-049 APPROVED after same-session corrections; FA-033 records explicit Founder v1.2 and Skill 16 activation approval |
 | 10 — Strategic cognition | PASS (N/A) | Work Contract selects institutional work; no customer skill portfolio |
 | 11 — Token economy | PASS (PAC) | Internal budget behavior and vocabulary declared in PAC; no customer UsageUnit |
 | 12 — Signal intelligence | PASS (N/A) | Direct operational events, no external signal-feed loop |
@@ -1331,7 +1331,7 @@ reason: >
 | 15 — Interview mode | PASS (N/A) | Section 13 records internal-agent rationale |
 | 16 — DCM | PASS | Section 3.25 classifies six consequential decision types and independent checks |
 
-**Independent gate result:** `TECHNICAL_PASS_FOUNDER_ACTIVATION_PENDING` — R-049. All technical sections pass. Skill 16 remains inactive until explicit Founder approval of v1.2 activation is recorded.
+**Independent gate result:** `ALL_16_SECTIONS_PASS_ACTIVATED` — R-049 + FA-033. Platform IT Expert v1.2 and Skill 16 are active.
 
 ## 16. Version History and Review
 
@@ -1341,8 +1341,8 @@ reason: >
 | 1.1 | 2026-08-04 | Platform IT Expert | Skill 15 and retroactive DCM/PAC amendments |
 | 1.2 | 2026-08-09 | Business Architect (INST-003) | FA-032 Skill 16 Type 1 amendment, architecture chain, professional template, and retroactive 16-section author audit |
 
-**Founder approval:** FA-032 approves the Skill 16 Section 15 Type 1 specification lifecycle and activation review only. It does not approve this amendment, activate Skill 16, adopt a new dependency, or authorize application-source changes.
+**Founder approval:** FA-032 authorized the Type 1 lifecycle. FA-033 approves Platform IT Expert v1.2 and activates Skill 16. Neither action adopts a dependency or grants deployment authority; application implementation remains bounded by its own Founder Action and local entry criteria.
 
 **Independent EA review:** R-049 — APPROVED. All technical findings resolved in PR #244.
 
-**Lifecycle status:** TECHNICALLY APPROVED; FOUNDER ACTIVATION PENDING; NOT ACTIVATED.
+**Lifecycle status:** ACTIVE — R-049 APPROVED; FA-033 ACTIVATED.
