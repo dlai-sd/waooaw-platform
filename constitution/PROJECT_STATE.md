@@ -1,6 +1,48 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-08-08 (WC-056 GOAL-005 Specification Orchestration DONE)
+**Last Updated:** 2026-08-09 (WC-034 Phase A Independent Review Complete)
+
+---
+
+## IN-PROGRESS CHECKPOINT — WC-034 HYBRID WEB APPLICATION SHELL
+
+| Milestone | Status |
+|---|---|
+| INST-004 office occupancy | DONE — architecture Decision Space loaded; WC-057 review remains excluded under C-065 |
+| Founder scope selection | DONE — amend WC-034 rather than create a separate precursor contract |
+| Work Contract amendment | DONE — architecture-first Phase A and separately gated implementation Phase B defined |
+| Required input validation | DONE — home template, provisional PWA, UX specifications, OpenAPI, ADR-017, and WBE contracts present |
+| Hybrid application-shell specification | DONE — route/rendering ownership, conversation model, navigation, API gaps, continuity boundary, failure semantics, privacy, and budgets defined |
+| Visual-system and information-architecture contracts | DONE — rejected architecture prototype permanently deleted; `web/WAOOAWHome.html` Founder-approved as the inspiration source for logo, fonts, color themes, design language, and public-page migration; constitutional UX/RTL/accessibility constraints govern adaptations; F0–F8 decomposition published |
+| Executable UI acceptance contract | DONE — component, browser, axe, visual, responsive, RTL, PWA, privacy, resilience, performance, and coverage evidence specified |
+| Platform IT Expert frontend capability assessment | DONE — Skill 16 proposal input prepared; Product Owner review and Founder decision required before Type 1 update |
+| Formal Enterprise Architecture assessment | DONE — architecturally groomed, not implementation-ready; WC-016 superseded for future planning |
+| Independent INST-005 and INST-011 review | DONE — R-047 INST-005 APPROVED; R-048 INST-011 APPROVED on PR #239 |
+| Product information architecture and release composition | DONE — customer labels fixed; text-only first conversation release; attachments, voice, cross-channel notifications, global priority, and Concierge explicitly deferred |
+| Platform IT Expert Skill 16 Product Owner review | DONE — INST-011 recommends APPROVE_FOR_SPEC at 95% confidence; Founder decision and lifecycle remain pending |
+| Founder implementation authorization | pending — no `web/app/` source changes authorized |
+
+### Decision Space
+
+INST-004 may define the structural application surfaces, route and layout ownership, rendering boundaries, constitutional-control placement, API ownership, and architecture acceptance contract. INST-004 may not finalize product priorities, implement the Next.js source, approve its own architecture package, or review WC-057 in this session.
+
+### Current Authorization Boundary
+
+Architecture authoring and both independent reviews for WC-034 Phase A are complete. R-047 approves component, API, rendering, and continuity ownership; R-048 approves information architecture, customer labels, release composition, explicit deferrals, and the Skill 16 business case after corrections. WC-034 Phase B implementation remains unauthorized and also requires approved service contracts for the selected component, completion of the Platform IT Expert new-skill lifecycle, and a separate Founder Action. WC-058 through WC-060 remain outside this Work Contract; transactional omnichannel continuity is explicitly blocked on WC-060.
+
+### Review Candidate Package
+
+- `architecture/reference/ux/hybrid-application-shell.md`
+- `architecture/reference/ux/hybrid-visual-system-contract.md`
+- `architecture/reference/ux/hybrid-ui-acceptance-contract.md`
+- `architecture/reference/ux/wc-034-implementation-decomposition.md`
+- `architecture/reference/ux/wc-034-enterprise-architecture-assessment.md`
+- `architecture/reference/agents/platform-it-expert-nextjs-skill-proposal-input.md`
+- `work-contracts/WC-034-goal005-webportal-founder-admin.md`
+
+### Next Constitutional Action
+
+Present the Platform IT Expert Skill 16 proposal and INST-011 `APPROVE_FOR_SPEC` recommendation for Founder decision. If approved, execute the Section 15 Type 1 update and independent activation review before requesting a separately authorized WC-034 Phase B implementation Work Contract. No implementation authorization is implied.
 
 ---
 

@@ -171,7 +171,7 @@ Business Platform: upsert organisation record, issue session
 |---|---|---|
 | `sub` (Google ID) | ✓ | Keycloak external ID mapping |
 | `name` | ✓ | Pre-fill display name |
-| `email` | ✓ | Account communication (NOT primary identity for agricultural) |
+| `email` + `email_verified` | ✓ | Mandatory verified account identity, recovery, and notices |
 | `picture` | ✓ | Default avatar (requires C-063 disclosure — see GAP-REG-008) |
 | `locale` | ✓ | Confirm language selection (mr-IN = confirm Marathi) |
 | Phone number | ✗ | Not available from Google OAuth |
@@ -215,7 +215,7 @@ Keycloak configuration (waooaw-realm.json addition):
 
 **Founder action required:** Create WAOOAW Facebook App in Meta Business Manager. App ID and Secret → GitHub Secrets (`FACEBOOK_APP_ID`, `FACEBOOK_APP_SECRET`).
 
-**Data from Facebook OAuth:** name, email (if user has email attached to FB), profile picture, locale.
+**Data from Facebook OAuth:** name, email and verification status when available, profile picture, locale.
 
 **[GAP-REG-009] Facebook email not always available**
 
@@ -224,11 +224,13 @@ Many Indian Facebook users (especially older, rural) did not register with email
 **Resolution:**
 ```
 After Facebook OAuth: if email is null:
-  → ask for phone number only (for WhatsApp agent delivery):
+  → ask for email and complete an approved email verification challenge
+  → then ask for phone number (for WhatsApp agent delivery):
   "WhatsApp वर सल्ला पाठवण्यासाठी तुमचा फोन नंबर द्या:"
   [Phone input + OTP verification via WhatsApp]
-  
-This phone number becomes the agricultural agent's primary channel identifier (ADR-023).
+
+If Facebook returns an email without a verified claim, verify it separately.
+The verified email completes recoverable account identity. The phone number becomes the agricultural professional's primary channel identifier under ADR-023.
 ```
 
 ---
@@ -329,7 +331,7 @@ Apple Sign In requires:
 
 **Founder action P0:** Create Apple Developer account and generate SIWA credentials before launch.
 
-**Apple-specific behaviour:** Apple allows users to hide their email (generates a relay address). The platform must handle `privaterelay.appleid.com` email addresses gracefully — they cannot be used for email communication. Must ask for phone number instead for notification delivery.
+**Apple-specific behaviour:** Apple allows users to hide their personal email by supplying a verified `privaterelay.appleid.com` address. That relay address satisfies the mandatory verified-email requirement. WAOOAW must register its outbound sender domain with Apple's private email relay so account and legal notices can be forwarded. Phone verification remains separately mandatory for WhatsApp continuity; WAOOAW must not force disclosure of a personal email merely because the customer selected Hide My Email.
 
 ---
 
@@ -337,7 +339,9 @@ Apple Sign In requires:
 
 **Constitutional basis:** C-063 (Data Minimisation — only collect what is necessary).
 
-After any OAuth provider completes, Suresh sees a 2-step completion screen (if fields are missing from OAuth):
+**Founder decision — 2026-08-08:** Verified email is mandatory for access to WAOOAW professionals. The requirement applies to WhatsApp-native, web, mobile, Google, Meta, Apple, and credential-based registration. Routine email notifications remain a separate customer preference.
+
+After any OAuth provider completes, Suresh sees a short completion flow for fields not supplied and verified by the provider. WhatsApp-native registration collects the same data conversationally.
 
 **Step 1 — The one thing we need (if not from OAuth):**
 ```
@@ -355,9 +359,11 @@ After any OAuth provider completes, Suresh sees a 2-step completion screen (if f
 | Field | Required | Source | Notes |
 |---|---|---|---|
 | Display name | ✓ | OAuth (pre-filled) or text input | 1 field. Not "first name + last name" |
-| Phone number | ✓ for agricultural | OAuth (not available) or OTP flow | WhatsApp agent delivery (ADR-023) |
+| Phone number | ✓ | Meta-verified WhatsApp identity or OTP flow | Confirm rather than re-enter when registration starts on WhatsApp |
+| Verified email | ✓ | Google/Meta verified claim or email verification challenge | Recoverable identity and web/mobile access; no skip |
+| Business name | ✓ | Customer response or approved provider claim | Name customers recognize; not legal-entity detail |
+| Business domain | ✓ | Plain-language business type selection | Agriculture for Suresh; not a website-domain field |
 | Language preference | ✓ | Auto-detected (confirm only) | One tap to confirm, not a form |
-| Email | ✗ | OAuth optional | Not required at registration. Collected if customer wants email invoices. |
 | Farm details | ✗ | Collected by agent | "What crop do you grow?" is the FIRST message from the agent, not a registration field |
 | Address | ✗ | Collected by agent | |
 | GST number | ✗ | Collected by billing system at first payment | |
@@ -369,19 +375,19 @@ The existing Business Platform OpenAPI (`POST /api/v1/employment/contracts`) exp
 **Resolution:**
 ```
 Amend POST /api/v1/employment/contracts:
-  - organisation_name:        OPTIONAL at registration (default to display_name + "'s Farm")
-  - primary_contact_email:    OPTIONAL (nullable — many agricultural customers have no email)
-  - primary_contact_phone:    REQUIRED for agricultural/tutoring agents (ADR-023 basis)
+  - organisation_name:        REQUIRED at registration; customer-facing business name
+  - business_domain:          REQUIRED at registration; plain-language business type
+  - primary_contact_email:    REQUIRED and verified before registration completes
+  - primary_contact_phone:    REQUIRED; Meta-verified or OTP-verified
   - language_preference:      NEW required field (mr/hi/en/ta/te/kn/gu/bn/ml/pa/ur)
 
 Progressive completion:
-  The Business Platform allows "incomplete" organisation records.
-  Missing fields are flagged as `profile_completion_status: PARTIAL`.
-  The agent's first conversation fills these in.
-  A ≥80% profile completeness is required before the agent begins billing (C-037 — Business KPI).
+  Registration completes only when the five identity/business fields above are present and verified where required.
+  Goals, farm details, address, GST, budget, authority, provider connections, and other operating context remain progressive.
+  The professional requests each deferred detail only when trial, configuration, hiring, payment, or work requires it.
 ```
 
-**Registration completes in:** 2 taps (Google OAuth) → phone OTP → language confirm = 3 screens, < 2 minutes for Suresh.
+**Registration target:** verified provider details are pre-filled; WhatsApp registration needs at most four data prompts plus one editable summary. Target completion is under 3 minutes, including email verification under ordinary connectivity.
 
 ---
 
@@ -738,10 +744,10 @@ This preserves the WhatsApp-primary experience for rural customers.
 |---|---|---|---|
 | GAP-REG-001 | Language not auto-detected before page render | HIGH | Browser locale detection + `Accept-Language` header → auto-switch with 1-tap confirm |
 | GAP-REG-002 | WhatsApp OTP not specced as portal login path | HIGH | Keycloak custom authenticator SPI; WABA OTP + MSG91 SMS fallback |
-| GAP-REG-003 | OpenAPI contract requires too many registration fields | HIGH | Amend `POST /api/v1/employment/contracts` — make all fields except phone+name optional |
+| GAP-REG-003 | Registration/OpenAPI fields must match the Founder-approved five-field ceiling | HIGH | Require customer name, verified email, verified mobile, business name, and business domain; defer operating details |
 | GAP-REG-007 | Duplicate phone number — no clear error path | MEDIUM | Plain-language Marathi error + 2 resolution options (login vs. support) |
 | GAP-REG-008 | Google profile picture — C-063 disclosure missing | MEDIUM | One-tap opt-in after OAuth with clear data disclosure |
-| GAP-REG-009 | Facebook OAuth — email not always available for rural Indian users | MEDIUM | Post-FB OAuth phone number collection + WhatsApp OTP |
+| GAP-REG-009 | Facebook OAuth — verified email not always available | MEDIUM | Collect and verify email when absent/unverified, then complete phone verification |
 | GAP-REG-010 | OTP expiry too short for poor connectivity | MEDIUM | Extend to 10 minutes; 60s resend delay; WhatsApp→SMS auto-fallback after 2 fails |
 | GAP-REG-011 | Apple Developer account not created — SIWA blocked | HIGH | Founder action P0 (before launch for iPhone users) |
 | GAP-REG-012 | Portal welcome screen doesn't prioritize WhatsApp for agricultural | HIGH | WhatsApp CTA primary, portal chat secondary on welcome screen |
@@ -809,7 +815,10 @@ POST /api/v1/registration/start
   # Called after any successful OAuth or OTP verification
   body:
     display_name: "Suresh"               # required
-    phone: "+919876543210"               # required for agricultural/tutoring
+    email: "suresh@example.com"          # required; server accepts only verified identity email
+    phone: "+919876543210"               # required; Meta-verified or OTP-verified
+    business_name: "Suresh Cotton Farm"  # required customer-facing name
+    business_domain: "AGRICULTURE"       # required plain-language business type
     language_preference: "mr"            # required
     agent_type: "AGRICULTURAL_ADVISOR_INDIA"  # from pre-registration selection
     referral_code: "SURESH-KT47"        # optional — extends trial if valid
@@ -830,7 +839,7 @@ PUT /api/v1/profile
     notification_preferences:
       whatsapp: true
       push: false
-      email: false
+      email: false  # verified identity email remains mandatory; routine email notifications are optional
 ```
 
 ---
@@ -924,7 +933,7 @@ POST /api/v1/payments/whatsapp-link  (internal)
 
 | Item | Owner | Priority |
 |---|---|---|
-| Amend Business Platform OpenAPI — relax required registration fields | Enterprise Architect | P0 |
+| Amend Business Platform OpenAPI — align registration with the Founder-approved five-field ceiling and verified identity claims | Enterprise Architect | P0 |
 | Add Facebook IDP to `waooaw-realm.json` | Developer | P0 |
 | Add Apple IDP to `waooaw-realm.json` | Developer (after Founder creates account) | P0 |
 | Implement Keycloak Phone OTP custom authenticator SPI | Developer | P0 |
