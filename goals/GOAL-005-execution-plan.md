@@ -309,7 +309,7 @@ This amendment adds a single new phase (Phase 8 — WC-034 F2 Implementation) to
 | Deployment | G-F2-13 blocked; separate Founder action required |
 | Employment, billing, payment | Outside WC-034 F2 scope |
 
-### Reserved GO Authorization (PENDING — not yet valid)
+### Phase 8 Authorization Record — GOA-GOAL-005-INST-010-01 (ISSUED)
 
 | Field | Value |
 |---|---|
@@ -322,10 +322,9 @@ This amendment adds a single new phase (Phase 8 — WC-034 F2 Implementation) to
 | Contribution scope | WC-034 F2 Identity and Registration implementation (Phase 8 — Amendment 1) per Evidence Specification above |
 | Participation Window | 5 constitutional sessions after valid acceptance |
 | `issued_by` | INST-013 |
-| `issued_at` | **RESERVED — not yet issued** |
-| **Status** | **PENDING — constitutionally void until: (1) CA Readiness Review of GEP-GOAL-005-INST-013-02 is APPROVED by an independent Constitutional Analyst; and (2) a valid ACK-GOAL-005-INST-001-02 referencing GEP-GOAL-005-INST-013-02 is recorded in the Goal Register** |
+| `issued_at` | 2026-08-09T20:30:01+00:00 |
 
-An Institution presenting this record prior to a valid `issued_at` timestamp has no constitutional standing under GEOM G-7 and GEOM §G-4 R2-05.
+Both R2-03 conditions are met: (1) CR-GOAL-005-INST-002-03 / R-057 PASSED CA Readiness Review; (2) ACK-GOAL-005-INST-001-02 recorded (produced_at 2026-08-09T20:30:00+00:00). This record is constitutionally valid under GEOM G-7 and GEOM §G-4 R2-05. INST-010 must record Goal Acceptance Timestamp after 2026-08-09T20:30:01+00:00.
 
 ### Registrant Authorization Basis
 
@@ -370,3 +369,21 @@ Produced by a fresh independent INST-002 instance that has not contributed to GO
 INST-013 may NOT issue GOA-GOAL-005-INST-010-01 until the Registrant records ACK-GOAL-005-INST-001-02 by providing:
 
 > **"I acknowledge GEP-GOAL-005-INST-013-02 and authorize INST-013 to issue GOA-GOAL-005-INST-010-01."**
+
+---
+
+## Registrant Acknowledgement Record — Amendment 1
+
+| Attestation field | Value |
+|---|---|
+| `institution_id` | INST-001 |
+| `goal_id` | GOAL-005 |
+| `record_id` | ACK-GOAL-005-INST-001-02 |
+| `record_type` | Acknowledgement Record |
+| `produced_at` | 2026-08-09T20:30:00+00:00 |
+| Acknowledged plan | GEP-GOAL-005-INST-013-02 |
+| Registrant | Yogesh Khandge / Founder |
+| Decision | ACKNOWLEDGED — INST-013 authorized to issue GOA-GOAL-005-INST-010-01 |
+| Exact quoted acknowledgement | "I acknowledge GEP-GOAL-005-INST-013-02 and authorize INST-013 to issue GOA-GOAL-005-INST-010-01." |
+
+This record supersedes ACK-GOAL-005-INST-001-01 with respect to INST-010 implementation authorization and satisfies GEOM R2-03 condition (2). ACK-GOAL-005-INST-001-01 remains valid for D-01 through D-07 and is not modified.

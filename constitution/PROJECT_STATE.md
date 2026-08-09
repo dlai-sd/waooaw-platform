@@ -1,6 +1,6 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-08-09 (CA Readiness Review R-057 APPROVED WITH CONDITIONS — R2-03 condition 1 PASSED; Registrant ACK-GOAL-005-INST-001-02 required before INST-013 may issue GOA-GOAL-005-INST-010-01)
+**Last Updated:** 2026-08-09 (ACK-GOAL-005-INST-001-02 recorded; GOA-GOAL-005-INST-010-01 issued 2026-08-09T20:30:01+00:00; INST-010 acceptance pending)
 
 ---
 
@@ -11,34 +11,30 @@
 | INST-013 office occupancy; GEOM, WC-034, FA-031, FA-034, R-056, and GOAL-005 records loaded | DONE — INST-013 OPERATIONAL; G5 CLEAR; all inputs verified present |
 | New facts validated (G-F2-12 closed, Founder session authorization) | DONE — R-056 APPROVED WITH NOTES (2026-08-09); FA-031/FA-034 in effect; Founder stated "I do authorize WC-034 F2 implementation for the current session" |
 | Minimal plan amendment (GEP-GOAL-005-INST-013-02) prepared | DONE — Amendment 1 appended to goals/GOAL-005-execution-plan.md; Phase 8 INST-010 scope and evidence specification recorded; Phased Authorization Rule 5 replaced |
-| Registrant acknowledgement analysis | DONE — Founder session statement recorded as prima facie Registrant Authorization Basis; formal ACK-GOAL-005-INST-001-02 cannot be pre-created because the statement predates GEP-GOAL-005-INST-013-02 and does not reference it by record ID; CA must decide |
+| Registrant acknowledgement analysis | ✓ DONE — ACK-GOAL-005-INST-001-02 recorded (2026-08-09T20:30:00+00:00); Founder provided exact required statement referencing GEP-GOAL-005-INST-013-02; R2-03 condition 2 MET |
 | CA Readiness Review (GEP-GOAL-005-INST-013-02) | DONE — R-057 APPROVED WITH CONDITIONS (2026-08-09); R2-03 condition 1 PASSED; GEP-GOAL-005-INST-013-02 is constitutionally sound and accurately limits INST-010 to WC-034 F2; R2-04 does not apply (Registrant present and reachable); CR-GOAL-005-INST-002-03 recorded in Goal Register |
-| GOA-GOAL-005-INST-010-01 issued | PENDING — R2-03 condition 1 met (R-057); constitutionally void until Registrant records ACK-GOAL-005-INST-001-02 referencing GEP-GOAL-005-INST-013-02 |
-| PROJECT_STATE checkpoint committed | DONE — this record |
-| Commit and push | DONE — commits `b3e3831` and `1546c4f` pushed; R-057 CA review commit follows |
+| GOA-GOAL-005-INST-010-01 issued | ✓ DONE — issued_at 2026-08-09T20:30:01+00:00; INST-013 issuer; both R2-03 conditions met; constitutionally valid |
+| INST-010 Goal Acceptance | PENDING — INST-010 must record acceptance timestamp strictly after 2026-08-09T20:30:01+00:00 to begin WC-034 F2 implementation |
+| PROJECT_STATE checkpoint committed | ✓ DONE — this record |
+| Commit and push | ✓ DONE — commits `b3e3831`, `1546c4f`, `092bb4e` pushed; governance issuance commit follows |
 
 ### Authorization Boundary
 
-This session prepares governance planning documents only. No source code, migration, API, or build artifact is written or modified. `logs/blueprint_assurance_report.json` is untouched. No PR is opened. No merge occurs. No GOA has been issued.
+This session prepares governance planning documents only. No source code, migration, API, or build artifact is written or modified. `logs/blueprint_assurance_report.json` is untouched. No PR is opened. No merge occurs. GOA-GOAL-005-INST-010-01 issued in this session (2026-08-09T20:30:01+00:00) following formal ACK-GOAL-005-INST-001-02.
 
-### CA Decision (R-057)
+### CA Decision (R-057) and Issuance Status
 
-The fresh independent INST-002 instance has decided (R-057, 2026-08-09, APPROVED WITH CONDITIONS):
+The fresh independent INST-002 instance decided (R-057, 2026-08-09, APPROVED WITH CONDITIONS):
 
 - **R2-03 condition 1:** PASSED — GEP-GOAL-005-INST-013-02 is constitutionally ready; scope accurately limits INST-010 to WC-034 F2; Google/email-fallback first; Facebook/Apple designed not activated; no F3-F8; no deployment.
-- **R2-03 condition 2:** NOT MET — The Founder's session statement predates the amendment, lacks mandatory G-10 attestation fields, and does not reference GEP-GOAL-005-INST-013-02 by record ID. The original ACK explicitly stated "stop before implementation" and must be superseded by a new ACK.
-- **R2-04:** DOES NOT APPLY — Registrant is present and reachable; 48-hour window has not elapsed; CA may not certify on Registrant's behalf.
+- **R2-03 condition 2:** MET — ACK-GOAL-005-INST-001-02 recorded (2026-08-09T20:30:00+00:00); Founder provided: "I acknowledge GEP-GOAL-005-INST-013-02 and authorize INST-013 to issue GOA-GOAL-005-INST-010-01."
+- **R2-04:** DID NOT APPLY — Registrant was present and reachable; formal ACK produced directly.
+
+**GOA-GOAL-005-INST-010-01 issued at 2026-08-09T20:30:01+00:00** — both R2-03 conditions satisfied; constitutionally valid.
 
 ### Next Constitutional Action
 
-**Founder must provide this single sentence** to unblock GOA issuance:
-
-> **"I acknowledge GEP-GOAL-005-INST-013-02 and authorize INST-013 to issue GOA-GOAL-005-INST-010-01."**
-
-After that statement is recorded as ACK-GOAL-005-INST-001-02 in the Goal Register:
-1. INST-013 sets `issued_at` on GOA-GOAL-005-INST-010-01 (making it constitutionally valid)
-2. INST-010 records Goal Acceptance Timestamp after that `issued_at`
-3. INST-010 begins WC-034 F2 implementation under WC-034 Phase B scope and Phase 8 evidence specification
+**INST-010 must record Goal Acceptance Timestamp** with a value strictly after 2026-08-09T20:30:01+00:00 to establish constitutional authority to begin WC-034 F2 implementation under Phase 8 scope and evidence specification.
 
 ---
 
@@ -71,7 +67,7 @@ This session grooms only WC-034 F2 Identity and Registration into an implementat
 
 ### Next Constitutional Action
 
-G-F2-12 is closed by R-056 (APPROVED WITH NOTES, 2026-08-09). F2 is architecture-approved. INST-010 may begin F2 implementation under FA-031 and FA-034 authority when Google and email-fallback provider environment configuration evidence is present. Facebook activation remains gated by G-F2-03 (FA-002/FA-018); Apple activation remains gated by G-F2-14 (FA-019). F2 implementation is now unblocked for Google and email-fallback paths only. Deployment authorization (G-F2-13) requires a separate Founder action. PR #248 remains open for Founder review and merge decision.
+G-F2-12 is closed by R-056 (APPROVED WITH NOTES, 2026-08-09). F2 is architecture-approved. INST-010 may begin F2 implementation under FA-031 and FA-034 authority when Google and email-fallback provider environment configuration evidence is present. Facebook activation remains gated by G-F2-03 (FA-002/FA-018); Apple activation remains gated by G-F2-14 (FA-019). F2 implementation is now unblocked for Google and email-fallback paths only. Deployment authorization (G-F2-13) requires a separate Founder action. PR #248 merged to `main` as `0b82e79` (2026-08-09).
 
 ---
 
