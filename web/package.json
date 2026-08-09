@@ -2,6 +2,7 @@
   "name": "waooaw-web",
   "version": "1.0.0",
   "private": true,
+  "packageManager": "pnpm@9.15.9",
   "scripts": {
     "dev": "next dev",
     "generate:api": "openapi-generator-cli generate -i ../architecture/reference/api-specs/business-platform.openapi.yaml -g typescript-fetch -o lib/api/generated --skip-validate-spec --global-property models=EmploymentRelationship:RelationshipTimelineEntry:EmploymentRelationshipState:RelationshipParticipantRole,supportingFiles=runtime.ts:models/index.ts:index.ts --additional-properties supportsES6=true,typescriptThreePlus=true,useSingleRequestParameter=true && prettier --write lib/api/generated",
@@ -23,7 +24,7 @@
   "devDependencies": {
     "@openapitools/openapi-generator-cli": "^2.18.4",
     "@axe-core/playwright": "^4.10.2",
-    "@playwright/test": "^1.49.1",
+    "@playwright/test": "1.62.1",
     "@testing-library/jest-dom": "6.9.1",
     "@testing-library/react": "^16.1.0",
     "@types/jest": "^29.5.14",

@@ -2,13 +2,17 @@ import type { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'WAOOAW Employment Workspace',
+    id: '/',
+    name: 'WAOOAW',
     short_name: 'WAOOAW',
-    description: 'Employ and govern WAOOAW digital professionals.',
+    description: 'Employ and govern constitutionally accountable digital professionals.',
     start_url: '/',
+    scope: '/',
     display: 'standalone',
-    background_color: '#f6f9fc',
-    theme_color: '#17334e',
+    background_color: '#f7f9fc',
+    theme_color: '#1e3352',
+    categories: ['business', 'productivity'],
+    lang: 'en',
     icons: [
       {
         src: '/icon',

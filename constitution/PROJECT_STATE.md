@@ -1,6 +1,6 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-08-09 (Platform IT Expert Skill 16 Activated)
+**Last Updated:** 2026-08-09 (WC-034 F1 R-052 independent confirmation approved)
 
 ---
 
@@ -53,6 +53,17 @@ FA-034 releases WC-034 Phase B execution under FA-031. INST-010 may begin F1 and
 | Platform IT Expert Skill 16 Type 1 handoff | DONE — GitHub Issue #241 completed; PR #244 merged |
 | Founder implementation authorization | DONE — FA-031 authorizes WC-034 Phase B; FA-034 releases execution subject to selected-component entry criteria |
 | Phase B execution release | DONE — FA-033 activated Skill 16, PR #244 merged, and FA-034 releases INST-010 to begin F1; later components retain local entry gates |
+| F1 route and authorization foundation | DONE — public, authentication, customer, Founder, and system-state route groups implemented; server session and explicit Founder claim gates own protected rendering |
+| F1 visual and responsive foundation | DONE — approved WAOOAW logo, semantic themes, script-specific Noto typography, eleven localized experiences including Urdu RTL, 200% text reflow, and expanded/intermediate/360 px navigation implemented |
+| F1 PWA and privacy boundary | DONE — installable manifest; static-assets-only runtime cache; navigation, API, RSC, authenticated HTML, and protected payload caching prohibited and verified in generated worker |
+| F1 system and limitation states | DONE — loading, empty, offline, forbidden, not-found, auth-error, and global-error states; deferred F2–F8 capabilities remain honestly unavailable |
+| Static home migration | DONE — `web/WAOOAWHome.html` retired and App Router `/` is the single production entry point |
+| R-050 independent INST-004 review | REJECTED — localization/font completeness, reproducible browser evidence, homepage content preservation, and honest Emergency Stop context required remediation |
+| R-050 remediation | DONE — eleven locale catalogs and script fonts, restored homepage content families, optional approved Stop context with honest disabled fallback, clean Docker runner, and deterministic browser/performance evidence implemented |
+| F1 executable validation | DONE — strict TypeScript and lint PASS; Jest 36/36 at 98.75% lines; nine logical Playwright/axe scenarios across five projects produced 38 PASS and 7 expected profile SKIP; Chromium, Firefox, WebKit, 1440×900, 768×1024, and 360×800 covered; production build 20/20 routes with `/` at 89.7 kB First Load JS |
+| Independent INST-004 re-review | CHANGES REQUIRED — R-051 confirms R050-01 and R050-03 resolved; UX-PERF-01 measurements and enabled Stop evidence remain open |
+| R-051 remediation | DONE — Chromium now observes and asserts FCP, LCP, CLS, and INP thresholds; the persistent protected shell derives approved contract scope from authenticated relationship routes, omits unknown session IDs per ADR-018, and proves enabled keyboard operation at 360×800 and 1440×900 through the application proxy |
+| Final INST-004 confirmation | APPROVED — R-052 independently confirms commit `6ec95f7` closes R051-01 and R051-02 for F1; F2–F8, deployment, merge, and WC-057 remain excluded |
 
 ### Decision Space
 
@@ -60,7 +71,7 @@ INST-004 may define the structural application surfaces, route and layout owners
 
 ### Current Authorization Boundary
 
-Architecture authoring and both independent reviews for WC-034 Phase A are complete. R-047 approves component, API, rendering, and continuity ownership; R-048 approves information architecture, customer labels, release composition, explicit deferrals, and the Skill 16 business case after corrections. FA-031 authorizes WC-034 Phase B; FA-033 and merged PR #244 complete the Skill 16 prerequisite; FA-034 releases execution. INST-010 may begin F1 and may implement later components only after their approved service contracts and acceptance prerequisites pass. WC-058 through WC-060 remain outside this Work Contract; transactional omnichannel continuity is explicitly blocked on WC-060.
+Architecture authoring and both independent reviews for WC-034 Phase A are complete. R-047 approves component, API, rendering, and continuity ownership; R-048 approves information architecture, customer labels, release composition, explicit deferrals, and the Skill 16 business case after corrections. FA-031 authorizes WC-034 Phase B; FA-033 and merged PR #244 complete the Skill 16 prerequisite; FA-034 releases execution. INST-010 completed F1 implementation and the R-050 and R-051 remediation with Docker-only executable evidence. R-052 independently confirms that R051-01 has complete FCP/LCP/CLS/INP assertions and R051-02 has an enabled production relationship-route Stop with compact and expanded keyboard evidence. F2–F8 may begin only after their approved local entry criteria pass. WC-058 through WC-060, deployment, and merge remain outside this confirmation; transactional omnichannel continuity is explicitly blocked on WC-060.
 
 ### Review Candidate Package
 
@@ -74,7 +85,7 @@ Architecture authoring and both independent reviews for WC-034 Phase A are compl
 
 ### Next Constitutional Action
 
-Start a new INST-010 Platform IT Expert session for WC-034 Phase B. Validate the selected component's local entry criteria, begin with F1, and execute under FA-031 and FA-034. No deferred component or deployment authority is implied.
+R-052 records independent INST-004 approval of R051-01 and R051-02 on WC-034 PR #246. Submit the PR for the constitutionally separate merge decision; this confirmation does not authorize merge, deployment, or F2–F8.
 
 ---
 

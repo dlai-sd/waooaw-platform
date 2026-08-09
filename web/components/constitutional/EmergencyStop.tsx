@@ -10,7 +10,7 @@ interface EmergencyStopProps {
 
 export function EmergencyStop({ contractId, activeSessionIds }: EmergencyStopProps) {
   const [status, setStatus] = useState<'idle' | 'stopping' | 'confirmed' | 'failed'>('idle');
-  const ready = Boolean(contractId && activeSessionIds.length > 0);
+  const ready = Boolean(contractId);
 
   async function stop() {
     if (!ready || !contractId) return;
@@ -19,7 +19,10 @@ export function EmergencyStop({ contractId, activeSessionIds }: EmergencyStopPro
       const response = await fetch('/api/emergency-stop', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contractId, activeSessionIds }),
+        body: JSON.stringify({
+          contractId,
+          ...(activeSessionIds.length > 0 ? { activeSessionIds } : {}),
+        }),
       });
       setStatus(response.ok ? 'confirmed' : 'failed');
     } catch {

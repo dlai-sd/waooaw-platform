@@ -3,6 +3,31 @@
 All notable changes to the WAOOAW Platform are documented here.
 This file is auto-generated from conventional commits. Do not edit manually.
 
+## [1.45.0] — 2026-08-09 · WC-034 Phase B F1 Experience Foundation
+
+### Features
+- Next.js App Router shells for public, authentication, customer, Founder, and system-state surfaces with server-owned customer and Founder authorization
+- Shared WAOOAW visual tokens, Noto Sans/Noto Nastaliq Urdu typography, light/dark/system themes, and English/Urdu direction bootstrap
+- Expanded, intermediate, and exact 360 px navigation with persistent authenticated Emergency Stop placement
+- Installable manifest and privacy-safe service worker that caches only static shell assets; navigations, APIs, RSC, and all other requests remain network-only
+- Loading, empty, offline, forbidden, not-found, authentication-error, and global-error states
+- Static `WAOOAWHome.html` retired; App Router `/` is the single production entry point
+
+### Authorization and Privacy
+- Customer routes validate the server session before protected rendering; Founder routes require an explicit validated Founder claim and otherwise redirect to `/403`
+- Public navigation emits no protected relationship, employment, evidence, or billing requests
+- Registration, verification, conversation transport, relationship integration, Founder operations, voice, attachments, continuity, new APIs, and deployment remain outside F1
+
+### Quality
+- Strict TypeScript and Next.js lint: PASS, zero diagnostics or warnings
+- Jest/Testing Library: 36/36 PASS; 98.75% overall line coverage
+- Playwright/axe: nine logical scenarios across five projects; 38 PASS and 7 expected profile SKIP across Chromium, Firefox, WebKit, 1440×900, 768×1024, and 360×800
+- Production build: 20/20 routes generated; shared initial JavaScript 89.5 kB; public route 89.7 kB
+- Service-worker audit: one approved static cache, three network-only strategies, zero default API/page/RSC/cross-origin caches, and no precached root HTML
+- R-051 remediation adds measured FCP/LCP/CLS/INP assertions and an enabled persistent relationship-route Emergency Stop with compact and expanded keyboard evidence; final independent INST-004 confirmation remains pending
+
+---
+
 ## [1.44.0] — 2026-08-07 · WC-043 WBE-S8 Reconciliation CCT Suite + Coverage Gate
 
 ### Features

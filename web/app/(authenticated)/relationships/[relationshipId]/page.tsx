@@ -6,7 +6,7 @@ import { authOptions } from '@/lib/auth';
 
 export default async function RelationshipPage({ params }: { params: { relationshipId: string } }) {
   const session = await getServerSession(authOptions);
-  if (!session?.accessToken) redirect('/');
+  if (!session?.accessToken) redirect('/login');
 
   const [relationship, timeline] = await Promise.all([
     getRelationship(params.relationshipId, session.accessToken),
