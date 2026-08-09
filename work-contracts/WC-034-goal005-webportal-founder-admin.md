@@ -7,8 +7,8 @@
 **Implementation Office:** Platform IT Expert (INST-010)
 **Architecture Reviewer:** Solution Architect (INST-005) + Product Owner (INST-011)
 **Implementation Reviewer:** Enterprise Architect (INST-004) in an independent session
-**Status:** PHASE B AUTHORIZED — PREREQUISITE GATES PENDING
-**Authorization:** FA-031 — after approving and merging PR #239, Founder authorized WC-034 Phase B implementation on 2026-08-09. Application-source work may begin only when the Platform IT Expert Skill 16 lifecycle and the selected component's local entry criteria are complete.
+**Status:** PHASE B EXECUTION RELEASED — COMPONENT ENTRY GATES APPLY
+**Authorization:** FA-031 authorized WC-034 Phase B implementation; FA-034 released execution on 2026-08-09 after FA-033 activated Platform IT Expert v1.2 Skill 16 and PR #244 merged. INST-010 may begin F1 and any later component whose local entry criteria pass.
 **Constitutional Basis:** C-001, C-009, C-023, C-034, C-042, C-059, C-064, C-065, C-076; ADR-017
 
 ## Outcome
@@ -25,7 +25,7 @@ Phase A defines the route topology, shell ownership, responsive layout, constitu
 
 ### Phase B — Application Implementation (INST-010)
 
-Phase B is authorized by FA-031 after Phase A received independent architecture review. Execution may begin only after the FA-032-approved Platform IT Expert Skill 16 Type 1 update, activation gate, and independent EA review are complete, and only for selected components whose service-contract and acceptance prerequisites pass. It implements the approved shell, migrates the home page into Next.js, and places customer and Founder routes inside their approved layouts.
+Phase B was authorized by FA-031 after Phase A received independent architecture review. FA-033 and merged PR #244 completed the Platform IT Expert Skill 16 Type 1 lifecycle; FA-034 releases execution. INST-010 may begin F1 and may select later components only when their service-contract and acceptance prerequisites pass. Phase B implements the approved shell, migrates the home page into Next.js, and places customer and Founder routes inside their approved layouts.
 
 Founder admin capabilities remain part of WC-034, but they are not the application architecture. Markup Designer, Trial Budget Config, and Coupon Manager are feature routes nested inside the Founder surface after the shared shell exists.
 
@@ -70,7 +70,7 @@ Detailed scope, dependencies, exclusions, and acceptance IDs are normative in `a
 | Component | Scope | Owner | Status |
 |---|---|---|---|
 | F0 | Architecture and dependency closure | INST-004 + reviewing/owning offices | review complete — remaining API and Founder gates named |
-| F1 | Experience foundation | INST-010 | blocked — review, skill, and Founder authorization gates |
+| F1 | Experience foundation | INST-010 | READY — FA-034 releases execution; acceptance gates remain normative |
 | F2 | Identity and registration | INST-010 + identity/BP owners | blocked — canonical identity/API contract plus implementation gates |
 | F3 | Conversation core | INST-010 + BP/PR owners | blocked — canonical BP public conversation/stream contracts and PR internal execution contract plus implementation gates |
 | F4 | Relationship workspace | INST-010 + BP/WBE owners | blocked — Plan/Priority Work and Consumption projections plus implementation gates |
@@ -92,7 +92,7 @@ Detailed scope, dependencies, exclusions, and acceptance IDs are normative in `a
 | ADR-017 — Next.js 14 TypeScript PWA | accepted — framework boundary fixed |
 | WC-057 — Employment Relationship foundation | merged to `main`; independent review evidence remains unresolved |
 | WC-027 and WC-031 — WBE markup/trial/promotions contracts | required before Founder feature implementation |
-| Platform IT Expert frontend skill lifecycle | FA-032 approves the proposal for specification; Issue #241 is the Type 1 Work Contract; update, activation gate, merge/version bump, and independent EA review pending |
+| Platform IT Expert frontend skill lifecycle | complete — Platform IT Expert v1.2 Skill 16 active under FA-033; PR #244 merged |
 
 ## Architecture Definition of Done
 

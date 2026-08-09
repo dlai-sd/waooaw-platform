@@ -10,18 +10,18 @@
 |---|---|
 | INST-003 Business Architect occupancy | DONE — Decision Space and constitutional obligations loaded |
 | Work Contract and authorization validation | DONE — Issue #241, FA-032, R-048, and approved candidate contract present |
-| Skill 16 specification and professional template | DONE — v1.2 review candidate contains full contract, runtime config, and authorized action |
+| Skill 16 specification and professional template | DONE — v1.2 ACTIVE specification contains full contract, runtime config, and authorized action |
 | Section 15 Type 1 architecture-chain update and N/A determinations | DONE — Capability 6.6, capability map, README count, and explicit prompt/MCP/data/ADR N/A decisions recorded |
 | Retroactive Agent Activation Gate | DONE — all 16 sections PASS after R-049 same-session corrections |
 | Constitutional validation | DONE — focused Docker DCM checks 5/5 PASS; broad baseline 57 PASS, 4 SKIP, 5 unrelated pre-existing failures (proposal-input classification and three canonical-proto drift cases) |
 | Independent `CHANGE_TYPE=NEW_SKILL` EA review | DONE — R-049 APPROVED after same-session correction; all technical gate sections PASS |
-| Activation closeout | DONE — FA-033 activates Platform IT Expert v1.2 and Skill 16; PR #244 pending merge |
+| Activation closeout | DONE — FA-033 activates Platform IT Expert v1.2 and Skill 16; PR #244 merged as `4241613` |
 
 ### Authorization Boundary
 
 The Type 1 lifecycle is complete. This closeout session records activation only and does not write WC-034 application code or grant deployment authority. FA-031 governs later WC-034 execution.
 
-### Review Candidate Package
+### Activation Package
 
 - `architecture/reference/agents/platform-it-expert-agent.md`
 - `knowledge/business-capabilities.md` — Capability 6.6
@@ -30,7 +30,7 @@ The Type 1 lifecycle is complete. This closeout session records activation only 
 
 ### Next Constitutional Action
 
-Merge PR #244. Then WC-034 implementation may begin under FA-031 only for components whose local entry criteria pass. No additional Skill 16 office handoff or agent review is required.
+FA-034 releases WC-034 Phase B execution under FA-031. INST-010 may begin F1 and any later component whose local entry criteria pass. No additional Skill 16 office handoff or agent review is required.
 
 ---
 
@@ -49,9 +49,10 @@ Merge PR #244. Then WC-034 implementation may begin under FA-031 only for compon
 | Formal Enterprise Architecture assessment | DONE — architecturally groomed, not implementation-ready; WC-016 superseded for future planning |
 | Independent INST-005 and INST-011 review | DONE — R-047 INST-005 APPROVED; R-048 INST-011 APPROVED on PR #239 |
 | Product information architecture and release composition | DONE — customer labels fixed; text-only first conversation release; attachments, voice, cross-channel notifications, global priority, and Concierge explicitly deferred |
-| Platform IT Expert Skill 16 approval | DONE — INST-011 recommends APPROVE_FOR_SPEC at 95% confidence; FA-032 Founder APPROVE recorded; Type 1 lifecycle pending |
-| Platform IT Expert Skill 16 Type 1 handoff | DONE — GitHub Issue #241 created with `type:agent-update`, `update-type:new-skill`, `status:waiting`; Business Architect execution pending |
-| Founder implementation authorization | DONE — FA-031 authorizes WC-034 Phase B; execution remains blocked on Skill 16 lifecycle and selected-component entry criteria |
+| Platform IT Expert Skill 16 approval | DONE — FA-032 approved the Type 1 lifecycle; FA-033 activated Platform IT Expert v1.2 Skill 16 after R-049 approval |
+| Platform IT Expert Skill 16 Type 1 handoff | DONE — GitHub Issue #241 completed; PR #244 merged |
+| Founder implementation authorization | DONE — FA-031 authorizes WC-034 Phase B; FA-034 releases execution subject to selected-component entry criteria |
+| Phase B execution release | DONE — FA-033 activated Skill 16, PR #244 merged, and FA-034 releases INST-010 to begin F1; later components retain local entry gates |
 
 ### Decision Space
 
@@ -59,7 +60,7 @@ INST-004 may define the structural application surfaces, route and layout owners
 
 ### Current Authorization Boundary
 
-Architecture authoring and both independent reviews for WC-034 Phase A are complete. R-047 approves component, API, rendering, and continuity ownership; R-048 approves information architecture, customer labels, release composition, explicit deferrals, and the Skill 16 business case after corrections. FA-031 records Founder authorization for WC-034 Phase B. FA-032 approves Skill 16 for the Section 15 Type 1 update and activation review. Application execution remains blocked until that lifecycle is complete and the selected component's approved service contracts and acceptance prerequisites pass. WC-058 through WC-060 remain outside this Work Contract; transactional omnichannel continuity is explicitly blocked on WC-060.
+Architecture authoring and both independent reviews for WC-034 Phase A are complete. R-047 approves component, API, rendering, and continuity ownership; R-048 approves information architecture, customer labels, release composition, explicit deferrals, and the Skill 16 business case after corrections. FA-031 authorizes WC-034 Phase B; FA-033 and merged PR #244 complete the Skill 16 prerequisite; FA-034 releases execution. INST-010 may begin F1 and may implement later components only after their approved service contracts and acceptance prerequisites pass. WC-058 through WC-060 remain outside this Work Contract; transactional omnichannel continuity is explicitly blocked on WC-060.
 
 ### Review Candidate Package
 
@@ -73,7 +74,7 @@ Architecture authoring and both independent reviews for WC-034 Phase A are compl
 
 ### Next Constitutional Action
 
-Execute GitHub Issue #241, the `type:agent-update`, `update-type:new-skill` Work Contract for Platform IT Expert Skill 16 under FA-032. After the Type 1 update, activation gate, merge/version bump, and independent EA review pass, an INST-010 implementation session may validate the selected component's remaining entry criteria and execute under FA-031. No deferred component or deployment authority is implied.
+Start a new INST-010 Platform IT Expert session for WC-034 Phase B. Validate the selected component's local entry criteria, begin with F1, and execute under FA-031 and FA-034. No deferred component or deployment authority is implied.
 
 ---
 
