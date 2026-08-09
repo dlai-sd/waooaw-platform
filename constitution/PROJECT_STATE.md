@@ -1,6 +1,6 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-08-09 (WC-034 F1 R-051 remediation — confirmation pending)
+**Last Updated:** 2026-08-09 (WC-034 F1 R-052 independent confirmation approved)
 
 ---
 
@@ -63,7 +63,7 @@ FA-034 releases WC-034 Phase B execution under FA-031. INST-010 may begin F1 and
 | F1 executable validation | DONE — strict TypeScript and lint PASS; Jest 36/36 at 98.75% lines; nine logical Playwright/axe scenarios across five projects produced 38 PASS and 7 expected profile SKIP; Chromium, Firefox, WebKit, 1440×900, 768×1024, and 360×800 covered; production build 20/20 routes with `/` at 89.7 kB First Load JS |
 | Independent INST-004 re-review | CHANGES REQUIRED — R-051 confirms R050-01 and R050-03 resolved; UX-PERF-01 measurements and enabled Stop evidence remain open |
 | R-051 remediation | DONE — Chromium now observes and asserts FCP, LCP, CLS, and INP thresholds; the persistent protected shell derives approved contract scope from authenticated relationship routes, omits unknown session IDs per ADR-018, and proves enabled keyboard operation at 360×800 and 1440×900 through the application proxy |
-| Final INST-004 confirmation | PENDING — authoring office has completed and validated R051-01 and R051-02 but cannot approve or merge under C-065 |
+| Final INST-004 confirmation | APPROVED — R-052 independently confirms commit `6ec95f7` closes R051-01 and R051-02 for F1; F2–F8, deployment, merge, and WC-057 remain excluded |
 
 ### Decision Space
 
@@ -71,7 +71,7 @@ INST-004 may define the structural application surfaces, route and layout owners
 
 ### Current Authorization Boundary
 
-Architecture authoring and both independent reviews for WC-034 Phase A are complete. R-047 approves component, API, rendering, and continuity ownership; R-048 approves information architecture, customer labels, release composition, explicit deferrals, and the Skill 16 business case after corrections. FA-031 authorizes WC-034 Phase B; FA-033 and merged PR #244 complete the Skill 16 prerequisite; FA-034 releases execution. INST-010 completed F1 implementation and the R-050 and R-051 remediation with Docker-only executable evidence. R051-01 now has complete FCP/LCP/CLS/INP assertions, and R051-02 now has an enabled production relationship-route Stop with compact and expanded keyboard evidence. Final independent INST-004 confirmation remains required under C-065. F2–F8 may begin only after their approved local entry criteria pass. WC-058 through WC-060 and deployment remain outside this Work Contract; transactional omnichannel continuity is explicitly blocked on WC-060.
+Architecture authoring and both independent reviews for WC-034 Phase A are complete. R-047 approves component, API, rendering, and continuity ownership; R-048 approves information architecture, customer labels, release composition, explicit deferrals, and the Skill 16 business case after corrections. FA-031 authorizes WC-034 Phase B; FA-033 and merged PR #244 complete the Skill 16 prerequisite; FA-034 releases execution. INST-010 completed F1 implementation and the R-050 and R-051 remediation with Docker-only executable evidence. R-052 independently confirms that R051-01 has complete FCP/LCP/CLS/INP assertions and R051-02 has an enabled production relationship-route Stop with compact and expanded keyboard evidence. F2–F8 may begin only after their approved local entry criteria pass. WC-058 through WC-060, deployment, and merge remain outside this confirmation; transactional omnichannel continuity is explicitly blocked on WC-060.
 
 ### Review Candidate Package
 
@@ -85,7 +85,7 @@ Architecture authoring and both independent reviews for WC-034 Phase A are compl
 
 ### Next Constitutional Action
 
-Request independent INST-004 confirmation of R051-01 and R051-02 on WC-034 PR #246. Do not merge, close F1, begin F2–F8, or authorize deployment until that decision is recorded.
+R-052 records independent INST-004 approval of R051-01 and R051-02 on WC-034 PR #246. Submit the PR for the constitutionally separate merge decision; this confirmation does not authorize merge, deployment, or F2–F8.
 
 ---
 
