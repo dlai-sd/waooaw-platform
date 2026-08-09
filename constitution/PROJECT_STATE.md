@@ -14,7 +14,7 @@
 | Registrant acknowledgement analysis | DONE — Founder session statement recorded as prima facie Registrant Authorization Basis; formal ACK-GOAL-005-INST-001-02 cannot be pre-created because the statement predates GEP-GOAL-005-INST-013-02 and does not reference it by record ID; CA must decide |
 | GOA-GOAL-005-INST-010-01 issued | PENDING — reserved in amendment; constitutionally void until CA Readiness Review of GEP-GOAL-005-INST-013-02 is APPROVED and a valid Registrant ACK is recorded in the Goal Register |
 | PROJECT_STATE checkpoint committed | DONE — this record |
-| Commit and push | DONE — commit SHA: (see git log after push) |
+| Commit and push | DONE — commit `b3e3831` pushed to `ib/014/wc034-f2-implementation` |
 
 ### Authorization Boundary
 
