@@ -45,8 +45,8 @@ Chromium, Firefox, and WebKit are required for the browser suite. Exact 360×800
 | ID | Scenario | Pass condition |
 |---|---|---|
 | UX-RESP-01 | Every required route at 360×800 | `scrollWidth <= clientWidth`; no clipped controls or horizontal overflow |
-| UX-RESP-02 | Mobile keyboard opens in composer | Input, send, voice state, and Stop remain reachable; layout does not jump incoherently |
-| UX-RESP-03 | Mobile context navigation | Plan, Work, Performance, Consumption, and Governance open full-screen and return focus/context correctly |
+| UX-RESP-02 | Mobile keyboard opens in composer | Input, send, release-enabled composer controls, and Stop remain reachable; layout does not jump incoherently |
+| UX-RESP-03 | Mobile context navigation | Plan, Work, Results, Usage & budget, and Rights & control open full-screen and return focus/context correctly |
 | UX-RESP-04 | Intermediate layout | Conversation remains at least 360px; context does not compress beside it |
 | UX-RESP-05 | Expanded layout | Navigation, conversation, and context meet minimum widths without overlap |
 | UX-RESP-06 | Long translated labels and 200% zoom | Controls retain meaning and content reflows without loss or overlap |
@@ -73,7 +73,7 @@ Chromium, Firefox, and WebKit are required for the browser suite. Exact 360×800
 | UX-CONV-05 | Delivery, processing, evidence | Each status has distinct icon, text, accessible name, and semantic meaning |
 | UX-CONV-06 | Structured cards | Action, Plan, Deliverable, and Decision cards expose owner, state, effect, and keyboard-operable commands |
 | UX-CONV-07 | Multiple professionals | Switcher changes the complete relationship context; drafts and item links never cross relationships |
-| UX-CONV-08 | Priority Work | Browser displays server order and does not calculate an independent priority ranking |
+| UX-CONV-08 | Needs your attention, when released | Browser displays server order and does not calculate an independent priority ranking; destination is absent before the aggregate contract is approved |
 
 ### Constitutional Controls
 
@@ -130,7 +130,7 @@ Chromium, Firefox, and WebKit are required for the browser suite. Exact 360×800
 |---|---|---|
 | UX-VIS-01 | Screenshot matrix | Approved baselines exist for compact/expanded, light/dark, English/Urdu, loading/error/stopped |
 | UX-VIS-02 | Constitutional color audit | Override red appears only on Stop surfaces; delivery, processing, and evidence remain distinct |
-| UX-VIS-03 | Stable dimensions | Voice, attachment, loading, long labels, status changes, and avatars do not resize fixed-format regions |
+| UX-VIS-03 | Stable dimensions | Release-enabled voice or attachment states, loading, long labels, status changes, and avatars do not resize fixed-format regions |
 | UX-PERF-01 | Core Web Vitals profile | FCP ≤1.5s, LCP ≤2.5s, CLS ≤0.10, INP ≤200ms under the approved 4G profile |
 | UX-PERF-02 | Initial payload | Public compressed weight ≤200KB; authenticated shell ≤400KB; initial JS ≤100KB gzipped |
 | UX-PERF-03 | Active font subset | Only required language subset is preloaded and each subset remains within the approved budget |
@@ -139,7 +139,7 @@ Chromium, Firefox, and WebKit are required for the browser suite. Exact 360×800
 
 Baselines are required for:
 
-- public home, login, registration, conversation, Plan, Work, Performance, Consumption, Governance, Settings, Profile, Founder shell, `/403`, and not-found;
+- public home, login, registration, conversation, Plan, Work, Results, Usage & budget, Rights & control, Settings, Profile, Founder shell, `/403`, and not-found;
 - compact light English, compact dark Urdu, expanded light English, and expanded dark Urdu;
 - conversation loading, empty, failed send, offline draft, streaming, Stop pending, stopped, evidence pending, and evidence recorded;
 - longest approved labels and representative Indic-script content.

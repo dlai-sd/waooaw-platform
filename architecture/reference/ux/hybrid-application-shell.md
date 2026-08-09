@@ -18,7 +18,7 @@ The authenticated web experience uses the layout and interaction grammar of a mo
 "Hybrid SPA" means:
 
 - Next.js App Router provides server rendering, route protection, metadata, initial data, and shareable URLs.
-- Client transitions, streaming messages, the composer, voice recording, panels, and optimistic interaction behave like an installed application after load.
+- Client transitions, streaming messages, the composer, panels, and optimistic interaction behave like an installed application after load; voice recording does so only in a release that includes approved F6 contracts.
 - Public, authentication, customer, and Founder surfaces share one application and design system.
 - The PWA is mobile-first and preserves application state across navigation and temporary connectivity loss.
 
@@ -75,7 +75,7 @@ Server-owned responsibilities:
 
 Client-owned interaction islands:
 
-- composer text, attachment selection, voice capture, draft persistence, and explicit send;
+- composer text, draft persistence, and explicit send; attachment selection and voice capture only when their separately approved components are included;
 - streamed message presentation, cancellation, retry, and reconnect status;
 - navigation expansion, context-panel selection, sheets, focus restoration, and keyboard behavior;
 - optimistic presentation only when an idempotency key exists and the state remains visibly unconfirmed;
@@ -85,16 +85,31 @@ The browser must not derive tenant identity, authorize relationship access, comm
 
 ## Navigation Contract
 
-Desktop primary navigation uses `My Professionals`, `Priority Work`, and `Settings`, with Profile and Sign out in the account menu. Relationship context owns Conversation, Plan, Work, Performance, Consumption, and Governance.
+Desktop primary navigation uses `My WaooaW Experts`, `Needs your attention`, and `Settings`, with `Profile` and `Sign out` in the account menu. Relationship context uses `Conversation`, `Plan`, `Work`, `Results`, `Usage & budget`, and `Rights & control`.
+
+Route paths remain stable technical identifiers and are not translated. Customer-visible source labels are:
+
+| Route or scope | English source label | Product meaning |
+|---|---|---|
+| `/professionals/mine` | My WaooaW Experts | Every professional relationship the customer has hired or is evaluating |
+| Global priority projection | Needs your attention | Customer actions ordered by the server; omitted until the aggregate contract exists |
+| `/conversation` | Conversation | The continuous professional exchange |
+| `/plan` | Plan | Goals, checkpoints, and next work |
+| `/work` | Work | Actions, deliverables, approvals, and schedule |
+| `/performance` | Results | Business outcomes and review history; technical metrics remain supporting evidence |
+| `/consumption` | Usage & budget | Allowance, usage, forecast, budget, and alerts |
+| `/governance` | Rights & control | Scope, rights, records, pause/resume, lifecycle, and Emergency Stop |
+
+Translations may use domain-native occupational language rather than literal equivalents, but they must preserve these meanings. `Performance`, `Consumption`, `Governance`, and `Priority Work` are internal architecture terms and must not appear as customer navigation labels.
 
 Mobile bottom navigation is fixed to four destinations:
 
 1. `Conversation` — current relationship conversation.
 2. `Plan` — goals and next work for the current relationship.
 3. `Work` — customer actions, deliverables, approvals, and schedule.
-4. `Professionals` — relationship switcher and all employed professionals.
+4. `WaooaW Experts` — relationship switcher and all employed professionals.
 
-Performance, Consumption, Governance, Settings, and Profile remain reachable from the relationship or account header. `Priority Work` is global on desktop and resolves to a professional-scoped item when opened; it is not a fifth mobile destination.
+`Results`, `Usage & budget`, `Rights & control`, `Settings`, and `Profile` remain reachable from the relationship or account header. `Needs your attention` is global on desktop and resolves to a professional-scoped item when opened; it is omitted until the server-owned aggregate contract is approved and is not a fifth mobile destination.
 
 ## Canonical Experience Model
 
@@ -129,7 +144,7 @@ Conversation is where work happens. Relationship is where the customer verifies 
 
 ## Entry and Resume Behavior
 
-After authentication, WAOOAW opens the most recently active conversation by default, including when the latest interaction occurred through WhatsApp. The customer may instead select `My Professionals` or `Priority Work` as the default start view in Settings.
+After authentication, WAOOAW opens the most recently active conversation by default, including when the latest interaction occurred through WhatsApp. After their contracts exist, the customer may instead select `My WaooaW Experts` or `Needs your attention` as the default start view in Settings.
 
 Resume restores the professional, first unread position, active goal context, and outstanding customer action. It does not automatically mark content as read before that content becomes visible. Cross-channel transitions display a quiet separator such as `Continued on WhatsApp` rather than starting a new thread.
 
@@ -145,7 +160,7 @@ Configured professional avatars are functional identity assets and are permitted
 
 The purpose of the no-image philosophy is productive, text-focused conversation across WhatsApp, web, and mobile. Visual work products may be attached or previewed on demand, but they do not turn the conversation shell into an image feed.
 
-A customer with one relationship enters that conversation directly. A customer with several relationships still resumes the most recently active conversation by default and can use a professional switcher or `My Professionals` to change context.
+A customer with one relationship enters that conversation directly. A customer with several relationships still resumes the most recently active conversation by default and can use a professional switcher or `My WaooaW Experts` to change context.
 
 ## Application Composition
 
@@ -156,9 +171,9 @@ A customer with one relationship enters that conversation directly. A customer w
 │ Collapsible nav  │ Conversation                    │ Context panel        │
 │                  │                                 │                      │
 │ WAOOAW logo      │ Professional header             │ Plan by default      │
-│ Professionals    │ Message stream                  │ Work                 │
-│ Priority work    │ Inline actions and deliverables │ Performance          │
-│ Settings         │ Fixed composer                  │ Consumption          │
+│ My Experts       │ Message stream                  │ Work                 │
+│ Needs attention  │ Inline actions and deliverables │ Results              │
+│ Settings         │ Fixed composer                  │ Usage & budget       │
 └──────────────────┴─────────────────────────────────┴──────────────────────┘
 ```
 
@@ -396,15 +411,16 @@ WhatsApp messages use explicit evidence text because transport delivery ticks ca
 - Emergency Stop remains reachable from every authenticated professional surface.
 - Theme, locale, drafts, unread position, and chosen default start view survive navigation and reconnect where constitutionally and technically permitted.
 
-## Open Product Decisions and Release Gates
+## Product Decisions and Release Gates
 
-| Decision | Owner | Implementation effect |
+| Decision | Product disposition | Implementation effect |
 |---|---|---|
-| Localized customer-visible names for Plan, Work, Performance, Consumption, and Governance | Product Owner with language review | Language packs remain review-blocked; route ownership is unaffected |
-| First-release attachment types, limits, scanning, and preview policy | Product Owner + Security Architect + owning service | Attachment control remains unavailable until approved |
-| Voice retention, transcription consent, correction, accessibility, and evidence lineage | Product Owner + Security/Data/Solution Architecture | Voice control may be visually reserved but cannot record or upload |
-| Cross-channel notification and active-channel suppression contract | Product Owner + Solution Architect | Notifications remain out of WC-034 implementation until specified |
-| Global priority ordering across multiple professionals | Product Owner + Business Platform owner | Priority Work uses server-provided order only; no browser ranking |
-| Vercel AI SDK use for typed stream consumption | Solution Architect | **INST-005 decision: not approved as an F3 architecture dependency.** Reconsider only after the canonical BP/PR stream contract exists; any later proposal must remain a typed presentation adapter with no provider, persistence, authentication, or business ownership. |
+| Customer-visible source labels | **CLOSED by INST-011:** `Plan`, `Work`, `Results`, `Usage & budget`, `Rights & control`, `Needs your attention`, and `My WaooaW Experts` | All eleven language packs remain release-blocking and translate meaning, not internal architecture terms; route ownership is unchanged |
+| First customer release attachments | **DEFERRED:** text-only conversation ships first | No attachment button, reserved active control, preview, or upload path appears until Product, Security, and service contracts are approved |
+| Voice interaction | **DEFERRED from first customer release to F6** | No enabled or visually reserved recorder appears before consent, retention, correction, accessibility, evidence, provider, and API decisions close |
+| Cross-channel notification suppression | **DEFERRED to F5/WC-060** | First customer release makes no active-channel suppression or transactional handoff promise |
+| Global priority ordering | **DEFERRED until the BP aggregate contract exists** | `Needs your attention` is omitted from navigation and default-view settings; no browser ranking or disabled dead-end destination |
+| Public Concierge | **DEFERRED from F1 and the first customer release** | Public pages use direct browse, disclosure, login, and registration commands; no simulated or non-durable concierge fallback |
+| Vercel AI SDK use for typed stream consumption | **CLOSED by INST-005:** not approved as an F3 architecture dependency | Reconsider only after the canonical BP/PR stream contract exists; any later proposal remains presentation-only with no provider, persistence, authentication, or business ownership |
 
 The navigation destinations and global-versus-relationship scope are closed by this architecture. The remaining decisions are routed to their owning offices and cannot be silently chosen during implementation.

@@ -34,8 +34,8 @@ It does not approve implementation, select product priorities, amend the Platfor
 - One Next.js 14 App Router PWA remains the web stack; no client-only or second SPA.
 - Conversation is the primary work surface; relationship views govern and verify it.
 - Desktop uses navigation, conversation, and optional context; compact mobile uses edge-to-edge conversation and full-screen secondary views.
-- Mobile navigation is Conversation, Plan, Work, and Professionals.
-- Priority Work is global presentation with server-owned ordering and relationship-scoped resolution.
+- Mobile navigation is Conversation, Plan, Work, and WaooaW Experts.
+- `Needs your attention` is the customer label for global priority presentation; it remains absent until server-owned ordering and relationship-scoped resolution contracts exist.
 - Authentication remains a distinct Keycloak-brokered surface with mandatory verified email and mobile identity handling.
 - Public, authentication, customer, Founder, and system routes have separate layout and authorization ownership.
 - The browser does not own tenant identity, lifecycle transitions, priority ranking, evidence truth, model dispatch, or cross-channel commit.
@@ -44,11 +44,17 @@ It does not approve implementation, select product priorities, amend the Platfor
 - `web/WAOOAWHome.html` is the Founder-approved inspiration source for logo treatment, fonts, color themes, and design language across public and authenticated surfaces; adaptations must retain recognizable continuity while ratified visual and constitutional constraints control conflicts.
 - WC-016 is not controlling for future implementation where it conflicts with WC-034 and GOAL-005.
 
+## Product Decisions Closed by INST-011
+
+- Customer-visible source labels are `My WaooaW Experts`, `Needs your attention`, `Conversation`, `Plan`, `Work`, `Results`, `Usage & budget`, and `Rights & control`; internal terms do not become navigation copy.
+- The first customer conversation release is text-only. Attachments, voice, F5/WC-060 cross-channel notification suppression, global priority aggregation, and public Concierge are deferred and leave no enabled or dead-end controls.
+- F8 is a mandatory proportional gate for every selected release, not a successor owned only by F7 Founder administration.
+- Skill 16 receives an INST-011 `APPROVE_FOR_SPEC` recommendation and remains blocked on Founder decision, Type 1 execution, activation gate, and independent EA review.
+
 ## Decisions Routed, Not Delegated
 
 | Decision | Required owner | Blocking component |
 |---|---|---|
-| Localized relationship-view names | Product Owner + language review | Language-pack release acceptance |
 | Attachment types, limits, scanning, and preview | Product Owner + Security + service owner | F3 attachments |
 | Voice consent, retention, transcript correction, provider, and evidence lineage | Product Owner + Security/Data/Solution | F6 |
 | Active-channel notification suppression | Product Owner + Solution Architect | F5 |

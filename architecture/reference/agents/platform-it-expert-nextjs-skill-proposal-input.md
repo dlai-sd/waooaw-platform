@@ -4,8 +4,9 @@
 **Agent:** WAOOAW AI Agent — Platform IT Expert
 **Candidate skill:** Next.js Conversational Experience Engineering
 **Change type after approval:** `type:agent-update`, `update-type:new-skill`
-**Status:** AWAITING PRODUCT OWNER REVIEW AND FOUNDER DECISION
+**Status:** PRODUCT OWNER REVIEW COMPLETE — AWAITING FOUNDER DECISION
 **Produced by:** Enterprise Architect (INST-004), WC-034 Phase A
+**Reviewed by:** Product Owner (INST-011), PR #239
 **Constitutional basis:** C-001, C-009, C-023, C-032, C-042, C-059, C-063, C-065, C-071, C-076, C-095, C-100; ADR-002, ADR-008, ADR-017, ADR-023
 
 ## Governance Boundary
@@ -40,6 +41,42 @@ WC-034 cannot be assigned responsibly to the current generic Code Implementation
 | Regulatory considerations | DPDPA data minimization, consent, identity, accessibility, and secure session handling; skill does not itself authorize data collection. |
 | Primary risk | Template copying or direct model access could bypass WAOOAW auth, service ownership, CE, evidence, privacy, and framework constraints. |
 | Recommendation | APPROVE_FOR_SPEC, with no implementation authority and an explicit retroactive activation-gate audit. |
+
+## Skill Proposal: Next.js Conversational Experience Engineering
+
+**Agent:** WAOOAW AI Agent — Platform IT Expert
+
+**Proposed Skill Domain:** Next.js conversational, accessible, localized PWA implementation
+
+**Signal Evidence:** One authorized architecture package exposes a blocking deficiency across every planned WC-034 frontend slice; the current 15-skill specification provides only generic implementation guidance and cannot satisfy the approved acceptance contract. This is institutional capability evidence, not a claim of customer gap-signal frequency.
+
+**Sample Unserviced Intents:**
+
+- Implement an approved durable conversation stream without collapsing delivery, processing, and constitutional evidence states.
+- Deliver one responsive English/Urdu PWA surface with exact-360px, keyboard, privacy-cache, accessibility, and multi-browser evidence.
+
+**Product Owner Assessment:**
+
+- **Genuine gap? YES.** The missing capability is a repeatable professional discipline with specialized inputs, workflow, prohibited actions, and acceptance evidence. A one-time prompt or training note would delegate architecture and constitutional choices to implementation.
+- **Adjacent professional covers it? NO.** Solution Architecture defines ownership and QA independently verifies outcomes; neither office implements the frontend experience. The Platform IT Expert remains the correct professional after its skill contract is amended.
+- **Constitutional dependencies:** No new constitutional claim, customer-runtime MCP server, customer data category, or public API is authorized by this proposal. C-001, C-023, C-032, C-042, C-063, C-065, C-071, C-076, C-095, and C-100 constrain the skill. The existing agent must pass the retroactive activation gate.
+- **Regulatory considerations:** DPDPA data minimization, consent, authenticated cache isolation, identity handling, accessibility, and secure-session obligations apply. The skill cannot authorize collection, retention, transcription, or a provider.
+- **Estimated customer segment:** Every customer who uses a WAOOAW web/PWA employment relationship benefits indirectly; directly, every authorized frontend implementation sprint requires the capability.
+- **Pricing impact:** No customer-facing skill price or tier change. Tool and dependency costs remain subject to existing C-077/C-067 controls and separate approval where required.
+
+**Risk Assessment:**
+
+- **Constitutional risks:** UI-created service behavior, misleading success/evidence states, weakened Emergency Stop access, or self-review.
+- **Technical risks:** incompatible template or dependency adoption, browser-owned business rules, private-service coupling, inaccessible or non-localized behavior, authenticated cache leakage, and unbounded bundle growth.
+- **Regulatory risks:** excess personal-data storage, missing consent for later voice/attachment capabilities, unsafe session handling, and inaccessible customer controls.
+
+**Proposed Mitigation:** Adopt the candidate contract and its prohibited/escalation rules; require approved route/API/visual contracts before implementation; retain generated-client discipline; run the complete activation gate and independent EA review; keep attachments, voice, notifications, and new dependencies outside the skill unless separately approved.
+
+**PO Recommendation:** APPROVE_FOR_SPEC
+
+**Confidence:** 95%
+
+This recommendation authorizes only Founder consideration. It does not approve the agent-spec amendment, dependency adoption, WC-034 Phase B, or any application-source change.
 
 ## Candidate Skill Contract
 
@@ -142,7 +179,7 @@ The official Vercel chatbot template is Apache-2.0 licensed and may inform inter
 
 The JQueryScript article is a secondary description of the Vercel template and adds no independent architectural authority.
 
-`@ai-sdk/react` remains optional. A Solution Architect spike may recommend it only if it:
+`@ai-sdk/react` is not approved as an F3 dependency. After the canonical BP/PR stream contract exists, a separately authorized Solution Architect spike may reconsider a presentation-only adapter only if it:
 
 - consumes a WAOOAW-owned typed stream without direct provider calls;
 - does not introduce template auth, persistence, ORM, or deployment assumptions;

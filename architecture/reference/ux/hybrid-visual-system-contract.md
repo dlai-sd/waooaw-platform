@@ -116,14 +116,14 @@ No breakpoint may shrink fixed-format controls below their stable dimensions. Co
 
 - Professional avatars appear in identity locations, not beside every message.
 - Customer and professional messages remain distinguishable without relying only on bubble color.
-- The composer has stable height bands for text, attachments, voice state, validation, and send status.
+- The composer has stable height bands for text, validation, and send status; attachment and voice bands exist only in releases that include those approved components.
 - Structured Action, Plan, Deliverable, and Decision cards use compact headings and stable action areas.
 - A live streamed response uses a polite live region and never steals focus.
 
-### Context and Governance
+### Relationship Context
 
-- Plan, Work, Performance, Consumption, and Governance use unframed sections with dividers and clear headings.
-- Business outcomes lead performance; technical metrics are supporting detail.
+- Plan, Work, Results, Usage & budget, and Rights & control use unframed sections with dividers and clear headings.
+- Business outcomes lead Results; technical metrics are supporting detail.
 - Scope, authority, rights, evidence, and lifecycle are stated in plain language.
 - Confirmation controls name the effect; ambiguous `OK` and color-only controls are prohibited.
 

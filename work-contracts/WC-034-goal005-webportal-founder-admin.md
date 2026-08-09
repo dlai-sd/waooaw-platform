@@ -7,7 +7,7 @@
 **Implementation Office:** Platform IT Expert (INST-010)
 **Architecture Reviewer:** Solution Architect (INST-005) + Product Owner (INST-011)
 **Implementation Reviewer:** Enterprise Architect (INST-004) in an independent session
-**Status:** ARCHITECTURE REVIEW CANDIDATE — IMPLEMENTATION UNAUTHORIZED
+**Status:** PHASE A INDEPENDENT REVIEW COMPLETE — IMPLEMENTATION UNAUTHORIZED
 **Authorization:** Founder selected the WC-034 scope amendment on 2026-08-08. This authorizes architecture and specification work only. A separate Founder Action is required before modifying application source.
 **Constitutional Basis:** C-001, C-009, C-023, C-034, C-042, C-059, C-064, C-065, C-076; ADR-017
 
@@ -33,7 +33,7 @@ Founder admin capabilities remain part of WC-034, but they are not the applicati
 
 | Surface | Route group | Primary layout | Constitutional controls |
 |---|---|---|---|
-| Public | `(public)` | Brand navigation, responsive content canvas, footer, optional Concierge | Honest capability and limitation disclosure; no authenticated data |
+| Public | `(public)` | Brand navigation, responsive content canvas, footer; Concierge deferred from first release | Honest capability and limitation disclosure; no authenticated data |
 | Customer | `(authenticated)` | Compact app header, desktop side navigation, mobile bottom navigation, relationship workspace | Persistent Emergency Stop; rights and lifecycle state; tenant-safe identity |
 | Founder | `(founder)` | Customer shell primitives with denser administration navigation | `founder=true` authorization; no customer-facing discovery language |
 | Shared system | global | Loading, empty, error, offline, forbidden, and not-found states | Fail-safe messaging; no fabricated success; correlation support |
@@ -69,7 +69,7 @@ Detailed scope, dependencies, exclusions, and acceptance IDs are normative in `a
 
 | Component | Scope | Owner | Status |
 |---|---|---|---|
-| F0 | Architecture and dependency closure | INST-004 + reviewing/owning offices | in progress — independent review and product/API decisions remain |
+| F0 | Architecture and dependency closure | INST-004 + reviewing/owning offices | review complete — remaining API and Founder gates named |
 | F1 | Experience foundation | INST-010 | blocked — review, skill, and Founder authorization gates |
 | F2 | Identity and registration | INST-010 + identity/BP owners | blocked — canonical identity/API contract plus implementation gates |
 | F3 | Conversation core | INST-010 + BP/PR owners | blocked — canonical BP public conversation/stream contracts and PR internal execution contract plus implementation gates |
@@ -92,7 +92,7 @@ Detailed scope, dependencies, exclusions, and acceptance IDs are normative in `a
 | ADR-017 — Next.js 14 TypeScript PWA | accepted — framework boundary fixed |
 | WC-057 — Employment Relationship foundation | merged to `main`; independent review evidence remains unresolved |
 | WC-027 and WC-031 — WBE markup/trial/promotions contracts | required before Founder feature implementation |
-| Platform IT Expert frontend skill lifecycle | proposal input complete; Product Owner review, Founder approval, Type 1 update, activation gate, and independent EA review pending |
+| Platform IT Expert frontend skill lifecycle | Product Owner recommends APPROVE_FOR_SPEC; Founder decision, Type 1 update, activation gate, and independent EA review pending |
 
 ## Architecture Definition of Done
 
@@ -103,7 +103,7 @@ Detailed scope, dependencies, exclusions, and acceptance IDs are normative in `a
 - [x] Every screen family maps to an approved capability and API owner; missing contracts are blocked and owner-routed.
 - [x] Founder feature routes remain subordinate to the shared shell and are separately authorization-gated.
 - [x] INST-005 reviewed component, API, rendering, and continuity ownership — R-047 APPROVED.
-- [ ] INST-011 reviews product information architecture, labels, release composition, and deferred choices before implementation authorization is requested.
+- [x] INST-011 reviewed product information architecture, labels, release composition, deferred choices, and Skill 16 business case — R-048 APPROVED.
 
 ## Implementation Definition of Done
 

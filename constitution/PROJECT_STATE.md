@@ -1,6 +1,6 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-08-08 (WC-056 GOAL-005 Specification Orchestration DONE)
+**Last Updated:** 2026-08-09 (WC-034 Phase A Independent Review Complete)
 
 ---
 
@@ -17,7 +17,9 @@
 | Executable UI acceptance contract | DONE — component, browser, axe, visual, responsive, RTL, PWA, privacy, resilience, performance, and coverage evidence specified |
 | Platform IT Expert frontend capability assessment | DONE — Skill 16 proposal input prepared; Product Owner review and Founder decision required before Type 1 update |
 | Formal Enterprise Architecture assessment | DONE — architecturally groomed, not implementation-ready; WC-016 superseded for future planning |
-| Independent INST-005 and INST-011 review | PARTIAL — R-047 INST-005 APPROVED; INST-011 approval record pending on PR #239 |
+| Independent INST-005 and INST-011 review | DONE — R-047 INST-005 APPROVED; R-048 INST-011 APPROVED on PR #239 |
+| Product information architecture and release composition | DONE — customer labels fixed; text-only first conversation release; attachments, voice, cross-channel notifications, global priority, and Concierge explicitly deferred |
+| Platform IT Expert Skill 16 Product Owner review | DONE — INST-011 recommends APPROVE_FOR_SPEC at 95% confidence; Founder decision and lifecycle remain pending |
 | Founder implementation authorization | pending — no `web/app/` source changes authorized |
 
 ### Decision Space
@@ -26,7 +28,7 @@ INST-004 may define the structural application surfaces, route and layout owners
 
 ### Current Authorization Boundary
 
-Architecture authoring and INST-005 solution review for WC-034 Phase A are complete. R-047 approves component, API, rendering, and continuity ownership after corrections; PR #239 still awaits independent INST-011 approval. WC-034 Phase B implementation remains unauthorized and also requires approved service contracts for the selected component, completion of the Platform IT Expert new-skill lifecycle, and a separate Founder Action. WC-058 through WC-060 remain outside this Work Contract; transactional omnichannel continuity is explicitly blocked on WC-060.
+Architecture authoring and both independent reviews for WC-034 Phase A are complete. R-047 approves component, API, rendering, and continuity ownership; R-048 approves information architecture, customer labels, release composition, explicit deferrals, and the Skill 16 business case after corrections. WC-034 Phase B implementation remains unauthorized and also requires approved service contracts for the selected component, completion of the Platform IT Expert new-skill lifecycle, and a separate Founder Action. WC-058 through WC-060 remain outside this Work Contract; transactional omnichannel continuity is explicitly blocked on WC-060.
 
 ### Review Candidate Package
 
@@ -40,7 +42,7 @@ Architecture authoring and INST-005 solution review for WC-034 Phase A are compl
 
 ### Next Constitutional Action
 
-INST-011 reviews product information architecture, release composition, labels, and deferred choices. INST-004 must not approve its own package. After INST-011 approval joins R-047, Product Ownership may present the frontend skill proposal for Founder decision. No implementation authorization is implied.
+Present the Platform IT Expert Skill 16 proposal and INST-011 `APPROVE_FOR_SPEC` recommendation for Founder decision. If approved, execute the Section 15 Type 1 update and independent activation review before requesting a separately authorized WC-034 Phase B implementation Work Contract. No implementation authorization is implied.
 
 ---
 
