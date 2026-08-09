@@ -53,6 +53,16 @@ public sealed class TenantIsolationMiddleware
             return;
         }
 
+        // Pre-account identity registration paths use a Keycloak pre-account JWT (PreAccountBearerAuth)
+        // that carries a `sub` claim but no `tenant_id`. Authentication is enforced by JwtBearer;
+        // the tenant_id requirement is deliberately absent per identity-boundary.md §1.7.
+        if (context.Request.Path.StartsWithSegments("/api/v1/identity/registrations",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            await _next(context);
+            return;
+        }
+
         // C-026: The user must be authenticated before we can extract the tenant claim.
         if (context.User?.Identity is null || !context.User.Identity.IsAuthenticated)
         {

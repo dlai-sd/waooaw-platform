@@ -22,12 +22,13 @@
 
 | Milestone | Status |
 |---|---|
-| F2 entry criteria validation (ADR-008 v3, identity-boundary.md, F2 operations in business-platform.openapi.yaml) | PENDING |
+| F2 entry criteria validation (ADR-008 v3, identity-boundary.md, F2 operations in business-platform.openapi.yaml) | DONE — GOA and ACC valid; merged PR #248/R-056 closes architecture entry gates |
+| Identity Boundary backend and persistence | DONE — all 13 canonical operations implemented in BP with issuer-subject binding, tenant-scoped account links, idempotency, privacy-safe errors, secret-backed OTP verification, and Migration 20 |
 | Authentication routes (login, registration, verification, account-linking, auth-error) | PENDING |
 | Keycloak OIDC broker integration — Google and email-fallback providers | PENDING |
 | Identity API generated TypeScript client integration | PENDING |
-| Progressive mobile verification (before consequential actions) | PENDING |
-| WhatsApp-to-web deterministic identity linking and duplicate resolution | PENDING |
+| Progressive mobile verification (before consequential actions) | IN PROGRESS — BP start/confirm API complete; web flow pending; delivery provider remains fail-closed until environment adapter is configured |
+| WhatsApp-to-web deterministic identity linking and duplicate resolution | IN PROGRESS — proof-gated BP account-link API complete; web flow and internal Phone Identity adapter acceptance remain pending |
 | Session lifecycle (safe return target, expiry, sign-out, account-switch cleanup) | PENDING |
 | F2 test suite (UX-SHELL-02, UX-SHELL-04, UX-AUTH-01–06, UX-PRIV-01, UX-PWA-04) | PENDING |
 | Independent INST-004 review and PR | PENDING |
@@ -48,7 +49,7 @@ The fresh independent INST-002 instance decided (R-057, 2026-08-09, APPROVED WIT
 
 ### Next Constitutional Action
 
-**INST-010 must record Goal Acceptance Timestamp** with a value strictly after 2026-08-09T20:30:01+00:00 to establish constitutional authority to begin WC-034 F2 implementation under Phase 8 scope and evidence specification.
+ACC-GOAL-005-INST-010-01 is complete. Continue WC-034 F2 web implementation against the validated Identity Boundary backend. Backend evidence: 89/89 focused identity tests, 144/144 full Business Platform tests, and 97.26% unique-line coverage across the new identity controller, service, and data context. Provider delivery remains fail-closed until an environment-specific dispatcher is configured; no Facebook, Apple, or deployment activation is authorized.
 
 ---
 
