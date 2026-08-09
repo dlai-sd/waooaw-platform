@@ -1,6 +1,6 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-08-09 (WC-034 F2 ADR-008 Amendment 1 complete; FA-035 reconciliation done; G-F2-02 READY)
+**Last Updated:** 2026-08-09 (WC-034 F2 G-F2-12 independent re-review closed — R-056 APPROVED WITH NOTES; F2 architecture-approved for implementation selection)
 
 ---
 
@@ -17,7 +17,7 @@
 | Independent INST-004 review submission | DONE — PR #248 opened against `main`; INST-004 review requested; no self-approval or merge |
 | R-055 remediation | DONE — R055-01 uses an internal server-to-server WhatsApp adapter; R055-02 adds applicable privacy-safe 400 responses and `IDENTITY_RESOURCE_NOT_ACCESSIBLE`; R055-03 whitespace defects removed and scoped diff check passes |
 | INST-004 ADR-008 amendment (FA-035 reconciliation) | DONE — ADR-008 v3 adds Amendment 1: one provider-agnostic experience, confirmed-email completion, progressive mobile verification, provider-subject binding, proof-of-control linking, no automatic email-only linking, non-enumerating behavior, Facebook scope isolation, provider-specific activation gates; Facebook BLOCKED by FA-002/FA-018; Apple BLOCKED by FA-019; G-F2-02 unblocked |
-| Independent INST-004 re-review | PENDING — must confirm R055-01 through R055-03, FA-035 contract alignment, and generated-client evidence; no self-approval |
+| Independent INST-004 re-review | DONE — R-056 APPROVED WITH NOTES (2026-08-09); R055-01 through R055-03 all resolved; FA-035 alignment confirmed across all named documents; G-F2-12 closed; F2 architecture-approved for implementation selection; Facebook blocked by G-F2-03/FA-002/FA-018; Apple blocked by G-F2-14/FA-019; deployment blocked by G-F2-13 |
 
 ### Authorization Boundary
 
@@ -25,14 +25,15 @@ This session grooms only WC-034 F2 Identity and Registration into an implementat
 
 ### Review Candidate
 
-- Commits `c36b438` and `054bfe8` on `ib/014/wc034-f2-identity-contract`
-- PR #248 — independent INST-004 Enterprise Architect review requested
+- Commits `4df595b` (INST-005 F2 remediation) and `0b629c6` (INST-004 ADR-008 Amendment 1) on `ib/014/wc034-f2-identity-contract`
+- PR #248 — independent INST-004 Enterprise Architect re-review completed
 - R-054 — INST-007 security consultation, CONCUR WITH BLOCKERS
 - R-055 — INST-004 independent review, CHANGES REQUIRED
+- R-056 — INST-004 independent re-review, APPROVED WITH NOTES
 
 ### Next Constitutional Action
 
-INST-004 ADR-008 Amendment 1 is complete; G-F2-02 is now READY. The sole remaining blocker for F2 implementation is `G-F2-12`: an independent INST-004 re-review of the full F2 package (R-055 remediation, FA-035 contract alignment, and generated-client evidence) in a separate context under C-065. Facebook activation remains blocked by FA-002/FA-018; Apple activation remains blocked by FA-019. F2 implementation remains blocked until G-F2-12 passes; deployment remains unauthorized.
+G-F2-12 is closed by R-056 (APPROVED WITH NOTES, 2026-08-09). F2 is architecture-approved. INST-010 may begin F2 implementation under FA-031 and FA-034 authority when Google and email-fallback provider environment configuration evidence is present. Facebook activation remains gated by G-F2-03 (FA-002/FA-018); Apple activation remains gated by G-F2-14 (FA-019). F2 implementation is now unblocked for Google and email-fallback paths only. Deployment authorization (G-F2-13) requires a separate Founder action. PR #248 remains open for Founder review and merge decision.
 
 ---
 
