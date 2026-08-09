@@ -1,6 +1,6 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-08-09 (Platform IT Expert Skill 16 Type 1 Update In Progress)
+**Last Updated:** 2026-08-09 (Platform IT Expert Skill 16 Type 1 Review Candidate)
 
 ---
 
@@ -10,14 +10,26 @@
 |---|---|
 | INST-003 Business Architect occupancy | DONE — Decision Space and constitutional obligations loaded |
 | Work Contract and authorization validation | DONE — Issue #241, FA-032, R-048, and approved candidate contract present |
-| Skill 16 specification and professional template | pending |
-| Section 15 Type 1 architecture-chain update and N/A determinations | pending |
-| Retroactive Agent Activation Gate | pending |
+| Skill 16 specification and professional template | DONE — v1.2 review candidate contains full contract, runtime config, and authorized action |
+| Section 15 Type 1 architecture-chain update and N/A determinations | DONE — Capability 6.6, capability map, README count, and explicit prompt/MCP/data/ADR N/A decisions recorded |
+| Retroactive Agent Activation Gate | DONE (AUTHOR AUDIT) — Sections 1–8 and 10–16 PASS; Section 9 remains pending independent review; Skill 16 NOT ACTIVATED |
+| Constitutional validation | DONE — focused Docker DCM checks 5/5 PASS; broad baseline 57 PASS, 4 SKIP, 5 unrelated pre-existing failures (proposal-input classification and three canonical-proto drift cases) |
 | Independent `CHANGE_TYPE=NEW_SKILL` EA review | pending — author cannot self-review under C-065 |
 
 ### Authorization Boundary
 
 This session may amend the Platform IT Expert specification and required Type 1 architecture-chain records under FA-032. It may not write WC-034 application code, activate Skill 16, perform the independent EA review, or exercise FA-031 before the lifecycle gate passes.
+
+### Review Candidate Package
+
+- `architecture/reference/agents/platform-it-expert-agent.md`
+- `knowledge/business-capabilities.md` — Capability 6.6
+- `architecture/reference/capability-to-container-map.md` — 6.6 ownership
+- `README.md` — 16-skill enumeration
+
+### Next Constitutional Action
+
+Independent INST-004 review with `CHANGE_TYPE=NEW_SKILL`. The reviewer must verify all 16 gate sections, resolve or accept every finding, and issue the Section 9 verdict. Merge/version activation remains prohibited until that review is APPROVED.
 
 ---
 

@@ -267,6 +267,14 @@ A capability exists because the institution must provide it — not because it w
 
 ---
 
+### 6.6 Engineer Governed Web Experiences
+
+**Statement:** The institution must be able to implement its approved customer and Founder web experiences as accessible, localized, responsive, privacy-safe Next.js software without allowing frontend implementation to invent service contracts, authorization rules, constitutional semantics, or persistence architecture. Every implementation slice must trace to an approved Work Contract, route and API owner, acceptance criteria, quality evidence, and independent review.
+
+**Constitutional Basis:** C-001 (Emergency Stop remains reachable); C-023 (transport success is not constitutional evidence); C-032 (implementation cannot create architecture); C-042 (customer vocabulary and localization); C-059 (implementation traceability); C-063 (data minimisation); C-065 (independent review); C-071 and C-076 (quality and coverage gates); C-095 (EA Skeleton gate); C-100 (credentialed-origin safety)
+
+---
+
 ## Domain 1 — Additional Capabilities (v0.8.0)
 
 ---
