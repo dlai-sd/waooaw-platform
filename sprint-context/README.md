@@ -70,3 +70,33 @@ agent's workspace view. This is reset on each autonomous sprint run and should N
 to main (it is gitignored). It is ephemeral workspace scoping — not a permanent exclusion.
 
 Add `.copilotignore` to `.gitignore` if not already present.
+
+---
+
+## Interactive Low-Risk Fast Path
+
+`scripts/constitutional_fast_path.py` builds a deterministic, commit-pinned context manifest
+for explicitly classified low-risk work after the mandatory BOOTSTRAP sequence reaches READY.
+It reuses index/RAG provenance but does not invoke RAG, read source contents, grant authority,
+execute validations, edit governed records, or replace direct verification of decisive sources.
+
+Build the tracked example:
+
+```bash
+python3 scripts/constitutional_fast_path.py build \
+  --request sprint-context/fast-path/example-request.json \
+  --output sprint-context/fast-path/example-manifest.json
+```
+
+Validate it again before use:
+
+```bash
+python3 scripts/constitutional_fast_path.py validate \
+  --manifest sprint-context/fast-path/example-manifest.json
+```
+
+The generated manifest is valid only at its pinned Git commit. Any missing bootstrap evidence,
+unknown or enabled risk flag, unsafe write target, missing source, malformed provenance, token
+overflow, stale commit, ambiguity, or scope expansion returns `BLOCKED` and requires the ordinary
+constitutional path. Generated manifests are physically contained to
+`sprint-context/fast-path/`.
