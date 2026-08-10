@@ -1,6 +1,45 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-08-09 (WC-034 F2 backend and web implementation validated; independent INST-004 review pending)
+**Last Updated:** 2026-08-10 (WC-034 F3 Conversation Core architecture and dependency closure complete; PR #250 open)
+
+---
+
+## COMPLETED CHECKPOINT — WC-034 F3 CONVERSATION CORE CONTRACT
+
+| Milestone | Status |
+|---|---|
+| INST-005 occupancy, WC-034 F3 scope, and architecture inputs validated | DONE — G5 CLEAR; architecture/dependency closure only; no application code, dependency installation, F4-F8, provider connection, or deployment authority |
+| Canonical BP conversation and PR execution/stream contracts | DONE — BP OpenAPI 1.2.0 exposes timeline, send, retry, read-position, cancellation, and SSE; PR OpenAPI 1.1.0 exposes BP-only execution, cancellation, and SSE |
+| F3 acceptance and dependency gate mapping | DONE — versioned message/card/event schemas, idempotency, privacy, tenant isolation, errors, offline reconciliation, all F3 acceptance IDs, and G-F3-01 through G-F3-09 mapped in `conversation-core.md` |
+| Contract validation | DONE — BP/PR YAML and local refs pass; F3-filtered OpenAPI Generator 7.17.0 validation/generation pass; generated `ConversationApi.ts` strict TypeScript compile passes; no tenant/private runtime/provider surface; full BP validation retains only pre-existing non-F3 dangling refs |
+| Independent INST-004 review | DONE — R-059 APPROVED; G-F3-01 through G-F3-07 cleared; G-F3-08 implementation and G-F3-09 deployment remain blocked |
+| PROJECT_STATE closure | DONE — architecture approval, validation evidence, remaining blockers, and next action recorded |
+| Commit, push, and PR | DONE — `f06cbaf` and `3b9f241` pushed on `ib/014/wc034-f3-conversation-contract`; PR #250 open against `main`; no self-merge |
+
+### Decision Space
+
+INST-005 may decompose the approved WC-034 F3 reference architecture into BP and PR component, API, data-shape, error, and acceptance contracts. INST-005 may not alter the reference architecture, implement application code, install `@ai-sdk/react`, permit ordinary browser-to-PR or model-provider connections, begin F4-F8, approve its own output, or deploy.
+
+### Architecture Outcome
+
+- `architecture/reference/components/conversation-core.md` is the canonical F3 ownership, behavior, data-shape, error, idempotency, privacy, tenant, reconciliation, acceptance, and gate contract.
+- Business Platform OpenAPI 1.2.0 is the sole ordinary public conversation ingress for timeline, send, retry, read position, cancellation, and SSE.
+- Professional Runtime OpenAPI 1.1.0 exposes only BP-authenticated internal execution, cancellation, and typed SSE.
+- Message, Action/Plan/Deliverable/Decision card, public event, and internal event schemas begin at version 1.0 with explicit compatibility rules.
+- `@ai-sdk/react`, direct browser-to-PR/model-provider access, attachments, voice, F4-F8, provider activation, and deployment remain excluded.
+
+### Validation and Review
+
+- BP and PR YAML parsing, local-reference resolution, operation-ID uniqueness, and editor diagnostics pass.
+- The dependency-closed F3 BP specification has zero OpenAPI Generator 7.17.0 validation issues.
+- `ConversationApi.ts` and all F3 models generate and compile under strict TypeScript without manual patches.
+- Generated public client scan confirms all six operations and no `tenantId`, private PR URL, model-provider URL, or API-key surface.
+- Full BP validation retains only pre-existing dangling non-F3 schemas; R-059 records this as non-blocking baseline debt.
+- R-059 is an independent INST-004 `APPROVED` review with zero required corrections.
+
+### Authorization Boundary and Next Action
+
+G-F3-01 through G-F3-07 are closed by validation and R-059. G-F3-08 remains BLOCKED pending a separate Founder/Goal Orchestrator implementation authorization for an INST-010 session. G-F3-09 remains BLOCKED pending separate deployment authorization. PR #250 awaits constitutional review and must not be self-merged. No F4-F8 work follows automatically.
 
 ---
 

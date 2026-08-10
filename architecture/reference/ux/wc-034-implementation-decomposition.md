@@ -127,6 +127,14 @@ F2 and the service-contract portion of F3 may be prepared in parallel after F1, 
 
 **Acceptance:** UX-CONV-01 through UX-CONV-07, CCT-UX-HO-01 through CCT-UX-EF-02, UX-PWA-03, UX-RES-01.
 
+**Contract status:** R-059 APPROVED. `architecture/reference/components/conversation-core.md`, Business Platform
+OpenAPI 1.2.0, and Professional Runtime OpenAPI 1.1.0 define the canonical timeline,
+send, retry, read-position, cancellation, public/internal streams, versioned message/card/event,
+idempotency, privacy, tenant, error, offline reconciliation, and acceptance contracts. Architecture
+gates G-F3-01 through G-F3-07 are closed. F3 implementation remains BLOCKED pending separate
+implementation authority (`G-F3-08`); deployment remains blocked by `G-F3-09`. Attachments, F4-F8, provider
+connections, `@ai-sdk/react`, and deployment remain excluded.
+
 ## F4 — Relationship Workspace
 
 **Customer slice:** The customer can understand and govern the professional relationship around the conversation.

@@ -2,7 +2,7 @@ openapi: "3.1.0"
 
 info:
   title: WAOOAW Business Platform API
-  version: "1.1.0"
+  version: "1.2.0"
   description: |
     External customer-facing API for the WAOOAW Business Platform.
     Manages the employment lifecycle, approval workflows, evidence reading,
@@ -34,6 +34,8 @@ servers:
 tags:
   - name: Identity
     description: Registration, confirmed email, progressive mobile verification, and deterministic account linking
+  - name: Conversation
+    description: Durable relationship conversation timeline, commands, reconciliation, and canonical response stream
   - name: Employment
     description: Employment contract lifecycle management
   - name: Approvals
@@ -1845,6 +1847,195 @@ paths:
         "400":
           description: Invalid signature or unrecognised event type
 
+  # ─── Conversation Core (WC-034 F3) ────────────────────────────────────────
+
+  /api/v1/employment/relationships/{relationshipId}/conversation/messages:
+    get:
+      tags: [Conversation]
+      summary: Read the authoritative durable conversation timeline
+      description: |
+        Returns tenant- and relationship-authorized messages in ascending canonical sequence.
+        `cursor` pages backward and `afterCursor` reconciles forward; they are mutually exclusive.
+        Cursors are opaque and relationship-bound. This read does not advance the unread position.
+      operationId: listConversationMessages
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/ConversationCursor"
+        - $ref: "#/components/parameters/ConversationAfterCursor"
+        - $ref: "#/components/parameters/ConversationPageLimit"
+      responses:
+        "200":
+          description: Authoritative timeline page
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConversationTimelinePageV1"
+        "400": { $ref: "#/components/responses/ConversationInvalidRequest" }
+        "401": { $ref: "#/components/responses/ConversationUnauthorized" }
+        "404": { $ref: "#/components/responses/ConversationNotFound" }
+        "410": { $ref: "#/components/responses/ConversationCursorExpired" }
+        "503": { $ref: "#/components/responses/ConversationUnavailable" }
+    post:
+      tags: [Conversation]
+      summary: Send or replay one customer text contribution
+      description: |
+        Accepts durable responsibility for one customer contribution. A 202 response means
+        accepted by BP; it does not mean delivered, professionally completed, or evidenced.
+        Same actor, relationship, key, and canonical payload hash replay one outcome.
+      operationId: sendConversationMessage
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendConversationMessageRequestV1"
+      responses:
+        "202":
+          description: Message accepted and professional execution queued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConversationSubmissionV1"
+        "200":
+          description: Prior identical outcome replayed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConversationSubmissionV1"
+        "400": { $ref: "#/components/responses/ConversationInvalidRequest" }
+        "401": { $ref: "#/components/responses/ConversationUnauthorized" }
+        "404": { $ref: "#/components/responses/ConversationNotFound" }
+        "409": { $ref: "#/components/responses/ConversationConflict" }
+        "423": { $ref: "#/components/responses/ConversationStopped" }
+        "429": { $ref: "#/components/responses/ConversationRateLimited" }
+        "503": { $ref: "#/components/responses/ConversationUnavailable" }
+
+  /api/v1/employment/relationships/{relationshipId}/conversation/messages/{messageId}/retry:
+    post:
+      tags: [Conversation]
+      summary: Reconcile and retry one failed or unresolved contribution
+      description: |
+        Requires the original Idempotency-Key. BP verifies the stored canonical payload hash
+        and retries the same logical message; it never mints a duplicate message. Completed
+        outcomes replay. Changed content must be sent as a new message with a new key.
+      operationId: retryConversationMessage
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/ConversationMessageId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "202":
+          description: Existing logical message accepted for retry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConversationSubmissionV1"
+        "200":
+          description: Prior terminal or accepted outcome replayed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConversationSubmissionV1"
+        "401": { $ref: "#/components/responses/ConversationUnauthorized" }
+        "404": { $ref: "#/components/responses/ConversationNotFound" }
+        "409": { $ref: "#/components/responses/ConversationConflict" }
+        "422": { $ref: "#/components/responses/ConversationRetryNotAllowed" }
+        "423": { $ref: "#/components/responses/ConversationStopped" }
+        "503": { $ref: "#/components/responses/ConversationUnavailable" }
+
+  /api/v1/employment/relationships/{relationshipId}/conversation/read-position:
+    put:
+      tags: [Conversation]
+      summary: Advance the authenticated participant's unread position
+      description: |
+        Advances monotonically to a visible canonical message. It cannot mark unseen content
+        read and cannot move backward. The tenant and participant come only from the JWT.
+      operationId: updateConversationReadPosition
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateConversationReadPositionRequestV1"
+      responses:
+        "200":
+          description: Read position advanced or identical outcome replayed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConversationReadPositionV1"
+        "400": { $ref: "#/components/responses/ConversationInvalidRequest" }
+        "401": { $ref: "#/components/responses/ConversationUnauthorized" }
+        "404": { $ref: "#/components/responses/ConversationNotFound" }
+        "409": { $ref: "#/components/responses/ConversationConflict" }
+
+  /api/v1/employment/relationships/{relationshipId}/conversation/stream:
+    get:
+      tags: [Conversation]
+      summary: Stream canonical conversation state as Server-Sent Events
+      description: |
+        Authenticated BP public stream. The browser never connects to PR or a model provider.
+        Last-Event-ID resumes within retention; expired state requires timeline reconciliation.
+        Heartbeats contain no protected payload and the stream is never service-worker cached.
+      operationId: streamConversation
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/ConversationLastEventId"
+      responses:
+        "200":
+          description: Canonical versioned conversation event stream
+          headers:
+            Cache-Control:
+              schema: { type: string, const: "no-store" }
+            X-Accel-Buffering:
+              schema: { type: string, const: "no" }
+          content:
+            text/event-stream:
+              schema:
+                $ref: "#/components/schemas/ConversationStreamEventV1"
+        "401": { $ref: "#/components/responses/ConversationUnauthorized" }
+        "404": { $ref: "#/components/responses/ConversationNotFound" }
+        "410": { $ref: "#/components/responses/ConversationCursorExpired" }
+        "423": { $ref: "#/components/responses/ConversationStopped" }
+        "503": { $ref: "#/components/responses/ConversationUnavailable" }
+
+  /api/v1/employment/relationships/{relationshipId}/conversation/executions/{executionId}:
+    delete:
+      tags: [Conversation]
+      summary: Request cancellation of one professional response execution
+      description: |
+        Routes cancellation through BP to PR. Accepted partial content remains canonical and
+        labelled incomplete. Cancellation does not delete history or release Emergency Stop.
+      operationId: cancelConversationExecution
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/ConversationExecutionId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "202":
+          description: Cancellation accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConversationExecutionStatusV1"
+        "200":
+          description: Existing terminal outcome replayed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConversationExecutionStatusV1"
+        "401": { $ref: "#/components/responses/ConversationUnauthorized" }
+        "404": { $ref: "#/components/responses/ConversationNotFound" }
+        "409": { $ref: "#/components/responses/ConversationConflict" }
+        "423": { $ref: "#/components/responses/ConversationStopped" }
+        "503": { $ref: "#/components/responses/ConversationUnavailable" }
+
   /api/v1/notifications/preferences:
     get:
       tags: [Notifications]
@@ -1927,6 +2118,47 @@ components:
         type: string
         format: uuid
       description: Tenant-scoped durable employment relationship UUID
+
+    ConversationMessageId:
+      name: messageId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+      description: Opaque BP canonical message UUID, authorized within the relationship
+
+    ConversationExecutionId:
+      name: executionId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+      description: Opaque professional execution UUID, authorized within the relationship
+
+    ConversationCursor:
+      name: cursor
+      in: query
+      required: false
+      schema: { type: string, minLength: 16, maxLength: 2048 }
+      description: Opaque relationship-bound cursor for older timeline pages; mutually exclusive with afterCursor
+
+    ConversationAfterCursor:
+      name: afterCursor
+      in: query
+      required: false
+      schema: { type: string, minLength: 16, maxLength: 2048 }
+      description: Opaque relationship-bound cursor for forward reconnect reconciliation; mutually exclusive with cursor
+
+    ConversationPageLimit:
+      name: limit
+      in: query
+      required: false
+      schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+
+    ConversationLastEventId:
+      name: Last-Event-ID
+      in: header
+      required: false
+      schema: { type: string, minLength: 1, maxLength: 256 }
+      description: Last BP canonical SSE event ID received; never supplied in a URL
 
     ContractId:
       name: contractId
@@ -2035,6 +2267,55 @@ components:
         application/problem+json:
           schema:
             $ref: "#/components/schemas/ProblemDetail"
+
+    ConversationInvalidRequest:
+      description: Conversation request or schema version is malformed or unsupported
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/ConversationProblemDetail" }
+    ConversationUnauthorized:
+      description: Authenticated customer session is missing, invalid, or expired
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/ConversationProblemDetail" }
+    ConversationNotFound:
+      description: Relationship or message is absent, inaccessible, or cross-tenant; one normalized shape prevents existence disclosure
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/ConversationProblemDetail" }
+    ConversationConflict:
+      description: Idempotency identity conflicts or authoritative state must be reconciled
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/ConversationProblemDetail" }
+    ConversationCursorExpired:
+      description: Cursor can no longer be resumed; fetch a fresh authoritative timeline snapshot
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/ConversationProblemDetail" }
+    ConversationRetryNotAllowed:
+      description: Message is not failed/unresolved or the original retry identity was not supplied
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/ConversationProblemDetail" }
+    ConversationStopped:
+      description: Relationship execution is stopped; ordinary reconnect, retry, or cancellation cannot release it
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/ConversationProblemDetail" }
+    ConversationRateLimited:
+      description: Conversation command is rate limited without losing its idempotency identity
+      headers:
+        Retry-After:
+          schema: { type: integer, minimum: 1 }
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/ConversationProblemDetail" }
+    ConversationUnavailable:
+      description: Professional execution or constitutional dependency is unavailable and the outcome remains explicit
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/ConversationProblemDetail" }
 
   schemas:
 
@@ -3132,6 +3413,332 @@ components:
         chargeAmount:
           type: number
           description: "pricePerMonth * (activeDurationMinutes / minutesInMonth)"
+
+    # ── Conversation Core (WC-034 F3) ────────────────────────────────────────
+
+    ConversationSchemaVersion:
+      type: string
+      const: "1.0"
+
+    ConversationActorType:
+      type: string
+      enum: [CUSTOMER, PROFESSIONAL, SYSTEM]
+
+    ConversationChannel:
+      type: string
+      enum: [WEB, WHATSAPP, SYSTEM]
+
+    ConversationDeliveryState:
+      type: string
+      enum: [LOCAL_ONLY, ACCEPTED, FAILED, UNRESOLVED]
+
+    ConversationProcessingState:
+      type: string
+      enum: [NOT_STARTED, QUEUED, RUNNING, COMPLETED, FAILED, CANCELLED, STOPPED]
+
+    ConversationEvidenceState:
+      type: string
+      enum: [NOT_APPLICABLE, PENDING, RECORDED, FAILED]
+
+    ConversationCompletionReason:
+      type: string
+      enum: [COMPLETE, PARTIAL_FAILURE, CANCELLED, EMERGENCY_STOPPED]
+
+    ConversationTextBlockV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, blockType, text]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/ConversationSchemaVersion" }
+        blockType: { type: string, const: TEXT }
+        text: { type: string, minLength: 1, maxLength: 32000 }
+        language: { type: string, minLength: 2, maxLength: 35 }
+
+    ConversationCardCommandV1:
+      type: object
+      additionalProperties: false
+      required: [commandId, label, availability]
+      properties:
+        commandId: { type: string, pattern: "^[A-Z][A-Z0-9_]{2,63}$" }
+        label: { type: string, minLength: 1, maxLength: 120 }
+        availability: { type: string, enum: [AVAILABLE, UNAVAILABLE, COMPLETED] }
+        unavailableReason: { type: string, maxLength: 240 }
+
+    ConversationCardBaseV1:
+      type: object
+      required: [schemaVersion, cardId, cardType, owner, state, effect, commands]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/ConversationSchemaVersion" }
+        cardId: { type: string, format: uuid }
+        cardType: { type: string, enum: [ACTION, PLAN, DELIVERABLE, DECISION] }
+        owner: { type: string, enum: [CUSTOMER, PROFESSIONAL, SHARED] }
+        state: { type: string, minLength: 1, maxLength: 64 }
+        effect: { type: string, minLength: 1, maxLength: 500 }
+        commands:
+          type: array
+          maxItems: 8
+          items: { $ref: "#/components/schemas/ConversationCardCommandV1" }
+
+    ActionCardV1:
+      allOf:
+        - $ref: "#/components/schemas/ConversationCardBaseV1"
+        - type: object
+          required: [goal]
+          properties:
+            cardType: { type: string, const: ACTION }
+            goal: { type: string, minLength: 1, maxLength: 240 }
+            dueAt: { type: string, format: date-time }
+
+    PlanCardV1:
+      allOf:
+        - $ref: "#/components/schemas/ConversationCardBaseV1"
+        - type: object
+          required: [goal, progressState]
+          properties:
+            cardType: { type: string, const: PLAN }
+            goal: { type: string, minLength: 1, maxLength: 240 }
+            progressState: { type: string, minLength: 1, maxLength: 64 }
+
+    DeliverableCardV1:
+      allOf:
+        - $ref: "#/components/schemas/ConversationCardBaseV1"
+        - type: object
+          required: [title, deliverableState]
+          properties:
+            cardType: { type: string, const: DELIVERABLE }
+            title: { type: string, minLength: 1, maxLength: 240 }
+            deliverableState: { type: string, minLength: 1, maxLength: 64 }
+
+    DecisionAlternativeV1:
+      type: object
+      additionalProperties: false
+      required: [alternativeId, label, effect]
+      properties:
+        alternativeId: { type: string, minLength: 1, maxLength: 64 }
+        label: { type: string, minLength: 1, maxLength: 120 }
+        effect: { type: string, minLength: 1, maxLength: 500 }
+
+    DecisionCardV1:
+      allOf:
+        - $ref: "#/components/schemas/ConversationCardBaseV1"
+        - type: object
+          required: [decisionState, authorityImpact, alternatives]
+          properties:
+            cardType: { type: string, const: DECISION }
+            decisionState: { type: string, minLength: 1, maxLength: 64 }
+            authorityImpact: { type: string, minLength: 1, maxLength: 500 }
+            alternatives:
+              type: array
+              minItems: 1
+              maxItems: 8
+              items: { $ref: "#/components/schemas/DecisionAlternativeV1" }
+
+    GovernedConversationCardV1:
+      oneOf:
+        - $ref: "#/components/schemas/ActionCardV1"
+        - $ref: "#/components/schemas/PlanCardV1"
+        - $ref: "#/components/schemas/DeliverableCardV1"
+        - $ref: "#/components/schemas/DecisionCardV1"
+      discriminator:
+        propertyName: cardType
+        mapping:
+          ACTION: "#/components/schemas/ActionCardV1"
+          PLAN: "#/components/schemas/PlanCardV1"
+          DELIVERABLE: "#/components/schemas/DeliverableCardV1"
+          DECISION: "#/components/schemas/DecisionCardV1"
+
+    ConversationMessageV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, messageId, relationshipId, sequence, actor, channel, content, cards, deliveryState, processingState, evidenceState, partial, acceptedAt]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/ConversationSchemaVersion" }
+        messageId: { type: string, format: uuid }
+        relationshipId: { type: string, format: uuid }
+        sequence: { type: integer, format: int64, minimum: 1 }
+        actor: { $ref: "#/components/schemas/ConversationActorType" }
+        channel: { $ref: "#/components/schemas/ConversationChannel" }
+        content:
+          type: array
+          minItems: 1
+          items: { $ref: "#/components/schemas/ConversationTextBlockV1" }
+        cards:
+          type: array
+          items: { $ref: "#/components/schemas/GovernedConversationCardV1" }
+        deliveryState: { $ref: "#/components/schemas/ConversationDeliveryState" }
+        processingState: { $ref: "#/components/schemas/ConversationProcessingState" }
+        evidenceState: { $ref: "#/components/schemas/ConversationEvidenceState" }
+        evidenceRecordId: { type: string, format: uuid }
+        partial: { type: boolean }
+        completionReason: { $ref: "#/components/schemas/ConversationCompletionReason" }
+        retryOfMessageId: { type: string, format: uuid }
+        clientMessageId: { type: string, format: uuid }
+        acceptedAt: { type: string, format: date-time }
+        completedAt: { type: string, format: date-time }
+
+    ConversationTimelinePageV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, relationshipId, items, authoritativeCursor, hasMore, serverTime]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/ConversationSchemaVersion" }
+        relationshipId: { type: string, format: uuid }
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/ConversationMessageV1" }
+        authoritativeCursor: { type: string }
+        nextCursor: { type: string }
+        unreadBoundaryMessageId: { type: string, format: uuid }
+        hasMore: { type: boolean }
+        serverTime: { type: string, format: date-time }
+
+    SendConversationMessageRequestV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, clientMessageId, content, locale]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/ConversationSchemaVersion" }
+        clientMessageId: { type: string, format: uuid }
+        content:
+          type: array
+          minItems: 1
+          maxItems: 1
+          items: { $ref: "#/components/schemas/ConversationTextBlockV1" }
+        locale: { type: string, minLength: 2, maxLength: 35 }
+        expectedCursor: { type: string, minLength: 16, maxLength: 2048 }
+
+    ConversationSubmissionV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, outcome, message, authoritativeCursor, replayed]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/ConversationSchemaVersion" }
+        outcome: { type: string, enum: [ACCEPTED, REPLAYED, FAILED, UNRESOLVED] }
+        message: { $ref: "#/components/schemas/ConversationMessageV1" }
+        executionId: { type: string, format: uuid }
+        authoritativeCursor: { type: string }
+        replayed: { type: boolean }
+
+    UpdateConversationReadPositionRequestV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, lastVisibleMessageId, authoritativeCursor]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/ConversationSchemaVersion" }
+        lastVisibleMessageId: { type: string, format: uuid }
+        authoritativeCursor: { type: string, minLength: 16, maxLength: 2048 }
+
+    ConversationReadPositionV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, relationshipId, lastReadMessageId, updatedAt]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/ConversationSchemaVersion" }
+        relationshipId: { type: string, format: uuid }
+        lastReadMessageId: { type: string, format: uuid }
+        updatedAt: { type: string, format: date-time }
+
+    ConversationExecutionStatusV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, executionId, state, partial, updatedAt]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/ConversationSchemaVersion" }
+        executionId: { type: string, format: uuid }
+        state: { $ref: "#/components/schemas/ConversationProcessingState" }
+        partial: { type: boolean }
+        completionReason: { $ref: "#/components/schemas/ConversationCompletionReason" }
+        updatedAt: { type: string, format: date-time }
+
+    ConversationStreamEventType:
+      type: string
+      enum: [message.accepted, processing.started, response.delta, card.upserted, message.completed, message.failed, stream.cancelled, stop.applied, reconciliation.required, heartbeat]
+
+    ConversationDeltaPayloadV1:
+      type: object
+      additionalProperties: false
+      required: [contentIndex, appendText, partial]
+      properties:
+        contentIndex: { type: integer, minimum: 0 }
+        appendText: { type: string, maxLength: 8000 }
+        partial: { type: boolean, const: true }
+
+    ConversationMessagePayloadV1:
+      type: object
+      additionalProperties: false
+      required: [message]
+      properties:
+        message: { $ref: "#/components/schemas/ConversationMessageV1" }
+
+    ConversationCardPayloadV1:
+      type: object
+      additionalProperties: false
+      required: [card]
+      properties:
+        card: { $ref: "#/components/schemas/GovernedConversationCardV1" }
+
+    ConversationFailurePayloadV1:
+      type: object
+      additionalProperties: false
+      required: [code, retryable, partial]
+      properties:
+        code: { type: string, minLength: 1, maxLength: 64 }
+        retryable: { type: boolean }
+        partial: { type: boolean }
+
+    ConversationReconciliationPayloadV1:
+      type: object
+      additionalProperties: false
+      required: [reason, authoritativeCursor]
+      properties:
+        reason: { type: string, enum: [EVENT_CURSOR_EXPIRED, EVENT_GAP, STATE_CONFLICT] }
+        authoritativeCursor: { type: string }
+
+    ConversationHeartbeatPayloadV1:
+      type: object
+      additionalProperties: false
+      required: [serverTime]
+      properties:
+        serverTime: { type: string, format: date-time }
+
+    ConversationStreamEventV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, eventId, eventType, relationshipId, sequence, occurredAt, data]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/ConversationSchemaVersion" }
+        eventId: { type: string, minLength: 1, maxLength: 256 }
+        eventType: { $ref: "#/components/schemas/ConversationStreamEventType" }
+        relationshipId: { type: string, format: uuid }
+        sequence: { type: integer, format: int64, minimum: 1 }
+        messageId: { type: string, format: uuid }
+        executionId: { type: string, format: uuid }
+        occurredAt: { type: string, format: date-time }
+        data:
+          oneOf:
+            - $ref: "#/components/schemas/ConversationDeltaPayloadV1"
+            - $ref: "#/components/schemas/ConversationMessagePayloadV1"
+            - $ref: "#/components/schemas/ConversationCardPayloadV1"
+            - $ref: "#/components/schemas/ConversationFailurePayloadV1"
+            - $ref: "#/components/schemas/ConversationReconciliationPayloadV1"
+            - $ref: "#/components/schemas/ConversationHeartbeatPayloadV1"
+
+    ConversationProblemCode:
+      type: string
+      enum: [CONVERSATION_REQUEST_INVALID, CONVERSATION_SESSION_REQUIRED, CONVERSATION_NOT_ACCESSIBLE, CONVERSATION_IDEMPOTENCY_CONFLICT, CONVERSATION_STATE_CONFLICT, CONVERSATION_CURSOR_EXPIRED, CONVERSATION_RETRY_NOT_ALLOWED, CONVERSATION_STOPPED, CONVERSATION_RATE_LIMITED, CONVERSATION_EXECUTION_UNAVAILABLE, CONSTITUTIONAL_ENGINE_UNAVAILABLE]
+
+    ConversationProblemDetail:
+      type: object
+      additionalProperties: false
+      description: Privacy-safe RFC 9457 problem; submitted content and internal dependency detail are never echoed
+      required: [type, title, status, code, correlationId]
+      properties:
+        type: { type: string, format: uri }
+        title: { type: string }
+        status: { type: integer }
+        code: { $ref: "#/components/schemas/ConversationProblemCode" }
+        correlationId: { type: string, format: uuid }
+        retryAfterSeconds: { type: integer, minimum: 1 }
 
     # ── Conversational Configuration (C-039) ─────────────────────────────────
 
