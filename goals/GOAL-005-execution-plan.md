@@ -1116,3 +1116,56 @@ The decision must preserve BP as the sole ordinary public F4 facade, WBE commerc
 - no provider activation, F5-F8, self-review, self-merge, or retrospective authorization;
 - no change to BP, WBE, PR, CE, web, or domain ownership beyond the workload-authentication decision; and
 - no weakening of Emergency Stop, Evidence First, tenant/relationship isolation, or private-service boundaries.
+
+---
+
+## Registrant Acknowledgement Record — Amendment 4
+
+| Attestation field | Value |
+|---|---|
+| `institution_id` | INST-001 |
+| `goal_id` | GOAL-005 |
+| `record_id` | ACK-GOAL-005-INST-001-05 |
+| `record_type` | Acknowledgement Record |
+| `produced_at` | 2026-08-10T15:10:35+00:00 |
+| Acknowledged plan | GEP-GOAL-005-INST-013-05 |
+| Registrant | Yogesh Khandge / Founder |
+| Decision | ACKNOWLEDGED — ADR-046 architecture, independent reviews, and ADR closure only |
+| Exact quoted acknowledgement | "I acknowledge GEP-GOAL-005-INST-013-05 and authorize INST-013 to issue GO Authorizations only for ADR-046 workload-identity and service-authentication architecture, independent Business and Constitutional reviews, and ADR closure. This does not authorize F4 implementation, OpenAPI changes, generated clients, policy defaults, provider activation, or deployment." |
+
+R-065 / `CR-GOAL-005-INST-002-07` satisfies GEOM R2-03 condition 1, with CA-F4-A4-01 through CA-F4-A4-06 binding. This record satisfies condition 2. Amendment 4 GOAs may now issue in dependency order; implementation and deployment remain unauthorized.
+
+## Amendment 4 Order 1 Authorization Record
+
+### GOA-GOAL-005-INST-004-09
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GOA-GOAL-005-INST-004-09 |
+| `record_type` | Authorization Record |
+| `authorization_id` | GOA-GOAL-005-INST-004-09 |
+| Authorized Institution | INST-004 — Enterprise Architect |
+| Contribution scope | Author ADR-046 workload-identity and service-authentication architecture for BP-to-WBE, BP-to-PR, and BP-to-professional/domain-adapter traffic; publish G-10-attested `CR-GOAL-005-INST-004-10` linked to this GOA and its Acceptance Record plus `LR-GOAL-005-INST-004-06` before evidence validation |
+| Evidence specification | Decide every item in the Amendment 4 Architecture Evidence Specification, preserve its ownership boundaries and exact ADR-046 output boundary, and state implementation evidence obligations without producing executable artifacts |
+| Participation Window | 2 constitutional sessions after valid acceptance |
+| Independence constraint | May author ADR-046 but may not approve or accept its own ADR, perform either independent review, or implement the decision |
+| Excluded authority | Existing-ADR amendment, source, tests, migrations, canonical OpenAPI changes, generated clients, builds, implementation, policy defaults, provider activation, deployment, F5-F8, self-review, and self-merge |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-10T15:10:36+00:00 |
+
+## Amendment 4 Order 1 Acceptance Record
+
+### ACC-GOAL-005-INST-004-09
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-004 |
+| `goal_id` | GOAL-005 |
+| `record_id` | ACC-GOAL-005-INST-004-09 |
+| `record_type` | Acceptance Record |
+| `authorization_id` | GOA-GOAL-005-INST-004-09 |
+| `acceptance_timestamp` | 2026-08-10T15:10:37+00:00 |
+| Decision | ACCEPTED |
+| Contribution scope accepted | ADR-046 architecture decision plus attested Contribution and Learning Records only; no review, implementation, policy-default, provider-activation, or deployment authority |
