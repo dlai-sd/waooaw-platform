@@ -1039,3 +1039,80 @@ R-062 / CR-GOAL-005-INST-002-05 satisfies GEOM R2-03 condition 1. This record sa
 | `acceptance_timestamp` | 2026-08-10T14:39:02+00:00 |
 | Decision | ACCEPTED |
 | Contribution scope accepted | Fresh independent F4 integrated technical review only; no repair, implementation authorization, or deployment authority |
+
+---
+
+## Amendment 4 — WC-034 F4 Workload-Authentication ADR Closure
+
+| Attestation field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GEP-GOAL-005-INST-013-05 |
+| `record_type` | Execution Plan |
+| `produced_at` | 2026-08-10T14:54:58+00:00 |
+| Status | PROPOSED — CA Readiness Review and exact Registrant acknowledgement required before any Amendment 4 GOA |
+
+### Purpose And Trigger
+
+R-064 / `CR-GOAL-005-INST-004-09` condition EA-F4-01 found that the accepted ADR set does not decide workload identity and mutual authentication for BP-to-WBE, BP-to-PR, and BP-to-professional/domain-adapter traffic. Amendment 3 is complete and cannot be expanded retrospectively. This prospective Collaboration Amendment authorizes only the architecture decision and independent reviews needed to close that condition before any G-F4-12 implementation amendment.
+
+The authorized architecture output is `ADR-046-workload-identity-and-service-authentication.md`. If the architecture process instead proposes amending an existing ADR, INST-013 must first publish a prospective Execution Plan amendment identifying that ADR and obtain fresh CA readiness plus a new exact Registrant acknowledgement. Amendment 4 must not be stretched to authorize another architecture instrument or silently generalize ADR-007 or ADR-014.
+
+### Ordered Contributions
+
+| Order | Contribution | Dependency | Institution | Completion evidence |
+|---:|---|---|---|---|
+| 1 | Workload-authentication architecture decision | CA readiness, exact Registrant acknowledgement, valid GOA and later acceptance | INST-004 — Enterprise Architect | ADR-046 plus attested Contribution Record and Learning Record |
+| 2 | Business-driver and capability review | Order 1 Contribution and Learning Records published | INST-003 — Business Architect | Independent review Contribution Record with explicit decision/conditions plus Learning Record |
+| 3 | Constitutional and claim-traceability review | Orders 1-2 Contribution and Learning Records published | Fresh INST-002 — Constitutional Analyst | Independent review Contribution Record with explicit decision/conditions plus Learning Record |
+| 4 | ADR acceptance and checkpoint | Both reviews APPROVED and conditions satisfied | INST-013 records closure; ADR status follows accepted review evidence | Accepted ADR status and reconciled PROJECT_STATE checkpoint |
+
+### Architecture Evidence Specification — INST-004
+
+The architecture contribution must decide, for BP-to-WBE, BP-to-PR, and BP-to-professional/domain-adapter traffic:
+
+1. workload identity source and trust root in development, CI, and cloud;
+2. mutual authentication protocol and transport protection;
+3. intended audience, caller identity, delegated actor/tenant/relationship purpose, operation, and version validation;
+4. credential issuance, storage, rotation, revocation, expiry, and compromise response;
+5. fail-closed behavior, privacy-safe errors, observability, and Emergency Stop independence;
+6. environment parity and explicitly permitted differences without development bypass becoming production behavior;
+7. least privilege, confused-deputy resistance, replay/idempotency interaction, and cross-tenant denial;
+8. compatibility and migration impact for existing BP, WBE, PR, CE, and domain-adapter contracts; and
+9. alternatives, tradeoffs, rejected options, ADR impact, and implementation evidence obligations.
+
+The decision must preserve BP as the sole ordinary public F4 facade, WBE commercial truth, PR execution truth, CE constitutional validation/evidence authority, private domain adapters, and zero browser access to internal services or ledgers.
+
+### Participation Windows And Independence
+
+| Institution | Participation Window | Independence constraint |
+|---|---|---|
+| INST-004 Enterprise Architect | 2 constitutional sessions after valid acceptance | Authors the architecture decision; may not approve its own ADR or implement it |
+| INST-003 Business Architect | 1 constitutional session after its valid acceptance | Reviews business-driver/capability coverage only; may not edit the ADR or approve implementation |
+| INST-002 Constitutional Analyst | 1 constitutional session after its valid acceptance | Fresh context distinct from Amendment 4 readiness review; may not edit the ADR or replace INST-003 review |
+
+### Authorization Rules
+
+1. No Amendment 4 GOA may issue until a fresh CA Readiness Review is APPROVED or APPROVED WITH CONDITIONS that are satisfied and the Registrant records the exact acknowledgement below.
+2. Every acceptance timestamp must be later than its GOA issuance timestamp.
+3. An Order N+1 GOA may issue only after every required Order N Contribution Record is published.
+4. The INST-004 author may not review or accept its own ADR.
+5. Every Order 1-3 participant must publish a G-10-attested Contribution Record linked to its GOA and Acceptance Record and a Learning Record before evidence validation or closure. Review records must state an explicit decision and exact conditions.
+6. ADR status may become Accepted only after both independent reviews approve and every review condition is satisfied.
+7. INST-013 closure is mechanical: it may verify published approvals, record ADR status, and update the checkpoint, but may not author, repair, accept, or self-review ADR-046.
+8. ADR acceptance closes only EA-F4-01. It does not close executable G-F4-10, resolve F4-POL-01 through F4-POL-06, or authorize G-F4-12 or G-F4-13.
+9. A separate later implementation amendment requires fresh CA readiness, a separate exact Registrant acknowledgement, a valid INST-010 GOA, and later acceptance.
+
+### Required Registrant Acknowledgement
+
+> "I acknowledge GEP-GOAL-005-INST-013-05 and authorize INST-013 to issue GO Authorizations only for ADR-046 workload-identity and service-authentication architecture, independent Business and Constitutional reviews, and ADR closure. This does not authorize F4 implementation, OpenAPI changes, generated clients, policy defaults, provider activation, or deployment."
+
+### Explicit Exclusions
+
+- no source, tests, migrations, canonical OpenAPI edits, generated clients, builds, implementation, or deployment;
+- no G-F4-10 executable evidence and no G-F4-12 or G-F4-13 authority;
+- no resolution or default for F4-POL-01 through F4-POL-06;
+- no provider activation, F5-F8, self-review, self-merge, or retrospective authorization;
+- no change to BP, WBE, PR, CE, web, or domain ownership beyond the workload-authentication decision; and
+- no weakening of Emergency Stop, Evidence First, tenant/relationship isolation, or private-service boundaries.

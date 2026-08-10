@@ -25,6 +25,7 @@
 | Amendment 3 Order 5 | DONE — CR-GOAL-005-INST-005-09 defines the complete future parse/reference, deterministic generation, strict TypeScript, forbidden-surface, fixture, acceptance, and provenance evidence contract without executable artifacts |
 | Amendment 3 Order 6 | CONDITIONALLY APPROVED — R-063 / CR-GOAL-005-INST-002-06 and R-064 / CR-GOAL-005-INST-004-09 complete fresh G-F4-11 review contributions; all review conditions remain mandatory |
 | Workload-authentication ADR condition | BLOCKED — before any G-F4-12 implementation amendment, an accepted ADR or amendment must define BP-to-WBE, BP-to-PR, and BP-to-domain-adapter workload identity/mutual authentication across development, CI, and cloud |
+| GEP-GOAL-005-INST-013-05 Amendment 4 | CA READY — R-065 / CR-GOAL-005-INST-002-07 APPROVED WITH CONDITIONS and all conditions incorporated; exact Founder acknowledgement remains required before any ADR-046 GOA; no implementation authority |
 | F4 implementation | BLOCKED — no `src/` or `web/` implementation, generated client, deployment, or F5-F8 authority in this architecture session |
 
 ### Decision Space and Constitutional Obligations
