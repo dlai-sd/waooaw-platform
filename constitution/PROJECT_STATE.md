@@ -18,6 +18,7 @@
 | Autonomous pipeline grooming | DONE — PR #252 merged to `main` as `5c33ea9`; five tasks, C-086 simulations, stack gates, service boundaries, and deterministic F3 generation gate accepted |
 | Autonomous pipeline dispatch | IN PROGRESS — fresh `ib/014/wc034-f3-implementation` branch; C-086, runner integrity, and fail-fast pass; first WC034-08 attempt rejected before accepted application output because non-Python tasks were routed through Python-only UDCP |
 | Generic pipeline correction | DONE — non-Python UDCP tasks use the stack-aware generator, rejected outputs roll back, and prior-chain completions cannot commit failed current output; focused Docker regressions 3/3 PASS |
+| Interactive execution mode correction | DONE — an accidental batch runner invocation returned PARTIAL after INR 319.1289 with zero accepted implementation tasks; batch-only commits and duplicate Goal Issue #253 were reconciled; further WC-034 work uses session-level subagents occupying contributing Institutions, not the GitHub Actions batch pipeline |
 
 ### Decision Space and Constitutional Obligations
 
@@ -25,7 +26,7 @@ INST-013 may amend the GOAL-005 execution choreography, obtain independent CA re
 
 ### Authorization and Dispatch Status
 
-PR #251 supplies the authenticated Registrant acknowledgement of the exact Amendment 2 execution envelope. R-060 condition 1 and both GEOM R2-03 conditions are satisfied. INST-013 issued GOA-GOAL-005-INST-010-02, and INST-010 accepted one second later. PR #252 then supplied the valid pipeline entry; C-086, runner integrity, and fail-fast preflight pass. INST-013 dispatch is complete and INST-010 is executing the authorized contribution. Founder involvement returns to implementation PR review, approval, and merge unless a genuine constitutional blocker arises.
+PR #251 supplies the authenticated Registrant acknowledgement of the exact Amendment 2 execution envelope. R-060 condition 1 and both GEOM R2-03 conditions are satisfied. INST-013 issued GOA-GOAL-005-INST-010-02, and INST-010 accepted one second later. PR #252 then supplied the valid implementation entry; C-086, runner integrity, and fail-fast preflight pass. INST-013 coordinates direct subagent handoffs while INST-010 and other authorized contributing Institutions execute within their Decision Spaces. The batch sprint runner is not used for this interactive session. Founder involvement returns to implementation PR review, approval, and merge unless a genuine constitutional blocker arises.
 
 ### Preserved Boundaries
 
