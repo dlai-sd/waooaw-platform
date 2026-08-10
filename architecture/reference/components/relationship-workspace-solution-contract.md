@@ -12,6 +12,28 @@
 | Status | COMPLETE |
 | Contribution boundary | Solution-level BP public and BP-internal contracts, interaction sequencing, versioning, errors, idempotency, reconciliation, generated-client boundary, acceptance trace, and gate evidence; no OpenAPI modification, data schema, implementation, deployment, provider activation, or F5-F8 decision |
 
+## Post-Authorization Re-attestation
+
+| Attestation field | Value |
+|---|---|
+| `institution_id` | INST-005 |
+| `goal_id` | GOAL-005 |
+| `record_id` | CR-GOAL-005-INST-005-05 |
+| `record_type` | Contribution Record |
+| `produced_at` | 2026-08-10T13:44:57+00:00 |
+| `authorization_id` | GOA-GOAL-005-INST-005-03 |
+| `acceptance_record` | ACC-GOAL-005-INST-005-03 |
+| Re-attests | CR-GOAL-005-INST-005-04 candidate solution contract |
+| Gate contribution | G-F4-03 — Solution API contracts |
+| Order 3 decision | RE-ATTESTED — G-F4-03 contribution evidence SATISFIED within INST-005 Decision Space |
+| Authority boundary | Solution contracts only; no DMA evidence, G-F4-09, canonical OpenAPI edit, generated client, source, test, migration, implementation, deployment, F5-F8, self-review, or integrated-review authority |
+
+After `GOA-GOAL-005-INST-005-03` was issued and `ACC-GOAL-005-INST-005-03` was recorded at `2026-08-10T13:41:01+00:00`, INST-005 independently re-opened this candidate against Amendment 3 `GEP-GOAL-005-INST-013-04`, R-062 / `CR-GOAL-005-INST-002-05`, the published Order 1 records `CR-GOAL-005-INST-003-04` and `CR-GOAL-005-INST-011-05`, and the published Order 2 records `CR-GOAL-005-INST-004-08`, `CR-GOAL-005-INST-006-04`, and `CR-GOAL-005-INST-007-05`. Repository search found no Contribution Record identifier collision for `CR-GOAL-005-INST-005-05`.
+
+INST-005 adopts Sections 1-14 without substantive amendment and confirms that they satisfy the Amendment 3 evidence specification for G-F4-03: public and internal contract families; BP, WBE, PR, domain-adapter, and CE ownership-preserving sequences; generated-client boundaries; versions and freshness; actor, tenant, and relationship authorization; idempotency and expected-version controls; privacy-safe errors; and deterministic partial, unknown, and reconciliation semantics. Historical gate-state statements in the adopted candidate describe its pre-authorization state; this re-attestation is the controlling post-acceptance contribution decision for G-F4-03 only.
+
+This record does not close G-F4-07 or G-F4-08; their separate logical owner acceptances are `CR-GOAL-005-INST-005-06` and `CR-GOAL-005-INST-005-07`. It does not supply DMA domain evidence or close G-F4-09, specify G-F4-10 compatibility evidence, perform G-F4-11 review, or resolve any Founder policy. Fresh INST-004 review remains required before the Order 3 package can be treated as independently accepted.
+
 ## 1. Purpose And Ownership
 
 This contract decomposes the approved F4 business meanings and Enterprise Architecture ownership into implementable service contracts. It introduces no deployable component and does not alter the reference architecture.
