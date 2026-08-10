@@ -10,7 +10,8 @@
 |---|---|
 | PR #255 post-merge reconciliation verified | DONE — merged to `main` as `e2be32e`; WC-034 F3 sprint state is DONE |
 | INST-013 occupancy and F4 authorization boundary | DONE — Epoch 1; G5 CLEAR; architecture/dependency closure only; current GOA excludes F4-F8, implementation, provider activation, and deployment |
-| F4 owner contribution routing | IN PROGRESS — Plan/Needs your attention, relationship governance, approval/evidence, and Usage & budget projection owners must publish contracts before solution closure |
+| F4 business semantics contribution | DONE — CR-GOAL-005-INST-003-03 defines customer outcomes, authoritative attention ordering, consequence classes, minimum release composition, and acceptance semantics without choosing architecture or interfaces |
+| F4 owner contribution routing | IN PROGRESS — Enterprise Architecture must assign Plan/Needs your attention, relationship governance, approval/evidence, results, and Usage & budget projection ownership before solution closure |
 | F4 solution, data, security, and product reviews | PENDING — separate institutional contributions and independent review required |
 | GEP-GOAL-005-INST-013-04 Amendment 3 | PENDING — may reserve implementation authorization only after architecture gates close |
 | CA readiness and Registrant acknowledgement | PENDING — both GEOM R2-03 conditions required before any F4 GOA issuance |
