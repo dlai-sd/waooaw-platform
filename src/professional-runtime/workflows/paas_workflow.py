@@ -271,13 +271,16 @@ class PAASSessionWorkflow:
         self._terminate_reason = inp.reason
 
     @workflow.signal(name="EmergencyStop")
-    async def signal_emergency_stop(self, payload: EmergencyStopSignalPayload) -> None:
+    async def signal_emergency_stop(self, payload: EmergencyStopSignalPayload | None = None) -> None:
         """
         Emergency Stop signal handler (ADR-018).
         Transitions unconditionally to EMERGENCY_STOPPED.
         The run() loop detects this and halts immediately.
         """
-        self._emergency_stop_payload = payload
+        self._emergency_stop_payload = payload or EmergencyStopSignalPayload(
+            stopped_by="constitutional-engine",
+            reason="Emergency Stop",
+        )
         self._state = SessionState.EMERGENCY_STOPPED
 
     # -----------------------------------------------------------------------

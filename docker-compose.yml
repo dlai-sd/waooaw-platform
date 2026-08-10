@@ -293,6 +293,7 @@ services:
       ENVIRONMENT: development
       DATABASE_URL: "postgresql+asyncpg://runtime_app:${POSTGRES_PASSWORD}@postgres:5432/waooaw"
       CONSTITUTIONAL_ENGINE_ADDRESS: constitutional-engine:5002
+      BP_SERVICE_JWT_SECRET: ${BP_SERVICE_JWT_SECRET}
       AI_RUNTIME_URL: http://ai-runtime:5004
       BUSINESS_PLATFORM_URL: http://business-platform:5001
       TEMPORAL_ADDRESS: temporal:7233

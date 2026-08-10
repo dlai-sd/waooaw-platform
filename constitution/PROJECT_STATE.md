@@ -1,6 +1,6 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-08-10 (WC034-08 BP Conversation Core implementation validated; F3 implementation branch active)
+**Last Updated:** 2026-08-10 (WC034-09 PR Conversation Core implementation approved; F3 implementation branch active)
 
 ---
 
@@ -20,6 +20,7 @@
 | Generic pipeline correction | DONE — non-Python UDCP tasks use the stack-aware generator, rejected outputs roll back, and prior-chain completions cannot commit failed current output; focused Docker regressions 3/3 PASS |
 | Interactive execution mode correction | DONE — an accidental batch runner invocation returned PARTIAL after INR 319.1289 with zero accepted implementation tasks; batch-only commits and duplicate Goal Issue #253 were reconciled; further WC-034 work uses session-level subagents occupying contributing Institutions, not the GitHub Actions batch pipeline |
 | WC034-08 BP Conversation Core | DONE — six canonical BP OpenAPI 1.2.0 operations, durable tenant-isolated projections, request-hash idempotency, Evidence First ordering, privacy-safe errors, cancellation, and typed resumable SSE implemented; focused Docker tests 19/19 PASS; full BP regression 158/158 PASS; affected-file line coverage: controller 95.97%, service 91.77%, store 100% |
+| WC034-09 PR Conversation Core | DONE — BP-authenticated internal execution, CE fail-closed authorization, durable Temporal state/replay, idempotent cancellation, typed live SSE/heartbeat, canonical health/OpenAPI, and CE-confirmed Emergency Stop implemented; INST-005 APPROVED; focused PR tests 69/69 PASS; full PR regression 89/89 PASS; CE Emergency Stop tests 4/4 PASS; affected-module line-plus-branch coverage 93.22% with every affected module at least 90% |
 
 ### Decision Space and Constitutional Obligations
 
