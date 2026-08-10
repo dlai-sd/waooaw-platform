@@ -939,3 +939,37 @@ R-062 / CR-GOAL-005-INST-002-05 satisfies GEOM R2-03 condition 1. This record sa
 | `acceptance_timestamp` | 2026-08-10T14:00:29+00:00 |
 | Decision | ACCEPTED |
 | Contribution scope accepted | F4 DMA adapter-conformance validation after publication of the INST-003 record only |
+
+## Amendment 3 Order 5 Authorization Record
+
+### GOA-GOAL-005-INST-005-05
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GOA-GOAL-005-INST-005-05 |
+| `record_type` | Authorization Record |
+| `authorization_id` | GOA-GOAL-005-INST-005-05 |
+| Authorized Institution | INST-005 — Solution Architect |
+| Contribution scope | Define and attest the G-F4-10 canonical BP OpenAPI and generated-client compatibility evidence specification for the approved F4 package |
+| Evidence required | Required future OpenAPI paths/schemas inventory, reference and operation-ID validation, backward-compatible versioning, pinned deterministic generation, two-run hash comparison, strict TypeScript compile, forbidden-surface scan, fixture/contract outcomes, and acceptance trace |
+| Participation Window | 1 constitutional session after valid acceptance |
+| Excluded authority | Canonical OpenAPI edits, generated production clients, generator execution claimed as implementation evidence, source, tests, migrations, build artifacts, implementation, provider activation, deployment, F5-F8, integrated review, and self-review |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-10T14:24:53+00:00 |
+
+## Amendment 3 Order 5 Acceptance Record
+
+### ACC-GOAL-005-INST-005-05
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-005 |
+| `goal_id` | GOAL-005 |
+| `record_id` | ACC-GOAL-005-INST-005-05 |
+| `record_type` | Acceptance Record |
+| `authorization_id` | GOA-GOAL-005-INST-005-05 |
+| `acceptance_timestamp` | 2026-08-10T14:24:54+00:00 |
+| Decision | ACCEPTED |
+| Contribution scope accepted | G-F4-10 compatibility evidence specification only; no canonical contract edit, generation, implementation, or deployment |

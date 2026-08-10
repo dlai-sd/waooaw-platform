@@ -22,6 +22,7 @@
 | Amendment 3 Order 2 | DONE — CR-GOAL-005-INST-004-08 closes G-F4-02 contribution evidence; CR-GOAL-005-INST-006-04 closes G-F4-04; CR-GOAL-005-INST-007-05 closes G-F4-05; fresh G-F4-11 review contexts remain required |
 | Amendment 3 Order 3 | DONE — CR-GOAL-005-INST-005-05 closes G-F4-03 contribution evidence; CR-GOAL-005-INST-005-06 records logical BP owner acceptance for G-F4-07; CR-GOAL-005-INST-005-07 records logical WBE owner acceptance for G-F4-08; fresh review remains required |
 | Amendment 3 Order 4 | DONE — Product provenance, Business outcome validation, and Solution adapter conformance are published in dependency order; all seven DMA outcome families map losslessly without contaminating the generic workspace |
+| Amendment 3 Order 5 | AUTHORIZED — GOA-GOAL-005-INST-005-05 and ACC-GOAL-005-INST-005-05 permit the G-F4-10 compatibility evidence specification only; canonical OpenAPI edits and generated clients remain later implementation work |
 | F4 implementation | BLOCKED — no `src/` or `web/` implementation, generated client, deployment, or F5-F8 authority in this architecture session |
 
 ### Decision Space and Constitutional Obligations
