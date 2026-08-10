@@ -12,7 +12,9 @@
 | INST-013 occupancy and F4 authorization boundary | DONE — Epoch 1; G5 CLEAR; architecture/dependency closure only; current GOA excludes F4-F8, implementation, provider activation, and deployment |
 | F4 business semantics contribution | DONE — CR-GOAL-005-INST-003-03 defines customer outcomes, authoritative attention ordering, consequence classes, minimum release composition, and acceptance semantics without choosing architecture or interfaces |
 | F4 Enterprise Architecture contribution | DONE — CR-GOAL-005-INST-004-07 assigns BP public governance projection, WBE commercial truth, CE constitutional evidence, PR execution truth, domain adapter, and web presentation boundaries without a new deployable component |
-| F4 solution, data, security, and product contributions | IN PROGRESS — separate INST-005, INST-006, INST-007, and INST-011 artifacts must close G-F4-03 through G-F4-06 before integrated review |
+| F4 solution, data, security, and product contributions | DONE — CR-GOAL-005-INST-005-04, CR-GOAL-005-INST-006-03, CR-GOAL-005-INST-007-04, and CR-GOAL-005-INST-011-04 complete G-F4-03 through G-F4-06 contribution evidence; integrated review remains required |
+| F4 BP, WBE, and professional/domain owner contracts | PENDING — G-F4-07 through G-F4-09 require owner acceptance; Solution contribution does not unilaterally close them |
+| F4 generated-client compatibility and independent review | PENDING — G-F4-10 requires canonical OpenAPI/generation evidence and G-F4-11 requires a fresh C-065-compliant integrated review |
 | GEP-GOAL-005-INST-013-04 Amendment 3 | PENDING — may reserve implementation authorization only after architecture gates close |
 | CA readiness and Registrant acknowledgement | PENDING — both GEOM R2-03 conditions required before any F4 GOA issuance |
 | F4 implementation | BLOCKED — no `src/` or `web/` implementation, generated client, deployment, or F5-F8 authority in this architecture session |
