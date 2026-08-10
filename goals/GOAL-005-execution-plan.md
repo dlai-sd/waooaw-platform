@@ -809,3 +809,37 @@ R-062 / CR-GOAL-005-INST-002-05 satisfies GEOM R2-03 condition 1. This record sa
 | `acceptance_timestamp` | 2026-08-10T13:33:48+00:00 |
 | Decision | ACCEPTED |
 | Contribution scope accepted | F4 security-contract re-attestation only |
+
+## Amendment 3 Order 3 Authorization Record
+
+### GOA-GOAL-005-INST-005-03
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GOA-GOAL-005-INST-005-03 |
+| `record_type` | Authorization Record |
+| `authorization_id` | GOA-GOAL-005-INST-005-03 |
+| Authorized Institution | INST-005 — Solution Architect |
+| Contribution scope | Re-open and attest the F4 solution contract; author and attest logical BP and WBE component-owner contracts for G-F4-03, G-F4-07, and G-F4-08 |
+| Evidence required | Public/internal contract families, BP relationship-governance ownership, WBE commercial-truth ownership, versions, freshness, idempotency, reconciliation, failure semantics, service boundaries, owner acceptance, and future compatibility evidence specification |
+| Participation Window | 3 constitutional sessions after valid acceptance |
+| Excluded authority | DMA domain evidence, canonical OpenAPI edits, generated production clients, source, tests, migrations, implementation, deployment, F5-F8, integrated review, and self-review |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-10T13:41:00+00:00 |
+
+## Amendment 3 Order 3 Acceptance Record
+
+### ACC-GOAL-005-INST-005-03
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-005 |
+| `goal_id` | GOAL-005 |
+| `record_id` | ACC-GOAL-005-INST-005-03 |
+| `record_type` | Acceptance Record |
+| `authorization_id` | GOA-GOAL-005-INST-005-03 |
+| `acceptance_timestamp` | 2026-08-10T13:41:01+00:00 |
+| Decision | ACCEPTED |
+| Contribution scope accepted | F4 solution re-attestation and logical BP/WBE owner-contract records only |
