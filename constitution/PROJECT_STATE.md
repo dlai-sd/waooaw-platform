@@ -26,7 +26,7 @@
 | Amendment 3 Order 6 | CONDITIONALLY APPROVED — R-063 / CR-GOAL-005-INST-002-06 and R-064 / CR-GOAL-005-INST-004-09 complete fresh G-F4-11 review contributions; all review conditions remain mandatory |
 | Workload-authentication ADR condition | BLOCKED — before any G-F4-12 implementation amendment, an accepted ADR or amendment must define BP-to-WBE, BP-to-PR, and BP-to-domain-adapter workload identity/mutual authentication across development, CI, and cloud |
 | GEP-GOAL-005-INST-013-05 Amendment 4 | ACTIVE — Order 1 published ADR-046 PROPOSED, CR-GOAL-005-INST-004-10, and LR-GOAL-005-INST-004-06; independent INST-003 Business review is next, followed by fresh INST-002 review; no implementation authority |
-| Amendment 4 Order 2 | AUTHORIZED — GOA-GOAL-005-INST-003-05 and ACC-GOAL-005-INST-003-05 permit independent Business review only; CR-GOAL-005-INST-003-06 and LR-GOAL-005-INST-003-02 are required before Order 3 |
+| Amendment 4 Order 2 | CONDITIONALLY APPROVED — R-066 / CR-GOAL-005-INST-003-06 and LR-GOAL-005-INST-003-02 are complete; ADR-046 must add end-to-end business-consequence evidence and migration/incident restoration evidence under prospective INST-004 repair authority before Order 3 |
 | F4 implementation | BLOCKED — no `src/` or `web/` implementation, generated client, deployment, or F5-F8 authority in this architecture session |
 
 ### Decision Space and Constitutional Obligations
