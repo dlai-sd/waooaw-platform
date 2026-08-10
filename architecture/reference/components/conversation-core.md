@@ -2,7 +2,7 @@
 
 **Work Contract:** WC-034 / IB-014 / F3 Conversation Core
 **Office:** INST-005 Solution Architect
-**Status:** REVIEW CANDIDATE — ARCHITECTURE AND DEPENDENCY CLOSURE ONLY
+**Status:** ARCHITECTURE APPROVED — R-059; IMPLEMENTATION AND DEPLOYMENT BLOCKED
 **Owning containers:** Business Platform (public conversation truth) and Professional Runtime (professional execution)
 **Constitutional basis:** C-001, C-002, C-005, C-023, C-026, C-032, C-042, C-049, C-059, C-063, C-065, C-071, C-076; ADR-002, ADR-003, ADR-005, ADR-015, ADR-017, ADR-018, ADR-031
 
@@ -187,17 +187,18 @@ Internal PR errors use the corresponding execution codes: `EXECUTION_REQUEST_INV
 
 | Gate | Requirement | Status after this contract |
 |---|---|---|
-| G-F3-01 | BP timeline/send/retry/read-position/cancel/SSE OpenAPI is canonical and generator-compatible | REVIEW CANDIDATE |
-| G-F3-02 | PR internal execution/cancel/SSE OpenAPI is canonical and explicitly internal | REVIEW CANDIDATE |
-| G-F3-03 | Message, card, event, idempotency, error, privacy, tenant, and reconciliation semantics are complete | REVIEW CANDIDATE |
-| G-F3-04 | All F3 acceptance IDs map to contract evidence | REVIEW CANDIDATE |
-| G-F3-05 | Independent INST-004 review approves the package | BLOCKED pending review |
-| G-F3-06 | OpenAPI validation and generated BP TypeScript client compatibility pass without manual patches | BLOCKED pending validation evidence |
-| G-F3-07 | C-095 determination: no new deployable platform component; existing BP and PR manifests remain controlling | READY — no skeleton required for a new service |
+| G-F3-01 | BP timeline/send/retry/read-position/cancel/SSE OpenAPI is canonical and generator-compatible | CLEARED — R-059 |
+| G-F3-02 | PR internal execution/cancel/SSE OpenAPI is canonical and explicitly internal | CLEARED — R-059 |
+| G-F3-03 | Message, card, event, idempotency, error, privacy, tenant, and reconciliation semantics are complete | CLEARED — R-059 |
+| G-F3-04 | All F3 acceptance IDs map to contract evidence | CLEARED — R-059 |
+| G-F3-05 | Independent INST-004 review approves the package | CLEARED — R-059 APPROVED |
+| G-F3-06 | OpenAPI validation and generated BP TypeScript client compatibility pass without manual patches | CLEARED — OpenAPI Generator 7.17.0 and strict TypeScript PASS; R-059 confirmed |
+| G-F3-07 | C-095 determination: no new deployable platform component; existing BP and PR manifests remain controlling | CLEARED — R-059; no skeleton required for a new service |
 | G-F3-08 | Selected F3 implementation session receives separate Founder/GO authorization | BLOCKED — this architecture session grants none |
 | G-F3-09 | Deployment authorization | BLOCKED — separate Founder action required |
 
-F3 implementation remains blocked until G-F3-01 through G-F3-08 are closed. F4-F8 remain outside this package regardless of F3 gate status.
+F3 implementation remains blocked until G-F3-08 is closed through separate authorization.
+Deployment remains blocked by G-F3-09. F4-F8 remain outside this package regardless of F3 gate status.
 
 ## 11. Definition of Done
 

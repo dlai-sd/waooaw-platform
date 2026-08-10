@@ -12,7 +12,7 @@
 | Canonical BP conversation and PR execution/stream contracts | DONE — BP OpenAPI 1.2.0 exposes timeline, send, retry, read-position, cancellation, and SSE; PR OpenAPI 1.1.0 exposes BP-only execution, cancellation, and SSE |
 | F3 acceptance and dependency gate mapping | DONE — versioned message/card/event schemas, idempotency, privacy, tenant isolation, errors, offline reconciliation, all F3 acceptance IDs, and G-F3-01 through G-F3-09 mapped in `conversation-core.md` |
 | Contract validation | DONE — BP/PR YAML and local refs pass; F3-filtered OpenAPI Generator 7.17.0 validation/generation pass; generated `ConversationApi.ts` strict TypeScript compile passes; no tenant/private runtime/provider surface; full BP validation retains only pre-existing non-F3 dangling refs |
-| Independent INST-004 review | pending |
+| Independent INST-004 review | DONE — R-059 APPROVED; G-F3-01 through G-F3-07 cleared; G-F3-08 implementation and G-F3-09 deployment remain blocked |
 | PROJECT_STATE closure | pending |
 | Commit, push, and PR | pending |
 
