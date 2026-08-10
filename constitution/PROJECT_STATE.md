@@ -1,6 +1,6 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-08-10 (PR #251 merged; F3 GOA and INST-010 acceptance valid; pipeline grooming in progress)
+**Last Updated:** 2026-08-10 (PR #252 merged; F3 implementation branch active; first dispatch pipeline correction validated)
 
 ---
 
@@ -15,7 +15,9 @@
 | CA Readiness Review | DONE — R-060 / CR-GOAL-005-INST-002-04 APPROVED WITH CONDITIONS; GEOM R2-03 condition 1 PASS |
 | Registrant acknowledgement | DONE — Founder approved and merged PR #251 as `da6824c`, whose sole authorization boundary identifies GEP-GOAL-005-INST-013-03 and GOA-GOAL-005-INST-010-02; `ACK-GOAL-005-INST-001-03` recorded at the merge timestamp |
 | GOA and INST-010 acceptance | DONE — `GOA-GOAL-005-INST-010-02` issued by INST-013 at 2026-08-10T03:35:03+00:00; `ACC-GOAL-005-INST-010-02` accepted at 2026-08-10T03:35:04+00:00; GEOM R2-12 temporal order passes |
-| Autonomous pipeline dispatch | IN PROGRESS — repository state is IMPLEMENTATION, halt false, failures zero; Issue #7 is stale; WC-034 F3 pipeline entry, C-086 simulation, and fail-fast preflight are pending |
+| Autonomous pipeline grooming | DONE — PR #252 merged to `main` as `5c33ea9`; five tasks, C-086 simulations, stack gates, service boundaries, and deterministic F3 generation gate accepted |
+| Autonomous pipeline dispatch | IN PROGRESS — fresh `ib/014/wc034-f3-implementation` branch; C-086, runner integrity, and fail-fast pass; first WC034-08 attempt rejected before accepted application output because non-Python tasks were routed through Python-only UDCP |
+| Generic pipeline correction | DONE — non-Python UDCP tasks use the stack-aware generator, rejected outputs roll back, and prior-chain completions cannot commit failed current output; focused Docker regressions 3/3 PASS |
 
 ### Decision Space and Constitutional Obligations
 
@@ -23,11 +25,11 @@ INST-013 may amend the GOAL-005 execution choreography, obtain independent CA re
 
 ### Authorization and Dispatch Status
 
-PR #251 approval and merge supplies the authenticated Registrant acknowledgement of the exact Amendment 2 execution envelope. R-060 condition 1 and both GEOM R2-03 conditions are satisfied. INST-013 issued GOA-GOAL-005-INST-010-02, and INST-010 accepted one second later. Production implementation may begin only after INST-013 creates a valid pipeline entry, produces a passing C-086 simulation, and clears fail-fast preflight. Founder involvement now returns to implementation PR review, approval, and merge unless a genuine constitutional blocker arises.
+PR #251 supplies the authenticated Registrant acknowledgement of the exact Amendment 2 execution envelope. R-060 condition 1 and both GEOM R2-03 conditions are satisfied. INST-013 issued GOA-GOAL-005-INST-010-02, and INST-010 accepted one second later. PR #252 then supplied the valid pipeline entry; C-086, runner integrity, and fail-fast preflight pass. INST-013 dispatch is complete and INST-010 is executing the authorized contribution. Founder involvement returns to implementation PR review, approval, and merge unless a genuine constitutional blocker arises.
 
 ### Preserved Boundaries
 
-- No application code, tests, web code, infrastructure, generated client, dependency installation, or build artifact is produced in this governance session.
+- The rejected first generation attempt produced no accepted application artifact; its three invalid stubs were removed before retry.
 - No `@ai-sdk/react`, attachments, voice, direct browser-to-PR/provider traffic, F4-F8, provider activation, or deployment is authorized.
 - `logs/blueprint_assurance_report.json` remains an unrelated local modification and is untouched.
 
@@ -2161,9 +2163,9 @@ Each sprint has EA spec gaps documented, SA corrections applied to WC files, and
 autonomous_halt: false
 platform_phase: IMPLEMENTATION
 current_sprint: WC-034
-sprint_status: READY
+sprint_status: IN_PROGRESS
 branch: ib/014/wc034-f3-implementation
-consecutive_failures: 0
+consecutive_failures: 1
 tasks_done:
 tasks_remaining:
   - WC034-08

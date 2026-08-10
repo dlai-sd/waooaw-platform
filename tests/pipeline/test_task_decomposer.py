@@ -565,6 +565,100 @@ class TestExecuteSubtaskChainLivePaths:
                     assert result is True
                     assert monitor["subtask_results"]["WC012-02b"]["result"] == "SUCCESS"
 
+    def test_non_python_udcp_uses_stack_aware_generator(self, tmp_path):
+        """UDCP is Python-only; other stacks use the existing file generator."""
+        monitor = self._make_monitor()
+        mock_runner = MagicMock(
+            get_branch_context=lambda: "",
+            git=MagicMock(return_value=MagicMock(returncode=0)),
+        )
+        subtask = SubTaskDef(
+            id="WC099-01a",
+            description="Generate C# service",
+            type="udcp",
+            stack="dotnet",
+            output_files=["src/service/Service.cs"],
+        )
+
+        generator = MagicMock(return_value=True)
+        with patch.dict(execute_subtask_chain.__globals__, {
+            "REPO_ROOT": tmp_path,
+            "_run_llm_subtask": generator,
+            "run_compile_gate": MagicMock(return_value=(True, "")),
+        }):
+            with patch.dict("sys.modules", {"autonomous_sprint_runner": mock_runner}):
+                        result = execute_subtask_chain(
+                            task_id="WC099-01",
+                            subtasks=[subtask],
+                            monitor_signal=monitor,
+                            infra_error_tasks=[],
+                        )
+
+        assert result is True
+        generator.assert_called_once()
+
+    def test_failed_subtask_rolls_back_declared_outputs(self, tmp_path):
+        """Rejected generation must restore existing files and remove new files."""
+        existing = tmp_path / "src/service/existing.py"
+        created = tmp_path / "src/service/created.py"
+        existing.parent.mkdir(parents=True)
+        existing.write_text("original\n")
+
+        def rejected_generation():
+            existing.write_text("rejected\n")
+            created.write_text("rejected\n")
+            return False
+
+        mock_runner = MagicMock(
+            get_branch_context=lambda: "",
+            git=MagicMock(return_value=MagicMock(returncode=0)),
+        )
+        subtask = SubTaskDef(
+            id="WC099-02a",
+            description="Rejected generation",
+            type="deterministic",
+            template_fn=rejected_generation,
+            output_files=["src/service/existing.py", "src/service/created.py"],
+        )
+
+        with patch.dict(execute_subtask_chain.__globals__, {"REPO_ROOT": tmp_path}):
+            with patch.dict("sys.modules", {"autonomous_sprint_runner": mock_runner}):
+                result = execute_subtask_chain(
+                    task_id="WC099-02",
+                    subtasks=[subtask],
+                    monitor_signal=self._make_monitor(),
+                    infra_error_tasks=[],
+                )
+
+        assert result is False
+        assert existing.read_text() == "original\n"
+        assert not created.exists()
+
+    def test_prior_completion_does_not_commit_failed_current_chain(self, tmp_path):
+        """Cross-task completion state cannot commit rejected current-task output."""
+        mock_git = MagicMock(return_value=MagicMock(returncode=1))
+        mock_runner = MagicMock(get_branch_context=lambda: "", git=mock_git)
+        subtask = SubTaskDef(
+            id="WC099-03a",
+            description="Rejected generation",
+            type="deterministic",
+            depends_on=["WC099-02a"],
+            template_fn=lambda: False,
+        )
+
+        with patch.dict(execute_subtask_chain.__globals__, {"REPO_ROOT": tmp_path}):
+            with patch.dict("sys.modules", {"autonomous_sprint_runner": mock_runner}):
+                result = execute_subtask_chain(
+                    task_id="WC099-03",
+                    subtasks=[subtask],
+                    monitor_signal=self._make_monitor(),
+                    infra_error_tasks=[],
+                    prior_completed=["WC099-02a"],
+                )
+
+        assert result is False
+        assert not any(call.args[0][0] == "add" for call in mock_git.call_args_list)
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # IB-023: File-by-file generation tests
@@ -1048,7 +1142,7 @@ class TestUDCPDispatch:
         mock_executor.execute_with_udcp = fake_udcp
 
         st = SubTaskDef(
-            id="WC027-01aa", description="interfaces", type="udcp",
+            id="WC027-01aa", description="interfaces", type="udcp", stack="python",
             constitutional_check="implement IMarkupEngine",
             model_hint="reasoning",
             max_tokens=8000,
@@ -1088,7 +1182,7 @@ class TestUDCPDispatch:
 
         check_text = "IMPLEMENT cost_floor() per constitutional floor"
         st = SubTaskDef(
-            id="WC027-01ba", description="markup logic", type="udcp",
+            id="WC027-01ba", description="markup logic", type="udcp", stack="python",
             constitutional_check=check_text,
             model_hint="reasoning",
             max_tokens=8000,
@@ -1137,7 +1231,7 @@ class TestUDCPDispatch:
         mock_executor.execute_with_udcp = fake_udcp
 
         st = SubTaskDef(
-            id="WC027-01ba", description="markup logic", type="udcp",
+            id="WC027-01ba", description="markup logic", type="udcp", stack="python",
             constitutional_check="base check",
             spec_sections={"work-contracts/WC-027.md": "full"},
             model_hint="reasoning",
@@ -1181,7 +1275,7 @@ class TestUDCPDispatch:
         mock_executor.execute_with_udcp = fake_udcp
 
         st = SubTaskDef(
-            id="WC027-01aa", description="interfaces", type="udcp",
+            id="WC027-01aa", description="interfaces", type="udcp", stack="python",
             constitutional_check="base check",
             spec_sections={"does-not-exist/WC-999.md": "full"},  # file does not exist
             model_hint="reasoning",
@@ -1228,7 +1322,7 @@ class TestUDCPDispatch:
         mock_executor.execute_with_udcp = fake_udcp
 
         st = SubTaskDef(
-            id="WC027-02a", description="api layer", type="udcp",
+            id="WC027-02a", description="api layer", type="udcp", stack="python",
             constitutional_check="write router tests",
             model_hint="flash",
             max_tokens=12000,
@@ -1281,12 +1375,12 @@ class TestUDCPDispatch:
 
         subtasks = [
             SubTaskDef(
-                id="WC027-01aa", description="interfaces", type="udcp",
+                id="WC027-01aa", description="interfaces", type="udcp", stack="python",
                 constitutional_check="task A",
                 model_hint="reasoning", max_tokens=8000,
             ),
             SubTaskDef(
-                id="WC027-01ab", description="data models", type="udcp",
+                id="WC027-01ab", description="data models", type="udcp", stack="python",
                 depends_on=["WC027-01aa"],
                 constitutional_check="task B depends on A",
                 model_hint="flash", max_tokens=4000,
@@ -1324,7 +1418,7 @@ class TestUDCPDispatch:
         mock_executor.execute_with_udcp = fake_udcp
 
         st = SubTaskDef(
-            id="WC027-01aa", description="interfaces", type="udcp",
+            id="WC027-01aa", description="interfaces", type="udcp", stack="python",
             constitutional_check="implement interface",
             model_hint="reasoning", max_tokens=8000,
         )
@@ -1365,7 +1459,7 @@ class TestUDCPDispatch:
         mock_executor.execute_with_udcp = fake_udcp
 
         st = SubTaskDef(
-            id="WC027-01aa", description="interfaces", type="udcp",
+            id="WC027-01aa", description="interfaces", type="udcp", stack="python",
             constitutional_check="implement",
             model_hint="reasoning", max_tokens=8000,
         )
@@ -1408,7 +1502,7 @@ class TestUDCPDispatch:
         mock_executor.execute_with_udcp = fake_udcp
 
         st = SubTaskDef(
-            id="WC027-01aa", description="interfaces", type="udcp",
+            id="WC027-01aa", description="interfaces", type="udcp", stack="python",
             constitutional_check="check",
             spec_sections={"work-contracts/WC-027-big.md": "full"},
             model_hint="reasoning", max_tokens=8000,

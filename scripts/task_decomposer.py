@@ -1412,6 +1412,7 @@ def execute_subtask_chain(
     # Seed completed list with subtask IDs from prior task chains so cross-task
     # depends_on references (e.g. WC013-03a depends_on WC013-02a) resolve correctly.
     completed: list[str] = list(prior_completed) if prior_completed else []
+    completed_this_chain: list[str] = []
     # Seed with cross-task failures so depends_on across task chains is honoured
     failed: list[str] = list(prior_failed) if prior_failed else []
     all_written_files: list[str] = []
@@ -1446,6 +1447,19 @@ def execute_subtask_chain(
 
         print(f"\n  ── [{st.id}] {st.description} ({st.type}) ──")
         udcp_files_written: list[str] = []  # reset per subtask; UDCP path sets this
+        output_snapshot = {
+            rel_path: (REPO_ROOT / rel_path).read_bytes() if (REPO_ROOT / rel_path).exists() else None
+            for rel_path in st.output_files
+        }
+
+        def rollback_outputs() -> None:
+            for rel_path, original in output_snapshot.items():
+                path = REPO_ROOT / rel_path
+                if original is None:
+                    path.unlink(missing_ok=True)
+                else:
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    path.write_bytes(original)
 
         if dry_run:
             print(f"  DRY RUN: would execute sub-task {st.id}")
@@ -1577,7 +1591,7 @@ def execute_subtask_chain(
                     st.max_tokens,
                 )
 
-        elif st.type == "udcp":
+        elif st.type == "udcp" and st.stack == "python":
             # ── UDCP path: WorkspaceSymbolIndex → Track 1/2 scaffold → logic-fill ─
             # constitutional_basis: ADR-039, C-059, C-077, C-082
             # Uses execute_with_udcp() from runner.task_executor (ADR-039 protocol).
@@ -1605,12 +1619,17 @@ def execute_subtask_chain(
                 force_greenfield=st.force_greenfield,
             )
 
+        elif st.type == "udcp":
+            print(f"  [{st.id}] {st.stack} stack: using stack-aware file generator (UDCP is Python-only)")
+            success = _run_llm_subtask(st, completed, dry_run)
+
         else:
             print(f"  [{st.id}] ERROR: unknown type '{st.type}'")
             failed.append(st.id)
             continue
 
         if not success:
+            rollback_outputs()
             print(f"  [{st.id}] FAILED — marking failed, continuing with non-dependents (C-084 2.0)")
             emit_subtask_signal(task_id, st.id, "FAIL", monitor_signal)
             failed.append(st.id)
@@ -1620,7 +1639,7 @@ def execute_subtask_chain(
         # For UDCP: scope to files UDCP actually wrote — avoids E902 (file not created)
         # and pre-existing lint in declared-but-unwritten output_files.
         # Missing declared deliverables surface as MISSING_DELIVERABLE, not E902.
-        if st.type == "udcp" and st.output_files:
+        if st.type == "udcp" and st.stack == "python" and st.output_files:
             declared = set(st.output_files)
             written_set = set(udcp_files_written)
             # DIFFERENTIAL no-op: file already satisfies requirement — not absent, just unchanged
@@ -1643,6 +1662,7 @@ def execute_subtask_chain(
                 target_files=st.output_files or None, task_id=st.id,
             )
         if not gate_ok:
+            rollback_outputs()
             print(f"  [{st.id}] COMPILE GATE FAILED: {gate_error[:200]}")
             print(f"  C-084 2.0: marking failed, continuing non-dependent subtasks")
             import re as _re_ec
@@ -1707,17 +1727,18 @@ def execute_subtask_chain(
         # ── C-083: emit signal ─────────────────────────────────────────────────
         emit_subtask_signal(task_id, st.id, "SUCCESS", monitor_signal)
         completed.append(st.id)
+        completed_this_chain.append(st.id)
         print(f"  [{st.id}] C-083 signal: SUBTASK_COMPLETE emitted")
 
     # All sub-tasks attempted — commit what succeeded
-    if not dry_run and completed:
+    if not dry_run and completed_this_chain:
         git(["add", "src/", "tests/"], check=False)
         diff = git(["diff", "--cached", "--quiet"], check=False)
         if diff.returncode != 0:
             git(["commit", "-m",
                  f"feat: {task_id} — {subtasks[-1].description}\n\n"
                  f"IB: IB-009\nConstitutional: C-059, C-073, C-076, C-084\n"
-                 f"Sub-tasks: {', '.join(completed)}"
+                 f"Sub-tasks: {', '.join(completed_this_chain)}"
                  + (f"\nFailed (retry next run): {', '.join(failed)}" if failed else "")])
 
     print(f"\n  ✅ {task_id}: {len(completed)}/{len(subtasks)} sub-tasks passed"
