@@ -1,87 +1,92 @@
 {
-  "run_id": "31065641010",
-  "sprint": "WC-030",
+  "run_id": "",
+  "sprint": "WC-034",
   "scaffold_task": null,
   "scaffold_failed": false,
   "task_results": {},
   "spec_gap_issues": [],
   "overall_result": "PARTIAL",
   "file_costs": {
-    "WC030-01aa:service.py": 14.1408,
-    "WC030-01ab:service.py": 1.7013000000000003,
-    "WC030-01ac:test_service.py": 5.686100000000001,
-    "WC030-01ba:scheduler.py": 7.8488,
-    "WC030-01ba:router.py": 4.2686,
-    "WC030-01ba:main.py": 4.0483,
-    "WC030-01ba:service.py": 14.476099999999999,
-    "WC030-01bb:scheduler.py": 0.5236,
-    "WC030-01bb:router.py": 0.633,
-    "WC030-01bb:main.py": 0.5448,
-    "WC030-01bb:service.py": 2.0765,
-    "WC030-01bc:test_scheduler.py": 4.929799999999999,
-    "WC030-03a:test_reconciliation.py": 4.7224
+    "WC034-08a:Program.cs": 64.23759999999999,
+    "WC034-08a:ConversationController.cs": 82.2336,
+    "WC034-08a:ConversationService.cs": 97.4877,
+    "WC034-08a:ConversationStoreDbContext.cs": 75.17
   },
   "subtask_results": {
-    "WC030-01aa": {
-      "result": "SUCCESS",
-      "task_id": "WC030-01a",
+    "WC034-09a": {
+      "result": "SKIPPED",
+      "task_id": "WC034-09",
       "error_codes": [],
       "error_text": ""
     },
-    "WC030-01ab": {
-      "result": "SUCCESS",
-      "task_id": "WC030-01a",
-      "error_codes": [],
-      "error_text": ""
-    },
-    "WC030-01ac": {
-      "result": "FAIL",
-      "task_id": "WC030-01a",
-      "error_codes": [],
-      "error_text": ""
-    },
-    "WC030-01ba": {
-      "result": "SUCCESS",
-      "task_id": "WC030-01b",
-      "error_codes": [],
-      "error_text": ""
-    },
-    "WC030-01bb": {
-      "result": "SUCCESS",
-      "task_id": "WC030-01b",
-      "error_codes": [],
-      "error_text": ""
-    },
-    "WC030-01bc": {
-      "result": "FAIL",
-      "task_id": "WC030-01b",
-      "error_codes": [],
-      "error_text": ""
-    },
-    "WC030-03a": {
-      "result": "FAIL",
-      "task_id": "WC030-03",
-      "error_codes": [],
-      "error_text": ""
-    },
-    "WC030-03b": {
+    "WC034-09b": {
       "result": "SKIPPED_CASCADE",
-      "task_id": "WC030-03",
+      "task_id": "WC034-09",
       "error_codes": [],
       "error_text": ""
     },
-    "WC030-03c": {
+    "WC034-10a": {
       "result": "SKIPPED_CASCADE",
-      "task_id": "WC030-03",
+      "task_id": "WC034-10",
+      "error_codes": [],
+      "error_text": ""
+    },
+    "WC034-10b": {
+      "result": "BLOCKED_SERVICE_BOUNDARY",
+      "task_id": "WC034-10",
+      "error_codes": [],
+      "error_text": ""
+    },
+    "WC034-11a": {
+      "result": "BLOCKED_SERVICE_BOUNDARY",
+      "task_id": "WC034-11",
+      "error_codes": [],
+      "error_text": ""
+    },
+    "WC034-11b": {
+      "result": "BLOCKED_SERVICE_BOUNDARY",
+      "task_id": "WC034-11",
+      "error_codes": [],
+      "error_text": ""
+    },
+    "WC034-11c": {
+      "result": "BLOCKED_SERVICE_BOUNDARY",
+      "task_id": "WC034-11",
+      "error_codes": [],
+      "error_text": ""
+    },
+    "WC034-12a": {
+      "result": "BLOCKED_SERVICE_BOUNDARY",
+      "task_id": "WC034-12",
+      "error_codes": [],
+      "error_text": ""
+    },
+    "WC034-08a": {
+      "result": "FAIL",
+      "task_id": "WC034-08",
+      "error_codes": [],
+      "error_text": ""
+    },
+    "WC034-08b": {
+      "result": "BLOCKED_SERVICE_BOUNDARY",
+      "task_id": "WC034-08",
+      "error_codes": [],
+      "error_text": ""
+    },
+    "WC034-08c": {
+      "result": "SKIPPED_CASCADE",
+      "task_id": "WC034-08",
       "error_codes": [],
       "error_text": ""
     }
   },
-  "total_cost_inr": 65.6001,
+  "total_cost_inr": 319.1289,
   "tasks_done": [],
   "tasks_requested": [
-    "WC030-01a",
-    "WC030-01b",
-    "WC030-03"
+    "WC034-09",
+    "WC034-10",
+    "WC034-11",
+    "WC034-12",
+    "WC034-08"
   ]
 }
