@@ -1,6 +1,28 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-08-10 (WC-034 F3 merged via PR #254; F4 remains blocked pending architecture and authorization)
+**Last Updated:** 2026-08-10 (WC-034 F4 architecture and dependency closure in progress; implementation remains unauthorized)
+
+---
+
+## IN-PROGRESS CHECKPOINT — GOAL-005 / WC-034 F4 ARCHITECTURE CLOSURE
+
+| Milestone | Status |
+|---|---|
+| PR #255 post-merge reconciliation verified | DONE — merged to `main` as `e2be32e`; WC-034 F3 sprint state is DONE |
+| INST-013 occupancy and F4 authorization boundary | DONE — Epoch 1; G5 CLEAR; architecture/dependency closure only; current GOA excludes F4-F8, implementation, provider activation, and deployment |
+| F4 owner contribution routing | IN PROGRESS — Plan/Needs your attention, relationship governance, approval/evidence, and Usage & budget projection owners must publish contracts before solution closure |
+| F4 solution, data, security, and product reviews | PENDING — separate institutional contributions and independent review required |
+| GEP-GOAL-005-INST-013-04 Amendment 3 | PENDING — may reserve implementation authorization only after architecture gates close |
+| CA readiness and Registrant acknowledgement | PENDING — both GEOM R2-03 conditions required before any F4 GOA issuance |
+| F4 implementation | BLOCKED — no `src/` or `web/` implementation, generated client, deployment, or F5-F8 authority in this architecture session |
+
+### Decision Space and Constitutional Obligations
+
+INST-013 may route GOAL-005 F4 architecture contributions, define their sequence and evidence specifications, monitor completion, and prepare a phased Execution Plan amendment. INST-013 may not author the domain or solution contracts it routes, issue implementation authority before CA readiness plus Registrant acknowledgement, contribute implementation, approve its own evidence, authorize deployment, or expand into F5-F8.
+
+### Controlling Dependency Finding
+
+F4 cannot proceed directly to implementation. The approved decomposition requires owner-approved Plan/Needs your attention and Usage & budget projections plus relationship, approval, evidence, goals, results, and billing generated-client contracts. No current GO Authorization covers F4; Amendment 2 explicitly excludes F4-F8. Architecture contributions and independent review therefore precede Amendment 3 implementation authorization.
 
 ---
 
