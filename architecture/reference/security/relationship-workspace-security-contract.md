@@ -12,6 +12,35 @@
 | Status | COMPLETE |
 | Contribution boundary | F4 authorization and assurance controls only; no product policy, endpoint path, wire schema, data schema, implementation, provider activation, deployment, or F5-F8 decision |
 
+## Post-Authorization Re-attestation
+
+| Attestation field | Value |
+|---|---|
+| `institution_id` | INST-007 |
+| `goal_id` | GOAL-005 |
+| `record_id` | CR-GOAL-005-INST-007-05 |
+| `record_type` | Contribution Record |
+| `produced_at` | 2026-08-10T13:37:54+00:00 |
+| `authorization_id` | GOA-GOAL-005-INST-007-03 |
+| `acceptance_record` | ACC-GOAL-005-INST-007-03 |
+| Re-attests | CR-GOAL-005-INST-007-04 candidate security contract |
+| Gate contribution | G-F4-05 — Security assurance |
+| Decision | RE-ATTESTED — SATISFIED within INST-007 Decision Space |
+
+After accepting `GOA-GOAL-005-INST-007-03` at `2026-08-10T13:33:48+00:00`, INST-007 independently re-opened this candidate against `GEP-GOAL-005-INST-013-04`, R-062 / `CR-GOAL-005-INST-002-05`, and the published Order 1 records `CR-GOAL-005-INST-003-04` and `CR-GOAL-005-INST-011-05`. INST-007 adopts the contract below without substantive amendment and confirms that it supplies the Amendment 3 evidence required for `G-F4-05`:
+
+- C1-C5 assurance floors and fail-closed stronger-factor handling, including current `AAL2_ACCOUNT` and required `AAL3_FRESH` controls;
+- single-use, consequence-bound typed acknowledgement distinct from ordinary approval and revalidated after step-up;
+- authoritative tenant, relationship, effective-role, command-purpose, subject, lifecycle, scope, authority, policy, owner-projection, and expected-version authorization;
+- authorization-before-disclosure anti-enumeration with privacy-indistinguishable errors, shapes, headers, counts, cursors, and timing envelopes;
+- evidence inspection and export controls covering sensitivity, recipient, purpose, completeness, redaction, manifest, retrieval grant, expiry, encryption, and retention;
+- browser privacy across caches, service workers, durable storage, history, URLs, referrers, analytics, telemetry, sign-out, and account, tenant, role, or relationship switching;
+- mutually authenticated BP-to-WBE, BP-to-CE, BP-to-PR, and BP-to-professional/domain-owner service calls with independently verified audience, delegated purpose, operation, relationship, and version bindings;
+- replay, single-use challenge, idempotency, request-hash, expected-version, uncertain-outcome reconciliation, and confused-deputy resistance; and
+- adversarial acceptance `SEC-F4-01` through `SEC-F4-10`, including cross-tenant and cross-relationship isolation, C1-C5 role enforcement, private-boundary denial, export containment, browser privacy, and Emergency Stop independence.
+
+This security re-attestation does not select or resolve Founder or Product policy. `F4-POL-01` through `F4-POL-06`, and every materiality, role-entitlement, stronger-factor, recipient, redaction, retention, commercial, lifecycle, customer-rights, release-composition, or owner-contract choice identified in Section 13, remain blocked or unavailable until their authorized owner approves them. No default is inferred from the Order 1 records. This record grants no API, endpoint, product, canonical OpenAPI, generated-client, implementation, test, migration, build, provider-activation, deployment, F5-F8, integrated-review, or self-review authority.
+
 ## 1. Decision Summary
 
 The Relationship Workspace is a Business Platform (BP) public projection for one authenticated actor and one authorized Employment Relationship at a time. The browser authenticates to BP only. BP authorizes every read and command from authoritative tenant membership, relationship membership, role, lifecycle, scope, authority, and current-version state; possession of an identifier, cursor, link, acknowledgement, assurance proof, or idempotency key grants no authority.
@@ -202,7 +231,7 @@ The integrated F4 acceptance package must also preserve UX-CONV-06 structured ow
 
 ## 14. Gate Statement
 
-`G-F4-05 — Security assurance` is **SATISFIED** by `CR-GOAL-005-INST-007-04` for architecture integration: C1-C5 assurance floors, typed acknowledgement, tenant/relationship/role/version authorization, anti-enumeration, evidence export, browser privacy, replay/idempotency, confused-deputy, service authentication, direct-access denial, and adversarial acceptance are explicit.
+`G-F4-05 — Security assurance` is **SATISFIED** for architecture integration by post-authorization Contribution Record `CR-GOAL-005-INST-007-05`, which re-attests candidate contract `CR-GOAL-005-INST-007-04`: C1-C5 assurance floors, typed acknowledgement, tenant/relationship/role/version authorization, anti-enumeration, evidence export, browser privacy, replay/idempotency, confused-deputy, service authentication, direct-access denial, and adversarial acceptance are explicit.
 
 This does not close `G-F4-03`, `G-F4-04`, `G-F4-06` through `G-F4-13`, or any owner-routed policy question. It does not authorize endpoints, schemas, generated clients, implementation, autonomous execution, provider activation, deployment, F5-F8 work, or self-review. Missing owner decisions remain blocked or unavailable exactly as identified above.
 

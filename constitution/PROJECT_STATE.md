@@ -19,7 +19,8 @@
 | GEP-GOAL-005-INST-013-04 Amendment 3 | PROPOSED — architecture/owner-contract closure only; DMA selected; candidate artifacts require post-GOA re-attestation; no implementation or deployment authority |
 | CA readiness and Registrant acknowledgement | DONE — R-062 / CR-GOAL-005-INST-002-05 satisfies R2-03 condition 1; ACK-GOAL-005-INST-001-04 records the exact Founder acknowledgement and DMA selection |
 | Amendment 3 Order 1 | DONE — CR-GOAL-005-INST-003-04 re-attests G-F4-01 business semantics; CR-GOAL-005-INST-011-05 re-attests G-F4-06 composition and DMA selection; DMA authority evidence remains Order 4 |
-| Amendment 3 Order 2 | AUTHORIZED — GOA-GOAL-005-INST-004-07, GOA-GOAL-005-INST-006-03, and GOA-GOAL-005-INST-007-03 issued and accepted after published Order 1 records; Contribution Records pending |
+| Amendment 3 Order 2 | DONE — CR-GOAL-005-INST-004-08 closes G-F4-02 contribution evidence; CR-GOAL-005-INST-006-04 closes G-F4-04; CR-GOAL-005-INST-007-05 closes G-F4-05; fresh G-F4-11 review contexts remain required |
+| Amendment 3 Order 3 | PENDING — INST-005 solution plus logical BP/WBE owner-contract GOA may issue only after Order 2 Contribution Records are published |
 | F4 implementation | BLOCKED — no `src/` or `web/` implementation, generated client, deployment, or F5-F8 authority in this architecture session |
 
 ### Decision Space and Constitutional Obligations

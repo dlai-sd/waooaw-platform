@@ -12,6 +12,28 @@
 | Status | COMPLETE |
 | Contribution boundary | Canonical data semantics, provenance, logical flow, correction, retention, and isolation for the F4 Relationship Workspace; no endpoint, wire schema, database schema, migration, implementation, provider activation, deployment, or F5-F8 decision |
 
+## Post-Authorization Re-Attestation
+
+| Attestation field | Value |
+|---|---|
+| `institution_id` | INST-006 |
+| `goal_id` | GOAL-005 |
+| `record_id` | CR-GOAL-005-INST-006-04 |
+| `record_type` | Contribution Record |
+| `produced_at` | 2026-08-10T13:37:35+00:00 |
+| `authorization_id` | GOA-GOAL-005-INST-006-03 |
+| `acceptance_record` | ACC-GOAL-005-INST-006-03 |
+| Re-attests | CR-GOAL-005-INST-006-03 candidate data contract |
+| Gate contribution | G-F4-04 — canonical data semantics |
+| Order 2 decision | RE-ATTESTED — SATISFIED within INST-006 Decision Space |
+| Authority boundary | Data semantics only; no persistence schema, migration, API, implementation, canonical OpenAPI, generated client, deployment, F5-F8, or self-review authority |
+
+After accepting `GOA-GOAL-005-INST-006-03` through `ACC-GOAL-005-INST-006-03` at `2026-08-10T13:33:47+00:00`, INST-006 independently re-opened this candidate against `GEP-GOAL-005-INST-013-04`, R-062 / `CR-GOAL-005-INST-002-05`, and the published Order 1 records `CR-GOAL-005-INST-003-04` and `CR-GOAL-005-INST-011-05`. INST-006 adopts Sections 1-17 without substantive amendment and confirms that the contract satisfies the Amendment 3 evidence specification for G-F4-04.
+
+The confirmed evidence covers accountable provenance, source and contract versions, produced/observed/confirmation times, declared validity and freshness; BP-authoritative sequence and stable ties without browser ranking; distinct actual, forecast, allowance, budget, and threshold meanings; business outcomes separated from technical metrics; pending, recorded, unavailable, disputed, and superseded evidence states; source-owned correction with append-only constitutional lineage; purpose-bound minimisation and retention; provenance-preserving BP relay of WBE commercial truth without recalculation or a second commercial ledger; professional/domain adapter provenance without transferred authority; and joint authenticated-tenant and selected-relationship isolation across projections, cursors, commands, evidence, WBE meanings, and adapter contributions.
+
+This re-attestation does not supply the DMA-specific domain-authority evidence reserved for Order 4 and does not close G-F4-09. It preserves DMA as the sole selected first-release profession while keeping DMA-specific fields and professional judgment outside this generic data contract.
+
 ## 1. Purpose And Governing Boundary
 
 This contract defines how F4 preserves the meaning and origin of relationship, plan, work, result, usage, budget, attention, rights, and evidence information for one selected Employment Relationship at a time. It refines the owner boundaries in `architecture/reference/components/relationship-workspace.md` without changing them.
@@ -295,7 +317,7 @@ No public projection includes provider credentials, raw prompts, private reasoni
 | Domain adapter provenance | Section 10 | Required lineage, evidence, attribution, compatibility, and prohibited authority defined. |
 | Retention and minimisation | Section 12 | Purpose/owner-based retention classes and minimisation rules defined. |
 
-**G-F4-04 data-semantics contribution result:** SATISFIED by `CR-GOAL-005-INST-006-03`, subject to the independent review required by G-F4-11. This contribution does not close G-F4-03, G-F4-05 through G-F4-13, implementation, release, deployment, or customer proof.
+**G-F4-04 data-semantics contribution result:** SATISFIED by post-authorization re-attestation `CR-GOAL-005-INST-006-04`, subject to the independent review required by G-F4-11. This contribution does not close G-F4-03, G-F4-05 through G-F4-13, implementation, release, deployment, or customer proof.
 
 ## 15. Acceptance Evidence Mapping
 
@@ -319,7 +341,10 @@ No section authorizes a concrete database schema, migration, endpoint, wire cont
 
 ## 17. Basis
 
-- `goals/GOAL-005-f4-business-contribution.md` — CR-GOAL-005-INST-003-03
+- `goals/GOAL-005-execution-plan.md` — GEP-GOAL-005-INST-013-04, GOA-GOAL-005-INST-006-03, and ACC-GOAL-005-INST-006-03
+- `reviews/R-062-wc034-f4-amendment3-ca-readiness.md` — CR-GOAL-005-INST-002-05
+- `goals/GOAL-005-f4-business-contribution.md` — CR-GOAL-005-INST-003-04 Order 1 business-semantics re-attestation
+- `architecture/reference/product/f4-relationship-workspace-release-contract.md` — CR-GOAL-005-INST-011-05 Order 1 release-composition and DMA-selection re-attestation
 - `architecture/reference/components/relationship-workspace.md` — CR-GOAL-005-INST-004-07
 - `architecture/reference/data/ledger-design.md` — three-ledger separation and immutable constitutional evidence
 - `architecture/reference/data/evidence-schema.md` — Evidence First and append-only evidence-state lineage

@@ -12,6 +12,31 @@
 | Status | COMPLETE |
 | Contribution boundary | Reference architecture and owner assignment only; no endpoint path, wire schema, implementation, deployment, provider activation, or F5-F8 decision |
 
+## Post-Authorization Re-attestation
+
+| Attestation field | Value |
+|---|---|
+| `institution_id` | INST-004 |
+| `goal_id` | GOAL-005 |
+| `record_id` | CR-GOAL-005-INST-004-08 |
+| `record_type` | Contribution Record |
+| `produced_at` | 2026-08-10T13:38:23+00:00 |
+| `authorization_id` | GOA-GOAL-005-INST-004-07 |
+| `acceptance_record` | ACC-GOAL-005-INST-004-07 |
+| Re-attests | CR-GOAL-005-INST-004-07 candidate enterprise architecture |
+| Order 2 decision | COMPLETE — this record satisfies G-F4-02 evidence under GEP-GOAL-005-INST-013-04 |
+| Authority boundary | Enterprise ownership and reference-architecture boundaries only; no product-policy selection, concrete API, endpoint, wire schema, implementation, canonical OpenAPI, generated client, build artifact, provider activation, deployment, F5-F8, self-review, or integrated-review authority |
+
+After `GOA-GOAL-005-INST-004-07` was issued and `ACC-GOAL-005-INST-004-07` was recorded at `2026-08-10T13:33:46+00:00`, INST-004 independently re-opened this candidate against `GEP-GOAL-005-INST-013-04`, R-062 / `CR-GOAL-005-INST-002-05`, and the published Order 1 records `CR-GOAL-005-INST-003-04` and `CR-GOAL-005-INST-011-05`. No Contribution Record identifier collision exists for `CR-GOAL-005-INST-004-08`. INST-004 adopts Sections 1-11 without substantive amendment and confirms that they satisfy the Amendment 3 evidence specification for G-F4-02.
+
+The adopted architecture keeps BP as the sole public relationship-governance facade and projection owner; WBE as the authority for allowance, billing, ceiling, forecast, threshold, and commercial truth; CE as the constitutional validation and evidence authority; PR as the internal professional-execution truth supplier; web as presentation and interaction over BP-owned public projections and generated BP commands only; and professional/domain owners as contributors of domain outcome semantics through the generic adapter role. These are logical ownership boundaries within the existing architecture. F4 creates no new deployable component and permits no direct web access to PR, WBE, CE, domain adapters, providers, or ledgers.
+
+Order 1 confirms DMA as the sole first-release profession without changing this generic architecture. DMA-specific outcome vocabulary, baselines, measures, evidence sources, attribution limits, uncertainty, review cadence, and material attention candidates remain the separate Order 4 domain-authority package for G-F4-09. No DMA field, rule, ranking, authority decision, or professional judgment enters the generic Relationship Workspace or adapter contract; generic adapter conformance alone cannot close G-F4-09.
+
+Gate integrity is preserved: this record closes only G-F4-02. It does not close G-F4-03 through G-F4-11, authorize Order 3 or later issuance by itself, resolve the product-policy escalations preserved by Order 1, or supply BP, WBE, DMA, compatibility, constitutional-review, or integrated-review evidence. G-F4-12 implementation and G-F4-13 deployment remain blocked and require their separately defined later authority. The ADR assessment remains unchanged: existing decisions cover the ownership refinement, so no new ADR or amendment is required; discovery of an uncovered significant decision remains a blocker routed through INST-013.
+
+This authoring context produced the G-F4-02 enterprise-ownership contribution and is therefore ineligible to act as the fresh INST-004 integrated technical reviewer for G-F4-11. That review requires a fresh context that did not author the contribution it reviews, after Orders 1-5 have validly completed.
+
 ## 1. Decision Summary
 
 F4 extends the existing authenticated customer experience with one governed Relationship Workspace for one selected Employment Relationship at a time. It introduces no new deployable component. The existing Business Platform (BP) is the sole public customer-facing relationship facade and the authoritative relationship governance projection. The web application presents only BP-owned public projections and sends customer commands only through approved BP contracts.
