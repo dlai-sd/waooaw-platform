@@ -1,6 +1,6 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-08-10 (WC034-11 cross-stack evidence approved; WC034-12 integrated acceptance next)
+**Last Updated:** 2026-08-10 (WC-034 F3 implementation complete; R-061 approved; Founder PR review next)
 
 ---
 
@@ -16,13 +16,14 @@
 | Registrant acknowledgement | DONE — Founder approved and merged PR #251 as `da6824c`, whose sole authorization boundary identifies GEP-GOAL-005-INST-013-03 and GOA-GOAL-005-INST-010-02; `ACK-GOAL-005-INST-001-03` recorded at the merge timestamp |
 | GOA and INST-010 acceptance | DONE — `GOA-GOAL-005-INST-010-02` issued by INST-013 at 2026-08-10T03:35:03+00:00; `ACC-GOAL-005-INST-010-02` accepted at 2026-08-10T03:35:04+00:00; GEOM R2-12 temporal order passes |
 | Autonomous pipeline grooming | DONE — PR #252 merged to `main` as `5c33ea9`; five tasks, C-086 simulations, stack gates, service boundaries, and deterministic F3 generation gate accepted |
-| Autonomous implementation dispatch | IN PROGRESS — `ib/014/wc034-f3-implementation` branch; C-086, runner integrity, and fail-fast pass; session-level institutional subagents execute authorized F3 tasks |
+| Autonomous implementation dispatch | DONE — WC034-08 through WC034-12 complete on `ib/014/wc034-f3-implementation`; C-086, runner integrity, and fail-fast pass; session-level institutional subagents executed the authorized F3 tasks; implementation PR and Founder review remain pending |
 | Generic pipeline correction | DONE — non-Python UDCP tasks use the stack-aware generator, rejected outputs roll back, and prior-chain completions cannot commit failed current output; focused Docker regressions 3/3 PASS |
 | Interactive execution mode correction | DONE — an accidental batch runner invocation returned PARTIAL after INR 319.1289 with zero accepted implementation tasks; batch-only commits and duplicate Goal Issue #253 were reconciled; further WC-034 work uses session-level subagents occupying contributing Institutions, not the GitHub Actions batch pipeline |
 | WC034-08 BP Conversation Core | DONE — six canonical BP OpenAPI 1.2.0 operations, durable tenant-isolated projections, request-hash idempotency, Evidence First ordering, privacy-safe errors, cancellation, and typed resumable SSE implemented; focused Docker tests 19/19 PASS; full BP regression 158/158 PASS; affected-file line coverage: controller 95.97%, service 91.77%, store 100% |
 | WC034-09 PR Conversation Core | DONE — BP-authenticated internal execution, CE fail-closed authorization, durable Temporal state/replay, idempotent cancellation, typed live SSE/heartbeat, canonical health/OpenAPI, and CE-confirmed Emergency Stop implemented; INST-005 APPROVED; focused PR tests 69/69 PASS; full PR regression 89/89 PASS; CE Emergency Stop tests 4/4 PASS; affected-module line-plus-branch coverage 93.22% with every affected module at least 90% |
 | WC034-10 web Conversation Core | DONE — pinned Generator 7.17.0 produces dependency-closed authenticated Identity+Conversation clients without manual patches; same-origin server-only BP boundary, durable timeline, offline outbox, replay/reconciliation, typed cards, retry, cancellation recovery, and responsive accessible conversation UI implemented; INST-005 APPROVED; deterministic two-run tree hash `541d5490431311ee2d5f727978c753f376816449938e5299ac5ac0be808dbc21`; web tests 80/80 PASS; global line coverage 93.39%, ConversationExperience 93.82%; TypeScript, lint, and production build PASS |
 | WC034-11 cross-stack evidence | DONE — INST-005 APPROVED; four static contract drift sentinels verify canonical operations, versioned schemas/events, Emergency Stop signal independence, and the browser-to-BP boundary without being characterized as live integration; same-tenant unauthorized mutation evidence fails before CE authorization, PR dispatch, or persistence and returns privacy-safe `404 CONVERSATION_NOT_ACCESSIBLE`; Docker suites PASS: BP Conversation 22/22, full BP 170/170, PR 89/89, static contract 4/4; affected Python modules each exceed 90% line coverage with aggregate 780/827 (94.32%), BP controller 94.38%, service 100%, store 100%, web global 93.39%, and ConversationExperience 93.82%; C-023, C-026, C-059, C-063, C-065, C-076, and C-080 satisfied; WC034-12 integrated acceptance and independent INST-004 review are next |
+| WC034-12 integrated acceptance | DONE — R-061 INST-004 APPROVED; deterministic Docker validation runner passes BP Conversation 22/22, PR 89/89, web 80/80 with coverage, lint, production build, static contracts 4/4, and browser acceptance 16/16; browser split is 8 Chromium tests at 1440x900 and 8 at exact 360x800 with keyboard/focus, polite live-region, zero serious or critical axe, overflow/occlusion, same-origin BFF, Stop, Evidence First, offline, unknown-outcome, and service-worker cache assertions; all 14 required acceptance IDs pass; evidence is fixture-backed production-build integration, not live BP/PR deployment integration; Founder implementation PR review and merge are next; G-F3-09 deployment remains blocked |
 
 ### Decision Space and Constitutional Obligations
 
@@ -2170,20 +2171,21 @@ platform_phase: IMPLEMENTATION
 current_sprint: WC-034
 sprint_status: IN_PROGRESS
 branch: ib/014/wc034-f3-implementation
-consecutive_failures: 1
+consecutive_failures: 0
 tasks_done:
-tasks_remaining:
   - WC034-08
   - WC034-09
   - WC034-10
   - WC034-11
   - WC034-12
+tasks_remaining: []
 notes: |
   2026-08-07: WC-043 DONE — WBE-S8 reconciliation CCT suite and coverage gate.
   WBE 361/361 · coverage 94% · VERSION 1.44.0.
   2026-08-10: WC-034 F3 READY under GOA-GOAL-005-INST-010-02 and ACC-GOAL-005-INST-010-02.
   Five F3 tasks passed C-086 simulation, fail-fast, runner-integrity, and stack-gate preflight;
-  pipeline entry awaits review and merge of the grooming package. Deployment remains unauthorized.
+  WC034-08 through WC034-12 are complete and R-061 is APPROVED. Founder PR review and merge remain pending.
+  Deployment remains unauthorized under G-F3-09.
   2026-08-08: WC-049 EA metadata reconciliation runs outside the autonomous implementation state machine.
   CCT-SKILL-CP-01/02/03 + CCT-SKILL-UNKNOWN-01 all passing.
   SkillResolver + SessionExecutor + IntentCrystallizer committed.

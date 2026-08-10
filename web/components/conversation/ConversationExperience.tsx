@@ -18,8 +18,11 @@ import {
 import { useCallback, useEffect, useState } from 'react';
 import type { ConversationMessageV1 } from '@/lib/api/generated/models/ConversationMessageV1';
 import type { ConversationStreamEventV1 } from '@/lib/api/generated/models/ConversationStreamEventV1';
-import type { ConversationSubmissionV1 } from '@/lib/api/generated/models/ConversationSubmissionV1';
-import type { ConversationTimelinePageV1 } from '@/lib/api/generated/models/ConversationTimelinePageV1';
+import { ConversationSubmissionV1FromJSON } from '@/lib/api/generated/models/ConversationSubmissionV1';
+import {
+  ConversationTimelinePageV1FromJSON,
+  type ConversationTimelinePageV1,
+} from '@/lib/api/generated/models/ConversationTimelinePageV1';
 import type { GovernedConversationCardV1 } from '@/lib/api/generated/models/GovernedConversationCardV1';
 
 interface QueuedContribution {
@@ -188,7 +191,7 @@ export function ConversationExperience({ relationshipId, locale = 'en-IN' }: Con
     if (options?.afterCursor) search.set('afterCursor', options.afterCursor);
     const response = await fetch(`/api/conversations/${encodeURIComponent(relationshipId)}?${search}`, { cache: 'no-store' });
     if (!response.ok) throw new Error(await readProblem(response));
-    const page = await response.json() as ConversationTimelinePageV1;
+    const page = ConversationTimelinePageV1FromJSON(await response.json());
     setMessages((current) => mergeMessages(options?.cursor || options?.afterCursor ? current : [], page.items));
     setAuthoritativeCursor(page.authoritativeCursor);
     setNextCursor(page.nextCursor);
@@ -223,7 +226,7 @@ export function ConversationExperience({ relationshipId, locale = 'en-IN' }: Con
         body: JSON.stringify({ action: 'send', ...contribution, locale, expectedCursor: cursor || undefined }),
       });
       if (!response.ok) throw new Error(await readProblem(response));
-      const submission = await response.json() as ConversationSubmissionV1;
+      const submission = ConversationSubmissionV1FromJSON(await response.json());
       setMessages((current) => mergeMessages(current.filter((item) => item.messageId !== contribution.clientMessageId), [submission.message]));
       setAuthoritativeCursor(submission.authoritativeCursor);
       setExecutionId(submission.executionId);
@@ -432,7 +435,7 @@ export function ConversationExperience({ relationshipId, locale = 'en-IN' }: Con
         body: JSON.stringify({ action: 'retry', messageId: message.messageId, idempotencyKey }),
       });
       if (!response.ok) throw new Error(await readProblem(response));
-      const submission = await response.json() as ConversationSubmissionV1;
+      const submission = ConversationSubmissionV1FromJSON(await response.json());
       setMessages((current) => mergeMessages(current, [submission.message]));
       setExecutionId(submission.executionId);
       setAnnouncement('Retry accepted for the original message.');
