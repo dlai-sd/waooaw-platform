@@ -1,6 +1,6 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-08-10 (PR #252 merged; F3 implementation branch active; first dispatch pipeline correction validated)
+**Last Updated:** 2026-08-10 (WC034-08 BP Conversation Core implementation validated; F3 implementation branch active)
 
 ---
 
@@ -16,9 +16,10 @@
 | Registrant acknowledgement | DONE — Founder approved and merged PR #251 as `da6824c`, whose sole authorization boundary identifies GEP-GOAL-005-INST-013-03 and GOA-GOAL-005-INST-010-02; `ACK-GOAL-005-INST-001-03` recorded at the merge timestamp |
 | GOA and INST-010 acceptance | DONE — `GOA-GOAL-005-INST-010-02` issued by INST-013 at 2026-08-10T03:35:03+00:00; `ACC-GOAL-005-INST-010-02` accepted at 2026-08-10T03:35:04+00:00; GEOM R2-12 temporal order passes |
 | Autonomous pipeline grooming | DONE — PR #252 merged to `main` as `5c33ea9`; five tasks, C-086 simulations, stack gates, service boundaries, and deterministic F3 generation gate accepted |
-| Autonomous pipeline dispatch | IN PROGRESS — fresh `ib/014/wc034-f3-implementation` branch; C-086, runner integrity, and fail-fast pass; first WC034-08 attempt rejected before accepted application output because non-Python tasks were routed through Python-only UDCP |
+| Autonomous implementation dispatch | IN PROGRESS — `ib/014/wc034-f3-implementation` branch; C-086, runner integrity, and fail-fast pass; session-level institutional subagents execute authorized F3 tasks |
 | Generic pipeline correction | DONE — non-Python UDCP tasks use the stack-aware generator, rejected outputs roll back, and prior-chain completions cannot commit failed current output; focused Docker regressions 3/3 PASS |
 | Interactive execution mode correction | DONE — an accidental batch runner invocation returned PARTIAL after INR 319.1289 with zero accepted implementation tasks; batch-only commits and duplicate Goal Issue #253 were reconciled; further WC-034 work uses session-level subagents occupying contributing Institutions, not the GitHub Actions batch pipeline |
+| WC034-08 BP Conversation Core | DONE — six canonical BP OpenAPI 1.2.0 operations, durable tenant-isolated projections, request-hash idempotency, Evidence First ordering, privacy-safe errors, cancellation, and typed resumable SSE implemented; focused Docker tests 19/19 PASS; full BP regression 158/158 PASS; affected-file line coverage: controller 95.97%, service 91.77%, store 100% |
 
 ### Decision Space and Constitutional Obligations
 
