@@ -1204,3 +1204,38 @@ R-065 / `CR-GOAL-005-INST-002-07` satisfies GEOM R2-03 condition 1, with CA-F4-A
 | `acceptance_timestamp` | 2026-08-10T15:57:40+00:00 |
 | Decision | ACCEPTED |
 | Contribution scope accepted | Independent ADR-046 Business review plus attested Contribution and Learning Records only; no ADR editing, implementation, policy-default, provider-activation, or deployment authority |
+
+## Amendment 4 Order 2 Condition-Repair Authorization Record
+
+### GOA-GOAL-005-INST-004-10
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GOA-GOAL-005-INST-004-10 |
+| `record_type` | Authorization Record |
+| `authorization_id` | GOA-GOAL-005-INST-004-10 |
+| Authorized Institution | INST-004 — Enterprise Architect |
+| Contribution scope | Repair ADR-046 Sections 7.2 and 10 only to satisfy R-066 Conditions 1 and 2; publish G-10-attested `CR-GOAL-005-INST-004-11` linked to this GOA and its Acceptance Record plus `LR-GOAL-005-INST-004-07` before Order 3 |
+| Evidence specification | Add future end-to-end owner-to-customer business-consequence evidence for every enabled BP-to-WBE, BP-to-PR, and BP-to-domain-adapter family; add migration and credential-incident evidence for customer disclosure, support, pending-intent preservation, reconciliation, rights and Stop status, owner-by-owner restoration, and business-state restoration |
+| Participation Window | 1 constitutional session after valid acceptance |
+| Independence constraint | May repair only the two review-mandated evidence obligations; may not approve or accept ADR-046, alter its authentication mechanism, perform Order 3 review, or implement the decision |
+| Excluded authority | New architecture instrument, existing-ADR amendment, mechanism change, source, tests, migrations, canonical OpenAPI changes, generated clients, builds, implementation, policy defaults, provider activation, deployment, F5-F8, self-review, and self-merge |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-10T16:11:26+00:00 |
+
+## Amendment 4 Order 2 Condition-Repair Acceptance Record
+
+### ACC-GOAL-005-INST-004-10
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-004 |
+| `goal_id` | GOAL-005 |
+| `record_id` | ACC-GOAL-005-INST-004-10 |
+| `record_type` | Acceptance Record |
+| `authorization_id` | GOA-GOAL-005-INST-004-10 |
+| `acceptance_timestamp` | 2026-08-10T16:11:27+00:00 |
+| Decision | ACCEPTED |
+| Contribution scope accepted | R-066 Conditions 1 and 2 repair to ADR-046 Sections 7.2 and 10 plus new Contribution and Learning Records only; no mechanism change, review, implementation, policy-default, provider-activation, or deployment authority |
