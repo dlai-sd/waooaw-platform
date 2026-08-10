@@ -1263,6 +1263,353 @@ TASK_HANDLERS = {
             ),
         ]
     },
+    "WC034-08": {
+        "subtasks": [
+            SubTaskDef(
+                id="WC034-08a",
+                description="Implement Business Platform conversation ingress endpoints and service boundary for timeline/send/retry/read-position/cancel/SSE.",
+                type="udcp",
+                depends_on=[],
+                compile_gate="dotnet_build",
+                service_dir="src/business-platform",
+                wc_task_id="WC034-08",
+                stack="dotnet",
+                output_files=[
+                    "src/business-platform/Program.cs",
+                    "src/business-platform/Controllers/ConversationController.cs",
+                    "src/business-platform/Services/ConversationService.cs",
+                    "src/business-platform/Infrastructure/ConversationStoreDbContext.cs",
+                ],
+                inject_source_files=[
+                    "architecture/reference/components/conversation-core.md",
+                    "architecture/reference/api-specs/business-platform.openapi.yaml",
+                    "work-contracts/WC-034-goal005-webportal-founder-admin.md",
+                    "src/business-platform/Program.cs",
+                    "src/business-platform/Controllers/IdentityController.cs",
+                    "src/business-platform/Services/IdentityService.cs",
+                    "src/business-platform/Infrastructure/IdentityDbContext.cs",
+                ],
+                spec_sections={
+                    "work-contracts/WC-034-goal005-webportal-founder-admin.md": "WC034-08",
+                    "architecture/reference/components/conversation-core.md": "F3",
+                    "architecture/reference/api-specs/business-platform.openapi.yaml": "conversation operations",
+                },
+                constitutional_check=(
+                    "Implement BP OpenAPI 1.2.0 conversation operations only. "
+                    "Use JWT tenant authority (no request-body tenant id), UUID request-hash idempotency, "
+                    "privacy-safe RFC 9457 errors, and Evidence First sequencing before success responses."
+                ),
+                model_hint="reasoning",
+                max_tokens=12000,
+            ),
+            SubTaskDef(
+                id="WC034-08b",
+                description="Add the additive Conversation Core persistence migration with tenant RLS, durable ordering, idempotency outcomes, unread positions, and stream cursors.",
+                type="udcp",
+                depends_on=["WC034-08a"],
+                compile_gate="sqlfluff",
+                service_dir="infrastructure/postgres/init",
+                wc_task_id="WC034-08",
+                stack="sql",
+                output_files=[
+                    "infrastructure/postgres/init/21-conversation-core.sql",
+                ],
+                inject_source_files=[
+                    "architecture/reference/components/conversation-core.md",
+                    "infrastructure/postgres/init/19-ae01-employment-relationship.sql",
+                    "infrastructure/postgres/init/20-identity-boundary.sql",
+                ],
+                spec_sections={
+                    "work-contracts/WC-034-goal005-webportal-founder-admin.md": "WC034-08",
+                    "architecture/reference/components/conversation-core.md": "durable timeline and idempotency",
+                },
+                constitutional_check=(
+                    "Use additive DDL only. Enforce tenant RLS and durable canonical sequence, "
+                    "idempotency request hashes/outcomes, unread positions, and resumable event cursors."
+                ),
+                model_hint="reasoning",
+                max_tokens=8000,
+            ),
+            SubTaskDef(
+                id="WC034-08c",
+                description="Add Business Platform conversation tests for idempotency, tenant isolation, privacy-safe errors, and SSE replay semantics.",
+                type="udcp",
+                depends_on=["WC034-08a", "WC034-08b"],
+                compile_gate="dotnet_test",
+                service_dir="tests/business-platform.Tests",
+                wc_task_id="WC034-08",
+                stack="dotnet",
+                output_files=[
+                    "tests/business-platform.Tests/ConversationControllerTests.cs",
+                    "tests/business-platform.Tests/ConversationServiceTests.cs",
+                ],
+                inject_source_files=[
+                    "src/business-platform/Controllers/ConversationController.cs",
+                    "src/business-platform/Services/ConversationService.cs",
+                    "architecture/reference/components/conversation-core.md",
+                ],
+                spec_sections={
+                    "work-contracts/WC-034-goal005-webportal-founder-admin.md": "WC034-08",
+                    "architecture/reference/components/conversation-core.md": "acceptance mapping",
+                },
+                constitutional_check=(
+                    "Tests must validate idempotency replay, tenant isolation, privacy-safe errors, "
+                    "cursor continuity, and cancellation behavior for BP conversation operations."
+                ),
+                model_hint="auto",
+                max_tokens=10000,
+            ),
+        ]
+    },
+    "WC034-09": {
+        "subtasks": [
+            SubTaskDef(
+                id="WC034-09a",
+                description="Implement Professional Runtime BP-authenticated conversation execution, cancellation, and resumable typed stream endpoints.",
+                type="udcp",
+                depends_on=["WC034-08a"],
+                compile_gate="ruff",
+                service_dir="src/professional-runtime",
+                wc_task_id="WC034-09",
+                stack="python",
+                output_files=[
+                    "src/professional-runtime/main.py",
+                    "src/professional-runtime/routers/conversation.py",
+                    "src/professional-runtime/workflows/conversation_workflow.py",
+                    "src/professional-runtime/activities/conversation_stream.py",
+                ],
+                inject_source_files=[
+                    "architecture/reference/components/conversation-core.md",
+                    "architecture/reference/api-specs/professional-runtime.openapi.yaml",
+                    "src/professional-runtime/main.py",
+                    "src/professional-runtime/workflows/paas_workflow.py",
+                ],
+                spec_sections={
+                    "work-contracts/WC-034-goal005-webportal-founder-admin.md": "WC034-09",
+                    "architecture/reference/components/conversation-core.md": "F3",
+                    "architecture/reference/api-specs/professional-runtime.openapi.yaml": "conversation execution and stream",
+                },
+                constitutional_check=(
+                    "Expose PR conversation execution/cancel/stream only for BP-authenticated internal ingress. "
+                    "No direct browser ingress and no provider-facing ingress. Preserve Stop behavior and Temporal consistency."
+                ),
+                model_hint="reasoning",
+                max_tokens=12000,
+            ),
+            SubTaskDef(
+                id="WC034-09b",
+                description="Add Professional Runtime conversation tests for typed events, cancellation, Stop independence, and stream resume.",
+                type="udcp",
+                depends_on=["WC034-09a"],
+                compile_gate="pytest",
+                service_dir="tests/professional-runtime",
+                wc_task_id="WC034-09",
+                stack="python",
+                output_files=[
+                    "tests/professional-runtime/test_conversation_router.py",
+                    "tests/professional-runtime/test_conversation_workflow.py",
+                ],
+                inject_source_files=[
+                    "src/professional-runtime/routers/conversation.py",
+                    "src/professional-runtime/workflows/conversation_workflow.py",
+                    "architecture/reference/components/conversation-core.md",
+                ],
+                spec_sections={
+                    "work-contracts/WC-034-goal005-webportal-founder-admin.md": "WC034-09",
+                    "architecture/reference/components/conversation-core.md": "acceptance mapping",
+                },
+                constitutional_check=(
+                    "Docker-only pytest coverage for cursor replay, reconnect, cancellation, "
+                    "Stop independence, and typed internal stream events."
+                ),
+                model_hint="auto",
+                max_tokens=10000,
+            ),
+        ]
+    },
+    "WC034-10": {
+        "subtasks": [
+            SubTaskDef(
+                id="WC034-10a",
+                description="Generate F3 ConversationApi client and implement server-only web BFF conversation routes.",
+                type="udcp",
+                depends_on=["WC034-08a", "WC034-09a"],
+                compile_gate="openapi_ts_generate",
+                service_dir="web",
+                wc_task_id="WC034-10",
+                stack="typescript",
+                output_files=[
+                    "web/lib/api/conversation.ts",
+                    "web/app/api/conversation/timeline/route.ts",
+                    "web/app/api/conversation/send/route.ts",
+                    "web/app/api/conversation/retry/route.ts",
+                    "web/app/api/conversation/read-position/route.ts",
+                    "web/app/api/conversation/stream/route.ts",
+                    "web/app/api/conversation/executions/route.ts",
+                ],
+                inject_source_files=[
+                    "architecture/reference/api-specs/business-platform.openapi.yaml",
+                    "architecture/reference/components/conversation-core.md",
+                    "web/lib/api/identity.ts",
+                    "web/app/api/identity/registration/route.ts",
+                ],
+                spec_sections={
+                    "work-contracts/WC-034-goal005-webportal-founder-admin.md": "WC034-10",
+                    "architecture/reference/components/conversation-core.md": "web boundary",
+                    "architecture/reference/api-specs/business-platform.openapi.yaml": "conversation operations",
+                },
+                constitutional_check=(
+                    "Follow existing Identity BFF pattern: server-only bridge to BP via a deterministically generated client. "
+                    "Do not author or patch files under web/lib/api/generated; the compile gate generates them from OpenAPI 1.2.0. "
+                    "Do not expose PR/provider endpoints to browser. Keep routes tenant-safe and privacy-safe."
+                ),
+                model_hint="reasoning",
+                max_tokens=12000,
+            ),
+            SubTaskDef(
+                id="WC034-10b",
+                description="Implement conversation workspace UI behavior for timeline/cards/retry/reconciliation and exact 360px compatibility.",
+                type="udcp",
+                depends_on=["WC034-10a"],
+                compile_gate="tsc",
+                service_dir="web",
+                wc_task_id="WC034-10",
+                stack="typescript",
+                output_files=[
+                    "web/components/conversation-workspace.tsx",
+                    "web/app/(authenticated)/relationships/[relationshipId]/conversation/page.tsx",
+                ],
+                inject_source_files=[
+                    "architecture/reference/components/conversation-core.md",
+                    "architecture/reference/ux/hybrid-ui-acceptance-contract.md",
+                ],
+                spec_sections={
+                    "work-contracts/WC-034-goal005-webportal-founder-admin.md": "WC034-10",
+                    "architecture/reference/components/conversation-core.md": "cards and events",
+                },
+                constitutional_check=(
+                    "UI must honor typed cards/events, retry/reconciliation semantics, offline state, and exact 360px layout constraints."
+                ),
+                model_hint="reasoning",
+                max_tokens=10000,
+            ),
+        ]
+    },
+    "WC034-11": {
+        "subtasks": [
+            SubTaskDef(
+                id="WC034-11a",
+                description="Add BP conversation contract and invariants coverage.",
+                type="udcp",
+                depends_on=["WC034-08c"],
+                compile_gate="dotnet_test",
+                service_dir="tests/business-platform.Tests",
+                wc_task_id="WC034-11",
+                stack="dotnet",
+                output_files=[
+                    "tests/business-platform.Tests/ConversationContractsTests.cs",
+                ],
+                inject_source_files=[
+                    "src/business-platform/Controllers/ConversationController.cs",
+                    "src/business-platform/Services/ConversationService.cs",
+                    "architecture/reference/components/conversation-core.md",
+                ],
+                spec_sections={
+                    "work-contracts/WC-034-goal005-webportal-founder-admin.md": "WC034-11",
+                },
+                constitutional_check=(
+                    "Validate BP idempotency, tenant isolation, privacy-safe errors, and versioned schema conformance."
+                ),
+                model_hint="auto",
+                max_tokens=9000,
+            ),
+            SubTaskDef(
+                id="WC034-11b",
+                description="Add PR conversation workflow/stream/cancellation invariants coverage.",
+                type="udcp",
+                depends_on=["WC034-09b"],
+                compile_gate="pytest",
+                service_dir="tests/professional-runtime",
+                wc_task_id="WC034-11",
+                stack="python",
+                output_files=[
+                    "tests/professional-runtime/test_conversation_idempotency.py",
+                ],
+                inject_source_files=[
+                    "src/professional-runtime/routers/conversation.py",
+                    "src/professional-runtime/workflows/conversation_workflow.py",
+                    "architecture/reference/components/conversation-core.md",
+                ],
+                spec_sections={
+                    "work-contracts/WC-034-goal005-webportal-founder-admin.md": "WC034-11",
+                },
+                constitutional_check=(
+                    "Docker-only pytest coverage for cursor replay, reconnect, cancellation, Stop independence, and Temporal state integrity."
+                ),
+                model_hint="auto",
+                max_tokens=9000,
+            ),
+            SubTaskDef(
+                id="WC034-11c",
+                description="Add web conversation BFF and UI contract coverage including generated-client conformance.",
+                type="udcp",
+                depends_on=["WC034-10b"],
+                compile_gate="ts_test",
+                service_dir="web",
+                wc_task_id="WC034-11",
+                stack="typescript",
+                output_files=[
+                    "web/tests/conversation.timeline.test.tsx",
+                    "web/lib/api/conversation.test.ts",
+                ],
+                inject_source_files=[
+                    "web/lib/api/conversation.ts",
+                    "web/components/conversation-workspace.tsx",
+                    "architecture/reference/components/conversation-core.md",
+                ],
+                spec_sections={
+                    "work-contracts/WC-034-goal005-webportal-founder-admin.md": "WC034-11",
+                    "architecture/reference/ux/hybrid-ui-acceptance-contract.md": "UX-CONV-01 through UX-CONV-07",
+                },
+                constitutional_check=(
+                    "Docker-only web tests for generated-client conformance, timeline/retry behavior, accessibility assertions, and no horizontal overflow at 360px."
+                ),
+                model_hint="auto",
+                max_tokens=9000,
+            ),
+        ]
+    },
+    "WC034-12": {
+        "subtasks": [
+            SubTaskDef(
+                id="WC034-12a",
+                description="Create deterministic F3 validation runner that executes Docker-only regression, constitutional suites, and browser acceptance gates.",
+                type="udcp",
+                depends_on=["WC034-11a", "WC034-11b", "WC034-11c"],
+                compile_gate="wc034_f3_validate",
+                service_dir="scripts",
+                wc_task_id="WC034-12",
+                stack="python",
+                output_files=[
+                    "scripts/wc034_f3_validation.py",
+                ],
+                inject_source_files=[
+                    "work-contracts/WC-034-goal005-webportal-founder-admin.md",
+                    "architecture/reference/components/conversation-core.md",
+                    "docker-compose.yml",
+                ],
+                spec_sections={
+                    "work-contracts/WC-034-goal005-webportal-founder-admin.md": "WC034-12",
+                    "architecture/reference/components/conversation-core.md": "acceptance and dependency gates",
+                },
+                constitutional_check=(
+                    "Validation runner must execute only Docker-based suites (C-080), collect UX-CONV/CCT-UX evidence, and emit review-ready pass/fail artifacts without deployment or workflow trigger side effects."
+                ),
+                model_hint="auto",
+                max_tokens=8000,
+            ),
+        ]
+    },
     # ── GROOMER INJECTION POINT — groom_sprint.py injects new sprint handlers here ──
 }
 
@@ -1304,12 +1651,14 @@ def _all_outputs_present_and_compile(subtasks: list) -> bool:
         )
         if ruff.returncode != 0:
             return False
-    # pytest -x (full execution) for test files — collect-only misses logic failures
+    # pytest -x (full execution) for test files — collect-only misses logic failures.
+    # C-080: run tests inside Docker test-runner, never host Python.
     test_files = [f for f in py_files if f.startswith("tests/") or "/tests/" in f]
     if test_files:
         test_run = subprocess.run(
-            ["python3", "-m", "pytest", "-x", "-q", "--tb=short"]
-            + [str(REPO_ROOT / f) for f in test_files],
+            ["docker", "compose", "--profile", "test", "run", "--rm", "test-runner",
+             "python3", "-m", "pytest", "-x", "-q", "--tb=short"]
+            + test_files,
             capture_output=True, text=True, cwd=REPO_ROOT,
             timeout=120,
         )

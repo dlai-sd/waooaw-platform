@@ -309,6 +309,73 @@ TASK_CONTEXT_MAP: dict[str, dict] = {
         "relevant_adrs": ["ADR-034"],
         "constitutional_check": "≥90% line coverage. pricing_floor_log row written on BOTH APPROVED and REJECTED paths. Property-based tests with hypothesis @given on derive_price and validate_price.",
     },
+
+    # WC-034 F3: Conversation core autonomous pipeline dispatch
+    "WC034-08": {
+        "description": "Business Platform F3 conversation timeline/send/retry/read-position/cancel/SSE implementation with JWT tenant authority and idempotency",
+        "model_hint": "reasoning",
+        "spec_sections": {
+            "work-contracts/WC-034-goal005-webportal-founder-admin.md": "F3 Autonomous Implementation Tasks",
+            "architecture/reference/components/conversation-core.md": "§BP ownership,§public API boundary,§idempotency,§privacy-safe errors",
+            "architecture/reference/api-specs/business-platform.openapi.yaml": "§Conversation operations",
+            "architecture/reference/components/identity-boundary.md": "§JWT tenant authority",
+        },
+        "relevant_claims": ["C-023", "C-026", "C-059", "C-063", "C-065", "C-076", "C-080"],
+        "relevant_adrs": ["ADR-002", "ADR-003", "ADR-038"],
+        "constitutional_check": "Implement only BP conversation ingress operations in OpenAPI 1.2.0 scope. Tenant authority from JWT only. Enforce request-hash idempotency and RFC 9457 privacy-safe errors. Preserve Evidence First sequencing before success return.",
+    },
+    "WC034-09": {
+        "description": "Professional Runtime F3 execution/cancellation/resumable stream implementation for BP-authenticated internal path only",
+        "model_hint": "reasoning",
+        "spec_sections": {
+            "work-contracts/WC-034-goal005-webportal-founder-admin.md": "F3 Autonomous Implementation Tasks",
+            "architecture/reference/components/conversation-core.md": "§PR ownership,§typed internal events,§Temporal state",
+            "architecture/reference/api-specs/professional-runtime.openapi.yaml": "§F3 internal execution and stream",
+            "architecture/reference/components/professional-runtime.md": "§session/workflow boundaries",
+        },
+        "relevant_claims": ["C-001", "C-023", "C-059", "C-063", "C-065", "C-076", "C-080"],
+        "relevant_adrs": ["ADR-002", "ADR-005", "ADR-018", "ADR-038"],
+        "constitutional_check": "Implement only BP-authenticated internal PR endpoints. No browser ingress and no direct provider-facing ingress. Preserve Stop behavior and Temporal execution-state integrity. Stream events must remain typed and resumable.",
+    },
+    "WC034-10": {
+        "description": "Web F3 generated ConversationApi client, server-only BFF boundary, and conversation UI behavior",
+        "model_hint": "reasoning",
+        "spec_sections": {
+            "work-contracts/WC-034-goal005-webportal-founder-admin.md": "F3 Autonomous Implementation Tasks",
+            "architecture/reference/components/conversation-core.md": "§web boundary,§cards/events,§offline/reconciliation",
+            "architecture/reference/api-specs/business-platform.openapi.yaml": "§F3 conversation operations",
+            "architecture/reference/ux/wc-034-implementation-decomposition.md": "§F3",
+        },
+        "relevant_claims": ["C-001", "C-023", "C-059", "C-063", "C-076", "C-080"],
+        "relevant_adrs": ["ADR-002", "ADR-017", "ADR-038"],
+        "constitutional_check": "Generate and consume the canonical typescript-fetch client without manual patches. Keep browser-to-BP via server-only BFF routes only. Implement exact 360px-safe conversation behavior with typed events and reconciliation semantics.",
+    },
+    "WC034-11": {
+        "description": "F3 cross-service coverage for BP, PR, and web with idempotency/tenant/privacy/cursor/cancellation/Stop invariants",
+        "model_hint": "auto",
+        "spec_sections": {
+            "work-contracts/WC-034-goal005-webportal-founder-admin.md": "F3 Autonomous Implementation Tasks",
+            "architecture/reference/components/conversation-core.md": "§acceptance mapping,§versioned schemas,§tenant/privacy invariants",
+            "tests/QA-STRATEGY.md": "§coverage and constitutional suites",
+            "architecture/reference/ux/hybrid-ui-acceptance-contract.md": "§conversation acceptance IDs",
+        },
+        "relevant_claims": ["C-001", "C-023", "C-026", "C-059", "C-063", "C-071", "C-076", "C-080"],
+        "relevant_adrs": ["ADR-017", "ADR-038"],
+        "constitutional_check": "Keep implementation and tests separated. Add service-scoped tests for idempotency, tenant isolation, privacy-safe errors, cursor replay, reconnect, cancellation, Stop independence, and generated-client conformance. Enforce Docker-only test execution for runnable test gates.",
+    },
+    "WC034-12": {
+        "description": "F3 Docker-only regression and constitutional acceptance execution with review-ready evidence packaging",
+        "model_hint": "auto",
+        "spec_sections": {
+            "work-contracts/WC-034-goal005-webportal-founder-admin.md": "F3 Autonomous Implementation Tasks",
+            "architecture/reference/components/conversation-core.md": "§acceptance and gate mapping",
+            "constitution/AGENT-ENTRY.md": "§Implementation Gate and C-080 test mandate",
+            "architecture/reference/ux/hybrid-ui-acceptance-contract.md": "§UX-CONV and UX-RES acceptance",
+        },
+        "relevant_claims": ["C-001", "C-023", "C-059", "C-065", "C-071", "C-076", "C-080", "C-086"],
+        "relevant_adrs": ["ADR-017", "ADR-038"],
+        "constitutional_check": "Run only Docker-based regression and constitutional suites; do not execute host-venv tests. Publish deterministic evidence artifacts for independent review and avoid deployment, trigger, or merge actions.",
+    },
 }
 
 # Global context always injected (condensed — not full corpus)
