@@ -1,6 +1,6 @@
 # ADR-046: Workload Identity and Service Authentication
 
-**Status:** PROPOSED - R-066 conditions repaired; pending fresh INST-002 Constitutional review
+**Status:** ACCEPTED - R-066 conditions satisfied; R-067 approved with no conditions
 **Date:** 2026-08-10
 **Decision owner:** INST-004 - Enterprise Architect
 **Goal / Work Contract:** GOAL-005 / WC-034 F4, Amendment 4 Order 1
@@ -8,12 +8,13 @@
 **Contribution evidence:** [CR-GOAL-005-INST-004-10](../goals/GOAL-005-f4-workload-identity-contribution.md)
 **Learning evidence:** [LR-GOAL-005-INST-004-06](../goals/GOAL-005-f4-workload-identity-learning.md)
 **R-066 repair evidence:** [CR-GOAL-005-INST-004-11](../goals/GOAL-005-f4-workload-identity-repair-contribution.md) and [LR-GOAL-005-INST-004-07](../goals/GOAL-005-f4-workload-identity-repair-learning.md)
+**Independent review evidence:** [R-066](../reviews/R-066-wc034-f4-adr046-business-review.md) and [R-067](../reviews/R-067-wc034-f4-adr046-constitutional-review.md)
 **Constitutional basis:** C-001, C-002, C-003, C-005, C-006, C-008, C-023, C-026, C-031, C-032, C-063, C-065, C-083, C-084, C-085; capabilities 6.1-6.4; AD-002, AD-004, AD-008, AD-009, AD-010; DP-001, DP-002, DP-006, DP-007, DP-010
 **Accepted decisions preserved:** [ADR-007](ADR-007-grpc-mtls-certificates.md), [ADR-014](ADR-014-secret-management.md), ADR-001, ADR-003, ADR-004, ADR-009, ADR-010, ADR-018, ADR-031, and ADR-034
 
 ## 1. Status And Decision Boundary
 
-This ADR is a proposal. INST-004 has authored it and cannot approve or accept it. It may become Accepted only after an independent INST-003 Business review and a fresh INST-002 Constitutional review both approve it and every review condition is satisfied. INST-013 may then record the resulting status mechanically; it may not repair or accept the decision.
+This ADR is Accepted. INST-003 approved it through R-066 subject to two conditions, INST-004 repaired both conditions prospectively, and fresh INST-002 approved the repaired decision through R-067 with no conditions. INST-013 recorded the resulting status mechanically and did not author, repair, or independently accept the decision.
 
 This decision governs workload identity and mutual service authentication for:
 
