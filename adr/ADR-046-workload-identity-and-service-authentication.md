@@ -1,12 +1,13 @@
 # ADR-046: Workload Identity and Service Authentication
 
-**Status:** PROPOSED - pending independent INST-003 Business review and fresh INST-002 Constitutional review
+**Status:** PROPOSED - R-066 conditions repaired; pending fresh INST-002 Constitutional review
 **Date:** 2026-08-10
 **Decision owner:** INST-004 - Enterprise Architect
 **Goal / Work Contract:** GOAL-005 / WC-034 F4, Amendment 4 Order 1
 **Authorization:** [GOA-GOAL-005-INST-004-09](../goals/GOAL-005-execution-plan.md#goa-goal-005-inst-004-09), accepted by [ACC-GOAL-005-INST-004-09](../goals/GOAL-005-execution-plan.md#acc-goal-005-inst-004-09)
 **Contribution evidence:** [CR-GOAL-005-INST-004-10](../goals/GOAL-005-f4-workload-identity-contribution.md)
 **Learning evidence:** [LR-GOAL-005-INST-004-06](../goals/GOAL-005-f4-workload-identity-learning.md)
+**R-066 repair evidence:** [CR-GOAL-005-INST-004-11](../goals/GOAL-005-f4-workload-identity-repair-contribution.md) and [LR-GOAL-005-INST-004-07](../goals/GOAL-005-f4-workload-identity-repair-learning.md)
 **Constitutional basis:** C-001, C-002, C-003, C-005, C-006, C-008, C-023, C-026, C-031, C-032, C-063, C-065, C-083, C-084, C-085; capabilities 6.1-6.4; AD-002, AD-004, AD-008, AD-009, AD-010; DP-001, DP-002, DP-006, DP-007, DP-010
 **Accepted decisions preserved:** [ADR-007](ADR-007-grpc-mtls-certificates.md), [ADR-014](ADR-014-secret-management.md), ADR-001, ADR-003, ADR-004, ADR-009, ADR-010, ADR-018, ADR-031, and ADR-034
 
@@ -191,6 +192,10 @@ Future separately authorized implementation must migrate each route in this orde
 
 There is no dual-mode plaintext fallback. If an existing route cannot cut over atomically, the dependent F4 capability remains `UNAVAILABLE` or `BLOCKED` until a separately approved migration design provides authenticated continuity. Existing F3 behavior is not silently changed by F4; any shared BP-to-PR transport migration must demonstrate backward compatibility and preserve existing contract outcomes before F4 is enabled.
 
+Before each planned cutover, and for every credential incident, the migration or incident record must enumerate each affected F4 read or command family and any affected shared F3 BP-to-PR route. For every enumerated family or route it must name the accountable business owner, the planned or observed impact window, the customer-language `UNAVAILABLE`, `BLOCKED`, or unknown consequence, the status of customer rights and the independently governed Emergency Stop, and the privacy-safe support correlation and escalation path. It must preserve pending customer intent and every unknown outcome by command identity and owner version, then reconcile them without assuming that request acceptance or transport loss means either failure or success.
+
+Restoration is owner-by-owner and family-by-family. The accountable WBE, PR, domain, BP, and, where applicable, CE owner must confirm its own authoritative state and consequence before BP republishes availability. Post-restoration evidence must prove that reconciliation exposed no duplicate mutation, cross-relationship state, lost customer decision, false success, or stale authority. Certificate validity, listener readiness, successful mTLS or envelope validation, request acceptance, technical completion, and evidence recording are necessary signals where applicable but are never sufficient restoration criteria. A family or shared F3 route remains `UNAVAILABLE`, `BLOCKED`, or honestly unknown until business-state reconciliation satisfies these criteria.
+
 ## 8. Alternatives Considered And Rejected
 
 | Alternative | Decision and reason |
@@ -243,6 +248,35 @@ No executable evidence is produced by this ADR. A later separately authorized im
 12. OpenTelemetry and privacy scans proving useful identity/audience/policy/rotation/replay signals while excluding keys, certificates, signatures, actor, tenant, relationship, acknowledgement, evidence payload, private topology, and high-cardinality protected identifiers;
 13. compatibility evidence proving unchanged BP public/generated-client surfaces, preserved WBE `BLOCKED`, preserved PR and CE behavior, explicit adapter registration, no browser/private-ledger access, and no plaintext fallback listener; and
 14. a parity matrix demonstrating identical trust-domain, URI SAN, audience, route, envelope, authorization, expiry, error, replay, and isolation semantics across development, CI, and cloud, with only the approved root custody and issuance differences.
+
+### 10.1 End-To-End Business-Operation Matrix
+
+The future executable evidence package must include one row for every enabled BP-to-WBE, BP-to-PR, and BP-to-domain-adapter read family and command family; grouping is permitted only when the grouped operations have identical owners, constitutional obligations, state transitions, consequences, and public translations. Each row must identify the relationship-bound operation, accountable owner, read or command classification, expected business state and consequence, and executable proofs for all of the following links:
+
+| Required proof link | Minimum executable proof |
+|---|---|
+| Authenticated transport | BP and the exact target mutually authenticate, and the envelope is bound to the correct audience, route, operation, relationship, purpose, body, and contract version. |
+| Correct owner receipt | The designated WBE, PR, or registered domain adapter receives the request under its owner correlation and confirms that no other owner or BP substitute handled its truth. |
+| Constitutional step where applicable | Every required CE authorization, authority-licensing, and Evidence First operation is confirmed in order; a non-applicable CE step is justified by the approved owner contract rather than omitted silently. |
+| Owner-confirmed business state and consequence | The owner returns or records its authoritative state, source version, business consequence, and unresolved state; technical acceptance or completion is not used as a proxy. |
+| BP public translation | BP preserves the owner meaning, including `UNAVAILABLE`, `BLOCKED`, `UNKNOWN`, `PARTIAL`, `REJECTED`, stale, disputed, or attribution-limited outcomes, through the privacy-safe public contract without recomputation or optimistic upgrade. |
+| Final customer-visible state | The generated-client/browser path displays the same relationship, business state, consequence, rights or next action, and support-safe correlation in customer language. |
+
+For every applicable matrix row, negative and partial cases must interrupt each link independently and prove the resulting owner and customer state. In particular, successful mTLS or envelope validation, request acceptance, technical completion, or constitutional evidence recording alone must never be presented or persisted as completed work, available authority, actual or available commercial truth, or an achieved business outcome. The matrix must prove zero false success when a later owner, CE, BP translation, or customer-visible step is denied, unavailable, partial, unknown, stale, disputed, or fails reconciliation.
+
+### 10.2 Migration And Credential-Incident Evidence Matrix
+
+The future package must also include planned-migration and credential-incident rows for every affected F4 family and any shared F3 BP-to-PR route. Each row must prove:
+
+1. the accountable business owner and planned or observed impact window;
+2. the customer-language `UNAVAILABLE`, `BLOCKED`, or unknown consequence, including which intended work, decision, commercial fact, or result is affected;
+3. the continuing status of customer rights and the independently governed Emergency Stop;
+4. durable preservation of pending customer intent and unknown outcomes by command identity, followed by owner-authoritative reconciliation before retry or completion;
+5. a privacy-safe correlation exposed through BP and an accountable support-escalation path that does not reveal private topology, identity material, tenant, relationship, or owner data;
+6. owner-by-owner restoration criteria for WBE commercial truth, PR execution truth, domain outcome truth, BP governance/public truth, and required CE authority/evidence state; and
+7. post-restoration proof of no duplicate mutation, cross-relationship state, lost customer decision, false success, or stale authority.
+
+Executable recovery must keep each family or route unavailable, blocked, or honestly unknown until those business states reconcile. Listener readiness, certificate renewal, successful authentication, request health, technical completion, or evidence presence alone cannot restore availability. Tests must include interrupted cutover, expiry, revocation, rotation failure, compromised TLS or delegation credentials, lost response after owner receipt, and partial multi-owner recovery, with restoration occurring independently only for families whose complete business-state criteria pass.
 
 Static specification, fixture, integration, browser, deployment, and customer-proof evidence must retain their existing provenance labels and must not be conflated. Passing this future evidence would satisfy only the authorized implementation gate named by a later amendment; it would not resolve F4 policy defaults, authorize deployment, or prove customer outcomes.
 
