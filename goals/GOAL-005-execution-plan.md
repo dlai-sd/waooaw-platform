@@ -1239,3 +1239,38 @@ R-065 / `CR-GOAL-005-INST-002-07` satisfies GEOM R2-03 condition 1, with CA-F4-A
 | `acceptance_timestamp` | 2026-08-10T16:11:27+00:00 |
 | Decision | ACCEPTED |
 | Contribution scope accepted | R-066 Conditions 1 and 2 repair to ADR-046 Sections 7.2 and 10 plus new Contribution and Learning Records only; no mechanism change, review, implementation, policy-default, provider-activation, or deployment authority |
+
+## Amendment 4 Order 3 Authorization Record
+
+### GOA-GOAL-005-INST-002-04
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GOA-GOAL-005-INST-002-04 |
+| `record_type` | Authorization Record |
+| `authorization_id` | GOA-GOAL-005-INST-002-04 |
+| Authorized Institution | Fresh INST-002 — Constitutional Analyst |
+| Contribution scope | Independently review repaired ADR-046 at commit `2547276` for constitutional and claim traceability; publish G-10-attested `CR-GOAL-005-INST-002-08` with explicit decision and exact conditions plus `LR-GOAL-005-INST-002-02` |
+| Evidence specification | Verify R-066 Conditions 1 and 2 are satisfied; trace the mechanism, owner boundaries, delegated context, customer rights, Human Override and Emergency Stop, Evidence First, fail-closed behavior, privacy-safe support, migration/incident reconciliation, environment parity, and future proof obligations to ratified claims and accepted architecture; distinguish authentication from authority, evidence, owner truth, completed work, and business outcome |
+| Participation Window | 1 constitutional session after valid acceptance |
+| Independence constraint | Fresh context distinct from R-065, R-063, Amendment 4 authoring and repair, and Business review; review only and may not edit ADR-046, repair a condition, accept the ADR, or authorize implementation |
+| Excluded authority | Architecture authorship or repair, Business review replacement, ADR acceptance, source, tests, migrations, canonical OpenAPI changes, generated clients, builds, implementation, policy defaults, provider activation, deployment, F5-F8, self-review, and self-merge |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-10T16:20:02+00:00 |
+
+## Amendment 4 Order 3 Acceptance Record
+
+### ACC-GOAL-005-INST-002-04
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-002 |
+| `goal_id` | GOAL-005 |
+| `record_id` | ACC-GOAL-005-INST-002-04 |
+| `record_type` | Acceptance Record |
+| `authorization_id` | GOA-GOAL-005-INST-002-04 |
+| `acceptance_timestamp` | 2026-08-10T16:20:03+00:00 |
+| Decision | ACCEPTED |
+| Contribution scope accepted | Fresh independent Constitutional and claim-traceability review of repaired ADR-046 plus attested Contribution and Learning Records only; no ADR editing, repair, acceptance, implementation, policy-default, provider-activation, or deployment authority |

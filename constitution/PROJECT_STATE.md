@@ -28,6 +28,7 @@
 | GEP-GOAL-005-INST-013-05 Amendment 4 | ACTIVE — Order 1 published ADR-046 PROPOSED, CR-GOAL-005-INST-004-10, and LR-GOAL-005-INST-004-06; independent INST-003 Business review is next, followed by fresh INST-002 review; no implementation authority |
 | Amendment 4 Order 2 | CONDITIONALLY APPROVED — R-066 / CR-GOAL-005-INST-003-06 and LR-GOAL-005-INST-003-02 are complete; ADR-046 must add end-to-end business-consequence evidence and migration/incident restoration evidence under prospective INST-004 repair authority before Order 3 |
 | Amendment 4 R-066 repair | DONE — CR-GOAL-005-INST-004-11 and LR-GOAL-005-INST-004-07 add the complete owner-to-customer operation matrix and migration/incident restoration matrix; R-066 Conditions 1 and 2 are textually satisfied; ADR-046 remains PROPOSED pending Order 3 |
+| Amendment 4 Order 3 | AUTHORIZED — GOA-GOAL-005-INST-002-04 and ACC-GOAL-005-INST-002-04 authorize a fresh INST-002 Constitutional and claim-traceability review of repaired ADR-046 at `2547276`; CR-GOAL-005-INST-002-08 and LR-GOAL-005-INST-002-02 required before closure |
 | F4 implementation | BLOCKED — no `src/` or `web/` implementation, generated client, deployment, or F5-F8 authority in this architecture session |
 
 ### Decision Space and Constitutional Obligations
