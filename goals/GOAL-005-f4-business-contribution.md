@@ -11,6 +11,25 @@
 | Contribution status | COMPLETE |
 | Contribution boundary | Business semantics for WC-034 F4 Relationship Workspace; no architecture, interface, schema, implementation, provider activation, or deployment decision |
 
+## Post-Authorization Re-attestation
+
+| Attestation field | Value |
+|---|---|
+| `institution_id` | INST-003 |
+| `goal_id` | GOAL-005 |
+| `record_id` | CR-GOAL-005-INST-003-04 |
+| `record_type` | Contribution Record |
+| `produced_at` | 2026-08-10T13:31:26+00:00 |
+| `authorization_id` | GOA-GOAL-005-INST-003-03 |
+| `acceptance_record` | ACC-GOAL-005-INST-003-03 |
+| Re-attests | CR-GOAL-005-INST-003-03 candidate semantics |
+| Order 1 decision | COMPLETE — the business semantics below satisfy G-F4-01 evidence under GEP-GOAL-005-INST-013-04 |
+| Authority boundary | Business semantics only; no architecture, API, interface, schema, implementation, canonical OpenAPI, generated-client, provider-activation, deployment, F5-F8, or integrated-review authority |
+
+After GOA-GOAL-005-INST-003-03 was issued and ACC-GOAL-005-INST-003-03 was recorded, INST-003 re-opened this candidate against GEP-GOAL-005-INST-013-04 and R-062. INST-003 confirms that its generic Relationship Workspace semantics satisfy Order 1 G-F4-01 evidence: they define Plan, authoritative Needs your attention, Work, Results, Usage & budget, and Rights & control; distinguish customer outcomes from technical metrics; preserve owner, state, effect, action, consequence, truthful-state, and measurable-acceptance meanings; and do not create browser-derived authority or priority.
+
+Digital Marketing Agent (DMA) is selected as the first-release profession. DMA-specific outcome semantic validation remains Order 4 work and is pending named DMA domain-authority evidence for baselines, measures, evidence sources, attribution limits, uncertainty, review cadence, and material attention candidates. This record does not invent, infer, or attest that missing domain evidence and does not close G-F4-09.
+
 ## Customer Outcome And Release Boundary
 
 F4 gives a customer one truthful relationship workspace for understanding what their employed professional plans to do, what needs a customer decision, what work is under way, what business results are evidenced, how allowances and budget are expected to change, and which rights and controls remain available. The customer can act in business language without interpreting models, tokens, queues, traces, provider telemetry, or other technical abstractions.

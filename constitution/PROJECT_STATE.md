@@ -18,7 +18,8 @@
 | F4 generated-client compatibility and independent review | PENDING — G-F4-10 requires canonical OpenAPI/generation evidence and G-F4-11 requires a fresh C-065-compliant integrated review |
 | GEP-GOAL-005-INST-013-04 Amendment 3 | PROPOSED — architecture/owner-contract closure only; DMA selected; candidate artifacts require post-GOA re-attestation; no implementation or deployment authority |
 | CA readiness and Registrant acknowledgement | DONE — R-062 / CR-GOAL-005-INST-002-05 satisfies R2-03 condition 1; ACK-GOAL-005-INST-001-04 records the exact Founder acknowledgement and DMA selection |
-| Amendment 3 Order 1 | AUTHORIZED — GOA-GOAL-005-INST-003-03 and GOA-GOAL-005-INST-011-05 issued and accepted in temporal order; Contribution Records pending |
+| Amendment 3 Order 1 | DONE — CR-GOAL-005-INST-003-04 re-attests G-F4-01 business semantics; CR-GOAL-005-INST-011-05 re-attests G-F4-06 composition and DMA selection; DMA authority evidence remains Order 4 |
+| Amendment 3 Order 2 | PENDING — INST-004, INST-006, and INST-007 GOAs may issue only after Order 1 Contribution Records are published |
 | F4 implementation | BLOCKED — no `src/` or `web/` implementation, generated client, deployment, or F5-F8 authority in this architecture session |
 
 ### Decision Space and Constitutional Obligations

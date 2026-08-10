@@ -342,3 +342,39 @@ The scenarios below are normative product acceptance. They require owner-approve
 - `architecture/reference/components/relationship-workspace.md` — CR-GOAL-005-INST-004-07
 - `work-contracts/WC-034-goal005-webportal-founder-admin.md` — F4 boundary and acceptance identifiers
 - `constitution/INSTITUTIONAL_BACKLOG.md` — IB-014 customer self-service demand and constitutional portal constraints
+
+## 13. Post-Authorization Re-Attestation
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-011 |
+| `goal_id` | GOAL-005 |
+| `record_id` | CR-GOAL-005-INST-011-05 |
+| `record_type` | Contribution Record |
+| `produced_at` | 2026-08-10T13:30:17+00:00 |
+| `authorization_id` | GOA-GOAL-005-INST-011-05 |
+| `acceptance_id` | ACC-GOAL-005-INST-011-05 |
+| Gate contribution | G-F4-06 — Product release composition and DMA first-release selection |
+| Decision | RE-ATTESTED — SATISFIED within INST-011 Decision Space |
+
+After accepting `GOA-GOAL-005-INST-011-05` at `2026-08-10T13:25:23+00:00`, INST-011 independently re-opened this candidate against `GEP-GOAL-005-INST-013-04` and R-062 / `CR-GOAL-005-INST-002-05`. INST-011 adopts Sections 1-12 without substantive amendment and confirms the Order 1 G-F4-06 product composition: one selected Employment Relationship context with the six mandatory first-release views **Plan**, **Needs your attention**, **Work**, **Results**, **Usage & budget**, and **Rights & control**; authoritative action availability and attention ordering; truthful empty, stale, unknown, blocked, unavailable, error, and pending-evidence states; the deferrals in Section 9; and the unresolved Founder policy escalations in Section 8.
+
+INST-011 also confirms the Registrant's selection of **Digital Marketing Agent (DMA)** as the sole WC-034 F4 first-release profession. This selection does not import DMA-specific fields or professional judgment into the generic Relationship Workspace contract.
+
+### Order 4 DMA Domain-Authority Evidence Requirement
+
+Before Order 4 can incorporate DMA domain evidence or G-F4-09 can close, a governing record must name the DMA domain authority and provide attested provenance for evidence covering all of the following:
+
+- F4-specific customer-outcome vocabulary;
+- baselines and measures;
+- authoritative evidence sources;
+- attribution boundaries and limits;
+- uncertainty treatment;
+- review cadence; and
+- material DMA attention candidates.
+
+Neither `GEP-GOAL-005-INST-013-04` nor R-062 names an individual DMA domain authority for this F4 contribution. This record therefore does not select a person, invent domain evidence, or treat earlier DMA material as F4 authority. The named authority and attested provenance remain required inputs. Once present after Orders 1-3 Contribution Records are published, INST-011 may incorporate that evidence, INST-003 must validate business-outcome semantics, and INST-005 must validate generic adapter conformance. Generic adapter conformance alone cannot close G-F4-09.
+
+### Preserved Boundaries
+
+The Founder policy decisions F4-POL-01 through F4-POL-06 remain unresolved and blocked exactly as stated in Section 8. This re-attestation grants no architecture, endpoint, API, wire-schema, canonical OpenAPI, generated-client, implementation, test, migration, build, provider-activation, deployment, F5-F8, self-review, or self-merge authority. G-F4-12 implementation and G-F4-13 deployment remain separately blocked.
