@@ -29,11 +29,16 @@ Backward compatible: SubTaskDef without wc_task_id uses constitutional_check onl
 
 from __future__ import annotations
 
+import os
+import shutil
 import subprocess
 import sys
+from copy import deepcopy
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Optional
+
+import yaml
 
 REPO_ROOT = Path(__file__).parent.parent
 
@@ -163,7 +168,7 @@ class SubTaskDef:
     description: str
     type: str                                  # "deterministic" | "llm" | "udcp"
     depends_on: list[str] = field(default_factory=list)
-    compile_gate: str = "dotnet_build"         # "dotnet_build" | "dotnet_test" | "ruff" | "tsc"
+    compile_gate: str = "dotnet_build"         # "dotnet_build" | "dotnet_test" | "ruff" | "pytest" | "tsc" | "ts_test"
     service_dir: str = "src/constitutional-engine"  # target service dir for compile gate
 
     # For type="deterministic"
@@ -195,6 +200,184 @@ class SubTaskDef:
     # Use when an existing file has wrong content that must be replaced entirely
     # (e.g. EA-session mock scaffolds that must be regenerated from spec).
     force_greenfield: bool = False
+
+
+SUPPORTED_COMPILE_GATES: set[str] = {
+    "dotnet_build",
+    "dotnet_test",
+    "py_compile",
+    "ruff",
+    "pytest",
+    "sqlfluff",
+    "yamllint",
+    "terraform_validate",
+    "openapi_ts_generate",
+    "wc034_f3_validate",
+    "tsc",
+    "ts_test",
+}
+
+F3_CONVERSATION_MODELS: tuple[str, ...] = (
+    "ActionCardV1",
+    "ConversationActorType",
+    "ConversationCardBaseV1",
+    "ConversationCardCommandV1",
+    "ConversationCardPayloadV1",
+    "ConversationChannel",
+    "ConversationCompletionReason",
+    "ConversationDeliveryState",
+    "ConversationDeltaPayloadV1",
+    "ConversationEvidenceState",
+    "ConversationExecutionStatusV1",
+    "ConversationFailurePayloadV1",
+    "ConversationHeartbeatPayloadV1",
+    "ConversationMessagePayloadV1",
+    "ConversationMessageV1",
+    "ConversationProblemCode",
+    "ConversationProblemDetail",
+    "ConversationProcessingState",
+    "ConversationReadPositionV1",
+    "ConversationReconciliationPayloadV1",
+    "ConversationSchemaVersion",
+    "ConversationStreamEventType",
+    "ConversationStreamEventV1",
+    "ConversationSubmissionV1",
+    "ConversationTextBlockV1",
+    "ConversationTimelinePageV1",
+    "DecisionAlternativeV1",
+    "DecisionCardV1",
+    "DeliverableCardV1",
+    "GovernedConversationCardV1",
+    "PlanCardV1",
+    "SendConversationMessageRequestV1",
+    "UpdateConversationReadPositionRequestV1",
+)
+
+
+def _write_f3_openapi_slice(output_path: Path) -> None:
+    """Write only Conversation-tagged operations and their recursive components."""
+    source_path = REPO_ROOT / "architecture" / "reference" / "api-specs" / "business-platform.openapi.yaml"
+    source = yaml.safe_load(source_path.read_text(encoding="utf-8"))
+    paths: dict = {}
+    for path, path_item in source.get("paths", {}).items():
+        selected: dict = {
+            key: deepcopy(value)
+            for key, value in path_item.items()
+            if key in {"summary", "description", "servers", "parameters", "$ref"}
+        }
+        for method, operation in path_item.items():
+            if isinstance(operation, dict) and "Conversation" in operation.get("tags", []):
+                selected[method] = deepcopy(operation)
+        if any(key.lower() in {"get", "post", "put", "patch", "delete", "options", "head", "trace"} for key in selected):
+            paths[path] = selected
+
+    source_components = source.get("components", {})
+    selected_components: dict[str, dict] = {}
+    pending: list[str] = []
+
+    def collect_refs(node: object) -> None:
+        if isinstance(node, dict):
+            ref = node.get("$ref")
+            if isinstance(ref, str) and ref.startswith("#/components/"):
+                pending.append(ref)
+            for value in node.values():
+                collect_refs(value)
+        elif isinstance(node, list):
+            for value in node:
+                collect_refs(value)
+
+    collect_refs(paths)
+    seen: set[str] = set()
+    while pending:
+        ref = pending.pop()
+        if ref in seen:
+            continue
+        seen.add(ref)
+        _, _, category, name = ref.split("/", 3)
+        component = source_components.get(category, {}).get(name)
+        if component is None:
+            raise ValueError(f"F3 OpenAPI slice has unresolved component: {ref}")
+        selected_components.setdefault(category, {})[name] = deepcopy(component)
+        collect_refs(component)
+
+    sliced = {
+        "openapi": source["openapi"],
+        "info": deepcopy(source["info"]),
+        "paths": paths,
+        "components": selected_components,
+    }
+    if source.get("servers"):
+        sliced["servers"] = deepcopy(source["servers"])
+    if source.get("security"):
+        sliced["security"] = deepcopy(source["security"])
+    output_path.write_text(yaml.safe_dump(sliced, sort_keys=False), encoding="utf-8")
+
+
+# WC-034 spans BP (.NET), PR (Python), and web (Next.js/TypeScript).
+# This map prevents cross-service context/output leakage per task root.
+TASK_SERVICE_BOUNDARY_PREFIXES: dict[str, tuple[str, ...]] = {
+    "WC034-08": (
+        "src/business-platform/",
+        "tests/business-platform.Tests/",
+        "infrastructure/postgres/init/21-conversation-core.sql",
+        "architecture/reference/components/conversation-core.md",
+        "architecture/reference/api-specs/business-platform.openapi.yaml",
+        "work-contracts/WC-034-goal005-webportal-founder-admin.md",
+    ),
+    "WC034-09": (
+        "src/professional-runtime/",
+        "tests/professional-runtime/",
+        "architecture/reference/components/conversation-core.md",
+        "architecture/reference/api-specs/professional-runtime.openapi.yaml",
+        "work-contracts/WC-034-goal005-webportal-founder-admin.md",
+    ),
+    "WC034-10": (
+        "web/",
+        "architecture/reference/components/conversation-core.md",
+        "architecture/reference/api-specs/business-platform.openapi.yaml",
+        "work-contracts/WC-034-goal005-webportal-founder-admin.md",
+    ),
+    "WC034-11": (
+        "tests/business-platform.Tests/",
+        "tests/professional-runtime/",
+        "web/tests/",
+        "web/lib/",
+        "architecture/reference/components/conversation-core.md",
+        "work-contracts/WC-034-goal005-webportal-founder-admin.md",
+    ),
+    "WC034-12": (
+        "scripts/",
+        "logs/",
+        "simulation/",
+        "architecture/reference/components/conversation-core.md",
+        "work-contracts/WC-034-goal005-webportal-founder-admin.md",
+    ),
+}
+
+
+def _validate_task_service_boundary(st: SubTaskDef) -> tuple[bool, str]:
+    """Enforce service-local boundaries for known cross-stack task roots."""
+    import re
+
+    m = re.match(r"^(WC\d{3}-\d{2})", st.id)
+    if not m:
+        return True, ""
+    task_root = m.group(1)
+    allowed = TASK_SERVICE_BOUNDARY_PREFIXES.get(task_root)
+    if not allowed:
+        return True, ""
+
+    candidate_paths = (st.output_files or []) + (st.inject_source_files or [])
+    violations = [
+        p for p in candidate_paths
+        if not any(p.startswith(prefix) for prefix in allowed)
+    ]
+    if violations:
+        return False, (
+            f"SERVICE_BOUNDARY_VIOLATION ({task_root}): disallowed paths {violations}. "
+            f"Allowed prefixes: {list(allowed)}"
+        )
+    return True, ""
 
 
 # ── Effective constitutional check assembly (IB-022) ──────────────────────────
@@ -399,14 +582,23 @@ def run_compile_gate(gate_type: str, service_dir: str = "src/constitutional-engi
         return result.returncode == 0, result.stderr[:500] if result.returncode != 0 else ""
 
     if gate_type == "dotnet_test":
-        test_csproj = list((REPO_ROOT / "tests").rglob("*.csproj"))
+        test_root = REPO_ROOT / service_dir
+        test_csproj = list(test_root.glob("*.csproj")) if test_root.exists() else []
         if not test_csproj:
-            return False, "No test .csproj found"
+            return False, f"No test .csproj found in {service_dir}"
+        project_path = test_csproj[0].relative_to(REPO_ROOT).as_posix()
         result = subprocess.run(
-            ["dotnet", "test", str(test_csproj[0]), "--nologo", "-v", "quiet", "--no-build"],
+            [
+                "docker", "compose", "--profile", "test", "run", "--rm",
+                "--user", "root", "--volume",
+                "waooaw-f3-web-node-modules:/workspace/web/node_modules",
+                "test-runner",
+                "dotnet", "test", project_path, "--nologo", "-v", "quiet",
+            ],
             capture_output=True, text=True, cwd=REPO_ROOT
         )
-        return result.returncode == 0, result.stderr[:500] if result.returncode != 0 else ""
+        error_output = (result.stdout + result.stderr)[-500:] if result.returncode != 0 else ""
+        return result.returncode == 0, error_output
 
     if gate_type == "py_compile":
         # Scaffold gate — syntax only, no style rules. Scaffold pass uses this.
@@ -443,15 +635,145 @@ def run_compile_gate(gate_type: str, service_dir: str = "src/constitutional-engi
         return result.returncode == 0, error_output
 
     if gate_type == "pytest":
-        # Scope to target_files when provided — avoids pre-existing test failures
-        # blocking validation of newly generated files (same principle as ruff gate).
+        # C-080: test execution must run in Docker, never host Python.
+        # Scope to target_files when provided — avoids unrelated baseline failures.
         pytest_targets: list[str] = target_files if target_files else [service_dir]
         result = subprocess.run(
-            ["python3", "-m", "pytest", *pytest_targets, "-q", "--tb=short"],
+            [
+                "docker", "compose", "--profile", "test", "run", "--rm", "test-runner",
+                "python3", "-m", "pytest", *pytest_targets, "-q", "--tb=short",
+            ],
             capture_output=True, text=True, cwd=REPO_ROOT
         )
         # Capture both stdout+stderr (same as ruff gate) — ImportErrors from missing
         # deps (asyncpg, httpx) go to stderr; silent failure if only stdout captured.
+        error_output = (result.stdout + result.stderr)[-500:] if result.returncode != 0 else ""
+        return result.returncode == 0, error_output
+
+    if gate_type == "openapi_ts_generate":
+        generation_dir = REPO_ROOT / "sprint-context" / ".generated-conversation-client"
+        slice_path = REPO_ROOT / "sprint-context" / ".f3-conversation.openapi.yaml"
+        shutil.rmtree(generation_dir, ignore_errors=True)
+        generation_dir.mkdir(parents=True)
+        try:
+            _write_f3_openapi_slice(slice_path)
+        except (OSError, ValueError, yaml.YAMLError) as exc:
+            return False, f"Could not build dependency-closed F3 OpenAPI slice: {exc}"
+        model_selection = ":".join(F3_CONVERSATION_MODELS)
+        generator = subprocess.run(
+            [
+                "docker", "run", "--rm",
+                "--user", f"{os.getuid()}:{os.getgid()}",
+                "--volume", f"{REPO_ROOT}:/local",
+                "openapitools/openapi-generator-cli:v7.17.0",
+                "generate",
+                "-i", "/local/sprint-context/.f3-conversation.openapi.yaml",
+                "-g", "typescript-fetch",
+                "-o", "/local/sprint-context/.generated-conversation-client",
+                "--skip-validate-spec",
+                "--global-property",
+                f"apis=Conversation,models={model_selection},supportingFiles=runtime.ts",
+                "--additional-properties",
+                "supportsES6=true,typescriptThreePlus=true,useSingleRequestParameter=true",
+            ],
+            capture_output=True, text=True, cwd=REPO_ROOT,
+        )
+        if generator.returncode != 0:
+            slice_path.unlink(missing_ok=True)
+            return False, (generator.stdout + generator.stderr)[-1000:]
+
+        generated_api = generation_dir / "apis" / "ConversationApi.ts"
+        generated_models = generation_dir / "models"
+        if not generated_api.exists():
+            slice_path.unlink(missing_ok=True)
+            return False, "OpenAPI generator did not produce ConversationApi.ts"
+
+        client_root = REPO_ROOT / "web" / "lib" / "api" / "generated"
+        api_root = client_root / "apis"
+        model_root = client_root / "models"
+        api_root.mkdir(parents=True, exist_ok=True)
+        model_root.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(generated_api, api_root / generated_api.name)
+        for model_name in F3_CONVERSATION_MODELS:
+            generated_model = generated_models / f"{model_name}.ts"
+            if not generated_model.exists():
+                slice_path.unlink(missing_ok=True)
+                return False, f"OpenAPI generator did not produce {model_name}.ts"
+            shutil.copy2(generated_model, model_root / generated_model.name)
+
+        def ensure_exports(index_path: Path, exports: list[str]) -> None:
+            existing = index_path.read_text(encoding="utf-8") if index_path.exists() else ""
+            additions = [line for line in exports if line not in existing]
+            if additions:
+                separator = "" if not existing or existing.endswith("\n") else "\n"
+                index_path.write_text(
+                    existing + separator + "\n".join(additions) + "\n",
+                    encoding="utf-8",
+                )
+
+        ensure_exports(api_root / "index.ts", ["export * from './ConversationApi';"])
+        ensure_exports(
+            model_root / "index.ts",
+            [f"export * from './{name}';" for name in F3_CONVERSATION_MODELS],
+        )
+        shutil.rmtree(generation_dir, ignore_errors=True)
+        slice_path.unlink(missing_ok=True)
+        return run_compile_gate("tsc", service_dir, target_files, task_id)
+
+    if gate_type == "wc034_f3_validate":
+        validation_script = REPO_ROOT / "scripts" / "wc034_f3_validation.py"
+        if not validation_script.exists():
+            return False, "scripts/wc034_f3_validation.py was not generated"
+        result = subprocess.run(
+            ["python3", str(validation_script)],
+            capture_output=True, text=True, cwd=REPO_ROOT,
+        )
+        error_output = (result.stdout + result.stderr)[-1500:] if result.returncode != 0 else ""
+        return result.returncode == 0, error_output
+
+    if gate_type == "tsc":
+        web_dir = REPO_ROOT / "web"
+        if not web_dir.exists():
+            return False, "web/ directory not found"
+
+        tsc_proc = subprocess.run(
+            [
+                "docker", "compose", "--profile", "test", "run", "--rm",
+                "--user", "root", "--volume",
+                "waooaw-f3-web-node-modules:/workspace/web/node_modules",
+                "test-runner",
+                "bash", "-lc",
+                "cd /workspace/web && CI=true pnpm install --frozen-lockfile --package-import-method=copy "
+                "&& pnpm exec tsc --noEmit --strict",
+            ],
+            capture_output=True, text=True, cwd=REPO_ROOT,
+        )
+        if tsc_proc.returncode != 0:
+            error_output = (tsc_proc.stdout + tsc_proc.stderr)[:500]
+            record_lint_violations(task_id, error_output, "tsc")
+            return False, error_output
+
+        return True, ""
+
+    if gate_type == "ts_test":
+        web_targets = [f for f in (target_files or []) if f.startswith("web/")]
+        run_clause = "pnpm test -- --runInBand"
+        if web_targets:
+            rel_targets = " ".join(p.replace("web/", "") for p in web_targets)
+            run_clause = f"pnpm test -- --runInBand --runTestsByPath {rel_targets}"
+
+        result = subprocess.run(
+            [
+                "docker", "compose", "--profile", "test", "run", "--rm",
+                "--user", "root", "--volume",
+                "waooaw-f3-web-node-modules:/workspace/web/node_modules",
+                "test-runner",
+                "bash", "-lc",
+                "cd /workspace/web && "
+                f"CI=true pnpm install --frozen-lockfile --package-import-method=copy && {run_clause}",
+            ],
+            capture_output=True, text=True, cwd=REPO_ROOT,
+        )
         error_output = (result.stdout + result.stderr)[-500:] if result.returncode != 0 else ""
         return result.returncode == 0, error_output
 
@@ -511,7 +833,9 @@ def run_compile_gate(gate_type: str, service_dir: str = "src/constitutional-engi
             return False, "\n".join(errors)
         return True, ""
 
-    return False, f"Unknown gate_type: {gate_type}"
+    return False, (
+        f"Unknown gate_type: {gate_type}. Supported: {sorted(SUPPORTED_COMPILE_GATES)}"
+    )
 
 
 # ── Lint violation learning cache (C-069 self-improvement) ────────────────────
@@ -1095,6 +1419,13 @@ def execute_subtask_chain(
     print(f"\n── {task_id}: sub-task chain ({len(subtasks)} sub-tasks) ──")
 
     for st in subtasks:
+        boundary_ok, boundary_error = _validate_task_service_boundary(st)
+        if not boundary_ok:
+            print(f"  [{st.id}] BLOCKED — {boundary_error}")
+            emit_subtask_signal(task_id, st.id, "BLOCKED_SERVICE_BOUNDARY", monitor_signal)
+            failed.append(st.id)
+            continue
+
         # ── C-084 2.0: dependency check — skip if dependency FAILED ───────────
         unmet_failed = [d for d in st.depends_on if d in failed]
         unmet_incomplete = [d for d in st.depends_on if d not in completed and d not in failed]

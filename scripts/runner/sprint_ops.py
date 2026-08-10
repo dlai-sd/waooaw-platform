@@ -285,6 +285,22 @@ def run_runner_integrity_checks(
     if not isinstance(handlers, dict):
         errors.append("TASK_HANDLERS missing or not a dict")
     # Note: TASK_HANDLERS may be empty at startup — groomer injects entries at runtime.
+    else:
+        supported_gates = {
+            "dotnet_build", "dotnet_test", "py_compile", "ruff", "pytest",
+            "sqlfluff", "yamllint", "terraform_validate", "openapi_ts_generate",
+            "wc034_f3_validate", "tsc", "ts_test",
+        }
+        for task_id, handler in handlers.items():
+            if not isinstance(handler, dict):
+                continue
+            subtasks = handler.get("subtasks", [])
+            for st in subtasks:
+                gate = getattr(st, "compile_gate", "")
+                if gate and gate not in supported_gates:
+                    errors.append(
+                        f"Unsupported compile gate '{gate}' in {task_id}/{getattr(st, 'id', 'subtask')}"
+                    )
 
     parser = namespace.get("parse_llm_files")
     if callable(parser):

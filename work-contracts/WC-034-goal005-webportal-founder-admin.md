@@ -76,12 +76,22 @@ Detailed scope, dependencies, exclusions, and acceptance IDs are normative in `a
 | F0 | Architecture and dependency closure | INST-004 + reviewing/owning offices | review complete — remaining API and Founder gates named |
 | F1 | Experience foundation | INST-010 | complete — R-052 approved; PR #246 merged to `main` as `798c183` on 2026-08-09 |
 | F2 | Identity and registration | INST-010 + identity/BP owners | R-055 contract remediation complete — FA-035 fixes Google/Facebook/Apple/email fallback and progressive mobile policy; implementation blocked by INST-004 ADR-008 amendment and independent re-review; Facebook activation blocked by FA-002/FA-018 and Apple by FA-019 |
-| F3 | Conversation core | INST-010 + BP/PR owners | architecture approved — R-059; BP OpenAPI 1.2.0 and PR OpenAPI 1.1.0 validated; implementation blocked pending separate authorization; deployment separately blocked |
+| F3 | Conversation core | INST-010 + BP/PR owners | implementation authorized — GOA-GOAL-005-INST-010-02 and ACC-GOAL-005-INST-010-02 valid; autonomous pipeline grooming in progress; deployment separately blocked |
 | F4 | Relationship workspace | INST-010 + BP/WBE owners | blocked — Plan/Priority Work and Consumption projections plus implementation gates |
 | F5 | Omnichannel continuity | INST-010 + WC-060 owners | blocked — WC-060 completion plus implementation gates |
 | F6 | Voice interaction | INST-010 + Product/Security/Data/Solution owners | blocked — voice consent, retention, transcription, attachment, and API decisions |
 | F7 | Founder administration | INST-010 + BP/WBE owners | blocked — canonical BP Founder facade and internal WBE management APIs plus implementation gates |
 | F8 | Integrated acceptance and hardening | INST-010, independently reviewed | blocked — selected release components complete and authorized |
+
+### F3 Autonomous Implementation Tasks
+
+| task_id | scope | model_hint | status | completed_at |
+|---|---|---|---|---|
+| WC034-08 | Implement the BP OpenAPI 1.2.0 conversation timeline, send, retry, read-position, cancellation, and resumable SSE operations with JWT tenant authority, UUID request-hash idempotency, privacy-safe RFC 9457 errors, and CE-confirmed Evidence First state. | reasoning | pending | — |
+| WC034-09 | Implement the PR OpenAPI 1.1.0 BP-authenticated execution, cancellation, and resumable SSE operations with typed internal events, Temporal execution state, Stop preservation, and no public or provider-facing ingress. | reasoning | pending | — |
+| WC034-10 | Generate the F3 `typescript-fetch` client without manual patches and implement the server-only BP boundary plus durable conversation timeline, composer, retry, reconciliation, typed cards, stream, cancellation, offline, accessibility, and exact 360px behavior. | reasoning | pending | — |
+| WC034-11 | Add BP, PR, and web unit/integration coverage for idempotency, tenant isolation, privacy-safe errors, cursor replay, reconnect, cancellation, Stop independence, Evidence First, versioned schemas, and generated-client conformance; affected services and changed interactive web code must each reach at least 90% line coverage. | auto | pending | — |
+| WC034-12 | Execute Docker-only regression and constitutional suites plus browser acceptance for UX-CONV-01 through UX-CONV-07, CCT-UX-HO-01 through CCT-UX-HO-03, CCT-UX-EF-01 and CCT-UX-EF-02, UX-PWA-03, and UX-RES-01; publish evidence for independent INST-004 review without merging or deploying. | auto | pending | — |
 
 ## Required Inputs
 
