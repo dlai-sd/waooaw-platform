@@ -490,3 +490,61 @@ After valid issuance, INST-010 must record `ACC-GOAL-005-INST-010-02` with an ac
 ### Operational Dispatch Condition
 
 The repository `SPRINT_STATE_MACHINE` reports `autonomous_halt: false`, `platform_phase: IMPLEMENTATION`, and WC-043 DONE. GitHub Sprint Dashboard Issue #7 is closed and retains stale `sprint:halted` state from 2026-08-06. Before F3 dispatch, INST-013 must reconcile the dashboard and pipeline entry state without changing F3 scope or bypassing pre-sprint simulation.
+
+---
+
+## Registrant Acknowledgement Record — Amendment 2
+
+| Attestation field | Value |
+|---|---|
+| `institution_id` | INST-001 |
+| `goal_id` | GOAL-005 |
+| `record_id` | ACK-GOAL-005-INST-001-03 |
+| `record_type` | Acknowledgement Record |
+| `produced_at` | 2026-08-10T09:02:35+05:30 |
+| Acknowledged plan | GEP-GOAL-005-INST-013-03 |
+| Registrant | Yogesh Khandge / Founder |
+| Decision | ACKNOWLEDGED — INST-013 authorized to issue GOA-GOAL-005-INST-010-02 |
+| Evidence | Founder approved and merged PR #251 as `da6824c`; the PR's sole purpose and Authorization Boundary explicitly identify GEP-GOAL-005-INST-013-03, the required acknowledgement, and GOA-GOAL-005-INST-010-02 |
+| Post-merge direction | "ok pr 251 is merged. please keep focus and decipline to follow constitution and progress" |
+
+The authenticated Founder approval and merge of the exact Execution Plan, followed by an explicit direction to progress constitutionally, records Registrant acknowledgement of GEP-GOAL-005-INST-013-03. This satisfies GEOM R2-03 condition 2 and R-060 condition 1 without expanding the approved contribution scope.
+
+---
+
+## Phase 8B Authorization Record — GOA-GOAL-005-INST-010-02 (ISSUED)
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GOA-GOAL-005-INST-010-02 |
+| `record_type` | Authorization Record |
+| `authorization_id` | GOA-GOAL-005-INST-010-02 |
+| Authorized Institution | INST-010 — Platform IT Expert |
+| Contribution scope | WC-034 F3 Conversation Core implementation per GEP-GOAL-005-INST-013-03 Evidence Specification |
+| Participation Window | 5 constitutional sessions after valid acceptance |
+| Collaboration type | Primary — Phase 8B Amendment 2 |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-10T03:35:03+00:00 |
+
+Both GEOM R2-03 conditions are met: CR-GOAL-005-INST-002-04 / R-060 passed CA Readiness Review, and ACK-GOAL-005-INST-001-03 records Registrant acknowledgement. This authorization excludes attachments, voice, F4-F8, `@ai-sdk/react`, direct browser-to-PR or provider traffic, provider activation, deployment, self-review, and self-merge.
+
+---
+
+## Phase 8B Acceptance Record — ACC-GOAL-005-INST-010-02
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-010 |
+| `goal_id` | GOAL-005 |
+| `record_id` | ACC-GOAL-005-INST-010-02 |
+| `record_type` | Acceptance Record |
+| `produced_at` | 2026-08-10T03:35:04+00:00 |
+| `authorization_id` | GOA-GOAL-005-INST-010-02 |
+| `acceptance_timestamp` | 2026-08-10T03:35:04+00:00 |
+| Decision | ACCEPTED |
+| Contribution scope accepted | WC-034 F3 Conversation Core implementation only, through the Autonomous Sprint Pipeline |
+| Excluded authority | Attachments, voice, F4-F8, `@ai-sdk/react`, direct browser-to-PR/provider traffic, provider activation, deployment, architectural changes, self-review, and self-merge |
+
+INST-010 accepts the GEP-GOAL-005-INST-013-03 contribution one second after GOA issuance, satisfying GEOM G-03 and R2-12. The five-session Participation Window begins at this acceptance timestamp. Execution remains pending a valid WC-034 F3 pipeline entry, C-086 pre-sprint simulation, and fail-fast preflight.

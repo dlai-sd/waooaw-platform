@@ -1,6 +1,6 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-08-10 (PR #250 merged; GOAL-005 Amendment 2 CA-ready; F3 GOA blocked on Registrant acknowledgement)
+**Last Updated:** 2026-08-10 (PR #251 merged; F3 GOA and INST-010 acceptance valid; pipeline grooming in progress)
 
 ---
 
@@ -13,21 +13,17 @@
 | Prior-phase sequencing verification | DONE — WC-034 F2 PR #249 merged as `cc80e812`; Amendment 2 does not reopen F2 |
 | GEP-GOAL-005-INST-013-03 | DONE — Amendment 2 defines the bounded F3 INST-010 contribution, evidence specification, five-session window, pipeline-only dispatch, and exclusions |
 | CA Readiness Review | DONE — R-060 / CR-GOAL-005-INST-002-04 APPROVED WITH CONDITIONS; GEOM R2-03 condition 1 PASS |
-| Registrant acknowledgement | BLOCKED — `ACK-GOAL-005-INST-001-03` must reference GEP-GOAL-005-INST-013-03; R2-04 unavailable because Registrant is present and reachable |
-| GOA and INST-010 acceptance | NOT ISSUED — `GOA-GOAL-005-INST-010-02` and `ACC-GOAL-005-INST-010-02` remain reserved; no implementation authority exists yet |
-| Autonomous pipeline dispatch | BLOCKED — requires valid GOA and acceptance, then reconciliation of closed/stale Sprint Dashboard Issue #7 and a valid F3 pipeline entry |
+| Registrant acknowledgement | DONE — Founder approved and merged PR #251 as `da6824c`, whose sole authorization boundary identifies GEP-GOAL-005-INST-013-03 and GOA-GOAL-005-INST-010-02; `ACK-GOAL-005-INST-001-03` recorded at the merge timestamp |
+| GOA and INST-010 acceptance | DONE — `GOA-GOAL-005-INST-010-02` issued by INST-013 at 2026-08-10T03:35:03+00:00; `ACC-GOAL-005-INST-010-02` accepted at 2026-08-10T03:35:04+00:00; GEOM R2-12 temporal order passes |
+| Autonomous pipeline dispatch | IN PROGRESS — repository state is IMPLEMENTATION, halt false, failures zero; Issue #7 is stale; WC-034 F3 pipeline entry, C-086 simulation, and fail-fast preflight are pending |
 
 ### Decision Space and Constitutional Obligations
 
 INST-013 may amend the GOAL-005 execution choreography, obtain independent CA readiness evidence, issue GO Authorization after GEOM R2-03 is satisfied, monitor participation, and dispatch authorized engineering work through the autonomous pipeline. INST-013 may not implement, contribute to GOAL-005, self-authorize, treat architecture approval as implementation authority, bypass Registrant acknowledgement, start F4-F8, authorize deployment, or merge an implementation PR.
 
-### Required Registrant Record
+### Authorization and Dispatch Status
 
-To satisfy GEOM R2-03 condition 2, the Founder must state:
-
-> "I acknowledge GEP-GOAL-005-INST-013-03 and authorize INST-013 to issue GOA-GOAL-005-INST-010-02."
-
-After that record exists, INST-013 may issue the GOA, obtain INST-010 acceptance with a later timestamp, reconcile the autonomous pipeline entry, and dispatch F3. Founder involvement then returns to implementation PR review, approval, and merge unless a genuine constitutional blocker arises.
+PR #251 approval and merge supplies the authenticated Registrant acknowledgement of the exact Amendment 2 execution envelope. R-060 condition 1 and both GEOM R2-03 conditions are satisfied. INST-013 issued GOA-GOAL-005-INST-010-02, and INST-010 accepted one second later. Production implementation may begin only after INST-013 creates a valid pipeline entry, produces a passing C-086 simulation, and clears fail-fast preflight. Founder involvement now returns to implementation PR review, approval, and merge unless a genuine constitutional blocker arises.
 
 ### Preserved Boundaries
 
