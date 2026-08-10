@@ -845,3 +845,97 @@ R-062 / CR-GOAL-005-INST-002-05 satisfies GEOM R2-03 condition 1. This record sa
 | `acceptance_timestamp` | 2026-08-10T13:41:01+00:00 |
 | Decision | ACCEPTED |
 | Contribution scope accepted | F4 solution re-attestation and logical BP/WBE owner-contract records only |
+
+## Amendment 3 Order 4 Authorization Records
+
+### GOA-GOAL-005-INST-011-06
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GOA-GOAL-005-INST-011-06 |
+| `record_type` | Authorization Record |
+| `authorization_id` | GOA-GOAL-005-INST-011-06 |
+| Authorized Institution | INST-011 — Product Owner |
+| Contribution scope | Incorporate and attest F4-specific DMA domain-authority evidence governed by Yogesh Khandge; preserve explicit source provenance and prepare the Product contribution to G-F4-09 |
+| Evidence required | DMA outcome vocabulary, baselines, measures, evidence sources, attribution limits, uncertainty, review cadence, material attention candidates, authority provenance, and explicit distinction between synthesis and direct authority testimony |
+| Participation Window | 2 constitutional sessions after valid acceptance |
+| Excluded authority | Inventing DMA professional judgment, attributing synthesis to Yogesh, any Sujay dependency, generic architecture changes, OpenAPI edits, generated clients, source, tests, implementation, deployment, F5-F8, and self-review |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-10T14:00:24+00:00 |
+
+### GOA-GOAL-005-INST-003-04
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GOA-GOAL-005-INST-003-04 |
+| `record_type` | Authorization Record |
+| `authorization_id` | GOA-GOAL-005-INST-003-04 |
+| Authorized Institution | INST-003 — Business Architect |
+| Contribution scope | Validate the incorporated F4 DMA evidence as customer-outcome semantics for G-F4-09 after the INST-011 Contribution Record is published |
+| Evidence required | Outcome versus technical-metric distinction, baseline and measure fitness, attribution boundary, uncertainty, review cadence, attention materiality, and compatibility with the generic F4 business semantics |
+| Participation Window | 1 constitutional session after the required INST-011 Contribution Record is published |
+| Excluded authority | Domain-authority impersonation, Product ownership, API or adapter design, OpenAPI edits, source, tests, implementation, deployment, F5-F8, and self-review |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-10T14:00:25+00:00 |
+
+### GOA-GOAL-005-INST-005-04
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GOA-GOAL-005-INST-005-04 |
+| `record_type` | Authorization Record |
+| `authorization_id` | GOA-GOAL-005-INST-005-04 |
+| Authorized Institution | INST-005 — Solution Architect |
+| Contribution scope | Validate the published F4 DMA evidence and business-semantics records against the generic RelationshipOutcomeAdapter contract for G-F4-09 |
+| Evidence required | Adapter version compatibility, relationship/goal binding, provenance, evidence-reference form, attribution and uncertainty fields, attention-candidate boundaries, and proof that DMA semantics do not enter the generic workspace contract |
+| Participation Window | 1 constitutional session after the required INST-003 Contribution Record is published |
+| Excluded authority | Altering DMA professional judgment, canonical OpenAPI edits, generated production clients, source, tests, migrations, implementation, deployment, F5-F8, integrated review, and self-review |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-10T14:00:26+00:00 |
+
+## Amendment 3 Order 4 Acceptance Records
+
+### ACC-GOAL-005-INST-011-06
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-011 |
+| `goal_id` | GOAL-005 |
+| `record_id` | ACC-GOAL-005-INST-011-06 |
+| `record_type` | Acceptance Record |
+| `authorization_id` | GOA-GOAL-005-INST-011-06 |
+| `acceptance_timestamp` | 2026-08-10T14:00:27+00:00 |
+| Decision | ACCEPTED |
+| Contribution scope accepted | F4 DMA domain-evidence incorporation and provenance attestation only; Yogesh is current authority and Sujay is deferred until WAOOAW is operational |
+
+### ACC-GOAL-005-INST-003-04
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-003 |
+| `goal_id` | GOAL-005 |
+| `record_id` | ACC-GOAL-005-INST-003-04 |
+| `record_type` | Acceptance Record |
+| `authorization_id` | GOA-GOAL-005-INST-003-04 |
+| `acceptance_timestamp` | 2026-08-10T14:00:28+00:00 |
+| Decision | ACCEPTED |
+| Contribution scope accepted | F4 DMA business-outcome semantic validation after publication of the INST-011 record only |
+
+### ACC-GOAL-005-INST-005-04
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-005 |
+| `goal_id` | GOAL-005 |
+| `record_id` | ACC-GOAL-005-INST-005-04 |
+| `record_type` | Acceptance Record |
+| `authorization_id` | GOA-GOAL-005-INST-005-04 |
+| `acceptance_timestamp` | 2026-08-10T14:00:29+00:00 |
+| Decision | ACCEPTED |
+| Contribution scope accepted | F4 DMA adapter-conformance validation after publication of the INST-003 record only |

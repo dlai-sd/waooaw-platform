@@ -21,7 +21,7 @@
 | Amendment 3 Order 1 | DONE — CR-GOAL-005-INST-003-04 re-attests G-F4-01 business semantics; CR-GOAL-005-INST-011-05 re-attests G-F4-06 composition and DMA selection; DMA authority evidence remains Order 4 |
 | Amendment 3 Order 2 | DONE — CR-GOAL-005-INST-004-08 closes G-F4-02 contribution evidence; CR-GOAL-005-INST-006-04 closes G-F4-04; CR-GOAL-005-INST-007-05 closes G-F4-05; fresh G-F4-11 review contexts remain required |
 | Amendment 3 Order 3 | DONE — CR-GOAL-005-INST-005-05 closes G-F4-03 contribution evidence; CR-GOAL-005-INST-005-06 records logical BP owner acceptance for G-F4-07; CR-GOAL-005-INST-005-07 records logical WBE owner acceptance for G-F4-08; fresh review remains required |
-| Amendment 3 Order 4 | READY FOR AUTHORIZATION — Orders 1-3 are published; Yogesh is the named DMA authority; Sujay is deferred until operational stage; INST-011/003/005 may receive bounded Order 4 GOAs |
+| Amendment 3 Order 4 | AUTHORIZED — GOA/ACC pairs INST-011-06, INST-003-04, and INST-005-04 are recorded; Product evidence incorporation must publish before Business validation, which must publish before Solution adapter validation |
 | F4 implementation | BLOCKED — no `src/` or `web/` implementation, generated client, deployment, or F5-F8 authority in this architecture session |
 
 ### Decision Space and Constitutional Obligations
