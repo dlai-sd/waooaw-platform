@@ -973,3 +973,69 @@ R-062 / CR-GOAL-005-INST-002-05 satisfies GEOM R2-03 condition 1. This record sa
 | `acceptance_timestamp` | 2026-08-10T14:24:54+00:00 |
 | Decision | ACCEPTED |
 | Contribution scope accepted | G-F4-10 compatibility evidence specification only; no canonical contract edit, generation, implementation, or deployment |
+
+## Amendment 3 Order 6 Authorization Records
+
+### GOA-GOAL-005-INST-002-03
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GOA-GOAL-005-INST-002-03 |
+| `record_type` | Authorization Record |
+| `authorization_id` | GOA-GOAL-005-INST-002-03 |
+| Authorized Institution | INST-002 — Constitutional Analyst |
+| Contribution scope | Independently review the complete WC-034 F4 Orders 1-5 architecture package for constitutional readiness and unresolved risk under G-F4-11 |
+| Evidence required | GOA and temporal trace, Decision Space compliance, Human Override, Evidence First, tenant isolation, privacy, rights, authority/scope/lifecycle distinctions, DMA provenance, gate integrity, unresolved policies, and implementation/deployment boundary |
+| Participation Window | 1 constitutional session after valid acceptance |
+| Independence constraint | Must use a fresh context that did not author R-062 or contribute to Orders 1-5; may identify findings but may not repair the package it reviews |
+| Excluded authority | Architecture authorship, canonical OpenAPI edits, generated clients, source, tests, implementation, deployment, F5-F8, GOA issuance, self-review, and merge |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-10T14:38:59+00:00 |
+
+### GOA-GOAL-005-INST-004-08
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GOA-GOAL-005-INST-004-08 |
+| `record_type` | Authorization Record |
+| `authorization_id` | GOA-GOAL-005-INST-004-08 |
+| Authorized Institution | INST-004 — Enterprise Architect |
+| Contribution scope | Independently review the integrated WC-034 F4 Orders 1-5 architecture package for technical coherence, ownership, dependency closure, and ADR impact under G-F4-11 |
+| Evidence required | BP/WBE/CE/PR/web/domain authority consistency, public/private boundaries, owner contracts, DMA adapter neutrality, compatibility specification, gate trace, contradiction scan, ADR impact, unresolved risks, and implementation/deployment boundary |
+| Participation Window | 1 constitutional session after valid acceptance |
+| Independence constraint | Must use a fresh context that did not author CR-GOAL-005-INST-004-08 or any reviewed INST-005/006/007/011 contribution; may identify findings but may not repair the package it reviews |
+| Excluded authority | Reviewed-package authorship, product or policy selection, canonical OpenAPI edits, generated clients, source, tests, implementation, deployment, F5-F8, self-review, and merge |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-10T14:39:00+00:00 |
+
+## Amendment 3 Order 6 Acceptance Records
+
+### ACC-GOAL-005-INST-002-03
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-002 |
+| `goal_id` | GOAL-005 |
+| `record_id` | ACC-GOAL-005-INST-002-03 |
+| `record_type` | Acceptance Record |
+| `authorization_id` | GOA-GOAL-005-INST-002-03 |
+| `acceptance_timestamp` | 2026-08-10T14:39:01+00:00 |
+| Decision | ACCEPTED |
+| Contribution scope accepted | Fresh independent F4 constitutional review only; no repair, implementation authorization, or deployment authority |
+
+### ACC-GOAL-005-INST-004-08
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-004 |
+| `goal_id` | GOAL-005 |
+| `record_id` | ACC-GOAL-005-INST-004-08 |
+| `record_type` | Acceptance Record |
+| `authorization_id` | GOA-GOAL-005-INST-004-08 |
+| `acceptance_timestamp` | 2026-08-10T14:39:02+00:00 |
+| Decision | ACCEPTED |
+| Contribution scope accepted | Fresh independent F4 integrated technical review only; no repair, implementation authorization, or deployment authority |

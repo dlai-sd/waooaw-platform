@@ -23,7 +23,7 @@
 | Amendment 3 Order 3 | DONE — CR-GOAL-005-INST-005-05 closes G-F4-03 contribution evidence; CR-GOAL-005-INST-005-06 records logical BP owner acceptance for G-F4-07; CR-GOAL-005-INST-005-07 records logical WBE owner acceptance for G-F4-08; fresh review remains required |
 | Amendment 3 Order 4 | DONE — Product provenance, Business outcome validation, and Solution adapter conformance are published in dependency order; all seven DMA outcome families map losslessly without contaminating the generic workspace |
 | Amendment 3 Order 5 | DONE — CR-GOAL-005-INST-005-09 defines the complete future parse/reference, deterministic generation, strict TypeScript, forbidden-surface, fixture, acceptance, and provenance evidence contract without executable artifacts |
-| Amendment 3 Order 6 | READY FOR AUTHORIZATION — Orders 1-5 are published; fresh non-contributing INST-002 and non-authoring INST-004 contexts must independently review the integrated architecture package |
+| Amendment 3 Order 6 | AUTHORIZED — GOA/ACC pairs INST-002-03 and INST-004-08 require fresh constitutional and integrated technical reviews; reviewers may report findings but may not repair or implement the package |
 | F4 implementation | BLOCKED — no `src/` or `web/` implementation, generated client, deployment, or F5-F8 authority in this architecture session |
 
 ### Decision Space and Constitutional Obligations
