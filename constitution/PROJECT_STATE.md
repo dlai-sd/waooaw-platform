@@ -1,6 +1,44 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-08-10 (WC-034 F3 merged via PR #254; F4 remains blocked pending architecture and authorization)
+**Last Updated:** 2026-08-10 (WC-034 F4 architecture and dependency closure complete; implementation remains unauthorized)
+
+---
+
+## IN-PROGRESS CHECKPOINT — GOAL-005 / WC-034 F4 ARCHITECTURE CLOSURE
+
+| Milestone | Status |
+|---|---|
+| PR #255 post-merge reconciliation verified | DONE — merged to `main` as `e2be32e`; WC-034 F3 sprint state is DONE |
+| INST-013 occupancy and F4 authorization boundary | DONE — Epoch 1; G5 CLEAR; architecture/dependency closure only; current GOA excludes F4-F8, implementation, provider activation, and deployment |
+| F4 business semantics contribution | DONE — CR-GOAL-005-INST-003-03 defines customer outcomes, authoritative attention ordering, consequence classes, minimum release composition, and acceptance semantics without choosing architecture or interfaces |
+| F4 Enterprise Architecture contribution | DONE — CR-GOAL-005-INST-004-07 assigns BP public governance projection, WBE commercial truth, CE constitutional evidence, PR execution truth, domain adapter, and web presentation boundaries without a new deployable component |
+| F4 solution, data, security, and product contributions | DONE — CR-GOAL-005-INST-005-04, CR-GOAL-005-INST-006-03, CR-GOAL-005-INST-007-04, and CR-GOAL-005-INST-011-04 complete G-F4-03 through G-F4-06 contribution evidence; integrated review remains required |
+| F4 BP and WBE owner-contract routing | DONE — Amendment 3 mapped logical ownership to INST-005; CR-GOAL-005-INST-005-06 and CR-GOAL-005-INST-005-07 satisfy G-F4-07/G-F4-08 contribution evidence; future WBE canonicalization must preserve distinct `BLOCKED` outcomes |
+| F4 professional/domain owner contract | DONE — G-F4-09 is satisfied with preservation conditions by CR-GOAL-005-INST-011-06, CR-GOAL-005-INST-003-05, and CR-GOAL-005-INST-005-08; Yogesh is current authority and Sujay remains deferred until operational stage |
+| F4 generated-client compatibility and independent review | SPECIFICATION DONE — CR-GOAL-005-INST-005-09 defines future canonical OpenAPI/generation evidence; executable G-F4-10 closure remains implementation work and G-F4-11 fresh reviews remain pending |
+| GEP-GOAL-005-INST-013-04 Amendment 3 | ACTIVE — R2-03 conditions satisfied and Orders 1-6 executed in dependency order for architecture/owner-contract closure only; no implementation or deployment authority |
+| CA readiness and Registrant acknowledgement | DONE — R-062 / CR-GOAL-005-INST-002-05 satisfies R2-03 condition 1; ACK-GOAL-005-INST-001-04 records the exact Founder acknowledgement and DMA selection |
+| Amendment 3 Order 1 | DONE — CR-GOAL-005-INST-003-04 re-attests G-F4-01 business semantics; CR-GOAL-005-INST-011-05 re-attests G-F4-06 composition and DMA selection; DMA authority evidence remains Order 4 |
+| Amendment 3 Order 2 | DONE — CR-GOAL-005-INST-004-08 closes G-F4-02 contribution evidence; CR-GOAL-005-INST-006-04 closes G-F4-04; CR-GOAL-005-INST-007-05 closes G-F4-05; fresh G-F4-11 review contexts remain required |
+| Amendment 3 Order 3 | DONE — CR-GOAL-005-INST-005-05 closes G-F4-03 contribution evidence; CR-GOAL-005-INST-005-06 records logical BP owner acceptance for G-F4-07; CR-GOAL-005-INST-005-07 records logical WBE owner acceptance for G-F4-08; fresh review remains required |
+| Amendment 3 Order 4 | DONE — Product provenance, Business outcome validation, and Solution adapter conformance are published in dependency order; all seven DMA outcome families map losslessly without contaminating the generic workspace |
+| Amendment 3 Order 5 | DONE — CR-GOAL-005-INST-005-09 defines the complete future parse/reference, deterministic generation, strict TypeScript, forbidden-surface, fixture, acceptance, and provenance evidence contract without executable artifacts |
+| Amendment 3 Order 6 | CONDITIONALLY APPROVED — R-063 / CR-GOAL-005-INST-002-06 and R-064 / CR-GOAL-005-INST-004-09 complete fresh G-F4-11 review contributions; all review conditions remain mandatory |
+| Workload-authentication ADR condition / EA-F4-01 | CLOSED — ADR-046 is Accepted after R-066 Business approval, prospective satisfaction of both R-066 conditions, and R-067 Constitutional approval with no conditions; the accepted decision covers BP-to-WBE, BP-to-PR, and BP-to-domain-adapter routes across development, CI, and cloud |
+| GEP-GOAL-005-INST-013-05 Amendment 4 | DONE — Orders 1-4 completed in dependency order; ADR-046 is Accepted and EA-F4-01 is closed; no implementation, policy-default, provider-activation, deployment, or F5-F8 authority was issued |
+| Amendment 4 Order 2 | DONE — R-066 / CR-GOAL-005-INST-003-06 and LR-GOAL-005-INST-003-02 approved with two conditions; both were satisfied prospectively by CR-GOAL-005-INST-004-11 and LR-GOAL-005-INST-004-07 |
+| Amendment 4 R-066 repair | DONE — CR-GOAL-005-INST-004-11 and LR-GOAL-005-INST-004-07 add the complete owner-to-customer operation matrix and migration/incident restoration matrix; R-066 Conditions 1 and 2 are satisfied |
+| Amendment 4 Order 3 | DONE — R-067 / CR-GOAL-005-INST-002-08 and LR-GOAL-005-INST-002-02 independently approve repaired ADR-046 with no conditions and permit mechanical ADR acceptance plus EA-F4-01 closure |
+| Amendment 4 Order 4 | DONE — INST-013 mechanically recorded ADR-046 Accepted and EA-F4-01 closed; G-F4-10, F4-POL-01 through F4-POL-06, G-F4-12, G-F4-13, provider activation, deployment, and F5-F8 remain blocked or unresolved |
+| F4 implementation | BLOCKED — no `src/` or `web/` implementation, generated client, deployment, or F5-F8 authority in this architecture session |
+
+### Decision Space and Constitutional Obligations
+
+INST-013 may route GOAL-005 F4 architecture contributions, define their sequence and evidence specifications, monitor completion, and prepare a phased Execution Plan amendment. INST-013 may not author the domain or solution contracts it routes, issue implementation authority before CA readiness plus Registrant acknowledgement, contribute implementation, approve its own evidence, authorize deployment, or expand into F5-F8.
+
+### Controlling Dependency Finding
+
+F4 cannot proceed directly to implementation. Amendment 3 closes architecture and owner-contract contributions conditionally, and Amendment 4 closes EA-F4-01, but neither issues implementation authority. Executable G-F4-10 remains blocked pending canonical OpenAPI/generated-client evidence, WBE canonicalization must preserve `BLOCKED`, and F4-POL-01 through F4-POL-06 remain fail-closed. G-F4-12 requires a later Execution Plan amendment, fresh CA readiness, Registrant acknowledgement, valid INST-010 GOA/acceptance, and separate implementation evidence; G-F4-13 deployment remains separately blocked.
 
 ---
 
