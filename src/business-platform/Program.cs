@@ -138,6 +138,20 @@ builder.Services.AddSingleton<Waooaw.BusinessPlatform.Services.IIdentityVerifica
     Waooaw.BusinessPlatform.Services.UnconfiguredVerificationDispatcher>();
 builder.Services.AddScoped<Waooaw.BusinessPlatform.Services.IdentityService>();
 
+// ── Conversation Core — WC-034 F3 ───────────────────────────────────────────
+var conversationConn = builder.Configuration.GetConnectionString("Conversation")
+    ?? builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? "Host=localhost;Database=waooaw_bp;Username=business_app;";
+builder.Services.AddDbContextFactory<ConversationStoreDbContext>((services, options) =>
+    options
+        .UseNpgsql(conversationConn)
+        .AddInterceptors(services.GetRequiredService<TenantDbConnectionInterceptor>()));
+builder.Services.Configure<ConversationCursorOptions>(
+    builder.Configuration.GetSection("Conversation:Cursor"));
+builder.Services.AddSingleton<ConversationCursorCodec>();
+builder.Services.AddSingleton<IConversationExecutionGateway, UnconfiguredConversationExecutionGateway>();
+builder.Services.AddScoped<ConversationService>();
+
 // ─────────────────────────────────────────────────────────────────────────────
 var app = builder.Build();
 

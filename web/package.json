@@ -5,7 +5,7 @@
   "packageManager": "pnpm@9.15.9",
   "scripts": {
     "dev": "next dev",
-    "generate:api": "openapi-generator-cli generate -i ../architecture/reference/api-specs/business-platform.openapi.yaml -g typescript-fetch -o lib/api/generated --skip-validate-spec --global-property apis=Identity,models=EmploymentRelationship:RelationshipTimelineEntry:EmploymentRelationshipState:RelationshipParticipantRole:IdentityRegistrationState:IdentityNextAction:IdentityAuthenticationPath:IdentityAssuranceLevel:IdentityVerificationPurpose:IdentityVerificationState:IdentityAccountLinkState:IdentityProblemCode:StartIdentityRegistrationRequest:IdentityRegistrationProfileRequest:IdentityRegistrationProfile:IdentityRegistration:StartEmailVerificationRequest:StartMobileVerificationRequest:ConfirmIdentityVerificationRequest:IdentityVerificationChallenge:IdentityMobileStatus:IdentityCompletion:StartIdentityAccountLinkRequest:IdentityAccountLink:IdentityProblemDetail,supportingFiles=runtime.ts:models/index.ts:index.ts --additional-properties supportsES6=true,typescriptThreePlus=true,useSingleRequestParameter=true && prettier --write lib/api/generated",
+    "generate:api": "./scripts/generate-api.sh && prettier --write lib/api/generated",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",

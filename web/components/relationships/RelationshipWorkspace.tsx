@@ -1,4 +1,5 @@
 import type { EmploymentRelationship, RelationshipTimelineEntry } from '@/lib/api/relationships';
+import { ConversationExperience } from '@/components/conversation/ConversationExperience';
 
 interface RelationshipWorkspaceProps {
   relationship: EmploymentRelationship;
@@ -30,6 +31,8 @@ export function RelationshipWorkspace({ relationship, timeline }: RelationshipWo
           <div><dt>Last updated</dt><dd>{new Date(relationship.updatedAt).toLocaleString('en-IN')}</dd></div>
         </dl>
       </section>
+
+      <ConversationExperience relationshipId={relationship.relationshipId} />
 
       <section className="timeline" aria-labelledby="timeline-title">
         <p className="section-label">Evidence timeline</p>

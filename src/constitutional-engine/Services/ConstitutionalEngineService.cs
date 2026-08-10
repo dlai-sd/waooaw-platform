@@ -656,8 +656,8 @@ public sealed class ConstitutionalEngineService : ConstitutionalService.Constitu
                     {
                         var handle = _temporalClient.GetWorkflowHandle(sessionId);
                         await handle.SignalAsync(
-                            "emergency-stop",
-                            new object[] { stopEventId.ToString(), req.ContractId });
+                            "EmergencyStop",
+                            Array.Empty<object>());
                     }
                     catch (Exception ex)
                     {
