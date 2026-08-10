@@ -608,6 +608,8 @@ Candidate inputs are:
 
 DMA is the sole first-release profession selected for G-F4-09. A named DMA domain authority supplies the F4-specific outcome vocabulary, baselines, measures, evidence sources, attribution limits, uncertainty, review cadence, and material attention candidates. Because a domain authority is not a registered Institution, INST-011 incorporates and attests that evidence with explicit provenance; INST-003 validates business semantics; INST-005 validates generic adapter conformance. Generic adapter acceptance alone cannot close G-F4-09.
 
+For WC-034 F4, Yogesh Khandge is the named DMA domain authority. The Founder direction recorded on 2026-08-10 is: "Yogesh will do this. Sujay will come in picture once waooaw is operational." Existing approved DMA knowledge and an F4-specific institutional professional synthesis may be presented to Yogesh for governance and review; neither the synthesis nor prior DMA material may be represented as direct Yogesh testimony. Sujay has no current F4 contribution, review, approval, or availability dependency and enters only through a separately authorized operational-stage process after WAOOAW is operational.
+
 No other profession enters F4 under this amendment. No DMA-specific field or rule may enter the generic Relationship Workspace contract.
 
 ### Gate And Authorization Rules

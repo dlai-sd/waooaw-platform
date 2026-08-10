@@ -373,7 +373,7 @@ Before Order 4 can incorporate DMA domain evidence or G-F4-09 can close, a gover
 - review cadence; and
 - material DMA attention candidates.
 
-Neither `GEP-GOAL-005-INST-013-04` nor R-062 names an individual DMA domain authority for this F4 contribution. This record therefore does not select a person, invent domain evidence, or treat earlier DMA material as F4 authority. The named authority and attested provenance remain required inputs. Once present after Orders 1-3 Contribution Records are published, INST-011 may incorporate that evidence, INST-003 must validate business-outcome semantics, and INST-005 must validate generic adapter conformance. Generic adapter conformance alone cannot close G-F4-09.
+Yogesh Khandge is the named DMA domain authority for this F4 contribution. The Founder direction recorded on 2026-08-10 explicitly defers Sujay until WAOOAW is operational; Sujay has no current F4 contribution, review, approval, or availability dependency. Existing approved DMA knowledge and an F4-specific institutional professional synthesis may be incorporated with explicit provenance for Yogesh governance and review, but neither may be represented as direct Yogesh testimony. INST-011 must attest the evidence provenance, INST-003 must validate business-outcome semantics, and INST-005 must validate generic adapter conformance. Generic adapter conformance alone cannot close G-F4-09.
 
 ### Preserved Boundaries
 
