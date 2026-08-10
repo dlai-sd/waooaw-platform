@@ -1169,3 +1169,38 @@ R-065 / `CR-GOAL-005-INST-002-07` satisfies GEOM R2-03 condition 1, with CA-F4-A
 | `acceptance_timestamp` | 2026-08-10T15:10:37+00:00 |
 | Decision | ACCEPTED |
 | Contribution scope accepted | ADR-046 architecture decision plus attested Contribution and Learning Records only; no review, implementation, policy-default, provider-activation, or deployment authority |
+
+## Amendment 4 Order 2 Authorization Record
+
+### GOA-GOAL-005-INST-003-05
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GOA-GOAL-005-INST-003-05 |
+| `record_type` | Authorization Record |
+| `authorization_id` | GOA-GOAL-005-INST-003-05 |
+| Authorized Institution | INST-003 — Business Architect |
+| Contribution scope | Independently review ADR-046 for business-driver, capability, operational-continuity, customer-rights, and ownership-boundary coverage; publish G-10-attested `CR-GOAL-005-INST-003-06` with explicit decision and conditions plus `LR-GOAL-005-INST-003-02` |
+| Evidence specification | Verify the workload-authentication decision supports the approved F4 customer relationship capabilities across development, CI, and cloud; preserves BP/WBE/PR/CE/domain ownership, truthful unavailable/blocked behavior, Emergency Stop, business continuity, and customer-rights effects; identify exact business conditions without editing ADR-046 |
+| Participation Window | 1 constitutional session after valid acceptance |
+| Independence constraint | Review only; may not edit ADR-046, replace the later Constitutional review, accept the ADR, or authorize implementation |
+| Excluded authority | Architecture authorship or repair, constitutional review, source, tests, migrations, canonical OpenAPI changes, generated clients, builds, implementation, policy defaults, provider activation, deployment, F5-F8, self-review, and self-merge |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-10T15:57:39+00:00 |
+
+## Amendment 4 Order 2 Acceptance Record
+
+### ACC-GOAL-005-INST-003-05
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-003 |
+| `goal_id` | GOAL-005 |
+| `record_id` | ACC-GOAL-005-INST-003-05 |
+| `record_type` | Acceptance Record |
+| `authorization_id` | GOA-GOAL-005-INST-003-05 |
+| `acceptance_timestamp` | 2026-08-10T15:57:40+00:00 |
+| Decision | ACCEPTED |
+| Contribution scope accepted | Independent ADR-046 Business review plus attested Contribution and Learning Records only; no ADR editing, implementation, policy-default, provider-activation, or deployment authority |
