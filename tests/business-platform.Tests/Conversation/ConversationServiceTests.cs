@@ -349,6 +349,53 @@ public sealed class ConversationServiceTests
     }
 
     [Fact]
+    public async Task Timeline_OtherParticipantInSameTenantCannotInferRelationshipOrReadMessages()
+    {
+        var context = await CreateContextAsync();
+        await context.Service.SendAsync(
+            context.TenantId,
+            context.ParticipantId,
+            context.RelationshipId,
+            Guid.NewGuid(),
+            CreateRequest("participant private"),
+            CancellationToken.None);
+
+        await Assert.ThrowsAsync<ConversationNotAccessibleException>(() =>
+            context.Service.ListMessagesAsync(
+                context.TenantId,
+                Guid.NewGuid(),
+                context.RelationshipId,
+                null,
+                null,
+                50,
+                CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task Send_OtherParticipantInSameTenantCannotMutateOrDispatch()
+    {
+        var context = await CreateContextAsync();
+
+        await Assert.ThrowsAsync<ConversationNotAccessibleException>(() =>
+            context.Service.SendAsync(
+                context.TenantId,
+                Guid.NewGuid(),
+                context.RelationshipId,
+                Guid.NewGuid(),
+                CreateRequest("unauthorized participant mutation"),
+                CancellationToken.None));
+
+        Assert.Equal(0, context.ConstitutionalGateway.CallCount);
+        Assert.Equal(0, context.ExecutionGateway.StartCount);
+        await using var db = context.ConversationFactory.CreateDbContext();
+        Assert.Empty(await db.Conversations.ToListAsync());
+        Assert.Empty(await db.Messages.ToListAsync());
+        Assert.Empty(await db.Executions.ToListAsync());
+        Assert.Empty(await db.IdempotencyOutcomes.ToListAsync());
+        Assert.Empty(await db.Events.ToListAsync());
+    }
+
+    [Fact]
     public async Task Controller_NotAccessibleProblemIsPrivacySafeRfc9457()
     {
         var context = await CreateContextAsync();
@@ -371,6 +418,34 @@ public sealed class ConversationServiceTests
         var json = JsonSerializer.Serialize(problem);
         Assert.DoesNotContain(hiddenRelationshipId.ToString(), json, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain(context.TenantId.ToString(), json, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("professional", json, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Controller_SendByOtherParticipantInSameTenantReturnsPrivacySafeNotAccessibleProblem()
+    {
+        var context = await CreateContextAsync();
+        var otherParticipantId = Guid.NewGuid();
+        var controller = CreateController(context, context.TenantId, otherParticipantId);
+        controller.Request.Headers["Idempotency-Key"] = Guid.NewGuid().ToString("D");
+        const string privateContent = "unauthorized participant mutation";
+
+        var result = await controller.SendMessageAsync(
+            context.RelationshipId,
+            CreateRequest(privateContent),
+            CancellationToken.None);
+
+        var problemResult = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(StatusCodes.Status404NotFound, problemResult.StatusCode);
+        var problem = Assert.IsType<ConversationProblemDetail>(problemResult.Value);
+        Assert.Equal("CONVERSATION_NOT_ACCESSIBLE", problem.Code);
+        Assert.Equal(StatusCodes.Status404NotFound, problem.Status);
+        Assert.NotEqual(Guid.Empty, problem.CorrelationId);
+        var json = JsonSerializer.Serialize(problem);
+        Assert.DoesNotContain(context.RelationshipId.ToString(), json, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(context.TenantId.ToString(), json, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(otherParticipantId.ToString(), json, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(privateContent, json, StringComparison.Ordinal);
         Assert.DoesNotContain("professional", json, StringComparison.OrdinalIgnoreCase);
     }
 

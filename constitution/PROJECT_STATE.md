@@ -1,6 +1,6 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-08-10 (WC034-10 web Conversation Core implementation approved; F3 implementation branch active)
+**Last Updated:** 2026-08-10 (WC034-11 cross-stack evidence approved; WC034-12 integrated acceptance next)
 
 ---
 
@@ -22,6 +22,7 @@
 | WC034-08 BP Conversation Core | DONE — six canonical BP OpenAPI 1.2.0 operations, durable tenant-isolated projections, request-hash idempotency, Evidence First ordering, privacy-safe errors, cancellation, and typed resumable SSE implemented; focused Docker tests 19/19 PASS; full BP regression 158/158 PASS; affected-file line coverage: controller 95.97%, service 91.77%, store 100% |
 | WC034-09 PR Conversation Core | DONE — BP-authenticated internal execution, CE fail-closed authorization, durable Temporal state/replay, idempotent cancellation, typed live SSE/heartbeat, canonical health/OpenAPI, and CE-confirmed Emergency Stop implemented; INST-005 APPROVED; focused PR tests 69/69 PASS; full PR regression 89/89 PASS; CE Emergency Stop tests 4/4 PASS; affected-module line-plus-branch coverage 93.22% with every affected module at least 90% |
 | WC034-10 web Conversation Core | DONE — pinned Generator 7.17.0 produces dependency-closed authenticated Identity+Conversation clients without manual patches; same-origin server-only BP boundary, durable timeline, offline outbox, replay/reconciliation, typed cards, retry, cancellation recovery, and responsive accessible conversation UI implemented; INST-005 APPROVED; deterministic two-run tree hash `541d5490431311ee2d5f727978c753f376816449938e5299ac5ac0be808dbc21`; web tests 80/80 PASS; global line coverage 93.39%, ConversationExperience 93.82%; TypeScript, lint, and production build PASS |
+| WC034-11 cross-stack evidence | DONE — INST-005 APPROVED; four static contract drift sentinels verify canonical operations, versioned schemas/events, Emergency Stop signal independence, and the browser-to-BP boundary without being characterized as live integration; same-tenant unauthorized mutation evidence fails before CE authorization, PR dispatch, or persistence and returns privacy-safe `404 CONVERSATION_NOT_ACCESSIBLE`; Docker suites PASS: BP Conversation 22/22, full BP 170/170, PR 89/89, static contract 4/4; affected Python modules each exceed 90% line coverage with aggregate 780/827 (94.32%), BP controller 94.38%, service 100%, store 100%, web global 93.39%, and ConversationExperience 93.82%; C-023, C-026, C-059, C-063, C-065, C-076, and C-080 satisfied; WC034-12 integrated acceptance and independent INST-004 review are next |
 
 ### Decision Space and Constitutional Obligations
 
