@@ -718,3 +718,94 @@ R-062 / CR-GOAL-005-INST-002-05 satisfies GEOM R2-03 condition 1. This record sa
 | `acceptance_timestamp` | 2026-08-10T13:25:23+00:00 |
 | Decision | ACCEPTED |
 | Contribution scope accepted | WC-034 F4 release-composition/DMA-selection re-attestation and named domain-authority evidence requirement only |
+
+## Amendment 3 Order 2 Authorization Records
+
+### GOA-GOAL-005-INST-004-07
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GOA-GOAL-005-INST-004-07 |
+| `record_type` | Authorization Record |
+| `authorization_id` | GOA-GOAL-005-INST-004-07 |
+| Authorized Institution | INST-004 — Enterprise Architect |
+| Contribution scope | Re-open and attest WC-034 F4 enterprise ownership, service boundaries, domain-adapter placement, gate integrity, and ADR impact |
+| Participation Window | 2 constitutional sessions after valid acceptance |
+| Excluded authority | Product prioritization, concrete API contracts, implementation, canonical OpenAPI changes, generated clients, deployment, F5-F8, integrated review in the same authoring context, and self-review |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-10T13:33:43+00:00 |
+
+### GOA-GOAL-005-INST-006-03
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GOA-GOAL-005-INST-006-03 |
+| `record_type` | Authorization Record |
+| `authorization_id` | GOA-GOAL-005-INST-006-03 |
+| Authorized Institution | INST-006 — Data Architect |
+| Contribution scope | Re-open and attest WC-034 F4 canonical data semantics, provenance, ordering, commercial categories, evidence states, correction, minimisation, and isolation |
+| Participation Window | 2 constitutional sessions after valid acceptance |
+| Excluded authority | Concrete persistence schema, migrations, API contracts, implementation, canonical OpenAPI changes, generated clients, deployment, F5-F8, and self-review |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-10T13:33:44+00:00 |
+
+### GOA-GOAL-005-INST-007-03
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GOA-GOAL-005-INST-007-03 |
+| `record_type` | Authorization Record |
+| `authorization_id` | GOA-GOAL-005-INST-007-03 |
+| Authorized Institution | INST-007 — Security Architect |
+| Contribution scope | Re-open and attest WC-034 F4 security assurance, authorization, acknowledgement, privacy, export, service-authentication, replay, and adversarial-acceptance controls |
+| Participation Window | 2 constitutional sessions after valid acceptance |
+| Excluded authority | Product policy selection, API contracts, implementation, canonical OpenAPI changes, generated clients, deployment, F5-F8, and self-review |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-10T13:33:45+00:00 |
+
+## Amendment 3 Order 2 Acceptance Records
+
+### ACC-GOAL-005-INST-004-07
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-004 |
+| `goal_id` | GOAL-005 |
+| `record_id` | ACC-GOAL-005-INST-004-07 |
+| `record_type` | Acceptance Record |
+| `authorization_id` | GOA-GOAL-005-INST-004-07 |
+| `acceptance_timestamp` | 2026-08-10T13:33:46+00:00 |
+| Decision | ACCEPTED |
+| Contribution scope accepted | F4 enterprise-ownership re-attestation only; later integrated review requires a fresh context |
+
+### ACC-GOAL-005-INST-006-03
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-006 |
+| `goal_id` | GOAL-005 |
+| `record_id` | ACC-GOAL-005-INST-006-03 |
+| `record_type` | Acceptance Record |
+| `authorization_id` | GOA-GOAL-005-INST-006-03 |
+| `acceptance_timestamp` | 2026-08-10T13:33:47+00:00 |
+| Decision | ACCEPTED |
+| Contribution scope accepted | F4 data-contract re-attestation only |
+
+### ACC-GOAL-005-INST-007-03
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-007 |
+| `goal_id` | GOAL-005 |
+| `record_id` | ACC-GOAL-005-INST-007-03 |
+| `record_type` | Acceptance Record |
+| `authorization_id` | GOA-GOAL-005-INST-007-03 |
+| `acceptance_timestamp` | 2026-08-10T13:33:48+00:00 |
+| Decision | ACCEPTED |
+| Contribution scope accepted | F4 security-contract re-attestation only |
