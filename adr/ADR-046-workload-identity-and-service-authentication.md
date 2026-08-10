@@ -281,8 +281,8 @@ Executable recovery must keep each family or route unavailable, blocked, or hone
 
 Static specification, fixture, integration, browser, deployment, and customer-proof evidence must retain their existing provenance labels and must not be conflated. Passing this future evidence would satisfy only the authorized implementation gate named by a later amendment; it would not resolve F4 policy defaults, authorize deployment, or prove customer outcomes.
 
-## 11. Review And Acceptance Required
+## 11. Review And Acceptance Evidence
 
-Order 2 requires an independent INST-003 review of capability coverage, operational continuity, customer-rights effects, and business-driver alignment. Order 3 requires a fresh INST-002 review of constitutional and claim traceability. Each review must publish its own authorized Contribution and Learning Records, state an explicit decision and exact conditions, and remain independent of this authoring context.
+Order 2 produced independent INST-003 Business review R-066, which approved the decision with two conditions. The prospectively authorized INST-004 repair satisfied both conditions in Sections 7.2 and 10 without changing the authentication mechanism. Order 3 then produced fresh INST-002 Constitutional review R-067, which approved the repaired decision with no conditions.
 
-Until both reviews approve and every condition is satisfied, ADR-046 remains **PROPOSED** and EA-F4-01 remains open. No self-approval is claimed.
+INST-013 mechanically recorded ADR-046 as **ACCEPTED** and EA-F4-01 as closed only after both independent reviews and the repair evidence were published. No self-approval is claimed, and this acceptance grants no implementation, policy-default, provider-activation, deployment, or F5-F8 authority.
