@@ -638,3 +638,83 @@ Before any Amendment 3 GOA is issued, the Registrant must record:
 - no new deployable component;
 - no F5-F8 scope;
 - no deployment, self-review, self-merge, or retrospective authorization.
+
+---
+
+## Registrant Acknowledgement Record — Amendment 3
+
+| Attestation field | Value |
+|---|---|
+| `institution_id` | INST-001 |
+| `goal_id` | GOAL-005 |
+| `record_id` | ACK-GOAL-005-INST-001-04 |
+| `record_type` | Acknowledgement Record |
+| `produced_at` | 2026-08-10T13:25:19+00:00 |
+| Acknowledged plan | GEP-GOAL-005-INST-013-04 |
+| Registrant | Yogesh Khandge / Founder |
+| Decision | ACKNOWLEDGED — architecture and owner-contract closure GO Authorizations only |
+| Exact quoted acknowledgement | "I acknowledge GEP-GOAL-005-INST-013-04, select Digital Marketing Agent as the WC-034 F4 first-release profession, and authorize INST-013 to issue architecture and owner-contract closure GO Authorizations only. This does not authorize F4 implementation or deployment." |
+
+R-062 / CR-GOAL-005-INST-002-05 satisfies GEOM R2-03 condition 1. This record satisfies condition 2. Amendment 3 architecture GOAs may now issue in dependency order; implementation and deployment remain unauthorized.
+
+## Amendment 3 Order 1 Authorization Records
+
+### GOA-GOAL-005-INST-003-03
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GOA-GOAL-005-INST-003-03 |
+| `record_type` | Authorization Record |
+| `authorization_id` | GOA-GOAL-005-INST-003-03 |
+| Authorized Institution | INST-003 — Business Architect |
+| Contribution scope | Re-open and attest WC-034 F4 business semantics; validate DMA outcome semantics after domain-authority evidence is incorporated |
+| Participation Window | 2 constitutional sessions after valid acceptance |
+| Excluded authority | Architecture approval, API contracts, implementation, canonical OpenAPI changes, generated clients, deployment, F5-F8, and self-review |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-10T13:25:20+00:00 |
+
+### GOA-GOAL-005-INST-011-05
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GOA-GOAL-005-INST-011-05 |
+| `record_type` | Authorization Record |
+| `authorization_id` | GOA-GOAL-005-INST-011-05 |
+| Authorized Institution | INST-011 — Product Owner |
+| Contribution scope | Re-open and attest WC-034 F4 release composition and DMA first-release selection; identify the named DMA domain-authority evidence required for Order 4 incorporation |
+| Participation Window | 2 constitutional sessions after valid acceptance |
+| Excluded authority | Professional judgment invention, architecture, API contracts, implementation, canonical OpenAPI changes, generated clients, deployment, F5-F8, and self-review |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-10T13:25:21+00:00 |
+
+## Amendment 3 Order 1 Acceptance Records
+
+### ACC-GOAL-005-INST-003-03
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-003 |
+| `goal_id` | GOAL-005 |
+| `record_id` | ACC-GOAL-005-INST-003-03 |
+| `record_type` | Acceptance Record |
+| `authorization_id` | GOA-GOAL-005-INST-003-03 |
+| `acceptance_timestamp` | 2026-08-10T13:25:22+00:00 |
+| Decision | ACCEPTED |
+| Contribution scope accepted | WC-034 F4 business-semantics re-attestation and later DMA semantic validation only |
+
+### ACC-GOAL-005-INST-011-05
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-011 |
+| `goal_id` | GOAL-005 |
+| `record_id` | ACC-GOAL-005-INST-011-05 |
+| `record_type` | Acceptance Record |
+| `authorization_id` | GOA-GOAL-005-INST-011-05 |
+| `acceptance_timestamp` | 2026-08-10T13:25:23+00:00 |
+| Decision | ACCEPTED |
+| Contribution scope accepted | WC-034 F4 release-composition/DMA-selection re-attestation and named domain-authority evidence requirement only |
