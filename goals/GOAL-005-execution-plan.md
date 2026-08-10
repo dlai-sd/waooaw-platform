@@ -548,3 +548,93 @@ Both GEOM R2-03 conditions are met: CR-GOAL-005-INST-002-04 / R-060 passed CA Re
 | Excluded authority | Attachments, voice, F4-F8, `@ai-sdk/react`, direct browser-to-PR/provider traffic, provider activation, deployment, architectural changes, self-review, and self-merge |
 
 INST-010 accepts the GEP-GOAL-005-INST-013-03 contribution one second after GOA issuance, satisfying GEOM G-03 and R2-12. The five-session Participation Window begins at this acceptance timestamp. Execution remains pending a valid WC-034 F3 pipeline entry, C-086 pre-sprint simulation, and fail-fast preflight.
+
+---
+
+## Amendment 3 — WC-034 F4 Architecture And Owner-Contract Closure
+
+| Attestation field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GEP-GOAL-005-INST-013-04 |
+| `record_type` | Execution Plan |
+| `produced_at` | 2026-08-10T13:14:51+00:00 |
+| Status | PROPOSED — CA Readiness Review and Registrant acknowledgement required before any Amendment 3 GOA is issued |
+
+### Amendment Purpose
+
+This amendment adds one bounded architecture/dependency-closure phase for WC-034 F4 Relationship Workspace. It maps the logical Business Platform, WAOOAW Billing Engine, and selected professional/domain owner responsibilities to registered Institutions, selects Digital Marketing Agent (DMA) as the first-release profession, and defines the evidence needed to close G-F4-01 through G-F4-11.
+
+This amendment issues no GO Authorization. It does not authorize implementation, source or test changes, OpenAPI modification, generated-client production, provider activation, deployment, F5-F8, or INST-010 participation. G-F4-12 and G-F4-13 remain blocked. A later Collaboration Amendment is required before any F4 implementation GOA may be reserved or issued.
+
+### Non-Retroactivity And Candidate Inputs
+
+The F4 documents prepared before Amendment 3 authorization are candidate inputs, not retroactively valid Contribution Records. After valid GOA issuance and acceptance, each Institution must independently re-open, verify, amend if needed, and attest its own candidate artifact within its Decision Space. Re-attestation may adopt an unchanged artifact only after the Institution verifies that it satisfies this amendment's Evidence Specification. No Institution may accept another Institution's draft as its own contribution.
+
+Candidate inputs are:
+
+- `goals/GOAL-005-f4-business-contribution.md`;
+- `architecture/reference/components/relationship-workspace.md`;
+- `architecture/reference/components/relationship-workspace-solution-contract.md`;
+- `architecture/reference/data/relationship-workspace-data-contract.md`;
+- `architecture/reference/security/relationship-workspace-security-contract.md`; and
+- `architecture/reference/product/f4-relationship-workspace-release-contract.md`.
+
+### Phase 8C — F4 Architecture And Dependency Closure
+
+| Order | Contribution | Dependency | Participating Institution | Gate evidence |
+|---:|---|---|---|---|
+| 1 | Business meanings and first-release product composition | Valid Amendment 3 GOAs and acceptances | INST-003 business semantics; INST-011 product composition and DMA selection | G-F4-01 and G-F4-06 contribution records |
+| 2 | Enterprise, data, and security architecture | Order 1 accepted | INST-004 enterprise ownership; INST-006 data semantics; INST-007 security assurance | G-F4-02, G-F4-04, and G-F4-05 contribution records |
+| 3 | Solution and logical component-owner contracts | Orders 1-2 accepted | INST-005 Solution Architect acting within component/API/integration Decision Space | G-F4-03, BP owner G-F4-07, and WBE owner G-F4-08 contribution records |
+| 4 | DMA domain outcome contract | DMA selected by Registrant; Orders 1-3 accepted | INST-011 incorporates attested DMA domain-authority evidence; INST-003 validates business-outcome semantics; INST-005 validates adapter conformance | G-F4-09 DMA outcome/evidence/attribution/attention compatibility package |
+| 5 | Canonical contract compatibility | Orders 1-4 accepted | INST-005 with logical BP contract ownership | G-F4-10 OpenAPI and generated-client compatibility specification; no canonical OpenAPI edit or generated client under this amendment |
+| 6 | Constitutional and integrated independent review | Orders 1-5 accepted | INST-002 constitutional review; fresh INST-004 integrated review context that did not author the reviewed contribution | G-F4-11 reviews and unresolved-risk statement |
+
+### Per-Institution Evidence Specifications
+
+| Institution | Amendment 3 Contribution Record | Minimum content | Participation Window | Independence constraint |
+|---|---|---|---|---|
+| INST-003 Business Architect | F4 business-semantics re-attestation; DMA outcome-semantics validation | Plan, attention, work, results, usage/budget, rights/control meanings; outcome vs technical metric; DMA baseline, measure, attribution, and attention semantics | 2 constitutional sessions after acceptance | May not approve architecture, API contracts, or its own integrated review |
+| INST-011 Product Owner | F4 release-composition re-attestation; DMA selection and domain-authority evidence incorporation | Mandatory views/actions, truthful states, deferrals, policy escalations, named DMA authority evidence and provenance | 2 constitutional sessions after acceptance | May not invent DMA professional judgment, architecture, or implementation authority |
+| INST-004 Enterprise Architect | F4 ownership re-attestation; fresh integrated review | BP/WBE/CE/PR/web/domain boundaries, no new deployable component, gate integrity, ADR impact, independent package verdict | 2 sessions for ownership plus 1 fresh review session | Review context must not author the INST-005, INST-006, INST-007, or INST-011 contribution it reviews |
+| INST-006 Data Architect | F4 data-contract re-attestation | Provenance, versions, freshness, stable sequence, commercial categories, evidence states, correction, minimisation, tenant/relationship isolation | 2 constitutional sessions after acceptance | Must not approve its own contribution or define concrete persistence schema |
+| INST-007 Security Architect | F4 security-contract re-attestation | C1-C5 controls, assurance, acknowledgement, authorization, privacy-safe errors, export, browser privacy, service authentication, adversarial acceptance | 2 constitutional sessions after acceptance | Must not approve its own contribution or select unresolved product policy |
+| INST-005 Solution Architect | F4 solution re-attestation; BP owner contract; WBE owner contract; DMA adapter conformance; G-F4-10 compatibility specification | Public/internal contract families, generated-client boundary, BP governance ownership, WBE commercial ownership, owner reconciliation, DMA adapter compatibility, deterministic future OpenAPI/generator evidence requirements | 3 constitutional sessions after acceptance | May not implement, edit canonical OpenAPI, generate production clients, or independently approve its own package |
+| INST-002 Constitutional Analyst | Amendment 3 readiness review; final F4 architecture constitutional review | GOA validity, rights, Human Override, Evidence First, tenant isolation, traceability, Decision Space compliance, unresolved policy and implementation boundary | 1 session per review | Does not replace fresh INST-004 technical integration review or Registrant acknowledgement |
+
+### DMA Domain Authority Rule
+
+DMA is the sole first-release profession selected for G-F4-09. A named DMA domain authority supplies the F4-specific outcome vocabulary, baselines, measures, evidence sources, attribution limits, uncertainty, review cadence, and material attention candidates. Because a domain authority is not a registered Institution, INST-011 incorporates and attests that evidence with explicit provenance; INST-003 validates business semantics; INST-005 validates generic adapter conformance. Generic adapter acceptance alone cannot close G-F4-09.
+
+No other profession enters F4 under this amendment. No DMA-specific field or rule may enter the generic Relationship Workspace contract.
+
+### Gate And Authorization Rules
+
+1. Amendment 3 GOAs may be issued only after CA Readiness Review is APPROVED or APPROVED WITH CONDITIONS that are satisfied and the Registrant acknowledges `GEP-GOAL-005-INST-013-04`.
+2. Acceptance timestamps must be later than their matching GOA issuance timestamps. Before any Order N+1 GOA is issued, every required Order N Contribution Record must be published to the Goal Register; an acceptance timestamp alone does not complete an order.
+3. Candidate inputs do not close gates until their owning Institution publishes a valid post-acceptance Contribution Record.
+4. G-F4-07 and G-F4-08 are authored by INST-005 as logical component-owner contracts and independently reviewed by fresh INST-004 context.
+5. G-F4-09 closes only with the DMA-specific evidence chain defined above.
+6. G-F4-10 under this amendment specifies and independently reviews compatibility evidence; canonical OpenAPI changes and generated production clients remain implementation work under a later authorization.
+7. G-F4-11 requires a fresh INST-002 constitutional reviewer that did not author the Amendment 3 readiness record or contribute to the reviewed F4 package, plus a fresh INST-004 integrated technical reviewer that did not author the contribution it reviews.
+8. Architecture closure does not authorize implementation. G-F4-12 requires a later Execution Plan amendment, CA readiness, Registrant acknowledgement, GOA issuance, and INST-010 acceptance.
+9. Deployment remains separately blocked by G-F4-13.
+
+### Required Registrant Acknowledgement
+
+Before any Amendment 3 GOA is issued, the Registrant must record:
+
+> "I acknowledge GEP-GOAL-005-INST-013-04, select Digital Marketing Agent as the WC-034 F4 first-release profession, and authorize INST-013 to issue architecture and owner-contract closure GO Authorizations only. This does not authorize F4 implementation or deployment."
+
+### Explicit Exclusions
+
+- no application code, tests, migrations, build artifacts, canonical OpenAPI edits, or generated production clients;
+- no INST-010 implementation contribution or implementation GOA;
+- no provider activation or direct browser access to PR, WBE, CE, domain adapters, providers, or ledgers;
+- no browser ranking or secondary sorting of Needs your attention;
+- no BP recreation of WBE actual, allowance, forecast, threshold, pricing, or commercial truth;
+- no new deployable component;
+- no F5-F8 scope;
+- no deployment, self-review, self-merge, or retrospective authorization.

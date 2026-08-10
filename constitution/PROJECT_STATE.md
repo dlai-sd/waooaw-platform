@@ -16,8 +16,8 @@
 | F4 BP and WBE owner-contract routing | BLOCKED — INST-002 classifies logical component ownership to INST-005 with fresh INST-004 review, but the F4 Execution Plan must explicitly map and authorize those supplemental contributions before G-F4-07/G-F4-08 records are produced |
 | F4 professional/domain owner contract | BLOCKED — G-F4-09 requires an explicitly selected first-release profession plus F4-specific outcome/evidence/attribution/attention compatibility; no profession may be inferred from prior GOAL-005 proof |
 | F4 generated-client compatibility and independent review | PENDING — G-F4-10 requires canonical OpenAPI/generation evidence and G-F4-11 requires a fresh C-065-compliant integrated review |
-| GEP-GOAL-005-INST-013-04 Amendment 3 | PENDING — may reserve implementation authorization only after architecture gates close |
-| CA readiness and Registrant acknowledgement | PENDING — both GEOM R2-03 conditions required before any F4 GOA issuance |
+| GEP-GOAL-005-INST-013-04 Amendment 3 | PROPOSED — architecture/owner-contract closure only; DMA selected; candidate artifacts require post-GOA re-attestation; no implementation or deployment authority |
+| CA readiness and Registrant acknowledgement | CA READY — R-062 / CR-GOAL-005-INST-002-05 APPROVED WITH CONDITIONS and conditions incorporated; exact Registrant acknowledgement remains required before any Amendment 3 GOA |
 | F4 implementation | BLOCKED — no `src/` or `web/` implementation, generated client, deployment, or F5-F8 authority in this architecture session |
 
 ### Decision Space and Constitutional Obligations
