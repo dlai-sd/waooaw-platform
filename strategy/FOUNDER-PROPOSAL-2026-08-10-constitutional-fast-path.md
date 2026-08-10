@@ -1,10 +1,10 @@
 # Founder Proposal: Low-Risk Constitutional Fast Path
 
-**Status:** DRAFT FOR FOUNDER REVIEW - nonbinding and not active
+**Status:** FOUNDER-AUTHORIZED LOW-RISK TOOLING IMPLEMENTATION - no high-risk activation
 **Date:** 2026-08-10
 **Prepared by:** INST-013 orchestration context
 **Decision owner:** Founder / Registrant
-**Implementation status:** NOT AUTHORIZED
+**Implementation status:** AUTHORIZED FOR CURRENT SESSION - deterministic low-risk tooling only
 **Constitutional basis preserved:** C-006, C-008, C-031, C-032, C-051, C-065, C-071, C-077, C-083, C-084, C-085
 **Existing mechanisms reused:** `knowledge/index.md`, ADR-019, `sprint-context/index.json`, `scripts/build_sprint_index.py`
 
@@ -167,9 +167,9 @@ At each completed increment:
 | Low-risk boundary drafted | DONE | Sections 2 and 3 |
 | Index/RAG retrieval design drafted | DONE | Sections 4 and 5 |
 | Disconnect-safe workflow drafted | DONE | Section 7 |
-| Founder review | PENDING | No activation before explicit Founder approval |
-| Constitutional/Office classification | PENDING | Determine whether later activation needs an Execution Plan, ADR, standard, or agent-update flow |
-| Deterministic validator implementation | NOT AUTHORIZED | High-risk exclusions remain active |
+| Founder review | DONE | Founder explicitly authorized implementation of the approved low-risk constitutional fast path for the 2026-08-10 session |
+| Constitutional/Office classification | DONE FOR THIS SCOPE | Deterministic standalone tooling only; no skill, hook, agent lifecycle, authority, or semantic decision |
+| Deterministic validator implementation | DONE | `scripts/constitutional_fast_path.py`; 15 focused tests and 24 CCT-PIPE-01 checks passed; documented CLI build/validate passed |
 | Skill/hook/agent customization | NOT AUTHORIZED | Requires separately governed lifecycle |
 | F4 implementation amendment | DEFERRED | Planned after break; separate scope and authority |
 
@@ -188,13 +188,15 @@ A separately approved pilot should measure, without relaxing quality:
 
 These are operational targets, not constitutional waivers. Missing a target does not justify bypassing evidence or review.
 
-## 9. Founder Decision Requested Later
+## 9. Founder Decision Record
 
-No decision is requested while this draft is being prepared. Before activation, the Founder must choose one of:
+On 2026-08-10 the Founder authorized implementation of the approved low-risk constitutional fast path for the current session. The authorization covers deterministic context-manifest tooling and its focused tests and documentation. It does not authorize F4 application implementation, a skill, hook, agent update, semantic authority, provider activation, deployment, or any Section 3.2 exclusion.
+
+Any later expansion or activation beyond this bounded tooling requires the Founder to choose one of:
 
 1. **Reject** - retain the ordinary path unchanged;
 2. **Approve a documentation-only pilot** - use the procedure manually for eligible low-risk work, with no new tooling;
 3. **Authorize formal classification** - route the proposal to the appropriate Offices to determine required governance artifacts; or
 4. **Authorize a later tooling proposal** - separately govern any validator, context-index extension, skill, hook, or agent update.
 
-Until that decision is explicit, this file is informative only and grants no authority.
+The implemented tool remains a fail-closed routing aid. This record does not grant institutional authority, alter an Office Decision Space, or make its output authoritative evidence.

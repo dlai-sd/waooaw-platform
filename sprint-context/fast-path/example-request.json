@@ -1,0 +1,67 @@
+{
+  "bootstrap": {
+    "completed": true,
+    "files_read": [
+      "constitution/BOOTSTRAP.md",
+      "README.md",
+      "constitution/PROJECT_STATE.md"
+    ],
+    "status": "READY"
+  },
+  "decision_space": "Prepare and validate a bounded low-risk context manifest only",
+  "goal_id": "GOAL-005",
+  "model_hint": "auto",
+  "office": "INST-013",
+  "relevant_adrs": [
+    "ADR-019"
+  ],
+  "relevant_claims": [
+    "C-051",
+    "C-077"
+  ],
+  "retrieval": {
+    "index_path": "sprint-context/index.json",
+    "mode": "index",
+    "query": null
+  },
+  "risk_flags": {
+    "adr_change": false,
+    "agent_lifecycle": false,
+    "application_implementation": false,
+    "authority_or_acceptance": false,
+    "constitutional_change": false,
+    "customer_rights": false,
+    "emergency_stop": false,
+    "evidence_first": false,
+    "financial_or_billing": false,
+    "independent_review": false,
+    "provider_or_deployment": false,
+    "security_or_identity": false
+  },
+  "sources": [
+    {
+      "max_tokens": 1200,
+      "path": "constitution/PROJECT_STATE.md",
+      "provenance": "current_checkpoint",
+      "retrieved_via": "index",
+      "section": "current goal checkpoint"
+    },
+    {
+      "max_tokens": 900,
+      "path": "knowledge/index.md",
+      "provenance": "authoritative_source",
+      "retrieved_via": "index",
+      "section": "relevant constitutional claims"
+    }
+  ],
+  "task_class": "orchestration_preparation",
+  "task_id": "FAST-PATH-EXAMPLE-001",
+  "validations": [
+    "verify every source path and decisive section directly",
+    "python3 scripts/constitutional_fast_path.py validate --manifest sprint-context/fast-path/example-manifest.json"
+  ],
+  "work_contract": "WC-034",
+  "write_paths": [
+    "sprint-context/fast-path/example-manifest.json"
+  ]
+}
