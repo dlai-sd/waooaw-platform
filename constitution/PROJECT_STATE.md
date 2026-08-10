@@ -1,6 +1,39 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-08-10 (WC-034 F3 Conversation Core architecture and dependency closure complete; PR #250 open)
+**Last Updated:** 2026-08-10 (PR #250 merged; GOAL-005 Amendment 2 CA-ready; F3 GOA blocked on Registrant acknowledgement)
+
+---
+
+## IN-PROGRESS CHECKPOINT — GOAL-005 AMENDMENT 2 / WC-034 F3 AUTHORIZATION
+
+| Milestone | Status |
+|---|---|
+| Post-merge bootstrap and INST-013 occupancy | DONE — Epoch 1; G5 CLEAR; IMPLEMENTATION; INST-013 OPERATIONAL; orchestration only under GEOM G-13 |
+| F3 architecture merge verification | DONE — PR #250 merged to `main` as `5010753`; R-059 APPROVED; G-F3-01 through G-F3-07 closed |
+| Prior-phase sequencing verification | DONE — WC-034 F2 PR #249 merged as `cc80e812`; Amendment 2 does not reopen F2 |
+| GEP-GOAL-005-INST-013-03 | DONE — Amendment 2 defines the bounded F3 INST-010 contribution, evidence specification, five-session window, pipeline-only dispatch, and exclusions |
+| CA Readiness Review | DONE — R-060 / CR-GOAL-005-INST-002-04 APPROVED WITH CONDITIONS; GEOM R2-03 condition 1 PASS |
+| Registrant acknowledgement | BLOCKED — `ACK-GOAL-005-INST-001-03` must reference GEP-GOAL-005-INST-013-03; R2-04 unavailable because Registrant is present and reachable |
+| GOA and INST-010 acceptance | NOT ISSUED — `GOA-GOAL-005-INST-010-02` and `ACC-GOAL-005-INST-010-02` remain reserved; no implementation authority exists yet |
+| Autonomous pipeline dispatch | BLOCKED — requires valid GOA and acceptance, then reconciliation of closed/stale Sprint Dashboard Issue #7 and a valid F3 pipeline entry |
+
+### Decision Space and Constitutional Obligations
+
+INST-013 may amend the GOAL-005 execution choreography, obtain independent CA readiness evidence, issue GO Authorization after GEOM R2-03 is satisfied, monitor participation, and dispatch authorized engineering work through the autonomous pipeline. INST-013 may not implement, contribute to GOAL-005, self-authorize, treat architecture approval as implementation authority, bypass Registrant acknowledgement, start F4-F8, authorize deployment, or merge an implementation PR.
+
+### Required Registrant Record
+
+To satisfy GEOM R2-03 condition 2, the Founder must state:
+
+> "I acknowledge GEP-GOAL-005-INST-013-03 and authorize INST-013 to issue GOA-GOAL-005-INST-010-02."
+
+After that record exists, INST-013 may issue the GOA, obtain INST-010 acceptance with a later timestamp, reconcile the autonomous pipeline entry, and dispatch F3. Founder involvement then returns to implementation PR review, approval, and merge unless a genuine constitutional blocker arises.
+
+### Preserved Boundaries
+
+- No application code, tests, web code, infrastructure, generated client, dependency installation, or build artifact is produced in this governance session.
+- No `@ai-sdk/react`, attachments, voice, direct browser-to-PR/provider traffic, F4-F8, provider activation, or deployment is authorized.
+- `logs/blueprint_assurance_report.json` remains an unrelated local modification and is untouched.
 
 ---
 
