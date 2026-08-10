@@ -406,3 +406,87 @@ This record supersedes ACK-GOAL-005-INST-001-01 with respect to INST-010 impleme
 | Excluded authority | No deployment (G-F2-13); no F3–F8 implementation; no provider activation beyond Google and email-fallback; no architectural decisions; no self-approval of contribution completeness |
 
 INST-010 accepts this authorization under the Phase 8 scope and Evidence Specification defined in GEP-GOAL-005-INST-013-02 (Amendment 1). Contribution completeness requires independent INST-004 review per G-5.
+
+---
+
+## Amendment 2 — INST-010 WC-034 F3 Conversation Core Contribution
+
+| Attestation field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GEP-GOAL-005-INST-013-03 |
+| `record_type` | Execution Plan |
+| `produced_at` | 2026-08-10T01:44:29+00:00 |
+| Amends | GEP-GOAL-005-INST-013-02 |
+| Amendment basis | FA-031 and FA-034 remain in effect; PR #249 merged as `cc80e812`; R-059 APPROVED and PR #250 merged as `5010753`; G-F3-01 through G-F3-07 are closed; GEOM G-7 requires a new GO Authorization before INST-010 may act |
+| Status | CA READINESS APPROVED WITH CONDITIONS — Registrant acknowledgement required before GOA issuance |
+
+### What This Amendment Changes
+
+This amendment adds WC-034 F3 Conversation Core as a parallel Phase 8 contribution. The approved decomposition permits F2 and F3 service-contract work to proceed independently after F1, while preventing authenticated end-to-end conversation closure until both pass. F2 merged before this amendment was produced; no F2 scope is reopened.
+
+The amendment does not treat architecture approval as implementation authority. It creates the GEOM evidence specification required for INST-010 implementation and reserves `GOA-GOAL-005-INST-010-02`. Under GEOM R2-03, that authorization remains constitutionally void until both CA readiness review and Registrant acknowledgement of this specific amendment are recorded.
+
+### Phase 8B — WC-034 F3 Conversation Core Implementation
+
+| Field | Value |
+|---|---|
+| Deliverable | WC-034 F3 Conversation Core implementation |
+| Dependency | F1 complete; FA-031/FA-034 in effect; G-F3-01 through G-F3-07 closed by R-059; PR #250 merged as `5010753` |
+| Participating Institutions | INST-010 primary implementation; INST-004 independent implementation review in a separate context |
+| Participation Window | 5 constitutional sessions after valid acceptance |
+| Gate to completion | All mapped F3 acceptance evidence passes; affected-service line coverage is at least 90%; independent INST-004 review is APPROVED; implementation PR is ready for Founder review |
+| Dispatch path | Autonomous Sprint Pipeline only; this Copilot session may govern and dispatch but may not author production implementation |
+
+### Evidence Specification — INST-010 WC-034 F3
+
+| Field | Value |
+|---|---|
+| Record types required | Implementation Contribution Record; Docker test evidence; coverage report; generated-client evidence; browser acceptance evidence; INST-004 independent review Contribution Record |
+| Participation Window | 5 constitutional sessions after valid acceptance |
+| Independence constraint | INST-004 reviews independently under C-065; INST-010 may not approve its own contribution or declare Goal completion |
+
+**Minimum contribution content:**
+
+1. Implement the BP OpenAPI 1.2.0 conversation timeline, send, retry, read-position, cancellation, and resumable SSE operations as the sole ordinary public ingress.
+2. Implement the PR OpenAPI 1.1.0 internal execution, cancellation, and resumable SSE operations with BP service authentication only.
+3. Preserve Message V1, Action/Plan/Deliverable/Decision Card V1, BP Event V1, and PR Event V1 compatibility rules.
+4. Enforce request-hash-bound UUID idempotency, replay, divergent-conflict, unknown-outcome, cursor, and client-message reconciliation semantics.
+5. Derive tenant authority only from validated JWT or service assertions; preserve normalized inaccessible-resource behavior and privacy-safe telemetry.
+6. Preserve independent delivery, processing, Stop, and CE-confirmed Evidence First states; reconnect must not release Stop or fabricate success.
+7. Implement the canonical RFC 9457 public and internal error contracts without dependency-detail leakage.
+8. Generate the public F3 TypeScript client from the canonical BP OpenAPI with OpenAPI Generator 7.17.0 or a proven compatible version; strict TypeScript must pass without manual generated-code patches.
+9. Implement the approved F3 conversation UX without `@ai-sdk/react`, direct browser-to-PR access, or direct browser-to-model-provider access.
+10. Pass UX-CONV-01 through UX-CONV-07, CCT-UX-HO-01 through CCT-UX-HO-03, CCT-UX-EF-01 and CCT-UX-EF-02, UX-PWA-03, UX-RES-01, and their mapped contract, accessibility, privacy, and tenant checks.
+11. Run tests in the repository Docker test runner and demonstrate at least 90% line coverage for every affected service and changed interactive web surface.
+12. Publish implementation evidence before independent INST-004 review and prepare, but do not merge, the implementation PR for Founder review.
+
+### Explicit Exclusions
+
+| Excluded item | Boundary preserved |
+|---|---|
+| Attachments and voice | Not part of the approved F3 contract |
+| F4 through F8 | No automatic expansion beyond Conversation Core |
+| F5 cross-channel checkpoint behavior | WC-060 and F5 gates remain controlling |
+| `@ai-sdk/react` | Not an approved F3 dependency |
+| Ordinary browser-to-PR or model-provider traffic | BP remains the sole public conversation ingress |
+| Provider activation and deployment | G-F3-09 remains blocked pending separate Founder action |
+| Self-review or self-merge | C-065 independence and Founder merge boundary remain mandatory |
+
+### Reserved Authorization — NOT ISSUED
+
+`GOA-GOAL-005-INST-010-02` is reserved for the scope above. It may be issued only after:
+
+1. CA Readiness Review of GEP-GOAL-005-INST-013-03 is recorded as APPROVED or APPROVED WITH CONDITIONS that are satisfied; and
+2. `ACK-GOAL-005-INST-001-03` records Registrant acknowledgement of GEP-GOAL-005-INST-013-03.
+
+Required Registrant statement:
+
+> "I acknowledge GEP-GOAL-005-INST-013-03 and authorize INST-013 to issue GOA-GOAL-005-INST-010-02."
+
+After valid issuance, INST-010 must record `ACC-GOAL-005-INST-010-02` with an acceptance timestamp later than the GOA `issued_at`. No implementation task may be queued or dispatched before that acceptance record exists.
+
+### Operational Dispatch Condition
+
+The repository `SPRINT_STATE_MACHINE` reports `autonomous_halt: false`, `platform_phase: IMPLEMENTATION`, and WC-043 DONE. GitHub Sprint Dashboard Issue #7 is closed and retains stale `sprint:halted` state from 2026-08-06. Before F3 dispatch, INST-013 must reconcile the dashboard and pipeline entry state without changing F3 scope or bypassing pre-sprint simulation.
