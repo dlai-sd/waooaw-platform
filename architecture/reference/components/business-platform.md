@@ -125,6 +125,34 @@ The customer PWA consumes relationship and timeline reads through an authenticat
 server boundary. Contract/payment activation, evaluation workflow, and relationship-wide
 Emergency Stop session resolution remain later AE-01 work and are not fabricated here.
 
+## WC-034 F3 Conversation Projection Coordinator
+
+Owns the one durable conversation projection for each authorized Employment Relationship.
+
+**Responsibilities:**
+- Authorize every conversation read and command from the validated Keycloak tenant, participant, and relationship binding
+- Persist canonical message identity, ordering, unread position, delivery/processing/evidence state, idempotency outcome, and reconciliation cursor
+- Accept text contributions and retries without interpreting timeout as success or creating duplicate messages
+- Invoke the Professional Runtime internal execution contract only after durable BP acceptance
+- Validate and project typed PR execution events through the canonical BP Server-Sent Event boundary
+- Preserve Emergency Stop as an independent constitutional transport and state
+- Normalize absent, inaccessible, and cross-tenant resources without existence disclosure
+
+**Canonical methods:**
+```
+GET    /api/v1/employment/relationships/{relationshipId}/conversation/messages
+POST   /api/v1/employment/relationships/{relationshipId}/conversation/messages
+POST   /api/v1/employment/relationships/{relationshipId}/conversation/messages/{messageId}/retry
+PUT    /api/v1/employment/relationships/{relationshipId}/conversation/read-position
+GET    /api/v1/employment/relationships/{relationshipId}/conversation/stream
+DELETE /api/v1/employment/relationships/{relationshipId}/conversation/executions/{executionId}
+```
+
+The normative behavior, versioned data shapes, errors, idempotency, privacy, tenant isolation,
+offline reconciliation, acceptance mapping, and dependency gates are defined in
+`architecture/reference/components/conversation-core.md`. The public wire contract is
+`architecture/reference/api-specs/business-platform.openapi.yaml` version 1.2.0.
+
 ## What Business Platform does NOT do
 - Does NOT execute professional work (that is Professional Runtime)
 - Does NOT write to the Constitutional Audit Ledger directly (only via Constitutional Engine)

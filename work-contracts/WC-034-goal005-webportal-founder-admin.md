@@ -64,6 +64,8 @@ The shell must use role-aware route composition rather than runtime CSS hiding. 
 | `architecture/reference/ux/wc-034-enterprise-architecture-assessment.md` | Formal readiness verdict, risks, resolutions, and remaining gates |
 | `architecture/reference/components/identity-boundary.md` | Canonical F2 component, API, data, error, assurance, integration, acceptance mapping, and dependency gate contract |
 | `architecture/reference/api-specs/business-platform.openapi.yaml` | Canonical public F2 registration, verification, completion, and account-linking operations for generated TypeScript clients |
+| `architecture/reference/components/conversation-core.md` | Canonical F3 BP/PR ownership, data-shape, error, idempotency, privacy, tenant, reconciliation, acceptance, and dependency gate contract |
+| `architecture/reference/api-specs/professional-runtime.openapi.yaml` | Canonical internal F3 professional execution, cancellation, and typed stream contract |
 
 ## Implementation Components — Gated
 
@@ -74,7 +76,7 @@ Detailed scope, dependencies, exclusions, and acceptance IDs are normative in `a
 | F0 | Architecture and dependency closure | INST-004 + reviewing/owning offices | review complete — remaining API and Founder gates named |
 | F1 | Experience foundation | INST-010 | complete — R-052 approved; PR #246 merged to `main` as `798c183` on 2026-08-09 |
 | F2 | Identity and registration | INST-010 + identity/BP owners | R-055 contract remediation complete — FA-035 fixes Google/Facebook/Apple/email fallback and progressive mobile policy; implementation blocked by INST-004 ADR-008 amendment and independent re-review; Facebook activation blocked by FA-002/FA-018 and Apple by FA-019 |
-| F3 | Conversation core | INST-010 + BP/PR owners | blocked — canonical BP public conversation/stream contracts and PR internal execution contract plus implementation gates |
+| F3 | Conversation core | INST-010 + BP/PR owners | architecture review candidate — BP OpenAPI 1.2.0 and PR OpenAPI 1.1.0 defined; blocked pending generated-client validation, independent INST-004 approval, and separate implementation authority |
 | F4 | Relationship workspace | INST-010 + BP/WBE owners | blocked — Plan/Priority Work and Consumption projections plus implementation gates |
 | F5 | Omnichannel continuity | INST-010 + WC-060 owners | blocked — WC-060 completion plus implementation gates |
 | F6 | Voice interaction | INST-010 + Product/Security/Data/Solution owners | blocked — voice consent, retention, transcription, attachment, and API decisions |

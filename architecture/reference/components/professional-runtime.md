@@ -73,6 +73,27 @@ Each active PAAS session runs as a long-lived Temporal workflow. The workflow ID
 - On Emergency Stop: discard the in-memory cache
 - On Decision Space version change mid-session: detect and halt the PAAS session (the session was opened on an old Decision Space; a new session must be started with the updated version)
 
+### 6. Conversation Execution Coordinator (WC-034 F3)
+**Responsibility:**
+- Accept or replay BP-authorized professional execution through an internal-only service contract
+- Derive tenant, relationship, and delegated actor context from the signed BP service assertion, never request-body hints
+- Start durable Temporal execution responsibility before returning `202`
+- Emit ordered versioned text-delta, card-proposal, evidence, terminal, Stop, and reconciliation events to BP
+- Accept cancellation while preserving partial output and without releasing Emergency Stop
+- Fail closed before model dispatch when Stop is active, Decision Space is stale, CE is unavailable, or schema major version is unsupported
+
+**Internal methods (Business Platform only):**
+```
+POST   /api/v1/internal/conversations/{conversationId}/executions
+GET    /api/v1/internal/conversations/{conversationId}/executions/{executionId}/stream
+DELETE /api/v1/internal/conversations/{conversationId}/executions/{executionId}
+```
+
+The normative contract is `architecture/reference/components/conversation-core.md`; the wire
+contract is `architecture/reference/api-specs/professional-runtime.openapi.yaml` version 1.1.0.
+These operations are not browser-accessible. PR events become customer-visible only after BP
+validates and persists the canonical conversation projection.
+
 ## Runtime Universality Implementation
 
 The Professional Runtime contains **no professional-type-specific code**. The `executionModel` field of the Decision Space determines which engine handles the session:

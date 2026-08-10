@@ -2,7 +2,7 @@ openapi: "3.1.0"
 
 info:
   title: WAOOAW Professional Runtime API
-  version: "1.0.0"
+  version: "1.1.0"
   description: |
     Internal and WebSocket API for the WAOOAW Professional Runtime service.
 
@@ -15,8 +15,11 @@ info:
 
     **Audience:**
     This spec covers two audiences:
-    1. **Business Platform** — internal REST calls for action submission and PAAS session management
-    2. **Customer browser/mobile** — WebSocket for Emergency Stop (via Business Platform proxy or direct)
+    1. **Business Platform** — internal REST/SSE calls for conversation execution, action submission, and PAAS session management
+    2. **Customer browser/mobile** — the dedicated WebSocket for Emergency Stop only (via Business Platform proxy or direct)
+
+    Ordinary conversation timeline, command, cancellation, and streaming traffic terminates
+    at Business Platform. Browsers never connect to these internal PR operations or to model providers.
 
     **Note on WebSocket:**
     OpenAPI 3.1 does not natively describe WebSocket protocol. The Emergency Stop
@@ -36,6 +39,8 @@ tags:
     description: Pre-Authorized Action Space session lifecycle
   - name: Internal
     description: Internal endpoints called by Business Platform only (not customer-facing)
+  - name: Conversation Execution
+    description: Internal BP-only professional execution and typed event stream for WC-034 F3
   - name: Health
     description: Service health
 
@@ -210,6 +215,123 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  # ─── Internal — Conversation Execution (WC-034 F3) ────────────────────────
+
+  /api/v1/internal/conversations/{conversationId}/executions:
+    post:
+      tags: [Conversation Execution]
+      summary: Start or replay professional processing for one BP-accepted message
+      description: |
+        Internal-only operation called by Business Platform after it has authenticated the
+        participant, authorized the relationship, persisted the canonical customer message,
+        and accepted idempotent responsibility. PR derives tenant and relationship context
+        from the signed BP service assertion; neither is accepted from the body.
+
+        A 202 response means Temporal accepted durable execution responsibility. PR does not
+        dispatch to AI Runtime while Emergency Stop is active, Decision Space is stale, or
+        Constitutional Engine is unavailable.
+      operationId: startConversationExecution
+      x-internal: true
+      security:
+        - ServiceBearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ConversationId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StartConversationExecutionRequestV1"
+      responses:
+        "202":
+          description: Durable professional execution accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProfessionalExecutionV1"
+        "200":
+          description: Prior identical execution outcome replayed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProfessionalExecutionV1"
+        "400": { $ref: "#/components/responses/ExecutionInvalidRequest" }
+        "401": { $ref: "#/components/responses/ExecutionUnauthorized" }
+        "404": { $ref: "#/components/responses/ExecutionNotFound" }
+        "409": { $ref: "#/components/responses/ExecutionConflict" }
+        "423": { $ref: "#/components/responses/ExecutionStopped" }
+        "503": { $ref: "#/components/responses/ExecutionUnavailable" }
+
+  /api/v1/internal/conversations/{conversationId}/executions/{executionId}/stream:
+    get:
+      tags: [Conversation Execution]
+      summary: Stream ordered typed professional execution events to BP
+      description: |
+        Internal-only Server-Sent Event stream consumed by Business Platform. Event IDs and
+        sequences are monotonic within the execution. BP validates, persists, and maps events
+        into its canonical public conversation projection; PR events are never browser truth.
+      operationId: streamConversationExecution
+      x-internal: true
+      security:
+        - ServiceBearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ConversationId"
+        - $ref: "#/components/parameters/ProfessionalExecutionId"
+        - $ref: "#/components/parameters/InternalLastEventId"
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Versioned internal professional execution event stream
+          headers:
+            Cache-Control:
+              schema: { type: string, const: "no-store" }
+          content:
+            text/event-stream:
+              schema:
+                $ref: "#/components/schemas/ProfessionalExecutionEventV1"
+        "401": { $ref: "#/components/responses/ExecutionUnauthorized" }
+        "404": { $ref: "#/components/responses/ExecutionNotFound" }
+        "410": { $ref: "#/components/responses/ExecutionCursorExpired" }
+        "423": { $ref: "#/components/responses/ExecutionStopped" }
+        "503": { $ref: "#/components/responses/ExecutionUnavailable" }
+
+  /api/v1/internal/conversations/{conversationId}/executions/{executionId}:
+    delete:
+      tags: [Conversation Execution]
+      summary: Request cancellation of one professional execution
+      description: |
+        Internal-only BP command. Cancellation preserves accepted partial output and does not
+        delete evidence or release Emergency Stop. A terminal execution replays its outcome.
+      operationId: cancelConversationExecutionInternal
+      x-internal: true
+      security:
+        - ServiceBearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ConversationId"
+        - $ref: "#/components/parameters/ProfessionalExecutionId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "202":
+          description: Cancellation accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProfessionalExecutionV1"
+        "200":
+          description: Existing terminal outcome replayed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProfessionalExecutionV1"
+        "401": { $ref: "#/components/responses/ExecutionUnauthorized" }
+        "404": { $ref: "#/components/responses/ExecutionNotFound" }
+        "409": { $ref: "#/components/responses/ExecutionConflict" }
+        "423": { $ref: "#/components/responses/ExecutionStopped" }
+        "503": { $ref: "#/components/responses/ExecutionUnavailable" }
+
 # ─── Components ─────────────────────────────────────────────────────────────
 
 components:
@@ -219,6 +341,14 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+    ServiceBearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        BP service assertion with PR audience plus signed tenant_id, relationship_id, and
+        delegated actor context. PR derives context only from these claims; request bodies,
+        paths, and headers cannot override tenant or relationship authorization.
 
   parameters:
     SessionId:
@@ -238,6 +368,41 @@ components:
         type: string
         format: uuid
 
+    ConversationId:
+      name: conversationId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+      description: BP-owned opaque durable conversation identifier
+
+    ProfessionalExecutionId:
+      name: executionId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+      description: PR-owned Temporal execution identifier correlated to one BP message
+
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema: { type: string, format: uuid }
+      description: Same authenticated BP caller, operation, key, and canonical hash replay one execution outcome
+
+    CorrelationId:
+      name: X-Correlation-Id
+      in: header
+      required: true
+      schema: { type: string, format: uuid }
+      description: Privacy-safe distributed correlation identifier; never contains customer content
+
+    InternalLastEventId:
+      name: Last-Event-ID
+      in: header
+      required: false
+      schema: { type: string, minLength: 1, maxLength: 256 }
+      description: Last PR event ID consumed by BP; never supplied in a URL
+
   responses:
     Unauthorized:
       description: JWT missing, expired, or invalid
@@ -251,8 +416,192 @@ components:
         application/problem+json:
           schema:
             $ref: "#/components/schemas/ProblemDetail"
+    ExecutionInvalidRequest:
+      description: Internal execution request or schema version is invalid
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/ExecutionProblemDetail" }
+    ExecutionUnauthorized:
+      description: BP service assertion is missing, invalid, expired, or lacks required scoped claims
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/ExecutionProblemDetail" }
+    ExecutionNotFound:
+      description: Conversation or execution is absent or inaccessible to the asserted context
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/ExecutionProblemDetail" }
+    ExecutionConflict:
+      description: Idempotency identity, schema, sequence, or execution state conflicts
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/ExecutionProblemDetail" }
+    ExecutionCursorExpired:
+      description: Event cursor expired; BP must reconcile from its canonical persisted state
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/ExecutionProblemDetail" }
+    ExecutionStopped:
+      description: Emergency Stop is active; cancellation or reconnect cannot release it
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/ExecutionProblemDetail" }
+    ExecutionUnavailable:
+      description: Runtime or Constitutional Engine is unavailable; no model dispatch occurs
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/ExecutionProblemDetail" }
 
   schemas:
+
+    ConversationExecutionSchemaVersion:
+      type: string
+      const: "1.0"
+
+    ConversationExecutionTextV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, contentType, text, language]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/ConversationExecutionSchemaVersion" }
+        contentType: { type: string, const: TEXT }
+        text: { type: string, minLength: 1, maxLength: 32000 }
+        language: { type: string, minLength: 2, maxLength: 35 }
+
+    StartConversationExecutionRequestV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, messageId, decisionSpaceVersion, locale, content]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/ConversationExecutionSchemaVersion" }
+        messageId: { type: string, format: uuid, description: BP canonical customer message ID }
+        decisionSpaceVersion: { type: integer, minimum: 1 }
+        locale: { type: string, minLength: 2, maxLength: 35 }
+        content: { $ref: "#/components/schemas/ConversationExecutionTextV1" }
+        activeGoalContextId: { type: string, format: uuid }
+
+    ProfessionalExecutionState:
+      type: string
+      enum: [ACCEPTED, QUEUED, RUNNING, COMPLETED, FAILED, CANCELLED, STOPPED, UNRESOLVED]
+
+    ProfessionalExecutionCompletionReason:
+      type: string
+      enum: [COMPLETE, PARTIAL_FAILURE, CANCELLED, EMERGENCY_STOPPED]
+
+    ProfessionalExecutionV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, executionId, conversationId, messageId, state, partial, replayed, acceptedAt]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/ConversationExecutionSchemaVersion" }
+        executionId: { type: string, format: uuid }
+        conversationId: { type: string, format: uuid }
+        messageId: { type: string, format: uuid }
+        state: { $ref: "#/components/schemas/ProfessionalExecutionState" }
+        partial: { type: boolean }
+        completionReason: { $ref: "#/components/schemas/ProfessionalExecutionCompletionReason" }
+        replayed: { type: boolean }
+        acceptedAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    ProfessionalExecutionEventType:
+      type: string
+      enum: [execution.accepted, processing.started, response.delta, card.proposed, evidence.pending, evidence.recorded, execution.completed, execution.failed, execution.cancelled, execution.stopped, reconciliation.required, heartbeat]
+
+    ProfessionalDeltaV1:
+      type: object
+      additionalProperties: false
+      required: [contentIndex, appendText, partial]
+      properties:
+        contentIndex: { type: integer, minimum: 0 }
+        appendText: { type: string, maxLength: 8000 }
+        partial: { type: boolean, const: true }
+
+    ProfessionalCardProposalV1:
+      type: object
+      additionalProperties: false
+      description: Typed proposal validated and mapped by BP before public projection
+      required: [schemaVersion, cardType, cardId, owner, state, effect, data]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/ConversationExecutionSchemaVersion" }
+        cardType: { type: string, enum: [ACTION, PLAN, DELIVERABLE, DECISION] }
+        cardId: { type: string, format: uuid }
+        owner: { type: string, enum: [CUSTOMER, PROFESSIONAL, SHARED] }
+        state: { type: string, minLength: 1, maxLength: 64 }
+        effect: { type: string, minLength: 1, maxLength: 500 }
+        data:
+          type: object
+          additionalProperties: true
+
+    ProfessionalEvidenceEventV1:
+      type: object
+      additionalProperties: false
+      required: [state]
+      properties:
+        state: { type: string, enum: [PENDING, RECORDED, FAILED] }
+        evidenceRecordId: { type: string, format: uuid }
+
+    ProfessionalTerminalEventV1:
+      type: object
+      additionalProperties: false
+      required: [state, partial, completionReason]
+      properties:
+        state: { $ref: "#/components/schemas/ProfessionalExecutionState" }
+        partial: { type: boolean }
+        completionReason: { $ref: "#/components/schemas/ProfessionalExecutionCompletionReason" }
+        errorCode: { type: string, maxLength: 64 }
+
+    ProfessionalReconciliationEventV1:
+      type: object
+      additionalProperties: false
+      required: [reason]
+      properties:
+        reason: { type: string, enum: [EVENT_CURSOR_EXPIRED, EVENT_GAP, STATE_CONFLICT] }
+
+    ProfessionalHeartbeatV1:
+      type: object
+      additionalProperties: false
+      required: [serverTime]
+      properties:
+        serverTime: { type: string, format: date-time }
+
+    ProfessionalExecutionEventV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, eventId, eventType, conversationId, executionId, messageId, sequence, occurredAt, data]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/ConversationExecutionSchemaVersion" }
+        eventId: { type: string, minLength: 1, maxLength: 256 }
+        eventType: { $ref: "#/components/schemas/ProfessionalExecutionEventType" }
+        conversationId: { type: string, format: uuid }
+        executionId: { type: string, format: uuid }
+        messageId: { type: string, format: uuid }
+        sequence: { type: integer, format: int64, minimum: 1 }
+        occurredAt: { type: string, format: date-time }
+        data:
+          oneOf:
+            - $ref: "#/components/schemas/ProfessionalDeltaV1"
+            - $ref: "#/components/schemas/ProfessionalCardProposalV1"
+            - $ref: "#/components/schemas/ProfessionalEvidenceEventV1"
+            - $ref: "#/components/schemas/ProfessionalTerminalEventV1"
+            - $ref: "#/components/schemas/ProfessionalReconciliationEventV1"
+            - $ref: "#/components/schemas/ProfessionalHeartbeatV1"
+
+    ExecutionProblemCode:
+      type: string
+      enum: [EXECUTION_REQUEST_INVALID, EXECUTION_NOT_ACCESSIBLE, EXECUTION_IDEMPOTENCY_CONFLICT, EXECUTION_SCHEMA_UNSUPPORTED, EXECUTION_CURSOR_EXPIRED, EXECUTION_STOPPED, EXECUTION_DECISION_SPACE_STALE, EXECUTION_CONSTITUTIONAL_UNAVAILABLE, EXECUTION_RUNTIME_UNAVAILABLE]
+
+    ExecutionProblemDetail:
+      type: object
+      additionalProperties: false
+      required: [type, title, status, code, correlationId]
+      properties:
+        type: { type: string, format: uri }
+        title: { type: string }
+        status: { type: integer }
+        code: { $ref: "#/components/schemas/ExecutionProblemCode" }
+        correlationId: { type: string, format: uuid }
+        retryAfterSeconds: { type: integer, minimum: 1 }
 
     EmergencyStopCommand:
       type: object
