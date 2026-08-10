@@ -23,17 +23,35 @@ const timeline: RelationshipTimelineEntry[] = [{
 }];
 
 describe('RelationshipWorkspace', () => {
-  it('presents evaluation state and evidence history', () => {
+  beforeEach(() => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        schemaVersion: '1.0',
+        relationshipId: relationship.relationshipId,
+        items: [],
+        authoritativeCursor: 'authoritative-cursor',
+        hasMore: false,
+        serverTime: '2026-08-10T10:01:00Z',
+      }),
+    } as Response);
+  });
+
+  afterEach(() => jest.restoreAllMocks());
+
+  it('presents evaluation state and evidence history', async () => {
     render(<RelationshipWorkspace relationship={relationship} timeline={timeline} />);
 
     expect(screen.getByText('Evaluation · TRIAL_ACTIVE')).toBeVisible();
     expect(screen.getAllByText('TRIAL ACTIVE')).toHaveLength(2);
     expect(screen.getAllByText('1', { selector: 'dd' })).toHaveLength(2);
+    expect(await screen.findByText('No messages yet. Start with a clear outcome for your professional.')).toBeVisible();
   });
 
-  it('distinguishes an active relationship as live', () => {
+  it('distinguishes an active relationship as live', async () => {
     render(<RelationshipWorkspace relationship={{ ...relationship, state: 'ACTIVE' }} timeline={timeline} />);
 
     expect(screen.getByText('Live · ACTIVE')).toBeVisible();
+    expect(await screen.findByText('No messages yet. Start with a clear outcome for your professional.')).toBeVisible();
   });
 });

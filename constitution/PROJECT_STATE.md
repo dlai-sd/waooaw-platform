@@ -1,6 +1,6 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-08-10 (WC034-09 PR Conversation Core implementation approved; F3 implementation branch active)
+**Last Updated:** 2026-08-10 (WC034-10 web Conversation Core implementation approved; F3 implementation branch active)
 
 ---
 
@@ -21,6 +21,7 @@
 | Interactive execution mode correction | DONE — an accidental batch runner invocation returned PARTIAL after INR 319.1289 with zero accepted implementation tasks; batch-only commits and duplicate Goal Issue #253 were reconciled; further WC-034 work uses session-level subagents occupying contributing Institutions, not the GitHub Actions batch pipeline |
 | WC034-08 BP Conversation Core | DONE — six canonical BP OpenAPI 1.2.0 operations, durable tenant-isolated projections, request-hash idempotency, Evidence First ordering, privacy-safe errors, cancellation, and typed resumable SSE implemented; focused Docker tests 19/19 PASS; full BP regression 158/158 PASS; affected-file line coverage: controller 95.97%, service 91.77%, store 100% |
 | WC034-09 PR Conversation Core | DONE — BP-authenticated internal execution, CE fail-closed authorization, durable Temporal state/replay, idempotent cancellation, typed live SSE/heartbeat, canonical health/OpenAPI, and CE-confirmed Emergency Stop implemented; INST-005 APPROVED; focused PR tests 69/69 PASS; full PR regression 89/89 PASS; CE Emergency Stop tests 4/4 PASS; affected-module line-plus-branch coverage 93.22% with every affected module at least 90% |
+| WC034-10 web Conversation Core | DONE — pinned Generator 7.17.0 produces dependency-closed authenticated Identity+Conversation clients without manual patches; same-origin server-only BP boundary, durable timeline, offline outbox, replay/reconciliation, typed cards, retry, cancellation recovery, and responsive accessible conversation UI implemented; INST-005 APPROVED; deterministic two-run tree hash `541d5490431311ee2d5f727978c753f376816449938e5299ac5ac0be808dbc21`; web tests 80/80 PASS; global line coverage 93.39%, ConversationExperience 93.82%; TypeScript, lint, and production build PASS |
 
 ### Decision Space and Constitutional Obligations
 

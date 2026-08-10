@@ -6,10 +6,12 @@
 import { LogOut, RefreshCw } from 'lucide-react';
 import { signIn, signOut } from 'next-auth/react';
 
-export function clearProtectedClientState(storage: Storage = window.sessionStorage) {
-  for (let index = storage.length - 1; index >= 0; index -= 1) {
-    const key = storage.key(index);
-    if (key?.startsWith('waooaw:')) storage.removeItem(key);
+export function clearProtectedClientState(storages: readonly Storage[] = [window.sessionStorage, window.localStorage]) {
+  for (const storage of storages) {
+    for (let index = storage.length - 1; index >= 0; index -= 1) {
+      const key = storage.key(index);
+      if (key?.startsWith('waooaw:')) storage.removeItem(key);
+    }
   }
 }
 

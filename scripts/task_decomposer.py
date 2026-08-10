@@ -40,6 +40,8 @@ from typing import Callable, Optional
 
 import yaml
 
+from openapi_slice import write_dependency_closed_openapi_slice
+
 REPO_ROOT = Path(__file__).parent.parent
 
 
@@ -257,60 +259,7 @@ F3_CONVERSATION_MODELS: tuple[str, ...] = (
 def _write_f3_openapi_slice(output_path: Path) -> None:
     """Write only Conversation-tagged operations and their recursive components."""
     source_path = REPO_ROOT / "architecture" / "reference" / "api-specs" / "business-platform.openapi.yaml"
-    source = yaml.safe_load(source_path.read_text(encoding="utf-8"))
-    paths: dict = {}
-    for path, path_item in source.get("paths", {}).items():
-        selected: dict = {
-            key: deepcopy(value)
-            for key, value in path_item.items()
-            if key in {"summary", "description", "servers", "parameters", "$ref"}
-        }
-        for method, operation in path_item.items():
-            if isinstance(operation, dict) and "Conversation" in operation.get("tags", []):
-                selected[method] = deepcopy(operation)
-        if any(key.lower() in {"get", "post", "put", "patch", "delete", "options", "head", "trace"} for key in selected):
-            paths[path] = selected
-
-    source_components = source.get("components", {})
-    selected_components: dict[str, dict] = {}
-    pending: list[str] = []
-
-    def collect_refs(node: object) -> None:
-        if isinstance(node, dict):
-            ref = node.get("$ref")
-            if isinstance(ref, str) and ref.startswith("#/components/"):
-                pending.append(ref)
-            for value in node.values():
-                collect_refs(value)
-        elif isinstance(node, list):
-            for value in node:
-                collect_refs(value)
-
-    collect_refs(paths)
-    seen: set[str] = set()
-    while pending:
-        ref = pending.pop()
-        if ref in seen:
-            continue
-        seen.add(ref)
-        _, _, category, name = ref.split("/", 3)
-        component = source_components.get(category, {}).get(name)
-        if component is None:
-            raise ValueError(f"F3 OpenAPI slice has unresolved component: {ref}")
-        selected_components.setdefault(category, {})[name] = deepcopy(component)
-        collect_refs(component)
-
-    sliced = {
-        "openapi": source["openapi"],
-        "info": deepcopy(source["info"]),
-        "paths": paths,
-        "components": selected_components,
-    }
-    if source.get("servers"):
-        sliced["servers"] = deepcopy(source["servers"])
-    if source.get("security"):
-        sliced["security"] = deepcopy(source["security"])
-    output_path.write_text(yaml.safe_dump(sliced, sort_keys=False), encoding="utf-8")
+    write_dependency_closed_openapi_slice(source_path, output_path, ("Conversation",))
 
 
 # WC-034 spans BP (.NET), PR (Python), and web (Next.js/TypeScript).
