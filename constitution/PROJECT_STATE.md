@@ -15,14 +15,15 @@
 | F4 solution, data, security, and product contributions | DONE — CR-GOAL-005-INST-005-04, CR-GOAL-005-INST-006-03, CR-GOAL-005-INST-007-04, and CR-GOAL-005-INST-011-04 complete G-F4-03 through G-F4-06 contribution evidence; integrated review remains required |
 | F4 BP and WBE owner-contract routing | BLOCKED — INST-002 classifies logical component ownership to INST-005 with fresh INST-004 review, but the F4 Execution Plan must explicitly map and authorize those supplemental contributions before G-F4-07/G-F4-08 records are produced |
 | F4 professional/domain owner contract | DONE — G-F4-09 is satisfied with preservation conditions by CR-GOAL-005-INST-011-06, CR-GOAL-005-INST-003-05, and CR-GOAL-005-INST-005-08; Yogesh is current authority and Sujay remains deferred until operational stage |
-| F4 generated-client compatibility and independent review | PENDING — G-F4-10 requires canonical OpenAPI/generation evidence and G-F4-11 requires a fresh C-065-compliant integrated review |
+| F4 generated-client compatibility and independent review | SPECIFICATION DONE — CR-GOAL-005-INST-005-09 defines future canonical OpenAPI/generation evidence; executable G-F4-10 closure remains implementation work and G-F4-11 fresh reviews remain pending |
 | GEP-GOAL-005-INST-013-04 Amendment 3 | PROPOSED — architecture/owner-contract closure only; DMA selected; candidate artifacts require post-GOA re-attestation; no implementation or deployment authority |
 | CA readiness and Registrant acknowledgement | DONE — R-062 / CR-GOAL-005-INST-002-05 satisfies R2-03 condition 1; ACK-GOAL-005-INST-001-04 records the exact Founder acknowledgement and DMA selection |
 | Amendment 3 Order 1 | DONE — CR-GOAL-005-INST-003-04 re-attests G-F4-01 business semantics; CR-GOAL-005-INST-011-05 re-attests G-F4-06 composition and DMA selection; DMA authority evidence remains Order 4 |
 | Amendment 3 Order 2 | DONE — CR-GOAL-005-INST-004-08 closes G-F4-02 contribution evidence; CR-GOAL-005-INST-006-04 closes G-F4-04; CR-GOAL-005-INST-007-05 closes G-F4-05; fresh G-F4-11 review contexts remain required |
 | Amendment 3 Order 3 | DONE — CR-GOAL-005-INST-005-05 closes G-F4-03 contribution evidence; CR-GOAL-005-INST-005-06 records logical BP owner acceptance for G-F4-07; CR-GOAL-005-INST-005-07 records logical WBE owner acceptance for G-F4-08; fresh review remains required |
 | Amendment 3 Order 4 | DONE — Product provenance, Business outcome validation, and Solution adapter conformance are published in dependency order; all seven DMA outcome families map losslessly without contaminating the generic workspace |
-| Amendment 3 Order 5 | AUTHORIZED — GOA-GOAL-005-INST-005-05 and ACC-GOAL-005-INST-005-05 permit the G-F4-10 compatibility evidence specification only; canonical OpenAPI edits and generated clients remain later implementation work |
+| Amendment 3 Order 5 | DONE — CR-GOAL-005-INST-005-09 defines the complete future parse/reference, deterministic generation, strict TypeScript, forbidden-surface, fixture, acceptance, and provenance evidence contract without executable artifacts |
+| Amendment 3 Order 6 | READY FOR AUTHORIZATION — Orders 1-5 are published; fresh non-contributing INST-002 and non-authoring INST-004 contexts must independently review the integrated architecture package |
 | F4 implementation | BLOCKED — no `src/` or `web/` implementation, generated client, deployment, or F5-F8 authority in this architecture session |
 
 ### Decision Space and Constitutional Obligations
