@@ -37,6 +37,88 @@ Gate integrity is preserved: this record closes only G-F4-02. It does not close 
 
 This authoring context produced the G-F4-02 enterprise-ownership contribution and is therefore ineligible to act as the fresh INST-004 integrated technical reviewer for G-F4-11. That review requires a fresh context that did not author the contribution it reviews, after Orders 1-5 have validly completed.
 
+## Amendment 5 Order 2 - Founder Policy Incorporation (INST-005)
+
+### Amendment 5 Order 2 Acceptance Record
+
+| field | value |
+|---|---|
+| institution_id | INST-005 |
+| goal_id | GOAL-005 |
+| acceptance_id | ACC-GOAL-005-INST-005-07 |
+| authorization_id | GOA-GOAL-005-INST-005-07 |
+| issued_at | 2026-08-11T02:05:13+00:00 |
+| accepted_at | 2026-08-11T02:10:17+00:00 |
+| decision | ACCEPTED - incorporate Founder-selected policy options into canonical owner and relationship-workspace specifications only |
+
+### G-10 Contribution Attestation
+
+| Attestation field | Value |
+|---|---|
+| institution_id | INST-005 |
+| goal_id | GOAL-005 |
+| record_id | CR-GOAL-005-INST-005-11 |
+| record_type | Contribution Record |
+| produced_at | 2026-08-11T02:10:17+00:00 |
+| authorization_id | GOA-GOAL-005-INST-005-07 |
+| acceptance_id | ACC-GOAL-005-INST-005-07 |
+| acceptance_timestamp | 2026-08-11T02:10:17+00:00 |
+| contribution_scope | Incorporate `F4-POL-01` through `F4-POL-06` Founder selections (`A, A, B, A, B, A`) into canonical owner and relationship-workspace specifications |
+| decision_boundary | Incorporation only; no policy reinterpretation, no canonical OpenAPI edits, no generated clients, no implementation, no deployment |
+
+### Controlling Inputs
+
+- `goals/GOAL-005-execution-plan.md` Amendment 5 Order 2 (`GOA-GOAL-005-INST-005-07`, `FPD-GOAL-005-F4-POL-01` through `FPD-GOAL-005-F4-POL-06`)
+- `goals/GOAL-005-f4-policy-product-recommendation.md` (`CR-GOAL-005-INST-011-07`)
+- `goals/GOAL-005-f4-policy-business-analysis.md` (`CR-GOAL-005-INST-003-07`)
+- `architecture/reference/security/relationship-workspace-policy-security-floors.md` (`CR-GOAL-005-INST-007-06`)
+- `architecture/reference/components/relationship-workspace-policy-feasibility.md` (`CR-GOAL-005-INST-005-10`)
+- `architecture/reference/components/relationship-workspace-solution-contract.md`
+- `architecture/reference/components/relationship-workspace-bp-owner-contract.md`
+- `architecture/reference/billing/relationship-workspace-wbe-owner-contract.md`
+
+### Founder Selection Incorporation (`A, A, B, A, B, A`)
+
+| Policy | Selected option | Canonical owner incorporation (no reinterpretation) |
+|---|---|---|
+| `F4-POL-01` | A | Material acknowledgement is required for irreversible loss, cancellation, financial, legal, safety, and deadline consequence classes. BP command facade preserves typed acknowledgement as a distinct requirement; CE remains authoritative for constitutional validation/evidence of governed approvals and rejections; PR and DMA adapters remain non-authoritative for acknowledgement policy; WBE remains authoritative only where the acknowledged consequence is commercial. |
+| `F4-POL-02` | A | Self-service evidence export remains limited to customer's own authorized routes already within approved sensitivity and recipient boundaries. BP Evidence Reader remains the sole public mediation path; CE/evidence stores remain evidence authorities; WBE/PR/DMA retain owner truth only and do not become public export authorities. Unresolved export-policy families remain unavailable/blocked fail-closed. |
+| `F4-POL-03` | B | Read-only and non-consequential access may continue while affected consequential work pauses at allowance threshold/budget ceiling. WBE remains sole commercial-truth authority for actuals/thresholds/forecasts/consequences, including distinct `BLOCKED`; BP relays owner truth without recomputation; PR and DMA adapters preserve execution/domain truth without commercial-policy ownership. |
+| `F4-POL-04` | A | Self-service authority change remains protective reduction only. Grant/expansion/restoration remain non-self-service. BP preserves capability-versus-authority distinction and command gating; CE remains authority/evidence constitutional floor; WBE/PR/DMA do not grant authority by side effect. |
+| `F4-POL-05` | B | Emergency Stop remains immediate and independent. Selected owner-approved pause/resume paths may be enabled with explicit consequence and re-entry treatment; renewal/termination remain closed. BP owns lifecycle public governance meaning; WBE owns lifecycle commercial truth; PR/DMA preserve execution/domain consequence truth; CE remains constitutional floor where required. Unresolved lifecycle families remain blocked/unavailable. |
+| `F4-POL-06` | A | During stale/unknown/partial/unavailable/unresolved owner state, permit read-only review of still-authoritative facts only; withhold affected consequential commands and success claims. BP preserves truthful public degraded-state semantics; WBE/PR/DMA preserve owner authoritative truth and version/freshness boundaries; CE and Emergency Stop independence remain unchanged. |
+
+### Preserved Cross-Policy Semantics (Authoritative)
+
+1. Distinct `BLOCKED` outcomes remain mandatory where selected families require unresolved policy/owner prerequisites.
+2. Authoritative-input boundaries remain unchanged: BP public governance projection, WBE commercial truth, PR execution truth, CE constitutional authority/evidence, domain adapters as private domain-truth contributors, and BP Evidence Reader as the only public evidence mediation route.
+3. Typed acknowledgement remains distinct from ordinary approval and cannot be downgraded to UI confirmation or transport acceptance.
+4. Reconciliation semantics remain explicit: `PENDING`, `PARTIAL`, and `UNKNOWN` do not become `COMPLETED` without required authoritative owner outcomes.
+5. Version and freshness semantics remain explicit and fail-closed: unsupported major versions, stale projection, unknown owner commit, unavailable owner contract, and unresolved outcome preserve blocked/unavailable treatment for dependent consequential commands.
+6. Unavailable-family semantics remain visible and non-empty: mandatory view families stay reachable and declared `UNAVAILABLE` or `BLOCKED` rather than omitted as if absent.
+
+### Exact Order 3 Contract Work Required Next (No Canonical OpenAPI Edit In This Record)
+
+1. Update the proposed BP public contract families in `relationship-workspace-solution-contract.md` so command availability and outcome semantics explicitly encode selected policy families (`F4-POL-01` through `F4-POL-06`) with preserved fail-closed behavior.
+2. Update BP owner obligations in `relationship-workspace-bp-owner-contract.md` to reflect enabled versus still-blocked command families under the selected options while preserving no-browser-ranking, no-private-route, and evidence-first boundaries.
+3. Update WBE owner obligations in `relationship-workspace-wbe-owner-contract.md` to preserve `F4-POL-03` Option B and `F4-POL-05` Option B consequences with distinct `BLOCKED` for unresolved purchase/increase/renewal/termination families.
+4. Keep PR and DMA adapter role boundaries unchanged in owner/solution contracts: execution and domain semantics contribute privately, but BP remains the sole public governance projection and attention-order owner.
+5. Keep CE and Evidence Reader boundaries unchanged in owner/solution contracts: CE remains constitutional validation/evidence authority, and BP Evidence Reader remains the only public evidence-read/export route.
+6. Preserve explicit version, idempotency, and reconciliation semantics in Order 3 contract text for every enabled policy family; do not add endpoints, fields, schemas, status codes, or transport registries in this record.
+
+### Learning Record (GEOM G-05)
+
+| field | value |
+|---|---|
+| institution_id | INST-005 |
+| goal_id | GOAL-005 |
+| record_id | LR-GOAL-005-INST-005-02 |
+| record_type | Learning Record |
+| improvement_signal | Policy-option incorporation remains lossless when each selected option is mapped only to existing owner truth boundaries and when blocked/unavailable, acknowledgement, reconciliation, version, and freshness semantics are preserved explicitly in the canonical contract lineage. |
+| constitutional_discovery | no |
+| evolution_triggered | no |
+| produced_at | 2026-08-11T02:10:17+00:00 |
+
 ## 1. Decision Summary
 
 F4 extends the existing authenticated customer experience with one governed Relationship Workspace for one selected Employment Relationship at a time. It introduces no new deployable component. The existing Business Platform (BP) is the sole public customer-facing relationship facade and the authoritative relationship governance projection. The web application presents only BP-owned public projections and sends customer commands only through approved BP contracts.

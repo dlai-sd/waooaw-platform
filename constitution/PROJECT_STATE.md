@@ -18,7 +18,8 @@
 | Mandatory current-session implementation authorization | DONE — FA-036 records INST-013's exact gate question and Founder response `yes please`; applies only to dependency-ordered WC-034 F4 implementation after all separate Amendment 5 routing prerequisites |
 | Amendment 5 Order 1 policy recommendations | DONE — `CR-GOAL-005-INST-011-07`, `CR-GOAL-005-INST-003-07`, `CR-GOAL-005-INST-005-10`, and `CR-GOAL-005-INST-007-06` plus their Learning Records cover all six policies; diagnostics, diff hygiene, attestation, six-policy coverage, and semantic guard scans pass |
 | Amendment 5 Order 2 Founder policy decisions | DONE — `FPD-GOAL-005-F4-POL-01` through `FPD-GOAL-005-F4-POL-06` select `A, A, B, A, B, A` prospectively; policy selection does not choose technical mechanisms or authorize deployment |
-| Amendment 5 Order 2 owner incorporation | IN PROGRESS — GOAs issued to INST-011, INST-005, and INST-007 for product recording, owner-specification incorporation, and security-floor confirmation; acceptances and contributions remain pending |
+| Amendment 5 Order 2 owner incorporation | DONE — `CR-GOAL-005-INST-011-08`, `CR-GOAL-005-INST-005-11`, and `CR-GOAL-005-INST-007-07` plus Learning Records incorporate `A, A, B, A, B, A`; owner linkage, six-policy coverage, diagnostics, and semantic guards pass |
+| Amendment 5 Order 2 constitutional policy review | IN PROGRESS — fresh INST-002 review authorized by `GOA-GOAL-005-INST-002-10`; acceptance and independent decision remain pending |
 | Amendment 5 execution and independent review | PENDING — Orders 2-8, Docker/CCT evidence, checkpoint commits, and completed unmerged PR required |
 | PR #255 post-merge reconciliation verified | DONE — merged to `main` as `e2be32e`; WC-034 F3 sprint state is DONE |
 | INST-013 occupancy and F4 authorization boundary | DONE — Epoch 1; G5 CLEAR; architecture/dependency closure only; current GOA excludes F4-F8, implementation, provider activation, and deployment |

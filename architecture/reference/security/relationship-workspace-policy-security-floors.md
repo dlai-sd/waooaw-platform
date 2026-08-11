@@ -127,3 +127,70 @@ FA-036 is satisfied for current-session implementation authorization status, but
 | constitutional_discovery | no |
 | evolution_triggered | no |
 | produced_at | 2026-08-11T01:29:30+00:00 |
+
+# GOAL-005 WC-034 F4 Amendment 5 Order 2 - Security Floor Verification (INST-007)
+
+## Amendment 5 Order 2 Acceptance Record
+
+| field | value |
+|---|---|
+| institution_id | INST-007 |
+| goal_id | GOAL-005 |
+| acceptance_id | ACC-GOAL-005-INST-007-07 |
+| authorization_id | GOA-GOAL-005-INST-007-07 |
+| accepted_at | 2026-08-11T02:08:11+00:00 |
+| decision | ACCEPTED - verify Founder selections against accepted security floors only |
+
+## G-10 Contribution Attestation
+
+| Attestation field | Value |
+|---|---|
+| institution_id | INST-007 |
+| goal_id | GOAL-005 |
+| record_id | CR-GOAL-005-INST-007-07 |
+| record_type | Contribution Record |
+| produced_at | 2026-08-11T02:08:11+00:00 |
+| authorization_id | GOA-GOAL-005-INST-007-07 |
+| acceptance_id | ACC-GOAL-005-INST-007-07 |
+| acceptance_timestamp | 2026-08-11T02:08:11+00:00 |
+| contribution_scope | Verify Founder-selected policies `F4-POL-01` through `F4-POL-06` against accepted Order 1 security floors and publish PASS or exact blocking conditions |
+| decision_boundary | Security-floor verification only. No policy reinterpretation. No mechanism invention. |
+
+## Founder Selection Verification (`A, A, B, A, B, A`)
+
+| Policy | Selected option | Security-floor verification |
+|---|---|---|
+| `F4-POL-01` | A | PASS. Material approval/rejection classes requiring typed acknowledgement remain within accepted floors. BLOCKED when a materially consequential class lacks required typed acknowledgement bound to actor, relationship, purpose, and authoritative version. |
+| `F4-POL-02` | A | PASS. Self-service evidence view/export remains limited to authorized customer routes within approved recipient, purpose, sensitivity, completeness, and redaction boundaries. BLOCKED when any export/privacy boundary is unresolved. |
+| `F4-POL-03` | B | PASS. Read-only and non-consequential access may continue while affected consequential commercial work is paused at threshold/ceiling. BLOCKED for any purchase, increase, continuation, or success claim lacking owner-authoritative route and unresolved-state handling. |
+| `F4-POL-04` | A | PASS. Self-service remains protective reduction only; authority grant, expansion, or restoration remains non-self-service. BLOCKED when authority ownership, consequence class, or authoritative version is unresolved. |
+| `F4-POL-05` | B | PASS. Emergency Stop remains immediate and independent; only selected owner-approved pause/resume paths may be enabled with explicit consequence and re-entry treatment. BLOCKED for renewal/termination and unresolved lifecycle-commercial-evidence coupling. |
+| `F4-POL-06` | A | PASS. Read-only review of still-authoritative facts is permitted while affected consequential commands and success claims remain withheld during stale, unknown, partial, unavailable, or unresolved owner state. BLOCKED when degraded-state handling weakens anti-enumeration, minimisation, rights preservation, or Emergency Stop independence. |
+
+## Mandatory Floor Coverage Check
+
+| Floor dimension | Status |
+|---|---|
+| acknowledgement | PASS under `F4-POL-01` Option A; materially consequential actions remain blocked without required typed acknowledgement. |
+| export/privacy | PASS under `F4-POL-02` Option A; unresolved recipient, purpose, sensitivity, completeness, or redaction remains blocked/unavailable. |
+| commercial continuation | PASS under `F4-POL-03` Option B; consequential continuation remains paused without complete owner-authoritative state. |
+| authority | PASS under `F4-POL-04` Option A; expansion/grant/restoration remains blocked from self-service paths. |
+| lifecycle | PASS under `F4-POL-05` Option B; renewal/termination remains closed and unresolved lifecycle coupling remains blocked/unavailable. |
+| degraded state | PASS under `F4-POL-06` Option A; unresolved owner state withholds affected consequential commands and success claims. |
+| anti-enumeration | PASS; inaccessible and non-existent remain privacy-indistinguishable and do not disclose owner or role details. |
+| minimisation | PASS; no additional customer-sensitive surface is authorized by these selections. |
+| rights | PASS; ordinary authorized evidence inspection rights and read-only authoritative review remain preserved within selected policy bounds. |
+| Emergency Stop | PASS; Emergency Stop remains immediate and independent across all six policy families. |
+
+## Learning Record (GEOM G-05)
+
+| field | value |
+|---|---|
+| institution_id | INST-007 |
+| goal_id | GOAL-005 |
+| record_id | LR-GOAL-005-INST-007-02 |
+| record_type | Learning Record |
+| improvement_signal | Founder selections can be incorporated without weakening floors when every enabled path is paired with an explicit unresolved-state block and independent Emergency Stop preservation. |
+| constitutional_discovery | no |
+| evolution_triggered | no |
+| produced_at | 2026-08-11T02:08:11+00:00 |

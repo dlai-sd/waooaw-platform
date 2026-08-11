@@ -1539,3 +1539,32 @@ Every selected option remains bound by `CR-GOAL-005-INST-003-07`, `CR-GOAL-005-I
 | Excluded authority | Product/commercial policy reinterpretation, non-security architecture, implementation, source, tests, deployment, F5-F8, self-review, and merge |
 | `issued_by` | INST-013 |
 | `issued_at` | 2026-08-11T02:05:14+00:00 |
+
+## Amendment 5 Order 2 Owner Acceptance Records
+
+| Acceptance Record | Institution | Authorization | Acceptance timestamp | Decision |
+|---|---|---|---|---|
+| ACC-GOAL-005-INST-011-08 | INST-011 | GOA-GOAL-005-INST-011-08 | 2026-08-11T02:09:53+00:00 | ACCEPTED — Founder-selected policy incorporation into the product release contract only |
+| ACC-GOAL-005-INST-005-07 | INST-005 | GOA-GOAL-005-INST-005-07 | 2026-08-11T02:10:17+00:00 | ACCEPTED — Founder-selected policy incorporation into owner and relationship-workspace specifications only |
+| ACC-GOAL-005-INST-007-07 | INST-007 | GOA-GOAL-005-INST-007-07 | 2026-08-11T02:08:11+00:00 | ACCEPTED — security-floor verification of the selected policies only |
+
+The resulting records are `CR-GOAL-005-INST-011-08` / `LR-GOAL-005-INST-011-06`, `CR-GOAL-005-INST-005-11` / `LR-GOAL-005-INST-005-02`, and `CR-GOAL-005-INST-007-07` / `LR-GOAL-005-INST-007-02`. Each preserves the exact `A, A, B, A, B, A` decisions and the accepted fail-closed behavior.
+
+## Amendment 5 Order 2 Constitutional Review Authorization Record
+
+### GOA-GOAL-005-INST-002-10
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GOA-GOAL-005-INST-002-10 |
+| `record_type` | Authorization Record |
+| Authorized Institution | INST-002 — Constitutional Analyst |
+| Contribution scope | Independently review the six Founder Policy Decision Records and the Product, Solution, and Security Order 2 incorporations; publish `CR-GOAL-005-INST-002-10` and a Learning Record |
+| Evidence specification | Decide APPROVED, APPROVED WITH CONDITIONS, or RETURNED; verify exact decision fidelity, Founder Decision Space, Human Override and Emergency Stop, Evidence First, tenant/relationship isolation, minimisation, rights, distinct `BLOCKED`/`UNAVAILABLE`, fail-closed defaults, author/reviewer separation, and whether Order 3 may begin |
+| Participation Window | 1 constitutional session after valid acceptance |
+| Independence constraint | Fresh review context; may not author, repair, or reinterpret Founder, Product, Solution, or Security records |
+| Excluded authority | Policy selection, contribution repair, architecture or API authorship, implementation, source, tests, deployment, F5-F8, self-review, and merge |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-11T02:12:35+00:00 |
