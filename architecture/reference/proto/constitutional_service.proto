@@ -93,6 +93,14 @@ service ConstitutionalService {
   // Proof record is retained; only erasure_status and erasure_timestamp are updated.
   // C-078 (DPDPA), ADR-044 §4
   rpc RecordErasure(RecordErasureRequest) returns (RecordErasureResponse);
+
+  // QueryEvidenceRecords — internal relationship Evidence Reader primitive
+  // Reads only the tenant's immutable Audit Sink proof records named by opaque IDs.
+  // Business Platform first authorizes the selected relationship and participant role,
+  // then supplies only evidence IDs already linked from its relationship projections.
+  // Tenant scope is taken exclusively from x-tenant-id metadata.
+  // C-023, C-063, ADR-044, WC060-05
+  rpc QueryEvidenceRecords(QueryEvidenceRecordsRequest) returns (QueryEvidenceRecordsResponse);
 }
 
 // ─── ENUMERATIONS ───────────────────────────────────────────────────────────
@@ -418,4 +426,47 @@ message RecordErasureResponse {
 
   // success is true when the update completed without error.
   bool success = 2;
+}
+
+// ─── QueryEvidenceRecords (ADR-044, WC060-05) ───────────────────────────────
+
+message QueryEvidenceRecordsRequest {
+  // Opaque Audit Sink evidence IDs already linked to the BP-authorized relationship.
+  // CE returns only IDs belonging to the tenant in x-tenant-id metadata.
+  // At most 100 IDs are accepted; an empty or oversized list is INVALID_ARGUMENT.
+  repeated string evidence_record_ids = 1;
+
+  // Opaque continuation token from a prior response. It is tenant-bound, bound to the
+  // original ordered ID set, stable for 15 minutes, and grants no access. An expired or
+  // mismatched cursor is INVALID_ARGUMENT without evidence existence disclosure.
+  optional string page_cursor = 2;
+
+  // Requested page size. CE applies a default of 50 and maximum of 100.
+  int32 page_size = 3;
+}
+
+message CustomerVisibleEvidenceRecord {
+  string evidence_record_id = 1;
+  string decision_id = 2;
+  string agent_id = 3;
+  string agent_instance_id = 4;
+  string action_type = 5;
+  optional string tool_name = 6;
+  optional string args_hash = 7;
+
+  // Opaque payload reference is present only when tenant-owned payload remains available.
+  // CE never returns payload content, credentials, raw prompts, or storage coordinates.
+  optional string payload_ref_id = 8;
+
+  string execution_status = 9;
+  repeated string constitutional_basis = 10;
+  string evidence_hash = 11;
+  google.protobuf.Timestamp recorded_at = 12;
+  string erasure_status = 13;
+  optional google.protobuf.Timestamp erasure_timestamp = 14;
+}
+
+message QueryEvidenceRecordsResponse {
+  repeated CustomerVisibleEvidenceRecord records = 1;
+  optional string next_page_cursor = 2;
 }

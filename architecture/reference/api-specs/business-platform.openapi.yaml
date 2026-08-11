@@ -2,7 +2,7 @@ openapi: "3.1.0"
 
 info:
   title: WAOOAW Business Platform API
-  version: "1.6.0"
+  version: "1.7.0"
   description: |
     External customer-facing API for the WAOOAW Business Platform.
     Manages the employment lifecycle, approval workflows, evidence reading,
@@ -619,6 +619,90 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "404":
           $ref: "#/components/responses/NotFound"
+
+  /api/v1/employment/relationships/{relationshipId}/handoffs:
+    post:
+      tags: [Employment]
+      summary: Prepare a channel handoff for the same employment relationship
+      description: |
+        Prepares a target-channel binding and continuity checkpoint without changing
+        relationship lifecycle, authority, contract, billing, or the active source binding.
+        Tenant, relationship, participant, role, and authority values are resolved by the
+        server. The source remains active until target authentication and checkpoint evidence
+        commit. Identical idempotency key and request hash replay the prior outcome; divergent
+        reuse conflicts with zero mutation.
+      operationId: prepareRelationshipHandoff
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PrepareRelationshipHandoffRequest"
+      responses:
+        "201":
+          description: Target binding and continuity checkpoint prepared
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RelationshipHandoff"
+        "200":
+          description: Prior identical preparation outcome replayed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RelationshipHandoff"
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: Authenticated participant lacks authority for the requested handoff
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "423":
+          description: Relationship is stopped and the handoff is blocked
+        "503":
+          description: Constitutional evidence or continuity persistence is unavailable
+
+  /api/v1/employment/relationships/{relationshipId}/handoffs/{handoffId}/activate:
+    post:
+      tags: [Employment]
+      summary: Authenticate the target channel and activate a prepared handoff
+      description: |
+        Freshly authenticates the target participant, re-verifies tenant, role, assurance,
+        current authority, and Stop state, then commits the target binding and continuity
+        checkpoint only after constitutional evidence is durable. Failure or uncertainty
+        preserves the active source binding. A lower-assurance target receives reduced
+        capability and never reduced protection.
+      operationId: activateRelationshipHandoff
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/RelationshipHandoffId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ActivateRelationshipHandoffRequest"
+      responses:
+        "200":
+          description: Target binding activated or prior identical outcome replayed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RelationshipHandoff"
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: Target authentication, role, or assurance is insufficient
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "423":
+          description: Relationship is stopped and activation is blocked
+        "503":
+          description: Target authentication, evidence, or checkpoint commitment is unavailable
 
   /api/v1/employment/relationships/{relationshipId}/transitions:
     post:
@@ -2567,6 +2651,15 @@ paths:
     get:
       tags: [Relationship Workspace]
       summary: List relationship-authorized evidence summaries
+      description: |
+        Returns only BP-authorized, customer-visible proof metadata for the selected
+        relationship. EVALUATOR receives own disclosures, trial/configuration evidence,
+        limitations, and Stop evidence. EMPLOYER receives the full customer-visible timeline,
+        including contract, payment, activation, charges, handoffs, Stop, and release.
+        RELATIONSHIP_MANAGER excludes restricted payment and personal payload references unless
+        separately authorized. Other tenant or relationship scope returns no existence
+        disclosure. Erased payload content, credentials, prompts, policy internals, and storage
+        coordinates are never returned.
       operationId: listRelationshipEvidence
       parameters:
         - $ref: "#/components/parameters/RelationshipId"
@@ -2587,6 +2680,11 @@ paths:
     get:
       tags: [Relationship Workspace]
       summary: Read one relationship-authorized evidence detail projection
+      description: |
+        Applies the same participant-role projection and no-existence-disclosure rules as the
+        evidence list. An evidence ID outside the authorized tenant, relationship, or role
+        scope is indistinguishable from an unknown ID. Payload references appear only when the
+        caller's role permits them and the tenant-owned payload has not been erased.
       operationId: getRelationshipEvidence
       parameters:
         - $ref: "#/components/parameters/RelationshipId"
@@ -2607,6 +2705,10 @@ paths:
     post:
       tags: [Relationship Workspace]
       summary: Request or replay one relationship evidence export
+      description: |
+        Builds an export from the same role-filtered projection as the Evidence Reader. BP is
+        the export owner and records export evidence before releasing an outcome; CE, Audit
+        Sink, and payload-store coordinates are never exposed to the browser.
       operationId: requestRelationshipEvidenceExport
       parameters:
         - $ref: "#/components/parameters/RelationshipId"
@@ -2641,6 +2743,10 @@ paths:
     get:
       tags: [Relationship Workspace]
       summary: Reconcile one relationship evidence export request
+      description: |
+        Rechecks the current tenant, relationship, participant role, and evidence scope before
+        returning a short-lived authenticated download. Revoked authority, erased payload, or
+        cross-scope export IDs disclose no protected evidence or storage location.
       operationId: getRelationshipEvidenceExport
       parameters:
         - $ref: "#/components/parameters/RelationshipId"
@@ -2739,6 +2845,15 @@ components:
         type: string
         format: uuid
       description: Tenant-scoped durable employment relationship UUID
+
+    RelationshipHandoffId:
+      name: handoffId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Opaque handoff identifier bound to one tenant and employment relationship
 
     RelationshipWorkspaceCommandId:
       name: commandId
@@ -3644,6 +3759,14 @@ components:
     TransitionEmploymentRelationshipRequest:
       type: object
       additionalProperties: false
+      description: |
+        Internal service command after BP authenticates the participant and resolves tenant,
+        relationship, role, and current state. When explicitEmergencyRelease is true, BP
+        accepts the command only from the Tier-4 portal for an active same-tenant EMPLOYER
+        with authentication no older than five minutes. It validates the originating Stop
+        evidence and correlation, records release evidence referencing that Stop, and only
+        then permits a legal transition out of STOPPED_EMERGENCY. Omission, mismatch,
+        uncertainty, or CE unavailability leaves the relationship stopped.
       required: [targetState, actorParticipantId, actorRole, correlationId]
       properties:
         targetState:
@@ -3659,6 +3782,30 @@ components:
         explicitEmergencyRelease:
           type: boolean
           default: false
+        originatingStopEvidenceId:
+          type: string
+          format: uuid
+        originatingStopCorrelationId:
+          type: string
+          format: uuid
+        releaseConfirmation:
+          type: string
+          const: RELEASE_EMERGENCY_STOP
+        releaseJustification:
+          type: string
+          minLength: 1
+          maxLength: 500
+      allOf:
+        - if:
+            properties:
+              explicitEmergencyRelease: { const: true }
+            required: [explicitEmergencyRelease]
+          then:
+            required:
+              - originatingStopEvidenceId
+              - originatingStopCorrelationId
+              - releaseConfirmation
+              - releaseJustification
 
     StartRelationshipTrialRequest:
       type: object
@@ -3750,6 +3897,148 @@ components:
         updatedAt:
           type: string
           format: date-time
+
+    RelationshipChannel:
+      type: string
+      enum: [WHATSAPP, WEB]
+
+    RelationshipAuthenticationAssurance:
+      type: string
+      enum: [TIER_1_PHONE_IDENTITY, TIER_2_EXPLICIT_CONFIRMATION, TIER_3_MPIN, TIER_4_PORTAL_FRESH]
+
+    RelationshipChannelBindingStatus:
+      type: string
+      enum: [PREPARED, ACTIVE, REVOKED, EXPIRED]
+
+    RelationshipHandoffStatus:
+      type: string
+      enum: [PREPARED, COMMITTED, REVERTED, CONFLICT, EXPIRED]
+
+    PrepareRelationshipHandoffRequest:
+      type: object
+      additionalProperties: false
+      required: [targetChannel, targetConversationId, commandPurpose]
+      properties:
+        targetChannel:
+          $ref: "#/components/schemas/RelationshipChannel"
+        targetConversationId:
+          type: string
+          minLength: 1
+          maxLength: 256
+        commandPurpose:
+          type: string
+          minLength: 1
+          maxLength: 64
+        correlationId:
+          type: string
+          format: uuid
+
+    ActivateRelationshipHandoffRequest:
+      type: object
+      additionalProperties: false
+      required: [targetConversationId]
+      properties:
+        targetConversationId:
+          type: string
+          minLength: 1
+          maxLength: 256
+        correlationId:
+          type: string
+          format: uuid
+
+    NeutralContinuityEnvelope:
+      type: object
+      additionalProperties: false
+      description: |
+        Channel-neutral handoff state signed by BP with HMAC-SHA256 over RFC 8785
+        canonical JSON bytes. The signature covers every property except integritySignature.
+        Only BP and authenticated internal services verify the signature with the managed
+        continuity-envelope key; it is not a browser authorization credential. Verification
+        failure rejects activation without mutating binding or relationship state. Tenant,
+        relationship, participant, role, assurance, and authority fields are server-resolved
+        and cannot be supplied or overridden by channel payloads.
+      required:
+        - schemaVersion
+        - tenantId
+        - relationshipId
+        - participantId
+        - participantRole
+        - authenticationAssurance
+        - authoritySnapshotId
+        - sourceChannel
+        - sourceConversationId
+        - targetChannel
+        - targetConversationId
+        - commandPurpose
+        - correlationId
+        - causalMarker
+        - sequenceNumber
+        - idempotencyKey
+        - evidenceCommitmentId
+        - continuityCheckpointId
+        - issuedAt
+        - integritySignature
+      properties:
+        schemaVersion: { type: string, const: "1.0.0" }
+        tenantId: { type: string, format: uuid }
+        relationshipId: { type: string, format: uuid }
+        participantId: { type: string, format: uuid }
+        participantRole: { $ref: "#/components/schemas/RelationshipParticipantRole" }
+        authenticationAssurance: { $ref: "#/components/schemas/RelationshipAuthenticationAssurance" }
+        authoritySnapshotId: { type: string, format: uuid }
+        sourceChannel: { $ref: "#/components/schemas/RelationshipChannel" }
+        sourceConversationId: { type: string, minLength: 1, maxLength: 256 }
+        targetChannel: { $ref: "#/components/schemas/RelationshipChannel" }
+        targetConversationId: { type: string, minLength: 1, maxLength: 256 }
+        commandPurpose: { type: string, minLength: 1, maxLength: 64 }
+        correlationId: { type: string, format: uuid }
+        causalMarker: { type: string, format: uuid }
+        sequenceNumber: { type: integer, format: int64, minimum: 1 }
+        idempotencyKey: { type: string, format: uuid }
+        evidenceCommitmentId: { type: string, format: uuid }
+        continuityCheckpointId: { type: string, format: uuid }
+        issuedAt: { type: string, format: date-time }
+        integritySignature:
+          type: string
+          pattern: "^[A-Za-z0-9_-]{43}$"
+          description: Base64url-encoded HMAC-SHA256 signature without padding.
+
+    RelationshipChannelBinding:
+      type: object
+      additionalProperties: false
+      required: [bindingId, channel, conversationId, assurance, status]
+      properties:
+        bindingId: { type: string, format: uuid }
+        channel: { $ref: "#/components/schemas/RelationshipChannel" }
+        conversationId: { type: string, minLength: 1, maxLength: 256 }
+        assurance: { $ref: "#/components/schemas/RelationshipAuthenticationAssurance" }
+        status: { $ref: "#/components/schemas/RelationshipChannelBindingStatus" }
+
+    RelationshipHandoff:
+      type: object
+      additionalProperties: false
+      required: [handoffId, relationshipId, status, sourceBinding, targetBinding, continuityEnvelope, replayed]
+      properties:
+        handoffId: { type: string, format: uuid }
+        relationshipId: { type: string, format: uuid }
+        status: { $ref: "#/components/schemas/RelationshipHandoffStatus" }
+        sourceBinding: { $ref: "#/components/schemas/RelationshipChannelBinding" }
+        targetBinding: { $ref: "#/components/schemas/RelationshipChannelBinding" }
+        continuityEnvelope: { $ref: "#/components/schemas/NeutralContinuityEnvelope" }
+        replayed: { type: boolean }
+        resolutionEvidenceId:
+          type: string
+          format: uuid
+          description: Opaque CE evidence reference, present for every terminal status.
+        committedAt:
+          type: string
+          format: date-time
+          description: Present only when status is COMMITTED and evidence is durable.
+        resolutionReason:
+          type: string
+          minLength: 1
+          maxLength: 240
+          description: Present only for REVERTED, CONFLICT, or EXPIRED; never fabricates success.
 
     EmploymentContractCommercialTerms:
       type: object
@@ -5431,13 +5720,28 @@ components:
     RelationshipEvidenceDetailV1:
       type: object
       additionalProperties: false
-      required: [schemaVersion, evidenceId, subject, state]
+      description: |
+        A retained proof record remains a 200 response after operational payload erasure.
+        In that case payloadState is ERASED, payloadReference is absent, and erasedAt is
+        present. Unknown or unauthorized proof IDs remain privacy-safe 404 responses.
+      required: [schemaVersion, evidenceId, subject, state, payloadState]
       properties:
         schemaVersion: { $ref: "#/components/schemas/RelationshipWorkspaceSchemaVersion" }
         evidenceId: { type: string, format: uuid }
         subject: { type: string, minLength: 1, maxLength: 240 }
         state: { $ref: "#/components/schemas/RelationshipEvidenceState" }
         completeness: { type: string, minLength: 1, maxLength: 120 }
+        payloadState:
+          type: string
+          enum: [AVAILABLE, NOT_RETAINED, ERASED]
+        payloadReference:
+          type: string
+          format: uuid
+          description: Opaque tenant-owned reference; present only when payloadState is AVAILABLE and the caller role permits it.
+        erasedAt:
+          type: string
+          format: date-time
+          description: Present only when payloadState is ERASED.
 
     RequestRelationshipEvidenceExportV1:
       type: object
@@ -5461,12 +5765,54 @@ components:
     RelationshipEvidenceExportOutcomeV1:
       type: object
       additionalProperties: false
+      description: |
+        A COMPLETED outcome exposes a BP-signed HTTPS URL for a UTF-8 JSON document with media
+        type application/vnd.waooaw.relationship-evidence+json;version=1.0. The URL is bound
+        to the authenticated tenant, relationship, participant, and role projection and expires
+        no later than 15 minutes after completion. PENDING, PARTIAL, UNKNOWN, REJECTED,
+        CONFLICT, and BLOCKED outcomes contain no download fields.
       required: [schemaVersion, exportId, status]
       properties:
         schemaVersion: { $ref: "#/components/schemas/RelationshipWorkspaceSchemaVersion" }
         exportId: { type: string, format: uuid }
         status: { $ref: "#/components/schemas/RelationshipCommandStatus" }
         downloadAvailableUntil: { type: string, format: date-time }
+        downloadUrl:
+          type: string
+          format: uri
+          pattern: "^https://"
+        mediaType:
+          type: string
+          const: "application/vnd.waooaw.relationship-evidence+json;version=1.0"
+        documentSha256:
+          type: string
+          pattern: "^[0-9a-f]{64}$"
+        document:
+          $ref: "#/components/schemas/RelationshipEvidenceExportDocumentV1"
+      allOf:
+        - if:
+            properties:
+              status: { const: COMPLETED }
+            required: [status]
+          then:
+            required: [downloadAvailableUntil, downloadUrl, mediaType, documentSha256]
+
+    RelationshipEvidenceExportDocumentV1:
+      type: object
+      additionalProperties: false
+      description: |
+        Canonical logical content of the downloadable UTF-8 JSON artifact. Object members are
+        serialized in RFC 8785 canonical order for documentSha256. Items use the same current
+        participant-role projection and erased-payload behavior as the Evidence Reader.
+      required: [schemaVersion, exportId, relationshipId, generatedAt, evidence]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/RelationshipWorkspaceSchemaVersion" }
+        exportId: { type: string, format: uuid }
+        relationshipId: { type: string, format: uuid }
+        generatedAt: { type: string, format: date-time }
+        evidence:
+          type: array
+          items: { $ref: "#/components/schemas/RelationshipEvidenceDetailV1" }
 
     RelationshipWorkspaceProblemCodeV1:
       type: string

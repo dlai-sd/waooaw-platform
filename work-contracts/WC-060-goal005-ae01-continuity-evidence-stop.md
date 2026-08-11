@@ -5,7 +5,7 @@
 **Office on execution:** Platform IT Expert (INST-010)
 **Reviewer:** Security Architect (INST-007) + Data Architect (INST-006)
 **WC-034 acceptance reviewer:** Enterprise Architect (INST-004) in an independent context
-**Status:** F5 UNIFICATION REVIEW APPROVED — R-073/R-074/R-075; implementation not authorized
+**Status:** IMPLEMENTATION-READY SPECIFICATION — fresh INST-005/INST-006/INST-007/INST-004/INST-002 readiness reviews approved; implementation authorization pending
 **Authorization:** A future session requires explicit Founder authorization: “Authorize implementation of WC-060.”
 **Unification reviews:** R-073 architecture/product APPROVED; R-074 security/data APPROVED; R-075 constitutional APPROVED
 **Track:** VERTICAL CUSTOMER OUTCOME
@@ -36,7 +36,7 @@ This unification does not waive WC-059 completion, per-session Founder implement
 | WC060-05 | Add the Evidence Reader endpoints in the D-06 Solution Contract and implement the D-06 Data/Security classification and access matrix. Query CE/Audit Sink through its approved read contract, enforce authenticated tenant + relationship + participant role, return only customer-visible material proof and authorized payload references, and provide evidenced short-lived export. | reasoning | pending |
 | WC060-06 | Build web relationship workspace and WhatsApp commands for timeline, evidence summary/export link, current authority/cost/trial state, and Stop. Distinguish transport acceptance from participant-observed acknowledgement and expose unresolved delivery honestly. | reasoning | pending |
 | WC060-07 | Bind Stop to the single AE-01 Employment Relationship: halt its evaluation/trial PAAS sessions, configuration, contract presentation, activation, and handoff within the existing latency budget; reject later consequential commands and show stopped state on every channel. Release is Tier-4 portal only, limited to active same-tenant `EMPLOYER`, freshly reauthenticated and explicitly confirmed with evidence linked to the originating Stop. Reconnect, conversation text, timeout, operator, or channel possession cannot release. AE-02 execution fan-out is deferred to AE-02 proof. | reasoning | pending |
-| WC060-08 | Add adversarial/integration CCTs for takeover, replay, confused deputy, assurance downgrade, cross-tenant query, out-of-order handoff, offline recovery, duplicate delivery, cross-channel Stop, unauthorized release, and full proposal-to-activation-to-handoff reconstruction. | auto | pending |
+| WC060-08 | Add adversarial/integration CCTs for takeover, replay, confused deputy, assurance downgrade, cross-tenant query, out-of-order handoff, offline recovery, duplicate delivery, cross-channel Stop, unauthorized release, forged or replayed Neutral Continuity Envelope signatures, and full proposal-to-activation-to-handoff reconstruction. | auto | pending |
 | WC060-09 | Complete WC-034 F5 browser/generated-client acceptance for UX-CONV-03, UX-RES-02, and UX-CONT-01 through UX-CONT-06 at exact 360px and expanded viewports; run the proportional F8 accessibility, privacy, contract-conformance, coverage, lint, build, and regression gate; publish one integrated evidence package for independent INST-004 review. | auto | pending |
 
 ## Required Inputs
@@ -49,6 +49,7 @@ This unification does not waive WC-059 completion, per-session Founder implement
 |---|---|
 | CCT-AE01-HANDOFF-01 | WhatsApp-to-web-to-WhatsApp preserves one relationship and unchanged contract/authority/billing state |
 | CCT-AE01-HANDOFF-02 | Target-channel authentication must commit before authority-bearing handoff activates |
+| CCT-AE01-HANDOFF-03 | Forged, modified, wrong-key, or replayed Neutral Continuity Envelope signature blocks activation with zero binding, relationship, authority, contract, billing, or lifecycle mutation |
 | CCT-AE01-REPLAY-01 | Duplicate message/delivery/handoff returns prior outcome without duplicate mutation |
 | CCT-AE01-TAKEOVER-01 | Phone/web takeover and confused-deputy attempts cannot access or mutate the relationship |
 | CCT-AE01-DOWNGRADE-01 | Reduced channel assurance reduces capability and never protection |
@@ -60,7 +61,7 @@ This unification does not waive WC-059 completion, per-session Founder implement
 
 - One authenticated customer traverses WhatsApp → web → WhatsApp with relationship and context intact.
 - Evidence Window reconstructs discovery, trial, configuration, acceptance, payment, activation, handoff, and Stop with correct attribution.
-- All takeover/replay/confused-deputy/downgrade/cross-tenant cases deterministically deny or replay prior outcome with zero unauthorized mutation.
+- All takeover/replay/confused-deputy/downgrade/cross-tenant and forged/wrong-key/replayed continuity-signature cases deterministically deny or replay prior outcome with zero unauthorized mutation.
 - Emergency Stop remains within the existing ≤250ms end-to-end constitutional floor and cannot be passively released.
 - BP/PR/CE/web/integration/security suites, manifests/OpenAPI, DPDPA checks, and platform-state synchronization pass.
 - UX-CONV-03, UX-RES-02, UX-CONT-01 through UX-CONT-06, and the proportional F8 acceptance matrix pass without a duplicate follow-on F5 implementation sprint.
