@@ -1,6 +1,6 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-08-11 (WC-034 F4 Amendment 5 Order 1 complete; six Founder policy decisions recorded; Order 2 owner incorporation authorized)
+**Last Updated:** 2026-08-11 (WC-034 F4 implementation evidence and independent review remediation in progress)
 
 ---
 
@@ -16,13 +16,17 @@
 | Fresh INST-002 CA Readiness Review | DONE — R-068 / `CR-GOAL-005-INST-002-09` APPROVED WITH CONDITIONS; R2-03 condition 1 satisfied; CA-F4-A5-01 through CA-F4-A5-06 bind all later routing |
 | Registrant acknowledgement of GEP-GOAL-005-INST-013-06 | DONE — `ACK-GOAL-005-INST-001-06` records the exact Founder statement; R2-03 condition 2 satisfied |
 | Mandatory current-session implementation authorization | DONE — FA-036 records INST-013's exact gate question and Founder response `yes please`; applies only to dependency-ordered WC-034 F4 implementation after all separate Amendment 5 routing prerequisites |
+| FA-036 GOA satisfaction | RECORDED — FA-036 current-session implementation gate satisfies Amendment 5's per-Institution authorization for WC-034 F4 Order 4 implementation; no separately numbered GOA-GOAL-005-INST-010-04 was issued. INST-013 mechanical attestation. |
 | Amendment 5 Order 1 policy recommendations | DONE — `CR-GOAL-005-INST-011-07`, `CR-GOAL-005-INST-003-07`, `CR-GOAL-005-INST-005-10`, and `CR-GOAL-005-INST-007-06` plus their Learning Records cover all six policies; diagnostics, diff hygiene, attestation, six-policy coverage, and semantic guard scans pass |
 | Amendment 5 Order 2 Founder policy decisions | DONE — `FPD-GOAL-005-F4-POL-01` through `FPD-GOAL-005-F4-POL-06` select `A, A, B, A, B, A` prospectively; policy selection does not choose technical mechanisms or authorize deployment |
 | Amendment 5 Order 2 owner incorporation | DONE — `CR-GOAL-005-INST-011-08`, `CR-GOAL-005-INST-005-11`, and `CR-GOAL-005-INST-007-07` plus Learning Records incorporate `A, A, B, A, B, A`; owner linkage, six-policy coverage, diagnostics, and semantic guards pass |
 | Amendment 5 Order 2 constitutional policy review | DONE — R-069 / `CR-GOAL-005-INST-002-10` APPROVED WITH CONDITIONS; `ACC-GOAL-005-INST-002-10` is later than issuance; Order 3 MAY BEGIN WITH CONDITIONS |
 | Amendment 5 Order 3 canonical contract publication | DONE — `ACC-GOAL-005-INST-005-08`, `CR-GOAL-005-INST-005-12`, and `LR-GOAL-005-INST-005-03` publish BP 1.3.0, PR 1.2.0, WBE 1.0.0, DMA adapter 1.0.0, and CE coverage; hashes match and Docker F4 slice/reference/inventory validation passes |
 | Amendment 5 Order 3 logical owner attestations | DONE — `ACC-GOAL-005-INST-005-09`, `CR-GOAL-005-INST-005-13`, and `LR-GOAL-005-INST-005-04` accept BP/PR/WBE/DMA/CE boundaries 5/5; all fixed hashes remain unchanged |
-| Amendment 5 Order 3 executable G-F4-10 | IN PROGRESS — `GOA-GOAL-005-INST-010-03` issued for Docker-only deterministic generation, strict TypeScript, forbidden-surface, fixture, traceability, and no-manual-patch evidence; acceptance and contribution remain pending; no service/web implementation or Order 4 authority |
+| Amendment 5 Order 3 executable G-F4-10 | DONE — canonical BP 1.3.0 validates after additive dependency closure; two clean TypeScript generations produce the same 112-file tree hash; strict TypeScript, forbidden-surface, fixture-token, traceability, and 16/16 focused constitutional checks pass; executable evidence is recorded in `relationship-workspace-compatibility-evidence.md` |
+| Amendment 5 Order 4 workload identity | IN PROGRESS — deterministic dev/CI PKI, exact BP/WBE/PR/DMA registry, ECDSA delegated context, transport-derived peer identity, PR and WBE mTLS-only private listeners, BP signer/client, exact audience/route/operation/contract/body binding, target rebinding, expiry, revocation primitive, replay denial, and privacy-minimized auth events are implemented. PR focused tests pass 27/27; WBE authenticated owner remediation passes 9/9; PKI/compatibility passes 31/31; constitutional CE/Stop/privacy/DMA-boundary remediation passes 13/13. DMA runtime owner source, cloud custody/rotation/revocation distribution, migration/incident recovery, deployment, and customer proof remain absent and are not claimed. |
+| Amendment 5 Orders 5-7 implementation | IN PROGRESS — PR execution and WBE commercial projections preserve owner truth; BP performs authenticated owner reads and remains partial/unavailable on failure; fourteen public operations and generated web workspace are implemented; DMA Results remains explicitly UNAVAILABLE because no authorized runtime owner source exists; consequential multi-owner commands remain BLOCKED. BP 175/175, PR 116/116, WBE 364/364 baseline, web 80/80, lint/build, compatibility PASS, strict generated compile, and Playwright desktop+360 2/2 pass. |
+| Amendment 5 Order 8 evidence | REVIEW APPROVED — `CR-GOAL-005-INST-010-04` and `LR-GOAL-005-INST-010-03` publish current evidence and limits. R-070 INST-004 is APPROVED WITH CONDITIONS limited to future cloud/deployment obligations; R-071 INST-007 is APPROVED with no current-code blocker; R-072 INST-002 is finally APPROVED after WBE listener, negative-test, CE/Stop/privacy, evidence-record, state-truthfulness, and FA-036 attestation remediation. The bounded unmerged F4 PR may be presented to Founder. G-F4-13 deployment, provider activation, production, customer proof, merge, and F5-F8 remain unauthorized. |
 | Amendment 5 execution and independent review | PENDING — Orders 3-8, Docker/CCT evidence, checkpoint commits, and completed unmerged PR required |
 | PR #255 post-merge reconciliation verified | DONE — merged to `main` as `e2be32e`; WC-034 F3 sprint state is DONE |
 | INST-013 occupancy and F4 authorization boundary | DONE — Epoch 1; G5 CLEAR; architecture/dependency closure only; current GOA excludes F4-F8, implementation, provider activation, and deployment |
@@ -46,7 +50,7 @@
 | Amendment 4 R-066 repair | DONE — CR-GOAL-005-INST-004-11 and LR-GOAL-005-INST-004-07 add the complete owner-to-customer operation matrix and migration/incident restoration matrix; R-066 Conditions 1 and 2 are satisfied |
 | Amendment 4 Order 3 | DONE — R-067 / CR-GOAL-005-INST-002-08 and LR-GOAL-005-INST-002-02 independently approve repaired ADR-046 with no conditions and permit mechanical ADR acceptance plus EA-F4-01 closure |
 | Amendment 4 Order 4 | DONE — INST-013 mechanically recorded ADR-046 Accepted and EA-F4-01 closed; G-F4-10, F4-POL-01 through F4-POL-06, G-F4-12, G-F4-13, provider activation, deployment, and F5-F8 remain blocked or unresolved |
-| F4 implementation | BLOCKED — no `src/` or `web/` implementation, generated client, deployment, or F5-F8 authority in this architecture session |
+| F4 implementation | IN PROGRESS — FA-036 current-session authority is active for dependency-ordered F4 only; Order 4 has begun. No deployment, provider activation, merge, or F5-F8 authority |
 
 ### Decision Space and Constitutional Obligations
 
