@@ -3,8 +3,8 @@
 **Goal:** GOAL-005 · **Epic stories:** AE-01-S07 and S08
 **Office on execution:** Platform IT Expert (INST-010)
 **Reviewer:** Enterprise Architect (INST-004) + Constitutional Analyst (INST-002)
-**Status:** IMPLEMENTATION-READY — D-07 R-046 RATIFIED; implementation not authorized
-**Authorization:** A future session requires explicit Founder authorization: “Authorize implementation of WC-059.”
+**Status:** GROOMED AND ROUTING — FA-040 RECORDED; GEP-08 CA/ACK/GOA/ACC gates pending
+**Authorization:** FA-040 records the exact current-session directive `Authorize implementation of WC-059`; implementation remains blocked until fresh CA readiness, ACK-GOAL-005-INST-001-08, GOA-GOAL-005-INST-010-05, and later ACC-GOAL-005-INST-010-05 are valid.
 **Track:** VERTICAL CUSTOMER OUTCOME
 **Service scope:** BP (.NET), WBE (Python), CE (.NET), web, PR channel presentation
 
@@ -20,7 +20,7 @@ WC-058 DONE; WC-042 and WC-043 DONE; accepted AEEC Foundation and D-03 model. Cu
 
 | Task | Scope | Model hint | Status |
 |---|---|---|---|
-| WC059-01 | Apply the exact Migration 21 blueprint in the D-06 Data Contract: immutable contract/acceptance records and one activation-intent row per canonical tuple, with material request hash, stored outcome, RLS, and replay semantics. Identical replay returns the prior result; divergent material records conflict without mutation. | reasoning | pending |
+| WC059-01 | Apply the exact Migration 21 blueprint in the D-06 Data Contract as `21b-ae01-contract-activation.sql` because `21-conversation-core.sql` already owns deployment sequence 21: immutable contract/acceptance records and one activation-intent row per canonical tuple, with material request hash, stored outcome, RLS, and replay semantics. Identical replay returns the prior result; divergent material records conflict without mutation. | reasoning | pending |
 | WC059-02 | Implement BP `EmploymentContractService`: compose common AEEC plus DMA schedule from accepted S06 configuration; present plain-language rights, obligations, price/tax, ad-spend treatment, limitations, cancellation, review, authority, and Stop terms; amendments create new versions. | reasoning | pending |
 | WC059-03 | Implement the canonical contract proposal/acceptance endpoints. Acceptance is Tier-4 web only and requires fresh Keycloak authentication, active same-tenant `EMPLOYER` role, exact version/hash, separate scope confirmation, and committed evidence. Conversation, default checkbox, silence, deep-link possession, MPIN, or trial consent cannot accept. | reasoning | pending |
 | WC059-04 | Integrate WC-042 onboarding order/webhook APIs and the D-06 Security Contract payment-consent flow. Present contract-linked itemized INR/GST/subscription/refund consequences, record explicit proceed intent, redirect to Razorpay-hosted checkout, verify webhook signatures, and expose dispute/refund evidence. Never collect payment secrets in WAOOAW UI or chat. | reasoning | pending |
@@ -64,4 +64,4 @@ docker compose --profile test run --rm test-runner npm --prefix web run build
 
 ## Boundaries
 
-No campaign execution, provider credential connection, renewal redesign, or implementation authorization. No implementation starts without a future explicit Founder authorization.
+No campaign execution, live Razorpay/provider credential activation, provider account setup, renewal redesign, WC-060, deployment, production/customer proof, self-review, or merge. FA-040 satisfies the current-session consent gate but no implementation starts before the GEP-08 CA/ACK/GOA/ACC chain is complete.

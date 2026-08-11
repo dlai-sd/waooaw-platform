@@ -1829,3 +1829,68 @@ R-077 and this record satisfy both GEOM R2-03 pre-issuance conditions. The ackno
 | Acceptance boundary | No provider activation, WC-059/WC-060, deployment, merge, self-review, architecture reinterpretation, or production/customer-proof authority |
 
 The Acceptance timestamp is later than the GOA issuance timestamp, satisfying GEOM G-03 and R2-12. WC-058 implementation may begin under FA-038, GEP-07, R-077, ACK-07, GOA-04, and ACC-04.
+
+---
+
+## Amendment 8 — WC-059 Implementation Routing
+
+| Attestation field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GEP-GOAL-005-INST-013-08 |
+| `record_type` | Execution Plan |
+| `produced_at` | 2026-08-11 |
+| Status | PROPOSED — fresh CA readiness and exact Registrant acknowledgement required before GOA issuance |
+| Amends | GEP-GOAL-005-INST-013-07 prospectively; Amendment 7 and all prior records remain unchanged |
+
+### Purpose And Groomed Entry State
+
+This amendment adds the smallest dependency-ordered execution envelope for WC-059 only. D-07 and R-046 ratified WC-059 as implementation-ready, WC-058 is DONE through PR #263 and merge reconciliation PR #264, WC-042/WC-043 payment and reconciliation foundations are DONE, and FA-040 records the Founder's exact current-session directive `Authorize implementation of WC-059`. That directive satisfies the separate implementation-consent gate but does not substitute for GEOM R2-03 readiness, acknowledgement, GO Authorization, or Goal Acceptance.
+
+A fresh read-only grooming audit and INST-004 architecture readiness review found no unresolved owner, ordering, API, security, data, failure, or acceptance decision. Missing Migration 21 tables, canonical endpoints, services, workflow, presentation, and CCTs are the enumerated WC059-01 through WC059-08 implementation scope, not specification gaps. Because `21-conversation-core.sql` already occupies sequence 21, WC059-01 preserves deterministic init ordering as `21b-ae01-contract-activation.sql` without changing the approved Migration 21 blueprint.
+
+### Phase 10 — WC-059 Contract, Payment, And Exactly-Once Activation
+
+| Field | Value |
+|---|---|
+| Primary Institution | INST-010 — Platform IT Expert |
+| Contribution scope | Implement WC059-01 through WC059-08 exactly as specified across BP, WBE, CE, web, PR channel presentation, Migration 21b, WC-042 onboarding payment integration, and durable activation orchestration |
+| Required inputs | WC-058 DONE; WC-042/WC-043 DONE; D-03 and D-06 accepted; D-07/R-046 ratified; AEEC-01 through AEEC-15; ADR-022/023/044; all paths listed in WC-059 Required Inputs present and approved |
+| Participation Window | Five constitutional sessions after valid INST-010 acceptance |
+| Required implementation evidence | Task-by-task traceability; Docker-only BP/WBE/CE/web/integration/security/CCT results; affected-surface line coverage at least 90%; deterministic Migration 21b first/reapply/RLS/immutability/concurrency evidence; OpenAPI/manifests/state synchronization; S07-S08 synthetic journey; WC-042/WC-043 regression and reconciliation evidence |
+| Required safety evidence | Exact version/hash and separate scope confirmation; Tier-4 fresh Keycloak authentication and same-tenant `EMPLOYER`; contract before payment; Razorpay-hosted checkout with no payment secrets; signature/replay checks; one canonical activation tuple, charge, subscription, evidence outcome, relationship, and `ACTIVE` transition; explicit retryable uncertainty; WBE `CONVERTED` as billing projection only; symmetric not-now/cancel/exit behavior |
+| Independent review | INST-004 Enterprise Architect and INST-002 Constitutional Analyst review the completed contribution independently; INST-010 may not review or approve its own work |
+| Completion boundary | Prepare an unmerged PR after all tasks, evidence, and independent reviews pass; Founder approval and merge remain separate |
+
+### Grooming Traceability
+
+| Task | Controlling owner contract | Existing implementation anchor | Discriminating executable proof |
+|---|---|---|---|
+| WC059-01 | D-06 relationship data contract, Migration 21 | Migrations 19/20b/21 patterns | First apply, reapply, forced RLS, immutable versions/acceptances, tuple concurrency/replay/conflict |
+| WC059-02 | AEEC-01 through AEEC-15; D-06 business/solution/data contracts | WC-058 accepted configuration projection | Deterministic version/hash, complete plain-language terms, amendment creates new immutable version |
+| WC059-03 | D-06 solution/security contracts | BP JWT tenant/participant authority and CE evidence gateways | Tier-4 freshness, same-tenant employer, exact hash, separate scope confirmation, replay/conflict |
+| WC059-04 | ADR-022; WC-042/WC-043; D-06 security contract | WBE onboarding order, HMAC webhook, payment intents, reconciliation | Contract-before-payment, itemized INR/GST, proceed evidence, signature/replay, dispute/refund projection |
+| WC059-05 | D-03 lifecycle; D-06 activation choreography | BP lifecycle/evidence gateway and Temporal workflow patterns | Ordered pending/WBE/evidence/active choreography under replay and concurrency |
+| WC059-06 | D-06 failure contract and WBE billing projection | WC-058 expiry repair and WBE trial/subscription state | CE/WBE uncertainty reuses one intent; no second charge/relationship; no false `CONVERTED` lifecycle |
+| WC059-07 | D-06 web/security/business contracts; ADR-023 Tier 4 | WC-058 relationship workspace and WhatsApp journey | Responsive/accessibility tests; portal-only acceptance/payment; symmetric hire/not-now/cancel/exit; no dark patterns |
+| WC059-08 | WC-059 seven CCT assertions | Existing BP/WBE/CE/web constitutional suites | Version/hash, authority, scope, ordering, replay, concurrency, conflict, failure, and ethical UX all pass |
+
+### Explicit Exclusions
+
+- Live Razorpay mode, provider credentials or account setup, campaign/provider execution, WC-060, F6-F8 feature implementation, deployment, production operation, and customer-proof claims.
+- Payment-secret collection in WAOOAW UI/chat, payment before accepted contract, acceptance through WhatsApp/MPIN/silence/default, direct trial-to-active conversion, duplicate charge/subscription/relationship, or WBE `CONVERTED` as a D-03 state.
+- Architecture reinterpretation, weakening D-03/D-06/R-046/WC-059 obligations, self-review, self-approval, self-merge, direct push to `main`, or merge authority.
+
+### Reserved Authorization — Not Issued
+
+`GOA-GOAL-005-INST-010-05` is reserved for this contribution and may be issued only after:
+
+1. a fresh INST-002 CA Readiness Review approves GEP-GOAL-005-INST-013-08, with every condition satisfied; and
+2. `ACK-GOAL-005-INST-001-08` records the Founder's exact acknowledgement of this amendment.
+
+Required acknowledgement:
+
+> `I acknowledge GEP-GOAL-005-INST-013-08 and authorize INST-013 to issue GOA-GOAL-005-INST-010-05 for WC-059 implementation only. This does not authorize live Razorpay or provider activation, WC-060, deployment, merge, or self-review.`
+
+After valid issuance, INST-010 must record `ACC-GOAL-005-INST-010-05` at a timestamp later than the GOA `issued_at`. No implementation task, source change, migration, generated production artifact, or build artifact may begin before that Acceptance Record exists.
