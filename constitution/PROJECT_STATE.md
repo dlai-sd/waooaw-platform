@@ -93,3 +93,8 @@ notes: |
   WC-034 F3 is complete and PR #254 merged as 8a1fcfa.
   This control block is retained for pipeline compatibility; it grants no new authority.
 ```
+
+## Platform Delivery Summary
+
+Last PM report: 2026-08-11
+Platform Status issue: see GitHub Issues with label `platform-status`
