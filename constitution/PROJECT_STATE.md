@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 4
+**State Revision:** 5
 **Last Updated:** 2026-08-11
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -32,7 +32,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | BOOTSTRAP retention rule | DONE — update one checkpoint in place; archive durable detail outside the hot path; 200-line ceiling |
 | Focused compatibility validation | DONE — 251 relevant tests pass; uniqueness, required-field, history, and line-budget checks pass |
 | Independent review | DONE — R-085 APPROVED after R085-01 and R085-02 resolution |
-| Founder PR | PENDING |
+| Founder PR | DONE — PR #266 is open against `main`; review and merge remain Founder-controlled |
 
 ### Recovery Context
 
@@ -54,8 +54,7 @@ None for the schema-v2 governance change. Independent review remains required be
 
 ## Next Authorized Action
 
-Complete focused compatibility validation, obtain independent review, and open an unmerged
-Founder-review PR for this governance-only change.
+Founder reviews PR #266. No merge or further work follows automatically.
 
 ## History And Evidence
 
