@@ -1645,3 +1645,18 @@ This publication fixes the contract bytes for owner attestation. It does not com
 | Excluded authority | Contract edits, policy reinterpretation, generator execution, generated clients, source, tests, migrations, implementation, deployment, provider activation, F5-F8, independent review, self-review, and merge |
 | `issued_by` | INST-013 |
 | `issued_at` | 2026-08-11T02:36:29+00:00 |
+
+## Amendment 5 Order 3 Logical Owner Attestation Acceptance
+
+| Field | Value |
+|---|---|
+| Acceptance Record | ACC-GOAL-005-INST-005-09 |
+| Institution | INST-005 — Solution Architect / registered logical component owner |
+| Authorization | GOA-GOAL-005-INST-005-09 |
+| Acceptance timestamp | 2026-08-11T02:41:33+00:00 |
+| Contribution Record | CR-GOAL-005-INST-005-13 |
+| Learning Record | LR-GOAL-005-INST-005-04 |
+| Decision | ACCEPT — BP, PR, WBE, DMA adapter, and CE coverage boundaries accepted 5/5 against fixed hashes |
+| Canonical byte state | UNCHANGED — all five externally verifiable hashes match the publication record |
+
+This acceptance satisfies the logical owner-attestation prerequisite only. Executable G-F4-10 still requires a separate INST-010 GOA and acceptance plus deterministic Docker evidence; source implementation and Order 4 remain separate.
