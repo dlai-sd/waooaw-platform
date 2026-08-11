@@ -1584,3 +1584,25 @@ The resulting records are `CR-GOAL-005-INST-011-08` / `LR-GOAL-005-INST-011-06`,
 | Order 3 gate | MAY BEGIN WITH CONDITIONS |
 
 R-069 conditions bind Order 3: contract work must remain within `CR-GOAL-005-INST-005-11`; the six Founder decisions may not be reinterpreted; distinct `BLOCKED`/`UNAVAILABLE`, fail-closed unresolved-state handling, and Emergency Stop independence must remain explicit; and no implementation, generated-client, deployment, G-F4-12, or G-F4-13 closure may be inferred.
+
+## Amendment 5 Order 3 Canonical Contract Authorization Record
+
+### GOA-GOAL-005-INST-005-08
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GOA-GOAL-005-INST-005-08 |
+| `record_type` | Authorization Record |
+| Authorized Institution | INST-005 — Solution Architect and logical contract owner |
+| Contribution scope | Publish the canonical WC-034 F4 BP public contract and private WBE, PR, CE-coverage, and registered DMA adapter contract surfaces required before executable G-F4-10 validation; publish `CR-GOAL-005-INST-005-12` and `LR-GOAL-005-INST-005-03` |
+| BP evidence specification | Update the canonical Business Platform OpenAPI with exactly the fourteen accepted F4 operation IDs, dependency-closed schemas, typed command unions, policy-selected availability, idempotency, expected versions, reconciliation, RFC 9457 errors, security, and no private/browser-forbidden surface |
+| Private-owner evidence specification | Publish versioned BP-only WBE and PR projection/command/reconciliation contracts; preserve WBE `BLOCKED`; publish one registered DMA adapter transport for the approved generic three-operation interface without DMA fields in the generic workspace; map every selected consequence to existing CE gRPC coverage and raise a blocker rather than silently invent a CE contract |
+| Policy and review constraints | Preserve `A, A, B, A, B, A`, R-069 Conditions 1-3, distinct `BLOCKED`/`UNAVAILABLE`, fail-closed unresolved state, owner truth, Evidence First, tenant/relationship isolation, and independent Emergency Stop |
+| Participation Window | 3 constitutional sessions after valid acceptance |
+| Excluded authority | Policy reinterpretation, source implementation, migrations, persistence design, generator execution, generated production clients, executable compatibility claims, tests, deployment, provider activation, F5-F8, integrated review, self-review, and merge |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-11T02:21:49+00:00 |
+
+Owner attestations, INST-010 deterministic generation, executable G-F4-10 closure, and Order 4 remain blocked until this Contribution and Learning Record are published and the canonical contract versions are fixed.
