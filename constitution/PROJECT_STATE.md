@@ -10,8 +10,8 @@
 |---|---|
 | PR #257 post-merge reconciliation | DONE — current branch fast-forwarded to merged `origin/main` commit `0c84857`; unrelated local `logs/blueprint_assurance_report.json` modification remains untouched |
 | INST-013 occupancy and Decision Space | DONE — READY for orchestration, sequencing, GOA routing after prerequisites, evidence monitoring, and mechanical checkpointing; no policy, architecture, security, implementation, independent-review, deployment, merge, or F5-F8 contribution authority |
-| Current F4 blocker snapshot | DONE — ADR-046 Accepted and EA-F4-01 closed; executable G-F4-10 open; `F4-POL-01` through `F4-POL-06` Founder-exclusive and fail-closed; G-F4-12 lacks current-session authorization/GOA/acceptance; G-F4-13 deployment separately blocked |
-| GEP-GOAL-005-INST-013-06 Amendment 5 | PROPOSED — orders policy recommendations and Founder decisions before canonical contracts, workload identity, owner projections, BP, web, integrated CCT evidence, and independent review; no GOA or implementation authority issued |
+| Current F4 blocker snapshot | DONE — ADR-046 Accepted and EA-F4-01 closed; executable G-F4-10 remains open; `F4-POL-01` through `F4-POL-06` are decided and incorporated; G-F4-12 has current-session authority but remains open pending Orders 3-8; G-F4-13 deployment remains separately blocked |
+| GEP-GOAL-005-INST-013-06 Amendment 5 | ACTIVE — CA readiness, acknowledgement, current-session implementation authorization, Order 1 recommendations, and Order 2 Founder decisions/incorporation are complete; R-069 permits bounded Order 3 contract work |
 | Amendment 5 structural validation | DONE — diff integrity, unique amendment marker, record references, six explicit policy IDs, and G-F4-10/G-F4-12/G-F4-13 coverage pass |
 | Fresh INST-002 CA Readiness Review | DONE — R-068 / `CR-GOAL-005-INST-002-09` APPROVED WITH CONDITIONS; R2-03 condition 1 satisfied; CA-F4-A5-01 through CA-F4-A5-06 bind all later routing |
 | Registrant acknowledgement of GEP-GOAL-005-INST-013-06 | DONE — `ACK-GOAL-005-INST-001-06` records the exact Founder statement; R2-03 condition 2 satisfied |
@@ -19,8 +19,8 @@
 | Amendment 5 Order 1 policy recommendations | DONE — `CR-GOAL-005-INST-011-07`, `CR-GOAL-005-INST-003-07`, `CR-GOAL-005-INST-005-10`, and `CR-GOAL-005-INST-007-06` plus their Learning Records cover all six policies; diagnostics, diff hygiene, attestation, six-policy coverage, and semantic guard scans pass |
 | Amendment 5 Order 2 Founder policy decisions | DONE — `FPD-GOAL-005-F4-POL-01` through `FPD-GOAL-005-F4-POL-06` select `A, A, B, A, B, A` prospectively; policy selection does not choose technical mechanisms or authorize deployment |
 | Amendment 5 Order 2 owner incorporation | DONE — `CR-GOAL-005-INST-011-08`, `CR-GOAL-005-INST-005-11`, and `CR-GOAL-005-INST-007-07` plus Learning Records incorporate `A, A, B, A, B, A`; owner linkage, six-policy coverage, diagnostics, and semantic guards pass |
-| Amendment 5 Order 2 constitutional policy review | IN PROGRESS — fresh INST-002 review authorized by `GOA-GOAL-005-INST-002-10`; acceptance and independent decision remain pending |
-| Amendment 5 execution and independent review | PENDING — Orders 2-8, Docker/CCT evidence, checkpoint commits, and completed unmerged PR required |
+| Amendment 5 Order 2 constitutional policy review | DONE — R-069 / `CR-GOAL-005-INST-002-10` APPROVED WITH CONDITIONS; `ACC-GOAL-005-INST-002-10` is later than issuance; Order 3 MAY BEGIN WITH CONDITIONS |
+| Amendment 5 execution and independent review | PENDING — Orders 3-8, Docker/CCT evidence, checkpoint commits, and completed unmerged PR required |
 | PR #255 post-merge reconciliation verified | DONE — merged to `main` as `e2be32e`; WC-034 F3 sprint state is DONE |
 | INST-013 occupancy and F4 authorization boundary | DONE — Epoch 1; G5 CLEAR; architecture/dependency closure only; current GOA excludes F4-F8, implementation, provider activation, and deployment |
 | F4 business semantics contribution | DONE — CR-GOAL-005-INST-003-03 defines customer outcomes, authoritative attention ordering, consequence classes, minimum release composition, and acceptance semantics without choosing architecture or interfaces |

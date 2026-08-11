@@ -1286,7 +1286,7 @@ R-065 / `CR-GOAL-005-INST-002-07` satisfies GEOM R2-03 condition 1, with CA-F4-A
 | `record_id` | GEP-GOAL-005-INST-013-06 |
 | `record_type` | Execution Plan |
 | `produced_at` | 2026-08-11 |
-| Status | PROPOSED — fresh CA Readiness Review, exact Registrant acknowledgement, current-session implementation authorization, valid GOAs, and later acceptances required |
+| Status | ACTIVE — CA readiness, exact Registrant acknowledgement, current-session implementation authorization, Order 1 recommendations, and Order 2 policy decisions/incorporation are complete; Order 3 may begin under R-069 conditions |
 
 ### Purpose And Current Gate State
 
@@ -1568,3 +1568,19 @@ The resulting records are `CR-GOAL-005-INST-011-08` / `LR-GOAL-005-INST-011-06`,
 | Excluded authority | Policy selection, contribution repair, architecture or API authorship, implementation, source, tests, deployment, F5-F8, self-review, and merge |
 | `issued_by` | INST-013 |
 | `issued_at` | 2026-08-11T02:12:35+00:00 |
+
+## Amendment 5 Order 2 Constitutional Review Acceptance And Decision
+
+| Field | Value |
+|---|---|
+| Acceptance Record | ACC-GOAL-005-INST-002-10 |
+| Institution | INST-002 — Constitutional Analyst |
+| Authorization | GOA-GOAL-005-INST-002-10 |
+| Acceptance timestamp | 2026-08-11T02:17:49+00:00 |
+| Contribution Record | CR-GOAL-005-INST-002-10 |
+| Learning Record | LR-GOAL-005-INST-002-03 |
+| Review | R-069 — WC-034 F4 Policy Incorporation Constitutional Review |
+| Decision | APPROVED WITH CONDITIONS |
+| Order 3 gate | MAY BEGIN WITH CONDITIONS |
+
+R-069 conditions bind Order 3: contract work must remain within `CR-GOAL-005-INST-005-11`; the six Founder decisions may not be reinterpreted; distinct `BLOCKED`/`UNAVAILABLE`, fail-closed unresolved-state handling, and Emergency Stop independence must remain explicit; and no implementation, generated-client, deployment, G-F4-12, or G-F4-13 closure may be inferred.
