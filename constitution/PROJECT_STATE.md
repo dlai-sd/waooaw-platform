@@ -307,7 +307,7 @@ F1 is closed. Before selecting any F2–F8 component, verify its local entry cri
 
 ---
 
-## IN-PROGRESS CHECKPOINT — WC-057 AE-01 EMPLOYMENT JOURNEY FOUNDATION
+## COMPLETED CHECKPOINT — WC-057 AE-01 EMPLOYMENT JOURNEY FOUNDATION
 
 | Milestone | Status |
 |---|---|
@@ -318,12 +318,13 @@ F1 is closed. Before selecting any F2–F8 component, verify its local entry cri
 | Authenticated web foundation | DONE — provisional Next.js PWA shell, generated relationship models, Keycloak session boundary, persistent honest Stop control |
 | Implementation validation | DONE — BP 55/55; web 5/5 and 93.75% line coverage; Playwright 2/2; platform metadata 12 passed, 1 known skip |
 | Implementation commits | DONE — `c5169cc`, `e458e42` |
-| Independent Enterprise Architect review | PENDING — C-065 author/reviewer separation required |
-| Release/version/state closure | PENDING — update VERSION/CHANGELOG and mark WC-057 DONE only after review approval |
+| Independent Enterprise Architect review | DONE — R-076 APPROVED with no conditions; C-065 author/reviewer separation satisfied |
+| Fresh closure validation | DONE — focused BP relationship VSTest 10/10 and current web Jest 80/80 PASS; platform-state sync retains pre-existing canonical-registry drift |
+| Release/version/state closure | DONE — WC-057 and SPRINT-REGISTRY status synchronized after review; later WC-034 releases already supersede the historical VERSION/CHANGELOG boundary |
 
-### Current Authorization Boundary
+### Closure And Authorization Boundary
 
-WC-057 implementation is complete under FA-030 and awaits independent INST-004 review. The web interface is a provisional technical shell, not a Founder-confirmed UI design. WC-058 through WC-060, live Google OAuth proof, deployment, and merge remain outside this implementation session's authority.
+WC-057 implementation is independently approved and mechanically closed under FA-030 and R-076. The web interface remains a provisional technical shell, not a Founder-confirmed UI design. WC-058 through WC-060, live Google OAuth proof, provider activation, deployment, and production/customer proof remain outside this closure. WC-058 is the next dependency and still requires its own explicit Founder implementation authorization.
 
 ### Known Residual Evidence
 
