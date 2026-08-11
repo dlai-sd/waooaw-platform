@@ -2,7 +2,7 @@ openapi: "3.1.0"
 
 info:
   title: WAOOAW Professional Runtime API
-  version: "1.1.0"
+  version: "1.2.0"
   description: |
     Internal and WebSocket API for the WAOOAW Professional Runtime service.
 
@@ -332,6 +332,93 @@ paths:
         "423": { $ref: "#/components/responses/ExecutionStopped" }
         "503": { $ref: "#/components/responses/ExecutionUnavailable" }
 
+  # ─── Internal — Relationship Workspace Execution (WC-034 F4) ─────────────
+
+  /api/v1/internal/relationships/{relationshipId}/workspace-execution:
+    get:
+      tags: [Internal]
+      summary: Get relationship execution projection for BP composition
+      description: |
+        BP-only private projection. This route remains independent from Emergency Stop transport.
+      operationId: getRelationshipExecutionProjection
+      x-internal: true
+      security:
+        - ServiceBearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Relationship execution projection
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PrRelationshipExecutionProjectionV1"
+        "401": { $ref: "#/components/responses/ExecutionUnauthorized" }
+        "404": { $ref: "#/components/responses/ExecutionNotFound" }
+        "503": { $ref: "#/components/responses/ExecutionUnavailable" }
+
+  /api/v1/internal/relationships/{relationshipId}/workspace-controls:
+    post:
+      tags: [Internal]
+      summary: Submit or replay BP-authorized relationship execution control
+      operationId: submitRelationshipExecutionControl
+      x-internal: true
+      security:
+        - ServiceBearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PrRelationshipExecutionControlRequestV1"
+      responses:
+        "202":
+          description: Control accepted for durable reconciliation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PrRelationshipExecutionControlReceiptV1"
+        "200":
+          description: Prior identical outcome replayed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PrRelationshipExecutionControlReceiptV1"
+        "400": { $ref: "#/components/responses/ExecutionInvalidRequest" }
+        "401": { $ref: "#/components/responses/ExecutionUnauthorized" }
+        "404": { $ref: "#/components/responses/ExecutionNotFound" }
+        "409": { $ref: "#/components/responses/ExecutionConflict" }
+        "423": { $ref: "#/components/responses/ExecutionStopped" }
+        "503": { $ref: "#/components/responses/ExecutionUnavailable" }
+
+  /api/v1/internal/relationships/{relationshipId}/workspace-controls/{controlId}:
+    get:
+      tags: [Internal]
+      summary: Reconcile one relationship execution control outcome
+      operationId: getRelationshipExecutionControl
+      x-internal: true
+      security:
+        - ServiceBearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/RelationshipWorkspaceControlId"
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Authoritative execution control outcome
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PrRelationshipExecutionControlOutcomeV1"
+        "401": { $ref: "#/components/responses/ExecutionUnauthorized" }
+        "404": { $ref: "#/components/responses/ExecutionNotFound" }
+        "503": { $ref: "#/components/responses/ExecutionUnavailable" }
+
 # ─── Components ─────────────────────────────────────────────────────────────
 
 components:
@@ -374,6 +461,19 @@ components:
       required: true
       schema: { type: string, format: uuid }
       description: BP-owned opaque durable conversation identifier
+
+    RelationshipId:
+      name: relationshipId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+      description: BP-authorized employment relationship identifier
+
+    RelationshipWorkspaceControlId:
+      name: controlId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
 
     ProfessionalExecutionId:
       name: executionId
@@ -602,6 +702,105 @@ components:
         code: { $ref: "#/components/schemas/ExecutionProblemCode" }
         correlationId: { type: string, format: uuid }
         retryAfterSeconds: { type: integer, minimum: 1 }
+
+    PrRelationshipExecutionSchemaVersion:
+      type: string
+      const: "1.0"
+
+    PrRelationshipExecutionState:
+      type: string
+      enum: [CURRENT, STALE, UNKNOWN, UNAVAILABLE, BLOCKED]
+
+    PrRelationshipExecutionProjectionV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, relationshipId, projectionVersion, state, producedAt]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/PrRelationshipExecutionSchemaVersion" }
+        relationshipId: { type: string, format: uuid }
+        projectionVersion: { type: string, minLength: 1, maxLength: 64 }
+        state: { $ref: "#/components/schemas/PrRelationshipExecutionState" }
+        producedAt: { type: string, format: date-time }
+        nextReviewAt: { type: string, format: date-time }
+
+    PrRelationshipExecutionControlKindV1:
+      type: string
+      enum: [PAUSE_WORK, RESUME_WORK, PROVIDE_WORK_INPUT]
+
+    PauseWorkControlPayloadV1:
+      type: object
+      additionalProperties: false
+      required: [controlKind, workItemId, reason]
+      properties:
+        controlKind: { type: string, const: PAUSE_WORK }
+        workItemId: { type: string, format: uuid }
+        reason: { type: string, minLength: 1, maxLength: 240 }
+
+    ResumeWorkControlPayloadV1:
+      type: object
+      additionalProperties: false
+      required: [controlKind, workItemId]
+      properties:
+        controlKind: { type: string, const: RESUME_WORK }
+        workItemId: { type: string, format: uuid }
+
+    ProvideWorkInputControlPayloadV1:
+      type: object
+      additionalProperties: false
+      required: [controlKind, workItemId, inputText]
+      properties:
+        controlKind: { type: string, const: PROVIDE_WORK_INPUT }
+        workItemId: { type: string, format: uuid }
+        inputText: { type: string, minLength: 1, maxLength: 2000 }
+
+    PrRelationshipExecutionControlPayloadV1:
+      oneOf:
+        - $ref: "#/components/schemas/PauseWorkControlPayloadV1"
+        - $ref: "#/components/schemas/ResumeWorkControlPayloadV1"
+        - $ref: "#/components/schemas/ProvideWorkInputControlPayloadV1"
+      discriminator:
+        propertyName: controlKind
+        mapping:
+          PAUSE_WORK: "#/components/schemas/PauseWorkControlPayloadV1"
+          RESUME_WORK: "#/components/schemas/ResumeWorkControlPayloadV1"
+          PROVIDE_WORK_INPUT: "#/components/schemas/ProvideWorkInputControlPayloadV1"
+
+    PrRelationshipExecutionControlRequestV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, expectedProjectionVersion, payload]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/PrRelationshipExecutionSchemaVersion" }
+        expectedProjectionVersion: { type: string, minLength: 1, maxLength: 64 }
+        payload: { $ref: "#/components/schemas/PrRelationshipExecutionControlPayloadV1" }
+
+    PrRelationshipExecutionControlStatusV1:
+      type: string
+      enum: [COMPLETED, PENDING, PARTIAL, UNKNOWN, REJECTED, CONFLICT, BLOCKED]
+
+    PrRelationshipExecutionControlReceiptV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, controlId, controlKind, status, acceptedAt, replayed]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/PrRelationshipExecutionSchemaVersion" }
+        controlId: { type: string, format: uuid }
+        controlKind: { $ref: "#/components/schemas/PrRelationshipExecutionControlKindV1" }
+        status: { $ref: "#/components/schemas/PrRelationshipExecutionControlStatusV1" }
+        acceptedAt: { type: string, format: date-time }
+        replayed: { type: boolean }
+
+    PrRelationshipExecutionControlOutcomeV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, controlId, controlKind, status, relationshipId]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/PrRelationshipExecutionSchemaVersion" }
+        controlId: { type: string, format: uuid }
+        controlKind: { $ref: "#/components/schemas/PrRelationshipExecutionControlKindV1" }
+        status: { $ref: "#/components/schemas/PrRelationshipExecutionControlStatusV1" }
+        relationshipId: { type: string, format: uuid }
+        resolvedAt: { type: string, format: date-time }
 
     EmergencyStopCommand:
       type: object

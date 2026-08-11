@@ -1,0 +1,235 @@
+openapi: "3.1.0"
+
+info:
+  title: WAOOAW DMA Relationship Outcome Adapter Private API
+  version: "1.0.0"
+  description: |
+    Private registered DMA transport for the generic RelationshipOutcomeAdapterV1 surface.
+
+    This contract is BP-only and uses registered adapter identity and exact audience.
+    It carries domain-neutral fields only and introduces no DMA-specific shape into generic workspace contracts.
+
+servers:
+  - url: https://dma-adapter.internal.waooaw
+    description: Private service network only
+
+tags:
+  - name: Relationship Outcome Adapter V1
+    description: Generic private domain-outcome adapter operations
+
+security:
+  - ServiceBearerAuth: []
+
+paths:
+  /internal/v1/relationships/{relationshipId}/domain-outcomes/projection:
+    get:
+      tags: [Relationship Outcome Adapter V1]
+      operationId: getDomainOutcomeProjection
+      x-internal: true
+      summary: Get one relationship-bound domain outcome projection
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/GoalOrReviewContextId"
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Domain outcome projection
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DomainOutcomeProjectionV1"
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+
+  /internal/v1/relationships/{relationshipId}/domain-outcomes/goal-change-validation:
+    post:
+      tags: [Relationship Outcome Adapter V1]
+      operationId: validateDomainGoalChange
+      x-internal: true
+      summary: Validate semantic compatibility of a proposed goal change
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DomainGoalChangeRequestV1"
+      responses:
+        "200":
+          description: Validation assessment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DomainGoalChangeAssessmentV1"
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+
+  /internal/v1/relationships/{relationshipId}/domain-outcomes/commands/{ownerCommandId}:
+    get:
+      tags: [Relationship Outcome Adapter V1]
+      operationId: getDomainCommandOutcome
+      x-internal: true
+      summary: Reconcile one owner-scoped domain command outcome
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/OwnerCommandId"
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Domain command outcome
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DomainCommandOutcomeV1"
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+
+components:
+  securitySchemes:
+    ServiceBearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        BP workload assertion signed for audience:
+        urn:waooaw:service:domain-adapter:dma
+
+  parameters:
+    RelationshipId:
+      name: relationshipId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    GoalOrReviewContextId:
+      name: goalOrReviewContextId
+      in: query
+      required: true
+      schema: { type: string, format: uuid }
+    OwnerCommandId:
+      name: ownerCommandId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema: { type: string, format: uuid }
+    CorrelationId:
+      name: X-Correlation-Id
+      in: header
+      required: true
+      schema: { type: string, format: uuid }
+
+  responses:
+    BadRequest:
+      description: Malformed request
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/DomainAdapterProblemDetailV1" }
+    Unauthorized:
+      description: Service assertion missing, invalid, or unauthorized
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/DomainAdapterProblemDetailV1" }
+    NotFound:
+      description: Resource absent or inaccessible
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/DomainAdapterProblemDetailV1" }
+    Conflict:
+      description: Expected version conflict or incompatible change
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/DomainAdapterProblemDetailV1" }
+    Unavailable:
+      description: Adapter owner source unavailable or unresolved
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/DomainAdapterProblemDetailV1" }
+
+  schemas:
+    DomainAdapterSchemaVersion:
+      type: string
+      const: "1.0"
+
+    DomainOutcomeProjectionV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, relationshipId, goalOrReviewContextId, contractVersion, sourceVersion, producedAt, state, outcomeLabel, attributionBasis]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/DomainAdapterSchemaVersion" }
+        relationshipId: { type: string, format: uuid }
+        goalOrReviewContextId: { type: string, format: uuid }
+        contractVersion: { type: string, minLength: 1, maxLength: 32 }
+        sourceVersion: { type: string, minLength: 1, maxLength: 64 }
+        producedAt: { type: string, format: date-time }
+        validUntil: { type: string, format: date-time }
+        state: { type: string, enum: [CURRENT, STALE, UNKNOWN, UNAVAILABLE, BLOCKED] }
+        outcomeLabel: { type: string, minLength: 1, maxLength: 240 }
+        baselineDefinition: { type: string, minLength: 1, maxLength: 500 }
+        measureDefinition: { type: string, minLength: 1, maxLength: 500 }
+        reviewPeriod: { type: string, minLength: 1, maxLength: 120 }
+        observedAssessment: { type: string, minLength: 1, maxLength: 500 }
+        evidenceReferenceIds:
+          type: array
+          items: { type: string, format: uuid }
+        attributionBasis: { type: string, minLength: 1, maxLength: 240 }
+        attributionLimits: { type: string, minLength: 1, maxLength: 500 }
+        uncertainty: { type: string, minLength: 1, maxLength: 240 }
+        attentionCandidateReason: { type: string, minLength: 1, maxLength: 240 }
+
+    DomainGoalChangeRequestV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, goalOrReviewContextId, proposedChange, expectedSourceVersion]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/DomainAdapterSchemaVersion" }
+        goalOrReviewContextId: { type: string, format: uuid }
+        proposedChange: { type: string, minLength: 1, maxLength: 500 }
+        expectedSourceVersion: { type: string, minLength: 1, maxLength: 64 }
+
+    DomainGoalChangeAssessmentV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, decision, reason]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/DomainAdapterSchemaVersion" }
+        decision: { type: string, enum: [COMPATIBLE, INCOMPATIBLE, NEEDS_REVIEW] }
+        reason: { type: string, minLength: 1, maxLength: 500 }
+        replayed: { type: boolean }
+
+    DomainCommandOutcomeV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, ownerCommandId, status, sourceVersion]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/DomainAdapterSchemaVersion" }
+        ownerCommandId: { type: string, format: uuid }
+        status: { type: string, enum: [COMPLETED, PENDING, PARTIAL, UNKNOWN, REJECTED, CONFLICT, BLOCKED, UNAVAILABLE] }
+        sourceVersion: { type: string, minLength: 1, maxLength: 64 }
+        resolvedAt: { type: string, format: date-time }
+
+    DomainAdapterProblemCodeV1:
+      type: string
+      enum: [DOMAIN_ADAPTER_REQUEST_INVALID, DOMAIN_ADAPTER_UNAUTHORIZED, DOMAIN_ADAPTER_NOT_ACCESSIBLE, DOMAIN_ADAPTER_CONFLICT, DOMAIN_ADAPTER_UNAVAILABLE, DOMAIN_ADAPTER_SCHEMA_UNSUPPORTED]
+
+    DomainAdapterProblemDetailV1:
+      type: object
+      additionalProperties: false
+      required: [type, title, status, code, correlationId]
+      properties:
+        type: { type: string, format: uri }
+        title: { type: string }
+        status: { type: integer, minimum: 400, maximum: 599 }
+        detail: { type: string, maxLength: 320 }
+        code: { $ref: "#/components/schemas/DomainAdapterProblemCodeV1" }
+        correlationId: { type: string, format: uuid }

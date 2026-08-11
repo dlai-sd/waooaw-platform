@@ -1606,3 +1606,22 @@ R-069 conditions bind Order 3: contract work must remain within `CR-GOAL-005-INS
 | `issued_at` | 2026-08-11T02:21:49+00:00 |
 
 Owner attestations, INST-010 deterministic generation, executable G-F4-10 closure, and Order 4 remain blocked until this Contribution and Learning Record are published and the canonical contract versions are fixed.
+
+## Amendment 5 Order 3 Canonical Contract Acceptance And Publication
+
+| Field | Value |
+|---|---|
+| Acceptance Record | ACC-GOAL-005-INST-005-08 |
+| Institution | INST-005 — Solution Architect and logical contract owner |
+| Authorization | GOA-GOAL-005-INST-005-08 |
+| Acceptance timestamp | 2026-08-11T02:26:15+00:00 |
+| Contribution Record | CR-GOAL-005-INST-005-12 |
+| Learning Record | LR-GOAL-005-INST-005-03 |
+| Canonical BP | `business-platform.openapi.yaml` 1.3.0 / SHA-256 `357c14bb359d15c6318192e9adf94eac0a4f0537626e9910363539e731d9c22e` |
+| Canonical PR | `professional-runtime.openapi.yaml` 1.2.0 / SHA-256 `a1aba55e7612cf0f8d342eab51f662d68127f4dd5aabaaa6695dc4e418a51f46` |
+| Canonical WBE | `wbe-relationship-workspace.openapi.yaml` 1.0.0 / SHA-256 `999b6687f7a0e96e6b362ca286805ee4bb44058f0e67e3dad2f928d74d78eaff` |
+| Canonical DMA adapter | `dma-relationship-outcome-adapter.openapi.yaml` 1.0.0 / SHA-256 `594524da76b4192493dbaf8ea4515f2d9d5c858dbd896c6020ea055e7230b26b` |
+| CE coverage | `relationship-workspace-ce-contract-coverage.md` 1.0.0 / SHA-256 `c11bd9e82680fd8173353ded2e029d1b69a115983cd1b9c160e86adc060e9478` |
+| Validation | Docker F4 slice extraction and four-spec YAML, local-reference, operation-ID, and required-inventory validation PASS; existing unrelated BP reference debt remains outside the dependency-closed F4 slice |
+
+This publication fixes the contract bytes for owner attestation. It does not complete owner attestation, run a generator, create a generated client, close executable G-F4-10, authorize source implementation, or advance Order 4.
