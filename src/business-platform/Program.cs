@@ -146,6 +146,7 @@ builder.Services.AddDbContextFactory<EmploymentRelationshipDbContext>((services,
 builder.Services.AddScoped<IRelationshipConstitutionalGateway, RelationshipConstitutionalGateway>();
 builder.Services.AddScoped<EmploymentRelationshipService>();
 builder.Services.AddScoped<RelationshipConfigurationService>();
+builder.Services.AddScoped<EmploymentContractService>();
 builder.Services.AddScoped<RelationshipTrialService>();
 builder.Services.Configure<WhatsAppJourneyOptions>(builder.Configuration.GetSection("WhatsApp"));
 builder.Services.AddScoped<IWhatsAppRegistrationEvidenceGateway, WhatsAppRegistrationEvidenceGateway>();

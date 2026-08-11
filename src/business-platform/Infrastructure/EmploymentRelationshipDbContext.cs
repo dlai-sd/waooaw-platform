@@ -172,6 +172,23 @@ public sealed class DecisionSpaceSnapshot
     public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;
 }
 
+public sealed class EmploymentContractVersion
+{
+    public Guid ContractId { get; init; } = Guid.NewGuid();
+    public Guid TenantId { get; init; }
+    public Guid RelationshipId { get; init; }
+    public int Version { get; init; }
+    public string ContractHash { get; init; } = string.Empty;
+    public string AeecVersion { get; init; } = string.Empty;
+    public Guid? DomainSchedulePayloadReference { get; init; }
+    public string DomainScheduleHash { get; init; } = string.Empty;
+    public string ConfigurationSnapshotJson { get; init; } = "{}";
+    public string PriceTaxSummaryJson { get; init; } = "{}";
+    public string State { get; init; } = "PRESENTED";
+    public Guid CreatedByParticipantId { get; init; }
+    public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;
+}
+
 public sealed class RelationshipTrialBinding
 {
     public Guid BindingId { get; init; } = Guid.NewGuid();
@@ -223,6 +240,7 @@ public sealed class EmploymentRelationshipDbContext : DbContext
     public DbSet<RelationshipGoal> RelationshipGoals => Set<RelationshipGoal>();
     public DbSet<RelationshipSkillConfiguration> RelationshipSkillConfigurations => Set<RelationshipSkillConfiguration>();
     public DbSet<DecisionSpaceSnapshot> DecisionSpaceSnapshots => Set<DecisionSpaceSnapshot>();
+    public DbSet<EmploymentContractVersion> EmploymentContractVersions => Set<EmploymentContractVersion>();
     public DbSet<RelationshipTrialBinding> RelationshipTrialBindings => Set<RelationshipTrialBinding>();
     public DbSet<WhatsAppJourneyContact> WhatsAppJourneyContacts => Set<WhatsAppJourneyContact>();
     public DbSet<WhatsAppMessageReceipt> WhatsAppMessageReceipts => Set<WhatsAppMessageReceipt>();
@@ -442,6 +460,30 @@ public sealed class EmploymentRelationshipDbContext : DbContext
                 .HasForeignKey(value => new { value.TenantId, value.RelationshipId })
                 .HasPrincipalKey(value => new { value.TenantId, value.RelationshipId });
         });
+
+            modelBuilder.Entity<EmploymentContractVersion>(entity =>
+            {
+                entity.ToTable("employment_contract_versions", "business");
+                entity.HasKey(value => value.ContractId);
+                entity.HasIndex(value => new { value.TenantId, value.RelationshipId, value.Version }).IsUnique();
+                entity.HasIndex(value => new { value.TenantId, value.RelationshipId, value.ContractHash }).IsUnique();
+                entity.Property(value => value.ContractId).HasColumnName("contract_id");
+                entity.Property(value => value.TenantId).HasColumnName("tenant_id");
+                entity.Property(value => value.RelationshipId).HasColumnName("relationship_id");
+                entity.Property(value => value.Version).HasColumnName("version");
+                entity.Property(value => value.ContractHash).HasColumnName("contract_hash").HasMaxLength(64).IsFixedLength();
+                entity.Property(value => value.AeecVersion).HasColumnName("aeec_version").HasMaxLength(32);
+                entity.Property(value => value.DomainSchedulePayloadReference).HasColumnName("domain_schedule_payload_reference");
+                entity.Property(value => value.DomainScheduleHash).HasColumnName("domain_schedule_hash").HasMaxLength(64).IsFixedLength();
+                entity.Property(value => value.ConfigurationSnapshotJson).HasColumnName("configuration_snapshot_json").HasColumnType("jsonb");
+                entity.Property(value => value.PriceTaxSummaryJson).HasColumnName("price_tax_summary_json").HasColumnType("jsonb");
+                entity.Property(value => value.State).HasColumnName("state").HasMaxLength(16);
+                entity.Property(value => value.CreatedByParticipantId).HasColumnName("created_by_participant_id");
+                entity.Property(value => value.CreatedAt).HasColumnName("created_at");
+                entity.HasOne<EmploymentRelationship>().WithMany()
+                .HasForeignKey(value => new { value.TenantId, value.RelationshipId })
+                .HasPrincipalKey(value => new { value.TenantId, value.RelationshipId });
+            });
 
         modelBuilder.Entity<RelationshipTrialBinding>(entity =>
         {
