@@ -689,6 +689,91 @@ paths:
         "503":
           description: WBE or PR owner outcome is unavailable or inconsistent
 
+  /api/v1/employment/relationships/{relationshipId}/contracts:
+    post:
+      tags: [Employment]
+      summary: Compose or replay the presented employment contract
+      description: |
+        Composes immutable contract material from the latest evidenced Decision Space,
+        accepted goals and skills, professional disclosure, and exact commercial terms.
+        Identical canonical material replays the existing version and amendments create a new version.
+      operationId: proposeEmploymentContract
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProposeEmploymentContractRequest"
+      responses:
+        "201":
+          description: New immutable contract version presented
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmploymentContractVersion"
+        "200":
+          description: Existing identical contract version replayed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmploymentContractVersion"
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: Active same-tenant participant authority denied
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "503":
+          description: Contract composition or constitutional evidence is unavailable
+
+  /api/v1/employment/relationships/{relationshipId}/contracts/{version}/accept:
+    post:
+      tags: [Employment]
+      summary: Explicitly accept one exact employment contract version
+      description: |
+        Tier-4 web-only command. Requires a Keycloak portal authentication no older than five
+        minutes, an active same-tenant EMPLOYER binding, the exact presented version and hash,
+        and the separate fixed authority-scope confirmation statement. WhatsApp, MPIN, deep-link
+        possession, trial consent, silence, or a default selection cannot accept a contract.
+      operationId: acceptEmploymentContract
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - name: version
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AcceptEmploymentContractRequest"
+      responses:
+        "201":
+          description: Exact contract accepted with committed constitutional evidence
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmploymentContractAcceptance"
+        "200":
+          description: Existing exact acceptance replayed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmploymentContractAcceptance"
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: Fresh portal assurance or active same-tenant EMPLOYER authority denied
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "503":
+          description: Constitutional validation or evidence commitment is unavailable
+
   /api/v1/employment/contracts:
     get:
       tags: [Employment]
@@ -3561,6 +3646,71 @@ components:
         updatedAt:
           type: string
           format: date-time
+
+    EmploymentContractCommercialTerms:
+      type: object
+      additionalProperties: false
+      required: [currency, grossAmountInrPaise, gstAmountInrPaise, cadence, subscriptionTerms, adSpendTreatment, cancellationAndRefundTerms]
+      properties:
+        currency: { type: string, enum: [INR] }
+        grossAmountInrPaise: { type: integer, format: int64, minimum: 1 }
+        gstAmountInrPaise: { type: integer, format: int64, minimum: 0 }
+        cadence: { type: string, enum: [MONTHLY] }
+        subscriptionTerms: { type: string, minLength: 1 }
+        adSpendTreatment: { type: string, minLength: 1 }
+        cancellationAndRefundTerms: { type: string, minLength: 1 }
+
+    ProposeEmploymentContractRequest:
+      type: object
+      additionalProperties: false
+      required: [commercialTerms]
+      properties:
+        commercialTerms:
+          $ref: "#/components/schemas/EmploymentContractCommercialTerms"
+        correlationId:
+          type: string
+          format: uuid
+
+    EmploymentContractVersion:
+      type: object
+      additionalProperties: false
+      required: [contractId, version, contractHash, state, document, createdAt]
+      properties:
+        contractId: { type: string, format: uuid }
+        version: { type: integer, minimum: 1 }
+        contractHash: { type: string, pattern: '^[0-9a-f]{64}$' }
+        state: { type: string, enum: [PRESENTED] }
+        document:
+          type: object
+          description: Canonical AEEC and domain-schedule material, including rights, obligations, limitations, authority, Stop, review, configuration, and price/tax terms.
+          additionalProperties: true
+        createdAt: { type: string, format: date-time }
+
+    AcceptEmploymentContractRequest:
+      type: object
+      additionalProperties: false
+      required: [contractHash, scopeConfirmation]
+      properties:
+        contractHash: { type: string, pattern: '^[0-9a-f]{64}$' }
+        scopeConfirmation:
+          type: string
+          enum: [I_CONFIRM_THE_ACCEPTED_DECISION_SPACE_AND_AUTHORITY_SCOPE]
+        correlationId:
+          type: string
+          format: uuid
+
+    EmploymentContractAcceptance:
+      type: object
+      additionalProperties: false
+      required: [acceptanceId, contractId, contractVersion, contractHash, authenticationAssurance, acceptanceEvidenceId, acceptedAt]
+      properties:
+        acceptanceId: { type: string, format: uuid }
+        contractId: { type: string, format: uuid }
+        contractVersion: { type: integer, minimum: 1 }
+        contractHash: { type: string, pattern: '^[0-9a-f]{64}$' }
+        authenticationAssurance: { type: string, enum: [AAL3_FRESH] }
+        acceptanceEvidenceId: { type: string, format: uuid }
+        acceptedAt: { type: string, format: date-time }
 
     RelationshipTimelineEntry:
       type: object

@@ -1,6 +1,6 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-08-11 (WC059-02 contract composition complete)
+**Last Updated:** 2026-08-11 (WC059-03 Tier-4 contract acceptance complete)
 
 ---
 
@@ -19,10 +19,11 @@
 | WC-059 implementation | AUTHORIZED — WC059-01 through WC059-08 may proceed under the five-session Participation Window |
 | WC059-01 Migration 21b | DONE — PostgreSQL 16 first apply/reapply, exact composite contract identity, RLS enabled/forced with own-tenant visibility and cross-tenant denial, immutable contract/acceptance evidence, retry/success/conflict constraints, terminal immutability, duplicate replay arbitration, and two-writer canonical-tuple concurrency passed |
 | WC059-02 EmploymentContractService | DONE — latest evidenced Decision Space plus accepted goals/skills, professional disclosure, and exact commercial terms compose canonical immutable material; unchanged material replays the stored version/hash and changed accepted configuration creates the next version; 8 focused and adjacent BP tests pass in Docker |
+| WC059-03 proposal and acceptance | DONE — canonical proposal/accept paths, exact version/hash, fixed separate scope statement, active same-tenant `EMPLOYER`, fresh five-minute Keycloak portal assurance, WhatsApp/service denial, CE evidence-before-mutation, acceptance replay, and relationship progression implemented; 23 focused/adjacent BP tests pass in Docker and the added OpenAPI slice validates with generator 7.17.0 |
 
 ### Authorization Boundary And Next Action
 
-FA-040, R-080, ACK-08, GOA-05, and ACC-05 complete the WC-059 implementation entry sequence. WC059-01 and WC059-02 are complete on the dedicated implementation branch; the next dependency-ordered action is WC059-03 contract proposal and Tier-4 acceptance. Live Razorpay/provider activation, credentials/account setup, WC-060, deployment, merge, self-review, architecture reinterpretation, and production/customer proof remain unauthorized.
+FA-040, R-080, ACK-08, GOA-05, and ACC-05 complete the WC-059 implementation entry sequence. WC059-01 through WC059-03 are complete on the dedicated implementation branch; the next dependency-ordered action is WC059-04 onboarding payment consent and WC-042 integration. Live Razorpay/provider activation, credentials/account setup, WC-060, deployment, merge, self-review, architecture reinterpretation, and production/customer proof remain unauthorized.
 
 ---
 

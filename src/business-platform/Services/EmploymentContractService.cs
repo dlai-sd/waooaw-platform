@@ -179,6 +179,20 @@ public sealed class EmploymentContractService(
         return new EmploymentContractComposition(contract, document, true);
     }
 
+    public async Task<EmploymentContractVersion?> GetByVersionAsync(
+        Guid tenantId,
+        Guid relationshipId,
+        int version,
+        CancellationToken cancellationToken)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+        return await db.EmploymentContractVersions.AsNoTracking().SingleOrDefaultAsync(
+            item => item.TenantId == tenantId
+                && item.RelationshipId == relationshipId
+                && item.Version == version,
+            cancellationToken);
+    }
+
     private static EmploymentContractDocument DeserializeDocument(string json) =>
         JsonSerializer.Deserialize<EmploymentContractDocument>(json, JsonOptions)
         ?? throw new InvalidOperationException("Stored employment contract material is invalid.");

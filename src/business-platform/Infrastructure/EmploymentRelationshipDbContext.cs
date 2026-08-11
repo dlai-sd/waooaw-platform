@@ -189,6 +189,23 @@ public sealed class EmploymentContractVersion
     public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;
 }
 
+public sealed class ContractAcceptance
+{
+    public Guid AcceptanceId { get; init; } = Guid.NewGuid();
+    public Guid TenantId { get; init; }
+    public Guid RelationshipId { get; init; }
+    public Guid ContractId { get; init; }
+    public int ContractVersion { get; init; }
+    public string ContractHash { get; init; } = string.Empty;
+    public Guid ParticipantId { get; init; }
+    public RelationshipParticipantRole ParticipantRole { get; init; }
+    public string AuthenticationAssurance { get; init; } = string.Empty;
+    public Guid AuthoritySnapshotId { get; init; }
+    public string ScopeConfirmationHash { get; init; } = string.Empty;
+    public Guid AcceptanceEvidenceId { get; init; }
+    public DateTimeOffset AcceptedAt { get; init; } = DateTimeOffset.UtcNow;
+}
+
 public sealed class RelationshipTrialBinding
 {
     public Guid BindingId { get; init; } = Guid.NewGuid();
@@ -241,6 +258,7 @@ public sealed class EmploymentRelationshipDbContext : DbContext
     public DbSet<RelationshipSkillConfiguration> RelationshipSkillConfigurations => Set<RelationshipSkillConfiguration>();
     public DbSet<DecisionSpaceSnapshot> DecisionSpaceSnapshots => Set<DecisionSpaceSnapshot>();
     public DbSet<EmploymentContractVersion> EmploymentContractVersions => Set<EmploymentContractVersion>();
+    public DbSet<ContractAcceptance> ContractAcceptances => Set<ContractAcceptance>();
     public DbSet<RelationshipTrialBinding> RelationshipTrialBindings => Set<RelationshipTrialBinding>();
     public DbSet<WhatsAppJourneyContact> WhatsAppJourneyContacts => Set<WhatsAppJourneyContact>();
     public DbSet<WhatsAppMessageReceipt> WhatsAppMessageReceipts => Set<WhatsAppMessageReceipt>();
@@ -465,6 +483,14 @@ public sealed class EmploymentRelationshipDbContext : DbContext
             {
                 entity.ToTable("employment_contract_versions", "business");
                 entity.HasKey(value => value.ContractId);
+                entity.HasAlternateKey(value => new
+                {
+                    value.TenantId,
+                    value.RelationshipId,
+                    value.ContractId,
+                    value.Version,
+                    value.ContractHash,
+                });
                 entity.HasIndex(value => new { value.TenantId, value.RelationshipId, value.Version }).IsUnique();
                 entity.HasIndex(value => new { value.TenantId, value.RelationshipId, value.ContractHash }).IsUnique();
                 entity.Property(value => value.ContractId).HasColumnName("contract_id");
@@ -484,6 +510,45 @@ public sealed class EmploymentRelationshipDbContext : DbContext
                 .HasForeignKey(value => new { value.TenantId, value.RelationshipId })
                 .HasPrincipalKey(value => new { value.TenantId, value.RelationshipId });
             });
+
+        modelBuilder.Entity<ContractAcceptance>(entity =>
+        {
+            entity.ToTable("contract_acceptances", "business");
+            entity.HasKey(value => value.AcceptanceId);
+            entity.HasIndex(value => new { value.TenantId, value.RelationshipId, value.ContractId }).IsUnique();
+            entity.Property(value => value.AcceptanceId).HasColumnName("acceptance_id");
+            entity.Property(value => value.TenantId).HasColumnName("tenant_id");
+            entity.Property(value => value.RelationshipId).HasColumnName("relationship_id");
+            entity.Property(value => value.ContractId).HasColumnName("contract_id");
+            entity.Property(value => value.ContractVersion).HasColumnName("contract_version");
+            entity.Property(value => value.ContractHash).HasColumnName("contract_hash").HasMaxLength(64).IsFixedLength();
+            entity.Property(value => value.ParticipantId).HasColumnName("participant_id");
+            entity.Property(value => value.ParticipantRole).HasColumnName("participant_role").HasConversion(
+                value => RelationshipRoleCodec.ToDatabase(value),
+                value => RelationshipRoleCodec.FromDatabase(value));
+            entity.Property(value => value.AuthenticationAssurance).HasColumnName("authentication_assurance").HasMaxLength(32);
+            entity.Property(value => value.AuthoritySnapshotId).HasColumnName("authority_snapshot_id");
+            entity.Property(value => value.ScopeConfirmationHash).HasColumnName("scope_confirmation_hash").HasMaxLength(64).IsFixedLength();
+            entity.Property(value => value.AcceptanceEvidenceId).HasColumnName("acceptance_evidence_id");
+            entity.Property(value => value.AcceptedAt).HasColumnName("accepted_at");
+            entity.HasOne<EmploymentContractVersion>().WithMany()
+                .HasForeignKey(value => new
+                {
+                    value.TenantId,
+                    value.RelationshipId,
+                    value.ContractId,
+                    value.ContractVersion,
+                    value.ContractHash,
+                })
+                .HasPrincipalKey(value => new
+                {
+                    value.TenantId,
+                    value.RelationshipId,
+                    value.ContractId,
+                    value.Version,
+                    value.ContractHash,
+                });
+        });
 
         modelBuilder.Entity<RelationshipTrialBinding>(entity =>
         {
