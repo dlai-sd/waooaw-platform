@@ -14,13 +14,14 @@ from intent_crystallizer import (
     IntentCrystallizer,
     LockedArtifact,
 )
-from session_executor import C041ToolAuthorizationError, SessionExecutor
+from session_executor import C041ToolAuthorizationError, SessionExecutor, TrialCapabilityDeniedError
 from skill_resolver import (
     CrystallizerConfig,
     SessionSkillContext,
     SkillAssignment,
     SkillResolutionError,
     SkillResolver,
+    _merge_into_context,
 )
 
 # ─── Shared fixture helpers ──────────────────────────────────────────────────
@@ -335,3 +336,31 @@ class TestCCT_SKILL_CP_03:
             "CCT-SKILL-CP-03: every tool in content_publish must carry DETERMINISTIC_REQUIRED"
         )
         assert len(calls) == 3
+
+
+class TestTrialCapabilities:
+    @pytest.mark.asyncio
+    async def test_trial_denies_authorized_tool_not_explicitly_trial_safe(self) -> None:
+        context = SessionSkillContext(
+            authorized_tools={"provider.publish", "local.simulate"},
+            trial_safe_tools={"local.simulate"},
+            dcm_categories={
+                "provider.publish": "DETERMINISTIC_REQUIRED",
+                "local.simulate": "DETERMINISTIC_REQUIRED",
+            },
+        )
+        executor = SessionExecutor(context, trial_mode=True)
+
+        with pytest.raises(TrialCapabilityDeniedError):
+            await executor.check_and_dispatch("provider.publish", {})
+        result = await executor.check_and_dispatch("local.simulate", {})
+        assert result["status"] == "dispatched"
+
+    @pytest.mark.asyncio
+    async def test_manifest_trial_tools_must_also_be_authorized(self) -> None:
+        context = SessionSkillContext()
+        _merge_into_context(context, "fixture", {
+            "tools": ["local.simulate"],
+            "trial_safe_tools": ["local.simulate", "provider.mutate"],
+        })
+        assert context.trial_safe_tools == {"local.simulate"}

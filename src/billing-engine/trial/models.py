@@ -10,6 +10,7 @@ from datetime import datetime
 @dataclass
 class TrialStartResult:
     trial_id: uuid.UUID
+    started_at: datetime
     expires_at: datetime
     free_unit_caps: dict[str, int]
     wallet_bucket_ids: list[uuid.UUID]

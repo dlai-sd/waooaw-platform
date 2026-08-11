@@ -82,10 +82,14 @@ if (!string.IsNullOrWhiteSpace(workloadCredentials)
     builder.Services.AddSingleton(workloadIdentity);
     builder.Services.AddSingleton<IRelationshipWorkspaceOwnerGateway>(
         new AuthenticatedRelationshipWorkspaceOwnerGateway(workloadIdentity, prWorkspaceUri, wbeWorkspaceUri));
+    builder.Services.AddSingleton<IRelationshipTrialOwnerGateway>(services =>
+        new HttpRelationshipTrialOwnerGateway(
+            services.GetRequiredService<IHttpClientFactory>(), workloadIdentity, prWorkspaceUri));
 }
 else
 {
     builder.Services.AddSingleton<IRelationshipWorkspaceOwnerGateway, UnconfiguredRelationshipWorkspaceOwnerGateway>();
+    builder.Services.AddSingleton<IRelationshipTrialOwnerGateway, UnconfiguredRelationshipTrialOwnerGateway>();
 }
 
 // ── WBE (billing-engine) HttpClient — used by SubscriptionsController + Temporal activities ──
@@ -140,6 +144,7 @@ builder.Services.AddDbContextFactory<EmploymentRelationshipDbContext>((services,
 builder.Services.AddScoped<IRelationshipConstitutionalGateway, RelationshipConstitutionalGateway>();
 builder.Services.AddScoped<EmploymentRelationshipService>();
 builder.Services.AddScoped<RelationshipConfigurationService>();
+builder.Services.AddScoped<RelationshipTrialService>();
 
 // ── Identity Boundary — WC-034 F2 (identity-boundary.md) ─────────────────
 // Pre-account registration paths use actor subject (JWT sub); no tenant_id required.

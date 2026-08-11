@@ -172,6 +172,22 @@ public sealed class DecisionSpaceSnapshot
     public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;
 }
 
+public sealed class RelationshipTrialBinding
+{
+    public Guid BindingId { get; init; } = Guid.NewGuid();
+    public Guid TenantId { get; init; }
+    public Guid RelationshipId { get; init; }
+    public Guid CustomerId { get; init; }
+    public Guid CorrelationId { get; init; }
+    public Guid? TrialId { get; set; }
+    public DateTimeOffset? StartsAt { get; set; }
+    public DateTimeOffset? ExpiresAt { get; set; }
+    public string Status { get; set; } = "PENDING";
+    public string? UnresolvedOwner { get; set; }
+    public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
 public sealed class EmploymentRelationshipDbContext : DbContext
 {
     public EmploymentRelationshipDbContext(DbContextOptions<EmploymentRelationshipDbContext> options)
@@ -186,6 +202,7 @@ public sealed class EmploymentRelationshipDbContext : DbContext
     public DbSet<RelationshipGoal> RelationshipGoals => Set<RelationshipGoal>();
     public DbSet<RelationshipSkillConfiguration> RelationshipSkillConfigurations => Set<RelationshipSkillConfiguration>();
     public DbSet<DecisionSpaceSnapshot> DecisionSpaceSnapshots => Set<DecisionSpaceSnapshot>();
+    public DbSet<RelationshipTrialBinding> RelationshipTrialBindings => Set<RelationshipTrialBinding>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -398,6 +415,28 @@ public sealed class EmploymentRelationshipDbContext : DbContext
             entity.Property(value => value.CreatedByParticipantId).HasColumnName("created_by_participant_id");
             entity.Property(value => value.EvidenceId).HasColumnName("evidence_id");
             entity.Property(value => value.CreatedAt).HasColumnName("created_at");
+            entity.HasOne<EmploymentRelationship>().WithMany()
+                .HasForeignKey(value => new { value.TenantId, value.RelationshipId })
+                .HasPrincipalKey(value => new { value.TenantId, value.RelationshipId });
+        });
+
+        modelBuilder.Entity<RelationshipTrialBinding>(entity =>
+        {
+            entity.ToTable("relationship_trial_bindings", "business");
+            entity.HasKey(value => value.BindingId);
+            entity.HasIndex(value => new { value.TenantId, value.RelationshipId }).IsUnique();
+            entity.Property(value => value.BindingId).HasColumnName("binding_id");
+            entity.Property(value => value.TenantId).HasColumnName("tenant_id");
+            entity.Property(value => value.RelationshipId).HasColumnName("relationship_id");
+            entity.Property(value => value.CustomerId).HasColumnName("customer_id");
+            entity.Property(value => value.CorrelationId).HasColumnName("correlation_id");
+            entity.Property(value => value.TrialId).HasColumnName("trial_id");
+            entity.Property(value => value.StartsAt).HasColumnName("starts_at");
+            entity.Property(value => value.ExpiresAt).HasColumnName("expires_at");
+            entity.Property(value => value.Status).HasColumnName("status");
+            entity.Property(value => value.UnresolvedOwner).HasColumnName("unresolved_owner");
+            entity.Property(value => value.CreatedAt).HasColumnName("created_at");
+            entity.Property(value => value.UpdatedAt).HasColumnName("updated_at");
             entity.HasOne<EmploymentRelationship>().WithMany()
                 .HasForeignKey(value => new { value.TenantId, value.RelationshipId })
                 .HasPrincipalKey(value => new { value.TenantId, value.RelationshipId });

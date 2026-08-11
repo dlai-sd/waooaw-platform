@@ -36,6 +36,7 @@ route_grants:
   - { caller: business-platform, target: billing-engine, method: POST, route: "/internal/v1/relationships/{relationshipId}/commercial-commands", operation: submitRelationshipCommercialCommand, contract_major: 1 }
   - { caller: business-platform, target: billing-engine, method: GET, route: "/internal/v1/relationships/{relationshipId}/commercial-commands/{commandId}", operation: getRelationshipCommercialCommand, contract_major: 1 }
   - { caller: business-platform, target: professional-runtime, method: GET, route: "/api/v1/internal/relationships/{relationshipId}/workspace-execution", operation: getRelationshipExecutionProjection, contract_major: 1 }
+  - { caller: business-platform, target: professional-runtime, method: POST, route: "/api/v1/internal/relationships/{relationshipId}/evaluation-trial", operation: startRelationshipTrial, contract_major: 1 }
   - { caller: business-platform, target: professional-runtime, method: POST, route: "/api/v1/internal/relationships/{relationshipId}/workspace-controls", operation: submitRelationshipExecutionControl, contract_major: 1 }
   - { caller: business-platform, target: professional-runtime, method: GET, route: "/api/v1/internal/relationships/{relationshipId}/workspace-controls/{controlId}", operation: getRelationshipExecutionControl, contract_major: 1 }
   - { caller: business-platform, target: domain-adapter-dma, method: GET, route: "/internal/v1/relationships/{relationshipId}/domain-outcomes/projection", operation: getDomainOutcomeProjection, contract_major: 1 }

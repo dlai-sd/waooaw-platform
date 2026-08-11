@@ -56,6 +56,7 @@ class TrialStartRequest(BaseModel):
 
 class TrialStartResponse(BaseModel):
     trial_id: uuid.UUID
+    started_at: datetime
     expires_at: datetime
     free_unit_caps: dict[str, int]
     wallet_bucket_ids: list[uuid.UUID]
@@ -88,6 +89,7 @@ async def start_trial(
     )
     return TrialStartResponse(
         trial_id=result.trial_id,
+        started_at=result.started_at,
         expires_at=result.expires_at,
         free_unit_caps=result.free_unit_caps,
         wallet_bucket_ids=result.wallet_bucket_ids,

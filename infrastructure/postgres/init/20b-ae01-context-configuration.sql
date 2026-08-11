@@ -130,6 +130,35 @@ CREATE TABLE IF NOT EXISTS business.decision_space_snapshots (
         CHECK (jsonb_typeof(accepted_evidence_json) = 'array')
 );
 
+CREATE TABLE IF NOT EXISTS business.relationship_trial_bindings (
+    binding_id          UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id           UUID         NOT NULL,
+    relationship_id     UUID         NOT NULL,
+    customer_id         UUID         NOT NULL,
+    correlation_id      UUID         NOT NULL,
+    trial_id            UUID,
+    starts_at           TIMESTAMPTZ,
+    expires_at          TIMESTAMPTZ,
+    status              VARCHAR(16)  NOT NULL DEFAULT 'PENDING',
+    unresolved_owner    VARCHAR(16),
+    created_at          TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    CONSTRAINT relationship_trial_bindings_relationship_fk
+        FOREIGN KEY (tenant_id, relationship_id)
+        REFERENCES business.employment_relationships (tenant_id, relationship_id),
+    CONSTRAINT relationship_trial_bindings_relationship_unique
+        UNIQUE (tenant_id, relationship_id),
+    CONSTRAINT relationship_trial_bindings_status_check
+        CHECK (status IN ('PENDING', 'UNRESOLVED', 'ACTIVE')),
+    CONSTRAINT relationship_trial_bindings_owner_check
+        CHECK (unresolved_owner IS NULL OR unresolved_owner IN ('WBE', 'PR')),
+    CONSTRAINT relationship_trial_bindings_window_check
+        CHECK (expires_at IS NULL OR starts_at IS NOT NULL AND expires_at = starts_at + INTERVAL '14 days'),
+    CONSTRAINT relationship_trial_bindings_active_check
+        CHECK (status <> 'ACTIVE' OR
+            trial_id IS NOT NULL AND starts_at IS NOT NULL AND expires_at IS NOT NULL AND unresolved_owner IS NULL)
+);
+
 CREATE INDEX IF NOT EXISTS idx_relationship_context_active
     ON payload_store.relationship_context_payloads (tenant_id, relationship_id, field_type)
     WHERE invalidated_at IS NULL AND erased_at IS NULL;
@@ -139,6 +168,8 @@ CREATE INDEX IF NOT EXISTS idx_relationship_goals
     ON business.relationship_goals (tenant_id, relationship_id, status);
 CREATE INDEX IF NOT EXISTS idx_relationship_skill_configuration
     ON business.relationship_skill_configuration (tenant_id, relationship_id, status);
+CREATE INDEX IF NOT EXISTS idx_relationship_trial_bindings_status
+    ON business.relationship_trial_bindings (tenant_id, status);
 
 CREATE OR REPLACE FUNCTION business.reject_ae01_append_only_mutation()
 RETURNS TRIGGER
@@ -176,6 +207,8 @@ ALTER TABLE business.relationship_skill_configuration ENABLE ROW LEVEL SECURITY;
 ALTER TABLE business.relationship_skill_configuration FORCE ROW LEVEL SECURITY;
 ALTER TABLE business.decision_space_snapshots ENABLE ROW LEVEL SECURITY;
 ALTER TABLE business.decision_space_snapshots FORCE ROW LEVEL SECURITY;
+ALTER TABLE business.relationship_trial_bindings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE business.relationship_trial_bindings FORCE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS relationship_context_payloads_tenant_isolation ON payload_store.relationship_context_payloads;
 CREATE POLICY relationship_context_payloads_tenant_isolation ON payload_store.relationship_context_payloads
@@ -197,9 +230,14 @@ DROP POLICY IF EXISTS decision_space_snapshots_tenant_isolation ON business.deci
 CREATE POLICY decision_space_snapshots_tenant_isolation ON business.decision_space_snapshots
     USING (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '')::UUID)
     WITH CHECK (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '')::UUID);
+DROP POLICY IF EXISTS relationship_trial_bindings_tenant_isolation ON business.relationship_trial_bindings;
+CREATE POLICY relationship_trial_bindings_tenant_isolation ON business.relationship_trial_bindings
+    USING (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '')::UUID)
+    WITH CHECK (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '')::UUID);
 
 GRANT SELECT, INSERT, UPDATE ON payload_store.relationship_context_payloads TO business_app;
 GRANT SELECT, INSERT ON business.context_confirmation_events TO business_app;
 GRANT SELECT, INSERT, UPDATE ON business.relationship_goals TO business_app;
 GRANT SELECT, INSERT, UPDATE ON business.relationship_skill_configuration TO business_app;
 GRANT SELECT, INSERT ON business.decision_space_snapshots TO business_app;
+GRANT SELECT, INSERT, UPDATE ON business.relationship_trial_bindings TO business_app;

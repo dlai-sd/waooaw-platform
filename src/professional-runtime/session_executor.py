@@ -30,6 +30,12 @@ class C041ToolAuthorizationError(Exception):
         )
 
 
+class TrialCapabilityDeniedError(Exception):
+    def __init__(self, tool_name: str) -> None:
+        self.tool_name = tool_name
+        super().__init__(f"Tool '{tool_name}' is not available in zero-external-action trial mode")
+
+
 class ToolDispatcher(Protocol):  # pragma: no cover
     """Minimal interface for the downstream dispatcher (CTG or stub)."""
     async def dispatch(
@@ -58,10 +64,12 @@ class SessionExecutor:
         session_ctx: SessionSkillContext,
         dispatcher: ToolDispatcher | None = None,
         interview_service: InterviewAnswerService | None = None,
+        trial_mode: bool = False,
     ) -> None:
         self._ctx = session_ctx
         self._dispatcher = dispatcher
         self._interview_service = interview_service
+        self._trial_mode = trial_mode
         # Temporal-persisted session state (WC041-04)
         self._locked_artifacts: dict[str, LockedArtifact] = {}
         self._crystallization_complete: dict[str, bool] = {}
@@ -104,6 +112,10 @@ class SessionExecutor:
         if not self._crystallization_complete.get(skill_id, False):
             raise CrystallizerRequiredError(skill_id, tool_name)
 
+    def _check_trial_capability(self, tool_name: str) -> None:
+        if self._trial_mode and tool_name not in self._ctx.trial_safe_tools:
+            raise TrialCapabilityDeniedError(tool_name)
+
     # ── Main dispatch ───────────────────────────────────────────────────────
 
     async def check_and_dispatch(
@@ -118,6 +130,7 @@ class SessionExecutor:
             CrystallizerRequiredError: skill requires a LockedArtifact before tool call
         """
         self._check_tool_authorized(tool_name)
+        self._check_trial_capability(tool_name)
         self._check_crystallizer_gate(tool_name)
 
         dcm_category = self._ctx.dcm_categories.get(tool_name, "DETERMINISTIC_REQUIRED")

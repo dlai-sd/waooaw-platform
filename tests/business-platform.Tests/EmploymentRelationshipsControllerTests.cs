@@ -121,6 +121,42 @@ public sealed class EmploymentRelationshipsControllerTests
         Assert.Equal("InternalService", authorization.Policy);
     }
 
+    [Fact]
+    public async Task TrialEndpointUsesAuthenticatedRelationshipParticipant()
+    {
+        var factory = new InMemoryEmploymentRelationshipFactory(Guid.NewGuid().ToString("N"));
+        var relationships = new EmploymentRelationshipService(
+            factory,
+            new RecordingRelationshipConstitutionalGateway(),
+            NullLogger<EmploymentRelationshipService>.Instance);
+        var tenantId = Guid.NewGuid();
+        var participantId = Guid.NewGuid();
+        var admitted = await relationships.AdmitAsync(
+            tenantId, participantId, Guid.NewGuid(), "DMA", Guid.NewGuid(), CancellationToken.None);
+        await relationships.TransitionAsync(
+            tenantId, admitted.Relationship.RelationshipId, participantId, RelationshipParticipantRole.Evaluator,
+            EmploymentRelationshipState.Interviewing, Guid.NewGuid(), false, CancellationToken.None);
+        var startsAt = DateTimeOffset.UtcNow;
+        var trialId = Guid.NewGuid();
+        var gateway = new TrialOwnerGatewayStub
+        {
+            Wbe = new(trialId, startsAt, startsAt.AddDays(14)),
+            Pr = new(trialId, "TRIAL_DEMONSTRATING", startsAt.AddDays(14)),
+        };
+        var controller = new EmploymentRelationshipsController(
+            relationships, new RelationshipTrialService(factory, relationships, gateway))
+        {
+            ControllerContext = CreateControllerContext(tenantId, participantId),
+        };
+
+        var response = Assert.IsType<OkObjectResult>(await controller.StartTrialAsync(
+            admitted.Relationship.RelationshipId, new StartRelationshipTrialRequest(), CancellationToken.None));
+        var trial = Assert.IsType<RelationshipTrialResult>(response.Value);
+
+        Assert.Equal(trialId, trial.TrialId);
+        Assert.Equal("ACTIVE", trial.Status);
+    }
+
     private static ControllerContext CreateControllerContext(Guid tenantId, Guid participantId)
     {
         var context = new DefaultHttpContext

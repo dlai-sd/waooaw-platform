@@ -24,6 +24,8 @@ public sealed record TransitionEmploymentRelationshipRequest(
     Guid CorrelationId,
     bool ExplicitEmergencyRelease = false);
 
+public sealed record StartRelationshipTrialRequest(Guid? CorrelationId = null);
+
 public sealed class RelationshipStateJsonConverter : JsonConverter<EmploymentRelationshipState>
 {
     public override EmploymentRelationshipState Read(
@@ -80,10 +82,14 @@ public sealed record RelationshipTimelineEntryResponse(
 public sealed class EmploymentRelationshipsController : ControllerBase
 {
     private readonly EmploymentRelationshipService _service;
+    private readonly RelationshipTrialService? _trials;
 
-    public EmploymentRelationshipsController(EmploymentRelationshipService service)
+    public EmploymentRelationshipsController(
+        EmploymentRelationshipService service,
+        RelationshipTrialService? trials = null)
     {
         _service = service;
+        _trials = trials;
     }
 
     [HttpPost]
@@ -201,6 +207,33 @@ public sealed class EmploymentRelationshipsController : ControllerBase
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
             return Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "Constitutional evidence unavailable");
+        }
+    }
+
+    [HttpPost("{relationshipId:guid}/trial")]
+    public async Task<IActionResult> StartTrialAsync(
+        Guid relationshipId,
+        [FromBody] StartRelationshipTrialRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetTenantId(out var tenantId) || !TryGetParticipantId(out var participantId)) return Forbid();
+        if (_trials is null) return Problem(statusCode: 503, title: "Trial owners unavailable");
+        try
+        {
+            return Ok(await _trials.StartAsync(
+                tenantId, relationshipId, participantId, request.CorrelationId ?? Guid.NewGuid(), cancellationToken));
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (IllegalRelationshipTransitionException exception)
+        {
+            return Conflict(new { error = "ILLEGAL_RELATIONSHIP_TRANSITION", detail = exception.Message });
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            return Problem(statusCode: 503, title: "Trial owner outcome unresolved", detail: exception.Message);
         }
     }
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import replace
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -13,6 +13,7 @@ from relationship_workspace import (
     ExecutionControlRequest,
     ExecutionProjection,
     RelationshipExecutionStore,
+    RelationshipTrialStartRequest,
 )
 from workload_identity import DelegatedContext, ServiceAuthError
 
@@ -124,3 +125,39 @@ def test_idempotency_mismatch_and_cross_tenant_read_fail_closed() -> None:
 
     assert failure.value.code == "EXECUTION_IDEMPOTENCY_CONFLICT"
     assert store.outcome(_context(tenant_id="tenant-b"), receipt.control_id) is None
+
+
+def _trial_request(days: int = 14) -> RelationshipTrialStartRequest:
+    starts_at = datetime.now(timezone.utc)
+    return RelationshipTrialStartRequest.model_validate({
+        "schemaVersion": "1.0",
+        "trialId": str(uuid.uuid4()),
+        "startsAt": starts_at.isoformat(),
+        "expiresAt": (starts_at + timedelta(days=days)).isoformat(),
+        "inferenceTier": "LOCAL",
+        "paidProviderFallback": False,
+        "credentialUseAllowed": False,
+        "externalActionsAllowed": False,
+    })
+
+
+def test_trial_start_is_relationship_bound_and_exactly_fourteen_days() -> None:
+    store = RelationshipExecutionStore()
+    trial = _trial_request()
+
+    first = store.start_trial(_context(), RELATIONSHIP_ID, trial)
+    replay = store.start_trial(_context(), RELATIONSHIP_ID, trial)
+
+    assert first.workflow_state == "TRIAL_DEMONSTRATING"
+    assert replay.replayed is True
+    assert store.projection(TENANT, RELATIONSHIP_ID).state == "CURRENT"
+
+
+def test_trial_start_rejects_invalid_duration_and_conflicting_binding() -> None:
+    store = RelationshipExecutionStore()
+    with pytest.raises(ServiceAuthError, match="TRIAL_DURATION_INVALID"):
+        store.start_trial(_context(), RELATIONSHIP_ID, _trial_request(days=13))
+
+    store.start_trial(_context(), RELATIONSHIP_ID, _trial_request())
+    with pytest.raises(ServiceAuthError, match="TRIAL_BINDING_CONFLICT"):
+        store.start_trial(_context(), RELATIONSHIP_ID, _trial_request())

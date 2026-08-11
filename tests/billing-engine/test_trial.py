@@ -153,6 +153,24 @@ async def test_cct_trial_02_redis_key_set_to_trial(trial_service, mock_redis):
 
 
 @pytest.mark.asyncio
+async def test_trial_duration_is_exactly_fourteen_days(session_factory, mock_redis):
+    service = TrialService(
+        session_factory=session_factory,
+        redis_client=mock_redis,
+        settings=MagicMock(
+            TRIAL_FREE_UNITS={"DMA": {"llm_local": 200}},
+            TRIAL_DURATION_DAYS=3,
+        ),
+    )
+
+    before = datetime.now(tz=timezone.utc)
+    result = await service.start_trial(uuid.uuid4(), "DMA", phone_verified=True)
+    after = datetime.now(tz=timezone.utc)
+
+    assert before + timedelta(days=14) <= result.expires_at <= after + timedelta(days=14)
+
+
+@pytest.mark.asyncio
 async def test_cct_trial_02_ledger_rows_created_with_correct_units(trial_service, session_factory):
     """CCT-TRIAL-02: trial_free_unit_ledger rows created with units_granted from TRIAL_FREE_UNITS."""
     cid = uuid.uuid4()

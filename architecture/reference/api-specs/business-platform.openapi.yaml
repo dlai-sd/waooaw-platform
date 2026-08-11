@@ -618,6 +618,40 @@ paths:
         "503":
           description: Constitutional validation or evidence commitment is unavailable
 
+  /api/v1/employment/relationships/{relationshipId}/trial:
+    post:
+      tags: [Employment]
+      summary: Start the relationship evaluation trial
+      description: |
+        Starts the WBE-owned 14-day entitlement and the PR-owned evaluation workflow.
+        The relationship becomes TRIAL_ACTIVE only after both owners confirm the same trial window.
+      operationId: startEmploymentRelationshipTrial
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StartRelationshipTrialRequest"
+      responses:
+        "200":
+          description: Owner-confirmed trial is active
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RelationshipTrial"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Authenticated identity lacks tenant or participant authority
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "503":
+          description: WBE or PR owner outcome is unavailable or inconsistent
+
   /api/v1/employment/contracts:
     get:
       tags: [Employment]
@@ -3399,6 +3433,33 @@ components:
         explicitEmergencyRelease:
           type: boolean
           default: false
+
+    StartRelationshipTrialRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        correlationId:
+          type: string
+          format: uuid
+          nullable: true
+
+    RelationshipTrial:
+      type: object
+      additionalProperties: false
+      required: [trialId, startsAt, expiresAt, status]
+      properties:
+        trialId:
+          type: string
+          format: uuid
+        startsAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [ACTIVE]
 
     EmploymentRelationship:
       type: object
