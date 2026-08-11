@@ -183,3 +183,38 @@ INST-005 acceptance remain valid historical evidence only. This amendment change
 owner semantics, policy tuple, source ownership, implementation, deployment state, or customer-proof
 claim.
 
+## WC-059 WBE 1.1.0 Logical Owner Amendment Acceptance - 2026-08-11
+
+### INST-005 Acceptance Record
+
+| Field | Value |
+|---|---|
+| institution_id | INST-005 - Solution Architect |
+| acceptance_id | ACC-GOAL-005-INST-005-10 |
+| acceptance_basis | GOAL-005 Amendment 5 Order 3 logical-owner designation and R-083 EA approval |
+| accepted_at | 2026-08-11 |
+| acceptance_scope | Append-only WBE 1.1.0 contract amendment and exact four-operation inventory |
+| decision | ACCEPT |
+
+INST-005 accepts `architecture/reference/api-specs/wbe-relationship-workspace.openapi.yaml` version
+1.1.0 at SHA-256 `b8ace8ccf218e430b61abb979bbd426843ca84b14a6e2adcfe46243aa1122623`.
+This acceptance is hash-bound and does not modify or supersede the historical 1.0.0 acceptance.
+
+Accepted operation inventory:
+
+| Operation ID | Method | Route |
+|---|---|---|
+| `activatePaidRelationship` | POST | `/internal/v1/relationships/{relationshipId}/paid-activation` |
+| `getRelationshipCommercialProjection` | GET | `/internal/v1/relationships/{relationshipId}/commercial-projection` |
+| `submitRelationshipCommercialCommand` | POST | `/internal/v1/relationships/{relationshipId}/commercial-commands` |
+| `getRelationshipCommercialCommand` | GET | `/internal/v1/relationships/{relationshipId}/commercial-commands/{commandId}` |
+
+The acceptance preserves WBE captured-payment, paid-subscription, and commercial-projection
+ownership; BP-only private ingress; ADR-046 mutual TLS and exact delegated-context binding;
+idempotent payment-keyed replay; target-owned payment-material rebinding; distinct BLOCKED and
+UNAVAILABLE semantics; CE Evidence First obligations; and Emergency Stop independence.
+
+This acceptance closes the INST-005 dependency retained by R-083 and therefore closes R082-01. It
+does not authorize live Razorpay or provider activation, credentials, WC-060, deployment, merge,
+implementation expansion, or production/customer claims.
+
