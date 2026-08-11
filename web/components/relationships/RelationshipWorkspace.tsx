@@ -1,18 +1,20 @@
-import type { EmploymentRelationship, RelationshipEvaluationProjection, RelationshipTimelineEntry } from '@/lib/api/relationships';
+import type { ContractJourneyProjection, EmploymentRelationship, RelationshipEvaluationProjection, RelationshipTimelineEntry } from '@/lib/api/relationships';
 import type { RelationshipWorkspaceViews } from '@/lib/api/relationship-workspace';
 import { ConversationExperience } from '@/components/conversation/ConversationExperience';
 import { RelationshipEvaluation } from './RelationshipEvaluation';
+import { ContractJourney } from './ContractJourney';
 
 interface RelationshipWorkspaceProps {
   relationship: EmploymentRelationship;
   timeline: RelationshipTimelineEntry[];
   views: RelationshipWorkspaceViews;
   evaluation: RelationshipEvaluationProjection;
+  contractJourney?: ContractJourneyProjection | null;
 }
 
 const stateLabel = (state: string) => state.replaceAll('_', ' ').toLowerCase();
 
-export function RelationshipWorkspace({ relationship, timeline, views, evaluation }: RelationshipWorkspaceProps) {
+export function RelationshipWorkspace({ relationship, timeline, views, evaluation, contractJourney = null }: RelationshipWorkspaceProps) {
   const live = relationship.state === 'ACTIVE';
 
   return (
@@ -39,6 +41,8 @@ export function RelationshipWorkspace({ relationship, timeline, views, evaluatio
       </section>
 
       <RelationshipEvaluation evaluation={evaluation} />
+
+      <ContractJourney relationshipId={relationship.relationshipId} journey={contractJourney} />
 
       <nav className="workspace-nav" aria-label="Relationship workspace views">
         {['Plan', 'Needs your attention', 'Work', 'Results', 'Usage & budget', 'Rights & control'].map((label) => (

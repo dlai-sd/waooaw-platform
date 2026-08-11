@@ -18,7 +18,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import Settings
-from payment.models import PaymentCapturedEvent
+from payment.models import PaymentCapturedEvent, PaymentCaptureResult
 from payment.razorpay_client import RazorpayClient
 from wallet.models import SubscriptionActivationResult
 from wallet.service import WalletService
@@ -45,7 +45,7 @@ class WebhookHandler:
         self,
         event: PaymentCapturedEvent,
         is_bypass: bool = False,
-    ) -> SubscriptionActivationResult:
+    ) -> SubscriptionActivationResult | PaymentCaptureResult:
         """Process payment.captured — idempotent, HMAC-verified, atomically activates wallet.
 
         Bypass orders (demo/UAT coupons) skip signature verification. FA-029.
@@ -63,6 +63,59 @@ class WebhookHandler:
                 )
                 raise HTTPException(status_code=400, detail={"code": "INVALID_SIGNATURE"})
 
+        if event.relationship_id is not None:
+            if any(value is None for value in (
+                event.tenant_id,
+                event.accepted_contract_id,
+                event.contract_version,
+                event.contract_acceptance_id,
+                event.payment_consent_evidence_id,
+                event.payment_evidence_id,
+            )) or not event.contract_hash:
+                raise HTTPException(status_code=400, detail={"code": "INCOMPLETE_CONTRACT_LINK"})
+            await self._db.execute(
+                text(
+                    "INSERT INTO payment_intents "
+                    "(razorpay_order_id, razorpay_payment_id, customer_id, status, relationship_id, "
+                    "tenant_id, accepted_contract_id, contract_version, contract_hash, "
+                    "contract_acceptance_id, payment_consent_evidence_id, "
+                    "payment_evidence_id, agent_type, bundle_tier) "
+                    "VALUES (:oid, :pid, :cid, 'CAPTURED', :rid, :tenant_id, :contract_id, "
+                    ":contract_version, :contract_hash, :acceptance_id, "
+                    ":consent_id, :evidence_id, :agent_type, :bundle_tier) "
+                    "ON CONFLICT (razorpay_payment_id) DO NOTHING"
+                ).bindparams(
+                    oid=event.razorpay_order_id, pid=event.razorpay_payment_id,
+                    cid=str(event.customer_id), rid=str(event.relationship_id),
+                    tenant_id=str(event.tenant_id),
+                    contract_id=str(event.accepted_contract_id),
+                    contract_version=event.contract_version,
+                    contract_hash=event.contract_hash,
+                    acceptance_id=str(event.contract_acceptance_id),
+                    consent_id=str(event.payment_consent_evidence_id),
+                    evidence_id=str(event.payment_evidence_id), agent_type=event.agent_type,
+                    bundle_tier=event.bundle_tier,
+                )
+            )
+            await self._db.commit()
+            stored = (await self._db.execute(text(
+                "SELECT tenant_id, relationship_id, accepted_contract_id, contract_version, contract_hash, contract_acceptance_id, "
+                "payment_consent_evidence_id, payment_evidence_id, status FROM payment_intents "
+                "WHERE razorpay_payment_id = :pid"
+            ).bindparams(pid=event.razorpay_payment_id))).fetchone()
+            expected = tuple(str(value) for value in (
+                event.tenant_id, event.relationship_id, event.accepted_contract_id,
+                event.contract_version, event.contract_hash, event.contract_acceptance_id,
+                event.payment_consent_evidence_id,
+            ))
+            if stored is None or tuple(str(stored[index]) for index in range(7)) != expected:
+                raise HTTPException(status_code=409, detail={"code": "PAYMENT_CAPTURE_CONFLICT"})
+            return PaymentCaptureResult(
+                payment_reference=event.razorpay_payment_id,
+                payment_evidence_id=UUID(str(stored.payment_evidence_id)),
+                status=stored.status,
+            )
+
         # Idempotency: reject if already processed
         existing = await self._db.execute(
             text(
@@ -76,7 +129,7 @@ class WebhookHandler:
             # Return existing result without error — webhook replay handled gracefully
             result_row = await self._db.execute(
                 text(
-                    "SELECT id FROM subscriptions WHERE customer_id = :cid "
+                    "SELECT subscription_id AS id FROM paid_subscriptions WHERE organisation_id = :cid "
                     "AND razorpay_payment_id = :pid LIMIT 1"
                 ).bindparams(cid=str(event.customer_id), pid=event.razorpay_payment_id)
             )

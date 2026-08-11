@@ -122,7 +122,13 @@ public sealed partial class WhatsAppJourneyService
             || inbound.Text.Trim().Equals("CONFIRM", StringComparison.OrdinalIgnoreCase);
         string status;
         string reply;
-        if (riskTier == "TIER_3_HIGH_RISK")
+        if (riskTier == "TIER_4_CONSEQUENTIAL")
+        {
+            contact.PendingMediumRiskConfirmation = false;
+            status = "SECURE_PORTAL_REQUIRED";
+            reply = "Contracts, hiring, cancellation, and payment cannot be accepted or initiated in WhatsApp. Review the exact contract and current payment or activation status in the secure portal: /relationships. Payment details are entered only on Razorpay. You may choose Hire, Not now, Cancel, or Exit there.";
+        }
+        else if (riskTier == "TIER_3_HIGH_RISK")
         {
             status = "PORTAL_STEP_UP_REQUIRED";
             reply = "This high-risk action cannot be authorized by phone identity. Continue in the secure portal.";

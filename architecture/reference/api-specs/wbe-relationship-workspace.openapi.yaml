@@ -2,7 +2,7 @@ openapi: "3.1.0"
 
 info:
   title: WAOOAW WBE Relationship Workspace Private API
-  version: "1.0.0"
+  version: "1.1.0"
   description: |
     Private Business Platform to WAOOAW Billing Engine contract for WC-034 F4.
 
@@ -22,6 +22,39 @@ security:
   - ServiceBearerAuth: []
 
 paths:
+  /internal/v1/relationships/{relationshipId}/paid-activation:
+    post:
+      tags: [Relationship Commercial Projection]
+      operationId: activatePaidRelationship
+      x-internal: true
+      summary: Activate one captured relationship payment idempotently
+      description: |
+        Requires BP mTLS identity and a delegated context bound to this audience, route,
+        body digest, tenant, relationship, contract version, activation intent, correlation,
+        and idempotency key. WBE rebinds those claims to signature-verified captured payment truth.
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WbePaidActivationRequestV1"
+      responses:
+        "200":
+          description: Stored or newly completed paid subscription activation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WbePaidActivationOutcomeV1"
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+
   /internal/v1/relationships/{relationshipId}/commercial-projection:
     get:
       tags: [Relationship Commercial Projection]
@@ -174,6 +207,27 @@ components:
     WbeCommercialCommandStatusV1:
       type: string
       enum: [COMPLETED, PENDING, REJECTED, CONFLICT, UNKNOWN, UNAVAILABLE, BLOCKED]
+
+    WbePaidActivationRequestV1:
+      type: object
+      additionalProperties: false
+      required: [activation_intent_id, accepted_contract_id, contract_version, contract_acceptance_id, payment_reference, payment_evidence_id, correlation_id]
+      properties:
+        activation_intent_id: { type: string, format: uuid }
+        accepted_contract_id: { type: string, format: uuid }
+        contract_version: { type: integer, minimum: 1 }
+        contract_acceptance_id: { type: string, format: uuid }
+        payment_reference: { type: string, minLength: 1, maxLength: 128 }
+        payment_evidence_id: { type: string, format: uuid }
+        correlation_id: { type: string, format: uuid }
+
+    WbePaidActivationOutcomeV1:
+      type: object
+      additionalProperties: false
+      required: [subscription_id, status]
+      properties:
+        subscription_id: { type: string, format: uuid }
+        status: { type: string, const: ACTIVE }
 
     WbeRelationshipCommercialProjectionV1:
       type: object

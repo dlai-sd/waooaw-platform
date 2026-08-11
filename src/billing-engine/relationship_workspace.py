@@ -16,11 +16,17 @@ from threading import Lock
 from pathlib import Path
 from typing import Annotated, Literal, Protocol
 
+import redis.asyncio as aioredis
 from cryptography import x509
 from cryptography.hazmat.primitives.asymmetric import ec
 from fastapi import APIRouter, Depends, FastAPI, Header, HTTPException, Request
 from pydantic import BaseModel, ConfigDict, Field
 
+from config import Settings
+from database import get_session_factory
+from payment.models import PaidActivationRequest
+from payment.paid_activation import PaidActivationService
+from wallet.service import WalletService
 from workload_identity import (
     DelegatedContext,
     DelegatedContextVerifier,
@@ -125,6 +131,16 @@ class CommercialOutcome(StrictModel):
     resolved_at: datetime | None = Field(default=None, alias="resolvedAt")
 
 
+class PaidActivationBody(StrictModel):
+    activation_intent_id: uuid.UUID
+    accepted_contract_id: uuid.UUID
+    contract_version: int = Field(gt=0)
+    contract_acceptance_id: uuid.UUID
+    payment_reference: str = Field(min_length=1, max_length=128)
+    payment_evidence_id: uuid.UUID
+    correlation_id: uuid.UUID
+
+
 @dataclass(frozen=True)
 class StoredCommand:
     tenant_id: str
@@ -227,6 +243,31 @@ def _authorize(request: Request, route: str, operation: str, relationship_id: uu
         and (idempotency_key is None or context.idempotency_key == idempotency_key))
 
 
+def _rebind_paid_activation(
+    context: DelegatedContext,
+    relationship_id: uuid.UUID,
+    body: PaidActivationBody,
+    idempotency_key: str,
+) -> None:
+    exact = (
+        context.effective_role == "EMPLOYER"
+        and context.purpose == "activatePaidRelationship"
+        and context.subject_reference == str(body.accepted_contract_id)
+        and context.command_id == str(body.activation_intent_id)
+        and context.idempotency_key == idempotency_key == str(body.correlation_id)
+        and context.correlation_id == str(body.correlation_id)
+        and context.relationship_id == str(relationship_id)
+        and context.expected_versions == {
+            "activation_intent": str(body.activation_intent_id),
+            "contract": str(body.contract_version),
+        }
+        and bool(context.tenant_id)
+        and bool(context.actor_subject)
+    )
+    if not exact:
+        raise ServiceAuthError("SERVICE_AUTHORIZATION_DENIED")
+
+
 @router.get("/{relationship_id}/commercial-projection", response_model=CommercialProjection, response_model_by_alias=True)
 def get_projection(
     relationship_id: uuid.UUID, request: Request, store: CommercialStore = Depends(get_store)
@@ -239,6 +280,45 @@ def get_projection(
     except ServiceAuthError as exc:
         logger.warning("service_auth decision=deny target=billing-engine operation=projection reason_class=%s", exc.code)
         raise HTTPException(status_code=401, detail="WBE_COMMERCIAL_UNAUTHORIZED") from None
+
+
+@router.post("/{relationship_id}/paid-activation")
+async def activate_paid_relationship(
+    relationship_id: uuid.UUID,
+    body: PaidActivationBody,
+    request: Request,
+    idempotency_key: Annotated[str, Header(alias="Idempotency-Key")],
+) -> dict[str, str]:
+    route = "/internal/v1/relationships/{relationshipId}/paid-activation"
+    operation = "activatePaidRelationship"
+    payload = body.model_dump(mode="json")
+    try:
+        context = _authorize(request, route, operation, relationship_id, payload, idempotency_key)
+        _rebind_paid_activation(context, relationship_id, body, idempotency_key)
+    except ServiceAuthError as exc:
+        logger.warning("service_auth decision=deny target=billing-engine operation=paid_activation reason_class=%s", exc.code)
+        raise HTTPException(status_code=401, detail="WBE_PAID_ACTIVATION_UNAUTHORIZED") from None
+
+    session_factory = get_session_factory()
+    async with session_factory() as db:
+        redis_client = aioredis.from_url(Settings().REDIS_URL, decode_responses=True)
+        try:
+            result = await PaidActivationService(db, WalletService(db=db, redis_client=redis_client)).activate(
+                PaidActivationRequest(
+                    tenant_id=uuid.UUID(context.tenant_id),
+                    relationship_id=relationship_id,
+                    activation_intent_id=body.activation_intent_id,
+                    accepted_contract_id=body.accepted_contract_id,
+                    contract_version=body.contract_version,
+                    contract_acceptance_id=body.contract_acceptance_id,
+                    payment_reference=body.payment_reference,
+                    payment_evidence_id=body.payment_evidence_id,
+                    correlation_id=body.correlation_id,
+                )
+            )
+        finally:
+            await redis_client.aclose()
+    return {"subscription_id": str(result.subscription_id), "status": result.status}
 
 
 @router.post("/{relationship_id}/commercial-commands", response_model=CommercialReceipt, response_model_by_alias=True, status_code=202)

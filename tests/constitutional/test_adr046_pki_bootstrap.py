@@ -105,6 +105,7 @@ def test_bootstrap_issues_exact_unique_short_lived_workload_identities(
     for workload_name, workload in registry["workloads"].items():
         workload_dir = output / "workloads" / workload_name
         certificate = _certificate(workload_dir / "tls-cert.pem")
+        assert len(x509.load_pem_x509_certificates((workload_dir / "tls-cert.pem").read_bytes())) == 2
         uri_names = certificate.extensions.get_extension_for_oid(
             ExtensionOID.SUBJECT_ALTERNATIVE_NAME
         ).value.get_values_for_type(x509.UniformResourceIdentifier)

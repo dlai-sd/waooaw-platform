@@ -367,6 +367,7 @@ class WalletService:
         bundle_tier: str,
         razorpay_order_id: str,
         razorpay_payment_id: str,
+        commit: bool = True,
     ) -> SubscriptionActivationResult:
         """
         Activate a subscription for a customer.
@@ -386,16 +387,30 @@ class WalletService:
         Raises:
             HTTPException(403): If billing profile not founder-authorized.
         """
+        existing = await self._db.execute(
+            text(
+                "SELECT subscription_id AS id, activated_at FROM paid_subscriptions "
+                "WHERE razorpay_payment_id = :payment_id LIMIT 1"
+            ).bindparams(payment_id=razorpay_payment_id)
+        )
+        existing_row = existing.fetchone()
+        if existing_row is not None:
+            return SubscriptionActivationResult(
+                subscription_id=UUID(str(existing_row.id)), customer_id=customer_id,
+                agent_type=agent_type, bundle_tier=bundle_tier,
+                activated_at=datetime.fromisoformat(str(existing_row.activated_at).replace("Z", "+00:00")),
+            )
+
         # Check billing profile authorization
         bp_result = await self._db.execute(
             text(
                 """
-                SELECT bp.status, bp.customer_id
+                SELECT bp.status, bp.agent_type
                 FROM billing_profiles bp
-                WHERE bp.customer_id = :customer_id
+                WHERE bp.agent_type = :agent_type
                 LIMIT 1
                 """
-            ).bindparams(customer_id=str(customer_id))
+            ).bindparams(agent_type=agent_type)
         )
         bp_row = bp_result.fetchone()
         if bp_row is None or bp_row.status != "FOUNDER_AUTHORIZED":
@@ -407,33 +422,24 @@ class WalletService:
                 },
             )
 
-        # Flip customer mode before subscription creation (race condition fix)
-        await self._db.execute(
-            text(
-                """
-                UPDATE customers
-                SET mode = 'SUBSCRIBED'
-                WHERE id = :customer_id
-                """
-            ).bindparams(customer_id=str(customer_id))
-        )
-
         subscription_id: UUID = uuid.uuid4()
         now_utc: datetime = datetime.now(timezone.utc)
+        is_postgres = self._db.bind is not None and self._db.bind.dialect.name == "postgresql"
+        database_uuid = (lambda value: value) if is_postgres else (lambda value: str(value))
 
         await self._db.execute(
             text(
                 """
-                INSERT INTO subscriptions
-                    (id, customer_id, agent_type, bundle_tier,
+                INSERT INTO paid_subscriptions
+                    (subscription_id, organisation_id, agent_type, bundle_tier,
                      razorpay_order_id, razorpay_payment_id, activated_at)
                 VALUES
                     (:sub_id, :customer_id, :agent_type, :bundle_tier,
                      :order_id, :payment_id, :activated_at)
                 """
             ).bindparams(
-                sub_id=str(subscription_id),
-                customer_id=str(customer_id),
+                sub_id=database_uuid(subscription_id),
+                customer_id=database_uuid(customer_id),
                 agent_type=agent_type,
                 bundle_tier=bundle_tier,
                 order_id=razorpay_order_id,
@@ -442,7 +448,8 @@ class WalletService:
             )
         )
 
-        await self._db.commit()
+        if commit:
+            await self._db.commit()
 
         logger.info(
             "Subscription activated: subscription_id=%s customer_id=%s agent_type=%s",

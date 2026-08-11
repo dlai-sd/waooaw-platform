@@ -1,6 +1,6 @@
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { RelationshipWorkspace } from './RelationshipWorkspace';
-import type { EmploymentRelationship, RelationshipEvaluationProjection, RelationshipTimelineEntry } from '@/lib/api/relationships';
+import type { ContractJourneyProjection, EmploymentRelationship, RelationshipEvaluationProjection, RelationshipTimelineEntry } from '@/lib/api/relationships';
 import type { RelationshipWorkspaceViews } from '@/lib/api/relationship-workspace';
 
 const relationship: EmploymentRelationship = {
@@ -51,6 +51,15 @@ const evaluation: RelationshipEvaluationProjection = {
   skills: [{ configurationId: 'skill-1', skillId: 'MARKET_RESEARCH', applicability: 'APPLICABLE', authorityState: 'NOT_GRANTED', status: 'DEFERRED' }],
   decisionSpace: { version: 1, budgetCeilingInrPaise: 100000, authorityBoundaries: ['No publishing'], stopConditions: ['Customer stop'], reviewCadenceMonths: 2 },
 };
+const contractJourney: ContractJourneyProjection = {
+  contractId: 'ca57bbd1-62eb-48ab-bd78-2a23053f6551', version: 2, contractHash: 'exact-contract-hash',
+  relationshipState: 'TRIAL_ACTIVE', acceptanceState: 'PENDING', paymentState: 'NOT_STARTED', activationState: 'NOT_STARTED',
+  document: {
+    professionalDisplayName: 'Digital Marketing Professional', rights: ['Inspect evidence', 'Choose not now'],
+    obligations: ['Provide accurate context'], limitations: ['Cannot publish without authority'], authorityTerms: ['No publishing'], stopTerms: ['Emergency Stop remains available'],
+    priceTax: { currency: 'INR', grossAmountInrPaise: 118000, gstAmountInrPaise: 18000, cadence: 'MONTHLY', subscriptionTerms: 'Monthly subscription', adSpendTreatment: 'Ad spend is separate', cancellationAndRefundTerms: 'Cancel before renewal; captured charges follow the stated refund policy' },
+  },
+};
 
 describe('RelationshipWorkspace', () => {
   beforeEach(() => {
@@ -88,5 +97,45 @@ describe('RelationshipWorkspace', () => {
 
     expect(screen.getByText('Live · ACTIVE')).toBeVisible();
     expect(await screen.findByText('No messages yet. Start with a clear outcome for your professional.')).toBeVisible();
+  });
+
+  it('CCT-AE01-DARK-01 shows exact terms and symmetric unselected contract decisions', async () => {
+    render(<RelationshipWorkspace relationship={relationship} timeline={timeline} views={views} evaluation={evaluation} contractJourney={contractJourney} />);
+
+    expect(screen.getByText('exact-contract-hash')).toBeVisible();
+    expect(screen.getByText('₹1,180.00')).toBeVisible();
+    expect(screen.getByText('₹180.00')).toBeVisible();
+    expect(screen.getByText(/Ad spend is separate/)).toBeVisible();
+    const decisions = screen.getByRole('group', { name: 'Contract decisions' });
+    for (const name of ['Hire and accept exact contract', 'Not now', 'Cancel', 'Exit']) {
+      expect(within(decisions).getByRole(name === 'Exit' ? 'link' : 'button', { name })).toBeVisible();
+    }
+    expect(within(decisions).queryByRole('button', { name: 'Proceed to Razorpay' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+    expect(screen.queryByText(/hurry|expires in|last chance/i)).not.toBeInTheDocument();
+    fireEvent.click(within(decisions).getByRole('button', { name: 'Hire and accept exact contract' }));
+    const proceed = await within(decisions).findByRole('button', { name: 'Proceed to Razorpay' });
+    expect(proceed).toBeVisible();
+    expect(screen.getByText('Contract accepted and evidenced. Payment has not started.')).toBeVisible();
+    fireEvent.click(proceed);
+    expect(await screen.findByText(/Payment remains unconfirmed until hosted checkout capture/)).toBeVisible();
+    fireEvent.click(within(decisions).getByRole('button', { name: 'Not now' }));
+    expect(screen.getByText('Not now selected. No contract or payment state changed.')).toBeVisible();
+    fireEvent.click(within(decisions).getByRole('button', { name: 'Cancel' }));
+    expect(screen.getByText('Cancelled. No contract or payment state changed.')).toBeVisible();
+  });
+
+  it('keeps failed payment explicitly unresolved', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: false,
+      json: async () => ({ title: 'Payment owner is unavailable.' }),
+    } as Response);
+    render(<RelationshipWorkspace relationship={relationship} timeline={timeline} views={views} evaluation={evaluation} contractJourney={{ ...contractJourney, acceptanceState: 'ACCEPTED' }} />);
+    const contractSection = screen.getByRole('heading', { name: 'Employment contract' }).closest('section')!;
+
+    fireEvent.click(screen.getByRole('button', { name: 'Proceed to Razorpay' }));
+
+    expect(await within(contractSection).findByText('Payment owner is unavailable.')).toBeVisible();
+    expect(screen.queryByText(/payment succeeded/i)).not.toBeInTheDocument();
   });
 });

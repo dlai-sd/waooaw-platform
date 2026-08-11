@@ -72,13 +72,14 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddSingleton<IProfessionalCatalog, ProfessionalCatalog>();
 
 var workloadCredentials = builder.Configuration["WAOOAW_WORKLOAD_CREDENTIALS"];
+WorkloadIdentityClient? workloadIdentity = null;
 var prWorkspaceBaseUrl = builder.Configuration["ProfessionalRuntime:RelationshipWorkspaceBaseUrl"];
 var wbeWorkspaceBaseUrl = builder.Configuration["BillingEngine:RelationshipWorkspaceBaseUrl"];
 if (!string.IsNullOrWhiteSpace(workloadCredentials)
     && Uri.TryCreate(prWorkspaceBaseUrl, UriKind.Absolute, out var prWorkspaceUri)
     && Uri.TryCreate(wbeWorkspaceBaseUrl, UriKind.Absolute, out var wbeWorkspaceUri))
 {
-    var workloadIdentity = WorkloadIdentityClient.Load(workloadCredentials);
+    workloadIdentity = WorkloadIdentityClient.Load(workloadCredentials);
     builder.Services.AddSingleton(workloadIdentity);
     builder.Services.AddSingleton<IRelationshipWorkspaceOwnerGateway>(
         new AuthenticatedRelationshipWorkspaceOwnerGateway(workloadIdentity, prWorkspaceUri, wbeWorkspaceUri));
@@ -108,9 +109,14 @@ var temporalHost = builder.Configuration["Temporal:Host"];
 if (!string.IsNullOrWhiteSpace(temporalHost))
 {
     builder.Services.AddTemporalClient(opts => opts.TargetHost = temporalHost);
+    builder.Services.AddSingleton<IActivationWorkflowStarter, TemporalActivationWorkflowStarter>();
+    builder.Services.AddScoped<ActivationWorkflowDispatchService>();
     builder.Services.AddSingleton<TrialExpiryActivities>();
+    builder.Services.AddScoped<ActivationActivities>();
     builder.Services.AddHostedTemporalWorker("bp-trial-worker")
         .AddWorkflow<TrialExpiryWorkflow>()
+        .AddWorkflow<ActivationWorkflow>()
+        .AddScopedActivities<ActivationActivities>()
         .AddSingletonActivities<TrialExpiryActivities>();
 }
 
@@ -146,6 +152,16 @@ builder.Services.AddDbContextFactory<EmploymentRelationshipDbContext>((services,
 builder.Services.AddScoped<IRelationshipConstitutionalGateway, RelationshipConstitutionalGateway>();
 builder.Services.AddScoped<EmploymentRelationshipService>();
 builder.Services.AddScoped<RelationshipConfigurationService>();
+builder.Services.AddScoped<EmploymentContractService>();
+builder.Services.AddScoped<EmploymentContractAcceptanceService>();
+builder.Services.AddScoped<IRelationshipPaymentGateway, HttpRelationshipPaymentGateway>();
+builder.Services.AddScoped<RelationshipPaymentService>();
+if (workloadIdentity is not null && Uri.TryCreate(wbeWorkspaceBaseUrl, UriKind.Absolute, out var activationWbeUri))
+    builder.Services.AddSingleton<IActivationBillingGateway>(
+        new AuthenticatedActivationBillingGateway(workloadIdentity, activationWbeUri));
+else
+    builder.Services.AddSingleton<IActivationBillingGateway, UnconfiguredActivationBillingGateway>();
+builder.Services.AddScoped<ActivationOrchestrationService>();
 builder.Services.AddScoped<RelationshipTrialService>();
 builder.Services.Configure<WhatsAppJourneyOptions>(builder.Configuration.GetSection("WhatsApp"));
 builder.Services.AddScoped<IWhatsAppRegistrationEvidenceGateway, WhatsAppRegistrationEvidenceGateway>();

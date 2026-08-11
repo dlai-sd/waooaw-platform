@@ -104,6 +104,21 @@ h1 { max-width: 760px; margin: 0; font-family: Georgia, serif; font-size: 5.5rem
 .state-banner.live { color: var(--green); background: #edf8ef; border-color: #b8dcbc; }
 .state-banner.trial { color: #086d88; background: #ecf8fb; border-color: #b4dce5; }
 .relationship-summary, .timeline { max-width: 1100px; margin-top: 3rem; }
+.contract-journey { max-width: 1100px; margin-top: 3rem; padding: 2rem 0; border-block: 1px solid var(--line); }
+.contract-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+.contract-heading h2 { margin: 0 0 1rem; font-family: Georgia, serif; font-size: 1.8rem; font-weight: 500; }
+.contract-hash { overflow-wrap: anywhere; color: var(--muted); }
+.contract-money { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem; margin: 1.5rem 0; }
+.contract-money dt { color: var(--muted); font-size: .75rem; }
+.contract-money dd { margin: .3rem 0 0; font-weight: 700; overflow-wrap: anywhere; }
+.contract-terms { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+.contract-terms h3 { font-size: 1rem; }
+.contract-terms li { margin-bottom: .5rem; line-height: 1.45; }
+.decision-actions { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 1.5rem; }
+.decision-actions button, .decision-actions a { min-height: 44px; padding: .7rem 1rem; border: 1px solid currentColor; border-radius: 4px; background: transparent; color: var(--ink); font: inherit; text-decoration: none; cursor: pointer; }
+.decision-actions button:disabled { cursor: wait; opacity: .65; }
+.decision-status { min-height: 1.5rem; }
+.provider-boundary { color: var(--muted); font-size: .9rem; }
 .relationship-summary h2, .timeline h2 { margin: 0 0 1.5rem; font-family: Georgia, serif; font-size: 1.8rem; font-weight: 500; }
 .state-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 0; border-block: 1px solid var(--line); }
 .state-grid div { min-width: 0; padding: 1.25rem; border-right: 1px solid var(--line); }
@@ -359,6 +374,9 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex="-1"]:foc
   .bottom-navigation a { min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .2rem; padding: .25rem; font-size: .7rem; text-align: center; text-decoration: none; }
   .stop-control { inset-block-end: 80px; }
   .workspace-shell { width: 100%; min-width: 0; padding: 1rem .75rem 7rem; }
+  .contract-money, .contract-terms { grid-template-columns: 1fr; gap: .75rem; }
+  .decision-actions { display: grid; grid-template-columns: 1fr 1fr; }
+  .decision-actions button, .decision-actions a { width: 100%; text-align: center; }
   .conversation-heading { align-items: flex-start; flex-direction: column; }
   .conversation-timeline, .conversation-composer { width: 100%; min-width: 0; padding: .75rem; }
   .conversation-message { width: 100%; }

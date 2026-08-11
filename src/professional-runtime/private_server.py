@@ -24,7 +24,7 @@ def private_listener_config() -> uvicorn.Config:
         http=MutualTlsH11Protocol,
         ssl_keyfile=str(workload / "tls-key.pem"),
         ssl_certfile=str(workload / "tls-cert.pem"),
-        ssl_ca_certs=str(credentials / "trust" / "root.pem"),
+        ssl_ca_certs=str(credentials / "trust" / "ca-bundle.pem"),
         ssl_cert_reqs=ssl.CERT_REQUIRED,
         ssl_version=ssl.PROTOCOL_TLS_SERVER,
     )

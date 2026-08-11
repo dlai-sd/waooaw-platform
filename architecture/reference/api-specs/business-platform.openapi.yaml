@@ -2,7 +2,7 @@ openapi: "3.1.0"
 
 info:
   title: WAOOAW Business Platform API
-  version: "1.5.0"
+  version: "1.6.0"
   description: |
     External customer-facing API for the WAOOAW Business Platform.
     Manages the employment lifecycle, approval workflows, evidence reading,
@@ -688,6 +688,195 @@ paths:
           $ref: "#/components/responses/Conflict"
         "503":
           description: WBE or PR owner outcome is unavailable or inconsistent
+
+  /api/v1/employment/relationships/{relationshipId}/contracts:
+    post:
+      tags: [Employment]
+      summary: Compose or replay the presented employment contract
+      description: |
+        Composes immutable contract material from the latest evidenced Decision Space,
+        accepted goals and skills, professional disclosure, and exact commercial terms.
+        Identical canonical material replays the existing version and amendments create a new version.
+      operationId: proposeEmploymentContract
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProposeEmploymentContractRequest"
+      responses:
+        "201":
+          description: New immutable contract version presented
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmploymentContractVersion"
+        "200":
+          description: Existing identical contract version replayed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmploymentContractVersion"
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: Active same-tenant participant authority denied
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "503":
+          description: Contract composition or constitutional evidence is unavailable
+
+  /api/v1/employment/relationships/{relationshipId}/contract-journey:
+    get:
+      tags: [Employment]
+      summary: Read the latest exact contract and activation journey
+      description: |
+        Returns the latest immutable contract material and BP-owned relationship progress for an
+        active same-tenant relationship participant. Payment capture remains evidence rather than
+        relationship activation; pending or unavailable owner outcomes never appear as success.
+      operationId: getRelationshipContractJourney
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+      responses:
+        "200":
+          description: Exact contract and current journey projection
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RelationshipContractJourney"
+        "204":
+          description: No employment contract has been presented
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: Authenticated tenant or participant context is absent
+        "404": { $ref: "#/components/responses/NotFound" }
+        "503":
+          description: Contract projection is unavailable
+
+  /api/v1/employment/relationships/{relationshipId}/contracts/{version}/accept:
+    post:
+      tags: [Employment]
+      summary: Explicitly accept one exact employment contract version
+      description: |
+        Tier-4 web-only command. Requires a Keycloak portal authentication no older than five
+        minutes, an active same-tenant EMPLOYER binding, the exact presented version and hash,
+        and the separate fixed authority-scope confirmation statement. WhatsApp, MPIN, deep-link
+        possession, trial consent, silence, or a default selection cannot accept a contract.
+      operationId: acceptEmploymentContract
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - name: version
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AcceptEmploymentContractRequest"
+      responses:
+        "201":
+          description: Exact contract accepted with committed constitutional evidence
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmploymentContractAcceptance"
+        "200":
+          description: Existing exact acceptance replayed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmploymentContractAcceptance"
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: Fresh portal assurance or active same-tenant EMPLOYER authority denied
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "503":
+          description: Constitutional validation or evidence commitment is unavailable
+
+  /api/v1/employment/relationships/{relationshipId}/contracts/{version}/payments/onboarding-order:
+    post:
+      tags: [Employment]
+      summary: Record explicit payment consent and create a contract-linked hosted order
+      description: |
+        Requires fresh Keycloak portal authentication, an active same-tenant EMPLOYER binding,
+        one exact accepted contract, and itemization whose subscription plus wallet seed equals
+        the accepted INR gross amount. Records constitutional proceed evidence before asking WBE
+        for a Razorpay-hosted order. Payment secrets and bypass coupons are never accepted.
+        Payment capture does not activate the relationship; durable activation is a separate flow.
+      operationId: createRelationshipOnboardingOrder
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - name: version
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RelationshipPaymentProceedRequest"
+      responses:
+        "200":
+          description: Contract-linked Razorpay-hosted order created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RelationshipHostedOnboardingOrder"
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: Fresh portal assurance or active same-tenant EMPLOYER authority denied
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: Exact contract acceptance is absent or itemization differs from the contract
+        "503":
+          description: Constitutional evidence or WBE hosted-order outcome is unavailable or inconsistent
+
+  /api/v1/employment/relationships/{relationshipId}/activation:
+    post:
+      tags: [Employment]
+      summary: Start or join durable paid relationship activation
+      description: |
+        Requires fresh Keycloak portal authentication and an active same-tenant EMPLOYER binding.
+        BP derives the accepted contract, acceptance evidence, authority snapshot, actor, and stable
+        correlation from canonical relationship state. WBE remains payment owner and revalidates the
+        supplied payment reference and evidence identifier against its signature-verified CAPTURED row.
+        Identical replay joins the stable Temporal workflow; unresolved owner outcomes never report success.
+      operationId: startPaidRelationshipActivation
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StartPaidRelationshipActivationRequest"
+      responses:
+        "200":
+          description: Stored successful activation outcome returned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaidRelationshipActivationOutcome"
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: Fresh portal assurance or active same-tenant EMPLOYER authority denied
+        "409":
+          description: Relationship is ineligible or canonical activation material conflicts
+        "503":
+          description: Temporal, constitutional evidence, or WBE activation outcome remains unresolved
 
   /api/v1/employment/contracts:
     get:
@@ -3561,6 +3750,130 @@ components:
         updatedAt:
           type: string
           format: date-time
+
+    EmploymentContractCommercialTerms:
+      type: object
+      additionalProperties: false
+      required: [currency, grossAmountInrPaise, gstAmountInrPaise, cadence, subscriptionTerms, adSpendTreatment, cancellationAndRefundTerms]
+      properties:
+        currency: { type: string, enum: [INR] }
+        grossAmountInrPaise: { type: integer, format: int64, minimum: 1 }
+        gstAmountInrPaise: { type: integer, format: int64, minimum: 0 }
+        cadence: { type: string, enum: [MONTHLY] }
+        subscriptionTerms: { type: string, minLength: 1 }
+        adSpendTreatment: { type: string, minLength: 1 }
+        cancellationAndRefundTerms: { type: string, minLength: 1 }
+
+    ProposeEmploymentContractRequest:
+      type: object
+      additionalProperties: false
+      required: [commercialTerms]
+      properties:
+        commercialTerms:
+          $ref: "#/components/schemas/EmploymentContractCommercialTerms"
+        correlationId:
+          type: string
+          format: uuid
+
+    EmploymentContractVersion:
+      type: object
+      additionalProperties: false
+      required: [contractId, version, contractHash, state, document, createdAt]
+      properties:
+        contractId: { type: string, format: uuid }
+        version: { type: integer, minimum: 1 }
+        contractHash: { type: string, pattern: '^[0-9a-f]{64}$' }
+        state: { type: string, enum: [PRESENTED] }
+        document:
+          type: object
+          description: Canonical AEEC and domain-schedule material, including rights, obligations, limitations, authority, Stop, review, configuration, and price/tax terms.
+          additionalProperties: true
+        createdAt: { type: string, format: date-time }
+
+    RelationshipContractJourney:
+      type: object
+      additionalProperties: false
+      required: [contractId, version, contractHash, document, relationshipState, acceptanceState, paymentState, activationState]
+      properties:
+        contractId: { type: string, format: uuid }
+        version: { type: integer, minimum: 1 }
+        contractHash: { type: string, pattern: '^[0-9a-f]{64}$' }
+        document:
+          type: object
+          description: Exact canonical AEEC and domain-schedule material presented for this version.
+          additionalProperties: true
+        relationshipState:
+          $ref: "#/components/schemas/EmploymentRelationshipState"
+        acceptanceState: { type: string, enum: [PENDING, ACCEPTED] }
+        paymentState: { type: string, enum: [NOT_STARTED, CAPTURED] }
+        activationState: { type: string, enum: [NOT_STARTED, PENDING, ACTIVE] }
+
+    AcceptEmploymentContractRequest:
+      type: object
+      additionalProperties: false
+      required: [contractHash, scopeConfirmation]
+      properties:
+        contractHash: { type: string, pattern: '^[0-9a-f]{64}$' }
+        scopeConfirmation:
+          type: string
+          enum: [I_CONFIRM_THE_ACCEPTED_DECISION_SPACE_AND_AUTHORITY_SCOPE]
+        correlationId:
+          type: string
+          format: uuid
+
+    EmploymentContractAcceptance:
+      type: object
+      additionalProperties: false
+      required: [acceptanceId, contractId, contractVersion, contractHash, authenticationAssurance, acceptanceEvidenceId, acceptedAt]
+      properties:
+        acceptanceId: { type: string, format: uuid }
+        contractId: { type: string, format: uuid }
+        contractVersion: { type: integer, minimum: 1 }
+        contractHash: { type: string, pattern: '^[0-9a-f]{64}$' }
+        authenticationAssurance: { type: string, enum: [AAL3_FRESH] }
+        acceptanceEvidenceId: { type: string, format: uuid }
+        acceptedAt: { type: string, format: date-time }
+
+    RelationshipPaymentProceedRequest:
+      type: object
+      additionalProperties: false
+      required: [bundleTier, subscriptionAmountInrPaise, walletSeedInrPaise, proceedConfirmation]
+      properties:
+        bundleTier: { type: string, minLength: 1 }
+        subscriptionAmountInrPaise: { type: integer, format: int64, minimum: 1 }
+        walletSeedInrPaise: { type: integer, format: int64, minimum: 0 }
+        proceedConfirmation:
+          type: string
+          enum: [PROCEED_TO_RAZORPAY]
+
+    RelationshipHostedOnboardingOrder:
+      type: object
+      additionalProperties: false
+      required: [orderId, amountInrPaise, currency, isBypass, checkoutMode]
+      properties:
+        orderId: { type: string, minLength: 1 }
+        amountInrPaise: { type: integer, format: int64, minimum: 1 }
+        currency: { type: string, enum: [INR] }
+        isBypass: { type: boolean, enum: [false] }
+        checkoutMode: { type: string, enum: [RAZORPAY_HOSTED] }
+
+    StartPaidRelationshipActivationRequest:
+      type: object
+      additionalProperties: false
+      required: [paymentReference, paymentEvidenceId]
+      properties:
+        paymentReference: { type: string, minLength: 1 }
+        paymentEvidenceId: { type: string, format: uuid }
+
+    PaidRelationshipActivationOutcome:
+      type: object
+      additionalProperties: false
+      required: [activationIntentId, subscriptionId, evidenceId, status]
+      properties:
+        activationIntentId: { type: string, format: uuid }
+        subscriptionId: { type: string, format: uuid }
+        evidenceId: { type: string, format: uuid }
+        status: { type: string, enum: [SUCCEEDED] }
 
     RelationshipTimelineEntry:
       type: object

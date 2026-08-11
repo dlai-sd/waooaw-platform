@@ -81,17 +81,16 @@ async def session_factory_with_billing(in_memory_engine):
     """Extended session factory including billing_profiles, customers, subscriptions."""
     extra = [
         """CREATE TABLE IF NOT EXISTS billing_profiles (
-            id TEXT PRIMARY KEY,
-            customer_id TEXT NOT NULL,
+            agent_type TEXT PRIMARY KEY,
             status TEXT NOT NULL DEFAULT 'PENDING'
         )""",
         """CREATE TABLE IF NOT EXISTS customers (
             id TEXT PRIMARY KEY,
             mode TEXT NOT NULL DEFAULT 'FREE'
         )""",
-        """CREATE TABLE IF NOT EXISTS subscriptions (
-            id TEXT PRIMARY KEY,
-            customer_id TEXT NOT NULL,
+        """CREATE TABLE IF NOT EXISTS paid_subscriptions (
+            subscription_id TEXT PRIMARY KEY,
+            organisation_id TEXT NOT NULL,
             agent_type TEXT NOT NULL,
             bundle_tier TEXT NOT NULL,
             razorpay_order_id TEXT NOT NULL,
@@ -167,12 +166,10 @@ async def _seed_reservation(session, *, bucket_id, reserved_paise=1000):
 
 
 async def _seed_billing_profile(session, customer_id, *, status="FOUNDER_AUTHORIZED"):
-    bp_id = str(uuid.uuid4())
     await session.execute(
         text(
-            "INSERT INTO billing_profiles (id, customer_id, status)"
-            " VALUES (:id, :cid, :status)"
-        ).bindparams(id=bp_id, cid=str(customer_id), status=status)
+            "INSERT INTO billing_profiles (agent_type, status) VALUES ('DMA', :status)"
+        ).bindparams(status=status)
     )
     await session.commit()
 

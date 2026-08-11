@@ -26,6 +26,42 @@ public sealed record TransitionEmploymentRelationshipRequest(
 
 public sealed record StartRelationshipTrialRequest(Guid? CorrelationId = null);
 
+public sealed record ProposeEmploymentContractRequest(
+    EmploymentContractCommercialTerms CommercialTerms,
+    Guid? CorrelationId = null);
+
+public sealed record AcceptEmploymentContractRequest(
+    string ContractHash,
+    string ScopeConfirmation,
+    Guid? CorrelationId = null);
+
+public sealed record EmploymentContractResponse(
+    Guid ContractId,
+    int Version,
+    string ContractHash,
+    string State,
+    EmploymentContractDocument Document,
+    DateTimeOffset CreatedAt);
+
+public sealed record ContractAcceptanceResponse(
+    Guid AcceptanceId,
+    Guid ContractId,
+    int ContractVersion,
+    string ContractHash,
+    string AuthenticationAssurance,
+    Guid AcceptanceEvidenceId,
+    DateTimeOffset AcceptedAt);
+
+public sealed record ContractJourneyResponse(
+    Guid ContractId,
+    int Version,
+    string ContractHash,
+    EmploymentContractDocument Document,
+    string RelationshipState,
+    string AcceptanceState,
+    string PaymentState,
+    string ActivationState);
+
 public sealed class RelationshipStateJsonConverter : JsonConverter<EmploymentRelationshipState>
 {
     public override EmploymentRelationshipState Read(
@@ -83,13 +119,25 @@ public sealed class EmploymentRelationshipsController : ControllerBase
 {
     private readonly EmploymentRelationshipService _service;
     private readonly RelationshipTrialService? _trials;
+    private readonly EmploymentContractService? _contracts;
+    private readonly EmploymentContractAcceptanceService? _contractAcceptances;
+    private readonly RelationshipPaymentService? _payments;
+    private readonly ActivationWorkflowDispatchService? _activationDispatch;
 
     public EmploymentRelationshipsController(
         EmploymentRelationshipService service,
-        RelationshipTrialService? trials = null)
+        RelationshipTrialService? trials = null,
+        EmploymentContractService? contracts = null,
+        EmploymentContractAcceptanceService? contractAcceptances = null,
+        RelationshipPaymentService? payments = null,
+        ActivationWorkflowDispatchService? activationDispatch = null)
     {
         _service = service;
         _trials = trials;
+        _contracts = contracts;
+        _contractAcceptances = contractAcceptances;
+        _payments = payments;
+        _activationDispatch = activationDispatch;
     }
 
     [HttpPost]
@@ -237,6 +285,249 @@ public sealed class EmploymentRelationshipsController : ControllerBase
         }
     }
 
+    [HttpPost("{relationshipId:guid}/contracts")]
+    public async Task<IActionResult> ProposeContractAsync(
+        Guid relationshipId,
+        [FromBody] ProposeEmploymentContractRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetTenantId(out var tenantId) || !TryGetParticipantId(out var participantId)) return Forbid();
+        if (_contracts is null) return Problem(statusCode: 503, title: "Contract composition unavailable");
+
+        try
+        {
+            var composition = await _contracts.ComposeAsync(
+                tenantId,
+                relationshipId,
+                participantId,
+                request.CommercialTerms,
+                cancellationToken);
+            var relationship = await _service.GetAsync(tenantId, relationshipId, cancellationToken);
+            if (relationship is null) return NotFound();
+            if (relationship.State == EmploymentRelationshipState.Configuring)
+            {
+                await _service.TransitionAsync(
+                    tenantId,
+                    relationshipId,
+                    participantId,
+                    RelationshipParticipantRole.Employer,
+                    EmploymentRelationshipState.ContractPendingAcceptance,
+                    request.CorrelationId ?? Guid.NewGuid(),
+                    false,
+                    cancellationToken);
+            }
+            else if (relationship.State != EmploymentRelationshipState.ContractPendingAcceptance)
+            {
+                return Conflict(new { error = "CONTRACT_PROPOSAL_STATE_CONFLICT" });
+            }
+
+            var response = ToContractResponse(composition);
+            return composition.Created
+                ? CreatedAtAction(nameof(ProposeContractAsync), new { relationshipId }, response)
+                : Ok(response);
+        }
+        catch (ArgumentException exception)
+        {
+            return ValidationProblem(exception.Message);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (ConstitutionalActionDeniedException exception)
+        {
+            return Problem(statusCode: 403, title: "Constitutional authorization denied", detail: exception.Message);
+        }
+        catch (IllegalRelationshipTransitionException exception)
+        {
+            return Conflict(new { error = "ILLEGAL_RELATIONSHIP_TRANSITION", detail = exception.Message });
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            return Problem(statusCode: 503, title: "Contract proposal unresolved");
+        }
+    }
+
+    [HttpGet("{relationshipId:guid}/contract-journey")]
+    public async Task<IActionResult> GetContractJourneyAsync(
+        Guid relationshipId, CancellationToken cancellationToken)
+    {
+        if (!TryGetTenantId(out var tenantId) || !TryGetParticipantId(out var participantId)) return Forbid();
+        if (_contracts is null) return Problem(statusCode: 503, title: "Contract projection unavailable");
+        var relationship = await _service.GetAsync(tenantId, relationshipId, cancellationToken);
+        if (relationship is null || !await _service.IsActiveParticipantAsync(
+            tenantId, relationshipId, participantId, cancellationToken)) return NotFound();
+        var contract = await _contracts.GetLatestAsync(tenantId, relationshipId, cancellationToken);
+        if (contract is null) return NoContent();
+        var accepted = relationship.AcceptedContractId == contract.Contract.ContractId;
+        return Ok(new ContractJourneyResponse(
+            contract.Contract.ContractId,
+            contract.Contract.Version,
+            contract.Contract.ContractHash,
+            contract.Document,
+            RelationshipStateCodec.ToDatabase(relationship.State),
+            accepted ? "ACCEPTED" : "PENDING",
+            relationship.State >= EmploymentRelationshipState.ActivationPending ? "CAPTURED" : "NOT_STARTED",
+            relationship.State == EmploymentRelationshipState.Active ? "ACTIVE"
+                : relationship.State == EmploymentRelationshipState.ActivationPending ? "PENDING" : "NOT_STARTED"));
+    }
+
+    [HttpPost("{relationshipId:guid}/contracts/{version:int}/accept")]
+    public async Task<IActionResult> AcceptContractAsync(
+        Guid relationshipId,
+        int version,
+        [FromBody] AcceptEmploymentContractRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetTenantId(out var tenantId) || !TryGetParticipantId(out var participantId)) return Forbid();
+        if (_contractAcceptances is null || _contracts is null)
+            return Problem(statusCode: 503, title: "Contract acceptance unavailable");
+
+        try
+        {
+            var contract = await _contracts.GetByVersionAsync(tenantId, relationshipId, version, cancellationToken);
+            if (contract is null) return NotFound();
+            var result = await _contractAcceptances.AcceptAsync(
+                tenantId,
+                relationshipId,
+                participantId,
+                contract.ContractId,
+                version,
+                request.ContractHash,
+                request.ScopeConfirmation,
+                GetContractPortalAssurance(),
+                request.CorrelationId ?? Guid.NewGuid(),
+                cancellationToken);
+            var response = ToAcceptanceResponse(result.Acceptance);
+            return result.Created ? StatusCode(StatusCodes.Status201Created, response) : Ok(response);
+        }
+        catch (ContractStepUpRequiredException exception)
+        {
+            return Problem(statusCode: 403, title: "IDENTITY_STEP_UP_REQUIRED", detail: exception.Message);
+        }
+        catch (ContractScopeConfirmationRequiredException exception)
+        {
+            return ValidationProblem(exception.Message);
+        }
+        catch (ContractIdentityMismatchException)
+        {
+            return NotFound();
+        }
+        catch (ConstitutionalActionDeniedException exception)
+        {
+            return Problem(statusCode: 403, title: "Constitutional authorization denied", detail: exception.Message);
+        }
+        catch (IllegalRelationshipTransitionException exception)
+        {
+            return Conflict(new { error = "ILLEGAL_RELATIONSHIP_TRANSITION", detail = exception.Message });
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return Conflict(new { error = "RELATIONSHIP_VERSION_CONFLICT" });
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            return Problem(statusCode: 503, title: "Constitutional evidence unavailable");
+        }
+    }
+
+    [HttpPost("{relationshipId:guid}/contracts/{version:int}/payments/onboarding-order")]
+    public async Task<IActionResult> CreateOnboardingPaymentOrderAsync(
+        Guid relationshipId,
+        int version,
+        [FromBody] PaymentProceedRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetTenantId(out var tenantId) || !TryGetParticipantId(out var participantId)) return Forbid();
+        if (_payments is null) return Problem(statusCode: 503, title: "Payment owner unavailable");
+
+        try
+        {
+            return Ok(await _payments.CreateOnboardingOrderAsync(
+                tenantId,
+                relationshipId,
+                participantId,
+                version,
+                request,
+                GetContractPortalAssurance(),
+                Guid.NewGuid(),
+                cancellationToken));
+        }
+        catch (PaymentStepUpRequiredException exception)
+        {
+            return Problem(statusCode: 403, title: "IDENTITY_STEP_UP_REQUIRED", detail: exception.Message);
+        }
+        catch (PaymentConsentRequiredException exception)
+        {
+            return ValidationProblem(exception.Message);
+        }
+        catch (PaymentOrderingException)
+        {
+            return Conflict(new { error = "ACCEPTED_CONTRACT_REQUIRED" });
+        }
+        catch (PaymentItemizationMismatchException exception)
+        {
+            return Conflict(new { error = "CONTRACT_PAYMENT_ITEMIZATION_MISMATCH", detail = exception.Message });
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (ConstitutionalActionDeniedException exception)
+        {
+            return Problem(statusCode: 403, title: "Constitutional authorization denied", detail: exception.Message);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            return Problem(statusCode: 503, title: "Payment owner outcome unresolved");
+        }
+    }
+
+    [HttpPost("{relationshipId:guid}/activation")]
+    public async Task<IActionResult> StartPaidActivationAsync(
+        Guid relationshipId,
+        [FromBody] StartPaidActivationRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetTenantId(out var tenantId) || !TryGetParticipantId(out var participantId)) return Forbid();
+        if (_activationDispatch is null) return Problem(statusCode: 503, title: "Activation workflow unavailable");
+
+        try
+        {
+            return Ok(await _activationDispatch.StartAsync(
+                tenantId,
+                relationshipId,
+                participantId,
+                request,
+                GetContractPortalAssurance(),
+                cancellationToken));
+        }
+        catch (PaymentStepUpRequiredException exception)
+        {
+            return Problem(statusCode: 403, title: "IDENTITY_STEP_UP_REQUIRED", detail: exception.Message);
+        }
+        catch (ConstitutionalActionDeniedException exception)
+        {
+            return Problem(statusCode: 403, title: "Constitutional authorization denied", detail: exception.Message);
+        }
+        catch (ActivationEligibilityException exception)
+        {
+            return Conflict(new { error = "ACTIVATION_NOT_ELIGIBLE", detail = exception.Message });
+        }
+        catch (ActivationConflictException exception)
+        {
+            return Conflict(new { error = "ACTIVATION_MATERIAL_CONFLICT", detail = exception.Message });
+        }
+        catch (ActivationOwnerUnavailableException exception)
+        {
+            return Problem(statusCode: 503, title: "Activation remains unresolved", detail: exception.Message);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            return Problem(statusCode: 503, title: "Activation remains unresolved");
+        }
+    }
+
     private bool TryGetTenantId(out Guid tenantId)
     {
         tenantId = default;
@@ -251,6 +542,34 @@ public sealed class EmploymentRelationshipsController : ControllerBase
             ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
         return Guid.TryParse(value, out participantId);
     }
+
+    private ContractPortalAssurance GetContractPortalAssurance()
+    {
+        var hasPortalContext = !User.HasClaim("client_type", "service")
+            && !string.Equals(User.FindFirstValue("identity_provider"), "whatsapp", StringComparison.OrdinalIgnoreCase);
+        var authenticatedAt = User.FindFirstValue("auth_time") is string value
+            && long.TryParse(value, out var timestamp)
+            ? DateTimeOffset.FromUnixTimeSeconds(timestamp)
+            : DateTimeOffset.MinValue;
+        return new ContractPortalAssurance(hasPortalContext, authenticatedAt);
+    }
+
+    private static EmploymentContractResponse ToContractResponse(EmploymentContractComposition composition) => new(
+        composition.Contract.ContractId,
+        composition.Contract.Version,
+        composition.Contract.ContractHash,
+        composition.Contract.State,
+        composition.Document,
+        composition.Contract.CreatedAt);
+
+    private static ContractAcceptanceResponse ToAcceptanceResponse(ContractAcceptance acceptance) => new(
+        acceptance.AcceptanceId,
+        acceptance.ContractId,
+        acceptance.ContractVersion,
+        acceptance.ContractHash,
+        acceptance.AuthenticationAssurance,
+        acceptance.AcceptanceEvidenceId,
+        acceptance.AcceptedAt);
 
     private static EmploymentRelationshipResponse ToResponse(EmploymentRelationship relationship) =>
         new(

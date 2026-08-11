@@ -8,6 +8,7 @@ CCT-GRANDFATHER-01 — C-090: renewal blocked when plan price > agreed price wit
 from __future__ import annotations
 
 import uuid
+from dataclasses import replace
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock
 
@@ -21,9 +22,11 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
-from payment.models import OnboardingOrderRequest, PaymentCapturedEvent
+from payment.models import OnboardingOrderRequest, PaidActivationRequest, PaymentCapturedEvent
 from payment.onboarding import OnboardingService
+from payment.paid_activation import PaidActivationService
 from payment.razorpay_client import RazorpayClient
+from payment.router import OnboardingOrderBody
 from payment.webhook import WebhookHandler
 from wallet.models import RenewalResult, SubscriptionActivationResult
 from wallet.service import WalletService
@@ -39,12 +42,25 @@ _PAYMENT_DDL = [
         razorpay_order_id   TEXT NOT NULL,
         customer_id         TEXT NOT NULL,
         status              TEXT NOT NULL DEFAULT 'IN_PROGRESS',
+        tenant_id           TEXT,
+        relationship_id     TEXT,
+        accepted_contract_id TEXT,
+        contract_version    INTEGER,
+        contract_hash       TEXT,
+        contract_acceptance_id TEXT,
+        payment_consent_evidence_id TEXT,
+        payment_evidence_id TEXT,
+        agent_type          TEXT,
+        bundle_tier         TEXT,
+        activation_intent_id TEXT,
+        activation_correlation_id TEXT,
+        outcome_subscription_id TEXT,
         created_at          TEXT NOT NULL DEFAULT (datetime('now')),
         activated_at        TEXT
     )""",
-    """CREATE TABLE IF NOT EXISTS subscriptions (
-        id                  TEXT PRIMARY KEY,
-        customer_id         TEXT NOT NULL,
+    """CREATE TABLE IF NOT EXISTS paid_subscriptions (
+        subscription_id     TEXT PRIMARY KEY,
+        organisation_id     TEXT NOT NULL,
         agent_type          TEXT NOT NULL,
         bundle_tier         TEXT NOT NULL,
         razorpay_order_id   TEXT NOT NULL,
@@ -52,13 +68,19 @@ _PAYMENT_DDL = [
         activated_at        TEXT NOT NULL
     )""",
     """CREATE TABLE IF NOT EXISTS billing_profiles (
-        id          TEXT PRIMARY KEY,
-        customer_id TEXT NOT NULL,
+        agent_type  TEXT PRIMARY KEY,
         status      TEXT NOT NULL DEFAULT 'PENDING'
     )""",
     """CREATE TABLE IF NOT EXISTS customers (
         id   TEXT PRIMARY KEY,
         mode TEXT NOT NULL DEFAULT 'FREE'
+    )""",
+    """CREATE TABLE IF NOT EXISTS trial_allocations (
+        trial_id            TEXT PRIMARY KEY,
+        customer_id         TEXT NOT NULL,
+        status              TEXT NOT NULL,
+        converted_at        TEXT,
+        new_subscription_id TEXT
     )""",
 ]
 
@@ -108,6 +130,22 @@ class TestCCT_ONBOARD_01:
         s.RAZORPAY_KEY_SECRET = "rzp_test_secret"
         s.RAZORPAY_WEBHOOK_SECRET = "rzp_wh_secret"
         return s
+
+    def test_relationship_order_requires_complete_contract_link_and_forbids_coupon(self):
+        relationship_id = uuid.uuid4()
+        base = {
+            "customer_id": uuid.uuid4(), "agent_type": "DMA", "bundle_tier": "STARTER",
+            "subscription_amount_paise": 149900, "wallet_seed_paise": 100000,
+        }
+        with pytest.raises(ValueError, match="complete contract link"):
+            OnboardingOrderBody(**base, relationship_id=relationship_id)
+        with pytest.raises(ValueError, match="cannot use payment bypass coupons"):
+            OnboardingOrderBody(
+                **base, tenant_id=uuid.uuid4(), relationship_id=relationship_id, contract_id=uuid.uuid4(),
+                contract_version=1, contract_hash="a" * 64,
+                contract_acceptance_id=uuid.uuid4(), payment_consent_evidence_id=uuid.uuid4(),
+                coupon_code="DEMOWAOOAW",
+            )
 
     @pytest.mark.asyncio
     async def test_demo_coupon_bypasses_razorpay(self, mock_settings):
@@ -222,6 +260,33 @@ class TestCCT_ONBOARD_01:
         assert body["notes"]["agent_type"] == "DMA"
         assert body["notes"]["bundle_tier"] == "WINNER"
 
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_relationship_order_notes_carry_contract_and_consent_evidence(self, mock_settings):
+        """WC059-04: hosted order is bound to accepted contract and explicit proceed evidence."""
+        ids = [uuid.uuid4() for _ in range(5)]
+        route = respx.post("https://api.razorpay.com/v1/orders").mock(
+            return_value=Response(200, json={"id": "order_contract_1"})
+        )
+        await OnboardingService(
+            razorpay_client=RazorpayClient(settings=mock_settings), settings=mock_settings
+        ).create_onboarding_order(OnboardingOrderRequest(
+            customer_id=ids[0], agent_type="DMA", bundle_tier="STARTER",
+            subscription_amount_paise=149900, wallet_seed_paise=100000,
+            relationship_id=ids[1], contract_id=ids[2], contract_version=3,
+            contract_hash="a" * 64, contract_acceptance_id=ids[3],
+            payment_consent_evidence_id=ids[4],
+        ))
+
+        import json
+        notes = json.loads(route.calls[0].request.content)["notes"]
+        assert notes["relationship_id"] == str(ids[1])
+        assert notes["contract_id"] == str(ids[2])
+        assert notes["contract_version"] == "3"
+        assert notes["contract_hash"] == "a" * 64
+        assert notes["contract_acceptance_id"] == str(ids[3])
+        assert notes["payment_consent_evidence_id"] == str(ids[4])
+
 
 # ---------------------------------------------------------------------------
 # CCT-WEBHOOK-01 — payment.captured activates wallet, HMAC verified, idempotent
@@ -245,6 +310,67 @@ class TestCCT_WEBHOOK_01:
             bundle_tier="STARTER",
             activated_at=datetime.now(timezone.utc),
         )
+
+    @pytest.mark.asyncio
+    async def test_relationship_capture_waits_for_bp_activation_and_replays_one_subscription(
+        self, payment_session, fake_redis, mock_settings
+    ):
+        customer_id = uuid.uuid4()
+        relationship_id = uuid.uuid4()
+        contract_id = uuid.uuid4()
+        acceptance_id = uuid.uuid4()
+        consent_id = uuid.uuid4()
+        payment_evidence_id = uuid.uuid4()
+        mock_wallet = AsyncMock(spec=WalletService)
+        subscription_id = uuid.uuid4()
+        mock_wallet.activate_subscription.return_value = SubscriptionActivationResult(
+            subscription_id=subscription_id, customer_id=customer_id, agent_type="DMA",
+            bundle_tier="STARTER", activated_at=datetime.now(timezone.utc),
+        )
+        mock_razorpay = MagicMock(spec=RazorpayClient)
+        mock_razorpay.verify_payment_signature.return_value = True
+        handler = WebhookHandler(
+            db=payment_session, wallet_service=mock_wallet,
+            razorpay_client=mock_razorpay, settings=mock_settings,
+        )
+        event = PaymentCapturedEvent(
+            razorpay_order_id="order_relationship", razorpay_payment_id="pay_relationship",
+            razorpay_signature="valid", customer_id=customer_id, agent_type="DMA",
+            bundle_tier="STARTER", tenant_id=customer_id, relationship_id=relationship_id,
+            accepted_contract_id=contract_id, contract_version=1, contract_hash="a" * 64,
+            contract_acceptance_id=acceptance_id,
+            payment_consent_evidence_id=consent_id, payment_evidence_id=payment_evidence_id,
+        )
+
+        captured = await handler.handle_payment_captured(event)
+
+        assert captured.status == "CAPTURED"
+        mock_wallet.activate_subscription.assert_not_awaited()
+        activation_request = PaidActivationRequest(
+            tenant_id=customer_id, relationship_id=relationship_id, activation_intent_id=uuid.uuid4(),
+            accepted_contract_id=contract_id, contract_version=1, contract_acceptance_id=acceptance_id,
+            payment_reference="pay_relationship", payment_evidence_id=payment_evidence_id,
+            correlation_id=uuid.uuid4(),
+        )
+        service = PaidActivationService(payment_session, mock_wallet)
+        with pytest.raises(HTTPException) as cross_tenant:
+            await service.activate(replace(activation_request, tenant_id=uuid.uuid4()))
+        assert cross_tenant.value.status_code == 409
+        with pytest.raises(HTTPException) as stale_contract:
+            await service.activate(replace(activation_request, contract_version=2))
+        assert stale_contract.value.status_code == 409
+        mock_wallet.activate_subscription.assert_not_awaited()
+
+        first = await service.activate(activation_request)
+        replay = await service.activate(activation_request)
+
+        assert first.subscription_id == replay.subscription_id == subscription_id
+        mock_wallet.activate_subscription.assert_awaited_once()
+        stored = (await payment_session.execute(text(
+            "SELECT status, outcome_subscription_id FROM payment_intents WHERE razorpay_payment_id = 'pay_relationship'"
+        ))).fetchone()
+        assert stored.status == "ACTIVATED"
+        assert stored.outcome_subscription_id == str(subscription_id)
 
     @pytest.mark.asyncio
     async def test_bypass_order_activates_subscription_without_signature_check(
@@ -321,8 +447,8 @@ class TestCCT_WEBHOOK_01:
         # Pre-insert matching subscription so the handler can fetch it
         await payment_session.execute(
             text(
-                "INSERT INTO subscriptions "
-                "(id, customer_id, agent_type, bundle_tier, razorpay_order_id, "
+                "INSERT INTO paid_subscriptions "
+                "(subscription_id, organisation_id, agent_type, bundle_tier, razorpay_order_id, "
                 "razorpay_payment_id, activated_at) "
                 "VALUES (:sid, :cid, 'DMA', 'STARTER', 'order_abc', :pid, datetime('now'))"
             ).bindparams(sid=str(uuid.uuid4()), cid=str(cid), pid=pay_id)

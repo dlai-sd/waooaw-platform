@@ -32,3 +32,17 @@ test('F4 workspace exposes all mandatory views without hiding Stop or overflowin
   const results = await new AxeBuilder({ page }).analyze();
   expect(results.violations.filter(({ impact }) => impact === 'critical' || impact === 'serious')).toEqual([]);
 });
+
+test('WC059 contract choices remain symmetric, responsive, and accessible', async ({ page }, testInfo) => {
+  test.skip(!['chromium-expanded', 'chromium-compact-360'].includes(testInfo.project.name), 'Required WC059 viewports only.');
+  await page.goto('/relationships/relationship-contract');
+
+  await expect(page.getByRole('heading', { name: 'Employment contract' })).toBeVisible();
+  await expect(page.getByText('₹1,180.00')).toBeVisible();
+  const decisions = page.getByRole('group', { name: 'Contract decisions' });
+  for (const name of ['Hire and accept exact contract', 'Not now', 'Cancel', 'Exit']) await expect(decisions.getByRole(name === 'Exit' ? 'link' : 'button', { name })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Emergency Stop' })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+  const results = await new AxeBuilder({ page }).analyze();
+  expect(results.violations.filter(({ impact }) => impact === 'critical' || impact === 'serious')).toEqual([]);
+});

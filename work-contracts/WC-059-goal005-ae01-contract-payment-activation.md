@@ -3,8 +3,8 @@
 **Goal:** GOAL-005 · **Epic stories:** AE-01-S07 and S08
 **Office on execution:** Platform IT Expert (INST-010)
 **Reviewer:** Enterprise Architect (INST-004) + Constitutional Analyst (INST-002)
-**Status:** IMPLEMENTATION-READY — D-07 R-046 RATIFIED; implementation not authorized
-**Authorization:** A future session requires explicit Founder authorization: “Authorize implementation of WC-059.”
+**Status:** IN PROGRESS — IMPLEMENTATION AUTHORIZED AND ACCEPTED
+**Authorization:** FA-040; GEP-GOAL-005-INST-013-08; R-080; ACK-GOAL-005-INST-001-08; GOA-GOAL-005-INST-010-05; ACC-GOAL-005-INST-010-05
 **Track:** VERTICAL CUSTOMER OUTCOME
 **Service scope:** BP (.NET), WBE (Python), CE (.NET), web, PR channel presentation
 
@@ -20,14 +20,14 @@ WC-058 DONE; WC-042 and WC-043 DONE; accepted AEEC Foundation and D-03 model. Cu
 
 | Task | Scope | Model hint | Status |
 |---|---|---|---|
-| WC059-01 | Apply the exact Migration 21 blueprint in the D-06 Data Contract: immutable contract/acceptance records and one activation-intent row per canonical tuple, with material request hash, stored outcome, RLS, and replay semantics. Identical replay returns the prior result; divergent material records conflict without mutation. | reasoning | pending |
-| WC059-02 | Implement BP `EmploymentContractService`: compose common AEEC plus DMA schedule from accepted S06 configuration; present plain-language rights, obligations, price/tax, ad-spend treatment, limitations, cancellation, review, authority, and Stop terms; amendments create new versions. | reasoning | pending |
-| WC059-03 | Implement the canonical contract proposal/acceptance endpoints. Acceptance is Tier-4 web only and requires fresh Keycloak authentication, active same-tenant `EMPLOYER` role, exact version/hash, separate scope confirmation, and committed evidence. Conversation, default checkbox, silence, deep-link possession, MPIN, or trial consent cannot accept. | reasoning | pending |
-| WC059-04 | Integrate WC-042 onboarding order/webhook APIs and the D-06 Security Contract payment-consent flow. Present contract-linked itemized INR/GST/subscription/refund consequences, record explicit proceed intent, redirect to Razorpay-hosted checkout, verify webhook signatures, and expose dispute/refund evidence. Never collect payment secrets in WAOOAW UI or chat. | reasoning | pending |
-| WC059-05 | Implement `ActivationOrchestrationService` and durable Temporal workflow exactly as ordered in the D-06 Solution Contract: load/lock intent, validate contract/payment/authority, enter `ACTIVATION_PENDING`, activate WBE idempotently, commit evidence, then transition relationship once to `ACTIVE`. | reasoning | pending |
-| WC059-06 | Repair partial-failure ordering so WBE billing `CONVERTED` is emitted only as the projection of successful paid activation, never as a D-03 relationship state. Uncertainty stays on the same retryable activation intent; retries reuse correlation and return stored outcome without a second charge or relationship. | reasoning | pending |
-| WC059-07 | Build web and WhatsApp contract summary/link, explicit acceptance, payment status, retry-safe activation result, cancellation/not-now path, and honest paid-capability differences. No countdown, confirm-shaming, preselection, or repeated solicitation. | reasoning | pending |
-| WC059-08 | Add CCTs for version/hash acceptance, unauthorized participant, scope confirmation, payment ordering, webhook replay, concurrent activation, conflicting tuple, WBE/CE failure, and exactly-one charge/relationship/active transition. | auto | pending |
+| WC059-01 | Apply the exact Migration 21 blueprint in the D-06 Data Contract as `21b-ae01-contract-activation.sql` because `21-conversation-core.sql` already owns deployment sequence 21: immutable contract/acceptance records and one activation-intent row per canonical tuple, with material request hash, stored outcome, RLS, and replay semantics. Identical replay returns the prior result; divergent material records conflict without mutation. | reasoning | done |
+| WC059-02 | Implement BP `EmploymentContractService`: compose common AEEC plus DMA schedule from accepted S06 configuration; present plain-language rights, obligations, price/tax, ad-spend treatment, limitations, cancellation, review, authority, and Stop terms; amendments create new versions. | reasoning | done |
+| WC059-03 | Implement the canonical contract proposal/acceptance endpoints. Acceptance is Tier-4 web only and requires fresh Keycloak authentication, active same-tenant `EMPLOYER` role, exact version/hash, separate scope confirmation, and committed evidence. Conversation, default checkbox, silence, deep-link possession, MPIN, or trial consent cannot accept. | reasoning | done |
+| WC059-04 | Integrate WC-042 onboarding order/webhook APIs and the D-06 Security Contract payment-consent flow. Present contract-linked itemized INR/GST/subscription/refund consequences, record explicit proceed intent, redirect to Razorpay-hosted checkout, verify webhook signatures, and expose dispute/refund evidence. Never collect payment secrets in WAOOAW UI or chat. | reasoning | done |
+| WC059-05 | Implement `ActivationOrchestrationService` and durable Temporal workflow exactly as ordered in the D-06 Solution Contract: load/lock intent, validate contract/payment/authority, enter `ACTIVATION_PENDING`, activate WBE idempotently, commit evidence, then transition relationship once to `ACTIVE`. | reasoning | done |
+| WC059-06 | Repair partial-failure ordering so WBE billing `CONVERTED` is emitted only as the projection of successful paid activation, never as a D-03 relationship state. Uncertainty stays on the same retryable activation intent; retries reuse correlation and return stored outcome without a second charge or relationship. | reasoning | done |
+| WC059-07 | Build web and WhatsApp contract summary/link, explicit acceptance, payment status, retry-safe activation result, cancellation/not-now path, and honest paid-capability differences. No countdown, confirm-shaming, preselection, or repeated solicitation. | reasoning | done |
+| WC059-08 | Add CCTs for version/hash acceptance, unauthorized participant, scope confirmation, payment ordering, webhook replay, concurrent activation, conflicting tuple, WBE/CE failure, and exactly-one charge/relationship/active transition. | auto | done |
 
 ## Required Inputs
 
@@ -64,4 +64,4 @@ docker compose --profile test run --rm test-runner npm --prefix web run build
 
 ## Boundaries
 
-No campaign execution, provider credential connection, renewal redesign, or implementation authorization. No implementation starts without a future explicit Founder authorization.
+No campaign execution, live Razorpay/provider credential activation, provider account setup, renewal redesign, WC-060, deployment, production/customer proof, self-review, or merge. FA-040 satisfies the current-session consent gate but no implementation starts before the GEP-08 CA/ACK/GOA/ACC chain is complete.

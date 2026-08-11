@@ -21,6 +21,25 @@ export interface RelationshipEvaluationProjection {
   decisionSpace?: { version: number; budgetCeilingInrPaise: number; authorityBoundaries: unknown[]; stopConditions: unknown[]; reviewCadenceMonths: number } | null;
 }
 
+export interface ContractJourneyProjection {
+  contractId: string;
+  version: number;
+  contractHash: string;
+  relationshipState: string;
+  acceptanceState: string;
+  paymentState: string;
+  activationState: string;
+  document: {
+    professionalDisplayName: string;
+    rights: string[];
+    obligations: string[];
+    limitations: string[];
+    authorityTerms: string[];
+    stopTerms: string[];
+    priceTax: { currency: string; grossAmountInrPaise: number; gstAmountInrPaise: number; cadence: string; subscriptionTerms: string; adSpendTreatment: string; cancellationAndRefundTerms: string };
+  };
+}
+
 const businessPlatformUrl = process.env.BUSINESS_PLATFORM_URL ?? 'http://localhost:5001';
 
 async function authorizedGet(path: string, accessToken: string): Promise<unknown> {
@@ -57,4 +76,15 @@ export async function getRelationshipEvaluation(
     `/api/v1/employment/relationships/${encodeURIComponent(relationshipId)}/evaluation`,
     accessToken,
   ) as Promise<RelationshipEvaluationProjection>;
+}
+
+export async function getContractJourney(
+  relationshipId: string, accessToken: string,
+): Promise<ContractJourneyProjection | null> {
+  const response = await fetch(`${businessPlatformUrl}/api/v1/employment/relationships/${encodeURIComponent(relationshipId)}/contract-journey`, {
+    headers: { Authorization: `Bearer ${accessToken}` }, cache: 'no-store',
+  });
+  if (response.status === 204) return null;
+  if (!response.ok) throw new Error(`Business Platform request failed with ${response.status}.`);
+  return response.json() as Promise<ContractJourneyProjection>;
 }

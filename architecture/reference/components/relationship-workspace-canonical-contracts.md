@@ -126,3 +126,95 @@ None in this publication slice.
 | evolution_triggered | no |
 | improvement_signal | Hash-bound owner attestation remains reliable when verification includes exact version/hash parity, operation-inventory checks per owner surface, explicit BLOCKED/UNAVAILABLE separation, and independent Stop-path confirmation before ACCEPT decisioning. |
 
+## WC-059 R082-01 Architecture Synchronization Amendment - 2026-08-11
+
+### Enterprise Architecture Attestation
+
+| Field | Value |
+|---|---|
+| institution_id | INST-004 - Enterprise Architect |
+| work_contract | WC-059 - AE-01 Contract, Payment, and Exactly-Once Activation |
+| finding | R082-01 - Canonical WBE contract attestation is stale |
+| amendment_scope | Synchronize the current canonical publication and architecture traceability for the additive WBE paid-activation operation without changing contract bytes or rewriting the historical INST-005 owner attestation |
+| authority | WC-059 assigns INST-004 as architecture reviewer; the INST-004 Decision Space permits reference-architecture publication and traceability maintenance for this non-semantic synchronization |
+| decision | ATTESTED - current WBE 1.1.0 contract, ADR-046 route grant, and WBE manifest entry are architecturally coherent |
+| acceptance_boundary | This amendment is not a new INST-005 logical-owner acceptance, does not extend ACC-GOAL-005-INST-005-09, and does not claim INST-005 acceptance of WBE 1.1.0 |
+| review_boundary | R082-01 remediation evidence is complete; independent re-review remains required for finding closure, and R081-03 remains open |
+
+### Historical Preservation
+
+The WBE 1.0.0 rows and exact three-operation owner inventory above remain the historical
+hash-bound attestation made at commit `9b126bd`. They are not rewritten and must not be read as
+describing the current committed OpenAPI bytes. This amendment records the later additive WC-059
+publication only.
+
+### Current Amended WBE Canonical Publication
+
+| Artifact | Version | SHA-256 | Result |
+|---|---|---|---|
+| architecture/reference/api-specs/wbe-relationship-workspace.openapi.yaml | 1.1.0 | b8ace8ccf218e430b61abb979bbd426843ca84b14a6e2adcfe46243aa1122623 | MATCH - independently computed from current bytes |
+
+Exact current operation inventory:
+
+| Operation ID | Method | Route |
+|---|---|---|
+| `activatePaidRelationship` | POST | `/internal/v1/relationships/{relationshipId}/paid-activation` |
+| `getRelationshipCommercialProjection` | GET | `/internal/v1/relationships/{relationshipId}/commercial-projection` |
+| `submitRelationshipCommercialCommand` | POST | `/internal/v1/relationships/{relationshipId}/commercial-commands` |
+| `getRelationshipCommercialCommand` | GET | `/internal/v1/relationships/{relationshipId}/commercial-commands/{commandId}` |
+
+### Architecture Consistency Evidence
+
+| Check | Result |
+|---|---|
+| OpenAPI 3.1 parse and validation with repository-approved OpenAPI Generator 7.17.0 | PASS - no validation issues |
+| ADR-046 workload route registry | PASS - exact four method, route, and operation tuples; caller is `business-platform`, target is `billing-engine`, contract major is 1 |
+| WBE component manifest for paid activation | PASS - exact POST route, BP-only caller, idempotent operation, and `must_not_expose_to_internet: true` |
+| BLOCKED and UNAVAILABLE semantics | PASS - distinct reusable responses and distinct command/projection states remain present |
+| Emergency Stop independence | PASS - no Stop route or operation is introduced; ADR-046 Section 5.3 remains controlling |
+| Browser ingress | PASS - private internal server, `x-internal: true` on all four operations, BP-only registry grants, and no browser authorization surface |
+| Architecture-owned WBE 1.0.0 traceability references | PASS - remaining references are confined to the preserved historical attestation above; no current-facing architecture header requires replacement |
+
+### Amendment Effect
+
+For current architecture traceability, the canonical WBE private contract is version 1.1.0 at the
+hash and exact four-operation inventory recorded above. The original 1.0.0 publication and
+INST-005 acceptance remain valid historical evidence only. This amendment changes no API bytes,
+owner semantics, policy tuple, source ownership, implementation, deployment state, or customer-proof
+claim.
+
+## WC-059 WBE 1.1.0 Logical Owner Amendment Acceptance - 2026-08-11
+
+### INST-005 Acceptance Record
+
+| Field | Value |
+|---|---|
+| institution_id | INST-005 - Solution Architect |
+| acceptance_id | ACC-GOAL-005-INST-005-10 |
+| acceptance_basis | GOAL-005 Amendment 5 Order 3 logical-owner designation and R-083 EA approval |
+| accepted_at | 2026-08-11 |
+| acceptance_scope | Append-only WBE 1.1.0 contract amendment and exact four-operation inventory |
+| decision | ACCEPT |
+
+INST-005 accepts `architecture/reference/api-specs/wbe-relationship-workspace.openapi.yaml` version
+1.1.0 at SHA-256 `b8ace8ccf218e430b61abb979bbd426843ca84b14a6e2adcfe46243aa1122623`.
+This acceptance is hash-bound and does not modify or supersede the historical 1.0.0 acceptance.
+
+Accepted operation inventory:
+
+| Operation ID | Method | Route |
+|---|---|---|
+| `activatePaidRelationship` | POST | `/internal/v1/relationships/{relationshipId}/paid-activation` |
+| `getRelationshipCommercialProjection` | GET | `/internal/v1/relationships/{relationshipId}/commercial-projection` |
+| `submitRelationshipCommercialCommand` | POST | `/internal/v1/relationships/{relationshipId}/commercial-commands` |
+| `getRelationshipCommercialCommand` | GET | `/internal/v1/relationships/{relationshipId}/commercial-commands/{commandId}` |
+
+The acceptance preserves WBE captured-payment, paid-subscription, and commercial-projection
+ownership; BP-only private ingress; ADR-046 mutual TLS and exact delegated-context binding;
+idempotent payment-keyed replay; target-owned payment-material rebinding; distinct BLOCKED and
+UNAVAILABLE semantics; CE Evidence First obligations; and Emergency Stop independence.
+
+This acceptance closes the INST-005 dependency retained by R-083 and therefore closes R082-01. It
+does not authorize live Razorpay or provider activation, credentials, WC-060, deployment, merge,
+implementation expansion, or production/customer claims.
+
