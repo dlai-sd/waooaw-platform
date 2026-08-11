@@ -843,6 +843,41 @@ paths:
         "503":
           description: Constitutional evidence or WBE hosted-order outcome is unavailable or inconsistent
 
+  /api/v1/employment/relationships/{relationshipId}/activation:
+    post:
+      tags: [Employment]
+      summary: Start or join durable paid relationship activation
+      description: |
+        Requires fresh Keycloak portal authentication and an active same-tenant EMPLOYER binding.
+        BP derives the accepted contract, acceptance evidence, authority snapshot, actor, and stable
+        correlation from canonical relationship state. WBE remains payment owner and revalidates the
+        supplied payment reference and evidence identifier against its signature-verified CAPTURED row.
+        Identical replay joins the stable Temporal workflow; unresolved owner outcomes never report success.
+      operationId: startPaidRelationshipActivation
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StartPaidRelationshipActivationRequest"
+      responses:
+        "200":
+          description: Stored successful activation outcome returned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaidRelationshipActivationOutcome"
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: Fresh portal assurance or active same-tenant EMPLOYER authority denied
+        "409":
+          description: Relationship is ineligible or canonical activation material conflicts
+        "503":
+          description: Temporal, constitutional evidence, or WBE activation outcome remains unresolved
+
   /api/v1/employment/contracts:
     get:
       tags: [Employment]
@@ -3821,6 +3856,24 @@ components:
         currency: { type: string, enum: [INR] }
         isBypass: { type: boolean, enum: [false] }
         checkoutMode: { type: string, enum: [RAZORPAY_HOSTED] }
+
+    StartPaidRelationshipActivationRequest:
+      type: object
+      additionalProperties: false
+      required: [paymentReference, paymentEvidenceId]
+      properties:
+        paymentReference: { type: string, minLength: 1 }
+        paymentEvidenceId: { type: string, format: uuid }
+
+    PaidRelationshipActivationOutcome:
+      type: object
+      additionalProperties: false
+      required: [activationIntentId, subscriptionId, evidenceId, status]
+      properties:
+        activationIntentId: { type: string, format: uuid }
+        subscriptionId: { type: string, format: uuid }
+        evidenceId: { type: string, format: uuid }
+        status: { type: string, enum: [SUCCEEDED] }
 
     RelationshipTimelineEntry:
       type: object

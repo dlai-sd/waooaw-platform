@@ -27,13 +27,13 @@ WC-060 continuity, deployment, production/customer proof, merge, or self-review.
 | Slice | Result |
 |---|---|
 | PostgreSQL migrations 21b/21c | PASS — first apply, reapply, RLS/immutability, canonical tuple, and paid-subscription constraints |
-| Business Platform | PASS — 236/236 in repository Docker test-runner; focused activation concurrency 1/1 |
+| Business Platform | PASS — 239/239 in repository Docker test-runner; focused activation command/orchestration 9/9 including canonical derivation, stable replay, fresh portal assurance, employer authority, concurrency, conflict, and retryable uncertainty |
 | Billing Engine | PASS — 377/377 including payment, wallet, paid activation, webhook replay, and reconciliation |
 | Business Platform affected coverage | PASS — core WC059 methods 93.33–100% lines except durable conflict/replay branches covered separately by PostgreSQL concurrency evidence; activation orchestration entry is 100% |
 | Web component | PASS — 4/4 focused relationship journey tests; `ContractJourney` 100% lines, 97.22% statements, 93.75% branches, 91.66% functions |
 | Web production build | PASS — strict TypeScript, lint, 23 generated routes |
 | Browser acceptance | PASS — 4/4 Chromium expanded and compact 360; no serious/critical axe violations or horizontal overflow |
-| OpenAPI | YAML parses and the WC059 dependency slice resolves; full generator validation retains one pre-existing missing `#/components/responses/Forbidden` reference |
+| OpenAPI | Paid activation command and truthful conflict/unresolved responses are specified; full generator validation reaches the new operation and retains only one pre-existing missing `#/components/responses/Forbidden` reference |
 | Diff hygiene | Protected `.coverage` and `logs/blueprint_assurance_report.json` remain unstaged; no generated `bin`, `obj`, `.next`, provider credential, or deployment artifact is committed |
 | Platform state check | Informational mismatch — canonical registry still names the prior completed baseline, so `SPRINT-REGISTRY.md` and this in-progress `PROJECT_STATE.md` checkpoint intentionally differ until reviewed completion; no automatic rewrite performed |
 

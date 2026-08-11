@@ -122,19 +122,22 @@ public sealed class EmploymentRelationshipsController : ControllerBase
     private readonly EmploymentContractService? _contracts;
     private readonly EmploymentContractAcceptanceService? _contractAcceptances;
     private readonly RelationshipPaymentService? _payments;
+    private readonly ActivationWorkflowDispatchService? _activationDispatch;
 
     public EmploymentRelationshipsController(
         EmploymentRelationshipService service,
         RelationshipTrialService? trials = null,
         EmploymentContractService? contracts = null,
         EmploymentContractAcceptanceService? contractAcceptances = null,
-        RelationshipPaymentService? payments = null)
+        RelationshipPaymentService? payments = null,
+        ActivationWorkflowDispatchService? activationDispatch = null)
     {
         _service = service;
         _trials = trials;
         _contracts = contracts;
         _contractAcceptances = contractAcceptances;
         _payments = payments;
+        _activationDispatch = activationDispatch;
     }
 
     [HttpPost]
@@ -477,6 +480,51 @@ public sealed class EmploymentRelationshipsController : ControllerBase
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
             return Problem(statusCode: 503, title: "Payment owner outcome unresolved");
+        }
+    }
+
+    [HttpPost("{relationshipId:guid}/activation")]
+    public async Task<IActionResult> StartPaidActivationAsync(
+        Guid relationshipId,
+        [FromBody] StartPaidActivationRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetTenantId(out var tenantId) || !TryGetParticipantId(out var participantId)) return Forbid();
+        if (_activationDispatch is null) return Problem(statusCode: 503, title: "Activation workflow unavailable");
+
+        try
+        {
+            return Ok(await _activationDispatch.StartAsync(
+                tenantId,
+                relationshipId,
+                participantId,
+                request,
+                GetContractPortalAssurance(),
+                cancellationToken));
+        }
+        catch (PaymentStepUpRequiredException exception)
+        {
+            return Problem(statusCode: 403, title: "IDENTITY_STEP_UP_REQUIRED", detail: exception.Message);
+        }
+        catch (ConstitutionalActionDeniedException exception)
+        {
+            return Problem(statusCode: 403, title: "Constitutional authorization denied", detail: exception.Message);
+        }
+        catch (ActivationEligibilityException exception)
+        {
+            return Conflict(new { error = "ACTIVATION_NOT_ELIGIBLE", detail = exception.Message });
+        }
+        catch (ActivationConflictException exception)
+        {
+            return Conflict(new { error = "ACTIVATION_MATERIAL_CONFLICT", detail = exception.Message });
+        }
+        catch (ActivationOwnerUnavailableException exception)
+        {
+            return Problem(statusCode: 503, title: "Activation remains unresolved", detail: exception.Message);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            return Problem(statusCode: 503, title: "Activation remains unresolved");
         }
     }
 

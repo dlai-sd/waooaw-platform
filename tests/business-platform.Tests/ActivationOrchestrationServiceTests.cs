@@ -123,6 +123,71 @@ public sealed class ActivationOrchestrationServiceTests
         Assert.Equal(1, context.Billing.CallCount);
     }
 
+    [Fact]
+    public async Task ActivationCommandDerivesCanonicalMaterialFromRelationshipState()
+    {
+        var context = await CreateContextAsync();
+        var starter = new RecordingActivationWorkflowStarter();
+        var dispatch = new ActivationWorkflowDispatchService(context.Factory, starter);
+        var paymentEvidenceId = Guid.NewGuid();
+        var command = new StartPaidActivationRequest(" pay_verified_123 ", paymentEvidenceId);
+        var assurance = new ContractPortalAssurance(true, DateTimeOffset.UtcNow);
+
+        await dispatch.StartAsync(
+            context.Request.TenantId, context.Request.RelationshipId, context.Request.ActorParticipantId,
+            command, assurance, CancellationToken.None);
+        await dispatch.StartAsync(
+            context.Request.TenantId, context.Request.RelationshipId, context.Request.ActorParticipantId,
+            command, assurance, CancellationToken.None);
+
+        Assert.Equal(2, starter.Requests.Count);
+        var activation = starter.Requests[0];
+        Assert.Equal(context.Request.AcceptedContractId, activation.AcceptedContractId);
+        Assert.Equal(context.Request.ContractAcceptanceId, activation.ContractAcceptanceId);
+        Assert.Equal(context.Request.AuthoritySnapshotId, activation.AuthoritySnapshotId);
+        Assert.Equal(paymentEvidenceId, activation.PaymentEvidenceId);
+        Assert.Equal("pay_verified_123", activation.PaymentReference);
+        Assert.Equal(activation.CorrelationId, starter.Requests[1].CorrelationId);
+        Assert.Equal(ActivationWorkflow.WorkflowIdFor(activation),
+            ActivationWorkflow.WorkflowIdFor(starter.Requests[1]));
+    }
+
+    [Fact]
+    public async Task ActivationCommandRejectsStalePortalAssuranceBeforeWorkflowStart()
+    {
+        var context = await CreateContextAsync();
+        var starter = new RecordingActivationWorkflowStarter();
+        var dispatch = new ActivationWorkflowDispatchService(context.Factory, starter);
+
+        await Assert.ThrowsAsync<PaymentStepUpRequiredException>(() => dispatch.StartAsync(
+            context.Request.TenantId,
+            context.Request.RelationshipId,
+            context.Request.ActorParticipantId,
+            new StartPaidActivationRequest(context.Request.PaymentReference, context.Request.PaymentEvidenceId),
+            new ContractPortalAssurance(true, DateTimeOffset.UtcNow.AddMinutes(-6)),
+            CancellationToken.None));
+
+        Assert.Empty(starter.Requests);
+    }
+
+    [Fact]
+    public async Task ActivationCommandRejectsNonEmployerBeforeWorkflowStart()
+    {
+        var context = await CreateContextAsync();
+        var starter = new RecordingActivationWorkflowStarter();
+        var dispatch = new ActivationWorkflowDispatchService(context.Factory, starter);
+
+        await Assert.ThrowsAsync<ConstitutionalActionDeniedException>(() => dispatch.StartAsync(
+            context.Request.TenantId,
+            context.Request.RelationshipId,
+            Guid.NewGuid(),
+            new StartPaidActivationRequest(context.Request.PaymentReference, context.Request.PaymentEvidenceId),
+            new ContractPortalAssurance(true, DateTimeOffset.UtcNow),
+            CancellationToken.None));
+
+        Assert.Empty(starter.Requests);
+    }
+
     private static async Task<ActivationTestContext> CreateContextAsync()
     {
         var factory = new InMemoryEmploymentRelationshipFactory(Guid.NewGuid().ToString("N"));
@@ -213,4 +278,17 @@ public sealed class ActivationOrchestrationServiceTests
         RecordingRelationshipConstitutionalGateway Constitutional,
         RecordingActivationBillingGateway Billing,
         ActivationRequest Request);
+
+    private sealed class RecordingActivationWorkflowStarter : IActivationWorkflowStarter
+    {
+        public List<ActivationRequest> Requests { get; } = [];
+
+        public Task<ActivationOutcome> StartOrJoinAsync(
+            ActivationRequest request, CancellationToken cancellationToken)
+        {
+            Requests.Add(request);
+            return Task.FromResult(new ActivationOutcome(
+                Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "SUCCEEDED"));
+        }
+    }
 }

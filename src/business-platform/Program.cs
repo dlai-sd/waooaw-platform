@@ -108,6 +108,8 @@ var temporalHost = builder.Configuration["Temporal:Host"];
 if (!string.IsNullOrWhiteSpace(temporalHost))
 {
     builder.Services.AddTemporalClient(opts => opts.TargetHost = temporalHost);
+    builder.Services.AddSingleton<IActivationWorkflowStarter, TemporalActivationWorkflowStarter>();
+    builder.Services.AddScoped<ActivationWorkflowDispatchService>();
     builder.Services.AddSingleton<TrialExpiryActivities>();
     builder.Services.AddScoped<ActivationActivities>();
     builder.Services.AddHostedTemporalWorker("bp-trial-worker")
