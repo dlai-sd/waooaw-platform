@@ -7,7 +7,7 @@
 | `record_id` | CB-004 |
 | `record_type` | Clearance Record |
 | `produced_at` | 2026-08-11T16:31:33Z |
-| Status | **OPEN — WC-060 IMPLEMENTATION ROUTING BLOCKED** |
+| Status | **RESOLVED — WC-060 SPECIFICATION READY; IMPLEMENTATION UNAUTHORIZED** |
 | Raised by | INST-013 — Goal Orchestrator |
 | Evidence baseline | `origin/main` at `0eed497`; includes WC-059 merge `b0dbe9c` and PROJECT_STATE v2 merge `c42a239` |
 
@@ -85,3 +85,28 @@ INST-005/INST-006 Decision Space.
 - GOA-GOAL-005-INST-010-06 and INST-010 Goal Acceptance: not issued.
 - Implementation, migrations, generated production clients, provider activation,
   deployment, merge, and F6-F8 feature work remain unauthorized.
+
+## Resolution — 2026-08-11
+
+All required resolution evidence is present in the readiness branch:
+
+1. BP OpenAPI v1.7.0 defines both handoff operations, the signed Neutral Continuity
+  Envelope, aligned binding/checkpoint states, role-filtered Evidence Reader behavior,
+  deterministic JSON export, erased-payload behavior, and privacy-safe outcomes.
+2. CE protobuf defines `QueryEvidenceRecords` with tenant-metadata-only scope, opaque
+  authorized evidence IDs, bounded pagination, erased-payload metadata, and no payload,
+  credential, prompt, policy, or storage-coordinate disclosure.
+3. The D-06 Migration 22 contract fixes exact columns, types, keys, valid composite foreign
+  keys, checks, unique indexes, forced RLS, transition and append-only triggers, 15-minute
+  checkpoint expiry, 48-hour deduplication retention, maintenance authority, and replay rules.
+4. Fresh independent INST-005, INST-006, and INST-007 reviews approved their respective
+  integration, data, and security boundaries. INST-004 then approved the integrated package
+  after explicit HMAC adversarial CCT, evidence-export, and erased-payload clarifications.
+5. Fresh INST-002 review declared the package constitutionally ready and confirmed this
+  blocker may close while implementation authority remains absent.
+
+CB-004 is therefore closed as a specification blocker. Amendment 9 may proceed to formal CA
+readiness review and future Registrant acknowledgement. Closing this blocker does not issue
+`GOA-GOAL-005-INST-010-06`, create `ACC-GOAL-005-INST-010-06`, satisfy the required future
+Founder session directive, or authorize implementation, migration execution, generated
+production clients, provider activation, deployment, PR merge, self-review, or F6-F8 work.

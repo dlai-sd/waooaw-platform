@@ -1949,3 +1949,111 @@ R-080 and this record satisfy both GEOM R2-03 pre-issuance conditions. The ackno
 | Acceptance boundary | No live Razorpay/provider activation, credentials/account setup, WC-060, deployment, merge, self-review, architecture reinterpretation, or production/customer-proof authority |
 
 The Acceptance timestamp is later than GOA issuance, satisfying GEOM G-03 and R2-12. WC-059 implementation may begin under FA-040, GEP-08, R-080, ACK-08, GOA-05, and ACC-05.
+
+---
+
+## Amendment 9 — WC-060 Implementation Readiness Routing
+
+| Attestation field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GEP-GOAL-005-INST-013-09 |
+| `record_type` | Execution Plan |
+| `produced_at` | 2026-08-11 |
+| Status | CA READY — R-086 APPROVED; exact Registrant acknowledgement and separate future current-session implementation authorization required |
+| Amends | GEP-GOAL-005-INST-013-08 prospectively; Amendment 8 and all prior records remain unchanged |
+
+### Purpose And Groomed Entry State
+
+This amendment adds the dependency-ordered execution envelope for WC-060 only. WC-059 is DONE
+through PR #265 and merge `b0dbe9c`. FA-037 and Amendment 6 make WC-060 the sole WC-034 F5
+implementation contract. CB-004 is resolved after canonical BP OpenAPI, CE protobuf, D-06
+Migration 22, security, export, erasure, and adversarial HMAC test contracts were repaired and
+independently reviewed by INST-005, INST-006, INST-007, INST-004, and INST-002.
+
+This amendment records implementation-ready specification scope only. Unlike Amendments 7 and
+8 at their implementation start, no Founder current-session implementation directive exists.
+Architecture approval, CA readiness, Registrant acknowledgement, or blocker closure cannot
+substitute for the future exact directive `Authorize implementation of WC-060`.
+
+### Phase 11 — WC-060 Omnichannel Continuity, Evidence, And Emergency Stop
+
+| Field | Value |
+|---|---|
+| Primary Institution | INST-010 — Platform IT Expert |
+| Contribution scope | After every authorization gate passes, implement WC060-01 through WC060-09 exactly across BP, PR, CE, web, Migration 22, and ADR-023 Phone Identity integration |
+| Required inputs | WC-059 DONE; D-03 through D-07 and R-046 ratified; FA-037 and R-073/R-074/R-075 controlling; CB-004 resolved; canonical BP OpenAPI v1.7.0, CE protobuf, D-06 solution/data/security contracts, and every WC-060 Required Input current |
+| Participation Window | Five constitutional sessions after valid INST-010 acceptance |
+| Required implementation evidence | Task traceability; Docker-only BP/PR/CE/web/integration/security/CCT evidence; affected-surface line coverage at least 90%; Migration 22 first/reapply/RLS/transition/immutability/concurrency proof; OpenAPI/protobuf/generated-client conformance; exact 360px and expanded browser acceptance; proportional F8 evidence |
+| Required safety evidence | Tenant/relationship/role isolation; fresh target authentication; HMAC-SHA256 continuity-envelope verification; replay/conflict/out-of-order denial with zero unauthorized mutation; role-filtered Evidence Reader/export; erased-payload proof retention; cross-channel Stop within the existing constitutional budget; Tier-4 evidence-linked Stop release only |
+| Independent review | INST-007 Security Architect and INST-006 Data Architect review their completed implementation surfaces; fresh INST-004 performs final integrated acceptance; INST-010 may not review or approve its own work |
+| Completion boundary | Prepare one complete unmerged PR after all nine tasks, F5 UX acceptance, proportional F8 evidence, and independent reviews pass; Founder review and merge remain separate |
+
+### Grooming Traceability
+
+| Task | Controlling contract | Required discriminating proof |
+|---|---|---|
+| WC060-01 | D-06 Migration 22 exact blueprint | First apply/reapply, valid composite FKs, forced RLS, checks/triggers, append-only acknowledgements, 15-minute checkpoint expiry, 48-hour dedup cleanup, replay/concurrency |
+| WC060-02 | ADR-023 and D-06 Security Contract | Meta HMAC/timestamp/dedup, opt-in, tenant-scoped 30-minute phone JWT, MPIN lockout, phone-attach Tier-4 proof, takeover/confused-deputy denial |
+| WC060-03 | BP OpenAPI handoffs and D-06 Solution Contract | Signed RFC 8785 envelope, fresh target role/assurance, evidence-before-commit, source preservation, identical replay, divergent conflict, HMAC CCT |
+| WC060-04 | PR session-routing ownership | Multiple channel sessions resolve one relationship/current authority while retaining separate delivery state; reconnect reauthenticates and cannot duplicate lifecycle outcome |
+| WC060-05 | BP Evidence Reader OpenAPI and CE `QueryEvidenceRecords` | Tenant/relationship/role projection, opaque-ID CE query, bounded cursor, no existence disclosure, erased proof retention, deterministic signed JSON export |
+| WC060-06 | F5 hybrid UX and acknowledgement semantics | Timeline/evidence/authority/cost/trial/Stop across web and WhatsApp; transport acceptance remains distinct from participant observation; unresolved delivery shown honestly |
+| WC060-07 | D-06 Stop and release contract | One-channel Stop halts every relationship session within budget; later consequential commands deny; release requires fresh Tier-4 EMPLOYER and originating Stop evidence chain |
+| WC060-08 | Nine WC-060 CCT assertions | Takeover, replay, confused deputy, downgrade, cross-tenant, out-of-order, offline, duplicate, HMAC forgery/replay, Stop, unauthorized release, and reconstructability pass |
+| WC060-09 | WC-034 F5 and proportional F8 acceptance | UX-CONV-03, UX-RES-02, UX-CONT-01 through UX-CONT-06, generated client, accessibility, privacy, lint, build, coverage, and regression evidence pass |
+
+### Authorization Rules And Mandatory Stops
+
+1. This proposed amendment issues no GO Authorization and authorizes no implementation.
+2. `GOA-GOAL-005-INST-010-06` is reserved and may issue only after a fresh INST-002 CA
+	Readiness Review approves this exact amendment, the Registrant records the exact
+	acknowledgement below, and the Founder gives the separate current-session directive
+	`Authorize implementation of WC-060`.
+3. After valid GOA issuance, INST-010 must record `ACC-GOAL-005-INST-010-06` at a timestamp
+	later than `issued_at`. No implementation task may start before that acceptance exists.
+4. Registrant acknowledgement authorizes future GOA routing only; it is not implementation
+	consent and cannot be inferred from PR approval, merge, architecture approval, G5 CLEAR,
+	backlog priority, blocker closure, or Work Contract status.
+5. INST-013 may sequence and mechanically verify records but may not contribute source,
+	migrations, generated clients, tests, implementation evidence, or independent review.
+6. INST-010 may implement only after all gates pass and may not deploy, activate providers,
+	self-review, self-approve, self-merge, merge, or begin F6-F8 feature implementation.
+
+### Required Future Registrant Acknowledgement
+
+Before `GOA-GOAL-005-INST-010-06` may issue, the Registrant must record exactly:
+
+> `I acknowledge GEP-GOAL-005-INST-013-09 and authorize INST-013 to issue GOA-GOAL-005-INST-010-06 for WC-060 implementation only after I separately authorize implementation for that current session. This does not authorize provider activation, deployment, F6-F8 feature implementation, PR merge, self-review, or self-merge.`
+
+The acknowledgement above does not satisfy the separate implementation gate. In the future
+implementation session, the Founder must also state exactly:
+
+> `Authorize implementation of WC-060`
+
+### Fresh CA Readiness Decision
+
+R-086 / `CR-GOAL-005-INST-002-13` independently APPROVES Amendment 9 with no
+readiness condition. GEOM R2-03 condition 1 is satisfied. Condition 2 remains open:
+`ACK-GOAL-005-INST-001-09` must contain the exact acknowledgement above. The separate
+current-session implementation gate also remains open and requires the future exact Founder
+directive `Authorize implementation of WC-060`. R-086 issues no GOA or ACC and authorizes no
+implementation.
+
+### Reserved Records — Not Issued
+
+- `ACK-GOAL-005-INST-001-09` — pending exact Registrant acknowledgement.
+- `GOA-GOAL-005-INST-010-06` — reserved; constitutionally void unless every rule above passes.
+- `ACC-GOAL-005-INST-010-06` — reserved; may be produced only after valid GOA issuance.
+
+### Explicit Exclusions
+
+- no implementation source, Migration 22 SQL, generated production client, test or build
+  artifact in this readiness contribution;
+- no provider credential, account setup, live provider activation, deployment, production
+  operation, customer-proof claim, PR approval, or merge;
+- no AE-02 campaign execution, F6-F8 feature implementation, architecture reinterpretation,
+  weakening of D-03/D-06/R-046/WC-060, or duplicate F5 implementation pass; and
+- no retrospective authorization, inferred consent, self-review, self-approval, self-merge,
+  or direct push to `main`.
