@@ -4,6 +4,17 @@
 # This file is for human reference only — agents do NOT need to read this.
 # constitutional_basis: Cost optimization; FinOps gap fix 2026-07-22
 
+## Archive Index
+
+| Period | Durable location |
+|---|---|
+| Through 2026-07-22 | This file |
+| 2026-07-23 through WC-059 closure on 2026-08-11 | Git object `b0dbe9c^2:constitution/PROJECT_STATE.md` |
+
+The second period is intentionally retained by immutable git reference instead of duplicated
+here. Its completed work remains indexed by the owning Work Contracts, Goal records, evidence,
+and reviews. Agents must not load either historical period during bootstrap.
+
 ## SESSION CLOSE BRIEFING — READ THIS FIRST
 
 ```
