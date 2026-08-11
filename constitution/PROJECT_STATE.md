@@ -1,6 +1,6 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-08-11 (WC-059 implementation authorized and accepted)
+**Last Updated:** 2026-08-11 (WC059-01 Migration 21b complete)
 
 ---
 
@@ -17,10 +17,11 @@
 | GOA-GOAL-005-INST-010-05 | ISSUED — INST-013 issued WC-059-only authority at 2026-08-11T10:21:58Z |
 | ACC-GOAL-005-INST-010-05 | ACCEPTED — INST-010 accepted at 2026-08-11T10:21:59Z; temporal order valid |
 | WC-059 implementation | AUTHORIZED — WC059-01 through WC059-08 may proceed under the five-session Participation Window |
+| WC059-01 Migration 21b | DONE — PostgreSQL 16 first apply/reapply, exact composite contract identity, RLS enabled/forced with own-tenant visibility and cross-tenant denial, immutable contract/acceptance evidence, retry/success/conflict constraints, terminal immutability, duplicate replay arbitration, and two-writer canonical-tuple concurrency passed |
 
 ### Authorization Boundary And Next Action
 
-FA-040, R-080, ACK-08, GOA-05, and ACC-05 complete the WC-059 implementation entry sequence. The next action is WC059-01 on a dedicated implementation branch, followed by each dependency-ordered task and checkpoint. Live Razorpay/provider activation, credentials/account setup, WC-060, deployment, merge, self-review, architecture reinterpretation, and production/customer proof remain unauthorized.
+FA-040, R-080, ACK-08, GOA-05, and ACC-05 complete the WC-059 implementation entry sequence. WC059-01 is complete on the dedicated implementation branch; the next dependency-ordered action is WC059-02 `EmploymentContractService`. Live Razorpay/provider activation, credentials/account setup, WC-060, deployment, merge, self-review, architecture reinterpretation, and production/customer proof remain unauthorized.
 
 ---
 
