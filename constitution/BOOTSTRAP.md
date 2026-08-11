@@ -476,7 +476,7 @@ During execution:
 AI sessions can time out without warning. Governance records must survive any timeout.
 
 At the START of each session:
-  Add an IN-PROGRESS CHECKPOINT table to constitution/PROJECT_STATE.md:
+  Replace the single Active Checkpoint table in constitution/PROJECT_STATE.md:
 
     | Milestone                  | Status      |
     |----------------------------|-------------|
@@ -491,9 +491,18 @@ After EACH internal milestone completes:
   Commit the change to PROJECT_STATE.md before beginning the next milestone.
 
 After the FINAL milestone:
-  Replace the checkpoint table with the full session record (completed work,
-  architecture decisions, next session work).
+  Reduce the checkpoint to a concise closure summary and next authorized action.
+  Record durable detail in the owning Work Contract, Goal record, review, evidence,
+  or other purpose-built artifact. Do not append a full session record here.
   Push to origin.
+
+Retention and versioning rules:
+  - PROJECT_STATE.md is a current snapshot, not an append-only ledger.
+  - Keep exactly one Active Checkpoint and one SPRINT_STATE_MACHINE block.
+  - Keep the file below 200 lines; update State Revision for each state change.
+  - Increment State Schema only when required fields or semantics change.
+  - Preserve completed history through git and constitution/PROJECT_STATE_ARCHIVE.md.
+  - Never copy completed session records back into the current-state file.
 
 Why this matters:
   If the session times out after milestone 2 of 4, the next agent reads
@@ -607,14 +616,17 @@ Merge to main only after agent review approval. Do not self-approve.
 
 ```
 Update: constitution/PROJECT_STATE.md with:
-  - Completed items (what was finished this session)
-  - Pending items (what is queued but not started)
-  - WIP items (what is partially done)
+  - Current checkpoint status (completed, pending, and WIP milestones)
   - Blockers raised (CB-XXX references)
   - Next authorized item (what should start next session)
   - Last updated: [date]
+  - Incremented State Revision
 
-Commit PROJECT_STATE.md to the feature branch or directly to main.
+Move detailed completed-session evidence to its owning durable artifact; do not append it
+to PROJECT_STATE.md. Confirm the file remains below 200 lines and contains exactly one
+SPRINT_STATE_MACHINE block.
+
+Commit PROJECT_STATE.md to the feature branch.
 Push to origin.
 Declare: "Session complete. PROJECT_STATE.md updated."
 ```
