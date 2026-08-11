@@ -33,6 +33,7 @@ public sealed class RelationshipPaymentServiceTests
         Assert.NotNull(context.Wbe.LastRequest);
         Assert.Equal(context.RelationshipId, context.Wbe.LastRequest!.RelationshipId);
         Assert.Equal(context.Contract.ContractId, context.Wbe.LastRequest.ContractId);
+        Assert.Equal(context.TenantId, context.Wbe.LastRequest.TenantId);
         Assert.Equal(context.AcceptanceId, context.Wbe.LastRequest.ContractAcceptanceId);
         Assert.NotEqual(Guid.Empty, context.Wbe.LastRequest.PaymentConsentEvidenceId);
     }

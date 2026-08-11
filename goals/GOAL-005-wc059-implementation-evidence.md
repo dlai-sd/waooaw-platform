@@ -1,6 +1,6 @@
 # GOAL-005 WC-059 Implementation Evidence
 
-**Work Contract:** WC-059 · **Office:** INST-010 Platform IT Expert  
+**Work Contract:** WC-059 · **Office:** INST-010 Platform IT Expert
 **Authorization:** FA-040 · GEP-08 · R-080 · ACK-08 · GOA-05 · ACC-05
 
 ## Scope
@@ -17,18 +17,19 @@ WC-060 continuity, deployment, production/customer proof, merge, or self-review.
 | `CCT-AE01-CONTRACT-01` | Exact version/hash, fresh portal assurance, active same-tenant employer, replay, mismatched hash/role with zero mutation | PASS |
 | `CCT-AE01-SCOPE-01` | Fixed scope-boundary statement is distinct and required; omission performs zero acceptance mutation | PASS |
 | `CCT-AE01-PAY-ORDER` | Missing acceptance, missing proceed intent, stale assurance, mismatched amount, and bypass all stop before WBE | PASS |
-| `CCT-AE01-ACT-01` | Replay and synchronized two-caller canonical tuple produce one intent, one WBE call/subscription outcome, one relationship, and one `ACTIVE` history row | PASS |
-| `CCT-AE01-ACT-CONFLICT` | Changed material for the same tuple records explicit conflict and performs no additional owner call or relationship mutation | PASS |
-| `CCT-AE01-ACT-FAIL` | WBE or CE uncertainty retains the same retryable intent and correlation while relationship remains `ACTIVATION_PENDING` | PASS |
+| `CCT-AE01-ACT-01` | Replay and synchronized two-caller canonical tuple produce one intent, one authenticated WBE call/subscription outcome, one relationship, and one `ACTIVE` history row | PASS |
+| `CCT-AE01-ACT-CONFLICT` | Changed material is rejected by durable BP preflight before Temporal join; WBE independently rejects changed tenant, contract version, relationship/payment material, delegated context, or idempotency binding before owner mutation | PASS |
+| `CCT-AE01-ACT-FAIL` | WBE or CE uncertainty retains the same retryable intent/correlation; failed-only Temporal ID reuse resumes the canonical execution while relationship remains `ACTIVATION_PENDING` | PASS |
 | `CCT-AE01-DARK-01` | Jest and Playwright prove exact terms, no preselection/countdown/pressure, and symmetric Hire, Not now, Cancel, Exit at desktop and 360px | PASS |
 
 ## Validation Evidence
 
 | Slice | Result |
 |---|---|
-| PostgreSQL migrations 21b/21c | PASS — first apply, reapply, RLS/immutability, canonical tuple, and paid-subscription constraints |
-| Business Platform | PASS — 239/239 baseline in repository Docker test-runner; focused activation command/orchestration 11/11 after R081-02 remediation, including durable preflight, canonical derivation, stored-success replay without workflow start, divergent-material rejection before join, fresh portal assurance, employer authority, concurrency, conflict, and retryable uncertainty |
-| Billing Engine | PASS — 377/377 including payment, wallet, paid activation, webhook replay, and reconciliation |
+| PostgreSQL migrations 21b/21c | PASS — first apply and reapply on PostgreSQL 16; tenant/contract-version/hash payment truth, canonical tuple, paid-subscription, RLS, and immutability constraints |
+| Business Platform | PASS — 241/241 in repository Docker test-runner; focused activation command/orchestration 11/11 after R081-02 remediation, including durable preflight, canonical derivation, stored-success replay without workflow start, divergent-material rejection before join, fresh portal assurance, employer authority, concurrency, conflict, and retryable uncertainty |
+| Billing Engine | PASS — 388/388; authenticated paid-activation boundary 40/40 proves route/audience/body/replay validation, missing-identity denial, delegated-context rebinding, cross-tenant/version denial, payment replay, and zero owner mutation on denial |
+| ADR-046 PKI and route registry | PASS — 15/15 constitutional bootstrap checks; private WBE OpenAPI 1.1.0 validates with no issues; affected Python lint clean |
 | Business Platform affected coverage | PASS — core WC059 methods 93.33–100% lines except durable conflict/replay branches covered separately by PostgreSQL concurrency evidence; activation orchestration entry is 100% |
 | Web component | PASS — 4/4 focused relationship journey tests; `ContractJourney` 100% lines, 97.22% statements, 93.75% branches, 91.66% functions |
 | Web production build | PASS — strict TypeScript, lint, 23 generated routes |
@@ -40,12 +41,14 @@ WC-060 continuity, deployment, production/customer proof, merge, or self-review.
 ## Ownership And Failure Evidence
 
 - BP alone owns D-03 relationship progression and records `ACTIVATION_PENDING` before WBE.
-- WBE verifies captured payment and owns one payment-keyed paid subscription; `CONVERTED` is billing projection only.
+- WBE accepts paid activation only on the ADR-046 private mTLS/delegated-context route, rebinds tenant/version/material to its signature-verified captured-payment row, and owns one payment-keyed paid subscription; `CONVERTED` is billing projection only.
 - CE evidence must commit before BP stores `ACTIVE`; uncertainty never fabricates success.
 - Stable Temporal workflow identity is the distributed serialization boundary. Same-worker tuple
   serialization is defense in depth; migration uniqueness remains the durable canonical arbiter.
 - WhatsApp cannot accept a contract or initiate payment and makes no WC-060 continuity claim.
 - Payment secrets are entered only in Razorpay-hosted checkout; no live credential was configured.
+
+R-081 findings R081-01 through R081-03 are remediated in implementation and executable evidence; closure remains pending independent INST-004 re-review.
 
 ## Residual Limits And Review Handoff
 

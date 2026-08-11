@@ -20,7 +20,7 @@ class PaidActivationService:
 
     async def activate(self, request: PaidActivationRequest) -> PaidActivationResult:
         row = (await self._db.execute(text(
-            "SELECT razorpay_order_id, customer_id, status, relationship_id, accepted_contract_id, "
+            "SELECT razorpay_order_id, customer_id, status, tenant_id, relationship_id, accepted_contract_id, contract_version, "
             "contract_acceptance_id, payment_evidence_id, agent_type, bundle_tier, "
             "activation_intent_id, activation_correlation_id, outcome_subscription_id "
             "FROM payment_intents WHERE razorpay_payment_id = :payment_reference"
@@ -28,10 +28,13 @@ class PaidActivationService:
         if row is None:
             raise HTTPException(status_code=404, detail={"code": "PAYMENT_CAPTURE_NOT_FOUND"})
         supplied = (
-            str(request.relationship_id), str(request.accepted_contract_id),
+            str(request.tenant_id), str(request.relationship_id), str(request.accepted_contract_id), request.contract_version,
             str(request.contract_acceptance_id), str(request.payment_evidence_id),
         )
-        stored = (row.relationship_id, row.accepted_contract_id, row.contract_acceptance_id, row.payment_evidence_id)
+        stored = (
+            row.tenant_id, row.relationship_id, row.accepted_contract_id, row.contract_version,
+            row.contract_acceptance_id, row.payment_evidence_id,
+        )
         if stored != supplied:
             raise HTTPException(status_code=409, detail={"code": "ACTIVATION_MATERIAL_CONFLICT"})
         if row.status == "ACTIVATED":

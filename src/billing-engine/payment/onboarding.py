@@ -70,6 +70,7 @@ class OnboardingService:
         }
         if req.relationship_id is not None:
             notes.update({
+                "tenant_id": str(req.tenant_id),
                 "relationship_id": str(req.relationship_id),
                 "contract_id": str(req.contract_id),
                 "contract_version": str(req.contract_version),

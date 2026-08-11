@@ -8,6 +8,7 @@ CCT-GRANDFATHER-01 — C-090: renewal blocked when plan price > agreed price wit
 from __future__ import annotations
 
 import uuid
+from dataclasses import replace
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock
 
@@ -41,8 +42,11 @@ _PAYMENT_DDL = [
         razorpay_order_id   TEXT NOT NULL,
         customer_id         TEXT NOT NULL,
         status              TEXT NOT NULL DEFAULT 'IN_PROGRESS',
+        tenant_id           TEXT,
         relationship_id     TEXT,
         accepted_contract_id TEXT,
+        contract_version    INTEGER,
+        contract_hash       TEXT,
         contract_acceptance_id TEXT,
         payment_consent_evidence_id TEXT,
         payment_evidence_id TEXT,
@@ -137,7 +141,7 @@ class TestCCT_ONBOARD_01:
             OnboardingOrderBody(**base, relationship_id=relationship_id)
         with pytest.raises(ValueError, match="cannot use payment bypass coupons"):
             OnboardingOrderBody(
-                **base, relationship_id=relationship_id, contract_id=uuid.uuid4(),
+                **base, tenant_id=uuid.uuid4(), relationship_id=relationship_id, contract_id=uuid.uuid4(),
                 contract_version=1, contract_hash="a" * 64,
                 contract_acceptance_id=uuid.uuid4(), payment_consent_evidence_id=uuid.uuid4(),
                 coupon_code="DEMOWAOOAW",
@@ -332,8 +336,9 @@ class TestCCT_WEBHOOK_01:
         event = PaymentCapturedEvent(
             razorpay_order_id="order_relationship", razorpay_payment_id="pay_relationship",
             razorpay_signature="valid", customer_id=customer_id, agent_type="DMA",
-            bundle_tier="STARTER", relationship_id=relationship_id,
-            accepted_contract_id=contract_id, contract_acceptance_id=acceptance_id,
+            bundle_tier="STARTER", tenant_id=customer_id, relationship_id=relationship_id,
+            accepted_contract_id=contract_id, contract_version=1, contract_hash="a" * 64,
+            contract_acceptance_id=acceptance_id,
             payment_consent_evidence_id=consent_id, payment_evidence_id=payment_evidence_id,
         )
 
@@ -342,12 +347,20 @@ class TestCCT_WEBHOOK_01:
         assert captured.status == "CAPTURED"
         mock_wallet.activate_subscription.assert_not_awaited()
         activation_request = PaidActivationRequest(
-            relationship_id=relationship_id, activation_intent_id=uuid.uuid4(),
-            accepted_contract_id=contract_id, contract_acceptance_id=acceptance_id,
+            tenant_id=customer_id, relationship_id=relationship_id, activation_intent_id=uuid.uuid4(),
+            accepted_contract_id=contract_id, contract_version=1, contract_acceptance_id=acceptance_id,
             payment_reference="pay_relationship", payment_evidence_id=payment_evidence_id,
             correlation_id=uuid.uuid4(),
         )
         service = PaidActivationService(payment_session, mock_wallet)
+        with pytest.raises(HTTPException) as cross_tenant:
+            await service.activate(replace(activation_request, tenant_id=uuid.uuid4()))
+        assert cross_tenant.value.status_code == 409
+        with pytest.raises(HTTPException) as stale_contract:
+            await service.activate(replace(activation_request, contract_version=2))
+        assert stale_contract.value.status_code == 409
+        mock_wallet.activate_subscription.assert_not_awaited()
+
         first = await service.activate(activation_request)
         replay = await service.activate(activation_request)
 

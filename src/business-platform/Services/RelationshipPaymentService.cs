@@ -11,7 +11,7 @@ namespace Waooaw.BusinessPlatform.Services;
 
 public sealed record PaymentProceedRequest(string BundleTier, long SubscriptionAmountInrPaise, long WalletSeedInrPaise, string ProceedConfirmation);
 public sealed record ContractLinkedOnboardingOrderRequest(
-    Guid CustomerId, Guid RelationshipId, Guid ContractId, int ContractVersion, string ContractHash,
+    Guid TenantId, Guid CustomerId, Guid RelationshipId, Guid ContractId, int ContractVersion, string ContractHash,
     Guid ContractAcceptanceId, Guid PaymentConsentEvidenceId, string AgentType, string BundleTier,
     long SubscriptionAmountInrPaise, long WalletSeedInrPaise);
 public sealed record HostedOnboardingOrder(
@@ -102,7 +102,7 @@ public sealed class RelationshipPaymentService(
                 checkout = "RAZORPAY_HOSTED",
             }, cancellationToken);
         var order = await paymentGateway.CreateOrderAsync(new ContractLinkedOnboardingOrderRequest(
-            relationship.InitiatingParticipantId, relationshipId, contract.ContractId, contract.Version,
+            tenantId, relationship.InitiatingParticipantId, relationshipId, contract.ContractId, contract.Version,
             contract.ContractHash, acceptance.AcceptanceId, evidenceId, relationship.ProfessionalType,
             request.BundleTier.Trim().ToUpperInvariant(), request.SubscriptionAmountInrPaise,
             request.WalletSeedInrPaise), cancellationToken);
@@ -120,7 +120,7 @@ public sealed class HttpRelationshipPaymentGateway(IHttpClientFactory httpClient
         using var response = await httpClientFactory.CreateClient("WBE").PostAsJsonAsync(
             "/payments/onboarding-order",
             new WbeOrderRequest(
-                request.CustomerId, request.RelationshipId, request.ContractId, request.ContractVersion,
+                request.TenantId, request.CustomerId, request.RelationshipId, request.ContractId, request.ContractVersion,
                 request.ContractHash, request.ContractAcceptanceId, request.PaymentConsentEvidenceId,
                 request.AgentType, request.BundleTier, request.SubscriptionAmountInrPaise,
                 request.WalletSeedInrPaise), cancellationToken);
@@ -132,6 +132,7 @@ public sealed class HttpRelationshipPaymentGateway(IHttpClientFactory httpClient
     }
 
     private sealed record WbeOrderRequest(
+        [property: JsonPropertyName("tenant_id")] Guid TenantId,
         [property: JsonPropertyName("customer_id")] Guid CustomerId,
         [property: JsonPropertyName("relationship_id")] Guid RelationshipId,
         [property: JsonPropertyName("contract_id")] Guid ContractId,

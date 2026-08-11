@@ -65,25 +65,32 @@ class WebhookHandler:
 
         if event.relationship_id is not None:
             if any(value is None for value in (
+                event.tenant_id,
                 event.accepted_contract_id,
+                event.contract_version,
                 event.contract_acceptance_id,
                 event.payment_consent_evidence_id,
                 event.payment_evidence_id,
-            )):
+            )) or not event.contract_hash:
                 raise HTTPException(status_code=400, detail={"code": "INCOMPLETE_CONTRACT_LINK"})
             await self._db.execute(
                 text(
                     "INSERT INTO payment_intents "
                     "(razorpay_order_id, razorpay_payment_id, customer_id, status, relationship_id, "
-                    "accepted_contract_id, contract_acceptance_id, payment_consent_evidence_id, "
+                    "tenant_id, accepted_contract_id, contract_version, contract_hash, "
+                    "contract_acceptance_id, payment_consent_evidence_id, "
                     "payment_evidence_id, agent_type, bundle_tier) "
-                    "VALUES (:oid, :pid, :cid, 'CAPTURED', :rid, :contract_id, :acceptance_id, "
+                    "VALUES (:oid, :pid, :cid, 'CAPTURED', :rid, :tenant_id, :contract_id, "
+                    ":contract_version, :contract_hash, :acceptance_id, "
                     ":consent_id, :evidence_id, :agent_type, :bundle_tier) "
                     "ON CONFLICT (razorpay_payment_id) DO NOTHING"
                 ).bindparams(
                     oid=event.razorpay_order_id, pid=event.razorpay_payment_id,
                     cid=str(event.customer_id), rid=str(event.relationship_id),
+                    tenant_id=str(event.tenant_id),
                     contract_id=str(event.accepted_contract_id),
+                    contract_version=event.contract_version,
+                    contract_hash=event.contract_hash,
                     acceptance_id=str(event.contract_acceptance_id),
                     consent_id=str(event.payment_consent_evidence_id),
                     evidence_id=str(event.payment_evidence_id), agent_type=event.agent_type,
@@ -92,15 +99,16 @@ class WebhookHandler:
             )
             await self._db.commit()
             stored = (await self._db.execute(text(
-                "SELECT relationship_id, accepted_contract_id, contract_acceptance_id, "
+                "SELECT tenant_id, relationship_id, accepted_contract_id, contract_version, contract_hash, contract_acceptance_id, "
                 "payment_consent_evidence_id, payment_evidence_id, status FROM payment_intents "
                 "WHERE razorpay_payment_id = :pid"
             ).bindparams(pid=event.razorpay_payment_id))).fetchone()
             expected = tuple(str(value) for value in (
-                event.relationship_id, event.accepted_contract_id, event.contract_acceptance_id,
+                event.tenant_id, event.relationship_id, event.accepted_contract_id,
+                event.contract_version, event.contract_hash, event.contract_acceptance_id,
                 event.payment_consent_evidence_id,
             ))
-            if stored is None or tuple(stored[index] for index in range(4)) != expected:
+            if stored is None or tuple(str(stored[index]) for index in range(7)) != expected:
                 raise HTTPException(status_code=409, detail={"code": "PAYMENT_CAPTURE_CONFLICT"})
             return PaymentCaptureResult(
                 payment_reference=event.razorpay_payment_id,

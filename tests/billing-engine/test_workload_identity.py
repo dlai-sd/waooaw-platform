@@ -81,3 +81,42 @@ def test_expired_envelope_is_denied() -> None:
     key = ec.generate_private_key(ec.SECP256R1())
     with pytest.raises(ServiceAuthError, match="DELEGATED_CONTEXT_EXPIRED"):
         verify(verifier(key), token(context(expires_at=NOW), key))
+
+
+def test_paid_activation_requires_exact_route_body_and_single_use_envelope() -> None:
+    route = "/internal/v1/relationships/{relationshipId}/paid-activation"
+    operation = "activatePaidRelationship"
+    digest = "a" * 64
+    key = ec.generate_private_key(ec.SECP256R1())
+    paid_context = context(
+        method="POST",
+        route=route,
+        operation=operation,
+        purpose=operation,
+        request_digest=digest,
+        idempotency_key="correlation-1",
+        expected_versions={"activation_intent": "intent-1", "contract": "3"},
+    )
+    instance = DelegatedContextVerifier(
+        frozenset({RouteGrant(BP, AUDIENCE, "POST", route, operation, 1)}),
+        {(BP, "key-1"): key.public_key()}, ReplayStore(), now=lambda: NOW,
+    )
+    signed = token(paid_context, key)
+    arguments = dict(
+        peer_identity_uri=BP,
+        target_audience=AUDIENCE,
+        method="POST",
+        route=route,
+        operation=operation,
+        contract_major=1,
+        request_digest=digest,
+        rebind=lambda value: value.tenant_id == "tenant-a" and value.relationship_id == "relationship-a",
+    )
+
+    assert instance.verify(signed, **arguments).purpose == operation
+    with pytest.raises(ServiceAuthError, match="DELEGATED_CONTEXT_REPLAYED"):
+        instance.verify(signed, **arguments)
+
+    changed_body = token(replace(paid_context, envelope_id="envelope-2"), key)
+    with pytest.raises(ServiceAuthError, match="DELEGATED_CONTEXT_INVALID"):
+        instance.verify(changed_body, **(arguments | {"request_digest": "b" * 64}))

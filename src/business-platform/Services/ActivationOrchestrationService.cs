@@ -17,6 +17,7 @@ public sealed record ActivationRequest(
     Guid RelationshipId,
     Guid ActorParticipantId,
     Guid AcceptedContractId,
+    int ContractVersion,
     Guid ContractAcceptanceId,
     string PaymentReference,
     Guid PaymentEvidenceId,
@@ -26,8 +27,10 @@ public sealed record ActivationRequest(
 public sealed record ActivationBillingRequest(
     Guid TenantId,
     Guid RelationshipId,
+    Guid ActorParticipantId,
     Guid ActivationIntentId,
     Guid AcceptedContractId,
+    int ContractVersion,
     Guid ContractAcceptanceId,
     string PaymentReference,
     Guid PaymentEvidenceId,
@@ -150,8 +153,10 @@ public sealed class ActivationOrchestrationService(
                 new ActivationBillingRequest(
                     request.TenantId,
                     request.RelationshipId,
+                    request.ActorParticipantId,
                     intent.ActivationIntentId,
                     request.AcceptedContractId,
+                    request.ContractVersion,
                     request.ContractAcceptanceId,
                     request.PaymentReference,
                     request.PaymentEvidenceId,
@@ -345,6 +350,7 @@ public sealed class ActivationOrchestrationService(
         Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(string.Join("|",
             request.TenantId.ToString("D"), request.RelationshipId.ToString("D"),
             request.ActorParticipantId.ToString("D"), request.AcceptedContractId.ToString("D"),
+            request.ContractVersion,
             request.ContractAcceptanceId.ToString("D"), request.PaymentReference,
             request.PaymentEvidenceId.ToString("D"), request.AuthoritySnapshotId.ToString("D"),
             request.CorrelationId.ToString("D")))));
@@ -356,33 +362,9 @@ public sealed class ActivationOrchestrationService(
         intent.Status);
 }
 
-public sealed class HttpActivationBillingGateway(IHttpClientFactory httpClientFactory) : IActivationBillingGateway
+public sealed class UnconfiguredActivationBillingGateway : IActivationBillingGateway
 {
-    public async Task<ActivationBillingOutcome> ActivatePaidSubscriptionAsync(
-        ActivationBillingRequest request, CancellationToken cancellationToken)
-    {
-        using var response = await httpClientFactory.CreateClient("WBE").PostAsJsonAsync(
-            "/payments/paid-activation",
-            new WbePaidActivationRequest(
-                request.RelationshipId, request.ActivationIntentId, request.AcceptedContractId,
-                request.ContractAcceptanceId, request.PaymentReference, request.PaymentEvidenceId,
-                request.CorrelationId), cancellationToken);
-        if (!response.IsSuccessStatusCode)
-            throw new ActivationOwnerUnavailableException($"WBE paid activation returned {(int)response.StatusCode}.");
-        var outcome = await response.Content.ReadFromJsonAsync<WbePaidActivationOutcome>(cancellationToken)
-            ?? throw new ActivationOwnerUnavailableException("WBE paid activation returned no outcome.");
-        return new ActivationBillingOutcome(outcome.SubscriptionId, outcome.Status);
-    }
-
-    private sealed record WbePaidActivationRequest(
-        [property: JsonPropertyName("relationship_id")] Guid RelationshipId,
-        [property: JsonPropertyName("activation_intent_id")] Guid ActivationIntentId,
-        [property: JsonPropertyName("accepted_contract_id")] Guid AcceptedContractId,
-        [property: JsonPropertyName("contract_acceptance_id")] Guid ContractAcceptanceId,
-        [property: JsonPropertyName("payment_reference")] string PaymentReference,
-        [property: JsonPropertyName("payment_evidence_id")] Guid PaymentEvidenceId,
-        [property: JsonPropertyName("correlation_id")] Guid CorrelationId);
-    private sealed record WbePaidActivationOutcome(
-        [property: JsonPropertyName("subscription_id")] Guid SubscriptionId,
-        [property: JsonPropertyName("status")] string Status);
+    public Task<ActivationBillingOutcome> ActivatePaidSubscriptionAsync(
+        ActivationBillingRequest request, CancellationToken cancellationToken) =>
+        throw new ActivationOwnerUnavailableException("Authenticated WBE paid activation is not configured.");
 }

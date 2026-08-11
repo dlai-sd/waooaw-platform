@@ -2,8 +2,11 @@
 -- constitutional_basis: C-002, C-023, C-059, C-088
 
 ALTER TABLE business.payment_intents
+    ADD COLUMN IF NOT EXISTS tenant_id UUID,
     ADD COLUMN IF NOT EXISTS relationship_id UUID,
     ADD COLUMN IF NOT EXISTS accepted_contract_id UUID,
+    ADD COLUMN IF NOT EXISTS contract_version INTEGER,
+    ADD COLUMN IF NOT EXISTS contract_hash VARCHAR(64),
     ADD COLUMN IF NOT EXISTS contract_acceptance_id UUID,
     ADD COLUMN IF NOT EXISTS payment_consent_evidence_id UUID,
     ADD COLUMN IF NOT EXISTS payment_evidence_id UUID,
@@ -20,7 +23,10 @@ ALTER TABLE business.payment_intents ADD CONSTRAINT payment_intents_status_check
 ALTER TABLE business.payment_intents DROP CONSTRAINT IF EXISTS payment_intents_relationship_material_check;
 ALTER TABLE business.payment_intents ADD CONSTRAINT payment_intents_relationship_material_check CHECK (
     relationship_id IS NULL OR (
-        accepted_contract_id IS NOT NULL
+        tenant_id IS NOT NULL
+        AND accepted_contract_id IS NOT NULL
+        AND contract_version IS NOT NULL AND contract_version > 0
+        AND contract_hash ~ '^[0-9a-f]{64}$'
         AND contract_acceptance_id IS NOT NULL
         AND payment_consent_evidence_id IS NOT NULL
         AND payment_evidence_id IS NOT NULL

@@ -282,7 +282,7 @@ public sealed class ActivationOrchestrationServiceTests
             factory, constitutional, NullLogger<EmploymentRelationshipService>.Instance);
         var service = new ActivationOrchestrationService(factory, relationships, constitutional, billing);
         var request = new ActivationRequest(
-            tenantId, relationshipId, participantId, contractId, acceptanceId,
+            tenantId, relationshipId, participantId, contractId, 1, acceptanceId,
             "pay_verified_123", Guid.NewGuid(), authoritySnapshotId, Guid.NewGuid());
         return new ActivationTestContext(service, factory, constitutional, billing, request);
     }

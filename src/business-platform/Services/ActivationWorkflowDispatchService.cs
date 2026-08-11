@@ -86,6 +86,7 @@ public sealed class ActivationWorkflowDispatchService(
             relationshipId,
             participantId,
             relationship.AcceptedContractId.Value,
+            acceptance.ContractVersion,
             acceptance.AcceptanceId,
             request.PaymentReference.Trim(),
             request.PaymentEvidenceId,

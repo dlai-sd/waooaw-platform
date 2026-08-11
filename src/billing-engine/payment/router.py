@@ -12,9 +12,8 @@ from pydantic import BaseModel, Field, model_validator
 import redis.asyncio as aioredis
 from database import get_session_factory
 from config import Settings
-from payment.models import OnboardingOrderRequest, PaidActivationRequest, PaymentCapturedEvent
+from payment.models import OnboardingOrderRequest, PaymentCapturedEvent
 from payment.onboarding import OnboardingService
-from payment.paid_activation import PaidActivationService
 from payment.razorpay_client import RazorpayClient
 from payment.webhook import WebhookHandler
 from wallet.service import WalletService
@@ -26,6 +25,7 @@ _settings = Settings()
 
 
 class OnboardingOrderBody(BaseModel):
+    tenant_id: UUID | None = None
     customer_id: UUID
     agent_type: str
     bundle_tier: str
@@ -41,7 +41,10 @@ class OnboardingOrderBody(BaseModel):
 
     @model_validator(mode="after")
     def require_complete_contract_link(self) -> OnboardingOrderBody:
+        if self.relationship_id is not None and self.coupon_code:
+            raise ValueError("relationship onboarding orders cannot use payment bypass coupons")
         contract_link = (
+            self.tenant_id,
             self.relationship_id,
             self.contract_id,
             self.contract_version,
@@ -53,8 +56,6 @@ class OnboardingOrderBody(BaseModel):
             value is None for value in contract_link
         ):
             raise ValueError("relationship onboarding orders require the complete contract link")
-        if self.relationship_id is not None and self.coupon_code:
-            raise ValueError("relationship onboarding orders cannot use payment bypass coupons")
         return self
 
 
@@ -66,16 +67,6 @@ class PaymentCaptureBody(BaseModel):
     agent_type: str
     bundle_tier: str
     is_bypass: bool = False
-
-
-class PaidActivationBody(BaseModel):
-    relationship_id: UUID
-    activation_intent_id: UUID
-    accepted_contract_id: UUID
-    contract_acceptance_id: UUID
-    payment_reference: str
-    payment_evidence_id: UUID
-    correlation_id: UUID
 
 
 @router.post("/onboarding-order")
@@ -92,6 +83,7 @@ async def create_onboarding_order(body: OnboardingOrderBody) -> dict:
         subscription_amount_paise=body.subscription_amount_paise,
         wallet_seed_paise=body.wallet_seed_paise,
         coupon_code=body.coupon_code,
+        tenant_id=body.tenant_id,
         relationship_id=body.relationship_id,
         contract_id=body.contract_id,
         contract_version=body.contract_version,
@@ -138,8 +130,11 @@ async def razorpay_webhook(request: Request) -> dict:
         customer_id=customer_id,
         agent_type=notes.get("agent_type", ""),
         bundle_tier=notes.get("bundle_tier", ""),
+        tenant_id=_optional_uuid(notes.get("tenant_id")),
         relationship_id=_optional_uuid(notes.get("relationship_id")),
         accepted_contract_id=_optional_uuid(notes.get("contract_id")),
+        contract_version=int(notes["contract_version"]) if notes.get("contract_version") else None,
+        contract_hash=notes.get("contract_hash", ""),
         contract_acceptance_id=_optional_uuid(notes.get("contract_acceptance_id")),
         payment_consent_evidence_id=_optional_uuid(notes.get("payment_consent_evidence_id")),
         payment_evidence_id=uuid5(NAMESPACE_URL, f"waooaw:payment:{payment.get('id', '')}"),
@@ -165,17 +160,6 @@ async def razorpay_webhook(request: Request) -> dict:
             "payment_evidence_id": str(result.payment_evidence_id),
         }
     return {"status": "activated", "subscription_id": str(result.subscription_id), "customer_id": str(result.customer_id)}
-
-
-@router.post("/paid-activation")
-async def activate_paid_relationship(body: PaidActivationBody) -> dict:
-    session_factory = get_session_factory()
-    async with session_factory() as db:
-        redis_client = aioredis.from_url(_settings.REDIS_URL, decode_responses=True)
-        result = await PaidActivationService(db, WalletService(db=db, redis_client=redis_client)).activate(
-            PaidActivationRequest(**body.model_dump())
-        )
-    return {"subscription_id": str(result.subscription_id), "status": result.status}
 
 
 def _optional_uuid(value: object) -> UUID | None:

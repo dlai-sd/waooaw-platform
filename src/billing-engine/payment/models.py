@@ -29,6 +29,7 @@ class OnboardingOrderRequest:
     subscription_amount_paise: int   # first month subscription price
     wallet_seed_paise: int           # initial ad wallet seed amount
     coupon_code: str = ""            # optional — DEMOWAOOAW/UATWAOOAW bypasses Razorpay
+    tenant_id: UUID | None = None
     relationship_id: UUID | None = None
     contract_id: UUID | None = None
     contract_version: int | None = None
@@ -54,8 +55,11 @@ class PaymentCapturedEvent:
     customer_id: UUID
     agent_type: str
     bundle_tier: str
+    tenant_id: UUID | None = None
     relationship_id: UUID | None = None
     accepted_contract_id: UUID | None = None
+    contract_version: int | None = None
+    contract_hash: str = ""
     contract_acceptance_id: UUID | None = None
     payment_consent_evidence_id: UUID | None = None
     payment_evidence_id: UUID | None = None
@@ -70,9 +74,11 @@ class PaymentCaptureResult:
 
 @dataclass(frozen=True)
 class PaidActivationRequest:
+    tenant_id: UUID
     relationship_id: UUID
     activation_intent_id: UUID
     accepted_contract_id: UUID
+    contract_version: int
     contract_acceptance_id: UUID
     payment_reference: str
     payment_evidence_id: UUID

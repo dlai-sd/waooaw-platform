@@ -15,7 +15,7 @@ owner_institution:     INST-010
 governing_institution: INST-004
 constitutional_basis:
   claims: [C-088, C-089, C-090, C-091, C-038, C-048, C-051]
-  adrs:   [ADR-022, ADR-034]
+  adrs:   [ADR-022, ADR-034, ADR-046]
 surface:
   type: REST_SERVICE
   language: python
@@ -49,6 +49,11 @@ surface:
       constitutional: C-089
     - path: /payments/onboarding-order
       method: POST
+      called_by: [bp]
+      constitutional: C-023
+    - path: /internal/v1/relationships/{relationshipId}/paid-activation
+      method: POST
+      idempotent: true
       called_by: [bp]
       constitutional: C-023
     - path: /payments/webhooks/razorpay
