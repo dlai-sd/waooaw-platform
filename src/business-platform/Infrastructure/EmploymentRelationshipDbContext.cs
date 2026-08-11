@@ -92,6 +92,86 @@ public sealed class RelationshipIdempotency
     public DateTimeOffset? CompletedAt { get; set; }
 }
 
+public sealed class RelationshipContextPayload
+{
+    public Guid PayloadReference { get; init; } = Guid.NewGuid();
+    public Guid TenantId { get; init; }
+    public Guid RelationshipId { get; init; }
+    public string FieldType { get; init; } = string.Empty;
+    public string? ValueJson { get; set; }
+    public string Source { get; init; } = string.Empty;
+    public decimal? Confidence { get; init; }
+    public string ConfirmationStatus { get; set; } = "UNCONFIRMED";
+    public DateTimeOffset? ConfirmedAt { get; set; }
+    public DateTimeOffset? InvalidatedAt { get; set; }
+    public string PayloadHash { get; init; } = string.Empty;
+    public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset? ErasedAt { get; set; }
+}
+
+public sealed class ContextConfirmationEvent
+{
+    public Guid EventId { get; init; } = Guid.NewGuid();
+    public Guid TenantId { get; init; }
+    public Guid RelationshipId { get; init; }
+    public Guid PayloadReference { get; init; }
+    public string PayloadHash { get; init; } = string.Empty;
+    public string FieldType { get; init; } = string.Empty;
+    public string Action { get; init; } = string.Empty;
+    public Guid ActorParticipantId { get; init; }
+    public Guid CorrelationId { get; init; }
+    public Guid EvidenceId { get; init; }
+    public DateTimeOffset OccurredAt { get; init; } = DateTimeOffset.UtcNow;
+}
+
+public sealed class RelationshipGoal
+{
+    public Guid GoalId { get; init; } = Guid.NewGuid();
+    public Guid TenantId { get; init; }
+    public Guid RelationshipId { get; init; }
+    public string Goal { get; set; } = string.Empty;
+    public string? Baseline { get; set; }
+    public string Measure { get; set; } = string.Empty;
+    public string? DecisionThreshold { get; set; }
+    public string? EvidenceSource { get; set; }
+    public int ReviewCadenceMonths { get; set; } = 2;
+    public string Status { get; set; } = "PROPOSED";
+    public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+public sealed class RelationshipSkillConfiguration
+{
+    public Guid ConfigurationId { get; init; } = Guid.NewGuid();
+    public Guid TenantId { get; init; }
+    public Guid RelationshipId { get; init; }
+    public string SkillId { get; init; } = string.Empty;
+    public string SkillVersion { get; init; } = string.Empty;
+    public Guid? GoalId { get; init; }
+    public string AuthorityState { get; set; } = "NOT_GRANTED";
+    public string Applicability { get; set; } = "APPLICABLE";
+    public string? ApplicabilityReason { get; set; }
+    public string Status { get; set; } = "PROPOSED";
+    public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+public sealed class DecisionSpaceSnapshot
+{
+    public Guid SnapshotId { get; init; } = Guid.NewGuid();
+    public Guid TenantId { get; init; }
+    public Guid RelationshipId { get; init; }
+    public int Version { get; init; }
+    public long BudgetCeilingInrPaise { get; init; }
+    public string AuthorityBoundariesJson { get; init; } = "[]";
+    public string StopConditionsJson { get; init; } = "[]";
+    public int ReviewCadenceMonths { get; init; } = 2;
+    public string AcceptedEvidenceJson { get; init; } = "[]";
+    public Guid CreatedByParticipantId { get; init; }
+    public Guid EvidenceId { get; init; }
+    public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;
+}
+
 public sealed class EmploymentRelationshipDbContext : DbContext
 {
     public EmploymentRelationshipDbContext(DbContextOptions<EmploymentRelationshipDbContext> options)
@@ -101,6 +181,11 @@ public sealed class EmploymentRelationshipDbContext : DbContext
     public DbSet<RelationshipParticipant> RelationshipParticipants => Set<RelationshipParticipant>();
     public DbSet<RelationshipStateHistory> RelationshipStateHistory => Set<RelationshipStateHistory>();
     public DbSet<RelationshipIdempotency> RelationshipIdempotency => Set<RelationshipIdempotency>();
+    public DbSet<RelationshipContextPayload> RelationshipContextPayloads => Set<RelationshipContextPayload>();
+    public DbSet<ContextConfirmationEvent> ContextConfirmationEvents => Set<ContextConfirmationEvent>();
+    public DbSet<RelationshipGoal> RelationshipGoals => Set<RelationshipGoal>();
+    public DbSet<RelationshipSkillConfiguration> RelationshipSkillConfigurations => Set<RelationshipSkillConfiguration>();
+    public DbSet<DecisionSpaceSnapshot> DecisionSpaceSnapshots => Set<DecisionSpaceSnapshot>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -203,6 +288,117 @@ public sealed class EmploymentRelationshipDbContext : DbContext
             entity.Property(value => value.CompletedAt).HasColumnName("completed_at");
             entity.HasOne<EmploymentRelationship>()
                 .WithMany()
+                .HasForeignKey(value => new { value.TenantId, value.RelationshipId })
+                .HasPrincipalKey(value => new { value.TenantId, value.RelationshipId });
+        });
+
+        modelBuilder.Entity<RelationshipContextPayload>(entity =>
+        {
+            entity.ToTable("relationship_context_payloads", "payload_store");
+            entity.HasKey(value => value.PayloadReference);
+            entity.HasIndex(value => new { value.TenantId, value.RelationshipId, value.FieldType });
+            entity.Property(value => value.PayloadReference).HasColumnName("payload_reference");
+            entity.Property(value => value.TenantId).HasColumnName("tenant_id");
+            entity.Property(value => value.RelationshipId).HasColumnName("relationship_id");
+            entity.Property(value => value.FieldType).HasColumnName("field_type");
+            entity.Property(value => value.ValueJson).HasColumnName("value_json").HasColumnType("jsonb");
+            entity.Property(value => value.Source).HasColumnName("source");
+            entity.Property(value => value.Confidence).HasColumnName("confidence");
+            entity.Property(value => value.ConfirmationStatus).HasColumnName("confirmation_status");
+            entity.Property(value => value.ConfirmedAt).HasColumnName("confirmed_at");
+            entity.Property(value => value.InvalidatedAt).HasColumnName("invalidated_at");
+            entity.Property(value => value.PayloadHash).HasColumnName("payload_hash");
+            entity.Property(value => value.CreatedAt).HasColumnName("created_at");
+            entity.Property(value => value.ErasedAt).HasColumnName("erased_at");
+            entity.HasOne<EmploymentRelationship>()
+                .WithMany()
+                .HasForeignKey(value => new { value.TenantId, value.RelationshipId })
+                .HasPrincipalKey(value => new { value.TenantId, value.RelationshipId });
+        });
+
+        modelBuilder.Entity<ContextConfirmationEvent>(entity =>
+        {
+            entity.ToTable("context_confirmation_events", "business");
+            entity.HasKey(value => value.EventId);
+            entity.HasIndex(value => new { value.TenantId, value.RelationshipId, value.OccurredAt });
+            entity.Property(value => value.EventId).HasColumnName("event_id");
+            entity.Property(value => value.TenantId).HasColumnName("tenant_id");
+            entity.Property(value => value.RelationshipId).HasColumnName("relationship_id");
+            entity.Property(value => value.PayloadReference).HasColumnName("payload_reference");
+            entity.Property(value => value.PayloadHash).HasColumnName("payload_hash");
+            entity.Property(value => value.FieldType).HasColumnName("field_type");
+            entity.Property(value => value.Action).HasColumnName("action");
+            entity.Property(value => value.ActorParticipantId).HasColumnName("actor_participant_id");
+            entity.Property(value => value.CorrelationId).HasColumnName("correlation_id");
+            entity.Property(value => value.EvidenceId).HasColumnName("evidence_id");
+            entity.Property(value => value.OccurredAt).HasColumnName("occurred_at");
+            entity.HasOne<EmploymentRelationship>()
+                .WithMany()
+                .HasForeignKey(value => new { value.TenantId, value.RelationshipId })
+                .HasPrincipalKey(value => new { value.TenantId, value.RelationshipId });
+        });
+
+        modelBuilder.Entity<RelationshipGoal>(entity =>
+        {
+            entity.ToTable("relationship_goals", "business");
+            entity.HasKey(value => value.GoalId);
+            entity.Property(value => value.GoalId).HasColumnName("goal_id");
+            entity.Property(value => value.TenantId).HasColumnName("tenant_id");
+            entity.Property(value => value.RelationshipId).HasColumnName("relationship_id");
+            entity.Property(value => value.Goal).HasColumnName("goal");
+            entity.Property(value => value.Baseline).HasColumnName("baseline");
+            entity.Property(value => value.Measure).HasColumnName("measure");
+            entity.Property(value => value.DecisionThreshold).HasColumnName("decision_threshold");
+            entity.Property(value => value.EvidenceSource).HasColumnName("evidence_source");
+            entity.Property(value => value.ReviewCadenceMonths).HasColumnName("review_cadence_months");
+            entity.Property(value => value.Status).HasColumnName("status");
+            entity.Property(value => value.CreatedAt).HasColumnName("created_at");
+            entity.Property(value => value.UpdatedAt).HasColumnName("updated_at");
+            entity.HasOne<EmploymentRelationship>().WithMany()
+                .HasForeignKey(value => new { value.TenantId, value.RelationshipId })
+                .HasPrincipalKey(value => new { value.TenantId, value.RelationshipId });
+        });
+
+        modelBuilder.Entity<RelationshipSkillConfiguration>(entity =>
+        {
+            entity.ToTable("relationship_skill_configuration", "business");
+            entity.HasKey(value => value.ConfigurationId);
+            entity.HasIndex(value => new { value.TenantId, value.RelationshipId, value.SkillId, value.SkillVersion }).IsUnique();
+            entity.Property(value => value.ConfigurationId).HasColumnName("configuration_id");
+            entity.Property(value => value.TenantId).HasColumnName("tenant_id");
+            entity.Property(value => value.RelationshipId).HasColumnName("relationship_id");
+            entity.Property(value => value.SkillId).HasColumnName("skill_id");
+            entity.Property(value => value.SkillVersion).HasColumnName("skill_version");
+            entity.Property(value => value.GoalId).HasColumnName("goal_id");
+            entity.Property(value => value.AuthorityState).HasColumnName("authority_state");
+            entity.Property(value => value.Applicability).HasColumnName("applicability");
+            entity.Property(value => value.ApplicabilityReason).HasColumnName("applicability_reason");
+            entity.Property(value => value.Status).HasColumnName("status");
+            entity.Property(value => value.CreatedAt).HasColumnName("created_at");
+            entity.Property(value => value.UpdatedAt).HasColumnName("updated_at");
+            entity.HasOne<EmploymentRelationship>().WithMany()
+                .HasForeignKey(value => new { value.TenantId, value.RelationshipId })
+                .HasPrincipalKey(value => new { value.TenantId, value.RelationshipId });
+        });
+
+        modelBuilder.Entity<DecisionSpaceSnapshot>(entity =>
+        {
+            entity.ToTable("decision_space_snapshots", "business");
+            entity.HasKey(value => value.SnapshotId);
+            entity.HasIndex(value => new { value.TenantId, value.RelationshipId, value.Version }).IsUnique();
+            entity.Property(value => value.SnapshotId).HasColumnName("snapshot_id");
+            entity.Property(value => value.TenantId).HasColumnName("tenant_id");
+            entity.Property(value => value.RelationshipId).HasColumnName("relationship_id");
+            entity.Property(value => value.Version).HasColumnName("version");
+            entity.Property(value => value.BudgetCeilingInrPaise).HasColumnName("budget_ceiling_inr_paise");
+            entity.Property(value => value.AuthorityBoundariesJson).HasColumnName("authority_boundaries_json").HasColumnType("jsonb");
+            entity.Property(value => value.StopConditionsJson).HasColumnName("stop_conditions_json").HasColumnType("jsonb");
+            entity.Property(value => value.ReviewCadenceMonths).HasColumnName("review_cadence_months");
+            entity.Property(value => value.AcceptedEvidenceJson).HasColumnName("accepted_evidence_json").HasColumnType("jsonb");
+            entity.Property(value => value.CreatedByParticipantId).HasColumnName("created_by_participant_id");
+            entity.Property(value => value.EvidenceId).HasColumnName("evidence_id");
+            entity.Property(value => value.CreatedAt).HasColumnName("created_at");
+            entity.HasOne<EmploymentRelationship>().WithMany()
                 .HasForeignKey(value => new { value.TenantId, value.RelationshipId })
                 .HasPrincipalKey(value => new { value.TenantId, value.RelationshipId });
         });

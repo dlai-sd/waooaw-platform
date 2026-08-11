@@ -139,6 +139,7 @@ builder.Services.AddDbContextFactory<EmploymentRelationshipDbContext>((services,
         .AddInterceptors(services.GetRequiredService<TenantDbConnectionInterceptor>()));
 builder.Services.AddScoped<IRelationshipConstitutionalGateway, RelationshipConstitutionalGateway>();
 builder.Services.AddScoped<EmploymentRelationshipService>();
+builder.Services.AddScoped<RelationshipConfigurationService>();
 
 // ── Identity Boundary — WC-034 F2 (identity-boundary.md) ─────────────────
 // Pre-account registration paths use actor subject (JWT sub); no tenant_id required.
