@@ -69,6 +69,7 @@ builder.Services.AddTenantIsolation();
 
 // ── HttpContextAccessor — required by TenantDbConnectionInterceptor ──────────────
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddSingleton<IProfessionalCatalog, ProfessionalCatalog>();
 
 var workloadCredentials = builder.Configuration["WAOOAW_WORKLOAD_CREDENTIALS"];
 var prWorkspaceBaseUrl = builder.Configuration["ProfessionalRuntime:RelationshipWorkspaceBaseUrl"];

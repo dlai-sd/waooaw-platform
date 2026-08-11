@@ -1,0 +1,65 @@
+{
+  "professionalType": "DIGITAL_MARKETING_LOCAL_SERVICE",
+  "projectionVersion": "1.0.0",
+  "displayName": "Digital Marketing Professional",
+  "active": true,
+  "supportedOutcomeTerms": [
+    "marketing", "customer", "customers", "patient", "patients", "booking", "bookings",
+    "lead", "leads", "visibility", "social media", "seo", "advertising", "retention"
+  ],
+  "prohibitedOutcomeTerms": [
+    "child sexual exploitation", "fraud", "narcotics promotion", "non-consensual intimate content",
+    "deceptive impersonation", "trafficking"
+  ],
+  "suitability": [
+    "Builds evidence-backed digital marketing plans for lawful local service businesses.",
+    "Connects marketing activity to customer-confirmed business outcomes and measures."
+  ],
+  "eligibilityExplanation": "Eligibility depends only on lawful outcome fit, applicable regulation, and honest professional capability; customer value or preferred-segment scoring is not used.",
+  "skills": [
+    { "skillId": "CUSTOMER_PROFILING", "displayName": "Customer Profiling", "applicableInTrial": true },
+    { "skillId": "MARKET_RESEARCH", "displayName": "Market Research and Maturity Scoring", "applicableInTrial": true },
+    { "skillId": "CONTENT_STRATEGY", "displayName": "Content Strategy", "applicableInTrial": true },
+    { "skillId": "INSTAGRAM", "displayName": "Instagram", "applicableInTrial": true },
+    { "skillId": "FACEBOOK", "displayName": "Facebook", "applicableInTrial": true },
+    { "skillId": "GOOGLE_BUSINESS_PROFILE", "displayName": "Google Business Profile", "applicableInTrial": true },
+    { "skillId": "WHATSAPP_BUSINESS", "displayName": "WhatsApp Business", "applicableInTrial": true },
+    { "skillId": "VIDEO_VISUAL_CONTENT", "displayName": "Video and Visual Content", "applicableInTrial": true },
+    { "skillId": "PERFORMANCE_ANALYTICS", "displayName": "Performance Analytics", "applicableInTrial": true },
+    { "skillId": "LOCAL_SEO", "displayName": "Local SEO", "applicableInTrial": true },
+    { "skillId": "PAID_ADVERTISING", "displayName": "Paid Advertising", "applicableInTrial": true },
+    { "skillId": "EMAIL_MARKETING", "displayName": "Email Marketing", "applicableInTrial": true },
+    { "skillId": "CUSTOMER_LIFECYCLE", "displayName": "Customer Lifecycle Management", "applicableInTrial": true },
+    { "skillId": "CONVERSION_OPTIMISATION", "displayName": "Conversion Optimisation", "applicableInTrial": true },
+    { "skillId": "COMPETITIVE_INTELLIGENCE", "displayName": "Competitive Intelligence", "applicableInTrial": true },
+    { "skillId": "AGENCY_OPERATIONS", "displayName": "Agency Operations", "applicableInTrial": false, "activationCondition": "Applicable when the customer operates as an agency or reseller." },
+    { "skillId": "MULTI_LOCATION_MANAGEMENT", "displayName": "Multi-Location Management", "applicableInTrial": false, "activationCondition": "Applicable when the customer operates more than one location." },
+    { "skillId": "CRISIS_COMMUNICATIONS", "displayName": "Crisis Communications", "applicableInTrial": true },
+    { "skillId": "QUARTERLY_STRATEGY_REVIEW", "displayName": "Quarterly Strategy Review", "applicableInTrial": true }
+  ],
+  "limitations": [
+    "Trial outputs are demonstrations and do not publish, spend, message third parties, or mutate provider state.",
+    "Recommendations are evidence-backed but do not guarantee customer acquisition, revenue, ranking, or campaign results."
+  ],
+  "authorityNeeds": [
+    "Live work requires an accepted Decision Space, minimum credential scope, approval boundaries, and budget ceiling.",
+    "Paid advertising and external publishing remain unavailable during trial."
+  ],
+  "customerRights": [
+    "Inspect evidence, assumptions, limitations, price consequences, and proposed authority before commitment.",
+    "Correct context, decline, choose not now, exit, or use Emergency Stop without losing approved trial artifacts."
+  ],
+  "trial": {
+    "available": true,
+    "durationDays": 14,
+    "paidApiCallsAllowed": false,
+    "externalActionsAllowed": false
+  },
+  "evidencePosture": "Facts, public evidence, inference, recommendations, and limitations remain distinguishable; unsupported claims fall back to an explicit limitation.",
+  "indicativePrice": {
+    "currency": "INR",
+    "amountInrPaise": 249900,
+    "cadence": "MONTHLY",
+    "qualification": "Indicative Growth Engine price including GST; final tier, included capability, provider treatment, and ad spend are disclosed before contract acceptance."
+  }
+}

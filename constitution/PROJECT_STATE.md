@@ -15,11 +15,12 @@
 | ACK-GOAL-005-INST-001-07 | DONE — exact Amendment 7 acknowledgement recorded at 2026-08-11T06:54:41Z |
 | GOA-GOAL-005-INST-010-04 | ISSUED — INST-013 issued WC-058-only authority at 2026-08-11T06:54:42Z |
 | ACC-GOAL-005-INST-010-04 | ACCEPTED — INST-010 accepted at 2026-08-11T06:54:43Z; temporal order valid |
-| WC-058 implementation | IN PROGRESS — WC058-01 through WC058-08 only; first implementation milestone pending |
+| WC-058 implementation | IN PROGRESS — WC058-01 DONE; WC058-02 through WC058-08 remain authorized and pending |
+| WC058-01 professional discovery and disclosure | DONE — BP OpenAPI 1.4.0, generic manifest-driven catalog, 19-skill DMA projection, privacy-safe controller, and four focused tests; isolated .NET build and VSTest PASS |
 
 ### Authorization Boundary And Next Action
 
-FA-038, R-077, ACK-07, GOA-04, and ACC-04 complete the WC-058 implementation entry sequence. INST-010 may implement WC058-01 through WC058-08 and publish the required evidence. Provider activation, WC-059/WC-060, deployment, merge, self-review, architecture reinterpretation, and production/customer proof remain unauthorized.
+FA-038, R-077, ACK-07, GOA-04, and ACC-04 complete the WC-058 implementation entry sequence. WC058-01 is complete; INST-010 proceeds to WC058-02 and may implement the remaining WC058-02 through WC058-08 scope and publish the required evidence. Provider activation, WC-059/WC-060, deployment, merge, self-review, architecture reinterpretation, and production/customer proof remain unauthorized.
 
 ---
 
