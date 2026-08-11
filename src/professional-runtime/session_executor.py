@@ -7,6 +7,7 @@ from __future__ import annotations
 import logging
 from typing import Any, Protocol
 
+from evaluation_workflow import EvaluationMessage, InterviewAnswerService, TypedAnswerEnvelope
 from intent_crystallizer import CrystallizerRequiredError, LockedArtifact
 from skill_resolver import SessionSkillContext
 
@@ -56,9 +57,11 @@ class SessionExecutor:
         self,
         session_ctx: SessionSkillContext,
         dispatcher: ToolDispatcher | None = None,
+        interview_service: InterviewAnswerService | None = None,
     ) -> None:
         self._ctx = session_ctx
         self._dispatcher = dispatcher
+        self._interview_service = interview_service
         # Temporal-persisted session state (WC041-04)
         self._locked_artifacts: dict[str, LockedArtifact] = {}
         self._crystallization_complete: dict[str, bool] = {}
@@ -130,3 +133,17 @@ class SessionExecutor:
 
         logger.warning("No dispatcher injected — tool call returned stub. tool=%s", tool_name)
         return {"status": "dispatched", "tool": tool_name}
+
+    async def answer_interview(
+        self,
+        relationship_id: str,
+        message: EvaluationMessage,
+        evidence_context: tuple[str, ...] = (),
+    ) -> TypedAnswerEnvelope:
+        if self._interview_service is None:
+            raise RuntimeError("Professional evaluation adapter is not configured")
+        return await self._interview_service.answer(
+            relationship_id,
+            message,
+            evidence_context,
+        )
