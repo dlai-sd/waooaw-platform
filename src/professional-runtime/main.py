@@ -27,6 +27,8 @@ from routers.conversation_models import HealthResponse
 from routers.emergency_stop import KeycloakJWTValidator
 from routers.emergency_stop import router as emergency_stop_router
 from routers.sessions import router as sessions_router
+from relationship_workspace import configure_relationship_workspace
+from relationship_workspace import router as relationship_workspace_router
 from workflows.conversation_execution_workflow import ConversationExecutionWorkflow
 
 logger = logging.getLogger(__name__)
@@ -128,13 +130,15 @@ async def lifespan(application: FastAPI) -> AsyncIterator[None]:
 app = FastAPI(
     title="WAOOAW Professional Runtime",
     description="PAAS execution engine (C-025). All professional work runs here.",
-    version="1.1.0",
+    version="1.2.0",
     lifespan=lifespan,
 )
 
 app.include_router(sessions_router)
 app.include_router(emergency_stop_router)
 app.include_router(conversation_execution_router)
+app.include_router(relationship_workspace_router)
+configure_relationship_workspace(app)
 
 
 def _execution_problem_response(name: str) -> dict[str, object]:
