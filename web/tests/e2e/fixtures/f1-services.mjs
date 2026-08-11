@@ -30,7 +30,7 @@ function relationship(relationshipId) {
   return {
     relationshipId,
     professionalType: relationshipId === 'relationship-second' ? 'PRIVATE_TUTOR' : 'DIGITAL_MARKETING',
-    state: 'ACTIVE', stateVersion: 2,
+    state: relationshipId === 'relationship-contract' ? 'CONTRACT_PENDING_ACCEPTANCE' : 'ACTIVE', stateVersion: 2,
     createdAt: '2026-08-08T10:00:00.000Z', updatedAt: '2026-08-09T10:00:00.000Z',
   };
 }
@@ -119,6 +119,33 @@ const server = createServer(async (request, response) => {
   const streamMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/conversation\/stream$/);
   const cancelMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/conversation\/executions\/([^/]+)$/);
   const workspaceMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/workspace(?:\/(plan|attention|work|results|usage-budget|rights-controls))?$/);
+  const evaluationMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/evaluation$/);
+  const contractJourneyMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/contract-journey$/);
+
+  if (request.method === 'GET' && evaluationMatch) {
+    const relationshipId = decodeURIComponent(evaluationMatch[1]);
+    json(response, { relationshipId, lifecycleState: relationship(relationshipId).state, interviewState: 'AVAILABLE', context: [], goals: [], skills: [] });
+    return;
+  }
+
+  if (request.method === 'GET' && contractJourneyMatch) {
+    const relationshipId = decodeURIComponent(contractJourneyMatch[1]);
+    if (relationshipId !== 'relationship-contract') {
+      response.statusCode = 204;
+      response.end();
+      return;
+    }
+    json(response, {
+      contractId: 'ca57bbd1-62eb-48ab-bd78-2a23053f6551', version: 2, contractHash: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+      relationshipState: 'CONTRACT_PENDING_ACCEPTANCE', acceptanceState: 'PENDING', paymentState: 'NOT_STARTED', activationState: 'NOT_STARTED',
+      document: {
+        professionalDisplayName: 'Digital Marketing Professional', rights: ['Inspect evidence', 'Choose not now without penalty'], obligations: ['Provide accurate context'],
+        limitations: ['Cannot publish or spend without authority'], authorityTerms: ['No publishing'], stopTerms: ['Emergency Stop remains available'],
+        priceTax: { currency: 'INR', grossAmountInrPaise: 118000, gstAmountInrPaise: 18000, cadence: 'MONTHLY', subscriptionTerms: 'Monthly subscription', adSpendTreatment: 'Ad spend is separate', cancellationAndRefundTerms: 'Cancel before renewal; captured charges follow the stated refund policy' },
+      },
+    });
+    return;
+  }
 
   if (request.method === 'GET' && workspaceMatch) {
     const relationshipId = decodeURIComponent(workspaceMatch[1]);

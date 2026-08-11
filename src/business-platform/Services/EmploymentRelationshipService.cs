@@ -178,6 +178,18 @@ public sealed class EmploymentRelationshipService
                 cancellationToken);
     }
 
+    public async Task<bool> IsActiveParticipantAsync(
+        Guid tenantId, Guid relationshipId, Guid participantId, CancellationToken cancellationToken)
+    {
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+        return await db.RelationshipParticipants.AsNoTracking().AnyAsync(
+            value => value.TenantId == tenantId
+                && value.RelationshipId == relationshipId
+                && value.ParticipantId == participantId
+                && value.Status == "ACTIVE",
+            cancellationToken);
+    }
+
     public async Task<IReadOnlyList<RelationshipStateHistory>> GetTimelineAsync(
         Guid tenantId,
         Guid relationshipId,

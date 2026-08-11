@@ -175,6 +175,34 @@ public sealed class EmploymentContractAcceptanceServiceTests
         Assert.Equal("AAL3_FRESH", response.AuthenticationAssurance);
     }
 
+    [Fact]
+    public async Task ContractJourneyReturnsLatestExactVersionForActiveParticipant()
+    {
+        var context = await CreateContextAsync(RelationshipParticipantRole.Employer);
+        var controller = CreateController(context, null, 0);
+
+        var result = await controller.GetContractJourneyAsync(context.RelationshipId, CancellationToken.None);
+
+        var response = Assert.IsType<ContractJourneyResponse>(Assert.IsType<OkObjectResult>(result).Value);
+        Assert.Equal(context.Contract.ContractId, response.ContractId);
+        Assert.Equal(context.Contract.ContractHash, response.ContractHash);
+        Assert.Equal("PENDING", response.AcceptanceState);
+        Assert.Equal("NOT_STARTED", response.PaymentState);
+    }
+
+    [Fact]
+    public async Task ContractJourneyDoesNotDiscloseMaterialToUnboundParticipant()
+    {
+        var context = await CreateContextAsync(RelationshipParticipantRole.Employer);
+        var controller = CreateController(context, null, 0);
+        controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim("participant_id", Guid.NewGuid().ToString("D"))], "Test"));
+
+        var result = await controller.GetContractJourneyAsync(context.RelationshipId, CancellationToken.None);
+
+        Assert.IsType<NotFoundResult>(result);
+    }
+
     private static Task<ContractAcceptanceResult> AcceptAsync(AcceptanceTestContext context) =>
         context.Service.AcceptAsync(
             context.TenantId,

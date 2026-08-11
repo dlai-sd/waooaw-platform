@@ -1,6 +1,6 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-08-11 (WC059-06 paid activation ordering repair complete)
+**Last Updated:** 2026-08-11 (WC059-07 customer contract and activation journey complete)
 
 ---
 
@@ -23,10 +23,11 @@
 | WC059-04 payment consent and WC-042 integration | DONE — accepted-contract itemization, fresh portal assurance, explicit `PROCEED_TO_RAZORPAY`, CE evidence-before-WBE, complete relationship/contract/acceptance/consent references in hosted-order notes, and relationship-flow bypass prohibition implemented; 15 BP contract/payment and 18 WBE payment tests pass in Docker. All 670 OpenAPI local references resolve except the pre-existing missing `Forbidden` response. No payment secrets, provider credentials, activation, or deployment introduced. |
 | WC059-05 durable activation orchestration | DONE — Migration 21b activation intents mapped into BP; canonical tuple/hash replay and conflict semantics, exact contract/acceptance/authority validation, evidence-bearing `ACTIVATION_PENDING`, same-correlation idempotent WBE owner interface, evidence-before-`ACTIVE`, atomic stored outcome, retryable owner uncertainty, and stable Temporal workflow identity implemented. Five focused and 26 adjacent BP tests pass in Docker. The concrete WBE verified-payment adapter remains fail-closed until WC059-06 installs the owner handoff and repairs webhook ordering. |
 | WC059-06 paid activation ordering repair | DONE — relationship-linked Razorpay webhooks verify and persist deterministic `CAPTURED` evidence without wallet/trial mutation; BP invokes the concrete WBE paid-activation command with exact intent/correlation/material; payment-keyed subscription replay and stored activation outcome prevent duplicate subscription; trial `CONVERTED` projects only after successful subscription activation; owner uncertainty remains retryable. Migration 21c first/reapply and canonical-row constraints pass on PostgreSQL 16; 41 WBE payment/wallet and 5 BP activation tests pass in Docker. |
+| WC059-07 customer contract and activation journey | DONE — participant-authorized BP projection supplies the latest exact immutable contract and honest acceptance/payment/activation states; authenticated web BFF preserves exact scope and explicit `PROCEED_TO_RAZORPAY` commands with stable idempotency; responsive UI presents INR total, GST, zero wallet seed, subscription/ad-spend/refund terms, and symmetric Hire/Not now/Cancel/Exit without preselection or pressure; WhatsApp Tier 4 provides secure-portal/status guidance and cannot accept or initiate payment. Focused BP tests 27/27, web tests 3/3, Next production build, and Chromium expanded/360px Playwright with axe and overflow checks 4/4 pass. Canonical OpenAPI 1.6.0 adds the projection; validation retains only the pre-existing missing `Forbidden` response. |
 
 ### Authorization Boundary And Next Action
 
-FA-040, R-080, ACK-08, GOA-05, and ACC-05 complete the WC-059 implementation entry sequence. WC059-01 through WC059-06 are complete on the dedicated implementation branch; the next dependency-ordered action is WC059-07 customer web/WhatsApp contract and activation journey. Live Razorpay/provider activation, credentials/account setup, WC-060, deployment, merge, self-review, architecture reinterpretation, and production/customer proof remain unauthorized.
+FA-040, R-080, ACK-08, GOA-05, and ACC-05 complete the WC-059 implementation entry sequence. WC059-01 through WC059-07 are complete on the dedicated implementation branch; the next dependency-ordered action is WC059-08 constitutional compliance and concurrency evidence. Live Razorpay/provider activation, credentials/account setup, WC-060, deployment, merge, self-review, architecture reinterpretation, and production/customer proof remain unauthorized.
 
 ---
 

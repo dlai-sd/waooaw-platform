@@ -113,6 +113,25 @@ public sealed class WhatsAppJourneyServiceTests
         Assert.Contains("secure portal", result.Reply, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Theory]
+    [InlineData("YES")]
+    [InlineData("CONFIRM")]
+    [InlineData("PAY NOW")]
+    public async Task TierFourContractAndPaymentActionsRemainPortalOnly(string text)
+    {
+        var (service, _, _) = Create();
+        var now = DateTimeOffset.UtcNow;
+        var body = Body("wamid-tier-4", now, "+919876543210", text, "TIER_4_CONSEQUENTIAL");
+
+        var result = await service.ReceiveAsync(body, Sign(body), now, CancellationToken.None);
+
+        Assert.Equal("SECURE_PORTAL_REQUIRED", result.Status);
+        Assert.Contains("cannot be accepted or initiated in WhatsApp", result.Reply, StringComparison.Ordinal);
+        Assert.Contains("Hire, Not now, Cancel, or Exit", result.Reply, StringComparison.Ordinal);
+        Assert.Contains("Razorpay", result.Reply, StringComparison.Ordinal);
+        Assert.DoesNotContain("handoff", result.Reply, StringComparison.OrdinalIgnoreCase);
+    }
+
     [Fact]
     public async Task FirstContactFailsClosedWhenRegistrationEvidenceIsUnavailable()
     {

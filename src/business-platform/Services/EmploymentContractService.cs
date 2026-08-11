@@ -193,6 +193,19 @@ public sealed class EmploymentContractService(
             cancellationToken);
     }
 
+    public async Task<EmploymentContractComposition?> GetLatestAsync(
+        Guid tenantId, Guid relationshipId, CancellationToken cancellationToken)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+        var contract = await db.EmploymentContractVersions.AsNoTracking()
+            .Where(item => item.TenantId == tenantId && item.RelationshipId == relationshipId)
+            .OrderByDescending(item => item.Version)
+            .FirstOrDefaultAsync(cancellationToken);
+        return contract is null
+            ? null
+            : new EmploymentContractComposition(contract, DeserializeDocument(contract.ConfigurationSnapshotJson), false);
+    }
+
     private static EmploymentContractDocument DeserializeDocument(string json) =>
         JsonSerializer.Deserialize<EmploymentContractDocument>(json, JsonOptions)
         ?? throw new InvalidOperationException("Stored employment contract material is invalid.");

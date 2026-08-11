@@ -52,6 +52,16 @@ public sealed record ContractAcceptanceResponse(
     Guid AcceptanceEvidenceId,
     DateTimeOffset AcceptedAt);
 
+public sealed record ContractJourneyResponse(
+    Guid ContractId,
+    int Version,
+    string ContractHash,
+    EmploymentContractDocument Document,
+    string RelationshipState,
+    string AcceptanceState,
+    string PaymentState,
+    string ActivationState);
+
 public sealed class RelationshipStateJsonConverter : JsonConverter<EmploymentRelationshipState>
 {
     public override EmploymentRelationshipState Read(
@@ -333,6 +343,30 @@ public sealed class EmploymentRelationshipsController : ControllerBase
         {
             return Problem(statusCode: 503, title: "Contract proposal unresolved");
         }
+    }
+
+    [HttpGet("{relationshipId:guid}/contract-journey")]
+    public async Task<IActionResult> GetContractJourneyAsync(
+        Guid relationshipId, CancellationToken cancellationToken)
+    {
+        if (!TryGetTenantId(out var tenantId) || !TryGetParticipantId(out var participantId)) return Forbid();
+        if (_contracts is null) return Problem(statusCode: 503, title: "Contract projection unavailable");
+        var relationship = await _service.GetAsync(tenantId, relationshipId, cancellationToken);
+        if (relationship is null || !await _service.IsActiveParticipantAsync(
+            tenantId, relationshipId, participantId, cancellationToken)) return NotFound();
+        var contract = await _contracts.GetLatestAsync(tenantId, relationshipId, cancellationToken);
+        if (contract is null) return NoContent();
+        var accepted = relationship.AcceptedContractId == contract.Contract.ContractId;
+        return Ok(new ContractJourneyResponse(
+            contract.Contract.ContractId,
+            contract.Contract.Version,
+            contract.Contract.ContractHash,
+            contract.Document,
+            RelationshipStateCodec.ToDatabase(relationship.State),
+            accepted ? "ACCEPTED" : "PENDING",
+            relationship.State >= EmploymentRelationshipState.ActivationPending ? "CAPTURED" : "NOT_STARTED",
+            relationship.State == EmploymentRelationshipState.Active ? "ACTIVE"
+                : relationship.State == EmploymentRelationshipState.ActivationPending ? "PENDING" : "NOT_STARTED"));
     }
 
     [HttpPost("{relationshipId:guid}/contracts/{version:int}/accept")]
