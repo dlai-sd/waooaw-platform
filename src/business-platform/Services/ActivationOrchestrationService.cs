@@ -72,6 +72,28 @@ public sealed class ActivationOrchestrationService(
         }
     }
 
+    public async Task<ActivationOutcome?> PrepareDispatchAsync(
+        ActivationRequest request, CancellationToken cancellationToken)
+    {
+        var materialHash = HashMaterial(request);
+        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+        var existing = await FindIntentAsync(db, request, cancellationToken);
+        if (existing is null)
+        {
+            await ValidateEligibilityAsync(request, cancellationToken);
+            existing = await LoadOrCreateIntentAsync(request, materialHash, cancellationToken);
+        }
+
+        if (!CryptographicOperations.FixedTimeEquals(
+                Convert.FromHexString(existing.MaterialRequestHash), Convert.FromHexString(materialHash)))
+        {
+            await RecordConflictAsync(existing, materialHash, cancellationToken);
+            throw new ActivationConflictException();
+        }
+
+        return existing.Status == "SUCCEEDED" ? ToOutcome(existing) : null;
+    }
+
     private static CanonicalTupleLock AcquireTupleLockReference(string tupleKey)
     {
         while (true)
@@ -319,7 +341,7 @@ public sealed class ActivationOrchestrationService(
                 && value.PaymentReference == request.PaymentReference,
             cancellationToken);
 
-    private static string HashMaterial(ActivationRequest request) =>
+    internal static string HashMaterial(ActivationRequest request) =>
         Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(string.Join("|",
             request.TenantId.ToString("D"), request.RelationshipId.ToString("D"),
             request.ActorParticipantId.ToString("D"), request.AcceptedContractId.ToString("D"),

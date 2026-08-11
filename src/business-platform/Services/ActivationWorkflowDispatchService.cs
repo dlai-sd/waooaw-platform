@@ -4,6 +4,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
+using Temporalio.Api.Enums.V1;
 using Temporalio.Client;
 using Temporalio.Exceptions;
 using Waooaw.BusinessPlatform.Infrastructure;
@@ -28,7 +29,10 @@ public sealed class TemporalActivationWorkflowStarter(ITemporalClient temporalCl
         {
             var handle = await temporalClient.StartWorkflowAsync(
                 (ActivationWorkflow workflow) => workflow.RunAsync(request),
-                new WorkflowOptions(workflowId, "bp-trial-worker"));
+                new WorkflowOptions(workflowId, "bp-trial-worker")
+                {
+                    IdReusePolicy = WorkflowIdReusePolicy.AllowDuplicateFailedOnly,
+                });
             return await handle.GetResultAsync<ActivationOutcome>();
         }
         catch (WorkflowAlreadyStartedException)
@@ -40,6 +44,7 @@ public sealed class TemporalActivationWorkflowStarter(ITemporalClient temporalCl
 
 public sealed class ActivationWorkflowDispatchService(
     IDbContextFactory<EmploymentRelationshipDbContext> dbFactory,
+    ActivationOrchestrationService orchestration,
     IActivationWorkflowStarter workflowStarter)
 {
     public async Task<ActivationOutcome> StartAsync(
@@ -62,7 +67,7 @@ public sealed class ActivationWorkflowDispatchService(
             item => item.TenantId == tenantId && item.RelationshipId == relationshipId,
             cancellationToken) ?? throw new ActivationEligibilityException("Relationship not found.");
         if (relationship.State is not (EmploymentRelationshipState.ContractAcceptedPendingPayment
-                or EmploymentRelationshipState.ActivationPending)
+            or EmploymentRelationshipState.ActivationPending or EmploymentRelationshipState.Active)
             || !relationship.AcceptedContractId.HasValue || !relationship.AuthoritySnapshotId.HasValue)
             throw new ActivationEligibilityException("Relationship is not eligible for paid activation.");
         var employer = await db.RelationshipParticipants.AsNoTracking().AnyAsync(
@@ -86,6 +91,8 @@ public sealed class ActivationWorkflowDispatchService(
             request.PaymentEvidenceId,
             relationship.AuthoritySnapshotId.Value,
             StableCorrelation(tenantId, relationshipId, relationship.AcceptedContractId.Value, request.PaymentReference));
+        var storedOutcome = await orchestration.PrepareDispatchAsync(activation, cancellationToken);
+        if (storedOutcome is not null) return storedOutcome;
         return await workflowStarter.StartOrJoinAsync(activation, cancellationToken);
     }
 

@@ -27,7 +27,7 @@ WC-060 continuity, deployment, production/customer proof, merge, or self-review.
 | Slice | Result |
 |---|---|
 | PostgreSQL migrations 21b/21c | PASS — first apply, reapply, RLS/immutability, canonical tuple, and paid-subscription constraints |
-| Business Platform | PASS — 239/239 in repository Docker test-runner; focused activation command/orchestration 9/9 including canonical derivation, stable replay, fresh portal assurance, employer authority, concurrency, conflict, and retryable uncertainty |
+| Business Platform | PASS — 239/239 baseline in repository Docker test-runner; focused activation command/orchestration 11/11 after R081-02 remediation, including durable preflight, canonical derivation, stored-success replay without workflow start, divergent-material rejection before join, fresh portal assurance, employer authority, concurrency, conflict, and retryable uncertainty |
 | Billing Engine | PASS — 377/377 including payment, wallet, paid activation, webhook replay, and reconciliation |
 | Business Platform affected coverage | PASS — core WC059 methods 93.33–100% lines except durable conflict/replay branches covered separately by PostgreSQL concurrency evidence; activation orchestration entry is 100% |
 | Web component | PASS — 4/4 focused relationship journey tests; `ContractJourney` 100% lines, 97.22% statements, 93.75% branches, 91.66% functions |

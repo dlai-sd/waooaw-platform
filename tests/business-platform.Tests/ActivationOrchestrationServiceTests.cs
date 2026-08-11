@@ -128,7 +128,7 @@ public sealed class ActivationOrchestrationServiceTests
     {
         var context = await CreateContextAsync();
         var starter = new RecordingActivationWorkflowStarter();
-        var dispatch = new ActivationWorkflowDispatchService(context.Factory, starter);
+        var dispatch = new ActivationWorkflowDispatchService(context.Factory, context.Service, starter);
         var paymentEvidenceId = Guid.NewGuid();
         var command = new StartPaidActivationRequest(" pay_verified_123 ", paymentEvidenceId);
         var assurance = new ContractPortalAssurance(true, DateTimeOffset.UtcNow);
@@ -157,7 +157,7 @@ public sealed class ActivationOrchestrationServiceTests
     {
         var context = await CreateContextAsync();
         var starter = new RecordingActivationWorkflowStarter();
-        var dispatch = new ActivationWorkflowDispatchService(context.Factory, starter);
+        var dispatch = new ActivationWorkflowDispatchService(context.Factory, context.Service, starter);
 
         await Assert.ThrowsAsync<PaymentStepUpRequiredException>(() => dispatch.StartAsync(
             context.Request.TenantId,
@@ -175,7 +175,7 @@ public sealed class ActivationOrchestrationServiceTests
     {
         var context = await CreateContextAsync();
         var starter = new RecordingActivationWorkflowStarter();
-        var dispatch = new ActivationWorkflowDispatchService(context.Factory, starter);
+        var dispatch = new ActivationWorkflowDispatchService(context.Factory, context.Service, starter);
 
         await Assert.ThrowsAsync<ConstitutionalActionDeniedException>(() => dispatch.StartAsync(
             context.Request.TenantId,
@@ -186,6 +186,49 @@ public sealed class ActivationOrchestrationServiceTests
             CancellationToken.None));
 
         Assert.Empty(starter.Requests);
+    }
+
+    [Fact]
+    public async Task ActivationCommandRejectsDivergentMaterialBeforeWorkflowJoin()
+    {
+        var context = await CreateContextAsync();
+        var starter = new RecordingActivationWorkflowStarter();
+        var dispatch = new ActivationWorkflowDispatchService(context.Factory, context.Service, starter);
+        var assurance = new ContractPortalAssurance(true, DateTimeOffset.UtcNow);
+
+        await dispatch.StartAsync(
+            context.Request.TenantId, context.Request.RelationshipId, context.Request.ActorParticipantId,
+            new StartPaidActivationRequest(context.Request.PaymentReference, context.Request.PaymentEvidenceId),
+            assurance, CancellationToken.None);
+
+        await Assert.ThrowsAsync<ActivationConflictException>(() => dispatch.StartAsync(
+            context.Request.TenantId, context.Request.RelationshipId, context.Request.ActorParticipantId,
+            new StartPaidActivationRequest(context.Request.PaymentReference, Guid.NewGuid()),
+            assurance, CancellationToken.None));
+
+        Assert.Single(starter.Requests);
+    }
+
+    [Fact]
+    public async Task ActivationCommandReturnsStoredSuccessWithoutWorkflowStart()
+    {
+        var context = await CreateContextAsync();
+        var starter = new RecordingActivationWorkflowStarter();
+        var dispatch = new ActivationWorkflowDispatchService(context.Factory, context.Service, starter);
+        var command = new StartPaidActivationRequest(context.Request.PaymentReference, context.Request.PaymentEvidenceId);
+        var assurance = new ContractPortalAssurance(true, DateTimeOffset.UtcNow);
+
+        await dispatch.StartAsync(
+            context.Request.TenantId, context.Request.RelationshipId, context.Request.ActorParticipantId,
+            command, assurance, CancellationToken.None);
+        var completed = await context.Service.ActivateAsync(starter.Requests.Single(), CancellationToken.None);
+
+        var replay = await dispatch.StartAsync(
+            context.Request.TenantId, context.Request.RelationshipId, context.Request.ActorParticipantId,
+            command, assurance, CancellationToken.None);
+
+        Assert.Equal(completed, replay);
+        Assert.Single(starter.Requests);
     }
 
     private static async Task<ActivationTestContext> CreateContextAsync()
