@@ -1,6 +1,6 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-08-11 (WC-058 PR #263 open and unmerged for Founder review)
+**Last Updated:** 2026-08-11 (WC-058 PR #263 merged to `main` as `2682ab0`)
 
 ---
 
@@ -15,11 +15,11 @@
 | ACK-GOAL-005-INST-001-07 | DONE — exact Amendment 7 acknowledgement recorded at 2026-08-11T06:54:41Z |
 | GOA-GOAL-005-INST-010-04 | ISSUED — INST-013 issued WC-058-only authority at 2026-08-11T06:54:42Z |
 | ACC-GOAL-005-INST-010-04 | ACCEPTED — INST-010 accepted at 2026-08-11T06:54:43Z; temporal order valid |
-| WC-058 implementation | COMPLETE AND SUBMITTED — WC058-01 through WC058-08, Contribution/Learning Records, and independent reviews DONE; PR #263 is OPEN and UNMERGED for Founder review |
+| WC-058 implementation | DONE — WC058-01 through WC058-08, Contribution/Learning Records, and independent reviews complete; PR #263 merged to `main` as `2682ab0` |
 | WC-058 Contribution and Learning Records | DONE — `CR-GOAL-005-INST-010-05` and `LR-GOAL-005-INST-010-04` attest the eight-commit implementation lineage, validation evidence, provenance classes, residual limits, and unauthorized boundaries; record-ID uniqueness, commit resolution, task completeness, diagnostics, and diff hygiene PASS |
 | R-078 independent INST-011 Product Owner review | APPROVED — customer ordering/rights, disclosure-before-trial, customer-agnostic suitability, progressive context, exact 14-day/inactivity/expiry truth, and honest provenance pass with no conditions |
 | R-079 independent INST-003 Business Architect review | APPROVED — generic/domain separation, exact 19-skill semantic coverage, non-DMA conformance, owner truth, capability provenance, and zero-paid/no-external/no-false-conversion boundaries pass with no conditions |
-| WC-058 final PR | OPEN — PR #263 targets `main` from `ib/014/wc058-implementation`, uses the repository template and complete C-059 matrix, and is unmerged pending Founder constitutional review; self-review, self-approval, and self-merge remain prohibited |
+| WC-058 final PR | MERGED — Founder merged PR #263 to `main` as `2682ab0`; the implementation branch did not self-merge |
 | WC058-01 professional discovery and disclosure | DONE — BP OpenAPI 1.4.0, generic manifest-driven catalog, 19-skill DMA projection, privacy-safe controller, and four focused tests; isolated .NET build and VSTest PASS |
 | WC058-02 evaluation workflow and typed answers | DONE — generic PR state machine, validated answer envelope, injected injection/PII gates, limitation fallback, evidence references, payload-reference separation, and Skill Runtime routing; 21 focused/neighbor tests PASS, 92% changed-module coverage, Ruff PASS |
 | WC058-03 progressive context and configuration | DONE — executable Migration 20 (`20b` preserves the occupied init sequence), five tenant-RLS tables, append-only confirmation/snapshot triggers, erasable payload values with retained hashes, goals/measures, skill decisions, immutable Decision Space versions, two-month cadence, and one-question progression; PostgreSQL first/reapply/catalog checks PASS, focused/neighbor tests 11/11 PASS, new service/entities 97–100% line coverage |
@@ -31,7 +31,7 @@
 
 ### Authorization Boundary And Next Action
 
-FA-038, R-077, ACK-07, GOA-04, and ACC-04 complete the WC-058 implementation entry sequence. WC058-01 through WC058-08, the required INST-010 Contribution/Learning Records, and independent R-078 INST-011/R-079 INST-003 reviews are complete. PR #263 is open and unmerged for Founder constitutional review; no further INST-010 execution is authorized. Provider activation, WC-059/WC-060, deployment, self-review, self-approval, self-merge, architecture reinterpretation, and production/customer proof remain unauthorized.
+FA-038, R-077, ACK-07, GOA-04, and ACC-04 complete the WC-058 implementation entry sequence. WC058-01 through WC058-08, the required INST-010 Contribution/Learning Records, and independent R-078 INST-011/R-079 INST-003 reviews are complete. Founder merged PR #263 to `main` as `2682ab0`; WC-058 is closed and no further INST-010 execution is authorized. Provider activation, WC-059/WC-060, deployment, self-review, self-approval, self-merge, architecture reinterpretation, and production/customer proof remain unauthorized.
 
 ---
 
