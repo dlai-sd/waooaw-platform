@@ -12,24 +12,24 @@ WC-060 continuity, deployment, production/customer proof, merge, or self-review.
 
 ## Constitutional Compliance Matrix
 
-| CCT | Executable proof | Result |
-|---|---|---|
-| `CCT-AE01-CONTRACT-01` | Exact version/hash, fresh portal assurance, active same-tenant employer, replay, mismatched hash/role with zero mutation | PASS |
-| `CCT-AE01-SCOPE-01` | Fixed scope-boundary statement is distinct and required; omission performs zero acceptance mutation | PASS |
-| `CCT-AE01-PAY-ORDER` | Missing acceptance, missing proceed intent, stale assurance, mismatched amount, and bypass all stop before WBE | PASS |
-| `CCT-AE01-ACT-01` | Replay and synchronized two-caller canonical tuple produce one intent, one authenticated WBE call/subscription outcome, one relationship, and one `ACTIVE` history row | PASS |
-| `CCT-AE01-ACT-CONFLICT` | Changed material is rejected by durable BP preflight before Temporal join; WBE independently rejects changed tenant, contract version, relationship/payment material, delegated context, or idempotency binding before owner mutation | PASS |
-| `CCT-AE01-ACT-FAIL` | WBE or CE uncertainty retains the same retryable intent/correlation; failed-only Temporal ID reuse resumes the canonical execution while relationship remains `ACTIVATION_PENDING` | PASS |
-| `CCT-AE01-DARK-01` | Jest and Playwright prove exact terms, no preselection/countdown/pressure, and symmetric Hire, Not now, Cancel, Exit at desktop and 360px | PASS |
+| CCT | Evidence class | Executable proof | Result |
+|---|---|---|---|
+| `CCT-AE01-CONTRACT-01` | Component | Exact version/hash, fresh portal assurance, active same-tenant employer, replay, mismatched hash/role with zero mutation | PASS |
+| `CCT-AE01-SCOPE-01` | Component | Fixed scope-boundary statement is distinct and required; omission performs zero acceptance mutation | PASS |
+| `CCT-AE01-PAY-ORDER` | Component | Missing acceptance, missing proceed intent, stale assurance, mismatched amount, and bypass all stop before WBE | PASS |
+| `CCT-AE01-ACT-01` | Temporal + mTLS + PostgreSQL 16 integration | Running callers join one real Temporal execution; the .NET gateway crosses a real mutually authenticated TLS listener twice and receives one stored WBE subscription; competing PostgreSQL transactions commit one subscription and one activation identity | PASS |
+| `CCT-AE01-ACT-CONFLICT` | Component + PostgreSQL 16 integration | BP durable preflight rejects changed material before Temporal join; WBE component checks reject changed tenant/version/body/context; competing PostgreSQL intents leave the winning identity and one subscription | PASS |
+| `CCT-AE01-ACT-FAIL` | Temporal + PostgreSQL 16 integration | Five real Temporal activity failures close one run as `FAILED_RETRYABLE`; failed-only ID reuse completes the same durable intent exactly once; response-loss replay returns PostgreSQL's stored subscription | PASS |
+| `CCT-AE01-DARK-01` | Browser fixture | Jest and Playwright prove exact terms, no preselection/countdown/pressure, and symmetric Hire, Not now, Cancel, Exit at desktop and 360px | PASS |
 
 ## Validation Evidence
 
 | Slice | Result |
 |---|---|
-| PostgreSQL migrations 21b/21c | PASS — first apply and reapply on PostgreSQL 16; tenant/contract-version/hash payment truth, canonical tuple, paid-subscription, RLS, and immutability constraints |
-| Business Platform | PASS — 241/241 in repository Docker test-runner; focused activation command/orchestration 11/11 after R081-02 remediation, including durable preflight, canonical derivation, stored-success replay without workflow start, divergent-material rejection before join, fresh portal assurance, employer authority, concurrency, conflict, and retryable uncertainty |
-| Billing Engine | PASS — 388/388; authenticated paid-activation boundary 40/40 proves route/audience/body/replay validation, missing-identity denial, delegated-context rebinding, cross-tenant/version denial, payment replay, and zero owner mutation on denial |
-| ADR-046 PKI and route registry | PASS — 15/15 constitutional bootstrap checks; private WBE OpenAPI 1.1.0 validates with no issues; affected Python lint clean |
+| PostgreSQL migrations and owner mutation | PASS — `scripts/test-wc059-postgres.sh` applies 21b and applies/reapplies 21c on a fresh PostgreSQL 16 container; 2/2 integration cases prove competing-intent serialization, exact UUID/timestamp driver bindings, one subscription, and response-loss replay |
+| Business Platform | PASS — 244/244 in the repository Docker test-runner; two activation tests execute the Temporal time-skipping server for running join and failed-only restart; one cross-stack test executes `AuthenticatedActivationBillingGateway` against the Python WBE private listener over real TLS |
+| Billing Engine | PASS — 389/389 component tests plus the separately executed PostgreSQL 2/2; the component matrix covers route/audience/body/replay/context/tenant/version denial with zero mutation, while the cross-stack BP test supplies real mTLS transport proof and missing-client-certificate denial |
+| ADR-046 PKI and private listeners | PASS — 15/15 bootstrap checks plus private-listener 1/1; generated TLS artifacts contain leaf/intermediate chains, listeners trust the root/intermediate CA bundle, and BP validates the custom-root chain plus exact URI SAN; affected Python lint clean |
 | Business Platform affected coverage | PASS — core WC059 methods 93.33–100% lines except durable conflict/replay branches covered separately by PostgreSQL concurrency evidence; activation orchestration entry is 100% |
 | Web component | PASS — 4/4 focused relationship journey tests; `ContractJourney` 100% lines, 97.22% statements, 93.75% branches, 91.66% functions |
 | Web production build | PASS — strict TypeScript, lint, 23 generated routes |
@@ -37,6 +37,9 @@ WC-060 continuity, deployment, production/customer proof, merge, or self-review.
 | OpenAPI | Paid activation command and truthful conflict/unresolved responses are specified; full generator validation reaches the new operation and retains only one pre-existing missing `#/components/responses/Forbidden` reference |
 | Diff hygiene | Protected `.coverage` and `logs/blueprint_assurance_report.json` remain unstaged; no generated `bin`, `obj`, `.next`, provider credential, or deployment artifact is committed |
 | Platform state check | Informational mismatch — canonical registry still names the prior completed baseline, so `SPRINT-REGISTRY.md` and this in-progress `PROJECT_STATE.md` checkpoint intentionally differ until reviewed completion; no automatic rewrite performed |
+
+No row above is deployment or production/customer evidence. SQLite component tests are retained for
+fast logic coverage but are not cited as PostgreSQL, Temporal, or network transport proof.
 
 ## Ownership And Failure Evidence
 

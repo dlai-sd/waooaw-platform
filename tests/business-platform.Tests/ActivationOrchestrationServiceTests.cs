@@ -3,6 +3,8 @@
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
+using Temporalio.Testing;
+using Temporalio.Worker;
 using Waooaw.BusinessPlatform.Infrastructure;
 using Waooaw.BusinessPlatform.Services;
 using Waooaw.BusinessPlatform.Workflows;
@@ -231,6 +233,75 @@ public sealed class ActivationOrchestrationServiceTests
         Assert.Single(starter.Requests);
     }
 
+    [Fact]
+    public async Task TemporalFailedExecutionRestartsSameDurableIntentExactlyOnce()
+    {
+        var context = await CreateContextAsync();
+        context.Billing.FailuresRemaining = 5;
+        await using var environment = await WorkflowEnvironment.StartTimeSkippingAsync();
+        using var worker = new TemporalWorker(
+            environment.Client,
+            new TemporalWorkerOptions("bp-trial-worker")
+                .AddWorkflow<ActivationWorkflow>()
+                .AddAllActivities(new ActivationActivities(context.Service)));
+        var starter = new TemporalActivationWorkflowStarter(environment.Client);
+
+        await worker.ExecuteAsync(async () =>
+        {
+            await Assert.ThrowsAnyAsync<Exception>(() =>
+                starter.StartOrJoinAsync(context.Request, CancellationToken.None));
+            await using (var failedDb = context.Factory.CreateDbContext())
+            {
+                var failedIntent = await failedDb.ActivationIntents.SingleAsync();
+                Assert.Equal("FAILED_RETRYABLE", failedIntent.Status);
+                Assert.Equal(EmploymentRelationshipState.ActivationPending,
+                    (await failedDb.EmploymentRelationships.SingleAsync()).State);
+            }
+
+            var outcome = await starter.StartOrJoinAsync(context.Request, CancellationToken.None);
+
+            await using var completedDb = context.Factory.CreateDbContext();
+            Assert.Equal("SUCCEEDED", outcome.Status);
+            Assert.Equal(outcome.ActivationIntentId,
+                (await completedDb.ActivationIntents.SingleAsync()).ActivationIntentId);
+            Assert.Equal(EmploymentRelationshipState.Active,
+                (await completedDb.EmploymentRelationships.SingleAsync()).State);
+            Assert.Equal(6, context.Billing.CallCount);
+            Assert.Single(await completedDb.RelationshipStateHistory.Where(value =>
+                value.ToState == EmploymentRelationshipState.Active).ToListAsync());
+        });
+    }
+
+    [Fact]
+    public async Task TemporalRunningReplayJoinsOneCanonicalExecution()
+    {
+        var context = await CreateContextAsync();
+        context.Billing.HoldCalls = true;
+        await using var environment = await WorkflowEnvironment.StartTimeSkippingAsync();
+        using var worker = new TemporalWorker(
+            environment.Client,
+            new TemporalWorkerOptions("bp-trial-worker")
+                .AddWorkflow<ActivationWorkflow>()
+                .AddAllActivities(new ActivationActivities(context.Service)));
+        var starter = new TemporalActivationWorkflowStarter(environment.Client);
+
+        await worker.ExecuteAsync(async () =>
+        {
+            var first = starter.StartOrJoinAsync(context.Request, CancellationToken.None);
+            await context.Billing.FirstCallEntered;
+            var replay = starter.StartOrJoinAsync(context.Request, CancellationToken.None);
+            context.Billing.ReleaseCalls();
+            var outcomes = await Task.WhenAll(first, replay);
+
+            Assert.Equal(outcomes[0], outcomes[1]);
+            Assert.Equal(1, context.Billing.CallCount);
+            await using var db = context.Factory.CreateDbContext();
+            Assert.Single(await db.ActivationIntents.ToListAsync());
+            Assert.Single(await db.RelationshipStateHistory.Where(value =>
+                value.ToState == EmploymentRelationshipState.Active).ToListAsync());
+        });
+    }
+
     private static async Task<ActivationTestContext> CreateContextAsync()
     {
         var factory = new InMemoryEmploymentRelationshipFactory(Guid.NewGuid().ToString("N"));
@@ -293,6 +364,7 @@ public sealed class ActivationOrchestrationServiceTests
         private readonly TaskCompletionSource _releaseCalls = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public int CallCount { get; private set; }
         public bool FailNext { get; set; }
+        public int FailuresRemaining { get; set; }
         public bool HoldCalls { get; set; }
         public Guid LastCorrelationId { get; private set; }
         public Task FirstCallEntered => _firstCallEntered.Task;
@@ -306,9 +378,10 @@ public sealed class ActivationOrchestrationServiceTests
             LastCorrelationId = request.CorrelationId;
             _firstCallEntered.TrySetResult();
             if (HoldCalls) await _releaseCalls.Task.WaitAsync(cancellationToken);
-            if (FailNext)
+            if (FailNext || FailuresRemaining > 0)
             {
                 FailNext = false;
+                if (FailuresRemaining > 0) FailuresRemaining--;
                 throw new ActivationOwnerUnavailableException("WBE unresolved.");
             }
             return new ActivationBillingOutcome(Guid.NewGuid(), "ACTIVE");

@@ -2,6 +2,7 @@
 // constitutional_basis: C-002, C-023, C-026, C-059, C-063, C-083, C-084, C-085
 
 using System.Net.Security;
+using System.Formats.Asn1;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
@@ -149,15 +150,37 @@ public sealed class WorkloadIdentityClient : IDisposable
         SslPolicyErrors errors,
         string targetIdentityUri)
     {
-        if (certificate is null || errors.HasFlag(SslPolicyErrors.RemoteCertificateNameMismatch)) return false;
+        if (certificate is null) return false;
         using var chain = new X509Chain();
         chain.ChainPolicy.TrustMode = X509ChainTrustMode.CustomRootTrust;
         chain.ChainPolicy.CustomTrustStore.Add(_rootCertificate);
         chain.ChainPolicy.RevocationMode = X509RevocationMode.NoCheck;
+        if (suppliedChain is not null)
+            foreach (var element in suppliedChain.ChainElements.Cast<X509ChainElement>().Skip(1))
+                chain.ChainPolicy.ExtraStore.Add(element.Certificate);
         if (!chain.Build(certificate)) return false;
-        var san = certificate.Extensions["2.5.29.17"]?.Format(false) ?? string.Empty;
-        return san.Split(',', StringSplitOptions.TrimEntries)
-            .Any(value => value.Equals($"URL={targetIdentityUri}", StringComparison.Ordinal));
+        return HasExactUriSan(certificate, targetIdentityUri);
+    }
+
+    private static bool HasExactUriSan(X509Certificate2 certificate, string targetIdentityUri)
+    {
+        var extension = certificate.Extensions["2.5.29.17"];
+        if (extension is null) return false;
+        var names = new AsnReader(extension.RawData, AsnEncodingRules.DER).ReadSequence();
+        var uriTag = new Asn1Tag(TagClass.ContextSpecific, 6);
+        while (names.HasData)
+        {
+            if (names.PeekTag().HasSameClassAndValue(uriTag))
+            {
+                var uri = names.ReadCharacterString(UniversalTagNumber.IA5String, uriTag);
+                if (uri.Equals(targetIdentityUri, StringComparison.Ordinal)) return true;
+            }
+            else
+            {
+                names.ReadEncodedValue();
+            }
+        }
+        return false;
     }
 
     private static string Base64Url(byte[] value) => Convert.ToBase64String(value).TrimEnd('=').Replace('+', '-').Replace('/', '_');

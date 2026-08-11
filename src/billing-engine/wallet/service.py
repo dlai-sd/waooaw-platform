@@ -367,6 +367,7 @@ class WalletService:
         bundle_tier: str,
         razorpay_order_id: str,
         razorpay_payment_id: str,
+        commit: bool = True,
     ) -> SubscriptionActivationResult:
         """
         Activate a subscription for a customer.
@@ -423,6 +424,8 @@ class WalletService:
 
         subscription_id: UUID = uuid.uuid4()
         now_utc: datetime = datetime.now(timezone.utc)
+        is_postgres = self._db.bind is not None and self._db.bind.dialect.name == "postgresql"
+        database_uuid = (lambda value: value) if is_postgres else (lambda value: str(value))
 
         await self._db.execute(
             text(
@@ -435,8 +438,8 @@ class WalletService:
                      :order_id, :payment_id, :activated_at)
                 """
             ).bindparams(
-                sub_id=str(subscription_id),
-                customer_id=str(customer_id),
+                sub_id=database_uuid(subscription_id),
+                customer_id=database_uuid(customer_id),
                 agent_type=agent_type,
                 bundle_tier=bundle_tier,
                 order_id=razorpay_order_id,
@@ -445,7 +448,8 @@ class WalletService:
             )
         )
 
-        await self._db.commit()
+        if commit:
+            await self._db.commit()
 
         logger.info(
             "Subscription activated: subscription_id=%s customer_id=%s agent_type=%s",

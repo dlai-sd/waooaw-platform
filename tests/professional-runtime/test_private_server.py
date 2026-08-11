@@ -19,4 +19,4 @@ def test_private_listener_requires_peer_certificate_and_custom_protocol(monkeypa
     assert config.ssl_cert_reqs == ssl.CERT_REQUIRED
     assert config.ssl_keyfile == str(credentials / "workloads/professional-runtime/tls-key.pem")
     assert config.ssl_certfile == str(credentials / "workloads/professional-runtime/tls-cert.pem")
-    assert config.ssl_ca_certs == str(credentials / "trust/root.pem")
+    assert config.ssl_ca_certs == str(credentials / "trust/ca-bundle.pem")

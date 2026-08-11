@@ -68,8 +68,12 @@ def _write_private_key(path: Path, key: Any) -> None:
     path.chmod(0o600)
 
 
-def _write_certificate(path: Path, certificate: x509.Certificate) -> None:
-    path.write_bytes(certificate.public_bytes(serialization.Encoding.PEM))
+def _write_certificate(
+    path: Path, certificate: x509.Certificate, chain: tuple[x509.Certificate, ...] = ()
+) -> None:
+    path.write_bytes(b"".join(
+        value.public_bytes(serialization.Encoding.PEM) for value in (certificate, *chain)
+    ))
     path.chmod(0o644)
 
 
@@ -173,6 +177,7 @@ def bootstrap(registry_path: Path, environment: str, output: Path) -> dict[str, 
     _write_certificate(trust / "root.pem", root)
     _write_private_key(trust / "intermediate-key.pem", intermediate_key)
     _write_certificate(trust / "intermediate.pem", intermediate)
+    _write_certificate(trust / "ca-bundle.pem", root, (intermediate,))
 
     manifest: dict[str, Any] = {
         "schema_version": "1.0",
@@ -207,7 +212,7 @@ def bootstrap(registry_path: Path, environment: str, output: Path) -> dict[str, 
             raise RuntimeError("Workload keys must be unique")
         public_keys.add(public_bytes)
         _write_private_key(workload_dir / "tls-key.pem", tls_key)
-        _write_certificate(workload_dir / "tls-cert.pem", tls_certificate)
+        _write_certificate(workload_dir / "tls-cert.pem", tls_certificate, (intermediate,))
         record = {
             "identity_uri": identity_uri,
             "audience": workload.get("audience"),

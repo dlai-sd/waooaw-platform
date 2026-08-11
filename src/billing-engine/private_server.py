@@ -18,7 +18,7 @@ def private_listener_config() -> uvicorn.Config:
         "main:create_app", factory=True, host=os.getenv("WBE_PRIVATE_HOST", "0.0.0.0"),  # noqa: S104
         port=int(os.getenv("WBE_PRIVATE_PORT", "5444")), http=MutualTlsH11Protocol,
         ssl_keyfile=str(workload / "tls-key.pem"), ssl_certfile=str(workload / "tls-cert.pem"),
-        ssl_ca_certs=str(credentials / "trust" / "root.pem"), ssl_cert_reqs=ssl.CERT_REQUIRED,
+        ssl_ca_certs=str(credentials / "trust" / "ca-bundle.pem"), ssl_cert_reqs=ssl.CERT_REQUIRED,
         ssl_version=ssl.PROTOCOL_TLS_SERVER)
 
 
