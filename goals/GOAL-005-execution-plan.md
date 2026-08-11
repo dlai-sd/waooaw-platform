@@ -1894,3 +1894,10 @@ Required acknowledgement:
 > `I acknowledge GEP-GOAL-005-INST-013-08 and authorize INST-013 to issue GOA-GOAL-005-INST-010-05 for WC-059 implementation only. This does not authorize live Razorpay or provider activation, WC-060, deployment, merge, or self-review.`
 
 After valid issuance, INST-010 must record `ACC-GOAL-005-INST-010-05` at a timestamp later than the GOA `issued_at`. No implementation task, source change, migration, generated production artifact, or build artifact may begin before that Acceptance Record exists.
+
+### Fresh CA Readiness Decision
+
+R-080 / `CR-GOAL-005-INST-002-12` independently APPROVES Amendment 8 with no
+readiness condition. GEOM R2-03 condition 1 is satisfied. Condition 2 remains open:
+`ACK-GOAL-005-INST-001-08` must contain the exact acknowledgement above before
+INST-013 may issue GOA-GOAL-005-INST-010-05.
