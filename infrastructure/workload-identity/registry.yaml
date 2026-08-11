@@ -1,0 +1,43 @@
+schema_version: "1.0"
+policy_version: "1.0"
+
+environments:
+  development:
+    trust_domain: waooaw.dev
+    leaf_lifetime_hours: 24
+  ci:
+    trust_domain: waooaw.ci
+    leaf_lifetime_hours: 2
+
+workloads:
+  business-platform:
+    identity_path: business-platform
+    owner: INST-010
+    tls_usages: [client_auth, server_auth]
+    delegation_signer: true
+  billing-engine:
+    identity_path: billing-engine
+    owner: INST-010
+    audience: urn:waooaw:service:billing-engine
+    tls_usages: [server_auth]
+  professional-runtime:
+    identity_path: professional-runtime
+    owner: INST-010
+    audience: urn:waooaw:service:professional-runtime
+    tls_usages: [server_auth]
+  domain-adapter-dma:
+    identity_path: domain-adapter/dma
+    owner: INST-010
+    audience: urn:waooaw:service:domain-adapter:dma
+    tls_usages: [server_auth]
+
+route_grants:
+  - { caller: business-platform, target: billing-engine, method: GET, route: "/internal/v1/relationships/{relationshipId}/commercial-projection", operation: getRelationshipCommercialProjection, contract_major: 1 }
+  - { caller: business-platform, target: billing-engine, method: POST, route: "/internal/v1/relationships/{relationshipId}/commercial-commands", operation: submitRelationshipCommercialCommand, contract_major: 1 }
+  - { caller: business-platform, target: billing-engine, method: GET, route: "/internal/v1/relationships/{relationshipId}/commercial-commands/{commandId}", operation: getRelationshipCommercialCommand, contract_major: 1 }
+  - { caller: business-platform, target: professional-runtime, method: GET, route: "/api/v1/internal/relationships/{relationshipId}/workspace-execution", operation: getRelationshipExecutionProjection, contract_major: 1 }
+  - { caller: business-platform, target: professional-runtime, method: POST, route: "/api/v1/internal/relationships/{relationshipId}/workspace-controls", operation: submitRelationshipExecutionControl, contract_major: 1 }
+  - { caller: business-platform, target: professional-runtime, method: GET, route: "/api/v1/internal/relationships/{relationshipId}/workspace-controls/{controlId}", operation: getRelationshipExecutionControl, contract_major: 1 }
+  - { caller: business-platform, target: domain-adapter-dma, method: GET, route: "/internal/v1/relationships/{relationshipId}/domain-outcomes/projection", operation: getDomainOutcomeProjection, contract_major: 1 }
+  - { caller: business-platform, target: domain-adapter-dma, method: POST, route: "/internal/v1/relationships/{relationshipId}/domain-outcomes/goal-change-validation", operation: validateDomainGoalChange, contract_major: 1 }
+  - { caller: business-platform, target: domain-adapter-dma, method: GET, route: "/internal/v1/relationships/{relationshipId}/domain-outcomes/commands/{ownerCommandId}", operation: getDomainCommandOutcome, contract_major: 1 }

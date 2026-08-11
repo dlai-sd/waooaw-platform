@@ -1274,3 +1274,409 @@ R-065 / `CR-GOAL-005-INST-002-07` satisfies GEOM R2-03 condition 1, with CA-F4-A
 | `acceptance_timestamp` | 2026-08-10T16:20:03+00:00 |
 | Decision | ACCEPTED |
 | Contribution scope accepted | Fresh independent Constitutional and claim-traceability review of repaired ADR-046 plus attested Contribution and Learning Records only; no ADR editing, repair, acceptance, implementation, policy-default, provider-activation, or deployment authority |
+
+---
+
+## Amendment 5 — WC-034 F4 Policy Resolution And Implementation
+
+| Attestation field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GEP-GOAL-005-INST-013-06 |
+| `record_type` | Execution Plan |
+| `produced_at` | 2026-08-11 |
+| Status | ACTIVE — CA readiness, exact Registrant acknowledgement, current-session implementation authorization, Order 1 recommendations, and Order 2 policy decisions/incorporation are complete; Order 3 may begin under R-069 conditions |
+
+### Purpose And Current Gate State
+
+This prospective amendment adds the smallest dependency-ordered path from the accepted WC-034 F4 architecture to executable F4 evidence. Amendment 3 conditionally approved the integrated architecture and specified future G-F4-10 evidence. Amendment 4 accepted ADR-046 and closed EA-F4-01. The current remaining prerequisites are:
+
+1. `F4-POL-01` through `F4-POL-06` require accountable-owner recommendations and exact Registrant/Founder decisions; until decided, every affected command remains `BLOCKED` or `UNAVAILABLE` under the approved fail-closed behavior.
+2. Executable G-F4-10 requires canonical BP OpenAPI bytes, approved internal WBE and PR contracts, registered DMA adapter transport, deterministic generated-client evidence, strict TypeScript, forbidden-surface scans, fixtures, and acceptance traceability.
+3. G-F4-12 requires this amendment, fresh CA readiness, exact Registrant acknowledgement, the mandatory current-session implementation authorization, valid per-Institution GOAs, and acceptances later than issuance.
+4. G-F4-13 remains separately blocked. No deployment, provider activation, production operation, customer-proof claim, or F5-F8 work is authorized by this amendment.
+
+| Policy | Decision boundary | Recommendation owners before Founder decision |
+|---|---|---|
+| `F4-POL-01` | Material approval/rejection classes requiring typed acknowledgement | INST-011 product treatment; INST-003 consequence classes; INST-007 assurance floor; INST-005 BP feasibility |
+| `F4-POL-02` | Evidence-export self-service by sensitivity, recipient, use, redaction, and completeness | INST-011 customer route; INST-007 export/privacy floor; INST-005 BP Evidence Reader feasibility |
+| `F4-POL-03` | Allowance-threshold and budget-ceiling pause, degrade, continue, or paid-addition treatment | INST-003 business consequence; INST-011 product treatment; INST-005 WBE/BP feasibility |
+| `F4-POL-04` | Customer self-service authority changes and unrecoverable-work consequences | INST-003 authority consequence; INST-011 customer treatment; INST-007 assurance floor; INST-005 BP/CE feasibility |
+| `F4-POL-05` | Pause, resume, renewal, termination, billing/allowance, evidence retention, re-entry, and fresh-assurance treatment | INST-003 lifecycle consequence; INST-011 customer treatment; INST-005 BP/WBE/PR feasibility; INST-007 assurance floor |
+| `F4-POL-06` | Permissible customer action during stale, unknown, partial, unavailable, or unresolved owner state | INST-011 degraded-state treatment; INST-003 business consequence; INST-005 owner feasibility; INST-007 fail-closed floor |
+
+### Ordered Contributions And Implementation Slices
+
+| Order | Slice | Direct owner(s) | Dependency gate | Completion evidence |
+|---:|---|---|---|---|
+| 1 | Policy recommendation package for `F4-POL-01` through `F4-POL-06` | INST-011 Product Owner coordinates customer-language choices; INST-003 Business Architect validates outcome and consequence meaning; INST-005 Solution Architect incorporates BP/WBE owner feasibility; INST-007 Security Architect states assurance, export, degraded-state, and rights floors | Amendment 5 CA readiness, exact Registrant acknowledgement, valid GOAs and acceptances | One option matrix per policy with recommendation, alternatives, customer consequence, owner impact, security/constitutional floor, blocked default, reversibility, and exact Founder decision question; no policy is selected by a contributing Office |
+| 2 | Founder policy decisions and owner incorporation | INST-001 Registrant/Founder decides; INST-011 records product policy; INST-005 incorporates owner-contract consequences; INST-007 confirms no security floor is weakened | Order 1 Contribution and Learning Records published | Six prospective policy decision records or an explicit decision to defer a named policy fail-closed; updated owner specifications preserve distinct `BLOCKED`; fresh INST-002 constitutional policy review |
+| 3 | Canonical contracts and executable G-F4-10 | INST-005 owns BP public and private owner contracts; logical BP, WBE, PR, CE, and DMA owners attest their boundaries; INST-010 performs deterministic generation and executable compatibility checks only after contract publication | Order 2 complete for enabled command families; deferred policies remain structurally blocked; ADR-046 Accepted; no source implementation yet | Exact fourteen-operation BP OpenAPI inventory; approved WBE `BLOCKED` outcome; BP-only PR and registered DMA adapter contracts; parse/reference/operation-ID validation; two clean generation hashes; strict TypeScript pass; forbidden private-service, ledger, provider, tenant-authority, and ranking surfaces absent; fixture matrix for success, conflict, stale, unavailable, blocked, partial, unknown, CE-unavailable, and unsupported versions |
+| 4 | Workload identity and service-authentication foundation | INST-010 implementation; INST-007 security validation; fresh INST-004 architecture conformance review | Order 3 contract versions fixed; ADR-046 identity registry, audiences, route grants, and envelope schema published | ADR-046 Section 10 items 1-6 and 9-12: deterministic dev/CI PKI, exact URI SANs, mTLS-only listeners, signed delegated context, rotation/revocation/compromise behavior, privacy-safe OTel, CE-independent authentication, Emergency Stop independence, environment-parity matrix, and negative identity/audience/route/replay/isolation tests |
+| 5 | Owner projections and reconciliation | INST-010 implements WBE, PR, and DMA adapter private contracts; INST-005 validates owner-contract conformance; INST-003 validates business-state consequence preservation | Order 4 service identity available; Order 3 owner contracts approved | WBE commercial projection and commands preserve `BLOCKED`; PR execution projection/control remains private; DMA adapter remains domain-only; owner receipt, idempotency, unknown-outcome reconciliation, freshness, version, cross-relationship denial, and zero false-success tests pass |
+| 6 | BP Relationship Workspace aggregate and public facade | INST-010 implementation; INST-005 contract conformance; INST-007 security verification | Orders 3-5 complete for each enabled family | BP composes one relationship-bound projection without recomputing owner truth; exact authoritative attention order; fourteen public operations; typed commands; CE authorization and Evidence First where applicable; privacy-safe RFC 9457; partial/unknown reconciliation; no private browser route; affected policy-deferred commands remain `BLOCKED` |
+| 7 | Generated-client web workspace | INST-010 implementation; INST-011 product acceptance; INST-007 accessibility/privacy/security verification | Order 6 public contract and executable G-F4-10 pass | Generated client has no manual patch; Plan, Needs your attention, Work, Results, Usage & budget, and Rights & control preserve authoritative meaning; exact 360px and desktop behavior; keyboard, RTL, reduced motion, PWA privacy, no overflow, no browser ranking, relationship-switch isolation, and persistent independent Emergency Stop pass |
+| 8 | Integrated business-operation, migration, and constitutional evidence | INST-010 assembles executable evidence; fresh INST-004 performs integrated technical review; fresh INST-002 performs constitutional review | Orders 1-7 complete; all enabled policy decisions incorporated; all deferred policies remain fail-closed | ADR-046 Sections 10.1 and 10.2 matrices; all F4 acceptance IDs and CCT obligations below pass; affected code is at least 90% line coverage; Docker-only evidence; independent reviews approve; PR complete and unmerged |
+
+Orders are strict. An Order N+1 GOA may issue only after the required Order N Contribution and Learning Records are published. A slice may progress family-by-family only when every dependency for that family passes; a blocked or deferred family remains unavailable and cannot borrow evidence from another family.
+
+### Per-Institution Evidence Specifications
+
+| Institution | Required contribution | Participation Window | Independence constraint |
+|---|---|---|---|
+| INST-011 | Policy option/recommendation package; final product-policy incorporation; customer-language and release acceptance | 2 sessions per contribution | May recommend but may not make Founder decisions, choose architecture, author security floors, implement, or review its own evidence |
+| INST-003 | Business consequence, continuity, rights, and owner-to-customer outcome validation | 1 session per contribution | May not choose architecture, API shape, implementation, or approve its own contribution |
+| INST-005 | Canonical BP/WBE/PR/DMA contracts, owner compatibility, policy incorporation, and implementation conformance | 3 sessions for contracts; 1 session per conformance review | May not implement application source or independently approve contracts it authored |
+| INST-007 | Security-floor recommendations and ADR-046 implementation/security evidence validation | 2 sessions for recommendations; 1 session per validation | May not choose product/commercial policy, implement, or approve its own authored security contribution |
+| INST-010 | Contract generation, implementation slices, Docker evidence, coverage, and review package | 5 sessions after valid implementation acceptance | May not author policy, alter accepted architecture, self-review, self-merge, deploy, activate providers, or enter F5-F8 |
+| INST-004 | Fresh architecture conformance and final integrated technical review | 1 session per review | Review contexts may not author or repair the contribution under review |
+| INST-002 | Amendment readiness, policy constitutional review, and final constitutional review | 1 session per review | Each review context is fresh from the contribution reviewed and may not repair it or replace Registrant decisions |
+
+Every contributing Institution must publish a G-10-attested Contribution Record and Learning Record linked to its GOA and later Acceptance Record. Records must distinguish specification, fixture, integration, browser, deployment, and customer-proof provenance.
+
+### Mandatory CCT And Quality Obligations
+
+At minimum, the implementation evidence must pass:
+
+1. `UX-CONV-06`, `UX-CONV-07`, `UX-CONV-08`, `UX-SHELL-06`, `CCT-UX-BOUNDARY-01`, `CCT-UX-RIGHTS-01`, and `CCT-UX-EF-01` with the exact accepted F4 meanings.
+2. C-001 Human Override and Emergency Stop evidence proving F4 route, credential, WBE, adapter, CE-authentication, and reconciliation failures cannot delay or disable Stop.
+3. C-023 Evidence First evidence proving transport success, owner receipt, technical completion, or pending evidence never becomes governed success.
+4. C-026 tenant and Employment Relationship isolation across projections, cursors, commands, idempotency, exports, owner routes, adapter contributions, browser state, and support correlation.
+5. C-059 traceability from this amendment and policy records through contracts, source annotations, tests, acceptance IDs, and review evidence.
+6. C-063 minimisation and privacy scans for logs, metrics, traces, URLs, browser storage, generated clients, errors, exports, certificates, signatures, actor, tenant, relationship, owner, and provider data.
+7. C-065 author/reviewer separation and C-076 at least 90% affected-code line coverage.
+8. C-080 Docker-only Python and web validation; no host virtual environment or direct host Python test execution.
+9. ADR-046 Section 10 obligations in full, including negative identity, audience, route, operation, contract-major, replay, confused-deputy, credential lifecycle, CE-unavailability, shared-F3 compatibility, owner-to-customer outcome, migration, incident, support, and restoration evidence.
+
+### Acceptance Criteria And Gate Closure
+
+G-F4-10 closes only when the canonical contract and complete executable compatibility evidence in Order 3 pass without manual generated-client patches. G-F4-12 closes only when Orders 1-8 are complete, every enabled policy has a valid Founder decision and owner incorporation, deferred policy families remain demonstrably fail-closed, all mandatory CCT and quality obligations pass, and both independent final reviews approve.
+
+Implementation acceptance additionally requires zero BP recomputation of WBE truth, zero browser/private-service or ledger access, zero browser ranking or secondary sorting, zero DMA-specific field in the generic adapter, zero cross-relationship carry-over, zero fabricated success, distinct WBE `BLOCKED`, and unchanged F3 behavior unless separately migrated with the ADR-046 evidence package.
+
+G-F4-13 deployment remains blocked after implementation acceptance. Deployment requires a separate environment-specific release amendment naming rollout, rollback, credential custody, impact windows, customer/support treatment, independent confirmer, and post-deployment evidence.
+
+### Authorization Rules And Mandatory Stops
+
+1. This proposed amendment issues no GOA and authorizes no contribution by itself.
+2. No Amendment 5 GOA may issue until a fresh INST-002 CA Readiness Review is APPROVED or all stated conditions are satisfied and the Registrant records the exact acknowledgement below.
+3. Policy recommendation GOAs do not authorize policy selection. Only INST-001 may decide `F4-POL-01` through `F4-POL-06`.
+4. No implementation, canonical OpenAPI edit, generated production client, source, test, migration, build artifact, or infrastructure artifact may be created until the Founder gives the mandatory current-session implementation authorization in response to the exact implementation-gate question.
+5. A current-session implementation authorization does not resolve a policy, authorize deployment, activate a provider, approve a PR, or permit merge.
+6. INST-013 may issue GOAs, sequence work, verify records, and mechanically checkpoint; it may not contribute policy recommendations, contracts, architecture, security, implementation, tests, or independent review.
+7. Every GOA acceptance timestamp must be later than issuance. No Institution may self-review or merge its own contribution.
+
+### Required Registrant Acknowledgement
+
+Before any Amendment 5 GOA is issued, the Registrant must record:
+
+> "I acknowledge GEP-GOAL-005-INST-013-06 and authorize INST-013 to route WC-034 F4 policy recommendations, Founder decision incorporation, dependency-ordered implementation, and independent review exactly as specified. I understand that F4-POL-01 through F4-POL-06 remain my decisions, current-session implementation authorization remains separately mandatory, and this acknowledgement does not authorize deployment, provider activation, F5-F8, PR merge, or self-review."
+
+### Explicit Exclusions
+
+- no deployment, provider activation, production operation, or customer-proof claim;
+- no F5-F8 scope and no unrelated WC-034 component work;
+- no weakening or silent extension of ADR-046, ADR-007, ADR-014, Evidence First, Emergency Stop, owner truth, tenant/relationship isolation, or privacy boundaries;
+- no policy default inferred by Product, Business, Solution, Security, implementation, or review contexts;
+- no direct web access to PR, WBE, CE, adapters, providers, or ledgers;
+- no autonomous sprint runner, autonomous-pipeline mode, retrospective authorization, self-review, self-merge, or merge by any AI office.
+
+---
+
+## Amendment 5 Registrant Acknowledgement Record
+
+| Attestation field | Value |
+|---|---|
+| `institution_id` | INST-001 |
+| `goal_id` | GOAL-005 |
+| `record_id` | ACK-GOAL-005-INST-001-06 |
+| `record_type` | Acknowledgement Record |
+| `produced_at` | 2026-08-11T01:27:33+00:00 |
+| Acknowledged plan | GEP-GOAL-005-INST-013-06 |
+| Registrant | Yogesh Khandge / Founder |
+| Decision | ACKNOWLEDGED — Amendment 5 routing only |
+| Exact quoted acknowledgement | "I acknowledge GEP-GOAL-005-INST-013-06 and authorize INST-013 to route WC-034 F4 policy recommendations, Founder decision incorporation, dependency-ordered implementation, and independent review exactly as specified. I understand that F4-POL-01 through F4-POL-06 remain my decisions, current-session implementation authorization remains separately mandatory, and this acknowledgement does not authorize deployment, provider activation, F5-F8, PR merge, or self-review." |
+
+R-068 / `CR-GOAL-005-INST-002-09` satisfies GEOM R2-03 condition 1 subject to CA-F4-A5-01 through CA-F4-A5-06. This exact record satisfies condition 2. FA-036 separately satisfies the current-session implementation gate. Neither record selects a policy or authorizes deployment.
+
+## Amendment 5 Order 1 Authorization Records
+
+### GOA-GOAL-005-INST-011-07
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GOA-GOAL-005-INST-011-07 |
+| `record_type` | Authorization Record |
+| Authorized Institution | INST-011 — Product Owner |
+| Contribution scope | Coordinate the customer-language option and recommendation matrix for `F4-POL-01` through `F4-POL-06`; publish `CR-GOAL-005-INST-011-07` and a Learning Record |
+| Evidence specification | For each policy: recommendation, alternatives, customer consequence, release effect, blocked default, reversibility, accountable-owner dependencies, and exact Founder question; incorporate but do not override Business, Solution, or Security evidence |
+| Participation Window | 2 constitutional sessions after valid acceptance |
+| Excluded authority | Policy selection, architecture, security-floor authorship, implementation, source, tests, deployment, F5-F8, self-review, and merge |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-11T01:27:34+00:00 |
+
+### GOA-GOAL-005-INST-003-06
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GOA-GOAL-005-INST-003-06 |
+| `record_type` | Authorization Record |
+| Authorized Institution | INST-003 — Business Architect |
+| Contribution scope | Validate business outcomes, consequence classes, continuity, rights effects, and customer harm/tradeoffs for the six policy options; publish `CR-GOAL-005-INST-003-07` and a Learning Record |
+| Evidence specification | Exact outcome and consequence analysis for material acknowledgement, export, commercial thresholds, authority, lifecycle, and degraded owner state, including the safe fail-closed baseline |
+| Participation Window | 1 constitutional session after valid acceptance |
+| Excluded authority | Policy selection, architecture, API design, security mechanisms, implementation, deployment, F5-F8, self-review, and merge |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-11T01:27:35+00:00 |
+
+### GOA-GOAL-005-INST-005-06
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GOA-GOAL-005-INST-005-06 |
+| `record_type` | Authorization Record |
+| Authorized Institution | INST-005 — Solution Architect |
+| Contribution scope | Assess BP, WBE, PR, CE, evidence-reader, and DMA owner feasibility and contract consequences for each policy option; publish `CR-GOAL-005-INST-005-10` and a Learning Record |
+| Evidence specification | Owner and command-family impact, required authoritative inputs, reconciliation behavior, versioning, distinct `BLOCKED`, dependency risk, and smallest implementable option without choosing policy |
+| Participation Window | 2 constitutional sessions after valid acceptance |
+| Excluded authority | Policy selection, implementation, canonical OpenAPI edits, generated clients, source, tests, deployment, F5-F8, integrated review, self-review, and merge |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-11T01:27:36+00:00 |
+
+### GOA-GOAL-005-INST-007-06
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GOA-GOAL-005-INST-007-06 |
+| `record_type` | Authorization Record |
+| Authorized Institution | INST-007 — Security Architect |
+| Contribution scope | Define non-weakenable assurance, acknowledgement, export, privacy, authority, lifecycle, and degraded-state floors for each policy option; publish `CR-GOAL-005-INST-007-06` and a Learning Record |
+| Evidence specification | Required assurance and typed acknowledgement floors, recipient/export protections, stale/unknown/partial constraints, anti-enumeration, minimisation, rights and Stop preservation, and prohibited options |
+| Participation Window | 1 constitutional session after valid acceptance |
+| Excluded authority | Product or commercial policy selection, architecture beyond security constraints, implementation, source, tests, deployment, F5-F8, self-review, and merge |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-11T01:27:37+00:00 |
+
+## Amendment 5 Order 1 Acceptance Records
+
+| Acceptance Record | Institution | Authorization | Acceptance timestamp | Decision |
+|---|---|---|---|---|
+| ACC-GOAL-005-INST-011-07 | INST-011 | GOA-GOAL-005-INST-011-07 | 2026-08-11T01:27:38+00:00 | ACCEPTED — policy recommendation coordination only |
+| ACC-GOAL-005-INST-003-06 | INST-003 | GOA-GOAL-005-INST-003-06 | 2026-08-11T01:27:39+00:00 | ACCEPTED — business consequence analysis only |
+| ACC-GOAL-005-INST-005-06 | INST-005 | GOA-GOAL-005-INST-005-06 | 2026-08-11T01:27:40+00:00 | ACCEPTED — owner feasibility analysis only |
+| ACC-GOAL-005-INST-007-06 | INST-007 | GOA-GOAL-005-INST-007-06 | 2026-08-11T01:27:41+00:00 | ACCEPTED — security-floor analysis only |
+
+## Amendment 5 Founder Policy Decision Records
+
+The Founder selected each option prospectively in the current session after receiving the four-Office Order 1 recommendation package. These decisions choose policy only. They do not choose API shape, security mechanism, persistence, implementation design, deployment, provider activation, F5-F8 scope, PR approval, or merge.
+
+| Record ID | Institution | Policy | Decision | Selected first-release policy | `produced_at` |
+|---|---|---|---|---|---|
+| FPD-GOAL-005-F4-POL-01 | INST-001 | `F4-POL-01` | Option A | Typed acknowledgement for irreversible loss, cancellation, financial consequence, legal consequence, safety consequence, and deadline consequence classes | 2026-08-11T02:05:11+00:00 |
+| FPD-GOAL-005-F4-POL-02 | INST-001 | `F4-POL-02` | Option A | Self-service only for the customer's own authorized evidence view/export routes already within approved sensitivity and recipient boundaries; all other exports use an alternate route | 2026-08-11T02:05:11+00:00 |
+| FPD-GOAL-005-F4-POL-03 | INST-001 | `F4-POL-03` | Option B | Continue read-only and non-consequential access while pausing affected consequential work at an allowance threshold or budget ceiling | 2026-08-11T02:05:11+00:00 |
+| FPD-GOAL-005-F4-POL-04 | INST-001 | `F4-POL-04` | Option A | Self-service permits protective reduction only; authority grant, expansion, and restoration remain non-self-service | 2026-08-11T02:05:11+00:00 |
+| FPD-GOAL-005-F4-POL-05 | INST-001 | `F4-POL-05` | Option B | Emergency Stop remains immediate; selected owner-approved pause/resume paths may be enabled with explicit consequence and re-entry treatment; renewal/termination remain closed | 2026-08-11T02:05:11+00:00 |
+| FPD-GOAL-005-F4-POL-06 | INST-001 | `F4-POL-06` | Option A | Permit read-only review of still-authoritative facts; withhold affected consequential commands and success claims while required owner state is unresolved | 2026-08-11T02:05:11+00:00 |
+
+Every selected option remains bound by `CR-GOAL-005-INST-003-07`, `CR-GOAL-005-INST-005-10`, and `CR-GOAL-005-INST-007-06`. An owner must preserve the accepted fail-closed default wherever a selected family lacks complete authoritative inputs or an approved implementation contract.
+
+## Amendment 5 Order 2 Authorization Records
+
+### GOA-GOAL-005-INST-011-08
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GOA-GOAL-005-INST-011-08 |
+| `record_type` | Authorization Record |
+| Authorized Institution | INST-011 — Product Owner |
+| Contribution scope | Incorporate `FPD-GOAL-005-F4-POL-01` through `FPD-GOAL-005-F4-POL-06` into the F4 product release contract; publish `CR-GOAL-005-INST-011-08` and a Learning Record |
+| Evidence specification | Record the six selected options, customer-visible treatment, enabled versus still-unavailable command families, release composition, exact fail-closed behavior, and dependencies on Solution and Security incorporation without inventing architecture or mechanisms |
+| Participation Window | 2 constitutional sessions after valid acceptance |
+| Excluded authority | Founder decision reinterpretation, architecture, API or schema design, security-floor authorship, implementation, source, tests, deployment, F5-F8, self-review, and merge |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-11T02:05:12+00:00 |
+
+### GOA-GOAL-005-INST-005-07
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GOA-GOAL-005-INST-005-07 |
+| `record_type` | Authorization Record |
+| Authorized Institution | INST-005 — Solution Architect |
+| Contribution scope | Incorporate the six Founder decisions into the canonical F4 owner and relationship-workspace specifications; publish `CR-GOAL-005-INST-005-11` and a Learning Record |
+| Evidence specification | Map each selected policy to BP, WBE, PR, CE, Evidence Reader, and DMA ownership; preserve distinct `BLOCKED`, authoritative-input, acknowledgement, reconciliation, version, and unavailable-family semantics; identify the exact Order 3 contract work without editing canonical OpenAPI |
+| Participation Window | 3 constitutional sessions after valid acceptance |
+| Excluded authority | Policy reinterpretation, implementation, canonical OpenAPI edits, generated clients, source, tests, deployment, F5-F8, integrated review, self-review, and merge |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-11T02:05:13+00:00 |
+
+### GOA-GOAL-005-INST-007-07
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GOA-GOAL-005-INST-007-07 |
+| `record_type` | Authorization Record |
+| Authorized Institution | INST-007 — Security Architect |
+| Contribution scope | Verify the six selected policies against the accepted F4 security floors and publish `CR-GOAL-005-INST-007-07` plus a Learning Record |
+| Evidence specification | For each policy, state PASS or exact blocking condition for acknowledgement, export/privacy, commercial continuation, authority, lifecycle, degraded state, anti-enumeration, minimisation, rights, and Emergency Stop; no mechanism or product-policy invention |
+| Participation Window | 1 constitutional session after valid acceptance |
+| Excluded authority | Product/commercial policy reinterpretation, non-security architecture, implementation, source, tests, deployment, F5-F8, self-review, and merge |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-11T02:05:14+00:00 |
+
+## Amendment 5 Order 2 Owner Acceptance Records
+
+| Acceptance Record | Institution | Authorization | Acceptance timestamp | Decision |
+|---|---|---|---|---|
+| ACC-GOAL-005-INST-011-08 | INST-011 | GOA-GOAL-005-INST-011-08 | 2026-08-11T02:09:53+00:00 | ACCEPTED — Founder-selected policy incorporation into the product release contract only |
+| ACC-GOAL-005-INST-005-07 | INST-005 | GOA-GOAL-005-INST-005-07 | 2026-08-11T02:10:17+00:00 | ACCEPTED — Founder-selected policy incorporation into owner and relationship-workspace specifications only |
+| ACC-GOAL-005-INST-007-07 | INST-007 | GOA-GOAL-005-INST-007-07 | 2026-08-11T02:08:11+00:00 | ACCEPTED — security-floor verification of the selected policies only |
+
+The resulting records are `CR-GOAL-005-INST-011-08` / `LR-GOAL-005-INST-011-06`, `CR-GOAL-005-INST-005-11` / `LR-GOAL-005-INST-005-02`, and `CR-GOAL-005-INST-007-07` / `LR-GOAL-005-INST-007-02`. Each preserves the exact `A, A, B, A, B, A` decisions and the accepted fail-closed behavior.
+
+## Amendment 5 Order 2 Constitutional Review Authorization Record
+
+### GOA-GOAL-005-INST-002-10
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GOA-GOAL-005-INST-002-10 |
+| `record_type` | Authorization Record |
+| Authorized Institution | INST-002 — Constitutional Analyst |
+| Contribution scope | Independently review the six Founder Policy Decision Records and the Product, Solution, and Security Order 2 incorporations; publish `CR-GOAL-005-INST-002-10` and a Learning Record |
+| Evidence specification | Decide APPROVED, APPROVED WITH CONDITIONS, or RETURNED; verify exact decision fidelity, Founder Decision Space, Human Override and Emergency Stop, Evidence First, tenant/relationship isolation, minimisation, rights, distinct `BLOCKED`/`UNAVAILABLE`, fail-closed defaults, author/reviewer separation, and whether Order 3 may begin |
+| Participation Window | 1 constitutional session after valid acceptance |
+| Independence constraint | Fresh review context; may not author, repair, or reinterpret Founder, Product, Solution, or Security records |
+| Excluded authority | Policy selection, contribution repair, architecture or API authorship, implementation, source, tests, deployment, F5-F8, self-review, and merge |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-11T02:12:35+00:00 |
+
+## Amendment 5 Order 2 Constitutional Review Acceptance And Decision
+
+| Field | Value |
+|---|---|
+| Acceptance Record | ACC-GOAL-005-INST-002-10 |
+| Institution | INST-002 — Constitutional Analyst |
+| Authorization | GOA-GOAL-005-INST-002-10 |
+| Acceptance timestamp | 2026-08-11T02:17:49+00:00 |
+| Contribution Record | CR-GOAL-005-INST-002-10 |
+| Learning Record | LR-GOAL-005-INST-002-03 |
+| Review | R-069 — WC-034 F4 Policy Incorporation Constitutional Review |
+| Decision | APPROVED WITH CONDITIONS |
+| Order 3 gate | MAY BEGIN WITH CONDITIONS |
+
+R-069 conditions bind Order 3: contract work must remain within `CR-GOAL-005-INST-005-11`; the six Founder decisions may not be reinterpreted; distinct `BLOCKED`/`UNAVAILABLE`, fail-closed unresolved-state handling, and Emergency Stop independence must remain explicit; and no implementation, generated-client, deployment, G-F4-12, or G-F4-13 closure may be inferred.
+
+## Amendment 5 Order 3 Canonical Contract Authorization Record
+
+### GOA-GOAL-005-INST-005-08
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GOA-GOAL-005-INST-005-08 |
+| `record_type` | Authorization Record |
+| Authorized Institution | INST-005 — Solution Architect and logical contract owner |
+| Contribution scope | Publish the canonical WC-034 F4 BP public contract and private WBE, PR, CE-coverage, and registered DMA adapter contract surfaces required before executable G-F4-10 validation; publish `CR-GOAL-005-INST-005-12` and `LR-GOAL-005-INST-005-03` |
+| BP evidence specification | Update the canonical Business Platform OpenAPI with exactly the fourteen accepted F4 operation IDs, dependency-closed schemas, typed command unions, policy-selected availability, idempotency, expected versions, reconciliation, RFC 9457 errors, security, and no private/browser-forbidden surface |
+| Private-owner evidence specification | Publish versioned BP-only WBE and PR projection/command/reconciliation contracts; preserve WBE `BLOCKED`; publish one registered DMA adapter transport for the approved generic three-operation interface without DMA fields in the generic workspace; map every selected consequence to existing CE gRPC coverage and raise a blocker rather than silently invent a CE contract |
+| Policy and review constraints | Preserve `A, A, B, A, B, A`, R-069 Conditions 1-3, distinct `BLOCKED`/`UNAVAILABLE`, fail-closed unresolved state, owner truth, Evidence First, tenant/relationship isolation, and independent Emergency Stop |
+| Participation Window | 3 constitutional sessions after valid acceptance |
+| Excluded authority | Policy reinterpretation, source implementation, migrations, persistence design, generator execution, generated production clients, executable compatibility claims, tests, deployment, provider activation, F5-F8, integrated review, self-review, and merge |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-11T02:21:49+00:00 |
+
+Owner attestations, INST-010 deterministic generation, executable G-F4-10 closure, and Order 4 remain blocked until this Contribution and Learning Record are published and the canonical contract versions are fixed.
+
+## Amendment 5 Order 3 Canonical Contract Acceptance And Publication
+
+| Field | Value |
+|---|---|
+| Acceptance Record | ACC-GOAL-005-INST-005-08 |
+| Institution | INST-005 — Solution Architect and logical contract owner |
+| Authorization | GOA-GOAL-005-INST-005-08 |
+| Acceptance timestamp | 2026-08-11T02:26:15+00:00 |
+| Contribution Record | CR-GOAL-005-INST-005-12 |
+| Learning Record | LR-GOAL-005-INST-005-03 |
+| Canonical BP | `business-platform.openapi.yaml` 1.3.0 / SHA-256 `357c14bb359d15c6318192e9adf94eac0a4f0537626e9910363539e731d9c22e` |
+| Canonical PR | `professional-runtime.openapi.yaml` 1.2.0 / SHA-256 `a1aba55e7612cf0f8d342eab51f662d68127f4dd5aabaaa6695dc4e418a51f46` |
+| Canonical WBE | `wbe-relationship-workspace.openapi.yaml` 1.0.0 / SHA-256 `999b6687f7a0e96e6b362ca286805ee4bb44058f0e67e3dad2f928d74d78eaff` |
+| Canonical DMA adapter | `dma-relationship-outcome-adapter.openapi.yaml` 1.0.0 / SHA-256 `594524da76b4192493dbaf8ea4515f2d9d5c858dbd896c6020ea055e7230b26b` |
+| CE coverage | `relationship-workspace-ce-contract-coverage.md` 1.0.0 / SHA-256 `c11bd9e82680fd8173353ded2e029d1b69a115983cd1b9c160e86adc060e9478` |
+| Validation | Docker F4 slice extraction and four-spec YAML, local-reference, operation-ID, and required-inventory validation PASS; existing unrelated BP reference debt remains outside the dependency-closed F4 slice |
+
+This publication fixes the contract bytes for owner attestation. It does not complete owner attestation, run a generator, create a generated client, close executable G-F4-10, authorize source implementation, or advance Order 4.
+
+## Amendment 5 Order 3 Logical Owner Attestation Authorization
+
+### GOA-GOAL-005-INST-005-09
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GOA-GOAL-005-INST-005-09 |
+| `record_type` | Authorization Record |
+| Authorized Institution | INST-005 — Solution Architect acting as registered logical component/API owner under the Amendment 3 ownership mapping |
+| Contribution scope | Attest the fixed BP, WBE, PR, CE-coverage, and DMA adapter canonical boundaries at commit `9b126bd`; publish `CR-GOAL-005-INST-005-13` and `LR-GOAL-005-INST-005-04` |
+| Evidence specification | For each owner surface, verify exact artifact hash/version, accepted authority and truth boundary, caller/audience, operation inventory, policy tuple effect, `BLOCKED`/`UNAVAILABLE`, version/reconciliation behavior, Emergency Stop independence, and absence of browser/private-owner transfer |
+| Fixed inputs | BP `357c14bb...d9c22e`; PR `a1aba55e...a51f46`; WBE `999b6687...78eaff`; DMA `594524da...0b26b`; CE coverage `c11bd9e8...e9478` |
+| Decision rule | ACCEPT each unchanged owner boundary, RETURN the package, or raise a Constitutional Blocker; do not repair or modify canonical artifacts in this attestation slice |
+| Participation Window | 1 constitutional session after valid acceptance |
+| Excluded authority | Contract edits, policy reinterpretation, generator execution, generated clients, source, tests, migrations, implementation, deployment, provider activation, F5-F8, independent review, self-review, and merge |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-11T02:36:29+00:00 |
+
+## Amendment 5 Order 3 Logical Owner Attestation Acceptance
+
+| Field | Value |
+|---|---|
+| Acceptance Record | ACC-GOAL-005-INST-005-09 |
+| Institution | INST-005 — Solution Architect / registered logical component owner |
+| Authorization | GOA-GOAL-005-INST-005-09 |
+| Acceptance timestamp | 2026-08-11T02:41:33+00:00 |
+| Contribution Record | CR-GOAL-005-INST-005-13 |
+| Learning Record | LR-GOAL-005-INST-005-04 |
+| Decision | ACCEPT — BP, PR, WBE, DMA adapter, and CE coverage boundaries accepted 5/5 against fixed hashes |
+| Canonical byte state | UNCHANGED — all five externally verifiable hashes match the publication record |
+
+This acceptance satisfies the logical owner-attestation prerequisite only. Executable G-F4-10 still requires a separate INST-010 GOA and acceptance plus deterministic Docker evidence; source implementation and Order 4 remain separate.
+
+## Amendment 5 Order 3 Executable Compatibility Authorization
+
+### GOA-GOAL-005-INST-010-03
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GOA-GOAL-005-INST-010-03 |
+| `record_type` | Authorization Record |
+| Authorized Institution | INST-010 — Runtime Implementation Professional |
+| Contribution scope | Produce executable G-F4-10 compatibility evidence from canonical commit `9b126bd` and owner attestation `CR-GOAL-005-INST-005-13`; publish `CR-GOAL-005-INST-010-03` and `LR-GOAL-005-INST-010-01` |
+| Evidence specification | Docker-only parse/reference/security/inventory checks; deterministic dependency-closed F4 slice; exact OpenAPI Generator `7.17.0`; two clean generation runs and hashes; strict TypeScript compile; no-manual-patch proof; forbidden-surface scan; success/conflict/stale/unavailable/blocked/partial/unknown/CE-unavailable/unsupported-version fixtures; acceptance and provenance manifest |
+| Fixed inputs | BP 1.3.0 hash `357c14bb...d9c22e`; compatibility specification `CR-GOAL-005-INST-005-09`; owner attestation `CR-GOAL-005-INST-005-13`; R-069 Conditions 1-3 |
+| Output boundary | Temporary generated trees and reproducible evidence only; no tracked production client, BP/WBE/PR/CE/DMA service implementation, web feature, persistence, migration, infrastructure, provider activation, or deployment |
+| Participation Window | 2 constitutional sessions after valid acceptance |
+| Excluded authority | Contract mutation, policy reinterpretation, application feature implementation, Order 4 workload identity, Orders 5-8, F5-F8, deployment, self-review, self-merge, and merge |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-11T02:43:06+00:00 |

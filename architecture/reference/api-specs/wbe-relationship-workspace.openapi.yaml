@@ -1,0 +1,309 @@
+openapi: "3.1.0"
+
+info:
+  title: WAOOAW WBE Relationship Workspace Private API
+  version: "1.0.0"
+  description: |
+    Private Business Platform to WAOOAW Billing Engine contract for WC-034 F4.
+
+    This API is BP-only and has no browser ingress.
+    It preserves distinct BLOCKED and UNAVAILABLE outcomes and the policy tuple A,A,B,A,B,A.
+    It does not expose provider economics, procurement internals, wallet internals, or ledger rows.
+
+servers:
+  - url: https://wbe.internal.waooaw
+    description: Private service network only
+
+tags:
+  - name: Relationship Commercial Projection
+    description: Internal owner projection and command reconciliation
+
+security:
+  - ServiceBearerAuth: []
+
+paths:
+  /internal/v1/relationships/{relationshipId}/commercial-projection:
+    get:
+      tags: [Relationship Commercial Projection]
+      operationId: getRelationshipCommercialProjection
+      x-internal: true
+      summary: Get WBE-authoritative commercial projection for one relationship
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Commercial projection
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WbeRelationshipCommercialProjectionV1"
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+
+  /internal/v1/relationships/{relationshipId}/commercial-commands:
+    post:
+      tags: [Relationship Commercial Projection]
+      operationId: submitRelationshipCommercialCommand
+      x-internal: true
+      summary: Submit or replay one WBE commercial command
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WbeCommercialCommandRequestV1"
+      responses:
+        "202":
+          description: Command accepted for durable reconciliation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WbeCommercialCommandReceiptV1"
+        "200":
+          description: Prior identical outcome replayed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WbeCommercialCommandReceiptV1"
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "423": { $ref: "#/components/responses/Blocked" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+
+  /internal/v1/relationships/{relationshipId}/commercial-commands/{commandId}:
+    get:
+      tags: [Relationship Commercial Projection]
+      operationId: getRelationshipCommercialCommand
+      x-internal: true
+      summary: Reconcile one WBE commercial command outcome
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/CommandId"
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200":
+          description: Authoritative command outcome
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WbeCommercialCommandOutcomeV1"
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+
+components:
+  securitySchemes:
+    ServiceBearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        BP workload assertion bound to WBE audience and delegated relationship context.
+
+  parameters:
+    RelationshipId:
+      name: relationshipId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    CommandId:
+      name: commandId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema: { type: string, format: uuid }
+    CorrelationId:
+      name: X-Correlation-Id
+      in: header
+      required: true
+      schema: { type: string, format: uuid }
+
+  responses:
+    BadRequest:
+      description: Malformed request
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/WbeCommercialProblemDetailV1" }
+    Unauthorized:
+      description: Service assertion missing, invalid, or unauthorized
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/WbeCommercialProblemDetailV1" }
+    NotFound:
+      description: Relationship command resource absent or inaccessible
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/WbeCommercialProblemDetailV1" }
+    Conflict:
+      description: Expected version conflict or idempotency mismatch
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/WbeCommercialProblemDetailV1" }
+    Blocked:
+      description: Command blocked by unresolved policy or authority precondition
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/WbeCommercialProblemDetailV1" }
+    Unavailable:
+      description: Owner projection unavailable or unresolved
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/WbeCommercialProblemDetailV1" }
+
+  schemas:
+    WbeCommercialSchemaVersion:
+      type: string
+      const: "1.0"
+
+    WbeCommercialCommandKindV1:
+      type: string
+      enum: [CHANGE_BUDGET_CEILING, CHANGE_PACING, REQUEST_ALLOWANCE_ADDITION, PAUSE_RELATIONSHIP, RESUME_RELATIONSHIP, RENEW_RELATIONSHIP, TERMINATE_RELATIONSHIP]
+
+    WbeCommercialCommandStatusV1:
+      type: string
+      enum: [COMPLETED, PENDING, REJECTED, CONFLICT, UNKNOWN, UNAVAILABLE, BLOCKED]
+
+    WbeRelationshipCommercialProjectionV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, relationshipId, projectionVersion, producedAt, currencyState, actuals, allowance, budget, forecast, thresholds, commercialConsequences]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/WbeCommercialSchemaVersion" }
+        relationshipId: { type: string, format: uuid }
+        projectionVersion: { type: string, minLength: 1, maxLength: 64 }
+        producedAt: { type: string, format: date-time }
+        validUntil: { type: string, format: date-time }
+        currencyState: { type: string, enum: [CURRENT, STALE, UNKNOWN, UNAVAILABLE, BLOCKED] }
+        actuals: { type: string, minLength: 1, maxLength: 80 }
+        allowance: { type: string, minLength: 1, maxLength: 80 }
+        budget: { type: string, minLength: 1, maxLength: 80 }
+        forecast: { type: string, minLength: 1, maxLength: 80 }
+        thresholds: { type: string, minLength: 1, maxLength: 120 }
+        assumptions: { type: string, minLength: 1, maxLength: 160 }
+        commercialConsequences: { type: string, minLength: 1, maxLength: 200 }
+
+    ChangeBudgetCeilingCommercialPayloadV1:
+      type: object
+      additionalProperties: false
+      required: [commandKind, amountInrPaise]
+      properties:
+        commandKind: { type: string, const: CHANGE_BUDGET_CEILING }
+        amountInrPaise: { type: integer, format: int64, minimum: 0 }
+
+    ChangePacingCommercialPayloadV1:
+      type: object
+      additionalProperties: false
+      required: [commandKind, pacingChoice]
+      properties:
+        commandKind: { type: string, const: CHANGE_PACING }
+        pacingChoice: { type: string, minLength: 1, maxLength: 64 }
+
+    RequestAllowanceAdditionCommercialPayloadV1:
+      type: object
+      additionalProperties: false
+      required: [commandKind, amountInrPaise]
+      properties:
+        commandKind: { type: string, const: REQUEST_ALLOWANCE_ADDITION }
+        amountInrPaise: { type: integer, format: int64, minimum: 1 }
+
+    PauseRelationshipCommercialPayloadV1:
+      type: object
+      additionalProperties: false
+      required: [commandKind]
+      properties:
+        commandKind: { type: string, const: PAUSE_RELATIONSHIP }
+
+    ResumeRelationshipCommercialPayloadV1:
+      type: object
+      additionalProperties: false
+      required: [commandKind]
+      properties:
+        commandKind: { type: string, const: RESUME_RELATIONSHIP }
+
+    RenewRelationshipCommercialPayloadV1:
+      type: object
+      additionalProperties: false
+      required: [commandKind]
+      properties:
+        commandKind: { type: string, const: RENEW_RELATIONSHIP }
+
+    TerminateRelationshipCommercialPayloadV1:
+      type: object
+      additionalProperties: false
+      required: [commandKind]
+      properties:
+        commandKind: { type: string, const: TERMINATE_RELATIONSHIP }
+
+    WbeCommercialCommandPayloadV1:
+      oneOf:
+        - $ref: "#/components/schemas/ChangeBudgetCeilingCommercialPayloadV1"
+        - $ref: "#/components/schemas/ChangePacingCommercialPayloadV1"
+        - $ref: "#/components/schemas/RequestAllowanceAdditionCommercialPayloadV1"
+        - $ref: "#/components/schemas/PauseRelationshipCommercialPayloadV1"
+        - $ref: "#/components/schemas/ResumeRelationshipCommercialPayloadV1"
+        - $ref: "#/components/schemas/RenewRelationshipCommercialPayloadV1"
+        - $ref: "#/components/schemas/TerminateRelationshipCommercialPayloadV1"
+      discriminator:
+        propertyName: commandKind
+
+    WbeCommercialCommandRequestV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, expectedProjectionVersion, payload]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/WbeCommercialSchemaVersion" }
+        expectedProjectionVersion: { type: string, minLength: 1, maxLength: 64 }
+        payload: { $ref: "#/components/schemas/WbeCommercialCommandPayloadV1" }
+
+    WbeCommercialCommandReceiptV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, commandId, commandKind, status, acceptedAt, replayed]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/WbeCommercialSchemaVersion" }
+        commandId: { type: string, format: uuid }
+        commandKind: { $ref: "#/components/schemas/WbeCommercialCommandKindV1" }
+        status: { $ref: "#/components/schemas/WbeCommercialCommandStatusV1" }
+        acceptedAt: { type: string, format: date-time }
+        replayed: { type: boolean }
+
+    WbeCommercialCommandOutcomeV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, commandId, commandKind, status, relationshipId]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/WbeCommercialSchemaVersion" }
+        commandId: { type: string, format: uuid }
+        commandKind: { $ref: "#/components/schemas/WbeCommercialCommandKindV1" }
+        status: { $ref: "#/components/schemas/WbeCommercialCommandStatusV1" }
+        relationshipId: { type: string, format: uuid }
+        outcomeVersion: { type: string, minLength: 1, maxLength: 64 }
+        resolvedAt: { type: string, format: date-time }
+
+    WbeCommercialProblemCodeV1:
+      type: string
+      enum: [WBE_COMMERCIAL_REQUEST_INVALID, WBE_COMMERCIAL_UNAUTHORIZED, WBE_COMMERCIAL_NOT_ACCESSIBLE, WBE_COMMERCIAL_CONFLICT, WBE_COMMERCIAL_BLOCKED, WBE_COMMERCIAL_UNAVAILABLE]
+
+    WbeCommercialProblemDetailV1:
+      type: object
+      additionalProperties: false
+      required: [type, title, status, code, correlationId]
+      properties:
+        type: { type: string, format: uri }
+        title: { type: string }
+        status: { type: integer, minimum: 400, maximum: 599 }
+        detail: { type: string, maxLength: 320 }
+        code: { $ref: "#/components/schemas/WbeCommercialProblemCodeV1" }
+        correlationId: { type: string, format: uuid }

@@ -70,6 +70,23 @@ builder.Services.AddTenantIsolation();
 // ── HttpContextAccessor — required by TenantDbConnectionInterceptor ──────────────
 builder.Services.AddHttpContextAccessor();
 
+var workloadCredentials = builder.Configuration["WAOOAW_WORKLOAD_CREDENTIALS"];
+var prWorkspaceBaseUrl = builder.Configuration["ProfessionalRuntime:RelationshipWorkspaceBaseUrl"];
+var wbeWorkspaceBaseUrl = builder.Configuration["BillingEngine:RelationshipWorkspaceBaseUrl"];
+if (!string.IsNullOrWhiteSpace(workloadCredentials)
+    && Uri.TryCreate(prWorkspaceBaseUrl, UriKind.Absolute, out var prWorkspaceUri)
+    && Uri.TryCreate(wbeWorkspaceBaseUrl, UriKind.Absolute, out var wbeWorkspaceUri))
+{
+    var workloadIdentity = WorkloadIdentityClient.Load(workloadCredentials);
+    builder.Services.AddSingleton(workloadIdentity);
+    builder.Services.AddSingleton<IRelationshipWorkspaceOwnerGateway>(
+        new AuthenticatedRelationshipWorkspaceOwnerGateway(workloadIdentity, prWorkspaceUri, wbeWorkspaceUri));
+}
+else
+{
+    builder.Services.AddSingleton<IRelationshipWorkspaceOwnerGateway, UnconfiguredRelationshipWorkspaceOwnerGateway>();
+}
+
 // ── WBE (billing-engine) HttpClient — used by SubscriptionsController + Temporal activities ──
 var wbeBaseUrl = builder.Configuration["BillingEngine:BaseUrl"] ?? "http://billing-engine:8140";
 builder.Services.AddHttpClient("WBE", client =>

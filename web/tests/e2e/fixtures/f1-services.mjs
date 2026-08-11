@@ -118,6 +118,28 @@ const server = createServer(async (request, response) => {
   const readMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/conversation\/read-position$/);
   const streamMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/conversation\/stream$/);
   const cancelMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/conversation\/executions\/([^/]+)$/);
+  const workspaceMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/workspace(?:\/(plan|attention|work|results|usage-budget|rights-controls))?$/);
+
+  if (request.method === 'GET' && workspaceMatch) {
+    const relationshipId = decodeURIComponent(workspaceMatch[1]);
+    const family = workspaceMatch[2];
+    const provenance = { owner: family === 'usage-budget' ? 'WBE' : family === 'work' ? 'PR' : family === 'results' ? 'DMA' : 'BP', sourceProjectionVersion: 'fixture-1', producedAt: '2026-08-10T10:00:00Z' };
+    const common = { currencyState: family === 'attention' || family === 'rights-controls' ? 'CURRENT' : 'UNAVAILABLE', provenance, availableCommands: [] };
+    const responses = {
+      plan: { ...common, sectionType: 'PLAN', planId: '5f33925b-fb0c-4366-8414-7f85309639b9', goals: [] },
+      attention: { ...common, sectionType: 'ATTENTION', items: [] },
+      work: { ...common, sectionType: 'WORK', items: [] },
+      results: { ...common, sectionType: 'RESULTS', outcomes: [] },
+      'usage-budget': { ...common, sectionType: 'USAGE_BUDGET', actualAmount: 'Unavailable', forecastRange: 'Unavailable', thresholdState: 'UNAVAILABLE', wbeProjectionVersion: 'unavailable-1' },
+      'rights-controls': { ...common, sectionType: 'RIGHTS_CONTROLS', scopeVersion: '1', authorityVersion: '1', lifecycleState: 'ACTIVE', emergencyStopReachable: true },
+    };
+    json(response, family ? responses[family] : {
+      schemaVersion: '1.0', relationshipId, workspaceVersion: 'fixture-1', snapshotState: 'PARTIAL', currencyState: 'CURRENT',
+      authoritativeCursor: `workspace:${relationshipId}:00000001`, producedAt: '2026-08-10T10:00:00Z',
+      context: { relationshipId, lifecycleState: 'ACTIVE', policySelection: { f4Pol01: 'A', f4Pol02: 'A', f4Pol03: 'B', f4Pol04: 'A', f4Pol05: 'B', f4Pol06: 'A' } }, sections: [],
+    });
+    return;
+  }
 
   if (request.method === 'GET' && relationshipMatch) {
     json(response, relationship(decodeURIComponent(relationshipMatch[1])));

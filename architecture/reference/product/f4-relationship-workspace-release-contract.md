@@ -377,4 +377,100 @@ Yogesh Khandge is the named DMA domain authority for this F4 contribution. The F
 
 ### Preserved Boundaries
 
-The Founder policy decisions F4-POL-01 through F4-POL-06 remain unresolved and blocked exactly as stated in Section 8. This re-attestation grants no architecture, endpoint, API, wire-schema, canonical OpenAPI, generated-client, implementation, test, migration, build, provider-activation, deployment, F5-F8, self-review, or self-merge authority. G-F4-12 implementation and G-F4-13 deployment remain separately blocked.
+The Section 8 policy escalations were resolved prospectively by `FPD-GOAL-005-F4-POL-01` through `FPD-GOAL-005-F4-POL-06` and are incorporated below. Those decisions grant no architecture, endpoint, API, wire-schema, canonical OpenAPI, generated-client, implementation, test, migration, build, provider-activation, deployment, F5-F8, self-review, or self-merge authority. G-F4-12 implementation acceptance and G-F4-13 deployment remain separately gated.
+
+## 14. Amendment 5 Order 2 Acceptance Record
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-011 |
+| `goal_id` | GOAL-005 |
+| `acceptance_id` | ACC-GOAL-005-INST-011-08 |
+| `record_type` | Acceptance Record |
+| `authorization_id` | GOA-GOAL-005-INST-011-08 |
+| `accepted_at` | 2026-08-11T02:09:53+00:00 |
+| Decision | ACCEPTED - incorporate Founder-selected F4 policy decisions prospectively into this product contract only |
+
+## 15. Amendment 5 Order 2 Founder Decision Incorporation
+
+### Contribution Record
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-011 |
+| `goal_id` | GOAL-005 |
+| `record_id` | CR-GOAL-005-INST-011-08 |
+| `record_type` | Contribution Record |
+| `produced_at` | 2026-08-11T02:09:53+00:00 |
+| `authorization_id` | GOA-GOAL-005-INST-011-08 |
+| `acceptance_id` | ACC-GOAL-005-INST-011-08 |
+| `acceptance_timestamp` | 2026-08-11T02:09:53+00:00 |
+| contribution_scope | Record Founder selections `F4-POL-01` through `F4-POL-06` as first-release product policy and publish customer-visible treatment, enabled versus unavailable command families, release composition, fail-closed behavior, and incorporation dependencies |
+| decision_boundary | Product incorporation only. No policy reinterpretation, architecture, API/schema design, mechanism selection, implementation, deployment, F5-F8, self-review, or merge authority. |
+
+### Founder-selected first-release policy set (prospective)
+
+| Policy | Founder decision record | Selected option | Product incorporation |
+|---|---|---|---|
+| `F4-POL-01` | `FPD-GOAL-005-F4-POL-01` | A | Typed acknowledgement is required for irreversible loss, cancellation, financial consequence, legal consequence, safety consequence, and deadline consequence classes. |
+| `F4-POL-02` | `FPD-GOAL-005-F4-POL-02` | A | Self-service remains limited to the customer's own authorized evidence view/export routes already within approved sensitivity and recipient boundaries; all other exports use an alternate route. |
+| `F4-POL-03` | `FPD-GOAL-005-F4-POL-03` | B | Read-only and non-consequential access continues while affected consequential work pauses at an allowance threshold or budget ceiling. |
+| `F4-POL-04` | `FPD-GOAL-005-F4-POL-04` | A | Self-service permits protective reduction only; authority grant, expansion, and restoration remain non-self-service. |
+| `F4-POL-05` | `FPD-GOAL-005-F4-POL-05` | B | Emergency Stop remains immediate; selected owner-approved pause/resume paths may be enabled with explicit consequence and re-entry treatment; renewal/termination remain closed. |
+| `F4-POL-06` | `FPD-GOAL-005-F4-POL-06` | A | Read-only review of still-authoritative facts is permitted; affected consequential commands and success claims remain withheld while required owner state is unresolved. |
+
+### Customer-visible treatment and release composition
+
+1. Relationship context and the six mandatory views in Sections 2-3 remain the first-release composition with truthful state semantics in Section 6.
+2. Consequential approvals/rejections in the selected material classes require typed acknowledgement; unresolved material-class eligibility remains blocked.
+3. Evidence inspection remains available where already authorized; export families outside selected self-service bounds remain unavailable and use the approved alternate route.
+4. At allowance/budget boundary conditions, read-only and non-consequential access may continue while affected consequential work remains paused unless and until owner-authoritative policy/command conditions are met.
+5. Rights and control preserve protective reduction paths where owner-approved; self-service authority grant/expansion/restoration remains unavailable.
+6. Emergency Stop remains independently reachable regardless of policy family state.
+7. During stale, unknown, partial, unavailable, or unresolved owner state, still-authoritative read facts may remain visible while affected consequential commands and success claims remain withheld.
+
+### Enabled versus still-unavailable command families
+
+| Command family | Incorporation status under `A, A, B, A, B, A` |
+|---|---|
+| Material consequential approvals/rejections | Enabled only for selected classes with required typed acknowledgement; otherwise blocked. |
+| Evidence inspection | Enabled where already authorized. |
+| Self-service evidence export | Enabled only within selected self-service boundaries; other export families remain unavailable. |
+| Commercial continuation at threshold/ceiling | Consequential continuation remains paused/blocked unless owner-authoritative conditions are satisfied. |
+| Protective authority reduction | Enabled only where already owner-approved. |
+| Authority grant/expansion/restoration | Remains unavailable (non-self-service). |
+| Pause/resume lifecycle paths | May be enabled only for selected owner-approved paths with explicit consequence and re-entry treatment. |
+| Renewal/termination lifecycle paths | Remains unavailable/closed. |
+| Degraded-state consequential execution | Remains withheld while required owner state is unresolved. |
+| Emergency Stop | Always enabled and independent. |
+
+### Exact fail-closed behavior and dependencies
+
+The fail-closed baseline in Section 8 remains mandatory and is now applied prospectively with the Founder selections above:
+
+- no materially consequential approval/rejection executes without required typed acknowledgement;
+- no out-of-bound self-service export executes;
+- no unresolved consequential commercial continuation executes;
+- no self-service authority grant, expansion, or restoration executes;
+- no unresolved lifecycle renewal/termination executes;
+- no affected consequential command or success claim executes under unresolved required owner state.
+
+This incorporation depends on:
+
+- Solution incorporation record `CR-GOAL-005-INST-005-11` for canonical owner/relationship-workspace specification alignment; and
+- Security verification record `CR-GOAL-005-INST-007-07` for accepted floor preservation.
+
+Until both dependencies are incorporated and no conflict is declared by their accountable offices, affected command families remain `BLOCKED` or `UNAVAILABLE` exactly as declared above.
+
+## 16. Learning Record (GEOM G-05)
+
+| field | value |
+|---|---|
+| institution_id | INST-011 |
+| goal_id | GOAL-005 |
+| record_id | LR-GOAL-005-INST-011-06 |
+| record_type | Learning Record |
+| improvement_signal | Recording Founder-selected policy options as a prospective, command-family matrix preserves customer-visible truth while preventing inferred defaults, architectural invention, and floor weakening. |
+| constitutional_discovery | no |
+| evolution_triggered | no |
+| produced_at | 2026-08-11T02:09:53+00:00 |
