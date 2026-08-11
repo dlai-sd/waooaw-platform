@@ -1381,3 +1381,96 @@ Before any Amendment 5 GOA is issued, the Registrant must record:
 - no policy default inferred by Product, Business, Solution, Security, implementation, or review contexts;
 - no direct web access to PR, WBE, CE, adapters, providers, or ledgers;
 - no autonomous sprint runner, autonomous-pipeline mode, retrospective authorization, self-review, self-merge, or merge by any AI office.
+
+---
+
+## Amendment 5 Registrant Acknowledgement Record
+
+| Attestation field | Value |
+|---|---|
+| `institution_id` | INST-001 |
+| `goal_id` | GOAL-005 |
+| `record_id` | ACK-GOAL-005-INST-001-06 |
+| `record_type` | Acknowledgement Record |
+| `produced_at` | 2026-08-11T01:27:33+00:00 |
+| Acknowledged plan | GEP-GOAL-005-INST-013-06 |
+| Registrant | Yogesh Khandge / Founder |
+| Decision | ACKNOWLEDGED — Amendment 5 routing only |
+| Exact quoted acknowledgement | "I acknowledge GEP-GOAL-005-INST-013-06 and authorize INST-013 to route WC-034 F4 policy recommendations, Founder decision incorporation, dependency-ordered implementation, and independent review exactly as specified. I understand that F4-POL-01 through F4-POL-06 remain my decisions, current-session implementation authorization remains separately mandatory, and this acknowledgement does not authorize deployment, provider activation, F5-F8, PR merge, or self-review." |
+
+R-068 / `CR-GOAL-005-INST-002-09` satisfies GEOM R2-03 condition 1 subject to CA-F4-A5-01 through CA-F4-A5-06. This exact record satisfies condition 2. FA-036 separately satisfies the current-session implementation gate. Neither record selects a policy or authorizes deployment.
+
+## Amendment 5 Order 1 Authorization Records
+
+### GOA-GOAL-005-INST-011-07
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GOA-GOAL-005-INST-011-07 |
+| `record_type` | Authorization Record |
+| Authorized Institution | INST-011 — Product Owner |
+| Contribution scope | Coordinate the customer-language option and recommendation matrix for `F4-POL-01` through `F4-POL-06`; publish `CR-GOAL-005-INST-011-07` and a Learning Record |
+| Evidence specification | For each policy: recommendation, alternatives, customer consequence, release effect, blocked default, reversibility, accountable-owner dependencies, and exact Founder question; incorporate but do not override Business, Solution, or Security evidence |
+| Participation Window | 2 constitutional sessions after valid acceptance |
+| Excluded authority | Policy selection, architecture, security-floor authorship, implementation, source, tests, deployment, F5-F8, self-review, and merge |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-11T01:27:34+00:00 |
+
+### GOA-GOAL-005-INST-003-06
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GOA-GOAL-005-INST-003-06 |
+| `record_type` | Authorization Record |
+| Authorized Institution | INST-003 — Business Architect |
+| Contribution scope | Validate business outcomes, consequence classes, continuity, rights effects, and customer harm/tradeoffs for the six policy options; publish `CR-GOAL-005-INST-003-07` and a Learning Record |
+| Evidence specification | Exact outcome and consequence analysis for material acknowledgement, export, commercial thresholds, authority, lifecycle, and degraded owner state, including the safe fail-closed baseline |
+| Participation Window | 1 constitutional session after valid acceptance |
+| Excluded authority | Policy selection, architecture, API design, security mechanisms, implementation, deployment, F5-F8, self-review, and merge |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-11T01:27:35+00:00 |
+
+### GOA-GOAL-005-INST-005-06
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GOA-GOAL-005-INST-005-06 |
+| `record_type` | Authorization Record |
+| Authorized Institution | INST-005 — Solution Architect |
+| Contribution scope | Assess BP, WBE, PR, CE, evidence-reader, and DMA owner feasibility and contract consequences for each policy option; publish `CR-GOAL-005-INST-005-10` and a Learning Record |
+| Evidence specification | Owner and command-family impact, required authoritative inputs, reconciliation behavior, versioning, distinct `BLOCKED`, dependency risk, and smallest implementable option without choosing policy |
+| Participation Window | 2 constitutional sessions after valid acceptance |
+| Excluded authority | Policy selection, implementation, canonical OpenAPI edits, generated clients, source, tests, deployment, F5-F8, integrated review, self-review, and merge |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-11T01:27:36+00:00 |
+
+### GOA-GOAL-005-INST-007-06
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GOA-GOAL-005-INST-007-06 |
+| `record_type` | Authorization Record |
+| Authorized Institution | INST-007 — Security Architect |
+| Contribution scope | Define non-weakenable assurance, acknowledgement, export, privacy, authority, lifecycle, and degraded-state floors for each policy option; publish `CR-GOAL-005-INST-007-06` and a Learning Record |
+| Evidence specification | Required assurance and typed acknowledgement floors, recipient/export protections, stale/unknown/partial constraints, anti-enumeration, minimisation, rights and Stop preservation, and prohibited options |
+| Participation Window | 1 constitutional session after valid acceptance |
+| Excluded authority | Product or commercial policy selection, architecture beyond security constraints, implementation, source, tests, deployment, F5-F8, self-review, and merge |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-11T01:27:37+00:00 |
+
+## Amendment 5 Order 1 Acceptance Records
+
+| Acceptance Record | Institution | Authorization | Acceptance timestamp | Decision |
+|---|---|---|---|---|
+| ACC-GOAL-005-INST-011-07 | INST-011 | GOA-GOAL-005-INST-011-07 | 2026-08-11T01:27:38+00:00 | ACCEPTED — policy recommendation coordination only |
+| ACC-GOAL-005-INST-003-06 | INST-003 | GOA-GOAL-005-INST-003-06 | 2026-08-11T01:27:39+00:00 | ACCEPTED — business consequence analysis only |
+| ACC-GOAL-005-INST-005-06 | INST-005 | GOA-GOAL-005-INST-005-06 | 2026-08-11T01:27:40+00:00 | ACCEPTED — owner feasibility analysis only |
+| ACC-GOAL-005-INST-007-06 | INST-007 | GOA-GOAL-005-INST-007-06 | 2026-08-11T01:27:41+00:00 | ACCEPTED — security-floor analysis only |
