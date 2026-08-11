@@ -2,7 +2,7 @@ openapi: "3.1.0"
 
 info:
   title: WAOOAW Business Platform API
-  version: "1.4.0"
+  version: "1.5.0"
   description: |
     External customer-facing API for the WAOOAW Business Platform.
     Manages the employment lifecycle, approval workflows, evidence reading,
@@ -40,6 +40,8 @@ tags:
     description: Relationship-governance workspace projection, typed commands, and evidence mediation
   - name: Professionals
     description: Outcome-based professional discovery and informed pre-trial disclosure
+  - name: WhatsApp Journey
+    description: Signature-authenticated, phone-native S01-S06 presentation boundary
   - name: Employment
     description: Employment contract lifecycle management
   - name: Approvals
@@ -502,6 +504,41 @@ paths:
               schema: { $ref: "#/components/schemas/ProfessionalDisclosure" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/whatsapp/webhook:
+    post:
+      tags: [WhatsApp Journey]
+      summary: Receive a signed WhatsApp journey message
+      description: |
+        Verifies the raw-body HMAC before deriving a minimised phone identity,
+        applies a five-minute replay window and durable message-id deduplication,
+        and returns non-consequential S01-S06 presentation text. Tier 2 requires
+        a separate explicit confirmation; Tier 3 always requires portal step-up.
+        ADR-023. This endpoint is authenticated by signature rather than Keycloak.
+      operationId: receiveWhatsAppJourneyMessage
+      security: []
+      parameters:
+        - name: X-Hub-Signature-256
+          in: header
+          required: true
+          schema:
+            type: string
+            pattern: '^sha256=[0-9A-Fa-f]{64}$'
+          description: HMAC-SHA256 of the exact raw request body
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WhatsAppJourneyInbound" }
+      responses:
+        "200":
+          description: Message accepted or deterministically replayed; internal tenant credentials are never returned
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WhatsAppJourneyResponse" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
 
   # ─── Employment ───────────────────────────────────────────────────────────
 
@@ -3460,6 +3497,48 @@ components:
         status:
           type: string
           enum: [ACTIVE]
+
+    WhatsAppJourneyInbound:
+      type: object
+      additionalProperties: false
+      required: [messageId, timestamp, from, text]
+      properties:
+        messageId:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: Provider message identifier used for durable deduplication
+        timestamp:
+          type: integer
+          format: int64
+          description: Provider Unix timestamp; accepted only within five minutes of receipt
+        from:
+          type: string
+          pattern: '^\+[1-9][0-9]{7,14}$'
+          description: E.164 sender number; transformed to HMAC and never persisted raw
+        text:
+          type: string
+          minLength: 1
+          maxLength: 4096
+        riskTier:
+          type: string
+          enum: [TIER_1_LOW_RISK, TIER_2_MEDIUM_RISK, TIER_3_HIGH_RISK]
+          default: TIER_1_LOW_RISK
+
+    WhatsAppJourneyResponse:
+      type: object
+      additionalProperties: false
+      required: [messageId, status, journeyStage, reply, replayed]
+      properties:
+        messageId: { type: string }
+        status:
+          type: string
+          enum: [ACCEPTED, DUPLICATE, CONFIRMATION_REQUIRED, PORTAL_STEP_UP_REQUIRED]
+        journeyStage:
+          type: string
+          enum: [DISCOVER, DISCLOSURE, INTERVIEW, CONTEXT, TRIAL, CONFIGURE, UNKNOWN]
+        reply: { type: string }
+        replayed: { type: boolean }
 
     EmploymentRelationship:
       type: object

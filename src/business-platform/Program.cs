@@ -147,6 +147,9 @@ builder.Services.AddScoped<IRelationshipConstitutionalGateway, RelationshipConst
 builder.Services.AddScoped<EmploymentRelationshipService>();
 builder.Services.AddScoped<RelationshipConfigurationService>();
 builder.Services.AddScoped<RelationshipTrialService>();
+builder.Services.Configure<WhatsAppJourneyOptions>(builder.Configuration.GetSection("WhatsApp"));
+builder.Services.AddScoped<IWhatsAppRegistrationEvidenceGateway, WhatsAppRegistrationEvidenceGateway>();
+builder.Services.AddScoped<WhatsAppJourneyService>();
 
 // ── Identity Boundary — WC-034 F2 (identity-boundary.md) ─────────────────
 // Pre-account registration paths use actor subject (JWT sub); no tenant_id required.

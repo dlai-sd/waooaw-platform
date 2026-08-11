@@ -3,6 +3,7 @@
 
 using FluentAssertions;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 using System.Runtime.CompilerServices;
@@ -76,6 +77,17 @@ public sealed class ProfessionalsControllerTests
         problem.StatusCode.Should().Be(404);
         problem.Value.Should().BeOfType<ProblemDetails>()
             .Which.Title.Should().Be("Professional not found");
+    }
+
+    [Theory]
+    [InlineData(nameof(ProfessionalsController.Discover))]
+    [InlineData(nameof(ProfessionalsController.GetDisclosure))]
+    public void InformedPreTrialCatalog_IsAvailableBeforeAuthentication(string methodName)
+    {
+        var method = typeof(ProfessionalsController).GetMethod(methodName);
+
+        method.Should().NotBeNull();
+        method!.GetCustomAttributes(typeof(AllowAnonymousAttribute), true).Should().ContainSingle();
     }
 
     private static string FindBusinessPlatformRoot([CallerFilePath] string sourcePath = "")

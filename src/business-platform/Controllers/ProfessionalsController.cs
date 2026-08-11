@@ -20,6 +20,7 @@ public sealed class ProfessionalsController : ControllerBase
     }
 
     [HttpGet]
+    [AllowAnonymous]
     public ActionResult<IReadOnlyList<ProfessionalDiscoveryResult>> Discover(
         [FromQuery] string outcome)
     {
@@ -36,6 +37,7 @@ public sealed class ProfessionalsController : ControllerBase
     }
 
     [HttpGet("{professionalType}/disclosure")]
+    [AllowAnonymous]
     public ActionResult<ProfessionalDisclosure> GetDisclosure(string professionalType)
     {
         var disclosure = _catalog.GetDisclosure(professionalType);

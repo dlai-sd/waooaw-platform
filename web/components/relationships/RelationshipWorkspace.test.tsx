@@ -1,6 +1,6 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { RelationshipWorkspace } from './RelationshipWorkspace';
-import type { EmploymentRelationship, RelationshipTimelineEntry } from '@/lib/api/relationships';
+import type { EmploymentRelationship, RelationshipEvaluationProjection, RelationshipTimelineEntry } from '@/lib/api/relationships';
 import type { RelationshipWorkspaceViews } from '@/lib/api/relationship-workspace';
 
 const relationship: EmploymentRelationship = {
@@ -40,6 +40,17 @@ const views: RelationshipWorkspaceViews = {
   usageBudget: { ...section, sectionType: 'USAGE_BUDGET', actualAmount: 'Unavailable', forecastRange: 'Unavailable' },
   rightsControls: { ...section, sectionType: 'RIGHTS_CONTROLS', currencyState: 'CURRENT', scopeVersion: '1', authorityVersion: '1', lifecycleState: 'TRIAL_ACTIVE', emergencyStopReachable: true },
 };
+const evaluation: RelationshipEvaluationProjection = {
+  relationshipId: relationship.relationshipId,
+  lifecycleState: 'TRIAL_ACTIVE',
+  interviewState: 'AVAILABLE',
+  context: [{ payloadReference: 'context-1', fieldType: 'NAME', value: 'Acme Clinic', status: 'CONFIRMED' }],
+  nextContextQuestion: 'Where does your business serve customers?',
+  trial: { trialId: 'trial-1', startsAt: '2026-08-08T10:00:00Z', expiresAt: '2026-08-22T10:00:00Z', status: 'ACTIVE' },
+  goals: [{ goalId: 'goal-1', goal: 'Increase enquiries', measure: 'Qualified enquiries', status: 'ACCEPTED', reviewCadenceMonths: 2 }],
+  skills: [{ configurationId: 'skill-1', skillId: 'MARKET_RESEARCH', applicability: 'APPLICABLE', authorityState: 'NOT_GRANTED', status: 'DEFERRED' }],
+  decisionSpace: { version: 1, budgetCeilingInrPaise: 100000, authorityBoundaries: ['No publishing'], stopConditions: ['Customer stop'], reviewCadenceMonths: 2 },
+};
 
 describe('RelationshipWorkspace', () => {
   beforeEach(() => {
@@ -59,18 +70,21 @@ describe('RelationshipWorkspace', () => {
   afterEach(() => jest.restoreAllMocks());
 
   it('presents evaluation state and evidence history', async () => {
-    render(<RelationshipWorkspace relationship={relationship} timeline={timeline} views={views} />);
+    render(<RelationshipWorkspace relationship={relationship} timeline={timeline} views={views} evaluation={evaluation} />);
 
     expect(screen.getByText('Evaluation · TRIAL_ACTIVE')).toBeVisible();
     expect(screen.getAllByText('TRIAL ACTIVE')).toHaveLength(2);
-    expect(screen.getAllByText('1', { selector: 'dd' })).toHaveLength(2);
+    expect(within(screen.getByText('Version').parentElement!).getByText('1')).toBeVisible();
     expect(screen.getByText('Nothing currently requires your response.')).toBeVisible();
     expect(screen.getByText('No supported business outcome is available yet.')).toBeVisible();
+    expect(screen.getByText('Where does your business serve customers?')).toBeVisible();
+    expect(screen.getByText(/Trial quota is unavailable/)).toBeVisible();
+    expect(screen.getByText('deferred')).toBeVisible();
     expect(await screen.findByText('No messages yet. Start with a clear outcome for your professional.')).toBeVisible();
   });
 
   it('distinguishes an active relationship as live', async () => {
-    render(<RelationshipWorkspace relationship={{ ...relationship, state: 'ACTIVE' }} timeline={timeline} views={views} />);
+    render(<RelationshipWorkspace relationship={{ ...relationship, state: 'ACTIVE' }} timeline={timeline} views={views} evaluation={evaluation} />);
 
     expect(screen.getByText('Live · ACTIVE')).toBeVisible();
     expect(await screen.findByText('No messages yet. Start with a clear outcome for your professional.')).toBeVisible();

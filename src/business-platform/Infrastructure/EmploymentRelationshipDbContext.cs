@@ -188,6 +188,27 @@ public sealed class RelationshipTrialBinding
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
+public sealed class WhatsAppJourneyContact
+{
+    public Guid ContactId { get; init; } = Guid.NewGuid();
+    public Guid TenantId { get; init; }
+    public string PhoneHmac { get; init; } = string.Empty;
+    public DateTimeOffset OptedInAt { get; init; }
+    public DateTimeOffset LastInboundAt { get; set; }
+    public string JourneyStage { get; set; } = "DISCOVER";
+    public bool PendingMediumRiskConfirmation { get; set; }
+}
+
+public sealed class WhatsAppMessageReceipt
+{
+    public string MessageId { get; init; } = string.Empty;
+    public Guid TenantId { get; init; }
+    public string SessionTokenHash { get; init; } = string.Empty;
+    public DateTimeOffset SessionExpiresAt { get; init; }
+    public DateTimeOffset ReceivedAt { get; init; }
+    public DateTimeOffset ExpiresAt { get; init; }
+}
+
 public sealed class EmploymentRelationshipDbContext : DbContext
 {
     public EmploymentRelationshipDbContext(DbContextOptions<EmploymentRelationshipDbContext> options)
@@ -203,6 +224,8 @@ public sealed class EmploymentRelationshipDbContext : DbContext
     public DbSet<RelationshipSkillConfiguration> RelationshipSkillConfigurations => Set<RelationshipSkillConfiguration>();
     public DbSet<DecisionSpaceSnapshot> DecisionSpaceSnapshots => Set<DecisionSpaceSnapshot>();
     public DbSet<RelationshipTrialBinding> RelationshipTrialBindings => Set<RelationshipTrialBinding>();
+    public DbSet<WhatsAppJourneyContact> WhatsAppJourneyContacts => Set<WhatsAppJourneyContact>();
+    public DbSet<WhatsAppMessageReceipt> WhatsAppMessageReceipts => Set<WhatsAppMessageReceipt>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -440,6 +463,32 @@ public sealed class EmploymentRelationshipDbContext : DbContext
             entity.HasOne<EmploymentRelationship>().WithMany()
                 .HasForeignKey(value => new { value.TenantId, value.RelationshipId })
                 .HasPrincipalKey(value => new { value.TenantId, value.RelationshipId });
+        });
+
+        modelBuilder.Entity<WhatsAppJourneyContact>(entity =>
+        {
+            entity.ToTable("whatsapp_journey_contacts", "business");
+            entity.HasKey(value => value.ContactId);
+            entity.HasIndex(value => value.PhoneHmac).IsUnique();
+            entity.Property(value => value.ContactId).HasColumnName("contact_id");
+            entity.Property(value => value.TenantId).HasColumnName("tenant_id");
+            entity.Property(value => value.PhoneHmac).HasColumnName("phone_hmac");
+            entity.Property(value => value.OptedInAt).HasColumnName("opted_in_at");
+            entity.Property(value => value.LastInboundAt).HasColumnName("last_inbound_at");
+            entity.Property(value => value.JourneyStage).HasColumnName("journey_stage");
+            entity.Property(value => value.PendingMediumRiskConfirmation).HasColumnName("pending_medium_risk_confirmation");
+        });
+
+        modelBuilder.Entity<WhatsAppMessageReceipt>(entity =>
+        {
+            entity.ToTable("whatsapp_message_receipts", "business");
+            entity.HasKey(value => value.MessageId);
+            entity.Property(value => value.MessageId).HasColumnName("message_id");
+            entity.Property(value => value.TenantId).HasColumnName("tenant_id");
+            entity.Property(value => value.SessionTokenHash).HasColumnName("session_token_hash");
+            entity.Property(value => value.SessionExpiresAt).HasColumnName("session_expires_at");
+            entity.Property(value => value.ReceivedAt).HasColumnName("received_at");
+            entity.Property(value => value.ExpiresAt).HasColumnName("expires_at");
         });
     }
 }
