@@ -99,7 +99,7 @@ describe('RelationshipWorkspace', () => {
     expect(await screen.findByText('No messages yet. Start with a clear outcome for your professional.')).toBeVisible();
   });
 
-  it('shows exact terms and symmetric unselected contract decisions', async () => {
+  it('CCT-AE01-DARK-01 shows exact terms and symmetric unselected contract decisions', async () => {
     render(<RelationshipWorkspace relationship={relationship} timeline={timeline} views={views} evaluation={evaluation} contractJourney={contractJourney} />);
 
     expect(screen.getByText('exact-contract-hash')).toBeVisible();
@@ -114,7 +114,28 @@ describe('RelationshipWorkspace', () => {
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
     expect(screen.queryByText(/hurry|expires in|last chance/i)).not.toBeInTheDocument();
     fireEvent.click(within(decisions).getByRole('button', { name: 'Hire and accept exact contract' }));
-    expect(await within(decisions).findByRole('button', { name: 'Proceed to Razorpay' })).toBeVisible();
+    const proceed = await within(decisions).findByRole('button', { name: 'Proceed to Razorpay' });
+    expect(proceed).toBeVisible();
     expect(screen.getByText('Contract accepted and evidenced. Payment has not started.')).toBeVisible();
+    fireEvent.click(proceed);
+    expect(await screen.findByText(/Payment remains unconfirmed until hosted checkout capture/)).toBeVisible();
+    fireEvent.click(within(decisions).getByRole('button', { name: 'Not now' }));
+    expect(screen.getByText('Not now selected. No contract or payment state changed.')).toBeVisible();
+    fireEvent.click(within(decisions).getByRole('button', { name: 'Cancel' }));
+    expect(screen.getByText('Cancelled. No contract or payment state changed.')).toBeVisible();
+  });
+
+  it('keeps failed payment explicitly unresolved', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: false,
+      json: async () => ({ title: 'Payment owner is unavailable.' }),
+    } as Response);
+    render(<RelationshipWorkspace relationship={relationship} timeline={timeline} views={views} evaluation={evaluation} contractJourney={{ ...contractJourney, acceptanceState: 'ACCEPTED' }} />);
+    const contractSection = screen.getByRole('heading', { name: 'Employment contract' }).closest('section')!;
+
+    fireEvent.click(screen.getByRole('button', { name: 'Proceed to Razorpay' }));
+
+    expect(await within(contractSection).findByText('Payment owner is unavailable.')).toBeVisible();
+    expect(screen.queryByText(/payment succeeded/i)).not.toBeInTheDocument();
   });
 });

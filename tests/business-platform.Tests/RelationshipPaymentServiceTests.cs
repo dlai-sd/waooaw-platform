@@ -10,6 +10,7 @@ namespace Waooaw.BusinessPlatform.Tests;
 
 public sealed class RelationshipPaymentServiceTests
 {
+    // CCT-AE01-PAY-ORDER
     [Fact]
     public async Task AcceptedContractAndExplicitProceedCreateContractLinkedHostedOrder()
     {

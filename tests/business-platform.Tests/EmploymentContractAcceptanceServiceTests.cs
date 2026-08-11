@@ -14,6 +14,7 @@ namespace Waooaw.BusinessPlatform.Tests;
 
 public sealed class EmploymentContractAcceptanceServiceTests
 {
+    // CCT-AE01-CONTRACT-01, CCT-AE01-SCOPE-01
     [Fact]
     public async Task ExactContractAndSeparateScopeConfirmationCommitEvidenceAndAcceptance()
     {

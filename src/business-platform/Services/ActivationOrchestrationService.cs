@@ -1,6 +1,7 @@
 // Implements: work-contracts/WC-059-goal005-ae01-contract-payment-activation.md §WC059-05
 // constitutional_basis: C-002, C-023, C-026, C-059, C-088
 
+using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Net.Http.Json;
 using System.Text;
@@ -52,7 +53,59 @@ public sealed class ActivationOrchestrationService(
     IRelationshipConstitutionalGateway constitutionalGateway,
     IActivationBillingGateway billingGateway)
 {
+    private static readonly ConcurrentDictionary<string, CanonicalTupleLock> CanonicalTupleLocks = new();
+
     public async Task<ActivationOutcome> ActivateAsync(
+        ActivationRequest request, CancellationToken cancellationToken)
+    {
+        var tupleKey = $"{request.TenantId:D}|{request.RelationshipId:D}|{request.AcceptedContractId:D}|{request.PaymentReference}";
+        var tupleLock = AcquireTupleLockReference(tupleKey);
+        await tupleLock.Gate.WaitAsync(cancellationToken);
+        try
+        {
+            return await ActivateCanonicalTupleAsync(request, cancellationToken);
+        }
+        finally
+        {
+            tupleLock.Gate.Release();
+            ReleaseTupleLockReference(tupleKey, tupleLock);
+        }
+    }
+
+    private static CanonicalTupleLock AcquireTupleLockReference(string tupleKey)
+    {
+        while (true)
+        {
+            var tupleLock = CanonicalTupleLocks.GetOrAdd(tupleKey, static _ => new());
+            lock (tupleLock)
+            {
+                if (CanonicalTupleLocks.TryGetValue(tupleKey, out var current)
+                    && ReferenceEquals(current, tupleLock))
+                {
+                    tupleLock.References++;
+                    return tupleLock;
+                }
+            }
+        }
+    }
+
+    private static void ReleaseTupleLockReference(string tupleKey, CanonicalTupleLock tupleLock)
+    {
+        lock (tupleLock)
+        {
+            tupleLock.References--;
+            if (tupleLock.References == 0)
+                CanonicalTupleLocks.TryRemove(new KeyValuePair<string, CanonicalTupleLock>(tupleKey, tupleLock));
+        }
+    }
+
+    private sealed class CanonicalTupleLock
+    {
+        public SemaphoreSlim Gate { get; } = new(1, 1);
+        public int References { get; set; }
+    }
+
+    private async Task<ActivationOutcome> ActivateCanonicalTupleAsync(
         ActivationRequest request, CancellationToken cancellationToken)
     {
         var materialHash = HashMaterial(request);

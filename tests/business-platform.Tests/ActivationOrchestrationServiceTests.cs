@@ -22,6 +22,7 @@ public sealed class ActivationOrchestrationServiceTests
             ActivationWorkflow.WorkflowIdFor(context.Request with { PaymentEvidenceId = Guid.NewGuid() }));
     }
 
+    // CCT-AE01-ACT-01
     [Fact]
     public async Task ValidCanonicalTupleActivatesBillingThenRelationshipExactlyOnce()
     {
@@ -47,6 +48,28 @@ public sealed class ActivationOrchestrationServiceTests
             value.ToState == EmploymentRelationshipState.Active).ToListAsync());
     }
 
+    // CCT-AE01-ACT-01
+    [Fact]
+    public async Task ConcurrentCanonicalTupleActivatesBillingAndRelationshipExactlyOnce()
+    {
+        var context = await CreateContextAsync();
+        context.Billing.HoldCalls = true;
+
+        var firstCall = context.Service.ActivateAsync(context.Request, CancellationToken.None);
+        await context.Billing.FirstCallEntered;
+        var secondCall = context.Service.ActivateAsync(context.Request, CancellationToken.None);
+        context.Billing.ReleaseCalls();
+        var outcomes = await Task.WhenAll(firstCall, secondCall);
+
+        Assert.Equal(outcomes[0], outcomes[1]);
+        Assert.Equal(1, context.Billing.CallCount);
+        await using var db = context.Factory.CreateDbContext();
+        Assert.Single(await db.ActivationIntents.ToListAsync());
+        Assert.Single(await db.RelationshipStateHistory.Where(value =>
+            value.ToState == EmploymentRelationshipState.Active).ToListAsync());
+    }
+
+    // CCT-AE01-ACT-CONFLICT
     [Fact]
     public async Task DivergentMaterialForCanonicalTupleRecordsConflictWithoutOwnerCall()
     {
@@ -61,6 +84,7 @@ public sealed class ActivationOrchestrationServiceTests
         Assert.Equal("SUCCEEDED", (await db.ActivationIntents.SingleAsync()).Status);
     }
 
+    // CCT-AE01-ACT-FAIL
     [Fact]
     public async Task BillingUncertaintyLeavesSameIntentRetryableAndRelationshipPreActive()
     {
@@ -157,21 +181,29 @@ public sealed class ActivationOrchestrationServiceTests
 
     private sealed class RecordingActivationBillingGateway : IActivationBillingGateway
     {
+        private readonly TaskCompletionSource _firstCallEntered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly TaskCompletionSource _releaseCalls = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public int CallCount { get; private set; }
         public bool FailNext { get; set; }
+        public bool HoldCalls { get; set; }
         public Guid LastCorrelationId { get; private set; }
+        public Task FirstCallEntered => _firstCallEntered.Task;
 
-        public Task<ActivationBillingOutcome> ActivatePaidSubscriptionAsync(
+        public void ReleaseCalls() => _releaseCalls.TrySetResult();
+
+        public async Task<ActivationBillingOutcome> ActivatePaidSubscriptionAsync(
             ActivationBillingRequest request, CancellationToken cancellationToken)
         {
             CallCount++;
             LastCorrelationId = request.CorrelationId;
+            _firstCallEntered.TrySetResult();
+            if (HoldCalls) await _releaseCalls.Task.WaitAsync(cancellationToken);
             if (FailNext)
             {
                 FailNext = false;
                 throw new ActivationOwnerUnavailableException("WBE unresolved.");
             }
-            return Task.FromResult(new ActivationBillingOutcome(Guid.NewGuid(), "ACTIVE"));
+            return new ActivationBillingOutcome(Guid.NewGuid(), "ACTIVE");
         }
     }
 
