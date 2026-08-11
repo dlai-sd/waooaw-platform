@@ -15,7 +15,7 @@
 | Amendment 5 structural validation | DONE — diff integrity, unique amendment marker, record references, six explicit policy IDs, and G-F4-10/G-F4-12/G-F4-13 coverage pass |
 | Fresh INST-002 CA Readiness Review | DONE — R-068 / `CR-GOAL-005-INST-002-09` APPROVED WITH CONDITIONS; R2-03 condition 1 satisfied; CA-F4-A5-01 through CA-F4-A5-06 bind all later routing |
 | Registrant acknowledgement of GEP-GOAL-005-INST-013-06 | PENDING — exact acknowledgement in Amendment 5 required before any GOA |
-| Mandatory current-session implementation authorization | PENDING — must be explicit before any canonical OpenAPI, generated client, source, test, migration, build, or infrastructure implementation artifact |
+| Mandatory current-session implementation authorization | DONE — FA-036 records INST-013's exact gate question and Founder response `yes please`; applies only to dependency-ordered WC-034 F4 implementation after all separate Amendment 5 routing prerequisites |
 | Amendment 5 execution and independent review | PENDING — direct contributing Offices, dependency-ordered milestones, Docker/CCT evidence, checkpoint commits, and completed unmerged PR required |
 | PR #255 post-merge reconciliation verified | DONE — merged to `main` as `e2be32e`; WC-034 F3 sprint state is DONE |
 | INST-013 occupancy and F4 authorization boundary | DONE — Epoch 1; G5 CLEAR; architecture/dependency closure only; current GOA excludes F4-F8, implementation, provider activation, and deployment |
