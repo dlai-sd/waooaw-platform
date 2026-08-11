@@ -8,8 +8,8 @@
 
 | Measure | Current evidence |
 |---|---|
-| Institutional inventory | 72 normalized CCTs declared in the current knowledge/status record |
-| Central catalogue | 72 unique parent `CCT-*` identifiers enumerated in this document as of 2026-08-08 |
+| Institutional inventory | 82 normalized CCTs declared in the current knowledge/status record |
+| Central catalogue | 82 unique parent `CCT-*` identifiers enumerated in this document as of 2026-08-11 |
 | Executable evidence | Distributed across service, platform, pipeline, and constitutional test suites; results are recorded per completed Work Contract |
 | Unified result | No evidence of a single 72/72 execution exists; do not interpret the institutional count as a passing-suite count |
 
@@ -74,6 +74,7 @@ Every CCT is a self-contained test that:
 | `CE-AVAIL` | CE Fail-Safe Halt on Unavailability | C-079 — RATIFIED 2026-07-23 |
 | `TR` | Implementation Traceability (Spec-Code Integrity) | C-059, GENESIS Engineering Quality Mandate |
 | `SEC` | AI Security (Prompt Injection, SSRF, Cross-Tenant LLM) | C-062, GENESIS AI Security Mandate |
+| `AE01` | Informed professional evaluation journey | GOAL-005 D-06, WC-058 |
 
 ---
 
@@ -1326,6 +1327,25 @@ These parent CCTs were implemented after the preceding detailed catalogue sectio
 | `CCT-WEBHOOK-01` | Payment webhooks are authenticated and idempotent | `tests/billing-engine/test_payment.py` |
 | `CCT-PREPAID-01` | Empty or halted billing state blocks paid execution | `tests/billing-engine/test_ccts.py` |
 | `CCT-SELFAUDIT-01` | Reconciliation discrepancies halt billing and raise evidence | `tests/billing-engine/test_ccts.py`; `tests/billing-engine/test_reconciliation_router.py` |
+
+### AE-01 Informed Evaluation Journey — WC-058
+
+The synthetic WhatsApp-first scenario is stored at `simulation/fixtures/wc058-whatsapp-first-dma.json`.
+All executable assertions live in `tests/constitutional/test_wc058_ae01_journey.py`; grouped test
+functions may prove more than one parent identifier without increasing the institutional count.
+
+| CCT | Constitutional purpose |
+|---|---|
+| `CCT-AE01-DISC-01` | Outcome discovery explains lawful professional fit without preferred-customer exclusion |
+| `CCT-AE01-DISCLOSE-01` | Rights, limits, authority, trial/live boundaries, evidence, Stop, and price precede trial |
+| `CCT-AE01-INTERVIEW-01` | Interview output preserves source and uncertainty distinctions and cannot fabricate evidence |
+| `CCT-AE01-CONTEXT-01` | Context progresses one question per cycle, survives restart, and preserves correction history |
+| `CCT-AE01-TRIAL-14D` | Trial entitlement and plan span exactly 14 calendar days regardless of activity count |
+| `CCT-AE01-TRIAL-ZERO` | All 19 DMA skill outcomes use zero paid capability and cause zero external mutation |
+| `CCT-AE01-CONFIG-01` | Goals, measures, skills, budget, cadence, Decision Space, and stop conditions remain independently decidable |
+| `CCT-AE01-TRIAL-ORDER` | Expiry and prohibited transition/action attempts fail closed while approved artifacts survive |
+| `CCT-AE01-ADAPTER-01` | DMA and unrelated three-skill fixtures use the same domain-neutral runtime contract |
+| `CCT-AE01-INJECTION-01` | Prompt injection and forged policy/evidence instructions never reach the professional adapter |
 
 ---
 

@@ -1,6 +1,6 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-08-11 (WC058-07 Professional Evaluation Adapter complete)
+**Last Updated:** 2026-08-11 (WC058-08 executable S01-S06 simulation and CCTs complete)
 
 ---
 
@@ -15,7 +15,7 @@
 | ACK-GOAL-005-INST-001-07 | DONE — exact Amendment 7 acknowledgement recorded at 2026-08-11T06:54:41Z |
 | GOA-GOAL-005-INST-010-04 | ISSUED — INST-013 issued WC-058-only authority at 2026-08-11T06:54:42Z |
 | ACC-GOAL-005-INST-010-04 | ACCEPTED — INST-010 accepted at 2026-08-11T06:54:43Z; temporal order valid |
-| WC-058 implementation | IN PROGRESS — WC058-01 through WC058-07 DONE; WC058-08 remains authorized and pending |
+| WC-058 implementation | IMPLEMENTATION COMPLETE — WC058-01 through WC058-08 DONE; Contribution/Learning Records and independent INST-011/INST-003 reviews remain required before the final unmerged PR boundary |
 | WC058-01 professional discovery and disclosure | DONE — BP OpenAPI 1.4.0, generic manifest-driven catalog, 19-skill DMA projection, privacy-safe controller, and four focused tests; isolated .NET build and VSTest PASS |
 | WC058-02 evaluation workflow and typed answers | DONE — generic PR state machine, validated answer envelope, injected injection/PII gates, limitation fallback, evidence references, payload-reference separation, and Skill Runtime routing; 21 focused/neighbor tests PASS, 92% changed-module coverage, Ruff PASS |
 | WC058-03 progressive context and configuration | DONE — executable Migration 20 (`20b` preserves the occupied init sequence), five tenant-RLS tables, append-only confirmation/snapshot triggers, erasable payload values with retained hashes, goals/measures, skill decisions, immutable Decision Space versions, two-month cadence, and one-question progression; PostgreSQL first/reapply/catalog checks PASS, focused/neighbor tests 11/11 PASS, new service/entities 97–100% line coverage |
@@ -23,10 +23,11 @@
 | WC058-05 fail-closed trial expiry | DONE — customer-bound WBE status reconciliation, explicit `EXPIRED`/`BILLING_CONVERTED`/`UNRESOLVED` workflow outcomes, exactly one pre-expiry reminder, authenticated WBE expiry command distinct from conversion, conversion-race preservation, and PR denial of new work after expiry without deleting approved artifacts; BP 13/13 PASS, WBE 30/30 PASS, PR 14/14 PASS, Ruff and diagnostics PASS |
 | WC058-06 web and WhatsApp S01-S06 presentation | DONE — public outcome discovery and informed comparison, authenticated relationship evaluation projection with progressive context, visible 14-day plan, quota-safe trial status, demonstrations, and item-level configuration; ADR-023 raw-body HMAC, E.164 validation, five-minute replay window, 24-hour deduplication, phone-HMAC identity, first-inbound opt-in with fail-closed CE evidence, internal 30-minute HS256 JWT, and Tier 2/3 step-up; BP focused 20/20 PASS, full BP suite exit 0, web focused 4/4 PASS, Next.js production build PASS, OpenAPI and Compose parse PASS, PostgreSQL first/reapply/retention checks PASS, and shared production code has zero DMA branches |
 | WC058-07 Professional Evaluation Adapter | DONE — shared domain-neutral adapter protocol now covers suitability, typed interview answers, exact 14-day planning, trial demonstration, and configuration proposal; DMA-owned recipes exactly match the 19-skill catalog and produce 17 simulated artifacts plus two context-gated reason/activation-condition outcomes using only local, deterministic, public/free, approved, synthetic, pre-generated, or customer-approved capability classes; paid, mutating, unknown, undeclared, or malformed results fail closed; a three-skill non-DMA fixture passes the same service with zero DMA literals in shared production code; focused 29/29 PASS at 93.92% coverage, Ruff and diagnostics PASS, and dependency-complete PR regression surface 147/147 PASS. Full PR collection remains independently blocked for two mTLS/private-server files because the existing test image lacks `uvicorn`. |
+| WC058-08 executable simulation and CCTs | DONE — synthetic WhatsApp-first fixture traverses S01-S06 in normative order; ten catalogued `CCT-AE01-*` parents prove disclosure-before-trial, progressive one-question context with restart/correction history, exact 14-day planning, all 19 skill outcomes, zero paid/mutating capabilities, independent configuration items, prohibited action denial, expiry preservation, generic adapter conformance, and injection denial. Focused CCT 7/7 PASS; cross-stack PR/CCT 50/50, AIR 24/24, WBE 30/30, BP 15/15, web 4/4, and Next.js production build PASS; Ruff, JSON parse, diagnostics, and diff checks PASS. No provider, credential, campaign, payment, activation, deployment, or customer-proof operation occurred. |
 
 ### Authorization Boundary And Next Action
 
-FA-038, R-077, ACK-07, GOA-04, and ACC-04 complete the WC-058 implementation entry sequence. WC058-01 through WC058-07 are complete; INST-010 proceeds to WC058-08 and may implement the remaining WC058-08 scope and publish the required evidence. Provider activation, WC-059/WC-060, deployment, merge, self-review, architecture reinterpretation, and production/customer proof remain unauthorized.
+FA-038, R-077, ACK-07, GOA-04, and ACC-04 complete the WC-058 implementation entry sequence. WC058-01 through WC058-08 are complete. INST-010 must now publish the required Contribution and Learning Records, then route independent INST-011 Product Owner and INST-003 Business Architect reviews. Provider activation, WC-059/WC-060, deployment, merge, self-review, architecture reinterpretation, and production/customer proof remain unauthorized.
 
 ---
 
