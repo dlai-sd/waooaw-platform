@@ -54,3 +54,32 @@ class PaymentCapturedEvent:
     customer_id: UUID
     agent_type: str
     bundle_tier: str
+    relationship_id: UUID | None = None
+    accepted_contract_id: UUID | None = None
+    contract_acceptance_id: UUID | None = None
+    payment_consent_evidence_id: UUID | None = None
+    payment_evidence_id: UUID | None = None
+
+
+@dataclass(frozen=True)
+class PaymentCaptureResult:
+    payment_reference: str
+    payment_evidence_id: UUID
+    status: str
+
+
+@dataclass(frozen=True)
+class PaidActivationRequest:
+    relationship_id: UUID
+    activation_intent_id: UUID
+    accepted_contract_id: UUID
+    contract_acceptance_id: UUID
+    payment_reference: str
+    payment_evidence_id: UUID
+    correlation_id: UUID
+
+
+@dataclass(frozen=True)
+class PaidActivationResult:
+    subscription_id: UUID
+    status: str = "ACTIVE"

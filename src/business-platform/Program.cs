@@ -153,7 +153,7 @@ builder.Services.AddScoped<EmploymentContractService>();
 builder.Services.AddScoped<EmploymentContractAcceptanceService>();
 builder.Services.AddScoped<IRelationshipPaymentGateway, HttpRelationshipPaymentGateway>();
 builder.Services.AddScoped<RelationshipPaymentService>();
-builder.Services.AddScoped<IActivationBillingGateway, UnconfiguredActivationBillingGateway>();
+builder.Services.AddScoped<IActivationBillingGateway, HttpActivationBillingGateway>();
 builder.Services.AddScoped<ActivationOrchestrationService>();
 builder.Services.AddScoped<RelationshipTrialService>();
 builder.Services.Configure<WhatsAppJourneyOptions>(builder.Configuration.GetSection("WhatsApp"));

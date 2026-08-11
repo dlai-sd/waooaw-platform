@@ -2,8 +2,10 @@
 // constitutional_basis: C-002, C-023, C-026, C-059, C-088
 
 using System.Security.Cryptography;
+using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 using Waooaw.BusinessPlatform.Infrastructure;
 
@@ -279,10 +281,33 @@ public sealed class ActivationOrchestrationService(
         intent.Status);
 }
 
-public sealed class UnconfiguredActivationBillingGateway : IActivationBillingGateway
+public sealed class HttpActivationBillingGateway(IHttpClientFactory httpClientFactory) : IActivationBillingGateway
 {
-    public Task<ActivationBillingOutcome> ActivatePaidSubscriptionAsync(
-        ActivationBillingRequest request, CancellationToken cancellationToken) =>
-        throw new ActivationOwnerUnavailableException(
-            "WBE verified-payment activation handoff is unavailable until WC059-06 ordering is installed.");
+    public async Task<ActivationBillingOutcome> ActivatePaidSubscriptionAsync(
+        ActivationBillingRequest request, CancellationToken cancellationToken)
+    {
+        using var response = await httpClientFactory.CreateClient("WBE").PostAsJsonAsync(
+            "/payments/paid-activation",
+            new WbePaidActivationRequest(
+                request.RelationshipId, request.ActivationIntentId, request.AcceptedContractId,
+                request.ContractAcceptanceId, request.PaymentReference, request.PaymentEvidenceId,
+                request.CorrelationId), cancellationToken);
+        if (!response.IsSuccessStatusCode)
+            throw new ActivationOwnerUnavailableException($"WBE paid activation returned {(int)response.StatusCode}.");
+        var outcome = await response.Content.ReadFromJsonAsync<WbePaidActivationOutcome>(cancellationToken)
+            ?? throw new ActivationOwnerUnavailableException("WBE paid activation returned no outcome.");
+        return new ActivationBillingOutcome(outcome.SubscriptionId, outcome.Status);
+    }
+
+    private sealed record WbePaidActivationRequest(
+        [property: JsonPropertyName("relationship_id")] Guid RelationshipId,
+        [property: JsonPropertyName("activation_intent_id")] Guid ActivationIntentId,
+        [property: JsonPropertyName("accepted_contract_id")] Guid AcceptedContractId,
+        [property: JsonPropertyName("contract_acceptance_id")] Guid ContractAcceptanceId,
+        [property: JsonPropertyName("payment_reference")] string PaymentReference,
+        [property: JsonPropertyName("payment_evidence_id")] Guid PaymentEvidenceId,
+        [property: JsonPropertyName("correlation_id")] Guid CorrelationId);
+    private sealed record WbePaidActivationOutcome(
+        [property: JsonPropertyName("subscription_id")] Guid SubscriptionId,
+        [property: JsonPropertyName("status")] string Status);
 }

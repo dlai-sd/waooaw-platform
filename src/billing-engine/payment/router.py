@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 import logging
-from uuid import UUID
+from uuid import NAMESPACE_URL, UUID, uuid5
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field, model_validator
@@ -12,8 +12,9 @@ from pydantic import BaseModel, Field, model_validator
 import redis.asyncio as aioredis
 from database import get_session_factory
 from config import Settings
-from payment.models import OnboardingOrderRequest, PaymentCapturedEvent
+from payment.models import OnboardingOrderRequest, PaidActivationRequest, PaymentCapturedEvent
 from payment.onboarding import OnboardingService
+from payment.paid_activation import PaidActivationService
 from payment.razorpay_client import RazorpayClient
 from payment.webhook import WebhookHandler
 from wallet.service import WalletService
@@ -65,6 +66,16 @@ class PaymentCaptureBody(BaseModel):
     agent_type: str
     bundle_tier: str
     is_bypass: bool = False
+
+
+class PaidActivationBody(BaseModel):
+    relationship_id: UUID
+    activation_intent_id: UUID
+    accepted_contract_id: UUID
+    contract_acceptance_id: UUID
+    payment_reference: str
+    payment_evidence_id: UUID
+    correlation_id: UUID
 
 
 @router.post("/onboarding-order")
@@ -127,6 +138,11 @@ async def razorpay_webhook(request: Request) -> dict:
         customer_id=customer_id,
         agent_type=notes.get("agent_type", ""),
         bundle_tier=notes.get("bundle_tier", ""),
+        relationship_id=_optional_uuid(notes.get("relationship_id")),
+        accepted_contract_id=_optional_uuid(notes.get("contract_id")),
+        contract_acceptance_id=_optional_uuid(notes.get("contract_acceptance_id")),
+        payment_consent_evidence_id=_optional_uuid(notes.get("payment_consent_evidence_id")),
+        payment_evidence_id=uuid5(NAMESPACE_URL, f"waooaw:payment:{payment.get('id', '')}"),
     )
 
     session_factory = get_session_factory()
@@ -142,11 +158,33 @@ async def razorpay_webhook(request: Request) -> dict:
         )
         result = await handler.handle_payment_captured(event, is_bypass=False)
 
-    return {
-        "status": "activated",
-        "subscription_id": str(result.subscription_id),
-        "customer_id": str(result.customer_id),
-    }
+    if hasattr(result, "payment_evidence_id"):
+        return {
+            "status": result.status,
+            "payment_reference": result.payment_reference,
+            "payment_evidence_id": str(result.payment_evidence_id),
+        }
+    return {"status": "activated", "subscription_id": str(result.subscription_id), "customer_id": str(result.customer_id)}
+
+
+@router.post("/paid-activation")
+async def activate_paid_relationship(body: PaidActivationBody) -> dict:
+    session_factory = get_session_factory()
+    async with session_factory() as db:
+        redis_client = aioredis.from_url(_settings.REDIS_URL, decode_responses=True)
+        result = await PaidActivationService(db, WalletService(db=db, redis_client=redis_client)).activate(
+            PaidActivationRequest(**body.model_dump())
+        )
+    return {"subscription_id": str(result.subscription_id), "status": result.status}
+
+
+def _optional_uuid(value: object) -> UUID | None:
+    if value in (None, ""):
+        return None
+    try:
+        return UUID(str(value))
+    except (ValueError, TypeError, AttributeError):
+        raise HTTPException(status_code=400, detail={"code": "INVALID_CONTRACT_LINK"}) from None
 
 
 @router.post("/activate-bypass")
