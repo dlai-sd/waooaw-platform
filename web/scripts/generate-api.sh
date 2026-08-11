@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 set -eu
 
-# Implements: architecture/reference/components/conversation-core.md §3 Public Business Platform Contract
+# Implements: architecture/reference/components/conversation-core.md §3 and WC-034 F4 Public BP Contract
 # Constitutional basis: C-032 (Spec Is Truth), C-059 (Implementation Traceability)
 
 readonly GENERATOR_IMAGE="openapitools/openapi-generator-cli:v7.17.0"
@@ -24,6 +24,7 @@ docker compose --profile test run --rm --no-deps test-runner \
   --output "${SLICE_PATH#"$REPOSITORY_ROOT/"}" \
   --tag Identity \
   --tag Conversation \
+  --tag "Relationship Workspace" \
   --schema EmploymentRelationship \
   --schema RelationshipTimelineEntry
 
@@ -36,7 +37,7 @@ docker run --rm \
   --input-spec "$CONTAINER_SLICE_PATH" \
   --generator-name typescript-fetch \
   --output /local/web/lib/api/generated \
-  --global-property "apis=Identity:Conversation,models,supportingFiles=runtime.ts:models/index.ts:index.ts" \
+  --global-property "apis=Identity:Conversation:RelationshipWorkspace,models,supportingFiles=runtime.ts:models/index.ts:index.ts" \
   --additional-properties supportsES6=true,typescriptThreePlus=true,useSingleRequestParameter=true,hideGenerationTimestamp=true
 
 docker compose --profile test run --rm --no-deps test-runner \

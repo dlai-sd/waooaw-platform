@@ -2760,7 +2760,283 @@ components:
       enum: [APPROVAL_GATE, PRE_AUTHORIZED]
       description: How the professional executes work. APPROVAL_GATE requires per-action approval. PRE_AUTHORIZED is PAAS mode.
 
+    SkillApprovalMode:
+      type: string
+      enum: [CUSTOMER_APPROVAL, EXCEPTION_APPROVAL, SYNTHETIC_APPROVAL]
+
+    DigitalMarketingProfileStatus:
+      type: string
+      enum: [INCOMPLETE, MINIMUM_VIABLE, COMPLETE]
+
+    DigitalMarketingNeedState:
+      type: string
+      enum: [VISIBILITY, LEADS, CONVERSION, EFFICIENCY, COMPETITION, CONSISTENCY, TRUST, CLARITY]
+
+    DigitalMarketingNeedStatus:
+      type: string
+      enum: [ACTIVE, LATENT, NOT_APPLICABLE]
+
+    DigitalMarketingPhaseBundle:
+      type: string
+      enum: [CURTAIN_RAISER, GROWTH_ENGINE, MATURITY_PHASE]
+
     # ── Domain Objects ────────────────────────────────────────────────────
+
+    GstInvoiceSummary:
+      type: object
+      additionalProperties: false
+      required: [id, invoice_number, invoice_date, customer_name, taxable_amount_paise, total_amount_paise, billing_period_start, billing_period_end, bundle, is_consolidated_parent, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        employment_contract_id: { type: string, format: uuid }
+        invoice_number: { type: string, maxLength: 30 }
+        invoice_date: { type: string, format: date }
+        customer_name: { type: string, maxLength: 200 }
+        customer_gstin: { type: [string, "null"], maxLength: 15 }
+        taxable_amount_paise: { type: integer, format: int64, minimum: 0 }
+        cgst_amount_paise: { type: integer, format: int64, minimum: 0 }
+        sgst_amount_paise: { type: integer, format: int64, minimum: 0 }
+        igst_amount_paise: { type: integer, format: int64, minimum: 0 }
+        total_amount_paise: { type: integer, format: int64, minimum: 0 }
+        billing_period_start: { type: string, format: date }
+        billing_period_end: { type: string, format: date }
+        bundle: { $ref: "#/components/schemas/DigitalMarketingPhaseBundle" }
+        pdf_url: { type: [string, "null"], format: uri }
+        consolidation_group_id: { type: [string, "null"], format: uuid }
+        is_consolidated_parent: { type: boolean }
+        parent_invoice_id: { type: [string, "null"], format: uuid }
+        cancelled_at: { type: [string, "null"], format: date-time }
+        created_at: { type: string, format: date-time }
+
+    SubscriptionTier:
+      type: object
+      additionalProperties: false
+      required: [id, professional_type, tier_id, display_name, monthly_price_inr_paise, base_amount_paise, gst_amount_paise, gst_sac_code, is_active, sort_order]
+      properties:
+        id: { type: string, format: uuid }
+        professional_type: { type: string, maxLength: 100 }
+        tier_id: { type: string, maxLength: 50 }
+        display_name: { type: string, maxLength: 100 }
+        monthly_price_inr_paise: { type: integer, format: int64, minimum: 0 }
+        base_amount_paise: { type: integer, format: int64, minimum: 0 }
+        gst_amount_paise: { type: integer, format: int64, minimum: 0 }
+        gst_sac_code: { type: string, maxLength: 10 }
+        is_active: { type: boolean }
+        sort_order: { type: integer }
+
+    SkillRuntimeConfig:
+      type: object
+      additionalProperties: false
+      required: [id, employment_contract_id, skill_type, approval_mode, synthetic_confidence_threshold, synthetic_min_history, override_window_hours, goal_miss_escalation_months, mid_month_pace_threshold, delivery_channels, monthly_llm_budget, monthly_external_api_budget, stale_after_days, override_count_30d, synthetic_approval_count_30d, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        employment_contract_id: { type: string, format: uuid }
+        skill_type: { type: string, maxLength: 100 }
+        approval_mode: { $ref: "#/components/schemas/SkillApprovalMode" }
+        synthetic_confidence_threshold: { type: number, minimum: 0.5, maximum: 1 }
+        synthetic_min_history: { type: integer, minimum: 0 }
+        override_window_hours: { type: integer, minimum: 1 }
+        goal_miss_escalation_months: { type: integer, minimum: 1 }
+        mid_month_pace_threshold: { type: number, minimum: 0, maximum: 1 }
+        delivery_channels:
+          type: array
+          items: { type: string }
+        monthly_llm_budget: { type: integer, minimum: 0 }
+        monthly_external_api_budget: { type: integer, minimum: 0 }
+        mode_upgrade_authorization_event: { type: [string, "null"], format: uuid }
+        synthetic_model_last_calibrated: { type: [string, "null"], format: date-time }
+        stale_after_days: { type: integer, minimum: 1 }
+        override_count_30d: { type: integer, minimum: 0 }
+        synthetic_approval_count_30d: { type: integer, minimum: 0 }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    SkillRuntimeConfigUpdate:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        approval_mode: { $ref: "#/components/schemas/SkillApprovalMode" }
+        synthetic_confidence_threshold: { type: number, minimum: 0.5, maximum: 1 }
+        synthetic_min_history: { type: integer, minimum: 0 }
+        override_window_hours: { type: integer, minimum: 1 }
+        goal_miss_escalation_months: { type: integer, minimum: 1 }
+        mid_month_pace_threshold: { type: number, minimum: 0, maximum: 1 }
+        delivery_channels:
+          type: array
+          minItems: 1
+          items: { type: string }
+        monthly_llm_budget: { type: integer, minimum: 0 }
+        monthly_external_api_budget: { type: integer, minimum: 0 }
+        stale_after_days: { type: integer, minimum: 1 }
+
+    DigitalMarketingProfile:
+      type: object
+      additionalProperties: false
+      required: [id, organisation_id, profile_status, field_sources, last_exchange_index, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        organisation_id: { type: string, format: uuid }
+        owner_name: { type: [string, "null"], maxLength: 255 }
+        business_name: { type: [string, "null"], maxLength: 255 }
+        business_domain: { type: [string, "null"], maxLength: 100 }
+        locality: { type: [string, "null"], maxLength: 255 }
+        city: { type: [string, "null"], maxLength: 100 }
+        prospective_customers: { type: [string, "null"] }
+        aspiration: { type: [string, "null"] }
+        geo_scope_km: { type: [integer, "null"], minimum: 0 }
+        current_digital_channels:
+          type: array
+          items: { type: string }
+        monthly_enquiry_volume: { type: [integer, "null"], minimum: 0 }
+        monthly_enquiry_target: { type: [integer, "null"], minimum: 0 }
+        team_size: { type: [integer, "null"], minimum: 0 }
+        monthly_ad_spend_inr: { type: [integer, "null"], minimum: 0 }
+        primary_competitor: { type: [string, "null"], maxLength: 255 }
+        biggest_pain_point: { type: [string, "null"] }
+        profile_status: { $ref: "#/components/schemas/DigitalMarketingProfileStatus" }
+        customer_confirmed_at: { type: [string, "null"], format: date-time }
+        field_sources:
+          type: object
+          additionalProperties: { type: string, enum: [registration, conversation, inference, customer_correction] }
+        profiling_session_id: { type: [string, "null"], format: uuid }
+        last_exchange_index: { type: integer, minimum: 0 }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    DigitalMarketingProfileUpdate:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        owner_name: { type: [string, "null"], maxLength: 255 }
+        business_name: { type: [string, "null"], maxLength: 255 }
+        business_domain: { type: [string, "null"], maxLength: 100 }
+        locality: { type: [string, "null"], maxLength: 255 }
+        city: { type: [string, "null"], maxLength: 100 }
+        prospective_customers: { type: [string, "null"] }
+        aspiration: { type: [string, "null"] }
+        geo_scope_km: { type: [integer, "null"], minimum: 0 }
+        current_digital_channels:
+          type: array
+          items: { type: string }
+        monthly_enquiry_volume: { type: [integer, "null"], minimum: 0 }
+        monthly_enquiry_target: { type: [integer, "null"], minimum: 0 }
+        team_size: { type: [integer, "null"], minimum: 0 }
+        monthly_ad_spend_inr: { type: [integer, "null"], minimum: 0 }
+        primary_competitor: { type: [string, "null"], maxLength: 255 }
+        biggest_pain_point: { type: [string, "null"] }
+        profile_status: { $ref: "#/components/schemas/DigitalMarketingProfileStatus" }
+        customer_confirmed: { type: boolean, description: Records customer confirmation at the server receipt time. }
+        field_sources:
+          type: object
+          additionalProperties: { type: string, enum: [registration, conversation, inference, customer_correction] }
+
+    MaturityScore:
+      type: object
+      additionalProperties: false
+      required: [id, organisation_id, assessment_date, maturity_score, maturity_label, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        organisation_id: { type: string, format: uuid }
+        assessment_date: { type: string, format: date-time }
+        maturity_score: { type: integer, minimum: 1, maximum: 7 }
+        maturity_label: { type: string, enum: [NO_PRESENCE, MINIMAL_PRESENCE, OCCASIONAL, ACTIVE_INCONSISTENT, STRUCTURED, MANAGED, DIGITAL_FIRST] }
+        industry_benchmark_avg: { type: [number, "null"], minimum: 1, maximum: 7 }
+        industry_benchmark_p80: { type: [number, "null"], minimum: 1, maximum: 7 }
+        benchmark_domain: { type: [string, "null"], maxLength: 100 }
+        benchmark_city: { type: [string, "null"], maxLength: 100 }
+        benchmark_sample_size: { type: [integer, "null"], minimum: 0 }
+        axis_digital_footprint: { type: [integer, "null"], minimum: 1, maximum: 7 }
+        axis_social_presence: { type: [integer, "null"], minimum: 1, maximum: 7 }
+        axis_google_business: { type: [integer, "null"], minimum: 1, maximum: 7 }
+        axis_paid_advertising: { type: [integer, "null"], minimum: 1, maximum: 7 }
+        axis_content_quality: { type: [integer, "null"], minimum: 1, maximum: 7 }
+        axis_competitor_landscape: { type: [integer, "null"], minimum: 1, maximum: 7 }
+        axis_analytics: { type: [integer, "null"], minimum: 1, maximum: 7 }
+        report_pdf_url: { type: [string, "null"], format: uri }
+        report_delivered_at: { type: [string, "null"], format: date-time }
+        recommended_bundle:
+          anyOf:
+            - $ref: "#/components/schemas/DigitalMarketingPhaseBundle"
+            - type: "null"
+        cal_event_id: { type: [string, "null"], format: uuid }
+        created_at: { type: string, format: date-time }
+
+    NeedsHeatmapEntry:
+      type: object
+      additionalProperties: false
+      required: [id, maturity_score_id, need_state, status, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        maturity_score_id: { type: string, format: uuid }
+        need_state: { $ref: "#/components/schemas/DigitalMarketingNeedState" }
+        status: { $ref: "#/components/schemas/DigitalMarketingNeedStatus" }
+        evidence_summary: { type: [string, "null"] }
+        evidence_source_url: { type: [string, "null"], format: uri }
+        evidence_retrieved_at: { type: [string, "null"], format: date-time }
+        created_at: { type: string, format: date-time }
+
+    PhaseBundleSubscription:
+      type: object
+      additionalProperties: false
+      required: [id, employment_contract_id, bundle, activated_at, activated_by, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        employment_contract_id: { type: string, format: uuid }
+        bundle: { $ref: "#/components/schemas/DigitalMarketingPhaseBundle" }
+        activated_at: { type: string, format: date-time }
+        deactivated_at: { type: [string, "null"], format: date-time }
+        maturity_score_at_activation: { type: [integer, "null"], minimum: 1, maximum: 7 }
+        customer_authorization_event: { type: [string, "null"], format: uuid }
+        activated_by: { type: string, enum: [CUSTOMER, AGENT_RECOMMENDATION] }
+        created_at: { type: string, format: date-time }
+
+    SyntheticApprovalRecord:
+      type: object
+      additionalProperties: false
+      required: [employment_contract_id, skill_type, confidence_score, basis_approval_count, action_description, action_type, override_deadline]
+      properties:
+        id: { type: string, format: uuid, readOnly: true }
+        evidence_record_id: { type: string, format: uuid, readOnly: true }
+        employment_contract_id: { type: string, format: uuid }
+        skill_type: { type: string, maxLength: 100 }
+        confidence_score: { type: number, minimum: 0, maximum: 1 }
+        basis_approval_count: { type: integer, minimum: 0 }
+        basis_approval_ids:
+          type: array
+          items: { type: string, format: uuid }
+        action_description: { type: string, minLength: 1 }
+        action_type: { type: string, minLength: 1, maxLength: 100 }
+        override_deadline: { type: string, format: date-time }
+        customer_notified_at: { type: [string, "null"], format: date-time, readOnly: true }
+        overridden_at: { type: [string, "null"], format: date-time, readOnly: true }
+        override_reason: { type: [string, "null"], readOnly: true }
+        sealed_at: { type: [string, "null"], format: date-time, readOnly: true }
+        created_at: { type: string, format: date-time, readOnly: true }
+
+    CreateSubscriptionRequest:
+      type: object
+      additionalProperties: false
+      required: [contract_id, tier_id]
+      properties:
+        contract_id: { type: string, format: uuid }
+        tier_id: { type: string, minLength: 1, maxLength: 50 }
+        total_count:
+          type: [integer, "null"]
+          minimum: 1
+          description: Number of billing cycles; null creates an indefinite subscription.
+
+    SubscriptionCreated:
+      type: object
+      additionalProperties: false
+      required: [contract_id, tier_id, razorpay_subscription_id, payment_link, short_url]
+      properties:
+        contract_id: { type: string, format: uuid }
+        tier_id: { type: string, maxLength: 50 }
+        razorpay_subscription_id: { type: string }
+        payment_link: { type: string, format: uri }
+        short_url: { type: string, format: uri }
 
     StartIdentityRegistrationRequest:
       type: object
