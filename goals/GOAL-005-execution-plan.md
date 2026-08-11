@@ -1274,3 +1274,110 @@ R-065 / `CR-GOAL-005-INST-002-07` satisfies GEOM R2-03 condition 1, with CA-F4-A
 | `acceptance_timestamp` | 2026-08-10T16:20:03+00:00 |
 | Decision | ACCEPTED |
 | Contribution scope accepted | Fresh independent Constitutional and claim-traceability review of repaired ADR-046 plus attested Contribution and Learning Records only; no ADR editing, repair, acceptance, implementation, policy-default, provider-activation, or deployment authority |
+
+---
+
+## Amendment 5 — WC-034 F4 Policy Resolution And Implementation
+
+| Attestation field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GEP-GOAL-005-INST-013-06 |
+| `record_type` | Execution Plan |
+| `produced_at` | 2026-08-11 |
+| Status | PROPOSED — fresh CA Readiness Review, exact Registrant acknowledgement, current-session implementation authorization, valid GOAs, and later acceptances required |
+
+### Purpose And Current Gate State
+
+This prospective amendment adds the smallest dependency-ordered path from the accepted WC-034 F4 architecture to executable F4 evidence. Amendment 3 conditionally approved the integrated architecture and specified future G-F4-10 evidence. Amendment 4 accepted ADR-046 and closed EA-F4-01. The current remaining prerequisites are:
+
+1. `F4-POL-01` through `F4-POL-06` require accountable-owner recommendations and exact Registrant/Founder decisions; until decided, every affected command remains `BLOCKED` or `UNAVAILABLE` under the approved fail-closed behavior.
+2. Executable G-F4-10 requires canonical BP OpenAPI bytes, approved internal WBE and PR contracts, registered DMA adapter transport, deterministic generated-client evidence, strict TypeScript, forbidden-surface scans, fixtures, and acceptance traceability.
+3. G-F4-12 requires this amendment, fresh CA readiness, exact Registrant acknowledgement, the mandatory current-session implementation authorization, valid per-Institution GOAs, and acceptances later than issuance.
+4. G-F4-13 remains separately blocked. No deployment, provider activation, production operation, customer-proof claim, or F5-F8 work is authorized by this amendment.
+
+| Policy | Decision boundary | Recommendation owners before Founder decision |
+|---|---|---|
+| `F4-POL-01` | Material approval/rejection classes requiring typed acknowledgement | INST-011 product treatment; INST-003 consequence classes; INST-007 assurance floor; INST-005 BP feasibility |
+| `F4-POL-02` | Evidence-export self-service by sensitivity, recipient, use, redaction, and completeness | INST-011 customer route; INST-007 export/privacy floor; INST-005 BP Evidence Reader feasibility |
+| `F4-POL-03` | Allowance-threshold and budget-ceiling pause, degrade, continue, or paid-addition treatment | INST-003 business consequence; INST-011 product treatment; INST-005 WBE/BP feasibility |
+| `F4-POL-04` | Customer self-service authority changes and unrecoverable-work consequences | INST-003 authority consequence; INST-011 customer treatment; INST-007 assurance floor; INST-005 BP/CE feasibility |
+| `F4-POL-05` | Pause, resume, renewal, termination, billing/allowance, evidence retention, re-entry, and fresh-assurance treatment | INST-003 lifecycle consequence; INST-011 customer treatment; INST-005 BP/WBE/PR feasibility; INST-007 assurance floor |
+| `F4-POL-06` | Permissible customer action during stale, unknown, partial, unavailable, or unresolved owner state | INST-011 degraded-state treatment; INST-003 business consequence; INST-005 owner feasibility; INST-007 fail-closed floor |
+
+### Ordered Contributions And Implementation Slices
+
+| Order | Slice | Direct owner(s) | Dependency gate | Completion evidence |
+|---:|---|---|---|---|
+| 1 | Policy recommendation package for `F4-POL-01` through `F4-POL-06` | INST-011 Product Owner coordinates customer-language choices; INST-003 Business Architect validates outcome and consequence meaning; INST-005 Solution Architect incorporates BP/WBE owner feasibility; INST-007 Security Architect states assurance, export, degraded-state, and rights floors | Amendment 5 CA readiness, exact Registrant acknowledgement, valid GOAs and acceptances | One option matrix per policy with recommendation, alternatives, customer consequence, owner impact, security/constitutional floor, blocked default, reversibility, and exact Founder decision question; no policy is selected by a contributing Office |
+| 2 | Founder policy decisions and owner incorporation | INST-001 Registrant/Founder decides; INST-011 records product policy; INST-005 incorporates owner-contract consequences; INST-007 confirms no security floor is weakened | Order 1 Contribution and Learning Records published | Six prospective policy decision records or an explicit decision to defer a named policy fail-closed; updated owner specifications preserve distinct `BLOCKED`; fresh INST-002 constitutional policy review |
+| 3 | Canonical contracts and executable G-F4-10 | INST-005 owns BP public and private owner contracts; logical BP, WBE, PR, CE, and DMA owners attest their boundaries; INST-010 performs deterministic generation and executable compatibility checks only after contract publication | Order 2 complete for enabled command families; deferred policies remain structurally blocked; ADR-046 Accepted; no source implementation yet | Exact fourteen-operation BP OpenAPI inventory; approved WBE `BLOCKED` outcome; BP-only PR and registered DMA adapter contracts; parse/reference/operation-ID validation; two clean generation hashes; strict TypeScript pass; forbidden private-service, ledger, provider, tenant-authority, and ranking surfaces absent; fixture matrix for success, conflict, stale, unavailable, blocked, partial, unknown, CE-unavailable, and unsupported versions |
+| 4 | Workload identity and service-authentication foundation | INST-010 implementation; INST-007 security validation; fresh INST-004 architecture conformance review | Order 3 contract versions fixed; ADR-046 identity registry, audiences, route grants, and envelope schema published | ADR-046 Section 10 items 1-6 and 9-12: deterministic dev/CI PKI, exact URI SANs, mTLS-only listeners, signed delegated context, rotation/revocation/compromise behavior, privacy-safe OTel, CE-independent authentication, Emergency Stop independence, environment-parity matrix, and negative identity/audience/route/replay/isolation tests |
+| 5 | Owner projections and reconciliation | INST-010 implements WBE, PR, and DMA adapter private contracts; INST-005 validates owner-contract conformance; INST-003 validates business-state consequence preservation | Order 4 service identity available; Order 3 owner contracts approved | WBE commercial projection and commands preserve `BLOCKED`; PR execution projection/control remains private; DMA adapter remains domain-only; owner receipt, idempotency, unknown-outcome reconciliation, freshness, version, cross-relationship denial, and zero false-success tests pass |
+| 6 | BP Relationship Workspace aggregate and public facade | INST-010 implementation; INST-005 contract conformance; INST-007 security verification | Orders 3-5 complete for each enabled family | BP composes one relationship-bound projection without recomputing owner truth; exact authoritative attention order; fourteen public operations; typed commands; CE authorization and Evidence First where applicable; privacy-safe RFC 9457; partial/unknown reconciliation; no private browser route; affected policy-deferred commands remain `BLOCKED` |
+| 7 | Generated-client web workspace | INST-010 implementation; INST-011 product acceptance; INST-007 accessibility/privacy/security verification | Order 6 public contract and executable G-F4-10 pass | Generated client has no manual patch; Plan, Needs your attention, Work, Results, Usage & budget, and Rights & control preserve authoritative meaning; exact 360px and desktop behavior; keyboard, RTL, reduced motion, PWA privacy, no overflow, no browser ranking, relationship-switch isolation, and persistent independent Emergency Stop pass |
+| 8 | Integrated business-operation, migration, and constitutional evidence | INST-010 assembles executable evidence; fresh INST-004 performs integrated technical review; fresh INST-002 performs constitutional review | Orders 1-7 complete; all enabled policy decisions incorporated; all deferred policies remain fail-closed | ADR-046 Sections 10.1 and 10.2 matrices; all F4 acceptance IDs and CCT obligations below pass; affected code is at least 90% line coverage; Docker-only evidence; independent reviews approve; PR complete and unmerged |
+
+Orders are strict. An Order N+1 GOA may issue only after the required Order N Contribution and Learning Records are published. A slice may progress family-by-family only when every dependency for that family passes; a blocked or deferred family remains unavailable and cannot borrow evidence from another family.
+
+### Per-Institution Evidence Specifications
+
+| Institution | Required contribution | Participation Window | Independence constraint |
+|---|---|---|---|
+| INST-011 | Policy option/recommendation package; final product-policy incorporation; customer-language and release acceptance | 2 sessions per contribution | May recommend but may not make Founder decisions, choose architecture, author security floors, implement, or review its own evidence |
+| INST-003 | Business consequence, continuity, rights, and owner-to-customer outcome validation | 1 session per contribution | May not choose architecture, API shape, implementation, or approve its own contribution |
+| INST-005 | Canonical BP/WBE/PR/DMA contracts, owner compatibility, policy incorporation, and implementation conformance | 3 sessions for contracts; 1 session per conformance review | May not implement application source or independently approve contracts it authored |
+| INST-007 | Security-floor recommendations and ADR-046 implementation/security evidence validation | 2 sessions for recommendations; 1 session per validation | May not choose product/commercial policy, implement, or approve its own authored security contribution |
+| INST-010 | Contract generation, implementation slices, Docker evidence, coverage, and review package | 5 sessions after valid implementation acceptance | May not author policy, alter accepted architecture, self-review, self-merge, deploy, activate providers, or enter F5-F8 |
+| INST-004 | Fresh architecture conformance and final integrated technical review | 1 session per review | Review contexts may not author or repair the contribution under review |
+| INST-002 | Amendment readiness, policy constitutional review, and final constitutional review | 1 session per review | Each review context is fresh from the contribution reviewed and may not repair it or replace Registrant decisions |
+
+Every contributing Institution must publish a G-10-attested Contribution Record and Learning Record linked to its GOA and later Acceptance Record. Records must distinguish specification, fixture, integration, browser, deployment, and customer-proof provenance.
+
+### Mandatory CCT And Quality Obligations
+
+At minimum, the implementation evidence must pass:
+
+1. `UX-CONV-06`, `UX-CONV-07`, `UX-CONV-08`, `UX-SHELL-06`, `CCT-UX-BOUNDARY-01`, `CCT-UX-RIGHTS-01`, and `CCT-UX-EF-01` with the exact accepted F4 meanings.
+2. C-001 Human Override and Emergency Stop evidence proving F4 route, credential, WBE, adapter, CE-authentication, and reconciliation failures cannot delay or disable Stop.
+3. C-023 Evidence First evidence proving transport success, owner receipt, technical completion, or pending evidence never becomes governed success.
+4. C-026 tenant and Employment Relationship isolation across projections, cursors, commands, idempotency, exports, owner routes, adapter contributions, browser state, and support correlation.
+5. C-059 traceability from this amendment and policy records through contracts, source annotations, tests, acceptance IDs, and review evidence.
+6. C-063 minimisation and privacy scans for logs, metrics, traces, URLs, browser storage, generated clients, errors, exports, certificates, signatures, actor, tenant, relationship, owner, and provider data.
+7. C-065 author/reviewer separation and C-076 at least 90% affected-code line coverage.
+8. C-080 Docker-only Python and web validation; no host virtual environment or direct host Python test execution.
+9. ADR-046 Section 10 obligations in full, including negative identity, audience, route, operation, contract-major, replay, confused-deputy, credential lifecycle, CE-unavailability, shared-F3 compatibility, owner-to-customer outcome, migration, incident, support, and restoration evidence.
+
+### Acceptance Criteria And Gate Closure
+
+G-F4-10 closes only when the canonical contract and complete executable compatibility evidence in Order 3 pass without manual generated-client patches. G-F4-12 closes only when Orders 1-8 are complete, every enabled policy has a valid Founder decision and owner incorporation, deferred policy families remain demonstrably fail-closed, all mandatory CCT and quality obligations pass, and both independent final reviews approve.
+
+Implementation acceptance additionally requires zero BP recomputation of WBE truth, zero browser/private-service or ledger access, zero browser ranking or secondary sorting, zero DMA-specific field in the generic adapter, zero cross-relationship carry-over, zero fabricated success, distinct WBE `BLOCKED`, and unchanged F3 behavior unless separately migrated with the ADR-046 evidence package.
+
+G-F4-13 deployment remains blocked after implementation acceptance. Deployment requires a separate environment-specific release amendment naming rollout, rollback, credential custody, impact windows, customer/support treatment, independent confirmer, and post-deployment evidence.
+
+### Authorization Rules And Mandatory Stops
+
+1. This proposed amendment issues no GOA and authorizes no contribution by itself.
+2. No Amendment 5 GOA may issue until a fresh INST-002 CA Readiness Review is APPROVED or all stated conditions are satisfied and the Registrant records the exact acknowledgement below.
+3. Policy recommendation GOAs do not authorize policy selection. Only INST-001 may decide `F4-POL-01` through `F4-POL-06`.
+4. No implementation, canonical OpenAPI edit, generated production client, source, test, migration, build artifact, or infrastructure artifact may be created until the Founder gives the mandatory current-session implementation authorization in response to the exact implementation-gate question.
+5. A current-session implementation authorization does not resolve a policy, authorize deployment, activate a provider, approve a PR, or permit merge.
+6. INST-013 may issue GOAs, sequence work, verify records, and mechanically checkpoint; it may not contribute policy recommendations, contracts, architecture, security, implementation, tests, or independent review.
+7. Every GOA acceptance timestamp must be later than issuance. No Institution may self-review or merge its own contribution.
+
+### Required Registrant Acknowledgement
+
+Before any Amendment 5 GOA is issued, the Registrant must record:
+
+> "I acknowledge GEP-GOAL-005-INST-013-06 and authorize INST-013 to route WC-034 F4 policy recommendations, Founder decision incorporation, dependency-ordered implementation, and independent review exactly as specified. I understand that F4-POL-01 through F4-POL-06 remain my decisions, current-session implementation authorization remains separately mandatory, and this acknowledgement does not authorize deployment, provider activation, F5-F8, PR merge, or self-review."
+
+### Explicit Exclusions
+
+- no deployment, provider activation, production operation, or customer-proof claim;
+- no F5-F8 scope and no unrelated WC-034 component work;
+- no weakening or silent extension of ADR-046, ADR-007, ADR-014, Evidence First, Emergency Stop, owner truth, tenant/relationship isolation, or privacy boundaries;
+- no policy default inferred by Product, Business, Solution, Security, implementation, or review contexts;
+- no direct web access to PR, WBE, CE, adapters, providers, or ledgers;
+- no autonomous sprint runner, autonomous-pipeline mode, retrospective authorization, self-review, self-merge, or merge by any AI office.

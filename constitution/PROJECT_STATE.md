@@ -1,13 +1,22 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-08-10 (WC-034 F4 architecture and dependency closure complete; implementation remains unauthorized)
+**Last Updated:** 2026-08-11 (PR #257 reconciled; WC-034 F4 Amendment 5 proposed; policy and implementation authority pending)
 
 ---
 
-## IN-PROGRESS CHECKPOINT — GOAL-005 / WC-034 F4 ARCHITECTURE CLOSURE
+## IN-PROGRESS CHECKPOINT — GOAL-005 / WC-034 F4 IMPLEMENTATION AUTHORIZATION
 
 | Milestone | Status |
 |---|---|
+| PR #257 post-merge reconciliation | DONE — current branch fast-forwarded to merged `origin/main` commit `0c84857`; unrelated local `logs/blueprint_assurance_report.json` modification remains untouched |
+| INST-013 occupancy and Decision Space | DONE — READY for orchestration, sequencing, GOA routing after prerequisites, evidence monitoring, and mechanical checkpointing; no policy, architecture, security, implementation, independent-review, deployment, merge, or F5-F8 contribution authority |
+| Current F4 blocker snapshot | DONE — ADR-046 Accepted and EA-F4-01 closed; executable G-F4-10 open; `F4-POL-01` through `F4-POL-06` Founder-exclusive and fail-closed; G-F4-12 lacks current-session authorization/GOA/acceptance; G-F4-13 deployment separately blocked |
+| GEP-GOAL-005-INST-013-06 Amendment 5 | PROPOSED — orders policy recommendations and Founder decisions before canonical contracts, workload identity, owner projections, BP, web, integrated CCT evidence, and independent review; no GOA or implementation authority issued |
+| Amendment 5 structural validation | DONE — diff integrity, unique amendment marker, record references, six explicit policy IDs, and G-F4-10/G-F4-12/G-F4-13 coverage pass |
+| Fresh INST-002 CA Readiness Review | DONE — R-068 / `CR-GOAL-005-INST-002-09` APPROVED WITH CONDITIONS; R2-03 condition 1 satisfied; CA-F4-A5-01 through CA-F4-A5-06 bind all later routing |
+| Registrant acknowledgement of GEP-GOAL-005-INST-013-06 | PENDING — exact acknowledgement in Amendment 5 required before any GOA |
+| Mandatory current-session implementation authorization | PENDING — must be explicit before any canonical OpenAPI, generated client, source, test, migration, build, or infrastructure implementation artifact |
+| Amendment 5 execution and independent review | PENDING — direct contributing Offices, dependency-ordered milestones, Docker/CCT evidence, checkpoint commits, and completed unmerged PR required |
 | PR #255 post-merge reconciliation verified | DONE — merged to `main` as `e2be32e`; WC-034 F3 sprint state is DONE |
 | INST-013 occupancy and F4 authorization boundary | DONE — Epoch 1; G5 CLEAR; architecture/dependency closure only; current GOA excludes F4-F8, implementation, provider activation, and deployment |
 | F4 business semantics contribution | DONE — CR-GOAL-005-INST-003-03 defines customer outcomes, authoritative attention ordering, consequence classes, minimum release composition, and acceptance semantics without choosing architecture or interfaces |
