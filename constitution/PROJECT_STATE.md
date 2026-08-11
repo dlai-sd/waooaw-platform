@@ -1,6 +1,6 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-08-11 (WC058-04 cross-service trial integration complete)
+**Last Updated:** 2026-08-11 (WC058-05 fail-closed trial expiry complete)
 
 ---
 
@@ -15,15 +15,16 @@
 | ACK-GOAL-005-INST-001-07 | DONE — exact Amendment 7 acknowledgement recorded at 2026-08-11T06:54:41Z |
 | GOA-GOAL-005-INST-010-04 | ISSUED — INST-013 issued WC-058-only authority at 2026-08-11T06:54:42Z |
 | ACC-GOAL-005-INST-010-04 | ACCEPTED — INST-010 accepted at 2026-08-11T06:54:43Z; temporal order valid |
-| WC-058 implementation | IN PROGRESS — WC058-01 through WC058-04 DONE; WC058-05 through WC058-08 remain authorized and pending |
+| WC-058 implementation | IN PROGRESS — WC058-01 through WC058-05 DONE; WC058-06 through WC058-08 remain authorized and pending |
 | WC058-01 professional discovery and disclosure | DONE — BP OpenAPI 1.4.0, generic manifest-driven catalog, 19-skill DMA projection, privacy-safe controller, and four focused tests; isolated .NET build and VSTest PASS |
 | WC058-02 evaluation workflow and typed answers | DONE — generic PR state machine, validated answer envelope, injected injection/PII gates, limitation fallback, evidence references, payload-reference separation, and Skill Runtime routing; 21 focused/neighbor tests PASS, 92% changed-module coverage, Ruff PASS |
 | WC058-03 progressive context and configuration | DONE — executable Migration 20 (`20b` preserves the occupied init sequence), five tenant-RLS tables, append-only confirmation/snapshot triggers, erasable payload values with retained hashes, goals/measures, skill decisions, immutable Decision Space versions, two-month cadence, and one-question progression; PostgreSQL first/reapply/catalog checks PASS, focused/neighbor tests 11/11 PASS, new service/entities 97–100% line coverage |
 | WC058-04 durable trial integration | DONE — canonical BP relationship trial endpoint, durable tenant-RLS owner binding, WBE-authoritative exact 14-day window, signed BP-to-PR workflow start, AIR LOCAL-only routing, and generic Skill Runtime trial allowlist; BP focused tests 10/10 PASS, WBE 27/27 PASS, AIR/PR 42/42 PASS, Ruff PASS, OpenAPI parse PASS, PostgreSQL first/reapply/forced-RLS checks PASS |
+| WC058-05 fail-closed trial expiry | DONE — customer-bound WBE status reconciliation, explicit `EXPIRED`/`BILLING_CONVERTED`/`UNRESOLVED` workflow outcomes, exactly one pre-expiry reminder, authenticated WBE expiry command distinct from conversion, conversion-race preservation, and PR denial of new work after expiry without deleting approved artifacts; BP 13/13 PASS, WBE 30/30 PASS, PR 14/14 PASS, Ruff and diagnostics PASS |
 
 ### Authorization Boundary And Next Action
 
-FA-038, R-077, ACK-07, GOA-04, and ACC-04 complete the WC-058 implementation entry sequence. WC058-01 through WC058-04 are complete; INST-010 proceeds to WC058-05 and may implement the remaining WC058-05 through WC058-08 scope and publish the required evidence. Provider activation, WC-059/WC-060, deployment, merge, self-review, architecture reinterpretation, and production/customer proof remain unauthorized.
+FA-038, R-077, ACK-07, GOA-04, and ACC-04 complete the WC-058 implementation entry sequence. WC058-01 through WC058-05 are complete; INST-010 proceeds to WC058-06 and may implement the remaining WC058-06 through WC058-08 scope and publish the required evidence. Provider activation, WC-059/WC-060, deployment, merge, self-review, architecture reinterpretation, and production/customer proof remain unauthorized.
 
 ---
 

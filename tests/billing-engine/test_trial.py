@@ -309,6 +309,30 @@ async def test_check_expiry_idempotent_for_already_expired(trial_service):
 
 
 @pytest.mark.asyncio
+async def test_check_expiry_does_not_rewrite_converted_trial(
+    trial_service, session_factory
+):
+    cid = uuid.uuid4()
+    result = await trial_service.start_trial(cid, "DMA", phone_verified=True)
+    async with session_factory() as session:
+        await session.execute(
+            text("UPDATE trial_allocations SET status = 'CONVERTED' WHERE trial_id = :id")
+            .bindparams(id=str(result.trial_id))
+        )
+        await session.commit()
+
+    status = await trial_service.check_expiry(result.trial_id)
+
+    assert status == "CONVERTED"
+    async with session_factory() as session:
+        row = await session.execute(
+            text("SELECT status FROM trial_allocations WHERE trial_id = :id")
+            .bindparams(id=str(result.trial_id))
+        )
+        assert row.fetchone()[0] == "CONVERTED"
+
+
+@pytest.mark.asyncio
 async def test_check_expiry_not_found_raises_404(trial_service):
     """check_expiry() on unknown trial_id → 404."""
     from fastapi import HTTPException
@@ -450,6 +474,7 @@ def _make_mock_trial_service(start_result=None, status_result=None, convert_resu
         new_subscription_id=uuid.uuid4(),
         grandfather_applied=True,
     ))
+    svc.check_expiry = AsyncMock(return_value="EXPIRED")
     return svc
 
 
@@ -568,3 +593,37 @@ async def test_router_post_convert_without_ops_token_returns_403():
         _clear_overrides()
 
     assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_router_post_expire_with_ops_token_returns_expired():
+    trial_id = uuid.uuid4()
+    mock_svc = _make_mock_trial_service()
+    app.dependency_overrides[_get_trial_service] = lambda: mock_svc
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            resp = await c.post(
+                "/trial/expire",
+                json={"trial_id": str(trial_id)},
+                headers={"X-Ops-Token": "test-ops-token"},
+            )
+    finally:
+        _clear_overrides()
+
+    assert resp.status_code == 200
+    assert resp.json() == {"trial_id": str(trial_id), "status": "EXPIRED"}
+    mock_svc.check_expiry.assert_awaited_once_with(trial_id)
+
+
+@pytest.mark.asyncio
+async def test_router_post_expire_without_ops_token_returns_403():
+    mock_svc = _make_mock_trial_service()
+    app.dependency_overrides[_get_trial_service] = lambda: mock_svc
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            resp = await c.post("/trial/expire", json={"trial_id": str(uuid.uuid4())})
+    finally:
+        _clear_overrides()
+
+    assert resp.status_code == 403
+    mock_svc.check_expiry.assert_not_awaited()

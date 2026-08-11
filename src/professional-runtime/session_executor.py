@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timezone
 from typing import Any, Protocol
 
 from evaluation_workflow import EvaluationMessage, InterviewAnswerService, TypedAnswerEnvelope
@@ -36,6 +37,14 @@ class TrialCapabilityDeniedError(Exception):
         super().__init__(f"Tool '{tool_name}' is not available in zero-external-action trial mode")
 
 
+class TrialEntitlementUnavailableError(Exception):
+    """Raised when PR cannot prove that the trial remains entitled."""
+
+
+class TrialExpiredError(Exception):
+    """Raised when new trial work is attempted at or after owner-confirmed expiry."""
+
+
 class ToolDispatcher(Protocol):  # pragma: no cover
     """Minimal interface for the downstream dispatcher (CTG or stub)."""
     async def dispatch(
@@ -65,11 +74,13 @@ class SessionExecutor:
         dispatcher: ToolDispatcher | None = None,
         interview_service: InterviewAnswerService | None = None,
         trial_mode: bool = False,
+        trial_expires_at: datetime | None = None,
     ) -> None:
         self._ctx = session_ctx
         self._dispatcher = dispatcher
         self._interview_service = interview_service
         self._trial_mode = trial_mode
+        self._trial_expires_at = trial_expires_at
         # Temporal-persisted session state (WC041-04)
         self._locked_artifacts: dict[str, LockedArtifact] = {}
         self._crystallization_complete: dict[str, bool] = {}
@@ -113,7 +124,16 @@ class SessionExecutor:
             raise CrystallizerRequiredError(skill_id, tool_name)
 
     def _check_trial_capability(self, tool_name: str) -> None:
-        if self._trial_mode and tool_name not in self._ctx.trial_safe_tools:
+        if not self._trial_mode:
+            return
+        if self._trial_expires_at is None:
+            raise TrialEntitlementUnavailableError("Trial expiry is not owner-confirmed")
+        expires_at = self._trial_expires_at
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        if datetime.now(timezone.utc) >= expires_at:
+            raise TrialExpiredError("Trial has expired; new work is not permitted")
+        if tool_name not in self._ctx.trial_safe_tools:
             raise TrialCapabilityDeniedError(tool_name)
 
     # ── Main dispatch ───────────────────────────────────────────────────────

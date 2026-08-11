@@ -73,6 +73,15 @@ class TrialConvertResponse(BaseModel):
     grandfather_applied: bool
 
 
+class TrialExpireRequest(BaseModel):
+    trial_id: uuid.UUID
+
+
+class TrialExpireResponse(BaseModel):
+    trial_id: uuid.UUID
+    status: str
+
+
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
@@ -129,3 +138,12 @@ async def convert_trial(
         new_subscription_id=result.new_subscription_id,
         grandfather_applied=result.grandfather_applied,
     )
+
+
+@router.post("/expire", response_model=TrialExpireResponse, dependencies=[Depends(_require_ops_auth)])
+async def expire_trial(
+    body: TrialExpireRequest,
+    service: TrialService = Depends(_get_trial_service),
+) -> TrialExpireResponse:
+    status = await service.check_expiry(body.trial_id)
+    return TrialExpireResponse(trial_id=body.trial_id, status=status)

@@ -98,6 +98,8 @@ builder.Services.AddHttpClient("WBE", client =>
 {
     client.BaseAddress = new Uri(wbeBaseUrl);
     client.Timeout     = TimeSpan.FromSeconds(30);
+    var opsToken = builder.Configuration["BillingEngine:OpsAuthToken"];
+    if (!string.IsNullOrWhiteSpace(opsToken)) client.DefaultRequestHeaders.Add("X-Ops-Token", opsToken);
 });
 
 // ── Temporal worker — trial expiry saga (ADR-015, conditional on config) ─────

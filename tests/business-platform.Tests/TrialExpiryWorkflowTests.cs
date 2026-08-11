@@ -24,11 +24,12 @@ namespace Waooaw.BusinessPlatform.Tests;
 internal sealed class TrackingActivities
 {
     public List<(string CustomerId, string TrialId)> ReminderCalls { get; } = [];
-    public List<string>                              StatusChecks   { get; } = [];
-    public List<(string TrialId, string CustomerId)> LapsedCalls    { get; } = [];
+    public List<(string CustomerId, string TrialId)> StatusChecks   { get; } = [];
+    public List<(string TrialId, string CustomerId)> ExpiredCalls   { get; } = [];
 
     // Returned by CheckTrialStatusAsync to control the workflow lapse/convert path
     public string StatusToReturn { get; set; } = "ACTIVE";
+    public string ExpiryStatusToReturn { get; set; } = "EXPIRED";
 
     [Activity]
     public Task SendReminderAsync(string customerId, string trialId)
@@ -38,17 +39,17 @@ internal sealed class TrackingActivities
     }
 
     [Activity]
-    public Task<string> CheckTrialStatusAsync(string trialId)
+    public Task<string> CheckTrialStatusAsync(string customerId, string trialId)
     {
-        StatusChecks.Add(trialId);
+        StatusChecks.Add((customerId, trialId));
         return Task.FromResult(StatusToReturn);
     }
 
     [Activity]
-    public Task MarkLapsedAsync(string trialId, string customerId)
+    public Task<string> MarkExpiredAsync(string trialId, string customerId)
     {
-        LapsedCalls.Add((trialId, customerId));
-        return Task.CompletedTask;
+        ExpiredCalls.Add((trialId, customerId));
+        return Task.FromResult(ExpiryStatusToReturn);
     }
 }
 
@@ -70,7 +71,7 @@ public sealed class TrialExpiryWorkflowTests
 
     // ── Helper: run workflow with tracking activities ─────────────────────────
 
-    private static async Task<TrackingActivities> RunWorkflowAsync(
+    private static async Task<(TrackingActivities Activities, TrialExpiryOutcome Outcome)> RunWorkflowAsync(
         TrialExpiryInput input,
         TrackingActivities? activities = null)
     {
@@ -83,15 +84,16 @@ public sealed class TrialExpiryWorkflowTests
                 .AddWorkflow<TrialExpiryWorkflow>()
                 .AddAllActivities(activities));
 
+        var outcome = TrialExpiryOutcome.Unresolved;
         await worker.ExecuteAsync(async () =>
         {
             var handle = await env.Client.StartWorkflowAsync(
                 (TrialExpiryWorkflow wf) => wf.RunAsync(input),
                 WorkflowOpts);
-            await handle.GetResultAsync();
+            outcome = await handle.GetResultAsync();
         });
 
-        return activities;
+        return (activities, outcome);
     }
 
     // ── Test 1: 48h reminder fires before expiry ──────────────────────────────
@@ -103,7 +105,7 @@ public sealed class TrialExpiryWorkflowTests
         var customerId = Guid.NewGuid().ToString();
         var input      = MakeInput(trialId: trialId, customerId: customerId);
 
-        var activities = await RunWorkflowAsync(input);
+        var (activities, _) = await RunWorkflowAsync(input);
 
         activities.ReminderCalls.Should().ContainSingle(because: "48h reminder must fire once");
         activities.ReminderCalls[0].TrialId.Should().Be(trialId);
@@ -119,11 +121,12 @@ public sealed class TrialExpiryWorkflowTests
         var customerId = Guid.NewGuid().ToString();
         var acts = new TrackingActivities { StatusToReturn = "ACTIVE" };
 
-        await RunWorkflowAsync(MakeInput(trialId: trialId, customerId: customerId), acts);
+        var (_, outcome) = await RunWorkflowAsync(MakeInput(trialId: trialId, customerId: customerId), acts);
 
-        acts.LapsedCalls.Should().ContainSingle(because: "ACTIVE trial at expiry must be marked LAPSED");
-        acts.LapsedCalls[0].TrialId.Should().Be(trialId);
-        acts.LapsedCalls[0].CustomerId.Should().Be(customerId);
+        acts.ExpiredCalls.Should().ContainSingle(because: "ACTIVE trial at expiry must be marked EXPIRED");
+        acts.ExpiredCalls[0].TrialId.Should().Be(trialId);
+        acts.ExpiredCalls[0].CustomerId.Should().Be(customerId);
+        outcome.Should().Be(TrialExpiryOutcome.Expired);
     }
 
     // ── Test 3: Trial already converted → no LAPSED call ─────────────────────
@@ -133,9 +136,10 @@ public sealed class TrialExpiryWorkflowTests
     {
         var acts = new TrackingActivities { StatusToReturn = "CONVERTED" };
 
-        await RunWorkflowAsync(MakeInput(), acts);
+        var (_, outcome) = await RunWorkflowAsync(MakeInput(), acts);
 
-        acts.LapsedCalls.Should().BeEmpty(because: "CONVERTED trial must not be marked LAPSED");
+        acts.ExpiredCalls.Should().BeEmpty(because: "CONVERTED is WBE billing truth, not an expiry command");
+        outcome.Should().Be(TrialExpiryOutcome.BillingConverted);
     }
 
     // ── Test 4: Status check happens exactly once ─────────────────────────────
@@ -146,10 +150,11 @@ public sealed class TrialExpiryWorkflowTests
         var trialId = Guid.NewGuid().ToString();
         var acts    = new TrackingActivities { StatusToReturn = "ACTIVE" };
 
-        await RunWorkflowAsync(MakeInput(trialId: trialId), acts);
+        var customerId = Guid.NewGuid().ToString();
+        await RunWorkflowAsync(MakeInput(trialId: trialId, customerId: customerId), acts);
 
         acts.StatusChecks.Should().ContainSingle(because: "status must be checked once at expiry");
-        acts.StatusChecks[0].Should().Be(trialId);
+        acts.StatusChecks[0].Should().Be((customerId, trialId));
     }
 
     // ── Test 5: Already-expired input (expiresAt in the past) ────────────────
@@ -163,21 +168,37 @@ public sealed class TrialExpiryWorkflowTests
 
         await RunWorkflowAsync(input, acts);
 
-        acts.LapsedCalls.Should().ContainSingle(
-            because: "already-expired trial must immediately lapse");
+        acts.ExpiredCalls.Should().ContainSingle(
+            because: "already-expired input must immediately expire owner entitlement");
     }
 
     // ── Test 6: UNKNOWN status (WBE unreachable) → marks LAPSED ─────────────
 
     [Fact]
-    public async Task Workflow_StatusUnknown_MarksLapsed()
+    public async Task Workflow_StatusUnknown_RemainsUnresolved()
     {
         var acts = new TrackingActivities { StatusToReturn = "UNKNOWN" };
 
-        await RunWorkflowAsync(MakeInput(), acts);
+        var (_, outcome) = await RunWorkflowAsync(MakeInput(), acts);
 
-        acts.LapsedCalls.Should().ContainSingle(
-            because: "UNKNOWN status (WBE unavailable) must default to LAPSED for safety");
+        acts.ExpiredCalls.Should().BeEmpty(
+            because: "owner uncertainty must not be rewritten as a confirmed expiry");
+        outcome.Should().Be(TrialExpiryOutcome.Unresolved);
+    }
+
+    [Fact]
+    public async Task Workflow_ConversionRace_RemainsBillingOnly()
+    {
+        var acts = new TrackingActivities
+        {
+            StatusToReturn = "ACTIVE",
+            ExpiryStatusToReturn = "CONVERTED",
+        };
+
+        var (_, outcome) = await RunWorkflowAsync(MakeInput(), acts);
+
+        acts.ExpiredCalls.Should().ContainSingle();
+        outcome.Should().Be(TrialExpiryOutcome.BillingConverted);
     }
 }
 
@@ -215,7 +236,7 @@ public sealed class TrialExpiryActivitiesTests
             _ => throw new HttpRequestException("WBE down"));
         var acts   = MakeActivities(wbeStub);
 
-        var status = await acts.CheckTrialStatusAsync("trial-001");
+        var status = await acts.CheckTrialStatusAsync("cust-001", "trial-001");
 
         status.Should().Be("UNKNOWN");
     }
@@ -223,11 +244,11 @@ public sealed class TrialExpiryActivitiesTests
     [Fact]
     public async Task CheckStatus_WbeReturns200_ReturnsStatus()
     {
-        var body    = JsonSerializer.Serialize(new { status = "ACTIVE" });
+        var body    = JsonSerializer.Serialize(new { trial_id = "trial-001", status = "ACTIVE" });
         var wbeStub = new StubHttpMessageHandler(HttpStatusCode.OK, body);
         var acts    = MakeActivities(wbeStub);
 
-        var status = await acts.CheckTrialStatusAsync("trial-001");
+        var status = await acts.CheckTrialStatusAsync("cust-001", "trial-001");
 
         status.Should().Be("ACTIVE");
     }
@@ -238,7 +259,7 @@ public sealed class TrialExpiryActivitiesTests
         var wbeStub = new StubHttpMessageHandler(HttpStatusCode.ServiceUnavailable, "{}");
         var acts    = MakeActivities(wbeStub);
 
-        var status = await acts.CheckTrialStatusAsync("trial-001");
+        var status = await acts.CheckTrialStatusAsync("cust-001", "trial-001");
 
         status.Should().Be("UNKNOWN");
     }
@@ -253,7 +274,7 @@ public sealed class TrialExpiryActivitiesTests
         var acts = MakeActivities(wbeStub);
 
         await Assert.ThrowsAsync<HttpRequestException>(
-            () => acts.MarkLapsedAsync("trial-001", "cust-001"));
+            () => acts.MarkExpiredAsync("trial-001", "cust-001"));
     }
 
     [Fact]
@@ -265,12 +286,15 @@ public sealed class TrialExpiryActivitiesTests
             callCount++;
             return new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent("{}", Encoding.UTF8, "application/json"),
+                Content = new StringContent(
+                    JsonSerializer.Serialize(new { trial_id = "trial-001", status = "EXPIRED" }),
+                    Encoding.UTF8,
+                    "application/json"),
             };
         });
         var acts = MakeActivities(wbeStub);
 
-        await acts.MarkLapsedAsync("trial-001", "cust-001");
+        await acts.MarkExpiredAsync("trial-001", "cust-001");
 
         callCount.Should().BeGreaterOrEqualTo(1,
             because: "WBE /trial/convert and notification must be called");

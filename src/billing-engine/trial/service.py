@@ -165,7 +165,7 @@ class TrialService:
     # check_expiry  (called by WC-033 Temporal saga)
     # ------------------------------------------------------------------
 
-    async def check_expiry(self, trial_id: uuid.UUID) -> None:
+    async def check_expiry(self, trial_id: uuid.UUID) -> str:
         """Mark trial as EXPIRED and clear Redis customer_mode key."""
         async with self._session_factory() as session:
             result = await session.execute(
@@ -177,7 +177,7 @@ class TrialService:
             if row is None:
                 raise HTTPException(status_code=404, detail={"code": "TRIAL_NOT_FOUND"})
             if row[1] != "ACTIVE":
-                return  # already expired or converted — idempotent
+                return str(row[1])  # already expired or converted — idempotent
 
             await session.execute(
                 text(
@@ -193,6 +193,7 @@ class TrialService:
             logger.error("Failed to clear trial Redis key for trial_id=%s", trial_id, exc_info=True)
 
         logger.info("Trial expired: trial_id=%s customer_id=%s", trial_id, customer_id)
+        return "EXPIRED"
 
     # ------------------------------------------------------------------
     # convert_to_paid  (called by WC-033 Temporal saga on payment)
