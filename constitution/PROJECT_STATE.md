@@ -1,6 +1,6 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-08-11 (WC058-08 executable S01-S06 simulation and CCTs complete)
+**Last Updated:** 2026-08-11 (WC-058 implementation Contribution and Learning Records published)
 
 ---
 
@@ -15,7 +15,9 @@
 | ACK-GOAL-005-INST-001-07 | DONE — exact Amendment 7 acknowledgement recorded at 2026-08-11T06:54:41Z |
 | GOA-GOAL-005-INST-010-04 | ISSUED — INST-013 issued WC-058-only authority at 2026-08-11T06:54:42Z |
 | ACC-GOAL-005-INST-010-04 | ACCEPTED — INST-010 accepted at 2026-08-11T06:54:43Z; temporal order valid |
-| WC-058 implementation | IMPLEMENTATION COMPLETE — WC058-01 through WC058-08 DONE; Contribution/Learning Records and independent INST-011/INST-003 reviews remain required before the final unmerged PR boundary |
+| WC-058 implementation | IMPLEMENTATION AND CONTRIBUTION EVIDENCE COMPLETE — WC058-01 through WC058-08 DONE; independent INST-011/INST-003 reviews remain required before the final unmerged PR boundary |
+| WC-058 Contribution and Learning Records | DONE — `CR-GOAL-005-INST-010-05` and `LR-GOAL-005-INST-010-04` attest the eight-commit implementation lineage, validation evidence, provenance classes, residual limits, and unauthorized boundaries; record-ID uniqueness, commit resolution, task completeness, diagnostics, and diff hygiene PASS |
+| WC-058 independent INST-011/INST-003 review | PENDING — Product Owner must verify customer ordering/rights and honest suitability/trial/inactivity semantics; Business Architect must verify generic/domain separation, all-skill meaning, and zero-paid/no-external/no-false-conversion boundaries |
 | WC058-01 professional discovery and disclosure | DONE — BP OpenAPI 1.4.0, generic manifest-driven catalog, 19-skill DMA projection, privacy-safe controller, and four focused tests; isolated .NET build and VSTest PASS |
 | WC058-02 evaluation workflow and typed answers | DONE — generic PR state machine, validated answer envelope, injected injection/PII gates, limitation fallback, evidence references, payload-reference separation, and Skill Runtime routing; 21 focused/neighbor tests PASS, 92% changed-module coverage, Ruff PASS |
 | WC058-03 progressive context and configuration | DONE — executable Migration 20 (`20b` preserves the occupied init sequence), five tenant-RLS tables, append-only confirmation/snapshot triggers, erasable payload values with retained hashes, goals/measures, skill decisions, immutable Decision Space versions, two-month cadence, and one-question progression; PostgreSQL first/reapply/catalog checks PASS, focused/neighbor tests 11/11 PASS, new service/entities 97–100% line coverage |
@@ -27,7 +29,7 @@
 
 ### Authorization Boundary And Next Action
 
-FA-038, R-077, ACK-07, GOA-04, and ACC-04 complete the WC-058 implementation entry sequence. WC058-01 through WC058-08 are complete. INST-010 must now publish the required Contribution and Learning Records, then route independent INST-011 Product Owner and INST-003 Business Architect reviews. Provider activation, WC-059/WC-060, deployment, merge, self-review, architecture reinterpretation, and production/customer proof remain unauthorized.
+FA-038, R-077, ACK-07, GOA-04, and ACC-04 complete the WC-058 implementation entry sequence. WC058-01 through WC058-08 and the required INST-010 Contribution/Learning Records are complete. The contribution must now receive independent INST-011 Product Owner and INST-003 Business Architect reviews before the final unmerged PR boundary. Provider activation, WC-059/WC-060, deployment, merge, self-review, architecture reinterpretation, and production/customer proof remain unauthorized.
 
 ---
 
