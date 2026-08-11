@@ -188,11 +188,11 @@ jobs:
 
           if [ -z "$STATUS_ISSUE" ]; then
             # Create the status issue if it doesn't exist
-            STATUS_ISSUE=$(gh issue create --repo "$REPO" \
-              --title "📊 Platform Delivery Status — Live Matrix" \
-              --label "platform-status" \
-              --body "This issue is automatically updated by the PM Report workflow. See comments for the latest matrix." \
-              --json number --jq '.number')
+            STATUS_ISSUE=$(gh api --method POST "repos/$REPO/issues" \
+              -f title='📊 Platform Delivery Status — Live Matrix' \
+              -f body='This issue is automatically updated by the PM Report workflow. See comments for the latest matrix.' \
+              -f 'labels[]=platform-status' \
+              --jq '.number')
             echo "Created Platform Status issue #${STATUS_ISSUE}"
           fi
 
