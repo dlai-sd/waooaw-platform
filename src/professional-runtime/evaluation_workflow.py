@@ -2,10 +2,11 @@
 # constitutional_basis: C-023, C-059, C-062, C-063
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
-from typing import Protocol
+from typing import ClassVar, Protocol
 from urllib.parse import urlparse
 
 
@@ -66,12 +67,64 @@ class TypedAnswerEnvelope:
     segments: tuple[TypedAnswerSegment, ...]
 
 
+@dataclass(frozen=True)
+class TrialCapability:
+    capability_id: str
+    source_type: str
+    paid: bool = False
+    external_mutation: bool = False
+
+
+@dataclass(frozen=True)
+class TrialDemonstrationRequest:
+    skill_id: str
+    goal: str
+    context: Mapping[str, str]
+    capabilities: tuple[TrialCapability, ...]
+
+
+@dataclass(frozen=True)
+class TrialDemonstration:
+    skill_id: str
+    applicable: bool
+    artifact_type: str | None
+    artifact: Mapping[str, object] | None
+    capability_ids: tuple[str, ...]
+    external_actions: tuple[str, ...] = ()
+    reason: str | None = None
+    activation_condition: str | None = None
+
+
 class ProfessionalEvaluationAdapter(Protocol):
+    async def describe_suitability(
+        self,
+        outcome: str,
+        confirmed_context: Mapping[str, str],
+    ) -> Mapping[str, object]: ...
+
     async def answer_interview(
         self,
         question: str,
         evidence_context: tuple[str, ...],
     ) -> tuple[AdapterAnswerProposal, ...]: ...
+
+    async def demonstrate(
+        self,
+        request: TrialDemonstrationRequest,
+    ) -> TrialDemonstration: ...
+
+    async def plan_trial(
+        self,
+        days: int,
+        applicable_skills: tuple[str, ...],
+    ) -> tuple[Mapping[str, object], ...]: ...
+
+    async def propose_configuration(
+        self,
+        goals: tuple[str, ...],
+        measures: tuple[str, ...],
+        skills: tuple[str, ...],
+    ) -> Mapping[str, object]: ...
 
 
 class TextSafetyGate(Protocol):
@@ -193,6 +246,59 @@ class InterviewAnswerService:
             payload_reference,
             (TypedAnswerSegment(AnswerTag.LIMITATION, content),),
         )
+
+
+class TrialDemonstrationService:
+    _ALLOWED_SOURCE_TYPES: ClassVar[frozenset[str]] = frozenset({
+        "LOCAL_INFERENCE",
+        "DETERMINISTIC_TOOL",
+        "PUBLIC_FREE_SOURCE",
+        "APPROVED_TEMPLATE",
+        "SYNTHETIC_FIXTURE",
+        "PREGENERATED_ASSET",
+        "CUSTOMER_APPROVED_ASSET",
+    })
+
+    def __init__(self, adapter: ProfessionalEvaluationAdapter) -> None:
+        self._adapter = adapter
+
+    async def demonstrate(self, request: TrialDemonstrationRequest) -> TrialDemonstration:
+        if not request.skill_id.strip() or not request.goal.strip():
+            raise ValueError("Trial demonstration requires a skill and goal")
+        if not request.capabilities:
+            raise ValueError("Trial capabilities are required")
+        capability_index = {capability.capability_id: capability for capability in request.capabilities}
+        if len(capability_index) != len(request.capabilities):
+            raise ValueError("Trial capability identifiers must be unique")
+        if any(
+            capability.paid
+            or capability.external_mutation
+            or capability.source_type not in self._ALLOWED_SOURCE_TYPES
+            for capability in request.capabilities
+        ):
+            raise ValueError("Trial capabilities must be local, free, approved, or synthetic and non-mutating")
+
+        result = await self._adapter.demonstrate(request)
+        if result.skill_id != request.skill_id:
+            raise ValueError("Adapter returned a demonstration for a different skill")
+        if result.external_actions:
+            raise ValueError("Trial demonstrations cannot cause external actions")
+        if any(capability_id not in capability_index for capability_id in result.capability_ids):
+            raise ValueError("Adapter used an undeclared trial capability")
+        if result.applicable:
+            if not result.artifact_type or result.artifact is None or not result.capability_ids:
+                raise ValueError("Applicable skills require a simulated artifact and capability provenance")
+            if result.reason or result.activation_condition:
+                raise ValueError("Applicable skills cannot carry non-applicability fields")
+        elif (
+            result.artifact_type is not None
+            or result.artifact is not None
+            or result.capability_ids
+            or not result.reason
+            or not result.activation_condition
+        ):
+            raise ValueError("Non-applicable skills require reason and activation condition only")
+        return result
 
 
 def _is_public_uri(value: str | None) -> bool:
