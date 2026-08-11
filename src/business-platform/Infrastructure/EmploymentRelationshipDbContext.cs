@@ -206,6 +206,26 @@ public sealed class ContractAcceptance
     public DateTimeOffset AcceptedAt { get; init; } = DateTimeOffset.UtcNow;
 }
 
+public sealed class ActivationIntent
+{
+    public Guid ActivationIntentId { get; init; } = Guid.NewGuid();
+    public Guid TenantId { get; init; }
+    public Guid RelationshipId { get; init; }
+    public Guid AcceptedContractId { get; init; }
+    public Guid ContractAcceptanceId { get; init; }
+    public string PaymentReference { get; init; } = string.Empty;
+    public Guid CorrelationId { get; init; }
+    public string MaterialRequestHash { get; init; } = string.Empty;
+    public string? ConflictingRequestHash { get; set; }
+    public string Status { get; set; } = "PENDING";
+    public Guid? OutcomeSubscriptionId { get; set; }
+    public Guid? OutcomeEvidenceId { get; set; }
+    public string? OutcomeJson { get; set; }
+    public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset? CompletedAt { get; set; }
+}
+
 public sealed class RelationshipTrialBinding
 {
     public Guid BindingId { get; init; } = Guid.NewGuid();
@@ -259,6 +279,7 @@ public sealed class EmploymentRelationshipDbContext : DbContext
     public DbSet<DecisionSpaceSnapshot> DecisionSpaceSnapshots => Set<DecisionSpaceSnapshot>();
     public DbSet<EmploymentContractVersion> EmploymentContractVersions => Set<EmploymentContractVersion>();
     public DbSet<ContractAcceptance> ContractAcceptances => Set<ContractAcceptance>();
+    public DbSet<ActivationIntent> ActivationIntents => Set<ActivationIntent>();
     public DbSet<RelationshipTrialBinding> RelationshipTrialBindings => Set<RelationshipTrialBinding>();
     public DbSet<WhatsAppJourneyContact> WhatsAppJourneyContacts => Set<WhatsAppJourneyContact>();
     public DbSet<WhatsAppMessageReceipt> WhatsAppMessageReceipts => Set<WhatsAppMessageReceipt>();
@@ -548,6 +569,36 @@ public sealed class EmploymentRelationshipDbContext : DbContext
                     value.Version,
                     value.ContractHash,
                 });
+        });
+
+        modelBuilder.Entity<ActivationIntent>(entity =>
+        {
+            entity.ToTable("activation_intents", "business");
+            entity.HasKey(value => value.ActivationIntentId);
+            entity.HasIndex(value => new
+            {
+                value.TenantId,
+                value.RelationshipId,
+                value.AcceptedContractId,
+                value.PaymentReference,
+            }).IsUnique();
+            entity.HasIndex(value => new { value.TenantId, value.RelationshipId, value.CorrelationId }).IsUnique();
+            entity.Property(value => value.ActivationIntentId).HasColumnName("activation_intent_id");
+            entity.Property(value => value.TenantId).HasColumnName("tenant_id");
+            entity.Property(value => value.RelationshipId).HasColumnName("relationship_id");
+            entity.Property(value => value.AcceptedContractId).HasColumnName("accepted_contract_id");
+            entity.Property(value => value.ContractAcceptanceId).HasColumnName("contract_acceptance_id");
+            entity.Property(value => value.PaymentReference).HasColumnName("payment_reference").HasMaxLength(128);
+            entity.Property(value => value.CorrelationId).HasColumnName("correlation_id");
+            entity.Property(value => value.MaterialRequestHash).HasColumnName("material_request_hash").HasMaxLength(64).IsFixedLength();
+            entity.Property(value => value.ConflictingRequestHash).HasColumnName("conflicting_request_hash").HasMaxLength(64).IsFixedLength();
+            entity.Property(value => value.Status).HasColumnName("status").HasMaxLength(24);
+            entity.Property(value => value.OutcomeSubscriptionId).HasColumnName("outcome_subscription_id");
+            entity.Property(value => value.OutcomeEvidenceId).HasColumnName("outcome_evidence_id");
+            entity.Property(value => value.OutcomeJson).HasColumnName("outcome_json").HasColumnType("jsonb");
+            entity.Property(value => value.CreatedAt).HasColumnName("created_at");
+            entity.Property(value => value.UpdatedAt).HasColumnName("updated_at");
+            entity.Property(value => value.CompletedAt).HasColumnName("completed_at");
         });
 
         modelBuilder.Entity<RelationshipTrialBinding>(entity =>

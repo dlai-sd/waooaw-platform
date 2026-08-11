@@ -109,8 +109,11 @@ if (!string.IsNullOrWhiteSpace(temporalHost))
 {
     builder.Services.AddTemporalClient(opts => opts.TargetHost = temporalHost);
     builder.Services.AddSingleton<TrialExpiryActivities>();
+    builder.Services.AddScoped<ActivationActivities>();
     builder.Services.AddHostedTemporalWorker("bp-trial-worker")
         .AddWorkflow<TrialExpiryWorkflow>()
+        .AddWorkflow<ActivationWorkflow>()
+        .AddScopedActivities<ActivationActivities>()
         .AddSingletonActivities<TrialExpiryActivities>();
 }
 
@@ -150,6 +153,8 @@ builder.Services.AddScoped<EmploymentContractService>();
 builder.Services.AddScoped<EmploymentContractAcceptanceService>();
 builder.Services.AddScoped<IRelationshipPaymentGateway, HttpRelationshipPaymentGateway>();
 builder.Services.AddScoped<RelationshipPaymentService>();
+builder.Services.AddScoped<IActivationBillingGateway, UnconfiguredActivationBillingGateway>();
+builder.Services.AddScoped<ActivationOrchestrationService>();
 builder.Services.AddScoped<RelationshipTrialService>();
 builder.Services.Configure<WhatsAppJourneyOptions>(builder.Configuration.GetSection("WhatsApp"));
 builder.Services.AddScoped<IWhatsAppRegistrationEvidenceGateway, WhatsAppRegistrationEvidenceGateway>();

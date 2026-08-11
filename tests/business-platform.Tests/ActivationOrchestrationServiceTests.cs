@@ -1,0 +1,184 @@
+// Implements: work-contracts/WC-059-goal005-ae01-contract-payment-activation.md §WC059-05
+// constitutional_basis: C-002, C-023, C-026, C-059, C-088
+
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
+using Waooaw.BusinessPlatform.Infrastructure;
+using Waooaw.BusinessPlatform.Services;
+using Waooaw.BusinessPlatform.Workflows;
+using Xunit;
+
+namespace Waooaw.BusinessPlatform.Tests;
+
+public sealed class ActivationOrchestrationServiceTests
+{
+    [Fact]
+    public async Task CanonicalTupleHasStableTemporalWorkflowIdentity()
+    {
+        var context = await CreateContextAsync();
+
+        Assert.Equal(
+            ActivationWorkflow.WorkflowIdFor(context.Request),
+            ActivationWorkflow.WorkflowIdFor(context.Request with { PaymentEvidenceId = Guid.NewGuid() }));
+    }
+
+    [Fact]
+    public async Task ValidCanonicalTupleActivatesBillingThenRelationshipExactlyOnce()
+    {
+        var context = await CreateContextAsync();
+        var request = context.Request;
+
+        var first = await context.Service.ActivateAsync(request, CancellationToken.None);
+        var replay = await context.Service.ActivateAsync(request, CancellationToken.None);
+
+        Assert.Equal("SUCCEEDED", first.Status);
+        Assert.Equal(first.ActivationIntentId, replay.ActivationIntentId);
+        Assert.Equal(first.SubscriptionId, replay.SubscriptionId);
+        Assert.Equal(1, context.Billing.CallCount);
+        Assert.Equal(request.CorrelationId, context.Billing.LastCorrelationId);
+        await using var db = context.Factory.CreateDbContext();
+        Assert.Single(await db.ActivationIntents.ToListAsync());
+        var relationship = await db.EmploymentRelationships.SingleAsync();
+        Assert.Equal(EmploymentRelationshipState.Active, relationship.State);
+        Assert.Equal(first.ActivationIntentId, relationship.ActivationId);
+        Assert.Single(await db.RelationshipStateHistory.Where(value =>
+            value.ToState == EmploymentRelationshipState.ActivationPending).ToListAsync());
+        Assert.Single(await db.RelationshipStateHistory.Where(value =>
+            value.ToState == EmploymentRelationshipState.Active).ToListAsync());
+    }
+
+    [Fact]
+    public async Task DivergentMaterialForCanonicalTupleRecordsConflictWithoutOwnerCall()
+    {
+        var context = await CreateContextAsync();
+        await context.Service.ActivateAsync(context.Request, CancellationToken.None);
+
+        await Assert.ThrowsAsync<ActivationConflictException>(() => context.Service.ActivateAsync(
+            context.Request with { PaymentEvidenceId = Guid.NewGuid() }, CancellationToken.None));
+
+        Assert.Equal(1, context.Billing.CallCount);
+        await using var db = context.Factory.CreateDbContext();
+        Assert.Equal("SUCCEEDED", (await db.ActivationIntents.SingleAsync()).Status);
+    }
+
+    [Fact]
+    public async Task BillingUncertaintyLeavesSameIntentRetryableAndRelationshipPreActive()
+    {
+        var context = await CreateContextAsync();
+        context.Billing.FailNext = true;
+
+        await Assert.ThrowsAsync<ActivationOwnerUnavailableException>(() =>
+            context.Service.ActivateAsync(context.Request, CancellationToken.None));
+
+        await using var db = context.Factory.CreateDbContext();
+        var intent = await db.ActivationIntents.SingleAsync();
+        Assert.Equal("FAILED_RETRYABLE", intent.Status);
+        Assert.Equal(EmploymentRelationshipState.ActivationPending,
+            (await db.EmploymentRelationships.SingleAsync()).State);
+        Assert.Null(intent.OutcomeSubscriptionId);
+
+        var retry = await context.Service.ActivateAsync(context.Request, CancellationToken.None);
+        Assert.Equal(intent.ActivationIntentId, retry.ActivationIntentId);
+        Assert.Equal(2, context.Billing.CallCount);
+        Assert.Equal(context.Request.CorrelationId, context.Billing.LastCorrelationId);
+    }
+
+    [Fact]
+    public async Task EvidenceUncertaintyAfterBillingSuccessRemainsRetryableAndPreActive()
+    {
+        var context = await CreateContextAsync();
+        context.Constitutional.FailOnCall = 2;
+
+        await Assert.ThrowsAsync<ActivationOwnerUnavailableException>(() =>
+            context.Service.ActivateAsync(context.Request, CancellationToken.None));
+
+        await using var db = context.Factory.CreateDbContext();
+        Assert.Equal("FAILED_RETRYABLE", (await db.ActivationIntents.SingleAsync()).Status);
+        Assert.Equal(EmploymentRelationshipState.ActivationPending,
+            (await db.EmploymentRelationships.SingleAsync()).State);
+        Assert.Equal(1, context.Billing.CallCount);
+    }
+
+    private static async Task<ActivationTestContext> CreateContextAsync()
+    {
+        var factory = new InMemoryEmploymentRelationshipFactory(Guid.NewGuid().ToString("N"));
+        var constitutional = new RecordingRelationshipConstitutionalGateway();
+        var billing = new RecordingActivationBillingGateway();
+        var tenantId = Guid.NewGuid();
+        var relationshipId = Guid.NewGuid();
+        var participantId = Guid.NewGuid();
+        var contractId = Guid.NewGuid();
+        var acceptanceId = Guid.NewGuid();
+        var authoritySnapshotId = Guid.NewGuid();
+        await using var db = factory.CreateDbContext();
+        db.EmploymentRelationships.Add(new EmploymentRelationship
+        {
+            TenantId = tenantId,
+            RelationshipId = relationshipId,
+            ProfessionalType = "DMA",
+            EvaluationIntentId = Guid.NewGuid(),
+            InitiatingParticipantId = participantId,
+            AcceptedContractId = contractId,
+            AuthoritySnapshotId = authoritySnapshotId,
+            State = EmploymentRelationshipState.ContractAcceptedPendingPayment,
+            StateVersion = 5,
+        });
+        db.RelationshipParticipants.Add(new RelationshipParticipant
+        {
+            TenantId = tenantId,
+            RelationshipId = relationshipId,
+            ParticipantId = participantId,
+            Role = RelationshipParticipantRole.Employer,
+            BoundEvidenceId = Guid.NewGuid(),
+        });
+        db.EmploymentContractVersions.Add(new EmploymentContractVersion
+        {
+            TenantId = tenantId, RelationshipId = relationshipId, ContractId = contractId,
+            Version = 1, ContractHash = new string('a', 64), AeecVersion = "1.0",
+            DomainScheduleHash = new string('b', 64), CreatedByParticipantId = participantId,
+        });
+        db.ContractAcceptances.Add(new ContractAcceptance
+        {
+            TenantId = tenantId, RelationshipId = relationshipId, ContractId = contractId,
+            ContractVersion = 1, ContractHash = new string('a', 64), AcceptanceId = acceptanceId,
+            ParticipantId = participantId, ParticipantRole = RelationshipParticipantRole.Employer,
+            AuthenticationAssurance = "AAL3_FRESH", AuthoritySnapshotId = authoritySnapshotId,
+            ScopeConfirmationHash = new string('c', 64), AcceptanceEvidenceId = Guid.NewGuid(),
+        });
+        await db.SaveChangesAsync();
+        var relationships = new EmploymentRelationshipService(
+            factory, constitutional, NullLogger<EmploymentRelationshipService>.Instance);
+        var service = new ActivationOrchestrationService(factory, relationships, constitutional, billing);
+        var request = new ActivationRequest(
+            tenantId, relationshipId, participantId, contractId, acceptanceId,
+            "pay_verified_123", Guid.NewGuid(), authoritySnapshotId, Guid.NewGuid());
+        return new ActivationTestContext(service, factory, constitutional, billing, request);
+    }
+
+    private sealed class RecordingActivationBillingGateway : IActivationBillingGateway
+    {
+        public int CallCount { get; private set; }
+        public bool FailNext { get; set; }
+        public Guid LastCorrelationId { get; private set; }
+
+        public Task<ActivationBillingOutcome> ActivatePaidSubscriptionAsync(
+            ActivationBillingRequest request, CancellationToken cancellationToken)
+        {
+            CallCount++;
+            LastCorrelationId = request.CorrelationId;
+            if (FailNext)
+            {
+                FailNext = false;
+                throw new ActivationOwnerUnavailableException("WBE unresolved.");
+            }
+            return Task.FromResult(new ActivationBillingOutcome(Guid.NewGuid(), "ACTIVE"));
+        }
+    }
+
+    private sealed record ActivationTestContext(
+        ActivationOrchestrationService Service,
+        InMemoryEmploymentRelationshipFactory Factory,
+        RecordingRelationshipConstitutionalGateway Constitutional,
+        RecordingActivationBillingGateway Billing,
+        ActivationRequest Request);
+}

@@ -22,6 +22,7 @@ internal sealed class RecordingRelationshipConstitutionalGateway : IRelationship
 {
     public int CallCount { get; private set; }
     public bool FailNext { get; set; }
+    public int? FailOnCall { get; set; }
 
     public Task<Guid> AuthorizeAndRecordAsync(
         Guid tenantId,
@@ -33,9 +34,10 @@ internal sealed class RecordingRelationshipConstitutionalGateway : IRelationship
         CancellationToken cancellationToken)
     {
         CallCount += 1;
-        if (FailNext)
+        if (FailNext || CallCount == FailOnCall)
         {
             FailNext = false;
+            FailOnCall = null;
             throw new InvalidOperationException("Evidence commitment unavailable.");
         }
 
