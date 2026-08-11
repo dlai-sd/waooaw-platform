@@ -1,10 +1,13 @@
 # Work Contract 060 — AE-01 Omnichannel Continuity, Evidence, and Emergency Stop
 
 **Goal:** GOAL-005 · **Epic stories:** AE-01-S09 and S10
+**WC-034 Component:** F5 — Omnichannel Continuity (sole implementation contract)
 **Office on execution:** Platform IT Expert (INST-010)
 **Reviewer:** Security Architect (INST-007) + Data Architect (INST-006)
-**Status:** IMPLEMENTATION-READY — D-07 R-046 RATIFIED; implementation not authorized
+**WC-034 acceptance reviewer:** Enterprise Architect (INST-004) in an independent context
+**Status:** F5 UNIFICATION REVIEW APPROVED — R-073/R-074/R-075; implementation not authorized
 **Authorization:** A future session requires explicit Founder authorization: “Authorize implementation of WC-060.”
+**Unification reviews:** R-073 architecture/product APPROVED; R-074 security/data APPROVED; R-075 constitutional APPROVED
 **Track:** VERTICAL CUSTOMER OUTCOME
 **Service scope:** BP (.NET), PR (Python), CE (.NET), web, ADR-023 Phone Identity Service integration
 
@@ -15,6 +18,12 @@ Allow an authenticated customer to continue the same Employment Relationship acr
 ## Dependencies
 
 WC-059 DONE; WC-014 PAAS/Emergency Stop and WC-037 Audit Sink DONE; D-04 accepted. Phone-only identity may perform low-risk conversation, but contract/payment/stop-release require configured step-up assurance.
+
+## WC-034 F5 Contract Unification
+
+Founder decision FA-037 selects WC-060 as the single implementation contract for WC-034 F5. WC-060 owns the complete continuity implementation and evidence package; successful completion of this contract, the F5 UX acceptance IDs, and the proportional F8 gate closes F5 without a second WC-034 implementation pass.
+
+This unification does not waive WC-059 completion, per-session Founder implementation authorization, canonical owner contracts, generated-client compatibility, WC-060 security/data semantics, any adversarial CCT, C-076 coverage, C-080 Docker execution, or independent INST-007, INST-006, and INST-004 review. It does not authorize deployment, providers, F6-F8 feature implementation, or merge.
 
 ## Tasks
 
@@ -28,6 +37,7 @@ WC-059 DONE; WC-014 PAAS/Emergency Stop and WC-037 Audit Sink DONE; D-04 accepte
 | WC060-06 | Build web relationship workspace and WhatsApp commands for timeline, evidence summary/export link, current authority/cost/trial state, and Stop. Distinguish transport acceptance from participant-observed acknowledgement and expose unresolved delivery honestly. | reasoning | pending |
 | WC060-07 | Bind Stop to the single AE-01 Employment Relationship: halt its evaluation/trial PAAS sessions, configuration, contract presentation, activation, and handoff within the existing latency budget; reject later consequential commands and show stopped state on every channel. Release is Tier-4 portal only, limited to active same-tenant `EMPLOYER`, freshly reauthenticated and explicitly confirmed with evidence linked to the originating Stop. Reconnect, conversation text, timeout, operator, or channel possession cannot release. AE-02 execution fan-out is deferred to AE-02 proof. | reasoning | pending |
 | WC060-08 | Add adversarial/integration CCTs for takeover, replay, confused deputy, assurance downgrade, cross-tenant query, out-of-order handoff, offline recovery, duplicate delivery, cross-channel Stop, unauthorized release, and full proposal-to-activation-to-handoff reconstruction. | auto | pending |
+| WC060-09 | Complete WC-034 F5 browser/generated-client acceptance for UX-CONV-03, UX-RES-02, and UX-CONT-01 through UX-CONT-06 at exact 360px and expanded viewports; run the proportional F8 accessibility, privacy, contract-conformance, coverage, lint, build, and regression gate; publish one integrated evidence package for independent INST-004 review. | auto | pending |
 
 ## Required Inputs
 
@@ -53,6 +63,7 @@ WC-059 DONE; WC-014 PAAS/Emergency Stop and WC-037 Audit Sink DONE; D-04 accepte
 - All takeover/replay/confused-deputy/downgrade/cross-tenant cases deterministically deny or replay prior outcome with zero unauthorized mutation.
 - Emergency Stop remains within the existing ≤250ms end-to-end constitutional floor and cannot be passively released.
 - BP/PR/CE/web/integration/security suites, manifests/OpenAPI, DPDPA checks, and platform-state synchronization pass.
+- UX-CONV-03, UX-RES-02, UX-CONT-01 through UX-CONT-06, and the proportional F8 acceptance matrix pass without a duplicate follow-on F5 implementation sprint.
 
 ## Validation Commands
 

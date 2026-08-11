@@ -45,7 +45,7 @@ F0 Architecture Closure
        ├─ F2 Identity and Registration
        ├─ F3 Conversation Core
        │    ├─ F4 Relationship Workspace
-       │    └─ F5 Omnichannel Continuity (after WC-060)
+     │    └─ F5 Omnichannel Continuity (implemented through WC-060)
        ├─ F6 Voice Interaction (after voice/privacy contract)
                 └─ F7 Founder Administration (after WBE management APIs)
 
@@ -165,9 +165,9 @@ connections, `@ai-sdk/react`, and deployment remain excluded.
 - checkpoint, acknowledgement, cursor, ordering, and duplicate-delivery handling;
 - active-channel notification suppression and reconnect behavior.
 
-**Hard dependency:** WC-060 complete and its adversarial CCTs passing.
+**Implementation contract:** WC-060 is the sole implementation Work Contract for F5. Its dependency on WC-059, explicit Founder implementation authorization, owner contracts, adversarial CCTs, independent Security/Data review, and proportional F8 evidence are F5 entry and exit gates; none is bypassed by this unification.
 
-**Excludes:** Any pre-WC-060 claim of committed handoff or exactly-once cross-channel action.
+**Excludes:** Any claim of committed handoff or exactly-once cross-channel action before the applicable WC-060 behavior and evidence pass. No second WC-034 F5 implementation pass or duplicate F5 Work Contract follows WC-060 completion.
 
 **Acceptance:** UX-CONV-03, UX-RES-02, UX-CONT-01 through UX-CONT-06, plus WC-060 handoff, replay, downgrade, takeover, and cross-tenant CCTs.
 
@@ -221,6 +221,6 @@ connections, `@ai-sdk/react`, and deployment remain excluded.
 
 ## Proposed Work Contract Boundaries
 
-Product Ownership should issue separate implementation Work Contracts for F1, F2, F3+F4, F5, F6, and F7 unless release sequencing or risk review requires a narrower split. Every implementation Work Contract that can produce a releasable increment includes the proportional F8 evidence gate for its selected components. F0 remains architecture closure under WC-034 Phase A.
+Product Ownership should issue separate implementation Work Contracts for F1, F2, F3+F4, F6, and F7 unless release sequencing or risk review requires a narrower split. WC-060 is the existing separate implementation Work Contract for F5. Every implementation Work Contract that can produce a releasable increment includes the proportional F8 evidence gate for its selected components. F0 remains architecture closure under WC-034 Phase A.
 
-F3 and F4 may share one Work Contract only after all required read and command contracts are approved. F5 must remain separate because WC-060 controls its security and replay semantics. F6 must remain separate because voice introduces new privacy, data, accessibility, and provider decisions. F7 remains independently releasable from customer conversation work but cannot bypass its proportional F8 gate.
+F3 and F4 may share one Work Contract only after all required read and command contracts are approved. F5 remains separately gated from F3/F4 through WC-060 because WC-060 controls its security, data, replay, evidence, and Stop semantics; completion of WC-060 plus the mapped F5 acceptance closes F5 without another implementation contract. F6 must remain separate because voice introduces new privacy, data, accessibility, and provider decisions. F7 remains independently releasable from customer conversation work but cannot bypass its proportional F8 gate.

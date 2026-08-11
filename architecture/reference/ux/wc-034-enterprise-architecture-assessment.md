@@ -17,7 +17,7 @@ It does not approve implementation, select product priorities, amend the Platfor
 
 | Severity | Finding | Disposition |
 |---|---|---|
-| P0 | Transactional cross-channel resume requires WC-060 checkpoints, authentication, deduplication, ordering, replay protection, and acknowledgement semantics | Shell distinguishes merged history from committed handoff; F5 remains blocked until WC-060 |
+| P0 | Transactional cross-channel resume requires WC-060 checkpoints, authentication, deduplication, ordering, replay protection, and acknowledgement semantics | Shell distinguishes merged history from committed handoff; WC-060 is the sole F5 implementation contract and must satisfy all F5/WC-060 gates before continuity is claimed |
 | P0 | Canonical OpenAPI lacks the complete durable conversation, Plan/Priority Work, Consumption, registration/linking, and Founder management surfaces required by the experience | Owner/gap matrix published; affected components cannot invent or privately call endpoints |
 | P0 | Current Platform IT Expert has no dedicated frontend/conversational/PWA skill | Candidate Skill 16 proposal input published; implementation entry gate requires completed new-skill lifecycle |
 | P1 | WC-016 conflicts with current identity, conversation, Stop, testing, and sprint-boundary decisions | Formally superseded for future implementation planning; historical artifact preserved |

@@ -1680,3 +1680,44 @@ This acceptance satisfies the logical owner-attestation prerequisite only. Execu
 | Excluded authority | Contract mutation, policy reinterpretation, application feature implementation, Order 4 workload identity, Orders 5-8, F5-F8, deployment, self-review, self-merge, and merge |
 | `issued_by` | INST-013 |
 | `issued_at` | 2026-08-11T02:43:06+00:00 |
+
+---
+
+## Amendment 6 — WC-034 F5 / WC-060 Contract Unification
+
+**Status:** REVIEW APPROVED — R-073, R-074, AND R-075; NO IMPLEMENTATION AUTHORITY
+**Founder decision:** FA-037
+**Purpose:** Remove duplicate omnichannel implementation authority by making WC-060 the sole implementation Work Contract for WC-034 F5 while preserving all existing dependency, constitutional, security, data, evidence, Stop, and review gates.
+
+### Controlling Determination
+
+1. WC-034 F5 remains the customer-facing component and acceptance boundary.
+2. WC-060 is its sole implementation Work Contract and owns the complete BP/PR/CE/web continuity implementation and evidence package.
+3. WC-060 completion closes F5 only when WC-059 is DONE, explicit current-session implementation authorization exists, all WC-060 tasks and adversarial CCTs pass, mapped F5 UX acceptance passes, proportional F8 evidence passes, and independent INST-007, INST-006, and INST-004 reviews approve the package.
+4. No second F5 implementation Work Contract or follow-on implementation pass is created after WC-060.
+5. Historical D-04 through D-07 contribution and ratification records remain unchanged; this amendment reconciles future execution authority only.
+
+### Review And Execution Order
+
+| Order | Office | Contribution |
+|---|---|---|
+| 1 | INST-004 + INST-005 | Confirm architecture and component/API ownership remain complete and non-duplicative |
+| 2 | INST-011 | Confirm release composition and proportional F8 acceptance |
+| 3 | INST-007 + INST-006 | Confirm no security, replay, privacy, retention, evidence, or Stop gate was weakened |
+| 4 | INST-002 | Independently review constitutional traceability, authorization boundaries, and separation of duties |
+| 5 | INST-013 | Mechanically record approved readiness and route the existing WC-060 authorization gate |
+| 6 | INST-010 | Execute WC-060 only after its prerequisites and explicit Founder implementation authorization pass |
+
+### Independent Review Evidence
+
+| Record | Office | Verdict |
+|---|---|---|
+| R-073 | INST-004 + INST-011 architecture and product review | APPROVED — complete F5 scope, ownership, acceptance, and proportional F8 coverage with no duplicate contract |
+| R-074 | INST-007 + INST-006 security and data review | APPROVED — no security, replay, privacy, retention, evidence, data-isolation, or Stop gate weakened |
+| R-075 | INST-002 constitutional review | APPROVED — C-059 traceability, C-065 separation, and all authorization exclusions preserved |
+
+Orders 1 through 5 are complete. Order 6 remains blocked until WC-059 is DONE and the Founder explicitly authorizes WC-060 implementation for the current session.
+
+### Authorization Boundary
+
+This amendment and FA-037 authorize specification, Work Contract, and execution-plan reconciliation only. They do not issue a GO Authorization, satisfy WC-060's explicit current-session implementation authorization, permit source/tests/migrations/generated production clients, activate a provider, deploy, merge, or begin F6-F8 feature implementation.
