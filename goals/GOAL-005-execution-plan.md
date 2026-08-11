@@ -1625,3 +1625,23 @@ Owner attestations, INST-010 deterministic generation, executable G-F4-10 closur
 | Validation | Docker F4 slice extraction and four-spec YAML, local-reference, operation-ID, and required-inventory validation PASS; existing unrelated BP reference debt remains outside the dependency-closed F4 slice |
 
 This publication fixes the contract bytes for owner attestation. It does not complete owner attestation, run a generator, create a generated client, close executable G-F4-10, authorize source implementation, or advance Order 4.
+
+## Amendment 5 Order 3 Logical Owner Attestation Authorization
+
+### GOA-GOAL-005-INST-005-09
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GOA-GOAL-005-INST-005-09 |
+| `record_type` | Authorization Record |
+| Authorized Institution | INST-005 — Solution Architect acting as registered logical component/API owner under the Amendment 3 ownership mapping |
+| Contribution scope | Attest the fixed BP, WBE, PR, CE-coverage, and DMA adapter canonical boundaries at commit `9b126bd`; publish `CR-GOAL-005-INST-005-13` and `LR-GOAL-005-INST-005-04` |
+| Evidence specification | For each owner surface, verify exact artifact hash/version, accepted authority and truth boundary, caller/audience, operation inventory, policy tuple effect, `BLOCKED`/`UNAVAILABLE`, version/reconciliation behavior, Emergency Stop independence, and absence of browser/private-owner transfer |
+| Fixed inputs | BP `357c14bb...d9c22e`; PR `a1aba55e...a51f46`; WBE `999b6687...78eaff`; DMA `594524da...0b26b`; CE coverage `c11bd9e8...e9478` |
+| Decision rule | ACCEPT each unchanged owner boundary, RETURN the package, or raise a Constitutional Blocker; do not repair or modify canonical artifacts in this attestation slice |
+| Participation Window | 1 constitutional session after valid acceptance |
+| Excluded authority | Contract edits, policy reinterpretation, generator execution, generated clients, source, tests, migrations, implementation, deployment, provider activation, F5-F8, independent review, self-review, and merge |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-11T02:36:29+00:00 |

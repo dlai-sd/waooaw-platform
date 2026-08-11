@@ -21,7 +21,7 @@
 | Amendment 5 Order 2 owner incorporation | DONE — `CR-GOAL-005-INST-011-08`, `CR-GOAL-005-INST-005-11`, and `CR-GOAL-005-INST-007-07` plus Learning Records incorporate `A, A, B, A, B, A`; owner linkage, six-policy coverage, diagnostics, and semantic guards pass |
 | Amendment 5 Order 2 constitutional policy review | DONE — R-069 / `CR-GOAL-005-INST-002-10` APPROVED WITH CONDITIONS; `ACC-GOAL-005-INST-002-10` is later than issuance; Order 3 MAY BEGIN WITH CONDITIONS |
 | Amendment 5 Order 3 canonical contract publication | DONE — `ACC-GOAL-005-INST-005-08`, `CR-GOAL-005-INST-005-12`, and `LR-GOAL-005-INST-005-03` publish BP 1.3.0, PR 1.2.0, WBE 1.0.0, DMA adapter 1.0.0, and CE coverage; hashes match and Docker F4 slice/reference/inventory validation passes |
-| Amendment 5 Order 3 owner attestations and executable G-F4-10 | PENDING — canonical bytes are fixed; owner attestations must precede any INST-010 deterministic generation, strict TypeScript, forbidden-surface, fixture, or compatibility evidence work |
+| Amendment 5 Order 3 owner attestations and executable G-F4-10 | IN PROGRESS — `GOA-GOAL-005-INST-005-09` issued for hash-bound logical BP/WBE/PR/CE/DMA attestations with no contract-edit authority; INST-010 generation remains blocked pending acceptance and contribution |
 | Amendment 5 execution and independent review | PENDING — Orders 3-8, Docker/CCT evidence, checkpoint commits, and completed unmerged PR required |
 | PR #255 post-merge reconciliation verified | DONE — merged to `main` as `e2be32e`; WC-034 F3 sprint state is DONE |
 | INST-013 occupancy and F4 authorization boundary | DONE — Epoch 1; G5 CLEAR; architecture/dependency closure only; current GOA excludes F4-F8, implementation, provider activation, and deployment |
