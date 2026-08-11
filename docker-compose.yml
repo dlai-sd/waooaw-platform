@@ -270,6 +270,8 @@ services:
       Keycloak__Authority: http://keycloak:8080/realms/waooaw
       Keycloak__Audience: waooaw-platform
       Identity__Hmac__Key: ${IDENTITY_HMAC_KEY}
+      WhatsApp__WebhookSecret: ${WHATSAPP_WEBHOOK_SECRET}
+      WhatsApp__TenantTokenKey: ${WHATSAPP_TENANT_TOKEN_KEY}
       OTLP_ENDPOINT: http://jaeger:4317
     depends_on:
       constitutional-engine:

@@ -1,6 +1,37 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-08-11 (WC-034 F4 merged; F5 remains dependency-gated by WC-060)
+**Last Updated:** 2026-08-11 (WC-058 PR #263 open and unmerged for Founder review)
+
+---
+
+## IN-PROGRESS CHECKPOINT — WC-058 AUTHORIZATION ROUTING
+
+| Milestone | Status |
+|---|---|
+| WC-057 dependency closure | DONE — R-076 approved; PR #262 merged to `main` as `e4ba937` |
+| Founder current-session implementation consent | DONE — FA-038 records exact directive `Authorize implementation of WC-058` |
+| GEP-GOAL-005-INST-013-07 | DONE — prospective WC-058-only scope, evidence, review, exclusions, and reserved GOA/ACC recorded |
+| Fresh INST-002 CA Readiness Review | DONE — R-077 APPROVED with no conditions; GEOM R2-03 condition 1 satisfied |
+| ACK-GOAL-005-INST-001-07 | DONE — exact Amendment 7 acknowledgement recorded at 2026-08-11T06:54:41Z |
+| GOA-GOAL-005-INST-010-04 | ISSUED — INST-013 issued WC-058-only authority at 2026-08-11T06:54:42Z |
+| ACC-GOAL-005-INST-010-04 | ACCEPTED — INST-010 accepted at 2026-08-11T06:54:43Z; temporal order valid |
+| WC-058 implementation | COMPLETE AND SUBMITTED — WC058-01 through WC058-08, Contribution/Learning Records, and independent reviews DONE; PR #263 is OPEN and UNMERGED for Founder review |
+| WC-058 Contribution and Learning Records | DONE — `CR-GOAL-005-INST-010-05` and `LR-GOAL-005-INST-010-04` attest the eight-commit implementation lineage, validation evidence, provenance classes, residual limits, and unauthorized boundaries; record-ID uniqueness, commit resolution, task completeness, diagnostics, and diff hygiene PASS |
+| R-078 independent INST-011 Product Owner review | APPROVED — customer ordering/rights, disclosure-before-trial, customer-agnostic suitability, progressive context, exact 14-day/inactivity/expiry truth, and honest provenance pass with no conditions |
+| R-079 independent INST-003 Business Architect review | APPROVED — generic/domain separation, exact 19-skill semantic coverage, non-DMA conformance, owner truth, capability provenance, and zero-paid/no-external/no-false-conversion boundaries pass with no conditions |
+| WC-058 final PR | OPEN — PR #263 targets `main` from `ib/014/wc058-implementation`, uses the repository template and complete C-059 matrix, and is unmerged pending Founder constitutional review; self-review, self-approval, and self-merge remain prohibited |
+| WC058-01 professional discovery and disclosure | DONE — BP OpenAPI 1.4.0, generic manifest-driven catalog, 19-skill DMA projection, privacy-safe controller, and four focused tests; isolated .NET build and VSTest PASS |
+| WC058-02 evaluation workflow and typed answers | DONE — generic PR state machine, validated answer envelope, injected injection/PII gates, limitation fallback, evidence references, payload-reference separation, and Skill Runtime routing; 21 focused/neighbor tests PASS, 92% changed-module coverage, Ruff PASS |
+| WC058-03 progressive context and configuration | DONE — executable Migration 20 (`20b` preserves the occupied init sequence), five tenant-RLS tables, append-only confirmation/snapshot triggers, erasable payload values with retained hashes, goals/measures, skill decisions, immutable Decision Space versions, two-month cadence, and one-question progression; PostgreSQL first/reapply/catalog checks PASS, focused/neighbor tests 11/11 PASS, new service/entities 97–100% line coverage |
+| WC058-04 durable trial integration | DONE — canonical BP relationship trial endpoint, durable tenant-RLS owner binding, WBE-authoritative exact 14-day window, signed BP-to-PR workflow start, AIR LOCAL-only routing, and generic Skill Runtime trial allowlist; BP focused tests 10/10 PASS, WBE 27/27 PASS, AIR/PR 42/42 PASS, Ruff PASS, OpenAPI parse PASS, PostgreSQL first/reapply/forced-RLS checks PASS |
+| WC058-05 fail-closed trial expiry | DONE — customer-bound WBE status reconciliation, explicit `EXPIRED`/`BILLING_CONVERTED`/`UNRESOLVED` workflow outcomes, exactly one pre-expiry reminder, authenticated WBE expiry command distinct from conversion, conversion-race preservation, and PR denial of new work after expiry without deleting approved artifacts; BP 13/13 PASS, WBE 30/30 PASS, PR 14/14 PASS, Ruff and diagnostics PASS |
+| WC058-06 web and WhatsApp S01-S06 presentation | DONE — public outcome discovery and informed comparison, authenticated relationship evaluation projection with progressive context, visible 14-day plan, quota-safe trial status, demonstrations, and item-level configuration; ADR-023 raw-body HMAC, E.164 validation, five-minute replay window, 24-hour deduplication, phone-HMAC identity, first-inbound opt-in with fail-closed CE evidence, internal 30-minute HS256 JWT, and Tier 2/3 step-up; BP focused 20/20 PASS, full BP suite exit 0, web focused 4/4 PASS, Next.js production build PASS, OpenAPI and Compose parse PASS, PostgreSQL first/reapply/retention checks PASS, and shared production code has zero DMA branches |
+| WC058-07 Professional Evaluation Adapter | DONE — shared domain-neutral adapter protocol now covers suitability, typed interview answers, exact 14-day planning, trial demonstration, and configuration proposal; DMA-owned recipes exactly match the 19-skill catalog and produce 17 simulated artifacts plus two context-gated reason/activation-condition outcomes using only local, deterministic, public/free, approved, synthetic, pre-generated, or customer-approved capability classes; paid, mutating, unknown, undeclared, or malformed results fail closed; a three-skill non-DMA fixture passes the same service with zero DMA literals in shared production code; focused 29/29 PASS at 93.92% coverage, Ruff and diagnostics PASS, and dependency-complete PR regression surface 147/147 PASS. Full PR collection remains independently blocked for two mTLS/private-server files because the existing test image lacks `uvicorn`. |
+| WC058-08 executable simulation and CCTs | DONE — synthetic WhatsApp-first fixture traverses S01-S06 in normative order; ten catalogued `CCT-AE01-*` parents prove disclosure-before-trial, progressive one-question context with restart/correction history, exact 14-day planning, all 19 skill outcomes, zero paid/mutating capabilities, independent configuration items, prohibited action denial, expiry preservation, generic adapter conformance, and injection denial. Focused CCT 7/7 PASS; cross-stack PR/CCT 50/50, AIR 24/24, WBE 30/30, BP 15/15, web 4/4, and Next.js production build PASS; Ruff, JSON parse, diagnostics, and diff checks PASS. No provider, credential, campaign, payment, activation, deployment, or customer-proof operation occurred. |
+
+### Authorization Boundary And Next Action
+
+FA-038, R-077, ACK-07, GOA-04, and ACC-04 complete the WC-058 implementation entry sequence. WC058-01 through WC058-08, the required INST-010 Contribution/Learning Records, and independent R-078 INST-011/R-079 INST-003 reviews are complete. PR #263 is open and unmerged for Founder constitutional review; no further INST-010 execution is authorized. Provider activation, WC-059/WC-060, deployment, self-review, self-approval, self-merge, architecture reinterpretation, and production/customer proof remain unauthorized.
 
 ---
 

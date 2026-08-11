@@ -114,6 +114,54 @@ class TestTrialTierOverride:
         assert result["tier"] == LlmTier.LOCAL.value
 
     @pytest.mark.asyncio
+    async def test_validated_trial_entitlement_forces_local_without_redis(self):
+        session_factory = _make_session_factory()
+        mock_gw = _make_mock_gateway(result={
+            "tier": LlmTier.LOCAL.value, "provider_id": "ollama",
+            "model_id": "llama3.2:3b", "response": "hello", "done": True,
+            "total_duration_ns": 100,
+        })
+
+        with patch("pse.router._select_tier", return_value=LlmTier.FRONTIER), \
+             patch("pse.router._make_gateway", return_value=mock_gw), \
+             patch("pse.router._record_dispatch_event", new_callable=AsyncMock):
+            result = await route_and_dispatch(
+                prompt="complex trial query",
+                task_complexity="complex",
+                language=None,
+                async_session_factory=session_factory,
+                customer_id="cust-001",
+                redis_client=None,
+                trial_entitled=True,
+            )
+
+        mock_gw.call.assert_awaited_once()
+        assert mock_gw.call.call_args.args[1]["provider"] == "ollama"
+        assert result["tier"] == LlmTier.LOCAL.value
+
+    @pytest.mark.asyncio
+    async def test_validated_trial_local_failure_has_no_paid_fallback(self):
+        session_factory = _make_session_factory()
+        mock_gw = _make_mock_gateway(
+            error=MCPToolError(code="PROVIDER_ERROR", message="LOCAL unavailable", retry_eligible=True)
+        )
+
+        with patch("pse.router._select_tier", return_value=LlmTier.FRONTIER), \
+             patch("pse.router._make_gateway", return_value=mock_gw), \
+             patch("pse.router._record_dispatch_event", new_callable=AsyncMock):
+            with pytest.raises(RuntimeError, match="CTG tool error"):
+                await route_and_dispatch(
+                    prompt="complex trial query",
+                    task_complexity="complex",
+                    language=None,
+                    async_session_factory=session_factory,
+                    trial_entitled=True,
+                )
+
+        mock_gw.call.assert_awaited_once()
+        assert mock_gw.call.call_args.args[1]["provider"] == "ollama"
+
+    @pytest.mark.asyncio
     async def test_trial_mode_overrides_medium_indic_to_local(self):
         """TRIAL customer with medium/indic (would be MID) → CTG called with provider=ollama."""
         redis = await _fake_redis_with_mode(b"TRIAL")

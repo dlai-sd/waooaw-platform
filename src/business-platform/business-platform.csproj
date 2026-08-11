@@ -53,4 +53,8 @@
     <Protobuf Include="Protos/constitutional_service.proto" GrpcServices="Client" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Update="Catalog/Professionals/*.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

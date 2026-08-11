@@ -56,6 +56,7 @@ class TrialStartRequest(BaseModel):
 
 class TrialStartResponse(BaseModel):
     trial_id: uuid.UUID
+    started_at: datetime
     expires_at: datetime
     free_unit_caps: dict[str, int]
     wallet_bucket_ids: list[uuid.UUID]
@@ -70,6 +71,15 @@ class TrialConvertRequest(BaseModel):
 class TrialConvertResponse(BaseModel):
     new_subscription_id: uuid.UUID
     grandfather_applied: bool
+
+
+class TrialExpireRequest(BaseModel):
+    trial_id: uuid.UUID
+
+
+class TrialExpireResponse(BaseModel):
+    trial_id: uuid.UUID
+    status: str
 
 
 # ---------------------------------------------------------------------------
@@ -88,6 +98,7 @@ async def start_trial(
     )
     return TrialStartResponse(
         trial_id=result.trial_id,
+        started_at=result.started_at,
         expires_at=result.expires_at,
         free_unit_caps=result.free_unit_caps,
         wallet_bucket_ids=result.wallet_bucket_ids,
@@ -127,3 +138,12 @@ async def convert_trial(
         new_subscription_id=result.new_subscription_id,
         grandfather_applied=result.grandfather_applied,
     )
+
+
+@router.post("/expire", response_model=TrialExpireResponse, dependencies=[Depends(_require_ops_auth)])
+async def expire_trial(
+    body: TrialExpireRequest,
+    service: TrialService = Depends(_get_trial_service),
+) -> TrialExpireResponse:
+    status = await service.check_expiry(body.trial_id)
+    return TrialExpireResponse(trial_id=body.trial_id, status=status)

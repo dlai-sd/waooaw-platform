@@ -358,6 +358,34 @@ paths:
         "404": { $ref: "#/components/responses/ExecutionNotFound" }
         "503": { $ref: "#/components/responses/ExecutionUnavailable" }
 
+  /api/v1/internal/relationships/{relationshipId}/evaluation-trial:
+    post:
+      tags: [Internal]
+      summary: Start or replay the relationship evaluation trial workflow
+      operationId: startRelationshipTrial
+      x-internal: true
+      security:
+        - ServiceBearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PrRelationshipTrialStartRequestV1"
+      responses:
+        "200":
+          description: Trial workflow started or identically replayed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PrRelationshipTrialStartResultV1"
+        "401": { $ref: "#/components/responses/ExecutionUnauthorized" }
+        "409": { $ref: "#/components/responses/ExecutionConflict" }
+        "422": { $ref: "#/components/responses/ExecutionInvalidRequest" }
+
   /api/v1/internal/relationships/{relationshipId}/workspace-controls:
     post:
       tags: [Internal]
@@ -722,6 +750,32 @@ components:
         state: { $ref: "#/components/schemas/PrRelationshipExecutionState" }
         producedAt: { type: string, format: date-time }
         nextReviewAt: { type: string, format: date-time }
+
+    PrRelationshipTrialStartRequestV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, trialId, startsAt, expiresAt, inferenceTier, paidProviderFallback, credentialUseAllowed, externalActionsAllowed]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/PrRelationshipExecutionSchemaVersion" }
+        trialId: { type: string, format: uuid }
+        startsAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time }
+        inferenceTier: { type: string, const: LOCAL }
+        paidProviderFallback: { type: boolean, const: false }
+        credentialUseAllowed: { type: boolean, const: false }
+        externalActionsAllowed: { type: boolean, const: false }
+
+    PrRelationshipTrialStartResultV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, relationshipId, trialId, workflowState, expiresAt, replayed]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/PrRelationshipExecutionSchemaVersion" }
+        relationshipId: { type: string, format: uuid }
+        trialId: { type: string, format: uuid }
+        workflowState: { type: string, const: TRIAL_DEMONSTRATING }
+        expiresAt: { type: string, format: date-time }
+        replayed: { type: boolean }
 
     PrRelationshipExecutionControlKindV1:
       type: string

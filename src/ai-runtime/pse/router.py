@@ -247,7 +247,7 @@ async def _record_dispatch_event(
 # ---------------------------------------------------------------------------
 
 
-def _build_llm_executor() -> "ToolExecutor":
+def _build_llm_executor() -> ToolExecutor:
     """
     Returns the LLM executor used by CTG for the 'llm.complete' tool.
     CTG calls this with (tool_name, args, token, config); executor does the HTTP call.
@@ -256,7 +256,7 @@ def _build_llm_executor() -> "ToolExecutor":
         tool_name: str,
         args: dict[str, Any],
         token: str | None,
-        config: "ProviderConfig",
+        config: ProviderConfig,
     ) -> dict[str, Any]:
         provider = args.get("provider", "ollama")
         language = args.get("language")
@@ -269,7 +269,7 @@ def _build_llm_executor() -> "ToolExecutor":
     return _executor
 
 
-def _make_gateway() -> "ConstitutionalToolGateway":
+def _make_gateway() -> ConstitutionalToolGateway:
     """Factory used by route_and_dispatch. Tests patch this to inject mocks."""
     return ConstitutionalToolGateway(
         bp_base_url=os.getenv("BP_BASE_URL", "http://business-platform:5003"),
@@ -286,7 +286,8 @@ async def route_and_dispatch(
     async_session_factory: sa_async.async_sessionmaker,  # type: ignore[type-arg]
     customer_id: str | None = None,
     redis_client: Any | None = None,
-    session_ctx: "SessionContext | None" = None,
+    session_ctx: SessionContext | None = None,
+    trial_entitled: bool = False,
 ) -> dict[str, Any]:
     """
     PSE entry point.  Selects tier, dispatches to the appropriate provider,
@@ -307,6 +308,8 @@ async def route_and_dispatch(
         async_session_factory: SQLAlchemy async_sessionmaker bound to institutional DB.
         customer_id:           Customer UUID string — used for trial mode Redis lookup.
         redis_client:          Async Redis client — shared instance from billing-engine.
+        trial_entitled:        WBE-validated relationship trial entitlement. Forces LOCAL
+                       without consulting the advisory Redis projection.
 
     Returns:
         dict with keys: tier, provider_id, model_id, response, done,
@@ -321,7 +324,9 @@ async def route_and_dispatch(
     tier = _select_tier(task_complexity, language)
 
     # C-049: trial customers must use LOCAL (Ollama) — zero procurement cost
-    if redis_client is not None and customer_id is not None:
+    if trial_entitled:
+        tier = LlmTier.LOCAL
+    elif redis_client is not None and customer_id is not None:
         customer_mode = await redis_client.get(f"wbe:customer:{customer_id}:mode")
         if customer_mode == b"TRIAL":
             tier = LlmTier.LOCAL

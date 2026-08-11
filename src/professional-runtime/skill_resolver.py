@@ -40,6 +40,7 @@ class SessionSkillContext:
     crystallizer_configs: dict[str, CrystallizerConfig] = field(default_factory=dict)
     autonomy_levels: dict[str, str] = field(default_factory=dict)
     required_providers: set[str] = field(default_factory=set)
+    trial_safe_tools: set[str] = field(default_factory=set)
     # tool → DCM category (from skill's default_dcm_category — passed to CE.ValidateAction)
     dcm_categories: dict[str, str] = field(default_factory=dict)
     # tool → owning skill_id (for crystallizer gate lookup)
@@ -145,6 +146,9 @@ def _merge_into_context(
 
     for provider in defn.get("required_providers", []):
         ctx.required_providers.add(provider)
+
+    declared_trial_tools = set(defn.get("trial_safe_tools", []))
+    ctx.trial_safe_tools.update(declared_trial_tools.intersection(ctx.authorized_tools))
 
     ctx.autonomy_levels[skill_id] = defn.get("default_autonomy_level", "APPROVAL_REQUIRED")
 

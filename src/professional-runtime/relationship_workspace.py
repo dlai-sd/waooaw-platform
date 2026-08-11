@@ -11,7 +11,7 @@ import logging
 import os
 import uuid
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from threading import Lock
 from typing import Annotated, Literal
@@ -98,6 +98,26 @@ class ExecutionControlOutcome(StrictModel):
     resolved_at: datetime | None = Field(default=None, alias="resolvedAt")
 
 
+class RelationshipTrialStartRequest(StrictModel):
+    schema_version: Literal["1.0"] = Field(alias="schemaVersion")
+    trial_id: uuid.UUID = Field(alias="trialId")
+    starts_at: datetime = Field(alias="startsAt")
+    expires_at: datetime = Field(alias="expiresAt")
+    inference_tier: Literal["LOCAL"] = Field(alias="inferenceTier")
+    paid_provider_fallback: Literal[False] = Field(alias="paidProviderFallback")
+    credential_use_allowed: Literal[False] = Field(alias="credentialUseAllowed")
+    external_actions_allowed: Literal[False] = Field(alias="externalActionsAllowed")
+
+
+class RelationshipTrialStartResult(StrictModel):
+    schema_version: Literal["1.0"] = Field(alias="schemaVersion")
+    relationship_id: uuid.UUID = Field(alias="relationshipId")
+    trial_id: uuid.UUID = Field(alias="trialId")
+    workflow_state: Literal["TRIAL_DEMONSTRATING"] = Field(alias="workflowState")
+    expires_at: datetime = Field(alias="expiresAt")
+    replayed: bool
+
+
 @dataclass(frozen=True)
 class StoredControl:
     binding: tuple[str, ...]
@@ -113,6 +133,7 @@ class RelationshipExecutionStore:
         self._projections: dict[tuple[str, uuid.UUID], ExecutionProjection] = {}
         self._controls: dict[uuid.UUID, StoredControl] = {}
         self._idempotency: dict[tuple[str, ...], uuid.UUID] = {}
+        self._trials: dict[tuple[str, uuid.UUID], RelationshipTrialStartResult] = {}
         self._lock = Lock()
 
     def projection(self, tenant_id: str, relationship_id: uuid.UUID) -> ExecutionProjection:
@@ -188,6 +209,40 @@ class RelationshipExecutionStore:
         if control is None or control.binding[1:3] != (context.tenant_id, context.relationship_id):
             return None
         return control.outcome
+
+    def start_trial(
+        self,
+        context: DelegatedContext,
+        relationship_id: uuid.UUID,
+        trial: RelationshipTrialStartRequest,
+    ) -> RelationshipTrialStartResult:
+        if trial.expires_at - trial.starts_at != timedelta(days=14):
+            raise ServiceAuthError("TRIAL_DURATION_INVALID")
+        key = (context.tenant_id, relationship_id)
+        with self._lock:
+            existing = self._trials.get(key)
+            if existing is not None:
+                if existing.trial_id != trial.trial_id or existing.expires_at != trial.expires_at:
+                    raise ServiceAuthError("TRIAL_BINDING_CONFLICT")
+                return existing.model_copy(update={"replayed": True})
+            result = RelationshipTrialStartResult(
+                schemaVersion=SCHEMA_VERSION,
+                relationshipId=relationship_id,
+                trialId=trial.trial_id,
+                workflowState="TRIAL_DEMONSTRATING",
+                expiresAt=trial.expires_at,
+                replayed=False,
+            )
+            self._trials[key] = result
+            self._projections[key] = ExecutionProjection(
+                schemaVersion=SCHEMA_VERSION,
+                relationshipId=relationship_id,
+                projectionVersion=f"trial-{trial.trial_id}",
+                state="CURRENT",
+                producedAt=datetime.now(timezone.utc),
+                nextReviewAt=trial.expires_at,
+            )
+            return result
 
 
 class WorkloadAuth:
@@ -299,6 +354,32 @@ async def get_relationship_execution_projection(
     logger.info("service_auth decision=allow target=professional-runtime operation=projection policy_version=1.0")
     store: RelationshipExecutionStore = request.app.state.relationship_execution_store
     return store.projection(context.tenant_id, relationship_id)
+
+
+@router.post(
+    "/{relationship_id}/evaluation-trial",
+    response_model=RelationshipTrialStartResult,
+    response_model_by_alias=True,
+)
+async def start_relationship_trial(
+    relationship_id: uuid.UUID,
+    trial: RelationshipTrialStartRequest,
+    request: Request,
+) -> RelationshipTrialStartResult | JSONResponse:
+    body = trial.model_dump(by_alias=True, mode="json")
+    try:
+        context = await _authorize(
+            request,
+            "/api/v1/internal/relationships/{relationshipId}/evaluation-trial",
+            "startRelationshipTrial",
+            relationship_id,
+            body,
+        )
+        store: RelationshipExecutionStore = request.app.state.relationship_execution_store
+        return store.start_trial(context, relationship_id, trial)
+    except ServiceAuthError as exc:
+        status = 409 if exc.code == "TRIAL_BINDING_CONFLICT" else 422 if exc.code == "TRIAL_DURATION_INVALID" else 401
+        return _problem(exc.code, status, request.headers.get("X-Correlation-ID", str(uuid.uuid4())))
 
 
 @router.post("/{relationship_id}/workspace-controls", response_model=ExecutionControlReceipt, response_model_by_alias=True)

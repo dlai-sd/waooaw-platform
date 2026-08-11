@@ -92,7 +92,12 @@ POST /trial/start
 GET  /trial/status/{customer_id}
      → TrialStatus { trial_id, agent_type, started_at, expires_at, units_consumed: {thread_type: int}, units_remaining: {thread_type: int}, status: ACTIVE|EXPIRED|CONVERTED }
 
-POST /trial/convert  (internal — called by Temporal saga on trial expiry + payment)
+POST /trial/expire  (internal — called by Temporal saga at confirmed expiry)
+    Body: { trial_id }
+    → { trial_id, status: EXPIRED|CONVERTED }
+    Note: Idempotently expires ACTIVE billing entitlement. A payment conversion race remains CONVERTED.
+
+POST /trial/convert  (internal — called only after successful paid activation in WC-059)
      Body: { trial_id, payment_reference }
      → ConvertResult { new_subscription_id, grandfather_applied: bool }
      Note: C-090 grandfather applies if trial_started within 14 days of conversion

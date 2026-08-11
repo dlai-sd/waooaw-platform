@@ -1,16 +1,18 @@
-import type { EmploymentRelationship, RelationshipTimelineEntry } from '@/lib/api/relationships';
+import type { EmploymentRelationship, RelationshipEvaluationProjection, RelationshipTimelineEntry } from '@/lib/api/relationships';
 import type { RelationshipWorkspaceViews } from '@/lib/api/relationship-workspace';
 import { ConversationExperience } from '@/components/conversation/ConversationExperience';
+import { RelationshipEvaluation } from './RelationshipEvaluation';
 
 interface RelationshipWorkspaceProps {
   relationship: EmploymentRelationship;
   timeline: RelationshipTimelineEntry[];
   views: RelationshipWorkspaceViews;
+  evaluation: RelationshipEvaluationProjection;
 }
 
 const stateLabel = (state: string) => state.replaceAll('_', ' ').toLowerCase();
 
-export function RelationshipWorkspace({ relationship, timeline, views }: RelationshipWorkspaceProps) {
+export function RelationshipWorkspace({ relationship, timeline, views, evaluation }: RelationshipWorkspaceProps) {
   const live = relationship.state === 'ACTIVE';
 
   return (
@@ -36,6 +38,8 @@ export function RelationshipWorkspace({ relationship, timeline, views }: Relatio
         </dl>
       </section>
 
+      <RelationshipEvaluation evaluation={evaluation} />
+
       <nav className="workspace-nav" aria-label="Relationship workspace views">
         {['Plan', 'Needs your attention', 'Work', 'Results', 'Usage & budget', 'Rights & control'].map((label) => (
           <a key={label} href={`#${label.toLowerCase().replaceAll(' ', '-').replace('&', 'and')}`}>{label}</a>
@@ -58,7 +62,7 @@ export function RelationshipWorkspace({ relationship, timeline, views }: Relatio
         <section className="workspace-family" id="rights-and-control"><p className="section-label">Rights &amp; control</p><h2>Scope, authority and lifecycle</h2><span className="currency-state">{stateLabel(views.rightsControls.currencyState)}</span><p>{stateLabel(views.rightsControls.lifecycleState)} · Emergency Stop {views.rightsControls.emergencyStopReachable ? 'available' : 'unavailable'}</p></section>
       </div>
 
-      <ConversationExperience relationshipId={relationship.relationshipId} />
+      <div id="relationship-conversation"><ConversationExperience relationshipId={relationship.relationshipId} /></div>
 
       <section className="timeline" aria-labelledby="timeline-title">
         <p className="section-label">Evidence timeline</p>

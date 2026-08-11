@@ -19,6 +19,7 @@ from trial.models import ConvertResult, TrialStartResult, TrialStatus
 logger = logging.getLogger(__name__)
 
 _GRANDFATHER_DAYS = 14
+_TRIAL_DURATION_DAYS = 14
 
 
 class TrialService:
@@ -74,8 +75,6 @@ class TrialService:
                 detail={"code": "TRIAL_CONFIG_MISSING", "message": f"No trial configuration for agent_type={agent_type}"},
             )
 
-        duration_days: int = getattr(self._settings, "TRIAL_DURATION_DAYS", _GRANDFATHER_DAYS)
-
         async with self._session_factory() as session:
             # C-088: one trial per customer per agent_type (UNIQUE constraint)
             existing = await session.execute(
@@ -92,7 +91,7 @@ class TrialService:
 
             trial_id = uuid.uuid4()
             now = datetime.now(tz=timezone.utc)
-            expires_at = now + timedelta(days=duration_days)
+            expires_at = now + timedelta(days=_TRIAL_DURATION_DAYS)
             # Shared employment_contract_id for all trial buckets (trial-specific EC)
             trial_ec_id = uuid.uuid4()
 
@@ -156,6 +155,7 @@ class TrialService:
         )
         return TrialStartResult(
             trial_id=trial_id,
+            started_at=now,
             expires_at=expires_at,
             free_unit_caps=agent_free_units,
             wallet_bucket_ids=bucket_ids,
@@ -165,7 +165,7 @@ class TrialService:
     # check_expiry  (called by WC-033 Temporal saga)
     # ------------------------------------------------------------------
 
-    async def check_expiry(self, trial_id: uuid.UUID) -> None:
+    async def check_expiry(self, trial_id: uuid.UUID) -> str:
         """Mark trial as EXPIRED and clear Redis customer_mode key."""
         async with self._session_factory() as session:
             result = await session.execute(
@@ -177,7 +177,7 @@ class TrialService:
             if row is None:
                 raise HTTPException(status_code=404, detail={"code": "TRIAL_NOT_FOUND"})
             if row[1] != "ACTIVE":
-                return  # already expired or converted — idempotent
+                return str(row[1])  # already expired or converted — idempotent
 
             await session.execute(
                 text(
@@ -193,6 +193,7 @@ class TrialService:
             logger.error("Failed to clear trial Redis key for trial_id=%s", trial_id, exc_info=True)
 
         logger.info("Trial expired: trial_id=%s customer_id=%s", trial_id, customer_id)
+        return "EXPIRED"
 
     # ------------------------------------------------------------------
     # convert_to_paid  (called by WC-033 Temporal saga on payment)

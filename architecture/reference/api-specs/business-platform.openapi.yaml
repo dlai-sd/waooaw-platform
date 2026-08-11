@@ -2,7 +2,7 @@ openapi: "3.1.0"
 
 info:
   title: WAOOAW Business Platform API
-  version: "1.3.0"
+  version: "1.5.0"
   description: |
     External customer-facing API for the WAOOAW Business Platform.
     Manages the employment lifecycle, approval workflows, evidence reading,
@@ -38,6 +38,10 @@ tags:
     description: Durable relationship conversation timeline, commands, reconciliation, and canonical response stream
   - name: Relationship Workspace
     description: Relationship-governance workspace projection, typed commands, and evidence mediation
+  - name: Professionals
+    description: Outcome-based professional discovery and informed pre-trial disclosure
+  - name: WhatsApp Journey
+    description: Signature-authenticated, phone-native S01-S06 presentation boundary
   - name: Employment
     description: Employment contract lifecycle management
   - name: Approvals
@@ -455,6 +459,87 @@ paths:
         "410": { $ref: "#/components/responses/IdentityChallengeExpired" }
         "429": { $ref: "#/components/responses/IdentityRateLimited" }
 
+  # ─── Professional Discovery And Disclosure ────────────────────────────────
+
+  /api/v1/professionals:
+    get:
+      tags: [Professionals]
+      summary: Discover suitable professionals for a business outcome
+      description: |
+        Returns active professional projections that are lawfully eligible for the
+        stated business outcome. Results explain suitability without preferred-customer
+        scoring, ranking by customer value, or disclosure of protected eligibility facts.
+      operationId: discoverProfessionals
+      parameters:
+        - name: outcome
+          in: query
+          required: true
+          schema: { type: string, minLength: 3, maxLength: 500 }
+      responses:
+        "200":
+          description: Suitable professional projections with customer-safe fit reasons
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/ProfessionalDiscoveryResult" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/v1/professionals/{professionalType}/disclosure:
+    get:
+      tags: [Professionals]
+      summary: Read the versioned professional disclosure before trial
+      operationId: getProfessionalDisclosure
+      parameters:
+        - name: professionalType
+          in: path
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 100 }
+      responses:
+        "200":
+          description: Complete suitability, rights, limits, authority, trial, evidence, and price disclosure
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ProfessionalDisclosure" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/whatsapp/webhook:
+    post:
+      tags: [WhatsApp Journey]
+      summary: Receive a signed WhatsApp journey message
+      description: |
+        Verifies the raw-body HMAC before deriving a minimised phone identity,
+        applies a five-minute replay window and durable message-id deduplication,
+        and returns non-consequential S01-S06 presentation text. Tier 2 requires
+        a separate explicit confirmation; Tier 3 always requires portal step-up.
+        ADR-023. This endpoint is authenticated by signature rather than Keycloak.
+      operationId: receiveWhatsAppJourneyMessage
+      security: []
+      parameters:
+        - name: X-Hub-Signature-256
+          in: header
+          required: true
+          schema:
+            type: string
+            pattern: '^sha256=[0-9A-Fa-f]{64}$'
+          description: HMAC-SHA256 of the exact raw request body
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WhatsAppJourneyInbound" }
+      responses:
+        "200":
+          description: Message accepted or deterministically replayed; internal tenant credentials are never returned
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WhatsAppJourneyResponse" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
   # ─── Employment ───────────────────────────────────────────────────────────
 
   /api/v1/employment/relationships:
@@ -569,6 +654,40 @@ paths:
           $ref: "#/components/responses/Conflict"
         "503":
           description: Constitutional validation or evidence commitment is unavailable
+
+  /api/v1/employment/relationships/{relationshipId}/trial:
+    post:
+      tags: [Employment]
+      summary: Start the relationship evaluation trial
+      description: |
+        Starts the WBE-owned 14-day entitlement and the PR-owned evaluation workflow.
+        The relationship becomes TRIAL_ACTIVE only after both owners confirm the same trial window.
+      operationId: startEmploymentRelationshipTrial
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StartRelationshipTrialRequest"
+      responses:
+        "200":
+          description: Owner-confirmed trial is active
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RelationshipTrial"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Authenticated identity lacks tenant or participant authority
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "503":
+          description: WBE or PR owner outcome is unavailable or inconsistent
 
   /api/v1/employment/contracts:
     get:
@@ -2698,6 +2817,91 @@ components:
 
   schemas:
 
+    ProfessionalDiscoveryResult:
+      type: object
+      additionalProperties: false
+      required: [professionalType, projectionVersion, displayName, suitability, eligibility]
+      properties:
+        professionalType: { type: string, maxLength: 100 }
+        projectionVersion: { type: string, pattern: '^\d+\.\d+\.\d+$' }
+        displayName: { type: string, maxLength: 200 }
+        suitability:
+          type: array
+          minItems: 1
+          items: { type: string, maxLength: 500 }
+        eligibility: { $ref: "#/components/schemas/ProfessionalEligibility" }
+
+    ProfessionalEligibility:
+      type: object
+      additionalProperties: false
+      required: [eligible, explanation]
+      properties:
+        eligible: { type: boolean }
+        explanation: { type: string, maxLength: 500 }
+
+    ProfessionalDisclosure:
+      type: object
+      additionalProperties: false
+      required: [professionalType, projectionVersion, displayName, suitability, skills, limitations, authorityNeeds, customerRights, trial, evidencePosture, indicativePrice, eligibility]
+      properties:
+        professionalType: { type: string, maxLength: 100 }
+        projectionVersion: { type: string, pattern: '^\d+\.\d+\.\d+$' }
+        displayName: { type: string, maxLength: 200 }
+        suitability:
+          type: array
+          minItems: 1
+          items: { type: string, maxLength: 500 }
+        skills:
+          type: array
+          minItems: 1
+          items: { $ref: "#/components/schemas/ProfessionalSkillDisclosure" }
+        limitations:
+          type: array
+          minItems: 1
+          items: { type: string, maxLength: 500 }
+        authorityNeeds:
+          type: array
+          minItems: 1
+          items: { type: string, maxLength: 500 }
+        customerRights:
+          type: array
+          minItems: 1
+          items: { type: string, maxLength: 500 }
+        trial: { $ref: "#/components/schemas/ProfessionalTrialDisclosure" }
+        evidencePosture: { type: string, maxLength: 1000 }
+        indicativePrice: { $ref: "#/components/schemas/IndicativePriceDisclosure" }
+        eligibility: { $ref: "#/components/schemas/ProfessionalEligibility" }
+
+    ProfessionalSkillDisclosure:
+      type: object
+      additionalProperties: false
+      required: [skillId, displayName, applicableInTrial]
+      properties:
+        skillId: { type: string, maxLength: 100 }
+        displayName: { type: string, maxLength: 200 }
+        applicableInTrial: { type: boolean }
+        activationCondition: { type: string, maxLength: 500 }
+
+    ProfessionalTrialDisclosure:
+      type: object
+      additionalProperties: false
+      required: [available, durationDays, paidApiCallsAllowed, externalActionsAllowed]
+      properties:
+        available: { type: boolean }
+        durationDays: { type: integer, minimum: 0, maximum: 14 }
+        paidApiCallsAllowed: { type: boolean, enum: [false] }
+        externalActionsAllowed: { type: boolean, enum: [false] }
+
+    IndicativePriceDisclosure:
+      type: object
+      additionalProperties: false
+      required: [currency, amountInrPaise, cadence, qualification]
+      properties:
+        currency: { type: string, const: INR }
+        amountInrPaise: { type: integer, format: int64, minimum: 0 }
+        cadence: { type: string, enum: [MONTHLY] }
+        qualification: { type: string, maxLength: 500 }
+
     # ── Enumerations ──────────────────────────────────────────────────────
 
     IdentityRegistrationState:
@@ -3266,6 +3470,75 @@ components:
         explicitEmergencyRelease:
           type: boolean
           default: false
+
+    StartRelationshipTrialRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        correlationId:
+          type: string
+          format: uuid
+          nullable: true
+
+    RelationshipTrial:
+      type: object
+      additionalProperties: false
+      required: [trialId, startsAt, expiresAt, status]
+      properties:
+        trialId:
+          type: string
+          format: uuid
+        startsAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [ACTIVE]
+
+    WhatsAppJourneyInbound:
+      type: object
+      additionalProperties: false
+      required: [messageId, timestamp, from, text]
+      properties:
+        messageId:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: Provider message identifier used for durable deduplication
+        timestamp:
+          type: integer
+          format: int64
+          description: Provider Unix timestamp; accepted only within five minutes of receipt
+        from:
+          type: string
+          pattern: '^\+[1-9][0-9]{7,14}$'
+          description: E.164 sender number; transformed to HMAC and never persisted raw
+        text:
+          type: string
+          minLength: 1
+          maxLength: 4096
+        riskTier:
+          type: string
+          enum: [TIER_1_LOW_RISK, TIER_2_MEDIUM_RISK, TIER_3_HIGH_RISK]
+          default: TIER_1_LOW_RISK
+
+    WhatsAppJourneyResponse:
+      type: object
+      additionalProperties: false
+      required: [messageId, status, journeyStage, reply, replayed]
+      properties:
+        messageId: { type: string }
+        status:
+          type: string
+          enum: [ACCEPTED, DUPLICATE, CONFIRMATION_REQUIRED, PORTAL_STEP_UP_REQUIRED]
+        journeyStage:
+          type: string
+          enum: [DISCOVER, DISCLOSURE, INTERVIEW, CONTEXT, TRIAL, CONFIGURE, UNKNOWN]
+        reply: { type: string }
+        replayed: { type: boolean }
 
     EmploymentRelationship:
       type: object

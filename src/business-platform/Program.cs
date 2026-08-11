@@ -69,6 +69,7 @@ builder.Services.AddTenantIsolation();
 
 // ── HttpContextAccessor — required by TenantDbConnectionInterceptor ──────────────
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddSingleton<IProfessionalCatalog, ProfessionalCatalog>();
 
 var workloadCredentials = builder.Configuration["WAOOAW_WORKLOAD_CREDENTIALS"];
 var prWorkspaceBaseUrl = builder.Configuration["ProfessionalRuntime:RelationshipWorkspaceBaseUrl"];
@@ -81,10 +82,14 @@ if (!string.IsNullOrWhiteSpace(workloadCredentials)
     builder.Services.AddSingleton(workloadIdentity);
     builder.Services.AddSingleton<IRelationshipWorkspaceOwnerGateway>(
         new AuthenticatedRelationshipWorkspaceOwnerGateway(workloadIdentity, prWorkspaceUri, wbeWorkspaceUri));
+    builder.Services.AddSingleton<IRelationshipTrialOwnerGateway>(services =>
+        new HttpRelationshipTrialOwnerGateway(
+            services.GetRequiredService<IHttpClientFactory>(), workloadIdentity, prWorkspaceUri));
 }
 else
 {
     builder.Services.AddSingleton<IRelationshipWorkspaceOwnerGateway, UnconfiguredRelationshipWorkspaceOwnerGateway>();
+    builder.Services.AddSingleton<IRelationshipTrialOwnerGateway, UnconfiguredRelationshipTrialOwnerGateway>();
 }
 
 // ── WBE (billing-engine) HttpClient — used by SubscriptionsController + Temporal activities ──
@@ -93,6 +98,8 @@ builder.Services.AddHttpClient("WBE", client =>
 {
     client.BaseAddress = new Uri(wbeBaseUrl);
     client.Timeout     = TimeSpan.FromSeconds(30);
+    var opsToken = builder.Configuration["BillingEngine:OpsAuthToken"];
+    if (!string.IsNullOrWhiteSpace(opsToken)) client.DefaultRequestHeaders.Add("X-Ops-Token", opsToken);
 });
 
 // ── Temporal worker — trial expiry saga (ADR-015, conditional on config) ─────
@@ -138,6 +145,11 @@ builder.Services.AddDbContextFactory<EmploymentRelationshipDbContext>((services,
         .AddInterceptors(services.GetRequiredService<TenantDbConnectionInterceptor>()));
 builder.Services.AddScoped<IRelationshipConstitutionalGateway, RelationshipConstitutionalGateway>();
 builder.Services.AddScoped<EmploymentRelationshipService>();
+builder.Services.AddScoped<RelationshipConfigurationService>();
+builder.Services.AddScoped<RelationshipTrialService>();
+builder.Services.Configure<WhatsAppJourneyOptions>(builder.Configuration.GetSection("WhatsApp"));
+builder.Services.AddScoped<IWhatsAppRegistrationEvidenceGateway, WhatsAppRegistrationEvidenceGateway>();
+builder.Services.AddScoped<WhatsAppJourneyService>();
 
 // ── Identity Boundary — WC-034 F2 (identity-boundary.md) ─────────────────
 // Pre-account registration paths use actor subject (JWT sub); no tenant_id required.

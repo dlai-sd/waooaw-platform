@@ -53,6 +53,13 @@ public sealed class TenantIsolationMiddleware
             return;
         }
 
+        // WhatsApp inbound identity is established only after raw-body signature verification.
+        if (context.Request.Path.Equals("/api/v1/whatsapp/webhook", StringComparison.OrdinalIgnoreCase))
+        {
+            await _next(context);
+            return;
+        }
+
         // Pre-account identity registration paths use a Keycloak pre-account JWT (PreAccountBearerAuth)
         // that carries a `sub` claim but no `tenant_id`. Authentication is enforced by JwtBearer;
         // the tenant_id requirement is deliberately absent per identity-boundary.md §1.7.
