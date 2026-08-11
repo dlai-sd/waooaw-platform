@@ -33,8 +33,9 @@ Canonical endpoints:
 - `PUT /api/v1/employment/relationships/{id}/configuration`; `POST .../configuration/accept`.
 - `POST /api/v1/employment/relationships/{id}/contracts`; `POST .../contracts/{version}/accept`.
 - `POST /api/v1/employment/relationships/{id}/activation-intents`; `GET .../activation-intents/{id}`.
-- `POST /api/v1/employment/relationships/{id}/handoffs`; `POST .../handoffs/{id}/activate`.
-- `GET /api/v1/employment/relationships/{id}/evidence`; `GET .../evidence/export`.
+- `POST /api/v1/employment/relationships/{relationshipId}/handoffs`; `POST .../handoffs/{handoffId}/activate`.
+- `GET /api/v1/employment/relationships/{relationshipId}/workspace/evidence`; `GET .../workspace/evidence/{evidenceId}`.
+- `POST /api/v1/employment/relationships/{relationshipId}/workspace/evidence-exports`; `GET .../workspace/evidence-exports/{exportId}`.
 
 Existing `POST /api/v1/employment/contracts`, `GET /api/v1/employment/contracts/{id}`, `POST /api/v1/agents/hire`, and `POST /api/agents/hire` remain compatibility adapters during AE-01. All call the canonical services. They emit `Deprecation: true` and a `Link` to the canonical endpoint; no duplicate business logic remains. Removal requires a later versioned contract and is outside AE-01.
 
@@ -60,7 +61,42 @@ The shared runtime enforces rights, trial limits, evidence, authority, and lifec
 
 The canonical JSON/OpenAPI schema carries: `schema_version`, `tenant_id`, `relationship_id`, `participant_id`, `participant_role`, `authentication_assurance`, `authority_snapshot_id`, `source_channel`, `source_conversation_id`, `target_channel`, `target_conversation_id`, `command_purpose`, `correlation_id`, `causal_marker`, `sequence_number`, `idempotency_key`, `evidence_commitment_id`, `continuity_checkpoint_id`, and `issued_at`.
 
-Tenant/relationship/participant/authority values are server-resolved and signed or integrity-protected; channel payload hints cannot override them. Source remains active until target authentication and checkpoint evidence commit. Same envelope/key/hash replays prior outcome; same key with different hash conflicts.
+Tenant/relationship/participant/authority values are server-resolved. BP signs the RFC 8785
+canonical Neutral Continuity Envelope with HMAC-SHA256 using the managed
+continuity-envelope key; authenticated internal consumers verify it before use and reject a
+failed signature without mutation. The signature is never treated as browser authorization,
+and channel payload hints cannot override signed fields. Source remains active until target
+authentication and checkpoint evidence commit. A prepared checkpoint expires after exactly
+15 minutes; expiry leaves the source active. Successful target activation does not revoke the
+source, and independently authenticated channels may remain concurrently active. Same
+envelope/key/hash replays prior outcome; same key with different hash conflicts.
+
+## Evidence Reader Internal Contract
+
+BP remains the only public Evidence Reader and export orchestrator. After BP authorizes the
+authenticated tenant, selected relationship, participant role, and permitted evidence scope,
+it resolves the opaque evidence IDs linked from the relationship-owned projections in
+Migrations 19 through 22. BP calls CE `QueryEvidenceRecords` over the authenticated internal
+gRPC boundary with those IDs. CE derives tenant only from `x-tenant-id` metadata and returns
+only matching immutable Audit Sink proof records; unknown, foreign-tenant, and erased-payload
+references are omitted without existence disclosure.
+
+The CE response may contain proof metadata and an opaque `payload_ref_id` only while the
+tenant-owned payload remains available. It never contains payload content, credentials, raw
+prompts, private policy traces, storage coordinates, or another tenant's data. BP applies the
+D-06 participant-role access matrix, prepares any short-lived authenticated export from the
+authorized projection, records export evidence through the existing CE write contract, and
+returns only the BP-mediated export resource. The browser never calls CE, Audit Sink, or the
+payload store directly.
+
+An erased operational payload does not erase or hide its authorized constitutional proof. BP
+returns the evidence detail with HTTP 200, `payloadState: ERASED`, the CE erasure timestamp,
+and no payload reference. Unknown and unauthorized evidence IDs remain indistinguishable
+privacy-safe 404 responses. Evidence export is a UTF-8 JSON artifact with media type
+`application/vnd.waooaw.relationship-evidence+json;version=1.0`, RFC 8785 canonical ordering,
+a lowercase SHA-256 document digest, and a BP-signed HTTPS download URL valid for no more than
+15 minutes. The artifact contains only the caller's current role-filtered evidence detail
+projection and applies the same erased-payload rule.
 
 ## Activation Choreography
 

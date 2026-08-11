@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 5
+**State Revision:** 6
 **Last Updated:** 2026-08-11
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -50,11 +50,17 @@ deployment, self-review, self-approval, self-merge, or production/customer-proof
 
 ## Current Blockers
 
-None for the schema-v2 governance change. Independent review remains required before merge.
+None for the schema-v2 governance change. WC-060 has no specification blocker: CB-004 is
+resolved and Amendment 9 is CA-ready through R-086. WC-060 implementation remains unauthorized
+pending exact Registrant acknowledgement, separate future current-session Founder authorization,
+GOA issuance, and later INST-010 acceptance.
 
 ## Next Authorized Action
 
-Founder reviews PR #266. No merge or further work follows automatically.
+Founder reviews PR #266 and the separate WC-060 readiness PR. No merge or implementation
+follows automatically. WC-060's next constitutional action is exact Registrant acknowledgement
+of Amendment 9; implementation additionally requires the separate future directive
+`Authorize implementation of WC-060`.
 
 ## History And Evidence
 
@@ -65,6 +71,9 @@ Founder reviews PR #266. No merge or further work follows automatically.
   `goals/GOAL-005-wc059-implementation-evidence.md`, and reviews R-083/R-084.
 - Schema-v2 governance record and independent review:
   `work-contracts/WC-061-project-state-v2-governance.md` and R-085.
+- WC-060 readiness: `work-contracts/WC-060-goal005-ae01-continuity-evidence-stop.md`,
+  `blockers/CB-004-wc060-canonical-contract-gaps-2026-08-11.md`, Amendment 9 in
+  `goals/GOAL-005-execution-plan.md`, and R-086.
 - Earlier completed work remains authoritative in its owning Work Contract, Goal, review,
   constitutional record, and repository history; it must not be copied back into this file.
 

@@ -54,14 +54,159 @@ The activation tuple has one unique row. Processing first performs `INSERT ... O
 
 ## Migration 22 — Continuity and Evidence Projection
 
-| Table | Semantics |
-|---|---|
-| `business.channel_bindings` | tenant, relationship, participant, channel, external subject hash, conversation reference, assurance level, status, bound/revoked evidence/time |
-| `business.continuity_checkpoints` | source/target binding, continuity envelope hash, causal marker, sequence, status, evidence/time |
-| `business.delivery_acknowledgements` | transport acceptance and participant observation as separate fields/events |
-| `business.channel_message_deduplication` | channel, message ID/hash, received time, outcome reference, expiry; no raw message |
+Migration `22-ae01-continuity-evidence.sql` creates the following exact contract. All UUID
+defaults use `gen_random_uuid()` and all timestamps use `TIMESTAMPTZ` in UTC.
 
-One relationship may have multiple concurrent presentation bindings, including multiple conversations, but each binding is independently authenticated and role-bound. Bindings can be `PREPARED`, `ACTIVE`, `REVOKED`, or `EXPIRED`; those are delivery states, not relationship lifecycle states. Revocation never terminates employment. Binding proof follows relationship constitutional retention; raw channel payload follows payload-store erasure rules.
+### `business.channel_bindings`
+
+| Column | Type and nullability | Constraint or meaning |
+|---|---|---|
+| `binding_id` | `UUID NOT NULL` | Primary key; unique `(tenant_id, binding_id)` for composite references |
+| `tenant_id` | `UUID NOT NULL` | RLS anchor; never accepted from a request body |
+| `relationship_id` | `UUID NOT NULL` | Composite FK to `employment_relationships(tenant_id, relationship_id)` |
+| `participant_id` | `UUID NOT NULL` | Server-resolved participant; BP verifies an active relationship-role binding |
+| `participant_role` | `VARCHAR(32) NOT NULL` | `EVALUATOR`, `EMPLOYER`, `OUTCOME_OWNER`, or `RELATIONSHIP_MANAGER` |
+| `channel` | `VARCHAR(16) NOT NULL` | `WHATSAPP` or `WEB` |
+| `external_subject_hash` | `CHAR(64) NOT NULL` | Lowercase SHA-256; no raw phone, provider subject, token, or credential |
+| `conversation_id` | `VARCHAR(256) NOT NULL` | Channel conversation reference; not relationship identity |
+| `assurance_level` | `VARCHAR(40) NOT NULL` | `TIER_1_PHONE_IDENTITY`, `TIER_2_EXPLICIT_CONFIRMATION`, `TIER_3_MPIN`, or `TIER_4_PORTAL_FRESH` |
+| `status` | `VARCHAR(16) NOT NULL DEFAULT 'PREPARED'` | `PREPARED`, `ACTIVE`, `REVOKED`, or `EXPIRED` |
+| `prepared_evidence_id` | `UUID NOT NULL` | Opaque CE evidence reference for preparation |
+| `bound_evidence_id` | `UUID` | Required when status becomes `ACTIVE` |
+| `revoked_evidence_id` | `UUID` | Required for `REVOKED`; absent for `ACTIVE` |
+| `created_at` | `TIMESTAMPTZ NOT NULL DEFAULT NOW()` | Immutable creation time |
+| `bound_at` | `TIMESTAMPTZ` | Required when status becomes `ACTIVE` |
+| `revoked_at` | `TIMESTAMPTZ` | Required for `REVOKED` or `EXPIRED` |
+
+Checks enforce the status enumeration, lowercase SHA-256 shape, and these state-dependent
+values: `ACTIVE` requires non-null `bound_evidence_id` and `bound_at`; `REVOKED` requires
+non-null `revoked_evidence_id` and `revoked_at`; `EXPIRED` requires `revoked_at`; and
+`PREPARED` has none of those resolution fields. A transition trigger allows only
+`PREPARED → ACTIVE|REVOKED|EXPIRED` and `ACTIVE → REVOKED|EXPIRED`, rejects reopening a
+terminal state, and prevents changes to identity, assurance, relationship, and existing
+evidence fields. A prepared binding is revoked when its participant role is revoked or Stop
+fires; it expires when its checkpoint reaches `expires_at`. An active binding is revoked only
+for explicit participant/role revocation or Stop and expires only when its independently
+authenticated channel credential expires. Activating another participant or channel never
+implicitly revokes an active binding. A partial unique index on
+`(tenant_id, relationship_id, participant_id, channel)` where status is `PREPARED` or
+`ACTIVE` prevents competing live bindings for the same participant and channel while allowing
+multiple participants, channels, and conversations on one relationship. Indexes also cover
+`(tenant_id, relationship_id, status)` and `(tenant_id, conversation_id)`.
+
+### `business.continuity_checkpoints`
+
+| Column | Type and nullability | Constraint or meaning |
+|---|---|---|
+| `checkpoint_id` | `UUID NOT NULL` | Primary key; unique `(tenant_id, checkpoint_id)` |
+| `tenant_id` | `UUID NOT NULL` | RLS anchor |
+| `relationship_id` | `UUID NOT NULL` | Composite FK to the relationship |
+| `source_binding_id` | `UUID NOT NULL` | Composite FK `(tenant_id, source_binding_id)` to channel bindings |
+| `target_binding_id` | `UUID NOT NULL` | Composite FK `(tenant_id, target_binding_id)` to channel bindings; differs from source |
+| `continuity_envelope_hash` | `CHAR(64) NOT NULL` | Lowercase SHA-256 of canonical Neutral Continuity Envelope bytes |
+| `material_request_hash` | `CHAR(64) NOT NULL` | Lowercase SHA-256 used for divergent replay detection |
+| `causal_marker` | `UUID NOT NULL` | Unique within tenant and relationship |
+| `sequence_number` | `BIGINT NOT NULL` | Positive and unique within tenant and relationship |
+| `idempotency_key` | `UUID NOT NULL` | Unique within tenant and relationship |
+| `status` | `VARCHAR(16) NOT NULL DEFAULT 'PREPARED'` | `PREPARED`, `COMMITTED`, `REVERTED`, `CONFLICT`, or `EXPIRED` |
+| `prepared_evidence_id` | `UUID NOT NULL` | Opaque CE preparation evidence reference |
+| `resolution_evidence_id` | `UUID` | Required for every terminal status |
+| `prepared_at` | `TIMESTAMPTZ NOT NULL DEFAULT NOW()` | Preparation time |
+| `expires_at` | `TIMESTAMPTZ NOT NULL` | Exactly 15 minutes after `prepared_at` |
+| `resolved_at` | `TIMESTAMPTZ` | Required for every terminal status |
+
+Checks enforce status enumeration, positive sequence number, differing source and target
+bindings, lowercase SHA-256 shape, `expires_at = prepared_at + INTERVAL '15 minutes'`, and
+null resolution fields only for `PREPARED`; every terminal row requires
+`resolution_evidence_id` and `resolved_at`. A transition trigger permits only
+`PREPARED → COMMITTED|REVERTED|CONFLICT|EXPIRED`, rejects terminal-row updates, and prevents
+changes to hashes, bindings, causal marker, sequence, idempotency, and preparation evidence.
+Target authentication, current role/authority, Stop state, and evidence
+commit all pass before `COMMITTED`. The source binding remains active after commit because
+AE-01 permits concurrent independently authenticated channels. Identical
+`(idempotency_key, material_request_hash, continuity_envelope_hash)` returns the prior row;
+reuse with either hash changed records `CONFLICT` with zero binding or relationship mutation.
+Unique `(tenant_id, relationship_id, idempotency_key)` is the concurrency arbiter; after a
+conflict, the stored hashes determine identical replay versus divergent use. Unique
+`(tenant_id, relationship_id, causal_marker)` and
+`(tenant_id, relationship_id, sequence_number)` enforce causal identity and order. The
+implementation locks the relationship row and assigns
+`MAX(sequence_number) + 1`, preventing gaps and out-of-order commit. Indexes cover
+`(tenant_id, relationship_id, sequence_number)`, `(tenant_id, relationship_id, status)`, and
+`(tenant_id, target_binding_id, status)`.
+
+### `business.delivery_acknowledgements`
+
+| Column | Type and nullability | Constraint or meaning |
+|---|---|---|
+| `acknowledgement_id` | `UUID NOT NULL` | Primary key |
+| `tenant_id` | `UUID NOT NULL` | RLS anchor |
+| `relationship_id` | `UUID NOT NULL` | Composite FK to the relationship |
+| `checkpoint_id` | `UUID` | Optional composite FK to a continuity checkpoint |
+| `binding_id` | `UUID NOT NULL` | Composite FK to the independently authenticated binding |
+| `message_id_hash` | `CHAR(64) NOT NULL` | Lowercase SHA-256; no raw provider message ID |
+| `acknowledgement_type` | `VARCHAR(32) NOT NULL` | `TRANSPORT_ACCEPTED` or `PARTICIPANT_OBSERVED` |
+| `acknowledged_at` | `TIMESTAMPTZ NOT NULL` | Provider or participant event time |
+| `evidence_id` | `UUID NOT NULL` | Opaque CE evidence reference |
+| `created_at` | `TIMESTAMPTZ NOT NULL DEFAULT NOW()` | Durable receipt time |
+
+Checks enforce acknowledgement type enumeration and lowercase SHA-256 shape. Rows are
+append-only through a `BEFORE UPDATE OR DELETE` trigger that raises an exception for every
+database role; grants additionally omit `UPDATE` and `DELETE` for `business_app`. Unique `(tenant_id, binding_id, message_id_hash,
+acknowledgement_type)` makes each acknowledgement independently replay-safe. Transport
+acceptance never implies participant observation. Indexes cover
+`(tenant_id, relationship_id, acknowledged_at)`, `(tenant_id, checkpoint_id)`, and
+`(tenant_id, binding_id, message_id_hash)`.
+
+### `business.channel_message_deduplication`
+
+| Column | Type and nullability | Constraint or meaning |
+|---|---|---|
+| `deduplication_id` | `UUID NOT NULL` | Primary key |
+| `tenant_id` | `UUID NOT NULL` | RLS anchor |
+| `relationship_id` | `UUID NOT NULL` | Composite FK to the relationship |
+| `binding_id` | `UUID NOT NULL` | Composite FK to the channel binding |
+| `provider_message_id_hash` | `CHAR(64) NOT NULL` | Lowercase SHA-256; no raw provider identifier |
+| `material_message_hash` | `CHAR(64) NOT NULL` | Lowercase SHA-256 of canonical material message bytes |
+| `received_at` | `TIMESTAMPTZ NOT NULL DEFAULT NOW()` | First receipt time |
+| `outcome_reference` | `UUID` | Prior durable outcome; required when processing completes |
+| `status` | `VARCHAR(16) NOT NULL DEFAULT 'RECEIVED'` | `RECEIVED`, `SUCCEEDED`, `FAILED`, or `CONFLICT` |
+| `expires_at` | `TIMESTAMPTZ NOT NULL` | Exactly 48 hours after `received_at` |
+
+Checks enforce status enumeration, lowercase SHA-256 shape,
+`expires_at = received_at + INTERVAL '48 hours'`, null `outcome_reference` for `RECEIVED`,
+and non-null `outcome_reference` for terminal states. Unique `(tenant_id, binding_id,
+provider_message_id_hash)` arbitrates concurrent delivery.
+The first receiver owns processing. Identical material hash replays the stored status and
+outcome; a changed material hash returns `CONFLICT` with zero mutation. Only
+`RECEIVED → SUCCEEDED|FAILED|CONFLICT` is legal; a transition trigger rejects terminal-row
+updates and changes to identity, hashes, relationship, binding, receipt, or expiry. Expired
+rows may be deleted only by the `business_continuity_maintenance` NOLOGIN role after
+`expires_at`; it has RLS-constrained `SELECT` and `DELETE` on this table only, receives a
+tenant setting from the scheduled maintenance transaction, and has no membership in
+`business_app` or constitutional roles. A daily BP maintenance job deletes only expired rows
+for one explicitly selected tenant per transaction and emits an operational cleanup metric;
+the deletion is not a constitutional decision and does not create CE evidence. Expiry never
+deletes the linked constitutional evidence or delivery acknowledgement. Indexes cover
+`(tenant_id, relationship_id, received_at)`, `(tenant_id, binding_id,
+provider_message_id_hash)`, and `expires_at` for maintenance.
+
+### Cross-Table Enforcement And Retention
+
+All four tables enable and force RLS using
+`tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '')::UUID` for both
+`USING` and `WITH CHECK`. `business_app` receives only the operations required by the legal
+transition rules; trigger-enforced transition guards reject illegal status changes.
+`delivery_acknowledgements` has no `UPDATE` or `DELETE` grant. Checkpoint and binding
+terminal evidence, hashes, and acknowledgement rows follow relationship constitutional
+retention. Deduplication rows alone are operational and expire after 48 hours. No table stores
+raw channel payload, phone, provider subject, credential, or customer content.
+
+One relationship may have multiple concurrent presentation bindings and conversations, but
+every binding is independently authenticated and role-bound. Binding and checkpoint statuses
+are delivery state only; they never own or mutate D-03 relationship lifecycle, contract,
+authority, payment, or billing truth. CE evidence IDs are opaque references rather than
+cross-database foreign keys.
 
 ## Evidence Retrieval
 
