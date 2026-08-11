@@ -3,8 +3,8 @@
 **Goal:** GOAL-005 · **Epic stories:** AE-01-S07 and S08
 **Office on execution:** Platform IT Expert (INST-010)
 **Reviewer:** Enterprise Architect (INST-004) + Constitutional Analyst (INST-002)
-**Status:** GROOMED AND ROUTING — FA-040 RECORDED; GEP-08 CA/ACK/GOA/ACC gates pending
-**Authorization:** FA-040 records the exact current-session directive `Authorize implementation of WC-059`; implementation remains blocked until fresh CA readiness, ACK-GOAL-005-INST-001-08, GOA-GOAL-005-INST-010-05, and later ACC-GOAL-005-INST-010-05 are valid.
+**Status:** IN PROGRESS — IMPLEMENTATION AUTHORIZED AND ACCEPTED
+**Authorization:** FA-040; GEP-GOAL-005-INST-013-08; R-080; ACK-GOAL-005-INST-001-08; GOA-GOAL-005-INST-010-05; ACC-GOAL-005-INST-010-05
 **Track:** VERTICAL CUSTOMER OUTCOME
 **Service scope:** BP (.NET), WBE (Python), CE (.NET), web, PR channel presentation
 

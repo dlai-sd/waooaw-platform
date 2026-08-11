@@ -1901,3 +1901,51 @@ R-080 / `CR-GOAL-005-INST-002-12` independently APPROVES Amendment 8 with no
 readiness condition. GEOM R2-03 condition 1 is satisfied. Condition 2 remains open:
 `ACK-GOAL-005-INST-001-08` must contain the exact acknowledgement above before
 INST-013 may issue GOA-GOAL-005-INST-010-05.
+
+### Registrant Acknowledgement — ACK-GOAL-005-INST-001-08
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-001 |
+| `goal_id` | GOAL-005 |
+| `record_id` | ACK-GOAL-005-INST-001-08 |
+| `record_type` | Acknowledgement Record |
+| `produced_at` | 2026-08-11T10:21:57Z |
+| Acknowledged plan | GEP-GOAL-005-INST-013-08 |
+| Decision | ACKNOWLEDGED — INST-013 authorized to issue GOA-GOAL-005-INST-010-05 for WC-059 only |
+| Exact quoted acknowledgement | "I acknowledge GEP-GOAL-005-INST-013-08 and authorize INST-013 to issue GOA-GOAL-005-INST-010-05 for WC-059 implementation only. This does not authorize live Razorpay or provider activation, WC-060, deployment, merge, or self-review" |
+
+R-080 and this record satisfy both GEOM R2-03 pre-issuance conditions. The acknowledgement does not itself issue a GOA, accept participation for INST-010, activate Razorpay or another provider, authorize WC-060, deploy, approve a PR, or permit merge.
+
+### Authorization Record — GOA-GOAL-005-INST-010-05
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GOA-GOAL-005-INST-010-05 |
+| `record_type` | Authorization Record |
+| Authorized Institution | INST-010 — Platform IT Expert |
+| Contribution scope | Implement WC059-01 through WC059-08 exactly within GEP-GOAL-005-INST-013-08 and WC-059; publish attested Contribution and Learning Records before independent review |
+| Evidence specification | Task traceability; Docker-only BP/WBE/CE/web/integration/security/CCT evidence; affected-surface line coverage at least 90%; deterministic Migration 21b; S07-S08 synthetic journey; one charge/subscription/relationship/`ACTIVE` transition; explicit conflict and retryable uncertainty |
+| Participation Window | Five constitutional sessions after valid acceptance |
+| Independence constraint | INST-010 may implement but may not independently review, approve, merge, deploy, activate a provider, or declare Goal completion |
+| Excluded authority | Live Razorpay/provider activation or credentials; account setup; WC-060/F6-F8; campaign/provider execution; deployment; production/customer proof; architecture reinterpretation; self-review; merge |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-11T10:21:58Z |
+
+### Acceptance Record — ACC-GOAL-005-INST-010-05
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-010 |
+| `goal_id` | GOAL-005 |
+| `record_id` | ACC-GOAL-005-INST-010-05 |
+| `record_type` | Acceptance Record |
+| `produced_at` | 2026-08-11T10:21:59Z |
+| `authorization_id` | GOA-GOAL-005-INST-010-05 |
+| Accepted scope | WC059-01 through WC059-08 implementation and evidence under Amendment 8 only |
+| Participation Window | 2026-08-11T10:21:59Z through five constitutional sessions |
+| Acceptance boundary | No live Razorpay/provider activation, credentials/account setup, WC-060, deployment, merge, self-review, architecture reinterpretation, or production/customer-proof authority |
+
+The Acceptance timestamp is later than GOA issuance, satisfying GEOM G-03 and R2-12. WC-059 implementation may begin under FA-040, GEP-08, R-080, ACK-08, GOA-05, and ACC-05.

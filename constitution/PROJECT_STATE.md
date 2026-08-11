@@ -1,6 +1,6 @@
 # PROJECT_STATE.md
 
-**Last Updated:** 2026-08-11 (WC-059 groomed authorization routing begun under FA-040)
+**Last Updated:** 2026-08-11 (WC-059 implementation authorized and accepted)
 
 ---
 
@@ -11,16 +11,16 @@
 | WC-058 dependency closure | DONE — PR #263 merged as `2682ab0`; reconciliation PR #264 merged as `1c59ff0` |
 | Founder current-session implementation consent | DONE — FA-040 records exact directive `Authorize implementation of WC-059` and the requirement to verify grooming before implementation |
 | WC-059 grooming audit | READY — D-07/R-046, D-03/D-06, WC-042/WC-043, owner APIs, Tier-4 security, activation ordering/failure semantics, and seven CCTs are complete and implementable without architecture invention; occupied migration sequence 21 is corrected to deployment filename `21b-ae01-contract-activation.sql` |
-| GEP-GOAL-005-INST-013-08 | PROPOSED — WC-059-only scope, evidence, review, exclusions, and reserved GOA-GOAL-005-INST-010-05 recorded |
+| GEP-GOAL-005-INST-013-08 | ACTIVE — WC-059-only scope, evidence, review, exclusions, and GOA-GOAL-005-INST-010-05 recorded |
 | Fresh INST-002 CA Readiness Review | DONE — R-080 / `CR-GOAL-005-INST-002-12` APPROVED Amendment 8 with no readiness condition; GEOM R2-03 condition 1 satisfied |
-| ACK-GOAL-005-INST-001-08 | PENDING — exact Amendment 8 acknowledgement required after CA readiness |
-| GOA-GOAL-005-INST-010-05 | RESERVED, NOT ISSUED |
-| ACC-GOAL-005-INST-010-05 | NOT RECORDED — must be later than GOA issuance |
-| WC-059 implementation | BLOCKED until CA, ACK, GOA, and ACC gates are complete |
+| ACK-GOAL-005-INST-001-08 | DONE — Founder acknowledged Amendment 8 at 2026-08-11T10:21:57Z and authorized GOA-05 issuance for WC-059 only |
+| GOA-GOAL-005-INST-010-05 | ISSUED — INST-013 issued WC-059-only authority at 2026-08-11T10:21:58Z |
+| ACC-GOAL-005-INST-010-05 | ACCEPTED — INST-010 accepted at 2026-08-11T10:21:59Z; temporal order valid |
+| WC-059 implementation | AUTHORIZED — WC059-01 through WC059-08 may proceed under the five-session Participation Window |
 
 ### Authorization Boundary And Next Action
 
-FA-040 satisfies the separate current-session implementation-consent gate but does not itself authorize code. R-080 satisfies fresh CA readiness. The next action is the exact Founder acknowledgement of GEP-GOAL-005-INST-013-08; only then may INST-013 issue GOA-05 and INST-010 later accept it. Live Razorpay/provider activation, WC-060, deployment, merge, self-review, architecture reinterpretation, and production/customer proof remain unauthorized.
+FA-040, R-080, ACK-08, GOA-05, and ACC-05 complete the WC-059 implementation entry sequence. The next action is WC059-01 on a dedicated implementation branch, followed by each dependency-ordered task and checkpoint. Live Razorpay/provider activation, credentials/account setup, WC-060, deployment, merge, self-review, architecture reinterpretation, and production/customer proof remain unauthorized.
 
 ---
 
