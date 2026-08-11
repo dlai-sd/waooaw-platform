@@ -1660,3 +1660,23 @@ This publication fixes the contract bytes for owner attestation. It does not com
 | Canonical byte state | UNCHANGED — all five externally verifiable hashes match the publication record |
 
 This acceptance satisfies the logical owner-attestation prerequisite only. Executable G-F4-10 still requires a separate INST-010 GOA and acceptance plus deterministic Docker evidence; source implementation and Order 4 remain separate.
+
+## Amendment 5 Order 3 Executable Compatibility Authorization
+
+### GOA-GOAL-005-INST-010-03
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GOA-GOAL-005-INST-010-03 |
+| `record_type` | Authorization Record |
+| Authorized Institution | INST-010 — Runtime Implementation Professional |
+| Contribution scope | Produce executable G-F4-10 compatibility evidence from canonical commit `9b126bd` and owner attestation `CR-GOAL-005-INST-005-13`; publish `CR-GOAL-005-INST-010-03` and `LR-GOAL-005-INST-010-01` |
+| Evidence specification | Docker-only parse/reference/security/inventory checks; deterministic dependency-closed F4 slice; exact OpenAPI Generator `7.17.0`; two clean generation runs and hashes; strict TypeScript compile; no-manual-patch proof; forbidden-surface scan; success/conflict/stale/unavailable/blocked/partial/unknown/CE-unavailable/unsupported-version fixtures; acceptance and provenance manifest |
+| Fixed inputs | BP 1.3.0 hash `357c14bb...d9c22e`; compatibility specification `CR-GOAL-005-INST-005-09`; owner attestation `CR-GOAL-005-INST-005-13`; R-069 Conditions 1-3 |
+| Output boundary | Temporary generated trees and reproducible evidence only; no tracked production client, BP/WBE/PR/CE/DMA service implementation, web feature, persistence, migration, infrastructure, provider activation, or deployment |
+| Participation Window | 2 constitutional sessions after valid acceptance |
+| Excluded authority | Contract mutation, policy reinterpretation, application feature implementation, Order 4 workload identity, Orders 5-8, F5-F8, deployment, self-review, self-merge, and merge |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-11T02:43:06+00:00 |

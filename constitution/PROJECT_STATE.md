@@ -22,7 +22,7 @@
 | Amendment 5 Order 2 constitutional policy review | DONE — R-069 / `CR-GOAL-005-INST-002-10` APPROVED WITH CONDITIONS; `ACC-GOAL-005-INST-002-10` is later than issuance; Order 3 MAY BEGIN WITH CONDITIONS |
 | Amendment 5 Order 3 canonical contract publication | DONE — `ACC-GOAL-005-INST-005-08`, `CR-GOAL-005-INST-005-12`, and `LR-GOAL-005-INST-005-03` publish BP 1.3.0, PR 1.2.0, WBE 1.0.0, DMA adapter 1.0.0, and CE coverage; hashes match and Docker F4 slice/reference/inventory validation passes |
 | Amendment 5 Order 3 logical owner attestations | DONE — `ACC-GOAL-005-INST-005-09`, `CR-GOAL-005-INST-005-13`, and `LR-GOAL-005-INST-005-04` accept BP/PR/WBE/DMA/CE boundaries 5/5; all fixed hashes remain unchanged |
-| Amendment 5 Order 3 executable G-F4-10 | PENDING — requires separate INST-010 GOA/acceptance and Docker-only deterministic generation, strict TypeScript, forbidden-surface, fixture, traceability, and no-manual-patch evidence |
+| Amendment 5 Order 3 executable G-F4-10 | IN PROGRESS — `GOA-GOAL-005-INST-010-03` issued for Docker-only deterministic generation, strict TypeScript, forbidden-surface, fixture, traceability, and no-manual-patch evidence; acceptance and contribution remain pending; no service/web implementation or Order 4 authority |
 | Amendment 5 execution and independent review | PENDING — Orders 3-8, Docker/CCT evidence, checkpoint commits, and completed unmerged PR required |
 | PR #255 post-merge reconciliation verified | DONE — merged to `main` as `e2be32e`; WC-034 F3 sprint state is DONE |
 | INST-013 occupancy and F4 authorization boundary | DONE — Epoch 1; G5 CLEAR; architecture/dependency closure only; current GOA excludes F4-F8, implementation, provider activation, and deployment |
