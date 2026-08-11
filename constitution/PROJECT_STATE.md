@@ -28,7 +28,7 @@
 
 ### Authorization Boundary And Next Action
 
-FA-040, R-080, ACK-08, GOA-05, and ACC-05 complete the WC-059 implementation entry sequence. WC059-01 through WC059-08 are complete on the dedicated implementation branch; the next action is independent INST-004 Enterprise Architect and INST-002 Constitutional Analyst review before the unmerged Founder review PR. Live Razorpay/provider activation, credentials/account setup, WC-060, deployment, merge, self-review, architecture reinterpretation, and production/customer proof remain unauthorized.
+FA-040, R-080, ACK-08, GOA-05, and ACC-05 complete the WC-059 implementation entry sequence. WC059-01 through WC059-08 are complete on the dedicated implementation branch. R-083 INST-004 approves the architecture remediation and closes R081-03; ACC-GOAL-005-INST-005-10 closes the WBE 1.1.0 owner dependency and R082-01; R-084 INST-002 approves constitutional compliance with no blocker. The next action is an unmerged Founder review PR. Live Razorpay/provider activation, credentials/account setup, WC-060, deployment, merge, self-review, architecture reinterpretation, and production/customer proof remain unauthorized.
 
 ---
 
