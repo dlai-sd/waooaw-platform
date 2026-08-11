@@ -774,6 +774,48 @@ paths:
         "503":
           description: Constitutional validation or evidence commitment is unavailable
 
+  /api/v1/employment/relationships/{relationshipId}/contracts/{version}/payments/onboarding-order:
+    post:
+      tags: [Employment]
+      summary: Record explicit payment consent and create a contract-linked hosted order
+      description: |
+        Requires fresh Keycloak portal authentication, an active same-tenant EMPLOYER binding,
+        one exact accepted contract, and itemization whose subscription plus wallet seed equals
+        the accepted INR gross amount. Records constitutional proceed evidence before asking WBE
+        for a Razorpay-hosted order. Payment secrets and bypass coupons are never accepted.
+        Payment capture does not activate the relationship; durable activation is a separate flow.
+      operationId: createRelationshipOnboardingOrder
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - name: version
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RelationshipPaymentProceedRequest"
+      responses:
+        "200":
+          description: Contract-linked Razorpay-hosted order created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RelationshipHostedOnboardingOrder"
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: Fresh portal assurance or active same-tenant EMPLOYER authority denied
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: Exact contract acceptance is absent or itemization differs from the contract
+        "503":
+          description: Constitutional evidence or WBE hosted-order outcome is unavailable or inconsistent
+
   /api/v1/employment/contracts:
     get:
       tags: [Employment]
@@ -3711,6 +3753,29 @@ components:
         authenticationAssurance: { type: string, enum: [AAL3_FRESH] }
         acceptanceEvidenceId: { type: string, format: uuid }
         acceptedAt: { type: string, format: date-time }
+
+    RelationshipPaymentProceedRequest:
+      type: object
+      additionalProperties: false
+      required: [bundleTier, subscriptionAmountInrPaise, walletSeedInrPaise, proceedConfirmation]
+      properties:
+        bundleTier: { type: string, minLength: 1 }
+        subscriptionAmountInrPaise: { type: integer, format: int64, minimum: 1 }
+        walletSeedInrPaise: { type: integer, format: int64, minimum: 0 }
+        proceedConfirmation:
+          type: string
+          enum: [PROCEED_TO_RAZORPAY]
+
+    RelationshipHostedOnboardingOrder:
+      type: object
+      additionalProperties: false
+      required: [orderId, amountInrPaise, currency, isBypass, checkoutMode]
+      properties:
+        orderId: { type: string, minLength: 1 }
+        amountInrPaise: { type: integer, format: int64, minimum: 1 }
+        currency: { type: string, enum: [INR] }
+        isBypass: { type: boolean, enum: [false] }
+        checkoutMode: { type: string, enum: [RAZORPAY_HOSTED] }
 
     RelationshipTimelineEntry:
       type: object

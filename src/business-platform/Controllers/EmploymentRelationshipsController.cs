@@ -111,17 +111,20 @@ public sealed class EmploymentRelationshipsController : ControllerBase
     private readonly RelationshipTrialService? _trials;
     private readonly EmploymentContractService? _contracts;
     private readonly EmploymentContractAcceptanceService? _contractAcceptances;
+    private readonly RelationshipPaymentService? _payments;
 
     public EmploymentRelationshipsController(
         EmploymentRelationshipService service,
         RelationshipTrialService? trials = null,
         EmploymentContractService? contracts = null,
-        EmploymentContractAcceptanceService? contractAcceptances = null)
+        EmploymentContractAcceptanceService? contractAcceptances = null,
+        RelationshipPaymentService? payments = null)
     {
         _service = service;
         _trials = trials;
         _contracts = contracts;
         _contractAcceptances = contractAcceptances;
+        _payments = payments;
     }
 
     [HttpPost]
@@ -388,6 +391,58 @@ public sealed class EmploymentRelationshipsController : ControllerBase
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
             return Problem(statusCode: 503, title: "Constitutional evidence unavailable");
+        }
+    }
+
+    [HttpPost("{relationshipId:guid}/contracts/{version:int}/payments/onboarding-order")]
+    public async Task<IActionResult> CreateOnboardingPaymentOrderAsync(
+        Guid relationshipId,
+        int version,
+        [FromBody] PaymentProceedRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetTenantId(out var tenantId) || !TryGetParticipantId(out var participantId)) return Forbid();
+        if (_payments is null) return Problem(statusCode: 503, title: "Payment owner unavailable");
+
+        try
+        {
+            return Ok(await _payments.CreateOnboardingOrderAsync(
+                tenantId,
+                relationshipId,
+                participantId,
+                version,
+                request,
+                GetContractPortalAssurance(),
+                Guid.NewGuid(),
+                cancellationToken));
+        }
+        catch (PaymentStepUpRequiredException exception)
+        {
+            return Problem(statusCode: 403, title: "IDENTITY_STEP_UP_REQUIRED", detail: exception.Message);
+        }
+        catch (PaymentConsentRequiredException exception)
+        {
+            return ValidationProblem(exception.Message);
+        }
+        catch (PaymentOrderingException)
+        {
+            return Conflict(new { error = "ACCEPTED_CONTRACT_REQUIRED" });
+        }
+        catch (PaymentItemizationMismatchException exception)
+        {
+            return Conflict(new { error = "CONTRACT_PAYMENT_ITEMIZATION_MISMATCH", detail = exception.Message });
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (ConstitutionalActionDeniedException exception)
+        {
+            return Problem(statusCode: 403, title: "Constitutional authorization denied", detail: exception.Message);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            return Problem(statusCode: 503, title: "Payment owner outcome unresolved");
         }
     }
 

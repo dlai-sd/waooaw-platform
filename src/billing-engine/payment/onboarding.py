@@ -68,6 +68,15 @@ class OnboardingService:
             "bundle_tier": req.bundle_tier,
             "wallet_seed_paise": str(req.wallet_seed_paise),
         }
+        if req.relationship_id is not None:
+            notes.update({
+                "relationship_id": str(req.relationship_id),
+                "contract_id": str(req.contract_id),
+                "contract_version": str(req.contract_version),
+                "contract_hash": req.contract_hash,
+                "contract_acceptance_id": str(req.contract_acceptance_id),
+                "payment_consent_evidence_id": str(req.payment_consent_evidence_id),
+            })
         order = await self._razorpay.create_order(amount_paise=total_paise, notes=notes)
 
         return OnboardingOrderResult(

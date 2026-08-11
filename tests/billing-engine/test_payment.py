@@ -24,6 +24,7 @@ from sqlalchemy.pool import StaticPool
 from payment.models import OnboardingOrderRequest, PaymentCapturedEvent
 from payment.onboarding import OnboardingService
 from payment.razorpay_client import RazorpayClient
+from payment.router import OnboardingOrderBody
 from payment.webhook import WebhookHandler
 from wallet.models import RenewalResult, SubscriptionActivationResult
 from wallet.service import WalletService
@@ -108,6 +109,22 @@ class TestCCT_ONBOARD_01:
         s.RAZORPAY_KEY_SECRET = "rzp_test_secret"
         s.RAZORPAY_WEBHOOK_SECRET = "rzp_wh_secret"
         return s
+
+    def test_relationship_order_requires_complete_contract_link_and_forbids_coupon(self):
+        relationship_id = uuid.uuid4()
+        base = {
+            "customer_id": uuid.uuid4(), "agent_type": "DMA", "bundle_tier": "STARTER",
+            "subscription_amount_paise": 149900, "wallet_seed_paise": 100000,
+        }
+        with pytest.raises(ValueError, match="complete contract link"):
+            OnboardingOrderBody(**base, relationship_id=relationship_id)
+        with pytest.raises(ValueError, match="cannot use payment bypass coupons"):
+            OnboardingOrderBody(
+                **base, relationship_id=relationship_id, contract_id=uuid.uuid4(),
+                contract_version=1, contract_hash="a" * 64,
+                contract_acceptance_id=uuid.uuid4(), payment_consent_evidence_id=uuid.uuid4(),
+                coupon_code="DEMOWAOOAW",
+            )
 
     @pytest.mark.asyncio
     async def test_demo_coupon_bypasses_razorpay(self, mock_settings):
@@ -221,6 +238,33 @@ class TestCCT_ONBOARD_01:
         assert body["notes"]["customer_id"] == str(cid)
         assert body["notes"]["agent_type"] == "DMA"
         assert body["notes"]["bundle_tier"] == "WINNER"
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_relationship_order_notes_carry_contract_and_consent_evidence(self, mock_settings):
+        """WC059-04: hosted order is bound to accepted contract and explicit proceed evidence."""
+        ids = [uuid.uuid4() for _ in range(5)]
+        route = respx.post("https://api.razorpay.com/v1/orders").mock(
+            return_value=Response(200, json={"id": "order_contract_1"})
+        )
+        await OnboardingService(
+            razorpay_client=RazorpayClient(settings=mock_settings), settings=mock_settings
+        ).create_onboarding_order(OnboardingOrderRequest(
+            customer_id=ids[0], agent_type="DMA", bundle_tier="STARTER",
+            subscription_amount_paise=149900, wallet_seed_paise=100000,
+            relationship_id=ids[1], contract_id=ids[2], contract_version=3,
+            contract_hash="a" * 64, contract_acceptance_id=ids[3],
+            payment_consent_evidence_id=ids[4],
+        ))
+
+        import json
+        notes = json.loads(route.calls[0].request.content)["notes"]
+        assert notes["relationship_id"] == str(ids[1])
+        assert notes["contract_id"] == str(ids[2])
+        assert notes["contract_version"] == "3"
+        assert notes["contract_hash"] == "a" * 64
+        assert notes["contract_acceptance_id"] == str(ids[3])
+        assert notes["payment_consent_evidence_id"] == str(ids[4])
 
 
 # ---------------------------------------------------------------------------

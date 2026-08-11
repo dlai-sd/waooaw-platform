@@ -29,6 +29,12 @@ class OnboardingOrderRequest:
     subscription_amount_paise: int   # first month subscription price
     wallet_seed_paise: int           # initial ad wallet seed amount
     coupon_code: str = ""            # optional — DEMOWAOOAW/UATWAOOAW bypasses Razorpay
+    relationship_id: UUID | None = None
+    contract_id: UUID | None = None
+    contract_version: int | None = None
+    contract_hash: str = ""
+    contract_acceptance_id: UUID | None = None
+    payment_consent_evidence_id: UUID | None = None
 
 
 @dataclass(frozen=True)

@@ -7,7 +7,7 @@ import logging
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 import redis.asyncio as aioredis
 from database import get_session_factory
@@ -31,6 +31,30 @@ class OnboardingOrderBody(BaseModel):
     subscription_amount_paise: int = Field(gt=0)
     wallet_seed_paise: int = Field(ge=0)
     coupon_code: str = ""
+    relationship_id: UUID | None = None
+    contract_id: UUID | None = None
+    contract_version: int | None = Field(default=None, gt=0)
+    contract_hash: str = Field(default="", pattern=r"^[0-9a-f]{64}$|^$")
+    contract_acceptance_id: UUID | None = None
+    payment_consent_evidence_id: UUID | None = None
+
+    @model_validator(mode="after")
+    def require_complete_contract_link(self) -> OnboardingOrderBody:
+        contract_link = (
+            self.relationship_id,
+            self.contract_id,
+            self.contract_version,
+            self.contract_hash or None,
+            self.contract_acceptance_id,
+            self.payment_consent_evidence_id,
+        )
+        if any(value is not None for value in contract_link) and any(
+            value is None for value in contract_link
+        ):
+            raise ValueError("relationship onboarding orders require the complete contract link")
+        if self.relationship_id is not None and self.coupon_code:
+            raise ValueError("relationship onboarding orders cannot use payment bypass coupons")
+        return self
 
 
 class PaymentCaptureBody(BaseModel):
@@ -57,6 +81,12 @@ async def create_onboarding_order(body: OnboardingOrderBody) -> dict:
         subscription_amount_paise=body.subscription_amount_paise,
         wallet_seed_paise=body.wallet_seed_paise,
         coupon_code=body.coupon_code,
+        relationship_id=body.relationship_id,
+        contract_id=body.contract_id,
+        contract_version=body.contract_version,
+        contract_hash=body.contract_hash,
+        contract_acceptance_id=body.contract_acceptance_id,
+        payment_consent_evidence_id=body.payment_consent_evidence_id,
     )
     result = await svc.create_onboarding_order(req)
     return {
