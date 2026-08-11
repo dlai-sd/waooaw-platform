@@ -1721,3 +1721,63 @@ Orders 1 through 5 are complete. Order 6 remains blocked until WC-059 is DONE an
 ### Authorization Boundary
 
 This amendment and FA-037 authorize specification, Work Contract, and execution-plan reconciliation only. They do not issue a GO Authorization, satisfy WC-060's explicit current-session implementation authorization, permit source/tests/migrations/generated production clients, activate a provider, deploy, merge, or begin F6-F8 feature implementation.
+
+---
+
+## Amendment 7 — WC-058 Implementation Routing
+
+| Attestation field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GEP-GOAL-005-INST-013-07 |
+| `record_type` | Execution Plan |
+| `produced_at` | 2026-08-11 |
+| Status | CA READY — R-077 APPROVED; exact Registrant acknowledgement required before GOA issuance |
+| Amends | GEP-GOAL-005-INST-013-06 prospectively; Amendment 6 and all prior records remain unchanged |
+
+### Purpose And Entry State
+
+This amendment adds the smallest dependency-ordered execution envelope for WC-058 only. D-07 and R-046 ratified WC-058 as implementation-ready, WC-057 is DONE through R-076 and merged PR #262, and FA-038 records the Founder's exact current-session directive `Authorize implementation of WC-058`. That directive satisfies the separate implementation-consent gate but does not substitute for GEOM R2-03 readiness, acknowledgement, GO Authorization, or Goal Acceptance.
+
+### Phase 9 — WC-058 Discover, Interview, Trial, And Configure
+
+| Field | Value |
+|---|---|
+| Primary Institution | INST-010 — Platform IT Expert |
+| Contribution scope | Implement WC058-01 through WC058-08 exactly as specified in WC-058 across BP, PR, AIR, WBE, web, the ADR-023 WhatsApp boundary, Migration 20, the DMA-owned adapter, and non-DMA conformance fixtures |
+| Required inputs | WC-057 DONE; D-06 DMA synthesis and Product Attestation accepted; D-01 through D-07 and R-046 ratified; WC-031/032/033/040/041 DONE; all paths listed in WC-058 Required Inputs present and approved |
+| Participation Window | Five constitutional sessions after valid INST-010 acceptance |
+| Required implementation evidence | Task-by-task traceability; Docker-only component, integration, security, and CCT results; affected-surface line coverage at least 90%; deterministic Migration 20 evidence; OpenAPI/manifests/state synchronization; S01-S06 simulation; all 19 DMA skills plus three-skill non-DMA conformance |
+| Required safety evidence | Fourteen calendar days independent of session count; zero paid-provider calls; zero credentials; zero external publish, spend, message, campaign, or provider mutation; no direct trial-to-active transition; explicit unresolved expiry uncertainty; Evidence First; tenant and relationship isolation; one new decision-relevant question per cycle |
+| Independent review | INST-011 Product Owner and INST-003 Business Architect review the completed contribution independently; INST-010 may not review or approve its own work |
+| Completion boundary | Prepare an unmerged PR after all tasks, evidence, and independent reviews pass; Founder approval and merge remain separate |
+
+### Evidence Specification
+
+INST-010 must publish an attested Contribution Record and Learning Record linked to the issued GOA and later Acceptance Record. The Contribution Record must identify every changed contract, migration, implementation surface, generated artifact, fixture, CCT, validation command, result, coverage measurement, residual limitation, and provenance class. It must prove that shared BP/PR/AIR/WBE/web logic contains no DMA-specific branch and that DMA expertise remains confined to its domain-owned Professional Evaluation Adapter.
+
+Independent INST-011 and INST-003 review records must verify customer ordering and decision rights; honest trial and inactivity semantics; professional suitability without preferred-customer exclusion; generic platform/domain separation; all-skill demonstration coverage; and preservation of the no-paid-API, no-external-action, no-false-conversion boundary. Review authorization is routed only after the implementation contribution and learning records are published.
+
+### Explicit Exclusions
+
+- WC-059, WC-060, F6-F8 feature implementation, provider activation, provider credentials, account setup, deployment, production operation, and customer-proof claims.
+- Real campaigns, publishing, spending, third-party messages, consequential external mutation, contract acceptance, payment, activation, or direct trial-to-active conversion.
+- Architecture reinterpretation, weakening any R-046/WC-058 obligation, self-review, self-approval, self-merge, direct push to `main`, or merge authority.
+
+### Reserved Authorization — Not Issued
+
+`GOA-GOAL-005-INST-010-04` is reserved for this contribution and may be issued only after:
+
+1. a fresh INST-002 CA Readiness Review approves GEP-GOAL-005-INST-013-07, with every condition satisfied; and
+2. `ACK-GOAL-005-INST-001-07` records the Founder's exact acknowledgement of this amendment.
+
+Required acknowledgement:
+
+> `I acknowledge GEP-GOAL-005-INST-013-07 and authorize INST-013 to issue GOA-GOAL-005-INST-010-04 for WC-058 implementation only. This does not authorize provider activation, WC-059 or WC-060, deployment, merge, or self-review.`
+
+After valid issuance, INST-010 must record `ACC-GOAL-005-INST-010-04` at a timestamp later than the GOA `issued_at`. No implementation task, source change, migration, generated production artifact, or build artifact may begin before that Acceptance Record exists.
+
+### Fresh CA Readiness Decision
+
+R-077 / `CR-GOAL-005-INST-002-11` independently APPROVES Amendment 7 with no conditions. GEOM R2-03 condition 1 is satisfied. Condition 2 remains open: `ACK-GOAL-005-INST-001-07` must contain the exact acknowledgement above before INST-013 may issue GOA-GOAL-005-INST-010-04.

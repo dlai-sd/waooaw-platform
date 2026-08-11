@@ -4,6 +4,25 @@
 
 ---
 
+## IN-PROGRESS CHECKPOINT — WC-058 AUTHORIZATION ROUTING
+
+| Milestone | Status |
+|---|---|
+| WC-057 dependency closure | DONE — R-076 approved; PR #262 merged to `main` as `e4ba937` |
+| Founder current-session implementation consent | DONE — FA-038 records exact directive `Authorize implementation of WC-058` |
+| GEP-GOAL-005-INST-013-07 | DONE — prospective WC-058-only scope, evidence, review, exclusions, and reserved GOA/ACC recorded |
+| Fresh INST-002 CA Readiness Review | DONE — R-077 APPROVED with no conditions; GEOM R2-03 condition 1 satisfied |
+| ACK-GOAL-005-INST-001-07 | PENDING — exact acknowledgement of Amendment 7 required after CA readiness |
+| GOA-GOAL-005-INST-010-04 | RESERVED — not issued |
+| ACC-GOAL-005-INST-010-04 | PENDING — must follow valid GOA issuance |
+| WC-058 implementation | NOT STARTED — no source, migration, tests, generated production artifacts, or build artifacts may begin before valid GOA and ACC |
+
+### Authorization Boundary And Next Action
+
+FA-038 supplies the required current-session implementation consent but does not bypass GEOM. R-077 satisfies fresh CA readiness with no conditions. The Founder must now provide the exact acknowledgement printed in Amendment 7; INST-013 may then issue GOA-GOAL-005-INST-010-04, after which INST-010 records ACC-GOAL-005-INST-010-04 and begins WC-058. Provider activation, WC-059/WC-060, deployment, merge, and self-review remain unauthorized.
+
+---
+
 ## COMPLETED CHECKPOINT — GOAL-005 / WC-034 F4 IMPLEMENTATION
 
 | Milestone | Status |
