@@ -78,7 +78,7 @@ Detailed scope, dependencies, exclusions, and acceptance IDs are normative in `a
 | F2 | Identity and registration | INST-010 + identity/BP owners | R-055 contract remediation complete — FA-035 fixes Google/Facebook/Apple/email fallback and progressive mobile policy; implementation blocked by INST-004 ADR-008 amendment and independent re-review; Facebook activation blocked by FA-002/FA-018 and Apple by FA-019 |
 | F3 | Conversation core | INST-010 + BP/PR owners | complete — WC034-08 through WC034-12 complete; R-061 INST-004 independent implementation review APPROVED; PR #254 merged to `main` as `8a1fcfa`; deployment separately blocked |
 | F4 | Relationship workspace | INST-010 + BP/WBE owners | blocked — Plan/Priority Work and Consumption projections plus implementation gates |
-| F5 | Omnichannel continuity | INST-010 + WC-060 owners | blocked — WC-060 completion plus implementation gates |
+| F5 | Omnichannel continuity | INST-010 + WC-060 owners | unified with WC-060 — WC-060 is the sole F5 implementation contract; its prerequisites, explicit authorization, adversarial CCTs, independent reviews, and proportional F8 gate control readiness and closure |
 | F6 | Voice interaction | INST-010 + Product/Security/Data/Solution owners | blocked — voice consent, retention, transcription, attachment, and API decisions |
 | F7 | Founder administration | INST-010 + BP/WBE owners | blocked — canonical BP Founder facade and internal WBE management APIs plus implementation gates |
 | F8 | Integrated acceptance and hardening | INST-010, independently reviewed | blocked — selected release components complete and authorized |
@@ -132,7 +132,7 @@ Detailed scope, dependencies, exclusions, and acceptance IDs are normative in `a
 ## Explicit Exclusions
 
 - No React/Vite SPA, React Native application, or second web framework.
-- No WC-058 through WC-060 employment-journey implementation.
+- No WC-058 or WC-059 employment-journey implementation. WC-060 may execute only under its own explicit Founder authorization as the sole WC-034 F5 implementation contract; WC-034 Phase B authority alone does not start it.
 - No new BP/WBE endpoint implemented from a UI task without its owning specification and authorization.
 - No Founder-admin implementation during Phase A.
 - No claim that the WC-057 provisional UI is the approved final visual design.
