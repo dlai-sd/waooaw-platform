@@ -1781,3 +1781,51 @@ After valid issuance, INST-010 must record `ACC-GOAL-005-INST-010-04` at a times
 ### Fresh CA Readiness Decision
 
 R-077 / `CR-GOAL-005-INST-002-11` independently APPROVES Amendment 7 with no conditions. GEOM R2-03 condition 1 is satisfied. Condition 2 remains open: `ACK-GOAL-005-INST-001-07` must contain the exact acknowledgement above before INST-013 may issue GOA-GOAL-005-INST-010-04.
+
+### Registrant Acknowledgement — ACK-GOAL-005-INST-001-07
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-001 |
+| `goal_id` | GOAL-005 |
+| `record_id` | ACK-GOAL-005-INST-001-07 |
+| `record_type` | Acknowledgement Record |
+| `produced_at` | 2026-08-11T06:54:41Z |
+| Acknowledged plan | GEP-GOAL-005-INST-013-07 |
+| Decision | ACKNOWLEDGED — INST-013 authorized to issue GOA-GOAL-005-INST-010-04 for WC-058 only |
+| Exact quoted acknowledgement | "I acknowledge GEP-GOAL-005-INST-013-07 and authorize INST-013 to issue GOA-GOAL-005-INST-010-04 for WC-058 implementation only. This does not authorize provider activation, WC-059 or WC-060, deployment, merge, or self-review." |
+
+R-077 and this record satisfy both GEOM R2-03 pre-issuance conditions. The acknowledgement does not itself issue a GOA, accept participation for INST-010, or expand FA-038.
+
+### Authorization Record — GOA-GOAL-005-INST-010-04
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GOA-GOAL-005-INST-010-04 |
+| `record_type` | Authorization Record |
+| Authorized Institution | INST-010 — Platform IT Expert |
+| Contribution scope | Implement WC058-01 through WC058-08 exactly within GEP-GOAL-005-INST-013-07 and WC-058; publish an attested Contribution Record and Learning Record before independent review |
+| Evidence specification | Task traceability; Docker-only component/integration/security/CCT evidence; affected-surface line coverage at least 90%; exact Migration 20; S01-S06; all 19 DMA skills; three-skill non-DMA fixture; no paid API, credentials, external mutation, false conversion, or destructive expiry |
+| Participation Window | Five constitutional sessions after valid acceptance |
+| Independence constraint | INST-010 may implement but may not independently review, approve, merge, deploy, or declare Goal completion |
+| Excluded authority | Provider activation or credentials; WC-059/WC-060; F6-F8; real campaigns/publish/spend/messages; contract/payment/activation; deployment; production/customer proof; architecture reinterpretation; self-review; merge |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-11T06:54:42Z |
+
+### Acceptance Record — ACC-GOAL-005-INST-010-04
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-010 |
+| `goal_id` | GOAL-005 |
+| `record_id` | ACC-GOAL-005-INST-010-04 |
+| `record_type` | Acceptance Record |
+| `produced_at` | 2026-08-11T06:54:43Z |
+| `authorization_id` | GOA-GOAL-005-INST-010-04 |
+| Accepted scope | WC058-01 through WC058-08 implementation and evidence under Amendment 7 only |
+| Participation Window | 2026-08-11T06:54:43Z through five constitutional sessions |
+| Acceptance boundary | No provider activation, WC-059/WC-060, deployment, merge, self-review, architecture reinterpretation, or production/customer-proof authority |
+
+The Acceptance timestamp is later than the GOA issuance timestamp, satisfying GEOM G-03 and R2-12. WC-058 implementation may begin under FA-038, GEP-07, R-077, ACK-07, GOA-04, and ACC-04.

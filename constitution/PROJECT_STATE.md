@@ -12,14 +12,14 @@
 | Founder current-session implementation consent | DONE — FA-038 records exact directive `Authorize implementation of WC-058` |
 | GEP-GOAL-005-INST-013-07 | DONE — prospective WC-058-only scope, evidence, review, exclusions, and reserved GOA/ACC recorded |
 | Fresh INST-002 CA Readiness Review | DONE — R-077 APPROVED with no conditions; GEOM R2-03 condition 1 satisfied |
-| ACK-GOAL-005-INST-001-07 | PENDING — exact acknowledgement of Amendment 7 required after CA readiness |
-| GOA-GOAL-005-INST-010-04 | RESERVED — not issued |
-| ACC-GOAL-005-INST-010-04 | PENDING — must follow valid GOA issuance |
-| WC-058 implementation | NOT STARTED — no source, migration, tests, generated production artifacts, or build artifacts may begin before valid GOA and ACC |
+| ACK-GOAL-005-INST-001-07 | DONE — exact Amendment 7 acknowledgement recorded at 2026-08-11T06:54:41Z |
+| GOA-GOAL-005-INST-010-04 | ISSUED — INST-013 issued WC-058-only authority at 2026-08-11T06:54:42Z |
+| ACC-GOAL-005-INST-010-04 | ACCEPTED — INST-010 accepted at 2026-08-11T06:54:43Z; temporal order valid |
+| WC-058 implementation | IN PROGRESS — WC058-01 through WC058-08 only; first implementation milestone pending |
 
 ### Authorization Boundary And Next Action
 
-FA-038 supplies the required current-session implementation consent but does not bypass GEOM. R-077 satisfies fresh CA readiness with no conditions. The Founder must now provide the exact acknowledgement printed in Amendment 7; INST-013 may then issue GOA-GOAL-005-INST-010-04, after which INST-010 records ACC-GOAL-005-INST-010-04 and begins WC-058. Provider activation, WC-059/WC-060, deployment, merge, and self-review remain unauthorized.
+FA-038, R-077, ACK-07, GOA-04, and ACC-04 complete the WC-058 implementation entry sequence. INST-010 may implement WC058-01 through WC058-08 and publish the required evidence. Provider activation, WC-059/WC-060, deployment, merge, self-review, architecture reinterpretation, and production/customer proof remain unauthorized.
 
 ---
 

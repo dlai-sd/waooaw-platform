@@ -3,8 +3,8 @@
 **Goal:** GOAL-005 · **Epic stories:** AE-01-S01 through S06
 **Office on execution:** Platform IT Expert (INST-010)
 **Reviewer:** Product Owner (INST-011) + Business Architect (INST-003)
-**Status:** IMPLEMENTATION-READY — D-07 R-046 RATIFIED; implementation not authorized
-**Authorization:** A future session requires explicit Founder authorization: “Authorize implementation of WC-058.”
+**Status:** IN PROGRESS — IMPLEMENTATION AUTHORIZED AND ACCEPTED
+**Authorization:** FA-038; GEP-GOAL-005-INST-013-07; R-077; ACK-GOAL-005-INST-001-07; GOA-GOAL-005-INST-010-04; ACC-GOAL-005-INST-010-04
 **Track:** VERTICAL CUSTOMER OUTCOME
 **Service scope:** BP (.NET), PR/AIR/WBE (Python), web, ADR-023 WhatsApp identity
 
