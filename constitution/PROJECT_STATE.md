@@ -2547,3 +2547,7 @@ But `_RE_BASIS` in `response_evaluator.py` required:
 - `current_sprint: WC-029`, `sprint_status: DONE`, `consecutive_failures: 0`
 - WC029-01a, WC029-01b, WC029-02: all `done`
 - Next run: only WC028-01 retries; WC028-01c (test_service.py) should pass with Bug 1+4 fixes
+## Platform Delivery Summary
+
+Last PM report: 2026-08-11
+Platform Status issue: see GitHub Issues with label `platform-status`
