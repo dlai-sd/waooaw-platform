@@ -1474,3 +1474,68 @@ R-068 / `CR-GOAL-005-INST-002-09` satisfies GEOM R2-03 condition 1 subject to CA
 | ACC-GOAL-005-INST-003-06 | INST-003 | GOA-GOAL-005-INST-003-06 | 2026-08-11T01:27:39+00:00 | ACCEPTED — business consequence analysis only |
 | ACC-GOAL-005-INST-005-06 | INST-005 | GOA-GOAL-005-INST-005-06 | 2026-08-11T01:27:40+00:00 | ACCEPTED — owner feasibility analysis only |
 | ACC-GOAL-005-INST-007-06 | INST-007 | GOA-GOAL-005-INST-007-06 | 2026-08-11T01:27:41+00:00 | ACCEPTED — security-floor analysis only |
+
+## Amendment 5 Founder Policy Decision Records
+
+The Founder selected each option prospectively in the current session after receiving the four-Office Order 1 recommendation package. These decisions choose policy only. They do not choose API shape, security mechanism, persistence, implementation design, deployment, provider activation, F5-F8 scope, PR approval, or merge.
+
+| Record ID | Institution | Policy | Decision | Selected first-release policy | `produced_at` |
+|---|---|---|---|---|---|
+| FPD-GOAL-005-F4-POL-01 | INST-001 | `F4-POL-01` | Option A | Typed acknowledgement for irreversible loss, cancellation, financial consequence, legal consequence, safety consequence, and deadline consequence classes | 2026-08-11T02:05:11+00:00 |
+| FPD-GOAL-005-F4-POL-02 | INST-001 | `F4-POL-02` | Option A | Self-service only for the customer's own authorized evidence view/export routes already within approved sensitivity and recipient boundaries; all other exports use an alternate route | 2026-08-11T02:05:11+00:00 |
+| FPD-GOAL-005-F4-POL-03 | INST-001 | `F4-POL-03` | Option B | Continue read-only and non-consequential access while pausing affected consequential work at an allowance threshold or budget ceiling | 2026-08-11T02:05:11+00:00 |
+| FPD-GOAL-005-F4-POL-04 | INST-001 | `F4-POL-04` | Option A | Self-service permits protective reduction only; authority grant, expansion, and restoration remain non-self-service | 2026-08-11T02:05:11+00:00 |
+| FPD-GOAL-005-F4-POL-05 | INST-001 | `F4-POL-05` | Option B | Emergency Stop remains immediate; selected owner-approved pause/resume paths may be enabled with explicit consequence and re-entry treatment; renewal/termination remain closed | 2026-08-11T02:05:11+00:00 |
+| FPD-GOAL-005-F4-POL-06 | INST-001 | `F4-POL-06` | Option A | Permit read-only review of still-authoritative facts; withhold affected consequential commands and success claims while required owner state is unresolved | 2026-08-11T02:05:11+00:00 |
+
+Every selected option remains bound by `CR-GOAL-005-INST-003-07`, `CR-GOAL-005-INST-005-10`, and `CR-GOAL-005-INST-007-06`. An owner must preserve the accepted fail-closed default wherever a selected family lacks complete authoritative inputs or an approved implementation contract.
+
+## Amendment 5 Order 2 Authorization Records
+
+### GOA-GOAL-005-INST-011-08
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GOA-GOAL-005-INST-011-08 |
+| `record_type` | Authorization Record |
+| Authorized Institution | INST-011 — Product Owner |
+| Contribution scope | Incorporate `FPD-GOAL-005-F4-POL-01` through `FPD-GOAL-005-F4-POL-06` into the F4 product release contract; publish `CR-GOAL-005-INST-011-08` and a Learning Record |
+| Evidence specification | Record the six selected options, customer-visible treatment, enabled versus still-unavailable command families, release composition, exact fail-closed behavior, and dependencies on Solution and Security incorporation without inventing architecture or mechanisms |
+| Participation Window | 2 constitutional sessions after valid acceptance |
+| Excluded authority | Founder decision reinterpretation, architecture, API or schema design, security-floor authorship, implementation, source, tests, deployment, F5-F8, self-review, and merge |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-11T02:05:12+00:00 |
+
+### GOA-GOAL-005-INST-005-07
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GOA-GOAL-005-INST-005-07 |
+| `record_type` | Authorization Record |
+| Authorized Institution | INST-005 — Solution Architect |
+| Contribution scope | Incorporate the six Founder decisions into the canonical F4 owner and relationship-workspace specifications; publish `CR-GOAL-005-INST-005-11` and a Learning Record |
+| Evidence specification | Map each selected policy to BP, WBE, PR, CE, Evidence Reader, and DMA ownership; preserve distinct `BLOCKED`, authoritative-input, acknowledgement, reconciliation, version, and unavailable-family semantics; identify the exact Order 3 contract work without editing canonical OpenAPI |
+| Participation Window | 3 constitutional sessions after valid acceptance |
+| Excluded authority | Policy reinterpretation, implementation, canonical OpenAPI edits, generated clients, source, tests, deployment, F5-F8, integrated review, self-review, and merge |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-11T02:05:13+00:00 |
+
+### GOA-GOAL-005-INST-007-07
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GOA-GOAL-005-INST-007-07 |
+| `record_type` | Authorization Record |
+| Authorized Institution | INST-007 — Security Architect |
+| Contribution scope | Verify the six selected policies against the accepted F4 security floors and publish `CR-GOAL-005-INST-007-07` plus a Learning Record |
+| Evidence specification | For each policy, state PASS or exact blocking condition for acknowledgement, export/privacy, commercial continuation, authority, lifecycle, degraded state, anti-enumeration, minimisation, rights, and Emergency Stop; no mechanism or product-policy invention |
+| Participation Window | 1 constitutional session after valid acceptance |
+| Excluded authority | Product/commercial policy reinterpretation, non-security architecture, implementation, source, tests, deployment, F5-F8, self-review, and merge |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-11T02:05:14+00:00 |
