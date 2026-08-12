@@ -13,7 +13,7 @@
 | `acceptance_record` | ACC-GOAL-005-INST-010-06 at 2026-08-12T04:00:00Z |
 | Work Contract | WC-060, WC060-01 through WC060-09 |
 | Learning output | LR-GOAL-005-INST-010-05 below |
-| Decision | IMPLEMENTATION COMPLETE - submitted for independent INST-007, INST-006, and INST-004 review |
+| Decision | ACCEPTED - implementation complete; R-087, R-088, and R-089 APPROVED; unmerged PR pending |
 | Authority boundary | No provider activation or credentials, deployment, F6-F8 feature implementation, production/customer proof, architecture reinterpretation, self-review, PR approval, merge, or self-merge |
 
 ## Scope
@@ -76,10 +76,10 @@ test dependencies plus Docker access and passed 309/309.
 
 Browser scenarios use deterministic contract fixtures and are not deployment or customer proof.
 No live Meta, Keycloak, Razorpay, provider, or production credential was configured. Independent
-INST-007 must review identity, HMAC, replay, release, and privacy boundaries; INST-006 must review
-Migration 22 ownership, RLS, retention, and reconstruction; fresh INST-004 must review integrated
-ownership, generated-contract compatibility, F5/F8 evidence, and visual acceptance. INST-010 does
-not self-review, approve, merge, deploy, or declare Goal completion.
+INST-007 approved identity, HMAC, replay, release, and privacy boundaries in R-087; INST-006 approved
+Migration 22 ownership, RLS, retention, and reconstruction in R-088; fresh INST-004 approved
+integrated ownership, generated-contract compatibility, F5/F8 evidence, and visual acceptance in
+R-089. INST-010 does not self-review, approve, merge, deploy, or declare Goal completion.
 
 ## Learning Record
 
