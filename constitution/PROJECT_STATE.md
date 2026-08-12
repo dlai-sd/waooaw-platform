@@ -21,7 +21,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Platform version | 1.45.0 |
 | Latest completed Work Contract | WC-062 — WC-034 F6 Voice Interaction |
 | Latest merge | PR #275 merged to `main` as `2276ab2` |
-| Active delivery | WC-064 ready for owner GOA routing; WC-070 ratified and active with unmerged PR submission pending; implementation unauthorized |
+| Active delivery | WC-064 ready for owner GOA routing; WC-070 ratified and active in open unmerged PR #276; implementation unauthorized |
 
 ## Active Checkpoint — Founder Commercial Governance Program Design
 
@@ -46,6 +46,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Independent CA review | DONE — R-100 approved after required changes and independently confirmed exact package `bc98213` |
 | Founder ratification | DONE — Founder selected **Ratify exact package** for R-100-confirmed baseline `bc98213` |
 | Mechanical activation | DONE — standard v1.1.0 active; GEOM amendment record and checkpoint updated |
+| Delivery PR | OPEN — PR #276 targets `main`; Founder-only merge remains required |
 | Implementation authorization | NOT REQUESTED — WC-070 contains no source or deployment work |
 
 ### Closure Context
@@ -72,9 +73,9 @@ is ratified and active; PR submission and Founder-only merge remain.
 
 ## Next Authorized Action
 
-Submit the complete WC-070 branch as one unmerged PR for Founder review. WC-064 owner routing
-remains separately authorized but is not part of WC-070. Do not begin WC-065 through WC-069
-implementation or issue implementation authority.
+Founder reviews and, if satisfied, merges PR #276. WC-064 owner routing remains separately
+authorized but is not part of WC-070. Do not begin WC-065 through WC-069 implementation or issue
+implementation authority.
 
 ## History And Evidence
 

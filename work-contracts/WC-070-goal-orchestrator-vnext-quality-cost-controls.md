@@ -5,7 +5,7 @@
 **Independent reviewer:** Fresh Constitutional Analyst (INST-002)
 **Registrant and ratifier:** Founder (INST-001)
 **Selected by:** Founder instruction, 2026-08-12
-**Status:** RATIFIED AND ACTIVE; PR SUBMISSION IN PROGRESS; IMPLEMENTATION UNAUTHORIZED
+**Status:** RATIFIED AND ACTIVE; PR #276 OPEN AND UNMERGED; IMPLEMENTATION UNAUTHORIZED
 **Delivery unit:** One complete constitutional operating-model hardening component
 **Constitutional basis:** GEOM Materiality and Contribution Envelope rule; R-095; C-007; C-023; C-059; C-064; C-065; C-069; C-076; C-077
 
@@ -63,7 +63,7 @@ repair is required. Exceeding this budget requires consolidation or explicit rep
 | WC070-05 | Preserve the detailed institutional rationale and risks in the vNext strategy record. | done |
 | WC070-06 | Run deterministic structure, cross-reference, Markdown, status, and size checks. | done |
 | WC070-07 | Obtain one fresh independent CA verdict on the complete fixed package. | done — R-100 confirmed `bc98213` |
-| WC070-08 | Obtain Founder ratification of the exact reviewed package, update current state, and submit one unmerged PR. | in progress — ratified; PR pending |
+| WC070-08 | Obtain Founder ratification of the exact reviewed package, update current state, and submit one unmerged PR. | done — PR #276 open and unmerged |
 
 ## Completeness Ledger
 
@@ -77,7 +77,7 @@ repair is required. Exceeding this budget requires consolidation or explicit rep
 | WC070-06 | INST-013 | M0 | Deterministic validation results | WC070-01 through WC070-05 | SATISFIED | WC-070 execution record | diff check; 132-line state check; diagnostics |
 | WC070-07 | Fresh INST-002 | M3 | Independent verdict on fixed commit | WC070-01 through WC070-06 | SATISFIED | R-100; `bc98213` | CA review plus fresh repair confirmation |
 | WC070-08A | Founder | M3 | Exact ratification of reviewed bytes | WC070-07 | SATISFIED | Founder selected **Ratify exact package** for `bc98213` | exact Founder decision |
-| WC070-08B | INST-013 | M0 | Activate the standard, update the GEOM header amendment record, update the checkpoint, and submit an unmerged PR | WC070-08A | PENDING | activation edits complete; PR pending | diff/status/PR checks |
+| WC070-08B | INST-013 | M0 | Activate the standard, update the GEOM header amendment record, update the checkpoint, and submit an unmerged PR | WC070-08A | SATISFIED | PR #276 open and unmerged | diff/status/PR checks |
 
 ## Execution Record
 
