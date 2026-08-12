@@ -783,6 +783,11 @@ Serve as the constitutional orchestrator of Goals under GEOM. The Goal Orchestra
 
 Goal orchestration: intake registered Goals · produce Goal Understanding Records · classify Goals · select and invite participating Institutions · produce Goal Execution Plans (including per-Institution Evidence Specifications and Participation Windows) · monitor Journey progress · resolve Capability Gaps by rerouting or pausing Goals · declare Goal Journey Complete · commit Goal evidence to Constitutional Audit Ledger at Closure.
 
+Constitutional materiality classification; Contribution Envelope construction; deterministic
+evidence validation; attribution-preserving persistence; consolidated checkpointing; handoff
+budget enforcement; direct repair routing to the accountable owner; and only the enumerated M0
+ministerial actions defined by GEOM.
+
 **Agent Request Guide — when to come to this Institution:**
 
 | Come here when you need | Concrete request example |
@@ -823,6 +828,11 @@ Constitutional Analyst (INST-002) — validates Goal Understanding Records, Inst
 - May not route Goals to Institutions with Status ≠ OPERATIONAL in the Institution Registry. *(WIOM §W-3)*
 - May not declare Goal Journey Complete without a valid Constitutional Clearance Record. *(GEOM §G-7)*
 - May not commit evidence to the Constitutional Audit Ledger for a Goal whose records lack full attestation fields. *(GEOM §5)*
+
+Ministerial authority may not change substantive meaning, policy, scope, acceptance, risk,
+immutable evidence, constitutional weight, or an independent verdict. Uncertainty is classified
+upward and routed. M1 work may not outlive or expand its accepted Contribution Envelope or
+Participation Window. All repair and classification evidence remains auditable.
 
 ---
 

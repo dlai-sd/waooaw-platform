@@ -1,6 +1,6 @@
 # Founder Proposal: Low-Risk Constitutional Fast Path
 
-**Status:** FOUNDER-AUTHORIZED LOW-RISK TOOLING IMPLEMENTATION - no high-risk activation
+**Status:** LOW-RISK TOOLING AUTHORIZED; GOAL ORCHESTRATOR OPERATING-MODEL vNEXT RATIFIED AND ACTIVATED
 **Date:** 2026-08-10
 **Prepared by:** INST-013 orchestration context
 **Decision owner:** Founder / Registrant
@@ -175,7 +175,7 @@ At each completed increment:
 | WC-062 institutional handoff follow-up | DONE | Sections 10–12 distinguish material decisions from ministerial orchestration |
 | Goal Orchestrator operating-model draft | DONE — PROPOSED | M0–M3 router, Contribution Envelope, accountable executor, and handoff budget drafted |
 | Independent constitutional review | DONE — R-095 | APPROVED WITH REQUIRED CHANGES; all eight safeguards incorporated |
-| GEOM / ORGANIZATION activation | NOT AUTHORIZED | Ratified text remains unchanged until independent review and exact Founder ratification |
+| GEOM / ORGANIZATION activation | DONE — FOUNDER RATIFIED | R-095 safeguards preserved; exact Section 13 text applied mechanically on 2026-08-12 |
 
 ## 8. Success Measures For A Later Pilot
 
@@ -211,7 +211,7 @@ The implemented tool remains a fail-closed routing aid. This record does not gra
 
 **Observation date:** 2026-08-12
 **Observed by:** INST-013 Goal Orchestrator
-**Status:** PROPOSED OPERATING-MODEL AMENDMENT — not yet ratified
+**Status:** RATIFIED AND ACTIVATED — exact R-095-reviewed amendments applied 2026-08-12
 
 WC-062 specification routing confirmed that the retrieval fast path is necessary but insufficient.
 The package legitimately required Product, Solution, Data, Security, integrated EA, and independent
@@ -431,3 +431,13 @@ The smallest quality-preserving adoption path is:
 No separate Business, Solution, Data, Security, or Enterprise Architecture contribution is needed
 unless the CA identifies a concrete conflict in that Office's Decision Space. This is deliberately
 one constitutional review, one Founder decision, and one mechanical activation step.
+
+### Ratification Record — 2026-08-12
+
+The Founder directed:
+
+> ratify the corrected Goal Orchestrator operating-model vNext reviewed in R-095 and authorize INST-013 to apply its exact GEOM and ORGANIZATION amendments mechanically.
+
+INST-013 applied only the exact Section 13 GEOM and ORGANIZATION amendment text. This ratification
+does not authorize WC-062 implementation, issue a GO Authorization, record INST-010 Acceptance,
+activate a provider, deploy, approve a PR, or permit merge.

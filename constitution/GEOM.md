@@ -9,6 +9,7 @@
 **Goal Reference:** GOAL-001 — Semantic Brain Transformation
 **Depends on:** WIOM (ratified 2026-07-27)
 **Amended:** 2026-08-08 — Founder authorized `Classification Record`, `Acknowledgement Record`, `Authorization Record`, and `Acceptance Record` as valid G-10 record types
+**Amended:** 2026-08-12 — Founder ratified the R-095-reviewed Goal Orchestrator operating-model vNext materiality and Contribution Envelope rule
 
 ---
 
@@ -212,6 +213,18 @@ Each Institution's entry in the Execution Plan must include an **Evidence Specif
 | Independence constraint | Whether this Institution may also serve as validator for this Goal's evidence |
 
 Stage G-6 (Evidence Validation) validates against each Institution's Evidence Specification — not against general principles. A Contribution Record that does not satisfy its Evidence Specification is constitutionally incomplete regardless of the Institution's self-assessment.
+
+**Materiality and Contribution Envelope rule — Stage G-4 / §6:**
+
+A GO Authorization authorizes one complete Contribution Envelope. INST-013 must not issue a new
+authorization or create a new institutional context for ministerial orchestration or an in-scope
+bounded continuation. New routing is required only for a material contribution, protected
+decision, expired/reclaimed Participation Window, changed Decision Space, or changed package
+boundary. INST-013 may execute ministerial evidence handling while preserving producer
+attribution; such handling is not a contribution and creates no review authority. M1
+continuation expires with its Participation Window, all repairs remain auditable, material
+changes trigger dependency-based re-review, conflicting protected verdicts stop work, and
+INST-002 spot-checks at least 25 percent of logged M0/M1 classifications at Goal closure.
 
 **GO Authorization — issued per Institution from the Execution Plan:**
 
