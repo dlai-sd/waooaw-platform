@@ -226,6 +226,21 @@ continuation expires with its Participation Window, all repairs remain auditable
 changes trigger dependency-based re-review, conflicting protected verdicts stop work, and
 INST-002 spot-checks at least 25 percent of logged M0/M1 classifications at Goal closure.
 
+**Quality-preserving cost controls:**
+
+Before dispatch, INST-013 applies the Contribution Necessity Gate defined in
+`standards/GOAL-ORCHESTRATOR-VNEXT-STANDARD.md`: `REUSE`, `M1_CONTINUE`, `M2_CONTRIBUTE`, or
+`M3_DECIDE`. Reuse requires approved hash-pinned evidence plus explicit scope, version,
+assumption, changed-fact, ownership, and applicability validation. Every M0/M1 classification
+must pass the Materiality Challenge. Every Work Component maintains a Completeness Ledger; every
+material change maintains a direct-and-indirect Dependency Impact Report. Initial baselines
+receive complete required review; delta review is valid only against an approved hash-pinned
+baseline and complete dependency impact. Model and budget routing may reduce repeated context but
+may not remove an owner decision, evidence obligation, independent gate, or Founder control.
+Budget exhaustion never means completion; it stops dispatch and triggers consolidation or
+authorized replanning. The cited standard is normative for INST-013 execution and may not weaken
+this GEOM rule.
+
 **GO Authorization — issued per Institution from the Execution Plan:**
 
 Each Institution listed in the Execution Plan receives a **GO Authorization** — the constitutional work token that authorizes that Institution to act on this Goal. No GO Authorization = no constitutional authority to act, regardless of domain expertise or charter scope.

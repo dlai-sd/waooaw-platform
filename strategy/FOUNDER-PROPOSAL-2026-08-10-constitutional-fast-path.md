@@ -441,3 +441,30 @@ The Founder directed:
 INST-013 applied only the exact Section 13 GEOM and ORGANIZATION amendment text. This ratification
 does not authorize WC-062 implementation, issue a GO Authorization, record INST-010 Acceptance,
 activate a provider, deploy, approve a PR, or permit merge.
+
+## 15. Proposed vNext Quality And Cost Controls — WC-070
+
+Operational evidence after ratification identified a narrower remaining risk: the model limits
+handoffs but does not deterministically decide when approved evidence can replace a new context,
+prove package completeness, select model capability, or stop cost growth without creating false
+completion. WC-070 therefore proposes the following extension:
+
+1. A Contribution Necessity Gate returns `REUSE`, `M1_CONTINUE`, `M2_CONTRIBUTE`, or `M3_DECIDE`.
+2. Reuse requires immutable source pinning and explicit owner, scope, version, assumption,
+	changed-fact, and applicability checks.
+3. Every M0/M1 decision passes an adversarial Materiality Challenge.
+4. Every Work Component maintains a machine-checkable Completeness Ledger.
+5. Every material change identifies direct and indirect dependency impact before re-review.
+6. Deterministic tools handle M0; capable economical models handle explicit M1/M2; ambiguity,
+	failed repair, cross-domain conflict, high consequence, and M3 route upward.
+7. Context, handoff, cost/token, elapsed-time, and repair budgets use `WITHIN_BUDGET`,
+	`STOP_AND_CONSOLIDATE`, and `REPLAN_REQUIRED`; no budget state changes completion evidence.
+8. Initial baselines receive full required review. Delta review requires an approved hash-pinned
+	baseline and complete dependency-impact evidence.
+
+The exact operational controls are versioned in
+`standards/GOAL-ORCHESTRATOR-VNEXT-STANDARD.md`. They optimize repeated context, not required
+decisions, evidence, owner authority, independent gates, or Founder control. This Section 15 and
+the linked WC-070 amendments remain **PROPOSED** until one fresh Constitutional Analyst reviews
+the complete fixed package and the Founder ratifies those exact reviewed bytes. They do not alter
+the 2026-08-12 Section 14 ratification record.
