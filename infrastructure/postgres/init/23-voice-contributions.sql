@@ -45,9 +45,10 @@ CREATE TABLE IF NOT EXISTS business.voice_audio_payloads (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     retain_until TIMESTAMPTZ NOT NULL,
     erased_at TIMESTAMPTZ,
-    CONSTRAINT voice_audio_session_unique UNIQUE (tenant_id, session_id),
-    CONSTRAINT voice_audio_session_fk FOREIGN KEY (session_id)
-        REFERENCES business.voice_contribution_sessions (session_id),
+    CONSTRAINT voice_audio_session_unique UNIQUE (tenant_id, relationship_id, session_id),
+    CONSTRAINT voice_audio_id_scope_unique UNIQUE (tenant_id, relationship_id, session_id, audio_payload_id),
+    CONSTRAINT voice_audio_session_fk FOREIGN KEY (tenant_id, relationship_id, session_id)
+        REFERENCES business.voice_contribution_sessions (tenant_id, relationship_id, session_id),
     CONSTRAINT voice_audio_hash_check CHECK (content_sha256 ~ '^[0-9a-f]{64}$'),
     CONSTRAINT voice_audio_size_check CHECK (size_bytes BETWEEN 0 AND 15728640),
     CONSTRAINT voice_audio_duration_check CHECK (duration_milliseconds BETWEEN 0 AND 180000),
@@ -72,13 +73,14 @@ CREATE TABLE IF NOT EXISTS business.voice_transcript_versions (
     contract_version VARCHAR(16) NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     erased_at TIMESTAMPTZ,
-    CONSTRAINT voice_transcript_version_unique UNIQUE (tenant_id, session_id, version),
-    CONSTRAINT voice_transcript_session_fk FOREIGN KEY (session_id)
-        REFERENCES business.voice_contribution_sessions (session_id),
-    CONSTRAINT voice_transcript_audio_fk FOREIGN KEY (audio_payload_id)
-        REFERENCES business.voice_audio_payloads (audio_payload_id),
-    CONSTRAINT voice_transcript_predecessor_fk FOREIGN KEY (predecessor_transcript_id)
-        REFERENCES business.voice_transcript_versions (transcript_id),
+    CONSTRAINT voice_transcript_version_unique UNIQUE (tenant_id, relationship_id, session_id, version),
+    CONSTRAINT voice_transcript_id_scope_unique UNIQUE (tenant_id, relationship_id, session_id, transcript_id),
+    CONSTRAINT voice_transcript_session_fk FOREIGN KEY (tenant_id, relationship_id, session_id)
+        REFERENCES business.voice_contribution_sessions (tenant_id, relationship_id, session_id),
+    CONSTRAINT voice_transcript_audio_fk FOREIGN KEY (tenant_id, relationship_id, session_id, audio_payload_id)
+        REFERENCES business.voice_audio_payloads (tenant_id, relationship_id, session_id, audio_payload_id),
+    CONSTRAINT voice_transcript_predecessor_fk FOREIGN KEY (tenant_id, relationship_id, session_id, predecessor_transcript_id)
+        REFERENCES business.voice_transcript_versions (tenant_id, relationship_id, session_id, transcript_id),
     CONSTRAINT voice_transcript_hash_check CHECK (text_sha256 ~ '^[0-9a-f]{64}$'),
     CONSTRAINT voice_transcript_version_check CHECK (version >= 1),
     CONSTRAINT voice_transcript_confidence_check CHECK (confidence IS NULL OR confidence BETWEEN 0 AND 1),

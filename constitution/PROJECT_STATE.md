@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 36
+**State Revision:** 37
 **Last Updated:** 2026-08-12
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -36,7 +36,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Integrated EA review | DONE — R-093 / `CR-GOAL-005-INST-004-13` APPROVED repaired package `1e80dfd`; R-091 remains superseded for readiness |
 | Final CA readiness | DONE — R-094 / `CR-GOAL-005-INST-002-16` APPROVED; specification Orders 1–6 complete |
 | WC-062 Entry Gate | DONE — items 1–6 revalidated; FA-043 closes item 7; GOA-07 and later ACC-07 close items 8–9 |
-| WC-062 implementation | IN PROGRESS — WC062-01 through WC062-07 implemented and executor validation passed; integrated evidence and fresh independent reviews pending |
+| WC-062 implementation | IN PROGRESS — WC062-01 through WC062-07 implemented; initial Security/Data reviews required changes; configured media, DI, retention, scoped lineage, and evidence repairs validated; fresh re-reviews pending |
 | Goal Orchestrator operating-model vNext | RATIFIED AND ACTIVATED — Founder ratified R-095-reviewed text; exact GEOM and ORGANIZATION amendments applied mechanically |
 | WC-063 F7 Founder Administration | GROOMED CANDIDATE — seven dormant tasks and six required owner/review contributions; not implementation-ready |
 | Founder implementation decision | DONE — FA-043 records current-session WC-062 authorization; WC-063 remains unauthorized |
@@ -48,7 +48,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 - **Branch:** `wc/062/implementation`
 - **Objective:** Deliver WC062-01 through WC062-07 as one complete implementation contribution and unmerged PR.
 - **Authority:** FA-043, GEP-GOAL-005-INST-013-12, GOA-GOAL-005-INST-010-07, and ACC-GOAL-005-INST-010-07.
-- **Validation:** AIR 11/11 at 94.70%; PR 14/14 at 90.05%; BP voice 14/14 with 91.75% aggregate affected coverage; BP non-Testcontainers regression 301/301; focused PostgreSQL 16 Migration 23 validation passed; web 107/107, affected web coverage above 95%, strict TypeScript/lint/build passed; dedicated voice Playwright matrix 14 passed with 6 intentional project skips across five browser/viewport projects. Legacy Migration 22 Testcontainers collection is blocked only by nested Docker socket permissions.
+- **Validation:** AIR 11/11 at 94.70%; PR 14/14 at 90.05%; repaired BP voice 19/19 with 94.44% aggregate affected coverage; BP non-Testcontainers regression 301/301; PostgreSQL 16 Migration 23 scoped-FK and forced-RLS validation passed; web 107/107, affected web coverage above 95%, strict TypeScript/lint/build passed; dedicated voice Playwright matrix 14 passed with 6 intentional project skips across five browser/viewport projects. Legacy Migration 22 Testcontainers collection is blocked only by nested Docker socket permissions.
 - **Protected local artifacts:** `.coverage`, `goals/goal_register.jsonl`, `logs/blueprint_assurance_report.json`, and `logs/bootstrap-evidence.jsonl` are unrelated and must remain unstaged.
 
 ## Authorization Boundary

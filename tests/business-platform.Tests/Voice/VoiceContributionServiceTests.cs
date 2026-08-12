@@ -19,6 +19,7 @@ internal sealed class VoiceMediaGatewayStub : IVoiceMediaGateway
 {
     public int StoreCount { get; private set; }
     public int EraseCount { get; private set; }
+    public int RetentionCount { get; private set; }
 
     public Task<VoiceMediaInspection> ValidateScanAndStoreAsync(
         Stream audio,
@@ -38,6 +39,14 @@ internal sealed class VoiceMediaGatewayStub : IVoiceMediaGateway
         EraseCount += 1;
         return Task.CompletedTask;
     }
+
+    public Task SetRetentionAsync(string payloadReference, DateTimeOffset retainUntil, CancellationToken cancellationToken)
+    {
+        RetentionCount += 1;
+        return Task.CompletedTask;
+    }
+
+    public Task PurgeExpiredAsync(DateTimeOffset now, CancellationToken cancellationToken) => Task.CompletedTask;
 }
 
 internal sealed class VoiceTranscriptionGatewayStub(decimal confidence = 0.75m) : IVoiceTranscriptionGateway
@@ -109,6 +118,7 @@ public sealed class VoiceContributionServiceTests
         Assert.NotNull(firstSend.Value.EvidenceReference);
         Assert.True(replaySend.Replayed);
         Assert.Equal(1, context.Constitutional.CallCount);
+        Assert.Equal(1, context.Media.RetentionCount);
 
         var erasure = await context.Service.EraseAsync(
             context.TenantId, context.ParticipantId, context.RelationshipId, firstSend.Value.ContributionId!.Value,

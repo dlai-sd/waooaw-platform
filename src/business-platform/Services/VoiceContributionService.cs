@@ -67,6 +67,8 @@ public interface IVoiceMediaGateway
         CancellationToken cancellationToken);
 
     Task EraseAsync(string payloadReference, CancellationToken cancellationToken);
+    Task SetRetentionAsync(string payloadReference, DateTimeOffset retainUntil, CancellationToken cancellationToken);
+    Task PurgeExpiredAsync(DateTimeOffset now, CancellationToken cancellationToken);
 }
 
 public interface IVoiceTranscriptionGateway
@@ -98,6 +100,12 @@ public sealed class UnconfiguredVoiceMediaGateway : IVoiceMediaGateway
         throw new VoiceUnavailableException();
 
     public Task EraseAsync(string payloadReference, CancellationToken cancellationToken) =>
+        throw new VoiceUnavailableException();
+
+    public Task SetRetentionAsync(string payloadReference, DateTimeOffset retainUntil, CancellationToken cancellationToken) =>
+        throw new VoiceUnavailableException();
+
+    public Task PurgeExpiredAsync(DateTimeOffset now, CancellationToken cancellationToken) =>
         throw new VoiceUnavailableException();
 }
 
@@ -450,9 +458,13 @@ public sealed class VoiceContributionService
         var now = DateTimeOffset.UtcNow;
         session.ContributionId = contributionId;
         session.EvidenceReference = evidenceId;
+        if (audio?.PayloadReference is not null)
+        {
+            await _mediaGateway.SetRetentionAsync(audio.PayloadReference, now.AddDays(30), cancellationToken);
+        }
         session.State = "RECORDED";
         session.UpdatedAt = now;
-        audio.RetainUntil = now.AddDays(30);
+        audio!.RetainUntil = now.AddDays(30);
         var outcome = new VoiceContributionOutcomeV1(SchemaVersion, sessionId, contributionId, "RECORDED", evidenceId, false, now);
         db.IdempotencyOutcomes.Add(NewOutcome(tenantId, relationshipId, participantId, sessionId, "SEND", idempotencyKey, hash, outcome));
         await db.SaveChangesAsync(cancellationToken);

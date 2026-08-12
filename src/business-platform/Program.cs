@@ -229,8 +229,19 @@ builder.Services.AddDbContextFactory<VoiceContributionDbContext>((services, opti
     options
         .UseNpgsql(voiceConn)
         .AddInterceptors(services.GetRequiredService<TenantDbConnectionInterceptor>()));
-builder.Services.AddSingleton<IVoiceMediaGateway, UnconfiguredVoiceMediaGateway>();
-builder.Services.AddSingleton<IVoiceTranscriptionGateway, UnconfiguredVoiceTranscriptionGateway>();
+if (!string.IsNullOrWhiteSpace(builder.Configuration["Voice:Media:FfprobePath"])
+    && !string.IsNullOrWhiteSpace(builder.Configuration["Voice:Media:ClamAvHost"])
+    && !string.IsNullOrWhiteSpace(builder.Configuration["Voice:Media:PayloadRoot"])
+    && !string.IsNullOrWhiteSpace(builder.Configuration["Voice:Media:EncryptionKey"]))
+{
+    builder.Services.AddSingleton<ConfiguredVoiceMediaGateway>();
+    builder.Services.AddSingleton<IVoiceMediaGateway>(services => services.GetRequiredService<ConfiguredVoiceMediaGateway>());
+    builder.Services.AddHostedService<VoiceMediaRetentionWorker>();
+}
+else
+{
+    builder.Services.AddSingleton<IVoiceMediaGateway, UnconfiguredVoiceMediaGateway>();
+}
 builder.Services.AddSingleton<IVoiceContentProtector, AesVoiceContentProtector>();
 builder.Services.AddScoped<VoiceContributionService>();
 
