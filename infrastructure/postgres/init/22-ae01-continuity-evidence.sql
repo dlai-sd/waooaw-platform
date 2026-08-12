@@ -2,6 +2,29 @@
 -- constitutional_basis: C-005, C-007, C-023, C-026, C-059, C-063
 -- WC-060 Task WC060-01: channel bindings, continuity checkpoints, delivery acknowledgements, deduplication
 
+DO $$ BEGIN
+    IF to_regclass('business.whatsapp_journey_contacts') IS NOT NULL THEN
+        ALTER TABLE business.whatsapp_journey_contacts
+            ADD COLUMN IF NOT EXISTS mpin_hash CHAR(64),
+            ADD COLUMN IF NOT EXISTS mpin_failed_attempts INTEGER NOT NULL DEFAULT 0,
+            ADD COLUMN IF NOT EXISTS mpin_locked_until TIMESTAMPTZ;
+        IF NOT EXISTS (
+            SELECT 1 FROM pg_constraint WHERE conname = 'whatsapp_journey_contacts_mpin_hash_check'
+        ) THEN
+            ALTER TABLE business.whatsapp_journey_contacts
+                ADD CONSTRAINT whatsapp_journey_contacts_mpin_hash_check
+                CHECK (mpin_hash IS NULL OR mpin_hash ~ '^[0-9a-f]{64}$');
+        END IF;
+        IF NOT EXISTS (
+            SELECT 1 FROM pg_constraint WHERE conname = 'whatsapp_journey_contacts_mpin_attempts_check'
+        ) THEN
+            ALTER TABLE business.whatsapp_journey_contacts
+                ADD CONSTRAINT whatsapp_journey_contacts_mpin_attempts_check
+                CHECK (mpin_failed_attempts BETWEEN 0 AND 3);
+        END IF;
+    END IF;
+END $$;
+
 -- ── channel_bindings ────────────────────────────────────────────────────────
 
 CREATE TABLE IF NOT EXISTS business.channel_bindings (
@@ -133,6 +156,7 @@ CREATE TABLE IF NOT EXISTS business.continuity_checkpoints (
     source_binding_id           UUID         NOT NULL,
     target_binding_id           UUID         NOT NULL,
     continuity_envelope_hash    CHAR(64)     NOT NULL,
+    continuity_envelope         JSONB,
     material_request_hash       CHAR(64)     NOT NULL,
     causal_marker               UUID         NOT NULL,
     sequence_number             BIGINT       NOT NULL,
@@ -215,6 +239,7 @@ BEGIN
         OR OLD.source_binding_id     != NEW.source_binding_id
         OR OLD.target_binding_id     != NEW.target_binding_id
         OR OLD.continuity_envelope_hash != NEW.continuity_envelope_hash
+        OR OLD.continuity_envelope IS DISTINCT FROM NEW.continuity_envelope
         OR OLD.material_request_hash != NEW.material_request_hash
         OR OLD.causal_marker         != NEW.causal_marker
         OR OLD.sequence_number       != NEW.sequence_number

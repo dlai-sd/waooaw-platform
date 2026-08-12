@@ -30,8 +30,8 @@ This unification does not waive WC-059 completion, per-session Founder implement
 | Task | Scope | Model hint | Status |
 |---|---|---|---|
 | WC060-01 | Apply the exact Migration 22 blueprint in the D-06 Data Contract: independently authenticated channel bindings, continuity checkpoints, transport/participant acknowledgements, deduplication, tenant/relationship indexes, lifecycle/retention rules, and no ownership of relationship state. | reasoning | done — 22 Docker tests pass |
-| WC060-02 | Implement ADR-023 and D-06 Security Contract controls: Meta HMAC, timestamp window, message deduplication, opt-in, 30-minute internal tenant-scoped phone JWT, relationship resolution, MPIN lockout, and Tier-4 portal proof for phone attach. An unknown phone may start a new evaluation but cannot attach to an existing relationship from phone possession or payload hints. | reasoning | pending |
-| WC060-03 | Implement the canonical continuity endpoints and neutral Continuity Envelope from the D-06 Solution Contract. `ChannelContinuityService` prepares handoff, freshly authenticates/role-checks the target, binds its conversation, commits/reverts checkpoint, and returns the same relationship. Source remains active until target evidence commits. | reasoning | pending |
+| WC060-02 | Implement ADR-023 and D-06 Security Contract controls: Meta HMAC, timestamp window, message deduplication, opt-in, 30-minute internal tenant-scoped phone JWT, relationship resolution, MPIN lockout, and Tier-4 portal proof for phone attach. An unknown phone may start a new evaluation but cannot attach to an existing relationship from phone possession or payload hints. | reasoning | done — 18 focused Docker tests pass |
+| WC060-03 | Implement the canonical continuity endpoints and neutral Continuity Envelope from the D-06 Solution Contract. `ChannelContinuityService` prepares handoff, freshly authenticates/role-checks the target, binds its conversation, commits/reverts checkpoint, and returns the same relationship. Source remains active until target evidence commits. | reasoning | done — 10 continuity/controller Docker tests pass |
 | WC060-04 | Extend PR session routing so multiple channel conversations resolve the same relationship and current authority while retaining separate delivery/session state. Offline/reconnect reauthenticates and re-evaluates pending intents; duplicate delivery cannot repeat a lifecycle outcome. | reasoning | pending |
 | WC060-05 | Add the Evidence Reader endpoints in the D-06 Solution Contract and implement the D-06 Data/Security classification and access matrix. Query CE/Audit Sink through its approved read contract, enforce authenticated tenant + relationship + participant role, return only customer-visible material proof and authorized payload references, and provide evidenced short-lived export. | reasoning | pending |
 | WC060-06 | Build web relationship workspace and WhatsApp commands for timeline, evidence summary/export link, current authority/cost/trial state, and Stop. Distinguish transport acceptance from participant-observed acknowledgement and expose unresolved delivery honestly. | reasoning | pending |
@@ -45,6 +45,22 @@ Migration 22 and its EF Core ownership mapping are implemented. The focused Dock
 suite passes 22/22 checks covering first apply, idempotent reapply, composite foreign keys, forced
 tenant RLS, checks and transition guards, append-only delivery acknowledgements, exact 15-minute
 and 48-hour expiry, maintenance-role boundaries, replay arbitration, and concurrency uniqueness.
+
+### WC060-02/03 Evidence
+
+The WhatsApp boundary retains Meta HMAC verification, the five-minute timestamp window, message
+deduplication, opt-in, privacy-safe phone HMAC, and 30-minute internal tenant token. Persistent
+MPIN state now locks on the third failed attempt for 30 minutes. Internal phone attachment requires
+fresh Tier-4 portal proof, an existing phone registration, an active same-tenant participant role,
+and durable constitutional evidence; unknown-phone takeover attempts produce no relationship
+mutation. The focused WhatsApp Docker suite passes 18/18 tests.
+
+The canonical prepare/activate routes use authenticated server claims for tenant, participant,
+channel, conversation, assurance, and carried internal envelope context. `ChannelContinuityService`
+signs deterministic canonical JSON with HMAC-SHA256, persists the envelope hash, rejects divergent
+idempotency and modified envelopes, rechecks current role/authority/Stop state, and commits target
+binding only after evidence. Source binding remains active. The focused continuity and controller
+Docker suite passes 10/10 tests; Migration 22 model and live PostgreSQL suites pass 26/26 tests.
 
 ## Required Inputs
 

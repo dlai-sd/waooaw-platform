@@ -189,8 +189,98 @@ public sealed class WhatsAppJourneyServiceTests
         Assert.DoesNotContain("waooaw-phone-identity", responseJson, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task CctAe01Auth01_MpinLocksOnThirdFailureAndRecoversAfterLockWindow()
+    {
+        var (service, factory, _) = Create();
+        var now = DateTimeOffset.UtcNow;
+        var phone = "+919876543210";
+        var body = Body("wamid-mpin", now, phone, "Show skills", "TIER_1_LOW_RISK");
+        await service.ReceiveAsync(body, Sign(body), now, CancellationToken.None);
+        await using var db = factory.CreateDbContext();
+        var tenantId = (await db.WhatsAppJourneyContacts.SingleAsync()).TenantId;
+        var proof = new PortalPhoneAttachProof(
+            Guid.NewGuid(), "TIER_4_PORTAL_FRESH", DateTimeOffset.UtcNow, Guid.NewGuid());
+        await service.EnrolMpinAsync(tenantId, phone, "2468", proof, CancellationToken.None);
+
+        Assert.False(await service.VerifyMpinAsync(tenantId, phone, "1111", now, CancellationToken.None));
+        Assert.False(await service.VerifyMpinAsync(tenantId, phone, "2222", now, CancellationToken.None));
+        Assert.False(await service.VerifyMpinAsync(tenantId, phone, "3333", now, CancellationToken.None));
+        var locked = await Assert.ThrowsAsync<WhatsAppWebhookException>(() =>
+            service.VerifyMpinAsync(tenantId, phone, "2468", now.AddMinutes(1), CancellationToken.None));
+        Assert.Equal(423, locked.StatusCode);
+        Assert.True(await service.VerifyMpinAsync(
+            tenantId, phone, "2468", now.AddMinutes(31), CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task CctAe01Takeover01_UnknownPhoneCannotAttachFromPortalPayloadHints()
+    {
+        var relationshipGateway = new RecordingRelationshipConstitutionalGateway();
+        var (service, _, _) = Create(relationshipGateway: relationshipGateway);
+
+        await Assert.ThrowsAsync<ConstitutionalActionDeniedException>(() => service.AttachPhoneAsync(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            "+919876543210",
+            "conversation",
+            new PortalPhoneAttachProof(
+                Guid.NewGuid(), "TIER_4_PORTAL_FRESH", DateTimeOffset.UtcNow, Guid.NewGuid()),
+            CancellationToken.None));
+
+        Assert.Equal(0, relationshipGateway.CallCount);
+    }
+
+    [Fact]
+    public async Task CctAe01Auth02_FreshTier4ProofAttachesKnownPhoneAfterEvidence()
+    {
+        var relationshipGateway = new RecordingRelationshipConstitutionalGateway();
+        var (service, factory, _) = Create(relationshipGateway: relationshipGateway);
+        var now = DateTimeOffset.UtcNow;
+        var phone = "+919876543210";
+        var body = Body("wamid-attach", now, phone, "Show skills", "TIER_1_LOW_RISK");
+        await service.ReceiveAsync(body, Sign(body), now, CancellationToken.None);
+        await using var db = factory.CreateDbContext();
+        var tenantId = (await db.WhatsAppJourneyContacts.SingleAsync()).TenantId;
+        var relationshipId = Guid.NewGuid();
+        var participantId = Guid.NewGuid();
+        db.EmploymentRelationships.Add(new EmploymentRelationship
+        {
+            TenantId = tenantId,
+            RelationshipId = relationshipId,
+            ProfessionalType = "DMA",
+            EvaluationIntentId = Guid.NewGuid(),
+            InitiatingParticipantId = participantId,
+        });
+        db.RelationshipParticipants.Add(new RelationshipParticipant
+        {
+            TenantId = tenantId,
+            RelationshipId = relationshipId,
+            ParticipantId = participantId,
+            Role = RelationshipParticipantRole.Evaluator,
+            BoundEvidenceId = Guid.NewGuid(),
+        });
+        await db.SaveChangesAsync();
+
+        var resolution = await service.AttachPhoneAsync(
+            tenantId,
+            relationshipId,
+            phone,
+            "conversation",
+            new PortalPhoneAttachProof(
+                participantId, "TIER_4_PORTAL_FRESH", DateTimeOffset.UtcNow, Guid.NewGuid()),
+            CancellationToken.None);
+
+        Assert.Equal("TIER_4_PORTAL_FRESH", resolution.AuthenticationAssurance);
+        Assert.Equal(1, relationshipGateway.CallCount);
+        var binding = await db.ChannelBindings.SingleAsync();
+        Assert.Equal("ACTIVE", binding.Status);
+        Assert.DoesNotContain(phone, binding.ExternalSubjectHash, StringComparison.Ordinal);
+    }
+
     private static (WhatsAppJourneyService Service, InMemoryEmploymentRelationshipFactory Factory, RecordingEvidenceGateway Evidence) Create(
-        bool evidenceFails = false)
+        bool evidenceFails = false,
+        IRelationshipConstitutionalGateway? relationshipGateway = null)
     {
         var factory = new InMemoryEmploymentRelationshipFactory(Guid.NewGuid().ToString("N"));
         var evidence = new RecordingEvidenceGateway(evidenceFails);
@@ -199,7 +289,7 @@ public sealed class WhatsAppJourneyServiceTests
             WebhookSecret = WebhookSecret,
             TenantTokenKey = TokenKey,
         });
-        return (new WhatsAppJourneyService(factory, evidence, options), factory, evidence);
+        return (new WhatsAppJourneyService(factory, evidence, options, relationshipGateway), factory, evidence);
     }
 
     private static string Body(string messageId, DateTimeOffset sentAt, string from, string text, string riskTier) =>

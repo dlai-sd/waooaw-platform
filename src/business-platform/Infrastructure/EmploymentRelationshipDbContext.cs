@@ -251,6 +251,9 @@ public sealed class WhatsAppJourneyContact
     public DateTimeOffset LastInboundAt { get; set; }
     public string JourneyStage { get; set; } = "DISCOVER";
     public bool PendingMediumRiskConfirmation { get; set; }
+    public string? MpinHash { get; set; }
+    public int MpinFailedAttempts { get; set; }
+    public DateTimeOffset? MpinLockedUntil { get; set; }
 }
 
 public sealed class WhatsAppMessageReceipt
@@ -293,6 +296,7 @@ public sealed class ContinuityCheckpoint
     public Guid SourceBindingId { get; init; }
     public Guid TargetBindingId { get; init; }
     public string ContinuityEnvelopeHash { get; init; } = string.Empty;
+    public string? ContinuityEnvelopeJson { get; init; }
     public string MaterialRequestHash { get; init; } = string.Empty;
     public Guid CausalMarker { get; init; }
     public long SequenceNumber { get; init; }
@@ -709,6 +713,9 @@ public sealed class EmploymentRelationshipDbContext : DbContext
             entity.Property(value => value.LastInboundAt).HasColumnName("last_inbound_at");
             entity.Property(value => value.JourneyStage).HasColumnName("journey_stage");
             entity.Property(value => value.PendingMediumRiskConfirmation).HasColumnName("pending_medium_risk_confirmation");
+            entity.Property(value => value.MpinHash).HasColumnName("mpin_hash").HasMaxLength(64).IsFixedLength();
+            entity.Property(value => value.MpinFailedAttempts).HasColumnName("mpin_failed_attempts");
+            entity.Property(value => value.MpinLockedUntil).HasColumnName("mpin_locked_until");
         });
 
         modelBuilder.Entity<WhatsAppMessageReceipt>(entity =>
@@ -767,6 +774,7 @@ public sealed class EmploymentRelationshipDbContext : DbContext
             entity.Property(value => value.SourceBindingId).HasColumnName("source_binding_id");
             entity.Property(value => value.TargetBindingId).HasColumnName("target_binding_id");
             entity.Property(value => value.ContinuityEnvelopeHash).HasColumnName("continuity_envelope_hash").HasMaxLength(64).IsFixedLength();
+            entity.Property(value => value.ContinuityEnvelopeJson).HasColumnName("continuity_envelope").HasColumnType("jsonb");
             entity.Property(value => value.MaterialRequestHash).HasColumnName("material_request_hash").HasMaxLength(64).IsFixedLength();
             entity.Property(value => value.CausalMarker).HasColumnName("causal_marker");
             entity.Property(value => value.SequenceNumber).HasColumnName("sequence_number");
