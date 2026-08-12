@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 27
+**State Revision:** 28
 **Last Updated:** 2026-08-12
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -32,21 +32,21 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Amendment 10 reconciliation | DONE — exact prospective GOA/Acceptance IDs, Evidence Specifications, acceptance IDs, independence constraints, and Participation Windows defined; no authority issued |
 | Initial CA routing-readiness review | DONE — R-090 / `CR-GOAL-005-INST-002-14` APPROVED at commit `4a267e1`; no authority issued |
 | Registrant acknowledgement | DONE — exact `ACK-GOAL-005-INST-001-10` recorded; routing only, no implementation authority |
-| Product, Solution, Data, Security contributions | DONE — four valid Acceptances; CR/LR owner records and exact voice acceptance IDs published |
-| Integrated EA review | READY TO ROUTE — owner package complete and version-pinned by commit |
-| Final CA readiness | BLOCKED BY INTEGRATED EA — fresh review follows approved EA integration |
+| Product, Solution, Data, Security contributions | REPAIRED — canonical BP/PR/AIR voice contracts and Solution repair CR/LR published at `1e80dfd`; other owner records unchanged |
+| Integrated EA review | ROUTED — R-091 superseded for readiness after canonical repair; fresh GOA-GOAL-005-INST-004-12 issued, awaiting Acceptance |
+| Final CA readiness | BLOCKED BY FRESH INTEGRATED EA — old CA scope covered the pre-repair package and published no verdict |
 | WC-062 F6 Voice | NOT IMPLEMENTATION-READY — seven dormant tasks; no implementation authority |
 | WC-063 F7 Founder Administration | GROOMED CANDIDATE — seven dormant tasks and six required owner/review contributions; not implementation-ready |
 | Founder implementation decision | RECORDED FOR WC-062 — FA-042; dormant pending Entry Gate and fresh confirmation in the future implementation session; WC-063 unauthorized |
-| GO Authorization and Acceptance | OWNER SPECIFICATION PHASE COMPLETE — four GOAs and Acceptances valid; no EA/final-CA/implementation GOA yet |
+| GO Authorization and Acceptance | OWNER REPAIR COMPLETE — fresh EA GOA issued; EA Acceptance, fresh CA GOA/Acceptance, and implementation GOA remain open |
 | Specification-routing branch | ACTIVE — `wc/062/specification-routing`; implementation remains stopped |
 
 ### Recovery Context
 
 - **Branch:** `wc/062/specification-routing`
-- **Objective:** Complete integrated EA review and final CA readiness; stop before implementation authorization.
+- **Objective:** Complete fresh integrated EA review and final CA readiness over repaired package `1e80dfd`; stop before implementation authorization.
 - **Authority:** The current Founder instruction authorizes specification routing only. FA-042 remains dormant and cannot authorize implementation in this session.
-- **Validation:** Reconciled Amendment 10 passes identifier-collision, required-marker, and whitespace checks; R-090 independently APPROVES routing readiness; no implementation tests apply.
+- **Validation:** Canonical BP `1.8.0`, PR `1.3.0`, and AIR `1.0.0` contracts parse; voice reference graphs resolve; operation IDs are unique; exact SHA-256 hashes are recorded; no implementation tests apply.
 - **Protected local artifacts:** `.coverage`, `goals/goal_register.jsonl`, `logs/blueprint_assurance_report.json`, and `logs/bootstrap-evidence.jsonl` are unrelated and must remain unstaged.
 
 ## Authorization Boundary
@@ -63,8 +63,8 @@ prerequisites, not closed evidence and not implementation blockers being bypasse
 
 ## Next Authorized Action
 
-Route a fresh integrated EA review of the fixed Product, Solution, Data, Security, and acceptance
-package. After approval, route a distinct fresh CA context for final Entry Gate readiness.
+Obtain Acceptance for GOA-GOAL-005-INST-004-12 and route its fresh integrated EA review of package
+`1e80dfd`. After approval, issue and accept a new distinct CA scope for final Entry Gate readiness.
 Implementation remains stopped until the complete Entry Gate, fresh implementation-session Founder
 confirmation, implementation GOA, and later INST-010 Acceptance pass. WC-063 remains unselected.
 

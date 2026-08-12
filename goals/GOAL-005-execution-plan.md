@@ -2455,6 +2455,41 @@ imposes no architectural condition. Order 2 is complete; this does not authorize
 The Acceptance timestamp is later than the GOA issuance timestamp. Order 3 is active. Final
 readiness remains undecided until the Contribution and Learning Records are published.
 
+### Amendment 10 Canonical Contract Repair
+
+CR-GOAL-005-INST-005-15 and LR-GOAL-005-INST-005-06 publish the canonical contract bytes omitted
+from the original Solution contribution. Commit `1e80dfd` fixes BP OpenAPI `1.8.0`, PR OpenAPI
+`1.3.0` with `VoiceOrchestrationV1` `1.0.0`, and AIR `ProviderNeutralTranscriptionV1` `1.0.0` by
+exact SHA-256 in the Solution repair attestation. The repair is specification-only and grants no
+implementation authority.
+
+R-091 remains an accurate review of package `0c994b5`, but it cannot approve the repaired package
+and is superseded for current Entry Gate readiness. GOA-GOAL-005-INST-002-11 and
+ACC-GOAL-005-INST-002-11 remain valid historical records scoped only to the old package; no final
+CA contribution was published from that scope. Fresh integrated EA approval and a later fresh CA
+scope are mandatory.
+
+### GOA-GOAL-005-INST-004-12
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GOA-GOAL-005-INST-004-12 |
+| `record_type` | Authorization Record |
+| Authorized Institution | INST-004 — Enterprise Architect |
+| Contribution scope | Independently review and integrate the repaired WC-062 package at commit `1e80dfd`; publish `CR-GOAL-005-INST-004-13` and `LR-GOAL-005-INST-004-09` |
+| Evidence specification | Amendment 10 INST-004 evidence plus exact canonical contract versions/hashes, OpenAPI ownership and browser/private boundary, acceptance traceability, C-095/ADR determination, unresolved-decision check, and explicit verdict |
+| Participation Window | 1 constitutional session after valid `ACC-GOAL-005-INST-004-12` |
+| Independence constraint | Fresh INST-004 context that authored or repaired none of the owner package or canonical contracts; may identify findings but may not edit the reviewed package |
+| Excluded authority | Owner repair, implementation, source, tests, migration, generated client, provider activation, deployment, constitutional review, Registrant acknowledgement, PR approval, merge, and self-review |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-12T11:00:16Z |
+| State | ISSUED — awaiting Acceptance; Participation Window inactive |
+
+Final CA readiness is blocked until this fresh EA scope is accepted and publishes an APPROVED
+Contribution and Learning Record. All implementation remains blocked.
+
 ---
 
 ## Amendment 11 — WC-063 Founder Administration Prospective Routing
