@@ -2248,6 +2248,102 @@ contribution, integrated review, final CA readiness decision, Registrant acknowl
 future-session implementation confirmation, GOA, Acceptance, or active Participation Window has
 been recorded.
 
+### Amendment 10 Routing-Readiness And Registrant Acknowledgement
+
+R-090 / `CR-GOAL-005-INST-002-14` independently APPROVES this reconciled amendment for exact
+Registrant acknowledgement and prospective specification routing. The review was produced at
+2026-08-12T09:54:30Z against commit `4a267e1`. It issues no authority.
+
+| Attestation field | Value |
+|---|---|
+| `institution_id` | INST-001 |
+| `goal_id` | GOAL-005 |
+| `record_id` | ACK-GOAL-005-INST-001-10 |
+| `record_type` | Acknowledgement Record |
+| `produced_at` | 2026-08-12T09:56:28Z |
+| Acknowledged plan | GEP-GOAL-005-INST-013-10 |
+| Registrant | Yogesh Khandge / Founder |
+| Decision | ACKNOWLEDGED — WC-062 specification routing only |
+| Exact quoted acknowledgement | "I acknowledge GEP-GOAL-005-INST-013-10 and authorize INST-013 to route the WC-062 Product, Solution, Data, Security, integrated Enterprise Architecture, and independent Constitutional Analyst specification contributions exactly as specified. I understand that this acknowledgement does not authorize implementation, issue a GOA by itself, create Acceptance, start a Participation Window, activate a provider, deploy, approve or merge a PR, or replace the fresh implementation-session confirmation required after the Entry Gate closes." |
+
+This record satisfies GEOM R2-03 condition 2 for Amendment 10 specification routing. Together
+with R-090 it permits INST-013 to issue the Order 1A-1D GOAs below. It does not issue a GOA,
+record Acceptance, start a Participation Window, or authorize implementation.
+
+### Amendment 10 Order 1 Specification GOAs
+
+#### GOA-GOAL-005-INST-011-09
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GOA-GOAL-005-INST-011-09 |
+| `record_type` | Authorization Record |
+| Authorized Institution | INST-011 — Product Owner |
+| Contribution scope | Produce Amendment 10 Order 1A exactly as specified; publish `CR-GOAL-005-INST-011-10` and `LR-GOAL-005-INST-011-07` |
+| Evidence specification | Amendment 10 INST-011 minimum evidence and exact voice acceptance inventory; fixed inputs and exclusions remain binding |
+| Participation Window | 2 constitutional sessions after valid `ACC-GOAL-005-INST-011-09` |
+| Excluded authority | API/data/security design, implementation, provider activation, deployment, integrated or constitutional review, PR approval, merge, and self-review |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-12T09:56:29Z |
+| State | ISSUED — awaiting Acceptance; Participation Window inactive |
+
+#### GOA-GOAL-005-INST-005-11
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GOA-GOAL-005-INST-005-11 |
+| `record_type` | Authorization Record |
+| Authorized Institution | INST-005 — Solution Architect |
+| Contribution scope | Produce Amendment 10 Order 1B exactly as specified; publish `CR-GOAL-005-INST-005-14` and `LR-GOAL-005-INST-005-05` |
+| Evidence specification | Amendment 10 INST-005 minimum evidence; canonical generated-client-compatible BP and private PR/AIR boundaries; fixed inputs and exclusions remain binding |
+| Participation Window | 3 constitutional sessions after valid `ACC-GOAL-005-INST-005-11` |
+| Excluded authority | Product/privacy policy, data/security ownership outside solution scope, implementation, provider activation, deployment, integrated review, PR approval, merge, and self-review |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-12T09:56:30Z |
+| State | ISSUED — awaiting Acceptance; Participation Window inactive |
+
+#### GOA-GOAL-005-INST-006-04
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GOA-GOAL-005-INST-006-04 |
+| `record_type` | Authorization Record |
+| Authorized Institution | INST-006 — Data Architect |
+| Contribution scope | Produce Amendment 10 Order 1C exactly as specified; publish `CR-GOAL-005-INST-006-05` and `LR-GOAL-005-INST-006-03` |
+| Evidence specification | Amendment 10 INST-006 minimum evidence, including migration blueprint or reasoned no-migration decision; fixed inputs and exclusions remain binding |
+| Participation Window | 2 constitutional sessions after valid `ACC-GOAL-005-INST-006-04` |
+| Excluded authority | Product behavior, API ownership outside data surfaces, security mechanism selection, implementation, provider activation, deployment, PR approval, merge, and self-review |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-12T09:56:31Z |
+| State | ISSUED — awaiting Acceptance; Participation Window inactive |
+
+#### GOA-GOAL-005-INST-007-08
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GOA-GOAL-005-INST-007-08 |
+| `record_type` | Authorization Record |
+| Authorized Institution | INST-007 — Security Architect |
+| Contribution scope | Produce Amendment 10 Order 1D exactly as specified; publish `CR-GOAL-005-INST-007-08` and `LR-GOAL-005-INST-007-03` |
+| Evidence specification | Amendment 10 INST-007 minimum evidence and adversarial CCT matrix; fixed inputs and exclusions remain binding |
+| Participation Window | 2 constitutional sessions after valid `ACC-GOAL-005-INST-007-08` |
+| Excluded authority | Product behavior, owner API authorship, data-policy decisions outside security floors, implementation, provider activation, deployment, PR approval, merge, and self-review |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-12T09:56:32Z |
+| State | ISSUED — awaiting Acceptance; Participation Window inactive |
+
+No Acceptance Record exists for these GOAs at issuance. Each Institution must explicitly accept
+after its `issued_at`; only that later timestamp starts its Participation Window. Order 2 remains
+blocked until all four Contribution and Learning Records are published.
+
 ---
 
 ## Amendment 11 — WC-063 Founder Administration Prospective Routing
