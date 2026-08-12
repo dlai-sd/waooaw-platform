@@ -2122,44 +2122,131 @@ The Acceptance timestamp is later than the GOA issuance timestamp (2026-08-12T02
 | `record_id` | GEP-GOAL-005-INST-013-10 |
 | `record_type` | Execution Plan |
 | `produced_at` | 2026-08-12 |
-| Status | PROPOSED — FA-042 records Founder implementation intent; owner specifications, integrated review, CA readiness, Registrant acknowledgement, fresh implementation-session confirmation, GOA, and Acceptance remain open |
+| Status | RECONCILED CANDIDATE — initial CA routing-readiness review and exact Registrant acknowledgement required before any specification GOA; no GOA or Acceptance is issued by this amendment |
 | Amends | GEP-GOAL-005-INST-013-09 prospectively; Amendment 9 and all prior records remain unchanged |
 
-### Purpose And Contribution Order
+### Purpose, Scope, And Fixed Inputs
 
 This amendment routes WC-062 as the separate WC-034 F6 contract for a reusable platform voice
 capability. It does not authorize a DMA-specific implementation or reopen completed F1–F5 work.
-Specification contributions proceed in this order: Product, Solution, Data, and Security owners;
-integrated Enterprise Architecture review; then independent Constitutional Analyst readiness.
-The first four may work in parallel but must reconcile into one version-pinned package before
-integrated review.
+The fixed implementation scope is WC062-01 through WC062-07 exactly as defined in WC-062. The
+normative routing inputs are WC-062, the F6 section of the WC-034 implementation decomposition,
+the accepted F1–F5 contracts, C-001/C-023/C-042/C-049/C-051/C-059/C-060/C-061/C-063/C-065/
+C-071/C-076/C-080, and ADR-017/020/023/029. Where those inputs do not decide an F6 policy,
+the accountable specification owner must decide it within its own Decision Space; INST-013 must
+not supply or infer the decision.
 
-| Field | Prospective value |
+### Routing Preconditions
+
+Before any specification GOA below may issue:
+
+1. a fresh INST-002 context that will not perform the later package review must approve this
+	reconciled routing plan as `CR-GOAL-005-INST-002-14`; and
+2. the Registrant must record `ACK-GOAL-005-INST-001-10` using the exact acknowledgement below.
+
+Those records satisfy GEOM R2-03 for specification routing only. They do not authorize
+implementation, issue a GOA, create an Acceptance, start a Participation Window, or predetermine
+any contribution or review verdict.
+
+### Ordered Specification Contributions
+
+| Order | Planned GOA / Acceptance | Institution | Contribution scope and required records | Participation Window after valid Acceptance | Independence constraint |
+|---:|---|---|---|---|---|
+| 1A | `GOA-GOAL-005-INST-011-09` / `ACC-GOAL-005-INST-011-09` | INST-011 Product Owner | Publish the first-release channel/language, consent, correction, confidence, fallback, failure, duration/size, and customer-visible acceptance contract as `CR-GOAL-005-INST-011-10` plus `LR-GOAL-005-INST-011-07` | 2 constitutional sessions | May decide product behavior and acceptance meaning only; may not design APIs, storage, security mechanisms, implementation, or approve its own contribution |
+| 1B | `GOA-GOAL-005-INST-005-11` / `ACC-GOAL-005-INST-005-11` | INST-005 Solution Architect | Publish provider-neutral BP public schemas/operations, PR/AIR private ownership, sequence, idempotency, failure semantics, generated-client boundary, and C-095 determination as `CR-GOAL-005-INST-005-14` plus `LR-GOAL-005-INST-005-05` | 3 constitutional sessions | May author component and interface contracts only; may not choose product/privacy policy, implement source, or perform Order 2 integrated review |
+| 1C | `GOA-GOAL-005-INST-006-04` / `ACC-GOAL-005-INST-006-04` | INST-006 Data Architect | Publish classification, minimisation, storage ownership, retention, erasure, evidence/payload separation, lineage, language metadata, and migration decision as `CR-GOAL-005-INST-006-05` plus `LR-GOAL-005-INST-006-03` | 2 constitutional sessions | May decide data architecture only; may not choose product behavior, API ownership outside data surfaces, security controls, implementation, or self-review |
+| 1D | `GOA-GOAL-005-INST-007-08` / `ACC-GOAL-005-INST-007-08` | INST-007 Security Architect | Publish consent/permission threats, authenticated upload, validation/scanning, replay, encryption, residency, abuse, observability, privacy-safe failure, and adversarial CCT obligations as `CR-GOAL-005-INST-007-08` plus `LR-GOAL-005-INST-007-03` | 2 constitutional sessions | May define non-weakenable security/privacy floors only; may not choose product behavior, author owner APIs, implement, or approve its own contribution |
+| 2 | `GOA-GOAL-005-INST-004-11` / `ACC-GOAL-005-INST-004-11` | INST-004 Enterprise Architect | After 1A–1D publish, reconcile their exact committed versions and approve or reject the integrated architecture as `CR-GOAL-005-INST-004-12` plus `LR-GOAL-005-INST-004-08` | 1 constitutional session | Fresh review context; did not author or repair Orders 1A–1D; may identify findings but may not edit the reviewed contributions |
+| 3 | `GOA-GOAL-005-INST-002-11` / `ACC-GOAL-005-INST-002-11` | INST-002 Constitutional Analyst | After approved Order 2, independently review the fixed package, this amendment, and WC-062 Entry Gate as `CR-GOAL-005-INST-002-15` plus `LR-GOAL-005-INST-002-04` | 1 constitutional session | Fresh context distinct from `CR-GOAL-005-INST-002-14`; did not author, repair, integrate, or approve any reviewed contribution |
+
+Orders 1A–1D may execute in parallel after their own valid GOA and later Acceptance. Order 2 may
+begin only after all four Contribution and Learning Records are published. Order 3 may begin only
+after Order 2 publishes an APPROVED integrated review. A rejected or conditional record returns
+only to its accountable owner; INST-013 may reroute the repair but may not perform it.
+
+### Per-Institution Evidence Specifications
+
+Every Contribution and Learning Record must contain all GEOM G-10 and G-05 fields, identify its
+GOA and Acceptance, cite exact source versions or hashes, distinguish specification evidence from
+implementation/runtime/customer proof, list unresolved decisions, and state a verdict limited to
+the Institution's Decision Space.
+
+| Institution | Minimum complete evidence |
 |---|---|
-| Primary implementation Institution | INST-010 — Platform IT Expert, only after every implementation gate closes |
-| Contribution scope | WC062-01 through WC062-07 exactly as defined in WC-062 |
-| Required inputs | Approved product behavior and acceptance IDs; provider-neutral BP/PR/AIR contracts; consent, confidence, correction, retention, erasure, evidence, tenant, security, offline, and text-fallback contracts; integrated and CA readiness approval |
-| Evidence specification | Task traceability; canonical/generated contract conformance; Docker-only unit/contract/integration/security/privacy/CCT evidence; at least 90% affected-surface coverage; browser, exact-360, expanded, keyboard, RTL, axe, offline/replay, Stop, and proportional F8 proof |
-| Participation Window | Placeholder only — duration must be approved in the reconciled specification package and begins only after valid INST-010 Acceptance |
-| Independent review | Fresh Security and Data review of their implemented surfaces; fresh Enterprise Architecture integrated acceptance; no self-review by INST-010 or INST-013 |
-| Completion boundary | One complete unmerged PR after all tasks and independent reviews pass; Founder review and merge remain separate |
+| INST-011 | First-release browser channel and supported-language policy; permission and consent copy/state model; record/pause/resume/cancel/review/correct/explicit-send journey; confidence and unsupported-language behavior; complete text fallback; duration/size recommendation; exact acceptance ID, scenario, fixture, and pass-condition matrix |
+| INST-005 | Versioned BP OpenAPI changes; generated-client-compatible schemas and operation IDs; private PR/AIR contracts; upload/transcription/correction state sequence; idempotency and reconciliation; provider abstraction; typed failure/degradation semantics; no direct browser-to-private-service path; C-095 manifest/skeleton decision |
+| INST-006 | Audio/transcript/evidence classifications; authoritative owner per state; residency and encryption-relevant data flow inputs; minimisation; retention clock and deletion/erasure behavior; immutable evidence versus erasable payload; lineage/correction model; migration blueprint or reasoned no-migration decision |
+| INST-007 | Threat actors and trust boundaries; permission/consent abuse; MIME/signature/codec and size/duration validation; malware/quarantine flow; authenticated tenant/relationship binding; replay/idempotency and confused-deputy controls; encryption/key and provider-residency floors; privacy-safe logs/errors; adversarial CCT matrix |
+| INST-004 | Version-pinned matrix proving Product, Solution, Data, and Security consistency; ownership and dependency graph; no unresolved policy delegated to code; acceptance-to-contract traceability; ADR/C-095 decision validation; explicit APPROVED, APPROVED WITH CONDITIONS, or REJECT verdict |
+| INST-002 | GEOM ordering and temporal validity; C-001/C-023/C-042/C-049/C-051/C-060/C-061/C-063/C-065/C-080 compliance; Decision Space and independence; complete Entry Gate matrix; exact remaining Registrant/session authorization/GOA/Acceptance stops; explicit readiness verdict |
+
+### Exact Acceptance Inventory To Reconcile
+
+INST-011 must define, and Orders 2–3 must approve, these exact IDs in
+`architecture/reference/ux/hybrid-ui-acceptance-contract.md`; an ID may be strengthened but not
+renamed, silently omitted, or assigned a meaning outside the label below:
+
+| ID | Required meaning |
+|---|---|
+| `UX-VOICE-01` | Permission denied or unavailable preserves a complete text path |
+| `UX-VOICE-02` | Record, pause, resume, cancel, timer, playback, and draft controls are truthful and stable |
+| `UX-VOICE-03` | Review and explicit send are separate; recording/upload/transcription never implies consent to send |
+| `UX-VOICE-04` | Low confidence and unsupported language require correction or text fallback before consequential use |
+| `UX-VOICE-05` | Upload/provider failure is recoverable without duplicate contribution or fabricated success |
+| `UX-VOICE-06` | Offline/reconnect reconciles authoritative state before retry and preserves the original idempotency identity |
+| `UX-VOICE-07` | Malformed, unsupported, oversized, over-duration, or quarantined content fails safely and privately |
+| `UX-VOICE-08` | Retention and erasure treatment is visible without claiming durable evidence was deleted |
+| `UX-VOICE-09` | Exact 360x800, intermediate, and expanded layouts preserve composer controls and Stop without overflow |
+| `UX-VOICE-10` | Keyboard and screen-reader journey completes record/review/correct/send or equivalent text fallback |
+| `UX-VOICE-11` | RTL, eleven-locale fallback, reduced motion, and 200% zoom preserve meaning and operation |
+| `UX-VOICE-12` | Emergency Stop remains independent and effective during capture, upload, transcription, correction, and retry |
+| `CCT-VOICE-EF-01` | Evidence First distinguishes transport, transcription, correction, acceptance, and recorded evidence |
+| `CCT-VOICE-TENANT-01` | Tenant, relationship, participant, and assurance bindings deny cross-boundary access |
+| `CCT-VOICE-REPLAY-01` | Duplicate, replayed, and uncertain requests cannot duplicate contributions or evidence |
+| `CCT-VOICE-PRIV-01` | Audio/transcript content and sensitive identifiers do not leak through URL, logs, metrics, traces, or errors |
+
+The implementation evidence package must also preserve all applicable shell, contract,
+responsive, accessibility, RTL, PWA/privacy, CCT-UX-HO, CCT-UX-EF, and `UX-VIS-03` obligations.
+
+### Implementation Entry And Evidence Boundary
+
+After Order 3 approves the fixed package, the Registrant must acknowledge that exact reconciled
+package. FA-042 remains dormant. In the separate human session that will write implementation
+code, the Founder must freshly answer the mandatory implementation-gate question. Only after
+both records exist may INST-013 issue a WC-062 implementation GOA to INST-010. The implementation
+Participation Window is **five constitutional sessions after valid INST-010 Acceptance**.
+
+Implementation evidence must trace WC062-01 through WC062-07 to the approved contracts and exact
+acceptance IDs; prove canonical/generated contract conformance; use Docker-only unit, contract,
+integration, security, privacy, and CCT execution; achieve at least 90% affected-surface line
+coverage; include Chromium/Firefox/WebKit at exact 360x800, 768x1024, and 1440x900 plus keyboard,
+screen reader, RTL, reduced motion, 200% zoom, axe, offline/replay, Stop, and proportional F8
+evidence; and receive fresh Data, Security, integrated EA, and Constitutional reviews. Completion
+is one complete unmerged PR; Founder review and merge remain separate.
+
+### Required Registrant Acknowledgement
+
+Before any specification GOA is issued, the Registrant must record exactly:
+
+> "I acknowledge GEP-GOAL-005-INST-013-10 and authorize INST-013 to route the WC-062 Product, Solution, Data, Security, integrated Enterprise Architecture, and independent Constitutional Analyst specification contributions exactly as specified. I understand that this acknowledgement does not authorize implementation, issue a GOA by itself, create Acceptance, start a Participation Window, activate a provider, deploy, approve or merge a PR, or replace the fresh implementation-session confirmation required after the Entry Gate closes."
 
 ### Mandatory Stops
 
-1. This proposed amendment issues and reserves no GO Authorization and authorizes no contribution or implementation.
-2. Owner contribution authorization records may be defined only after each Decision Space and Evidence Specification is approved; no candidate document may be retroactively treated as an authorized contribution.
-3. A future reconciled amendment revision must name every contribution GOA, Acceptance, Participation Window, and independence constraint before owner work begins.
-4. FA-042 records the Founder's decision to implement WC-062 after prerequisites close, but it cannot authorize a future human session. A WC-062 implementation GOA may issue only after owner contributions, integrated review, CA readiness approval of the exact reconciled plan, Registrant acknowledgement of that plan, and fresh explicit Founder confirmation in the session that will write implementation code.
-5. INST-010 must record Acceptance later than GOA issuance before WC062-01 begins.
-6. No provider activation, credential setup, deployment, DMA-specific behavior, production/customer proof, PR approval, merge, self-review, or self-merge is included.
+1. This amendment defines prospective identifiers but issues no GOA, records no Acceptance, and authorizes no contribution or implementation by itself.
+2. No candidate or pre-existing document may be retroactively treated as an authorized WC-062 contribution.
+3. No specification GOA may issue before `CR-GOAL-005-INST-002-14` and `ACK-GOAL-005-INST-001-10` are both recorded.
+4. No Order 2 or 3 GOA may issue before its dependency records are complete and version-pinned.
+5. FA-042 cannot authorize the future implementation session. No implementation GOA may issue before Order 3 approval, exact package acknowledgement, and fresh explicit Founder confirmation in the session that will write implementation code.
+6. INST-010 must record Acceptance later than implementation GOA issuance before WC062-01 begins.
+7. No provider activation, credential setup, deployment, DMA-specific behavior, production/customer proof, PR approval, merge, self-review, or self-merge is included.
 
 ### Current Decision
 
-WC-062 is groomed but **NOT IMPLEMENTATION-READY**. FA-042 records Founder implementation intent
-and the present grooming-session directive; this amendment remains a prospective routing record
-only. No owner contribution, integrated review, CA readiness decision, Registrant acknowledgement,
-future-session implementation confirmation, GOA, Acceptance, or Participation Window has been
-recorded.
+WC-062 is **READY FOR INDEPENDENT CA ROUTING-READINESS REVIEW ONLY** and remains **NOT
+IMPLEMENTATION-READY**. FA-042 records Founder implementation intent but is dormant. No owner
+contribution, integrated review, final CA readiness decision, Registrant acknowledgement,
+future-session implementation confirmation, GOA, Acceptance, or active Participation Window has
+been recorded.
 
 ---
 

@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 23
+**State Revision:** 24
 **Last Updated:** 2026-08-12
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -20,30 +20,32 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Engineering status | IMPLEMENTATION |
 | Platform version | 1.45.0 |
 | Latest completed Work Contract | WC-060 — AE-01 Omnichannel Continuity, Evidence, and Emergency Stop |
-| Latest merge | PR #268 merged to `main` as `95e0d91` |
-| Active delivery | WC-034 F6/F7 grooming — WC-062 and WC-063 candidates; implementation unauthorized |
+| Latest merge | PR #270 merged to `main` as `ccf2ca5` |
+| Active delivery | WC-062 specification routing under GOAL-005 Amendment 10; implementation unauthorized |
 
-## Active Checkpoint — WC-062/WC-063 Grooming
+## Active Checkpoint — WC-062 Specification Routing
 
 | Milestone | Status |
 |---|---|
 | WC-060 delivery closure | DONE — PR #268 approved and merged to `main` as `95e0d91`; R-087/R-088/R-089 APPROVED |
-| WC-034 reconciliation | DONE — F0–F5 complete; F6/F7 traced to separate contracts; F8 remains proportional per release |
-| WC-062 F6 Voice | GROOMED CANDIDATE — seven dormant tasks and six required owner/review contributions; not implementation-ready |
+| WC-062 grooming merge | DONE — PR #270 merged to `main` as `ccf2ca5` |
+| Amendment 10 reconciliation | DONE — exact prospective GOA/Acceptance IDs, Evidence Specifications, acceptance IDs, independence constraints, and Participation Windows defined; no authority issued |
+| Initial CA routing-readiness review | IN PROGRESS — fresh INST-002 review of reconciled Amendment 10 required before acknowledgement |
+| Registrant acknowledgement | OPEN — exact `ACK-GOAL-005-INST-001-10` required after initial CA approval |
+| Product, Solution, Data, Security contributions | BLOCKED BY ROUTING GATE — may begin in parallel only after valid specification GOAs and later Acceptances |
+| Integrated EA and final CA readiness | BLOCKED BY OWNER CONTRIBUTIONS — dependency-ordered independent reviews |
+| WC-062 F6 Voice | NOT IMPLEMENTATION-READY — seven dormant tasks; no implementation authority |
 | WC-063 F7 Founder Administration | GROOMED CANDIDATE — seven dormant tasks and six required owner/review contributions; not implementation-ready |
-| GOAL-005 routing | PROPOSED — Amendments 10/11 define prospective sequencing and evidence but issue/reserve no GOA |
-| Specification owner contributions | OPEN — Product, Solution, Data, Security, integrated EA, and independent CA records do not yet exist |
-| Registrant acknowledgement | OPEN — none recorded for Amendment 10 or 11 |
 | Founder implementation decision | RECORDED FOR WC-062 — FA-042; dormant pending Entry Gate and fresh confirmation in the future implementation session; WC-063 unauthorized |
 | GO Authorization and Acceptance | NOT ISSUED — no F6/F7 GOA, Acceptance, or active Participation Window exists |
-| Grooming pull request | OPEN — PR #270 from `wc/062/grooming-authorization`; independent Constitutional Analyst review pending |
+| Specification-routing branch | ACTIVE — `wc/062/specification-routing`; implementation remains stopped |
 
 ### Recovery Context
 
-- **Branch:** `wc/062/grooming-authorization`
-- **Objective:** Obtain independent Constitutional Analyst review of PR #270; stop before implementation.
-- **Authority:** FA-042 records the Founder decision to implement WC-062 after prerequisites close. Current session authorizes governance/PR work only; future implementation requires fresh explicit Founder confirmation.
-- **Validation:** Both candidate contracts, WC-034/registry traceability, and prospective amendments pass deterministic fail-closed checks; no implementation tests apply.
+- **Branch:** `wc/062/specification-routing`
+- **Objective:** Complete Amendment 10 routing readiness, acknowledgement, owner contributions, integrated EA review, and final CA readiness; stop before implementation authorization.
+- **Authority:** The current Founder instruction authorizes specification routing only. FA-042 remains dormant and cannot authorize implementation in this session.
+- **Validation:** Reconciled Amendment 10 passes identifier-collision, required-marker, and whitespace checks; no implementation tests apply.
 - **Protected local artifacts:** `.coverage`, `goals/goal_register.jsonl`, `logs/blueprint_assurance_report.json`, and `logs/bootstrap-evidence.jsonl` are unrelated and must remain unstaged.
 
 ## Authorization Boundary
@@ -60,10 +62,11 @@ prerequisites, not closed evidence and not implementation blockers being bypasse
 
 ## Next Authorized Action
 
-After PR #270 receives independent review and Founder merge, route WC-062 through Product,
-Solution, Data, Security, integrated EA, and CA readiness contributions. Implementation remains
-stopped until the complete Entry Gate, fresh implementation-session Founder confirmation, GOA, and
-later INST-010 Acceptance pass. WC-063 remains an unselected candidate.
+Obtain fresh INST-002 routing-readiness review of reconciled Amendment 10. After approval, obtain
+the exact Registrant acknowledgement before issuing any specification GOA. Route Product,
+Solution, Data, and Security contributions in parallel, then integrated EA and final CA readiness.
+Implementation remains stopped until the complete Entry Gate, fresh implementation-session Founder
+confirmation, implementation GOA, and later INST-010 Acceptance pass. WC-063 remains unselected.
 
 ## History And Evidence
 
