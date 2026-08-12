@@ -2359,6 +2359,40 @@ its GOA `issued_at`. The corresponding Participation Window is now active for th
 in the GOA. These Acceptances authorize specification contributions only and do not authorize
 implementation, provider activation, deployment, integrated review, PR approval, or merge.
 
+### Amendment 10 Order 1 Completion
+
+The version-pinned owner package at commit `0c994b5` contains:
+
+- INST-011: `CR-GOAL-005-INST-011-10` and `LR-GOAL-005-INST-011-07`;
+- INST-005: `CR-GOAL-005-INST-005-14` and `LR-GOAL-005-INST-005-05`;
+- INST-006: `CR-GOAL-005-INST-006-05` and `LR-GOAL-005-INST-006-03`; and
+- INST-007: `CR-GOAL-005-INST-007-08` and `LR-GOAL-005-INST-007-03`.
+
+The same commit contains all sixteen exact voice acceptance IDs in the canonical acceptance
+contract. Order 1A-1D is complete for integrated review. This completion assertion is mechanical
+and does not approve the package.
+
+### GOA-GOAL-005-INST-004-11
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GOA-GOAL-005-INST-004-11 |
+| `record_type` | Authorization Record |
+| Authorized Institution | INST-004 — Enterprise Architect |
+| Contribution scope | Independently review and integrate the fixed WC-062 owner package at commit `0c994b5`; publish `CR-GOAL-005-INST-004-12` and `LR-GOAL-005-INST-004-08` |
+| Evidence specification | Amendment 10 INST-004 minimum evidence, including version matrix, ownership/dependency graph, acceptance-to-contract traceability, C-095/ADR determination, unresolved-decision check, and explicit verdict |
+| Participation Window | 1 constitutional session after valid `ACC-GOAL-005-INST-004-11` |
+| Independence constraint | Fresh INST-004 context that authored or repaired none of Orders 1A-1D; may identify findings but may not edit the reviewed package |
+| Excluded authority | Owner contribution repair, implementation, source, tests, migration, generated client, provider activation, deployment, constitutional review, PR approval, merge, and self-review |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-12T10:22:28Z |
+| State | ISSUED — awaiting Acceptance; Participation Window inactive |
+
+Order 3 remains blocked until this review publishes an APPROVED integrated verdict and its
+Learning Record.
+
 ---
 
 ## Amendment 11 — WC-063 Founder Administration Prospective Routing
