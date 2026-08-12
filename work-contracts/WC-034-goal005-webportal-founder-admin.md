@@ -7,7 +7,7 @@
 **Implementation Office:** Platform IT Expert (INST-010)
 **Architecture Reviewer:** Solution Architect (INST-005) + Product Owner (INST-011)
 **Implementation Reviewer:** Enterprise Architect (INST-004) in an independent session
-**Status:** ACTIVE — F0–F5 COMPLETE; F6/F7 SPLIT TO WC-062/WC-063 WITH SPECIFICATION GATES OPEN; PROPORTIONAL F8 COMPLETE FOR RELEASED COMPONENTS
+**Status:** ACTIVE — F0–F6 COMPLETE; F7 SUPERSEDED BY WC-064→WC-069 PROGRAM; PROPORTIONAL F8 COMPLETE FOR RELEASED COMPONENTS
 **Authorization:** FA-031 authorized WC-034 Phase B implementation; FA-034 released execution on 2026-08-09 after FA-033 activated Platform IT Expert v1.2 Skill 16 and PR #244 merged. INST-010 may begin F1 and any later component whose local entry criteria pass.
 **Constitutional Basis:** C-001, C-009, C-023, C-034, C-042, C-059, C-064, C-065, C-076; ADR-017
 
@@ -27,7 +27,11 @@ Phase A defines the route topology, shell ownership, responsive layout, constitu
 
 Phase B was authorized by FA-031 after Phase A received independent architecture review. FA-033 and merged PR #244 completed the Platform IT Expert Skill 16 Type 1 lifecycle; FA-034 releases execution. INST-010 may begin F1 and may select later components only when their service-contract and acceptance prerequisites pass. Phase B implements the approved shell, migrates the home page into Next.js, and places customer and Founder routes inside their approved layouts.
 
-Founder admin capabilities remain part of WC-034, but they are not the application architecture. Markup Designer, Trial Budget Config, and Coupon Manager are feature routes nested inside the Founder surface after the shared shell exists.
+Founder commercial governance remains subordinate to the shared shell, but it is not defined by
+three administration routes. WC-063's Markup Designer, Trial Budget Configuration, and Coupon
+Manager framing was superseded prospectively by WC-064 through WC-069. The program design decides
+which controls are retained, relocated, deferred, or rejected before any new Founder feature is
+implemented.
 
 ## Required Surface Model
 
@@ -79,16 +83,18 @@ Detailed scope, dependencies, exclusions, and acceptance IDs are normative in `a
 | F3 | Conversation core | INST-010 + BP/PR owners | complete — WC034-08 through WC034-12 complete; R-061 INST-004 independent implementation review APPROVED; PR #254 merged to `main` as `8a1fcfa`; deployment separately blocked |
 | F4 | Relationship workspace | INST-010 + BP/WBE owners | complete — R-070/R-071/R-072 approved the implementation; PR #258 merged as `dab3a36` |
 | F5 | Omnichannel continuity | INST-010 + WC-060 owners | complete — sole implementation contract WC-060 completed WC060-01 through WC060-09; R-087/R-088/R-089 approved; PR #268 merged as `95e0d91` |
-| F6 | Voice interaction | INST-010 + Product/Security/Data/Solution owners | separated into WC-062 — generic platform voice scope and implementation tasks groomed; Product/Solution/Data/Security specifications, integrated review, CA readiness, Registrant acknowledgement, explicit Founder implementation authorization, GOA, and Acceptance remain required |
-| F7 | Founder administration | INST-010 + BP/WBE owners | separated into WC-063 — markup, trial-budget, and coupon administration scope and implementation tasks groomed; canonical BP Founder facade, private WBE management contracts, Data/Security specifications, integrated review, CA readiness, Registrant acknowledgement, explicit Founder implementation authorization, GOA, and Acceptance remain required |
+| F6 | Voice interaction | INST-010 + Product/Security/Data/Solution owners | complete — WC-062 delivered WC062-01 through WC062-07; R-096/R-097/R-098 approved; PR #273 merged as `1a624d6` |
+| F7 | Founder commercial governance | Proposed federated design under WC-064; later implementation by separately authorized owners | WC-063 superseded before implementation; WC-064 awaits CA readiness and Registrant acknowledgement before owner contribution GOAs; WC-065 through WC-069 remain implementation-unauthorized |
 | F8 | Integrated acceptance and hardening | INST-010, independently reviewed | complete proportionally for released F1–F5 components — WC060-09 passed browser, accessibility, privacy, generated-client, coverage, lint, build, and regression gates; any future F6/F7 release must run its own proportional F8 gate |
 
 ### F6/F7 Work Contract Traceability
 
 | Component | Work Contract | Current state | Implementation boundary |
 |---|---|---|---|
-| F6 Voice Interaction | `work-contracts/WC-062-wc034-f6-voice-interaction.md` | Groomed candidate; specification gates open | No implementation until approved owner contracts, integrated and CA readiness reviews, Registrant acknowledgement, current-session Founder authorization, GOA, and later Acceptance |
-| F7 Founder Administration | `work-contracts/WC-063-wc034-f7-founder-administration.md` | Groomed candidate; specification gates open | No implementation until approved BP/WBE/Data/Security contracts, integrated and CA readiness reviews, Registrant acknowledgement, current-session Founder authorization, GOA, and later Acceptance |
+| F6 Voice Interaction | `work-contracts/WC-062-wc034-f6-voice-interaction.md` | complete and merged | Delivered under FA-043, GOA/ACC-07, R-096/R-097/R-098, and PR #273 |
+| F7 historical proposal | `work-contracts/WC-063-wc034-f7-founder-administration.md` | superseded before implementation | Historical evidence only; authorizes no work |
+| Founder Commercial Governance design | `work-contracts/WC-064-founder-commercial-governance-program-design.md` | proposed; CA readiness and Registrant acknowledgement pending | After the gate: owner contributions, integrated design, WC-065 detailed grooming, and independent review; no implementation |
+| Implementation iterations | `work-contracts/WC-065-founder-offerability-commercial-composition.md` through `work-contracts/WC-069-helpdesk-support-administration.md` | planned or deferred; implementation unauthorized | Separate detailed grooming and complete authorization gate required per iteration |
 
 ### F3 Autonomous Implementation Tasks
 
