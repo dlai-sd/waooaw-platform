@@ -7,7 +7,7 @@
 **Implementation Office:** Platform IT Expert (INST-010)
 **Architecture Reviewer:** Solution Architect (INST-005) + Product Owner (INST-011)
 **Implementation Reviewer:** Enterprise Architect (INST-004) in an independent session
-**Status:** PHASE B EXECUTION RELEASED — COMPONENT ENTRY GATES APPLY
+**Status:** ACTIVE — F0–F5 COMPLETE; F6/F7 SPLIT TO WC-062/WC-063 WITH SPECIFICATION GATES OPEN; PROPORTIONAL F8 COMPLETE FOR RELEASED COMPONENTS
 **Authorization:** FA-031 authorized WC-034 Phase B implementation; FA-034 released execution on 2026-08-09 after FA-033 activated Platform IT Expert v1.2 Skill 16 and PR #244 merged. INST-010 may begin F1 and any later component whose local entry criteria pass.
 **Constitutional Basis:** C-001, C-009, C-023, C-034, C-042, C-059, C-064, C-065, C-076; ADR-017
 
@@ -73,15 +73,22 @@ Detailed scope, dependencies, exclusions, and acceptance IDs are normative in `a
 
 | Component | Scope | Owner | Status |
 |---|---|---|---|
-| F0 | Architecture and dependency closure | INST-004 + reviewing/owning offices | review complete — remaining API and Founder gates named |
+| F0 | Architecture and dependency closure | INST-004 + reviewing/owning offices | complete — architecture package independently approved; component dependencies and deferrals named |
 | F1 | Experience foundation | INST-010 | complete — R-052 approved; PR #246 merged to `main` as `798c183` on 2026-08-09 |
-| F2 | Identity and registration | INST-010 + identity/BP owners | R-055 contract remediation complete — FA-035 fixes Google/Facebook/Apple/email fallback and progressive mobile policy; implementation blocked by INST-004 ADR-008 amendment and independent re-review; Facebook activation blocked by FA-002/FA-018 and Apple by FA-019 |
+| F2 | Identity and registration | INST-010 + identity/BP owners | complete for the authorized Google and email-fallback release — R-058 approved with conditions satisfied; PR #249 merged as `cc80e81`; Facebook and Apple activation remain excluded pending their separate Founder actions |
 | F3 | Conversation core | INST-010 + BP/PR owners | complete — WC034-08 through WC034-12 complete; R-061 INST-004 independent implementation review APPROVED; PR #254 merged to `main` as `8a1fcfa`; deployment separately blocked |
-| F4 | Relationship workspace | INST-010 + BP/WBE owners | blocked — Plan/Priority Work and Consumption projections plus implementation gates |
-| F5 | Omnichannel continuity | INST-010 + WC-060 owners | unified with WC-060 — WC-060 is the sole F5 implementation contract; its prerequisites, explicit authorization, adversarial CCTs, independent reviews, and proportional F8 gate control readiness and closure |
-| F6 | Voice interaction | INST-010 + Product/Security/Data/Solution owners | blocked — voice consent, retention, transcription, attachment, and API decisions |
-| F7 | Founder administration | INST-010 + BP/WBE owners | blocked — canonical BP Founder facade and internal WBE management APIs plus implementation gates |
-| F8 | Integrated acceptance and hardening | INST-010, independently reviewed | blocked — selected release components complete and authorized |
+| F4 | Relationship workspace | INST-010 + BP/WBE owners | complete — R-070/R-071/R-072 approved the implementation; PR #258 merged as `dab3a36` |
+| F5 | Omnichannel continuity | INST-010 + WC-060 owners | complete — sole implementation contract WC-060 completed WC060-01 through WC060-09; R-087/R-088/R-089 approved; PR #268 merged as `95e0d91` |
+| F6 | Voice interaction | INST-010 + Product/Security/Data/Solution owners | separated into WC-062 — generic platform voice scope and implementation tasks groomed; Product/Solution/Data/Security specifications, integrated review, CA readiness, Registrant acknowledgement, explicit Founder implementation authorization, GOA, and Acceptance remain required |
+| F7 | Founder administration | INST-010 + BP/WBE owners | separated into WC-063 — markup, trial-budget, and coupon administration scope and implementation tasks groomed; canonical BP Founder facade, private WBE management contracts, Data/Security specifications, integrated review, CA readiness, Registrant acknowledgement, explicit Founder implementation authorization, GOA, and Acceptance remain required |
+| F8 | Integrated acceptance and hardening | INST-010, independently reviewed | complete proportionally for released F1–F5 components — WC060-09 passed browser, accessibility, privacy, generated-client, coverage, lint, build, and regression gates; any future F6/F7 release must run its own proportional F8 gate |
+
+### F6/F7 Work Contract Traceability
+
+| Component | Work Contract | Current state | Implementation boundary |
+|---|---|---|---|
+| F6 Voice Interaction | `work-contracts/WC-062-wc034-f6-voice-interaction.md` | Groomed candidate; specification gates open | No implementation until approved owner contracts, integrated and CA readiness reviews, Registrant acknowledgement, current-session Founder authorization, GOA, and later Acceptance |
+| F7 Founder Administration | `work-contracts/WC-063-wc034-f7-founder-administration.md` | Groomed candidate; specification gates open | No implementation until approved BP/WBE/Data/Security contracts, integrated and CA readiness reviews, Registrant acknowledgement, current-session Founder authorization, GOA, and later Acceptance |
 
 ### F3 Autonomous Implementation Tasks
 

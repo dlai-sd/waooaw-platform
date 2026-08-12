@@ -1,6 +1,6 @@
 # WAOOAW Platform — Sprint Registry
 
-**Last Updated:** 2026-08-09 · **Version:** 1.45.0 · **Work Contracts:** 53 recorded (48 closed · 4 active · 1 blocked)
+**Last Updated:** 2026-08-12 · **Version:** 1.45.0 · **Work Contracts:** 56 recorded (53 closed · 3 active · 0 blocked)
 
 ---
 
@@ -8,11 +8,9 @@
 
 | WC | Title | Track | Status | Depends On | Key Outcome |
 |---|---|---|---|---|---|
-| **WC-034** | Hybrid Web Application Shell | Next.js 14 PWA | F1 COMPLETE — F2–F8 GATED | WC-057 · ADR-017 · IB-014 · FA-031 · FA-034 | PR #246 merged as `798c183` after R-052 approval; later components retain local entry gates and deployment remains unauthorized |
-| **WC-057** | AE-01 Employment Journey Foundation | Customer outcome | DONE — R-076 APPROVED | R-046 · FA-030 · R-076 · WC-037 · WC-040 · WC-041 | Durable relationship, canonical APIs, participant roles, and provisional authenticated PWA shell; PRs #237/#238 merged |
-| **WC-058** | AE-01 Discover, Trial, Configure | Customer outcome | IMPLEMENTATION-READY — UNAUTHORIZED | WC-057 | Generic S01–S06 journey with DMA 19-skill first proof and 14-day zero-paid-API trial |
-| **WC-059** | AE-01 Contract, Payment, Activation | Customer outcome | IMPLEMENTATION-READY — UNAUTHORIZED | WC-058 · WC-042 · WC-043 | Tier-4 contract/payment and exactly-once activation |
-| **WC-060** | AE-01 Continuity, Evidence, Stop | Customer outcome | IMPLEMENTATION-READY — UNAUTHORIZED | WC-059 · WC-014 · WC-037 | One relationship across channels, Evidence Reader, and fail-safe Emergency Stop |
+| **WC-034** | Hybrid Web Application Shell | Next.js 14 PWA | F0–F5 COMPLETE · F6/F7 GROOMING ACTIVE · PROPORTIONAL F8 COMPLETE | WC-057→WC-063 · ADR-017 · IB-014 · FA-031 · FA-034 · FA-041 | Released F1–F5 slices passed independent review and merged; WC-062/WC-063 now own F6/F7 and remain implementation-unauthorized pending specification and governance gates |
+| **WC-062** | WC-034 F6 Voice Interaction | Generic platform capability | GROOMED CANDIDATE — SPECIFICATION GATES OPEN | WC-034 F1–F5 · Product/Solution/Data/Security contracts | Reusable governed voice capture, transcription, correction, consent, retention, evidence, accessibility, and proportional F8; implementation unauthorized |
+| **WC-063** | WC-034 F7 Founder Administration | Governed platform administration | GROOMED CANDIDATE — SPECIFICATION GATES OPEN | WC-027 · WC-031 · WC-042 · WC-043 · BP/WBE/Data/Security contracts | Founder markup, trial-budget, and coupon administration through BP-only public ingress; implementation unauthorized |
 
 **Reserved customer-first roadmap:** WC-044→WC-048. These identifiers describe Founder-approved sequencing in the 2026-08-07 strategy record; Work Contracts have not yet been created.
 
@@ -70,6 +68,11 @@
 | WC-054 | Goal Orchestrator Registry Reconciliation | Constitutional Analyst | 1.44.0 | INST-013 registry synchronized to 2026-07-27 ratification; CB-001 closed; R-030 approved |
 | WC-055 | GOAL-005 Understanding and Classification | Goal Orchestrator | 1.44.0 | G-2 and G-3 approved by R-032/R-033; CB-002 closed; no implementation authority |
 | WC-056 | GOAL-005 Specification Orchestration | Goal Orchestrator | 1.44.0 | D-01 through D-07 complete; R-035 through R-046; WC-057 through WC-060 ratified and unauthorized |
+| WC-057 | AE-01 Employment Journey Foundation | Platform IT Expert | 1.45.0 | Durable relationship, canonical APIs, participant roles, and provisional authenticated PWA shell; R-076 approved; PRs #237/#238 and closure PR #262 merged |
+| WC-058 | AE-01 Discover, Interview, Trial, and Configure | Platform IT Expert | 1.45.0 | Generic S01–S06 journey completed; R-078/R-079 approved; implementation PR #263 and reconciliation PR #264 merged |
+| WC-059 | AE-01 Contract, Payment, and Activation | Platform IT Expert | 1.45.0 | Tier-4 contract/payment and exactly-once activation; R-083/R-084 approved; PR #265 merged as `b0dbe9c` |
+| WC-060 | AE-01 Continuity, Evidence, and Stop | Platform IT Expert | 1.45.0 | WC-034 F5 continuity, Evidence Reader, and fail-safe Emergency Stop; R-087/R-088/R-089 approved; PR #268 merged as `95e0d91` |
+| WC-061 | PROJECT_STATE Schema V2 Governance | Platform IT Expert | 1.45.0 | Compact versioned current-state interface with preserved recovery/history and parser compatibility; R-085 approved; merged to main through `11d3297` |
 
 ---
 
@@ -91,4 +94,4 @@
 | L2 Trust | Provider Registry, oauth-vault, CTG, Token Refresh | ✅ 100% DONE | WC-037→039 |
 | L3 Business | WBE S1–S8 implemented and tested; AIR/BP end-to-end integration remains partial | ~90% repository evidence | WC-025→033, WC-042→043 |
 | L4 Skill Architecture | Skill Catalog, Skill Runtime, Intent Crystallizer | ✅ 100% DONE | WC-040→041 |
-| L5 Interface | F1 experience foundation + provisional relationship route | ~40% | WC-034 F1 complete in `main` after R-052 approval and PR #246 merge; F2–F8 gated |
+| L5 Interface | Hybrid application and AE-01 employment journey | F0–F5 complete; F6/F7 grooming active; proportional F8 complete for released scope | WC-034 released F1–F5 through WC-057→WC-060; WC-062/WC-063 separately groom F6 Voice and F7 Founder Administration without implementation authority |
