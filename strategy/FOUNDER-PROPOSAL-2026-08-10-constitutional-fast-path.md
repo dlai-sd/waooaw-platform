@@ -172,6 +172,10 @@ At each completed increment:
 | Deterministic validator implementation | DONE | `scripts/constitutional_fast_path.py`; 15 focused tests and 24 CCT-PIPE-01 checks passed; documented CLI build/validate passed |
 | Skill/hook/agent customization | NOT AUTHORIZED | Requires separately governed lifecycle |
 | F4 implementation amendment | DEFERRED | Planned after break; separate scope and authority |
+| WC-062 institutional handoff follow-up | DONE | Sections 10–12 distinguish material decisions from ministerial orchestration |
+| Goal Orchestrator operating-model draft | DONE — PROPOSED | M0–M3 router, Contribution Envelope, accountable executor, and handoff budget drafted |
+| Independent constitutional review | NOT STARTED | Required only after Founder selects the design for formalization |
+| GEOM / ORGANIZATION activation | NOT AUTHORIZED | Ratified text remains unchanged until independent review and exact Founder ratification |
 
 ## 8. Success Measures For A Later Pilot
 
@@ -200,3 +204,193 @@ Any later expansion or activation beyond this bounded tooling requires the Found
 4. **Authorize a later tooling proposal** - separately govern any validator, context-index extension, skill, hook, or agent update.
 
 The implemented tool remains a fail-closed routing aid. This record does not grant institutional authority, alter an Office Decision Space, or make its output authoritative evidence.
+
+---
+
+## 10. WC-062 Follow-Up — Institutional Handoff Finding
+
+**Observation date:** 2026-08-12
+**Observed by:** INST-013 Goal Orchestrator
+**Status:** PROPOSED OPERATING-MODEL AMENDMENT — not yet ratified
+
+WC-062 specification routing confirmed that the retrieval fast path is necessary but insufficient.
+The package legitimately required Product, Solution, Data, Security, integrated EA, and independent
+CA decisions. It did not legitimately require a new institutional hop for identifier checks,
+timestamp correction, artifact persistence, hash verification, checkpoint wording, review-file
+creation, or branch publication.
+
+The session also exposed a second cost pattern: after a material canonical-contract omission was
+found, fresh EA and CA verdicts were constitutionally necessary, but clerical defects inside their
+draft outputs still had to be corrected and revalidated by the orchestrating context. Treating each
+clerical correction as another institutional contribution would add cost without adding
+independence or quality.
+
+**Root finding:** GEOM correctly requires accountable authority for institutional decisions, but
+its implementation is being over-read as requiring a separate agent context for every action.
+Constitutional separation attaches to **material decisions and independent verdicts**, not to
+ministerial movement of already authorized evidence.
+
+## 11. Proposed Constitutional Materiality Router
+
+Before creating a new institutional context, INST-013 classifies the requested action by the most
+consequential effect it can produce. Classification is fail-closed: uncertainty moves upward.
+
+| Class | Effect | Executor | New institutional context? | Examples |
+|---|---|---|---|---|
+| `M0 — Ministerial` | Cannot change meaning, authority, scope, risk, acceptance, or immutable evidence | Goal Orchestrator directly | No | Locate IDs; verify timestamps/hashes; persist an attributed verdict; update checkpoint wording; commit/push exact approved artifacts |
+| `M1 — Bounded continuation` | Completes or repairs an already authorized contribution without changing its Decision Space, Evidence Specification, acceptance meaning, or package boundary | Existing accountable Institution under the same Contribution Envelope | No new GOA; normally no new context | Fix formatting or an unpublished clerical error; supply a missing field; rerun the same validation; answer a reviewer finding within the accepted scope |
+| `M2 — Material contribution` | Creates or changes domain policy, contract behavior, architecture, data/security rules, acceptance meaning, or reviewed canonical bytes | Accountable owner Institution | Yes, one context for the complete contribution | Product decision; canonical API contract; retention policy; threat control; material post-review repair |
+| `M3 — Protected decision` | Changes constitutional meaning, authority, Decision Space, immutable evidence, deployment/production state, or issues an independent verdict | Constitutionally designated independent Office or Founder | Yes; ordinary path | CA/EA/security/legal review; GOA/Acceptance; constitutional amendment; implementation authorization; PR approval/merge |
+
+The router classifies the **effect**, not the apparent size of the edit. A one-line authority change
+is `M3`; a hundred-line deterministic status reconciliation may remain `M0`.
+
+### 11.1 Materiality Tests
+
+An action is at least `M2` if any answer below is yes:
+
+1. Does it choose or change customer-visible behavior, policy, contract semantics, risk controls,
+	 acceptance meaning, or an owner Decision Space?
+2. Does it alter canonical bytes already reviewed or relied upon by a later phase?
+3. Could a reasonable independent reviewer reach a different substantive verdict because of it?
+4. Does it add a new artifact family, component boundary, dependency, constitutional obligation,
+	 or implementation scope?
+
+An action is `M3` if it additionally changes authority, constitutional interpretation, immutable
+evidence, independent approval, deployment/production state, or Founder-reserved action.
+
+## 12. Goal Orchestrator Operating Model vNext
+
+### 12.1 One Accountable Executor
+
+Each authorized Work Contract or complete Work Component has one primary executor from entry to
+delivery closure. INST-013 remains the single orchestration interface to the Registrant and does
+not expose routine office-to-office traffic as separate user handoffs.
+
+The primary executor:
+
+- receives one complete Contribution Envelope rather than a sequence of micro-assignments;
+- completes all in-scope work, validation, evidence, and non-material repair loops;
+- retains continuity until the complete authorized delivery unit is ready for its protected gate;
+- does not transfer accountability merely because another Office supplies a bounded input; and
+- returns one consolidated result, blocker, or material decision request to INST-013.
+
+For implementation, INST-010 is the primary executor for the complete authorized Work Contract or
+Work Component. Internal task boundaries are checkpoints, not new institutional handoffs.
+
+### 12.2 Goal Orchestrator As Execution Coordinator, Not Messenger
+
+Without becoming a domain contributor, INST-013 owns the following ministerial execution work:
+
+- build and pin the complete context/evidence package for each real contribution;
+- issue one Contribution Envelope with exact scope, IDs, files, exclusions, and validations;
+- group independent same-order contributions into one parallel wave;
+- preserve attribution while persisting an independently authored record;
+- run deterministic chronology, identifier, hash, presence, and formatting checks;
+- correct unpublished clerical defects that do not alter the author's substantive decision;
+- maintain the active checkpoint, branch, commits, push, and recovery state;
+- route a reviewer finding directly to the accountable owner without an intermediate messenger
+	context; and
+- present one consolidated decision or acknowledgement request to the Registrant.
+
+These actions are orchestration evidence, not domain contributions. INST-013 may not use this rule
+to select policy, repair substantive owner decisions, alter a verdict, or self-review.
+
+### 12.3 Contribution Envelope
+
+A GO Authorization may contain one complete Contribution Envelope:
+
+| Field | Requirement |
+|---|---|
+| Delivery unit | Complete Work Contract, Work Component, or constitutionally indivisible contribution |
+| Material decisions | Exact decisions the Institution owns |
+| Outputs | All expected artifacts and records, bundled |
+| Continuation authority | In-scope repair and rerun permitted during the Participation Window |
+| Material-change triggers | Conditions requiring a new amendment, owner decision, or downstream re-review |
+| Validation | Deterministic checks plus any protected independent gate |
+| Closure | One consolidated Contribution and Learning Record unless the contract requires atomic records |
+
+An in-scope `M1` repair does not require a new GOA, Acceptance, or Participation Window. A repair
+after publication is linked as a correction record under the same envelope. A material `M2` repair
+invalidates only the downstream reviews that relied on the changed bytes; it does not restart
+unaffected upstream contributions.
+
+### 12.4 Review Economy
+
+Independent review remains mandatory where the Constitution, Work Contract, risk class, or
+Execution Plan requires it. Review is performed once against the complete fixed package, not once
+per internal increment.
+
+| Situation | Required route |
+|---|---|
+| Unpublished clerical defect | Primary executor or INST-013 corrects; same validation reruns |
+| Reviewer finds in-scope owner defect | Direct return to owner under the active envelope; same reviewer confirms |
+| Material canonical change after review | Re-run only reviews downstream of that changed artifact |
+| New Decision Space, authority, constitutional, security, legal, or deployment decision | Ordinary independent path; no compression |
+| Complete implementation component | One implementation evidence package, then required independent reviews in a single review wave |
+
+No Office may review its own substantive contribution. Multiple protected reviewers may run in
+parallel when their Decision Spaces are independent and the fixed package is identical.
+
+### 12.5 Handoff Budget And Stop-Loss
+
+Every Execution Plan declares a handoff budget before routing:
+
+- one institutional context per real `M2` contribution;
+- one context per required `M3` independent verdict;
+- zero contexts for `M0` actions;
+- normally zero additional contexts for `M1` continuation work; and
+- one reserve context for a material repair per contribution before INST-013 must re-plan.
+
+INST-013 records actual versus budgeted contexts, tool calls, elapsed time, and rework causes at
+phase closure. Exceeding the budget does not waive quality; it triggers consolidation or explicit
+re-planning before more contexts are dispatched.
+
+## 13. Proposed Constitutional Text Changes
+
+This design requires a narrow amendment to ratified GEOM and the INST-013 charter. It does not
+change BOOTSTRAP, Decision Spaces, independent review, implementation authorization, Founder
+control, or the self-participation prohibition.
+
+### GEOM
+
+Add a **Materiality and Contribution Envelope** rule under Stage G-4 and §6:
+
+> A GO Authorization authorizes one complete Contribution Envelope. INST-013 must not issue a new
+> authorization or create a new institutional context for ministerial orchestration or an in-scope
+> bounded continuation. New routing is required only for a material contribution, protected
+> decision, expired/reclaimed Participation Window, changed Decision Space, or changed package
+> boundary. INST-013 may execute ministerial evidence handling while preserving producer
+> attribution; such handling is not a contribution and creates no review authority.
+
+### ORGANIZATION
+
+Add to INST-013 Decision Space:
+
+> Constitutional materiality classification; Contribution Envelope construction; deterministic
+> evidence validation; attribution-preserving persistence; consolidated checkpointing; handoff
+> budget enforcement; and direct repair routing to the accountable owner.
+
+Add to INST-013 Constitutional Obligations:
+
+> Ministerial authority may not change substantive meaning, policy, scope, acceptance, risk,
+> immutable evidence, or an independent verdict. Uncertainty is classified upward and routed.
+
+## 14. Adoption Path
+
+Because this proposal changes the ratified institutional operating model and the powers of
+INST-013, it is not eligible for self-activation through the low-risk fast path.
+
+The smallest quality-preserving adoption path is:
+
+1. Founder selects this design for formalization.
+2. One independent Constitutional Analyst reviews the materiality boundaries, G-13 separation,
+	 and compatibility with GEOM/WIOM and the Office Operating Protocol.
+3. Founder ratifies the exact amendment text.
+4. INST-013 applies the approved GEOM and ORGANIZATION edits mechanically in one commit.
+5. Pilot on one specification Work Contract and one implementation Work Contract; compare actual
+	 handoffs, cost, elapsed time, rework, and escaped defects with the Section 8 baseline.
+
+No separate Business, Solution, Data, Security, or Enterprise Architecture contribution is needed
+unless the CA identifies a concrete conflict in that Office's Decision Space. This is deliberately
+one constitutional review, one Founder decision, and one mechanical activation step.
