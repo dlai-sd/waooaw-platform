@@ -2510,6 +2510,27 @@ The Acceptance is later than the GOA issuance. R-093 / CR-GOAL-005-INST-004-13 a
 LR-GOAL-005-INST-004-09 APPROVE the repaired package. Fresh Amendment 10 Order 2 is complete;
 Order 3 still requires a new CA GOA and Acceptance. No implementation authority exists.
 
+### GOA-GOAL-005-INST-002-12
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GOA-GOAL-005-INST-002-12 |
+| `record_type` | Authorization Record |
+| Authorized Institution | INST-002 — Constitutional Analyst |
+| Contribution scope | Independently review Amendment 10, WC-062 Entry Gate, repaired package `1e80dfd`, and R-093 at `d991272`; publish `CR-GOAL-005-INST-002-16` and `LR-GOAL-005-INST-002-05` |
+| Evidence specification | GEOM chronology; constitutional obligations; Decision Spaces and independence; exact canonical contract hashes; 16 acceptance IDs; complete Entry Gate matrix; exact remaining acknowledgement, fresh-session authority, GOA, and Acceptance stops; explicit readiness verdict |
+| Participation Window | 1 constitutional session after valid `ACC-GOAL-005-INST-002-12` |
+| Independence constraint | Fresh INST-002 context distinct from R-090, the stale pre-repair CA scope, all owner contexts, and both EA contexts; may identify findings but may not author, repair, or integrate reviewed artifacts |
+| Excluded authority | Specification repair, implementation, source, tests, migration, generated client, provider activation, deployment, Registrant acknowledgement, implementation GOA, PR approval, merge, and self-review |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-12T11:17:24Z |
+| State | ISSUED — awaiting Acceptance; Participation Window inactive |
+
+Final readiness remains undecided. No CA contribution may be published until a valid Acceptance
+later than this issuance activates the Participation Window.
+
 ---
 
 ## Amendment 11 — WC-063 Founder Administration Prospective Routing
