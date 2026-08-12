@@ -2344,6 +2344,21 @@ No Acceptance Record exists for these GOAs at issuance. Each Institution must ex
 after its `issued_at`; only that later timestamp starts its Participation Window. Order 2 remains
 blocked until all four Contribution and Learning Records are published.
 
+### Amendment 10 Order 1 Acceptance Records
+
+| `record_id` | Institution | `authorization_id` | `acceptance_timestamp` | Decision and boundary |
+|---|---|---|---|---|
+| ACC-GOAL-005-INST-011-09 | INST-011 | GOA-GOAL-005-INST-011-09 | 2026-08-12T10:00:31Z | ACCEPTED — Order 1A product behavior and acceptance specification only |
+| ACC-GOAL-005-INST-005-11 | INST-005 | GOA-GOAL-005-INST-005-11 | 2026-08-12T10:07:17Z | ACCEPTED — Order 1B provider-neutral solution and contract specification only |
+| ACC-GOAL-005-INST-006-04 | INST-006 | GOA-GOAL-005-INST-006-04 | 2026-08-12T10:07:18Z | ACCEPTED — Order 1C data architecture and migration-decision specification only |
+| ACC-GOAL-005-INST-007-08 | INST-007 | GOA-GOAL-005-INST-007-08 | 2026-08-12T10:07:19Z | ACCEPTED — Order 1D security floors and adversarial CCT specification only |
+
+Each record has `institution_id` equal to the named accepting Institution, `goal_id` GOAL-005,
+`record_type` Acceptance Record, and the listed `authorization_id`. Each timestamp is later than
+its GOA `issued_at`. The corresponding Participation Window is now active for the duration stated
+in the GOA. These Acceptances authorize specification contributions only and do not authorize
+implementation, provider activation, deployment, integrated review, PR approval, or merge.
+
 ---
 
 ## Amendment 11 — WC-063 Founder Administration Prospective Routing
