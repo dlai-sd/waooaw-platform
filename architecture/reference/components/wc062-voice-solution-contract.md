@@ -101,3 +101,53 @@ does not silently default them.
 
 **Verdict:** CR-GOAL-005-INST-005-14 satisfies Amendment 10 Order 1B within INST-005 Decision
 Space. It authorizes no implementation, generated client, migration, or integrated review.
+
+## Canonical Contract Repair — CR-GOAL-005-INST-005-15
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-005 |
+| `goal_id` | GOAL-005 |
+| `record_id` | CR-GOAL-005-INST-005-15 |
+| `record_type` | Contribution Record — repair attestation |
+| `produced_at` | 2026-08-12T10:59:19Z |
+| Repairs | The canonical-contract omission in CR-GOAL-005-INST-005-14; its operation catalog existed only in prose |
+| Scope | Specification artifacts only; no source, generated client, migration, provider activation, deployment, or implementation authority |
+| Status | COMPLETE |
+
+The Solution owner publishes the following exact canonical contracts:
+
+| Boundary | Canonical artifact | Version | SHA-256 |
+|---|---|---|---|
+| BP authenticated public facade | `architecture/reference/api-specs/business-platform.openapi.yaml` | `1.8.0` | `a3fb13593da4a2fc2121ba0f603849de7113529df65092caa53a0273d84a0b75` |
+| PR private orchestration | `architecture/reference/api-specs/professional-runtime.openapi.yaml` | `1.3.0`; `VoiceOrchestrationV1` `1.0.0` | `debcdb33bc7ecfbcec111be618c36cc9508d1009374effb09e7a771daf007d74` |
+| AIR private transcription | `architecture/reference/api-specs/ai-runtime-transcription.openapi.yaml` | `ProviderNeutralTranscriptionV1` `1.0.0` | `4f24e86a4003c76efa70d3b61a7d9da6fbe5346b7f67926c8bf70132b9dbd94d` |
+
+The BP artifact contains the eight declared public operations and no browser-private route. The PR
+and AIR operations are service-authenticated, marked `x-internal`, and expose no provider or
+credential field. Tenant context is derived from authenticated claims rather than request-body
+fields. Mutating submission and cancellation operations carry idempotency keys; GET operations
+reconcile authoritative state. BP remains the Evidence First success boundary, and Emergency Stop
+remains independent of transcription availability and ordinary voice control paths.
+
+Validation parsed all three YAML documents, found unique operation IDs, resolved every local
+reference reachable from the new voice paths and schemas, and found no `tenantId` request field.
+The whole BP document retains one pre-existing unresolved `#/components/responses/Forbidden`
+reference outside the voice graph; this repair neither introduces nor changes that unrelated debt.
+
+## Learning Record — LR-GOAL-005-INST-005-06
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-005 |
+| `goal_id` | GOAL-005 |
+| `record_id` | LR-GOAL-005-INST-005-06 |
+| `record_type` | Learning Record |
+| `improvement_signal` | A prose operation catalog can guide a contract but cannot satisfy an Entry Gate that requires canonical, generated-client-compatible contract bytes. |
+| `constitutional_discovery` | no |
+| `evolution_triggered` | no |
+| `produced_at` | 2026-08-12T10:59:19Z |
+
+**Repair verdict:** CR-GOAL-005-INST-005-15 closes the concrete Solution specification gap. R-091
+reviewed the earlier package and must be superseded by a fresh integrated EA review before final CA
+readiness can be determined. This repair grants no implementation authority.

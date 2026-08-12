@@ -2,7 +2,7 @@ openapi: "3.1.0"
 
 info:
   title: WAOOAW Professional Runtime API
-  version: "1.2.0"
+  version: "1.3.0"
   description: |
     Internal and WebSocket API for the WAOOAW Professional Runtime service.
 
@@ -41,6 +41,8 @@ tags:
     description: Internal endpoints called by Business Platform only (not customer-facing)
   - name: Conversation Execution
     description: Internal BP-only professional execution and typed event stream for WC-034 F3
+  - name: Voice Orchestration
+    description: Internal BP-only provider-neutral transcription orchestration for WC-062 F6
   - name: Health
     description: Service health
 
@@ -447,6 +449,73 @@ paths:
         "404": { $ref: "#/components/responses/ExecutionNotFound" }
         "503": { $ref: "#/components/responses/ExecutionUnavailable" }
 
+  /api/v1/internal/relationships/{relationshipId}/voice-orchestrations:
+    post:
+      tags: [Voice Orchestration]
+      summary: Start or replay provider-neutral voice orchestration
+      operationId: startVoiceOrchestrationInternal
+      x-internal: true
+      x-contract: VoiceOrchestrationV1
+      security:
+        - ServiceBearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/StartVoiceOrchestrationRequestV1" }
+      responses:
+        "202": { description: Orchestration accepted, content: { application/json: { schema: { $ref: "#/components/schemas/VoiceOrchestrationV1" } } } }
+        "200": { description: Prior identical outcome replayed, content: { application/json: { schema: { $ref: "#/components/schemas/VoiceOrchestrationV1" } } } }
+        "400": { $ref: "#/components/responses/VoiceOrchestrationInvalidRequest" }
+        "401": { $ref: "#/components/responses/VoiceOrchestrationUnauthorized" }
+        "404": { $ref: "#/components/responses/VoiceOrchestrationNotFound" }
+        "409": { $ref: "#/components/responses/VoiceOrchestrationConflict" }
+        "423": { $ref: "#/components/responses/VoiceOrchestrationStopped" }
+        "503": { $ref: "#/components/responses/VoiceOrchestrationUnavailable" }
+
+  /api/v1/internal/relationships/{relationshipId}/voice-orchestrations/{orchestrationId}:
+    get:
+      tags: [Voice Orchestration]
+      summary: Reconcile one voice orchestration
+      operationId: getVoiceOrchestrationInternal
+      x-internal: true
+      x-contract: VoiceOrchestrationV1
+      security:
+        - ServiceBearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/VoiceOrchestrationId"
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200": { description: Authoritative orchestration state, content: { application/json: { schema: { $ref: "#/components/schemas/VoiceOrchestrationV1" } } } }
+        "401": { $ref: "#/components/responses/VoiceOrchestrationUnauthorized" }
+        "404": { $ref: "#/components/responses/VoiceOrchestrationNotFound" }
+        "503": { $ref: "#/components/responses/VoiceOrchestrationUnavailable" }
+
+    delete:
+      tags: [Voice Orchestration]
+      summary: Cancel an unfinished voice orchestration
+      operationId: cancelVoiceOrchestrationInternal
+      x-internal: true
+      x-contract: VoiceOrchestrationV1
+      security:
+        - ServiceBearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/VoiceOrchestrationId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200": { description: Cancellation or terminal outcome, content: { application/json: { schema: { $ref: "#/components/schemas/VoiceOrchestrationV1" } } } }
+        "401": { $ref: "#/components/responses/VoiceOrchestrationUnauthorized" }
+        "404": { $ref: "#/components/responses/VoiceOrchestrationNotFound" }
+        "409": { $ref: "#/components/responses/VoiceOrchestrationConflict" }
+        "423": { $ref: "#/components/responses/VoiceOrchestrationStopped" }
+
 # ─── Components ─────────────────────────────────────────────────────────────
 
 components:
@@ -503,6 +572,12 @@ components:
       required: true
       schema: { type: string, format: uuid }
 
+    VoiceOrchestrationId:
+      name: orchestrationId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+
     ProfessionalExecutionId:
       name: executionId
       in: path
@@ -532,6 +607,24 @@ components:
       description: Last PR event ID consumed by BP; never supplied in a URL
 
   responses:
+    VoiceOrchestrationInvalidRequest:
+      description: Contract version, locale, or payload reference is invalid
+      content: { application/problem+json: { schema: { $ref: "#/components/schemas/VoiceOrchestrationProblemV1" } } }
+    VoiceOrchestrationUnauthorized:
+      description: BP service assertion or scoped relationship authority is invalid
+      content: { application/problem+json: { schema: { $ref: "#/components/schemas/VoiceOrchestrationProblemV1" } } }
+    VoiceOrchestrationNotFound:
+      description: Orchestration is absent or inaccessible to the asserted context
+      content: { application/problem+json: { schema: { $ref: "#/components/schemas/VoiceOrchestrationProblemV1" } } }
+    VoiceOrchestrationConflict:
+      description: State, contract, or idempotency identity conflicts
+      content: { application/problem+json: { schema: { $ref: "#/components/schemas/VoiceOrchestrationProblemV1" } } }
+    VoiceOrchestrationStopped:
+      description: Relationship authority is stopped; this contract does not release Stop
+      content: { application/problem+json: { schema: { $ref: "#/components/schemas/VoiceOrchestrationProblemV1" } } }
+    VoiceOrchestrationUnavailable:
+      description: AIR, payload store, scanner, or evidence dependency is unavailable
+      content: { application/problem+json: { schema: { $ref: "#/components/schemas/VoiceOrchestrationProblemV1" } } }
     Unauthorized:
       description: JWT missing, expired, or invalid
       content:
@@ -581,6 +674,48 @@ components:
           schema: { $ref: "#/components/schemas/ExecutionProblemDetail" }
 
   schemas:
+    StartVoiceOrchestrationRequestV1:
+      type: object
+      additionalProperties: false
+      description: BP supplies opaque payload coordinates; PR never receives browser credentials or provider selection.
+      required: [contractVersion, voiceSessionId, payloadReference, locale, mediaType, contentSha256, durationSeconds, sizeBytes]
+      properties:
+        contractVersion: { type: string, const: "1.0.0" }
+        voiceSessionId: { type: string, format: uuid }
+        payloadReference: { type: string, format: uuid }
+        locale: { type: string, enum: [en-IN, hi-IN, mr-IN] }
+        mediaType: { type: string, enum: [audio/webm, audio/ogg, audio/mp4, audio/mpeg, audio/wav] }
+        contentSha256: { type: string, pattern: "^[0-9a-f]{64}$" }
+        durationSeconds: { type: integer, minimum: 1, maximum: 180 }
+        sizeBytes: { type: integer, minimum: 1, maximum: 15728640 }
+
+    VoiceOrchestrationV1:
+      type: object
+      additionalProperties: false
+      required: [contractVersion, orchestrationId, voiceSessionId, state, locale, updatedAt]
+      properties:
+        contractVersion: { type: string, const: "1.0.0" }
+        orchestrationId: { type: string, format: uuid }
+        voiceSessionId: { type: string, format: uuid }
+        state: { type: string, enum: [ACCEPTED, VALIDATING, TRANSCRIBING, REVIEW_REQUIRED, COMPLETED, CANCELLED, REJECTED, QUARANTINED, UNAVAILABLE, UNKNOWN, STOPPED] }
+        locale: { type: string, enum: [en-IN, hi-IN, mr-IN] }
+        transcript: { type: string, maxLength: 20000 }
+        confidenceBand: { type: string, enum: [HIGH, REVIEW, LOW, UNAVAILABLE] }
+        failureCode: { type: string, enum: [unsupported_language, invalid_media, limit_exceeded, malware_quarantined, transcription_unavailable, stopped, contract_mismatch] }
+        updatedAt: { type: string, format: date-time }
+
+    VoiceOrchestrationProblemV1:
+      type: object
+      additionalProperties: false
+      required: [type, title, status, code, correlationId]
+      properties:
+        type: { type: string, format: uri }
+        title: { type: string }
+        status: { type: integer, minimum: 400, maximum: 599 }
+        code: { type: string, enum: [invalid_media, limit_exceeded, idempotency_conflict, relationship_forbidden, transcription_unavailable, stopped, contract_mismatch] }
+        correlationId: { type: string, format: uuid }
+        reconciliationRequired: { type: boolean }
+
 
     ConversationExecutionSchemaVersion:
       type: string

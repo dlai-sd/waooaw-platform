@@ -1,0 +1,164 @@
+openapi: "3.1.0"
+
+info:
+  title: WAOOAW AI Runtime Provider-Neutral Transcription API
+  version: "1.0.0"
+  description: |
+    Private Professional Runtime to AI Runtime contract for WC-062 F6.
+    AIR selects and isolates providers behind this boundary. Requests and responses
+    contain no provider name, credential, browser token, tenant field, or storage URI.
+
+servers:
+  - url: http://ai-runtime:5004
+    description: Private service network only
+
+tags:
+  - name: Provider-Neutral Transcription
+    description: Private transcription submission, reconciliation, and cancellation
+
+security:
+  - ServiceBearerAuth: []
+
+paths:
+  /api/v1/internal/transcriptions:
+    post:
+      tags: [Provider-Neutral Transcription]
+      summary: Start or replay one provider-neutral transcription
+      operationId: startProviderNeutralTranscription
+      x-internal: true
+      x-contract: ProviderNeutralTranscriptionV1
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ProviderNeutralTranscriptionRequestV1" }
+      responses:
+        "202": { description: Transcription accepted, content: { application/json: { schema: { $ref: "#/components/schemas/ProviderNeutralTranscriptionV1" } } } }
+        "200": { description: Prior identical outcome replayed, content: { application/json: { schema: { $ref: "#/components/schemas/ProviderNeutralTranscriptionV1" } } } }
+        "400": { $ref: "#/components/responses/InvalidRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "423": { $ref: "#/components/responses/Blocked" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+
+  /api/v1/internal/transcriptions/{transcriptionId}:
+    get:
+      tags: [Provider-Neutral Transcription]
+      summary: Reconcile one provider-neutral transcription
+      operationId: getProviderNeutralTranscription
+      x-internal: true
+      x-contract: ProviderNeutralTranscriptionV1
+      parameters:
+        - $ref: "#/components/parameters/TranscriptionId"
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200": { description: Authoritative transcription state, content: { application/json: { schema: { $ref: "#/components/schemas/ProviderNeutralTranscriptionV1" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+
+    delete:
+      tags: [Provider-Neutral Transcription]
+      summary: Cancel an unfinished provider-neutral transcription
+      operationId: cancelProviderNeutralTranscription
+      x-internal: true
+      x-contract: ProviderNeutralTranscriptionV1
+      parameters:
+        - $ref: "#/components/parameters/TranscriptionId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/CorrelationId"
+      responses:
+        "200": { description: Cancellation or terminal outcome, content: { application/json: { schema: { $ref: "#/components/schemas/ProviderNeutralTranscriptionV1" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+components:
+  securitySchemes:
+    ServiceBearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: PR service assertion scoped to AIR transcription; context is derived only from signed claims.
+
+  parameters:
+    TranscriptionId:
+      name: transcriptionId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema: { type: string, format: uuid }
+    CorrelationId:
+      name: X-Correlation-Id
+      in: header
+      required: true
+      schema: { type: string, format: uuid }
+
+  responses:
+    InvalidRequest:
+      description: Contract, locale, media, or bounded payload metadata is invalid
+      content: { application/problem+json: { schema: { $ref: "#/components/schemas/TranscriptionProblemV1" } } }
+    Unauthorized:
+      description: PR service assertion is invalid or lacks transcription authority
+      content: { application/problem+json: { schema: { $ref: "#/components/schemas/TranscriptionProblemV1" } } }
+    NotFound:
+      description: Transcription is absent or inaccessible to the asserted context
+      content: { application/problem+json: { schema: { $ref: "#/components/schemas/TranscriptionProblemV1" } } }
+    Conflict:
+      description: State, contract, or idempotency identity conflicts
+      content: { application/problem+json: { schema: { $ref: "#/components/schemas/TranscriptionProblemV1" } } }
+    Blocked:
+      description: Payload validation or quarantine blocks transcription
+      content: { application/problem+json: { schema: { $ref: "#/components/schemas/TranscriptionProblemV1" } } }
+    Unavailable:
+      description: No conforming transcription capability is currently available
+      content: { application/problem+json: { schema: { $ref: "#/components/schemas/TranscriptionProblemV1" } } }
+
+  schemas:
+    ProviderNeutralTranscriptionRequestV1:
+      type: object
+      additionalProperties: false
+      required: [contractVersion, orchestrationId, payloadReference, locale, mediaType, contentSha256, durationSeconds, sizeBytes]
+      properties:
+        contractVersion: { type: string, const: "1.0.0" }
+        orchestrationId: { type: string, format: uuid }
+        payloadReference: { type: string, format: uuid }
+        locale: { type: string, enum: [en-IN, hi-IN, mr-IN] }
+        mediaType: { type: string, enum: [audio/webm, audio/ogg, audio/mp4, audio/mpeg, audio/wav] }
+        contentSha256: { type: string, pattern: "^[0-9a-f]{64}$" }
+        durationSeconds: { type: integer, minimum: 1, maximum: 180 }
+        sizeBytes: { type: integer, minimum: 1, maximum: 15728640 }
+
+    ProviderNeutralTranscriptionV1:
+      type: object
+      additionalProperties: false
+      required: [contractVersion, transcriptionId, orchestrationId, state, locale, updatedAt]
+      properties:
+        contractVersion: { type: string, const: "1.0.0" }
+        transcriptionId: { type: string, format: uuid }
+        orchestrationId: { type: string, format: uuid }
+        state: { type: string, enum: [ACCEPTED, PROCESSING, COMPLETED, CANCELLED, REJECTED, QUARANTINED, UNAVAILABLE, UNKNOWN] }
+        locale: { type: string, enum: [en-IN, hi-IN, mr-IN] }
+        transcript: { type: string, maxLength: 20000 }
+        confidenceBand: { type: string, enum: [HIGH, REVIEW, LOW, UNAVAILABLE] }
+        failureCode: { type: string, enum: [unsupported_language, invalid_media, limit_exceeded, malware_quarantined, transcription_unavailable, contract_mismatch] }
+        updatedAt: { type: string, format: date-time }
+
+    TranscriptionProblemV1:
+      type: object
+      additionalProperties: false
+      required: [type, title, status, code, correlationId]
+      properties:
+        type: { type: string, format: uri }
+        title: { type: string }
+        status: { type: integer, minimum: 400, maximum: 599 }
+        code: { type: string, enum: [unsupported_language, invalid_media, limit_exceeded, malware_quarantined, transcription_unavailable, idempotency_conflict, contract_mismatch] }
+        correlationId: { type: string, format: uuid }
+        reconciliationRequired: { type: boolean }
