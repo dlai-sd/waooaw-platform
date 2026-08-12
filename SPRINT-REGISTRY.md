@@ -1,6 +1,6 @@
 # WAOOAW Platform — Sprint Registry
 
-**Last Updated:** 2026-08-12 · **Version:** 1.45.0 · **Work Contracts:** 56 recorded (53 closed · 3 active · 0 blocked)
+**Last Updated:** 2026-08-12 · **Version:** 1.45.0 · **Work Contracts:** 62 recorded (54 closed · 1 active · 1 proposed · 4 planned · 1 deferred · 1 superseded · 0 blocked)
 
 ---
 
@@ -8,9 +8,19 @@
 
 | WC | Title | Track | Status | Depends On | Key Outcome |
 |---|---|---|---|---|---|
-| **WC-034** | Hybrid Web Application Shell | Next.js 14 PWA | F0–F5 COMPLETE · F6/F7 GROOMING ACTIVE · PROPORTIONAL F8 COMPLETE | WC-057→WC-063 · ADR-017 · IB-014 · FA-031 · FA-034 · FA-041 | Released F1–F5 slices passed independent review and merged; WC-062/WC-063 now own F6/F7 and remain implementation-unauthorized pending specification and governance gates |
-| **WC-062** | WC-034 F6 Voice Interaction | Generic platform capability | GROOMED CANDIDATE — SPECIFICATION GATES OPEN | WC-034 F1–F5 · Product/Solution/Data/Security contracts | Reusable governed voice capture, transcription, correction, consent, retention, evidence, accessibility, and proportional F8; implementation unauthorized |
-| **WC-063** | WC-034 F7 Founder Administration | Governed platform administration | GROOMED CANDIDATE — SPECIFICATION GATES OPEN | WC-027 · WC-031 · WC-042 · WC-043 · BP/WBE/Data/Security contracts | Founder markup, trial-budget, and coupon administration through BP-only public ingress; implementation unauthorized |
+| **WC-034** | Hybrid Web Application Shell | Next.js 14 PWA | F0–F6 COMPLETE · F7 ROUTED TO WC-064→WC-069 · PROPORTIONAL F8 COMPLETE | WC-057→WC-069 · ADR-017 · IB-014 · FA-031 · FA-034 · FA-041 · FA-043 | Released F1–F6 slices passed independent review and merged; Founder commercial governance now follows the separately gated WC-064 program |
+| **WC-064** | Founder Commercial Governance Program Design | Federated design and grooming | PROPOSED — CA READINESS AND REGISTRANT ACKNOWLEDGEMENT REQUIRED | WC-027 · WC-031 · WC-042 · WC-043 · WC-049 · WC-063 supersession | Selected planning scope for the cross-iteration design spine and WC-065 grooming; owner contributions and implementation unauthorized |
+| **WC-065** | Founder Offerability And Commercial Composition | Iteration 1 | PLANNED CANDIDATE — IMPLEMENTATION UNAUTHORIZED | WC-064 approved design | Defensible offering composition, expected economics, policy-bounded calculated risk, and publication/hiring decision |
+| **WC-066** | Customer And Employed-Agent Oversight | Iteration 2 | PLANNED CANDIDATE — IMPLEMENTATION UNAUTHORIZED | WC-065 evidence | Outcome, resource, participation, quality, economics, and governed correction review |
+| **WC-067** | Operational Exceptions And Reconciliation | Iteration 3 | PLANNED CANDIDATE — IMPLEMENTATION UNAUTHORIZED | WC-065 · WC-066 · WBE reconciliation | Provider, cost, attribution, provisional, settled, refund, credit, and operational exception governance |
+| **WC-068** | Portfolio Economics And Institutional Learning | Iteration 4 | PLANNED CANDIDATE — IMPLEMENTATION UNAUTHORIZED | Settled WC-065→WC-067 cohort evidence | Portfolio economics, resilience, commercial policy, offering, provider, and governed learning proposals |
+| **WC-069** | Helpdesk And Support Administration | Iteration 5 | DEFERRED — GROOMING/IMPLEMENTATION UNAUTHORIZED | Real customer-case evidence · WC-065→WC-068 | Support administration only if evidence proves a separate capability is necessary |
+
+### Superseded Work Contracts
+
+| WC | Historical title | Status | Successor |
+|---|---|---|---|
+| **WC-063** | WC-034 F7 Founder Administration | SUPERSEDED BEFORE IMPLEMENTATION | WC-064 program design and WC-065→WC-069 iterations |
 
 **Reserved customer-first roadmap:** WC-044→WC-048. These identifiers describe Founder-approved sequencing in the 2026-08-07 strategy record; Work Contracts have not yet been created.
 
@@ -73,6 +83,7 @@
 | WC-059 | AE-01 Contract, Payment, and Activation | Platform IT Expert | 1.45.0 | Tier-4 contract/payment and exactly-once activation; R-083/R-084 approved; PR #265 merged as `b0dbe9c` |
 | WC-060 | AE-01 Continuity, Evidence, and Stop | Platform IT Expert | 1.45.0 | WC-034 F5 continuity, Evidence Reader, and fail-safe Emergency Stop; R-087/R-088/R-089 approved; PR #268 merged as `95e0d91` |
 | WC-061 | PROJECT_STATE Schema V2 Governance | Platform IT Expert | 1.45.0 | Compact versioned current-state interface with preserved recovery/history and parser compatibility; R-085 approved; merged to main through `11d3297` |
+| WC-062 | WC-034 F6 Voice Interaction | Platform IT Expert | 1.45.0 | Governed reusable voice capture, transcription, correction, consent, retention, evidence, accessibility, and proportional F8; R-096/R-097/R-098 approved; PR #273 merged as `1a624d6` |
 
 ---
 
@@ -94,4 +105,4 @@
 | L2 Trust | Provider Registry, oauth-vault, CTG, Token Refresh | ✅ 100% DONE | WC-037→039 |
 | L3 Business | WBE S1–S8 implemented and tested; AIR/BP end-to-end integration remains partial | ~90% repository evidence | WC-025→033, WC-042→043 |
 | L4 Skill Architecture | Skill Catalog, Skill Runtime, Intent Crystallizer | ✅ 100% DONE | WC-040→041 |
-| L5 Interface | Hybrid application and AE-01 employment journey | F0–F5 complete; F6/F7 grooming active; proportional F8 complete for released scope | WC-034 released F1–F5 through WC-057→WC-060; WC-062/WC-063 separately groom F6 Voice and F7 Founder Administration without implementation authority |
+| L5 Interface | Hybrid application and AE-01 employment journey | F0–F6 complete; Founder commercial governance design active; proportional F8 complete for released scope | WC-034 released F1–F6 through WC-057→WC-062; WC-064 designs Founder Commercial Governance and WC-065→WC-069 remain gated |

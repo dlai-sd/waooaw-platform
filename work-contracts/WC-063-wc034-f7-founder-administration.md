@@ -8,10 +8,23 @@
 **Required specification owners:** Product Owner (INST-011), Solution Architect (INST-005), Data Architect (INST-006), Security Architect (INST-007)
 **Integrated architecture reviewer:** Enterprise Architect (INST-004)
 **Readiness reviewer:** Constitutional Analyst (INST-002)
-**Status:** GROOMED CANDIDATE — SPECIFICATION GATES OPEN; IMPLEMENTATION UNAUTHORIZED
+**Status:** SUPERSEDED — replaced prospectively by WC-064 through WC-069; never implementation-authorized
 **Constitutional basis:** C-007, C-023, C-043, C-048, C-051, C-056, C-059, C-064, C-065, C-076, C-080, C-088, C-089, C-090, C-091; ADR-002, ADR-003, ADR-008, ADR-022, ADR-034
 
-## Outcome
+## Supersession Notice
+
+Founder-sponsored discovery on 2026-08-12 determined that this contract organized delivery
+around three administration surfaces rather than the institutional decision outcome the Founder
+needs. WC-064 now owns the cross-iteration Founder Commercial Governance program design.
+WC-065 through WC-069 are its gated implementation-iteration candidates.
+
+Markup Designer, Trial Budget Configuration, and Coupon Manager are not discarded as business
+capabilities. Their valid behavior is reconsidered inside the program design and may be retained,
+relocated, deferred, or rejected based on the coherent outcome of each iteration. The historical
+scope, tasks, and gates below remain as evidence of the superseded proposal only. They authorize
+no specification contribution, implementation, migration, test, deployment, or live change.
+
+## Historical Outcome
 
 Provide an isolated Founder administration surface for three governed capabilities: Markup Designer, Trial Budget Configuration, and Coupon Manager. Every read and command uses a canonical generated Business Platform contract, preserves WBE ownership of billing truth, requires explicit Founder authority, records durable evidence before reporting success, and presents conflicts or unresolved outcomes honestly.
 

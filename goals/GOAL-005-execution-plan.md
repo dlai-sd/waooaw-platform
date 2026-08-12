@@ -2620,6 +2620,10 @@ accepted Contribution Envelope.
 
 ## Amendment 11 — WC-063 Founder Administration Prospective Routing
 
+> **SUPERSEDED 2026-08-12:** Founder-sponsored commercial-governance discovery replaced this
+> screen-led proposal prospectively with Amendment 12 and WC-064 through WC-069. No contribution,
+> GO Authorization, Acceptance, or implementation occurred under Amendment 11.
+
 | Attestation field | Value |
 |---|---|
 | `institution_id` | INST-013 |
@@ -2627,7 +2631,7 @@ accepted Contribution Envelope.
 | `record_id` | GEP-GOAL-005-INST-013-11 |
 | `record_type` | Execution Plan |
 | `produced_at` | 2026-08-12 |
-| Status | PROPOSED — owner specifications, integrated review, CA readiness, Registrant acknowledgement, current-session Founder implementation authorization, GOA, and Acceptance all open |
+| Status | SUPERSEDED — no contribution, acknowledgement, authorization, Acceptance, or implementation occurred |
 | Amends | GEP-GOAL-005-INST-013-10 prospectively; Amendments 9–10 and all prior records remain unchanged |
 
 ### Purpose And Contribution Order
@@ -2664,6 +2668,77 @@ specification is not an implementation input and must be corrected or explicitly
 
 ### Current Decision
 
-WC-063 is groomed but **NOT IMPLEMENTATION-READY**. This amendment is a prospective routing
-record only. No CA readiness decision, Registrant acknowledgement, Founder implementation
-authorization, GOA, Acceptance, or Participation Window has been recorded.
+WC-063 was groomed but never became implementation-ready or implementation-authorized. Amendment
+12 supersedes this prospective route. No CA readiness decision, Registrant acknowledgement,
+Founder implementation authorization, GOA, Acceptance, or Participation Window was recorded.
+
+---
+
+## Amendment 12 — Founder Commercial Governance Program Design And Iteration Routing
+
+| Attestation field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GEP-GOAL-005-INST-013-13 |
+| `record_type` | Execution Plan |
+| `produced_at` | 2026-08-12 |
+| Status | PROPOSED FOR REVIEW — selected planning scope; owner contributions and implementation unauthorized |
+| Amends | GEP-GOAL-005-INST-013-11 prospectively; Amendment 11 and WC-063 remain preserved as superseded evidence |
+
+### Purpose
+
+Founder-sponsored discovery determined that WC-063 organized Markup Designer, Trial Budget
+Configuration, and Coupon Manager around administration surfaces rather than the institutional
+decision outcome required by the Founder. WC-064 replaces that route with one federated Founder
+Commercial Governance program design spanning five implementation iterations.
+
+The program must be designed across all iterations before WC-065 is groomed to implementation
+depth. WC-066 through WC-069 remain at stable outcome, dependency, and boundary depth until
+evidence from earlier iterations justifies detailed grooming.
+
+| Sequence | Work Contract | Routing state | Outcome |
+|---|---|---|---|
+| Design | WC-064 | selected planning scope; contribution GOAs gated by CA readiness and Registrant acknowledgement | Cross-iteration design spine and detailed WC-065 grooming |
+| Iteration 1 | WC-065 | planned candidate; implementation unauthorized | Founder Offerability and Commercial Composition |
+| Iteration 2 | WC-066 | planned candidate; implementation unauthorized | Customer and Employed-Agent Oversight |
+| Iteration 3 | WC-067 | planned candidate; implementation unauthorized | Operational Exceptions and Reconciliation |
+| Iteration 4 | WC-068 | planned candidate; implementation unauthorized | Portfolio Economics and Institutional Learning |
+| Iteration 5 | WC-069 | deferred candidate; grooming and implementation unauthorized | Helpdesk and Support Administration |
+
+### Contribution Envelope
+
+| Field | Prospective value |
+|---|---|
+| Primary Institution | INST-013 coordinates; it does not decide product, commercial, architecture, data, security, implementation, or constitutional questions |
+| Contribution scope | WC064-01 through WC064-08 only |
+| Owner offices | INST-011, INST-003, INST-004, INST-005, INST-006, INST-007, INST-010, and INST-002 within their respective Decision Spaces and Knowledge Specifications |
+| Evidence specification | Attested owner contributions; loaded-context declarations; conflict and missing-contribution record; integrated version-pinned program design; EA approval; independent CA readiness review |
+| Participation Window | Begins only after owner-specific GO Authorizations and later Acceptances are recorded; this amendment itself issues none |
+| Completion boundary | Approved WC-064 design package and implementation-ready WC-065 grooming record; no source, migration, test, generated artifact, deployment, provider activation, PR approval, or merge |
+
+### Mandatory Stops
+
+1. No WC-064 owner-contribution GO Authorization may be reserved or issued until an independent
+	CA Readiness Review approves this exact amendment and a valid Registrant Acknowledgement Record
+	referencing `GEP-GOAL-005-INST-013-13` is recorded in the Goal Register.
+2. Amendment 12 authorizes no implementation work in WC-065 through WC-069.
+3. Each office reads only its Knowledge Specification; a missing contribution remains missing.
+4. WBE remains the sole source of billing and financial truth throughout every iteration.
+5. WC-064 may define stable concepts and boundaries for all iterations but may detail APIs,
+	schemas, migrations, UI components, and implementation tasks only for WC-065 when justified.
+6. WC-065 requires approved owner contracts, integrated and Constitutional readiness review,
+	Registrant acknowledgement, fresh Founder implementation confirmation, GO Authorization, and
+	later Acceptance before any implementation begins.
+7. WC-066 through WC-069 require separate future grooming and authorization; completion of WC-064
+	or any earlier iteration does not authorize them.
+8. Helpdesk remains deferred until real customer-case evidence satisfies WC-069 prerequisites.
+9. No direct browser-to-WBE route, duplicate financial truth, silent calculated risk, retroactive
+	pricing, fabricated settlement, direct agent modification, or constitutional override is allowed.
+
+### Current Decision
+
+WC-064 is the selected planning scope, but owner contributions remain gated until this amendment
+passes independent CA readiness and receives a valid Registrant acknowledgement. WC-065 through
+WC-069 remain implementation-unauthorized. No contribution GOA, Acceptance, implementation GOA,
+implementation Acceptance, deployment authority, PR approval, or merge authority is issued here.
