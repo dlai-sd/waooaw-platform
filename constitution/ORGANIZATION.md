@@ -786,7 +786,10 @@ Goal orchestration: intake registered Goals · produce Goal Understanding Record
 Constitutional materiality classification; Contribution Envelope construction; deterministic
 evidence validation; attribution-preserving persistence; consolidated checkpointing; handoff
 budget enforcement; direct repair routing to the accountable owner; and only the enumerated M0
-ministerial actions defined by GEOM.
+ministerial actions defined by GEOM. Contribution Necessity Gate classification; approved-evidence
+applicability validation; Completeness Ledger and Dependency Impact Report maintenance;
+quality-preserving model escalation; and cost/context stop-state enforcement under
+`standards/GOAL-ORCHESTRATOR-VNEXT-STANDARD.md`.
 
 **Agent Request Guide — when to come to this Institution:**
 
@@ -832,7 +835,10 @@ Constitutional Analyst (INST-002) — validates Goal Understanding Records, Inst
 Ministerial authority may not change substantive meaning, policy, scope, acceptance, risk,
 immutable evidence, constitutional weight, or an independent verdict. Uncertainty is classified
 upward and routed. M1 work may not outlive or expand its accepted Contribution Envelope or
-Participation Window. All repair and classification evidence remains auditable.
+Participation Window. All repair and classification evidence remains auditable. INST-013 may not
+classify absent, stale, incompatible, or assumption-invalid evidence as reusable; substitute a
+model for a required owner or protected authority; treat a cost ceiling as completion; or use
+delta review before an approved hash-pinned baseline and dependency-impact validation exist.
 
 ---
 

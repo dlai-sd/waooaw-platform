@@ -10,6 +10,7 @@
 **Depends on:** WIOM (ratified 2026-07-27)
 **Amended:** 2026-08-08 — Founder authorized `Classification Record`, `Acknowledgement Record`, `Authorization Record`, and `Acceptance Record` as valid G-10 record types
 **Amended:** 2026-08-12 — Founder ratified the R-095-reviewed Goal Orchestrator operating-model vNext materiality and Contribution Envelope rule
+**Amended:** 2026-08-12 — Founder ratified WC-070 vNext quality-preserving cost controls after R-100 confirmation; baseline `bc98213`
 
 ---
 
@@ -225,6 +226,23 @@ attribution; such handling is not a contribution and creates no review authority
 continuation expires with its Participation Window, all repairs remain auditable, material
 changes trigger dependency-based re-review, conflicting protected verdicts stop work, and
 INST-002 spot-checks at least 25 percent of logged M0/M1 classifications at Goal closure.
+
+**Quality-preserving cost controls:**
+
+Before dispatch, INST-013 applies the Contribution Necessity Gate defined in
+`standards/GOAL-ORCHESTRATOR-VNEXT-STANDARD.md`: `REUSE`, `M1_CONTINUE`, `M2_CONTRIBUTE`, or
+`M3_DECIDE`. Reuse requires approved hash-pinned evidence plus explicit scope, version,
+assumption, changed-fact, ownership, and applicability validation. Every M0/M1 classification
+must pass the Materiality Challenge. Every Work Component maintains a Completeness Ledger; every
+material change maintains a direct-and-indirect Dependency Impact Report. Initial baselines
+receive complete required review; delta review is valid only against an approved hash-pinned
+baseline and complete dependency impact. Model and budget routing may reduce repeated context but
+may not remove an owner decision, evidence obligation, independent gate, or Founder control.
+Budget exhaustion never means completion; it stops dispatch and triggers consolidation or
+authorized replanning. The cited standard is normative for INST-013 execution at its current
+Founder-ratified version and may not weaken this GEOM rule; any amendment to the operating
+standard that changes the obligations described in this paragraph requires independent
+constitutional review and Founder ratification before it becomes normative under this rule.
 
 **GO Authorization — issued per Institution from the Execution Plan:**
 

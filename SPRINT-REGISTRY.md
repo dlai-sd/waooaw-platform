@@ -1,6 +1,6 @@
 # WAOOAW Platform — Sprint Registry
 
-**Last Updated:** 2026-08-12 · **Version:** 1.45.0 · **Work Contracts:** 62 recorded (54 closed · 2 active · 4 planned · 1 deferred · 1 superseded · 0 blocked)
+**Last Updated:** 2026-08-12 · **Version:** 1.45.0 · **Work Contracts:** 63 recorded (54 closed · 3 active · 4 planned · 1 deferred · 1 superseded · 0 blocked)
 
 ---
 
@@ -15,6 +15,7 @@
 | **WC-067** | Operational Exceptions And Reconciliation | Iteration 3 | PLANNED CANDIDATE — IMPLEMENTATION UNAUTHORIZED | WC-065 · WC-066 · WBE reconciliation | Provider, cost, attribution, provisional, settled, refund, credit, and operational exception governance |
 | **WC-068** | Portfolio Economics And Institutional Learning | Iteration 4 | PLANNED CANDIDATE — IMPLEMENTATION UNAUTHORIZED | Settled WC-065→WC-067 cohort evidence | Portfolio economics, resilience, commercial policy, offering, provider, and governed learning proposals |
 | **WC-069** | Helpdesk And Support Administration | Iteration 5 | DEFERRED — GROOMING/IMPLEMENTATION UNAUTHORIZED | Real customer-case evidence · WC-065→WC-068 | Support administration only if evidence proves a separate capability is necessary |
+| **WC-070** | Goal Orchestrator vNext Quality And Cost Controls | Constitutional operating-model hardening | RATIFIED AND ACTIVE — PR #276 OPEN/UNMERGED · IMPLEMENTATION UNAUTHORIZED | Ratified vNext · R-095 · R-100 · Founder ratification | Automatic evidence-reuse, completeness, dependency-impact, model-escalation, and stop-budget controls without reduced constitutional quality |
 
 ### Superseded Work Contracts
 

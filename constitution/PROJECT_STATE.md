@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 43
+**State Revision:** 45
 **Last Updated:** 2026-08-12
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -20,8 +20,8 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Engineering status | IMPLEMENTATION |
 | Platform version | 1.45.0 |
 | Latest completed Work Contract | WC-062 — WC-034 F6 Voice Interaction |
-| Latest merge | PR #273 merged to `main` as `1a624d6` |
-| Active delivery | WC-064 active for owner GOA routing after R-099 and ACK-GOAL-005-INST-001-12; implementation unauthorized |
+| Latest merge | PR #275 merged to `main` as `2276ab2` |
+| Active delivery | WC-064 ready for owner GOA routing; WC-070 ratified and active in open unmerged PR #276; implementation unauthorized |
 
 ## Active Checkpoint — Founder Commercial Governance Program Design
 
@@ -35,6 +35,19 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | WC-065 detailed grooming | PENDING — begins only within approved WC-064 design |
 | WC-066 through WC-069 | PLANNED/DEFERRED — detailed grooming and implementation unauthorized |
 | Implementation authorization | NOT REQUESTED — no iteration is implementation-authorized |
+
+## Active Checkpoint — Goal Orchestrator vNext Quality And Cost Controls
+
+| Milestone | Status |
+|---|---|
+| WC-070 Work Contract | ACTIVE — Founder selected one governance hardening component |
+| Proposed operating standard | DRAFTED — necessity, reuse, materiality, completeness, dependency, model, and budget controls linked across operating surfaces |
+| Deterministic validation | IN PROGRESS — editor and diff checks passed; fixed-package checks pending |
+| Independent CA review | DONE — R-100 approved after required changes and independently confirmed exact package `bc98213` |
+| Founder ratification | DONE — Founder selected **Ratify exact package** for R-100-confirmed baseline `bc98213` |
+| Mechanical activation | DONE — standard v1.1.0 active; GEOM amendment record and checkpoint updated |
+| Delivery PR | OPEN — PR #276 targets `main`; Founder-only merge remains required |
+| Implementation authorization | NOT REQUESTED — WC-070 contains no source or deployment work |
 
 ### Closure Context
 
@@ -55,14 +68,14 @@ and independent implementation review.
 ## Current Blockers
 
 None filed. WC-064 owner routing has no current constitutional blocker. R-099's fresh-context
-condition remains binding for the future INST-002 owner contribution and package review.
+condition remains binding for the future INST-002 owner contribution and package review. WC-070
+is ratified and active; PR submission and Founder-only merge remain.
 
 ## Next Authorized Action
 
-Define and issue the individual WC-064 owner-contribution GOAs with complete Evidence
-Specifications, Participation Windows, dependencies, and independence constraints; obtain each
-temporally later Acceptance before contribution begins. Do not begin WC-065 through WC-069
-implementation or issue implementation authority.
+Founder reviews and, if satisfied, merges PR #276. WC-064 owner routing remains separately
+authorized but is not part of WC-070. Do not begin WC-065 through WC-069 implementation or issue
+implementation authority.
 
 ## History And Evidence
 
@@ -83,6 +96,8 @@ implementation or issue implementation authority.
 - WC-062 implementation evidence and independent acceptance:
   `goals/GOAL-005-wc062-implementation-evidence.md` and R-096/R-097/R-098.
 - WC-062 delivery closure: PR #273 merged by the Founder to `main` as `1a624d6` on 2026-08-12.
+- Founder Commercial Governance formalization: PR #275 merged by the Founder to `main` as
+  `2276ab2` on 2026-08-12; WC-064 remains ready for owner routing.
 - Earlier completed work remains authoritative in its owning Work Contract, Goal, review,
   constitutional record, and repository history; it must not be copied back into this file.
 

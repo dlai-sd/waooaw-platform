@@ -109,6 +109,7 @@ Azure infrastructure:
 | **WAOOAW AI Agent — Legal** | This file + legal/ (all 5 documents) + knowledge/claims/C-060.md + C-061.md + C-063.md | architecture/, src/, simulation/, agent specs |
 | **Program Management Office** | This file + pmo/PROGRAM-PLAN.md + constitution/PROJECT_STATE.md + constitution/INSTITUTIONAL_BACKLOG.md + work-contracts/ (active WCs only) + security/FOUNDER-ACTIONS.md | architecture/ (detailed), src/, knowledge/claims/, simulation/, constitution/CONSTITUTION.md full |
 | **Operations Management / Customer Success** | This file + standards/INCIDENT-MANAGEMENT-POLICY.md + standards/CHANGE-MANAGEMENT-POLICY.md + standards/RELEASE-MANAGEMENT-POLICY.md + pmo/PROGRAM-PLAN.md §6 (SLA/OLA) + constitution/PROJECT_STATE.md | architecture/, src/, knowledge/claims/, simulation/ — read operational artefacts only |
+| **Goal Orchestrator** | This file + active Work Contract + constitution/GEOM.md + standards/GOAL-ORCHESTRATOR-VNEXT-STANDARD.md + compressed INST-013 charter | Full architecture, src/, knowledge/claims/, and simulation/ unless a material owner contribution explicitly requires routing |
 
 ---
 
@@ -164,6 +165,7 @@ Steward Interface
   Steward interface design              architecture/reference/steward-interface.md
 
 Operations & Standards
+  Goal Orchestrator vNext standard       standards/GOAL-ORCHESTRATOR-VNEXT-STANDARD.md
   PMO program plan                      pmo/PROGRAM-PLAN.md
   Incident Management Policy            standards/INCIDENT-MANAGEMENT-POLICY.md  (pending — ITSM)
   Change Management Policy              standards/CHANGE-MANAGEMENT-POLICY.md    (pending — ITSM)
