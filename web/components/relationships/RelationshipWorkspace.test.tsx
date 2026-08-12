@@ -123,7 +123,7 @@ describe('RelationshipWorkspace', () => {
       expect(within(decisions).getByRole(name === 'Exit' ? 'link' : 'button', { name })).toBeVisible();
     }
     expect(within(decisions).queryByRole('button', { name: 'Proceed to Razorpay' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+    expect(within(decisions).queryByRole('checkbox')).not.toBeInTheDocument();
     expect(screen.queryByText(/hurry|expires in|last chance/i)).not.toBeInTheDocument();
     fireEvent.click(within(decisions).getByRole('button', { name: 'Hire and accept exact contract' }));
     const proceed = await within(decisions).findByRole('button', { name: 'Proceed to Razorpay' });

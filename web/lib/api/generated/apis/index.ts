@@ -4,3 +4,4 @@ export * from "./ConversationApi";
 export * from "./EmploymentApi";
 export * from "./IdentityApi";
 export * from "./RelationshipWorkspaceApi";
+export * from "./VoiceContributionsApi";

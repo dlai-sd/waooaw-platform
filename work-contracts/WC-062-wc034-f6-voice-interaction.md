@@ -8,7 +8,7 @@
 **Required specification owners:** Product Owner (INST-011), Solution Architect (INST-005), Data Architect (INST-006), Security Architect (INST-007)
 **Integrated architecture reviewer:** Enterprise Architect (INST-004)
 **Readiness reviewer:** Constitutional Analyst (INST-002)
-**Status:** GROOMED CANDIDATE — SPECIFICATION GATES OPEN; IMPLEMENTATION UNAUTHORIZED
+**Status:** IMPLEMENTATION COMPLETE — WC062-01 THROUGH WC062-07 DONE; R-096/R-097/R-098 APPROVED; UNMERGED PR PENDING
 **Constitutional basis:** C-001, C-023, C-042, C-049, C-051, C-059, C-060, C-061, C-063, C-065, C-071, C-076, C-080; ADR-017, ADR-020, ADR-023, ADR-029
 
 ## Outcome
@@ -59,13 +59,13 @@ Implementation tasks remain dormant until the Entry Gate is fully satisfied.
 
 | Task | Scope | Model hint | Status |
 |---|---|---|---|
-| WC062-01 | Implement the approved BP voice-contribution public contract, authenticated tenant/relationship authority, idempotency, Evidence First transitions, privacy-safe failures, and any approved persistence/migration blueprint. | reasoning | gated |
-| WC062-02 | Implement the approved internal PR/AIR transcription orchestration and provider-neutral adapter boundary; no browser/provider coupling and no paid or live provider activation. | reasoning | gated |
-| WC062-03 | Implement consent, confidence, correction, retention/erasure, evidence lineage, unresolved outcome, and text-fallback behavior exactly as approved. | reasoning | gated |
-| WC062-04 | Generate the TypeScript client without manual patches and implement the web recorder/review/correction/send experience with stable dimensions and no dead-end controls. | reasoning | gated |
-| WC062-05 | Add unit, contract, integration, migration where applicable, tenant-isolation, replay, malformed-content, malware, downgrade, consent, retention, erasure, provider-failure, offline, and Emergency Stop preservation tests. | auto | gated |
-| WC062-06 | Execute the dedicated voice acceptance matrix across Chromium, Firefox, WebKit, exact 360×800, intermediate, and expanded viewports, including keyboard, screen reader, RTL, reduced motion, and text fallback. | auto | gated |
-| WC062-07 | Run proportional F8 validation: generated-contract conformance, privacy/security inspection, Docker-only regression, at least 90% affected-surface line coverage, lint, strict TypeScript, production build, and independent implementation review. | auto | gated |
+| WC062-01 | Implement the approved BP voice-contribution public contract, authenticated tenant/relationship authority, idempotency, Evidence First transitions, privacy-safe failures, and any approved persistence/migration blueprint. | reasoning | done |
+| WC062-02 | Implement the approved internal PR/AIR transcription orchestration and provider-neutral adapter boundary; no browser/provider coupling and no paid or live provider activation. | reasoning | done |
+| WC062-03 | Implement consent, confidence, correction, retention/erasure, evidence lineage, unresolved outcome, and text-fallback behavior exactly as approved. | reasoning | done |
+| WC062-04 | Generate the TypeScript client without manual patches and implement the web recorder/review/correction/send experience with stable dimensions and no dead-end controls. | reasoning | done |
+| WC062-05 | Add unit, contract, integration, migration where applicable, tenant-isolation, replay, malformed-content, malware, downgrade, consent, retention, erasure, provider-failure, offline, and Emergency Stop preservation tests. | auto | done |
+| WC062-06 | Execute the dedicated voice acceptance matrix across Chromium, Firefox, WebKit, exact 360×800, intermediate, and expanded viewports, including keyboard, screen reader, RTL, reduced motion, and text fallback. | auto | done |
+| WC062-07 | Run proportional F8 validation: generated-contract conformance, privacy/security inspection, Docker-only regression, at least 90% affected-surface line coverage, lint, strict TypeScript, production build, and independent implementation review. | auto | done |
 
 ## Entry Gate — All Required
 
@@ -94,12 +94,18 @@ Implementation tasks remain dormant until the Entry Gate is fully satisfied.
 
 ## Current Readiness Decision
 
-**NOT IMPLEMENTATION-READY.** WC-034 architecture establishes the F6 boundary, but the Product, Solution, Data, Security, dedicated acceptance, and integrated readiness contributions do not yet exist. This Work Contract closes ambiguity about scope and sequence; it does not compensate for those missing authoritative inputs.
+**IMPLEMENTATION AUTHORIZED AND ACCEPTED.** Entry Gate items 1–6 remain approved under R-093,
+R-094, and ACK-GOAL-005-INST-001-11. FA-043 closes item 7 for this session;
+GOA-GOAL-005-INST-010-07 and the later ACC-GOAL-005-INST-010-07 close items 8–9.
 
-FA-042 records the Founder's decision to implement WC-062 after these prerequisites close. It does
-not make this candidate implementation-ready or authorize work in a later session. The human
-session that begins implementation must obtain fresh explicit Founder confirmation before writing
-implementation code, followed by valid GOA issuance and later INST-010 Acceptance in the required
-sequence.
+Implementation is limited to WC062-01 through WC062-07. Live or paid provider activation,
+credentials, deployment, WC-063, production/customer proof, PR approval, merge, self-review, and
+self-merge remain unauthorized.
 
-No implementation, provider activation, deployment, PR approval, merge, self-review, or self-merge is authorized by this grooming record.
+## Implementation Closure
+
+WC062-01 through WC062-07 are complete in `09f7056..57a1494`. Integrated executor evidence is
+recorded in `goals/GOAL-005-wc062-implementation-evidence.md`. Fresh independent implementation
+reviews R-096 (Security), R-097 (Data), and R-098 (Enterprise Architecture) approve the repaired
+range for unmerged PR submission. Provider/scanner activation, credentials, deployment,
+production/customer proof, WC-063, PR approval, merge, and self-merge remain excluded.

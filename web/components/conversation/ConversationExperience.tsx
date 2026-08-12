@@ -24,6 +24,7 @@ import {
   type ConversationTimelinePageV1,
 } from '@/lib/api/generated/models/ConversationTimelinePageV1';
 import type { GovernedConversationCardV1 } from '@/lib/api/generated/models/GovernedConversationCardV1';
+import { VoiceContribution } from './VoiceContribution';
 
 interface QueuedContribution {
   clientMessageId: string;
@@ -526,6 +527,11 @@ export function ConversationExperience({ relationshipId, locale = 'en-IN', relat
         })}
       </div>
 
+      <VoiceContribution
+        relationshipId={relationshipId}
+        relationshipStopped={connection === 'stopped'}
+        textFallbackId={`conversation-draft-${relationshipId}`}
+      />
       <form className="conversation-composer" onSubmit={(event) => { event.preventDefault(); void sendMessage(); }}>
         <label htmlFor={`conversation-draft-${relationshipId}`}>Message your professional</label>
         <textarea

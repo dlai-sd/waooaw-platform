@@ -5,6 +5,7 @@ const executionId = '3ead2d21-f908-40b5-9510-b1e77f516d7e';
 const streamClients = new Map();
 const scopedTimelines = new Map();
 const continuityStates = new Map();
+const voiceSessions = new Map();
 
 const governedCards = [
   {
@@ -131,6 +132,67 @@ const server = createServer(async (request, response) => {
   const prepareHandoffMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/handoffs$/);
   const activateHandoffMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/handoffs\/([^/]+)\/activate$/);
   const stopRelationshipMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/emergency-stop$/);
+  const voiceCreateMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/voice-contributions\/sessions$/);
+  const voiceSessionMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/voice-contributions\/sessions\/([^/]+)$/);
+  const voiceAudioMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/voice-contributions\/sessions\/([^/]+)\/audio$/);
+  const voiceTranscriptMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/voice-contributions\/sessions\/([^/]+)\/transcript$/);
+  const voiceCorrectionMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/voice-contributions\/sessions\/([^/]+)\/correction$/);
+  const voiceSendMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/voice-contributions\/sessions\/([^/]+)\/send$/);
+  const voiceCancelMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/voice-contributions\/sessions\/([^/]+)\/cancel$/);
+
+  if (request.method === 'POST' && voiceCreateMatch) {
+    const relationshipId = decodeURIComponent(voiceCreateMatch[1]);
+    const body = await readBody(request);
+    const sessionId = `voice-${relationshipId}`;
+    voiceSessions.set(scopeKey(scope, sessionId), { relationshipId, locale: body.locale, version: 1, text: 'Please review this governed voice draft.' });
+    json(response, {
+      schemaVersion: '1.0.0', sessionId, relationshipId, state: 'CAPTURE_PENDING', locale: body.locale,
+      allowedCommands: ['UPLOAD', 'CANCEL'], createdAt: '2026-08-12T10:00:00Z', updatedAt: '2026-08-12T10:00:00Z',
+    }, 201);
+    return;
+  }
+  if (request.method === 'GET' && voiceSessionMatch) {
+    const sessionId = decodeURIComponent(voiceSessionMatch[2]);
+    const session = voiceSessions.get(scopeKey(scope, sessionId));
+    if (!session) { json(response, { title: 'not_authorized' }, 404); return; }
+    json(response, { schemaVersion: '1.0.0', sessionId, relationshipId: session.relationshipId, state: 'REVIEW_REQUIRED', locale: session.locale, confidenceBand: 'REVIEW', allowedCommands: ['CORRECT', 'SEND', 'CANCEL'], createdAt: '2026-08-12T10:00:00Z', updatedAt: '2026-08-12T10:01:00Z' });
+    return;
+  }
+  if (request.method === 'POST' && voiceAudioMatch) {
+    const sessionId = decodeURIComponent(voiceAudioMatch[2]);
+    if (!voiceSessions.has(scopeKey(scope, sessionId))) { json(response, { title: 'not_authorized' }, 404); return; }
+    request.resume();
+    request.on('end', () => json(response, { schemaVersion: '1.0.0', sessionId, state: 'REVIEW_REQUIRED', receiptId: '44444444-4444-4444-8444-444444444444', acceptedAt: '2026-08-12T10:01:00Z' }, 202));
+    return;
+  }
+  if (request.method === 'GET' && voiceTranscriptMatch) {
+    const sessionId = decodeURIComponent(voiceTranscriptMatch[2]);
+    const session = voiceSessions.get(scopeKey(scope, sessionId));
+    if (!session) { json(response, { title: 'not_authorized' }, 404); return; }
+    json(response, { schemaVersion: '1.0.0', sessionId, state: 'REVIEW_REQUIRED', locale: session.locale, confidenceBand: 'REVIEW', text: session.text, version: session.version });
+    return;
+  }
+  if (request.method === 'PUT' && voiceCorrectionMatch) {
+    const sessionId = decodeURIComponent(voiceCorrectionMatch[2]);
+    const session = voiceSessions.get(scopeKey(scope, sessionId));
+    if (!session) { json(response, { title: 'not_authorized' }, 404); return; }
+    const body = await readBody(request);
+    session.text = body.correctedText;
+    session.version += 1;
+    json(response, { schemaVersion: '1.0.0', sessionId, state: 'READY_TO_SEND', version: session.version, recordedAt: '2026-08-12T10:02:00Z' });
+    return;
+  }
+  if (request.method === 'POST' && voiceSendMatch) {
+    const sessionId = decodeURIComponent(voiceSendMatch[2]);
+    const session = voiceSessions.get(scopeKey(scope, sessionId));
+    if (!session) { json(response, { title: 'not_authorized' }, 404); return; }
+    json(response, { schemaVersion: '1.0.0', sessionId, contributionId: '55555555-5555-4555-8555-555555555555', state: 'RECORDED', evidenceReference: '66666666-6666-4666-8666-666666666666', reconciliationRequired: false, outcomeAt: '2026-08-12T10:03:00Z' });
+    return;
+  }
+  if (request.method === 'POST' && voiceCancelMatch) {
+    json(response, { schemaVersion: '1.0.0', sessionId: decodeURIComponent(voiceCancelMatch[2]), state: 'CANCELLED', reconciliationRequired: false, outcomeAt: '2026-08-12T10:03:00Z' });
+    return;
+  }
 
   if (request.method === 'POST' && prepareHandoffMatch) {
     const relationshipId = decodeURIComponent(prepareHandoffMatch[1]);
