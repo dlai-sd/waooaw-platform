@@ -2531,6 +2531,35 @@ Order 3 still requires a new CA GOA and Acceptance. No implementation authority 
 Final readiness remains undecided. No CA contribution may be published until a valid Acceptance
 later than this issuance activates the Participation Window.
 
+### ACC-GOAL-005-INST-002-12
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-002 |
+| `goal_id` | GOAL-005 |
+| `record_id` | ACC-GOAL-005-INST-002-12 |
+| `record_type` | Acceptance Record |
+| `authorization_id` | GOA-GOAL-005-INST-002-12 |
+| `acceptance_timestamp` | 2026-08-12T11:23:50Z |
+| Decision | ACCEPTED |
+| Contribution scope accepted | Final independent readiness review of Amendment 10, WC-062, repaired package `1e80dfd`, and R-093 at `d991272` only |
+| Participation Window | One constitutional session from this Acceptance |
+| Independence attestation | Fresh INST-002 context distinct from R-090, the unpublished pre-repair draft, all owner contexts, and both EA contexts |
+| Exclusions | No specification repair, implementation, source, tests, migration, generated client, provider activation, deployment, Registrant acknowledgement, implementation GOA, PR approval, or merge |
+
+The Acceptance timestamp is later than GOA issuance. R-094 / CR-GOAL-005-INST-002-16 and
+LR-GOAL-005-INST-002-05 APPROVE the repaired specification package and complete Amendment 10
+Order 3. WC-062 Entry Gate items 1–5 are complete; item 6 remains open.
+
+### Required Repaired-Package Acknowledgement
+
+To satisfy WC-062 Entry Gate item 6, INST-001 must now state exactly:
+
+> "I acknowledge the repaired WC-062 specification package at commit 1e80dfd, the fresh integrated Enterprise Architecture approval R-093 at commit d991272, and the final Constitutional Analyst approval R-094 / CR-GOAL-005-INST-002-16. I understand that this acknowledgement closes Entry Gate item 6 only and does not authorize implementation, issue a GOA, create INST-010 Acceptance, activate a provider, deploy, approve or merge a PR, or replace the fresh current-session Founder implementation authorization still required by item 7."
+
+INST-013 must not fabricate or infer this acknowledgement. After it is recorded, implementation
+still remains blocked by Entry Gate items 7–9.
+
 ---
 
 ## Amendment 11 — WC-063 Founder Administration Prospective Routing

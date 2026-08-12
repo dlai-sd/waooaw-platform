@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 29
+**State Revision:** 30
 **Last Updated:** 2026-08-12
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -34,17 +34,17 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Registrant acknowledgement | DONE — exact `ACK-GOAL-005-INST-001-10` recorded; routing only, no implementation authority |
 | Product, Solution, Data, Security contributions | REPAIRED — canonical BP/PR/AIR voice contracts and Solution repair CR/LR published at `1e80dfd`; other owner records unchanged |
 | Integrated EA review | DONE — R-093 / `CR-GOAL-005-INST-004-13` APPROVED repaired package `1e80dfd`; R-091 remains superseded for readiness |
-| Final CA readiness | ROUTED — GOA-GOAL-005-INST-002-12 issued over `1e80dfd` + R-093; awaiting fresh Acceptance |
-| WC-062 F6 Voice | NOT IMPLEMENTATION-READY — seven dormant tasks; no implementation authority |
+| Final CA readiness | DONE — R-094 / `CR-GOAL-005-INST-002-16` APPROVED; specification Orders 1–6 complete |
+| WC-062 F6 Voice | ENTRY GATE ITEM 6 OPEN — exact repaired-package Registrant acknowledgement required; seven tasks dormant |
 | WC-063 F7 Founder Administration | GROOMED CANDIDATE — seven dormant tasks and six required owner/review contributions; not implementation-ready |
 | Founder implementation decision | RECORDED FOR WC-062 — FA-042; dormant pending Entry Gate and fresh confirmation in the future implementation session; WC-063 unauthorized |
-| GO Authorization and Acceptance | REPAIRED OWNER AND EA PHASE COMPLETE — fresh CA GOA issued; CA Acceptance and implementation GOA remain open |
+| GO Authorization and Acceptance | SPECIFICATION PHASE COMPLETE — owner, EA, and CA GOAs/Acceptances valid; implementation GOA not issued |
 | Specification-routing branch | ACTIVE — `wc/062/specification-routing`; implementation remains stopped |
 
 ### Recovery Context
 
 - **Branch:** `wc/062/specification-routing`
-- **Objective:** Complete fresh integrated EA review and final CA readiness over repaired package `1e80dfd`; stop before implementation authorization.
+- **Objective:** Obtain exact repaired-package acknowledgement for Entry Gate item 6; stop before implementation authorization.
 - **Authority:** The current Founder instruction authorizes specification routing only. FA-042 remains dormant and cannot authorize implementation in this session.
 - **Validation:** Canonical BP `1.8.0`, PR `1.3.0`, and AIR `1.0.0` contracts parse; voice reference graphs resolve; operation IDs are unique; exact SHA-256 hashes are recorded; no implementation tests apply.
 - **Protected local artifacts:** `.coverage`, `goals/goal_register.jsonl`, `logs/blueprint_assurance_report.json`, and `logs/bootstrap-evidence.jsonl` are unrelated and must remain unstaged.
@@ -63,8 +63,9 @@ prerequisites, not closed evidence and not implementation blockers being bypasse
 
 ## Next Authorized Action
 
-Obtain fresh CA Acceptance and complete final Entry Gate readiness review over package `1e80dfd`
-and R-093. Implementation remains stopped through final acknowledgement and fresh-session authority.
+Obtain the exact repaired-package Registrant acknowledgement quoted in Amendment 10. After it is
+recorded, implementation remains stopped pending fresh current-session Founder authority, a
+WC-062-specific implementation GOA, and later INST-010 Acceptance.
 Implementation remains stopped until the complete Entry Gate, fresh implementation-session Founder
 confirmation, implementation GOA, and later INST-010 Acceptance pass. WC-063 remains unselected.
 
