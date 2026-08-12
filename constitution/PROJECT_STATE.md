@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 38
+**State Revision:** 39
 **Last Updated:** 2026-08-12
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -41,7 +41,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | WC-063 F7 Founder Administration | GROOMED CANDIDATE — seven dormant tasks and six required owner/review contributions; not implementation-ready |
 | Founder implementation decision | DONE — FA-043 records current-session WC-062 authorization; WC-063 remains unauthorized |
 | GO Authorization and Acceptance | DONE — GOA-GOAL-005-INST-010-07 issued at 12:02:00Z; ACC-GOAL-005-INST-010-07 accepted at 12:02:01Z |
-| Implementation branch | DELIVERY COMPLETE — `wc/062/implementation`; push and one complete unmerged PR pending |
+| Implementation branch | DELIVERY COMPLETE — `wc/062/implementation`; PR #273 open and unmerged against `main` |
 
 ### Recovery Context
 
@@ -65,8 +65,8 @@ None filed. WC-062 implementation gates are closed. WC-063 remains unselected an
 
 ## Next Authorized Action
 
-Push `wc/062/implementation` and open one complete unmerged PR for independent constitutional
-review. WC-063 remains unselected and unauthorized.
+PR #273 awaits independent constitutional review and Founder merge decision. Do not self-approve
+or merge. WC-063 remains unselected and unauthorized.
 
 ## History And Evidence
 
@@ -86,6 +86,7 @@ review. WC-063 remains unselected and unauthorized.
 - WC-060 delivery closure: PR #268 merged to `main` as `95e0d91` after Founder approval.
 - WC-062 implementation evidence and independent acceptance:
   `goals/GOAL-005-wc062-implementation-evidence.md` and R-096/R-097/R-098.
+- WC-062 delivery PR: #273 open and unmerged from `wc/062/implementation` to `main`.
 - Earlier completed work remains authoritative in its owning Work Contract, Goal, review,
   constitutional record, and repository history; it must not be copied back into this file.
 
