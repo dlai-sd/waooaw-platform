@@ -36,6 +36,17 @@ public sealed class RelationshipEvidenceServiceTests
     }
 
     [Fact]
+    public async Task CctAe01Evidence01_CrossTenantQueryGetsNoExistenceDisclosureOrCeCall()
+    {
+        var context = await CreateAsync(RelationshipParticipantRole.Employer);
+
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => context.Service.ListAsync(
+            Guid.NewGuid(), context.RelationshipId, context.ParticipantId, CancellationToken.None));
+
+        Assert.Equal(0, context.Gateway.CallCount);
+    }
+
+    [Fact]
     public async Task EvidenceExport_IsEvidenceFirstSignedAndIdempotent()
     {
         var context = await CreateAsync(RelationshipParticipantRole.Employer);

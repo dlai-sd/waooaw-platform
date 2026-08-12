@@ -100,6 +100,120 @@ public sealed class ChannelContinuityServiceTests
     }
 
     [Fact]
+    public async Task CctAe01Replay01_ExactCommittedEnvelopeReplaysPriorOutcomeWithoutNewEvidence()
+    {
+        var context = await CreateContextAsync();
+        var prepared = await PrepareAsync(context);
+        var request = new ActivateChannelHandoff(
+            "web-conversation", Guid.NewGuid(), prepared.ContinuityEnvelope.IdempotencyKey, prepared.ContinuityEnvelope);
+        var first = await context.Service.ActivateAsync(
+            context.TenantId, context.RelationshipId, prepared.HandoffId,
+            TargetIdentity(context.ParticipantId), request, CancellationToken.None);
+        var replay = await context.Service.ActivateAsync(
+            context.TenantId, context.RelationshipId, prepared.HandoffId,
+            TargetIdentity(context.ParticipantId), request, CancellationToken.None);
+
+        Assert.True(replay.Replayed);
+        Assert.Equal(first.HandoffId, replay.HandoffId);
+        Assert.Equal(first.ResolutionEvidenceId, replay.ResolutionEvidenceId);
+        Assert.Equal(2, context.Gateway.CallCount);
+    }
+
+    [Fact]
+    public async Task CctAe01Handoff03_WrongKeyEnvelopeIsDeniedWithoutMutation()
+    {
+        var context = await CreateContextAsync();
+        var prepared = await PrepareAsync(context);
+        var wrongKeyService = new ChannelContinuityService(
+            context.Factory, context.Gateway,
+            Options.Create(new ChannelContinuityOptions
+            {
+                EnvelopeHmacKey = Convert.ToBase64String(Enumerable.Repeat((byte)0x7f, 32).ToArray()),
+            }));
+
+        await Assert.ThrowsAsync<ConstitutionalActionDeniedException>(() => wrongKeyService.ActivateAsync(
+            context.TenantId, context.RelationshipId, prepared.HandoffId,
+            TargetIdentity(context.ParticipantId),
+            new ActivateChannelHandoff("web-conversation", Guid.NewGuid(), prepared.ContinuityEnvelope.IdempotencyKey, prepared.ContinuityEnvelope),
+            CancellationToken.None));
+
+        await AssertBindingsAsync(context, "ACTIVE", "PREPARED");
+        Assert.Equal(1, context.Gateway.CallCount);
+    }
+
+    [Fact]
+    public async Task CctAe01Handoff03_ForgedCommittedReplayDoesNotReturnPriorSuccess()
+    {
+        var context = await CreateContextAsync();
+        var prepared = await PrepareAsync(context);
+        var request = new ActivateChannelHandoff(
+            "web-conversation", Guid.NewGuid(), prepared.ContinuityEnvelope.IdempotencyKey, prepared.ContinuityEnvelope);
+        await context.Service.ActivateAsync(
+            context.TenantId, context.RelationshipId, prepared.HandoffId,
+            TargetIdentity(context.ParticipantId), request, CancellationToken.None);
+
+        await Assert.ThrowsAsync<ConstitutionalActionDeniedException>(() => context.Service.ActivateAsync(
+            context.TenantId, context.RelationshipId, prepared.HandoffId,
+            TargetIdentity(context.ParticipantId),
+            request with { Envelope = prepared.ContinuityEnvelope with { IntegritySignature = "forged" } },
+            CancellationToken.None));
+
+        Assert.Equal(2, context.Gateway.CallCount);
+        await AssertBindingsAsync(context, "ACTIVE", "ACTIVE");
+    }
+
+    [Fact]
+    public async Task CctAe01Downgrade01_LowerAssuranceTargetCannotActivatePreparedAuthority()
+    {
+        var context = await CreateContextAsync();
+        var prepared = await PrepareAsync(context);
+        var downgraded = TargetIdentity(context.ParticipantId) with { AuthenticationAssurance = "TIER_1_PHONE_IDENTITY" };
+
+        await Assert.ThrowsAsync<ConstitutionalActionDeniedException>(() => context.Service.ActivateAsync(
+            context.TenantId, context.RelationshipId, prepared.HandoffId, downgraded,
+            new ActivateChannelHandoff("web-conversation", Guid.NewGuid(), prepared.ContinuityEnvelope.IdempotencyKey, prepared.ContinuityEnvelope),
+            CancellationToken.None));
+
+        await AssertBindingsAsync(context, "ACTIVE", "PREPARED");
+    }
+
+    [Fact]
+    public async Task CctAe01Takeover01_ConfusedDeputyTargetCannotActivateAnotherParticipantHandoff()
+    {
+        var context = await CreateContextAsync();
+        var prepared = await PrepareAsync(context);
+
+        await Assert.ThrowsAsync<ConstitutionalActionDeniedException>(() => context.Service.ActivateAsync(
+            context.TenantId, context.RelationshipId, prepared.HandoffId,
+            TargetIdentity(Guid.NewGuid()),
+            new ActivateChannelHandoff("web-conversation", Guid.NewGuid(), prepared.ContinuityEnvelope.IdempotencyKey, prepared.ContinuityEnvelope),
+            CancellationToken.None));
+
+        await AssertBindingsAsync(context, "ACTIVE", "PREPARED");
+    }
+
+    [Fact]
+    public async Task CctAe01Handoff02_ActivationWithoutPreparedCheckpointHasZeroMutation()
+    {
+        var context = await CreateContextAsync();
+        var envelope = new NeutralContinuityEnvelope(
+            "1.0.0", context.TenantId, context.RelationshipId, context.ParticipantId, "EMPLOYER",
+            "TIER_3_MPIN", Guid.NewGuid(), "WHATSAPP", "whatsapp-conversation", "WEB", "web-conversation",
+            "CONTINUE", Guid.NewGuid(), Guid.NewGuid(), 1, Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(),
+            DateTimeOffset.UtcNow, "forged");
+
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => context.Service.ActivateAsync(
+            context.TenantId, context.RelationshipId, Guid.NewGuid(), TargetIdentity(context.ParticipantId),
+            new ActivateChannelHandoff("web-conversation", Guid.NewGuid(), envelope.IdempotencyKey, envelope),
+            CancellationToken.None));
+
+        await using var db = context.Factory.CreateDbContext();
+        Assert.Empty(await db.ContinuityCheckpoints.ToListAsync());
+        Assert.Single(await db.ChannelBindings.ToListAsync());
+        Assert.Equal(0, context.Gateway.CallCount);
+    }
+
+    [Fact]
     public async Task CctAe01Stop02_StoppedRelationshipBlocksPrepareWithoutEvidenceOrMutation()
     {
         var context = await CreateContextAsync(EmploymentRelationshipState.StoppedEmergency);
@@ -110,6 +224,48 @@ public sealed class ChannelContinuityServiceTests
         await using var db = context.Factory.CreateDbContext();
         Assert.Empty(await db.ContinuityCheckpoints.ToListAsync());
         Assert.Single(await db.ChannelBindings.ToListAsync());
+    }
+
+    [Fact]
+    public async Task CctAe01Evidence01_ProposalToActivationToHandoffIsReconstructable()
+    {
+        var context = await CreateContextAsync(EmploymentRelationshipState.Configuring);
+        var relationships = new EmploymentRelationshipService(
+            context.Factory, context.Gateway, Microsoft.Extensions.Logging.Abstractions.NullLogger<EmploymentRelationshipService>.Instance);
+        foreach (var state in new[]
+        {
+            EmploymentRelationshipState.ContractPendingAcceptance,
+            EmploymentRelationshipState.ContractAcceptedPendingPayment,
+            EmploymentRelationshipState.ActivationPending,
+            EmploymentRelationshipState.Active,
+        })
+        {
+            await relationships.TransitionAsync(
+                context.TenantId, context.RelationshipId, context.ParticipantId,
+                RelationshipParticipantRole.Employer, state, Guid.NewGuid(), false, CancellationToken.None);
+        }
+        var prepared = await PrepareAsync(context);
+        await context.Service.ActivateAsync(
+            context.TenantId, context.RelationshipId, prepared.HandoffId,
+            TargetIdentity(context.ParticipantId),
+            new ActivateChannelHandoff(
+                "web-conversation", Guid.NewGuid(), prepared.ContinuityEnvelope.IdempotencyKey, prepared.ContinuityEnvelope),
+            CancellationToken.None);
+
+        var timeline = await relationships.GetTimelineAsync(context.TenantId, context.RelationshipId, CancellationToken.None);
+        Assert.Equal(new[]
+        {
+            EmploymentRelationshipState.ContractPendingAcceptance,
+            EmploymentRelationshipState.ContractAcceptedPendingPayment,
+            EmploymentRelationshipState.ActivationPending,
+            EmploymentRelationshipState.Active,
+        }, timeline.Select(value => value.ToState));
+        Assert.Equal(timeline.Count, timeline.Select(value => value.EvidenceId).Distinct().Count());
+        await using var db = context.Factory.CreateDbContext();
+        var checkpoint = await db.ContinuityCheckpoints.SingleAsync();
+        Assert.Equal("COMMITTED", checkpoint.Status);
+        Assert.NotNull(checkpoint.ResolutionEvidenceId);
+        await AssertBindingsAsync(context, "ACTIVE", "ACTIVE");
     }
 
     private static async Task<ChannelHandoffResult> PrepareAsync(TestContext context) =>

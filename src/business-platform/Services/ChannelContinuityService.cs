@@ -236,15 +236,11 @@ public sealed class ChannelContinuityService
                 && value.CheckpointId == handoffId,
             cancellationToken) ?? throw new KeyNotFoundException("Channel handoff was not found.");
 
-        if (checkpoint.Status == "COMMITTED")
-        {
-            return await LoadResultAsync(db, checkpoint, true, cancellationToken);
-        }
-        if (checkpoint.Status != "PREPARED")
+        if (checkpoint.Status is not ("PREPARED" or "COMMITTED"))
         {
             throw new ChannelContinuityConflictException("Channel handoff is already terminal.");
         }
-        if (checkpoint.ExpiresAt <= DateTimeOffset.UtcNow)
+        if (checkpoint.Status == "PREPARED" && checkpoint.ExpiresAt <= DateTimeOffset.UtcNow)
         {
             throw new ChannelContinuityConflictException("Channel handoff has expired.");
         }
@@ -266,11 +262,14 @@ public sealed class ChannelContinuityService
         var sourceBinding = await db.ChannelBindings.SingleAsync(
             value => value.TenantId == tenantId && value.BindingId == checkpoint.SourceBindingId,
             cancellationToken);
+        var now = DateTimeOffset.UtcNow;
         if (targetIdentity.ParticipantId != request.Envelope.ParticipantId
             || targetIdentity.ConversationId != request.TargetConversationId
             || targetIdentity.ConversationId != targetBinding.ConversationId
             || targetIdentity.Channel != targetBinding.Channel
-            || DateTimeOffset.UtcNow - targetIdentity.AuthenticatedAt > FreshAuthenticationWindow)
+            || targetIdentity.AuthenticatedAt > now
+            || now - targetIdentity.AuthenticatedAt > FreshAuthenticationWindow
+            || AssuranceRank(targetIdentity.AuthenticationAssurance) < AssuranceRank(request.Envelope.AuthenticationAssurance))
         {
             throw new ConstitutionalActionDeniedException("Fresh target-channel authentication does not match the prepared handoff.");
         }
@@ -284,6 +283,10 @@ public sealed class ChannelContinuityService
         if (!hasCurrentRole || relationship.AuthoritySnapshotId != request.Envelope.AuthoritySnapshotId)
         {
             throw new ConstitutionalActionDeniedException("Participant role or relationship authority changed during handoff.");
+        }
+        if (checkpoint.Status == "COMMITTED")
+        {
+            return await LoadResultAsync(db, checkpoint, true, cancellationToken);
         }
 
         var evidenceId = await _constitutionalGateway.AuthorizeAndRecordAsync(
@@ -403,4 +406,13 @@ public sealed class ChannelContinuityService
         if (relationship.State == EmploymentRelationshipState.StoppedEmergency)
             throw new ChannelContinuityLockedException("Relationship is stopped; channel handoff is locked.");
     }
+
+    private static int AssuranceRank(string assurance) => assurance switch
+    {
+        "TIER_1_PHONE_IDENTITY" => 1,
+        "TIER_2_EXPLICIT_CONFIRMATION" => 2,
+        "TIER_3_MPIN" => 3,
+        "TIER_4_PORTAL_FRESH" => 4,
+        _ => 0,
+    };
 }

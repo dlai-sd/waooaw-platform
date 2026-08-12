@@ -5,8 +5,8 @@
 **Office on execution:** Platform IT Expert (INST-010)
 **Reviewer:** Security Architect (INST-007) + Data Architect (INST-006)
 **WC-034 acceptance reviewer:** Enterprise Architect (INST-004) in an independent context
-**Status:** IMPLEMENTATION-READY SPECIFICATION — fresh INST-005/INST-006/INST-007/INST-004/INST-002 readiness reviews approved; implementation authorization pending
-**Authorization:** A future session requires explicit Founder authorization: “Authorize implementation of WC-060.”
+**Status:** IMPLEMENTATION IN PROGRESS — WC060-01 through WC060-08 complete; WC060-09 active
+**Authorization:** FA-041, GOA-GOAL-005-INST-010-06, and ACC-GOAL-005-INST-010-06 authorize this session's implementation.
 **Unification reviews:** R-073 architecture/product APPROVED; R-074 security/data APPROVED; R-075 constitutional APPROVED
 **Track:** VERTICAL CUSTOMER OUTCOME
 **Service scope:** BP (.NET), PR (Python), CE (.NET), web, ADR-023 Phone Identity Service integration
@@ -36,7 +36,7 @@ This unification does not waive WC-059 completion, per-session Founder implement
 | WC060-05 | Add the Evidence Reader endpoints in the D-06 Solution Contract and implement the D-06 Data/Security classification and access matrix. Query CE/Audit Sink through its approved read contract, enforce authenticated tenant + relationship + participant role, return only customer-visible material proof and authorized payload references, and provide evidenced short-lived export. | reasoning | done — CE/BP/migration Docker suites pass |
 | WC060-06 | Build web relationship workspace and WhatsApp commands for timeline, evidence summary/export link, current authority/cost/trial state, and Stop. Distinguish transport acceptance from participant-observed acknowledgement and expose unresolved delivery honestly. | reasoning | done — web build, 6 UI tests, and 23 WhatsApp tests pass |
 | WC060-07 | Bind Stop to the single AE-01 Employment Relationship: halt its evaluation/trial PAAS sessions, configuration, contract presentation, activation, and handoff within the existing latency budget; reject later consequential commands and show stopped state on every channel. Release is Tier-4 portal only, limited to active same-tenant `EMPLOYER`, freshly reauthenticated and explicitly confirmed with evidence linked to the originating Stop. Reconnect, conversation text, timeout, operator, or channel possession cannot release. AE-02 execution fan-out is deferred to AE-02 proof. | reasoning | done — 82 BP regressions, 24 WhatsApp tests, and 4 latency CCTs pass |
-| WC060-08 | Add adversarial/integration CCTs for takeover, replay, confused deputy, assurance downgrade, cross-tenant query, out-of-order handoff, offline recovery, duplicate delivery, cross-channel Stop, unauthorized release, forged or replayed Neutral Continuity Envelope signatures, and full proposal-to-activation-to-handoff reconstruction. | auto | pending |
+| WC060-08 | Add adversarial/integration CCTs for takeover, replay, confused deputy, assurance downgrade, cross-tenant query, out-of-order handoff, offline recovery, duplicate delivery, cross-channel Stop, unauthorized release, forged or replayed Neutral Continuity Envelope signatures, and full proposal-to-activation-to-handoff reconstruction. | auto | done — integrated BP/PR/CE/PostgreSQL Docker matrix passes |
 | WC060-09 | Complete WC-034 F5 browser/generated-client acceptance for UX-CONV-03, UX-RES-02, and UX-CONT-01 through UX-CONT-06 at exact 360px and expanded viewports; run the proportional F8 accessibility, privacy, contract-conformance, coverage, lint, build, and regression gate; publish one integrated evidence package for independent INST-004 review. | auto | pending |
 
 ### WC060-01 Evidence
@@ -111,6 +111,18 @@ active originating Stop; release evidence includes `EMERGENCY_STOP_RELEASE:<evid
 The generated Employment client exposes both Stop operations. The broad BP regression slice passes
 82/82, WhatsApp passes 24/24, CE Emergency Stop latency CCTs pass 4/4, web Stop tests pass 6/6,
 and the production Next.js build passes.
+
+### WC060-08 Evidence
+
+Continuity activation validates the signed envelope and target context before returning a committed
+replay, so a forged replay cannot inherit prior success. It rebinds tenant, relationship,
+participant, conversation, checkpoint, idempotency, freshness, role, authority, and assurance, and
+rejects wrong-key/modified signatures, out-of-order activation, confused deputies, and assurance
+downgrade without mutation. Exact committed replay returns its prior evidence. Focused BP denial,
+replay, cross-tenant Evidence Reader, unauthorized Stop release, and full relationship-to-handoff
+reconstruction CCTs pass 19/19. The integrated Docker matrix also passes PR offline/reconnect and
+duplicate-delivery tests 71/71, Migration 22 live PostgreSQL replay/RLS/concurrency tests 22/22,
+and CE tenant-scoped Evidence Reader plus Emergency Stop latency tests 5/5.
 
 ## Required Inputs
 
