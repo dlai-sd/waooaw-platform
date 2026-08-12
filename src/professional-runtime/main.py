@@ -27,6 +27,13 @@ from routers.conversation_models import HealthResponse
 from routers.emergency_stop import KeycloakJWTValidator
 from routers.emergency_stop import router as emergency_stop_router
 from routers.sessions import router as sessions_router
+from routers.voice_orchestration import (
+    ConstitutionalVoiceStopAuthority,
+    HttpAirTranscriptionClient,
+    UnavailableAirClient,
+    UnavailableStopAuthority,
+)
+from routers.voice_orchestration import router as voice_orchestration_router
 from relationship_workspace import configure_relationship_workspace
 from relationship_workspace import router as relationship_workspace_router
 from workflows.conversation_execution_workflow import ConversationExecutionWorkflow
@@ -79,10 +86,17 @@ async def lifespan(application: FastAPI) -> AsyncIterator[None]:
     worker_task: asyncio.Task[None] | None = None
     gateway: GrpcConversationConstitutionalGateway | None = None
     keycloak_client: httpx.AsyncClient | None = None
+    air_client: httpx.AsyncClient | None = None
     ce_address = os.getenv("CONSTITUTIONAL_ENGINE_ADDRESS")
     if ce_address:
         gateway = GrpcConversationConstitutionalGateway(ce_address)
         application.state.conversation_constitutional_gateway = gateway
+        application.state.voice_stop_authority = ConstitutionalVoiceStopAuthority(gateway)
+    air_base_url = os.getenv("AIR_TRANSCRIPTION_BASE_URL")
+    air_secret = os.getenv("PR_SERVICE_JWT_SECRET")
+    if air_base_url and air_secret:
+        air_client = httpx.AsyncClient(timeout=15.0)
+        application.state.air_transcription_client = HttpAirTranscriptionClient(air_base_url, air_secret, air_client)
     jwks_url = os.getenv("KEYCLOAK_JWKS_URL")
     if jwks_url:
         issuer = os.getenv("KEYCLOAK_ISSUER") or jwks_url.removesuffix("/protocol/openid-connect/certs")
@@ -121,10 +135,14 @@ async def lifespan(application: FastAPI) -> AsyncIterator[None]:
     application.state.conversation_constitutional_gateway = None
     application.state.emergency_stop_jwt_validator = None
     application.state.bp_service_jwt_secret = None
+    application.state.voice_stop_authority = UnavailableStopAuthority()
+    application.state.air_transcription_client = UnavailableAirClient()
     if gateway is not None:
         await gateway.close()
     if keycloak_client is not None:
         await keycloak_client.aclose()
+    if air_client is not None:
+        await air_client.aclose()
 
 
 app = FastAPI(
@@ -138,7 +156,11 @@ app.include_router(sessions_router)
 app.include_router(emergency_stop_router)
 app.include_router(conversation_execution_router)
 app.include_router(relationship_workspace_router)
+app.include_router(voice_orchestration_router)
 configure_relationship_workspace(app)
+app.state.voice_stop_authority = UnavailableStopAuthority()
+app.state.air_transcription_client = UnavailableAirClient()
+app.state.voice_orchestration_store = {}
 
 
 def _execution_problem_response(name: str) -> dict[str, object]:

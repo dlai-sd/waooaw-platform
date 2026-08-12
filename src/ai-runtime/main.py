@@ -4,11 +4,18 @@
 
 from fastapi import FastAPI
 
+from transcription import DisabledTranscriptionProvider
+from transcription import router as transcription_router
+
 app = FastAPI(
     title="WAOOAW AI Runtime",
     description="Provider Selection Engine + LLM dispatch (ADR-029).",
     version="0.1.0",
 )
+app.state.pr_service_jwt_secret = None
+app.state.transcription_provider = DisabledTranscriptionProvider()
+app.state.transcription_store = {}
+app.include_router(transcription_router)
 
 
 @app.get("/health")

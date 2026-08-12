@@ -174,6 +174,23 @@ builder.Services.AddScoped<IRelationshipEvidenceGateway, GrpcRelationshipEvidenc
 builder.Services.Configure<RelationshipEvidenceExportOptions>(builder.Configuration.GetSection("RelationshipEvidenceExport"));
 builder.Services.AddScoped<RelationshipEvidenceService>();
 
+var voicePrBaseUrl = builder.Configuration["ProfessionalRuntime:VoiceBaseUrl"];
+var voicePrSecret = builder.Configuration["Voice:ProfessionalRuntimeJwtSecret"];
+if (Uri.TryCreate(voicePrBaseUrl, UriKind.Absolute, out var voicePrUri)
+    && !string.IsNullOrWhiteSpace(voicePrSecret))
+{
+    builder.Services.AddHttpClient("VoiceProfessionalRuntime", client =>
+    {
+        client.BaseAddress = voicePrUri;
+        client.Timeout = TimeSpan.FromSeconds(15);
+    });
+    builder.Services.AddScoped<IVoiceTranscriptionGateway, HttpVoiceTranscriptionGateway>();
+}
+else
+{
+    builder.Services.AddScoped<IVoiceTranscriptionGateway, UnconfiguredVoiceTranscriptionGateway>();
+}
+
 // ── Identity Boundary — WC-034 F2 (identity-boundary.md) ─────────────────
 // Pre-account registration paths use actor subject (JWT sub); no tenant_id required.
 // Account-link and mobile-verification paths require full tenant JWT.
@@ -203,6 +220,19 @@ builder.Services.Configure<ConversationCursorOptions>(
 builder.Services.AddSingleton<ConversationCursorCodec>();
 builder.Services.AddSingleton<IConversationExecutionGateway, UnconfiguredConversationExecutionGateway>();
 builder.Services.AddScoped<ConversationService>();
+
+// ── Voice Contributions — WC-062 / GOAL-005 F6 ─────────────────────────────
+var voiceConn = builder.Configuration.GetConnectionString("VoiceContribution")
+    ?? builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? "Host=localhost;Database=waooaw_bp;Username=business_app;";
+builder.Services.AddDbContextFactory<VoiceContributionDbContext>((services, options) =>
+    options
+        .UseNpgsql(voiceConn)
+        .AddInterceptors(services.GetRequiredService<TenantDbConnectionInterceptor>()));
+builder.Services.AddSingleton<IVoiceMediaGateway, UnconfiguredVoiceMediaGateway>();
+builder.Services.AddSingleton<IVoiceTranscriptionGateway, UnconfiguredVoiceTranscriptionGateway>();
+builder.Services.AddSingleton<IVoiceContentProtector, AesVoiceContentProtector>();
+builder.Services.AddScoped<VoiceContributionService>();
 
 // ─────────────────────────────────────────────────────────────────────────────
 var app = builder.Build();
