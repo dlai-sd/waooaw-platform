@@ -75,6 +75,27 @@ Chromium, Firefox, and WebKit are required for the browser suite. Exact 360×800
 | UX-CONV-07 | Multiple professionals | Switcher changes the complete relationship context; drafts and item links never cross relationships |
 | UX-CONV-08 | Needs your attention, when released | Browser displays server order and does not calculate an independent priority ranking; destination is absent before the aggregate contract is approved |
 
+### Voice Interaction (F6/WC-062 Only)
+
+| ID | Scenario | Pass condition |
+|---|---|---|
+| UX-VOICE-01 | Permission denied or unavailable | A complete text path remains focused and usable; no recording or transcription success is implied |
+| UX-VOICE-02 | Capture controls | Record, pause, resume, cancel, timer, playback, and draft status remain truthful and dimensionally stable |
+| UX-VOICE-03 | Review and explicit send | Recording, upload, transcription, playback, or correction never sends; only the enabled explicit send command does |
+| UX-VOICE-04 | Low confidence or unsupported language | Review/low confidence requires correction or confirmation; unsupported language preserves text fallback before consequential use |
+| UX-VOICE-05 | Upload or provider failure | Recovery preserves the draft and idempotency identity without duplicate contribution or fabricated success |
+| UX-VOICE-06 | Offline and reconnect | Authoritative session state is reconciled before retry; the original idempotency identity is retained |
+| UX-VOICE-07 | Invalid or quarantined media | Malformed, unsupported, oversized, over-duration, or quarantined content fails safely without provider dispatch or private detail |
+| UX-VOICE-08 | Retention and erasure | Customer-visible treatment distinguishes erasable payload from durable constitutional evidence |
+| UX-VOICE-09 | Responsive composition | Exact 360x800, 768x1024, and 1440x900 preserve composer controls and Stop without overflow or overlap |
+| UX-VOICE-10 | Keyboard and screen reader | Record/review/correct/send or the equivalent text-fallback journey completes without pointer or focus loss |
+| UX-VOICE-11 | Language, RTL, zoom, and motion | Supported locales, localized fallback, RTL, reduced motion, and 200% zoom preserve meaning and operation |
+| UX-VOICE-12 | Emergency Stop | Stop remains visible, independent, and effective during capture, upload, transcription, correction, and retry |
+| CCT-VOICE-EF-01 | Evidence First states | Transport, transcription, correction, send acceptance, and recorded evidence remain semantically distinct |
+| CCT-VOICE-TENANT-01 | Authority boundaries | Tenant, relationship, participant, and assurance bindings deny cross-boundary access without enumeration |
+| CCT-VOICE-REPLAY-01 | Replay and uncertainty | Duplicate, replayed, and uncertain requests cannot duplicate contributions or evidence |
+| CCT-VOICE-PRIV-01 | Privacy inspection | Audio, transcript, credentials, and sensitive identifiers do not leak through URL, logs, metrics, traces, errors, or browser persistence |
+
 ### Constitutional Controls
 
 | ID | Scenario | Pass condition |
