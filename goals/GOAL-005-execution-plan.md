@@ -2393,6 +2393,25 @@ and does not approve the package.
 Order 3 remains blocked until this review publishes an APPROVED integrated verdict and its
 Learning Record.
 
+### ACC-GOAL-005-INST-004-11
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-004 |
+| `goal_id` | GOAL-005 |
+| `record_id` | ACC-GOAL-005-INST-004-11 |
+| `record_type` | Acceptance Record |
+| `authorization_id` | GOA-GOAL-005-INST-004-11 |
+| `acceptance_timestamp` | 2026-08-12T10:25:53Z |
+| Decision | ACCEPTED |
+| Contribution scope accepted | Independent integrated review of the exact WC-062 owner package at commit `0c994b5` only |
+| Participation Window | One constitutional session from this Acceptance |
+| Independence attestation | Fresh INST-004 context that authored or repaired none of Orders 1A-1D |
+| Exclusions | No owner repair, implementation, source, tests, migration, generated client, provider activation, deployment, constitutional review, PR approval, or merge |
+
+The Acceptance timestamp is later than the GOA issuance timestamp. Order 2 is active; Order 3 and
+all implementation remain blocked.
+
 ---
 
 ## Amendment 11 — WC-063 Founder Administration Prospective Routing
