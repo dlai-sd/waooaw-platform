@@ -2551,14 +2551,26 @@ The Acceptance timestamp is later than GOA issuance. R-094 / CR-GOAL-005-INST-00
 LR-GOAL-005-INST-002-05 APPROVE the repaired specification package and complete Amendment 10
 Order 3. WC-062 Entry Gate items 1–5 are complete; item 6 remains open.
 
-### Required Repaired-Package Acknowledgement
+### ACK-GOAL-005-INST-001-11 — Repaired-Package Acknowledgement
 
-To satisfy WC-062 Entry Gate item 6, INST-001 must now state exactly:
+| Field | Value |
+|---|---|
+| `institution_id` | INST-001 |
+| `goal_id` | GOAL-005 |
+| `record_id` | ACK-GOAL-005-INST-001-11 |
+| `record_type` | Acknowledgement Record |
+| `produced_at` | 2026-08-12T11:29:30Z |
+| Exact acknowledged package | Canonical repair `1e80dfd`; R-093 at `d991272`; R-094 / `CR-GOAL-005-INST-002-16` |
+| Entry Gate effect | Item 6 COMPLETE only |
+| Excluded authority | Implementation, GOA issuance, INST-010 Acceptance, provider activation, deployment, PR approval, and merge |
+
+The Registrant stated exactly:
 
 > "I acknowledge the repaired WC-062 specification package at commit 1e80dfd, the fresh integrated Enterprise Architecture approval R-093 at commit d991272, and the final Constitutional Analyst approval R-094 / CR-GOAL-005-INST-002-16. I understand that this acknowledgement closes Entry Gate item 6 only and does not authorize implementation, issue a GOA, create INST-010 Acceptance, activate a provider, deploy, approve or merge a PR, or replace the fresh current-session Founder implementation authorization still required by item 7."
 
-INST-013 must not fabricate or infer this acknowledgement. After it is recorded, implementation
-still remains blocked by Entry Gate items 7–9.
+ACK-GOAL-005-INST-001-11 satisfies WC-062 Entry Gate item 6. Implementation remains blocked by
+item 7 fresh current-session Founder authorization, item 8 GOA issuance, and item 9 INST-010
+Acceptance in that order.
 
 ---
 

@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 30
+**State Revision:** 31
 **Last Updated:** 2026-08-12
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -35,7 +35,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Product, Solution, Data, Security contributions | REPAIRED — canonical BP/PR/AIR voice contracts and Solution repair CR/LR published at `1e80dfd`; other owner records unchanged |
 | Integrated EA review | DONE — R-093 / `CR-GOAL-005-INST-004-13` APPROVED repaired package `1e80dfd`; R-091 remains superseded for readiness |
 | Final CA readiness | DONE — R-094 / `CR-GOAL-005-INST-002-16` APPROVED; specification Orders 1–6 complete |
-| WC-062 F6 Voice | ENTRY GATE ITEM 6 OPEN — exact repaired-package Registrant acknowledgement required; seven tasks dormant |
+| WC-062 F6 Voice | ENTRY GATE ITEM 7 OPEN — ACK-GOAL-005-INST-001-11 closes item 6; seven tasks dormant and implementation unauthorized |
 | WC-063 F7 Founder Administration | GROOMED CANDIDATE — seven dormant tasks and six required owner/review contributions; not implementation-ready |
 | Founder implementation decision | RECORDED FOR WC-062 — FA-042; dormant pending Entry Gate and fresh confirmation in the future implementation session; WC-063 unauthorized |
 | GO Authorization and Acceptance | SPECIFICATION PHASE COMPLETE — owner, EA, and CA GOAs/Acceptances valid; implementation GOA not issued |
@@ -44,7 +44,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 ### Recovery Context
 
 - **Branch:** `wc/062/specification-routing`
-- **Objective:** Obtain exact repaired-package acknowledgement for Entry Gate item 6; stop before implementation authorization.
+- **Objective:** Await fresh current-session Founder implementation authorization for Entry Gate item 7; no GOA may issue before it.
 - **Authority:** The current Founder instruction authorizes specification routing only. FA-042 remains dormant and cannot authorize implementation in this session.
 - **Validation:** Canonical BP `1.8.0`, PR `1.3.0`, and AIR `1.0.0` contracts parse; voice reference graphs resolve; operation IDs are unique; exact SHA-256 hashes are recorded; no implementation tests apply.
 - **Protected local artifacts:** `.coverage`, `goals/goal_register.jsonl`, `logs/blueprint_assurance_report.json`, and `logs/bootstrap-evidence.jsonl` are unrelated and must remain unstaged.
@@ -63,9 +63,9 @@ prerequisites, not closed evidence and not implementation blockers being bypasse
 
 ## Next Authorized Action
 
-Obtain the exact repaired-package Registrant acknowledgement quoted in Amendment 10. After it is
-recorded, implementation remains stopped pending fresh current-session Founder authority, a
-WC-062-specific implementation GOA, and later INST-010 Acceptance.
+Obtain fresh current-session Founder authorization for WC-062 implementation. Only after that
+explicit decision may INST-013 issue a WC-062-specific implementation GOA; INST-010 Acceptance
+must then be recorded later than GOA issuance before implementation begins.
 Implementation remains stopped until the complete Entry Gate, fresh implementation-session Founder
 confirmation, implementation GOA, and later INST-010 Acceptance pass. WC-063 remains unselected.
 
