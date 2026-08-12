@@ -374,6 +374,12 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex="-1"]:foc
   .bottom-navigation a { min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .2rem; padding: .25rem; font-size: .7rem; text-align: center; text-decoration: none; }
   .stop-control { inset-block-end: 80px; }
   .workspace-shell { width: 100%; min-width: 0; padding: 1rem .75rem 7rem; }
+  .workspace-nav { flex-wrap: wrap; overflow-x: visible; gap: .15rem; }
+  .workspace-nav a { padding: .45rem .55rem; }
+  .workspace-families { grid-template-columns: minmax(0, 1fr); }
+  .workspace-family h2 { max-width: 100%; }
+  .evidence-window { position: relative; }
+  .evidence-window .currency-state { position: static; margin-block: .75rem; }
   .contract-money, .contract-terms { grid-template-columns: 1fr; gap: .75rem; }
   .decision-actions { display: grid; grid-template-columns: 1fr 1fr; }
   .decision-actions button, .decision-actions a { width: 100%; text-align: center; }

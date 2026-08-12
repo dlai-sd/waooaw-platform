@@ -102,6 +102,15 @@ describe('RelationshipWorkspace', () => {
     expect(await screen.findByText('No messages yet. Start with a clear outcome for your professional.')).toBeVisible();
   });
 
+  it('projects authoritative relationship Stop into the conversation controls', async () => {
+    render(<RelationshipWorkspace relationship={{ ...relationship, state: 'STOPPED_EMERGENCY' }} timeline={timeline} views={views} evaluation={evaluation} />);
+
+    expect(await screen.findByText('stopped', { exact: true })).toBeVisible();
+    expect(screen.getByLabelText('Message your professional')).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Send' })).toBeDisabled();
+    expect(screen.queryByText('live', { exact: true })).not.toBeInTheDocument();
+  });
+
   it('CCT-AE01-DARK-01 shows exact terms and symmetric unselected contract decisions', async () => {
     render(<RelationshipWorkspace relationship={relationship} timeline={timeline} views={views} evaluation={evaluation} contractJourney={contractJourney} />);
 

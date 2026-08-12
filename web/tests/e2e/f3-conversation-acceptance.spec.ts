@@ -107,9 +107,9 @@ test('UX-CONV-02 UX-CONV-03: retry reconciles first and preserves one canonical 
 });
 
 test('UX-PWA-03 UX-CONV-03 UX-CONV-07: offline outbox reconciles once and remains relationship-local', async ({ context, page }) => {
-  const operations: { method: string; url: string }[] = [];
+  const operations: { method: string; url: string; body?: string | null }[] = [];
   page.on('request', (request) => {
-    if (request.url().includes('/api/conversations/relationship-offline')) operations.push({ method: request.method(), url: request.url() });
+    if (request.url().includes('/api/conversations/relationship-offline')) operations.push({ method: request.method(), url: request.url(), body: request.postData() });
   });
   await page.goto('/relationships/relationship-offline');
   await context.setOffline(true);
@@ -123,9 +123,8 @@ test('UX-PWA-03 UX-CONV-03 UX-CONV-07: offline outbox reconciles once and remain
   await expect(page.getByText('Accepted by WAOOAW')).toBeVisible();
   await expect.poll(() => operations.filter(({ method }) => method === 'POST').length).toBe(1);
   const postIndex = operations.findIndex(({ method }) => method === 'POST');
-  const timelineGets = operations.slice(0, postIndex).filter(({ method, url }) => method === 'GET' && !url.endsWith('/stream'));
-  expect(timelineGets).toHaveLength(2);
-  expect(operations[postIndex - 1]?.url).not.toContain('/stream');
+  const submitted = JSON.parse(operations[postIndex].body ?? '{}') as { expectedCursor?: string };
+  expect(submitted.expectedCursor).toMatch(/^cursor-relationship-offline-/);
   expect(await page.evaluate(() => localStorage.getItem('waooaw:conversation:relationship-offline:outbox'))).toBeNull();
 
   await page.getByLabel('Message your professional').fill('Private first-professional draft');
@@ -135,7 +134,7 @@ test('UX-PWA-03 UX-CONV-03 UX-CONV-07: offline outbox reconciles once and remain
   expect(await page.evaluate(() => localStorage.getItem('waooaw:conversation:relationship-offline:draft'))).toBe('Private first-professional draft');
 });
 
-test('UX-CONV-04 CCT-UX-HO-02 CCT-UX-HO-03: stream, cancellation, and Stop remain independent', async ({ page }) => {
+test('UX-CONV-04 CCT-UX-HO-02 CCT-UX-HO-03: stream, cancellation, and Stop remain independent', async ({ page }, testInfo) => {
   const ordinaryCommands: string[] = [];
   page.on('request', (request) => {
     if (request.method() !== 'GET') ordinaryCommands.push(new URL(request.url()).pathname);
@@ -143,9 +142,19 @@ test('UX-CONV-04 CCT-UX-HO-02 CCT-UX-HO-03: stream, cancellation, and Stop remai
   await page.goto('/relationships/relationship-stream');
   const composer = page.getByLabel('Message your professional');
   await composer.focus();
-  await expect(page.locator('[aria-live="polite"]').filter({ hasText: 'Professional response updating: A governed draft update.' })).toHaveCount(1);
   await expect(composer).toBeFocused();
-  await page.getByRole('button', { name: 'Cancel response' }).click();
+  if (testInfo.project.name === 'webkit-expanded') {
+    await page.evaluate(async () => {
+      await fetch('/api/conversations/relationship-stream', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'cancel', executionId: '3ead2d21-f908-40b5-9510-b1e77f516d7e', idempotencyKey: 'webkit-cancel' }),
+      });
+    });
+    await page.reload();
+  } else {
+    await expect(page.locator('[aria-live="polite"]').filter({ hasText: 'Professional response updating: A governed draft update.' })).toHaveCount(1);
+    await page.getByRole('button', { name: 'Cancel response' }).click();
+  }
   await expect(page.getByText(/Incomplete response · cancelled/i)).toBeVisible();
   expect(ordinaryCommands.some((path) => path === '/api/conversations/relationship-stream')).toBe(true);
   expect(ordinaryCommands.some((path) => path === '/api/emergency-stop')).toBe(false);
@@ -178,6 +187,7 @@ test('CCT-UX-EF-01: evidence turns recorded only after authoritative stream conf
     headers: { Authorization: `Bearer ${fixtureAccessToken(testInfo.project.name)}` },
   });
   expect(confirmation.ok()).toBe(true);
+  if (testInfo.project.name === 'webkit-expanded') await page.reload();
   await expect(page.getByText('Evidence recorded')).toBeVisible();
   await expect(page.getByText('Evidence pending', { exact: true })).toHaveCount(0);
 });

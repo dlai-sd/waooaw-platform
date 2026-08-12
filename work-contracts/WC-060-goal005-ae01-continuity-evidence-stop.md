@@ -5,7 +5,7 @@
 **Office on execution:** Platform IT Expert (INST-010)
 **Reviewer:** Security Architect (INST-007) + Data Architect (INST-006)
 **WC-034 acceptance reviewer:** Enterprise Architect (INST-004) in an independent context
-**Status:** IMPLEMENTATION IN PROGRESS — WC060-01 through WC060-08 complete; WC060-09 active
+**Status:** IMPLEMENTATION COMPLETE — WC060-01 through WC060-09 complete; independent review pending
 **Authorization:** FA-041, GOA-GOAL-005-INST-010-06, and ACC-GOAL-005-INST-010-06 authorize this session's implementation.
 **Unification reviews:** R-073 architecture/product APPROVED; R-074 security/data APPROVED; R-075 constitutional APPROVED
 **Track:** VERTICAL CUSTOMER OUTCOME
@@ -37,7 +37,7 @@ This unification does not waive WC-059 completion, per-session Founder implement
 | WC060-06 | Build web relationship workspace and WhatsApp commands for timeline, evidence summary/export link, current authority/cost/trial state, and Stop. Distinguish transport acceptance from participant-observed acknowledgement and expose unresolved delivery honestly. | reasoning | done — web build, 6 UI tests, and 23 WhatsApp tests pass |
 | WC060-07 | Bind Stop to the single AE-01 Employment Relationship: halt its evaluation/trial PAAS sessions, configuration, contract presentation, activation, and handoff within the existing latency budget; reject later consequential commands and show stopped state on every channel. Release is Tier-4 portal only, limited to active same-tenant `EMPLOYER`, freshly reauthenticated and explicitly confirmed with evidence linked to the originating Stop. Reconnect, conversation text, timeout, operator, or channel possession cannot release. AE-02 execution fan-out is deferred to AE-02 proof. | reasoning | done — 82 BP regressions, 24 WhatsApp tests, and 4 latency CCTs pass |
 | WC060-08 | Add adversarial/integration CCTs for takeover, replay, confused deputy, assurance downgrade, cross-tenant query, out-of-order handoff, offline recovery, duplicate delivery, cross-channel Stop, unauthorized release, forged or replayed Neutral Continuity Envelope signatures, and full proposal-to-activation-to-handoff reconstruction. | auto | done — integrated BP/PR/CE/PostgreSQL Docker matrix passes |
-| WC060-09 | Complete WC-034 F5 browser/generated-client acceptance for UX-CONV-03, UX-RES-02, and UX-CONT-01 through UX-CONT-06 at exact 360px and expanded viewports; run the proportional F8 accessibility, privacy, contract-conformance, coverage, lint, build, and regression gate; publish one integrated evidence package for independent INST-004 review. | auto | pending |
+| WC060-09 | Complete WC-034 F5 browser/generated-client acceptance for UX-CONV-03, UX-RES-02, and UX-CONT-01 through UX-CONT-06 at exact 360px and expanded viewports; run the proportional F8 accessibility, privacy, contract-conformance, coverage, lint, build, and regression gate; publish one integrated evidence package for independent INST-004 review. | auto | done — integrated F5/F8 evidence published |
 
 ### WC060-01 Evidence
 
@@ -123,6 +123,18 @@ replay, cross-tenant Evidence Reader, unauthorized Stop release, and full relati
 reconstruction CCTs pass 19/19. The integrated Docker matrix also passes PR offline/reconnect and
 duplicate-delivery tests 71/71, Migration 22 live PostgreSQL replay/RLS/concurrency tests 22/22,
 and CE tenant-scoped Evidence Reader plus Emergency Stop latency tests 5/5.
+
+### WC060-09 Evidence
+
+The generated browser client deterministically reproduces from BP OpenAPI 1.7.0 with no diff and
+pins Employment handoff, Stop, release, and Evidence Reader operations. F5 Playwright acceptance
+passes UX-CONV-03, UX-RES-02, and UX-CONT-01 through UX-CONT-06 at exact 360x800 and 1440x900,
+with reviewed active/stopped baselines, zero serious/critical axe findings, and element containment.
+The complete browser matrix passes 106 tests across Chromium, Firefox, WebKit, compact, expanded,
+and intermediate projects with 19 intentional project-scope skips. Jest passes 89/89 at 94.63%
+lines, lint is clean, and the production build passes. Final Docker regressions pass BP 309/309,
+CE 83/83, and PR 153/153. The integrated attested evidence is published in
+`goals/GOAL-005-wc060-implementation-evidence.md`.
 
 ## Required Inputs
 

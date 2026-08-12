@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 16
+**State Revision:** 17
 **Last Updated:** 2026-08-12
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -40,7 +40,8 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | WC060-06 customer continuity surfaces | DONE — Evidence Window/export, honest delivery state, and WhatsApp commands |
 | WC060-07 relationship Emergency Stop | DONE — relationship-wide CE/Temporal halt and proof-bound Tier-4 release |
 | WC060-08 adversarial CCT matrix | DONE — BP 19/19, PR 71/71, PostgreSQL 22/22, and CE 5/5 Docker tests pass |
-| WC060-09 integrated acceptance | IN PROGRESS — browser, accessibility, privacy, conformance, coverage, and regression gate |
+| WC060-09 integrated acceptance | DONE — browser 106 pass, web 89/89 at 94.63% lines, BP 309/309, CE 83/83, PR 153/153 |
+| WC-060 independent review | IN PROGRESS — INST-007, INST-006, and fresh INST-004 review package |
 
 ### Recovery Context
 
@@ -63,8 +64,8 @@ are satisfied. Implementation is underway on branch ib/019/wc060-implementation.
 
 ## Next Authorized Action
 
-INST-010 completes WC060-01 through WC060-09, publishes attested Contribution and Learning Records,
-and opens one complete unmerged PR. Independent INST-007/006/004 reviews follow.
+Independent INST-007, INST-006, and fresh INST-004 review the complete WC-060 contribution.
+After approved reviews, INST-010 opens one complete unmerged PR and requests constitutional review.
 
 ## History And Evidence
 

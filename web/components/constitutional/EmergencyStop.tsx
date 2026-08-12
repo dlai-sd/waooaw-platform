@@ -24,7 +24,14 @@ export function EmergencyStop({ contractId, activeSessionIds }: EmergencyStopPro
           ...(activeSessionIds.length > 0 ? { activeSessionIds } : {}),
         }),
       });
-      setStatus(response.ok ? 'confirmed' : 'failed');
+      if (response.ok) {
+        setStatus('confirmed');
+        window.dispatchEvent(new CustomEvent('waooaw:relationship-stopped', {
+          detail: { relationshipId: contractId },
+        }));
+      } else {
+        setStatus('failed');
+      }
     } catch {
       setStatus('failed');
     }
