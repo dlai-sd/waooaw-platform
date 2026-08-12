@@ -2738,7 +2738,38 @@ evidence from earlier iterations justifies detailed grooming.
 
 ### Current Decision
 
-WC-064 is the selected planning scope, but owner contributions remain gated until this amendment
-passes independent CA readiness and receives a valid Registrant acknowledgement. WC-065 through
-WC-069 remain implementation-unauthorized. No contribution GOA, Acceptance, implementation GOA,
-implementation Acceptance, deployment authority, PR approval, or merge authority is issued here.
+R-099 / `CR-GOAL-005-INST-002-18` independently approves this exact amendment at reviewed commit
+`31b80e4`. `ACK-GOAL-005-INST-001-12` below records the Registrant's exact acknowledgement. GEOM
+R2-03 conditions 1 and 2 are therefore satisfied for future WC-064 owner-contribution routing.
+
+INST-013 may now define and issue the individual WC-064 owner-contribution GO Authorizations in
+dependency order. No contribution has yet been accepted, and no Participation Window is active.
+WC-065 through WC-069 remain implementation-unauthorized. No implementation GOA, implementation
+Acceptance, deployment authority, PR approval, or merge authority is issued here.
+
+### Registrant Acknowledgement — ACK-GOAL-005-INST-001-12
+
+| Attestation field | Value |
+|---|---|
+| `institution_id` | INST-001 |
+| `goal_id` | GOAL-005 |
+| `record_id` | ACK-GOAL-005-INST-001-12 |
+| `record_type` | Acknowledgement Record |
+| `produced_at` | 2026-08-12T17:35:28Z |
+| Acknowledged plan | GEP-GOAL-005-INST-013-13 at reviewed commit `31b80e4` |
+| Independent readiness | R-099 / CR-GOAL-005-INST-002-18 — APPROVED |
+| Registrant | Yogesh Khandge — Founder, INST-001 |
+| Decision | ACKNOWLEDGED — WC-064 owner-contribution routing only |
+
+> "I acknowledge GEP-GOAL-005-INST-013-13 and authorize INST-013 to issue GO Authorizations for
+> WC-064 owner contributions exactly as specified in Amendment 12. I understand that this
+> acknowledgement does not authorize implementation in WC-064 or any WC-065 through WC-069
+> iteration, does not issue any GOA or Acceptance itself, does not invent owner decisions, does
+> not activate providers, does not deploy, does not approve or merge a PR, and does not replace
+> the separate implementation confirmations required for each future iteration."
+
+The Registrant affirmed this exact statement in the activating session on 2026-08-12. This record
+satisfies GEOM R2-03 condition 2 only. The acknowledgement does not itself issue a GOA or
+Acceptance, begin a Participation Window, authorize implementation, approve PR #275, or authorize
+merge. The INST-002 context that produced R-099 may not serve as the future WC-064 constitutional
+owner contributor or subsequent independent package reviewer.

@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 42
+**State Revision:** 43
 **Last Updated:** 2026-08-12
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -21,7 +21,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Platform version | 1.45.0 |
 | Latest completed Work Contract | WC-062 — WC-034 F6 Voice Interaction |
 | Latest merge | PR #273 merged to `main` as `1a624d6` |
-| Active delivery | WC-064 selected as proposed Founder Commercial Governance planning scope; awaiting CA readiness and Registrant acknowledgement |
+| Active delivery | WC-064 active for owner GOA routing after R-099 and ACK-GOAL-005-INST-001-12; implementation unauthorized |
 
 ## Active Checkpoint — Founder Commercial Governance Program Design
 
@@ -29,7 +29,9 @@ or evidence artifact. Completed history remains in git and the archive index bel
 |---|---|
 | WC-063 supersession | DONE — preserved as historical evidence; never implementation-authorized |
 | WC-064 contract formalization | DONE — program objectives, first-grooming standard, acceptance scenarios, and gated implementation work packages recorded |
-| WC-064 program design | GATED — CA readiness and Registrant acknowledgement required before owner contribution GOAs |
+| CA routing readiness | DONE — R-099 / CR-GOAL-005-INST-002-18 independently APPROVED Amendment 12 |
+| Registrant acknowledgement | DONE — ACK-GOAL-005-INST-001-12 recorded verbatim |
+| WC-064 program design | READY FOR ROUTING — individual owner GOAs and later Acceptances not yet issued |
 | WC-065 detailed grooming | PENDING — begins only within approved WC-064 design |
 | WC-066 through WC-069 | PLANNED/DEFERRED — detailed grooming and implementation unauthorized |
 | Implementation authorization | NOT REQUESTED — no iteration is implementation-authorized |
@@ -46,19 +48,21 @@ or evidence artifact. Completed history remains in git and the archive index bel
 
 WC062-01 through WC062-07 were implemented under ACC-07, independently reviewed, and merged by the
 Founder through PR #273. WC-063 was superseded before implementation. Founder selection authorizes
-WC-064 design and grooming only. WC-065 through WC-069 require separate approved specifications,
+WC-064 owner-contribution routing, design, and grooming only. WC-065 through WC-069 require separate approved specifications,
 constitutional readiness, acknowledgement, fresh implementation confirmation, GOA, Acceptance,
 and independent implementation review.
 
 ## Current Blockers
 
-None filed. WC-062 delivery is closed. WC-064 design has no current constitutional blocker.
+None filed. WC-064 owner routing has no current constitutional blocker. R-099's fresh-context
+condition remains binding for the future INST-002 owner contribution and package review.
 
 ## Next Authorized Action
 
-Obtain independent CA readiness review of GOAL-005 Amendment 12 and valid Registrant
-acknowledgement before issuing any WC-064 owner contribution GOA. Do not begin WC-065 through
-WC-069 implementation or issue implementation authority.
+Define and issue the individual WC-064 owner-contribution GOAs with complete Evidence
+Specifications, Participation Windows, dependencies, and independence constraints; obtain each
+temporally later Acceptance before contribution begins. Do not begin WC-065 through WC-069
+implementation or issue implementation authority.
 
 ## History And Evidence
 

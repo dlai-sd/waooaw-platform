@@ -6,8 +6,9 @@
 **Required owner contributions:** Product Owner (INST-011), Business Architect (INST-003), Enterprise Architect (INST-004), Solution Architect (INST-005), Data Architect (INST-006), Security Architect (INST-007), Platform IT Expert (INST-010), Constitutional Analyst (INST-002)
 **Integrated reviewer:** Enterprise Architect (INST-004)
 **Independent readiness reviewer:** Constitutional Analyst (INST-002)
-**Selected by:** Founder instruction, 2026-08-12, as the proposed design and grooming scope
-**Status:** PROPOSED FOR INDEPENDENT READINESS AND REGISTRANT ACKNOWLEDGEMENT; OWNER CONTRIBUTIONS AND IMPLEMENTATION UNAUTHORIZED
+**Selected by:** Founder instruction, 2026-08-12, as the design and grooming scope
+**Routing readiness:** R-099 / CR-GOAL-005-INST-002-18 APPROVED; ACK-GOAL-005-INST-001-12 recorded
+**Status:** ACTIVE FOR OWNER GOA ROUTING; NO CONTRIBUTION ACCEPTED; IMPLEMENTATION UNAUTHORIZED
 **Constitutional basis:** C-002, C-005, C-007, C-023, C-038, C-043, C-048, C-049, C-051, C-056, C-059, C-064, C-065, C-076, C-088, C-089, C-090, C-091
 
 ## Outcome
@@ -219,10 +220,10 @@ WC-064 is complete only when:
 
 ## Authorization Boundary
 
-Founder selection authorizes WC-064 documentation, owner contribution routing, design, grooming,
-and independent review preparation only. Owner contribution GOAs require independent CA readiness
-of GOAL-005 Amendment 12 and a valid Registrant acknowledgement before issuance. It does not
-authorize WC-065 through WC-069 implementation. Each
+Founder selection, R-099, and ACK-GOAL-005-INST-001-12 authorize INST-013 to define and issue
+individual WC-064 owner-contribution GOAs in dependency order. Each contribution begins only after
+its valid GOA and temporally later Acceptance. No contribution GOA or Acceptance is issued by this
+contract. It does not authorize WC-065 through WC-069 implementation. Each
 implementation iteration requires its approved detailed specification, constitutional readiness,
 Registrant acknowledgement, fresh Founder implementation confirmation, GO Authorization, later
 Acceptance, and independent implementation review.
