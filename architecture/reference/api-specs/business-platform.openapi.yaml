@@ -2,7 +2,7 @@ openapi: "3.1.0"
 
 info:
   title: WAOOAW Business Platform API
-  version: "1.7.0"
+  version: "1.8.0"
   description: |
     External customer-facing API for the WAOOAW Business Platform.
     Manages the employment lifecycle, approval workflows, evidence reading,
@@ -38,6 +38,8 @@ tags:
     description: Durable relationship conversation timeline, commands, reconciliation, and canonical response stream
   - name: Relationship Workspace
     description: Relationship-governance workspace projection, typed commands, and evidence mediation
+  - name: Voice Contributions
+    description: Authenticated voice capture, transcript review, correction, explicit send, and payload erasure
   - name: Professionals
     description: Outcome-based professional discovery and informed pre-trial disclosure
   - name: WhatsApp Journey
@@ -2822,6 +2824,176 @@ paths:
         "404": { $ref: "#/components/responses/RelationshipWorkspaceNotAccessible" }
         "503": { $ref: "#/components/responses/RelationshipWorkspaceUnavailable" }
 
+  /api/v1/employment/relationships/{relationshipId}/voice-contributions/sessions:
+    post:
+      tags: [Voice Contributions]
+      summary: Create or replay a voice contribution session
+      operationId: createVoiceContributionSession
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateVoiceContributionSessionRequestV1" }
+      responses:
+        "201": { description: Session created, content: { application/json: { schema: { $ref: "#/components/schemas/VoiceContributionSessionV1" } } } }
+        "200": { description: Prior identical session replayed, content: { application/json: { schema: { $ref: "#/components/schemas/VoiceContributionSessionV1" } } } }
+        "400": { $ref: "#/components/responses/VoiceContributionInvalidRequest" }
+        "401": { $ref: "#/components/responses/VoiceContributionUnauthorized" }
+        "404": { $ref: "#/components/responses/VoiceContributionNotAccessible" }
+        "409": { $ref: "#/components/responses/VoiceContributionConflict" }
+        "423": { $ref: "#/components/responses/VoiceContributionBlocked" }
+        "503": { $ref: "#/components/responses/VoiceContributionUnavailable" }
+
+  /api/v1/employment/relationships/{relationshipId}/voice-contributions/sessions/{sessionId}:
+    get:
+      tags: [Voice Contributions]
+      summary: Reconcile authoritative voice contribution state
+      operationId: getVoiceContributionSession
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/VoiceSessionId"
+      responses:
+        "200": { description: Current authoritative session, content: { application/json: { schema: { $ref: "#/components/schemas/VoiceContributionSessionV1" } } } }
+        "401": { $ref: "#/components/responses/VoiceContributionUnauthorized" }
+        "404": { $ref: "#/components/responses/VoiceContributionNotAccessible" }
+        "503": { $ref: "#/components/responses/VoiceContributionUnavailable" }
+
+  /api/v1/employment/relationships/{relationshipId}/voice-contributions/sessions/{sessionId}/audio:
+    post:
+      tags: [Voice Contributions]
+      summary: Upload one bounded voice draft for validation and transcription
+      operationId: uploadVoiceContributionAudio
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/VoiceSessionId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [audio]
+              properties:
+                audio: { type: string, format: binary }
+      responses:
+        "202": { description: Audio accepted for fail-closed validation, content: { application/json: { schema: { $ref: "#/components/schemas/VoiceUploadReceiptV1" } } } }
+        "400": { $ref: "#/components/responses/VoiceContributionInvalidRequest" }
+        "401": { $ref: "#/components/responses/VoiceContributionUnauthorized" }
+        "404": { $ref: "#/components/responses/VoiceContributionNotAccessible" }
+        "409": { $ref: "#/components/responses/VoiceContributionConflict" }
+        "413": { $ref: "#/components/responses/VoiceContributionLimitExceeded" }
+        "415": { $ref: "#/components/responses/VoiceContributionInvalidMedia" }
+        "423": { $ref: "#/components/responses/VoiceContributionBlocked" }
+        "503": { $ref: "#/components/responses/VoiceContributionUnavailable" }
+
+  /api/v1/employment/relationships/{relationshipId}/voice-contributions/sessions/{sessionId}/transcript:
+    get:
+      tags: [Voice Contributions]
+      summary: Get the provider-neutral transcript review state
+      operationId: getVoiceContributionTranscript
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/VoiceSessionId"
+      responses:
+        "200": { description: Transcript state, content: { application/json: { schema: { $ref: "#/components/schemas/VoiceTranscriptV1" } } } }
+        "401": { $ref: "#/components/responses/VoiceContributionUnauthorized" }
+        "404": { $ref: "#/components/responses/VoiceContributionNotAccessible" }
+        "503": { $ref: "#/components/responses/VoiceContributionUnavailable" }
+
+  /api/v1/employment/relationships/{relationshipId}/voice-contributions/sessions/{sessionId}/correction:
+    put:
+      tags: [Voice Contributions]
+      summary: Publish a new customer-reviewed transcript version
+      operationId: submitVoiceContributionCorrection
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/VoiceSessionId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/VoiceCorrectionRequestV1" }
+      responses:
+        "200": { description: Correction version recorded, content: { application/json: { schema: { $ref: "#/components/schemas/VoiceCorrectionReceiptV1" } } } }
+        "400": { $ref: "#/components/responses/VoiceContributionInvalidRequest" }
+        "401": { $ref: "#/components/responses/VoiceContributionUnauthorized" }
+        "404": { $ref: "#/components/responses/VoiceContributionNotAccessible" }
+        "409": { $ref: "#/components/responses/VoiceContributionConflict" }
+        "423": { $ref: "#/components/responses/VoiceContributionBlocked" }
+
+  /api/v1/employment/relationships/{relationshipId}/voice-contributions/sessions/{sessionId}/send:
+    post:
+      tags: [Voice Contributions]
+      summary: Explicitly send the reviewed voice contribution
+      operationId: sendVoiceContribution
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/VoiceSessionId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SendVoiceContributionRequestV1" }
+      responses:
+        "200": { description: Authoritative Evidence First outcome, content: { application/json: { schema: { $ref: "#/components/schemas/VoiceContributionOutcomeV1" } } } }
+        "400": { $ref: "#/components/responses/VoiceContributionInvalidRequest" }
+        "401": { $ref: "#/components/responses/VoiceContributionUnauthorized" }
+        "404": { $ref: "#/components/responses/VoiceContributionNotAccessible" }
+        "409": { $ref: "#/components/responses/VoiceContributionConflict" }
+        "423": { $ref: "#/components/responses/VoiceContributionBlocked" }
+        "503": { $ref: "#/components/responses/VoiceContributionUnavailable" }
+
+  /api/v1/employment/relationships/{relationshipId}/voice-contributions/sessions/{sessionId}/cancel:
+    post:
+      tags: [Voice Contributions]
+      summary: Cancel an unsent voice contribution session
+      operationId: cancelVoiceContributionSession
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/VoiceSessionId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CancelVoiceContributionRequestV1" }
+      responses:
+        "200": { description: Cancellation or prior terminal outcome, content: { application/json: { schema: { $ref: "#/components/schemas/VoiceContributionOutcomeV1" } } } }
+        "401": { $ref: "#/components/responses/VoiceContributionUnauthorized" }
+        "404": { $ref: "#/components/responses/VoiceContributionNotAccessible" }
+        "409": { $ref: "#/components/responses/VoiceContributionConflict" }
+        "423": { $ref: "#/components/responses/VoiceContributionBlocked" }
+
+  /api/v1/employment/relationships/{relationshipId}/voice-contributions/{contributionId}/erasure:
+    post:
+      tags: [Voice Contributions]
+      summary: Request Evidence First erasure of voice payload
+      operationId: requestVoicePayloadErasure
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/VoiceContributionId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/VoicePayloadErasureRequestV1" }
+      responses:
+        "202": { description: Erasure accepted, content: { application/json: { schema: { $ref: "#/components/schemas/VoicePayloadErasureReceiptV1" } } } }
+        "200": { description: Prior identical outcome replayed, content: { application/json: { schema: { $ref: "#/components/schemas/VoicePayloadErasureReceiptV1" } } } }
+        "401": { $ref: "#/components/responses/VoiceContributionUnauthorized" }
+        "404": { $ref: "#/components/responses/VoiceContributionNotAccessible" }
+        "409": { $ref: "#/components/responses/VoiceContributionConflict" }
+        "423": { $ref: "#/components/responses/VoiceContributionBlocked" }
+        "503": { $ref: "#/components/responses/VoiceContributionUnavailable" }
+
   /api/v1/notifications/preferences:
     get:
       tags: [Notifications]
@@ -2904,6 +3076,18 @@ components:
         type: string
         format: uuid
       description: Tenant-scoped durable employment relationship UUID
+
+    VoiceSessionId:
+      name: sessionId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+
+    VoiceContributionId:
+      name: contributionId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
 
     RelationshipHandoffId:
       name: handoffId
@@ -3004,6 +3188,30 @@ components:
       description: Approval request UUID
 
   responses:
+    VoiceContributionInvalidRequest:
+      description: Voice request or state is invalid
+      content: { application/problem+json: { schema: { $ref: "#/components/schemas/ProblemDetail" } } }
+    VoiceContributionUnauthorized:
+      description: Authentication is required
+      content: { application/problem+json: { schema: { $ref: "#/components/schemas/ProblemDetail" } } }
+    VoiceContributionNotAccessible:
+      description: Voice session is absent or inaccessible without enumeration
+      content: { application/problem+json: { schema: { $ref: "#/components/schemas/ProblemDetail" } } }
+    VoiceContributionConflict:
+      description: State, version, or idempotency conflict
+      content: { application/problem+json: { schema: { $ref: "#/components/schemas/ProblemDetail" } } }
+    VoiceContributionLimitExceeded:
+      description: Product duration or size limit exceeded
+      content: { application/problem+json: { schema: { $ref: "#/components/schemas/ProblemDetail" } } }
+    VoiceContributionInvalidMedia:
+      description: Media type or validated content is unsupported
+      content: { application/problem+json: { schema: { $ref: "#/components/schemas/ProblemDetail" } } }
+    VoiceContributionBlocked:
+      description: Voice operation is blocked, quarantined, or stopped
+      content: { application/problem+json: { schema: { $ref: "#/components/schemas/ProblemDetail" } } }
+    VoiceContributionUnavailable:
+      description: Required owner, scanner, provider, or evidence service is unavailable
+      content: { application/problem+json: { schema: { $ref: "#/components/schemas/ProblemDetail" } } }
     IdentityInvalidRequest:
       description: Identity request is malformed or unsupported; no submitted secret is echoed
       content:
@@ -5908,6 +6116,134 @@ components:
         evidence:
           type: array
           items: { $ref: "#/components/schemas/RelationshipEvidenceDetailV1" }
+
+    VoiceContributionStateV1:
+      type: string
+      enum: [CREATED, UPLOADING, UPLOADED, TRANSCRIBING, REVIEW_REQUIRED, READY_TO_SEND, SENDING, RECORDED, CANCELLED, REJECTED, QUARANTINED, UNAVAILABLE, UNKNOWN, STOPPED]
+
+    VoiceConfidenceBandV1:
+      type: string
+      enum: [HIGH, REVIEW, LOW, UNAVAILABLE]
+
+    CreateVoiceContributionSessionRequestV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, locale]
+      properties:
+        schemaVersion: { type: string, const: "1.0.0" }
+        locale: { type: string, enum: [en-IN, hi-IN, mr-IN] }
+
+    VoiceContributionSessionV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, sessionId, relationshipId, state, locale, allowedCommands, createdAt, updatedAt]
+      properties:
+        schemaVersion: { type: string, const: "1.0.0" }
+        sessionId: { type: string, format: uuid }
+        relationshipId: { type: string, format: uuid }
+        state: { $ref: "#/components/schemas/VoiceContributionStateV1" }
+        locale: { type: string, enum: [en-IN, hi-IN, mr-IN] }
+        confidenceBand: { $ref: "#/components/schemas/VoiceConfidenceBandV1" }
+        durationSeconds: { type: integer, minimum: 0, maximum: 180 }
+        audioSizeBytes: { type: integer, minimum: 0, maximum: 15728640 }
+        allowedCommands:
+          type: array
+          items: { type: string, enum: [UPLOAD, REVIEW_TRANSCRIPT, SUBMIT_CORRECTION, SEND, CANCEL, RETRY, SWITCH_TO_TEXT, REQUEST_ERASURE] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    VoiceUploadReceiptV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, sessionId, state, receiptId, acceptedAt]
+      properties:
+        schemaVersion: { type: string, const: "1.0.0" }
+        sessionId: { type: string, format: uuid }
+        state: { $ref: "#/components/schemas/VoiceContributionStateV1" }
+        receiptId: { type: string, format: uuid }
+        acceptedAt: { type: string, format: date-time }
+
+    VoiceTranscriptV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, sessionId, state, locale, confidenceBand, version]
+      properties:
+        schemaVersion: { type: string, const: "1.0.0" }
+        sessionId: { type: string, format: uuid }
+        state: { $ref: "#/components/schemas/VoiceContributionStateV1" }
+        locale: { type: string, enum: [en-IN, hi-IN, mr-IN] }
+        confidenceBand: { $ref: "#/components/schemas/VoiceConfidenceBandV1" }
+        text: { type: string, maxLength: 20000 }
+        version: { type: integer, minimum: 1 }
+
+    VoiceCorrectionRequestV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, expectedVersion, correctedText]
+      properties:
+        schemaVersion: { type: string, const: "1.0.0" }
+        expectedVersion: { type: integer, minimum: 1 }
+        correctedText: { type: string, minLength: 1, maxLength: 20000 }
+
+    VoiceCorrectionReceiptV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, sessionId, state, version, recordedAt]
+      properties:
+        schemaVersion: { type: string, const: "1.0.0" }
+        sessionId: { type: string, format: uuid }
+        state: { $ref: "#/components/schemas/VoiceContributionStateV1" }
+        version: { type: integer, minimum: 2 }
+        recordedAt: { type: string, format: date-time }
+
+    SendVoiceContributionRequestV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, acceptedTranscriptVersion, explicitSend]
+      properties:
+        schemaVersion: { type: string, const: "1.0.0" }
+        acceptedTranscriptVersion: { type: integer, minimum: 1 }
+        explicitSend: { type: boolean, const: true }
+
+    CancelVoiceContributionRequestV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion]
+      properties:
+        schemaVersion: { type: string, const: "1.0.0" }
+
+    VoiceContributionOutcomeV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, sessionId, state, outcomeAt]
+      properties:
+        schemaVersion: { type: string, const: "1.0.0" }
+        sessionId: { type: string, format: uuid }
+        contributionId: { type: string, format: uuid }
+        state: { $ref: "#/components/schemas/VoiceContributionStateV1" }
+        evidenceReference: { type: string, format: uuid }
+        reconciliationRequired: { type: boolean }
+        outcomeAt: { type: string, format: date-time }
+
+    VoicePayloadErasureRequestV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, scope]
+      properties:
+        schemaVersion: { type: string, const: "1.0.0" }
+        scope: { type: string, enum: [AUDIO, TRANSCRIPT, AUDIO_AND_TRANSCRIPT] }
+
+    VoicePayloadErasureReceiptV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, erasureId, contributionId, status, recordedAt]
+      properties:
+        schemaVersion: { type: string, const: "1.0.0" }
+        erasureId: { type: string, format: uuid }
+        contributionId: { type: string, format: uuid }
+        status: { type: string, enum: [PENDING, COMPLETED, BLOCKED, UNKNOWN] }
+        evidenceReference: { type: string, format: uuid }
+        recordedAt: { type: string, format: date-time }
 
     RelationshipWorkspaceProblemCodeV1:
       type: string

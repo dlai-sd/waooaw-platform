@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 23
+**State Revision:** 32
 **Last Updated:** 2026-08-12
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -20,30 +20,35 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Engineering status | IMPLEMENTATION |
 | Platform version | 1.45.0 |
 | Latest completed Work Contract | WC-060 — AE-01 Omnichannel Continuity, Evidence, and Emergency Stop |
-| Latest merge | PR #268 merged to `main` as `95e0d91` |
-| Active delivery | WC-034 F6/F7 grooming — WC-062 and WC-063 candidates; implementation unauthorized |
+| Latest merge | PR #270 merged to `main` as `ccf2ca5` |
+| Active delivery | WC-062 specification routing under GOAL-005 Amendment 10; implementation unauthorized |
 
-## Active Checkpoint — WC-062/WC-063 Grooming
+## Active Checkpoint — WC-062 Specification Routing
 
 | Milestone | Status |
 |---|---|
 | WC-060 delivery closure | DONE — PR #268 approved and merged to `main` as `95e0d91`; R-087/R-088/R-089 APPROVED |
-| WC-034 reconciliation | DONE — F0–F5 complete; F6/F7 traced to separate contracts; F8 remains proportional per release |
-| WC-062 F6 Voice | GROOMED CANDIDATE — seven dormant tasks and six required owner/review contributions; not implementation-ready |
+| WC-062 grooming merge | DONE — PR #270 merged to `main` as `ccf2ca5` |
+| Amendment 10 reconciliation | DONE — exact prospective GOA/Acceptance IDs, Evidence Specifications, acceptance IDs, independence constraints, and Participation Windows defined; no authority issued |
+| Initial CA routing-readiness review | DONE — R-090 / `CR-GOAL-005-INST-002-14` APPROVED at commit `4a267e1`; no authority issued |
+| Registrant acknowledgement | DONE — exact `ACK-GOAL-005-INST-001-10` recorded; routing only, no implementation authority |
+| Product, Solution, Data, Security contributions | REPAIRED — canonical BP/PR/AIR voice contracts and Solution repair CR/LR published at `1e80dfd`; other owner records unchanged |
+| Integrated EA review | DONE — R-093 / `CR-GOAL-005-INST-004-13` APPROVED repaired package `1e80dfd`; R-091 remains superseded for readiness |
+| Final CA readiness | DONE — R-094 / `CR-GOAL-005-INST-002-16` APPROVED; specification Orders 1–6 complete |
+| WC-062 F6 Voice | ENTRY GATE ITEM 7 OPEN — ACK-GOAL-005-INST-001-11 closes item 6; seven tasks dormant and implementation unauthorized |
+| WC-062 authorization package | READY — `GEP-GOAL-005-INST-013-12` presents exact item-7 directive; no GOA or Acceptance exists |
+| Goal Orchestrator operating-model vNext | CA REVIEWED — R-095 APPROVED WITH REQUIRED CHANGES incorporated; exact Founder ratification remains open |
 | WC-063 F7 Founder Administration | GROOMED CANDIDATE — seven dormant tasks and six required owner/review contributions; not implementation-ready |
-| GOAL-005 routing | PROPOSED — Amendments 10/11 define prospective sequencing and evidence but issue/reserve no GOA |
-| Specification owner contributions | OPEN — Product, Solution, Data, Security, integrated EA, and independent CA records do not yet exist |
-| Registrant acknowledgement | OPEN — none recorded for Amendment 10 or 11 |
 | Founder implementation decision | RECORDED FOR WC-062 — FA-042; dormant pending Entry Gate and fresh confirmation in the future implementation session; WC-063 unauthorized |
-| GO Authorization and Acceptance | NOT ISSUED — no F6/F7 GOA, Acceptance, or active Participation Window exists |
-| Grooming pull request | OPEN — PR #270 from `wc/062/grooming-authorization`; independent Constitutional Analyst review pending |
+| GO Authorization and Acceptance | SPECIFICATION PHASE COMPLETE — owner, EA, and CA GOAs/Acceptances valid; implementation GOA not issued |
+| Specification-routing branch | ACTIVE — `wc/062/specification-routing`; implementation remains stopped |
 
 ### Recovery Context
 
-- **Branch:** `wc/062/grooming-authorization`
-- **Objective:** Obtain independent Constitutional Analyst review of PR #270; stop before implementation.
-- **Authority:** FA-042 records the Founder decision to implement WC-062 after prerequisites close. Current session authorizes governance/PR work only; future implementation requires fresh explicit Founder confirmation.
-- **Validation:** Both candidate contracts, WC-034/registry traceability, and prospective amendments pass deterministic fail-closed checks; no implementation tests apply.
+- **Branch:** `wc/062/specification-routing`
+- **Objective:** Present the WC-062 authorization package and corrected operating-model vNext for separate Founder decisions; no GOA may issue before item 7.
+- **Authority:** The current Founder instruction authorizes specification routing only. FA-042 remains dormant and cannot authorize implementation in this session.
+- **Validation:** Canonical BP `1.8.0`, PR `1.3.0`, and AIR `1.0.0` contracts parse; voice reference graphs resolve; operation IDs are unique; exact SHA-256 hashes are recorded; no implementation tests apply.
 - **Protected local artifacts:** `.coverage`, `goals/goal_register.jsonl`, `logs/blueprint_assurance_report.json`, and `logs/bootstrap-evidence.jsonl` are unrelated and must remain unstaged.
 
 ## Authorization Boundary
@@ -60,10 +65,11 @@ prerequisites, not closed evidence and not implementation blockers being bypasse
 
 ## Next Authorized Action
 
-After PR #270 receives independent review and Founder merge, route WC-062 through Product,
-Solution, Data, Security, integrated EA, and CA readiness contributions. Implementation remains
-stopped until the complete Entry Gate, fresh implementation-session Founder confirmation, GOA, and
-later INST-010 Acceptance pass. WC-063 remains an unselected candidate.
+Obtain fresh current-session Founder authorization for WC-062 implementation. Only after that
+explicit decision may INST-013 issue a WC-062-specific implementation GOA; INST-010 Acceptance
+must then be recorded later than GOA issuance before implementation begins.
+Implementation remains stopped until the complete Entry Gate, fresh implementation-session Founder
+confirmation, implementation GOA, and later INST-010 Acceptance pass. WC-063 remains unselected.
 
 ## History And Evidence
 
