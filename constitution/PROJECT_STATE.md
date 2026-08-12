@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 31
+**State Revision:** 32
 **Last Updated:** 2026-08-12
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -36,6 +36,8 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Integrated EA review | DONE — R-093 / `CR-GOAL-005-INST-004-13` APPROVED repaired package `1e80dfd`; R-091 remains superseded for readiness |
 | Final CA readiness | DONE — R-094 / `CR-GOAL-005-INST-002-16` APPROVED; specification Orders 1–6 complete |
 | WC-062 F6 Voice | ENTRY GATE ITEM 7 OPEN — ACK-GOAL-005-INST-001-11 closes item 6; seven tasks dormant and implementation unauthorized |
+| WC-062 authorization package | READY — `GEP-GOAL-005-INST-013-12` presents exact item-7 directive; no GOA or Acceptance exists |
+| Goal Orchestrator operating-model vNext | CA REVIEWED — R-095 APPROVED WITH REQUIRED CHANGES incorporated; exact Founder ratification remains open |
 | WC-063 F7 Founder Administration | GROOMED CANDIDATE — seven dormant tasks and six required owner/review contributions; not implementation-ready |
 | Founder implementation decision | RECORDED FOR WC-062 — FA-042; dormant pending Entry Gate and fresh confirmation in the future implementation session; WC-063 unauthorized |
 | GO Authorization and Acceptance | SPECIFICATION PHASE COMPLETE — owner, EA, and CA GOAs/Acceptances valid; implementation GOA not issued |
@@ -44,7 +46,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 ### Recovery Context
 
 - **Branch:** `wc/062/specification-routing`
-- **Objective:** Await fresh current-session Founder implementation authorization for Entry Gate item 7; no GOA may issue before it.
+- **Objective:** Present the WC-062 authorization package and corrected operating-model vNext for separate Founder decisions; no GOA may issue before item 7.
 - **Authority:** The current Founder instruction authorizes specification routing only. FA-042 remains dormant and cannot authorize implementation in this session.
 - **Validation:** Canonical BP `1.8.0`, PR `1.3.0`, and AIR `1.0.0` contracts parse; voice reference graphs resolve; operation IDs are unique; exact SHA-256 hashes are recorded; no implementation tests apply.
 - **Protected local artifacts:** `.coverage`, `goals/goal_register.jsonl`, `logs/blueprint_assurance_report.json`, and `logs/bootstrap-evidence.jsonl` are unrelated and must remain unstaged.

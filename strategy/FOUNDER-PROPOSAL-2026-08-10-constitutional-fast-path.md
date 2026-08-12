@@ -174,7 +174,7 @@ At each completed increment:
 | F4 implementation amendment | DEFERRED | Planned after break; separate scope and authority |
 | WC-062 institutional handoff follow-up | DONE | Sections 10–12 distinguish material decisions from ministerial orchestration |
 | Goal Orchestrator operating-model draft | DONE — PROPOSED | M0–M3 router, Contribution Envelope, accountable executor, and handoff budget drafted |
-| Independent constitutional review | NOT STARTED | Required only after Founder selects the design for formalization |
+| Independent constitutional review | DONE — R-095 | APPROVED WITH REQUIRED CHANGES; all eight safeguards incorporated |
 | GEOM / ORGANIZATION activation | NOT AUTHORIZED | Ratified text remains unchanged until independent review and exact Founder ratification |
 
 ## 8. Success Measures For A Later Pilot
@@ -255,6 +255,8 @@ An action is at least `M2` if any answer below is yes:
 3. Could a reasonable independent reviewer reach a different substantive verdict because of it?
 4. Does it add a new artifact family, component boundary, dependency, constitutional obligation,
 	 or implementation scope?
+5. Does it change the constitutional weight of a prior verdict or acceptance, such as
+	 blocking to advisory, required to optional, or approved to conditional?
 
 An action is `M3` if it additionally changes authority, constitutional interpretation, immutable
 evidence, independent approval, deployment/production state, or Founder-reserved action.
@@ -280,21 +282,30 @@ Work Component. Internal task boundaries are checkpoints, not new institutional 
 
 ### 12.2 Goal Orchestrator As Execution Coordinator, Not Messenger
 
-Without becoming a domain contributor, INST-013 owns the following ministerial execution work:
+Without becoming a domain contributor, INST-013 may perform only the following pre-defined `M0`
+actions without a new institutional context:
 
 - build and pin the complete context/evidence package for each real contribution;
-- issue one Contribution Envelope with exact scope, IDs, files, exclusions, and validations;
+- issue one templated Contribution Envelope with exact scope, IDs, files, exclusions, and
+	validations already decided by the Execution Plan;
 - group independent same-order contributions into one parallel wave;
-- preserve attribution while persisting an independently authored record;
-- run deterministic chronology, identifier, hash, presence, and formatting checks;
-- correct unpublished clerical defects that do not alter the author's substantive decision;
+- commit a pre-authored record without editing it while preserving producer attribution;
+- run automated chronology, identifier, hash, presence, and formatting validators;
 - maintain the active checkpoint, branch, commits, push, and recovery state;
-- route a reviewer finding directly to the accountable owner without an intermediate messenger
-	context; and
+- route a reviewer finding unchanged to the accountable owner; and
 - present one consolidated decision or acknowledgement request to the Registrant.
 
 These actions are orchestration evidence, not domain contributions. INST-013 may not use this rule
-to select policy, repair substantive owner decisions, alter a verdict, or self-review.
+to select policy, alter scope or sequence, modify a Contribution Envelope, repair owner evidence,
+alter a verdict, or self-review. All non-enumerated GO classifications are logged. At Goal closure,
+INST-002 reviews the decision log and randomly spot-checks at least 25 percent of `M0` and `M1`
+classifications. Any incorrect classification is reclassified and rerouted; repeated errors are
+recorded as a constitutional anomaly.
+
+Evidence artifacts have two states. A draft is a branch working copy whose edits remain visible in
+Git history. A committed G-10 record is immutable. At commitment, INST-013 records the source
+commit and SHA-256 of the exact evidence bytes. Re-edited committed evidence requires a new linked
+correction record and may never overwrite the original.
 
 ### 12.3 Contribution Envelope
 
@@ -310,10 +321,26 @@ A GO Authorization may contain one complete Contribution Envelope:
 | Validation | Deterministic checks plus any protected independent gate |
 | Closure | One consolidated Contribution and Learning Record unless the contract requires atomic records |
 
-An in-scope `M1` repair does not require a new GOA, Acceptance, or Participation Window. A repair
-after publication is linked as a correction record under the same envelope. A material `M2` repair
-invalidates only the downstream reviews that relied on the changed bytes; it does not restart
-unaffected upstream contributions.
+An `M1` repair is in scope only when it fixes work directly described by the original Contribution
+Envelope or supplies a field required by that order's Evidence Specification, and only while the
+original Participation Window remains active. It does not require a new GOA or Acceptance.
+
+The repair is reclassified as `M2` and requires a new or amended Contribution Envelope when it
+changes behavior or policy outside the original scope, modifies an architecture boundary or
+component interface, adds a dependency, integration, or Institution, changes the package boundary,
+or would extend beyond the original Participation Window. The executor must request a
+Collaboration Amendment rather than relabel scope expansion as continuation.
+
+Every `M1` repair is auditable. Before publication, Git retains the original draft bytes and the
+final Contribution Record includes a repair entry with original SHA-256, change, reason, actor,
+and timestamp. After publication, a new G-10 correction record contains the same fields plus the
+superseded record ID. A separate append-only supersession marker makes current-version queries
+resolve to the correction while preserving the original record.
+
+A material `M2` repair does not automatically restart unaffected upstream contributions. INST-013
+first identifies every direct and indirect dependency through Goal Register cross-references.
+Directly dependent reviews rerun. INST-002 checks indirect dependencies for contradicted recorded
+assumptions; any contradiction routes to the affected owner through a Collaboration Amendment.
 
 ### 12.4 Review Economy
 
@@ -323,7 +350,7 @@ per internal increment.
 
 | Situation | Required route |
 |---|---|
-| Unpublished clerical defect | Primary executor or INST-013 corrects; same validation reruns |
+| Unpublished clerical defect | Primary executor corrects; repair entry and same validation required |
 | Reviewer finds in-scope owner defect | Direct return to owner under the active envelope; same reviewer confirms |
 | Material canonical change after review | Re-run only reviews downstream of that changed artifact |
 | New Decision Space, authority, constitutional, security, legal, or deployment decision | Ordinary independent path; no compression |
@@ -331,6 +358,10 @@ per internal increment.
 
 No Office may review its own substantive contribution. Multiple protected reviewers may run in
 parallel when their Decision Spaces are independent and the fixed package is identical.
+
+If protected reviewers return conflicting `M3` verdicts on the same decision, that decision is not
+approved. Both verdicts are recorded, work remains stopped, and INST-013 escalates the Decision
+Space conflict to the Founder. The Founder resolution is recorded before any Institution acts.
 
 ### 12.5 Handoff Budget And Stop-Loss
 
@@ -361,7 +392,10 @@ Add a **Materiality and Contribution Envelope** rule under Stage G-4 and §6:
 > bounded continuation. New routing is required only for a material contribution, protected
 > decision, expired/reclaimed Participation Window, changed Decision Space, or changed package
 > boundary. INST-013 may execute ministerial evidence handling while preserving producer
-> attribution; such handling is not a contribution and creates no review authority.
+> attribution; such handling is not a contribution and creates no review authority. M1
+> continuation expires with its Participation Window, all repairs remain auditable, material
+> changes trigger dependency-based re-review, conflicting protected verdicts stop work, and
+> INST-002 spot-checks at least 25 percent of logged M0/M1 classifications at Goal closure.
 
 ### ORGANIZATION
 
@@ -369,12 +403,15 @@ Add to INST-013 Decision Space:
 
 > Constitutional materiality classification; Contribution Envelope construction; deterministic
 > evidence validation; attribution-preserving persistence; consolidated checkpointing; handoff
-> budget enforcement; and direct repair routing to the accountable owner.
+> budget enforcement; direct repair routing to the accountable owner; and only the enumerated M0
+> ministerial actions defined by GEOM.
 
 Add to INST-013 Constitutional Obligations:
 
 > Ministerial authority may not change substantive meaning, policy, scope, acceptance, risk,
-> immutable evidence, or an independent verdict. Uncertainty is classified upward and routed.
+> immutable evidence, constitutional weight, or an independent verdict. Uncertainty is classified
+> upward and routed. M1 work may not outlive or expand its accepted Contribution Envelope or
+> Participation Window. All repair and classification evidence remains auditable.
 
 ## 14. Adoption Path
 
