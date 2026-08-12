@@ -2110,3 +2110,105 @@ The Acceptance timestamp is later than the GOA issuance timestamp (2026-08-12T02
   weakening of D-03/D-06/R-046/WC-060, or duplicate F5 implementation pass; and
 - no retrospective authorization, inferred consent, self-review, self-approval, self-merge,
   or direct push to `main`.
+
+---
+
+## Amendment 10 — WC-062 Voice Interaction Prospective Routing
+
+| Attestation field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GEP-GOAL-005-INST-013-10 |
+| `record_type` | Execution Plan |
+| `produced_at` | 2026-08-12 |
+| Status | PROPOSED — FA-042 records Founder implementation intent; owner specifications, integrated review, CA readiness, Registrant acknowledgement, fresh implementation-session confirmation, GOA, and Acceptance remain open |
+| Amends | GEP-GOAL-005-INST-013-09 prospectively; Amendment 9 and all prior records remain unchanged |
+
+### Purpose And Contribution Order
+
+This amendment routes WC-062 as the separate WC-034 F6 contract for a reusable platform voice
+capability. It does not authorize a DMA-specific implementation or reopen completed F1–F5 work.
+Specification contributions proceed in this order: Product, Solution, Data, and Security owners;
+integrated Enterprise Architecture review; then independent Constitutional Analyst readiness.
+The first four may work in parallel but must reconcile into one version-pinned package before
+integrated review.
+
+| Field | Prospective value |
+|---|---|
+| Primary implementation Institution | INST-010 — Platform IT Expert, only after every implementation gate closes |
+| Contribution scope | WC062-01 through WC062-07 exactly as defined in WC-062 |
+| Required inputs | Approved product behavior and acceptance IDs; provider-neutral BP/PR/AIR contracts; consent, confidence, correction, retention, erasure, evidence, tenant, security, offline, and text-fallback contracts; integrated and CA readiness approval |
+| Evidence specification | Task traceability; canonical/generated contract conformance; Docker-only unit/contract/integration/security/privacy/CCT evidence; at least 90% affected-surface coverage; browser, exact-360, expanded, keyboard, RTL, axe, offline/replay, Stop, and proportional F8 proof |
+| Participation Window | Placeholder only — duration must be approved in the reconciled specification package and begins only after valid INST-010 Acceptance |
+| Independent review | Fresh Security and Data review of their implemented surfaces; fresh Enterprise Architecture integrated acceptance; no self-review by INST-010 or INST-013 |
+| Completion boundary | One complete unmerged PR after all tasks and independent reviews pass; Founder review and merge remain separate |
+
+### Mandatory Stops
+
+1. This proposed amendment issues and reserves no GO Authorization and authorizes no contribution or implementation.
+2. Owner contribution authorization records may be defined only after each Decision Space and Evidence Specification is approved; no candidate document may be retroactively treated as an authorized contribution.
+3. A future reconciled amendment revision must name every contribution GOA, Acceptance, Participation Window, and independence constraint before owner work begins.
+4. FA-042 records the Founder's decision to implement WC-062 after prerequisites close, but it cannot authorize a future human session. A WC-062 implementation GOA may issue only after owner contributions, integrated review, CA readiness approval of the exact reconciled plan, Registrant acknowledgement of that plan, and fresh explicit Founder confirmation in the session that will write implementation code.
+5. INST-010 must record Acceptance later than GOA issuance before WC062-01 begins.
+6. No provider activation, credential setup, deployment, DMA-specific behavior, production/customer proof, PR approval, merge, self-review, or self-merge is included.
+
+### Current Decision
+
+WC-062 is groomed but **NOT IMPLEMENTATION-READY**. FA-042 records Founder implementation intent
+and the present grooming-session directive; this amendment remains a prospective routing record
+only. No owner contribution, integrated review, CA readiness decision, Registrant acknowledgement,
+future-session implementation confirmation, GOA, Acceptance, or Participation Window has been
+recorded.
+
+---
+
+## Amendment 11 — WC-063 Founder Administration Prospective Routing
+
+| Attestation field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GEP-GOAL-005-INST-013-11 |
+| `record_type` | Execution Plan |
+| `produced_at` | 2026-08-12 |
+| Status | PROPOSED — owner specifications, integrated review, CA readiness, Registrant acknowledgement, current-session Founder implementation authorization, GOA, and Acceptance all open |
+| Amends | GEP-GOAL-005-INST-013-10 prospectively; Amendments 9–10 and all prior records remain unchanged |
+
+### Purpose And Contribution Order
+
+This amendment routes WC-063 as the separate WC-034 F7 contract for Founder-only Markup
+Designer, Trial Budget Configuration, and Coupon Manager capabilities. Product, Solution, Data,
+and Security owners contribute first; Enterprise Architecture then integrates the package; an
+independent Constitutional Analyst performs readiness review last. The first four contributions
+may proceed in parallel but must reconcile before integrated review.
+
+The canonical topology is browser to BP through a generated client, then private authenticated
+BP-to-WBE management operations. The direct browser-to-WBE direction in the older acquisition
+specification is not an implementation input and must be corrected or explicitly superseded.
+
+| Field | Prospective value |
+|---|---|
+| Primary implementation Institution | INST-010 — Platform IT Expert, only after every implementation gate closes |
+| Contribution scope | WC063-01 through WC063-07 exactly as defined in WC-063 |
+| Required inputs | Approved admin workflows and acceptance IDs; canonical BP Founder OpenAPI; private WBE management contracts; versioning/effective-date/immutability blueprint; Founder assurance, CSRF/replay, tenant, service-authentication, financial, conflict, evidence, and reconciliation rules; integrated and CA readiness approval |
+| Evidence specification | Task traceability; generated-contract conformance; Docker-only unit/contract/integration/migration/security/financial/CCT evidence; at least 90% affected-surface coverage; exact-360, expanded, keyboard, RTL, axe, privacy/network, margin-floor, stale-version, duplicate, and proportional F8 proof |
+| Participation Window | Placeholder only — duration must be approved in the reconciled specification package and begins only after valid INST-010 Acceptance |
+| Independent review | Fresh Security and Data review of their implemented surfaces; fresh Enterprise Architecture integrated acceptance; no self-review by INST-010 or INST-013 |
+| Completion boundary | One complete unmerged PR after all tasks and independent reviews pass; Founder review and merge remain separate |
+
+### Mandatory Stops
+
+1. This proposed amendment issues and reserves no GO Authorization and authorizes no contribution or implementation.
+2. Existing WBE code, completed billing Work Contracts, or architecture text does not substitute for approved management contracts or BP public ingress.
+3. Owner contribution authorization records may be defined only after each Decision Space and Evidence Specification is approved; no candidate document may be retroactively treated as an authorized contribution.
+4. A future reconciled amendment revision must name every contribution GOA, Acceptance, Participation Window, and independence constraint before owner work begins.
+5. A WC-063 implementation GOA may issue only after owner contributions, integrated review, CA readiness approval of the exact reconciled plan, Registrant acknowledgement of that plan, and the separate current-session Founder directive `Authorize implementation of WC-063`.
+6. INST-010 must record Acceptance later than GOA issuance before WC063-01 begins.
+7. No pricing/policy decision, provider activation, credential setup, deployment, production/customer proof, PR approval, merge, self-review, or self-merge is included.
+
+### Current Decision
+
+WC-063 is groomed but **NOT IMPLEMENTATION-READY**. This amendment is a prospective routing
+record only. No CA readiness decision, Registrant acknowledgement, Founder implementation
+authorization, GOA, Acceptance, or Participation Window has been recorded.
