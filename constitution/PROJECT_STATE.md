@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 24
+**State Revision:** 25
 **Last Updated:** 2026-08-12
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -30,7 +30,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | WC-060 delivery closure | DONE — PR #268 approved and merged to `main` as `95e0d91`; R-087/R-088/R-089 APPROVED |
 | WC-062 grooming merge | DONE — PR #270 merged to `main` as `ccf2ca5` |
 | Amendment 10 reconciliation | DONE — exact prospective GOA/Acceptance IDs, Evidence Specifications, acceptance IDs, independence constraints, and Participation Windows defined; no authority issued |
-| Initial CA routing-readiness review | IN PROGRESS — fresh INST-002 review of reconciled Amendment 10 required before acknowledgement |
+| Initial CA routing-readiness review | DONE — R-090 / `CR-GOAL-005-INST-002-14` APPROVED at commit `4a267e1`; no authority issued |
 | Registrant acknowledgement | OPEN — exact `ACK-GOAL-005-INST-001-10` required after initial CA approval |
 | Product, Solution, Data, Security contributions | BLOCKED BY ROUTING GATE — may begin in parallel only after valid specification GOAs and later Acceptances |
 | Integrated EA and final CA readiness | BLOCKED BY OWNER CONTRIBUTIONS — dependency-ordered independent reviews |
@@ -43,9 +43,9 @@ or evidence artifact. Completed history remains in git and the archive index bel
 ### Recovery Context
 
 - **Branch:** `wc/062/specification-routing`
-- **Objective:** Complete Amendment 10 routing readiness, acknowledgement, owner contributions, integrated EA review, and final CA readiness; stop before implementation authorization.
+- **Objective:** Obtain exact Amendment 10 acknowledgement, then complete owner contributions, integrated EA review, and final CA readiness; stop before implementation authorization.
 - **Authority:** The current Founder instruction authorizes specification routing only. FA-042 remains dormant and cannot authorize implementation in this session.
-- **Validation:** Reconciled Amendment 10 passes identifier-collision, required-marker, and whitespace checks; no implementation tests apply.
+- **Validation:** Reconciled Amendment 10 passes identifier-collision, required-marker, and whitespace checks; R-090 independently APPROVES routing readiness; no implementation tests apply.
 - **Protected local artifacts:** `.coverage`, `goals/goal_register.jsonl`, `logs/blueprint_assurance_report.json`, and `logs/bootstrap-evidence.jsonl` are unrelated and must remain unstaged.
 
 ## Authorization Boundary
@@ -62,9 +62,9 @@ prerequisites, not closed evidence and not implementation blockers being bypasse
 
 ## Next Authorized Action
 
-Obtain fresh INST-002 routing-readiness review of reconciled Amendment 10. After approval, obtain
-the exact Registrant acknowledgement before issuing any specification GOA. Route Product,
-Solution, Data, and Security contributions in parallel, then integrated EA and final CA readiness.
+Obtain the exact Amendment 10 Registrant acknowledgement before issuing any specification GOA.
+Then route Product, Solution, Data, and Security contributions in parallel, followed by integrated
+EA and final CA readiness.
 Implementation remains stopped until the complete Entry Gate, fresh implementation-session Founder
 confirmation, implementation GOA, and later INST-010 Acceptance pass. WC-063 remains unselected.
 
