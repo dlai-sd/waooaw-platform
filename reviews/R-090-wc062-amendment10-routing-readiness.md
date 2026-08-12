@@ -6,7 +6,7 @@
 | `goal_id` | GOAL-005 |
 | `record_id` | CR-GOAL-005-INST-002-14 |
 | `record_type` | Contribution Record |
-| `produced_at` | 2026-08-12T16:47:32Z |
+| `produced_at` | 2026-08-12T09:54:30Z |
 | Reviewed commit | `4a267e1` |
 | Review scope | GEP-GOAL-005-INST-013-10 Amendment 10 routing reconciliation and WC-062 Entry Gate alignment |
 
