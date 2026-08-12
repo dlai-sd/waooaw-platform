@@ -51,18 +51,21 @@ public sealed partial class WhatsAppJourneyService
     private readonly byte[] _webhookSecret;
     private readonly byte[] _tokenKey;
     private readonly IRelationshipConstitutionalGateway? _relationshipGateway;
+    private readonly RelationshipEmergencyStopService? _emergencyStops;
 
     public WhatsAppJourneyService(
         IDbContextFactory<EmploymentRelationshipDbContext> dbFactory,
         IWhatsAppRegistrationEvidenceGateway evidenceGateway,
         IOptions<WhatsAppJourneyOptions> options,
-        IRelationshipConstitutionalGateway? relationshipGateway = null)
+        IRelationshipConstitutionalGateway? relationshipGateway = null,
+        RelationshipEmergencyStopService? emergencyStops = null)
     {
         _dbFactory = dbFactory;
         _evidenceGateway = evidenceGateway;
         _webhookSecret = RequireKey(options.Value.WebhookSecret, nameof(options.Value.WebhookSecret));
         _tokenKey = RequireKey(options.Value.TenantTokenKey, nameof(options.Value.TenantTokenKey));
         _relationshipGateway = relationshipGateway;
+        _emergencyStops = emergencyStops;
     }
 
     public async Task<WhatsAppJourneyReceipt> ReceiveAsync(
@@ -133,12 +136,41 @@ public sealed partial class WhatsAppJourneyService
         }
         contact.LastInboundAt = receivedAt;
 
+        var bindings = await db.ChannelBindings.AsNoTracking()
+            .Where(value => value.TenantId == contact.TenantId
+                && value.Channel == "WHATSAPP"
+                && value.ExternalSubjectHash == phoneHmac
+                && value.Status == "ACTIVE")
+            .ToListAsync(cancellationToken);
+        var binding = bindings.Count == 1 ? bindings[0] : null;
+        var attachedRelationship = binding is null ? null : await db.EmploymentRelationships.AsNoTracking()
+            .SingleOrDefaultAsync(value => value.TenantId == contact.TenantId
+                && value.RelationshipId == binding.RelationshipId, cancellationToken);
+
         var riskTier = inbound.RiskTier?.Trim().ToUpperInvariant() ?? "TIER_1_LOW_RISK";
         var confirmation = inbound.Text.Trim().Equals("YES", StringComparison.OrdinalIgnoreCase)
             || inbound.Text.Trim().Equals("CONFIRM", StringComparison.OrdinalIgnoreCase);
         string status;
         string reply;
-        if (riskTier == "TIER_4_CONSEQUENTIAL")
+        if (attachedRelationship?.State == EmploymentRelationshipState.StoppedEmergency)
+        {
+            contact.PendingMediumRiskConfirmation = false;
+            contact.JourneyStage = "STOP";
+            status = "STOPPED";
+            reply = "This relationship is STOPPED_EMERGENCY. Consequential commands, configuration, contract, activation, and handoff remain blocked. Release is available only in the secure Tier-4 employer portal.";
+        }
+        else if (binding is not null && inbound.Text.Contains("STOP", StringComparison.OrdinalIgnoreCase))
+        {
+            if (_emergencyStops is null) throw new InvalidOperationException("Relationship Emergency Stop is unavailable.");
+            await _emergencyStops.StopAsync(
+                contact.TenantId, binding.RelationshipId, binding.ParticipantId,
+                RelationshipRoleCodec.FromDatabase(binding.ParticipantRole), Guid.NewGuid(), cancellationToken);
+            contact.PendingMediumRiskConfirmation = false;
+            contact.JourneyStage = "STOP";
+            status = "ACCEPTED";
+            reply = "Emergency Stop confirmed for the relationship. All known evaluation and trial sessions were halted; later consequential commands remain blocked.";
+        }
+        else if (riskTier == "TIER_4_CONSEQUENTIAL")
         {
             contact.PendingMediumRiskConfirmation = false;
             status = "SECURE_PORTAL_REQUIRED";

@@ -10,6 +10,15 @@ namespace Waooaw.BusinessPlatform.Services;
 
 public sealed record AdmitRelationshipResult(EmploymentRelationship Relationship, bool Created);
 
+public sealed record EmergencyStopReleaseAuthorization(
+    bool IsPortalContext,
+    string AuthenticationAssurance,
+    DateTimeOffset AuthenticatedAt,
+    Guid OriginatingStopEvidenceId,
+    Guid OriginatingStopCorrelationId,
+    string Confirmation,
+    string Justification);
+
 public sealed class IllegalRelationshipTransitionException(
     EmploymentRelationshipState current,
     EmploymentRelationshipState target)
@@ -20,13 +29,13 @@ public sealed class EmploymentRelationshipService
     private static readonly IReadOnlyDictionary<EmploymentRelationshipState, ISet<EmploymentRelationshipState>> LegalTransitions =
         new Dictionary<EmploymentRelationshipState, ISet<EmploymentRelationshipState>>
         {
-            [EmploymentRelationshipState.Discovered] = Set(EmploymentRelationshipState.Interviewing),
-            [EmploymentRelationshipState.Interviewing] = Set(EmploymentRelationshipState.TrialActive, EmploymentRelationshipState.Configuring),
-            [EmploymentRelationshipState.TrialActive] = Set(EmploymentRelationshipState.Configuring),
-            [EmploymentRelationshipState.Configuring] = Set(EmploymentRelationshipState.ContractPendingAcceptance),
-            [EmploymentRelationshipState.ContractPendingAcceptance] = Set(EmploymentRelationshipState.ContractAcceptedPendingPayment),
-            [EmploymentRelationshipState.ContractAcceptedPendingPayment] = Set(EmploymentRelationshipState.ActivationPending),
-            [EmploymentRelationshipState.ActivationPending] = Set(EmploymentRelationshipState.Active),
+            [EmploymentRelationshipState.Discovered] = Set(EmploymentRelationshipState.Interviewing, EmploymentRelationshipState.StoppedEmergency),
+            [EmploymentRelationshipState.Interviewing] = Set(EmploymentRelationshipState.TrialActive, EmploymentRelationshipState.Configuring, EmploymentRelationshipState.StoppedEmergency),
+            [EmploymentRelationshipState.TrialActive] = Set(EmploymentRelationshipState.Configuring, EmploymentRelationshipState.StoppedEmergency),
+            [EmploymentRelationshipState.Configuring] = Set(EmploymentRelationshipState.ContractPendingAcceptance, EmploymentRelationshipState.StoppedEmergency),
+            [EmploymentRelationshipState.ContractPendingAcceptance] = Set(EmploymentRelationshipState.ContractAcceptedPendingPayment, EmploymentRelationshipState.StoppedEmergency),
+            [EmploymentRelationshipState.ContractAcceptedPendingPayment] = Set(EmploymentRelationshipState.ActivationPending, EmploymentRelationshipState.StoppedEmergency),
+            [EmploymentRelationshipState.ActivationPending] = Set(EmploymentRelationshipState.Active, EmploymentRelationshipState.StoppedEmergency),
             [EmploymentRelationshipState.Active] = Set(EmploymentRelationshipState.Paused, EmploymentRelationshipState.StoppedEmergency, EmploymentRelationshipState.Terminated),
             [EmploymentRelationshipState.Paused] = Set(EmploymentRelationshipState.Active, EmploymentRelationshipState.StoppedEmergency, EmploymentRelationshipState.Terminated),
             [EmploymentRelationshipState.StoppedEmergency] = Set(EmploymentRelationshipState.Paused, EmploymentRelationshipState.Active, EmploymentRelationshipState.Terminated),
@@ -190,6 +199,20 @@ public sealed class EmploymentRelationshipService
             cancellationToken);
     }
 
+    public async Task<RelationshipParticipantRole?> GetActiveRoleAsync(
+        Guid tenantId, Guid relationshipId, Guid participantId, CancellationToken cancellationToken)
+    {
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+        return await db.RelationshipParticipants.AsNoTracking()
+            .Where(value => value.TenantId == tenantId
+                && value.RelationshipId == relationshipId
+                && value.ParticipantId == participantId
+                && value.Status == "ACTIVE")
+            .OrderBy(value => value.Role == RelationshipParticipantRole.Employer ? 0 : 1)
+            .Select(value => (RelationshipParticipantRole?)value.Role)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
     public async Task<IReadOnlyList<RelationshipStateHistory>> GetTimelineAsync(
         Guid tenantId,
         Guid relationshipId,
@@ -211,7 +234,8 @@ public sealed class EmploymentRelationshipService
         EmploymentRelationshipState targetState,
         Guid correlationId,
         bool explicitEmergencyRelease,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        EmergencyStopReleaseAuthorization? emergencyReleaseAuthorization = null)
     {
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
         var relationship = await db.EmploymentRelationships.SingleOrDefaultAsync(
@@ -240,19 +264,25 @@ public sealed class EmploymentRelationshipService
                 "Transition authority requires an active same-tenant participant-role binding.");
         }
 
+        RelationshipStateHistory? originatingStop = null;
         if (relationship.State == EmploymentRelationshipState.StoppedEmergency
-            && targetState is EmploymentRelationshipState.Active or EmploymentRelationshipState.Paused
-            && (!explicitEmergencyRelease || actorRole != RelationshipParticipantRole.Employer))
+            && targetState is EmploymentRelationshipState.Active or EmploymentRelationshipState.Paused)
         {
-            throw new ConstitutionalActionDeniedException(
-                "Emergency Stop release requires explicit same-tenant EMPLOYER authority.");
+            originatingStop = await db.RelationshipStateHistory.AsNoTracking()
+                .Where(value => value.TenantId == tenantId
+                    && value.RelationshipId == relationshipId
+                    && value.ToState == EmploymentRelationshipState.StoppedEmergency)
+                .OrderByDescending(value => value.StateVersion)
+                .FirstOrDefaultAsync(cancellationToken);
+            ValidateEmergencyRelease(actorRole, explicitEmergencyRelease, emergencyReleaseAuthorization, originatingStop);
         }
 
+        var actionType = originatingStop is null ? "TRANSITION_EMPLOYMENT_RELATIONSHIP" : "RELEASE_EMERGENCY_STOP";
         var evidenceId = await _constitutionalGateway.AuthorizeAndRecordAsync(
             tenantId,
             relationshipId,
             relationship.ProfessionalType,
-            "TRANSITION_EMPLOYMENT_RELATIONSHIP",
+            actionType,
             correlationId,
             new
             {
@@ -261,6 +291,10 @@ public sealed class EmploymentRelationshipService
                 actor_participant_id = actorParticipantId,
                 actor_role = RelationshipRoleCodec.ToDatabase(actorRole),
                 explicit_emergency_release = explicitEmergencyRelease,
+                originating_stop_evidence_id = originatingStop?.EvidenceId,
+                originating_stop_correlation_id = originatingStop?.CorrelationId,
+                constitutional_basis = originatingStop is null ? null : $"EMERGENCY_STOP_RELEASE:{originatingStop.EvidenceId:D}",
+                release_justification = emergencyReleaseAuthorization?.Justification.Trim(),
             },
             cancellationToken);
 
@@ -287,6 +321,81 @@ public sealed class EmploymentRelationshipService
 
         await db.SaveChangesAsync(cancellationToken);
         return relationship;
+    }
+
+    public async Task<EmploymentRelationship?> CommitEmergencyStopAsync(
+        Guid tenantId,
+        Guid relationshipId,
+        Guid actorParticipantId,
+        RelationshipParticipantRole actorRole,
+        Guid correlationId,
+        Guid stopEvidenceId,
+        CancellationToken cancellationToken)
+    {
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+        var relationship = await db.EmploymentRelationships.SingleOrDefaultAsync(
+            value => value.TenantId == tenantId && value.RelationshipId == relationshipId,
+            cancellationToken);
+        if (relationship is null) return null;
+        if (relationship.State == EmploymentRelationshipState.StoppedEmergency) return relationship;
+        if (!LegalTransitions[relationship.State].Contains(EmploymentRelationshipState.StoppedEmergency))
+            throw new IllegalRelationshipTransitionException(relationship.State, EmploymentRelationshipState.StoppedEmergency);
+        var bound = await db.RelationshipParticipants.AnyAsync(
+            value => value.TenantId == tenantId
+                && value.RelationshipId == relationshipId
+                && value.ParticipantId == actorParticipantId
+                && value.Role == actorRole
+                && value.Status == "ACTIVE",
+            cancellationToken);
+        if (!bound) throw new ConstitutionalActionDeniedException("Emergency Stop requires an active same-tenant participant binding.");
+
+        var previousState = relationship.State;
+        relationship.State = EmploymentRelationshipState.StoppedEmergency;
+        relationship.StateVersion += 1;
+        relationship.StoppedAt = DateTimeOffset.UtcNow;
+        relationship.UpdatedAt = relationship.StoppedAt.Value;
+        db.RelationshipStateHistory.Add(new RelationshipStateHistory
+        {
+            TenantId = tenantId,
+            RelationshipId = relationshipId,
+            StateVersion = relationship.StateVersion,
+            FromState = previousState,
+            ToState = EmploymentRelationshipState.StoppedEmergency,
+            ActorParticipantId = actorParticipantId,
+            ActorRole = actorRole,
+            AuthoritySnapshotId = relationship.AuthoritySnapshotId,
+            CorrelationId = correlationId,
+            EvidenceId = stopEvidenceId,
+        });
+        await db.SaveChangesAsync(cancellationToken);
+        return relationship;
+    }
+
+    private static void ValidateEmergencyRelease(
+        RelationshipParticipantRole actorRole,
+        bool explicitEmergencyRelease,
+        EmergencyStopReleaseAuthorization? authorization,
+        RelationshipStateHistory? originatingStop)
+    {
+        var freshAuthentication = authorization is not null
+            && authorization.AuthenticatedAt <= DateTimeOffset.UtcNow
+            && DateTimeOffset.UtcNow - authorization.AuthenticatedAt <= TimeSpan.FromMinutes(5);
+        if (!explicitEmergencyRelease
+            || actorRole != RelationshipParticipantRole.Employer
+            || authorization is null
+            || !authorization.IsPortalContext
+            || authorization.AuthenticationAssurance != "TIER_4_PORTAL_FRESH"
+            || !freshAuthentication
+            || authorization.Confirmation != "RELEASE_EMERGENCY_STOP"
+            || string.IsNullOrWhiteSpace(authorization.Justification)
+            || authorization.Justification.Trim().Length > 500
+            || originatingStop is null
+            || authorization.OriginatingStopEvidenceId != originatingStop.EvidenceId
+            || authorization.OriginatingStopCorrelationId != originatingStop.CorrelationId)
+        {
+            throw new ConstitutionalActionDeniedException(
+                "Emergency Stop release requires fresh Tier-4 portal EMPLOYER authorization linked to the active Stop.");
+        }
     }
 
     private static Task<EmploymentRelationship?> FindByAdmissionKeyAsync(

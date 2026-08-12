@@ -298,9 +298,55 @@ public sealed class WhatsAppJourneyServiceTests
         Assert.DoesNotContain(phone, binding.ExternalSubjectHash, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task CctAe01Stop01_AttachedWhatsAppStopsRelationshipAndBlocksLaterCommands()
+    {
+        var relationshipGateway = new RecordingRelationshipConstitutionalGateway();
+        var stopGateway = new RecordingEmergencyStopGateway();
+        var (service, factory, _) = Create(relationshipGateway: relationshipGateway, stopGateway: stopGateway);
+        var now = DateTimeOffset.UtcNow;
+        var phone = "+919876543210";
+        var first = Body("wamid-stop-register", now, phone, "Show skills", "TIER_1_LOW_RISK");
+        await service.ReceiveAsync(first, Sign(first), now, CancellationToken.None);
+        await using var db = factory.CreateDbContext();
+        var tenantId = (await db.WhatsAppJourneyContacts.SingleAsync()).TenantId;
+        var relationshipId = Guid.NewGuid();
+        var participantId = Guid.NewGuid();
+        db.EmploymentRelationships.Add(new EmploymentRelationship
+        {
+            TenantId = tenantId, RelationshipId = relationshipId, ProfessionalType = "DMA",
+            EvaluationIntentId = Guid.NewGuid(), InitiatingParticipantId = participantId,
+            State = EmploymentRelationshipState.TrialActive,
+        });
+        db.RelationshipParticipants.Add(new RelationshipParticipant
+        {
+            TenantId = tenantId, RelationshipId = relationshipId, ParticipantId = participantId,
+            Role = RelationshipParticipantRole.Evaluator, BoundEvidenceId = Guid.NewGuid(),
+        });
+        await db.SaveChangesAsync();
+        await service.AttachPhoneAsync(
+            tenantId, relationshipId, phone, "conversation",
+            new PortalPhoneAttachProof(participantId, "TIER_4_PORTAL_FRESH", DateTimeOffset.UtcNow, Guid.NewGuid()),
+            CancellationToken.None);
+
+        var stopBody = Body("wamid-stop", now.AddSeconds(1), phone, "STOP", "TIER_1_LOW_RISK");
+        var stopped = await service.ReceiveAsync(stopBody, Sign(stopBody), now.AddSeconds(1), CancellationToken.None);
+        var laterBody = Body("wamid-after-stop", now.AddSeconds(2), phone, "CONFIGURE budget", "TIER_2_MEDIUM_RISK");
+        var later = await service.ReceiveAsync(laterBody, Sign(laterBody), now.AddSeconds(2), CancellationToken.None);
+
+        Assert.Equal("ACCEPTED", stopped.Status);
+        Assert.Equal("STOP", stopped.JourneyStage);
+        Assert.Equal("STOPPED", later.Status);
+        Assert.Contains("STOPPED_EMERGENCY", later.Reply, StringComparison.Ordinal);
+        await using var verificationDb = factory.CreateDbContext();
+        Assert.Equal(EmploymentRelationshipState.StoppedEmergency,
+            (await verificationDb.EmploymentRelationships.FindAsync(relationshipId))!.State);
+    }
+
     private static (WhatsAppJourneyService Service, InMemoryEmploymentRelationshipFactory Factory, RecordingEvidenceGateway Evidence) Create(
         bool evidenceFails = false,
-        IRelationshipConstitutionalGateway? relationshipGateway = null)
+        IRelationshipConstitutionalGateway? relationshipGateway = null,
+        IRelationshipEmergencyStopGateway? stopGateway = null)
     {
         var factory = new InMemoryEmploymentRelationshipFactory(Guid.NewGuid().ToString("N"));
         var evidence = new RecordingEvidenceGateway(evidenceFails);
@@ -309,7 +355,17 @@ public sealed class WhatsAppJourneyServiceTests
             WebhookSecret = WebhookSecret,
             TenantTokenKey = TokenKey,
         });
-        return (new WhatsAppJourneyService(factory, evidence, options, relationshipGateway), factory, evidence);
+        RelationshipEmergencyStopService? emergencyStops = null;
+        if (stopGateway is not null)
+        {
+            var relationships = new EmploymentRelationshipService(
+                factory,
+                relationshipGateway ?? new RecordingRelationshipConstitutionalGateway(),
+                NullLogger<EmploymentRelationshipService>.Instance);
+            emergencyStops = new RelationshipEmergencyStopService(
+                new InMemoryConversationStoreFactory(Guid.NewGuid().ToString("N")), relationships, stopGateway);
+        }
+        return (new WhatsAppJourneyService(factory, evidence, options, relationshipGateway, emergencyStops), factory, evidence);
     }
 
     private static string Body(string messageId, DateTimeOffset sentAt, string from, string text, string riskTier) =>

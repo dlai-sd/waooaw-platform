@@ -739,6 +739,65 @@ paths:
         "503":
           description: Constitutional validation or evidence commitment is unavailable
 
+  /api/v1/employment/relationships/{relationshipId}/emergency-stop:
+    post:
+      tags: [Employment]
+      summary: Stop the complete AE-01 Employment Relationship
+      description: |
+        Any authenticated active participant may invoke fail-safe Stop. BP commits the
+        relationship STOPPED_EMERGENCY projection while PR halts the relationship's known
+        evaluation and trial sessions. Repeated Stop returns the existing stopped projection.
+      operationId: stopEmploymentRelationship
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/StopEmploymentRelationshipRequest" }
+      responses:
+        "200":
+          description: Relationship Stop is durably projected
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EmploymentRelationship" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "503":
+          description: Stop remains unresolved and must not be presented as confirmed
+
+  /api/v1/employment/relationships/{relationshipId}/emergency-stop/release:
+    post:
+      tags: [Employment]
+      summary: Release the active relationship Stop with fresh Tier-4 employer proof
+      description: |
+        Portal only. Requires an active same-tenant EMPLOYER, authentication no older than
+        five minutes, literal confirmation, justification, and exact originating Stop evidence
+        and correlation. Reconnect, conversation, timeout, channel possession, and service
+        operator contexts cannot release Stop.
+      operationId: releaseEmploymentRelationshipStop
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ReleaseEmploymentRelationshipStopRequest" }
+      responses:
+        "200":
+          description: Stop released after release evidence commitment
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EmploymentRelationship" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: Role, assurance, freshness, confirmation, or originating proof denied
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "503":
+          description: Release unresolved; relationship remains stopped
+
   /api/v1/employment/relationships/{relationshipId}/trial:
     post:
       tags: [Employment]
@@ -3806,6 +3865,42 @@ components:
               - originatingStopCorrelationId
               - releaseConfirmation
               - releaseJustification
+
+    StopEmploymentRelationshipRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        correlationId:
+          type: string
+          format: uuid
+          nullable: true
+
+    ReleaseEmploymentRelationshipStopRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - originatingStopEvidenceId
+        - originatingStopCorrelationId
+        - releaseConfirmation
+        - releaseJustification
+        - targetState
+      properties:
+        originatingStopEvidenceId: { type: string, format: uuid }
+        originatingStopCorrelationId: { type: string, format: uuid }
+        releaseConfirmation:
+          type: string
+          const: RELEASE_EMERGENCY_STOP
+        releaseJustification:
+          type: string
+          minLength: 1
+          maxLength: 500
+        targetState:
+          type: string
+          enum: [ACTIVE, PAUSED]
+        correlationId:
+          type: string
+          format: uuid
+          nullable: true
 
     StartRelationshipTrialRequest:
       type: object

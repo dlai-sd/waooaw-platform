@@ -76,6 +76,8 @@ public sealed class EmploymentContractService(
         var relationship = await db.EmploymentRelationships.AsNoTracking().SingleOrDefaultAsync(
             item => item.TenantId == tenantId && item.RelationshipId == relationshipId,
             cancellationToken) ?? throw new KeyNotFoundException("Relationship not found.");
+        if (relationship.State == EmploymentRelationshipState.StoppedEmergency)
+            throw new ConstitutionalActionDeniedException("Contract presentation is blocked by Emergency Stop.");
         var decisionSpace = await db.DecisionSpaceSnapshots.AsNoTracking()
             .Where(item => item.TenantId == tenantId && item.RelationshipId == relationshipId)
             .OrderByDescending(item => item.Version)

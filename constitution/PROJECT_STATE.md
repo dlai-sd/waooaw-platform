@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 14
+**State Revision:** 15
 **Last Updated:** 2026-08-12
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -38,7 +38,8 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | WC060-04 runtime routing | DONE — relationship-bound channel sessions and reconnect reauthorization; 71/71 Docker tests pass |
 | WC060-05 Evidence Reader | DONE — tenant/role-filtered CE proof reads and evidenced 15-minute exports |
 | WC060-06 customer continuity surfaces | DONE — Evidence Window/export, honest delivery state, and WhatsApp commands |
-| WC060-07 through WC060-09 | IN PROGRESS — dependency-ordered implementation continues |
+| WC060-07 relationship Emergency Stop | DONE — relationship-wide CE/Temporal halt and proof-bound Tier-4 release |
+| WC060-08 through WC060-09 | IN PROGRESS — adversarial and integrated acceptance continues |
 
 ### Recovery Context
 

@@ -22,7 +22,21 @@ public sealed record TransitionEmploymentRelationshipRequest(
     Guid ActorParticipantId,
     [property: JsonConverter(typeof(RelationshipRoleJsonConverter))] RelationshipParticipantRole ActorRole,
     Guid CorrelationId,
-    bool ExplicitEmergencyRelease = false);
+    bool ExplicitEmergencyRelease = false,
+    Guid? OriginatingStopEvidenceId = null,
+    Guid? OriginatingStopCorrelationId = null,
+    string? ReleaseConfirmation = null,
+    string? ReleaseJustification = null);
+
+public sealed record StopEmploymentRelationshipRequest(Guid? CorrelationId = null);
+
+public sealed record ReleaseEmploymentRelationshipStopRequest(
+    Guid OriginatingStopEvidenceId,
+    Guid OriginatingStopCorrelationId,
+    string ReleaseConfirmation,
+    string ReleaseJustification,
+    [property: JsonConverter(typeof(RelationshipStateJsonConverter))] EmploymentRelationshipState TargetState,
+    Guid? CorrelationId = null);
 
 public sealed record StartRelationshipTrialRequest(Guid? CorrelationId = null);
 
@@ -152,6 +166,7 @@ public sealed class EmploymentRelationshipsController : ControllerBase
     private readonly RelationshipPaymentService? _payments;
     private readonly ActivationWorkflowDispatchService? _activationDispatch;
     private readonly ChannelContinuityService? _continuity;
+    private readonly RelationshipEmergencyStopService? _emergencyStops;
 
     public EmploymentRelationshipsController(
         EmploymentRelationshipService service,
@@ -160,7 +175,8 @@ public sealed class EmploymentRelationshipsController : ControllerBase
         EmploymentContractAcceptanceService? contractAcceptances = null,
         RelationshipPaymentService? payments = null,
         ActivationWorkflowDispatchService? activationDispatch = null,
-        ChannelContinuityService? continuity = null)
+        ChannelContinuityService? continuity = null,
+        RelationshipEmergencyStopService? emergencyStops = null)
     {
         _service = service;
         _trials = trials;
@@ -169,6 +185,7 @@ public sealed class EmploymentRelationshipsController : ControllerBase
         _payments = payments;
         _activationDispatch = activationDispatch;
         _continuity = continuity;
+        _emergencyStops = emergencyStops;
     }
 
     [HttpPost]
@@ -345,7 +362,8 @@ public sealed class EmploymentRelationshipsController : ControllerBase
                 request.TargetState,
                 request.CorrelationId,
                 request.ExplicitEmergencyRelease,
-                cancellationToken);
+                cancellationToken,
+                BuildEmergencyReleaseAuthorization(request));
             return relationship is null ? NotFound() : Ok(ToResponse(relationship));
         }
         catch (IllegalRelationshipTransitionException exception)
@@ -363,6 +381,73 @@ public sealed class EmploymentRelationshipsController : ControllerBase
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
             return Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "Constitutional evidence unavailable");
+        }
+    }
+
+    [HttpPost("{relationshipId:guid}/emergency-stop")]
+    public async Task<IActionResult> StopAsync(
+        Guid relationshipId,
+        [FromBody] StopEmploymentRelationshipRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetTenantId(out var tenantId) || !TryGetParticipantId(out var participantId)) return Forbid();
+        if (_emergencyStops is null) return Problem(statusCode: 503, title: "Emergency Stop unavailable");
+        var actorRole = await _service.GetActiveRoleAsync(tenantId, relationshipId, participantId, cancellationToken);
+        if (actorRole is null) return NotFound();
+        var current = await _service.GetAsync(tenantId, relationshipId, cancellationToken);
+        if (current is null) return NotFound();
+        if (current.State == EmploymentRelationshipState.StoppedEmergency) return Ok(ToResponse(current));
+        try
+        {
+            var stopped = await _emergencyStops.StopAsync(
+                tenantId, relationshipId, participantId, actorRole.Value,
+                request.CorrelationId ?? Guid.NewGuid(), cancellationToken);
+            return Ok(ToResponse(stopped!));
+        }
+        catch (IllegalRelationshipTransitionException exception)
+        {
+            return Conflict(new { error = "ILLEGAL_RELATIONSHIP_TRANSITION", detail = exception.Message });
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            return Problem(statusCode: 503, title: "Emergency Stop remains unresolved");
+        }
+    }
+
+    [HttpPost("{relationshipId:guid}/emergency-stop/release")]
+    public async Task<IActionResult> ReleaseStopAsync(
+        Guid relationshipId,
+        [FromBody] ReleaseEmploymentRelationshipStopRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetTenantId(out var tenantId) || !TryGetParticipantId(out var participantId)) return Forbid();
+        try
+        {
+            var assurance = GetContractPortalAssurance();
+            var released = await _service.TransitionAsync(
+                tenantId, relationshipId, participantId, RelationshipParticipantRole.Employer,
+                request.TargetState, request.CorrelationId ?? Guid.NewGuid(), true, cancellationToken,
+                new EmergencyStopReleaseAuthorization(
+                    assurance.IsKeycloakPortal,
+                    User.FindFirstValue("authentication_assurance") ?? string.Empty,
+                    assurance.AuthenticatedAt,
+                    request.OriginatingStopEvidenceId,
+                    request.OriginatingStopCorrelationId,
+                    request.ReleaseConfirmation,
+                    request.ReleaseJustification));
+            return released is null ? NotFound() : Ok(ToResponse(released));
+        }
+        catch (IllegalRelationshipTransitionException exception)
+        {
+            return Conflict(new { error = "ILLEGAL_RELATIONSHIP_TRANSITION", detail = exception.Message });
+        }
+        catch (ConstitutionalActionDeniedException exception)
+        {
+            return Problem(statusCode: 403, title: "Emergency Stop release denied", detail: exception.Message);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            return Problem(statusCode: 503, title: "Emergency Stop remains active");
         }
     }
 
@@ -719,6 +804,28 @@ public sealed class EmploymentRelationshipsController : ControllerBase
             ? DateTimeOffset.FromUnixTimeSeconds(timestamp)
             : DateTimeOffset.MinValue;
         return new ContractPortalAssurance(hasPortalContext, authenticatedAt);
+    }
+
+    private EmergencyStopReleaseAuthorization? BuildEmergencyReleaseAuthorization(
+        TransitionEmploymentRelationshipRequest request)
+    {
+        if (!request.ExplicitEmergencyRelease
+            || request.OriginatingStopEvidenceId is null
+            || request.OriginatingStopCorrelationId is null
+            || request.ReleaseConfirmation is null
+            || request.ReleaseJustification is null)
+        {
+            return null;
+        }
+        var assurance = GetContractPortalAssurance();
+        return new EmergencyStopReleaseAuthorization(
+            assurance.IsKeycloakPortal,
+            User.FindFirstValue("authentication_assurance") ?? string.Empty,
+            assurance.AuthenticatedAt,
+            request.OriginatingStopEvidenceId.Value,
+            request.OriginatingStopCorrelationId.Value,
+            request.ReleaseConfirmation,
+            request.ReleaseJustification);
     }
 
     private static EmploymentContractResponse ToContractResponse(EmploymentContractComposition composition) => new(

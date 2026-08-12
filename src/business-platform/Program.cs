@@ -151,6 +151,8 @@ builder.Services.AddDbContextFactory<EmploymentRelationshipDbContext>((services,
         .AddInterceptors(services.GetRequiredService<TenantDbConnectionInterceptor>()));
 builder.Services.AddScoped<IRelationshipConstitutionalGateway, RelationshipConstitutionalGateway>();
 builder.Services.AddScoped<EmploymentRelationshipService>();
+builder.Services.AddScoped<IRelationshipEmergencyStopGateway, GrpcRelationshipEmergencyStopGateway>();
+builder.Services.AddScoped<RelationshipEmergencyStopService>();
 builder.Services.AddScoped<RelationshipConfigurationService>();
 builder.Services.AddScoped<EmploymentContractService>();
 builder.Services.AddScoped<EmploymentContractAcceptanceService>();
