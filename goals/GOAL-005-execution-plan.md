@@ -2490,6 +2490,26 @@ scope are mandatory.
 Final CA readiness is blocked until this fresh EA scope is accepted and publishes an APPROVED
 Contribution and Learning Record. All implementation remains blocked.
 
+### ACC-GOAL-005-INST-004-12
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-004 |
+| `goal_id` | GOAL-005 |
+| `record_id` | ACC-GOAL-005-INST-004-12 |
+| `record_type` | Acceptance Record |
+| `authorization_id` | GOA-GOAL-005-INST-004-12 |
+| `acceptance_timestamp` | 2026-08-12T11:03:22Z |
+| Decision | ACCEPTED |
+| Contribution scope accepted | Independent integrated review of repaired package `1e80dfd` only |
+| Participation Window | One constitutional session from this Acceptance |
+| Independence attestation | Fresh INST-004 context that authored or repaired none of the reviewed package |
+| Exclusions | No owner repair, implementation, source, tests, migration, generated client, provider activation, deployment, constitutional review, Registrant acknowledgement, PR approval, or merge |
+
+The Acceptance is later than the GOA issuance. R-093 / CR-GOAL-005-INST-004-13 and
+LR-GOAL-005-INST-004-09 APPROVE the repaired package. Fresh Amendment 10 Order 2 is complete;
+Order 3 still requires a new CA GOA and Acceptance. No implementation authority exists.
+
 ---
 
 ## Amendment 11 — WC-063 Founder Administration Prospective Routing

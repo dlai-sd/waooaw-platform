@@ -33,12 +33,12 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Initial CA routing-readiness review | DONE — R-090 / `CR-GOAL-005-INST-002-14` APPROVED at commit `4a267e1`; no authority issued |
 | Registrant acknowledgement | DONE — exact `ACK-GOAL-005-INST-001-10` recorded; routing only, no implementation authority |
 | Product, Solution, Data, Security contributions | REPAIRED — canonical BP/PR/AIR voice contracts and Solution repair CR/LR published at `1e80dfd`; other owner records unchanged |
-| Integrated EA review | ROUTED — R-091 superseded for readiness after canonical repair; fresh GOA-GOAL-005-INST-004-12 issued, awaiting Acceptance |
-| Final CA readiness | BLOCKED BY FRESH INTEGRATED EA — old CA scope covered the pre-repair package and published no verdict |
+| Integrated EA review | DONE — R-093 / `CR-GOAL-005-INST-004-13` APPROVED repaired package `1e80dfd`; R-091 remains superseded for readiness |
+| Final CA readiness | READY TO ROUTE — old CA scope covered the pre-repair package and published no verdict; new GOA/Acceptance required |
 | WC-062 F6 Voice | NOT IMPLEMENTATION-READY — seven dormant tasks; no implementation authority |
 | WC-063 F7 Founder Administration | GROOMED CANDIDATE — seven dormant tasks and six required owner/review contributions; not implementation-ready |
 | Founder implementation decision | RECORDED FOR WC-062 — FA-042; dormant pending Entry Gate and fresh confirmation in the future implementation session; WC-063 unauthorized |
-| GO Authorization and Acceptance | OWNER REPAIR COMPLETE — fresh EA GOA issued; EA Acceptance, fresh CA GOA/Acceptance, and implementation GOA remain open |
+| GO Authorization and Acceptance | REPAIRED OWNER AND EA PHASE COMPLETE — fresh CA GOA/Acceptance and implementation GOA remain open |
 | Specification-routing branch | ACTIVE — `wc/062/specification-routing`; implementation remains stopped |
 
 ### Recovery Context
@@ -63,8 +63,8 @@ prerequisites, not closed evidence and not implementation blockers being bypasse
 
 ## Next Authorized Action
 
-Obtain Acceptance for GOA-GOAL-005-INST-004-12 and route its fresh integrated EA review of package
-`1e80dfd`. After approval, issue and accept a new distinct CA scope for final Entry Gate readiness.
+Issue and accept a new distinct CA scope for final Entry Gate readiness over package `1e80dfd` and
+R-093. Implementation remains stopped through final acknowledgement and fresh-session authority.
 Implementation remains stopped until the complete Entry Gate, fresh implementation-session Founder
 confirmation, implementation GOA, and later INST-010 Acceptance pass. WC-063 remains unselected.
 
