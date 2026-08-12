@@ -3,8 +3,9 @@
 **Owner:** Goal Orchestrator (INST-013)
 **Reviewer:** Constitutional Analyst (INST-002)
 **Authority:** GEOM Stage G-4 Materiality and Contribution Envelope rule
-**Status:** PROPOSED BY WC-070; inactive until independent review and Founder ratification
-**Version:** 1.1.0-proposed
+**Status:** ACTIVE — Founder-ratified 2026-08-12 after R-100 confirmation
+**Version:** 1.1.0
+**Ratified baseline:** `bc98213`
 
 ## 1. Purpose And Invariants
 

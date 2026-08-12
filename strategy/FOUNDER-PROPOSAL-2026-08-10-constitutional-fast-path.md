@@ -468,3 +468,14 @@ decisions, evidence, owner authority, independent gates, or Founder control. Thi
 the linked WC-070 amendments remain **PROPOSED** until one fresh Constitutional Analyst reviews
 the complete fixed package and the Founder ratifies those exact reviewed bytes. They do not alter
 the 2026-08-12 Section 14 ratification record.
+
+### WC-070 Ratification Record — 2026-08-12
+
+R-100 initially approved the WC-070 package with three required repairs and a second fresh
+INST-002 context confirmed all repairs at exact baseline `bc98213`. The Founder then selected
+**Ratify exact package**, ratifying `bc98213` and authorizing INST-013 to activate it mechanically,
+update state, push, and open an unmerged PR.
+
+INST-013 activated only the reviewed quality-preserving cost controls and required amendment
+metadata. This ratification does not authorize source implementation, issue a GOA or Acceptance,
+activate a provider, deploy, approve a PR, authorize merge, or weaken any R-095 safeguard.

@@ -10,6 +10,7 @@
 **Depends on:** WIOM (ratified 2026-07-27)
 **Amended:** 2026-08-08 — Founder authorized `Classification Record`, `Acknowledgement Record`, `Authorization Record`, and `Acceptance Record` as valid G-10 record types
 **Amended:** 2026-08-12 — Founder ratified the R-095-reviewed Goal Orchestrator operating-model vNext materiality and Contribution Envelope rule
+**Amended:** 2026-08-12 — Founder ratified WC-070 vNext quality-preserving cost controls after R-100 confirmation; baseline `bc98213`
 
 ---
 
