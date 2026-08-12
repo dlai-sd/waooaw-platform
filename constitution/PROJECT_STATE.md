@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 22
+**State Revision:** 23
 **Last Updated:** 2026-08-12
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -36,11 +36,12 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Registrant acknowledgement | OPEN — none recorded for Amendment 10 or 11 |
 | Founder implementation decision | RECORDED FOR WC-062 — FA-042; dormant pending Entry Gate and fresh confirmation in the future implementation session; WC-063 unauthorized |
 | GO Authorization and Acceptance | NOT ISSUED — no F6/F7 GOA, Acceptance, or active Participation Window exists |
+| Grooming pull request | OPEN — PR #270 from `wc/062/grooming-authorization`; independent Constitutional Analyst review pending |
 
 ### Recovery Context
 
 - **Branch:** `wc/062/grooming-authorization`
-- **Objective:** Submit WC-062/WC-063 grooming and FA-042 for independent review; stop before implementation.
+- **Objective:** Obtain independent Constitutional Analyst review of PR #270; stop before implementation.
 - **Authority:** FA-042 records the Founder decision to implement WC-062 after prerequisites close. Current session authorizes governance/PR work only; future implementation requires fresh explicit Founder confirmation.
 - **Validation:** Both candidate contracts, WC-034/registry traceability, and prospective amendments pass deterministic fail-closed checks; no implementation tests apply.
 - **Protected local artifacts:** `.coverage`, `goals/goal_register.jsonl`, `logs/blueprint_assurance_report.json`, and `logs/bootstrap-evidence.jsonl` are unrelated and must remain unstaged.
@@ -59,7 +60,7 @@ prerequisites, not closed evidence and not implementation blockers being bypasse
 
 ## Next Authorized Action
 
-After this grooming PR receives independent review and Founder merge, route WC-062 through Product,
+After PR #270 receives independent review and Founder merge, route WC-062 through Product,
 Solution, Data, Security, integrated EA, and CA readiness contributions. Implementation remains
 stopped until the complete Entry Gate, fresh implementation-session Founder confirmation, GOA, and
 later INST-010 Acceptance pass. WC-063 remains an unselected candidate.
