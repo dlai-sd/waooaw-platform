@@ -77,7 +77,7 @@ repair is required. Exceeding this budget requires consolidation or explicit rep
 | WC070-06 | INST-013 | M0 | Deterministic validation results | WC070-01 through WC070-05 | SATISFIED | WC-070 execution record | diff check; 132-line state check; diagnostics |
 | WC070-07 | Fresh INST-002 | M3 | Independent verdict on fixed commit | WC070-01 through WC070-06 | PENDING | pending | CA review |
 | WC070-08A | Founder | M3 | Exact ratification of reviewed bytes | WC070-07 | BLOCKED | pending | exact Founder decision |
-| WC070-08B | INST-013 | M0 | Activation checkpoint and unmerged PR | WC070-08A | BLOCKED | pending | diff/status/PR checks |
+| WC070-08B | INST-013 | M0 | Activate the standard, update the GEOM header amendment record, update the checkpoint, and submit an unmerged PR | WC070-08A | BLOCKED | pending | diff/status/PR checks |
 
 ## Execution Record
 

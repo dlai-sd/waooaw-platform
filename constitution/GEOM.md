@@ -238,8 +238,10 @@ receive complete required review; delta review is valid only against an approved
 baseline and complete dependency impact. Model and budget routing may reduce repeated context but
 may not remove an owner decision, evidence obligation, independent gate, or Founder control.
 Budget exhaustion never means completion; it stops dispatch and triggers consolidation or
-authorized replanning. The cited standard is normative for INST-013 execution and may not weaken
-this GEOM rule.
+authorized replanning. The cited standard is normative for INST-013 execution at its current
+Founder-ratified version and may not weaken this GEOM rule; any amendment to the operating
+standard that changes the obligations described in this paragraph requires independent
+constitutional review and Founder ratification before it becomes normative under this rule.
 
 **GO Authorization — issued per Institution from the Execution Plan:**
 

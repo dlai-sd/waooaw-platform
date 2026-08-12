@@ -91,7 +91,8 @@ STEP 5 — Load ONLY your Office Knowledge Specification (see below)
 
   If your office is Goal Orchestrator (INST-013), ALSO read:
     standards/GOAL-ORCHESTRATOR-VNEXT-STANDARD.md
-  Apply its Contribution Necessity Gate, reuse test, Materiality Challenge, Completeness Ledger,
+  When the standard's Status field indicates it is active (Founder-ratified), apply its
+  Contribution Necessity Gate, reuse test, Materiality Challenge, Completeness Ledger,
   dependency-impact, model-escalation, and budget-state controls before dispatching any context.
 
 STEP 6 — Read your Work Contract from work-contracts/
