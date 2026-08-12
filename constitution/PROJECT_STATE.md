@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 18
+**State Revision:** 19
 **Last Updated:** 2026-08-12
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -21,7 +21,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Platform version | 1.45.0 |
 | Latest completed Work Contract | WC-060 — AE-01 Omnichannel Continuity, Evidence, and Emergency Stop |
 | Latest merge | PR #267 merged to `main` as `7ee9f6b` |
-| Active delivery | WC-060 complete and independently approved; unmerged PR pending |
+| Active delivery | WC-060 complete and independently approved; PR #268 open and unmerged |
 
 ## Active Checkpoint — WC-060 Authorization Routing
 
@@ -46,7 +46,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 ### Recovery Context
 
 - **Branch:** `ib/019/wc060-implementation`
-- **Objective:** Submit the complete independently approved WC-060 component in one unmerged PR.
+- **Objective:** Obtain constitutional review of the complete WC-060 component in PR #268.
 - **Hypothesis:** ACC-06, GOA-06, FA-041, ACK-09, and R-086 authorize implementation within Amendment 9 boundaries.
 - **Validation:** All nine tasks with Docker evidence, ≥90% coverage, Migration 22, adversarial CCTs, F5/F8 acceptance.
 - **Protected local artifacts:** `.coverage` and `logs/blueprint_assurance_report.json` are unrelated and must remain unstaged.
@@ -65,8 +65,8 @@ ib/019/wc060-implementation.
 
 ## Next Authorized Action
 
-Push branch ib/019/wc060-implementation, open one complete unmerged PR using the repository
-template, and request constitutional review. Do not merge or self-approve.
+Constitutional Analyst reviews PR #268. Founder retains merge authority; do not merge or
+self-approve.
 
 ## History And Evidence
 
