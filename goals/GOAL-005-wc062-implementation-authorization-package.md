@@ -64,12 +64,12 @@ To close Entry Gate item 7 for this current session, the Founder must state exac
 After that statement is recorded, INST-013 may issue the WC-062 implementation GOA. Implementation
 still may not begin until INST-010 records Acceptance at a timestamp later than GOA issuance.
 
-## Separate Operating-Model Decision
+## Separate Operating-Model Decision — RATIFIED 2026-08-12
 
 R-095 approves operating-model vNext with required safeguards now incorporated in the proposal.
-To ratify that model separately, the Founder may state:
+The Founder ratified the model and authorized its exact mechanical amendments by stating:
 
-> I ratify the corrected Goal Orchestrator operating-model vNext reviewed in R-095 and authorize INST-013 to apply its exact GEOM and ORGANIZATION amendments mechanically.
+> ratify the corrected Goal Orchestrator operating-model vNext reviewed in R-095 and authorize INST-013 to apply its exact GEOM and ORGANIZATION amendments mechanically.
 
 This operating-model decision is independent of WC-062 implementation authorization. Neither
 statement implies the other.
