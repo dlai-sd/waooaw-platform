@@ -151,6 +151,8 @@ builder.Services.AddDbContextFactory<EmploymentRelationshipDbContext>((services,
         .AddInterceptors(services.GetRequiredService<TenantDbConnectionInterceptor>()));
 builder.Services.AddScoped<IRelationshipConstitutionalGateway, RelationshipConstitutionalGateway>();
 builder.Services.AddScoped<EmploymentRelationshipService>();
+builder.Services.AddScoped<IRelationshipEmergencyStopGateway, GrpcRelationshipEmergencyStopGateway>();
+builder.Services.AddScoped<RelationshipEmergencyStopService>();
 builder.Services.AddScoped<RelationshipConfigurationService>();
 builder.Services.AddScoped<EmploymentContractService>();
 builder.Services.AddScoped<EmploymentContractAcceptanceService>();
@@ -166,6 +168,11 @@ builder.Services.AddScoped<RelationshipTrialService>();
 builder.Services.Configure<WhatsAppJourneyOptions>(builder.Configuration.GetSection("WhatsApp"));
 builder.Services.AddScoped<IWhatsAppRegistrationEvidenceGateway, WhatsAppRegistrationEvidenceGateway>();
 builder.Services.AddScoped<WhatsAppJourneyService>();
+builder.Services.Configure<ChannelContinuityOptions>(builder.Configuration.GetSection("ChannelContinuity"));
+builder.Services.AddScoped<ChannelContinuityService>();
+builder.Services.AddScoped<IRelationshipEvidenceGateway, GrpcRelationshipEvidenceGateway>();
+builder.Services.Configure<RelationshipEvidenceExportOptions>(builder.Configuration.GetSection("RelationshipEvidenceExport"));
+builder.Services.AddScoped<RelationshipEvidenceService>();
 
 // ── Identity Boundary — WC-034 F2 (identity-boundary.md) ─────────────────
 // Pre-account registration paths use actor subject (JWT sub); no tenant_id required.

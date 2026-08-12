@@ -50,6 +50,8 @@ public sealed class RelationshipConfigurationService(
         var relationship = await db.EmploymentRelationships.SingleOrDefaultAsync(
             item => item.TenantId == tenantId && item.RelationshipId == relationshipId,
             cancellationToken) ?? throw new KeyNotFoundException("Relationship not found.");
+        if (relationship.State == EmploymentRelationshipState.StoppedEmergency)
+            throw new ConstitutionalActionDeniedException("Relationship configuration is blocked by Emergency Stop.");
 
         RelationshipContextPayload? corrected = null;
         if (correctsPayloadReference.HasValue)

@@ -173,6 +173,8 @@ example().catch(console.error);
 
 Read one relationship-authorized evidence detail projection
 
+Applies the same participant-role projection and no-existence-disclosure rules as the evidence list. An evidence ID outside the authorized tenant, relationship, or role scope is indistinguishable from an unknown ID. Payload references appear only when the caller\&#39;s role permits them and the tenant-owned payload has not been erased.
+
 ### Example
 
 ```ts
@@ -246,6 +248,8 @@ example().catch(console.error);
 > RelationshipEvidenceExportOutcomeV1 getRelationshipEvidenceExport(relationshipId, exportId)
 
 Reconcile one relationship evidence export request
+
+Rechecks the current tenant, relationship, participant role, and evidence scope before returning a short-lived authenticated download. Revoked authority, erased payload, or cross-scope export IDs disclose no protected evidence or storage location.
 
 ### Example
 
@@ -827,6 +831,8 @@ example().catch(console.error);
 
 List relationship-authorized evidence summaries
 
+Returns only BP-authorized, customer-visible proof metadata for the selected relationship. EVALUATOR receives own disclosures, trial/configuration evidence, limitations, and Stop evidence. EMPLOYER receives the full customer-visible timeline, including contract, payment, activation, charges, handoffs, Stop, and release. RELATIONSHIP_MANAGER excludes restricted payment and personal payload references unless separately authorized. Other tenant or relationship scope returns no existence disclosure. Erased payload content, credentials, prompts, policy internals, and storage coordinates are never returned.
+
 ### Example
 
 ```ts
@@ -900,6 +906,8 @@ example().catch(console.error);
 > RelationshipEvidenceExportReceiptV1 requestRelationshipEvidenceExport(relationshipId, idempotencyKey, requestRelationshipEvidenceExportV1)
 
 Request or replay one relationship evidence export
+
+Builds an export from the same role-filtered projection as the Evidence Reader. BP is the export owner and records export evidence before releasing an outcome; CE, Audit Sink, and payload-store coordinates are never exposed to the browser.
 
 ### Example
 

@@ -34,6 +34,7 @@ interface QueuedContribution {
 interface ConversationExperienceProps {
   relationshipId: string;
   locale?: string;
+  relationshipStopped?: boolean;
 }
 
 type ConnectionState = 'connecting' | 'live' | 'offline' | 'reconnecting' | 'stopped';
@@ -171,7 +172,7 @@ function MessageStatus({ message }: { message: ConversationMessageV1 }) {
   );
 }
 
-export function ConversationExperience({ relationshipId, locale = 'en-IN' }: ConversationExperienceProps) {
+export function ConversationExperience({ relationshipId, locale = 'en-IN', relationshipStopped = false }: ConversationExperienceProps) {
   const [messages, setMessages] = useState<ConversationMessageV1[]>([]);
   const [authoritativeCursor, setAuthoritativeCursor] = useState('');
   const [nextCursor, setNextCursor] = useState<string>();
@@ -179,11 +180,21 @@ export function ConversationExperience({ relationshipId, locale = 'en-IN' }: Con
   const [draft, setDraft] = useState('');
   const [queued, setQueued] = useState<QueuedContribution>();
   const [executionId, setExecutionId] = useState<string>();
-  const [connection, setConnection] = useState<ConnectionState>('connecting');
+  const [connection, setConnection] = useState<ConnectionState>(relationshipStopped ? 'stopped' : 'connecting');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
   const [announcement, setAnnouncement] = useState('');
+
+  useEffect(() => {
+    const stopped = (event: Event) => {
+      if ((event as CustomEvent<{ relationshipId?: string }>).detail?.relationshipId !== relationshipId) return;
+      setConnection('stopped');
+      setAnnouncement('Emergency Stop confirmed. Conversation commands are disabled.');
+    };
+    window.addEventListener('waooaw:relationship-stopped', stopped);
+    return () => window.removeEventListener('waooaw:relationship-stopped', stopped);
+  }, [relationshipId]);
 
   const fetchTimeline = useCallback(async (options?: { cursor?: string; afterCursor?: string }) => {
     const search = new URLSearchParams({ limit: '40' });
@@ -278,6 +289,10 @@ export function ConversationExperience({ relationshipId, locale = 'en-IN' }: Con
   }, [fetchTimeline, reconcileContribution, relationshipId]);
 
   useEffect(() => {
+    if (relationshipStopped) {
+      setConnection('stopped');
+      return;
+    }
     let disposed = false;
     let controller: AbortController | undefined;
     let retryTimer: ReturnType<typeof setTimeout> | undefined;
@@ -366,7 +381,7 @@ export function ConversationExperience({ relationshipId, locale = 'en-IN' }: Con
       if (retryTimer) clearTimeout(retryTimer);
       controller?.abort();
     };
-  }, [fetchTimeline, relationshipId]);
+  }, [fetchTimeline, relationshipId, relationshipStopped]);
 
   useEffect(() => {
     const reconnect = () => {

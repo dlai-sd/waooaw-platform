@@ -105,6 +105,23 @@ public sealed class EmploymentContractServiceTests
         Assert.Equal("PRESENTED", versions[0].State);
     }
 
+    [Fact]
+    public async Task CctAe01Stop01_StoppedRelationshipRejectsContractPresentationWithoutMutation()
+    {
+        var (service, factory, tenantId, relationshipId, actorId) = await CreateContextAsync();
+        await using (var db = factory.CreateDbContext())
+        {
+            (await db.EmploymentRelationships.SingleAsync()).State = EmploymentRelationshipState.StoppedEmergency;
+            await db.SaveChangesAsync();
+        }
+
+        await Assert.ThrowsAsync<ConstitutionalActionDeniedException>(() => service.ComposeAsync(
+            tenantId, relationshipId, actorId, CommercialTerms, CancellationToken.None));
+
+        await using var verificationDb = factory.CreateDbContext();
+        Assert.Empty(await verificationDb.EmploymentContractVersions.ToListAsync());
+    }
+
     private static async Task<(EmploymentContractService Service, InMemoryEmploymentRelationshipFactory Factory, Guid TenantId, Guid RelationshipId, Guid ActorId)> CreateContextAsync(
         bool includeSnapshot = true)
     {

@@ -1,5 +1,5 @@
-// Implements: architecture/reference/product/ae01-relationship-data-contract.md § Migration 19
-// constitutional_basis: C-005, C-007, C-023, C-026, C-059
+// Implements: architecture/reference/product/ae01-relationship-data-contract.md § Migration 19 and § Migration 22
+// constitutional_basis: C-005, C-007, C-023, C-026, C-059, C-063
 
 using Microsoft.EntityFrameworkCore;
 
@@ -251,6 +251,9 @@ public sealed class WhatsAppJourneyContact
     public DateTimeOffset LastInboundAt { get; set; }
     public string JourneyStage { get; set; } = "DISCOVER";
     public bool PendingMediumRiskConfirmation { get; set; }
+    public string? MpinHash { get; set; }
+    public int MpinFailedAttempts { get; set; }
+    public DateTimeOffset? MpinLockedUntil { get; set; }
 }
 
 public sealed class WhatsAppMessageReceipt
@@ -260,6 +263,93 @@ public sealed class WhatsAppMessageReceipt
     public string SessionTokenHash { get; init; } = string.Empty;
     public DateTimeOffset SessionExpiresAt { get; init; }
     public DateTimeOffset ReceivedAt { get; init; }
+    public DateTimeOffset ExpiresAt { get; init; }
+}
+
+// ── Migration 22 — Continuity and Evidence Projection ────────────────────────
+
+public sealed class ChannelBinding
+{
+    public Guid BindingId { get; init; } = Guid.NewGuid();
+    public Guid TenantId { get; init; }
+    public Guid RelationshipId { get; init; }
+    public Guid ParticipantId { get; init; }
+    public string ParticipantRole { get; init; } = string.Empty;
+    public string Channel { get; init; } = string.Empty;
+    public string ExternalSubjectHash { get; init; } = string.Empty;
+    public string ConversationId { get; init; } = string.Empty;
+    public string AssuranceLevel { get; init; } = string.Empty;
+    public string Status { get; set; } = "PREPARED";
+    public Guid PreparedEvidenceId { get; init; }
+    public Guid? BoundEvidenceId { get; set; }
+    public Guid? RevokedEvidenceId { get; set; }
+    public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset? BoundAt { get; set; }
+    public DateTimeOffset? RevokedAt { get; set; }
+}
+
+public sealed class ContinuityCheckpoint
+{
+    public Guid CheckpointId { get; init; } = Guid.NewGuid();
+    public Guid TenantId { get; init; }
+    public Guid RelationshipId { get; init; }
+    public Guid SourceBindingId { get; init; }
+    public Guid TargetBindingId { get; init; }
+    public string ContinuityEnvelopeHash { get; init; } = string.Empty;
+    public string? ContinuityEnvelopeJson { get; init; }
+    public string MaterialRequestHash { get; init; } = string.Empty;
+    public Guid CausalMarker { get; init; }
+    public long SequenceNumber { get; init; }
+    public Guid IdempotencyKey { get; init; }
+    public string Status { get; set; } = "PREPARED";
+    public Guid PreparedEvidenceId { get; init; }
+    public Guid? ResolutionEvidenceId { get; set; }
+    public DateTimeOffset PreparedAt { get; init; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset ExpiresAt { get; init; }
+    public DateTimeOffset? ResolvedAt { get; set; }
+}
+
+public sealed class DeliveryAcknowledgement
+{
+    public Guid AcknowledgementId { get; init; } = Guid.NewGuid();
+    public Guid TenantId { get; init; }
+    public Guid RelationshipId { get; init; }
+    public Guid? CheckpointId { get; init; }
+    public Guid BindingId { get; init; }
+    public string MessageIdHash { get; init; } = string.Empty;
+    public string AcknowledgementType { get; init; } = string.Empty;
+    public DateTimeOffset AcknowledgedAt { get; init; }
+    public Guid EvidenceId { get; init; }
+    public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;
+}
+
+public sealed class ChannelMessageDeduplication
+{
+    public Guid DeduplicationId { get; init; } = Guid.NewGuid();
+    public Guid TenantId { get; init; }
+    public Guid RelationshipId { get; init; }
+    public Guid BindingId { get; init; }
+    public string ProviderMessageIdHash { get; init; } = string.Empty;
+    public string MaterialMessageHash { get; init; } = string.Empty;
+    public DateTimeOffset ReceivedAt { get; init; } = DateTimeOffset.UtcNow;
+    public Guid? OutcomeReference { get; set; }
+    public string Status { get; set; } = "RECEIVED";
+    public DateTimeOffset ExpiresAt { get; init; }
+}
+
+public sealed class RelationshipEvidenceExport
+{
+    public Guid ExportId { get; init; } = Guid.NewGuid();
+    public Guid TenantId { get; init; }
+    public Guid RelationshipId { get; init; }
+    public Guid ParticipantId { get; init; }
+    public string ParticipantRole { get; init; } = string.Empty;
+    public Guid IdempotencyKey { get; init; }
+    public string MaterialRequestHash { get; init; } = string.Empty;
+    public string DocumentJson { get; init; } = string.Empty;
+    public string DocumentSha256 { get; init; } = string.Empty;
+    public Guid EvidenceId { get; init; }
+    public DateTimeOffset CreatedAt { get; init; }
     public DateTimeOffset ExpiresAt { get; init; }
 }
 
@@ -283,6 +373,11 @@ public sealed class EmploymentRelationshipDbContext : DbContext
     public DbSet<RelationshipTrialBinding> RelationshipTrialBindings => Set<RelationshipTrialBinding>();
     public DbSet<WhatsAppJourneyContact> WhatsAppJourneyContacts => Set<WhatsAppJourneyContact>();
     public DbSet<WhatsAppMessageReceipt> WhatsAppMessageReceipts => Set<WhatsAppMessageReceipt>();
+    public DbSet<ChannelBinding> ChannelBindings => Set<ChannelBinding>();
+    public DbSet<ContinuityCheckpoint> ContinuityCheckpoints => Set<ContinuityCheckpoint>();
+    public DbSet<DeliveryAcknowledgement> DeliveryAcknowledgements => Set<DeliveryAcknowledgement>();
+    public DbSet<ChannelMessageDeduplication> ChannelMessageDeduplications => Set<ChannelMessageDeduplication>();
+    public DbSet<RelationshipEvidenceExport> RelationshipEvidenceExports => Set<RelationshipEvidenceExport>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -635,6 +730,9 @@ public sealed class EmploymentRelationshipDbContext : DbContext
             entity.Property(value => value.LastInboundAt).HasColumnName("last_inbound_at");
             entity.Property(value => value.JourneyStage).HasColumnName("journey_stage");
             entity.Property(value => value.PendingMediumRiskConfirmation).HasColumnName("pending_medium_risk_confirmation");
+            entity.Property(value => value.MpinHash).HasColumnName("mpin_hash").HasMaxLength(64).IsFixedLength();
+            entity.Property(value => value.MpinFailedAttempts).HasColumnName("mpin_failed_attempts");
+            entity.Property(value => value.MpinLockedUntil).HasColumnName("mpin_locked_until");
         });
 
         modelBuilder.Entity<WhatsAppMessageReceipt>(entity =>
@@ -647,6 +745,149 @@ public sealed class EmploymentRelationshipDbContext : DbContext
             entity.Property(value => value.SessionExpiresAt).HasColumnName("session_expires_at");
             entity.Property(value => value.ReceivedAt).HasColumnName("received_at");
             entity.Property(value => value.ExpiresAt).HasColumnName("expires_at");
+        });
+
+        modelBuilder.Entity<ChannelBinding>(entity =>
+        {
+            entity.ToTable("channel_bindings", "business");
+            entity.HasKey(value => value.BindingId);
+            entity.HasAlternateKey(value => new { value.TenantId, value.BindingId });
+            entity.HasIndex(value => new { value.TenantId, value.RelationshipId, value.Status });
+            entity.HasIndex(value => new { value.TenantId, value.ConversationId });
+            entity.Property(value => value.BindingId).HasColumnName("binding_id");
+            entity.Property(value => value.TenantId).HasColumnName("tenant_id");
+            entity.Property(value => value.RelationshipId).HasColumnName("relationship_id");
+            entity.Property(value => value.ParticipantId).HasColumnName("participant_id");
+            entity.Property(value => value.ParticipantRole).HasColumnName("participant_role");
+            entity.Property(value => value.Channel).HasColumnName("channel");
+            entity.Property(value => value.ExternalSubjectHash).HasColumnName("external_subject_hash").HasMaxLength(64).IsFixedLength();
+            entity.Property(value => value.ConversationId).HasColumnName("conversation_id");
+            entity.Property(value => value.AssuranceLevel).HasColumnName("assurance_level");
+            entity.Property(value => value.Status).HasColumnName("status");
+            entity.Property(value => value.PreparedEvidenceId).HasColumnName("prepared_evidence_id");
+            entity.Property(value => value.BoundEvidenceId).HasColumnName("bound_evidence_id");
+            entity.Property(value => value.RevokedEvidenceId).HasColumnName("revoked_evidence_id");
+            entity.Property(value => value.CreatedAt).HasColumnName("created_at");
+            entity.Property(value => value.BoundAt).HasColumnName("bound_at");
+            entity.Property(value => value.RevokedAt).HasColumnName("revoked_at");
+            entity.HasOne<EmploymentRelationship>().WithMany()
+                .HasForeignKey(value => new { value.TenantId, value.RelationshipId })
+                .HasPrincipalKey(value => new { value.TenantId, value.RelationshipId });
+        });
+
+        modelBuilder.Entity<ContinuityCheckpoint>(entity =>
+        {
+            entity.ToTable("continuity_checkpoints", "business");
+            entity.HasKey(value => value.CheckpointId);
+            entity.HasAlternateKey(value => new { value.TenantId, value.CheckpointId });
+            entity.HasIndex(value => new { value.TenantId, value.RelationshipId, value.IdempotencyKey }).IsUnique();
+            entity.HasIndex(value => new { value.TenantId, value.RelationshipId, value.CausalMarker }).IsUnique();
+            entity.HasIndex(value => new { value.TenantId, value.RelationshipId, value.SequenceNumber }).IsUnique();
+            entity.HasIndex(value => new { value.TenantId, value.RelationshipId, value.Status });
+            entity.HasIndex(value => new { value.TenantId, value.TargetBindingId, value.Status });
+            entity.Property(value => value.CheckpointId).HasColumnName("checkpoint_id");
+            entity.Property(value => value.TenantId).HasColumnName("tenant_id");
+            entity.Property(value => value.RelationshipId).HasColumnName("relationship_id");
+            entity.Property(value => value.SourceBindingId).HasColumnName("source_binding_id");
+            entity.Property(value => value.TargetBindingId).HasColumnName("target_binding_id");
+            entity.Property(value => value.ContinuityEnvelopeHash).HasColumnName("continuity_envelope_hash").HasMaxLength(64).IsFixedLength();
+            entity.Property(value => value.ContinuityEnvelopeJson).HasColumnName("continuity_envelope").HasColumnType("jsonb");
+            entity.Property(value => value.MaterialRequestHash).HasColumnName("material_request_hash").HasMaxLength(64).IsFixedLength();
+            entity.Property(value => value.CausalMarker).HasColumnName("causal_marker");
+            entity.Property(value => value.SequenceNumber).HasColumnName("sequence_number");
+            entity.Property(value => value.IdempotencyKey).HasColumnName("idempotency_key");
+            entity.Property(value => value.Status).HasColumnName("status");
+            entity.Property(value => value.PreparedEvidenceId).HasColumnName("prepared_evidence_id");
+            entity.Property(value => value.ResolutionEvidenceId).HasColumnName("resolution_evidence_id");
+            entity.Property(value => value.PreparedAt).HasColumnName("prepared_at");
+            entity.Property(value => value.ExpiresAt).HasColumnName("expires_at").ValueGeneratedOnAdd();
+            entity.Property(value => value.ResolvedAt).HasColumnName("resolved_at");
+            entity.HasOne<EmploymentRelationship>().WithMany()
+                .HasForeignKey(value => new { value.TenantId, value.RelationshipId })
+                .HasPrincipalKey(value => new { value.TenantId, value.RelationshipId });
+            entity.HasOne<ChannelBinding>().WithMany()
+                .HasForeignKey(value => new { value.TenantId, value.SourceBindingId })
+                .HasPrincipalKey(value => new { value.TenantId, value.BindingId });
+            entity.HasOne<ChannelBinding>().WithMany()
+                .HasForeignKey(value => new { value.TenantId, value.TargetBindingId })
+                .HasPrincipalKey(value => new { value.TenantId, value.BindingId });
+        });
+
+        modelBuilder.Entity<DeliveryAcknowledgement>(entity =>
+        {
+            entity.ToTable("delivery_acknowledgements", "business");
+            entity.HasKey(value => value.AcknowledgementId);
+            entity.HasIndex(value => new { value.TenantId, value.BindingId, value.MessageIdHash, value.AcknowledgementType }).IsUnique();
+            entity.HasIndex(value => new { value.TenantId, value.RelationshipId, value.AcknowledgedAt });
+            entity.HasIndex(value => new { value.TenantId, value.CheckpointId });
+            entity.HasIndex(value => new { value.TenantId, value.BindingId, value.MessageIdHash });
+            entity.Property(value => value.AcknowledgementId).HasColumnName("acknowledgement_id");
+            entity.Property(value => value.TenantId).HasColumnName("tenant_id");
+            entity.Property(value => value.RelationshipId).HasColumnName("relationship_id");
+            entity.Property(value => value.CheckpointId).HasColumnName("checkpoint_id");
+            entity.Property(value => value.BindingId).HasColumnName("binding_id");
+            entity.Property(value => value.MessageIdHash).HasColumnName("message_id_hash").HasMaxLength(64).IsFixedLength();
+            entity.Property(value => value.AcknowledgementType).HasColumnName("acknowledgement_type");
+            entity.Property(value => value.AcknowledgedAt).HasColumnName("acknowledged_at");
+            entity.Property(value => value.EvidenceId).HasColumnName("evidence_id");
+            entity.Property(value => value.CreatedAt).HasColumnName("created_at");
+            entity.HasOne<EmploymentRelationship>().WithMany()
+                .HasForeignKey(value => new { value.TenantId, value.RelationshipId })
+                .HasPrincipalKey(value => new { value.TenantId, value.RelationshipId });
+            entity.HasOne<ContinuityCheckpoint>().WithMany()
+                .HasForeignKey(value => new { value.TenantId, value.CheckpointId })
+                .HasPrincipalKey(value => new { value.TenantId, value.CheckpointId })
+                .IsRequired(false);
+            entity.HasOne<ChannelBinding>().WithMany()
+                .HasForeignKey(value => new { value.TenantId, value.BindingId })
+                .HasPrincipalKey(value => new { value.TenantId, value.BindingId });
+        });
+
+        modelBuilder.Entity<ChannelMessageDeduplication>(entity =>
+        {
+            entity.ToTable("channel_message_deduplication", "business");
+            entity.HasKey(value => value.DeduplicationId);
+            entity.HasIndex(value => new { value.TenantId, value.BindingId, value.ProviderMessageIdHash }).IsUnique();
+            entity.HasIndex(value => new { value.TenantId, value.RelationshipId, value.ReceivedAt });
+            entity.HasIndex(value => value.ExpiresAt);
+            entity.Property(value => value.DeduplicationId).HasColumnName("deduplication_id");
+            entity.Property(value => value.TenantId).HasColumnName("tenant_id");
+            entity.Property(value => value.RelationshipId).HasColumnName("relationship_id");
+            entity.Property(value => value.BindingId).HasColumnName("binding_id");
+            entity.Property(value => value.ProviderMessageIdHash).HasColumnName("provider_message_id_hash").HasMaxLength(64).IsFixedLength();
+            entity.Property(value => value.MaterialMessageHash).HasColumnName("material_message_hash").HasMaxLength(64).IsFixedLength();
+            entity.Property(value => value.ReceivedAt).HasColumnName("received_at");
+            entity.Property(value => value.OutcomeReference).HasColumnName("outcome_reference");
+            entity.Property(value => value.Status).HasColumnName("status");
+            entity.Property(value => value.ExpiresAt).HasColumnName("expires_at").ValueGeneratedOnAdd();
+            entity.HasOne<EmploymentRelationship>().WithMany()
+                .HasForeignKey(value => new { value.TenantId, value.RelationshipId })
+                .HasPrincipalKey(value => new { value.TenantId, value.RelationshipId });
+            entity.HasOne<ChannelBinding>().WithMany()
+                .HasForeignKey(value => new { value.TenantId, value.BindingId })
+                .HasPrincipalKey(value => new { value.TenantId, value.BindingId });
+        });
+
+        modelBuilder.Entity<RelationshipEvidenceExport>(entity =>
+        {
+            entity.ToTable("relationship_evidence_exports", "business");
+            entity.HasKey(value => value.ExportId);
+            entity.HasIndex(value => new { value.TenantId, value.RelationshipId, value.IdempotencyKey }).IsUnique();
+            entity.Property(value => value.ExportId).HasColumnName("export_id");
+            entity.Property(value => value.TenantId).HasColumnName("tenant_id");
+            entity.Property(value => value.RelationshipId).HasColumnName("relationship_id");
+            entity.Property(value => value.ParticipantId).HasColumnName("participant_id");
+            entity.Property(value => value.ParticipantRole).HasColumnName("participant_role");
+            entity.Property(value => value.IdempotencyKey).HasColumnName("idempotency_key");
+            entity.Property(value => value.MaterialRequestHash).HasColumnName("material_request_hash");
+            entity.Property(value => value.DocumentJson).HasColumnName("document_json").HasColumnType("jsonb");
+            entity.Property(value => value.DocumentSha256).HasColumnName("document_sha256");
+            entity.Property(value => value.EvidenceId).HasColumnName("evidence_id");
+            entity.Property(value => value.CreatedAt).HasColumnName("created_at");
+            entity.Property(value => value.ExpiresAt).HasColumnName("expires_at");
+            entity.HasOne<EmploymentRelationship>().WithMany()
+                .HasForeignKey(value => new { value.TenantId, value.RelationshipId })
+                .HasPrincipalKey(value => new { value.TenantId, value.RelationshipId });
         });
     }
 }

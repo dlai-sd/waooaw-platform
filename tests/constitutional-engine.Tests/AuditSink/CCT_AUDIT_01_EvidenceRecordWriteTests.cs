@@ -245,4 +245,45 @@ public sealed class CCT_AUDIT_01_EvidenceRecordWriteTests
         bRow.ErasureStatus.Should().Be("NONE",
             because: "tenant B's data must not be affected by tenant A's erasure order");
     }
+
+    [Fact]
+    public async Task QueryEvidenceRecords_OmitsForeignTenantAndErasedPayloadReference()
+    {
+        var auditOpts = BuildAuditOptions();
+        var auditFactory = new FakeAuditFactory(auditOpts);
+        var tenantId = Guid.NewGuid();
+        var ownId = Guid.NewGuid();
+        var foreignId = Guid.NewGuid();
+        await using (var db = new AuditSinkDbContext(auditOpts))
+        {
+            db.EvidenceRecords.AddRange(
+                new AuditSinkEvidenceRecord
+                {
+                    Id = ownId, TenantId = tenantId, DecisionId = "DEC-OWN", AgentId = "agent",
+                    AgentInstanceId = "relationship", ActionType = "EMERGENCY_STOP",
+                    ExecutionStatus = "AUTHORIZED", ConstitutionalBasis = ["C-001"],
+                    EvidenceHash = new string('a', 64), PayloadRefId = Guid.NewGuid(),
+                    ErasureStatus = "PAYLOAD_PURGED", ErasureTimestamp = DateTimeOffset.UtcNow,
+                },
+                new AuditSinkEvidenceRecord
+                {
+                    Id = foreignId, TenantId = Guid.NewGuid(), DecisionId = "DEC-FOREIGN", AgentId = "agent",
+                    AgentInstanceId = "relationship", ActionType = "PAYMENT",
+                    ExecutionStatus = "AUTHORIZED", ConstitutionalBasis = ["C-023"],
+                    EvidenceHash = new string('b', 64), PayloadRefId = Guid.NewGuid(),
+                });
+            await db.SaveChangesAsync();
+        }
+        var service = BuildService(new FakeConstFactory(BuildConstOptions()), auditFactory);
+        var request = new QueryEvidenceRecordsRequest { PageSize = 100 };
+        request.EvidenceRecordIds.AddRange([ownId.ToString(), foreignId.ToString()]);
+
+        var response = await service.QueryEvidenceRecords(
+            request, FakeServerCallContext.Create(tenantId.ToString()));
+
+        response.Records.Should().ContainSingle();
+        response.Records[0].EvidenceRecordId.Should().Be(ownId.ToString());
+        response.Records[0].HasPayloadRefId.Should().BeFalse();
+        response.Records[0].ErasureTimestamp.Should().NotBeNull();
+    }
 }

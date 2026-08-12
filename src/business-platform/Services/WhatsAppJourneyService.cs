@@ -25,6 +25,19 @@ public sealed record WhatsAppJourneyReceipt(
     bool Replayed,
     string InternalTenantToken);
 
+public sealed record PortalPhoneAttachProof(
+    Guid ParticipantId,
+    string AuthenticationAssurance,
+    DateTimeOffset AuthenticatedAt,
+    Guid CorrelationId);
+
+public sealed record WhatsAppRelationshipResolution(
+    Guid TenantId,
+    Guid RelationshipId,
+    Guid ParticipantId,
+    Guid BindingId,
+    string AuthenticationAssurance);
+
 public sealed class WhatsAppWebhookException(int statusCode, string code) : Exception(code)
 {
     public int StatusCode { get; } = statusCode;
@@ -37,16 +50,22 @@ public sealed partial class WhatsAppJourneyService
     private readonly IWhatsAppRegistrationEvidenceGateway _evidenceGateway;
     private readonly byte[] _webhookSecret;
     private readonly byte[] _tokenKey;
+    private readonly IRelationshipConstitutionalGateway? _relationshipGateway;
+    private readonly RelationshipEmergencyStopService? _emergencyStops;
 
     public WhatsAppJourneyService(
         IDbContextFactory<EmploymentRelationshipDbContext> dbFactory,
         IWhatsAppRegistrationEvidenceGateway evidenceGateway,
-        IOptions<WhatsAppJourneyOptions> options)
+        IOptions<WhatsAppJourneyOptions> options,
+        IRelationshipConstitutionalGateway? relationshipGateway = null,
+        RelationshipEmergencyStopService? emergencyStops = null)
     {
         _dbFactory = dbFactory;
         _evidenceGateway = evidenceGateway;
         _webhookSecret = RequireKey(options.Value.WebhookSecret, nameof(options.Value.WebhookSecret));
         _tokenKey = RequireKey(options.Value.TenantTokenKey, nameof(options.Value.TenantTokenKey));
+        _relationshipGateway = relationshipGateway;
+        _emergencyStops = emergencyStops;
     }
 
     public async Task<WhatsAppJourneyReceipt> ReceiveAsync(
@@ -117,12 +136,41 @@ public sealed partial class WhatsAppJourneyService
         }
         contact.LastInboundAt = receivedAt;
 
+        var bindings = await db.ChannelBindings.AsNoTracking()
+            .Where(value => value.TenantId == contact.TenantId
+                && value.Channel == "WHATSAPP"
+                && value.ExternalSubjectHash == phoneHmac
+                && value.Status == "ACTIVE")
+            .ToListAsync(cancellationToken);
+        var binding = bindings.Count == 1 ? bindings[0] : null;
+        var attachedRelationship = binding is null ? null : await db.EmploymentRelationships.AsNoTracking()
+            .SingleOrDefaultAsync(value => value.TenantId == contact.TenantId
+                && value.RelationshipId == binding.RelationshipId, cancellationToken);
+
         var riskTier = inbound.RiskTier?.Trim().ToUpperInvariant() ?? "TIER_1_LOW_RISK";
         var confirmation = inbound.Text.Trim().Equals("YES", StringComparison.OrdinalIgnoreCase)
             || inbound.Text.Trim().Equals("CONFIRM", StringComparison.OrdinalIgnoreCase);
         string status;
         string reply;
-        if (riskTier == "TIER_4_CONSEQUENTIAL")
+        if (attachedRelationship?.State == EmploymentRelationshipState.StoppedEmergency)
+        {
+            contact.PendingMediumRiskConfirmation = false;
+            contact.JourneyStage = "STOP";
+            status = "STOPPED";
+            reply = "This relationship is STOPPED_EMERGENCY. Consequential commands, configuration, contract, activation, and handoff remain blocked. Release is available only in the secure Tier-4 employer portal.";
+        }
+        else if (binding is not null && inbound.Text.Contains("STOP", StringComparison.OrdinalIgnoreCase))
+        {
+            if (_emergencyStops is null) throw new InvalidOperationException("Relationship Emergency Stop is unavailable.");
+            await _emergencyStops.StopAsync(
+                contact.TenantId, binding.RelationshipId, binding.ParticipantId,
+                RelationshipRoleCodec.FromDatabase(binding.ParticipantRole), Guid.NewGuid(), cancellationToken);
+            contact.PendingMediumRiskConfirmation = false;
+            contact.JourneyStage = "STOP";
+            status = "ACCEPTED";
+            reply = "Emergency Stop confirmed for the relationship. All known evaluation and trial sessions were halted; later consequential commands remain blocked.";
+        }
+        else if (riskTier == "TIER_4_CONSEQUENTIAL")
         {
             contact.PendingMediumRiskConfirmation = false;
             status = "SECURE_PORTAL_REQUIRED";
@@ -158,6 +206,140 @@ public sealed partial class WhatsAppJourneyService
         });
         await db.SaveChangesAsync(cancellationToken);
         return new(inbound.MessageId, status, contact.JourneyStage, reply, false, tenantToken);
+    }
+
+    public async Task EnrolMpinAsync(
+        Guid tenantId,
+        string phone,
+        string mpin,
+        PortalPhoneAttachProof proof,
+        CancellationToken cancellationToken)
+    {
+        ValidateFreshPortalProof(proof);
+        ValidateMpin(mpin);
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+        var phoneHmac = HmacHex(_webhookSecret, phone);
+        var contact = await db.WhatsAppJourneyContacts.SingleOrDefaultAsync(
+            value => value.TenantId == tenantId && value.PhoneHmac == phoneHmac,
+            cancellationToken) ?? throw new ConstitutionalActionDeniedException(
+                "Unknown phone identity cannot be attached from portal payload hints.");
+        contact.MpinHash = HmacHex(_tokenKey, $"{tenantId:D}:{mpin}");
+        contact.MpinFailedAttempts = 0;
+        contact.MpinLockedUntil = null;
+        await db.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<bool> VerifyMpinAsync(
+        Guid tenantId,
+        string phone,
+        string mpin,
+        DateTimeOffset attemptedAt,
+        CancellationToken cancellationToken)
+    {
+        ValidateMpin(mpin);
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+        var phoneHmac = HmacHex(_webhookSecret, phone);
+        var contact = await db.WhatsAppJourneyContacts.SingleOrDefaultAsync(
+            value => value.TenantId == tenantId && value.PhoneHmac == phoneHmac,
+            cancellationToken) ?? throw new ConstitutionalActionDeniedException("Phone identity is not registered.");
+        if (contact.MpinLockedUntil > attemptedAt)
+            throw new WhatsAppWebhookException(423, "WHATSAPP_MPIN_LOCKED");
+        if (contact.MpinHash is null)
+            throw new ConstitutionalActionDeniedException("MPIN is not enrolled.");
+
+        var suppliedHash = HmacHex(_tokenKey, $"{tenantId:D}:{mpin}");
+        var valid = CryptographicOperations.FixedTimeEquals(
+            Convert.FromHexString(contact.MpinHash), Convert.FromHexString(suppliedHash));
+        if (valid)
+        {
+            contact.MpinFailedAttempts = 0;
+            contact.MpinLockedUntil = null;
+        }
+        else
+        {
+            contact.MpinFailedAttempts += 1;
+            if (contact.MpinFailedAttempts >= 3)
+            {
+                contact.MpinFailedAttempts = 3;
+                contact.MpinLockedUntil = attemptedAt.AddMinutes(30);
+            }
+        }
+        await db.SaveChangesAsync(cancellationToken);
+        return valid;
+    }
+
+    public async Task<WhatsAppRelationshipResolution> AttachPhoneAsync(
+        Guid tenantId,
+        Guid relationshipId,
+        string phone,
+        string conversationId,
+        PortalPhoneAttachProof proof,
+        CancellationToken cancellationToken)
+    {
+        ValidateFreshPortalProof(proof);
+        if (_relationshipGateway is null)
+            throw new InvalidOperationException("Relationship constitutional gateway is unavailable.");
+        var phoneHmac = HmacHex(_webhookSecret, phone);
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+        var contactExists = await db.WhatsAppJourneyContacts.AsNoTracking().AnyAsync(
+            value => value.TenantId == tenantId && value.PhoneHmac == phoneHmac,
+            cancellationToken);
+        if (!contactExists)
+            throw new ConstitutionalActionDeniedException(
+                "Unknown phone identity cannot attach to an existing relationship.");
+        var relationship = await db.EmploymentRelationships.AsNoTracking().SingleOrDefaultAsync(
+            value => value.TenantId == tenantId && value.RelationshipId == relationshipId,
+            cancellationToken) ?? throw new KeyNotFoundException("Employment relationship was not found.");
+        var participant = await db.RelationshipParticipants.AsNoTracking().SingleOrDefaultAsync(
+            value => value.TenantId == tenantId
+                && value.RelationshipId == relationshipId
+                && value.ParticipantId == proof.ParticipantId
+                && value.Status == "ACTIVE",
+            cancellationToken) ?? throw new ConstitutionalActionDeniedException(
+                "Phone attachment requires an active same-tenant participant binding.");
+        var existing = await db.ChannelBindings.SingleOrDefaultAsync(
+            value => value.TenantId == tenantId
+                && value.RelationshipId == relationshipId
+                && value.ParticipantId == proof.ParticipantId
+                && value.Channel == "WHATSAPP"
+                && value.Status == "ACTIVE",
+            cancellationToken);
+        if (existing is not null)
+            return new(tenantId, relationshipId, proof.ParticipantId, existing.BindingId, existing.AssuranceLevel);
+
+        var evidenceId = await _relationshipGateway.AuthorizeAndRecordAsync(
+            tenantId,
+            relationshipId,
+            relationship.ProfessionalType,
+            "ATTACH_WHATSAPP_PHONE",
+            proof.CorrelationId,
+            new
+            {
+                participant_id = proof.ParticipantId,
+                participant_role = RelationshipRoleCodec.ToDatabase(participant.Role),
+                phone_subject_hash = phoneHmac,
+            },
+            cancellationToken);
+        var now = DateTimeOffset.UtcNow;
+        var binding = new ChannelBinding
+        {
+            TenantId = tenantId,
+            RelationshipId = relationshipId,
+            ParticipantId = proof.ParticipantId,
+            ParticipantRole = RelationshipRoleCodec.ToDatabase(participant.Role),
+            Channel = "WHATSAPP",
+            ExternalSubjectHash = phoneHmac,
+            ConversationId = conversationId,
+            AssuranceLevel = "TIER_4_PORTAL_FRESH",
+            Status = "ACTIVE",
+            PreparedEvidenceId = evidenceId,
+            BoundEvidenceId = evidenceId,
+            CreatedAt = now,
+            BoundAt = now,
+        };
+        db.ChannelBindings.Add(binding);
+        await db.SaveChangesAsync(cancellationToken);
+        return new(tenantId, relationshipId, proof.ParticipantId, binding.BindingId, binding.AssuranceLevel);
     }
 
     private void VerifySignature(string rawBody, string signatureHeader)
@@ -201,6 +383,12 @@ public sealed partial class WhatsAppJourneyService
     private static (string Stage, string Reply) Present(string text)
     {
         var normalized = text.Trim().ToUpperInvariant();
+        if (normalized.Contains("STOP", StringComparison.Ordinal))
+            return ("STOP", "Emergency Stop remains available in the secure relationship workspace. WhatsApp transport acceptance does not prove that every participant observed the Stop; delivery stays unresolved until durable acknowledgement is recorded.");
+        if (normalized.Contains("EVIDENCE", StringComparison.Ordinal) || normalized.Contains("EXPORT", StringComparison.Ordinal))
+            return ("EVIDENCE", "Open the secure relationship workspace to inspect the customer Evidence Window or request a time-limited canonical export. Evidence access follows your current relationship role.");
+        if (normalized.Contains("TIMELINE", StringComparison.Ordinal) || normalized.Contains("STATUS", StringComparison.Ordinal))
+            return ("CONTINUITY", "The secure relationship workspace shows the authoritative timeline, current trial and lifecycle state, authority version, actual and forecast cost, and participant delivery acknowledgements. A received WhatsApp message confirms transport acceptance only.");
         if (normalized.Contains("TRIAL", StringComparison.Ordinal))
             return ("TRIAL", "Your evaluation plan spans 14 calendar days. It uses local inference and cannot publish, spend, message third parties, or mutate providers.");
         if (normalized.Contains("CONFIG", StringComparison.Ordinal) || normalized.Contains("BUDGET", StringComparison.Ordinal))
@@ -219,6 +407,19 @@ public sealed partial class WhatsAppJourneyService
     private static string HmacHex(byte[] key, string value) =>
         Convert.ToHexStringLower(HMACSHA256.HashData(key, Encoding.UTF8.GetBytes(value)));
     private static string Base64Url(byte[] value) => Convert.ToBase64String(value).TrimEnd('=').Replace('+', '-').Replace('/', '_');
+
+    private static void ValidateFreshPortalProof(PortalPhoneAttachProof proof)
+    {
+        if (proof.AuthenticationAssurance != "TIER_4_PORTAL_FRESH"
+            || (DateTimeOffset.UtcNow - proof.AuthenticatedAt).Duration() > TimeSpan.FromMinutes(5))
+            throw new ConstitutionalActionDeniedException("Phone attachment requires fresh Tier-4 portal proof.");
+    }
+
+    private static void ValidateMpin(string mpin)
+    {
+        if (mpin.Length is < 4 or > 8 || mpin.Any(value => !char.IsAsciiDigit(value)))
+            throw new ArgumentException("MPIN must contain 4 to 8 digits.", nameof(mpin));
+    }
 
     [GeneratedRegex("^\\+[1-9][0-9]{7,14}$", RegexOptions.CultureInvariant)]
     private static partial Regex E164();

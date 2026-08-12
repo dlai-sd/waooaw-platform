@@ -22,9 +22,51 @@ public sealed record TransitionEmploymentRelationshipRequest(
     Guid ActorParticipantId,
     [property: JsonConverter(typeof(RelationshipRoleJsonConverter))] RelationshipParticipantRole ActorRole,
     Guid CorrelationId,
-    bool ExplicitEmergencyRelease = false);
+    bool ExplicitEmergencyRelease = false,
+    Guid? OriginatingStopEvidenceId = null,
+    Guid? OriginatingStopCorrelationId = null,
+    string? ReleaseConfirmation = null,
+    string? ReleaseJustification = null);
+
+public sealed record StopEmploymentRelationshipRequest(Guid? CorrelationId = null);
+
+public sealed record ReleaseEmploymentRelationshipStopRequest(
+    Guid OriginatingStopEvidenceId,
+    Guid OriginatingStopCorrelationId,
+    string ReleaseConfirmation,
+    string ReleaseJustification,
+    [property: JsonConverter(typeof(RelationshipStateJsonConverter))] EmploymentRelationshipState TargetState,
+    Guid? CorrelationId = null);
 
 public sealed record StartRelationshipTrialRequest(Guid? CorrelationId = null);
+
+public sealed record PrepareRelationshipHandoffRequest(
+    string TargetChannel,
+    string TargetConversationId,
+    string CommandPurpose,
+    Guid? CorrelationId = null);
+
+public sealed record ActivateRelationshipHandoffRequest(
+    string TargetConversationId,
+    Guid? CorrelationId = null);
+
+public sealed record RelationshipChannelBindingResponse(
+    Guid BindingId,
+    string Channel,
+    string ConversationId,
+    string Assurance,
+    string Status);
+
+public sealed record RelationshipHandoffResponse(
+    Guid HandoffId,
+    Guid RelationshipId,
+    string Status,
+    RelationshipChannelBindingResponse SourceBinding,
+    RelationshipChannelBindingResponse TargetBinding,
+    NeutralContinuityEnvelope ContinuityEnvelope,
+    bool Replayed,
+    Guid? ResolutionEvidenceId,
+    DateTimeOffset? CommittedAt);
 
 public sealed record ProposeEmploymentContractRequest(
     EmploymentContractCommercialTerms CommercialTerms,
@@ -123,6 +165,8 @@ public sealed class EmploymentRelationshipsController : ControllerBase
     private readonly EmploymentContractAcceptanceService? _contractAcceptances;
     private readonly RelationshipPaymentService? _payments;
     private readonly ActivationWorkflowDispatchService? _activationDispatch;
+    private readonly ChannelContinuityService? _continuity;
+    private readonly RelationshipEmergencyStopService? _emergencyStops;
 
     public EmploymentRelationshipsController(
         EmploymentRelationshipService service,
@@ -130,7 +174,9 @@ public sealed class EmploymentRelationshipsController : ControllerBase
         EmploymentContractService? contracts = null,
         EmploymentContractAcceptanceService? contractAcceptances = null,
         RelationshipPaymentService? payments = null,
-        ActivationWorkflowDispatchService? activationDispatch = null)
+        ActivationWorkflowDispatchService? activationDispatch = null,
+        ChannelContinuityService? continuity = null,
+        RelationshipEmergencyStopService? emergencyStops = null)
     {
         _service = service;
         _trials = trials;
@@ -138,6 +184,8 @@ public sealed class EmploymentRelationshipsController : ControllerBase
         _contractAcceptances = contractAcceptances;
         _payments = payments;
         _activationDispatch = activationDispatch;
+        _continuity = continuity;
+        _emergencyStops = emergencyStops;
     }
 
     [HttpPost]
@@ -215,6 +263,83 @@ public sealed class EmploymentRelationshipsController : ControllerBase
             value.OccurredAt)));
     }
 
+    [HttpPost("{relationshipId:guid}/handoffs")]
+    public async Task<IActionResult> PrepareHandoffAsync(
+        Guid relationshipId,
+        [FromHeader(Name = "Idempotency-Key")] string idempotencyKey,
+        [FromBody] PrepareRelationshipHandoffRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetTenantId(out var tenantId) || !TryGetContinuityIdentity(out var identity)) return Forbid();
+        if (_continuity is null) return Problem(statusCode: 503, title: "Channel continuity unavailable");
+        if (!Guid.TryParse(idempotencyKey, out var parsedIdempotencyKey))
+            return ValidationProblem("Idempotency-Key must be a UUID.");
+
+        try
+        {
+            var handoff = await _continuity.PrepareAsync(
+                tenantId,
+                relationshipId,
+                identity,
+                new PrepareChannelHandoff(
+                    request.TargetChannel,
+                    request.TargetConversationId,
+                    request.CommandPurpose,
+                    request.CorrelationId ?? Guid.NewGuid(),
+                    parsedIdempotencyKey),
+                cancellationToken);
+            return handoff.Replayed ? Ok(ToHandoffResponse(handoff)) : StatusCode(201, ToHandoffResponse(handoff));
+        }
+        catch (KeyNotFoundException) { return NotFound(); }
+        catch (ArgumentException exception) { return ValidationProblem(exception.Message); }
+        catch (ChannelContinuityLockedException exception) { return Problem(statusCode: 423, title: "Relationship is stopped", detail: exception.Message); }
+        catch (ChannelContinuityConflictException exception) { return Conflict(new { error = "HANDOFF_CONFLICT", detail = exception.Message }); }
+        catch (ConstitutionalActionDeniedException exception) { return Problem(statusCode: 403, title: "Constitutional authorization denied", detail: exception.Message); }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            return Problem(statusCode: 503, title: "Channel handoff remains unresolved");
+        }
+    }
+
+    [HttpPost("{relationshipId:guid}/handoffs/{handoffId:guid}/activate")]
+    public async Task<IActionResult> ActivateHandoffAsync(
+        Guid relationshipId,
+        Guid handoffId,
+        [FromHeader(Name = "Idempotency-Key")] string idempotencyKey,
+        [FromBody] ActivateRelationshipHandoffRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetTenantId(out var tenantId) || !TryGetContinuityIdentity(out var identity)) return Forbid();
+        if (_continuity is null) return Problem(statusCode: 503, title: "Channel continuity unavailable");
+        if (!Guid.TryParse(idempotencyKey, out var parsedIdempotencyKey))
+            return ValidationProblem("Idempotency-Key must be a UUID.");
+        if (!TryGetContinuityEnvelope(out var envelope)) return Forbid();
+
+        try
+        {
+            var handoff = await _continuity.ActivateAsync(
+                tenantId,
+                relationshipId,
+                handoffId,
+                identity,
+                new ActivateChannelHandoff(
+                    request.TargetConversationId,
+                    request.CorrelationId ?? Guid.NewGuid(),
+                    parsedIdempotencyKey,
+                    envelope),
+                cancellationToken);
+            return Ok(ToHandoffResponse(handoff));
+        }
+        catch (KeyNotFoundException) { return NotFound(); }
+        catch (ChannelContinuityLockedException exception) { return Problem(statusCode: 423, title: "Relationship is stopped", detail: exception.Message); }
+        catch (ChannelContinuityConflictException exception) { return Conflict(new { error = "HANDOFF_CONFLICT", detail = exception.Message }); }
+        catch (ConstitutionalActionDeniedException exception) { return Problem(statusCode: 403, title: "Target authentication denied", detail: exception.Message); }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            return Problem(statusCode: 503, title: "Channel handoff remains unresolved");
+        }
+    }
+
     [Authorize(Policy = "InternalService")]
     [HttpPost("{relationshipId:guid}/transitions")]
     public async Task<IActionResult> TransitionAsync(
@@ -237,7 +362,8 @@ public sealed class EmploymentRelationshipsController : ControllerBase
                 request.TargetState,
                 request.CorrelationId,
                 request.ExplicitEmergencyRelease,
-                cancellationToken);
+                cancellationToken,
+                BuildEmergencyReleaseAuthorization(request));
             return relationship is null ? NotFound() : Ok(ToResponse(relationship));
         }
         catch (IllegalRelationshipTransitionException exception)
@@ -255,6 +381,73 @@ public sealed class EmploymentRelationshipsController : ControllerBase
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
             return Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "Constitutional evidence unavailable");
+        }
+    }
+
+    [HttpPost("{relationshipId:guid}/emergency-stop")]
+    public async Task<IActionResult> StopAsync(
+        Guid relationshipId,
+        [FromBody] StopEmploymentRelationshipRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetTenantId(out var tenantId) || !TryGetParticipantId(out var participantId)) return Forbid();
+        if (_emergencyStops is null) return Problem(statusCode: 503, title: "Emergency Stop unavailable");
+        var actorRole = await _service.GetActiveRoleAsync(tenantId, relationshipId, participantId, cancellationToken);
+        if (actorRole is null) return NotFound();
+        var current = await _service.GetAsync(tenantId, relationshipId, cancellationToken);
+        if (current is null) return NotFound();
+        if (current.State == EmploymentRelationshipState.StoppedEmergency) return Ok(ToResponse(current));
+        try
+        {
+            var stopped = await _emergencyStops.StopAsync(
+                tenantId, relationshipId, participantId, actorRole.Value,
+                request.CorrelationId ?? Guid.NewGuid(), cancellationToken);
+            return Ok(ToResponse(stopped!));
+        }
+        catch (IllegalRelationshipTransitionException exception)
+        {
+            return Conflict(new { error = "ILLEGAL_RELATIONSHIP_TRANSITION", detail = exception.Message });
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            return Problem(statusCode: 503, title: "Emergency Stop remains unresolved");
+        }
+    }
+
+    [HttpPost("{relationshipId:guid}/emergency-stop/release")]
+    public async Task<IActionResult> ReleaseStopAsync(
+        Guid relationshipId,
+        [FromBody] ReleaseEmploymentRelationshipStopRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetTenantId(out var tenantId) || !TryGetParticipantId(out var participantId)) return Forbid();
+        try
+        {
+            var assurance = GetContractPortalAssurance();
+            var released = await _service.TransitionAsync(
+                tenantId, relationshipId, participantId, RelationshipParticipantRole.Employer,
+                request.TargetState, request.CorrelationId ?? Guid.NewGuid(), true, cancellationToken,
+                new EmergencyStopReleaseAuthorization(
+                    assurance.IsKeycloakPortal,
+                    User.FindFirstValue("authentication_assurance") ?? string.Empty,
+                    assurance.AuthenticatedAt,
+                    request.OriginatingStopEvidenceId,
+                    request.OriginatingStopCorrelationId,
+                    request.ReleaseConfirmation,
+                    request.ReleaseJustification));
+            return released is null ? NotFound() : Ok(ToResponse(released));
+        }
+        catch (IllegalRelationshipTransitionException exception)
+        {
+            return Conflict(new { error = "ILLEGAL_RELATIONSHIP_TRANSITION", detail = exception.Message });
+        }
+        catch (ConstitutionalActionDeniedException exception)
+        {
+            return Problem(statusCode: 403, title: "Emergency Stop release denied", detail: exception.Message);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            return Problem(statusCode: 503, title: "Emergency Stop remains active");
         }
     }
 
@@ -543,6 +736,65 @@ public sealed class EmploymentRelationshipsController : ControllerBase
         return Guid.TryParse(value, out participantId);
     }
 
+    private bool TryGetContinuityIdentity(out ChannelContinuityIdentity identity)
+    {
+        identity = default!;
+        if (!TryGetParticipantId(out var participantId)
+            || User.FindFirstValue("channel") is not { Length: > 0 } channel
+            || User.FindFirstValue("conversation_id") is not { Length: > 0 } conversationId
+            || User.FindFirstValue("external_subject_hash") is not { Length: 64 } externalSubjectHash
+            || User.FindFirstValue("authentication_assurance") is not { Length: > 0 } assurance
+            || User.FindFirstValue("auth_time") is not string authTime
+            || !long.TryParse(authTime, out var authenticatedAt))
+        {
+            return false;
+        }
+
+        identity = new ChannelContinuityIdentity(
+            participantId,
+            channel.ToUpperInvariant(),
+            conversationId,
+            externalSubjectHash,
+            assurance.ToUpperInvariant(),
+            DateTimeOffset.FromUnixTimeSeconds(authenticatedAt));
+        return true;
+    }
+
+    private bool TryGetContinuityEnvelope(out NeutralContinuityEnvelope envelope)
+    {
+        envelope = default!;
+        var value = User.FindFirstValue("continuity_envelope");
+        if (string.IsNullOrWhiteSpace(value)) return false;
+        try
+        {
+            envelope = JsonSerializer.Deserialize<NeutralContinuityEnvelope>(
+                value, new JsonSerializerOptions(JsonSerializerDefaults.Web))!;
+            return envelope is not null;
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+    }
+
+    private static RelationshipHandoffResponse ToHandoffResponse(ChannelHandoffResult handoff) => new(
+        handoff.HandoffId,
+        handoff.RelationshipId,
+        handoff.Status,
+        ToBindingResponse(handoff.SourceBinding),
+        ToBindingResponse(handoff.TargetBinding),
+        handoff.ContinuityEnvelope,
+        handoff.Replayed,
+        handoff.ResolutionEvidenceId,
+        handoff.CommittedAt);
+
+    private static RelationshipChannelBindingResponse ToBindingResponse(ChannelBinding binding) => new(
+        binding.BindingId,
+        binding.Channel,
+        binding.ConversationId,
+        binding.AssuranceLevel,
+        binding.Status);
+
     private ContractPortalAssurance GetContractPortalAssurance()
     {
         var hasPortalContext = !User.HasClaim("client_type", "service")
@@ -552,6 +804,28 @@ public sealed class EmploymentRelationshipsController : ControllerBase
             ? DateTimeOffset.FromUnixTimeSeconds(timestamp)
             : DateTimeOffset.MinValue;
         return new ContractPortalAssurance(hasPortalContext, authenticatedAt);
+    }
+
+    private EmergencyStopReleaseAuthorization? BuildEmergencyReleaseAuthorization(
+        TransitionEmploymentRelationshipRequest request)
+    {
+        if (!request.ExplicitEmergencyRelease
+            || request.OriginatingStopEvidenceId is null
+            || request.OriginatingStopCorrelationId is null
+            || request.ReleaseConfirmation is null
+            || request.ReleaseJustification is null)
+        {
+            return null;
+        }
+        var assurance = GetContractPortalAssurance();
+        return new EmergencyStopReleaseAuthorization(
+            assurance.IsKeycloakPortal,
+            User.FindFirstValue("authentication_assurance") ?? string.Empty,
+            assurance.AuthenticatedAt,
+            request.OriginatingStopEvidenceId.Value,
+            request.OriginatingStopCorrelationId.Value,
+            request.ReleaseConfirmation,
+            request.ReleaseJustification);
     }
 
     private static EmploymentContractResponse ToContractResponse(EmploymentContractComposition composition) => new(

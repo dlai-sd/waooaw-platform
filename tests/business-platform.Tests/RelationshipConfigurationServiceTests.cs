@@ -165,6 +165,26 @@ public sealed class RelationshipConfigurationServiceTests
         Assert.Empty(await db.ContextConfirmationEvents.ToListAsync());
     }
 
+    [Fact]
+    public async Task CctAe01Stop01_StoppedRelationshipRejectsConfigurationWithoutMutation()
+    {
+        var (service, relationship, tenantId, actorId, factory) = await CreateServiceAsync();
+        await using (var db = factory.CreateDbContext())
+        {
+            (await db.EmploymentRelationships.SingleAsync()).State = EmploymentRelationshipState.StoppedEmergency;
+            await db.SaveChangesAsync();
+        }
+
+        await Assert.ThrowsAsync<ConstitutionalActionDeniedException>(() => service.ConfirmContextAsync(
+            tenantId, relationship.RelationshipId, actorId, "name",
+            JsonSerializer.SerializeToElement("Blocked value"), "customer", null, null,
+            Guid.NewGuid(), CancellationToken.None));
+
+        await using var verificationDb = factory.CreateDbContext();
+        Assert.Empty(await verificationDb.RelationshipContextPayloads.ToListAsync());
+        Assert.Empty(await verificationDb.ContextConfirmationEvents.ToListAsync());
+    }
+
     private static async Task<(RelationshipConfigurationService Service, EmploymentRelationship Relationship, Guid TenantId, Guid ActorId, InMemoryEmploymentRelationshipFactory Factory)> CreateServiceAsync()
     {
         var factory = new InMemoryEmploymentRelationshipFactory(Guid.NewGuid().ToString("N"));

@@ -6,6 +6,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Waooaw.BusinessPlatform.Controllers;
 using Waooaw.BusinessPlatform.Infrastructure;
@@ -157,6 +158,63 @@ public sealed class EmploymentRelationshipsControllerTests
         Assert.Equal("ACTIVE", trial.Status);
     }
 
+    [Fact]
+    public async Task CctAe01Stop01_AuthenticatedParticipantStopsPreActiveRelationship()
+    {
+        var factory = new InMemoryEmploymentRelationshipFactory(Guid.NewGuid().ToString("N"));
+        var relationships = new EmploymentRelationshipService(factory, new RecordingRelationshipConstitutionalGateway(), NullLogger<EmploymentRelationshipService>.Instance);
+        var tenantId = Guid.NewGuid();
+        var participantId = Guid.NewGuid();
+        var admitted = await relationships.AdmitAsync(tenantId, participantId, Guid.NewGuid(), "DMA", Guid.NewGuid(), CancellationToken.None);
+        await using (var db = factory.CreateDbContext())
+        {
+            (await db.EmploymentRelationships.SingleAsync()).State = EmploymentRelationshipState.Configuring;
+            await db.SaveChangesAsync();
+        }
+        var emergencyStops = new RelationshipEmergencyStopService(
+            new InMemoryConversationStoreFactory(Guid.NewGuid().ToString("N")), relationships, new RecordingEmergencyStopGateway());
+        var controller = new EmploymentRelationshipsController(relationships, emergencyStops: emergencyStops) { ControllerContext = CreateControllerContext(tenantId, participantId) };
+
+        var result = await controller.StopAsync(admitted.Relationship.RelationshipId, new StopEmploymentRelationshipRequest(), CancellationToken.None);
+
+        Assert.IsType<OkObjectResult>(result);
+        Assert.Equal(EmploymentRelationshipState.StoppedEmergency,
+            (await relationships.GetAsync(tenantId, admitted.Relationship.RelationshipId, CancellationToken.None))!.State);
+    }
+
+    [Fact]
+    public async Task CctAe01StopRelease_StalePortalAuthenticationLeavesStopActive()
+    {
+        var fixture = await CreateStoppedEmployerAsync(DateTimeOffset.UtcNow.AddMinutes(-6));
+
+        var result = await fixture.Controller.ReleaseStopAsync(
+            fixture.RelationshipId,
+            new ReleaseEmploymentRelationshipStopRequest(
+                fixture.Stop.EvidenceId, fixture.Stop.CorrelationId, "RELEASE_EMERGENCY_STOP", "Customer confirmed recovery.", EmploymentRelationshipState.Active),
+            CancellationToken.None);
+
+        Assert.IsType<ObjectResult>(result);
+        Assert.Equal(403, ((ObjectResult)result).StatusCode);
+        Assert.Equal(EmploymentRelationshipState.StoppedEmergency,
+            (await fixture.Service.GetAsync(fixture.TenantId, fixture.RelationshipId, CancellationToken.None))!.State);
+    }
+
+    [Fact]
+    public async Task CctAe01StopRelease_FreshTierFourEmployerReleasesLinkedStop()
+    {
+        var fixture = await CreateStoppedEmployerAsync(DateTimeOffset.UtcNow);
+
+        var result = await fixture.Controller.ReleaseStopAsync(
+            fixture.RelationshipId,
+            new ReleaseEmploymentRelationshipStopRequest(
+                fixture.Stop.EvidenceId, fixture.Stop.CorrelationId, "RELEASE_EMERGENCY_STOP", "Customer confirmed recovery.", EmploymentRelationshipState.Active),
+            CancellationToken.None);
+
+        Assert.IsType<OkObjectResult>(result);
+        Assert.Equal(EmploymentRelationshipState.Active,
+            (await fixture.Service.GetAsync(fixture.TenantId, fixture.RelationshipId, CancellationToken.None))!.State);
+    }
+
     private static ControllerContext CreateControllerContext(Guid tenantId, Guid participantId)
     {
         var context = new DefaultHttpContext
@@ -167,5 +225,41 @@ public sealed class EmploymentRelationshipsControllerTests
         };
         context.Items[TenantIsolationMiddleware.TenantIdItemKey] = tenantId.ToString();
         return new ControllerContext { HttpContext = context };
+    }
+
+    private static async Task<(EmploymentRelationshipService Service, EmploymentRelationshipsController Controller,
+        Guid TenantId, Guid RelationshipId, RelationshipStateHistory Stop)> CreateStoppedEmployerAsync(DateTimeOffset authenticatedAt)
+    {
+        var factory = new InMemoryEmploymentRelationshipFactory(Guid.NewGuid().ToString("N"));
+        var service = new EmploymentRelationshipService(factory, new RecordingRelationshipConstitutionalGateway(), NullLogger<EmploymentRelationshipService>.Instance);
+        var tenantId = Guid.NewGuid();
+        var participantId = Guid.NewGuid();
+        var admitted = await service.AdmitAsync(tenantId, participantId, Guid.NewGuid(), "DMA", Guid.NewGuid(), CancellationToken.None);
+        await using (var db = factory.CreateDbContext())
+        {
+            (await db.EmploymentRelationships.SingleAsync()).State = EmploymentRelationshipState.Active;
+            db.RelationshipParticipants.Add(new RelationshipParticipant
+            {
+                TenantId = tenantId,
+                RelationshipId = admitted.Relationship.RelationshipId,
+                ParticipantId = participantId,
+                Role = RelationshipParticipantRole.Employer,
+                BoundEvidenceId = Guid.NewGuid(),
+            });
+            await db.SaveChangesAsync();
+        }
+        await service.TransitionAsync(
+            tenantId, admitted.Relationship.RelationshipId, participantId, RelationshipParticipantRole.Employer,
+            EmploymentRelationshipState.StoppedEmergency, Guid.NewGuid(), false, CancellationToken.None);
+        RelationshipStateHistory stop;
+        await using (var db = factory.CreateDbContext())
+            stop = await db.RelationshipStateHistory.SingleAsync(value => value.ToState == EmploymentRelationshipState.StoppedEmergency);
+        var context = CreateControllerContext(tenantId, participantId);
+        var identity = (ClaimsIdentity)context.HttpContext.User.Identity!;
+        identity.AddClaim(new Claim("authentication_assurance", "TIER_4_PORTAL_FRESH"));
+        identity.AddClaim(new Claim("auth_time", authenticatedAt.ToUnixTimeSeconds().ToString()));
+        identity.AddClaim(new Claim("identity_provider", "keycloak"));
+        var controller = new EmploymentRelationshipsController(service) { ControllerContext = context };
+        return (service, controller, tenantId, admitted.Relationship.RelationshipId, stop);
     }
 }

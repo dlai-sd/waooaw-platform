@@ -745,6 +745,57 @@ public sealed class ConstitutionalEngineService : ConstitutionalService.Constitu
     // ADR-044 §4: set erasure_status = 'PAYLOAD_PURGED' for all tenant records.
     // Note: this updates erasure metadata only — it does NOT delete proof rows.
     // ═══════════════════════════════════════════════════════════════════════
+    public override async Task<QueryEvidenceRecordsResponse> QueryEvidenceRecords(
+        QueryEvidenceRecordsRequest req, ServerCallContext ctx)
+    {
+        var rawTenantId = ctx.RequestHeaders.GetValue("x-tenant-id") ?? string.Empty;
+        if (!Guid.TryParse(rawTenantId, out var tenantId))
+            throw new RpcException(new Status(StatusCode.Unauthenticated, "Valid x-tenant-id metadata is required."));
+        if (req.EvidenceRecordIds.Count is 0 or > 100 || req.PageSize is < 0 or > 100 || req.HasPageCursor)
+            throw new RpcException(new Status(StatusCode.InvalidArgument, "Evidence query shape is invalid."));
+        if (_auditSinkDbContextFactory is null)
+            throw new RpcException(new Status(StatusCode.Unavailable, "Audit evidence is unavailable."));
+
+        var orderedIds = new List<Guid>(req.EvidenceRecordIds.Count);
+        foreach (var value in req.EvidenceRecordIds)
+        {
+            if (!Guid.TryParse(value, out var id))
+                throw new RpcException(new Status(StatusCode.InvalidArgument, "Evidence identifiers must be UUIDs."));
+            orderedIds.Add(id);
+        }
+        var pageSize = req.PageSize == 0 ? 50 : req.PageSize;
+        await using var db = await _auditSinkDbContextFactory.CreateDbContextAsync(ctx.CancellationToken);
+        var records = await db.EvidenceRecords.AsNoTracking()
+            .Where(value => value.TenantId == tenantId && orderedIds.Contains(value.Id))
+            .ToDictionaryAsync(value => value.Id, ctx.CancellationToken);
+        var response = new QueryEvidenceRecordsResponse();
+        foreach (var id in orderedIds.Take(pageSize))
+        {
+            if (!records.TryGetValue(id, out var record)) continue;
+            var visible = new CustomerVisibleEvidenceRecord
+            {
+                EvidenceRecordId = record.Id.ToString("D"),
+                DecisionId = record.DecisionId,
+                AgentId = record.AgentId,
+                AgentInstanceId = record.AgentInstanceId,
+                ActionType = record.ActionType,
+                ExecutionStatus = record.ExecutionStatus,
+                EvidenceHash = record.EvidenceHash,
+                RecordedAt = Timestamp.FromDateTimeOffset(record.RecordedAt),
+                ErasureStatus = record.ErasureStatus,
+            };
+            if (record.ToolName is not null) visible.ToolName = record.ToolName;
+            if (record.ArgsHash is not null) visible.ArgsHash = record.ArgsHash;
+            if (record.PayloadRefId.HasValue && record.ErasureStatus == "NONE")
+                visible.PayloadRefId = record.PayloadRefId.Value.ToString("D");
+            if (record.ErasureTimestamp.HasValue)
+                visible.ErasureTimestamp = Timestamp.FromDateTimeOffset(record.ErasureTimestamp.Value);
+            visible.ConstitutionalBasis.AddRange(record.ConstitutionalBasis);
+            response.Records.Add(visible);
+        }
+        return response;
+    }
+
     public override async Task<RecordErasureResponse> RecordErasure(
         RecordErasureRequest req, ServerCallContext ctx)
     {

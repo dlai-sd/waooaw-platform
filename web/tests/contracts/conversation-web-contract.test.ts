@@ -12,11 +12,12 @@ function sourceFiles(directory: string): string[] {
   });
 }
 
-describe('F3/F4 generated client and browser boundary contract', () => {
-  it('dependency-closes Identity, Conversation, and Relationship Workspace with the pinned generator', () => {
+describe('F3/F4/F5 generated client and browser boundary contract', () => {
+  it('dependency-closes Identity, Conversation, Employment, and Relationship Workspace with the pinned generator', () => {
     const script = readFileSync(join(root, 'scripts/generate-api.sh'), 'utf8');
     const generated = readFileSync(join(root, 'lib/api/generated/apis/ConversationApi.ts'), 'utf8');
     const identity = readFileSync(join(root, 'lib/api/generated/apis/IdentityApi.ts'), 'utf8');
+    const employment = readFileSync(join(root, 'lib/api/generated/apis/EmploymentApi.ts'), 'utf8');
     const workspace = readFileSync(join(root, 'lib/api/generated/apis/RelationshipWorkspaceApi.ts'), 'utf8');
     const version = readFileSync(join(root, 'lib/api/generated/.openapi-generator/VERSION'), 'utf8').trim();
     const generatedApis = readdirSync(join(root, 'lib/api/generated/apis')).sort();
@@ -26,6 +27,7 @@ describe('F3/F4 generated client and browser boundary contract', () => {
     expect(script).toContain('scripts/openapi_slice.py');
     expect(script).toContain('--tag Identity');
     expect(script).toContain('--tag Conversation');
+    expect(script).toContain('--tag Employment');
     expect(script).toContain('--tag "Relationship Workspace"');
     expect(script).toContain('--schema EmploymentRelationship');
     expect(script).toContain('--schema RelationshipTimelineEntry');
@@ -33,7 +35,7 @@ describe('F3/F4 generated client and browser boundary contract', () => {
     expect(script).toContain('hideGenerationTimestamp=true');
     expect(script).toContain('pnpm exec prettier --write lib/api/generated');
     expect(script).not.toContain('--skip-validate-spec');
-    expect(generatedApis).toEqual(['ConversationApi.ts', 'IdentityApi.ts', 'RelationshipWorkspaceApi.ts', 'index.ts']);
+    expect(generatedApis).toEqual(['ConversationApi.ts', 'EmploymentApi.ts', 'IdentityApi.ts', 'RelationshipWorkspaceApi.ts', 'index.ts']);
     expect(version).toBe('7.17.0');
     for (const operation of [
       'listConversationMessages',
@@ -46,7 +48,14 @@ describe('F3/F4 generated client and browser boundary contract', () => {
     expect(generated.match(/token\("BearerAuth", \[\]\)/g)).toHaveLength(6);
     expect(identity).toContain('token("BearerAuth", [])');
     expect(identity).toContain('token("PreAccountBearerAuth", [])');
-    expect(generated).toContain('The version of the OpenAPI document: 1.3.0');
+    expect(generated).toContain('The version of the OpenAPI document: 1.7.0');
+    for (const operation of [
+      'prepareRelationshipHandoff',
+      'activateRelationshipHandoff',
+      'stopEmploymentRelationship',
+      'releaseEmploymentRelationshipStop',
+    ]) expect(employment).toContain(`async ${operation}(`);
+    expect(employment.match(/token\("BearerAuth", \[\]\)/g)?.length).toBeGreaterThanOrEqual(4);
     for (const operation of [
       'getRelationshipWorkspace', 'getRelationshipWorkspaceChanges', 'getRelationshipPlan',
       'getRelationshipAttention', 'getRelationshipWork', 'getRelationshipResults',
@@ -54,7 +63,7 @@ describe('F3/F4 generated client and browser boundary contract', () => {
       'getRelationshipCommand', 'listRelationshipEvidence', 'getRelationshipEvidence',
       'requestRelationshipEvidenceExport', 'getRelationshipEvidenceExport',
     ]) expect(workspace).toContain(`async ${operation}(`);
-    expect(workspace).toContain('The version of the OpenAPI document: 1.3.0');
+    expect(workspace).toContain('The version of the OpenAPI document: 1.7.0');
 
     for (const model of [
       'ConversationMessageV1',
@@ -67,6 +76,11 @@ describe('F3/F4 generated client and browser boundary contract', () => {
       'DecisionCardV1',
       'EmploymentRelationship',
       'RelationshipTimelineEntry',
+      'PrepareRelationshipHandoffRequest',
+      'ActivateRelationshipHandoffRequest',
+      'RelationshipHandoff',
+      'NeutralContinuityEnvelope',
+      'ReleaseEmploymentRelationshipStopRequest',
     ]) expect(statSync(join(root, `lib/api/generated/models/${model}.ts`)).isFile()).toBe(true);
   });
 

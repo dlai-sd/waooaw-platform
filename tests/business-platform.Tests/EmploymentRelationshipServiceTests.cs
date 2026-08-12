@@ -23,6 +23,7 @@ internal sealed class RecordingRelationshipConstitutionalGateway : IRelationship
     public int CallCount { get; private set; }
     public bool FailNext { get; set; }
     public int? FailOnCall { get; set; }
+    public string? LastActionType { get; private set; }
 
     public Task<Guid> AuthorizeAndRecordAsync(
         Guid tenantId,
@@ -34,6 +35,7 @@ internal sealed class RecordingRelationshipConstitutionalGateway : IRelationship
         CancellationToken cancellationToken)
     {
         CallCount += 1;
+        LastActionType = actionType;
         if (FailNext || CallCount == FailOnCall)
         {
             FailNext = false;
@@ -177,6 +179,109 @@ public sealed class EmploymentRelationshipServiceTests
         Assert.NotEqual(Guid.Empty, history[1].EvidenceId);
     }
 
+    [Theory]
+    [InlineData(EmploymentRelationshipState.Discovered)]
+    [InlineData(EmploymentRelationshipState.TrialActive)]
+    [InlineData(EmploymentRelationshipState.Configuring)]
+    [InlineData(EmploymentRelationshipState.ContractPendingAcceptance)]
+    [InlineData(EmploymentRelationshipState.ActivationPending)]
+    public async Task CctAe01Stop01_StopHaltsEveryPreTerminalRelationshipStage(EmploymentRelationshipState state)
+    {
+        var (service, factory, gateway) = CreateService();
+        var admitted = await AdmitAsync(service);
+        await SetStateAsync(factory, admitted.Relationship.RelationshipId, state);
+
+        var stopped = await service.TransitionAsync(
+            admitted.Relationship.TenantId, admitted.Relationship.RelationshipId,
+            admitted.Relationship.InitiatingParticipantId, RelationshipParticipantRole.Evaluator,
+            EmploymentRelationshipState.StoppedEmergency, Guid.NewGuid(), false, CancellationToken.None);
+
+        Assert.Equal(EmploymentRelationshipState.StoppedEmergency, stopped!.State);
+        Assert.Equal("TRANSITION_EMPLOYMENT_RELATIONSHIP", gateway.LastActionType);
+        Assert.NotNull(stopped.StoppedAt);
+    }
+
+    [Fact]
+    public async Task CctAe01StopRelease_RequiresFreshTierFourEmployerProofLinkedToActiveStop()
+    {
+        var (service, factory, gateway) = CreateService();
+        var admitted = await AdmitAsync(service);
+        await BindEmployerAndSetStateAsync(factory, admitted, EmploymentRelationshipState.Active);
+        var stopCorrelationId = Guid.NewGuid();
+        await service.TransitionAsync(
+            admitted.Relationship.TenantId, admitted.Relationship.RelationshipId,
+            admitted.Relationship.InitiatingParticipantId, RelationshipParticipantRole.Employer,
+            EmploymentRelationshipState.StoppedEmergency, stopCorrelationId, false, CancellationToken.None);
+        await using var db = factory.CreateDbContext();
+        var stop = await db.RelationshipStateHistory.SingleAsync(value => value.ToState == EmploymentRelationshipState.StoppedEmergency);
+
+        var released = await service.TransitionAsync(
+            admitted.Relationship.TenantId, admitted.Relationship.RelationshipId,
+            admitted.Relationship.InitiatingParticipantId, RelationshipParticipantRole.Employer,
+            EmploymentRelationshipState.Active, Guid.NewGuid(), true, CancellationToken.None,
+            new EmergencyStopReleaseAuthorization(true, "TIER_4_PORTAL_FRESH", DateTimeOffset.UtcNow,
+                stop.EvidenceId, stop.CorrelationId, "RELEASE_EMERGENCY_STOP", "Customer confirmed recovery."));
+
+        Assert.Equal(EmploymentRelationshipState.Active, released!.State);
+        Assert.Equal("RELEASE_EMERGENCY_STOP", gateway.LastActionType);
+    }
+
+    [Fact]
+    public async Task CctAe01StopRelease_ForgedOriginatingProofLeavesRelationshipStopped()
+    {
+        var (service, factory, gateway) = CreateService();
+        var admitted = await AdmitAsync(service);
+        await BindEmployerAndSetStateAsync(factory, admitted, EmploymentRelationshipState.Active);
+        await service.TransitionAsync(
+            admitted.Relationship.TenantId, admitted.Relationship.RelationshipId,
+            admitted.Relationship.InitiatingParticipantId, RelationshipParticipantRole.Employer,
+            EmploymentRelationshipState.StoppedEmergency, Guid.NewGuid(), false, CancellationToken.None);
+        var callsBeforeRelease = gateway.CallCount;
+
+        await Assert.ThrowsAsync<ConstitutionalActionDeniedException>(() => service.TransitionAsync(
+            admitted.Relationship.TenantId, admitted.Relationship.RelationshipId,
+            admitted.Relationship.InitiatingParticipantId, RelationshipParticipantRole.Employer,
+            EmploymentRelationshipState.Active, Guid.NewGuid(), true, CancellationToken.None,
+            new EmergencyStopReleaseAuthorization(true, "TIER_4_PORTAL_FRESH", DateTimeOffset.UtcNow,
+                Guid.NewGuid(), Guid.NewGuid(), "RELEASE_EMERGENCY_STOP", "Forged proof.")));
+
+        Assert.Equal(callsBeforeRelease, gateway.CallCount);
+        Assert.Equal(EmploymentRelationshipState.StoppedEmergency,
+            (await service.GetAsync(admitted.Relationship.TenantId, admitted.Relationship.RelationshipId, CancellationToken.None))!.State);
+    }
+
+    [Fact]
+    public async Task CctAe01StopRelease_WrongRoleAndNonPortalContextCannotRelease()
+    {
+        var (service, factory, gateway) = CreateService();
+        var admitted = await AdmitAsync(service);
+        await BindEmployerAndSetStateAsync(factory, admitted, EmploymentRelationshipState.Active);
+        await service.TransitionAsync(
+            admitted.Relationship.TenantId, admitted.Relationship.RelationshipId,
+            admitted.Relationship.InitiatingParticipantId, RelationshipParticipantRole.Employer,
+            EmploymentRelationshipState.StoppedEmergency, Guid.NewGuid(), false, CancellationToken.None);
+        await using var db = factory.CreateDbContext();
+        var stop = await db.RelationshipStateHistory.SingleAsync(value => value.ToState == EmploymentRelationshipState.StoppedEmergency);
+        var callsBeforeRelease = gateway.CallCount;
+        var proof = new EmergencyStopReleaseAuthorization(
+            true, "TIER_4_PORTAL_FRESH", DateTimeOffset.UtcNow,
+            stop.EvidenceId, stop.CorrelationId, "RELEASE_EMERGENCY_STOP", "Customer confirmed recovery.");
+
+        await Assert.ThrowsAsync<ConstitutionalActionDeniedException>(() => service.TransitionAsync(
+            admitted.Relationship.TenantId, admitted.Relationship.RelationshipId,
+            admitted.Relationship.InitiatingParticipantId, RelationshipParticipantRole.Evaluator,
+            EmploymentRelationshipState.Active, Guid.NewGuid(), true, CancellationToken.None, proof));
+        await Assert.ThrowsAsync<ConstitutionalActionDeniedException>(() => service.TransitionAsync(
+            admitted.Relationship.TenantId, admitted.Relationship.RelationshipId,
+            admitted.Relationship.InitiatingParticipantId, RelationshipParticipantRole.Employer,
+            EmploymentRelationshipState.Active, Guid.NewGuid(), true, CancellationToken.None,
+            proof with { IsPortalContext = false }));
+
+        Assert.Equal(callsBeforeRelease, gateway.CallCount);
+        Assert.Equal(EmploymentRelationshipState.StoppedEmergency,
+            (await service.GetAsync(admitted.Relationship.TenantId, admitted.Relationship.RelationshipId, CancellationToken.None))!.State);
+    }
+
     private static (EmploymentRelationshipService Service, InMemoryEmploymentRelationshipFactory Factory, RecordingRelationshipConstitutionalGateway Gateway) CreateService()
     {
         var factory = new InMemoryEmploymentRelationshipFactory(Guid.NewGuid().ToString("N"));
@@ -207,5 +312,31 @@ public sealed class EmploymentRelationshipServiceTests
         Assert.Equal(EmploymentRelationshipState.Discovered, relationship.State);
         Assert.Equal(0, relationship.StateVersion);
         Assert.Equal(1, await db.RelationshipStateHistory.CountAsync());
+    }
+
+    private static async Task SetStateAsync(
+        InMemoryEmploymentRelationshipFactory factory, Guid relationshipId, EmploymentRelationshipState state)
+    {
+        await using var db = factory.CreateDbContext();
+        var relationship = await db.EmploymentRelationships.SingleAsync(value => value.RelationshipId == relationshipId);
+        relationship.State = state;
+        await db.SaveChangesAsync();
+    }
+
+    private static async Task BindEmployerAndSetStateAsync(
+        InMemoryEmploymentRelationshipFactory factory, AdmitRelationshipResult admitted, EmploymentRelationshipState state)
+    {
+        await using var db = factory.CreateDbContext();
+        var relationship = await db.EmploymentRelationships.SingleAsync(value => value.RelationshipId == admitted.Relationship.RelationshipId);
+        relationship.State = state;
+        db.RelationshipParticipants.Add(new RelationshipParticipant
+        {
+            TenantId = admitted.Relationship.TenantId,
+            RelationshipId = admitted.Relationship.RelationshipId,
+            ParticipantId = admitted.Relationship.InitiatingParticipantId,
+            Role = RelationshipParticipantRole.Employer,
+            BoundEvidenceId = Guid.NewGuid(),
+        });
+        await db.SaveChangesAsync();
     }
 }

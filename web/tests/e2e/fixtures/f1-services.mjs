@@ -4,6 +4,7 @@ const primaryRelationshipId = 'relationship-active';
 const executionId = '3ead2d21-f908-40b5-9510-b1e77f516d7e';
 const streamClients = new Map();
 const scopedTimelines = new Map();
+const continuityStates = new Map();
 
 const governedCards = [
   {
@@ -59,6 +60,12 @@ function scopeFor(request) {
 
 function scopeKey(scope, relationshipId) {
   return `${scope}:${relationshipId}`;
+}
+
+function continuityFor(scope, relationshipId) {
+  const key = scopeKey(scope, relationshipId);
+  if (!continuityStates.has(key)) continuityStates.set(key, { stopped: false, handoffs: new Map() });
+  return continuityStates.get(key);
 }
 
 function messagesFor(scope, relationshipId) {
@@ -118,13 +125,77 @@ const server = createServer(async (request, response) => {
   const readMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/conversation\/read-position$/);
   const streamMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/conversation\/stream$/);
   const cancelMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/conversation\/executions\/([^/]+)$/);
-  const workspaceMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/workspace(?:\/(plan|attention|work|results|usage-budget|rights-controls))?$/);
+  const workspaceMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/workspace(?:\/(plan|attention|work|results|usage-budget|rights-controls|evidence))?$/);
   const evaluationMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/evaluation$/);
   const contractJourneyMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/contract-journey$/);
+  const prepareHandoffMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/handoffs$/);
+  const activateHandoffMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/handoffs\/([^/]+)\/activate$/);
+  const stopRelationshipMatch = url.pathname.match(/^\/api\/v1\/employment\/relationships\/([^/]+)\/emergency-stop$/);
+
+  if (request.method === 'POST' && prepareHandoffMatch) {
+    const relationshipId = decodeURIComponent(prepareHandoffMatch[1]);
+    const state = continuityFor(scope, relationshipId);
+    const body = await readBody(request);
+    const idempotencyKey = request.headers['idempotency-key'];
+    if (state.stopped) {
+      json(response, { code: 'RELATIONSHIP_STOPPED', title: 'Emergency Stop is active.' }, 409);
+      return;
+    }
+    const prior = [...state.handoffs.values()].find((handoff) => handoff.idempotencyKey === idempotencyKey);
+    if (prior) {
+      if (prior.requestHash !== JSON.stringify(body)) {
+        json(response, { code: 'IDEMPOTENCY_CONFLICT', title: 'The handoff request differs from the committed request.' }, 409);
+        return;
+      }
+      json(response, { ...prior.response, replayed: true });
+      return;
+    }
+    const handoffId = `handoff-${state.handoffs.size + 1}`;
+    const envelope = {
+      schemaVersion: '1.0', tenantId: 'fixture-tenant', relationshipId,
+      participantId: 'fixture-participant', participantRole: 'EMPLOYER', sourceChannel: 'WHATSAPP',
+      sourceConversationId: 'whatsapp-conversation', targetChannel: body.targetChannel,
+      assuranceLevel: 'TIER_4_PORTAL_FRESH', authorityVersion: 2,
+      continuityCheckpointId: `checkpoint-${state.handoffs.size + 1}`, idempotencyKey,
+      expiresAt: '2026-08-10T10:15:00.000Z', integritySignature: 'fixture-valid-signature',
+    };
+    const prepared = { handoffId, relationshipId, status: 'PREPARED', sourceBinding: { status: 'ACTIVE' }, targetBinding: { status: 'PREPARED' }, continuityEnvelope: envelope, replayed: false };
+    state.handoffs.set(handoffId, { idempotencyKey, requestHash: JSON.stringify(body), response: prepared });
+    json(response, prepared, 201);
+    return;
+  }
+
+  if (request.method === 'POST' && activateHandoffMatch) {
+    const relationshipId = decodeURIComponent(activateHandoffMatch[1]);
+    const handoffId = decodeURIComponent(activateHandoffMatch[2]);
+    const state = continuityFor(scope, relationshipId);
+    const handoff = state.handoffs.get(handoffId);
+    const body = await readBody(request);
+    if (state.stopped) {
+      json(response, { code: 'RELATIONSHIP_STOPPED', title: 'Emergency Stop preempted handoff.' }, 409);
+      return;
+    }
+    if (!handoff || body.continuityEnvelope?.integritySignature !== 'fixture-valid-signature') {
+      json(response, { code: 'HANDOFF_NOT_FOUND', title: 'The relationship or handoff is unavailable.' }, 404);
+      return;
+    }
+    if (body.targetConversationId === 'timeout') {
+      json(response, { code: 'HANDOFF_OUTCOME_UNKNOWN', title: 'Activation is unresolved; the source remains authoritative.' }, 503);
+      return;
+    }
+    if (body.targetConversationId === 'downgrade' || request.headers['x-fixture-tenant'] === 'foreign') {
+      json(response, { code: 'HANDOFF_NOT_FOUND', title: 'The relationship or handoff is unavailable.' }, 404);
+      return;
+    }
+    handoff.response = { ...handoff.response, status: 'COMMITTED', targetBinding: { status: 'ACTIVE' }, resolutionEvidenceId: 'evidence-handoff-committed' };
+    json(response, handoff.response);
+    return;
+  }
 
   if (request.method === 'GET' && evaluationMatch) {
     const relationshipId = decodeURIComponent(evaluationMatch[1]);
-    json(response, { relationshipId, lifecycleState: relationship(relationshipId).state, interviewState: 'AVAILABLE', context: [], goals: [], skills: [] });
+    const state = continuityFor(scope, relationshipId);
+    json(response, { relationshipId, lifecycleState: state.stopped ? 'STOPPED_EMERGENCY' : relationship(relationshipId).state, interviewState: 'AVAILABLE', context: [], goals: [], skills: [] });
     return;
   }
 
@@ -150,6 +221,7 @@ const server = createServer(async (request, response) => {
   if (request.method === 'GET' && workspaceMatch) {
     const relationshipId = decodeURIComponent(workspaceMatch[1]);
     const family = workspaceMatch[2];
+    const lifecycleState = continuityFor(scope, relationshipId).stopped ? 'STOPPED_EMERGENCY' : 'ACTIVE';
     const provenance = { owner: family === 'usage-budget' ? 'WBE' : family === 'work' ? 'PR' : family === 'results' ? 'DMA' : 'BP', sourceProjectionVersion: 'fixture-1', producedAt: '2026-08-10T10:00:00Z' };
     const common = { currencyState: family === 'attention' || family === 'rights-controls' ? 'CURRENT' : 'UNAVAILABLE', provenance, availableCommands: [] };
     const responses = {
@@ -158,18 +230,21 @@ const server = createServer(async (request, response) => {
       work: { ...common, sectionType: 'WORK', items: [] },
       results: { ...common, sectionType: 'RESULTS', outcomes: [] },
       'usage-budget': { ...common, sectionType: 'USAGE_BUDGET', actualAmount: 'Unavailable', forecastRange: 'Unavailable', thresholdState: 'UNAVAILABLE', wbeProjectionVersion: 'unavailable-1' },
-      'rights-controls': { ...common, sectionType: 'RIGHTS_CONTROLS', scopeVersion: '1', authorityVersion: '1', lifecycleState: 'ACTIVE', emergencyStopReachable: true },
+      'rights-controls': { ...common, sectionType: 'RIGHTS_CONTROLS', scopeVersion: '1', authorityVersion: '1', lifecycleState, emergencyStopReachable: true },
+      evidence: { schemaVersion: '1.0', relationshipId, items: [], authoritativeCursor: `evidence:${relationshipId}:00000001`, hasMore: false },
     };
     json(response, family ? responses[family] : {
       schemaVersion: '1.0', relationshipId, workspaceVersion: 'fixture-1', snapshotState: 'PARTIAL', currencyState: 'CURRENT',
       authoritativeCursor: `workspace:${relationshipId}:00000001`, producedAt: '2026-08-10T10:00:00Z',
-      context: { relationshipId, lifecycleState: 'ACTIVE', policySelection: { f4Pol01: 'A', f4Pol02: 'A', f4Pol03: 'B', f4Pol04: 'A', f4Pol05: 'B', f4Pol06: 'A' } }, sections: [],
+      context: { relationshipId, lifecycleState, policySelection: { f4Pol01: 'A', f4Pol02: 'A', f4Pol03: 'B', f4Pol04: 'A', f4Pol05: 'B', f4Pol06: 'A' } }, sections: [],
     });
     return;
   }
 
   if (request.method === 'GET' && relationshipMatch) {
-    json(response, relationship(decodeURIComponent(relationshipMatch[1])));
+    const relationshipId = decodeURIComponent(relationshipMatch[1]);
+    const state = continuityFor(scope, relationshipId);
+    json(response, { ...relationship(relationshipId), state: state.stopped ? 'STOPPED_EMERGENCY' : relationship(relationshipId).state });
     return;
   }
   if (request.method === 'GET' && timelineMatch) {
@@ -244,9 +319,10 @@ const server = createServer(async (request, response) => {
     sendEvent(scope, relationshipId, event(relationshipId, 'message.completed', { executionId }));
     return;
   }
-  if (request.method === 'POST' && url.pathname === '/api/v1/emergency-stop') {
+  if (request.method === 'POST' && (stopRelationshipMatch || url.pathname === '/api/v1/emergency-stop')) {
     const command = await readBody(request);
-    if (command.contractId === 'relationship-stop-unknown') {
+    const relationshipId = stopRelationshipMatch ? decodeURIComponent(stopRelationshipMatch[1]) : command.contractId;
+    if (relationshipId === 'relationship-stop-unknown') {
       json(response, { code: 'STOP_OUTCOME_UNKNOWN' }, 503);
       return;
     }
@@ -254,8 +330,12 @@ const server = createServer(async (request, response) => {
       json(response, { error: 'INVALID_STOP_SCOPE' }, 422);
       return;
     }
-    json(response, { affectedSessions: ['runtime-owned-session'], confirmedAt: '2026-08-10T10:02:00.000Z' });
-    sendEvent(scope, command.contractId, event(command.contractId, 'stop.applied', { executionId }));
+    continuityFor(scope, relationshipId).stopped = true;
+    json(response, {
+      ...relationship(relationshipId), state: 'STOPPED_EMERGENCY', stateVersion: 3,
+      affectedSessions: ['runtime-owned-session'], confirmedAt: '2026-08-10T10:02:00.000Z',
+    });
+    sendEvent(scope, relationshipId, event(relationshipId, 'stop.applied', { executionId }));
     return;
   }
   json(response, { error: 'NOT_FOUND', path: url.pathname }, 404);

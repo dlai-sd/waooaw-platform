@@ -2041,11 +2041,64 @@ current-session implementation gate also remains open and requires the future ex
 directive `Authorize implementation of WC-060`. R-086 issues no GOA or ACC and authorizes no
 implementation.
 
-### Reserved Records — Not Issued
+### Registrant Acknowledgement — ACK-GOAL-005-INST-001-09
 
-- `ACK-GOAL-005-INST-001-09` — pending exact Registrant acknowledgement.
-- `GOA-GOAL-005-INST-010-06` — reserved; constitutionally void unless every rule above passes.
-- `ACC-GOAL-005-INST-010-06` — reserved; may be produced only after valid GOA issuance.
+| Field | Value |
+|---|---|
+| `institution_id` | INST-001 |
+| `goal_id` | GOAL-005 |
+| `record_id` | ACK-GOAL-005-INST-001-09 |
+| `record_type` | Acknowledgement Record |
+| `produced_at` | 2026-08-12T02:44:57Z |
+| Acknowledged plan | GEP-GOAL-005-INST-013-09 |
+| Decision | ACKNOWLEDGED — INST-013 may issue GOA-GOAL-005-INST-010-06 only after the separate current-session Founder implementation directive |
+| Exact quoted acknowledgement | "I acknowledge GEP-GOAL-005-INST-013-09 and authorize INST-013 to issue GOA-GOAL-005-INST-010-06 for WC-060 implementation only after I separately authorize implementation for that current session. This does not authorize provider activation, deployment, F6-F8 feature implementation, PR merge, self-review, or self-merge." |
+
+R-086 and this record satisfy both GEOM R2-03 pre-issuance conditions. The acknowledgement does
+not satisfy the separate current-session implementation gate, issue a GOA, accept participation
+for INST-010, authorize implementation, activate a provider, deploy, approve or merge a PR, or
+permit self-review or self-merge.
+
+### Current-Session Implementation Authorization — FA-041
+
+The Founder stated exactly `Authorize implementation of WC-060` on 2026-08-12. FA-041 records
+that directive and satisfies Amendment 9's separate current-session implementation-consent gate.
+It does not substitute for GOA issuance or later INST-010 acceptance and does not authorize
+provider activation, deployment, F6-F8 feature implementation, PR merge, self-review, or
+self-merge.
+
+### Authorization Record — GOA-GOAL-005-INST-010-06
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GOA-GOAL-005-INST-010-06 |
+| `record_type` | Authorization Record |
+| Authorized Institution | INST-010 — Platform IT Expert |
+| Contribution scope | Implement WC060-01 through WC060-09 exactly within GEP-GOAL-005-INST-013-09 and WC-060; publish attested Contribution and Learning Records before independent review |
+| Evidence specification | Task traceability; Docker-only BP/PR/CE/web/integration/security/CCT evidence; affected-surface line coverage at least 90%; Migration 22 safety; OpenAPI/protobuf/generated-client conformance; exact 360px and expanded browser acceptance; proportional F8 evidence |
+| Participation Window | Five constitutional sessions after valid acceptance |
+| Independence constraint | INST-010 may implement but may not independently review, approve, merge, deploy, activate a provider, or declare Goal completion |
+| Excluded authority | Provider activation or credentials; deployment; F6-F8 feature implementation; production/customer proof; architecture reinterpretation; self-review; PR approval; merge; self-merge |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-12T02:53:21Z |
+
+### Acceptance Record — ACC-GOAL-005-INST-010-06
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-010 |
+| `goal_id` | GOAL-005 |
+| `record_id` | ACC-GOAL-005-INST-010-06 |
+| `record_type` | Acceptance Record |
+| `produced_at` | 2026-08-12T04:00:00Z |
+| `authorization_id` | GOA-GOAL-005-INST-010-06 |
+| Accepted scope | WC060-01 through WC060-09 implementation and evidence under Amendment 9 only |
+| Participation Window | 2026-08-12T04:00:00Z through five constitutional sessions |
+| Acceptance boundary | No provider activation or credentials; no deployment; no F6-F8 feature implementation; no production/customer-proof authority; no self-review; no PR approval; no merge; no self-merge; no architecture reinterpretation |
+
+The Acceptance timestamp is later than the GOA issuance timestamp (2026-08-12T02:53:21Z), satisfying GEOM G-03 and R2-12. WC-060 implementation may begin under FA-041, GEP-09, R-086, ACK-09, GOA-06, and ACC-06.
 
 ### Explicit Exclusions
 

@@ -3,6 +3,7 @@ import type { RelationshipWorkspaceViews } from '@/lib/api/relationship-workspac
 import { ConversationExperience } from '@/components/conversation/ConversationExperience';
 import { RelationshipEvaluation } from './RelationshipEvaluation';
 import { ContractJourney } from './ContractJourney';
+import { EvidenceWindow } from './EvidenceWindow';
 
 interface RelationshipWorkspaceProps {
   relationship: EmploymentRelationship;
@@ -66,7 +67,14 @@ export function RelationshipWorkspace({ relationship, timeline, views, evaluatio
         <section className="workspace-family" id="rights-and-control"><p className="section-label">Rights &amp; control</p><h2>Scope, authority and lifecycle</h2><span className="currency-state">{stateLabel(views.rightsControls.currencyState)}</span><p>{stateLabel(views.rightsControls.lifecycleState)} · Emergency Stop {views.rightsControls.emergencyStopReachable ? 'available' : 'unavailable'}</p></section>
       </div>
 
-      <div id="relationship-conversation"><ConversationExperience relationshipId={relationship.relationshipId} /></div>
+      <div id="relationship-conversation">
+        <ConversationExperience
+          relationshipId={relationship.relationshipId}
+          relationshipStopped={relationship.state === 'STOPPED_EMERGENCY'}
+        />
+      </div>
+
+      <EvidenceWindow relationshipId={relationship.relationshipId} evidence={views.evidence} />
 
       <section className="timeline" aria-labelledby="timeline-title">
         <p className="section-label">Evidence timeline</p>

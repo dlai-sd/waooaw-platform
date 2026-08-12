@@ -1,6 +1,6 @@
 # WAOOAW Platform — Founder Action List
 
-**Last Updated:** 2026-08-11
+**Last Updated:** 2026-08-12
 **Purpose:** Tracks all actions that require the Founder's direct involvement. No AI agent can complete these.
 
 ---
@@ -75,6 +75,7 @@
 | **FA-037** | WC-034 F5 / WC-060 contract unification decision — after receiving three paths, Founder selected Option 3 with `ok follow option 3, update required work component documents for suitable changes as you sense.` WC-060 becomes the sole implementation Work Contract for WC-034 F5; its dependency chain, security/data/replay/evidence/Stop semantics, adversarial CCTs, independent reviews, and proportional F8 gate remain mandatory. No duplicate F5 implementation contract follows WC-060. This action authorizes contract and architecture reconciliation only; it does not authorize WC-060 implementation, deployment, provider activation, F6-F8 feature work, PR approval, or merge. | 2026-08-11 — Yogesh Khandge | ✅ DONE |
 | **FA-038** | WC-058 current-session implementation authorization — Founder stated exactly `Authorize implementation of WC-058`. This satisfies the separate Founder implementation-consent gate for WC-058 after WC-057 closure. GEOM routing remains mandatory: fresh CA readiness and exact Registrant acknowledgement of GEP-GOAL-005-INST-013-07 must precede GOA-GOAL-005-INST-010-04 issuance and later ACC-GOAL-005-INST-010-04. This action does not authorize provider activation or credentials, WC-059 or WC-060, deployment, production/customer proof, PR approval, merge, or self-review. | 2026-08-11 — Yogesh Khandge | ✅ DONE |
 | **FA-040** | WC-059 current-session implementation authorization — Founder stated exactly `Authorize implementation of WC-059` and required confirmation that the Work Contract is genuinely groomed before implementation. This satisfies the separate Founder implementation-consent gate after WC-058 closure. Grooming confirms D-07/R-046, WC-042/WC-043, D-03/D-06, and all required owner/security/data contracts are complete; occupied migration sequence 21 is preserved by the implementation filename `21b-ae01-contract-activation.sql`. GEOM routing remains mandatory: fresh CA readiness and exact Registrant acknowledgement of GEP-GOAL-005-INST-013-08 must precede GOA-GOAL-005-INST-010-05 issuance and later ACC-GOAL-005-INST-010-05. This action does not authorize live Razorpay/provider credentials, provider activation, WC-060, deployment, production/customer proof, PR approval, merge, or self-review. | 2026-08-11 — Yogesh Khandge | ✅ DONE |
+| **FA-041** | WC-060 current-session implementation authorization — Founder stated exactly `Authorize implementation of WC-060`. This satisfies Amendment 9's separate implementation-consent gate after R-086 and ACK-GOAL-005-INST-001-09. GEOM routing remains mandatory: GOA-GOAL-005-INST-010-06 must be issued before later ACC-GOAL-005-INST-010-06, and no implementation task may begin before acceptance. This action does not authorize provider activation, deployment, F6-F8 feature implementation, PR merge, self-review, or self-merge. | 2026-08-12 — Yogesh Khandge | ✅ DONE |
 
 ---
 

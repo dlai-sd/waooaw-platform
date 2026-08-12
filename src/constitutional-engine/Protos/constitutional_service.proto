@@ -93,6 +93,7 @@ service ConstitutionalService {
   // Proof record is retained; only erasure_status and erasure_timestamp are updated.
   // C-078 (DPDPA), ADR-044 §4
   rpc RecordErasure(RecordErasureRequest) returns (RecordErasureResponse);
+  rpc QueryEvidenceRecords(QueryEvidenceRecordsRequest) returns (QueryEvidenceRecordsResponse);
 }
 
 // ─── ENUMERATIONS ───────────────────────────────────────────────────────────
@@ -447,4 +448,32 @@ message RecordErasureResponse {
 
   // success is true when the update completed without error.
   bool success = 2;
+}
+
+message QueryEvidenceRecordsRequest {
+  repeated string evidence_record_ids = 1;
+  optional string page_cursor = 2;
+  int32 page_size = 3;
+}
+
+message CustomerVisibleEvidenceRecord {
+  string evidence_record_id = 1;
+  string decision_id = 2;
+  string agent_id = 3;
+  string agent_instance_id = 4;
+  string action_type = 5;
+  optional string tool_name = 6;
+  optional string args_hash = 7;
+  optional string payload_ref_id = 8;
+  string execution_status = 9;
+  repeated string constitutional_basis = 10;
+  string evidence_hash = 11;
+  google.protobuf.Timestamp recorded_at = 12;
+  string erasure_status = 13;
+  optional google.protobuf.Timestamp erasure_timestamp = 14;
+}
+
+message QueryEvidenceRecordsResponse {
+  repeated CustomerVisibleEvidenceRecord records = 1;
+  optional string next_page_cursor = 2;
 }

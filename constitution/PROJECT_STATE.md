@@ -1,8 +1,8 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 6
-**Last Updated:** 2026-08-11
+**State Revision:** 19
+**Last Updated:** 2026-08-12
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
 This file is a snapshot, not a session ledger. Keep it below 200 lines. Update the active
@@ -19,48 +19,54 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Gate | G5 CLEAR — prerequisites met; not session implementation authority |
 | Engineering status | IMPLEMENTATION |
 | Platform version | 1.45.0 |
-| Latest completed Work Contract | WC-059 — AE-01 contract, payment, and exactly-once activation |
-| Latest merge | PR #265 merged to `main` as `b0dbe9c` |
-| Active implementation Work Contract | None |
+| Latest completed Work Contract | WC-060 — AE-01 Omnichannel Continuity, Evidence, and Emergency Stop |
+| Latest merge | PR #267 merged to `main` as `7ee9f6b` |
+| Active delivery | WC-060 complete and independently approved; PR #268 open and unmerged |
 
-## Active Checkpoint — PROJECT_STATE Schema V2
+## Active Checkpoint — WC-060 Authorization Routing
 
 | Milestone | Status |
 |---|---|
-| Consumer and parser inventory | DONE — machine consumers require the unique `SPRINT_STATE_MACHINE` YAML block and scalar fields |
-| Compact state schema | DONE — 94-line current snapshot with versioned metadata, recovery data, boundaries, and history pointers |
-| BOOTSTRAP retention rule | DONE — update one checkpoint in place; archive durable detail outside the hot path; 200-line ceiling |
-| Focused compatibility validation | DONE — 251 relevant tests pass; uniqueness, required-field, history, and line-budget checks pass |
-| Independent review | DONE — R-085 APPROVED after R085-01 and R085-02 resolution |
-| Founder PR | DONE — PR #266 is open against `main`; review and merge remain Founder-controlled |
+| Amendment 9 readiness | DONE — PR #267 merged as `7ee9f6b`; R-086 APPROVED |
+| Registrant acknowledgement | DONE — ACK-GOAL-005-INST-001-09 recorded exactly |
+| Current-session implementation directive | DONE — FA-041 records exact Founder directive |
+| GO Authorization | DONE — GOA-GOAL-005-INST-010-06 issued by INST-013 |
+| INST-010 acceptance | DONE — ACC-GOAL-005-INST-010-06 at 2026-08-12T04:00:00Z |
+| WC060-01 data foundation | DONE — Migration 22 and EF ownership; 22/22 Docker/PostgreSQL tests pass |
+| WC060-02 phone identity security | DONE — MPIN lockout and evidence-backed Tier-4 attach; 18/18 focused Docker tests pass |
+| WC060-03 channel continuity | DONE — canonical handoff API and signed envelope; 10/10 focused Docker tests pass |
+| WC060-04 runtime routing | DONE — relationship-bound channel sessions and reconnect reauthorization; 71/71 Docker tests pass |
+| WC060-05 Evidence Reader | DONE — tenant/role-filtered CE proof reads and evidenced 15-minute exports |
+| WC060-06 customer continuity surfaces | DONE — Evidence Window/export, honest delivery state, and WhatsApp commands |
+| WC060-07 relationship Emergency Stop | DONE — relationship-wide CE/Temporal halt and proof-bound Tier-4 release |
+| WC060-08 adversarial CCT matrix | DONE — BP 19/19, PR 71/71, PostgreSQL 22/22, and CE 5/5 Docker tests pass |
+| WC060-09 integrated acceptance | DONE — browser 106 pass, web 89/89 at 94.63% lines, BP 309/309, CE 83/83, PR 153/153 |
+| WC-060 independent review | DONE — R-087 Security, R-088 Data, and R-089 Enterprise Architecture APPROVED |
 
 ### Recovery Context
 
-- **Branch:** `chore/project-state-v2`
-- **Objective:** Keep mandatory startup state concise, versioned, current, and machine compatible.
-- **Hypothesis:** Historical session records are not parser inputs; removing them will not alter sprint tooling.
-- **Validation:** Focused sprint-state parser tests plus structural checks for uniqueness, required fields, archive pointer, and line budget.
+- **Branch:** `ib/019/wc060-implementation`
+- **Objective:** Obtain constitutional review of the complete WC-060 component in PR #268.
+- **Hypothesis:** ACC-06, GOA-06, FA-041, ACK-09, and R-086 authorize implementation within Amendment 9 boundaries.
+- **Validation:** All nine tasks with Docker evidence, ≥90% coverage, Migration 22, adversarial CCTs, F5/F8 acceptance.
 - **Protected local artifacts:** `.coverage` and `logs/blueprint_assurance_report.json` are unrelated and must remain unstaged.
 
 ## Authorization Boundary
 
-This activity may compact and version governance state records and clarify BOOTSTRAP retention.
-It does not authorize implementation code, live Razorpay or provider activation, WC-060,
-deployment, self-review, self-approval, self-merge, or production/customer-proof claims.
+This activity implemented WC060-01 through WC060-09 under ACC-06 and completed independent review.
+It does not authorize provider activation, deployment, F6-F8 feature implementation, PR merge,
+self-review, self-approval, or self-merge.
 
 ## Current Blockers
 
-None for the schema-v2 governance change. WC-060 has no specification blocker: CB-004 is
-resolved and Amendment 9 is CA-ready through R-086. WC-060 implementation remains unauthorized
-pending exact Registrant acknowledgement, separate future current-session Founder authorization,
-GOA issuance, and later INST-010 acceptance.
+None. ACC-GOAL-005-INST-010-06 is recorded. All gates (R-086, ACK-09, FA-041, GOA-06, ACC-06)
+are satisfied. WC-060 implementation and independent review are complete on branch
+ib/019/wc060-implementation.
 
 ## Next Authorized Action
 
-Founder reviews PR #266 and the separate WC-060 readiness PR. No merge or implementation
-follows automatically. WC-060's next constitutional action is exact Registrant acknowledgement
-of Amendment 9; implementation additionally requires the separate future directive
-`Authorize implementation of WC-060`.
+Constitutional Analyst reviews PR #268. Founder retains merge authority; do not merge or
+self-approve.
 
 ## History And Evidence
 
@@ -73,7 +79,10 @@ of Amendment 9; implementation additionally requires the separate future directi
   `work-contracts/WC-061-project-state-v2-governance.md` and R-085.
 - WC-060 readiness: `work-contracts/WC-060-goal005-ae01-continuity-evidence-stop.md`,
   `blockers/CB-004-wc060-canonical-contract-gaps-2026-08-11.md`, Amendment 9 in
-  `goals/GOAL-005-execution-plan.md`, and R-086.
+  `goals/GOAL-005-execution-plan.md`, R-086, ACK-GOAL-005-INST-001-09, FA-041, and
+  GOA-GOAL-005-INST-010-06.
+- WC-060 implementation evidence and independent acceptance:
+  `goals/GOAL-005-wc060-implementation-evidence.md` and R-087/R-088/R-089.
 - Earlier completed work remains authoritative in its owning Work Contract, Goal, review,
   constitutional record, and repository history; it must not be copied back into this file.
 

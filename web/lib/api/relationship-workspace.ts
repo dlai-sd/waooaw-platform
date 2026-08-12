@@ -5,6 +5,7 @@ import { RelationshipWorkPageV1FromJSON, type RelationshipWorkPageV1 } from '@/l
 import { RelationshipResultsV1FromJSON, type RelationshipResultsV1 } from '@/lib/api/generated/models/RelationshipResultsV1';
 import { RelationshipUsageBudgetV1FromJSON, type RelationshipUsageBudgetV1 } from '@/lib/api/generated/models/RelationshipUsageBudgetV1';
 import { RelationshipRightsControlsV1FromJSON, type RelationshipRightsControlsV1 } from '@/lib/api/generated/models/RelationshipRightsControlsV1';
+import { RelationshipEvidencePageV1FromJSON, type RelationshipEvidencePageV1 } from '@/lib/api/generated/models/RelationshipEvidencePageV1';
 
 export interface RelationshipWorkspaceViews {
   workspace: RelationshipWorkspaceV1;
@@ -14,6 +15,7 @@ export interface RelationshipWorkspaceViews {
   results: RelationshipResultsV1;
   usageBudget: RelationshipUsageBudgetV1;
   rightsControls: RelationshipRightsControlsV1;
+  evidence: RelationshipEvidencePageV1;
 }
 
 const businessPlatformUrl = process.env.BUSINESS_PLATFORM_URL ?? 'http://localhost:5001';
@@ -32,10 +34,11 @@ export async function getRelationshipWorkspaceViews(
   accessToken: string
 ): Promise<RelationshipWorkspaceViews> {
   const root = `/api/v1/employment/relationships/${encodeURIComponent(relationshipId)}/workspace`;
-  const [workspace, plan, attention, work, results, usageBudget, rightsControls] = await Promise.all([
+  const [workspace, plan, attention, work, results, usageBudget, rightsControls, evidence] = await Promise.all([
     read(root, accessToken), read(`${root}/plan`, accessToken), read(`${root}/attention`, accessToken),
     read(`${root}/work`, accessToken), read(`${root}/results`, accessToken),
     read(`${root}/usage-budget`, accessToken), read(`${root}/rights-controls`, accessToken),
+    read(`${root}/evidence`, accessToken),
   ]);
   return {
     workspace: RelationshipWorkspaceV1FromJSON(workspace),
@@ -45,5 +48,6 @@ export async function getRelationshipWorkspaceViews(
     results: RelationshipResultsV1FromJSON(results),
     usageBudget: RelationshipUsageBudgetV1FromJSON(usageBudget),
     rightsControls: RelationshipRightsControlsV1FromJSON(rightsControls),
+    evidence: RelationshipEvidencePageV1FromJSON(evidence),
   };
 }
