@@ -62,7 +62,7 @@ repair is required. Exceeding this budget requires consolidation or explicit rep
 | WC070-04 | Route future Goal Orchestrator sessions to the standard through BOOTSTRAP and AGENT-ENTRY. | done |
 | WC070-05 | Preserve the detailed institutional rationale and risks in the vNext strategy record. | done |
 | WC070-06 | Run deterministic structure, cross-reference, Markdown, status, and size checks. | done |
-| WC070-07 | Obtain one fresh independent CA verdict on the complete fixed package. | pending |
+| WC070-07 | Obtain one fresh independent CA verdict on the complete fixed package. | done — R-100 confirmed `bc98213` |
 | WC070-08 | Obtain Founder ratification of the exact reviewed package, update current state, and submit one unmerged PR. | pending |
 
 ## Completeness Ledger
@@ -75,8 +75,8 @@ repair is required. Exceeding this budget requires consolidation or explicit rep
 | WC070-04 | INST-013 | M0 | Automatic bootstrap routing | WC070-03 | SATISFIED | `constitution/BOOTSTRAP.md`; `constitution/AGENT-ENTRY.md` | editor + cross-reference check |
 | WC070-05 | INST-013 | M0 | Proposal rationale and inactive boundary | WC070-01 through WC070-04 | SATISFIED | `strategy/FOUNDER-PROPOSAL-2026-08-10-constitutional-fast-path.md` §15 | editor + diff check |
 | WC070-06 | INST-013 | M0 | Deterministic validation results | WC070-01 through WC070-05 | SATISFIED | WC-070 execution record | diff check; 132-line state check; diagnostics |
-| WC070-07 | Fresh INST-002 | M3 | Independent verdict on fixed commit | WC070-01 through WC070-06 | PENDING | pending | CA review |
-| WC070-08A | Founder | M3 | Exact ratification of reviewed bytes | WC070-07 | BLOCKED | pending | exact Founder decision |
+| WC070-07 | Fresh INST-002 | M3 | Independent verdict on fixed commit | WC070-01 through WC070-06 | SATISFIED | R-100; `bc98213` | CA review plus fresh repair confirmation |
+| WC070-08A | Founder | M3 | Exact ratification of reviewed bytes | WC070-07 | PENDING | pending | exact Founder decision |
 | WC070-08B | INST-013 | M0 | Activate the standard, update the GEOM header amendment record, update the checkpoint, and submit an unmerged PR | WC070-08A | BLOCKED | pending | diff/status/PR checks |
 
 ## Execution Record
@@ -89,7 +89,7 @@ repair is required. Exceeding this budget requires consolidation or explicit rep
 | Dependency impact | GEOM, INST-013 charter, BOOTSTRAP, AGENT-ENTRY, strategy rationale, registry, and current-state checkpoint are the complete direct package; no source, architecture, data, security, or runtime dependency changes |
 | Baseline policy | Complete CA review required because this is the initial quality/cost-control baseline; no delta-review shortcut |
 | Model route | Deterministic checks for M0; fresh capable CA context for protected review; Founder remains ratifier |
-| Budget state | `WITHIN_BUDGET` — zero new M0/M1 owner contexts, one planned CA context, one planned Founder decision, zero repair contexts consumed |
+| Budget state | `WITHIN_BUDGET` — zero new M0/M1 owner contexts, one initial CA context and one reserved repair-confirmation context consumed, one Founder decision pending |
 | Protected local artifacts | `.coverage`, `goals/goal_register.jsonl`, `logs/blueprint_assurance_report.json`, `logs/bootstrap-evidence.jsonl`, and `web/tsconfig.tsbuildinfo` remain excluded |
 
 ## Quality Invariants

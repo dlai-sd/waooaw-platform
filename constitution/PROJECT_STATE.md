@@ -43,7 +43,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | WC-070 Work Contract | ACTIVE — Founder selected one governance hardening component |
 | Proposed operating standard | DRAFTED — necessity, reuse, materiality, completeness, dependency, model, and budget controls linked across operating surfaces |
 | Deterministic validation | IN PROGRESS — editor and diff checks passed; fixed-package checks pending |
-| Independent CA review | PENDING — one fresh M3 verdict required on the complete fixed package |
+| Independent CA review | DONE — R-100 approved after required changes and independently confirmed exact package `bc98213` |
 | Founder ratification | PENDING — exact reviewed bytes remain inactive until ratified |
 | Implementation authorization | NOT REQUESTED — WC-070 contains no source or deployment work |
 
@@ -71,10 +71,10 @@ requires a separate fresh INST-002 review and exact Founder ratification before 
 
 ## Next Authorized Action
 
-Freeze and deterministically validate the WC-070 package, obtain one fresh independent CA verdict,
-and request exact Founder ratification. WC-064 owner routing remains separately authorized but is
-not part of WC-070. Do not begin WC-065 through WC-069 implementation or issue implementation
-authority.
+Obtain exact Founder ratification of WC-070 package `bc98213`; then mechanically activate the
+standard, update the GEOM amendment header and checkpoint, and submit one unmerged PR. WC-064
+owner routing remains separately authorized but is not part of WC-070. Do not begin WC-065
+through WC-069 implementation or issue implementation authority.
 
 ## History And Evidence
 
