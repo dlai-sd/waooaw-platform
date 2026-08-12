@@ -2572,6 +2572,50 @@ ACK-GOAL-005-INST-001-11 satisfies WC-062 Entry Gate item 6. Implementation rema
 item 7 fresh current-session Founder authorization, item 8 GOA issuance, and item 9 INST-010
 Acceptance in that order.
 
+### Current-Session Implementation Authorization — FA-043
+
+After INST-013 asked exactly `This would begin writing implementation code. Do you authorize
+WC-062 implementation for the current session?`, the Founder replied exactly `yes i do authorize
+WC062 for implementation`. FA-043 records that explicit scoped confirmation and satisfies WC-062
+Entry Gate item 7 for this session. It does not substitute for GOA issuance or later Acceptance.
+
+### Authorization Record — GOA-GOAL-005-INST-010-07
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GOA-GOAL-005-INST-010-07 |
+| `record_type` | Authorization Record |
+| Authorized Institution | INST-010 — Platform IT Expert |
+| Contribution scope | Deliver WC062-01 through WC062-07 as one complete implementation contribution under GEP-GOAL-005-INST-013-12 and the approved Amendment 10 package |
+| Evidence specification | Task/spec traceability; Docker-only unit, contract, integration, migration, privacy, security, CCT, lint, and coverage evidence; generated-client conformance; Chromium/Firefox/WebKit acceptance at 360x800, 768x1024, and 1440x900; keyboard, screen-reader, RTL, reduced-motion, 200% zoom, offline/replay, Stop, and proportional F8 evidence; at least 90% affected-surface line coverage; fresh independent Data, Security, EA, and CA reviews |
+| Participation Window | Five constitutional sessions after valid Acceptance |
+| Independence constraint | INST-010 may implement and publish evidence but may not independently review, approve, merge, deploy, activate a provider, or declare Goal completion |
+| Excluded authority | Live or paid provider activation or credentials; deployment; DMA-specific speech behavior; production/customer proof; WC-063; architecture reinterpretation; self-review; PR approval; merge; self-merge |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-12T12:02:00Z |
+
+### Acceptance Record — ACC-GOAL-005-INST-010-07
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-010 |
+| `goal_id` | GOAL-005 |
+| `record_id` | ACC-GOAL-005-INST-010-07 |
+| `record_type` | Acceptance Record |
+| `produced_at` | 2026-08-12T12:02:01Z |
+| `authorization_id` | GOA-GOAL-005-INST-010-07 |
+| `acceptance_timestamp` | 2026-08-12T12:02:01Z |
+| Decision | ACCEPTED |
+| Contribution scope accepted | WC062-01 through WC062-07 as one complete implementation and evidence contribution under GEP-GOAL-005-INST-013-12 |
+| Participation Window | 2026-08-12T12:02:01Z through five constitutional sessions |
+| Acceptance boundary | No live or paid provider activation or credentials; no deployment; no DMA-specific behavior; no production/customer-proof authority; no WC-063; no architecture reinterpretation; no self-review; no PR approval; no merge; no self-merge |
+
+The Acceptance timestamp is later than GOA issuance, satisfying GEOM G-03 and R2-12. All nine
+WC-062 Entry Gate items are complete. INST-010 may begin WC062-01 through WC062-07 within this
+accepted Contribution Envelope.
+
 ---
 
 ## Amendment 11 — WC-063 Founder Administration Prospective Routing

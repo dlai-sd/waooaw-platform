@@ -10,7 +10,7 @@
 | Work Contract | WC-062 — WC-034 F6 Voice Interaction |
 | Implementation office | INST-010 — Platform IT Expert |
 | Delivery unit | WC062-01 through WC062-07 as one complete authorized Work Contract |
-| Current state | READY FOR FOUNDER ITEM-7 DECISION — implementation unauthorized |
+| Current state | AUTHORIZED AND ACCEPTED — implementation active under ACC-GOAL-005-INST-010-07 |
 
 ## Purpose
 
@@ -29,9 +29,9 @@ issue the implementation GOA, and INST-010 must accept it later, before code is 
 | 4. Data and Security decisions | Retention, erasure, lineage, migration, validation, quarantine, replay, encryption, residency, Stop | COMPLETE |
 | 5. Execution Plan | GOAL-005 Amendment 10 | COMPLETE |
 | 6. Repaired-package acknowledgement | ACK-GOAL-005-INST-001-11 | COMPLETE |
-| 7. Current-session Founder implementation authorization | Exact directive below | OPEN |
-| 8. WC-062 implementation GOA | Must follow item 7 | NOT ISSUED |
-| 9. INST-010 Acceptance | Must follow GOA issuance | NOT RECORDED |
+| 7. Current-session Founder implementation authorization | FA-043 | COMPLETE |
+| 8. WC-062 implementation GOA | GOA-GOAL-005-INST-010-07 at 2026-08-12T12:02:00Z | ISSUED |
+| 9. INST-010 Acceptance | ACC-GOAL-005-INST-010-07 at 2026-08-12T12:02:01Z | ACCEPTED |
 
 ## Fixed Implementation Scope
 
@@ -63,6 +63,13 @@ To close Entry Gate item 7 for this current session, the Founder must state exac
 
 After that statement is recorded, INST-013 may issue the WC-062 implementation GOA. Implementation
 still may not begin until INST-010 records Acceptance at a timestamp later than GOA issuance.
+
+## Current-Session Decision — COMPLETE
+
+FA-043 records the Founder's explicit scoped confirmation. INST-013 issued
+`GOA-GOAL-005-INST-010-07` at `2026-08-12T12:02:00Z`, and INST-010 recorded
+`ACC-GOAL-005-INST-010-07` at `2026-08-12T12:02:01Z`. The later Acceptance activates the fixed
+WC062-01 through WC062-07 Contribution Envelope. All exclusions above remain binding.
 
 ## Separate Operating-Model Decision — RATIFIED 2026-08-12
 

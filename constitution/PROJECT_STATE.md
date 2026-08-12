@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 33
+**State Revision:** 34
 **Last Updated:** 2026-08-12
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -20,10 +20,10 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Engineering status | IMPLEMENTATION |
 | Platform version | 1.45.0 |
 | Latest completed Work Contract | WC-060 — AE-01 Omnichannel Continuity, Evidence, and Emergency Stop |
-| Latest merge | PR #270 merged to `main` as `ccf2ca5` |
-| Active delivery | WC-062 specification routing under GOAL-005 Amendment 10; implementation unauthorized |
+| Latest merge | PR #272 merged to `main` as `09f7056` |
+| Active delivery | WC-062 implementation active under ACC-GOAL-005-INST-010-07 |
 
-## Active Checkpoint — WC-062 Specification Routing
+## Active Checkpoint — WC-062 Implementation
 
 | Milestone | Status |
 |---|---|
@@ -35,19 +35,19 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Product, Solution, Data, Security contributions | REPAIRED — canonical BP/PR/AIR voice contracts and Solution repair CR/LR published at `1e80dfd`; other owner records unchanged |
 | Integrated EA review | DONE — R-093 / `CR-GOAL-005-INST-004-13` APPROVED repaired package `1e80dfd`; R-091 remains superseded for readiness |
 | Final CA readiness | DONE — R-094 / `CR-GOAL-005-INST-002-16` APPROVED; specification Orders 1–6 complete |
-| WC-062 F6 Voice | ENTRY GATE ITEM 7 OPEN — ACK-GOAL-005-INST-001-11 closes item 6; seven tasks dormant and implementation unauthorized |
-| WC-062 authorization package | READY — `GEP-GOAL-005-INST-013-12` presents exact item-7 directive; no GOA or Acceptance exists |
+| WC-062 Entry Gate | DONE — items 1–6 revalidated; FA-043 closes item 7; GOA-07 and later ACC-07 close items 8–9 |
+| WC-062 implementation | IN PROGRESS — WC062-01 active; WC062-02 through WC062-07 pending |
 | Goal Orchestrator operating-model vNext | RATIFIED AND ACTIVATED — Founder ratified R-095-reviewed text; exact GEOM and ORGANIZATION amendments applied mechanically |
 | WC-063 F7 Founder Administration | GROOMED CANDIDATE — seven dormant tasks and six required owner/review contributions; not implementation-ready |
-| Founder implementation decision | RECORDED FOR WC-062 — FA-042; dormant pending Entry Gate and fresh confirmation in the future implementation session; WC-063 unauthorized |
-| GO Authorization and Acceptance | SPECIFICATION PHASE COMPLETE — owner, EA, and CA GOAs/Acceptances valid; implementation GOA not issued |
-| Specification-routing branch | ACTIVE — `wc/062/specification-routing`; implementation remains stopped |
+| Founder implementation decision | DONE — FA-043 records current-session WC-062 authorization; WC-063 remains unauthorized |
+| GO Authorization and Acceptance | DONE — GOA-GOAL-005-INST-010-07 issued at 12:02:00Z; ACC-GOAL-005-INST-010-07 accepted at 12:02:01Z |
+| Implementation branch | ACTIVE — `wc/062/implementation`; one complete unmerged PR required |
 
 ### Recovery Context
 
-- **Branch:** `wc/062/specification-routing`
-- **Objective:** Present the WC-062 authorization package for the remaining separate Founder implementation decision; no GOA may issue before item 7.
-- **Authority:** The current Founder instruction authorizes specification routing only. FA-042 remains dormant and cannot authorize implementation in this session.
+- **Branch:** `wc/062/implementation`
+- **Objective:** Deliver WC062-01 through WC062-07 as one complete implementation contribution and unmerged PR.
+- **Authority:** FA-043, GEP-GOAL-005-INST-013-12, GOA-GOAL-005-INST-010-07, and ACC-GOAL-005-INST-010-07.
 - **Validation:** Canonical BP `1.8.0`, PR `1.3.0`, and AIR `1.0.0` contracts parse; voice reference graphs resolve; operation IDs are unique; exact SHA-256 hashes are recorded; no implementation tests apply.
 - **Protected local artifacts:** `.coverage`, `goals/goal_register.jsonl`, `logs/blueprint_assurance_report.json`, and `logs/bootstrap-evidence.jsonl` are unrelated and must remain unstaged.
 
@@ -65,11 +65,8 @@ prerequisites, not closed evidence and not implementation blockers being bypasse
 
 ## Next Authorized Action
 
-Obtain fresh current-session Founder authorization for WC-062 implementation. Only after that
-explicit decision may INST-013 issue a WC-062-specific implementation GOA; INST-010 Acceptance
-must then be recorded later than GOA issuance before implementation begins.
-Implementation remains stopped until the complete Entry Gate, fresh implementation-session Founder
-confirmation, implementation GOA, and later INST-010 Acceptance pass. WC-063 remains unselected.
+INST-010 implements and validates WC062-01 through WC062-07 within the accepted Contribution
+Envelope. WC-063 remains unselected and unauthorized.
 
 ## History And Evidence
 
