@@ -27,6 +27,33 @@ END $$;
 
 -- ── channel_bindings ────────────────────────────────────────────────────────
 
+CREATE TABLE IF NOT EXISTS business.relationship_evidence_exports (
+    export_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id UUID NOT NULL,
+    relationship_id UUID NOT NULL,
+    participant_id UUID NOT NULL,
+    participant_role VARCHAR(32) NOT NULL,
+    idempotency_key UUID NOT NULL,
+    material_request_hash CHAR(64) NOT NULL,
+    document_json JSONB NOT NULL,
+    document_sha256 CHAR(64) NOT NULL,
+    evidence_id UUID NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL,
+    UNIQUE (tenant_id, relationship_id, idempotency_key),
+    FOREIGN KEY (tenant_id, relationship_id)
+        REFERENCES business.employment_relationships (tenant_id, relationship_id),
+    CHECK (expires_at = created_at + INTERVAL '15 minutes')
+);
+
+ALTER TABLE business.relationship_evidence_exports ENABLE ROW LEVEL SECURITY;
+ALTER TABLE business.relationship_evidence_exports FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS relationship_evidence_exports_tenant_isolation ON business.relationship_evidence_exports;
+CREATE POLICY relationship_evidence_exports_tenant_isolation ON business.relationship_evidence_exports
+    USING (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '')::UUID)
+    WITH CHECK (tenant_id = NULLIF(current_setting('app.current_tenant_id', TRUE), '')::UUID);
+GRANT SELECT, INSERT ON business.relationship_evidence_exports TO business_app;
+
 CREATE TABLE IF NOT EXISTS business.channel_bindings (
     binding_id              UUID         NOT NULL DEFAULT gen_random_uuid(),
     tenant_id               UUID         NOT NULL,

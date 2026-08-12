@@ -33,7 +33,7 @@ This unification does not waive WC-059 completion, per-session Founder implement
 | WC060-02 | Implement ADR-023 and D-06 Security Contract controls: Meta HMAC, timestamp window, message deduplication, opt-in, 30-minute internal tenant-scoped phone JWT, relationship resolution, MPIN lockout, and Tier-4 portal proof for phone attach. An unknown phone may start a new evaluation but cannot attach to an existing relationship from phone possession or payload hints. | reasoning | done — 18 focused Docker tests pass |
 | WC060-03 | Implement the canonical continuity endpoints and neutral Continuity Envelope from the D-06 Solution Contract. `ChannelContinuityService` prepares handoff, freshly authenticates/role-checks the target, binds its conversation, commits/reverts checkpoint, and returns the same relationship. Source remains active until target evidence commits. | reasoning | done — 10 continuity/controller Docker tests pass |
 | WC060-04 | Extend PR session routing so multiple channel conversations resolve the same relationship and current authority while retaining separate delivery/session state. Offline/reconnect reauthenticates and re-evaluates pending intents; duplicate delivery cannot repeat a lifecycle outcome. | reasoning | done — 71 focused Docker tests pass |
-| WC060-05 | Add the Evidence Reader endpoints in the D-06 Solution Contract and implement the D-06 Data/Security classification and access matrix. Query CE/Audit Sink through its approved read contract, enforce authenticated tenant + relationship + participant role, return only customer-visible material proof and authorized payload references, and provide evidenced short-lived export. | reasoning | pending |
+| WC060-05 | Add the Evidence Reader endpoints in the D-06 Solution Contract and implement the D-06 Data/Security classification and access matrix. Query CE/Audit Sink through its approved read contract, enforce authenticated tenant + relationship + participant role, return only customer-visible material proof and authorized payload references, and provide evidenced short-lived export. | reasoning | done — CE/BP/migration Docker suites pass |
 | WC060-06 | Build web relationship workspace and WhatsApp commands for timeline, evidence summary/export link, current authority/cost/trial state, and Stop. Distinguish transport acceptance from participant-observed acknowledgement and expose unresolved delivery honestly. | reasoning | pending |
 | WC060-07 | Bind Stop to the single AE-01 Employment Relationship: halt its evaluation/trial PAAS sessions, configuration, contract presentation, activation, and handoff within the existing latency budget; reject later consequential commands and show stopped state on every channel. Release is Tier-4 portal only, limited to active same-tenant `EMPLOYER`, freshly reauthenticated and explicitly confirmed with evidence linked to the originating Stop. Reconnect, conversation text, timeout, operator, or channel possession cannot release. AE-02 execution fan-out is deferred to AE-02 proof. | reasoning | pending |
 | WC060-08 | Add adversarial/integration CCTs for takeover, replay, confused deputy, assurance downgrade, cross-tenant query, out-of-order handoff, offline recovery, duplicate delivery, cross-channel Stop, unauthorized release, forged or replayed Neutral Continuity Envelope signatures, and full proposal-to-activation-to-handoff reconstruction. | auto | pending |
@@ -71,6 +71,19 @@ relationship, participant role, request hash, and Decision Space version before 
 Current Stop, stale authority, denial, or CE uncertainty fails closed without executing a pending
 intent. Existing replay arbitration prevents duplicate accepted requests from repeating workflow
 mutation. The focused conversation execution Docker suite passes 71/71 tests.
+
+### WC060-05 Evidence
+
+CE implements the canonical internal `QueryEvidenceRecords` RPC and derives tenant scope only from
+gRPC metadata. It returns only requested same-tenant Audit Sink proof fields, omits credential and
+storage metadata, and suppresses payload references after erasure. The Audit Sink CCT passes 7/7.
+BP collects opaque evidence IDs only from relationship-owned projections, resolves the caller's
+active participant role from persistence, applies the evaluator/employer/relationship-manager
+matrix, and keeps unknown, foreign, and unauthorized IDs privacy-safe. List/detail and export tests
+pass 5/5. Exports freeze the current role-filtered document, canonicalize and SHA-256 hash it,
+record constitutional evidence before persistence, replay identical idempotency, reject divergent
+reuse, and issue a participant/role-bound HTTPS URL for exactly 15 minutes. Migration 22 model and
+live PostgreSQL suites pass 26/26 with tenant-scoped durable export storage.
 
 ## Required Inputs
 

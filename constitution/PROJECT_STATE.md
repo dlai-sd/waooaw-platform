@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 12
+**State Revision:** 13
 **Last Updated:** 2026-08-12
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -36,7 +36,8 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | WC060-02 phone identity security | DONE — MPIN lockout and evidence-backed Tier-4 attach; 18/18 focused Docker tests pass |
 | WC060-03 channel continuity | DONE — canonical handoff API and signed envelope; 10/10 focused Docker tests pass |
 | WC060-04 runtime routing | DONE — relationship-bound channel sessions and reconnect reauthorization; 71/71 Docker tests pass |
-| WC060-05 through WC060-09 | IN PROGRESS — dependency-ordered implementation continues |
+| WC060-05 Evidence Reader | DONE — tenant/role-filtered CE proof reads and evidenced 15-minute exports |
+| WC060-06 through WC060-09 | IN PROGRESS — dependency-ordered implementation continues |
 
 ### Recovery Context
 

@@ -337,6 +337,22 @@ public sealed class ChannelMessageDeduplication
     public DateTimeOffset ExpiresAt { get; init; }
 }
 
+public sealed class RelationshipEvidenceExport
+{
+    public Guid ExportId { get; init; } = Guid.NewGuid();
+    public Guid TenantId { get; init; }
+    public Guid RelationshipId { get; init; }
+    public Guid ParticipantId { get; init; }
+    public string ParticipantRole { get; init; } = string.Empty;
+    public Guid IdempotencyKey { get; init; }
+    public string MaterialRequestHash { get; init; } = string.Empty;
+    public string DocumentJson { get; init; } = string.Empty;
+    public string DocumentSha256 { get; init; } = string.Empty;
+    public Guid EvidenceId { get; init; }
+    public DateTimeOffset CreatedAt { get; init; }
+    public DateTimeOffset ExpiresAt { get; init; }
+}
+
 public sealed class EmploymentRelationshipDbContext : DbContext
 {
     public EmploymentRelationshipDbContext(DbContextOptions<EmploymentRelationshipDbContext> options)
@@ -361,6 +377,7 @@ public sealed class EmploymentRelationshipDbContext : DbContext
     public DbSet<ContinuityCheckpoint> ContinuityCheckpoints => Set<ContinuityCheckpoint>();
     public DbSet<DeliveryAcknowledgement> DeliveryAcknowledgements => Set<DeliveryAcknowledgement>();
     public DbSet<ChannelMessageDeduplication> ChannelMessageDeduplications => Set<ChannelMessageDeduplication>();
+    public DbSet<RelationshipEvidenceExport> RelationshipEvidenceExports => Set<RelationshipEvidenceExport>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -849,6 +866,28 @@ public sealed class EmploymentRelationshipDbContext : DbContext
             entity.HasOne<ChannelBinding>().WithMany()
                 .HasForeignKey(value => new { value.TenantId, value.BindingId })
                 .HasPrincipalKey(value => new { value.TenantId, value.BindingId });
+        });
+
+        modelBuilder.Entity<RelationshipEvidenceExport>(entity =>
+        {
+            entity.ToTable("relationship_evidence_exports", "business");
+            entity.HasKey(value => value.ExportId);
+            entity.HasIndex(value => new { value.TenantId, value.RelationshipId, value.IdempotencyKey }).IsUnique();
+            entity.Property(value => value.ExportId).HasColumnName("export_id");
+            entity.Property(value => value.TenantId).HasColumnName("tenant_id");
+            entity.Property(value => value.RelationshipId).HasColumnName("relationship_id");
+            entity.Property(value => value.ParticipantId).HasColumnName("participant_id");
+            entity.Property(value => value.ParticipantRole).HasColumnName("participant_role");
+            entity.Property(value => value.IdempotencyKey).HasColumnName("idempotency_key");
+            entity.Property(value => value.MaterialRequestHash).HasColumnName("material_request_hash");
+            entity.Property(value => value.DocumentJson).HasColumnName("document_json").HasColumnType("jsonb");
+            entity.Property(value => value.DocumentSha256).HasColumnName("document_sha256");
+            entity.Property(value => value.EvidenceId).HasColumnName("evidence_id");
+            entity.Property(value => value.CreatedAt).HasColumnName("created_at");
+            entity.Property(value => value.ExpiresAt).HasColumnName("expires_at");
+            entity.HasOne<EmploymentRelationship>().WithMany()
+                .HasForeignKey(value => new { value.TenantId, value.RelationshipId })
+                .HasPrincipalKey(value => new { value.TenantId, value.RelationshipId });
         });
     }
 }
