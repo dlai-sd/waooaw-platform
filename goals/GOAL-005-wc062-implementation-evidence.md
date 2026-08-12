@@ -10,8 +10,8 @@
 | Learning | LR-GOAL-005-INST-010-06 |
 | Authorization / Acceptance | GOA-GOAL-005-INST-010-07 / ACC-GOAL-005-INST-010-07 |
 | Implemented range | `09f7056..57a1494` on `wc/062/implementation` |
-| Decision | ACCEPTED - implementation and executor evidence complete; R-096, R-097, and R-098 APPROVED; unmerged PR pending |
-| Exclusions | No live or paid provider, credentials, deployment, production/customer proof, WC-063, self-review, PR approval, merge, or self-merge |
+| Decision | DELIVERED - implementation and executor evidence complete; R-096, R-097, and R-098 APPROVED; PR #273 merged by the Founder as `1a624d6` |
+| Exclusions | No live or paid provider, credentials, deployment, production/customer proof, WC-063, self-review, self-approval, or self-merge; the Founder performed the merge |
 
 ## Delivered Capability
 

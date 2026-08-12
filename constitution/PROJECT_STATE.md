@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 39
+**State Revision:** 40
 **Last Updated:** 2026-08-12
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -19,34 +19,23 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Gate | G5 CLEAR — prerequisites met; not session implementation authority |
 | Engineering status | IMPLEMENTATION |
 | Platform version | 1.45.0 |
-| Latest completed Work Contract | WC-060 — AE-01 Omnichannel Continuity, Evidence, and Emergency Stop |
-| Latest merge | PR #272 merged to `main` as `09f7056` |
-| Active delivery | WC-062 implementation active under ACC-GOAL-005-INST-010-07 |
+| Latest completed Work Contract | WC-062 — WC-034 F6 Voice Interaction |
+| Latest merge | PR #273 merged to `main` as `1a624d6` |
+| Active delivery | None selected; WC-063 remains a groomed candidate without implementation authority |
 
-## Active Checkpoint — WC-062 Implementation
+## Active Checkpoint — WC-062 Delivery Closure
 
 | Milestone | Status |
 |---|---|
-| WC-060 delivery closure | DONE — PR #268 approved and merged to `main` as `95e0d91`; R-087/R-088/R-089 APPROVED |
-| WC-062 grooming merge | DONE — PR #270 merged to `main` as `ccf2ca5` |
-| Amendment 10 reconciliation | DONE — exact prospective GOA/Acceptance IDs, Evidence Specifications, acceptance IDs, independence constraints, and Participation Windows defined; no authority issued |
-| Initial CA routing-readiness review | DONE — R-090 / `CR-GOAL-005-INST-002-14` APPROVED at commit `4a267e1`; no authority issued |
-| Registrant acknowledgement | DONE — exact `ACK-GOAL-005-INST-001-10` recorded; routing only, no implementation authority |
-| Product, Solution, Data, Security contributions | REPAIRED — canonical BP/PR/AIR voice contracts and Solution repair CR/LR published at `1e80dfd`; other owner records unchanged |
-| Integrated EA review | DONE — R-093 / `CR-GOAL-005-INST-004-13` APPROVED repaired package `1e80dfd`; R-091 remains superseded for readiness |
-| Final CA readiness | DONE — R-094 / `CR-GOAL-005-INST-002-16` APPROVED; specification Orders 1–6 complete |
-| WC-062 Entry Gate | DONE — items 1–6 revalidated; FA-043 closes item 7; GOA-07 and later ACC-07 close items 8–9 |
-| WC-062 implementation | DONE — WC062-01 through WC062-07 complete; integrated evidence published; R-096/R-097/R-098 APPROVED |
-| Goal Orchestrator operating-model vNext | RATIFIED AND ACTIVATED — Founder ratified R-095-reviewed text; exact GEOM and ORGANIZATION amendments applied mechanically |
-| WC-063 F7 Founder Administration | GROOMED CANDIDATE — seven dormant tasks and six required owner/review contributions; not implementation-ready |
-| Founder implementation decision | DONE — FA-043 records current-session WC-062 authorization; WC-063 remains unauthorized |
-| GO Authorization and Acceptance | DONE — GOA-GOAL-005-INST-010-07 issued at 12:02:00Z; ACC-GOAL-005-INST-010-07 accepted at 12:02:01Z |
-| Implementation branch | DELIVERY COMPLETE — `wc/062/implementation`; PR #273 open and unmerged against `main` |
+| Authorization and Acceptance | DONE — FA-043, GOA-GOAL-005-INST-010-07, and ACC-GOAL-005-INST-010-07 |
+| Implementation and evidence | DONE — WC062-01 through WC062-07; integrated evidence and LR published |
+| Independent review | DONE — R-096/R-097/R-098 APPROVED |
+| Founder merge | DONE — PR #273 merged to `main` as `1a624d6` on 2026-08-12 |
+| WC-063 F7 Founder Administration | GROOMED CANDIDATE — not selected and not implementation-authorized |
 
-### Recovery Context
+### Closure Context
 
-- **Branch:** `wc/062/implementation`
-- **Objective:** Deliver WC062-01 through WC062-07 as one complete implementation contribution and unmerged PR.
+- **Delivered branch:** `wc/062/implementation`; full head `d05ad67` is contained in merge commit `1a624d6`.
 - **Authority:** FA-043, GEP-GOAL-005-INST-013-12, GOA-GOAL-005-INST-010-07, and ACC-GOAL-005-INST-010-07.
 - **Validation:** AIR 11/11 at 94.70%; PR 14/14 at 90.05%; repaired BP voice 19/19 with 94.44% aggregate affected coverage; BP non-Testcontainers regression 301/301; PostgreSQL 16 Migration 23 scoped-FK and forced-RLS validation passed; web 107/107, affected web coverage above 95%, strict TypeScript/lint/build passed; dedicated voice Playwright matrix 14 passed with 6 intentional project skips across five browser/viewport projects. Legacy Migration 22 Testcontainers collection is blocked only by nested Docker socket permissions.
 - **Protected local artifacts:** `.coverage`, `goals/goal_register.jsonl`, `logs/blueprint_assurance_report.json`, and `logs/bootstrap-evidence.jsonl` are unrelated and must remain unstaged.
@@ -54,19 +43,19 @@ or evidence artifact. Completed history remains in git and the archive index bel
 
 ## Authorization Boundary
 
-WC060-01 through WC060-09 were implemented under ACC-06, independently reviewed, and merged by the
-Founder through PR #268. WC-062/WC-063 grooming creates no implementation authority. Owner
-contributions, integrated and CA readiness review, Registrant acknowledgement, fresh confirmation
-in the implementation session, GOA issuance, and later Acceptance remain mandatory per contract.
+WC062-01 through WC062-07 were implemented under ACC-07, independently reviewed, and merged by the
+Founder through PR #273. WC-063 grooming creates no implementation authority. Its owner
+contributions, integrated and CA readiness review, Registrant acknowledgement, fresh Founder
+confirmation in an implementation session, GOA issuance, and later Acceptance remain mandatory.
 
 ## Current Blockers
 
-None filed. WC-062 implementation gates are closed. WC-063 remains unselected and unauthorized.
+None filed. WC-062 delivery is closed. WC-063 remains unselected and unauthorized.
 
 ## Next Authorized Action
 
-PR #273 awaits independent constitutional review and Founder merge decision. Do not self-approve
-or merge. WC-063 remains unselected and unauthorized.
+Await Founder selection of the next gate-filtered work item. WC-063 remains a groomed candidate;
+do not begin its specification contributions or implementation without the required routing.
 
 ## History And Evidence
 
@@ -86,7 +75,7 @@ or merge. WC-063 remains unselected and unauthorized.
 - WC-060 delivery closure: PR #268 merged to `main` as `95e0d91` after Founder approval.
 - WC-062 implementation evidence and independent acceptance:
   `goals/GOAL-005-wc062-implementation-evidence.md` and R-096/R-097/R-098.
-- WC-062 delivery PR: #273 open and unmerged from `wc/062/implementation` to `main`.
+- WC-062 delivery closure: PR #273 merged by the Founder to `main` as `1a624d6` on 2026-08-12.
 - Earlier completed work remains authoritative in its owning Work Contract, Goal, review,
   constitutional record, and repository history; it must not be copied back into this file.
 
