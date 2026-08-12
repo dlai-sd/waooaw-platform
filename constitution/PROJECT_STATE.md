@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 19
+**State Revision:** 20
 **Last Updated:** 2026-08-12
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -20,10 +20,10 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Engineering status | IMPLEMENTATION |
 | Platform version | 1.45.0 |
 | Latest completed Work Contract | WC-060 — AE-01 Omnichannel Continuity, Evidence, and Emergency Stop |
-| Latest merge | PR #267 merged to `main` as `7ee9f6b` |
-| Active delivery | WC-060 complete and independently approved; PR #268 open and unmerged |
+| Latest merge | PR #268 merged to `main` as `95e0d91` |
+| Active delivery | None — WC-060 is complete, approved, and merged |
 
-## Active Checkpoint — WC-060 Authorization Routing
+## Active Checkpoint — WC-060 Delivery Closure
 
 | Milestone | Status |
 |---|---|
@@ -42,31 +42,31 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | WC060-08 adversarial CCT matrix | DONE — BP 19/19, PR 71/71, PostgreSQL 22/22, and CE 5/5 Docker tests pass |
 | WC060-09 integrated acceptance | DONE — browser 106 pass, web 89/89 at 94.63% lines, BP 309/309, CE 83/83, PR 153/153 |
 | WC-060 independent review | DONE — R-087 Security, R-088 Data, and R-089 Enterprise Architecture APPROVED |
+| Founder review and merge | DONE — PR #268 approved and merged to `main` as `95e0d91` |
 
 ### Recovery Context
 
-- **Branch:** `ib/019/wc060-implementation`
-- **Objective:** Obtain constitutional review of the complete WC-060 component in PR #268.
-- **Hypothesis:** ACC-06, GOA-06, FA-041, ACK-09, and R-086 authorize implementation within Amendment 9 boundaries.
+- **Branch:** `main` at merge `95e0d91`
+- **Objective:** WC-060 delivery is closed; route any next Goal work through a new gate-filtered selection.
+- **Authority:** ACC-06, GOA-06, FA-041, ACK-09, and R-086 authorized only the now-complete WC-060 component.
 - **Validation:** All nine tasks with Docker evidence, ≥90% coverage, Migration 22, adversarial CCTs, F5/F8 acceptance.
 - **Protected local artifacts:** `.coverage` and `logs/blueprint_assurance_report.json` are unrelated and must remain unstaged.
 
 ## Authorization Boundary
 
-This activity implemented WC060-01 through WC060-09 under ACC-06 and completed independent review.
-It does not authorize provider activation, deployment, F6-F8 feature implementation, PR merge,
-self-review, self-approval, or self-merge.
+WC060-01 through WC060-09 were implemented under ACC-06, independently reviewed, and merged by the
+Founder through PR #268. Closure does not authorize provider activation, deployment, F6-F8 feature
+implementation, a new implementation sprint, self-review, self-approval, or self-merge.
 
 ## Current Blockers
 
 None. ACC-GOAL-005-INST-010-06 is recorded. All gates (R-086, ACK-09, FA-041, GOA-06, ACC-06)
-are satisfied. WC-060 implementation and independent review are complete on branch
-ib/019/wc060-implementation.
+are satisfied. WC-060 implementation, independent review, and Founder merge are complete.
 
 ## Next Authorized Action
 
-Constitutional Analyst reviews PR #268. Founder retains merge authority; do not merge or
-self-approve.
+INST-013 performs the next gate-filtered Goal work selection. No new implementation is authorized
+by WC-060 closure.
 
 ## History And Evidence
 
@@ -83,6 +83,7 @@ self-approve.
   GOA-GOAL-005-INST-010-06.
 - WC-060 implementation evidence and independent acceptance:
   `goals/GOAL-005-wc060-implementation-evidence.md` and R-087/R-088/R-089.
+- WC-060 delivery closure: PR #268 merged to `main` as `95e0d91` after Founder approval.
 - Earlier completed work remains authoritative in its owning Work Contract, Goal, review,
   constitutional record, and repository history; it must not be copied back into this file.
 
