@@ -29,7 +29,7 @@ This unification does not waive WC-059 completion, per-session Founder implement
 
 | Task | Scope | Model hint | Status |
 |---|---|---|---|
-| WC060-01 | Apply the exact Migration 22 blueprint in the D-06 Data Contract: independently authenticated channel bindings, continuity checkpoints, transport/participant acknowledgements, deduplication, tenant/relationship indexes, lifecycle/retention rules, and no ownership of relationship state. | reasoning | pending |
+| WC060-01 | Apply the exact Migration 22 blueprint in the D-06 Data Contract: independently authenticated channel bindings, continuity checkpoints, transport/participant acknowledgements, deduplication, tenant/relationship indexes, lifecycle/retention rules, and no ownership of relationship state. | reasoning | done — 22 Docker tests pass |
 | WC060-02 | Implement ADR-023 and D-06 Security Contract controls: Meta HMAC, timestamp window, message deduplication, opt-in, 30-minute internal tenant-scoped phone JWT, relationship resolution, MPIN lockout, and Tier-4 portal proof for phone attach. An unknown phone may start a new evaluation but cannot attach to an existing relationship from phone possession or payload hints. | reasoning | pending |
 | WC060-03 | Implement the canonical continuity endpoints and neutral Continuity Envelope from the D-06 Solution Contract. `ChannelContinuityService` prepares handoff, freshly authenticates/role-checks the target, binds its conversation, commits/reverts checkpoint, and returns the same relationship. Source remains active until target evidence commits. | reasoning | pending |
 | WC060-04 | Extend PR session routing so multiple channel conversations resolve the same relationship and current authority while retaining separate delivery/session state. Offline/reconnect reauthenticates and re-evaluates pending intents; duplicate delivery cannot repeat a lifecycle outcome. | reasoning | pending |
@@ -38,6 +38,13 @@ This unification does not waive WC-059 completion, per-session Founder implement
 | WC060-07 | Bind Stop to the single AE-01 Employment Relationship: halt its evaluation/trial PAAS sessions, configuration, contract presentation, activation, and handoff within the existing latency budget; reject later consequential commands and show stopped state on every channel. Release is Tier-4 portal only, limited to active same-tenant `EMPLOYER`, freshly reauthenticated and explicitly confirmed with evidence linked to the originating Stop. Reconnect, conversation text, timeout, operator, or channel possession cannot release. AE-02 execution fan-out is deferred to AE-02 proof. | reasoning | pending |
 | WC060-08 | Add adversarial/integration CCTs for takeover, replay, confused deputy, assurance downgrade, cross-tenant query, out-of-order handoff, offline recovery, duplicate delivery, cross-channel Stop, unauthorized release, forged or replayed Neutral Continuity Envelope signatures, and full proposal-to-activation-to-handoff reconstruction. | auto | pending |
 | WC060-09 | Complete WC-034 F5 browser/generated-client acceptance for UX-CONV-03, UX-RES-02, and UX-CONT-01 through UX-CONT-06 at exact 360px and expanded viewports; run the proportional F8 accessibility, privacy, contract-conformance, coverage, lint, build, and regression gate; publish one integrated evidence package for independent INST-004 review. | auto | pending |
+
+### WC060-01 Evidence
+
+Migration 22 and its EF Core ownership mapping are implemented. The focused Docker/Testcontainers
+suite passes 22/22 checks covering first apply, idempotent reapply, composite foreign keys, forced
+tenant RLS, checks and transition guards, append-only delivery acknowledgements, exact 15-minute
+and 48-hour expiry, maintenance-role boundaries, replay arbitration, and concurrency uniqueness.
 
 ## Required Inputs
 

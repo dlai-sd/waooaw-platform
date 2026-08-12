@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 9
+**State Revision:** 10
 **Last Updated:** 2026-08-12
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -32,6 +32,8 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Current-session implementation directive | DONE — FA-041 records exact Founder directive |
 | GO Authorization | DONE — GOA-GOAL-005-INST-010-06 issued by INST-013 |
 | INST-010 acceptance | DONE — ACC-GOAL-005-INST-010-06 at 2026-08-12T04:00:00Z |
+| WC060-01 data foundation | DONE — Migration 22 and EF ownership; 22/22 Docker/PostgreSQL tests pass |
+| WC060-02 through WC060-09 | IN PROGRESS — dependency-ordered implementation continues |
 
 ### Recovery Context
 
