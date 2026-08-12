@@ -135,6 +135,7 @@ class ConversationExecutionWorkflow:
             "relationshipId": self._input.relationship_id if self._input is not None else None,
             "delegatedActorId": self._input.delegated_actor_id if self._input is not None else None,
             "participantRole": self._input.participant_role if self._input is not None else None,
+            "decisionSpaceVersion": self._input.decision_space_version if self._input is not None else None,
             "state": self._state,
             "partial": self._partial,
             "completionReason": self._completion_reason,

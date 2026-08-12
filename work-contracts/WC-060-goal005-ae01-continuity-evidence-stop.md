@@ -32,7 +32,7 @@ This unification does not waive WC-059 completion, per-session Founder implement
 | WC060-01 | Apply the exact Migration 22 blueprint in the D-06 Data Contract: independently authenticated channel bindings, continuity checkpoints, transport/participant acknowledgements, deduplication, tenant/relationship indexes, lifecycle/retention rules, and no ownership of relationship state. | reasoning | done — 22 Docker tests pass |
 | WC060-02 | Implement ADR-023 and D-06 Security Contract controls: Meta HMAC, timestamp window, message deduplication, opt-in, 30-minute internal tenant-scoped phone JWT, relationship resolution, MPIN lockout, and Tier-4 portal proof for phone attach. An unknown phone may start a new evaluation but cannot attach to an existing relationship from phone possession or payload hints. | reasoning | done — 18 focused Docker tests pass |
 | WC060-03 | Implement the canonical continuity endpoints and neutral Continuity Envelope from the D-06 Solution Contract. `ChannelContinuityService` prepares handoff, freshly authenticates/role-checks the target, binds its conversation, commits/reverts checkpoint, and returns the same relationship. Source remains active until target evidence commits. | reasoning | done — 10 continuity/controller Docker tests pass |
-| WC060-04 | Extend PR session routing so multiple channel conversations resolve the same relationship and current authority while retaining separate delivery/session state. Offline/reconnect reauthenticates and re-evaluates pending intents; duplicate delivery cannot repeat a lifecycle outcome. | reasoning | pending |
+| WC060-04 | Extend PR session routing so multiple channel conversations resolve the same relationship and current authority while retaining separate delivery/session state. Offline/reconnect reauthenticates and re-evaluates pending intents; duplicate delivery cannot repeat a lifecycle outcome. | reasoning | done — 71 focused Docker tests pass |
 | WC060-05 | Add the Evidence Reader endpoints in the D-06 Solution Contract and implement the D-06 Data/Security classification and access matrix. Query CE/Audit Sink through its approved read contract, enforce authenticated tenant + relationship + participant role, return only customer-visible material proof and authorized payload references, and provide evidenced short-lived export. | reasoning | pending |
 | WC060-06 | Build web relationship workspace and WhatsApp commands for timeline, evidence summary/export link, current authority/cost/trial state, and Stop. Distinguish transport acceptance from participant-observed acknowledgement and expose unresolved delivery honestly. | reasoning | pending |
 | WC060-07 | Bind Stop to the single AE-01 Employment Relationship: halt its evaluation/trial PAAS sessions, configuration, contract presentation, activation, and handoff within the existing latency budget; reject later consequential commands and show stopped state on every channel. Release is Tier-4 portal only, limited to active same-tenant `EMPLOYER`, freshly reauthenticated and explicitly confirmed with evidence linked to the originating Stop. Reconnect, conversation text, timeout, operator, or channel possession cannot release. AE-02 execution fan-out is deferred to AE-02 proof. | reasoning | pending |
@@ -61,6 +61,16 @@ signs deterministic canonical JSON with HMAC-SHA256, persists the envelope hash,
 idempotency and modified envelopes, rechecks current role/authority/Stop state, and commits target
 binding only after evidence. Source binding remains active. The focused continuity and controller
 Docker suite passes 10/10 tests; Migration 22 model and live PostgreSQL suites pass 26/26 tests.
+
+### WC060-04 Evidence
+
+Professional Runtime retains one durable Temporal execution per conversation and idempotency
+identity while every BP assertion resolves the same server-authorized relationship context.
+Reconnect reads durable workflow state, rechecks CE readiness, and reauthorizes the pinned
+relationship, participant role, request hash, and Decision Space version before resuming events.
+Current Stop, stale authority, denial, or CE uncertainty fails closed without executing a pending
+intent. Existing replay arbitration prevents duplicate accepted requests from repeating workflow
+mutation. The focused conversation execution Docker suite passes 71/71 tests.
 
 ## Required Inputs
 

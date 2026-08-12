@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 11
+**State Revision:** 12
 **Last Updated:** 2026-08-12
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -35,7 +35,8 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | WC060-01 data foundation | DONE — Migration 22 and EF ownership; 22/22 Docker/PostgreSQL tests pass |
 | WC060-02 phone identity security | DONE — MPIN lockout and evidence-backed Tier-4 attach; 18/18 focused Docker tests pass |
 | WC060-03 channel continuity | DONE — canonical handoff API and signed envelope; 10/10 focused Docker tests pass |
-| WC060-04 through WC060-09 | IN PROGRESS — dependency-ordered implementation continues |
+| WC060-04 runtime routing | DONE — relationship-bound channel sessions and reconnect reauthorization; 71/71 Docker tests pass |
+| WC060-05 through WC060-09 | IN PROGRESS — dependency-ordered implementation continues |
 
 ### Recovery Context
 

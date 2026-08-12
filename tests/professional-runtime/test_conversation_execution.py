@@ -121,6 +121,7 @@ class FakeWorkflowHandle:
             "relationshipId": workflow_input.relationship_id,
             "delegatedActorId": workflow_input.delegated_actor_id,
             "participantRole": workflow_input.participant_role,
+            "decisionSpaceVersion": workflow_input.decision_space_version,
             "state": "ACCEPTED",
             "partial": False,
             "completionReason": None,
@@ -461,6 +462,50 @@ async def test_stream_rejects_invalid_cursor_and_cross_context(client: Any) -> N
     assert invalid.status_code == 410
     assert invalid.json()["code"] == "EXECUTION_CURSOR_EXPIRED"
     assert cross_context.status_code == 404
+
+
+async def test_reconnect_reauthenticates_current_relationship_authority(client: Any) -> None:
+    conversation_id, execution = await _start(client)
+    gateway = app.state.conversation_constitutional_gateway
+    gateway.decision = ConstitutionalDecision.STOPPED
+
+    response = await client.get(
+        f"/api/v1/internal/conversations/{conversation_id}/executions/{execution['executionId']}/stream",
+        headers=_headers(_service_token()),
+    )
+
+    assert response.status_code == 423
+    assert response.json()["code"] == "EXECUTION_STOPPED"
+    assert len(gateway.authorizations) == 2
+    reconnect = gateway.authorizations[-1]
+    assert reconnect["context"].relationship_id == "relationship-a"
+    assert reconnect["decision_space_version"] == 1
+
+
+async def test_distinct_channels_keep_separate_execution_state_for_same_relationship(client: Any) -> None:
+    whatsapp_conversation = uuid.uuid4()
+    web_conversation = uuid.uuid4()
+    token = _service_token(relationship_id="relationship-shared")
+
+    whatsapp = await client.post(
+        f"/api/v1/internal/conversations/{whatsapp_conversation}/executions",
+        headers=_headers(token),
+        json=_body(),
+    )
+    web = await client.post(
+        f"/api/v1/internal/conversations/{web_conversation}/executions",
+        headers=_headers(token),
+        json=_body(),
+    )
+
+    assert whatsapp.status_code == web.status_code == 202
+    assert whatsapp.json()["executionId"] != web.json()["executionId"]
+    inputs = [started["input"] for started in app.state.temporal_client.started]
+    assert {item.relationship_id for item in inputs} == {"relationship-shared"}
+    assert {item.conversation_id for item in inputs} == {
+        str(whatsapp_conversation),
+        str(web_conversation),
+    }
 
 
 async def test_terminal_stream_has_canonical_headers_and_closes(client: Any) -> None:

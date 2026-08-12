@@ -488,6 +488,7 @@ async def stream_conversation_execution(
     last_event_id: str | None = Header(default=None, alias="Last-Event-ID"),
     context: BPServiceContext | None = Depends(get_bp_service_context),
     temporal: TemporalClient | None = Depends(get_temporal_client),
+    gateway: ConversationConstitutionalGateway | None = Depends(get_constitutional_gateway),
 ) -> JSONResponse | StreamingResponse:
     if context is None:
         return problem_response(401, ExecutionProblemCode.NOT_ACCESSIBLE, "Execution is not accessible", correlation_id)
@@ -504,6 +505,32 @@ async def stream_conversation_execution(
         return problem_response(404, ExecutionProblemCode.NOT_ACCESSIBLE, "Execution is not accessible", correlation_id)
     if state["state"] == "STOPPED":
         return problem_response(423, ExecutionProblemCode.STOPPED, "Emergency Stop is active", correlation_id)
+    try:
+        constitutional_ready = gateway is not None and await gateway.is_ready()
+        decision = await gateway.authorize_execution(
+            context,
+            conversation_id,
+            int(state["decisionSpaceVersion"]),
+            str(state["requestHash"]),
+        ) if constitutional_ready else None
+    except (ConstitutionalGatewayUnavailableError, KeyError, TypeError, ValueError):
+        decision = None
+    if decision is None:
+        return problem_response(
+            503,
+            ExecutionProblemCode.CONSTITUTIONAL_UNAVAILABLE,
+            "Constitutional execution is unavailable",
+            correlation_id,
+            30,
+        )
+    if decision == ConstitutionalDecision.STOPPED:
+        return problem_response(423, ExecutionProblemCode.STOPPED, "Emergency Stop is active", correlation_id)
+    if decision == ConstitutionalDecision.STALE:
+        return problem_response(
+            409, ExecutionProblemCode.DECISION_SPACE_STALE, "Decision Space version is stale", correlation_id
+        )
+    if decision != ConstitutionalDecision.ALLOW:
+        return problem_response(404, ExecutionProblemCode.NOT_ACCESSIBLE, "Execution is not accessible", correlation_id)
     try:
         after_sequence = _resume_sequence(last_event_id, events)
     except ValueError:
