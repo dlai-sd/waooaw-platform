@@ -34,7 +34,7 @@ This unification does not waive WC-059 completion, per-session Founder implement
 | WC060-03 | Implement the canonical continuity endpoints and neutral Continuity Envelope from the D-06 Solution Contract. `ChannelContinuityService` prepares handoff, freshly authenticates/role-checks the target, binds its conversation, commits/reverts checkpoint, and returns the same relationship. Source remains active until target evidence commits. | reasoning | done — 10 continuity/controller Docker tests pass |
 | WC060-04 | Extend PR session routing so multiple channel conversations resolve the same relationship and current authority while retaining separate delivery/session state. Offline/reconnect reauthenticates and re-evaluates pending intents; duplicate delivery cannot repeat a lifecycle outcome. | reasoning | done — 71 focused Docker tests pass |
 | WC060-05 | Add the Evidence Reader endpoints in the D-06 Solution Contract and implement the D-06 Data/Security classification and access matrix. Query CE/Audit Sink through its approved read contract, enforce authenticated tenant + relationship + participant role, return only customer-visible material proof and authorized payload references, and provide evidenced short-lived export. | reasoning | done — CE/BP/migration Docker suites pass |
-| WC060-06 | Build web relationship workspace and WhatsApp commands for timeline, evidence summary/export link, current authority/cost/trial state, and Stop. Distinguish transport acceptance from participant-observed acknowledgement and expose unresolved delivery honestly. | reasoning | pending |
+| WC060-06 | Build web relationship workspace and WhatsApp commands for timeline, evidence summary/export link, current authority/cost/trial state, and Stop. Distinguish transport acceptance from participant-observed acknowledgement and expose unresolved delivery honestly. | reasoning | done — web build, 6 UI tests, and 23 WhatsApp tests pass |
 | WC060-07 | Bind Stop to the single AE-01 Employment Relationship: halt its evaluation/trial PAAS sessions, configuration, contract presentation, activation, and handoff within the existing latency budget; reject later consequential commands and show stopped state on every channel. Release is Tier-4 portal only, limited to active same-tenant `EMPLOYER`, freshly reauthenticated and explicitly confirmed with evidence linked to the originating Stop. Reconnect, conversation text, timeout, operator, or channel possession cannot release. AE-02 execution fan-out is deferred to AE-02 proof. | reasoning | pending |
 | WC060-08 | Add adversarial/integration CCTs for takeover, replay, confused deputy, assurance downgrade, cross-tenant query, out-of-order handoff, offline recovery, duplicate delivery, cross-channel Stop, unauthorized release, forged or replayed Neutral Continuity Envelope signatures, and full proposal-to-activation-to-handoff reconstruction. | auto | pending |
 | WC060-09 | Complete WC-034 F5 browser/generated-client acceptance for UX-CONV-03, UX-RES-02, and UX-CONT-01 through UX-CONT-06 at exact 360px and expanded viewports; run the proportional F8 accessibility, privacy, contract-conformance, coverage, lint, build, and regression gate; publish one integrated evidence package for independent INST-004 review. | auto | pending |
@@ -84,6 +84,18 @@ pass 5/5. Exports freeze the current role-filtered document, canonicalize and SH
 record constitutional evidence before persistence, replay identical idempotency, reject divergent
 reuse, and issue a participant/role-bound HTTPS URL for exactly 15 minutes. Migration 22 model and
 live PostgreSQL suites pass 26/26 with tenant-scoped durable export storage.
+
+### WC060-06 Evidence
+
+The established relationship workspace now loads the generated Evidence Reader projection, shows
+customer-visible summaries, labels participant observation unresolved, and requests an evidenced,
+time-limited export through an authenticated same-origin route. The relationship view retains the
+authoritative timeline, trial/lifecycle state, authority version, commercial truth, and global
+Emergency Stop access. WhatsApp `STATUS`, `TIMELINE`, `EVIDENCE`, `EXPORT`, and `STOP` presentations
+direct customers to the secure authoritative workspace and distinguish transport acceptance from
+durable participant acknowledgement. The generated TypeScript client was regenerated from BP
+OpenAPI 1.7.0. Focused Jest suites pass 6/6, the WhatsApp Docker suite passes 23/23, and the
+production Next.js build passes.
 
 ## Required Inputs
 

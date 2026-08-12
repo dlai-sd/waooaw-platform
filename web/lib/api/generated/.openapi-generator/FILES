@@ -73,6 +73,7 @@ docs/RelationshipCommandReceiptV1.md
 docs/RelationshipCommandStatus.md
 docs/RelationshipContextV1.md
 docs/RelationshipEvidenceDetailV1.md
+docs/RelationshipEvidenceExportDocumentV1.md
 docs/RelationshipEvidenceExportOutcomeV1.md
 docs/RelationshipEvidenceExportReceiptV1.md
 docs/RelationshipEvidencePageV1.md
@@ -185,6 +186,7 @@ models/RelationshipCommandReceiptV1.ts
 models/RelationshipCommandStatus.ts
 models/RelationshipContextV1.ts
 models/RelationshipEvidenceDetailV1.ts
+models/RelationshipEvidenceExportDocumentV1.ts
 models/RelationshipEvidenceExportOutcomeV1.ts
 models/RelationshipEvidenceExportReceiptV1.ts
 models/RelationshipEvidencePageV1.ts

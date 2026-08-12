@@ -69,6 +69,7 @@ export * from "./RelationshipCommandReceiptV1";
 export * from "./RelationshipCommandStatus";
 export * from "./RelationshipContextV1";
 export * from "./RelationshipEvidenceDetailV1";
+export * from "./RelationshipEvidenceExportDocumentV1";
 export * from "./RelationshipEvidenceExportOutcomeV1";
 export * from "./RelationshipEvidenceExportReceiptV1";
 export * from "./RelationshipEvidencePageV1";

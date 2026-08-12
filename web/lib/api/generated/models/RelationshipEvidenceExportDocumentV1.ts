@@ -13,13 +13,13 @@
  */
 
 import { mapValues } from "../runtime";
-import type { RelationshipWorkspaceChangeEntryV1 } from "./RelationshipWorkspaceChangeEntryV1";
+import type { RelationshipEvidenceDetailV1 } from "./RelationshipEvidenceDetailV1";
 import {
-  RelationshipWorkspaceChangeEntryV1FromJSON,
-  RelationshipWorkspaceChangeEntryV1FromJSONTyped,
-  RelationshipWorkspaceChangeEntryV1ToJSON,
-  RelationshipWorkspaceChangeEntryV1ToJSONTyped,
-} from "./RelationshipWorkspaceChangeEntryV1";
+  RelationshipEvidenceDetailV1FromJSON,
+  RelationshipEvidenceDetailV1FromJSONTyped,
+  RelationshipEvidenceDetailV1ToJSON,
+  RelationshipEvidenceDetailV1ToJSONTyped,
+} from "./RelationshipEvidenceDetailV1";
 import type { RelationshipWorkspaceSchemaVersion } from "./RelationshipWorkspaceSchemaVersion";
 import {
   RelationshipWorkspaceSchemaVersionFromJSON,
@@ -29,72 +29,73 @@ import {
 } from "./RelationshipWorkspaceSchemaVersion";
 
 /**
+ * Canonical logical content of the downloadable UTF-8 JSON artifact. Object members are
+ * serialized in RFC 8785 canonical order for documentSha256. Items use the same current
+ * participant-role projection and erased-payload behavior as the Evidence Reader.
  *
  * @export
- * @interface RelationshipWorkspaceChangePageV1
+ * @interface RelationshipEvidenceExportDocumentV1
  */
-export interface RelationshipWorkspaceChangePageV1 {
+export interface RelationshipEvidenceExportDocumentV1 {
   /**
    *
    * @type {RelationshipWorkspaceSchemaVersion}
-   * @memberof RelationshipWorkspaceChangePageV1
+   * @memberof RelationshipEvidenceExportDocumentV1
    */
   schemaVersion: RelationshipWorkspaceSchemaVersion;
   /**
    *
    * @type {string}
-   * @memberof RelationshipWorkspaceChangePageV1
+   * @memberof RelationshipEvidenceExportDocumentV1
+   */
+  exportId: string;
+  /**
+   *
+   * @type {string}
+   * @memberof RelationshipEvidenceExportDocumentV1
    */
   relationshipId: string;
   /**
    *
-   * @type {string}
-   * @memberof RelationshipWorkspaceChangePageV1
+   * @type {Date}
+   * @memberof RelationshipEvidenceExportDocumentV1
    */
-  authoritativeCursor: string;
+  generatedAt: Date;
   /**
    *
-   * @type {string}
-   * @memberof RelationshipWorkspaceChangePageV1
+   * @type {Array<RelationshipEvidenceDetailV1>}
+   * @memberof RelationshipEvidenceExportDocumentV1
    */
-  nextCursor?: string;
-  /**
-   *
-   * @type {Array<RelationshipWorkspaceChangeEntryV1>}
-   * @memberof RelationshipWorkspaceChangePageV1
-   */
-  items: Array<RelationshipWorkspaceChangeEntryV1>;
+  evidence: Array<RelationshipEvidenceDetailV1>;
 }
 
 /**
- * Check if a given object implements the RelationshipWorkspaceChangePageV1 interface.
+ * Check if a given object implements the RelationshipEvidenceExportDocumentV1 interface.
  */
-export function instanceOfRelationshipWorkspaceChangePageV1(
+export function instanceOfRelationshipEvidenceExportDocumentV1(
   value: object,
-): value is RelationshipWorkspaceChangePageV1 {
+): value is RelationshipEvidenceExportDocumentV1 {
   if (!("schemaVersion" in value) || value["schemaVersion"] === undefined)
     return false;
+  if (!("exportId" in value) || value["exportId"] === undefined) return false;
   if (!("relationshipId" in value) || value["relationshipId"] === undefined)
     return false;
-  if (
-    !("authoritativeCursor" in value) ||
-    value["authoritativeCursor"] === undefined
-  )
+  if (!("generatedAt" in value) || value["generatedAt"] === undefined)
     return false;
-  if (!("items" in value) || value["items"] === undefined) return false;
+  if (!("evidence" in value) || value["evidence"] === undefined) return false;
   return true;
 }
 
-export function RelationshipWorkspaceChangePageV1FromJSON(
+export function RelationshipEvidenceExportDocumentV1FromJSON(
   json: any,
-): RelationshipWorkspaceChangePageV1 {
-  return RelationshipWorkspaceChangePageV1FromJSONTyped(json, false);
+): RelationshipEvidenceExportDocumentV1 {
+  return RelationshipEvidenceExportDocumentV1FromJSONTyped(json, false);
 }
 
-export function RelationshipWorkspaceChangePageV1FromJSONTyped(
+export function RelationshipEvidenceExportDocumentV1FromJSONTyped(
   json: any,
   ignoreDiscriminator: boolean,
-): RelationshipWorkspaceChangePageV1 {
+): RelationshipEvidenceExportDocumentV1 {
   if (json == null) {
     return json;
   }
@@ -102,23 +103,23 @@ export function RelationshipWorkspaceChangePageV1FromJSONTyped(
     schemaVersion: RelationshipWorkspaceSchemaVersionFromJSON(
       json["schemaVersion"],
     ),
+    exportId: json["exportId"],
     relationshipId: json["relationshipId"],
-    authoritativeCursor: json["authoritativeCursor"],
-    nextCursor: json["nextCursor"] == null ? undefined : json["nextCursor"],
-    items: (json["items"] as Array<any>).map(
-      RelationshipWorkspaceChangeEntryV1FromJSON,
+    generatedAt: new Date(json["generatedAt"]),
+    evidence: (json["evidence"] as Array<any>).map(
+      RelationshipEvidenceDetailV1FromJSON,
     ),
   };
 }
 
-export function RelationshipWorkspaceChangePageV1ToJSON(
+export function RelationshipEvidenceExportDocumentV1ToJSON(
   json: any,
-): RelationshipWorkspaceChangePageV1 {
-  return RelationshipWorkspaceChangePageV1ToJSONTyped(json, false);
+): RelationshipEvidenceExportDocumentV1 {
+  return RelationshipEvidenceExportDocumentV1ToJSONTyped(json, false);
 }
 
-export function RelationshipWorkspaceChangePageV1ToJSONTyped(
-  value?: RelationshipWorkspaceChangePageV1 | null,
+export function RelationshipEvidenceExportDocumentV1ToJSONTyped(
+  value?: RelationshipEvidenceExportDocumentV1 | null,
   ignoreDiscriminator: boolean = false,
 ): any {
   if (value == null) {
@@ -129,11 +130,11 @@ export function RelationshipWorkspaceChangePageV1ToJSONTyped(
     schemaVersion: RelationshipWorkspaceSchemaVersionToJSON(
       value["schemaVersion"],
     ),
+    exportId: value["exportId"],
     relationshipId: value["relationshipId"],
-    authoritativeCursor: value["authoritativeCursor"],
-    nextCursor: value["nextCursor"],
-    items: (value["items"] as Array<any>).map(
-      RelationshipWorkspaceChangeEntryV1ToJSON,
+    generatedAt: value["generatedAt"].toISOString(),
+    evidence: (value["evidence"] as Array<any>).map(
+      RelationshipEvidenceDetailV1ToJSON,
     ),
   };
 }

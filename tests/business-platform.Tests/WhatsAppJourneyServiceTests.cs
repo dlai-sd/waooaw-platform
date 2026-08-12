@@ -114,6 +114,26 @@ public sealed class WhatsAppJourneyServiceTests
     }
 
     [Theory]
+    [InlineData("STATUS", "CONTINUITY", "transport acceptance only")]
+    [InlineData("TIMELINE", "CONTINUITY", "authority version")]
+    [InlineData("EVIDENCE", "EVIDENCE", "time-limited canonical export")]
+    [InlineData("EXPORT", "EVIDENCE", "current relationship role")]
+    [InlineData("STOP", "STOP", "delivery stays unresolved")]
+    public async Task RelationshipContinuityCommandsPreserveAuthoritativeAndDeliveryMeaning(
+        string text, string stage, string expectedReply)
+    {
+        var (service, _, _) = Create();
+        var now = DateTimeOffset.UtcNow;
+        var body = Body($"wamid-{text.ToLowerInvariant()}", now, "+919876543210", text, "TIER_1_LOW_RISK");
+
+        var result = await service.ReceiveAsync(body, Sign(body), now, CancellationToken.None);
+
+        Assert.Equal("ACCEPTED", result.Status);
+        Assert.Equal(stage, result.JourneyStage);
+        Assert.Contains(expectedReply, result.Reply, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Theory]
     [InlineData("YES")]
     [InlineData("CONFIRM")]
     [InlineData("PAY NOW")]

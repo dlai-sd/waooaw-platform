@@ -351,6 +351,12 @@ public sealed partial class WhatsAppJourneyService
     private static (string Stage, string Reply) Present(string text)
     {
         var normalized = text.Trim().ToUpperInvariant();
+        if (normalized.Contains("STOP", StringComparison.Ordinal))
+            return ("STOP", "Emergency Stop remains available in the secure relationship workspace. WhatsApp transport acceptance does not prove that every participant observed the Stop; delivery stays unresolved until durable acknowledgement is recorded.");
+        if (normalized.Contains("EVIDENCE", StringComparison.Ordinal) || normalized.Contains("EXPORT", StringComparison.Ordinal))
+            return ("EVIDENCE", "Open the secure relationship workspace to inspect the customer Evidence Window or request a time-limited canonical export. Evidence access follows your current relationship role.");
+        if (normalized.Contains("TIMELINE", StringComparison.Ordinal) || normalized.Contains("STATUS", StringComparison.Ordinal))
+            return ("CONTINUITY", "The secure relationship workspace shows the authoritative timeline, current trial and lifecycle state, authority version, actual and forecast cost, and participant delivery acknowledgements. A received WhatsApp message confirms transport acceptance only.");
         if (normalized.Contains("TRIAL", StringComparison.Ordinal))
             return ("TRIAL", "Your evaluation plan spans 14 calendar days. It uses local inference and cannot publish, spend, message third parties, or mutate providers.");
         if (normalized.Contains("CONFIG", StringComparison.Ordinal) || normalized.Contains("BUDGET", StringComparison.Ordinal))

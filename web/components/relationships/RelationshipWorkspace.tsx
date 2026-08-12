@@ -3,6 +3,7 @@ import type { RelationshipWorkspaceViews } from '@/lib/api/relationship-workspac
 import { ConversationExperience } from '@/components/conversation/ConversationExperience';
 import { RelationshipEvaluation } from './RelationshipEvaluation';
 import { ContractJourney } from './ContractJourney';
+import { EvidenceWindow } from './EvidenceWindow';
 
 interface RelationshipWorkspaceProps {
   relationship: EmploymentRelationship;
@@ -67,6 +68,8 @@ export function RelationshipWorkspace({ relationship, timeline, views, evaluatio
       </div>
 
       <div id="relationship-conversation"><ConversationExperience relationshipId={relationship.relationshipId} /></div>
+
+      <EvidenceWindow relationshipId={relationship.relationshipId} evidence={views.evidence} />
 
       <section className="timeline" aria-labelledby="timeline-title">
         <p className="section-label">Evidence timeline</p>

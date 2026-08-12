@@ -39,6 +39,7 @@ const views: RelationshipWorkspaceViews = {
   results: { ...section, sectionType: 'RESULTS', outcomes: [] },
   usageBudget: { ...section, sectionType: 'USAGE_BUDGET', actualAmount: 'Unavailable', forecastRange: 'Unavailable' },
   rightsControls: { ...section, sectionType: 'RIGHTS_CONTROLS', currencyState: 'CURRENT', scopeVersion: '1', authorityVersion: '1', lifecycleState: 'TRIAL_ACTIVE', emergencyStopReachable: true },
+  evidence: { schemaVersion: '1.0', relationshipId: relationship.relationshipId, items: [{ evidenceId: timeline[0].evidenceId, subject: 'TRIAL_STARTED', state: 'RECORDED' }] },
 };
 const evaluation: RelationshipEvaluationProjection = {
   relationshipId: relationship.relationshipId,
@@ -89,6 +90,8 @@ describe('RelationshipWorkspace', () => {
     expect(screen.getByText('Where does your business serve customers?')).toBeVisible();
     expect(screen.getByText(/Trial quota is unavailable/)).toBeVisible();
     expect(screen.getByText('deferred')).toBeVisible();
+    expect(screen.getByText('TRIAL_STARTED')).toBeVisible();
+    expect(screen.getByText('Participant observation unresolved')).toBeVisible();
     expect(await screen.findByText('No messages yet. Start with a clear outcome for your professional.')).toBeVisible();
   });
 
