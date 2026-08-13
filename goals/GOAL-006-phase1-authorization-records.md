@@ -362,3 +362,44 @@ actions, cloud queries/spend, DNS, deployment, Production, activation, PR approv
 | Decision | ACCEPTED |
 | Accepted scope | P1-WC08 qualification design only |
 | Excluded authority | Implementation, architecture changes, credentials/cloud/DNS/deployment/production action, protected target/risk acceptance, activation, final constitutional validation, PR approval, and merge |
+
+## P1-WC08 Completion Gate
+
+| Field | Value |
+|---|---|
+| Contribution | CR-GOAL-006-QA-01 |
+| Independent review | R-114 / CR-GOAL-006-INST-002-06 |
+| Review verdict | ACCEPT — NO CONSTITUTIONAL CHALLENGE |
+| Completion effect | P1-WC09 dependency satisfied; targets and all execution/live proof remain open |
+
+## Phase 1 Authorization — P1-WC09
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-006 |
+| `record_id` | GOA-GOAL-006-PLATFORM-OPS-01 |
+| `record_type` | Authorization Record |
+| `authorization_id` | GOA-GOAL-006-PLATFORM-OPS-01 |
+| Authorized Institution | Platform Operations candidate — DRAFT, NOT ACTIVATED |
+| Contribution scope | P1-WC09 Operational Architecture, Policies, And Handover Acceptance |
+| Required evidence | Runbooks and machine checklists; monitoring/alerts; incident/change/release/access/vulnerability/cost/drift/certificate/backup duties; autonomous boundaries; handover tests; no live permissions |
+| Participation Window | 2 constitutional sessions after valid acceptance |
+| Independence constraint | Candidate may design operations and acceptance but may not implement, access live systems, deploy, operate, activate itself, accept protected risk/targets, or validate its own contribution |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-13T11:17:28Z |
+
+## Acceptance — P1-WC09
+
+| Field | Value |
+|---|---|
+| `institution_id` | Platform Operations candidate — DRAFT |
+| `goal_id` | GOAL-006 |
+| `record_id` | ACC-GOAL-006-PLATFORM-OPS-01 |
+| `record_type` | Acceptance Record |
+| `produced_at` | 2026-08-13T11:17:29Z |
+| `authorization_id` | GOA-GOAL-006-PLATFORM-OPS-01 |
+| `acceptance_timestamp` | 2026-08-13T11:17:29Z |
+| Decision | ACCEPTED |
+| Accepted scope | P1-WC09 operational and handover design only |
+| Excluded authority | Implementation, credentials/live access, cloud/DNS/deployment/production operation, target/risk acceptance, self-activation, final validation, PR approval, and merge |
