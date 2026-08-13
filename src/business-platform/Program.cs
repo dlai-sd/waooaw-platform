@@ -163,6 +163,7 @@ if (workloadIdentity is not null && Uri.TryCreate(wbeWorkspaceBaseUrl, UriKind.A
         new AuthenticatedActivationBillingGateway(workloadIdentity, activationWbeUri));
 else
     builder.Services.AddSingleton<IActivationBillingGateway, UnconfiguredActivationBillingGateway>();
+builder.Services.AddScoped<IOfferabilityGuard, PersistentOfferabilityGuard>();
 builder.Services.AddScoped<ActivationOrchestrationService>();
 builder.Services.AddScoped<RelationshipTrialService>();
 builder.Services.Configure<WhatsAppJourneyOptions>(builder.Configuration.GetSection("WhatsApp"));

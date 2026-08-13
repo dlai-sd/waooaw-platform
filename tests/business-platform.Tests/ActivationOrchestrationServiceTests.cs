@@ -351,7 +351,8 @@ public sealed class ActivationOrchestrationServiceTests
         await db.SaveChangesAsync();
         var relationships = new EmploymentRelationshipService(
             factory, constitutional, NullLogger<EmploymentRelationshipService>.Instance);
-        var service = new ActivationOrchestrationService(factory, relationships, constitutional, billing);
+        var service = new ActivationOrchestrationService(
+            factory, relationships, constitutional, billing, new AllowOfferabilityGuard());
         var request = new ActivationRequest(
             tenantId, relationshipId, participantId, contractId, 1, acceptanceId,
             "pay_verified_123", Guid.NewGuid(), authoritySnapshotId, Guid.NewGuid());
@@ -386,6 +387,12 @@ public sealed class ActivationOrchestrationServiceTests
             }
             return new ActivationBillingOutcome(Guid.NewGuid(), "ACTIVE");
         }
+    }
+
+    private sealed class AllowOfferabilityGuard : IOfferabilityGuard
+    {
+        public Task RequireEligibleAsync(
+            Guid tenantId, Guid relationshipId, CancellationToken cancellationToken) => Task.CompletedTask;
     }
 
     private sealed record ActivationTestContext(

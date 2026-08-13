@@ -54,7 +54,8 @@ public sealed class ActivationOrchestrationService(
     IDbContextFactory<EmploymentRelationshipDbContext> dbFactory,
     EmploymentRelationshipService relationships,
     IRelationshipConstitutionalGateway constitutionalGateway,
-    IActivationBillingGateway billingGateway)
+    IActivationBillingGateway billingGateway,
+    IOfferabilityGuard offerabilityGuard)
 {
     private static readonly ConcurrentDictionary<string, CanonicalTupleLock> CanonicalTupleLocks = new();
 
@@ -253,6 +254,7 @@ public sealed class ActivationOrchestrationService(
                 && value.AuthoritySnapshotId == request.AuthoritySnapshotId,
             cancellationToken);
         if (!accepted) throw new ActivationEligibilityException("Exact contract acceptance is not eligible.");
+        await offerabilityGuard.RequireEligibleAsync(request.TenantId, request.RelationshipId, cancellationToken);
         return relationship.ProfessionalType;
     }
 
