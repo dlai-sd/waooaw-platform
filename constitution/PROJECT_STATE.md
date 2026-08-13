@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 90
+**State Revision:** 91
 **Last Updated:** 2026-08-13
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -21,7 +21,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Platform version | 1.45.0 |
 | Latest completed Work Contract | WC-065 — Founder Offerability And Commercial Composition |
 | Latest merge | PR #283 merged to `main` as `61b1cda` on 2026-08-13 |
-| Active delivery | GOAL-006 Phase 2 / WC-072; P2-WC03 in progress, P2-WC02 independent acceptance pending |
+| Active delivery | GOAL-006 Phase 2 / WC-072; P2-WC02 and P2-WC03 implemented with independent acceptance pending |
 
 ## Active Checkpoint — GOAL-006 Phase 2 Authorization Routing
 
@@ -34,12 +34,12 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | INST-010 Acceptance | VALID — `ACC-GOAL-006-INST-010-02` recorded at 13:10:05Z |
 | Constitutional blocker | RESOLVED — CB-006 closed by FA-049, GOA-02 and ACC-02 |
 | Phase 2 Work Contract | CREATED — WC-072 covers P2-WC01 through P2-WC08 with one compact execution record |
-| Current component | P2-WC03 — bounded offline Terraform context prepared; P2-WC02 locally validated with independent acceptance pending |
+| Current component | P2-WC02 and P2-WC03 — local gates pass; required independent acceptance pending |
 | Branch and PR | ACTIVE — `goal/006/phase2-offline-delivery`; draft PR #284; reuse through P2-WC08 and do not merge |
 
 ### Checkpoint Context
 
-- **Delivery branch:** `goal/006/phase2-offline-delivery`; draft PR #284; P2-WC01 accepted by R-120; P2-WC02 implementation `d2b95d8` and local-review repair `5cbf895`.
+- **Delivery branch:** `goal/006/phase2-offline-delivery`; draft PR #284; P2-WC01 accepted by R-120; P2-WC02 implementation `d2b95d8` plus repair `5cbf895`; P2-WC03 implementation `5ed3f0c`.
 - **Authority present:** Founder current-session consent, Skill 17 activation and INR 5,000 ceiling.
 - **Authority:** FA-049, `GOA-GOAL-006-INST-010-02` and `ACC-GOAL-006-INST-010-02` authorize the complete offline Phase 2 envelope.
 - **Resume source:** Git, CB-006, this checkpoint, the merged Phase 1 package and GitHub PR records; chat history is non-authoritative.
@@ -62,9 +62,9 @@ policy-dependent automation and Phase 3 handover/activation.
 
 ## Next Authorized Action
 
-Implement and validate the bounded P2-WC03 offline Terraform contract. P2-WC03 may proceed beside
-P2-WC02 because it depends only on accepted P2-WC01; do not start P2-WC04/05 closure while required
-P2-WC02 independent acceptance is pending. All live/cloud and Phase 3 actions remain unauthorized.
+Obtain independent P2-WC02 INST-005/QA acceptance and P2-WC03 INST-009/INST-007 acceptance against
+their immutable commits. Do not start P2-WC04/P2-WC05 closure while required P2-WC02 acceptance is
+pending. All live/cloud and Phase 3 actions remain unauthorized.
 
 ## History And Evidence
 

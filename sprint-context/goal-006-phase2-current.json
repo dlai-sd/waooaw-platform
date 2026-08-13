@@ -40,5 +40,5 @@
     "src/",
     ".github/workflows/"
   ],
-  "next_exact_action": "Add a failing parser-based contract for the isolated Phase 2 Terraform surface, then implement the smallest offline-valid root and rerun it in the Docker test runner."
+  "next_exact_action": "Obtain independent INST-009 and INST-007 acceptance for P2-WC03 commit 5ed3f0c; P2-WC02 INST-005 and QA acceptance remains a direct dependency before P2-WC04 or P2-WC05 closure."
 }
