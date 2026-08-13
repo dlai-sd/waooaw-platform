@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 67
+**State Revision:** 82
 **Last Updated:** 2026-08-13
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -21,33 +21,55 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Platform version | 1.45.0 |
 | Latest completed Work Contract | WC-065 — Founder Offerability And Commercial Composition |
 | Latest merge | PR #278 merged to `main` as `f28badc` on 2026-08-13 |
-| Active delivery | None — WC-066 evidence collection is next; grooming and implementation remain unauthorized |
+| Active delivery | GOAL-006 Phase 1 cleared with conditions; awaiting Founder hash-pinned acknowledgement |
 
-## Active Checkpoint — WC-065 Delivery Closure
+## Active Checkpoint — GOAL-006 Secure Autonomous Cloud Delivery Intake
 
 | Milestone | Status |
 |---|---|
-| Merged specification baseline | DONE — R-101/R-102 approved package commit `6c2fa94`; PR #277 merged as `e9a1150` |
-| Contribution Necessity Gate | DONE — baseline reused; orchestration continued M1; protected decisions classified M2/M3 |
-| Registrant routing acknowledgement | DONE — ACK-GOAL-005-INST-001-13 authorizes bounded owner routing only |
-| Budget control | WITHIN_BUDGET — USD 15.00 accounted; USD 40 ceiling; STOP_AND_CONSOLIDATE at USD 32 |
-| Fresh CA routing readiness | DONE — R-103 / CR-GOAL-005-INST-002-21 READY FOR ROUTING |
-| Protected Decision Register | DONE — PDR-065-07 closed by FA-046 reuse; PDR-065-01 through PDR-065-06 closed by FA-047 lean baseline |
-| Final package review and acknowledgement | DONE — R-105 READY; ACK-GOAL-005-INST-001-14 recorded at 2026-08-13T05:08:55Z |
-| Fresh implementation confirmation | DONE — FA-048 authorizes WC-065 for the current session |
-| Implementation GOA / Acceptance | VALID — GOA-09 at 2026-08-13T05:10:51Z; ACC-09 at 2026-08-13T05:11:16Z |
-| WC065-01 through WC065-07 implementation | DONE — PR #278 merged to `main` as `f28badc` after Founder approval |
-| Post-merge verification | PASS — merged tree matched reviewed head; BP 349/349, WBE 402 passed with 2 harness-only skips, web 110/110 with clean lint/build; PM delivery report workflow succeeded |
-| WC-066 through WC-069 | EVIDENCE-GATED — no detailed grooming or implementation authorized |
+| WC-071 intake contract | DONE — bounded to registration, Understanding, provisional Classification, and proposed Execution Plan |
+| Goal Understanding Record | DONE — GUR-GOAL-006-INST-013-01 |
+| Provisional Classification | DONE — GCL-GOAL-006-INST-013-01 proposes Cross-domain · Design · Constitutional · Elevated / P2 |
+| Founder requirement baseline | DONE — FR-001 through FR-056 retained as controlling grooming requirements |
+| Proposed Execution Plan | DONE — GEP-GOAL-006-INST-013-01; no GO Authorization issued |
+| Deterministic validation | PASS — record IDs, requirement continuity, phase stops, approval controls, diagnostics, and diff checks |
+| Fresh INST-002 review | DONE — R-106 READY WITH REQUIRED ACTION; NO CHALLENGE ISSUED |
+| Phase 1 PR | DRAFT — PR #281 targets `main`; remains draft through P1-WC01 to P1-WC12 and Phase 1 closure |
+| Founder classification and plan approval | DONE — ACK-GOAL-006-INST-001-01 recorded after R-106 |
+| P1-WC01 Platform inventory GOA / Acceptance | VALID — GOA-GOAL-006-INST-009-01 at 08:54:36Z; ACC-GOAL-006-INST-009-01 at 08:54:37Z |
+| P1-WC01 contribution / review | DONE — CR-GOAL-006-INST-009-01 accepted by R-107; P1-R01 through P1-R10 remain open |
+| P1-WC02 Product Owner GOA / Acceptance | VALID — GOA-GOAL-006-INST-011-01 at 09:17:19Z; ACC-GOAL-006-INST-011-01 at 09:17:20Z |
+| P1-WC02 contribution / review | DONE — CR-GOAL-006-INST-011-01 accepted by R-108; specialist targets and estimates remain open |
+| P1-WC03 Platform Architect GOA / Acceptance | VALID — GOA-GOAL-006-INST-009-02 at 09:33:51Z; ACC-GOAL-006-INST-009-02 at 09:33:52Z |
+| P1-WC03 contribution / review | DONE — CR-GOAL-006-INST-009-02 accepted by R-109; implementation/live risks remain open |
+| P1-WC04 Solution Architect GOA / Acceptance | VALID — GOA-GOAL-006-INST-005-01 at 09:57:33Z; ACC-GOAL-006-INST-005-01 at 09:57:34Z |
+| P1-WC04 contribution / review | DONE — topology and CT-02 scope decision accepted by R-110; CT-01 through CT-07 remain routed/open |
+| P1-WC05 Security Architect GOA / Acceptance | VALID — GOA-GOAL-006-INST-007-01 at 10:19:26Z; ACC-GOAL-006-INST-007-01 at 10:19:27Z |
+| P1-WC05 contribution / review | DONE — CR-GOAL-006-INST-007-01 accepted by R-111; implementation/live and protected Production risks remain open |
+| P1-WC06 Data Architect GOA / Acceptance | VALID — GOA-GOAL-006-INST-006-01 at 10:36:21Z; ACC-GOAL-006-INST-006-01 at 10:36:22Z |
+| P1-WC06 contribution / review | DONE — CR-GOAL-006-INST-006-01 accepted by R-112; Production objectives remain protected recommendations |
+| P1-WC07 Platform IT Expert GOA / Acceptance | VALID — GOA-GOAL-006-INST-010-01 at 10:47:11Z; ACC-GOAL-006-INST-010-01 at 10:47:12Z |
+| P1-WC07 contribution / review | DONE — conditionally feasible CR-GOAL-006-INST-010-01 accepted by R-113; Phase 2 prerequisites remain open |
+| P1-WC08 QA GOA / Acceptance | VALID — GOA-GOAL-006-QA-01 at 11:09:38Z; ACC-GOAL-006-QA-01 at 11:09:39Z |
+| P1-WC08 contribution / review | DONE — CR-GOAL-006-QA-01 accepted by R-114; targets and execution/live proof remain open |
+| P1-WC09 Operations candidate GOA / Acceptance | VALID — GOA-GOAL-006-PLATFORM-OPS-01 at 11:17:28Z; ACC-GOAL-006-PLATFORM-OPS-01 at 11:17:29Z; candidate remains DRAFT/NOT ACTIVATED |
+| P1-WC09 contribution / P1-WC10 review | DONE — CR-GOAL-006-PLATFORM-OPS-01 accepted by R-115 after bounded repairs; policy-dependent operations and all activation remain blocked |
+| P1-WC11 Product Owner GOA / Acceptance | VALID — GOA-GOAL-006-INST-011-02 at 11:32:00Z; ACC-GOAL-006-INST-011-02 at 11:32:01Z |
+| P1-WC11 contribution / owner review | DONE — CR-GOAL-006-INST-011-02 accepted at `495f7206...` by R-116 and all decision owners |
+| P1-WC12 Constitutional GOA / Acceptance | VALID — GOA-GOAL-006-INST-002-02 at 11:52:00Z; ACC-GOAL-006-INST-002-02 at 11:52:01Z |
+| P1-WC12 constitutional review | DONE — R-117 / CR-GOAL-006-INST-002-07 CLEAR WITH CONDITIONS at commit `db5f477`; no Constitutional Blocker |
+| Phase 1 Founder control point | WAITING — exact R-117 acknowledgement may move PR #281 to Ready for Founder Review only; Phase 2 remains unauthorized |
 
-### Closure Context
+### Intake Context
 
-- **Delivered branch:** `wc/065/implementation-authorization`; merged by PR #278 as `f28badc`.
-- **Authority:** GEP-GOAL-005-INST-013-15, R-101/R-102 reuse, ACK-GOAL-005-INST-001-13, and the Founder-set USD 40 dispatch ceiling.
-- **Validation:** Docker-only post-merge regression passes: BP 349/349, WBE 402 passed with 2 documented harness-only skips, and web 110/110 with clean lint and production build. OpenAPI validation, generated-client regeneration, PostgreSQL RLS/append-only/concurrent-idempotency integration, Python lint, and affected-surface coverage checks pass.
-- **Independent review:** concurrency, contract-status, UI retry, durable changed-intent, and lock-lifecycle findings were corrected and revalidated. Residual: after CE evidence succeeds but BP loses its local commit, exact terminal reconstruction still depends on retry-time CE authorization because the current CE contract exposes no evidence read; duplicate evidence is prevented and the path fails closed.
+- **Delivery branch:** `goal/006/cloud-delivery-capability`.
+- **Authority:** Founder instruction dated 2026-08-13 and WC-071 intake boundary.
+- **Validation:** deterministic content checks and editor diagnostics pass; no runnable infrastructure or implementation changed.
+- **Independent review:** R-106 / CR-GOAL-006-INST-002-01 finds the classification and plan ready, with post-review Founder acknowledgement as the sole routing predecessor.
+- **Pull request:** PR #281 is the Phase 1 PR. Phase 2 implementation will use a separate later PR after Phase 1 closure and explicit implementation authorization.
+- **Boundary:** Awaiting Founder Phase 1 acknowledgement only; no runnable changes, credentials/live access, cloud spend, DNS action, deployment, operation, Platform Operations activation, PR approval, or merge is authorized.
 - **Protected local artifacts:** `.coverage`, `goals/goal_register.jsonl`, `logs/blueprint_assurance_report.json`, and `logs/bootstrap-evidence.jsonl` are unrelated and must remain unstaged.
-- **Authorization evidence:** `goals/GOAL-005-wc065-implementation-authorization-package.md` and R-103.
+- **Intake evidence:** `goals/GOAL-006-secure-autonomous-cloud-delivery.md`, `goals/GOAL-006-execution-plan.md`, and WC-071.
 
 ## Authorization Boundary
 
@@ -55,20 +77,20 @@ WC062-01 through WC062-07 were implemented under ACC-07, independently reviewed,
 Founder through PR #273. WC-063 was superseded before implementation. Founder selection authorizes
 WC-064 owner-contribution routing, design, and grooming only. WC-065 through WC-069 require separate approved specifications,
 constitutional readiness, acknowledgement, fresh implementation confirmation, GOA, Acceptance,
-and independent implementation review.
+and independent implementation review. WC-071 authorizes GOAL-006 intake records only; it does not
+authorize Phase 1 specialist grooming, Phase 2 implementation, or Phase 3 cloud deployment.
 
 ## Current Blockers
 
-No institutional routing blocker is open. CB-005 is RESOLVED through R-104, FA-045, and exact
-mechanical application of the bounded Office 02 and INST-002 registry amendment. FA-046 and
-FA-047 close all seven protected decisions; R-105 finds the exact package READY.
+No constitutional blocker file is open. The three canonical operations policies remain downstream
+dependencies; they block policy-dependent automation and Phase 3 handover/activation, not P1-WC11 grooming.
 
 ## Next Authorized Action
 
-Product Owner and Goal Orchestrator collect representative real WC-065 decisions, carried employment
-envelopes, stale/unavailable outcomes, disclosures, and exception evidence for the WC-066 grooming
-trigger. Do not groom or implement WC-066, activate policy/providers, deploy, or advance WC-067
-through WC-069 until their evidence gates and complete authorization chains close.
+Obtain the exact R-117 Founder acknowledgement for commit `db5f4773b6646c585e5cbfe70af34b76f4512ce4`.
+Only then may PR #281 move from Draft to Ready for Founder Review. Do not issue Phase 2 implementation
+authority until every R-117 pre-GOA condition closes and the Founder separately authorizes the current
+session. All cloud, DNS, deployment, production, and Platform Operations activation remain unauthorized.
 
 ## History And Evidence
 
