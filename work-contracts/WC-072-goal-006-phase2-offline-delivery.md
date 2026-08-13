@@ -8,7 +8,7 @@
 | Authorization | FA-049; GOA-GOAL-006-INST-010-02 |
 | Acceptance | ACC-GOAL-006-INST-010-02 |
 | Gate | G5 CLEAR; platform phase IMPLEMENTATION |
-| Status | IN PROGRESS - P2-WC02 through P2-WC07 implemented/author-gated; complete independent review package next |
+| Status | COMPLETE - P2-WC01 through P2-WC08 independently accepted; draft PR #284 awaits Founder review |
 | Reviewer | INST-004 for implementation integrity; INST-007 security; independent QA for qualification; affected specialist owners retain their Decision Spaces |
 | Constitutional basis | C-001, C-023, C-032, C-059, C-065, C-066, C-067, C-071, C-076, C-080; GEOM G-7 |
 
@@ -84,13 +84,13 @@ additional charge. Phase 3 remains unauthorized.
 | Component | Outcome | Direct dependencies | Required independent acceptance | Status |
 |---|---|---|---|---|
 | P2-WC01 | Deterministic Docker-first toolchain and test foundation | Phase 1, FA-049, GOA-02, ACC-02 | INST-004 implementation review | DONE - R-120 APPROVE |
-| P2-WC02 | Exactly six image, Compose and component contracts | P2-WC01 | INST-005 plus independent QA | IMPLEMENTED/AUTHOR-GATED - independent acceptance deferred |
-| P2-WC03 | Offline Terraform isolation, identity, secrets and JIT | P2-WC01 | INST-009 and INST-007 | IMPLEMENTED/AUTHOR-GATED - 16/16 contracts and static gates pass; independent acceptance deferred |
-| P2-WC04 | Synthetic data lifecycle, migration and recovery | P2-WC01/02; full tuple also P2-WC03/05 | INST-006 and INST-007 | IMPLEMENTED/AUTHOR-GATED - 26/26 contracts pass; independent acceptance deferred |
-| P2-WC05 | Signed six-member immutable release manifest and supply-chain evidence | P2-WC01/02 | INST-007 and independent QA | IMPLEMENTED/AUTHOR-GATED - 21/21 contracts pass; independent acceptance deferred |
-| P2-WC06 | Offline CI/CD, revision blue-green, rollback, lifecycle, halt and cost simulation | P2-WC03/04/05 | INST-009, INST-007 and independent confirmer | IMPLEMENTED/AUTHOR-GATED - 39/39 focused and 86/86 integrated contracts pass; independent acceptance deferred |
-| P2-WC07 | Complete deterministic qualification and proof accounting | P2-WC01 through P2-WC06 | Independent QA acceptor | IMPLEMENTED/AUTHOR-GATED - 139/139 tests and 150/150 proof obligations pass; independent acceptance deferred |
-| P2-WC08 | Evidence, reviews and bounded Phase 3 readiness package | Independently accepted P2-WC01 through P2-WC07 | INST-004, INST-007, QA and fresh INST-002 | PENDING |
+| P2-WC02 | Exactly six image, Compose and component contracts | P2-WC01 | INST-005 plus independent QA | DONE - R-121 and R-122 APPROVE |
+| P2-WC03 | Offline Terraform isolation, identity, secrets and JIT | P2-WC01 | INST-009 and INST-007 | DONE - R-123 APPROVE; R-124 APPROVE after remediation |
+| P2-WC04 | Synthetic data lifecycle, migration and recovery | P2-WC01/02; full tuple also P2-WC03/05 | INST-006 and INST-007 | DONE - integrated R-121/R-124 acceptance |
+| P2-WC05 | Signed six-member immutable release manifest and supply-chain evidence | P2-WC01/02 | INST-007 and independent QA | DONE - R-122 and R-124 APPROVE |
+| P2-WC06 | Offline CI/CD, revision blue-green, rollback, lifecycle, halt and cost simulation | P2-WC03/04/05 | INST-009, INST-007 and independent confirmer | DONE - R-123 and R-124 APPROVE |
+| P2-WC07 | Complete deterministic qualification and proof accounting | P2-WC01 through P2-WC06 | Independent QA acceptor | DONE - R-122 APPROVE; 147/147 tests and 150/150 proof obligations pass |
+| P2-WC08 | Evidence, reviews and bounded Phase 3 readiness package | Independently accepted P2-WC01 through P2-WC07 | INST-004, INST-007, QA and fresh INST-002 | DONE - R-121 through R-125 complete; constitutional verdict CLEAR |
 
 ## Component Closure Protocol
 
@@ -121,11 +121,11 @@ PROJECT_STATE, commits, CI evidence, reviews or the PR.
 | Authorization checkpoint | `313fb12` on `goal/006/phase2-blocked` |
 | Current branch | `goal/006/phase2-offline-delivery` |
 | Current PR | Draft PR #284 - `https://github.com/dlai-sd/waooaw-platform/pull/284`; reuse through P2-WC08; do not merge |
-| Current component | P2-WC02 through P2-WC07 - frozen complete implementation package at `2136bce`; independent acceptance pending |
-| Next exact action | Obtain one complete bounded institutional review package against frozen head `2136bce`; do not begin P2-WC08 closure or claim acceptance before reviews pass |
-| Completed commit IDs | `313fb12` authorization; `6e23941` WC/context; `739cf2b` P2-WC01; `222eaef` R-120; `d2b95d8` P2-WC02; `5cbf895` local-review repairs; `5ed3f0c` P2-WC03; `fe8cdff` review remediation; `8dca8a5` lease repair; `6baa975` review-cadence checkpoint; `3308c9a` P2-WC04; `f7c39b7` WC05 checkpoint; `5e83af1` P2-WC05 |
-| Validation results | P2-WC01 gates PASS; P2-WC02 14/14 plus delegated PostgreSQL 2/2; P2-WC03 16/16 plus static gates; P2-WC04 26/26; P2-WC05 21/21; P2-WC06 39/39 and 86/86 integrated; P2-WC07 21/21 focused, 137/137 complete Docker pytest, delegated PostgreSQL 2/2, 150/150 proof obligations and CLI/Ruff/YAML/JSON/hygiene gates PASS |
-| Review results | R-117 Phase 1 CLEAR WITH CONDITIONS; R-118 Skill 17 APPROVE; R-119 release contract APPROVE; R-120 P2-WC01 APPROVE; P2-WC02 and P2-WC03 author readiness gates PASS with independent acceptance explicitly deferred until the complete P2-WC02 through P2-WC07 package |
+| Current component | P2-WC08 complete - implementation/remediation accepted at `6339a9f`; review evidence at `82e545d`; R-125 CLEAR |
+| Next exact action | Founder review of draft PR #284; keep unmerged and do not begin Phase 3 or any live/cloud action |
+| Completed commit IDs | `313fb12` authorization; `6e23941` WC/context; `739cf2b` P2-WC01; `222eaef` R-120; `d2b95d8` P2-WC02; `5cbf895` local-review repairs; `5ed3f0c` P2-WC03; `fe8cdff` review remediation; `8dca8a5` lease repair; `6baa975` review-cadence checkpoint; `3308c9a` P2-WC04; `f7c39b7` WC05 checkpoint; `5e83af1` P2-WC05; `e5dac5e` P2-WC06; `2136bce` P2-WC07; `c79f5c3` review freeze; `6339a9f` Security remediation; `82e545d` review evidence |
+| Validation results | Complete Docker qualification 145/145 plus delegated PostgreSQL 2/2; 147/147 combined test accounting; 150/150 proof obligations; focused Security 71/71; canonical CLIs, Ruff, Terraform format/TFLint, Checkov 18/18, JSON and hygiene gates PASS |
+| Review results | R-120 through R-123 APPROVE; R-124 APPROVE after remediation; R-125 constitutional closure CLEAR |
 | Blockers and owner decisions | No contribution-start blocker; canonical Incident/Change/Release policies remain fail-closed dependencies for affected P2-WC06/07/08 paths; INR 5,000 ceiling; Phase 3 prohibited |
 | Allowed actions | Offline repository implementation, Docker-first validation, synthetic evidence, author readiness review, commits/pushes, one draft unmerged PR; independent review after P2-WC07 |
 | Prohibited actions | Provider/cloud/DNS/deployment/Production/real-traffic/spend/Phase 3 actions; self-review/approval/merge; weakened or advisory proof |
@@ -252,10 +252,11 @@ counts. Speculation, future-component findings and findings outside the pinned r
 
 | Review | Office and decision boundary | Required checks | Output |
 |---|---|---|---|
-| R-121 | INST-005 Solution Architect; P2-WC02 through frozen head `2136bce` | Six-member topology plus WC04-WC07 integration, accepted ports/protocols, CE boundary, dependency and recovery/promotion compatibility | `reviews/R-121-goal-006-p2-solution-architecture-review.md` |
-| R-122 | Independent QA; frozen head `2136bce` | Execute the 137-test Docker selection and delegated PostgreSQL 2/2; verify 150/150 ledger, CT-07 allocation and no omissions | `reviews/R-122-goal-006-p2-qa-review.md` |
-| R-123 | INST-009 Platform Architect; frozen head `2136bce` | Terraform foundation/workload split, exact-six CI, immutable tuple, ACA state machine, rollback, lease/halt/drift/cost and no provider action | `reviews/R-123-goal-006-p2-platform-review.md` |
-| R-124 | INST-007 Security Architect; frozen head `2136bce` | OIDC/RBAC/private boundaries, secret exclusion, break glass, Ed25519/evidence chain, tamper denial, recovery integrity and fail-closed promotion | `reviews/R-124-goal-006-p2-security-review.md` |
+| R-121 | INST-005 Solution Architect; frozen implementation head `2136bce` | Six-member topology plus WC04-WC07 integration, accepted ports/protocols, CE boundary, dependency and recovery/promotion compatibility | `reviews/R-121-goal-006-p2-solution-architecture-review.md` - APPROVE |
+| R-122 | Independent QA; base head `2136bce`, count delta through `6339a9f` | Verify 147/147 combined accounting, 150/150 ledger, CT-07 allocation and no omissions | `reviews/R-122-goal-006-p2-qa-review.md` - APPROVE |
+| R-123 | INST-009 Platform Architect; frozen implementation head `2136bce` | Terraform foundation/workload split, exact-six CI, immutable tuple, ACA state machine, rollback, lease/halt/drift/cost and no provider action | `reviews/R-123-goal-006-p2-platform-review.md` - APPROVE |
+| R-124 | INST-007 Security Architect; base head `2136bce`, remediation through `6339a9f` | OIDC/RBAC/private boundaries, secret exclusion, break glass, Ed25519/evidence chain, tamper denial, recovery integrity and fail-closed promotion | `reviews/R-124-goal-006-p2-security-review.md` - APPROVE AFTER REMEDIATION |
+| R-125 | Fresh INST-002; implementation `6339a9f`, evidence `82e545d` | Constitutional closure, independence, authority boundary and Definition of Done | `reviews/R-125-goal-006-p2-constitutional-closure.md` - CLEAR |
 
 ## Definition Of Done
 

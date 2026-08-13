@@ -2,8 +2,8 @@
   "schema_version": "1.0.0",
   "goal_id": "GOAL-006",
   "work_contract": "WC-072",
-  "component": "P2-WC02-P2-WC07-REVIEW",
-  "title": "Frozen Complete Implementation Package For Independent Review",
+  "component": "P2-WC08-CLOSURE",
+  "title": "Completed Offline Evidence And Independent Review Package",
   "controlling_sections": [
     "work-contracts/WC-072-goal-006-phase2-offline-delivery.md#component-ledger",
     "goals/GOAL-006-p1-wc11-integrated-grooming.md#p2-wc07--complete-deterministic-qualification-suite",
@@ -33,7 +33,9 @@
   "dependencies": [
     "P2-WC01 accepted by R-120",
     "P2-WC01 independently accepted by R-120",
-    "P2-WC02 through P2-WC07 implemented and author-gated at 2136bce",
+    "P2-WC01 through P2-WC08 independently accepted by R-120 through R-125",
+    "implementation and Security remediation accepted at 6339a9f",
+    "review evidence committed at 82e545d",
     "accepted P1-WC08 qualification strategy",
     "exact SEC-01..27, DATA-01..28, CCT-01..06 and CT-01..07 ledgers",
     "EVC-01 through EVC-08",
@@ -42,9 +44,9 @@
   "prohibited_paths": [
     "constitution/CONSTITUTION.md",
     "constitution/GENESIS.md",
-    "implementation changes before reviewer findings, provider credentials, cloud mutation, real traffic, Production action and CT-07 PASS",
+    "implementation changes, provider credentials, cloud mutation, real traffic, Production action and CT-07 PASS",
     "src/",
     "infrastructure/terraform/phase2/"
   ],
-  "next_exact_action": "Execute one complete bounded INST-005, INST-009, INST-007 and independent QA review package against frozen head 2136bce; retain independent acceptance as pending until all reviews pass."
+  "next_exact_action": "Founder review of draft PR #284; keep unmerged and do not begin Phase 3 or any live/cloud action."
 }
