@@ -53,5 +53,5 @@
     ".github/workflows/post-deploy-verify.yaml",
     "src/"
   ],
-  "next_exact_action": "Push this contract checkpoint, create the dedicated Phase 2 implementation branch and draft PR, then amend the Phase 2 specification and obtain independent review before runner implementation."
+  "next_exact_action": "Amend the Phase 2 specification and obtain independent INST-004 review before runner implementation; continue on goal/006/phase2-offline-delivery and draft PR #284."
 }

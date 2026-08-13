@@ -114,11 +114,11 @@ PROJECT_STATE, commits, CI evidence, reviews or the PR.
 |---|---|
 | Controlling specification commit | Phase 1 merge `1655afbab1dec83949734dd435c6c17f811e2683`; integrated SHA-256 `495f720692bd71358f5d21db03bfa364b5724978e8b3b8ce85d3ba894b65303f` |
 | Authorization checkpoint | `313fb12` on `goal/006/phase2-blocked` |
-| Current branch | `goal/006/phase2-blocked`; replace with dedicated implementation branch after this contract is pushed |
-| Current PR | NOT CREATED - create one draft Phase 2 PR after implementation branch creation |
+| Current branch | `goal/006/phase2-offline-delivery` |
+| Current PR | Draft PR #284 - `https://github.com/dlai-sd/waooaw-platform/pull/284`; reuse through P2-WC08; do not merge |
 | Current component | P2-WC01 - Deterministic Toolchain And Test Foundation |
-| Next exact action | Commit and push WC-072 plus P2-WC01 context; create dedicated implementation branch from that commit; create draft PR; amend Phase 2 specification before runner implementation |
-| Completed commit IDs | `313fb12` - FA-049, GOA-02, ACC-02 and CB-006 resolution |
+| Next exact action | Amend the Phase 2 specification to make FR-031 through FR-038, C-067, ADR-027, six-member immutable promotion and Azure Container Apps revision blue-green obligations explicit; commit and obtain independent INST-004 review before runner implementation |
+| Completed commit IDs | `313fb12` - FA-049, GOA-02, ACC-02 and CB-006 resolution; `6e23941` - WC-072 and P2-WC01 bounded context |
 | Validation results | Authorization JSONL/chronology Docker check PASS; state/lifecycle/blocker checks PASS |
 | Review results | R-117 Phase 1 CLEAR WITH CONDITIONS; R-118 Skill 17 APPROVE / Activation Gate PASS; Phase 2 specification amendment review pending |
 | Blockers and owner decisions | No contribution-start blocker; canonical Incident/Change/Release policies remain fail-closed dependencies for affected P2-WC06/07/08 paths; INR 5,000 ceiling; Phase 3 prohibited |

@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 85
+**State Revision:** 86
 **Last Updated:** 2026-08-13
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -35,11 +35,11 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Constitutional blocker | RESOLVED — CB-006 closed by FA-049, GOA-02 and ACC-02 |
 | Phase 2 Work Contract | CREATED — WC-072 covers P2-WC01 through P2-WC08 with one compact execution record |
 | Current component | P2-WC01 — bounded context manifest prepared; no runner implementation yet |
-| Branch and PR | NEXT — create dedicated implementation branch from pushed WC-072 checkpoint, then one draft Phase 2 PR |
+| Branch and PR | ACTIVE — `goal/006/phase2-offline-delivery`; draft PR #284; reuse through P2-WC08 and do not merge |
 
 ### Checkpoint Context
 
-- **Checkpoint branch:** `goal/006/phase2-blocked`; authorization checkpoint `313fb12`.
+- **Delivery branch:** `goal/006/phase2-offline-delivery`; draft PR #284; authorization checkpoint `313fb12`; WC checkpoint `6e23941`.
 - **Authority present:** Founder current-session consent, Skill 17 activation and INR 5,000 ceiling.
 - **Authority:** FA-049, `GOA-GOAL-006-INST-010-02` and `ACC-GOAL-006-INST-010-02` authorize the complete offline Phase 2 envelope.
 - **Resume source:** Git, CB-006, this checkpoint, the merged Phase 1 package and GitHub PR records; chat history is non-authoritative.
@@ -62,9 +62,8 @@ policy-dependent automation and Phase 3 handover/activation.
 
 ## Next Authorized Action
 
-Commit and push WC-072 plus `sprint-context/goal-006-phase2-current.json`. Create the dedicated
-implementation branch and one draft Phase 2 PR, then amend the Phase 2 specification and obtain
-independent review before runner implementation. All live/cloud and Phase 3 actions remain unauthorized.
+Amend the Phase 2 specification and obtain independent INST-004 review before runner implementation.
+Continue on the dedicated branch and draft PR #284. All live/cloud and Phase 3 actions remain unauthorized.
 
 ## History And Evidence
 
