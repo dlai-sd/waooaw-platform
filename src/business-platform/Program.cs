@@ -16,6 +16,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddHealthChecks();
 
 // ── JWT Authentication — Keycloak (ADR-003, C-026) ───────────────────────────
 // tenant_id extracted in TenantIsolationMiddleware after token is validated.
@@ -27,7 +28,8 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ?? throw new InvalidOperationException(
                 "Keycloak:Authority is required (C-026 — tenant isolation cannot function without JWT issuer).");
         options.Audience = builder.Configuration["Keycloak:Audience"] ?? "business-platform";
-        options.RequireHttpsMetadata = !builder.Environment.IsDevelopment();
+        options.RequireHttpsMetadata = builder.Configuration.GetValue<bool?>("Keycloak:RequireHttpsMetadata")
+            ?? !builder.Environment.IsDevelopment();
 
         options.TokenValidationParameters = new TokenValidationParameters
         {
@@ -283,6 +285,9 @@ app.UseAuthorization();
 app.UseTenantIsolation();
 
 app.MapControllers();
+app.MapHealthChecks("/health");
+app.MapHealthChecks("/health/live");
+app.MapHealthChecks("/health/ready");
 
 app.Run();
 

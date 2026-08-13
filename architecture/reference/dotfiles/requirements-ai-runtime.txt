@@ -34,7 +34,8 @@ anthropic==0.34.2
 # Implementation: transformers.pipeline('ner', model='ai4bharat/IndicNER')
 # The model downloads automatically on first run from HuggingFace Hub.
 transformers==4.46.1
-torch==2.4.1          # CPU-only for dev; GPU for prod
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.4.1+cpu      # CPU-only for dev; GPU images use a separate accepted lock
 
 # ─── Vector database client — pgvector for RAG (ADR-019) ─────────────────────
 asyncpg==0.30.0
@@ -47,7 +48,7 @@ grpcio-tools==1.67.1
 protobuf==5.28.3
 
 # ─── Observability (ADR-009) ──────────────────────────────────────────────────
-opentelemetry-api==1.27.0
-opentelemetry-sdk==1.27.0
-opentelemetry-instrumentation-fastapi==0.48b0
-opentelemetry-exporter-otlp==1.27.0
+opentelemetry-api==1.28.2
+opentelemetry-sdk==1.28.2
+opentelemetry-instrumentation-fastapi==0.49b2
+opentelemetry-exporter-otlp==1.28.2
