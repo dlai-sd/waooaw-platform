@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 64
+**State Revision:** 65
 **Last Updated:** 2026-08-13
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -35,7 +35,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Protected Decision Register | DONE — PDR-065-07 closed by FA-046 reuse; PDR-065-01 through PDR-065-06 closed by FA-047 lean baseline |
 | Final package review and acknowledgement | DONE — R-105 READY; ACK-GOAL-005-INST-001-14 recorded at 2026-08-13T05:08:55Z |
 | Fresh implementation confirmation | DONE — FA-048 authorizes WC-065 for the current session |
-| Implementation GOA / Acceptance | NOT ISSUED — GOA/ACC-GOAL-005-INST-010-09 are reserved identifiers only |
+| Implementation GOA / Acceptance | GOA-GOAL-005-INST-010-09 ISSUED at 2026-08-13T05:10:51Z; later ACC-09 required before code |
 | WC-066 through WC-069 | EVIDENCE-GATED — no detailed grooming or implementation authorized |
 
 ### Closure Context
@@ -62,8 +62,8 @@ FA-047 close all seven protected decisions; R-105 finds the exact package READY.
 
 ## Next Authorized Action
 
-Issue GOA-GOAL-005-INST-010-09 for BIND-GOAL-005-WC065-01, then obtain a temporally later
-ACC-GOAL-005-INST-010-09 before implementation. Do not activate policy/providers, deploy, approve
+INST-010 records ACC-GOAL-005-INST-010-09 later than 2026-08-13T05:10:51Z before implementation.
+Do not activate policy/providers, deploy, approve
 or merge a PR, self-review, self-merge, or groom WC-066 through WC-069.
 
 ## History And Evidence

@@ -113,7 +113,7 @@ or INST-010 Acceptance.
 | CL-065-11 | INST-002 | M3 | Fresh readiness review of the complete policy and implementation package | CL-065-10 | SATISFIED | R-105 / CR-GOAL-005-INST-002-24 READY | Independent exact-commit verdict |
 | CL-065-12 | Registrant / INST-001 | M3 | Final hash-pinned package acknowledgement | CL-065-11 | SATISFIED | ACK-GOAL-005-INST-001-14 | Exact-package and exclusion check |
 | CL-065-13 | Founder / INST-001 | M3 | Fresh current-session implementation confirmation | CL-065-12 | SATISFIED | FA-048 at 2026-08-13T05:10:28Z | Exact scoped confirmation |
-| CL-065-14 | INST-013 | M1 | Implementation GOA | CL-065-01 through CL-065-13 | BLOCKED | GOA-GOAL-005-INST-010-09 reserved | Temporal and predecessor-gate check |
+| CL-065-14 | INST-013 | M1 | Implementation GOA | CL-065-01 through CL-065-13 | SATISFIED | GOA-GOAL-005-INST-010-09 at 2026-08-13T05:10:51Z | Temporal and predecessor-gate check |
 | CL-065-15 | INST-010 | M1 | Temporally later Acceptance | CL-065-14 | BLOCKED | ACC-GOAL-005-INST-010-09 reserved | `acceptance_timestamp` later than `issued_at` |
 | CL-065-16 | Independent reviewers | M3 | Independent implementation review plan remains separate | CL-065-10 | BLOCKED | none | C-065 identity and scope check |
 
@@ -262,11 +262,25 @@ institutional handoff is authorized merely to restate common industry practice.
 
 ## Reserved Implementation Authorization
 
-`GOA-GOAL-005-INST-010-09` and `ACC-GOAL-005-INST-010-09` are identifiers only. Neither record
-exists and no implementation authority is issued while any predecessor ledger row is blocked.
-When issuance becomes valid, the GOA must bind WC065-01 through WC065-07 as one complete delivery
-unit, exact artifacts and validation commands, at least 90 percent affected-surface line coverage,
-Docker-only Python tests, independent implementation review, and every exclusion in WC-065.
+### GOA-GOAL-005-INST-010-09
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GOA-GOAL-005-INST-010-09 |
+| `record_type` | Authorization Record |
+| Authorized Institution | INST-010 - Platform IT Expert |
+| Contribution scope | Complete WC065-01 through WC065-07 delivery as one unit under BIND-GOAL-005-WC065-01 |
+| Evidence specification | Implement only bound artifacts; run bound scoped commands; at least 90 percent affected-surface line coverage and 80 percent BP branch coverage; deterministic generated clients; independent implementation review |
+| Policy basis | FA-046, FA-047, FA-048; ACK-GOAL-005-INST-001-14; R-105 READY |
+| Participation Window | Current constitutional session after valid Acceptance |
+| Excluded authority | Provider/policy activation, deployment, WC-066 through WC-069, PR approval, merge, self-review, self-merge, new service, or unbound architecture expansion |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-13T05:10:51Z |
+
+INST-010 must record `ACC-GOAL-005-INST-010-09` with an acceptance timestamp later than
+`2026-08-13T05:10:51Z` before writing implementation code.
 
 ## WC-066 Through WC-069 Evidence Gate
 
