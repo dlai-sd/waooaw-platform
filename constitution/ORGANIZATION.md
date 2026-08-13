@@ -210,6 +210,48 @@ Founder — ratifies constitutional authenticity of LAW and CONFIRMED claims; ap
 
 ---
 
+#### WC-065 Bounded Legal/Privacy Decision Space (Amendment — FA-044)
+
+**Amendment scope:** WC-065 only. Expires at WC-065 closure.
+
+**Effective:** Only after independent approval and separate Founder ratification of this amendment.
+
+Only under a valid GO Authorization and later Acceptance for GOAL-005/WC-065, INST-002 may
+produce one owner-attributed legal/privacy Contribution Record addressing the following
+WC-065 PDR-065-07 topics exactly:
+
+- **Legal basis** — the applicable legal basis for the prospective-change behavior specified in
+  WC-065, drawn from approved legal source documents and applicable authoritative law
+- **Grandfathering** — the scope and duration of any grandfathering treatment for existing
+  affected parties, on legal basis
+- **Remedy** — the type and process of remedy available to affected parties, on legal basis
+- **Recipient classes and redaction** — the classes of recipients to whom disclosure may be made
+  and any redaction requirements, on legal basis
+- **Payload erasure** — the treatment and timing of payload erasure for affected records, on
+  legal basis
+- **Retention** — the retention period and triggers for disposal of affected records, on legal
+  basis
+
+**Production requirements:** INST-002 must use approved legal source documents and applicable
+authoritative law as its primary inputs. All constitutional floors must be preserved in the
+record. Where the applicable law or its application to WC-065 facts is genuinely ambiguous,
+INST-002 must record the ambiguity as unresolved rather than resolve it by inference. Where
+authoritative legal support is insufficient to reach a conclusion, INST-002 must record that
+Founder-directed qualified external counsel is required before the decision can be closed.
+
+**Boundaries — INST-002 may not under this amendment:**
+
+- Make Product, Business, Data, Security, or Founder-reserved decisions
+- Provide general legal advice outside the six PDR-065-07 topics
+- Alter any constitutional claim
+- Authorize, implement, or instruct implementation of any WC-065 component
+- Perform the final Constitutional readiness review for WC-065
+
+**Termination:** This bounded authority terminates upon WC-065 closure. It does not extend to
+any subsequent Work Contract, Goal, or general charter amendment.
+
+---
+
 #### Constitutional Analyst — Operating Procedure
 
 **Input Sources (in processing order)**

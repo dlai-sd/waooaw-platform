@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 55
+**State Revision:** 56
 **Last Updated:** 2026-08-13
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -32,7 +32,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Registrant routing acknowledgement | DONE — ACK-GOAL-005-INST-001-13 authorizes bounded owner routing only |
 | Budget control | WITHIN_BUDGET — USD 40 ceiling; STOP_AND_CONSOLIDATE at USD 32; no WC-065 dispatch yet |
 | Fresh CA routing readiness | DONE — R-103 / CR-GOAL-005-INST-002-21 READY FOR ROUTING |
-| Protected Decision Register | BLOCKED — R-104 APPROVED bounded INST-002 amendment; Founder ratification pending |
+| Protected Decision Register | READY TO ROUTE — R-104 approved; FA-045 ratified; exact bounded INST-002 amendment applied |
 | Final package review and acknowledgement | PENDING — fresh review plus ACK-GOAL-005-INST-001-14 required |
 | Fresh implementation confirmation | NOT REQUESTED — separate current-session Founder decision remains required |
 | Implementation GOA / Acceptance | NOT ISSUED — GOA/ACC-GOAL-005-INST-010-09 are reserved identifiers only |
@@ -56,15 +56,16 @@ and independent implementation review.
 
 ## Current Blockers
 
-CB-005 is OPEN. R-104 independently APPROVES the WC-065-only INST-002 legal/privacy amendment;
-separate Founder ratification and mechanical charter/registry application remain pending.
+No institutional routing blocker is open. CB-005 is RESOLVED through R-104, FA-045, and exact
+mechanical application of the bounded Office 02 and INST-002 registry amendment. PDR-065-07
+remains undecided pending valid owner contributions and integrated review.
 
 ## Next Authorized Action
 
-Founder considers separate ratification of CR-GOAL-005-INST-CI-001-01 as approved by R-104. If
-ratified, apply only the proposal's Office 02 and INST-002 registry text mechanically before any
-owner GOA. Do not issue implementation GOA/ACC-09, implement, activate policy/providers, deploy,
-approve or merge a PR, or groom WC-066 through WC-069.
+INST-013 may issue bounded protected-decision owner GOAs, including the WC-065-only INST-002
+legal/privacy GOA; each Acceptance must be temporally later. Do not issue implementation
+GOA/ACC-09, implement, activate policy/providers, deploy, approve or merge a PR, or groom WC-066
+through WC-069.
 
 ## History And Evidence
 
