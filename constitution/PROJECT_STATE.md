@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 80
+**State Revision:** 81
 **Last Updated:** 2026-08-13
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -21,7 +21,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Platform version | 1.45.0 |
 | Latest completed Work Contract | WC-065 — Founder Offerability And Commercial Composition |
 | Latest merge | PR #278 merged to `main` as `f28badc` on 2026-08-13 |
-| Active delivery | GOAL-006 Phase 1 P1-WC11 integrated grooming package and Phase 2/3 Work Components |
+| Active delivery | GOAL-006 Phase 1 P1-WC12 independent constitutional review and Founder authorization package |
 
 ## Active Checkpoint — GOAL-006 Secure Autonomous Cloud Delivery Intake
 
@@ -55,7 +55,9 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | P1-WC09 Operations candidate GOA / Acceptance | VALID — GOA-GOAL-006-PLATFORM-OPS-01 at 11:17:28Z; ACC-GOAL-006-PLATFORM-OPS-01 at 11:17:29Z; candidate remains DRAFT/NOT ACTIVATED |
 | P1-WC09 contribution / P1-WC10 review | DONE — CR-GOAL-006-PLATFORM-OPS-01 accepted by R-115 after bounded repairs; policy-dependent operations and all activation remain blocked |
 | P1-WC11 Product Owner GOA / Acceptance | VALID — GOA-GOAL-006-INST-011-02 at 11:32:00Z; ACC-GOAL-006-INST-011-02 at 11:32:01Z |
-| Phase 1 owner grooming | IN PROGRESS — P1-WC11 only; P1-WC12 remains dependency-blocked |
+| P1-WC11 contribution / owner review | DONE — CR-GOAL-006-INST-011-02 accepted at `495f7206...` by R-116 and all decision owners |
+| P1-WC12 Constitutional GOA / Acceptance | VALID — GOA-GOAL-006-INST-002-02 at 11:52:00Z; ACC-GOAL-006-INST-002-02 at 11:52:01Z |
+| Phase 1 owner grooming | IN PROGRESS — P1-WC12 independent review only; Founder Phase 2 decision remains protected |
 
 ### Intake Context
 
@@ -64,7 +66,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 - **Validation:** deterministic content checks and editor diagnostics pass; no runnable infrastructure or implementation changed.
 - **Independent review:** R-106 / CR-GOAL-006-INST-002-01 finds the classification and plan ready, with post-review Founder acknowledgement as the sole routing predecessor.
 - **Pull request:** PR #281 is the Phase 1 PR. Phase 2 implementation will use a separate later PR after Phase 1 closure and explicit implementation authorization.
-- **Boundary:** P1-WC11 integrated grooming only; no runnable changes, credentials/live access, cloud spend, DNS action, deployment, operation, Platform Operations activation, PR approval, or merge is authorized.
+- **Boundary:** P1-WC12 independent review only; no runnable changes, credentials/live access, cloud spend, DNS action, deployment, operation, Platform Operations activation, PR approval, or merge is authorized.
 - **Protected local artifacts:** `.coverage`, `goals/goal_register.jsonl`, `logs/blueprint_assurance_report.json`, and `logs/bootstrap-evidence.jsonl` are unrelated and must remain unstaged.
 - **Intake evidence:** `goals/GOAL-006-secure-autonomous-cloud-delivery.md`, `goals/GOAL-006-execution-plan.md`, and WC-071.
 
@@ -84,10 +86,10 @@ dependencies; they block policy-dependent automation and Phase 3 handover/activa
 
 ## Next Authorized Action
 
-Complete P1-WC11 integrated grooming, exact Phase 2/3 Work Components, owner reviews, ledgers,
-estimates, costs, risks, policy dependencies, and conclusion tables. Do not issue P1-WC12 before
-P1-WC11 independent owner acceptance. Phase 2 implementation and all cloud, DNS, deployment,
-production, and Platform Operations activation actions remain unauthorized.
+Complete fresh P1-WC12 review of the exact P1-WC11 baseline and produce a Founder decision package
+with the exact Phase 2 boundary. Do not issue Phase 2 implementation authority without separate
+current-session Founder authorization. All cloud, DNS, deployment, production, and Platform
+Operations activation actions remain unauthorized.
 
 ## History And Evidence
 

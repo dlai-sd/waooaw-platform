@@ -454,3 +454,48 @@ and merge. P1-WC12 remains dependency-blocked.
 | Decision | ACCEPTED |
 | Accepted scope | P1-WC11 integrated grooming and downstream Work Component specification only |
 | Excluded authority | Specialist invention, runnable implementation, cloud/DNS/deployment/Production action, activation, final constitutional validation, PR approval, and merge |
+
+## P1-WC11 Completion Gate
+
+| Field | Value |
+|---|---|
+| Contribution | CR-GOAL-006-INST-011-02 |
+| Reviewed baseline | `495f720692bd71358f5d21db03bfa364b5724978e8b3b8ce85d3ba894b65303f` |
+| Owner review | R-116; CR-GOAL-006-INST-009-03, INST-005-02, INST-007-02, INST-006-02, INST-010-02, QA-02, PLATFORM-OPS-02, INST-004-04 |
+| Review verdict | ACCEPT — all bounded repairs verified |
+| Completion effect | P1-WC11 complete; P1-WC12 dependency satisfied |
+
+Owner acceptance establishes integration fidelity only. It does not provide independent
+constitutional clearance or authorize Phase 2, Phase 3, cloud action, activation, approval, or merge.
+
+## Phase 1 Authorization — P1-WC12
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-006 |
+| `record_id` | GOA-GOAL-006-INST-002-02 |
+| `record_type` | Authorization Record |
+| `authorization_id` | GOA-GOAL-006-INST-002-02 |
+| Authorized Institution | Fresh INST-002 — Constitutional Analyst validator |
+| Contribution scope | P1-WC12 Independent Constitutional Review And Founder Authorization Package |
+| Required evidence | Exact hash review; FR/risk/proof continuity; Evidence First, Human Override, Decision Space, authority and independence; residual-risk classification; protected decisions; exact Phase 2 authorization boundary; clearance or blocker |
+| Participation Window | One constitutional session after valid acceptance |
+| Independence constraint | Validator did not author P1-WC01 through P1-WC11 or perform their owner reviews and may not authorize implementation, cloud action, activation, approval, or merge |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-13T11:52:00Z |
+
+## Acceptance — P1-WC12
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-002 |
+| `goal_id` | GOAL-006 |
+| `record_id` | ACC-GOAL-006-INST-002-02 |
+| `record_type` | Acceptance Record |
+| `produced_at` | 2026-08-13T11:52:01Z |
+| `authorization_id` | GOA-GOAL-006-INST-002-02 |
+| `acceptance_timestamp` | 2026-08-13T11:52:01Z |
+| Decision | ACCEPTED |
+| Accepted scope | Independent P1-WC12 constitutional and authorization-readiness review only |
+| Excluded authority | Owner contribution, implementation, provider/cloud/DNS/deployment/Production action, Founder decision substitution, activation, PR approval, and merge |
