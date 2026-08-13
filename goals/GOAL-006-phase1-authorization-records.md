@@ -321,3 +321,44 @@ actions, cloud queries/spend, DNS, deployment, Production, activation, PR approv
 | Decision | ACCEPTED |
 | Accepted scope | P1-WC07 feasibility and decomposition only |
 | Excluded authority | Architecture changes, runnable implementation, credentials/cloud/DNS/deployment/production action, risk acceptance, activation, final validation, PR approval, and merge |
+
+## P1-WC07 Completion Gate
+
+| Field | Value |
+|---|---|
+| Contribution | CR-GOAL-006-INST-010-01; ER-GOAL-006-INST-010-01 |
+| Independent review | R-113 / CR-GOAL-006-INST-004-02 |
+| Review verdict | ACCEPT — NO CONSTITUTIONAL CHALLENGE |
+| Completion effect | P1-WC08 dependency satisfied; Phase 2 prerequisites and all live proof remain open |
+
+## Phase 1 Authorization — P1-WC08
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-006 |
+| `record_id` | GOA-GOAL-006-QA-01 |
+| `record_type` | Authorization Record |
+| `authorization_id` | GOA-GOAL-006-QA-01 |
+| Authorized Institution | Independent QA |
+| Contribution scope | P1-WC08 Qualification, Performance, Resilience, Promotion, And DR Test Plan |
+| Required evidence | Automated functional/integration/CCT/security/performance/resilience/rollback/DR/promotion matrix; targets and evidence contracts; environment acceptance; complete SEC/DATA proof traceability; no test execution or runnable changes |
+| Participation Window | 2 constitutional sessions after valid acceptance |
+| Independence constraint | QA may define qualification and acceptance evidence but may not implement controls, overwrite architecture, accept protected Production targets/risk, deploy, activate, or self-validate its final contribution |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-13T11:09:38Z |
+
+## Acceptance — P1-WC08
+
+| Field | Value |
+|---|---|
+| `institution_id` | Independent QA |
+| `goal_id` | GOAL-006 |
+| `record_id` | ACC-GOAL-006-QA-01 |
+| `record_type` | Acceptance Record |
+| `produced_at` | 2026-08-13T11:09:39Z |
+| `authorization_id` | GOA-GOAL-006-QA-01 |
+| `acceptance_timestamp` | 2026-08-13T11:09:39Z |
+| Decision | ACCEPTED |
+| Accepted scope | P1-WC08 qualification design only |
+| Excluded authority | Implementation, architecture changes, credentials/cloud/DNS/deployment/production action, protected target/risk acceptance, activation, final constitutional validation, PR approval, and merge |
