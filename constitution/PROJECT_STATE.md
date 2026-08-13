@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 84
+**State Revision:** 85
 **Last Updated:** 2026-08-13
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -21,7 +21,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Platform version | 1.45.0 |
 | Latest completed Work Contract | WC-065 — Founder Offerability And Commercial Composition |
 | Latest merge | PR #283 merged to `main` as `61b1cda` on 2026-08-13 |
-| Active delivery | GOAL-006 Phase 2 authorized and accepted; Work Contract creation is next |
+| Active delivery | GOAL-006 Phase 2 / WC-072; P2-WC01 context prepared |
 
 ## Active Checkpoint — GOAL-006 Phase 2 Authorization Routing
 
@@ -33,11 +33,13 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Phase 2 GO Authorization | VALID — `GOA-GOAL-006-INST-010-02` issued by INST-013 at 13:10:04Z |
 | INST-010 Acceptance | VALID — `ACC-GOAL-006-INST-010-02` recorded at 13:10:05Z |
 | Constitutional blocker | RESOLVED — CB-006 closed by FA-049, GOA-02 and ACC-02 |
-| Phase 2 contribution | AUTHORIZED — create the single Work Contract before any specification or runnable implementation |
+| Phase 2 Work Contract | CREATED — WC-072 covers P2-WC01 through P2-WC08 with one compact execution record |
+| Current component | P2-WC01 — bounded context manifest prepared; no runner implementation yet |
+| Branch and PR | NEXT — create dedicated implementation branch from pushed WC-072 checkpoint, then one draft Phase 2 PR |
 
 ### Checkpoint Context
 
-- **Checkpoint branch:** `goal/006/phase2-blocked` from merged `origin/main` at `61b1cda`.
+- **Checkpoint branch:** `goal/006/phase2-blocked`; authorization checkpoint `313fb12`.
 - **Authority present:** Founder current-session consent, Skill 17 activation and INR 5,000 ceiling.
 - **Authority:** FA-049, `GOA-GOAL-006-INST-010-02` and `ACC-GOAL-006-INST-010-02` authorize the complete offline Phase 2 envelope.
 - **Resume source:** Git, CB-006, this checkpoint, the merged Phase 1 package and GitHub PR records; chat history is non-authoritative.
@@ -60,9 +62,9 @@ policy-dependent automation and Phase 3 handover/activation.
 
 ## Next Authorized Action
 
-Create the single Phase 2 Work Contract with artifact bindings, estimates, reviewers and compact
-execution record. Then create the dedicated implementation branch, draft PR and P2-WC01 bounded
-context manifest before amending the specification. All live/cloud and Phase 3 actions remain unauthorized.
+Commit and push WC-072 plus `sprint-context/goal-006-phase2-current.json`. Create the dedicated
+implementation branch and one draft Phase 2 PR, then amend the Phase 2 specification and obtain
+independent review before runner implementation. All live/cloud and Phase 3 actions remain unauthorized.
 
 ## History And Evidence
 

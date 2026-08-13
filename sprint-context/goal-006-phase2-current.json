@@ -1,0 +1,57 @@
+{
+  "schema_version": "1.0.0",
+  "goal_id": "GOAL-006",
+  "work_contract": "WC-072",
+  "component": "P2-WC01",
+  "title": "Deterministic Toolchain And Test Foundation",
+  "controlling_sections": [
+    "work-contracts/WC-072-goal-006-phase2-offline-delivery.md#p2-wc01-binding-and-estimate",
+    "goals/GOAL-006-p1-wc11-integrated-grooming.md#p2-wc01--deterministic-toolchain-and-test-foundation",
+    "goals/GOAL-006-p1-wc07-implementation-feasibility.md#toolchain-and-prerequisites",
+    "goals/GOAL-006-p1-wc07-implementation-feasibility.md#docker-first-validation-architecture",
+    "goals/GOAL-006-p1-wc07-diagnostic-evidence.md#host-test-collection-diagnostic",
+    "adr/ADR-037-sprint-environment-contract-validation.md",
+    "tests/QA-STRATEGY.md#docker-execution-mandate"
+  ],
+  "affected_paths": [
+    "architecture/reference/dockerfiles/Dockerfile.test-runner",
+    "architecture/reference/dockerfiles/Dockerfile.test-runner-python",
+    "docker-compose.yml",
+    "requirements-test.txt",
+    "scripts/env_validator.py",
+    "scripts/autonomous_sprint_runner.py",
+    "tests/test_wc012_dry_run.py",
+    "tests/pipeline/",
+    "work-contracts/WC-072-goal-006-phase2-offline-delivery.md",
+    "sprint-context/goal-006-phase2-current.json",
+    "constitution/PROJECT_STATE.md"
+  ],
+  "validations": [
+    "docker compose config --quiet",
+    "docker compose run --rm test-runner python scripts/env_validator.py",
+    "docker compose run --rm test-runner pytest --collect-only -q tests/professional-runtime tests/test_wc012_dry_run.py",
+    "docker compose run --rm test-runner python tests/test_wc012_dry_run.py",
+    "docker compose run --rm test-runner pytest tests/pipeline -q",
+    "git diff --check"
+  ],
+  "dependencies": [
+    "FA-049",
+    "GOA-GOAL-006-INST-010-02",
+    "ACC-GOAL-006-INST-010-02",
+    "PR #281 merge 1655afbab1dec83949734dd435c6c17f811e2683",
+    "PR #283 merge 61b1cda8994b85bf9e5c371ba107227d6dfc65bf",
+    "R-117",
+    "R-118",
+    "C-080",
+    "ADR-037"
+  ],
+  "prohibited_paths": [
+    "constitution/CONSTITUTION.md",
+    "constitution/GENESIS.md",
+    "infrastructure/terraform/",
+    ".github/workflows/promote.yaml",
+    ".github/workflows/post-deploy-verify.yaml",
+    "src/"
+  ],
+  "next_exact_action": "Push this contract checkpoint, create the dedicated Phase 2 implementation branch and draft PR, then amend the Phase 2 specification and obtain independent review before runner implementation."
+}
