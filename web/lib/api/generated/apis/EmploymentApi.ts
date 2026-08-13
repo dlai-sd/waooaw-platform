@@ -23,6 +23,7 @@ import type {
   EmploymentContractVersion,
   EmploymentRelationship,
   EmploymentState,
+  EvaluateRelationshipOfferabilityRequest,
   LegacyEmploymentRelationshipAdapterResponse,
   LegacyFormEmploymentContractRequest,
   LegacyHireAgentRequest,
@@ -35,6 +36,7 @@ import type {
   RelationshipContractJourney,
   RelationshipHandoff,
   RelationshipHostedOnboardingOrder,
+  RelationshipOfferabilityDecision,
   RelationshipPaymentProceedRequest,
   RelationshipTimelineEntry,
   RelationshipTrial,
@@ -67,6 +69,8 @@ import {
   EmploymentRelationshipToJSON,
   EmploymentStateFromJSON,
   EmploymentStateToJSON,
+  EvaluateRelationshipOfferabilityRequestFromJSON,
+  EvaluateRelationshipOfferabilityRequestToJSON,
   LegacyEmploymentRelationshipAdapterResponseFromJSON,
   LegacyEmploymentRelationshipAdapterResponseToJSON,
   LegacyFormEmploymentContractRequestFromJSON,
@@ -91,6 +95,8 @@ import {
   RelationshipHandoffToJSON,
   RelationshipHostedOnboardingOrderFromJSON,
   RelationshipHostedOnboardingOrderToJSON,
+  RelationshipOfferabilityDecisionFromJSON,
+  RelationshipOfferabilityDecisionToJSON,
   RelationshipPaymentProceedRequestFromJSON,
   RelationshipPaymentProceedRequestToJSON,
   RelationshipTimelineEntryFromJSON,
@@ -146,6 +152,13 @@ export interface CreateRelationshipOnboardingOrderRequest {
   relationshipId: string;
   version: number;
   relationshipPaymentProceedRequest: RelationshipPaymentProceedRequest;
+}
+
+export interface EvaluateRelationshipOfferabilityOperationRequest {
+  relationshipId: string;
+  idempotencyKey: string;
+  xCorrelationID: string;
+  evaluateRelationshipOfferabilityRequest: EvaluateRelationshipOfferabilityRequest;
 }
 
 export interface FormEmploymentContractRequest {
@@ -707,6 +720,108 @@ export class EmploymentApi extends runtime.BaseAPI {
     initOverrides?: RequestInit | runtime.InitOverrideFunction,
   ): Promise<RelationshipHostedOnboardingOrder> {
     const response = await this.createRelationshipOnboardingOrderRaw(
+      requestParameters,
+      initOverrides,
+    );
+    return await response.value();
+  }
+
+  /**
+   * Founder-only. BP sends the proposed offer to authenticated WBE for authoritative cost-floor and margin validation, applies FA-047, records constitutional evidence, and appends a version-pinned decision before returning success. Browser-provided costs and overrides are not accepted. Missing or stale owner truth fails closed.
+   * Evaluate and evidence one Founder offering decision
+   */
+  async evaluateRelationshipOfferabilityRaw(
+    requestParameters: EvaluateRelationshipOfferabilityOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<runtime.ApiResponse<RelationshipOfferabilityDecision>> {
+    if (requestParameters["relationshipId"] == null) {
+      throw new runtime.RequiredError(
+        "relationshipId",
+        'Required parameter "relationshipId" was null or undefined when calling evaluateRelationshipOfferability().',
+      );
+    }
+
+    if (requestParameters["idempotencyKey"] == null) {
+      throw new runtime.RequiredError(
+        "idempotencyKey",
+        'Required parameter "idempotencyKey" was null or undefined when calling evaluateRelationshipOfferability().',
+      );
+    }
+
+    if (requestParameters["xCorrelationID"] == null) {
+      throw new runtime.RequiredError(
+        "xCorrelationID",
+        'Required parameter "xCorrelationID" was null or undefined when calling evaluateRelationshipOfferability().',
+      );
+    }
+
+    if (requestParameters["evaluateRelationshipOfferabilityRequest"] == null) {
+      throw new runtime.RequiredError(
+        "evaluateRelationshipOfferabilityRequest",
+        'Required parameter "evaluateRelationshipOfferabilityRequest" was null or undefined when calling evaluateRelationshipOfferability().',
+      );
+    }
+
+    const queryParameters: any = {};
+
+    const headerParameters: runtime.HTTPHeaders = {};
+
+    headerParameters["Content-Type"] = "application/json";
+
+    if (requestParameters["idempotencyKey"] != null) {
+      headerParameters["Idempotency-Key"] = String(
+        requestParameters["idempotencyKey"],
+      );
+    }
+
+    if (requestParameters["xCorrelationID"] != null) {
+      headerParameters["X-Correlation-ID"] = String(
+        requestParameters["xCorrelationID"],
+      );
+    }
+
+    if (this.configuration && this.configuration.accessToken) {
+      const token = this.configuration.accessToken;
+      const tokenString = await token("BearerAuth", []);
+
+      if (tokenString) {
+        headerParameters["Authorization"] = `Bearer ${tokenString}`;
+      }
+    }
+
+    let urlPath = `/api/v1/employment/relationships/{relationshipId}/offerability/evaluations`;
+    urlPath = urlPath.replace(
+      `{${"relationshipId"}}`,
+      encodeURIComponent(String(requestParameters["relationshipId"])),
+    );
+
+    const response = await this.request(
+      {
+        path: urlPath,
+        method: "POST",
+        headers: headerParameters,
+        query: queryParameters,
+        body: EvaluateRelationshipOfferabilityRequestToJSON(
+          requestParameters["evaluateRelationshipOfferabilityRequest"],
+        ),
+      },
+      initOverrides,
+    );
+
+    return new runtime.JSONApiResponse(response, (jsonValue) =>
+      RelationshipOfferabilityDecisionFromJSON(jsonValue),
+    );
+  }
+
+  /**
+   * Founder-only. BP sends the proposed offer to authenticated WBE for authoritative cost-floor and margin validation, applies FA-047, records constitutional evidence, and appends a version-pinned decision before returning success. Browser-provided costs and overrides are not accepted. Missing or stale owner truth fails closed.
+   * Evaluate and evidence one Founder offering decision
+   */
+  async evaluateRelationshipOfferability(
+    requestParameters: EvaluateRelationshipOfferabilityOperationRequest,
+    initOverrides?: RequestInit | runtime.InitOverrideFunction,
+  ): Promise<RelationshipOfferabilityDecision> {
+    const response = await this.evaluateRelationshipOfferabilityRaw(
       requestParameters,
       initOverrides,
     );

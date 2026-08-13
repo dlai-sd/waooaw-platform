@@ -63,6 +63,7 @@ docs/EmploymentContractVersion.md
 docs/EmploymentRelationship.md
 docs/EmploymentRelationshipState.md
 docs/EmploymentState.md
+docs/EvaluateRelationshipOfferabilityRequest.md
 docs/ExecutionModel.md
 docs/GovernedConversationCardV1.md
 docs/IdentityAccountLink.md
@@ -120,6 +121,7 @@ docs/RelationshipEvidenceSummaryV1.md
 docs/RelationshipHandoff.md
 docs/RelationshipHandoffStatus.md
 docs/RelationshipHostedOnboardingOrder.md
+docs/RelationshipOfferabilityDecision.md
 docs/RelationshipParticipantRole.md
 docs/RelationshipPaymentProceedRequest.md
 docs/RelationshipPlanV1.md
@@ -239,6 +241,7 @@ models/EmploymentContractVersion.ts
 models/EmploymentRelationship.ts
 models/EmploymentRelationshipState.ts
 models/EmploymentState.ts
+models/EvaluateRelationshipOfferabilityRequest.ts
 models/ExecutionModel.ts
 models/GovernedConversationCardV1.ts
 models/IdentityAccountLink.ts
@@ -295,6 +298,7 @@ models/RelationshipEvidenceSummaryV1.ts
 models/RelationshipHandoff.ts
 models/RelationshipHandoffStatus.ts
 models/RelationshipHostedOnboardingOrder.ts
+models/RelationshipOfferabilityDecision.ts
 models/RelationshipParticipantRole.ts
 models/RelationshipPaymentProceedRequest.ts
 models/RelationshipPlanV1.ts

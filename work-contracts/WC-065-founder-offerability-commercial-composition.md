@@ -240,13 +240,13 @@ affected-surface line coverage. No test is executed by this specification sprint
 
 | Decision | Owner | Current state | Activation effect |
 |---|---|---|---|
-| Numeric margin bands/floors and fully loaded planning position | Founder policy authority with WBE/Business inputs | PENDING M3 | No policy activation or implementation authorization |
-| Calculated-risk exposure and concentration limits | Founder policy authority | PENDING M3 | `ALLOW_CALCULATED_RISK` unavailable |
-| Minimum evidence/confidence class per offering/policy class | Founder policy authority with Product/Data/Security/Constitutional inputs | PENDING M3 | Missing class fails closed |
-| Delegated adjustments and Founder-reserved exceptions | Founder policy authority | PENDING M3 | Silence grants no autonomous authority |
-| Validity, expiry, review cadence and escalation values | Founder policy authority | PENDING M3 | No permanent permission by omission |
-| Consequence/assurance class for policy, calculated risk, publication, hiring and customer impact | Founder policy authority with Security/Constitutional inputs | PENDING M3 | Consequential path unavailable until classified |
-| Exact grandfathering/remedy policy and applicable legal/retention details | Named Founder, Product, Business, Data, Security, Constitutional and legal owners | PENDING M3/M2 by Decision Space | No prospective change activation |
+| Margin and planning position | Founder policy authority with WBE/Business inputs | SATISFIED by FA-047 | Publish only with non-negative direct contribution; track fully loaded margin without a launch floor until review evidence exists |
+| Calculated-risk exposure and concentration | Founder policy authority | SATISFIED by FA-047 | Disabled for lean launch; no `ALLOW_CALCULATED_RISK` disposition |
+| Minimum evidence/confidence | Founder policy authority with Product/Data/Security/Constitutional inputs | SATISFIED by FA-047 | Current authoritative owner evidence required; missing or conflicting facts block |
+| Delegated adjustments and Founder-reserved exceptions | Founder policy authority | SATISFIED by FA-047 | Routine adjustments inside approved price and policy are delegated; price, floors, exceptions, and customer harm remain Founder-reserved |
+| Validity, expiry, review cadence and escalation | Founder policy authority | SATISFIED by FA-047 | Input or policy change invalidates; review after first 10 paid hires or 30 days, whichever occurs first |
+| Consequence and assurance class | Founder policy authority with Security/Constitutional inputs | SATISFIED by FA-047 | Normal assurance for drafts; fresh explicit confirmation for publish, hire, policy change, or customer impact |
+| Grandfathering, remedy, legal, disclosure, erasure, and retention treatment | Founder direction with existing approved Privacy, Refund, and Grievance Policies | SATISFIED by FA-046 reuse baseline | Existing industry-standard policy applies; only a concrete material exception requires scoped review before activation |
 
 These decisions are preserved, not delegated to INST-013 or implementation. They do not justify
 detailed grooming of WC-066 through WC-069.
@@ -258,7 +258,8 @@ No implementation task is executable until:
 1. The exact WC-064/WC-065 package is hash-pinned and receives fresh integrated INST-004 approval
   plus fresh INST-002 Constitutional readiness approval.
 2. Every protected decision required for the activated policy and implementation package is
-  recorded by its owner; no pending value is replaced with an inferred default.
+  recorded by its owner. Existing approved policy may be reused when no material change is
+  introduced; silence may not create a new exception or weaken an existing customer protection.
 3. The Registrant acknowledges the reviewed implementation specification.
 4. The Founder explicitly confirms WC-065 implementation for that later session.
 5. INST-013 issues an implementation GOA and INST-010 records a temporally later Acceptance.

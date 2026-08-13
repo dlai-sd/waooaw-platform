@@ -286,8 +286,8 @@ async def test_bundle_engine_derive_price_uses_target_margin() -> None:
     result = await engine.derive_price(
         agent_type="DMA", bundle_tier="STARTER", target_margin_pct=25
     )
-    # formula: int(4000 / (1 - 25/100)) = int(4000 / 0.75) = 5333
-    assert result == 5333
+    # Minimum compliant prices round upward so the requested margin is never undercut.
+    assert result == 5334
 
 
 @pytest.mark.asyncio
@@ -369,6 +369,28 @@ async def test_bundle_engine_validate_price_approved_at_boundary() -> None:
         proposed_price_paise=6250,
     )
     assert result.outcome == "APPROVED"
+
+
+@pytest.mark.asyncio
+async def test_bundle_engine_validate_price_rounds_fractional_floor_up() -> None:
+    engine, _ = _make_bundle_engine(
+        _fetchone(("FOUNDER_AUTHORIZED",)),
+        _fetchone((5000, 25)),
+        _insert_result(),
+    )
+    result = await engine.validate_price("DMA", "STARTER", 6666)
+    assert result.minimum_compliant_price_paise == 6667
+    assert result.outcome == "REJECTED"
+
+
+@pytest.mark.asyncio
+async def test_bundle_engine_validate_price_missing_margin_fails_closed() -> None:
+    engine, _ = _make_bundle_engine(
+        _fetchone(("FOUNDER_AUTHORIZED",)),
+        _fetchone((5000, None)),
+    )
+    with pytest.raises(ValueError, match="invalid cost floor or minimum margin"):
+        await engine.validate_price("DMA", "STARTER", 7000)
 
 
 @pytest.mark.asyncio

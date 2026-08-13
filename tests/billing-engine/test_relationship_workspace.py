@@ -10,15 +10,20 @@ from types import SimpleNamespace
 import pytest
 from fastapi import HTTPException
 from fastapi import FastAPI
+from starlette.requests import Request
 from fastapi.testclient import TestClient
 
+import relationship_workspace
 from relationship_workspace import (
     CommercialCommandRequest,
     CommercialProjection,
     CommercialStore,
+    OfferabilityValidationRequest,
     PaidActivationBody,
+    _rebind_offerability_validation,
     _rebind_paid_activation,
     router,
+    validate_relationship_offerability,
 )
 from workload_identity import ServiceAuthError
 
@@ -98,6 +103,154 @@ def _activation_binding() -> tuple[SimpleNamespace, uuid.UUID, PaidActivationBod
 def test_paid_activation_rebinds_exact_delegated_context() -> None:
     context, relationship_id, body, idempotency_key = _activation_binding()
     _rebind_paid_activation(context, relationship_id, body, idempotency_key)
+
+
+def _offerability_binding() -> tuple[SimpleNamespace, uuid.UUID, OfferabilityValidationRequest]:
+    relationship_id = uuid.uuid4()
+    body = OfferabilityValidationRequest(
+        schemaVersion="1.0",
+        offeringId="dma-starter-v1",
+        agentType="DMA",
+        bundleTier="STARTER",
+        proposedPricePaise=7000,
+    )
+    context = SimpleNamespace(
+        effective_role="FOUNDER",
+        purpose="validateRelationshipOfferability",
+        subject_reference=body.offering_id,
+        relationship_id=str(relationship_id),
+        expected_versions={
+            "agent_type": body.agent_type,
+            "bundle_tier": body.bundle_tier,
+            "offering": body.offering_id,
+            "proposed_price_paise": str(body.proposed_price_paise),
+        },
+        tenant_id=str(uuid.uuid4()),
+        actor_subject=str(uuid.uuid4()),
+    )
+    return context, relationship_id, body
+
+
+def test_offerability_validation_rebinds_exact_delegated_context() -> None:
+    context, relationship_id, body = _offerability_binding()
+    _rebind_offerability_validation(context, relationship_id, body)
+
+
+@pytest.mark.parametrize("field,value", [
+    ("effective_role", "EMPLOYER"),
+    ("purpose", "getRelationshipCommercialProjection"),
+    ("subject_reference", "changed-offering"),
+    ("relationship_id", "changed-relationship"),
+    ("expected_versions", {"offering": "changed"}),
+    ("tenant_id", ""),
+])
+def test_offerability_validation_denies_confused_deputy_context(field: str, value: object) -> None:
+    context, relationship_id, body = _offerability_binding()
+    setattr(context, field, value)
+    with pytest.raises(ServiceAuthError, match="SERVICE_AUTHORIZATION_DENIED"):
+        _rebind_offerability_validation(context, relationship_id, body)
+
+
+def test_offerability_route_denies_missing_workload_identity_before_owner_call() -> None:
+    _, relationship_id, body = _offerability_binding()
+    application = FastAPI()
+    application.include_router(router)
+    application.state.relationship_workload_auth = None
+
+    response = TestClient(application).post(
+        f"/internal/v1/relationships/{relationship_id}/offerability-validation",
+        json=body.model_dump(by_alias=True, mode="json"),
+        headers={"X-Correlation-ID": str(uuid.uuid4())},
+    )
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "WBE_OFFERABILITY_UNAUTHORIZED"
+
+
+def test_offerability_route_rejects_invalid_body_with_contract_status() -> None:
+    _, relationship_id, _ = _offerability_binding()
+    app = FastAPI()
+    app.include_router(router)
+
+    response = TestClient(app).post(
+        f"/internal/v1/relationships/{relationship_id}/offerability-validation",
+        json={"schemaVersion": "1.0"},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "WBE_OFFERABILITY_REQUEST_INVALID"
+
+
+@pytest.mark.asyncio
+async def test_offerability_route_returns_owner_validation(monkeypatch: pytest.MonkeyPatch) -> None:
+    context, relationship_id, body = _offerability_binding()
+
+    class Session:
+        async def __aenter__(self) -> object:
+            return object()
+
+        async def __aexit__(self, *args: object) -> None:
+            return None
+
+    class Engine:
+        def __init__(self, db: object) -> None:
+            pass
+
+        async def validate_price(self, agent_type: str, bundle_tier: str, proposed_price_paise: int) -> SimpleNamespace:
+            return SimpleNamespace(
+                outcome="APPROVED",
+                cost_floor_paise=5_000,
+                minimum_compliant_price_paise=6_250,
+                proposed_price_paise=proposed_price_paise,
+            )
+
+    monkeypatch.setattr(relationship_workspace, "_authorize", lambda *args, **kwargs: context)
+    monkeypatch.setattr(relationship_workspace, "get_session_factory", lambda: Session)
+    monkeypatch.setattr(relationship_workspace, "BundleEngine", Engine)
+
+    result = await validate_relationship_offerability(
+        relationship_id,
+        body.model_dump(by_alias=True, mode="json"),
+        Request({"type": "http", "method": "POST", "path": "/"}),
+    )
+
+    assert result["outcome"] == "APPROVED"
+    assert result["directContributionPaise"] == 2_000
+    assert result["relationshipId"] == str(relationship_id)
+    assert len(str(result["validationVersion"])) == 64
+
+
+@pytest.mark.asyncio
+async def test_offerability_route_fails_closed_when_owner_truth_is_unavailable(monkeypatch: pytest.MonkeyPatch) -> None:
+    context, relationship_id, body = _offerability_binding()
+
+    class Session:
+        async def __aenter__(self) -> object:
+            return object()
+
+        async def __aexit__(self, *args: object) -> None:
+            return None
+
+    class Engine:
+        def __init__(self, db: object) -> None:
+            pass
+
+        async def validate_price(self, agent_type: str, bundle_tier: str, proposed_price_paise: int) -> None:
+            raise ValueError("owner truth unavailable")
+
+    monkeypatch.setattr(relationship_workspace, "_authorize", lambda *args, **kwargs: context)
+    monkeypatch.setattr(relationship_workspace, "get_session_factory", lambda: Session)
+    monkeypatch.setattr(relationship_workspace, "BundleEngine", Engine)
+
+    with pytest.raises(HTTPException) as unavailable:
+        await validate_relationship_offerability(
+            relationship_id,
+            body.model_dump(by_alias=True, mode="json"),
+            Request({"type": "http", "method": "POST", "path": "/"}),
+        )
+
+    assert unavailable.value.status_code == 503
+    assert unavailable.value.detail == "WBE_OFFERABILITY_UNAVAILABLE"
 
 
 def test_paid_activation_route_denies_missing_workload_identity_before_owner_call() -> None:

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import math
 from datetime import datetime, timezone
 
 from sqlalchemy import text
@@ -33,8 +34,13 @@ class BundleEngine(IMarkupEngine):
         query = text(
             """
             SELECT cost_floor_paise
-            FROM bundle_profiles
-            WHERE agent_type = :agent_type AND bundle_tier = :bundle_tier
+                        FROM institutional.bundle_profiles
+                        WHERE agent_type = :agent_type
+                            AND bundle_tier = :bundle_tier
+                            AND is_active = TRUE
+                            AND status = 'FOUNDER_AUTHORIZED'
+                        ORDER BY bundle_version DESC
+                        LIMIT 1
             """
         )
         result = await self.db.execute(
@@ -66,8 +72,13 @@ class BundleEngine(IMarkupEngine):
         query = text(
             """
             SELECT cost_floor_paise, minimum_margin_pct
-            FROM bundle_profiles
-            WHERE agent_type = :agent_type AND bundle_tier = :bundle_tier
+                        FROM institutional.bundle_profiles
+                        WHERE agent_type = :agent_type
+                            AND bundle_tier = :bundle_tier
+                            AND is_active = TRUE
+                            AND status = 'FOUNDER_AUTHORIZED'
+                        ORDER BY bundle_version DESC
+                        LIMIT 1
             """
         )
         result = await self.db.execute(
@@ -89,14 +100,17 @@ class BundleEngine(IMarkupEngine):
 
         margin_pct = target_margin_pct if target_margin_pct is not None else minimum_margin_pct
 
-        if margin_pct >= 100:
-            logger.error(
-                "Invalid margin percentage",
-                extra={"margin_pct": margin_pct},
-            )
+        if margin_pct is not None and margin_pct >= 100:
+            logger.error("Invalid margin percentage", extra={"margin_pct": margin_pct})
             raise ValueError(f"Margin percentage must be < 100, got {margin_pct}")
+        if cost_floor_paise < 0 or margin_pct is None or margin_pct < 0:
+            logger.error(
+                "Invalid bundle pricing profile",
+                extra={"margin_pct": margin_pct, "cost_floor_paise": cost_floor_paise},
+            )
+            raise ValueError("Cost floor and margin percentage must be non-negative")
 
-        derived_price = int(cost_floor_paise / (1 - margin_pct / 100))
+        derived_price = math.ceil(cost_floor_paise / (1 - margin_pct / 100))
         return derived_price
 
     async def validate_price(
@@ -116,7 +130,7 @@ class BundleEngine(IMarkupEngine):
         status_query = text(
             """
             SELECT status
-            FROM billing_profiles
+            FROM institutional.billing_profiles
             WHERE agent_type = :agent_type
             """
         )
@@ -138,8 +152,13 @@ class BundleEngine(IMarkupEngine):
         profile_query = text(
             """
             SELECT cost_floor_paise, minimum_margin_pct
-            FROM bundle_profiles
-            WHERE agent_type = :agent_type AND bundle_tier = :bundle_tier
+                        FROM institutional.bundle_profiles
+                        WHERE agent_type = :agent_type
+                            AND bundle_tier = :bundle_tier
+                            AND is_active = TRUE
+                            AND status = 'FOUNDER_AUTHORIZED'
+                        ORDER BY bundle_version DESC
+                        LIMIT 1
             """
         )
         profile_result = await self.db.execute(
@@ -159,8 +178,16 @@ class BundleEngine(IMarkupEngine):
         cost_floor_paise = profile_row[0]
         minimum_margin_pct = profile_row[1]
 
+        if (
+            cost_floor_paise < 0
+            or minimum_margin_pct is None
+            or minimum_margin_pct < 0
+            or minimum_margin_pct >= 100
+        ):
+            raise ValueError("Bundle profile has an invalid cost floor or minimum margin")
+
         # C-089: Calculate minimum compliant price using margin-on-revenue formula
-        minimum_compliant_price_paise = int(
+        minimum_compliant_price_paise = math.ceil(
             cost_floor_paise / (1 - minimum_margin_pct / 100)
         )
 
@@ -173,9 +200,10 @@ class BundleEngine(IMarkupEngine):
         # C-059: Write to pricing_floor_log regardless of outcome
         log_query = text(
             """
-            INSERT INTO pricing_floor_log
+                INSERT INTO institutional.pricing_floor_log
             (agent_type, bundle_tier, proposed_price_paise, cost_floor_paise,
-             minimum_margin_pct, minimum_compliant_price_paise, outcome, created_at)
+                 constitutional_minimum_margin_pct, minimum_compliant_price_paise,
+                 outcome, evaluated_at)
             VALUES (:agent_type, :bundle_tier, :proposed_price_paise, :cost_floor_paise,
                     :minimum_margin_pct, :minimum_compliant_price_paise, :outcome, :created_at)
             """

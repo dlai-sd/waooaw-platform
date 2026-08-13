@@ -22,6 +22,36 @@ security:
   - ServiceBearerAuth: []
 
 paths:
+  /internal/v1/relationships/{relationshipId}/offerability-validation:
+    post:
+      tags: [Relationship Commercial Projection]
+      operationId: validateRelationshipOfferability
+      x-internal: true
+      summary: Validate one proposed relationship offering against WBE-owned cost and margin truth
+      description: |
+        Requires BP mTLS identity and delegated context bound to this relationship, offering,
+        agent type, bundle tier, proposed price, route, operation, and body digest. WBE selects
+        the newest active Founder-authorized bundle and records the pricing-floor evaluation.
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WbeOfferabilityValidationRequestV1"
+      responses:
+        "200":
+          description: WBE-authoritative offerability validation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WbeOfferabilityValidationResultV1"
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+
   /internal/v1/relationships/{relationshipId}/paid-activation:
     post:
       tags: [Relationship Commercial Projection]
@@ -199,6 +229,33 @@ components:
     WbeCommercialSchemaVersion:
       type: string
       const: "1.0"
+
+    WbeOfferabilityValidationRequestV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, offeringId, agentType, bundleTier, proposedPricePaise]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/WbeCommercialSchemaVersion" }
+        offeringId: { type: string, minLength: 1, maxLength: 128 }
+        agentType: { type: string, minLength: 1, maxLength: 50 }
+        bundleTier: { type: string, minLength: 1, maxLength: 20 }
+        proposedPricePaise: { type: integer, format: int64, minimum: 1 }
+
+    WbeOfferabilityValidationResultV1:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, relationshipId, offeringId, outcome, costFloorPaise, minimumCompliantPricePaise, proposedPricePaise, directContributionPaise, validationVersion, producedAt]
+      properties:
+        schemaVersion: { $ref: "#/components/schemas/WbeCommercialSchemaVersion" }
+        relationshipId: { type: string, format: uuid }
+        offeringId: { type: string, minLength: 1, maxLength: 128 }
+        outcome: { type: string, enum: [APPROVED, REJECTED] }
+        costFloorPaise: { type: integer, format: int64, minimum: 0 }
+        minimumCompliantPricePaise: { type: integer, format: int64, minimum: 0 }
+        proposedPricePaise: { type: integer, format: int64, minimum: 1 }
+        directContributionPaise: { type: integer, format: int64 }
+        validationVersion: { type: string, minLength: 64, maxLength: 64 }
+        producedAt: { type: string, format: date-time }
 
     WbeCommercialCommandKindV1:
       type: string

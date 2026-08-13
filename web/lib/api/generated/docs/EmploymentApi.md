@@ -10,6 +10,7 @@ All URIs are relative to _http://localhost:5001_
 | [**admitEmploymentRelationship**](EmploymentApi.md#admitemploymentrelationshipoperation)             | **POST** /api/v1/employment/relationships                                                                | Admit or replay an employment relationship                                |
 | [**convertTrialToPaid**](EmploymentApi.md#converttrialtopaid)                                        | **POST** /api/v1/employment/contracts/{contractId}/convert-trial                                         | Convert a trial contract to paid subscription (FR-002)                    |
 | [**createRelationshipOnboardingOrder**](EmploymentApi.md#createrelationshiponboardingorder)          | **POST** /api/v1/employment/relationships/{relationshipId}/contracts/{version}/payments/onboarding-order | Record explicit payment consent and create a contract-linked hosted order |
+| [**evaluateRelationshipOfferability**](EmploymentApi.md#evaluaterelationshipofferabilityoperation)   | **POST** /api/v1/employment/relationships/{relationshipId}/offerability/evaluations                      | Evaluate and evidence one Founder offering decision                       |
 | [**formEmploymentContract**](EmploymentApi.md#formemploymentcontract)                                | **POST** /api/v1/employment/contracts                                                                    | Compatibility adapter for relationship admission                          |
 | [**getEmploymentContract**](EmploymentApi.md#getemploymentcontract)                                  | **GET** /api/v1/employment/contracts/{contractId}                                                        | Compatibility projection of an employment relationship                    |
 | [**getEmploymentRelationship**](EmploymentApi.md#getemploymentrelationship)                          | **GET** /api/v1/employment/relationships/{relationshipId}                                                | Get an employment relationship                                            |
@@ -494,6 +495,91 @@ example().catch(console.error);
 | **404**     | Resource not found (or not accessible to this tenant)                              | -                |
 | **409**     | Exact contract acceptance is absent or itemization differs from the contract       | -                |
 | **503**     | Constitutional evidence or WBE hosted-order outcome is unavailable or inconsistent | -                |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+## evaluateRelationshipOfferability
+
+> RelationshipOfferabilityDecision evaluateRelationshipOfferability(relationshipId, idempotencyKey, xCorrelationID, evaluateRelationshipOfferabilityRequest)
+
+Evaluate and evidence one Founder offering decision
+
+Founder-only. BP sends the proposed offer to authenticated WBE for authoritative cost-floor and margin validation, applies FA-047, records constitutional evidence, and appends a version-pinned decision before returning success. Browser-provided costs and overrides are not accepted. Missing or stale owner truth fails closed.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  EmploymentApi,
+} from '';
+import type { EvaluateRelationshipOfferabilityOperationRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const config = new Configuration({
+    // Configure HTTP bearer authorization: BearerAuth
+    accessToken: "YOUR BEARER TOKEN",
+  });
+  const api = new EmploymentApi(config);
+
+  const body = {
+    // string | Tenant-scoped durable employment relationship UUID
+    relationshipId: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string | Same key and canonical request hash replay the prior outcome; divergent reuse conflicts.
+    idempotencyKey: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string
+    xCorrelationID: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // EvaluateRelationshipOfferabilityRequest
+    evaluateRelationshipOfferabilityRequest: ...,
+  } satisfies EvaluateRelationshipOfferabilityOperationRequest;
+
+  try {
+    const data = await api.evaluateRelationshipOfferability(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+| Name                                        | Type                                                                                  | Description                                                                              | Notes                     |
+| ------------------------------------------- | ------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ------------------------- |
+| **relationshipId**                          | `string`                                                                              | Tenant-scoped durable employment relationship UUID                                       | [Defaults to `undefined`] |
+| **idempotencyKey**                          | `string`                                                                              | Same key and canonical request hash replay the prior outcome; divergent reuse conflicts. | [Defaults to `undefined`] |
+| **xCorrelationID**                          | `string`                                                                              |                                                                                          | [Defaults to `undefined`] |
+| **evaluateRelationshipOfferabilityRequest** | [EvaluateRelationshipOfferabilityRequest](EvaluateRelationshipOfferabilityRequest.md) |                                                                                          |                           |
+
+### Return type
+
+[**RelationshipOfferabilityDecision**](RelationshipOfferabilityDecision.md)
+
+### Authorization
+
+[BearerAuth](../README.md#BearerAuth)
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`, `application/problem+json`
+
+### HTTP response details
+
+| Status code | Description                                             | Response headers |
+| ----------- | ------------------------------------------------------- | ---------------- |
+| **200**     | Evidence-backed offerability decision                   | -                |
+| **400**     | Request body failed validation                          | -                |
+| **401**     | JWT missing, expired, or invalid                        | -                |
+| **403**     | Founder role is required                                | -                |
+| **404**     | Resource not found (or not accessible to this tenant)   | -                |
+| **409**     | Idempotency key was reused with changed material intent | -                |
+| **423**     | Constitutional authorization denied                     | -                |
+| **503**     | WBE or Constitutional Engine outcome is unavailable     | -                |
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 

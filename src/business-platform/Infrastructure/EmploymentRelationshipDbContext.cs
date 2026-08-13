@@ -226,6 +226,24 @@ public sealed class ActivationIntent
     public DateTimeOffset? CompletedAt { get; set; }
 }
 
+public sealed class OfferabilityDecisionRecord
+{
+    public Guid DecisionId { get; init; } = Guid.NewGuid();
+    public Guid TenantId { get; init; }
+    public Guid RelationshipId { get; init; }
+    public Guid IdempotencyKey { get; init; }
+    public string MaterialRequestHash { get; init; } = string.Empty;
+    public int RelationshipStateVersion { get; init; }
+    public string PolicyVersion { get; init; } = string.Empty;
+    public string Disposition { get; init; } = string.Empty;
+    public decimal DirectContributionAmount { get; init; }
+    public string OwnerVersionsJson { get; init; } = "{}";
+    public string ReasonsJson { get; init; } = "[]";
+    public Guid EvidenceId { get; init; }
+    public DateTimeOffset ProducedAt { get; init; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset ExpiresAt { get; init; }
+}
+
 public sealed class RelationshipTrialBinding
 {
     public Guid BindingId { get; init; } = Guid.NewGuid();
@@ -370,6 +388,7 @@ public sealed class EmploymentRelationshipDbContext : DbContext
     public DbSet<EmploymentContractVersion> EmploymentContractVersions => Set<EmploymentContractVersion>();
     public DbSet<ContractAcceptance> ContractAcceptances => Set<ContractAcceptance>();
     public DbSet<ActivationIntent> ActivationIntents => Set<ActivationIntent>();
+    public DbSet<OfferabilityDecisionRecord> OfferabilityDecisions => Set<OfferabilityDecisionRecord>();
     public DbSet<RelationshipTrialBinding> RelationshipTrialBindings => Set<RelationshipTrialBinding>();
     public DbSet<WhatsAppJourneyContact> WhatsAppJourneyContacts => Set<WhatsAppJourneyContact>();
     public DbSet<WhatsAppMessageReceipt> WhatsAppMessageReceipts => Set<WhatsAppMessageReceipt>();
@@ -480,6 +499,31 @@ public sealed class EmploymentRelationshipDbContext : DbContext
             entity.Property(value => value.CompletedAt).HasColumnName("completed_at");
             entity.HasOne<EmploymentRelationship>()
                 .WithMany()
+                .HasForeignKey(value => new { value.TenantId, value.RelationshipId })
+                .HasPrincipalKey(value => new { value.TenantId, value.RelationshipId });
+        });
+
+        modelBuilder.Entity<OfferabilityDecisionRecord>(entity =>
+        {
+            entity.ToTable("offerability_decisions", "business");
+            entity.HasKey(value => value.DecisionId);
+            entity.HasIndex(value => new { value.TenantId, value.RelationshipId, value.ProducedAt });
+            entity.HasIndex(value => new { value.TenantId, value.RelationshipId, value.IdempotencyKey }).IsUnique();
+            entity.Property(value => value.DecisionId).HasColumnName("decision_id");
+            entity.Property(value => value.TenantId).HasColumnName("tenant_id");
+            entity.Property(value => value.RelationshipId).HasColumnName("relationship_id");
+            entity.Property(value => value.IdempotencyKey).HasColumnName("idempotency_key");
+            entity.Property(value => value.MaterialRequestHash).HasColumnName("material_request_hash");
+            entity.Property(value => value.RelationshipStateVersion).HasColumnName("relationship_state_version");
+            entity.Property(value => value.PolicyVersion).HasColumnName("policy_version");
+            entity.Property(value => value.Disposition).HasColumnName("disposition");
+            entity.Property(value => value.DirectContributionAmount).HasColumnName("direct_contribution_amount");
+            entity.Property(value => value.OwnerVersionsJson).HasColumnName("owner_versions_json").HasColumnType("jsonb");
+            entity.Property(value => value.ReasonsJson).HasColumnName("reasons_json").HasColumnType("jsonb");
+            entity.Property(value => value.EvidenceId).HasColumnName("evidence_id");
+            entity.Property(value => value.ProducedAt).HasColumnName("produced_at");
+            entity.Property(value => value.ExpiresAt).HasColumnName("expires_at");
+            entity.HasOne<EmploymentRelationship>().WithMany()
                 .HasForeignKey(value => new { value.TenantId, value.RelationshipId })
                 .HasPrincipalKey(value => new { value.TenantId, value.RelationshipId });
         });

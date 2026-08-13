@@ -55,13 +55,14 @@ Institutions in the engineering governance domain are referred to as "Offices" i
 | **Domain Label** | Office (Constitutional) |
 | **Domain** | Constitutional Governance |
 | **Status** | OPERATIONAL |
-| **Decision Space** | Institutional knowledge: claim production, confidence assessment, relationship mapping, contradiction detection, graduation recommendations |
-| **Offering Scope** | Claim production · Readiness Audit · Evidence Validation · Goal Journey contribution (constitutional analysis) |
+| **Decision Space** | Institutional knowledge: claim production, confidence assessment, relationship mapping, contradiction detection, graduation recommendations. **WC-065 amendment (FA-044, expires at WC-065 closure):** legal basis, grandfathering, remedy, recipient/redaction, payload erasure, and retention determinations for WC-065 PDR-065-07 only, using approved legal source documents and applicable authoritative law, preserving all constitutional floors, recording ambiguity as unresolved, and requiring Founder-directed qualified external counsel where authoritative legal support is insufficient. |
+| **Offering Scope** | Claim production · Readiness Audit · Evidence Validation · Goal Journey contribution (constitutional analysis). **WC-065 amendment:** Owner-attributed legal/privacy Contribution Record for GOAL-005/WC-065 PDR-065-07 exactly — legal basis, grandfathering, remedy, recipient/redaction, payload erasure, and retention. |
 | **Charter Date** | 2026-07-06 |
 | **Operational Since** | 2026-07-06 |
+| **Amendment** | FA-044 — WC-065 legal/privacy bounded authority added 2026-08-13; expires at WC-065 closure; effective only after independent approval and Founder ratification |
 | **Reviewer** | Enterprise Architect (INST-004) · Founder (INST-001) |
 | **ORGANIZATION.md Reference** | Office 02 |
-| **Independence Note** | When INST-002 participates in a Goal Journey as a contributing Institution, a separate CA instance or INST-001 must perform Stage G-6 Evidence Validation for that Goal (G-02) |
+| **Independence Note** | When INST-002 participates in a Goal Journey as a contributing Institution, a separate INST-002 context or INST-001 must perform Stage G-6 Evidence Validation for that Goal (G-02). The INST-002 context that produces the WC-065 legal/privacy Contribution Record is ineligible to perform the final WC-065 Constitutional readiness review; a separate INST-002 context or INST-001 must perform that review. |
 
 ---
 
