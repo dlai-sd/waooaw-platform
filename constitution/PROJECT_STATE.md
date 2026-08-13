@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 66
+**State Revision:** 67
 **Last Updated:** 2026-08-13
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -19,11 +19,11 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Gate | G5 CLEAR — prerequisites met; not session implementation authority |
 | Engineering status | IMPLEMENTATION |
 | Platform version | 1.45.0 |
-| Latest completed Work Contract | WC-062 — WC-034 F6 Voice Interaction |
-| Latest merge | PR #277 merged to `main` as `e9a1150`; delivery report advanced `main` to `aca51ea` |
-| Active delivery | WC-065 implementation under GOA-GOAL-005-INST-010-09 / ACC-GOAL-005-INST-010-09 |
+| Latest completed Work Contract | WC-065 — Founder Offerability And Commercial Composition |
+| Latest merge | PR #278 merged to `main` as `f28badc` on 2026-08-13 |
+| Active delivery | None — WC-066 evidence collection is next; grooming and implementation remain unauthorized |
 
-## Active Checkpoint — WC-065 Founder Offerability And Commercial Composition
+## Active Checkpoint — WC-065 Delivery Closure
 
 | Milestone | Status |
 |---|---|
@@ -36,14 +36,15 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Final package review and acknowledgement | DONE — R-105 READY; ACK-GOAL-005-INST-001-14 recorded at 2026-08-13T05:08:55Z |
 | Fresh implementation confirmation | DONE — FA-048 authorizes WC-065 for the current session |
 | Implementation GOA / Acceptance | VALID — GOA-09 at 2026-08-13T05:10:51Z; ACC-09 at 2026-08-13T05:11:16Z |
-| WC065-01 through WC065-07 implementation | PR-READY — WBE financial truth, authenticated BP orchestration, evidence-first idempotent persistence, activation guard, generated Founder experience, migration proof, and independent implementation review complete |
+| WC065-01 through WC065-07 implementation | DONE — PR #278 merged to `main` as `f28badc` after Founder approval |
+| Post-merge verification | PASS — merged tree matched reviewed head; BP 349/349, WBE 402 passed with 2 harness-only skips, web 110/110 with clean lint/build; PM delivery report workflow succeeded |
 | WC-066 through WC-069 | EVIDENCE-GATED — no detailed grooming or implementation authorized |
 
 ### Closure Context
 
-- **Delivery branch:** `wc/065/implementation-authorization`.
+- **Delivered branch:** `wc/065/implementation-authorization`; merged by PR #278 as `f28badc`.
 - **Authority:** GEP-GOAL-005-INST-013-15, R-101/R-102 reuse, ACK-GOAL-005-INST-001-13, and the Founder-set USD 40 dispatch ceiling.
-- **Validation:** Docker-only regression passes: BP 349/349, WBE 402 passed with 2 documented harness-only skips, and web 110/110 with clean lint and production build. OpenAPI validation, generated-client regeneration, PostgreSQL RLS/append-only/concurrent-idempotency integration, Python lint, and affected-surface coverage checks pass.
+- **Validation:** Docker-only post-merge regression passes: BP 349/349, WBE 402 passed with 2 documented harness-only skips, and web 110/110 with clean lint and production build. OpenAPI validation, generated-client regeneration, PostgreSQL RLS/append-only/concurrent-idempotency integration, Python lint, and affected-surface coverage checks pass.
 - **Independent review:** concurrency, contract-status, UI retry, durable changed-intent, and lock-lifecycle findings were corrected and revalidated. Residual: after CE evidence succeeds but BP loses its local commit, exact terminal reconstruction still depends on retry-time CE authorization because the current CE contract exposes no evidence read; duplicate evidence is prevented and the path fails closed.
 - **Protected local artifacts:** `.coverage`, `goals/goal_register.jsonl`, `logs/blueprint_assurance_report.json`, and `logs/bootstrap-evidence.jsonl` are unrelated and must remain unstaged.
 - **Authorization evidence:** `goals/GOAL-005-wc065-implementation-authorization-package.md` and R-103.
@@ -64,8 +65,10 @@ FA-047 close all seven protected decisions; R-105 finds the exact package READY.
 
 ## Next Authorized Action
 
-Founder reviews the unmerged WC-065 implementation PR. Do not activate policy/providers, deploy,
-self-approve, self-merge, or groom WC-066 through WC-069.
+Product Owner and Goal Orchestrator collect representative real WC-065 decisions, carried employment
+envelopes, stale/unavailable outcomes, disclosures, and exception evidence for the WC-066 grooming
+trigger. Do not groom or implement WC-066, activate policy/providers, deploy, or advance WC-067
+through WC-069 until their evidence gates and complete authorization chains close.
 
 ## History And Evidence
 
@@ -86,6 +89,8 @@ self-approve, self-merge, or groom WC-066 through WC-069.
 - WC-062 implementation evidence and independent acceptance:
   `goals/GOAL-005-wc062-implementation-evidence.md` and R-096/R-097/R-098.
 - WC-062 delivery closure: PR #273 merged by the Founder to `main` as `1a624d6` on 2026-08-12.
+- WC-065 delivery closure: PR #278 merged by the Founder to `main` as `f28badc` on 2026-08-13;
+  post-merge Docker regression and the PM delivery report passed.
 - Founder Commercial Governance formalization: PR #275 merged by the Founder to `main` as
   `2276ab2` on 2026-08-12; WC-064 remains ready for owner routing.
 - Earlier completed work remains authoritative in its owning Work Contract, Goal, review,

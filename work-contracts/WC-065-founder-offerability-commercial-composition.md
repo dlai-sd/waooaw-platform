@@ -3,7 +3,7 @@
 **Program:** WC-064 — Founder Commercial Governance Program Design
 **Iteration:** 1
 **Successor scope:** Carries the offerability portion of WC-063 intent; WC-064 must still retain, relocate, defer, or reject every remaining WC-063 capability
-**Status:** IMPLEMENTATION-READY SPECIFICATION — PROTECTED DECISIONS AND IMPLEMENTATION AUTHORIZATION GATED
+**Status:** DONE — IMPLEMENTED, INDEPENDENTLY REVIEWED, AND MERGED BY PR #278 AS `f28badc`
 **Primary outcome owners:** Product Owner (INST-011) + Business Architect (INST-003)
 **Required design owners:** INST-004, INST-005, INST-006, INST-007, INST-002
 **Implementation office:** INST-010 only after a future complete implementation gate
@@ -16,8 +16,8 @@
 | Execution controls | `goals/GOAL-005-wc064-execution-record.md` / ER-GOAL-005-INST-013-WC064-01 |
 | Contribution Envelope | CE-GOAL-005-WC064-01 |
 | Owner contributions | INST-011 CR-11; INST-003 CR-09; INST-004 CR-14; INST-005 CR-16; INST-006 CR-06; INST-007 CR-09; INST-010 CR-08; INST-002 CR-20 |
-| Review state | Pending fresh integrated INST-004 and fresh Constitutional INST-002 verdicts on one hash-pinned package |
-| Implementation state | UNAUTHORIZED; no task below is executable |
+| Review state | COMPLETE — R-103/R-105 readiness and independent implementation review completed |
+| Implementation state | DELIVERED — WC065-01 through WC065-07 merged to `main` on 2026-08-13 |
 
 The baseline fixes behavior, ownership, dependencies, failure outcomes, data and evidence meaning,
 security obligations, compatibility consequences, acceptance scenarios, and verification scope.
@@ -251,7 +251,7 @@ affected-surface line coverage. No test is executed by this specification sprint
 These decisions are preserved, not delegated to INST-013 or implementation. They do not justify
 detailed grooming of WC-066 through WC-069.
 
-## Activation Gate
+## Activation Gate — Closed Historical Record
 
 No implementation task is executable until:
 
@@ -267,5 +267,7 @@ No implementation task is executable until:
   to the approved behavior, owner-contract, Data and Security specifications above.
 7. Independent implementation review remains separate from execution under C-065.
 
-Until all seven items close, this is an implementation-ready specification and nothing more.
-WC-066 through WC-069 remain outcome-and-boundary records gated by real earlier-iteration evidence.
+All seven items closed before implementation under GOA-GOAL-005-INST-010-09 and the later
+ACC-GOAL-005-INST-010-09. PR #278 merged the independently reviewed implementation to `main` as
+`f28badc` on 2026-08-13. WC-066 through WC-069 remain outcome-and-boundary records gated by real
+earlier-iteration evidence; WC-065 delivery does not authorize their grooming or implementation.
