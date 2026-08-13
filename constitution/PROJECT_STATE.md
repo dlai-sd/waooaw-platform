@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 67
+**State Revision:** 68
 **Last Updated:** 2026-08-13
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -21,9 +21,9 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Platform version | 1.45.0 |
 | Latest completed Work Contract | WC-065 — Founder Offerability And Commercial Composition |
 | Latest merge | PR #278 merged to `main` as `f28badc` on 2026-08-13 |
-| Active delivery | None — WC-066 evidence collection is next; grooming and implementation remain unauthorized |
+| Active delivery | WC-066 evidence gate assessment; grooming and implementation remain unauthorized |
 
-## Active Checkpoint — WC-065 Delivery Closure
+## Active Checkpoint — WC-066 Evidence Gate
 
 | Milestone | Status |
 |---|---|
@@ -38,7 +38,8 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Implementation GOA / Acceptance | VALID — GOA-09 at 2026-08-13T05:10:51Z; ACC-09 at 2026-08-13T05:11:16Z |
 | WC065-01 through WC065-07 implementation | DONE — PR #278 merged to `main` as `f28badc` after Founder approval |
 | Post-merge verification | PASS — merged tree matched reviewed head; BP 349/349, WBE 402 passed with 2 harness-only skips, web 110/110 with clean lint/build; PM delivery report workflow succeeded |
-| WC-066 through WC-069 | EVIDENCE-GATED — no detailed grooming or implementation authorized |
+| WC-066 evidence sufficiency | BLOCKED — merged mechanisms and synthetic proofs exist, but no Product-selected real active-employment sample satisfies the first-grooming trigger |
+| WC-067 through WC-069 | EVIDENCE-GATED — no detailed grooming or implementation authorized |
 
 ### Closure Context
 
@@ -48,6 +49,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 - **Independent review:** concurrency, contract-status, UI retry, durable changed-intent, and lock-lifecycle findings were corrected and revalidated. Residual: after CE evidence succeeds but BP loses its local commit, exact terminal reconstruction still depends on retry-time CE authorization because the current CE contract exposes no evidence read; duplicate evidence is prevented and the path fails closed.
 - **Protected local artifacts:** `.coverage`, `goals/goal_register.jsonl`, `logs/blueprint_assurance_report.json`, and `logs/bootstrap-evidence.jsonl` are unrelated and must remain unstaged.
 - **Authorization evidence:** `goals/GOAL-005-wc065-implementation-authorization-package.md` and R-103.
+- **WC-066 evidence assessment:** `goals/GOAL-005-wc066-evidence-sample.md`; synthetic proofs are not customer evidence.
 
 ## Authorization Boundary
 
@@ -59,16 +61,15 @@ and independent implementation review.
 
 ## Current Blockers
 
-No institutional routing blocker is open. CB-005 is RESOLVED through R-104, FA-045, and exact
-mechanical application of the bounded Office 02 and INST-002 registry amendment. FA-046 and
-FA-047 close all seven protected decisions; R-105 finds the exact package READY.
+No constitutional defect is open. The WC-066 evidence gate is unsatisfied by design: Product has
+not selected representative real active-employment cases, and the required outcome/resource/
+participation/provider observations are not present in repository evidence.
 
 ## Next Authorized Action
 
-Product Owner and Goal Orchestrator collect representative real WC-065 decisions, carried employment
-envelopes, stale/unavailable outcomes, disclosures, and exception evidence for the WC-066 grooming
-trigger. Do not groom or implement WC-066, activate policy/providers, deploy, or advance WC-067
-through WC-069 until their evidence gates and complete authorization chains close.
+Product Owner selects the six real case classes and resolves calculated-risk applicability listed
+in `goals/GOAL-005-wc066-evidence-sample.md`; Goal Orchestrator then assembles an independently
+reviewable, minimised sample. Do not groom or implement WC-066 until that gate closes.
 
 ## History And Evidence
 
