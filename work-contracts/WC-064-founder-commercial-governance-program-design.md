@@ -8,7 +8,7 @@
 **Independent readiness reviewer:** Constitutional Analyst (INST-002)
 **Selected by:** Founder instruction, 2026-08-12, as the design and grooming scope
 **Routing readiness:** R-099 / CR-GOAL-005-INST-002-18 APPROVED; ACK-GOAL-005-INST-001-12 recorded
-**Status:** INTEGRATED DESIGN COMPLETE; INDEPENDENT REVIEWS IN PROGRESS; IMPLEMENTATION UNAUTHORIZED
+**Status:** DESIGN AND GROOMING COMPLETE; R-101/R-102 APPROVED; IMPLEMENTATION UNAUTHORIZED
 **Constitutional basis:** C-002, C-005, C-007, C-023, C-038, C-043, C-048, C-049, C-051, C-056, C-059, C-064, C-065, C-076, C-088, C-089, C-090, C-091
 
 ## Outcome
@@ -171,7 +171,7 @@ verdict. INST-013 coordinates attribution and routing but gains no review author
 | WC064-05 | Produce Order 8 constitutional owner contribution, separate from final readiness review. | DONE — fresh INST-002 CR-20 |
 | WC064-06 | Publish the integrated design spine and classify every capability NOW, NEXT, LATER, or REJECT. | DONE — GEP-GOAL-005-INST-013-14 |
 | WC064-07 | Refine WC-065 to implementation-ready grooming depth while leaving WC-066 through WC-069 at outcome-and-boundary depth. | DONE — WC-065 specification baseline |
-| WC064-08 | Obtain independent integrated EA approval and final Constitutional readiness, then record the next authorized action without issuing implementation authority. | pending |
+| WC064-08 | Obtain independent integrated EA approval and final Constitutional readiness, then record the next authorized action without issuing implementation authority. | DONE — R-101 and R-102 APPROVED; next action is delivery PR only |
 
 ## Detailed Design Activities
 

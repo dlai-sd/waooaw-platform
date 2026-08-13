@@ -208,9 +208,9 @@ All three authorizations consume the approved Phase 1 through Phase 3 baseline a
 | CL-064-09 | INST-010 | M2 | Implementation-reality contribution + Learning Record | CL-064-05, CL-064-06 | SATISFIED | ACC/CR/LR-GOAL-005-INST-010-08 | Read-only evidence, reuse inventory, and no-execution checks passed |
 | CL-064-10 | fresh INST-002 | M2 | Constitutional owner contribution + Learning Record | CL-064-03..09 | SATISFIED | ACC-13 / CR-20 / LR-08, INST-002 | Fresh-context, floor, authority, and no-final-verdict checks passed |
 | CL-064-11 | INST-013 | M1 | Integrated program design and WC-065 package | CL-064-03..10 | SATISFIED | GEP-GOAL-005-INST-013-14 + WC-065 baseline | Deterministic package validation passed |
-| CL-064-12 | fresh INST-004 | M3 | Independent integrated EA verdict | CL-064-11 | PENDING | - | Protected independent review |
-| CL-064-13 | fresh INST-002 | M3 | Independent Constitutional readiness verdict | CL-064-12 | PENDING | - | Protected independent review |
-| CL-064-14 | INST-013 | M1 | Closure evidence, dependency report, next authority boundary | CL-064-12, CL-064-13 | PENDING | - | Ledger closure check |
+| CL-064-12 | fresh INST-004 | M3 | Independent integrated EA verdict | CL-064-11 | SATISFIED | R-101 final bounded reconfirmation: APPROVED | Exact-package hashes and finding closure verified |
+| CL-064-13 | fresh INST-002 | M3 | Independent Constitutional readiness verdict | CL-064-12 | SATISFIED | R-102: APPROVED | Full-baseline constitutional review and hash verification passed |
+| CL-064-14 | INST-013 | M1 | Closure evidence, dependency report, next authority boundary | CL-064-12, CL-064-13 | SATISFIED | This closure record + WC-064/WC-065 state | Ledger complete; implementation boundary remains closed |
 
 ## Budget State
 
@@ -243,14 +243,16 @@ No cost state changes an obligation status or permits completion by exhaustion.
 | D-064-11 | Constitutional owner contribution | Deterministic validation passed | `$2.50` | None |
 | D-064-12 | Fresh integrated EA review | R-101 `APPROVED WITH NOTES`; two bounded record-state repairs required | `$2.50` | Repair in active INST-013 context; reviewer confirmation required |
 | D-064-13 | R-101 bounded confirmation within D-064-12 | `REJECT`; WC064-05/WC064-08 wording remained ambiguous | `$0.00` | Second M1 wording repair in active INST-013 context; no new dispatch |
+| D-064-14 | R-101 final reconfirmation within D-064-12 | `APPROVED`; all 14 hashes and both findings closed without drift | `$0.00` | None; existing review dispatch completed |
+| D-064-15 | Fresh Constitutional readiness review | R-102 `APPROVED`; all 14 hashes and constitutional gates verified | `$2.50` | None; mandatory final review completed |
 
 The execution environment exposes no provider invoice. To fail conservatively, each dispatched
-context reserves `$2.50` against the ceiling until reconciled. Current accounted use is `$27.50`.
-EA confirmation plus fresh CA review forecasts `$32.50`, so budget state is
-`STOP_AND_CONSOLIDATE`. No new owner or repair context may be dispatched. The exact bounded repair
-is consolidated into the already-dispatched R-101 review for confirmation; only the mandatory
-fresh CA review remains eligible after confirmation. Forecast remains below the `$40.00` ceiling,
-but any further context requires a Founder budget decision.
+context reserves `$2.50` against the ceiling until reconciled. Final accounted use is `$30.00`.
+The pre-review forecast of `$32.50` activated `STOP_AND_CONSOLIDATE`; consolidation kept both R-101
+confirmations inside D-064-12 at zero additional debit. The stop state remains binding: no new
+owner, repair, or review context may be dispatched, and any further context requires a Founder
+budget decision. Closure in the existing INST-013 context adds no debit and does not weaken any
+obligation or authority boundary.
 
 ### R-101 Bounded Repair Record
 
@@ -259,9 +261,20 @@ but any further context requires a Founder budget decision.
 | F-101-01 stale WC-064 header | M1 ministerial state correction | Status now reflects accepted contributions and integrated design while retaining implementation prohibition | No owner, policy, architecture, acceptance, package-boundary, or risk change |
 | F-101-02 ledger/task ambiguity | M1 ministerial state correction | CL-064-11 closed against existing evidence; WC064-05 closes only the owner contribution; WC064-08 explicitly carries independent EA approval and final Constitutional readiness | No protected verdict changed; R-101 confirmation and fresh CA review remain required |
 
-The initial manifest is superseded for review by the repaired package manifest. R-101 remains the
-independent full-baseline review evidence and must confirm only that these exact notes were
-addressed without design drift.
+MAN-GOAL-005-INST-013-WC064-03 supersedes the initial manifests. R-101 and R-102 independently
+verified all 14 hashes at package commit `6c2fa94187d454b751faac3407a038299e303fd6` and approved the
+same complete baseline. Closure changes only task, ledger, budget, and delivery state; they change
+no owner decision, policy, architecture, acceptance meaning, package boundary, risk, WC-065
+activation gate, or WC-066 through WC-069 evidence gate.
+
+## Closure And Next Authority Boundary
+
+WC-064 design and grooming are complete. WC-065 is implementation-ready only in the specification
+sense and remains unauthorized until every activation condition in that Work Contract is
+separately satisfied. WC-066 through WC-069 remain evidence-gated and unimplemented. The only
+authorized delivery action is to publish this governance package in one unmerged PR for Founder
+and constitutional review; this closure grants no implementation, policy activation, provider,
+deployment, live-configuration, PR approval, merge, or self-review authority.
 
 ## Initial Dependency Impact
 

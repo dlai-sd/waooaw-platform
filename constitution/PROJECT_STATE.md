@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 47
+**State Revision:** 48
 **Last Updated:** 2026-08-13
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -21,7 +21,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Platform version | 1.45.0 |
 | Latest completed Work Contract | WC-062 — WC-034 F6 Voice Interaction |
 | Latest merge | PR #275 merged to `main` as `2276ab2` |
-| Active delivery | WC-064 received R-101 approval with notes; bounded repair and STOP_AND_CONSOLIDATE recorded; WC-065 remains authorization-gated; WC-070 remains ratified in open unmerged PR #276 |
+| Active delivery | WC-064 design and WC-065 grooming complete under R-101/R-102 approval; delivery PR pending; WC-065 remains authorization-gated; WC-070 remains ratified in open unmerged PR #276 |
 
 ## Active Checkpoint — WC-064 Founder Commercial Governance Program Design
 
@@ -33,21 +33,21 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Integrated program design | DONE — GEP-GOAL-005-INST-013-14 published with decision/concept/ownership/policy/dependency catalogues |
 | WC-065 detailed grooming | DONE — implementation-ready specification; protected policy and implementation gates remain closed |
 | Deterministic validation | DONE — record sequence, required-section, boundary, formatting, and package checks passed |
-| Fresh integrated EA review | PENDING — R-101 bounded confirmation rejected one remaining milestone ambiguity; second M1 wording repair applied, exact-package reconfirmation required |
-| Budget control | STOP_AND_CONSOLIDATE — `$27.50` accounted; EA confirmation plus mandatory CA review forecasts `$32.50`; no new owner or repair context |
-| Fresh Constitutional readiness | PENDING — begins only after EA approval |
+| Fresh integrated EA review | DONE — R-101 final bounded reconfirmation APPROVED package commit `6c2fa94`; all findings closed without drift |
+| Budget control | STOP_AND_CONSOLIDATE — `$30.00` final accounted use; no new owner, repair, or review context |
+| Fresh Constitutional readiness | DONE — R-102 APPROVED the same exact package; no implementation authority granted |
 | WC-066 through WC-069 | EVIDENCE-GATED — no detailed grooming or implementation authorized |
-| Delivery PR | PENDING — one unmerged PR after independent approvals |
+| Delivery PR | PENDING — one unmerged PR is the only remaining delivery action |
 | WC-070 dependency | RATIFIED/ACTIVE — PR #276 remains open and Founder-only merge is required |
 | Implementation authorization | NOT REQUESTED — no iteration is implementation-authorized |
 
 ### Closure Context
 
-- **Delivered branch:** `wc/062/implementation`; full head `d05ad67` is contained in merge commit `1a624d6`.
-- **Authority:** FA-043, GEP-GOAL-005-INST-013-12, GOA-GOAL-005-INST-010-07, and ACC-GOAL-005-INST-010-07.
-- **Validation:** AIR 11/11 at 94.70%; PR 14/14 at 90.05%; repaired BP voice 19/19 with 94.44% aggregate affected coverage; BP non-Testcontainers regression 301/301; PostgreSQL 16 Migration 23 scoped-FK and forced-RLS validation passed; web 107/107, affected web coverage above 95%, strict TypeScript/lint/build passed; dedicated voice Playwright matrix 14 passed with 6 intentional project skips across five browser/viewport projects. Legacy Migration 22 Testcontainers collection is blocked only by nested Docker socket permissions.
+- **Delivery branch:** `wc/064/program-design-vnext`; one unmerged PR remains pending.
+- **Authority:** Founder-selected WC-064 design/grooming scope, R-099, ACK-12, CE-GOAL-005-WC064-01, eight accepted owner contributions, R-101, and R-102.
+- **Validation:** all 14 package hashes verified independently by R-101 and R-102 at `6c2fa94`; deterministic record-sequence, required-section, boundary, formatting, package, and editor-diagnostic checks passed. No implementation tests were authorized or run.
 - **Protected local artifacts:** `.coverage`, `goals/goal_register.jsonl`, `logs/blueprint_assurance_report.json`, and `logs/bootstrap-evidence.jsonl` are unrelated and must remain unstaged.
-- **Implementation evidence:** `goals/GOAL-005-wc062-implementation-evidence.md`; independent approvals R-096, R-097, and R-098.
+- **Design evidence:** `goals/GOAL-005-wc064-execution-record.md`, `goals/GOAL-005-wc064-program-design.md`, `goals/GOAL-005-wc064-review-manifest.md`, WC-065, R-101, and R-102.
 
 ## Authorization Boundary
 
@@ -65,10 +65,9 @@ activation gates, not inferred defaults. WC-070 is ratified and active; PR #276 
 
 ## Next Authorized Action
 
-Repin the bounded WC-064 repair, obtain R-101 exact-package confirmation within the dispatched
-review, then obtain the mandatory fresh Constitutional readiness verdict and open one unmerged
-delivery PR. Do not dispatch another owner or repair context, begin WC-065 through WC-069
-implementation, or issue implementation authority.
+Commit and push the WC-064 closure evidence, then open one unmerged delivery PR for Founder and
+constitutional review. Do not dispatch another context, begin WC-065 through WC-069
+implementation, issue implementation authority, approve the PR, or merge it.
 
 ## History And Evidence
 
