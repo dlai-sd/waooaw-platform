@@ -44,6 +44,22 @@ locals {
   }
 }
 
+resource "azurerm_user_assigned_identity" "member" {
+  for_each = local.release_members
+
+  name                = "id-${var.environment}-${each.key}"
+  location            = var.location
+  resource_group_name = var.resource_group_name
+}
+
+resource "azurerm_role_assignment" "member_secret" {
+  for_each = local.release_members
+
+  scope                = var.key_vault_secret_ids[each.key]
+  role_definition_name = "Key Vault Secrets User"
+  principal_id         = azurerm_user_assigned_identity.member[each.key].principal_id
+}
+
 resource "azurerm_container_app" "member" {
   for_each = local.release_members
 
@@ -54,17 +70,17 @@ resource "azurerm_container_app" "member" {
 
   identity {
     type         = "UserAssigned"
-    identity_ids = [var.runtime_identity_id]
+    identity_ids = [azurerm_user_assigned_identity.member[each.key].id]
   }
 
   secret {
     name                = "runtime-reference"
-    identity            = var.runtime_identity_client_id
+    identity            = azurerm_user_assigned_identity.member[each.key].id
     key_vault_secret_id = var.key_vault_secret_ids[each.key]
   }
 
   template {
-    min_replicas = local.minimum_replicas[each.key]
+    min_replicas = var.workload_enabled ? local.minimum_replicas[each.key] : 0
     max_replicas = var.max_replicas
 
     container {

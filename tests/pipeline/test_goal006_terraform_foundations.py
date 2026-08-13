@@ -24,23 +24,29 @@ def read_contract(relative_path: str) -> str:
 
 @pytest.mark.parametrize("environment", ENVIRONMENTS)
 def test_environment_roots_have_isolated_state_and_oidc(environment: str) -> None:
-    contract = read_contract(f"environments/{environment}/main.tf")
+    foundation = read_contract(f"environments/{environment}/foundation/main.tf")
+    workload = read_contract(f"environments/{environment}/workload/main.tf")
 
-    assert f'key = "goal006/{environment}/terraform.tfstate"' in contract
-    assert re.search(rf'environment\s*=\s*"{environment}"', contract)
-    assert 'source               = "../../modules/environment"' in contract
-    assert re.search(r"use_oidc\s*=\s*true", contract)
-    assert re.search(r"use_cli\s*=\s*false", contract)
-    assert "client_secret" not in contract.lower()
+    assert f'key = "goal006/{environment}/foundation.tfstate"' in foundation
+    assert f'key = "goal006/{environment}/workload.tfstate"' in workload
+    assert f'key = "goal006/{environment}/foundation.tfstate"' in workload
+    assert re.search(rf'environment\s*=\s*"{environment}"', foundation)
+    assert 'source                 = "../../../modules/foundation"' in foundation
+    assert 'source = "../../../modules/workload"' in workload
+    for contract in (foundation, workload):
+        assert re.search(r"use_oidc\s*=\s*true", contract)
+        assert re.search(r"use_cli\s*=\s*false", contract)
+        assert "client_secret" not in contract.lower()
 
 
-def test_environment_module_binds_foundation_and_workload() -> None:
-    contract = read_contract("modules/environment/main.tf")
-
-    assert 'source                 = "../foundation"' in contract
-    assert 'source = "../workload"' in contract
-    assert "repository_environment = var.environment" in contract
-    assert "key_vault_secret_ids         = var.key_vault_secret_ids" in contract
+def test_foundation_and_workload_have_distinct_owners() -> None:
+    assert not list((PHASE2_ROOT / "modules" / "environment").glob("*.tf"))
+    for environment in ENVIRONMENTS:
+        foundation = read_contract(f"environments/{environment}/foundation/main.tf")
+        workload = read_contract(f"environments/{environment}/workload/main.tf")
+        assert 'module "workload"' not in foundation
+        assert 'module "foundation"' not in workload
+        assert 'data "terraform_remote_state" "foundation"' in workload
 
 
 def test_workloads_use_exact_six_digests_and_multiple_revision_mode() -> None:
@@ -65,6 +71,18 @@ def test_private_boundaries_and_key_vault_references_are_explicit() -> None:
     assert "secret_value" not in contract
 
 
+def test_each_release_member_has_its_own_identity_and_secret_scope() -> None:
+    contract = read_contract("modules/workload/main.tf")
+
+    assert 'resource "azurerm_user_assigned_identity" "member"' in contract
+    assert 'resource "azurerm_role_assignment" "member_secret"' in contract
+    assert "for_each = local.release_members" in contract
+    assert "azurerm_user_assigned_identity.member[each.key].id" in contract
+    assert "scope                = var.key_vault_secret_ids[each.key]" in contract
+    assert "runtime_identity_id" not in contract
+    assert "runtime_identity_client_id" not in contract
+
+
 def test_foundation_is_private_isolated_and_environment_scoped() -> None:
     contract = read_contract("modules/foundation/main.tf")
 
@@ -81,11 +99,27 @@ def test_foundation_is_private_isolated_and_environment_scoped() -> None:
     assert "internal_load_balancer_enabled = true" in contract
 
 
+def test_network_egress_is_explicitly_fail_closed() -> None:
+    contract = read_contract("modules/foundation/main.tf")
+
+    assert contract.count('name                       = "deny-unapproved-egress"') == 2
+    assert contract.count('priority                   = 4096') == 2
+    assert contract.count('direction                  = "Outbound"') == 3
+    assert contract.count('access                     = "Deny"') == 2
+    assert 'destination_address_prefix = "VirtualNetwork"' in contract
+    assert 'destination_address_prefix = "Internet"' not in contract
+
+
 def test_scale_contract_is_bounded_and_defaults_to_zero() -> None:
     contract = read_contract("modules/workload/variables.tf")
+    prod_root = read_contract("environments/prod/workload/main.tf")
+    prod_variables = read_contract("environments/prod/workload/variables.tf")
 
     assert contract.count("default = 0") == 2
     assert "var.max_replicas > 0 && var.max_replicas <= 10" in contract
+    assert "ce_min_replicas              = var.ce_min_replicas" in prod_root
+    assert "pr_min_replicas              = var.pr_min_replicas" in prod_root
+    assert prod_variables.count("requires an accepted positive owner value") == 2
 
 
 def test_jit_break_glass_requires_separation_expiry_and_evidence() -> None:
@@ -104,6 +138,11 @@ def test_jit_break_glass_requires_separation_expiry_and_evidence() -> None:
     for term in required_terms:
         assert term in contract
     assert "approver_principal_id != var.executor_principal_id" in contract
+    assert 'var.activation_state == "ACTIVE"' in contract
+    assert "var.revoked_at == null" in contract
+    assert "timecmp(var.expires_at, timestamp()) > 0" in contract
+    assert "var.activation_state != \"REVOKED\" || var.revoked_at != null" in contract
+    assert 'output "authority_enabled"' in contract
 
 
 def test_lease_lifecycle_preserves_foundation_and_prohibits_production() -> None:
@@ -114,6 +153,29 @@ def test_lease_lifecycle_preserves_foundation_and_prohibits_production() -> None
         assert term in contract
     assert "protected_foundation_id" in contract
     assert 'contains(["demo", "uat"], var.environment)' in variables
+    assert "timecmp(var.expires_at, timestamp()) > 0" in contract
+    assert 'output "workload_enabled"' in contract
+
+    for environment in ("demo", "uat"):
+        workload = read_contract(f"environments/{environment}/workload/main.tf")
+        assert 'module "lease"' in workload
+        assert "workload_enabled             = module.lease.workload_enabled" in workload
+    assert 'module "lease"' not in read_contract("environments/prod/workload/main.tf")
+
+
+def test_oidc_policy_requires_exact_governed_refs_and_workflows() -> None:
+    policy = json.loads(read_contract("policies/oidc-trust-policy.json"))
+
+    assert policy["repository"] == "dlai-sd/waooaw-platform"
+    assert policy["allowed_environments"] == ["demo", "uat", "prod"]
+    assert policy["allowed_refs"] == ["refs/heads/main"]
+    assert policy["allowed_workflows"] == [
+        ".github/workflows/promote.yaml",
+        ".github/workflows/post-deploy-verify.yaml",
+    ]
+    assert policy["wildcards_allowed"] is False
+    assert all("*" not in value for value in (*policy["allowed_refs"], *policy["allowed_workflows"]))
+    assert policy["enforcement_stage"] == "P2-WC06_WORKFLOW_GATE"
 
 
 def test_edge_and_break_glass_policies_are_fail_closed() -> None:

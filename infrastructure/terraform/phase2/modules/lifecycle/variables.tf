@@ -22,6 +22,23 @@ variable "expires_at" {
   type = string
 }
 
+variable "issued_at" {
+  type = string
+}
+
+variable "lifecycle_state" {
+  type = string
+  validation {
+    condition     = contains(["ACTIVE", "REVOKED"], var.lifecycle_state)
+    error_message = "Lease state must be ACTIVE or REVOKED."
+  }
+}
+
+variable "revoked_at" {
+  type    = string
+  default = null
+}
+
 variable "cost_centre" {
   type = string
 }

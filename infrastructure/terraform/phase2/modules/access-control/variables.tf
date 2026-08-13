@@ -22,6 +22,18 @@ variable "expires_at" {
   type = string
 }
 
+variable "issued_at" {
+  type = string
+}
+
+variable "activation_state" {
+  type = string
+  validation {
+    condition     = contains(["ACTIVE", "REVOKED"], var.activation_state)
+    error_message = "Break-glass state must be ACTIVE or REVOKED."
+  }
+}
+
 variable "revoked_at" {
   type    = string
   default = null

@@ -6,15 +6,11 @@ variable "resource_group_name" {
   type = string
 }
 
+variable "location" {
+  type = string
+}
+
 variable "container_app_environment_id" {
-  type = string
-}
-
-variable "runtime_identity_id" {
-  type = string
-}
-
-variable "runtime_identity_client_id" {
   type = string
 }
 
@@ -54,4 +50,10 @@ variable "max_replicas" {
     condition     = var.max_replicas > 0 && var.max_replicas <= 10
     error_message = "ADR-027 limits each offline workload contract to 10 replicas."
   }
+}
+
+variable "workload_enabled" {
+  type        = bool
+  description = "False after lease expiry or revocation; forces every disposable workload to zero replicas."
+  default     = true
 }

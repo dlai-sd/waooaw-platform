@@ -36,13 +36,6 @@ resource "azurerm_user_assigned_identity" "deployment" {
   tags                = local.tags
 }
 
-resource "azurerm_user_assigned_identity" "runtime" {
-  name                = "id-${local.name}-runtime"
-  location            = azurerm_resource_group.environment.location
-  resource_group_name = azurerm_resource_group.environment.name
-  tags                = local.tags
-}
-
 resource "azurerm_virtual_network" "environment" {
   name                = "vnet-${local.name}"
   location            = azurerm_resource_group.environment.location
@@ -78,6 +71,30 @@ resource "azurerm_network_security_group" "container_apps" {
   location            = azurerm_resource_group.environment.location
   resource_group_name = azurerm_resource_group.environment.name
   tags                = local.tags
+
+  security_rule {
+    name                       = "allow-private-egress"
+    priority                   = 100
+    direction                  = "Outbound"
+    access                     = "Allow"
+    protocol                   = "*"
+    source_port_range          = "*"
+    destination_port_range     = "*"
+    source_address_prefix      = "VirtualNetwork"
+    destination_address_prefix = "VirtualNetwork"
+  }
+
+  security_rule {
+    name                       = "deny-unapproved-egress"
+    priority                   = 4096
+    direction                  = "Outbound"
+    access                     = "Deny"
+    protocol                   = "*"
+    source_port_range          = "*"
+    destination_port_range     = "*"
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+  }
 }
 
 resource "azurerm_network_security_group" "private_endpoints" {
@@ -85,6 +102,18 @@ resource "azurerm_network_security_group" "private_endpoints" {
   location            = azurerm_resource_group.environment.location
   resource_group_name = azurerm_resource_group.environment.name
   tags                = local.tags
+
+  security_rule {
+    name                       = "deny-unapproved-egress"
+    priority                   = 4096
+    direction                  = "Outbound"
+    access                     = "Deny"
+    protocol                   = "*"
+    source_port_range          = "*"
+    destination_port_range     = "*"
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+  }
 }
 
 resource "azurerm_subnet_network_security_group_association" "container_apps" {
@@ -110,7 +139,7 @@ resource "azurerm_key_vault" "environment" {
   name                          = "kv-${local.name}"
   location                      = azurerm_resource_group.environment.location
   resource_group_name           = azurerm_resource_group.environment.name
-  tenant_id                     = azurerm_user_assigned_identity.runtime.tenant_id
+  tenant_id                     = azurerm_user_assigned_identity.deployment.tenant_id
   sku_name                      = "standard"
   enable_rbac_authorization     = true
   purge_protection_enabled      = true
@@ -156,14 +185,10 @@ output "container_app_environment_id" {
   value = azurerm_container_app_environment.environment.id
 }
 
-output "runtime_identity_id" {
-  value = azurerm_user_assigned_identity.runtime.id
-}
-
-output "runtime_identity_client_id" {
-  value = azurerm_user_assigned_identity.runtime.client_id
-}
-
 output "key_vault_id" {
   value = azurerm_key_vault.environment.id
+}
+
+output "location" {
+  value = azurerm_resource_group.environment.location
 }

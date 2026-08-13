@@ -1,0 +1,14 @@
+{
+  "schema_version": "1.0.0",
+  "repository": "dlai-sd/waooaw-platform",
+  "issuer": "https://token.actions.githubusercontent.com",
+  "audience": "api://AzureADTokenExchange",
+  "allowed_environments": ["demo", "uat", "prod"],
+  "allowed_refs": ["refs/heads/main"],
+  "allowed_workflows": [
+    ".github/workflows/promote.yaml",
+    ".github/workflows/post-deploy-verify.yaml"
+  ],
+  "wildcards_allowed": false,
+  "enforcement_stage": "P2-WC06_WORKFLOW_GATE"
+}
