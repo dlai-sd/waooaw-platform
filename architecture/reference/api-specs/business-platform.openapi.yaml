@@ -539,7 +539,8 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/WhatsAppJourneyResponse" }
         "400": { $ref: "#/components/responses/ValidationError" }
-        "403": { $ref: "#/components/responses/Forbidden" }
+        "403":
+          description: Founder role is required
         "409": { $ref: "#/components/responses/Conflict" }
 
   # ─── Employment ───────────────────────────────────────────────────────────
@@ -1022,6 +1023,48 @@ paths:
           description: Relationship is ineligible or canonical activation material conflicts
         "503":
           description: Temporal, constitutional evidence, or WBE activation outcome remains unresolved
+
+  /api/v1/employment/relationships/{relationshipId}/offerability/evaluations:
+    post:
+      tags: [Employment]
+      summary: Evaluate and evidence one Founder offering decision
+      description: |
+        Founder-only. BP sends the proposed offer to authenticated WBE for authoritative
+        cost-floor and margin validation, applies FA-047, records constitutional evidence,
+        and appends a version-pinned decision before returning success. Browser-provided
+        costs and overrides are not accepted. Missing or stale owner truth fails closed.
+      operationId: evaluateRelationshipOfferability
+      parameters:
+        - $ref: "#/components/parameters/RelationshipId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - name: X-Correlation-ID
+          in: header
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EvaluateRelationshipOfferabilityRequest"
+      responses:
+        "200":
+          description: Evidence-backed offerability decision
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RelationshipOfferabilityDecision"
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: Founder role is required
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: Idempotency key was reused with changed material intent
+        "423":
+          description: Constitutional authorization denied
+        "503":
+          description: WBE or Constitutional Engine outcome is unavailable
 
   /api/v1/employment/contracts:
     get:
@@ -3387,6 +3430,38 @@ components:
           schema: { $ref: "#/components/schemas/RelationshipWorkspaceProblemDetailV1" }
 
   schemas:
+
+    EvaluateRelationshipOfferabilityRequest:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, offeringId, agentType, bundleTier, proposedPricePaise]
+      properties:
+        schemaVersion: { type: string, const: "1.0" }
+        offeringId: { type: string, minLength: 1, maxLength: 128 }
+        agentType: { type: string, minLength: 1, maxLength: 50 }
+        bundleTier: { type: string, minLength: 1, maxLength: 20 }
+        proposedPricePaise: { type: integer, format: int64, minimum: 1 }
+
+    RelationshipOfferabilityDecision:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, decisionId, relationshipId, disposition, directContributionPaise, policyVersion, ownerVersions, reasons, evidenceId, producedAt, expiresAt]
+      properties:
+        schemaVersion: { type: string, const: "1.0" }
+        decisionId: { type: string, format: uuid }
+        relationshipId: { type: string, format: uuid }
+        disposition: { type: string, enum: [ALLOW, REVISE, ESCALATE, BLOCK] }
+        directContributionPaise: { type: number }
+        policyVersion: { type: string, const: "FA-047-v1" }
+        ownerVersions:
+          type: object
+          additionalProperties: { type: string }
+        reasons:
+          type: array
+          items: { type: string }
+        evidenceId: { type: string, format: uuid }
+        producedAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time }
 
     ProfessionalDiscoveryResult:
       type: object

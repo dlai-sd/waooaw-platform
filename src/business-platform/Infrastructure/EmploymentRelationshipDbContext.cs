@@ -231,6 +231,8 @@ public sealed class OfferabilityDecisionRecord
     public Guid DecisionId { get; init; } = Guid.NewGuid();
     public Guid TenantId { get; init; }
     public Guid RelationshipId { get; init; }
+    public Guid IdempotencyKey { get; init; }
+    public string MaterialRequestHash { get; init; } = string.Empty;
     public int RelationshipStateVersion { get; init; }
     public string PolicyVersion { get; init; } = string.Empty;
     public string Disposition { get; init; } = string.Empty;
@@ -506,9 +508,12 @@ public sealed class EmploymentRelationshipDbContext : DbContext
             entity.ToTable("offerability_decisions", "business");
             entity.HasKey(value => value.DecisionId);
             entity.HasIndex(value => new { value.TenantId, value.RelationshipId, value.ProducedAt });
+            entity.HasIndex(value => new { value.TenantId, value.RelationshipId, value.IdempotencyKey }).IsUnique();
             entity.Property(value => value.DecisionId).HasColumnName("decision_id");
             entity.Property(value => value.TenantId).HasColumnName("tenant_id");
             entity.Property(value => value.RelationshipId).HasColumnName("relationship_id");
+            entity.Property(value => value.IdempotencyKey).HasColumnName("idempotency_key");
+            entity.Property(value => value.MaterialRequestHash).HasColumnName("material_request_hash");
             entity.Property(value => value.RelationshipStateVersion).HasColumnName("relationship_state_version");
             entity.Property(value => value.PolicyVersion).HasColumnName("policy_version");
             entity.Property(value => value.Disposition).HasColumnName("disposition");

@@ -1,6 +1,8 @@
-// Implements: architecture/reference/ux/wc-034-implementation-decomposition.md §F1 — Experience Foundation
-// Constitutional basis: C-049 (Honest Limitation), C-059 (Implementation Traceability)
+// Implements: WC-065 WC065-05 Founder decision experience
+// Constitutional basis: C-023, C-049, C-059, C-063
 
-import { StateView } from '@/components/system/StateView';
-import { getRequestI18n } from '@/lib/i18n-server';
-export default function FounderHomePage() { const { messages } = getRequestI18n(); return <StateView actionLabel={messages.returnHome} kind="empty" title={messages.founderAdministration} description={messages.founderDescription} />; }
+import { OfferabilityWorkbench } from '@/components/founder/OfferabilityWorkbench';
+
+export default function FounderHomePage() {
+	return <OfferabilityWorkbench />;
+}

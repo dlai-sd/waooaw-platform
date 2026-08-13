@@ -5,6 +5,8 @@ CREATE TABLE IF NOT EXISTS business.offerability_decisions (
     decision_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id UUID NOT NULL,
     relationship_id UUID NOT NULL,
+    idempotency_key UUID NOT NULL,
+    material_request_hash VARCHAR(64) NOT NULL,
     relationship_state_version INTEGER NOT NULL,
     policy_version VARCHAR(64) NOT NULL,
     disposition VARCHAR(16) NOT NULL,
@@ -22,6 +24,9 @@ CREATE TABLE IF NOT EXISTS business.offerability_decisions (
 
 CREATE INDEX IF NOT EXISTS ix_offerability_current
 ON business.offerability_decisions (tenant_id, relationship_id, produced_at DESC);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_offerability_idempotency
+ON business.offerability_decisions (tenant_id, relationship_id, idempotency_key);
 
 ALTER TABLE business.offerability_decisions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE business.offerability_decisions FORCE ROW LEVEL SECURITY;

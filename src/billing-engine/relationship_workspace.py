@@ -24,6 +24,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from config import Settings
 from database import get_session_factory
+from markup.bundle_engine import BundleEngine
 from payment.models import PaidActivationRequest
 from payment.paid_activation import PaidActivationService
 from wallet.service import WalletService
@@ -42,6 +43,15 @@ logger = logging.getLogger(__name__)
 
 class StrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+
+def _camel_alias(field_name: str) -> str:
+    first, *rest = field_name.split("_")
+    return first + "".join(part.capitalize() for part in rest)
+
+
+class CamelStrictModel(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True, alias_generator=_camel_alias)
 
 
 class TrustedContext(Protocol):
@@ -139,6 +149,27 @@ class PaidActivationBody(StrictModel):
     payment_reference: str = Field(min_length=1, max_length=128)
     payment_evidence_id: uuid.UUID
     correlation_id: uuid.UUID
+
+
+class OfferabilityValidationRequest(CamelStrictModel):
+    schema_version: str = Field(pattern=r"^1\.0$")
+    offering_id: str = Field(min_length=1, max_length=128)
+    agent_type: str = Field(min_length=1, max_length=50)
+    bundle_tier: str = Field(min_length=1, max_length=20)
+    proposed_price_paise: int = Field(gt=0)
+
+
+class OfferabilityValidationResult(CamelStrictModel):
+    schema_version: str = Field(pattern=r"^1\.0$")
+    relationship_id: uuid.UUID
+    offering_id: str
+    outcome: Literal["APPROVED", "REJECTED"]
+    cost_floor_paise: int = Field(ge=0)
+    minimum_compliant_price_paise: int = Field(ge=0)
+    proposed_price_paise: int = Field(gt=0)
+    direct_contribution_paise: int
+    validation_version: str = Field(min_length=64, max_length=64)
+    produced_at: datetime
 
 
 @dataclass(frozen=True)
@@ -268,6 +299,29 @@ def _rebind_paid_activation(
         raise ServiceAuthError("SERVICE_AUTHORIZATION_DENIED")
 
 
+def _rebind_offerability_validation(
+    context: DelegatedContext,
+    relationship_id: uuid.UUID,
+    body: OfferabilityValidationRequest,
+) -> None:
+    exact = (
+        context.effective_role == "FOUNDER"
+        and context.purpose == "validateRelationshipOfferability"
+        and context.subject_reference == body.offering_id
+        and context.relationship_id == str(relationship_id)
+        and context.expected_versions == {
+            "agent_type": body.agent_type,
+            "bundle_tier": body.bundle_tier,
+            "offering": body.offering_id,
+            "proposed_price_paise": str(body.proposed_price_paise),
+        }
+        and bool(context.tenant_id)
+        and bool(context.actor_subject)
+    )
+    if not exact:
+        raise ServiceAuthError("SERVICE_AUTHORIZATION_DENIED")
+
+
 @router.get("/{relationship_id}/commercial-projection", response_model=CommercialProjection, response_model_by_alias=True)
 def get_projection(
     relationship_id: uuid.UUID, request: Request, store: CommercialStore = Depends(get_store)
@@ -319,6 +373,63 @@ async def activate_paid_relationship(
         finally:
             await redis_client.aclose()
     return {"subscription_id": str(result.subscription_id), "status": result.status}
+
+
+@router.post(
+    "/{relationship_id}/offerability-validation",
+)
+async def validate_relationship_offerability(
+    relationship_id: uuid.UUID,
+    body: dict[str, object],
+    request: Request,
+) -> dict[str, object]:
+    route = "/internal/v1/relationships/{relationshipId}/offerability-validation"
+    operation = "validateRelationshipOfferability"
+    try:
+        validated_body = OfferabilityValidationRequest.model_validate(body)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="WBE_OFFERABILITY_REQUEST_INVALID") from None
+    payload = validated_body.model_dump(by_alias=True, mode="json")
+    try:
+        context = _authorize(request, route, operation, relationship_id, payload)
+        _rebind_offerability_validation(context, relationship_id, validated_body)
+    except ServiceAuthError as exc:
+        logger.warning("service_auth decision=deny target=billing-engine operation=offerability reason_class=%s", exc.code)
+        raise HTTPException(status_code=401, detail="WBE_OFFERABILITY_UNAUTHORIZED") from None
+
+    session_factory = get_session_factory()
+    try:
+        async with session_factory() as db:
+            validation = await BundleEngine(db).validate_price(
+                validated_body.agent_type,
+                validated_body.bundle_tier,
+                validated_body.proposed_price_paise,
+            )
+    except ValueError:
+        logger.warning("offerability_validation state=unavailable relationship_bound=true")
+        raise HTTPException(status_code=503, detail="WBE_OFFERABILITY_UNAVAILABLE") from None
+
+    version_source = ":".join((
+        validated_body.agent_type,
+        validated_body.bundle_tier,
+        str(validation.cost_floor_paise),
+        str(validation.minimum_compliant_price_paise),
+        str(validation.proposed_price_paise),
+        validation.outcome,
+    ))
+    result = OfferabilityValidationResult(
+        schemaVersion="1.0",
+        relationshipId=relationship_id,
+        offeringId=validated_body.offering_id,
+        outcome=validation.outcome,
+        costFloorPaise=validation.cost_floor_paise,
+        minimumCompliantPricePaise=validation.minimum_compliant_price_paise,
+        proposedPricePaise=validation.proposed_price_paise,
+        directContributionPaise=validation.proposed_price_paise - validation.cost_floor_paise,
+        validationVersion=hashlib.sha256(version_source.encode()).hexdigest(),
+        producedAt=datetime.now(timezone.utc),
+    )
+    return result.model_dump(by_alias=True, mode="json")
 
 
 @router.post("/{relationship_id}/commercial-commands", response_model=CommercialReceipt, response_model_by_alias=True, status_code=202)
