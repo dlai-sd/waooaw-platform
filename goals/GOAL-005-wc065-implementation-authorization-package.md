@@ -11,7 +11,7 @@
 | `produced_at` | 2026-08-13 |
 | Work Contract | WC-065 - Founder Offerability And Commercial Composition |
 | Implementation office | INST-010 only after every Activation Gate condition closes |
-| Current state | R-105 READY AND ACK-GOAL-005-INST-001-14 RECORDED; SEPARATE CURRENT-SESSION IMPLEMENTATION CONSENT PENDING |
+| Current state | FA-048 CURRENT-SESSION IMPLEMENTATION CONSENT RECORDED; IMPLEMENTATION GOA AND LATER ACCEPTANCE PENDING |
 
 ## Authority And Boundary
 
@@ -112,7 +112,7 @@ or INST-010 Acceptance.
 | CL-065-10 | INST-013 | M1 | Exact physical artifact and scoped validation binding | CL-065-03 through CL-065-09 | SATISFIED | BIND-GOAL-005-WC065-01 | Traceability and command checks; no code execution |
 | CL-065-11 | INST-002 | M3 | Fresh readiness review of the complete policy and implementation package | CL-065-10 | SATISFIED | R-105 / CR-GOAL-005-INST-002-24 READY | Independent exact-commit verdict |
 | CL-065-12 | Registrant / INST-001 | M3 | Final hash-pinned package acknowledgement | CL-065-11 | SATISFIED | ACK-GOAL-005-INST-001-14 | Exact-package and exclusion check |
-| CL-065-13 | Founder / INST-001 | M3 | Fresh current-session implementation confirmation | CL-065-12 | BLOCKED | FA-048 reserved | Exact scoped confirmation |
+| CL-065-13 | Founder / INST-001 | M3 | Fresh current-session implementation confirmation | CL-065-12 | SATISFIED | FA-048 at 2026-08-13T05:10:28Z | Exact scoped confirmation |
 | CL-065-14 | INST-013 | M1 | Implementation GOA | CL-065-01 through CL-065-13 | BLOCKED | GOA-GOAL-005-INST-010-09 reserved | Temporal and predecessor-gate check |
 | CL-065-15 | INST-010 | M1 | Temporally later Acceptance | CL-065-14 | BLOCKED | ACC-GOAL-005-INST-010-09 reserved | `acceptance_timestamp` later than `issued_at` |
 | CL-065-16 | Independent reviewers | M3 | Independent implementation review plan remains separate | CL-065-10 | BLOCKED | none | C-065 identity and scope check |
