@@ -11,7 +11,7 @@
 | `produced_at` | 2026-08-13 |
 | Work Contract | WC-065 - Founder Offerability And Commercial Composition |
 | Implementation office | INST-010 only after every Activation Gate condition closes |
-| Current state | OWNER ROUTING AUTHORIZED; BOUNDED INST-002 AMENDMENT RATIFIED; PROTECTED DECISIONS AND IMPLEMENTATION AUTHORITY PENDING |
+| Current state | PARKED - LEGAL/PRIVACY CONTRIBUTION COMPLETE WITH SIX UNRESOLVED FINDINGS; EXTERNAL COUNSEL INPUT REQUIRED |
 
 ## Authority And Boundary
 
@@ -108,7 +108,7 @@ or INST-010 Acceptance.
 | CL-065-06 | Founder | M3 | PDR-065-04 exact verdict | CL-065-R1, CL-065-R2 | BLOCKED | none | Protected-authority record |
 | CL-065-07 | Founder | M3 | PDR-065-05 exact verdict | CL-065-R1, CL-065-R2 | BLOCKED | none | Protected-authority record |
 | CL-065-08 | Founder | M3 | PDR-065-06 exact verdict | CL-065-R1, CL-065-R2 | BLOCKED | none | Protected-authority record |
-| CL-065-09 | Named owners and Founder | M2/M3 | PDR-065-07 owner records and integrated verdict | CL-065-R1, CL-065-R2 | IN_PROGRESS | GOA-GOAL-005-INST-002-14 issued; Acceptance pending | Bounded legal/privacy contribution and all other owner contributions remain required |
+| CL-065-09 | Named owners and Founder | M2/M3 | PDR-065-07 owner records and integrated verdict | CL-065-R1, CL-065-R2 | BLOCKED | ACC-GOAL-005-INST-002-14; CR-GOAL-005-INST-002-23 | Six legal/privacy topics UNRESOLVED; exact facts and Founder-directed qualified external counsel required |
 | CL-065-10 | INST-013 | M1 | Exact physical artifact and scoped validation binding | CL-065-03 through CL-065-09 | BLOCKED | none | Traceability and command checks; no code execution |
 | CL-065-11 | INST-002 | M3 | Fresh readiness review of the complete policy and implementation package | CL-065-10 | BLOCKED | none | Independent full-baseline verdict |
 | CL-065-12 | Registrant / INST-001 | M3 | Final hash-pinned package acknowledgement | CL-065-11 | BLOCKED | ACK-GOAL-005-INST-001-14 reserved | Exact-package and exclusion check |
@@ -160,7 +160,7 @@ deploy, approve or merge a PR, waive independent review, or authorize WC-066 thr
 |---|---|
 | Founder monetary ceiling | USD 40 |
 | `STOP_AND_CONSOLIDATE` threshold | USD 32 (80 percent) |
-| Current state | `WITHIN_BUDGET` - USD 10.00 conservatively accounted |
+| Current state | `WITHIN_BUDGET` - USD 12.50 conservatively accounted |
 | Dispatch boundary | Only Completeness Ledger owner contributions and independent reviews |
 | Required accounting | Record each context, route, result, conservative debit, repair, and escalation |
 | Hard stop | No dispatch at or above USD 32 before consolidation; no spend above USD 40 without a fresh Founder decision |
@@ -176,10 +176,20 @@ protected verdict, review requirement, or implementation gate.
 | D-065-02 | FA-044 CRB amendment draft | Three unfiled drafts rejected for scope, G-10, temporal, and authority defects | USD 2.50 | Repair loop exhausted; no rejected draft entered the constitutional record |
 | D-065-03 | Expert-informed CRB redesign | Valid bounded proposal filed as CR-GOAL-005-INST-CI-001-01 | USD 2.50 | Deterministic G-10, two-surface, temporal-order, expiry, and no-authority checks passed |
 | D-065-04 | Fresh independent amendment review | R-104 / CR-GOAL-005-INST-002-22 `APPROVED` | USD 2.50 | One bounded factual correction removed a false INST-CI-001 registry note without changing substantive findings |
+| D-065-05 | Bounded INST-002 legal/privacy contribution | ACC-GOAL-005-INST-002-14; CR-GOAL-005-INST-002-23; LR-GOAL-005-INST-002-09 | USD 2.50 | All six topics remained UNRESOLVED; no legal conclusion invented; external counsel and exact fact package required |
 
 The environment exposes no provider invoice. USD 2.50 is reserved conservatively for each
-dispatch context. Actual use remains below the USD 32 consolidation threshold. CB-005 stops new
-owner routing independently of budget state.
+dispatch context. Actual use remains below the USD 32 consolidation threshold. The six
+UNRESOLVED legal/privacy findings stop package closure independently of budget state.
+
+## Parked Resume Point
+
+Resume only when the Founder supplies or authorizes preparation of the exact purpose, party,
+contract, recipient, record-taxonomy, jurisdiction/applicability, and change/cohort fact package
+and directs qualified external counsel to answer the six questions in
+CR-GOAL-005-INST-002-23. Do not dispatch another institution merely to restate the unresolved
+result. PDR-065-07, final package review, implementation confirmation, and implementation
+GOA/Acceptance remain blocked.
 
 ## Reserved Implementation Authorization
 
