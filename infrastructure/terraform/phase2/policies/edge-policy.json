@@ -1,0 +1,34 @@
+{
+  "schema_version": "1.0.0",
+  "mode": "offline-product-neutral",
+  "public_candidates": [
+    "web",
+    "business-platform",
+    "professional-runtime",
+    "keycloak-login"
+  ],
+  "private_surfaces": [
+    "constitutional-engine",
+    "ai-runtime",
+    "billing-engine",
+    "keycloak-admin",
+    "keycloak-management",
+    "data",
+    "temporal",
+    "redis"
+  ],
+  "blocking_controls": [
+    "exploit",
+    "protocol-anomaly",
+    "bot",
+    "coarse-source-abuse",
+    "direct-container-endpoint"
+  ],
+  "emergency_stop": {
+    "challenge_exempt": true,
+    "quota_exempt": true,
+    "commercial_limit_exempt": true,
+    "latency_floor_milliseconds": 250
+  },
+  "product_selection": "UNRESOLVED_PROTECTED_DECISION"
+}

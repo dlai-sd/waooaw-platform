@@ -1,0 +1,30 @@
+{
+  "schema_version": "1.0.0",
+  "status": "OFFLINE_RECOMMENDATION_PENDING_FOUNDER_ACTORS",
+  "required_fields": [
+    "incident_id",
+    "environment",
+    "resource",
+    "operation",
+    "reason",
+    "approver_principal_id",
+    "executor_principal_id",
+    "strong_authentication_evidence",
+    "expires_at",
+    "evidence_digest"
+  ],
+  "constraints": {
+    "approval_separate_from_execution": true,
+    "least_privilege": true,
+    "immutable_logging": true,
+    "immediate_alerting": true,
+    "automatic_expiry": true,
+    "session_revocation": true,
+    "independent_post_event_review": true,
+    "routine_deployment_prohibited": true,
+    "evidence_deletion_prohibited": true,
+    "authority_expansion_prohibited": true
+  },
+  "production_actors": "UNRESOLVED_FOUNDER_DECISION",
+  "production_duration": "UNRESOLVED_FOUNDER_DECISION"
+}

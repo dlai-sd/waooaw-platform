@@ -2,56 +2,43 @@
   "schema_version": "1.0.0",
   "goal_id": "GOAL-006",
   "work_contract": "WC-072",
-  "component": "P2-WC01",
-  "title": "Deterministic Toolchain And Test Foundation",
+  "component": "P2-WC03",
+  "title": "Offline Terraform Foundations, Isolation, Identity, Secrets And JIT",
   "controlling_sections": [
-    "work-contracts/WC-072-goal-006-phase2-offline-delivery.md#p2-wc01-binding-and-estimate",
-    "goals/GOAL-006-p1-wc11-integrated-grooming.md#p2-wc01--deterministic-toolchain-and-test-foundation",
-    "goals/GOAL-006-p1-wc07-implementation-feasibility.md#toolchain-and-prerequisites",
-    "goals/GOAL-006-p1-wc07-implementation-feasibility.md#docker-first-validation-architecture",
-    "goals/GOAL-006-p1-wc07-diagnostic-evidence.md#host-test-collection-diagnostic",
-    "adr/ADR-037-sprint-environment-contract-validation.md",
-    "tests/QA-STRATEGY.md#docker-execution-mandate"
+    "work-contracts/WC-072-goal-006-phase2-offline-delivery.md#p2-wc03-binding-and-estimate",
+    "goals/GOAL-006-p1-wc11-integrated-grooming.md#p2-wc03--terraform-foundations-isolation-identity-secrets-and-jit",
+    "goals/GOAL-006-p1-wc05-security-architecture.md#sa-01--environment-and-identity-isolation",
+    "goals/GOAL-006-p1-wc05-security-architecture.md#sa-04--github-actions-to-azure-oidc",
+    "goals/GOAL-006-p1-wc05-security-architecture.md#sa-11--secrets-state-and-bootstrap",
+    "goals/GOAL-006-p1-wc05-security-architecture.md#sa-13--break-glass",
+    "adr/ADR-027-cloud-architecture-optimization.md"
   ],
   "affected_paths": [
-    "architecture/reference/dockerfiles/Dockerfile.test-runner",
-    "architecture/reference/dockerfiles/Dockerfile.test-runner-python",
-    "docker-compose.yml",
-    "requirements-test.txt",
-    "scripts/env_validator.py",
-    "scripts/autonomous_sprint_runner.py",
-    "tests/test_wc012_dry_run.py",
-    "tests/pipeline/",
+    "infrastructure/terraform/phase2/",
+    "tests/pipeline/test_goal006_terraform_foundations.py",
     "work-contracts/WC-072-goal-006-phase2-offline-delivery.md",
     "sprint-context/goal-006-phase2-current.json",
     "constitution/PROJECT_STATE.md"
   ],
   "validations": [
-    "docker compose config --quiet",
-    "docker compose run --rm test-runner python scripts/env_validator.py",
-    "docker compose run --rm test-runner pytest --collect-only -q tests/professional-runtime tests/test_wc012_dry_run.py",
-    "docker compose run --rm test-runner python tests/test_wc012_dry_run.py",
-    "docker compose run --rm test-runner pytest tests/pipeline -q",
+    "docker compose run --rm test-runner pytest -q tests/pipeline/test_goal006_terraform_foundations.py",
+    "pinned Docker terraform fmt -check on infrastructure/terraform/phase2",
+    "pinned Docker TFLint and Checkov on infrastructure/terraform/phase2",
     "git diff --check"
   ],
   "dependencies": [
-    "FA-049",
-    "GOA-GOAL-006-INST-010-02",
-    "ACC-GOAL-006-INST-010-02",
-    "PR #281 merge 1655afbab1dec83949734dd435c6c17f811e2683",
-    "PR #283 merge 61b1cda8994b85bf9e5c371ba107227d6dfc65bf",
-    "R-117",
-    "R-118",
-    "C-080",
-    "ADR-037"
+    "P2-WC01 accepted by R-120",
+    "PA-01 through PA-03, PA-06 and PA-08",
+    "SA-01 through SA-11 and SA-13",
+    "C-067",
+    "ADR-027"
   ],
   "prohibited_paths": [
     "constitution/CONSTITUTION.md",
     "constitution/GENESIS.md",
-    "infrastructure/terraform/",
-    ".github/workflows/promote.yaml",
-    ".github/workflows/post-deploy-verify.yaml",
-    "src/"
+    "legacy Terraform roots outside infrastructure/terraform/phase2/",
+    "src/",
+    ".github/workflows/"
   ],
-  "next_exact_action": "Commit and push R-119, then run the Docker environment validator and focused WC012 collection/dry-run checks before P2-WC01 implementation."
+  "next_exact_action": "Add a failing parser-based contract for the isolated Phase 2 Terraform surface, then implement the smallest offline-valid root and rerun it in the Docker test runner."
 }

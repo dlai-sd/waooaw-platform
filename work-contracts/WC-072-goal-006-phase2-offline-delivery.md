@@ -8,7 +8,7 @@
 | Authorization | FA-049; GOA-GOAL-006-INST-010-02 |
 | Acceptance | ACC-GOAL-006-INST-010-02 |
 | Gate | G5 CLEAR; platform phase IMPLEMENTATION |
-| Status | AUTHORIZED - P2-WC01 context preparation |
+| Status | IN PROGRESS - P2-WC03 offline Terraform foundations |
 | Reviewer | INST-004 for implementation integrity; INST-007 security; independent QA for qualification; affected specialist owners retain their Decision Spaces |
 | Constitutional basis | C-001, C-023, C-032, C-059, C-065, C-066, C-067, C-071, C-076, C-080; GEOM G-7 |
 
@@ -83,9 +83,9 @@ additional charge. Phase 3 remains unauthorized.
 
 | Component | Outcome | Direct dependencies | Required independent acceptance | Status |
 |---|---|---|---|---|
-| P2-WC01 | Deterministic Docker-first toolchain and test foundation | Phase 1, FA-049, GOA-02, ACC-02 | INST-004 implementation review | IN PROGRESS - bounded context prepared |
-| P2-WC02 | Exactly six image, Compose and component contracts | P2-WC01 | INST-005 plus independent QA | PENDING |
-| P2-WC03 | Offline Terraform isolation, identity, secrets and JIT | P2-WC01 | INST-009 and INST-007 | PENDING |
+| P2-WC01 | Deterministic Docker-first toolchain and test foundation | Phase 1, FA-049, GOA-02, ACC-02 | INST-004 implementation review | DONE - R-120 APPROVE |
+| P2-WC02 | Exactly six image, Compose and component contracts | P2-WC01 | INST-005 plus independent QA | IMPLEMENTED - local gates pass; independent acceptance pending |
+| P2-WC03 | Offline Terraform isolation, identity, secrets and JIT | P2-WC01 | INST-009 and INST-007 | IN PROGRESS - bounded context prepared |
 | P2-WC04 | Synthetic data lifecycle, migration and recovery | P2-WC01/02; full tuple also P2-WC03/05 | INST-006 and INST-007 | PENDING |
 | P2-WC05 | Signed six-member immutable release manifest and supply-chain evidence | P2-WC01/02 | INST-007 and independent QA | PENDING |
 | P2-WC06 | Offline CI/CD, revision blue-green, rollback, lifecycle, halt and cost simulation | P2-WC03/04/05 | INST-009, INST-007 and independent confirmer | PENDING |
@@ -116,11 +116,11 @@ PROJECT_STATE, commits, CI evidence, reviews or the PR.
 | Authorization checkpoint | `313fb12` on `goal/006/phase2-blocked` |
 | Current branch | `goal/006/phase2-offline-delivery` |
 | Current PR | Draft PR #284 - `https://github.com/dlai-sd/waooaw-platform/pull/284`; reuse through P2-WC08; do not merge |
-| Current component | P2-WC01 - approved specification baseline; Docker runner baseline validation next |
-| Next exact action | Commit and push R-119; run Docker environment validator and focused WC012 collection/dry-run checks to discriminate the diagnosed grpc and WC012-01 failures before implementation |
-| Completed commit IDs | `313fb12` - FA-049, GOA-02, ACC-02 and CB-006 resolution; `6e23941` - WC-072 and P2-WC01 bounded context |
-| Validation results | Authorization JSONL/chronology Docker check PASS; state/lifecycle/blocker checks PASS |
-| Review results | R-117 Phase 1 CLEAR WITH CONDITIONS; R-118 Skill 17 APPROVE / Activation Gate PASS; R-119 Phase 2 release contract APPROVE after required changes confirmed |
+| Current component | P2-WC03 - offline Terraform foundations, isolation, identity, secret references and JIT |
+| Next exact action | Add a parser-based failing contract for the isolated Phase 2 Terraform surface, then implement the smallest offline-valid root and rerun it in the Docker test runner |
+| Completed commit IDs | `313fb12` authorization; `6e23941` WC/context; `739cf2b` P2-WC01; `222eaef` R-120; `d2b95d8` P2-WC02; `5cbf895` local-review repairs |
+| Validation results | P2-WC01 gates PASS; six images and 11-service topology healthy; P2-WC02 focused contracts 14/14 PASS; delegated PostgreSQL 2/2 PASS; ShellCheck and Ruff PASS; Compose parse, patch hygiene and secret-pattern checks PASS |
+| Review results | R-117 Phase 1 CLEAR WITH CONDITIONS; R-118 Skill 17 APPROVE; R-119 release contract APPROVE; R-120 P2-WC01 APPROVE; P2-WC02 deterministic local review complete but required independent acceptance remains pending |
 | Blockers and owner decisions | No contribution-start blocker; canonical Incident/Change/Release policies remain fail-closed dependencies for affected P2-WC06/07/08 paths; INR 5,000 ceiling; Phase 3 prohibited |
 | Allowed actions | Offline repository implementation, Docker-first validation, synthetic evidence, independent review, commits/pushes, one draft unmerged PR |
 | Prohibited actions | Provider/cloud/DNS/deployment/Production/real-traffic/spend/Phase 3 actions; self-review/approval/merge; weakened or advisory proof |
@@ -150,6 +150,28 @@ CI evidence and the PR are authoritative.
 - `tests/test_wc012_dry_run.py` exits zero with WC012-01 through WC012-04 registered.
 - No skipped, xfailed, xpassed, deselected, warning-only or zero-test result is accepted.
 - `git diff --check`, dependency consistency and secret-pattern checks pass.
+
+## P2-WC03 Binding And Estimate
+
+| Field | Binding |
+|---|---|
+| Controlling sections | Integrated grooming `P2-WC03` and mandatory release contract; security architecture SA-01, SA-04, SA-05, SA-07, SA-08, SA-11 and SA-13; C-067; ADR-027 |
+| Exact affected paths | `infrastructure/terraform/phase2/`; `tests/pipeline/test_goal006_terraform_foundations.py`; Docker test-runner dependencies only if required; this Work Contract, current context and PROJECT_STATE |
+| Generated outputs | Offline format/validation results, policy-test counts, non-secret synthetic plan fixtures and SHA-256 evidence references; no provider-derived plan |
+| Evidence location | Compact execution record and Phase 2 PR/CI output; no duplicate status artifact |
+| Prohibited files/actions | Class 1 Constitution/GENESIS; legacy live Terraform roots except separately reviewed remediation; credentials, secret values, provider queries, init against a provider, plan/apply, DNS, deployment or Production action |
+| Estimate | 2-4 focused implementation days plus Platform and Security review; high confidence on static identity/isolation/secret-reference controls, medium on complete lint/scan coverage until pinned containers execute |
+| Critical-path effect | May proceed beside pending P2-WC02 acceptance; blocks P2-WC06 and the full P2-WC04 recovery tuple |
+
+### P2-WC03 Deterministic Gates
+
+- The Phase 2 surface parses and formats using pinned offline Docker tooling without provider authentication or query.
+- Demo, UAT and Production use distinct roots, backend keys, deployment identities, runtime identities, vault references and approved OIDC subjects.
+- Long-lived Azure credentials, secret-value variables, broad subjects, shared state and cross-environment authority are rejected.
+- Workloads use Key Vault references, internal components remain private, public candidates are explicit, and Container Apps use multiple revision mode.
+- Scale-to-zero and bounded maximums follow ADR-027; CE and PR preserve accepted minimum-safe policy inputs without inventing Production values.
+- JIT and break-glass fixtures require separate approval/execution, exact scope, reason, expiry, revocation and immutable evidence; Production actors and durations remain unresolved.
+- Every selected test executes with nonzero counts; no skip, xfail, deselection, TODO, echo-only or advisory success is accepted.
 
 ## Definition Of Done
 
