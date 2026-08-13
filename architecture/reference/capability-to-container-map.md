@@ -36,6 +36,7 @@ Each of the 26 business capabilities is owned by exactly one container. Ownershi
 | **6.4 Observe Platform Health** | All containers (OTel) | Jaeger/Azure Monitor |
 | **6.5 Bill Customers** | Business Platform | — |
 | **6.6 Engineer Governed Web Experiences** | Next.js Web App | Business Platform (approved REST contracts), Professional Runtime (approved streams and Emergency Stop), Constitutional Engine (Evidence First), GitHub Actions (quality evidence) |
+| **6.7 Implement Governed Cloud Delivery** | GitHub Actions, GHCR, Docker/Compose, Terraform/AzureRM, OTel/Azure Monitor configuration | INST-009 Platform architecture; INST-005 component contracts; INST-007 security controls; INST-006 data/recovery; independent QA evidence; Founder retains provider, spend, DNS, Production and activation decisions |
 | **11.1 Profile Customer** | AI Runtime (Customer Profiling Pipeline) | Business Platform (profile storage via customer-profile-mcp) |
 | **4.6 Earn Synthetic Approval Authority** | AI Runtime (Synthetic Approval Pipeline) | Business Platform (mode upgrade amendment), Constitutional Engine (evidence record per synthetic approval + mode upgrade event) |
 | **11.2 Assess Digital Marketing Maturity** | AI Runtime (Market Research Pipeline) | Business Platform (score + heatmap storage), CE (ValidateAction before each MCP call) |
