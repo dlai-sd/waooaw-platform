@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 82
+**State Revision:** 83
 **Last Updated:** 2026-08-13
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -20,56 +20,29 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Engineering status | IMPLEMENTATION |
 | Platform version | 1.45.0 |
 | Latest completed Work Contract | WC-065 — Founder Offerability And Commercial Composition |
-| Latest merge | PR #278 merged to `main` as `f28badc` on 2026-08-13 |
-| Active delivery | GOAL-006 Phase 1 cleared with conditions; awaiting Founder hash-pinned acknowledgement |
+| Latest merge | PR #283 merged to `main` as `61b1cda` on 2026-08-13 |
+| Active delivery | GOAL-006 Phase 2 blocked before contribution start by CB-006 |
 
-## Active Checkpoint — GOAL-006 Secure Autonomous Cloud Delivery Intake
+## Active Checkpoint — GOAL-006 Phase 2 Authorization Routing
 
 | Milestone | Status |
 |---|---|
-| WC-071 intake contract | DONE — bounded to registration, Understanding, provisional Classification, and proposed Execution Plan |
-| Goal Understanding Record | DONE — GUR-GOAL-006-INST-013-01 |
-| Provisional Classification | DONE — GCL-GOAL-006-INST-013-01 proposes Cross-domain · Design · Constitutional · Elevated / P2 |
-| Founder requirement baseline | DONE — FR-001 through FR-056 retained as controlling grooming requirements |
-| Proposed Execution Plan | DONE — GEP-GOAL-006-INST-013-01; no GO Authorization issued |
-| Deterministic validation | PASS — record IDs, requirement continuity, phase stops, approval controls, diagnostics, and diff checks |
-| Fresh INST-002 review | DONE — R-106 READY WITH REQUIRED ACTION; NO CHALLENGE ISSUED |
-| Phase 1 PR | DRAFT — PR #281 targets `main`; remains draft through P1-WC01 to P1-WC12 and Phase 1 closure |
-| Founder classification and plan approval | DONE — ACK-GOAL-006-INST-001-01 recorded after R-106 |
-| P1-WC01 Platform inventory GOA / Acceptance | VALID — GOA-GOAL-006-INST-009-01 at 08:54:36Z; ACC-GOAL-006-INST-009-01 at 08:54:37Z |
-| P1-WC01 contribution / review | DONE — CR-GOAL-006-INST-009-01 accepted by R-107; P1-R01 through P1-R10 remain open |
-| P1-WC02 Product Owner GOA / Acceptance | VALID — GOA-GOAL-006-INST-011-01 at 09:17:19Z; ACC-GOAL-006-INST-011-01 at 09:17:20Z |
-| P1-WC02 contribution / review | DONE — CR-GOAL-006-INST-011-01 accepted by R-108; specialist targets and estimates remain open |
-| P1-WC03 Platform Architect GOA / Acceptance | VALID — GOA-GOAL-006-INST-009-02 at 09:33:51Z; ACC-GOAL-006-INST-009-02 at 09:33:52Z |
-| P1-WC03 contribution / review | DONE — CR-GOAL-006-INST-009-02 accepted by R-109; implementation/live risks remain open |
-| P1-WC04 Solution Architect GOA / Acceptance | VALID — GOA-GOAL-006-INST-005-01 at 09:57:33Z; ACC-GOAL-006-INST-005-01 at 09:57:34Z |
-| P1-WC04 contribution / review | DONE — topology and CT-02 scope decision accepted by R-110; CT-01 through CT-07 remain routed/open |
-| P1-WC05 Security Architect GOA / Acceptance | VALID — GOA-GOAL-006-INST-007-01 at 10:19:26Z; ACC-GOAL-006-INST-007-01 at 10:19:27Z |
-| P1-WC05 contribution / review | DONE — CR-GOAL-006-INST-007-01 accepted by R-111; implementation/live and protected Production risks remain open |
-| P1-WC06 Data Architect GOA / Acceptance | VALID — GOA-GOAL-006-INST-006-01 at 10:36:21Z; ACC-GOAL-006-INST-006-01 at 10:36:22Z |
-| P1-WC06 contribution / review | DONE — CR-GOAL-006-INST-006-01 accepted by R-112; Production objectives remain protected recommendations |
-| P1-WC07 Platform IT Expert GOA / Acceptance | VALID — GOA-GOAL-006-INST-010-01 at 10:47:11Z; ACC-GOAL-006-INST-010-01 at 10:47:12Z |
-| P1-WC07 contribution / review | DONE — conditionally feasible CR-GOAL-006-INST-010-01 accepted by R-113; Phase 2 prerequisites remain open |
-| P1-WC08 QA GOA / Acceptance | VALID — GOA-GOAL-006-QA-01 at 11:09:38Z; ACC-GOAL-006-QA-01 at 11:09:39Z |
-| P1-WC08 contribution / review | DONE — CR-GOAL-006-QA-01 accepted by R-114; targets and execution/live proof remain open |
-| P1-WC09 Operations candidate GOA / Acceptance | VALID — GOA-GOAL-006-PLATFORM-OPS-01 at 11:17:28Z; ACC-GOAL-006-PLATFORM-OPS-01 at 11:17:29Z; candidate remains DRAFT/NOT ACTIVATED |
-| P1-WC09 contribution / P1-WC10 review | DONE — CR-GOAL-006-PLATFORM-OPS-01 accepted by R-115 after bounded repairs; policy-dependent operations and all activation remain blocked |
-| P1-WC11 Product Owner GOA / Acceptance | VALID — GOA-GOAL-006-INST-011-02 at 11:32:00Z; ACC-GOAL-006-INST-011-02 at 11:32:01Z |
-| P1-WC11 contribution / owner review | DONE — CR-GOAL-006-INST-011-02 accepted at `495f7206...` by R-116 and all decision owners |
-| P1-WC12 Constitutional GOA / Acceptance | VALID — GOA-GOAL-006-INST-002-02 at 11:52:00Z; ACC-GOAL-006-INST-002-02 at 11:52:01Z |
-| P1-WC12 constitutional review | DONE — R-117 / CR-GOAL-006-INST-002-07 CLEAR WITH CONDITIONS at commit `db5f477`; no Constitutional Blocker |
-| Phase 1 Founder control point | WAITING — exact R-117 acknowledgement may move PR #281 to Ready for Founder Review only; Phase 2 remains unauthorized |
+| Phase 1 delivery | DONE — PR #281 merged as `1655afb`; R-117 conditions remain downstream gates |
+| INST-010 Skill 17 specification | DONE — PR #283 merged as `61b1cda`; Founder activated Skill 17 for the current session |
+| Current-session implementation consent | DONE — offline P2-WC01 through P2-WC08 only; INR 5,000 monthly ceiling; Phase 3 and live/cloud actions prohibited |
+| Phase 2 GO Authorization | BLOCKED — no INST-013-issued `GOA-GOAL-006-INST-010-*` exists |
+| INST-010 Acceptance | BLOCKED — must follow valid GOA issuance |
+| Constitutional blocker | OPEN — CB-006 records the missing routing chronology and exact resolution |
+| Phase 2 contribution | NOT STARTED — no Work Contract, implementation branch, PR, context manifest or runnable change created |
 
-### Intake Context
+### Checkpoint Context
 
-- **Delivery branch:** `goal/006/cloud-delivery-capability`.
-- **Authority:** Founder instruction dated 2026-08-13 and WC-071 intake boundary.
-- **Validation:** deterministic content checks and editor diagnostics pass; no runnable infrastructure or implementation changed.
-- **Independent review:** R-106 / CR-GOAL-006-INST-002-01 finds the classification and plan ready, with post-review Founder acknowledgement as the sole routing predecessor.
-- **Pull request:** PR #281 is the Phase 1 PR. Phase 2 implementation will use a separate later PR after Phase 1 closure and explicit implementation authorization.
-- **Boundary:** Awaiting Founder Phase 1 acknowledgement only; no runnable changes, credentials/live access, cloud spend, DNS action, deployment, operation, Platform Operations activation, PR approval, or merge is authorized.
+- **Checkpoint branch:** `goal/006/phase2-blocked` from merged `origin/main` at `61b1cda`.
+- **Authority present:** Founder current-session consent, Skill 17 activation and INR 5,000 ceiling.
+- **Authority missing:** INST-013 Phase 2 GOA and later INST-010 Acceptance required by GEOM G-7/R2-05/R2-08/R2-12.
+- **Resume source:** Git, CB-006, this checkpoint, the merged Phase 1 package and GitHub PR records; chat history is non-authoritative.
+- **Boundary:** No implementation, provider/live access, cloud spend, DNS action, deployment, Production, traffic, Platform Operations activation, PR approval, merge or Phase 3 action.
 - **Protected local artifacts:** `.coverage`, `goals/goal_register.jsonl`, `logs/blueprint_assurance_report.json`, and `logs/bootstrap-evidence.jsonl` are unrelated and must remain unstaged.
-- **Intake evidence:** `goals/GOAL-006-secure-autonomous-cloud-delivery.md`, `goals/GOAL-006-execution-plan.md`, and WC-071.
 
 ## Authorization Boundary
 
@@ -82,15 +55,15 @@ authorize Phase 1 specialist grooming, Phase 2 implementation, or Phase 3 cloud 
 
 ## Current Blockers
 
-No constitutional blocker file is open. The three canonical operations policies remain downstream
-dependencies; they block policy-dependent automation and Phase 3 handover/activation, not P1-WC11 grooming.
+CB-006 is open because GOAL-006 Phase 2 has no INST-013-issued GO Authorization and later INST-010
+Acceptance. The three canonical operations policies remain downstream dependencies for
+policy-dependent automation and Phase 3 handover/activation.
 
 ## Next Authorized Action
 
-Obtain the exact R-117 Founder acknowledgement for commit `db5f4773b6646c585e5cbfe70af34b76f4512ce4`.
-Only then may PR #281 move from Draft to Ready for Founder Review. Do not issue Phase 2 implementation
-authority until every R-117 pre-GOA condition closes and the Founder separately authorizes the current
-session. All cloud, DNS, deployment, production, and Platform Operations activation remain unauthorized.
+INST-013 must issue and append the complete Phase 2 GOA described by CB-006. INST-010 must then record
+a later Acceptance. Resume by creating the single Phase 2 Work Contract, dedicated implementation
+branch, draft PR and P2-WC01 bounded context manifest. All live/cloud and Phase 3 actions remain unauthorized.
 
 ## History And Evidence
 
