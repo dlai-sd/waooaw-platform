@@ -53,5 +53,5 @@
     ".github/workflows/post-deploy-verify.yaml",
     "src/"
   ],
-  "next_exact_action": "Validate, commit and push the Phase 2 release acceptance amendment, then obtain independent INST-004 review of the exact commit before runner implementation; continue on goal/006/phase2-offline-delivery and draft PR #284."
+  "next_exact_action": "Validate, commit and push the R-119-required digest-only rollback and deterministic transition clarifications, then obtain independent INST-004 confirmation before runner implementation."
 }

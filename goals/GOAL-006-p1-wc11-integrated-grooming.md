@@ -186,6 +186,35 @@ traffic totals other than 100%, and reject blue deactivation before independent 
 observation. Offline simulation is repository evidence only; it is not Azure, traffic, deployment,
 Production or cloud-effectiveness evidence.
 
+Rollback authority is exclusively the **last independently qualified, signed six-member immutable
+manifest** and its exact CE, BP, PR, AIR, Web and Billing OCI digests. Rollback may not resolve a
+tag, rebuild an image, substitute a member, mutate a manifest or select an unqualified tuple. The
+qualified blue state is the active revision set whose exact six-member manifest, configuration
+version, data version and state generation previously passed all applicable gates and independent
+confirmation.
+
+The revision simulator is parameterized, but parameters are valid only when they satisfy all of the
+following deterministic constraints:
+
+- canary traffic weight is an integer greater than 0 and less than 100; blue plus green always
+	equals 100; the canary duration is positive and comes from an accepted environment policy;
+- the independent confirmer is neither the implementation author nor deployment executor and may
+	confirm only when immutable-manifest verification, green-at-zero pre-traffic checks, canary
+	health evidence and all applicable constitutional gates pass;
+- observation duration is positive, comes from an accepted environment policy, and evaluates at
+	least readiness, error rate, constitutional gate status and release-marker continuity;
+- the 30-minute blue-deactivation clock starts at successful independent confirmation and includes
+	the transition to 100% green, observation and blue deactivation; an observation parameter that
+	cannot fit inside that deadline is invalid;
+- `atomic failure` means an ordered fail-closed recovery, not an unsupported claim of one Azure
+	control-plane transaction: stop forward transitions, restore blue to 100%, verify traffic totals,
+	deactivate green, preserve evidence, then mark the release failed; while recovery is incomplete,
+	green weight may never increase and blue may never be deactivated.
+
+Phase 2 fixtures must exercise boundary values and invalid values for these parameters. Exact Demo,
+UAT and Production canary percentages, durations and health thresholds remain owner/Founder inputs
+for Phase 3 and are not invented by the simulator.
+
 ### Component Application Of The Release Acceptance Contract
 
 | Component | Mandatory application |
