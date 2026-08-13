@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 61
+**State Revision:** 62
 **Last Updated:** 2026-08-13
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -30,10 +30,10 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Merged specification baseline | DONE — R-101/R-102 approved package commit `6c2fa94`; PR #277 merged as `e9a1150` |
 | Contribution Necessity Gate | DONE — baseline reused; orchestration continued M1; protected decisions classified M2/M3 |
 | Registrant routing acknowledgement | DONE — ACK-GOAL-005-INST-001-13 authorizes bounded owner routing only |
-| Budget control | WITHIN_BUDGET — USD 12.50 accounted; USD 40 ceiling; STOP_AND_CONSOLIDATE at USD 32 |
+| Budget control | WITHIN_BUDGET — USD 15.00 accounted; USD 40 ceiling; STOP_AND_CONSOLIDATE at USD 32 |
 | Fresh CA routing readiness | DONE — R-103 / CR-GOAL-005-INST-002-21 READY FOR ROUTING |
 | Protected Decision Register | DONE — PDR-065-07 closed by FA-046 reuse; PDR-065-01 through PDR-065-06 closed by FA-047 lean baseline |
-| Final package review and acknowledgement | PENDING — one fresh independent package review plus ACK-GOAL-005-INST-001-14 required |
+| Final package review and acknowledgement | R-105 READY — only ACK-GOAL-005-INST-001-14 remains |
 | Fresh implementation confirmation | NOT REQUESTED — separate current-session Founder decision remains required |
 | Implementation GOA / Acceptance | NOT ISSUED — GOA/ACC-GOAL-005-INST-010-09 are reserved identifiers only |
 | WC-066 through WC-069 | EVIDENCE-GATED — no detailed grooming or implementation authorized |
@@ -57,15 +57,14 @@ and independent implementation review.
 ## Current Blockers
 
 No institutional routing blocker is open. CB-005 is RESOLVED through R-104, FA-045, and exact
-mechanical application of the bounded Office 02 and INST-002 registry amendment. PDR-065-07
-remains undecided pending valid owner contributions and integrated review.
+mechanical application of the bounded Office 02 and INST-002 registry amendment. FA-046 and
+FA-047 close all seven protected decisions; R-105 finds the exact package READY.
 
 ## Next Authorized Action
 
-Perform only the required final independent review of the FA-046/FA-047 and
-BIND-GOAL-005-WC065-01 package. Do not add owner handoffs. Do not issue
-implementation GOA/ACC-09, implement, activate policy/providers, deploy, approve or merge a PR,
-or groom WC-066 through WC-069.
+Obtain hash-pinned ACK-GOAL-005-INST-001-14 for the R-105-ready package. Do not add owner
+handoffs. Do not issue implementation GOA/ACC-09, implement, activate policy/providers, deploy,
+approve or merge a PR, or groom WC-066 through WC-069.
 
 ## History And Evidence
 

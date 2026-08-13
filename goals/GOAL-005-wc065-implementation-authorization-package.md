@@ -110,7 +110,7 @@ or INST-010 Acceptance.
 | CL-065-08 | Founder | M3 | PDR-065-06 exact verdict | CL-065-R1, CL-065-R2 | SATISFIED | FA-047 | Consequence-bound assurance |
 | CL-065-09 | Founder / existing policy owners | M3 | PDR-065-07 reuse or material-exception decision | CL-065-R1, CL-065-R2 | SATISFIED | FA-046; approved Privacy, Refund, and Grievance Policies | Reuse baseline; exception review only on a concrete material trigger |
 | CL-065-10 | INST-013 | M1 | Exact physical artifact and scoped validation binding | CL-065-03 through CL-065-09 | SATISFIED | BIND-GOAL-005-WC065-01 | Traceability and command checks; no code execution |
-| CL-065-11 | INST-002 | M3 | Fresh readiness review of the complete policy and implementation package | CL-065-10 | BLOCKED | none | Independent full-baseline verdict |
+| CL-065-11 | INST-002 | M3 | Fresh readiness review of the complete policy and implementation package | CL-065-10 | SATISFIED | R-105 / CR-GOAL-005-INST-002-24 READY | Independent exact-commit verdict |
 | CL-065-12 | Registrant / INST-001 | M3 | Final hash-pinned package acknowledgement | CL-065-11 | BLOCKED | ACK-GOAL-005-INST-001-14 reserved | Exact-package and exclusion check |
 | CL-065-13 | Founder / INST-001 | M3 | Fresh current-session implementation confirmation | CL-065-12 | BLOCKED | FA-048 reserved | Exact scoped confirmation |
 | CL-065-14 | INST-013 | M1 | Implementation GOA | CL-065-01 through CL-065-13 | BLOCKED | GOA-GOAL-005-INST-010-09 reserved | Temporal and predecessor-gate check |
@@ -208,7 +208,7 @@ deploy, approve or merge a PR, waive independent review, or authorize WC-066 thr
 |---|---|
 | Founder monetary ceiling | USD 40 |
 | `STOP_AND_CONSOLIDATE` threshold | USD 32 (80 percent) |
-| Current state | `WITHIN_BUDGET` - USD 12.50 conservatively accounted |
+| Current state | `WITHIN_BUDGET` - USD 15.00 conservatively accounted |
 | Dispatch boundary | Only Completeness Ledger owner contributions and independent reviews |
 | Required accounting | Record each context, route, result, conservative debit, repair, and escalation |
 | Hard stop | No dispatch at or above USD 32 before consolidation; no spend above USD 40 without a fresh Founder decision |
@@ -226,6 +226,7 @@ protected verdict, review requirement, or implementation gate.
 | D-065-04 | Fresh independent amendment review | R-104 / CR-GOAL-005-INST-002-22 `APPROVED` | USD 2.50 | One bounded factual correction removed a false INST-CI-001 registry note without changing substantive findings |
 | D-065-05 | Bounded INST-002 legal/privacy contribution | ACC-GOAL-005-INST-002-14; CR-GOAL-005-INST-002-23; LR-GOAL-005-INST-002-09 | USD 2.50 | All six topics remained UNRESOLVED; no legal conclusion invented; external counsel and exact fact package required |
 | D-065-06 | Founder proportionality correction | FA-046 closes PDR-065-07 by reuse and trigger-based escalation | USD 0.00 | Stops further legal routing absent a concrete material exception |
+| D-065-07 | One final independent package review | R-105 / CR-GOAL-005-INST-002-24 `READY` | USD 2.50 | No material blocker; no further owner/legal handoff required absent a concrete trigger |
 
 The environment exposes no provider invoice. USD 2.50 is reserved conservatively for each
 dispatch context. Actual use remains below the USD 32 consolidation threshold. FA-046 prevents
