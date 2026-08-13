@@ -53,5 +53,5 @@
     ".github/workflows/post-deploy-verify.yaml",
     "src/"
   ],
-  "next_exact_action": "Validate, commit and push the R-119-required digest-only rollback and deterministic transition clarifications, then obtain independent INST-004 confirmation before runner implementation."
+  "next_exact_action": "Commit and push R-119, then run the Docker environment validator and focused WC012 collection/dry-run checks before P2-WC01 implementation."
 }

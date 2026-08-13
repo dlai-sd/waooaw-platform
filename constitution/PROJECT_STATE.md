@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 88
+**State Revision:** 89
 **Last Updated:** 2026-08-13
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -34,7 +34,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | INST-010 Acceptance | VALID — `ACC-GOAL-006-INST-010-02` recorded at 13:10:05Z |
 | Constitutional blocker | RESOLVED — CB-006 closed by FA-049, GOA-02 and ACC-02 |
 | Phase 2 Work Contract | CREATED — WC-072 covers P2-WC01 through P2-WC08 with one compact execution record |
-| Current component | P2-WC01 — R-119 required specification clarifications prepared; independent confirmation pending |
+| Current component | P2-WC01 — R-119 APPROVE; Docker runner baseline validation next |
 | Branch and PR | ACTIVE — `goal/006/phase2-offline-delivery`; draft PR #284; reuse through P2-WC08 and do not merge |
 
 ### Checkpoint Context
@@ -62,9 +62,9 @@ policy-dependent automation and Phase 3 handover/activation.
 
 ## Next Authorized Action
 
-Validate, commit and push the R-119-required digest-only rollback and deterministic transition
-clarifications, then obtain independent INST-004 confirmation before runner implementation. Continue
-on the dedicated branch and draft PR #284. All live/cloud and Phase 3 actions remain unauthorized.
+Commit and push R-119, then run the Docker environment validator and focused WC012 collection/dry-run
+checks before P2-WC01 implementation. Continue on the dedicated branch and draft PR #284. All
+live/cloud and Phase 3 actions remain unauthorized.
 
 ## History And Evidence
 
