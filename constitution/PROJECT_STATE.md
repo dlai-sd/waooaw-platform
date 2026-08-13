@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 59
+**State Revision:** 60
 **Last Updated:** 2026-08-13
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -21,7 +21,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Platform version | 1.45.0 |
 | Latest completed Work Contract | WC-062 — WC-034 F6 Voice Interaction |
 | Latest merge | PR #277 merged to `main` as `e9a1150`; delivery report advanced `main` to `aca51ea` |
-| Active delivery | WC-065 protected-decision closure; PDR-065-07 closed by FA-046 policy reuse; implementation remains unauthorized |
+| Active delivery | WC-065 final package binding after FA-046/FA-047 closed all protected decisions; implementation remains unauthorized |
 
 ## Active Checkpoint — WC-065 Founder Offerability And Commercial Composition
 
@@ -32,7 +32,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Registrant routing acknowledgement | DONE — ACK-GOAL-005-INST-001-13 authorizes bounded owner routing only |
 | Budget control | WITHIN_BUDGET — USD 12.50 accounted; USD 40 ceiling; STOP_AND_CONSOLIDATE at USD 32 |
 | Fresh CA routing readiness | DONE — R-103 / CR-GOAL-005-INST-002-21 READY FOR ROUTING |
-| Protected Decision Register | IN PROGRESS — PDR-065-07 SATISFIED by FA-046 policy reuse; Founder PDR-065-01 through PDR-065-06 remain pending |
+| Protected Decision Register | DONE — PDR-065-07 closed by FA-046 reuse; PDR-065-01 through PDR-065-06 closed by FA-047 lean baseline |
 | Final package review and acknowledgement | PENDING — fresh review plus ACK-GOAL-005-INST-001-14 required |
 | Fresh implementation confirmation | NOT REQUESTED — separate current-session Founder decision remains required |
 | Implementation GOA / Acceptance | NOT ISSUED — GOA/ACC-GOAL-005-INST-010-09 are reserved identifiers only |
@@ -62,8 +62,8 @@ remains undecided pending valid owner contributions and integrated review.
 
 ## Next Authorized Action
 
-Present PDR-065-01 through PDR-065-06 directly to the Founder as one compact decision set; do not
-add institutional handoffs unless a genuinely new exclusive Decision Space appears. Do not issue
+Bind FA-046 and FA-047 into the exact WC-065 artifact and scoped validation package, then perform
+only the required final independent package review. Do not add owner handoffs. Do not issue
 implementation GOA/ACC-09, implement, activate policy/providers, deploy, approve or merge a PR,
 or groom WC-066 through WC-069.
 

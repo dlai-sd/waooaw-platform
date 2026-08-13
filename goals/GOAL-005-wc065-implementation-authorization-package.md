@@ -11,7 +11,7 @@
 | `produced_at` | 2026-08-13 |
 | Work Contract | WC-065 - Founder Offerability And Commercial Composition |
 | Implementation office | INST-010 only after every Activation Gate condition closes |
-| Current state | PDR-065-07 CLOSED BY POLICY REUSE; FOUNDER DECISIONS PDR-065-01 THROUGH PDR-065-06 PENDING |
+| Current state | PROTECTED DECISION REGISTER CLOSED BY FA-046 AND FA-047; FINAL PACKAGE BINDING AND REVIEW PENDING |
 
 ## Authority And Boundary
 
@@ -30,7 +30,7 @@ Founder, or implementation Decision Space.
 | CNG-065-03 | Close numeric policy, calculated-risk, evidence, delegation, validity, and assurance decisions | `M3_DECIDE` | The WC-065 Protected Decision Register reserves these decisions to Founder policy authority with named owner inputs | Stop affected activation rows until the Founder records exact values |
 | CNG-065-04 | Close exact grandfathering, remedy, legal, and retention details | `M2_CONTRIBUTE` / `M3_DECIDE` | The decision spans Product, Business, Data, Security, Constitutional, legal, and Founder Decision Spaces; the approved baseline fixes boundaries but not exact values | Reuse applicable approved owner conclusions; route only uncovered exact decisions to their named owners, then route the integrated policy verdict to the Founder |
 | CNG-065-05 | Obtain Registrant acknowledgement for bounded protected-decision routing | `M3_DECIDE` | GEOM R2-03 requires plan-specific acknowledgement before owner-contribution GOAs issue | SATISFIED by ACK-GOAL-005-INST-001-13; routing still awaits independent CA readiness |
-| CNG-065-06 | Confirm implementation for the current human session | `M3_DECIDE` | G5 CLEAR and specification readiness do not authorize this session's implementation | Keep GOA stopped pending a fresh explicit Founder confirmation recorded as FA-047 |
+| CNG-065-06 | Confirm implementation for the current human session | `M3_DECIDE` | G5 CLEAR and specification readiness do not authorize this session's implementation | Keep GOA stopped pending a fresh explicit Founder confirmation recorded as FA-048 |
 | CNG-065-07 | Issue implementation authority to INST-010 | `M1_CONTINUE` | Issuance is ministerial only after all predecessor gates close; it changes no protected decision | Reserve GOA-GOAL-005-INST-010-09; issue only after CL-065-01 through CL-065-12 are satisfied |
 
 ### Materiality Challenge For CNG-065-02 And CNG-065-07
@@ -61,12 +61,12 @@ fact or unsupported assumption reclassifies the affected work upward.
 
 | Decision ID | Protected decision | Owner | State | Evidence required before closure |
 |---|---|---|---|---|
-| PDR-065-01 | Numeric margin bands/floors and fully loaded planning position | Founder policy authority with WBE/Business inputs | `BLOCKED_PENDING_M3` | Exact values, units, applicability, effective date, floor precedence, and review trigger |
-| PDR-065-02 | Calculated-risk exposure and concentration limits | Founder policy authority | `BLOCKED_PENDING_M3` | Exact offering, cohort, customer, resource, and period limits plus breach outcome |
-| PDR-065-03 | Minimum evidence/confidence class per offering/policy class | Founder policy authority with Product/Data/Security/Constitutional inputs | `BLOCKED_PENDING_M3` | Exact classes, minimum thresholds, unavailable behavior, and escalation route |
-| PDR-065-04 | Delegated adjustments and Founder-reserved exceptions | Founder policy authority | `BLOCKED_PENDING_M3` | Enumerated delegated, reserved, and prohibited actions with bounds |
-| PDR-065-05 | Validity, expiry, review cadence, and escalation values | Founder policy authority | `BLOCKED_PENDING_M3` | Exact durations, expiry behavior, review triggers, and escalation deadlines |
-| PDR-065-06 | Consequence and assurance classes | Founder policy authority with Security/Constitutional inputs | `BLOCKED_PENDING_M3` | Exact class per policy, calculated risk, publication, hiring, and customer-impact action |
+| PDR-065-01 | Margin and fully loaded planning position | Founder policy authority with WBE/Business inputs | `SATISFIED_FA_047` | Publish only with non-negative direct contribution; track fully loaded margin; no launch floor until evidence review |
+| PDR-065-02 | Calculated-risk exposure and concentration | Founder policy authority | `SATISFIED_FA_047` | Disabled for lean launch; no calculated-risk offer disposition |
+| PDR-065-03 | Minimum evidence/confidence | Founder policy authority with Product/Data/Security/Constitutional inputs | `SATISFIED_FA_047` | Current authoritative owner evidence required; missing or conflicting facts block |
+| PDR-065-04 | Delegated adjustments and Founder-reserved exceptions | Founder policy authority | `SATISFIED_FA_047` | Routine adjustment inside approved price/policy delegated; price, floors, exceptions, and customer harm reserved |
+| PDR-065-05 | Validity, expiry, review cadence, and escalation | Founder policy authority | `SATISFIED_FA_047` | Input/policy change invalidates; review after first 10 paid hires or 30 days, whichever occurs first |
+| PDR-065-06 | Consequence and assurance classes | Founder policy authority with Security/Constitutional inputs | `SATISFIED_FA_047` | Normal assurance for drafts; fresh explicit confirmation for publish, hire, policy change, or customer impact |
 | PDR-065-07 | Grandfathering, remedy, legal, disclosure, erasure, and retention treatment | Founder policy authority using approved institutional policies | `SATISFIED_REUSE_FA_046` | Reuse current Privacy, Refund, and Grievance Policies; no new purpose, recipient class, data class, retention period, remedy, or weaker customer protection is introduced by WC-065 |
 
 No row may become satisfied from silence, a model recommendation, an implementation default, an
@@ -102,17 +102,17 @@ or INST-010 Acceptance.
 | CL-065-02 | INST-013 | M1 | Necessity Gate and Materiality Challenge | CL-065-01 | SATISFIED | CNG-065-01 through CNG-065-07 | Required-field and upward-classification check |
 | CL-065-R1 | fresh INST-002 | M3 | Independent routing-readiness review of GEP-15 | CL-065-02 | SATISFIED | R-103 / CR-GOAL-005-INST-002-21 | Full plan, Decision Space, and envelope review |
 | CL-065-R2 | Registrant / INST-001 | M3 | Plan-specific owner-routing acknowledgement | CL-065-02 | SATISFIED | ACK-GOAL-005-INST-001-13 | Exact-plan and exclusion check |
-| CL-065-03 | Founder | M3 | PDR-065-01 exact verdict | CL-065-R1, CL-065-R2 | BLOCKED | none | Protected-authority record |
-| CL-065-04 | Founder | M3 | PDR-065-02 exact verdict | CL-065-R1, CL-065-R2 | BLOCKED | none | Protected-authority record |
-| CL-065-05 | Founder | M3 | PDR-065-03 exact verdict | CL-065-R1, CL-065-R2 | BLOCKED | none | Protected-authority record |
-| CL-065-06 | Founder | M3 | PDR-065-04 exact verdict | CL-065-R1, CL-065-R2 | BLOCKED | none | Protected-authority record |
-| CL-065-07 | Founder | M3 | PDR-065-05 exact verdict | CL-065-R1, CL-065-R2 | BLOCKED | none | Protected-authority record |
-| CL-065-08 | Founder | M3 | PDR-065-06 exact verdict | CL-065-R1, CL-065-R2 | BLOCKED | none | Protected-authority record |
+| CL-065-03 | Founder | M3 | PDR-065-01 exact verdict | CL-065-R1, CL-065-R2 | SATISFIED | FA-047 | Lean margin baseline |
+| CL-065-04 | Founder | M3 | PDR-065-02 exact verdict | CL-065-R1, CL-065-R2 | SATISFIED | FA-047 | Calculated risk disabled |
+| CL-065-05 | Founder | M3 | PDR-065-03 exact verdict | CL-065-R1, CL-065-R2 | SATISFIED | FA-047 | Authoritative current evidence required |
+| CL-065-06 | Founder | M3 | PDR-065-04 exact verdict | CL-065-R1, CL-065-R2 | SATISFIED | FA-047 | Lean delegation boundary |
+| CL-065-07 | Founder | M3 | PDR-065-05 exact verdict | CL-065-R1, CL-065-R2 | SATISFIED | FA-047 | Event invalidation and evidence review trigger |
+| CL-065-08 | Founder | M3 | PDR-065-06 exact verdict | CL-065-R1, CL-065-R2 | SATISFIED | FA-047 | Consequence-bound assurance |
 | CL-065-09 | Founder / existing policy owners | M3 | PDR-065-07 reuse or material-exception decision | CL-065-R1, CL-065-R2 | SATISFIED | FA-046; approved Privacy, Refund, and Grievance Policies | Reuse baseline; exception review only on a concrete material trigger |
 | CL-065-10 | INST-013 | M1 | Exact physical artifact and scoped validation binding | CL-065-03 through CL-065-09 | BLOCKED | none | Traceability and command checks; no code execution |
 | CL-065-11 | INST-002 | M3 | Fresh readiness review of the complete policy and implementation package | CL-065-10 | BLOCKED | none | Independent full-baseline verdict |
 | CL-065-12 | Registrant / INST-001 | M3 | Final hash-pinned package acknowledgement | CL-065-11 | BLOCKED | ACK-GOAL-005-INST-001-14 reserved | Exact-package and exclusion check |
-| CL-065-13 | Founder / INST-001 | M3 | Fresh current-session implementation confirmation | CL-065-12 | BLOCKED | FA-047 reserved | Exact scoped confirmation |
+| CL-065-13 | Founder / INST-001 | M3 | Fresh current-session implementation confirmation | CL-065-12 | BLOCKED | FA-048 reserved | Exact scoped confirmation |
 | CL-065-14 | INST-013 | M1 | Implementation GOA | CL-065-01 through CL-065-13 | BLOCKED | GOA-GOAL-005-INST-010-09 reserved | Temporal and predecessor-gate check |
 | CL-065-15 | INST-010 | M1 | Temporally later Acceptance | CL-065-14 | BLOCKED | ACC-GOAL-005-INST-010-09 reserved | `acceptance_timestamp` later than `issued_at` |
 | CL-065-16 | Independent reviewers | M3 | Independent implementation review plan remains separate | CL-065-10 | BLOCKED | none | C-065 identity and scope check |
