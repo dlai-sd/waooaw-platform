@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 65
+**State Revision:** 66
 **Last Updated:** 2026-08-13
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -21,7 +21,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Platform version | 1.45.0 |
 | Latest completed Work Contract | WC-062 — WC-034 F6 Voice Interaction |
 | Latest merge | PR #277 merged to `main` as `e9a1150`; delivery report advanced `main` to `aca51ea` |
-| Active delivery | WC-065 final independent package review after BIND-GOAL-005-WC065-01; implementation remains unauthorized |
+| Active delivery | WC-065 implementation under GOA-GOAL-005-INST-010-09 / ACC-GOAL-005-INST-010-09 |
 
 ## Active Checkpoint — WC-065 Founder Offerability And Commercial Composition
 
@@ -35,7 +35,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Protected Decision Register | DONE — PDR-065-07 closed by FA-046 reuse; PDR-065-01 through PDR-065-06 closed by FA-047 lean baseline |
 | Final package review and acknowledgement | DONE — R-105 READY; ACK-GOAL-005-INST-001-14 recorded at 2026-08-13T05:08:55Z |
 | Fresh implementation confirmation | DONE — FA-048 authorizes WC-065 for the current session |
-| Implementation GOA / Acceptance | GOA-GOAL-005-INST-010-09 ISSUED at 2026-08-13T05:10:51Z; later ACC-09 required before code |
+| Implementation GOA / Acceptance | VALID — GOA-09 at 2026-08-13T05:10:51Z; ACC-09 at 2026-08-13T05:11:16Z |
 | WC-066 through WC-069 | EVIDENCE-GATED — no detailed grooming or implementation authorized |
 
 ### Closure Context
@@ -62,9 +62,9 @@ FA-047 close all seven protected decisions; R-105 finds the exact package READY.
 
 ## Next Authorized Action
 
-INST-010 records ACC-GOAL-005-INST-010-09 later than 2026-08-13T05:10:51Z before implementation.
-Do not activate policy/providers, deploy, approve
-or merge a PR, self-review, self-merge, or groom WC-066 through WC-069.
+INST-010 implements WC065-01 through WC065-07 as one bound delivery and runs the scoped validation
+package. Do not activate policy/providers, deploy, approve or merge a PR, self-review, self-merge,
+or groom WC-066 through WC-069.
 
 ## History And Evidence
 

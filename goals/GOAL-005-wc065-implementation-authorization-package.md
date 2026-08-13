@@ -11,7 +11,7 @@
 | `produced_at` | 2026-08-13 |
 | Work Contract | WC-065 - Founder Offerability And Commercial Composition |
 | Implementation office | INST-010 only after every Activation Gate condition closes |
-| Current state | FA-048 CURRENT-SESSION IMPLEMENTATION CONSENT RECORDED; IMPLEMENTATION GOA AND LATER ACCEPTANCE PENDING |
+| Current state | IMPLEMENTATION AUTHORIZED - GOA-GOAL-005-INST-010-09 AND LATER ACC-GOAL-005-INST-010-09 VALID |
 
 ## Authority And Boundary
 
@@ -114,7 +114,7 @@ or INST-010 Acceptance.
 | CL-065-12 | Registrant / INST-001 | M3 | Final hash-pinned package acknowledgement | CL-065-11 | SATISFIED | ACK-GOAL-005-INST-001-14 | Exact-package and exclusion check |
 | CL-065-13 | Founder / INST-001 | M3 | Fresh current-session implementation confirmation | CL-065-12 | SATISFIED | FA-048 at 2026-08-13T05:10:28Z | Exact scoped confirmation |
 | CL-065-14 | INST-013 | M1 | Implementation GOA | CL-065-01 through CL-065-13 | SATISFIED | GOA-GOAL-005-INST-010-09 at 2026-08-13T05:10:51Z | Temporal and predecessor-gate check |
-| CL-065-15 | INST-010 | M1 | Temporally later Acceptance | CL-065-14 | BLOCKED | ACC-GOAL-005-INST-010-09 reserved | `acceptance_timestamp` later than `issued_at` |
+| CL-065-15 | INST-010 | M1 | Temporally later Acceptance | CL-065-14 | SATISFIED | ACC-GOAL-005-INST-010-09 at 2026-08-13T05:11:16Z | `acceptance_timestamp` later than `issued_at` |
 | CL-065-16 | Independent reviewers | M3 | Independent implementation review plan remains separate | CL-065-10 | BLOCKED | none | C-065 identity and scope check |
 
 ## Minimal Artifact And Validation Binding - BIND-GOAL-005-WC065-01
@@ -281,6 +281,25 @@ institutional handoff is authorized merely to restate common industry practice.
 
 INST-010 must record `ACC-GOAL-005-INST-010-09` with an acceptance timestamp later than
 `2026-08-13T05:10:51Z` before writing implementation code.
+
+### ACC-GOAL-005-INST-010-09
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-010 |
+| `goal_id` | GOAL-005 |
+| `record_id` | ACC-GOAL-005-INST-010-09 |
+| `record_type` | Acceptance Record |
+| `authorization_id` | GOA-GOAL-005-INST-010-09 |
+| `goa_issued_at` | 2026-08-13T05:10:51Z |
+| `acceptance_timestamp` | 2026-08-13T05:11:16Z |
+| Accepted scope | Complete WC065-01 through WC065-07 delivery under BIND-GOAL-005-WC065-01 |
+| Accepted evidence obligations | Bound tests and commands, coverage floors, deterministic generated clients, implementation evidence, and independent review |
+| Excluded authority acknowledged | Provider/policy activation, deployment, WC-066 through WC-069, PR approval, merge, self-review, self-merge, new service, and unbound architecture expansion |
+| Decision | ACCEPTED |
+
+INST-010 accepts only the bound implementation scope. The authorized implementation window opens
+at `2026-08-13T05:11:16Z` and does not enlarge any excluded authority.
 
 ## WC-066 Through WC-069 Evidence Gate
 
