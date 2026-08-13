@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 83
+**State Revision:** 84
 **Last Updated:** 2026-08-13
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -21,7 +21,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Platform version | 1.45.0 |
 | Latest completed Work Contract | WC-065 — Founder Offerability And Commercial Composition |
 | Latest merge | PR #283 merged to `main` as `61b1cda` on 2026-08-13 |
-| Active delivery | GOAL-006 Phase 2 blocked before contribution start by CB-006 |
+| Active delivery | GOAL-006 Phase 2 authorized and accepted; Work Contract creation is next |
 
 ## Active Checkpoint — GOAL-006 Phase 2 Authorization Routing
 
@@ -30,16 +30,16 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Phase 1 delivery | DONE — PR #281 merged as `1655afb`; R-117 conditions remain downstream gates |
 | INST-010 Skill 17 specification | DONE — PR #283 merged as `61b1cda`; Founder activated Skill 17 for the current session |
 | Current-session implementation consent | DONE — offline P2-WC01 through P2-WC08 only; INR 5,000 monthly ceiling; Phase 3 and live/cloud actions prohibited |
-| Phase 2 GO Authorization | BLOCKED — no INST-013-issued `GOA-GOAL-006-INST-010-*` exists |
-| INST-010 Acceptance | BLOCKED — must follow valid GOA issuance |
-| Constitutional blocker | OPEN — CB-006 records the missing routing chronology and exact resolution |
-| Phase 2 contribution | NOT STARTED — no Work Contract, implementation branch, PR, context manifest or runnable change created |
+| Phase 2 GO Authorization | VALID — `GOA-GOAL-006-INST-010-02` issued by INST-013 at 13:10:04Z |
+| INST-010 Acceptance | VALID — `ACC-GOAL-006-INST-010-02` recorded at 13:10:05Z |
+| Constitutional blocker | RESOLVED — CB-006 closed by FA-049, GOA-02 and ACC-02 |
+| Phase 2 contribution | AUTHORIZED — create the single Work Contract before any specification or runnable implementation |
 
 ### Checkpoint Context
 
 - **Checkpoint branch:** `goal/006/phase2-blocked` from merged `origin/main` at `61b1cda`.
 - **Authority present:** Founder current-session consent, Skill 17 activation and INR 5,000 ceiling.
-- **Authority missing:** INST-013 Phase 2 GOA and later INST-010 Acceptance required by GEOM G-7/R2-05/R2-08/R2-12.
+- **Authority:** FA-049, `GOA-GOAL-006-INST-010-02` and `ACC-GOAL-006-INST-010-02` authorize the complete offline Phase 2 envelope.
 - **Resume source:** Git, CB-006, this checkpoint, the merged Phase 1 package and GitHub PR records; chat history is non-authoritative.
 - **Boundary:** No implementation, provider/live access, cloud spend, DNS action, deployment, Production, traffic, Platform Operations activation, PR approval, merge or Phase 3 action.
 - **Protected local artifacts:** `.coverage`, `goals/goal_register.jsonl`, `logs/blueprint_assurance_report.json`, and `logs/bootstrap-evidence.jsonl` are unrelated and must remain unstaged.
@@ -55,15 +55,14 @@ authorize Phase 1 specialist grooming, Phase 2 implementation, or Phase 3 cloud 
 
 ## Current Blockers
 
-CB-006 is open because GOAL-006 Phase 2 has no INST-013-issued GO Authorization and later INST-010
-Acceptance. The three canonical operations policies remain downstream dependencies for
+No constitutional blocker is open for Phase 2 contribution start. The three canonical operations policies remain downstream dependencies for
 policy-dependent automation and Phase 3 handover/activation.
 
 ## Next Authorized Action
 
-INST-013 must issue and append the complete Phase 2 GOA described by CB-006. INST-010 must then record
-a later Acceptance. Resume by creating the single Phase 2 Work Contract, dedicated implementation
-branch, draft PR and P2-WC01 bounded context manifest. All live/cloud and Phase 3 actions remain unauthorized.
+Create the single Phase 2 Work Contract with artifact bindings, estimates, reviewers and compact
+execution record. Then create the dedicated implementation branch, draft PR and P2-WC01 bounded
+context manifest before amending the specification. All live/cloud and Phase 3 actions remain unauthorized.
 
 ## History And Evidence
 
