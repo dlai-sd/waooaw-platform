@@ -275,6 +275,20 @@ A capability exists because the institution must provide it — not because it w
 
 ---
 
+### 6.7 Implement Governed Cloud Delivery
+
+**Statement:** The institution must be able to implement approved cloud-delivery contracts as
+deterministic Docker, Terraform, GitHub Actions, OCI supply-chain, recovery, observability and
+qualification artifacts without allowing implementation to choose architecture, security policy,
+data lifecycle, targets, provider resources, expenditure, DNS, Production action or activation.
+
+**Constitutional Basis:** C-001 (Human Override and Emergency Stop); C-023 (Evidence First); C-032
+(implementation cannot create architecture); C-059 (implementation traceability); C-063 (data and
+secret minimisation); C-065 (independent review); C-071 and C-076 (quality and coverage gates); C-077
+(development cost control)
+
+---
+
 ## Domain 1 — Additional Capabilities (v0.8.0)
 
 ---
