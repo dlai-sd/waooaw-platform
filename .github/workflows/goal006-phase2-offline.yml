@@ -1,0 +1,44 @@
+name: GOAL-006 Phase 2 Offline Qualification
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "release/goal006/**"
+      - "scripts/goal006_*.py"
+      - "tests/pipeline/test_goal006_*.py"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: goal006-phase2-offline-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  offline-simulation:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Docker test runner
+        run: docker compose build test-runner
+      - name: Run offline release contracts
+        run: >-
+          docker compose run --rm test-runner pytest -q
+          tests/test_wc012_dry_run.py
+          tests/pipeline/test_goal006_data_recovery.py
+          tests/pipeline/test_goal006_qualification.py
+          tests/pipeline/test_goal006_release_manifest.py
+          tests/pipeline/test_goal006_release_simulator.py
+          tests/pipeline/test_goal006_six_member_packaging.py
+          tests/pipeline/test_goal006_terraform_foundations.py
+          tests/pipeline/test_billing_ce_validator.py -rA
+      - name: Run delegated PostgreSQL contracts
+        run: scripts/test-wc059-postgres.sh
+      - name: Verify successful offline release path
+        run: >-
+          docker compose run --rm test-runner python
+          scripts/goal006_release_simulator.py
+          release/goal006/promotion-policy.json
+          release/goal006/release-manifest.json
+          infrastructure/recovery/phase2/fixtures/valid-recovery-bundle.json

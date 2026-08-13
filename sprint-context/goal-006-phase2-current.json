@@ -1,0 +1,52 @@
+{
+  "schema_version": "1.0.0",
+  "goal_id": "GOAL-006",
+  "work_contract": "WC-072",
+  "component": "P2-WC08-CLOSURE",
+  "title": "Completed Offline Evidence And Independent Review Package",
+  "controlling_sections": [
+    "work-contracts/WC-072-goal-006-phase2-offline-delivery.md#component-ledger",
+    "goals/GOAL-006-p1-wc11-integrated-grooming.md#p2-wc07--complete-deterministic-qualification-suite",
+    "goals/GOAL-006-p1-wc11-integrated-grooming.md#qualification-preservation",
+    "goals/GOAL-006-p1-wc08-qualification-strategy.md#evidence-contracts-and-proof-accounting",
+    "goals/GOAL-006-p1-wc08-qualification-strategy.md#p1-wc07-and-phase-allocation"
+  ],
+  "affected_paths": [
+    "docker-compose.release.yml",
+    "infrastructure/terraform/phase2/",
+    "infrastructure/recovery/phase2/",
+    "release/goal006/",
+    "scripts/goal006_*.py",
+    "tests/pipeline/test_goal006_*.py",
+    "tests/pipeline/test_billing_ce_validator.py",
+    "work-contracts/WC-072-goal-006-phase2-offline-delivery.md",
+    "sprint-context/goal-006-phase2-current.json",
+    "constitution/PROJECT_STATE.md"
+  ],
+  "validations": [
+    "docker compose run --rm test-runner pytest -q tests/pipeline/test_goal006_*.py -rA",
+    "docker compose run --rm test-runner ruff check scripts/goal006_*.py tests/pipeline/test_goal006_*.py",
+    "qualification ledger verification with 150/150 proof equality and CT-07 phase allocation",
+    "pinned Terraform format, TFLint and Checkov gates",
+    "git diff --check"
+  ],
+  "dependencies": [
+    "P2-WC01 accepted by R-120",
+    "P2-WC01 independently accepted by R-120",
+    "P2-WC01 through P2-WC08 independently accepted by R-120 through R-125",
+    "implementation and Security remediation accepted at 6339a9f",
+    "review evidence committed at 82e545d",
+    "accepted P1-WC08 qualification strategy",
+    "exact SEC-01..27, DATA-01..28, CCT-01..06 and CT-01..07 ledgers",
+    "EVC-01 through EVC-08",
+    "TGT-01 through TGT-15 classifications"
+  ],
+  "prohibited_paths": [
+    "constitution/CONSTITUTION.md",
+    "constitution/GENESIS.md",
+    "implementation changes, provider credentials, cloud mutation, real traffic, Production action and CT-07 PASS",
+    "src/",
+    "infrastructure/terraform/phase2/"
+  ],
+  "next_exact_action": "Founder review of draft PR #284; keep unmerged and do not begin Phase 3 or any live/cloud action."
+}

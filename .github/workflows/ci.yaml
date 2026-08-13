@@ -23,7 +23,7 @@ env:
 
 jobs:
 
-  # ─── Build all 5 images ───────────────────────────────────────────────────
+  # ─── Build all 6 release images ──────────────────────────────────────────
   build:
     name: Build Docker images
     runs-on: ubuntu-latest
@@ -34,15 +34,17 @@ jobs:
       matrix:
         service:
           - name: constitutional-engine
-            context: src/constitutional-engine
+            dockerfile: src/constitutional-engine/Dockerfile
           - name: business-platform
-            context: src/business-platform
+            dockerfile: src/business-platform/Dockerfile
           - name: professional-runtime
-            context: src/professional-runtime
+            dockerfile: src/professional-runtime/Dockerfile
           - name: ai-runtime
-            context: src/ai-runtime
+            dockerfile: src/ai-runtime/Dockerfile
           - name: web
-            context: web
+            dockerfile: web/Dockerfile
+          - name: billing-engine
+            dockerfile: src/billing-engine/Dockerfile
     steps:
       - uses: actions/checkout@v4
 
@@ -59,7 +61,8 @@ jobs:
       - name: Build and push image
         uses: docker/build-push-action@v5
         with:
-          context: ${{ matrix.service.context }}
+          context: .
+          file: ${{ matrix.service.dockerfile }}
           push: true
           tags: |
             ${{ env.REGISTRY_PREFIX }}/${{ matrix.service.name }}:sha-${{ github.sha }}
@@ -277,7 +280,7 @@ jobs:
     needs: build
     strategy:
       matrix:
-        image: [constitutional-engine, business-platform, professional-runtime, ai-runtime, web]
+        image: [constitutional-engine, business-platform, professional-runtime, ai-runtime, web, billing-engine]
     steps:
       - name: Run Trivy
         uses: aquasecurity/trivy-action@master
@@ -318,6 +321,7 @@ jobs:
           pip install pip-audit
           pip-audit -r src/professional-runtime/requirements.txt --strict
           pip-audit -r src/ai-runtime/requirements.txt --strict
+          pip-audit -r src/billing-engine/requirements.txt --strict
         continue-on-error: false  # Fail on any vulnerability
 
       - name: dotnet vulnerable — .NET dependencies

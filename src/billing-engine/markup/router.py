@@ -35,7 +35,7 @@ async def get_thread_catalog() -> list[ThreadEntry]:
     Delegates to thread_catalog module to return thread definitions.
     C-091: ThreadCatalogService delegation.
     """
-    await CE.ValidateAction("pricing.thread_catalog.read")
+    await CE.validate_action("pricing.thread_catalog.read")
     catalog = await thread_catalog.get_all_threads()
     return [ThreadEntry(**e.__dict__) for e in catalog]
 
@@ -50,7 +50,7 @@ async def get_bundle_cost_floor(
     GET /bundle-cost-floor/{agent_type}/{bundle_tier}
     Returns cost floor in paise for given agent type and bundle tier.
     """
-    await CE.ValidateAction("pricing.cost_floor.read")
+    await CE.validate_action("pricing.cost_floor.read")
     cost_floor_paise = await engine.cost_floor(agent_type=agent_type, bundle_tier=bundle_tier)
     return {"cost_floor_paise": cost_floor_paise}
 
@@ -68,7 +68,7 @@ async def validate_price(
     C-089: Enforce constitutional minimum margin floor.
     Returns 422 with minimum_compliant_price_paise on violation (C-038).
     """
-    await CE.ValidateAction("pricing.validate.write")
+    await CE.validate_action("pricing.validate.write")
     
     result = await engine.validate_price(
         agent_type=request.agent_type,
@@ -100,7 +100,7 @@ async def derive_price(
     Derives compliant price using margin-on-revenue formula.
     C-023: ValidateAction before execution.
     """
-    await CE.ValidateAction("pricing.derive.read")
+    await CE.validate_action("pricing.derive.read")
     
     derived_price_paise = await engine.derive_price(
         agent_type=request.agent_type,

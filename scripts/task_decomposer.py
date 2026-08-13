@@ -533,6 +533,8 @@ def run_compile_gate(gate_type: str, service_dir: str = "src/constitutional-engi
     if gate_type == "dotnet_test":
         test_root = REPO_ROOT / service_dir
         test_csproj = list(test_root.glob("*.csproj")) if test_root.exists() else []
+        if not test_csproj and service_dir == "src/constitutional-engine":
+            test_csproj = list((REPO_ROOT / "tests").glob("*/*.csproj"))
         if not test_csproj:
             return False, f"No test .csproj found in {service_dir}"
         project_path = test_csproj[0].relative_to(REPO_ROOT).as_posix()

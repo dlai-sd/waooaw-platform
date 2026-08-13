@@ -512,3 +512,64 @@ constitutional clearance or authorize Phase 2, Phase 3, cloud action, activation
 R-117 grants no Phase 2 or Phase 3 authority. PR #281 remains Draft until the Founder gives the exact
 hash-pinned acknowledgement in R-117. Phase 2 additionally requires all named pre-GOA conditions and
 a separate explicit current-session implementation authorization.
+
+## Founder Phase 2 Activation
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-001 |
+| `goal_id` | GOAL-006 |
+| `record_id` | FA-049 |
+| `record_type` | Founder Action |
+| `produced_at` | 2026-08-13T13:10:03Z |
+| Decision | APPROVED — activate Skill 17 and INST-013 Phase 2 routing |
+| Scope | Complete offline P2-WC01 through P2-WC08 delivery; INR 5,000 monthly development ceiling |
+| Excluded authority | Azure/provider access, Terraform apply, resource mutation, cloud expenditure, DNS, deployment, real traffic, Production, Platform Operations activation, Phase 3, PR approval and merge |
+
+R-118 independently approved Skill 17 and passed its Activation Gate. PR #281 merged as
+`1655afbab1dec83949734dd435c6c17f811e2683`; PR #283 merged as
+`61b1cda8994b85bf9e5c371ba107227d6dfc65bf`. FA-049 closes the protected Founder decision and
+permits INST-013 to issue the complete Phase 2 Contribution Envelope below.
+
+## Phase 2 Authorization — P2-WC01 Through P2-WC08
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-006 |
+| `record_id` | GOA-GOAL-006-INST-010-02 |
+| `record_type` | Authorization Record |
+| `authorization_id` | GOA-GOAL-006-INST-010-02 |
+| Authorized Institution | INST-010 — Platform IT Expert, Skill 17 |
+| Contribution scope | One complete Phase 2 envelope: create one Work Contract and bounded context; amend and independently review the Phase 2 specification; implement, deterministically validate, independently review and evidence P2-WC01 through P2-WC08 in dependency order; maintain one branch and one unmerged draft PR |
+| Controlling baseline | PR #281 merge `1655afbab1dec83949734dd435c6c17f811e2683`; integrated specification SHA-256 `495f720692bd71358f5d21db03bfa364b5724978e8b3b8ce85d3ba894b65303f`; Skill 17 PR #283 merge `61b1cda8994b85bf9e5c371ba107227d6dfc65bf` |
+| Required release behavior | BUILD ONCE → VERIFY → SIGNED SIX-MEMBER IMMUTABLE MANIFEST → PROMOTE EXACT DIGESTS → GREEN AT 0% TRAFFIC → VERIFY GREEN → BOUNDED CANARY → INDEPENDENT CONFIRMATION → 100% GREEN → OBSERVE → DEACTIVATE BLUE WITHIN 30 MINUTES; every failed gate restores 100% blue, deactivates green, preserves evidence and fails release |
+| Required evidence | C-059 traceability; exact CE/BP/PR/AIR/Web/Billing scope; Docker-first no-skip deterministic gates; immutable digests, SBOM/provenance/signature evidence; offline blue-green and rollback simulation; per-component independent review; security and QA acceptance; pushed commits and unmerged Phase 2 PR |
+| Budget | INR 5,000 monthly development ceiling; no additional charge without Founder approval; no cloud expenditure authorized |
+| Participation Window | Current constitutional delivery session and resumptions from the last pushed checkpoint until Phase 2 closure, unless reclaimed or halted by INST-013 or Founder |
+| Independence constraint | INST-010 is primary author/executor and may not independently approve its specification amendment, component evidence, security/QA result, PR or merge; specialist Decision Spaces remain with their accountable owners |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-13T13:10:04Z |
+
+This is one M2 Contribution Envelope under the Goal Orchestrator vNext standard. It authorizes
+offline repository implementation only. It prohibits Azure login, provider query, Terraform apply,
+resource mutation, deployment, real traffic, DNS, Production action, cloud expenditure, Platform
+Operations activation, Phase 3, self-review, self-approval, weakened gates and merge.
+
+## Acceptance — Phase 2
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-010 |
+| `goal_id` | GOAL-006 |
+| `record_id` | ACC-GOAL-006-INST-010-02 |
+| `record_type` | Acceptance Record |
+| `produced_at` | 2026-08-13T13:10:05Z |
+| `authorization_id` | GOA-GOAL-006-INST-010-02 |
+| `acceptance_timestamp` | 2026-08-13T13:10:05Z |
+| Decision | ACCEPTED |
+| Accepted scope | Complete offline P2-WC01 through P2-WC08 Contribution Envelope under Skill 17 and the disconnect-safe execution model |
+| Next exact action | Create the single Phase 2 Work Contract with artifact bindings, estimates, reviewers, compact execution record and P2-WC01 bounded context; then create the dedicated implementation branch and draft PR before specification amendment |
+| Excluded authority | Architecture/policy invention, live/provider/cloud/DNS/deployment/Production/traffic action, expenditure, Platform Operations activation, Phase 3, self-review, self-approval, merge and gate weakening |
+
+The Acceptance follows GOA issuance by one second and starts INST-010's Participation Window.

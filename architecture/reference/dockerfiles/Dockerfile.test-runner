@@ -24,6 +24,7 @@ WORKDIR /workspace
 # System dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
+    gh \
     curl \
     docker.io \
     python3 \

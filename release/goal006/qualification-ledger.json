@@ -1,0 +1,82 @@
+{
+  "schema": "waooaw.qualification-ledger/v1",
+  "mode": "offline_phase2",
+  "proof_families": {
+    "FUN": {"count": 6, "status": "PASS_PHASE_2_DETERMINISTIC", "test_bindings": ["tests/pipeline/test_goal006_six_member_packaging.py"]},
+    "INT": {"count": 8, "status": "PASS_PHASE_2_DETERMINISTIC", "test_bindings": ["tests/pipeline/test_goal006_six_member_packaging.py", "tests/pipeline/test_billing_ce_validator.py"]},
+    "CCT": {"count": 6, "status": "PASS_PHASE_2_DETERMINISTIC", "test_bindings": ["tests/test_wc012_dry_run.py", "tests/pipeline/test_goal006_release_simulator.py"]},
+    "SEC": {"count": 27, "status": "PASS_PHASE_2_DETERMINISTIC", "test_bindings": ["tests/pipeline/test_goal006_terraform_foundations.py", "tests/pipeline/test_goal006_release_manifest.py", "tests/pipeline/test_goal006_release_simulator.py"]},
+    "DATA": {"count": 28, "status": "PASS_PHASE_2_DETERMINISTIC", "test_bindings": ["tests/pipeline/test_goal006_data_recovery.py", "tests/pipeline/test_goal006_six_member_packaging.py"]},
+    "CT": {"count": 6, "status": "PASS_PHASE_2_DETERMINISTIC", "test_bindings": ["tests/pipeline/test_goal006_six_member_packaging.py", "tests/pipeline/test_goal006_terraform_foundations.py"]},
+    "PERF": {"count": 5, "status": "PASS_PHASE_2_DETERMINISTIC", "test_bindings": ["tests/pipeline/test_goal006_release_simulator.py"]},
+    "LOAD": {"count": 4, "status": "PASS_PHASE_2_DETERMINISTIC", "test_bindings": ["tests/pipeline/test_goal006_release_simulator.py"]},
+    "COLD": {"count": 3, "status": "PASS_PHASE_2_DETERMINISTIC", "test_bindings": ["tests/pipeline/test_goal006_six_member_packaging.py"]},
+    "RES": {"count": 8, "status": "PASS_PHASE_2_DETERMINISTIC", "test_bindings": ["tests/pipeline/test_goal006_release_simulator.py"]},
+    "CHAOS": {"count": 6, "status": "PASS_PHASE_2_DETERMINISTIC", "test_bindings": ["tests/pipeline/test_goal006_release_simulator.py"]},
+    "PROM": {"count": 5, "status": "PASS_PHASE_2_DETERMINISTIC", "test_bindings": ["tests/pipeline/test_goal006_release_manifest.py", "tests/pipeline/test_goal006_release_simulator.py"]},
+    "ROLL": {"count": 5, "status": "PASS_PHASE_2_DETERMINISTIC", "test_bindings": ["tests/pipeline/test_goal006_release_simulator.py"]},
+    "DR": {"count": 8, "status": "PASS_PHASE_2_DETERMINISTIC", "test_bindings": ["tests/pipeline/test_goal006_data_recovery.py", "tests/pipeline/test_goal006_release_simulator.py"]},
+    "OBS": {"count": 6, "status": "PASS_PHASE_2_DETERMINISTIC", "test_bindings": ["tests/pipeline/test_goal006_release_simulator.py"]},
+    "COST": {"count": 5, "status": "PASS_PHASE_2_DETERMINISTIC", "test_bindings": ["tests/pipeline/test_goal006_release_simulator.py"]},
+    "CJ": {"count": 5, "status": "PASS_PHASE_2_DETERMINISTIC", "test_bindings": ["tests/pipeline/test_goal006_data_recovery.py", "tests/pipeline/test_goal006_six_member_packaging.py"]},
+    "LIFE": {"count": 4, "status": "PASS_PHASE_2_DETERMINISTIC", "test_bindings": ["tests/pipeline/test_goal006_data_recovery.py", "tests/pipeline/test_goal006_release_simulator.py"]},
+    "OPS": {"count": 5, "status": "PASS_PHASE_2_DETERMINISTIC", "test_bindings": ["tests/pipeline/test_goal006_release_simulator.py"]}
+  },
+  "accounting": {
+    "expected": 150,
+    "collected": 150,
+    "executed": 150,
+    "passed": 150,
+    "test_selected": 147,
+    "test_executed": 147,
+    "test_passed": 147,
+    "omissions": [],
+    "proof_ids_sha256": "fdea035675c8d8ebb75d32d25abd23cc9553a7887eeff4d8b13f80dfe297a802"
+  },
+  "ct_07": {"id": "CT-07", "status": "NOT_EXECUTED_PHASE_3", "reason": "PHASE_3_NOT_AUTHORIZED"},
+  "targets": {
+    "TGT-01": "BINDING_FLOOR",
+    "TGT-02": "OWNER_DECISION_REQUIRED",
+    "TGT-03": "OWNER_DECISION_REQUIRED",
+    "TGT-04": "OWNER_DECISION_REQUIRED",
+    "TGT-05": "OWNER_DECISION_REQUIRED",
+    "TGT-06": "OWNER_DECISION_REQUIRED",
+    "TGT-07": "RECOMMENDED_NOT_ACCEPTED",
+    "TGT-08": "RECOMMENDED_NOT_ACCEPTED",
+    "TGT-09": "RECOMMENDED_NOT_ACCEPTED",
+    "TGT-10": "RECOMMENDED_NOT_ACCEPTED",
+    "TGT-11": "RECOMMENDED_NOT_ACCEPTED",
+    "TGT-12": "RECOMMENDED_NOT_ACCEPTED",
+    "TGT-13": "RECOMMENDED_NOT_ACCEPTED",
+    "TGT-14": "RECOMMENDED_NOT_ACCEPTED",
+    "TGT-15": "RECOMMENDED_NOT_ACCEPTED"
+  },
+  "evidence_contracts": {
+    "EVC-01": {"status": "COLLECTED", "reference": "Docker commands and exact nonzero counts in this ledger"},
+    "EVC-02": {"status": "COLLECTED", "reference": "release/goal006/release-manifest.json"},
+    "EVC-03": {"status": "COLLECTED", "reference": "release/goal006/promotion-policy.json"},
+    "EVC-04": {"status": "COLLECTED", "reference": "infrastructure/recovery/phase2/fixtures/valid-recovery-bundle.json"},
+    "EVC-05": {"status": "COLLECTED", "reference": "tests/pipeline/test_goal006_release_simulator.py"},
+    "EVC-06": {"status": "COLLECTED", "reference": "negative cases in tests/pipeline/test_goal006_*.py"},
+    "EVC-07": {"status": "COLLECTED", "reference": "offline synthetic assumptions in release/goal006/promotion-policy.json"},
+    "EVC-08": {"status": "COLLECTED", "reference": "independence record below; QA acceptance deferred"}
+  },
+  "bindings": {
+    "source_commit": "d53bb8ad007765cdae7397a9443f7f6c1e2f386f",
+    "manifest_path": "release/goal006/release-manifest.json",
+    "manifest_sha256": "72150c68487645fbfe067410d9f3f8832d19e9127b3623bfde5c168d1ce36e6d",
+    "runner_digest": "sha256:13b3b272650e99bc7f8c1e775d5d532491a58ea5c34370aa71a064b5822f92ed",
+    "commands": [
+      "docker compose run --rm test-runner pytest -q tests/test_wc012_dry_run.py tests/pipeline/test_goal006_*.py tests/pipeline/test_billing_ce_validator.py -rA",
+      "scripts/test-wc059-postgres.sh"
+    ]
+  },
+  "independence": {
+    "implementer": "INST-010 Platform IT Expert",
+    "executor": "INST-010 author Docker execution",
+    "custodian": "Draft PR #284",
+    "qa_acceptor": "Independent QA pending",
+    "conflicts": ["Implementer and author executor cannot accept their own evidence"],
+    "acceptance_status": "DEFERRED_PENDING_INDEPENDENT_REVIEW"
+  }
+}

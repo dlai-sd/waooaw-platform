@@ -6,6 +6,10 @@ using Waooaw.ConstitutionalEngine.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddGrpc();
+builder.Services
+    .AddGrpcHealthChecks()
+    .AddCheck("constitutional-engine", () =>
+        Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Healthy());
 
 // ── Audit Sink DbContext — WORM evidence records (ADR-044) ───────────────────
 // Required for WriteAuditSinkRecordAsync on every ValidateAction call (C-059).
@@ -17,4 +21,5 @@ builder.Services.AddDbContextFactory<AuditSinkDbContext>(opts =>
 
 var app = builder.Build();
 app.MapGrpcService<ConstitutionalEngineService>();
+app.MapGrpcHealthChecksService();
 app.Run();

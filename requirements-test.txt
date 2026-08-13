@@ -20,7 +20,6 @@ python-hcl2>=4.3                # Terraform HCL syntax validation gate — P2 mu
 
 # ── Testing utilities ────────────────────────────────────────────────────────
 hypothesis>=6.100               # property-based testing
-pytest-hypothesis                # hypothesis pytest integration
 testcontainers>=4.0             # Docker-based integration test containers
 psycopg2-binary>=2.9            # PostgreSQL for integration tests
 

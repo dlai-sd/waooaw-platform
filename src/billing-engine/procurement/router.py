@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from procurement.models import ProviderRunwayStatus
 from procurement.service import ProcurementService
-from db import get_session
+from database import get_db
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +32,7 @@ class CostRecordRequest:
 
 
 async def get_procurement_service(
-    session: Annotated[AsyncSession, Depends(get_session)],
+    session: Annotated[AsyncSession, Depends(get_db)],
 ) -> ProcurementService:
     """Dependency: instantiate ProcurementService with DB session and default FA generator."""
     from procurement.founder_action import FounderActionGenerator

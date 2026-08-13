@@ -1,0 +1,42 @@
+{
+  "schema": "waooaw.offline-promotion-policy/v1",
+  "mode": "offline_synthetic",
+  "live_actions_authorized": false,
+  "requested_sequence": [
+    "BUILD_ONCE",
+    "VERIFY",
+    "SIGNED_SIX_MEMBER_IMMUTABLE_MANIFEST",
+    "PROMOTE_EXACT_DIGESTS",
+    "GREEN_REVISION_AT_0_PERCENT",
+    "VERIFY_GREEN",
+    "BOUNDED_CANARY",
+    "INDEPENDENT_CONFIRMATION",
+    "GREEN_AT_100_PERCENT",
+    "OBSERVE",
+    "DEACTIVATE_BLUE_WITHIN_30_MINUTES"
+  ],
+  "concurrency_key": "goal006-phase2-release",
+  "concurrent_release_active": false,
+  "autonomous_halt": false,
+  "workload_lease_active": true,
+  "drift_status": "clean",
+  "estimated_monthly_cost_inr": 0,
+  "monthly_cost_ceiling_inr": 5000,
+  "canary_weight": 10,
+  "canary_duration_seconds": 300,
+  "observation_duration_seconds": 600,
+  "blue_deactivation_deadline_seconds": 1800,
+  "identities": {
+    "author": "synthetic-author",
+    "executor": "synthetic-executor",
+    "independent_confirmer": "synthetic-independent-confirmer"
+  },
+  "confirmation_evidence": {
+    "manifest_verified": true,
+    "green_at_zero_verified": true,
+    "canary_healthy": true,
+    "constitutional_gates_passed": true
+  },
+  "inject_failure_at": null,
+  "phase3_policy_status": "NOT_ACCEPTED_NOT_EXECUTED"
+}
