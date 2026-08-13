@@ -16,7 +16,14 @@ members=("${release_members[@]}")
 if (( $# > 0 )); then
   members=("$@")
   for member in "${members[@]}"; do
-    if [[ ! " ${release_members[*]} " =~ " ${member} " ]]; then
+    known_member=false
+    for release_member in "${release_members[@]}"; do
+      if [[ "$member" == "$release_member" ]]; then
+        known_member=true
+        break
+      fi
+    done
+    if [[ "$known_member" != true ]]; then
       echo "Unknown release member: ${member}" >&2
       exit 2
     fi

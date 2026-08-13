@@ -51,7 +51,7 @@ class FakeProtobuf:
     VALIDATION_DECISION_ALLOW = 1
 
     @staticmethod
-    def ValidateActionRequest(**values: Any) -> SimpleNamespace:
+    def ValidateActionRequest(**values: Any) -> SimpleNamespace:  # noqa: N802
         return SimpleNamespace(**values)
 
 
@@ -61,7 +61,9 @@ class FakeStub:
         self.error = error
         self.request: Any = None
 
-    async def ValidateAction(self, request: Any, *, timeout: float) -> Any:
+    async def ValidateAction(  # noqa: N802
+        self, request: Any, *, timeout: float  # noqa: ASYNC109
+    ) -> Any:
         self.request = request
         assert timeout == 2.0
         if self.error is not None:
@@ -90,7 +92,7 @@ async def test_validate_action_maps_dcm_and_allows_with_basis(
         protobuf=FakeProtobuf,
     )
 
-    await validator.ValidateAction(action)
+    await validator.validate_action(action)
 
     assert stub.request.action_type == action
     assert stub.request.contract_id == "offline-contract"
@@ -105,7 +107,7 @@ async def test_validate_action_rejects_allow_without_basis(ce_validator: Any) ->
     )
 
     with pytest.raises(ce_validator.ConstitutionalValidationError):
-        await validator.ValidateAction("pricing.derive.read")
+        await validator.validate_action("pricing.derive.read")
 
 
 @pytest.mark.asyncio
@@ -116,4 +118,4 @@ async def test_validate_action_fails_closed_when_ce_is_unavailable(ce_validator:
     )
 
     with pytest.raises(ce_validator.ConstitutionalValidationError):
-        await validator.ValidateAction("pricing.validate.write")
+        await validator.validate_action("pricing.validate.write")

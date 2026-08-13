@@ -53,7 +53,7 @@ class ConstitutionalEngineValidator:
             self._stub = protobuf_grpc.ConstitutionalServiceStub(self._channel)
         return self._protobuf, self._stub
 
-    async def ValidateAction(self, action: str) -> None:
+    async def validate_action(self, action: str) -> None:
         """Require an affirmative CE decision before the Billing action proceeds."""
         protobuf, stub = self._load_contract()
         dcm_category = (
