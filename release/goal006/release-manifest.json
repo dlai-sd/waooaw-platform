@@ -1,0 +1,57 @@
+{
+  "payload": {
+    "schema": "waooaw.release-manifest/v1",
+    "immutable": true,
+    "source_commit": "f7c39b754b3a74fc4a8d758fff4c9ab412c926bf",
+    "builder_identity": "https://github.com/dlai-sd/waooaw-platform/.github/workflows/ci.yml@refs/heads/main",
+    "reviewed_config_digest": "sha256:94aa2ae155073a1330921de848f0215fccccb8000df5138716c4f9c0513cfe95",
+    "qualification": {
+      "status": "pass",
+      "selected": 16,
+      "executed": 16,
+      "passed": 16,
+      "skipped": [],
+      "xfailed": [],
+      "deselected": []
+    },
+    "members": {
+      "constitutional-engine": {
+        "digest": "sha256:9f17b7fcd98aecbe343f28594a3a7ce8222762c4a5cbd7c9d2ff69571250568d",
+        "evidence": {"path": "supply-chain-evidence.json", "sha256": "f92678eb9706d08e012d8d1a137ca7d8baf23cad7fc9d1b051c7119dea3f9477"},
+        "signature": "QHNaxqVK6u58m4uud22s7v1kmelpd3Elyex9/sFFj5Ib0zjKfaxloAZBtjpohzPl7F/4h9e+xOzPyTazbklWDw=="
+      },
+      "business-platform": {
+        "digest": "sha256:e1b6bbd028819ed3cc5d92fd209e26ff907d350cc705b45b358af09bc27b825d",
+        "evidence": {"path": "supply-chain-evidence.json", "sha256": "f92678eb9706d08e012d8d1a137ca7d8baf23cad7fc9d1b051c7119dea3f9477"},
+        "signature": "kroD02QGzEeEbOSuNj62NTKh6ABFB1AkIc3JJ8rJaZOx2ZZHbUMSvobjt7R1YdCM8zteZB82TkPm/5BVO7oqCA=="
+      },
+      "professional-runtime": {
+        "digest": "sha256:8b92afcece53868076b9a1faea32ef4bf9ae37a833a5d13745d0920b23c8e67e",
+        "evidence": {"path": "supply-chain-evidence.json", "sha256": "f92678eb9706d08e012d8d1a137ca7d8baf23cad7fc9d1b051c7119dea3f9477"},
+        "signature": "t8x4J3P0WXBVAdbiLo0UY4Sy36EZrRXPXBrM8UJb44j7w8HUqZBPtxBYXD/dmssj27kNvLTqgMUwsfw6rs98DA=="
+      },
+      "ai-runtime": {
+        "digest": "sha256:ff843470679e98356bb0bb06d72e76ff6c3ee9b496d0ef465ca25a18dc3da8c6",
+        "evidence": {"path": "supply-chain-evidence.json", "sha256": "f92678eb9706d08e012d8d1a137ca7d8baf23cad7fc9d1b051c7119dea3f9477"},
+        "signature": "At1G+Bi450kkub7+FRregpPAHcnDXSk77iOddtKbYJ+MJzd5Tmzd/ruIj2QxpIWoFIhlCmxrpghUUm1vuGWNDg=="
+      },
+      "web": {
+        "digest": "sha256:99529bdbe80d01eca6cacbee3ed054e86b024956d505a4b08a401236561857ed",
+        "evidence": {"path": "supply-chain-evidence.json", "sha256": "f92678eb9706d08e012d8d1a137ca7d8baf23cad7fc9d1b051c7119dea3f9477"},
+        "signature": "T35qqvYhApY0fLD1L5JRmzKRUcey7L0fdHBCWfPyCOAImGKNJ+D3b2Oad0Dv4SIoqnzkuvSZ162v2w0qqnZqCg=="
+      },
+      "billing-engine": {
+        "digest": "sha256:253334ac456574e186d3cc016bcbb4b3ccdba16dbc8abda117d7ab06d197ff27",
+        "evidence": {"path": "supply-chain-evidence.json", "sha256": "f92678eb9706d08e012d8d1a137ca7d8baf23cad7fc9d1b051c7119dea3f9477"},
+        "signature": "321jLA879ga5GI0wS7gK2eyU9MrvXDAG6dZLY/OnJvmcC75VOrD14cqdYXnU/viymrPXxaU76UDnp52Tx325CA=="
+      }
+    }
+  },
+  "verification_key": {
+    "algorithm": "ed25519",
+    "key_id": "goal006-phase2-offline-1",
+    "public_key": "wJX5zmzdtQOn0T+KawiZRmd6aR7aSBZGc8t4ZtyDSIY=",
+    "status": "active"
+  },
+  "signature": "z5h4hhkseV7en5h7f2/LaYaPr0LSNOX/ciwOaWyU+mkI1G7Z4YXtpi+Sb16KDZWNpuE38RznmgsWI/yoNHauCA=="
+}
