@@ -8,7 +8,7 @@
 | Authorization | FA-049; GOA-GOAL-006-INST-010-02 |
 | Acceptance | ACC-GOAL-006-INST-010-02 |
 | Gate | G5 CLEAR; platform phase IMPLEMENTATION |
-| Status | IN PROGRESS - P2-WC02 and P2-WC03 independent acceptance pending |
+| Status | IN PROGRESS - P2-WC03 author-gated; P2-WC04 active; independent acceptance deferred until P2-WC07 |
 | Reviewer | INST-004 for implementation integrity; INST-007 security; independent QA for qualification; affected specialist owners retain their Decision Spaces |
 | Constitutional basis | C-001, C-023, C-032, C-059, C-065, C-066, C-067, C-071, C-076, C-080; GEOM G-7 |
 
@@ -84,9 +84,9 @@ additional charge. Phase 3 remains unauthorized.
 | Component | Outcome | Direct dependencies | Required independent acceptance | Status |
 |---|---|---|---|---|
 | P2-WC01 | Deterministic Docker-first toolchain and test foundation | Phase 1, FA-049, GOA-02, ACC-02 | INST-004 implementation review | DONE - R-120 APPROVE |
-| P2-WC02 | Exactly six image, Compose and component contracts | P2-WC01 | INST-005 plus independent QA | IMPLEMENTED - local gates pass; independent acceptance pending |
-| P2-WC03 | Offline Terraform isolation, identity, secrets and JIT | P2-WC01 | INST-009 and INST-007 | IMPLEMENTED - local gates pass; independent acceptance pending |
-| P2-WC04 | Synthetic data lifecycle, migration and recovery | P2-WC01/02; full tuple also P2-WC03/05 | INST-006 and INST-007 | PENDING |
+| P2-WC02 | Exactly six image, Compose and component contracts | P2-WC01 | INST-005 plus independent QA | IMPLEMENTED/AUTHOR-GATED - independent acceptance deferred |
+| P2-WC03 | Offline Terraform isolation, identity, secrets and JIT | P2-WC01 | INST-009 and INST-007 | IMPLEMENTED/AUTHOR-GATED - 16/16 contracts and static gates pass; independent acceptance deferred |
+| P2-WC04 | Synthetic data lifecycle, migration and recovery | P2-WC01/02; full tuple also P2-WC03/05 | INST-006 and INST-007 | IN PROGRESS |
 | P2-WC05 | Signed six-member immutable release manifest and supply-chain evidence | P2-WC01/02 | INST-007 and independent QA | PENDING |
 | P2-WC06 | Offline CI/CD, revision blue-green, rollback, lifecycle, halt and cost simulation | P2-WC03/04/05 | INST-009, INST-007 and independent confirmer | PENDING |
 | P2-WC07 | Complete deterministic qualification and proof accounting | P2-WC01 through P2-WC06 | Independent QA acceptor | PENDING |
@@ -94,16 +94,21 @@ additional charge. Phase 3 remains unauthorized.
 
 ## Component Closure Protocol
 
-For each component in dependency order:
+For P2-WC04 through P2-WC07 in dependency order:
 
 1. Replace `sprint-context/goal-006-phase2-current.json` with only that component's controlling
    sections, affected paths, deterministic validations and direct dependencies.
-2. Implement one bounded independently valid increment and run its focused Docker/offline check.
+2. Implement one bounded increment and run its focused Docker/offline check.
 3. Before a long validation run, commit and push the latest valid implementation state.
 4. Run every complete deterministic gate with nonzero selected/executed/passed accounting.
-5. Obtain the named independent review; author evidence is never acceptance.
+5. Record a deterministic author readiness verdict for defect discovery. Author review is never
+  independent acceptance and the component remains explicitly acceptance-deferred.
 6. Update this execution record and component status, replace the context for the next component,
    update the single PROJECT_STATE checkpoint, commit and push.
+
+After P2-WC07 is implemented and author-gated, freeze one immutable P2-WC02 through P2-WC07 package
+and obtain the named institutional reviews against that complete package. No component may claim
+independent acceptance before those reviews.
 
 No separate planning or status artifact may duplicate this Work Contract, the context manifest,
 PROJECT_STATE, commits, CI evidence, reviews or the PR.
@@ -116,13 +121,13 @@ PROJECT_STATE, commits, CI evidence, reviews or the PR.
 | Authorization checkpoint | `313fb12` on `goal/006/phase2-blocked` |
 | Current branch | `goal/006/phase2-offline-delivery` |
 | Current PR | Draft PR #284 - `https://github.com/dlai-sd/waooaw-platform/pull/284`; reuse through P2-WC08; do not merge |
-| Current component | P2-WC02 and P2-WC03 - implementation complete; required independent acceptance pending |
-| Next exact action | Obtain P2-WC02 INST-005/QA acceptance and P2-WC03 INST-009/INST-007 acceptance against immutable commits; do not start dependent P2-WC04/P2-WC05 closure before P2-WC02 acceptance |
-| Completed commit IDs | `313fb12` authorization; `6e23941` WC/context; `739cf2b` P2-WC01; `222eaef` R-120; `d2b95d8` P2-WC02; `5cbf895` local-review repairs; `5ed3f0c` P2-WC03 |
-| Validation results | P2-WC01 gates PASS; P2-WC02 focused contracts 14/14 and delegated PostgreSQL 2/2 PASS; P2-WC03 contracts 12/12, Ruff, Terraform format, recursive TFLint, Checkov 18/18, policy JSON, patch hygiene and secret scan PASS |
-| Review results | R-117 Phase 1 CLEAR WITH CONDITIONS; R-118 Skill 17 APPROVE; R-119 release contract APPROVE; R-120 P2-WC01 APPROVE; P2-WC02 local review complete with independent acceptance pending; P2-WC03 local review complete with Platform/Security acceptance pending |
+| Current component | P2-WC04 - synthetic data lifecycle, migration and recovery implementation |
+| Next exact action | Implement and author-gate P2-WC04 offline synthetic recovery contracts; then proceed through P2-WC07 before one complete independent review package |
+| Completed commit IDs | `313fb12` authorization; `6e23941` WC/context; `739cf2b` P2-WC01; `222eaef` R-120; `d2b95d8` P2-WC02; `5cbf895` local-review repairs; `5ed3f0c` P2-WC03; `fe8cdff` review remediation; `8dca8a5` lease deactivation repair |
+| Validation results | P2-WC01 gates PASS; P2-WC02 focused contracts 14/14 and delegated PostgreSQL 2/2 PASS; P2-WC03 contracts 16/16, Ruff, Terraform format, recursive TFLint, Checkov 18/18, patch hygiene and prohibited-command scan PASS |
+| Review results | R-117 Phase 1 CLEAR WITH CONDITIONS; R-118 Skill 17 APPROVE; R-119 release contract APPROVE; R-120 P2-WC01 APPROVE; P2-WC02 and P2-WC03 author readiness gates PASS with independent acceptance explicitly deferred until the complete P2-WC02 through P2-WC07 package |
 | Blockers and owner decisions | No contribution-start blocker; canonical Incident/Change/Release policies remain fail-closed dependencies for affected P2-WC06/07/08 paths; INR 5,000 ceiling; Phase 3 prohibited |
-| Allowed actions | Offline repository implementation, Docker-first validation, synthetic evidence, independent review, commits/pushes, one draft unmerged PR |
+| Allowed actions | Offline repository implementation, Docker-first validation, synthetic evidence, author readiness review, commits/pushes, one draft unmerged PR; independent review after P2-WC07 |
 | Prohibited actions | Provider/cloud/DNS/deployment/Production/real-traffic/spend/Phase 3 actions; self-review/approval/merge; weakened or advisory proof |
 
 This table is the durable resume source. Chat history, transcript history and accumulated session
@@ -186,7 +191,7 @@ C-065 or either component exit gate.
 | Packaging review | PASS - exactly six local images present; all run as `waooaw`; accepted ports 5002, 5001, 5003, 5004, 3000 and 8140 |
 | Terraform review | PASS - pinned format, recursive TFLint, Checkov 18/18, Ruff, policy JSON and 12/12 contracts |
 | Hygiene | PASS - diff check and committed credential-pattern scan |
-| Author verdict | READY FOR INDEPENDENT REVIEW - no author finding; no self-approval |
+| Author verdict | IMPLEMENTED/AUTHOR-GATED - no author finding; independent acceptance deferred; no self-approval |
 
 ### Bounded Independent Review Matrix
 
