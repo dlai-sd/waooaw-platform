@@ -47,3 +47,27 @@ R-101 confirmation is limited to verifying these hashes, both finding dispositio
 design drift. It is not a new owner or repair dispatch. Any package change after this manifest
 invalidates the hashes and requires a new manifest plus dependency-impact classification before
 review may continue.
+
+## Delivery Closure
+
+| Field | Value |
+|---|---|
+| Closure commit | `33f5a4224b2f14b60af555165277f1eee2b064de` |
+| Review evidence | R-101 final verdict `APPROVED`; R-102 verdict `APPROVED` |
+| Change class after reviewed package | M1 ministerial closure: task, ledger, budget, delivery state, and next-authority boundary only |
+| Design review basis | The 14-file Exact Package above remains the baseline independently approved by both reviewers |
+
+| Closure file | SHA-256 at closure commit |
+|---|---|
+| `SPRINT-REGISTRY.md` | `169b91281d2a1ba5d15326f15e522f6f3fdbf575ce6152d28ac8487d5abb0b58` |
+| `constitution/PROJECT_STATE.md` | `a435140d9a52eb68e12ec53a4fda741eea0dbb27d25a83bf63cdcdbdc168217a` |
+| `work-contracts/WC-064-founder-commercial-governance-program-design.md` | `50abafdad9c8a131c7fe8d9975ca7c87847ca80703910ae94d1cad9fd5dcd54f` |
+| `goals/GOAL-005-wc064-execution-record.md` | `dadd3a91da6d8d55b507297a4b25be3ce8312282fa3ae742ae6b5f292388b585` |
+| `reviews/R-101-wc064-integrated-ea-review.md` | `6c01d5bd1188aab1e90aecfcfc8d14ceaabf7e7ffca967bede1efb47941c866f` |
+| `reviews/R-102-wc064-constitutional-readiness.md` | `410573be62d85c88d91caebb6e183886e58df771d402e76bb60f375d851d6bf5` |
+
+These closure hashes do not replace or expand the reviewed design baseline. They prove that the
+post-verdict delta records only approved review evidence and ministerial completion. Any later
+change to owner decisions, policy, architecture, acceptance meaning, package boundaries, risk,
+WC-065 activation, or WC-066 through WC-069 evidence gates requires a new dependency-impact
+classification and applicable re-review.
