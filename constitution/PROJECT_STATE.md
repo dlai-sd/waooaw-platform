@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 62
+**State Revision:** 63
 **Last Updated:** 2026-08-13
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -33,7 +33,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Budget control | WITHIN_BUDGET — USD 15.00 accounted; USD 40 ceiling; STOP_AND_CONSOLIDATE at USD 32 |
 | Fresh CA routing readiness | DONE — R-103 / CR-GOAL-005-INST-002-21 READY FOR ROUTING |
 | Protected Decision Register | DONE — PDR-065-07 closed by FA-046 reuse; PDR-065-01 through PDR-065-06 closed by FA-047 lean baseline |
-| Final package review and acknowledgement | R-105 READY — only ACK-GOAL-005-INST-001-14 remains |
+| Final package review and acknowledgement | DONE — R-105 READY; ACK-GOAL-005-INST-001-14 recorded at 2026-08-13T05:08:55Z |
 | Fresh implementation confirmation | NOT REQUESTED — separate current-session Founder decision remains required |
 | Implementation GOA / Acceptance | NOT ISSUED — GOA/ACC-GOAL-005-INST-010-09 are reserved identifiers only |
 | WC-066 through WC-069 | EVIDENCE-GATED — no detailed grooming or implementation authorized |
@@ -62,9 +62,10 @@ FA-047 close all seven protected decisions; R-105 finds the exact package READY.
 
 ## Next Authorized Action
 
-Obtain hash-pinned ACK-GOAL-005-INST-001-14 for the R-105-ready package. Do not add owner
-handoffs. Do not issue implementation GOA/ACC-09, implement, activate policy/providers, deploy,
-approve or merge a PR, or groom WC-066 through WC-069.
+Ask the mandatory separate question: `This would begin writing implementation code. Do you
+authorize WC-065 implementation for the current session?` Until explicit confirmation, do not
+issue implementation GOA/ACC-09, implement, activate policy/providers, deploy, approve or merge a
+PR, or groom WC-066 through WC-069.
 
 ## History And Evidence
 
