@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 81
+**State Revision:** 82
 **Last Updated:** 2026-08-13
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -21,7 +21,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Platform version | 1.45.0 |
 | Latest completed Work Contract | WC-065 — Founder Offerability And Commercial Composition |
 | Latest merge | PR #278 merged to `main` as `f28badc` on 2026-08-13 |
-| Active delivery | GOAL-006 Phase 1 P1-WC12 independent constitutional review and Founder authorization package |
+| Active delivery | GOAL-006 Phase 1 cleared with conditions; awaiting Founder hash-pinned acknowledgement |
 
 ## Active Checkpoint — GOAL-006 Secure Autonomous Cloud Delivery Intake
 
@@ -57,7 +57,8 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | P1-WC11 Product Owner GOA / Acceptance | VALID — GOA-GOAL-006-INST-011-02 at 11:32:00Z; ACC-GOAL-006-INST-011-02 at 11:32:01Z |
 | P1-WC11 contribution / owner review | DONE — CR-GOAL-006-INST-011-02 accepted at `495f7206...` by R-116 and all decision owners |
 | P1-WC12 Constitutional GOA / Acceptance | VALID — GOA-GOAL-006-INST-002-02 at 11:52:00Z; ACC-GOAL-006-INST-002-02 at 11:52:01Z |
-| Phase 1 owner grooming | IN PROGRESS — P1-WC12 independent review only; Founder Phase 2 decision remains protected |
+| P1-WC12 constitutional review | DONE — R-117 / CR-GOAL-006-INST-002-07 CLEAR WITH CONDITIONS at commit `db5f477`; no Constitutional Blocker |
+| Phase 1 Founder control point | WAITING — exact R-117 acknowledgement may move PR #281 to Ready for Founder Review only; Phase 2 remains unauthorized |
 
 ### Intake Context
 
@@ -66,7 +67,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 - **Validation:** deterministic content checks and editor diagnostics pass; no runnable infrastructure or implementation changed.
 - **Independent review:** R-106 / CR-GOAL-006-INST-002-01 finds the classification and plan ready, with post-review Founder acknowledgement as the sole routing predecessor.
 - **Pull request:** PR #281 is the Phase 1 PR. Phase 2 implementation will use a separate later PR after Phase 1 closure and explicit implementation authorization.
-- **Boundary:** P1-WC12 independent review only; no runnable changes, credentials/live access, cloud spend, DNS action, deployment, operation, Platform Operations activation, PR approval, or merge is authorized.
+- **Boundary:** Awaiting Founder Phase 1 acknowledgement only; no runnable changes, credentials/live access, cloud spend, DNS action, deployment, operation, Platform Operations activation, PR approval, or merge is authorized.
 - **Protected local artifacts:** `.coverage`, `goals/goal_register.jsonl`, `logs/blueprint_assurance_report.json`, and `logs/bootstrap-evidence.jsonl` are unrelated and must remain unstaged.
 - **Intake evidence:** `goals/GOAL-006-secure-autonomous-cloud-delivery.md`, `goals/GOAL-006-execution-plan.md`, and WC-071.
 
@@ -86,10 +87,10 @@ dependencies; they block policy-dependent automation and Phase 3 handover/activa
 
 ## Next Authorized Action
 
-Complete fresh P1-WC12 review of the exact P1-WC11 baseline and produce a Founder decision package
-with the exact Phase 2 boundary. Do not issue Phase 2 implementation authority without separate
-current-session Founder authorization. All cloud, DNS, deployment, production, and Platform
-Operations activation actions remain unauthorized.
+Obtain the exact R-117 Founder acknowledgement for commit `db5f4773b6646c585e5cbfe70af34b76f4512ce4`.
+Only then may PR #281 move from Draft to Ready for Founder Review. Do not issue Phase 2 implementation
+authority until every R-117 pre-GOA condition closes and the Founder separately authorizes the current
+session. All cloud, DNS, deployment, production, and Platform Operations activation remain unauthorized.
 
 ## History And Evidence
 

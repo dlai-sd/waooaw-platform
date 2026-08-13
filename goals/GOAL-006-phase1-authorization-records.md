@@ -499,3 +499,16 @@ constitutional clearance or authorize Phase 2, Phase 3, cloud action, activation
 | Decision | ACCEPTED |
 | Accepted scope | Independent P1-WC12 constitutional and authorization-readiness review only |
 | Excluded authority | Owner contribution, implementation, provider/cloud/DNS/deployment/Production action, Founder decision substitution, activation, PR approval, and merge |
+
+## P1-WC12 Completion Gate
+
+| Field | Value |
+|---|---|
+| Reviewed package | Commit `db5f4773b6646c585e5cbfe70af34b76f4512ce4`; P1-WC11 SHA-256 `495f720692bd71358f5d21db03bfa364b5724978e8b3b8ce85d3ba894b65303f` |
+| Independent review | R-117 / CR-GOAL-006-INST-002-07 |
+| Review verdict | CLEAR WITH CONDITIONS — NO CONSTITUTIONAL BLOCKER |
+| Completion effect | P1-WC12 review complete; Founder Phase 1 acknowledgement and PR readiness decision required |
+
+R-117 grants no Phase 2 or Phase 3 authority. PR #281 remains Draft until the Founder gives the exact
+hash-pinned acknowledgement in R-117. Phase 2 additionally requires all named pre-GOA conditions and
+a separate explicit current-session implementation authorization.
