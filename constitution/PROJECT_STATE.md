@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 92
+**State Revision:** 93
 **Last Updated:** 2026-08-13
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -21,7 +21,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Platform version | 1.45.0 |
 | Latest completed Work Contract | WC-065 — Founder Offerability And Commercial Composition |
 | Latest merge | PR #283 merged to `main` as `61b1cda` on 2026-08-13 |
-| Active delivery | GOAL-006 Phase 2 / WC-072; P2-WC03 author-gated; P2-WC04 active; independent reviews deferred until P2-WC07 |
+| Active delivery | GOAL-006 Phase 2 / WC-072; P2-WC04 author-gated; P2-WC05 active; independent reviews deferred until P2-WC07 |
 
 ## Active Checkpoint — GOAL-006 Phase 2 Authorization Routing
 
@@ -34,12 +34,12 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | INST-010 Acceptance | VALID — `ACC-GOAL-006-INST-010-02` recorded at 13:10:05Z |
 | Constitutional blocker | RESOLVED — CB-006 closed by FA-049, GOA-02 and ACC-02 |
 | Phase 2 Work Contract | CREATED — WC-072 covers P2-WC01 through P2-WC08 with one compact execution record |
-| Current component | P2-WC04 — synthetic data lifecycle, migration and recovery |
+| Current component | P2-WC05 — signed exact-six immutable manifest and supply-chain evidence |
 | Branch and PR | ACTIVE — `goal/006/phase2-offline-delivery`; draft PR #284; reuse through P2-WC08 and do not merge |
 
 ### Checkpoint Context
 
-- **Delivery branch:** `goal/006/phase2-offline-delivery`; draft PR #284; P2-WC01 accepted by R-120; P2-WC02 author-gated at `5cbf895`; P2-WC03 author-gated through `8dca8a5`; independent acceptance is deferred until P2-WC07.
+- **Delivery branch:** `goal/006/phase2-offline-delivery`; draft PR #284; P2-WC01 accepted by R-120; P2-WC02/P2-WC03 author-gated; P2-WC04 author-gated at `3308c9a`; independent acceptance is deferred until P2-WC07.
 - **Authority present:** Founder current-session consent, Skill 17 activation and INR 5,000 ceiling.
 - **Authority:** FA-049, `GOA-GOAL-006-INST-010-02` and `ACC-GOAL-006-INST-010-02` authorize the complete offline Phase 2 envelope.
 - **Resume source:** Git, CB-006, this checkpoint, the merged Phase 1 package and GitHub PR records; chat history is non-authoritative.
