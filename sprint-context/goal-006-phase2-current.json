@@ -2,45 +2,44 @@
   "schema_version": "1.0.0",
   "goal_id": "GOAL-006",
   "work_contract": "WC-072",
-  "component": "P2-WC06",
-  "title": "Offline Promotion, Rollback, Lifecycle, Halt And Cost Simulation",
+  "component": "P2-WC07",
+  "title": "Complete Deterministic Qualification And Proof Accounting",
   "controlling_sections": [
     "work-contracts/WC-072-goal-006-phase2-offline-delivery.md#component-ledger",
-    "goals/GOAL-006-p1-wc11-integrated-grooming.md#mandatory-phase-2-release-acceptance-contract",
-    "goals/GOAL-006-p1-wc11-integrated-grooming.md#p2-wc06--cicd-promotion-rollback-lifecycle-halt-and-cost-automation",
-    "goals/GOAL-006-p1-wc05-security-architecture.md#sa-12--supply-chain-and-promotion",
-    "adr/ADR-027-cloud-architecture-optimization.md",
-    "constitution/CONSTITUTION.md#c-067--blue-green-deployment-automation"
+    "goals/GOAL-006-p1-wc11-integrated-grooming.md#p2-wc07--complete-deterministic-qualification-suite",
+    "goals/GOAL-006-p1-wc11-integrated-grooming.md#qualification-preservation",
+    "goals/GOAL-006-p1-wc08-qualification-strategy.md#evidence-contracts-and-proof-accounting",
+    "goals/GOAL-006-p1-wc08-qualification-strategy.md#p1-wc07-and-phase-allocation"
   ],
   "affected_paths": [
-    "release/goal006/promotion-policy.json",
-    "scripts/goal006_release_simulator.py",
-    "tests/pipeline/test_goal006_release_simulator.py",
+    "release/goal006/qualification-ledger.json",
+    "scripts/goal006_qualification.py",
+    "tests/pipeline/test_goal006_qualification.py",
     ".github/workflows/goal006-phase2-offline.yml",
     "work-contracts/WC-072-goal-006-phase2-offline-delivery.md",
     "sprint-context/goal-006-phase2-current.json",
     "constitution/PROJECT_STATE.md"
   ],
   "validations": [
-    "docker compose run --rm test-runner pytest -q tests/pipeline/test_goal006_release_simulator.py",
-    "docker compose run --rm test-runner ruff check scripts/goal006_release_simulator.py tests/pipeline/test_goal006_release_simulator.py",
-    "offline successful and failed transition simulation with traffic and deadline accounting",
+    "docker compose run --rm test-runner pytest -q tests/pipeline/test_goal006_*.py -rA",
+    "docker compose run --rm test-runner ruff check scripts/goal006_*.py tests/pipeline/test_goal006_*.py",
+    "qualification ledger verification with expected/collected/executed/passed equality and CT-07 phase allocation",
     "git diff --check"
   ],
   "dependencies": [
     "P2-WC01 accepted by R-120",
-    "P2-WC03 author-gated Terraform isolation and lifecycle controls",
-    "P2-WC04 author-gated compatible recovery tuple",
-    "P2-WC05 author-gated signed exact-six manifest",
-    "C-067",
-    "ADR-027"
+    "P2-WC01 through P2-WC06 implementation and author gates",
+    "accepted P1-WC08 qualification strategy",
+    "exact SEC-01..27, DATA-01..28, CCT-01..06 and CT-01..07 ledgers",
+    "EVC-01 through EVC-08",
+    "TGT-01 through TGT-15 classifications"
   ],
   "prohibited_paths": [
     "constitution/CONSTITUTION.md",
     "constitution/GENESIS.md",
-    "provider credentials, cloud mutation, real traffic and Production action",
+    "provider credentials, cloud mutation, real traffic, Production action and CT-07 PASS",
     "src/",
     "infrastructure/terraform/phase2/"
   ],
-  "next_exact_action": "Implement the complete ordered success and fail-closed rollback state machine with exact-digest, independent-confirmation, traffic conservation, 30-minute, halt, lease, drift and cost controls; author-gate and push P2-WC06 without claiming independent acceptance."
+  "next_exact_action": "Build and verify the exact machine proof ledger, execute the complete Docker/offline GOAL-006 suite with nonzero accounting, preserve CT-07 as NOT_EXECUTED_PHASE_3, author-gate and push P2-WC07 without claiming independent acceptance."
 }
