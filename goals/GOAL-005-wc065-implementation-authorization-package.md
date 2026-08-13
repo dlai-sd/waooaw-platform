@@ -109,13 +109,61 @@ or INST-010 Acceptance.
 | CL-065-07 | Founder | M3 | PDR-065-05 exact verdict | CL-065-R1, CL-065-R2 | SATISFIED | FA-047 | Event invalidation and evidence review trigger |
 | CL-065-08 | Founder | M3 | PDR-065-06 exact verdict | CL-065-R1, CL-065-R2 | SATISFIED | FA-047 | Consequence-bound assurance |
 | CL-065-09 | Founder / existing policy owners | M3 | PDR-065-07 reuse or material-exception decision | CL-065-R1, CL-065-R2 | SATISFIED | FA-046; approved Privacy, Refund, and Grievance Policies | Reuse baseline; exception review only on a concrete material trigger |
-| CL-065-10 | INST-013 | M1 | Exact physical artifact and scoped validation binding | CL-065-03 through CL-065-09 | BLOCKED | none | Traceability and command checks; no code execution |
+| CL-065-10 | INST-013 | M1 | Exact physical artifact and scoped validation binding | CL-065-03 through CL-065-09 | SATISFIED | BIND-GOAL-005-WC065-01 | Traceability and command checks; no code execution |
 | CL-065-11 | INST-002 | M3 | Fresh readiness review of the complete policy and implementation package | CL-065-10 | BLOCKED | none | Independent full-baseline verdict |
 | CL-065-12 | Registrant / INST-001 | M3 | Final hash-pinned package acknowledgement | CL-065-11 | BLOCKED | ACK-GOAL-005-INST-001-14 reserved | Exact-package and exclusion check |
 | CL-065-13 | Founder / INST-001 | M3 | Fresh current-session implementation confirmation | CL-065-12 | BLOCKED | FA-048 reserved | Exact scoped confirmation |
 | CL-065-14 | INST-013 | M1 | Implementation GOA | CL-065-01 through CL-065-13 | BLOCKED | GOA-GOAL-005-INST-010-09 reserved | Temporal and predecessor-gate check |
 | CL-065-15 | INST-010 | M1 | Temporally later Acceptance | CL-065-14 | BLOCKED | ACC-GOAL-005-INST-010-09 reserved | `acceptance_timestamp` later than `issued_at` |
 | CL-065-16 | Independent reviewers | M3 | Independent implementation review plan remains separate | CL-065-10 | BLOCKED | none | C-065 identity and scope check |
+
+## Minimal Artifact And Validation Binding - BIND-GOAL-005-WC065-01
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | BIND-GOAL-005-WC065-01 |
+| `record_type` | Orchestration Record |
+| `produced_at` | 2026-08-13 |
+| Policy basis | FA-046 policy reuse; FA-047 lean-launch baseline |
+| Scope | WC065-01 through WC065-07 as one delivery unit |
+| Exclusions | No new service; no portfolio learning, oversight, helpdesk, provider activation, deployment, or WC-066 through WC-069 work |
+
+| Component | Exact implementation surfaces |
+|---|---|
+| WC065-01 owner reads | `src/business-platform/Services/RelationshipWorkspaceOwnerGateway.cs`; new `src/business-platform/Services/OfferabilityOwnerGateway.cs` |
+| WC065-02 WBE validation | `architecture/reference/api-specs/wbe-relationship-workspace.openapi.yaml`; new `src/billing-engine/offerability.py`; `src/billing-engine/main.py` |
+| WC065-03 orchestration | `architecture/reference/api-specs/business-platform.openapi.yaml`; new `src/business-platform/Controllers/OfferabilityController.cs`; new `src/business-platform/Services/OfferabilityService.cs`; `src/business-platform/Program.cs` |
+| WC065-04 publication/hiring guard | `src/business-platform/Controllers/AgentsController.cs`; `src/business-platform/Services/EmploymentRelationshipService.cs`; `src/business-platform/Services/ActivationOrchestrationService.cs` |
+| WC065-05 Founder experience | `web/scripts/generate-api.sh`; generated `web/lib/api/generated/**`; new `web/components/founder/OfferabilityDecision.tsx`; `web/app/(founder)/founder/page.tsx` |
+| WC065-06 persistence | new `infrastructure/postgres/init/24-offerability-decision.sql`; new `tests/business-platform.Tests/Migration24PostgresIntegrationTests.cs` |
+| WC065-07 focused verification | new `tests/business-platform.Tests/OfferabilityControllerTests.cs`; new `tests/business-platform.Tests/OfferabilityServiceTests.cs`; new `tests/business-platform.Tests/OfferabilityGuardTests.cs`; new `tests/billing-engine/test_offerability.py`; new `web/components/founder/OfferabilityDecision.test.tsx`; new `web/tests/e2e/wc065-offerability.spec.ts` |
+
+Existing CE, PR, AIR, CTG, Provider Registry, lifecycle, and WBE owner boundaries are reused.
+Unavailable, stale, or conflicting owner evidence blocks; implementation may not add a new RPC,
+provider call, service, or local substitute merely to obtain an optimistic offerability result.
+
+### Scoped Validation Commands
+
+```bash
+docker compose --profile test-python run --rm test-runner-python \
+	pytest tests/billing-engine/test_offerability.py tests/billing-engine/test_relationship_workspace.py \
+	--cov=src/billing-engine --cov-report=term-missing --cov-fail-under=90
+
+dotnet test tests/business-platform.Tests/business-platform.Tests.csproj \
+	--filter 'FullyQualifiedName~Offerability|FullyQualifiedName~ActivationOrchestrationService|FullyQualifiedName~EmploymentRelationshipService|FullyQualifiedName~Migration24' \
+	--collect:'XPlat Code Coverage' --results-directory ./coverage-wc065-bp
+
+pnpm --dir web generate:api
+pnpm --dir web test -- --runInBand OfferabilityDecision
+pnpm --dir web exec playwright test tests/e2e/wc065-offerability.spec.ts
+```
+
+Before closure, merge the focused .NET coverage result and prove at least 90 percent line and 80
+percent branch coverage for affected BP surfaces. Generated-client output must be committed and
+`git diff --exit-code` after a second deterministic generation. Independent implementation review
+under C-065 remains mandatory and cannot be performed by the implementation context.
 
 ## WC-065 Legal/Privacy GO Authorization
 
