@@ -133,6 +133,71 @@ Every P2 component requires Phase 1 closure, an approved specification, explicit
 
 Cost frame for every component: `INR TBD; underlying billing currency USD; pricing date 2026-08-13 baseline and refresh before authorization; Central India assumption; taxes excluded; no cloud creation; low confidence until owner estimate and quote refresh.`
 
+### Mandatory P2-WC02 Through P2-WC08 Release Acceptance Contract
+
+The obligations in this section are acceptance criteria for **each** of P2-WC02 through P2-WC08,
+applied to that component's Decision Space and evidence boundary. A component cannot pass by
+deferring, omitting, weakening or marking one of these obligations advisory. P2-WC01 establishes
+the deterministic runner foundation but cannot satisfy any release obligation on behalf of a later
+component.
+
+| Obligation | P2-WC02 through P2-WC08 acceptance requirement |
+|---|---|
+| FR-031 | Environments use isolated configuration and secret references; no credential or environment value is baked into an image, manifest, workflow fixture or promotion record. |
+| FR-032 | Configuration is external to immutable images and separately versioned, reviewed and bound to the release tuple; secret values never enter repository evidence, plans or logs. |
+| FR-033 | Every one of exactly six release members has digest, SBOM, provenance, signature and blocking scan evidence; incomplete or unverifiable supply-chain evidence fails release. |
+| FR-034 | Docker-first build, lint, unit, integration, contract, CCT and security gates execute with nonzero accounting and no skip, xfail, deselection, TODO, echo-only or advisory success. |
+| FR-035 | Build and infrastructure identifiers are deterministic and immutable; Terraform format/validate/lint/scan/plan controls remain offline in Phase 2, and apply remains prohibited. |
+| FR-036 | Workflow identity uses OIDC/short-lived identity contracts and least privilege; long-lived cloud credentials and unreviewed subjects are rejected by deterministic negative tests. |
+| FR-037 | Promotion preserves the exact six image digests through Demo, UAT and Production models; Phase 2 simulates these gates and never claims live environment qualification. |
+| FR-038 | Concurrency, halt, drift, lifecycle, evidence preservation, rollback and recovery fail closed; every failed gate restores the last qualified state and records the failed attempt. |
+| C-067 | Blue remains at 100% until green passes pre-traffic verification; bounded canary and independent confirmation precede 100% green; blue is deactivated within 30 minutes after green confirmation; any failure restores 100% blue and deactivates green. |
+| ADR-027 | Accepted Azure Container Apps cost, scale-to-zero, sizing and portability constraints are implemented as offline policy/configuration assertions without provider access or expenditure. |
+| Six-member immutability | The manifest contains exactly CE, BP, PR, AIR, Web and Billing. Promotion and rollback use exact OCI digests only. Mutable tags, rebuilds, missing Billing, OAuth Vault, MCPs or additional members are rejected as authority. |
+| ACA revision delivery | The offline model uses Azure Container Apps multiple-revision semantics: create green as a distinct revision at 0% traffic, verify it, assign a bounded canary, require independent confirmation, move to 100% green, observe, then deactivate blue within 30 minutes. |
+
+The required state machine is:
+
+```text
+BUILD_ONCE
+	-> VERIFY
+	-> SIGNED_SIX_MEMBER_IMMUTABLE_MANIFEST
+	-> PROMOTE_EXACT_DIGESTS
+	-> GREEN_REVISION_AT_0_PERCENT
+	-> VERIFY_GREEN
+	-> BOUNDED_CANARY
+	-> INDEPENDENT_CONFIRMATION
+	-> GREEN_AT_100_PERCENT
+	-> OBSERVE
+	-> DEACTIVATE_BLUE_WITHIN_30_MINUTES
+```
+
+For every gate from `VERIFY` through blue deactivation, failure transitions atomically to:
+
+```text
+RESTORE_BLUE_100_PERCENT
+	-> DEACTIVATE_GREEN
+	-> PRESERVE_FAILURE_EVIDENCE
+	-> FAIL_RELEASE
+```
+
+The simulator must prove successful and failed transitions, reject transition reordering, reject
+traffic totals other than 100%, and reject blue deactivation before independent confirmation and
+observation. Offline simulation is repository evidence only; it is not Azure, traffic, deployment,
+Production or cloud-effectiveness evidence.
+
+### Component Application Of The Release Acceptance Contract
+
+| Component | Mandatory application |
+|---|---|
+| P2-WC02 | Produce exactly six buildable non-root image and component contracts; prove external configuration, health boundaries and immutable build outputs required by FR-031/032/034/037 and the six-member rule. |
+| P2-WC03 | Implement offline Terraform identity, isolation, secret-reference, scale and revision-mode assertions for FR-031/032/035/036, C-067, ADR-027 and ACA multiple-revision delivery; no apply or provider access. |
+| P2-WC04 | Bind synthetic migration/recovery state to the immutable release tuple and prove FR-032/035/038 rollback and evidence preservation without Production data or destructive migration. |
+| P2-WC05 | Produce and verify the signed exactly-six-member digest manifest, SBOMs, provenance, signatures and scans required by FR-031/033/035/037 and immutable promotion. |
+| P2-WC06 | Implement the complete ordered ACA revision simulation, exact-digest promotion, independent-confirmation gate, C-067 30-minute rule and failed-gate blue restoration required by FR-036/037/038 and ADR-027. |
+| P2-WC07 | Execute positive, negative, tamper, transition-order, traffic-conservation, timeout and rollback tests for every obligation above with complete nonzero proof accounting and independent QA acceptance. |
+| P2-WC08 | Reconcile component evidence and independent reviews for every obligation above; unresolved or unaccepted evidence blocks Phase 2 closure and remains a named Phase 3 gap rather than a pass. |
+
 ### P2-WC01 — Deterministic Toolchain And Test Foundation
 
 | Field | Specification |
