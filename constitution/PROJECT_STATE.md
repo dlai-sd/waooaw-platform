@@ -36,13 +36,15 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Final package review and acknowledgement | DONE — R-105 READY; ACK-GOAL-005-INST-001-14 recorded at 2026-08-13T05:08:55Z |
 | Fresh implementation confirmation | DONE — FA-048 authorizes WC-065 for the current session |
 | Implementation GOA / Acceptance | VALID — GOA-09 at 2026-08-13T05:10:51Z; ACC-09 at 2026-08-13T05:11:16Z |
+| WC065-01 through WC065-07 implementation | PR-READY — WBE financial truth, authenticated BP orchestration, evidence-first idempotent persistence, activation guard, generated Founder experience, migration proof, and independent implementation review complete |
 | WC-066 through WC-069 | EVIDENCE-GATED — no detailed grooming or implementation authorized |
 
 ### Closure Context
 
 - **Delivery branch:** `wc/065/implementation-authorization`.
 - **Authority:** GEP-GOAL-005-INST-013-15, R-101/R-102 reuse, ACK-GOAL-005-INST-001-13, and the Founder-set USD 40 dispatch ceiling.
-- **Validation:** initial package structure, seven protected-decision rows, acknowledgement, budget, reserved-ID, boundary, and formatting checks pass. No implementation tests are authorized or run.
+- **Validation:** Docker-only regression passes: BP 349/349, WBE 402 passed with 2 documented harness-only skips, and web 110/110 with clean lint and production build. OpenAPI validation, generated-client regeneration, PostgreSQL RLS/append-only/concurrent-idempotency integration, Python lint, and affected-surface coverage checks pass.
+- **Independent review:** concurrency, contract-status, UI retry, durable changed-intent, and lock-lifecycle findings were corrected and revalidated. Residual: after CE evidence succeeds but BP loses its local commit, exact terminal reconstruction still depends on retry-time CE authorization because the current CE contract exposes no evidence read; duplicate evidence is prevented and the path fails closed.
 - **Protected local artifacts:** `.coverage`, `goals/goal_register.jsonl`, `logs/blueprint_assurance_report.json`, and `logs/bootstrap-evidence.jsonl` are unrelated and must remain unstaged.
 - **Authorization evidence:** `goals/GOAL-005-wc065-implementation-authorization-package.md` and R-103.
 
@@ -62,9 +64,8 @@ FA-047 close all seven protected decisions; R-105 finds the exact package READY.
 
 ## Next Authorized Action
 
-INST-010 implements WC065-01 through WC065-07 as one bound delivery and runs the scoped validation
-package. Do not activate policy/providers, deploy, approve or merge a PR, self-review, self-merge,
-or groom WC-066 through WC-069.
+Founder reviews the unmerged WC-065 implementation PR. Do not activate policy/providers, deploy,
+self-approve, self-merge, or groom WC-066 through WC-069.
 
 ## History And Evidence
 
