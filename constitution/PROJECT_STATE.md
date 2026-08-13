@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 46
+**State Revision:** 47
 **Last Updated:** 2026-08-13
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -21,7 +21,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Platform version | 1.45.0 |
 | Latest completed Work Contract | WC-062 — WC-034 F6 Voice Interaction |
 | Latest merge | PR #275 merged to `main` as `2276ab2` |
-| Active delivery | WC-064 owner package and WC-065 grooming ready for independent review; WC-070 remains ratified in open unmerged PR #276; implementation unauthorized |
+| Active delivery | WC-064 received R-101 approval with notes; bounded repair and STOP_AND_CONSOLIDATE recorded; WC-065 remains authorization-gated; WC-070 remains ratified in open unmerged PR #276 |
 
 ## Active Checkpoint — WC-064 Founder Commercial Governance Program Design
 
@@ -33,7 +33,8 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Integrated program design | DONE — GEP-GOAL-005-INST-013-14 published with decision/concept/ownership/policy/dependency catalogues |
 | WC-065 detailed grooming | DONE — implementation-ready specification; protected policy and implementation gates remain closed |
 | Deterministic validation | DONE — record sequence, required-section, boundary, formatting, and package checks passed |
-| Fresh integrated EA review | PENDING — exact package hash/commit to be reviewed |
+| Fresh integrated EA review | APPROVED WITH NOTES — R-101; two bounded record-state repairs applied, exact-package confirmation pending |
+| Budget control | STOP_AND_CONSOLIDATE — `$27.50` accounted; EA confirmation plus mandatory CA review forecasts `$32.50`; no new owner or repair context |
 | Fresh Constitutional readiness | PENDING — begins only after EA approval |
 | WC-066 through WC-069 | EVIDENCE-GATED — no detailed grooming or implementation authorized |
 | Delivery PR | PENDING — one unmerged PR after independent approvals |
@@ -64,9 +65,10 @@ activation gates, not inferred defaults. WC-070 is ratified and active; PR #276 
 
 ## Next Authorized Action
 
-Pin the WC-064 package, obtain fresh integrated Enterprise Architecture and Constitutional
-readiness verdicts, then open one unmerged delivery PR. Do not begin WC-065 through WC-069
-implementation or issue implementation authority.
+Repin the bounded WC-064 repair, obtain R-101 exact-package confirmation within the dispatched
+review, then obtain the mandatory fresh Constitutional readiness verdict and open one unmerged
+delivery PR. Do not dispatch another owner or repair context, begin WC-065 through WC-069
+implementation, or issue implementation authority.
 
 ## History And Evidence
 

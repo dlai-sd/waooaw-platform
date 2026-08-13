@@ -1,6 +1,6 @@
 # WAOOAW Platform — Sprint Registry
 
-**Last Updated:** 2026-08-12 · **Version:** 1.45.0 · **Work Contracts:** 63 recorded (54 closed · 3 active · 4 planned · 1 deferred · 1 superseded · 0 blocked)
+**Last Updated:** 2026-08-13 · **Version:** 1.45.0 · **Work Contracts:** 63 recorded (54 closed · 3 active · 4 planned · 1 deferred · 1 superseded · 0 blocked)
 
 ---
 
@@ -9,7 +9,7 @@
 | WC | Title | Track | Status | Depends On | Key Outcome |
 |---|---|---|---|---|---|
 | **WC-034** | Hybrid Web Application Shell | Next.js 14 PWA | F0–F6 COMPLETE · F7 ROUTED TO WC-064→WC-069 · PROPORTIONAL F8 COMPLETE | WC-057→WC-069 · ADR-017 · IB-014 · FA-031 · FA-034 · FA-041 · FA-043 | Released F1–F6 slices passed independent review and merged; Founder commercial governance now follows the separately gated WC-064 program |
-| **WC-064** | Founder Commercial Governance Program Design | Federated design and grooming | PACKAGE READY FOR INDEPENDENT REVIEW — IMPLEMENTATION UNAUTHORIZED | WC-027 · WC-031 · WC-042 · WC-043 · WC-049 · WC-063 supersession · R-099 · ACK-12 | Eight owner contributions, integrated design, and WC-065 grooming complete; fresh EA and CA verdicts pending |
+| **WC-064** | Founder Commercial Governance Program Design | Federated design and grooming | R-101 APPROVED WITH NOTES — BOUNDED REPAIR REPIN PENDING · IMPLEMENTATION UNAUTHORIZED | WC-027 · WC-031 · WC-042 · WC-043 · WC-049 · WC-063 supersession · R-099 · ACK-12 | Eight owner contributions, integrated design, and WC-065 grooming complete; STOP_AND_CONSOLIDATE active; EA confirmation and fresh CA verdict pending |
 | **WC-065** | Founder Offerability And Commercial Composition | Iteration 1 | IMPLEMENTATION-READY SPECIFICATION — AUTHORIZATION GATED | WC-064 exact reviewed design | Defensible offering composition, expected economics, policy-bounded calculated risk, and publication/hiring decision; protected policy values and implementation authority remain pending |
 | **WC-066** | Customer And Employed-Agent Oversight | Iteration 2 | PLANNED CANDIDATE — IMPLEMENTATION UNAUTHORIZED | WC-065 evidence | Outcome, resource, participation, quality, economics, and governed correction review |
 | **WC-067** | Operational Exceptions And Reconciliation | Iteration 3 | PLANNED CANDIDATE — IMPLEMENTATION UNAUTHORIZED | WC-065 · WC-066 · WBE reconciliation | Provider, cost, attribution, provisional, settled, refund, credit, and operational exception governance |

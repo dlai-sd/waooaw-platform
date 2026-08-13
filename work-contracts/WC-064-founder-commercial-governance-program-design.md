@@ -8,7 +8,7 @@
 **Independent readiness reviewer:** Constitutional Analyst (INST-002)
 **Selected by:** Founder instruction, 2026-08-12, as the design and grooming scope
 **Routing readiness:** R-099 / CR-GOAL-005-INST-002-18 APPROVED; ACK-GOAL-005-INST-001-12 recorded
-**Status:** ACTIVE FOR OWNER GOA ROUTING; NO CONTRIBUTION ACCEPTED; IMPLEMENTATION UNAUTHORIZED
+**Status:** INTEGRATED DESIGN COMPLETE; INDEPENDENT REVIEWS IN PROGRESS; IMPLEMENTATION UNAUTHORIZED
 **Constitutional basis:** C-002, C-005, C-007, C-023, C-038, C-043, C-048, C-049, C-051, C-056, C-059, C-064, C-065, C-076, C-088, C-089, C-090, C-091
 
 ## Outcome
@@ -149,7 +149,7 @@ Every activated implementation Work Contract must contain:
 | 5 | INST-006 Data Architect | Financial semantics, ownership, effective dating, immutable history, attribution, reconciliation, evidence relationships, and extensible cost taxonomy | Approved data contribution |
 | 6 | INST-007 Security Architect | Founder isolation, fresh assurance, confirmation, conflict handling, abuse, credentials, privacy, customer rights, and prohibited overrides | Approved security contribution |
 | 7 | INST-010 Platform IT Expert | Read-only implementation reality check, reuse inventory, partial/absent behavior, and duplication risks | Attested implementation-reality contribution |
-| 8 | INST-002 Constitutional Analyst | Evidence First, Decision Space, Founder authority, floors, transparency, grandfathering, prohibited overrides, and learning boundaries | Constitutional readiness review |
+| 8 | INST-002 Constitutional Analyst | Evidence First, Decision Space, Founder authority, floors, transparency, grandfathering, prohibited overrides, and learning boundaries | Attested constitutional owner contribution; not final readiness review |
 | 9 | INST-004 + INST-013 | Reconcile contributions into one version-pinned program design and iteration plan | Integrated approval and routing record |
 
 Offices load only their own Knowledge Specifications. Missing contributions remain explicitly
@@ -168,7 +168,7 @@ verdict. INST-013 coordinates attribution and routing but gains no review author
 | WC064-02 | Produce and reconcile Orders 3–4: enterprise boundaries, solution ownership, resilience, reuse, and iteration dependencies. | DONE — INST-004 CR-14 and INST-005 CR-16 |
 | WC064-03 | Produce and reconcile Orders 5–6: financial semantics, extensibility, evidence, authority, security, privacy, and conflict rules. | DONE — INST-006 CR-06 and INST-007 CR-09 |
 | WC064-04 | Produce Order 7 implementation-reality evidence without implementation or test execution. | DONE — INST-010 CR-08 |
-| WC064-05 | Produce Order 8 independent constitutional readiness review. | pending |
+| WC064-05 | Produce Order 8 constitutional owner contribution, separate from final readiness review. | DONE — fresh INST-002 CR-20 |
 | WC064-06 | Publish the integrated design spine and classify every capability NOW, NEXT, LATER, or REJECT. | DONE — GEP-GOAL-005-INST-013-14 |
 | WC064-07 | Refine WC-065 to implementation-ready grooming depth while leaving WC-066 through WC-069 at outcome-and-boundary depth. | DONE — WC-065 specification baseline |
 | WC064-08 | Obtain independent integrated review and record the next authorized action without issuing implementation authority. | pending |
