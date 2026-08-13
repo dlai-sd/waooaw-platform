@@ -236,3 +236,47 @@ actions, cloud queries/spend, DNS, deployment, production, activation, PR approv
 | Decision | ACCEPTED |
 | Accepted scope | P1-WC05 security design only |
 | Excluded authority | Platform/component/data decisions, implementation, credentials/cloud/DNS/deployment/production action, residual-risk acceptance, activation, final validation, PR approval, and merge |
+
+## P1-WC05 Completion Gate
+
+| Field | Value |
+|---|---|
+| Contribution | CR-GOAL-006-INST-007-01 |
+| Independent review | R-111 / CR-GOAL-006-INST-004-01 |
+| Review verdict | ACCEPT — NO CONSTITUTIONAL CHALLENGE |
+| Completion effect | P1-WC06 dependency satisfied; implementation/live risks and protected Production decisions remain open |
+
+## Phase 1 Authorization — P1-WC06
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-006 |
+| `record_id` | GOA-GOAL-006-INST-006-01 |
+| `record_type` | Authorization Record |
+| `authorization_id` | GOA-GOAL-006-INST-006-01 |
+| Authorized Institution | INST-006 — Data Architect |
+| Contribution scope | P1-WC06 Data Isolation, Backup, Restore, Retention, And Migration |
+| Required evidence | Environment data model and isolation; no-Production-data rules; Terraform/state and evidence retention interfaces; backup/restore/retention/migration; RPO/RTO recommendations; encryption and key-recovery dependencies; deterministic tests and residual risks |
+| Participation Window | 3 constitutional sessions after valid acceptance |
+| Independence constraint | INST-006 may decide data architecture and recommend recovery objectives but may not overwrite accepted platform/component/security decisions, accept protected Production residual risk, implement, deploy, activate, or validate its own final evidence |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-13T10:36:21Z |
+
+This GOA authorizes Phase 1 data design only. It excludes runnable changes, credentials/provider
+actions, cloud queries/spend, DNS, deployment, Production, activation, PR approval, and merge.
+
+## Acceptance — P1-WC06
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-006 |
+| `goal_id` | GOAL-006 |
+| `record_id` | ACC-GOAL-006-INST-006-01 |
+| `record_type` | Acceptance Record |
+| `produced_at` | 2026-08-13T10:36:22Z |
+| `authorization_id` | GOA-GOAL-006-INST-006-01 |
+| `acceptance_timestamp` | 2026-08-13T10:36:22Z |
+| Decision | ACCEPTED |
+| Accepted scope | P1-WC06 data design only |
+| Excluded authority | Platform/component/security decisions, implementation, credentials/cloud/DNS/deployment/production action, protected RPO/RTO or residual-risk acceptance, activation, final validation, PR approval, and merge |
