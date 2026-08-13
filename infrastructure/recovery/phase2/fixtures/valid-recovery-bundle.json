@@ -1,0 +1,61 @@
+{
+  "schema_version": "1.0.0",
+  "mode": "offline_synthetic",
+  "environment": "uat",
+  "provenance": {
+    "data_class": "synthetic",
+    "derived_from_production": false,
+    "contains_identifiable_subjects": false,
+    "generator": "goal006-deterministic-fixture-v1"
+  },
+  "migration": {
+    "id": "goal006-001-add-recovery-marker",
+    "predecessor": "goal006-baseline-v1",
+    "source_version": "data-v1",
+    "target_version": "data-v2",
+    "sql_path": "001-add-recovery-marker.sql",
+    "sha256": "9c386c8a31f2b70335a54f1c54aaea3b078bd2e4e111fc4dae07e99a5e7f5c07",
+    "down_migration": false,
+    "rollback_readable": true,
+    "rls_impact": "unchanged"
+  },
+  "recovery_point": {
+    "id": "synthetic-rp-001",
+    "source_environment": "uat",
+    "isolated_target": true,
+    "encrypted": true,
+    "chain_continuous": true,
+    "checksum_verified": true,
+    "key_reference_available": true,
+    "key_reference": "kv://uat/recovery-key/version-1",
+    "database_version": "postgresql-16",
+    "extensions": ["vector-0.7.4"],
+    "evidence_tail_complete": true,
+    "writes_reopened": false,
+    "restore_order": ["postgresql", "keycloak", "temporal", "billing", "evidence_tail", "derived_state"],
+    "uncertain_workflows": ["synthetic-workflow-001"],
+    "uncertain_workflows_paused": true
+  },
+  "release_tuple": {
+    "manifest_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+    "oci_digests": {
+      "ce": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "bp": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "pr": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "air": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "web": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "billing": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+    },
+    "config_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+    "data_version": "data-v2",
+    "state_generation": "uat-workload-generation-001",
+    "recovery_point_id": "synthetic-rp-001",
+    "immutable": true,
+    "signatures_verified": true,
+    "certificate_references": ["kv://uat/signing-cert/version-1"]
+  },
+  "lifecycle_replay": {
+    "applied_before_access": true,
+    "event_classes": ["deletion", "hold", "revocation", "termination", "correction"]
+  }
+}
