@@ -246,7 +246,7 @@ affected-surface line coverage. No test is executed by this specification sprint
 | Delegated adjustments and Founder-reserved exceptions | Founder policy authority | PENDING M3 | Silence grants no autonomous authority |
 | Validity, expiry, review cadence and escalation values | Founder policy authority | PENDING M3 | No permanent permission by omission |
 | Consequence/assurance class for policy, calculated risk, publication, hiring and customer impact | Founder policy authority with Security/Constitutional inputs | PENDING M3 | Consequential path unavailable until classified |
-| Exact grandfathering/remedy policy and applicable legal/retention details | Named Founder, Product, Business, Data, Security, Constitutional and legal owners | PENDING M3/M2 by Decision Space | No prospective change activation |
+| Grandfathering, remedy, legal, disclosure, erasure, and retention treatment | Founder direction with existing approved Privacy, Refund, and Grievance Policies | SATISFIED by FA-046 reuse baseline | Existing industry-standard policy applies; only a concrete material exception requires scoped review before activation |
 
 These decisions are preserved, not delegated to INST-013 or implementation. They do not justify
 detailed grooming of WC-066 through WC-069.
@@ -258,7 +258,8 @@ No implementation task is executable until:
 1. The exact WC-064/WC-065 package is hash-pinned and receives fresh integrated INST-004 approval
   plus fresh INST-002 Constitutional readiness approval.
 2. Every protected decision required for the activated policy and implementation package is
-  recorded by its owner; no pending value is replaced with an inferred default.
+  recorded by its owner. Existing approved policy may be reused when no material change is
+  introduced; silence may not create a new exception or weaken an existing customer protection.
 3. The Registrant acknowledges the reviewed implementation specification.
 4. The Founder explicitly confirms WC-065 implementation for that later session.
 5. INST-013 issues an implementation GOA and INST-010 records a temporally later Acceptance.

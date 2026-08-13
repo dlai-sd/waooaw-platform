@@ -1,5 +1,11 @@
 # GOAL-005 WC-065 Legal/Privacy Owner Contribution
 
+> **Subsequent Founder disposition — FA-046:** This record remains immutable evidence of the
+> contributor's conservative assessment. It is not a current WC-065 blocker. WC-065 introduces
+> no material legal/privacy exception and therefore reuses the approved Privacy, Refund, and
+> Grievance Policies. Detailed review is deferred until a concrete trigger listed in FA-046
+> exists; no further handoff is required to restate standard practice.
+
 ## Acceptance Record
 
 | Field | Value |

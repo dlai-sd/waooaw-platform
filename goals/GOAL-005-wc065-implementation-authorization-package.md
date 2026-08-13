@@ -11,7 +11,7 @@
 | `produced_at` | 2026-08-13 |
 | Work Contract | WC-065 - Founder Offerability And Commercial Composition |
 | Implementation office | INST-010 only after every Activation Gate condition closes |
-| Current state | PARKED - LEGAL/PRIVACY CONTRIBUTION COMPLETE WITH SIX UNRESOLVED FINDINGS; EXTERNAL COUNSEL INPUT REQUIRED |
+| Current state | PDR-065-07 CLOSED BY POLICY REUSE; FOUNDER DECISIONS PDR-065-01 THROUGH PDR-065-06 PENDING |
 
 ## Authority And Boundary
 
@@ -30,7 +30,7 @@ Founder, or implementation Decision Space.
 | CNG-065-03 | Close numeric policy, calculated-risk, evidence, delegation, validity, and assurance decisions | `M3_DECIDE` | The WC-065 Protected Decision Register reserves these decisions to Founder policy authority with named owner inputs | Stop affected activation rows until the Founder records exact values |
 | CNG-065-04 | Close exact grandfathering, remedy, legal, and retention details | `M2_CONTRIBUTE` / `M3_DECIDE` | The decision spans Product, Business, Data, Security, Constitutional, legal, and Founder Decision Spaces; the approved baseline fixes boundaries but not exact values | Reuse applicable approved owner conclusions; route only uncovered exact decisions to their named owners, then route the integrated policy verdict to the Founder |
 | CNG-065-05 | Obtain Registrant acknowledgement for bounded protected-decision routing | `M3_DECIDE` | GEOM R2-03 requires plan-specific acknowledgement before owner-contribution GOAs issue | SATISFIED by ACK-GOAL-005-INST-001-13; routing still awaits independent CA readiness |
-| CNG-065-06 | Confirm implementation for the current human session | `M3_DECIDE` | G5 CLEAR and specification readiness do not authorize this session's implementation | Keep GOA stopped pending a fresh explicit Founder confirmation recorded as FA-046 |
+| CNG-065-06 | Confirm implementation for the current human session | `M3_DECIDE` | G5 CLEAR and specification readiness do not authorize this session's implementation | Keep GOA stopped pending a fresh explicit Founder confirmation recorded as FA-047 |
 | CNG-065-07 | Issue implementation authority to INST-010 | `M1_CONTINUE` | Issuance is ministerial only after all predecessor gates close; it changes no protected decision | Reserve GOA-GOAL-005-INST-010-09; issue only after CL-065-01 through CL-065-12 are satisfied |
 
 ### Materiality Challenge For CNG-065-02 And CNG-065-07
@@ -67,7 +67,7 @@ fact or unsupported assumption reclassifies the affected work upward.
 | PDR-065-04 | Delegated adjustments and Founder-reserved exceptions | Founder policy authority | `BLOCKED_PENDING_M3` | Enumerated delegated, reserved, and prohibited actions with bounds |
 | PDR-065-05 | Validity, expiry, review cadence, and escalation values | Founder policy authority | `BLOCKED_PENDING_M3` | Exact durations, expiry behavior, review triggers, and escalation deadlines |
 | PDR-065-06 | Consequence and assurance classes | Founder policy authority with Security/Constitutional inputs | `BLOCKED_PENDING_M3` | Exact class per policy, calculated risk, publication, hiring, and customer-impact action |
-| PDR-065-07 | Grandfathering, remedy, legal, and retention details | Product, Business, Data, Security, Constitutional, legal, then Founder policy authority | `BLOCKED_PENDING_M2_M3` | Owner-attributed exact scope, duration, remedy, legal basis, recipient/redaction, payload erasure, and retention values |
+| PDR-065-07 | Grandfathering, remedy, legal, disclosure, erasure, and retention treatment | Founder policy authority using approved institutional policies | `SATISFIED_REUSE_FA_046` | Reuse current Privacy, Refund, and Grievance Policies; no new purpose, recipient class, data class, retention period, remedy, or weaker customer protection is introduced by WC-065 |
 
 No row may become satisfied from silence, a model recommendation, an implementation default, an
 existing code value, or a cost stop. Constitutional and approved commercial floors remain
@@ -108,11 +108,11 @@ or INST-010 Acceptance.
 | CL-065-06 | Founder | M3 | PDR-065-04 exact verdict | CL-065-R1, CL-065-R2 | BLOCKED | none | Protected-authority record |
 | CL-065-07 | Founder | M3 | PDR-065-05 exact verdict | CL-065-R1, CL-065-R2 | BLOCKED | none | Protected-authority record |
 | CL-065-08 | Founder | M3 | PDR-065-06 exact verdict | CL-065-R1, CL-065-R2 | BLOCKED | none | Protected-authority record |
-| CL-065-09 | Named owners and Founder | M2/M3 | PDR-065-07 owner records and integrated verdict | CL-065-R1, CL-065-R2 | BLOCKED | ACC-GOAL-005-INST-002-14; CR-GOAL-005-INST-002-23 | Six legal/privacy topics UNRESOLVED; exact facts and Founder-directed qualified external counsel required |
+| CL-065-09 | Founder / existing policy owners | M3 | PDR-065-07 reuse or material-exception decision | CL-065-R1, CL-065-R2 | SATISFIED | FA-046; approved Privacy, Refund, and Grievance Policies | Reuse baseline; exception review only on a concrete material trigger |
 | CL-065-10 | INST-013 | M1 | Exact physical artifact and scoped validation binding | CL-065-03 through CL-065-09 | BLOCKED | none | Traceability and command checks; no code execution |
 | CL-065-11 | INST-002 | M3 | Fresh readiness review of the complete policy and implementation package | CL-065-10 | BLOCKED | none | Independent full-baseline verdict |
 | CL-065-12 | Registrant / INST-001 | M3 | Final hash-pinned package acknowledgement | CL-065-11 | BLOCKED | ACK-GOAL-005-INST-001-14 reserved | Exact-package and exclusion check |
-| CL-065-13 | Founder / INST-001 | M3 | Fresh current-session implementation confirmation | CL-065-12 | BLOCKED | FA-046 reserved | Exact scoped confirmation |
+| CL-065-13 | Founder / INST-001 | M3 | Fresh current-session implementation confirmation | CL-065-12 | BLOCKED | FA-047 reserved | Exact scoped confirmation |
 | CL-065-14 | INST-013 | M1 | Implementation GOA | CL-065-01 through CL-065-13 | BLOCKED | GOA-GOAL-005-INST-010-09 reserved | Temporal and predecessor-gate check |
 | CL-065-15 | INST-010 | M1 | Temporally later Acceptance | CL-065-14 | BLOCKED | ACC-GOAL-005-INST-010-09 reserved | `acceptance_timestamp` later than `issued_at` |
 | CL-065-16 | Independent reviewers | M3 | Independent implementation review plan remains separate | CL-065-10 | BLOCKED | none | C-065 identity and scope check |
@@ -177,19 +177,21 @@ protected verdict, review requirement, or implementation gate.
 | D-065-03 | Expert-informed CRB redesign | Valid bounded proposal filed as CR-GOAL-005-INST-CI-001-01 | USD 2.50 | Deterministic G-10, two-surface, temporal-order, expiry, and no-authority checks passed |
 | D-065-04 | Fresh independent amendment review | R-104 / CR-GOAL-005-INST-002-22 `APPROVED` | USD 2.50 | One bounded factual correction removed a false INST-CI-001 registry note without changing substantive findings |
 | D-065-05 | Bounded INST-002 legal/privacy contribution | ACC-GOAL-005-INST-002-14; CR-GOAL-005-INST-002-23; LR-GOAL-005-INST-002-09 | USD 2.50 | All six topics remained UNRESOLVED; no legal conclusion invented; external counsel and exact fact package required |
+| D-065-06 | Founder proportionality correction | FA-046 closes PDR-065-07 by reuse and trigger-based escalation | USD 0.00 | Stops further legal routing absent a concrete material exception |
 
 The environment exposes no provider invoice. USD 2.50 is reserved conservatively for each
-dispatch context. Actual use remains below the USD 32 consolidation threshold. The six
-UNRESOLVED legal/privacy findings stop package closure independently of budget state.
+dispatch context. Actual use remains below the USD 32 consolidation threshold. FA-046 prevents
+further legal/privacy dispatch unless a concrete material exception appears.
 
-## Parked Resume Point
+## PDR-065-07 Reuse Disposition
 
-Resume only when the Founder supplies or authorizes preparation of the exact purpose, party,
-contract, recipient, record-taxonomy, jurisdiction/applicability, and change/cohort fact package
-and directs qualified external counsel to answer the six questions in
-CR-GOAL-005-INST-002-23. Do not dispatch another institution merely to restate the unresolved
-result. PDR-065-07, final package review, implementation confirmation, and implementation
-GOA/Acceptance remain blocked.
+WC-065 reuses the approved Privacy, Refund, and Grievance Policies without creating a new legal
+purpose, recipient class, data class, retention period, remedy, or weaker customer protection.
+Expand review only if delivery introduces a new jurisdiction, processing purpose, sensitive data
+class, external recipient, policy deviation, contractual promise, material customer harm,
+regulatory demand, or incident. Until such a trigger exists, CR-GOAL-005-INST-002-23 is retained
+as conservative historical analysis and is not a closure blocker. No additional legal or
+institutional handoff is authorized merely to restate common industry practice.
 
 ## Reserved Implementation Authorization
 
