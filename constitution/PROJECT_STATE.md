@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 53
+**State Revision:** 54
 **Last Updated:** 2026-08-13
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -32,7 +32,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Registrant routing acknowledgement | DONE — ACK-GOAL-005-INST-001-13 authorizes bounded owner routing only |
 | Budget control | WITHIN_BUDGET — USD 40 ceiling; STOP_AND_CONSOLIDATE at USD 32; no WC-065 dispatch yet |
 | Fresh CA routing readiness | DONE — R-103 / CR-GOAL-005-INST-002-21 READY FOR ROUTING |
-| Protected Decision Register | BLOCKED — CB-005 path 2 selected; FA-044 activates narrow INST-002 charter amendment drafting only |
+| Protected Decision Register | BLOCKED — CRB proposal CR-GOAL-005-INST-CI-001-01 filed; independent review and ratification pending |
 | Final package review and acknowledgement | PENDING — fresh review plus ACK-GOAL-005-INST-001-14 required |
 | Fresh implementation confirmation | NOT REQUESTED — separate current-session Founder decision remains required |
 | Implementation GOA / Acceptance | NOT ISSUED — GOA/ACC-GOAL-005-INST-010-09 are reserved identifiers only |
@@ -56,15 +56,15 @@ and independent implementation review.
 
 ## Current Blockers
 
-CB-005 is OPEN. Founder selected assignment of the exact legal/privacy Decision Space to INST-002
-and activated a narrow CRB draft under FA-044; review and separate ratification remain pending.
+CB-005 is OPEN. The validated FA-044 CRB proposal assigns a WC-065-only legal/privacy Decision
+Space to INST-002; independent review and separate ratification remain pending.
 
 ## Next Authorized Action
 
-INST-CI-001 drafts only the FA-044-bounded INST-002 charter amendment, followed by independent
-constitutional review and separate Founder ratification. Do not issue owner or implementation
-GOAs, implement, activate policy/providers, deploy, approve or merge a PR, or groom WC-066 through
-WC-069.
+Obtain independent constitutional approval of CR-GOAL-005-INST-CI-001-01. Only after approval may
+the Founder consider separate ratification and mechanical charter/registry updates. Do not issue
+owner or implementation GOAs, implement, activate policy/providers, deploy, approve or merge a PR,
+or groom WC-066 through WC-069.
 
 ## History And Evidence
 

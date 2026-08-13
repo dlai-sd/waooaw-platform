@@ -7,7 +7,7 @@
 | `record_id` | CB-005 |
 | `record_type` | Clearance Record |
 | `produced_at` | 2026-08-13 |
-| Status | **OPEN - RESOLUTION PATH 2 SELECTED; AMENDMENT NOT YET RATIFIED** |
+| Status | **OPEN - CRB PROPOSAL FILED; INDEPENDENT REVIEW AND RATIFICATION PENDING** |
 | Raised by | INST-013 - Goal Orchestrator |
 | Affected obligation | CL-065-09 / PDR-065-07 |
 
@@ -77,3 +77,7 @@ protect the Constitution, INST-002. FA-044 activates INST-CI-001 to draft only t
 amendment needed to make that routing valid. Independent constitutional review and separate
 Founder ratification remain mandatory. Until both exist and the Institution Registry and charter
 are amended mechanically, CB-005 remains open and no legal-owner GOA may issue.
+
+CR-GOAL-005-INST-CI-001-01 is the accepted CRB proposal after deterministic validation. Three
+earlier drafts were rejected and remained unfiled. The accepted proposal changes no ratified file
+and grants no authority before independent approval and separate Founder ratification.

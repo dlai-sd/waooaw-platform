@@ -138,7 +138,7 @@ deploy, approve or merge a PR, waive independent review, or authorize WC-066 thr
 |---|---|
 | Founder monetary ceiling | USD 40 |
 | `STOP_AND_CONSOLIDATE` threshold | USD 32 (80 percent) |
-| Current state | `WITHIN_BUDGET` - USD 2.50 conservatively accounted |
+| Current state | `WITHIN_BUDGET` - USD 7.50 conservatively accounted |
 | Dispatch boundary | Only Completeness Ledger owner contributions and independent reviews |
 | Required accounting | Record each context, route, result, conservative debit, repair, and escalation |
 | Hard stop | No dispatch at or above USD 32 before consolidation; no spend above USD 40 without a fresh Founder decision |
@@ -151,10 +151,12 @@ protected verdict, review requirement, or implementation gate.
 | Dispatch | Route | Result | Conservative debit | Repair/escalation |
 |---|---|---|---|---|
 | D-065-01 | Fresh INST-002 routing-readiness review | R-103 `READY FOR ROUTING`; CL-065-R1 satisfied | USD 2.50 | One bounded factual correction preserved the verdict and fixed package hash, merge date, and later-iteration file status |
+| D-065-02 | FA-044 CRB amendment draft | Three unfiled drafts rejected for scope, G-10, temporal, and authority defects | USD 2.50 | Repair loop exhausted; no rejected draft entered the constitutional record |
+| D-065-03 | Expert-informed CRB redesign | Valid bounded proposal filed as CR-GOAL-005-INST-CI-001-01 | USD 2.50 | Deterministic G-10, two-surface, temporal-order, expiry, and no-authority checks passed |
 
-The environment exposes no provider invoice. USD 2.50 is reserved conservatively for the review
-and its bounded correction as one context. Actual use remains below the USD 32 consolidation
-threshold. CB-005 stops new owner routing independently of budget state.
+The environment exposes no provider invoice. USD 2.50 is reserved conservatively for each
+dispatch context. Actual use remains below the USD 32 consolidation threshold. CB-005 stops new
+owner routing independently of budget state.
 
 ## Reserved Implementation Authorization
 
