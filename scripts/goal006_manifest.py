@@ -21,7 +21,7 @@ RELEASE_MEMBERS = frozenset(
 DIGEST_PATTERN = re.compile(r"^sha256:[0-9a-f]{64}$")
 COMMIT_PATTERN = re.compile(r"^[0-9a-f]{40}$")
 SECRET_FIELD = re.compile(r"(?:password|secret_value|private_key|access_token|connection_string)$", re.IGNORECASE)
-TRUSTED_BUILDERS = frozenset({"https://github.com/dlai-sd/waooaw-platform/.github/workflows/ci.yml@refs/heads/main"})
+TRUSTED_BUILDERS = frozenset({"https://github.com/dlai-sd/waooaw-platform/.github/workflows/ci.yaml@refs/heads/main"})
 
 
 def _canonical(value: Mapping[str, Any]) -> bytes:
