@@ -173,6 +173,36 @@ CI evidence and the PR are authoritative.
 - JIT and break-glass fixtures require separate approval/execution, exact scope, reason, expiry, revocation and immutable evidence; Production actors and durations remain unresolved.
 - Every selected test executes with nonzero counts; no skip, xfail, deselection, TODO, echo-only or advisory success is accepted.
 
+## P2-WC02 And P2-WC03 Deterministic Author Review
+
+Author review is defect discovery only. It is not independent acceptance and does not satisfy
+C-065 or either component exit gate.
+
+| Check | Result |
+|---|---|
+| Immutable boundaries | P2-WC02 `222eaef..5cbf8953b33198cec5197d33d8719dddfb73da9a`; P2-WC03 `5cbf895..5ed3f0c5350de10983476a05fcc4b84e3439a0da`; checkpoint `2db72e1160d174a77329c897b4a15e70381df274` |
+| Combined contract accounting | PASS - 26 selected, 26 executed, 26 passed, zero skip/xfail/deselection |
+| Runnable-surface review | PASS - no TODO, FIXME, advisory continuation, test skip, Terraform apply or Azure login command |
+| Packaging review | PASS - exactly six local images present; all run as `waooaw`; accepted ports 5002, 5001, 5003, 5004, 3000 and 8140 |
+| Terraform review | PASS - pinned format, recursive TFLint, Checkov 18/18, Ruff, policy JSON and 12/12 contracts |
+| Hygiene | PASS - diff check and committed credential-pattern scan |
+| Author verdict | READY FOR INDEPENDENT REVIEW - no author finding; no self-approval |
+
+### Bounded Independent Review Matrix
+
+Every reviewer reads only its row's immutable range and controlling P2-WC section. Unchanged
+baseline behavior, live Azure effectiveness, Phase 3, P2-WC05 supply-chain evidence and P2-WC06
+promotion simulation are out of scope. A review must return one verdict (`APPROVE` or `REJECT`),
+file-and-line findings for every rejection, commands actually executed, and selected/executed/passed
+counts. Speculation, future-component findings and findings outside the pinned range have no gate effect.
+
+| Review | Office and decision boundary | Required checks | Output |
+|---|---|---|---|
+| R-121 | INST-005 Solution Architect; P2-WC02 range `222eaef..5cbf8953b33198cec5197d33d8719dddfb73da9a` | Exactly six members; accepted ports/protocols; CE internal-only; startup/dependency/health/config contracts; Billing membership; OAuth Vault/MCP exclusion | `reviews/R-121-goal-006-p2-wc02-solution-architecture-review.md` |
+| R-122 | Independent QA; same P2-WC02 range | Execute 14 focused contracts and delegated PostgreSQL 2/2; verify nonzero accounting, negative membership/secret/port/dependency checks and no skip/xfail/deselection | `reviews/R-122-goal-006-p2-wc02-qa-review.md` |
+| R-123 | INST-009 Platform Architect; P2-WC03 range `5cbf895..5ed3f0c5350de10983476a05fcc4b84e3439a0da` | Separate roots/state/identity; durable foundation versus workload; exact-digest ACA multiple revisions; bounded scaling; lease preservation; no provider operation | `reviews/R-123-goal-006-p2-wc03-platform-review.md` |
+| R-124 | INST-007 Security Architect; same P2-WC03 range | OIDC subject scope; no long-lived credentials/secret values; private vault/network/NSGs; ingress classes; break-glass separation/expiry/revocation/evidence; run Checkov and security-negative contracts | `reviews/R-124-goal-006-p2-wc03-security-review.md` |
+
 ## Definition Of Done
 
 - P2-WC01 through P2-WC08 are independently accepted in dependency order.
