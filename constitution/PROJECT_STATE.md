@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 49
+**State Revision:** 50
 **Last Updated:** 2026-08-13
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -21,7 +21,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Platform version | 1.45.0 |
 | Latest completed Work Contract | WC-062 — WC-034 F6 Voice Interaction |
 | Latest merge | PR #276 merged to `main` as `6eb12d0` |
-| Active delivery | WC-064 design and WC-065 grooming complete under R-101/R-102 approval; delivery PR pending; WC-065 remains authorization-gated; WC-070 vNext standard is ratified and merged |
+| Active delivery | WC-064 design and WC-065 grooming complete under R-101/R-102 approval; PR #277 open and unmerged; WC-065 remains authorization-gated; WC-070 vNext standard is ratified and merged |
 
 ## Active Checkpoint — WC-064 Founder Commercial Governance Program Design
 
@@ -37,13 +37,13 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Budget control | STOP_AND_CONSOLIDATE — `$30.00` final accounted use; no new owner, repair, or review context |
 | Fresh Constitutional readiness | DONE — R-102 APPROVED the same exact package; no implementation authority granted |
 | WC-066 through WC-069 | EVIDENCE-GATED — no detailed grooming or implementation authorized |
-| Delivery PR | PENDING — one unmerged PR is the only remaining delivery action |
+| Delivery PR | OPEN — PR #277 targets `main`; Founder/constitutional review and merge remain external |
 | WC-070 dependency | RATIFIED/ACTIVE — PR #276 merged to `main` as `6eb12d0`; vNext standard governs this closure |
 | Implementation authorization | NOT REQUESTED — no iteration is implementation-authorized |
 
 ### Closure Context
 
-- **Delivery branch:** `wc/064/program-design-vnext`; one unmerged PR remains pending.
+- **Delivery branch:** `wc/064/program-design-vnext`; PR #277 is open and unmerged.
 - **Authority:** Founder-selected WC-064 design/grooming scope, R-099, ACK-12, CE-GOAL-005-WC064-01, eight accepted owner contributions, R-101, and R-102.
 - **Validation:** all 14 package hashes verified independently by R-101 and R-102 at `6c2fa94`; deterministic record-sequence, required-section, boundary, formatting, package, and editor-diagnostic checks passed. No implementation tests were authorized or run.
 - **Protected local artifacts:** `.coverage`, `goals/goal_register.jsonl`, `logs/blueprint_assurance_report.json`, and `logs/bootstrap-evidence.jsonl` are unrelated and must remain unstaged.
@@ -66,9 +66,9 @@ operating standard.
 
 ## Next Authorized Action
 
-Commit and push the WC-064 closure evidence, then open one unmerged delivery PR for Founder and
-constitutional review. Do not dispatch another context, begin WC-065 through WC-069
-implementation, issue implementation authority, approve the PR, or merge it.
+Founder and Constitutional reviewers evaluate PR #277. Do not dispatch another context, begin
+WC-065 through WC-069 implementation, issue implementation authority, self-approve the PR, or
+merge it.
 
 ## History And Evidence
 
