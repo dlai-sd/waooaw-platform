@@ -127,12 +127,14 @@ resource "azurerm_subnet_network_security_group_association" "private_endpoints"
 }
 
 resource "azurerm_federated_identity_credential" "deployment" {
-  name                = "github-${var.repository_environment}"
+  for_each = var.repository_workflows
+
+  name                = "github-${var.repository_environment}-${substr(sha256(each.value), 0, 8)}"
   resource_group_name = azurerm_resource_group.environment.name
   parent_id           = azurerm_user_assigned_identity.deployment.id
   audience            = ["api://AzureADTokenExchange"]
   issuer              = "https://token.actions.githubusercontent.com"
-  subject             = "repo:${var.repository_id}:environment:${var.repository_environment}"
+  subject             = "repo:${var.repository_id}:environment:${var.repository_environment}:ref:${var.repository_ref}:job_workflow_ref:${var.repository_id}/${each.value}@${var.repository_ref}"
 }
 
 resource "azurerm_key_vault" "environment" {

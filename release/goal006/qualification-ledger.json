@@ -27,9 +27,9 @@
     "collected": 150,
     "executed": 150,
     "passed": 150,
-    "test_selected": 139,
-    "test_executed": 139,
-    "test_passed": 139,
+    "test_selected": 147,
+    "test_executed": 147,
+    "test_passed": 147,
     "omissions": [],
     "proof_ids_sha256": "fdea035675c8d8ebb75d32d25abd23cc9553a7887eeff4d8b13f80dfe297a802"
   },

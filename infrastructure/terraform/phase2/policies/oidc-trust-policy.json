@@ -9,6 +9,7 @@
     ".github/workflows/promote.yaml",
     ".github/workflows/post-deploy-verify.yaml"
   ],
+  "subject_claim_template": ["repo", "environment", "ref", "job_workflow_ref"],
   "wildcards_allowed": false,
-  "enforcement_stage": "P2-WC06_WORKFLOW_GATE"
+  "enforcement_stage": "P2-WC03_FEDERATED_CREDENTIAL_AND_P2-WC06_WORKFLOW_GATE"
 }

@@ -122,6 +122,21 @@ def test_secret_values_are_rejected_from_manifest(field: str) -> None:
     assert_violation(manifest, "SECRET_VALUE_PRESENT")
 
 
+@pytest.mark.parametrize(
+    "secret",
+    [
+        "ghp_abcdefghijklmnopqrstuvwxyz123456",
+        "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1c2VyIn0.invalidsignature",
+        "postgresql://user:credential@database.example/app",
+        "-----BEGIN PRIVATE KEY-----",
+    ],
+)
+def test_secret_like_values_are_rejected_under_innocent_field_names(secret: str) -> None:
+    manifest = load_manifest()
+    manifest["note"] = secret
+    assert_violation(manifest, "SECRET_VALUE_PRESENT")
+
+
 def test_evidence_path_cannot_escape_release_root() -> None:
     manifest = load_manifest()
     manifest["payload"]["members"]["web"]["evidence"]["path"] = "../../pyproject.toml"

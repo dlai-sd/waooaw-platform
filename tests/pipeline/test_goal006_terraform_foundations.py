@@ -95,10 +95,9 @@ def test_foundation_is_private_isolated_and_environment_scoped() -> None:
 
     for cidr in ("10.60.0.0/16", "10.61.0.0/16", "10.62.0.0/16"):
         assert cidr in contract
-    assert re.search(
-        r'subject\s*=\s*"repo:\$\{var\.repository_id\}:environment:\$\{var\.repository_environment\}"',
-        contract,
-    )
+    assert 'subject             = "repo:${var.repository_id}:environment:${var.repository_environment}' in contract
+    assert ":ref:${var.repository_ref}:" in contract
+    assert "job_workflow_ref:${var.repository_id}/${each.value}@${var.repository_ref}" in contract
     assert "public_network_access_enabled = false" in contract
     assert 'default_action = "Deny"' in contract
     assert 'subresource_names              = ["vault"]' in contract
@@ -183,9 +182,19 @@ def test_oidc_policy_requires_exact_governed_refs_and_workflows() -> None:
         ".github/workflows/promote.yaml",
         ".github/workflows/post-deploy-verify.yaml",
     ]
+    assert policy["subject_claim_template"] == ["repo", "environment", "ref", "job_workflow_ref"]
     assert policy["wildcards_allowed"] is False
     assert all("*" not in value for value in (*policy["allowed_refs"], *policy["allowed_workflows"]))
-    assert policy["enforcement_stage"] == "P2-WC06_WORKFLOW_GATE"
+    assert policy["enforcement_stage"] == "P2-WC03_FEDERATED_CREDENTIAL_AND_P2-WC06_WORKFLOW_GATE"
+
+    foundation = read_contract("modules/foundation/main.tf")
+    variables = read_contract("modules/foundation/variables.tf")
+    assert "for_each = var.repository_workflows" in foundation
+    assert "ref:${var.repository_ref}" in foundation
+    assert "job_workflow_ref:${var.repository_id}/${each.value}@${var.repository_ref}" in foundation
+    assert 'default = "refs/heads/main"' in variables
+    assert ".github/workflows/promote.yaml" in variables
+    assert ".github/workflows/post-deploy-verify.yaml" in variables
 
 
 def test_edge_and_break_glass_policies_are_fail_closed() -> None:

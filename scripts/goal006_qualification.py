@@ -80,7 +80,7 @@ def validate_ledger(ledger: Mapping[str, Any], repo_root: Path) -> list[str]:
     proof_ids_sha256 = hashlib.sha256("\n".join(sorted(expanded)).encode()).hexdigest()
     if accounting.get("proof_ids_sha256") != proof_ids_sha256 or _sequence(accounting.get("omissions")):
         violations.append("PROOF_ID_ACCOUNTING_INVALID")
-    if accounting.get("test_selected") != 139 or accounting.get("test_executed") != 139 or accounting.get("test_passed") != 139:
+    if accounting.get("test_selected") != 147 or accounting.get("test_executed") != 147 or accounting.get("test_passed") != 147:
         violations.append("TEST_COUNT_MISMATCH")
 
     ct07 = _mapping(ledger.get("ct_07"))

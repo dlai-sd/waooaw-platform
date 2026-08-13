@@ -145,6 +145,21 @@ def test_secret_values_are_rejected_recursively(field: str) -> None:
     assert_violation(bundle, "SECRET_VALUE_PRESENT")
 
 
+@pytest.mark.parametrize(
+    "secret",
+    [
+        "ghp_abcdefghijklmnopqrstuvwxyz123456",
+        "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1c2VyIn0.invalidsignature",
+        "postgresql://user:credential@database.example/app",
+        "-----BEGIN PRIVATE KEY-----",
+    ],
+)
+def test_secret_like_values_are_rejected_under_innocent_field_names(secret: str) -> None:
+    bundle = load_bundle()
+    bundle["provenance"]["note"] = secret
+    assert_violation(bundle, "SECRET_VALUE_PRESENT")
+
+
 def test_path_traversal_cannot_select_a_migration_outside_the_bundle() -> None:
     bundle = load_bundle()
     bundle["migration"]["sql_path"] = "../../../../pyproject.toml"

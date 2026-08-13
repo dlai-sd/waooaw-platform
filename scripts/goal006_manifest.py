@@ -21,6 +21,15 @@ RELEASE_MEMBERS = frozenset(
 DIGEST_PATTERN = re.compile(r"^sha256:[0-9a-f]{64}$")
 COMMIT_PATTERN = re.compile(r"^[0-9a-f]{40}$")
 SECRET_FIELD = re.compile(r"(?:password|secret_value|private_key|access_token|connection_string)$", re.IGNORECASE)
+SECRET_VALUE = re.compile(
+    r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----|"
+    r"\bgh[pousr]_[A-Za-z0-9]{20,}\b|"
+    r"\bAKIA[0-9A-Z]{16}\b|"
+    r"\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b|"
+    r"(?:password|secret|token|accountkey)\s*[=:]\s*[^\s,;]+|"
+    r"[a-z][a-z0-9+.-]*://[^/\s:@]+:[^@\s/]+@",
+    re.IGNORECASE,
+)
 TRUSTED_BUILDERS = frozenset({"https://github.com/dlai-sd/waooaw-platform/.github/workflows/ci.yaml@refs/heads/main"})
 
 
@@ -45,7 +54,7 @@ def _has_secret_value(value: Any) -> bool:
         return any(SECRET_FIELD.search(str(key)) or _has_secret_value(item) for key, item in value.items())
     if isinstance(value, Sequence) and not isinstance(value, (str, bytes)):
         return any(_has_secret_value(item) for item in value)
-    return False
+    return isinstance(value, str) and SECRET_VALUE.search(value) is not None
 
 
 def _verify_signature(public_key: Ed25519PublicKey | None, message: bytes, signature: Any) -> bool:
