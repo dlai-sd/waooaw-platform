@@ -8,7 +8,7 @@
 | Authorization | FA-049; GOA-GOAL-006-INST-010-02 |
 | Acceptance | ACC-GOAL-006-INST-010-02 |
 | Gate | G5 CLEAR; platform phase IMPLEMENTATION |
-| Status | IN PROGRESS - P2-WC04 author-gated; P2-WC05 active; independent acceptance deferred until P2-WC07 |
+| Status | IN PROGRESS - P2-WC05 author-gated; P2-WC06 active; independent acceptance deferred until P2-WC07 |
 | Reviewer | INST-004 for implementation integrity; INST-007 security; independent QA for qualification; affected specialist owners retain their Decision Spaces |
 | Constitutional basis | C-001, C-023, C-032, C-059, C-065, C-066, C-067, C-071, C-076, C-080; GEOM G-7 |
 
@@ -87,8 +87,8 @@ additional charge. Phase 3 remains unauthorized.
 | P2-WC02 | Exactly six image, Compose and component contracts | P2-WC01 | INST-005 plus independent QA | IMPLEMENTED/AUTHOR-GATED - independent acceptance deferred |
 | P2-WC03 | Offline Terraform isolation, identity, secrets and JIT | P2-WC01 | INST-009 and INST-007 | IMPLEMENTED/AUTHOR-GATED - 16/16 contracts and static gates pass; independent acceptance deferred |
 | P2-WC04 | Synthetic data lifecycle, migration and recovery | P2-WC01/02; full tuple also P2-WC03/05 | INST-006 and INST-007 | IMPLEMENTED/AUTHOR-GATED - 26/26 contracts pass; independent acceptance deferred |
-| P2-WC05 | Signed six-member immutable release manifest and supply-chain evidence | P2-WC01/02 | INST-007 and independent QA | IN PROGRESS |
-| P2-WC06 | Offline CI/CD, revision blue-green, rollback, lifecycle, halt and cost simulation | P2-WC03/04/05 | INST-009, INST-007 and independent confirmer | PENDING |
+| P2-WC05 | Signed six-member immutable release manifest and supply-chain evidence | P2-WC01/02 | INST-007 and independent QA | IMPLEMENTED/AUTHOR-GATED - 21/21 contracts pass; independent acceptance deferred |
+| P2-WC06 | Offline CI/CD, revision blue-green, rollback, lifecycle, halt and cost simulation | P2-WC03/04/05 | INST-009, INST-007 and independent confirmer | IN PROGRESS |
 | P2-WC07 | Complete deterministic qualification and proof accounting | P2-WC01 through P2-WC06 | Independent QA acceptor | PENDING |
 | P2-WC08 | Evidence, reviews and bounded Phase 3 readiness package | Independently accepted P2-WC01 through P2-WC07 | INST-004, INST-007, QA and fresh INST-002 | PENDING |
 
@@ -121,10 +121,10 @@ PROJECT_STATE, commits, CI evidence, reviews or the PR.
 | Authorization checkpoint | `313fb12` on `goal/006/phase2-blocked` |
 | Current branch | `goal/006/phase2-offline-delivery` |
 | Current PR | Draft PR #284 - `https://github.com/dlai-sd/waooaw-platform/pull/284`; reuse through P2-WC08; do not merge |
-| Current component | P2-WC05 - signed exact-six immutable manifest and supply-chain evidence |
-| Next exact action | Implement and author-gate the offline exact-six manifest, SBOM, provenance, signature and scan evidence chain; then proceed to P2-WC06 |
-| Completed commit IDs | `313fb12` authorization; `6e23941` WC/context; `739cf2b` P2-WC01; `222eaef` R-120; `d2b95d8` P2-WC02; `5cbf895` local-review repairs; `5ed3f0c` P2-WC03; `fe8cdff` review remediation; `8dca8a5` lease repair; `6baa975` review-cadence checkpoint; `3308c9a` P2-WC04 |
-| Validation results | P2-WC01 gates PASS; P2-WC02 focused contracts 14/14 and delegated PostgreSQL 2/2 PASS; P2-WC03 contracts 16/16 and static gates PASS; P2-WC04 contracts 26/26, CLI verification, Ruff, JSON, patch hygiene and prohibited-action scan PASS |
+| Current component | P2-WC06 - offline CI/CD, promotion, rollback, lifecycle, halt and cost simulation |
+| Next exact action | Implement and author-gate the complete provider-free revision state machine and offline CI path; then proceed to P2-WC07 |
+| Completed commit IDs | `313fb12` authorization; `6e23941` WC/context; `739cf2b` P2-WC01; `222eaef` R-120; `d2b95d8` P2-WC02; `5cbf895` local-review repairs; `5ed3f0c` P2-WC03; `fe8cdff` review remediation; `8dca8a5` lease repair; `6baa975` review-cadence checkpoint; `3308c9a` P2-WC04; `f7c39b7` WC05 checkpoint; `5e83af1` P2-WC05 |
+| Validation results | P2-WC01 gates PASS; P2-WC02 focused contracts 14/14 and delegated PostgreSQL 2/2 PASS; P2-WC03 contracts 16/16 and static gates PASS; P2-WC04 contracts 26/26 and CLI PASS; P2-WC05 contracts 21/21, Ed25519 CLI verification, Ruff, JSON, patch hygiene and secret scan PASS |
 | Review results | R-117 Phase 1 CLEAR WITH CONDITIONS; R-118 Skill 17 APPROVE; R-119 release contract APPROVE; R-120 P2-WC01 APPROVE; P2-WC02 and P2-WC03 author readiness gates PASS with independent acceptance explicitly deferred until the complete P2-WC02 through P2-WC07 package |
 | Blockers and owner decisions | No contribution-start blocker; canonical Incident/Change/Release policies remain fail-closed dependencies for affected P2-WC06/07/08 paths; INR 5,000 ceiling; Phase 3 prohibited |
 | Allowed actions | Offline repository implementation, Docker-first validation, synthetic evidence, author readiness review, commits/pushes, one draft unmerged PR; independent review after P2-WC07 |
@@ -144,6 +144,18 @@ CI evidence and the PR are authoritative.
 | Recovery integrity | PASS - isolation, encryption, chain/checksum, evidence tail, durable ordering and uncertain-workflow pause enforced |
 | Release tuple readiness | PASS - exact six OCI digests including Billing, reviewed config, data version, state generation and recovery point bound; final WC05 manifest identity remains the direct dependency |
 | Lifecycle and custody | PASS - pre-access replay and secret-value rejection enforced; no Production data/objective/key/live action |
+| Author verdict | IMPLEMENTED/AUTHOR-GATED - no author finding; independent acceptance deferred; no self-approval |
+
+## P2-WC05 Deterministic Author Review
+
+| Check | Result |
+|---|---|
+| Immutable boundary | Implementation commit `5e83af1` |
+| Contract accounting | PASS - 21 selected, 21 executed, 21 passed; zero skip/xfail/deselection |
+| Release identity | PASS - exact CE/BP/PR/AIR/Web/Billing content digests; tags, omissions, OAuth/MCP and extras rejected |
+| Cryptographic verification | PASS - Ed25519 manifest plus six member signatures verify using a public key only; tampering/revocation fail closed |
+| Evidence chain | PASS - every member binds SPDX 2.3, SLSA v1 and OpenVEX policy-pass evidence by SHA-256 |
+| Custody and qualification | PASS - trusted builder, reviewed config, source commit, nonzero equal counts and secret exclusion enforced |
 | Author verdict | IMPLEMENTED/AUTHOR-GATED - no author finding; independent acceptance deferred; no self-approval |
 
 ## P2-WC01 Binding And Estimate
