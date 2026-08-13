@@ -403,3 +403,54 @@ actions, cloud queries/spend, DNS, deployment, Production, activation, PR approv
 | Decision | ACCEPTED |
 | Accepted scope | P1-WC09 operational and handover design only |
 | Excluded authority | Implementation, credentials/live access, cloud/DNS/deployment/production operation, target/risk acceptance, self-activation, final validation, PR approval, and merge |
+
+## P1-WC09 And P1-WC10 Completion Gate
+
+| Field | Value |
+|---|---|
+| Contribution | CR-GOAL-006-PLATFORM-OPS-01 |
+| Reviewed baseline | `117e4d93a919ae8d2898c13e3a9cf81f1aa8cb9467e8650d4b933b06a38fac94` |
+| Independent review | R-115 / CR-GOAL-006-INST-004-03 |
+| Review verdict | ACCEPT after bounded repairs — NO CONSTITUTIONAL CHALLENGE |
+| Completion effect | P1-WC09 and P1-WC10 complete; P1-WC11 dependency satisfied |
+
+The review does not activate Platform Operations. The exact Incident, Change, and Release policy
+files, Phase 2 implementation, Phase 3 qualification including CT-07 PASS, handover, and Founder
+activation remain separate dependencies or protected decisions.
+
+## Phase 1 Authorization — P1-WC11
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-006 |
+| `record_id` | GOA-GOAL-006-INST-011-02 |
+| `record_type` | Authorization Record |
+| `authorization_id` | GOA-GOAL-006-INST-011-02 |
+| Authorized Institution | INST-011 — Product Owner |
+| Contribution scope | P1-WC11 Integrated Grooming Package And Phase 2/3 Work Components |
+| Required evidence | Complete FR-019 through FR-045 package; FR-001 through FR-056 traceability; accepted owner decisions; completeness/dependency ledgers; estimates, costs and risks; exact Phase 2/3 Work Components; owned canonical policy dependencies; six conclusion tables |
+| Participation Window | 3 constitutional sessions after valid acceptance |
+| Independence constraint | INST-011 integrates accepted contributions and owns product grooming but may not invent or overwrite specialist decisions, authorize implementation/cloud action, activate operations, or validate the final package |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-13T11:32:00Z |
+
+This GOA authorizes integrated documentation and grooming only. It excludes runnable source,
+infrastructure, workflow or policy implementation; credentials/provider queries; cloud spend; DNS;
+deployment; Production; Platform Operations activation; protected decision acceptance; PR approval;
+and merge. P1-WC12 remains dependency-blocked.
+
+## Acceptance — P1-WC11
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-011 |
+| `goal_id` | GOAL-006 |
+| `record_id` | ACC-GOAL-006-INST-011-02 |
+| `record_type` | Acceptance Record |
+| `produced_at` | 2026-08-13T11:32:01Z |
+| `authorization_id` | GOA-GOAL-006-INST-011-02 |
+| `acceptance_timestamp` | 2026-08-13T11:32:01Z |
+| Decision | ACCEPTED |
+| Accepted scope | P1-WC11 integrated grooming and downstream Work Component specification only |
+| Excluded authority | Specialist invention, runnable implementation, cloud/DNS/deployment/Production action, activation, final constitutional validation, PR approval, and merge |

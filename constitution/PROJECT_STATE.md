@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 79
+**State Revision:** 80
 **Last Updated:** 2026-08-13
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -21,7 +21,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Platform version | 1.45.0 |
 | Latest completed Work Contract | WC-065 — Founder Offerability And Commercial Composition |
 | Latest merge | PR #278 merged to `main` as `f28badc` on 2026-08-13 |
-| Active delivery | GOAL-006 Phase 1 P1-WC09 operational architecture and handover design |
+| Active delivery | GOAL-006 Phase 1 P1-WC11 integrated grooming package and Phase 2/3 Work Components |
 
 ## Active Checkpoint — GOAL-006 Secure Autonomous Cloud Delivery Intake
 
@@ -53,7 +53,9 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | P1-WC08 QA GOA / Acceptance | VALID — GOA-GOAL-006-QA-01 at 11:09:38Z; ACC-GOAL-006-QA-01 at 11:09:39Z |
 | P1-WC08 contribution / review | DONE — CR-GOAL-006-QA-01 accepted by R-114; targets and execution/live proof remain open |
 | P1-WC09 Operations candidate GOA / Acceptance | VALID — GOA-GOAL-006-PLATFORM-OPS-01 at 11:17:28Z; ACC-GOAL-006-PLATFORM-OPS-01 at 11:17:29Z; candidate remains DRAFT/NOT ACTIVATED |
-| Phase 1 owner grooming | IN PROGRESS — P1-WC09 only; P1-WC10 through P1-WC12 remain dependency-blocked |
+| P1-WC09 contribution / P1-WC10 review | DONE — CR-GOAL-006-PLATFORM-OPS-01 accepted by R-115 after bounded repairs; policy-dependent operations and all activation remain blocked |
+| P1-WC11 Product Owner GOA / Acceptance | VALID — GOA-GOAL-006-INST-011-02 at 11:32:00Z; ACC-GOAL-006-INST-011-02 at 11:32:01Z |
+| Phase 1 owner grooming | IN PROGRESS — P1-WC11 only; P1-WC12 remains dependency-blocked |
 
 ### Intake Context
 
@@ -62,7 +64,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 - **Validation:** deterministic content checks and editor diagnostics pass; no runnable infrastructure or implementation changed.
 - **Independent review:** R-106 / CR-GOAL-006-INST-002-01 finds the classification and plan ready, with post-review Founder acknowledgement as the sole routing predecessor.
 - **Pull request:** PR #281 is the Phase 1 PR. Phase 2 implementation will use a separate later PR after Phase 1 closure and explicit implementation authorization.
-- **Boundary:** P1-WC09 operational design only; no runnable changes, credentials/live access, cloud spend, DNS action, deployment, operation, Platform Operations activation, PR approval, or merge is authorized.
+- **Boundary:** P1-WC11 integrated grooming only; no runnable changes, credentials/live access, cloud spend, DNS action, deployment, operation, Platform Operations activation, PR approval, or merge is authorized.
 - **Protected local artifacts:** `.coverage`, `goals/goal_register.jsonl`, `logs/blueprint_assurance_report.json`, and `logs/bootstrap-evidence.jsonl` are unrelated and must remain unstaged.
 - **Intake evidence:** `goals/GOAL-006-secure-autonomous-cloud-delivery.md`, `goals/GOAL-006-execution-plan.md`, and WC-071.
 
@@ -77,15 +79,15 @@ authorize Phase 1 specialist grooming, Phase 2 implementation, or Phase 3 cloud 
 
 ## Current Blockers
 
-No constitutional blocker file is open. R-107 accepts the P1-WC01 inventory while preserving
-P1-R01 through P1-R10 as open risks for later owner contributions.
+No constitutional blocker file is open. The three canonical operations policies remain downstream
+dependencies; they block policy-dependent automation and Phase 3 handover/activation, not P1-WC11 grooming.
 
 ## Next Authorized Action
 
-Complete and independently review the P1-WC09 operational contribution. Do not issue
-P1-WC10 until P1-WC09 publishes an independently accepted Contribution Record. Phase 2
-implementation and all cloud, DNS, deployment, production, and Platform Operations activation
-actions remain unauthorized.
+Complete P1-WC11 integrated grooming, exact Phase 2/3 Work Components, owner reviews, ledgers,
+estimates, costs, risks, policy dependencies, and conclusion tables. Do not issue P1-WC12 before
+P1-WC11 independent owner acceptance. Phase 2 implementation and all cloud, DNS, deployment,
+production, and Platform Operations activation actions remain unauthorized.
 
 ## History And Evidence
 
