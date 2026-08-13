@@ -242,6 +242,7 @@ No cost state changes an obligation status or permits completion by exhaustion.
 | D-064-10 | M1 deterministic record renumbering | Duplicate identifiers repaired and revalidated | `$0.00` | No new context |
 | D-064-11 | Constitutional owner contribution | Deterministic validation passed | `$2.50` | None |
 | D-064-12 | Fresh integrated EA review | R-101 `APPROVED WITH NOTES`; two bounded record-state repairs required | `$2.50` | Repair in active INST-013 context; reviewer confirmation required |
+| D-064-13 | R-101 bounded confirmation within D-064-12 | `REJECT`; WC064-05/WC064-08 wording remained ambiguous | `$0.00` | Second M1 wording repair in active INST-013 context; no new dispatch |
 
 The execution environment exposes no provider invoice. To fail conservatively, each dispatched
 context reserves `$2.50` against the ceiling until reconciled. Current accounted use is `$27.50`.
@@ -256,7 +257,7 @@ but any further context requires a Founder budget decision.
 | Finding | Classification | Repair | Dependency impact |
 |---|---|---|---|
 | F-101-01 stale WC-064 header | M1 ministerial state correction | Status now reflects accepted contributions and integrated design while retaining implementation prohibition | No owner, policy, architecture, acceptance, package-boundary, or risk change |
-| F-101-02 ledger/task ambiguity | M1 ministerial state correction | CL-064-11 closed against existing evidence; WC064-05 now names the owner contribution and WC064-08 retains final independent readiness | No protected verdict changed; R-101 confirmation and fresh CA review remain required |
+| F-101-02 ledger/task ambiguity | M1 ministerial state correction | CL-064-11 closed against existing evidence; WC064-05 closes only the owner contribution; WC064-08 explicitly carries independent EA approval and final Constitutional readiness | No protected verdict changed; R-101 confirmation and fresh CA review remain required |
 
 The initial manifest is superseded for review by the repaired package manifest. R-101 remains the
 independent full-baseline review evidence and must confirm only that these exact notes were

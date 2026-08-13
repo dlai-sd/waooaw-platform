@@ -171,7 +171,7 @@ verdict. INST-013 coordinates attribution and routing but gains no review author
 | WC064-05 | Produce Order 8 constitutional owner contribution, separate from final readiness review. | DONE — fresh INST-002 CR-20 |
 | WC064-06 | Publish the integrated design spine and classify every capability NOW, NEXT, LATER, or REJECT. | DONE — GEP-GOAL-005-INST-013-14 |
 | WC064-07 | Refine WC-065 to implementation-ready grooming depth while leaving WC-066 through WC-069 at outcome-and-boundary depth. | DONE — WC-065 specification baseline |
-| WC064-08 | Obtain independent integrated review and record the next authorized action without issuing implementation authority. | pending |
+| WC064-08 | Obtain independent integrated EA approval and final Constitutional readiness, then record the next authorized action without issuing implementation authority. | pending |
 
 ## Detailed Design Activities
 
@@ -188,8 +188,9 @@ verdict. INST-013 coordinates attribution and routing but gains no review author
 
 The WC-064 design PR attaches the eight owner contributions, integrated program design, vNext
 execution record, and version-pinned WC-065 package. It may mark WC064-01 through WC064-07 complete
-only as their evidence closes. WC064-05 and WC064-08 remain pending until fresh Enterprise
-Architecture and Constitutional readiness verdicts approve the exact package.
+only as their evidence closes. WC064-05 is complete on its accepted owner contribution;
+WC064-08 remains pending until fresh Enterprise Architecture and Constitutional readiness verdicts
+approve the exact package.
 
 ## Program Design Gate
 

@@ -215,3 +215,60 @@ grants **no merge authority**. It does not activate policy values, providers, de
 configuration, source, tests, migrations, generated clients, or WC-065 through WC-069 execution.
 Fresh independent Constitutional readiness is still required after this verdict, and every later
 implementation gate remains closed until separately satisfied.
+
+## Bounded Repair Confirmation
+
+### Successor Package Basis
+
+This confirmation compares package commit
+`13e3637f506f78a8b5c1fecc258ba504dd80e406` with successor package commit
+`90f4a1e019b0470e32c9251cce5fb4ef8cdf7b23` only for the bounded repair files:
+`SPRINT-REGISTRY.md`, `constitution/PROJECT_STATE.md`,
+`goals/GOAL-005-wc064-execution-record.md`, and
+`work-contracts/WC-064-founder-commercial-governance-program-design.md`.
+
+All 14 successor-manifest SHA-256 values were computed directly from the blobs at
+`90f4a1e019b0470e32c9251cce5fb4ef8cdf7b23`; all 14 match
+`MAN-GOAL-005-INST-013-WC064-02`. No source, tests, migrations, providers, deployment, or live
+configuration were inspected.
+
+### Finding Dispositions
+
+- **F-101-01 — RESOLVED.** WC-064 now records `INTEGRATED DESIGN COMPLETE; INDEPENDENT REVIEWS
+  IN PROGRESS; IMPLEMENTATION UNAUTHORIZED`, consistent with the accepted owner contributions and
+  integrated package while preserving the implementation prohibition.
+- **F-101-02 — NOT FULLY RESOLVED.** `CL-064-11` is supportably closed against
+  `GEP-GOAL-005-INST-013-14`, the WC-065 baseline, and the already-recorded deterministic package
+  validation. WC064-05 also now correctly identifies and closes the Constitutional owner
+  contribution. However, the unchanged `Review Evidence Required For This PR` section still says
+  WC064-05 must remain pending until fresh Enterprise Architecture and Constitutional readiness
+  verdicts approve the package, contradicting WC064-05's corrected owner-contribution status.
+  WC064-08 remains phrased only as an independent integrated review and next-action record; it does
+  not explicitly identify the separate final Constitutional readiness milestone. Owner
+  contribution and final readiness therefore remain conflated in the Work Contract.
+
+`STOP_AND_CONSOLIDATE` is honestly and conservatively recorded: `$27.50` is accounted, bounded EA
+confirmation plus the mandatory fresh Constitutional review forecasts `$32.50`, no new owner or
+repair context is permitted, and any further context requires a Founder budget decision.
+
+### Drift Assessment
+
+The bounded changes do not alter any owner Decision Space, policy, architecture, acceptance
+meaning, package boundary, risk allocation, WC-065 implementation gate, or WC-066 through WC-069
+evidence gate. The defect above is a remaining milestone-record contradiction, not design drift.
+
+### Final R-101 Verdict
+
+**REJECT.** Exact blocker: F-101-02 remains open because WC-064 simultaneously marks WC064-05 done
+as the Constitutional owner contribution and requires it to remain pending for final readiness,
+while WC064-08 does not explicitly carry the distinct final Constitutional readiness milestone.
+The owning closure context must reconcile those two statements without changing the package's
+design or authority boundaries, then repin the package for bounded confirmation.
+
+### Unchanged Authority Boundary
+
+This confirmation grants no implementation authorization, policy activation, provider or
+deployment authority, PR approval, merge authority, or WC-065 through WC-069 execution authority.
+Fresh independent Constitutional readiness remains mandatory after Enterprise Architecture
+approval of one exact package. All protected owner decisions and every later implementation and
+evidence gate remain closed until separately satisfied.

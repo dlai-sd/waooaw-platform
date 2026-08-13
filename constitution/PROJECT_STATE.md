@@ -33,7 +33,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Integrated program design | DONE — GEP-GOAL-005-INST-013-14 published with decision/concept/ownership/policy/dependency catalogues |
 | WC-065 detailed grooming | DONE — implementation-ready specification; protected policy and implementation gates remain closed |
 | Deterministic validation | DONE — record sequence, required-section, boundary, formatting, and package checks passed |
-| Fresh integrated EA review | APPROVED WITH NOTES — R-101; two bounded record-state repairs applied, exact-package confirmation pending |
+| Fresh integrated EA review | PENDING — R-101 bounded confirmation rejected one remaining milestone ambiguity; second M1 wording repair applied, exact-package reconfirmation required |
 | Budget control | STOP_AND_CONSOLIDATE — `$27.50` accounted; EA confirmation plus mandatory CA review forecasts `$32.50`; no new owner or repair context |
 | Fresh Constitutional readiness | PENDING — begins only after EA approval |
 | WC-066 through WC-069 | EVIDENCE-GATED — no detailed grooming or implementation authorized |
