@@ -106,9 +106,14 @@ def _extract_wc_tasks(wc_file: Path) -> dict[str, str]:
     return tasks
 
 
-def _classify_task(scope: str) -> str:  # noqa: ARG001
-    """Bootstrap creates PASS for all tasks — sprint AUTHORIZED = Founder pre-authorization."""
-    return "PASS"
+def _classify_task(scope: str) -> str:
+    """Auto-pass known patterns while leaving sensitive or unknown work pending."""
+    words = set(re.findall(r"[a-z0-9-]+", scope.lower()))
+    if any(pattern in words for pattern in PENDING_PATTERNS):
+        return "PENDING"
+    if any(pattern in words for pattern in KNOWN_SAFE_PATTERNS):
+        return "PASS"
+    return "PENDING"
 
 
 def _build_sim_content(task_id: str, scope: str, sprint: str, verdict: str) -> str:

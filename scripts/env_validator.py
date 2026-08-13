@@ -33,12 +33,14 @@ def _collect_local_modules() -> set[str]:
         for py in root.rglob("*.py"):
             if py.stem not in ("__init__", "__main__"):
                 local.add(py.stem)
-        for init in root.rglob("__init__.py"):
-            local.add(init.parent.name)
+        for directory in root.rglob("*"):
+            if directory.is_dir() and not directory.name.startswith((".", "_")):
+                local.add(directory.name)
 
     # Also detect namespace packages: dirs importable via conftest sys.path injection
     # but lacking __init__.py (Python 3.3+ implicit namespace packages).
     for conftest in (REPO_ROOT / "tests").rglob("conftest.py"):
+        local.update(_extract_module_aliases(conftest))
         for injected in _extract_sys_path_inserts(conftest):
             if not injected.exists():
                 continue
@@ -46,6 +48,28 @@ def _collect_local_modules() -> set[str]:
                 if subdir.is_dir() and not subdir.name.startswith((".", "_")):
                     local.add(subdir.name)
     return local
+
+
+def _extract_module_aliases(conftest: Path) -> set[str]:
+    """Return module names explicitly created by a conftest import hook."""
+    try:
+        tree = ast.parse(conftest.read_text(encoding="utf-8"))
+    except SyntaxError:
+        return set()
+
+    aliases: set[str] = set()
+    for node in ast.walk(tree):
+        if not (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and node.func.attr == "spec_from_file_location"
+            and node.args
+            and isinstance(node.args[0], ast.Constant)
+            and isinstance(node.args[0].value, str)
+        ):
+            continue
+        aliases.add(node.args[0].value.split(".")[0])
+    return aliases
 
 
 def _extract_sys_path_inserts(conftest: Path) -> list[Path]:
