@@ -280,3 +280,44 @@ actions, cloud queries/spend, DNS, deployment, Production, activation, PR approv
 | Decision | ACCEPTED |
 | Accepted scope | P1-WC06 data design only |
 | Excluded authority | Platform/component/security decisions, implementation, credentials/cloud/DNS/deployment/production action, protected RPO/RTO or residual-risk acceptance, activation, final validation, PR approval, and merge |
+
+## P1-WC06 Completion Gate
+
+| Field | Value |
+|---|---|
+| Contribution | CR-GOAL-006-INST-006-01 |
+| Independent review | R-112 / CR-GOAL-006-INST-005-02 |
+| Review verdict | ACCEPT — NO CONSTITUTIONAL CHALLENGE |
+| Completion effect | P1-WC07 dependency satisfied; Production objectives and implementation/live risks remain open |
+
+## Phase 1 Authorization — P1-WC07
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-006 |
+| `record_id` | GOA-GOAL-006-INST-010-01 |
+| `record_type` | Authorization Record |
+| `authorization_id` | GOA-GOAL-006-INST-010-01 |
+| Authorized Institution | INST-010 — Platform IT Expert |
+| Contribution scope | P1-WC07 Implementation And Pipeline Feasibility |
+| Required evidence | Toolchain/prerequisite validation; implementation decomposition; IaC/workflow/security/data/control feasibility; deterministic Docker-based test strategy; dependency and Phase 2 blocker closure plan; no runnable changes |
+| Participation Window | 3 constitutional sessions after valid acceptance |
+| Independence constraint | INST-010 may assess feasibility and decompose implementation but may not overwrite accepted architecture, write runnable changes, deploy, activate, accept protected risk, or validate its own final evidence |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-13T10:47:11Z |
+
+## Acceptance — P1-WC07
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-010 |
+| `goal_id` | GOAL-006 |
+| `record_id` | ACC-GOAL-006-INST-010-01 |
+| `record_type` | Acceptance Record |
+| `produced_at` | 2026-08-13T10:47:12Z |
+| `authorization_id` | GOA-GOAL-006-INST-010-01 |
+| `acceptance_timestamp` | 2026-08-13T10:47:12Z |
+| Decision | ACCEPTED |
+| Accepted scope | P1-WC07 feasibility and decomposition only |
+| Excluded authority | Architecture changes, runnable implementation, credentials/cloud/DNS/deployment/production action, risk acceptance, activation, final validation, PR approval, and merge |
