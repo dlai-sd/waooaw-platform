@@ -7,7 +7,7 @@
 | `record_id` | CB-005 |
 | `record_type` | Clearance Record |
 | `produced_at` | 2026-08-13 |
-| Status | **OPEN - CRB PROPOSAL FILED; INDEPENDENT REVIEW AND RATIFICATION PENDING** |
+| Status | **OPEN - R-104 APPROVED; FOUNDER RATIFICATION PENDING** |
 | Raised by | INST-013 - Goal Orchestrator |
 | Affected obligation | CL-065-09 / PDR-065-07 |
 
@@ -81,3 +81,8 @@ are amended mechanically, CB-005 remains open and no legal-owner GOA may issue.
 CR-GOAL-005-INST-CI-001-01 is the accepted CRB proposal after deterministic validation. Three
 earlier drafts were rejected and remained unfiled. The accepted proposal changes no ratified file
 and grants no authority before independent approval and separate Founder ratification.
+
+R-104 / CR-GOAL-005-INST-002-22 independently APPROVES the exact proposal at commit `f7bd91a`
+and SHA-256 `df318c170da72678d8776e4bc207db20b0b323226293c1cd58420dd3e2cee170`.
+The amendment remains inactive until the Founder separately ratifies it and the approved Office 02
+and Institution Registry text is applied mechanically.
