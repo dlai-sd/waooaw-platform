@@ -76,11 +76,18 @@ def test_each_release_member_has_its_own_identity_and_secret_scope() -> None:
 
     assert 'resource "azurerm_user_assigned_identity" "member"' in contract
     assert 'resource "azurerm_role_assignment" "member_secret"' in contract
-    assert "for_each = local.release_members" in contract
     assert "azurerm_user_assigned_identity.member[each.key].id" in contract
     assert "scope                = var.key_vault_secret_ids[each.key]" in contract
     assert "runtime_identity_id" not in contract
     assert "runtime_identity_client_id" not in contract
+
+
+def test_disabled_lease_removes_all_disposable_workload_resources() -> None:
+    contract = read_contract("modules/workload/main.tf")
+
+    assert "active_members = var.workload_enabled ? local.release_members : toset([])" in contract
+    assert contract.count("for_each = local.active_members") == 3
+    assert "var.workload_enabled ? local.minimum_replicas" not in contract
 
 
 def test_foundation_is_private_isolated_and_environment_scoped() -> None:
@@ -117,6 +124,9 @@ def test_scale_contract_is_bounded_and_defaults_to_zero() -> None:
 
     assert contract.count("default = 0") == 2
     assert "var.max_replicas > 0 && var.max_replicas <= 10" in contract
+    uat_root = read_contract("environments/uat/workload/main.tf")
+    assert "ce_min_replicas              = 0" in uat_root
+    assert "pr_min_replicas              = 0" in uat_root
     assert "ce_min_replicas              = var.ce_min_replicas" in prod_root
     assert "pr_min_replicas              = var.pr_min_replicas" in prod_root
     assert prod_variables.count("requires an accepted positive owner value") == 2

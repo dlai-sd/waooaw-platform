@@ -18,6 +18,7 @@ locals {
     "web",
     "billing-engine",
   ])
+  active_members = var.workload_enabled ? local.release_members : toset([])
   public_ingress = {
     "constitutional-engine" = false
     "ai-runtime"            = false
@@ -45,7 +46,7 @@ locals {
 }
 
 resource "azurerm_user_assigned_identity" "member" {
-  for_each = local.release_members
+  for_each = local.active_members
 
   name                = "id-${var.environment}-${each.key}"
   location            = var.location
@@ -53,7 +54,7 @@ resource "azurerm_user_assigned_identity" "member" {
 }
 
 resource "azurerm_role_assignment" "member_secret" {
-  for_each = local.release_members
+  for_each = local.active_members
 
   scope                = var.key_vault_secret_ids[each.key]
   role_definition_name = "Key Vault Secrets User"
@@ -61,7 +62,7 @@ resource "azurerm_role_assignment" "member_secret" {
 }
 
 resource "azurerm_container_app" "member" {
-  for_each = local.release_members
+  for_each = local.active_members
 
   name                         = "ca-${var.environment}-${each.key}"
   container_app_environment_id = var.container_app_environment_id
@@ -80,7 +81,7 @@ resource "azurerm_container_app" "member" {
   }
 
   template {
-    min_replicas = var.workload_enabled ? local.minimum_replicas[each.key] : 0
+    min_replicas = local.minimum_replicas[each.key]
     max_replicas = var.max_replicas
 
     container {

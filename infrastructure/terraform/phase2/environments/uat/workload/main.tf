@@ -49,7 +49,7 @@ module "workload" {
   container_app_environment_id = data.terraform_remote_state.foundation.outputs.container_app_environment_id
   image_digests                = var.image_digests
   key_vault_secret_ids         = var.key_vault_secret_ids
-  ce_min_replicas              = 2
-  pr_min_replicas              = 2
+  ce_min_replicas              = 0
+  pr_min_replicas              = 0
   workload_enabled             = module.lease.workload_enabled
 }

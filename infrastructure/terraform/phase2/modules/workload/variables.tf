@@ -54,6 +54,6 @@ variable "max_replicas" {
 
 variable "workload_enabled" {
   type        = bool
-  description = "False after lease expiry or revocation; forces every disposable workload to zero replicas."
+  description = "False after lease expiry or revocation; removes disposable workload resources from desired state."
   default     = true
 }
