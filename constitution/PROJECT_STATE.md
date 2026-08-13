@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 48
+**State Revision:** 49
 **Last Updated:** 2026-08-13
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -20,8 +20,8 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Engineering status | IMPLEMENTATION |
 | Platform version | 1.45.0 |
 | Latest completed Work Contract | WC-062 — WC-034 F6 Voice Interaction |
-| Latest merge | PR #275 merged to `main` as `2276ab2` |
-| Active delivery | WC-064 design and WC-065 grooming complete under R-101/R-102 approval; delivery PR pending; WC-065 remains authorization-gated; WC-070 remains ratified in open unmerged PR #276 |
+| Latest merge | PR #276 merged to `main` as `6eb12d0` |
+| Active delivery | WC-064 design and WC-065 grooming complete under R-101/R-102 approval; delivery PR pending; WC-065 remains authorization-gated; WC-070 vNext standard is ratified and merged |
 
 ## Active Checkpoint — WC-064 Founder Commercial Governance Program Design
 
@@ -38,7 +38,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Fresh Constitutional readiness | DONE — R-102 APPROVED the same exact package; no implementation authority granted |
 | WC-066 through WC-069 | EVIDENCE-GATED — no detailed grooming or implementation authorized |
 | Delivery PR | PENDING — one unmerged PR is the only remaining delivery action |
-| WC-070 dependency | RATIFIED/ACTIVE — PR #276 remains open and Founder-only merge is required |
+| WC-070 dependency | RATIFIED/ACTIVE — PR #276 merged to `main` as `6eb12d0`; vNext standard governs this closure |
 | Implementation authorization | NOT REQUESTED — no iteration is implementation-authorized |
 
 ### Closure Context
@@ -60,8 +60,9 @@ and independent implementation review.
 ## Current Blockers
 
 None filed. The R-099 context did not produce the WC-064 Constitutional owner contribution and
-will not perform final package review. Protected WC-065 policy decisions remain explicit
-activation gates, not inferred defaults. WC-070 is ratified and active; PR #276 remains open.
+did not perform final package review. Protected WC-065 policy decisions remain explicit
+activation gates, not inferred defaults. WC-070 is ratified, merged, and active as the governing
+operating standard.
 
 ## Next Authorized Action
 
