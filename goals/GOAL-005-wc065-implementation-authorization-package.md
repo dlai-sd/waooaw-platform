@@ -100,7 +100,7 @@ or INST-010 Acceptance.
 |---|---|---|---|---|---|---|---|
 | CL-065-01 | INST-013 | M0 | Approved baseline reuse record | R-101, R-102, PR #277 | SATISFIED | REUSE-GOAL-005-WC065-01 | Commit, hash, scope, and changed-fact check |
 | CL-065-02 | INST-013 | M1 | Necessity Gate and Materiality Challenge | CL-065-01 | SATISFIED | CNG-065-01 through CNG-065-07 | Required-field and upward-classification check |
-| CL-065-R1 | fresh INST-002 | M3 | Independent routing-readiness review of GEP-15 | CL-065-02 | BLOCKED | none | Full plan, Decision Space, and envelope review |
+| CL-065-R1 | fresh INST-002 | M3 | Independent routing-readiness review of GEP-15 | CL-065-02 | SATISFIED | R-103 / CR-GOAL-005-INST-002-21 | Full plan, Decision Space, and envelope review |
 | CL-065-R2 | Registrant / INST-001 | M3 | Plan-specific owner-routing acknowledgement | CL-065-02 | SATISFIED | ACK-GOAL-005-INST-001-13 | Exact-plan and exclusion check |
 | CL-065-03 | Founder | M3 | PDR-065-01 exact verdict | CL-065-R1, CL-065-R2 | BLOCKED | none | Protected-authority record |
 | CL-065-04 | Founder | M3 | PDR-065-02 exact verdict | CL-065-R1, CL-065-R2 | BLOCKED | none | Protected-authority record |
@@ -108,7 +108,7 @@ or INST-010 Acceptance.
 | CL-065-06 | Founder | M3 | PDR-065-04 exact verdict | CL-065-R1, CL-065-R2 | BLOCKED | none | Protected-authority record |
 | CL-065-07 | Founder | M3 | PDR-065-05 exact verdict | CL-065-R1, CL-065-R2 | BLOCKED | none | Protected-authority record |
 | CL-065-08 | Founder | M3 | PDR-065-06 exact verdict | CL-065-R1, CL-065-R2 | BLOCKED | none | Protected-authority record |
-| CL-065-09 | Named owners and Founder | M2/M3 | PDR-065-07 owner records and integrated verdict | CL-065-R1, CL-065-R2 | BLOCKED | none | Decision Space, dependency, and protected-authority review |
+| CL-065-09 | Named owners and Founder | M2/M3 | PDR-065-07 owner records and integrated verdict | CL-065-R1, CL-065-R2 | BLOCKED | CB-005 | Legal Decision Space has no OPERATIONAL institution; no valid GOA target |
 | CL-065-10 | INST-013 | M1 | Exact physical artifact and scoped validation binding | CL-065-03 through CL-065-09 | BLOCKED | none | Traceability and command checks; no code execution |
 | CL-065-11 | INST-002 | M3 | Fresh readiness review of the complete policy and implementation package | CL-065-10 | BLOCKED | none | Independent full-baseline verdict |
 | CL-065-12 | Registrant / INST-001 | M3 | Final hash-pinned package acknowledgement | CL-065-11 | BLOCKED | ACK-GOAL-005-INST-001-14 reserved | Exact-package and exclusion check |
@@ -138,13 +138,23 @@ deploy, approve or merge a PR, waive independent review, or authorize WC-066 thr
 |---|---|
 | Founder monetary ceiling | USD 40 |
 | `STOP_AND_CONSOLIDATE` threshold | USD 32 (80 percent) |
-| Current state | `WITHIN_BUDGET` - no WC-065 owner or review context dispatched yet |
+| Current state | `WITHIN_BUDGET` - USD 2.50 conservatively accounted |
 | Dispatch boundary | Only Completeness Ledger owner contributions and independent reviews |
 | Required accounting | Record each context, route, result, conservative debit, repair, and escalation |
 | Hard stop | No dispatch at or above USD 32 before consolidation; no spend above USD 40 without a fresh Founder decision |
 
 The WC-064 budget is closed and is not reused. Budget state never changes an obligation, owner,
 protected verdict, review requirement, or implementation gate.
+
+### Dispatch Ledger
+
+| Dispatch | Route | Result | Conservative debit | Repair/escalation |
+|---|---|---|---|---|
+| D-065-01 | Fresh INST-002 routing-readiness review | R-103 `READY FOR ROUTING`; CL-065-R1 satisfied | USD 2.50 | One bounded factual correction preserved the verdict and fixed package hash, merge date, and later-iteration file status |
+
+The environment exposes no provider invoice. USD 2.50 is reserved conservatively for the review
+and its bounded correction as one context. Actual use remains below the USD 32 consolidation
+threshold. CB-005 stops new owner routing independently of budget state.
 
 ## Reserved Implementation Authorization
 

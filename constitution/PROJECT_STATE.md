@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 51
+**State Revision:** 52
 **Last Updated:** 2026-08-13
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -31,8 +31,8 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Contribution Necessity Gate | DONE — baseline reused; orchestration continued M1; protected decisions classified M2/M3 |
 | Registrant routing acknowledgement | DONE — ACK-GOAL-005-INST-001-13 authorizes bounded owner routing only |
 | Budget control | WITHIN_BUDGET — USD 40 ceiling; STOP_AND_CONSOLIDATE at USD 32; no WC-065 dispatch yet |
-| Fresh CA routing readiness | PENDING — required before any owner-contribution GOA |
-| Protected Decision Register | BLOCKED — exact owner and Founder verdicts remain absent; no defaults inferred |
+| Fresh CA routing readiness | DONE — R-103 / CR-GOAL-005-INST-002-21 READY FOR ROUTING |
+| Protected Decision Register | BLOCKED — CB-005: required Legal Decision Space has no OPERATIONAL institution |
 | Final package review and acknowledgement | PENDING — fresh review plus ACK-GOAL-005-INST-001-14 required |
 | Fresh implementation confirmation | NOT REQUESTED — separate current-session Founder decision remains required |
 | Implementation GOA / Acceptance | NOT ISSUED — GOA/ACC-GOAL-005-INST-010-09 are reserved identifiers only |
@@ -44,7 +44,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 - **Authority:** GEP-GOAL-005-INST-013-15, R-101/R-102 reuse, ACK-GOAL-005-INST-001-13, and the Founder-set USD 40 dispatch ceiling.
 - **Validation:** initial package structure, seven protected-decision rows, acknowledgement, budget, reserved-ID, boundary, and formatting checks pass. No implementation tests are authorized or run.
 - **Protected local artifacts:** `.coverage`, `goals/goal_register.jsonl`, `logs/blueprint_assurance_report.json`, and `logs/bootstrap-evidence.jsonl` are unrelated and must remain unstaged.
-- **Authorization evidence:** `goals/GOAL-005-wc065-implementation-authorization-package.md`.
+- **Authorization evidence:** `goals/GOAL-005-wc065-implementation-authorization-package.md` and R-103.
 
 ## Authorization Boundary
 
@@ -56,14 +56,15 @@ and independent implementation review.
 
 ## Current Blockers
 
-None filed. Protected WC-065 decisions are explicit activation gates and remain blocked pending
-their accountable owners; this is expected gated work, not a missing-input blocker.
+CB-005 is OPEN. PDR-065-07 requires exact legal/privacy conclusions, but the Institution Registry
+contains no OPERATIONAL Legal institution and therefore no valid GEOM GOA target.
 
 ## Next Authorized Action
 
-Obtain a fresh independent INST-002 routing-readiness verdict on GEP-GOAL-005-INST-013-15. Do not
-issue owner GOAs before approval; do not implement, issue GOA/ACC-09, activate policy/providers,
-deploy, approve or merge a PR, or groom WC-066 through WC-069.
+Founder selects one CB-005 resolution path: charter a Legal institution, assign the Decision Space
+through a ratified charter amendment, or remove the affected WC-065 capability through full owner
+and dependency review. Do not issue owner or implementation GOAs, implement, activate policy or
+providers, deploy, approve or merge a PR, or groom WC-066 through WC-069.
 
 ## History And Evidence
 
