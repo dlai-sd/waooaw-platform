@@ -1,7 +1,7 @@
 # WAOOAW Goal Backlog Register
 
 **Authority:** Goal Orchestrator (INST-013) — maintained per GEOM §G-2
-**Last Updated:** 2026-08-08
+**Last Updated:** 2026-08-13
 **Status:** Living document — updated at each Goal registration or session close
 
 ---
@@ -28,6 +28,7 @@ Understanding Record and the Founder acknowledges the Execution Plan.
 | GOAL-003 | PTR Dynamic Knowledge Asset — replace static JSON context with a live, multi-stack Prompt Template Repository assembled from source files | CLOSED | — | 2026-07-27 |
 | GOAL-004 | WAOOAW Billing Engine | **SPEC COMPLETE** — implementation WBE-S1→WBE-S8 awaiting Founder authorization | WBE-S1→WBE-S8 (est.) | — |
 | GOAL-005 | Agent Employment Experience Program — one constitutional relationship across discovery, hire, work, lifecycle, multiple agents, and organizational delegation | **REGISTERED** — INST-013 ready for G-2 Understanding; no implementation authorization | Not assigned; AE-01→AE-06 are outcome epics | — |
+| GOAL-006 | Secure Autonomous Cloud Delivery Capability — reliable, secure, recoverable, observable, cost-controlled Azure delivery with immutable promotion and bounded autonomous operations | **UNDERSTOOD** — classification and plan proposed; no grooming authorization | WC-071 intake only | — |
 
 ---
 
