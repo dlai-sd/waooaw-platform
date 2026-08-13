@@ -4,12 +4,12 @@
 |---|---|
 | `institution_id` | INST-013 |
 | `goal_id` | GOAL-005 |
-| `record_id` | MAN-GOAL-005-INST-013-WC064-02 |
+| `record_id` | MAN-GOAL-005-INST-013-WC064-03 |
 | `record_type` | Execution Plan |
-| `produced_at` | 2026-08-13T14:10:00Z |
-| Package commit | `90f4a1e019b0470e32c9251cce5fb4ef8cdf7b23` |
-| Supersedes | MAN-GOAL-005-INST-013-WC064-01 at package commit `13e3637f506f78a8b5c1fecc258ba504dd80e406` |
-| Repair basis | R-101 F-101-01 and F-101-02; M1 record-state corrections only |
+| `produced_at` | 2026-08-13T14:30:00Z |
+| Package commit | `6c2fa94187d454b751faac3407a038299e303fd6` |
+| Supersedes | MAN-GOAL-005-INST-013-WC064-02 at package commit `90f4a1e019b0470e32c9251cce5fb4ef8cdf7b23` |
+| Repair basis | R-101 F-101-01 and F-101-02; final WC064-05/WC064-08 milestone separation; M1 record-state corrections only |
 | Review order | R-101 exact-package repair confirmation, then fresh INST-002 Constitutional readiness review |
 | Review rule | Full initial-baseline review; no delta-review claim |
 
@@ -17,11 +17,11 @@
 
 | File | SHA-256 |
 |---|---|
-| `SPRINT-REGISTRY.md` | `2f744dafd0fd75e6fccaf1a0e67f3a18da920e0ca1cf15fc57e39a80b7d1a3c6` |
-| `constitution/PROJECT_STATE.md` | `c98abcaa03b9f3fb7ef8d4beb13190ee016678b7e5551b95043ffd085cee3f53` |
-| `work-contracts/WC-064-founder-commercial-governance-program-design.md` | `08699161f1c9163160641a39eff737d865ee64797856370c1a07d82a7e4fa417` |
+| `SPRINT-REGISTRY.md` | `1a7bee9c11a7cd1d98a613082ac2217bea3b4bd0c36478be7623f4280c9073f3` |
+| `constitution/PROJECT_STATE.md` | `d24938d1daf4f60f3a473cb7a2901bc86a193c1620a4a785db1e923060761aeb` |
+| `work-contracts/WC-064-founder-commercial-governance-program-design.md` | `0f13fcc4c41119310ad681293ed3b764a34ca2f4817c713f22fc4205e16da2da` |
 | `work-contracts/WC-065-founder-offerability-commercial-composition.md` | `709da959db4e22e326ed6b25a349baaf7c97fefe7d3e0bb56e2eeb3eb1870ca9` |
-| `goals/GOAL-005-wc064-execution-record.md` | `e912012ccae085072d678fd399e0eeb1940e31de6fd9c43cb0efe50a6b7e4f42` |
+| `goals/GOAL-005-wc064-execution-record.md` | `651178ac418c01349396aea356dec0e0ead4167d897b33b70b031849abefe9d6` |
 | `goals/GOAL-005-wc064-program-design.md` | `1a586b0cd7d48cd47bc81c29114a0e1d298c43d9d167998ed19136b98907cdbc` |
 | `goals/GOAL-005-wc064-product-contribution.md` | `f49a9de23a71355d82c25e5402aa0b36ab12f4ae780c9823f987a6c4648b2565` |
 | `goals/GOAL-005-wc064-business-contribution.md` | `fa75a3cd7121353a594d3b5470790f4cfed50b798195ae0611f373b974a07a8a` |
