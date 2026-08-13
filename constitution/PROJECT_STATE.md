@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 56
+**State Revision:** 57
 **Last Updated:** 2026-08-13
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -32,7 +32,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Registrant routing acknowledgement | DONE — ACK-GOAL-005-INST-001-13 authorizes bounded owner routing only |
 | Budget control | WITHIN_BUDGET — USD 40 ceiling; STOP_AND_CONSOLIDATE at USD 32; no WC-065 dispatch yet |
 | Fresh CA routing readiness | DONE — R-103 / CR-GOAL-005-INST-002-21 READY FOR ROUTING |
-| Protected Decision Register | READY TO ROUTE — R-104 approved; FA-045 ratified; exact bounded INST-002 amendment applied |
+| Protected Decision Register | IN PROGRESS — GOA-GOAL-005-INST-002-14 issued; later INST-002 Acceptance required before legal/privacy contribution |
 | Final package review and acknowledgement | PENDING — fresh review plus ACK-GOAL-005-INST-001-14 required |
 | Fresh implementation confirmation | NOT REQUESTED — separate current-session Founder decision remains required |
 | Implementation GOA / Acceptance | NOT ISSUED — GOA/ACC-GOAL-005-INST-010-09 are reserved identifiers only |
@@ -62,10 +62,10 @@ remains undecided pending valid owner contributions and integrated review.
 
 ## Next Authorized Action
 
-INST-013 may issue bounded protected-decision owner GOAs, including the WC-065-only INST-002
-legal/privacy GOA; each Acceptance must be temporally later. Do not issue implementation
-GOA/ACC-09, implement, activate policy/providers, deploy, approve or merge a PR, or groom WC-066
-through WC-069.
+Fresh INST-002 may record ACC-GOAL-005-INST-002-14 with a timestamp later than
+2026-08-13T04:43:14Z, then produce only the bounded legal/privacy contribution and Learning
+Record. Do not issue implementation GOA/ACC-09, implement, activate policy/providers, deploy,
+approve or merge a PR, or groom WC-066 through WC-069.
 
 ## History And Evidence
 

@@ -108,7 +108,7 @@ or INST-010 Acceptance.
 | CL-065-06 | Founder | M3 | PDR-065-04 exact verdict | CL-065-R1, CL-065-R2 | BLOCKED | none | Protected-authority record |
 | CL-065-07 | Founder | M3 | PDR-065-05 exact verdict | CL-065-R1, CL-065-R2 | BLOCKED | none | Protected-authority record |
 | CL-065-08 | Founder | M3 | PDR-065-06 exact verdict | CL-065-R1, CL-065-R2 | BLOCKED | none | Protected-authority record |
-| CL-065-09 | Named owners and Founder | M2/M3 | PDR-065-07 owner records and integrated verdict | CL-065-R1, CL-065-R2 | READY_TO_ROUTE | R-104; FA-045; CB-005 resolved | Bounded INST-002 legal/privacy GOA and all other owner contributions remain required |
+| CL-065-09 | Named owners and Founder | M2/M3 | PDR-065-07 owner records and integrated verdict | CL-065-R1, CL-065-R2 | IN_PROGRESS | GOA-GOAL-005-INST-002-14 issued; Acceptance pending | Bounded legal/privacy contribution and all other owner contributions remain required |
 | CL-065-10 | INST-013 | M1 | Exact physical artifact and scoped validation binding | CL-065-03 through CL-065-09 | BLOCKED | none | Traceability and command checks; no code execution |
 | CL-065-11 | INST-002 | M3 | Fresh readiness review of the complete policy and implementation package | CL-065-10 | BLOCKED | none | Independent full-baseline verdict |
 | CL-065-12 | Registrant / INST-001 | M3 | Final hash-pinned package acknowledgement | CL-065-11 | BLOCKED | ACK-GOAL-005-INST-001-14 reserved | Exact-package and exclusion check |
@@ -116,6 +116,28 @@ or INST-010 Acceptance.
 | CL-065-14 | INST-013 | M1 | Implementation GOA | CL-065-01 through CL-065-13 | BLOCKED | GOA-GOAL-005-INST-010-09 reserved | Temporal and predecessor-gate check |
 | CL-065-15 | INST-010 | M1 | Temporally later Acceptance | CL-065-14 | BLOCKED | ACC-GOAL-005-INST-010-09 reserved | `acceptance_timestamp` later than `issued_at` |
 | CL-065-16 | Independent reviewers | M3 | Independent implementation review plan remains separate | CL-065-10 | BLOCKED | none | C-065 identity and scope check |
+
+## WC-065 Legal/Privacy GO Authorization
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-005 |
+| `record_id` | GOA-GOAL-005-INST-002-14 |
+| `record_type` | Authorization Record |
+| Authorized Institution | Fresh INST-002 - Constitutional Analyst legal/privacy owner contributor |
+| Contribution scope | One owner-attributed legal/privacy Contribution Record for WC-065 PDR-065-07: legal basis, grandfathering, remedy, recipient classes and redaction, payload erasure, and retention |
+| Evidence specification | Approved legal source documents and applicable authoritative law; exact source attribution; constitutional-floor preservation; ambiguity recorded unresolved; qualified external counsel required where authoritative legal support is insufficient; Learning Record |
+| Participation Window | One constitutional session after valid Acceptance |
+| Independence | This contributing context may not perform the final WC-065 Constitutional readiness review; Data and Security implication reviews remain independent |
+| Excluded authority | Product, Business, Data, Security, Founder-reserved, architecture, implementation, provider activation, deployment, PR approval, merge, and any topic outside the six PDR-065-07 legal/privacy topics |
+| Authorization basis | ACK-GOAL-005-INST-001-13; R-103; R-104; FA-045; CB-005 resolved; ratified Office 02 and INST-002 registry amendment |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-13T04:43:14Z |
+
+INST-002 must record `ACC-GOAL-005-INST-002-14` with an acceptance timestamp later than
+`2026-08-13T04:43:14Z` before producing any contribution. This authorization grants no
+implementation authority and does not decide PDR-065-07.
 
 ## Required Final-Package Registrant Acknowledgement
 
