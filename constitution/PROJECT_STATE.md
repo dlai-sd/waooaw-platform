@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 50
+**State Revision:** 51
 **Last Updated:** 2026-08-13
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -20,34 +20,31 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Engineering status | IMPLEMENTATION |
 | Platform version | 1.45.0 |
 | Latest completed Work Contract | WC-062 — WC-034 F6 Voice Interaction |
-| Latest merge | PR #276 merged to `main` as `6eb12d0` |
-| Active delivery | WC-064 design and WC-065 grooming complete under R-101/R-102 approval; PR #277 open and unmerged; WC-065 remains authorization-gated; WC-070 vNext standard is ratified and merged |
+| Latest merge | PR #277 merged to `main` as `e9a1150`; delivery report advanced `main` to `aca51ea` |
+| Active delivery | WC-065 protected-decision and implementation-authorization preparation under GEP-GOAL-005-INST-013-15; implementation remains unauthorized |
 
-## Active Checkpoint — WC-064 Founder Commercial Governance Program Design
+## Active Checkpoint — WC-065 Founder Offerability And Commercial Composition
 
 | Milestone | Status |
 |---|---|
-| Routing prerequisites | DONE — R-099 / CR-18 approved Amendment 12; ACK-12 recorded |
-| Contribution Necessity Gate | DONE — approved routing evidence reused; orchestration continued M1; one M2 envelope CE-GOAL-005-WC064-01 used |
-| Eight owner contributions | DONE — Product, Business, Enterprise, Solution, Data, Security, implementation reality, and fresh Constitutional owner records published |
-| Integrated program design | DONE — GEP-GOAL-005-INST-013-14 published with decision/concept/ownership/policy/dependency catalogues |
-| WC-065 detailed grooming | DONE — implementation-ready specification; protected policy and implementation gates remain closed |
-| Deterministic validation | DONE — record sequence, required-section, boundary, formatting, and package checks passed |
-| Fresh integrated EA review | DONE — R-101 final bounded reconfirmation APPROVED package commit `6c2fa94`; all findings closed without drift |
-| Budget control | STOP_AND_CONSOLIDATE — `$30.00` final accounted use; no new owner, repair, or review context |
-| Fresh Constitutional readiness | DONE — R-102 APPROVED the same exact package; no implementation authority granted |
+| Merged specification baseline | DONE — R-101/R-102 approved package commit `6c2fa94`; PR #277 merged as `e9a1150` |
+| Contribution Necessity Gate | DONE — baseline reused; orchestration continued M1; protected decisions classified M2/M3 |
+| Registrant routing acknowledgement | DONE — ACK-GOAL-005-INST-001-13 authorizes bounded owner routing only |
+| Budget control | WITHIN_BUDGET — USD 40 ceiling; STOP_AND_CONSOLIDATE at USD 32; no WC-065 dispatch yet |
+| Fresh CA routing readiness | PENDING — required before any owner-contribution GOA |
+| Protected Decision Register | BLOCKED — exact owner and Founder verdicts remain absent; no defaults inferred |
+| Final package review and acknowledgement | PENDING — fresh review plus ACK-GOAL-005-INST-001-14 required |
+| Fresh implementation confirmation | NOT REQUESTED — separate current-session Founder decision remains required |
+| Implementation GOA / Acceptance | NOT ISSUED — GOA/ACC-GOAL-005-INST-010-09 are reserved identifiers only |
 | WC-066 through WC-069 | EVIDENCE-GATED — no detailed grooming or implementation authorized |
-| Delivery PR | OPEN — PR #277 targets `main`; Founder/constitutional review and merge remain external |
-| WC-070 dependency | RATIFIED/ACTIVE — PR #276 merged to `main` as `6eb12d0`; vNext standard governs this closure |
-| Implementation authorization | NOT REQUESTED — no iteration is implementation-authorized |
 
 ### Closure Context
 
-- **Delivery branch:** `wc/064/program-design-vnext`; PR #277 is open and unmerged.
-- **Authority:** Founder-selected WC-064 design/grooming scope, R-099, ACK-12, CE-GOAL-005-WC064-01, eight accepted owner contributions, R-101, and R-102.
-- **Validation:** all 14 package hashes verified independently by R-101 and R-102 at `6c2fa94`; deterministic record-sequence, required-section, boundary, formatting, package, and editor-diagnostic checks passed. No implementation tests were authorized or run.
+- **Delivery branch:** `wc/065/implementation-authorization`.
+- **Authority:** GEP-GOAL-005-INST-013-15, R-101/R-102 reuse, ACK-GOAL-005-INST-001-13, and the Founder-set USD 40 dispatch ceiling.
+- **Validation:** initial package structure, seven protected-decision rows, acknowledgement, budget, reserved-ID, boundary, and formatting checks pass. No implementation tests are authorized or run.
 - **Protected local artifacts:** `.coverage`, `goals/goal_register.jsonl`, `logs/blueprint_assurance_report.json`, and `logs/bootstrap-evidence.jsonl` are unrelated and must remain unstaged.
-- **Design evidence:** `goals/GOAL-005-wc064-execution-record.md`, `goals/GOAL-005-wc064-program-design.md`, `goals/GOAL-005-wc064-review-manifest.md`, WC-065, R-101, and R-102.
+- **Authorization evidence:** `goals/GOAL-005-wc065-implementation-authorization-package.md`.
 
 ## Authorization Boundary
 
@@ -59,16 +56,14 @@ and independent implementation review.
 
 ## Current Blockers
 
-None filed. The R-099 context did not produce the WC-064 Constitutional owner contribution and
-did not perform final package review. Protected WC-065 policy decisions remain explicit
-activation gates, not inferred defaults. WC-070 is ratified, merged, and active as the governing
-operating standard.
+None filed. Protected WC-065 decisions are explicit activation gates and remain blocked pending
+their accountable owners; this is expected gated work, not a missing-input blocker.
 
 ## Next Authorized Action
 
-Founder and Constitutional reviewers evaluate PR #277. Do not dispatch another context, begin
-WC-065 through WC-069 implementation, issue implementation authority, self-approve the PR, or
-merge it.
+Obtain a fresh independent INST-002 routing-readiness verdict on GEP-GOAL-005-INST-013-15. Do not
+issue owner GOAs before approval; do not implement, issue GOA/ACC-09, activate policy/providers,
+deploy, approve or merge a PR, or groom WC-066 through WC-069.
 
 ## History And Evidence
 
