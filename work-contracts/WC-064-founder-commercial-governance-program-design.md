@@ -164,13 +164,13 @@ verdict. INST-013 coordinates attribution and routing but gains no review author
 
 | Task | Scope | Status |
 |---|---|---|
-| WC064-01 | Produce and reconcile Orders 1–2: Founder outcomes, commercial model, capability map, and acceptance boundaries. | pending |
-| WC064-02 | Produce and reconcile Orders 3–4: enterprise boundaries, solution ownership, resilience, reuse, and iteration dependencies. | pending |
-| WC064-03 | Produce and reconcile Orders 5–6: financial semantics, extensibility, evidence, authority, security, privacy, and conflict rules. | pending |
-| WC064-04 | Produce Order 7 implementation-reality evidence without implementation or test execution. | pending |
+| WC064-01 | Produce and reconcile Orders 1–2: Founder outcomes, commercial model, capability map, and acceptance boundaries. | DONE — INST-011 CR-11 and INST-003 CR-09 |
+| WC064-02 | Produce and reconcile Orders 3–4: enterprise boundaries, solution ownership, resilience, reuse, and iteration dependencies. | DONE — INST-004 CR-14 and INST-005 CR-16 |
+| WC064-03 | Produce and reconcile Orders 5–6: financial semantics, extensibility, evidence, authority, security, privacy, and conflict rules. | DONE — INST-006 CR-06 and INST-007 CR-09 |
+| WC064-04 | Produce Order 7 implementation-reality evidence without implementation or test execution. | DONE — INST-010 CR-08 |
 | WC064-05 | Produce Order 8 independent constitutional readiness review. | pending |
-| WC064-06 | Publish the integrated design spine and classify every capability NOW, NEXT, LATER, or REJECT. | pending |
-| WC064-07 | Refine WC-065 to implementation-ready grooming depth while leaving WC-066 through WC-069 at outcome-and-boundary depth. | pending |
+| WC064-06 | Publish the integrated design spine and classify every capability NOW, NEXT, LATER, or REJECT. | DONE — GEP-GOAL-005-INST-013-14 |
+| WC064-07 | Refine WC-065 to implementation-ready grooming depth while leaving WC-066 through WC-069 at outcome-and-boundary depth. | DONE — WC-065 specification baseline |
 | WC064-08 | Obtain independent integrated review and record the next authorized action without issuing implementation authority. | pending |
 
 ## Detailed Design Activities
@@ -186,11 +186,10 @@ verdict. INST-013 coordinates attribution and routing but gains no review author
 
 ## Review Evidence Required For This PR
 
-This planning PR may establish the program, grooming standard, candidate work packages, and
-authorization boundaries. It may not mark WC064-01 through WC064-08 complete. A later WC-064
-design contribution PR must attach the eight owner contributions, integrated Enterprise
-Architecture verdict, independent Constitutional readiness verdict, and version-pinned WC-065
-package before WC-064 can close.
+The WC-064 design PR attaches the eight owner contributions, integrated program design, vNext
+execution record, and version-pinned WC-065 package. It may mark WC064-01 through WC064-07 complete
+only as their evidence closes. WC064-05 and WC064-08 remain pending until fresh Enterprise
+Architecture and Constitutional readiness verdicts approve the exact package.
 
 ## Program Design Gate
 

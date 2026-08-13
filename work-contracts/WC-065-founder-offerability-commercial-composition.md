@@ -3,10 +3,28 @@
 **Program:** WC-064 — Founder Commercial Governance Program Design
 **Iteration:** 1
 **Successor scope:** Carries the offerability portion of WC-063 intent; WC-064 must still retain, relocate, defer, or reject every remaining WC-063 capability
-**Status:** PLANNED IMPLEMENTATION CANDIDATE — DETAILED GROOMING GATED; IMPLEMENTATION UNAUTHORIZED
+**Status:** IMPLEMENTATION-READY SPECIFICATION — PROTECTED DECISIONS AND IMPLEMENTATION AUTHORIZATION GATED
 **Primary outcome owners:** Product Owner (INST-011) + Business Architect (INST-003)
 **Required design owners:** INST-004, INST-005, INST-006, INST-007, INST-002
 **Implementation office:** INST-010 only after a future complete implementation gate
+
+## Specification Baseline
+
+| Field | Value |
+|---|---|
+| Program design | `goals/GOAL-005-wc064-program-design.md` / GEP-GOAL-005-INST-013-14 |
+| Execution controls | `goals/GOAL-005-wc064-execution-record.md` / ER-GOAL-005-INST-013-WC064-01 |
+| Contribution Envelope | CE-GOAL-005-WC064-01 |
+| Owner contributions | INST-011 CR-11; INST-003 CR-09; INST-004 CR-14; INST-005 CR-16; INST-006 CR-06; INST-007 CR-09; INST-010 CR-08; INST-002 CR-20 |
+| Review state | Pending fresh integrated INST-004 and fresh Constitutional INST-002 verdicts on one hash-pinned package |
+| Implementation state | UNAUTHORIZED; no task below is executable |
+
+The baseline fixes behavior, ownership, dependencies, failure outcomes, data and evidence meaning,
+security obligations, compatibility consequences, acceptance scenarios, and verification scope.
+It intentionally does not choose protected policy values, physical schema names, endpoint names,
+class names, or screen components. Those omissions do not grant implementation discretion: policy
+values require their protected owner, and physical realization must trace to the approved owner
+contracts during a separately authorized implementation plan.
 
 ## Outcome
 
@@ -116,12 +134,14 @@ must prove that the Founder can:
 | Evidence failure | No success or reusable authorization is returned |
 | Cross-tenant or insufficient assurance | Request is denied without revealing the existence or economics of another tenant |
 
-## Gated Implementation Work Packages
+## Implementation-Ready Work Packages
 
-These packages become executable tasks only after the first grooming package names their approved
-contracts and the complete implementation authorization chain closes.
+These packages are specification-complete but remain non-executable until every Activation Gate
+item closes. Each package consumes the exact approved owner records above; an implementation
+context may choose physical names only within the named component and behavior boundary and must
+record that traceability before writing code.
 
-| Candidate task | Component responsibility | Required behavior and proof |
+| Work package | Component responsibility | Required behavior and proof |
 |---|---|---|
 | WC065-01 | Owner read adapters | Read approved agent/skill/goal/resource/provider and WBE facts with provenance, freshness, confidence, and explicit unavailable states |
 | WC065-02 | Approved commercial simulation boundary | Implement or invoke the owner-approved WBE validation/simulation responsibility for price, budget, trial, promotion, cost, tax, and margin scenarios without persisting duplicate financial truth; grooming decides whether this is reuse or a WBE extension |
@@ -131,12 +151,120 @@ contracts and the complete implementation authorization chain closes.
 | WC065-06 | Data and evidence persistence | Apply the approved append-only history and ownership design, or record the approved no-migration result; preserve idempotency and effective dating |
 | WC065-07 | Verification and independent review | Run owner-contract, policy, financial, tenant, security, evidence-failure, generated-client, browser/accessibility, coverage, and regression checks; obtain independent review |
 
+### Task-To-Owner-Contract Traceability
+
+| Work package | Controlling decisions | Exact specification references |
+|---|---|---|
+| WC065-01 | Owner attribution, lifecycle eligibility, PR/AIR side-effect-free feasibility, stale/conflict/unavailable outcomes | Program Design Ownership Map; INST-004 CR-14 ownership/fail-closed model; INST-005 CR-16 authoritative-read and governed-projection contracts; INST-010 CR-08 IR-01, IR-05, IR-07, IR-08 |
+| WC065-02 | WBE-only financial truth, canonical financial distinctions, governed category extension, blocked/drifting baseline prohibition | INST-003 CR-09 commercial-policy semantics; INST-005 CR-16 WBE boundary; INST-006 CR-06 financial catalogue; INST-010 CR-08 IR-02 through IR-04 and R-IR-04 through R-IR-06 |
+| WC065-03 | One current disposition, proposal/preview/confirmation sequence, policy input, CE authorization and evidence | INST-011 CR-11 acceptance outcomes; INST-003 CR-09 disposition semantics; INST-004 CR-14 decision boundary; INST-005 CR-16 contract sequence; INST-002 CR-20 obligation matrix |
+| WC065-04 | Current lifecycle and disposition eligibility across canonical and compatibility paths | INST-011 CR-11 product prohibition; INST-004 CR-14 independent-safety proof; INST-005 CR-16 publication/hiring enforcement; INST-007 CR-09 prohibited-path matrix; INST-010 CR-08 IR-06/R-IR-07 |
+| WC065-05 | Founder isolation, version-pinned comparison, honest uncertainty, customer impact, generated BP-only experience | INST-011 CR-11 Founder/customer matrices; INST-005 CR-16 generated-contract categories; INST-007 CR-09 assurance/privacy/customer-rights model; INST-010 CR-08 IR-10 |
+| WC065-06 | Additive BP-owned immutable minimum decision history, tenant isolation, effective dating, invalidation and evidence references | INST-006 CR-06 minimum record and additive migration decision; INST-007 CR-09 minimisation/retention/security boundaries; INST-010 CR-08 IR-11 and migration evidence; INST-002 CR-20 Evidence First/history conditions |
+| WC065-07 | Complete test matrix, C-076 coverage, C-065 separation and independent implementation review | WC-064 First-Grooming Standard; INST-007 CR-09 threat/failure matrix; INST-010 CR-08 future test obligations; INST-002 CR-20 constitutional conditions |
+
+### Affected Components And Approved Surfaces
+
+| Component | Approved impact | Existing evidence surface |
+|---|---|---|
+| BP | Public orchestration, owner adapters, scenario/preview/confirmation/disposition, guard, immutable decision history and evidence correlation | `architecture/reference/api-specs/business-platform.openapi.yaml`; existing relationship, catalog, employment and activation orchestration surfaces identified by INST-010 CR-08 |
+| WBE | Owner-qualified scenario validation for price, included budget, trial, promotion impact, cost category, tax, margin and reconciliation state | `architecture/reference/api-specs/wbe-relationship-workspace.openapi.yaml`; billing markup/trial/promotion and relationship projection surfaces identified by INST-010 CR-08 |
+| PR | Side-effect-free professional resource/feasibility projection with provenance, confidence, validity and unavailable outcomes | `architecture/reference/api-specs/professional-runtime.openapi.yaml`; relationship projection surface identified by INST-010 CR-08 |
+| AIR / CTG / provider registry | Side-effect-free provider/resource feasibility and expected-use evidence; no dispatch; CTG remains non-bypassable for later calls | Approved AIR, CTG and provider boundaries cited by INST-005 CR-16 and INST-010 CR-08 |
+| Agent lifecycle | Version-pinned professional/skill/Decision Space eligibility and governed proposal outcomes | Catalog, skill, relationship and context-configuration surfaces identified by INST-010 CR-08 |
+| CE | Existing constitutional authorization and evidence contracts where semantically sufficient; additive contract only after explicit compatibility decision | `architecture/reference/proto/constitutional_service.proto`; generic boundary evidence in INST-010 CR-08 IR-09 |
+| Web generated consumer | Founder/customer experience generated only from BP public contracts; no private owner client | `web/scripts/generate-api.sh` and committed BP generated-client families identified by INST-010 CR-08 IR-10 |
+| BP persistence | One additive tenant-isolated decision-history evolution; exact physical names assigned under the approved Data contract during implementation planning | INST-006 CR-06 Migration Decision; existing relationship/contract/activation history surfaces in INST-010 CR-08 IR-11 |
+
+No existing source, migration, generated client, provider or deployment surface is authorized for
+modification by this specification. The table defines ownership and future impact only.
+
+### Read And Command Failure Contract
+
+1. Every read returns owner, source/contract version, production or observation time, effective
+   meaning, freshness, validity and explicit authoritative/projection/provisional/settled state.
+2. Required stale, missing, superseded, contradictory, disputed, ineligible or unavailable inputs
+   cannot default, inherit, reuse a cache as truth, or advance publication/hiring.
+3. Proposal and preview are non-authorizing. Confirmation binds the exact actor, tenant, purpose,
+   consequence, preview, policy and owner versions and expires on any material change.
+4. Owner commands validate authority, expected versions and idempotency independently. Dispatch,
+   queue acceptance, timeout, partial completion, pending and unknown outcome are not success.
+5. CE authorization and durable evidence confirmation precede disposition reuse and every
+   publication/hiring success. CE or evidence failure returns no success.
+6. Idempotent replay returns the same authoritative terminal or unresolved outcome without
+   repeating an owner mutation, provider call, disposition, publication, hiring or evidence event.
+
+### Migration And Contract Decisions
+
+- **Migration:** additive BP-owned persistence is required for the Data-owner minimum retained
+  decision record. No WBE, lifecycle, execution, provider or constitutional truth is copied.
+  Existing offerings receive no fabricated backfill permission and require fresh assessment.
+- **Public contract:** an additive BP-generated contract family must express owner-attributed
+  inputs, scenario comparison, assumptions, confidence, customer impact, preview/confirmation,
+  disposition, validity, unresolved outcomes and evidence reference.
+- **Compatibility:** omission must never mean allowed, current or evidenced. Existing publication
+  and legacy hire paths must consume the same current guard, be narrowed to non-consequential
+  evaluation, or be retired by an explicit Product/Solution compatibility decision.
+- **Private contracts:** WBE, lifecycle, PR and AIR contracts require additive, owner-approved
+  semantics where current relationship projections are partial. AIR feasibility is side-effect-
+  free; provider execution is not simulation.
+- **Generated consumers:** every approved public BP change regenerates committed consumers and
+  proves compatibility. Browsers never import private WBE/PR/AIR/CTG/CE/provider contracts.
+- **CE/CTG:** reuse existing generic boundaries when the approved action/evidence meaning fits.
+  Any extension requires explicit owner compatibility approval; this specification assumes no
+  new RPC or provider activation.
+
+### Acceptance IDs And Verification Obligations
+
+| ID | Acceptance obligation | Future verification evidence |
+|---|---|---|
+| AS-065-01 | Defensible baseline produces one reconstructable current disposition | Unit/property checks; owner-contract and integration evidence; immutable-history reconstruction |
+| AS-065-02 | Policy-bounded calculated risk preserves assumptions, exposure, customer impact, expiry and review above every floor | Policy-boundary, floor, expiry, concentration and customer-disclosure checks |
+| AS-065-03 | Constitutional or commercial-floor breach is `BLOCK` with no override | CE/CCT, WBE floor, Founder-role, compatibility-path and prohibited-fallback checks |
+| AS-065-04 | Stale, missing, contradictory, ineligible or unavailable owner state fails closed | Contract variants, cache invalidation, owner outage and explicit-unresolved integration checks |
+| AS-065-05 | Concurrent policy/offering/owner change invalidates preview and confirmation | Version-conflict, refreshed impact, renewed assurance and idempotency checks |
+| AS-065-06 | Prospective customer-impacting change preserves notice, effective date, review, choice, continuity and remedy | Data effective-dating, Product language, Security privacy and customer-rights checks |
+| AS-065-07 | Evidence failure returns no success or reusable permission | CE unavailable/deny, evidence-write/correlation failure and recovery checks |
+| AS-065-08 | Cross-tenant or insufficient assurance denies without disclosure | RLS/FORCE RLS, authorization-before-disclosure, non-enumeration and privacy-safe error checks |
+| AS-065-09 | Canonical and compatibility publication/hiring paths cannot bypass the guard | Public contract, legacy adapter, activation and generated-client regression checks |
+| AS-065-10 | Category extension preserves owner, unit, attribution, reconciliation and Evidence First | Provider/resource/cost/charging-unit contract and property checks |
+
+Future implementation validation must use the repository's constitutionally required execution
+environment. Python checks run through `docker compose run --rm test-runner`; .NET checks use the
+approved devcontainer SDK. The activated implementation plan must name exact scoped commands and
+must include unit, property, owner-contract, integration, migration, constitutional, security,
+data, generated-client, browser/accessibility and regression evidence with at least 90 percent
+affected-surface line coverage. No test is executed by this specification sprint.
+
+## Protected Decision Register
+
+| Decision | Owner | Current state | Activation effect |
+|---|---|---|---|
+| Numeric margin bands/floors and fully loaded planning position | Founder policy authority with WBE/Business inputs | PENDING M3 | No policy activation or implementation authorization |
+| Calculated-risk exposure and concentration limits | Founder policy authority | PENDING M3 | `ALLOW_CALCULATED_RISK` unavailable |
+| Minimum evidence/confidence class per offering/policy class | Founder policy authority with Product/Data/Security/Constitutional inputs | PENDING M3 | Missing class fails closed |
+| Delegated adjustments and Founder-reserved exceptions | Founder policy authority | PENDING M3 | Silence grants no autonomous authority |
+| Validity, expiry, review cadence and escalation values | Founder policy authority | PENDING M3 | No permanent permission by omission |
+| Consequence/assurance class for policy, calculated risk, publication, hiring and customer impact | Founder policy authority with Security/Constitutional inputs | PENDING M3 | Consequential path unavailable until classified |
+| Exact grandfathering/remedy policy and applicable legal/retention details | Named Founder, Product, Business, Data, Security, Constitutional and legal owners | PENDING M3/M2 by Decision Space | No prospective change activation |
+
+These decisions are preserved, not delegated to INST-013 or implementation. They do not justify
+detailed grooming of WC-066 through WC-069.
+
 ## Activation Gate
 
-No detailed implementation tasks exist until WC-064 closes and WC064-07 produces an approved,
-version-pinned WC-065 package with acceptance scenarios, owner contracts, Data and Security
-decisions, integrated review, and Constitutional readiness. Implementation then still requires
-fresh Founder confirmation, GO Authorization, later Acceptance, and independent review.
+No implementation task is executable until:
 
-The activated contract must replace each candidate task above with exact approved specification
-references, affected files/components, validation commands, acceptance IDs, and evidence outputs.
+1. The exact WC-064/WC-065 package is hash-pinned and receives fresh integrated INST-004 approval
+  plus fresh INST-002 Constitutional readiness approval.
+2. Every protected decision required for the activated policy and implementation package is
+  recorded by its owner; no pending value is replaced with an inferred default.
+3. The Registrant acknowledges the reviewed implementation specification.
+4. The Founder explicitly confirms WC-065 implementation for that later session.
+5. INST-013 issues an implementation GOA and INST-010 records a temporally later Acceptance.
+6. The implementation Work Contract binds exact physical artifacts and scoped validation commands
+  to the approved behavior, owner-contract, Data and Security specifications above.
+7. Independent implementation review remains separate from execution under C-065.
+
+Until all seven items close, this is an implementation-ready specification and nothing more.
+WC-066 through WC-069 remain outcome-and-boundary records gated by real earlier-iteration evidence.

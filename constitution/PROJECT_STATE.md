@@ -1,8 +1,8 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 45
-**Last Updated:** 2026-08-12
+**State Revision:** 46
+**Last Updated:** 2026-08-13
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
 This file is a snapshot, not a session ledger. Keep it below 200 lines. Update the active
@@ -21,33 +21,24 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Platform version | 1.45.0 |
 | Latest completed Work Contract | WC-062 — WC-034 F6 Voice Interaction |
 | Latest merge | PR #275 merged to `main` as `2276ab2` |
-| Active delivery | WC-064 ready for owner GOA routing; WC-070 ratified and active in open unmerged PR #276; implementation unauthorized |
+| Active delivery | WC-064 owner package and WC-065 grooming ready for independent review; WC-070 remains ratified in open unmerged PR #276; implementation unauthorized |
 
-## Active Checkpoint — Founder Commercial Governance Program Design
+## Active Checkpoint — WC-064 Founder Commercial Governance Program Design
 
 | Milestone | Status |
 |---|---|
-| WC-063 supersession | DONE — preserved as historical evidence; never implementation-authorized |
-| WC-064 contract formalization | DONE — program objectives, first-grooming standard, acceptance scenarios, and gated implementation work packages recorded |
-| CA routing readiness | DONE — R-099 / CR-GOAL-005-INST-002-18 independently APPROVED Amendment 12 |
-| Registrant acknowledgement | DONE — ACK-GOAL-005-INST-001-12 recorded verbatim |
-| WC-064 program design | READY FOR ROUTING — individual owner GOAs and later Acceptances not yet issued |
-| WC-065 detailed grooming | PENDING — begins only within approved WC-064 design |
-| WC-066 through WC-069 | PLANNED/DEFERRED — detailed grooming and implementation unauthorized |
+| Routing prerequisites | DONE — R-099 / CR-18 approved Amendment 12; ACK-12 recorded |
+| Contribution Necessity Gate | DONE — approved routing evidence reused; orchestration continued M1; one M2 envelope CE-GOAL-005-WC064-01 used |
+| Eight owner contributions | DONE — Product, Business, Enterprise, Solution, Data, Security, implementation reality, and fresh Constitutional owner records published |
+| Integrated program design | DONE — GEP-GOAL-005-INST-013-14 published with decision/concept/ownership/policy/dependency catalogues |
+| WC-065 detailed grooming | DONE — implementation-ready specification; protected policy and implementation gates remain closed |
+| Deterministic validation | DONE — record sequence, required-section, boundary, formatting, and package checks passed |
+| Fresh integrated EA review | PENDING — exact package hash/commit to be reviewed |
+| Fresh Constitutional readiness | PENDING — begins only after EA approval |
+| WC-066 through WC-069 | EVIDENCE-GATED — no detailed grooming or implementation authorized |
+| Delivery PR | PENDING — one unmerged PR after independent approvals |
+| WC-070 dependency | RATIFIED/ACTIVE — PR #276 remains open and Founder-only merge is required |
 | Implementation authorization | NOT REQUESTED — no iteration is implementation-authorized |
-
-## Active Checkpoint — Goal Orchestrator vNext Quality And Cost Controls
-
-| Milestone | Status |
-|---|---|
-| WC-070 Work Contract | ACTIVE — Founder selected one governance hardening component |
-| Proposed operating standard | DRAFTED — necessity, reuse, materiality, completeness, dependency, model, and budget controls linked across operating surfaces |
-| Deterministic validation | IN PROGRESS — editor and diff checks passed; fixed-package checks pending |
-| Independent CA review | DONE — R-100 approved after required changes and independently confirmed exact package `bc98213` |
-| Founder ratification | DONE — Founder selected **Ratify exact package** for R-100-confirmed baseline `bc98213` |
-| Mechanical activation | DONE — standard v1.1.0 active; GEOM amendment record and checkpoint updated |
-| Delivery PR | OPEN — PR #276 targets `main`; Founder-only merge remains required |
-| Implementation authorization | NOT REQUESTED — WC-070 contains no source or deployment work |
 
 ### Closure Context
 
@@ -67,15 +58,15 @@ and independent implementation review.
 
 ## Current Blockers
 
-None filed. WC-064 owner routing has no current constitutional blocker. R-099's fresh-context
-condition remains binding for the future INST-002 owner contribution and package review. WC-070
-is ratified and active; PR submission and Founder-only merge remain.
+None filed. The R-099 context did not produce the WC-064 Constitutional owner contribution and
+will not perform final package review. Protected WC-065 policy decisions remain explicit
+activation gates, not inferred defaults. WC-070 is ratified and active; PR #276 remains open.
 
 ## Next Authorized Action
 
-Founder reviews and, if satisfied, merges PR #276. WC-064 owner routing remains separately
-authorized but is not part of WC-070. Do not begin WC-065 through WC-069 implementation or issue
-implementation authority.
+Pin the WC-064 package, obtain fresh integrated Enterprise Architecture and Constitutional
+readiness verdicts, then open one unmerged delivery PR. Do not begin WC-065 through WC-069
+implementation or issue implementation authority.
 
 ## History And Evidence
 
