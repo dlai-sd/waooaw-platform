@@ -7,7 +7,7 @@
 | `record_id` | CB-005 |
 | `record_type` | Clearance Record |
 | `produced_at` | 2026-08-13 |
-| Status | **OPEN - PROTECTED-DECISION ROUTING BLOCKED** |
+| Status | **OPEN - RESOLUTION PATH 2 SELECTED; AMENDMENT NOT YET RATIFIED** |
 | Raised by | INST-013 - Goal Orchestrator |
 | Affected obligation | CL-065-09 / PDR-065-07 |
 
@@ -69,3 +69,11 @@ fail-closed runtime behavior does not resolve the missing Decision Space.
 - WC-065 implementation, policy/provider activation, deployment, PR approval, and merge remain
   unauthorized.
 - WC-066 through WC-069 remain evidence-gated and receive no detailed grooming or authority.
+
+## Founder-Selected Resolution Path - 2026-08-13
+
+The Founder selected Path 2: route the exact legal/privacy decisions to the institution meant to
+protect the Constitution, INST-002. FA-044 activates INST-CI-001 to draft only the narrow charter
+amendment needed to make that routing valid. Independent constitutional review and separate
+Founder ratification remain mandatory. Until both exist and the Institution Registry and charter
+are amended mechanically, CB-005 remains open and no legal-owner GOA may issue.
