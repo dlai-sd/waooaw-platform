@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 95
+**State Revision:** 96
 **Last Updated:** 2026-08-13
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -21,7 +21,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Platform version | 1.45.0 |
 | Latest completed Work Contract | WC-065 — Founder Offerability And Commercial Composition |
 | Latest merge | PR #283 merged to `main` as `61b1cda` on 2026-08-13 |
-| Active delivery | GOAL-006 Phase 2 / WC-072; P2-WC06 author-gated; P2-WC07 active; independent reviews follow P2-WC07 closure |
+| Active delivery | GOAL-006 Phase 2 / WC-072; P2-WC02 through P2-WC07 implemented/author-gated at `2136bce`; independent reviews next |
 
 ## Active Checkpoint — GOAL-006 Phase 2 Authorization Routing
 
@@ -34,12 +34,12 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | INST-010 Acceptance | VALID — `ACC-GOAL-006-INST-010-02` recorded at 13:10:05Z |
 | Constitutional blocker | RESOLVED — CB-006 closed by FA-049, GOA-02 and ACC-02 |
 | Phase 2 Work Contract | CREATED — WC-072 covers P2-WC01 through P2-WC08 with one compact execution record |
-| Current component | P2-WC07 — deterministic qualification and proof accounting |
+| Current component | Frozen P2-WC02 through P2-WC07 review package — independent acceptance pending |
 | Branch and PR | ACTIVE — `goal/006/phase2-offline-delivery`; draft PR #284; reuse through P2-WC08 and do not merge |
 
 ### Checkpoint Context
 
-- **Delivery branch:** `goal/006/phase2-offline-delivery`; draft PR #284; P2-WC01 accepted by R-120; P2-WC02 through P2-WC05 author-gated; P2-WC06 author-gated at `e5dac5e`; independent acceptance follows P2-WC07 closure.
+- **Delivery branch:** `goal/006/phase2-offline-delivery`; draft PR #284; P2-WC01 accepted by R-120; P2-WC02 through P2-WC07 implemented and author-gated at frozen head `2136bce`; independent acceptance remains pending.
 - **Authority present:** Founder current-session consent, Skill 17 activation and INR 5,000 ceiling.
 - **Authority:** FA-049, `GOA-GOAL-006-INST-010-02` and `ACC-GOAL-006-INST-010-02` authorize the complete offline Phase 2 envelope.
 - **Resume source:** Git, CB-006, this checkpoint, the merged Phase 1 package and GitHub PR records; chat history is non-authoritative.
@@ -62,9 +62,9 @@ policy-dependent automation and Phase 3 handover/activation.
 
 ## Next Authorized Action
 
-Implement and author-gate P2-WC04 through P2-WC07 in dependency order, committing and pushing each
-component. Then freeze one complete package for the required independent reviews. Author review is
-not independent acceptance. All live/cloud and Phase 3 actions remain unauthorized.
+Obtain the complete bounded INST-005, INST-009, INST-007 and independent QA review package against
+frozen head `2136bce`. Do not begin P2-WC08 closure or claim independent acceptance before all named
+reviews pass. All live/cloud and Phase 3 actions remain unauthorized.
 
 ## History And Evidence
 

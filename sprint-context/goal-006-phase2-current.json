@@ -2,8 +2,8 @@
   "schema_version": "1.0.0",
   "goal_id": "GOAL-006",
   "work_contract": "WC-072",
-  "component": "P2-WC07",
-  "title": "Complete Deterministic Qualification And Proof Accounting",
+  "component": "P2-WC02-P2-WC07-REVIEW",
+  "title": "Frozen Complete Implementation Package For Independent Review",
   "controlling_sections": [
     "work-contracts/WC-072-goal-006-phase2-offline-delivery.md#component-ledger",
     "goals/GOAL-006-p1-wc11-integrated-grooming.md#p2-wc07--complete-deterministic-qualification-suite",
@@ -12,10 +12,13 @@
     "goals/GOAL-006-p1-wc08-qualification-strategy.md#p1-wc07-and-phase-allocation"
   ],
   "affected_paths": [
-    "release/goal006/qualification-ledger.json",
-    "scripts/goal006_qualification.py",
-    "tests/pipeline/test_goal006_qualification.py",
-    ".github/workflows/goal006-phase2-offline.yml",
+    "docker-compose.release.yml",
+    "infrastructure/terraform/phase2/",
+    "infrastructure/recovery/phase2/",
+    "release/goal006/",
+    "scripts/goal006_*.py",
+    "tests/pipeline/test_goal006_*.py",
+    "tests/pipeline/test_billing_ce_validator.py",
     "work-contracts/WC-072-goal-006-phase2-offline-delivery.md",
     "sprint-context/goal-006-phase2-current.json",
     "constitution/PROJECT_STATE.md"
@@ -23,12 +26,14 @@
   "validations": [
     "docker compose run --rm test-runner pytest -q tests/pipeline/test_goal006_*.py -rA",
     "docker compose run --rm test-runner ruff check scripts/goal006_*.py tests/pipeline/test_goal006_*.py",
-    "qualification ledger verification with expected/collected/executed/passed equality and CT-07 phase allocation",
+    "qualification ledger verification with 150/150 proof equality and CT-07 phase allocation",
+    "pinned Terraform format, TFLint and Checkov gates",
     "git diff --check"
   ],
   "dependencies": [
     "P2-WC01 accepted by R-120",
-    "P2-WC01 through P2-WC06 implementation and author gates",
+    "P2-WC01 independently accepted by R-120",
+    "P2-WC02 through P2-WC07 implemented and author-gated at 2136bce",
     "accepted P1-WC08 qualification strategy",
     "exact SEC-01..27, DATA-01..28, CCT-01..06 and CT-01..07 ledgers",
     "EVC-01 through EVC-08",
@@ -37,9 +42,9 @@
   "prohibited_paths": [
     "constitution/CONSTITUTION.md",
     "constitution/GENESIS.md",
-    "provider credentials, cloud mutation, real traffic, Production action and CT-07 PASS",
+    "implementation changes before reviewer findings, provider credentials, cloud mutation, real traffic, Production action and CT-07 PASS",
     "src/",
     "infrastructure/terraform/phase2/"
   ],
-  "next_exact_action": "Build and verify the exact machine proof ledger, execute the complete Docker/offline GOAL-006 suite with nonzero accounting, preserve CT-07 as NOT_EXECUTED_PHASE_3, author-gate and push P2-WC07 without claiming independent acceptance."
+  "next_exact_action": "Execute one complete bounded INST-005, INST-009, INST-007 and independent QA review package against frozen head 2136bce; retain independent acceptance as pending until all reviews pass."
 }
