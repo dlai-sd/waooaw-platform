@@ -6,7 +6,7 @@
 **Independent reviewer:** Fresh Constitutional Analyst (INST-002)
 **Registrant and plan approver:** Founder (INST-001)
 **Selected by:** Founder instruction, 2026-08-13
-**Status:** AWAITING FOUNDER ACKNOWLEDGEMENT — R-106 ready; grooming and implementation unauthorized
+**Status:** COMPLETE — ACK-01 recorded; Phase 1 P1-WC01 routed; implementation unauthorized
 **Delivery unit:** Goal registration, Understanding, provisional Classification, and proposed Execution Plan
 **Constitutional basis:** GEOM G-1 through G-4, G-7, G-10, G-13; C-001; C-007; C-023; C-059; C-064; C-065; C-067; C-070; C-080
 
@@ -50,7 +50,7 @@ contributions until the Founder approves the Goal classification and plan.
 | INTAKE-03 | INST-013 | M2 | Provisional Classification Record | INTAKE-02 | SATISFIED | GCL-GOAL-006-INST-013-01 | Four-dimension check |
 | INTAKE-04 | INST-013 | M2 | Proposed Execution Plan | INTAKE-02, INTAKE-03 | SATISFIED | GEP-GOAL-006-INST-013-01 | GEOM G-4 structure check |
 | INTAKE-05 | Fresh INST-002 | M3 | Independent classification and plan-readiness verdict | INTAKE-04 | SATISFIED | R-106 / CR-GOAL-006-INST-002-01 | Independent review |
-| INTAKE-06 | Founder | M3 | Explicit classification and plan approval | INTAKE-05 | BLOCKED | Not yet requested | Exact Founder decision |
+| INTAKE-06 | Founder | M3 | Explicit classification and plan approval | INTAKE-05 | SATISFIED | ACK-GOAL-006-INST-001-01 | Exact Founder decision |
 | INTAKE-07 | INST-013 | M0 | Future PR requirement-retention statement | INTAKE-04 | SATISFIED | Required exact text in GEP-GOAL-006-INST-013-01 | Plan text check |
 
 ## Contribution Necessity And Budget
