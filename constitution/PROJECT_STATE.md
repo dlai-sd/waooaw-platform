@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 73
+**State Revision:** 75
 **Last Updated:** 2026-08-13
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -21,7 +21,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Platform version | 1.45.0 |
 | Latest completed Work Contract | WC-065 — Founder Offerability And Commercial Composition |
 | Latest merge | PR #278 merged to `main` as `f28badc` on 2026-08-13 |
-| Active delivery | GOAL-006 Phase 1 P1-WC03 platform architecture design |
+| Active delivery | GOAL-006 Phase 1 P1-WC05 security architecture and threat model |
 
 ## Active Checkpoint — GOAL-006 Secure Autonomous Cloud Delivery Intake
 
@@ -41,7 +41,11 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | P1-WC02 Product Owner GOA / Acceptance | VALID — GOA-GOAL-006-INST-011-01 at 09:17:19Z; ACC-GOAL-006-INST-011-01 at 09:17:20Z |
 | P1-WC02 contribution / review | DONE — CR-GOAL-006-INST-011-01 accepted by R-108; specialist targets and estimates remain open |
 | P1-WC03 Platform Architect GOA / Acceptance | VALID — GOA-GOAL-006-INST-009-02 at 09:33:51Z; ACC-GOAL-006-INST-009-02 at 09:33:52Z |
-| Phase 1 owner grooming | IN PROGRESS — P1-WC03 only; P1-WC04 through P1-WC12 remain dependency-blocked |
+| P1-WC03 contribution / review | DONE — CR-GOAL-006-INST-009-02 accepted by R-109; implementation/live risks remain open |
+| P1-WC04 Solution Architect GOA / Acceptance | VALID — GOA-GOAL-006-INST-005-01 at 09:57:33Z; ACC-GOAL-006-INST-005-01 at 09:57:34Z |
+| P1-WC04 contribution / review | DONE — topology and CT-02 scope decision accepted by R-110; CT-01 through CT-07 remain routed/open |
+| P1-WC05 Security Architect GOA / Acceptance | VALID — GOA-GOAL-006-INST-007-01 at 10:19:26Z; ACC-GOAL-006-INST-007-01 at 10:19:27Z |
+| Phase 1 owner grooming | IN PROGRESS — P1-WC05 only; P1-WC06 through P1-WC12 remain dependency-blocked |
 
 ### Intake Context
 
@@ -50,7 +54,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 - **Validation:** deterministic content checks and editor diagnostics pass; no runnable infrastructure or implementation changed.
 - **Independent review:** R-106 / CR-GOAL-006-INST-002-01 finds the classification and plan ready, with post-review Founder acknowledgement as the sole routing predecessor.
 - **Pull request:** PR #281 is the Phase 1 PR. Phase 2 implementation will use a separate later PR after Phase 1 closure and explicit implementation authorization.
-- **Boundary:** P1-WC03 platform design documentation only; no runnable changes, cloud spend, DNS action, deployment, Platform Operations activation, PR approval, or merge is authorized.
+- **Boundary:** P1-WC05 security design documentation only; no runnable changes, credentials, cloud spend, DNS action, deployment, Platform Operations activation, PR approval, or merge is authorized.
 - **Protected local artifacts:** `.coverage`, `goals/goal_register.jsonl`, `logs/blueprint_assurance_report.json`, and `logs/bootstrap-evidence.jsonl` are unrelated and must remain unstaged.
 - **Intake evidence:** `goals/GOAL-006-secure-autonomous-cloud-delivery.md`, `goals/GOAL-006-execution-plan.md`, and WC-071.
 
@@ -70,8 +74,8 @@ P1-R01 through P1-R10 as open risks for later owner contributions.
 
 ## Next Authorized Action
 
-Complete and independently review the P1-WC03 platform architecture contribution. Do not issue
-P1-WC04 until P1-WC03 publishes an independently accepted Contribution Record. Phase 2
+Complete and independently review the P1-WC05 security architecture contribution. Do not issue
+P1-WC06 until P1-WC05 publishes an independently accepted Contribution Record. Phase 2
 implementation and all cloud, DNS, deployment, production, and Platform Operations activation
 actions remain unauthorized.
 

@@ -148,3 +148,91 @@ above constitutional ceilings, and activation remain Founder-protected.
 | Decision | ACCEPTED |
 | Accepted scope | P1-WC03 platform design only |
 | Excluded authority | Specialist security/data/component decisions, implementation, cloud/DNS/deployment/production action, activation, final validation, PR approval, and merge |
+
+## P1-WC03 Completion Gate
+
+| Field | Value |
+|---|---|
+| Contribution | CR-GOAL-006-INST-009-02 |
+| Independent review | R-109 / CR-GOAL-006-INST-002-04 |
+| Review verdict | ACCEPT — NO CONSTITUTIONAL CHALLENGE |
+| Completion effect | P1-WC04 dependency satisfied; all implementation/live risks remain open |
+
+## Phase 1 Authorization — P1-WC04
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-006 |
+| `record_id` | GOA-GOAL-006-INST-005-01 |
+| `record_type` | Authorization Record |
+| `authorization_id` | GOA-GOAL-006-INST-005-01 |
+| Authorized Institution | INST-005 — Solution Architect |
+| Contribution scope | P1-WC04 Deployable Component And Integration Topology |
+| Required evidence | Component placement by environment; public/internal boundary requirements; ports/protocols; dependencies; health/configuration contracts; failure/degradation; promotion/configuration contracts; conflicts routed without overwriting P1-WC03 |
+| Participation Window | 2 constitutional sessions after valid acceptance |
+| Independence constraint | INST-005 may design component/integration contracts but may not overwrite platform decisions, decide P1-WC05 security controls or P1-WC06 data recovery, implement, deploy, activate, or validate its own final evidence |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-13T09:57:33Z |
+
+This GOA authorizes Phase 1 topology documentation only. It excludes runnable changes, cloud
+queries/spend, DNS, deployment, production, activation, PR approval, and merge.
+
+## Acceptance — P1-WC04
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-005 |
+| `goal_id` | GOAL-006 |
+| `record_id` | ACC-GOAL-006-INST-005-01 |
+| `record_type` | Acceptance Record |
+| `produced_at` | 2026-08-13T09:57:34Z |
+| `authorization_id` | GOA-GOAL-006-INST-005-01 |
+| `acceptance_timestamp` | 2026-08-13T09:57:34Z |
+| Decision | ACCEPTED |
+| Accepted scope | P1-WC04 topology design only |
+| Excluded authority | Platform/security/data decisions, implementation, cloud/DNS/deployment/production action, activation, final validation, PR approval, and merge |
+
+## P1-WC04 Completion Gate
+
+| Field | Value |
+|---|---|
+| Contribution | CR-GOAL-006-INST-005-01; DR-GOAL-006-INST-011-01 |
+| Independent review | R-110 / CR-GOAL-006-INST-002-05 |
+| Review verdict | ACCEPT — NO CONSTITUTIONAL CHALLENGE |
+| Completion effect | P1-WC05 dependency satisfied; CT-01 through CT-07 remain routed/open |
+
+## Phase 1 Authorization — P1-WC05
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-006 |
+| `record_id` | GOA-GOAL-006-INST-007-01 |
+| `record_type` | Authorization Record |
+| `authorization_id` | GOA-GOAL-006-INST-007-01 |
+| Authorized Institution | INST-007 — Security Architect |
+| Contribution scope | P1-WC05 Security Architecture And Threat Model |
+| Required evidence | Identity/OIDC/RBAC; ingress/egress/private communication; Keycloak and conditional OAuth Vault boundary; TLS/DNS/certificates; secrets/state/supply chain; WAF/rate-limit justification; break glass; threats, controls, residual risks and automated tests |
+| Participation Window | 3 constitutional sessions after valid acceptance |
+| Independence constraint | INST-007 may decide security architecture but may not overwrite platform/component/data decisions, implement, deploy, accept protected residual risk, activate operations, or validate its own final evidence |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-13T10:19:26Z |
+
+This GOA authorizes Phase 1 security design only. It excludes runnable changes, credential/provider
+actions, cloud queries/spend, DNS, deployment, production, activation, PR approval, and merge.
+
+## Acceptance — P1-WC05
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-007 |
+| `goal_id` | GOAL-006 |
+| `record_id` | ACC-GOAL-006-INST-007-01 |
+| `record_type` | Acceptance Record |
+| `produced_at` | 2026-08-13T10:19:27Z |
+| `authorization_id` | GOA-GOAL-006-INST-007-01 |
+| `acceptance_timestamp` | 2026-08-13T10:19:27Z |
+| Decision | ACCEPTED |
+| Accepted scope | P1-WC05 security design only |
+| Excluded authority | Platform/component/data decisions, implementation, credentials/cloud/DNS/deployment/production action, residual-risk acceptance, activation, final validation, PR approval, and merge |
