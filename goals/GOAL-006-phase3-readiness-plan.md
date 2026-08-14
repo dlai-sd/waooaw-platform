@@ -251,7 +251,7 @@ learning record and PR/merge evidence.
 | P3-R08 Incident policy | Named policy owner and acceptance authority | M2/M3 | Accepted canonical policy | Owner routing | BLOCKED | File and review |
 | P3-R09 Change policy | Named policy owner and acceptance authority | M2/M3 | Accepted canonical policy | Owner routing | BLOCKED | File and review |
 | P3-R10 Release policy | Named policy owner and acceptance authority | M2/M3 | Accepted canonical policy | Owner routing | BLOCKED | File and review |
-| P3-R11 P3-WC01 cloud-query authorization | Founder | M3 | Exact scope, identity, ceiling and stops | R-127 and acknowledgement | BLOCKED | Founder record |
+| P3-R11 P3-WC01 cloud-query authorization | Founder | M3 | FA-050 named scope, identities, INR 0 ceiling, current-session window and stops | R-128 and PR #287 merge | SATISFIED_FOR_STOPPED_ATTEMPT | `goals/GOAL-006-phase3-authorization-records.md` |
 | P3-R12 Resource creation and spend | Founder | M3 | Per-component authority | Accepted prior component | BLOCKED | Founder record |
 | P3-R13 DNS/hostnames | Founder | M3 | Environment-specific decision | Readiness recommendation | BLOCKED | Founder record |
 | P3-R14 Production targets/risk/promotion | Founder after owner evidence | M3 | Exact accepted values and risks | Accepted UAT | BLOCKED | Founder record |
@@ -259,7 +259,9 @@ learning record and PR/merge evidence.
 | P3-R16 Goal closure | Fresh INST-002 and Founder | M3 | Clearance and acceptance | P3-WC01..08 evidence | BLOCKED | GEOM closure gate |
 | P3-R17 Enterprise delivery contract | INST-013 coordination; independent Platform/Solution/Security/Data/QA/Constitutional review | M2/M3 | WC-074 addendum and R-128 APPROVE | PR #286 baseline | SATISFIED | Reviewed commit `919db761b25675f20029ea029261666da3fb1c12` |
 
-No blocked row is waived by this plan. Phase 3 does not start until P3-R17 and P3-R11 are satisfied.
+No blocked row is waived by this plan. P3-R17 is satisfied. FA-050 satisfied P3-R11 for one attempt,
+which stopped on Azure identity enforcement; a fresh authorization window is required after direct
+Founder reauthentication. P3-WC02 and later components remain blocked.
 
 ## Dependency Impact Report
 
@@ -284,8 +286,9 @@ After Founder acceptance and merge of the R-128-approved WC-074 package, INST-01
 > activation is included. Record approved tenant/subscription, regions, registry scope, DNS zones,
 > identities, ceiling, start/end window, evidence destination, stop conditions and revocation path.
 
-Only after that decision is recorded may INST-013 issue the P3-WC01 GO Authorization and the named
-executor record a later Acceptance. P3-WC02 and all later actions require separate authority.
+FA-050, GOA-GOAL-006-INST-009-03 and ACC-GOAL-006-INST-009-03 record the first bounded attempt. It
+stopped on `AADSTS530035` before live inventory. A fresh decision window is required after direct
+Founder authentication. P3-WC02 and all later actions require separate authority.
 
 ## Validation Verdict
 

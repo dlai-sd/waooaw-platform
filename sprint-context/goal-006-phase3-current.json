@@ -1,35 +1,35 @@
 {
   "schema_version": "1.0.0",
   "goal_id": "GOAL-006",
-  "work_contract": "WC-074",
-  "component": "P3-ENTERPRISE-DELIVERY-ADDENDUM",
-  "title": "Phase 3 Enterprise Delivery Clarification",
+  "work_contract": "P3-WC01",
+  "component": "P3-WC01-CLOUD-READINESS",
+  "title": "Phase 3 Cloud Readiness - Blocked Identity Attempt",
   "controlling_sections": [
     "work-contracts/WC-073-goal-006-phase3-readiness-refinement.md",
     "goals/GOAL-006-phase3-readiness-plan.md",
     "work-contracts/WC-074-goal-006-enterprise-delivery-addendum.md",
     "goals/GOAL-006-phase3-enterprise-delivery-addendum.md",
+    "goals/GOAL-006-phase3-authorization-records.md",
+    "goals/GOAL-006-p3-wc01-readiness-evidence.md",
     "goals/GOAL-006-p1-wc11-integrated-grooming.md#phase-3-work-components",
     "work-contracts/WC-072-goal-006-phase2-offline-delivery.md#compact-execution-record"
   ],
   "affected_paths": [
-    "work-contracts/WC-074-goal-006-enterprise-delivery-addendum.md",
-    "goals/GOAL-006-phase3-enterprise-delivery-addendum.md",
+    "goals/GOAL-006-phase3-authorization-records.md",
+    "goals/GOAL-006-p3-wc01-readiness-evidence.md",
     "goals/GOAL-006-phase3-readiness-plan.md",
     "sprint-context/goal-006-phase3-current.json",
     "constitution/PROJECT_STATE.md",
     "reviews/R-128-goal-006-enterprise-delivery-review.md"
   ],
   "validations": [
-    "eight unique P3-WC01 through P3-WC08 objectives",
-    "enterprise capability binding across P3-WC01 through P3-WC08",
-    "exact-six immutable promotion and no-rebuild rollback invariants",
-    "governed one-action, progressive blue-green and independent-confirmation states",
-    "pre-action cost, lease, C-067 retirement and actual-reconciliation gates",
-    "EVC-ED-01 through EVC-ED-10 enterprise evidence mapping",
+    "temporally ordered FA-050, GOA and executor Acceptance",
+    "identity-only Azure and GitHub boundary check before broader reads",
+    "AADSTS530035 failed attempt preserved without retry or permission expansion",
+    "INR 0 and no-mutation evidence",
     "CT-07 exact NOT_EXECUTED_PHASE_3 preservation",
-    "Phase 2 and R-127 evidence preservation",
-    "JSON parse, Markdown structure, stale-authority scan and git diff --check"
+    "GHCR, DNS, pricing, quota and inventory non-execution recorded",
+    "JSON parse, Markdown structure, authorization-boundary scan and git diff --check"
   ],
   "dependencies": [
     "Phase 3 readiness PR #286 merged as 94701362d957fdc13d88bc7637c8b773a7cfb385",
@@ -37,14 +37,17 @@
     "Phase 2 merged as f52811436c900c2405aad871c43c88c073ae55fb",
     "signed exact-six offline release manifest",
     "147/147 Phase 2 executable tests and 150/150 proof obligations",
-    "Founder enterprise delivery clarification dated 2026-08-14"
+    "PR #287 merge bb511099ca5ff693ea538223e3779e4887421a99",
+    "FA-050 stopped bounded authorization",
+    "GOA-GOAL-006-INST-009-03",
+    "ACC-GOAL-006-INST-009-03"
   ],
   "prohibited_paths": [
     "constitution/CONSTITUTION.md",
     "constitution/GENESIS.md",
     "src/",
     "infrastructure/terraform/phase2/",
-    "provider credentials, Azure queries, cloud mutation, DNS action, deployment, real traffic, Production action and CT-07 PASS claims"
+    "further provider queries under FA-050, credentials or device codes in chat, permission expansion, cloud mutation, DNS action, deployment, real traffic, Production action and CT-07 PASS claims"
   ],
-  "next_exact_action": "Founder reviews and, if accepted, merges PR #287. After merge, present the separate bounded P3-WC01 read-only readiness authorization; no Phase 3 GOA or live/cloud action is authorized by WC-074, R-128 or PR #287."
+  "next_exact_action": "Founder authenticates directly in the terminal for the named tenant without sharing credentials, device codes or MFA responses; after success, issue a fresh bounded authorization and restart with identity-only verification."
 }
