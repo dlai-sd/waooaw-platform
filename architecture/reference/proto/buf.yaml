@@ -8,9 +8,12 @@ deps:
 # Lint configuration — enforce proto style consistency
 lint:
   use:
-    - DEFAULT
+    - STANDARD
   except:
     - PACKAGE_VERSION_SUFFIX  # waooaw uses package versioning via file names, not suffixes
+    - PACKAGE_DIRECTORY_MATCH # canonical proto remains at the published root path
+    - RPC_REQUEST_STANDARD_NAME  # public request names predate method-specific naming
+    - RPC_RESPONSE_STANDARD_NAME # public response names predate method-specific naming
 
 # Breaking change detection — protects against breaking changes to published contracts
 breaking:

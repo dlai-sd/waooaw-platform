@@ -47,7 +47,6 @@ option csharp_namespace = "Waooaw.ConstitutionalEngine.Grpc";
 // ─── SERVICE DEFINITION ─────────────────────────────────────────────────────
 
 service ConstitutionalService {
-
   // RecordEvidence — Evidence First Enforcer
   // Writes an evidence record to the Constitutional Audit Ledger atomically.
   // The caller MUST NOT return success to its own client until this RPC returns OK.
@@ -109,29 +108,29 @@ service ConstitutionalService {
 // Matches the evidence_state DB enum defined in evidence-schema.md.
 // IMPORTANT: each state is a new INSERT; transitions do not UPDATE existing records (C-027).
 enum EvidenceState {
-  EVIDENCE_STATE_UNSPECIFIED    = 0;  // invalid — must never be stored
-  EVIDENCE_STATE_PROPOSED       = 1;  // action has been proposed; shadow trial begins (C-028)
+  EVIDENCE_STATE_UNSPECIFIED = 0; // invalid — must never be stored
+  EVIDENCE_STATE_PROPOSED = 1; // action has been proposed; shadow trial begins (C-028)
   EVIDENCE_STATE_AWAITING_APPROVAL = 2; // presented to customer for approval decision
-  EVIDENCE_STATE_APPROVED       = 3;  // customer approved; execution may proceed
-  EVIDENCE_STATE_REJECTED       = 4;  // customer rejected; execution is prohibited
-  EVIDENCE_STATE_EXECUTED       = 5;  // action executed; constitutional record complete
-  EVIDENCE_STATE_ABANDONED      = 6;  // Emergency Stop fired; action constitutionally terminated
+  EVIDENCE_STATE_APPROVED = 3; // customer approved; execution may proceed
+  EVIDENCE_STATE_REJECTED = 4; // customer rejected; execution is prohibited
+  EVIDENCE_STATE_EXECUTED = 5; // action executed; constitutional record complete
+  EVIDENCE_STATE_ABANDONED = 6; // Emergency Stop fired; action constitutionally terminated
 }
 
 // ValidationDecision — the PAAS boundary validation outcome.
 enum ValidationDecision {
   VALIDATION_DECISION_UNSPECIFIED = 0;
-  VALIDATION_DECISION_ALLOW       = 1;  // action is within Decision Space; proceed
-  VALIDATION_DECISION_DENY        = 2;  // action is outside Decision Space; halt
-  VALIDATION_DECISION_ESCALATE    = 3;  // action is at scope boundary; route to customer
+  VALIDATION_DECISION_ALLOW = 1; // action is within Decision Space; proceed
+  VALIDATION_DECISION_DENY = 2; // action is outside Decision Space; halt
+  VALIDATION_DECISION_ESCALATE = 3; // action is at scope boundary; route to customer
 }
 
 // PolicyDecision — the general policy evaluation outcome.
 enum PolicyDecision {
   POLICY_DECISION_UNSPECIFIED = 0;
-  POLICY_DECISION_PERMIT      = 1;
-  POLICY_DECISION_DENY        = 2;
-  POLICY_DECISION_ESCALATE    = 3;  // requires customer confirmation
+  POLICY_DECISION_PERMIT = 1;
+  POLICY_DECISION_DENY = 2;
+  POLICY_DECISION_ESCALATE = 3; // requires customer confirmation
 }
 
 // ─── RecordEvidence ──────────────────────────────────────────────────────────
@@ -144,19 +143,19 @@ message RecordEvidenceRequest {
   string action_instance_id = 1;
 
   // contract_id identifies the Employment Contract this evidence belongs to.
-  string contract_id        = 2;
+  string contract_id = 2;
 
   // professional_id identifies the Digital Professional that performed the action.
-  string professional_id    = 3;
+  string professional_id = 3;
 
   // action_type is a string identifier for the type of action being recorded.
   // Examples: "MARKETING_POST", "CALENDAR_INVITE", "TRADE_ORDER", "EMERGENCY_STOP",
   //           "SCOPE_BOUNDARY_CONFIRMATION", "AUTHORITY_GRANT"
-  string action_type        = 4;
+  string action_type = 4;
 
   // state is the evidence state this record represents.
   // The Constitutional Engine validates the transition before writing (evidence-schema.md).
-  EvidenceState state       = 5;
+  EvidenceState state = 5;
 
   // proposed_content is the action content as proposed (before customer approval).
   // Present for PROPOSED state. Optional for others.
@@ -170,7 +169,7 @@ message RecordEvidenceRequest {
 
   // is_scope_boundary indicates this action crosses or approaches a scope boundary.
   // When true, scope_boundary_name must be set.
-  bool is_scope_boundary    = 8;
+  bool is_scope_boundary = 8;
 
   // scope_boundary_name names the specific scope boundary crossed.
   // Required when is_scope_boundary = true.
@@ -267,11 +266,11 @@ message SyntheticApprovalContext {
 
 // ApprovalType — the type of approval being validated or recorded.
 enum ApprovalType {
-  APPROVAL_TYPE_UNSPECIFIED         = 0;
-  APPROVAL_TYPE_CUSTOMER_EXPLICIT   = 1;  // customer manually approved
-  APPROVAL_TYPE_CALENDAR_AUTHORIZED = 2;  // within approved content calendar
-  APPROVAL_TYPE_SYNTHETIC           = 3;  // skill-generated from preference model (C-044)
-  APPROVAL_TYPE_PRE_AUTHORIZED      = 4;  // pre-authorized class at contract formation
+  APPROVAL_TYPE_UNSPECIFIED = 0;
+  APPROVAL_TYPE_CUSTOMER_EXPLICIT = 1; // customer manually approved
+  APPROVAL_TYPE_CALENDAR_AUTHORIZED = 2; // within approved content calendar
+  APPROVAL_TYPE_SYNTHETIC = 3; // skill-generated from preference model (C-044)
+  APPROVAL_TYPE_PRE_AUTHORIZED = 4; // pre-authorized class at contract formation
 }
 
 message ValidateActionResponse {

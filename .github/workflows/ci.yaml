@@ -250,15 +250,16 @@ jobs:
             architecture/reference/api-specs/professional-runtime.openapi.yaml
 
       - name: buf lint — Constitutional Service proto
-        uses: bufbuild/buf-action@v1
+        uses: bufbuild/buf-setup-action@v1
         with:
-          input: architecture/reference/proto
+          version: '1.72.0'
 
-      - name: buf breaking — detect breaking changes
-        uses: bufbuild/buf-action@v1
-        with:
-          input: architecture/reference/proto
-          breaking_against: 'https://github.com/${{ github.repository }}.git#branch=main'
+      - name: Validate proto format and compatibility
+        working-directory: architecture/reference/proto
+        run: |
+          buf format --diff --exit-code
+          buf lint
+          buf breaking --against 'https://github.com/${{ github.repository }}.git#branch=main,subdir=architecture/reference/proto'
 
   # ─── Security — SAST ──────────────────────────────────────────────────────
   sast:
