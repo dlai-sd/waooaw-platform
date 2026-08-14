@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 101
+**State Revision:** 102
 **Last Updated:** 2026-08-14
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -21,7 +21,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Platform version | 1.45.0 |
 | Latest completed Work Contract | WC-073 — GOAL-006 Phase 3 Readiness Refinement |
 | Latest merge | PR #286 merged to `main` as `94701362d957fdc13d88bc7637c8b773a7cfb385` on 2026-08-14 |
-| Active delivery | GOAL-006 WC-074 enterprise delivery addendum in progress; no Phase 3 execution authorized |
+| Active delivery | GOAL-006 WC-074 enterprise delivery addendum approved by R-128; awaiting Founder PR review/merge; no Phase 3 execution authorized |
 
 ## Active Checkpoint — GOAL-006 Enterprise Delivery Addendum
 
@@ -31,7 +31,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | WC-074 planning contract | DONE — planning-only scope and no-cloud boundary established |
 | Enterprise delivery addendum | DONE — immutable promotion, one-action orchestration, blue-green, rollback, release intelligence and FinOps contracts drafted |
 | P3-WC01 through P3-WC08 integration | DONE — addendum bound as co-controlling acceptance evidence without changing sequence |
-| Independent delta review | PENDING — Platform, Solution, Security, Data, QA and constitutional boundaries |
+| Independent delta review | DONE — R-128 APPROVE at `919db761b25675f20029ea029261666da3fb1c12` |
 | Planning branch and PR | IN PROGRESS — `goal/006/phase3-enterprise-delivery`; no self-approval or merge |
 | Phase 3 authorization | BLOCKED — no cloud-query, create, spend, DNS, deployment, Production or activation authority |
 
@@ -58,14 +58,14 @@ Phase 3 cloud, DNS, expenditure, deployment, Production or activation authority.
 
 ## Current Blockers
 
-No constitutional blocker is open for WC-074 planning. Phase 3 execution is stopped pending WC-074
-independent review, Founder P3-WC01 authority and later per-component GOA/Acceptance records. The three canonical
+No constitutional blocker is open for WC-074 planning. Phase 3 execution is stopped pending Founder
+acceptance/merge of WC-074, separate P3-WC01 authority and later per-component GOA/Acceptance records. The three canonical
 operations policies remain absent and block P3-WC06/07 handover and activation.
 
 ## Next Authorized Action
 
-Obtain independent delta review of WC-074, then publish an unmerged Founder PR. Only after Founder
-acceptance and merge may INST-013 present the separate exact bounded P3-WC01 read-only readiness
+Publish the R-128-approved WC-074 package in an unmerged Founder PR. Only after Founder acceptance
+and merge may INST-013 present the separate exact bounded P3-WC01 read-only readiness
 decision. Do not issue a Phase 3 GOA or perform provider/live
 access, cloud spend, DNS action, deployment, Production action, traffic or Platform Operations
 activation before the protected decision is recorded.

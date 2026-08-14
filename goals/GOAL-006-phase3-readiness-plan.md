@@ -9,7 +9,7 @@
 | Produced | 2026-08-14 |
 | Status | APPROVED BY R-127 AND MERGED IN PR #286 - NO PHASE 3 AUTHORITY |
 | Baseline | Phase 1 P3-WC01..08 accepted through PR #281; Phase 2 merged through PR #284 |
-| Enterprise delivery clarification | WC-074 and `GOAL-006-phase3-enterprise-delivery-addendum.md`; pending independent delta review |
+| Enterprise delivery clarification | WC-074 and `GOAL-006-phase3-enterprise-delivery-addendum.md`; R-128 APPROVE |
 
 ## Decision Summary
 
@@ -257,7 +257,7 @@ learning record and PR/merge evidence.
 | P3-R14 Production targets/risk/promotion | Founder after owner evidence | M3 | Exact accepted values and risks | Accepted UAT | BLOCKED | Founder record |
 | P3-R15 Platform Operations activation | Founder after QA/INST-004 | M3 | Exact activation grant | P3-WC07 verdicts | BLOCKED | Founder record |
 | P3-R16 Goal closure | Fresh INST-002 and Founder | M3 | Clearance and acceptance | P3-WC01..08 evidence | BLOCKED | GEOM closure gate |
-| P3-R17 Enterprise delivery contract | INST-013 coordination; independent Platform/Solution/Security/Data/QA/Constitutional review | M2/M3 | WC-074 addendum and delta-review verdict | PR #286 baseline | IN PROGRESS | Must be accepted before P3-WC01 authorization package is presented |
+| P3-R17 Enterprise delivery contract | INST-013 coordination; independent Platform/Solution/Security/Data/QA/Constitutional review | M2/M3 | WC-074 addendum and R-128 APPROVE | PR #286 baseline | SATISFIED | Reviewed commit `919db761b25675f20029ea029261666da3fb1c12` |
 
 No blocked row is waived by this plan. Phase 3 does not start until P3-R17 and P3-R11 are satisfied.
 
@@ -276,7 +276,7 @@ No blocked row is waived by this plan. Phase 3 does not start until P3-R17 and P
 
 ## Exact Founder Decision Required To Begin P3-WC01
 
-After P3-R17 independent delta approval, INST-013 may present one bounded decision:
+After Founder acceptance and merge of the R-128-approved WC-074 package, INST-013 may present one bounded decision:
 
 > Authorize P3-WC01 Cloud Readiness only, limited to named read-only Azure, GHCR, DNS-control and
 > pricing queries using approved identities and a stated monetary ceiling. No resource creation,
