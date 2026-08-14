@@ -867,7 +867,7 @@ def test_openapi_conforms_to_canonical_conversation_contract() -> None:
     canonical_path = Path(__file__).parents[2] / "architecture" / "reference" / "api-specs" / "professional-runtime.openapi.yaml"
     canonical = yaml.safe_load(canonical_path.read_text())
     generated = app.openapi()
-    assert generated["info"]["version"] == canonical["info"]["version"] == "1.2.0"
+    assert generated["info"]["version"] == canonical["info"]["version"] == "1.3.0"
     operations = {
         "/api/v1/internal/conversations/{conversationId}/executions": "post",
         "/api/v1/internal/conversations/{conversationId}/executions/{executionId}/stream": "get",

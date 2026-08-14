@@ -148,7 +148,7 @@ async def lifespan(application: FastAPI) -> AsyncIterator[None]:
 app = FastAPI(
     title="WAOOAW Professional Runtime",
     description="PAAS execution engine (C-025). All professional work runs here.",
-    version="1.2.0",
+    version="1.3.0",
     lifespan=lifespan,
 )
 

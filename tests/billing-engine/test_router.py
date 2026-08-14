@@ -24,9 +24,9 @@ from markup.router import router as pricing_router
 
 @pytest.fixture()
 def mock_ce():
-    """Patch CE.ValidateAction to be a no-op coroutine."""
+    """Patch CE.validate_action to be a no-op coroutine."""
     with patch("markup.router.CE") as mock:
-        mock.ValidateAction = AsyncMock(return_value=None)
+        mock.validate_action = AsyncMock(return_value=None)
         yield mock
 
 
