@@ -619,6 +619,79 @@ secret minimisation); C-065 (independent review); C-071 and C-076 (quality and c
 
 ---
 
+## Domain 13 — Quality Assurance And Test Engineering (GOAL-007 — proposed)
+
+*The institution must independently establish whether consequential behavior and delivery claims are
+supported by reproducible, risk-appropriate evidence without allowing implementation authorship to
+become sole quality authority.*
+
+### 13.1 Design Risk-Based Quality Campaigns
+
+**Statement:** The institution must translate approved constitutional, customer, architecture,
+security, data, implementation, and operational obligations into complete risk-ranked campaigns with
+negative paths, evidence contracts, independence assignments, and explicit stop conditions.
+
+**Constitutional Basis:** C-023 (Evidence First); C-059 (traceability); C-065 (separation); C-071
+(quality obligation); C-099 (consequence-based verification).
+
+### 13.2 Produce Independent Constitutional And Acceptance Proof
+
+**Statement:** The institution must author and qualify CCT and acceptance evidence independently of
+the production implementation author, proving that required behavior fails under breach and passes
+only when the approved obligation is enforced.
+
+**Constitutional Basis:** C-023; C-065; C-070; C-071.
+
+### 13.3 Challenge Test And Contract Strength
+
+**Statement:** The institution must identify weak assertions, mutation survivors, invariant breaches,
+and producer-consumer drift across unit/integration suites, OpenAPI, gRPC, events, identity, and
+failure contracts before promotion.
+
+**Constitutional Basis:** C-032 (drift prevention); C-059; C-071; C-076 (coverage obligation).
+
+### 13.4 Qualify Constitutional, Security, Tenant, And Privacy Boundaries
+
+**Statement:** The institution must adversarially prove authorization denials, tenant isolation,
+stale authority, replay defense, evidence integrity, redaction, and fail-safe constitutional behavior
+without unauthorized access or destructive customer-state experiments.
+
+**Constitutional Basis:** C-023; C-041 (tool authorization); C-063 (data minimisation); C-065; C-071.
+
+### 13.5 Qualify Performance, Resilience, Recovery, And Promotion
+
+**Statement:** The institution must measure approved latency/capacity targets and prove dependency
+loss, safe halt, restore, rollback, provenance, same-digest promotion, and post-release behavior in
+authorized environments while preserving protected target and risk decisions for their owners.
+
+**Constitutional Basis:** C-001 (Human Override); C-023; C-065; C-067; C-071; C-080.
+
+### 13.6 Govern Test Data And Reproducibility
+
+**Statement:** The institution must govern synthetic fixtures, data classifications, flaky-test
+disposition, retries, skips, tool versions, environment identity, and raw evidence so every result is
+reproducible and no Production data or hidden omission creates a false quality claim.
+
+**Constitutional Basis:** C-023; C-059; C-063; C-071; C-080.
+
+### 13.7 Verify Coverage And Evidence Authenticity
+
+**Statement:** The institution must distinguish genuine production-facing proof from generated-code,
+DTO-only, assertion-free, exclusion-based, simulated, repository, deployment, and customer-proof
+evidence, and enforce the applicable line/branch floor without hiding owned behavior.
+
+**Constitutional Basis:** C-023; C-059; C-071; C-076.
+
+### 13.8 Recommend Quality Gates And Defect Response
+
+**Statement:** The institution must classify defects and issue evidence-bound PASS, BLOCK,
+CONDITIONAL, or UNKNOWN recommendations without accepting protected Production targets/risk,
+approving its own material contribution, merging, or activating an Institution or agent.
+
+**Constitutional Basis:** C-001; C-023; C-065; C-071; C-099.
+
+---
+
 ### 11.9 Operate as an AI-Native Digital Marketing Agency (C-057, v0.44.0)
 
 **Statement:** The institution must enable the Digital Marketing Professional to function as a full-service AI-native digital marketing agency — not a self-service tool, not an assistant to an existing agency, but a professional entity that takes strategic ownership of the customer's digital marketing outcomes. This means: opening every engagement with a professional intake (not a data form); competing directly on price, speed, consistency, and transparency against traditional agencies; citing its own evidence-based track record to demonstrate capability; and holding itself accountable to business outcomes (appointments, enquiries, bookings) — not just content metrics.

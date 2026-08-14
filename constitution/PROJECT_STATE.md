@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 108
+**State Revision:** 109
 **Last Updated:** 2026-08-14
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -21,7 +21,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Platform version | 1.45.0 |
 | Latest completed Work Contract | WC-074 - GOAL-006 Enterprise Delivery Addendum |
 | Latest merge | PR #287 merged to `main` as `bb511099ca5ff693ea538223e3779e4887421a99` on 2026-08-14 |
-| Active delivery | GOAL-007 P1-WC01 GOA issued to INST-003; awaiting valid Business Architect Acceptance |
+| Active delivery | GOAL-007 AVD v0.1 and charter-capability proposal submitted; agent spec blocked pending AVD ratification and charter |
 
 ## Active Checkpoint — GOAL-007 QA Institution And Test Champion Intake
 
@@ -34,7 +34,10 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Proposed Execution Plan | DONE — GEP-GOAL-007-INST-013-01; no GO Authorization issued |
 | Fresh INST-002 review | DONE — R-130 READY; P2 classification stands; no P0/P1 intake blocker |
 | Founder acknowledgement | DONE — ACK-GOAL-007-INST-001-01 at 16:33:27Z; reviewed P2 plan approved |
-| P1-WC01 Business Architect GOA | ISSUED — GOA-GOAL-007-INST-003-01 at 16:33:42Z; awaiting later Acceptance |
+| P1-WC01 Business Architect GOA | ACCEPTED — GOA-GOAL-007-INST-003-01 at 16:33:42Z; ACC at 16:35:08Z |
+| P1-WC01 Acceptance | VALID — ACC-GOAL-007-INST-003-01 at 16:35:08Z |
+| P1-WC01 contribution | SUBMITTED — AVD-002 v0.1, Domain 13 capability, and CR-GOAL-007-INST-003-01; no agent spec |
+| Agent Authoring prerequisite | BLOCKED AS DESIGNED — AVD v1.0 and non-PROPOSED registry entry required before specification |
 
 ### Checkpoint Context
 
@@ -58,15 +61,15 @@ cloud, DNS, expenditure, deployment, Production, QA Institution status, or agent
 
 ## Current Blockers
 
-GOAL-007 P1-WC01 execution is blocked pending a valid INST-003 Acceptance timestamp after the GOA.
-The proposed QA Institution is not registered or operational. GOAL-006 P3-WC01 remains blocked by CT-07 failure,
+GOAL-007 agent specification is blocked pending AVD multi-review, Founder ratification to v1.0, and
+a chartered registry entry. The proposed QA Institution is not registered or operational. GOAL-006 P3-WC01 remains blocked by CT-07 failure,
 absent exact-six GHCR packages, and its recorded Azure, identity, DNS, cost, target, and policy gaps.
 
 ## Next Authorized Action
 
-Obtain INST-003 Acceptance of GOA-GOAL-007-INST-003-01 with a timestamp later than issuance. Then
-execute the complete P1-WC01 Business Architect contribution. Do not begin P1-WC02 or create or
-activate the QA Institution before the sequential protected decisions.
+Route AVD-002 v0.1 in parallel to INST-002, INST-004, and INST-008 for constitutional, architectural,
+and AI-execution review. Resolve blocking findings into v0.2 before Founder ratification. Do not
+produce the agent specification, create a registry entry, or activate the Institution prematurely.
 
 ## History And Evidence
 
