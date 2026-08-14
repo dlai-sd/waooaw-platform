@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 114
+**State Revision:** 115
 **Last Updated:** 2026-08-14
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -21,7 +21,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Platform version | 1.45.0 |
 | Latest completed Work Contract | WC-074 - GOAL-006 Enterprise Delivery Addendum |
 | Latest merge | PR #287 merged to `main` as `bb511099ca5ff693ea538223e3779e4887421a99` on 2026-08-14 |
-| Active delivery | GOAL-007 INST-015 chartered at Stage W-2 under FA-050; agent specification next |
+| Active delivery | GOAL-007 Test Champion specification authoring active under parallel EA/AI GOAs |
 
 ## Active Checkpoint — GOAL-007 QA Institution And Test Champion Intake
 
@@ -41,6 +41,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Lifecycle Amendment 1 | APPROVED — ACK-GOAL-007-INST-001-02 at 17:15:01Z; GitHub Issue #290 and PR #291 evidence recorded |
 | Formal AVD review batch | DONE — R-134 EA, R-135 AI, R-136 fresh CA; unanimous READY_FOR_RATIFICATION; zero P0/P1 |
 | Constitutional birth | DONE — FA-050 ratified AVD-002 v1.0, assigned INST-015, and chartered Stage W-2 CAPABILITY DEVELOPMENT |
+| Agent specification GOAs | ISSUED — INST-004 primary and INST-008 AI contract in one parallel package at 17:30:31Z/17:30:32Z |
 | Agent Authoring prerequisite | BLOCKED AS DESIGNED — AVD v1.0 and non-PROPOSED registry entry required before specification |
 
 ### Checkpoint Context
@@ -65,15 +66,14 @@ cloud, DNS, expenditure, deployment, Production, QA Institution status, or agent
 
 ## Current Blockers
 
-GOAL-007 agent specification and capability tooling are not yet complete. INST-015 is registered and
+GOAL-007 agent specification authorship is active; capability tooling is not yet complete. INST-015 is registered and
 chartered but not OPERATIONAL. GOAL-006 P3-WC01 remains blocked by CT-07 failure,
 absent exact-six GHCR packages, and its recorded Azure, identity, DNS, cost, target, and policy gaps.
 
 ## Next Authorized Action
 
-Produce the complete Test Champion agent specification and Architecture Chain from AVD-002 v1.0,
-then run independent Activation Gate review and implement the approved CI capability. Activation
-remains contingent on simulations and readiness evidence.
+Complete the integrated Test Champion specification and AI contract in one package, run one
+independent Activation Gate review, then implement and exercise the approved CI capability.
 
 ## History And Evidence
 

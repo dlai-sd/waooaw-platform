@@ -131,3 +131,15 @@ zero. P1-WC02 is complete and the package is ready for the Founder constitutiona
 This decision does not mark INST-015 OPERATIONAL, accept external Goals, approve/merge PR #291,
 deploy, or waive specification, Architecture Chain, simulations, independent Activation Gate, or
 Operational Readiness evidence.
+
+## P1-WC04 Agent Specification Authorizations
+
+| Authorization | Owner | Complete envelope | Issued at | Participation window |
+|---|---|---|---|---|
+| GOA-GOAL-007-INST-004-02 | INST-004 — Enterprise Architect, primary | Complete Test Champion specification derived from AVD-002 v1.0; all 16 Activation Gate sections; skills, DCM, PAC, runtime, architecture chain, no activation claim | 2026-08-14T17:30:31Z | One constitutional session |
+| GOA-GOAL-007-INST-008-02 | INST-008 — AI Architect, contributing | Prompt catalogue and MagicLLM execution contract for the specification, using existing categories and India-resident evidence controls; no new runtime component | 2026-08-14T17:30:32Z | One constitutional session |
+
+Both are `M2_CONTRIBUTE` under FA-050. INST-004 integrates the single package; INST-008 contributes
+only the AI contract. Neither may review or activate its own output. Existing Docker runners,
+GitHub Actions, audit records, and approved tool families must be reused before any new component,
+MCP, schema, or dependency is proposed.
