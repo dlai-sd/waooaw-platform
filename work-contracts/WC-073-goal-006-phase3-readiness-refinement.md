@@ -6,7 +6,7 @@
 | Office | INST-013 - Goal Orchestrator |
 | Work type | Post-Phase-2 objective validation and planning refinement |
 | Authorized by | Founder instruction dated 2026-08-14 |
-| Status | READY FOR INDEPENDENT REVIEW - planning only; no Phase 3 execution authority |
+| Status | COMPLETE - R-127 APPROVE; planning only; no Phase 3 execution authority |
 | Branch | `goal/006/phase3-readiness-refinement` |
 | Base | `61da87314f666249aeabdd507a35aca1bb3860e5` on `origin/main` |
 
@@ -77,8 +77,8 @@ This Work Contract authorizes repository planning records only. It does not auth
 | WC073-01 Phase 2 evidence reconciliation | INST-013 | M0 | Pinned reuse record | R-120..R-126 and merged PRs | SATISFIED | Hash and scope checks pass |
 | WC073-02 P3-WC01..08 objective refinement | INST-013 | M1 | Readiness plan | WC073-01 | SATISFIED | Eight objectives and dependency gates validated |
 | WC073-03 Open owner/protected decisions | Named owners / Founder | M2/M3 | Exact decision register | WC073-02 | SATISFIED | Open decisions identified without substituted authority |
-| WC073-04 Independent planning review | Fresh INST-002 | M3 | R-127 verdict | WC073-01..03 | PENDING | Independence and completeness review |
-| WC073-05 Planning checkpoint publication | INST-013 | M0 | Commit, push and unmerged PR | R-127 approval | PENDING | Git and PR evidence |
+| WC073-04 Independent planning review | Fresh INST-002 | M3 | R-127 verdict | WC073-01..03 | SATISFIED | APPROVE at reviewed head `230e6b7` |
+| WC073-05 Planning checkpoint publication | INST-013 | M0 | Commit, push and unmerged PR | R-127 approval | IN PROGRESS | Review recorded; PR pending |
 
 ## Definition Of Done
 
