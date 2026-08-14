@@ -1,6 +1,6 @@
 # GOAL-007 — Independent Quality Assurance Institution And Test Champion
 
-**Status:** UNDERSTOOD — CLASSIFICATION AND PLAN PROPOSED; NO GO AUTHORIZATION
+**Status:** IN JOURNEY — P1-WC01 GOA ISSUED; AWAITING INST-003 ACCEPTANCE
 **Registrant:** Yogesh Khandge, Founder (INST-001)
 **Registered:** 2026-08-14
 **Work Contract:** WC-075
@@ -96,3 +96,9 @@ Institution status, and activation decisions.
 - Do not treat Issue #290, WC-075, a proposed spec, or an Activation Gate author audit as activation.
 - Do not execute the BP pilot until its specification, implementation authority, GOA, Acceptance,
   independent review identity, and Docker environment are valid.
+
+## Founder Acknowledgement And P1 Dispatch
+
+ACK-GOAL-007-INST-001-01 approved the P2 classification and proposed Execution Plan after R-130.
+INST-013 issued GOA-GOAL-007-INST-003-01 at `2026-08-14T16:33:42Z`. P1-WC01 may begin only after
+INST-003 records a later Acceptance timestamp. All P1-WC02 and later phases remain blocked.

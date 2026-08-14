@@ -6,7 +6,7 @@
 **Independent reviewer:** Constitutional Analyst (INST-002)
 **Registrant and plan approver:** Founder (INST-001)
 **Selected by:** Founder instruction, 2026-08-14
-**Status:** READY FOR FOUNDER ACKNOWLEDGEMENT — R-130 READY; no GO Authorization or activation
+**Status:** COMPLETE — Founder acknowledged reviewed plan; P1-WC01 GOA issued; no activation
 **Delivery unit:** Goal registration, Understanding, provisional Classification, and proposed Execution Plan
 **Constitutional basis:** GEOM G-1 through G-4, G-7, G-10, G-13; C-023; C-041; C-059; C-064; C-065; C-070; C-071; C-076; C-080; C-094; C-099
 
@@ -37,7 +37,7 @@ protected activation separation.
 | WC075-04 | Produce a proposed phased Execution Plan with accountable owner Evidence Specifications | DONE |
 | WC075-05 | Preserve C-065 separation and Founder-only charter/activation decisions | DONE |
 | WC075-06 | Obtain fresh INST-002 classification and plan-readiness review | DONE — R-130 READY; no challenge |
-| WC075-07 | Obtain Founder acknowledgement before any GO Authorization | PENDING |
+| WC075-07 | Obtain Founder acknowledgement before any GO Authorization | DONE — ACK-01 precedes GOA-INST-003-01 |
 
 ## Completeness Ledger
 
@@ -48,7 +48,7 @@ protected activation separation.
 | QA-INTAKE-03 | INST-013 | M2 | Provisional Classification Record | QA-INTAKE-02 | SATISFIED | GCL-GOAL-007-INST-013-01 | Four dimensions |
 | QA-INTAKE-04 | INST-013 | M2 | Proposed Execution Plan | QA-INTAKE-02, QA-INTAKE-03 | SATISFIED | GEP-GOAL-007-INST-013-01 | GEOM G-4 structure |
 | QA-INTAKE-05 | Fresh INST-002 | M3 | Independent readiness verdict | QA-INTAKE-04 | SATISFIED | R-130 / CR-GOAL-007-INST-002-01 | Independent review |
-| QA-INTAKE-06 | Founder | M3 | Classification and plan acknowledgement | QA-INTAKE-05 | PENDING | — | Exact decision record |
+| QA-INTAKE-06 | Founder | M3 | Classification and plan acknowledgement | QA-INTAKE-05 | SATISFIED | ACK-GOAL-007-INST-001-01 | Exact decision record |
 
 ## Authorization Boundary
 
