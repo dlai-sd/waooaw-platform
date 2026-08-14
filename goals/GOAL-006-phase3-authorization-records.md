@@ -81,3 +81,57 @@ through P3-WC08 remain dependency-blocked and unauthorized.
 
 Acceptance authorizes evidence gathering only. It does not predetermine CT-07, registry, cost,
 identity, quota or overall readiness results.
+
+## Renewed Founder Protected Decision - P3-WC01 Attempt 2
+
+| Decision field | Authorized value |
+|---|---|
+| `institution_id` | INST-001 |
+| `goal_id` | GOAL-006 |
+| `record_id` | FA-051 |
+| `record_type` | Founder Action |
+| `produced_at` | 2026-08-14T07:11:32Z |
+| Registrant | Yogesh Khandge, Founder |
+| Decision | APPROVED - fresh bounded P3-WC01 read-only readiness attempt for the current session |
+| Controlling scope | Identical to FA-050: tenant `0471534c-1bbe-40ab-ae65-3f721b62582c`; subscription `2ed11839-6a0f-4eaa-bd94-44ca96ff5d84`; Central India; exact-six GHCR; public `waooaw.com` control evidence; public pricing; INR 0 |
+| Renewed fact | Founder reports successful Azure authentication and enabled account metadata after correcting the Entra policy |
+| Authorization window | Current constitutional session only; expires at session close, explicit revocation or any stop condition |
+| Stop conditions | Same as FA-050, including identity/scope mismatch, mutation, charge, permission expansion, secret exposure or ambiguity |
+| Explicit exclusions | Same as FA-050; P3-WC02 through P3-WC08 remain unauthorized |
+
+## Renewed P3-WC01 GO Authorization
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-013 |
+| `goal_id` | GOAL-006 |
+| `record_id` | GOA-GOAL-006-INST-009-04 |
+| `record_type` | Authorization Record |
+| `authorization_id` | GOA-GOAL-006-INST-009-04 |
+| Authorized Institution | INST-009 - Platform Architect |
+| Contribution scope | Complete the remaining P3-WC01 read-only evidence under FA-051; preserve the first failed attempt and restart with identity-only verification |
+| Participation Window | Current constitutional session only; expires with FA-051 or any stop condition |
+| Monetary ceiling | INR 0 new spend |
+| Independence constraint | Same as GOA-GOAL-006-INST-009-03; no mutation, permission expansion, self-review, later-component authorization, PR approval or merge |
+| `issued_by` | INST-013 |
+| `issued_at` | 2026-08-14T07:11:33Z |
+
+This renewed GOA becomes executable only after a temporally later INST-009 Acceptance Record.
+
+## Renewed Acceptance - P3-WC01 Attempt 2
+
+| Field | Value |
+|---|---|
+| `institution_id` | INST-009 |
+| `goal_id` | GOAL-006 |
+| `record_id` | ACC-GOAL-006-INST-009-04 |
+| `record_type` | Acceptance Record |
+| `produced_at` | 2026-08-14T07:12:01Z |
+| `authorization_id` | GOA-GOAL-006-INST-009-04 |
+| `acceptance_timestamp` | 2026-08-14T07:12:01Z |
+| Decision | ACCEPTED |
+| Accepted scope | Renewed P3-WC01 read-only evidence gathering exactly within FA-051 |
+| First discriminating check | Read active Azure account metadata and stop unless tenant, subscription, enabled state and user-session boundary match |
+| Excluded authority | All FA-051 exclusions, self-review, PR approval and merge |
+
+Acceptance does not erase or rewrite the first blocked attempt and does not predetermine readiness.

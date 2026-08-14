@@ -3,7 +3,7 @@
   "goal_id": "GOAL-006",
   "work_contract": "P3-WC01",
   "component": "P3-WC01-CLOUD-READINESS",
-  "title": "Phase 3 Cloud Readiness - Blocked Identity Attempt",
+  "title": "Phase 3 Cloud Readiness - Evidence Complete, Exit Blocked",
   "controlling_sections": [
     "work-contracts/WC-073-goal-006-phase3-readiness-refinement.md",
     "goals/GOAL-006-phase3-readiness-plan.md",
@@ -20,15 +20,18 @@
     "goals/GOAL-006-phase3-readiness-plan.md",
     "sprint-context/goal-006-phase3-current.json",
     "constitution/PROJECT_STATE.md",
-    "reviews/R-128-goal-006-enterprise-delivery-review.md"
+    "reviews/R-128-goal-006-enterprise-delivery-review.md",
+    "reviews/R-129-goal-006-p3-wc01-readiness-review.md"
   ],
   "validations": [
-    "temporally ordered FA-050, GOA and executor Acceptance",
-    "identity-only Azure and GitHub boundary check before broader reads",
-    "AADSTS530035 failed attempt preserved without retry or permission expansion",
+    "FA-050 stopped attempt preserved and FA-051 renewal temporally ordered",
+    "exact tenant, subscription, enabled state and user-session identity",
+    "authorized Azure inventory, provider, quota, budget and role evidence",
+    "CT-07 FAIL against absent exact-six live topology",
+    "all six exact GHCR packages classified PACKAGE_NOT_FOUND",
+    "public DNS delegation and Central India retail unit rates",
     "INR 0 and no-mutation evidence",
-    "CT-07 exact NOT_EXECUTED_PHASE_3 preservation",
-    "GHCR, DNS, pricing, quota and inventory non-execution recorded",
+    "R-129 independent APPROVE with P3-WC01 blocked",
     "JSON parse, Markdown structure, authorization-boundary scan and git diff --check"
   ],
   "dependencies": [
@@ -39,15 +42,16 @@
     "147/147 Phase 2 executable tests and 150/150 proof obligations",
     "PR #287 merge bb511099ca5ff693ea538223e3779e4887421a99",
     "FA-050 stopped bounded authorization",
-    "GOA-GOAL-006-INST-009-03",
-    "ACC-GOAL-006-INST-009-03"
+    "FA-051 completed bounded authorization",
+    "GOA-GOAL-006-INST-009-04",
+    "ACC-GOAL-006-INST-009-04"
   ],
   "prohibited_paths": [
     "constitution/CONSTITUTION.md",
     "constitution/GENESIS.md",
     "src/",
     "infrastructure/terraform/phase2/",
-    "further provider queries under FA-050, credentials or device codes in chat, permission expansion, cloud mutation, DNS action, deployment, real traffic, Production action and CT-07 PASS claims"
+    "provider or role registration/change, budget creation, registry push, credentials or device codes in chat, DNS action, deployment, real traffic, Production action and CT-07 PASS claims"
   ],
-  "next_exact_action": "Founder authenticates directly in the terminal for the named tenant without sharing credentials, device codes or MFA responses; after success, issue a fresh bounded authorization and restart with identity-only verification."
+  "next_exact_action": "Publish the R-129-approved blocked P3-WC01 evidence checkpoint; then present a separate bounded remediation decision without inferring P3-WC02 authority."
 }
