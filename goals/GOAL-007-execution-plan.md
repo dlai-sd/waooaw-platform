@@ -7,7 +7,7 @@
 | `record_id` | GEP-GOAL-007-INST-013-01 |
 | `record_type` | Execution Plan |
 | `produced_at` | 2026-08-14T12:05:00Z |
-| Status | FOUNDER-ACKNOWLEDGED P2 PLAN; lifecycle Amendment 1 proposed after AVD prerequisite discovery |
+| Status | FOUNDER-ACKNOWLEDGED P2 PLAN; lifecycle Amendment 1 effective under ACK-GOAL-007-INST-001-02 |
 | Work Contract | WC-075 |
 | GitHub action | Issue #290 |
 
@@ -24,7 +24,7 @@ Use one primary executor per complete Work Component. The Goal Orchestrator coor
 author a charter, agent specification, architecture, tests, tools, simulations, or quality verdict.
 The proposed QA Institution cannot validate or activate itself.
 
-## Amendment 1 — AVD And Constitutional Birth Prerequisites (Proposed)
+## Amendment 1 — AVD And Constitutional Birth Prerequisites (Founder-Acknowledged)
 
 P1-WC01 execution found that the original plan incorrectly placed a complete agent specification
 before the mandatory AVD and constitutional-birth gates. The AGENT-AUTHORING-GUIDE and AVD Authoring
@@ -32,8 +32,9 @@ Process require: AVD v0.1/v0.2 review, Founder ratification to v1.0, and a non-P
 registry entry before any agent specification is produced. This amendment preserves the approved
 Goal outcome and splits the old P1 sequence at the controlling prerequisite.
 
-This amendment is not effective until the Founder acknowledges it. R-131 through R-133 are advisory
-inputs only; they do not replace the formal authorized reviews below.
+The Founder acknowledged this amendment through ACK-GOAL-007-INST-001-02 at
+`2026-08-14T17:15:01Z`. R-131 through R-133 remain advisory inputs only; they do not replace the
+formal authorized reviews below.
 
 | Phase / WC | Accountable owner | Contribution envelope | Dependencies | Exit evidence |
 |---|---|---|---|---|

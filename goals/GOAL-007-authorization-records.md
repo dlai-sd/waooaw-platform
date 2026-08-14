@@ -63,3 +63,23 @@ INST-003 accepts full accountability for P1-WC01 contribution quality within the
 The contribution is a DRAFT requiring independent review and Founder ratification before any
 institutional or agent status transition. This acceptance does not create INST-015, activate any
 agent, authorize implementation, or grant architecture decision authority.
+
+## Founder Acknowledgement — Lifecycle Amendment 1
+
+| Attestation field | Value |
+|---|---|
+| `institution_id` | INST-001 |
+| `goal_id` | GOAL-007 |
+| `record_id` | ACK-GOAL-007-INST-001-02 |
+| `record_type` | Acknowledgement Record |
+| `produced_at` | 2026-08-14T17:15:01Z |
+| Acknowledged plan | GEP-GOAL-007-INST-013-01 — Amendment 1 |
+| Acknowledged AVD | AVD-002 v0.2 |
+| Advisory inputs | R-131, R-132, R-133 |
+| GitHub evidence | Issue #290 comment `5296136615` at 17:15:01Z; PR #291 comment `5296139642` at 17:15:21Z |
+| Decision | APPROVED — separate formal Stage 4 AVD review GOAs may issue |
+
+The Founder authorized INST-013 to issue separate formal Stage 4 AVD review GOAs to INST-004,
+INST-008, and a fresh INST-002 context. This acknowledgement does not ratify AVD v1.0, create or
+register INST-015, authorize agent specification, implementation, simulation, activation, PR
+approval, or merge.
