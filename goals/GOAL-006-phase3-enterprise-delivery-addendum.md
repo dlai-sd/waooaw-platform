@@ -40,7 +40,7 @@ accepted P3-WC01 through P3-WC08 sequence or authorizing live action.
 | ED-05 | Data change is independently recoverable | Expand/contract compatibility, PITR and forward repair protect durable state; destructive down-migration is prohibited |
 | ED-06 | Cost is a deployment property | Estimate, ceiling, lease and actual reconciliation are promotion gates, not after-the-fact reports |
 | ED-07 | Customer value is release evidence | Technical health cannot compensate for a failed customer journey or unacceptable unit economics |
-| ED-08 | Deployment evidence is independently confirmed | Author, workflow executor and deployment confirmer remain constitutionally distinct under C-065 |
+| ED-08 | Deployment evidence is independently confirmed | Author, authorized reviewer and deployment confirmer remain constitutionally distinct under C-065; workflows are execution infrastructure, not reviewers |
 | ED-09 | Every control fails closed | Missing identity, digest, signature, target, cost, backup, telemetry or authority stops progression |
 | ED-10 | Portability remains deliberate | Azure services require named escape hatches under ADR-010; delivery contracts remain OCI, OTel and Terraform oriented |
 
@@ -70,7 +70,8 @@ visible.
 Authorized intent
   -> authorization and environment gate
   -> release-manifest/signature/provenance verification
-  -> state lock, drift, quota, dependency and recovery preflight
+   -> state lock, drift, quota, dependency, CT-06 and recovery preflight
+   -> verify PITR chain continuity, current restorable point and key-reference availability
   -> reviewed Terraform plan and cost forecast
   -> environment approval
   -> deploy inactive Green revisions
@@ -103,24 +104,55 @@ REQUESTED
   -> CLOSED
 ```
 
-Terminal or recovery states are `DENIED`, `BLOCKED`, `FAILED_GREEN`, `ROLLING_BACK`,
-`ROLLED_BACK`, `FAILED_ROLLBACK`, `DEACTIVATED` and `REVOKED`. Every transition records actor,
+Exceptional or recovery states are `DENIED`, `BLOCKED`, `FAILED_GREEN`, `ROLLING_BACK`,
+`ROLLED_BACK`, `FAILED_ROLLBACK`, `DEACTIVATED` and `REVOKED`. `BLOCKED` is resumable only after
+the named missing evidence or owner decision is recorded and preflight is rerun; all other
+exceptional outcomes require a new authorized operation to retry. Every transition records actor,
 authority, prior state, release tuple, environment, timestamp, evidence references, cost snapshot
 and reason. Retrying creates a new attempt under the same operation; it never erases the failed
 attempt.
 
+Verification timeout, unavailable monitoring or an indeterminate required signal fails closed from
+`GREEN_DEPLOYED`, `GREEN_VERIFIED` or `TRAFFIC_SHIFTING` to `ROLLING_BACK`, then `ROLLED_BACK` when
+Blue restoration verifies or `FAILED_ROLLBACK` when it does not. No timeout can imply acceptance.
+
+### Valid Transition Contract
+
+| Predecessor | Event | Successor |
+|---|---|---|
+| `REQUESTED` | authority accepted / denied / evidence missing | `AUTHORIZED` / `DENIED` / `BLOCKED` |
+| `AUTHORIZED` | preflight passes / fails or becomes indeterminate / authority revoked | `PREFLIGHT_PASSED` / `BLOCKED` / `REVOKED` |
+| `PREFLIGHT_PASSED` | reviewed plan and cost gate accepted / rejected / authority revoked | `PLAN_APPROVED` / `BLOCKED` / `REVOKED` |
+| `PLAN_APPROVED` | Green created / deployment fails / authority revoked | `GREEN_DEPLOYED` / `FAILED_GREEN` / `REVOKED` |
+| `GREEN_DEPLOYED` | all Green gates pass / fail / time out | `GREEN_VERIFIED` / `FAILED_GREEN` / `ROLLING_BACK` |
+| `GREEN_VERIFIED` | next approved stage starts / evidence fails or times out / authority revoked | `TRAFFIC_SHIFTING` / `ROLLING_BACK` / `ROLLING_BACK` |
+| `TRAFFIC_SHIFTING` | next stage required / final stage passes / signal fails, times out or authority is revoked | `GREEN_VERIFIED` / `INDEPENDENTLY_CONFIRMED` / `ROLLING_BACK` |
+| `INDEPENDENTLY_CONFIRMED` | confirmation accepted / rejected or becomes indeterminate | `ACCEPTED` / `ROLLING_BACK` |
+| `ACCEPTED` | prior Blue retired within C-067 window / retirement cannot verify | `BLUE_RETIRED` / `BLOCKED` |
+| `BLUE_RETIRED` | evidence and cost reconcile | `CLOSED` |
+| `ROLLING_BACK` | Blue restoration verifies / restoration fails | `ROLLED_BACK` / `FAILED_ROLLBACK` |
+| Any non-closed state | authorized deactivation completes | `DEACTIVATED` |
+| `BLOCKED` | named deficiency resolves and preflight reruns / request withdrawn | `AUTHORIZED` / `REVOKED` |
+
+Transitions not listed above are invalid and block the operation. `REQUESTED -> ACCEPTED`, direct
+stage bypass and silent retry are explicitly prohibited.
+
 ### Workflow Surface
 
-| Workflow | Responsibility | Must not do |
-|---|---|---|
-| Build and attest | Build six images, test, scan, generate SBOM/provenance/OpenVEX, sign manifest | Access Azure or promote mutable tags as authority |
-| Readiness and plan | Verify live prerequisites when authorized, acquire lock, detect drift, produce plan and cost delta | Apply resources or read secret values |
-| Deploy Green | Apply reviewed workload change and create inactive candidate revisions | Move accepted traffic or rebuild images |
-| Verify Green | Run health, integration, CCT, security, data and customer-journey checks | Self-accept the deployment |
-| Shift traffic | Apply owner-approved stages and observation windows through the selected edge | Expose private services or exceed accepted risk |
-| Confirm release | Independently compare telemetry, journeys, constitutional checks and cost with accepted targets | Author deployment changes |
-| Roll back | Restore traffic to the last accepted tuple and preserve failure evidence | Rebuild, mutate evidence or down-migrate constitutional data |
-| Retire/deactivate | Retire Blue within C-067 window or stop leased lower workload safely | Destroy protected state, recovery material, vaults or evidence |
+| Workflow | State responsibility | GitHub permission ceiling | Must not do |
+|---|---|---|---|
+| Build and attest | Produce the release input before `REQUESTED` | `contents: read`, `packages: write`; no `id-token: write` | Access Azure or promote mutable tags as authority |
+| Readiness and plan | `AUTHORIZED -> PREFLIGHT_PASSED -> PLAN_APPROVED` | `id-token: write` only for an exact plan/read-only federated subject; `contents: read` | Apply resources or read secret values |
+| Deploy Green | `PLAN_APPROVED -> GREEN_DEPLOYED` | `id-token: write` only for an environment apply federated subject; `contents: read` | Move accepted traffic or rebuild images |
+| Verify Green | `GREEN_DEPLOYED -> GREEN_VERIFIED` | `contents: read`; no `id-token: write` | Self-accept deployment; omit Keycloak session, Temporal idempotency or Billing lineage checks |
+| Shift traffic | `GREEN_VERIFIED <-> TRAFFIC_SHIFTING` | `id-token: write` only for an environment route federated subject; `contents: read` | Expose private services or exceed accepted risk |
+| Independent Confirmation | `TRAFFIC_SHIFTING -> INDEPENDENTLY_CONFIRMED -> ACCEPTED` | `contents: read`; no `id-token: write` | Author or execute deployment changes |
+| Roll back | `ROLLING_BACK -> ROLLED_BACK` | `id-token: write` only for an environment rollback federated subject; `contents: read` | Rebuild, mutate evidence or down-migrate constitutional data |
+| Retire/deactivate | `ACCEPTED -> BLUE_RETIRED -> CLOSED`, or `DEACTIVATED` | `id-token: write` only for an environment retirement federated subject; `contents: read` | Destroy protected state, recovery material, vaults or evidence |
+
+Permission ceilings are job-level. Workflow-level `id-token: write`, shared apply/plan subjects and
+OIDC access by build, test, review or independent-confirmation jobs are prohibited. Federated subject
+names and exact RBAC remain Security/Platform owner decisions.
 
 ## Immutable Promotion Contract
 
@@ -130,7 +162,9 @@ The release manifest is the sole promotion authority and binds:
 - source commit and reviewed configuration identity;
 - manifest signature and signer policy;
 - SBOM, SLSA provenance, OpenVEX and scan evidence per member;
-- migration/data compatibility declaration;
+- migration/data compatibility declaration binding predecessor, database/extension versions,
+  verified recovery point, forward/rollback behavior and prohibited-operation verification per
+  P1-WC06 `Migration And Same-Digest Compatibility`;
 - minimum platform contract and dependency versions;
 - qualification evidence inherited from each preceding environment; and
 - the last compatible rollback tuple.
@@ -146,7 +180,8 @@ the same source; it is a material release failure requiring requalification.
 2. Deploy Green as inactive revisions with zero accepted public traffic.
 3. Validate Green through private or tightly controlled qualification paths.
 4. Prove schema, identity, dependency, telemetry and rollback compatibility.
-5. Move traffic through owner-approved stages and observation windows.
+5. Move traffic through at least two distinct owner-approved stages with an intermediate observation
+   window. A single `0% -> 100%` shift is not progressive delivery and is prohibited.
 6. At every stage evaluate technical, constitutional, security, journey and cost signals.
 7. Automatically stop progression and restore Blue when a blocking signal breaches its accepted
    target or required evidence becomes unavailable.
@@ -158,27 +193,47 @@ Exact percentages, observation durations, minimum sample sizes and automatic-rol
 QA/Product/Platform/Security owner decisions informed by authorized live evidence. Until accepted,
 traffic progression remains blocked rather than defaulting to industry-generic values.
 
+Every operation assigns ordered stage IDs. `BG-S1-CANARY` proves the first nonzero public traffic;
+one or more `BG-SN-EXPANSION` stages prove partial traffic under increasing exposure; and
+`BG-SF-FINAL` proves the final owner-approved distribution. Each stage records its approved weight,
+window, sample requirement, thresholds, actual signals and decision. Stage purpose and ordering are
+fixed here; values remain owner decisions.
+
 Emergency Stop remains pre-warmed and outside ordinary rate limits throughout traffic movement. CE,
 AIR, Billing, data, management, metrics and administrative surfaces remain private. The selected
 managed edge/WAF must control public routing without making direct Container Apps endpoints an
 alternate public path.
+
+Emergency Stop pre-warm, independent reachability and latency evidence must pass immediately before
+the first `TRAFFIC_SHIFTING` transition and remain monitored at every stage. Missing evidence blocks
+traffic movement; rollback does not depend on an unverified Emergency Stop path.
 
 ## Rollback And Recovery Contract
 
 | Failure class | Automatic response | Required evidence |
 |---|---|---|
 | Green provisioning or startup | Keep Blue at accepted traffic; mark Green failed | Plan/apply logs, revision state, health and cost |
-| Green qualification | Do not progress traffic; isolate Green | Failed test, CCT, security, journey or dependency evidence |
+| Green qualification | Do not progress traffic; isolate Green | Failed test, CCT, security, journey or dependency evidence; Keycloak session, Temporal idempotency and Billing lineage results |
 | Progressive traffic regression | Stop progression and restore Blue | Trigger signal, target, traffic history and restoration proof |
 | Independent confirmation failure | Restore Blue unless an accepted safe hold state exists | Confirmer verdict and resulting traffic state |
 | Blue restoration failure | Raise high-severity incident and execute accepted recovery path | Failed rollback and incident evidence; no false success |
-| Data incompatibility | Stop before traffic; restore data only through accepted PITR/recovery authority | Migration tuple, recovery point and integrity checks |
+| Data incompatibility | Stop before traffic; restore data only through accepted PITR/recovery authority | Migration tuple, PITR chain/restorable point, Keycloak session revocation, Temporal idempotency reconciliation, Billing lineage and evidence-tail integrity |
 
-Rollback uses the retained accepted OCI digest/configuration tuple. Database change uses additive
-expand/contract sequencing so Blue and Green remain compatible during the release window.
+Rollback uses the retained accepted `manifest + OCI digests + reviewed config + data version + state
+generation + recovery point` tuple required by P1-WC06. Database change uses additive expand/contract
+sequencing so Blue and Green remain compatible during the release window.
 Constitutional schema down-migration, evidence rewriting and Production-to-lower data movement remain
 prohibited. Where data cannot safely roll back, application traffic restores to the compatible Blue
 revision and the database follows an accepted forward-repair plan.
+
+Data recovery verifies evidence tails, revokes invalid restored Keycloak sessions, pauses uncertain
+Temporal workflows until idempotency and external effects reconcile, and verifies Billing lineage
+before writes reopen. It appends Evidence First recovery records when safe; it never overwrites the
+failed attempt or treats service health as data integrity.
+
+An accepted and exercised Blue-restoration-failure recovery path is a P3-WC05 pre-entry condition;
+Production cannot be provisioned or promoted while that path is undefined or only synthetically
+asserted.
 
 ## Environment And Cost Operating Model
 
@@ -193,6 +248,11 @@ separate hostname, certificate, routing and evidence identities. Production requ
 edge/IP and policy boundary. This is a recommended cost/blast-radius balance, not a product or DNS
 decision.
 
+Before UAT can activate a shared lower edge, Demo must be `DEACTIVATED`: all Demo revisions scaled
+to zero, no accepted traffic, lease closed, evidence published and required backup retained. Security
+and QA attest that state as a P3-WC04 preflight gate. The edge cannot route to any Demo-active
+revision while UAT is `GREEN_DEPLOYED` or later.
+
 Production PostgreSQL and its backup chain remain separate. A lower-environment PostgreSQL service
 may be shared sequentially only if Data and Security accept separate databases, roles, credentials,
 network boundaries, backups and environment-addressable restore evidence, and prove that no Demo/UAT
@@ -203,7 +263,7 @@ overlap or Production-derived data exists.
 | Gate | Required behaviour |
 |---|---|
 | Before request acceptance | Confirm environment authority, lease, cost centre and remaining ceiling |
-| Before plan approval | Show dated estimate, current spend, forecast, resource delta, uncertainty and ceiling impact |
+| Before plan approval | Show current estimate, spend, forecast, resource delta, uncertainty and ceiling impact; P3-WC01 must accept a maximum estimate age, and an absent/stale estimate or material configuration delta forces refresh |
 | Before Green deployment | Revalidate budget and detect price/configuration drift |
 | During dual revisions | Track incremental release-window cost and enforce C-067 retirement timer |
 | During environment life | Enforce lease expiry, scale-to-zero eligibility, anomaly alerts and protected-resource exclusions |
@@ -234,13 +294,39 @@ Telemetry absence is not health. Public health endpoints expose no secrets, topo
 detail. Release confirmation consumes independently collected telemetry and tests rather than the
 deployer's assertion.
 
+The operation evidence set is append-only from its first transition. The correlated view becomes
+immutable at `CLOSED`, `ROLLED_BACK`, `FAILED_ROLLBACK`, `DEACTIVATED` or `REVOKED`; corrections and
+retries append linked records. DORA is derived from GitHub workflow/release timestamps and operational
+telemetry, never by granting ledger authority to telemetry. Collection starts with the first complete
+P3-WC03 Demo operation; QA owns measurement integrity, Product owns outcome interpretation, and
+Founder acceptance of targets remains protected.
+
+## Enterprise Evidence Verification Codes
+
+These codes extend, but do not replace, EVC-01 through EVC-08. Every result binds operation ID,
+environment, release tuple, attempt, stage where applicable, expected target, actual observation,
+raw evidence hash, independent verifier and verdict.
+
+| Code | Required proof | First required |
+|---|---|---|
+| EVC-ED-01 | One-action authorization, valid state transitions and no bypass | P3-WC03 |
+| EVC-ED-02 | Exact-six retrieval, signature, provenance and cross-environment digest equality | P3-WC01; repeat each promotion |
+| EVC-ED-03 | Green isolation, ordered blue-green stages and C-067 Blue retirement | P3-WC03 |
+| EVC-ED-04 | Triggered automatic rollback and authorized manual rollback restore the accepted full tuple | P3-WC03 |
+| EVC-ED-05 | PITR/evidence-tail, RLS/PgBouncer, Keycloak, Temporal and Billing integrity | P3-WC03; broaden P3-WC04/05 |
+| EVC-ED-06 | Release-intelligence completeness and independent confirmation | P3-WC03 |
+| EVC-ED-07 | Estimate, ceiling, lease, dual-capacity and actual-cost reconciliation | P3-WC03 |
+| EVC-ED-08 | Customer-journey result and cost per successful approved journey | P3-WC03 |
+| EVC-ED-09 | DORA event completeness and baseline calculation | P3-WC03; activation evidence P3-WC07 |
+| EVC-ED-10 | Deactivation preserves protected foundation, recovery and evidence | P3-WC03/04 |
+
 ## Phase 3 Capability Binding
 
 | Component | Enterprise delivery obligations added or made explicit | Exit effect |
 |---|---|---|
 | P3-WC01 Readiness | Verify registry retrieval, workflow/environment configuration, OIDC subjects, edge options, revision capability, cost/pricing inputs, monitoring prerequisites and rollback dependencies | No resource creation until the complete control-plane prerequisites and owner decisions are visible |
 | P3-WC02 Foundations | Establish remote state/locking, isolated identities/vault references, monitoring, budgets, managed edge foundations and deployment evidence custody | Foundations support governed plans and zero application traffic |
-| P3-WC03 Demo | Execute one-action deployment, Green isolation, progressive shift, automatic/manual rollback drill, release dashboard, cost reconciliation and safe deactivation | Demo proves the delivery system, not only application functionality |
+| P3-WC03 Demo | Execute EVC-ED-01..10 as applicable: one-action deployment, Green isolation, progressive shift, automatic/manual rollback drill, release dashboard, cost reconciliation, first DORA baseline event and safe deactivation | Demo proves the delivery system, not only application functionality |
 | P3-WC04 UAT | Promote the identical tuple; execute production-like load, resilience, rollback, recovery, migration compatibility and release-intelligence gates | Independent proof that promotion and recovery hold under accepted UAT targets |
 | P3-WC05 Production | Require explicit Founder promotion; deploy minimum-safe Green, perform non-destructive progression, preserve Blue, confirm independently and reconcile actual cost | Production evidence is presented without implied acceptance |
 | P3-WC06 Handover | Bind deployment, rollback, cost, evidence and access runbooks to accepted Incident/Change/Release policies | Supervised operators can act without receiving architecture or self-approval authority |
@@ -264,6 +350,15 @@ The following are gaps to verify and route, not authorization to repair:
 6. Release intelligence does not yet correlate manifest, revisions, traffic, CCT/security/journey
    evidence, rollback and cost in one operation record.
 7. Canonical Incident, Change and Release policies remain required before P3-WC06/07.
+8. `.github/workflows/autonomous-sprint.yaml` grants workflow-level `id-token: write`, extending
+   Azure federation to non-deployment jobs; SA-04 requires job-level denial and exact deployment
+   subjects before any Phase 3 workflow receives OIDC authority.
+9. CT-06 direct/PgBouncer transaction-local RLS behavior remains a live data-boundary obligation;
+   it must pass DATA-01..03 against the selected pooling path before Demo Green touches tenant data.
+
+The legacy `promote.yaml` path must be disabled or converted to exact-six, job-scoped OIDC before
+any Phase 3 workflow receives provider authority. It cannot coexist as an alternate authoritative
+promotion path.
 
 Each material repair requires an accepted owner contract, exact artifact binding, fresh estimate,
 GO Authorization, later Acceptance and independent review. Platform IT Expert Skill 17 remains
@@ -282,6 +377,21 @@ This addendum does not decide:
 
 These remain with the named Platform, Solution, Security, Data, Product, QA, Operations or Founder
 authority. Missing decisions stop the affected component.
+
+### Protected Decision Blocking Map
+
+| Decision | Owner boundary | Blocking gate |
+|---|---|---|
+| Edge/WAF/IP product, private reachability and escape hatch | Platform/Solution/Security; Founder for protected spend/IP | P3-WC01 exit and P3-WC02 design |
+| Demo/UAT hostnames, DNS and certificates | Founder with Security/Platform evidence | Respective P3-WC03/04 entry |
+| Traffic weights, windows, samples and rollback thresholds | Product/QA/Platform/Security | P3-WC03 before `TRAFFIC_SHIFTING`; repeat for UAT/Production targets |
+| CT-06 pooling/RLS client contract | Data/Solution/Security/QA | P3-WC03 before database-bearing Green deployment |
+| Migration tuple, PITR target and recovery objectives | Data/Platform/QA; Founder for Production risk | P3-WC03/04 acceptance and P3-WC05 entry |
+| UAT load, resilience, journey and recovery targets | Product/QA/Platform/Data/Security | P3-WC04 entry and exit |
+| Production capacity, SLO, RPO/RTO and residual risk | Named owners; Founder acceptance | P3-WC05 entry |
+| GitHub Environment approvers and federated permission subjects | Security/Platform; Founder for Production actors | P3-WC01 exit before any provider authority |
+| Incident, Change and Release policies | Named policy owners and acceptance authorities | P3-WC06 entry |
+| DORA interpretation/targets and operational competence | QA/Product/Operations; Founder at activation | P3-WC07 exit / P3-WC08 decision |
 
 ## Dependency Impact Report
 

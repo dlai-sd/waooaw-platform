@@ -26,6 +26,8 @@
     "exact-six immutable promotion and no-rebuild rollback invariants",
     "governed one-action, progressive blue-green and independent-confirmation states",
     "pre-action cost, lease, C-067 retirement and actual-reconciliation gates",
+    "EVC-ED-01 through EVC-ED-10 enterprise evidence mapping",
+    "CT-07 exact NOT_EXECUTED_PHASE_3 preservation",
     "Phase 2 and R-127 evidence preservation",
     "JSON parse, Markdown structure, stale-authority scan and git diff --check"
   ],
