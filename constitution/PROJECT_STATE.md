@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 105
+**State Revision:** 106
 **Last Updated:** 2026-08-14
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -21,34 +21,27 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Platform version | 1.45.0 |
 | Latest completed Work Contract | WC-074 - GOAL-006 Enterprise Delivery Addendum |
 | Latest merge | PR #287 merged to `main` as `bb511099ca5ff693ea538223e3779e4887421a99` on 2026-08-14 |
-| Active delivery | GOAL-006 P3-WC01 read-only evidence complete and BLOCKED - CT-07 fails, exact-six GHCR packages are absent and prerequisites remain unmet |
+| Active delivery | GOAL-007 QA Institution intake drafted; awaiting independent INST-002 review and Founder plan acknowledgement |
 
-## Active Checkpoint - GOAL-006 P3-WC01 Read-Only Readiness
+## Active Checkpoint — GOAL-007 QA Institution And Test Champion Intake
 
 | Milestone | Status |
 |---|---|
-| Phase 1, Phase 2 and readiness baseline | DONE — PR #281, PR #284, PR #285 and PR #286 merged; R-117 and R-120..R-127 approved |
-| WC-074 planning contract | DONE — planning-only scope and no-cloud boundary established |
-| Enterprise delivery addendum | DONE — immutable promotion, one-action orchestration, blue-green, rollback, release intelligence and FinOps contracts drafted |
-| P3-WC01 through P3-WC08 integration | DONE — addendum bound as co-controlling acceptance evidence without changing sequence |
-| Independent delta review | DONE — R-128 APPROVE at `919db761b25675f20029ea029261666da3fb1c12` |
-| Planning branch and PR | DONE - PR #287 merged by Founder as `bb511099ca5ff693ea538223e3779e4887421a99` |
-| Attempt 1 | STOPPED - FA-050 attempt preserved after AADSTS530035; no mutation or spend |
-| Attempt 2 authorization | DONE - FA-051, GOA-GOAL-006-INST-009-04 and ACC-GOAL-006-INST-009-04 |
-| Attempt 2 evidence | COMPLETE - identity/quota pass; CT-07 FAIL; six GHCR packages absent; prerequisite and cost gaps recorded |
-| Independent evidence review | DONE - R-129 APPROVE; P3-WC01 remains blocked |
-| Provider mutation and spend | NONE - INR 0; no Azure, registry, DNS, role, provider or budget mutation |
-| P3-WC02 and later authority | BLOCKED - no create, spend, DNS mutation, deployment, traffic, Production or activation authority |
+| PR #289 defect notice | DONE — detailed BP coverage, independence, evidence-language, and QA routing TODOs posted |
+| GitHub lifecycle action | DONE — Issue #290 created with `type:new-agent` and `status:waiting` |
+| WC-075 intake contract | DONE — bounded to registration, Understanding, provisional Classification, and proposed plan |
+| Goal Understanding and provisional Classification | DONE — GUR/GCL-GOAL-007-INST-013-01 |
+| Proposed Execution Plan | DONE — GEP-GOAL-007-INST-013-01; no GO Authorization issued |
+| Fresh INST-002 review | PENDING — classification, routing, separation, and plan readiness |
+| Founder acknowledgement | BLOCKED — follows independent review; no charter, registry status, or activation yet |
 
 ### Checkpoint Context
 
-- **Execution branch:** `goal/006/p3-wc01-authorization`; durable attempt evidence in `goals/GOAL-006-p3-wc01-readiness-evidence.md`.
-- **Clarified outcome:** Phase 3 must prove an enterprise delivery capability, not only running Azure resources or healthy containers.
-- **Key refinement:** Every environment gate now requires immutable promotion, governed orchestration, blue-green/rollback, release intelligence, customer-journey and cost evidence.
-- **Open dependencies:** Exact-six registry publication; Storage/Insights registration; budgets and least-privilege identities; authenticated DNS control; complete cost assumptions; owner targets; canonical policies; later Founder-protected actions.
-- **Resume source:** Git, WC-074, this checkpoint, the current sprint manifest, the PR #286 baseline and R-120..R-127; chat history is non-authoritative.
-- **Boundary:** FA-051 read-only work is complete. Neither attempt authorizes repair, provider/role/budget mutation, registry push, DNS change, deployment, traffic, Production or activation action.
-- **Protected local artifacts:** `.coverage`, `goals/goal_register.jsonl`, `logs/blueprint_assurance_report.json`, and `logs/bootstrap-evidence.jsonl` are unrelated and must remain unstaged.
+- **Delivery branch:** `goal/007/qa-test-champion`; GitHub Issue #290 is the lifecycle action.
+- **Outcome:** establish a first-class QA Institution and Test Champion without combining production authorship and final quality authority.
+- **Proposed identifier:** INST-015, pending fresh Constitutional Analyst verification and Founder ratification.
+- **GOAL-006 continuity:** P3-WC01 remains blocked by CT-07 failure and the prerequisites recorded in R-129; no cloud or later Phase 3 authority is inferred.
+- **Boundary:** no charter, registry status, architecture, implementation, test execution, cloud action, qualification, activation, approval, or merge is authorized by WC-075.
 
 ## Authorization Boundary
 
@@ -58,21 +51,21 @@ WC-064 owner-contribution routing, design, and grooming only. WC-065 through WC-
 constitutional readiness, acknowledgement, fresh implementation confirmation, GOA, Acceptance,
 and independent implementation review. WC-071 authorized GOAL-006 intake only; WC-072 authorized
 and closed offline Phase 2 delivery. WC-073 authorizes Phase 3 objective validation and planning
-records only. WC-074 authorizes the enterprise delivery planning clarification only. Neither grants
-Phase 3 cloud, DNS, expenditure, deployment, Production or activation authority.
+records only. WC-074 authorizes the enterprise delivery planning clarification only. WC-075
+authorizes GOAL-007 intake and proposed planning only. None grants new implementation, Phase 3
+cloud, DNS, expenditure, deployment, Production, QA Institution status, or agent activation authority.
 
 ## Current Blockers
 
-P3-WC01 is blocked by CT-07 failure, absent exact-six GHCR packages, unregistered Storage/Insights
-providers, absent budgets, overbroad human access, unproven authenticated DNS control, incomplete
-cost totals and unresolved targets. The three canonical operations policies remain absent and
-separately block P3-WC06/07 handover and activation.
+GOAL-007 routing is blocked pending fresh INST-002 review and Founder acknowledgement. The proposed
+QA Institution is not registered or operational. GOAL-006 P3-WC01 remains blocked by CT-07 failure,
+absent exact-six GHCR packages, and its recorded Azure, identity, DNS, cost, target, and policy gaps.
 
 ## Next Authorized Action
 
-Publish the R-129-approved blocked checkpoint. Then present a separate bounded remediation decision
-covering exact registry publication and named Azure prerequisite changes. Do not infer P3-WC02,
-deployment, DNS or Production authority.
+Obtain fresh INST-002 review of WC-075, GUR/GCL-GOAL-007-INST-013-01, and
+GEP-GOAL-007-INST-013-01. If ready, obtain exact Founder acknowledgement before issuing P1-WC01 to
+the Business Architect. Do not create or activate the QA Institution before the protected decisions.
 
 ## History And Evidence
 
