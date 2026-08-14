@@ -100,3 +100,17 @@ under ACK-GOAL-007-INST-001-02. Reviewers may produce review evidence only. They
 AVD, ratify it, create/register INST-015, produce the agent specification, implement, simulate,
 activate, approve PR #291, or merge. The three reviews execute in parallel and must retain distinct
 producer attribution.
+
+## P1-WC02 Reviewer Acceptances And Formal Verdicts
+
+| Acceptance | GOA | Accepted at | Formal record | Verdict |
+|---|---|---|---|---|
+| ACC-GOAL-007-INST-004-01 | GOA-GOAL-007-INST-004-01 | 2026-08-14T17:20:10Z | R-134 / CR-GOAL-007-INST-004-01 | READY_FOR_RATIFICATION |
+| ACC-GOAL-007-INST-008-01 | GOA-GOAL-007-INST-008-01 | 2026-08-14T17:20:11Z | R-135 / CR-GOAL-007-INST-008-01 | READY_FOR_RATIFICATION |
+| ACC-GOAL-007-INST-002-01 | GOA-GOAL-007-INST-002-01 | 2026-08-14T17:20:12Z | R-136 / CR-GOAL-007-INST-002-02 | READY_FOR_RATIFICATION |
+
+All Acceptances follow their respective issuance timestamps. All three reviewers examined the same
+AVD content baseline commit `1c48463ee36db0580b31dec9a2f6712b60ec22f7` and SHA-256
+`7172b36cfb7cfe6737f5c275644cd0a94d919f973f12aa1da7ebc2cc206c050a`. Commit `a61c210`
+is the later authorization-record commit and does not replace the content baseline. P0/P1 findings:
+zero. P1-WC02 is complete and the package is ready for the Founder constitutional-birth decision.
