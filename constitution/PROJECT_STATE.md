@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 106
+**State Revision:** 107
 **Last Updated:** 2026-08-14
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -21,7 +21,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Platform version | 1.45.0 |
 | Latest completed Work Contract | WC-074 - GOAL-006 Enterprise Delivery Addendum |
 | Latest merge | PR #287 merged to `main` as `bb511099ca5ff693ea538223e3779e4887421a99` on 2026-08-14 |
-| Active delivery | GOAL-007 QA Institution intake drafted; awaiting independent INST-002 review and Founder plan acknowledgement |
+| Active delivery | GOAL-007 QA Institution intake cleared by R-130; awaiting Founder plan acknowledgement |
 
 ## Active Checkpoint — GOAL-007 QA Institution And Test Champion Intake
 
@@ -32,7 +32,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | WC-075 intake contract | DONE — bounded to registration, Understanding, provisional Classification, and proposed plan |
 | Goal Understanding and provisional Classification | DONE — GUR/GCL-GOAL-007-INST-013-01 |
 | Proposed Execution Plan | DONE — GEP-GOAL-007-INST-013-01; no GO Authorization issued |
-| Fresh INST-002 review | PENDING — classification, routing, separation, and plan readiness |
+| Fresh INST-002 review | DONE — R-130 READY; P2 classification stands; no P0/P1 intake blocker |
 | Founder acknowledgement | BLOCKED — follows independent review; no charter, registry status, or activation yet |
 
 ### Checkpoint Context
@@ -57,15 +57,15 @@ cloud, DNS, expenditure, deployment, Production, QA Institution status, or agent
 
 ## Current Blockers
 
-GOAL-007 routing is blocked pending fresh INST-002 review and Founder acknowledgement. The proposed
-QA Institution is not registered or operational. GOAL-006 P3-WC01 remains blocked by CT-07 failure,
+GOAL-007 routing is blocked pending exact Founder acknowledgement after R-130. The proposed QA
+Institution is not registered or operational. GOAL-006 P3-WC01 remains blocked by CT-07 failure,
 absent exact-six GHCR packages, and its recorded Azure, identity, DNS, cost, target, and policy gaps.
 
 ## Next Authorized Action
 
-Obtain fresh INST-002 review of WC-075, GUR/GCL-GOAL-007-INST-013-01, and
-GEP-GOAL-007-INST-013-01. If ready, obtain exact Founder acknowledgement before issuing P1-WC01 to
-the Business Architect. Do not create or activate the QA Institution before the protected decisions.
+Obtain exact Founder acknowledgement of GCL-GOAL-007-INST-013-01 and
+GEP-GOAL-007-INST-013-01 after R-130. Only then may INST-013 issue P1-WC01 to the Business
+Architect. Do not create or activate the QA Institution before the protected decisions.
 
 ## History And Evidence
 
