@@ -25,9 +25,9 @@
     "JSON parse, Markdown structure, stale-authority scan and git diff --check"
   ],
   "dependencies": [
-    "Phase 1 merged as 1655afb",
-    "Phase 2 merged as f528114 and independently accepted by R-120 through R-125",
-    "post-merge closure R-126 and PR #285 merge b0f1385",
+    "Phase 1 merged as 1655afbab1dec83949734dd435c6c17f811e2683",
+    "Phase 2 merged as f52811436c900c2405aad871c43c88c073ae55fb and independently accepted by R-120 through R-125",
+    "post-merge closure R-126 and PR #285 merge b0f1385a07ae02be1cbfd8b9b65f55acd498c65c",
     "signed exact-six offline release manifest",
     "147/147 Phase 2 executable tests and 150/150 proof obligations",
     "fresh INST-002 planning review R-127"

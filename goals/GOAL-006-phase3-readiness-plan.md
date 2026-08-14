@@ -42,7 +42,7 @@ on the bounded P3-WC01 authorization package below.
 |---|---|
 | Reuse record ID | `REUSE-GOAL-006-P3-01` |
 | Source records | Phase 1 CR-GOAL-006-INST-011-02/R-116/R-117; WC-072; R-120 through R-126 |
-| Source commits | Phase 1 merge `1655afb`; Phase 2 merge `f528114`; post-merge closure `b0f1385` |
+| Source commits | Phase 1 merge `1655afbab1dec83949734dd435c6c17f811e2683`; Phase 2 merge `f52811436c900c2405aad871c43c88c073ae55fb`; post-merge closure `b0f1385a07ae02be1cbfd8b9b65f55acd498c65c` |
 | Approved scope | P3-WC01..08 design plus offline Phase 2 implementation, qualification and review |
 | Target scope | Phase 3 entry, environment qualification, handover and Goal closure planning |
 | Producer and decision owners | Preserved from each source; INST-013 receives no specialist or Founder authority |
@@ -56,12 +56,30 @@ on the bounded P3-WC01 authorization package below.
 
 | Evidence | Pin | Reused conclusion | Explicit non-conclusion |
 |---|---|---|---|
-| Integrated Phase 1 package | Commit `1655afb`; accepted package SHA-256 `495f7206...` | P3-WC01..08 requirements, owners and phase gates | No cloud authority or current live fact |
+| Integrated Phase 1 package | Commit `1655afbab1dec83949734dd435c6c17f811e2683`; accepted package SHA-256 `495f720692bd71358f5d21db03bfa364b5724978e8b3b8ce85d3ba894b65303f` | P3-WC01..08 requirements, owners and phase gates | No cloud authority or current live fact |
 | Release manifest | SHA-256 `72150c68487645fbfe067410d9f3f8832d19e9127b3623bfde5c168d1ce36e6d` | Signed exact-six identity, digest syntax and evidence binding | No proof that an OCI registry currently holds those digests |
 | Qualification ledger | SHA-256 `8bce40628cdd86b15324ef11683a82b13a7f6f86cc400513a3455e7fb76fd764` | 147/147 executable tests and 150/150 Phase 2 proofs | CT-07 remains `NOT_EXECUTED_PHASE_3`; live effectiveness not executed |
 | Supply-chain evidence | SHA-256 `433a891b03cba5f401254f9c11b3d01a4a0f37e4c67f824a6bfa9cca01ba73e3` | SPDX 2.3, SLSA v1 and OpenVEX bindings for six members | No registry retrieval, runtime or environment proof |
 | Promotion policy | SHA-256 `f627fc9a7f69630a970741803ef988cbf4519540c5be7251e91822447a6174ef` | Exact 11-step success sequence and four-step restoration contract | `offline_synthetic`; zero provider/live execution |
 | Independent reviews | R-120..R-126 | Phase 2 accepted and closed without self-approval | No Phase 3, Production or activation verdict |
+
+### Review Evidence Locators
+
+| Review | Repository path | SHA-256 |
+|---|---|---|
+| R-120 | `reviews/R-120-goal-006-p2-wc01-implementation-review.md` | `65c1071b069ebc8aa4f4799c44a155a99cc00908eaf4cbc9feec39a91b5ca37a` |
+| R-121 | `reviews/R-121-goal-006-p2-solution-architecture-review.md` | `c54b87fe39539ab5dda5bd970a092e67126eaf0c8f6f4c44ee7f2c579cb8bc23` |
+| R-122 | `reviews/R-122-goal-006-p2-qa-review.md` | `bc406f07374e35f12a42ffdb4bc8534eb8c0c6fa23094627e095566348955b37` |
+| R-123 | `reviews/R-123-goal-006-p2-platform-review.md` | `92a218d0cf27a2d0a9349e232a0f88f9a207e908f7ff18bf3565ad670f6f90dd` |
+| R-124 | `reviews/R-124-goal-006-p2-security-review.md` | `2671b86cb690a9b6c2d3695409d35c9437464c8d552add970840b5fdf13c9547` |
+| R-125 | `reviews/R-125-goal-006-p2-constitutional-closure.md` | `8deb95cb1cfd24836c7a6cd97e043e268c04f17fe24bbd54a2cb6d73e3968b81` |
+| R-126 | `reviews/R-126-goal-006-p2-post-merge-closure-review.md` | `b05233964fcc9c342ad8ac3393a8151e5fa8d1dec2a74187042e6e3cd2606414` |
+
+All seven files are present in the repository. PR #285 merge
+`b0f1385a07ae02be1cbfd8b9b65f55acd498c65c` contains R-126 and the three Phase 2 closure records.
+The promotion policy SHA-256 is identical in the current tree and at Phase 2 merge
+`f52811436c900c2405aad871c43c88c073ae55fb`; its `NOT_ACCEPTED_NOT_EXECUTED` field records the
+Phase 2 boundary and is not a post-closure mutation.
 
 The qualification ledger's embedded `qa_acceptor: Independent QA pending` and draft-PR wording are
 historical generation-state fields. Later immutable records R-122, R-125, R-126 and merge commits
@@ -243,7 +261,7 @@ No blocked row is waived by this plan. Phase 3 does not start until P3-R11 is sa
 | Indirect dependants | P3-WC08 closure depends on all refined gates and protected decisions |
 | Unaffected evidence | Phase 2 implementation, tests, proof counts, security remediation and R-120..R-126 verdicts remain accepted |
 | Required re-contribution | Live readiness, cost/targets, canonical policies and protected decisions only; no broad Phase 2 rework |
-| Baseline and delta | Phase 1 merge `1655afb`; Phase 2 merge `f528114`; refinement branch from `61da873` |
+| Baseline and delta | Phase 1 merge `1655afbab1dec83949734dd435c6c17f811e2683`; Phase 2 merge `f52811436c900c2405aad871c43c88c073ae55fb`; refinement branch from `61da87314f666249aeabdd507a35aca1bb3860e5` |
 | Unresolved impacts | Registry availability, live topology, prices, policies, targets and Founder-reserved actions remain blocked |
 
 ## Exact Founder Decision Required To Begin P3-WC01

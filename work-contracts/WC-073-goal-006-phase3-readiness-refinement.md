@@ -8,7 +8,7 @@
 | Authorized by | Founder instruction dated 2026-08-14 |
 | Status | READY FOR INDEPENDENT REVIEW - planning only; no Phase 3 execution authority |
 | Branch | `goal/006/phase3-readiness-refinement` |
-| Base | `61da873` on `origin/main` |
+| Base | `61da87314f666249aeabdd507a35aca1bb3860e5` on `origin/main` |
 
 ## Objective
 
@@ -35,9 +35,9 @@ This Work Contract authorizes repository planning records only. It does not auth
 
 | Input | Required state | Validation |
 |---|---|---|
-| Phase 1 integrated grooming and P3-WC01..08 | Accepted baseline | PR #281 merge `1655afb`; integrated SHA-256 `495f7206...` |
-| Phase 2 implementation and qualification | Complete and independently accepted | PR #284 merge `f528114`; 147/147 tests; 150/150 proof obligations |
-| Phase 2 post-merge checkpoint | Independently approved | R-126 APPROVE; PR #285 merge `b0f1385` |
+| Phase 1 integrated grooming and P3-WC01..08 | Accepted baseline | PR #281 merge `1655afbab1dec83949734dd435c6c17f811e2683`; integrated SHA-256 `495f720692bd71358f5d21db03bfa364b5724978e8b3b8ce85d3ba894b65303f` |
+| Phase 2 implementation and qualification | Complete and independently accepted | PR #284 merge `f52811436c900c2405aad871c43c88c073ae55fb`; 147/147 tests; 150/150 proof obligations |
+| Phase 2 post-merge checkpoint | Independently approved | R-126 APPROVE; PR #285 merge `b0f1385a07ae02be1cbfd8b9b65f55acd498c65c` |
 | Current Goal and project state | Phase 2 closed; Phase 3 unauthorized | `constitution/PROJECT_STATE.md` revision 98 |
 | Founder requirement baseline | Retained and controlling | FR-001 through FR-056 |
 

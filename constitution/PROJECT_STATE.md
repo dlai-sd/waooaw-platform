@@ -20,15 +20,15 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Engineering status | IMPLEMENTATION |
 | Platform version | 1.45.0 |
 | Latest completed Work Contract | WC-072 — GOAL-006 Phase 2 Offline Cloud Delivery |
-| Latest merge | PR #285 merged to `main` as `b0f1385` on 2026-08-14 |
+| Latest merge | PR #285 merged to `main` as `b0f1385a07ae02be1cbfd8b9b65f55acd498c65c` on 2026-08-14 |
 | Active delivery | GOAL-006 WC-073 Phase 3 objectives refined after Phase 2; awaiting independent planning review; no Phase 3 execution authorized |
 
 ## Active Checkpoint — GOAL-006 Phase 3 Readiness Refinement
 
 | Milestone | Status |
 |---|---|
-| Phase 1 and Phase 2 delivery | DONE — PR #281 `1655afb`, PR #284 `f528114`, reviews R-117 and R-120..R-125 |
-| Phase 2 post-merge closure | DONE — R-126 APPROVE; PR #285 merged as `b0f1385` |
+| Phase 1 and Phase 2 delivery | DONE — PR #281 `1655afbab1dec83949734dd435c6c17f811e2683`, PR #284 `f52811436c900c2405aad871c43c88c073ae55fb`, reviews R-117 and R-120..R-125 |
+| Phase 2 post-merge closure | DONE — R-126 APPROVE; PR #285 merged as `b0f1385a07ae02be1cbfd8b9b65f55acd498c65c` |
 | WC-073 planning contract | DONE — planning-only boundary and completeness ledger established |
 | Phase 2 evidence reconciliation | DONE — exact pins, reuse limits and changed facts recorded |
 | P3-WC01 through P3-WC08 objective validation | DONE — sequence retained and refined for execution readiness |
@@ -90,8 +90,9 @@ Platform Operations activation before the protected decision is recorded.
 - WC-062 delivery closure: PR #273 merged by the Founder to `main` as `1a624d6` on 2026-08-12.
 - WC-065 delivery closure: PR #278 merged by the Founder to `main` as `f28badc` on 2026-08-13;
   post-merge Docker regression and the PM delivery report passed.
-- GOAL-006 Phase 2 delivery: PR #284 merged as `f528114`; post-merge closure PR #285 merged as
-  `b0f1385`; WC-072 and R-120 through R-126 are the durable evidence.
+- GOAL-006 Phase 2 delivery: PR #284 merged as `f52811436c900c2405aad871c43c88c073ae55fb`;
+  post-merge closure PR #285 merged as `b0f1385a07ae02be1cbfd8b9b65f55acd498c65c`; WC-072
+  and R-120 through R-126 are the durable evidence.
 - Founder Commercial Governance formalization: PR #275 merged by the Founder to `main` as
   `2276ab2` on 2026-08-12; WC-064 remains ready for owner routing.
 - Earlier completed work remains authoritative in its owning Work Contract, Goal, review,
