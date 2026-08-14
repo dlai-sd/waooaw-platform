@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 98
+**State Revision:** 99
 **Last Updated:** 2026-08-14
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -20,30 +20,30 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Engineering status | IMPLEMENTATION |
 | Platform version | 1.45.0 |
 | Latest completed Work Contract | WC-072 — GOAL-006 Phase 2 Offline Cloud Delivery |
-| Latest merge | PR #284 merged to `main` as `f528114` on 2026-08-13 |
-| Active delivery | GOAL-006 Phase 2 / WC-072 complete and merged; R-120 through R-126 accepted; no further INST-010 Phase 2 implementation pending |
+| Latest merge | PR #285 merged to `main` as `b0f1385` on 2026-08-14 |
+| Active delivery | GOAL-006 WC-073 Phase 3 objectives refined after Phase 2; awaiting independent planning review; no Phase 3 execution authorized |
 
-## Active Checkpoint — GOAL-006 Phase 2 Delivery Closure
+## Active Checkpoint — GOAL-006 Phase 3 Readiness Refinement
 
 | Milestone | Status |
 |---|---|
-| Phase 1 delivery | DONE — PR #281 merged as `1655afb`; R-117 conditions remain downstream gates |
-| INST-010 Skill 17 specification | DONE — PR #283 merged as `61b1cda`; Founder activated Skill 17 for the current session |
-| Current-session implementation consent | DONE — offline P2-WC01 through P2-WC08 only; INR 5,000 monthly ceiling; Phase 3 and live/cloud actions prohibited |
-| Phase 2 GO Authorization | VALID — `GOA-GOAL-006-INST-010-02` issued by INST-013 at 13:10:04Z |
-| INST-010 Acceptance | VALID — `ACC-GOAL-006-INST-010-02` recorded at 13:10:05Z |
-| Constitutional blocker | RESOLVED — CB-006 closed by FA-049, GOA-02 and ACC-02 |
-| Phase 2 Work Contract | DONE — WC-072 P2-WC01 through P2-WC08 independently accepted and merged |
-| Current component | P2-WC08 DONE - R-125 CLEAR; post-merge checkpoint R-126 APPROVE |
-| Branch and PR | DONE — PR #284 merged by the Founder as `f528114`; author did not approve or merge |
+| Phase 1 and Phase 2 delivery | DONE — PR #281 `1655afb`, PR #284 `f528114`, reviews R-117 and R-120..R-125 |
+| Phase 2 post-merge closure | DONE — R-126 APPROVE; PR #285 merged as `b0f1385` |
+| WC-073 planning contract | DONE — planning-only boundary and completeness ledger established |
+| Phase 2 evidence reconciliation | DONE — exact pins, reuse limits and changed facts recorded |
+| P3-WC01 through P3-WC08 objective validation | DONE — sequence retained and refined for execution readiness |
+| Phase 3 entry package | DONE — exact P3-WC01 Founder decision and no-cloud pre-entry boundary recorded |
+| Independent planning review | PENDING — fresh INST-002 R-127 required |
+| Phase 3 authorization | BLOCKED — no cloud-query, create, spend, DNS, deployment, Production or activation authority |
 
 ### Checkpoint Context
 
-- **Delivery branch:** `goal/006/phase2-offline-delivery`; PR #284 merged as `f528114`; P2-WC01 through P2-WC08 independently accepted; final branch head `89aede0`; R-125 CLEAR; post-merge checkpoint R-126 APPROVE.
-- **Authority present:** Founder current-session consent, Skill 17 activation and INR 5,000 ceiling.
-- **Authority:** FA-049, `GOA-GOAL-006-INST-010-02` and `ACC-GOAL-006-INST-010-02` authorize the complete offline Phase 2 envelope.
-- **Resume source:** Git, CB-006, this checkpoint, merged PR #284 and its green CI records; chat history is non-authoritative.
-- **Boundary:** Phase 2 contribution is closed. No provider/live access, cloud spend, DNS action, deployment, Production, traffic, Platform Operations activation, new PR approval/merge authority or Phase 3 action follows from this closure.
+- **Planning branch:** `goal/006/phase3-readiness-refinement`; WC-073 and `goals/GOAL-006-phase3-readiness-plan.md`.
+- **Validated outcome:** Phase 3 remains Azure deployment, Demo/UAT/Production qualification and supervised handover; it is not steady-state operation.
+- **Key refinement:** P3-WC01 must prove registry retrievability and live topology before any foundation or environment action.
+- **Open dependencies:** CT-07, live effectiveness, dated costs, TGT-02..15 owner decisions, canonical Incident/Change/Release policies and all Founder-protected actions.
+- **Resume source:** Git, WC-073, this checkpoint, the current sprint manifest and R-120..R-126; chat history is non-authoritative.
+- **Boundary:** This is repository planning only. No provider query, credentials, cloud spend, DNS, deployment, Production, traffic, Platform Operations activation, Phase 3 GOA, PR approval or merge is authorized.
 - **Protected local artifacts:** `.coverage`, `goals/goal_register.jsonl`, `logs/blueprint_assurance_report.json`, and `logs/bootstrap-evidence.jsonl` are unrelated and must remain unstaged.
 
 ## Authorization Boundary
@@ -52,20 +52,22 @@ WC062-01 through WC062-07 were implemented under ACC-07, independently reviewed,
 Founder through PR #273. WC-063 was superseded before implementation. Founder selection authorizes
 WC-064 owner-contribution routing, design, and grooming only. WC-065 through WC-069 require separate approved specifications,
 constitutional readiness, acknowledgement, fresh implementation confirmation, GOA, Acceptance,
-and independent implementation review. WC-071 authorizes GOAL-006 intake records only; it does not
-authorize Phase 1 specialist grooming, Phase 2 implementation, or Phase 3 cloud deployment.
+and independent implementation review. WC-071 authorized GOAL-006 intake only; WC-072 authorized
+and closed offline Phase 2 delivery. WC-073 authorizes Phase 3 objective validation and planning
+records only. It grants no Phase 3 cloud, DNS, expenditure, deployment, Production or activation authority.
 
 ## Current Blockers
 
-No constitutional blocker is open for Phase 2 contribution start. The three canonical operations policies remain downstream dependencies for
-policy-dependent automation and Phase 3 handover/activation.
+No constitutional blocker is open for WC-073 planning. Phase 3 execution is stopped pending R-127,
+Founder P3-WC01 authority and later per-component GOA/Acceptance records. The three canonical
+operations policies remain absent and block P3-WC06/07 handover and activation.
 
 ## Next Authorized Action
 
-Return the completed Phase 2 Contribution Record to INST-013 for any remaining GEOM Journey
-completion or closure action. No further INST-010 Phase 2 implementation is pending. Phase 3,
-provider/live access, cloud spend, DNS action, deployment, Production action, traffic and Platform
-Operations activation remain unauthorized.
+Obtain fresh INST-002 review R-127 over WC-073 and the Phase 3 readiness plan. If approved, present
+the exact bounded P3-WC01 read-only readiness decision to the Founder. Do not issue a Phase 3 GOA or
+perform provider/live access, cloud spend, DNS action, deployment, Production action, traffic or
+Platform Operations activation before the protected decision is recorded.
 
 ## History And Evidence
 
@@ -88,6 +90,8 @@ Operations activation remain unauthorized.
 - WC-062 delivery closure: PR #273 merged by the Founder to `main` as `1a624d6` on 2026-08-12.
 - WC-065 delivery closure: PR #278 merged by the Founder to `main` as `f28badc` on 2026-08-13;
   post-merge Docker regression and the PM delivery report passed.
+- GOAL-006 Phase 2 delivery: PR #284 merged as `f528114`; post-merge closure PR #285 merged as
+  `b0f1385`; WC-072 and R-120 through R-126 are the durable evidence.
 - Founder Commercial Governance formalization: PR #275 merged by the Founder to `main` as
   `2276ab2` on 2026-08-12; WC-064 remains ready for owner routing.
 - Earlier completed work remains authoritative in its owning Work Contract, Goal, review,
