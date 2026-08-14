@@ -244,14 +244,14 @@ learning record and PR/merge evidence.
 | P3-R01 Phase 2 merged and accepted | INST-013 reconciliation | M0 | PR #284, R-120..R-125 | None | SATISFIED | Merge/review pins |
 | P3-R02 Post-merge closure accepted | INST-013 reconciliation | M0 | R-126 and PR #285 | P3-R01 | SATISFIED | Merge/review pins |
 | P3-R03 Exact-six offline tuple | INST-010 source; reused | M0 | Signed manifest and evidence hashes | P3-R01 | SATISFIED_OFFLINE | Offline validator |
-| P3-R04 Registry retrievability and digest binding | INST-009 / Security / QA | M2 | Authorized registry evidence | Founder query authority | BLOCKED | P3-WC01 |
-| P3-R05 CT-07 live topology | INST-009 / QA | M2 | EVC-compliant live inventory | Founder query authority | BLOCKED | P3-WC01 |
-| P3-R06 Dated cloud cost and capacity recommendation | INST-009 with Product/Data/QA | M2 | INR/USD/date/region/tax/usage/confidence | Founder pricing-query authority | BLOCKED | P3-WC01 |
+| P3-R04 Registry retrievability and digest binding | INST-009 / Security / QA | M2 | Authorized registry evidence | Founder query authority | NOT_SATISFIED - six packages absent | Attempt 2 evidence; R-129 APPROVE |
+| P3-R05 CT-07 live topology | INST-009 / QA | M2 | EVC-compliant live inventory | Founder query authority | NOT_SATISFIED - CT-07 FAIL | Attempt 2 evidence; R-129 APPROVE |
+| P3-R06 Dated cloud cost and capacity recommendation | INST-009 with Product/Data/QA | M2 | INR/USD/date/region/tax/usage/confidence | Founder pricing-query authority | PARTIAL - rates present, total assumptions unresolved | Attempt 2 evidence; owner decisions pending |
 | P3-R07 TGT-02..15 decisions | Named Product/Platform/Data/Security/QA owners; Founder where protected | M2/M3 | Versioned target decisions | P3-R06 and readiness facts | BLOCKED | Owner and Founder records |
 | P3-R08 Incident policy | Named policy owner and acceptance authority | M2/M3 | Accepted canonical policy | Owner routing | BLOCKED | File and review |
 | P3-R09 Change policy | Named policy owner and acceptance authority | M2/M3 | Accepted canonical policy | Owner routing | BLOCKED | File and review |
 | P3-R10 Release policy | Named policy owner and acceptance authority | M2/M3 | Accepted canonical policy | Owner routing | BLOCKED | File and review |
-| P3-R11 P3-WC01 cloud-query authorization | Founder | M3 | Exact scope, identity, ceiling and stops | R-127 and acknowledgement | BLOCKED | Founder record |
+| P3-R11 P3-WC01 cloud-query authorization | Founder | M3 | Named scope, identity, INR 0 ceiling, current-session window and stops | R-128 and PR #287 merge | SATISFIED - FA-050 stopped; FA-051 completed | Authorization and attempt evidence |
 | P3-R12 Resource creation and spend | Founder | M3 | Per-component authority | Accepted prior component | BLOCKED | Founder record |
 | P3-R13 DNS/hostnames | Founder | M3 | Environment-specific decision | Readiness recommendation | BLOCKED | Founder record |
 | P3-R14 Production targets/risk/promotion | Founder after owner evidence | M3 | Exact accepted values and risks | Accepted UAT | BLOCKED | Founder record |
@@ -259,7 +259,9 @@ learning record and PR/merge evidence.
 | P3-R16 Goal closure | Fresh INST-002 and Founder | M3 | Clearance and acceptance | P3-WC01..08 evidence | BLOCKED | GEOM closure gate |
 | P3-R17 Enterprise delivery contract | INST-013 coordination; independent Platform/Solution/Security/Data/QA/Constitutional review | M2/M3 | WC-074 addendum and R-128 APPROVE | PR #286 baseline | SATISFIED | Reviewed commit `919db761b25675f20029ea029261666da3fb1c12` |
 
-No blocked row is waived by this plan. Phase 3 does not start until P3-R17 and P3-R11 are satisfied.
+No blocked row is waived by this plan. P3-R17 and P3-R11 are satisfied. Attempt 2 establishes that
+P3-WC01 is not ready: P3-R04 and P3-R05 are not satisfied, P3-R06 is partial, and P3-R07 remains
+blocked. P3-WC02 and later components remain blocked.
 
 ## Dependency Impact Report
 
@@ -272,7 +274,7 @@ No blocked row is waived by this plan. Phase 3 does not start until P3-R17 and P
 | Unaffected evidence | Phase 2 implementation, tests, proof counts, security remediation and R-120..R-127 verdicts remain accepted within their stated boundaries |
 | Required re-contribution | Enterprise delivery delta review, live readiness, owner contracts, cost/targets, canonical policies and protected decisions only; no broad Phase 2 rework |
 | Baseline and delta | PR #286 merge `94701362d957fdc13d88bc7637c8b773a7cfb385`; WC-074 records the post-merge Founder clarification |
-| Unresolved impacts | Registry availability, live topology, workflow effectiveness, edge/product choices, prices, policies, targets and Founder-reserved actions remain blocked |
+| Unresolved impacts | Six GHCR packages are absent; live exact-six topology is absent; Storage and Insights providers and budgets are missing; authenticated DNS control, least-privilege execution identity, total cost assumptions, policies, targets and Founder-reserved actions remain blocked |
 
 ## Exact Founder Decision Required To Begin P3-WC01
 
@@ -284,8 +286,11 @@ After Founder acceptance and merge of the R-128-approved WC-074 package, INST-01
 > activation is included. Record approved tenant/subscription, regions, registry scope, DNS zones,
 > identities, ceiling, start/end window, evidence destination, stop conditions and revocation path.
 
-Only after that decision is recorded may INST-013 issue the P3-WC01 GO Authorization and the named
-executor record a later Acceptance. P3-WC02 and all later actions require separate authority.
+FA-050, GOA-GOAL-006-INST-009-03 and ACC-GOAL-006-INST-009-03 record the first bounded attempt. It
+stopped on `AADSTS530035` before live inventory. FA-051, GOA-GOAL-006-INST-009-04 and
+ACC-GOAL-006-INST-009-04 record the completed second read-only attempt. Its evidence does not satisfy
+P3-WC01 exit. Any registry push, provider registration, budget/identity creation, DNS proof action or
+other repair requires separate scope and authority. P3-WC02 and all later actions remain blocked.
 
 ## Validation Verdict
 

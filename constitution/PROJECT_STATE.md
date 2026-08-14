@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 103
+**State Revision:** 105
 **Last Updated:** 2026-08-14
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -19,11 +19,11 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Gate | G5 CLEAR — prerequisites met; not session implementation authority |
 | Engineering status | IMPLEMENTATION |
 | Platform version | 1.45.0 |
-| Latest completed Work Contract | WC-073 — GOAL-006 Phase 3 Readiness Refinement |
-| Latest merge | PR #286 merged to `main` as `94701362d957fdc13d88bc7637c8b773a7cfb385` on 2026-08-14 |
-| Active delivery | GOAL-006 WC-074 enterprise delivery addendum approved by R-128; awaiting Founder PR review/merge; no Phase 3 execution authorized |
+| Latest completed Work Contract | WC-074 - GOAL-006 Enterprise Delivery Addendum |
+| Latest merge | PR #287 merged to `main` as `bb511099ca5ff693ea538223e3779e4887421a99` on 2026-08-14 |
+| Active delivery | GOAL-006 P3-WC01 read-only evidence complete and BLOCKED - CT-07 fails, exact-six GHCR packages are absent and prerequisites remain unmet |
 
-## Active Checkpoint — GOAL-006 Enterprise Delivery Addendum
+## Active Checkpoint - GOAL-006 P3-WC01 Read-Only Readiness
 
 | Milestone | Status |
 |---|---|
@@ -32,17 +32,22 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Enterprise delivery addendum | DONE — immutable promotion, one-action orchestration, blue-green, rollback, release intelligence and FinOps contracts drafted |
 | P3-WC01 through P3-WC08 integration | DONE — addendum bound as co-controlling acceptance evidence without changing sequence |
 | Independent delta review | DONE — R-128 APPROVE at `919db761b25675f20029ea029261666da3fb1c12` |
-| Planning branch and PR | DONE — PR #287 open against `main`; no self-approval or merge |
-| Phase 3 authorization | BLOCKED — no cloud-query, create, spend, DNS, deployment, Production or activation authority |
+| Planning branch and PR | DONE - PR #287 merged by Founder as `bb511099ca5ff693ea538223e3779e4887421a99` |
+| Attempt 1 | STOPPED - FA-050 attempt preserved after AADSTS530035; no mutation or spend |
+| Attempt 2 authorization | DONE - FA-051, GOA-GOAL-006-INST-009-04 and ACC-GOAL-006-INST-009-04 |
+| Attempt 2 evidence | COMPLETE - identity/quota pass; CT-07 FAIL; six GHCR packages absent; prerequisite and cost gaps recorded |
+| Independent evidence review | DONE - R-129 APPROVE; P3-WC01 remains blocked |
+| Provider mutation and spend | NONE - INR 0; no Azure, registry, DNS, role, provider or budget mutation |
+| P3-WC02 and later authority | BLOCKED - no create, spend, DNS mutation, deployment, traffic, Production or activation authority |
 
 ### Checkpoint Context
 
-- **Planning branch:** `goal/006/phase3-enterprise-delivery`; WC-074 and `goals/GOAL-006-phase3-enterprise-delivery-addendum.md`.
+- **Execution branch:** `goal/006/p3-wc01-authorization`; durable attempt evidence in `goals/GOAL-006-p3-wc01-readiness-evidence.md`.
 - **Clarified outcome:** Phase 3 must prove an enterprise delivery capability, not only running Azure resources or healthy containers.
 - **Key refinement:** Every environment gate now requires immutable promotion, governed orchestration, blue-green/rollback, release intelligence, customer-journey and cost evidence.
-- **Open dependencies:** Independent delta review, CT-07, live effectiveness, owner contracts/targets, dated costs, canonical Incident/Change/Release policies and all Founder-protected actions.
+- **Open dependencies:** Exact-six registry publication; Storage/Insights registration; budgets and least-privilege identities; authenticated DNS control; complete cost assumptions; owner targets; canonical policies; later Founder-protected actions.
 - **Resume source:** Git, WC-074, this checkpoint, the current sprint manifest, the PR #286 baseline and R-120..R-127; chat history is non-authoritative.
-- **Boundary:** This is repository planning only. No provider query, credentials, cloud spend, DNS, deployment, Production, traffic, Platform Operations activation, Phase 3 GOA, PR approval or merge is authorized.
+- **Boundary:** FA-051 read-only work is complete. Neither attempt authorizes repair, provider/role/budget mutation, registry push, DNS change, deployment, traffic, Production or activation action.
 - **Protected local artifacts:** `.coverage`, `goals/goal_register.jsonl`, `logs/blueprint_assurance_report.json`, and `logs/bootstrap-evidence.jsonl` are unrelated and must remain unstaged.
 
 ## Authorization Boundary
@@ -58,17 +63,16 @@ Phase 3 cloud, DNS, expenditure, deployment, Production or activation authority.
 
 ## Current Blockers
 
-No constitutional blocker is open for WC-074 planning. Phase 3 execution is stopped pending Founder
-acceptance/merge of WC-074, separate P3-WC01 authority and later per-component GOA/Acceptance records. The three canonical
-operations policies remain absent and block P3-WC06/07 handover and activation.
+P3-WC01 is blocked by CT-07 failure, absent exact-six GHCR packages, unregistered Storage/Insights
+providers, absent budgets, overbroad human access, unproven authenticated DNS control, incomplete
+cost totals and unresolved targets. The three canonical operations policies remain absent and
+separately block P3-WC06/07 handover and activation.
 
 ## Next Authorized Action
 
-Founder reviews and, if accepted, merges PR #287. Only after that merge may INST-013 present the
-separate exact bounded P3-WC01 read-only readiness
-decision. Do not issue a Phase 3 GOA or perform provider/live
-access, cloud spend, DNS action, deployment, Production action, traffic or Platform Operations
-activation before the protected decision is recorded.
+Publish the R-129-approved blocked checkpoint. Then present a separate bounded remediation decision
+covering exact registry publication and named Azure prerequisite changes. Do not infer P3-WC02,
+deployment, DNS or Production authority.
 
 ## History And Evidence
 
@@ -96,6 +100,8 @@ activation before the protected decision is recorded.
   and R-120 through R-126 are the durable evidence.
 - GOAL-006 Phase 3 readiness: WC-073 and R-127 merged through PR #286 as
   `94701362d957fdc13d88bc7637c8b773a7cfb385`; WC-074 adds a planning-only enterprise delivery delta.
+- GOAL-006 enterprise delivery addendum: WC-074 and R-128 merged through PR #287 as
+  `bb511099ca5ff693ea538223e3779e4887421a99`; FA-050 stopped and FA-051 completed P3-WC01 read-only evidence.
 - Founder Commercial Governance formalization: PR #275 merged by the Founder to `main` as
   `2276ab2` on 2026-08-12; WC-064 remains ready for owner routing.
 - Earlier completed work remains authoritative in its owning Work Contract, Goal, review,
