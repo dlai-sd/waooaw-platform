@@ -83,3 +83,20 @@ The Founder authorized INST-013 to issue separate formal Stage 4 AVD review GOAs
 INST-008, and a fresh INST-002 context. This acknowledgement does not ratify AVD v1.0, create or
 register INST-015, authorize agent specification, implementation, simulation, activation, PR
 approval, or merge.
+
+## P1-WC02 Formal Stage 4 AVD Review Authorizations
+
+**Shared baseline:** commit `1c48463ee36db0580b31dec9a2f6712b60ec22f7`; AVD-002 v0.2 SHA-256
+`7172b36cfb7cfe6737f5c275644cd0a94d919f973f12aa1da7ebc2cc206c050a`.
+
+| Authorization | Institution | Complete contribution envelope | Participation window | Issued at | Status |
+|---|---|---|---|---|---|
+| GOA-GOAL-007-INST-004-01 | INST-004 — Enterprise Architect | Formal architectural feasibility, tool/isolation boundary, architecture-chain impact, and pre-ratification finding disposition for AVD-002 v0.2 | One constitutional session | 2026-08-14T17:20:00Z | ISSUED — awaiting Acceptance |
+| GOA-GOAL-007-INST-008-01 | INST-008 — AI Architect | Formal MagicLLM/task-category, deterministic-tool, model/data/economics boundary, and pre-ratification finding disposition for AVD-002 v0.2 | One constitutional session | 2026-08-14T17:20:01Z | ISSUED — awaiting Acceptance |
+| GOA-GOAL-007-INST-002-01 | INST-002 — fresh Constitutional Analyst context | Formal WIOM/GEOM, charter, C-065, evidence, immutable-boundary, and pre-ratification constitutional disposition for AVD-002 v0.2 | One constitutional session | 2026-08-14T17:20:02Z | ISSUED — awaiting Acceptance |
+
+Each authorization is `M2_CONTRIBUTE`, collaboration type `Primary`, and was issued by INST-013
+under ACK-GOAL-007-INST-001-02. Reviewers may produce review evidence only. They may not edit the
+AVD, ratify it, create/register INST-015, produce the agent specification, implement, simulate,
+activate, approve PR #291, or merge. The three reviews execute in parallel and must retain distinct
+producer attribution.
