@@ -7,7 +7,7 @@
 | `record_id` | GEP-GOAL-007-INST-013-01 |
 | `record_type` | Execution Plan |
 | `produced_at` | 2026-08-14T12:05:00Z |
-| Status | PROPOSED — no GO Authorization; awaiting fresh INST-002 review and Founder acknowledgement |
+| Status | FOUNDER-ACKNOWLEDGED P2 PLAN; lifecycle Amendment 1 proposed after AVD prerequisite discovery |
 | Work Contract | WC-075 |
 | GitHub action | Issue #290 |
 
@@ -24,13 +24,26 @@ Use one primary executor per complete Work Component. The Goal Orchestrator coor
 author a charter, agent specification, architecture, tests, tools, simulations, or quality verdict.
 The proposed QA Institution cannot validate or activate itself.
 
+## Amendment 1 — AVD And Constitutional Birth Prerequisites (Proposed)
+
+P1-WC01 execution found that the original plan incorrectly placed a complete agent specification
+before the mandatory AVD and constitutional-birth gates. The AGENT-AUTHORING-GUIDE and AVD Authoring
+Process require: AVD v0.1/v0.2 review, Founder ratification to v1.0, and a non-PROPOSED chartered
+registry entry before any agent specification is produced. This amendment preserves the approved
+Goal outcome and splits the old P1 sequence at the controlling prerequisite.
+
+This amendment is not effective until the Founder acknowledges it. R-131 through R-133 are advisory
+inputs only; they do not replace the formal authorized reviews below.
+
 | Phase / WC | Accountable owner | Contribution envelope | Dependencies | Exit evidence |
 |---|---|---|---|---|
-| P1-WC01 Institutional capability and Test Champion specification | INST-003 Business Architect | Draft QA capability, charter proposal, complete agent spec Sections 1–13, professional persona, skills, Decision Space, prohibited actions, evidence and escalation contracts | Reviewed plan and valid GOA | Contribution Record; complete spec package; no activation claim |
-| P1-WC02 Architecture chain and activation-gate review | INST-004 Enterprise Architect | Review the charter/spec; decide architectural impacts; ensure chain updates are complete; run the full binary Activation Gate; define least-privilege tool boundary | P1-WC01 | Independent EA Review; gate matrix; dependency impact report; zero unresolved P0/P1 |
-| P1-WC03 Constitutional operating-model integration | INST-002 Constitutional Analyst | Validate C-065 separation, WIOM/GEOM compatibility, proposed ORGANIZATION and registry changes, immutable-document boundaries, reviewer model, and status-transition evidence | P1-WC02 | Constitutional Clearance Record; proposed integration delta; no self-ratification |
-| P1-WC04 Charter, specification, and activation decision | INST-001 Founder | Ratify, return, or reject charter/spec; assign canonical Institution ID; authorize status transition and activation only if all gates pass | P1-WC03 | Founder Action and exact ratification/activation record or explicit return |
-| P2-WC01 QA tooling and deterministic harness integration | INST-010 Platform IT Expert | Implement only approved missing tool adapters, Docker runners, evidence contracts, CI hooks, and least-privilege integrations; reuse existing tools first | P1-WC04 plus separate current-session implementation authorization | Source/test changes, Docker evidence, security checks, independent implementation review |
+| P1-WC01 Institutional capability, AVD, and charter proposal | INST-003 Business Architect | Draft Domain 13 capability, AVD with professional mission and 13 skills, Charter Parameters, Decision Space, Code of Conduct, evidence/escalation contracts | Reviewed plan and valid GOA | AVD v0.2; CR-GOAL-007-INST-003-01; no spec/registry/activation claim |
+| P1-WC02 AVD multi-institution review | INST-004 EA + INST-008 AI Architect + fresh INST-002 CA contexts | Formally review feasibility, AI execution validity, constitutional alignment, charter boundaries, and architecture-chain impacts | P1-WC01 plus separate GOAs/Acceptances | Three independent Contribution/Review Records; all blocking findings resolved |
+| P1-WC03 Constitutional birth decision | INST-001 Founder | Ratify, return, or reject AVD; if ratified, establish v1.0 and authorize canonical Institution ID plus CHARTERED/CAPABILITY DEVELOPMENT registry and ORGANIZATION integration | P1-WC02 | Founder Action; AVD v1.0 and exact charter integration authority, or explicit return |
+| P1-WC04 Agent specification and architecture chain | INST-004 EA + INST-008 AI Architect | Derive complete agent spec from ratified AVD; define tools/prompts/DCM/PAC/data/container impacts; update full architecture chain | P1-WC03 chartered registry entry plus separate GOAs/Acceptances | Complete agent spec and chain; no implementation/activation claim |
+| P1-WC05 Independent Activation Gate and constitutional clearance | Fresh INST-004 reviewer then fresh INST-002 reviewer | Run binary author gate and independently validate WIOM/GEOM, C-065, immutable boundaries, registry/status evidence, and unresolved owner decisions | P1-WC04 | EA Activation Gate Review plus Constitutional Clearance; zero unresolved P0/P1 |
+| P1-WC06 Specification and capability-development decision | INST-001 Founder | Approve/return specification and authorize capability-development implementation only; activation remains later | P1-WC05 | Founder Action with exact implementation boundary; no OPERATIONAL status |
+| P2-WC01 QA tooling and deterministic harness integration | INST-010 Platform IT Expert | Implement only approved missing tool adapters, Docker runners, evidence contracts, CI hooks, and least-privilege integrations; reuse existing tools first | P1-WC06 plus separate current-session implementation authorization | Source/test changes, Docker evidence, security checks, independent implementation review |
 | P2-WC02 Test Champion supervised simulations | Activated QA Institution as executor; INST-004/002 independent reviewers | Execute mandatory campaigns without production authority; prove fail-closed and separation behavior | P2-WC01 | Simulation ledger, raw evidence, defects, independent verdict, no unresolved P0/P1 |
 | P3-WC01 Business Platform genuine-test pilot | INST-010 authors unit/integration repairs; activated QA owns campaign architecture, independent CCTs, execution, and recommendation | Raise BP from 77.85%/65.81% to at least 90%/80% with risk-ranked production-facing tests and mutation sampling | P2-WC02 and separate pilot authorization | Docker test/coverage/mutation artifacts; EVC-08 identities; independent acceptance |
 | P3-WC02 Goal clearance and learning | Fresh INST-002 plus INST-013 closure | Validate SC-01 through SC-12 and commit evidence/learning without overstating customer or Production proof | All prior WCs | Clearance Record, completion decision, learning record |

@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 109
+**State Revision:** 110
 **Last Updated:** 2026-08-14
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -21,7 +21,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Platform version | 1.45.0 |
 | Latest completed Work Contract | WC-074 - GOAL-006 Enterprise Delivery Addendum |
 | Latest merge | PR #287 merged to `main` as `bb511099ca5ff693ea538223e3779e4887421a99` on 2026-08-14 |
-| Active delivery | GOAL-007 AVD v0.1 and charter-capability proposal submitted; agent spec blocked pending AVD ratification and charter |
+| Active delivery | GOAL-007 AVD v0.2 ready; lifecycle Amendment 1 awaiting Founder acknowledgement before formal reviews |
 
 ## Active Checkpoint — GOAL-007 QA Institution And Test Champion Intake
 
@@ -36,7 +36,9 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Founder acknowledgement | DONE — ACK-GOAL-007-INST-001-01 at 16:33:27Z; reviewed P2 plan approved |
 | P1-WC01 Business Architect GOA | ACCEPTED — GOA-GOAL-007-INST-003-01 at 16:33:42Z; ACC at 16:35:08Z |
 | P1-WC01 Acceptance | VALID — ACC-GOAL-007-INST-003-01 at 16:35:08Z |
-| P1-WC01 contribution | SUBMITTED — AVD-002 v0.1, Domain 13 capability, and CR-GOAL-007-INST-003-01; no agent spec |
+| P1-WC01 contribution | REVISED — AVD-002 v0.2, Domain 13 capability, and CR-GOAL-007-INST-003-01; no agent spec |
+| Advisory Stage 4 reviews | DONE — R-131 EA, R-132 AI Architect, R-133 CA; required findings incorporated in v0.2 |
+| Lifecycle Amendment 1 | PROPOSED — corrects AVD/charter/spec/activation ordering; awaiting Founder acknowledgement |
 | Agent Authoring prerequisite | BLOCKED AS DESIGNED — AVD v1.0 and non-PROPOSED registry entry required before specification |
 
 ### Checkpoint Context
@@ -61,15 +63,16 @@ cloud, DNS, expenditure, deployment, Production, QA Institution status, or agent
 
 ## Current Blockers
 
-GOAL-007 agent specification is blocked pending AVD multi-review, Founder ratification to v1.0, and
-a chartered registry entry. The proposed QA Institution is not registered or operational. GOAL-006 P3-WC01 remains blocked by CT-07 failure,
+GOAL-007 formal review dispatch is blocked pending Founder acknowledgement of lifecycle Amendment 1.
+Agent specification remains blocked pending formal AVD review, Founder ratification to v1.0, and a
+chartered registry entry. The proposed QA Institution is not registered or operational. GOAL-006 P3-WC01 remains blocked by CT-07 failure,
 absent exact-six GHCR packages, and its recorded Azure, identity, DNS, cost, target, and policy gaps.
 
 ## Next Authorized Action
 
-Route AVD-002 v0.1 in parallel to INST-002, INST-004, and INST-008 for constitutional, architectural,
-and AI-execution review. Resolve blocking findings into v0.2 before Founder ratification. Do not
-produce the agent specification, create a registry entry, or activate the Institution prematurely.
+Obtain Founder acknowledgement of GOAL-007 Execution Plan Amendment 1, then issue and accept the
+separate formal AVD review authorizations. Do not produce the agent specification, create a registry
+entry, or activate the Institution before the corrected sequential protected decisions.
 
 ## History And Evidence
 

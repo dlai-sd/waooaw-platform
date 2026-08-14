@@ -16,7 +16,7 @@
 ## Contribution Outcome
 
 INST-003 confirms a genuine Quality Assurance and Test Engineering capability gap and proposes the
-WAOOAW AI Agent — Test Champion through `avd/AVD-002-test-champion-v0.1.md`. The AVD defines 13
+WAOOAW AI Agent — Test Champion through `avd/AVD-002-test-champion-v0.2.md`. The AVD defines 13
 MVP1 skills, the Quality Evidence Twin, Goal Journey, AI role, charter parameters, C-065 separation,
 and constitutional employment fit.
 
@@ -121,8 +121,9 @@ The accepted envelope requested a complete agent specification, but
 
 Neither prerequisite existed at P1-WC01 acceptance. The Business Architect therefore produced the
 AVD and charter parameters and did not create `test-champion-agent.md`. This is a mandatory lifecycle
-correction, not an incomplete draft. The Execution Plan must route AVD reviews and Founder
-ratification before Stage 6 specification work.
+correction, not an incomplete draft. Advisory reviews R-131 through R-133 informed v0.2 but do not
+replace formal GOA/Acceptance/review records. The Execution Plan must route authorized AVD reviews
+and Founder ratification before Stage 6 specification work.
 
 ## Required Reviews And Unresolved Owner Decisions
 
