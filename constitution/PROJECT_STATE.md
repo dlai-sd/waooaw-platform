@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 102
+**State Revision:** 103
 **Last Updated:** 2026-08-14
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -32,7 +32,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Enterprise delivery addendum | DONE — immutable promotion, one-action orchestration, blue-green, rollback, release intelligence and FinOps contracts drafted |
 | P3-WC01 through P3-WC08 integration | DONE — addendum bound as co-controlling acceptance evidence without changing sequence |
 | Independent delta review | DONE — R-128 APPROVE at `919db761b25675f20029ea029261666da3fb1c12` |
-| Planning branch and PR | IN PROGRESS — `goal/006/phase3-enterprise-delivery`; no self-approval or merge |
+| Planning branch and PR | DONE — PR #287 open against `main`; no self-approval or merge |
 | Phase 3 authorization | BLOCKED — no cloud-query, create, spend, DNS, deployment, Production or activation authority |
 
 ### Checkpoint Context
@@ -64,8 +64,8 @@ operations policies remain absent and block P3-WC06/07 handover and activation.
 
 ## Next Authorized Action
 
-Publish the R-128-approved WC-074 package in an unmerged Founder PR. Only after Founder acceptance
-and merge may INST-013 present the separate exact bounded P3-WC01 read-only readiness
+Founder reviews and, if accepted, merges PR #287. Only after that merge may INST-013 present the
+separate exact bounded P3-WC01 read-only readiness
 decision. Do not issue a Phase 3 GOA or perform provider/live
 access, cloud spend, DNS action, deployment, Production action, traffic or Platform Operations
 activation before the protected decision is recorded.

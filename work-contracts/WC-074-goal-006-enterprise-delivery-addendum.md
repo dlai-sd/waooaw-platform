@@ -85,7 +85,7 @@ Expert Skill 17 and does not authorize:
 | WC074-02 Define enterprise delivery contract | INST-013 coordinating owner boundaries | M2 | Addendum with capability and state-machine contracts | SATISFIED |
 | WC074-03 Bind obligations to P3-WC01..08 | INST-013 | M1 | Component acceptance matrix | SATISFIED |
 | WC074-04 Specialist and constitutional delta review | Independent reviewers | M3 | R-128 APPROVE at reviewed commit `919db761b25675f20029ea029261666da3fb1c12` | SATISFIED |
-| WC074-05 Publish unmerged Founder PR | INST-013 | M0 | Commit, push and PR | IN PROGRESS |
+| WC074-05 Publish unmerged Founder PR | INST-013 | M0 | PR #287 open against `main`; author did not approve or merge | SATISFIED |
 
 ## Definition Of Done
 

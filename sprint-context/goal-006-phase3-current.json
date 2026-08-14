@@ -46,5 +46,5 @@
     "infrastructure/terraform/phase2/",
     "provider credentials, Azure queries, cloud mutation, DNS action, deployment, real traffic, Production action and CT-07 PASS claims"
   ],
-  "next_exact_action": "Publish the R-128-approved WC-074 package in an unmerged Founder PR. After Founder review and merge, present the separate bounded P3-WC01 read-only readiness authorization; no Phase 3 GOA or live/cloud action is authorized by WC-074 or R-128."
+  "next_exact_action": "Founder reviews and, if accepted, merges PR #287. After merge, present the separate bounded P3-WC01 read-only readiness authorization; no Phase 3 GOA or live/cloud action is authorized by WC-074, R-128 or PR #287."
 }
