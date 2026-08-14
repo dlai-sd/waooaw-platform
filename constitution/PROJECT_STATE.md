@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **State Schema:** 2.0.0
-**State Revision:** 100
+**State Revision:** 101
 **Last Updated:** 2026-08-14
 **Purpose:** Current operational state for bootstrap, recovery, and automated sprint controls.
 
@@ -19,31 +19,29 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Gate | G5 CLEAR — prerequisites met; not session implementation authority |
 | Engineering status | IMPLEMENTATION |
 | Platform version | 1.45.0 |
-| Latest completed Work Contract | WC-072 — GOAL-006 Phase 2 Offline Cloud Delivery |
-| Latest merge | PR #285 merged to `main` as `b0f1385a07ae02be1cbfd8b9b65f55acd498c65c` on 2026-08-14 |
-| Active delivery | GOAL-006 WC-073 Phase 3 objectives refined and approved by R-127; awaiting bounded Founder P3-WC01 decision; no Phase 3 execution authorized |
+| Latest completed Work Contract | WC-073 — GOAL-006 Phase 3 Readiness Refinement |
+| Latest merge | PR #286 merged to `main` as `94701362d957fdc13d88bc7637c8b773a7cfb385` on 2026-08-14 |
+| Active delivery | GOAL-006 WC-074 enterprise delivery addendum in progress; no Phase 3 execution authorized |
 
-## Active Checkpoint — GOAL-006 Phase 3 Readiness Refinement
+## Active Checkpoint — GOAL-006 Enterprise Delivery Addendum
 
 | Milestone | Status |
 |---|---|
-| Phase 1 and Phase 2 delivery | DONE — PR #281 `1655afbab1dec83949734dd435c6c17f811e2683`, PR #284 `f52811436c900c2405aad871c43c88c073ae55fb`, reviews R-117 and R-120..R-125 |
-| Phase 2 post-merge closure | DONE — R-126 APPROVE; PR #285 merged as `b0f1385a07ae02be1cbfd8b9b65f55acd498c65c` |
-| WC-073 planning contract | DONE — planning-only boundary and completeness ledger established |
-| Phase 2 evidence reconciliation | DONE — exact pins, reuse limits and changed facts recorded |
-| P3-WC01 through P3-WC08 objective validation | DONE — sequence retained and refined for execution readiness |
-| Phase 3 entry package | DONE — exact P3-WC01 Founder decision and no-cloud pre-entry boundary recorded |
-| Independent planning review | DONE — fresh INST-002 R-127 APPROVE at `230e6b7` |
-| Planning branch and PR | DONE — PR #286 open against `main`; author did not approve or merge |
+| Phase 1, Phase 2 and readiness baseline | DONE — PR #281, PR #284, PR #285 and PR #286 merged; R-117 and R-120..R-127 approved |
+| WC-074 planning contract | DONE — planning-only scope and no-cloud boundary established |
+| Enterprise delivery addendum | DONE — immutable promotion, one-action orchestration, blue-green, rollback, release intelligence and FinOps contracts drafted |
+| P3-WC01 through P3-WC08 integration | DONE — addendum bound as co-controlling acceptance evidence without changing sequence |
+| Independent delta review | PENDING — Platform, Solution, Security, Data, QA and constitutional boundaries |
+| Planning branch and PR | IN PROGRESS — `goal/006/phase3-enterprise-delivery`; no self-approval or merge |
 | Phase 3 authorization | BLOCKED — no cloud-query, create, spend, DNS, deployment, Production or activation authority |
 
 ### Checkpoint Context
 
-- **Planning branch:** `goal/006/phase3-readiness-refinement`; WC-073 and `goals/GOAL-006-phase3-readiness-plan.md`.
-- **Validated outcome:** Phase 3 remains Azure deployment, Demo/UAT/Production qualification and supervised handover; it is not steady-state operation.
-- **Key refinement:** P3-WC01 must prove registry retrievability and live topology before any foundation or environment action.
-- **Open dependencies:** CT-07, live effectiveness, dated costs, TGT-02..15 owner decisions, canonical Incident/Change/Release policies and all Founder-protected actions.
-- **Resume source:** Git, WC-073, this checkpoint, the current sprint manifest and R-120..R-126; chat history is non-authoritative.
+- **Planning branch:** `goal/006/phase3-enterprise-delivery`; WC-074 and `goals/GOAL-006-phase3-enterprise-delivery-addendum.md`.
+- **Clarified outcome:** Phase 3 must prove an enterprise delivery capability, not only running Azure resources or healthy containers.
+- **Key refinement:** Every environment gate now requires immutable promotion, governed orchestration, blue-green/rollback, release intelligence, customer-journey and cost evidence.
+- **Open dependencies:** Independent delta review, CT-07, live effectiveness, owner contracts/targets, dated costs, canonical Incident/Change/Release policies and all Founder-protected actions.
+- **Resume source:** Git, WC-074, this checkpoint, the current sprint manifest, the PR #286 baseline and R-120..R-127; chat history is non-authoritative.
 - **Boundary:** This is repository planning only. No provider query, credentials, cloud spend, DNS, deployment, Production, traffic, Platform Operations activation, Phase 3 GOA, PR approval or merge is authorized.
 - **Protected local artifacts:** `.coverage`, `goals/goal_register.jsonl`, `logs/blueprint_assurance_report.json`, and `logs/bootstrap-evidence.jsonl` are unrelated and must remain unstaged.
 
@@ -55,18 +53,20 @@ WC-064 owner-contribution routing, design, and grooming only. WC-065 through WC-
 constitutional readiness, acknowledgement, fresh implementation confirmation, GOA, Acceptance,
 and independent implementation review. WC-071 authorized GOAL-006 intake only; WC-072 authorized
 and closed offline Phase 2 delivery. WC-073 authorizes Phase 3 objective validation and planning
-records only. It grants no Phase 3 cloud, DNS, expenditure, deployment, Production or activation authority.
+records only. WC-074 authorizes the enterprise delivery planning clarification only. Neither grants
+Phase 3 cloud, DNS, expenditure, deployment, Production or activation authority.
 
 ## Current Blockers
 
-No constitutional blocker is open for WC-073 planning. Phase 3 execution is stopped pending R-127,
-Founder P3-WC01 authority and later per-component GOA/Acceptance records. The three canonical
+No constitutional blocker is open for WC-074 planning. Phase 3 execution is stopped pending WC-074
+independent review, Founder P3-WC01 authority and later per-component GOA/Acceptance records. The three canonical
 operations policies remain absent and block P3-WC06/07 handover and activation.
 
 ## Next Authorized Action
 
-Founder reviews and, if accepted, merges PR #286. After that merge, present and record the separate
-exact bounded P3-WC01 read-only readiness decision. Do not issue a Phase 3 GOA or perform provider/live
+Obtain independent delta review of WC-074, then publish an unmerged Founder PR. Only after Founder
+acceptance and merge may INST-013 present the separate exact bounded P3-WC01 read-only readiness
+decision. Do not issue a Phase 3 GOA or perform provider/live
 access, cloud spend, DNS action, deployment, Production action, traffic or Platform Operations
 activation before the protected decision is recorded.
 
@@ -94,6 +94,8 @@ activation before the protected decision is recorded.
 - GOAL-006 Phase 2 delivery: PR #284 merged as `f52811436c900c2405aad871c43c88c073ae55fb`;
   post-merge closure PR #285 merged as `b0f1385a07ae02be1cbfd8b9b65f55acd498c65c`; WC-072
   and R-120 through R-126 are the durable evidence.
+- GOAL-006 Phase 3 readiness: WC-073 and R-127 merged through PR #286 as
+  `94701362d957fdc13d88bc7637c8b773a7cfb385`; WC-074 adds a planning-only enterprise delivery delta.
 - Founder Commercial Governance formalization: PR #275 merged by the Founder to `main` as
   `2276ab2` on 2026-08-12; WC-064 remains ready for owner routing.
 - Earlier completed work remains authoritative in its owning Work Contract, Goal, review,
