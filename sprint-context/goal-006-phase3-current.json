@@ -40,5 +40,5 @@
     "infrastructure/terraform/phase2/",
     "provider credentials, Azure queries, cloud mutation, DNS action, deployment, real traffic, Production action and CT-07 PASS claims"
   ],
-  "next_exact_action": "Present the bounded P3-WC01 read-only readiness authorization decision to the Founder; no Phase 3 GOA or live/cloud action is authorized by WC-073 or R-127."
+  "next_exact_action": "Founder reviews and, if accepted, merges PR #286. Then record a separate bounded P3-WC01 read-only readiness authorization decision; no Phase 3 GOA or live/cloud action is authorized by WC-073 or R-127."
 }

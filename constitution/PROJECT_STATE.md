@@ -34,6 +34,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | P3-WC01 through P3-WC08 objective validation | DONE — sequence retained and refined for execution readiness |
 | Phase 3 entry package | DONE — exact P3-WC01 Founder decision and no-cloud pre-entry boundary recorded |
 | Independent planning review | DONE — fresh INST-002 R-127 APPROVE at `230e6b7` |
+| Planning branch and PR | DONE — PR #286 open against `main`; author did not approve or merge |
 | Phase 3 authorization | BLOCKED — no cloud-query, create, spend, DNS, deployment, Production or activation authority |
 
 ### Checkpoint Context
@@ -64,9 +65,10 @@ operations policies remain absent and block P3-WC06/07 handover and activation.
 
 ## Next Authorized Action
 
-Present the exact bounded P3-WC01 read-only readiness decision to the Founder. Do not issue a Phase 3 GOA or
-perform provider/live access, cloud spend, DNS action, deployment, Production action, traffic or
-Platform Operations activation before the protected decision is recorded.
+Founder reviews and, if accepted, merges PR #286. After that merge, present and record the separate
+exact bounded P3-WC01 read-only readiness decision. Do not issue a Phase 3 GOA or perform provider/live
+access, cloud spend, DNS action, deployment, Production action, traffic or Platform Operations
+activation before the protected decision is recorded.
 
 ## History And Evidence
 

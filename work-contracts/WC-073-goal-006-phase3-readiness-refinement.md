@@ -78,7 +78,7 @@ This Work Contract authorizes repository planning records only. It does not auth
 | WC073-02 P3-WC01..08 objective refinement | INST-013 | M1 | Readiness plan | WC073-01 | SATISFIED | Eight objectives and dependency gates validated |
 | WC073-03 Open owner/protected decisions | Named owners / Founder | M2/M3 | Exact decision register | WC073-02 | SATISFIED | Open decisions identified without substituted authority |
 | WC073-04 Independent planning review | Fresh INST-002 | M3 | R-127 verdict | WC073-01..03 | SATISFIED | APPROVE at reviewed head `230e6b7` |
-| WC073-05 Planning checkpoint publication | INST-013 | M0 | Commit, push and unmerged PR | R-127 approval | IN PROGRESS | Review recorded; PR pending |
+| WC073-05 Planning checkpoint publication | INST-013 | M0 | Commit, push and unmerged PR | R-127 approval | SATISFIED | PR #286 open and unmerged against `main` |
 
 ## Definition Of Done
 
