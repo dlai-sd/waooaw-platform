@@ -114,3 +114,20 @@ AVD content baseline commit `1c48463ee36db0580b31dec9a2f6712b60ec22f7` and SHA-2
 `7172b36cfb7cfe6737f5c275644cd0a94d919f973f12aa1da7ebc2cc206c050a`. Commit `a61c210`
 is the later authorization-record commit and does not replace the content baseline. P0/P1 findings:
 zero. P1-WC02 is complete and the package is ready for the Founder constitutional-birth decision.
+
+## P1-WC03 Founder Constitutional Birth
+
+| Attestation field | Value |
+|---|---|
+| `institution_id` | INST-001 |
+| `goal_id` | GOAL-007 |
+| `record_id` | FA-050 / RAT-GOAL-007-INST-001-01 |
+| `record_type` | Founder Ratification And Constitutional Birth Record |
+| `produced_at` | 2026-08-14 |
+| Reviewed package | AVD-002 v0.2 SHA-256 `7172b36cfb7cfe6737f5c275644cd0a94d919f973f12aa1da7ebc2cc206c050a`; R-134, R-135, R-136 |
+| Decision | RATIFIED — AVD-002 v1.0; INST-015 assigned; CHARTERED at Stage W-2 CAPABILITY DEVELOPMENT |
+| Implementation continuity | Agent specification and current-session capability development authorized subject to their local GOA/Acceptance and independent gates |
+
+This decision does not mark INST-015 OPERATIONAL, accept external Goals, approve/merge PR #291,
+deploy, or waive specification, Architecture Chain, simulations, independent Activation Gate, or
+Operational Readiness evidence.

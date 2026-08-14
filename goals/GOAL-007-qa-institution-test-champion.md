@@ -1,12 +1,11 @@
 # GOAL-007 — Independent Quality Assurance Institution And Test Champion
 
-**Status:** IN JOURNEY — P1-WC01 GOA ISSUED; AWAITING INST-003 ACCEPTANCE
+**Status:** IN JOURNEY — INST-015 CHARTERED AT STAGE W-2; AGENT SPECIFICATION NEXT
 **Registrant:** Yogesh Khandge, Founder (INST-001)
 **Registered:** 2026-08-14
 **Work Contract:** WC-075
 **GitHub action:** Issue #290
-**Proposed Institution:** INST-015 — Quality Assurance and Test Engineering; identifier and status
-remain unratified
+**Institution:** INST-015 — Quality Assurance and Test Engineering; CHARTERED — CAPABILITY DEVELOPMENT
 **Constitutional basis:** C-023, C-041, C-059, C-064, C-065, C-066, C-070, C-071, C-076, C-080,
 C-094, C-099; GEOM; WIOM; `tests/QA-POLICY.md`
 
@@ -54,8 +53,8 @@ material contribution.
 
 | ID | Criterion |
 |---|---|
-| SC-01 | Founder-ratified QA charter defines mission, Decision Space, Offering Scope, reviewer, obligations, and C-065 separation |
-| SC-02 | Canonical Institution Registry entry uses a verified free ID and reaches OPERATIONAL only after ratification and readiness proof |
+| SC-01 | SATISFIED — FA-050 ratified AVD-002 v1.0 and the QA charter after R-134/R-135/R-136 |
+| SC-02 | PARTIAL — INST-015 is canonical and CHARTERED at Stage W-2; OPERATIONAL still requires readiness proof and activation |
 | SC-03 | WAOOAW AI Agent — Test Champion has a complete AGENT-AUTHORING-GUIDE Sections 1–13 specification and PAC/DCM/DNA contracts |
 | SC-04 | Architecture Chain Update is complete or each non-applicable layer is independently justified |
 | SC-05 | Tool contract covers Docker-only pytest/pytest-cov, xUnit, Coverlet/Cobertura, contract, mutation, property, security, accessibility, performance, resilience, chaos, recovery, and browser techniques as applicable |
@@ -102,3 +101,10 @@ Institution status, and activation decisions.
 ACK-GOAL-007-INST-001-01 approved the P2 classification and proposed Execution Plan after R-130.
 INST-013 issued GOA-GOAL-007-INST-003-01 at `2026-08-14T16:33:42Z`. P1-WC01 may begin only after
 INST-003 records a later Acceptance timestamp. All P1-WC02 and later phases remain blocked.
+
+## Constitutional Birth
+
+FA-050 ratified the unanimous formal AVD package, created AVD-002 v1.0, assigned INST-015, and
+chartered the Institution at Stage W-2 CAPABILITY DEVELOPMENT. This satisfies SC-01 and the charter
+portion of SC-02. It does not satisfy agent specification, tooling, simulations, Activation Gate,
+Operational Readiness, BP pilot, PR approval, merge, deployment, or customer proof.

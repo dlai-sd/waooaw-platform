@@ -1,11 +1,13 @@
-# Agent Vision Document v0.2 — WAOOAW AI Agent — Test Champion
+# Agent Vision Document v1.0 — WAOOAW AI Agent — Test Champion
 
-**Status:** DRAFT — STAGE 4 REVIEW REVISION; NOT RATIFIED
+**Status:** RATIFIED — FOUNDING DOCUMENT
+**Founder Ratification:** FA-050 — 2026-08-14
+**Ratified baseline:** v0.2 SHA-256 `7172b36cfb7cfe6737f5c275644cd0a94d919f973f12aa1da7ebc2cc206c050a`
 **Goal:** GOAL-007
 **GO Authorization:** GOA-GOAL-007-INST-003-01
 **Acceptance:** ACC-GOAL-007-INST-003-01
 **Produced by:** Chief Business Architect (INST-003)
-**Proposed Institution:** INST-015 — identifier reserved only as a proposal; NOT REGISTERED
+**Institution:** INST-015 — Quality Assurance and Test Engineering; CHARTERED — CAPABILITY DEVELOPMENT
 **Constitutional basis:** C-023, C-041, C-059, C-064, C-065, C-070, C-071, C-076, C-080, C-094, C-099
 
 ## 1. Agent Identity
@@ -401,10 +403,10 @@ The institutional promise is not "all defects will be found." It is that every q
 state what was tested, what was not, how the evidence was produced, what failed, and who remains
 authorized to decide.
 
-## Ratification And Lifecycle Stop
+## Ratification And Lifecycle State
 
-This v0.2 AVD incorporates advisory Stage 4 Constitutional Analyst, Enterprise Architect, and AI
-Architect findings. Formal authorized review records and all blocking objections must close before
-Founder ratification. Only Founder ratification may create AVD
-v1.0 and a CHARTERED/CAPABILITY DEVELOPMENT registry entry. The Test Champion agent specification
-must not be produced until both prerequisites exist.
+FA-050 ratified this v1.0 founding document after formal reviews R-134, R-135, and R-136 returned
+READY_FOR_RATIFICATION with zero P0/P1 findings. INST-015 is CHARTERED at WIOM Stage W-2
+CAPABILITY DEVELOPMENT, not OPERATIONAL. Agent specification, architecture-chain completion,
+tooling, simulations, independent Activation Gate review, readiness clearance, and a later Founder
+activation decision remain required before INST-015 may accept external Goals.

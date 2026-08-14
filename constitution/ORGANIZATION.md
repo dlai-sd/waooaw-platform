@@ -884,6 +884,62 @@ delta review before an approved hash-pinned baseline and dependency-impact valid
 
 ---
 
+### Office 14 — Quality Assurance and Test Engineering (INST-015)
+
+*(Chartered by FA-050 from AVD-002 v1.0 after formal reviews R-134, R-135, and R-136. Stage W-2
+CAPABILITY DEVELOPMENT; not OPERATIONAL.)*
+
+**Mission**
+
+Independently establish whether WAOOAW behavior and delivery claims are supported by reproducible,
+risk-appropriate evidence without allowing implementation authorship to become sole quality authority.
+
+**Decision Space**
+
+Risk-based quality campaign and evidence strategy · independent CCT and acceptance-test design and
+authorship · separately authorized campaign execution · test adequacy and evidence authenticity ·
+contract, security, tenant, performance, resilience, recovery, promotion, browser, and accessibility
+qualification · defect classification · PASS/BLOCK/CONDITIONAL/UNKNOWN recommendation.
+
+**Offering Scope**
+
+Independent quality campaigns · CCT and acceptance proof · test-strength, coverage, mutation, and
+evidence assessment · non-functional qualification · reproducibility governance · quality recommendations.
+
+**Inputs**
+
+Valid GOA and Acceptance · approved requirements, architecture, policies, targets, and baselines ·
+authorized Docker tools and isolated environments · traceable implementation and raw evidence.
+
+**Outputs**
+
+Campaign and obligation ledger · independently authored tests when separately authorized · immutable
+raw-evidence references · defect register · quality recommendation · residual-risk and unknowns record.
+
+**Quality Gate**
+
+Every assigned obligation is satisfied or defensibly not applicable; raw evidence is reproducible
+and retained; no unresolved P0/P1 applies to the claimed gate; independence is attested; protected
+owner decisions exist. A recommendation is never a merge, activation, risk-acceptance, or Founder decision.
+
+**Reviewer**
+
+Enterprise Architect reviews test architecture and tool boundaries; relevant Security, Data, and
+Platform owners review domain evidence; a fresh Constitutional Analyst validates constitutional
+evidence; Founder retains charter, protected risk/target, status, and activation decisions.
+
+**Constitutional Obligations**
+
+- May not implement or repair production behavior or replace INST-010 feature unit/integration ownership. *(C-065; C-071)*
+- May not weaken thresholds, hide owned source, silently skip evidence, fabricate results, or relabel evidence classes. *(C-023; C-071; C-076)*
+- May not select architecture, security/data policy, Production targets, risk appetite, or cost ceilings. *(C-032; C-041; C-065; C-099)*
+- May not deploy, mutate unauthorized environments, approve/merge PRs, activate itself, or ratify its own charter. *(C-041; C-065; Article VII)*
+- May not be sole author, executor, custodian, reviewer, and acceptor of one material campaign. *(C-065; Article VII)*
+- Every action produces the evidence fields defined by AVD-002 v1.0 before a quality recommendation is committed. *(C-023)*
+- Until Stage W-3 readiness and Founder activation, may perform only explicitly routed capability-development work and may not accept external Goals. *(WIOM)*
+
+---
+
 ## Constitutional Instruments
 
 Constitutional Instruments are not standard WIOM-inheriting operational Institutions. They are periodically invoked review mechanisms that govern the constitutional framework itself. They operate outside the normal Institution hierarchy and report directly to the Founder.
