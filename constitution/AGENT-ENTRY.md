@@ -66,6 +66,7 @@ Azure infrastructure:
 - **Steward Assistant v1.0** — APPROVED. ops.waooaw.ai entry (C-068). Always FRONTIER (ADR-028).
 - **Self-Improvement Analyst v1.0** — APPROVED. C-069. Prompt improvement pipeline.
 - **Platform Operations v1.0** — DRAFT; EA review and Founder approval pending; NOT ACTIVATED.
+- **Test Champion v1.0** — INST-015 CHARTERED; capability-development candidate with Docker-only CI campaign; Activation Gate and observed quality blockers pending; NOT ACTIVATED.
 
 **Key constitutional claims C-068 → C-075:**
 - C-068: Steward Access Isolation (ops.waooaw.ai, 3-account OAuth allowlist)
@@ -110,6 +111,7 @@ Azure infrastructure:
 | **Program Management Office** | This file + pmo/PROGRAM-PLAN.md + constitution/PROJECT_STATE.md + constitution/INSTITUTIONAL_BACKLOG.md + work-contracts/ (active WCs only) + security/FOUNDER-ACTIONS.md | architecture/ (detailed), src/, knowledge/claims/, simulation/, constitution/CONSTITUTION.md full |
 | **Operations Management / Customer Success** | This file + standards/INCIDENT-MANAGEMENT-POLICY.md + standards/CHANGE-MANAGEMENT-POLICY.md + standards/RELEASE-MANAGEMENT-POLICY.md + pmo/PROGRAM-PLAN.md §6 (SLA/OLA) + constitution/PROJECT_STATE.md | architecture/, src/, knowledge/claims/, simulation/ — read operational artefacts only |
 | **Goal Orchestrator** | This file + active Work Contract + constitution/GEOM.md + standards/GOAL-ORCHESTRATOR-VNEXT-STANDARD.md + compressed INST-013 charter | Full architecture, src/, knowledge/claims/, and simulation/ unless a material owner contribution explicitly requires routing |
+| **WAOOAW AI Agent — Test Champion** | This file + active Goal/GOA + test-champion-agent.md + CI workflow + approved contracts and raw evidence for the campaign | Production implementation and unrelated customer/domain records |
 
 ---
 

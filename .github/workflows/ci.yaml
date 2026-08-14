@@ -152,45 +152,61 @@ jobs:
       hashFiles('src/ai-runtime/pyproject.toml') != ''
     strategy:
       matrix:
-        service:
-          - src/professional-runtime
-          - src/ai-runtime
+        include:
+          - service: professional-runtime
+            source: src/professional-runtime
+            tests: tests/professional-runtime
+          - service: ai-runtime
+            source: src/ai-runtime
+            tests: tests/ai-runtime
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
+      - name: Build constitutional Docker test runner (C-080)
+        run: docker compose --profile test-python build test-runner-python
 
-      - name: Install uv
-        run: pip install uv
-
-      - name: Install dependencies
-        run: uv sync --dev
-        working-directory: ${{ matrix.service }}
-
-      - name: Ruff lint + format check
+      - name: Ruff in Docker (C-080)
         run: |
-          uv run ruff check .
-          uv run ruff format --check .
-        working-directory: ${{ matrix.service }}
+          docker compose --profile test-python run --rm test-runner-python sh -lc '
+            ruff check "${{ matrix.source }}" "${{ matrix.tests }}" &&
+            ruff format --check "${{ matrix.source }}" "${{ matrix.tests }}"
+          '
 
-      - name: mypy type check
-        run: uv run mypy --strict .
-        working-directory: ${{ matrix.service }}
-
-      - name: pytest
+      - name: mypy in Docker (C-080)
+        if: always()
         run: |
-          uv run pytest tests/unit \
-            --cov=. \
-            --cov-report=xml \
-            --cov-fail-under=90
-        working-directory: ${{ matrix.service }}
+          docker compose --profile test-python run --rm test-runner-python \
+            mypy --strict "${{ matrix.source }}"
+
+      - name: pytest and constitutional coverage in Docker (C-076, C-080)
+        if: always()
+        run: |
+          docker compose --profile test-python run --rm test-runner-python sh -lc '
+            mkdir -p coverage/${{ matrix.service }} &&
+            pytest "${{ matrix.tests }}" \
+              --cov="${{ matrix.source }}" \
+              --cov-branch \
+              --cov-report=xml:coverage/${{ matrix.service }}/coverage.xml \
+              --cov-report=json:coverage/${{ matrix.service }}/coverage.json \
+              --cov-fail-under=0 &&
+            python -c "import json, sys; data=json.load(open(\"coverage/${{ matrix.service }}/coverage.json\")); totals=data[\"totals\"]; lines=totals[\"covered_lines\"]*100/totals[\"num_statements\"]; branches=100 if totals[\"num_branches\"] == 0 else totals[\"covered_branches\"]*100/totals[\"num_branches\"]; print(json.dumps({\"service\": \"${{ matrix.service }}\", \"line_coverage\": lines, \"branch_coverage\": branches, \"minimum_lines\": 90, \"minimum_branches\": 80})); sys.exit(0 if lines >= 90 and branches >= 80 else 1)"
+          '
 
       - name: Upload coverage
+        if: always()
         uses: codecov/codecov-action@v4
         with:
-          files: ${{ matrix.service }}/coverage.xml
+          files: coverage/${{ matrix.service }}/coverage.xml
           token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: true
+
+      - name: Retain raw coverage evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-coverage-${{ matrix.service }}-${{ github.run_id }}
+          path: coverage/${{ matrix.service }}/
+          if-no-files-found: error
+          retention-days: 90
 
   # ─── TypeScript tests ─────────────────────────────────────────────────────
   test-web:
@@ -460,3 +476,71 @@ jobs:
           echo "ℹ️  No tier label found on PR — defaulting to CODEOWNERS review gate"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ─── Test Champion campaign verdict (INST-015; C-023/C-065/C-099) ─────────
+  # Deterministically synthesizes every CI prerequisite. This job recommends
+  # PASS/BLOCK and preserves evidence; it does not approve or merge the PR.
+  qa-campaign:
+    name: Test Champion QA Campaign
+    runs-on: ubuntu-latest
+    if: always()
+    needs:
+      - build
+      - secrets
+      - test-dotnet
+      - test-python
+      - test-web
+      - spec-lint
+      - sast
+      - trivy
+      - dep-scan
+      - license-check
+      - constitutional-commit-gate
+      - authorization-tier-check
+    steps:
+      - name: Synthesize immutable gate evidence
+        env:
+          GATE_RESULTS: ${{ toJSON(needs) }}
+          REPOSITORY: ${{ github.repository }}
+          COMMIT_SHA: ${{ github.sha }}
+          RUN_ID: ${{ github.run_id }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          mkdir -p qa-evidence
+          BLOCKING=$(jq '[to_entries[] | select(.value.result == "failure" or .value.result == "cancelled")] | length' <<< "$GATE_RESULTS")
+          VERDICT=PASS
+          if [ "$BLOCKING" -gt 0 ]; then
+            VERDICT=BLOCK
+          fi
+
+          jq -n \
+            --arg schema_version "1.0" \
+            --arg institution "INST-015" \
+            --arg verdict "$VERDICT" \
+            --arg repository "$REPOSITORY" \
+            --arg commit_sha "$COMMIT_SHA" \
+            --arg run_id "$RUN_ID" \
+            --arg event_name "$EVENT_NAME" \
+            --argjson gates "$GATE_RESULTS" \
+            '{schema_version: $schema_version, institution: $institution,
+              recommendation: $verdict, repository: $repository,
+              commit_sha: $commit_sha, run_id: $run_id, event_name: $event_name,
+              gates: ($gates | with_entries(.value = {result: .value.result})),
+              authority_boundary: "Recommendation only; no PR approval or merge authority"}' \
+            > qa-evidence/test-champion-verdict.json
+
+          cat qa-evidence/test-champion-verdict.json
+          if [ "$VERDICT" = BLOCK ]; then
+            echo "Test Champion recommendation: BLOCK"
+            exit 1
+          fi
+          echo "Test Champion recommendation: PASS"
+
+      - name: Retain Test Champion evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-champion-evidence-${{ github.run_id }}
+          path: qa-evidence/test-champion-verdict.json
+          if-no-files-found: error
+          retention-days: 90
