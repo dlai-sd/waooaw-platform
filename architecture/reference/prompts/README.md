@@ -91,6 +91,14 @@ Every agent prompt must produce a response conforming to this base schema plus t
 | AGRI/TOKEN_ECONOMY/USAGE_SUMMARY | Token Economy | Budget status in farmer's language — Marathi WhatsApp voice (C-051) | v1.0.0 | ACTIVE |
 | PLATFORM/TOKEN_ECONOMY/MESSAGE_CLASSIFIER | Token Economy | Message Classification Gate — LOCAL tier invariant (C-051, AD-022) | v1.0.0 | ACTIVE |
 | PLATFORM/BOUNDARY/OFF_TOPIC_REDIRECT | Off-Topic Boundary | Graceful professional deflection + specific monitoring hook — 3-attempt graduation (C-036, C-037, C-048) | v1.0.0 | ACTIVE |
+| QA/SKILL_ACTIVATION_PLAN | QA Strategy | Select and sequence campaign skills (C-050) | v1.0.0 | ACTIVE |
+| QA/PERFORMANCE_ASSESSMENT | QA Strategy | Assess quality portfolio health (C-049, C-050) | v1.0.0 | ACTIVE |
+| QA/CAMPAIGN_DESIGN | QA Campaign | Map obligations, risks, tools, and stop conditions (C-023, C-071) | v1.0.0 | ACTIVE |
+| QA/FAILURE_TRIAGE | Defect Intelligence | Cluster reproducible failures without hiding unknowns (C-049, C-071) | v1.0.0 | ACTIVE |
+| QA/EVIDENCE_SYNTHESIS | Evidence | Bind immutable results to obligations (C-023, C-059) | v1.0.0 | ACTIVE |
+| QA/GATE_RECOMMENDATION | Quality Gate | Produce PASS/BLOCK/CONDITIONAL/UNKNOWN recommendation (C-065, C-099) | v1.0.0 | ACTIVE |
+| QA/SKILL_INTENT_ROUTER | QA Routing | Route campaign intent to the 13 skills (C-054) | v1.0.0 | ACTIVE |
+| QA/USAGE_SUMMARY | Token Economy | Summarize deterministic and model usage (C-051, C-077) | v1.0.0 | ACTIVE |
 | DMA/ROUTING/SKILL_INTENT_ROUTER | Skill Intelligence Router | LOCAL-tier intent classification → skill routing plan for DMA agent (C-054) | v1.0.0 | ACTIVE |
 | AGRI/ROUTING/SKILL_INTENT_ROUTER | Skill Intelligence Router | LOCAL-tier intent classification → skill routing plan for Agricultural agent (C-054) | v1.0.0 | ACTIVE |
 | TRADING/ROUTING/SKILL_INTENT_ROUTER | Skill Intelligence Router | LOCAL-tier intent classification → skill routing plan for Trading agent (C-054) | v1.0.0 | ACTIVE |

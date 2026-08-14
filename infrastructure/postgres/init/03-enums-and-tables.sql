@@ -955,6 +955,21 @@ CREATE TABLE institutional.agent_prompt_versions (
 CREATE INDEX idx_prompt_active ON institutional.agent_prompt_versions(skill_type, pipeline_step, agent_type) WHERE is_active = TRUE;
 CREATE INDEX idx_prompt_tier ON institutional.agent_prompt_versions(minimum_model_tier) WHERE is_active = TRUE;
 
+-- INST-015 Test Champion prompts (FA-050; capability development)
+INSERT INTO institutional.agent_prompt_versions
+    (prompt_id, version, skill_type, pipeline_step, agent_type, prompt_file_path,
+     constitutional_basis, change_type, minimum_model_tier, reviewed_by, reviewed_at,
+     approved_by, approved_at, is_active, activated_at)
+VALUES
+    ('QA/SKILL_ACTIVATION_PLAN','1.0.0','QA_STRATEGY','SKILL_ACTIVATION_PLAN','TEST_CHAMPION','architecture/reference/prompts/test-champion-prompts.md','C-050; C-048; C-049','STRATEGIC','FRONTIER','Enterprise Architect',NOW(),'Founder FA-050',NOW(),TRUE,NOW()),
+    ('QA/PERFORMANCE_ASSESSMENT','1.0.0','QA_STRATEGY','PERFORMANCE_ASSESSMENT','TEST_CHAMPION','architecture/reference/prompts/test-champion-prompts.md','C-037; C-049','BEHAVIOURAL','MID_TIER','Enterprise Architect',NOW(),'Founder FA-050',NOW(),TRUE,NOW()),
+    ('QA/CAMPAIGN_DESIGN','1.0.0','QA_CAMPAIGN_DESIGN','CAMPAIGN_DESIGN','TEST_CHAMPION','architecture/reference/prompts/test-champion-prompts.md','C-023; C-050; C-071','STRATEGIC','FRONTIER','Enterprise Architect',NOW(),'Founder FA-050',NOW(),TRUE,NOW()),
+    ('QA/FAILURE_TRIAGE','1.0.0','DEFECT_CLASSIFICATION','FAILURE_TRIAGE','TEST_CHAMPION','architecture/reference/prompts/test-champion-prompts.md','C-023; C-049; C-071','CLASSIFICATION','LOCAL','Enterprise Architect',NOW(),'Founder FA-050',NOW(),TRUE,NOW()),
+    ('QA/EVIDENCE_SYNTHESIS','1.0.0','EVIDENCE_AUTHENTICITY','EVIDENCE_SYNTHESIS','TEST_CHAMPION','architecture/reference/prompts/test-champion-prompts.md','C-023; C-059; C-099','BEHAVIOURAL','MID_TIER','Enterprise Architect',NOW(),'Founder FA-050',NOW(),TRUE,NOW()),
+    ('QA/GATE_RECOMMENDATION','1.0.0','QUALITY_RECOMMENDATION','GATE_RECOMMENDATION','TEST_CHAMPION','architecture/reference/prompts/test-champion-prompts.md','C-023; C-065; C-099','BREAKING','FRONTIER','Enterprise Architect',NOW(),'Founder FA-050',NOW(),TRUE,NOW()),
+    ('QA/SKILL_INTENT_ROUTER','1.0.0','QA_ROUTING','SKILL_INTENT_ROUTER','TEST_CHAMPION','architecture/reference/prompts/test-champion-prompts.md','C-054','CLASSIFICATION','LOCAL','Enterprise Architect',NOW(),'Founder FA-050',NOW(),TRUE,NOW()),
+    ('QA/USAGE_SUMMARY','1.0.0','QA_ECONOMICS','USAGE_SUMMARY','TEST_CHAMPION','architecture/reference/prompts/test-champion-prompts.md','C-051; C-077','USAGE_SUMMARY','LOCAL','Enterprise Architect',NOW(),'Founder FA-050',NOW(),TRUE,NOW());
+
 -- Seed active prompts (v1.0.0 — all from digital-marketing-agent-prompts.md)
 INSERT INTO institutional.agent_prompt_versions
     (prompt_id, version, skill_type, pipeline_step, agent_type, prompt_file_path, constitutional_basis, change_type, reviewed_by, reviewed_at, is_active, activated_at)
