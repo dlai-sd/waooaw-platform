@@ -7,8 +7,9 @@
 | Institution | INST-013 - Goal Orchestrator |
 | Work Contract | WC-073 |
 | Produced | 2026-08-14 |
-| Status | READY FOR INDEPENDENT REVIEW - NO PHASE 3 AUTHORITY |
+| Status | APPROVED BY R-127 AND MERGED IN PR #286 - NO PHASE 3 AUTHORITY |
 | Baseline | Phase 1 P3-WC01..08 accepted through PR #281; Phase 2 merged through PR #284 |
+| Enterprise delivery clarification | WC-074 and `GOAL-006-phase3-enterprise-delivery-addendum.md`; R-128 APPROVE |
 
 ## Decision Summary
 
@@ -25,12 +26,20 @@ evidence without rebuilding or silently replacing them.
 No Phase 3 component is authorized by this plan. The first protected action is a Founder decision
 on the bounded P3-WC01 authorization package below.
 
+WC-074 adds a co-controlling enterprise delivery acceptance contract without changing the eight
+component sequence. P3-WC01 through P3-WC08 must satisfy the applicable immutable promotion,
+governed one-action operation, progressive blue-green, rollback, database compatibility, release
+intelligence, FinOps and independent-confirmation obligations in
+`goals/GOAL-006-phase3-enterprise-delivery-addendum.md`. Basic resource creation, running containers
+or endpoint health cannot satisfy an environment exit gate.
+
 ## Contribution Necessity Gate
 
 | Candidate | Decision | Reason and handling |
 |---|---|---|
 | Accepted Phase 1 P3-WC01..08 structure | `REUSE` | Still covers readiness, foundations, Demo, UAT, Production, handover, activation decision and closure; retain IDs and sequence |
 | Phase 2 implementation, tests and reviews | `REUSE` | Approved repository evidence resolves implementation readiness but not provider, registry or environment effectiveness |
+| Enterprise delivery outcome clarification | `M2_CONTRIBUTE` | Founder requires visible enterprise CI/CD, DevOps, cloud, monitoring and cost excellence; WC-074 defines cross-component acceptance without reopening Phase 2 |
 | Live Azure, GHCR and DNS readiness | `M2_CONTRIBUTE` | No approved live inventory exists; route only after exact P3-WC01 authority |
 | Numeric workload/SLO/recovery/capacity targets | `M2_CONTRIBUTE` | TGT-02..15 remain owner decisions or unaccepted recommendations |
 | Incident, Change and Release policies | `M2_CONTRIBUTE` | Canonical files remain absent; named owners must produce and obtain acceptance before P3-WC06 |
@@ -248,25 +257,26 @@ learning record and PR/merge evidence.
 | P3-R14 Production targets/risk/promotion | Founder after owner evidence | M3 | Exact accepted values and risks | Accepted UAT | BLOCKED | Founder record |
 | P3-R15 Platform Operations activation | Founder after QA/INST-004 | M3 | Exact activation grant | P3-WC07 verdicts | BLOCKED | Founder record |
 | P3-R16 Goal closure | Fresh INST-002 and Founder | M3 | Clearance and acceptance | P3-WC01..08 evidence | BLOCKED | GEOM closure gate |
+| P3-R17 Enterprise delivery contract | INST-013 coordination; independent Platform/Solution/Security/Data/QA/Constitutional review | M2/M3 | WC-074 addendum and R-128 APPROVE | PR #286 baseline | SATISFIED | Reviewed commit `919db761b25675f20029ea029261666da3fb1c12` |
 
-No blocked row is waived by this plan. Phase 3 does not start until P3-R11 is satisfied.
+No blocked row is waived by this plan. Phase 3 does not start until P3-R17 and P3-R11 are satisfied.
 
 ## Dependency Impact Report
 
 | Field | Finding |
 |---|---|
-| Changed records | This readiness plan and WC-073 only; accepted Phase 1/2 evidence is not rewritten |
-| Changed decision | P3-WC01 now explicitly verifies OCI retrievability and separates pre-entry authorization from authorized read-only readiness |
-| Direct dependants | P3-WC02..05 consume only a registry-verified exact-six tuple; P3-WC06/07 require accepted canonical operations policies |
-| Indirect dependants | P3-WC08 closure depends on all refined gates and protected decisions |
-| Unaffected evidence | Phase 2 implementation, tests, proof counts, security remediation and R-120..R-126 verdicts remain accepted |
-| Required re-contribution | Live readiness, cost/targets, canonical policies and protected decisions only; no broad Phase 2 rework |
-| Baseline and delta | Phase 1 merge `1655afbab1dec83949734dd435c6c17f811e2683`; Phase 2 merge `f52811436c900c2405aad871c43c88c073ae55fb`; refinement branch from `61da87314f666249aeabdd507a35aca1bb3860e5` |
-| Unresolved impacts | Registry availability, live topology, prices, policies, targets and Founder-reserved actions remain blocked |
+| Changed records | WC-074 addendum and bounded readiness-plan integration; accepted Phase 1/2 evidence is not rewritten |
+| Changed decision | P3-WC01 verifies OCI retrievability and live control-plane prerequisites; every later exit gate also consumes the accepted enterprise delivery contract |
+| Direct dependants | P3-WC01..05 must prove governed promotion/deployment/rollback/cost behavior; P3-WC06/07 require accepted policies and operating competence |
+| Indirect dependants | P3-WC08 closure depends on complete technical, constitutional, customer-journey, financial and delivery-performance evidence |
+| Unaffected evidence | Phase 2 implementation, tests, proof counts, security remediation and R-120..R-127 verdicts remain accepted within their stated boundaries |
+| Required re-contribution | Enterprise delivery delta review, live readiness, owner contracts, cost/targets, canonical policies and protected decisions only; no broad Phase 2 rework |
+| Baseline and delta | PR #286 merge `94701362d957fdc13d88bc7637c8b773a7cfb385`; WC-074 records the post-merge Founder clarification |
+| Unresolved impacts | Registry availability, live topology, workflow effectiveness, edge/product choices, prices, policies, targets and Founder-reserved actions remain blocked |
 
 ## Exact Founder Decision Required To Begin P3-WC01
 
-After fresh INST-002 approval of this plan, INST-013 may present one bounded decision:
+After Founder acceptance and merge of the R-128-approved WC-074 package, INST-013 may present one bounded decision:
 
 > Authorize P3-WC01 Cloud Readiness only, limited to named read-only Azure, GHCR, DNS-control and
 > pricing queries using approved identities and a stated monetary ceiling. No resource creation,
