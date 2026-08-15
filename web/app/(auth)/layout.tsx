@@ -9,7 +9,7 @@ import { authOptions } from '@/lib/auth';
 import { getRequestI18n } from '@/lib/i18n-server';
 export default async function AuthLayout({ children }: { children: ReactNode }) {
 	const session = await getServerSession(authOptions);
-	const { messages } = getRequestI18n();
+	const { messages } = await getRequestI18n();
 	const headerStatus = session?.authenticated ? <><AccountSwitchCommand label="Switch account" /><SignOutCommand label="Sign out" /></> : undefined;
 	return <AppShell headerStatus={headerStatus} messages={messages} variant="auth">{children}</AppShell>;
 }

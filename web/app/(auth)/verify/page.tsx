@@ -9,10 +9,11 @@ import { getIdentityMessages } from '@/lib/identity-messages';
 import { getRequestI18n } from '@/lib/i18n-server';
 import { safeReturnTarget } from '@/lib/safe-return';
 
-export default async function VerifyPage({ searchParams }: { searchParams?: { returnTo?: string | string[] } }) {
+export default async function VerifyPage({ searchParams }: { searchParams?: Promise<{ returnTo?: string | string[] }> }) {
 	const session = await getServerSession(authOptions);
-	const { locale } = getRequestI18n();
+	const resolvedSearchParams = await searchParams;
+	const { locale } = await getRequestI18n();
 	const messages = getIdentityMessages(locale);
-	const returnTo = safeReturnTarget(searchParams?.returnTo);
+	const returnTo = safeReturnTarget(resolvedSearchParams?.returnTo);
 	return <section className="auth-view identity-view"><p className="eyebrow">{messages.eyebrow}</p><h1>{messages.optionalMobile}</h1><p>{messages.description}</p>{session?.authenticated ? <MobileVerificationFlow messages={messages} returnTo={returnTo} /> : <SignInCommand callbackUrl="/verify" label={messages.signInFirst} />}</section>;
 }

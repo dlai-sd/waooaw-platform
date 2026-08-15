@@ -3,4 +3,4 @@
 
 import { StateView } from '@/components/system/StateView';
 import { getRequestI18n } from '@/lib/i18n-server';
-export default function ProfilePage() { const { messages } = getRequestI18n(); return <StateView actionLabel={messages.returnHome} kind="empty" title={messages.profile} description={messages.profileUnavailableDescription} />; }
+export default async function ProfilePage() { const { messages } = await getRequestI18n(); return <StateView actionLabel={messages.returnHome} kind="empty" title={messages.profile} description={messages.profileUnavailableDescription} />; }

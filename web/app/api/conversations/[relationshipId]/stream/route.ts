@@ -17,7 +17,7 @@ function streamProblem(status: number) {
   return { code: 'CONVERSATION_EXECUTION_UNAVAILABLE', title: 'Conversation stream is unavailable.' };
 }
 
-export async function GET(request: NextRequest, { params }: { params: { relationshipId: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ relationshipId: string }> }) {
   const accessToken = await accessTokenFromRequest(request);
   if (!accessToken) {
     return NextResponse.json(
@@ -25,10 +25,11 @@ export async function GET(request: NextRequest, { params }: { params: { relation
       { status: 401 },
     );
   }
+  const { relationshipId } = await params;
 
   try {
     const upstream = await openConversationStream(
-      params.relationshipId,
+      relationshipId,
       accessToken,
       request.headers.get('Last-Event-ID'),
       request.signal,

@@ -3,4 +3,4 @@
 
 import { StateView } from '@/components/system/StateView';
 import { getRequestI18n } from '@/lib/i18n-server';
-export default function ForbiddenPage() { const { messages } = getRequestI18n(); return <main className="system-page"><StateView actionLabel={messages.returnHome} kind="forbidden" title={messages.accessNotPermitted} description={messages.accessNotPermittedDescription} /></main>; }
+export default async function ForbiddenPage() { const { messages } = await getRequestI18n(); return <main className="system-page"><StateView actionLabel={messages.returnHome} kind="forbidden" title={messages.accessNotPermitted} description={messages.accessNotPermittedDescription} /></main>; }

@@ -5,8 +5,8 @@ import { Search } from 'lucide-react';
 import { ProfessionalComparison } from '@/components/professionals/ProfessionalComparison';
 import { discoverProfessionals, getProfessionalDisclosure } from '@/lib/api/professionals';
 
-export default async function ProfessionalsPage({ searchParams }: { searchParams: { outcome?: string } }) {
-	const outcome = searchParams.outcome?.trim() ?? '';
+export default async function ProfessionalsPage({ searchParams }: { searchParams: Promise<{ outcome?: string }> }) {
+	const outcome = (await searchParams).outcome?.trim() ?? '';
 	let unavailable = false;
 	const professionals = outcome.length >= 3
 		? await discoverProfessionals(outcome)

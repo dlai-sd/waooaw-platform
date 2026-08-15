@@ -4,8 +4,8 @@
 import { ArrowRight, BriefcaseBusiness, CheckCircle2, Scale, ShieldCheck } from 'lucide-react';
 import { getRequestI18n } from '@/lib/i18n-server';
 
-export default function HomePage() {
-  const { messages } = getRequestI18n();
+export default async function HomePage() {
+  const { messages } = await getRequestI18n();
   const steps = [messages.stepBusiness, messages.stepScope, messages.stepControl];
   const professionalCategories = [messages.marketingExpert, messages.agricultureExpert, messages.tradingExpert, messages.tutorExpert];
   return (

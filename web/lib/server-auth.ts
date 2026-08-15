@@ -13,6 +13,6 @@ export async function accessTokenFromRequest(request: NextRequest): Promise<stri
 }
 
 export async function getServerAccessToken(): Promise<string | undefined> {
-  const request = new NextRequest(process.env.NEXTAUTH_URL ?? 'http://localhost:3000', { headers: new Headers(headers()) });
+  const request = new NextRequest(process.env.NEXTAUTH_URL ?? 'http://localhost:3000', { headers: new Headers(await headers()) });
   return accessTokenFromRequest(request);
 }

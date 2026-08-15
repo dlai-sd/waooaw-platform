@@ -21,7 +21,7 @@ jest.mock('@/lib/api/conversation', () => ({
 }));
 
 const relationshipId = '5f33925b-fb0c-4366-8414-7f85309639b9';
-const params = { params: { relationshipId } };
+const params = { params: Promise.resolve({ relationshipId }) };
 
 describe('conversation server boundary', () => {
   beforeEach(() => {
