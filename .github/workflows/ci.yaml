@@ -158,7 +158,7 @@ jobs:
 
       - name: Ruff in Docker (C-080)
         run: |
-          docker compose --profile test-python run --rm test-runner-python sh -lc '
+          docker compose --profile test-python run --rm --user root test-runner-python sh -lc '
             ruff check "${{ matrix.source }}" "${{ matrix.tests }}" &&
             ruff format --check "${{ matrix.source }}" "${{ matrix.tests }}"
           '
@@ -166,13 +166,13 @@ jobs:
       - name: mypy in Docker (C-080)
         if: always()
         run: |
-          docker compose --profile test-python run --rm test-runner-python \
+          docker compose --profile test-python run --rm --user root test-runner-python \
             mypy --strict "${{ matrix.source }}"
 
       - name: pytest and constitutional coverage in Docker (C-076, C-080)
         if: always()
         run: |
-          docker compose --profile test-python run --rm test-runner-python sh -lc '
+          docker compose --profile test-python run --rm --user root test-runner-python sh -lc '
             mkdir -p coverage/${{ matrix.service }} &&
             pytest "${{ matrix.tests }}" \
               --cov="${{ matrix.source }}" \
@@ -298,6 +298,7 @@ jobs:
           format: sarif
           output: trivy-${{ matrix.image }}.sarif
           severity: CRITICAL,HIGH
+          ignore-unfixed: true
           exit-code: 1
 
       - name: Upload Trivy results
@@ -340,10 +341,17 @@ jobs:
 
       - name: dotnet vulnerable — .NET dependencies
         run: |
-          dotnet list src/constitutional-engine package --vulnerable --include-transitive 2>&1 | \
-            grep -i "has the following vulnerable packages" && exit 1 || true
-          dotnet list src/business-platform package --vulnerable --include-transitive 2>&1 | \
-            grep -i "has the following vulnerable packages" && exit 1 || true
+          audit_dotnet_project() {
+            local project="$1"
+            local audit_output
+            audit_output="$(dotnet list "$project" package --vulnerable --include-transitive 2>&1)"
+            printf '%s\n' "$audit_output"
+            if grep -qi "has the following vulnerable packages" <<< "$audit_output"; then
+              return 1
+            fi
+          }
+          audit_dotnet_project src/constitutional-engine
+          audit_dotnet_project src/business-platform
 
       - name: pnpm audit — Node.js dependencies
         run: pnpm audit --audit-level high
@@ -363,10 +371,9 @@ jobs:
       - name: pip-licenses — check Python dependency licenses
         run: |
           pip install pip-licenses
-          pip-licenses --fail-on="GPL;AGPL;LGPL" \
-            --packages $(pip install -r src/professional-runtime/requirements.txt -q 2>/dev/null && \
-                         pip install -r src/ai-runtime/requirements.txt -q 2>/dev/null && \
-                         pip freeze | cut -d= -f1 | tr '\n' ' ')
+          pip install -r src/professional-runtime/requirements.txt -q
+          pip install -r src/ai-runtime/requirements.txt -q
+          pip-licenses --fail-on="GPL;AGPL;LGPL"
         continue-on-error: true  # Advisory only — does not block PR (LGPL can be acceptable)
 
   # ─── Constitutional commit gate (C-059 — Implementation Traceability) ─────

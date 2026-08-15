@@ -1,9 +1,9 @@
-FROM python:3.12-slim AS dependencies
+FROM python:3.12-slim-bookworm AS dependencies
 WORKDIR /install
 COPY src/billing-engine/requirements.txt .
 RUN pip install --no-cache-dir --prefix=/install/packages -r requirements.txt
 
-FROM python:3.12-slim
+FROM python:3.12-slim-bookworm
 RUN groupadd --system waooaw && useradd --system --gid waooaw waooaw
 WORKDIR /app
 COPY --from=dependencies /install/packages /usr/local
