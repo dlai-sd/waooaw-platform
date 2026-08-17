@@ -7,7 +7,8 @@ from enum import StrEnum
 
 class LlmTier(StrEnum):
     """ADR-029 §3 routing tiers. NEVER add tiers without EA approval."""
-    LOCAL = "local"        # Ollama (₹0/token) — default for dev
-    MID = "mid"            # Sarvam AI (Indian SMEs, optimised cost)
+
+    LOCAL = "local"  # Ollama (₹0/token) — default for dev
+    MID = "mid"  # Sarvam AI (Indian SMEs, optimised cost)
     FRONTIER = "frontier"  # Gemini / Anthropic (complex reasoning)
     FALLBACK = "fallback"  # Anthropic Claude (when Gemini unavailable)

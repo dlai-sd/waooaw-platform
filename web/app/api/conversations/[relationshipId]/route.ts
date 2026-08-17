@@ -26,9 +26,10 @@ function sessionRequired() {
   );
 }
 
-export async function GET(request: NextRequest, { params }: { params: { relationshipId: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ relationshipId: string }> }) {
   const accessToken = await accessTokenFromRequest(request);
   if (!accessToken) return sessionRequired();
+  const { relationshipId } = await params;
 
   const cursor = optionalQuery(request, 'cursor');
   const afterCursor = optionalQuery(request, 'afterCursor');
@@ -46,7 +47,7 @@ export async function GET(request: NextRequest, { params }: { params: { relation
       throw new InvalidConversationRequest();
     }
     const page = await createConversationApi(accessToken).listConversationMessages({
-      relationshipId: params.relationshipId,
+      relationshipId,
       cursor,
       afterCursor,
       limit,
@@ -64,9 +65,10 @@ export async function GET(request: NextRequest, { params }: { params: { relation
   }
 }
 
-export async function POST(request: NextRequest, { params }: { params: { relationshipId: string } }) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ relationshipId: string }> }) {
   const accessToken = await accessTokenFromRequest(request);
   if (!accessToken) return sessionRequired();
+  const { relationshipId } = await params;
 
   try {
     const body = await request.json() as CommandBody;
@@ -77,7 +79,7 @@ export async function POST(request: NextRequest, { params }: { params: { relatio
     switch (action) {
       case 'send':
         return NextResponse.json(await api.sendConversationMessage({
-          relationshipId: params.relationshipId,
+          relationshipId,
           idempotencyKey,
           sendConversationMessageRequestV1: {
             schemaVersion: '1.0',
@@ -89,13 +91,13 @@ export async function POST(request: NextRequest, { params }: { params: { relatio
         }));
       case 'retry':
         return NextResponse.json(await api.retryConversationMessage({
-          relationshipId: params.relationshipId,
+          relationshipId,
           messageId: requiredString(body, 'messageId'),
           idempotencyKey,
         }));
       case 'read':
         return NextResponse.json(await api.updateConversationReadPosition({
-          relationshipId: params.relationshipId,
+          relationshipId,
           idempotencyKey,
           updateConversationReadPositionRequestV1: {
             schemaVersion: '1.0',
@@ -105,7 +107,7 @@ export async function POST(request: NextRequest, { params }: { params: { relatio
         }));
       case 'cancel':
         return NextResponse.json(await api.cancelConversationExecution({
-          relationshipId: params.relationshipId,
+          relationshipId,
           executionId: requiredString(body, 'executionId'),
           idempotencyKey,
         }));

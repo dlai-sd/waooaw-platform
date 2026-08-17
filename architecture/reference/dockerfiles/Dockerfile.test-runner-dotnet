@@ -1,0 +1,18 @@
+# Implements: ADR-045 §1, §2, §4, §6
+# Constitutional basis: C-076, C-080
+
+FROM mcr.microsoft.com/dotnet/sdk:9.0-noble
+
+WORKDIR /workspace
+
+COPY src/constitutional-engine/constitutional-engine.csproj src/constitutional-engine/
+COPY src/business-platform/business-platform.csproj src/business-platform/
+COPY tests/constitutional-engine.Tests/constitutional-engine.Tests.csproj tests/constitutional-engine.Tests/
+COPY tests/business-platform.Tests/business-platform.Tests.csproj tests/business-platform.Tests/
+RUN --mount=type=cache,target=/root/.nuget/packages \
+    dotnet restore tests/constitutional-engine.Tests/constitutional-engine.Tests.csproj && \
+    dotnet restore tests/business-platform.Tests/business-platform.Tests.csproj
+
+COPY . /workspace/
+
+CMD ["dotnet", "test"]

@@ -175,10 +175,10 @@ public sealed class TenantDbConnectionInterceptor : DbCommandInterceptor
         return base.ReaderExecuting(command, eventData, result);
     }
 
-    public override InterceptionResult<object?> ScalarExecuting(
+    public override InterceptionResult<object> ScalarExecuting(
         DbCommand command,
         CommandEventData eventData,
-        InterceptionResult<object?> result)
+        InterceptionResult<object> result)
     {
         SetTenantLocal(command);
         return base.ScalarExecuting(command, eventData, result);
@@ -205,10 +205,10 @@ public sealed class TenantDbConnectionInterceptor : DbCommandInterceptor
         return base.ReaderExecutingAsync(command, eventData, result, cancellationToken);
     }
 
-    public override ValueTask<InterceptionResult<object?>> ScalarExecutingAsync(
+    public override ValueTask<InterceptionResult<object>> ScalarExecutingAsync(
         DbCommand command,
         CommandEventData eventData,
-        InterceptionResult<object?> result,
+        InterceptionResult<object> result,
         CancellationToken cancellationToken = default)
     {
         SetTenantLocal(command);

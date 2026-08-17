@@ -26,10 +26,7 @@ DMA_CATALOG = ROOT / "src/business-platform/Catalog/Professionals/digital-market
 
 
 def capabilities() -> tuple[TrialCapability, ...]:
-    return tuple(
-        TrialCapability(capability_id, source_type)
-        for capability_id, source_type in DMA_TRIAL_CAPABILITIES.items()
-    )
+    return tuple(TrialCapability(capability_id, source_type) for capability_id, source_type in DMA_TRIAL_CAPABILITIES.items())
 
 
 @pytest.mark.asyncio
@@ -41,39 +38,35 @@ async def test_dma_adapter_covers_exact_catalog_and_all_19_demonstrations() -> N
 
     service = TrialDemonstrationService(DigitalMarketingEvaluationAdapter())
     results = [
-        await service.demonstrate(TrialDemonstrationRequest(
-            skill_id=skill_id,
-            goal="Increase qualified local enquiries",
-            context={"business_name": "Example Services", "location": "Pune"},
-            capabilities=capabilities(),
-        ))
+        await service.demonstrate(
+            TrialDemonstrationRequest(
+                skill_id=skill_id,
+                goal="Increase qualified local enquiries",
+                context={"business_name": "Example Services", "location": "Pune"},
+                capabilities=capabilities(),
+            )
+        )
         for skill_id in sorted(catalog_skills)
     ]
 
     assert len(results) == 19
     assert sum(result.applicable for result in results) == 17
     assert all(not result.external_actions for result in results)
-    assert all(
-        result.artifact and result.artifact["mode"] == "SIMULATION_ONLY"
-        for result in results
-        if result.applicable
-    )
-    assert all(
-        result.reason and result.activation_condition
-        for result in results
-        if not result.applicable
-    )
+    assert all(result.artifact and result.artifact["mode"] == "SIMULATION_ONLY" for result in results if result.applicable)
+    assert all(result.reason and result.activation_condition for result in results if not result.applicable)
 
 
 @pytest.mark.asyncio
 async def test_context_activates_conditional_dma_skill_without_changing_shared_runtime() -> None:
     service = TrialDemonstrationService(DigitalMarketingEvaluationAdapter())
-    result = await service.demonstrate(TrialDemonstrationRequest(
-        skill_id="AGENCY_OPERATIONS",
-        goal="Standardise client delivery",
-        context={"agency_mode": "true"},
-        capabilities=capabilities(),
-    ))
+    result = await service.demonstrate(
+        TrialDemonstrationRequest(
+            skill_id="AGENCY_OPERATIONS",
+            goal="Standardise client delivery",
+            context={"agency_mode": "true"},
+            capabilities=capabilities(),
+        )
+    )
     assert result.applicable is True
     assert result.artifact_type == "agency-workspace-plan"
 
@@ -111,16 +104,23 @@ async def test_dma_adapter_plans_exact_14_days_and_proposes_configuration() -> N
 async def test_dma_adapter_rejects_unknown_skill_and_missing_recipe_capability() -> None:
     adapter = DigitalMarketingEvaluationAdapter()
     with pytest.raises(ValueError, match="Unknown DMA skill"):
-        await adapter.demonstrate(TrialDemonstrationRequest(
-            "UNKNOWN", "Goal", {}, capabilities(),
-        ))
+        await adapter.demonstrate(
+            TrialDemonstrationRequest(
+                "UNKNOWN",
+                "Goal",
+                {},
+                capabilities(),
+            )
+        )
     with pytest.raises(ValueError, match="Required trial capability unavailable"):
-        await adapter.demonstrate(TrialDemonstrationRequest(
-            "CUSTOMER_PROFILING",
-            "Goal",
-            {},
-            (TrialCapability("approved-template", "APPROVED_TEMPLATE"),),
-        ))
+        await adapter.demonstrate(
+            TrialDemonstrationRequest(
+                "CUSTOMER_PROFILING",
+                "Goal",
+                {},
+                (TrialCapability("approved-template", "APPROVED_TEMPLATE"),),
+            )
+        )
 
 
 @pytest.mark.asyncio
@@ -137,12 +137,14 @@ async def test_shared_runtime_rejects_paid_external_or_unknown_capabilities(
 ) -> None:
     service = TrialDemonstrationService(DigitalMarketingEvaluationAdapter())
     with pytest.raises(ValueError, match="local, free, approved, or synthetic"):
-        await service.demonstrate(TrialDemonstrationRequest(
-            skill_id="CUSTOMER_PROFILING",
-            goal="Profile business",
-            context={},
-            capabilities=(unsafe_capability,),
-        ))
+        await service.demonstrate(
+            TrialDemonstrationRequest(
+                skill_id="CUSTOMER_PROFILING",
+                goal="Profile business",
+                context={},
+                capabilities=(unsafe_capability,),
+            )
+        )
 
 
 class ResultAdapter:
@@ -171,12 +173,14 @@ async def test_shared_runtime_rejects_invalid_adapter_results(
 ) -> None:
     service = TrialDemonstrationService(ResultAdapter(result))
     with pytest.raises(ValueError, match=error):
-        await service.demonstrate(TrialDemonstrationRequest(
-            "SKILL",
-            "Goal",
-            {},
-            (TrialCapability("safe", "LOCAL_INFERENCE"),),
-        ))
+        await service.demonstrate(
+            TrialDemonstrationRequest(
+                "SKILL",
+                "Goal",
+                {},
+                (TrialCapability("safe", "LOCAL_INFERENCE"),),
+            )
+        )
 
 
 @pytest.mark.asyncio
@@ -186,19 +190,29 @@ async def test_shared_runtime_rejects_invalid_adapter_results(
         (TrialDemonstrationRequest("", "Goal", {}, (TrialCapability("safe", "LOCAL_INFERENCE"),)), "skill and goal"),
         (TrialDemonstrationRequest("SKILL", "", {}, (TrialCapability("safe", "LOCAL_INFERENCE"),)), "skill and goal"),
         (TrialDemonstrationRequest("SKILL", "Goal", {}, ()), "capabilities are required"),
-        (TrialDemonstrationRequest("SKILL", "Goal", {}, (
-            TrialCapability("safe", "LOCAL_INFERENCE"),
-            TrialCapability("safe", "LOCAL_INFERENCE"),
-        )), "identifiers must be unique"),
+        (
+            TrialDemonstrationRequest(
+                "SKILL",
+                "Goal",
+                {},
+                (
+                    TrialCapability("safe", "LOCAL_INFERENCE"),
+                    TrialCapability("safe", "LOCAL_INFERENCE"),
+                ),
+            ),
+            "identifiers must be unique",
+        ),
     ],
 )
 async def test_shared_runtime_rejects_invalid_demonstration_requests(
     demonstration_request: TrialDemonstrationRequest,
     error: str,
 ) -> None:
-    service = TrialDemonstrationService(ResultAdapter(
-        TrialDemonstration("SKILL", True, "artifact", {}, ("safe",)),
-    ))
+    service = TrialDemonstrationService(
+        ResultAdapter(
+            TrialDemonstration("SKILL", True, "artifact", {}, ("safe",)),
+        )
+    )
     with pytest.raises(ValueError, match=error):
         await service.demonstrate(demonstration_request)
 
@@ -250,12 +264,14 @@ async def test_non_dma_three_skill_fixture_uses_same_shared_contract() -> None:
     service = TrialDemonstrationService(ThreeSkillNonDmaAdapter())
     fixture_capabilities = (TrialCapability("fixture-local", "LOCAL_INFERENCE"),)
     results = [
-        await service.demonstrate(TrialDemonstrationRequest(
-            skill_id=skill_id,
-            goal="Fixture goal",
-            context={},
-            capabilities=fixture_capabilities,
-        ))
+        await service.demonstrate(
+            TrialDemonstrationRequest(
+                skill_id=skill_id,
+                goal="Fixture goal",
+                context={},
+                capabilities=fixture_capabilities,
+            )
+        )
         for skill_id in ("FORECAST", "SCHEDULE", "SUMMARISE")
     ]
     assert [result.skill_id for result in results] == ["FORECAST", "SCHEDULE", "SUMMARISE"]

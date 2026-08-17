@@ -21,11 +21,13 @@ from pse.tiers import LlmTier
 try:
     import sys
     import pathlib
+
     _tl = str(pathlib.Path(__file__).parent.parent.parent / "trust-layer")
     if _tl not in sys.path:
         sys.path.insert(0, _tl)
     from ctg.gateway import ConstitutionalToolGateway, ToolExecutor
     from ctg.models import GatewayResult, ProviderConfig, SessionContext
+
     _CTG_AVAILABLE = True
 except ImportError:  # pragma: no cover — CTG available in Docker; local dev may lack it
     _CTG_AVAILABLE = False
@@ -169,9 +171,7 @@ async def _dispatch_mid(prompt: str, language: str | None) -> dict[str, Any]:
     those adapters are wired in (WC015-02b scope).
     C-063: prompt is not logged here.
     """
-    raise NotImplementedError(
-        "MID_TIER provider dispatch not yet implemented in this adapter scope (WC015-02b)"
-    )
+    raise NotImplementedError("MID_TIER provider dispatch not yet implemented in this adapter scope (WC015-02b)")
 
 
 async def _dispatch_frontier(prompt: str) -> dict[str, Any]:
@@ -181,9 +181,7 @@ async def _dispatch_frontier(prompt: str) -> dict[str, Any]:
     Raises NotImplementedError until that adapter is wired in (WC015-02b scope).
     C-063: prompt is not logged here.
     """
-    raise NotImplementedError(
-        "FRONTIER provider dispatch not yet implemented in this adapter scope (WC015-02b)"
-    )
+    raise NotImplementedError("FRONTIER provider dispatch not yet implemented in this adapter scope (WC015-02b)")
 
 
 # ---------------------------------------------------------------------------
@@ -252,6 +250,7 @@ def _build_llm_executor() -> ToolExecutor:
     Returns the LLM executor used by CTG for the 'llm.complete' tool.
     CTG calls this with (tool_name, args, token, config); executor does the HTTP call.
     """
+
     async def _executor(
         tool_name: str,
         args: dict[str, Any],
@@ -266,6 +265,7 @@ def _build_llm_executor() -> ToolExecutor:
         if provider in ("sarvam", "google") and config.auth_method == "API_KEY":
             return await _dispatch_mid(prompt, language)
         return await _dispatch_frontier(prompt)
+
     return _executor
 
 
@@ -401,8 +401,14 @@ async def route_and_dispatch(
                 status = "failed"
                 await _record_dispatch_event(
                     async_session_factory,
-                    event_id, tier, provider_id, model_id,
-                    task_complexity, language, status, error_detail,
+                    event_id,
+                    tier,
+                    provider_id,
+                    model_id,
+                    task_complexity,
+                    language,
+                    status,
+                    error_detail,
                 )
                 raise RuntimeError(f"CTG tool error: {gw_result.error.code}")
             result = gw_result.result or {}
@@ -411,8 +417,14 @@ async def route_and_dispatch(
         except asyncio.CancelledError:
             await _record_dispatch_event(
                 async_session_factory,
-                event_id, tier, provider_id, model_id,
-                task_complexity, language, "cancelled", "asyncio.CancelledError",
+                event_id,
+                tier,
+                provider_id,
+                model_id,
+                task_complexity,
+                language,
+                "cancelled",
+                "asyncio.CancelledError",
             )
             raise
         except Exception as exc:
@@ -421,8 +433,14 @@ async def route_and_dispatch(
                 status = "failed"
                 await _record_dispatch_event(
                     async_session_factory,
-                    event_id, tier, provider_id, model_id,
-                    task_complexity, language, status, error_detail,
+                    event_id,
+                    tier,
+                    provider_id,
+                    model_id,
+                    task_complexity,
+                    language,
+                    status,
+                    error_detail,
                 )
             raise
     else:
@@ -439,8 +457,14 @@ async def route_and_dispatch(
         except asyncio.CancelledError:
             await _record_dispatch_event(
                 async_session_factory,
-                event_id, tier, provider_id, model_id,
-                task_complexity, language, "cancelled", "asyncio.CancelledError",
+                event_id,
+                tier,
+                provider_id,
+                model_id,
+                task_complexity,
+                language,
+                "cancelled",
+                "asyncio.CancelledError",
             )
             raise
         except Exception as exc:
@@ -448,8 +472,14 @@ async def route_and_dispatch(
             status = "not_implemented" if isinstance(exc, NotImplementedError) else "failed"
             await _record_dispatch_event(
                 async_session_factory,
-                event_id, tier, provider_id, model_id,
-                task_complexity, language, status, error_detail,
+                event_id,
+                tier,
+                provider_id,
+                model_id,
+                task_complexity,
+                language,
+                status,
+                error_detail,
             )
             raise
 

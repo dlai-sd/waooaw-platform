@@ -13,7 +13,10 @@ pytest-xdist>=3.0              # parallel test execution
 # ── Quality tools ────────────────────────────────────────────────────────────
 ruff>=0.5                       # linting + formatting (replaces flake8 + isort + black)
 mypy>=1.10                      # type checking
+types-grpcio>=1.0               # grpcio typing for strict Professional Runtime checks
+asyncpg-stubs>=0.30             # asyncpg typing for AI provider checks
 bandit>=1.7                     # security SAST
+pip-audit>=2.9                  # Python dependency vulnerability gate
 sqlfluff>=3.0                   # SQL lint gate (PostgreSQL dialect) — P1 multi-stack gate
 yamllint>=1.35                  # YAML lint gate (K8s/Helm manifests) — P1 multi-stack gate
 python-hcl2>=4.3                # Terraform HCL syntax validation gate — P2 multi-stack gate
@@ -26,6 +29,8 @@ psycopg2-binary>=2.9            # PostgreSQL for integration tests
 # ── Async database drivers ──────────────────────────────────────────────────
 aiosqlite>=0.20                 # SQLite async driver for in-memory test engines
 asyncpg>=0.29                   # PostgreSQL async driver
+pgvector==0.3.5                 # AI Runtime RAG import contract
+transformers==5.5.0             # AI Runtime retriever import contract
 
 # ── Contract testing ─────────────────────────────────────────────────────────
 schemathesis>=3.0                # OpenAPI fuzzing — auto-generates adversarial tests from spec (WC-013)

@@ -46,6 +46,72 @@ public sealed class RelationshipEvidenceServiceTests
         Assert.Equal(0, context.Gateway.CallCount);
     }
 
+    [Theory]
+    [InlineData(RelationshipParticipantRole.Employer, 2)]
+    [InlineData(RelationshipParticipantRole.RelationshipManager, 1)]
+    [InlineData(RelationshipParticipantRole.OutcomeOwner, 0)]
+    [InlineData(RelationshipParticipantRole.ConstitutionalAuthority, 0)]
+    public async Task EvidenceVisibility_MapsEveryRelationshipRole(
+        RelationshipParticipantRole role,
+        int expectedCount)
+    {
+        var context = await CreateAsync(role);
+
+        var items = await context.Service.ListAsync(
+            context.TenantId, context.RelationshipId, context.ParticipantId, CancellationToken.None);
+
+        Assert.Equal(expectedCount, items.Count);
+    }
+
+    [Fact]
+    public async Task EvidenceDetails_MapAvailableErasedAndNotRetainedPayloads()
+    {
+        var context = await CreateAsync(RelationshipParticipantRole.Employer);
+        var records = context.Gateway.Records.Values.ToArray();
+        records[0].PayloadRefId = Guid.NewGuid().ToString("D");
+        records[1].ErasureStatus = "PURGED";
+        records[1].ErasureTimestamp = Timestamp.FromDateTimeOffset(DateTimeOffset.UtcNow);
+
+        var items = await context.Service.ListAsync(
+            context.TenantId, context.RelationshipId, context.ParticipantId, CancellationToken.None);
+        var available = await context.Service.GetAsync(
+            context.TenantId, context.RelationshipId, context.ParticipantId,
+            Guid.Parse(records[0].EvidenceRecordId), CancellationToken.None);
+        var missing = await context.Service.GetAsync(
+            context.TenantId, context.RelationshipId, context.ParticipantId,
+            Guid.NewGuid(), CancellationToken.None);
+
+        Assert.Contains(items, value => value.PayloadState == "AVAILABLE" && value.PayloadReference.HasValue);
+        Assert.Contains(items, value => value.PayloadState == "ERASED" && value.ErasedAt.HasValue);
+        Assert.NotNull(available);
+        Assert.Null(missing);
+    }
+
+    [Fact]
+    public async Task EmptyEvidenceAndInvalidExportConfigurationFailClosed()
+    {
+        var context = await CreateAsync(RelationshipParticipantRole.Employer);
+        await using (var db = context.Factory.CreateDbContext())
+        {
+            db.RelationshipStateHistory.RemoveRange(db.RelationshipStateHistory);
+            await db.SaveChangesAsync();
+        }
+        context.Gateway.Records.Clear();
+        Assert.Empty(await context.Service.ListAsync(
+            context.TenantId, context.RelationshipId, context.ParticipantId, CancellationToken.None));
+
+        var unavailable = new RelationshipEvidenceService(context.Factory, context.Gateway);
+        await Assert.ThrowsAsync<ArgumentException>(() => unavailable.CreateExportAsync(
+            context.TenantId, context.RelationshipId, context.ParticipantId,
+            Guid.NewGuid(), " ", CancellationToken.None));
+        await Assert.ThrowsAsync<ArgumentException>(() => unavailable.CreateExportAsync(
+            context.TenantId, context.RelationshipId, context.ParticipantId,
+            Guid.NewGuid(), new string('x', 201), CancellationToken.None));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => unavailable.CreateExportAsync(
+            context.TenantId, context.RelationshipId, context.ParticipantId,
+            Guid.NewGuid(), "audit", CancellationToken.None));
+    }
+
     [Fact]
     public async Task EvidenceExport_IsEvidenceFirstSignedAndIdempotent()
     {
@@ -86,13 +152,19 @@ public sealed class RelationshipEvidenceServiceTests
         await using var db = factory.CreateDbContext();
         db.EmploymentRelationships.Add(new EmploymentRelationship
         {
-            TenantId = tenantId, RelationshipId = relationshipId, ProfessionalType = "DMA",
-            EvaluationIntentId = Guid.NewGuid(), InitiatingParticipantId = participantId,
+            TenantId = tenantId,
+            RelationshipId = relationshipId,
+            ProfessionalType = "DMA",
+            EvaluationIntentId = Guid.NewGuid(),
+            InitiatingParticipantId = participantId,
         });
         db.RelationshipParticipants.Add(new RelationshipParticipant
         {
-            TenantId = tenantId, RelationshipId = relationshipId, ParticipantId = participantId,
-            Role = role, BoundEvidenceId = Guid.NewGuid(),
+            TenantId = tenantId,
+            RelationshipId = relationshipId,
+            ParticipantId = participantId,
+            Role = role,
+            BoundEvidenceId = Guid.NewGuid(),
         });
         db.RelationshipStateHistory.AddRange(
             History(tenantId, relationshipId, participantId, trialEvidenceId, 1),
@@ -114,17 +186,27 @@ public sealed class RelationshipEvidenceServiceTests
 
     private static RelationshipStateHistory History(
         Guid tenantId, Guid relationshipId, Guid participantId, Guid evidenceId, int version) => new()
-    {
-        TenantId = tenantId, RelationshipId = relationshipId, StateVersion = version,
-        ToState = EmploymentRelationshipState.Interviewing, ActorParticipantId = participantId,
-        ActorRole = RelationshipParticipantRole.Evaluator, CorrelationId = Guid.NewGuid(), EvidenceId = evidenceId,
-    };
+        {
+            TenantId = tenantId,
+            RelationshipId = relationshipId,
+            StateVersion = version,
+            ToState = EmploymentRelationshipState.Interviewing,
+            ActorParticipantId = participantId,
+            ActorRole = RelationshipParticipantRole.Evaluator,
+            CorrelationId = Guid.NewGuid(),
+            EvidenceId = evidenceId,
+        };
 
     private static CustomerVisibleEvidenceRecord Record(Guid id, string actionType) => new()
     {
-        EvidenceRecordId = id.ToString(), DecisionId = Guid.NewGuid().ToString(), AgentId = "agent",
-        AgentInstanceId = "relationship", ActionType = actionType, ExecutionStatus = "AUTHORIZED",
-        EvidenceHash = new string('a', 64), RecordedAt = Timestamp.FromDateTimeOffset(DateTimeOffset.UtcNow),
+        EvidenceRecordId = id.ToString(),
+        DecisionId = Guid.NewGuid().ToString(),
+        AgentId = "agent",
+        AgentInstanceId = "relationship",
+        ActionType = actionType,
+        ExecutionStatus = "AUTHORIZED",
+        EvidenceHash = new string('a', 64),
+        RecordedAt = Timestamp.FromDateTimeOffset(DateTimeOffset.UtcNow),
         ErasureStatus = "NONE",
     };
 

@@ -5,6 +5,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Text;
+using System.Buffers.Binary;
 using Microsoft.Extensions.Configuration;
 using Waooaw.BusinessPlatform.Services;
 using Xunit;
@@ -146,8 +147,18 @@ public sealed class ConfiguredVoiceMediaGatewayTests : IDisposable
             {
                 using var client = await _listener.AcceptTcpClientAsync(_stopping.Token);
                 await using var stream = client.GetStream();
-                var buffer = new byte[81920];
-                await stream.ReadAtLeastAsync(buffer, 1, cancellationToken: _stopping.Token);
+                var command = new byte["zINSTREAM\0"u8.Length];
+                await stream.ReadExactlyAsync(command, _stopping.Token);
+                Assert.Equal("zINSTREAM\0"u8.ToArray(), command);
+                var lengthBytes = new byte[sizeof(int)];
+                while (true)
+                {
+                    await stream.ReadExactlyAsync(lengthBytes, _stopping.Token);
+                    var length = BinaryPrimitives.ReadInt32BigEndian(lengthBytes);
+                    if (length == 0) break;
+                    var chunk = new byte[length];
+                    await stream.ReadExactlyAsync(chunk, _stopping.Token);
+                }
                 await stream.WriteAsync(Encoding.UTF8.GetBytes(response), _stopping.Token);
             }
         }

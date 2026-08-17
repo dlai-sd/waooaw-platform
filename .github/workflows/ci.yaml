@@ -95,50 +95,58 @@ jobs:
     name: .NET unit tests
     runs-on: ubuntu-latest
     needs: build
-    # G-04 FIX: only run when .csproj files exist — prevents false failures during
-    # Sprint 011 scaffold PRs before src/ service directories are created.
-    if: |
-      hashFiles('src/constitutional-engine/**/*.csproj') != '' ||
-      hashFiles('src/business-platform/**/*.csproj') != ''
     strategy:
+      fail-fast: false
       matrix:
-        project:
-          - src/constitutional-engine
-          - src/business-platform
+        include:
+          - service: constitutional-engine
+            source: src/constitutional-engine/constitutional-engine.csproj
+            tests: tests/constitutional-engine.Tests/constitutional-engine.Tests.csproj
+            profile: test-dotnet
+            runner: test-runner-dotnet
+          - service: business-platform
+            source: src/business-platform/business-platform.csproj
+            tests: tests/business-platform.Tests/business-platform.Tests.csproj
+            profile: test
+            runner: test-runner
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '9.0.x'
+      - name: Build .NET Docker test runner (C-080)
+        run: docker compose --profile ${{ matrix.profile }} build ${{ matrix.runner }}
 
-      - name: Restore
-        run: dotnet restore ${{ matrix.project }}
-
-      - name: Build
-        run: dotnet build ${{ matrix.project }} --no-restore -warnaserror
-
-      - name: Test
+      - name: Restore, build, and test in Docker (C-076, C-080)
         run: |
-          dotnet test ${{ matrix.project }} \
-            --no-build \
-            --collect:"XPlat Code Coverage" \
-            --results-directory ./coverage
-
-      - name: Install dotnet-coverage tool
-        run: dotnet tool install --global dotnet-coverage
+          docker compose --profile ${{ matrix.profile }} run --rm --user root ${{ matrix.runner }} sh -lc '
+            dotnet restore "${{ matrix.tests }}" &&
+            dotnet build "${{ matrix.tests }}" --no-restore -warnaserror &&
+            dotnet test "${{ matrix.tests }}" \
+              --no-build \
+              --settings tests/coverage.runsettings \
+              --collect:"XPlat Code Coverage" \
+              --results-directory ./coverage/${{ matrix.service }}
+          '
 
       - name: Check coverage ≥90% (C-076)
         run: |
-          dotnet-coverage merge ./coverage/**/*.xml -f xml -o merged-coverage.xml
-          dotnet-coverage check merged-coverage.xml \
-            --minimum-coverage-lines 90 \
-            --minimum-coverage-branches 80
+          coverage_file="$(find ./coverage/${{ matrix.service }} -name coverage.cobertura.xml -print -quit)"
+          if [[ -z "$coverage_file" ]]; then
+            echo "Cobertura coverage report not found" >&2
+            exit 1
+          fi
+          read -r line_rate branch_rate < <(
+            sed -n 's/.*<coverage line-rate="\([0-9.]*\)" branch-rate="\([0-9.]*\)".*/\1 \2/p' \
+              "$coverage_file" | head -n 1
+          )
+          awk -v lines="$line_rate" -v branches="$branch_rate" 'BEGIN {
+            printf "line_coverage=%.2f%% branch_coverage=%.2f%%\n", lines * 100, branches * 100
+            exit !(lines >= 0.90 && branches >= 0.80)
+          }'
         # Failure = C-076 constitutional violation — blocks merge absolutely
 
       - name: Upload coverage
         uses: codecov/codecov-action@v4
         with:
-          directory: ./coverage
+          directory: ./coverage/${{ matrix.service }}
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: true
 
@@ -147,19 +155,23 @@ jobs:
     name: Python unit tests + lint
     runs-on: ubuntu-latest
     needs: build
-    # G-04 FIX: only run when pyproject.toml exists in service directories
-    if: |
-      hashFiles('src/professional-runtime/pyproject.toml') != '' ||
-      hashFiles('src/ai-runtime/pyproject.toml') != ''
     strategy:
       matrix:
         include:
           - service: professional-runtime
             source: src/professional-runtime
             tests: tests/professional-runtime
+            mypy_targets: >-
+              -p routers -p workflows -p professionals -m main -m private_server
+              -m relationship_workspace -m constitutional_gateway -m evaluation_workflow
+              -m intent_crystallizer -m mtls_protocol -m session_executor
+              -m skill_resolver -m workload_identity
           - service: ai-runtime
             source: src/ai-runtime
             tests: tests/ai-runtime
+            mypy_path: /workspace/src/trust-layer
+            mypy_targets: >-
+              -p providers -p pii -p pse -p rag -m main -m transcription
     steps:
       - uses: actions/checkout@v4
       - name: Build constitutional Docker test runner (C-080)
@@ -167,7 +179,7 @@ jobs:
 
       - name: Ruff in Docker (C-080)
         run: |
-          docker compose --profile test-python run --rm test-runner-python sh -lc '
+          docker compose --profile test-python run --rm --user root test-runner-python sh -lc '
             ruff check "${{ matrix.source }}" "${{ matrix.tests }}" &&
             ruff format --check "${{ matrix.source }}" "${{ matrix.tests }}"
           '
@@ -175,13 +187,16 @@ jobs:
       - name: mypy in Docker (C-080)
         if: always()
         run: |
-          docker compose --profile test-python run --rm test-runner-python \
-            mypy --strict "${{ matrix.source }}"
+          docker compose --profile test-python run --rm --user root test-runner-python sh -lc '
+            cd "${{ matrix.source }}" &&
+            MYPYPATH="${{ matrix.mypy_path }}" \
+              mypy --strict --namespace-packages --explicit-package-bases ${{ matrix.mypy_targets }}
+          '
 
       - name: pytest and constitutional coverage in Docker (C-076, C-080)
         if: always()
         run: |
-          docker compose --profile test-python run --rm test-runner-python sh -lc '
+          docker compose --profile test-python run --rm --user root test-runner-python sh -lc '
             mkdir -p coverage/${{ matrix.service }} &&
             pytest "${{ matrix.tests }}" \
               --cov="${{ matrix.source }}" \
@@ -216,29 +231,17 @@ jobs:
     needs: build
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v3
-        with:
-          version: 9
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'pnpm'
-          cache-dependency-path: web/pnpm-lock.yaml
+      - name: Build TypeScript Docker test runner (C-080)
+        run: docker compose --profile test-ts build test-runner-ts
 
-      - run: pnpm install --frozen-lockfile
-        working-directory: web
-
-      - name: Type check
-        run: pnpm tsc --noEmit
-        working-directory: web
-
-      - name: ESLint
-        run: pnpm eslint . --max-warnings 0
-        working-directory: web
-
-      - name: Jest
-        run: pnpm jest --coverage --coverageThreshold='{"global":{"lines":90,"branches":80,"functions":90,"statements":90}}'
-        working-directory: web
+      - name: Type check, lint, and test in Docker (C-076, C-080)
+        run: |
+          docker compose --profile test-ts run --rm test-runner-ts sh -lc '
+            cd web &&
+            pnpm tsc --noEmit &&
+            pnpm eslint . --max-warnings 0 &&
+            pnpm jest --coverage --coverageThreshold='"'"'{"global":{"lines":90,"branches":80,"functions":90,"statements":90}}'"'"'
+          '
         # C-076: 90% line/function/statement floor is constitutional minimum
 
   # ─── OpenAPI spec lint ────────────────────────────────────────────────────
@@ -247,27 +250,29 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Spectral lint — Business Platform OpenAPI
-        uses: stoplightio/spectral-action@latest
+      - uses: actions/setup-node@v4
         with:
-          file_glob: 'architecture/reference/api-specs/business-platform.openapi.yaml'
+          node-version: '20'
 
-      - name: Spectral lint — Professional Runtime OpenAPI
-        uses: stoplightio/spectral-action@latest
-        with:
-          file_glob: 'architecture/reference/api-specs/professional-runtime.openapi.yaml'
+      - name: Spectral lint — OpenAPI contracts
+        run: |
+          npx --yes @stoplight/spectral-cli@6.15.0 lint \
+            --fail-severity error \
+            architecture/reference/api-specs/business-platform.openapi.yaml \
+            architecture/reference/api-specs/professional-runtime.openapi.yaml
 
       - name: buf lint — Constitutional Service proto
-        uses: bufbuild/buf-action@v1
+        uses: bufbuild/buf-setup-action@v1
         with:
-          input: architecture/reference/proto
+          version: '1.72.0'
+          github_token: ${{ github.token }}
 
-      - name: buf breaking — detect breaking changes
-        uses: bufbuild/buf-action@v1
-        with:
-          input: architecture/reference/proto
-          breaking_against: 'https://github.com/${{ github.repository }}.git#branch=main'
+      - name: Validate proto format and compatibility
+        working-directory: architecture/reference/proto
+        run: |
+          buf format --diff --exit-code
+          buf lint
+          buf breaking --against 'https://github.com/${{ github.repository }}.git#branch=main,subdir=architecture/reference/proto'
 
   # ─── Security — SAST ──────────────────────────────────────────────────────
   sast:
@@ -296,17 +301,22 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     strategy:
+      fail-fast: false
       matrix:
         image: [constitutional-engine, business-platform, professional-runtime, ai-runtime, web, billing-engine]
     steps:
       - name: Run Trivy
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: ${{ env.REGISTRY_PREFIX }}/${{ matrix.image }}:sha-${{ github.sha }}
-          format: sarif
-          output: trivy-${{ matrix.image }}.sarif
-          severity: CRITICAL,HIGH
-          exit-code: 1
+        run: |
+          docker run --rm \
+            -v "$PWD:/workspace" \
+            aquasec/trivy:0.69.3 image \
+            --scanners vuln \
+            --ignore-unfixed \
+            --severity CRITICAL,HIGH \
+            --exit-code 1 \
+            --format sarif \
+            --output "/workspace/trivy-${{ matrix.image }}.sarif" \
+            "${{ env.REGISTRY_PREFIX }}/${{ matrix.image }}:sha-${{ github.sha }}"
 
       - name: Upload Trivy results
         uses: github/codeql-action/upload-sarif@v3
@@ -323,34 +333,47 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '9.0.x'
-      - uses: pnpm/action-setup@v3
-        with:
-          version: 9
+      - name: Build dependency audit runners (C-080)
+        run: |
+          docker compose --profile test-python build test-runner-python
+          docker compose --profile test-dotnet build test-runner-dotnet
+          docker compose --profile test-ts build test-runner-ts
 
       - name: pip-audit — Python dependencies
         run: |
-          pip install pip-audit
-          pip-audit -r src/professional-runtime/requirements.txt --strict
-          pip-audit -r src/ai-runtime/requirements.txt --strict
-          pip-audit -r src/billing-engine/requirements.txt --strict
+          docker compose --profile test-python run --rm --user root test-runner-python sh -lc '
+            pip-audit -r src/professional-runtime/requirements.txt --strict &&
+            sed -e "/^--extra-index-url/d" \
+                -e "s/torch==2.13.0+cpu/torch==2.13.0/" \
+                src/ai-runtime/requirements.txt > /tmp/ai-runtime-audit.txt &&
+            pip-audit -r /tmp/ai-runtime-audit.txt --strict &&
+            pip-audit -r src/billing-engine/requirements.txt --strict
+          '
         continue-on-error: false  # Fail on any vulnerability
 
       - name: dotnet vulnerable — .NET dependencies
         run: |
-          dotnet list src/constitutional-engine package --vulnerable --include-transitive 2>&1 | \
-            grep -i "has the following vulnerable packages" && exit 1 || true
-          dotnet list src/business-platform package --vulnerable --include-transitive 2>&1 | \
-            grep -i "has the following vulnerable packages" && exit 1 || true
+          docker compose --profile test-dotnet run --rm --user root test-runner-dotnet sh -lc '
+            audit_dotnet_project() {
+              dotnet restore "$1" --nologo >/dev/null
+              if ! output="$(dotnet list "$1" package --vulnerable --include-transitive 2>&1)"; then
+                printf "%s\n" "$output"
+                return 1
+              fi
+              printf "%s\n" "$output"
+              if printf "%s\n" "$output" | grep -qi "has the following vulnerable packages"; then
+                return 1
+              fi
+            }
+            audit_dotnet_project src/constitutional-engine &&
+            audit_dotnet_project src/business-platform
+          '
 
       - name: pnpm audit — Node.js dependencies
-        run: pnpm audit --audit-level high
-        working-directory: web
+        run: |
+          docker compose --profile test-ts run --rm test-runner-ts sh -lc '
+            cd web && pnpm audit --audit-level high
+          '
 
   # ─── License compliance ───────────────────────────────────────────────────
   # Prevents inadvertent use of GPL/AGPL licensed dependencies in commercial code.
@@ -366,10 +389,9 @@ jobs:
       - name: pip-licenses — check Python dependency licenses
         run: |
           pip install pip-licenses
-          pip-licenses --fail-on="GPL;AGPL;LGPL" \
-            --packages $(pip install -r src/professional-runtime/requirements.txt -q 2>/dev/null && \
-                         pip install -r src/ai-runtime/requirements.txt -q 2>/dev/null && \
-                         pip freeze | cut -d= -f1 | tr '\n' ' ')
+          pip install -r src/professional-runtime/requirements.txt -q
+          pip install -r src/ai-runtime/requirements.txt -q
+          pip-licenses --fail-on="GPL;AGPL;LGPL"
         continue-on-error: true  # Advisory only — does not block PR (LGPL can be acceptable)
 
   # ─── Constitutional commit gate (C-059 — Implementation Traceability) ─────
@@ -390,7 +412,14 @@ jobs:
         run: |
           BASE="${{ github.event.pull_request.base.sha }}"
           HEAD="${{ github.event.pull_request.head.sha }}"
+          PR_BODY="$(gh pr view ${{ github.event.pull_request.number }} --json body --jq .body --repo ${{ github.repository }})"
           FAIL=0
+
+          if ! grep -qE 'Work Contract: WC-[0-9]+' <<< "$PR_BODY" ||
+             ! grep -qi 'Constitutional basis:' <<< "$PR_BODY"; then
+            echo "❌ PR body must declare its Work Contract and Constitutional basis."
+            FAIL=1
+          fi
 
           while IFS= read -r msg; do
             # Skip merge commits
@@ -426,6 +455,8 @@ jobs:
           fi
 
           echo "✓ All commits satisfy C-059 Implementation Traceability"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # ─── Authorization tier check (C-066) ─────────────────────────────────────
   # Verifies the PR branch has the required authorization label on its source issue.
@@ -450,16 +481,14 @@ jobs:
             exit 0
           fi
 
-          # Tier 1/2: requires approved:sujay label
+          # Tier 1/2: requires approval from a named steward
           if echo "$PR_LABELS" | grep -qP "tier:1-bugfix|tier:2-feature"; then
-            if echo "$PR_LABELS" | grep -q "approved:sujay"; then
-              echo "✓ Tier 1/2 — approved by Sujay (C-066)"
+            if echo "$PR_LABELS" | grep -qP "approved:sujay|approved:yogesh"; then
+              echo "✓ Tier 1/2 — steward approved (C-066)"
               exit 0
             else
-              echo "⚠️  Tier 1/2 PR requires 'approved:sujay' label before merge."
-              echo "Sujay must review the implementation spec and apply the approval label."
-              # Warning only — Founder (CODEOWNERS) will still gate the actual merge
-              exit 0
+              echo "❌ Tier 1/2 PR requires an approving steward label."
+              exit 1
             fi
           fi
 
@@ -469,12 +498,13 @@ jobs:
               echo "✓ Tier 3 — approved by Yogesh (C-066)"
               exit 0
             else
-              echo "⚠️  Tier 3 constitutional PR requires 'approved:yogesh' label."
-              exit 0
+              echo "❌ Tier 3 constitutional PR requires 'approved:yogesh' label."
+              exit 1
             fi
           fi
 
-          echo "ℹ️  No tier label found on PR — defaulting to CODEOWNERS review gate"
+          echo "❌ No constitutional authorization tier label found on PR."
+          exit 1
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

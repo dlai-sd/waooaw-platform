@@ -11,6 +11,6 @@ import { getRequestI18n } from '@/lib/i18n-server';
 export default async function CustomerLayout({ children }: { children: ReactNode }) {
   const session = await getServerSession(authOptions);
   if (!session?.authenticated) redirect('/login');
-  const { messages } = getRequestI18n();
+  const { messages } = await getRequestI18n();
   return <ProtectedAppShell messages={messages} variant="customer">{children}</ProtectedAppShell>;
 }

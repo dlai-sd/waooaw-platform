@@ -11,19 +11,19 @@
 # The API key is in Azure Key Vault as SARVAM-API-KEY.
 
 # ─── Web framework ────────────────────────────────────────────────────────────
-fastapi==0.115.0
+fastapi==0.135.1
 uvicorn[standard]==0.30.6
 pydantic==2.9.2
 pydantic-settings==2.5.2
 
 # ─── Async HTTP client — used by SarvamProvider and OllamaProvider ────────────
-httpx==0.27.2
+httpx==0.28.1
 
 # ─── Vertex AI / Gemini (FA-021 gate: GOOGLE_VERTEX_SA_KEY required in KV) ────
 # CORRECT import: from google.cloud import aiplatform
 # WRONG imports: import vertexai, from vertexai import..., from google.cloud.aiplatform import...
 # The SDK is 'google-cloud-aiplatform' (PyPI). Import path is 'google.cloud.aiplatform'.
-google-cloud-aiplatform==1.70.0
+google-cloud-aiplatform==1.133.0
 
 # ─── Anthropic (for FRONTIER tier — ADR-028) ─────────────────────────────────
 anthropic==0.34.2
@@ -33,9 +33,9 @@ anthropic==0.34.2
 # DO NOT 'pip install ai4bharat' or 'import ai4bharat' — no such PyPI package.
 # Implementation: transformers.pipeline('ner', model='ai4bharat/IndicNER')
 # The model downloads automatically on first run from HuggingFace Hub.
-transformers==4.46.1
+transformers==5.5.0
 --extra-index-url https://download.pytorch.org/whl/cpu
-torch==2.4.1+cpu      # CPU-only for dev; GPU images use a separate accepted lock
+torch==2.13.0+cpu     # CPU-only for dev; GPU images use a separate accepted lock
 
 # ─── Vector database client — pgvector for RAG (ADR-019) ─────────────────────
 asyncpg==0.30.0
@@ -45,7 +45,7 @@ pgvector==0.3.5
 # ─── gRPC client — calls Constitutional Engine ───────────────────────────────
 grpcio==1.67.1
 grpcio-tools==1.67.1
-protobuf==5.28.3
+protobuf==5.29.6
 
 # ─── Observability (ADR-009) ──────────────────────────────────────────────────
 opentelemetry-api==1.28.2

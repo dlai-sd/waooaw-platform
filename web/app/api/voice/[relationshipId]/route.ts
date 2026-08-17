@@ -40,16 +40,17 @@ function invalidRequest() {
   return NextResponse.json({ code: 'VOICE_REQUEST_INVALID', title: 'Voice contribution request is invalid.' }, { status: 400 });
 }
 
-export async function GET(request: NextRequest, { params }: { params: { relationshipId: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ relationshipId: string }> }) {
   const accessToken = await accessTokenFromRequest(request);
   if (!accessToken) return sessionRequired();
+  const { relationshipId } = await params;
   const sessionId = request.nextUrl.searchParams.get('sessionId');
   if (!sessionId) return invalidRequest();
   try {
     const api = createVoiceApi(accessToken);
     const result = request.nextUrl.searchParams.get('resource') === 'transcript'
-      ? await api.getVoiceContributionTranscript({ relationshipId: params.relationshipId, sessionId })
-      : await api.getVoiceContributionSession({ relationshipId: params.relationshipId, sessionId });
+      ? await api.getVoiceContributionTranscript({ relationshipId, sessionId })
+      : await api.getVoiceContributionSession({ relationshipId, sessionId });
     return NextResponse.json(result, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     const problem = await voiceProblem(error);
@@ -57,9 +58,10 @@ export async function GET(request: NextRequest, { params }: { params: { relation
   }
 }
 
-export async function POST(request: NextRequest, { params }: { params: { relationshipId: string } }) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ relationshipId: string }> }) {
   const accessToken = await accessTokenFromRequest(request);
   if (!accessToken) return sessionRequired();
+  const { relationshipId } = await params;
   try {
     const api = createVoiceApi(accessToken);
     if (request.headers.get('content-type')?.startsWith('multipart/form-data')) {
@@ -67,7 +69,7 @@ export async function POST(request: NextRequest, { params }: { params: { relatio
       const audio = form.get('audio');
       if (!(audio instanceof Blob)) throw new InvalidVoiceRequest();
       return NextResponse.json(await api.uploadVoiceContributionAudio({
-        relationshipId: params.relationshipId,
+        relationshipId,
         sessionId: requiredString(Object.fromEntries(form), 'sessionId'),
         idempotencyKey: requiredString(Object.fromEntries(form), 'idempotencyKey'),
         audio,
@@ -80,27 +82,27 @@ export async function POST(request: NextRequest, { params }: { params: { relatio
     switch (action) {
       case 'create':
         return NextResponse.json(await api.createVoiceContributionSession({
-          relationshipId: params.relationshipId,
+          relationshipId,
           idempotencyKey,
           createVoiceContributionSessionRequestV1: { schemaVersion: '1.0.0', locale: requiredLocale(body) },
         }), { status: 201 });
       case 'correct':
         return NextResponse.json(await api.submitVoiceContributionCorrection({
-          relationshipId: params.relationshipId,
+          relationshipId,
           sessionId: requiredString(body, 'sessionId'),
           idempotencyKey,
           voiceCorrectionRequestV1: { schemaVersion: '1.0.0', expectedVersion: requiredInteger(body, 'expectedVersion'), correctedText: requiredString(body, 'correctedText') },
         }));
       case 'send':
         return NextResponse.json(await api.sendVoiceContribution({
-          relationshipId: params.relationshipId,
+          relationshipId,
           sessionId: requiredString(body, 'sessionId'),
           idempotencyKey,
           sendVoiceContributionRequestV1: { schemaVersion: '1.0.0', acceptedTranscriptVersion: requiredInteger(body, 'acceptedTranscriptVersion'), explicitSend: true },
         }));
       case 'cancel':
         return NextResponse.json(await api.cancelVoiceContributionSession({
-          relationshipId: params.relationshipId,
+          relationshipId,
           sessionId: requiredString(body, 'sessionId'),
           idempotencyKey,
           cancelVoiceContributionRequestV1: { schemaVersion: '1.0.0' },

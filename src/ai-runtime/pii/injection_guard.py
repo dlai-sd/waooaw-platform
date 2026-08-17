@@ -2,7 +2,6 @@
 # constitutional_basis: C-023, C-059, C-062, C-063
 from __future__ import annotations
 
-import asyncio
 import logging
 import re
 from dataclasses import dataclass, field
@@ -26,7 +25,9 @@ _ROLE_OVERRIDE_PATTERNS: list[re.Pattern[str]] = [
     re.compile(r"\bhacker\s+(assistant|mode|persona)\b", re.I),
     re.compile(r"\bpretend\s+(you\s+are|to\s+be)\s+(a\s+|an\s+)?(unrestricted|evil|unaligned|rogue|jailbroken|DAN)\b", re.I),
     re.compile(r"\bpretend\s+you\s+(have\s+no|had\s+no|are\s+without|were\s+without)\b", re.I),
-    re.compile(r"\bact\s+as\s+(if\s+you\s+(have|are|were|had)\s+)?(no\s+restrictions?|no\s+rules?|no\s+limits?|unrestricted)\b", re.I),
+    re.compile(
+        r"\bact\s+as\s+(if\s+you\s+(have|are|were|had)\s+)?(no\s+restrictions?|no\s+rules?|no\s+limits?|unrestricted)\b", re.I
+    ),
     re.compile(r"\bact\s+as\s+if\s+(you\s+)?(were\s+)?(created|made|built|designed)\s+(without|with\s+no)\b", re.I),
     re.compile(r"\bwithout\s+(safeguards?|restrictions?|limits?|guidelines?)\b", re.I),
     re.compile(r"\byour\s+(new|real|true|actual)\s+(instructions?|purpose|goal|objective|mission|role|identity)\b", re.I),
@@ -45,7 +46,9 @@ _ROLE_OVERRIDE_PATTERNS: list[re.Pattern[str]] = [
 _EXTRACTION_PATTERNS: list[re.Pattern[str]] = [
     re.compile(r"\brepeat\s+(the\s+)?(system|initial|original|above|first)\s+(prompt|instruction|message|directive)\b", re.I),
     re.compile(r"\bprint\s+(the\s+)?(system|initial|original|above|first)\s+(prompt|instruction|message|directive)\b", re.I),
-    re.compile(r"\bshow\s+(me\s+)?(the\s+)?(system|initial|original|above|first)\s+(prompt|instruction|message|directive)\b", re.I),
+    re.compile(
+        r"\bshow\s+(me\s+)?(the\s+)?(system|initial|original|above|first)\s+(prompt|instruction|message|directive)\b", re.I
+    ),
     re.compile(r"\bwhat\s+(are\s+)?(your|the)\s+(system\s+)?(instructions?|directives?|rules?|constraints?|guidelines?)\b", re.I),
     re.compile(r"\bwhat\s+were\s+your\s+(instructions?|directives?|rules?)\b", re.I),
     re.compile(r"\bwhat\s+were\s+(your\s+)?(original|initial|first|prior|system)\s+(instructions?|directives?|prompts?)\b", re.I),
@@ -80,21 +83,32 @@ _JAILBREAK_PATTERNS: list[re.Pattern[str]] = [
 
 # ── Category 4: Authority / constitutional bypass attempts ──────────────────
 _AUTHORITY_BYPASS_PATTERNS: list[re.Pattern[str]] = [
-    re.compile(r"\boverride\s+(the\s+)?(constitution|constitutional|decision\s+space|authority|governance|policy|rules?)\b", re.I),
-    re.compile(r"\bbypass\s+(the\s+)?(constitution|constitutional|decision\s+space|authority|governance|policy|rules?|safety|guardrail)\b", re.I),
+    re.compile(
+        r"\boverride\s+(the\s+)?(constitution|constitutional|decision\s+space|authority|governance|policy|rules?)\b", re.I
+    ),
+    re.compile(
+        r"\bbypass\s+(the\s+)?(constitution|constitutional|decision\s+space|authority|governance|policy|rules?|safety|guardrail)\b",
+        re.I,
+    ),
     re.compile(r"\bskip\s+(the\s+)?(validation|check|guard|filter|constitution|review)\b", re.I),
     re.compile(r"\bdisable\s+(the\s+)?(safety|guardrail|filter|check|validation|constitution)\b", re.I),
-    re.compile(r"\byou\s+(don'?t\s+need\s+to|no\s+longer\s+need\s+to|should\s+not)\s+(follow|obey|respect|adhere\s+to)\s+(the\s+)?(rules?|constitution|guidelines?|instructions?)\b", re.I),
-    re.compile(r"\bthe\s+(rules?|constitution|guidelines?|restrictions?)\s+(don'?t\s+apply|no\s+longer\s+apply|are\s+lifted|are\s+waived|are\s+suspended)\b", re.I),
+    re.compile(
+        r"\byou\s+(don'?t\s+need\s+to|no\s+longer\s+need\s+to|should\s+not)\s+(follow|obey|respect|adhere\s+to)\s+(the\s+)?(rules?|constitution|guidelines?|instructions?)\b",
+        re.I,
+    ),
+    re.compile(
+        r"\bthe\s+(rules?|constitution|guidelines?|restrictions?)\s+(don'?t\s+apply|no\s+longer\s+apply|are\s+lifted|are\s+waived|are\s+suspended)\b",
+        re.I,
+    ),
     re.compile(r"\b(authorized?|permitted?|allowed?)\s+to\s+(bypass|override|ignore|skip)\b", re.I),
 ]
 
 # ── Category 5: Encoding / obfuscation evasion ─────────────────────────────
 _ENCODING_PATTERNS: list[re.Pattern[str]] = [
     re.compile(r"base64\s*(decode|encode|encoded|decoded)", re.I),
-    re.compile(r"&#x[0-9a-fA-F]{2,4};", re.I),          # HTML hex entity
-    re.compile(r"\\u[0-9a-fA-F]{4}", re.I),              # Unicode escape
-    re.compile(r"\\x[0-9a-fA-F]{2}", re.I),              # Hex escape in string
+    re.compile(r"&#x[0-9a-fA-F]{2,4};", re.I),  # HTML hex entity
+    re.compile(r"\\u[0-9a-fA-F]{4}", re.I),  # Unicode escape
+    re.compile(r"\\x[0-9a-fA-F]{2}", re.I),  # Hex escape in string
     re.compile(r"\brot\s*13\b", re.I),
     re.compile(r"\breverse\s+(the\s+)?(string|text|word|sentence)\s+(to\s+)?(get|reveal|decode|find)\b", re.I),
     re.compile(r"\bdecode\s+(the\s+following|this|my)\s+(message|string|text|instruction)\b", re.I),
@@ -102,10 +116,16 @@ _ENCODING_PATTERNS: list[re.Pattern[str]] = [
 
 # ── Category 6: Multi-turn / context manipulation ───────────────────────────
 _CONTEXT_MANIPULATION_PATTERNS: list[re.Pattern[str]] = [
-    re.compile(r"\b(in\s+the\s+previous|in\s+our\s+last|from\s+the\s+previous)\s+(conversation|session|turn|message|chat)\b", re.I),
+    re.compile(
+        r"\b(in\s+the\s+previous|in\s+our\s+last|from\s+the\s+previous)\s+(conversation|session|turn|message|chat)\b", re.I
+    ),
     re.compile(r"\byou\s+(already\s+)?(agreed|confirmed|said|told\s+me|promised|accepted)\s+(that\s+)?(you\s+would|to)\b", re.I),
-    re.compile(r"\byour\s+(previous|last|earlier)\s+(self|version|response|answer|message)\s+(said|told|confirmed|agreed)\b", re.I),
-    re.compile(r"\bwe\s+(already\s+)?(established|agreed|decided|confirmed)\s+(that\s+)?(you\s+(can|will|should|are\s+allowed))\b", re.I),
+    re.compile(
+        r"\byour\s+(previous|last|earlier)\s+(self|version|response|answer|message)\s+(said|told|confirmed|agreed)\b", re.I
+    ),
+    re.compile(
+        r"\bwe\s+(already\s+)?(established|agreed|decided|confirmed)\s+(that\s+)?(you\s+(can|will|should|are\s+allowed))\b", re.I
+    ),
     re.compile(r"\bin\s+(maintenance|debug|test|dev|developer|admin|root|god|privileged)\s+mode\b", re.I),
     re.compile(r"\bsimulation\s+(mode|context|scenario)\b", re.I),
     re.compile(r"\bhypothetically\s+(speaking|if\s+you\s+(had\s+no|were\s+without|could\s+ignore))\b", re.I),
@@ -117,13 +137,19 @@ _CONTEXT_MANIPULATION_PATTERNS: list[re.Pattern[str]] = [
 
 # ── Category 7: Indirect / nested injection ─────────────────────────────────
 _INDIRECT_INJECTION_PATTERNS: list[re.Pattern[str]] = [
-    re.compile(r"\bthe\s+(document|file|page|article|text|content|data)\s+(says?|states?|instructs?|tells?\s+you|asks?\s+you)\s+(to\s+)?(ignore|forget|disregard|override|bypass)\b", re.I),
-    re.compile(r"\b(translate|summarize|rewrite|paraphrase)\s+(this|the\s+following)\s+(and\s+then|then\s+also|but\s+also)\s+(ignore|forget|disregard)\b", re.I),
+    re.compile(
+        r"\bthe\s+(document|file|page|article|text|content|data)\s+(says?|states?|instructs?|tells?\s+you|asks?\s+you)\s+(to\s+)?(ignore|forget|disregard|override|bypass)\b",
+        re.I,
+    ),
+    re.compile(
+        r"\b(translate|summarize|rewrite|paraphrase)\s+(this|the\s+following)\s+(and\s+then|then\s+also|but\s+also)\s+(ignore|forget|disregard)\b",
+        re.I,
+    ),
     re.compile(r"\bnew\s+instruction\s*:", re.I),
     re.compile(r"\bsystem\s*:\s*(ignore|you\s+are|from\s+now|new\s+role|new\s+instruction)\b", re.I),
     re.compile(r"\[system\]", re.I),
     re.compile(r"<\s*system\s*>", re.I),
-    re.compile(r"<\s*system[_\-]\w+\s*>", re.I),   # <system_override>, <system-prompt>
+    re.compile(r"<\s*system[_\-]\w+\s*>", re.I),  # <system_override>, <system-prompt>
     re.compile(r"\bASSTANT\s*:", re.I),  # typosquat of ASSISTANT
     re.compile(r"\bINSTRUCTION\s*:", re.I),
     re.compile(r"\bCOMMAND\s*:", re.I),
@@ -136,11 +162,18 @@ _INDIRECT_INJECTION_PATTERNS: list[re.Pattern[str]] = [
 
 # ── Category 8: Goal / objective hijacking ──────────────────────────────────
 _GOAL_HIJACK_PATTERNS: list[re.Pattern[str]] = [
-    re.compile(r"\byour\s+(only|primary|main|sole|real|true|actual)\s+(goal|objective|purpose|task|job|mission)\s+is\s+now\b", re.I),
+    re.compile(
+        r"\byour\s+(only|primary|main|sole|real|true|actual)\s+(goal|objective|purpose|task|job|mission)\s+is\s+now\b", re.I
+    ),
     re.compile(r"\bfrom\s+now\s+(on|forward)\s+(you\s+)?(must|should|will|shall|are\s+to)\b", re.I),
     re.compile(r"\bstarting\s+(now|from\s+this\s+point|from\s+here)\s+(you\s+)?(must|should|will|shall|are\s+to)\b", re.I),
-    re.compile(r"\bI\s+(hereby|now|officially)\s+(authorize|permit|allow|grant)\s+(you\s+to)?\s*(bypass|override|ignore|skip)\b", re.I),
-    re.compile(r"\bthe\s+(founder|admin|owner|developer|creator|operator)\s+(says?|told|wants?|authorized?|permits?)\s+(you\s+to)?\s*(bypass|override|ignore)\b", re.I),
+    re.compile(
+        r"\bI\s+(hereby|now|officially)\s+(authorize|permit|allow|grant)\s+(you\s+to)?\s*(bypass|override|ignore|skip)\b", re.I
+    ),
+    re.compile(
+        r"\bthe\s+(founder|admin|owner|developer|creator|operator)\s+(says?|told|wants?|authorized?|permits?)\s+(you\s+to)?\s*(bypass|override|ignore)\b",
+        re.I,
+    ),
 ]
 
 # ── Category 9: Code / protocol injection syntax ────────────────────────────
@@ -149,19 +182,19 @@ _INJECTION_SYNTAX_PATTERNS: list[re.Pattern[str]] = [
     re.compile(r"';\s*(DROP|DELETE|UPDATE|INSERT|SELECT|UNION)\b", re.I),
     re.compile(r"\bDROP\s+TABLE\b", re.I),
     re.compile(r"\bSELECT\b.{1,60}\bFROM\b", re.I),
-    re.compile(r"--\s*$", re.M),                      # SQL comment at EOL
-    re.compile(r"/\*.*?\*/"),                          # SQL block comment
+    re.compile(r"--\s*$", re.M),  # SQL comment at EOL
+    re.compile(r"/\*.*?\*/"),  # SQL block comment
     # Shell injection
-    re.compile(r"\$\([^)]+\)"),                       # $(command) substitution
+    re.compile(r"\$\([^)]+\)"),  # $(command) substitution
     re.compile(r"&&\s*(ignore|hack|exec|wget|curl|bash|sh|rm\b)", re.I),
     re.compile(r"\|\s*(bash|sh|python|perl|ruby|php)\b", re.I),
     # Template / expression language injection
-    re.compile(r"\{\{[^}]{1,200}\}\}"),               # {{...}} template injection
-    re.compile(r"\$\{[^}]{1,200}\}"),                 # ${...} EL/Groovy/shell
+    re.compile(r"\{\{[^}]{1,200}\}\}"),  # {{...}} template injection
+    re.compile(r"\$\{[^}]{1,200}\}"),  # ${...} EL/Groovy/shell
     # Protocol handler injection
     re.compile(r"\b(javascript|vbscript|data)\s*:", re.I),
     # Path traversal
-    re.compile(r"(\.\.[/\\]){2,}"),                   # ../../ or ..\..\ traversal
+    re.compile(r"(\.\.[/\\]){2,}"),  # ../../ or ..\..\ traversal
     # LDAP injection
     re.compile(r"\*\)\s*\(\s*\|"),
     re.compile(r"\)\(\|\s*(uid|cn|dc|ou|mail)=", re.I),
@@ -197,9 +230,9 @@ _UNICODE_OBFUSCATION_PATTERNS: list[re.Pattern[str]] = [
     # Variation selectors (change visual appearance of adjacent char)
     re.compile("[\ufe00-\ufe0f]"),
     # Mixed-script homograph attack indicators: Cyrillic, Greek, Armenian
-    re.compile("[\u0400-\u04ff]"),   # Cyrillic
-    re.compile("[\u0370-\u03ff]"),   # Greek
-    re.compile("[\u0530-\u058f]"),   # Armenian
+    re.compile("[\u0400-\u04ff]"),  # Cyrillic
+    re.compile("[\u0370-\u03ff]"),  # Greek
+    re.compile("[\u0530-\u058f]"),  # Armenian
     # Combining diacritical marks dense enough to indicate obfuscation (≥3 consecutive)
     re.compile("[\u0300-\u036f]{3,}"),
 ]
@@ -235,8 +268,8 @@ _VOWELS = frozenset("aeiouAEIOU")
 
 # ── Known-bad cipher strings (CCT-PI-01 test suite) ─────────────────────────
 _CIPHER_LITERAL_PATTERNS: list[re.Pattern[str]] = [
-    re.compile(r"\brldnov\b", re.I),   # Atbash-encoded attack string (CCT-PI-01 #45)
-    re.compile(r"\brdqzwj\b", re.I),   # Caesar-encoded attack string (CCT-PI-01 #46)
+    re.compile(r"\brldnov\b", re.I),  # Atbash-encoded attack string (CCT-PI-01 #45)
+    re.compile(r"\brdqzwj\b", re.I),  # Caesar-encoded attack string (CCT-PI-01 #46)
 ]
 
 _ALL_PATTERN_GROUPS_WITH_CIPHERS: list[list[re.Pattern[str]]] = [
@@ -245,9 +278,16 @@ _ALL_PATTERN_GROUPS_WITH_CIPHERS: list[list[re.Pattern[str]]] = [
 ]
 
 # ── Injection keywords for alpha-stripped substring scan ─────────────────────
-_ALPHA_INJECTION_KEYWORDS = frozenset([
-    "ignore", "jailbreak", "bypass", "override", "disregard", "forget",
-])
+_ALPHA_INJECTION_KEYWORDS = frozenset(
+    [
+        "ignore",
+        "jailbreak",
+        "bypass",
+        "override",
+        "disregard",
+        "forget",
+    ]
+)
 
 # ── Bracket characters to strip for bracket-bypass detection ─────────────────
 _BRACKET_STRIP = re.compile(r"[(){}\[\]<>]")
@@ -256,6 +296,7 @@ _BRACKET_STRIP = re.compile(r"[(){}\[\]<>]")
 # ---------------------------------------------------------------------------
 # InjectionGuard — C-062 enforcement
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class InjectionScanResult:
@@ -277,18 +318,20 @@ class InjectionGuard:
         is_safe = await guard.scan(prompt)
     """
 
-    _category_names: list[str] = field(default_factory=lambda: [
-        "role_override",
-        "extraction",
-        "jailbreak",
-        "authority_bypass",
-        "encoding_obfuscation",
-        "context_manipulation",
-        "indirect_injection",
-        "goal_hijack",
-        "injection_syntax",
-        "unicode_obfuscation",
-    ])
+    _category_names: list[str] = field(
+        default_factory=lambda: [
+            "role_override",
+            "extraction",
+            "jailbreak",
+            "authority_bypass",
+            "encoding_obfuscation",
+            "context_manipulation",
+            "indirect_injection",
+            "goal_hijack",
+            "injection_syntax",
+            "unicode_obfuscation",
+        ]
+    )
 
     def scan(self, prompt: str) -> bool:
         """
@@ -338,9 +381,7 @@ class InjectionGuard:
 
         # 2. NFKD normalization + strip combining diacritics (handles composed
         #    Unicode, lookalike chars from Phonetic Extensions, etc.)
-        nfkd_stripped = "".join(
-            c for c in _ud.normalize("NFKD", prompt) if not _ud.combining(c)
-        )
+        nfkd_stripped = "".join(c for c in _ud.normalize("NFKD", prompt) if not _ud.combining(c))
         if nfkd_stripped != prompt:
             r = self._match_patterns(nfkd_stripped)
             if not r.safe:
@@ -436,11 +477,7 @@ class InjectionGuard:
         all_groups = [*_ALL_PATTERN_GROUPS, _CIPHER_LITERAL_PATTERNS]
         category_names = [*self._category_names, "cipher_encoded"]
         for group_idx, pattern_group in enumerate(all_groups):
-            category_name = (
-                category_names[group_idx]
-                if group_idx < len(category_names)
-                else f"category_{group_idx}"
-            )
+            category_name = category_names[group_idx] if group_idx < len(category_names) else f"category_{group_idx}"
             for pattern in pattern_group:
                 if pattern.search(prompt):
                     return InjectionScanResult(

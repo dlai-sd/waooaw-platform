@@ -10,7 +10,7 @@ import { getRequestI18n } from '@/lib/i18n-server';
 
 export default async function RegisterPage() {
 	const session = await getServerSession(authOptions);
-	const { locale } = getRequestI18n();
+	const { locale } = await getRequestI18n();
 	const messages = getIdentityMessages(locale);
 	return <section className="auth-view identity-view"><p className="eyebrow">{messages.eyebrow}</p><h1>{messages.title}</h1><p>{session?.authenticated ? messages.description : messages.signInDescription}</p>{session?.authenticated ? <RegistrationFlow locale={locale} messages={messages} /> : <SignInCommand callbackUrl="/register" label={messages.signInFirst} />}</section>;
 }

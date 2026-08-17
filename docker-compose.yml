@@ -19,6 +19,25 @@ services:
     profiles:
       - test-python
 
+  test-runner-dotnet:
+    build:
+      context: .
+      dockerfile: architecture/reference/dockerfiles/Dockerfile.test-runner-dotnet
+    volumes:
+      - .:/workspace
+    environment:
+      DOTNET_CLI_HOME: /tmp/dotnet
+      NUGET_PACKAGES: /tmp/nuget
+    profiles:
+      - test-dotnet
+
+  test-runner-ts:
+    build:
+      context: .
+      dockerfile: architecture/reference/dockerfiles/Dockerfile.test-runner-ts
+    profiles:
+      - test-ts
+
   # ─── Test Runner — full multi-stack (DEPRECATED per ADR-045, retained for integration smoke tests only) ─────
   # Use only when exercising Python + .NET + TypeScript in one run.
   # Prefer test-runner-python / test-runner-dotnet / test-runner-ts for sprint tests.

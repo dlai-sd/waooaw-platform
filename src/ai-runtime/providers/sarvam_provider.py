@@ -119,9 +119,7 @@ class SarvamProvider:
                 model=params.get("model", "saaras"),
                 usage={},
             )
-            raise SarvamProviderError(
-                f"Sarvam API timed out after {self._timeout}s"
-            ) from exc
+            raise SarvamProviderError(f"Sarvam API timed out after {self._timeout}s") from exc
         except httpx.HTTPError as exc:
             logger.error(
                 "Sarvam API HTTP transport error — dispatch_event_id=%s",
@@ -152,9 +150,7 @@ class SarvamProvider:
                 model=params.get("model", "saaras"),
                 usage={},
             )
-            raise SarvamProviderError(
-                f"Sarvam API returned HTTP {response.status_code}"
-            )
+            raise SarvamProviderError(f"Sarvam API returned HTTP {response.status_code}")
 
         try:
             body = response.json()
@@ -190,9 +186,7 @@ class SarvamProvider:
                 model=params.get("model", "saaras"),
                 usage={},
             )
-            raise SarvamProviderError(
-                "Sarvam API response missing expected fields"
-            ) from exc
+            raise SarvamProviderError("Sarvam API response missing expected fields") from exc
 
         await self._record_dispatch_event(
             dispatch_event_id=dispatch_event_id,

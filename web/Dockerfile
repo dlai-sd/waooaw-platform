@@ -13,7 +13,11 @@ ENV BUILD_STANDALONE=true
 RUN pnpm build
 
 FROM node:20-alpine
-RUN addgroup -S waooaw && adduser -S waooaw -G waooaw
+RUN apk upgrade --no-cache \
+	&& rm -rf /usr/local/lib/node_modules/npm \
+	&& rm -f /usr/local/bin/npm /usr/local/bin/npx \
+	&& addgroup -S waooaw \
+	&& adduser -S waooaw -G waooaw
 WORKDIR /app
 COPY --from=build --chown=waooaw:waooaw /app/.next/standalone ./
 COPY --from=build --chown=waooaw:waooaw /app/.next/static ./.next/static

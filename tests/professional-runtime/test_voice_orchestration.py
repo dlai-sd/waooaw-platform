@@ -11,8 +11,8 @@ import time
 import uuid
 from datetime import datetime, timezone
 
-import pytest
 import httpx
+import pytest
 
 from professional_runtime_main import app
 from routers.conversation_execution import BPServiceContext, ConstitutionalDecision
@@ -55,7 +55,11 @@ class FakeAirClient:
         }
 
     async def cancel(self, transcription_id, idempotency_key, correlation_id):
-        return {"state": "CANCELLED", "updatedAt": datetime.now(timezone.utc).isoformat()}
+        return {
+            "transcriptionId": str(transcription_id),
+            "state": "CANCELLED",
+            "updatedAt": datetime.now(timezone.utc).isoformat(),
+        }
 
 
 def _encode(value: bytes) -> str:
@@ -181,7 +185,10 @@ async def test_reconciliation_hides_other_tenant_outcome(client):
     )
     response = await client.get(
         f"/api/v1/internal/relationships/{relationship_id}/voice-orchestrations/{created.json()['orchestrationId']}",
-        headers={"Authorization": f"Bearer {_token(relationship_id, tenant_id='tenant-b')}", "X-Correlation-Id": str(uuid.uuid4())},
+        headers={
+            "Authorization": f"Bearer {_token(relationship_id, tenant_id='tenant-b')}",
+            "X-Correlation-Id": str(uuid.uuid4()),
+        },
     )
 
     assert response.status_code == 404
@@ -255,7 +262,12 @@ async def test_get_and_cancel_pending_orchestration(client):
         updatedAt=datetime.now(timezone.utc),
     )
     app.state.voice_orchestration_store[orchestration_id] = (
-        "digest", pending, transcription_id, "tenant-a", str(relationship_id), body,
+        "digest",
+        pending,
+        transcription_id,
+        "tenant-a",
+        str(relationship_id),
+        body,
     )
     get_response = await client.get(
         f"/api/v1/internal/relationships/{relationship_id}/voice-orchestrations/{orchestration_id}",
@@ -296,31 +308,111 @@ async def test_constitutional_stop_authority_maps_allow_stop_and_unavailable():
     context = BPServiceContext("contract", "tenant", "relationship", "actor", "CUSTOMER")
     session_id = uuid.uuid4()
     assert await ConstitutionalVoiceStopAuthority(FakeConstitutionalGateway()).is_stopped(context, session_id, "hash") is False
-    assert await ConstitutionalVoiceStopAuthority(FakeConstitutionalGateway(ConstitutionalDecision.STOPPED)).is_stopped(context, session_id, "hash") is True
+    assert (
+        await ConstitutionalVoiceStopAuthority(FakeConstitutionalGateway(ConstitutionalDecision.STOPPED)).is_stopped(
+            context, session_id, "hash"
+        )
+        is True
+    )
     with pytest.raises(DependencyUnavailableError):
         await ConstitutionalVoiceStopAuthority(FakeConstitutionalGateway(ready=False)).is_stopped(context, session_id, "hash")
     with pytest.raises(DependencyUnavailableError):
-        await ConstitutionalVoiceStopAuthority(FakeConstitutionalGateway(ConstitutionalDecision.DENY)).is_stopped(context, session_id, "hash")
+        await ConstitutionalVoiceStopAuthority(FakeConstitutionalGateway(ConstitutionalDecision.DENY)).is_stopped(
+            context, session_id, "hash"
+        )
 
 
-async def test_http_air_client_signs_start_and_cancel_requests():
+async def test_http_air_client_signs_start_and_cancel_requests(client):
     seen = []
+    transcription_id = uuid.uuid4()
 
     async def handler(request: httpx.Request):
         seen.append(request)
+        updated_at = datetime.now(timezone.utc).isoformat()
         if request.method == "POST":
-            return httpx.Response(202, json={"state": "COMPLETED", "transcriptionId": str(uuid.uuid4())})
-        return httpx.Response(200, json={"state": "CANCELLED"})
+            return httpx.Response(
+                202,
+                json={"state": "COMPLETED", "transcriptionId": str(transcription_id), "updatedAt": updated_at},
+            )
+        return httpx.Response(
+            200,
+            json={"state": "CANCELLED", "transcriptionId": str(transcription_id), "updatedAt": updated_at},
+        )
 
     async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http_client:
         air = HttpAirTranscriptionClient("http://air/", "secret", http_client)
-        body = StartVoiceOrchestrationRequest.model_validate(_body())
-        await air.start(uuid.uuid4(), body, uuid.uuid4(), uuid.uuid4())
+        app.state.air_transcription_client = air
+        relationship_id = uuid.uuid4()
+        response = await client.post(
+            f"/api/v1/internal/relationships/{relationship_id}/voice-orchestrations",
+            json=_body(),
+            headers=_headers(relationship_id),
+        )
         await air.cancel(uuid.uuid4(), uuid.uuid4(), uuid.uuid4())
 
+    assert response.status_code == 202
+    stored = app.state.voice_orchestration_store[uuid.UUID(response.json()["orchestrationId"])]
+    assert stored[2] == transcription_id
     assert len(seen) == 2
     assert all(request.headers["authorization"].startswith("Bearer ") for request in seen)
     assert "voiceSessionId" not in json.loads(seen[0].content)
+
+
+async def test_malformed_air_start_response_requires_reconciliation(client):
+    async def handler(request: httpx.Request):
+        return httpx.Response(
+            202,
+            json={"state": "COMPLETED", "updatedAt": datetime.now(timezone.utc).isoformat()},
+        )
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http_client:
+        app.state.air_transcription_client = HttpAirTranscriptionClient("http://air", "secret", http_client)
+        relationship_id = uuid.uuid4()
+        response = await client.post(
+            f"/api/v1/internal/relationships/{relationship_id}/voice-orchestrations",
+            json=_body(),
+            headers=_headers(relationship_id),
+        )
+
+    assert response.status_code == 503
+    assert response.json()["code"] == "transcription_unavailable"
+    assert response.json()["reconciliationRequired"] is True
+
+
+async def test_malformed_air_cancel_response_requires_reconciliation(client):
+    async def handler(request: httpx.Request):
+        return httpx.Response(
+            200,
+            json={"state": "CANCELLED", "updatedAt": datetime.now(timezone.utc).isoformat()},
+        )
+
+    relationship_id = uuid.uuid4()
+    orchestration_id = uuid.uuid4()
+    body = StartVoiceOrchestrationRequest.model_validate(_body())
+    app.state.voice_orchestration_store[orchestration_id] = (
+        "digest",
+        VoiceOrchestration(
+            orchestrationId=orchestration_id,
+            voiceSessionId=body.voice_session_id,
+            state="TRANSCRIBING",
+            locale=body.locale,
+            updatedAt=datetime.now(timezone.utc),
+        ),
+        uuid.uuid4(),
+        "tenant-a",
+        str(relationship_id),
+        body,
+    )
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http_client:
+        app.state.air_transcription_client = HttpAirTranscriptionClient("http://air", "secret", http_client)
+        response = await client.delete(
+            f"/api/v1/internal/relationships/{relationship_id}/voice-orchestrations/{orchestration_id}",
+            headers=_headers(relationship_id),
+        )
+
+    assert response.status_code == 503
+    assert response.json()["code"] == "transcription_unavailable"
+    assert response.json()["reconciliationRequired"] is True
 
 
 async def test_http_air_client_rejects_unexpected_status():

@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 @dataclass(frozen=True)
 class SkillAssignment:
     """Pinned skill assignment from an Employment Contract (ADR-043 §4)."""
+
     skill_id: str
     version: str
 
@@ -23,6 +24,7 @@ class SkillAssignment:
 @dataclass(frozen=True)
 class CrystallizerConfig:
     """Intent Crystallizer configuration extracted from a skill definition."""
+
     enabled: bool
     prompt_template: str
     requires_customer_approval: bool
@@ -36,6 +38,7 @@ class SessionSkillContext:
     Built once at session open (ADR-043 §3). Capability-complete and
     constitutionally bounded — all tool authorization is derived from this object.
     """
+
     authorized_tools: set[str] = field(default_factory=set)
     crystallizer_configs: dict[str, CrystallizerConfig] = field(default_factory=dict)
     autonomy_levels: dict[str, str] = field(default_factory=dict)
@@ -52,6 +55,7 @@ class SkillResolutionError(Exception):
 
     ADR-043 §3: session fails to open on SkillResolutionError — no tool calls permitted.
     """
+
     def __init__(self, skill_id: str, version: str, reason: str = "") -> None:
         self.skill_id = skill_id
         self.version = version
@@ -116,9 +120,7 @@ class SkillResolver:
         if resp.status_code == 404:
             raise SkillResolutionError(skill_id, version, "not found in Skill Catalog (404)")
         if not resp.is_success:
-            raise SkillResolutionError(
-                skill_id, version, f"BP Skill Catalog returned {resp.status_code}"
-            )
+            raise SkillResolutionError(skill_id, version, f"BP Skill Catalog returned {resp.status_code}")
 
         payload = resp.json()
         # BP wraps the JSONB definition field in the SkillResponse DTO:
@@ -127,15 +129,11 @@ class SkillResolver:
         if isinstance(defn, str):
             defn = json.loads(defn)
         if not isinstance(defn, dict):
-            raise SkillResolutionError(
-                skill_id, version, "definition field is not a JSON object"
-            )
+            raise SkillResolutionError(skill_id, version, "definition field is not a JSON object")
         return defn
 
 
-def _merge_into_context(
-    ctx: SessionSkillContext, skill_id: str, defn: dict[str, Any]
-) -> None:
+def _merge_into_context(ctx: SessionSkillContext, skill_id: str, defn: dict[str, Any]) -> None:
     """Merge a single skill definition into the session context (union semantics)."""
     dcm = defn.get("default_dcm_category", "DETERMINISTIC_REQUIRED")
 

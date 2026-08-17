@@ -53,7 +53,7 @@ public sealed class Migration22PostgresFixture : IAsyncLifetime
             """);
 
         // Apply migration 19 (provides the FK target)
-        await ExecFileAsync(conn, Sql.RepoPath("infrastructure/postgres/init/19-ae01-employment-relationship.sql"));
+        await ExecFileAsync(conn, RepositoryPaths.Resolve("infrastructure/postgres/init/19-ae01-employment-relationship.sql"));
 
         await ExecAsync(conn, """
             GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA business TO business_app;
@@ -61,7 +61,7 @@ public sealed class Migration22PostgresFixture : IAsyncLifetime
             """);
 
         // Apply migration 22 under test
-        await ExecFileAsync(conn, Sql.RepoPath("infrastructure/postgres/init/22-ae01-continuity-evidence.sql"));
+        await ExecFileAsync(conn, RepositoryPaths.Resolve("infrastructure/postgres/init/22-ae01-continuity-evidence.sql"));
 
         // business_continuity_maintenance gets LOGIN for role-switch test only
         await ExecAsync(conn, $"""
@@ -101,17 +101,6 @@ public sealed class Migration22PostgresCollection : ICollectionFixture<Migration
 // ── helpers used across test methods ─────────────────────────────────────────
 file static class Sql
 {
-    public static string RepoPath(string relative)
-    {
-        // Works in host devcontainer (/workspaces/...) and Docker test-runner (/workspace)
-        var candidates = new[]
-        {
-            Path.Combine("/workspace", relative),
-            Path.Combine("/workspaces/waooaw-platform", relative),
-        };
-        return candidates.FirstOrDefault(File.Exists) ?? candidates[0];
-    }
-
     public static async Task<NpgsqlConnection> OpenAsync(string connStr)
     {
         var conn = new NpgsqlConnection(connStr);
@@ -215,7 +204,7 @@ public sealed class Migration22FirstApplyAndReapplyTests
         // Running migration 22 a second time must not raise an exception
         await using var conn = await Sql.OpenAsync(_fx.OwnerConnectionString);
         var sql = await File.ReadAllTextAsync(
-            Sql.RepoPath("infrastructure/postgres/init/22-ae01-continuity-evidence.sql"));
+            RepositoryPaths.Resolve("infrastructure/postgres/init/22-ae01-continuity-evidence.sql"));
         var exception = await Record.ExceptionAsync(async () =>
         {
             await using var cmd = conn.CreateCommand();

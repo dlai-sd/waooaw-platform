@@ -5,7 +5,7 @@
 # DO NOT add packages without EA approval. These versions are pinned and tested.
 
 # ─── Web framework ────────────────────────────────────────────────────────────
-fastapi==0.115.0
+fastapi==0.135.1
 uvicorn[standard]==0.30.6
 pydantic==2.9.2
 pydantic-settings==2.5.2
@@ -14,13 +14,13 @@ pydantic-settings==2.5.2
 # NOTE: The Python package is 'temporalio' (same name as .NET).
 # DO NOT use 'temporal-sdk', 'temporal-python', or any other variant.
 # The 1.x series is stable. Do NOT use 0.x-beta versions.
-temporalio==1.7.1
+temporalio==1.30.0
 
 # ─── gRPC client — calls Constitutional Engine (ADR-001) ─────────────────────
 grpcio==1.67.1
 grpcio-tools==1.67.1
 grpcio-status==1.67.1
-protobuf==5.28.3
+protobuf==5.29.6
 
 # ─── Async HTTP client — calls Business Platform ─────────────────────────────
 httpx==0.27.2
@@ -36,5 +36,4 @@ opentelemetry-instrumentation-fastapi==0.49b2
 opentelemetry-exporter-otlp==1.28.2
 
 # ─── Utilities ───────────────────────────────────────────────────────────────
-python-jose[cryptography]==3.3.0
-python-multipart==0.0.12
+python-multipart==0.0.32

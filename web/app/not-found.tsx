@@ -3,4 +3,4 @@
 
 import { StateView } from '@/components/system/StateView';
 import { getRequestI18n } from '@/lib/i18n-server';
-export default function NotFound() { const { messages } = getRequestI18n(); return <main className="system-page"><StateView actionLabel={messages.returnHome} kind="not-found" title={messages.pageNotFound} description={messages.pageNotFoundDescription} /></main>; }
+export default async function NotFound() { const { messages } = await getRequestI18n(); return <main className="system-page"><StateView actionLabel={messages.returnHome} kind="not-found" title={messages.pageNotFound} description={messages.pageNotFoundDescription} /></main>; }

@@ -17,7 +17,6 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
-from cryptography.x509.oid import ExtensionOID
 
 
 MAX_ENVELOPE_LIFETIME_SECONDS = 60
@@ -118,9 +117,9 @@ def extract_peer_identity(
     if current < certificate.not_valid_before_utc or current >= certificate.not_valid_after_utc:
         raise ServiceAuthError("SERVICE_AUTHENTICATION_FAILED")
     try:
-        names = certificate.extensions.get_extension_for_oid(
-            ExtensionOID.SUBJECT_ALTERNATIVE_NAME
-        ).value.get_values_for_type(x509.UniformResourceIdentifier)
+        names = certificate.extensions.get_extension_for_class(x509.SubjectAlternativeName).value.get_values_for_type(
+            x509.UniformResourceIdentifier
+        )
     except x509.ExtensionNotFound as exc:
         raise ServiceAuthError("SERVICE_AUTHENTICATION_FAILED") from exc
     expected_prefix = f"spiffe://{trust_domain}/workload/"

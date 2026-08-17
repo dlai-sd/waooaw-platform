@@ -31,9 +31,9 @@
 # No I/O, no DB calls, no LLM calls on this path
 async def handle_emergency_stop(session_id: str) -> EmergencyStopResult:
     # ONLY: cancel Temporal workflow signal + update in-memory state
-    await self._temporal_client.signal_workflow(
-        session_id, "emergency_stop", EmergencyStopSignal()
-    )
+    await self._temporal_client.signal_workflow(session_id, "emergency_stop", EmergencyStopSignal())
     return EmergencyStopResult(success=True, session_id=session_id)
+
+
 # NEVER: DB write, LLM call, or any external I/O on this code path
 ```

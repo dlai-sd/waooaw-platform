@@ -10,7 +10,8 @@ public sealed class ConversationMigrationTests
     [Fact]
     public void MigrationDefinesDurableOrderingOutcomesPositionsCursorsAndForcedRls()
     {
-        var sql = File.ReadAllText("/workspace/infrastructure/postgres/init/21-conversation-core.sql");
+        var sql = File.ReadAllText(
+            RepositoryPaths.Resolve("infrastructure/postgres/init/21-conversation-core.sql"));
 
         Assert.Contains("business.conversations", sql);
         Assert.Contains("next_message_sequence", sql);

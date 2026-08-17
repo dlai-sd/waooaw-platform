@@ -33,7 +33,16 @@ from workload_identity import (
 )
 
 
-SCHEMA_VERSION = "1.0"
+SCHEMA_VERSION: Literal["1.0"] = "1.0"
+ControlStatus = Literal[
+    "COMPLETED",
+    "PENDING",
+    "PARTIAL",
+    "UNKNOWN",
+    "REJECTED",
+    "CONFLICT",
+    "BLOCKED",
+]
 TARGET_NAME = "professional-runtime"
 logger = logging.getLogger(__name__)
 
@@ -84,7 +93,7 @@ class ExecutionControlReceipt(StrictModel):
     schema_version: Literal["1.0"] = Field(alias="schemaVersion")
     control_id: uuid.UUID = Field(alias="controlId")
     control_kind: Literal["PAUSE_WORK", "RESUME_WORK", "PROVIDE_WORK_INPUT"] = Field(alias="controlKind")
-    status: Literal["COMPLETED", "PENDING", "PARTIAL", "UNKNOWN", "REJECTED", "CONFLICT", "BLOCKED"]
+    status: ControlStatus
     accepted_at: datetime = Field(alias="acceptedAt")
     replayed: bool
 
@@ -93,7 +102,7 @@ class ExecutionControlOutcome(StrictModel):
     schema_version: Literal["1.0"] = Field(alias="schemaVersion")
     control_id: uuid.UUID = Field(alias="controlId")
     control_kind: Literal["PAUSE_WORK", "RESUME_WORK", "PROVIDE_WORK_INPUT"] = Field(alias="controlKind")
-    status: Literal["COMPLETED", "PENDING", "PARTIAL", "UNKNOWN", "REJECTED", "CONFLICT", "BLOCKED"]
+    status: ControlStatus
     relationship_id: uuid.UUID = Field(alias="relationshipId")
     resolved_at: datetime | None = Field(default=None, alias="resolvedAt")
 
@@ -175,6 +184,7 @@ class RelationshipExecutionStore:
                 return existing.receipt.model_copy(update={"replayed": True})
 
             projection = self._projections.get((context.tenant_id, relationship_id))
+            status: ControlStatus
             if projection is None or projection.state != "CURRENT":
                 status = "BLOCKED"
             elif projection.projection_version != request.expected_projection_version:
@@ -425,7 +435,9 @@ async def get_relationship_execution_control(
             relationship_id,
         )
     except ServiceAuthError as exc:
-        logger.warning("service_auth decision=deny target=professional-runtime operation=reconciliation reason_class=%s", exc.code)
+        logger.warning(
+            "service_auth decision=deny target=professional-runtime operation=reconciliation reason_class=%s", exc.code
+        )
         return _problem(exc.code, 401, request.headers.get("X-Correlation-ID", str(uuid.uuid4())))
     store: RelationshipExecutionStore = request.app.state.relationship_execution_store
     outcome = store.outcome(context, control_id)

@@ -867,7 +867,7 @@ def test_openapi_conforms_to_canonical_conversation_contract() -> None:
     canonical_path = Path(__file__).parents[2] / "architecture" / "reference" / "api-specs" / "professional-runtime.openapi.yaml"
     canonical = yaml.safe_load(canonical_path.read_text())
     generated = app.openapi()
-    assert generated["info"]["version"] == canonical["info"]["version"] == "1.2.0"
+    assert generated["info"]["version"] == canonical["info"]["version"] == "1.3.0"
     operations = {
         "/api/v1/internal/conversations/{conversationId}/executions": "post",
         "/api/v1/internal/conversations/{conversationId}/executions/{executionId}/stream": "get",
@@ -885,13 +885,17 @@ def test_openapi_conforms_to_canonical_conversation_contract() -> None:
         assert actual["parameters"] == expected["parameters"]
     stream_response = generated["paths"][next(path for path in operations if path.endswith("/stream"))]["get"]["responses"]["200"]
     assert set(stream_response["content"]) == {"text/event-stream"}
-    assert stream_response["headers"] == canonical[
-        "paths"
-    ]["/api/v1/internal/conversations/{conversationId}/executions/{executionId}/stream"]["get"]["responses"]["200"]["headers"]
+    assert (
+        stream_response["headers"]
+        == canonical["paths"]["/api/v1/internal/conversations/{conversationId}/executions/{executionId}/stream"]["get"][
+            "responses"
+        ]["200"]["headers"]
+    )
     assert generated["servers"] == canonical["servers"]
-    assert generated["components"]["securitySchemes"]["ServiceBearerAuth"] == canonical["components"][
-        "securitySchemes"
-    ]["ServiceBearerAuth"]
+    assert (
+        generated["components"]["securitySchemes"]["ServiceBearerAuth"]
+        == canonical["components"]["securitySchemes"]["ServiceBearerAuth"]
+    )
     for response_name in (
         "ExecutionInvalidRequest",
         "ExecutionUnauthorized",
@@ -901,12 +905,8 @@ def test_openapi_conforms_to_canonical_conversation_contract() -> None:
         "ExecutionStopped",
         "ExecutionUnavailable",
     ):
-        assert generated["components"]["responses"][response_name] == canonical["components"]["responses"][
-            response_name
-        ]
-        assert set(generated["components"]["responses"][response_name]["content"]) == {
-            "application/problem+json"
-        }
+        assert generated["components"]["responses"][response_name] == canonical["components"]["responses"][response_name]
+        assert set(generated["components"]["responses"][response_name]["content"]) == {"application/problem+json"}
     for schema_name in (
         "ConversationExecutionSchemaVersion",
         "ConversationExecutionTextV1",
@@ -934,9 +934,7 @@ async def test_grpc_gateway_sends_canonical_validate_action_with_tenant_metadata
         ValidationDecision=validation_decision,
     )
     stub = MagicMock(
-        ValidateAction=AsyncMock(
-            return_value=SimpleNamespace(decision=1, constitutional_basis="C-023; C-041", reason="")
-        )
+        ValidateAction=AsyncMock(return_value=SimpleNamespace(decision=1, constitutional_basis="C-023; C-041", reason=""))
     )
     gateway = GrpcConversationConstitutionalGateway(
         "unused",
@@ -968,9 +966,7 @@ async def test_grpc_gateway_requires_constitutional_basis_and_translates_transpo
         ValidateActionRequest=lambda **values: SimpleNamespace(**values),
         ValidationDecision=validation_decision,
     )
-    stub = MagicMock(
-        ValidateAction=AsyncMock(return_value=SimpleNamespace(decision=1, constitutional_basis="", reason=""))
-    )
+    stub = MagicMock(ValidateAction=AsyncMock(return_value=SimpleNamespace(decision=1, constitutional_basis="", reason="")))
     gateway = GrpcConversationConstitutionalGateway("unused", channel=channel, stub=stub, protobuf=protobuf)
     context = BPServiceContext("contract-a", "tenant-a", "relationship-a", "participant-a", "CUSTOMER")
     assert await gateway.authorize_execution(context, uuid.uuid4(), 1, "hash") == ConstitutionalDecision.DENY
@@ -1322,9 +1318,7 @@ def test_emergency_stop_websocket_confirms_only_from_ce_evidence() -> None:
         subprotocols=["waooaw-emergency-stop-v1"],
     ) as websocket:
         websocket.receive_json()
-        websocket.send_json(
-            {"type": "EMERGENCY_STOP", "contractId": "contract-a", "activeSessionIds": [session_id]}
-        )
+        websocket.send_json({"type": "EMERGENCY_STOP", "contractId": "contract-a", "activeSessionIds": [session_id]})
         confirmation = websocket.receive_json()
     assert gateway.stop_requests == [
         {
@@ -1428,13 +1422,7 @@ def test_problem_codes_match_canonical_openapi() -> None:
 
 
 def test_constitutional_engine_uses_canonical_emergency_stop_signal() -> None:
-    service_path = (
-        Path(__file__).parents[2]
-        / "src"
-        / "constitutional-engine"
-        / "Services"
-        / "ConstitutionalEngineService.cs"
-    )
+    service_path = Path(__file__).parents[2] / "src" / "constitutional-engine" / "Services" / "ConstitutionalEngineService.cs"
     service_source = service_path.read_text()
     assert '"EmergencyStop"' in service_source
     assert '"emergency-stop"' not in service_source

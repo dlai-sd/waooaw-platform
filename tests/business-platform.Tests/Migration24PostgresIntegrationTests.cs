@@ -39,8 +39,8 @@ public sealed class Migration24PostgresFixture : IAsyncLifetime
             END $$;
             GRANT USAGE ON SCHEMA business TO business_app;
             """);
-        await ExecuteFileAsync(connection, RepoPath("infrastructure/postgres/init/19-ae01-employment-relationship.sql"));
-        await ExecuteFileAsync(connection, RepoPath("infrastructure/postgres/init/24-offerability-decision.sql"));
+        await ExecuteFileAsync(connection, RepositoryPaths.Resolve("infrastructure/postgres/init/19-ae01-employment-relationship.sql"));
+        await ExecuteFileAsync(connection, RepositoryPaths.Resolve("infrastructure/postgres/init/24-offerability-decision.sql"));
         BusinessConnectionString = new NpgsqlConnectionStringBuilder(OwnerConnectionString)
         {
             Username = "business_app",
@@ -52,10 +52,6 @@ public sealed class Migration24PostgresFixture : IAsyncLifetime
     {
         if (_container is not null) await _container.DisposeAsync();
     }
-
-    public static string RepoPath(string relative) =>
-        new[] { Path.Combine("/workspace", relative), Path.Combine("/workspaces/waooaw-platform", relative) }
-            .First(File.Exists);
 
     public static async Task ExecuteAsync(NpgsqlConnection connection, string sql)
     {

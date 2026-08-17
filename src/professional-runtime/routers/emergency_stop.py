@@ -62,9 +62,7 @@ class KeycloakJWTValidator:
             response = await self._client.get(self._jwks_url)
             response.raise_for_status()
             self._keys = {
-                str(key["kid"]): key
-                for key in response.json().get("keys", [])
-                if key.get("kty") == "RSA" and key.get("kid")
+                str(key["kid"]): key for key in response.json().get("keys", []) if key.get("kty") == "RSA" and key.get("kid")
             }
         if key_id not in self._keys:
             raise ValueError("unknown signing key")

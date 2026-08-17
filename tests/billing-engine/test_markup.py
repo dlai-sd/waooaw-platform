@@ -137,7 +137,7 @@ def _rejected(proposed: int = 4000) -> PriceValidation:
 @pytest.fixture()
 def mock_ce():
     with patch("markup.router.CE") as mock:
-        mock.ValidateAction = AsyncMock(return_value=None)
+        mock.validate_action = AsyncMock(return_value=None)
         yield mock
 
 

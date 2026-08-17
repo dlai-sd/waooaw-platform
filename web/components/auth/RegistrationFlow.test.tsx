@@ -36,6 +36,13 @@ describe('F2 registration flow', () => {
     fireEvent.change(screen.getByLabelText('Business name'), { target: { value: 'Field Works' } });
     expect(sessionStorage.getItem('waooaw:identity:registration-draft')).toContain('Field Works');
     expect(sessionStorage.getItem('waooaw:identity:registration-draft')).not.toMatch(/email|mobile|code/i);
+
+    const profileForm = screen.getByLabelText('Your name').closest('form');
+    expect(profileForm).not.toBeNull();
+    fireEvent.submit(profileForm!);
+    await waitFor(() => expect(jest.mocked(fetch)).toHaveBeenCalledTimes(2));
+    const profileCommand = JSON.parse(String(jest.mocked(fetch).mock.calls[1][1]?.body));
+    expect(profileCommand).toMatchObject({ action: 'profile', businessName: 'Field Works' });
   });
 
   it('never persists a one-time code and clears the challenge after confirmation', async () => {
@@ -68,5 +75,18 @@ describe('F2 registration flow', () => {
     const first = JSON.parse(String(jest.mocked(fetch).mock.calls[0][1]?.body));
     const second = JSON.parse(String(jest.mocked(fetch).mock.calls[1][1]?.body));
     expect(second.idempotencyKey).toBe(first.idempotencyKey);
+  });
+
+  it('allows optional mobile verification before completing registration', async () => {
+    global.fetch = jest.fn(() => jsonResponse({
+      ...baseRegistration,
+      state: 'REGISTRATION_COMPLETION_REQUIRED',
+      nextAction: 'COMPLETE_REGISTRATION',
+    }));
+    render(<RegistrationFlow locale="en" messages={getIdentityMessages('en')} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Verify mobile now' }));
+
+    expect(await screen.findByLabelText('Mobile number')).toBeInTheDocument();
   });
 });

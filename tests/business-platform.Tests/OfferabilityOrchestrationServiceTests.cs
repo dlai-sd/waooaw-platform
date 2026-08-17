@@ -2,6 +2,7 @@
 // constitutional_basis: C-002, C-023, C-059, C-089, C-091
 
 using Microsoft.EntityFrameworkCore;
+using Waooaw.BusinessPlatform.Infrastructure;
 using Waooaw.BusinessPlatform.Services;
 using Xunit;
 
@@ -102,6 +103,66 @@ public sealed class OfferabilityOrchestrationServiceTests
             service.EvaluateAsync(request with { ProposedPricePaise = 7_001 }, CancellationToken.None));
 
         Assert.Equal(1, owner.CallCount);
+    }
+
+    [Fact]
+    public async Task PersistentGuard_RequiresCurrentAllowForExactRelationshipVersion()
+    {
+        var factory = new InMemoryEmploymentRelationshipFactory(Guid.NewGuid().ToString("N"));
+        var tenantId = Guid.NewGuid();
+        var relationshipId = Guid.NewGuid();
+        await using (var db = factory.CreateDbContext())
+        {
+            db.EmploymentRelationships.Add(new EmploymentRelationship
+            {
+                TenantId = tenantId,
+                RelationshipId = relationshipId,
+                ProfessionalType = "DMA",
+                EvaluationIntentId = Guid.NewGuid(),
+                InitiatingParticipantId = Guid.NewGuid(),
+                StateVersion = 3,
+            });
+            await db.SaveChangesAsync();
+        }
+        var guard = new PersistentOfferabilityGuard(factory);
+
+        await Assert.ThrowsAsync<ActivationEligibilityException>(() => guard.RequireEligibleAsync(
+            Guid.NewGuid(), relationshipId, CancellationToken.None));
+        await Assert.ThrowsAsync<ActivationEligibilityException>(() => guard.RequireEligibleAsync(
+            tenantId, relationshipId, CancellationToken.None));
+
+        foreach (var (disposition, expiresAt, version, allowed) in new[]
+        {
+            ("BLOCK", DateTimeOffset.UtcNow.AddHours(1), 3, false),
+            ("ALLOW", DateTimeOffset.UtcNow.AddMinutes(-1), 3, false),
+            ("ALLOW", DateTimeOffset.UtcNow.AddHours(1), 2, false),
+            ("ALLOW", DateTimeOffset.UtcNow.AddHours(1), 3, true),
+        })
+        {
+            await using (var db = factory.CreateDbContext())
+            {
+                db.OfferabilityDecisions.RemoveRange(db.OfferabilityDecisions);
+                db.OfferabilityDecisions.Add(new OfferabilityDecisionRecord
+                {
+                    TenantId = tenantId,
+                    RelationshipId = relationshipId,
+                    RelationshipStateVersion = version,
+                    PolicyVersion = "policy",
+                    DirectContributionAmount = 50,
+                    Disposition = disposition,
+                    ReasonsJson = "[]",
+                    OwnerVersionsJson = "{}",
+                    MaterialRequestHash = new string('a', 64),
+                    ExpiresAt = expiresAt,
+                });
+                await db.SaveChangesAsync();
+            }
+            if (allowed)
+                await guard.RequireEligibleAsync(tenantId, relationshipId, CancellationToken.None);
+            else
+                await Assert.ThrowsAsync<ActivationEligibilityException>(() => guard.RequireEligibleAsync(
+                    tenantId, relationshipId, CancellationToken.None));
+        }
     }
 
     private static OfferabilityEvaluationRequest Request() => new(

@@ -3,4 +3,4 @@
 
 import { StateView } from '@/components/system/StateView';
 import { getRequestI18n } from '@/lib/i18n-server';
-export default function OfflinePage() { const { messages } = getRequestI18n(); return <main className="system-page"><StateView actionLabel={messages.returnHome} kind="error" title={messages.offline} description={messages.offlineDescription} /></main>; }
+export default async function OfflinePage() { const { messages } = await getRequestI18n(); return <main className="system-page"><StateView actionLabel={messages.returnHome} kind="error" title={messages.offline} description={messages.offlineDescription} /></main>; }

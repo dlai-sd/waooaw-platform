@@ -36,85 +36,104 @@ DMA_TRIAL_CAPABILITIES: Mapping[str, str] = {
 
 DMA_RECIPES: Mapping[str, DemonstrationRecipe] = {
     "CUSTOMER_PROFILING": DemonstrationRecipe(
-        "customer-profile", ("approved-template", "local-inference"),
+        "customer-profile",
+        ("approved-template", "local-inference"),
         ("confirmed_context", "open_questions", "assumptions"),
     ),
     "MARKET_RESEARCH": DemonstrationRecipe(
-        "market-maturity-brief", ("public-free-research", "deterministic-analysis"),
+        "market-maturity-brief",
+        ("public-free-research", "deterministic-analysis"),
         ("public_observations", "maturity_score", "limitations"),
     ),
     "CONTENT_STRATEGY": DemonstrationRecipe(
-        "content-calendar", ("local-inference", "approved-template"),
+        "content-calendar",
+        ("local-inference", "approved-template"),
         ("campaign_theme", "channel_plan", "approval_points"),
     ),
     "INSTAGRAM": DemonstrationRecipe(
-        "simulated-instagram-post", ("local-inference", "pregenerated-asset"),
+        "simulated-instagram-post",
+        ("local-inference", "pregenerated-asset"),
         ("caption", "asset_reference", "simulated_preview"),
     ),
     "FACEBOOK": DemonstrationRecipe(
-        "simulated-facebook-post", ("local-inference", "customer-approved-asset"),
+        "simulated-facebook-post",
+        ("local-inference", "customer-approved-asset"),
         ("copy", "asset_reference", "simulated_preview"),
     ),
     "GOOGLE_BUSINESS_PROFILE": DemonstrationRecipe(
-        "gbp-optimisation-draft", ("public-free-research", "approved-template"),
+        "gbp-optimisation-draft",
+        ("public-free-research", "approved-template"),
         ("profile_gaps", "draft_update", "customer_decisions"),
     ),
     "WHATSAPP_BUSINESS": DemonstrationRecipe(
-        "synthetic-whatsapp-flow", ("approved-template", "synthetic-recipient"),
+        "synthetic-whatsapp-flow",
+        ("approved-template", "synthetic-recipient"),
         ("entry_message", "synthetic_conversation", "opt_in_boundary"),
     ),
     "VIDEO_VISUAL_CONTENT": DemonstrationRecipe(
-        "storyboard", ("local-inference", "pregenerated-asset"),
+        "storyboard",
+        ("local-inference", "pregenerated-asset"),
         ("shot_list", "script", "asset_references"),
     ),
     "PERFORMANCE_ANALYTICS": DemonstrationRecipe(
-        "synthetic-performance-report", ("deterministic-analysis", "simulated-campaign"),
+        "synthetic-performance-report",
+        ("deterministic-analysis", "simulated-campaign"),
         ("synthetic_metrics", "calculation", "interpretation"),
     ),
     "LOCAL_SEO": DemonstrationRecipe(
-        "local-seo-audit", ("public-free-research", "deterministic-analysis"),
+        "local-seo-audit",
+        ("public-free-research", "deterministic-analysis"),
         ("observations", "keyword_map", "recommended_changes"),
     ),
     "PAID_ADVERTISING": DemonstrationRecipe(
-        "simulated-paid-campaign", ("simulated-campaign", "approved-template"),
+        "simulated-paid-campaign",
+        ("simulated-campaign", "approved-template"),
         ("campaign_structure", "synthetic_budget", "no_spend_confirmation"),
     ),
     "EMAIL_MARKETING": DemonstrationRecipe(
-        "synthetic-email-sequence", ("approved-template", "synthetic-recipient"),
+        "synthetic-email-sequence",
+        ("approved-template", "synthetic-recipient"),
         ("subject_variants", "message_sequence", "synthetic_delivery"),
     ),
     "CUSTOMER_LIFECYCLE": DemonstrationRecipe(
-        "lifecycle-map", ("approved-template", "local-inference"),
+        "lifecycle-map",
+        ("approved-template", "local-inference"),
         ("stages", "signals", "consent_boundaries"),
     ),
     "CONVERSION_OPTIMISATION": DemonstrationRecipe(
-        "conversion-hypothesis", ("deterministic-analysis", "approved-template"),
+        "conversion-hypothesis",
+        ("deterministic-analysis", "approved-template"),
         ("funnel_observation", "hypothesis", "measurement_plan"),
     ),
     "COMPETITIVE_INTELLIGENCE": DemonstrationRecipe(
-        "competitive-public-brief", ("public-free-research", "local-inference"),
+        "competitive-public-brief",
+        ("public-free-research", "local-inference"),
         ("public_observations", "inferences", "limitations"),
     ),
     "AGENCY_OPERATIONS": DemonstrationRecipe(
-        "agency-workspace-plan", ("approved-template", "deterministic-analysis"),
+        "agency-workspace-plan",
+        ("approved-template", "deterministic-analysis"),
         ("client_partitioning", "approval_routing", "reporting_model"),
         context_gate="agency_mode",
         non_applicable_reason="The confirmed business context does not identify an agency or reseller.",
         activation_condition="Applicable when the customer confirms agency or reseller operations.",
     ),
     "MULTI_LOCATION_MANAGEMENT": DemonstrationRecipe(
-        "multi-location-plan", ("approved-template", "deterministic-analysis"),
+        "multi-location-plan",
+        ("approved-template", "deterministic-analysis"),
         ("location_matrix", "shared_standards", "local_variations"),
         context_gate="multi_location",
         non_applicable_reason="The confirmed business context contains only one operating location.",
         activation_condition="Applicable when the customer confirms more than one operating location.",
     ),
     "CRISIS_COMMUNICATIONS": DemonstrationRecipe(
-        "simulated-crisis-response", ("approved-template", "synthetic-recipient"),
+        "simulated-crisis-response",
+        ("approved-template", "synthetic-recipient"),
         ("scenario", "holding_statement", "approval_escalation"),
     ),
     "QUARTERLY_STRATEGY_REVIEW": DemonstrationRecipe(
-        "synthetic-strategy-review", ("simulated-campaign", "deterministic-analysis"),
+        "synthetic-strategy-review",
+        ("simulated-campaign", "deterministic-analysis"),
         ("synthetic_outcomes", "lessons", "next_quarter_options"),
     ),
 }
@@ -138,10 +157,12 @@ class DigitalMarketingEvaluationAdapter:
         question: str,
         evidence_context: tuple[str, ...],
     ) -> tuple[AdapterAnswerProposal, ...]:
-        return (AdapterAnswerProposal(
-            proposed_tag="LIMITATION",
-            content="This adapter answers only from validated evidence supplied by the evaluation runtime.",
-        ),)
+        return (
+            AdapterAnswerProposal(
+                proposed_tag="LIMITATION",
+                content="This adapter answers only from validated evidence supplied by the evaluation runtime.",
+            ),
+        )
 
     async def demonstrate(self, request: TrialDemonstrationRequest) -> TrialDemonstration:
         try:

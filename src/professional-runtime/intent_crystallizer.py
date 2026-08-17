@@ -21,6 +21,7 @@ class LockedArtifact:
     Any tool call in a skill's authorized_tools set is blocked until the corresponding
     LockedArtifact exists in session state.
     """
+
     skill_id: str
     artifact_type: str  # derived from CrystallizerConfig.locked_artifact_schema
     content: dict[str, Any] = field(default_factory=dict)
@@ -33,6 +34,7 @@ class CrystallizerRequiredError(Exception):
     ADR-043 §3: Maps to MCPToolError(CONSTITUTIONAL_BLOCKED) — caller must present the
     crystallizer to the customer before retrying the tool call.
     """
+
     def __init__(self, skill_id: str, tool_name: str) -> None:
         self.skill_id = skill_id
         self.tool_name = tool_name
@@ -44,12 +46,13 @@ class CrystallizerRequiredError(Exception):
 
 class LLMClient(Protocol):  # pragma: no cover
     """Minimal interface for calling the LLM (injectable for tests)."""
-    async def generate(self, prompt_template: str, skill_id: str) -> dict[str, Any]:
-        ...
+
+    async def generate(self, prompt_template: str, skill_id: str) -> dict[str, Any]: ...
 
 
 class CEApprovalClient(Protocol):  # pragma: no cover
     """Minimal interface for writing a CE evidence record for customer approval (C-023)."""
+
     async def record_approval(self, skill_id: str, artifact_content: dict[str, Any]) -> str:
         """Return the CE evidence_record_id."""
         ...
@@ -64,7 +67,7 @@ def _artifact_type_from_schema(schema_path: str) -> str:
     """
     if not schema_path:
         return "artifact"
-    stem = PurePosixPath(schema_path).stem           # "campaign_brief_v1"
+    stem = PurePosixPath(schema_path).stem  # "campaign_brief_v1"
     return re.sub(r"_v\d+.*$", "", stem) or "artifact"  # "campaign_brief"
 
 
@@ -123,9 +126,7 @@ class IntentCrystallizer:
         prompt_template: str,
     ) -> dict[str, Any]:
         if self._llm_client is not None:
-            return await self._llm_client.generate(
-                prompt_template=prompt_template, skill_id=skill_id
-            )
+            return await self._llm_client.generate(prompt_template=prompt_template, skill_id=skill_id)
         # Stub — real implementation routes through AIR via CTG
         return {
             "skill_id": skill_id,
@@ -138,8 +139,7 @@ class IntentCrystallizer:
             return await self._ce_client.record_approval(skill_id, artifact_content)
         # GAP-004 fix: warn when ce_client absent — C-023 violated in production
         logger.warning(
-            "ce_client not configured — LockedArtifact has no CE evidence record. "
-            "C-023 violated in production. skill_id=%s",
+            "ce_client not configured — LockedArtifact has no CE evidence record. C-023 violated in production. skill_id=%s",
             skill_id,
         )
         return f"evidence-{skill_id}-approval-stub"

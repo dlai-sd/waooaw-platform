@@ -10,7 +10,7 @@ import { getRequestI18n } from '@/lib/i18n-server';
 
 export default async function AccountLinkPage() {
   const session = await getServerSession(authOptions);
-  const { locale } = getRequestI18n();
+  const { locale } = await getRequestI18n();
   const messages = getIdentityMessages(locale);
   if (!session?.authenticated) return <section className="auth-view"><h1>{messages.duplicate}</h1><SignInCommand callbackUrl="/account-link" label={messages.signInFirst} /></section>;
   return <StateView actionHref="/home" actionLabel={messages.retry} kind="empty" title={messages.duplicate} description="Continue from the verified WhatsApp conversation. No link will be created until the internal channel proof and fresh account assurance are both available." />;

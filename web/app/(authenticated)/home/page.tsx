@@ -3,4 +3,4 @@
 
 import { StateView } from '@/components/system/StateView';
 import { getRequestI18n } from '@/lib/i18n-server';
-export default function CustomerHomePage() { const { messages } = getRequestI18n(); return <StateView actionLabel={messages.returnHome} kind="empty" title={messages.workspaceReady} description={messages.workspaceReadyDescription} />; }
+export default async function CustomerHomePage() { const { messages } = await getRequestI18n(); return <StateView actionLabel={messages.returnHome} kind="empty" title={messages.workspaceReady} description={messages.workspaceReadyDescription} />; }

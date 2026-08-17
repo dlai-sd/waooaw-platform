@@ -281,14 +281,13 @@ async def terminate_session(
     """
     terminated_at = _now_iso()
     terminate_input = TerminateSessionInput(
-        stopped_by=body.stopped_by,
+        session_id=session_id,
         reason=body.reason,
-        terminated_at=terminated_at,
     )
 
     try:
         handle = temporal.get_workflow_handle(session_id)
-        await handle.signal(PAASSessionWorkflow.terminate_session, terminate_input)
+        await handle.signal(PAASSessionWorkflow.signal_terminate, terminate_input)
         signal_sent = True
     except asyncio.CancelledError:
         raise
@@ -335,13 +334,13 @@ async def pause_session(
     """
     paused_at = _now_iso()
     pause_input = PauseSessionInput(
-        paused_by=body.paused_by,
-        paused_at=paused_at,
+        session_id=session_id,
+        reason=f"operator:{body.paused_by}",
     )
 
     try:
         handle = temporal.get_workflow_handle(session_id)
-        await handle.signal(PAASSessionWorkflow.pause_session, pause_input)
+        await handle.signal(PAASSessionWorkflow.signal_pause, pause_input)
         signal_sent = True
     except asyncio.CancelledError:
         raise
@@ -388,13 +387,12 @@ async def resume_session(
     """
     resumed_at = _now_iso()
     resume_input = ResumeSessionInput(
-        resumed_by=body.resumed_by,
-        resumed_at=resumed_at,
+        session_id=session_id,
     )
 
     try:
         handle = temporal.get_workflow_handle(session_id)
-        await handle.signal(PAASSessionWorkflow.resume_session, resume_input)
+        await handle.signal(PAASSessionWorkflow.signal_resume, resume_input)
         signal_sent = True
     except asyncio.CancelledError:
         raise

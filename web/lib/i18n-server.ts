@@ -5,7 +5,7 @@ import { cookies } from 'next/headers';
 import { getMessages } from './i18n';
 import { resolveLocale } from './preferences';
 
-export function getRequestI18n() {
-  const locale = resolveLocale(cookies().get('waooaw-locale')?.value);
+export async function getRequestI18n() {
+  const locale = resolveLocale((await cookies()).get('waooaw-locale')?.value);
   return { locale, messages: getMessages(locale) };
 }

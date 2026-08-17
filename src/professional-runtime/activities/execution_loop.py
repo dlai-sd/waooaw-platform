@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class SenseInput:
     """Input to the SENSE activity."""
+
     session_id: str
     contract_id: str
     decision_space_id: str
@@ -27,6 +28,7 @@ class SenseInput:
 @dataclass
 class SenseOutput:
     """Output from the SENSE activity."""
+
     observation_id: str
     context: dict[str, Any] = field(default_factory=dict)
     status: str = "sensed"
@@ -35,6 +37,7 @@ class SenseOutput:
 @dataclass
 class RetrieveInput:
     """Input to the RETRIEVE activity."""
+
     observation_id: str
     decision_space_id: str
     context: dict[str, Any] = field(default_factory=dict)
@@ -43,6 +46,7 @@ class RetrieveInput:
 @dataclass
 class RetrieveOutput:
     """Output from the RETRIEVE activity."""
+
     retrieval_id: str
     documents: list[dict[str, Any]] = field(default_factory=list)
     status: str = "retrieved"
@@ -51,6 +55,7 @@ class RetrieveOutput:
 @dataclass
 class ReasonInput:
     """Input to the REASON activity."""
+
     observation_id: str
     retrieval_id: str
     decision_space_id: str
@@ -61,6 +66,7 @@ class ReasonInput:
 @dataclass
 class ReasonOutput:
     """Output from the REASON activity."""
+
     reasoning_id: str
     proposed_action: dict[str, Any] = field(default_factory=dict)
     confidence: float = 0.0
@@ -70,6 +76,7 @@ class ReasonOutput:
 @dataclass
 class ActInput:
     """Input to the ACT activity."""
+
     reasoning_id: str
     proposed_action: dict[str, Any] = field(default_factory=dict)
     session_id: str
@@ -80,6 +87,7 @@ class ActInput:
 @dataclass
 class ActOutput:
     """Output from the ACT activity."""
+
     execution_id: str
     action_result: dict[str, Any] = field(default_factory=dict)
     status: str = "executed"
@@ -88,6 +96,7 @@ class ActOutput:
 @dataclass
 class RecordInput:
     """Input to the RECORD activity."""
+
     execution_id: str
     session_id: str
     contract_id: str
@@ -101,6 +110,7 @@ class RecordInput:
 @dataclass
 class RecordOutput:
     """Output from the RECORD activity."""
+
     evidence_record_id: str
     persisted_at: str
     status: str = "recorded"
@@ -122,10 +132,7 @@ async def sense(sense_input: SenseInput) -> SenseOutput:
     """
     try:
         observation_id = str(uuid.uuid4())
-        logger.info(
-            "SENSE activity started",
-            extra={"observation_id": observation_id, "session_id": sense_input.session_id}
-        )
+        logger.info("SENSE activity started", extra={"observation_id": observation_id, "session_id": sense_input.session_id})
 
         # Stub: simulate observation collection
         await asyncio.sleep(0.01)  # Minimal latency
@@ -135,16 +142,9 @@ async def sense(sense_input: SenseInput) -> SenseOutput:
             "decision_space_id": sense_input.decision_space_id,
         }
 
-        result = SenseOutput(
-            observation_id=observation_id,
-            context=context,
-            status="sensed"
-        )
+        result = SenseOutput(observation_id=observation_id, context=context, status="sensed")
 
-        logger.info(
-            "SENSE activity completed",
-            extra={"observation_id": observation_id, "status": result.status}
-        )
+        logger.info("SENSE activity completed", extra={"observation_id": observation_id, "status": result.status})
         return result
 
     except asyncio.CancelledError:
@@ -152,9 +152,7 @@ async def sense(sense_input: SenseInput) -> SenseOutput:
         raise
     except (ValueError, KeyError, RuntimeError) as e:
         logger.error(
-            "SENSE activity failed",
-            exc_info=True,
-            extra={"session_id": sense_input.session_id, "error_type": type(e).__name__}
+            "SENSE activity failed", exc_info=True, extra={"session_id": sense_input.session_id, "error_type": type(e).__name__}
         )
         raise
 
@@ -180,8 +178,8 @@ async def retrieve(retrieve_input: RetrieveInput) -> RetrieveOutput:
             extra={
                 "retrieval_id": retrieval_id,
                 "observation_id": retrieve_input.observation_id,
-                "decision_space_id": retrieve_input.decision_space_id
-            }
+                "decision_space_id": retrieve_input.decision_space_id,
+            },
         )
 
         # Stub: simulate document retrieval
@@ -191,23 +189,15 @@ async def retrieve(retrieve_input: RetrieveInput) -> RetrieveOutput:
                 "id": str(uuid.uuid4()),
                 "type": "decision_space_constraint",
                 "title": "Sample Decision Space Rule",
-                "relevance": 0.95
+                "relevance": 0.95,
             }
         ]
 
-        result = RetrieveOutput(
-            retrieval_id=retrieval_id,
-            documents=documents,
-            status="retrieved"
-        )
+        result = RetrieveOutput(retrieval_id=retrieval_id, documents=documents, status="retrieved")
 
         logger.info(
             "RETRIEVE activity completed",
-            extra={
-                "retrieval_id": retrieval_id,
-                "document_count": len(documents),
-                "status": result.status
-            }
+            extra={"retrieval_id": retrieval_id, "document_count": len(documents), "status": result.status},
         )
         return result
 
@@ -221,8 +211,8 @@ async def retrieve(retrieve_input: RetrieveInput) -> RetrieveOutput:
             extra={
                 "observation_id": retrieve_input.observation_id,
                 "decision_space_id": retrieve_input.decision_space_id,
-                "error_type": type(e).__name__
-            }
+                "error_type": type(e).__name__,
+            },
         )
         raise
 
@@ -250,8 +240,8 @@ async def reason(reason_input: ReasonInput) -> ReasonOutput:
                 "reasoning_id": reasoning_id,
                 "observation_id": reason_input.observation_id,
                 "retrieval_id": reason_input.retrieval_id,
-                "decision_space_id": reason_input.decision_space_id
-            }
+                "decision_space_id": reason_input.decision_space_id,
+            },
         )
 
         # Stub: simulate reasoning
@@ -260,15 +250,10 @@ async def reason(reason_input: ReasonInput) -> ReasonOutput:
             "action_type": "send_communication",
             "target": "placeholder_recipient",
             "content_template": "sample_template_id",
-            "parameters": {}
+            "parameters": {},
         }
 
-        result = ReasonOutput(
-            reasoning_id=reasoning_id,
-            proposed_action=proposed_action,
-            confidence=0.85,
-            status="reasoned"
-        )
+        result = ReasonOutput(reasoning_id=reasoning_id, proposed_action=proposed_action, confidence=0.85, status="reasoned")
 
         logger.info(
             "REASON activity completed",
@@ -276,8 +261,8 @@ async def reason(reason_input: ReasonInput) -> ReasonOutput:
                 "reasoning_id": reasoning_id,
                 "proposed_action_type": proposed_action.get("action_type"),
                 "confidence": result.confidence,
-                "status": result.status
-            }
+                "status": result.status,
+            },
         )
         return result
 
@@ -291,8 +276,8 @@ async def reason(reason_input: ReasonInput) -> ReasonOutput:
             extra={
                 "observation_id": reason_input.observation_id,
                 "decision_space_id": reason_input.decision_space_id,
-                "error_type": type(e).__name__
-            }
+                "error_type": type(e).__name__,
+            },
         )
         raise
 
@@ -320,8 +305,8 @@ async def act(act_input: ActInput) -> ActOutput:
                 "execution_id": execution_id,
                 "reasoning_id": act_input.reasoning_id,
                 "session_id": act_input.session_id,
-                "decision_space_id": act_input.decision_space_id
-            }
+                "decision_space_id": act_input.decision_space_id,
+            },
         )
 
         # Stub: simulate action execution
@@ -330,22 +315,14 @@ async def act(act_input: ActInput) -> ActOutput:
             "status": "success",
             "execution_timestamp": activity.info().started_at.isoformat() if activity.info().started_at else None,
             "resource_id": str(uuid.uuid4()),
-            "details": {}
+            "details": {},
         }
 
-        result = ActOutput(
-            execution_id=execution_id,
-            action_result=action_result,
-            status="executed"
-        )
+        result = ActOutput(execution_id=execution_id, action_result=action_result, status="executed")
 
         logger.info(
             "ACT activity completed",
-            extra={
-                "execution_id": execution_id,
-                "action_status": action_result.get("status"),
-                "status": result.status
-            }
+            extra={"execution_id": execution_id, "action_status": action_result.get("status"), "status": result.status},
         )
         return result
 
@@ -360,8 +337,8 @@ async def act(act_input: ActInput) -> ActOutput:
                 "reasoning_id": act_input.reasoning_id,
                 "session_id": act_input.session_id,
                 "decision_space_id": act_input.decision_space_id,
-                "error_type": type(e).__name__
-            }
+                "error_type": type(e).__name__,
+            },
         )
         raise
 
@@ -395,19 +372,15 @@ async def record(record_input: RecordInput) -> RecordOutput:
                 "execution_id": record_input.execution_id,
                 "session_id": record_input.session_id,
                 "evidence_type": record_input.evidence_type,
-                "has_error": record_input.error is not None
-            }
+                "has_error": record_input.error is not None,
+            },
         )
 
         # Stub: simulate Constitutional Engine gRPC call and evidence persistence
         await asyncio.sleep(0.05)  # Simulate RPC latency (~50-80ms per spec)
         persisted_at = activity.info().started_at.isoformat() if activity.info().started_at else None
 
-        result = RecordOutput(
-            evidence_record_id=evidence_record_id,
-            persisted_at=persisted_at,
-            status="recorded"
-        )
+        result = RecordOutput(evidence_record_id=evidence_record_id, persisted_at=persisted_at, status="recorded")
 
         logger.info(
             "RECORD activity completed",
@@ -415,8 +388,8 @@ async def record(record_input: RecordInput) -> RecordOutput:
                 "evidence_record_id": evidence_record_id,
                 "execution_id": record_input.execution_id,
                 "status": result.status,
-                "persisted_at": persisted_at
-            }
+                "persisted_at": persisted_at,
+            },
         )
         return result
 
@@ -432,7 +405,7 @@ async def record(record_input: RecordInput) -> RecordOutput:
                 "execution_id": record_input.execution_id,
                 "session_id": record_input.session_id,
                 "evidence_type": record_input.evidence_type,
-                "error_type": type(e).__name__
-            }
+                "error_type": type(e).__name__,
+            },
         )
         raise
