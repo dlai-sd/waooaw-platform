@@ -28,6 +28,55 @@ public sealed class OfferabilityControllerTests
     }
 
     [Fact]
+    public async Task EvaluateIdentityAndHeaderGuards_CoverEveryIndependentBoundary()
+    {
+        var fixture = await CreateFixtureAsync();
+        var tenantId = Guid.NewGuid();
+        foreach (var (tenantValue, participant) in new (object?, string?)[]
+        {
+            (null, fixture.ParticipantId.ToString()),
+            (tenantId, fixture.ParticipantId.ToString()),
+            ("not-a-uuid", fixture.ParticipantId.ToString()),
+            (tenantId.ToString(), null),
+            (tenantId.ToString(), "not-a-uuid"),
+        })
+        {
+            var context = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(new ClaimsIdentity(
+                    participant is null
+                        ? [new Claim(ClaimTypes.Role, "founder")]
+                        : [new Claim(ClaimTypes.Role, "founder"), new Claim("participant_id", participant)],
+                    "Test")),
+            };
+            if (tenantValue is not null)
+                context.Items[TenantIsolationMiddleware.TenantIdItemKey] = tenantValue;
+            fixture.Controller.ControllerContext = new ControllerContext { HttpContext = context };
+            Assert.IsType<ForbidResult>(await EvaluateAsync(fixture));
+        }
+
+        var fallbackContext = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity(
+                [
+                    new Claim(ClaimTypes.Role, "founder"),
+                    new Claim(ClaimTypes.NameIdentifier, fixture.ParticipantId.ToString()),
+                ], "Test")),
+        };
+        fallbackContext.Items[TenantIsolationMiddleware.TenantIdItemKey] = tenantId.ToString();
+        fixture.Controller.ControllerContext = new ControllerContext { HttpContext = fallbackContext };
+        AssertProblem(await EvaluateAsync(fixture), 404, "OFFERABILITY_NOT_ACCESSIBLE");
+
+        fixture = await CreateFixtureAsync();
+        AssertProblem(await EvaluateAsync(
+            fixture, Request(), includeCorrelationId: false), 400, "OFFERABILITY_REQUEST_INVALID");
+        AssertProblem(await EvaluateAsync(
+            fixture, Request(), includeIdempotencyKey: false), 400, "OFFERABILITY_REQUEST_INVALID");
+        AssertProblem(await EvaluateAsync(
+            fixture, Request() with { SchemaVersion = "2.0" }), 400, "OFFERABILITY_REQUEST_INVALID");
+    }
+
+    [Fact]
     public async Task EvaluateRejectsInvalidSchemaOrMissingRequiredHeaders()
     {
         var fixture = await CreateFixtureAsync();

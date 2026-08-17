@@ -14,7 +14,7 @@ pydantic-settings==2.5.2
 # NOTE: The Python package is 'temporalio' (same name as .NET).
 # DO NOT use 'temporal-sdk', 'temporal-python', or any other variant.
 # The 1.x series is stable. Do NOT use 0.x-beta versions.
-temporalio==1.7.1
+temporalio==1.30.0
 
 # ─── gRPC client — calls Constitutional Engine (ADR-001) ─────────────────────
 grpcio==1.67.1
