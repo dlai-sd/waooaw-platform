@@ -7,4 +7,10 @@ WORKDIR /workspace
 
 RUN corepack enable && corepack prepare pnpm@9.15.9 --activate
 
+COPY web/package.json web/pnpm-lock.yaml /workspace/web/
+RUN --mount=type=cache,target=/pnpm/store \
+	cd web && pnpm install --frozen-lockfile
+
+COPY web /workspace/web/
+
 CMD ["pnpm", "--dir", "web", "test"]

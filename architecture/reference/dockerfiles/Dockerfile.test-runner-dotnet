@@ -5,14 +5,14 @@ FROM mcr.microsoft.com/dotnet/sdk:9.0-noble
 
 WORKDIR /workspace
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    docker.io \
-    python3 \
-    python3-pip \
-    && rm -rf /var/lib/apt/lists/*
+COPY src/constitutional-engine/constitutional-engine.csproj src/constitutional-engine/
+COPY src/business-platform/business-platform.csproj src/business-platform/
+COPY tests/constitutional-engine.Tests/constitutional-engine.Tests.csproj tests/constitutional-engine.Tests/
+COPY tests/business-platform.Tests/business-platform.Tests.csproj tests/business-platform.Tests/
+RUN --mount=type=cache,target=/root/.nuget/packages \
+    dotnet restore tests/constitutional-engine.Tests/constitutional-engine.Tests.csproj && \
+    dotnet restore tests/business-platform.Tests/business-platform.Tests.csproj
 
-COPY src/billing-engine/requirements.txt /tmp/billing-requirements.txt
-RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install --break-system-packages -r /tmp/billing-requirements.txt aiosqlite PyYAML
+COPY . /workspace/
 
 CMD ["dotnet", "test"]

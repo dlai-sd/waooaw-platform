@@ -16,7 +16,7 @@ from typing import Protocol
 import httpx
 from fastapi import APIRouter, Depends, Header, Path, Request
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from routers.conversation_execution import (
     BPServiceContext,
@@ -288,7 +288,7 @@ async def start_voice_orchestration(
         air = AirTranscriptionResponse.model_validate(
             await request.app.state.air_transcription_client.start(orchestration_id, body, idempotency_key, correlation_id)
         )
-    except (DependencyUnavailableError, httpx.HTTPError):
+    except (DependencyUnavailableError, ValidationError, httpx.HTTPError):
         return _problem(503, "transcription_unavailable", correlation_id, reconcile=True)
     result = _map_air(orchestration_id, body, air)
     request.app.state.voice_orchestration_store[orchestration_id] = (
@@ -347,7 +347,7 @@ async def cancel_voice_orchestration(
         if await request.app.state.voice_stop_authority.is_stopped(context, existing[1].voice_session_id, existing[0]):
             return _problem(423, "stopped", correlation_id)
         air = await request.app.state.air_transcription_client.cancel(existing[2], idempotency_key, correlation_id)
-    except (DependencyUnavailableError, httpx.HTTPError):
+    except (DependencyUnavailableError, ValidationError, httpx.HTTPError):
         return _problem(503, "transcription_unavailable", correlation_id, reconcile=True)
     result = existing[1] if existing[1].state in TERMINAL_STATES else _map_air(orchestration_id, existing[5], air)
     request.app.state.voice_orchestration_store[orchestration_id] = (

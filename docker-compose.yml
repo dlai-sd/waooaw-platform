@@ -25,7 +25,6 @@ services:
       dockerfile: architecture/reference/dockerfiles/Dockerfile.test-runner-dotnet
     volumes:
       - .:/workspace
-      - /var/run/docker.sock:/var/run/docker.sock
     environment:
       DOTNET_CLI_HOME: /tmp/dotnet
       NUGET_PACKAGES: /tmp/nuget
@@ -36,13 +35,6 @@ services:
     build:
       context: .
       dockerfile: architecture/reference/dockerfiles/Dockerfile.test-runner-ts
-    volumes:
-      - .:/workspace
-      - web_node_modules:/workspace/web/node_modules
-      - pnpm_store:/pnpm/store
-    environment:
-      PNPM_HOME: /pnpm
-      PNPM_STORE_DIR: /pnpm/store
     profiles:
       - test-ts
 
@@ -1204,8 +1196,6 @@ services:
 
 volumes:
   postgres_data:
-  web_node_modules:
-  pnpm_store:
   ollama_data:      # Persists downloaded models across restarts (ADR-029 — LOCAL tier)
 
 networks:

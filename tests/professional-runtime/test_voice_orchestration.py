@@ -11,8 +11,8 @@ import time
 import uuid
 from datetime import datetime, timezone
 
-import pytest
 import httpx
+import pytest
 
 from professional_runtime_main import app
 from routers.conversation_execution import BPServiceContext, ConstitutionalDecision
@@ -356,6 +356,63 @@ async def test_http_air_client_signs_start_and_cancel_requests(client):
     assert len(seen) == 2
     assert all(request.headers["authorization"].startswith("Bearer ") for request in seen)
     assert "voiceSessionId" not in json.loads(seen[0].content)
+
+
+async def test_malformed_air_start_response_requires_reconciliation(client):
+    async def handler(request: httpx.Request):
+        return httpx.Response(
+            202,
+            json={"state": "COMPLETED", "updatedAt": datetime.now(timezone.utc).isoformat()},
+        )
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http_client:
+        app.state.air_transcription_client = HttpAirTranscriptionClient("http://air", "secret", http_client)
+        relationship_id = uuid.uuid4()
+        response = await client.post(
+            f"/api/v1/internal/relationships/{relationship_id}/voice-orchestrations",
+            json=_body(),
+            headers=_headers(relationship_id),
+        )
+
+    assert response.status_code == 503
+    assert response.json()["code"] == "transcription_unavailable"
+    assert response.json()["reconciliationRequired"] is True
+
+
+async def test_malformed_air_cancel_response_requires_reconciliation(client):
+    async def handler(request: httpx.Request):
+        return httpx.Response(
+            200,
+            json={"state": "CANCELLED", "updatedAt": datetime.now(timezone.utc).isoformat()},
+        )
+
+    relationship_id = uuid.uuid4()
+    orchestration_id = uuid.uuid4()
+    body = StartVoiceOrchestrationRequest.model_validate(_body())
+    app.state.voice_orchestration_store[orchestration_id] = (
+        "digest",
+        VoiceOrchestration(
+            orchestrationId=orchestration_id,
+            voiceSessionId=body.voice_session_id,
+            state="TRANSCRIBING",
+            locale=body.locale,
+            updatedAt=datetime.now(timezone.utc),
+        ),
+        uuid.uuid4(),
+        "tenant-a",
+        str(relationship_id),
+        body,
+    )
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http_client:
+        app.state.air_transcription_client = HttpAirTranscriptionClient("http://air", "secret", http_client)
+        response = await client.delete(
+            f"/api/v1/internal/relationships/{relationship_id}/voice-orchestrations/{orchestration_id}",
+            headers=_headers(relationship_id),
+        )
+
+    assert response.status_code == 503
+    assert response.json()["code"] == "transcription_unavailable"
+    assert response.json()["reconciliationRequired"] is True
 
 
 async def test_http_air_client_rejects_unexpected_status():

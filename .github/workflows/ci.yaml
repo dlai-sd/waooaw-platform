@@ -102,17 +102,21 @@ jobs:
           - service: constitutional-engine
             source: src/constitutional-engine/constitutional-engine.csproj
             tests: tests/constitutional-engine.Tests/constitutional-engine.Tests.csproj
+            profile: test-dotnet
+            runner: test-runner-dotnet
           - service: business-platform
             source: src/business-platform/business-platform.csproj
             tests: tests/business-platform.Tests/business-platform.Tests.csproj
+            profile: test
+            runner: test-runner
     steps:
       - uses: actions/checkout@v4
       - name: Build .NET Docker test runner (C-080)
-        run: docker compose --profile test-dotnet build test-runner-dotnet
+        run: docker compose --profile ${{ matrix.profile }} build ${{ matrix.runner }}
 
       - name: Restore, build, and test in Docker (C-076, C-080)
         run: |
-          docker compose --profile test-dotnet run --rm --user root test-runner-dotnet sh -lc '
+          docker compose --profile ${{ matrix.profile }} run --rm --user root ${{ matrix.runner }} sh -lc '
             dotnet restore "${{ matrix.tests }}" &&
             dotnet build "${{ matrix.tests }}" --no-restore -warnaserror &&
             dotnet test "${{ matrix.tests }}" \
@@ -230,11 +234,10 @@ jobs:
       - name: Build TypeScript Docker test runner (C-080)
         run: docker compose --profile test-ts build test-runner-ts
 
-      - name: Install, type check, lint, and test in Docker (C-076, C-080)
+      - name: Type check, lint, and test in Docker (C-076, C-080)
         run: |
           docker compose --profile test-ts run --rm test-runner-ts sh -lc '
             cd web &&
-            pnpm install --frozen-lockfile &&
             pnpm tsc --noEmit &&
             pnpm eslint . --max-warnings 0 &&
             pnpm jest --coverage --coverageThreshold='"'"'{"global":{"lines":90,"branches":80,"functions":90,"statements":90}}'"'"'
@@ -352,7 +355,11 @@ jobs:
         run: |
           docker compose --profile test-dotnet run --rm --user root test-runner-dotnet sh -lc '
             audit_dotnet_project() {
-              output="$(dotnet list "$1" package --vulnerable --include-transitive 2>&1)"
+              dotnet restore "$1" --nologo >/dev/null
+              if ! output="$(dotnet list "$1" package --vulnerable --include-transitive 2>&1)"; then
+                printf "%s\n" "$output"
+                return 1
+              fi
               printf "%s\n" "$output"
               if printf "%s\n" "$output" | grep -qi "has the following vulnerable packages"; then
                 return 1
@@ -365,7 +372,7 @@ jobs:
       - name: pnpm audit — Node.js dependencies
         run: |
           docker compose --profile test-ts run --rm test-runner-ts sh -lc '
-            cd web && pnpm install --frozen-lockfile && pnpm audit --audit-level high
+            cd web && pnpm audit --audit-level high
           '
 
   # ─── License compliance ───────────────────────────────────────────────────

@@ -16,8 +16,8 @@ This record is the approved bug-fix specification and Work Contract.
 
 | Record | Time | Authority |
 |---|---|---|
-| `FA-051` | `2026-08-17T10:53:16Z` | Founder current-session implementation approval for WC-076 recorded |
-| `GOA-GOAL-007-INST-010-01` | `2026-08-17T10:53:17Z` | INST-013 routing token issued ministerially under FA-051 |
+| `FA-052` | `2026-08-17T10:53:16Z` | Founder current-session implementation approval for WC-076 recorded |
+| `GOA-GOAL-007-INST-010-01` | `2026-08-17T10:53:17Z` | INST-013 routing token issued ministerially under FA-052 |
 | `ACC-GOAL-007-INST-010-01` | `2026-08-17T10:53:18Z` | INST-010 accepts the complete repair envelope |
 
 The contribution envelope is indivisible: repair fail-closed C-059/C-066 gates; complete ADR-045
