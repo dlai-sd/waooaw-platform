@@ -283,6 +283,7 @@ jobs:
         uses: bufbuild/buf-setup-action@v1
         with:
           version: '1.72.0'
+          github_token: ${{ github.token }}
 
       - name: Validate proto format and compatibility
         working-directory: architecture/reference/proto
