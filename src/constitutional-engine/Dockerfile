@@ -7,7 +7,7 @@ RUN dotnet publish --configuration Release --runtime linux-musl-x64 \
     --self-contained false --no-restore --output /app/publish
 
 FROM alpine:3.20 AS health-probe
-ARG GRPC_HEALTH_PROBE_VERSION=v0.4.28
+ARG GRPC_HEALTH_PROBE_VERSION=v0.4.55
 RUN wget -qO /grpc_health_probe \
     "https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/${GRPC_HEALTH_PROBE_VERSION}/grpc_health_probe-linux-amd64" \
     && chmod +x /grpc_health_probe
