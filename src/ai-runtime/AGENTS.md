@@ -43,8 +43,10 @@ INJECTION_PATTERNS = [
     # ... full list in tests/conftest.py INJECTION_ATTACKS
 ]
 
+
 def detect_prompt_injection(user_input: str) -> bool:
     return any(re.search(p, user_input, re.IGNORECASE) for p in INJECTION_PATTERNS)
+
 
 # NEVER: pass user_input directly to LLM without injection check
 ```
