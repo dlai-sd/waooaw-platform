@@ -201,7 +201,7 @@ public sealed class RelationshipEvaluationControllerTests
         Assert.Throws<ConversationCursorExpiredException>(() => codec.Decode(cursor, tenantId, relationshipId, "other"));
         Assert.Throws<ConversationCursorExpiredException>(() => codec.Decode(
             codec.Encode(tenantId, relationshipId, "messages", -1), tenantId, relationshipId, "messages"));
-        var tampered = cursor[..^1] + (cursor[^1] == 'A' ? 'B' : 'A');
+        var tampered = $"{cursor}A";
         Assert.Throws<ConversationCursorExpiredException>(() => codec.Decode(
             tampered, tenantId, relationshipId, "messages"));
         Assert.Throws<InvalidOperationException>(() => new ConversationCursorCodec(
