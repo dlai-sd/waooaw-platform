@@ -58,6 +58,7 @@ class VoiceOrchestration(BaseModel):
 
 class AirTranscriptionResponse(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
+    transcription_id: uuid.UUID = Field(alias="transcriptionId")
     state: str
     transcript: str | None = None
     confidence_band: str | None = Field(default=None, alias="confidenceBand")
@@ -284,14 +285,16 @@ async def start_voice_orchestration(
     try:
         if await request.app.state.voice_stop_authority.is_stopped(context, body.voice_session_id, digest):
             return _problem(423, "stopped", correlation_id)
-        air = await request.app.state.air_transcription_client.start(orchestration_id, body, idempotency_key, correlation_id)
+        air = AirTranscriptionResponse.model_validate(
+            await request.app.state.air_transcription_client.start(orchestration_id, body, idempotency_key, correlation_id)
+        )
     except (DependencyUnavailableError, httpx.HTTPError):
         return _problem(503, "transcription_unavailable", correlation_id, reconcile=True)
     result = _map_air(orchestration_id, body, air)
     request.app.state.voice_orchestration_store[orchestration_id] = (
         digest,
         result,
-        uuid.UUID(str(air["transcriptionId"])),
+        air.transcription_id,
         context.tenant_id,
         context.relationship_id,
         body,

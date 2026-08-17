@@ -16,6 +16,7 @@ mypy>=1.10                      # type checking
 types-grpcio>=1.0               # grpcio typing for strict Professional Runtime checks
 asyncpg-stubs>=0.30             # asyncpg typing for AI provider checks
 bandit>=1.7                     # security SAST
+pip-audit>=2.9                  # Python dependency vulnerability gate
 sqlfluff>=3.0                   # SQL lint gate (PostgreSQL dialect) — P1 multi-stack gate
 yamllint>=1.35                  # YAML lint gate (K8s/Helm manifests) — P1 multi-stack gate
 python-hcl2>=4.3                # Terraform HCL syntax validation gate — P2 multi-stack gate

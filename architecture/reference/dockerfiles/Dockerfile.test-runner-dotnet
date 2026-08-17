@@ -1,0 +1,18 @@
+# Implements: ADR-045 §1, §2, §4, §6
+# Constitutional basis: C-076, C-080
+
+FROM mcr.microsoft.com/dotnet/sdk:9.0-noble
+
+WORKDIR /workspace
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    docker.io \
+    python3 \
+    python3-pip \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY src/billing-engine/requirements.txt /tmp/billing-requirements.txt
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --break-system-packages -r /tmp/billing-requirements.txt aiosqlite PyYAML
+
+CMD ["dotnet", "test"]

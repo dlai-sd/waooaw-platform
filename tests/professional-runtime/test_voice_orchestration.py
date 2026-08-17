@@ -55,7 +55,11 @@ class FakeAirClient:
         }
 
     async def cancel(self, transcription_id, idempotency_key, correlation_id):
-        return {"state": "CANCELLED", "updatedAt": datetime.now(timezone.utc).isoformat()}
+        return {
+            "transcriptionId": str(transcription_id),
+            "state": "CANCELLED",
+            "updatedAt": datetime.now(timezone.utc).isoformat(),
+        }
 
 
 def _encode(value: bytes) -> str:
@@ -318,22 +322,37 @@ async def test_constitutional_stop_authority_maps_allow_stop_and_unavailable():
         )
 
 
-async def test_http_air_client_signs_start_and_cancel_requests():
+async def test_http_air_client_signs_start_and_cancel_requests(client):
     seen = []
+    transcription_id = uuid.uuid4()
 
     async def handler(request: httpx.Request):
         seen.append(request)
         updated_at = datetime.now(timezone.utc).isoformat()
         if request.method == "POST":
-            return httpx.Response(202, json={"state": "COMPLETED", "transcriptionId": str(uuid.uuid4()), "updatedAt": updated_at})
-        return httpx.Response(200, json={"state": "CANCELLED", "updatedAt": updated_at})
+            return httpx.Response(
+                202,
+                json={"state": "COMPLETED", "transcriptionId": str(transcription_id), "updatedAt": updated_at},
+            )
+        return httpx.Response(
+            200,
+            json={"state": "CANCELLED", "transcriptionId": str(transcription_id), "updatedAt": updated_at},
+        )
 
     async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http_client:
         air = HttpAirTranscriptionClient("http://air/", "secret", http_client)
-        body = StartVoiceOrchestrationRequest.model_validate(_body())
-        await air.start(uuid.uuid4(), body, uuid.uuid4(), uuid.uuid4())
+        app.state.air_transcription_client = air
+        relationship_id = uuid.uuid4()
+        response = await client.post(
+            f"/api/v1/internal/relationships/{relationship_id}/voice-orchestrations",
+            json=_body(),
+            headers=_headers(relationship_id),
+        )
         await air.cancel(uuid.uuid4(), uuid.uuid4(), uuid.uuid4())
 
+    assert response.status_code == 202
+    stored = app.state.voice_orchestration_store[uuid.UUID(response.json()["orchestrationId"])]
+    assert stored[2] == transcription_id
     assert len(seen) == 2
     assert all(request.headers["authorization"].startswith("Bearer ") for request in seen)
     assert "voiceSessionId" not in json.loads(seen[0].content)
