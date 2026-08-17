@@ -6,10 +6,12 @@
 | `record_id` | `CB-007` |
 | `record_type` | Constitutional Blocker |
 | `produced_at` | `2026-08-17` |
-| Status | **OPEN** |
+| Status | **RESOLVED** |
 | Raised by | INST-002 - Constitutional Analyst |
 | Affected work | PR #292 at `09e584755d4938f6073aaaa38fe9b4d505f8c79f` |
-| Review | R-138 |
+| Opening review | R-138 |
+| Resolution review | R-139 at `7b06f6484680d4dff7d8aff6657ca26592b91806` |
+| Resolved at | `2026-08-17` |
 
 ## Blocker
 
@@ -51,7 +53,9 @@ reconciliation risk.
 
 ## Gate Effect
 
-- PR #292 is **BLOCKED from approval and merge**.
-- Green CI at the reviewed SHA does not satisfy the failed constitutional obligations.
-- No reviewer or Founder may waive C-023, C-059, C-066, or C-080.
-- Resolution grants no deployment, cloud, Production, or self-merge authority.
+- R-139 independently approved the repaired implementation at
+   `7b06f6484680d4dff7d8aff6657ca26592b91806`.
+- Authoritative GitHub Actions run `32027177449` completed with 27 of 27 jobs passing.
+- The CB-007 merge block is removed.
+- Resolution grants no deployment, cloud, Production, or self-merge authority. PR #292 remains
+   subject to Founder review and approval.
