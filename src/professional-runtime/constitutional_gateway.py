@@ -133,9 +133,7 @@ class GrpcConversationConstitutionalGateway:
             )
         except Exception as error:
             raise ConstitutionalGatewayUnavailableError from error
-        decision_name = protobuf.ValidationDecision.Name(response.decision).removeprefix(
-            "VALIDATION_DECISION_"
-        )
+        decision_name = protobuf.ValidationDecision.Name(response.decision).removeprefix("VALIDATION_DECISION_")
         reason = str(response.reason).upper()
         if decision_name == "ALLOW" and str(response.constitutional_basis).strip():
             return ConstitutionalDecision.ALLOW

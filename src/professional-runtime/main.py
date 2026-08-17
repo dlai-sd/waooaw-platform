@@ -9,6 +9,7 @@ import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager, suppress
 from pathlib import Path
+from typing import Any, Literal
 
 import httpx
 from fastapi import FastAPI, Request
@@ -167,7 +168,7 @@ def _execution_problem_response(name: str) -> dict[str, object]:
     return {"$ref": f"#/components/responses/{name}"}
 
 
-def canonical_openapi() -> dict:
+def canonical_openapi() -> dict[str, Any]:
     """Expose the canonical internal F3 contract rather than framework-derived shapes."""
     if app.openapi_schema is None:
         schema = get_openapi(
@@ -207,38 +208,40 @@ def canonical_openapi() -> dict:
                 "paths, and headers cannot override tenant or relationship authorization.\n"
             ),
         }
-        components.setdefault("parameters", {}).update({
-            "ConversationId": {
-                "name": "conversationId",
-                "in": "path",
-                "required": True,
-                "schema": {"type": "string", "format": "uuid"},
-            },
-            "ProfessionalExecutionId": {
-                "name": "executionId",
-                "in": "path",
-                "required": True,
-                "schema": {"type": "string", "format": "uuid"},
-            },
-            "IdempotencyKey": {
-                "name": "Idempotency-Key",
-                "in": "header",
-                "required": True,
-                "schema": {"type": "string", "format": "uuid"},
-            },
-            "CorrelationId": {
-                "name": "X-Correlation-Id",
-                "in": "header",
-                "required": True,
-                "schema": {"type": "string", "format": "uuid"},
-            },
-            "InternalLastEventId": {
-                "name": "Last-Event-ID",
-                "in": "header",
-                "required": False,
-                "schema": {"type": "string", "minLength": 1, "maxLength": 256},
-            },
-        })
+        components.setdefault("parameters", {}).update(
+            {
+                "ConversationId": {
+                    "name": "conversationId",
+                    "in": "path",
+                    "required": True,
+                    "schema": {"type": "string", "format": "uuid"},
+                },
+                "ProfessionalExecutionId": {
+                    "name": "executionId",
+                    "in": "path",
+                    "required": True,
+                    "schema": {"type": "string", "format": "uuid"},
+                },
+                "IdempotencyKey": {
+                    "name": "Idempotency-Key",
+                    "in": "header",
+                    "required": True,
+                    "schema": {"type": "string", "format": "uuid"},
+                },
+                "CorrelationId": {
+                    "name": "X-Correlation-Id",
+                    "in": "header",
+                    "required": True,
+                    "schema": {"type": "string", "format": "uuid"},
+                },
+                "InternalLastEventId": {
+                    "name": "Last-Event-ID",
+                    "in": "header",
+                    "required": False,
+                    "schema": {"type": "string", "minLength": 1, "maxLength": 256},
+                },
+            }
+        )
         problem_responses = {
             "ExecutionInvalidRequest": "Internal execution request or schema version is invalid",
             "ExecutionUnauthorized": "BP service assertion is missing, invalid, expired, or lacks required scoped claims",
@@ -252,11 +255,7 @@ def canonical_openapi() -> dict:
             {
                 name: {
                     "description": description,
-                    "content": {
-                        "application/problem+json": {
-                            "schema": {"$ref": "#/components/schemas/ExecutionProblemDetail"}
-                        }
-                    }
+                    "content": {"application/problem+json": {"schema": {"$ref": "#/components/schemas/ExecutionProblemDetail"}}},
                 }
                 for name, description in problem_responses.items()
             }
@@ -369,11 +368,7 @@ def canonical_openapi() -> dict:
         ]
         start["requestBody"] = {
             "required": True,
-            "content": {
-                "application/json": {
-                    "schema": {"$ref": "#/components/schemas/StartConversationExecutionRequestV1"}
-                }
-            },
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/StartConversationExecutionRequestV1"}}},
         }
         start["responses"] = {
             "202": {
@@ -406,11 +401,7 @@ def canonical_openapi() -> dict:
             "200": {
                 "description": "Versioned internal professional execution event stream",
                 "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}},
-                "content": {
-                    "text/event-stream": {
-                        "schema": {"$ref": "#/components/schemas/ProfessionalExecutionEventV1"}
-                    }
-                },
+                "content": {"text/event-stream": {"schema": {"$ref": "#/components/schemas/ProfessionalExecutionEventV1"}}},
             },
             "401": _execution_problem_response("ExecutionUnauthorized"),
             "404": _execution_problem_response("ExecutionNotFound"),
@@ -449,7 +440,8 @@ def canonical_openapi() -> dict:
     return app.openapi_schema
 
 
-app.openapi = canonical_openapi
+app_override: Any = app
+app_override.openapi = canonical_openapi
 
 
 @app.exception_handler(RequestValidationError)
@@ -480,9 +472,7 @@ async def health(request: Request) -> HealthResponse:
     """Report canonical runtime health without treating degraded dependencies as healthy."""
     worker_task = getattr(request.app.state, "temporal_worker_task", None)
     temporal_connected = (
-        getattr(request.app.state, "temporal_client", None) is not None
-        and worker_task is not None
-        and not worker_task.done()
+        getattr(request.app.state, "temporal_client", None) is not None and worker_task is not None and not worker_task.done()
     )
     gateway = getattr(request.app.state, "conversation_constitutional_gateway", None)
     try:
@@ -490,14 +480,15 @@ async def health(request: Request) -> HealthResponse:
     except Exception:
         ce_reachable = False
     bp_auth_configured = bool(getattr(request.app.state, "bp_service_jwt_secret", None))
+    health_status: Literal["healthy", "degraded", "unhealthy"]
     if not temporal_connected:
-        status = "unhealthy"
+        health_status = "unhealthy"
     elif not ce_reachable or not bp_auth_configured:
-        status = "degraded"
+        health_status = "degraded"
     else:
-        status = "healthy"
+        health_status = "healthy"
     return HealthResponse(
-        status=status,
+        status=health_status,
         temporalConnected=temporal_connected,
         constitutionalEngineReachable=ce_reachable,
         activePAASSessions=max(0, int(getattr(request.app.state, "active_paas_sessions", 0))),

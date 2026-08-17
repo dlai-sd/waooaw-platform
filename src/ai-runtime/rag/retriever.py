@@ -44,16 +44,14 @@ def _embed_text(text: str) -> list[float]:
     output: list[list[list[float]]] = pipe(text)
     token_vectors = output[0]  # shape: [seq_len][hidden_dim]
     hidden_dim = len(token_vectors[0])
-    pooled = [
-        sum(token_vectors[t][d] for t in range(len(token_vectors))) / len(token_vectors)
-        for d in range(hidden_dim)
-    ]
+    pooled = [sum(token_vectors[t][d] for t in range(len(token_vectors))) / len(token_vectors) for d in range(hidden_dim)]
     return pooled
 
 
 # ---------------------------------------------------------------------------
 # Public interface
 # ---------------------------------------------------------------------------
+
 
 async def retrieve_chunks(
     query: str,
@@ -85,9 +83,7 @@ async def retrieve_chunks(
 
     # Embed in a thread so we do not block the event loop (IndicBERT is synchronous)
     try:
-        embedding: list[float] = await asyncio.get_event_loop().run_in_executor(
-            None, _embed_text, query
-        )
+        embedding: list[float] = await asyncio.get_event_loop().run_in_executor(None, _embed_text, query)
     except asyncio.CancelledError:
         raise
     except (RuntimeError, OSError) as exc:
@@ -106,10 +102,7 @@ async def retrieve_chunks(
 
         rows: list[asyncpg.Record] = await conn.fetch(
             # C-063: only SELECT content — never SELECT embedding
-            "SELECT content "
-            "FROM professional.agent_prompts "
-            "ORDER BY embedding <=> $1 "
-            "LIMIT $2",
+            "SELECT content FROM professional.agent_prompts ORDER BY embedding <=> $1 LIMIT $2",
             embedding,
             top_k,
         )

@@ -108,9 +108,7 @@ def test_stale_version_conflicts_and_unavailable_projection_blocks() -> None:
     )
 
     conflict = store.submit(_context(), _request("7"), "idempotency-a", "digest-a")
-    blocked = RelationshipExecutionStore().submit(
-        _context(), _request("7"), "idempotency-b", "digest-b"
-    )
+    blocked = RelationshipExecutionStore().submit(_context(), _request("7"), "idempotency-b", "digest-b")
 
     assert conflict.status == "CONFLICT"
     assert blocked.status == "BLOCKED"
@@ -129,16 +127,18 @@ def test_idempotency_mismatch_and_cross_tenant_read_fail_closed() -> None:
 
 def _trial_request(days: int = 14) -> RelationshipTrialStartRequest:
     starts_at = datetime.now(timezone.utc)
-    return RelationshipTrialStartRequest.model_validate({
-        "schemaVersion": "1.0",
-        "trialId": str(uuid.uuid4()),
-        "startsAt": starts_at.isoformat(),
-        "expiresAt": (starts_at + timedelta(days=days)).isoformat(),
-        "inferenceTier": "LOCAL",
-        "paidProviderFallback": False,
-        "credentialUseAllowed": False,
-        "externalActionsAllowed": False,
-    })
+    return RelationshipTrialStartRequest.model_validate(
+        {
+            "schemaVersion": "1.0",
+            "trialId": str(uuid.uuid4()),
+            "startsAt": starts_at.isoformat(),
+            "expiresAt": (starts_at + timedelta(days=days)).isoformat(),
+            "inferenceTier": "LOCAL",
+            "paidProviderFallback": False,
+            "credentialUseAllowed": False,
+            "externalActionsAllowed": False,
+        }
+    )
 
 
 def test_trial_start_is_relationship_bound_and_exactly_fourteen_days() -> None:

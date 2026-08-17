@@ -78,13 +78,17 @@ def test_state_machine_rejects_skipped_phase() -> None:
 @pytest.mark.asyncio
 async def test_public_evidence_is_server_validated_and_keeps_payload_separate() -> None:
     observed_at = datetime(2026, 8, 11, tzinfo=UTC)
-    adapter = RecordingAdapter((AdapterAnswerProposal(
-        proposed_tag="PUBLIC_EVIDENCE",
-        content="The public directory lists weekend opening hours.",
-        source_uri="https://example.test/directory",
-        source_observed_at=observed_at,
-        evidence_reference="evidence-ref-1",
-    ),))
+    adapter = RecordingAdapter(
+        (
+            AdapterAnswerProposal(
+                proposed_tag="PUBLIC_EVIDENCE",
+                content="The public directory lists weekend opening hours.",
+                source_uri="https://example.test/directory",
+                source_observed_at=observed_at,
+                evidence_reference="evidence-ref-1",
+            ),
+        )
+    )
     result = await make_service(adapter).answer(
         "relationship-1",
         EvaluationMessage("payload-ref-1", "What are our opening hours?"),
@@ -113,9 +117,7 @@ async def test_invalid_or_forged_adapter_tags_fall_back_to_limitation(
         "relationship-1",
         EvaluationMessage("payload-ref-1", "Customer question"),
     )
-    assert result.segments == (
-        result.segments[0],
-    )
+    assert result.segments == (result.segments[0],)
     assert result.segments[0].tag is AnswerTag.LIMITATION
 
 
@@ -136,11 +138,15 @@ async def test_safety_gate_denial_never_invokes_adapter(
 
 @pytest.mark.asyncio
 async def test_skill_runtime_routes_interview_through_validated_adapter_boundary() -> None:
-    adapter = RecordingAdapter((AdapterAnswerProposal(
-        "INFERENCE",
-        "Weekend availability may improve booking fit.",
-        confidence=0.7,
-    ),))
+    adapter = RecordingAdapter(
+        (
+            AdapterAnswerProposal(
+                "INFERENCE",
+                "Weekend availability may improve booking fit.",
+                confidence=0.7,
+            ),
+        )
+    )
     executor = SessionExecutor(
         SessionSkillContext(),
         interview_service=make_service(adapter),

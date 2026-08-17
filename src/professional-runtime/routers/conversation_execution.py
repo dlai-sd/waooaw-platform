@@ -13,7 +13,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import StrEnum
-from typing import Any, Protocol
+from typing import Any, Literal, Protocol, cast
 
 from fastapi import APIRouter, Depends, Header, Path, Request
 from fastapi.responses import JSONResponse, StreamingResponse
@@ -22,7 +22,7 @@ from temporalio.client import Client as TemporalClient
 from temporalio.exceptions import WorkflowAlreadyStartedError
 from temporalio.service import RPCError
 
-from routers.conversation_models import (
+from .conversation_models import (
     ExecutionProblemCode,
     ExecutionProblemDetail,
     ProfessionalExecutionEventV1,
@@ -38,7 +38,7 @@ from workflows.conversation_execution_workflow import (
 
 router = APIRouter(prefix="/api/v1/internal/conversations", tags=["Conversation Execution"])
 
-SCHEMA_VERSION = "1.0"
+SCHEMA_VERSION: Literal["1.0"] = "1.0"
 BP_AUDIENCE = "professional-runtime"
 BP_ISSUER = "business-platform"
 BP_REQUIRED_SCOPE = "conversation:execute"
@@ -46,7 +46,9 @@ TEMPORAL_TASK_QUEUE = "conversation-execution-queue"
 EXECUTION_ID_NAMESPACE = uuid.UUID("f3e57984-3923-4f89-91bd-32453502471a")
 TERMINAL_STATES = frozenset({"COMPLETED", "FAILED", "CANCELLED", "STOPPED", "UNRESOLVED"})
 
-START_RESPONSES: dict[int, dict[str, Any]] = {
+ApiResponses = dict[int | str, dict[str, Any]]
+
+START_RESPONSES: ApiResponses = {
     200: {"model": ProfessionalExecutionV1},
     202: {"model": ProfessionalExecutionV1},
     400: {"model": ExecutionProblemDetail},
@@ -56,7 +58,7 @@ START_RESPONSES: dict[int, dict[str, Any]] = {
     423: {"model": ExecutionProblemDetail},
     503: {"model": ExecutionProblemDetail, "headers": {"Retry-After": {"schema": {"type": "string"}}}},
 }
-STREAM_RESPONSES: dict[int, dict[str, Any]] = {
+STREAM_RESPONSES: ApiResponses = {
     200: {
         "model": ProfessionalExecutionEventV1,
         "content": {"text/event-stream": {}},
@@ -68,7 +70,7 @@ STREAM_RESPONSES: dict[int, dict[str, Any]] = {
     423: {"model": ExecutionProblemDetail},
     503: {"model": ExecutionProblemDetail, "headers": {"Retry-After": {"schema": {"type": "string"}}}},
 }
-CANCEL_RESPONSES: dict[int, dict[str, Any]] = {
+CANCEL_RESPONSES: ApiResponses = {
     200: {"model": ProfessionalExecutionV1},
     202: {"model": ProfessionalExecutionV1},
     401: {"model": ExecutionProblemDetail},
@@ -127,7 +129,7 @@ def _decode_service_assertion(token: str, secret: str) -> dict[str, Any]:
     if not hmac.compare_digest(supplied_signature, expected_signature):
         raise ValueError("invalid signature")
     header = json.loads(_b64decode(header_part))
-    claims = json.loads(_b64decode(payload_part))
+    claims = cast(dict[str, Any], json.loads(_b64decode(payload_part)))
     if header.get("alg") != "HS256" or header.get("typ", "JWT") != "JWT":
         raise ValueError("unsupported assertion header")
     now = int(time.time())
@@ -281,7 +283,7 @@ def get_temporal_client(request: Request) -> TemporalClient | None:
     worker_task = getattr(request.app.state, "temporal_worker_task", None)
     if temporal is None or worker_task is None or worker_task.done():
         return None
-    return temporal
+    return cast(TemporalClient, temporal)
 
 
 def get_constitutional_gateway(request: Request) -> ConversationConstitutionalGateway | None:
@@ -289,7 +291,10 @@ def get_constitutional_gateway(request: Request) -> ConversationConstitutionalGa
 
 
 async def _query_state(temporal: TemporalClient, execution_id: uuid.UUID) -> dict[str, Any]:
-    return await temporal.get_workflow_handle(str(execution_id)).query("GetConversationExecutionState")
+    return cast(
+        dict[str, Any],
+        await temporal.get_workflow_handle(str(execution_id)).query("GetConversationExecutionState"),
+    )
 
 
 async def _query_events(temporal: TemporalClient, execution_id: uuid.UUID) -> list[ProfessionalExecutionEventV1]:
@@ -376,8 +381,16 @@ async def start_conversation_execution(
         return problem_response(
             503, ExecutionProblemCode.RUNTIME_UNAVAILABLE, "Professional execution is unavailable", correlation_id, 30
         )
+    if gateway is None:
+        return problem_response(
+            503,
+            ExecutionProblemCode.CONSTITUTIONAL_UNAVAILABLE,
+            "Constitutional execution is unavailable",
+            correlation_id,
+            30,
+        )
     try:
-        constitutional_ready = gateway is not None and await gateway.is_ready()
+        constitutional_ready = await gateway.is_ready()
     except ConstitutionalGatewayUnavailableError:
         constitutional_ready = False
     if not constitutional_ready:
@@ -505,14 +518,26 @@ async def stream_conversation_execution(
         return problem_response(404, ExecutionProblemCode.NOT_ACCESSIBLE, "Execution is not accessible", correlation_id)
     if state["state"] == "STOPPED":
         return problem_response(423, ExecutionProblemCode.STOPPED, "Emergency Stop is active", correlation_id)
+    if gateway is None:
+        return problem_response(
+            503,
+            ExecutionProblemCode.CONSTITUTIONAL_UNAVAILABLE,
+            "Constitutional execution is unavailable",
+            correlation_id,
+            30,
+        )
     try:
-        constitutional_ready = gateway is not None and await gateway.is_ready()
-        decision = await gateway.authorize_execution(
-            context,
-            conversation_id,
-            int(state["decisionSpaceVersion"]),
-            str(state["requestHash"]),
-        ) if constitutional_ready else None
+        constitutional_ready = await gateway.is_ready()
+        decision = (
+            await gateway.authorize_execution(
+                context,
+                conversation_id,
+                int(state["decisionSpaceVersion"]),
+                str(state["requestHash"]),
+            )
+            if constitutional_ready
+            else None
+        )
     except (ConstitutionalGatewayUnavailableError, KeyError, TypeError, ValueError):
         decision = None
     if decision is None:
@@ -526,9 +551,7 @@ async def stream_conversation_execution(
     if decision == ConstitutionalDecision.STOPPED:
         return problem_response(423, ExecutionProblemCode.STOPPED, "Emergency Stop is active", correlation_id)
     if decision == ConstitutionalDecision.STALE:
-        return problem_response(
-            409, ExecutionProblemCode.DECISION_SPACE_STALE, "Decision Space version is stale", correlation_id
-        )
+        return problem_response(409, ExecutionProblemCode.DECISION_SPACE_STALE, "Decision Space version is stale", correlation_id)
     if decision != ConstitutionalDecision.ALLOW:
         return problem_response(404, ExecutionProblemCode.NOT_ACCESSIBLE, "Execution is not accessible", correlation_id)
     try:

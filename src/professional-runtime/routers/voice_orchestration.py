@@ -56,10 +56,27 @@ class VoiceOrchestration(BaseModel):
     updated_at: datetime = Field(alias="updatedAt")
 
 
-class AirTranscriptionClient(Protocol):
-    async def start(self, orchestration_id: uuid.UUID, body: StartVoiceOrchestrationRequest, idempotency_key: uuid.UUID, correlation_id: uuid.UUID) -> dict[str, object]: ...
+class AirTranscriptionResponse(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    state: str
+    transcript: str | None = None
+    confidence_band: str | None = Field(default=None, alias="confidenceBand")
+    failure_code: str | None = Field(default=None, alias="failureCode")
+    updated_at: datetime = Field(alias="updatedAt")
 
-    async def cancel(self, transcription_id: uuid.UUID, idempotency_key: uuid.UUID, correlation_id: uuid.UUID) -> dict[str, object]: ...
+
+class AirTranscriptionClient(Protocol):
+    async def start(
+        self,
+        orchestration_id: uuid.UUID,
+        body: StartVoiceOrchestrationRequest,
+        idempotency_key: uuid.UUID,
+        correlation_id: uuid.UUID,
+    ) -> AirTranscriptionResponse: ...
+
+    async def cancel(
+        self, transcription_id: uuid.UUID, idempotency_key: uuid.UUID, correlation_id: uuid.UUID
+    ) -> AirTranscriptionResponse: ...
 
 
 class StopAuthority(Protocol):
@@ -91,10 +108,18 @@ class ConstitutionalVoiceStopAuthority:
 
 
 class UnavailableAirClient:
-    async def start(self, orchestration_id: uuid.UUID, body: StartVoiceOrchestrationRequest, idempotency_key: uuid.UUID, correlation_id: uuid.UUID) -> dict[str, object]:
+    async def start(
+        self,
+        orchestration_id: uuid.UUID,
+        body: StartVoiceOrchestrationRequest,
+        idempotency_key: uuid.UUID,
+        correlation_id: uuid.UUID,
+    ) -> AirTranscriptionResponse:
         raise DependencyUnavailableError
 
-    async def cancel(self, transcription_id: uuid.UUID, idempotency_key: uuid.UUID, correlation_id: uuid.UUID) -> dict[str, object]:
+    async def cancel(
+        self, transcription_id: uuid.UUID, idempotency_key: uuid.UUID, correlation_id: uuid.UUID
+    ) -> AirTranscriptionResponse:
         raise DependencyUnavailableError
 
 
@@ -109,29 +134,61 @@ class HttpAirTranscriptionClient:
             return base64.urlsafe_b64encode(value).rstrip(b"=").decode()
 
         header = encode(b'{"alg":"HS256","typ":"JWT"}')
-        claims = encode(json.dumps({"iss": "professional-runtime", "sub": "professional-runtime", "aud": "ai-runtime", "scope": "voice:transcribe", "exp": int(time.time()) + 30}, separators=(",", ":")).encode())
+        claims = encode(
+            json.dumps(
+                {
+                    "iss": "professional-runtime",
+                    "sub": "professional-runtime",
+                    "aud": "ai-runtime",
+                    "scope": "voice:transcribe",
+                    "exp": int(time.time()) + 30,
+                },
+                separators=(",", ":"),
+            ).encode()
+        )
         signature = encode(hmac.new(self._secret.encode(), f"{header}.{claims}".encode(), hashlib.sha256).digest())
         return f"{header}.{claims}.{signature}"
 
     def _headers(self, idempotency_key: uuid.UUID, correlation_id: uuid.UUID) -> dict[str, str]:
-        return {"Authorization": f"Bearer {self._token()}", "Idempotency-Key": str(idempotency_key), "X-Correlation-Id": str(correlation_id)}
+        return {
+            "Authorization": f"Bearer {self._token()}",
+            "Idempotency-Key": str(idempotency_key),
+            "X-Correlation-Id": str(correlation_id),
+        }
 
-    async def start(self, orchestration_id: uuid.UUID, body: StartVoiceOrchestrationRequest, idempotency_key: uuid.UUID, correlation_id: uuid.UUID) -> dict[str, object]:
+    async def start(
+        self,
+        orchestration_id: uuid.UUID,
+        body: StartVoiceOrchestrationRequest,
+        idempotency_key: uuid.UUID,
+        correlation_id: uuid.UUID,
+    ) -> AirTranscriptionResponse:
         payload = body.model_dump(by_alias=True, mode="json", exclude={"voice_session_id"})
         payload["orchestrationId"] = str(orchestration_id)
-        response = await self._client.post(f"{self._base_url}/api/v1/internal/transcriptions", json=payload, headers=self._headers(idempotency_key, correlation_id))
+        response = await self._client.post(
+            f"{self._base_url}/api/v1/internal/transcriptions",
+            json=payload,
+            headers=self._headers(idempotency_key, correlation_id),
+        )
         if response.status_code not in {200, 202, 503}:
             raise DependencyUnavailableError
-        return response.json()
+        return AirTranscriptionResponse.model_validate(response.json())
 
-    async def cancel(self, transcription_id: uuid.UUID, idempotency_key: uuid.UUID, correlation_id: uuid.UUID) -> dict[str, object]:
-        response = await self._client.delete(f"{self._base_url}/api/v1/internal/transcriptions/{transcription_id}", headers=self._headers(idempotency_key, correlation_id))
+    async def cancel(
+        self, transcription_id: uuid.UUID, idempotency_key: uuid.UUID, correlation_id: uuid.UUID
+    ) -> AirTranscriptionResponse:
+        response = await self._client.delete(
+            f"{self._base_url}/api/v1/internal/transcriptions/{transcription_id}",
+            headers=self._headers(idempotency_key, correlation_id),
+        )
         if response.status_code != 200:
             raise DependencyUnavailableError
-        return response.json()
+        return AirTranscriptionResponse.model_validate(response.json())
 
 
-async def get_voice_context(request: Request, authorization: str | None = Header(default=None, alias="Authorization")) -> BPServiceContext | None:
+async def get_voice_context(
+    request: Request, authorization: str | None = Header(default=None, alias="Authorization")
+) -> BPServiceContext | None:
     secret = getattr(request.app.state, "bp_service_jwt_secret", None) or os.getenv("BP_SERVICE_JWT_SECRET")
     if not secret or not authorization or not authorization.startswith("Bearer "):
         return None
@@ -139,7 +196,13 @@ async def get_voice_context(request: Request, authorization: str | None = Header
         claims = _decode_service_assertion(authorization.removeprefix("Bearer ").strip(), str(secret))
         if claims.get("sub") != "business-platform" or "voice:orchestrate" not in set(str(claims.get("scope", "")).split()):
             return None
-        values = (str(claims["contract_id"]), str(claims["tenant_id"]), str(claims["relationship_id"]), str(claims["delegated_actor_id"]), str(claims["participant_role"]))
+        values = (
+            str(claims["contract_id"]),
+            str(claims["tenant_id"]),
+            str(claims["relationship_id"]),
+            str(claims["delegated_actor_id"]),
+            str(claims["participant_role"]),
+        )
         if not all(values):
             return None
         return BPServiceContext(*values)
@@ -148,22 +211,53 @@ async def get_voice_context(request: Request, authorization: str | None = Header
 
 
 def _problem(status: int, code: str, correlation_id: uuid.UUID, *, reconcile: bool = False) -> JSONResponse:
-    return JSONResponse(status_code=status, media_type="application/problem+json", content={"type": f"https://waooaw.com/problems/{code.replace('_', '-')}", "title": code, "status": status, "code": code, "correlationId": str(correlation_id), "reconciliationRequired": reconcile})
+    return JSONResponse(
+        status_code=status,
+        media_type="application/problem+json",
+        content={
+            "type": f"https://waooaw.com/problems/{code.replace('_', '-')}",
+            "title": code,
+            "status": status,
+            "code": code,
+            "correlationId": str(correlation_id),
+            "reconciliationRequired": reconcile,
+        },
+    )
 
 
 def _digest(body: StartVoiceOrchestrationRequest, context: BPServiceContext) -> str:
-    value = {"body": body.model_dump(by_alias=True, mode="json"), "tenantId": context.tenant_id, "relationshipId": context.relationship_id}
+    value = {
+        "body": body.model_dump(by_alias=True, mode="json"),
+        "tenantId": context.tenant_id,
+        "relationshipId": context.relationship_id,
+    }
     return hashlib.sha256(json.dumps(value, separators=(",", ":"), sort_keys=True).encode()).hexdigest()
 
 
-def _map_air(orchestration_id: uuid.UUID, body: StartVoiceOrchestrationRequest, air: dict[str, object]) -> VoiceOrchestration:
-    state = str(air["state"])
-    if state == "COMPLETED" and air.get("confidenceBand") != "HIGH":
+def _map_air(
+    orchestration_id: uuid.UUID,
+    body: StartVoiceOrchestrationRequest,
+    air: AirTranscriptionResponse | dict[str, object],
+) -> VoiceOrchestration:
+    air = AirTranscriptionResponse.model_validate(air)
+    state = air.state
+    if state == "COMPLETED" and air.confidence_band != "HIGH":
         state = "REVIEW_REQUIRED"
-    return VoiceOrchestration(orchestrationId=orchestration_id, voiceSessionId=body.voice_session_id, state=state, locale=body.locale, transcript=air.get("transcript"), confidenceBand=air.get("confidenceBand"), failureCode=air.get("failureCode"), updatedAt=air["updatedAt"])
+    return VoiceOrchestration(
+        orchestrationId=orchestration_id,
+        voiceSessionId=body.voice_session_id,
+        state=state,
+        locale=body.locale,
+        transcript=air.transcript,
+        confidenceBand=air.confidence_band,
+        failureCode=air.failure_code,
+        updatedAt=air.updated_at,
+    )
 
 
-@router.post("/{relationshipId}/voice-orchestrations", response_model=VoiceOrchestration, operation_id="startVoiceOrchestrationInternal")
+@router.post(
+    "/{relationshipId}/voice-orchestrations", response_model=VoiceOrchestration, operation_id="startVoiceOrchestrationInternal"
+)
 async def start_voice_orchestration(
     body: StartVoiceOrchestrationRequest,
     request: Request,
@@ -178,7 +272,9 @@ async def start_voice_orchestration(
         return _problem(400, "contract_mismatch", correlation_id)
     if body.locale not in SUPPORTED_LOCALES or body.media_type not in SUPPORTED_MEDIA:
         return _problem(400, "invalid_media", correlation_id)
-    orchestration_id = uuid.uuid5(uuid.NAMESPACE_URL, f"{context.tenant_id}:{relationship_id}:{body.voice_session_id}:{idempotency_key}")
+    orchestration_id = uuid.uuid5(
+        uuid.NAMESPACE_URL, f"{context.tenant_id}:{relationship_id}:{body.voice_session_id}:{idempotency_key}"
+    )
     digest = _digest(body, context)
     existing = request.app.state.voice_orchestration_store.get(orchestration_id)
     if existing is not None:
@@ -192,13 +288,31 @@ async def start_voice_orchestration(
     except (DependencyUnavailableError, httpx.HTTPError):
         return _problem(503, "transcription_unavailable", correlation_id, reconcile=True)
     result = _map_air(orchestration_id, body, air)
-    request.app.state.voice_orchestration_store[orchestration_id] = (digest, result, uuid.UUID(str(air["transcriptionId"])), context.tenant_id, context.relationship_id, body)
+    request.app.state.voice_orchestration_store[orchestration_id] = (
+        digest,
+        result,
+        uuid.UUID(str(air["transcriptionId"])),
+        context.tenant_id,
+        context.relationship_id,
+        body,
+    )
     status = 503 if result.state == "UNAVAILABLE" else 202
     return JSONResponse(status_code=status, content=result.model_dump(by_alias=True, mode="json", exclude_none=True))
 
 
-@router.get("/{relationshipId}/voice-orchestrations/{orchestrationId}", response_model=VoiceOrchestration, operation_id="getVoiceOrchestrationInternal")
-async def get_voice_orchestration(orchestration_id: uuid.UUID = Path(alias="orchestrationId"), relationship_id: uuid.UUID = Path(alias="relationshipId"), *, request: Request, correlation_id: uuid.UUID = Header(alias="X-Correlation-Id"), context: BPServiceContext | None = Depends(get_voice_context)) -> JSONResponse:
+@router.get(
+    "/{relationshipId}/voice-orchestrations/{orchestrationId}",
+    response_model=VoiceOrchestration,
+    operation_id="getVoiceOrchestrationInternal",
+)
+async def get_voice_orchestration(
+    orchestration_id: uuid.UUID = Path(alias="orchestrationId"),
+    relationship_id: uuid.UUID = Path(alias="relationshipId"),
+    *,
+    request: Request,
+    correlation_id: uuid.UUID = Header(alias="X-Correlation-Id"),
+    context: BPServiceContext | None = Depends(get_voice_context),
+) -> JSONResponse:
     existing = request.app.state.voice_orchestration_store.get(orchestration_id)
     if context is None or context.relationship_id != str(relationship_id):
         return _problem(401, "relationship_forbidden", correlation_id)
@@ -207,8 +321,20 @@ async def get_voice_orchestration(orchestration_id: uuid.UUID = Path(alias="orch
     return JSONResponse(status_code=200, content=existing[1].model_dump(by_alias=True, mode="json", exclude_none=True))
 
 
-@router.delete("/{relationshipId}/voice-orchestrations/{orchestrationId}", response_model=VoiceOrchestration, operation_id="cancelVoiceOrchestrationInternal")
-async def cancel_voice_orchestration(orchestration_id: uuid.UUID = Path(alias="orchestrationId"), relationship_id: uuid.UUID = Path(alias="relationshipId"), *, request: Request, idempotency_key: uuid.UUID = Header(alias="Idempotency-Key"), correlation_id: uuid.UUID = Header(alias="X-Correlation-Id"), context: BPServiceContext | None = Depends(get_voice_context)) -> JSONResponse:
+@router.delete(
+    "/{relationshipId}/voice-orchestrations/{orchestrationId}",
+    response_model=VoiceOrchestration,
+    operation_id="cancelVoiceOrchestrationInternal",
+)
+async def cancel_voice_orchestration(
+    orchestration_id: uuid.UUID = Path(alias="orchestrationId"),
+    relationship_id: uuid.UUID = Path(alias="relationshipId"),
+    *,
+    request: Request,
+    idempotency_key: uuid.UUID = Header(alias="Idempotency-Key"),
+    correlation_id: uuid.UUID = Header(alias="X-Correlation-Id"),
+    context: BPServiceContext | None = Depends(get_voice_context),
+) -> JSONResponse:
     existing = request.app.state.voice_orchestration_store.get(orchestration_id)
     if context is None or context.relationship_id != str(relationship_id):
         return _problem(401, "relationship_forbidden", correlation_id)
@@ -221,5 +347,12 @@ async def cancel_voice_orchestration(orchestration_id: uuid.UUID = Path(alias="o
     except (DependencyUnavailableError, httpx.HTTPError):
         return _problem(503, "transcription_unavailable", correlation_id, reconcile=True)
     result = existing[1] if existing[1].state in TERMINAL_STATES else _map_air(orchestration_id, existing[5], air)
-    request.app.state.voice_orchestration_store[orchestration_id] = (existing[0], result, existing[2], existing[3], existing[4], existing[5])
+    request.app.state.voice_orchestration_store[orchestration_id] = (
+        existing[0],
+        result,
+        existing[2],
+        existing[3],
+        existing[4],
+        existing[5],
+    )
     return JSONResponse(status_code=200, content=result.model_dump(by_alias=True, mode="json", exclude_none=True))

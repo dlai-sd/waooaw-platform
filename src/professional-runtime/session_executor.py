@@ -23,6 +23,7 @@ class C041ToolAuthorizationError(Exception):
     declares it. The caller is responsible for writing a CE DENY evidence record
     before propagating this error (C-023 obligation belongs to the session layer).
     """
+
     def __init__(self, tool_name: str, authorized_tools: set[str]) -> None:
         self.tool_name = tool_name
         super().__init__(
@@ -47,14 +48,14 @@ class TrialExpiredError(Exception):
 
 class ToolDispatcher(Protocol):  # pragma: no cover
     """Minimal interface for the downstream dispatcher (CTG or stub)."""
+
     async def dispatch(
         self,
         tool_name: str,
         params: dict[str, Any],
         dcm_category: str,
         skill_id: str,
-    ) -> Any:
-        ...
+    ) -> Any: ...
 
 
 class SessionExecutor:

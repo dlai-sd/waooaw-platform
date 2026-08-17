@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 # Domain types
 # ---------------------------------------------------------------------------
 
+
 class SessionState(StrEnum):
     STARTING = "STARTING"
     ACTIVE = "ACTIVE"
@@ -31,6 +32,7 @@ class SessionState(StrEnum):
 @dataclass
 class DecisionSpace:
     """Isolated per-session Decision Space. Never shared across sessions (C-025)."""
+
     contract_id: str
     professional_id: str
     version: str
@@ -47,7 +49,9 @@ class PAASSessionInput:
     professional_id: str
     organisation_id: str
     decision_space_version: str
-    budget_limit_inr_paise: int
+    tenant_id: str
+    started_at: str
+    budget_limit_inr_paise: int = 0
 
 
 @dataclass
@@ -83,6 +87,7 @@ class PAASSessionResult:
 # ---------------------------------------------------------------------------
 # Activity input/output types
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class LoadDecisionSpaceInput:
@@ -156,6 +161,7 @@ class TerminateSessionInput:
 # workflow.execute_activity references; C-025: all execution via Temporal)
 # ---------------------------------------------------------------------------
 
+
 @activity.defn
 async def load_decision_space(inp: LoadDecisionSpaceInput) -> dict[str, Any]:
     """
@@ -201,6 +207,7 @@ async def record_abandoned_evidence(inp: RecordAbandonedEvidenceInput) -> str:
 # Workflow
 # ---------------------------------------------------------------------------
 
+
 @workflow.defn(name="PAASSessionWorkflow")
 class PAASSessionWorkflow:
     """
@@ -226,7 +233,7 @@ class PAASSessionWorkflow:
 
         # WC041-04: Skill Runtime session state (ADR-043 §3).
         # Persisted in Temporal workflow state — survives session restart.
-        self._locked_artifacts: dict[str, Any] = {}         # skill_id → LockedArtifact
+        self._locked_artifacts: dict[str, Any] = {}  # skill_id → LockedArtifact
         self._crystallization_complete: dict[str, bool] = {}  # skill_id → bool
 
         # Signal queues — populated by signal handlers, drained by run().
@@ -391,11 +398,7 @@ class PAASSessionWorkflow:
 
                 # Wait for resume or terminate or emergency-stop
                 await workflow.wait_condition(
-                    lambda: (
-                        self._resume_requested
-                        or self._terminate_requested
-                        or self._emergency_stop_payload is not None
-                    )
+                    lambda: self._resume_requested or self._terminate_requested or self._emergency_stop_payload is not None
                 )
 
                 if self._emergency_stop_payload is not None:
@@ -441,11 +444,7 @@ class PAASSessionWorkflow:
 
         self._state = SessionState.TERMINATED
 
-        budget_used = (
-            self._decision_space.budget_used_inr_paise
-            if self._decision_space is not None
-            else 0
-        )
+        budget_used = self._decision_space.budget_used_inr_paise if self._decision_space is not None else 0
         return PAASSessionResult(
             inp.session_id,
             str(SessionState.TERMINATED),
@@ -487,10 +486,7 @@ class PAASSessionWorkflow:
             )
 
         # Step 2: In-memory budget check
-        budget_remaining = (
-            self._decision_space.budget_limit_inr_paise
-            - self._decision_space.budget_used_inr_paise
-        )
+        budget_remaining = self._decision_space.budget_limit_inr_paise - self._decision_space.budget_used_inr_paise
         if budget_remaining <= 0:
             self._in_flight_action = None
             return PAASActionResult(
@@ -634,11 +630,7 @@ class PAASSessionWorkflow:
             except asyncio.CancelledError:
                 raise
 
-        budget_used = (
-            self._decision_space.budget_used_inr_paise
-            if self._decision_space is not None
-            else 0
-        )
+        budget_used = self._decision_space.budget_used_inr_paise if self._decision_space is not None else 0
 
         # Release Decision Space — C-025 session isolation
         self._decision_space = None

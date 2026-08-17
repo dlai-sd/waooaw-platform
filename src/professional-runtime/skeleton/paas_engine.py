@@ -18,30 +18,17 @@ class IPAASEngine(ABC):
     """
 
     @abstractmethod
-    async def create_session(
-        self,
-        contract_id: UUID,
-        tenant_id: str,
-        agent_type: str
-    ) -> PAASSession:
+    async def create_session(self, contract_id: UUID, tenant_id: str, agent_type: str) -> PAASSession:
         # Raises: SessionCreationError if CE cannot be reached (ADR-031)
         ...
 
     @abstractmethod
-    async def get_session(
-        self,
-        session_id: UUID,
-        tenant_id: str
-    ) -> PAASSession:
+    async def get_session(self, session_id: UUID, tenant_id: str) -> PAASSession:
         # Raises: SessionNotFoundError
         ...
 
     @abstractmethod
-    async def emergency_stop(
-        self,
-        session_ids: list[UUID],
-        initiated_by: str
-    ) -> EmergencyStopResult:
+    async def emergency_stop(self, session_ids: list[UUID], initiated_by: str) -> EmergencyStopResult:
         # Constitutional: C-001 — NEVER fails. NEVER blocks.
         # SLA: ≤250ms p99
         # Must record evidence BEFORE returning success (C-023)
@@ -54,7 +41,7 @@ class PAASSession:
     contract_id: UUID
     tenant_id: str
     agent_type: str
-    status: str          # ACTIVE | STOPPED | PAUSED
+    status: str  # ACTIVE | STOPPED | PAUSED
     created_at: datetime
     temporal_workflow_id: str | None
 
@@ -69,6 +56,7 @@ class EmergencyStopResult:
 
 class SessionNotFoundError(Exception):
     """Raised when session_id does not exist for given tenant."""
+
 
 class SessionCreationError(Exception):
     """Raised when CE is unavailable and session cannot be constitutionally created."""

@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Awaitable, Callable, MutableMapping
-from typing import Any
+from typing import Any, cast
 
 from uvicorn.protocols.http.h11_impl import H11Protocol
 
@@ -21,7 +21,8 @@ AsgiApp = Callable[[MutableMapping[str, Any], AsgiReceive, AsgiSend], Awaitable[
 class MutualTlsH11Protocol(H11Protocol):
     """Expose only the certificate authenticated by the TLS transport."""
 
-    def connection_made(self, transport: asyncio.Transport) -> None:
+    def connection_made(self, transport: asyncio.BaseTransport) -> None:
+        transport = cast(asyncio.Transport, transport)
         ssl_object = transport.get_extra_info("ssl_object")
         peer_certificate = ssl_object.getpeercert(binary_form=True) if ssl_object is not None else None
         if not peer_certificate:

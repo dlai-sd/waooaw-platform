@@ -11,7 +11,7 @@ import os
 import time
 import uuid
 from datetime import datetime, timezone
-from typing import Protocol
+from typing import Protocol, cast
 
 from fastapi import APIRouter, Depends, Header, Request
 from fastapi.responses import JSONResponse
@@ -120,7 +120,10 @@ def _problem(status: int, code: str, correlation_id: uuid.UUID) -> JSONResponse:
 
 
 def _store(request: Request) -> dict[uuid.UUID, tuple[str, TranscriptionResult]]:
-    return request.app.state.transcription_store
+    return cast(
+        dict[uuid.UUID, tuple[str, TranscriptionResult]],
+        request.app.state.transcription_store,
+    )
 
 
 def _request_hash(body: TranscriptionRequest) -> str:
@@ -156,7 +159,9 @@ async def start_transcription(
     now = datetime.now(timezone.utc)
     try:
         provider_result = await provider.transcribe(body)
-        confidence_band = "HIGH" if provider_result.confidence >= 0.9 else "REVIEW" if provider_result.confidence >= 0.7 else "LOW"
+        confidence_band = (
+            "HIGH" if provider_result.confidence >= 0.9 else "REVIEW" if provider_result.confidence >= 0.7 else "LOW"
+        )
         result = TranscriptionResult(
             transcriptionId=transcription_id,
             orchestrationId=body.orchestration_id,

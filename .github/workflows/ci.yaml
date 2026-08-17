@@ -97,37 +97,56 @@ jobs:
     needs: build
     strategy:
       matrix:
-        project:
-          - src/constitutional-engine
-          - src/business-platform
+        include:
+          - service: constitutional-engine
+            source: src/constitutional-engine/constitutional-engine.csproj
+            tests: tests/constitutional-engine.Tests/constitutional-engine.Tests.csproj
+          - service: business-platform
+            source: src/business-platform/business-platform.csproj
+            tests: tests/business-platform.Tests/business-platform.Tests.csproj
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '9.0.x'
+      - uses: actions/setup-python@v5
+        if: matrix.service == 'business-platform'
+        with:
+          python-version: '3.12'
+
+      - name: Install cross-stack test dependencies
+        if: matrix.service == 'business-platform'
+        run: pip install --requirement requirements-test.txt
 
       - name: Restore
-        run: dotnet restore ${{ matrix.project }}
+        run: dotnet restore ${{ matrix.tests }}
 
       - name: Build
-        run: dotnet build ${{ matrix.project }} --no-restore -warnaserror
+        run: dotnet build ${{ matrix.tests }} --no-restore -warnaserror
 
       - name: Test
         run: |
-          dotnet test ${{ matrix.project }} \
+          dotnet test ${{ matrix.tests }} \
             --no-build \
+            --settings tests/coverage.runsettings \
             --collect:"XPlat Code Coverage" \
             --results-directory ./coverage
 
-      - name: Install dotnet-coverage tool
-        run: dotnet tool install --global dotnet-coverage
-
       - name: Check coverage ≥90% (C-076)
         run: |
-          dotnet-coverage merge ./coverage/**/*.xml -f xml -o merged-coverage.xml
-          dotnet-coverage check merged-coverage.xml \
-            --minimum-coverage-lines 90 \
-            --minimum-coverage-branches 80
+          coverage_file="$(find ./coverage -name coverage.cobertura.xml -print -quit)"
+          if [[ -z "$coverage_file" ]]; then
+            echo "Cobertura coverage report not found" >&2
+            exit 1
+          fi
+          read -r line_rate branch_rate < <(
+            sed -n 's/.*<coverage line-rate="\([0-9.]*\)" branch-rate="\([0-9.]*\)".*/\1 \2/p' \
+              "$coverage_file" | head -n 1
+          )
+          awk -v lines="$line_rate" -v branches="$branch_rate" 'BEGIN {
+            printf "line_coverage=%.2f%% branch_coverage=%.2f%%\n", lines * 100, branches * 100
+            exit !(lines >= 0.90 && branches >= 0.80)
+          }'
         # Failure = C-076 constitutional violation — blocks merge absolutely
 
       - name: Upload coverage
@@ -148,9 +167,17 @@ jobs:
           - service: professional-runtime
             source: src/professional-runtime
             tests: tests/professional-runtime
+            mypy_targets: >-
+              -p routers -p workflows -p professionals -m main -m private_server
+              -m relationship_workspace -m constitutional_gateway -m evaluation_workflow
+              -m intent_crystallizer -m mtls_protocol -m session_executor
+              -m skill_resolver -m workload_identity
           - service: ai-runtime
             source: src/ai-runtime
             tests: tests/ai-runtime
+            mypy_path: /workspace/src/trust-layer
+            mypy_targets: >-
+              -p providers -p pii -p pse -p rag -m main -m transcription
     steps:
       - uses: actions/checkout@v4
       - name: Build constitutional Docker test runner (C-080)
@@ -166,8 +193,11 @@ jobs:
       - name: mypy in Docker (C-080)
         if: always()
         run: |
-          docker compose --profile test-python run --rm --user root test-runner-python \
-            mypy --strict "${{ matrix.source }}"
+          docker compose --profile test-python run --rm --user root test-runner-python sh -lc '
+            cd "${{ matrix.source }}" &&
+            MYPYPATH="${{ matrix.mypy_path }}" \
+              mypy --strict --namespace-packages --explicit-package-bases ${{ matrix.mypy_targets }}
+          '
 
       - name: pytest and constitutional coverage in Docker (C-076, C-080)
         if: always()
@@ -292,14 +322,17 @@ jobs:
         image: [constitutional-engine, business-platform, professional-runtime, ai-runtime, web, billing-engine]
     steps:
       - name: Run Trivy
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: ${{ env.REGISTRY_PREFIX }}/${{ matrix.image }}:sha-${{ github.sha }}
-          format: sarif
-          output: trivy-${{ matrix.image }}.sarif
-          severity: CRITICAL,HIGH
-          ignore-unfixed: true
-          exit-code: 1
+        run: |
+          docker run --rm \
+            -v "$PWD:/workspace" \
+            aquasec/trivy:0.69.3 image \
+            --scanners vuln \
+            --ignore-unfixed \
+            --severity CRITICAL,HIGH \
+            --exit-code 1 \
+            --format sarif \
+            --output "/workspace/trivy-${{ matrix.image }}.sarif" \
+            "${{ env.REGISTRY_PREFIX }}/${{ matrix.image }}:sha-${{ github.sha }}"
 
       - name: Upload Trivy results
         uses: github/codeql-action/upload-sarif@v3

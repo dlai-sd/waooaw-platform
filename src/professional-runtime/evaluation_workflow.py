@@ -189,16 +189,22 @@ class InterviewAnswerService:
         if not self._injection_gate.scan(message.text):
             return self._limitation(relationship_id, message.payload_reference, "The request could not be processed safely.")
         if not self._pii_gate.scan(message.text):
-            return self._limitation(relationship_id, message.payload_reference, "Sensitive information must be removed before continuing.")
+            return self._limitation(
+                relationship_id, message.payload_reference, "Sensitive information must be removed before continuing."
+            )
 
         try:
             proposals = await self._adapter.answer_interview(message.text, evidence_context)
             segments = tuple(self._validate(proposal) for proposal in proposals)
         except (TypeError, ValueError):
-            return self._limitation(relationship_id, message.payload_reference, "The available evidence does not support an answer.")
+            return self._limitation(
+                relationship_id, message.payload_reference, "The available evidence does not support an answer."
+            )
 
         if not segments:
-            return self._limitation(relationship_id, message.payload_reference, "The available evidence does not support an answer.")
+            return self._limitation(
+                relationship_id, message.payload_reference, "The available evidence does not support an answer."
+            )
         return TypedAnswerEnvelope("1.0", relationship_id, message.payload_reference, segments)
 
     @staticmethod
@@ -249,15 +255,17 @@ class InterviewAnswerService:
 
 
 class TrialDemonstrationService:
-    _ALLOWED_SOURCE_TYPES: ClassVar[frozenset[str]] = frozenset({
-        "LOCAL_INFERENCE",
-        "DETERMINISTIC_TOOL",
-        "PUBLIC_FREE_SOURCE",
-        "APPROVED_TEMPLATE",
-        "SYNTHETIC_FIXTURE",
-        "PREGENERATED_ASSET",
-        "CUSTOMER_APPROVED_ASSET",
-    })
+    _ALLOWED_SOURCE_TYPES: ClassVar[frozenset[str]] = frozenset(
+        {
+            "LOCAL_INFERENCE",
+            "DETERMINISTIC_TOOL",
+            "PUBLIC_FREE_SOURCE",
+            "APPROVED_TEMPLATE",
+            "SYNTHETIC_FIXTURE",
+            "PREGENERATED_ASSET",
+            "CUSTOMER_APPROVED_ASSET",
+        }
+    )
 
     def __init__(self, adapter: ProfessionalEvaluationAdapter) -> None:
         self._adapter = adapter
@@ -271,9 +279,7 @@ class TrialDemonstrationService:
         if len(capability_index) != len(request.capabilities):
             raise ValueError("Trial capability identifiers must be unique")
         if any(
-            capability.paid
-            or capability.external_mutation
-            or capability.source_type not in self._ALLOWED_SOURCE_TYPES
+            capability.paid or capability.external_mutation or capability.source_type not in self._ALLOWED_SOURCE_TYPES
             for capability in request.capabilities
         ):
             raise ValueError("Trial capabilities must be local, free, approved, or synthetic and non-mutating")

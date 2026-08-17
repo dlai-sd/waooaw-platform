@@ -19,6 +19,6 @@ app.include_router(transcription_router)
 
 
 @app.get("/health")
-async def health() -> dict:
+async def health() -> dict[str, str]:
     """Health check."""
     return {"status": "ok", "service": "ai-runtime"}

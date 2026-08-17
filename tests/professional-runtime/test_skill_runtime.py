@@ -105,9 +105,7 @@ class TestCCT_SKILL_UNKNOWN_01:
     async def test_known_skill_resolves_successfully(self) -> None:
         """Known skill returns SessionSkillContext with correct authorized_tools."""
         with respx.mock(base_url="http://bp-test") as mock:
-            mock.get("/api/v1/skills/content_publish/1.0.0").mock(
-                return_value=httpx.Response(200, json=BP_SKILL_RESPONSE)
-            )
+            mock.get("/api/v1/skills/content_publish/1.0.0").mock(return_value=httpx.Response(200, json=BP_SKILL_RESPONSE))
             async with httpx.AsyncClient(base_url="http://bp-test") as client:
                 resolver = SkillResolver(bp_base_url="http://bp-test", http_client=client)
                 ctx = await resolver.resolve_skills(
@@ -166,17 +164,13 @@ class TestCCT_SKILL_CP_01:
         assert artifact.content["campaign_objective"] == "Brand awareness"
         assert artifact.artifact_type == "campaign_brief"  # GAP-002 fix: derived from locked_artifact_schema
         mock_llm.generate.assert_called_once()
-        mock_ce.record_approval.assert_called_once_with(
-            "content_publish", artifact.content
-        )
+        mock_ce.record_approval.assert_called_once_with("content_publish", artifact.content)
 
     @pytest.mark.asyncio
     async def test_crystallizer_ce_called_before_tool_dispatch_allowed(self) -> None:
         """After crystallization, tool dispatch proceeds without CrystallizerRequiredError."""
         with respx.mock(base_url="http://bp-test") as mock:
-            mock.get("/api/v1/skills/content_publish/1.0.0").mock(
-                return_value=httpx.Response(200, json=BP_SKILL_RESPONSE)
-            )
+            mock.get("/api/v1/skills/content_publish/1.0.0").mock(return_value=httpx.Response(200, json=BP_SKILL_RESPONSE))
             async with httpx.AsyncClient(base_url="http://bp-test") as client:
                 resolver = SkillResolver(bp_base_url="http://bp-test", http_client=client)
                 ctx = await resolver.resolve_skills(
@@ -231,9 +225,7 @@ class TestCCT_SKILL_CP_02:
         return ctx
 
     @pytest.mark.asyncio
-    async def test_publish_tool_blocked_without_locked_artifact(
-        self, content_publish_ctx: SessionSkillContext
-    ) -> None:
+    async def test_publish_tool_blocked_without_locked_artifact(self, content_publish_ctx: SessionSkillContext) -> None:
         """meta.post_content blocked → CrystallizerRequiredError (no artifact yet)."""
         executor = SessionExecutor(session_ctx=content_publish_ctx)
 
@@ -244,9 +236,7 @@ class TestCCT_SKILL_CP_02:
         assert exc_info.value.tool_name == "meta.post_content"
 
     @pytest.mark.asyncio
-    async def test_all_content_publish_tools_blocked_without_artifact(
-        self, content_publish_ctx: SessionSkillContext
-    ) -> None:
+    async def test_all_content_publish_tools_blocked_without_artifact(self, content_publish_ctx: SessionSkillContext) -> None:
         """All three content_publish tools blocked before crystallization."""
         executor = SessionExecutor(session_ctx=content_publish_ctx)
 
@@ -288,21 +278,19 @@ class TestCCT_SKILL_CP_03:
         return ctx
 
     @pytest.mark.asyncio
-    async def test_dispatcher_receives_correct_dcm_category(
-        self, crystallized_ctx: SessionSkillContext
-    ) -> None:
+    async def test_dispatcher_receives_correct_dcm_category(self, crystallized_ctx: SessionSkillContext) -> None:
         """Dispatcher called with dcm_category=DETERMINISTIC_REQUIRED from skill definition."""
         calls: list[dict[str, Any]] = []
 
         class RecordingDispatcher:
-            async def dispatch(
-                self, tool_name: str, params: dict, dcm_category: str, skill_id: str
-            ) -> dict:
-                calls.append({
-                    "tool_name": tool_name,
-                    "dcm_category": dcm_category,
-                    "skill_id": skill_id,
-                })
+            async def dispatch(self, tool_name: str, params: dict, dcm_category: str, skill_id: str) -> dict:
+                calls.append(
+                    {
+                        "tool_name": tool_name,
+                        "dcm_category": dcm_category,
+                        "skill_id": skill_id,
+                    }
+                )
                 return {"status": "ok"}
 
         executor = SessionExecutor(
@@ -321,16 +309,12 @@ class TestCCT_SKILL_CP_03:
         assert calls[0]["skill_id"] == "content_publish"
 
     @pytest.mark.asyncio
-    async def test_every_tool_call_dispatches_with_dcm_category(
-        self, crystallized_ctx: SessionSkillContext
-    ) -> None:
+    async def test_every_tool_call_dispatches_with_dcm_category(self, crystallized_ctx: SessionSkillContext) -> None:
         """All three tools in content_publish dispatch with DETERMINISTIC_REQUIRED."""
         calls: list[str] = []
 
         class RecordingDispatcher:
-            async def dispatch(
-                self, tool_name: str, params: dict, dcm_category: str, skill_id: str
-            ) -> dict:
+            async def dispatch(self, tool_name: str, params: dict, dcm_category: str, skill_id: str) -> dict:
                 calls.append(dcm_category)
                 return {}
 
@@ -405,8 +389,12 @@ class TestTrialCapabilities:
     @pytest.mark.asyncio
     async def test_manifest_trial_tools_must_also_be_authorized(self) -> None:
         context = SessionSkillContext()
-        _merge_into_context(context, "fixture", {
-            "tools": ["local.simulate"],
-            "trial_safe_tools": ["local.simulate", "provider.mutate"],
-        })
+        _merge_into_context(
+            context,
+            "fixture",
+            {
+                "tools": ["local.simulate"],
+                "trial_safe_tools": ["local.simulate", "provider.mutate"],
+            },
+        )
         assert context.trial_safe_tools == {"local.simulate"}

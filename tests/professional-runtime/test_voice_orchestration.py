@@ -181,7 +181,10 @@ async def test_reconciliation_hides_other_tenant_outcome(client):
     )
     response = await client.get(
         f"/api/v1/internal/relationships/{relationship_id}/voice-orchestrations/{created.json()['orchestrationId']}",
-        headers={"Authorization": f"Bearer {_token(relationship_id, tenant_id='tenant-b')}", "X-Correlation-Id": str(uuid.uuid4())},
+        headers={
+            "Authorization": f"Bearer {_token(relationship_id, tenant_id='tenant-b')}",
+            "X-Correlation-Id": str(uuid.uuid4()),
+        },
     )
 
     assert response.status_code == 404
@@ -255,7 +258,12 @@ async def test_get_and_cancel_pending_orchestration(client):
         updatedAt=datetime.now(timezone.utc),
     )
     app.state.voice_orchestration_store[orchestration_id] = (
-        "digest", pending, transcription_id, "tenant-a", str(relationship_id), body,
+        "digest",
+        pending,
+        transcription_id,
+        "tenant-a",
+        str(relationship_id),
+        body,
     )
     get_response = await client.get(
         f"/api/v1/internal/relationships/{relationship_id}/voice-orchestrations/{orchestration_id}",
@@ -296,11 +304,18 @@ async def test_constitutional_stop_authority_maps_allow_stop_and_unavailable():
     context = BPServiceContext("contract", "tenant", "relationship", "actor", "CUSTOMER")
     session_id = uuid.uuid4()
     assert await ConstitutionalVoiceStopAuthority(FakeConstitutionalGateway()).is_stopped(context, session_id, "hash") is False
-    assert await ConstitutionalVoiceStopAuthority(FakeConstitutionalGateway(ConstitutionalDecision.STOPPED)).is_stopped(context, session_id, "hash") is True
+    assert (
+        await ConstitutionalVoiceStopAuthority(FakeConstitutionalGateway(ConstitutionalDecision.STOPPED)).is_stopped(
+            context, session_id, "hash"
+        )
+        is True
+    )
     with pytest.raises(DependencyUnavailableError):
         await ConstitutionalVoiceStopAuthority(FakeConstitutionalGateway(ready=False)).is_stopped(context, session_id, "hash")
     with pytest.raises(DependencyUnavailableError):
-        await ConstitutionalVoiceStopAuthority(FakeConstitutionalGateway(ConstitutionalDecision.DENY)).is_stopped(context, session_id, "hash")
+        await ConstitutionalVoiceStopAuthority(FakeConstitutionalGateway(ConstitutionalDecision.DENY)).is_stopped(
+            context, session_id, "hash"
+        )
 
 
 async def test_http_air_client_signs_start_and_cancel_requests():
@@ -308,9 +323,10 @@ async def test_http_air_client_signs_start_and_cancel_requests():
 
     async def handler(request: httpx.Request):
         seen.append(request)
+        updated_at = datetime.now(timezone.utc).isoformat()
         if request.method == "POST":
-            return httpx.Response(202, json={"state": "COMPLETED", "transcriptionId": str(uuid.uuid4())})
-        return httpx.Response(200, json={"state": "CANCELLED"})
+            return httpx.Response(202, json={"state": "COMPLETED", "transcriptionId": str(uuid.uuid4()), "updatedAt": updated_at})
+        return httpx.Response(200, json={"state": "CANCELLED", "updatedAt": updated_at})
 
     async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http_client:
         air = HttpAirTranscriptionClient("http://air/", "secret", http_client)
