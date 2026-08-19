@@ -99,6 +99,7 @@ jobs:
           output: trivy-${{ matrix.service.name }}.sarif
           scanners: vuln
           severity: CRITICAL,HIGH
+          limit-severities-for-sarif: true
           ignore-unfixed: true
           exit-code: 1
       - name: Upload pull-request scan results
@@ -446,6 +447,7 @@ jobs:
           output: trivy-${{ matrix.image }}.sarif
           scanners: vuln
           severity: CRITICAL,HIGH
+          limit-severities-for-sarif: true
           ignore-unfixed: true
           exit-code: 1
 

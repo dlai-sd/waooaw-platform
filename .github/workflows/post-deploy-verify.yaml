@@ -23,9 +23,9 @@ jobs:
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}-verification
     env:
-      ARM_CLIENT_ID: ${{ vars.GOAL006_AZURE_CLIENT_ID }}
-      ARM_TENANT_ID: ${{ vars.GOAL006_AZURE_TENANT_ID }}
-      ARM_SUBSCRIPTION_ID: ${{ vars.GOAL006_AZURE_SUBSCRIPTION_ID }}
+      ARM_CLIENT_ID: ${{ vars.WAOOAW_PLATFORM_VERIFICATION_CLIENT_ID }}
+      ARM_TENANT_ID: ${{ vars.WAOOAW_PLATFORM_AZURE_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ vars.WAOOAW_PLATFORM_AZURE_SUBSCRIPTION_ID }}
     steps:
       - name: Enforce trusted caller workflow and ref
         env:

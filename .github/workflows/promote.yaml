@@ -19,7 +19,7 @@ jobs:
     if: >-
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.head_branch == 'main' &&
-      vars.GOAL006_PROMOTION_ENABLED == 'true'
+      vars.WAOOAW_PLATFORM_PROMOTION_ENABLED == 'true'
     runs-on: ubuntu-latest
     outputs:
       release_sha: ${{ steps.freshness.outputs.release_sha }}
@@ -65,10 +65,10 @@ jobs:
         run: |
           latest_main_sha=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
           test "$RELEASE_SHA" = "$latest_main_sha"
-          test '${{ vars.GOAL006_DEMO_ACCEPTED_RELEASE_RUN_ID }}' = '${{ github.event.workflow_run.id }}'
-          test '${{ vars.GOAL006_DEMO_ACCEPTED_RELEASE_SHA }}' = '${{ github.event.workflow_run.head_sha }}'
-          test -n '${{ vars.GOAL006_DEMO_ACCEPTANCE_EVIDENCE_SHA256 }}'
-          echo '${{ vars.GOAL006_DEMO_ACCEPTANCE_EVIDENCE_SHA256 }}' | grep -Eq '^sha256:[0-9a-f]{64}$'
+          test '${{ vars.WAOOAW_PLATFORM_DEMO_ACCEPTED_RELEASE_RUN_ID }}' = '${{ github.event.workflow_run.id }}'
+          test '${{ vars.WAOOAW_PLATFORM_DEMO_ACCEPTED_RELEASE_SHA }}' = '${{ github.event.workflow_run.head_sha }}'
+          test -n '${{ vars.WAOOAW_PLATFORM_DEMO_ACCEPTANCE_EVIDENCE_SHA256 }}'
+          echo '${{ vars.WAOOAW_PLATFORM_DEMO_ACCEPTANCE_EVIDENCE_SHA256 }}' | grep -Eq '^sha256:[0-9a-f]{64}$'
 
   uat:
     needs: accept-demo
@@ -101,10 +101,10 @@ jobs:
         run: |
           latest_main_sha=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
           test "$RELEASE_SHA" = "$latest_main_sha"
-          test '${{ vars.GOAL006_UAT_ACCEPTED_RELEASE_RUN_ID }}' = '${{ github.event.workflow_run.id }}'
-          test '${{ vars.GOAL006_UAT_ACCEPTED_RELEASE_SHA }}' = '${{ github.event.workflow_run.head_sha }}'
-          test -n '${{ vars.GOAL006_UAT_ACCEPTANCE_EVIDENCE_SHA256 }}'
-          echo '${{ vars.GOAL006_UAT_ACCEPTANCE_EVIDENCE_SHA256 }}' | grep -Eq '^sha256:[0-9a-f]{64}$'
+          test '${{ vars.WAOOAW_PLATFORM_UAT_ACCEPTED_RELEASE_RUN_ID }}' = '${{ github.event.workflow_run.id }}'
+          test '${{ vars.WAOOAW_PLATFORM_UAT_ACCEPTED_RELEASE_SHA }}' = '${{ github.event.workflow_run.head_sha }}'
+          test -n '${{ vars.WAOOAW_PLATFORM_UAT_ACCEPTANCE_EVIDENCE_SHA256 }}'
+          echo '${{ vars.WAOOAW_PLATFORM_UAT_ACCEPTANCE_EVIDENCE_SHA256 }}' | grep -Eq '^sha256:[0-9a-f]{64}$'
 
   production-plan:
     needs: accept-uat

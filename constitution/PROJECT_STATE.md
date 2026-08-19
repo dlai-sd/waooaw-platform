@@ -21,7 +21,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Platform version | 1.45.0 |
 | Latest completed Work Contract | WC-074 - GOAL-006 Enterprise Delivery Addendum |
 | Latest merge | PR #289 merged to `main` as `d49dad13fa3d7e9a670d847010f7b73e5612da51` |
-| Active delivery | WC-076 GOAL-006 Phase 3 execution - blocked pending INST-010 GOA/Acceptance |
+| Active delivery | WC-076 GOAL-006 Phase 3 execution - P3-EX01 through P3-EX04 implementation checkpoint |
 
 ## Active Checkpoint - GOAL-006 Phase 3 Live Execution
 
@@ -30,11 +30,11 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Cloud-only PR #289 | DONE - independently approved by R-131 and merged by Founder as `d49dad1` |
 | Azure read-only preflight | DONE - tenant, subscription, budget, state and providers verified |
 | WC-076 execution contract | READY - compact code-first contract; no duplicate evidence documents |
-| INST-010 GOA / Acceptance | BLOCKED - INST-013 must authorize INST-010 before implementation |
-| Trusted-main release scan | BLOCKED - Trivy SARIF jobs fail despite zero HIGH/CRITICAL findings |
-| Durable environment configuration | BLOCKED - temporary `GOAL006_*` contract requires platform-scoped replacement |
-| Terraform identity outputs | BLOCKED - root modules do not expose deployment/verifier client IDs |
-| Bootstrap OIDC identity | PENDING - roles and exact federated subject require verification |
+| INST-010 GOA / Acceptance | VALID - GOA-GOAL-006-INST-010-03 and later ACC-GOAL-006-INST-010-03 recorded on PR #294 |
+| Trusted-main release scan | IMPLEMENTED - SARIF severity filter and Docker regression pass; independent CI gate pending |
+| Durable environment configuration | IMPLEMENTED - `WAOOAW_PLATFORM_*` schema and migration contract pass |
+| Terraform identity outputs | IMPLEMENTED - Demo/UAT roots expose deployment/verifier client IDs; six roots validate |
+| Bootstrap OIDC identity | TOOLING READY - read-only verifier passes; INST-009 live verification and INST-007 review pending |
 | GitHub protected environments | PENDING - Founder/admin action only after configuration contract repair |
 | Signed exact-six tuple | BLOCKED - trusted-main release manifest not produced |
 | Demo deploy / verify / accept | PENDING - no resources created |
@@ -60,16 +60,15 @@ progression.
 
 ## Current Blockers
 
-GOAL-006 implementation cannot begin until INST-013 names INST-010 in a WC-076 GOA and INST-010
-records later Acceptance. Demo also remains blocked until P3-EX01 through P3-EX06 close. The defects are the
-trusted-main Trivy release gate, temporary Goal-scoped GitHub variable contract, absent Terraform
-root identity outputs and unverified bootstrap OIDC authority. GitHub environment administration
-also returns HTTP 403 for the current integration token.
+Demo remains blocked until P3-EX01 through P3-EX06 close. P3-EX01 through P3-EX03 require
+independent review, CI and Founder merge; P3-EX04 requires INST-009 live verification and INST-007
+security review. GitHub environment administration also returns HTTP 403 for the current integration token.
 
 ## Next Authorized Action
 
-INST-013 issues the WC-076 INST-010 GOA and INST-010 records Acceptance. Then repair P3-EX01 through P3-EX04, obtain independent review and Founder merge, and request the single
-P3-EX05 GitHub environment administration action. Produce a signed exact-six release before Demo.
+Open the P3-EX01 through P3-EX04 implementation PR, obtain INST-015 plus INST-009/007 review and
+Founder merge, then request the single P3-EX05 GitHub environment administration action. Produce a
+signed exact-six release before Demo.
 
 ## History And Evidence
 

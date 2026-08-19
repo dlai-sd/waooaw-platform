@@ -25,3 +25,11 @@ module "foundation" {
   repository_environment     = "demo"
   tfstate_storage_account_id = var.tfstate_storage_account_id
 }
+
+output "deployment_client_id" {
+  value = module.foundation.deployment_client_id
+}
+
+output "verification_client_id" {
+  value = module.foundation.verification_client_id
+}

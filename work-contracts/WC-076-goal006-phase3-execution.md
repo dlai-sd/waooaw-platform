@@ -5,9 +5,9 @@
 | Goal | GOAL-006 - Secure Autonomous Cloud Delivery Capability |
 | Accountable owner | INST-009 - Platform Architect |
 | Implementation executor | INST-010 - Platform IT Expert, Skill 17 |
-| Authority | FA-052; requires an INST-013 authorization naming INST-010 and a later INST-010 Acceptance |
+| Authority | FA-052; GOA-GOAL-006-INST-010-03; ACC-GOAL-006-INST-010-03 |
 | Scope | P3-EX01 through P3-EX11 in dependency order |
-| Status | BLOCKED - INST-010 authorization and Acceptance not yet recorded |
+| Status | IN PROGRESS - P3-EX01 through P3-EX03 implemented; P3-EX04 tooling ready for owner verification |
 
 ## Outcome
 
@@ -30,6 +30,15 @@ produce a dark-Production handover plan without activating customer traffic or P
 Code, tests and executable CI output are the primary evidence. Record only task status, immutable
 commit/run/digest references and independent verdicts in this Work Contract or the PR; do not create
 per-task evidence documents, duplicate pass reports or narrative handoff records.
+
+## Execution Checkpoint
+
+| Work | Status | Executable evidence |
+|---|---|---|
+| P3-EX01 | IMPLEMENTED - independent gate pending | Trivy SARIF severity contract; GOAL-006 Docker suite 187/187 |
+| P3-EX02 | IMPLEMENTED - independent gate pending | Durable `WAOOAW_PLATFORM_*` migration contract; legacy runtime variables absent |
+| P3-EX03 | IMPLEMENTED - independent gate pending | Demo/UAT root output tests; all six Terraform 1.9.8 roots validate |
+| P3-EX04 tooling | READY FOR INST-009/007 | Read-only OIDC/RBAC verifier; four fail-closed Docker tests |
 
 ## Definition Of Done
 

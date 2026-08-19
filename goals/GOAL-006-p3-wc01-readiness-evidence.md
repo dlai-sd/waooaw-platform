@@ -407,10 +407,10 @@ references. A task is not complete merely because configuration or infrastructur
 
 | ID | Pending task | Executor | Independent gate | Current defect / completion condition | Status |
 |---|---|---|---|---|---|
-| P3-EX01 | Repair trusted-main release scanning | INST-010 | INST-015 + Founder merge | Run `32267443831` failed three Trivy SARIF jobs despite zero HIGH/CRITICAL findings; focused tests, lint and exact-image reproduction must pass. | BLOCKED - WC-076 GOA/Acceptance |
-| P3-EX02 | Replace temporary Goal-scoped environment configuration | INST-010 | INST-009/007 + Founder merge | Replace `GOAL006_*` with one durable platform-scoped schema; test defaults and migration. | BLOCKED - WC-076 GOA/Acceptance |
-| P3-EX03 | Expose environment identity outputs | INST-010 | INST-009/007 + Founder merge | Demo/UAT roots must expose deployment and verifier client IDs with retrieval tests. | BLOCKED - WC-076 GOA/Acceptance |
-| P3-EX04 | Verify constrained bootstrap OIDC identity | INST-009 | INST-007 | Verify exact subject, state access and least-privilege roles under FA-052; no client secret. | PENDING after P3-EX01..03 |
+| P3-EX01 | Repair trusted-main release scanning | INST-010 | INST-015 + Founder merge | Run `32267443831` failed three Trivy SARIF jobs despite zero HIGH/CRITICAL findings; focused tests, lint and exact-image reproduction must pass. | IMPLEMENTED - independent gate pending |
+| P3-EX02 | Replace temporary Goal-scoped environment configuration | INST-010 | INST-009/007 + Founder merge | Replace `GOAL006_*` with one durable platform-scoped schema; test defaults and migration. | IMPLEMENTED - independent gate pending |
+| P3-EX03 | Expose environment identity outputs | INST-010 | INST-009/007 + Founder merge | Demo/UAT roots must expose deployment and verifier client IDs with retrieval tests. | IMPLEMENTED - independent gate pending |
+| P3-EX04 | Verify constrained bootstrap OIDC identity | INST-009 | INST-007 | Verify exact subject, state access and least-privilege roles under FA-052; no client secret. | TOOLING READY - live owner/security verdict pending |
 | P3-EX05 | Configure protected GitHub environments | Founder/admin | INST-007 | Create six `main`-only environments with Founder-reviewed acceptance and durable variables. | PENDING after P3-EX02/04 |
 | P3-EX06 | Produce signed exact-six release | INST-010 | INST-015 | Trusted-current-main publishes six immutable digests, attestations and signed manifest. | BLOCKED by P3-EX01 |
 | P3-EX07 | Deploy Demo | INST-009 | INST-015 | Cost gate and Terraform apply pass; deploy P3-EX06 tuple by digest. | BLOCKED by P3-EX02..06 |
