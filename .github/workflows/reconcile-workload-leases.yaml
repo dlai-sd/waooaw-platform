@@ -23,16 +23,16 @@ jobs:
       matrix:
         environment: [demo, uat]
     env:
-      ARM_CLIENT_ID: ${{ vars.GOAL006_BOOTSTRAP_CLIENT_ID }}
-      ARM_TENANT_ID: ${{ vars.GOAL006_AZURE_TENANT_ID }}
-      ARM_SUBSCRIPTION_ID: ${{ vars.GOAL006_AZURE_SUBSCRIPTION_ID }}
-      DEPLOYMENT_CLIENT_ID: ${{ vars.GOAL006_DEPLOYMENT_CLIENT_ID }}
-      TFSTATE_RESOURCE_GROUP: ${{ vars.GOAL006_TFSTATE_RESOURCE_GROUP }}
-      TFSTATE_STORAGE_ACCOUNT: ${{ vars.GOAL006_TFSTATE_STORAGE_ACCOUNT }}
-      TFSTATE_CONTAINER: ${{ vars.GOAL006_TFSTATE_CONTAINER }}
-      TF_VAR_tfstate_resource_group: ${{ vars.GOAL006_TFSTATE_RESOURCE_GROUP }}
-      TF_VAR_tfstate_storage_account: ${{ vars.GOAL006_TFSTATE_STORAGE_ACCOUNT }}
-      TF_VAR_tfstate_container: ${{ vars.GOAL006_TFSTATE_CONTAINER }}
+      ARM_CLIENT_ID: ${{ vars.WAOOAW_PLATFORM_BOOTSTRAP_CLIENT_ID }}
+      ARM_TENANT_ID: ${{ vars.WAOOAW_PLATFORM_AZURE_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ vars.WAOOAW_PLATFORM_AZURE_SUBSCRIPTION_ID }}
+      DEPLOYMENT_CLIENT_ID: ${{ vars.WAOOAW_PLATFORM_DEPLOYMENT_CLIENT_ID }}
+      TFSTATE_RESOURCE_GROUP: ${{ vars.WAOOAW_PLATFORM_TFSTATE_RESOURCE_GROUP }}
+      TFSTATE_STORAGE_ACCOUNT: ${{ vars.WAOOAW_PLATFORM_TFSTATE_STORAGE_ACCOUNT }}
+      TFSTATE_CONTAINER: ${{ vars.WAOOAW_PLATFORM_TFSTATE_CONTAINER }}
+      TF_VAR_tfstate_resource_group: ${{ vars.WAOOAW_PLATFORM_TFSTATE_RESOURCE_GROUP }}
+      TF_VAR_tfstate_storage_account: ${{ vars.WAOOAW_PLATFORM_TFSTATE_STORAGE_ACCOUNT }}
+      TF_VAR_tfstate_container: ${{ vars.WAOOAW_PLATFORM_TFSTATE_CONTAINER }}
     defaults:
       run:
         working-directory: infrastructure/terraform/phase2/environments/${{ matrix.environment }}/workload

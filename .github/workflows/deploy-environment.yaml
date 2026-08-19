@@ -27,17 +27,17 @@ jobs:
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     env:
-      ARM_CLIENT_ID: ${{ vars.GOAL006_BOOTSTRAP_CLIENT_ID }}
-      ARM_TENANT_ID: ${{ vars.GOAL006_AZURE_TENANT_ID }}
-      ARM_SUBSCRIPTION_ID: ${{ vars.GOAL006_AZURE_SUBSCRIPTION_ID }}
-      TFSTATE_RESOURCE_GROUP: ${{ vars.GOAL006_TFSTATE_RESOURCE_GROUP }}
-      TFSTATE_STORAGE_ACCOUNT: ${{ vars.GOAL006_TFSTATE_STORAGE_ACCOUNT }}
-      TFSTATE_CONTAINER: ${{ vars.GOAL006_TFSTATE_CONTAINER }}
-      TF_VAR_tfstate_resource_group: ${{ vars.GOAL006_TFSTATE_RESOURCE_GROUP }}
-      TF_VAR_tfstate_storage_account: ${{ vars.GOAL006_TFSTATE_STORAGE_ACCOUNT }}
-      TF_VAR_tfstate_container: ${{ vars.GOAL006_TFSTATE_CONTAINER }}
-      TF_VAR_tfstate_storage_account_id: ${{ vars.GOAL006_TFSTATE_STORAGE_ACCOUNT_ID }}
-      WORKLOAD_CONFIGURATION: ${{ vars.GOAL006_WORKLOAD_CONFIGURATION }}
+      ARM_CLIENT_ID: ${{ vars.WAOOAW_PLATFORM_BOOTSTRAP_CLIENT_ID }}
+      ARM_TENANT_ID: ${{ vars.WAOOAW_PLATFORM_AZURE_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ vars.WAOOAW_PLATFORM_AZURE_SUBSCRIPTION_ID }}
+      TFSTATE_RESOURCE_GROUP: ${{ vars.WAOOAW_PLATFORM_TFSTATE_RESOURCE_GROUP }}
+      TFSTATE_STORAGE_ACCOUNT: ${{ vars.WAOOAW_PLATFORM_TFSTATE_STORAGE_ACCOUNT }}
+      TFSTATE_CONTAINER: ${{ vars.WAOOAW_PLATFORM_TFSTATE_CONTAINER }}
+      TF_VAR_tfstate_resource_group: ${{ vars.WAOOAW_PLATFORM_TFSTATE_RESOURCE_GROUP }}
+      TF_VAR_tfstate_storage_account: ${{ vars.WAOOAW_PLATFORM_TFSTATE_STORAGE_ACCOUNT }}
+      TF_VAR_tfstate_container: ${{ vars.WAOOAW_PLATFORM_TFSTATE_CONTAINER }}
+      TF_VAR_tfstate_storage_account_id: ${{ vars.WAOOAW_PLATFORM_TFSTATE_STORAGE_ACCOUNT_ID }}
+      WORKLOAD_CONFIGURATION: ${{ vars.WAOOAW_PLATFORM_WORKLOAD_CONFIGURATION }}
     steps:
       - name: Enforce caller and Production plan-only boundary
         env:

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 readonly compose_file="docker-compose.release.yml"
-readonly required_free_gb="${GOAL006_MIN_FREE_GB:-12}"
+readonly required_free_gb="${WAOOAW_PLATFORM_MIN_FREE_GB:-12}"
 readonly release_members=(
   constitutional-engine
   business-platform

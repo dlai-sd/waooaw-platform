@@ -100,6 +100,14 @@ def test_deployment_identity_is_environment_scoped_for_resources_and_rbac() -> N
     assert 'output "verification_client_id"' in contract
 
 
+@pytest.mark.parametrize("environment", ("demo", "uat"))
+def test_environment_foundation_roots_expose_identity_client_ids(environment: str) -> None:
+    contract = read_contract(f"environments/{environment}/foundation/main.tf")
+
+    assert re.search(r'output "deployment_client_id"\s*{\s*value\s*=\s*module\.foundation\.deployment_client_id', contract)
+    assert re.search(r'output "verification_client_id"\s*{\s*value\s*=\s*module\.foundation\.verification_client_id', contract)
+
+
 def test_disabled_lease_removes_all_disposable_workload_resources() -> None:
     contract = read_contract("modules/workload/main.tf")
 
@@ -284,7 +292,7 @@ def test_deployment_workflow_pins_accepted_terraform_version() -> None:
 def test_promotion_requires_explicit_readiness_enablement_and_keeps_production_plan_only() -> None:
     workflow = (REPO_ROOT / ".github/workflows/promote.yaml").read_text(encoding="utf-8")
 
-    assert "vars.GOAL006_PROMOTION_ENABLED == 'true'" in workflow
+    assert "vars.WAOOAW_PLATFORM_PROMOTION_ENABLED == 'true'" in workflow
     assert "Reject stale or non-main release" in workflow
     assert 'gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main"' in workflow
     assert 'test "$RELEASE_SHA" = "$latest_main_sha"' in workflow
@@ -292,12 +300,12 @@ def test_promotion_requires_explicit_readiness_enablement_and_keeps_production_p
     assert workflow.count('gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main"') == 3
     assert "environment: demo-acceptance" in workflow
     assert "environment: uat-acceptance" in workflow
-    assert "GOAL006_DEMO_ACCEPTED_RELEASE_RUN_ID" in workflow
-    assert "GOAL006_DEMO_ACCEPTED_RELEASE_SHA" in workflow
-    assert "GOAL006_DEMO_ACCEPTANCE_EVIDENCE_SHA256" in workflow
-    assert "GOAL006_UAT_ACCEPTED_RELEASE_RUN_ID" in workflow
-    assert "GOAL006_UAT_ACCEPTED_RELEASE_SHA" in workflow
-    assert "GOAL006_UAT_ACCEPTANCE_EVIDENCE_SHA256" in workflow
+    assert "WAOOAW_PLATFORM_DEMO_ACCEPTED_RELEASE_RUN_ID" in workflow
+    assert "WAOOAW_PLATFORM_DEMO_ACCEPTED_RELEASE_SHA" in workflow
+    assert "WAOOAW_PLATFORM_DEMO_ACCEPTANCE_EVIDENCE_SHA256" in workflow
+    assert "WAOOAW_PLATFORM_UAT_ACCEPTED_RELEASE_RUN_ID" in workflow
+    assert "WAOOAW_PLATFORM_UAT_ACCEPTED_RELEASE_SHA" in workflow
+    assert "WAOOAW_PLATFORM_UAT_ACCEPTANCE_EVIDENCE_SHA256" in workflow
     assert "needs: accept-demo" in workflow
     assert "needs: accept-uat" in workflow
     assert "environment: prod" in workflow
@@ -309,6 +317,16 @@ def test_promotion_requires_explicit_readiness_enablement_and_keeps_production_p
     assert verification.index("Reject stale release before independent verification") < verification.index(
         "azure/login@v2"
     )
+
+    delivery_surfaces = [
+        REPO_ROOT / ".github/workflows/deploy-environment.yaml",
+        REPO_ROOT / ".github/workflows/post-deploy-verify.yaml",
+        REPO_ROOT / ".github/workflows/promote.yaml",
+        REPO_ROOT / ".github/workflows/reconcile-workload-leases.yaml",
+        REPO_ROOT / "scripts/build_goal006_release_images.sh",
+    ]
+    for path in delivery_surfaces:
+        assert "GOAL006_" not in path.read_text(encoding="utf-8"), path.relative_to(REPO_ROOT)
 
 
 def test_edge_and_break_glass_policies_are_fail_closed() -> None:
