@@ -401,27 +401,27 @@ exit or authorize merge, promotion, Production traffic, operations activation or
 
 PR #289 was merged by the Founder to `main` as
 `d49dad13fa3d7e9a670d847010f7b73e5612da51`. Repository delivery is complete, but live Phase 3
-qualification is not. The following is the single controlling backlog for remaining GOAL-006
-execution. Completion requires evidence in this record or a purpose-built successor record; a task
-is not complete merely because configuration or infrastructure exists.
+qualification is not. WC-076 is the single execution contract for the remaining GOAL-006 work.
+Tests, CI and PR review are the primary evidence; this table stores only status and immutable
+references. A task is not complete merely because configuration or infrastructure exists.
 
-| ID | Pending task | Current evidence / defect | Completion condition | Status |
-|---|---|---|---|---|
-| P3-EX01 | Repair trusted-main release scanning | Main run `32267443831` failed three Trivy SARIF jobs. Exact published images contain only one LOW and four MEDIUM findings each, with zero HIGH/CRITICAL findings; the configured HIGH/CRITICAL release gate is behaving incorrectly. | Focused contract test, action lint and exact-image reproduction pass; independent review approves the repair; Founder merges it. | BLOCKED - repair PR required |
-| P3-EX02 | Replace temporary Goal-scoped environment configuration | Merged workflows require `GOAL006_*` GitHub variables. These are implementation-specific names and are not an accepted durable platform environment contract. No Founder should populate them as permanent environment configuration. | A durable platform-scoped naming and configuration schema is specified; workflow references are migrated to it; defaults and migration behavior are explicit; implementation, tests, independent review and Founder merge complete. | BLOCKED - contract repair required |
-| P3-EX03 | Expose environment identity outputs | The foundation child module creates deployment and verification identities, but Demo/UAT root modules do not expose their client IDs while the workflow requests `terraform output -raw deployment_client_id`. | Root outputs for both identities exist for Demo/UAT, tests prove retrieval, and independent review approves the repair. | BLOCKED - Terraform repair required |
-| P3-EX04 | Verify constrained bootstrap OIDC identity | Existing `waooaw-platform-sp` is known, but its role assignments and exact GitHub federated subject have not been accepted as the constrained bootstrap identity. | Identity, federated subject, state access and least-privilege roles are verified against FA-052; no client secret is created. A mismatch stops execution and is escalated to the Founder before P3-EX05. | PENDING |
-| P3-EX05 | Configure protected GitHub environments | `demo`, `demo-verification`, `demo-acceptance`, `uat`, `uat-verification` and `uat-acceptance` require exact branch, reviewer and OIDC-subject controls. Current integration token receives HTTP 403 for environment administration. | Six environments exist with `main`-only deployment rules; acceptance environments have Founder review; durable variables from P3-EX02 are configured; no long-lived Azure secret exists. | FOUNDER/ADMIN ACTION after P3-EX02 |
-| P3-EX06 | Produce signed exact-six release | The merged run published image tags but produced no release manifest because release scanning failed. | A successful trusted-current-`main` run publishes and attests all six immutable image digests and the signed exact-six manifest. | BLOCKED by P3-EX01 |
-| P3-EX07 | Deploy Demo | No Demo resource group, managed identities, foundation or workload exists. P3-EX03 repairs output exposure only; this apply creates the Demo resource group and identities. | Cost gate passes; Terraform foundation/workload apply succeeds inside FA-052; exact release from P3-EX06 is deployed by digest. | BLOCKED by P3-EX02..06 |
-| P3-EX08 | Verify and accept Demo | No live Demo evidence exists. | Independent verifier proves exact-six digest equality and required qualification evidence; Founder acceptance record matches the release run, SHA and evidence digest. | BLOCKED by P3-EX07 |
-| P3-EX09 | Deploy UAT | No UAT resource group, managed identities, foundation or workload exists. This apply creates the UAT resource group and identities. | The exact Demo-accepted tuple is applied to UAT by digest inside the cost boundary. | BLOCKED by P3-EX08 |
-| P3-EX10 | Verify and accept UAT | No live UAT evidence exists. | Independent verifier proves exact-six digest equality and required qualification evidence; Founder acceptance record matches the release run, SHA and evidence digest. | BLOCKED by P3-EX09 |
-| P3-EX11 | Produce Production plan and Founder handover evidence | Production remains dark and plan-only under FA-052; Platform Operations activation and final Goal acceptance are Founder-reserved. | Reviewed Production plan demonstrates no apply; handover evidence is presented to the Founder; all reserved decisions remain unexercised pending Founder action. | BLOCKED by P3-EX10 |
+| ID | Pending task | Executor | Independent gate | Current defect / completion condition | Status |
+|---|---|---|---|---|---|
+| P3-EX01 | Repair trusted-main release scanning | INST-010 | INST-015 + Founder merge | Run `32267443831` failed three Trivy SARIF jobs despite zero HIGH/CRITICAL findings; focused tests, lint and exact-image reproduction must pass. | BLOCKED - WC-076 GOA/Acceptance |
+| P3-EX02 | Replace temporary Goal-scoped environment configuration | INST-010 | INST-009/007 + Founder merge | Replace `GOAL006_*` with one durable platform-scoped schema; test defaults and migration. | BLOCKED - WC-076 GOA/Acceptance |
+| P3-EX03 | Expose environment identity outputs | INST-010 | INST-009/007 + Founder merge | Demo/UAT roots must expose deployment and verifier client IDs with retrieval tests. | BLOCKED - WC-076 GOA/Acceptance |
+| P3-EX04 | Verify constrained bootstrap OIDC identity | INST-009 | INST-007 | Verify exact subject, state access and least-privilege roles under FA-052; no client secret. | PENDING after P3-EX01..03 |
+| P3-EX05 | Configure protected GitHub environments | Founder/admin | INST-007 | Create six `main`-only environments with Founder-reviewed acceptance and durable variables. | PENDING after P3-EX02/04 |
+| P3-EX06 | Produce signed exact-six release | INST-010 | INST-015 | Trusted-current-main publishes six immutable digests, attestations and signed manifest. | BLOCKED by P3-EX01 |
+| P3-EX07 | Deploy Demo | INST-009 | INST-015 | Cost gate and Terraform apply pass; deploy P3-EX06 tuple by digest. | BLOCKED by P3-EX02..06 |
+| P3-EX08 | Verify and accept Demo | INST-015 / Founder | Founder acceptance | Verify exact-six equality and qualification; acceptance binds run, SHA and evidence digest. | BLOCKED by P3-EX07 |
+| P3-EX09 | Deploy UAT | INST-009 | INST-015 | Apply the exact Demo-accepted tuple to UAT by digest within cost bounds. | BLOCKED by P3-EX08 |
+| P3-EX10 | Verify and accept UAT | INST-015 / Founder | Founder acceptance | Verify exact-six equality and qualification; acceptance binds run, SHA and evidence digest. | BLOCKED by P3-EX09 |
+| P3-EX11 | Produce dark-Production plan and handover | INST-009 | INST-004/007/015 | Reviewed plan proves no apply; reserved decisions remain unexercised. | BLOCKED by P3-EX10 |
 
 ### Execution Order And Founder Actions
 
-Execute P3-EX01 through P3-EX04 before asking the Founder to configure GitHub environments.
+Record the WC-076 INST-010 GOA/Acceptance before P3-EX01. Execute P3-EX01 through P3-EX04 before asking the Founder to configure GitHub environments.
 P3-EX05 is the next Founder/admin action. After P3-EX05, enable promotion only when P3-EX06 has a
 successful trusted-main release candidate. Demo and UAT then proceed sequentially. No API key,
 Azure client secret, Production deployment or customer traffic is required or authorized.

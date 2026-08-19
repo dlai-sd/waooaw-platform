@@ -7,7 +7,7 @@
 | `record_id` | GEP-GOAL-006-INST-013-01 |
 | `record_type` | Execution Plan |
 | `produced_at` | 2026-08-13T12:03:00+00:00 |
-| Status | EXECUTION BASELINE — Phase 1 and Phase 2 complete; Phase 3 execution authorized by FA-052 and in progress |
+| Status | EXECUTION BASELINE — Phase 1 and Phase 2 complete; FA-052 active; WC-076 execution blocked pending INST-010 GOA/Acceptance |
 | Governing requirements | Founder Session Directive plus GOAL-006 FR-001 through FR-056 |
 
 ## Historical Approval Stop
@@ -154,7 +154,7 @@ Phase 1 owners must refine these into approved Work Components; no Azure action 
 | PLAN-05 Phase 2 authorization | Founder | M3 | Approved WCs plus session authorization | PLAN-04 | DONE | Explicit boundary |
 | PLAN-06 Phase 2 implementation | INST-010 and approved owners | M2 | Tested implementation and independent reviews | PLAN-05 | DONE — PR #284 and closure PR #285 merged | Docker-only reproducible validation |
 | PLAN-07 Phase 3 authorization | Founder | M3 | Cloud/DNS/expenditure authorization | PLAN-06 merged | DONE — FA-052 and Phase 3 GOA/Acceptance recorded | Exact protected decisions |
-| PLAN-08 Deployment/handover | Approved execution and operations owners | M2/M3 | Environment qualification and activation evidence | PLAN-07 | IN PROGRESS — see post-merge backlog in P3-WC01 readiness evidence | Independent acceptance |
+| PLAN-08 Deployment/handover | Approved execution and operations owners | M2/M3 | WC-076 executable gates and independent acceptance | PLAN-07 | BLOCKED — INST-010 GOA/Acceptance required before implementation | Independent acceptance |
 
 ## Dependency And Budget Controls
 
@@ -180,7 +180,7 @@ or attempted Platform Operations activation before acceptance.
 
 ## Next Action
 
-Execute the numbered post-merge backlog in `goals/GOAL-006-p3-wc01-readiness-evidence.md` under
-FA-052. Repair and independently review the trusted-main release path before enabling promotion;
-then qualify Demo and UAT in order. Production remains plan-only and all Founder-reserved decisions
-remain protected.
+INST-013 must amend the Phase 3 GO Authorization to name INST-010 for WC-076, followed by a later
+INST-010 Acceptance. Then execute the numbered backlog code-first under FA-052, using tests, CI and
+the PR as primary evidence. Production remains plan-only and all Founder-reserved decisions remain
+protected.

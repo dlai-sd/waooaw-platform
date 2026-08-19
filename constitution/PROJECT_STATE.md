@@ -21,7 +21,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 | Platform version | 1.45.0 |
 | Latest completed Work Contract | WC-074 - GOAL-006 Enterprise Delivery Addendum |
 | Latest merge | PR #289 merged to `main` as `d49dad13fa3d7e9a670d847010f7b73e5612da51` |
-| Active delivery | GOAL-006 post-merge release repair, environment bootstrap and Demo/UAT qualification under FA-052 |
+| Active delivery | WC-076 GOAL-006 Phase 3 execution - blocked pending INST-010 GOA/Acceptance |
 
 ## Active Checkpoint - GOAL-006 Phase 3 Live Execution
 
@@ -29,6 +29,8 @@ or evidence artifact. Completed history remains in git and the archive index bel
 |---|---|
 | Cloud-only PR #289 | DONE - independently approved by R-131 and merged by Founder as `d49dad1` |
 | Azure read-only preflight | DONE - tenant, subscription, budget, state and providers verified |
+| WC-076 execution contract | READY - compact code-first contract; no duplicate evidence documents |
+| INST-010 GOA / Acceptance | BLOCKED - INST-013 must authorize INST-010 before implementation |
 | Trusted-main release scan | BLOCKED - Trivy SARIF jobs fail despite zero HIGH/CRITICAL findings |
 | Durable environment configuration | BLOCKED - temporary `GOAL006_*` contract requires platform-scoped replacement |
 | Terraform identity outputs | BLOCKED - root modules do not expose deployment/verifier client IDs |
@@ -42,7 +44,7 @@ or evidence artifact. Completed history remains in git and the archive index bel
 ### Checkpoint Context
 
 - **Authority:** FA-052 and the accepted Phase 3 autonomous GO Authorization remain controlling through 2026-09-13 unless stopped or revoked earlier.
-- **Durable backlog:** `goals/GOAL-006-p3-wc01-readiness-evidence.md` P3-EX01 through P3-EX11.
+- **Execution contract:** `work-contracts/WC-076-goal006-phase3-execution.md`; backlog P3-EX01 through P3-EX11.
 - **Cloud state:** no Demo/UAT resources or identities have been created; promotion remains disabled.
 - **Founder action:** none until release, configuration, Terraform output and bootstrap identity repairs are complete and independently reviewed.
 - **Boundary:** no client secret, Production apply, customer traffic, Platform Operations activation, final Goal acceptance, self-approval or self-merge.
@@ -58,14 +60,15 @@ progression.
 
 ## Current Blockers
 
-GOAL-006 cannot deploy Demo until P3-EX01 through P3-EX06 close. The immediate defects are the
+GOAL-006 implementation cannot begin until INST-013 names INST-010 in a WC-076 GOA and INST-010
+records later Acceptance. Demo also remains blocked until P3-EX01 through P3-EX06 close. The defects are the
 trusted-main Trivy release gate, temporary Goal-scoped GitHub variable contract, absent Terraform
 root identity outputs and unverified bootstrap OIDC authority. GitHub environment administration
 also returns HTTP 403 for the current integration token.
 
 ## Next Authorized Action
 
-Repair P3-EX01 through P3-EX04, obtain independent review and Founder merge, then request the single
+INST-013 issues the WC-076 INST-010 GOA and INST-010 records Acceptance. Then repair P3-EX01 through P3-EX04, obtain independent review and Founder merge, and request the single
 P3-EX05 GitHub environment administration action. Produce a signed exact-six release before Demo.
 
 ## History And Evidence
