@@ -396,3 +396,32 @@ Independent review R-131 approved frozen implementation SHA
 remains. The sole non-blocking residual is behavioral confirmation of GitHub `workflow_call`
 caller-context semantics during trusted-main execution. This approval does not establish P3-WC01
 exit or authorize merge, promotion, Production traffic, operations activation or Goal acceptance.
+
+## Post-Merge Execution Backlog - 2026-08-19
+
+PR #289 was merged by the Founder to `main` as
+`d49dad13fa3d7e9a670d847010f7b73e5612da51`. Repository delivery is complete, but live Phase 3
+qualification is not. WC-076 is the single execution contract for the remaining GOAL-006 work.
+Tests, CI and PR review are the primary evidence; this table stores only status and immutable
+references. A task is not complete merely because configuration or infrastructure exists.
+
+| ID | Pending task | Executor | Independent gate | Current defect / completion condition | Status |
+|---|---|---|---|---|---|
+| P3-EX01 | Repair trusted-main release scanning | INST-010 | INST-015 + Founder merge | Run `32267443831` failed three Trivy SARIF jobs despite zero HIGH/CRITICAL findings; focused tests, lint and exact-image reproduction must pass. | BLOCKED - WC-076 GOA/Acceptance |
+| P3-EX02 | Replace temporary Goal-scoped environment configuration | INST-010 | INST-009/007 + Founder merge | Replace `GOAL006_*` with one durable platform-scoped schema; test defaults and migration. | BLOCKED - WC-076 GOA/Acceptance |
+| P3-EX03 | Expose environment identity outputs | INST-010 | INST-009/007 + Founder merge | Demo/UAT roots must expose deployment and verifier client IDs with retrieval tests. | BLOCKED - WC-076 GOA/Acceptance |
+| P3-EX04 | Verify constrained bootstrap OIDC identity | INST-009 | INST-007 | Verify exact subject, state access and least-privilege roles under FA-052; no client secret. | PENDING after P3-EX01..03 |
+| P3-EX05 | Configure protected GitHub environments | Founder/admin | INST-007 | Create six `main`-only environments with Founder-reviewed acceptance and durable variables. | PENDING after P3-EX02/04 |
+| P3-EX06 | Produce signed exact-six release | INST-010 | INST-015 | Trusted-current-main publishes six immutable digests, attestations and signed manifest. | BLOCKED by P3-EX01 |
+| P3-EX07 | Deploy Demo | INST-009 | INST-015 | Cost gate and Terraform apply pass; deploy P3-EX06 tuple by digest. | BLOCKED by P3-EX02..06 |
+| P3-EX08 | Verify and accept Demo | INST-015 / Founder | Founder acceptance | Verify exact-six equality and qualification; acceptance binds run, SHA and evidence digest. | BLOCKED by P3-EX07 |
+| P3-EX09 | Deploy UAT | INST-009 | INST-015 | Apply the exact Demo-accepted tuple to UAT by digest within cost bounds. | BLOCKED by P3-EX08 |
+| P3-EX10 | Verify and accept UAT | INST-015 / Founder | Founder acceptance | Verify exact-six equality and qualification; acceptance binds run, SHA and evidence digest. | BLOCKED by P3-EX09 |
+| P3-EX11 | Produce dark-Production plan and handover | INST-009 | INST-004/007/015 | Reviewed plan proves no apply; reserved decisions remain unexercised. | BLOCKED by P3-EX10 |
+
+### Execution Order And Founder Actions
+
+Record the WC-076 INST-010 GOA/Acceptance before P3-EX01. Execute P3-EX01 through P3-EX04 before asking the Founder to configure GitHub environments.
+P3-EX05 is the next Founder/admin action. After P3-EX05, enable promotion only when P3-EX06 has a
+successful trusted-main release candidate. Demo and UAT then proceed sequentially. No API key,
+Azure client secret, Production deployment or customer traffic is required or authorized.
