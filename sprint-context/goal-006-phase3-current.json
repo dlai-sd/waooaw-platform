@@ -1,9 +1,9 @@
 {
   "schema_version": "1.0.0",
   "goal_id": "GOAL-006",
-  "work_contract": "P3-WC01",
-  "component": "P3-WC01-CLOUD-READINESS",
-  "title": "Phase 3 Cloud Readiness - Evidence Complete, Exit Blocked",
+  "work_contract": "P3-WC01-P3-WC07",
+  "component": "PHASE3-AUTONOMOUS-EXECUTION",
+  "title": "Phase 3 Autonomous Evidence-Gated Execution",
   "controlling_sections": [
     "work-contracts/WC-073-goal-006-phase3-readiness-refinement.md",
     "goals/GOAL-006-phase3-readiness-plan.md",
@@ -11,6 +11,22 @@
     "goals/GOAL-006-phase3-enterprise-delivery-addendum.md",
     "goals/GOAL-006-phase3-authorization-records.md",
     "goals/GOAL-006-p3-wc01-readiness-evidence.md",
+    ".github/workflows/ci.yaml",
+    "scripts/goal006_registry_manifest.py",
+    "tests/pipeline/test_goal006_registry_manifest.py",
+    "tests/pipeline/test_goal006_six_member_packaging.py",
+    ".github/workflows/promote.yaml",
+    ".github/workflows/deploy-environment.yaml",
+    ".github/workflows/post-deploy-verify.yaml",
+    "scripts/goal006_deployment_inputs.py",
+    "scripts/goal006_live_inventory.py",
+    "scripts/goal006_cost_gate.py",
+    "tests/pipeline/test_goal006_deployment_inputs.py",
+    "tests/pipeline/test_goal006_live_inventory.py",
+    "tests/pipeline/test_goal006_cost_gate.py",
+    "tests/pipeline/test_goal006_terraform_foundations.py",
+    "reviews/R-130-goal-006-p3-wc01-remediation-review.md",
+    "infrastructure/terraform/phase2/",
     "goals/GOAL-006-p1-wc11-integrated-grooming.md#phase-3-work-components",
     "work-contracts/WC-072-goal-006-phase2-offline-delivery.md#compact-execution-record"
   ],
@@ -24,14 +40,25 @@
     "reviews/R-129-goal-006-p3-wc01-readiness-review.md"
   ],
   "validations": [
-    "FA-050 stopped attempt preserved and FA-051 renewal temporally ordered",
-    "exact tenant, subscription, enabled state and user-session identity",
-    "authorized Azure inventory, provider, quota, budget and role evidence",
-    "CT-07 FAIL against absent exact-six live topology",
-    "all six exact GHCR packages classified PACKAGE_NOT_FOUND",
-    "public DNS delegation and Central India retail unit rates",
-    "INR 0 and no-mutation evidence",
-    "R-129 independent APPROVE with P3-WC01 blocked",
+    "FA-052 exact financial, Azure, resource-group, DNS, validity and stop envelope",
+    "temporally ordered GOA-GOAL-006-P3-AUTONOMOUS-01 and executor Acceptance",
+    "automatic P3-WC01 through P3-WC07 progression only after independent exit evidence",
+    "INR 15,000 one-time and INR 10,000 monthly hard ceilings",
+    "Founder-reserved traffic, material Production risk, customer-state destruction, activation, final acceptance and merge",
+    "PR builds cannot publish; main builds emit SBOM/provenance, exact registry digests and a signed OIDC-attested exact-six tuple",
+    "PR-local Trivy scans with main-only publication and registry scans",
+    "promotion consumers pinned to the triggering source SHA and GitHub run ID",
+    "ordered Demo and UAT candidate verification plus explicit independent acceptance with Production foundation plan-only",
+    "actual, forecast, planned monthly and cumulative one-time INR gates stop at 80% consolidation and before 100% ceilings",
+    "Storage and Insights Registered; INR 10,000 monthly budget with 80% Actual and 100% Forecast alerts",
+    "hardened Central India state bootstrap with Azure AD only, firewall deny, versioning and 30-day retention",
+    "all six Terraform roots validate with Terraform 1.9.8 and AzureRM 4.14.0",
+    "171/171 GOAL-006 pipeline tests and pinned actionlint v1.7.7 pass after independent-review repairs",
+    "Spectral 0 errors; GOAL-006 172/172; all auditable Python dependencies clean; Professional Runtime 167/167, AI Runtime 43/43, Billing 402 plus 2 dedicated-harness skips",
+    "Billing, Professional Runtime and AI Runtime images contain zero fixable HIGH/CRITICAL findings under the PR/main Trivy policy",
+    "pinned non-commenting Spectral and Buf CLI gates; Buf format, STANDARD lint and breaking compatibility pass; .NET OpenTelemetry 1.17.0 audits clean",
+    "R-130 independent APPROVE for blocked remediation PR submission; P3-WC01 exit remains blocked",
+    "GitHub environment administration blocked by integration-token HTTP 403; no environment or variable created",
     "JSON parse, Markdown structure, authorization-boundary scan and git diff --check"
   ],
   "dependencies": [
@@ -44,14 +71,17 @@
     "FA-050 stopped bounded authorization",
     "FA-051 completed bounded authorization",
     "GOA-GOAL-006-INST-009-04",
-    "ACC-GOAL-006-INST-009-04"
+    "ACC-GOAL-006-INST-009-04",
+    "PR #288 merge 1762c00",
+    "FA-052 autonomous execution mandate",
+    "GOA-GOAL-006-P3-AUTONOMOUS-01",
+    "ACC-GOAL-006-P3-AUTONOMOUS-01"
   ],
   "prohibited_paths": [
     "constitution/CONSTITUTION.md",
     "constitution/GENESIS.md",
-    "src/",
-    "infrastructure/terraform/phase2/",
-    "provider or role registration/change, budget creation, registry push, credentials or device codes in chat, DNS action, deployment, real traffic, Production action and CT-07 PASS claims"
+    "src/ changes beyond the explicitly authorized dependency and Professional Runtime OpenAPI-version remediation",
+    "scope or ceiling expansion, customer traffic activation, material Production residual-risk acceptance, customer-state destructive testing, Platform Operations activation, final GOAL-006 acceptance, PR approval and merge"
   ],
-  "next_exact_action": "Publish the R-129-approved blocked P3-WC01 evidence checkpoint; then present a separate bounded remediation decision without inferring P3-WC02 authority."
+  "next_exact_action": "Push the locally qualified CI remediation to PR #289, verify GitHub CI, then obtain Founder-reserved merge and verify the main-produced exact-six tuple before any P3-WC02 execution or promotion enablement."
 }

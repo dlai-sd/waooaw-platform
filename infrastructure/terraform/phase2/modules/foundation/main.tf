@@ -24,7 +24,7 @@ locals {
 }
 
 resource "azurerm_resource_group" "environment" {
-  name     = "rg-${local.name}"
+  name     = "${local.name}-rg"
   location = var.location
   tags     = local.tags
 }
@@ -34,6 +34,37 @@ resource "azurerm_user_assigned_identity" "deployment" {
   location            = azurerm_resource_group.environment.location
   resource_group_name = azurerm_resource_group.environment.name
   tags                = local.tags
+}
+
+resource "azurerm_user_assigned_identity" "verification" {
+  name                = "id-${local.name}-verification"
+  location            = azurerm_resource_group.environment.location
+  resource_group_name = azurerm_resource_group.environment.name
+  tags                = local.tags
+}
+
+resource "azurerm_role_assignment" "deployment_contributor" {
+  scope                = azurerm_resource_group.environment.id
+  role_definition_name = "Contributor"
+  principal_id         = azurerm_user_assigned_identity.deployment.principal_id
+}
+
+resource "azurerm_role_assignment" "deployment_rbac" {
+  scope                = azurerm_resource_group.environment.id
+  role_definition_name = "Role Based Access Control Administrator"
+  principal_id         = azurerm_user_assigned_identity.deployment.principal_id
+}
+
+resource "azurerm_role_assignment" "deployment_state" {
+  scope                = var.tfstate_storage_account_id
+  role_definition_name = "Storage Blob Data Contributor"
+  principal_id         = azurerm_user_assigned_identity.deployment.principal_id
+}
+
+resource "azurerm_role_assignment" "verification_reader" {
+  scope                = azurerm_resource_group.environment.id
+  role_definition_name = "Reader"
+  principal_id         = azurerm_user_assigned_identity.verification.principal_id
 }
 
 resource "azurerm_virtual_network" "environment" {
@@ -127,14 +158,21 @@ resource "azurerm_subnet_network_security_group_association" "private_endpoints"
 }
 
 resource "azurerm_federated_identity_credential" "deployment" {
-  for_each = var.repository_workflows
-
-  name                = "github-${var.repository_environment}-${substr(sha256(each.value), 0, 8)}"
+  name                = "github-${var.repository_environment}-deployment"
   resource_group_name = azurerm_resource_group.environment.name
   parent_id           = azurerm_user_assigned_identity.deployment.id
   audience            = ["api://AzureADTokenExchange"]
   issuer              = "https://token.actions.githubusercontent.com"
-  subject             = "repo:${var.repository_id}:environment:${var.repository_environment}:ref:${var.repository_ref}:job_workflow_ref:${var.repository_id}/${each.value}@${var.repository_ref}"
+  subject             = "repo:${var.repository_id}:environment:${var.repository_environment}"
+}
+
+resource "azurerm_federated_identity_credential" "verification" {
+  name                = "github-${var.repository_environment}-verification"
+  resource_group_name = azurerm_resource_group.environment.name
+  parent_id           = azurerm_user_assigned_identity.verification.id
+  audience            = ["api://AzureADTokenExchange"]
+  issuer              = "https://token.actions.githubusercontent.com"
+  subject             = "repo:${var.repository_id}:environment:${var.repository_environment}-verification"
 }
 
 resource "azurerm_key_vault" "environment" {
@@ -193,4 +231,12 @@ output "key_vault_id" {
 
 output "location" {
   value = azurerm_resource_group.environment.location
+}
+
+output "deployment_client_id" {
+  value = azurerm_user_assigned_identity.deployment.client_id
+}
+
+output "verification_client_id" {
+  value = azurerm_user_assigned_identity.verification.client_id
 }

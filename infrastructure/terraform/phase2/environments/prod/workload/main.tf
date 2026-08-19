@@ -20,7 +20,12 @@ provider "azurerm" {
 data "terraform_remote_state" "foundation" {
   backend = "azurerm"
   config = {
-    key = "goal006/prod/foundation.tfstate"
+    resource_group_name  = var.tfstate_resource_group
+    storage_account_name = var.tfstate_storage_account
+    container_name       = var.tfstate_container
+    key                  = "goal006/prod/foundation.tfstate"
+    use_oidc             = true
+    use_azuread_auth     = true
   }
 }
 
@@ -33,6 +38,7 @@ module "workload" {
   container_app_environment_id = data.terraform_remote_state.foundation.outputs.container_app_environment_id
   image_digests                = var.image_digests
   key_vault_secret_ids         = var.key_vault_secret_ids
+  ghcr_packages_public         = var.ghcr_packages_public
   ce_min_replicas              = var.ce_min_replicas
   pr_min_replicas              = var.pr_min_replicas
 }

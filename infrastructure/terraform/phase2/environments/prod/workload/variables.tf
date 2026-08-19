@@ -6,6 +6,12 @@ variable "key_vault_secret_ids" {
   type = map(string)
 }
 
+variable "ghcr_packages_public" {
+  type        = bool
+  description = "Administrator attestation that all exact-six GHCR packages allow anonymous digest pulls."
+  default     = false
+}
+
 variable "ce_min_replicas" {
   type = number
   validation {
@@ -20,4 +26,16 @@ variable "pr_min_replicas" {
     condition     = var.pr_min_replicas > 0
     error_message = "Production PR minimum requires an accepted positive owner value."
   }
+}
+
+variable "tfstate_resource_group" {
+  type = string
+}
+
+variable "tfstate_storage_account" {
+  type = string
+}
+
+variable "tfstate_container" {
+  type = string
 }

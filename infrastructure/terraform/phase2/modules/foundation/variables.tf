@@ -18,26 +18,10 @@ variable "repository_id" {
   type = string
 }
 
-variable "repository_ref" {
-  type    = string
-  default = "refs/heads/main"
+variable "tfstate_storage_account_id" {
+  type = string
   validation {
-    condition     = var.repository_ref == "refs/heads/main"
-    error_message = "Phase 2 deployment trust is restricted to refs/heads/main."
-  }
-}
-
-variable "repository_workflows" {
-  type = set(string)
-  default = [
-    ".github/workflows/promote.yaml",
-    ".github/workflows/post-deploy-verify.yaml",
-  ]
-  validation {
-    condition = var.repository_workflows == toset([
-      ".github/workflows/promote.yaml",
-      ".github/workflows/post-deploy-verify.yaml",
-    ])
-    error_message = "Phase 2 deployment trust requires the exact approved workflow set."
+    condition     = can(regex("^/subscriptions/[0-9a-f-]+/resourceGroups/waooaw-platform-rg/providers/Microsoft.Storage/storageAccounts/waooawp3tfstate2ed118$", var.tfstate_storage_account_id))
+    error_message = "Phase 3 state access is restricted to the authorized protected storage account."
   }
 }

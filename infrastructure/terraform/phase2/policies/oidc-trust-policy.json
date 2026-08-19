@@ -4,12 +4,14 @@
   "issuer": "https://token.actions.githubusercontent.com",
   "audience": "api://AzureADTokenExchange",
   "allowed_environments": ["demo", "uat", "prod"],
+  "allowed_verification_environments": ["demo-verification", "uat-verification", "prod-verification"],
   "allowed_refs": ["refs/heads/main"],
   "allowed_workflows": [
-    ".github/workflows/promote.yaml",
-    ".github/workflows/post-deploy-verify.yaml"
+    ".github/workflows/promote.yaml@refs/heads/main"
   ],
-  "subject_claim_template": ["repo", "environment", "ref", "job_workflow_ref"],
+  "subject_claim_template": ["repo", "environment"],
   "wildcards_allowed": false,
-  "enforcement_stage": "P2-WC03_FEDERATED_CREDENTIAL_AND_P2-WC06_WORKFLOW_GATE"
+  "workflow_allowlist_enforcement": "exact_github_workflow_ref_guard_before_oidc_login_plus_protected_main_only_environments",
+  "credential_enforcement": "exact_repository_environment_subject_without_wildcards",
+  "enforcement_stage": "P3-WC01_DEFAULT_SUBJECT_COMPATIBILITY_AND_P3-WC02_FEDERATED_CREDENTIAL"
 }
